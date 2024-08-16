@@ -44,6 +44,20 @@ std::vector<math::Vector<u8, 4>> extract_color_from_vec4_float(const u8* data,
   return result;
 }
 
+std::vector<math::Vector<u8, 4>> extract_color_from_vec3_float(const u8* data,
+                                                               u32 count,
+                                                               u32 stride) {
+  std::vector<math::Vector<u8, 4>> result;
+  result.reserve(count);
+  for (u32 i = 0; i < count; i++) {
+    math::Vector<float, 3> temp;
+    memcpy(&temp, data, sizeof(math::Vector<float, 3>));
+    data += stride;
+    result.emplace_back(temp.x() * 255, temp.y() * 255, temp.z() * 255, 255);
+  }
+  return result;
+}
+
 /*!
  * Convert a GLTF color buffer (u16 format) to u8 colors.
  */
@@ -57,6 +71,16 @@ std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u16(const u8* data,
     memcpy(&temp, data, sizeof(math::Vector<u16, 4>));
     data += stride;
     result.emplace_back(temp.x() >> 8, temp.y() >> 8, temp.z() >> 8, temp.w() >> 8);
+  }
+  return result;
+}
+
+std::vector<math::Vector<u8, 4>> extract_color_from_vec4_u8(const u8* data, u32 count, u32 stride) {
+  std::vector<math::Vector<u8, 4>> result;
+  result.reserve(count);
+  for (u32 i = 0; i < count; i++) {
+    result.push_back(math::Vector<u8, 4>(data[0], data[1], data[2], data[3]));
+    data += stride;
   }
   return result;
 }
@@ -90,6 +114,74 @@ std::vector<u32> gltf_index_buffer(const tinygltf::Model& model,
     default:
       ASSERT_MSG(false, "unsupported component type");
   }
+}
+
+std::vector<math::Matrix4f> extract_mat4(const tinygltf::Model& model, int accessor_idx) {
+  const auto& accessor = model.accessors[accessor_idx];
+  const auto& buffer_view = model.bufferViews[accessor.bufferView];
+  const auto& buffer = model.buffers[buffer_view.buffer];
+  const u8* data_ptr = buffer.data.data() + buffer_view.byteOffset + accessor.byteOffset;
+  const auto stride = accessor.ByteStride(buffer_view);
+  const auto count = accessor.count;
+
+  // ASSERT(buffer_view.target == TINYGLTF_TARGET_ARRAY_BUFFER);  // ??
+  ASSERT(accessor.componentType == TINYGLTF_COMPONENT_TYPE_FLOAT);
+  ASSERT(accessor.type == TINYGLTF_TYPE_MAT4);
+
+  std::vector<math::Matrix4f> result(accessor.count);
+  for (size_t x = 0; x < count; x++) {
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        memcpy(&result[x](j, i), data_ptr + sizeof(float) * (i * 4 + j), sizeof(float));
+      }
+    }
+    data_ptr += stride;
+  }
+  return result;
+}
+
+JointsAndWeights convert_per_vertex_data(const math::Vector4f& weights,
+                                         const math::Vector<u8, 4>& joints) {
+  int discard_idx = -1;
+  float discard_weight = 100;
+  for (int i = 0; i < 4; i++) {
+    if (weights[i] < discard_weight) {
+      discard_idx = i;
+      discard_weight = weights[i];
+    }
+  }
+
+  JointsAndWeights ret;
+  int dst = 0;
+  float sum = 0;
+  for (int src = 0; src < 4; src++) {
+    if (src == discard_idx) {
+      continue;
+    }
+    // this +1 is to account for align not existing in the gltf.
+    ret.joints[dst] = joints[src] + 2;
+    ret.weights[dst] = weights[src];
+    sum += ret.weights[dst];
+    dst++;
+  }
+
+  ret.weights /= sum;
+  return ret;
+}
+
+std::vector<JointsAndWeights> extract_and_flatten_joints_and_weights(
+    const tinygltf::Model& model,
+    const tinygltf::Primitive& prim) {
+  auto weights =
+      extract_vec<float, 4>(model, prim.attributes.at("WEIGHTS_0"), TINYGLTF_COMPONENT_TYPE_FLOAT);
+  auto joints = extract_vec<u8, 4>(model, prim.attributes.at("JOINTS_0"),
+                                   TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE);
+  std::vector<JointsAndWeights> ret;
+  ASSERT(weights.size() == joints.size());
+  for (size_t i = 0; i < weights.size(); i++) {
+    ret.push_back(convert_per_vertex_data(weights[i], joints[i]));
+  }
+  return ret;
 }
 
 /*!
@@ -148,19 +240,37 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
           buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
       const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
       const auto count = attrib_accessor.count;
-
-      ASSERT_MSG(attrib_accessor.type == TINYGLTF_TYPE_VEC4, "COLOR_0 wasn't vec4");
       std::vector<math::Vector<u8, 4>> colors;
-      switch (attrib_accessor.componentType) {
-        case TINYGLTF_COMPONENT_TYPE_FLOAT:
-          colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
+
+      switch (attrib_accessor.type) {
+        case TINYGLTF_TYPE_VEC4:
+          switch (attrib_accessor.componentType) {
+            case TINYGLTF_COMPONENT_TYPE_FLOAT:
+              colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
+              break;
+            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+              colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
+              break;
+            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+              colors = extract_color_from_vec4_u8(data_ptr, count, byte_stride);
+              break;
+            default:
+              lg::die("Unknown type for COLOR_0: {}", attrib_accessor.componentType);
+          }
           break;
-        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-          colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
+        case TINYGLTF_TYPE_VEC3:
+          switch (attrib_accessor.componentType) {
+            case TINYGLTF_COMPONENT_TYPE_FLOAT:
+              colors = extract_color_from_vec3_float(data_ptr, count, byte_stride);
+              break;
+            default:
+              lg::die("unkonwn component type for vec3 color {}", attrib_accessor.componentType);
+          }
           break;
         default:
-          lg::die("Unknown component type for COLOR_0: {}", attrib_accessor.componentType);
+          lg::die("unknown attribute type for color {}", attrib_accessor.type);
       }
+
       vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
     }
   }
@@ -348,6 +458,15 @@ math::Vector4f vector4f_from_gltf(const std::vector<double>& in) {
   return math::Vector4f{in[0], in[1], in[2], in[3]};
 }
 
+math::Matrix4f matrix_from_trs(const math::Vector3f& trans,
+                               const math::Vector4f& quat,
+                               const math::Vector3f& scale) {
+  math::Matrix4f t = affine_translation(trans);
+  math::Matrix4f r = affine_rot_qxyzw(quat);
+  math::Matrix4f s = affine_scale(scale);
+  return t * r * s;
+}
+
 math::Matrix4f matrix_from_node(const tinygltf::Node& node) {
   if (!node.matrix.empty()) {
     math::Matrix4f result;
@@ -464,4 +583,43 @@ DrawMode draw_mode_from_sampler(const tinygltf::Sampler& sampler) {
 
   return mode;
 }
+
+std::optional<int> find_single_skin(const tinygltf::Model& model,
+                                    const std::vector<NodeWithTransform>& all_nodes) {
+  std::optional<int> skin_index;
+  for (const auto& n : all_nodes) {
+    const auto& node = model.nodes.at(n.node_idx);
+    if (node.skin >= 0) {
+      if (skin_index && *skin_index != node.skin) {
+        lg::die("GLTF contains multiple skins, but only one skin per actor is supported.");
+      }
+      skin_index = node.skin;
+    }
+  }
+  return skin_index;
+}
+
+std::vector<float> extract_floats(const tinygltf::Model& model, int accessor_idx) {
+  const auto& accessor = model.accessors[accessor_idx];
+  const auto& buffer_view = model.bufferViews[accessor.bufferView];
+  const auto& buffer = model.buffers[buffer_view.buffer];
+  const u8* data_ptr = buffer.data.data() + buffer_view.byteOffset + accessor.byteOffset;
+  const auto stride = accessor.ByteStride(buffer_view);
+  const auto count = accessor.count;
+
+  // ASSERT(buffer_view.target == TINYGLTF_TARGET_ARRAY_BUFFER);  // ??
+  if (accessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT) {
+    lg::die("mismatched format, wanted {} but got {}", TINYGLTF_COMPONENT_TYPE_FLOAT,
+            accessor.componentType);
+  }
+  ASSERT(accessor.type == TINYGLTF_TYPE_SCALAR);
+
+  std::vector<float> result(accessor.count);
+  for (size_t x = 0; x < count; x++) {
+    memcpy(&result[x], data_ptr, sizeof(float));
+    data_ptr += stride;
+  }
+  return result;
+}
+
 }  // namespace gltf_util

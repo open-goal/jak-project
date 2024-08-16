@@ -6,6 +6,7 @@ add_library(compiler
         emitter/Register.cpp
         debugger/disassemble.cpp
         build_level/common/build_level.cpp
+        build_actor/common/animation_processing.cpp
         build_actor/common/MercExtract.cpp
         build_level/jak1/build_level.cpp
         build_level/jak2/build_level.cpp
