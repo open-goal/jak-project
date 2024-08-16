@@ -24,7 +24,8 @@ struct Input {
 };
 
 struct TfragOutput {
-  std::vector<tfrag3::StripDraw> strip_draws;
+  std::vector<tfrag3::StripDraw> normal_strip_draws;
+  std::vector<tfrag3::StripDraw> trans_strip_draws;
   std::vector<tfrag3::PreloadedVertex> vertices;
   std::vector<math::Vector<u8, 4>> color_palette;
 };

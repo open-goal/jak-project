@@ -25,10 +25,13 @@ void dedup_vertices(TfragOutput& data) {
   gltf_util::dedup_vertices(data.vertices, new_verts, old_to_new);
   data.vertices = std::move(new_verts);
 
-  for (auto& draw : data.strip_draws) {
-    ASSERT(draw.runs.empty());  // not supported yet
-    for (auto& idx : draw.plain_indices) {
-      idx = old_to_new.at(idx);
+  // TODO: properly split vertices between trees...
+  for (auto drawlist : {&data.normal_strip_draws, &data.trans_strip_draws}) {
+    for (auto& draw : *drawlist) {
+      ASSERT(draw.runs.empty());  // not supported yet
+      for (auto& idx : draw.plain_indices) {
+        idx = old_to_new.at(idx);
+      }
     }
   }
 
@@ -97,39 +100,56 @@ void extract(const Input& in,
   }
 
   for (const auto& [mat_idx, d_] : draw_by_material) {
-    out.strip_draws.push_back(d_);
-    auto& draw = out.strip_draws.back();
+    // out.strip_draws.push_back(d_);
+    // auto& draw = out.strip_draws.back();
+    tfrag3::StripDraw draw = d_;
     draw.mode = make_default_draw_mode();
 
     if (mat_idx == -1) {
       lg::warn("Draw had a material index of -1, using default texture.");
       draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      out.normal_strip_draws.push_back(draw);
       continue;
     }
+
     const auto& mat = model.materials[mat_idx];
+    setup_alpha_from_material(mat, &draw.mode);
     int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
     if (tex_idx == -1) {
       lg::warn("Material {} has no texture, using default texture.", mat.name);
       draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      if (draw.mode.get_ab_enable()) {
+        out.trans_strip_draws.push_back(draw);
+      } else {
+        out.normal_strip_draws.push_back(draw);
+      }
       continue;
     }
 
     const auto& tex = model.textures[tex_idx];
     ASSERT(tex.sampler >= 0);
     ASSERT(tex.source >= 0);
-    draw.mode = draw_mode_from_sampler(model.samplers.at(tex.sampler));
+    setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
 
     const auto& img = model.images[tex.source];
     draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, img);
+
+    if (draw.mode.get_ab_enable()) {
+      out.trans_strip_draws.push_back(draw);
+    } else {
+      out.normal_strip_draws.push_back(draw);
+    }
   }
-  lg::info("total of {} unique materials", out.strip_draws.size());
+  lg::info("total of {} normal, {} transparent unique materials", out.normal_strip_draws.size(),
+           out.trans_strip_draws.size());
 
   lg::info("Merged {} meshes and {} prims into {} vertices", mesh_count, prim_count,
            out.vertices.size());
 
   if (in.get_colors) {
     Timer quantize_timer;
-    auto quantized = quantize_colors_octree(all_vtx_colors, 1024);
+    // auto quantized = quantize_colors_octree(all_vtx_colors, 1024);
+    auto quantized = quantize_colors_kd_tree(all_vtx_colors, 10);
     for (size_t i = 0; i < out.vertices.size(); i++) {
       out.vertices[i].color_index = quantized.vtx_to_color[i];
     }

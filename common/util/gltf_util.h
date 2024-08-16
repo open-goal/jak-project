@@ -77,7 +77,8 @@ void dedup_vertices(const std::vector<tfrag3::PreloadedVertex>& vertices_in,
 
 std::vector<NodeWithTransform> flatten_nodes_from_all_scenes(const tinygltf::Model& model);
 
-DrawMode draw_mode_from_sampler(const tinygltf::Sampler& sampler);
+void setup_alpha_from_material(const tinygltf::Material& material, DrawMode* mode);
+void setup_draw_mode_from_sampler(const tinygltf::Sampler& sampler, DrawMode* mode);
 
 /*!
  * Find the index of the skin for this model. Returns nullopt if there is no skin, the index of the

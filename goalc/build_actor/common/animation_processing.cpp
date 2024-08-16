@@ -276,6 +276,9 @@ CompressedAnim compress_animation(const UncompressedJointAnim& in) {
       compress_scale(&out.fixed, joint_data.scale_frames[0]);
     }
   }
+
+  lg::info("animation {} size {:.2f} kB", in.name,
+           (out.fixed.size_bytes() + out.frames.size() * out.frames.at(0).size_bytes()) / 1024.f);
   return out;
 }
 }  // namespace anim
