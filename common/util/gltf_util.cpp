@@ -242,18 +242,18 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       const auto count = attrib_accessor.count;
       std::vector<math::Vector<u8, 4>> colors;
 
-      switch(attrib_accessor.type) {
+      switch (attrib_accessor.type) {
         case TINYGLTF_TYPE_VEC4:
           switch (attrib_accessor.componentType) {
             case TINYGLTF_COMPONENT_TYPE_FLOAT:
               colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
-            break;
+              break;
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
               colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
-            break;
+              break;
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
               colors = extract_color_from_vec4_u8(data_ptr, count, byte_stride);
-            break;
+              break;
             default:
               lg::die("Unknown type for COLOR_0: {}", attrib_accessor.componentType);
           }

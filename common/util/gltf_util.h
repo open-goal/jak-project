@@ -105,7 +105,7 @@ std::vector<math::Vector<T, n>> extract_vec(const tinygltf::Model& model,
   switch (n) {
     case 3:
       ASSERT(accessor.type == TINYGLTF_TYPE_VEC3);
-    break;
+      break;
     case 4:
       ASSERT(accessor.type == TINYGLTF_TYPE_VEC4);
       break;
