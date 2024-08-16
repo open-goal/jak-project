@@ -501,14 +501,24 @@ size_t gen_dummy_frag_ctrl_for_uploads(DataObjectGenerator& gen, int n) {
 
   std::vector<u8> packed_frag_ctrls;
 
-  for (int k = 0; k < 8; k++) {  // hack
+  // this is still a bit of a hack - the dummy_frag_ctrl above has 8 fragments, so we need to
+  // provide fragment controls for each. The PC merc renderer will de-duplicate bone uploads over
+  // all effects and fragments, so we just need to have a single fragment that asks for all bones,
+  // and everything will work out.
+  for (int k = 0; k < 8; k++) {
     packed_frag_ctrls.push_back(0);
     packed_frag_ctrls.push_back(0);
     packed_frag_ctrls.push_back(0);
-    packed_frag_ctrls.push_back(n);
-    for (int i = 0; i < n; i++) {
-      packed_frag_ctrls.push_back(i);
-      packed_frag_ctrls.push_back(i);
+    if (k == 0) {  // for the first frag, do all matrix uploads.
+      // note that these are bogus destination addresses, but nothing uses it on PC
+      packed_frag_ctrls.push_back(n);
+      for (int i = 0; i < n; i++) {
+        packed_frag_ctrls.push_back(i);
+        packed_frag_ctrls.push_back(i);
+      }
+    } else {
+      // remaining frags can have empty matrix upload lists.
+      packed_frag_ctrls.push_back(0);
     }
   }
 
@@ -576,7 +586,7 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.add_word(0x100011b);                           // 136
   auto extra_info_slot = gen.add_word(0);            // 140 (extra-info)
   gen.link_word_to_byte(extra_info_slot, gen_dummy_extra_info(gen));
-  gen.link_word_to_byte(frag_ctrl_slot, gen_dummy_frag_ctrl_for_uploads(gen, 126));  // wrong.
+  gen.link_word_to_byte(frag_ctrl_slot, gen_dummy_frag_ctrl_for_uploads(gen, joints + 3));
   gen.link_word_to_byte(frag_geo_slot, gen_dummy_frag_geo(gen));
   return result;
 }

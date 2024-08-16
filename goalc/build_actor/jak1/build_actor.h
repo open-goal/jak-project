@@ -2,9 +2,9 @@
 
 #include "common/util/gltf_util.h"
 
+#include "goalc/build_actor/common/animation_processing.h"
 #include "goalc/build_actor/common/art_types.h"
 #include "goalc/build_level/collide/common/collide_common.h"
-#include "goalc/build_actor/common/animation_processing.h"
 
 namespace jak1 {
 

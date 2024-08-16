@@ -69,7 +69,7 @@ UncompressedJointAnim extract_anim_from_gltf(const tinygltf::Model& model,
 
   for (const auto& channel : anim.channels) {
     const int channel_node_idx = channel.target_node;
-    const auto& channel_node = model.nodes.at(channel_node_idx);
+    // const auto& channel_node = model.nodes.at(channel_node_idx);
     const int channel_joint = node_to_joint.at(channel_node_idx);
     // lg::info("channel for {} {} / {}", channel_joint, channel_node.name, channel.target_path);
     const auto& sampler = anim.samplers.at(channel.sampler);
@@ -87,11 +87,11 @@ UncompressedJointAnim extract_anim_from_gltf(const tinygltf::Model& model,
     }
   }
 
-  int max_frames = 0;
+  size_t max_frames = 0;
   for (auto& joint : out.joints) {
-    max_frames = std::max(max_frames, (int)joint.quat_frames.size());
-    max_frames = std::max(max_frames, (int)joint.trans_frames.size());
-    max_frames = std::max(max_frames, (int)joint.scale_frames.size());
+    max_frames = std::max(max_frames, joint.quat_frames.size());
+    max_frames = std::max(max_frames, joint.trans_frames.size());
+    max_frames = std::max(max_frames, joint.scale_frames.size());
   }
   lg::info("max frames is {}", max_frames);
 
@@ -251,12 +251,6 @@ CompressedAnim compress_animation(const UncompressedJointAnim& in) {
     metadata.animated_quat = !is_constant(joint_data.quat_frames);
     metadata.animated_scale = !is_constant(joint_data.scale_frames);
     metadata.big_trans_mode = !can_use_small_trans(joint_data.trans_frames);
-
-    // massive hack
-    // if (joint > 1) {
-    //   lg::error("huge hack to reduce animation size");
-    //   metadata.animated_scale = false;
-    // }
 
     if (metadata.animated_trans) {
       for (int i = 0; i < in.frames; i++) {
