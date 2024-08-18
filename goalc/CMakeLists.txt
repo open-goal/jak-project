@@ -31,6 +31,7 @@ add_library(compiler
         build_level/jak3/LevelFile.cpp
         build_level/common/ResLump.cpp
         build_level/common/Tfrag.cpp
+        build_level/common/Tie.cpp
         build_level/jak1/ambient.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp

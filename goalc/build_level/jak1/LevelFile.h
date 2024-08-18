@@ -15,13 +15,12 @@
 #include "goalc/build_level/collide/jak1/collide_drawable.h"
 #include "goalc/build_level/collide/jak1/collide_pack.h"
 #include "goalc/build_level/common/Tfrag.h"
+#include "goalc/build_level/common/Tie.h"
 
 namespace jak1 {
 struct VisibilityString {
   std::vector<u8> bytes;
 };
-
-struct DrawableTreeInstanceTie {};
 
 struct DrawableTreeActor {};
 

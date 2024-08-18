@@ -5,6 +5,7 @@
 #include "gltf_mesh_extract.h"
 
 #include "common/custom_data/pack_helpers.h"
+#include "common/util/gltf_util.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
@@ -15,17 +16,8 @@ void add_tree(std::vector<tfrag3::TfragTree>& out_pc,
   auto& normal = out_pc.emplace_back();
   normal.kind = kind;
   normal.draws = draws;
-  pack_tfrag_vertices(&normal.packed_vertices, mesh_extract_out.vertices);
-  normal.colors.color_count = (mesh_extract_out.color_palette.size() + 3) & (~3);
-  normal.colors.data.resize(normal.colors.color_count * 8 * 4);
-  for (u32 color_index = 0; color_index < mesh_extract_out.color_palette.size(); color_index++) {
-    for (u32 palette = 0; palette < 8; palette++) {
-      for (u32 channel = 0; channel < 4; channel++) {
-        normal.colors.read(color_index, palette, channel) =
-            mesh_extract_out.color_palette[color_index][channel];
-      }
-    }
-  }
+  pack_tfrag_vertices(&normal.packed_vertices, mesh_extract_out.tfrag_vertices);
+  normal.colors = gltf_util::pack_time_of_day(mesh_extract_out.color_palette);
   normal.use_strips = false;
 }
 

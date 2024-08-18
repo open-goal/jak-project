@@ -644,4 +644,22 @@ std::vector<float> extract_floats(const tinygltf::Model& model, int accessor_idx
   return result;
 }
 
+std::size_t TieFullVertex::hash::operator()(const TieFullVertex& x) const {
+  return tfrag3::PackedTieVertices::Vertex::hash()(x.vertex) ^ std::hash<u16>()(x.color_index);
+}
+
+tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8, 4>>& color_palette) {
+  tfrag3::PackedTimeOfDay colors;
+  colors.color_count = (color_palette.size() + 3) & (~3);
+  colors.data.resize(colors.color_count * 8 * 4);
+  for (u32 color_index = 0; color_index < color_palette.size(); color_index++) {
+    for (u32 palette = 0; palette < 8; palette++) {
+      for (u32 channel = 0; channel < 4; channel++) {
+        colors.read(color_index, palette, channel) = color_palette[color_index][channel];
+      }
+    }
+  }
+  return colors;
+}
+
 }  // namespace gltf_util

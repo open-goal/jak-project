@@ -85,6 +85,14 @@ bool run_build_level(const std::string& input_file,
                                           "drawable-inline-array-trans-tfrag");
 
   tfrag_from_gltf(mesh_extract_out.tfrag, pc_level.tfrag_trees[0]);
+
+  // TIE
+  if (!mesh_extract_out.tie.base_draws.empty()) {
+    file.drawable_trees.ties.emplace_back();
+    tie_from_gltf(mesh_extract_out.tie, pc_level.tie_trees[0]);
+  }
+
+  // TEXTURE
   pc_level.textures = std::move(tex_pool.textures_by_idx);
 
   // COLLIDE
