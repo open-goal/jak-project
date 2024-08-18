@@ -86,6 +86,23 @@ bool prim_needs_tie(const tinygltf::Model& model, const tinygltf::Primitive& pri
   return false;
 }
 
+struct EnvmapSettings {
+  int texture_idx = -1;
+};
+
+EnvmapSettings envmap_settings_from_gltf(const tinygltf::Material& mat) {
+  EnvmapSettings settings;
+
+  ASSERT(mat.extensions.contains("KHR_materials_specular"));
+  const auto& specular_extension = mat.extensions.at("KHR_materials_specular");
+  ASSERT(specular_extension.Has("specularColorTexture"));
+
+  auto& texture = specular_extension.Get("specularColorTexture");
+  ASSERT(texture.Has("index"));
+  settings.texture_idx = texture.Get("index").Get<int>();
+  return settings;
+}
+
 void extract(const Input& in,
              TfragOutput& out,
              const tinygltf::Model& model,
@@ -242,6 +259,54 @@ void add_to_packed_verts(std::vector<tfrag3::PackedTieVertices::Vertex>* out,
   }
 }
 
+int texture_pool_add_envmap_control_texture(TexturePool* pool,
+                                            const tinygltf::Model& model,
+                                            int rgb_image_id,
+                                            int mr_image_id) {
+  const auto& existing = pool->envmap_textures_by_gltf_id.find({rgb_image_id, mr_image_id});
+  if (existing != pool->envmap_textures_by_gltf_id.end()) {
+    lg::info("Reusing envmap textures");
+    return existing->second;
+  }
+  const auto& rgb_tex = model.images.at(rgb_image_id);
+  const auto& mr_tex = model.images.at(mr_image_id);
+  lg::info("new envmap texture {} {}", rgb_tex.name, mr_tex.name);
+  ASSERT(rgb_tex.bits == 8);
+  ASSERT(rgb_tex.component == 4);
+  ASSERT(rgb_tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
+
+  ASSERT(mr_tex.bits == 8);
+  ASSERT(mr_tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
+  ASSERT(mr_tex.component == 4);
+
+  ASSERT(rgb_tex.width == mr_tex.width);
+  ASSERT(rgb_tex.height == mr_tex.height);
+
+  size_t idx = pool->textures_by_idx.size();
+  pool->envmap_textures_by_gltf_id[{rgb_image_id, mr_image_id}] = idx;
+  auto& tt = pool->textures_by_idx.emplace_back();
+  tt.w = rgb_tex.width;
+  tt.h = rgb_tex.height;
+  tt.debug_name = rgb_tex.name;
+  tt.debug_tpage_name = "custom-level";
+  tt.load_to_pool = false;
+  tt.combo_id = 0;  // doesn't matter, not a pool tex
+  tt.data.resize(tt.w * tt.h);
+  ASSERT(rgb_tex.image.size() >= tt.data.size());
+  memcpy(tt.data.data(), rgb_tex.image.data(), tt.data.size() * 4);
+
+  // adjust alpha from metallic channel
+  for (size_t i = 0; i < tt.data.size(); i++) {
+    u32 rgb = tt.data[i];
+    u32 metal = mr_tex.image[4 * i + 2] / 4;
+    rgb &= 0xff'ff'ff;
+    rgb |= (metal << 24);
+    tt.data[i] = rgb;
+  }
+
+  return idx;
+}
+
 void extract(const Input& in,
              TieOutput& out,
              const tinygltf::Model& model,
@@ -321,23 +386,40 @@ void extract(const Input& in,
 
     const auto& mat = model.materials[mat_idx];
     setup_alpha_from_material(mat, &draw.mode);
-    int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
-    if (tex_idx == -1) {
+    int base_tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
+    if (base_tex_idx == -1) {
       lg::warn("Material {} has no texture, using default texture.", mat.name);
       draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
       out.base_draws.push_back(draw);
       continue;
     }
+    int roughness_tex_idx = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+    ASSERT(roughness_tex_idx >= 0);
+    const auto& base_tex = model.textures[base_tex_idx];
+    ASSERT(base_tex.sampler >= 0);
+    ASSERT(base_tex.source >= 0);
+    setup_draw_mode_from_sampler(model.samplers.at(base_tex.sampler), &draw.mode);
+    const auto& roughness_tex = model.textures.at(roughness_tex_idx);
+    ASSERT(roughness_tex.sampler >= 0);
+    ASSERT(roughness_tex.source >= 0);
 
-    const auto& tex = model.textures[tex_idx];
-    ASSERT(tex.sampler >= 0);
-    ASSERT(tex.source >= 0);
-    setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
-
-    const auto& img = model.images[tex.source];
-    draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, img);
-
+    // draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, model.images[base_tex.source]);
+    draw.tree_tex_id = texture_pool_add_envmap_control_texture(in.tex_pool, model, base_tex.source,
+                                                               roughness_tex.source);
     out.base_draws.push_back(draw);
+
+    // now, setup envmap draw:
+    auto envmap_settings = envmap_settings_from_gltf(mat);
+    const auto& envmap_tex = model.textures[envmap_settings.texture_idx];
+    ASSERT(envmap_tex.sampler >= 0);
+    ASSERT(envmap_tex.source >= 0);
+    draw.mode = make_default_draw_mode();
+    setup_draw_mode_from_sampler(model.samplers.at(envmap_tex.sampler), &draw.mode);
+    draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, model.images[envmap_tex.source]);
+    draw.mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+    draw.mode.enable_ab();
+
+    out.envmap_draws.push_back(draw);
   }
   lg::info("total of {} normal TIE draws, {} envmap", out.base_draws.size(),
            out.envmap_draws.size());

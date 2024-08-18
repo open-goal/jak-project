@@ -9,11 +9,11 @@ void tie_from_gltf(const gltf_mesh_extract::TieOutput& mesh_extract_out,
   out.category_draw_indices[0] = 0;
   for (int category_idx = 0; category_idx < tfrag3::kNumTieCategories; category_idx++) {
     switch ((tfrag3::TieCategory)category_idx) {
-      case tfrag3::TieCategory::NORMAL:
+      case tfrag3::TieCategory::NORMAL_ENVMAP:
         out.static_draws.insert(out.static_draws.end(), mesh_extract_out.base_draws.begin(),
                                 mesh_extract_out.base_draws.end());
         break;
-      case tfrag3::TieCategory::NORMAL_ENVMAP:
+      case tfrag3::TieCategory::NORMAL_ENVMAP_SECOND_DRAW:
         out.static_draws.insert(out.static_draws.end(), mesh_extract_out.envmap_draws.begin(),
                                 mesh_extract_out.envmap_draws.end());
         break;

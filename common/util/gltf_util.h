@@ -61,9 +61,10 @@ DrawMode make_default_draw_mode();
 struct TexturePool {
   std::unordered_map<std::string, int> textures_by_name;
   std::vector<tfrag3::Texture> textures_by_idx;
+  std::map<std::pair<int, int>, int> envmap_textures_by_gltf_id;
 };
 
-int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex);
+int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int alpha_shift = 1);
 int texture_pool_debug_checker(TexturePool* pool);
 
 struct NodeWithTransform {

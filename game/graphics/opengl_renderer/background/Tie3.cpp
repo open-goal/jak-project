@@ -108,6 +108,7 @@ void Tie3::load_from_fr3_data(const LevelData* loader_data) {
       // OpenGL index buffer (fixed index buffer for multidraw system)
       lod_tree[l_tree].index_buffer = loader_data->tie_data[l_geo][l_tree].index_buffer;
       lod_tree[l_tree].category_draw_indices = tree.category_draw_indices;
+      lod_tree[l_tree].draw_mode = tree.use_strips ? GL_TRIANGLE_STRIP : GL_TRIANGLES;
 
       // set up vertex attributes
       glBindBuffer(GL_ARRAY_BUFFER, lod_tree[l_tree].vertex_buffer);
@@ -586,11 +587,11 @@ void Tie3::draw_matching_draws_for_tree(int idx,
     prof.add_draw_call();
 
     if (render_state->no_multidraw) {
-      glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
+      glDrawElements(tree.draw_mode, singledraw_indices.second, GL_UNSIGNED_INT,
                      (void*)(singledraw_indices.first * sizeof(u32)));
     } else {
       glMultiDrawElements(
-          GL_TRIANGLE_STRIP, &tree.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
+          tree.draw_mode, &tree.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
           &tree.multidraw_index_offset_buffer[multidraw_indices.first], multidraw_indices.second);
     }
 
@@ -606,13 +607,13 @@ void Tie3::draw_matching_draws_for_tree(int idx,
                     double_draw.aref_second);
         glDepthMask(GL_FALSE);
         if (render_state->no_multidraw) {
-          glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
+          glDrawElements(tree.draw_mode, singledraw_indices.second, GL_UNSIGNED_INT,
                          (void*)(singledraw_indices.first * sizeof(u32)));
         } else {
-          glMultiDrawElements(
-              GL_TRIANGLE_STRIP, &tree.multidraw_count_buffer[multidraw_indices.first],
-              GL_UNSIGNED_INT, &tree.multidraw_index_offset_buffer[multidraw_indices.first],
-              multidraw_indices.second);
+          glMultiDrawElements(tree.draw_mode, &tree.multidraw_count_buffer[multidraw_indices.first],
+                              GL_UNSIGNED_INT,
+                              &tree.multidraw_index_offset_buffer[multidraw_indices.first],
+                              multidraw_indices.second);
         }
         break;
       default:
@@ -674,11 +675,11 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
     prof.add_draw_call();
 
     if (render_state->no_multidraw) {
-      glDrawElements(GL_TRIANGLE_STRIP, singledraw_indices.second, GL_UNSIGNED_INT,
+      glDrawElements(tree.draw_mode, singledraw_indices.second, GL_UNSIGNED_INT,
                      (void*)(singledraw_indices.first * sizeof(u32)));
     } else {
       glMultiDrawElements(
-          GL_TRIANGLE_STRIP, &tree.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
+          tree.draw_mode, &tree.multidraw_count_buffer[multidraw_indices.first], GL_UNSIGNED_INT,
           &tree.multidraw_index_offset_buffer[multidraw_indices.first], multidraw_indices.second);
     }
 
@@ -941,7 +942,7 @@ void Tie3::render_tree_wind(int idx,
       prof.add_draw_call();
       prof.add_tri(grp.num);
 
-      glDrawElements(GL_TRIANGLE_STRIP, grp.num, GL_UNSIGNED_INT,
+      glDrawElements(tree.draw_mode, grp.num, GL_UNSIGNED_INT,
                      (void*)((off + tree.wind_vertex_index_offsets.at(draw_idx)) * sizeof(u32)));
       off += grp.num;
 
@@ -958,7 +959,7 @@ void Tie3::render_tree_wind(int idx,
               glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
               double_draw.aref_second);
           glDepthMask(GL_FALSE);
-          glDrawElements(GL_TRIANGLE_STRIP, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
+          glDrawElements(tree.draw_mode, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
                          (void*)0);
           break;
         default:

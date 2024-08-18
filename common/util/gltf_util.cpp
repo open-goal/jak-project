@@ -387,7 +387,7 @@ int texture_pool_debug_checker(TexturePool* pool) {
   }
 }
 
-int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
+int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int alpha_shift) {
   const auto& existing = pool->textures_by_name.find(tex.name);
   if (existing != pool->textures_by_name.end()) {
     lg::info("Reusing image: {}", tex.name);
@@ -416,7 +416,7 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   // adjust alpha colors for PS2/PC difference
   for (auto& color : tt.data) {
     u32 alpha = color >> 24;
-    alpha >>= 1;
+    alpha >>= alpha_shift;
     color &= 0xff'ff'ff;
     color |= (alpha << 24);
   }
