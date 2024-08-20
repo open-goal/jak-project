@@ -14,7 +14,17 @@
 
 (defmacro autosplit-flag-task-complete! (field-name task-name)
   "Given a field name in the autosplitter struct, and a [[game-task]] name to check, sets either a 0 or a 1"
-  `(set! (-> this ,field-name) (if (task-complete? *game-info* (game-task ,task-name)) 1 0)))
+  `(begin
+    (if (!= (-> this ,field-name) (if (task-complete? *game-info* (game-task ,task-name)) 1 0))
+      (format 0 "AUTOSPLIT for ~A~%" (quote ,task-name)))
+    (set! (-> this ,field-name) (if (task-complete? *game-info* (game-task ,task-name)) 1 0))))
+
+(defmacro autosplit-flag-task-node-closed! (field-name task-node-name)
+  "Given a field name in the autosplitter struct, and a [[game-task-node]] name to check, sets either a 0 or a 1"
+  `(begin
+    (if (!= (-> this ,field-name) (if (task-node-closed? (game-task-node ,task-node-name)) 1 0))
+      (format 0 "AUTOSPLIT for ~A~%" (quote ,task-node-name)))
+    (set! (-> this ,field-name) (if (task-node-closed? (game-task-node ,task-node-name)) 1 0))))
 
 (defmethod update! ((this autosplit-info))
   ;; general statistics
@@ -139,6 +149,12 @@
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class3-r stadium-burning-bush-race-class3-r)
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class2-r stadium-burning-bush-race-class2-r)
   (autosplit-flag-task-complete! res-stadium-burning-bush-race-class1-r stadium-burning-bush-race-class1-r)
+  ;; misc other tasks
+  (autosplit-flag-task-node-closed! tomb-poles-poles tomb-poles-poles)  ;; left tomb/daxter boulder start
+  (autosplit-flag-task-node-closed! fortress-save-friends-introduction fortress-save-friends-introduction) ;; talk to torn (before rescue friends)
+  (autosplit-flag-task-node-closed! sewer-escort-get-gun sewer-escort-get-gun) ;; get peacemaker
+  (autosplit-flag-task-node-closed! forest-protect-introduction forest-protect-introduction) ;; talk to onin (protect samos)
+  (autosplit-flag-task-node-closed! forest-protect-meeting forest-protect-meeting) ;; talk to samos (protect samos)
 
   ;; debug only, draw stuff to the screen so i don't have to stare at a memory editor
   ;; (debug-draw this)
