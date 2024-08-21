@@ -858,10 +858,9 @@ std::string ObjectFileDB::process_all_spool_subtitles(const Config& cfg,
   }
 }
 
-std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
+std::string ObjectFileDB::process_game_text_files(const Config& cfg, std::string text_string) {
   try {
     lg::info("- Finding game text...");
-    std::string text_string = "COMMON";
     Timer timer;
     int file_count = 0;
     int string_count = 0;
@@ -869,7 +868,7 @@ std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
     std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
 
     for_each_obj([&](ObjectFileData& data) {
-      if (data.name_in_dgo.substr(1) == text_string) {
+      if (data.name_in_dgo.ends_with(text_string)) {
         file_count++;
         auto statistics = process_game_text(data, cfg.text_version);
         string_count += statistics.total_text;

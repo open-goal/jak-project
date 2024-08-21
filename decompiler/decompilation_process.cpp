@@ -207,15 +207,28 @@ int run_decompilation_process(decompiler::Config config,
     if (!result.empty()) {
       file_util::write_text_file(out_folder / "assets" / "game_text.txt", result);
     }
+
+    if (config.game_version == GameVersion::JakX) {
+      auto subtitle_result = db.process_game_text_files(config, "SUBTIT");
+      if (!subtitle_result.empty()) {
+        file_util::write_text_file(out_folder / "assets" / "game_subs.txt", subtitle_result);
+      }
+    }
   }
 
   lg::info("[Mem] After text: {} MB", get_peak_rss() / (1024 * 1024));
 
   if (config.process_subtitle_text || config.process_subtitle_images) {
-    auto result = db.process_all_spool_subtitles(
-        config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
-    if (!result.empty()) {
-      file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+    if (config.game_version == GameVersion::JakX) {
+      lg::warn(
+          "- Jak X does not use spools, ignoring process_subtitle_text and/or "
+          "process_subtitle_images");
+    } else {
+      auto result = db.process_all_spool_subtitles(
+          config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
+      if (!result.empty()) {
+        file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+      }
     }
   }
 
