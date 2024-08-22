@@ -75,7 +75,7 @@ namespace jakx {
 // for now, we don't have the ability to extend the size of the symbol table
 constexpr s32 GOAL_MAX_SYMBOLS = 0x4000;
 // amount of levels in level heap
-constexpr int LEVEL_MAX = 18;
+constexpr int LEVEL_MAX = 10;
 // total amount of levels, including ones outside level heap (default-level)
 constexpr int LEVEL_TOTAL = LEVEL_MAX + 1;
 }  // namespace jakx
