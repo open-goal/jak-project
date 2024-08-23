@@ -57,7 +57,8 @@ void write_wave_file(const std::vector<s16>& left_samples,
 }
 
 std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
-                                                           const bool stereo) {
+                                                           const bool stereo,
+                                                           const u32 version) {
   std::vector<s16> left_samples;
   std::vector<s16> right_samples;
   s32 left_sample_prev[2] = {0, 0};
@@ -85,7 +86,7 @@ std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
       break;
     }
 
-    if (stereo && bytes_read == 0x2000) {
+    if (stereo && bytes_read == (version == 3 ? 0x1000 : 0x2000)) {
       // switch streams
       processing_left_chunk = !processing_left_chunk;
       bytes_read = 0;
