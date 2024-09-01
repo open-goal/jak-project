@@ -385,8 +385,7 @@
     (behavior ()
       (if (move-legs?) (go target-flut-walk))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max)))
       (if (can-hands? #t) (go target-flut-running-attack))
       (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
@@ -437,8 +436,7 @@
     (behavior ()
       (if (not (move-legs?)) (go target-flut-stance))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max)))
       (if (can-hands? #t) (go target-flut-running-attack))
       (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
@@ -545,7 +543,7 @@
     (behavior ()
       (set! (-> self control unknown-float123)
             (fmax (-> self control unknown-float123)
-                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 6)))))
+                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx x)))))) ;; og:preserve-this abutton indexing
       (if (logtest? (-> self control status) (cshape-moving-flags onsurf)) (go target-flut-hit-ground))
       (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 40960.0)
@@ -690,10 +688,9 @@
     (-> target-flut-start
         exit)
   :trans
-     (behavior ()
-       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+    (behavior ()
+      ;; og:preserve-this - High FPS Fix
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max)))
       (if (move-legs?) (go target-flut-walk))
       (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
