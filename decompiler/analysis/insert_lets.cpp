@@ -1673,6 +1673,99 @@ FormElement* rewrite_part_tracker_new(const std::string& type,
       ->try_as_single_element();
 }
 
+FormElement* rewrite_call_parent_state_handler(LetElement* in, const Env& env, FormPool& pool) {
+  // (let ((t9-3 (-> (find-parent-state) code)))
+  //   (if t9-3
+  //       ((the-as (function none) t9-3))
+  //       )
+  //   )
+  auto mr =
+      Matcher::let(false,
+                   {LetEntryMatcher::any(Matcher::deref(Matcher::func("find-parent-state", {}),
+                                                        false, {DerefTokenMatcher::any_string(1)}),
+                                         0)},
+                   {Matcher::if_no_else(Matcher::any(), Matcher::any(2))});
+  auto let_mr = match(mr, in);
+  if (!let_mr.matched) {
+    return nullptr;
+  }
+  auto handler = let_mr.maps.strings.at(1);
+  auto valid_handlers = {"enter", "trans", "code", "post"};
+  if (std::find(valid_handlers.begin(), valid_handlers.end(), handler) != valid_handlers.end()) {
+    std::vector<Form*> macro_args;
+    macro_args.push_back(pool.form<ConstantTokenElement>(handler));
+    // there are no examples of this being used with args, so that is not handled for now...
+    // auto func = let_mr.maps.forms.at(2);
+    return pool
+        .form<GenericElement>(GenericOperator::make_function(
+                                  pool.form<ConstantTokenElement>("call-parent-state-handler")),
+                              macro_args)
+        ->try_as_single_element();
+  }
+  return nullptr;
+}
+
+FormElement* rewrite_suspend_for(LetElement* in, const Env& env, FormPool& pool) {
+  // (let ((gp-1 (current-time)))
+  //   (until (time-elapsed? gp-1 (seconds 0.5))
+  //     (suspend)
+  //     )
+  //   )
+  // ->
+  // (suspend-for (seconds 0.5))
+  auto until = dynamic_cast<UntilElement*>(in->body()->at(0));
+  if (!until) {
+    return nullptr;
+  }
+  auto mr = Matcher::let(
+      false, {LetEntryMatcher::any(Matcher::func("current-time", {}), 0)},
+      {Matcher::until_loop(Matcher::func("time-elapsed?", {Matcher::any_reg(1), Matcher::any(2)}),
+                           Matcher::any(3))});
+  auto let_mr = match(mr, in);
+  if (!let_mr.matched) {
+    return nullptr;
+  }
+  auto var = let_mr.maps.regs.at(1);
+  auto time = let_mr.maps.forms.at(2);
+  auto body = let_mr.maps.forms.at(3);
+  std::vector<Form*> macro_args;
+  std::vector<FormElement*> macro_elts;
+  macro_args.push_back(time);
+  for (auto& elt : body->elts()) {
+    auto op = dynamic_cast<AtomicOpElement*>(elt);
+    auto suspend = op && op->op() && dynamic_cast<SpecialOp*>(op->op()) &&
+                   dynamic_cast<SpecialOp*>(op->op())->kind() == SpecialOp::Kind::SUSPEND;
+    if (!suspend || elt != body->elts().back()) {
+      elt->apply_form([&](Form* form) {
+        for (auto& e : form->elts()) {
+          auto as_expr = dynamic_cast<SimpleExpressionElement*>(e);
+          if (as_expr) {
+            RegAccessSet regs;
+            as_expr->collect_vars(regs, false);
+            for (auto reg : regs) {
+              if (reg.to_string(env, RegisterAccess::Print::AS_VARIABLE) ==
+                  var.value().to_string(env, RegisterAccess::Print::AS_VARIABLE)) {
+                e = pool.alloc_element<ConstantTokenElement>("time");
+              }
+            }
+          }
+        }
+      });
+      macro_elts.push_back(elt);
+    }
+  }
+  if (!macro_elts.empty()) {
+    for (auto elt : macro_elts) {
+      macro_args.push_back(pool.alloc_single_form(nullptr, elt));
+    }
+  }
+  return pool
+      .form<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("suspend-for")),
+          macro_args)
+      ->try_as_single_element();
+}
+
 FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   // this function checks for the process-spawn macros.
   // it uses recursive form scanning to wrap the macro inside a potential "shell"
@@ -2185,6 +2278,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
     return as_set_vector3;
   }
 
+  auto suspend_for = rewrite_suspend_for(in, env, pool);
+  if (suspend_for) {
+    stats.suspend_for++;
+    return suspend_for;
+  }
+
   auto as_abs_2 = fix_up_abs_2(in, env, pool);
   if (as_abs_2) {
     stats.abs2++;
@@ -2213,6 +2312,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_attack_info) {
     stats.attack_info++;
     return as_attack_info;
+  }
+
+  auto as_call_parent_state = rewrite_call_parent_state_handler(in, env, pool);
+  if (as_call_parent_state) {
+    stats.call_parent_state_handler++;
+    return as_call_parent_state;
   }
 
   // nothing matched.

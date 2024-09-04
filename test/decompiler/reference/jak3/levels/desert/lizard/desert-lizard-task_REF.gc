@@ -294,13 +294,10 @@
         )
       )
     (when (time-elapsed? (-> self state-time) (seconds 5))
-      (let ((gp-1 (current-time)))
-        (until (time-elapsed? gp-1 (seconds 1))
-          (set! (-> self sound-id)
-                (add-process *gui-control* self (gui-channel background) (gui-action queue) "hudchime" -99.0 0)
-                )
-          (suspend)
-          )
+      (suspend-for (seconds 1)
+        (set! (-> self sound-id)
+              (add-process *gui-control* self (gui-channel background) (gui-action queue) "hudchime" -99.0 0)
+              )
         )
       (sound-params-set! *gui-control* (-> self sound-id) #f -1 -1 -1 1.0)
       (set-action!
@@ -634,11 +631,7 @@
   :virtual #t
   :code (behavior ()
     (send-event (handle->process (-> self vehicle-handle)) 'go-die)
-    (let ((t9-2 (-> (find-parent-state) code)))
-      (if t9-2
-          ((the-as (function none) t9-2))
-          )
-      )
+    (call-parent-state-handler code)
     )
   )
 

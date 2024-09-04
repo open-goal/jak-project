@@ -18,6 +18,7 @@
    (stick-lock    basic)
    (flap-sound-id sound-id)))
 
+
 (deftype flut-bank (basic)
   ((jump-height-min        meters)
    (jump-height-max        meters)
@@ -25,6 +26,7 @@
    (double-jump-height-max meters)
    (air-attack-speed       meters)
    (ground-timeout         time-frame)))
+
 
 (define *FLUT-bank*
   (new 'static
@@ -1084,7 +1086,7 @@
                   (let ((s4-1 (new-stack-vector0)))
                     (set! (-> s4-1 quad) (-> self control last-known-safe-ground quad))
                     (ja-channel-set! 0)
-                    (let ((s3-1 (current-time))) (until (time-elapsed? s3-1 (seconds 1)) (suspend)))
+                    (suspend-for (seconds 1))
                     (move-to-point! (-> self control) s4-1))
                   (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
                   (send-event *camera* 'teleport)
@@ -1159,24 +1161,22 @@
                (vector+! (-> self control transv)
                          (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-0)
                          (vector-float*! gp-3 gp-3 (/ f0-4 f1-3))))))
-         (let ((gp-4 (current-time)))
-           (until (time-elapsed? gp-4 (seconds 1))
-             (target-flut-falling-anim-trans)
-             (vector-seek! (-> self draw color-mult) *zero-vector* (seconds-per-frame))
-             (let ((s5-2 (new-stack-vector0))
-                   (f30-1 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
-               0.0
-               (vector-! s5-2
-                         (-> self control transv)
-                         (vector-float*! s5-2 (-> self control dynam gravity-normal) (the-as float f30-1)))
-               (let* ((f0-10 (vector-length s5-2))
-                      (f1-4 f0-10))
-                 (if (< (the-as float (-> self control unknown-uint20)) (the-as float f30-1)) (set! f30-1 (-> self control unknown-uint20)))
-                 (vector+! (-> self control transv)
-                           (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float f30-1))
-                           (vector-float*! s5-2 s5-2 (/ f0-10 f1-4)))))
-             (target-flut-post-post)
-             (suspend)))
+         (suspend-for (seconds 1)
+                      (target-flut-falling-anim-trans)
+                      (vector-seek! (-> self draw color-mult) *zero-vector* (seconds-per-frame))
+                      (let ((s5-2 (new-stack-vector0))
+                            (f30-1 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
+                        0.0
+                        (vector-! s5-2
+                                  (-> self control transv)
+                                  (vector-float*! s5-2 (-> self control dynam gravity-normal) (the-as float f30-1)))
+                        (let* ((f0-10 (vector-length s5-2))
+                               (f1-4 f0-10))
+                          (if (< (the-as float (-> self control unknown-uint20)) (the-as float f30-1)) (set! f30-1 (-> self control unknown-uint20)))
+                          (vector+! (-> self control transv)
+                                    (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float f30-1))
+                                    (vector-float*! s5-2 s5-2 (/ f0-10 f1-4)))))
+                      (target-flut-post-post))
          (camera-change-to (the-as string 'base) 0 #f))
         (else
          (set! (-> self control unknown-surface00) *neutral-mods*)

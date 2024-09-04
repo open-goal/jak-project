@@ -42,6 +42,7 @@
   ((local-pos vector :inline)
    (normal    vector :inline)))
 
+
 (deftype vehicle-path (structure)
   ((point-array vector 10 :inline)
    (point-count int32))
@@ -51,6 +52,7 @@
    (distance-to-next-point (_type_ int vector) vector)
    (add-point! (_type_ float float float float) none)
    (debug-draw (_type_) symbol)))
+
 
 (defmethod get-point-count ((this vehicle-path))
   (-> this point-count))
@@ -215,8 +217,9 @@
    (vehicle-controller-method-15 (_type_ collide-shape-moving) none)
    (vehicle-controller-method-16 (_type_) none)))
 
-(defmethod relocate ((this vehicle-controller) (arg0 int))
-  (if (nonzero? (-> this path)) (&+! (-> this path) arg0))
+
+(defmethod relocate ((this vehicle-controller) (offset int))
+  (if (nonzero? (-> this path)) (&+! (-> this path) offset))
   (the-as vehicle-controller 0))
 
 (defmethod vehicle-controller-method-12 ((this vehicle-controller) (arg0 int) (arg1 vector))
@@ -397,6 +400,7 @@
    fishermans-boat-player-control
    fishermans-boat-ride-to-misty
    fishermans-boat-ride-to-village1))
+
 
 (defskelgroup *fishermans-boat-sg*
   fishermans-boat
@@ -924,21 +928,17 @@
               (suspend))
             (vector-z-quaternion! gp-0 (-> self root-overlay quat))
             (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
-            (let ((s3-0 (current-time)))
-              (until (time-elapsed? s3-0 (seconds 1))
-                (fishermans-boat-set-throttle-by-speed f30-0)
-                (suspend)
-                (suspend))))
+            (suspend-for (seconds 1) (fishermans-boat-set-throttle-by-speed f30-0) (suspend)))
           (vector-z-quaternion! gp-0 (-> self root-overlay quat))
           (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
           (+! s5-0 1)))
       (go fishermans-boat-player-control))
   :post fishermans-boat-post)
 
-(defmethod relocate ((this fishermans-boat) (arg0 int))
-  (relocate (-> this controller) arg0)
-  (if (nonzero? (-> this propeller)) (&+! (-> this propeller) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this fishermans-boat) (offset int))
+  (relocate (-> this controller) offset)
+  (if (nonzero? (-> this propeller)) (&+! (-> this propeller) offset))
+  (call-parent-method this offset))
 
 (defmethod rigid-body-platform-method-30 ((this fishermans-boat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
@@ -1115,7 +1115,7 @@
       (apply-settings *setting-control*)
       (process-spawn-function process
         (lambda :behavior fishermans-boat ()
-          (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 1)) (suspend)))
+          (suspend-for (seconds 1))
           (while (or (-> *setting-control* current ambient) (-> *setting-control* current hint) (-> *setting-control* current movie))
             (suspend))
           (suspend)

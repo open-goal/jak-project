@@ -696,11 +696,7 @@
         (set-blackout-frames (seconds 0.05))
         )
     (start 'play arg0)
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 1))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 1))
     (while (and *target* (and (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
                               (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
                               )
@@ -789,11 +785,11 @@
 
 (defmethod init-from-entity! ((this warp-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (warp-gate-init arg0 (the-as vector #f))
   (none)
   )
@@ -1104,20 +1100,21 @@ This commonly includes things such as:
 
 
 ;; WARN: Return type mismatch warp-gate vs air-train.
-(defmethod relocate ((this air-train) (arg0 int))
+(defmethod relocate ((this air-train) (offset int))
   (if (nonzero? (-> this part-exhaust-left))
-      (&+! (-> this part-exhaust-left) arg0)
+      (&+! (-> this part-exhaust-left) offset)
       )
   (if (nonzero? (-> this part-exhaust-right))
-      (&+! (-> this part-exhaust-right) arg0)
+      (&+! (-> this part-exhaust-right) offset)
       )
   (if (nonzero? (-> this part-dust))
-      (&+! (-> this part-dust) arg0)
+      (&+! (-> this part-dust) offset)
       )
-  (the-as air-train ((method-of-type warp-gate relocate) this arg0))
+  (the-as air-train ((method-of-type warp-gate relocate) this offset))
   )
 
 (defmethod deactivate ((this air-train))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this hover-sound))
   (if (nonzero? (-> this part-exhaust-left))
       (kill-and-free-particles (-> this part-exhaust-left))

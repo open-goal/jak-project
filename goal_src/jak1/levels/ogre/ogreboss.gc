@@ -106,6 +106,7 @@
    ogreboss-missile-impact
    ogreboss-missile-seek))
 
+
 (defstate ogreboss-missile-idle (ogreboss-missile)
   :enter
     (behavior ()
@@ -272,6 +273,7 @@
    (blast-radius float)
    (pickup-type  pickup-type)))
 
+
 (defbehavior ogreboss-missile-init-by-other ogreboss-missile ((arg0 ogreboss-missile-init-data) (arg1 entity-actor))
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
@@ -337,6 +339,7 @@
    ogreboss-super-boulder-land
    ogreboss-super-boulder-roll
    ogreboss-super-boulder-throw))
+
 
 (defbehavior ogreboss-super-boulder-event-handler ogreboss-super-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -532,9 +535,9 @@
       (transform-post)
       0))
 
-(defmethod relocate ((this ogreboss-super-boulder) (arg0 int))
-  (if (nonzero? (-> this joint)) (&+! (-> this joint) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this ogreboss-super-boulder) (offset int))
+  (if (nonzero? (-> this joint)) (&+! (-> this joint) offset))
+  (call-parent-method this offset))
 
 (defstate ogreboss-super-boulder-killed-player (ogreboss-super-boulder)
   :code
@@ -593,6 +596,7 @@
    (boulder-type    int8))
   (:states
    ogreboss-bounce-boulder-idle))
+
 
 (defbehavior ogreboss-bounce-boulder-event-handler ogreboss-bounce-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -722,6 +726,7 @@
    ogreboss-stage3-throw
    ogreboss-wait-for-player))
 
+
 (defbehavior ogreboss-inc-try-count ogreboss ()
   (when (not (-> self try-counted))
     (set! (-> self try-counted) #t)
@@ -757,7 +762,7 @@
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe (the-as float 140.0) 0))))
-         (let ((gp-2 (current-time))) (until (time-elapsed? gp-2 (seconds 0.167)) (suspend)))
+         (suspend-for (seconds 0.167))
          (ja-no-eval :group!
                      ogreboss-idle-ja
                      :num!
@@ -767,7 +772,7 @@
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe (the-as float 168.0) 0))))
-         (let ((gp-5 (current-time))) (until (time-elapsed? gp-5 (seconds 0.167)) (suspend)))
+         (suspend-for (seconds 0.167))
          (ja-no-eval :group! ogreboss-idle-ja :num! (seek!) :frame-num (ja-aframe (the-as float 168.0) 0))
          (until (ja-done? 0)
            (suspend)
@@ -945,7 +950,7 @@
          (ja :num! (seek! max arg1)))))
     (logior! (-> self draw status) (draw-status hidden))
     (set! (-> self submerged) #t)
-    (let ((s5-1 (current-time))) (until (time-elapsed? s5-1 arg0) (suspend))))
+    (suspend-for arg0))
   0
   (none))
 
