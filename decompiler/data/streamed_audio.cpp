@@ -34,6 +34,7 @@ struct AudioDir {
   };
 
   std::vector<Entry> entries;
+  u32 version = 1;
 
   int entry_count() const { return entries.size(); }
 
@@ -153,7 +154,7 @@ AudioDir read_audio_dir(const decompiler::Config& config, const fs::path& path) 
       e.start_byte = AUDIO_PAGE_SIZE * entries[i].value;
       result.entries.push_back(e);
     }
-  } else if (config.game_version == GameVersion::Jak3) {
+  } else if (config.game_version >= GameVersion::Jak3) {
     struct VagDirJak3 {
       u32 id[2];
       u32 version;
@@ -178,6 +179,8 @@ AudioDir read_audio_dir(const decompiler::Config& config, const fs::path& path) 
     ASSERT(dir.id[0] == 0x41574756);
     ASSERT(dir.id[1] == 0x52494444);
     lg::warn("version {} count {}", dir.version, dir.count);
+
+    result.version = dir.version;
 
     std::vector<DirEntryJak3> entries;
 
@@ -216,7 +219,8 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
                                  std::span<const uint8_t> data,
                                  const std::string& name,
                                  const std::string& suffix,
-                                 bool stereo) {
+                                 bool stereo,
+                                 u32 version) {
   BinaryReader reader(data);
 
   auto header = reader.read<VagFileHeader>();
@@ -228,7 +232,7 @@ AudioFileInfo process_audio_file(const fs::path& output_folder,
   header.debug_print();
 
   reader = BinaryReader(data.subspan(0, header.size));
-  const auto [left_samples, right_samples] = decode_adpcm(reader, stereo);
+  const auto [left_samples, right_samples] = decode_adpcm(reader, stereo, version);
 
   while (reader.bytes_left()) {
     ASSERT(reader.read<u8>() == 0);
@@ -280,7 +284,7 @@ void process_streamed_audio(const decompiler::Config& config,
 
       lg::info("File {}, total {:.2f} minutes", entry.name, audio_len / 60.0);
       auto data = std::span(wad_data).subspan(entry.start_byte);
-      auto info = process_audio_file(output_path, data, entry.name, suffix, entry.stereo);
+      auto info = process_audio_file(output_path, data, entry.name, suffix, entry.stereo, dir_data.version);
       audio_len += info.length_seconds;
       filename_data[i][lang_id + 1] = info.filename;
     }

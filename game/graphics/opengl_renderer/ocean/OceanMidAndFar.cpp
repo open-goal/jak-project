@@ -31,6 +31,7 @@ void OceanMidAndFar::render(DmaFollower& dma,
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       render_jak2(dma, render_state, prof);
       break;
   }
@@ -176,6 +177,7 @@ void OceanMidAndFar::handle_ocean_mid(DmaFollower& dma,
         break;
       case GameVersion::Jak2:
       case GameVersion::Jak3:
+      case GameVersion::JakX:
         m_mid_renderer.run_jak2(dma, render_state, prof);
     }
   } else {

@@ -232,6 +232,9 @@ void ee_runner(SystemThreadInterface& iface) {
     case GameVersion::Jak3:
       jak3::goal_main(g_argc, g_argv);
       break;
+    case GameVersion::JakX:
+    // TODO: point at a Jak X goal_main
+      jak3::goal_main(g_argc, g_argv);
     default:
       ASSERT_MSG(false, "Unsupported game version");
   }
@@ -271,7 +274,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   iop::LIBRARY_register(&iop);
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
-  if (version != GameVersion::Jak3) {
+  if (version != GameVersion::Jak3 && version != GameVersion::JakX) {
     jak1::dma_init_globals();
     jak2::dma_init_globals();
 
@@ -331,6 +334,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
         jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
         break;
       case GameVersion::Jak3:
+      case GameVersion::JakX:
         jak3::start_overlord_wrapper(&complete);
         break;
       default:

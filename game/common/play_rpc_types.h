@@ -7,5 +7,5 @@
  */
 #include "common/versions/versions.h"
 
-constexpr PerGameVersion<int> PLAY_RPC_ID(0xdeb6, 0xfab5, 0xfab5);
+constexpr PerGameVersion<int> PLAY_RPC_ID(0xdeb6, 0xfab5, 0xfab5, 0xfab5);
 constexpr int PLAY_RPC_CHANNEL = 5;

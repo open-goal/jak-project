@@ -13,6 +13,8 @@ GameVersion game_name_to_version(const std::string& name) {
     return GameVersion::Jak2;
   } else if (name == "jak3") {
     return GameVersion::Jak3;
+  } else if (name == "jakx") {
+    return GameVersion::JakX;
   } else {
     ASSERT_MSG(false, fmt::format("invalid game name: {}", name));
   }
@@ -30,6 +32,8 @@ std::string version_to_game_name(GameVersion v) {
       return "jak2";
     case GameVersion::Jak3:
       return "jak3";
+    case GameVersion::JakX:
+      return "jakx";
     default:
       ASSERT_MSG(false, fmt::format("no game_name for version: {} found", fmt::underlying(v)));
   }
@@ -43,6 +47,8 @@ std::string version_to_game_name_external(GameVersion v) {
       return "Jak 2";
     case GameVersion::Jak3:
       return "Jak 3";
+    case GameVersion::JakX:
+      return "Jak X";
     default:
       ASSERT_MSG(false, fmt::format("no game_name for version: {} found", fmt::underlying(v)));
   }
@@ -50,7 +56,7 @@ std::string version_to_game_name_external(GameVersion v) {
 
 std::vector<std::string> valid_game_version_names() {
   return {game_version_names[GameVersion::Jak1], game_version_names[GameVersion::Jak2],
-          game_version_names[GameVersion::Jak3]};
+          game_version_names[GameVersion::Jak3], game_version_names[GameVersion::JakX]};
 }
 
 std::string build_revision() {
