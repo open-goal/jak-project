@@ -1485,7 +1485,7 @@
       )
 
     ; ;; Update start-menu map and masking
-    ; (update *bigmap*)
+    (update *bigmap*)
 
     ;; do some more level loading.
     (if (-> *level* loading-level)
@@ -1555,7 +1555,7 @@
 
     ; ;; generate DMA to copy from render buffer to frame buffer.
     (with-profiler 'blit-displays *profile-blit-color*
-      (blit-displays-work-method-19 *blit-displays-work*)
+      (do-blit-displays *blit-displays-work*)
       )
 
     ;; wrap up this frame (drawing of stdcon, debugging, etc.)
@@ -1575,8 +1575,11 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;; start stat collection for this frame
-    (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
-    (start-profiling! (-> *perf-stats* data 0))
+    ;; og:preserve-this added check
+    (when *debug-segment*
+      (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
+      (start-profiling! (-> *perf-stats* data 0))
+      )
 
     ;; update *teleport* flag, which is set when the game intentionally teleports the camera,
     ;; and indicates that effects should not be gradually transitioned.

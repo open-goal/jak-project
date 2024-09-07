@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: bigmap.gc
-;; name in dgo: bigmap
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition for method 0 of type bigmap
 (defmethod new bigmap ((allocation symbol) (type-to-make type))
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 bigmap-image)
@@ -95,6 +90,7 @@
     )
   )
 
+;; definition for symbol *bigmap-info-array*, type bigmap-info-array
 (define *bigmap-info-array*
   (new 'static 'bigmap-info-array
     :data (new 'static 'inline-array bigmap-info 24
@@ -126,6 +122,8 @@
     )
   )
 
+;; definition for method 17 of type bigmap
+;; WARN: Return type mismatch int vs none.
 (defmethod set-pos! ((this bigmap) (arg0 vector))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -144,6 +142,8 @@
     )
   )
 
+;; definition for method 18 of type bigmap
+;; WARN: Return type mismatch int vs none.
 (defmethod bigmap-method-18 ((this bigmap) (arg0 (pointer int32)))
   (when (or (= (-> this load-index) (bigmap-id sewer-met-hum)) (= (-> this load-index) (bigmap-id sewer-hum-kg)))
     (let ((v1-4 (-> arg0 0)))
@@ -154,34 +154,8 @@
   (none)
   )
 
-;; og:preserve-this
-(defun pc-upload-map-texture ((dma-buf dma-buffer) (image-data pointer) (clut-data pointer) (width int) (height int) (tbp int) (cbp int))
-  "Added function in the PC port to create a map texture. The format should be mt8 for the image and ct32 for the clut (16 x 16)"
-  (pc-texture-anim-flag start-anim-array dma-buf)
-  (pc-texture-anim-flag upload-clut-16-16 dma-buf :qwc 1)
-  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
-    (set! (-> upload-record data) clut-data)
-    (set! (-> upload-record width) 16)
-    (set! (-> upload-record height) 16)
-    (set! (-> upload-record dest) cbp)
-    (set! (-> upload-record format) (gs-psm ct32))
-    (set! (-> upload-record force-to-gpu) 0)
-    )
-  (&+! (-> dma-buf base) 16)
-
-  (pc-texture-anim-flag upload-generic-vram dma-buf :qwc 1)
-  (let ((upload-record (the texture-anim-pc-upload (-> dma-buf base))))
-    (set! (-> upload-record data) image-data)
-    (set! (-> upload-record width) width)
-    (set! (-> upload-record height) height)
-    (set! (-> upload-record dest) tbp)
-    (set! (-> upload-record format) (gs-psm mt8))
-    (set! (-> upload-record force-to-gpu) 1)
-    )
-  (&+! (-> dma-buf base) 16)
-  (pc-texture-anim-flag finish-anim-array dma-buf)
-  )
-
+;; definition for method 19 of type bigmap
+;; WARN: Return type mismatch int vs none.
 (defmethod texture-upload-dma ((this bigmap) (arg0 dma-buffer) (arg1 (pointer uint32)) (arg2 int) (arg3 int) (arg4 int) (arg5 gs-psm))
   (local-vars (sv-16 int))
   (set! sv-16 arg2)
@@ -196,6 +170,8 @@
   (none)
   )
 
+;; definition for method 21 of type bigmap
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs object.
 (defmethod sprite-dma ((this bigmap) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int) (arg6 int))
   (let ((v1-0 (the-as object (-> arg0 base))))
@@ -217,6 +193,8 @@
     )
   )
 
+;; definition for method 20 of type bigmap
+;; INFO: Used lq/sq
 (defmethod bigmap-method-20 ((this bigmap) (arg0 dma-buffer))
   (local-vars (sv-16 uint))
   (let* ((s4-0 (the-as (pointer uint32) (-> this bigmap-image art-group)))
@@ -232,17 +210,30 @@
     (-> s4-0 2)
     (set! sv-16 (* (-> s4-0 3) 256))
     (while (>= s0-0 s1-0)
-      ;; og:preserve-this
-      ; (texture-upload-dma this arg0 (+ (+ (-> s4-0 0) 16) (the-as uint s4-0)) 0 16 16 (gs-psm ct32))
-      ; (dma-buffer-add-gs-set arg0 (texflush 0))
+      (texture-upload-dma
+        this
+        arg0
+        (the-as (pointer uint32) (+ (+ (-> s4-0 0) 16) (the-as uint s4-0)))
+        0
+        16
+        16
+        (gs-psm ct32)
+        )
+      (dma-buffer-add-gs-set arg0 (texflush 0))
       (let ((v1-18 (+ (-> s4-0 1) (* (the-as uint s1-0) sv-16) (* (the int (-> this scroll y)) 256))))
-        ; (texture-upload-dma this arg0 (+ (+ v1-18 16) (the-as uint s4-0)) 8 256 416 (gs-psm mt8))
-        (pc-upload-map-texture arg0 (&+ s4-0 v1-18 16) (&+ s4-0 (-> s4-0 0) 16) 256 416 8 0)
+        (texture-upload-dma
+          this
+          arg0
+          (the-as (pointer uint32) (+ (+ v1-18 16) (the-as uint s4-0)))
+          8
+          256
+          416
+          (gs-psm mt8)
+          )
         )
       (dma-buffer-add-gs-set arg0
                              (tex0-1 (new 'static 'gs-tex0 :tbp0 #x8 :tbw #x4 :psm #x13 :tw #x8 :th #x9 :cld #x1))
-                             ;; og:preserve-this added mmag and mmin for texture filtering
-                             (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                             (tex1-1 (new 'static 'gs-tex1))
                              (texflush 0)
                              )
       (sprite-dma this arg0 (+ s2-0 1792) (+ s3-0 1792 s2-0) (-> this y0) (-> this y1) 0 256)
@@ -253,6 +244,9 @@
   #f
   )
 
+;; definition for method 22 of type bigmap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-from-minimap ((this bigmap) (arg0 dma-buffer) (arg1 connection-minimap))
   (local-vars (sv-80 vector4w))
   (rlet ((vf0 :class vf)
@@ -338,12 +332,10 @@
             (set! (-> s3-2 y) (+ (-> s2-0 y) f1-8))
             )
           )
-        ;; og:preserve-this cast
-        (let* ((a2-1 (the int (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8)))
-               (a3-0 (the int (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8)))
-               ;; og:preserve-this fix icon misalignment
-               (v1-55 (+ a2-1 300))
-               (a0-35 (+ a3-0 300))
+        (let* ((a2-1 (the-as uint (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8)))
+               (a3-0 (the-as uint (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8)))
+               (v1-55 (+ (the-as int a2-1) 312))
+               (a0-35 (+ (the-as int a3-0) 312))
                (a1-6 (the-as object (-> arg0 base)))
                )
           (set! (-> (the-as (inline-array vector4w) a1-6) 0 quad) (-> this sprite-tmpl dma-vif quad))
@@ -355,7 +347,7 @@
             (the-as int (-> s1-0 b))
             128
             )
-          (set-vector! (-> (the-as (inline-array vector4w) a1-6) 3) a2-1 a3-0 0 0)
+          (set-vector! (-> (the-as (inline-array vector4w) a1-6) 3) (the-as int a2-1) (the-as int a3-0) 0 0)
           (set-vector!
             (-> (the-as (inline-array vector4w) a1-6) 4)
             (the int (* 16.0 (-> s2-0 x)))
@@ -380,6 +372,8 @@
     )
   )
 
+;; definition for method 9 of type bigmap
+;; WARN: Return type mismatch int vs none.
 (defmethod initialize ((this bigmap))
   (set! (-> this bigmap-index) (bigmap-id city))
   (set-pending-file (-> this bigmap-image) (the-as string #f) 0 (process->handle *dproc*) 0.0)
@@ -387,6 +381,8 @@
   (none)
   )
 
+;; definition for method 10 of type bigmap
+;; WARN: Return type mismatch int vs none.
 (defmethod update ((this bigmap))
   (when (-> this drawing-flag)
     (update! *minimap*)
@@ -448,11 +444,15 @@
   (none)
   )
 
+;; definition for method 11 of type bigmap
 ;; WARN: Return type mismatch texture-page vs symbol.
 (defmethod loaded? ((this bigmap))
   (the-as symbol (and (-> *bigmap* progress-minimap) (-> *bigmap* progress-minimap2)))
   )
 
+;; definition for method 12 of type bigmap
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw! ((this bigmap) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
   (local-vars
     (sv-96 (inline-array vector4w))
@@ -466,7 +466,7 @@
              (not (-> this loading-flag))
              )
     (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
-                                 (bucket-id tex-hud-hud-alpha)
+                                 (bucket-id hud-draw-hud-alpha)
                                  )
       (dma-buffer-add-gs-set s2-0
                              (scissor-1 (new 'static 'gs-scissor
@@ -701,6 +701,8 @@
   (none)
   )
 
+;; definition for method 13 of type bigmap
+;; WARN: Return type mismatch int vs none.
 (defmethod handle-cpad-input ((this bigmap))
   (let ((v1-1 (-> this bigmap-image art-group))
         (s5-0 (-> *cpad-list* cpads 0))
@@ -718,6 +720,8 @@
   (none)
   )
 
+;; definition for method 16 of type bigmap
+;; WARN: Return type mismatch int vs none.
 (defmethod set-map-indices! ((this bigmap))
   (let ((s5-0 (level-get-target-inside *level*)))
     (let ((v1-2 (-> *setting-control* user-current bigmap-level)))
@@ -846,6 +850,8 @@
   (none)
   )
 
+;; definition for method 14 of type bigmap
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch bigmap-flag vs none.
 (defmethod enable-drawing ((this bigmap))
   (set-map-indices! this)
@@ -905,6 +911,7 @@
   (none)
   )
 
+;; definition for method 15 of type bigmap
 (defmethod disable-drawing ((this bigmap))
   (set-pending-file
     (-> this bigmap-image)
@@ -942,9 +949,15 @@
   0
   )
 
+;; failed to figure out what this is:
 (kmemopen global "bigmap-struct")
 
-;; og:preserve-this
-(define-perm *bigmap* bigmap (new 'global 'bigmap))
+;; definition for symbol *bigmap*, type bigmap
+(define *bigmap* (new 'global 'bigmap))
 
+;; failed to figure out what this is:
 (kmemclose)
+
+
+
+

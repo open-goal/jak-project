@@ -587,10 +587,7 @@
      (dotimes (v1-96 (-> this game-score length))
        (set! (-> this game-score v1-96) 0.0)
        )
-     (when *bigmap*  ;; og:preserve-this not-yet-implemented check
-       (format 0 "skipping bigmap init in game-info~%")
-       ((method-of-object *bigmap* bigmap-method-9))
-       )
+     (initialize *bigmap*)
      )
     )
   (case mode
@@ -1089,34 +1086,31 @@
              (let ((s3-0 (new 'stack-no-clear 'vector4w)))
                (set! (-> s3-0 quad) (the-as uint128 0))
                (when (transform-point-qword! s3-0 (the-as vector arg0))
-                 (let ((s5-0
-                         (new
-                           'stack
-                           'font-context
-                           *font-default-matrix*
-                           (+ (the int (/ (the float (+ (/ (-> s3-0 x) 16) -1792)) (-> *video-params* relative-x-scale))) -48)
-                           (+ (/ (-> s3-0 y) 16) -1855)
-                           0.0
-                           (font-color orange)
-                           (font-flags shadow kerning)
-                           )
-                         )
+                 (let ((s5-0 (new
+                               'stack
+                               'font-context
+                               *font-default-matrix*
+                               (+ (the int (/ (the float (+ (/ (-> s3-0 x) 16) -1792)) (-> *video-params* relative-x-scale))) -48)
+                               (+ (/ (-> s3-0 y) 16) -1855)
+                               0.0
+                               (font-color orange)
+                               (font-flags shadow kerning)
+                               )
+                             )
                        )
                    (set! (-> s5-0 scale) (lerp-scale 0.6 1.0 (the-as float arg1) 50.0 8000.0))
                    (let ((v1-9 s5-0))
                      (set! (-> v1-9 origin z) (the float (/ (-> s3-0 z) 16)))
                      )
                    (set! (-> s5-0 flags) (font-flags shadow kerning large))
-                   (suspend-for
-                     (+ arg2 -75)
+                   (suspend-for (+ arg2 -75)
                      (+! (-> s5-0 origin y) (* -120.0 (seconds-per-frame)))
                      (let ((s2-0 print-game-text))
                        (format (clear *temp-string*) "~4,,0f" arg1)
                        (s2-0 *temp-string* s5-0 #f 44 (bucket-id debug-no-zbuf1))
                        )
                      )
-                   (suspend-for
-                     (seconds 0.25)
+                   (suspend-for (seconds 0.25)
                      (set! (-> s5-0 alpha) (lerp-scale 1.0 0.0 (the float (- (current-time) time)) 0.0 150.0))
                      (+! (-> s5-0 origin y) (* -120.0 (seconds-per-frame)))
                      (let ((s3-2 print-game-text))
@@ -1398,10 +1392,6 @@
 
 (defmethod copy-perms-to-level! ((this game-info) (arg0 level))
   (let ((s5-0 (-> arg0 bsp level entity)))
-    (when (not s5-0)  ;; og:preserve-this not-yet-implemented check
-      (format #t "skipping copy-perms-to-level! since we have no entity links (needs entity.gc)~%")
-      (return 0)
-      )
     (dotimes (s4-0 (-> s5-0 length))
       (let* ((s3-0 (-> s5-0 data s4-0 entity extra perm))
              (v1-7 (actor-perm this (-> s3-0 aid)))
@@ -1589,7 +1579,13 @@
          (position->stream s5-0 arg0 #t)
          (process-spawn-function
            process
-           (lambda :behavior process ((arg0 string)) (suspend-for (seconds 10) (format *stdcon* "~S~%" arg0)) (none))
+           (lambda :behavior process
+             ((arg0 string))
+             (suspend-for (seconds 10)
+               (format *stdcon* "~S~%" arg0)
+               )
+             (none)
+             )
            s5-0
            )
          )
