@@ -93,7 +93,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
     if (!PollSema(gSema)) {
       if (gMusic) {
         if (!gMusicPause && !LookupSound(666)) {
-          Sound* music = AllocateSound();
+          Sound* music = AllocateSound(false);
           if (music != nullptr) {
             gMusicFade = 0;
             gMusicFadeDir = 1;
@@ -183,7 +183,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             break;
           }
 
-          sound = AllocateSound();
+          sound = AllocateSound(false);
           if (!sound) {
             break;
           }

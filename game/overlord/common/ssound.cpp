@@ -7,7 +7,8 @@
 
 s32 gMusicFade = 0;
 s32 gSema;
-Sound gSounds[64];
+constexpr int kNumSounds = 64;
+Sound gSounds[kNumSounds];
 Vec3w gEarTrans[2];
 Vec3w gCamTrans;
 s32 gMusicFadeDir = 0;
@@ -15,6 +16,7 @@ Curve gCurves[16];
 s32 gCamAngle;
 u8 gMirrorMode = 0;
 u32 sLastTick = 0;
+s64 gAddIndex = 0;
 
 static s32 sqrt_table[256] = {
     0,     4096,  5793,  7094,  8192,  9159,  10033, 10837, 11585, 12288, 12953, 13585, 14189,
@@ -56,6 +58,7 @@ static s32 atan_table[257] = {
 void ssound_init_globals() {
   gMusicFade = 0;
   gSema = 0;
+  gAddIndex = 0;
 }
 
 Sound* LookupSound(s32 id) {
@@ -268,9 +271,66 @@ void UpdateVolume(Sound* sound) {
   }
 }
 
-Sound* AllocateSound() {
+void RemoveOldSounds() {
+  int unique_sounds = 0;
+  struct Entry {
+    u32 id;
+    u32 count;
+    Sound* info;
+  };
+  Entry entries[kNumSounds];
+  Entry* best_entry = nullptr;
+
+  for (auto& sound : gSounds) {
+    if (sound.id) {
+      Entry* existing_entry = nullptr;
+      u32 uid = snd_GetSoundID(sound.sound_handle);
+
+      // look for entry:
+      for (int i = 0; i < unique_sounds; i++) {
+        if (entries[i].id == uid) {
+          existing_entry = &entries[i];
+          break;
+        }
+      }
+
+      // if none found, create
+      if (!existing_entry) {
+        existing_entry = &entries[unique_sounds];
+        unique_sounds++;
+        existing_entry->id = uid;
+        existing_entry->count = 0;
+        existing_entry->info = &sound;
+      }
+
+      // update
+      existing_entry->count++;
+      // pick oldest sound
+      if (sound.add_index < existing_entry->info->add_index) {
+        existing_entry->info = &sound;
+      }
+
+      // se if we're best
+      if (!best_entry) {
+        best_entry = existing_entry;
+      } else {
+        if (best_entry->count < existing_entry->count) {
+          best_entry = existing_entry;
+        }
+      }
+    }
+  }
+
+  if (best_entry) {
+    snd_StopSound(best_entry->info->sound_handle);
+    best_entry->info->id = 0;
+  }
+}
+
+Sound* AllocateSound(bool remove_old_sounds) {
   for (auto& s : gSounds) {
     if (s.id == 0) {
+      s.add_index = gAddIndex++;
       return &s;
     }
   }
@@ -278,7 +338,18 @@ Sound* AllocateSound() {
   CleanSounds();
   for (auto& s : gSounds) {
     if (s.id == 0) {
+      s.add_index = gAddIndex++;
       return &s;
+    }
+  }
+
+  if (remove_old_sounds) {
+    RemoveOldSounds();
+    for (auto& s : gSounds) {
+      if (s.id == 0) {
+        s.add_index = gAddIndex++;
+        return &s;
+      }
     }
   }
 
