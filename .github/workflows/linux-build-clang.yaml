@@ -21,8 +21,18 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      # minimal checkout if we're NOT uploading artifacts
       - name: Checkout Repository
+        if: ${{ ! inputs.uploadArtifacts }}
         uses: actions/checkout@v4
+
+      # full checkout with tags if we ARE uploading artifacts
+      - name: Checkout Repository with Tags
+        if: ${{ inputs.uploadArtifacts }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Install Package Dependencies
         run: |
