@@ -12,6 +12,6 @@ void tie_from_gltf(const gltf_mesh_extract::TieOutput& mesh_extract_out,
                    std::vector<tfrag3::TieTree>& out_pc);
 
 class DrawableTreeInstanceTie {
-public:
+ public:
   size_t add_to_object_file(DataObjectGenerator& gen) const;
 };

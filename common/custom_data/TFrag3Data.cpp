@@ -312,7 +312,7 @@ void TieTree::unpack() {
       unpacked.indices.push_back(UINT32_MAX);
     }
     unpacked.indices.insert(unpacked.indices.end(), draw.plain_indices.begin(),
-                        draw.plain_indices.end());
+                            draw.plain_indices.end());
   }
 }
 
