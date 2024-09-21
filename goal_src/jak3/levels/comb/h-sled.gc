@@ -1116,8 +1116,8 @@
 (defmethod vehicle-method-88 ((this h-sled) (arg0 vehicle-controls))
   (set! (-> arg0 steering) (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
   (set! (-> arg0 lean-z) (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0))
-  (set! (-> arg0 throttle) (fmin 1.0 (* 0.023529412 (the float (-> *cpad-list* cpads 0 abutton 6)))))
-  (set! (-> arg0 brake) (fmin 1.0 (* 0.023529412 (the float (-> *cpad-list* cpads 0 abutton 7)))))
+  (set! (-> arg0 throttle) (fmin 1.0 (* 0.023529412 (the float (-> *cpad-list* cpads 0 abutton (abutton-idx x)))))) ;; og:preserve-this abutton indexing
+  (set! (-> arg0 brake) (fmin 1.0 (* 0.023529412 (the float (-> *cpad-list* cpads 0 abutton (abutton-idx square)))))) ;; og:preserve-this abutton indexing
   (if (cpad-pressed? 0 r1)
       (logior! (-> arg0 flags) (vehicle-controls-flag vcf1))
       )
@@ -1842,11 +1842,7 @@
   :virtual #t
   :enter (behavior ()
     (set! (-> self health-hud) (process->handle (hud-sled-health-spawn self)))
-    (let ((t9-2 (-> (find-parent-state) enter)))
-      (if t9-2
-          (t9-2)
-          )
-      )
+    (call-parent-state-handler enter)
     )
   :exit (behavior ()
     (let ((t9-1 (-> (find-parent-state) exit)))

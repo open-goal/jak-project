@@ -1544,6 +1544,11 @@ block_11:
 block_16:
   c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
   // Unknown instr: ld t0, L217(fp)
+  // L217:
+  // .word 0x80808080
+  // .word 0x0
+  c->gprs[t0].du32[0] = 0x80808080;
+  c->gprs[t0].du32[1] = 0x0;
   c->dsll(t1, a3, 3);                               // dsll t1, a3, 3
   c->daddu(t1, v1, t1);                             // daddu t1, v1, t1
   c->sw(t0, 124, t1);                               // sw t0, 124(t1)

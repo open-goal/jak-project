@@ -453,9 +453,7 @@
     (process-spawn hud-ring-cell 11 (* -1.0 f30-0) 9 :name "hud-ring-cell" :to self)
     )
   (clear *stdcon1*)
-  (if *bigmap*
-    (enable-drawing *bigmap*)
-    )
+  (enable-drawing *bigmap*)
   (set-setting! 'scanlines 'abs 0.0 0)
   (go-virtual come-in)
   )
@@ -504,8 +502,7 @@
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (set! (-> *progress-work* hero-mode-save) #f)
   (remove-setting-by-arg0 *setting-control* 'extra-bank)
-  ;; og:preserve-this not-yet-implemented check
-  (if *bigmap* (disable-drawing *bigmap*))
+  (disable-drawing *bigmap*)
   (set-menu-mode *blit-displays-work* #f)
   (set! *progress-process* (the-as (pointer progress) #f))
   (enable-level-text-file-loading)
@@ -1509,13 +1506,7 @@
     (progress-method-33 self (-> *progress-work* full-screen))
     (cond
       ((>= (-> self pos-transition) 0.38)
-       (let ((t9-15 (method-of-object *bigmap* bigmap-method-12)))
-         1792
-         1840
-         2304
-         2256
-         (t9-15)
-         )
+       (draw! *bigmap* 1792 1840 2304 2256)
        )
       (else
         (let ((s4-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 21)))
@@ -1525,15 +1516,9 @@
           (set! (-> gp-1 quad) (the-as uint128 0))
           (let ((s5-2 (new 'stack-no-clear 'vector4w)))
             (set! (-> s5-2 quad) (the-as uint128 0))
-            (when (and (transform-point-qword! gp-1 s4-1) (transform-point-qword! s5-2 s3-1))
-              (let ((t9-20 (method-of-object *bigmap* bigmap-method-12)))
-                (/ (-> s5-2 x) 16)
-                (/ (-> s5-2 y) 16)
-                (/ (-> gp-1 x) 16)
-                (/ (-> gp-1 y) 16)
-                (t9-20)
+            (if (and (transform-point-qword! gp-1 s4-1) (transform-point-qword! s5-2 s3-1))
+                (draw! *bigmap* (/ (-> s5-2 x) 16) (/ (-> s5-2 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
                 )
-              )
             )
           )
         )
@@ -1602,64 +1587,64 @@
           (let ((t9-0 format)
                 (a0-3 #t)
                 (a1-1 "DONE NOTIFY: ~S ~S~%")
-                (v1-3 (-> block param 1))
+                (v1-3 (the-as mc-status-code (-> block param 1)))
                 )
             (t9-0
               a0-3
               a1-1
               (cond
-                ((= v1-3 15)
+                ((= v1-3 (mc-status-code bad-version))
                  "bad-version"
                  )
-                ((= v1-3 13)
+                ((= v1-3 (mc-status-code no-save))
                  "no-save"
                  )
-                ((= v1-3 10)
+                ((= v1-3 (mc-status-code no-last))
                  "no-last"
                  )
-                ((= v1-3 14)
+                ((= v1-3 (mc-status-code no-space))
                  "no-space"
                  )
-                ((= v1-3 4)
+                ((= v1-3 (mc-status-code internal-error))
                  "internal-error"
                  )
-                ((= v1-3 8)
+                ((= v1-3 (mc-status-code no-memory))
                  "no-memory"
                  )
-                ((= v1-3 2)
+                ((= v1-3 (mc-status-code bad-handle))
                  "bad-handle"
                  )
-                ((zero? v1-3)
+                ((= v1-3 (mc-status-code busy))
                  "busy"
                  )
-                ((= v1-3 5)
+                ((= v1-3 (mc-status-code write-error))
                  "write-error"
                  )
-                ((= v1-3 6)
+                ((= v1-3 (mc-status-code read-error))
                  "read-error"
                  )
-                ((= v1-3 9)
+                ((= v1-3 (mc-status-code no-card))
                  "no-card"
                  )
-                ((= v1-3 11)
+                ((= v1-3 (mc-status-code no-format))
                  "no-format"
                  )
-                ((= v1-3 1)
+                ((= v1-3 (mc-status-code ok))
                  "ok"
                  )
-                ((= v1-3 16)
+                ((= v1-3 (mc-status-code no-process))
                  "no-process"
                  )
-                ((= v1-3 17)
+                ((= v1-3 (mc-status-code no-auto-save))
                  "no-auto-save"
                  )
-                ((= v1-3 12)
+                ((= v1-3 (mc-status-code no-file))
                  "no-file"
                  )
-                ((= v1-3 3)
+                ((= v1-3 (mc-status-code format-failed))
                  "format-failed"
                  )
-                ((= v1-3 7)
+                ((= v1-3 (mc-status-code new-game))
                  "new-game"
                  )
                 (else
@@ -1669,7 +1654,8 @@
               (-> self current)
               )
             )
-          (case (-> self current)
+          ;; og:preserve-this patched to next instead of current because we save synchronously
+          (case (-> self next)
             (('saving)
              (cond
                ((= (-> self state-array 0) 'title)
@@ -1862,8 +1848,7 @@
 (defstate gone (progress)
   :virtual #t
   :code (behavior ()
-    ;; og:preserve-this not-yet-implemented check
-    (if *bigmap* (disable-drawing *bigmap*))
+    (disable-drawing *bigmap*)
     (set-menu-mode *blit-displays-work* #f)
     (while (or (-> *blit-displays-work* screen-copied) (nonzero? (-> *blit-displays-work* count-down)))
       (suspend)
@@ -1882,7 +1867,7 @@
 
 (defmethod respond-progress ((this menu-slider-option) (arg0 progress) (arg1 symbol))
   (with-pp
-    (when (bigmap-method-11 *bigmap*)
+    (when (loaded? *bigmap*)
       (let ((s5-0 (&+ (the-as (pointer float) *setting-control*) (-> this setting-offset)))
             (s3-0 #f)
             )
@@ -1938,7 +1923,7 @@
   )
 
 (defmethod respond-progress ((this menu-stereo-mode-sound-option) (arg0 progress) (arg1 symbol))
-  (when (bigmap-method-11 *bigmap*)
+  (when (loaded? *bigmap*)
     (let ((a0-2 (-> *setting-control* user-default stereo-mode))
           (v1-4 #f)
           )
@@ -2215,7 +2200,7 @@
     (set-next-state arg0 a1-3 0)
     )
   (set! (-> arg0 selected-option) #f)
-  (when (bigmap-method-11 *bigmap*)
+  (when (loaded? *bigmap*)
     (cond
       ((cpad-pressed? 0 triangle)
        )
@@ -3009,7 +2994,7 @@
   )
 
 (defmethod respond-progress ((this menu-bigmap-option) (arg0 progress) (arg1 symbol))
-  ((method-of-object *bigmap* bigmap-method-13))
+  (handle-cpad-input *bigmap*)
   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
   0
@@ -4049,10 +4034,7 @@
     process
     (lambda :behavior process
       ((arg0 int))
-      (let ((s5-0 (current-time)))
-        (until (time-elapsed? s5-0 (seconds 2.5))
-          (suspend)
-          )
+      (suspend-for (seconds 2.5)
         )
       (while (or (not (handle-command-list *gui-control* (gui-channel alert) (the-as gui-connection #f)))
                  (= (status-of-level-and-borrows *level* 'title #f) 'active)
