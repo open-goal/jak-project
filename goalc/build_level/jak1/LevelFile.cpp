@@ -26,6 +26,7 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   num_trees += tfrags.size();
   num_trees += collides.size();
   num_trees += ambients.size();
+  num_trees += ties.size();
   gen.add_word(num_trees << 16);
   gen.add_word(0);
   gen.add_word(0);
@@ -34,8 +35,6 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   gen.add_word(0);
   gen.add_word(0);
   gen.add_word(0);
-
-  // todo add trees...
 
   if (num_trees == 0) {
     gen.add_word(0);  // the one at the end.
@@ -52,6 +51,10 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
 
     for (auto& collide : collides) {
       gen.link_word_to_byte(tree_word++, collide.add_to_object_file(gen));
+    }
+
+    for (auto& tie : ties) {
+      gen.link_word_to_byte(tree_word++, tie.add_to_object_file(gen));
     }
 
     for (auto& ambient : ambients) {

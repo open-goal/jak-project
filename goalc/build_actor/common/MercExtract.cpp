@@ -108,7 +108,8 @@ void extract(const std::string& name,
     const auto& tex = model.textures[tex_idx];
     ASSERT(tex.sampler >= 0);
     ASSERT(tex.source >= 0);
-    draw.mode = gltf_util::draw_mode_from_sampler(model.samplers.at(tex.sampler));
+    gltf_util::setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
+    gltf_util::setup_alpha_from_material(mat, &draw.mode);
 
     const auto& img = model.images[tex.source];
     draw.tree_tex_id = tex_offset + texture_pool_add_texture(&out.tex_pool, img);

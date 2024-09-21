@@ -17,15 +17,15 @@ namespace gltf_mesh_extract {
 struct Input {
   std::string filename;
   gltf_util::TexturePool* tex_pool = nullptr;
-  bool get_colors = true;
   bool auto_wall_enable = true;
   float auto_wall_angle = 30.f;
   bool double_sided_collide = false;
 };
 
 struct TfragOutput {
-  std::vector<tfrag3::StripDraw> strip_draws;
-  std::vector<tfrag3::PreloadedVertex> vertices;
+  std::vector<tfrag3::StripDraw> normal_strip_draws;
+  std::vector<tfrag3::StripDraw> trans_strip_draws;
+  std::vector<tfrag3::PreloadedVertex> tfrag_vertices;
   std::vector<math::Vector<u8, 4>> color_palette;
 };
 
@@ -33,9 +33,18 @@ struct CollideOutput {
   std::vector<jak1::CollideFace> faces;
 };
 
+struct TieOutput {
+  std::vector<tfrag3::StripDraw> base_draws;
+  std::vector<tfrag3::StripDraw> envmap_draws;
+  std::vector<tfrag3::PackedTieVertices::Vertex> vertices;
+  std::vector<u16> color_indices;
+  std::vector<math::Vector<u8, 4>> color_palette;
+};
+
 struct Output {
   TfragOutput tfrag;
   CollideOutput collide;
+  TieOutput tie;
 };
 
 struct PatResult {

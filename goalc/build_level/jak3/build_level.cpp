@@ -67,9 +67,8 @@ bool run_build_level(const std::string& input_file,
   pc_level.level_name = file.name;
 
   // TFRAG
-  auto& tfrag_drawable_tree = file.drawable_trees.tfrags.emplace_back();
-  tfrag_from_gltf(mesh_extract_out.tfrag, tfrag_drawable_tree,
-                  pc_level.tfrag_trees[0].emplace_back());
+  file.drawable_trees.tfrags.emplace_back("drawable-tree-tfrag", "drawable-inline-array-tfrag");
+  tfrag_from_gltf(mesh_extract_out.tfrag, pc_level.tfrag_trees[0]);
   pc_level.textures = std::move(tex_pool.textures_by_idx);
 
   // COLLIDE

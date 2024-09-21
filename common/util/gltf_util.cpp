@@ -387,7 +387,7 @@ int texture_pool_debug_checker(TexturePool* pool) {
   }
 }
 
-int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
+int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int alpha_shift) {
   const auto& existing = pool->textures_by_name.find(tex.name);
   if (existing != pool->textures_by_name.end()) {
     lg::info("Reusing image: {}", tex.name);
@@ -412,6 +412,14 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex) {
   tt.data.resize(tt.w * tt.h);
   ASSERT(tex.image.size() >= tt.data.size());
   memcpy(tt.data.data(), tex.image.data(), tt.data.size() * 4);
+
+  // adjust alpha colors for PS2/PC difference
+  for (auto& color : tt.data) {
+    u32 alpha = color >> 24;
+    alpha >>= alpha_shift;
+    color &= 0xff'ff'ff;
+    color |= (alpha << 24);
+  }
   return idx;
 }
 
@@ -549,22 +557,38 @@ void dedup_vertices(const std::vector<tfrag3::PreloadedVertex>& vertices_in,
   }
 }
 
-DrawMode draw_mode_from_sampler(const tinygltf::Sampler& sampler) {
-  DrawMode mode = make_default_draw_mode();
+void setup_alpha_from_material(const tinygltf::Material& material, DrawMode* mode) {
+  if (material.alphaMode == "OPAQUE") {
+    mode->disable_ab();
+  } else if (material.alphaMode == "MASK") {
+    mode->enable_at();
+    mode->set_alpha_test(DrawMode::AlphaTest::GEQUAL);
+    mode->set_alpha_fail(GsTest::AlphaFail::KEEP);
+    mode->set_aref(material.alphaCutoff * 127);
+  } else if (material.alphaMode == "BLEND") {
+    mode->enable_ab();
+    mode->set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+    mode->set_depth_write_enable(false);
+  } else {
+    lg::die("Unknown GLTF alphaMode {}", material.alphaMode);
+  }
+}
+
+void setup_draw_mode_from_sampler(const tinygltf::Sampler& sampler, DrawMode* mode) {
   if (sampler.magFilter == TINYGLTF_TEXTURE_FILTER_NEAREST) {
     ASSERT(sampler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST);
-    mode.set_filt_enable(false);
+    mode->set_filt_enable(false);
   } else {
     ASSERT(sampler.minFilter != TINYGLTF_TEXTURE_FILTER_NEAREST);
-    mode.set_filt_enable(true);
+    mode->set_filt_enable(true);
   }
 
   switch (sampler.wrapS) {
     case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
-      mode.set_clamp_s_enable(true);
+      mode->set_clamp_s_enable(true);
       break;
     case TINYGLTF_TEXTURE_WRAP_REPEAT:
-      mode.set_clamp_s_enable(false);
+      mode->set_clamp_s_enable(false);
       break;
     default:
       ASSERT(false);
@@ -572,16 +596,14 @@ DrawMode draw_mode_from_sampler(const tinygltf::Sampler& sampler) {
 
   switch (sampler.wrapT) {
     case TINYGLTF_TEXTURE_WRAP_CLAMP_TO_EDGE:
-      mode.set_clamp_t_enable(true);
+      mode->set_clamp_t_enable(true);
       break;
     case TINYGLTF_TEXTURE_WRAP_REPEAT:
-      mode.set_clamp_t_enable(false);
+      mode->set_clamp_t_enable(false);
       break;
     default:
       ASSERT(false);
   }
-
-  return mode;
 }
 
 std::optional<int> find_single_skin(const tinygltf::Model& model,
@@ -620,6 +642,24 @@ std::vector<float> extract_floats(const tinygltf::Model& model, int accessor_idx
     data_ptr += stride;
   }
   return result;
+}
+
+std::size_t TieFullVertex::hash::operator()(const TieFullVertex& x) const {
+  return tfrag3::PackedTieVertices::Vertex::hash()(x.vertex) ^ std::hash<u16>()(x.color_index);
+}
+
+tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8, 4>>& color_palette) {
+  tfrag3::PackedTimeOfDay colors;
+  colors.color_count = (color_palette.size() + 3) & (~3);
+  colors.data.resize(colors.color_count * 8 * 4);
+  for (u32 color_index = 0; color_index < color_palette.size(); color_index++) {
+    for (u32 palette = 0; palette < 8; palette++) {
+      for (u32 channel = 0; channel < 4; channel++) {
+        colors.read(color_index, palette, channel) = color_palette[color_index][channel];
+      }
+    }
+  }
+  return colors;
 }
 
 }  // namespace gltf_util

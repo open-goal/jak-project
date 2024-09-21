@@ -63,14 +63,14 @@ void extract(const std::string& name,
     draw.mode = make_default_draw_mode();
 
     if (mat_idx == -1) {
-      lg::warn("Draw had a material index of -1, using default texture.");
+      lg::warn("Draw had a material index of -1, using bogus texture.");
       draw.tree_tex_id = 0;
       continue;
     }
     const auto& mat = model.materials[mat_idx];
     int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
     if (tex_idx == -1) {
-      lg::warn("Material {} has no texture, using default texture.", mat.name);
+      lg::warn("Material {} has no texture, using bogus texture.", mat.name);
       draw.tree_tex_id = 0;
       continue;
     }
@@ -78,7 +78,8 @@ void extract(const std::string& name,
     const auto& tex = model.textures[tex_idx];
     ASSERT(tex.sampler >= 0);
     ASSERT(tex.source >= 0);
-    draw.mode = draw_mode_from_sampler(model.samplers.at(tex.sampler));
+    setup_alpha_from_material(mat, &draw.mode);
+    setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
 
     const auto& img = model.images[tex.source];
     draw.tree_tex_id = tex_offset + texture_pool_add_texture(&out.tex_pool, img);

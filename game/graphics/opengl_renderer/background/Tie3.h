@@ -130,6 +130,7 @@ class Tie3 : public BucketRenderer {
     std::vector<std::pair<int, int>> multidraw_offset_per_stripdraw;
     std::vector<GLsizei> multidraw_count_buffer;
     std::vector<void*> multidraw_index_offset_buffer;
+    u64 draw_mode = 0;  // strip or not, GL enum
   };
 
   void envmap_second_pass_draw(const Tree& tree,

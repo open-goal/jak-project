@@ -1,10 +1,12 @@
 #include "color_quantization.h"
 
 #include <algorithm>
+#include <set>
 #include <unordered_map>
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"
+#include "common/util/Timer.h"
 
 /*!
  * Just removes duplicate colors, which can work if there are only a few unique colors.
@@ -220,4 +222,124 @@ QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& i
   lg::info("Final palette size: {}", out.final_colors.size());
 
   return out;
+}
+
+struct KdNode {
+  // if not a leaf
+  std::unique_ptr<KdNode> left, right;
+
+  // if leaf
+  std::vector<Color> colors;
+};
+
+void split_kd(KdNode* in, u32 depth, int next_split_dim) {
+  if (!depth) {
+    return;
+  }
+
+  // sort by split dimension
+  std::stable_sort(in->colors.begin(), in->colors.end(), [=](const Color& a, const Color& b) {
+    return a[next_split_dim] < b[next_split_dim];
+  });
+
+  in->left = std::make_unique<KdNode>();
+  in->right = std::make_unique<KdNode>();
+
+  size_t i = 0;
+  size_t mid = in->colors.size() / 2;
+  if (depth & 1) {
+    while (mid > 1 && in->colors[mid] == in->colors[mid - 1]) {
+      mid--;
+    }
+  } else {
+    while (mid + 2 < in->colors.size() && in->colors[mid] == in->colors[mid + 1]) {
+      mid++;
+    }
+  }
+
+  for (; i < mid; i++) {
+    in->left->colors.push_back(in->colors[i]);
+  }
+
+  for (; i < in->colors.size(); i++) {
+    in->right->colors.push_back(in->colors[i]);
+  }
+
+  split_kd(in->left.get(), depth - 1, (next_split_dim + 1) % 4);
+  split_kd(in->right.get(), depth - 1, (next_split_dim + 1) % 4);
+}
+
+template <typename Func>
+void for_each_child(KdNode* node, Func&& f) {
+  if (node->left) {
+    for_each_child(node->left.get(), f);
+    for_each_child(node->right.get(), f);
+  } else {
+    f(node);
+  }
+}
+
+u32 color_as_u32(const Color& color) {
+  u32 ret = 0;
+  memcpy(&ret, color.data(), 4);
+  return ret;
+}
+
+Color u32_as_color(u32 in) {
+  Color ret;
+  memcpy(ret.data(), &in, 4);
+  return ret;
+}
+
+std::vector<Color> deduplicated_colors(const std::vector<Color>& in) {
+  std::set<u32> unique;
+  for (auto& x : in) {
+    unique.insert(color_as_u32(x));
+  }
+  std::vector<Color> out;
+  for (auto& x : unique) {
+    out.push_back(u32_as_color(x));
+  }
+  return out;
+}
+
+QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 4>>& in,
+                                        u32 target_depth) {
+  Timer timer;
+  // Build root node:
+  KdNode root;
+  root.colors = deduplicated_colors(in);
+  // root.colors = in;
+
+  // Split tree:
+  split_kd(&root, target_depth, 0);
+
+  // Get final colors:
+  std::unordered_map<u32, u32> color_value_to_color_idx;
+  QuantizedColors result;
+  for_each_child(&root, [&](KdNode* node) {
+    if (node->colors.empty()) {
+      return;
+    }
+
+    const u32 slot = result.final_colors.size();
+    u32 totals[4] = {0, 0, 0, 0};
+    u32 n = node->colors.size();
+    for (auto& color : node->colors) {
+      color_value_to_color_idx[color_as_u32(color)] = slot;
+      for (int i = 0; i < 4; i++) {
+        totals[i] += color[i];
+      }
+    }
+    result.final_colors.emplace_back(totals[0] / n, totals[1] / n, totals[2] / n,
+                                     totals[3] / (2 * n));
+  });
+
+  for (auto& color : in) {
+    result.vtx_to_color.push_back(color_value_to_color_idx.at(color_as_u32(color)));
+  }
+
+  lg::warn("Quantize colors: {} input colors -> {} output in {:.3f} ms\n", in.size(),
+           result.final_colors.size(), timer.getMs());
+  return result;
 }
