@@ -2116,10 +2116,22 @@
                   (.lvf vf3 (&-> a1-4 uvec quad))
                   (.add.mul.x.vf acc vf2 vf1 acc)
                   (.lvf vf4 (&-> a1-4 fvec quad))
+
+                  (.add.mul.y.vf acc vf3 vf1 acc)
+                  (.add.mul.z.vf vf1 vf4 vf1 acc :mask #b111)
+
+                ;; this check is added in the PC port. It's added for the same reason as the modification
+                ;; to vector<-cspace!. On the first frame of a process-drawable being alive, the bones will often be zero
+                ;; on PS2, this would have a potentially harmless result of setting this bone to 0, putting the collision geometry at 0.
+                ;; this would usually result in no collision, and no change in velocities
+                ;; in the next frame, the position would be computed correctly.
+                ;; on PC, this bone becomes NaN, which propagates to setting the velocity to NaN, which results in the
+                ;; entire collision system having everything as NaN all the time.
+                (if (!= (-> a1-4 trans w) 0.0)
+                  (.mul.vf vf1 vf1 Q :mask #b111)
                   )
-                (.add.mul.y.vf acc vf3 vf1 acc)
-                (.add.mul.z.vf vf1 vf4 vf1 acc :mask #b111)
-                (.mul.vf vf1 vf1 Q :mask #b111)
+                )
+
                 (.svf (&-> s5-0 prim-core world-sphere quad) vf1)
                 (.mov a1-5 vf1)
                 )
