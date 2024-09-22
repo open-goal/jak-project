@@ -5,6 +5,12 @@
 ;; name in dgo: rigid-body
 ;; dgos: GAME
 
+(deftype rigid-body-stack (structure)
+  ((vec vector :inline)
+   (mat matrix :inline)
+    )
+  )
+
 ;; DECOMP BEGINS
 
 (deftype rigid-body-work (structure)
@@ -92,10 +98,10 @@
   )
 
 (defmethod rigid-body-control-method-28 ((this rigid-body-control) (arg0 vector) (arg1 quaternion))
-  (let ((s3-0 (new 'stack-no-clear 'rigid-body-impact)))
-    (quaternion->matrix (the-as matrix (-> s3-0 normal)) arg1)
-    (vector-rotate*! (-> s3-0 point) (-> this info cm-offset-joint) (the-as matrix (-> s3-0 normal)))
-    (vector+! (-> this position) arg0 (-> s3-0 point))
+  (let ((s3-0 (new 'stack-no-clear 'rigid-body-stack)))
+    (quaternion->matrix (-> s3-0 mat) arg1)
+    (vector-rotate*! (-> s3-0 vec) (-> this info cm-offset-joint) (-> s3-0 mat))
+    (vector+! (-> this position) arg0 (-> s3-0 vec))
     )
   (quaternion-copy! (the-as quaternion (-> this rot)) arg1)
   (quaternion-normalize! (the-as quaternion (-> this rot)))
