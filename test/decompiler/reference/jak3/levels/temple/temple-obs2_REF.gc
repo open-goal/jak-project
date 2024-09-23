@@ -272,9 +272,9 @@
    (within-outer-ring    symbol)
    (within-inner-ring    symbol)
    (ouched               symbol)
-   (bound-cam            basic)
+   (bound-cam            string)
    (trans                vector  :inline)
-   (state-time           uint64)
+   (state-time           time-frame)
    (jak-in-hint-region   symbol)
    (watchers-vulnerable  symbol)
    )
@@ -408,7 +408,7 @@
          (logior! (-> v1-8 status) (entity-perm-status bit-14))
          )
        )
-     (set! (-> self bound-cam) (the-as basic (-> arg3 param 0)))
+     (set! (-> self bound-cam) (the-as string (-> arg3 param 0)))
      (set! (-> self ouched) #t)
      (go-virtual until-watchers-dead)
      )
@@ -470,7 +470,7 @@
   :virtual #t
   :event tpl-watcher-manager-ehandler
   :enter (behavior ()
-    (set! (-> self state-time) (the-as uint (current-time)))
+    (set-time! (-> self state-time))
     )
   :trans watcher-man-trans
   :code (behavior ()
@@ -511,7 +511,7 @@
           )
         )
       )
-    (until (time-elapsed? (the-as int (-> self state-time)) (seconds 1))
+    (until (time-elapsed? (-> self state-time) (seconds 1))
       (suspend)
       )
     (task-close! "temple-oracle-watchers-complete")
@@ -615,7 +615,7 @@
     standing-down
     )
   (:methods
-    (tpl-watcher-method-32 (_type_) none)
+    (init-collision! (_type_) none)
     )
   )
 
@@ -1120,7 +1120,7 @@
 
 ;; definition for method 32 of type tpl-watcher
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod tpl-watcher-method-32 ((this tpl-watcher))
+(defmethod init-collision! ((this tpl-watcher))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1179,7 +1179,7 @@
 (defmethod init-from-entity! ((this tpl-watcher) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 384)
-  (tpl-watcher-method-32 this)
+  (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (logior! (-> this mask) (process-mask enemy))
   (initialize-skeleton
@@ -2235,3 +2235,7 @@
   ((method-of-type process-focusable deactivate) (the-as process-focusable this))
   (none)
   )
+
+
+
+

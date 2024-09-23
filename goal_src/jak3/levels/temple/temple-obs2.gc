@@ -99,7 +99,8 @@
         (suspend)
         )
       (set-setting! 'entity-name "camera-356" 0.0 0)
-      (suspend-for (seconds 1))
+      (suspend-for (seconds 1)
+        )
       )
     (sound-play "gate-raise")
     (ja-no-eval :group! tpl-gate-close-ja :num! (seek!) :frame-num 0.0)
@@ -108,7 +109,8 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (suspend-for (seconds 0.1))
+    (suspend-for (seconds 0.1)
+      )
     (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-6 from) (process->ppointer self))
       (set! (-> a1-6 num-params) 0)
@@ -125,9 +127,11 @@
         )
       )
     (when (= (-> self extra-id) 1)
-      (suspend-for (seconds 0.5))
+      (suspend-for (seconds 0.5)
+        )
       (remove-setting! 'entity-name)
-      (suspend-for (seconds 2.5))
+      (suspend-for (seconds 2.5)
+        )
       (until (process-release? *target*)
         (suspend)
         )
@@ -251,9 +255,9 @@
    (within-outer-ring    symbol)
    (within-inner-ring    symbol)
    (ouched               symbol)
-   (bound-cam            basic)
+   (bound-cam            string)
    (trans                vector  :inline)
-   (state-time           uint64)
+   (state-time           time-frame)
    (jak-in-hint-region   symbol)
    (watchers-vulnerable  symbol)
    )
@@ -360,7 +364,7 @@
          (logior! (-> v1-8 status) (entity-perm-status bit-14))
          )
        )
-     (set! (-> self bound-cam) (the-as basic (-> arg3 param 0)))
+     (set! (-> self bound-cam) (the-as string (-> arg3 param 0)))
      (set! (-> self ouched) #t)
      (go-virtual until-watchers-dead)
      )
@@ -405,7 +409,8 @@
   :event tpl-watcher-manager-ehandler
   :trans watcher-man-trans
   :code (behavior ()
-    (suspend-for (seconds 1))
+    (suspend-for (seconds 1)
+      )
     (while (and *target* (focus-test? *target* dead))
       (suspend)
       )
@@ -417,7 +422,7 @@
   :virtual #t
   :event tpl-watcher-manager-ehandler
   :enter (behavior ()
-    (set! (-> self state-time) (the-as uint (current-time)))
+    (set-time! (-> self state-time))
     )
   :trans watcher-man-trans
   :code (behavior ()
@@ -428,7 +433,8 @@
         (suspend)
         )
       (process-entity-status! self (entity-perm-status no-kill) #t)
-      (suspend-for (seconds 2.5))
+      (suspend-for (seconds 2.5)
+        )
       (while (not (process-release? *target*))
         (suspend)
         )
@@ -457,7 +463,7 @@
           )
         )
       )
-    (until (time-elapsed? (the-as int (-> self state-time)) (seconds 1))
+    (until (time-elapsed? (-> self state-time) (seconds 1))
       (suspend)
       )
     (task-close! "temple-oracle-watchers-complete")
@@ -557,7 +563,7 @@
     standing-down
     )
   (:methods
-    (tpl-watcher-method-32 (_type_) none)
+    (init-collision! (_type_) none)
     )
   )
 
@@ -841,6 +847,8 @@
                 )
               )
             (suspend)
+            ;; og:preserve-this fix vf0 clobbering after suspend
+            (init-vf0-vector)
             (set! v1-32 (- (current-time) s4-0))
             (let ((a0-14 (-> self manager)))
               (set! a1-12 (if a0-14
@@ -910,7 +918,9 @@
                )
              )
             (sound-play "wtcher-fire")
-            (suspend-for (seconds 1) '())
+            (suspend-for (seconds 1)
+              '()
+              )
             )
           )
         )
@@ -978,7 +988,8 @@
           )
         )
       )
-    (suspend-for (seconds 4))
+    (suspend-for (seconds 4)
+      )
     (while (-> self child)
       (suspend)
       )
@@ -1013,13 +1024,14 @@
     (let ((gp-0 (-> self root quat))
           (s5-0 (-> self entity quat))
           )
-      (suspend-for (seconds 1.5) (quaternion-slerp!
-                                   (-> self root quat)
-                                   gp-0
-                                   s5-0
-                                   (* 0.0022222223 (the float (- (current-time) (-> self state-time))))
-                                   )
-                   )
+      (suspend-for (seconds 1.5)
+        (quaternion-slerp!
+          (-> self root quat)
+          gp-0
+          s5-0
+          (* 0.0022222223 (the float (- (current-time) (-> self state-time))))
+          )
+        )
       )
     (go-virtual idle)
     )
@@ -1027,7 +1039,7 @@
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod tpl-watcher-method-32 ((this tpl-watcher))
+(defmethod init-collision! ((this tpl-watcher))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1082,7 +1094,7 @@
 (defmethod init-from-entity! ((this tpl-watcher) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 384)
-  (tpl-watcher-method-32 this)
+  (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (logior! (-> this mask) (process-mask enemy))
   (initialize-skeleton
@@ -1630,8 +1642,7 @@
         (quaternion-normalize! s5-2)
         (set-time! (-> self state-time))
         (let ((f30-1 (lerp-scale 45.0 9.0 (-> self clock clock-ratio) 1.0 0.05)))
-          (suspend-for
-            (the int f30-1)
+          (suspend-for (the int f30-1)
             (quaternion-slerp!
               (-> self root quat)
               gp-3
@@ -1657,7 +1668,9 @@
   :trans rider-trans
   :code (behavior ()
     (let ((f30-0 (res-lump-float (-> self entity) 'tpl-platform-predelay)))
-      (suspend-for (the int (* 300.0 f30-0)) '())
+      (suspend-for (the int (* 300.0 f30-0))
+        '()
+        )
       )
     (go-virtual flip)
     )
@@ -1711,7 +1724,9 @@
   :code (behavior ()
     (set-time! (-> self state-time))
     (set! (-> self state-time) (-> *display* real-clock frame-counter))
-    (suspend-for (seconds 0.25) '())
+    (suspend-for (seconds 0.25)
+      '()
+      )
     (while (< (+ (-> *display* real-clock frame-counter) (seconds -1)) (-> self last-ridden))
       (suspend)
       )
