@@ -586,16 +586,18 @@ void pc_set_window_size(u64 width, u64 height) {
   }
 }
 
-s64 pc_get_num_resolutions() {
+s64 pc_get_num_resolutions(u32 for_windowed) {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_manager()->get_num_resolutions();
+    return Display::GetMainDisplay()->get_display_manager()->get_num_resolutions(
+        symbol_to_bool(for_windowed));
   }
   return 0;
 }
 
-void pc_get_resolution(u32 id, u32 w_ptr, u32 h_ptr) {
+void pc_get_resolution(u32 id, u32 for_windowed, u32 w_ptr, u32 h_ptr) {
   if (Display::GetMainDisplay()) {
-    auto res = Display::GetMainDisplay()->get_display_manager()->get_resolution(id);
+    auto res = Display::GetMainDisplay()->get_display_manager()->get_resolution(
+        id, symbol_to_bool(for_windowed));
     auto w = Ptr<s64>(w_ptr).c();
     if (w) {
       *w = res.width;
