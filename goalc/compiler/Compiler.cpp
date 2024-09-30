@@ -21,11 +21,12 @@ using namespace goos;
 Compiler::Compiler(GameVersion version,
                    const std::optional<REPL::Config> repl_config,
                    const std::string& user_profile,
-                   std::unique_ptr<REPL::Wrapper> repl)
+                   std::unique_ptr<REPL::Wrapper> repl,
+                   const std::string& iso_path)
     : m_version(version),
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
-      m_make(repl_config, user_profile),
+      m_make(repl_config, user_profile, iso_path),
       m_repl(std::move(repl)),
       m_symbol_info(&m_goos.reader.db) {
   m_listener.add_debugger(&m_debugger);

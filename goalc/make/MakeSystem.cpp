@@ -39,7 +39,7 @@ std::string MakeStep::print() const {
   return result;
 }
 
-MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username)
+MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username, const std::string& iso_path)
     : m_goos(username), m_repl_config(repl_config) {
   m_goos.register_form("defstep", [=](const goos::Object& obj, goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env) {
@@ -91,8 +91,14 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
-  set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
-  set_constant("*use-iso-data-path*", false);
+  if (!iso_path.empty()) {
+    set_constant("*iso-data*", iso_path);
+    set_constant("*use-iso-data-path*", true);
+  }
+  else {
+    set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
+    set_constant("*use-iso-data-path*", false);
+  }
 
   add_tool<DgoTool>();
   add_tool<TpageDirTool>();

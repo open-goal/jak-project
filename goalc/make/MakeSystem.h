@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/goos/Interpreter.h"
-
+#include "common/util/FileUtil.h"
 #include "goalc/make/Tool.h"
 
 struct MakeStep {
@@ -15,7 +15,9 @@ struct MakeStep {
 
 class MakeSystem {
  public:
-  MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username = "#f");
+  MakeSystem(const std::optional<REPL::Config> repl_config,
+             const std::string& username = "#f",
+             const std::string& iso_path = "");
   void load_project_file(const std::string& file_path);
 
   goos::Object handle_defstep(const goos::Object& obj,
