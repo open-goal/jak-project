@@ -2007,7 +2007,11 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
   file_info.read_from_file(get_and_check_ref_to_basic(ref, "info", "file-info", dts), dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   name = read_symbol_field(ref, "name", dts);
-  adgifs.read_from_file(get_and_check_ref_to_basic(ref, "adgifs", "adgif-shader-array", dts), dts);
+
+  if (version == GameVersion::Jak1) {
+    adgifs.read_from_file(get_and_check_ref_to_basic(ref, "adgifs", "adgif-shader-array", dts),
+                          dts);
+  }
 
   texture_page_count = read_plain_data_field<s32>(ref, "texture-page-count", dts);
   if (texture_page_count > 0) {
