@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
   std::string game = "jak1";
   int nrepl_port = -1;
   fs::path project_path_override;
+  fs::path iso_path_override;
 
   // TODO - a lot of these flags could be deprecated and moved into `repl-config.json`
   CLI::App app{"OpenGOAL Compiler / REPL"};
@@ -49,6 +50,8 @@ int main(int argc, char** argv) {
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
+  app.add_option("--iso-path", iso_path_override,
+                 "Specify the location of the 'iso_data/' folder");
   define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
@@ -66,6 +69,15 @@ int main(int argc, char** argv) {
     }
   } else if (!file_util::setup_project_path(std::nullopt, true)) {
     return 1;
+  }
+
+  // Check for a custom ISO path before the REPL window renders.
+  if (!iso_path_override.empty()) {
+    if (!fs::exists(iso_path_override)) {
+      lg::error("Error: iso path override '{}' does not exist", iso_path_override.string());
+      return 1;
+    }
+    file_util::set_iso_data_dir(iso_path_override);
   }
 
   try {
@@ -119,6 +131,13 @@ int main(int argc, char** argv) {
     compiler = std::make_unique<Compiler>(
         game_version, std::make_optional(repl_config), username,
         std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
+
+    // Once the compiler is instantiated, set it to use custom iso data dir.
+    if (!iso_path_override.empty()) {
+      compiler->make_system().set_constant("*iso-data*", absolute(iso_path_override).string());
+      compiler->make_system().set_constant("*use-iso-data-path*", true);
+    }
+
     // Start nREPL Server if it spun up successfully
     if (nrepl_server_ok) {
       nrepl_thread = std::thread([&]() {
