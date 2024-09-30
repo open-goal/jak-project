@@ -26,4 +26,7 @@ tfrag3::Texture make_texture(u32 id,
                              bool pool_load);
 std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
                                                          const std::string& dgo_name);
+std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records,
+                                             const std::string& dgo_name);
+bool is_valid_bsp(const LinkedObjectFile& file);
 }  // namespace decompiler
