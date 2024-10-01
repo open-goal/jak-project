@@ -336,6 +336,17 @@ This gives us more freedom to write code how we want.
         (pc-settings-save)
         (set! (-> *setting-control* user-default subtitle) val))))
 
+(defmacro game-options-pc-hint-subtitle-toggle ()
+  `(new 'static 'menu-generic-boolean-option
+      :name (text-id progress-hint-subtitles)
+      :truthy-text (text-id progress-on)
+      :falsey-text (text-id progress-off)
+      :get-value-fn (lambda () (-> *pc-settings* hint-subtitles?))
+      :should-disable? (lambda () (not (-> *pc-settings* memcard-subtitles?)))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* hint-subtitles?) val)
+        (pc-settings-save))))
+
 (defmacro game-options-pc-subtitle-language ()
   `(new 'static 'menu-generic-carousel-option
       :name (text-id progress-sound-subtitle-language)
@@ -454,6 +465,7 @@ This gives us more freedom to write code how we want.
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
     (game-options-pc-input-options)
     (game-options-pc-subtitle-toggle)
+    (game-options-pc-hint-subtitle-toggle)
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
@@ -466,6 +478,7 @@ This gives us more freedom to write code how we want.
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
     (game-options-pc-input-options)
     (game-options-pc-subtitle-toggle)
+    (game-options-pc-hint-subtitle-toggle)
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
