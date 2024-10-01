@@ -22,7 +22,7 @@ class StrFileReader {
   std::string get_chunk_art_name(int idx) const;
 
   std::string get_full_name(const std::string& short_name) const;
-  std::string get_texture_name() const;
+  std::string get_chunk_texture_name(int idx) const;
 
  private:
   void init_jak1(const fs::path& file_path);
@@ -46,8 +46,9 @@ class StrFileReader {
   std::string get_texture_page_file_info_string() const {
     switch (m_version) {
       case GameVersion::Jak2:
-      case GameVersion::Jak3:
         return "/src/jak2/final/texture-page8/";
+      case GameVersion::Jak3:
+        return "/src/jak3/final/texture-page8/";
       default:
         ASSERT_MSG(false, "NYI get_file_info_string version");
         break;

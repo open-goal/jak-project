@@ -11,6 +11,7 @@
 
 (deftype warpgate (process-hidden) ())
 
+
 (defstate target-warp-in (target)
   :event target-generic-event-handler
   :enter
@@ -31,7 +32,7 @@
       (ja-channel-set! 0)
       (vector-reset! (-> self control transv))
       (move-to-point! (-> self control) (-> self control unknown-vector102))
-      (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 1)) (suspend)))
+      (suspend-for (seconds 1))
       (let ((gp-1 (new-stack-vector0)))
         (let ((f0-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
           0.0
@@ -270,6 +271,7 @@
   (:methods
    (pressable? (_type_) symbol)))
 
+
 (defskelgroup *warp-gate-switch-sg*
   warp-gate-switch
   warp-gate-switch-lod0-jg
@@ -484,9 +486,10 @@
   (:state-methods
    idle))
 
-(defmethod relocate ((this village-cam) (arg0 int))
-  (if (nonzero? (-> this root-override)) (&+! (-> this root-override) arg0))
-  (the-as village-cam ((method-of-type process relocate) this arg0)))
+
+(defmethod relocate ((this village-cam) (offset int))
+  (if (nonzero? (-> this root-override)) (&+! (-> this root-override) offset))
+  (the-as village-cam ((method-of-type process relocate) this offset)))
 
 (defstate idle (village-cam)
   :virtual #t
@@ -627,7 +630,7 @@
               (let ((a0-70 (-> self entity extra perm)))
                 (when (= (-> a0-70 user-uint8 0) 1)
                   (remove-setting! 'allow-progress)
-                  (let ((gp-3 (current-time))) (until (time-elapsed? gp-3 (seconds 300)) (suspend)))
+                  (suspend-for (seconds 300))
                   (go-virtual idle))))
             (process-entity-status! self (entity-perm-status bit-3) #f)
             (process-entity-status! self (entity-perm-status dead) #t)

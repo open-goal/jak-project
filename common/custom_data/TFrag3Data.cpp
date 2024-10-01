@@ -304,13 +304,15 @@ void TieTree::unpack() {
 
   for (auto& draw : static_draws) {
     draw.unpacked.idx_of_first_idx_in_full_buffer = unpacked.indices.size();
-    ASSERT(draw.plain_indices.empty());
+    // indices can come from either runs or already in plain indices.
     for (auto& run : draw.runs) {
       for (u32 ri = 0; ri < run.length; ri++) {
         unpacked.indices.push_back(run.vertex0 + ri);
       }
       unpacked.indices.push_back(UINT32_MAX);
     }
+    unpacked.indices.insert(unpacked.indices.end(), draw.plain_indices.begin(),
+                            draw.plain_indices.end());
   }
 }
 
@@ -405,6 +407,8 @@ void TieTree::serialize(Serializer& ser) {
   packed_vertices.serialize(ser);
   colors.serialize(ser);
   bvh.serialize(ser);
+
+  ser.from_ptr(&use_strips);
 
   ser.from_ptr(&has_per_proto_visibility_toggle);
   ser.from_string_vector(&proto_names);
@@ -848,6 +852,13 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
 std::size_t PreloadedVertex::hash::operator()(const PreloadedVertex& v) const {
   return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
          std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^ std::hash<u16>()(v.color_index);
+}
+
+std::size_t PackedTieVertices::Vertex::hash::operator()(const Vertex& v) const {
+  return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
+         std::hash<float>()(v.r) ^ std::hash<float>()(v.g) ^ std::hash<float>()(v.b) ^
+         std::hash<float>()(v.a) ^ std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^
+         std::hash<float>()(v.nx) ^ std::hash<float>()(v.ny) ^ std::hash<float>()(v.nz);
 }
 
 }  // namespace tfrag3

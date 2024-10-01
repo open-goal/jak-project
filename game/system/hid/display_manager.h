@@ -80,8 +80,8 @@ class DisplayManager {
   game_settings::DisplaySettings::DisplayMode get_display_mode() {
     return m_display_settings.display_mode;
   }
-  int get_num_resolutions() { return m_available_resolutions.size(); }
-  Resolution get_resolution(int id);
+  int get_num_resolutions(bool for_window_size);
+  Resolution get_resolution(int id, bool for_window_size);
   bool is_supported_resolution(int width, int height);
 
   // Mutators
@@ -123,6 +123,7 @@ class DisplayManager {
   // ie. allowing someone to set 150fps on a monitor set to 60hz is not correct
   std::unordered_map<int, DisplayMode> m_current_display_modes;
   std::vector<Resolution> m_available_resolutions;
+  std::vector<Resolution> m_available_window_sizes;
 
   void initialize_window_position_from_settings();
   void update_curr_display_info();

@@ -299,12 +299,12 @@
             (set! (-> a1-7 generic-next-clear) (the-as uint128 0)))
           0)
         (let* ((s1-0 (-> (the-as drawable-inline-array-instance-tie v1-16) data)) ;; the inline array of instances
-               (s0-0 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s1-0 0 id) 8))) ;; vis for first.
+               ;; (s0-0 (&-> (scratchpad-object terrain-context) work background vis-list (if (zero? (-> arg0 length)) 0 (/ (-> s1-0 0 id) 8)))) ;; vis for first.
                (s3-1 (-> *display* frames (-> *display* on-screen) frame global-buf)) ;; dma buf to write to
                )
-          (set! sv-16 (-> (the-as drawable-inline-array-node v1-16) length)) ;; number of instances
+          ;; (set! sv-16 (-> (the-as drawable-inline-array-node v1-16) length)) ;; number of instances
           ;; if we actually have things to draw
-          (when (nonzero? sv-16)
+          (when #t ;; (nonzero? sv-16)
             ;; this is some buffer for the generic renderer
             (let* ((v1-21 (logand (the-as int *gsf-buffer*) 8191))
                    (v1-23 (logand (the-as int (&- (logand (the-as int (&-> (-> s4-1 data) -512)) 8191) (the-as uint v1-21))) 8191)))
@@ -325,9 +325,9 @@
               ;; note: this is a bit wasteful because we only care about generic ties.
               ;; non-generics are drawn fully in C++, but we're computing unused stuff here.
               ;; This ends up being so fast it's probably not worth worrying about yet.
-              (when (not *use-etie*)
-                (with-profiler "tie-instance"
-                  (draw-inline-array-instance-tie s0-0 s1-0 sv-16 s3-1)))
+              ;; (when (not *use-etie*)
+              ;;  (with-profiler "tie-instance"
+              ;;    (draw-inline-array-instance-tie s0-0 s1-0 sv-16 s3-1)))
               ;; finish perf stats
               (read! (-> *perf-stats* data 9))
               (update-wait-stats (-> *perf-stats* data 9)
@@ -558,34 +558,47 @@
 ;;;;;;;;;;;;;;;;;
 
 ;; note: the first three methods appear twice in the original code.
+;; modified for PC: check length before colliding.
 
 (defmethod collide-with-box ((this drawable-tree-instance-tie) (arg0 int) (arg1 collide-list))
-  (collide-with-box (-> this data 0) (-> this length) arg1)
+  (when (nonzero? (-> this length))
+    (collide-with-box (-> this data 0) (-> this length) arg1)
+    )
   0
   (none))
 
 (defmethod collide-y-probe ((this drawable-tree-instance-tie) (arg0 int) (arg1 collide-list))
-  (collide-y-probe (-> this data 0) (-> this length) arg1)
+  (when (nonzero? (-> this length))
+    (collide-y-probe (-> this data 0) (-> this length) arg1)
+    )
   0
   (none))
 
 (defmethod collide-ray ((this drawable-tree-instance-tie) (arg0 int) (arg1 collide-list))
-  (collide-ray (-> this data 0) (-> this length) arg1)
+  (when (nonzero? (-> this length))
+    (collide-ray (-> this data 0) (-> this length) arg1)
+    )
   0
   (none))
 
 (defmethod collide-with-box ((this drawable-inline-array-instance-tie) (arg0 int) (arg1 collide-list))
-  (collide-with-box (the-as instance-tie (-> this data)) (-> this length) arg1)
+  (when (nonzero? (-> this length))
+    (collide-with-box (the-as instance-tie (-> this data)) (-> this length) arg1)
+    )
   0
   (none))
 
 (defmethod collide-y-probe ((this drawable-inline-array-instance-tie) (arg0 int) (arg1 collide-list))
-  (collide-y-probe (the-as instance-tie (-> this data)) (-> this length) arg1)
+  (when (nonzero? (-> this length))
+    (collide-y-probe (the-as instance-tie (-> this data)) (-> this length) arg1)
+    )
   0
   (none))
 
 (defmethod collide-ray ((this drawable-inline-array-instance-tie) (arg0 int) (arg1 collide-list))
-  (collide-ray (the-as instance-tie (-> this data)) (-> this length) arg1)
+  (when (nonzero? (-> this length))
+    (collide-ray (the-as instance-tie (-> this data)) (-> this length) arg1)
+    )
   0
   (none))
 

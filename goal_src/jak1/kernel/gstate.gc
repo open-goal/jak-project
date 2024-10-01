@@ -209,6 +209,10 @@ It type checks the arguments for the entry function.
                        ,*defstate-current-state-name*
                        (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))))
 
+(defmacro call-parent-state-handler (handler &key (type (function none)) &rest args)
+  "Call the parent handler for this state."
+  `(let ((handler (-> (find-parent-state) ,handler))) (if handler ((the ,type handler) ,@args))))
+
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
   (let ((behavior-type (first *defstate-type-stack*)))
@@ -428,3 +432,6 @@ It type checks the arguments for the entry function.
 (defmacro time-passed? (time)
   "has it been 'time' since set-state-time?"
   `(>= (time-passed) ,time))
+
+(defmacro suspend-for (time &rest body)
+  `(let ((time (current-time))) (until (time-elapsed? time ,time) ,@body (suspend))))

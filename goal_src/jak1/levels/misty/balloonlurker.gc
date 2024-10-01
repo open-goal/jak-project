@@ -211,6 +211,7 @@
    (explosion-force             float)
    (mine-weight                 float)))
 
+
 (define *BALLOONLURKER-bank*
   (new 'static
        'balloonlurker-bank
@@ -281,6 +282,7 @@
    (balloonlurker-mine-explode int)
    balloonlurker-patrol))
 
+
 (deftype balloonlurker-pilot (process-drawable)
   ((root            collide-shape-moving :override)
    (parent-override (pointer balloonlurker) :overlay-at parent))
@@ -290,6 +292,7 @@
   (:states
    balloonlurker-pilot-die
    balloonlurker-pilot-idle))
+
 
 (defskelgroup *balloonlurker-sg*
   balloonlurker
@@ -586,7 +589,7 @@
         (apply-all (-> self link) actor-link-dead-hook (& sv-16))
         (when (and sv-16 sv-24)
           (process-grab? *target*)
-          (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 1)) (suspend)))
+          (suspend-for (seconds 1))
           (process-release? *target*)
           (while (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
                    (set! (-> a1-4 from) self)
@@ -607,12 +610,12 @@
         (suspend)))
   :post balloonlurker-post)
 
-(defmethod relocate ((this balloonlurker) (arg0 int))
-  (if (nonzero? (-> this propeller)) (&+! (-> this propeller) arg0))
-  (if (nonzero? (-> this rudder)) (&+! (-> this rudder) arg0))
-  (if (nonzero? (-> this mine 0)) (&+! (-> this mine 0) arg0))
-  (if (nonzero? (-> this mine 1)) (&+! (-> this mine 1) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this balloonlurker) (offset int))
+  (if (nonzero? (-> this propeller)) (&+! (-> this propeller) offset))
+  (if (nonzero? (-> this rudder)) (&+! (-> this rudder) offset))
+  (if (nonzero? (-> this mine 0)) (&+! (-> this mine 0) offset))
+  (if (nonzero? (-> this mine 1)) (&+! (-> this mine 1) offset))
+  (call-parent-method this offset))
 
 (defstate balloonlurker-pilot-idle (balloonlurker-pilot)
   :event

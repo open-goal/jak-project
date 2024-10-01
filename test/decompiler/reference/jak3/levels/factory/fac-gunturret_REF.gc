@@ -704,28 +704,25 @@
         (sound-group)
         (-> self root trans)
         )
-      (let ((gp-2 (current-time)))
-        (until (time-elapsed? gp-2 (seconds 0.75))
-          (let ((s5-2 (new 'stack-no-clear 'vector)))
-            (set! (-> s5-2 quad) (-> self aim-pos quad))
-            (track-target self #t)
-            (vector-! s5-2 (-> self aim-pos) s5-2)
-            (when (time-elapsed? (-> self snd-cmd-time) (seconds 0.12))
-              0.0
-              (vector-length s5-2)
-              (sound-play-by-name
-                (static-sound-name "smallturret-rot")
-                (-> self rotate-sound)
-                1024
-                (the int (* 1524.0 (* 0.5 (doppler-pitch-shift (-> self root trans) (-> self root transv)))))
-                0
-                (sound-group)
-                (-> self root trans)
-                )
-              (set-time! (-> self snd-cmd-time))
+      (suspend-for (seconds 0.75)
+        (let ((s5-2 (new 'stack-no-clear 'vector)))
+          (set! (-> s5-2 quad) (-> self aim-pos quad))
+          (track-target self #t)
+          (vector-! s5-2 (-> self aim-pos) s5-2)
+          (when (time-elapsed? (-> self snd-cmd-time) (seconds 0.12))
+            0.0
+            (vector-length s5-2)
+            (sound-play-by-name
+              (static-sound-name "smallturret-rot")
+              (-> self rotate-sound)
+              1024
+              (the int (* 1524.0 (* 0.5 (doppler-pitch-shift (-> self root trans) (-> self root transv)))))
+              0
+              (sound-group)
+              (-> self root trans)
               )
+            (set-time! (-> self snd-cmd-time))
             )
-          (suspend)
           )
         )
       (when (-> self rotate-sound-playing)
@@ -912,17 +909,11 @@
     (let ((gp-1 (new 'stack-no-clear 'vector)))
       (set! (-> gp-1 quad) (-> self root trans quad))
       (+! (-> gp-1 y) 12288.0)
-      (let ((s5-1 (current-time)))
-        (until (time-elapsed? s5-1 (seconds 2))
-          (spawn (-> self part) gp-1)
-          (suspend)
-          )
+      (suspend-for (seconds 2)
+        (spawn (-> self part) gp-1)
         )
       )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (send-event self 'death-end)
     (while (-> self child)
@@ -1151,7 +1142,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

@@ -63,14 +63,14 @@ void extract(const std::string& name,
     draw.mode = make_default_draw_mode();
 
     if (mat_idx == -1) {
-      lg::warn("Draw had a material index of -1, using default texture.");
+      lg::warn("Draw had a material index of -1, using bogus texture.");
       draw.tree_tex_id = 0;
       continue;
     }
     const auto& mat = model.materials[mat_idx];
     int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
     if (tex_idx == -1) {
-      lg::warn("Material {} has no texture, using default texture.", mat.name);
+      lg::warn("Material {} has no texture, using bogus texture.", mat.name);
       draw.tree_tex_id = 0;
       continue;
     }
@@ -78,7 +78,8 @@ void extract(const std::string& name,
     const auto& tex = model.textures[tex_idx];
     ASSERT(tex.sampler >= 0);
     ASSERT(tex.source >= 0);
-    draw.mode = draw_mode_from_sampler(model.samplers.at(tex.sampler));
+    setup_alpha_from_material(mat, &draw.mode);
+    setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
 
     const auto& img = model.images[tex.source];
     draw.tree_tex_id = tex_offset + texture_pool_add_texture(&out.tex_pool, img);
@@ -99,9 +100,9 @@ const tfrag3::MercVertex& find_closest(const std::vector<tfrag3::MercVertex>& ol
                                        float y,
                                        float z) {
   float best_dist = 1e10;
-  int best_idx = 0;
+  size_t best_idx = 0;
 
-  for (int i = 0; i < old.size(); i++) {
+  for (size_t i = 0; i < old.size(); i++) {
     auto& v = old[i];
     float dx = v.pos[0] - x;
     float dy = v.pos[1] - y;
@@ -131,9 +132,9 @@ void merc_convert_replacement(MercSwapData& out,
     x.pos[0] = y.x;
     x.pos[1] = y.y;
     x.pos[2] = y.z;
-    x.normal[0] = copy_from.normal[0];
-    x.normal[1] = copy_from.normal[1];
-    x.normal[2] = copy_from.normal[2];
+    x.normal[0] = in.normals.at(i).x();
+    x.normal[1] = in.normals.at(i).y();
+    x.normal[2] = in.normals.at(i).z();
     x.weights[0] = copy_from.weights[0];
     x.weights[1] = copy_from.weights[1];
     x.weights[2] = copy_from.weights[2];

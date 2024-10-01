@@ -866,6 +866,109 @@
 
 (defmethod-mips2c "(method 10 collide-cache-prim)" 10 collide-cache-prim)
 
+;; this function is a cleaned up version of the MIPS2C'd (method 10 collide-cache-prim)
+;; as far as I know, it works correctly, but I'm too scared to use it as the default
+;; in case there's a subtle bug.
+#|
+(defmethod resolve-moving-sphere-sphere ((this collide-cache-prim)
+                                         (result collide-query)
+                                         (other sphere)
+                                         (move-dist vector)
+                                         (best-dist float)
+                                         (action collide-action))
+  "Update the `result` collide query with the result of moving `other` by `move-dist`
+   If best-dist is positive, it indicates a fraction of move-dist where we know there is already a collision.
+   So, collisions after this point should be ignored.
+   Additionally, the fraction along move-dist to have collision is returned, or a negative number if no collision is possible.
+   Note that a collision that occurs in move-dist, but after best-dist will return a negative number."
+
+  ;; treat the incoming sphere as the "moving sphere", do collision detection:
+  (let* ((sphere-collide-pt (new 'stack-no-clear 'vector))
+         (u (moving-sphere-sphere-intersect
+             other  ;; the incoming sphere's position/radius
+             move-dist               ;; the delta position of incoming sphere, if no collision happens
+             (-> this world-sphere)  ;; our position/radius
+             sphere-collide-pt       ;; resulting position of sphere collision
+             ))
+         )
+
+    ;; if we are moving away from collision, there is no collision to report
+    (when (< u 0.0)
+      (return u)
+      )
+
+    ;; if a previous prim has already found a closer collision, ignore this one.
+    (when (>= best-dist 0.0) ;; only if we've found something.
+      (when (<= best-dist u)
+        (return -100000000.0)
+        )
+      )
+
+    ;; vector pointing from our center to the intersect point
+    ;; if the incoming sphere moves this way, it will move it out of collision.
+    (let* ((escape-dir (vector-! (new 'stack-no-clear 'vector) sphere-collide-pt (-> this world-sphere)))
+           )
+
+      ;; next, we'll reject collision if we collide with a solid, but our velocity is moving us out of collision
+      (when (and (logtest? action (collide-action solid))
+                 (>= (vector-dot escape-dir move-dist) 0.0)
+                 )
+        (return -100000000.0)
+        )
+
+      ;; we'll now accept this as the real collision!
+      (set! (-> result best-my-tri intersect quad) (-> sphere-collide-pt quad))
+      (let ((p (the collide-shape-prim-sphere (-> this prim))))
+        (set! (-> result best-my-tri pat) (-> p pat))
+        (set! (-> result best-my-tri collide-ptr) p)
+        )
+
+      (vector-normalize! escape-dir 1.0)
+      (vector-copy! (-> result best-my-tri normal) escape-dir)
+
+      ;; we need to fake a triangle for the collision result.
+      ;; to do this, we need to find a vector that's perpendicular to our normal
+      (let ((triangle-rot (new 'stack-no-clear 'matrix)))
+        (vector-copy! (-> triangle-rot vector 0) escape-dir)
+        (cond
+          ((and (= (-> escape-dir x) 0.0) (= (-> escape-dir y) 0.0))
+           ;; unlikely case that escape is exactly along z. If this happens, pick unit x.
+           (set-vector! (-> triangle-rot vector 1) (-> escape-dir z) 0.0 0.0 1.0)
+           )
+          (else
+           ;; normal case that there's some x/y component
+           (set-vector! (-> triangle-rot vector 1) (- 0.0 (-> escape-dir y)) (-> escape-dir x) 0.0 1.0)
+           (vector-normalize! (-> triangle-rot vector 1) 1.0)
+           )
+          )
+
+          ;; pick final axis
+          (vector-cross! (-> triangle-rot vector 2)
+                         (-> triangle-rot vector 0)
+                         (-> triangle-rot vector 1))
+          ;; position
+          (set! (-> triangle-rot quad 3)
+                (-> sphere-collide-pt quad))
+
+          ;; transform
+          (vector-matrix*! (-> result best-my-tri vertex 0)
+                           (new 'static 'vector :y 4096.0 :w 1.0)
+                           triangle-rot)
+          (vector-matrix*! (-> result best-my-tri vertex 1)
+                           (new 'static 'vector :y -4096.0 :z 4096.0 :w 1.0)
+                           triangle-rot)
+          (vector-matrix*! (-> result best-my-tri vertex 2)
+                           (new 'static 'vector :y -4096.0 :z -4096.0 :w 1.0)
+                           triangle-rot)
+
+
+          )
+        u
+      )
+    )
+  )
+|#
+
 (defmethod fill-and-probe-using-spheres ((this collide-cache) (arg0 collide-query))
   (fill-using-spheres this arg0)
   (probe-using-spheres this arg0)

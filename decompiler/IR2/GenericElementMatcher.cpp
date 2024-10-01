@@ -211,6 +211,13 @@ Matcher Matcher::while_loop(const Matcher& condition, const Matcher& body) {
   return m;
 }
 
+Matcher Matcher::until_loop(const Matcher& condition, const Matcher& body) {
+  Matcher m;
+  m.m_kind = Kind::UNTIL_LOOP;
+  m.m_sub_matchers = {condition, body};
+  return m;
+}
+
 Matcher Matcher::any_constant_token(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY_CONSTANT_TOKEN;
@@ -666,6 +673,22 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       }
 
       if (!m_sub_matchers.at(1).do_match(as_while->body, maps_out, env)) {
+        return false;
+      }
+      return true;
+    } break;
+
+    case Kind::UNTIL_LOOP: {
+      auto as_until = dynamic_cast<UntilElement*>(input->try_as_single_active_element());
+      if (!as_until) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_until->condition, maps_out, env)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_until->body, maps_out, env)) {
         return false;
       }
       return true;

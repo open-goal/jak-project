@@ -245,13 +245,10 @@
         (remove-exit)
         (go target-duck-stance))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? circle)
-               (can-feet?))
-        (go target-attack))
+      (if (and (recently-pressed? circle) (can-feet?)) (go target-attack))
       (if (can-hands? #t) (go target-running-attack))
       (slide-down-test)
       (fall-test))
@@ -405,13 +402,10 @@
         (remove-exit)
         (go target-stance))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? circle)
-               (can-feet?))
-        (go target-attack))
+      (if (and (recently-pressed? circle) (can-feet?)) (go target-attack))
       (if (can-hands? #t) (go target-running-attack))
       (when (and (turn-around?) (time-elapsed? (-> self state-time) (seconds 0.3)))
         (set! (-> self control transv quad) (-> self control unknown-vector-array10 (-> self control unknown-int10) quad))
@@ -612,8 +606,7 @@
     (behavior ()
       ((-> self state-hook))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
       (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) circle) (can-feet?)) (go target-attack))
       (if (can-hands? #t) (go target-running-attack))
@@ -762,8 +755,7 @@
         (go target-stance))
       (if (move-legs?) (go target-duck-walk))
       ;; og:preserve-this - High FPS Fix
-      (when (and (recently-pressed? x)
-                 (can-jump? #f))
+      (when (and (recently-pressed? x) (can-jump? #f))
         (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
           (go target-high-jump (-> *TARGET-bank* duck-jump-height-min) (-> *TARGET-bank* duck-jump-height-max) 'duck)
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))))
@@ -815,8 +807,7 @@
         (go target-walk))
       (if (not (move-legs?)) (go target-duck-stance))
       ;; og:preserve-this - High FPS Fix
-      (when (and (recently-pressed? x)
-                 (can-jump? #f))
+      (when (and (recently-pressed? x) (can-jump? #f))
         (if (= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
           (go target-high-jump (-> *TARGET-bank* duck-jump-height-min) (-> *TARGET-bank* duck-jump-height-max) 'duck)
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f))))
@@ -874,7 +865,7 @@
     (behavior ()
       (set! (-> self control unknown-float123)
             (fmax (-> self control unknown-float123)
-                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 6)))))
+                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx x)))))) ;; og:preserve-this abutton indexing
       (target-falling-trans #f (the-as time-frame (if (ja-group? eichar-jump-loop-ja) 15 -1)))
       (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 12288.0)
@@ -1189,10 +1180,9 @@
                       600
                       1500))
   :trans
-     (behavior ()
-       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+    (behavior ()
+      ;; og:preserve-this - High FPS Fix
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
       (if (and (not (can-exit-duck?)) (can-duck?)) (go target-duck-stance))
       (when (!= (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) stick0-speed) 0.0)
@@ -1236,9 +1226,8 @@
           (effect-control-method-10 (-> self skel effect) 'group-red-eco-spinkick (ja-frame-num 0) 74)
           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
           (level-hint-spawn (text-id misty-eco-red-first-use) "sksp0072" (the-as entity #f) *entity-pool* (game-task none)))
-	;; og:preserve-this - High FPS Fix
-        (if (and (recently-pressed? x)
-                 (can-jump? #f))
+        ;; og:preserve-this - High FPS Fix
+        (if (and (recently-pressed? x) (can-jump? #f))
           (go target-jump (-> *TARGET-bank* jump-height-min) (-> *TARGET-bank* jump-height-max) (the-as surface #f)))
         (suspend)
         (ja :num! (seek! max (-> self control unknown-surface01 align-speed))))
@@ -1852,9 +1841,8 @@
                 ((time-elapsed? (-> self state-hook-time) (-> *TARGET-bank* wheel-jump-post-window))
                  (set! (-> self state-hook) (the-as (function none :behavior target) nothing)))
                 (else
-		 ;; og:preserve-this - High FPS Fix
-                 (if (and (recently-pressed? x)
-                          (can-jump? 'target-wheel-flip))
+                 ;; og:preserve-this - High FPS Fix
+                 (if (and (recently-pressed? x) (can-jump? 'target-wheel-flip))
                    (go target-wheel-flip (-> *TARGET-bank* wheel-flip-height) (-> *TARGET-bank* wheel-flip-dist)))))
               (none)))
       (go target-duck-stance))
@@ -1933,9 +1921,8 @@
                 ((time-elapsed? (-> self state-hook-time) (seconds 0.1))
                  (set! (-> self state-hook) (the-as (function none :behavior target) nothing)))
                 (else
-		 ;; og:preserve-this - High FPS Fix
-                 (if (and (recently-pressed? x)
-                          (can-jump? #f))
+                 ;; og:preserve-this - High FPS Fix
+                 (if (and (recently-pressed? x) (can-jump? #f))
                    (go target-high-jump (-> *TARGET-bank* flip-jump-height-min) (-> *TARGET-bank* flip-jump-height-max) 'flip))))
               (none)))
       (if (ja-group? eichar-jump-loop-ja) (go target-hit-ground #f) (go target-stance)))

@@ -4603,6 +4603,24 @@
   )
 ;; ---pad:pad-buttons
 
+;; +++pad:abutton-idx
+(defenum abutton-idx
+  :type uint8
+  (right 0)
+  (left 1)
+  (up 2)
+  (down 3)
+  (triangle 4)
+  (circle 5)
+  (x 6)
+  (square 7)
+  (l1 8)
+  (r1 9)
+  (l2 10)
+  (r2 11)
+  )
+;; ---pad:abutton-idx
+
 ;; +++pad:mouse-buttons
 (defenum mouse-buttons
   :bitfield #t
@@ -7523,27 +7541,27 @@
 ;; +++level-h:bigmap-id
 (defenum bigmap-id
   :type uint32
-  (bigmap-id-0 0)
-  (bigmap-id-1 1)
+  (city 0)
+  (comb 1)
   (desert 2)
   (factory 3)
   (forest 4)
   (mhcity 5)
   (mine 6)
   (nest 7)
-  (bigmap-id-8 8)
-  (no-map 9)
-  (precursor 10)
-  (bigmap-id-11 11)
+  (nest2 8)
+  (none 9)
+  (precursor1 10)
+  (precursor2 11)
   (rubble 12)
-  (sewer0 13)
-  (sewer1 14)
-  (sewer2 15)
+  (sewer-hum-kg 13)
+  (sewer-kg-met 14)
+  (sewer-met-hum 15)
   (stadium 16)
-  (temple 17)
-  (bigmap-id-18 18)
-  (bigmap-id-19 19)
-  (bigmap-id-20 20)
+  (temple1 17)
+  (temple2 18)
+  (temple3 19)
+  (temple4 20)
   (tower 21)
   (volcano 22)
   (wascity 23)
@@ -10724,16 +10742,55 @@
   :flag-assert         #x900000180
   )
 
+;; +++bigmap-h:bigmap-flag
+(defenum bigmap-flag
+  :type uint32
+  :bitfield #t
+  (bf00 0)
+  (bf01 1)
+  (bf02 2)
+  (bf03 3)
+  (bf04 4)
+  (bf05 5)
+  (bf06 6)
+  (bf07 7)
+  (bf08 8)
+  (bf09 9)
+  (bf10 10)
+  (bf11 11)
+  (bf12 12)
+  (bf13 13)
+  (bf14 14)
+  (bf15 15)
+  (bf16 16)
+  (bf17 17)
+  (ctywide 18)
+  (waswide 19)
+  (wasall 20)
+  (desert 21)
+  (bf22 22)
+  (bf23 23)
+  (bf24 24)
+  (bf25 25)
+  (bf26 26)
+  (bf27 27)
+  (bf28 28)
+  (bf29 29)
+  (bf30 30)
+  (bf31 31)
+  )
+;; ---bigmap-h:bigmap-flag
+
 (deftype bigmap (basic)
   ((drawing-flag        symbol                      :offset-assert 4) ;; guessed by decompiler
    (loading-flag        symbol                      :offset-assert 8) ;; guessed by decompiler
-   (bigmap-index        uint32                      :offset-assert 12)
+   (bigmap-index        bigmap-id                   :offset-assert 12)
    (bigmap-image        external-art-buffer         :offset-assert 16) ;; guessed by decompiler
    (tpage               external-art-buffer         :offset-assert 20) ;; guessed by decompiler
-   (tpage2              basic                       :offset-assert 24)
+   (tpage2              external-art-buffer         :offset-assert 24)
    (progress-minimap    texture-page                :offset-assert 28) ;; guessed by decompiler
    (progress-minimap2   texture-page                :offset-assert 32)
-   (load-index          uint32                      :offset-assert 36)
+   (load-index          bigmap-id                   :offset-assert 36)
    (x0                  int32                       :offset-assert 40)
    (y0                  int32                       :offset-assert 44)
    (x1                  int32                       :offset-assert 48)
@@ -10748,29 +10805,29 @@
    (scroll              vector              :inline :offset-assert 176)
    (pos                 vector4w            :inline :offset-assert 192)
    (color               vector4w            :inline :offset-assert 208)
-   (corner              vector              4 :inline       :offset-assert 224) ;; guessed by decompiler
+   (corner              vector            4 :inline :offset-assert 224) ;; guessed by decompiler
    (auto-save-icon-flag symbol                      :offset-assert 288) ;; guessed by decompiler
-   (global-flags        uint32                      :offset-assert 292)
+   (global-flags        bigmap-flag                 :offset-assert 292)
    )
   :method-count-assert 23
   :size-assert         #x128
   :flag-assert         #x1700000128
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
-    (bigmap-method-9 () none) ;; 9 ;; (initialize (_type_) none)
+    (new (symbol type) _type_) ;; 0
+    (initialize (_type_) none) ;; 9
     (update (_type_) none) ;; 10
-    (bigmap-method-11 (_type_) symbol) ;; 11
-    (bigmap-method-12 () none) ;; 12 ;; (handle-cpad-inputs (_type_) int)
-    (bigmap-method-13 () none) ;; 13 ;; (compress-all (_type_) int)
+    (loaded? (_type_) symbol) ;; 11
+    (draw! (_type_ int int int int) none) ;; 12 ;; (handle-cpad-inputs (_type_) int)
+    (handle-cpad-input (_type_) none) ;; 13 ;; (compress-all (_type_) int)
     (enable-drawing (_type_) none) ;; 14
     (disable-drawing (_type_) int) ;; 15
-    (bigmap-method-16 (_type_) none) ;; 16 ;; (dump-to-file (_type_) file-stream)
-    (bigmap-method-17 () none) ;; 17 ;; (set-pos! (_type_ vector) int)
-    (bigmap-method-18 () none) ;; 18 ;; (decompress-current-masks! (_type_) int)
-    (bigmap-method-19 () none) ;; 19 ;; (compress-current-masks! (_type_) int)
-    (bigmap-method-20 () none) ;; 20 ;; (set-enable-from-position! (_type_) int)
-    (bigmap-method-21 () none) ;; 21 ;; (maybe-fill-for-position (_type_ int int) int)
-    (bigmap-method-22 () none) ;; 22 ;; (texture-upload-dma (_type_ dma-buffer (pointer uint32) int int int gs-psm) none)
+    (set-map-indices! (_type_) none) ;; 16 ;; (dump-to-file (_type_) file-stream)
+    (set-pos! (_type_ vector) none) ;; 17
+    (bigmap-method-18 (_type_ (pointer int32)) none) ;; 18 ;; (decompress-current-masks! (_type_) int)
+    (texture-upload-dma (_type_ dma-buffer (pointer uint32) int int int gs-psm) none) ;; 19 ;; (compress-current-masks! (_type_) int)
+    (bigmap-method-20 (_type_ dma-buffer) symbol) ;; 20 ;; (set-enable-from-position! (_type_) int)
+    (sprite-dma (_type_ dma-buffer int int int int int int) object) ;; 21 ;; (maybe-fill-for-position (_type_ int int) int)
+    (draw-from-minimap (_type_ dma-buffer connection-minimap) none) ;; 22
     )
   )
 
@@ -11485,13 +11542,13 @@
    (scan-tmpl                dma-gif-packet :inline :offset-assert 192)
    (color                    vector4w       :inline :offset-assert 224)
    (line-color               uint64                 :offset-assert 240)
-   (scan-colors              vector4w       15 :inline      :offset-assert 256) ;; guessed by decompiler
+   (scan-colors              vector4w    15 :inline :offset-assert 256) ;; guessed by decompiler
    (zoom-blur-pos            vector         :inline :offset-assert 496)
    (zoom-blur-count          int32                  :offset-assert 512)
    (zoom-blur-texels         int32                  :offset-assert 516)
    (zoom-blur-alpha-target   float                  :offset-assert 520)
    (zoom-blur-alpha-current  float                  :offset-assert 524)
-   (zoom-blur-2d             basic                  :offset-assert 528)
+   (zoom-blur-2d             symbol                 :offset-assert 528)
    (menu-mode                symbol                 :offset-assert 532) ;; guessed by decompiler
    (screen-copied            symbol                 :offset-assert 536) ;; guessed by decompiler
    (vu1-enable-user-menu     vu1-renderer-mask      :offset-assert 544)
@@ -11509,18 +11566,18 @@
   :size-assert         #x24c
   :flag-assert         #x1b0000024c
   (:methods
-    (blit-displays-work-method-9 () none) ;; 9
-    (blit-displays-work-method-10 () none) ;; 10
-    (blit-displays-work-method-11 () none) ;; 11
-    (blit-displays-work-method-12 () none) ;; 12
-    (blit-displays-work-method-13 () none) ;; 13
-    (blit-displays-work-method-14 () none) ;; 14
-    (blit-displays-work-method-15 () none) ;; 15
-    (blit-displays-work-method-16 () none) ;; 16
-    (blit-displays-work-method-17 (_type_ vector int float symbol) none) ;; 17
-    (blit-displays-work-method-18 () none) ;; 18
-    (blit-displays-work-method-19 (_type_) none) ;; 19 (called from main.gc)
-    (blit-displays-work-method-20 (_type_) none) ;; 20
+    (blit-displays-work-method-9 (_type_ dma-buffer int int int) none) ;; 9
+    (blit-displays-work-method-10 (_type_ dma-buffer int int int) none) ;; 10
+    (blit-displays-work-method-11 (_type_ dma-buffer int) none) ;; 11
+    (draw-letterbox (_type_ dma-buffer float int float) none) ;; 12
+    (blit-displays-work-method-13 (_type_ dma-buffer int int int) none) ;; 13
+    (blit-displays-work-method-14 (_type_ dma-buffer vector) none) ;; 14
+    (blit-displays-work-method-15 (_type_ dma-buffer) none) ;; 15
+    (draw-zoom-blur (_type_ dma-buffer int) none) ;; 16
+    (setup-zoom-blur-2d (_type_ vector int float symbol) none) ;; 17
+    (setup-brightness-and-contrast (_type_ dma-buffer float float) none) ;; 18
+    (do-blit-displays (_type_) none) ;; 19 (called from main.gc)
+    (draw-sky (_type_ dma-buffer) none) ;; 20
     (get-menu-mode (_type_) symbol) ;; 21
     (get-screen-copied (_type_) symbol) ;; 22
     (get-horizontal-flip-flag (_type_) symbol) ;; 23
@@ -31064,7 +31121,7 @@
 
 (define-extern *blit-displays-work* blit-displays-work)
 (define-extern draw-color-bars (function blit-displays-work none))
-(define-extern draw-raw-image (function bucket-id art-group int vector vector level int none))
+(define-extern draw-raw-image (function blit-displays-work bucket-id art-group vector vector level int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; font-data                      ;;
@@ -39229,7 +39286,7 @@
 ;; bigmap                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *bigmap-info-array* object) ;; bigmap-info-array
+(define-extern *bigmap-info-array* bigmap-info-array)
 (define-extern *bigmap* bigmap)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42123,6 +42180,12 @@
 ;; rigid-body                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftype rigid-body-stack (structure)
+  ((vec vector :inline)
+   (mat matrix :inline)
+    )
+  )
+
 (deftype rigid-body-work (structure)
   ((max-ang-momentum float  :offset-assert 0)
    (max-ang-velocity float  :offset-assert 4)
@@ -44394,9 +44457,9 @@
    (within-outer-ring   symbol         :offset-assert 136)
    (within-inner-ring   symbol         :offset-assert 140)
    (ouched              symbol         :offset-assert 144)
-   (bound-cam           basic          :offset-assert 148)
+   (bound-cam           string         :offset-assert 148)
    (trans               vector :inline :offset-assert 160)
-   (state-time          uint64         :offset-assert 176)
+   (state-time          time-frame     :offset-assert 176)
    (jak-in-hint-region  symbol         :offset-assert 184)
    (watchers-vulnerable symbol         :offset-assert 188)
    )
@@ -44429,7 +44492,7 @@
     standing-down ;; 31
     )
   (:methods
-    (tpl-watcher-method-32 (_type_) none) ;; 32
+    (init-collision! (_type_) none) ;; 32
     )
   )
 

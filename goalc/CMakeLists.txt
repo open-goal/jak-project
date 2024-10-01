@@ -6,6 +6,7 @@ add_library(compiler
         emitter/Register.cpp
         debugger/disassemble.cpp
         build_level/common/build_level.cpp
+        build_actor/common/animation_processing.cpp
         build_actor/common/MercExtract.cpp
         build_level/jak1/build_level.cpp
         build_level/jak2/build_level.cpp
@@ -30,6 +31,7 @@ add_library(compiler
         build_level/jak3/LevelFile.cpp
         build_level/common/ResLump.cpp
         build_level/common/Tfrag.cpp
+        build_level/common/Tie.cpp
         build_level/jak1/ambient.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
