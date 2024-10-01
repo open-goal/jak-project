@@ -344,8 +344,8 @@ class TieLoadStage : public LoaderStage {
           if (m_next_tree >= data.lev_data->level->tie_trees[m_next_geo].size()) {
             m_next_tree = 0;
             m_next_geo++;
-            while (data.lev_data->level->tie_trees[m_next_geo].empty() &&
-                   m_next_geo < tfrag3::TIE_GEOS) {
+            while (m_next_geo < tfrag3::TIE_GEOS &&
+                   data.lev_data->level->tie_trees[m_next_geo].empty()) {
               m_next_geo++;
             }
             if (m_next_geo >= tfrag3::TIE_GEOS) {
@@ -452,8 +452,8 @@ class TieLoadStage : public LoaderStage {
           if (m_next_tree >= data.lev_data->level->tie_trees[m_next_geo].size()) {
             m_next_tree = 0;
             m_next_geo++;
-            while (data.lev_data->level->tie_trees[m_next_geo].empty() &&
-                   m_next_geo < tfrag3::TIE_GEOS) {
+            while (m_next_geo < tfrag3::TIE_GEOS &&
+                   data.lev_data->level->tie_trees[m_next_geo].empty()) {
               m_next_geo++;
             }
             if (m_next_geo >= tfrag3::TIE_GEOS) {

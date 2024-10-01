@@ -179,8 +179,17 @@ int DisplayManager::get_screen_height() {
   return 480;
 }
 
-Resolution DisplayManager::get_resolution(int id) {
-  if (id < (int)m_available_resolutions.size()) {
+int DisplayManager::get_num_resolutions(bool for_window_size) {
+  if (for_window_size) {
+    return m_available_window_sizes.size();
+  }
+  return m_available_resolutions.size();
+}
+
+Resolution DisplayManager::get_resolution(int id, bool for_window_size) {
+  if (for_window_size && id < (int)m_available_window_sizes.size()) {
+    return m_available_window_sizes.at(id);
+  } else if (id < (int)m_available_resolutions.size()) {
     return m_available_resolutions.at(id);
   }
   return {0, 0, 0.0};
@@ -380,6 +389,8 @@ void DisplayManager::update_resolutions() {
           fmt::format("unable to get display mode for display {}, index {}", active_display_id, i));
       continue;
     }
+    Resolution new_res = {curr_mode.w, curr_mode.h,
+                          static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
     // Skip resolutions that aren't using the current refresh rate, they won't work.
     // For example if your monitor is currently set to `60hz` and the monitor _could_ support
     // resolution X but only at `30hz`...then there's no reason for us to consider it as an option.
@@ -387,10 +398,10 @@ void DisplayManager::update_resolutions() {
       lg::debug(
           "[DISPLAY]: Skipping {}x{} as it requires {}hz but the monitor is currently set to {}hz",
           curr_mode.w, curr_mode.h, curr_mode.refresh_rate, active_refresh_rate);
+      // Allow it for windowed mode though
+      m_available_window_sizes.push_back(new_res);
       continue;
     }
-    Resolution new_res = {curr_mode.w, curr_mode.h,
-                          static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
     lg::info("[DISPLAY]: {}x{} is supported", new_res.width, new_res.height);
     m_available_resolutions.push_back(new_res);
   }
@@ -400,11 +411,22 @@ void DisplayManager::update_resolutions() {
             [](const Resolution& a, const Resolution& b) -> bool {
               return a.width * a.height > b.width * b.height;
             });
+  std::sort(m_available_resolutions.begin(), m_available_resolutions.end(),
+            [](const Resolution& a, const Resolution& b) -> bool {
+              return a.width * a.height > b.width * b.height;
+            });
 
   // Remove duplicate resolutions
-  auto last = std::unique(m_available_resolutions.begin(), m_available_resolutions.end(),
-                          [](const Resolution& a, const Resolution& b) -> bool {
-                            return (a.width == b.width && a.height == b.height);
-                          });
-  m_available_resolutions.erase(last, m_available_resolutions.end());
+  m_available_resolutions.erase(
+      std::unique(m_available_resolutions.begin(), m_available_resolutions.end(),
+                  [](const Resolution& a, const Resolution& b) -> bool {
+                    return (a.width == b.width && a.height == b.height);
+                  }),
+      m_available_resolutions.end());
+  m_available_window_sizes.erase(
+      std::unique(m_available_window_sizes.begin(), m_available_window_sizes.end(),
+                  [](const Resolution& a, const Resolution& b) -> bool {
+                    return (a.width == b.width && a.height == b.height);
+                  }),
+      m_available_window_sizes.end());
 }
