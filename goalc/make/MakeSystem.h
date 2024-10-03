@@ -2,6 +2,7 @@
 
 #include "common/goos/Interpreter.h"
 #include "common/util/FileUtil.h"
+
 #include "goalc/make/Tool.h"
 
 struct MakeStep {

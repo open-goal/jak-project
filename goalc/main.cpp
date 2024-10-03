@@ -50,8 +50,7 @@ int main(int argc, char** argv) {
   app.add_option("-g,--game", game, "The game name: 'jak1' or 'jak2'");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
-  app.add_option("--iso-path", iso_path_override,
-                 "Specify the location of the 'iso_data/' folder");
+  app.add_option("--iso-path", iso_path_override, "Specify the location of the 'iso_data/' folder");
   define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
@@ -129,9 +128,7 @@ int main(int argc, char** argv) {
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     compiler = std::make_unique<Compiler>(
-      game_version,
-      std::make_optional(repl_config),
-      username,
+      game_version, std::make_optional(repl_config), username,
       std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok),
       file_util::get_iso_dir_for_game(game_version).string());
 
