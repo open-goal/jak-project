@@ -39,9 +39,7 @@ std::string MakeStep::print() const {
   return result;
 }
 
-MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config,
-                       const std::string& username,
-                       const std::string& iso_path)
+MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username)
     : m_goos(username), m_repl_config(repl_config) {
   m_goos.register_form("defstep", [=](const goos::Object& obj, goos::Arguments& args,
                                       const std::shared_ptr<goos::EnvironmentObject>& env) {
@@ -93,8 +91,8 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config,
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
-  if (!iso_path.empty()) {
-    set_constant("*iso-data*", iso_path);
+  if (m_repl_config && !m_repl_config.value().iso_path.empty()) {
+    set_constant("*iso-data*", m_repl_config.value().iso_path);
     set_constant("*use-iso-data-path*", true);
   } else {
     set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));

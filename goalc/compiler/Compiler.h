@@ -48,8 +48,7 @@ class Compiler {
   Compiler(GameVersion version,
            const std::optional<REPL::Config> repl_config = {},
            const std::string& user_profile = "#f",
-           std::unique_ptr<REPL::Wrapper> repl = nullptr,
-           const std::string& iso_path = "");
+           std::unique_ptr<REPL::Wrapper> repl = nullptr);
   ~Compiler();
   void asm_file(const CompilationOptions& options);
 

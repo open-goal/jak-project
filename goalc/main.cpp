@@ -129,9 +129,7 @@ int main(int argc, char** argv) {
   try {
     compiler = std::make_unique<Compiler>(
         game_version, std::make_optional(repl_config), username,
-        std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok),
-        file_util::get_iso_dir_for_game(game_version).string());
-
+        std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
     // Start nREPL Server if it spun up successfully
     if (nrepl_server_ok) {
       nrepl_thread = std::thread([&]() {

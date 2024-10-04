@@ -49,6 +49,7 @@ struct Config {
       {KeyBind::Modifier::CTRL, "N", "Full build of the game", "(mi)"}};
   bool per_game_history = true;
   bool permissive_redefinitions = false;
+  std::string iso_path;
 
   int get_nrepl_port() {
     if (temp_nrepl_port != -1) {

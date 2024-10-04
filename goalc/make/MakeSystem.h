@@ -16,9 +16,7 @@ struct MakeStep {
 
 class MakeSystem {
  public:
-  MakeSystem(const std::optional<REPL::Config> repl_config,
-             const std::string& username = "#f",
-             const std::string& iso_path = "");
+  MakeSystem(const std::optional<REPL::Config> repl_config, const std::string& username = "#f");
   void load_project_file(const std::string& file_path);
 
   goos::Object handle_defstep(const goos::Object& obj,

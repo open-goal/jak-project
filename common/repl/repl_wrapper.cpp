@@ -44,9 +44,7 @@ void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_proje
                   fmt::format(fg(fmt::color::gray), file_util::get_jak_project_dir().string()));
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  -       :===:       -");
   message +=
-      fmt::format("  ISO Data Path: {}\n",
-                  fmt::format(fg(fmt::color::gray),
-                              file_util::get_iso_dir_for_game(repl_config.game_version).string()));
+      fmt::format("  ISO Data Path: {}\n", fmt::format(fg(fmt::color::gray), repl_config.iso_path));
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  --.   .--: :--.   .--");
   message += "  nREPL:";
   if (!nrepl_alive) {
@@ -293,6 +291,7 @@ REPL::Config load_repl_config(const std::string& username,
       // do nothing
     }
   }
+  loaded_config.iso_path = file_util::get_iso_dir_for_game(game_version).string();
   loaded_config.temp_nrepl_port = nrepl_port;
   return loaded_config;
 }
