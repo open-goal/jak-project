@@ -547,6 +547,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   bool model_disables_fog = flags->bitflags & 2;
   bool model_uses_pc_blerc = flags->bitflags & 4 && !is_custom_model;
   bool model_disables_envmap = flags->bitflags & 8;
+  bool model_no_texture = flags->bitflags & 16;
   input_data += 32;
 
   float blerc_weights[kMaxBlerc];
@@ -612,13 +613,29 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   u32 first_bone = alloc_bones(bone_count, skel_matrix_buffer);
 
   // allocate lights
+  if (current_lights.w1) {
+    if (render_state->version != GameVersion::Jak3) {
+      current_lights.w1 = 0;  // force off merc fade in jak2/1 - a bunch of stuff uses this
+    }
+  }
   u32 lights = alloc_lights(current_lights);
   stats->num_lights++;
 
   u64 hash = fnv64(model->name);
 
+  DrawArgs args;
+  args.lev_bucket = lev_bucket;
+  args.jak1_water_mode = uses_water;
+  args.disable_fog = model_disables_fog;
+  args.hash = hash;
+  args.lights = lights;
+  args.first_bone = first_bone;
+  args.no_texture = render_state->version == GameVersion::Jak3 && model_no_texture;
+
   // loop over effects, creating draws for each
   for (size_t ei = 0; ei < model->effects.size(); ei++) {
+    args.fade = fade_buffer + 4 * ei;
+
     // game has disabled it?
     if (!(current_effect_enable_bits & (1ull << ei))) {
       continue;
@@ -630,6 +647,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     }
 
     bool ignore_alpha = !!(current_ignore_alpha_bits & (1ull << ei));
+    args.ignore_alpha = ignore_alpha;
     auto& effect = model->effects[ei];
 
     bool should_envmap = effect.has_envmap && !model_disables_envmap;
@@ -640,25 +658,20 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
       // do fixed draws:
       for (auto& fdraw : effect.mod.fix_draw) {
-        alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
-                          model_disables_fog, hash);
+        alloc_normal_draw(fdraw, args);
         if (should_envmap) {
-          try_alloc_envmap_draw(fdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
-                                fade_buffer + 4 * ei, first_bone, lights, uses_water);
+          try_alloc_envmap_draw(fdraw, effect.envmap_mode, effect.envmap_texture, args);
         }
       }
 
       // do mod draws
       for (auto& mdraw : effect.mod.mod_draw) {
-        auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
-                                   model_disables_fog, hash);
+        auto n = alloc_normal_draw(mdraw, args);
         // modify the draw, set the mod flag and point it to the opengl buffer
         n->flags |= MOD_VTX;
         n->mod_vtx_buffer = mod_opengl_buffers[ei];
         if (should_envmap) {
-          auto e =
-              try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
-                                    fade_buffer + 4 * ei, first_bone, lights, uses_water);
+          auto e = try_alloc_envmap_draw(mdraw, effect.envmap_mode, effect.envmap_texture, args);
           if (e) {
             e->flags |= MOD_VTX;
             e->mod_vtx_buffer = mod_opengl_buffers[ei];
@@ -669,11 +682,9 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       // no mod, just do all_draws
       for (auto& draw : effect.all_draws) {
         if (should_envmap) {
-          try_alloc_envmap_draw(draw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
-                                fade_buffer + 4 * ei, first_bone, lights, uses_water);
+          try_alloc_envmap_draw(draw, effect.envmap_mode, effect.envmap_texture, args);
         }
-        alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
-                          model_disables_fog, hash);
+        alloc_normal_draw(draw, args);
       }
     }
   }
@@ -722,8 +733,8 @@ void Merc2::init_shader_common(Shader& shader, Uniforms* uniforms, bool include_
   auto id = shader.id();
   shader.activate();
   if (include_lights) {
-    uniforms->light_direction[0] = glGetUniformLocation(id, "light_dir0");
-    uniforms->light_direction[1] = glGetUniformLocation(id, "light_dir1");
+    uniforms->light_direction[0] = glGetUniformLocation(id, "light_dir0_fade");
+    uniforms->light_direction[1] = glGetUniformLocation(id, "light_dir1_fade_en");
     uniforms->light_direction[2] = glGetUniformLocation(id, "light_dir2");
     uniforms->light_color[0] = glGetUniformLocation(id, "light_col0");
     uniforms->light_color[1] = glGetUniformLocation(id, "light_col1");
@@ -1042,14 +1053,10 @@ Merc2::ModBuffers Merc2::alloc_mod_vtx_buffer(const LevelData* lev) {
 Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
                                           const DrawMode& envmap_mode,
                                           u32 envmap_texture,
-                                          LevelDrawBucket* lev_bucket,
-                                          const u8* fade,
-                                          u32 first_bone,
-                                          u32 lights,
-                                          bool jak1_water_mode) {
+                                          const DrawArgs& args) {
   bool nonzero_fade = false;
   for (int i = 0; i < 4; i++) {
-    if (fade[i]) {
+    if (args.fade[i]) {
       nonzero_fade = true;
       break;
     }
@@ -1058,57 +1065,53 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
     return nullptr;
   }
 
-  Draw* draw = &lev_bucket->envmap_draws[lev_bucket->next_free_envmap_draw++];
+  Draw* draw = &args.lev_bucket->envmap_draws[args.lev_bucket->next_free_envmap_draw++];
   draw->flags = 0;
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = envmap_mode;
   draw->hash = 0;
-  if (jak1_water_mode) {
+  if (args.jak1_water_mode) {
     draw->mode.enable_ab();
     draw->mode.disable_depth_write();
   }
   draw->texture = envmap_texture;
-  draw->first_bone = first_bone;
-  draw->light_idx = lights;
+  draw->first_bone = args.first_bone;
+  draw->light_idx = args.lights;
   draw->num_triangles = mdraw.num_triangles;
   for (int i = 0; i < 4; i++) {
-    draw->fade[i] = fade[i];
+    draw->fade[i] = args.fade[i];
   }
   return draw;
 }
 
-Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
-                                      bool ignore_alpha,
-                                      LevelDrawBucket* lev_bucket,
-                                      u32 first_bone,
-                                      u32 lights,
-                                      bool jak1_water_mode,
-                                      bool disable_fog,
-                                      u64 hash) {
-  Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
+Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw, const DrawArgs& args) {
+  Draw* draw = &args.lev_bucket->draws[args.lev_bucket->next_free_draw++];
   draw->flags = 0;
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = mdraw.mode;
-  draw->hash = hash;
-  if (jak1_water_mode) {
+  draw->hash = args.hash;
+  if (args.jak1_water_mode) {
     draw->mode.set_ab(true);
     draw->mode.disable_depth_write();
   }
 
-  if (disable_fog) {
+  if (args.disable_fog) {
     draw->mode.set_fog(false);
     // but don't toggle it the other way?
   }
 
   draw->texture = mdraw.eye_id == 0xff ? mdraw.tree_tex_id : (0xefffff00 | mdraw.eye_id);
-  draw->first_bone = first_bone;
-  draw->light_idx = lights;
+  draw->first_bone = args.first_bone;
+  draw->light_idx = args.lights;
   draw->num_triangles = mdraw.num_triangles;
   draw->no_strip = mdraw.no_strip;
-  if (ignore_alpha) {
+  if (args.ignore_alpha) {
     draw->flags |= IGNORE_ALPHA;
+  }
+  if (args.no_texture) {
+    draw->flags |= NO_TEXTURE;
   }
   for (int i = 0; i < 4; i++) {
     draw->fade[i] = 0;
@@ -1281,8 +1284,18 @@ void Merc2::do_draws(const Draw* draw_array,
     }
 
     if ((int)draw.light_idx != last_light && !set_fade) {
-      set_uniform(uniforms.light_direction[0], m_lights_buffer[draw.light_idx].direction0);
-      set_uniform(uniforms.light_direction[1], m_lights_buffer[draw.light_idx].direction1);
+      const auto& l0_dir = m_lights_buffer[draw.light_idx].direction0;
+      const auto& l1_dir = m_lights_buffer[draw.light_idx].direction1;
+      float fade = 1.f;
+      float fade_enable = 0.f;
+      if (m_lights_buffer[draw.light_idx].w1) {
+        fade = m_lights_buffer[draw.light_idx].w2 / 128.f;
+        fade_enable = 1.f;
+      }
+      math::Vector4f l0_dir_f(l0_dir.x(), l0_dir.y(), l0_dir.z(), fade);
+      set_uniform(uniforms.light_direction[0], l0_dir_f);
+      math::Vector4f l1_dir_f(l1_dir.x(), l1_dir.y(), l1_dir.z(), fade_enable);
+      set_uniform(uniforms.light_direction[1], l1_dir_f);
       set_uniform(uniforms.light_direction[2], m_lights_buffer[draw.light_idx].direction2);
       set_uniform(uniforms.light_color[0], m_lights_buffer[draw.light_idx].color0);
       set_uniform(uniforms.light_color[1], m_lights_buffer[draw.light_idx].color1);
@@ -1290,24 +1303,52 @@ void Merc2::do_draws(const Draw* draw_array,
       set_uniform(uniforms.light_ambient, m_lights_buffer[draw.light_idx].ambient);
       last_light = draw.light_idx;
     }
-    setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, use_mipmaps_for_filtering);
 
     glUniform1i(uniforms.decal, draw.mode.get_decal());
+    glUniform1i(uniforms.gfx_hack_no_tex, (draw.flags & NO_TEXTURE) != 0);
 
     if (set_fade) {
       math::Vector4f fade =
           math::Vector4f(draw.fade[0], draw.fade[1], draw.fade[2], draw.fade[3]) / 255.f;
       set_uniform(uniforms.fade, fade);
       ASSERT(draw.mode.get_alpha_blend() == DrawMode::AlphaBlend::SRC_0_DST_DST);
-      // glBindTexture(GL_TEXTURE_2D, render_state->texture_pool->get_placeholder_texture());
     }
 
-    prof.add_draw_call();
-    prof.add_tri(draw.num_triangles);
-    glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
-                      sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
-    glDrawElements(draw.no_strip ? GL_TRIANGLES : GL_TRIANGLE_STRIP, draw.index_count,
-                   GL_UNSIGNED_INT, (void*)(sizeof(u32) * draw.first_index));
+    if (m_lights_buffer[draw.light_idx].w1 && !set_fade) {
+      DrawMode mode = draw.mode;
+      mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_SRC_DST);
+      mode.set_ab(true);
+      setup_opengl_from_draw_mode(mode, GL_TEXTURE0, use_mipmaps_for_filtering);
+
+      prof.add_draw_call(2);
+      prof.add_tri(draw.num_triangles * 2);
+      glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
+                        sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
+      // draw rgb
+      const auto& l1_dir = m_lights_buffer[draw.light_idx].direction1;
+      math::Vector4f l1_dir_f(l1_dir.x(), l1_dir.y(), l1_dir.z(), 1);
+      set_uniform(uniforms.light_direction[1], l1_dir_f);
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+      glDrawElements(draw.no_strip ? GL_TRIANGLES : GL_TRIANGLE_STRIP, draw.index_count,
+                     GL_UNSIGNED_INT, (void*)(sizeof(u32) * draw.first_index));
+      // draw a
+      setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, use_mipmaps_for_filtering);
+      math::Vector4f l1_dir_f_off(l1_dir.x(), l1_dir.y(), l1_dir.z(), -1);
+      set_uniform(uniforms.light_direction[1], l1_dir_f_off);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+      glDrawElements(draw.no_strip ? GL_TRIANGLES : GL_TRIANGLE_STRIP, draw.index_count,
+                     GL_UNSIGNED_INT, (void*)(sizeof(u32) * draw.first_index));
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+    } else {
+      setup_opengl_from_draw_mode(draw.mode, GL_TEXTURE0, use_mipmaps_for_filtering);
+      prof.add_draw_call();
+      prof.add_tri(draw.num_triangles);
+      glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
+                        sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
+      glDrawElements(draw.no_strip ? GL_TRIANGLES : GL_TRIANGLE_STRIP, draw.index_count,
+                     GL_UNSIGNED_INT, (void*)(sizeof(u32) * draw.first_index));
+    }
   }
 
   if (!normal_vtx_buffer_bound) {
