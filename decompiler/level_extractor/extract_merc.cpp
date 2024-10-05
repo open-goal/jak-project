@@ -853,10 +853,17 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         u32 tidx = (env >> 8) & 0b1111'1111'1111;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
-      case GameVersion::Jak2:
-      case GameVersion::Jak3: {
+      case GameVersion::Jak2: {
         u32 tpage = 0x1f;
         u32 tidx = 2;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      case GameVersion::Jak3: {
+        // (define *generic-envmap-texture* (get-texture pal-environment-front environment-generic))
+        // (defconstant environment-generic 2) tpage
+        // (def-tex pal-environment-front environment-generic 1) texture
+        u32 tpage = 2;
+        u32 tidx = 1;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
       default:
