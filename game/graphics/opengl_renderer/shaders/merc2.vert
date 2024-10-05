@@ -9,8 +9,8 @@ layout (location = 4) in vec4 rgba;
 layout (location = 5) in uvec3 mats;
 
 // light control
-uniform vec3 light_dir0;
-uniform vec3 light_dir1;
+uniform vec4 light_dir0_fade;
+uniform vec4 light_dir1_fade_en;
 uniform vec3 light_dir2;
 uniform vec4 light_col0;
 uniform vec4 light_col1;
@@ -84,7 +84,7 @@ void main() {
   vec4 transformed = perspective_matrix * vtx_pos;
 
   rotated_nrm = normalize(rotated_nrm);
-  vec3 light_intensity = light_dir0 * rotated_nrm.x + light_dir1 * rotated_nrm.y + light_dir2 * rotated_nrm.z;
+  vec3 light_intensity = light_dir0_fade.xyz * rotated_nrm.x + light_dir1_fade_en.xyz * rotated_nrm.y + light_dir2 * rotated_nrm.z;
   light_intensity = max(light_intensity, vec3(0, 0, 0));
 
   vec4 light_color = light_ambient
