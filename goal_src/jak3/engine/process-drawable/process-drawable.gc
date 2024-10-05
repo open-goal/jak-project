@@ -426,60 +426,83 @@
   0
   )
 
-(defmethod draw-control-method-14 ((this draw-control) (arg0 cspace-array) (arg1 joint-control))
-  (let ((s5-0 (if (logtest? (-> arg1 status) (joint-control-status force-math))
-                  (+ (-> arg0 length) -3)
-                  (-> this mgeo length)
-                  )
-              )
+(defmethod draw-control-method-14 ((this draw-control) (cspaces cspace-array) (jc joint-control))
+  "This function determines the world-space bone transforms.
+  First, joint transforms are computed with the callback generate-frame-function.
+  Then, the cspace functions are called for each bone."
+
+  ;; pick the number of "transformq joints" to compute. Most joints are transformq, except for the first three:
+  ;; cspace 0 is a special "root" with no joint. Its bone is typically set from the root.
+  ;; cspace 1 is align. This doesn't really do anything by default, but is used by the aligner.
+  ;; cspace 2 is prejoint. This is an animated matrix placed before any joints.
+  ;; so, if we force math on all bones, subtract off these three weird cspaces that don't have animated transformq's.
+  ;; otherwise, use the joint count from the currently active mgeo
+  (let ((num-tq-joints (if (logtest? (-> jc status) (joint-control-status force-math))
+                           (+ (-> cspaces length) -3)
+                           (-> this mgeo length)
+                           )
+                       )
         )
-    (let ((s3-0 (+ s5-0 2)))
+
+    ;; tq joints, plus 2 for align and prejoint:
+    (let ((num-joints (+ num-tq-joints 2)))
       ;; og:preserve-this
-      ((-> arg1 generate-frame-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) s3-0 arg1)
-      (if (-> arg1 prebind-function)
-          ((-> arg1 prebind-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) s3-0 arg1)
+
+      ;; generate joint transforms from animation.
+      ;; this dumps joint matrix/tq's to the scratchpad
+      ((-> jc generate-frame-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) num-joints jc)
+
+      ;; user callback to modify animated joints
+      (if (-> jc prebind-function)
+          ((-> jc prebind-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) num-joints jc)
           )
       )
-    (dotimes (s3-1 1)
-      (let* ((v1-11 (-> arg0 data s3-1))
-             (t9-2 (the-as function (-> v1-11 param0)))
+
+    ;; First cspace: the root. Run the bone callback, which typically would copy the (-> pd root)'s transform to the bone.
+    ;; Future cspaces will access this.
+    (dotimes (i 1)
+      (let* ((root-cspace (-> cspaces data i))
+             (bone-func (the-as (function cspace object object none) (-> root-cspace param0)))
              )
-        (if (the-as (function cspace transformq none) t9-2)
-            ((the-as (function object object object none) t9-2) v1-11 (-> v1-11 param1) (-> v1-11 param2))
+        (when bone-func
+          (bone-func root-cspace (-> root-cspace param1) (-> root-cspace param2))
+          )
+        )
+      )
+
+    ;; Cspaces for align and prejoint are computed with a matrix joint
+    (dotimes (matrix-num 2)
+      (let* ((mat-cspace (-> cspaces data (+ matrix-num 1)))
+             (mat (-> (scratchpad-object joint-work) mtx-acc matrix-num))
+             (bone-func (-> mat-cspace param0))
+             )
+        (if bone-func
+            (bone-func mat-cspace (the-as transformq mat))
             )
         )
       )
-    (dotimes (s3-2 2)
-      (let* ((a0-8 (-> arg0 data (+ s3-2 1)))
-             ;; og:preserve-this
-             (a1-5 (+ (* s3-2 64) 2400 (scratchpad-object int)))
-             (t9-3 (-> a0-8 param0))
-             )
-        (if t9-3
-            (t9-3 a0-8 (the-as transformq a1-5))
-            )
-        )
-      )
-    (let ((s3-3 3))
+
+    ;; cspaces for tq joints. There's an option to disable custom callbacks and force all joints
+    ;; to use the standard cspace<-parented-transformq-joint, which does the right thing for playing
+    ;; back plain animations, no joint mods or anything fancy.
+    (let ((cspace-idx 3))
       (cond
-        ((logtest? (-> arg1 status) (joint-control-status no-joint-callbacks))
-         (dotimes (s4-1 s5-0)
+        ((logtest? (-> jc status) (joint-control-status no-joint-callbacks))
+         (dotimes (i num-tq-joints)
            (cspace<-parented-transformq-joint!
-             (-> arg0 data (+ s4-1 s3-3))
-             ;; og:preserve-this
-             (the-as transformq (+ (* 48 s4-1) 2528 (scratchpad-object int)))
+             (-> cspaces data (+ i cspace-idx))
+             (-> (scratchpad-object joint-work) tq-acc i)
              )
            )
          )
         (else
-          (dotimes (s4-2 s5-0)
-            (let ((a0-10 (-> arg0 data (+ s4-2 s3-3)))
-                  ;; og:preserve-this
-                  (a1-9 (+ (* 48 s4-2) 2528 (scratchpad-object int)))
+          (dotimes (i num-tq-joints)
+            (let ((csp (-> cspaces data (+ i cspace-idx)))
+                  (tq (-> (scratchpad-object joint-work) tq-acc i))
                   )
-              (if (-> a0-10 param0)
-                  ((-> a0-10 param0) a0-10 (the-as transformq a1-9))
-                  (cspace<-parented-transformq-joint! a0-10 (the-as transformq a1-9))
+              (if (-> csp param0)
+                  ((-> csp param0) csp tq)
+                  (cspace<-parented-transformq-joint! csp tq)
                   )
               )
             )
