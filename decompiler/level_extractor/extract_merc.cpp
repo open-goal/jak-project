@@ -853,7 +853,7 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         u32 tidx = (env >> 8) & 0b1111'1111'1111;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
-      case GameVersion::Jak2:{
+      case GameVersion::Jak2: {
         u32 tpage = 0x1f;
         u32 tidx = 2;
         tex_combo = (((u32)tpage) << 16) | tidx;
