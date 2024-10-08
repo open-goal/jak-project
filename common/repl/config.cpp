@@ -8,7 +8,6 @@ namespace REPL {
 void to_json(json& j, const Config& obj) {
   j = json{
       {"nreplPort", obj.nrepl_port},
-      {"isoPath", obj.iso_path},
       {"gameVersionFolder", obj.game_version_folder},
       {"numConnectToTargetAttempts", obj.target_connect_attempts},
       {"asmFileSearchDirs", obj.asm_file_search_dirs},
@@ -22,9 +21,6 @@ void from_json(const json& j, Config& obj) {
   // TODO - make a camelCase variant of json_serialize/deserialize macros
   if (j.contains("nreplPort")) {
     j.at("nreplPort").get_to(obj.nrepl_port);
-  }
-  if (j.contains("isoPath")) {
-    j.at("isoPath").get_to(obj.iso_path);
   }
   if (j.contains("gameVersionFolder")) {
     j.at("gameVersionFolder").get_to(obj.game_version_folder);

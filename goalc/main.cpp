@@ -70,15 +70,6 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // Check for a custom ISO path before the REPL window renders.
-  if (!iso_path_override.empty()) {
-    if (!fs::exists(iso_path_override)) {
-      lg::error("Error: iso path override '{}' does not exist", iso_path_override.string());
-      return 1;
-    }
-    file_util::set_iso_data_dir(iso_path_override);
-  }
-
   try {
     setup_logging(_cli_flag_disable_ansi);
   } catch (const std::exception& e) {
@@ -94,6 +85,16 @@ int main(int argc, char** argv) {
   auto startup_file = REPL::load_user_startup_file(username, game_version);
   // Load the user's REPL config
   auto repl_config = REPL::load_repl_config(username, game_version, nrepl_port);
+
+  // Check for a custom ISO path before we instantiate the compiler.
+  if (!iso_path_override.empty()) {
+    if (!fs::exists(iso_path_override)) {
+      lg::error("Error: iso path override '{}' does not exist", iso_path_override.string());
+      return 1;
+    }
+    file_util::set_iso_data_dir(iso_path_override);
+    repl_config.iso_path = iso_path_override.string();
+  }
 
   // Init Compiler
   std::unique_ptr<Compiler> compiler;
