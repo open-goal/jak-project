@@ -43,6 +43,15 @@ void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_proje
       fmt::format("  Project Path: {}\n",
                   fmt::format(fg(fmt::color::gray), file_util::get_jak_project_dir().string()));
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  -       :===:       -");
+  std::string effective_iso_path;
+  if (repl_config.iso_path.empty()) {
+    effective_iso_path = file_util::get_file_path({"iso_data"});
+  } else {
+    effective_iso_path = repl_config.iso_path;
+  }
+  message +=
+      fmt::format("  ISO Data Path: {}\n", fmt::format(fg(fmt::color::gray), effective_iso_path));
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  --.   .--: :--.   .--");
   message += "  nREPL:";
   if (!nrepl_alive) {
     message += fmt::format(fg(fmt::color::red), "DISABLED\n");
@@ -50,22 +59,21 @@ void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_proje
     message += fmt::format(fg(fmt::color::light_green), " Listening on {}\n",
                            repl_config.get_nrepl_port());
   }
-  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  --.   .--: :--.   .--");
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  .=======.    =======.");
   message += "  Source File Search Dirs: ";
   const auto search_dir_string =
       fmt::format("{}", fmt::join(repl_config.asm_file_search_dirs, ","));
   message += fmt::format("[{}]\n", fmt::format(fg(fmt::color::gray), search_dir_string));
-  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  .=======.    =======.");
-  message += fmt::format("  {} or {} for basic help and usage\n",
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "   .-=====-. .-=====-");
+  message += fmt::format("    {} or {} for basic help and usage\n",
                          fmt::format(fg(fmt::color::cyan), "(repl-help)"),
                          fmt::format(fg(fmt::color::cyan), "(repl-keybinds)"));
-  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "   .-=====-. .-=====-");
-  message +=
-      fmt::format("    {} to connect to the game\n", fmt::format(fg(fmt::color::cyan), "(lt)"));
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "     .-===========-.");
-  message += fmt::format("     {} to recompile the active project.\n",
+  message +=
+      fmt::format("     {} to connect to the game\n", fmt::format(fg(fmt::color::cyan), "(lt)"));
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "         .-===-.");
+  message += fmt::format("         {} to recompile the active project.\n",
                          fmt::format(fg(fmt::color::cyan), "(mi)"));
-  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "         .-===-.\n");
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "            .\n");
   fmt::print("{}", message);
 }
