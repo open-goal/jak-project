@@ -3175,7 +3175,7 @@ goos::Object DefskelgroupElement::ClothParams::to_list(const std::string& ag_nam
                                   pretty_print::to_symbol(std::to_string(timestep_freq))}));
   }
   if (secret != 0) {
-    auto bits = decompile_bitfield_enum_from_int(TypeSpec("game-secrets"), env.dts->ts, flags);
+    auto bits = decompile_bitfield_enum_from_int(TypeSpec("game-secrets"), env.dts->ts, secret);
     result.push_back(pretty_print::build_list(
         {pretty_print::to_symbol("secret-disable"),
          pretty_print::to_symbol(fmt::format("(game-secrets {})", fmt::join(bits, " ")))}));
