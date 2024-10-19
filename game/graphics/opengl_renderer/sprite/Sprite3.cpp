@@ -877,15 +877,15 @@ void Sprite3::do_block_common(SpriteMode mode,
           // FLAG 16: 1, 0, 3, 2
           m_vertices_3d.at(start_vtx_id + 0).info[2] = 0;
           m_vertices_3d.at(start_vtx_id + 1).info[2] = 1;
-          m_vertices_3d.at(start_vtx_id + 2).info[2] = 2;
+          m_vertices_3d.at(start_vtx_id + 2).info[2] = 3;
           m_vertices_3d.at(start_vtx_id + 3).info[2] = 2;
           break;
         case 0x20:
           // FLAG 32: 3, 2, 1, 0
           m_vertices_3d.at(start_vtx_id + 0).info[2] = 3;
           m_vertices_3d.at(start_vtx_id + 1).info[2] = 2;
-          m_vertices_3d.at(start_vtx_id + 2).info[2] = 1;
-          m_vertices_3d.at(start_vtx_id + 3).info[2] = 0;
+          m_vertices_3d.at(start_vtx_id + 2).info[2] = 0;
+          m_vertices_3d.at(start_vtx_id + 3).info[2] = 1;
           break;
         case 0x30:
           // 2, 3, 0, 1
