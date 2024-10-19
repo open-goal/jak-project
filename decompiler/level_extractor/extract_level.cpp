@@ -279,20 +279,25 @@ void extract_common(const ObjectFileDB& db,
   extract_art_groups_from_level(db, tex_db, {}, "ARTSPOOL", tfrag_level, art_group_data);
 
   std::set<std::string> textures_we_have;
+  std::set<u32> textures_we_have_id;
 
   // put _all_ index textures in common.
   for (const auto& [id, tex] : tex_db.index_textures_by_combo_id) {
     tfrag_level.index_textures.push_back(tex);
   }
 
+  // remember which textures we already added.
+  // textures with the same name or the same ID always have the same data.
   for (const auto& t : tfrag_level.textures) {
     textures_we_have.insert(t.debug_name);
+    textures_we_have_id.insert(t.combo_id);
   }
 
+  // for common textures, add if the ID isn't there - common textures are looked up by ID.
   for (const auto& [id, normal_texture] : tex_db.textures) {
-    if (config.common_tpages.count(normal_texture.page) &&
-        !textures_we_have.count(normal_texture.name)) {
+    if (config.common_tpages.count(normal_texture.page) && !textures_we_have_id.count(id)) {
       textures_we_have.insert(normal_texture.name);
+      textures_we_have_id.insert(id);
       tfrag_level.textures.push_back(
           make_texture(id, normal_texture, tex_db.tpage_names.at(normal_texture.page), true));
     }
