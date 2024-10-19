@@ -2,13 +2,15 @@
 
 #include "game/system/hid/sdl_util.h"
 
+#include "third-party/glad/include/glad/glad.h"
+
 namespace tests {
 void to_json(json& j, const GPUTestOutput& obj) {
-  j = json{
-      {"success", obj.success},
-      {"error", obj.error},
-      {"errorCause", obj.errorCause},
-  };
+  json_serialize(success);
+  json_serialize(error);
+  json_serialize(errorCause);
+  json_serialize_optional(gpuRendererString);
+  json_serialize_optional(gpuVendorString);
 }
 
 GPUTestOutput run_gpu_test(const std::string& test_type) {
@@ -40,7 +42,20 @@ GPUTestOutput run_gpu_test(const std::string& test_type) {
       output = {false, "Required OpenGL Version is not supported",
                 sdl_util::log_and_return_error("SDL initialization failed")};
     } else {
-      output = {true, "", ""};
+      gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+      if (!gladLoadGL()) {
+        output = {false, "Unable to init GLAD", ""};
+      } else {
+        output = {true, "", ""};
+        const auto rendererString = glGetString(GL_RENDERER);
+        if (rendererString) {
+          output.gpuRendererString = (const char*)rendererString;
+        }
+        const auto vendorString = glGetString(GL_VENDOR);
+        if (vendorString) {
+          output.gpuVendorString = (const char*)vendorString;
+        }
+      }
       SDL_GL_DeleteContext(glContext);
     }
     SDL_DestroyWindow(window);
