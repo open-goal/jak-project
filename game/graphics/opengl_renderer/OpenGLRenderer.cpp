@@ -366,10 +366,8 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
                                                BucketId::DEBUG_NO_ZBUF1, m_texture_animator, true);
     // 578
     init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
-                                               BucketId::TEX_HUD_HUD_ALPHA, m_texture_animator);
-
-    init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
-                                               BucketId::TEX_HUD_HUD_ALPHA, m_texture_animator);
+                                               BucketId::TEX_HUD_HUD_ALPHA, m_texture_animator,
+                                               true);
     init_bucket_renderer<ProgressRenderer>("hud-draw-hud-alpha", BucketCategory::OTHER,
                                            BucketId::HUD_DRAW_HUD_ALPHA, 0x8000);
     init_bucket_renderer<TextureUploadHandler>("tex-hud-pris2", BucketCategory::TEX,

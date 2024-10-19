@@ -91,8 +91,14 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
-  set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
-  set_constant("*use-iso-data-path*", false);
+  if (m_repl_config && !m_repl_config->iso_path.empty()) {
+    set_constant("*iso-data*",
+                 file_util::get_iso_dir_for_game(m_repl_config->game_version).string());
+    set_constant("*use-iso-data-path*", true);
+  } else {
+    set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
+    set_constant("*use-iso-data-path*", false);
+  }
 
   add_tool<DgoTool>();
   add_tool<TpageDirTool>();
