@@ -4,6 +4,7 @@
 
 #include "decompiler/extractor/extractor_util.h"
 #include "decompiler/level_extractor/BspHeader.h"
+#include "decompiler/level_extractor/extract_collide_frags.h"
 #include "decompiler/level_extractor/extract_level.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "goalc/build_level/collide/jak1/collide_bvh.h"
@@ -104,6 +105,22 @@ bool run_build_level(const std::string& input_file,
     auto& collide_drawable_tree = file.drawable_trees.collides.emplace_back();
     collide_drawable_tree.bvh = collide::construct_collide_bvh(mesh_extract_out.collide.faces);
     collide_drawable_tree.packed_frags = pack_collide_frags(collide_drawable_tree.bvh.frags.frags);
+    // for collision renderer
+    for (auto& face : mesh_extract_out.collide.faces) {
+      math::Vector4f verts[3];
+      for (int i = 0; i < 3; i++) {
+        verts[i].x() = face.v[i].x();
+        verts[i].y() = face.v[i].y();
+        verts[i].z() = face.v[i].z();
+        verts[i].w() = 1.f;
+      }
+      tfrag3::CollisionMesh::Vertex out_verts[3];
+      decompiler::set_vertices_for_tri(out_verts, verts);
+      for (auto& out : out_verts) {
+        out.pat = face.pat.val;
+        pc_level.collision.vertices.push_back(out);
+      }
+    }
   }
 
   auto sky_name = level_json.value("sky", "none");
