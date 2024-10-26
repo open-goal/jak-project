@@ -21,7 +21,7 @@ void TextureAnimator::setup_texture_anims_jak3() {
           "jakchires-facert",
           "jakchires-hair",
       },
-      "-norm", "-dark", "MHCTYCST.DGO");
+      "-norm", "-dark", "MHCTYCST.DGO", true);
 
   // default-water
   {
@@ -1791,13 +1791,13 @@ void TextureAnimator::setup_texture_anims_jak2() {
   // MISSING FINGER
   m_jakb_oracle_clut_blender_idx = create_clut_blender_group(
       {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "ORACLE.DGO");
+      "-dark", "ORACLE.DGO", true);
 
   // NEST
   // MISSING FINGER
   m_jakb_nest_clut_blender_idx = create_clut_blender_group(
       {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "NEB.DGO");
+      "-dark", "NEB.DGO", true);
 
   // KOR (doesn't work??)
   m_kor_transform_clut_blender_idx = create_clut_blender_group(
