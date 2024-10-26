@@ -130,6 +130,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::GLOW_PROBE_ON_GRID) = {"glow_probe_on_grid", version};
   at(ShaderId::HFRAG) = {"hfrag", version};
   at(ShaderId::HFRAG_MONTAGE) = {"hfrag_montage", version};
+  at(ShaderId::PLAIN_TEXTURE) = {"plain_texture", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");
