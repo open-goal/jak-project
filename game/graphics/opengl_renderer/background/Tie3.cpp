@@ -6,8 +6,15 @@
 
 #include "third-party/imgui/imgui.h"
 
-Tie3::Tie3(const std::string& name, int my_id, int level_id, tfrag3::TieCategory category)
-    : BucketRenderer(name, my_id), m_level_id(level_id), m_default_category(category) {
+Tie3::Tie3(const std::string& name,
+           int my_id,
+           int level_id,
+           const std::vector<GLuint>* anim_slot_array,
+           tfrag3::TieCategory category)
+    : BucketRenderer(name, my_id),
+      m_level_id(level_id),
+      m_default_category(category),
+      m_anim_slot_array(anim_slot_array) {
   // regardless of how many we use some fixed max
   // we won't actually interp or upload to gpu the unused ones, but we need a fixed maximum so
   // indexing works properly.
@@ -573,8 +580,12 @@ void Tie3::draw_matching_draws_for_tree(int idx,
       }
     }
 
-    if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+    if (draw.tree_tex_id != last_texture) {
+      if (draw.tree_tex_id >= 0) {
+        glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+      } else {
+        glBindTexture(GL_TEXTURE_2D, m_anim_slot_array->at(-(draw.tree_tex_id + 1)));
+      }
       last_texture = draw.tree_tex_id;
     }
 
@@ -665,8 +676,13 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
       }
     }
 
-    if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+    if (draw.tree_tex_id != last_texture) {
+      if (draw.tree_tex_id >= 0) {
+        glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+      } else {
+        glBindTexture(GL_TEXTURE_2D, m_anim_slot_array->at(-(draw.tree_tex_id + 1)));
+      }
+
       last_texture = draw.tree_tex_id;
     }
 
@@ -922,8 +938,12 @@ void Tie3::render_tree_wind(int idx,
   for (size_t draw_idx = 0; draw_idx < tree.wind_draws->size(); draw_idx++) {
     const auto& draw = tree.wind_draws->operator[](draw_idx);
 
-    if ((int)draw.tree_tex_id != last_texture) {
-      glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+    if (draw.tree_tex_id != last_texture) {
+      if (draw.tree_tex_id >= 0) {
+        glBindTexture(GL_TEXTURE_2D, m_textures->at(draw.tree_tex_id));
+      } else {
+        glBindTexture(GL_TEXTURE_2D, m_anim_slot_array->at(-(draw.tree_tex_id + 1)));
+      }
       last_texture = draw.tree_tex_id;
     }
     auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
@@ -993,7 +1013,7 @@ void Tie3AnotherCategory::render(DmaFollower& dma,
 }
 
 Tie3WithEnvmapJak1::Tie3WithEnvmapJak1(const std::string& name, int my_id, int level_id)
-    : Tie3(name, my_id, level_id, tfrag3::TieCategory::NORMAL) {}
+    : Tie3(name, my_id, level_id, nullptr, tfrag3::TieCategory::NORMAL) {}
 
 void Tie3WithEnvmapJak1::render(DmaFollower& dma,
                                 SharedRenderState* render_state,

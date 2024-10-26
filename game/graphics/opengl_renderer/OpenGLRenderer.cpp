@@ -168,7 +168,8 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, i, anim_slot_array());
       Tie3* tie = init_bucket_renderer<Tie3>(
           fmt::format("tie-l{}-tfrag", i), BucketCategory::TIE,
-          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i);
+          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i,
+          anim_slot_array());
       init_bucket_renderer<Tie3AnotherCategory>(
           fmt::format("etie-l{}-tfrag", i), BucketCategory::TIE,
           GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_TFRAG, BucketId::ETIE_L1_TFRAG, i), tie,
@@ -431,7 +432,8 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
         std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, i, anim_slot_array());
     Tie3* tie = init_bucket_renderer<Tie3>(
         fmt::format("tie-l{}-tfrag", i), BucketCategory::TIE,
-        GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i);
+        GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i,
+        anim_slot_array());
     init_bucket_renderer<Tie3AnotherCategory>(
         fmt::format("etie-l{}-tfrag", i), BucketCategory::TIE,
         GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_TFRAG, BucketId::ETIE_L1_TFRAG, i), tie,

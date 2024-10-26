@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 42;
+constexpr int TFRAG3_VERSION = 43;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -241,7 +241,7 @@ struct ShrubDraw {
 
 struct InstancedStripDraw {
   DrawMode mode;        // the OpenGL draw settings.
-  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+  s32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
   // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
   // will use to start a new strip.
