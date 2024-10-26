@@ -145,6 +145,7 @@ struct FixedLayerDef {
   bool clamp_v = false;
   bool blend_enable = true;
   bool channel_masks[4] = {true, true, true, true};
+  bool disable = false;
   GsAlpha::BlendMode blend_modes[4];  // abcd
   u8 blend_fix = 0;
 
@@ -208,13 +209,17 @@ struct DynamicLayerData {
   LayerVals start_vals, end_vals;
 };
 
+struct FixedAnimSource {
+  u64 idx = 0;
+  bool is_anim_slot = false;
+};
+
 struct FixedAnim {
   FixedAnimDef def;
   std::vector<DynamicLayerData> dynamic_data;
-  // GLint dest_texture;
   std::optional<FramebufferTexturePair> fbt;
   int dest_slot;
-  std::vector<GLint> src_textures;
+  std::vector<FixedAnimSource> src_textures;
 
   GpuTexture* pool_gpu_tex = nullptr;
 };
@@ -528,6 +533,7 @@ class TextureAnimator {
   GpuTexture* m_slime_scroll_pool_gpu_tex = nullptr;
   int m_slime_output_slot = -1;
   int m_slime_scroll_output_slot = -1;
+  ShaderLibrary* m_shaders = nullptr;
 };
 
 int output_slot_by_idx(GameVersion version, const std::string& name);

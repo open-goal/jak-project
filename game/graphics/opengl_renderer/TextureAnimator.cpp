@@ -55,6 +55,16 @@
 //  then it's actually treated as a palette texture, but we don't really do this.
 //  This breaks the fade-out/thresholding, and likely the colors. But it still looks vaguely like
 //  clouds.
+void debug_save_opengl_texture(const std::string& out, GLuint texture) {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  int w, h;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  lg::print("saving texture with size {} x {}\n", w, h);
+  std::vector<u8> data(w * h * 4);
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
+  file_util::write_rgba_png(out, data.data(), w, h);
+}
 
 /*!
  * A simple list of preallocated textures by size. If a texture needs to be resized, it's faster
@@ -263,6 +273,71 @@ void opengl_upload_texture(GLint dest, const void* data, int w, int h) {
 }
 
 /*!
+ * Upload a texture and generate mipmaps. Assumes the usual RGBA format.
+ * The size of the destination and source texture don't need to match.
+ */
+void opengl_upload_resize_texture(FramebufferTexturePair& fbt,
+                                  const void* data,
+                                  const math::Vector2<int>& data_size,
+                                  ShaderLibrary& shaders) {
+  {
+    FramebufferTexturePairContext ctx(fbt);
+    GLuint temp_texture = 0;
+    GLuint vao = 0;
+    GLuint vertex_buffer = 0;
+    glGenTextures(1, &temp_texture);
+    glBindTexture(GL_TEXTURE_2D, temp_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, data_size.x(), data_size.y(), 0, GL_RGBA,
+                 GL_UNSIGNED_INT_8_8_8_8_REV, data);
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vertex_buffer);
+    glBindVertexArray(vao);
+
+    struct Vertex {
+      float x, y;
+    };
+
+    std::array<Vertex, 4> vertices = {
+        Vertex{-1, -1},
+        Vertex{-1, 1},
+        Vertex{1, -1},
+        Vertex{1, 1},
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4, vertices.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,               // location 0 in the shader
+                          2,               // 2 floats per vert
+                          GL_FLOAT,        // floats
+                          GL_TRUE,         // normalized, ignored,
+                          sizeof(Vertex),  //
+                          nullptr          //
+    );
+
+    auto& shader = shaders[ShaderId::PLAIN_TEXTURE];
+    shader.activate();
+    glUniform1i(glGetUniformLocation(shader.id(), "tex_T0"), 0);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, temp_texture);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vertex_buffer);
+    glDeleteTextures(1, &temp_texture);
+  }
+  glBindTexture(GL_TEXTURE_2D, fbt.texture());
+  glGenerateMipmap(GL_TEXTURE_2D);
+}
+
+/*!
  * Utility class to grab CLUTs from the source textures, blend them, and produce a destination RGBA
  * texture using the index data in dest.
  */
@@ -417,7 +492,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
                             GL_UNSIGNED_INT_8_8_8_8_REV),
       m_slime_final_scroll_texture(kFinalSlimeTextureSize,
                                    kFinalSlimeTextureSize,
-                                   GL_UNSIGNED_INT_8_8_8_8_REV) {
+                                   GL_UNSIGNED_INT_8_8_8_8_REV),
+      m_shaders(&shaders) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -522,8 +598,28 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
     default:
       ASSERT_NOT_REACHED();
   }
-
   setup_sky();
+
+  // Patch up references to animated textures
+  std::map<std::string, u64> name_to_slot;
+  for (const auto& anim_array : m_fixed_anim_arrays) {
+    for (const auto& anim : anim_array.anims) {
+      name_to_slot[anim.def.tex_name] = anim.dest_slot;
+    }
+  }
+
+  for (auto& anim_array : m_fixed_anim_arrays) {
+    for (auto& anim : anim_array.anims) {
+      for (size_t i = 0; i < anim.src_textures.size(); i++) {
+        const auto& it = name_to_slot.find(anim.def.layers.at(i).tex_name);
+        if (it != name_to_slot.end()) {
+          lg::error("Patching ref to {} in {}", it->first, anim.def.tex_name);
+          anim.src_textures[i].is_anim_slot = true;
+          anim.src_textures[i].idx = it->second;
+        }
+      }
+    }
+  }
 }
 
 /*!
@@ -544,6 +640,11 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
     if (anim.def.override_size) {
       anim.fbt.emplace(anim.def.override_size->x(), anim.def.override_size->y(),
                        GL_UNSIGNED_INT_8_8_8_8_REV);
+      // I think there's kind of a bug here - if the game accesses a resized texture before
+      // the animation is run once, it can end up using the wrong size.
+      // For PC, we just resize the texture to the new size at startup, which avoids the texture
+      // changing sizes at runtime.
+      opengl_upload_resize_texture(*anim.fbt, dtex->data.data(), {dtex->w, dtex->h}, *m_shaders);
     } else {
       anim.fbt.emplace(dtex->w, dtex->h, GL_UNSIGNED_INT_8_8_8_8_REV);
       opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
@@ -555,7 +656,10 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
     for (const auto& layer : def.layers) {
       auto* stex = tex_by_name(m_common_level, layer.tex_name);
       GLint gl_texture = m_opengl_texture_pool.allocate(stex->w, stex->h);
-      anim.src_textures.push_back(gl_texture);
+      FixedAnimSource src;
+      src.idx = gl_texture;
+      src.is_anim_slot = false;
+      anim.src_textures.push_back(src);
       opengl_upload_texture(gl_texture, stex->data.data(), stex->w, stex->h);
     }
 
@@ -1473,17 +1577,6 @@ PcTextureId TextureAnimator::get_id_for_tbp(TexturePool* pool, u64 tbp, u64 othe
   } else {
     return it->second;
   }
-}
-
-void debug_save_opengl_texture(const std::string& out, GLuint texture) {
-  glBindTexture(GL_TEXTURE_2D, texture);
-  int w, h;
-  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-  lg::print("saving texture with size {} x {}\n", w, h);
-  std::vector<u8> data(w * h * 4);
-  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
-  file_util::write_rgba_png(out, data.data(), w, h);
 }
 
 void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx) {
@@ -2434,15 +2527,18 @@ void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
   math::Vector2f pos_offset(2048.f + (vals.offset.x() * w), 2048.f + (vals.offset.y() * h));
   math::Vector2f st_scale = vals.st_scale;
   math::Vector2f st_offset = vals.st_offset;
-  math::Vector2f corners[4] = {math::Vector2f{-0.5, -0.5}, math::Vector2f{0.5, -0.5},
-                               math::Vector2f{-0.5, 0.5}, math::Vector2f{0.5, 0.5}};
+  const std::array<math::Vector2f, 4> fixed_corners = {
+      math::Vector2f{-0.5, -0.5}, math::Vector2f{0.5, -0.5}, math::Vector2f{-0.5, 0.5},
+      math::Vector2f{0.5, 0.5}};
+  auto pos_corners = fixed_corners;
+
   if (vals.rot) {
     const float rotation_radians = 2.f * M_PI * vals.rot / 65536.f;
     const float sine = std::sin(rotation_radians);
     const float cosine = std::cos(rotation_radians);
     math::Vector2f vx(sine, cosine);
     math::Vector2f vy(cosine, -sine);
-    for (auto& corner : corners) {
+    for (auto& corner : pos_corners) {
       corner = vx * corner.x() + vy * corner.y();
     }
   }
@@ -2450,7 +2546,7 @@ void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
   math::Vector2<u32> poss[4];
 
   for (int i = 0; i < 4; i++) {
-    poss[i] = ((corners[i].elementwise_multiply(pos_scale) + pos_offset) * 16.f).cast<u32>();
+    poss[i] = ((pos_corners[i].elementwise_multiply(pos_scale) + pos_offset) * 16.f).cast<u32>();
   }
 
   if (vals.st_rot != 0) {
@@ -2460,12 +2556,12 @@ void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
     math::Vector2f vx(sine, cosine);
     math::Vector2f vy(cosine, -sine);
     for (int i = 0; i < 4; i++) {
-      math::Vector2f corner = corners[i].elementwise_multiply(st_scale);
+      math::Vector2f corner = fixed_corners[i].elementwise_multiply(st_scale);
       sts[i] = st_offset + vx * corner.x() + vy * corner.y();
     }
   } else {
     for (int i = 0; i < 4; i++) {
-      sts[i] = corners[i].elementwise_multiply(st_scale) + st_offset;
+      sts[i] = fixed_corners[i].elementwise_multiply(st_scale) + st_offset;
     }
   }
 
@@ -2511,7 +2607,6 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
 
     LayerVals interpolated_values;
     DrawData draw_data;
-
     // Loop over layers
     for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
       auto& layer_def = anim.def.layers[layer_idx];
@@ -2521,13 +2616,22 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
         continue;
       }
 
+      if (layer_def.disable) {
+        continue;
+      }
+
       // interpolate
       interpolate_layer_values(
           (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
           &interpolated_values, layer_dyn.start_vals, layer_dyn.end_vals);
 
       // shader setup
-      set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
+      const auto& src = anim.src_textures.at(layer_idx);
+      if (src.is_anim_slot) {
+        set_up_opengl_for_fixed(layer_def, m_private_output_slots.at(src.idx));
+      } else {
+        set_up_opengl_for_fixed(layer_def, src.idx);
+      }
 
       set_draw_data_from_interpolated(&draw_data, interpolated_values, anim.fbt->width(),
                                       anim.fbt->height());
