@@ -12,6 +12,7 @@
 #include "common/math/geometry.h"
 #include "common/util/Timer.h"
 #include "common/util/gltf_util.h"
+#include <common/util/image_resize.h>
 
 using namespace gltf_util;
 namespace gltf_mesh_extract {
@@ -262,7 +263,9 @@ void add_to_packed_verts(std::vector<tfrag3::PackedTieVertices::Vertex>* out,
 int texture_pool_add_envmap_control_texture(TexturePool* pool,
                                             const tinygltf::Model& model,
                                             int rgb_image_id,
-                                            int mr_image_id) {
+                                            int mr_image_id,
+                                            bool wrap_w,
+                                            bool wrap_h) {
   const auto& existing = pool->envmap_textures_by_gltf_id.find({rgb_image_id, mr_image_id});
   if (existing != pool->envmap_textures_by_gltf_id.end()) {
     lg::info("Reusing envmap textures");
@@ -279,8 +282,16 @@ int texture_pool_add_envmap_control_texture(TexturePool* pool,
   ASSERT(mr_tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
   ASSERT(mr_tex.component == 4);
 
-  ASSERT(rgb_tex.width == mr_tex.width);
-  ASSERT(rgb_tex.height == mr_tex.height);
+  std::vector<u8> resized_mr_tex;
+  const u8* mr_src;
+  if (rgb_tex.width == mr_tex.width && rgb_tex.height == mr_tex.height) {
+    mr_src = mr_tex.image.data();
+  } else {
+    resized_mr_tex.resize(rgb_tex.width * rgb_tex.height * 4);
+    resize_rgba_image(resized_mr_tex.data(), rgb_tex.width, rgb_tex.height, mr_tex.image.data(),
+                      mr_tex.width, mr_tex.height, wrap_w, wrap_h);
+    mr_src = resized_mr_tex.data();
+  }
 
   size_t idx = pool->textures_by_idx.size();
   pool->envmap_textures_by_gltf_id[{rgb_image_id, mr_image_id}] = idx;
@@ -298,7 +309,7 @@ int texture_pool_add_envmap_control_texture(TexturePool* pool,
   // adjust alpha from metallic channel
   for (size_t i = 0; i < tt.data.size(); i++) {
     u32 rgb = tt.data[i];
-    u32 metal = mr_tex.image[4 * i + 2] / 4;
+    u32 metal = mr_src[4 * i + 2] / 4;
     rgb &= 0xff'ff'ff;
     rgb |= (metal << 24);
     tt.data[i] = rgb;
@@ -404,8 +415,9 @@ void extract(const Input& in,
     ASSERT(roughness_tex.source >= 0);
 
     // draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, model.images[base_tex.source]);
-    draw.tree_tex_id = texture_pool_add_envmap_control_texture(in.tex_pool, model, base_tex.source,
-                                                               roughness_tex.source);
+    draw.tree_tex_id = texture_pool_add_envmap_control_texture(
+        in.tex_pool, model, base_tex.source, roughness_tex.source, !draw.mode.get_clamp_s_enable(),
+        !draw.mode.get_clamp_t_enable());
     out.base_draws.push_back(draw);
 
     // now, setup envmap draw:

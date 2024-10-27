@@ -95,6 +95,7 @@ add_library(common
         util/Timer.cpp
         util/unicode_util.cpp
         util/gltf_util.cpp
+        util/image_resize.cpp
         versions/versions.cpp
         )
 

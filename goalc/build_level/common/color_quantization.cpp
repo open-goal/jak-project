@@ -237,6 +237,24 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
     return;
   }
 
+  if (!in->colors.empty()) {
+    for (int i = 0; i < 4; i++) {
+      bool all_same = true;
+      u8 same = in->colors[0][next_split_dim];
+      for (auto& color : in->colors) {
+        if (color[next_split_dim] != same) {
+          all_same = false;
+          break;
+        }
+      }
+      if (all_same) {
+        next_split_dim = (next_split_dim + 1) % 4;
+      } else {
+        break;
+      }
+    }
+  }
+
   // sort by split dimension
   std::stable_sort(in->colors.begin(), in->colors.end(), [=](const Color& a, const Color& b) {
     return a[next_split_dim] < b[next_split_dim];
@@ -248,11 +266,12 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
   size_t i = 0;
   size_t mid = in->colors.size() / 2;
   if (depth & 1) {
-    while (mid > 1 && in->colors[mid] == in->colors[mid - 1]) {
+    while (mid > 1 && in->colors[mid][next_split_dim] == in->colors[mid - 1][next_split_dim]) {
       mid--;
     }
   } else {
-    while (mid + 2 < in->colors.size() && in->colors[mid] == in->colors[mid + 1]) {
+    while (mid + 2 < in->colors.size() &&
+           in->colors[mid][next_split_dim] == in->colors[mid + 1][next_split_dim]) {
       mid++;
     }
   }
