@@ -736,10 +736,14 @@ void TextureAnimator::copy_private_to_public() {
 int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& textures,
                                                const std::string& suffix0,
                                                const std::string& suffix1,
-                                               const std::optional<std::string>& dgo) {
+                                               const std::optional<std::string>& dgo,
+                                               bool add_to_pool) {
   int ret = m_clut_blender_groups.size();
   m_clut_blender_groups.emplace_back();
   add_to_clut_blender_group(ret, textures, suffix0, suffix1, dgo);
+  if (add_to_pool) {
+    m_clut_blender_groups.back().move_to_pool = true;
+  }
   return ret;
 }
 
@@ -1240,23 +1244,23 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
               break;
             case PcTextureAnimCodesJak2::DARKJAK: {
               auto p = scoped_prof("darkjak");
-              run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx);
+              run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx, texture_pool);
             } break;
             case PcTextureAnimCodesJak2::PRISON_JAK: {
               auto p = scoped_prof("prisonjak");
-              run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx, frame_idx);
+              run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx, frame_idx, texture_pool);
             } break;
             case PcTextureAnimCodesJak2::ORACLE_JAK: {
               auto p = scoped_prof("oraclejak");
-              run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx, frame_idx);
+              run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx, frame_idx, texture_pool);
             } break;
             case PcTextureAnimCodesJak2::NEST_JAK: {
               auto p = scoped_prof("nestjak");
-              run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx, frame_idx);
+              run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx, frame_idx, texture_pool);
             } break;
             case PcTextureAnimCodesJak2::KOR_TRANSFORM: {
               auto p = scoped_prof("kor");
-              run_clut_blender_group(tf, m_kor_transform_clut_blender_idx, frame_idx);
+              run_clut_blender_group(tf, m_kor_transform_clut_blender_idx, frame_idx, texture_pool);
             } break;
             case PcTextureAnimCodesJak2::SKULL_GEM:
             case PcTextureAnimCodesJak2::BOMB:
@@ -1321,11 +1325,12 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
               break;
             case PcTextureAnimCodesJak3::DARKJAK: {
               auto p = scoped_prof("darkjak");
-              run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx);
+              run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx, texture_pool);
             } break;
             case PcTextureAnimCodesJak3::DARKJAK_HIGHRES: {
               auto p = scoped_prof("darkjak-highres");
-              run_clut_blender_group(tf, m_darkjak_highres_clut_blender_idx, frame_idx);
+              run_clut_blender_group(tf, m_darkjak_highres_clut_blender_idx, frame_idx,
+                                     texture_pool);
             } break;
             case PcTextureAnimCodesJak3::SKULL_GEM:
             case PcTextureAnimCodesJak3::DEFAULT_WATER:
@@ -1579,15 +1584,48 @@ PcTextureId TextureAnimator::get_id_for_tbp(TexturePool* pool, u64 tbp, u64 othe
   }
 }
 
-void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx) {
+void TextureAnimator::run_clut_blender_group(DmaTransfer& tf,
+                                             int idx,
+                                             u64 frame_idx,
+                                             TexturePool* texture_pool) {
+  auto& blenders = m_clut_blender_groups.at(idx);
+  const int tbps_size = sizeof(u32) * 4 * ((blenders.blenders.size() + 3) / 4);
   float f;
-  ASSERT(tf.size_bytes == 16);
+  ASSERT(tf.size_bytes == 16 + tbps_size);
   memcpy(&f, tf.data, sizeof(float));
   float weights[2] = {1.f - f, f};
-  auto& blender = m_clut_blender_groups.at(idx);
-  blender.last_updated_frame = frame_idx;
-  for (size_t i = 0; i < blender.blenders.size(); i++) {
-    m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+  blenders.last_updated_frame = frame_idx;
+  for (size_t i = 0; i < blenders.blenders.size(); i++) {
+    m_private_output_slots[blenders.outputs[i]] = blenders.blenders[i].run(weights);
+  }
+
+  const u32* tbps = (const u32*)(tf.data + 16);
+
+  // give to the pool for renderers that don't know how to access this directly
+  if (blenders.move_to_pool) {
+    for (size_t i = 0; i < blenders.blenders.size(); i++) {
+      auto& blender = blenders.blenders[i];
+      const u32 tbp = tbps[i];
+      if (tbp == UINT32_MAX) {
+        continue;
+      }
+      ASSERT(tbp < 0x40000);
+      m_skip_tbps.push_back(tbp);  // known to be an output texture.
+      if (blender.pool_gpu_tex) {
+        // TODO: handle debug checkbox.
+        texture_pool->move_existing_to_vram(blender.pool_gpu_tex, tbp);
+        ASSERT(texture_pool->lookup(tbp).value() == blender.texture());
+      } else {
+        TextureInput in;
+        in.gpu_texture = blender.texture();
+        in.w = blender.w();
+        in.h = blender.h();
+        in.debug_page_name = "PC-ANIM";
+        in.debug_name = std::to_string(tbp);
+        in.id = get_id_for_tbp(texture_pool, tbp, idx);
+        blender.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
+      }
+    }
   }
 }
 
