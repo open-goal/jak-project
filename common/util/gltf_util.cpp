@@ -323,7 +323,8 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       normals = extract_vec3f(data_ptr, count, byte_stride);
       for (auto& nrm : normals) {
         math::Vector4f nrm4(nrm.x(), nrm.y(), nrm.z(), 0.f);
-        nrm = (w_T_local * nrm4).xyz();
+        // we found that normals aren't normalized if an object is scaled in blender.
+        nrm = (w_T_local * nrm4).xyz().normalized();
       }
       ASSERT(normals.size() == result.size());
     } else {
