@@ -283,6 +283,10 @@ include(test/CMakeLists.txt)
 build_third_party_lib(lzokay lzokay)
 
 build_third_party_lib(stb_image stb_image)
+# build draco library for tinygltf compression support
+include_directories(third-party/draco/src)
+add_subdirectory(third-party/draco)
+add_compile_definitions(TINYGLTF_ENABLE_DRACO)
 build_third_party_lib(tiny_gltf tiny_gltf)
 build_third_party_lib(xdelta3 xdelta3)
 

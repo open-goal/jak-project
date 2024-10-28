@@ -19,4 +19,5 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
                            const decompiler::DecompilerTypeSystem& dts,
                            tfrag3::Level& out);
 
+void set_vertices_for_tri(tfrag3::CollisionMesh::Vertex* out, const math::Vector4f* in);
 }  // namespace decompiler
