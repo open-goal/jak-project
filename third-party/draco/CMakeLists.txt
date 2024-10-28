@@ -1005,7 +1005,7 @@ else()
   endif()
 
   # Library targets that consume the object collections.
-  if(MSVC)
+  if(WIN32)
     # In order to produce a DLL and import library the Windows tools require
     # that the exported symbols are part of the DLL target. The unfortunate side
     # effect of this is that a single configuration cannot output both the

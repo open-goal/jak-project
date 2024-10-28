@@ -70,7 +70,7 @@ macro(draco_setup_install_target)
       install(TARGETS draco_transcoder DESTINATION "${bin_path}")
     endif()
 
-    if(MSVC)
+    if(WIN32)
       install(
         TARGETS draco
         EXPORT dracoExport

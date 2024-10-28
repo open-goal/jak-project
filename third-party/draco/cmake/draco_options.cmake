@@ -17,7 +17,7 @@ if(DRACO_CMAKE_DRACO_OPTIONS_CMAKE_)
 endif() # DRACO_CMAKE_DRACO_OPTIONS_CMAKE_
 set(DRACO_CMAKE_DRACO_OPTIONS_CMAKE_)
 
-set(draco_features_file_name "${draco_build}/draco/draco_features.h")
+set(draco_features_file_name "${draco_src_root}/draco_features.h")
 set(draco_features_list)
 
 # Simple wrapper for CMake's builtin option command that tracks draco's build
@@ -292,7 +292,7 @@ function(draco_generate_features_h)
     file(APPEND "${draco_features_file_name}.new" "#define ${feature}\n")
   endforeach()
 
-  if(MSVC)
+  if(WIN32)
     if(NOT DRACO_DEBUG_COMPILER_WARNINGS)
       file(APPEND "${draco_features_file_name}.new"
            "// Enable DRACO_DEBUG_COMPILER_WARNINGS at CMake generation \n"

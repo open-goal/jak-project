@@ -98,7 +98,7 @@ add_library(common
         versions/versions.cpp
         )
 
-target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs draco tiny_gltf)
+target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs tiny_gltf)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)
