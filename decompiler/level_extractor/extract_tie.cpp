@@ -2753,6 +2753,10 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
                  bool dump_level,
                  GameVersion version) {
   for (int geo = 0; geo < GEOM_MAX; ++geo) {
+    // as far as I can tell, this one has bad colors
+    if (debug_name == "PRECD.DGO-2-tie" && geo == 3) {
+      continue;
+    }
     tfrag3::TieTree this_tree;
 
     // sanity check the vis tree (not a perfect check, but this is used in game and should be right)
