@@ -370,7 +370,6 @@ void InitMachine_PCPort() {
                               (void*)kmachine_extras::pc_set_active_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak3_texture_dest_offset);
   // make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
-  make_function_symbol_from_c("pc-encode-utf8-string", (void*)kmachine_extras::encode_utf8_string);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)kmachine_extras::update_discord_rpc);

@@ -904,6 +904,15 @@ void pc_register_screen_shot_settings(u32 ptr) {
   register_screen_shot_settings(Ptr<ScreenShotSettings>(ptr).c());
 }
 
+void pc_encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr) {
+  auto str = std::string(Ptr<String>(src_str_ptr).c()->data());
+  std::string version = version_to_game_name(g_game_version);
+  const std::string font_bank_name = version == "jak1" ? "jak1-v2" : version;
+  std::string converted =
+      get_font_bank(get_text_version_from_name(font_bank_name))->convert_utf8_to_game(str);
+  strcpy(Ptr<String>(str_dest_ptr).c()->data(), converted.c_str());
+}
+
 /// Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
 /// than the one to create a function in the first place)
@@ -1004,6 +1013,9 @@ void init_common_pc_port_functions(
 
   // RNG
   make_func_symbol_func("pc-rand", (void*)pc_rand);
+
+  // text
+  make_func_symbol_func("pc-encode-utf8-string", (void*)pc_encode_utf8_string);
 
   // debugging tools
   make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
