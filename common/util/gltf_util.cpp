@@ -577,7 +577,7 @@ void setup_alpha_from_material(const tinygltf::Material& material, DrawMode* mod
 
 void setup_draw_mode_from_sampler(const tinygltf::Sampler& sampler, DrawMode* mode) {
   if (sampler.magFilter == TINYGLTF_TEXTURE_FILTER_NEAREST) {
-    ASSERT(sampler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST);
+    ASSERT(sampler.minFilter == TINYGLTF_TEXTURE_FILTER_NEAREST_MIPMAP_NEAREST);
     mode->set_filt_enable(false);
   } else {
     ASSERT(sampler.minFilter != TINYGLTF_TEXTURE_FILTER_NEAREST);

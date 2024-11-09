@@ -168,6 +168,39 @@ static FormFormattingConfig new_deftype_rule(
   return cfg;
 }
 
+static FormFormattingConfig new_defproc_rule(
+    int start_index,
+    int num_columns_to_compute_widths,
+    const std::vector<int>& inlining_preventation_indices) {
+  FormFormattingConfig cfg;
+  cfg.has_constant_pairs = true;
+  cfg.config_set = true;
+  cfg.hang_forms = false;
+  cfg.inline_until_index = [start_index](std::vector<std::string> curr_lines) {
+    // if (curr_lines.size() >= 4 && curr_lines.at(3) == "()") {
+    //   return 4;
+    // }
+    return start_index;
+  };
+  for (const auto& index : inlining_preventation_indices) {
+    auto temp_config = std::make_shared<FormFormattingConfig>();
+    temp_config->config_set = true;
+    temp_config->prevent_inlining = true;
+    temp_config->hang_forms = false;
+    temp_config->indentation_width = 1;
+    auto temp_list_config = std::make_shared<FormFormattingConfig>();
+    temp_list_config->force_inline = false;
+    temp_list_config->hang_forms = false;
+    temp_config->default_index_config = temp_list_config;
+    if (index == 3) {
+      temp_config->determine_column_widths_for_list_elements = true;
+      temp_config->num_columns_to_compute_widths = num_columns_to_compute_widths;
+    }
+    cfg.index_configs.emplace(index, temp_config);
+  }
+  return cfg;
+}
+
 static FormFormattingConfig new_binding_rule(int form_head_width) {
   FormFormattingConfig cfg;
   cfg.config_set = true;
@@ -253,6 +286,9 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"defmethod", new_defmethod_rule(3)},
     {"lambda", new_lambda_rule(2)},
     {"deftype", new_deftype_rule(3, 1, {3, 4, 5, 6})},
+    {"defproc", new_defproc_rule(3, 1, {3, 4, 5, 6})},
+    {"suspend-for", new_flow_rule(2)},
+    {"spawn-proc", new_flow_rule(2)},
     {"defun", new_flow_rule(3)},
     {"defun-recursive", new_flow_rule(4)},
     {"defun-debug-recursive", new_flow_rule(4)},
@@ -281,12 +317,14 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"protect", new_binding_rule(4)},
     {"let*", new_binding_rule(5)},
     {"rlet", new_binding_rule(5)},
+    {"mlet", new_binding_rule(5)},
     {"when", new_flow_rule(2)},
     {"unless", new_flow_rule(2)},
     {"with-profiler", new_flow_rule(2)},
     {"with-pc", new_flow_rule(0)},
     {"#unless", new_flow_rule(2)},
     {"#when", new_flow_rule(2)},
+    {"#when-game", new_flow_rule(2)},
     {"countdown", new_flow_rule(2)},
     {"until", new_flow_rule(2)},
     {"loop", new_flow_rule(0)},

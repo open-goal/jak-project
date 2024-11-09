@@ -183,12 +183,5 @@ inline bool symbol_to_bool(const u32 symptr) {
   return symptr != s7.offset;
 }
 
-// TODO - move to common
-void encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr) {
-  auto str = std::string(Ptr<String>(src_str_ptr).c()->data());
-  std::string converted = get_font_bank(GameTextVersion::JAK3)->convert_utf8_to_game(str);
-  strcpy(Ptr<String>(str_dest_ptr).c()->data(), converted.c_str());
-}
-
 }  // namespace kmachine_extras
 }  // namespace jak3
