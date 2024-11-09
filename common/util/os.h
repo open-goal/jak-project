@@ -16,3 +16,5 @@ struct CpuInfo {
 };
 
 CpuInfo& get_cpu_info();
+
+std::optional<double> get_macos_version();
