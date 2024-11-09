@@ -125,7 +125,7 @@ std::optional<double> get_macos_version() {
   }
   try {
     return std::stod(buffer);
-  } catch (std::exception e) {
+  } catch (std::exception& e) {
     lg::error("Error occured when attempting to convert sysctl value {} to number", buffer);
     return {};
   }
