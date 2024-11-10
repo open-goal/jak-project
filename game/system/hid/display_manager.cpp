@@ -404,6 +404,7 @@ void DisplayManager::update_resolutions() {
     }
     lg::info("[DISPLAY]: {}x{} is supported", new_res.width, new_res.height);
     m_available_resolutions.push_back(new_res);
+    m_available_window_sizes.push_back(new_res);
   }
 
   // Sort by area
@@ -411,7 +412,7 @@ void DisplayManager::update_resolutions() {
             [](const Resolution& a, const Resolution& b) -> bool {
               return a.width * a.height > b.width * b.height;
             });
-  std::sort(m_available_resolutions.begin(), m_available_resolutions.end(),
+  std::sort(m_available_window_sizes.begin(), m_available_window_sizes.end(),
             [](const Resolution& a, const Resolution& b) -> bool {
               return a.width * a.height > b.width * b.height;
             });
