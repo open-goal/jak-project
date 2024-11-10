@@ -27,10 +27,10 @@ if (CLANG_FORMAT_CMD)
 endif(CLANG_FORMAT_CMD)
 
 # thirdparty stuff
-execute_process(
-    COMMAND mkdir ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
-    ERROR_QUIET
-)
+# execute_process(
+#     COMMAND mkdir ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
+#     ERROR_QUIET
+# )
 
 # NOTE: Rapidjson has a bug that was fixed https://github.com/Tencent/rapidjson/pull/719
 # and is starting to cause problems in some environments
@@ -49,7 +49,7 @@ execute_process(
 #     file(REMOVE ${RJ_TAR_FILE})
 # endif(NOT RAPIDJSONTEST)
 
-# find_file(RAPIDJSON NAMES rapidjson rapidjson-1.1.0 PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty CMAKE_FIND_ROOT_PATH_BOTH)
+find_file(RAPIDJSON NAMES rapidjson rapidjson-1.1.0 PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty CMAKE_FIND_ROOT_PATH_BOTH)
 
 add_library(rapidjson STATIC IMPORTED ${RAPIDJSON})
 
