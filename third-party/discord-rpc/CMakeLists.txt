@@ -32,19 +32,24 @@ execute_process(
     ERROR_QUIET
 )
 
-find_file(RAPIDJSONTEST NAMES rapidjson rapidjson-1.1.0 PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty CMAKE_FIND_ROOT_PATH_BOTH)
-if (NOT RAPIDJSONTEST)
-    message("no rapidjson, download")
-    set(RJ_TAR_FILE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/v1.1.0.tar.gz)
-    file(DOWNLOAD https://github.com/miloyip/rapidjson/archive/v1.1.0.tar.gz ${RJ_TAR_FILE})
-    execute_process(
-        COMMAND ${CMAKE_COMMAND} -E tar xzf ${RJ_TAR_FILE}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
-    )
-    file(REMOVE ${RJ_TAR_FILE})
-endif(NOT RAPIDJSONTEST)
+# NOTE: Rapidjson has a bug that was fixed https://github.com/Tencent/rapidjson/pull/719
+# and is starting to cause problems in some environments
+#
+# But there is no way that I'm going to just blindly consume 8 years of updates...so commit rapidjson
+# with the above linked fix.
+# find_file(RAPIDJSONTEST NAMES rapidjson rapidjson-1.1.0 PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty CMAKE_FIND_ROOT_PATH_BOTH)
+# if (NOT RAPIDJSONTEST)
+#     message("no rapidjson, download")
+#     set(RJ_TAR_FILE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/v1.1.0.tar.gz)
+#     file(DOWNLOAD https://github.com/miloyip/rapidjson/archive/v1.1.0.tar.gz ${RJ_TAR_FILE})
+#     execute_process(
+#         COMMAND ${CMAKE_COMMAND} -E tar xzf ${RJ_TAR_FILE}
+#         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
+#     )
+#     file(REMOVE ${RJ_TAR_FILE})
+# endif(NOT RAPIDJSONTEST)
 
-find_file(RAPIDJSON NAMES rapidjson rapidjson-1.1.0 PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty CMAKE_FIND_ROOT_PATH_BOTH)
+# find_file(RAPIDJSON NAMES rapidjson rapidjson-1.1.0 PATHS ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty CMAKE_FIND_ROOT_PATH_BOTH)
 
 add_library(rapidjson STATIC IMPORTED ${RAPIDJSON})
 
