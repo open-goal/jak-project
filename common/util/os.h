@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 
 size_t get_peak_rss();
@@ -16,3 +17,5 @@ struct CpuInfo {
 };
 
 CpuInfo& get_cpu_info();
+
+std::optional<double> get_macos_version();
