@@ -12,9 +12,11 @@
 #include "game/kernel/common/Symbol4.h"
 #include "game/kernel/common/kmachine.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/overlord/jak3/iso_cd.h"
 
 namespace jak3 {
 namespace kmachine_extras {
+using namespace jak3;
 
 void update_discord_rpc(u32 discord_info) {
   if (gDiscordRpcEnabled) {
@@ -173,6 +175,46 @@ void pc_set_active_levels(u32 lev_list) {
   }
 
   Gfx::GetCurrentRenderer()->set_active_levels(levels);
+}
+
+static std::string unpack_vag_name_jak3(u64 compressed) {
+  const char* char_map = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-";
+  u32 chars = compressed & 0x1fffff;
+  std::array<char, 9> buf{};
+  buf.fill(0);
+  for (int i = 0; i < 8; i++) {
+    if (i == 4) {
+      chars = (compressed >> 21) & 0x1fffff;
+    }
+    buf[7 - i] = char_map[chars % 38];
+    chars /= 38;
+  }
+
+  return {buf.data()};
+}
+
+u32 alloc_vagdir_names(u32 heap_sym) {
+  auto alloced_heap = (Ptr<u64>)alloc_heap_memory(heap_sym, g_VagDir.num_entries * 8 + 8);
+  if (alloced_heap.offset) {
+    *alloced_heap = g_VagDir.num_entries;
+    // use entry -1 to get the amount
+    alloced_heap = alloced_heap + 8;
+    for (size_t i = 0; i < g_VagDir.num_entries; ++i) {
+      char vagname_temp[9];
+      u64 packed = *(u64*)g_VagDir.entries[i].words;
+      auto name = unpack_vag_name_jak3(packed).data();
+      memcpy(vagname_temp, name, 8);
+      for (int j = 0; j < 8; ++j) {
+        vagname_temp[j] = tolower(vagname_temp[j]);
+      }
+      vagname_temp[8] = 0;
+      u64 vagname_val;
+      memcpy(&vagname_val, vagname_temp, 8);
+      *(alloced_heap + i * 8) = vagname_val;
+    }
+    return alloced_heap.offset;
+  }
+  return s7.offset;
 }
 
 inline u64 bool_to_symbol(const bool val) {
