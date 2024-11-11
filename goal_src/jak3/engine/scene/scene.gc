@@ -817,6 +817,10 @@
              )
     (let ((v1-9 (-> self skel root-channel 0 frame-group)))
       (when v1-9
+        ;; og:preserve-this send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
+        (#when PC_PORT
+            (if (= (-> self type) scene-player)
+                (send-event (ppointer->process *subtitle3*) 'movie-no-subtitle (-> (the scene-player self) anim name) #f (ja-aframe-num 0))))
         (let ((gp-0 (res-lump-struct (-> v1-9 extra) 'subtitle-range (array subtitle-range))))
           (when gp-0
             (let ((f30-0 (ja-aframe-num 0))
@@ -865,7 +869,14 @@
                              (+! (-> s2-0 origin y) 1.0)
                              (set! (-> s2-0 color) (font-color default))
                              (set! (-> s2-0 flags) (font-flags shadow kerning middle middle-vert large))
-                             (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2))
+                             ;; og:preserve-this subtitle3
+                             (#if PC_PORT
+                                  (if (or (!= (-> self type) scene-player)
+                                          (not (send-event (ppointer->process *subtitle3*) 'movie (-> (the scene-player self) anim name) s3-0 f30-0)))
+                                      (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2)))
+
+                                  (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2)))
+                             ; (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2))
                              (gui-control-method-12
                                *gui-control*
                                self
