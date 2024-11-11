@@ -72,6 +72,13 @@ class SubtitleV2Tool : public Tool {
   bool needs_run(const ToolInput& task, const PathMap& path_map) override;
 };
 
+class SubtitleV3Tool : public Tool {
+ public:
+  SubtitleV3Tool();
+  bool run(const ToolInput& task, const PathMap& path_map) override;
+  bool needs_run(const ToolInput& task, const PathMap& path_map) override;
+};
+
 class BuildLevelTool : public Tool {
  public:
   BuildLevelTool();

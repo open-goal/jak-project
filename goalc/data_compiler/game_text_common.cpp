@@ -226,6 +226,69 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
         data.data(), data.size());
   }
 }
+/*!
+ * Write game subtitle3 data to a file. Uses the V2 object format which is identical between GOAL
+ * and OpenGOAL.
+ */
+void compile_subtitles_v2_jak3(GameSubtitleDB& db, const std::string& output_prefix) {
+  for (const auto& [lang, bank] : db.m_banks) {
+    auto font = get_font_bank(bank->m_text_version);
+    DataObjectGenerator gen;
+    gen.add_type_tag("subtitle3-text-info");                     // type
+    gen.add_word((bank->m_scenes.size() & 0xffff) | (1 << 16));  // length (lo) + version (hi)
+    // note: we add 1 because "none" isn't included
+    gen.add_word((lang & 0xffff) | ((bank->m_speakers.size() + 1) << 16));  // lang + speaker-length
+    int speaker_array_link = gen.add_word(0);  // speaker array (dummy for now)
+
+    // fifo queue for scene data arrays
+    std::queue<int> array_link_sources;
+    // now add all the scenes inline
+    for (auto& [name, scene] : bank->m_scenes) {
+      gen.add_ref_to_string_in_pool(name);  // scene name
+      gen.add_word(scene.m_lines.size());   // line amount
+      array_link_sources.push(gen.words());
+      gen.add_word(0);  // line array (linked later)
+    }
+    // now add all the line arrays and link them to their scene
+    for (auto& [name, scene] : bank->m_scenes) {
+      // link inline-array with reference from earlier
+      gen.link_word_to_word(array_link_sources.front(), gen.words());
+      array_link_sources.pop();
+
+      for (auto& line : scene.m_lines) {
+        gen.add_word_float(static_cast<float>(line.metadata.frame_start));  // start frame
+        gen.add_word_float(static_cast<float>(line.metadata.frame_end));    // end frame
+        if (line.metadata.merge) {
+          gen.add_symbol_link("#f");
+        } else {
+          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+        }
+        u16 speaker = bank->speaker_enum_value_from_name(line.metadata.speaker);
+        u16 flags = 0;
+        flags |= line.metadata.offscreen << 0;
+        flags |= line.metadata.merge << 1;
+        gen.add_word(speaker | (flags << 16));  // speaker (lo) + flags (hi)
+      }
+    }
+    // now write the array of strings for the speakers
+    // key word array -- it has to be in the right order.
+    gen.link_word_to_word(speaker_array_link, gen.words());
+    const auto localized_speakers = bank->speaker_names_ordered_by_enum_value();
+    for (auto& speaker_localized : localized_speakers) {
+      // No need to check for invalid speakers here, they are checked at the scene line level above
+      // and throw an error
+      gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
+    }
+
+    auto data = gen.generate_v2();
+
+    file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
+    file_util::write_binary_file(
+        file_util::get_file_path(
+            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase("subti3"))}),
+        data.data(), data.size());
+  }
+}
 }  // namespace
 
 /*!
@@ -261,10 +324,21 @@ void compile_game_subtitles(const std::vector<GameSubtitleDefinitionFile>& files
     }
     compile_subtitles_v1(db, output_prefix);
   } else {
+    auto text_version = get_text_version_name(GameTextVersion::JAK2);
     for (auto& file : files) {
       lg::print("[Build Game Subtitle V2] {}:{}\n", file.lines_path, file.meta_path);
       db.init_banks_from_file(file);
+      text_version = file.text_version;
     }
-    compile_subtitles_v2(db, output_prefix);
+    switch (get_text_version_from_name(text_version)) {
+      case GameTextVersion::JAK2:
+        compile_subtitles_v2(db, output_prefix);
+        break;
+      case GameTextVersion::JAK3:
+        compile_subtitles_v2_jak3(db, output_prefix);
+        break;
+      default:
+        throw std::runtime_error(fmt::format("invalid text version {}", text_version));
+    }
   }
 }

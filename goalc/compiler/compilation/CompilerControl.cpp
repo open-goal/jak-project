@@ -89,7 +89,7 @@ Val* Compiler::compile_asm_text_file(const goos::Object& form, const goos::Objec
   const auto kind = symbol_string(args.unnamed.at(0));
 
   // compile files.
-  if (kind == "subtitle" || kind == "subtitle-v2") {
+  if (kind == "subtitle" || kind == "subtitle-v2" || kind == "subtitle-v3") {
     std::vector<GameSubtitleDefinitionFile> inputs;
     // open all project files specified (usually one).
     for_each_in_list(args.named.at("files"), [this, &inputs, &form, &kind](const goos::Object& o) {

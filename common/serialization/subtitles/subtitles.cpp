@@ -61,7 +61,10 @@ const std::unordered_map<GameVersion, std::vector<std::string>> locale_lookup = 
     {GameVersion::Jak1,
      {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "en-GB", "pt-PT", "fi-FI", "sv-SE",
       "da-DK", "no-NO", "nl-NL", "pt-BR", "hu-HU", "ca-ES", "is-IS"}},
-    {GameVersion::Jak2, {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "ko-KR", "en-GB"}}};
+    {GameVersion::Jak2, {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "ko-KR", "en-GB"}},
+    {GameVersion::Jak3,
+     {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "cm-CM", "jp-JP", "ko-KR", "ru-RU", "pt-PT",
+      "nl-NL", "en-GB"}}};
 
 std::string lookup_locale_code(const GameVersion game_version, const int language_id) {
   if (locale_lookup.find(game_version) == locale_lookup.end() ||
@@ -73,7 +76,8 @@ std::string lookup_locale_code(const GameVersion game_version, const int languag
 
 const std::unordered_map<GameVersion, std::vector<int>> language_ids_with_audio = {
     {GameVersion::Jak1, {0, 1, 2, 3, 4, 5, 6}},
-    {GameVersion::Jak2, {0, 1, 2, 3, 4, 5, 6, 7}}};
+    {GameVersion::Jak2, {0, 1, 2, 3, 4, 5, 6, 7}},
+    {GameVersion::Jak3, {0, 1, 2, 3, 4, 5, 11}}};
 
 bool dump_language_with_duplicates_from_base(const GameVersion game_version,
                                              const int language_id) {
