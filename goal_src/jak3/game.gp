@@ -512,7 +512,7 @@
   )
 
 (defstep :in "game/assets/jak3/game_subtitle.gp"
-  :tool 'subtitle-v3
+  :tool 'subtitle-v2
   :out '("$OUT/iso/0SUBTI3.TXT")
   )
 

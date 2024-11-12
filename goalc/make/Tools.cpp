@@ -247,27 +247,6 @@ bool SubtitleV2Tool::run(const ToolInput& task, const PathMap& path_map) {
   return true;
 }
 
-SubtitleV3Tool::SubtitleV3Tool() : Tool("subtitle-v3") {}
-
-bool SubtitleV3Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
-  if (task.input.size() != 1) {
-    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
-  }
-  std::vector<GameSubtitleDefinitionFile> files;
-  std::vector<std::string> deps;
-  enumerate_subtitle_project_files(name(), task.input.at(0), path_map, files, deps);
-  return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
-}
-
-bool SubtitleV3Tool::run(const ToolInput& task, const PathMap& path_map) {
-  GameSubtitleDB db;
-  db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
-  std::vector<GameSubtitleDefinitionFile> files;
-  run_subtitle_project_files(name(), task.input.at(0), path_map, files);
-  compile_game_subtitles(files, db, path_map.output_prefix);
-  return true;
-}
-
 BuildLevelTool::BuildLevelTool() : Tool("build-level") {}
 
 bool BuildLevelTool::needs_run(const ToolInput& task, const PathMap& path_map) {

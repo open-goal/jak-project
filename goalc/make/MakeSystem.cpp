@@ -108,7 +108,6 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<TextTool>();
   add_tool<SubtitleTool>();
   add_tool<SubtitleV2Tool>();
-  add_tool<SubtitleV3Tool>();
   add_tool<BuildLevelTool>();
   add_tool<BuildLevel2Tool>();
   add_tool<BuildLevel3Tool>();

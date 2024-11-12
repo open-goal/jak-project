@@ -465,16 +465,7 @@ GameSubtitleDB load_subtitle_project(const GameSubtitleDB::SubtitleFormat format
     if (format_version == GameSubtitleDB::SubtitleFormat::V1) {
       open_subtitle_project("subtitle", subtitle_project, files);
     } else {
-      switch (game_version) {
-        case GameVersion::Jak2:
-          open_subtitle_project("subtitle-v2", subtitle_project, files);
-          break;
-        case GameVersion::Jak3:
-          open_subtitle_project("subtitle-v3", subtitle_project, files);
-          break;
-        default:
-          break;
-      }
+      open_subtitle_project("subtitle-v2", subtitle_project, files);
     }
     for (auto& file : files) {
       db.init_banks_from_file(file);
