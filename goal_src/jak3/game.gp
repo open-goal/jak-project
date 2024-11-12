@@ -513,7 +513,7 @@
 
 (defstep :in "game/assets/jak3/game_subtitle.gp"
   :tool 'subtitle-v2
-  :out '("$OUT/iso/0SUBTI2.TXT")
+  :out '("$OUT/iso/0SUBTI3.TXT")
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -530,7 +530,7 @@
    "$OUT/iso/5COMMON.TXT"
    "$OUT/iso/6COMMON.TXT"
    "$OUT/iso/7COMMON.TXT"
-   "$OUT/iso/0SUBTI2.TXT"
+   "$OUT/iso/0SUBTI3.TXT"
    "$OUT/iso/VAGDIR.AYB"
    "$OUT/iso/TWEAKVAL.MUS"
    ,@(reverse *all-vis*)

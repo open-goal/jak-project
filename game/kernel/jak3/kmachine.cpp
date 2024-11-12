@@ -375,7 +375,7 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)kmachine_extras::update_discord_rpc);
 
   // debugging tools
-  // make_function_symbol_from_c("alloc-vagdir-names", (void*)alloc_vagdir_names);
+  make_function_symbol_from_c("alloc-vagdir-names", (void*)kmachine_extras::alloc_vagdir_names);
 
   // external RPCs
   /*

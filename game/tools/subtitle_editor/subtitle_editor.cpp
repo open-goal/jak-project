@@ -402,6 +402,10 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
   } else {
     bool play = false;
     bool save_and_reload_text = false;
+    if (ImGui::Button("Save")) {
+      save_and_reload_text = true;
+    }
+    ImGui::SameLine();
     if (ImGui::Button("Play")) {
       play = true;
     }

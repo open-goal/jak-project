@@ -93,6 +93,55 @@ const std::unordered_map<std::string, u16> jak2_speaker_name_to_enum_val = {
     {"metalkor-before-consite", 35},
     {"metalkor-intro", 36}};
 
+// matches enum in `subtitle3-h.gc` with "none" (first) and "max" (last and removed)
+const std::unordered_map<std::string, u16> jak3_speaker_name_to_enum_val = {
+    {"none", 0},
+    {"jak", 1},
+    {"darkjak", 2},
+    {"daxter", 3},
+    {"pecker", 4},
+    {"ashelin", 5},
+    {"veger", 6},
+    {"samos", 7},
+    {"damas", 8},
+    {"kleiver", 9},
+    {"seem", 10},
+    {"errol", 11},
+    {"errol-hologram", 12},
+    {"sig", 13},
+    {"torn", 14},
+    {"tess", 15},
+    {"guard", 16},
+    {"guard-a", 17},
+    {"guard-b", 18},
+    {"keira", 19},
+    {"vin", 20},
+    {"onin", 21},
+    {"jinx", 22},
+    {"wastelander-male", 23},
+    {"wastelander-female", 24},
+    {"citizen-male", 25},
+    {"citizen-female", 26},
+    {"marauder", 27},
+    {"oracle", 28},
+    {"precursor", 29},
+    {"ottsel-leader", 30},
+    {"ottsel-surfer", 31},
+    {"ottsel-dummy", 32},
+    {"ottsel-veger", 33},
+    {"ottsel-tess", 34},
+    {"computer", 35},
+    {"krew", 36},
+    {"baron", 37},
+    {"scherr", 38},
+    {"arey", 39},
+    {"baldwin", 40},
+    {"schimpf", 41},
+    {"martinsen", 42},
+    {"phillips", 43},
+    {"yates", 44},
+};
+
 GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_info) {
   GameSubtitlePackage package;
   SubtitleFile lang_lines;
@@ -256,11 +305,21 @@ void GameSubtitleBank::add_scenes_from_files(const GameSubtitlePackage& package)
   }
 }
 
-// TODO - for jak 3+, this needs some game version context info (could infer from text version)
 std::vector<std::string> GameSubtitleBank::speaker_names_ordered_by_enum_value() {
   // Create a temporary vector of pairs (key, value)
-  std::vector<std::pair<std::string, u16>> temp_vec(jak2_speaker_name_to_enum_val.begin(),
-                                                    jak2_speaker_name_to_enum_val.end());
+  std::vector<std::pair<std::string, u16>> temp_vec;
+  switch (m_text_version) {
+    case GameTextVersion::JAK2:
+      temp_vec = {jak2_speaker_name_to_enum_val.begin(), jak2_speaker_name_to_enum_val.end()};
+      break;
+    case GameTextVersion::JAK3:
+      temp_vec = {jak3_speaker_name_to_enum_val.begin(), jak3_speaker_name_to_enum_val.end()};
+      break;
+    default:
+      throw std::runtime_error(fmt::format("GameSubtitleBank: invalid game text version {} ({})",
+                                           (int)m_text_version,
+                                           get_text_version_name(m_text_version)));
+  }
   // Sort the temporary vector based on the enum value in ascending order
   std::sort(temp_vec.begin(), temp_vec.end(),
             [](const auto& a, const auto& b) { return a.second < b.second; });
@@ -279,13 +338,25 @@ std::vector<std::string> GameSubtitleBank::speaker_names_ordered_by_enum_value()
 }
 
 u16 GameSubtitleBank::speaker_enum_value_from_name(const std::string& speaker_id) {
-  if (jak2_speaker_name_to_enum_val.find(speaker_id) == jak2_speaker_name_to_enum_val.end()) {
+  std::unordered_map<std::string, u16> enum_map;
+  switch (m_text_version) {
+    case GameTextVersion::JAK2:
+      enum_map = jak2_speaker_name_to_enum_val;
+      break;
+    case GameTextVersion::JAK3:
+      enum_map = jak3_speaker_name_to_enum_val;
+      break;
+    default:
+      throw std::runtime_error(fmt::format("GameSubtitleBank: invalid game text version {}",
+                                           get_text_version_name(m_text_version)));
+  }
+  if (enum_map.find(speaker_id) == enum_map.end()) {
     throw std::runtime_error(
         fmt::format("'{}' speaker could not be found in the enum value mapping, update it or fix "
                     "the invalid speaker!",
                     speaker_id));
   }
-  return u16(jak2_speaker_name_to_enum_val.at(speaker_id));
+  return u16(enum_map.at(speaker_id));
 }
 
 SubtitleMetadataFile dump_bank_meta_v2(const GameVersion game_version,

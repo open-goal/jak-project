@@ -2212,6 +2212,10 @@
     )
   )
 
+;; og:preserve-this added for debugging
+(#when PC_PORT
+(define *gui-kick-str* #f))
+
 (defmethod update-connection ((this gui-control) (arg0 gui-connection) (arg1 process) (arg2 symbol))
   (local-vars (v1-75 symbol))
   (when (and (>= (the-as uint (-> arg0 channel)) (the-as uint 16))
@@ -2253,7 +2257,9 @@
            ((= s3-0 (gui-status ready))
             (case (shr (the-as int (-> arg0 channel)) 4)
               ((1 2)
-               (if (not (paused?))
+               ;; og:preserve-this added condition
+               (if (#if PC_PORT (or *gui-kick-str* (not (paused?)))
+                                (not (paused?)))
                    (str-play-async
                      (-> arg0 name)
                      (-> arg0 id)
@@ -2723,6 +2729,8 @@
     (set! (-> gp-0 cmd 35)
           '((64 . wait) (21 . wait) (22 . wait) (23 . wait) (25 . wait) (19 . wait) (28 . wait) (35 . wait))
           )
+    ;; og:preserve-this added
+    (set! (-> gp-0 cmd (gui-channel subtitle-pc)) '(((the binteger (gui-channel blackout)) . wait)))
     (set! (-> gp-0 group 18) (sound-group))
     (set! (-> gp-0 group 27) (sound-group))
     (set! (-> gp-0 group 31) (sound-group))

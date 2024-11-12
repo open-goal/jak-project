@@ -352,6 +352,8 @@
   "capture-pc.o" ;; added
   "pckernel-common.o" ;; added
   "pckernel.o" ;; added
+  "subtitle3-h.o" ;; added
+  "subtitle3.o" ;; added
   "main.o"
   "collide-cache.o"
   "collide-debug.o"
@@ -410,6 +412,7 @@
   "visvol-edit.o"
   "collision-editor.o"
   "speech-manager.o"
+  "vag-player.o" ;; added
   "default-menu-pc.o" ;; added
   "dir-tpages.go"
   "tpage-1.go"
