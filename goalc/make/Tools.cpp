@@ -238,7 +238,6 @@ bool SubtitleV2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
 
-
 bool SubtitleV2Tool::run(const ToolInput& task, const PathMap& path_map) {
   GameSubtitleDB db;
   db.m_subtitle_version = GameSubtitleDB::SubtitleFormat::V2;
@@ -259,7 +258,6 @@ bool SubtitleV3Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
   enumerate_subtitle_project_files(name(), task.input.at(0), path_map, files, deps);
   return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
 }
-
 
 bool SubtitleV3Tool::run(const ToolInput& task, const PathMap& path_map) {
   GameSubtitleDB db;
