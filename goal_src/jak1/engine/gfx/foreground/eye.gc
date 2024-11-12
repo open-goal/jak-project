@@ -688,17 +688,18 @@
             (cond
               ((and (>= (-> s5-3 left lid) 0.0) (>= (-> s5-3 right lid) 0.0))
                (set! (-> s5-3 random-time)
-                     (the int
-                          (* (/ 1.0 (-> *display* time-adjust-ratio)) ;; og:preserve-this changed for high fps
-                             (the-as uint 60))))
+                 (the int (* (1/ DISPLAY_FPS_RATIO) ;; og:preserve-this changed for high fps
+                   (the-as uint 60))))
                (set! (-> s5-3 blink) 0.0))
               (else
                (+! (-> s5-3 random-time) -1)
-               (let ((v1-54 (-> s5-3 random-time)))
+               (let ((v1-54 (the int (* DISPLAY_FPS_RATIO (-> s5-3 random-time))))) ;; og:preserve-this changed for high fps
                  (when (< v1-54 (the-as uint 10))
                    (set! (-> s5-3 blink) (-> *eye-work* blink-table v1-54))
                    (if (zero? v1-54)
-                     (set! (-> s5-3 random-time) (the-as uint (the int (* (1/ DISPLAY_FPS_RATIO) (rand-vu-float-range 60.0 240.0)))))))))))
+                     (set! (-> s5-3 random-time) (the-as uint (the int
+                       (* (1/ DISPLAY_FPS_RATIO) ;; og:preserve-this changed for high fps
+                         (rand-vu-float-range 60.0 240.0)))))))))))
           ;; pick between level and common eyes
           (cond
             ((>= (the-as uint 1) (-> s5-3 level))
