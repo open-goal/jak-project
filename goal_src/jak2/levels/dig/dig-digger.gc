@@ -656,7 +656,12 @@
        )
       (('attack)
        (let ((v1-2 (the-as attack-info (-> block param 1))))
-         (when (and (logtest? (-> v1-2 mask) (attack-mask mode)) (= (-> v1-2 mode) 'board))
+         (when (and (logtest? (-> v1-2 mask) (attack-mask mode))
+                    ;; og:preserve-this fix bug where spinning into grind doesnt break
+                    (#if PC_PORT
+                      (or (= (-> v1-2 mode) 'board)
+                          (and (= (-> v1-2 mode) 'board-spin) (focus-test? *target* rail)))
+                      (= (-> v1-2 mode) 'board)))
            (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 85 (seconds 0.1))
            (go-virtual break-it)
            )
