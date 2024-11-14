@@ -240,6 +240,7 @@
   "game-task.o"
   "game-save.o"
   "settings.o"
+  "popup-menu-h.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
@@ -342,6 +343,7 @@
   "board-states.o"
   "mech-h.o"
   "menu.o"
+  "popup-menu.o" ;; added
   "drawable.o"
   "drawable-group.o"
   "drawable-inline-array.o"
