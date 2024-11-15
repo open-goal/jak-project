@@ -369,7 +369,8 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-set-active-levels",
                               (void*)kmachine_extras::pc_set_active_levels);
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak3_texture_dest_offset);
-  // make_function_symbol_from_c("pc-init-autosplitter-struct", (void*)init_autosplit_struct);
+  make_function_symbol_from_c("pc-init-autosplitter-struct",
+                              (void*)kmachine_extras::init_autosplit_struct);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)kmachine_extras::update_discord_rpc);
@@ -394,6 +395,45 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("pc-get-num-external-highscores",
                               (void*)pc_get_num_external_highscores);
  */
+
+  // speedrunning stuff
+  make_function_symbol_from_c("pc-sr-mode-get-practice-entries-amount",
+                              (void*)kmachine_extras::pc_sr_mode_get_practice_entries_amount);
+  make_function_symbol_from_c("pc-sr-mode-get-practice-entry-name",
+                              (void*)kmachine_extras::pc_sr_mode_get_practice_entry_name);
+  make_function_symbol_from_c("pc-sr-mode-get-practice-entry-continue-point",
+                              (void*)kmachine_extras::pc_sr_mode_get_practice_entry_continue_point);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-history-success",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_history_success);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-history-attempts",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_history_attempts);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-session-success",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_session_success);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-practice-entry-session-attempts",
+      (void*)kmachine_extras::pc_sr_mode_get_practice_entry_session_attempts);
+  make_function_symbol_from_c("pc-sr-mode-get-practice-entry-avg-time",
+                              (void*)kmachine_extras::pc_sr_mode_get_practice_entry_avg_time);
+  make_function_symbol_from_c("pc-sr-mode-get-practice-entry-fastest-time",
+                              (void*)kmachine_extras::pc_sr_mode_get_practice_entry_fastest_time);
+  make_function_symbol_from_c("pc-sr-mode-record-practice-entry-attempt!",
+                              (void*)kmachine_extras::pc_sr_mode_record_practice_entry_attempt);
+  make_function_symbol_from_c("pc-sr-mode-init-practice-info!",
+                              (void*)kmachine_extras::pc_sr_mode_init_practice_info);
+  make_function_symbol_from_c("pc-sr-mode-get-custom-category-amount",
+                              (void*)kmachine_extras::pc_sr_mode_get_custom_category_amount);
+  make_function_symbol_from_c("pc-sr-mode-get-custom-category-name",
+                              (void*)kmachine_extras::pc_sr_mode_get_custom_category_name);
+  make_function_symbol_from_c(
+      "pc-sr-mode-get-custom-category-continue-point",
+      (void*)kmachine_extras::pc_sr_mode_get_custom_category_continue_point);
+  make_function_symbol_from_c("pc-sr-mode-init-custom-category-info!",
+                              (void*)kmachine_extras::pc_sr_mode_init_custom_category_info);
+  make_function_symbol_from_c("pc-sr-mode-dump-new-custom-category",
+                              (void*)kmachine_extras::pc_sr_mode_dump_new_custom_category);
 
   // setup string constants
   auto user_dir_path = file_util::get_user_config_dir();
