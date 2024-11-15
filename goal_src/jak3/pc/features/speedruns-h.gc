@@ -1,0 +1,134 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; TEST - safe with malformed entries
+
+(deftype speedrun-timer (process)
+  ((draw?         symbol)
+   (started?      symbol)
+   (stopped?      symbol)
+   (start-time    time-frame)
+   (end-time      time-frame)
+   (recorded-time float))
+  (:methods
+   (draw-timer (_type_) object)
+   (start! (_type_) object)
+   (reset! (_type_) object)
+   (stop! (_type_) float))
+  (:state-methods
+   idle))
+
+(defbehavior speedrun-timer-init-by-other speedrun-timer ()
+  (false! (-> self draw?))
+  (false! (-> self started?))
+  (set! (-> self start-time) 0)
+  (set! (-> self end-time) 0)
+  (set! (-> self recorded-time) 0.0)
+  (go-virtual idle))
+
+(defstate idle (speedrun-timer)
+  :virtual #t
+  :code
+    (behavior ()
+      (loop
+        (when (-> self draw?)
+          (draw-timer self))
+        (suspend))))
+
+;; TODO - put in util
+(deftype objective-zone (process)
+  ((start?   symbol)
+   (v1       vector :inline)
+   (v2       vector :inline)
+   (on-enter (function none))
+   (on-exit  (function none)))
+  (:methods
+   (draw-zone (_type_) object))
+  (:state-methods
+   waiting-for-player
+   player-inside))
+
+(deftype objective-zone-init-params (structure)
+  ((v1 vector :inline)
+   (v2 vector :inline)))
+
+(defenum speedrun-practice-flags
+  (none))
+
+;; reset method
+(deftype speedrun-practice-objective (structure)
+  ((index                    int32)
+   (flags                    speedrun-practice-flags)
+   (completed-task           game-task)
+   (features                 game-feature)
+   (secrets                  game-secrets)
+   (vehicles                 game-vehicles)
+   (starting-position        vector)
+   (starting-rotation        vector)
+   (starting-camera-position vector)
+   (starting-camera-rotation matrix)
+   (end-task                 game-task)
+   (start-zone-init-params   objective-zone-init-params)
+   (start-zone               (pointer objective-zone))
+   (end-zone-init-params     objective-zone-init-params)
+   (end-zone                 (pointer objective-zone)))
+  (:methods
+   (draw-info (_type_) object)
+   (reset! (_type_) object)))
+
+(defenum speedrun-category
+  :type uint32
+  ;; Main Categories
+  (newgame-normal 0)
+  (newgame-heromode 1)
+  ;; TODO - add ILs and such later
+  ;; there's no point in adding categories that just start from a new-game and have later restrictions
+  ;; because we aren't going to modify the code to make that possible
+  ;; ie. removing mars tomb skip if you pick "all missions"
+  ;; Random one for experimentation
+  (all-cheats-allowed 999)
+  (custom 9999))
+
+(deftype speedrun-custom-category (structure)
+  ((index              int32)
+   (secrets            game-secrets)
+   (features           game-feature)
+   (vehicles           game-vehicles)
+   (forbidden-features game-feature)
+   (pc-cheats          pc-cheats)
+   (completed-task     game-task)))
+
+(deftype speedrun-info (structure)
+  ((category                            speedrun-category)
+   (active-custom-category              speedrun-custom-category)
+   (dump-custom-category                speedrun-custom-category)
+   (display-run-info?                   symbol)
+   (practicing?                         symbol)
+   (active-practice-objective           speedrun-practice-objective)
+   (waiting-to-record-practice-attempt? symbol)
+   (run-started-at                      time-frame))
+  (:methods
+   (set-category! (_type_ speedrun-category) object)
+   (start-run! (_type_) object)
+   (enforce-settings! (_type_) object)
+   (update! (_type_) object)
+   (draw-run-info (_type_) object)))
+
+(define-extern *speedrun-info* speedrun-info)
+
+(defenum speedrun-menu-command
+  :type uint32
+  (reset 0)
+  (exit 1))
+
+(deftype speedrun-manager (process)
+  ((popup-menu          (pointer popup-menu))
+   (ignore-menu-toggle? symbol)
+   (opened-with-start?  symbol)
+   (timer               (pointer speedrun-timer)))
+  (:methods
+   (draw-menu (_type_) object))
+  (:state-methods
+   idle))
+
+(define-extern *speedrun-manager* (pointer speedrun-manager))
