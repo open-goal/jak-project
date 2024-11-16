@@ -143,7 +143,7 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
   }
   for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     const auto child_node = ts_node_child(curr_node, i);
-    auto debug_child = ts_node_string(child_node);
+    [[maybe_unused]] auto debug_child = ts_node_string(child_node);
     const auto contents = get_source_code(source, child_node);
     bool skip_node = false;
     for (const auto& skippable_content : skippable_nodes) {

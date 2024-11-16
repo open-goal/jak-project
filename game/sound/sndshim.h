@@ -73,7 +73,7 @@ snd::BankHandle snd_BankLoadEx(const char* filepath,
 
 void snd_BankLoadFromIOPPartialEx_Start();
 void snd_BankLoadFromIOPPartialEx(const u8* data, u32 length, u32 spu_mem_loc, u32 spu_mem_size);
-void snd_BankLoadFromIOPPartialEx_Completion();
+snd::BankHandle snd_BankLoadFromIOPPartialEx_Completion();
 
 s32 snd_GetVoiceStatus(s32 voice);
 s32 snd_GetFreeSPUDMA();
