@@ -166,7 +166,8 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         prof().set_enable(record_events);
       }
       ImGui::SameLine();
-      ImGui::Text(fmt::format("({}/{})", prof().get_next_idx(), prof().get_max_events()).c_str());
+      ImGui::Text("%s",
+                  fmt::format("({}/{})", prof().get_next_idx(), prof().get_max_events()).c_str());
       ImGui::InputInt("Event Buffer Size", &max_event_buffer_size);
       if (ImGui::Button("Resize")) {
         prof().update_event_buffer_size(max_event_buffer_size);

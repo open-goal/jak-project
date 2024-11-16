@@ -202,8 +202,8 @@ u32 alloc_vagdir_names(u32 heap_sym) {
     for (size_t i = 0; i < g_VagDir.num_entries; ++i) {
       char vagname_temp[9];
       u64 packed = *(u64*)g_VagDir.entries[i].words;
-      auto name = unpack_vag_name_jak3(packed).data();
-      memcpy(vagname_temp, name, 8);
+      auto name = unpack_vag_name_jak3(packed);
+      memcpy(vagname_temp, name.data(), 8);
       for (int j = 0; j < 8; ++j) {
         vagname_temp[j] = tolower(vagname_temp[j]);
       }

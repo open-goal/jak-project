@@ -1738,7 +1738,7 @@ EIsoStatus CopyData(ISO_LoadCommon* cmd, CopyKind kind) {
                 snd_BankLoadFromIOPPartialEx(buffer->m_pCurrentData, len, bank_info->m_nSpuMemLoc,
                                              bank_info->m_nSpuMemSize);
                 if (cmd->progress_bytes + len == cmd->length_to_copy) {
-                  snd_BankLoadFromIOPPartialEx_Completion();
+                  bank_info->snd_handle = snd_BankLoadFromIOPPartialEx_Completion();
                   snd_ResolveBankXREFS();
                   // TODO: this also set field_0x28... is that needed??
                 }

@@ -157,7 +157,7 @@ enum class SoundCommand : u16 {
   SET_REVERB = 23,
   SET_EAR_TRANS = 24,
   SHUTDOWN = 25,
-  // LIST_SOUNDS = 26,
+  LIST_SOUNDS = 26,
   UNLOAD_MUSIC = 27,
   SET_FPS = 28,
   // BOOT_LOAD = 29,

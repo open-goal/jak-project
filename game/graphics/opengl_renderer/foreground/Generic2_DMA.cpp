@@ -598,12 +598,12 @@ void Generic2::process_dma_prim(DmaFollower& dma, u32 next_bucket) {
     }
     if (up1.vifcode0().kind == VifCode::Kind::FLUSHA) {
       while (dma.current_tag_offset() != next_bucket) {
-        auto it = dma.read_and_advance();
+        [[maybe_unused]] auto it = dma.read_and_advance();
       }
       break;
     }
     auto up2 = dma.read_and_advance();
-    auto call = dma.read_and_advance();
+    [[maybe_unused]] auto call = dma.read_and_advance();
 
     // up1 is a 12 qw upload for control:
     // up2 is vertex upload.
