@@ -6,9 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(jak)
 include(CTest)
 
-# Options
-option(BUILD_X86_ON_MACOS "Builds the project for macOS for Rosetta 2" OFF)
-
 # Include third-party modules
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
 
@@ -127,11 +124,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     
     # pin to AVX for macOS, hopefully all macOS runners have atleast this architecture
     # technically speaking, SSE4 is the cutoff for Apple Silicon so...only a matter of time!
-    if (BUILD_X86_ON_MACOS)
-        message("Targetting x86 on macOS via Rosetta 2 (requires Sequoia)")
-        set(CMAKE_OSX_ARCHITECTURES "x86_64")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
-    elseif(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
+    if(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
     endif()
 

@@ -1,10 +1,7 @@
 # Set a more convenient ARM flag
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" AND (NOT BUILD_X86_ON_MACOS))
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     set(ARM64_ARCH TRUE)
     message(STATUS "ARM64 architecture detected")
-elseif()
-    set(ARM64_ARCH FALSE)
-    message(STATUS "Forcefully targetting x86 via Rosetta 2")
 else()
     set(ARM64_ARCH FALSE)
     message(STATUS "Non-ARM64 architecture detected")
