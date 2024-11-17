@@ -9,7 +9,8 @@ void extract(const std::string& name,
              const std::vector<NodeWithTransform>& all_nodes,
              u32 index_offset,
              u32 vertex_offset,
-             u32 tex_offset) {
+             u32 tex_offset,
+             bool& has_custom_weights) {
   ASSERT(out.new_vertices.empty());
 
   std::map<int, tfrag3::MercDraw> draw_by_material;
@@ -24,6 +25,8 @@ void extract(const std::string& name,
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
+      has_custom_weights = node.extras.Has("enable_custom_weights") &&
+                           node.extras.Get("enable_custom_weights").Get<int>();
       for (const auto& prim : mesh.primitives) {
         prim_count++;
         // extract index buffer
@@ -38,6 +41,21 @@ void extract(const std::string& name,
                               verts.vtx_colors.end());
         out.normals.insert(out.normals.end(), verts.normals.begin(), verts.normals.end());
         ASSERT(out.new_colors.size() == out.new_vertices.size());
+
+        if (prim.attributes.count("JOINTS_0") && prim.attributes.count("WEIGHTS_0")) {
+          auto joints_and_weights = gltf_util::extract_and_flatten_joints_and_weights(model, prim);
+          ASSERT(joints_and_weights.size() == verts.vtx.size());
+          out.joints_and_weights.insert(out.joints_and_weights.end(), joints_and_weights.begin(),
+                                        joints_and_weights.end());
+        } else {
+          // add fake data for vertices without this data
+          gltf_util::JointsAndWeights dummy;
+          dummy.joints[0] = 3;
+          dummy.weights[0] = 1.f;
+          for (size_t i = 0; i < out.new_vertices.size(); i++) {
+            out.joints_and_weights.push_back(dummy);
+          }
+        }
 
         // TODO: just putting it all in one material
         auto& draw = draw_by_material[prim.material];
@@ -119,7 +137,8 @@ const tfrag3::MercVertex& find_closest(const std::vector<tfrag3::MercVertex>& ol
 
 void merc_convert_replacement(MercSwapData& out,
                               const MercExtractData& in,
-                              const std::vector<tfrag3::MercVertex>& old_verts) {
+                              const std::vector<tfrag3::MercVertex>& old_verts,
+                              bool use_custom_weights) {
   out.new_model = in.new_model;
   out.new_indices = in.new_indices;
   out.new_textures = in.tex_pool.textures_by_idx;
@@ -127,6 +146,7 @@ void merc_convert_replacement(MercSwapData& out,
   // convert vertices
   for (size_t i = 0; i < in.new_vertices.size(); i++) {
     const auto& y = in.new_vertices[i];
+
     const auto& copy_from = find_closest(old_verts, y.x, y.y, y.z);
     auto& x = out.new_vertices.emplace_back();
     x.pos[0] = y.x;
@@ -135,18 +155,27 @@ void merc_convert_replacement(MercSwapData& out,
     x.normal[0] = in.normals.at(i).x();
     x.normal[1] = in.normals.at(i).y();
     x.normal[2] = in.normals.at(i).z();
-    x.weights[0] = copy_from.weights[0];
-    x.weights[1] = copy_from.weights[1];
-    x.weights[2] = copy_from.weights[2];
+    if (use_custom_weights) {
+      x.weights[0] = in.joints_and_weights.at(i).weights[0];
+      x.weights[1] = in.joints_and_weights.at(i).weights[1];
+      x.weights[2] = in.joints_and_weights.at(i).weights[2];
+      x.mats[0] = in.joints_and_weights.at(i).joints[0];
+      x.mats[1] = in.joints_and_weights.at(i).joints[1];
+      x.mats[2] = in.joints_and_weights.at(i).joints[2];
+    } else {
+      x.weights[0] = copy_from.weights[0];
+      x.weights[1] = copy_from.weights[1];
+      x.weights[2] = copy_from.weights[2];
+      x.mats[0] = copy_from.mats[0];
+      x.mats[1] = copy_from.mats[1];
+      x.mats[2] = copy_from.mats[2];
+    }
     x.st[0] = y.s;
     x.st[1] = y.t;
     x.rgba[0] = in.new_colors[i][0];
     x.rgba[1] = in.new_colors[i][1];
     x.rgba[2] = in.new_colors[i][2];
     x.rgba[3] = in.new_colors[i][3];
-    x.mats[0] = copy_from.mats[0];
-    x.mats[1] = copy_from.mats[1];
-    x.mats[2] = copy_from.mats[2];
   }
 }
 
@@ -165,18 +194,18 @@ void merc_convert_custom(MercSwapData& out, const MercExtractData& in) {
     x.normal[0] = in.normals.at(i).x();
     x.normal[1] = in.normals.at(i).y();
     x.normal[2] = in.normals.at(i).z();
-    x.weights[0] = 1.0f;
-    x.weights[1] = 0.0f;
-    x.weights[2] = 0.0f;
+    x.weights[0] = in.joints_and_weights.at(i).weights[0];
+    x.weights[1] = in.joints_and_weights.at(i).weights[1];
+    x.weights[2] = in.joints_and_weights.at(i).weights[2];
     x.st[0] = y.s;
     x.st[1] = y.t;
     x.rgba[0] = in.new_colors[i][0];
     x.rgba[1] = in.new_colors[i][1];
     x.rgba[2] = in.new_colors[i][2];
     x.rgba[3] = in.new_colors[i][3];
-    x.mats[0] = 3;
-    x.mats[1] = 0;
-    x.mats[2] = 0;
+    x.mats[0] = in.joints_and_weights.at(i).joints[0];
+    x.mats[1] = in.joints_and_weights.at(i).joints[1];
+    x.mats[2] = in.joints_and_weights.at(i).joints[2];
   }
 }
 
@@ -199,12 +228,13 @@ MercSwapData load_replacement_merc_model(const std::string& name,
   auto all_nodes = flatten_nodes_from_all_scenes(model);
 
   MercExtractData extract_data;
+  auto has_custom_weights = false;
   extract(name, extract_data, model, all_nodes, current_idx_count, current_vtx_count,
-          current_tex_count);
+          current_tex_count, has_custom_weights);
   if (custom_mdl) {
     merc_convert_custom(result, extract_data);
   } else {
-    merc_convert_replacement(result, extract_data, old_verts);
+    merc_convert_replacement(result, extract_data, old_verts, has_custom_weights);
   }
 
   return result;

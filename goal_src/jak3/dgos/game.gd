@@ -240,6 +240,10 @@
   "game-task.o"
   "game-save.o"
   "settings.o"
+  "autosplit-h.o" ;; added
+  "autosplit.o" ;; added
+  "popup-menu-h.o" ;; added
+  "speedruns-h.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
@@ -342,6 +346,8 @@
   "board-states.o"
   "mech-h.o"
   "menu.o"
+  "popup-menu.o" ;; added
+  "speedruns.o" ;; added
   "drawable.o"
   "drawable-group.o"
   "drawable-inline-array.o"
