@@ -72,6 +72,76 @@
 (defmethod set-category! ((this speedrun-info) (category speedrun-category))
   (set! (-> this category) category))
 
+(defconstant HERO_MODE_SECRETS
+  (game-secrets hero-mode
+                endless-ammo
+                invulnerable
+                endless-dark
+                endless-light
+                unlimited-turbos
+                vehicle-hit-points
+                board-fast
+                vehicle-fox
+                vehicle-mirage
+                vehicle-x-ride
+                darkjak-tracking
+                button-invis
+                gun-upgrade-red-1
+                gun-upgrade-red-2
+                gun-upgrade-red-3
+                gun-upgrade-yellow-1
+                gun-upgrade-yellow-2
+                gun-upgrade-yellow-3
+                gun-upgrade-blue-1
+                gun-upgrade-blue-2
+                gun-upgrade-blue-3
+                gun-upgrade-dark-1
+                gun-upgrade-dark-2
+                gun-upgrade-dark-3
+                gun-upgrade-ammo-red
+                gun-upgrade-ammo-yellow
+                gun-upgrade-ammo-blue
+                gun-upgrade-ammo-dark))
+
+(defconstant HERO_MODE_FEATURES
+  (game-feature gun
+                gun-red-1
+                gun-red-2
+                gun-red-3
+                gun-yellow-1
+                gun-yellow-2
+                gun-yellow-3
+                gun-blue-1
+                gun-blue-2
+                gun-blue-3
+                gun-dark-1
+                gun-dark-2
+                gun-dark-3
+                board
+                gun-upgrade-yellow-ammo-1
+                gun-upgrade-yellow-ammo-2
+                gun-upgrade-red-ammo-1
+                gun-upgrade-red-ammo-2
+                gun-upgrade-blue-ammo-1
+                gun-upgrade-blue-ammo-2
+                gun-upgrade-dark-ammo-1
+                gun-upgrade-dark-ammo-2
+                board-launch
+                board-zap
+                darkjak
+                darkjak-bomb0
+                darkjak-bomb1
+                lightjak
+                lightjak-regen
+                lightjak-freeze
+                lightjak-shield
+                armor0
+                armor1
+                armor2
+                armor3
+                lighteco
+                darkeco))
+
 (defmethod start-run! ((this speedrun-info))
   ;; randomize game id so the autosplitter knows to restart
   (reset! *autosplit-info-jak3*)
@@ -83,19 +153,40 @@
   ;; finalize any category specific setup code
   (case (-> this category)
     (((speedrun-category newgame-normal))
-     (initialize! *game-info* 'game (the game-save #f) "intro-start" (the resetter-spec #f)))
+     (set! (-> *game-info* mode) 'debug)
+     (initialize! *game-info* 'game (the game-save #f) (the string #f) (the resetter-spec #f))
+     (set! (-> *game-info* mode) 'play)
+     (start 'play (get-continue-by-name *game-info* "wasstada-jump-training"))
+     (play-task (game-task arena-training-1) 'debug #f))
     (((speedrun-category newgame-heromode))
-     (initialize! *game-info* 'game (the game-save #f) "intro-start-hero" (the resetter-spec #f)))
+     (process-spawn-function process
+       (lambda :behavior process ()
+         (set! (-> *game-info* mode) 'debug)
+         (initialize! *game-info* 'game (the game-save #f) (the string #f) (the resetter-spec #f))
+         (set! (-> *game-info* mode) 'play)
+         (logior! (-> *game-info* secrets) (game-secrets hero-mode))
+         (logior! (-> *game-info* purchase-secrets) (game-secrets hero-mode))
+         (start 'play (get-continue-by-name *game-info* "wasstada-jump-training"))
+         (play-task (game-task arena-training-1) 'debug #f)
+         (until (and *target* (= (-> *target* next-state name) 'target-stance))
+           (suspend))
+         (set! (-> *game-info* secrets) HERO_MODE_SECRETS)
+         (set! (-> *game-info* purchase-secrets) HERO_MODE_SECRETS)
+         (set! (-> *game-info* features) HERO_MODE_FEATURES))))
     (((speedrun-category all-cheats-allowed))
-     (initialize! *game-info* 'game (the game-save #f) "intro-start" (the resetter-spec #f)))
+     (process-spawn-function process
+       (lambda :behavior process ()
+         (set! (-> *game-info* mode) 'debug)
+         (initialize! *game-info* 'game (the game-save #f) (the string #f) (the resetter-spec #f))
+         (set! (-> *game-info* mode) 'play)
+         (start 'play (get-continue-by-name *game-info* "wasstada-jump-training"))
+         (play-task (game-task arena-training-1) 'debug #f))))
     (((speedrun-category custom))
-     (set-master-mode 'game)
-     (send-event (ppointer->process (-> *speedrun-manager* 0 popup-menu)) 'close-menu)
      (process-spawn-function process
        (lambda :behavior process ()
          (clear *temp-string*)
          (pc-sr-mode-get-custom-category-continue-point (-> *speedrun-info* active-custom-category index) *temp-string*)
-         (if (string= *temp-string* "")
+         (if (string= *temp-string* EMPTY_STRING)
            (initialize! *game-info* 'game (the game-save #f) "intro-start" (the resetter-spec #f))
            (initialize! *game-info* 'game (the game-save #f) *temp-string* (the resetter-spec #f)))
          (until (and *target* (= (-> *target* next-state name) 'target-stance))
@@ -116,6 +207,7 @@
      ;; disable any active cheats
      (set! (-> *pc-settings* cheats) (pc-cheats)))
     (((speedrun-category custom))
+     (set! (-> *game-info* purchase-secrets) (-> *speedrun-info* active-custom-category secrets))
      (set! (-> *game-info* secrets) (-> *speedrun-info* active-custom-category secrets))
      (logior! (-> *game-info* features) (-> *speedrun-info* active-custom-category features))
      (logclear! (-> *game-info* features) (-> *speedrun-info* active-custom-category forbidden-features))
