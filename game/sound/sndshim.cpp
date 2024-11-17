@@ -241,11 +241,12 @@ void snd_BankLoadFromIOPPartialEx_Start() {
 void snd_BankLoadFromIOPPartialEx(const u8* data, u32 length, u32 spu_mem_loc, u32 spu_mem_size) {
   sbk_data.insert(sbk_data.end(), data, data + length);
 }
-void snd_BankLoadFromIOPPartialEx_Completion() {
+snd::BankHandle snd_BankLoadFromIOPPartialEx_Completion() {
   ASSERT(started);
   started = false;
-  player->LoadBank(std::span(sbk_data));
+  auto ret = player->LoadBank(std::span(sbk_data));
   sbk_data.clear();
+  return ret;
 }
 
 s32 snd_GetVoiceStatus(s32 voice) {

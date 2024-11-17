@@ -424,7 +424,7 @@ int InitMachine() {
  * Shutdown the runtime.
  */
 int ShutdownMachine() {
-  Msg(6, "kernel: machine shutdown (reason %d)\n", MasterExit);
+  Msg(6, "kernel: machine shutdown (reason %d)\n", (int)MasterExit);
 
   StopIOP();
   ShutdownSound();
