@@ -361,6 +361,9 @@
   )
 
 (define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
+;; og:preserve-this
+(#when PC_PORT
+  (define-extern *sky-hires-texture-anim-array* (texture-anim-array texture-anim)))
 (define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *darkjak-highres-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
@@ -426,6 +429,22 @@
   (dotimes (i 9)
     (set! (-> si times i)
           (-> *sky-texture-anim-array* array-data i frame-time)
+          )
+    )
+  )
+
+(defun make-sky-hires-input ((si sky-input))
+  (set! (-> si fog-height) (-> (the (array texture-anim) *sky-hires-texture-anim-array*) 10 extra z))
+  (set! (-> si cloud-min)  (-> *sky-hires-texture-anim-array* array-data 9 extra y))
+  (set! (-> si cloud-max)  (-> *sky-hires-texture-anim-array* array-data 9 extra z))
+  (set! (-> si cloud-dest) (the int (-> *sky-hires-texture-anim-array* array-data 8 tex dest 0)))
+  (dotimes (i (-> *sky-hires-texture-anim-array* array-data 7 num-layers))
+    (set! (-> si scales i) (-> *sky-hires-texture-anim-array* array-data 7 data i start-color w))
+    (set! (-> si max-times i) (-> *sky-hires-texture-anim-array* array-data (1+ i) frame-mod))
+    )
+  (dotimes (i 11)
+    (set! (-> si times i)
+          (-> *sky-hires-texture-anim-array* array-data i frame-time)
           )
     )
   )
@@ -498,6 +517,29 @@
            ;; falling through on purpose (TODO)
            (set! anim-idx 8) ;; fog
            ;; (return #f)
+           )
+          ((*sky-hires-texture-anim-array*)
+           (when (= bucket (bucket-id tex-lcom-sky-post))
+             ;; skip. I believe this is only used to generate the envmap texture for the ocean.
+             ;; it generates the exact same thing, so if we want this on PC one day, we can just
+             ;; steal if from the beginning of the frame.
+             (return #f)
+             )
+           (with-dma-buffer-add-bucket ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                         bucket
+                                         )
+             (pc-texture-anim-flag start-anim-array dma-buf)
+             (pc-texture-anim-flag clouds-hires dma-buf :qwc (/ (psize-of sky-input) 16))
+             (make-sky-hires-input (the sky-input (-> dma-buf base)))
+             (&+! (-> dma-buf base) (psize-of sky-input))
+             (pc-texture-anim-flag finish-anim-array dma-buf)
+             (dotimes (i 10) ;; intentially skipping fog here!!
+               (pc-update-anim-frame-time (-> *sky-hires-texture-anim-array* array-data i))
+               )
+             )
+           ;; falling through on purpose
+           (set! anim-idx 10) ;; fog
+           ; (return #f)
            )
           ((*darkjak-texture-anim-array*)
            (pc-clut-blender bucket (texture-anim-pc darkjak) anim-array)
