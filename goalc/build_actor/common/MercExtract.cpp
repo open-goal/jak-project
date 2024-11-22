@@ -185,7 +185,10 @@ void extract(const std::string& name,
   lg::info("total of {} unique materials ({} normal, {} envmap)",
            e.all_draws.size() + envmap_eff.all_draws.size(), e.all_draws.size(),
            envmap_eff.all_draws.size());
-  out.new_model.effects.push_back(e);
+  // in case a model only has envmap draws, we don't push the normal merc effect
+  if (!e.all_draws.empty()) {
+    out.new_model.effects.push_back(e);
+  }
   if (has_envmaps) {
     out.new_model.effects.push_back(envmap_eff);
   }
