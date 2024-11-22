@@ -1079,6 +1079,7 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
   draw->first_bone = args.first_bone;
   draw->light_idx = args.lights;
   draw->num_triangles = mdraw.num_triangles;
+  draw->no_strip = mdraw.no_strip;
   for (int i = 0; i < 4; i++) {
     draw->fade[i] = args.fade[i];
   }
