@@ -164,8 +164,8 @@ void extract(const std::string& name,
     ASSERT(envmap_tex.source >= 0);
     auto env_mode = gltf_util::make_default_draw_mode();
     gltf_util::setup_draw_mode_from_sampler(model.samplers.at(envmap_tex.sampler), &env_mode);
-    eff.envmap_texture =
-        gltf_util::texture_pool_add_texture(&out.tex_pool, model.images[envmap_tex.source]);
+    eff.envmap_texture = tex_offset + gltf_util::texture_pool_add_texture(
+                                          &out.tex_pool, model.images[envmap_tex.source]);
     env_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
     env_mode.enable_ab();
     eff.envmap_mode = env_mode;
