@@ -65,6 +65,12 @@ struct TexturePool {
 };
 
 int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int alpha_shift = 1);
+int texture_pool_add_envmap_control_texture(TexturePool* pool,
+                                            const tinygltf::Model& model,
+                                            int rgb_image_id,
+                                            int mr_image_id,
+                                            bool wrap_w,
+                                            bool wrap_h);
 int texture_pool_debug_checker(TexturePool* pool);
 
 struct NodeWithTransform {
@@ -113,6 +119,12 @@ std::vector<NodeWithTransform> flatten_nodes_from_all_scenes(const tinygltf::Mod
 
 void setup_alpha_from_material(const tinygltf::Material& material, DrawMode* mode);
 void setup_draw_mode_from_sampler(const tinygltf::Sampler& sampler, DrawMode* mode);
+
+struct EnvmapSettings {
+  int texture_idx = -1;
+};
+
+EnvmapSettings envmap_settings_from_gltf(const tinygltf::Material& mat);
 
 /*!
  * Find the index of the skin for this model. Returns nullopt if there is no skin, the index of the
