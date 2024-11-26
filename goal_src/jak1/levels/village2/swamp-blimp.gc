@@ -59,7 +59,7 @@
 
 (defpart 2066
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 6.0)
    (:y (meters 1) (meters 3))
    (:scale-x (meters 0.33) (meters 0.66))
@@ -86,7 +86,7 @@
 
 (defpart 2068
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 3.0)
    (:y (meters 1) (meters 3))
    (:scale-x (meters 0.4))
@@ -103,7 +103,7 @@
 
 (defpart 2065
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters 2))
    (:scale-x (meters 32))
@@ -118,7 +118,7 @@
 
 (defpart 2067
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 16.0)
    (:y (meters 1) (meters 3))
    (:scale-x (meters 4) (meters 2))
@@ -148,7 +148,7 @@
 
 (defpart 2017
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1e :page #x2))
+  ((:texture (water-ring effects))
    (:num 0.2)
    (:y (meters 0.1))
    (:scale-x (meters 3))
@@ -173,7 +173,7 @@
 
 (defpart 1321
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 1.0 1.0)
    (:scale-x (meters 0.1) (meters 0.3))
    (:rot-z (degrees 0) (degrees 360))
@@ -198,6 +198,7 @@
    (rise-per-break            float)
    (arm-sink-wait             float)))
 
+
 (define *SWAMP_BLIMP-bank*
   (new 'static 'swamp-blimp-bank :pause-before-dropping-arm #x4b0 :rise-per-break 16384.0 :arm-sink-wait 1500.0))
 
@@ -208,6 +209,7 @@
    (other-rp          int32)
    (connected-to-rock basic)
    (damping           float)))
+
 
 (defun tetherrock-get-info ((arg0 entity))
   (case (-> arg0 extra perm task)
@@ -261,6 +263,7 @@
    (init! (_type_ int int float) none)
    (update-timer! (_type_) none)))
 
+
 (defmethod init! ((this swamp-rope-rand-float) (arg0 int) (arg1 int) (arg2 float))
   (set! (-> this min-time) arg0)
   (set! (-> this max-time) arg1)
@@ -289,6 +292,7 @@
   (:methods
    (init! (_type_ float float float float) none)
    (swamp-rope-oscillator-method-10 (_type_ float) none)))
+
 
 (defmethod init! ((this swamp-rope-oscillator) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (set! (-> this target) arg0)
@@ -319,6 +323,7 @@
   (:methods
    (init! (_type_ int int float float) none)
    (update-timer! (_type_) none)))
+
 
 (defmethod init! ((this swamp-blimp-rand-vector) (arg0 int) (arg1 int) (arg2 float) (arg3 float))
   (set! (-> this min-time) arg0)
@@ -351,6 +356,7 @@
   (:methods
    (init! (_type_ vector float float float) none)
    (swamp-blimp-oscillator-method-10 (_type_ vector) none)))
+
 
 (defmethod init! ((this swamp-blimp-oscillator) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
@@ -391,6 +397,7 @@
    swamp-tetherrock-hide
    swamp-tetherrock-idle))
 
+
 (deftype precursor-arm (process-drawable)
   ((root      collide-shape :override)
    (y-init    float)
@@ -405,6 +412,7 @@
    precursor-arm-die
    precursor-arm-idle
    precursor-arm-sink))
+
 
 (deftype swamp-rope (process-drawable)
   ((parent-override (pointer swamp-blimp) :overlay-at parent)
@@ -426,6 +434,7 @@
    swamp-rope-break
    swamp-rope-idle-arm
    swamp-rope-idle-rock))
+
 
 (defmethod swamp-rope-method-20 ((this swamp-rope))
   (and (-> this other-entity) (not (task-closed? (-> this other-entity extra perm task) (task-status need-reminder)))))
@@ -452,10 +461,11 @@
    swamp-blimp-bye-bye
    swamp-blimp-idle))
 
-(defmethod relocate ((this swamp-blimp) (arg0 int))
-  (if (nonzero? (-> this gondola)) (&+! (-> this gondola) arg0))
-  (if (nonzero? (-> this bag)) (&+! (-> this bag) arg0))
-  (call-parent-method this arg0))
+
+(defmethod relocate ((this swamp-blimp) (offset int))
+  (if (nonzero? (-> this gondola)) (&+! (-> this gondola) offset))
+  (if (nonzero? (-> this bag)) (&+! (-> this bag) offset))
+  (call-parent-method this offset))
 
 (defstate swamp-tetherrock-die (swamp-tetherrock)
   :code

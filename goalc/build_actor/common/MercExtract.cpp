@@ -22,6 +22,11 @@ void extract(const std::string& name,
   int mesh_count = 0;
   int prim_count = 0;
   bool has_envmaps = false;
+  int joints = 1;
+  auto skin_idx = find_single_skin(model, all_nodes);
+  if (skin_idx) {
+    joints = gltf_util::get_joint_count(model, *skin_idx);
+  }
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
@@ -92,8 +97,8 @@ void extract(const std::string& name,
   tfrag3::MercEffect e;
   tfrag3::MercEffect envmap_eff;
   out.new_model.name = name;
-  out.new_model.max_bones = 100;  // idk
-  out.new_model.max_draws = 200;
+  out.new_model.max_bones = joints;
+  out.new_model.max_draws = 0;
 
   auto process_normal_draw = [&](tfrag3::MercEffect& eff, int mat_idx, const tfrag3::MercDraw& d_) {
     const auto& mat = model.materials[mat_idx];
@@ -182,9 +187,6 @@ void extract(const std::string& name,
     }
   }
 
-  lg::info("total of {} unique materials ({} normal, {} envmap)",
-           e.all_draws.size() + envmap_eff.all_draws.size(), e.all_draws.size(),
-           envmap_eff.all_draws.size());
   // in case a model only has envmap draws, we don't push the normal merc effect
   if (!e.all_draws.empty()) {
     out.new_model.effects.push_back(e);
@@ -193,6 +195,12 @@ void extract(const std::string& name,
     out.new_model.effects.push_back(envmap_eff);
   }
 
+  for (auto& effect : out.new_model.effects) {
+    out.new_model.max_draws += effect.all_draws.size();
+  }
+
+  lg::info("total of {} unique materials ({} normal, {} envmap)", out.new_model.max_draws,
+           e.all_draws.size(), envmap_eff.all_draws.size());
   lg::info("Merged {} meshes and {} prims into {} vertices", mesh_count, prim_count,
            out.new_vertices.size());
 }

@@ -695,6 +695,11 @@ std::optional<int> find_single_skin(const tinygltf::Model& model,
   return skin_index;
 }
 
+int get_joint_count(const tinygltf::Model& model, int skin_idx) {
+  const auto& skin = model.skins.at(skin_idx);
+  return skin.joints.size();
+}
+
 std::vector<float> extract_floats(const tinygltf::Model& model, int accessor_idx) {
   const auto& accessor = model.accessors[accessor_idx];
   const auto& buffer_view = model.bufferViews[accessor.bufferView];
