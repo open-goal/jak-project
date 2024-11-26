@@ -132,6 +132,7 @@ EnvmapSettings envmap_settings_from_gltf(const tinygltf::Material& mat);
  */
 std::optional<int> find_single_skin(const tinygltf::Model& model,
                                     const std::vector<NodeWithTransform>& all_nodes);
+int get_joint_count(const tinygltf::Model& model, int skin_idx);
 
 template <typename T, int n>
 std::vector<math::Vector<T, n>> extract_vec(const tinygltf::Model& model,
