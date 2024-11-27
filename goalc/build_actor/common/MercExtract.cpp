@@ -21,7 +21,7 @@ void extract(const std::string& name,
   int joints = 3;
   auto skin_idx = find_single_skin(model, all_nodes);
   if (skin_idx) {
-    joints = gltf_util::get_joint_count(model, *skin_idx);
+    joints += gltf_util::get_joint_count(model, *skin_idx);
   }
 
   for (const auto& n : all_nodes) {
