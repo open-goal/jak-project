@@ -125,6 +125,8 @@ struct EnvmapSettings {
 };
 
 EnvmapSettings envmap_settings_from_gltf(const tinygltf::Material& mat);
+bool material_has_envmap(const tinygltf::Material& mat);
+bool envmap_is_valid(const tinygltf::Material& mat, bool die);
 
 /*!
  * Find the index of the skin for this model. Returns nullopt if there is no skin, the index of the
