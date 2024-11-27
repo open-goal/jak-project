@@ -733,7 +733,7 @@ void ProcessMusic() {
   // handle pausing request.
   if (!g_bMusicIsPaused && g_bMusicPause) {
     cmd = FindMusicStreamName(g_szCurrentMusicName);
-    if (cmd && cmd->id & !cmd->flags.stop) {
+    if (cmd && cmd->id && !cmd->flags.stop) {
       PauseVAG(cmd);
     }
     g_bMusicIsPaused = true;
