@@ -4,10 +4,6 @@ using namespace gltf_util;
 
 namespace decompiler {
 
-bool material_has_envmap(const tinygltf::Material& mat) {
-  return mat.extensions.contains("KHR_materials_specular");
-}
-
 void extract(const std::string& name,
              MercExtractData& out,
              const tinygltf::Model& model,
@@ -25,7 +21,7 @@ void extract(const std::string& name,
   int joints = 3;
   auto skin_idx = find_single_skin(model, all_nodes);
   if (skin_idx) {
-    joints = get_joint_count(model, *skin_idx);
+    joints += get_joint_count(model, *skin_idx);
   }
 
   for (const auto& n : all_nodes) {
@@ -134,14 +130,13 @@ void extract(const std::string& name,
       return;
     }
 
-    int roughness_tex_idx = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
-    ASSERT(roughness_tex_idx >= 0);
     const auto& base_tex = model.textures[base_tex_idx];
     ASSERT(base_tex.sampler >= 0);
     ASSERT(base_tex.source >= 0);
     gltf_util::setup_draw_mode_from_sampler(model.samplers.at(base_tex.sampler), &draw.mode);
     gltf_util::setup_alpha_from_material(mat, &draw.mode);
-    const auto& roughness_tex = model.textures.at(roughness_tex_idx);
+    const auto& roughness_tex =
+        model.textures.at(mat.pbrMetallicRoughness.metallicRoughnessTexture.index);
     ASSERT(roughness_tex.sampler >= 0);
     ASSERT(roughness_tex.source >= 0);
 
@@ -169,6 +164,7 @@ void extract(const std::string& name,
     if (!material_has_envmap(mat)) {
       process_normal_draw(e, mat_idx, d_);
     } else {
+      envmap_is_valid(mat, true);
       has_envmaps = true;
       envmap_eff.has_envmap = true;
       process_envmap_draw(envmap_eff, mat_idx, d_);
