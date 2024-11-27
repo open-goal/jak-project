@@ -22,7 +22,7 @@ void extract(const std::string& name,
   int mesh_count = 0;
   int prim_count = 0;
   bool has_envmaps = false;
-  int joints = 1;
+  int joints = 3;
   auto skin_idx = find_single_skin(model, all_nodes);
   if (skin_idx) {
     joints = gltf_util::get_joint_count(model, *skin_idx);
