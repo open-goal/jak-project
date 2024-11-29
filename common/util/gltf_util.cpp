@@ -684,19 +684,12 @@ bool material_has_envmap(const tinygltf::Material& mat) {
   return mat.extensions.contains("KHR_materials_specular");
 }
 
-bool envmap_is_valid(const tinygltf::Material& mat, bool die) {
+bool envmap_is_valid(const tinygltf::Material& mat) {
   if (material_has_envmap(mat) && mat.pbrMetallicRoughness.metallicRoughnessTexture.index < 0) {
-    std::string error = fmt::format(
-        "Material \"{}\" has specular property set, but is missing a metallic roughness texture! "
-        "Check "
-        "that the Specular IOR level for the material is at the default of 0.5 if this is "
-        "unintended.",
-        mat.name);
-    if (die) {
-      lg::die(error);
-    } else {
-      lg::error(error);
-    }
+    lg::warn(fmt::format(
+        "Material \"{}\" has specular property set, but is missing a metallic roughness texture, "
+        "ignoring envmap!",
+        mat.name));
     return false;
   }
   return true;
