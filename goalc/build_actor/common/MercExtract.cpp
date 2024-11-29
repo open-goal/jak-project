@@ -17,7 +17,6 @@ void extract(const std::string& name,
   std::map<int, tfrag3::MercDraw> draw_by_material;
   int mesh_count = 0;
   int prim_count = 0;
-  bool has_envmaps = false;
   int joints = 3;
   auto skin_idx = find_single_skin(model, all_nodes);
   if (skin_idx) {
@@ -92,6 +91,7 @@ void extract(const std::string& name,
 
   tfrag3::MercEffect e;
   tfrag3::MercEffect envmap_eff;
+  envmap_eff.has_envmap = false;
   out.new_model.name = name;
   out.new_model.max_bones = joints;
   out.new_model.max_draws = 0;
@@ -173,11 +173,9 @@ void extract(const std::string& name,
 
   for (const auto& [mat_idx, d_] : draw_by_material) {
     const auto& mat = model.materials[mat_idx];
-    if (!gltf_util::material_has_envmap(mat)) {
+    if (!gltf_util::material_has_envmap(mat) || !gltf_util::envmap_is_valid(mat)) {
       process_normal_draw(e, mat_idx, d_);
     } else {
-      gltf_util::envmap_is_valid(mat, false);
-      has_envmaps = true;
       envmap_eff.has_envmap = true;
       process_envmap_draw(envmap_eff, mat_idx, d_);
     }
@@ -187,7 +185,7 @@ void extract(const std::string& name,
   if (!e.all_draws.empty()) {
     out.new_model.effects.push_back(e);
   }
-  if (has_envmaps) {
+  if (envmap_eff.has_envmap) {
     out.new_model.effects.push_back(envmap_eff);
   }
 
