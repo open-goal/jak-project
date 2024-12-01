@@ -1804,7 +1804,7 @@ void extract_merc(const ObjectFileData& ag_data,
       if (file_util::file_exists(merc_replacements_path.string())) {
         std::string file_name(ctrl.name + ".glb");
         auto mdl_path = merc_replacements_path / file_name;
-        if (file_util::file_exists(mdl_path)) {
+        if (file_util::file_exists(mdl_path.string())) {
           auto it = std::find_if(out.merc_data.models.begin(), out.merc_data.models.end(),
                                  [&](const auto& m) { return m.name == ctrl.name; });
           if (it != out.merc_data.models.end()) {
