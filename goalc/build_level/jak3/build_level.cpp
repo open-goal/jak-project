@@ -148,8 +148,9 @@ bool run_build_level(const std::string& input_file,
           if (ag.name.length() > 3 && !ag.name.compare(ag.name.length() - 3, 3, "-ag")) {
             const auto& ag_file = db.lookup_record(ag);
             lg::print("custom level: extracting art group {}\n", ag_file.name_in_dgo);
+            decompiler::MercSwapInfo info;
             decompiler::extract_merc(ag_file, tex_db, db.dts, tex_remap, pc_level, false,
-                                     db.version());
+                                     db.version(), info);
           }
         }
       }

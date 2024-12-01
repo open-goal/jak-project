@@ -10,6 +10,40 @@
 
 namespace decompiler {
 
+// info about what models have been replaced/added per level
+struct MercSwapInfo {
+  std::map<std::string, std::vector<std::string>> per_level_merc_swaps;
+  std::map<std::string, std::vector<std::string>> per_level_custom_mdls;
+
+  bool already_swapped(const std::string& model, const std::string& level) {
+    auto mdls_it = per_level_merc_swaps.find(level);
+    if (mdls_it != per_level_merc_swaps.end()) {
+      auto& mdls = mdls_it->second;
+      auto mdl = std::find(mdls.begin(), mdls.end(), model);
+      return mdl != mdls.end();
+    }
+    return false;
+  }
+
+  bool already_added(const std::string& model, const std::string& level) {
+    auto mdls_it = per_level_custom_mdls.find(level);
+    if (mdls_it != per_level_custom_mdls.end()) {
+      auto& mdls = mdls_it->second;
+      auto mdl = std::find(mdls.begin(), mdls.end(), model);
+      return mdl != mdls.end();
+    }
+    return false;
+  }
+
+  void add_to_swapped_list(const std::string& model, const std::string& level) {
+    per_level_merc_swaps[level].push_back(model);
+  }
+
+  void add_to_custom_list(const std::string& model, const std::string& level) {
+    per_level_custom_mdls[level].push_back(model);
+  }
+};
+
 // extract everything
 void extract_all_levels(const ObjectFileDB& db,
                         const TextureDB& tex_db,
