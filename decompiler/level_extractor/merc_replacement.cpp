@@ -81,7 +81,9 @@ void extract(const std::string& name,
   tfrag3::MercEffect envmap_eff;
   envmap_eff.has_envmap = false;
   out.new_model.name = name;
-  out.new_model.max_bones = joints;
+  // if we have a skeleton, use that joint count, otherwise use a high default value since the model
+  // we replace can have more
+  out.new_model.max_bones = joints != 3 ? joints : 100;
   out.new_model.max_draws = 0;
 
   auto process_normal_draw = [&](tfrag3::MercEffect& eff, int mat_idx, const tfrag3::MercDraw& d_) {
