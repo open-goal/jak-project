@@ -1802,7 +1802,7 @@ void extract_merc(const ObjectFileData& ag_data,
                                   game_version_names[version] / "merc_replacements";
     if (!swapped_info.already_swapped(ctrl.name, out.level_name)) {
       if (file_util::file_exists(merc_replacements_path.string())) {
-        auto file_name = ctrl.name + ".glb";
+        ghc::filesystem::path file_name(ctrl.name + ".glb");
         auto mdl_path = merc_replacements_path / file_name;
         if (file_util::file_exists(mdl_path)) {
           auto it = std::find_if(out.merc_data.models.begin(), out.merc_data.models.end(),
