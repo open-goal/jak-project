@@ -197,12 +197,9 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       float button_width = text_size.x + ImGui::GetStyle().FramePadding.x * 2;
       float button_height = text_size.y + ImGui::GetStyle().FramePadding.y * 2;
 
-      ImGui::PushStyleColor(ImGuiCol_Header,
-                            ImGui::GetStyleColorVec4(ImGuiCol_MenuBarBg));
-      ImGui::PushStyleColor(ImGuiCol_HeaderHovered,
-                            ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
-      ImGui::PushStyleColor(ImGuiCol_HeaderActive,
-                            ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+      ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_MenuBarBg));
+      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+      ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
 
       if (ImGui::Selectable(button_text.c_str(), false, ImGuiSelectableFlags_DontClosePopups,
                             ImVec2(button_width, button_height))) {
