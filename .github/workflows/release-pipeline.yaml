@@ -74,8 +74,19 @@ jobs:
     name: "🍎 MacOS"
     uses: ./.github/workflows/macos-build.yaml
     with:
-      cmakePreset: "Release-macos-clang-static"
+      cmakePreset: "Release-macos-x86_64-clang-static"
       cachePrefix: "static"
+      uploadArtifacts: true
+    secrets: inherit
+
+  build_macos_arm:
+    needs:
+      - cut_release
+    name: "🍎 MacOS"
+    uses: ./.github/workflows/macos-build.yaml
+    with:
+      cmakePreset: "Release-macos-x86_64-clang-static"
+      cachePrefix: "static-arm"
       uploadArtifacts: true
     secrets: inherit
 
@@ -87,6 +98,7 @@ jobs:
       - build_windows_clang
       - build_linux_clang
       - build_macos_intel
+      - build_macos_arm
     name: "Upload Artifacts"
     runs-on: ubuntu-latest
     steps:
@@ -124,7 +136,7 @@ jobs:
           7z a -tzip ./ci-artifacts/final/opengoal-windows-${TAG_VAL}.zip ./ci-artifacts/windows/*
           cp ./ci-artifacts/opengoal-windows-static/lsp.exe ./ci-artifacts/final/opengoal-lsp-windows-${TAG_VAL}.exe
 
-      - name: Prepare macOS Build Assets
+      - name: Prepare Intel macOS Build Assets
         run: |
           mkdir -p ./ci-artifacts/macos
           ./.github/scripts/releases/extract_build_unix.sh ./ci-artifacts/macos ./ci-artifacts/opengoal-macos-static ./
@@ -134,6 +146,17 @@ jobs:
           popd
           chmod +x ./ci-artifacts/opengoal-macos-static/lsp/lsp
           cp ./ci-artifacts/opengoal-macos-static/lsp/lsp ./ci-artifacts/final/opengoal-lsp-macos-intel-${TAG_VAL}.bin
+
+      - name: Prepare ARM macOS Build Assets
+        run: |
+          mkdir -p ./ci-artifacts/macos-arm
+          ./.github/scripts/releases/extract_build_unix.sh ./ci-artifacts/macos-arm ./ci-artifacts/opengoal-macos-static-arm ./
+          pushd ci-artifacts/macos-arm
+          TAG_VAL=${{ needs.cut_release.outputs.new_tag }}
+          tar czf ../final/opengoal-macos-arm-${TAG_VAL}.tar.gz .
+          popd
+          chmod +x ./ci-artifacts/opengoal-macos-static-arm/lsp/lsp
+          cp ./ci-artifacts/opengoal-macos-static-arm/lsp/lsp ./ci-artifacts/final/opengoal-lsp-macos-arm-${TAG_VAL}.bin
 
       - name: Upload Assets
         env:

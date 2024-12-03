@@ -245,6 +245,13 @@ void InitSound() {
   InitVagStreamList(&g_NewStreamsList, 4, "new");
 }
 
+void PrintSounds() {
+  for (auto& sound : gSounds) {
+    printf("SOUND %d %s\n", sound.id, sound.name.data);
+    printf(" still playing? %d\n", snd_SoundIsStillPlaying(sound.sound_handle));
+  }
+}
+
 SoundInfo* LookupSound(int id) {
   if (id == 0) {
     return nullptr;

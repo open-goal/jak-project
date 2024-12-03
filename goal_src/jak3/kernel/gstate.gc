@@ -41,11 +41,10 @@
                                    &rest args)
   "Start a new process and run an init function on it.
    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
-
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,(if runtime 'process proc-type) (get-process ,from ,proc-type ,stack-size ,unk))))
         (when ,new-proc
-          ((method-of-type ,(if runtime 'process proc-type) activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          ((method-of-type ,(if runtime 'process proc-type) activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
           (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
           (the (pointer ,(if runtime 'process proc-type)) (-> ,new-proc ppointer))
           )

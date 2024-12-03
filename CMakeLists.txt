@@ -2,6 +2,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(jak)
 include(CTest)
 
@@ -43,6 +44,10 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
+        -Wno-deprecated-this-capture \
+        -Wno-missing-field-initializers \
+        -Wno-sign-compare \
+        -Wno-ignored-qualifiers \
         -O3 \
         -D_CRT_SECURE_NO_WARNINGS")
 
@@ -52,7 +57,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # Note: this is only _reserved_ memory, not necessarily _committed_ memory
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS} -Xlinker /STACK:16000000")
     else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -g -Wextra")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -g")
     endif()
 
     # additional c++ and linker flags for release mode for our projects

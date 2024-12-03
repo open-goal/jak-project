@@ -105,10 +105,10 @@
 (cgo-file "wasseem.gd" common-dep)
 (cgo-file "wca.gd" common-dep)
 (cgo-file "wcb.gd" common-dep)
-(cgo-file "wasleapr.gd" common-dep)
 (cgo-file "wcaseem.gd" common-dep)
 (cgo-file "wascast.gd" common-dep)
 (cgo-file "cwi.gd" common-dep) ;; ctywide
+(cgo-file "wasleapr.gd" common-dep)
 (cgo-file "wasall.gd" common-dep)
 (cgo-file "desresc.gd" common-dep)
 (cgo-file "wsd.gd" common-dep) ;; wasdoors (garage)
@@ -513,7 +513,7 @@
 
 (defstep :in "game/assets/jak3/game_subtitle.gp"
   :tool 'subtitle-v2
-  :out '("$OUT/iso/0SUBTI2.TXT")
+  :out '("$OUT/iso/0SUBTI3.TXT")
   )
 
 ;;;;;;;;;;;;;;;;;;;;;
@@ -530,7 +530,7 @@
    "$OUT/iso/5COMMON.TXT"
    "$OUT/iso/6COMMON.TXT"
    "$OUT/iso/7COMMON.TXT"
-   "$OUT/iso/0SUBTI2.TXT"
+   "$OUT/iso/0SUBTI3.TXT"
    "$OUT/iso/VAGDIR.AYB"
    "$OUT/iso/TWEAKVAL.MUS"
    ,@(reverse *all-vis*)
@@ -549,7 +549,7 @@
    "$OUT/iso/5COMMON.TXT"
    "$OUT/iso/6COMMON.TXT"
    "$OUT/iso/7COMMON.TXT"
-   "$OUT/iso/0SUBTI2.TXT"
+   "$OUT/iso/0SUBTI3.TXT"
    )
  )
 
@@ -560,7 +560,7 @@
 
 (group "engine"
        "$OUT/iso/0COMMON.TXT"
-       "$OUT/iso/0SUBTI2.TXT"
+       "$OUT/iso/0SUBTI3.TXT"
        "$OUT/iso/KERNEL.CGO"
        "$OUT/iso/GAME.CGO"
        "$OUT/iso/VAGDIR.AYB"

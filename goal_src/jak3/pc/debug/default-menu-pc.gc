@@ -733,44 +733,42 @@
   )
 
 
-;; (define *made-vag-list* #f)
-;; (defun build-vag-list ((menu debug-menu))
-;;   "Fill the vag play menu"
+(define *made-vag-list* #f)
+(defun build-vag-list ((menu debug-menu))
+  "Fill the vag play menu"
+  (if *made-vag-list*
+      (return #f))
+  (true! *made-vag-list*)
 
-;;   (if *made-vag-list*
-;;       (return #f))
-;;   (true! *made-vag-list*)
+  ;; clear old list
+  (debug-menu-remove-all-items menu)
 
-;;   ;; clear old list
-;;   (debug-menu-remove-all-items menu)
+  ;; make button for each vag, we use an index
+  (dotimes (i (-> *vag-list* allocated-length))
+    (debug-menu-append-item menu (new-dm-func (-> *vag-list* i) i vag-player-play-from-index))
+    )
 
-;;   ;; make button for each vag, we use an index
-;;   (dotimes (i (-> *vag-list* allocated-length))
-;;     (debug-menu-append-item menu (new-dm-func (-> *vag-list* i) i vag-player-play-from-index))
-;;     )
+  ;; sort by vag name - note: already sorted from before
+  (set! (-> menu items) (sort (-> menu items) debug-menu-node<?))
+  #t)
 
-;;   ;; sort by vag name - note: already sorted from before
-;;   ;(set! (-> menu items) (sort (-> menu items) debug-menu-node<?))
-;;   #t)
-
-;; (define *vag-play-menu* (the debug-menu #f))
-;; (defun debug-menu-make-vag-menu ((ctx debug-menu-context))
-;;   (let ((vag-menu (new 'debug 'debug-menu ctx "Vag menu")))
-;;       (let ((play-menu (new 'debug 'debug-menu ctx "Play Vag menu")))
-;;         (set! *vag-play-menu* play-menu)
-;;         (debug-menu-append-item vag-menu (new-dm-submenu "Play" play-menu))
-;;         )
-;;       (debug-menu-append-item vag-menu (new-dm-func "Make List" *vag-play-menu* build-vag-list))
-;;       (debug-menu-append-item vag-menu (new-dm-bool "subtitle" #f
-;;                                             (lambda (arg (msg debug-menu-msg))
-;;                                               (if (= msg (debug-menu-msg press))
-;;                                                   (not! (-> *setting-control* user-default subtitle)))
-;;                                               (-> *setting-control* user-default subtitle))))
-;;       ;; pick channel
-
-;;       (new-dm-submenu "Vag" vag-menu)
-;;       )
-;;   )
+(define *vag-play-menu* (the debug-menu #f))
+(defun debug-menu-make-vag-menu ((ctx debug-menu-context))
+  (let ((vag-menu (new 'debug 'debug-menu ctx "Vag menu")))
+      (let ((play-menu (new 'debug 'debug-menu ctx "Play Vag menu")))
+        (set! *vag-play-menu* play-menu)
+        (debug-menu-append-item vag-menu (new-dm-submenu "Play" play-menu))
+        )
+      (debug-menu-append-item vag-menu (new-dm-func "Make List" *vag-play-menu* build-vag-list))
+      (debug-menu-append-item vag-menu (new-dm-bool "subtitle" #f
+                                            (lambda (arg (msg debug-menu-msg))
+                                              (if (= msg (debug-menu-msg press))
+                                                  (not! (-> *setting-control* user-default subtitle)))
+                                              (-> *setting-control* user-default subtitle))))
+      ;; pick channel
+      (new-dm-submenu "Vag" vag-menu)
+      )
+  )
 
 (defun dm-frame-rate-pick-func ((bfps int) (msg debug-menu-msg))
   (let ((fps (/ bfps 8)))
@@ -815,7 +813,7 @@
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-part-menu *debug-menu-context*))
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-entity-menu *debug-menu-context*))
   (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-regions-menu *debug-menu-context*))
-  ;; (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-vag-menu *debug-menu-context*))
+  (debug-menu-append-item (-> *debug-menu-context* root-menu) (debug-menu-make-vag-menu *debug-menu-context*))
 
   (debug-menu-append-item (-> *debug-menu-context* root-menu)
     (debug-menu-make-from-template *debug-menu-context*

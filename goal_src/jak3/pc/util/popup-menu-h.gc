@@ -1,0 +1,59 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; A debug-menu style popup menu, a lightweight way to make a context menu that doesn't involve the progress code
+;; and isn't debug-only
+
+(define *popup-menu-open* #f)
+
+(deftype popup-menu-entry (basic)
+  ((label string)
+   (entry-disabled? (function symbol))
+   (on-confirm (function none)))
+  (:methods
+   (draw-entry (_type_ font-context dma-buffer symbol) object)))
+
+;; (deftype popup-menu-label (popup-menu-entry) ())
+
+(deftype popup-menu-button (popup-menu-entry) ())
+
+(deftype popup-menu-flag (popup-menu-entry)
+  ((is-toggled? (function symbol))))
+
+(deftype popup-menu-submenu (popup-menu-entry)
+  ((entries (array popup-menu-entry))))
+
+(deftype popup-menu-dynamic-submenu (popup-menu-entry)
+  ((get-length (function int))
+   (get-entry-label (function int string none))
+   (on-entry-confirm (function int none))
+   (entry-selected? (function int symbol))
+   (on-reset (function none))))
+
+(deftype popup-menu-state (structure)
+  ((title string)
+   (entries (array popup-menu-entry))
+   (entry-index int32)
+   (dynamic-menu? symbol)
+   (get-dynamic-menu-length (function int))
+   (get-dynamic-menu-entry-label (function int string none))
+   (on-dynamic-menu-entry-confirm (function int none))
+   (dynamic-menu-entry-selected? (function int symbol))
+   (on-dynamic-menu-reset (function none))))
+
+(deftype popup-menu (process)
+  ((title string)
+   (entries (array popup-menu-entry))
+   (menu-states popup-menu-state 10 :inline)
+   (curr-state-index int32)
+   (draw? symbol))
+  (:methods
+   (update-menu! (_type_) object)
+   (draw-menu (_type_) object)
+   (move-up! (_type_ int) object)
+   (move-down! (_type_ int) object)
+   (confirm! (_type_) object)
+   (reset! (_type_) object)
+   (back! (_type_) symbol))
+  (:state-methods
+    idle))

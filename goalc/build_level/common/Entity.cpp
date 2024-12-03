@@ -328,11 +328,20 @@ static std::unordered_map<std::string,
 std::unique_ptr<Res> res_from_json_array(const std::string& name,
                                          const nlohmann::json& json_array,
                                          decompiler::DecompilerTypeSystem& dts) {
-  ASSERT(!json_array.empty());
-  std::string array_type = json_array[0].get<std::string>();
+  if (json_array.empty()) {
+    throw std::runtime_error(fmt::format("json for {} lump was empty", name));
+  }
+  auto& lump = json_array[0];
+  if (lump.type() != nlohmann::detail::value_t::string) {
+    throw std::runtime_error(
+        fmt::format("first entry of lump \"{}\" has json type {}, but should be string", name,
+                    lump.type_name()));
+  }
+  auto array_type = lump.get<std::string>();
   if (lump_map.find(array_type) != lump_map.end()) {
     return lump_map[array_type](name, json_array, dts);
   } else {
-    ASSERT_MSG(false, fmt::format("unsupported array type: {}\n", array_type));
+    throw std::runtime_error(
+        fmt::format("unsupported array type for lump {}: {}\n", name, array_type));
   }
 }

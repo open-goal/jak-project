@@ -402,6 +402,10 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
   } else {
     bool play = false;
     bool save_and_reload_text = false;
+    if (ImGui::Button("Save")) {
+      save_and_reload_text = true;
+    }
+    ImGui::SameLine();
     if (ImGui::Button("Play")) {
       play = true;
     }
@@ -410,11 +414,11 @@ void SubtitleEditor::draw_subtitle_options(GameSubtitleSceneInfo& scene, bool cu
       play = true;
       save_and_reload_text = true;
     }
+    if (save_and_reload_text) {
+      m_subtitle_db.write_subtitle_db_to_files(g_game_version);
+      m_repl.rebuild_text();
+    }
     if (play) {
-      if (save_and_reload_text) {
-        m_subtitle_db.write_subtitle_db_to_files(g_game_version);
-        m_repl.rebuild_text();
-      }
       if (g_game_version == GameVersion::Jak1) {
         m_jak1_editor_db.update();
         if (scene.is_cutscene) {

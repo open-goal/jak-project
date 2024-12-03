@@ -179,10 +179,26 @@ int main(int argc, char** argv) {
   setup_cpu_info();
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
+// Check if we are on a modern enough version of macOS so that AVX can be
+// emulated via rosetta
+#ifdef __APPLE__
+    auto macos_version = get_macos_version();
+    if (macos_version < 15.0) {
+      lg::info(
+          "Your CPU does not support AVX. But the newer version of Rosetta supports it, update to "
+          "atleast Sequoia to run OpenGOAL!");
+      dialogs::create_error_message_dialog(
+          "Unmet Requirements",
+          "Your CPU does not support AVX. But the newer version of Rosetta supports it, update to "
+          "atleast Sequoia to run OpenGOAL!");
+      return -1;
+    }
+#else
     lg::info("Your CPU does not support AVX, which is required for OpenGOAL.");
     dialogs::create_error_message_dialog(
         "Unmet Requirements", "Your CPU does not support AVX, which is required for OpenGOAL.");
     return -1;
+#endif
   }
 
   // set up file paths for resources. This is the full repository when developing, and the data

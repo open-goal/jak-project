@@ -240,6 +240,10 @@
   "game-task.o"
   "game-save.o"
   "settings.o"
+  "autosplit-h.o" ;; added
+  "autosplit.o" ;; added
+  "popup-menu-h.o" ;; added
+  "speedruns-h.o" ;; added
   "mood-tables.o"
   "mood-tables2.o"
   "mood.o"
@@ -342,6 +346,8 @@
   "board-states.o"
   "mech-h.o"
   "menu.o"
+  "popup-menu.o" ;; added
+  "speedruns.o" ;; added
   "drawable.o"
   "drawable-group.o"
   "drawable-inline-array.o"
@@ -352,6 +358,8 @@
   "capture-pc.o" ;; added
   "pckernel-common.o" ;; added
   "pckernel.o" ;; added
+  "subtitle3-h.o" ;; added
+  "subtitle3.o" ;; added
   "main.o"
   "collide-cache.o"
   "collide-debug.o"
@@ -410,6 +418,7 @@
   "visvol-edit.o"
   "collision-editor.o"
   "speech-manager.o"
+  "vag-player.o" ;; added
   "default-menu-pc.o" ;; added
   "dir-tpages.go"
   "tpage-1.go"

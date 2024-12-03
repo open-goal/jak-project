@@ -26,6 +26,15 @@ void jak3_overlord_init_globals_sbank() {
   gBanks[7] = &gLevel2hBank;
 }
 
+// added
+void PrintBanks() {
+  printf("Loaded Banks\n");
+  for (int i = 0; i < kNumBanks; i++) {
+    printf(" [%d] %s %s (%d/%d)\n", i, gBanks[i]->m_name1, gBanks[i]->m_name2, gBanks[i]->in_use,
+           gBanks[i]->loaded);
+  }
+}
+
 void InitBanks() {
   for (int i = 0; i < kNumBanks; i++) {
     auto* bank = gBanks[i];

@@ -194,8 +194,13 @@
                (the-as string #f)
                )
              (else
-               (format (clear *temp-string*) "UNKNOWN ID ~X" arg0)
-               *temp-string*
+              ;; og:preserve-this Added fallback to English if string is not found.
+              (#if PC_PORT
+                (if *fallback-text-lookup?*
+                  (aif (lookup-text! *fallback-text* arg0 #t)
+                      it
+                      (string-format "UNKNOWN ID ~D" arg0)))
+                (string-format "UNKNOWN ID ~D" arg0))
                )
              )
            )
@@ -301,12 +306,14 @@
   )
 
 (defun load-level-text-files ((arg0 int))
-  (if (or *level-text-file-load-flag* (>= arg0 0))
-      (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
-      )
-  0
-  (none)
-  )
+  ;; og:preserve-this Load in English file to use as a fallback
+  (when (or *level-text-file-load-flag* (>= arg0 0))
+    (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
+    (#when PC_PORT
+      (protect ((-> *setting-control* user-current language))
+        (set! (-> *setting-control* user-current language) (language-enum english))
+        (load-game-text-info "common" (&-> '*fallback-text* value) *fallback-text-heap*))))
+  (none))
 
 (defun draw-debug-text-box ((arg0 font-context))
   (when *cheat-mode*

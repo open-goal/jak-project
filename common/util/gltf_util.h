@@ -65,6 +65,12 @@ struct TexturePool {
 };
 
 int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int alpha_shift = 1);
+int texture_pool_add_envmap_control_texture(TexturePool* pool,
+                                            const tinygltf::Model& model,
+                                            int rgb_image_id,
+                                            int mr_image_id,
+                                            bool wrap_w,
+                                            bool wrap_h);
 int texture_pool_debug_checker(TexturePool* pool);
 
 struct NodeWithTransform {
@@ -114,12 +120,21 @@ std::vector<NodeWithTransform> flatten_nodes_from_all_scenes(const tinygltf::Mod
 void setup_alpha_from_material(const tinygltf::Material& material, DrawMode* mode);
 void setup_draw_mode_from_sampler(const tinygltf::Sampler& sampler, DrawMode* mode);
 
+struct EnvmapSettings {
+  int texture_idx = -1;
+};
+
+EnvmapSettings envmap_settings_from_gltf(const tinygltf::Material& mat);
+bool material_has_envmap(const tinygltf::Material& mat);
+bool envmap_is_valid(const tinygltf::Material& mat);
+
 /*!
  * Find the index of the skin for this model. Returns nullopt if there is no skin, the index of the
  * skin if there is a single skin used, or fatal error if there are multiple skins.
  */
 std::optional<int> find_single_skin(const tinygltf::Model& model,
                                     const std::vector<NodeWithTransform>& all_nodes);
+int get_joint_count(const tinygltf::Model& model, int skin_idx);
 
 template <typename T, int n>
 std::vector<math::Vector<T, n>> extract_vec(const tinygltf::Model& model,

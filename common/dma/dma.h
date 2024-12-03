@@ -37,7 +37,7 @@ struct DmaTag {
   DmaTag(u64 value) {
     spr = (value >> 63);
     addr = (value >> 32) & 0x7fffffff;
-    qwc = value & 0xfff;
+    qwc = value & 0xffff;
     kind = Kind((value >> 28) & 0b111);
   }
 

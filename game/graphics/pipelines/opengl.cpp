@@ -220,9 +220,10 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   // TODO - SDL2 doesn't seem to support HDR (and neither does windows)
   //   Related -
   //   https://answers.microsoft.com/en-us/windows/forum/all/hdr-monitor-low-brightness-after-exiting-full/999f7ee9-7ba3-4f9c-b812-bbeb9ff8dcc1
-  SDL_Window* window =
-      SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height,
-                       SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+  SDL_Window* window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                        width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+  // TODO - rendering code on hiDPI/Retina displays is not adequate, solve it properly so that
+  // `SDL_WINDOW_ALLOW_HIGHDPI` can be added back to the window flags.
   prof().end_event();
   if (!window) {
     sdl_util::log_error("gl_make_display failed - Could not create display window");

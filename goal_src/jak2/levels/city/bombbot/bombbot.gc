@@ -46,7 +46,7 @@
   )
 
 (defpart 4613
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:y (meters -2.5))
     (:scale-x (meters 32))
@@ -82,7 +82,7 @@
   )
 
 (defpart 4615
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:scale-x (meters 120))
     (:rot-x (degrees 45))
@@ -117,7 +117,7 @@
   )
 
 (defpart 4611
-  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+  :init-specs ((:texture (motion-blur-part effects))
     (:num 16.0)
     (:y (meters -3.5) (meters 2))
     (:scale-x (meters 2.5))
@@ -161,7 +161,7 @@
   )
 
 (defpart 4614
-  :init-specs ((:texture (new 'static 'texture-id :index #x34 :page #xc))
+  :init-specs ((:texture (explosion-wave effects))
     (:num 5.0 5.0)
     (:y (meters -2.5))
     (:scale-x (meters 3) (meters 2))
@@ -214,7 +214,7 @@
   )
 
 (defpart 4612
-  :init-specs ((:texture (new 'static 'texture-id :index #x33 :page #xc))
+  :init-specs ((:texture (explosion-nebula effects))
     (:birth-func 'birth-func-texture-group)
     (:num 16.0 10.0)
     (:y (meters -2.5))
@@ -278,7 +278,7 @@
   )
 
 (defpart 4610
-  :init-specs ((:texture (new 'static 'texture-id :index #x32 :page #xc))
+  :init-specs ((:texture (specs effects))
     (:num 6.0 8.0)
     (:x (meters 0.25))
     (:y (meters -2.5))
@@ -325,7 +325,7 @@
   )
 
 (defpart 4608
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 4.0 8.0)
     (:x (meters 0) (meters 0.6))
     (:y (meters -2.5))
@@ -378,7 +378,7 @@
   )
 
 (defpart 4609
-  :init-specs ((:texture (new 'static 'texture-id :index #x31 :page #xc))
+  :init-specs ((:texture (flamingstick effects))
     (:num 9.0)
     (:y (meters -2.5))
     (:scale-x (meters 4) (meters 8))
@@ -399,7 +399,7 @@
   )
 
 (defpart 4630
-  :init-specs ((:texture (new 'static 'texture-id :index #x83 :page #xc))
+  :init-specs ((:texture (pal-lightning effects))
     (:birth-func 'birth-func-set-quat)
     (:num 1.0)
     (:scale-x (meters 2))
@@ -414,7 +414,7 @@
   )
 
 (defpart 4631
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 4))
     (:scale-y :copy scale-x)
@@ -432,7 +432,7 @@
   )
 
 (defpart 4632
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 2))
     (:scale-y :copy scale-x)
@@ -1143,9 +1143,9 @@
 
 (defmethod common-post ((this bombbot))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (local-vars (sv-16 sparticle-launcher) (sv-20 sparticle-launcher))
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
@@ -1232,6 +1232,7 @@
   )
 
 (defmethod run-logic? ((this bombbot))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
@@ -1265,7 +1266,7 @@
 
 (defmethod general-event-handler ((this bombbot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('nav-mesh-kill)
      (change-to *default-nav-mesh* this)
@@ -2155,16 +2156,16 @@
     )
   )
 
-(defmethod relocate ((this bombbot) (arg0 int))
+(defmethod relocate ((this bombbot) (offset int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this joint-ik v1-0))
-        (&+! (-> this joint-ik v1-0) arg0)
+        (&+! (-> this joint-ik v1-0) offset)
         )
     )
   (if (nonzero? (-> this rigidbody))
-      (&+! (-> this rigidbody) arg0)
+      (&+! (-> this rigidbody) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod init-enemy-collision! ((this bombbot))

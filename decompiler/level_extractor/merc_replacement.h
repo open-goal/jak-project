@@ -10,7 +10,7 @@ struct MercExtractData {
   std::vector<tfrag3::PreloadedVertex> new_vertices;
   std::vector<math::Vector<u8, 4>> new_colors;
   std::vector<math::Vector3f> normals;
-
+  std::vector<gltf_util::JointsAndWeights> joints_and_weights;
   tfrag3::MercModel new_model;
 };
 

@@ -171,7 +171,11 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
   for (const auto& [lang, bank] : db.m_banks) {
     auto font = get_font_bank(bank->m_text_version);
     DataObjectGenerator gen;
-    gen.add_type_tag("subtitle2-text-info");                     // type
+    if (get_text_version_name(bank->m_text_version) == "jak3") {
+      gen.add_type_tag("subtitle3-text-info");  // type
+    } else {
+      gen.add_type_tag("subtitle2-text-info");  // type
+    }
     gen.add_word((bank->m_scenes.size() & 0xffff) | (1 << 16));  // length (lo) + version (hi)
     // note: we add 1 because "none" isn't included
     gen.add_word((lang & 0xffff) | ((bank->m_speakers.size() + 1) << 16));  // lang + speaker-length
@@ -220,9 +224,10 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
     auto data = gen.generate_v2();
 
     file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
+    auto file_name = get_text_version_name(bank->m_text_version) == "jak3" ? "subti3" : "subti2";
     file_util::write_binary_file(
         file_util::get_file_path(
-            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase("subti2"))}),
+            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase(file_name))}),
         data.data(), data.size());
   }
 }

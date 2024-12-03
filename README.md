@@ -72,7 +72,7 @@ Our objectives are:
 
 We support both Linux and Windows on x86-64.
 
-> We do not support, or plan to support the ARM architecture.  This means that this will not run on devices such as an M1 Mac or a mobile device.
+> We do not support, or plan to support the ARM architecture.  This means that this will not run on devices such as a mobile device.
 
 ### Current Status
 
@@ -235,7 +235,7 @@ Then build the entire project as `Windows Release (clang)`. You can also press C
 
 ### MacOS
 
-> NOTE: At this time you can only run the game on macOS if you have an Intel processor.
+> NOTE: Running the game requires an Apple Silicon Mac running macOS Sequoia, or an Intel Mac.
 
 Ensure that you have Xcode command line tools installed (this installs things like Apple Clang).  If you don't, you can run the following command:
 
@@ -243,21 +243,25 @@ Ensure that you have Xcode command line tools installed (this installs things li
 xcode-select --install
 ```
 
-#### Intel Based
+On Apple Silicon, Rosetta 2 also must be installed:
+
+```bash
+softwareupdate --install-rosetta
+```
+
+#### Building for x86_64
 
 ```bash
 brew install cmake nasm ninja go-task clang-format
-cmake -B build --preset=Release-macos-clang
+cmake -B build --preset=Release-macos-x86_64-clang
 cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 ```
 
-#### Apple Silicon
-
-**Not Supported at This Time**
+#### Building for ARM64 (experimental, unsupported)
 
 ```bash
 brew install cmake ninja go-task clang-format
-cmake -B build --preset=Release-macos-clang
+cmake -B build --preset=Release-macos-arm64-clang
 cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 ```
 

@@ -21,7 +21,7 @@
 
 (defpart 665
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:scale-x (meters 1) (meters 1))
    (:scale-y :copy scale-x)
@@ -66,6 +66,7 @@
    seagull-soaring
    seagull-takeoff))
 
+
 (deftype seagullflock (process)
   ((self-override      seagullflock :overlay-at self)
    (path               path-control)
@@ -91,11 +92,12 @@
    seagullflock-at-waterfall
    seagullflock-idle))
 
-(defmethod relocate ((this seagullflock) (arg0 int))
-  (if (nonzero? (-> this path)) (&+! (-> this path) arg0))
-  (if (nonzero? (-> this link)) (&+! (-> this link) arg0))
-  (if (nonzero? (-> this squall)) (&+! (-> this squall) arg0))
-  (the-as seagullflock ((method-of-type process relocate) this arg0)))
+
+(defmethod relocate ((this seagullflock) (offset int))
+  (if (nonzero? (-> this path)) (&+! (-> this path) offset))
+  (if (nonzero? (-> this link)) (&+! (-> this link) offset))
+  (if (nonzero? (-> this squall)) (&+! (-> this squall) offset))
+  (the-as seagullflock ((method-of-type process relocate) this offset)))
 
 (defmethod deactivate ((this seagullflock))
   (if (nonzero? (-> this squall)) (stop! (-> this squall)))
