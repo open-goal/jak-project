@@ -650,6 +650,24 @@
   0
   (none))
 
+;; og:preserve-this added
+(defun dma-add-process-drawable-hud-merc ((pd process-drawable) (dc draw-control) (arg2 symbol) (buf dma-buffer))
+  (logclear! (-> dc status) (draw-status was-drawn))
+  (when (not (logtest? (-> dc status) (draw-status hidden no-anim no-skeleton-update)))
+    (let ((vu-lights (scratchpad-object vu-lights :offset 64))
+          (hud-lights *hud-lights*))
+      (vector-copy! (-> vu-lights direction 0) (-> hud-lights direction 0))
+      (vector-copy! (-> vu-lights direction 1) (-> hud-lights direction 1))
+      (vector-copy! (-> vu-lights direction 2) (-> hud-lights direction 2))
+      (vector-copy! (-> vu-lights color 0) (-> hud-lights color 0))
+      (vector-copy! (-> vu-lights color 1) (-> hud-lights color 1))
+      (vector-copy! (-> vu-lights color 2) (-> hud-lights color 2))
+      (vector-copy! (-> vu-lights ambient) (-> hud-lights ambient)))
+    (lod-set! dc 0)
+    (logior! (-> dc status) (draw-status was-drawn))
+    (draw-bones-hud-merc dc buf))
+  (none))
+
 (defun add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
   ((-> arg1 dma-add-func) arg0 arg1 arg2 arg3)
   (none))
