@@ -97,7 +97,6 @@ void extract(const std::string& name,
   out.new_model.max_draws = 0;
 
   auto process_normal_draw = [&](tfrag3::MercEffect& eff, int mat_idx, const tfrag3::MercDraw& d_) {
-    const auto& mat = model.materials[mat_idx];
     eff.all_draws.push_back(d_);
     auto& draw = eff.all_draws.back();
     draw.mode = gltf_util::make_default_draw_mode();
@@ -107,6 +106,8 @@ void extract(const std::string& name,
       draw.tree_tex_id = 0;
       return;
     }
+    const auto& mat = model.materials[mat_idx];
+
     int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
     if (tex_idx == -1) {
       lg::warn("Material {} has no texture, using default texture.", mat.name);
@@ -172,8 +173,8 @@ void extract(const std::string& name,
   };
 
   for (const auto& [mat_idx, d_] : draw_by_material) {
-    const auto& mat = model.materials[mat_idx];
-    if (!gltf_util::material_has_envmap(mat) || !gltf_util::envmap_is_valid(mat)) {
+    if (mat_idx < 0 || !gltf_util::material_has_envmap(model.materials[mat_idx]) ||
+        !gltf_util::envmap_is_valid(model.materials[mat_idx])) {
       process_normal_draw(e, mat_idx, d_);
     } else {
       envmap_eff.has_envmap = true;
