@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: ISC
 #pragma once
 
+#include <map>
+#include <memory>
+
 #include "common/common_types.h"
 
 namespace snd {
@@ -25,5 +28,13 @@ class SoundHandler {
   virtual void SetPBend(s32 /*mod*/){};
   virtual void SetRegister(u8 /*reg*/, u8 /*value*/) {}
   virtual u32 SoundID() const { return -1; }
+
+  // Check if this handler violates an instance limit. If so, return pointer to the sound that
+  // should be removed.
+  virtual SoundHandler* CheckInstanceLimit(
+      const std::map<u32, std::unique_ptr<SoundHandler>>& handlers,
+      s32 vol) {
+    return nullptr;
+  }
 };
 }  // namespace snd
