@@ -173,6 +173,7 @@
 (define *underb-master* (the-as (pointer underb-master) #f))
 
 (defmethod deactivate ((this underb-master))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this ambient-sound-id))
   (send-event (handle->process (-> this warp-handle)) 'die-fast)
   (set! *underb-master* (the-as (pointer underb-master) #f))
@@ -620,14 +621,15 @@
 
 
 ;; WARN: Return type mismatch process-drawable vs under-locking.
-(defmethod relocate ((this under-locking) (arg0 int))
+(defmethod relocate ((this under-locking) (offset int))
   (if (nonzero? (-> this draining-part))
-      (&+! (-> this draining-part) arg0)
+      (&+! (-> this draining-part) offset)
       )
-  (the-as under-locking ((method-of-type process-drawable relocate) this arg0))
+  (the-as under-locking ((method-of-type process-drawable relocate) this offset))
   )
 
 (defmethod deactivate ((this under-locking))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this draining-part))
       (kill-and-free-particles (-> this draining-part))
       )
@@ -1039,11 +1041,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this under-locking) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (set! (-> this which-reminder?) #f)
   (set! (-> this spooled-sound-id) (new 'static 'sound-id))

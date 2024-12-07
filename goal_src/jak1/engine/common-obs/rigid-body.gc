@@ -201,8 +201,10 @@
    (platform              symbol)
    (sound-name            string)))
 
+
 (deftype rigid-body-control-point-inline-array (inline-array-class)
   ((data rigid-body-control-point :inline :dynamic :offset 16)))
+
 
 (set! (-> rigid-body-control-point-inline-array heap-base) (the-as uint 48))
 
@@ -240,11 +242,12 @@
    (rigid-body-platform-method-33 (_type_) object)
    (rigid-body-platform-method-34 (_type_) none)))
 
-(defmethod relocate ((this rigid-body-platform) (arg0 int))
+
+(defmethod relocate ((this rigid-body-platform) (offset int))
   (if (nonzero? (-> this control-point-array))
     (set! (-> this control-point-array)
-          (the-as rigid-body-control-point-inline-array (+ (the-as int (-> this control-point-array)) arg0))))
-  (call-parent-method this arg0))
+          (the-as rigid-body-control-point-inline-array (+ (the-as int (-> this control-point-array)) offset))))
+  (call-parent-method this offset))
 
 (defmethod rigid-body-platform-method-22 ((this rigid-body-platform) (arg0 vector) (arg1 float))
   (let ((v1-0 (-> this water-anim)))
@@ -328,7 +331,7 @@
   (+! (-> this sim-time-remaining) (* 0.0033333334 (the float (- (current-time) (-> *display* old-base-frame-counter)))))
   (let ((f30-0 (* DISPLAY_FPS_RATIO 0.016666668)) ;; og:preserve-this changed for high fps
         (f28-0 (* 0.0033333334 (the float (logand #xffffff (current-time))))))
-    (while (>= (-> this sim-time-remaining) (* 0.5 f30-0))
+    (while (>= (-> this sim-time-remaining) (/ f30-0 2))
       (clear-force-torque! (-> this rbody))
       (rigid-body-platform-method-23 this f28-0)
       (rigid-body-method-10 (-> this rbody) f30-0)

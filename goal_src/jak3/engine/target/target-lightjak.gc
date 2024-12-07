@@ -1380,12 +1380,7 @@
         (set! (-> self fact shield-attack-id) a0-46)
         )
       (if (not (logtest? (-> self lightjak stage) (lightjak-stage ls1)))
-          (send-event
-            self
-            'get-pickup
-            (pickup-type eco-pill-light)
-            (* -0.33333334 (-> *FACT-bank* lightjak-shield-inc))
-            )
+          (send-event self 'get-pickup (pickup-type eco-pill-light) (/ (-> *FACT-bank* lightjak-shield-inc) -3))
           )
       (set-time! (-> self lightjak shield-count-time))
       )
@@ -2275,7 +2270,9 @@
 (defstate die (freeze-screen)
   :virtual #t
   :code (behavior ()
-    (suspend-for (seconds 1) (seek! (-> self transition) 0.0 (seconds-per-frame)))
+    (suspend-for (seconds 1)
+      (seek! (-> self transition) 0.0 (seconds-per-frame))
+      )
     )
   )
 
@@ -2766,7 +2763,7 @@
          )
         (else
           (let* ((f1-5 (/ f0-1 (* (-> self control dynam gravity-length) (seconds-per-frame))))
-                 (f0-6 (* 0.5 f1-5 (seconds-per-frame) f0-1))
+                 (f0-6 (* (/ f1-5 2) (seconds-per-frame) f0-1))
                  (v1-25 (new-stack-vector0))
                  )
             (let ((f1-9 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
