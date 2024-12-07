@@ -2674,9 +2674,10 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
               divisor = pool.form<ConstantFloatElement>(divisor_num);
             }
             if (divisor) {
-              if (b_as_deref || (env.get_types_before_op(b_as_simple->expr().var().idx())
-                                     .get(b_as_simple->expr().var().reg())
-                                     .typespec() == TypeSpec("float"))) {
+              if (b_as_deref || (b_as_simple->expr().is_var() &&
+                                 env.get_types_before_op(b_as_simple->expr().var().idx())
+                                         .get(b_as_simple->expr().var().reg())
+                                         .typespec() == TypeSpec("float"))) {
                 *m_src->back_ref() = pool.alloc_element<GenericElement>(
                     GenericOperator::make_fixed(FixedOperatorKind::DIVISION), mr.maps.forms.at(1),
                     divisor);
