@@ -21,12 +21,15 @@
   (:methods
    (new (symbol type int) _type_)))
 
+
 (deftype joint-exploder-static-joint-params (structure)
   ((joint-index        int16)
    (parent-joint-index int16)))
 
+
 (deftype joint-exploder-static-params (basic)
   ((joints (array joint-exploder-static-joint-params))))
+
 
 (deftype joint-exploder-joint (structure)
   ((next        int16)
@@ -38,17 +41,20 @@
    (transv      vector :inline)
    (prev-pos    vector :inline)))
 
+
 (deftype joint-exploder-joints (basic)
   ((num-joints int32)
    (joint      joint-exploder-joint :inline :dynamic :offset 16))
   (:methods
    (new (symbol type joint-exploder-static-params) _type_)))
 
+
 (deftype joint-exploder-list (structure)
   ((head        int32)
    (pre-moved?  symbol)
    (bbox-valid? symbol)
    (bbox        bounding-box :inline)))
+
 
 (deftype joint-exploder (process-drawable)
   ((parent-override            (pointer process-drawable) :overlay-at parent)
@@ -72,6 +78,7 @@
    (joint-exploder-method-28 (_type_ joint-exploder-list) none))
   (:states
    joint-exploder-shatter))
+
 
 (defmethod asize-of ((this joint-exploder-joints))
   (the-as int (+ (-> this type size) (* 176 (-> this num-joints)))))
@@ -270,7 +277,7 @@
                 (set! (-> s5-1 transv y) (* 0.7 f30-0))))
             (+! (-> s4-0 y) (* 40.96 (-> s3-0 normal y)))
             (set! (-> s4-0 w) 1.0)
-            (set! (-> s5-1 rspeed) (* 0.5 (-> s5-1 rspeed)))))
+            (set! (-> s5-1 rspeed) (/ (-> s5-1 rspeed) 2))))
         (set! v1-2 (-> s5-1 next)))))
   #f)
 
@@ -381,9 +388,9 @@
             (add-point! s5-1 (the-as vector3s (+ (the-as uint (-> gp-0 joint 0 mat vector 3)) (* 176 s4-1)))))))
       #f)))
 
-(defmethod relocate ((this joint-exploder) (arg0 int))
-  (if (nonzero? (-> this joints)) (&+! (-> this joints) arg0))
-  (the-as joint-exploder ((method-of-type process-drawable relocate) this arg0)))
+(defmethod relocate ((this joint-exploder) (offset int))
+  (if (nonzero? (-> this joints)) (&+! (-> this joints) offset))
+  (the-as joint-exploder ((method-of-type process-drawable relocate) this offset)))
 
 (defbehavior joint-exploder-init-by-other joint-exploder ((arg0 skeleton-group) (arg1 int) (arg2 joint-exploder-static-params) (arg3 joint-exploder-static-params))
   (set! (-> self static-params) arg3)
