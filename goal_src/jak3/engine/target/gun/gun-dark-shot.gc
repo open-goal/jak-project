@@ -201,13 +201,7 @@
     )
   (set! (-> self root trans quad) (-> arg0 pos quad))
   (quaternion-identity! (-> self root quat))
-  (set-vector!
-    (-> self root scale)
-    (* 0.00024414062 (-> arg0 size-x))
-    (* 0.00024414062 (-> arg0 size-y))
-    1.0
-    1.0
-    )
+  (set-vector! (-> self root scale) (/ (-> arg0 size-x) METER_LENGTH) (/ (-> arg0 size-y) METER_LENGTH) 1.0 1.0)
   (go-virtual active)
   )
 
@@ -218,13 +212,7 @@
       (('set-pos-and-size)
        (let ((v1-2 (the-as gun-dark-3-sphere-init-params (-> block param 0))))
          (set! (-> self root trans quad) (-> v1-2 pos quad))
-         (set-vector!
-           (-> self root scale)
-           (* 0.00024414062 (-> v1-2 size-x))
-           (* 0.00024414062 (-> v1-2 size-y))
-           1.0
-           1.0
-           )
+         (set-vector! (-> self root scale) (/ (-> v1-2 size-x) METER_LENGTH) (/ (-> v1-2 size-y) METER_LENGTH) 1.0 1.0)
          (vector-float*! (-> self root scale) (-> self root scale) 1.7)
          (set! (-> self alpha-val) (-> v1-2 alpha-val))
          )
@@ -1691,7 +1679,7 @@
                   (set! f30-0 (lerp-scale 4096.0 1228.8 f0-9 30.0 300.0))
                   )
                 )
-              (let ((f30-1 (* 0.5 f30-0)))
+              (let ((f30-1 (/ f30-0 2)))
                 (vector-normalize! (-> self spin-vector) f30-1)
                 (vector-normalize! (-> self core-velocity) 7372.8)
                 (set! (-> s5-0 fvec quad) (-> s4-0 quad))
@@ -2510,7 +2498,7 @@
                )
           (s3-1 s2-2 (the-as quaternion s1-0) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-40)))) *up-vector*)
           )
-        (let ((f0-18 (* 0.000061035156 (-> self obj-radius))))
+        (let ((f0-18 (/ (-> self obj-radius) (meters 4))))
           0.0
           (let* ((f30-1 (lerp 1.0 0.2 f0-18))
                  (s3-2 s5-4)
@@ -2782,7 +2770,7 @@
        (let* ((f0-1 (vector-normalize-ret-len! s5-1 1.0))
               (f0-2 (* 182.04445 f0-1))
               (f0-3 (* 360.0 f0-2))
-              (f0-4 (* 0.2 f0-3))
+              (f0-4 (/ f0-3 5))
               (f30-0 (fmin 116508.445 f0-4))
               (s4-0 (handle->process (-> this parent-hand)))
               )
@@ -2884,7 +2872,7 @@
     (until (< (-> self end-time) (current-time))
       (suspend)
       )
-    (let* ((f0-1 (+ 0.5 (* 0.0625 (-> self cached-damage))))
+    (let* ((f0-1 (+ 0.5 (/ (-> self cached-damage) 16)))
            (f0-2 (fmin 0.9 f0-1))
            )
       (send-event (handle->process (-> self parent-hand)) 'gun-dark-2-off f0-2)
@@ -2915,8 +2903,7 @@
 
 ;; WARN: Return type mismatch int vs object.
 (defbehavior zero-g-wait-for-land gravity-spinner ()
-  (suspend-for
-    (seconds 1.5)
+  (suspend-for (seconds 1.5)
     (let* ((s4-0 (handle->process (-> self parent-hand)))
            (s5-0 (if (type? s4-0 process-focusable)
                      s4-0
@@ -2998,7 +2985,7 @@
            (let ((f0-0 (vector-length (the-as vector (-> block param 1)))))
              0.0
              (when (< 40960.0 f0-0)
-               (let ((f30-0 (* 0.000024414063 f0-0)))
+               (let ((f30-0 (/ f0-0 (meters 10))))
                  (format 0 "Receving impact damage ~f~%" f30-0)
                  (+! (-> self cached-damage) f30-0)
                  )
@@ -3151,7 +3138,7 @@
               )
           0.0
           (set! (-> self cached-damage) (* 2.0 (-> self cached-damage)))
-          (let* ((f0-6 (* 0.00012207031 f0-5))
+          (let* ((f0-6 (/ f0-5 (meters 2)))
                  (f0-7 (fmax 1.0 f0-6))
                  )
             (+! (-> self cached-damage) f0-7)
@@ -3308,8 +3295,8 @@
     (vector4-lerp! s5-0 (-> v1-0 0 dir0 color) (-> v1-0 0 dir1 color) (-> v1-0 0 dir1 extra x))
     (fmax (fmax (-> s4-0 x) (-> s4-0 y)) (-> s4-0 z))
     (fmax (fmax (-> s5-0 x) (-> s5-0 y)) (-> s5-0 z))
-    (let* ((f0-10 (+ (* 0.2 (-> s4-0 x)) (* 0.75 (-> s4-0 y)) (* 0.05 (-> s4-0 z))))
-           (f1-12 (+ (* 0.2 (-> s5-0 x)) (* 0.75 (-> s5-0 y)) (* 0.05 (-> s5-0 z))))
+    (let* ((f0-10 (+ (/ (-> s4-0 x) 5) (* 0.75 (-> s4-0 y)) (/ (-> s4-0 z) 20)))
+           (f1-12 (+ (/ (-> s5-0 x) 5) (* 0.75 (-> s5-0 y)) (/ (-> s5-0 z) 20)))
            (f0-12 (* 0.5 (+ f0-10 f1-12)))
            (f30-0 (lerp-scale-clamp 0.0 1.0 f0-12 0.0 1.0))
            (s5-1 (new 'stack 'rgbaf))
@@ -3613,9 +3600,11 @@
               )
             )
           (set! f30-0 (+ -0.6 f30-0))
-          (suspend-for (seconds 0.15))
+          (suspend-for (seconds 0.15)
+            )
           )
-        (suspend-for (seconds 13.5))
+        (suspend-for (seconds 13.5)
+          )
         (go empty-state)
         (set! f30-0 4.0)
         )
