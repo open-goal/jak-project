@@ -188,10 +188,26 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (!Gfx::g_debug_settings.ignore_hide_imgui) {
-      ImGui::Text("%s", fmt::format("Toggle toolbar with {}",
-                                    sdl_util::get_keyboard_button_name(
-                                        Gfx::g_debug_settings.hide_imgui_key, InputModifiers()))
-                            .c_str());
+      std::string button_text =
+          fmt::format("Click here or Press {} to hide Toolbar",
+                      sdl_util::get_keyboard_button_name(Gfx::g_debug_settings.hide_imgui_key,
+                                                         InputModifiers()));
+
+      ImVec2 text_size = ImGui::CalcTextSize(button_text.c_str());
+      float button_width = text_size.x + ImGui::GetStyle().FramePadding.x * 2;
+      float button_height = text_size.y + ImGui::GetStyle().FramePadding.y * 2;
+
+      ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_MenuBarBg));
+      ImGui::PushStyleColor(ImGuiCol_HeaderHovered,
+                            ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+      ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+
+      if (ImGui::Selectable(button_text.c_str(), false, ImGuiSelectableFlags_DontClosePopups,
+                            ImVec2(button_width, button_height))) {
+        std::shared_ptr<GfxDisplay> display = Display::GetMainDisplay();
+        display->set_imgui_visible(false);
+      }
+      ImGui::PopStyleColor(3);
     }
   }
   ImGui::EndMainMenuBar();
