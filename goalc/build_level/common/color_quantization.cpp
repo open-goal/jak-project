@@ -8,7 +8,6 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/Timer.h"
-#include <common/util/colors.h>
 
 /*!
  * Just removes duplicate colors, which can work if there are only a few unique colors.
