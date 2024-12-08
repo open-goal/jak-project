@@ -226,26 +226,15 @@ QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& i
   return out;
 }
 
-const Color DEBUG_COLOR(0x53, 0x1c, 0x43, 0xff);
-
 struct KdNode {
   // if not a leaf
   std::unique_ptr<KdNode> left, right;
 
   // if leaf
   std::vector<Color> colors;
-
-  bool has_debug() const {
-    for (auto& c : colors) {
-      if (c == DEBUG_COLOR) {
-        return true;
-      }
-    }
-    return false;
-  }
 };
 
-size_t pick_split_point(const std::vector<Color>& colors, int dim, bool debug) {
+size_t pick_split_point(const std::vector<Color>& colors, int dim) {
   if (colors.empty()) {
     return 0;
   }
@@ -293,15 +282,10 @@ int pick_split_dim_final_splits(const std::vector<Color>& colors) {
     }
   }
 
-
   return best_dim;
 }
 
 void split_kd(KdNode* in, u32 depth, int next_split_dim) {
-  bool debug = in->has_debug();
-  if (debug)
-    printf("KD split depth %d, dim %d\n", depth, next_split_dim);
-
   if (!depth) {
     return;
   }
@@ -318,8 +302,6 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
       }
       if (all_same) {
         next_split_dim = (next_split_dim + 1) % 4;
-        if (debug)
-          printf(" trying next dim because selected dim can't split (now on %d)\n", next_split_dim);
       } else {
         break;
       }
@@ -336,7 +318,7 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
 
   size_t i = 0;
   // size_t mid = in->colors.size() / 2;
-  size_t mid = pick_split_point(in->colors, next_split_dim, debug);
+  size_t mid = pick_split_point(in->colors, next_split_dim);
   if (depth & 1) {
     while (mid > 1 && in->colors[mid][next_split_dim] == in->colors[mid - 1][next_split_dim]) {
       mid--;
@@ -356,6 +338,7 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
     in->right->colors.push_back(in->colors[i]);
   }
 
+  /*
   if (debug) {
     if (in->left->colors.empty()) {
       printf(" LEFT empty\n");
@@ -371,6 +354,7 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
              in->right->colors.front()[next_split_dim], in->right->colors.back()[next_split_dim]);
     }
   }
+  */
 
   split_kd(in->left.get(), depth - 1, (next_split_dim + 1) % 4);
   split_kd(in->right.get(), depth - 1, (next_split_dim + 1) % 4);
@@ -466,11 +450,10 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 4>>& 
   int color_count = total_color_count(&root);
   printf("color count %d / %d\n", color_count, (1 << target_depth));
   while (color_count < (1 << target_depth)) {
-    printf("extra split iteration! have %d / %d\n", color_count, (1 << target_depth));
+    printf("extra split iteration - have %d / %d\n", color_count, (1 << target_depth));
     std::vector<KdNode*> extra_splits;
     get_splittable(&root, &extra_splits);
-    printf(" found %ld splittable nodes!\n", extra_splits.size());
-
+    printf(" found %ld splittable nodes\n", extra_splits.size());
     if (extra_splits.empty()) {
       break;
     }
@@ -485,9 +468,7 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 4>>& 
       color_count++;
     }
 
-    printf("top is %d\n", color_count);
     color_count = total_color_count(&root);
-    printf("bot is %d\n", color_count);
   }
 
   // Get final colors:
@@ -520,24 +501,26 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 4>>& 
            num_unique_colors, result.final_colors.size(), timer.getMs());
 
   // debug:
-  Color worst_in;
-  Color worst_out;
-  s32 worst_diff = 0;
+  if (!result.vtx_to_color.empty()) {
+    Color worst_in;
+    Color worst_out;
+    s32 worst_diff = -1;
 
-  for (size_t i = 0; i < result.vtx_to_color.size(); i++) {
-    Color input = in.at(i);
-    input.w() /= 2;
-    const Color output = result.final_colors.at(result.vtx_to_color.at(i));
-    const s32 diff = color_difference(input, output);
-    if (diff > worst_diff) {
-      worst_diff = diff;
-      worst_in = input;
-      worst_out = output;
+    for (size_t i = 0; i < result.vtx_to_color.size(); i++) {
+      Color input = in.at(i);
+      input.w() /= 2;
+      const Color output = result.final_colors.at(result.vtx_to_color.at(i));
+      const s32 diff = color_difference(input, output);
+      if (diff > worst_diff) {
+        worst_diff = diff;
+        worst_in = input;
+        worst_out = output;
+      }
     }
-  }
 
-  lg::error("Worst diff {} between {} {}", std::sqrt((float)worst_diff), worst_in.to_string_hex_byte(),
-            worst_out.to_string_hex_byte());
+    lg::error("Worst diff {} between {} {}", std::sqrt((float)worst_diff),
+              worst_in.to_string_hex_byte(), worst_out.to_string_hex_byte());
+  }
 
   return result;
 }
