@@ -113,6 +113,16 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
   if (db.obj_files_by_dgo.count(dgo_name)) {
     const auto& files = db.obj_files_by_dgo.at(dgo_name);
     MercSwapInfo swapped_info;
+    // build list of models to replace
+    auto merc_replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
+                                  game_version_names[db.version()] / "merc_replacements";
+    if (file_util::file_exists(merc_replacements_path.string())) {
+      auto custom_models =
+          file_util::find_files_in_dir(merc_replacements_path, std::regex(".*\\.glb"));
+      for (auto& mdl : custom_models) {
+        swapped_info.add_to_swap_list(mdl.stem().string());
+      }
+    }
     for (const auto& file : files) {
       if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
         const auto& ag_file = db.lookup_record(file);

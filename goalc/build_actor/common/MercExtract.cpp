@@ -6,7 +6,7 @@
 #include "goalc/build_level/common/gltf_mesh_extract.h"
 
 void extract(const std::string& name,
-             MercExtractData& out,
+             gltf_util::MercExtractData& out,
              const tinygltf::Model& model,
              const std::vector<gltf_util::NodeWithTransform>& all_nodes,
              u32 index_offset,
@@ -96,89 +96,14 @@ void extract(const std::string& name,
   out.new_model.max_bones = joints;
   out.new_model.max_draws = 0;
 
-  auto process_normal_draw = [&](tfrag3::MercEffect& eff, int mat_idx, const tfrag3::MercDraw& d_) {
-    eff.all_draws.push_back(d_);
-    auto& draw = eff.all_draws.back();
-    draw.mode = gltf_util::make_default_draw_mode();
-
-    if (mat_idx == -1) {
-      lg::warn("Draw had a material index of -1, using default texture.");
-      draw.tree_tex_id = 0;
-      return;
-    }
-    const auto& mat = model.materials[mat_idx];
-
-    int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
-    if (tex_idx == -1) {
-      lg::warn("Material {} has no texture, using default texture.", mat.name);
-      draw.tree_tex_id = 0;
-      return;
-    }
-
-    const auto& tex = model.textures[tex_idx];
-    ASSERT(tex.sampler >= 0);
-    ASSERT(tex.source >= 0);
-    gltf_util::setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
-    gltf_util::setup_alpha_from_material(mat, &draw.mode);
-
-    const auto& img = model.images[tex.source];
-    draw.tree_tex_id = tex_offset + texture_pool_add_texture(&out.tex_pool, img);
-  };
-
-  auto process_envmap_draw = [&](tfrag3::MercEffect& eff, int mat_idx, const tfrag3::MercDraw& d_) {
-    const auto& mat = model.materials[mat_idx];
-    eff.all_draws.push_back(d_);
-    auto& draw = eff.all_draws.back();
-    draw.mode = gltf_util::make_default_draw_mode();
-
-    if (mat_idx == -1) {
-      lg::warn("Envmap draw had a material index of -1, using default texture.");
-      draw.tree_tex_id = texture_pool_debug_checker(&out.tex_pool);
-      return;
-    }
-    int base_tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
-    if (base_tex_idx == -1) {
-      lg::warn("Envmap material {} has no texture, using default texture.", mat.name);
-      draw.tree_tex_id = texture_pool_debug_checker(&out.tex_pool);
-      return;
-    }
-
-    const auto& base_tex = model.textures[base_tex_idx];
-    ASSERT(base_tex.sampler >= 0);
-    ASSERT(base_tex.source >= 0);
-    gltf_util::setup_draw_mode_from_sampler(model.samplers.at(base_tex.sampler), &draw.mode);
-    gltf_util::setup_alpha_from_material(mat, &draw.mode);
-    const auto& roughness_tex =
-        model.textures.at(mat.pbrMetallicRoughness.metallicRoughnessTexture.index);
-    ASSERT(roughness_tex.sampler >= 0);
-    ASSERT(roughness_tex.source >= 0);
-
-    draw.tree_tex_id =
-        tex_offset + gltf_util::texture_pool_add_envmap_control_texture(
-                         &out.tex_pool, model, base_tex.source, roughness_tex.source,
-                         !draw.mode.get_clamp_s_enable(), !draw.mode.get_clamp_t_enable());
-
-    // now, setup envmap draw:
-    auto envmap_settings = gltf_util::envmap_settings_from_gltf(mat);
-    const auto& envmap_tex = model.textures[envmap_settings.texture_idx];
-    ASSERT(envmap_tex.sampler >= 0);
-    ASSERT(envmap_tex.source >= 0);
-    auto env_mode = gltf_util::make_default_draw_mode();
-    gltf_util::setup_draw_mode_from_sampler(model.samplers.at(envmap_tex.sampler), &env_mode);
-    eff.envmap_texture = tex_offset + gltf_util::texture_pool_add_texture(
-                                          &out.tex_pool, model.images[envmap_tex.source]);
-    env_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
-    env_mode.enable_ab();
-    eff.envmap_mode = env_mode;
-  };
-
   for (const auto& [mat_idx, d_] : draw_by_material) {
+    const auto& mat = model.materials[mat_idx];
     if (mat_idx < 0 || !gltf_util::material_has_envmap(model.materials[mat_idx]) ||
         !gltf_util::envmap_is_valid(model.materials[mat_idx])) {
-      process_normal_draw(e, mat_idx, d_);
+      gltf_util::process_normal_merc_draw(model, out, tex_offset, e, mat_idx, d_);
     } else {
       envmap_eff.has_envmap = true;
-      process_envmap_draw(envmap_eff, mat_idx, d_);
+      gltf_util::process_envmap_merc_draw(model, out, tex_offset, envmap_eff, mat_idx, d_);
     }
   }
 
@@ -200,7 +125,7 @@ void extract(const std::string& name,
            out.new_vertices.size());
 }
 
-void merc_convert(MercSwapData& out, const MercExtractData& in) {
+void merc_convert(gltf_util::MercSwapData& out, const gltf_util::MercExtractData& in) {
   // easy
   out.new_model = in.new_model;
   out.new_indices = in.new_indices;
@@ -231,12 +156,12 @@ void merc_convert(MercSwapData& out, const MercExtractData& in) {
   }
 }
 
-MercSwapData load_merc_model(u32 current_idx_count,
-                             u32 current_vtx_count,
-                             u32 current_tex_count,
-                             const std::string& path,
-                             const std::string& name) {
-  MercSwapData result;
+gltf_util::MercSwapData load_merc_model(u32 current_idx_count,
+                                        u32 current_vtx_count,
+                                        u32 current_tex_count,
+                                        const std::string& path,
+                                        const std::string& name) {
+  gltf_util::MercSwapData result;
   lg::info("Reading gltf mesh: {}", path);
   tinygltf::TinyGLTF loader;
   tinygltf::Model model;
@@ -247,7 +172,7 @@ MercSwapData load_merc_model(u32 current_idx_count,
   ASSERT_MSG(res, "Failed to load GLTF file!");
   auto all_nodes = gltf_util::flatten_nodes_from_all_scenes(model);
 
-  MercExtractData extract_data;
+  gltf_util::MercExtractData extract_data;
   extract(name, extract_data, model, all_nodes, current_idx_count, current_vtx_count,
           current_tex_count);
   merc_convert(result, extract_data);
