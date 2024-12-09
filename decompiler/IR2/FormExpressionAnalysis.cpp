@@ -2603,9 +2603,6 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
     ASSERT(x->parent_form == m_src);
   }
 
-  if (auto test0 = m_src->to_string(env) == "(* 0.00024414062 (-> arg0 y))") {
-    printf("");
-  }
   if (m_src->is_single_element()) {
     auto src_as_se = dynamic_cast<SimpleExpressionElement*>(m_src->back());
     if (src_as_se) {

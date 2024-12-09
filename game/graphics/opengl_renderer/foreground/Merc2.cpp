@@ -538,8 +538,6 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   auto* flags = (const PcMercFlags*)input_data;
   int num_effects = flags->effect_count;  // mostly just a sanity check
   ASSERT(num_effects < kMaxEffect);
-  // hack for custom models to disable blerc/mod draws
-  bool is_custom_model = model->effects.at(0).all_draws.at(0).no_strip;
   u64 current_ignore_alpha_bits = flags->ignore_alpha_mask;  // shader settings
   u64 current_effect_enable_bits = flags->enable_mask;       // mask for game to disable an effect
   bool model_uses_mod = flags->bitflags & 1;  // if we should update vertices from game.
@@ -566,11 +564,18 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
 
   // Next is pointers to merc data, needed so we can update vertices
 
+  // custom models are likely to have a different number of effects than what GOAL reports, update
+  // the count here (after reading DMA) so we don't potentially go out of bounds when we do
+  // blerc/mod draws
+  if (model->effects.at(0).all_draws.at(0).no_strip) {
+    num_effects = model->effects.size();
+  }
+
   // will hold opengl buffers for the updated vertices
   ModBuffers mod_opengl_buffers[kMaxEffect];
-  if (model_uses_pc_blerc && !is_custom_model) {
+  if (model_uses_pc_blerc) {
     model_mod_blerc_draws(num_effects, model, lev, mod_opengl_buffers, blerc_weights, stats);
-  } else if (model_uses_mod && !is_custom_model) {  // only if we've enabled, this path is slow.
+  } else if (model_uses_mod) {  // only if we've enabled, this path is slow.
     model_mod_draws(num_effects, model, lev, input_data, setup, mod_opengl_buffers, stats);
   }
 
@@ -650,8 +655,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
     auto& effect = model->effects[ei];
 
     bool should_envmap = effect.has_envmap && !model_disables_envmap;
-    bool should_mod =
-        !is_custom_model && ((model_uses_pc_blerc || model_uses_mod) && effect.has_mod_draw);
+    bool should_mod = (model_uses_pc_blerc || model_uses_mod) && effect.has_mod_draw;
 
     if (should_mod) {
       // draw as two parts, fixed and mod
