@@ -1134,6 +1134,10 @@
 
 
 (defmethod run-pending-updates! ((this engine-minimap) (arg0 time-frame))
+  "Run updates if they scheduled. If something is found that has no pending update, kill it.
+   Note that we won't kill things on this call if they fail to update their `update-time`.
+   They will survive until the next call to `run-pending-updates`!
+   (or you can modify their `update-time` before that to prevent them from being killed.)"
   (let ((s2-0 (the-as (pointer connection-pers) (&-> this alive-list)))
         (s3-0 (-> this alive-list))
         )
@@ -1242,6 +1246,7 @@
 
 ;; WARN: Function (method 10 engine-minimap) has a return type of none, but the expression builder found a return statement.
 (defmethod kill-callback ((this engine-minimap) (arg0 connection-pers))
+  "Called when a connection is removed."
   (if (not arg0)
       (return #f)
       )
@@ -1346,7 +1351,7 @@
         (set! (-> this target-inv-scale) 0.5)
         )
       )
-    (seek! (-> this offset y) (-> this target-inv-scale) (* 0.5 f30-2))
+    (seek! (-> this offset y) (-> this target-inv-scale) (/ f30-2 2))
     )
   (run-pending-updates! (-> this engine) (-> *display* base-clock frame-counter))
   (when (and (-> this ctywide) (and (= (-> this ctywide status) 'active) (!= (-> this offset w) 0.0)))
@@ -1927,23 +1932,23 @@
             (set-vector! (-> arg0 mat vector 2) (* (-> s1-0 x) f30-0) 0.0 (-> s1-0 z) 0.0)
             )
           (vector-! s2-0 (target-pos 0) (-> this minimap-corner))
-          (set! (-> s2-0 x) (* 0.00000023841858 (-> s2-0 x)))
-          (set! (-> s2-0 z) (* 0.00000023841858 (-> s2-0 z)))
+          (set! (-> s2-0 x) (/ (-> s2-0 x) (meters 1024)))
+          (set! (-> s2-0 z) (/ (-> s2-0 z) (meters 1024)))
           (vector+! (-> arg0 mat trans) s2-0 (-> this offset))
           )
         )
       (set! (-> arg0 mat trans y) 0.0)
-      (set! (-> arg0 corner 0 x) (* 0.25 (-> this offset y)))
-      (set! (-> arg0 corner 0 z) (* 0.25 (-> this offset y)))
+      (set! (-> arg0 corner 0 x) (/ (-> this offset y) 4))
+      (set! (-> arg0 corner 0 z) (/ (-> this offset y) 4))
       (set! (-> arg0 corner 0 w) 1.0)
-      (set! (-> arg0 corner 1 x) (* -0.25 (-> this offset y)))
-      (set! (-> arg0 corner 1 z) (* 0.25 (-> this offset y)))
+      (set! (-> arg0 corner 1 x) (/ (-> this offset y) -4))
+      (set! (-> arg0 corner 1 z) (/ (-> this offset y) 4))
       (set! (-> arg0 corner 1 w) 1.0)
-      (set! (-> arg0 corner 2 x) (* 0.25 (-> this offset y)))
-      (set! (-> arg0 corner 2 z) (* -0.25 (-> this offset y)))
+      (set! (-> arg0 corner 2 x) (/ (-> this offset y) 4))
+      (set! (-> arg0 corner 2 z) (/ (-> this offset y) -4))
       (set! (-> arg0 corner 2 w) 1.0)
-      (set! (-> arg0 corner 3 x) (* -0.25 (-> this offset y)))
-      (set! (-> arg0 corner 3 z) (* -0.25 (-> this offset y)))
+      (set! (-> arg0 corner 3 x) (/ (-> this offset y) -4))
+      (set! (-> arg0 corner 3 z) (/ (-> this offset y) -4))
       (set! (-> arg0 corner 3 w) 1.0)
       (vector-matrix*! (the-as vector (-> arg0 corner)) (the-as vector (-> arg0 corner)) (-> arg0 mat))
       (vector-matrix*! (-> arg0 corner 1) (-> arg0 corner 1) (-> arg0 mat))

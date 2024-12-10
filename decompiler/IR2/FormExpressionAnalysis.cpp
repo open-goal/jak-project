@@ -965,7 +965,7 @@ FormElement* make_and_compact_math_op(Form* arg0,
 /*!
  * Update a two-argument form that uses two floats.
  * This is for operations like * and + that can be nested
- * (* (* a b)) -> (* a b c)
+ * (* (* a b) c) -> (* a b c)
  * Note that we only apply this to the _first_ argument to keep the order of operations the same.
  */
 void SimpleExpressionElement::update_from_stack_float_2_nestable(const Env& env,
@@ -2621,6 +2621,71 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
           src_as_se->expr().get_arg(0).is_var()) {
         if (env.op_id_is_eliminated_coloring_move(src_as_se->expr().get_arg(0).var().idx())) {
           m_var_info.is_eliminated_coloring_move = true;
+        }
+      }
+    }
+
+    // (* 0.125 b) -> (/ b 8)
+    // adds explicit cast b to float if necessary
+    auto src_as_ge = dynamic_cast<GenericElement*>(m_src->back());
+    if (src_as_ge) {
+      auto mr = match(Matcher::op_fixed(FixedOperatorKind::MULTIPLICATION,
+                                        {Matcher::any_single(0), Matcher::any(1)}),
+                      m_src);
+      if (mr.matched && std::abs(mr.maps.floats.at(0)) < 1 && mr.maps.floats.at(0) != 0) {
+        auto inverse_mult = mr.maps.floats.at(0);
+        float divisor_num = 1.0f / inverse_mult;
+
+        // note: float inaccuracies lead to convergent values, so we can do this safely
+        if ((int)divisor_num != divisor_num && 1.0f / std::roundf(divisor_num) == inverse_mult) {
+          lg::debug("managed to round divisor - cool !! {} -> {} ({})", divisor_num,
+                    std::roundf(divisor_num), inverse_mult);
+          divisor_num = std::roundf(divisor_num);
+        }
+
+        int divisor_int = (int)divisor_num;
+        bool integer = divisor_int == divisor_num;
+        if (integer) {
+          auto elt = mr.maps.forms.at(1)->try_as_single_element();
+          auto b_as_simple = dynamic_cast<SimpleExpressionElement*>(elt);
+          // WARNING : there is an assumption here that derefs DO NOT have implicit casts!
+          auto b_as_deref = dynamic_cast<DerefElement*>(elt);
+          if (b_as_deref ||
+              (b_as_simple && b_as_simple->expr().kind() == SimpleExpression::Kind::IDENTITY)) {
+            // TODO check if op is float, cast if so
+            Form* divisor = nullptr;
+            if (divisor_num == 4096.0f) {
+              divisor = pool.form<ConstantTokenElement>("METER_LENGTH");
+            } else if (integer && divisor_int % 4096 == 0) {
+              divisor = pool.form<GenericElement>(
+                  GenericOperator::make_function(pool.form<ConstantTokenElement>("meters")),
+                  pool.form<SimpleAtomElement>(divisor_int / 4096, true));
+            } else if (integer && divisor_int % 2048 == 0) {
+              divisor = pool.form<GenericElement>(
+                  GenericOperator::make_function(pool.form<ConstantTokenElement>("meters")),
+                  pool.form<ConstantFloatElement>(divisor_num / (float)METER_LENGTH));
+            } else if (integer) {
+              divisor = pool.form<SimpleAtomElement>(divisor_int, true);
+            } else {
+              // this shouldn't run because of the checks before.
+              divisor = pool.form<ConstantFloatElement>(divisor_num);
+            }
+            if (divisor) {
+              if (b_as_deref || (b_as_simple->expr().is_var() &&
+                                 env.get_types_before_op(b_as_simple->expr().var().idx())
+                                         .get(b_as_simple->expr().var().reg())
+                                         .typespec() == TypeSpec("float"))) {
+                *m_src->back_ref() = pool.alloc_element<GenericElement>(
+                    GenericOperator::make_fixed(FixedOperatorKind::DIVISION), mr.maps.forms.at(1),
+                    divisor);
+              } else {
+                *m_src->back_ref() = pool.alloc_element<GenericElement>(
+                    GenericOperator::make_fixed(FixedOperatorKind::DIVISION),
+                    pool.form<CastElement>(TypeSpec("float"), mr.maps.forms.at(1), true), divisor);
+              }
+              m_src->back()->parent_form = m_src;
+            }
+          }
         }
       }
     }

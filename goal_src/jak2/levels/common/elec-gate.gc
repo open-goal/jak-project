@@ -750,6 +750,7 @@
   )
 
 (defmethod deactivate ((this elec-gate))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (set-elec-scale-if-close! this 0.0)
   (call-parent-method this)
   (none)
@@ -773,9 +774,9 @@
 
 (defmethod set-state! ((this elec-gate))
   "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
-make the gate `idle`.
+   make the gate `idle`.
 
-Otherwise, the gate will be `active`."
+   Otherwise, the gate will be `active`."
   (if (or (logtest? (actor-option user17) (-> this fact options))
           (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
           )
@@ -788,11 +789,11 @@ Otherwise, the gate will be `active`."
 
 (defmethod init-from-entity! ((this elec-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (set! (-> this entity) arg0)
@@ -841,7 +842,7 @@ This commonly includes things such as:
           (get-point-in-path! (-> this path-r) (new 'stack-no-clear 'vector) 0.0 'interp)
           )
         )
-  (set! (-> this wall-xz) (* 0.5 (-> this wall-xz)))
+  (set! (-> this wall-xz) (/ (-> this wall-xz) 2))
   (+! (-> this wall-xz) 4096.0)
   (set! (-> this wall-y)
         (fabs
@@ -874,8 +875,8 @@ This commonly includes things such as:
 
 (defmethod set-elec-scale! ((this fort-elec-gate) (scale float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-fordumpa-electricity-scale! scale)
   (set-forresca-electricity-scale! scale (-> this palette-id))
   (set-forrescb-electricity-scale! scale (-> this palette-id))
@@ -898,8 +899,8 @@ This commonly includes things such as:
 
 (defmethod set-elec-scale! ((this drill-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-drill-electricity-scale! arg0 (-> this palette-id))
   0
   (none)
@@ -924,8 +925,8 @@ This commonly includes things such as:
 
 (defmethod set-elec-scale! ((this castle-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-castle-electricity-scale! arg0)
   0
   (none)
@@ -995,8 +996,8 @@ This commonly includes things such as:
 
 (defmethod set-elec-scale! ((this palroof-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-palroof-electricity-scale! arg0 (-> this palette-id))
   0
   (none)

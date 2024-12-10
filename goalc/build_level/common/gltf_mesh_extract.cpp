@@ -15,6 +15,7 @@
 #include <common/util/image_resize.h>
 
 using namespace gltf_util;
+constexpr int kColorTreeDepth = 13;
 namespace gltf_mesh_extract {
 
 void dedup_tfrag_vertices(TfragOutput& data) {
@@ -201,7 +202,7 @@ void extract(const Input& in,
            out.tfrag_vertices.size());
 
   Timer quantize_timer;
-  auto quantized = quantize_colors_kd_tree(all_vtx_colors, 10);
+  auto quantized = quantize_colors_kd_tree(all_vtx_colors, kColorTreeDepth);
   for (size_t i = 0; i < out.tfrag_vertices.size(); i++) {
     out.tfrag_vertices[i].color_index = quantized.vtx_to_color[i];
   }
@@ -365,7 +366,7 @@ void extract(const Input& in,
            out.vertices.size());
 
   Timer quantize_timer;
-  auto quantized = quantize_colors_kd_tree(all_vtx_colors, 10);
+  auto quantized = quantize_colors_kd_tree(all_vtx_colors, kColorTreeDepth);
   for (size_t i = 0; i < out.vertices.size(); i++) {
     out.color_indices.push_back(quantized.vtx_to_color[i]);
   }

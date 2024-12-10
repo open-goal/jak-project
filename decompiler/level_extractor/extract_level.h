@@ -12,8 +12,13 @@ namespace decompiler {
 
 // info about what models have been replaced/added per level
 struct MercSwapInfo {
+  std::vector<std::string> swap_list;
   std::map<std::string, std::vector<std::string>> per_level_merc_swaps;
   std::map<std::string, std::vector<std::string>> per_level_custom_mdls;
+
+  bool should_swap(const std::string& model) {
+    return std::find(swap_list.begin(), swap_list.end(), model) != swap_list.end();
+  }
 
   bool already_swapped(const std::string& model, const std::string& level) {
     auto mdls_it = per_level_merc_swaps.find(level);
@@ -34,6 +39,8 @@ struct MercSwapInfo {
     }
     return false;
   }
+
+  void add_to_swap_list(const std::string& model) { swap_list.push_back(model); }
 
   void add_to_swapped_list(const std::string& model, const std::string& level) {
     per_level_merc_swaps[level].push_back(model);

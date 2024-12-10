@@ -11,13 +11,16 @@
   (:states
    snow-ball-shadow-idle))
 
+
 (deftype snow-ball-junction (structure)
   ((enter-time time-frame)
    (exit-time  time-frame)))
 
+
 (deftype snow-ball-path-info (structure)
   ((hug-path? symbol)
    (path-pos  vector :inline)))
+
 
 (deftype snow-ball-roller (process-drawable)
   ((root                   collide-shape-moving :override)
@@ -42,6 +45,7 @@
   (:states
    snow-ball-roller-idle))
 
+
 (deftype snow-ball (process)
   ((child-override         (pointer snow-ball-roller) :overlay-at child)
    (state-time             time-frame)
@@ -54,6 +58,7 @@
    (snow-ball-method-15 (_type_ (inline-array snow-ball-junction) int) symbol))
   (:states
    snow-ball-idle))
+
 
 (defskelgroup *snow-ball-sg*
   snow-ball
@@ -189,7 +194,7 @@
       (cond
         ((>= f0-23 245760.0) (deactivate self))
         (else
-         (let ((f0-25 (- 1.0 (* 0.0000040690106 f0-23))))
+         (let ((f0-25 (- 1.0 (/ f0-23 (meters 60)))))
            (set! (-> self root scale x) f0-25)
            (set! (-> self root scale y) f0-25)
            (set! (-> self root scale z) f0-25))))))
@@ -367,10 +372,10 @@
       (suspend)
       (b! #t cfg-1 :delay (nop!))))
 
-(defmethod relocate ((this snow-ball) (arg0 int))
+(defmethod relocate ((this snow-ball) (offset int))
   (dotimes (v1-0 2)
-    (if (nonzero? (-> this path v1-0)) (&+! (-> this path v1-0) arg0)))
-  (call-parent-method this arg0))
+    (if (nonzero? (-> this path v1-0)) (&+! (-> this path v1-0) offset)))
+  (call-parent-method this offset))
 
 (defmethod init-from-entity! ((this snow-ball) (arg0 entity-actor))
   (set! (-> this last-path-picked) 1)

@@ -1064,13 +1064,13 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs squid-tentacle.
-(defmethod relocate ((this squid-tentacle) (arg0 int))
+(defmethod relocate ((this squid-tentacle) (offset int))
   (dotimes (v1-0 11)
     (if (nonzero? (-> this chain-joints v1-0 joint-mod))
-        (&+! (-> this chain-joints v1-0 joint-mod) arg0)
+        (&+! (-> this chain-joints v1-0 joint-mod) offset)
         )
     )
-  (the-as squid-tentacle ((method-of-type process-drawable relocate) this arg0))
+  (the-as squid-tentacle ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -1499,6 +1499,7 @@
   )
 
 (defmethod deactivate ((this squid))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this thruster-part))
       (kill-and-free-particles (-> this thruster-part))
       )
@@ -1519,39 +1520,39 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs squid.
-(defmethod relocate ((this squid) (arg0 int))
+(defmethod relocate ((this squid) (offset int))
   (if (nonzero? (-> this thruster-part))
-      (&+! (-> this thruster-part) arg0)
+      (&+! (-> this thruster-part) offset)
       )
   (if (nonzero? (-> this first-path))
-      (&+! (-> this first-path) arg0)
+      (&+! (-> this first-path) offset)
       )
   (if (nonzero? (-> this second-path))
-      (&+! (-> this second-path) arg0)
+      (&+! (-> this second-path) offset)
       )
   (if (nonzero? (-> this third-path))
-      (&+! (-> this third-path) arg0)
+      (&+! (-> this third-path) offset)
       )
   (if (nonzero? (-> this gun-tilt-left-jm))
-      (&+! (-> this gun-tilt-left-jm) arg0)
+      (&+! (-> this gun-tilt-left-jm) offset)
       )
   (if (nonzero? (-> this gun-tilt-right-jm))
-      (&+! (-> this gun-tilt-right-jm) arg0)
+      (&+! (-> this gun-tilt-right-jm) offset)
       )
   (if (nonzero? (-> this tentacle-base-jm))
-      (&+! (-> this tentacle-base-jm) arg0)
+      (&+! (-> this tentacle-base-jm) offset)
       )
-  (the-as squid ((method-of-type process-drawable relocate) this arg0))
+  (the-as squid ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this squid) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by)
           (penetrate
@@ -2831,7 +2832,7 @@ This commonly includes things such as:
       (launch-particles (-> *part-id-table* 4859) s4-1)
       )
     (let ((s4-2 (new 'stack-no-clear 'matrix))
-          (f26-0 (* 0.000012207031 f30-0))
+          (f26-0 (/ f30-0 (meters 20)))
           (f30-1 (-> *part-id-table* 4860 init-specs 3 initial-valuef))
           (f28-0 (-> *part-id-table* 4860 init-specs 4 initial-valuef))
           )

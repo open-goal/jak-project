@@ -756,4 +756,89 @@ tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8, 4>>&
   return colors;
 }
 
+void process_normal_merc_draw(const tinygltf::Model& model,
+                              MercExtractData& out,
+                              u32 tex_offset,
+                              tfrag3::MercEffect& eff,
+                              int mat_idx,
+                              const tfrag3::MercDraw& d_) {
+  const auto& mat = model.materials[mat_idx];
+  eff.all_draws.push_back(d_);
+  auto& draw = eff.all_draws.back();
+  draw.mode = gltf_util::make_default_draw_mode();
+
+  if (mat_idx == -1) {
+    lg::warn("Draw had a material index of -1, using default texture.");
+    draw.tree_tex_id = 0;
+    return;
+  }
+  int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
+  if (tex_idx == -1) {
+    lg::warn("Material {} has no texture, using default texture.", mat.name);
+    draw.tree_tex_id = 0;
+    return;
+  }
+
+  const auto& tex = model.textures[tex_idx];
+  ASSERT(tex.sampler >= 0);
+  ASSERT(tex.source >= 0);
+  gltf_util::setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
+  gltf_util::setup_alpha_from_material(mat, &draw.mode);
+
+  const auto& img = model.images[tex.source];
+  draw.tree_tex_id = tex_offset + texture_pool_add_texture(&out.tex_pool, img);
+};
+
+void process_envmap_merc_draw(const tinygltf::Model& model,
+                              MercExtractData& out,
+                              u32 tex_offset,
+                              tfrag3::MercEffect& eff,
+                              int mat_idx,
+                              const tfrag3::MercDraw& d_) {
+  const auto& mat = model.materials[mat_idx];
+  eff.all_draws.push_back(d_);
+  auto& draw = eff.all_draws.back();
+  draw.mode = gltf_util::make_default_draw_mode();
+
+  if (mat_idx == -1) {
+    lg::warn("Envmap draw had a material index of -1, using default texture.");
+    draw.tree_tex_id = texture_pool_debug_checker(&out.tex_pool);
+    return;
+  }
+  int base_tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
+  if (base_tex_idx == -1) {
+    lg::warn("Envmap material {} has no texture, using default texture.", mat.name);
+    draw.tree_tex_id = texture_pool_debug_checker(&out.tex_pool);
+    return;
+  }
+
+  const auto& base_tex = model.textures[base_tex_idx];
+  ASSERT(base_tex.sampler >= 0);
+  ASSERT(base_tex.source >= 0);
+  gltf_util::setup_draw_mode_from_sampler(model.samplers.at(base_tex.sampler), &draw.mode);
+  gltf_util::setup_alpha_from_material(mat, &draw.mode);
+  const auto& roughness_tex =
+      model.textures.at(mat.pbrMetallicRoughness.metallicRoughnessTexture.index);
+  ASSERT(roughness_tex.sampler >= 0);
+  ASSERT(roughness_tex.source >= 0);
+
+  draw.tree_tex_id =
+      tex_offset + gltf_util::texture_pool_add_envmap_control_texture(
+                       &out.tex_pool, model, base_tex.source, roughness_tex.source,
+                       !draw.mode.get_clamp_s_enable(), !draw.mode.get_clamp_t_enable());
+
+  // now, setup envmap draw:
+  auto envmap_settings = gltf_util::envmap_settings_from_gltf(mat);
+  const auto& envmap_tex = model.textures[envmap_settings.texture_idx];
+  ASSERT(envmap_tex.sampler >= 0);
+  ASSERT(envmap_tex.source >= 0);
+  auto env_mode = gltf_util::make_default_draw_mode();
+  gltf_util::setup_draw_mode_from_sampler(model.samplers.at(envmap_tex.sampler), &env_mode);
+  eff.envmap_texture = tex_offset + gltf_util::texture_pool_add_texture(
+                                        &out.tex_pool, model.images[envmap_tex.source]);
+  env_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+  env_mode.enable_ab();
+  eff.envmap_mode = env_mode;
+};
+
 }  // namespace gltf_util
