@@ -609,6 +609,14 @@ void pc_get_resolution(u32 id, u32 for_windowed, u32 w_ptr, u32 h_ptr) {
   }
 }
 
+u32 pc_get_current_height_resolution() {
+  return Gfx::g_global_settings.game_res_h;
+}
+
+u32 pc_get_current_width_resolution() {
+  return Gfx::g_global_settings.game_res_w;
+}
+
 u64 pc_is_supported_resolution(u64 width, u64 height) {
   if (Display::GetMainDisplay()) {
     return bool_to_symbol(
@@ -955,6 +963,8 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-set-window-size!", (void*)pc_set_window_size);
   make_func_symbol_func("pc-get-num-resolutions", (void*)pc_get_num_resolutions);
   make_func_symbol_func("pc-get-resolution", (void*)pc_get_resolution);
+  make_func_symbol_func("pc-get-resolution-h", (void*)pc_get_current_height_resolution);
+  make_func_symbol_func("pc-get-resolution-w", (void*)pc_get_current_width_resolution);
   make_func_symbol_func("pc-is-supported-resolution?", (void*)pc_is_supported_resolution);
 
   // -- INPUT RELATED --
