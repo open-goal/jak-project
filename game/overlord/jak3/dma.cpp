@@ -48,6 +48,7 @@ struct DmaInterruptHandlerHack {
   sceSdTransIntrHandler cb = nullptr;
   void* data;
   int countdown = 0;
+  bool pending = false;
 } g_DmaInterruptHack;
 
 }  // namespace
@@ -87,9 +88,19 @@ void set_dma_intr_handler_hack(s32 chan, sceSdTransIntrHandler cb, void* data) {
   g_DmaInterruptHack.cb = cb;
   g_DmaInterruptHack.data = data;
   g_DmaInterruptHack.countdown = 10;
+  g_DmaInterruptHack.pending = true;
 }
 
 int SPUDmaIntr(int channel, void* userdata);
+
+void complete_dma_now() {
+  if (g_DmaInterruptHack.pending) {
+    int chan = g_DmaInterruptHack.chan;
+    void* data = g_DmaInterruptHack.data;
+    g_DmaInterruptHack = {};
+    SPUDmaIntr(chan, data);
+  }
+}
 
 void dma_intr_hack() {
   if (g_DmaInterruptHack.countdown) {
@@ -498,11 +509,25 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
     }
   }
 
-  // kick off dma, if we decided not to queue.
+  // Note on DMA interrupts.
+  // The DMA completion interrupt handler function may start more DMA transfers.
+  // If the second transfer's completion interrupt runs before the first transfer's completion
+  // interrupt returns, things break. This wasn't an issue on the real PS2 since the DMA takes
+  // longer. On PC, this means that we can't just call the completion handler from the DMA start
+  // function. Instead, put it at the end of this function.
+
+  // kick off dma, if we decided not to queue. This copies data immediately to the SPU buffer, but
+  // doesn't run the completion interrupt.
   if (!defer) {
     g_bSpuDmaBusy = true;
     set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, user_data);
     voice_trans_wrapper(g_nSpuDmaChannel, 0, iop_mem, spu_addr, length);
+  }
+
+  // run completion interrupts. the interrupt may start another DMA transfer, which should also
+  // finish here.
+  while (g_DmaInterruptHack.pending) {
+    complete_dma_now();
   }
   return ret;
 }

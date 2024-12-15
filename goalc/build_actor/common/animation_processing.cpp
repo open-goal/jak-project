@@ -188,11 +188,12 @@ void compress_frame_to_matrix(CompressedFrame* frame,
 void compress_trans(CompressedFrame* frame, const math::Vector3f& trans, bool big) {
   if (big) {
     // 64, 64, 32
+    const math::Vector3f scaled_trans = trans * 4096.f;
     u64 data[1];
-    memcpy(data, trans.data(), 2 * sizeof(float));
+    memcpy(data, scaled_trans.data(), 2 * sizeof(float));
     frame->data64.push_back(data[0]);
     u32 data_32[1];
-    memcpy(data_32, &trans.z(), sizeof(float));
+    memcpy(data_32, &scaled_trans.z(), sizeof(float));
     frame->data32.push_back(data_32[0]);
   } else {
     constexpr float kTransScale = 4.f / 4096.f;

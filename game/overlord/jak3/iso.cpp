@@ -821,7 +821,7 @@ u32 ISOThread() {
   // ISOFileDef* file_def = nullptr;
 
   while (true) {
-    dma_intr_hack();
+    // dma_intr_hack();
     // Part 1: Handle incoming messages from the user:
 
     int poll_result = PollMbx((MsgPacket**)&mbx_cmd, g_nISOMbx);
