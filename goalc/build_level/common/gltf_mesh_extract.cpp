@@ -12,7 +12,7 @@
 #include "common/math/geometry.h"
 #include "common/util/Timer.h"
 #include "common/util/gltf_util.h"
-#include <common/util/image_resize.h>
+#include "common/util/image_resize.h"
 
 using namespace gltf_util;
 constexpr int kColorTreeDepth = 13;
