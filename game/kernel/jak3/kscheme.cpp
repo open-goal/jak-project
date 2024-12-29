@@ -1923,8 +1923,8 @@ int InitHeapAndSymbol() {
       lg::error(
           "Kernel version mismatch! Compiled C kernel version is {}.{} but"
           " the goal kernel is {}.{}",
-          KERNEL_VERSION_MAJOR, KERNEL_VERSION_MINOR, kernel_version >> 0x13,
-          (kernel_version >> 3) & 0xffff);
+          kernel_version >> 0x13, (kernel_version >> 3) & 0xffff, KERNEL_VERSION_MAJOR,
+          KERNEL_VERSION_MINOR);
       return -1;
     } else {
       lg::info("Got correct kernel version {}.{}", kernel_version >> 0x13,
