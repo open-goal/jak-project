@@ -559,6 +559,8 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"U~Y~-13H~+2V,~Z", "Ų"},
     {"U~Y~-18H~-10V-~Z", "Ū"},
     {"I~Y~-8H~+1V,~Z", "Į"},
+    // czech specific
+    {"U~Y~-23H~-5Vº~Z", "Ů"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -575,6 +577,8 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"N~Y~-21H~-5V'~Z", "Ń"},
     {"S~Y~-21H~-5V'~Z", "Ś"},
     {"Z~Y~-21H~-5V'~Z", "Ź"},
+    // czech specific
+    {"Y~Y~-25H~-4V'~Z", "Ý"},
 
     // double acute accents
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},   // custom
@@ -610,6 +614,13 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"O~Y~-20H~-4Vˇ~Z", "Ǒ"},
     {"U~Y~-24H~-3Vˇ~Z", "Ǔ"},
     {"Y~Y~-24H~-3Vˇ~Z", "Y̌"},
+    // czech specific - Č Ň Ř Š Ž Ť
+    {"C~Y~-25H~-9Vˇ~Z", "Č"},
+    {"N~Y~-23H~-5Vˇ~Z", "Ň"},
+    {"R~Y~-24H~-5Vˇ~Z", "Ř"},
+    {"S~Y~-24H~-5Vˇ~Z", "Š"},
+    {"T~Y~-23H~-5Vˇ~Z", "Ť"},
+    {"Z~Y~-23H~-5Vˇ~Z", "Ž"},
 
     // dakuten katakana
     {"~Yウ~Z゛", "ヴ"},
@@ -975,6 +986,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"u~Y~-18H~-15V-~Z", "ū"},
     {"I~Y~-8H~+4V,~Z", "Į"},
     {"i~Y~-8H~+4V,~Z", "į"},
+    // czech specific
+    {"U~Y~-24H~-7Vº~Z", "Ů"},
+    {"u~Y~-23H~-5Vº~Z", "ů"},
+    {"t~Y~-7H~-21V,~Z", "ť"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -996,6 +1011,9 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"u~Y~-24H~-3V'~Z", "ú"},
     {"Z~Y~-24H~-3V'~Z", "Ź"},
     {"z~Y~-24H~-3V'~Z", "ź"},
+    // czech specific
+    {"Y~Y~-26H~-5V'~Z", "Ý"},
+    {"~+7Vy~-7V~Y~-24H~-3V'~Z", "ý"},
 
     // circumflex
     {"A~Y~-20H~-4V^~Z", "Â"},
@@ -1047,6 +1065,18 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"u~Y~-24H~-3Vˇ~Z", "ǔ"},
     {"Y~Y~-25H~-5Vˇ~Z", "Y̌"},
     {"~+7Vy~-7V~Y~-25H~-3Vˇ~Z", "y̌"},
+    // czech specific - Č č Ň ň Ř ř Š š Ž ž Ť
+    {"C~Y~-25H~-9Vˇ~Z", "Č"},
+    {"c~Y~-24H~-5Vˇ~Z", "č"},
+    {"N~Y~-25H~-9Vˇ~Z", "Ň"},
+    {"n~Y~-24H~-5Vˇ~Z", "ň"},
+    {"R~Y~-25H~-9Vˇ~Z", "Ř"},
+    {"r~Y~-22H~-5Vˇ~Z", "ř"},
+    {"S~Y~-25H~-9Vˇ~Z", "Š"},
+    {"s~Y~-22H~-5Vˇ~Z", "š"},
+    {"T~Y~-24H~-7Vˇ~Z", "Ť"},
+    {"Z~Y~-25H~-9Vˇ~Z", "Ž"},
+    {"z~Y~-24H~-5Vˇ~Z", "ž"},
 
     // dakuten katakana
     {"~Yウ~Z゛", "ヴ"},
