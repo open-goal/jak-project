@@ -19,7 +19,7 @@ masks = {
     "#b1111": "xyzw",
 }
 
-relevant_files = glob.glob("./jak1/**/*.gc", recursive=True)
+relevant_files = glob.glob("./jak3/**/*.gc", recursive=True)
 mask_regex = re.compile(r"(:mask #b[0,1]+)")
 op_regex = re.compile(r"\(.*(\.vf)\s")
 
