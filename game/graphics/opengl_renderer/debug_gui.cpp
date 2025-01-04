@@ -6,6 +6,7 @@
 #include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/graphics/screenshot.h"
+#include "game/overlord/jak3/dma.h"
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/core.h"
@@ -104,6 +105,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       ImGui::MenuItem("Profiler", nullptr, &m_draw_profiler);
       ImGui::MenuItem("Small Profiler", nullptr, &small_profiler);
       ImGui::MenuItem("Loader", nullptr, &m_draw_loader);
+      ImGui::MenuItem("Overlord", nullptr, &m_draw_overlord);
       if (ImGui::MenuItem("Reboot In Debug Mode!")) {
         want_reboot_in_debug = true;
       }
@@ -214,5 +216,20 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
 
   if (m_draw_frame_time) {
     m_frame_timer.draw_window(dma_stats);
+  }
+
+  if (should_draw_overlord_debug()) {
+    draw_overlord_debug_menu();
+  }
+}
+
+void OpenGlDebugGui::draw_overlord_debug_menu() {
+  ImGui::Begin("Overlord");
+
+  for (int stream_idx = 0; stream_idx < 6; stream_idx++) {
+    auto& stream = jak3::g_overlord_stream_memory.infos[stream_idx];
+
+    ImGui::Text("%30s [%3d] | %30s [%3d]", stream[0].name.chars, stream[0].idx,
+                stream[1].name.chars, stream[1].idx);
   }
 }
