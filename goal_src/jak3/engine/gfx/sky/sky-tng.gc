@@ -20,6 +20,27 @@
 
 (def-mips2c render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
 
+(defun update-pc-sky-scaling ()
+  "Update values in sky-work so the moon/sun don't look stretched."
+  (let ((scale-factor (if (-> *pc-settings* use-vis?)
+                          1.0
+                          (-> *video-params* relative-x-scale))))
+    (set! (-> *sky-work* sun-coords 0 x) (* scale-factor -267.0))
+    (set! (-> *sky-work* sun-coords 1 x) (* scale-factor 267.0))
+    (set! (-> *sky-work* green-coords 0 x) (* scale-factor -126.0))
+    (set! (-> *sky-work* green-coords 1 x) (* scale-factor 126.0))
+    (set! (-> *sky-work* moon0-coords 0 x) (* scale-factor -357.0))
+    (set! (-> *sky-work* moon0-coords 1 x) (* scale-factor 357.0))
+    (set! (-> *sky-work* moon1-coords 0 x) (* scale-factor -1207.0))
+    (set! (-> *sky-work* moon1-coords 1 x) (* scale-factor 1207.0))
+    (set! (-> *sky-work* moon2-coords 0 x) (* scale-factor -232.0))
+    (set! (-> *sky-work* moon2-coords 1 x) (* scale-factor 232.0))
+    (set! (-> *sky-work* day-star-coords 0 x) (* scale-factor -126.0))
+    (set! (-> *sky-work* day-star-coords 1 x) (* scale-factor 126.0))
+    )
+  (none)
+  )
+
 ;; WARN: Return type mismatch pointer vs none.
 ;; ERROR: Function may read a register that is not set: ra
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
@@ -637,6 +658,8 @@
   )
 
 (defmethod draw ((this sky-work))
+  ;; og:preserve-this
+  (update-pc-sky-scaling)
   (let ((s4-0 *time-of-day-context*)
         (v1-0 #f)
         )
