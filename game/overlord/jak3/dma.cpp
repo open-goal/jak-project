@@ -13,6 +13,7 @@
 #define VOICE_BIT(voice) (1 << ((voice) >> 1))
 
 namespace jak3 {
+OverlordStreamMemory g_overlord_stream_memory;
 using namespace iop;
 namespace {
 
@@ -50,6 +51,8 @@ struct DmaInterruptHandlerHack {
   int countdown = 0;
   bool pending = false;
 } g_DmaInterruptHack;
+
+const char* g_current_stream_name = 0;
 
 }  // namespace
 
@@ -139,7 +142,71 @@ int voice_trans_wrapper(s16 chan, u32 mode, const void* iop_addr, u32 spu_addr, 
   } else {
     g_voiceTransRunning = true;
     g_voiceTransTime = GetSystemTimeLow();
+
+    switch (spu_addr) {
+      case 0x5040:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 0, 0);
+        break;
+      case 0x7040:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 0, 1);
+        break;
+      case 0x9080:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 1, 0);
+        break;
+      case 0xb080:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 1, 1);
+        break;
+      case 0xd0c0:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 2, 0);
+        break;
+      case 0xf0c0:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 2, 1);
+        break;
+      case 0x11100:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 3, 0);
+        break;
+      case 0x13100:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 3, 1);
+        break;
+      case 0x15140:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 4, 0);
+        break;
+      case 0x17140:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 4, 1);
+        break;
+      case 0x19180:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 5, 0);
+        break;
+      case 0x1b180:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 5, 1);
+        break;
+    }
     return sceSdVoiceTrans(chan, mode, iop_addr, spu_addr, size);
+  }
+}
+
+OverlordStreamMemory::OverlordStreamMemory() {
+  for (auto& x : infos) {
+    for (auto& y : x) {
+      y.idx = 0;
+      strcpy(y.name.chars, "Uninitialized");
+    }
+  }
+}
+
+void OverlordStreamMemory::update_name(const char* input, int stream, int side) {
+  auto& info = infos[stream][side];
+  if (!input) {
+    strcpy(info.name.chars, "???");
+    info.idx = 0;
+  } else {
+    if (strcmp(input, info.name.chars) == 0) {
+      info.idx++;
+    } else {
+      info.idx = 0;
+      strncpy(info.name.chars, input, 48);
+      info.name.chars[47] = 0;
+    }
   }
 }
 
@@ -464,6 +531,13 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
   ovrld_log(LogCategory::SPU_DMA_STR,
             "DMA to SPU requested for {}, {} bytes to 0x{:x}, currently busy? {}",
             cmd ? cmd->name : "NO-CMD", length, spu_addr, g_bSpuDmaBusy);
+  if (cmd) {
+    g_current_stream_name = cmd->name;
+  } else {
+    const static char* unknown = "unknown";
+    g_current_stream_name = unknown;
+  }
+
   if (g_bSpuDmaBusy == 0) {
     // not busy, we can actually start dma now.
     g_nSpuDmaChannel = snd_GetFreeSPUDMA();
