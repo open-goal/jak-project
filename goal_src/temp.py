@@ -1,9 +1,11 @@
 op_names_2arg = [
+    ".mov.vf",
     ".abs.vf",
 ]
 
 op_names_3arg = [
     ".xor.vf",
+    ".blend.vf",
     ".max.vf",
     ".max.x.vf",
     ".max.y.vf",
@@ -65,12 +67,12 @@ masks = {
 
 for op_name in op_names_2arg:
     for op_addition, mask in masks.items():
-        print(f"(defmacro {op_name}.{op_addition} (dest src)\n  \"Performs `{op_name}` on the provided arguments with a `:mask` of `{mask}`\"\n  ({op_name} ,dest ,src :mask {mask}))\n")
+        print(f"(defmacro {op_name}.{op_addition} (dest src)\n  \"Performs `{op_name}` on the provided arguments with a `:mask` of `{mask}`\"\n  `({op_name} ,dest ,src :mask {mask}))\n")
 
 for op_name in op_names_3arg:
     for op_addition, mask in masks.items():
-        print(f"(defmacro {op_name}.{op_addition} (dest src1 src2)\n  \"Performs `{op_name}` on the provided arguments with a `:mask` of `{mask}`\"\n  ({op_name} ,dest ,src1 ,src2 :mask {mask}))\n")
+        print(f"(defmacro {op_name}.{op_addition} (dest src1 src2)\n  \"Performs `{op_name}` on the provided arguments with a `:mask` of `{mask}`\"\n  `({op_name} ,dest ,src1 ,src2 :mask {mask}))\n")
 
 for op_name in op_names_4arg:
     for op_addition, mask in masks.items():
-        print(f"(defmacro {op_name}.{op_addition} (dest src1 src2 src3)\n  \"Performs `{op_name}` on the provided arguments with a `:mask` of `{mask}`\"\n  ({op_name} ,dest ,src1 ,src2 ,src3 :mask {mask}))\n")
+        print(f"(defmacro {op_name}.{op_addition} (dest src1 src2 src3)\n  \"Performs `{op_name}` on the provided arguments with a `:mask` of `{mask}`\"\n  `({op_name} ,dest ,src1 ,src2 ,src3 :mask {mask}))\n")

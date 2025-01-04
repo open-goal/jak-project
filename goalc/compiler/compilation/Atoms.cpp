@@ -28,9 +28,6 @@ const std::unordered_map<std::string, GoalCompilerForm> g_goal_forms = {
     // INLINE ASM - VECTOR FLOAT OPERATIONS
     {".lvf", {.form_function = &Compiler::compile_asm_lvf}},
     {".svf", {.form_function = &Compiler::compile_asm_svf}},
-    {".mov.vf", {.form_function = &Compiler::compile_asm_mov_vf}},
-    {".blend.vf", {.form_function = &Compiler::compile_asm_blend_vf}},
-
     {".nop.vf", {.form_function = &Compiler::compile_asm_nop_vf}},
     {".wait.vf", {.form_function = &Compiler::compile_asm_wait_vf}},
 
@@ -39,6 +36,8 @@ const std::unordered_map<std::string, GoalCompilerForm> g_goal_forms = {
     // Masked VF Operations
     // You can specify them with an explicit `:mask 0b0000` arg
     // or you can append a `.[xyzw]` to the end of the name
+    {".mov.vf", {.form_function = &Compiler::compile_asm_mov_vf}},
+    {".blend.vf", {.form_function = &Compiler::compile_asm_blend_vf}},
     {".xor.vf", {.form_function = &Compiler::compile_asm_xor_vf}},
 
     {".max.vf", {.form_function = &Compiler::compile_asm_max_vf}},
