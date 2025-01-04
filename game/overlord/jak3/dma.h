@@ -1,8 +1,8 @@
 #pragma once
 
-#include "game/overlord/jak3/rpc_interface.h"
-
 #include "common/common_types.h"
+
+#include "game/overlord/jak3/rpc_interface.h"
 
 namespace jak3 {
 void jak3_overlord_init_globals_dma();
