@@ -121,7 +121,8 @@ struct ISOName {
 struct ISOFileDef {
   ISOName name;
   std::string full_path;  // pc
-  u32 length;
+  // removed because PC doesn't assume constant file sizes.
+  // u32 length;
 };
 
 struct VagDirEntry {
