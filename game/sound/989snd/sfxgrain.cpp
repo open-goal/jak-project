@@ -255,7 +255,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STOP(BlockSoundHandler& handler) {
 }
 
 s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PLAY(BlockSoundHandler& handler) {
-  auto cp = std::get<ControlParams>(data);
+  auto& cp = std::get<ControlParams>(data);
   auto options = cp.param[0];
   auto count = cp.param[1];
   auto& previous = cp.param[2];
