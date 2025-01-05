@@ -54,6 +54,7 @@ s32 format_impl_jak1(uint64_t* args) {
     print_temp = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
   }
   PrintPending = make_ptr(strend(print_temp)).cast<u8>();
+  assert_print_buffer_has_room(PrintPending.c());
 
   // what we write to
   char* output_ptr = PrintPending.cast<char>().c();
@@ -498,6 +499,7 @@ s32 format_impl_jak1(uint64_t* args) {
   // end
   *output_ptr = 0;
   output_ptr++;
+  assert_print_buffer_has_room((const u8*)output_ptr);
 
   if (original_dest == s7.offset + FIX_SYM_TRUE) {
     // do nothing, we're done
