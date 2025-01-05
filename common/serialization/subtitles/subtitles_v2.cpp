@@ -140,6 +140,8 @@ const std::unordered_map<std::string, u16> jak3_speaker_name_to_enum_val = {
     {"martinsen", 42},
     {"phillips", 43},
     {"yates", 44},
+    {"ottsel-voice-before-outro", 45},
+    {"ottsel-voice", 46},
 };
 
 GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_info) {
