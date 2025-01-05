@@ -171,6 +171,68 @@ DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, Sh
   return draw_settings;
 }
 
+std::array<math::Vector4f, 4> make_new_cam_mat(const math::Vector4f cam_T_w[4],
+                                               const math::Vector4f persp[4],
+                                               float fog_constant,
+                                               float hvdf_z) {
+  // renderers may eventually have tricks to do things in local coordinates - so use the convention
+  // that the shader has already subtracted off the camera translation from the vertex position.
+  // (I think this could help with accuracy too, since you aren't rotating and subtracting two large
+  // vectors that are very close to each other)
+
+  // this is the perspective x-scaling. This is used to map to a 256-pixel buffer.
+  const float game_pxx = persp[0][0];
+  // on PC, OpenGL uses normalized coordinates for drawing, so divide by the pixel width.
+  // in the game, the perspective divide includes a multiplication by the fog constant, for PC,
+  // just include this multiply here so we can let OpenGL do the perspective multiply.
+  const float pc_pxx = fog_constant * game_pxx / 256.f;
+
+  // this is the perspective y-scaling.
+  const float game_pyy = persp[1][1];
+  // same logic as y - there's a later SCISSOR scaling in the shader that expects this ratio.
+  const float pc_pyy = -fog_constant * game_pyy / 128.f;
+
+  // the depth is considered twice. Once, as the value to write into the depth buffer, which is
+  // scaled for PC here:
+  const float depth_scale = fog_constant * persp[2][2] / 8388608;
+
+  // and once as the value used for perspective divide
+  const float game_pzw = persp[2][3];
+  const float game_depth_offset = persp[3][2];
+
+  // set up PC scaling values
+  math::Vector3f persp_scale(pc_pxx, pc_pyy, depth_scale);
+
+  // it turns out that shifting the depth buffer to line up with OpenGL is equivalent to adding
+  // transformed.w * (hvdf_z / 8388608.f - 1.f) to the depth value. We know that w is just depth *
+  // pzw, so we can include the effect here:
+  const float pc_z_offset = (hvdf_z / 8388608.f - 1.f);
+  persp_scale.z() += pc_z_offset * game_pzw;
+
+  std::array<math::Vector4f, 4> result;
+  for (auto& x : result) {
+    x.set_zero();
+  }
+
+  // fill out the upper 3x3 - simply scale the rotation matrix by the perspective scale.
+  for (int row = 0; row < 3; row++) {
+    for (int col = 0; col < 3; col++) {
+      result[row][col] = cam_T_w[row][col] * persp_scale[col];
+    }
+  }
+
+  // fill out the right most column. This converts world-space points to depth for divide, scaled by
+  // pzw. for now, copy the game.
+  for (int row = 0; row < 3; row++) {
+    result[row][3] = cam_T_w[row][2] * game_pzw;
+  }
+
+  // depth buffer offset - now needs to be scaled by the PC depth buffer scaling too
+  result[3][2] = fog_constant * game_depth_offset / 8388608;
+
+  return result;
+}
+
 void first_tfrag_draw_setup(const GoalBackgroundCameraData& settings,
                             SharedRenderState* render_state,
                             ShaderId shader) {
@@ -181,8 +243,36 @@ void first_tfrag_draw_setup(const GoalBackgroundCameraData& settings,
   glUniform1i(glGetUniformLocation(id, "decal"), false);
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
   glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.camera[0].data());
+
+  auto newcam =
+      make_new_cam_mat(settings.rot, settings.perspective, settings.fog.x(), settings.hvdf_off.z());
+
+  /*
+  fmt::print("camera:\n{}\n{}\n{}\n{}\n", settings.camera[0].to_string_aligned(),
+             settings.camera[1].to_string_aligned(), settings.camera[2].to_string_aligned(),
+             settings.camera[3].to_string_aligned());
+
+  fmt::print("camera2:\n{}\n{}\n{}\n{}\n", newcam[0].to_string_aligned(),
+             newcam[1].to_string_aligned(), newcam[2].to_string_aligned(),
+             newcam[3].to_string_aligned());
+
+  fmt::print("persp:\n{}\n{}\n{}\n{}\n", settings.perspective[0].to_string_aligned(),
+             settings.perspective[1].to_string_aligned(),
+             settings.perspective[2].to_string_aligned(),
+             settings.perspective[3].to_string_aligned());
+  fmt::print("rot:\n{}\n{}\n{}\n{}\n", settings.rot[0].to_string_aligned(),
+             settings.rot[1].to_string_aligned(), settings.rot[2].to_string_aligned(),
+             settings.rot[3].to_string_aligned());
+  fmt::print("ctrans: {}\n", settings.trans.to_string_aligned());
+  fmt::print("hvdf: {}\n", settings.hvdf_off.to_string_aligned());
+  */
+
+  glUniformMatrix4fv(glGetUniformLocation(id, "pc_camera"), 1, GL_FALSE, newcam[0].data());
+
   glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.hvdf_off[0], settings.hvdf_off[1],
               settings.hvdf_off[2], settings.hvdf_off[3]);
+  glUniform4f(glGetUniformLocation(id, "cam_trans"), settings.trans[0], settings.trans[1],
+              settings.trans[2], settings.trans[3]);
   glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.fog.x());
   glUniform1f(glGetUniformLocation(id, "fog_min"), settings.fog.y());
   glUniform1f(glGetUniformLocation(id, "fog_max"), settings.fog.z());
