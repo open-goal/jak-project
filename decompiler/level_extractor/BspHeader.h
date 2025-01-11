@@ -862,6 +862,22 @@ struct FileInfo {
   std::string print(int indent = 0) const;
 };
 
+struct Jak1BspNodeRef {
+  bool is_leaf = false;
+  int index = 0;
+};
+
+struct Jak1BspNode {
+  Jak1BspNodeRef front;
+  Jak1BspNodeRef back;
+
+  uint32_t front_flags = 0;
+  uint32_t back_flags = 0;
+  Vector plane;
+
+  bool discovered = false;
+};
+
 struct BspHeader {
   //  (info file-info :offset 4)
   FileInfo file_info;
@@ -904,6 +920,7 @@ struct BspHeader {
   DrawableInlineArrayActor actors;
   //  (cameras (array entity-camera) :offset-assert 116)
   //  (nodes (inline-array bsp-node) :offset-assert 120)
+  std::vector<Jak1BspNode> jak1_bsp_nodes;
   //
   //  (level level :offset-assert 124)
   //  (current-leaf-idx uint16 :offset-assert 128)

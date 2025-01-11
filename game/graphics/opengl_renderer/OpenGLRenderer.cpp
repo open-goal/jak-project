@@ -74,6 +74,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                                GameVersion version)
     : m_render_state(texture_pool, loader, version),
       m_collide_renderer(version),
+      m_bsp_renderer(version),
       m_version(version) {
   // requires OpenGL 4.3
 #ifndef __APPLE__
@@ -1104,6 +1105,7 @@ void OpenGLRenderer::draw_renderer_selection_window() {
   ImGui::Checkbox("Sky CPU", &m_render_state.use_sky_cpu);
   ImGui::Checkbox("Occlusion Cull", &m_render_state.use_occlusion_culling);
   ImGui::Checkbox("Blackout Loads", &m_enable_fast_blackout_loads);
+  m_bsp_renderer.draw_debug_window();
 
   if (m_texture_animator && ImGui::TreeNode("Texture Animator")) {
     m_texture_animator->draw_debug_window();
@@ -1304,9 +1306,16 @@ void OpenGLRenderer::dispatch_buckets_jak1(DmaFollower dma,
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
     // hack to draw the collision mesh in the middle the drawing
-    if (bucket_id == 31 - 1 && Gfx::g_global_settings.collision_enable) {
-      auto p = prof.make_scoped_child("collision-draw");
-      m_collide_renderer.render(&m_render_state, p);
+    if (bucket_id == 31 - 1) {
+      if (Gfx::g_global_settings.collision_enable) {
+        auto p = prof.make_scoped_child("collision-draw");
+        m_collide_renderer.render(&m_render_state, p);
+      }
+
+      {
+        auto p = prof.make_scoped_child("bsp-draw");
+        m_bsp_renderer.render(&m_render_state, p);
+      }
     }
   }
 

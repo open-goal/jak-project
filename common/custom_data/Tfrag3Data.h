@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 43;
+constexpr int TFRAG3_VERSION = 44;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -67,6 +67,7 @@ enum MemoryUsageCategory {
   HFRAG_CORNERS,
 
   COLLISION,
+  DEBUG_VIS,
 
   NUM_CATEGORIES
 };
@@ -614,6 +615,19 @@ struct MercModelGroup {
   void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
+struct BspVisVertex {
+  float x, y, z;
+  u16 bsp_cell;
+};
+static_assert(sizeof(BspVisVertex) == 16);
+
+struct DebugVisData {
+  std::vector<BspVisVertex> bsp_cell_vertices;
+  std::vector<uint32_t> bsp_cell_indices;
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
+};
+
 //
 
 constexpr int TFRAG_GEOS = 3;
@@ -630,6 +644,7 @@ struct Level {
   Hfragment hfrag;
   CollisionMesh collision;
   MercModelGroup merc_data;
+  DebugVisData debug_data;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;

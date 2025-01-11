@@ -1995,6 +1995,92 @@ void AdgifShaderArray::read_from_file(TypedRef ref, const decompiler::Decompiler
                     sizeof(AdGifData) * length);
 }
 
+Jak1BspNodeRef bsp_node_ref_from_file(Ref node_array,
+                                      TypedRef parent,
+                                      bool is_front,
+                                      const decompiler::DecompilerTypeSystem& dts) {
+  const char* name = is_front ? "front" : "back";
+  auto type = get_word_kind_for_field(parent, name, dts);
+  Jak1BspNodeRef ret;
+  if (type == decompiler::LinkedWord::PTR) {
+    ret.is_leaf = false;
+    Ref child = deref_label(get_field_ref(parent, name, dts));
+    int byte_offset = child.byte_offset - node_array.byte_offset;
+    ASSERT((byte_offset & 31) == 0);
+    ret.index = byte_offset / 32;
+  } else if (type == decompiler::LinkedWord::PLAIN_DATA) {
+    ret.is_leaf = true;
+    uint32_t leaf_value = read_plain_data_field<uint32_t>(parent, name, dts);
+    ASSERT((leaf_value >> 16) == 0x8000);
+    ret.index = leaf_value & 0xffff;
+  } else {
+    ASSERT_NOT_REACHED();
+  }
+  return ret;
+}
+
+Jak1BspNode bsp_node_from_file(Ref node_array,
+                               Ref ref,
+                               const decompiler::DecompilerTypeSystem& dts) {
+  Jak1BspNode result;
+  TypedRef r(ref, dts.ts.lookup_type("bsp-node"));
+  result.front = bsp_node_ref_from_file(node_array, r, true, dts);
+  result.back = bsp_node_ref_from_file(node_array, r, false, dts);
+  result.front_flags = read_plain_data_field<uint32_t>(r, "front-flags", dts);
+  result.back_flags = read_plain_data_field<uint32_t>(r, "back-flags", dts);
+  result.plane.read_from_file(get_field_ref(r, "plane", dts));
+  result.discovered = true;
+  return result;
+}
+
+void print_node(const Jak1BspNode& node) {
+  fmt::print("[{:.3f} {:.3f} {:.3f} {:.3f}] ({} {} {}) ({} {} {})\n",
+    node.plane.data[0], node.plane.data[1], node.plane.data[2], node.plane.data[3],
+    node.front.is_leaf, node.front.index, node.front_flags,
+    node.back.is_leaf,  node.back.index, node.back_flags
+    );
+}
+
+std::vector<Jak1BspNode> bsp_nodes_from_file(Ref node_array,
+                                             const decompiler::DecompilerTypeSystem& dts) {
+  std::vector<Jak1BspNode> nodes;
+  std::vector<int> to_explore = {0};
+
+  while (!to_explore.empty()) {
+    int node_idx = to_explore.back();
+    to_explore.pop_back();
+
+    // expand node array
+    if (nodes.size() <= node_idx) {
+      nodes.resize(node_idx + 1);
+    }
+
+    if (nodes.at(node_idx).discovered) {
+      continue;
+    }
+
+    Ref node_ref = node_array;
+    node_ref.byte_offset += 32 * node_idx;
+    nodes.at(node_idx) = bsp_node_from_file(node_array, node_ref, dts);
+    auto& n = nodes.at(node_idx);
+    if (!n.front.is_leaf) {
+      to_explore.push_back(n.front.index);
+    }
+    if (!n.back.is_leaf) {
+      to_explore.push_back(n.back.index);
+    }
+    // print_node(nodes.at(node_idx));
+
+  }
+
+  int known = 0;
+  for (auto& n : nodes) {
+    if (n.discovered) known++;
+  }
+  ASSERT((int)nodes.size() == known);
+  return nodes;
+}
+
 void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
                                const decompiler::DecompilerTypeSystem& dts,
                                GameVersion version,
@@ -2012,6 +2098,7 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
   if (version == GameVersion::Jak1) {
     adgifs.read_from_file(get_and_check_ref_to_basic(ref, "adgifs", "adgif-shader-array", dts),
                           dts);
+    jak1_bsp_nodes = bsp_nodes_from_file(deref_label(get_field_ref(ref, "nodes", dts)), dts);
   }
 
   texture_page_count = read_plain_data_field<s32>(ref, "texture-page-count", dts);

@@ -12,6 +12,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_actors.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
+#include "decompiler/level_extractor/extract_debug_vis.h"
 #include "decompiler/level_extractor/extract_hfrag.h"
 #include "decompiler/level_extractor/extract_joint_group.h"
 #include "decompiler/level_extractor/extract_merc.h"
@@ -255,6 +256,10 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
   if (bsp_header.hfrag) {
     extract_hfrag(bsp_header, tex_db, &level_data);
   }
+
+  if (db.version() == GameVersion::Jak1) {  // for now...
+    extract_debug_vis(bsp_header, &level_data);
+  }
   level_data.level_name = bsp_header.name;
 
   return bsp_header;
@@ -404,7 +409,7 @@ void extract_all_levels(const ObjectFileDB& db,
       [&](int idx) {
         extract_from_level(db, tex_db, dgo_names[idx], config, output_path, entities_dir);
       },
-      dgo_names.size());
+      dgo_names.size(), 1);
   threads.join();
 }
 

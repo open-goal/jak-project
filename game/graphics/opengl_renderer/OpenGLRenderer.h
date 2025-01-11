@@ -5,6 +5,7 @@
 
 #include "common/dma/dma_chain_read.h"
 
+#include "game/graphics/opengl_renderer/BspRenderer.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/opengl_renderer/CollideMeshRenderer.h"
 #include "game/graphics/opengl_renderer/Fbo.h"
@@ -120,6 +121,7 @@ class OpenGLRenderer {
   std::array<float, (int)BucketCategory::MAX_CATEGORIES> m_category_times;
   FullScreenDraw m_blackout_renderer;
   CollideMeshRenderer m_collide_renderer;
+  BspRenderer m_bsp_renderer;
 
   float m_last_pmode_alp = 1.;
   bool m_enable_fast_blackout_loads = true;

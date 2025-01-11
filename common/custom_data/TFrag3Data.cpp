@@ -579,6 +579,11 @@ void MercModelGroup::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
 }
 
+void DebugVisData::serialize(Serializer& ser) {
+  ser.from_pod_vector(&bsp_cell_vertices);
+  ser.from_pod_vector(&bsp_cell_indices);
+}
+
 void Level::serialize(Serializer& ser) {
   ser.from_ptr(&version);
   if (ser.is_loading() && version != TFRAG3_VERSION) {
@@ -642,6 +647,7 @@ void Level::serialize(Serializer& ser) {
 
   collision.serialize(ser);
   merc_data.serialize(ser);
+  debug_data.serialize(ser);
 
   ser.from_ptr(&version2);
   if (ser.is_loading() && version2 != TFRAG3_VERSION) {
@@ -762,6 +768,11 @@ void Hfragment::memory_usage(tfrag3::MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::HFRAG_CORNERS, corners.size() * sizeof(HfragmentCorner));
 }
 
+void DebugVisData::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::DEBUG_VIS, bsp_cell_indices.size() * sizeof(u32));
+  tracker->add(MemoryUsageCategory::DEBUG_VIS, bsp_cell_vertices.size() * sizeof(BspVisVertex));
+}
+
 void Level::memory_usage(MemoryUsageTracker* tracker) const {
   for (const auto& texture : textures) {
     texture.memory_usage(tracker);
@@ -785,6 +796,7 @@ void Level::memory_usage(MemoryUsageTracker* tracker) const {
   hfrag.memory_usage(tracker);
   collision.memory_usage(tracker);
   merc_data.memory_usage(tracker);
+  debug_data.memory_usage(tracker);
 }
 
 void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
@@ -829,9 +841,8 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"hfrag-verts", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_VERTS]},
       {"hfrag-index", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_INDEX]},
       {"hfrag-time-of-day", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_TIME_OF_DAY]},
-      {"hfrag-corners", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_CORNERS]}
-
-  };
+      {"hfrag-corners", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_CORNERS]},
+      {"debug-vis", mem_use.data[tfrag3::MemoryUsageCategory::DEBUG_VIS]}};
   for (auto& known : known_categories) {
     total_accounted += known.second;
   }
