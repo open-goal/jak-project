@@ -182,8 +182,8 @@ int main(int argc, char** argv) {
 // Check if we are on a modern enough version of macOS so that AVX can be
 // emulated via rosetta
 #ifdef __APPLE__
-    auto macos_version = get_macos_version();
-    if (macos_version < 15.0) {
+    auto macos_major_version = get_macos_major_version();
+    if (macos_major_version < 15.0) {
       lg::info(
           "Your CPU does not support AVX. But the newer version of Rosetta supports it, update to "
           "atleast Sequoia to run OpenGOAL!");
