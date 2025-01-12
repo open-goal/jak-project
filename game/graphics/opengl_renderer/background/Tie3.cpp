@@ -969,9 +969,8 @@ void Tie3::render_tree_wind(int idx,
         continue;  // invisible, skip.
       }
 
-      glUniformMatrix4fv(
-          glGetUniformLocation(render_state->shaders[shader_id].id(), "camera"), 1, GL_FALSE,
-          tree.wind_matrix_cache.at(grp.instance_idx)[0].data());
+      glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[shader_id].id(), "camera"), 1,
+                         GL_FALSE, tree.wind_matrix_cache.at(grp.instance_idx)[0].data());
 
       prof.add_draw_call();
       prof.add_tri(grp.num);
@@ -986,12 +985,10 @@ void Tie3::render_tree_wind(int idx,
         case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
           prof.add_draw_call();
           prof.add_tri(grp.num);
-          glUniform1f(
-              glGetUniformLocation(render_state->shaders[shader_id].id(), "alpha_min"),
-              -10.f);
-          glUniform1f(
-              glGetUniformLocation(render_state->shaders[shader_id].id(), "alpha_max"),
-              double_draw.aref_second);
+          glUniform1f(glGetUniformLocation(render_state->shaders[shader_id].id(), "alpha_min"),
+                      -10.f);
+          glUniform1f(glGetUniformLocation(render_state->shaders[shader_id].id(), "alpha_max"),
+                      double_draw.aref_second);
           glDepthMask(GL_FALSE);
           glDrawElements(tree.draw_mode, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
                          (void*)0);
