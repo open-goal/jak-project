@@ -131,6 +131,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::HFRAG) = {"hfrag", version};
   at(ShaderId::HFRAG_MONTAGE) = {"hfrag_montage", version};
   at(ShaderId::PLAIN_TEXTURE) = {"plain_texture", version};
+  at(ShaderId::TIE_WIND) = {"tie_wind", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");

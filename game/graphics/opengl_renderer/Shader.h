@@ -64,6 +64,7 @@ enum class ShaderId {
   HFRAG = 37,
   HFRAG_MONTAGE = 38,
   PLAIN_TEXTURE = 39,
+  TIE_WIND = 40,
   MAX_SHADERS
 };
 
