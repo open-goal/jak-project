@@ -401,6 +401,7 @@ void CDvdDriver::read_from_file(const jak3::Block* block) {
               selected_entry->def ? selected_entry->def->name.data : "NONE", fd->name.data);
     if (selected_entry->def) {
       fclose(selected_entry->fp);
+      selected_entry->size = 0;
     }
 
     selected_entry->def = fd;
@@ -408,6 +409,11 @@ void CDvdDriver::read_from_file(const jak3::Block* block) {
     if (!selected_entry->fp) {
       lg::die("Failed to open {} {}", fd->full_path, strerror(errno));
     }
+    // get the size of the file we actually opened, rather than caching the size at startup to
+    // support changing the file length after the game has started.
+    fseek(selected_entry->fp, 0, SEEK_END);
+    selected_entry->size = ftell(selected_entry->fp);
+    fseek(selected_entry->fp, 0, SEEK_SET);
     selected_entry->offset_in_file = 0;
   }
 
@@ -417,7 +423,7 @@ void CDvdDriver::read_from_file(const jak3::Block* block) {
   const u64 desired_offset = block->params.sector_num * 0x800;
 
   // see if we're reading entirely past the end of the file
-  if (desired_offset >= fd->length) {
+  if (desired_offset >= selected_entry->size) {
     return;
   }
 
@@ -432,14 +438,14 @@ void CDvdDriver::read_from_file(const jak3::Block* block) {
 
   // read
   s64 read_length = block->params.num_sectors * 0x800;
-  s64 extra_length = read_length + desired_offset - fd->length;
+  s64 extra_length = read_length + desired_offset - selected_entry->size;
   if (extra_length > 0) {
     read_length -= extra_length;
   }
   auto ret = fread(block->params.destination, read_length, 1, selected_entry->fp);
   if (ret != 1) {
     lg::die("Failed to read {} {}, size {} of {} (ret {})", fd->full_path, strerror(errno),
-            read_length, fd->length, ret);
+            read_length, selected_entry->size, ret);
   }
   selected_entry->offset_in_file += read_length;
 }
