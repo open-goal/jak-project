@@ -932,6 +932,20 @@ void Tie3::render_tree_wind(int idx,
     out[3] = cam[0] * mat[3].x() + cam[1] * mat[3].y() + cam[2] * mat[3].z() + cam[3];
   }
 
+  auto shader_id = ShaderId::TIE_WIND;
+  first_tfrag_draw_setup(settings.camera, render_state, shader_id);
+  glBindVertexArray(tree.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+               render_state->no_multidraw ? tree.single_draw_index_buffer : tree.index_buffer);
+
+  glActiveTexture(GL_TEXTURE10);
+  glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
+
+  glActiveTexture(GL_TEXTURE0);
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
+
   int last_texture = -1;
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, tree.wind_vertex_index_buffer);
 
@@ -946,7 +960,7 @@ void Tie3::render_tree_wind(int idx,
       }
       last_texture = draw.tree_tex_id;
     }
-    auto double_draw = setup_tfrag_shader(render_state, draw.mode, ShaderId::TFRAG3);
+    auto double_draw = setup_tfrag_shader(render_state, draw.mode, shader_id);
 
     int off = 0;
     for (auto& grp : draw.instance_groups) {
@@ -955,9 +969,8 @@ void Tie3::render_tree_wind(int idx,
         continue;  // invisible, skip.
       }
 
-      glUniformMatrix4fv(
-          glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "camera"), 1, GL_FALSE,
-          tree.wind_matrix_cache.at(grp.instance_idx)[0].data());
+      glUniformMatrix4fv(glGetUniformLocation(render_state->shaders[shader_id].id(), "camera"), 1,
+                         GL_FALSE, tree.wind_matrix_cache.at(grp.instance_idx)[0].data());
 
       prof.add_draw_call();
       prof.add_tri(grp.num);
@@ -972,12 +985,10 @@ void Tie3::render_tree_wind(int idx,
         case DoubleDrawKind::AFAIL_NO_DEPTH_WRITE:
           prof.add_draw_call();
           prof.add_tri(grp.num);
-          glUniform1f(
-              glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_min"),
-              -10.f);
-          glUniform1f(
-              glGetUniformLocation(render_state->shaders[ShaderId::TFRAG3].id(), "alpha_max"),
-              double_draw.aref_second);
+          glUniform1f(glGetUniformLocation(render_state->shaders[shader_id].id(), "alpha_min"),
+                      -10.f);
+          glUniform1f(glGetUniformLocation(render_state->shaders[shader_id].id(), "alpha_max"),
+                      double_draw.aref_second);
           glDepthMask(GL_FALSE);
           glDrawElements(tree.draw_mode, draw.vertex_index_stream.size(), GL_UNSIGNED_INT,
                          (void*)0);
