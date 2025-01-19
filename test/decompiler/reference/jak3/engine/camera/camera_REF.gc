@@ -1674,6 +1674,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f2, f5]
 (defun slave-set-rotation! ((arg0 cam-rotation-tracker) (arg1 vector) (arg2 cam-slave-options-u32) (arg3 float) (arg4 symbol))
   (local-vars
+    (v1-60 matrix)
     (f0-9 float)
     (sv-208 vector)
     (sv-224 vector)
@@ -1791,10 +1792,16 @@
       (let ((a2-5 (lerp-clamp arg3 (/ arg3 4) (-> arg0 underwater-blend value))))
         (sv-256 sv-272 sv-288 a2-5)
         )
-      (if arg4
-          (slave-matrix-blend-2 (-> arg0 inv-mat) arg2 s0-0 s1-0)
-          (matrix-copy! (-> arg0 inv-mat) s1-0)
-          )
+      (set! v1-60 (cond
+                    (arg4
+                      (slave-matrix-blend-2 (-> arg0 inv-mat) arg2 s0-0 s1-0)
+                      v1-60
+                      )
+                    (else
+                      (matrix-copy! (-> arg0 inv-mat) s1-0)
+                      )
+                    )
+            )
       )
     (mat-remove-z-rot (-> arg0 inv-mat) (-> *camera* local-down))
     (cond

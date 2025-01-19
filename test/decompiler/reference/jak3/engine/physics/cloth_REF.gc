@@ -85,22 +85,26 @@
 ;; WARN: Return type mismatch cloth-flag vs none.
 (defmethod pre-physics-update ((this cloth-on-skeleton))
   "Callback to update prior to running verlet integration. Can handle movement of the entire system in the world, for example"
+  (local-vars (v1-4 matrix))
   (let ((s5-0 (new 'stack-no-clear 'matrix))
         (s4-0 (handle->process (-> this owner)))
         )
     (when s4-0
-      (cond
-        ((< -1 (-> this base-transform-index))
-         (matrix-copy!
-           s5-0
-           (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform)
-           )
-         )
-        (else
-          (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
-          (vector-copy! (-> s5-0 trans) (-> (the-as process-focusable s4-0) root trans))
-          )
-        )
+      (set! v1-4
+            (cond
+              ((< -1 (-> this base-transform-index))
+               (matrix-copy!
+                 s5-0
+                 (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform)
+                 )
+               )
+              (else
+                (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
+                (vector-copy! (-> s5-0 trans) (-> (the-as process-focusable s4-0) root trans))
+                v1-4
+                )
+              )
+            )
       (vector-normalize! (-> s5-0 fvec) 1.0)
       (vector-normalize! (-> s5-0 uvec) 1.0)
       (vector-normalize! (-> s5-0 rvec) 1.0)
@@ -156,22 +160,26 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod reset! ((this cloth-on-skeleton))
   "Reset to stationary/default state."
+  (local-vars (v1-5 matrix))
   (let ((s5-0 (new 'stack-no-clear 'matrix))
         (s4-0 (handle->process (-> this owner)))
         )
     (when s4-0
-      (cond
-        ((< -1 (-> this base-transform-index))
-         (matrix-copy!
-           s5-0
-           (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform)
-           )
-         )
-        (else
-          (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
-          (vector-copy! (-> s5-0 trans) (-> (the-as process-focusable s4-0) root trans))
-          )
-        )
+      (set! v1-5
+            (cond
+              ((< -1 (-> this base-transform-index))
+               (matrix-copy!
+                 s5-0
+                 (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform)
+                 )
+               )
+              (else
+                (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
+                (vector-copy! (-> s5-0 trans) (-> (the-as process-focusable s4-0) root trans))
+                v1-5
+                )
+              )
+            )
       (dotimes (s4-1 (-> this particles length))
         (vector-matrix*! (the-as vector (-> this particles data s4-1)) (the-as vector (-> this mesh mesh s4-1)) s5-0)
         (vector-float*!

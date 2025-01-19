@@ -333,7 +333,6 @@
 ;; definition for method 13 of type carry-info
 ;; INFO: Used lq/sq
 (defmethod carry-info-method-13 ((this carry-info))
-  (local-vars (s5-1 matrix))
   (with-pp
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer pp))
@@ -355,33 +354,37 @@
              (s3-2 (vector-! (new 'stack-no-clear 'vector) v1-10 (-> this process 0 control trans)))
              )
         (when s4-0
-          (matrix-copy! (new 'stack-no-clear 'matrix) (-> s4-0 process 0 node-list data (-> s4-0 joint) bone transform))
-          (vector-normalize! (-> s5-1 rvec) 1.0)
-          (vector-normalize! (-> s5-1 uvec) 1.0)
-          (vector-normalize! (-> s5-1 fvec) 1.0)
-          (vector-reset! (-> s5-1 trans))
-          (let* ((a1-8 (quaternion-normalize! (matrix->quaternion (new 'stack-no-clear 'quaternion) s5-1)))
-                 (s5-3 (quaternion-normalize! (quaternion*! a1-8 a1-8 (-> this grab-quat))))
-                 (v1-19 (vector-! (new 'stack-no-clear 'vector) (-> s4-0 point) s3-2))
-                 (f30-0 (* 0.033333335 (the float (- (current-time) (-> this pickup-time)))))
-                 )
-            (cond
-              ((time-elapsed? (-> this pickup-time) (seconds 1))
-               (vector-copy! (-> this process 0 control trans) v1-19)
-               (quaternion-copy! (-> this process 0 control quat) s5-3)
-               )
-              (else
-                (vector-lerp!
-                  (-> this process 0 control trans)
-                  (-> this process 0 control trans)
-                  v1-19
-                  (fmin 1.0 (* f30-0 (-> pp clock time-adjust-ratio)))
+          (let ((s5-1
+                  (matrix-copy! (new 'stack-no-clear 'matrix) (-> s4-0 process 0 node-list data (-> s4-0 joint) bone transform))
                   )
-                (quaternion-slerp!
-                  (-> this process 0 control quat)
-                  (-> this process 0 control quat)
-                  s5-3
-                  (fmin 1.0 (* f30-0 (-> pp clock time-adjust-ratio)))
+                )
+            (vector-normalize! (-> s5-1 rvec) 1.0)
+            (vector-normalize! (-> s5-1 uvec) 1.0)
+            (vector-normalize! (-> s5-1 fvec) 1.0)
+            (vector-reset! (-> s5-1 trans))
+            (let* ((a1-8 (quaternion-normalize! (matrix->quaternion (new 'stack-no-clear 'quaternion) s5-1)))
+                   (s5-3 (quaternion-normalize! (quaternion*! a1-8 a1-8 (-> this grab-quat))))
+                   (v1-19 (vector-! (new 'stack-no-clear 'vector) (-> s4-0 point) s3-2))
+                   (f30-0 (* 0.033333335 (the float (- (current-time) (-> this pickup-time)))))
+                   )
+              (cond
+                ((time-elapsed? (-> this pickup-time) (seconds 1))
+                 (vector-copy! (-> this process 0 control trans) v1-19)
+                 (quaternion-copy! (-> this process 0 control quat) s5-3)
+                 )
+                (else
+                  (vector-lerp!
+                    (-> this process 0 control trans)
+                    (-> this process 0 control trans)
+                    v1-19
+                    (fmin 1.0 (* f30-0 (-> pp clock time-adjust-ratio)))
+                    )
+                  (quaternion-slerp!
+                    (-> this process 0 control quat)
+                    (-> this process 0 control quat)
+                    s5-3
+                    (fmin 1.0 (* f30-0 (-> pp clock time-adjust-ratio)))
+                    )
                   )
                 )
               )

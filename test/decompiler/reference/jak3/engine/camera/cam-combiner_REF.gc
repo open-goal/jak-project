@@ -400,19 +400,22 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defbehavior cam-combiner-init camera-combiner ()
+  (local-vars (v1-6 matrix))
   (stack-size-set! (-> self main-thread) 512)
   (vector-reset! (-> self trans))
   (matrix-identity! (-> self inv-camera-rot))
-  (cond
-    (*math-camera*
-      (set! (-> self fov) (-> *math-camera* fov))
-      (vector-copy! (-> self trans) (-> *math-camera* trans))
-      (matrix-copy! (-> self inv-camera-rot) (-> *math-camera* inv-camera-rot))
-      )
-    (else
-      (set! (-> self fov) 11650.845)
-      )
-    )
+  (set! v1-6 (cond
+               (*math-camera*
+                 (set! (-> self fov) (-> *math-camera* fov))
+                 (vector-copy! (-> self trans) (-> *math-camera* trans))
+                 (matrix-copy! (-> self inv-camera-rot) (-> *math-camera* inv-camera-rot))
+                 )
+               (else
+                 (set! (-> self fov) 11650.845)
+                 v1-6
+                 )
+               )
+        )
   (set! (-> self interp-val) 1.0)
   (set! (-> self interp-step) 0.125)
   (set! (-> self tracking-status) (the-as uint 0))

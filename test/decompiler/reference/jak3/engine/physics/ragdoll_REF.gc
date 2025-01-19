@@ -555,7 +555,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun ragdoll-joint-callback ((arg0 cspace) (arg1 transformq) (arg2 process-drawable) (arg3 ragdoll-proc))
-  (local-vars (sv-240 int) (sv-256 quaternion) (sv-272 vector) (sv-288 matrix))
+  (local-vars (a2-10 matrix) (sv-240 int) (sv-256 quaternion) (sv-272 vector) (sv-288 matrix))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
          (vf5 :class vf)
@@ -623,25 +623,28 @@
                 (if (logtest? (-> s3-1 ragdoll-flags) (ragdoll-flag mirror))
                     (matrix*! s2-1 s2-1 (-> s3-1 mirror))
                     )
-                (cond
-                  ((>= (-> s3-1 flex-blend) 1.0)
-                   (matrix-copy! (-> arg0 bone transform) s2-1)
-                   )
-                  (else
-                    (let ((s1-3 (vector-lerp!
-                                  (new 'stack-no-clear 'vector)
-                                  (matrix->trans (-> arg0 bone transform) (new 'stack-no-clear 'vector))
-                                  (-> s2-1 trans)
-                                  (-> s3-1 flex-blend)
-                                  )
+                (set! a2-10
+                      (cond
+                        ((>= (-> s3-1 flex-blend) 1.0)
+                         (matrix-copy! (-> arg0 bone transform) s2-1)
+                         )
+                        (else
+                          (let ((s1-3 (vector-lerp!
+                                        (new 'stack-no-clear 'vector)
+                                        (matrix->trans (-> arg0 bone transform) (new 'stack-no-clear 'vector))
+                                        (-> s2-1 trans)
+                                        (-> s3-1 flex-blend)
+                                        )
+                                      )
                                 )
+                            (ragdoll-matrix-interp (-> arg0 bone transform) (-> arg0 bone transform) s2-1 (-> s3-1 flex-blend))
+                            (vector-copy! (-> arg0 bone transform trans) s1-3)
+                            )
+                          (set! (-> arg0 bone transform trans w) 1.0)
+                          a2-10
                           )
-                      (ragdoll-matrix-interp (-> arg0 bone transform) (-> arg0 bone transform) s2-1 (-> s3-1 flex-blend))
-                      (vector-copy! (-> arg0 bone transform trans) s1-3)
+                        )
                       )
-                    (set! (-> arg0 bone transform trans w) 1.0)
-                    )
-                  )
                 )
               (let ((v1-60 (new 'stack-no-clear 'vector)))
                 (let ((a0-50 v1-60))

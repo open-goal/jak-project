@@ -1728,13 +1728,13 @@
 (defun matrix->quat ((arg0 matrix) (arg1 quaternion))
   "Convert matrix to quaternion, works for matrix with scale.
    unlike matrix->quaternion."
-  (local-vars (s5-0 matrix))
-  (matrix-copy! (new 'stack-no-clear 'matrix) arg0)
-  (vector-reset! (-> s5-0 trans))
-  (vector-normalize! (-> s5-0 rvec) 1.0)
-  (vector-normalize! (-> s5-0 uvec) 1.0)
-  (vector-normalize! (-> s5-0 fvec) 1.0)
-  (matrix->quaternion arg1 s5-0)
+  (let ((s5-0 (matrix-copy! (new 'stack-no-clear 'matrix) arg0)))
+    (vector-reset! (-> s5-0 trans))
+    (vector-normalize! (-> s5-0 rvec) 1.0)
+    (vector-normalize! (-> s5-0 uvec) 1.0)
+    (vector-normalize! (-> s5-0 fvec) 1.0)
+    (matrix->quaternion arg1 s5-0)
+    )
   )
 
 ;; definition for function matrix<-quat
@@ -1757,7 +1757,6 @@
 ;; INFO: Used lq/sq
 (defun matrix->transformq ((arg0 transformq) (arg1 matrix))
   "Create a transformq from a matrix. Allowing scale, etc."
-  (local-vars (s4-0 matrix))
   (rlet ((Q :class vf)
          (vf0 :class vf)
          (vf2 :class vf)
@@ -1771,13 +1770,14 @@
     (.nop.vf)
     (.mov.vf vf2 vf0 :mask #b1000)
     (.svf (&-> arg0 trans quad) vf2)
-    (matrix-copy! (new 'stack-no-clear 'matrix) arg1)
-    (vector-normalize! (-> s4-0 rvec) 1.0)
-    (vector-normalize! (-> s4-0 uvec) 1.0)
-    (vector-normalize! (-> s4-0 fvec) 1.0)
-    (vector-cross! (-> s4-0 fvec) (-> s4-0 rvec) (-> s4-0 uvec))
-    (vector-cross! (-> s4-0 uvec) (-> s4-0 fvec) (-> s4-0 rvec))
-    (matrix->quaternion (-> arg0 quat) s4-0)
+    (let ((s4-0 (matrix-copy! (new 'stack-no-clear 'matrix) arg1)))
+      (vector-normalize! (-> s4-0 rvec) 1.0)
+      (vector-normalize! (-> s4-0 uvec) 1.0)
+      (vector-normalize! (-> s4-0 fvec) 1.0)
+      (vector-cross! (-> s4-0 fvec) (-> s4-0 rvec) (-> s4-0 uvec))
+      (vector-cross! (-> s4-0 uvec) (-> s4-0 fvec) (-> s4-0 rvec))
+      (matrix->quaternion (-> arg0 quat) s4-0)
+      )
     (set-vector!
       (-> arg0 scale)
       (vector-length (-> arg1 rvec))
