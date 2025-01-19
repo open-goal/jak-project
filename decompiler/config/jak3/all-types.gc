@@ -5843,7 +5843,7 @@
 (define-extern matrix-remove-z-rot "Remove the z rotation component of a rotation." (function matrix vector matrix))
 (define-extern matrix-rot-diff!
   "Get the difference of rotation between two matrices, expressed as a quaternion."
-  (function vector matrix matrix float))
+  (function quaternion matrix matrix float))
 (define-extern quaternion-seek
   "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount."
   (function quaternion quaternion quaternion float float quaternion))
@@ -7885,7 +7885,7 @@
     (update-vis-volumes (_type_) none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
     (level-group-method-24 (_type_) none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
     (print-volume-sizes (_type_) none) ;; 25
-    (status-of-level-and-borrows "Get the combined status of a level and borrow levels." (_type_ symbol symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
+    (level-status? "Get the combined status of a level and borrow levels." (_type_ symbol symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
     (do-nothing "Empty method." (_type_) none) ;; 27
     (load-in-progress? "Is there a load happening now?" (_type_) symbol) ;; 28 ;; (level-status (_type_ symbol) symbol)
     (is-load-allowed? "Does the exclusive-load setting allow us to load this level?" (_type_ (pointer symbol)) symbol) ;; 29
@@ -17312,7 +17312,7 @@
    (task-node-commands     (array game-task-node-command) :offset-assert 416)
    (task-node-exclusive    (array uint16)            :offset-assert 420)
    (task-counter           uint32                    :offset-assert 424)
-   (unknown-arr4           (array uint16)            :offset-assert 428)
+   (talker-state           (array uint16)            :offset-assert 428)
    (level-opened           uint8             32      :offset-assert 432)
    (total-deaths           int32                     :offset-assert 464)
    (continue-deaths        int32                     :offset-assert 468)
@@ -17549,20 +17549,25 @@
 (defenum talker-flags
   :type uint16
   :bitfield #t
-  (tf0 0)
-  (tf1 1)
-  (tf2 2)
-  (tf3 3)
-  (tf4 4)
-  (tf5 5)
-  (tf6 6)
-  (tf7 7)
-  (tf8 8)
+  (play-only-once 0)
+  (reduce-volume 1)
+  (auto-save-on-each-start 2)
+  (auto-save-once-on-exit 3)
+  (only-play-in-region 4)
+  (fade-in 5)
+  (slide-in 6)
+  (bigger-font 7)
+  (long-timeout 8)
   )
 ;; ---ambient-h:talker-flags
 
 (deftype talker-speech-class (structure)
-  "Contains metadata about a voice line or hint text being played/displayed."
+  "Contains metadata about a voice line or hint text being played/displayed.
+   In the talker state, there's a pos-state and neg-state.
+   Calling yes-play! adjusts the pos-state and no-play! adjusts the neg-state.
+   Playback is only allowed if the pos-state is less than or equal to pos
+   and neg-state is greater than or equal to neg.
+   "
   ((name          string       :offset-assert 0)
    (channel       gui-channel  :offset-assert 4)
    (flags         talker-flags :offset-assert 6)
@@ -17581,11 +17586,11 @@
   :flag-assert         #xe00000020
   ;; field on-close uses ~A with a signed load.
   (:methods
-    (talker-speech-class-method-9 (_type_) symbol) ;; 9
-    (play-communicator-speech! (_type_) none) ;; 10
-    (talker-speech-class-method-11 (_type_) none) ;; 11
-    (talker-speech-class-method-12 (_type_ int) none) ;; 12
-    (talker-speech-class-method-13 (_type_ int) none) ;; 13
+    (should-play? "Return if the talker is in a state where it should play." (_type_) symbol) ;; 9
+    (mark-played! "Mark something as played by making its state UINT16_MAX" (_type_) none) ;; 10
+    (reset-state! "Reset the state of this talker to 0 (the initial value)" (_type_) none) ;; 11
+    (yes-play! (_type_ int) none) ;; 12
+    (no-play! (_type_ int) none) ;; 13
     )
   )
 
@@ -19448,11 +19453,6 @@
   :bitfield #t
   :type uint32
   (disabled) ;; keep object velocity
-  (af01)
-  (af02)
-  (af03)
-  (af04)
-  (af05)
   )
 ;; ---aligner-h:align-flags
 
@@ -19638,9 +19638,9 @@
   (sf23 23)
   (sf24 24)
   (sf25 25)
-  (sf26 26)
+  (hang 26)
   (sf27 27)
-  (sf28 28)
+  (invisible 28)
   (sf29 29)
   (sf30 30)
   (sf31 31)
@@ -21999,8 +21999,8 @@
    (unknown-float37                                float                                  :offset 5636)
    (unknown-vector37                               vector                     :inline     :offset 5648)
    (unknown-vector38                               vector                     :inline     :offset 5664)
-   (unknown-vector39                               vector                     :inline     :offset 5680)
-   (unknown-vector40                               vector                     :inline     :offset 5696)
+   (unknown-quat39                                 quaternion                 :inline     :offset 5680)
+   (unknown-quat40                                 quaternion                 :inline     :offset 5696)
    (sliding-start-time                             time-frame                             :offset 5712)
    (unknown-time-frame18                           time-frame                             :offset 5720)
    (unknown-sound-id00                             sound-id                               :offset 5776)
@@ -25776,7 +25776,7 @@
   (bit-4 4)
   (bit-5 5)
   (subtask-complete 6)
-  (bit-7 7)
+  (special 7)
   (complete 8)
   (bit-9 9)
   (bit-10 10)
@@ -41322,8 +41322,8 @@
 (defenum enemy-aware
   :type uint64
   (unaware 0)
-  (ea1 1)
-  (ea2 2)
+  (aware1 1)
+  (aware2 2)
   (hostile 3)
   (flee 4)
   )
@@ -41370,6 +41370,7 @@
   (death-start 34)
   (auto-death-phase-out 35)
   (has-gem 36)
+  ;; these seem to be an extension of the flags for nav-enemy.
   (ef37 37)
   (ef38 38)
   (ef39 39)

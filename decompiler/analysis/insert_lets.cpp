@@ -2716,8 +2716,12 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
   }
 
   auto set_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(0));
+  GenericElement* vector_copy_elt = nullptr;
   if (!set_elt) {
-    return nullptr;
+    vector_copy_elt = dynamic_cast<GenericElement*>(in->body()->at(0));
+    if (!vector_copy_elt || vector_copy_elt->op().to_form(env).print() != "vector-copy!") {
+      return nullptr;
+    }
   }
 
   auto func_elt = dynamic_cast<GenericElement*>(in->body()->at(1));
@@ -2747,19 +2751,24 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
     return nullptr;
   }
 
-  auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
-  if (!origin) {
-    return nullptr;
-  }
-  auto tokens = origin->tokens().size();
-  Form* origin_form;
-  // remove only the quad if there are multiple derefs
-  if (tokens > 1) {
-    origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
-    auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
-    orig->tokens().pop_back();
+  Form* origin_form = nullptr;
+  if (set_elt) {
+    auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
+    auto tokens = origin->tokens().size();
+    // remove only the quad if there are multiple derefs
+    if (tokens > 1) {
+      origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
+      auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
+      orig->tokens().pop_back();
+    } else {
+      origin_form = origin->base();
+    }
   } else {
-    origin_form = origin->base();
+    // the vector copy rewrite already did the logic above.
+    origin_form = vector_copy_elt->elts().at(1);
+  }
+  if (!origin_form) {
+    return nullptr;
   }
 
   auto launch_state = func_elt->elts().at(func_elt->elts().size() - 3);

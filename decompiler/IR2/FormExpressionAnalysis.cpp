@@ -2964,6 +2964,97 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
   return false;
 }
 
+bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack& stack) {
+  auto matrix_entries =
+      stack.try_getting_active_stack_entries({true, true, true, true, false, false, false, false});
+  if (matrix_entries) {
+    // first, check the loads. they should be something like source = (-> MAT vec quad)
+    // MAT should always be a variable
+    const char* names[] = {"rvec", "uvec", "fvec", "trans"};
+
+    std::vector<RegisterAccess> load_src_ras, store_dest_ras, store_src_ras;
+    for (int i = 0; i < 4; i++) {
+      auto deref_matcher =
+          Matcher::deref(Matcher::any_reg(0), false,
+                         {DerefTokenMatcher::string(names[i]), DerefTokenMatcher::string("quad")});
+      auto mr = match(deref_matcher, matrix_entries->at(i).source, &env);
+      if (!mr.matched) {
+        return false;
+      }
+      load_src_ras.push_back(mr.maps.regs.at(0).value());
+    }
+
+    // check the stores
+    for (int i = 4; i < 8; i++) {
+      Matcher matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                    {DerefTokenMatcher::string(names[i - 4]),
+                                                     DerefTokenMatcher::string("quad")}),
+                                     Matcher::any_reg(1));
+      auto mr = match(matcher, matrix_entries->at(i).elt, &env);
+      if (!mr.matched) {
+        return false;
+      }
+      store_dest_ras.push_back(mr.maps.regs.at(0).value());
+      store_src_ras.push_back(mr.maps.regs.at(1).value());
+    }
+
+    // check loads are all loading from the same matrix
+    for (int i = 1; i < 3; i++) {
+      if (load_src_ras.at(i).reg() != load_src_ras.at(0).reg()) {
+        return false;
+      }
+    }
+
+    // check stores are all storing to the same matrix
+    for (int i = 1; i < 3; i++) {
+      if (store_dest_ras.at(i).reg() != store_dest_ras.at(0).reg()) {
+        return false;
+      }
+    }
+
+    // check temps are consistent
+    for (int i = 0; i < 4; i++) {
+      if (store_src_ras.at(i).reg() != matrix_entries->at(i).destination.value().reg()) {
+        return false;
+      }
+    }
+
+    // check types
+    if (env.get_variable_type(load_src_ras.at(0), true) != TypeSpec("matrix")) {
+      return false;
+    }
+
+    if (env.get_variable_type(store_dest_ras.at(0), true) != TypeSpec("matrix")) {
+      return false;
+    }
+
+    stack.pop(8);
+    auto* menv = const_cast<Env*>(&env);
+    for (int i = 1; i < 4; i++) {
+      menv->disable_use(store_dest_ras.at(i));
+    }
+
+    auto src_repopped = stack.pop_reg(load_src_ras.at(0), {}, env, true);
+    if (!src_repopped) {
+      src_repopped = var_to_form(load_src_ras.at(0), pool);
+    }
+
+    auto dst_repopped = stack.pop_reg(store_dest_ras.at(0), {}, env, true);
+    if (!dst_repopped) {
+      dst_repopped = var_to_form(store_dest_ras.at(0), pool);
+    }
+
+    stack.push_form_element(
+        pool.alloc_element<GenericElement>(
+            GenericOperator::make_function(pool.form<ConstantTokenElement>("matrix-copy!")),
+            std::vector<Form*>{dst_repopped, src_repopped}),
+        true);
+
+    return true;
+  }
+  return false;
+}
+
 bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack& stack) {
   // now, let's check for a matrix initialization.
   auto matrix_entries = stack.try_getting_active_stack_entries({true, false, false, false, false});
@@ -2983,54 +3074,79 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
 
     // zeroing the rows:
     std::vector<RegisterAccess> write_vars;
-    if (env.version == GameVersion::Jak1) {
-      for (int i = 0; i < 4; i++) {
-        auto elt = matrix_entries->at(i + 1).elt;
+    switch (env.version) {
+      case GameVersion::Jak1: {
+        for (int i = 0; i < 4; i++) {
+          auto elt = matrix_entries->at(i + 1).elt;
 
-        auto matcher = Matcher::set(
-            Matcher::deref(Matcher::any_reg(0), false,
-                           {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
-                            DerefTokenMatcher::string("quad")}),
-            Matcher::cast("uint128", Matcher::integer(0)));
-
-        auto mr = match(matcher, elt);
-        if (mr.matched) {
-          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
-            return false;
-          }
-          write_vars.push_back(*mr.maps.regs.at(0));
-        } else {
-          return false;
-        }
-      }
-    } else {
-      for (int i = 0; i < 4; i++) {
-        auto elt = matrix_entries->at(i + 1).elt;
-
-        Matcher matcher;
-        if (i == 3) {
-          matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
-                                                {DerefTokenMatcher::string("trans"),
-                                                 DerefTokenMatcher::string("quad")}),
-                                 Matcher::cast("uint128", Matcher::integer(0)));
-
-        } else {
-          matcher = Matcher::set(
+          auto matcher = Matcher::set(
               Matcher::deref(Matcher::any_reg(0), false,
-                             {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
+                             {DerefTokenMatcher::string("vector"), DerefTokenMatcher::integer(i),
+                              DerefTokenMatcher::string("quad")}),
               Matcher::cast("uint128", Matcher::integer(0)));
-        }
 
-        auto mr = match(matcher, elt);
-        if (mr.matched) {
-          if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+          auto mr = match(matcher, elt);
+          if (mr.matched) {
+            if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+              return false;
+            }
+            write_vars.push_back(*mr.maps.regs.at(0));
+          } else {
             return false;
           }
-          write_vars.push_back(*mr.maps.regs.at(0));
-        } else {
-          return false;
         }
-      }
+      } break;
+      case GameVersion::Jak2: {
+        for (int i = 0; i < 4; i++) {
+          auto elt = matrix_entries->at(i + 1).elt;
+
+          Matcher matcher;
+          if (i == 3) {
+            matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                  {DerefTokenMatcher::string("trans"),
+                                                   DerefTokenMatcher::string("quad")}),
+                                   Matcher::cast("uint128", Matcher::integer(0)));
+
+          } else {
+            matcher = Matcher::set(
+                Matcher::deref(Matcher::any_reg(0), false,
+                               {DerefTokenMatcher::string("quad"), DerefTokenMatcher::integer(i)}),
+                Matcher::cast("uint128", Matcher::integer(0)));
+          }
+
+          auto mr = match(matcher, elt);
+          if (mr.matched) {
+            if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+              return false;
+            }
+            write_vars.push_back(*mr.maps.regs.at(0));
+          } else {
+            return false;
+          }
+        }
+      } break;
+      case GameVersion::Jak3: {
+        for (int i = 0; i < 4; i++) {
+          auto elt = matrix_entries->at(i + 1).elt;
+
+          const char* names[] = {"rvec", "uvec", "fvec", "trans"};
+
+          Matcher matcher = Matcher::set(Matcher::deref(Matcher::any_reg(0), false,
+                                                        {DerefTokenMatcher::string(names[i]),
+                                                         DerefTokenMatcher::string("quad")}),
+                                         Matcher::cast("uint128", Matcher::integer(0)));
+
+          auto mr = match(matcher, elt);
+          if (mr.matched) {
+            if (var_name != env.get_variable_name(*mr.maps.regs.at(0))) {
+              return false;
+            }
+            write_vars.push_back(*mr.maps.regs.at(0));
+          } else {
+            return false;
+          }
+        }
+      } break;
     }
 
     // success!
@@ -3050,6 +3166,70 @@ bool try_to_rewrite_matrix_inline_ctor(const Env& env, FormPool& pool, FormStack
   return false;
 }
 
+bool is_deref_to_quad(DerefElement* deref) {
+  return deref && !deref->is_addr_of() && !deref->tokens().empty() &&
+         deref->tokens().back().is_field_name("quad");
+}
+
+Form* pop_last_deref_token(Form* form) {
+  auto deref = form->try_as_element<DerefElement>();
+  ASSERT(deref);
+  if (deref->tokens().size() == 1) {
+    return deref->base();
+  } else {
+    deref->tokens().pop_back();
+    return form;
+  }
+}
+
+FormElement* try_to_rewrite_vector_copy(Form* dst,
+                                        const TypeSpec& dst_type,
+                                        Form* src,
+                                        const TypeSpec& src_type,
+                                        FormPool& pool,
+                                        const Env& env) {
+  if (env.func->name() == "vector-copy!") {
+    return nullptr;
+  }
+
+  if (dst && src) {
+    // check types
+    if (dst_type != TypeSpec("vector")) {
+      return nullptr;
+    }
+
+    // kinda sus - we really want to check the place where this was loaded...
+    if (src_type != TypeSpec("uint128")) {
+      return nullptr;
+    }
+
+    auto* dst_deref = dst->try_as_element<DerefElement>();
+    auto* src_deref = src->try_as_element<DerefElement>();
+    if (!dst_deref) {
+      return nullptr;
+    }
+
+    if (!src_deref) {
+      return nullptr;
+    }
+
+    if (!is_deref_to_quad(dst_deref)) {
+      return nullptr;
+    }
+
+    if (!is_deref_to_quad(src_deref)) {
+      return nullptr;
+    }
+
+    auto ret = pool.alloc_element<GenericElement>(
+        GenericOperator::make_function(pool.form<ConstantTokenElement>("vector-copy!")),
+        std::vector<Form*>{pop_last_deref_token(dst), pop_last_deref_token(src)});
+    // lg::info("success: {}\n", ret->to_string(env));
+    return ret;
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& stack) {
@@ -3066,14 +3246,26 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
     if (size() == 16) {
       std::swap(popped.at(0), popped.at(1));
     }
-    m_dst->try_as_element<DerefElement>()->set_base(
-        make_optional_cast(m_dst_cast_type, popped.at(1), pool, env));
+    auto dst_deref = m_dst->try_as_element<DerefElement>();
+    dst_deref->set_base(make_optional_cast(m_dst_cast_type, popped.at(1), pool, env));
     m_dst->mark_popped();
-    m_dst->try_as_element<DerefElement>()->inline_nested();
-    auto fr = pool.alloc_element<SetFormFormElement>(
-        m_dst, make_optional_cast(m_src_cast_type, popped.at(0), pool, env));
-    // so the bitfield set check can run
-    fr->mark_popped();
+    dst_deref->inline_nested();
+
+    FormElement* fr = nullptr;
+
+    if (size() == 16) {
+      fr = try_to_rewrite_vector_copy(
+          m_dst, env.get_variable_type(m_base_var, true), popped.at(0),
+          m_src_cast_type.value_or(env.get_variable_type(m_expr.var(), true)), pool, env);
+    }
+
+    if (!fr) {
+      fr = pool.alloc_element<SetFormFormElement>(
+          m_dst, make_optional_cast(m_src_cast_type, popped.at(0), pool, env));
+      // so the bitfield set check can run
+      fr->mark_popped();
+    }
+
     fr->push_to_stack(env, pool, stack);
   } else {
     auto vars = std::vector<RegisterAccess>({m_base_var});
@@ -3092,7 +3284,9 @@ void StorePlainDeref::push_to_stack(const Env& env, FormPool& pool, FormStack& s
 
   if (!try_to_rewrite_matrix_inline_ctor(env, pool, stack)) {
     if (!try_to_rewrite_vector_inline_ctor(env, pool, stack, "vector")) {
-      try_to_rewrite_vector_inline_ctor(env, pool, stack, "quaternion");
+      if (!try_to_rewrite_vector_inline_ctor(env, pool, stack, "quaternion")) {
+        try_to_rewrite_matrix_inline_copy(env, pool, stack);
+      }
     }
   }
 }
