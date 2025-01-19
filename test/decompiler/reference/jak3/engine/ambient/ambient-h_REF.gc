@@ -3,7 +3,12 @@
 
 ;; definition of type talker-speech-class
 (deftype talker-speech-class (structure)
-  "Contains metadata about a voice line or hint text being played/displayed."
+  "Contains metadata about a voice line or hint text being played/displayed.
+In the talker state, there's a pos-state and neg-state.
+Calling yes-play! adjusts the pos-state and no-play! adjusts the neg-state.
+Playback is only allowed if the pos-state is less than or equal to pos
+and neg-state is greater than or equal to neg.
+"
   ((name           string)
    (channel        gui-channel)
    (flags          talker-flags)
@@ -18,11 +23,11 @@
    )
   :pack-me
   (:methods
-    (talker-speech-class-method-9 (_type_) symbol)
-    (play-communicator-speech! (_type_) none)
-    (talker-speech-class-method-11 (_type_) none)
-    (talker-speech-class-method-12 (_type_ int) none)
-    (talker-speech-class-method-13 (_type_ int) none)
+    (should-play? (_type_) symbol)
+    (mark-played! (_type_) none)
+    (reset-state! (_type_) none)
+    (yes-play! (_type_ int) none)
+    (no-play! (_type_ int) none)
     )
   )
 
@@ -106,7 +111,7 @@
                           (new 'static 'talker-speech-class
                             :name "DSbop002"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x1
                             :text-duration (seconds 5)
                             :neg #x1
@@ -117,7 +122,7 @@
                           (new 'static 'talker-speech-class
                             :name "DSbop004"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x2
                             :text-duration (seconds 5)
                             :neg #x1
@@ -128,7 +133,7 @@
                           (new 'static 'talker-speech-class
                             :name "DSbop008"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x3
                             :text-duration (seconds 5)
                             :neg #x1
@@ -139,7 +144,7 @@
                           (new 'static 'talker-speech-class
                             :name "DSbop010"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x4
                             :text-duration (seconds 5)
                             :neg #x1
@@ -150,7 +155,7 @@
                           (new 'static 'talker-speech-class
                             :name "DSbop011"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x5
                             :neg #x1
                             :on-close #f
@@ -159,7 +164,7 @@
                           (new 'static 'talker-speech-class
                             :name "DSbop016"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x6
                             :text-duration (seconds 5)
                             :neg #x1
@@ -170,7 +175,7 @@
                           (new 'static 'talker-speech-class
                             :name "DSbop017"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x7
                             :neg #x1
                             :on-close #f
@@ -179,7 +184,7 @@
                           (new 'static 'talker-speech-class
                             :name "ds020"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x8
                             :text-duration (seconds 5)
                             :neg #x1
@@ -190,7 +195,7 @@
                           (new 'static 'talker-speech-class
                             :name "ds043"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x9
                             :text-duration (seconds 1)
                             :neg #x1
@@ -201,7 +206,7 @@
                           (new 'static 'talker-speech-class
                             :name "ds043m"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf4)
+                            :flags (talker-flags only-play-in-region)
                             :speech #xa
                             :text-duration (seconds 1)
                             :neg #x1
@@ -212,7 +217,7 @@
                           (new 'static 'talker-speech-class
                             :name "ds046"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #xb
                             :text-duration (seconds 1)
                             :neg #x1
@@ -223,7 +228,7 @@
                           (new 'static 'talker-speech-class
                             :name "ds046m"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf4)
+                            :flags (talker-flags only-play-in-region)
                             :speech #xc
                             :text-duration (seconds 1)
                             :neg #x1
@@ -234,7 +239,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax101"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #xd
                             :neg #x1
                             :on-close #f
@@ -243,7 +248,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax102"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #xe
                             :neg #x1
                             :on-close #f
@@ -252,7 +257,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax103"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #xf
                             :text-duration (seconds 1)
                             :neg #x1
@@ -263,7 +268,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax104"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x10
                             :text-duration (seconds 1)
                             :neg #x1
@@ -274,7 +279,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax105"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x11
                             :text-duration (seconds 1)
                             :neg #x1
@@ -285,7 +290,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax106"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x12
                             :text-duration (seconds 1)
                             :neg #x1
@@ -296,7 +301,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax107"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x13
                             :neg #x1
                             :on-close #f
@@ -305,7 +310,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax108"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x14
                             :text-duration (seconds 1)
                             :neg #x1
@@ -316,7 +321,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax109"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x15
                             :text-duration (seconds 1)
                             :neg #x1
@@ -327,7 +332,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax110"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x16
                             :neg #x1
                             :on-close #f
@@ -336,7 +341,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax111"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x17
                             :text-duration (seconds 1)
                             :neg #x1
@@ -347,7 +352,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax112"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x18
                             :text-duration (seconds 1)
                             :neg #x1
@@ -410,7 +415,7 @@
                           (new 'static 'talker-speech-class
                             :name "demo001"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf4)
+                            :flags (talker-flags only-play-in-region)
                             :speech #x1f
                             :text-duration (seconds 5)
                             :neg #x1
@@ -421,7 +426,7 @@
                           (new 'static 'talker-speech-class
                             :name "demo002"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x20
                             :text-duration (seconds 5)
                             :neg #x1
@@ -431,7 +436,7 @@
                           (new 'static 'talker-speech-class
                             :name "demo003"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x21
                             :text-duration (seconds 8)
                             :neg #x1
@@ -441,7 +446,7 @@
                           (new 'static 'talker-speech-class
                             :name "demo004"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x22
                             :text-duration (seconds 8)
                             :neg #x1
@@ -451,7 +456,7 @@
                           (new 'static 'talker-speech-class
                             :name "demo005"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x23
                             :text-duration (seconds 8)
                             :neg #x1
@@ -461,7 +466,7 @@
                           (new 'static 'talker-speech-class
                             :name "sam001"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x24
                             :neg #x1
                             :on-close #f
@@ -470,7 +475,7 @@
                           (new 'static 'talker-speech-class
                             :name "ds162"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x25
                             :neg #x1
                             :on-close #f
@@ -479,7 +484,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp0002"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x26
                             :neg #x1
                             :on-close #f
@@ -488,7 +493,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp0005"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x27
                             :neg #x1
                             :on-close #f
@@ -497,7 +502,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp0004"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x28
                             :neg #x1
                             :on-close #f
@@ -506,7 +511,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp009b"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x29
                             :neg #x1
                             :on-close #f
@@ -515,7 +520,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp0006"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x2a
                             :neg #x1
                             :on-close #f
@@ -524,7 +529,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp009c"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x2b
                             :neg #x1
                             :on-close #f
@@ -533,7 +538,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp0035"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x2c
                             :neg #x1
                             :on-close #f
@@ -542,7 +547,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp009d"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x2d
                             :neg #x1
                             :on-close #f
@@ -551,7 +556,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp009e"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x2e
                             :neg #x1
                             :on-close #f
@@ -560,7 +565,7 @@
                           (new 'static 'talker-speech-class
                             :name "sksp0072"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x2f
                             :neg #x1
                             :on-close #f
@@ -618,7 +623,7 @@
                           (new 'static 'talker-speech-class
                             :name "str001"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x36
                             :text-duration (seconds 3)
                             :neg #x1
@@ -648,7 +653,7 @@
                           (new 'static 'talker-speech-class
                             :name "intro01"
                             :channel (gui-channel notice)
-                            :flags (talker-flags tf5)
+                            :flags (talker-flags fade-in)
                             :speech #x39
                             :text-duration (seconds 3.5)
                             :neg #x1
@@ -659,7 +664,7 @@
                           (new 'static 'talker-speech-class
                             :name "intro01e"
                             :channel (gui-channel notice)
-                            :flags (talker-flags tf5)
+                            :flags (talker-flags fade-in)
                             :speech #x3a
                             :text-duration (seconds 3.5)
                             :neg #x1
@@ -670,7 +675,7 @@
                           (new 'static 'talker-speech-class
                             :name "intro01j"
                             :channel (gui-channel notice)
-                            :flags (talker-flags tf5)
+                            :flags (talker-flags fade-in)
                             :speech #x3b
                             :text-duration (seconds 3.5)
                             :neg #x1
@@ -681,7 +686,7 @@
                           (new 'static 'talker-speech-class
                             :name "intro01k"
                             :channel (gui-channel notice)
-                            :flags (talker-flags tf5)
+                            :flags (talker-flags fade-in)
                             :speech #x3c
                             :text-duration (seconds 3.5)
                             :neg #x1
@@ -702,7 +707,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck002"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x3e
                             :delay (seconds 2)
                             :neg #x1
@@ -712,7 +717,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck004"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x3f
                             :neg #x1
                             :on-close #f
@@ -721,7 +726,7 @@
                           (new 'static 'talker-speech-class
                             :name "sam007"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3 tf8)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit long-timeout)
                             :speech #x40
                             :neg #x1
                             :on-close #f
@@ -730,7 +735,7 @@
                           (new 'static 'talker-speech-class
                             :name "klev001"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf3)
+                            :flags (talker-flags auto-save-once-on-exit)
                             :speech #x41
                             :delay (seconds 2)
                             :neg #x1
@@ -740,7 +745,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax118"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x42
                             :text-duration (seconds 1)
                             :neg #x1
@@ -750,7 +755,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck135"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x43
                             :neg #x1
                             :on-close #f
@@ -759,7 +764,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck114"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x44
                             :text-duration (seconds 1)
                             :neg #x1
@@ -770,7 +775,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck115"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x45
                             :text-duration (seconds 1)
                             :neg #x1
@@ -781,7 +786,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck129"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x46
                             :text-duration (seconds 1)
                             :neg #x1
@@ -792,7 +797,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck122"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x47
                             :text-duration (seconds 1)
                             :neg #x1
@@ -803,7 +808,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck119"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x48
                             :text-duration (seconds 1)
                             :neg #x1
@@ -814,7 +819,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck124"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x49
                             :text-duration (seconds 1)
                             :neg #x1
@@ -825,7 +830,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck141"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x4a
                             :text-duration (seconds 1)
                             :neg #x1
@@ -836,7 +841,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck141m"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf4)
+                            :flags (talker-flags only-play-in-region)
                             :speech #x4b
                             :text-duration (seconds 1)
                             :neg #x1
@@ -847,7 +852,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck131"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x4c
                             :text-duration (seconds 1)
                             :neg #x1
@@ -858,7 +863,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck131m"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf4)
+                            :flags (talker-flags only-play-in-region)
                             :speech #x4d
                             :text-duration (seconds 1)
                             :neg #x1
@@ -869,7 +874,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck126"
                             :channel (gui-channel pecker)
-                            :flags (talker-flags tf0 tf4)
+                            :flags (talker-flags play-only-once only-play-in-region)
                             :speech #x4e
                             :text-duration (seconds 1)
                             :neg #x1
@@ -880,7 +885,7 @@
                           (new 'static 'talker-speech-class
                             :name "peck126m"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf4)
+                            :flags (talker-flags only-play-in-region)
                             :speech #x4f
                             :text-duration (seconds 1)
                             :neg #x1
@@ -891,7 +896,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax126"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x50
                             :text-duration (seconds 1)
                             :neg #x1
@@ -901,7 +906,7 @@
                           (new 'static 'talker-speech-class
                             :name "gun-fire"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x51
                             :text-duration (seconds 5)
                             :neg #x1
@@ -912,7 +917,7 @@
                           (new 'static 'talker-speech-class
                             :name "klev002"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x52
                             :neg #x1
                             :on-close #f
@@ -921,7 +926,7 @@
                           (new 'static 'talker-speech-class
                             :name "ash001"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x53
                             :neg #x1
                             :on-close #f
@@ -950,7 +955,7 @@
                           (new 'static 'talker-speech-class
                             :name "leaper02"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x56
                             :text-duration (seconds 5)
                             :neg #x1
@@ -1021,7 +1026,7 @@
                           (new 'static 'talker-speech-class
                             :name "sig001"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf8)
+                            :flags (talker-flags play-only-once long-timeout)
                             :speech #x5d
                             :neg #x1
                             :on-close #f
@@ -1030,7 +1035,7 @@
                           (new 'static 'talker-speech-class
                             :name "torn002"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x5e
                             :delay (seconds 2)
                             :neg #x1
@@ -1040,7 +1045,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax133"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x5f
                             :text-duration (seconds 5)
                             :neg #x1
@@ -1051,7 +1056,7 @@
                           (new 'static 'talker-speech-class
                             :name "mine001"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x60
                             :text-duration (seconds 3)
                             :neg #x1
@@ -1062,7 +1067,7 @@
                           (new 'static 'talker-speech-class
                             :name "klev004"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x61
                             :neg #x1
                             :on-close '(kiosk-complete)
@@ -1071,7 +1076,7 @@
                           (new 'static 'talker-speech-class
                             :name "gun001"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x62
                             :text-duration (seconds 5)
                             :neg #x1
@@ -1082,7 +1087,7 @@
                           (new 'static 'talker-speech-class
                             :name "dam003"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf3)
+                            :flags (talker-flags auto-save-once-on-exit)
                             :speech #x63
                             :neg #x1
                             :on-close '(kiosk-complete)
@@ -1109,7 +1114,7 @@
                           (new 'static 'talker-speech-class
                             :name "sam003"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf3)
+                            :flags (talker-flags auto-save-once-on-exit)
                             :speech #x66
                             :neg #x1
                             :on-close #f
@@ -1118,7 +1123,7 @@
                           (new 'static 'talker-speech-class
                             :name "keir002"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf8)
+                            :flags (talker-flags play-only-once long-timeout)
                             :speech #x67
                             :neg #x1
                             :on-close #f
@@ -1127,7 +1132,7 @@
                           (new 'static 'talker-speech-class
                             :name "sam002"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf3)
+                            :flags (talker-flags auto-save-once-on-exit)
                             :speech #x68
                             :neg #x1
                             :on-close #f
@@ -1136,7 +1141,7 @@
                           (new 'static 'talker-speech-class
                             :name "for001"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x69
                             :text-duration (seconds 5)
                             :neg #x1
@@ -1147,7 +1152,7 @@
                           (new 'static 'talker-speech-class
                             :name "keir004"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf8)
+                            :flags (talker-flags play-only-once long-timeout)
                             :speech #x6a
                             :delay (seconds 8)
                             :neg #x1
@@ -1157,7 +1162,7 @@
                           (new 'static 'talker-speech-class
                             :name "sam006"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x6b
                             :delay (seconds 5)
                             :neg #x1
@@ -1167,7 +1172,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup001"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x6c
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1179,7 +1184,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup002"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x6d
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1191,7 +1196,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup003"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x6e
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1203,7 +1208,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup004"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x6f
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1215,7 +1220,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup005"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x70
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1227,7 +1232,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup006"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x71
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1239,7 +1244,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup007"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x72
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1251,7 +1256,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup008"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x73
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1263,7 +1268,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup009"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x74
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1275,7 +1280,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup010"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x75
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1287,7 +1292,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup011"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x76
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1299,7 +1304,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup012"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x77
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1311,7 +1316,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup013"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x78
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1323,7 +1328,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup014"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x79
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1335,7 +1340,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup015"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x7a
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1347,7 +1352,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup016"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x7b
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1359,7 +1364,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup017"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x7c
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1371,7 +1376,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup018"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x7d
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1383,7 +1388,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup019"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x7e
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1395,7 +1400,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup020"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x7f
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1407,7 +1412,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup021"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x80
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1419,7 +1424,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup022"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x81
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1431,7 +1436,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup023"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf3 tf6)
+                            :flags (talker-flags reduce-volume auto-save-once-on-exit slide-in)
                             :speech #x82
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1443,7 +1448,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup024"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x83
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1455,7 +1460,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup025"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x84
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1467,7 +1472,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup026"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x85
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1490,7 +1495,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup028"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x87
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1502,7 +1507,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup029"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x88
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1514,7 +1519,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup030"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf1 tf6)
+                            :flags (talker-flags reduce-volume slide-in)
                             :speech #x89
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -1526,7 +1531,7 @@
                           (new 'static 'talker-speech-class
                             :name "powup031"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf0 tf1 tf6)
+                            :flags (talker-flags play-only-once reduce-volume slide-in)
                             :speech #x8a
                             :text-duration (seconds 10)
                             :delay (seconds 1)
@@ -1548,7 +1553,7 @@
                           (new 'static 'talker-speech-class
                             :name "torn001"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf2)
+                            :flags (talker-flags play-only-once auto-save-on-each-start)
                             :speech #x8c
                             :neg #x1
                             :on-close #f
@@ -1557,7 +1562,7 @@
                           (new 'static 'talker-speech-class
                             :name "jak112"
                             :channel (gui-channel jak)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x8d
                             :neg #x1
                             :on-close #f
@@ -1566,7 +1571,7 @@
                           (new 'static 'talker-speech-class
                             :name "torn008"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x8e
                             :neg #x1
                             :on-close #f
@@ -1739,7 +1744,7 @@
                           (new 'static 'talker-speech-class
                             :name "ash004"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #xa2
                             :delay (seconds 2)
                             :neg #x1
@@ -1765,7 +1770,7 @@
                           (new 'static 'talker-speech-class
                             :name "dam004"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #xa5
                             :neg #x1
                             :on-close #f
@@ -1814,7 +1819,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax586"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #xab
                             :neg #x1
                             :on-close #f
@@ -1831,7 +1836,7 @@
                           (new 'static 'talker-speech-class
                             :name "seem003"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3 tf8)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit long-timeout)
                             :speech #xad
                             :neg #x1
                             :on-close #f
@@ -1904,7 +1909,7 @@
                           (new 'static 'talker-speech-class
                             :name "seem002"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3 tf8)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit long-timeout)
                             :speech #xb6
                             :neg #x1
                             :on-close #f
@@ -1913,7 +1918,7 @@
                           (new 'static 'talker-speech-class
                             :name "darkjak1"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #xb7
                             :text-duration (seconds 5)
                             :neg #x1
@@ -1924,7 +1929,7 @@
                           (new 'static 'talker-speech-class
                             :name "bb10win"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf3)
+                            :flags (talker-flags auto-save-once-on-exit)
                             :speech #xb8
                             :neg #x1
                             :on-close #f
@@ -2309,7 +2314,7 @@
                           (new 'static 'talker-speech-class
                             :name "light001"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf0 tf6)
+                            :flags (talker-flags play-only-once slide-in)
                             :speech #xe8
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -2321,7 +2326,7 @@
                           (new 'static 'talker-speech-class
                             :name "light002"
                             :channel (gui-channel alert)
-                            :flags (talker-flags tf0 tf6)
+                            :flags (talker-flags play-only-once slide-in)
                             :speech #xe9
                             :text-duration (seconds 5)
                             :delay (seconds 1)
@@ -2333,7 +2338,7 @@
                           (new 'static 'talker-speech-class
                             :name "keir003"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #xea
                             :neg #x1
                             :on-close #f
@@ -2342,7 +2347,7 @@
                           (new 'static 'talker-speech-class
                             :name "ash002"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #xeb
                             :neg #x1
                             :on-close #f
@@ -3063,7 +3068,7 @@
                           (new 'static 'talker-speech-class
                             :name "tor062"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf3)
+                            :flags (talker-flags auto-save-once-on-exit)
                             :speech #x145
                             :neg #x1
                             :on-close #f
@@ -3152,7 +3157,7 @@
                           (new 'static 'talker-speech-class
                             :name "ash132"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf3)
+                            :flags (talker-flags auto-save-once-on-exit)
                             :speech #x150
                             :neg #x1
                             :on-close #f
@@ -3249,7 +3254,7 @@
                           (new 'static 'talker-speech-class
                             :name "teach-pickup"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x15c
                             :text-duration (seconds 5)
                             :neg #x1
@@ -3260,7 +3265,7 @@
                           (new 'static 'talker-speech-class
                             :name "teach-place"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x15d
                             :text-duration (seconds 5)
                             :neg #x1
@@ -3271,7 +3276,7 @@
                           (new 'static 'talker-speech-class
                             :name "teach-shield"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x15e
                             :text-duration (seconds 5)
                             :neg #x1
@@ -3312,7 +3317,7 @@
                           (new 'static 'talker-speech-class
                             :name "redhint1"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x162
                             :text-duration (seconds 5)
                             :neg #x1
@@ -3323,7 +3328,7 @@
                           (new 'static 'talker-speech-class
                             :name "redhint2"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x163
                             :text-duration (seconds 5)
                             :neg #x1
@@ -3334,7 +3339,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax619"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x164
                             :neg #x1
                             :on-close #f
@@ -3343,7 +3348,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax613"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x165
                             :neg #x1
                             :on-close #f
@@ -3352,7 +3357,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax615"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x166
                             :neg #x1
                             :on-close #f
@@ -3361,7 +3366,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax624"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x167
                             :neg #x1
                             :on-close #f
@@ -3370,7 +3375,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax623"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x168
                             :neg #x1
                             :on-close #f
@@ -3379,7 +3384,7 @@
                           (new 'static 'talker-speech-class
                             :name "dax622"
                             :channel (gui-channel daxter)
-                            :flags (talker-flags tf0 tf3)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit)
                             :speech #x169
                             :neg #x1
                             :on-close #f
@@ -3388,7 +3393,7 @@
                           (new 'static 'talker-speech-class
                             :name "hellcat-fire"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x16a
                             :text-duration (seconds 5)
                             :neg #x1
@@ -3399,7 +3404,7 @@
                           (new 'static 'talker-speech-class
                             :name "seem005"
                             :channel (gui-channel voicebox)
-                            :flags (talker-flags tf0 tf3 tf8)
+                            :flags (talker-flags play-only-once auto-save-once-on-exit long-timeout)
                             :speech #x16b
                             :neg #x1
                             :on-close #f
@@ -3408,7 +3413,7 @@
                           (new 'static 'talker-speech-class
                             :name "yellow3hint"
                             :channel (gui-channel message)
-                            :flags (talker-flags tf0)
+                            :flags (talker-flags play-only-once)
                             :speech #x16c
                             :text-duration (seconds 5)
                             :neg #x1

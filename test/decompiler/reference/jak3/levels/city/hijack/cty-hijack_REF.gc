@@ -15,7 +15,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "dax373"
                                      :channel (gui-channel daxter)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x2
                                      :neg #x1
                                      :on-close #f
@@ -80,7 +80,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "dax381"
                                      :channel (gui-channel daxter)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #xa
                                      :neg #x1
                                      :on-close #f
@@ -217,7 +217,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak103"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x1b
                                      :neg #x1
                                      :on-close #f
@@ -250,7 +250,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak107"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x1f
                                      :neg #x1
                                      :on-close #f
@@ -275,7 +275,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak110"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x22
                                      :neg #x1
                                      :on-close #f
@@ -292,7 +292,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak112"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x24
                                      :neg #x1
                                      :on-close #f
@@ -301,7 +301,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "torn149"
                                      :channel (gui-channel voicebox)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x25
                                      :neg #x1
                                      :on-close #f
@@ -334,7 +334,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "torn153"
                                      :channel (gui-channel voicebox)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x29
                                      :neg #x1
                                      :on-close #f
@@ -895,7 +895,7 @@
     ((= arg0 3)
      (let ((gp-1 (new 'static 'vector)))
        (if (-> this is-naughty-ottsel?)
-           (set! (-> gp-1 quad) (-> this root trans quad))
+           (vector-copy! gp-1 (-> this root trans))
            (vector<-cspace! gp-1 (-> this node-list data 16))
            )
        gp-1
@@ -1006,7 +1006,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cty-missile-lure" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (vector-copy! (-> self root trans) (-> arg0 pos))
   (quaternion-copy! (-> self root quat) (-> arg0 orient))
   (set-vector! (-> self root scale) 3.0 3.0 3.0 1.0)
   (set! (-> self is-naughty-ottsel?) (-> arg0 is-naughty-ottsel?))
@@ -1105,7 +1105,7 @@
 ;; INFO: Used lq/sq
 (defmethod find-and-lure-missiles ((this cty-missile-lure))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (set! (-> v1-0 quad) (-> this root trans quad))
+    (vector-copy! v1-0 (-> this root trans))
     (set! (-> v1-0 w) 327680.0)
     )
   (when #f
@@ -1483,7 +1483,7 @@
     (set-setting! 'exclusive-load '((ignore lctyhijk)) 0.0 0)
     (let ((gp-0 (new 'stack 'traffic-object-spawn-params)))
       (set! (-> gp-0 flags) (traffic-spawn-flags))
-      (set! (-> gp-0 position quad) (-> *pickup-start-pos* quad))
+      (vector-copy! (-> gp-0 position) *pickup-start-pos*)
       (quaternion-identity! (-> gp-0 rotation))
       (quaternion-rotate-y! (-> gp-0 rotation) (-> gp-0 rotation) *pickup-start-angle*)
       (set! (-> gp-0 velocity quad) (the-as uint128 0))
@@ -1505,7 +1505,7 @@
         )
       )
     (let ((gp-1 (new 'stack-no-clear 'task-arrow-params)))
-      (set! (-> gp-1 pos quad) (-> *pickup-start-pos* quad))
+      (vector-copy! (-> gp-1 pos) *pickup-start-pos*)
       (quaternion-identity! (-> gp-1 quat))
       (set! (-> gp-1 flags) (task-arrow-flags taf8))
       (set! (-> gp-1 map-icon) (the-as uint 12))
@@ -1527,7 +1527,7 @@
             (when (time-elapsed? (-> self last-check-vehicle-vis-time) (seconds 0.5))
               (set-time! (-> self last-check-vehicle-vis-time))
               (let ((s5-1 (new 'stack-no-clear 'collide-query)))
-                (set! (-> s5-1 start-pos quad) (-> (target-pos 0) quad))
+                (vector-copy! (-> s5-1 start-pos) (target-pos 0))
                 (vector-! (-> s5-1 move-dist) (get-trans gp-0 0) (-> s5-1 start-pos))
                 (let ((v1-20 s5-1))
                   (set! (-> v1-20 radius) 40.96)
@@ -1883,7 +1883,7 @@
         (set! (-> s4-0 is-leader?) #t)
         (set! (-> s4-0 is-leader?) #f)
         )
-    (set! (-> s4-0 pos quad) (-> arg0 quad))
+    (vector-copy! (-> s4-0 pos) arg0)
     (quaternion-copy! (-> s4-0 quat) arg1)
     (set! (-> s4-0 track-obj) (-> this hpickup))
     (let* ((s3-0 (get-process *default-dead-pool* cty-hijack-missile #x4000 1))
@@ -1960,7 +1960,7 @@
     (let ((gp-0 (new 'stack-no-clear 'cty-missile-lure-init-params)))
       (dotimes (s5-0 (-> *cty-hijack-lure-positions* length))
         (let ((a0-21 (-> *cty-hijack-lure-positions* s5-0)))
-          (set! (-> gp-0 pos quad) (-> a0-21 pos quad))
+          (vector-copy! (-> gp-0 pos) (-> a0-21 pos))
           )
         (quaternion-identity! (-> gp-0 orient))
         (set! (-> gp-0 is-naughty-ottsel?) #f)
@@ -1968,7 +1968,7 @@
         )
       )
     (let ((gp-1 (new 'stack-no-clear 'cty-missile-lure-init-params)))
-      (set! (-> gp-1 pos quad) (-> *naughty-ottsel-pos* quad))
+      (vector-copy! (-> gp-1 pos) *naughty-ottsel-pos*)
       (quaternion-identity! (-> gp-1 orient))
       (set! (-> gp-1 is-naughty-ottsel?) #t)
       (let ((s5-1 (get-process *default-dead-pool* cty-missile-lure #x4000 1)))
@@ -2080,6 +2080,7 @@
 
 ;; definition for method 11 of type cty-missile-launcher
 (defmethod init-from-entity! ((this cty-missile-launcher) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
@@ -2300,11 +2301,11 @@
   (dotimes (s5-0 (-> *guide-arrow-list* length))
     (let ((a0-1 (new 'stack-no-clear 'guide-arrow-init-params)))
       (let ((v1-0 (new 'stack-no-clear 'vector)))
-        (set! (-> v1-0 quad) (-> *guide-arrow-list* s5-0 pos quad))
+        (vector-copy! v1-0 (-> *guide-arrow-list* s5-0 pos))
         (let ((a1-5 (new 'stack-no-clear 'vector)))
-          (set! (-> a1-5 quad) (-> *guide-arrow-list* s5-0 facing quad))
-          (set! (-> a0-1 pos quad) (-> v1-0 quad))
-          (set! (-> a0-1 facing quad) (-> a1-5 quad))
+          (vector-copy! a1-5 (-> *guide-arrow-list* s5-0 facing))
+          (vector-copy! (-> a0-1 pos) v1-0)
+          (vector-copy! (-> a0-1 facing) a1-5)
           )
         )
       (set! (-> a0-1 xz?) #t)

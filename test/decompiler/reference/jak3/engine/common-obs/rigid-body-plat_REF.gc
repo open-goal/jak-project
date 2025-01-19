@@ -297,7 +297,7 @@
      (let ((v1-1 (the-as object (-> arg3 param 0))))
        (when (not (logtest? (-> this flags) (rigid-body-object-flag player-impulse-force)))
          (logior! (-> this flags) (rigid-body-object-flag player-contact-force))
-         (set! (-> this player-force-position quad) (-> (the-as rigid-body-control-point v1-1) velocity quad))
+         (vector-copy! (-> this player-force-position) (-> (the-as rigid-body-control-point v1-1) velocity))
          (vector-reset! (-> this player-force))
          (set! (-> this player-force y) (* -1.0 (-> this info player-weight)))
          )
@@ -318,7 +318,7 @@
                       )
              (when (not (logtest? (-> this flags) (rigid-body-object-flag player-impulse-force)))
                (logior! (-> this flags) (rigid-body-object-flag player-contact-force))
-               (set! (-> this player-force-position quad) (-> (the-as process-focusable v1-11) root trans quad))
+               (vector-copy! (-> this player-force-position) (-> (the-as process-focusable v1-11) root trans))
                (vector-reset! (-> this player-force))
                (let* ((a1-5 (-> this player-force-position))
                       (f30-0 0.0)
@@ -347,7 +347,7 @@
               )
          (when v1-31
            (logior! (-> this flags) (rigid-body-object-flag player-impulse-force))
-           (set! (-> this player-force-position quad) (-> (the-as process-focusable v1-31) root trans quad))
+           (vector-copy! (-> this player-force-position) (-> (the-as process-focusable v1-31) root trans))
            (let ((f0-14 (fmin
                           (* 0.00012207031
                              (the-as float (-> arg3 param 1))
@@ -401,7 +401,7 @@
     (the-as (function rigid-body-object float) (method-of-object this apply-gravity!))
     )
   (set-time! (-> this player-bonk-timeout))
-  (set! (-> this player-force quad) (-> *null-vector* quad))
+  (vector-copy! (-> this player-force) *null-vector*)
   (set! (-> this root max-iteration-count) (the-as uint 4))
   (set! (-> this max-time-step) (-> arg0 extra max-time-step))
   (set! (-> this water-anim) (entity-actor-lookup (-> this entity) 'water-actor 0))
@@ -498,6 +498,7 @@
 ;; definition for method 11 of type rigid-body-platform
 ;; WARN: Return type mismatch int vs object.
 (defmethod init-from-entity! ((this rigid-body-platform) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (logior! (-> this mask) (process-mask platform))
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
@@ -505,7 +506,3 @@
   (go-idle this)
   0
   )
-
-
-
-

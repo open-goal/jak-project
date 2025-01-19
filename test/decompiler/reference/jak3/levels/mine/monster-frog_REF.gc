@@ -131,34 +131,34 @@
     :jump-height-min (meters 2.87)
     :jump-height-factor 0.1
     :knocked-seek-ry-clamp 4551.1113
-    :knocked-soft-vxz-lo 75776.0
-    :knocked-soft-vxz-hi 75776.0
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 81920.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 79872.0
-    :knocked-hard-vxz-hi 79872.0
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 75776.0
-    :knocked-yellow-vxz-hi 75776.0
-    :knocked-yellow-vy-lo 81920.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 73728.0
-    :knocked-red-vxz-hi 73728.0
-    :knocked-red-vy-lo 96256.0
-    :knocked-red-vy-hi 96256.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 18.5)
+    :knocked-soft-vxz-hi (meters 18.5)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 20)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.5)
+    :knocked-hard-vxz-hi (meters 19.5)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 18.5)
+    :knocked-yellow-vxz-hi (meters 18.5)
+    :knocked-yellow-vy-lo (meters 20)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 18)
+    :knocked-red-vxz-hi (meters 18)
+    :knocked-red-vy-lo (meters 23.5)
+    :knocked-red-vy-hi (meters 23.5)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -206,7 +206,7 @@
       (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
       )
     0
-    (dotimes (gp-0 (set-reaction-time! self (seconds 0.007) (seconds 0.01)))
+    (dotimes (gp-0 (rnd-time-frame self (seconds 0.007) (seconds 0.01)))
       (cond
         ((zero? (rnd-int self 4))
          (let ((v1-7 (ja-group)))
@@ -337,7 +337,7 @@
       (set! (-> v1-37 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-37 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post nav-enemy-simple-post
   )
@@ -375,7 +375,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -398,7 +398,7 @@
           (suspend)
           (ja :num! (seek! max f30-0))
           )
-        (when (enemy-method-134 self 0.2)
+        (when (rnd-chance-for-idle? self 0.2)
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
           (let ((v1-57 self))
@@ -416,7 +416,7 @@
             (suspend)
             (ja :num! (seek! max f30-0))
             )
-          (until (not (enemy-method-134 self 0.2))
+          (until (not (rnd-chance-for-idle? self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
@@ -516,7 +516,7 @@
           ((or (>= 2 (the-as int gp-0)) (not (get-focus! self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware ea4))
+          ((= gp-0 (enemy-aware flee))
            (go-flee self)
            )
           )
@@ -545,7 +545,7 @@
                    (gp-1 (-> self enemy-info))
                    )
               (let ((a1-5 (vector-normalize-copy! (new 'stack-no-clear 'vector) a1-4 1.0)))
-                (if (not (enemy-method-103 self a1-5 6371.5557))
+                (if (not (heading-matches-direction? self a1-5 6371.5557))
                     (go-virtual turn)
                     )
                 )
@@ -635,7 +635,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post (behavior ()
     (let ((a0-0 self))
@@ -692,7 +692,7 @@
             )
         (logclear! (-> a0-3 flags) (nav-state-flag directional-mode))
         (logior! (-> a0-3 flags) (nav-state-flag target-poly-dirty))
-        (set! (-> a0-3 target-pos quad) (-> v1-17 quad))
+        (vector-copy! (-> a0-3 target-pos) v1-17)
         )
       )
     0
@@ -768,13 +768,14 @@
           )
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post nav-enemy-simple-post
   )
 
 ;; definition for method 85 of type monster-frog
 (defmethod knocked-anim ((this monster-frog) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (ja-channel-push! 1 0)
@@ -836,6 +837,7 @@
 
 ;; definition for method 86 of type monster-frog
 (defmethod knocked-land-anim ((this monster-frog) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (ja-channel-push! 1 (seconds 0.17))
@@ -897,6 +899,7 @@
 
 ;; definition for method 59 of type monster-frog
 (defmethod enemy-common-post ((this monster-frog))
+  "Common implementation of post. Runs ja-post."
   (water-control-method-10 (-> this water))
   ((method-of-type nav-enemy enemy-common-post) this)
   (none)
@@ -905,6 +908,7 @@
 ;; definition for method 120 of type monster-frog
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this monster-frog))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -969,12 +973,13 @@
 ;; definition for method 121 of type monster-frog
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this monster-frog))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-monster-frog" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *monster-frog-nav-enemy-info*)
+  (setup-enemy! this *monster-frog-nav-enemy-info*)
   (set! (-> this water) (new 'process 'water-control this 5 0.0 8192.0 2048.0))
   (set! (-> this water flags)
         (water-flag active use-water-anim touch-water part-splash part-drip part-rings part-water find-water)
@@ -985,7 +990,3 @@
   0
   (none)
   )
-
-
-
-
