@@ -2965,8 +2965,11 @@ bool try_to_rewrite_vector_inline_ctor(const Env& env,
 }
 
 bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack& stack) {
-  auto matrix_entries =
-      stack.try_getting_active_stack_entries({true, true, true, true, false, false, false, false});
+  if (env.func->name() == "(method 63 collide-shape-moving)") {
+    return false;
+  }
+  auto matrix_entries = stack.try_getting_active_stack_entries(
+      {true, true, true, true, false, false, false, false});
   if (matrix_entries) {
     // first, check the loads. they should be something like source = (-> MAT vec quad)
     // MAT should always be a variable
@@ -2979,6 +2982,7 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
                          {DerefTokenMatcher::string(names[i]), DerefTokenMatcher::string("quad")});
       auto mr = match(deref_matcher, matrix_entries->at(i).source, &env);
       if (!mr.matched) {
+        lg::info("faile 1");
         return false;
       }
       load_src_ras.push_back(mr.maps.regs.at(0).value());
@@ -2992,6 +2996,8 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
                                      Matcher::any_reg(1));
       auto mr = match(matcher, matrix_entries->at(i).elt, &env);
       if (!mr.matched) {
+        lg::info("faile 2");
+
         return false;
       }
       store_dest_ras.push_back(mr.maps.regs.at(0).value());
@@ -2999,15 +3005,18 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
     }
 
     // check loads are all loading from the same matrix
-    for (int i = 1; i < 3; i++) {
+    for (int i = 1; i < 4; i++) {
       if (load_src_ras.at(i).reg() != load_src_ras.at(0).reg()) {
+        lg::info("faile 3");
         return false;
       }
     }
 
     // check stores are all storing to the same matrix
-    for (int i = 1; i < 3; i++) {
+    for (int i = 1; i < 4; i++) {
       if (store_dest_ras.at(i).reg() != store_dest_ras.at(0).reg()) {
+        lg::info("faile 4");
+
         return false;
       }
     }
@@ -3015,43 +3024,75 @@ bool try_to_rewrite_matrix_inline_copy(const Env& env, FormPool& pool, FormStack
     // check temps are consistent
     for (int i = 0; i < 4; i++) {
       if (store_src_ras.at(i).reg() != matrix_entries->at(i).destination.value().reg()) {
+        lg::info("faile 5");
+
         return false;
       }
     }
 
     // check types
     if (env.get_variable_type(load_src_ras.at(0), true) != TypeSpec("matrix")) {
+      lg::info("faile 6");
+
       return false;
     }
 
     if (env.get_variable_type(store_dest_ras.at(0), true) != TypeSpec("matrix")) {
+      lg::info("faile 7");
+
       return false;
     }
 
     stack.pop(8);
     auto* menv = const_cast<Env*>(&env);
-    for (int i = 1; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
       menv->disable_use(store_dest_ras.at(i));
     }
 
+    lg::error("in {}", env.func->name());
+    lg::info("src is {}", load_src_ras.at(0).reg().to_string());
+    lg::info("dst is {}", store_dest_ras.at(0).reg().to_string());
+    lg::info("stack:\n{}", stack.print(env));
+
     auto src_repopped = stack.pop_reg(load_src_ras.at(0), {}, env, true);
     if (!src_repopped) {
+      lg::info("repop src failed!!");
       src_repopped = var_to_form(load_src_ras.at(0), pool);
+    } else {
+      lg::info(" popped src: {}", src_repopped->to_string(env));
     }
 
-    auto dst_repopped = stack.pop_reg(store_dest_ras.at(0), {}, env, true);
+    // src_repopped = matrix_entries->at(0).source;
+    bool found = false;
+    RegisterAccess ra;
+    auto dst_repopped = stack.pop_reg(store_dest_ras.at(0).reg(), {}, env, true, -1, &ra, &found);
     if (!dst_repopped) {
+      lg::info("repop dst failed!!");
       dst_repopped = var_to_form(store_dest_ras.at(0), pool);
+    } else {
+      ASSERT(found);
+      lg::info(" popped dst: {} {} {}", dst_repopped->to_string(env), ra.reg().to_string(),
+               ra.mode() == AccessMode::WRITE);
     }
 
-    stack.push_form_element(
-        pool.alloc_element<GenericElement>(
-            GenericOperator::make_function(pool.form<ConstantTokenElement>("matrix-copy!")),
-            std::vector<Form*>{dst_repopped, src_repopped}),
-        true);
+    if (found) {
+      stack.push_value_to_reg(
+          ra,
+          pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("matrix-copy!")),
+              std::vector<Form*>{dst_repopped, src_repopped}),
+          true, TypeSpec("matrix"));
+    } else {
+      stack.push_form_element(
+          pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("matrix-copy!")),
+              std::vector<Form*>{dst_repopped, src_repopped}),
+          true);
+    }
 
     return true;
   }
+
   return false;
 }
 
