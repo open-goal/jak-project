@@ -60,7 +60,7 @@
        #t
        )
       (s3-0
-        (set! (-> arg1 quad) (-> (the-as vector s3-0) quad))
+        (vector-copy! arg1 (the-as vector s3-0))
         #t
         )
       (else
@@ -453,7 +453,7 @@
         )
       (arg3
         (set! (-> this vec 0 quad) (-> arg3 cverts 0 quad))
-        (set! (-> this vec 1 quad) (-> arg3 cverts (+ (-> arg3 num-cverts) -1) quad))
+        (vector-copy! (-> this vec 1) (-> arg3 cverts (+ (-> arg3 num-cverts) -1)))
         )
       (else
         (return #f)
@@ -519,7 +519,7 @@
   (set! (-> this max-move) 0.0)
   (set! (-> this sample-len) 0.0)
   (set! (-> this used-count) 1)
-  (set! (-> this old-position quad) (-> arg0 quad))
+  (vector-copy! (-> this old-position) arg0)
   (let ((v1-6 1))
     (while (!= v1-6 31)
       (set! (-> this point v1-6 next) (+ v1-6 1))
@@ -901,8 +901,8 @@
         (let ((a2-3 (-> s3-0 cur-pt)))
           (set! (-> this debug-last-point) a2-3)
           (let ((s4-1 (new 'stack-no-clear 'vector)))
-            (set! (-> this debug-old-position quad) (-> this old-position quad))
-            (set! (-> this debug-out-position quad) (-> arg0 quad))
+            (vector-copy! (-> this debug-old-position) (-> this old-position))
+            (vector-copy! (-> this debug-out-position) arg0)
             (vector-! s4-1 arg0 (-> this old-position))
             (tracking-spline-method-20 this s4-1 a2-3)
             (vector+! arg0 (-> this old-position) s4-1)
@@ -910,7 +910,7 @@
           )
         )
       )
-    (set! (-> this old-position quad) (-> arg0 quad))
+    (vector-copy! (-> this old-position) arg0)
     arg0
     )
   )
@@ -1013,7 +1013,7 @@
           )
         )
       (set! (-> self fov) (-> *camera-combiner* fov))
-      (set! (-> self velocity quad) (-> *camera-combiner* velocity quad))
+      (vector-copy! (-> self velocity) (-> *camera-combiner* velocity))
       )
     (else
       (vector-reset! (-> self trans))
@@ -1159,8 +1159,8 @@
         (let ((s3-1 (new 'stack-no-clear 'vector)))
           (curve-length (-> self spline-curve))
           (if arg3
-              (set! (-> s3-1 quad) (-> self tracking follow-pt quad))
-              (set! (-> s3-1 quad) (-> *camera* tpos-curr-adj quad))
+              (vector-copy! s3-1 (-> self tracking follow-pt))
+              (vector-copy! s3-1 (-> *camera* tpos-curr-adj))
               )
           (let ((f0-22
                   (curve-closest-point (-> self spline-curve) s3-1 (-> self spline-tt) 40960.0 10 (-> self spline-follow-dist))
@@ -1232,7 +1232,7 @@
         (update! (-> arg0 underwater-blend) 0.0)
         )
       (else
-        (set! (-> arg0 old-cam-trans quad) (-> arg1 quad))
+        (vector-copy! (-> arg0 old-cam-trans) arg1)
         (jump-to-target! (-> arg0 tilt-adjust) 0.0)
         (jump-to-target! (-> arg0 point-of-interest-blend) 0.0)
         (jump-to-target! (-> arg0 underwater-blend) 0.0)
@@ -1240,7 +1240,7 @@
       )
     (set! (-> arg0 follow-height-extra target) (-> *camera* settings extra-follow-height))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-0 quad) (-> arg0 follow-pt quad))
+      (vector-copy! s4-0 (-> arg0 follow-pt))
       (cond
         ((logtest? (-> *camera* settings slave-options) (cam-slave-options BIKE_MODE))
          (let ((s1-0 (new 'stack-no-clear 'vector))
@@ -1287,7 +1287,7 @@
               (vector+! (-> arg0 follow-off) (-> arg0 follow-off) s2-0)
               )
              (else
-               (set! (-> arg0 follow-off quad) (-> s2-0 quad))
+               (vector-copy! (-> arg0 follow-off) s2-0)
                )
              )
            )
@@ -1355,7 +1355,7 @@
                     )
                 )
               (else
-                (set! (-> arg0 follow-off quad) (-> s2-1 quad))
+                (vector-copy! (-> arg0 follow-off) s2-1)
                 (jump-to-target! (-> arg0 follow-height-extra) 0.0)
                 )
               )
@@ -1388,7 +1388,7 @@
         (vector-! (-> arg0 follow-off) (-> arg0 follow-off) (-> *camera* tpos-curr-adj))
         )
       )
-    (set! (-> arg0 old-cam-trans quad) (-> arg1 quad))
+    (vector-copy! (-> arg0 old-cam-trans) arg1)
     (-> arg0 follow-pt)
     )
   )
@@ -1397,11 +1397,7 @@
   (let ((s4-0 (new-stack-vector0)))
     0.0
     0.0
-    (let ((s5-0 (new 'stack-no-clear 'matrix)))
-      (set! (-> s5-0 rvec quad) (the-as uint128 0))
-      (set! (-> s5-0 uvec quad) (the-as uint128 0))
-      (set! (-> s5-0 fvec quad) (the-as uint128 0))
-      (set! (-> s5-0 trans quad) (the-as uint128 0))
+    (let ((s5-0 (new-stack-matrix0)))
       (vector-negate! s4-0 arg1)
       (vector-flatten! s4-0 s4-0 (-> arg0 fvec))
       (vector-normalize! s4-0 1.0)
@@ -1497,11 +1493,7 @@
          (vf2 :class vf)
          )
     (init-vf0-vector)
-    (let ((s5-0 (new 'stack-no-clear 'matrix)))
-      (set! (-> s5-0 rvec quad) (the-as uint128 0))
-      (set! (-> s5-0 uvec quad) (the-as uint128 0))
-      (set! (-> s5-0 fvec quad) (the-as uint128 0))
-      (set! (-> s5-0 trans quad) (the-as uint128 0))
+    (let ((s5-0 (new-stack-matrix0)))
       (let ((s3-0 (new-stack-vector0))
             (s2-0 (new-stack-vector0))
             )
@@ -1845,8 +1837,8 @@
             )
           )
         (else
-          (set! (-> s0-0 quad) (-> arg1 quad))
-          (set! (-> sv-160 quad) (-> arg2 quad))
+          (vector-copy! s0-0 arg1)
+          (vector-copy! sv-160 arg2)
           (set! f30-0 (vector-normalize-ret-len! s0-0 1.0))
           (set! f28-0 (vector-normalize-ret-len! sv-160 1.0))
           (vector-normalize! (vector-cross! s3-0 arg2 arg1) 1.0)
@@ -1916,11 +1908,7 @@
           (f30-0 1.0)
           )
       0.0
-      (let ((s0-0 (new 'stack-no-clear 'matrix)))
-        (set! (-> s0-0 rvec quad) (the-as uint128 0))
-        (set! (-> s0-0 uvec quad) (the-as uint128 0))
-        (set! (-> s0-0 fvec quad) (the-as uint128 0))
-        (set! (-> s0-0 trans quad) (the-as uint128 0))
+      (let ((s0-0 (new-stack-matrix0)))
         (cond
           (arg3
             (vector-flatten! s1-0 arg1 arg3)
@@ -1936,8 +1924,8 @@
               )
             )
           (else
-            (set! (-> s1-0 quad) (-> arg1 quad))
-            (set! (-> sv-160 quad) (-> arg2 quad))
+            (vector-copy! s1-0 arg1)
+            (vector-copy! sv-160 arg2)
             (set! f28-0 (vector-normalize-ret-len! s1-0 1.0))
             (set! f26-0 (vector-normalize-ret-len! sv-160 1.0))
             (vector-normalize! (vector-cross! s3-0 arg2 arg1) 1.0)

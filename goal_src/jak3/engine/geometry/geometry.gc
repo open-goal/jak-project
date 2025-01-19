@@ -107,7 +107,7 @@
 
 (defun vector-reflect-flat-gravity! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s4-0 quad) (-> arg1 quad))
+    (vector-copy! s4-0 arg1)
     (vector-reflect-flat! arg0 s4-0 arg2)
     ;; og:preserve-this
     (let* ((s2-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) s4-0 1.0)) ;; src normalized
@@ -750,11 +750,11 @@
   "Slerp for vectors. (imagine that they are the z axis of two frames)"
   (cond
     ((>= 0.0 arg3)
-     (set! (-> arg0 quad) (-> arg1 quad))
+     (vector-copy! arg0 arg1)
      arg0
      )
     ((>= arg3 1.0)
-     (set! (-> arg0 quad) (-> arg2 quad))
+     (vector-copy! arg0 arg2)
      arg0
      )
     (else
@@ -775,10 +775,10 @@
   (local-vars (sv-112 (function float float float float)))
   (cond
     ((>= 0.0 arg3)
-     (set! (-> arg0 quad) (-> arg1 quad))
+     (vector-copy! arg0 arg1)
      )
     ((>= arg3 1.0)
-     (set! (-> arg0 quad) (-> arg2 quad))
+     (vector-copy! arg0 arg2)
      )
     (else
       (let* ((s0-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 1.0))
@@ -1433,7 +1433,7 @@
         (-> arg0 num-knots)
         )
       (dotimes (s2-0 s3-0)
-        (set! (-> s5-0 quad) (-> s4-0 quad))
+        (vector-copy! s5-0 s4-0)
         (curve-evaluate!
           s4-0
           (/ (the float (+ s2-0 1)) (the float s3-0))
@@ -1601,11 +1601,13 @@
   (vector-normalize! arg0 1.0)
   )
 
-(defmethod lissajous-interp-method-9 ((this lissajous-interp) (arg0 vector))
-  (lissajous-method-9 (-> this current) arg0)
+(defmethod evaluate! ((this lissajous-interp) (arg0 vector))
+  "Set the x and y component of the vector to the current point on the curve."
+  (evaluate! (-> this current) arg0)
   )
 
-(defmethod lissajous-interp-method-10 ((this lissajous-interp))
+(defmethod update! ((this lissajous-interp))
+  "Update both the interpolation, and the curves themselves."
   (seek! (-> this current x-mag) (-> this dest x-mag) (-> this rate x-mag))
   (seek! (-> this current y-mag) (-> this dest y-mag) (-> this rate y-mag))
   (seek! (-> this current theta-rate) (-> this dest theta-rate) (-> this rate theta-rate))
@@ -1617,7 +1619,8 @@
         )
   )
 
-(defmethod lissajous-method-9 ((this lissajous) (arg0 vector))
+(defmethod evaluate! ((this lissajous) (arg0 vector))
+  "Set the x and y component of the vector to the current point on the curve."
   0.0
   0.0
   (let ((f30-0 (* (cos (* (-> this theta) (-> this wx))) (-> this x-mag)))

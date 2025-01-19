@@ -301,7 +301,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cty-hijack-missile" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (vector-copy! (-> self root trans) (-> arg0 pos))
   (quaternion-copy! (-> self root quat) (-> arg0 quat))
   self
   (set! (-> self particle-trail)
@@ -339,7 +339,7 @@
                )
          )
     (if a0-5
-        (set! (-> arg0 quad) (-> (get-trans a0-5 3) quad))
+        (vector-copy! arg0 (get-trans a0-5 3))
         )
     )
   arg0
@@ -347,7 +347,7 @@
 
 (defmethod probe-ground ((this cty-hijack-missile) (arg0 vector) (arg1 vector))
   (let ((v1-0 (new 'stack-no-clear 'collide-query)))
-    (set! (-> v1-0 start-pos quad) (-> arg0 quad))
+    (vector-copy! (-> v1-0 start-pos) arg0)
     (vector-! (-> v1-0 move-dist) arg1 (-> v1-0 start-pos))
     (let ((a0-4 v1-0))
       (set! (-> a0-4 radius) 8192.0)
@@ -386,9 +386,7 @@
           (-> this tracked-player-positions data (+ (-> this tracked-player-positions length) -2))
           s5-0
           )
-        (set! (-> this tracked-player-positions data (+ (-> this tracked-player-positions length) -1) quad)
-              (-> s5-0 quad)
-              )
+        (vector-copy! (-> this tracked-player-positions data (+ (-> this tracked-player-positions length) -1)) s5-0)
         (push-back (-> this tracked-player-positions) s5-0)
         )
     )
@@ -498,11 +496,11 @@
   :enter (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 217 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 217))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 217))
         )
       )
@@ -520,11 +518,11 @@
     (logior! (-> self draw status) (draw-control-status no-draw))
     (cond
       ((logtest? (-> *part-group-id-table* 296 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 296))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 296))
         )
       )
@@ -557,7 +555,7 @@
          (s5-1 (new 'stack-no-clear 'vector))
          )
     (let ((s0-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s0-0 quad) (-> s2-0 root transv quad))
+      (vector-copy! s0-0 (-> s2-0 root transv))
       (let ((v1-8 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> s2-0 root quat)))
             (s1-0 (new 'stack-no-clear 'vector))
             )
@@ -590,7 +588,7 @@
           )
         )
       )
-    (set! (-> arg0 quad) (-> s5-1 quad))
+    (vector-copy! arg0 s5-1)
     )
   (add-debug-sphere #t (bucket-id debug) arg0 (meters 2) *color-yellow*)
   arg0
@@ -624,11 +622,11 @@
     (logior! (-> self draw status) (draw-control-status no-draw))
     (cond
       ((logtest? (-> *part-group-id-table* 88 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 88))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 88))
         )
       )
@@ -702,7 +700,7 @@
 (defmethod cty-hijack-missile-method-49 ((this cty-hijack-missile))
   (let ((gp-0 (new 'stack-no-clear 'matrix)))
     (matrix-f-u-compose gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)) *up-vector*)
-    (set! (-> gp-0 trans quad) (-> this root trans quad))
+    (vector-copy! (-> gp-0 trans) (-> this root trans))
     (vector+float*! (-> gp-0 trans) (-> gp-0 trans) (-> gp-0 fvec) -3686.4)
     (spawn-from-mat (-> this part) gp-0)
     (vector+float*! (-> gp-0 trans) (-> gp-0 trans) (-> gp-0 fvec) -4096.0)
@@ -744,16 +742,14 @@
      (when (-> this is-leader?)
        (let ((s4-0 (new 'stack-no-clear 'vector)))
          (let ((s3-0 arg0))
-           (set! (-> s4-0 quad) (-> (get-trans
-                                      (the-as process-focusable (if (type? s3-0 process-focusable)
-                                                                    (the-as process-focusable s3-0)
-                                                                    )
-                                              )
-                                      3
-                                      )
-                                    quad
-                                    )
-                 )
+           (vector-copy! s4-0 (get-trans
+                                (the-as process-focusable (if (type? s3-0 process-focusable)
+                                                              (the-as process-focusable s3-0)
+                                                              )
+                                        )
+                                3
+                                )
+                         )
            )
          (let ((s3-1 (get-tracked-obj-pos this (new 'stack-no-clear 'vector))))
            0.0
@@ -865,9 +861,9 @@
     (if (not s5-0)
         (return 0)
         )
-    (set! (-> a0-5 quad) (-> s5-0 root transv quad))
+    (vector-copy! a0-5 (-> s5-0 root transv))
     (let ((f30-0 (vector-normalize-ret-len! a0-5 1.0)))
-      (set! (-> s4-1 quad) (-> this target-pos quad))
+      (vector-copy! s4-1 (-> this target-pos))
       (when #t
         (seek! (-> this offset-dist) (-> this missile-dist) (* 20480.0 (seconds-per-frame)))
         (seek! (-> this vel-factor) *k1* (* 2.0 (seconds-per-frame)))
@@ -1010,8 +1006,8 @@
   (set! (-> this lisa rate y-mag) (* 10240.0 (seconds-per-frame)))
   (set! (-> this lisa rate period-shift) (* 16384.0 (seconds-per-frame)))
   (set! (-> this lisa dest period-shift) 16384.0)
-  (lissajous-interp-method-10 (-> this lisa))
-  (let ((s5-3 (lissajous-interp-method-9 (-> this lisa) (new 'stack-no-clear 'vector))))
+  (update! (-> this lisa))
+  (let ((s5-3 (evaluate! (-> this lisa) (new 'stack-no-clear 'vector))))
     (vector-float*! s5-3 s5-3 0.5)
     (vector-lerp! (-> this lisa-pt) (-> this lisa-pt) s5-3 1.0)
     (let ((a2-9 (matrix-f-u-compose (matrix-identity! (new 'stack-no-clear 'matrix)) sv-76 *up-vector*)))
@@ -1039,7 +1035,7 @@
     (vector-normalize! s5-5 1.0)
     (quaternion-look-at! (-> this root quat) s5-5 *up-vector*)
     )
-  (set! (-> this last-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this last-trans) (-> this root trans))
   (none)
   )
 
@@ -1067,7 +1063,7 @@
   (set! (-> this lisa dest wx) 1.0)
   (set! (-> this lisa dest wy) 1.2)
   (set! (-> this lisa dest period-shift) 16384.0)
-  (set! (-> this basetrans quad) (-> this root trans quad))
+  (vector-copy! (-> this basetrans) (-> this root trans))
   (none)
   )
 
@@ -1166,8 +1162,8 @@
     (set! (-> self lisa rate y-mag) (* 10240.0 (seconds-per-frame)))
     (set! (-> self lisa rate period-shift) (* 16384.0 (seconds-per-frame)))
     (set! (-> self lisa dest period-shift) 16384.0)
-    (lissajous-interp-method-10 (-> self lisa))
-    (let ((gp-0 (lissajous-interp-method-9 (-> self lisa) (new 'stack-no-clear 'vector))))
+    (update! (-> self lisa))
+    (let ((gp-0 (evaluate! (-> self lisa) (new 'stack-no-clear 'vector))))
       (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> self target-pos) (-> self basetrans))))
         (vector-normalize! s5-1 1.0)
         (vector-float*! gp-0 gp-0 0.5)
@@ -1183,7 +1179,7 @@
       (vector-normalize! gp-2 1.0)
       (quaternion-look-at! (-> self root quat) gp-2 *up-vector*)
       )
-    (set! (-> self last-trans quad) (-> self root trans quad))
+    (vector-copy! (-> self last-trans) (-> self root trans))
     (if (and (< (vector-vector-distance (-> self root trans) (get-tracked-obj-pos self (new 'stack-no-clear 'vector)))
                 20480.0
                 )
