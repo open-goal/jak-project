@@ -24,9 +24,10 @@
             (cond
               ((!= (-> (handle->process (-> this focus handle)) type) target)
                (set! (-> s3-1 quad) (the-as uint128 0))
-               (set! (-> s5-0 dest quad)
-                     (-> (get-trans (the-as process-focusable (handle->process (-> this focus handle))) 3) quad)
-                     )
+               (vector-copy!
+                 (-> s5-0 dest)
+                 (get-trans (the-as process-focusable (handle->process (-> this focus handle))) 3)
+                 )
                0.0
                )
               (else
@@ -34,14 +35,12 @@
                     (vector-normalize! s3-1 (* 4096.0 (rand-vu-float-range 1.0 2.0)))
                     (vector-normalize! s3-1 (* 4096.0 (rand-vu-float-range 1.0 3.0)))
                     )
-                (set! (-> s5-0 dest quad)
-                      (-> (vector+! (new 'stack-no-clear 'vector) s3-1 (-> this target-pos-predict-miss)) quad)
-                      )
+                (vector-copy! (-> s5-0 dest) (vector+! (new 'stack-no-clear 'vector) s3-1 (-> this target-pos-predict-miss)))
                 f30-0
                 )
               )
             )
-      (set! (-> s5-0 src quad) (-> s4-0 quad))
+      (vector-copy! (-> s5-0 src) s4-0)
       (set! (-> s5-0 initial-tilt) 8192.0)
       (set! (-> s5-0 gravity) 184320.0)
       (when (traj3d-calc-initial-velocity-using-tilt s5-0)
@@ -50,8 +49,8 @@
           (set! (-> a1-14 charge) f30-0)
           (set! (-> a1-14 options) (projectile-options))
           (logclear! (-> a1-14 options) (projectile-options po14 po15 po16))
-          (set! (-> a1-14 pos quad) (-> s5-0 src quad))
-          (set! (-> a1-14 vel quad) (-> s5-0 initial-velocity quad))
+          (vector-copy! (-> a1-14 pos) (-> s5-0 src))
+          (vector-copy! (-> a1-14 vel) (-> s5-0 initial-velocity))
           (set! (-> a1-14 notify-handle) (the-as handle #f))
           (set! (-> a1-14 owner-handle) (process->handle this))
           (set! (-> a1-14 target-handle) (the-as handle #f))
@@ -133,7 +132,7 @@
     (loop
       (let ((a2-0 (new 'stack-no-clear 'vector)))
         (let ((a1-0 (-> self nav state)))
-          (set! (-> a2-0 quad) (-> a1-0 target-pos quad))
+          (vector-copy! a2-0 (-> a1-0 target-pos))
           )
         (add-debug-sphere #t (bucket-id debug-no-zbuf1) a2-0 (meters 2) *color-red*)
         )
@@ -445,7 +444,7 @@
     (let ((a0-8 (-> self nav state))
           (v1-15 *null-vector*)
           )
-      (set! (-> a0-8 velocity quad) (-> v1-15 quad))
+      (vector-copy! (-> a0-8 velocity) v1-15)
       )
     0
     (set-time! (-> self state-time))

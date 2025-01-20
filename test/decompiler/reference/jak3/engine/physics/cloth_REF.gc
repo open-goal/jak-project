@@ -85,30 +85,26 @@
 ;; WARN: Return type mismatch cloth-flag vs none.
 (defmethod pre-physics-update ((this cloth-on-skeleton))
   "Callback to update prior to running verlet integration. Can handle movement of the entire system in the world, for example"
+  (local-vars (v1-4 matrix))
   (let ((s5-0 (new 'stack-no-clear 'matrix))
         (s4-0 (handle->process (-> this owner)))
         )
     (when s4-0
-      (cond
-        ((< -1 (-> this base-transform-index))
-         (let* ((v1-4 s5-0)
-                (a3-0 (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform))
-                (a0-8 (-> a3-0 rvec quad))
-                (a1-3 (-> a3-0 uvec quad))
-                (a2-0 (-> a3-0 fvec quad))
-                (a3-1 (-> a3-0 trans quad))
+      (set! v1-4
+            (cond
+              ((< -1 (-> this base-transform-index))
+               (matrix-copy!
+                 s5-0
+                 (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform)
+                 )
+               )
+              (else
+                (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
+                (vector-copy! (-> s5-0 trans) (-> (the-as process-focusable s4-0) root trans))
+                v1-4
                 )
-           (set! (-> v1-4 rvec quad) a0-8)
-           (set! (-> v1-4 uvec quad) a1-3)
-           (set! (-> v1-4 fvec quad) a2-0)
-           (set! (-> v1-4 trans quad) a3-1)
-           )
-         )
-        (else
-          (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
-          (set! (-> s5-0 trans quad) (-> (the-as process-focusable s4-0) root trans quad))
-          )
-        )
+              )
+            )
       (vector-normalize! (-> s5-0 fvec) 1.0)
       (vector-normalize! (-> s5-0 uvec) 1.0)
       (vector-normalize! (-> s5-0 rvec) 1.0)
@@ -130,7 +126,7 @@
               (set! (-> s3-0 trans w) 1.0)
               (matrix*! s4-1 s4-1 s3-0)
               (matrix-identity! s3-0)
-              (set! (-> s3-0 trans quad) (-> s5-0 trans quad))
+              (vector-copy! (-> s3-0 trans) (-> s5-0 trans))
               (matrix*! s4-1 s4-1 s3-0)
               )
             )
@@ -152,17 +148,7 @@
             )
           )
         )
-      (let ((a2-7 (-> this last-owner-mat))
-            (v1-54 (-> s5-0 rvec quad))
-            (a0-42 (-> s5-0 uvec quad))
-            (a1-23 (-> s5-0 fvec quad))
-            (a3-2 (-> s5-0 trans quad))
-            )
-        (set! (-> a2-7 rvec quad) v1-54)
-        (set! (-> a2-7 uvec quad) a0-42)
-        (set! (-> a2-7 fvec quad) a1-23)
-        (set! (-> a2-7 trans quad) a3-2)
-        )
+      (matrix-copy! (-> this last-owner-mat) s5-0)
       (logclear! (-> this flags) (cloth-flag local-space local-space-xyz local-space-y))
       )
     )
@@ -174,30 +160,26 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod reset! ((this cloth-on-skeleton))
   "Reset to stationary/default state."
+  (local-vars (v1-5 matrix))
   (let ((s5-0 (new 'stack-no-clear 'matrix))
         (s4-0 (handle->process (-> this owner)))
         )
     (when s4-0
-      (cond
-        ((< -1 (-> this base-transform-index))
-         (let* ((v1-5 s5-0)
-                (a3-0 (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform))
-                (a0-8 (-> a3-0 rvec quad))
-                (a1-3 (-> a3-0 uvec quad))
-                (a2-0 (-> a3-0 fvec quad))
-                (a3-1 (-> a3-0 trans quad))
+      (set! v1-5
+            (cond
+              ((< -1 (-> this base-transform-index))
+               (matrix-copy!
+                 s5-0
+                 (-> (the-as process-focusable s4-0) node-list data (-> this base-transform-index) bone transform)
+                 )
+               )
+              (else
+                (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
+                (vector-copy! (-> s5-0 trans) (-> (the-as process-focusable s4-0) root trans))
+                v1-5
                 )
-           (set! (-> v1-5 rvec quad) a0-8)
-           (set! (-> v1-5 uvec quad) a1-3)
-           (set! (-> v1-5 fvec quad) a2-0)
-           (set! (-> v1-5 trans quad) a3-1)
-           )
-         )
-        (else
-          (quaternion->matrix s5-0 (-> (the-as process-focusable s4-0) root quat))
-          (set! (-> s5-0 trans quad) (-> (the-as process-focusable s4-0) root trans quad))
-          )
-        )
+              )
+            )
       (dotimes (s4-1 (-> this particles length))
         (vector-matrix*! (the-as vector (-> this particles data s4-1)) (the-as vector (-> this mesh mesh s4-1)) s5-0)
         (vector-float*!
@@ -215,7 +197,7 @@
           )
         )
       (let ((a0-25 (-> s5-0 trans)))
-        (set! (-> this last-owner-pos quad) (-> a0-25 quad))
+        (vector-copy! (-> this last-owner-pos) a0-25)
         )
       )
     )
@@ -830,7 +812,7 @@
           (when (< (* f0-0 f0-0) (vector-vector-distance-squared (-> this last-owner-pos) s5-2))
             )
           )
-        (set! (-> this last-owner-pos quad) (-> s5-2 quad))
+        (vector-copy! (-> this last-owner-pos) s5-2)
         )
       )
     )
@@ -917,8 +899,8 @@
           (vector-! a1-4 a1-4 (vector-float*! (new 'stack-no-clear 'vector) (-> a2-1 prev-pos) (- 1.0 f1-1)))
           (vector+float*! a1-4 a1-4 a3-0 f0-1)
           )
-        (set! (-> a2-1 prev-pos quad) (-> a2-1 pos quad))
-        (set! (-> a2-1 pos quad) (-> a1-4 quad))
+        (vector-copy! (-> a2-1 prev-pos) (-> a2-1 pos))
+        (vector-copy! (-> a2-1 pos) a1-4)
         )
       )
     )
@@ -1247,7 +1229,7 @@
                 (when (< 0.0 f0-2)
                   (vector+float*! t0-7 a3-7 (-> a0-6 normal) (* -1.0 f0-2))
                   (if (< (vector-length (vector-! (new 'stack-no-clear 'vector) t0-7 (-> a0-6 origin))) (-> a0-6 radius))
-                      (set! (-> a3-7 quad) (-> t0-7 quad))
+                      (vector-copy! a3-7 t0-7)
                       )
                   )
                 )
@@ -1270,8 +1252,8 @@
             (a1-20 (the-as object (&-> (-> this particles) _data (* (* 48 (-> this cloth-width)) v1-13))))
             )
         (set! (-> a0-19 mass-scale) 0.0)
-        (set! (-> a0-19 pos quad) (-> (the-as vector (&-> (the-as vector a1-20) x)) quad))
-        (set! (-> a0-19 prev-pos quad) (-> (the-as vector (&-> (the-as vector a1-20) x)) quad))
+        (vector-copy! (-> a0-19 pos) (the-as vector (&-> (the-as vector a1-20) x)))
+        (vector-copy! (-> a0-19 prev-pos) (the-as vector (&-> (the-as vector a1-20) x)))
         )
       )
     )
@@ -2016,7 +1998,7 @@
         (cond
           (s5-0
             (let ((s3-0 (new 'stack-no-clear 'vector)))
-              (set! (-> s3-0 quad) (-> this collision-constraints data s4-1 quad))
+              (vector-copy! s3-0 (-> this collision-constraints data s4-1))
               (set! (-> s3-0 w) 1.0)
               (vector-matrix*!
                 s3-0
@@ -2200,7 +2182,7 @@
   (when (logtest? (-> this flags) (cloth-flag use-parent-momentum))
     (let ((proc (handle->process (-> this owner))))
       (if proc
-          (set! (-> this momentum quad) (-> (the-as process-drawable proc) root transv quad))
+          (vector-copy! (-> this momentum) (-> (the-as process-drawable proc) root transv))
           )
       )
     )

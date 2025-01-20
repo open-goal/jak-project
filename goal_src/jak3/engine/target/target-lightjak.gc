@@ -672,7 +672,7 @@
     (vector-! s4-0 (camera-pos) (target-pos 0))
     (set! (-> s4-0 y) 0.0)
     (vector-normalize! s4-0 1.0)
-    (set! (-> s5-0 quad) (-> (target-pos 0) quad))
+    (vector-copy! s5-0 (target-pos 0))
     (reverse-transform-point! arg0 s5-0 s4-0 s3-0)
     )
   arg0
@@ -1938,7 +1938,7 @@
     (set! (-> self control mod-surface) *lightjak-swoop-mods*)
     (set-setting! 'string-min-height 'low (meters 1) 0)
     (set-setting! 'string-max-height 'low (meters 10) 0)
-    (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
+    (vector-copy! (-> self control last-trans-any-surf) (-> self control trans))
     )
   :exit (behavior ()
     (remove-setting! 'board)
@@ -2294,7 +2294,7 @@
       (let ((f0-4 (* 0.00013563369 (tan (* 0.5 (-> *math-camera* fov))) f30-0)))
         (set-vector! (-> this root scale) (* f0-4 (if (-> *pc-settings* use-vis?) 1.0 (-> *pc-settings* aspect-ratio-scale))) f0-4 f0-4 1.0)
         )
-      (set! (-> gp-0 quad) (-> (camera-pos) quad))
+      (vector-copy! gp-0 (camera-pos))
       (vector-normalize-copy! s5-0 (-> s3-0 fvec) 1.0)
       (matrix->quaternion (-> this root quat) s3-0)
       (let ((v1-10 (-> this root trans)))
@@ -2317,7 +2317,7 @@
 (defbehavior freeze-screen-init freeze-screen ((arg0 vector) (arg1 quaternion) (arg2 entity))
   (process-entity-set! self arg2)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-copy! (-> self root quat) arg1)
   (initialize-skeleton
     self
@@ -2640,7 +2640,7 @@
   :code (behavior ()
     (send-event (handle->process (-> self notify)) 'notify 'attack 27)
     (set! (-> self neck flex-blend) 0.0)
-    (set! (-> self alt-cam-pos quad) (-> self control trans quad))
+    (vector-copy! (-> self alt-cam-pos) (-> self control trans))
     (if (logtest? (-> *part-group-id-table* 180 flags) (sp-group-flag sp13))
         (part-tracker-spawn
           part-tracker-subsampler
@@ -2675,15 +2675,17 @@
       )
     (cond
       ((logtest? (-> *part-group-id-table* 181 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad)
-             (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg sk_lhand)) quad)
-             )
+       (vector-copy!
+         (-> *launch-matrix* trans)
+         (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg sk_lhand))
+         )
        (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 181))
        )
       (else
-        (set! (-> *launch-matrix* trans quad)
-              (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg sk_lhand)) quad)
-              )
+        (vector-copy!
+          (-> *launch-matrix* trans)
+          (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg sk_lhand))
+          )
         (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 181))
         )
       )
@@ -2785,7 +2787,7 @@
         )
       )
     (set! (-> self control dynam gravity-length) 122880.0)
-    (set! (-> self control last-trans-any-surf quad) (-> self control trans quad))
+    (vector-copy! (-> self control last-trans-any-surf) (-> self control trans))
     (let ((gp-0 jakb-lightjak-shield-ja))
       (quaternion-rotate-y! (-> self control quat-for-control) (-> self control quat-for-control) -1365.3334)
       (ja-channel-push! 1 (seconds 0.05))
@@ -2911,11 +2913,11 @@
               (ppointer->handle
                 (cond
                   ((logtest? (-> *part-group-id-table* 177 flags) (sp-group-flag sp13))
-                   (set! (-> *launch-matrix* trans quad) (-> self control trans quad))
+                   (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
                    (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 177))
                    )
                   (else
-                    (set! (-> *launch-matrix* trans quad) (-> self control trans quad))
+                    (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
                     (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 177))
                     )
                   )
@@ -3044,7 +3046,7 @@
         (let ((f0-0 3.0))
           (set-vector! (-> self root scale) f0-0 f0-0 f0-0 1.0)
           )
-        (set! (-> gp-1 quad) (-> (get-trans s3-0 5) quad))
+        (vector-copy! gp-1 (get-trans s3-0 5))
         (vector-normalize-copy! s5-0 (-> s4-0 fvec) 0.0)
         (matrix->quaternion (-> self root quat) s4-0)
         (let ((v1-11 (-> self root trans)))

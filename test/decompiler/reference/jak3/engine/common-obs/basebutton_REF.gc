@@ -73,8 +73,8 @@
 (defmethod move-to! ((this basebutton) (arg0 vector) (arg1 quaternion))
   (logclear! (-> this button-status) (button-status button-status-2))
   (if arg0
-      (set! (-> this move-to-pos quad) (-> arg0 quad))
-      (set! (-> this move-to-pos quad) (-> this root trans quad))
+      (vector-copy! (-> this move-to-pos) arg0)
+      (vector-copy! (-> this move-to-pos) (-> this root trans))
       )
   (if arg1
       (quaternion-copy! (-> this move-to-quat) arg1)
@@ -138,7 +138,7 @@
   :post (behavior ()
     (when (logtest? (-> self button-status) (button-status button-status-2))
       (logclear! (-> self button-status) (button-status button-status-2))
-      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (vector-copy! (-> self root trans) (-> self move-to-pos))
       (quaternion-copy! (-> self root quat) (-> self move-to-quat))
       (rider-post)
       )
@@ -179,7 +179,7 @@
   :post (behavior ()
     (when (logtest? (-> self button-status) (button-status button-status-2))
       (logclear! (-> self button-status) (button-status button-status-2))
-      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (vector-copy! (-> self root trans) (-> self move-to-pos))
       (quaternion-copy! (-> self root quat) (-> self move-to-quat))
       )
     (rider-post)
@@ -226,7 +226,7 @@
   :post (behavior ()
     (when (logtest? (-> self button-status) (button-status button-status-2))
       (logclear! (-> self button-status) (button-status button-status-2))
-      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (vector-copy! (-> self root trans) (-> self move-to-pos))
       (quaternion-copy! (-> self root quat) (-> self move-to-quat))
       (rider-post)
       )
@@ -262,7 +262,7 @@
   :post (behavior ()
     (when (logtest? (-> self button-status) (button-status button-status-2))
       (logclear! (-> self button-status) (button-status button-status-2))
-      (set! (-> self root trans quad) (-> self move-to-pos quad))
+      (vector-copy! (-> self root trans) (-> self move-to-pos))
       (quaternion-copy! (-> self root quat) (-> self move-to-quat))
       )
     (rider-post)
@@ -419,6 +419,7 @@
 ;; definition for method 11 of type basebutton
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this basebutton) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (init! this)
   (set! (-> this button-id) -1)
@@ -475,7 +476,7 @@
   (set! (-> self actor-group) (the-as (pointer actor-group) #f))
   (set! (-> self actor-group-count) 0)
   (init-collision! self)
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) arg1)
   (quaternion-copy! (-> self root quat) arg2)
   (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
   (prepare-trigger-event! self)
@@ -483,7 +484,3 @@
   (idle-state-transition self)
   (none)
   )
-
-
-
-

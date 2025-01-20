@@ -667,34 +667,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 65536.0
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 1)
     :shadow-max-y (meters 1)
@@ -736,6 +736,7 @@
 ;; definition for method 59 of type terraformer-drone
 ;; WARN: Return type mismatch int vs none.
 (defmethod enemy-common-post ((this terraformer-drone))
+  "Common implementation of post. Runs ja-post."
   (with-pp
     (let ((t9-0 (method-of-type nav-enemy enemy-common-post)))
       (t9-0 this)
@@ -785,6 +786,7 @@
 
 ;; definition for method 82 of type terraformer-drone
 (defmethod event-handler ((this terraformer-drone) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('explode)
      (go (method-of-object this explode))
@@ -803,7 +805,8 @@
   )
 
 ;; definition for method 93 of type terraformer-drone
-(defmethod setup-jump! ((this terraformer-drone) (arg0 enemy-jump-info))
+(defmethod setup-jump-trajectory! ((this terraformer-drone) (arg0 enemy-jump-info))
+  "Compute jump trajectory."
   (if (< (-> this root scale x) 1.0)
       (setup-from-to-duration-and-height! (-> arg0 traj) (-> arg0 start-pos) (-> arg0 dest-pos) 120.0 61440.0)
       (setup-from-to-duration-and-height! (-> arg0 traj) (-> arg0 start-pos) (-> arg0 dest-pos) 120.0 40960.0)
@@ -833,7 +836,7 @@
     (activate! *camera-smush-control* 819.2 60 300 0.995 0.9 (-> *display* camera-clock))
     (sound-play "drone-blow" :position (-> self root trans))
     (let ((gp-1 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-1 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 40960.0)
       (set! (-> gp-1 scale) 1.0)
@@ -859,9 +862,10 @@
 
 ;; definition for method 100 of type terraformer-drone
 ;; WARN: Return type mismatch vector vs none.
-(defmethod in-jump-handler ((this terraformer-drone) (arg0 int) (arg1 enemy-jump-info))
+(defmethod move-along-ballistic-trajectory-for-jump ((this terraformer-drone) (arg0 jump-stage) (arg1 enemy-jump-info))
+  "Adjust trans, transv for the jump, if we're airborne."
   (case arg0
-    ((2 3)
+    (((jump-stage takeoff) (jump-stage in-air))
      (let ((f30-0 (fmin (the float (-> arg1 hang-time)) (-> arg1 traj time))))
        (let ((a1-3 (compute-trans-at-time (-> arg1 traj) f30-0 (new 'stack-no-clear 'vector))))
          (move-to-point! (-> this root) a1-3)
@@ -877,13 +881,15 @@
   )
 
 ;; definition for method 95 of type terraformer-drone
-(defmethod on-ground? ((this terraformer-drone) (arg0 enemy-jump-info))
+(defmethod landed-jump-yet? ((this terraformer-drone) (arg0 enemy-jump-info))
+  "Is this on, or close to, the ground?"
   (>= (the float (-> arg0 hang-time)) (-> arg0 traj time))
   )
 
 ;; definition for method 94 of type terraformer-drone
 ;; WARN: Return type mismatch vector vs float.
 (defmethod move-to-gspot! ((this terraformer-drone))
+  "Snap the enemy down onto the cached ground spot (gspot)."
   (the-as float (vector-reset! (-> this root transv)))
   )
 
@@ -977,7 +983,7 @@
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (format 0 "spawning impact part~%")
       (matrix-identity! gp-0)
-      (set! (-> gp-0 trans quad) (-> self root trans quad))
+      (vector-copy! (-> gp-0 trans) (-> self root trans))
       (if (logtest? (-> *part-group-id-table* 431 flags) (sp-group-flag sp13))
           (part-tracker-spawn
             part-tracker-subsampler
@@ -1028,7 +1034,7 @@
           (t9-0)
           )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1085,7 +1091,7 @@
     (let ((a0-1 (handle->process (-> self focus handle))))
       (when a0-1
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-1) 0) quad))
+          (vector-copy! gp-0 (get-trans (the-as process-focusable a0-1) 0))
           (let ((s5-0 3))
             (if (< (-> self root scale x) 1.0)
                 (set! s5-0 6)
@@ -1095,7 +1101,7 @@
                (let ((v1-14 (-> self nav state)))
                  (logclear! (-> v1-14 flags) (nav-state-flag directional-mode))
                  (logior! (-> v1-14 flags) (nav-state-flag target-poly-dirty))
-                 (set! (-> v1-14 target-pos quad) (-> gp-0 quad))
+                 (vector-copy! (-> v1-14 target-pos) gp-0)
                  )
                0
                )
@@ -1135,7 +1141,7 @@
                      )
                  (logclear! (-> a0-26 flags) (nav-state-flag directional-mode))
                  (logior! (-> a0-26 flags) (nav-state-flag target-poly-dirty))
-                 (set! (-> a0-26 target-pos quad) (-> v1-48 quad))
+                 (vector-copy! (-> a0-26 target-pos) v1-48)
                  )
                0
                )
@@ -1173,6 +1179,7 @@
 ;; definition for method 120 of type terraformer-drone
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this terraformer-drone))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1219,6 +1226,7 @@
 
 ;; definition for method 67 of type terraformer-drone
 (defmethod coin-flip? ((this terraformer-drone))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1248,13 +1256,14 @@
 ;; definition for method 121 of type terraformer-drone
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this terraformer-drone))
+  "Typical place for shared init code. Runs from entity or process style init."
   (with-pp
     (initialize-skeleton
       this
       (the-as skeleton-group (art-group-get-by-name *level* "skel-terraformer-drone" (the-as (pointer level) #f)))
       (the-as pair 0)
       )
-    (init-enemy-defaults! this *terraformer-drone-nav-enemy-info*)
+    (setup-enemy! this *terraformer-drone-nav-enemy-info*)
     (let ((v1-5 (-> this nav)))
       (set! (-> v1-5 speed-scale) 1.0)
       )
@@ -1304,13 +1313,10 @@
 ;; definition for method 121 of type terraformer-drone-small
 ;; WARN: Return type mismatch vector vs none.
 (defmethod init-enemy! ((this terraformer-drone-small))
+  "Typical place for shared init code. Runs from entity or process style init."
   (let ((t9-0 (method-of-type terraformer-drone init-enemy!)))
     (t9-0 this)
     )
   (set-vector! (-> this root scale) 0.95 0.95 0.95 1.0)
   (none)
   )
-
-
-
-
