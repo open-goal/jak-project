@@ -4449,11 +4449,11 @@ void DerefElement::update_from_stack(const Env& env,
 }
 
 void DerefElement::inline_nested() {
-  auto as_deref = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
-  if (as_deref) {
-    if (!m_is_addr_of && !as_deref->is_addr_of()) {
-      m_tokens.insert(m_tokens.begin(), as_deref->tokens().begin(), as_deref->tokens().end());
-      m_base = as_deref->m_base;
+  auto inner = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
+  if (inner) {
+    if (!inner->is_addr_of()) {
+      m_tokens.insert(m_tokens.begin(), inner->tokens().begin(), inner->tokens().end());
+      m_base = inner->m_base;
     }
   }
 }
