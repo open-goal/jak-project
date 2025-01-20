@@ -1616,6 +1616,7 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::VECTOR_CROSS:
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_PLUS:
+    case SimpleExpression::Kind::VECTOR_XYZ_PRODUCT:
       types2_for_vector_in_and_out(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:

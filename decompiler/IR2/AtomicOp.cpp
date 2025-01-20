@@ -353,6 +353,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "pcypld";
     case SimpleExpression::Kind::VECTOR_PLUS:
       return "vector+!2";
+    case SimpleExpression::Kind::VECTOR_XYZ_PRODUCT:
+      return "vector-xyz-product!";
     case SimpleExpression::Kind::VECTOR_MINUS:
       return "vector-!2";
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
@@ -427,6 +429,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
     case SimpleExpression::Kind::VECTOR_CROSS:
+    case SimpleExpression::Kind::VECTOR_XYZ_PRODUCT:
       return 3;
     case SimpleExpression::Kind::SUBU_L32_S7:
       return 1;
