@@ -2527,6 +2527,10 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_vector_plus_minus_cross(FixedOperatorKind::VECTOR_CROSS, env, pool, stack,
                                                 result, allow_side_effects);
       break;
+    case SimpleExpression::Kind::VECTOR_XYZ_PRODUCT:
+      update_from_stack_vector_plus_minus_cross(FixedOperatorKind::VECTOR_XYZ_PRODUCT, env, pool,
+                                                stack, result, allow_side_effects);
+      break;
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       update_from_stack_vector_float_product(env, pool, stack, result, allow_side_effects);
       break;
