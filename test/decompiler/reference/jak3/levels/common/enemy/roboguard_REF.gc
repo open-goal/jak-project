@@ -1000,7 +1000,7 @@
                   (set! (-> s5-1 uvec y) 0.0)
                   (vector-normalize! (-> s5-1 uvec) 1.0)
                   (vector-normalize-copy! (-> s5-1 fvec) (-> s5-1 rvec) 1.0)
-                  (vector-flatten! (-> s5-1 fvec) (-> s5-1 fvec) (the-as vector (-> self upper-rotation-matrix)))
+                  (vector-flatten! (-> s5-1 fvec) (-> s5-1 fvec) (-> self upper-rotation-matrix rvec))
                   (set! (-> self arm-rot-mult arg1)
                         (* (-> self arm-rot-mult arg1) (vector-dot (-> s5-1 uvec) (-> self upper-rotation-matrix fvec)))
                         )
@@ -1665,8 +1665,8 @@
   "Common implementation of post. Runs ja-post."
   (quaternion->matrix (-> this rotation-matrix) (-> this root quat))
   (vector-rotate-around-y!
-    (the-as vector (-> this upper-rotation-matrix))
-    (the-as vector (-> this rotation-matrix))
+    (-> this upper-rotation-matrix rvec)
+    (-> this rotation-matrix rvec)
     (-> this torso-angle)
     )
   (vector-copy! (-> this upper-rotation-matrix uvec) (-> this rotation-matrix uvec))
@@ -1691,7 +1691,7 @@
            (s5-1 (-> this rotation-matrix))
            (f0-3 (vector-vector-angle-safe (-> this me-to-focus-dir) a1-9))
            )
-      (if (< (vector-dot (-> this me-to-focus-dir) (the-as vector s5-1)) 0.0)
+      (if (< (vector-dot (-> this me-to-focus-dir) (-> s5-1 rvec)) 0.0)
           (set! f0-3 (* -1.0 f0-3))
           )
       (set! (-> this me-to-focus-angle) f0-3)
@@ -1784,7 +1784,7 @@
                    (cspace<-parented-transformq-joint! arg0 arg1)
                    (quaternion-vector-angle!
                      (the-as quaternion s4-0)
-                     (the-as vector (-> (the-as roboguard s3-0) upper-rotation-matrix))
+                     (-> (the-as roboguard s3-0) upper-rotation-matrix rvec)
                      (* (-> (the-as roboguard s3-0) arm-rot (the-as int s2-0))
                         (-> (the-as roboguard s3-0) arm-rot-mult (the-as int s2-0))
                         )

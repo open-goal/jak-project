@@ -319,15 +319,15 @@
                            (and (< (-> s5-0 floats 2) -8192.0) (not (logtest? (-> *target* focus-status) (focus-status edge-grab))))
                            )
                   (matrix-4x4-inverse! (-> s5-0 mat 2) (-> s5-0 mat 1))
-                  (vector-matrix*! (the-as vector (-> s5-0 mat)) (-> s5-0 mat 0 uvec) (-> s5-0 mat 2))
+                  (vector-matrix*! (-> s5-0 mat 0 rvec) (-> s5-0 mat 0 uvec) (-> s5-0 mat 2))
                   (set! (-> s5-0 floats 0) 81920.0)
                   (dotimes (s2-1 (-> this info rider grab-rail-count))
                     (let ((s1-0 (-> this info rider grab-rail-array s2-1)))
-                      (vector-! (-> s5-0 mat 0 trans) (the-as vector (-> s5-0 mat)) (the-as vector (-> s1-0 local-pos)))
+                      (vector-! (-> s5-0 mat 0 trans) (-> s5-0 mat 0 rvec) (-> s1-0 local-pos 0))
                       (when #t
                         (let ((f30-0 (vector-segment-distance-point!
-                                       (the-as vector (-> s5-0 mat))
-                                       (the-as vector (-> s1-0 local-pos))
+                                       (-> s5-0 mat 0 rvec)
+                                       (-> s1-0 local-pos 0)
                                        (-> s1-0 local-pos 1)
                                        (-> s5-0 mat 0 trans)
                                        )
@@ -336,7 +336,7 @@
                           (when (< f30-0 (-> s5-0 floats 0))
                             (set! (-> s5-0 floats 0) f30-0)
                             (set! (-> s5-0 vec 0 quad) (-> s5-0 mat 0 trans quad))
-                            (vector-! (-> s5-0 vec 1) (-> s1-0 local-pos 1) (the-as vector (-> s1-0 local-pos)))
+                            (vector-! (-> s5-0 vec 1) (-> s1-0 local-pos 1) (-> s1-0 local-pos 0))
                             (vector-normalize! (-> s5-0 vec 1) 1.0)
                             (set! s3-0 #t)
                             (set! (-> s5-0 floats 3) (* (-> this hit-points) (/ 40960.0 f30-0)))
@@ -576,11 +576,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-method-113 ((this vehicle) (arg0 vector) (arg1 int) (arg2 int))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (vector+!
-      v1-0
-      (the-as vector (-> this info rider seat-array arg1))
-      (-> this info rider rider-hand-offset arg2)
-      )
+    (vector+! v1-0 (-> this info rider seat-array arg1 position) (-> this info rider rider-hand-offset arg2))
     (vector-matrix*! arg0 v1-0 (-> this node-list data 0 bone transform))
     )
   0
@@ -849,7 +845,7 @@
       (set-vector! (-> s4-1 0 fvec) 0.0 1.0 0.0 1.0)
       (mem-copy! (the-as pointer (-> s4-1 1)) (the-as pointer s5-1) 64)
       (dotimes (s3-0 2)
-        (vector-matrix*! (the-as vector (-> s4-1 0)) (-> this info particles exhaust-local-pos s3-0) s5-1)
+        (vector-matrix*! (-> s4-1 0 rvec) (-> this info particles exhaust-local-pos s3-0) s5-1)
         (vector-rotate*! (-> s4-1 0 uvec) (-> this info particles exhaust-local-dir s3-0) s5-1)
         (vector-cross! (-> s4-1 0 trans) (-> s4-1 0 uvec) (-> s4-1 0 fvec))
         (vector-normalize! (-> s4-1 0 trans) 1.0)

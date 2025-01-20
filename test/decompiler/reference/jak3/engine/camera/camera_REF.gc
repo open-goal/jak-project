@@ -457,7 +457,7 @@
       (s2-1
         (cond
           (v0-10
-            (vector+! (the-as vector (-> this vec)) (the-as vector (&+ s2-1 0)) (the-as vector v0-10))
+            (vector+! (-> this vec 0) (the-as vector (&+ s2-1 0)) (the-as vector v0-10))
             (vector+! (-> this vec 1) (the-as vector (&+ s2-1 16)) (the-as vector v0-10))
             )
           (else
@@ -481,7 +481,7 @@
       ((logtest? (-> this flags) (cam-index-options RADIAL))
        (vector-! v1-14 (-> this vec 1) arg2)
        (set! (-> this vec 1 w) (vector-length v1-14))
-       (vector-! v1-14 (the-as vector (-> this vec)) arg2)
+       (vector-! v1-14 (-> this vec 0) arg2)
        (set! (-> this vec 1 x) (vector-length v1-14))
        (set! (-> this vec 1 w) (- (-> this vec 1 w) (-> this vec 1 x)))
        (set! (-> this vec 0 quad) (-> arg2 quad))
@@ -489,13 +489,13 @@
       ((logtest? (-> this flags) (cam-index-options SPHERICAL))
        (vector-! v1-14 (-> this vec 1) arg2)
        (set! (-> this vec 1 w) (vector-length v1-14))
-       (vector-! v1-14 (the-as vector (-> this vec)) arg2)
+       (vector-! v1-14 (-> this vec 0) arg2)
        (set! (-> this vec 1 x) (vector-length v1-14))
        (set! (-> this vec 1 w) (- (-> this vec 1 w) (-> this vec 1 x)))
        (set! (-> this vec 0 quad) (-> arg2 quad))
        )
       (else
-        (vector-! (-> this vec 1) (-> this vec 1) (the-as vector (-> this vec)))
+        (vector-! (-> this vec 1) (-> this vec 1) (-> this vec 0))
         (set! (-> this vec 1 w) (vector-normalize-ret-len! (-> this vec 1) 1.0))
         )
       )
@@ -508,7 +508,7 @@
 (defmethod cam-index-method-10 ((this cam-index) (arg0 vector))
   (let ((s5-0 (new-stack-vector0)))
     0.0
-    (vector-! s5-0 arg0 (the-as vector (-> this vec)))
+    (vector-! s5-0 arg0 (-> this vec 0))
     (cond
       ((logtest? (-> this flags) (cam-index-options RADIAL))
        (vector-flatten! s5-0 s5-0 (-> *camera* local-down))
@@ -570,8 +570,8 @@
           (set! (-> this summed-len) (- (-> this summed-len) (-> this point arg0 tp-length)))
           (vector-!
             (the-as vector (+ (the-as uint (-> this point 0 direction)) (* 48 arg0)))
-            (the-as vector (-> this point v1-11))
-            (the-as vector (-> this point arg0))
+            (-> this point v1-11 position)
+            (-> this point arg0 position)
             )
           )
         (set! (-> this point arg0 tp-length)
@@ -724,7 +724,7 @@
     (vector-!
       (the-as vector (+ (the-as uint (-> this point 0 direction)) (* 48 s2-0)))
       arg0
-      (the-as vector (-> this point s2-0))
+      (-> this point s2-0 position)
       )
     (set! (-> this point s2-0 tp-length)
           (vector-normalize-ret-len! (the-as vector (+ (the-as uint (-> this point 0 direction)) (* 48 s2-0))) 1.0)
@@ -772,19 +772,14 @@
     (cond
       ((= (-> arg3 cur-pt) (-> this end-point))
        (set! (-> arg3 partial-pt) 0.0)
-       (vector+! arg1 arg1 (the-as vector (-> this point (-> arg3 cur-pt))))
+       (vector+! arg1 arg1 (-> this point (-> arg3 cur-pt) position))
        (return arg1)
        )
       ((begin (set! f0-4 (+ (-> arg3 partial-pt) (/ arg0 (-> this point (-> arg3 cur-pt) tp-length)))) (< f0-4 1.0))
        (set! (-> arg3 partial-pt) f0-4)
        (let ((s2-0 (new 'stack-no-clear 'vector)))
          (let ((v1-13 (-> this point (-> arg3 cur-pt) next)))
-           (vector-lerp!
-             s2-0
-             (the-as vector (-> this point (-> arg3 cur-pt)))
-             (the-as vector (-> this point v1-13))
-             f0-4
-             )
+           (vector-lerp! s2-0 (-> this point (-> arg3 cur-pt) position) (-> this point v1-13 position) f0-4)
            )
          (vector+! arg1 arg1 s2-0)
          )
@@ -816,11 +811,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod tracking-spline-method-20 ((this tracking-spline) (arg0 vector) (arg1 int))
   (let ((s3-0 (new 'stack-no-clear 'vector)))
-    (vector-!
-      s3-0
-      (the-as vector (-> this point (-> this used-point)))
-      (the-as vector (-> this point (-> this end-point)))
-      )
+    (vector-! s3-0 (-> this point (-> this used-point) position) (-> this point (-> this end-point) position))
     (let* ((f0-0 (vector-length s3-0))
            (f1-1 (* 0.33333334 (- 1.5 (/ f0-0 METER_LENGTH))))
            )
@@ -868,7 +859,7 @@
                 ((< f26-0 0.0)
                  (if (and *debug-segment* *display-camera-marks*)
                      (camera-line-rel-len
-                       (the-as vector (-> this point s1-0))
+                       (-> this point s1-0 position)
                        s2-0
                        (* -40.96 f26-0)
                        (new 'static 'vector4w :x #xff :y #xff :w #x80)
@@ -878,7 +869,7 @@
                  )
                 ((and *debug-segment* *display-camera-marks*)
                  (camera-line-rel-len
-                   (the-as vector (-> this point s1-0))
+                   (-> this point s1-0 position)
                    s2-0
                    (* 40.96 f26-0)
                    (new 'static 'vector4w :x #x80 :y #x80 :w #x80)
@@ -1058,7 +1049,7 @@
       )
     (else
       (vector-reset! (-> self trans))
-      (matrix-identity! (the-as matrix (-> self tracking)))
+      (matrix-identity! (-> self tracking inv-mat))
       (set! (-> self fov) 11650.845)
       (vector-reset! (-> self velocity))
       )

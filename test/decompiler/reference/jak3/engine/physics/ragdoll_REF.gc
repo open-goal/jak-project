@@ -28,12 +28,8 @@
     0
     )
   (vector-seek-3d-smooth! (-> this gravity) (-> this gravity-target) 0.05 0.1)
-  (quaternion*!
-    (the-as quaternion (-> this ragdoll-joints))
-    (-> this rotate-vel)
-    (the-as quaternion (-> this ragdoll-joints))
-    )
-  (quaternion-normalize! (the-as quaternion (-> this ragdoll-joints)))
+  (quaternion*! (-> this ragdoll-joints 0 quat) (-> this rotate-vel) (-> this ragdoll-joints 0 quat))
+  (quaternion-normalize! (-> this ragdoll-joints 0 quat))
   (set! (-> this stable-joints) 0)
   (when (logtest? (-> this ragdoll-flags) (ragdoll-flag rf0))
     (let ((s4-1 (new 'stack-no-clear 'collide-query))
@@ -180,7 +176,7 @@
           (quaternion-negate! (-> this rotate-vel) (-> this rotate-vel))
           )
       (when (< (-> this rotate-vel w) (cos 7281.778))
-        (let ((a1-4 (vector-normalize! (the-as vector (-> this rotate-vel)) 1.0)))
+        (let ((a1-4 (vector-normalize! (-> this rotate-vel vec) 1.0)))
           (quaternion-vector-angle! (-> this rotate-vel) a1-4 7281.778)
           )
         )
@@ -643,7 +639,7 @@
             (let ((v1-60 (new 'stack-no-clear 'vector)))
               (vector*! v1-60 (-> s3-1 scale) (-> arg2 root scale))
               (vector*! v1-60 v1-60 (-> arg1 scale))
-              (vector*! (the-as vector (-> arg0 bone transform)) (the-as vector (-> arg0 bone transform)) v1-60)
+              (vector*! (-> arg0 bone transform rvec) (-> arg0 bone transform rvec) v1-60)
               (vector*! (-> arg0 bone transform uvec) (-> arg0 bone transform uvec) v1-60)
               (vector*! (-> arg0 bone transform fvec) (-> arg0 bone transform fvec) v1-60)
               )
@@ -726,12 +722,9 @@
     ((= (-> arg1 node-list data 2 param0) cspace<-parented-matrix-joint-flip-z!)
      (logior! (-> this ragdoll-flags) (ragdoll-flag mirror))
      (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg1 node-list data 2)))
-           (a1-5 (vector-normalize-copy!
-                   (new 'stack-no-clear 'vector)
-                   (the-as vector (-> arg1 node-list data 2 bone transform))
-                   1.0
-                   )
-                 )
+           (a1-5
+             (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> arg1 node-list data 2 bone transform rvec) 1.0)
+             )
            )
        (ragdoll-reflect-matrix arg0 a1-5 s4-0)
        )

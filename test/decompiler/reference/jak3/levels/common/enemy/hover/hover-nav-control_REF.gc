@@ -552,9 +552,7 @@
        (vector-copy! (-> gp-0 curve-matrix uvec) arg2)
        (set! (-> gp-0 pos-index 0) arg3)
        (set! (-> gp-0 pos-index 1) arg4)
-       (set! (-> gp-0 dist)
-             (vector-vector-distance (the-as vector (-> gp-0 curve-matrix)) (-> gp-0 curve-matrix uvec))
-             )
+       (set! (-> gp-0 dist) (vector-vector-distance (-> gp-0 curve-matrix rvec) (-> gp-0 curve-matrix uvec)))
        (if (not (-> arg0 segment-list))
            (set! (-> arg0 tail-segment) gp-0)
            )
@@ -1247,7 +1245,7 @@
       (set! sv-48 (-> this nav network))
       (cond
         ((< (vector-vector-distance arg0 arg1) 13107.2)
-         (nav-network-method-23 (-> this nav) s5-0 (the-as vector (hover-nav-control-method-17 this)) arg1 -1 -1)
+         (nav-network-method-23 (-> this nav) s5-0 (-> (hover-nav-control-method-17 this) world-sphere) arg1 -1 -1)
          (hover-nav-control-method-31 this)
          )
         (else
@@ -1344,7 +1342,7 @@
                             (nav-network-method-23
                               (-> this nav)
                               s5-0
-                              (the-as vector (hover-nav-control-method-17 this))
+                              (-> (hover-nav-control-method-17 this) world-sphere)
                               (-> sv-48 (-> s5-0 segment-list pos-index 0) pos)
                               -1
                               (-> s5-0 segment-list pos-index 0)
@@ -1384,7 +1382,7 @@
           (vector-copy! (-> v1-0 curve-matrix fvec) arg0)
           )
         (else
-          (vector-! (-> v1-0 curve-matrix fvec) (-> v1-0 curve-matrix uvec) (the-as vector (-> v1-0 curve-matrix)))
+          (vector-! (-> v1-0 curve-matrix fvec) (-> v1-0 curve-matrix uvec) (-> v1-0 curve-matrix rvec))
           (vector-float*! (-> v1-0 curve-matrix fvec) (-> v1-0 curve-matrix fvec) 0.5)
           )
         )
@@ -1394,7 +1392,7 @@
             (vector-!
               (-> v1-0 curve-matrix trans)
               (-> (the-as hover-nav-path-segment a2-6) curve-matrix uvec)
-              (the-as vector (-> v1-0 curve-matrix))
+              (-> v1-0 curve-matrix rvec)
               )
             (vector-float*! (-> v1-0 curve-matrix trans) (-> v1-0 curve-matrix trans) -0.5)
             )
@@ -1569,7 +1567,7 @@
                      (else
                        (let ((f30-0 (path-control-method-29
                                       s5-1
-                                      (the-as vector (hover-nav-control-method-17 this))
+                                      (-> (hover-nav-control-method-17 this) world-sphere)
                                       (-> s3-0 current-index)
                                       (the-as float #f)
                                       )
@@ -1577,7 +1575,7 @@
                              )
                          (if (< (path-control-method-29
                                   s5-1
-                                  (the-as vector (hover-nav-control-method-17 this))
+                                  (-> (hover-nav-control-method-17 this) world-sphere)
                                   (+ (-> s3-0 current-index) 1)
                                   (the-as float #f)
                                   )
@@ -1601,11 +1599,13 @@
                   (t0-1 -1)
                   (t1-0 -1)
                   )
-              (s1-2 s2-2 s0-0 (the-as vector sv-128) a3-4 t0-1 t1-0)
+              (s1-2 s2-2 s0-0 (-> sv-128 world-sphere) a3-4 t0-1 t1-0)
               )
             )
           (let ((s2-3 (new 'stack-no-clear 'vector)))
-            (if (and (< (path-control-method-29 s5-1 (the-as vector s4-0) (+ (-> s3-0 end-index) -1) (the-as float s2-3)) 12288.0)
+            (if (and (< (path-control-method-29 s5-1 (-> s4-0 world-sphere) (+ (-> s3-0 end-index) -1) (the-as float s2-3))
+                        12288.0
+                        )
                      (< (vector-vector-distance
                           s2-3
                           (get-point-at-percent-along-path! s5-1 (new 'stack-no-clear 'vector) 1.0 'interp)
@@ -1630,7 +1630,7 @@
                  (+! s3-1 -1)
                  )
                )
-             (nav-network-method-23 (-> this nav) (-> this path-info) (the-as vector s4-0) s2-4 -1 -1)
+             (nav-network-method-23 (-> this nav) (-> this path-info) (-> s4-0 world-sphere) s2-4 -1 -1)
              )
            )
          )
@@ -1638,7 +1638,7 @@
      (hover-nav-control-method-31 this)
      )
     (arg0
-      (hover-nav-control-method-30 this (the-as vector (hover-nav-control-method-17 this)) arg0)
+      (hover-nav-control-method-30 this (-> (hover-nav-control-method-17 this) world-sphere) arg0)
       )
     )
   0
@@ -1723,7 +1723,7 @@
   (local-vars (sv-48 vector) (sv-128 float) (sv-144 float))
   (let ((s5-0 (-> this root)))
     (let ((s4-0 (hover-nav-control-method-17 this)))
-      (let ((v1-2 (vector-! (new 'stack-no-clear 'vector) (the-as vector s4-0) (-> s5-0 trans))))
+      (let ((v1-2 (vector-! (new 'stack-no-clear 'vector) (-> s4-0 world-sphere) (-> s5-0 trans))))
         (set! sv-48 (vector-! (new 'stack-no-clear 'vector) (-> this dest-pos) v1-2))
         )
       (when (not (logtest? (-> this flags) (hover-nav-flags hnf0)))
@@ -1737,12 +1737,12 @@
           (set! sv-144 (the-as float 0.0))
           (let* ((t0-0 (hover-nav-control-method-33 this))
                  (f0-4 (s2-0 s1-0 s0-0 sv-128 sv-144 t0-0))
-                 (t0-2 (vector+float*! (new 'stack-no-clear 'vector) (the-as vector s4-0) s3-0 (/ f0-4 f30-0)))
+                 (t0-2 (vector+float*! (new 'stack-no-clear 'vector) (-> s4-0 world-sphere) s3-0 (/ f0-4 f30-0)))
                  (s4-1 (nav-network-method-27
                          (-> this nav)
                          (new 'stack-no-clear 'vector)
                          (-> this root process)
-                         (the-as vector s4-0)
+                         (-> s4-0 world-sphere)
                          t0-2
                          (-> s4-0 world-sphere w)
                          )

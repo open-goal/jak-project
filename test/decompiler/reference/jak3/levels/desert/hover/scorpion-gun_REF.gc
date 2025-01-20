@@ -554,7 +554,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-scorpion-gun))
   (set! (-> this sprites 0 color w) 0)
-  (set-hud-piece-position! (the-as hud-sprite (-> this sprites)) 32 208)
+  (set-hud-piece-position! (-> this sprites 0) 32 208)
   (set! (-> this sprites 0 color w) (the int (-> this alpha 0)))
   (set! (-> this sprites 1 color w) 0)
   (set-hud-piece-position! (-> this sprites 1) 480 208)
@@ -1160,9 +1160,9 @@
                   )
               (when (logtest? (process-mask enemy projectile) (-> s1-0 mask))
                 (if #f
-                    (add-debug-sphere #t (bucket-id debug) (the-as vector s0-0) (-> s0-0 world-sphere w) *color-red*)
+                    (add-debug-sphere #t (bucket-id debug) (-> s0-0 world-sphere) (-> s0-0 world-sphere w) *color-red*)
                     )
-                (let* ((a1-7 (vector-! (new 'stack-no-clear 'vector) (the-as vector s0-0) (-> gp-0 trans)))
+                (let* ((a1-7 (vector-! (new 'stack-no-clear 'vector) (-> s0-0 world-sphere) (-> gp-0 trans)))
                        (f28-0 (vector-length a1-7))
                        )
                   (when (< f28-0 1024000.0)
@@ -1215,7 +1215,7 @@
                    )
           (let ((s5-4 (vector-!
                         (new 'stack-no-clear 'vector)
-                        (the-as vector (-> (the-as process-focusable s4-2) root root-prim prim-core))
+                        (-> (the-as process-focusable s4-2) root root-prim prim-core world-sphere)
                         (-> gp-1 trans)
                         )
                       )
@@ -2040,22 +2040,21 @@
             (s3-0 (-> gp-0 path node (-> gp-0 prev-pos)))
             (s4-0 (new 'stack-no-clear 'inline-array 'vector 1))
             )
-        (let ((f30-1 (vector-segment-distance-point! (-> self trans) (the-as vector s3-0) (the-as vector s5-0) (-> s4-0 0)))
-              )
+        (let ((f30-1 (vector-segment-distance-point! (-> self trans) (-> s3-0 position) (-> s5-0 position) (-> s4-0 0))))
           (set! (-> gp-0 curr-pos)
-                (+ (the float (-> gp-0 prev-pos)) (/ (vector-vector-distance (the-as vector s3-0) (-> s4-0 0))
-                                                     (vector-vector-distance (the-as vector s3-0) (the-as vector s5-0))
+                (+ (the float (-> gp-0 prev-pos)) (/ (vector-vector-distance (-> s3-0 position) (-> s4-0 0))
+                                                     (vector-vector-distance (-> s3-0 position) (-> s5-0 position))
                                                      )
                    )
                 )
           (let ((s3-1 (new 'stack-no-clear 'inline-array 'vector 2)))
-            (vector-! (-> s3-1 1) (the-as vector s5-0) (-> s4-0 0))
+            (vector-! (-> s3-1 1) (-> s5-0 position) (-> s4-0 0))
             (vector+float*! (-> s3-1 0) (-> s4-0 0) (-> s3-1 1) (lerp-scale 0.0 1.0 f30-1 122880.0 20480.0))
             (send-event (handle->process (-> self scorp)) 'ai-set-target-position (-> s3-1 0))
             )
           )
         (send-event (handle->process (-> self scorp)) 'ai-set-target-speed #x48700000)
-        (when (< (vector-vector-distance (the-as vector s5-0) (-> s4-0 0)) 40960.0)
+        (when (< (vector-vector-distance (-> s5-0 position) (-> s4-0 0)) 40960.0)
           (+! (-> gp-0 prev-pos) 1)
           (+! (-> gp-0 next-pos) 1)
           (when (>= (-> gp-0 next-pos) (the-as int (-> gp-0 path node-count)))
@@ -2077,8 +2076,8 @@
           (add-debug-line
             #t
             (bucket-id debug-no-zbuf1)
-            (the-as vector (-> self path-info path node gp-1))
-            (the-as vector (-> self path-info path node (+ gp-1 1)))
+            (-> self path-info path node gp-1 position)
+            (-> self path-info path node (+ gp-1 1) position)
             *color-red*
             #f
             (the-as rgba -1)
@@ -2202,7 +2201,7 @@
             )
         (let ((f30-0 0.0))
           (dotimes (s4-0 (the-as int (-> gp-0 path node-count)))
-            (let ((f0-0 (vector-vector-distance (target-pos 0) (the-as vector (-> gp-0 path node s4-0)))))
+            (let ((f0-0 (vector-vector-distance (target-pos 0) (-> gp-0 path node s4-0 position))))
               (when (or (= s5-0 -1) (< f0-0 f30-0))
                 (set! s5-0 s4-0)
                 (set! f30-0 f0-0)
@@ -2269,8 +2268,8 @@
           (add-debug-line
             #t
             (bucket-id debug-no-zbuf1)
-            (the-as vector (-> s5-0 node s4-1))
-            (the-as vector (-> s5-0 node (+ s4-1 1)))
+            (-> s5-0 node s4-1 position)
+            (-> s5-0 node (+ s4-1 1) position)
             *color-red*
             #f
             (the-as rgba -1)
@@ -2284,7 +2283,7 @@
               s2-1
               (the-as bucket-id s1-1)
               *temp-string*
-              (the-as vector (-> s5-0 node s4-1))
+              (-> s5-0 node s4-1 position)
               (font-color red)
               (the-as vector2h #f)
               )
@@ -2415,7 +2414,7 @@
                 (when v1-8
                   (let ((gp-0 (new 'stack-no-clear 'vector)))
                     (if (send-event (handle->process v1-8) 'get-cam-info (-> self trans) gp-0)
-                        (forward-up->inv-matrix (the-as matrix (-> self tracking)) gp-0 *y-vector*)
+                        (forward-up->inv-matrix (-> self tracking inv-mat) gp-0 *y-vector*)
                         )
                     )
                   )

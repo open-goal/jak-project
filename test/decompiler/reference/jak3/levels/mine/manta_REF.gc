@@ -1259,11 +1259,11 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod manta-method-195 ((this manta))
-  (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this focus-pos) (the-as vector (-> this move-matrix)))))
+  (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this focus-pos) (-> this move-matrix rvec))))
     (set! (-> s5-1 y) (-> this attack-y-offset))
     (vector-normalize! s5-1 (-> this move-force))
     (vector-copy! (-> this move-matrix fvec) s5-1)
-    (vector+! (-> this move-matrix uvec) (the-as vector (-> this move-matrix)) s5-1)
+    (vector+! (-> this move-matrix uvec) (-> this move-matrix rvec) s5-1)
     )
   (vector-! (-> this move-matrix trans) (-> this focus-pos) (-> this move-matrix uvec))
   (vector-normalize! (-> this move-matrix trans) 24576.0)
@@ -1477,7 +1477,7 @@
             (when (logtest? (the-as collide-spec s4-0) (-> v1-27 root-prim prim-core collide-as))
               (when (!= v1-27 (-> this root))
                 (let* ((s2-1
-                         (vector-! (new 'stack-no-clear 'vector) (the-as vector s5-0) (the-as vector (-> v1-27 root-prim prim-core)))
+                         (vector-! (new 'stack-no-clear 'vector) (-> s5-0 world-sphere) (-> v1-27 root-prim prim-core world-sphere))
                          )
                        (f0-3 (vector-length s2-1))
                        )
@@ -1504,10 +1504,7 @@
 (defmethod manta-method-201 ((this manta) (arg0 float))
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'matrix 2)))
     (set! (-> gp-0 0 rvec quad) (-> this move-vel quad))
-    (vector-normalize!
-      (the-as vector (-> gp-0 0))
-      (vector-vector-distance (-> this dest-pos) (-> this root trans))
-      )
+    (vector-normalize! (-> gp-0 0 rvec) (vector-vector-distance (-> this dest-pos) (-> this root trans)))
     (let ((v1-2 (-> gp-0 1)))
       (set! (-> v1-2 rvec x) 0.0)
       (set! (-> v1-2 rvec y) 0.0)
@@ -1534,7 +1531,7 @@
         )
     (vector-float*! (-> gp-0 0 fvec) (-> gp-0 0 uvec) 4.0)
     (vector-float*! (-> gp-0 0 trans) (-> gp-0 0 uvec) 0.5)
-    (vector-orient-by-quat! (-> gp-0 1 fvec) (the-as vector (-> gp-0 1)) (-> this root quat))
+    (vector-orient-by-quat! (-> gp-0 1 fvec) (-> gp-0 1 rvec) (-> this root quat))
     (vector+! (-> gp-0 1 fvec) (-> gp-0 1 fvec) (-> this root trans))
     (apply-impact! (-> this rbody) (-> gp-0 1 fvec) (-> gp-0 0 fvec))
     (vector-orient-by-quat! (-> gp-0 1 fvec) (-> gp-0 1 uvec) (-> this root quat))
