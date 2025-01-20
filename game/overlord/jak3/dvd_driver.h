@@ -130,6 +130,7 @@ class CDvdDriver {
   struct FileCacheEntry {
     const ISOFileDef* def = nullptr;
     FILE* fp = nullptr;
+    size_t size = 0;
     u32 last_use_count = 0;
     u64 offset_in_file = 0;
   };

@@ -1029,7 +1029,14 @@ struct ExecutionContext {
   }
 
   void vrsqrt(int src0, BC bc0, int src1, BC bc1) {
-    Q = vf_src(src0).f[(int)bc0] / std::sqrt(std::abs(vf_src(src1).f[(int)bc1]));
+    const float s = std::sqrt(std::abs(vf_src(src1).f[(int)bc1]));
+    if (s == 0) {
+      // avoid propagating NaN's in Jak 3's cloth stuff, which sometimes runs the update method
+      // before doing setup.
+      Q = 0;
+    } else {
+      Q = vf_src(src0).f[(int)bc0] / s;
+    }
   }
 
   void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }

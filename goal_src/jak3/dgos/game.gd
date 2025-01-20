@@ -418,6 +418,7 @@
   "visvol-edit.o"
   "collision-editor.o"
   "speech-manager.o"
+  "anim-tester-x.o" ;; added
   "vag-player.o" ;; added
   "default-menu-pc.o" ;; added
   "dir-tpages.go"

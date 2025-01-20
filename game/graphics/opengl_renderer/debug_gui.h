@@ -50,6 +50,7 @@ class OpenGlDebugGui {
   bool should_draw_subtitle_editor() const { return master_enable && m_subtitle_editor; }
   bool should_draw_filters_menu() const { return master_enable && m_filters_menu; }
   bool should_draw_loader_menu() const { return master_enable && m_draw_loader; }
+  bool should_draw_overlord_debug() const { return master_enable && m_draw_overlord; }
 
   bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
   bool should_gl_finish() const { return m_frame_timer.do_gl_finish; }
@@ -72,11 +73,13 @@ class OpenGlDebugGui {
   bool master_enable = false;
 
  private:
+  void draw_overlord_debug_menu();
   FrameTimeRecorder m_frame_timer;
   bool m_draw_frame_time = false;
   bool m_draw_profiler = false;
   bool m_draw_debug = false;
   bool m_draw_loader = false;
+  bool m_draw_overlord = false;
   bool m_subtitle_editor = false;
   bool m_filters_menu = false;
   bool m_want_screenshot = false;

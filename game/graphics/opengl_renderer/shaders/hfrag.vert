@@ -6,7 +6,8 @@ layout (location = 2) in ivec2 uv;
 layout (location = 3) in int vi;
 
 uniform vec4 hvdf_offset;
-uniform mat4 camera;
+uniform vec4 cam_trans;
+uniform mat4 pc_camera;
 uniform float fog_constant;
 uniform float fog_min;
 uniform float fog_max;
@@ -25,27 +26,14 @@ void main() {
   tex_coord.x = (uv.x == 1) ? 1.f : 0.f;
   tex_coord.y = (uv.y == 1) ? 1.f : 0.f;
 
-  vec4 transformed = -camera[3];
-  transformed -= camera[0] * 32768.f * vx;
-  transformed -= camera[1] * position_in;
-  transformed -= camera[2] * 32768.f * vz;
+  vec3 vert = position_in - cam_trans.xyz;
+  vec4 transformed = -pc_camera[3];
+  transformed -= pc_camera[0] * (32768.f * vx - cam_trans.x);
+  transformed -= pc_camera[1] * (position_in - cam_trans.y);
+  transformed -= pc_camera[2] * (32768.f * vz - cam_trans.z);
 
-  float Q = fog_constant / transformed.w;
+  fogginess = 255 - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
 
-   fogginess = 255 - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
-
-  transformed.xyz *= Q;
-  // offset
-  transformed.xyz += hvdf_offset.xyz;
-  // correct xy offset
-  transformed.xy -= (2048.);
-  // correct z scale
-  transformed.z /= (8388608);
-  transformed.z -= 1;
-  // correct xy scale
-  transformed.x /= (256);
-  transformed.y /= -(128);
-  transformed.xyz *= transformed.w;
   // scissoring area adjust
   transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
   gl_Position = transformed;

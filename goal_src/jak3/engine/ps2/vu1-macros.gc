@@ -246,8 +246,16 @@ directly implemented by the OpenGOAL compiler
       )
   )
 
-
-
+(defmacro format-vf (&key (iter 0) &key (buf 0) &key (v (new-stack-vector0)) &rest regs)
+  (with-gensyms (vec)
+    `(let ((,vec ,v))
+      ,@(apply (lambda (reg)
+               `(begin
+                 (.svf (&-> ,vec quad) ,reg)
+                 (format ,buf "[~D] ~A: ~f ~f ~f ~f~%" ,iter (quote ,reg) (-> ,vec x) (-> ,vec y) (-> ,vec z) (-> ,vec w))))
+             regs)
+      (1+! ,iter)
+      ,vec)))
 
 ;; DECOMP BEGINS
 
