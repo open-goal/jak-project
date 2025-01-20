@@ -251,13 +251,7 @@
         (s5-0 (new 'stack-no-clear 'matrix))
         )
     (let ((s0-0 (new 'stack-no-clear 'vector)))
-      (sp-init-fields!
-        (the-as (pointer float) (-> s2-0 rvec))
-        arg2
-        (sp-field-id launch-fields-start)
-        (sp-field-id launch-fields-end)
-        #t
-        )
+      (sp-init-fields! (&-> s2-0 rvec x) arg2 (sp-field-id launch-fields-start) (sp-field-id launch-fields-end) #t)
       (matrix-rotate-xyz! s5-0 (-> s2-0 rvec))
       (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s5-0)
       (matrix-rotate-xyz! s5-0 (-> s2-0 uvec))
@@ -430,7 +424,7 @@
           )
       (let* ((a1-2 (-> arg1 init-specs 0))
              (a1-3 (sp-init-fields!
-                     (the-as (pointer float) (-> s5-0 rvec))
+                     (&-> s5-0 rvec x)
                      (the-as (inline-array sp-field-init-spec) a1-2)
                      (sp-field-id sprite-fields-start)
                      (sp-field-id sprite-fields-end)
@@ -583,7 +577,7 @@
        (set! (-> arg2 fade z) 99999.0)
        (set! sv-80
              (sp-init-fields!
-               (the-as (pointer float) (-> arg3 x-y-z-sx))
+               (&-> arg3 x-y-z-sx x)
                sv-80
                (sp-field-id sprite-fields-start)
                (sp-field-id sprite-fields-end)
@@ -625,7 +619,7 @@
     (else
       (set! sv-80
             (sp-init-fields!
-              (the-as (pointer float) (-> arg3 x-y-z-sx))
+              (&-> arg3 x-y-z-sx x)
               sv-80
               (sp-field-id sprite-fields-start)
               (sp-field-id sprite-fields-end)
@@ -1008,18 +1002,7 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod spawn-from-mat ((this sparticle-launch-control) (arg0 matrix))
-  (let* ((a2-0 (-> this origin))
-         (a3-0 arg0)
-         (v1-0 (-> a3-0 rvec quad))
-         (a0-1 (-> a3-0 uvec quad))
-         (a1-1 (-> a3-0 fvec quad))
-         (a3-1 (-> a3-0 trans quad))
-         )
-    (set! (-> a2-0 rvec quad) v1-0)
-    (set! (-> a2-0 uvec quad) a0-1)
-    (set! (-> a2-0 fvec quad) a1-1)
-    (set! (-> a2-0 trans quad) a3-1)
-    )
+  (matrix-copy! (-> this origin) arg0)
   (let ((s4-0 (-> this group)))
     (when (logtest? (-> s4-0 flags) (sp-group-flag sp6))
       (let ((f0-0 (-> s4-0 rotate-x))
@@ -1055,18 +1038,7 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod spawn-from-cspace ((this sparticle-launch-control) (arg0 cspace))
-  (let* ((v1-0 (-> this origin))
-         (a3-0 (-> arg0 bone transform))
-         (a0-2 (-> a3-0 rvec quad))
-         (a1-1 (-> a3-0 uvec quad))
-         (a2-0 (-> a3-0 fvec quad))
-         (a3-1 (-> a3-0 trans quad))
-         )
-    (set! (-> v1-0 rvec quad) a0-2)
-    (set! (-> v1-0 uvec quad) a1-1)
-    (set! (-> v1-0 fvec quad) a2-0)
-    (set! (-> v1-0 trans quad) a3-1)
-    )
+  (matrix-copy! (-> this origin) (-> arg0 bone transform))
   (let ((s4-0 (-> this group)))
     (when (logtest? (-> s4-0 flags) (sp-group-flag sp6))
       (let ((f0-0 (-> s4-0 rotate-x))
@@ -1103,7 +1075,7 @@
 ;; WARN: Return type mismatch int vs object.
 (defmethod spawn ((this sparticle-launch-control) (arg0 vector))
   (with-pp
-    (set! (-> this origin trans quad) (-> arg0 quad))
+    (vector-copy! (-> this origin trans) arg0)
     (if (not (or (is-visible? this arg0)
                  (logtest? (-> this group flags) (sp-group-flag sp1 sp2))
                  (and (logtest? (-> this group flags) (sp-group-flag sp2 sp11))
@@ -1113,20 +1085,9 @@
              )
         (return (the-as object 0))
         )
-    (when (logtest? (-> this group flags) (sp-group-flag sp12))
-      (let* ((v1-18 (-> this origin))
-             (a3-0 (-> this local-space-binding mat-prev))
-             (a0-5 (-> a3-0 rvec quad))
-             (a1-2 (-> a3-0 uvec quad))
-             (a2-0 (-> a3-0 fvec quad))
-             (a3-1 (-> a3-0 trans quad))
-             )
-        (set! (-> v1-18 rvec quad) a0-5)
-        (set! (-> v1-18 uvec quad) a1-2)
-        (set! (-> v1-18 fvec quad) a2-0)
-        (set! (-> v1-18 trans quad) a3-1)
+    (if (logtest? (-> this group flags) (sp-group-flag sp12))
+        (matrix-copy! (-> this origin) (-> this local-space-binding mat-prev))
         )
-      )
     (let ((s4-0 (the-as int (current-time)))
           (s5-0 (-> this last-spawn-time))
           )

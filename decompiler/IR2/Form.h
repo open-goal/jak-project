@@ -1274,6 +1274,7 @@ class DerefToken {
 };
 
 DerefToken to_token(const FieldReverseLookupOutput::Token& in);
+std::vector<DerefToken> to_tokens(const std::vector<FieldReverseLookupOutput::Token>& in);
 
 class DerefElement : public FormElement {
  public:

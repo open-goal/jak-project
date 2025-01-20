@@ -794,7 +794,7 @@
                   )
               )
             (set-time! (-> self state-time))
-            (let ((gp-3 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (the-as vector (-> self traj)))))
+            (let ((gp-3 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (-> self traj initial-position))))
               (set! (-> gp-3 y) 0.0)
               (vector-normalize! gp-3 12288.0)
               (vector+! gp-3 gp-3 (-> self root trans))
@@ -971,7 +971,7 @@
     )
   :trans (behavior ()
     (ja :num! (loop!))
-    (vector<-cspace! (-> self root trans) (the-as cspace (-> self node-list data)))
+    (vector<-cspace! (-> self root trans) (-> self node-list data 0))
     )
   :code sleep-code
   :post (behavior ()
@@ -1159,7 +1159,7 @@
              )
        (set! (-> self sand-drop-part) (create-launch-control (-> *part-group-id-table* 436) self))
        (set! (-> self water-drop-part) (create-launch-control (-> *part-group-id-table* 439) self))
-       ((method-of-type cam-float-seeker init) (the-as cam-float-seeker (-> self foot-lock)) 0.0 0.005 0.04 0.9)
+       ((method-of-type cam-float-seeker init) (-> self foot-lock lock) 0.0 0.005 0.04 0.9)
        (set! (-> self foot-lock initialized) #f)
        (set! (-> self foot-marks) (new 'process 'terraformer-foot-mark-pt-array))
        (cond
@@ -1666,7 +1666,7 @@
                 (set! (-> a1-26 y) 327680.0)
                 (set! (-> a1-26 z) 32768.0)
                 (set! (-> a1-26 w) 1.0)
-                (vector-! (the-as vector a2-30) a0-30 a1-26)
+                (vector-! (-> a2-30 min) a0-30 a1-26)
                 )
               (let ((a1-27 (-> s5-4 bbox max))
                     (a0-31 (new 'stack-no-clear 'vector))
@@ -1712,7 +1712,7 @@
             )
           )
         )
-      ((method-of-type cam-float-seeker update!) (the-as cam-float-seeker (-> self foot-lock)) 0.0)
+      ((method-of-type cam-float-seeker update!) (-> self foot-lock lock) 0.0)
       (if (-> self foot-lock initialized)
           (vector-lerp!
             gp-0
@@ -2924,13 +2924,9 @@
 
 
 (defmethod draw ((this hud-terraformer))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 472.0 (* 130.0 (-> this offset))))
-    160
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 472.0 (* 130.0 (-> this offset)))) 160)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 4 48)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 4 48)
   ((method-of-type hud draw) this)
   0
   (none)

@@ -53,7 +53,7 @@
       (vector-reset! (-> gp-0 mat fvec))
       (cond
         ((logtest? (-> this flags) (vehicle-controller-flag on-straightaway))
-         (vector-! (-> gp-0 world-pos) (-> this turn-enter-point) (the-as vector (-> gp-0 mat)))
+         (vector-! (-> gp-0 world-pos) (-> this turn-enter-point) (-> gp-0 mat rvec))
          (let ((f0-5 (vector-dot (-> gp-0 world-pos) (-> this turn-enter-dir))))
            (vector+float*! (-> gp-0 force) (-> this turn-enter-point) (-> this turn-enter-dir) (- f0-5))
            (vector-copy! (-> gp-0 velocity) (-> this turn-enter-dir))
@@ -84,7 +84,7 @@
           (if (not (logtest? (-> this flags) (vehicle-controller-flag no-slowing-for-turns)))
               (set! (-> gp-0 dir x) (fmin (-> gp-0 dir x) (-> this max-turn-speed)))
               )
-          (vector-! (-> gp-0 world-pos) (the-as vector (-> gp-0 mat)) (-> this dest-circle))
+          (vector-! (-> gp-0 world-pos) (-> gp-0 mat rvec) (-> this dest-circle))
           (vector-normalize! (-> gp-0 world-pos) 1.0)
           (set! (-> gp-0 velocity x) (- (-> gp-0 world-pos z)))
           (set! (-> gp-0 velocity y) 0.0)
@@ -95,7 +95,7 @@
           (vector-float*! (-> gp-0 world-pos) (-> gp-0 world-pos) (-> this dest-circle w))
           (vector+! (-> gp-0 force) (-> this dest-circle) (-> gp-0 world-pos))
           (when (logtest? (-> this flags) (vehicle-controller-flag attached))
-            (vector-! (-> gp-0 steering-axis) (-> this turn-exit-point) (the-as vector (-> gp-0 mat)))
+            (vector-! (-> gp-0 steering-axis) (-> this turn-exit-point) (-> gp-0 mat rvec))
             (when (and (< (vector-dot (-> this turn-exit-dir) (-> gp-0 steering-axis)) 0.0)
                        (>= (vector-dot (-> this turn-exit-dir) (-> gp-0 mat trans)) (cos 8192.0))
                        )
@@ -120,7 +120,7 @@
               )
           (countdown (s4-1 (fill-actor-list-for-sphere
                              (-> this traffic object-hash)
-                             (the-as vector (-> gp-0 mat))
+                             (-> gp-0 mat rvec)
                              (-> gp-0 mat uvec)
                              (* 1.5 f30-1)
                              s3-1
@@ -137,7 +137,7 @@
               (when (and v1-70 (not (logtest? (-> v1-70 v-flags) (vehicle-flag dead))) (nonzero? (-> v1-70 flight-level-index)))
                 (vector-copy! (-> gp-0 lift-dir) (-> v1-70 root trans))
                 (vector-copy! (-> gp-0 normal) (-> v1-70 root transv))
-                (vector-! (-> gp-0 tmp) (the-as vector (-> gp-0 mat)) (-> gp-0 lift-dir))
+                (vector-! (-> gp-0 tmp) (-> gp-0 mat rvec) (-> gp-0 lift-dir))
                 (.lvf vf1 (&-> (-> gp-0 tmp) quad))
                 (.add.w.vf.x vf2 vf0 vf0)
                 (.mul.vf vf1 vf1 vf1)
@@ -173,7 +173,7 @@
                         )
                       (when (< (cos 8192.0) (- (vector-dot (-> gp-0 mat trans) (-> gp-0 axis))))
                         (when (< (nearest-dist2-between-moving-points
-                                   (the-as vector (-> gp-0 mat))
+                                   (-> gp-0 mat rvec)
                                    (-> gp-0 mat uvec)
                                    (-> gp-0 lift-dir)
                                    (-> gp-0 normal)
@@ -195,7 +195,7 @@
           )
         )
       (when (not (logtest? (-> this flags) (vehicle-controller-flag ignore-others)))
-        (vector-! (-> gp-0 world-pos) (-> gp-0 force) (the-as vector (-> gp-0 mat)))
+        (vector-! (-> gp-0 world-pos) (-> gp-0 force) (-> gp-0 mat rvec))
         (.lvf vf1 (&-> (-> gp-0 world-pos) quad))
         (.add.w.vf.x vf2 vf0 vf0)
         (.mul.vf vf1 vf1 vf1)
@@ -229,7 +229,7 @@
         )
       (cond
         ((logtest? (-> this flags) (vehicle-controller-flag direct-mode))
-         (vector-! (-> gp-0 world-normal) (-> this turn-exit-point) (the-as vector (-> gp-0 mat)))
+         (vector-! (-> gp-0 world-normal) (-> this turn-exit-point) (-> gp-0 mat rvec))
          (vector-normalize! (-> gp-0 world-normal) (-> gp-0 dir x))
          (vector-! (-> gp-0 world-pos) (-> gp-0 world-normal) (-> gp-0 mat uvec))
          (vector-float*! (-> gp-0 world-pos) (-> gp-0 world-pos) 3.0)
@@ -240,11 +240,11 @@
            )
          )
         (else
-          (vector+float*! (-> gp-0 local-pos) (the-as vector (-> gp-0 mat)) (-> gp-0 mat uvec) 0.4)
+          (vector+float*! (-> gp-0 local-pos) (-> gp-0 mat rvec) (-> gp-0 mat uvec) 0.4)
           (vector-! (-> gp-0 world-pos) (-> gp-0 local-pos) (-> this turn-enter-point))
           (cond
             ((< (vector-dot (-> gp-0 world-pos) (-> this turn-enter-dir)) 0.0)
-             (vector-! (-> gp-0 world-normal) (-> this turn-enter-point) (the-as vector (-> gp-0 mat)))
+             (vector-! (-> gp-0 world-normal) (-> this turn-enter-point) (-> gp-0 mat rvec))
              )
             ((begin
                (vector-! (-> gp-0 world-pos) (-> gp-0 local-pos) (-> this turn-exit-point))

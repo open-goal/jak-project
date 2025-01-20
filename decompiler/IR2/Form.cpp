@@ -2148,6 +2148,15 @@ DerefToken to_token(const FieldReverseLookupOutput::Token& in) {
   }
 }
 
+std::vector<DerefToken> to_tokens(const std::vector<FieldReverseLookupOutput::Token>& in) {
+  std::vector<DerefToken> ret;
+  ret.reserve(in.size());
+  for (auto& x : in) {
+    ret.push_back(to_token(x));
+  }
+  return ret;
+}
+
 DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
     : m_base(base), m_is_addr_of(is_addr_of), m_tokens({std::move(token)}) {
   m_base->parent_element = this;

@@ -489,6 +489,38 @@ Form* cast_form(Form* in,
   return pool.form<CastElement>(new_type, in);
 }
 
+Form* cast_form_from(Form* in,
+                     const TypeSpec& old_type,
+                     const TypeSpec& new_type,
+                     FormPool& pool,
+                     const Env& env,
+                     bool tc_pass = false) {
+  auto& ts = env.dts->ts;
+
+  // sometimes, accessing a field is a no-op but changes the type. For example, accessing an inlined
+  // structure at the start of a structure. To detect this, look up all the possible derefs with no
+  // deref or offset, then find the highest scoring one that is the right type.
+  FieldReverseLookupInput lookup_input;
+  lookup_input.deref = std::nullopt;
+  lookup_input.offset = 0;
+  lookup_input.stride = 0;
+  lookup_input.base_type = old_type;
+  auto lookup_result = ts.reverse_field_multi_lookup(lookup_input);
+  if (lookup_result.success) {
+    for (auto& result : lookup_result.results) {
+      if (result.result_type == new_type) {
+        // it's a match!
+        auto form = pool.form<DerefElement>(in, result.addr_of, to_tokens(result.tokens));
+        form->try_as_element<DerefElement>()->inline_nested();
+        return form;
+      }
+    }
+  }
+
+  // fall back to normal casts.
+  return cast_form(in, new_type, pool, env, tc_pass);
+}
+
 /*!
  * Pop each variable in the input list into a form. The variables should be given in the order
  * they are evaluated in the source. It is safe to put the result of these in the same expression.
@@ -660,7 +692,7 @@ Form* make_cast_if_needed(Form* in,
     return try_cast_simplify(in, TypeSpec("time-frame"), pool, env, true);
   }
 
-  return cast_form(in, out_type, pool, env);
+  return cast_form_from(in, in_type, out_type, pool, env);
 }
 
 std::vector<Form*> make_casts_if_needed(const std::vector<Form*>& in,
@@ -1605,7 +1637,8 @@ void SimpleExpressionElement::update_from_stack_vector_plus_minus_cross(
   for (int i = 0; i < 3; i++) {
     auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     if (arg_type.typespec() != TypeSpec("vector")) {
-      popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
+      popped_args.at(i) =
+          cast_form_from(popped_args.at(i), arg_type.typespec(), TypeSpec("vector"), pool, env);
     }
   }
 
@@ -1629,7 +1662,8 @@ void SimpleExpressionElement::update_from_stack_vector_plus_float_times(
     auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     TypeSpec desired_type(i == 3 ? "float" : "vector");
     if (arg_type.typespec() != desired_type) {
-      popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
+      popped_args.at(i) =
+          cast_form_from(popped_args.at(i), arg_type.typespec(), desired_type, pool, env);
     }
   }
 
@@ -1654,7 +1688,8 @@ void SimpleExpressionElement::update_from_stack_vector_float_product(
     auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     TypeSpec desired_type(i == 2 ? "float" : "vector");
     if (arg_type.typespec() != desired_type) {
-      popped_args.at(i) = cast_form(popped_args.at(i), desired_type, pool, env);
+      popped_args.at(i) =
+          cast_form_from(popped_args.at(i), arg_type.typespec(), desired_type, pool, env);
     }
   }
 
@@ -1680,7 +1715,8 @@ void SimpleExpressionElement::update_from_stack_vectors_in_common(FixedOperatorK
   for (int i = 0; i < m_expr.args(); i++) {
     auto arg_type = env.get_types_before_op(m_my_idx).get(m_expr.get_arg(i).var().reg());
     if (arg_type.typespec() != TypeSpec("vector")) {
-      popped_args.at(i) = cast_form(popped_args.at(i), TypeSpec("vector"), pool, env);
+      popped_args.at(i) =
+          cast_form_from(popped_args.at(i), arg_type.typespec(), TypeSpec("vector"), pool, env);
     }
   }
 
@@ -3554,8 +3590,8 @@ void FunctionCallElement::update_from_stack(const Env& env,
 
       auto desired_arg_type = function_type.get_arg(arg_id);
       if (env.dts->should_attempt_cast_simplify(desired_arg_type, actual_arg_type)) {
-        arg_forms.push_back(cast_form(val, desired_arg_type, pool, env,
-                                      env.dts->ts.tc(desired_arg_type, actual_arg_type)));
+        arg_forms.push_back(cast_form_from(val, actual_arg_type, desired_arg_type, pool, env,
+                                           env.dts->ts.tc(desired_arg_type, actual_arg_type)));
       } else {
         arg_forms.push_back(val);
       }
@@ -4449,11 +4485,11 @@ void DerefElement::update_from_stack(const Env& env,
 }
 
 void DerefElement::inline_nested() {
-  auto as_deref = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
-  if (as_deref) {
-    if (!m_is_addr_of && !as_deref->is_addr_of()) {
-      m_tokens.insert(m_tokens.begin(), as_deref->tokens().begin(), as_deref->tokens().end());
-      m_base = as_deref->m_base;
+  auto inner = dynamic_cast<DerefElement*>(m_base->try_as_single_element());
+  if (inner) {
+    if (!inner->is_addr_of()) {
+      m_tokens.insert(m_tokens.begin(), inner->tokens().begin(), inner->tokens().end());
+      m_base = inner->m_base;
     }
   }
 }
@@ -6001,7 +6037,7 @@ void ReturnElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
         as_cast->set_type(func_type);
         return_code->push_back(as_cast);
       } else {
-        return_code = cast_form(return_code, func_type, pool, env);
+        return_code = cast_form_from(return_code, *return_type, func_type, pool, env);
         return_code->parent_element = this;
       }
     }

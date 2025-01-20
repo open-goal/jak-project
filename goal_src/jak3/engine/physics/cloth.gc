@@ -57,13 +57,13 @@
   (when (> (-> this anchor-points length) 0)
     (let ((v1-6 (vector-!
                   (new 'stack-no-clear 'vector)
-                  (the-as vector (-> this anchor-points data))
-                  (the-as vector (-> this particles data (-> this anchor-points data 0 particle-index)))
+                  (-> this anchor-points data 0 anchor-pos)
+                  (-> this particles data (-> this anchor-points data 0 particle-index) pos)
                   )
                 )
           )
       (dotimes (a0-4 (-> this particles length))
-        (vector+! (the-as vector (-> this particles data a0-4)) (the-as vector (-> this particles data a0-4)) v1-6)
+        (vector+! (-> this particles data a0-4 pos) (-> this particles data a0-4 pos) v1-6)
         )
       )
     )
@@ -254,7 +254,7 @@
         s3-0
         (the-as bucket-id s2-0)
         *temp-string*
-        (the-as vector (-> this particles data s5-0))
+        (-> this particles data s5-0 pos)
         (font-color red)
         (the-as vector2h #f)
         )
@@ -297,7 +297,7 @@
         s3-0
         (the-as bucket-id s2-0)
         *temp-string*
-        (the-as vector (-> this particles data s5-0))
+        (-> this particles data s5-0 pos)
         (the-as font-color s1-0)
         (the-as vector2h #f)
         )
@@ -654,8 +654,8 @@
           (let ((s4-0 (-> this stick-constraints data s5-0)))
             0.0
             (let ((f0-1 (vector-vector-distance
-                          (the-as vector (-> this particles data (-> s4-0 particle0)))
-                          (the-as vector (-> this particles data (-> s4-0 particle1)))
+                          (-> this particles data (-> s4-0 particle0) pos)
+                          (-> this particles data (-> s4-0 particle1) pos)
                           )
                         )
                   )
@@ -1007,7 +1007,7 @@
           (when (< sv-212 (* sv-168 sv-168))
             (vector-normalize-copy! sv-216 sv-208 sv-168)
             (vector-! sv-216 sv-216 sv-208)
-            (when (and (> sv-40 0) (< (vector-dot sv-216 (the-as vector sv-64)) 0.0))
+            (when (and (> sv-40 0) (< (vector-dot sv-216 (-> sv-64 rvec)) 0.0))
               )
             (vector+float*! (-> sv-68 pos) (-> sv-68 pos) sv-216 (-> sv-68 mass-scale))
             (vector+float*! (-> sv-72 pos) (-> sv-72 pos) sv-216 (-> sv-72 mass-scale))
@@ -1317,7 +1317,7 @@
                                     (* (- (-> arg2 current-vert-index) (the-as uint (-> arg2 cross-index0))) 32)
                                     )
                           )
-                  (the-as vector sv-16)
+                  (-> sv-16 pos)
                   )
           )
     (set! sv-84 (vector-!
@@ -1326,7 +1326,7 @@
                                     (* (- (-> arg2 current-vert-index) (the-as uint (-> arg2 cross-index1))) 32)
                                     )
                           )
-                  (the-as vector sv-16)
+                  (-> sv-16 pos)
                   )
           )
     (set! sv-88 (new 'stack-no-clear 'vector))
@@ -1476,13 +1476,13 @@
              )
         (vector-!
           a2-1
-          (the-as vector (-> this particles data t1-0))
-          (the-as vector (-> this particles data (+ (-> this cloth-width) 1 t1-0)))
+          (-> this particles data t1-0 pos)
+          (-> this particles data (+ (-> this cloth-width) 1 t1-0) pos)
           )
         (vector-!
           a3-2
-          (the-as vector (-> this particles data (+ t1-0 1)))
-          (the-as vector (-> this particles data (+ t1-0 (-> this cloth-width))))
+          (-> this particles data (+ t1-0 1) pos)
+          (-> this particles data (+ t1-0 (-> this cloth-width)) pos)
           )
         (vector-cross! (-> *normal-array* t0-4) a2-1 a3-2)
         )
@@ -1493,7 +1493,7 @@
   )
 
 (defmethod cloth-system-method-33 ((this cloth-system) (lights vu-lights))
-  (vu-lights<-light-group! lights (the-as light-group (-> *time-of-day-context* light-group)))
+  (vu-lights<-light-group! lights (-> *time-of-day-context* light-group 0))
   (none)
   )
 
@@ -1782,14 +1782,14 @@
     (set! (-> s5-0 face-normal-needs-flip?) #f)
     (set-vector! (-> s5-0 scale) 128.0 128.0 128.0 128.0)
     (set-vector! (-> s5-0 clamp-col) 255.0 255.0 255.0 128.0)
-    (vu-lights<-light-group! (-> s5-0 lights) (the-as light-group (-> *time-of-day-context* light-group)))
+    (vu-lights<-light-group! (-> s5-0 lights) (-> *time-of-day-context* light-group 0))
     (dotimes (s4-0 (+ (-> this cloth-height) -1))
       (let* ((a0-17 (+ sv-16 (/ (+ sv-32 -1) 2) (* (+ sv-24 (/ (+ sv-40 -1) 2)) (+ (-> this cloth-width) -1))))
              (s3-0 (-> *normal-array* a0-17))
              (s1-0 (-> this particles data (+ sv-16 (* sv-24 (-> this cloth-width)))))
              (s2-0 (new 'stack-no-clear 'vector))
              )
-        (vector-! s2-0 (the-as vector s1-0) (math-camera-pos))
+        (vector-! s2-0 (-> s1-0 pos) (math-camera-pos))
         (set! (-> s5-0 face-normal-needs-flip?) (< 0.0 (vector-dot s2-0 s3-0)))
         )
       (cloth-system-method-30 this sv-16 sv-24 s5-0 0)
@@ -1853,14 +1853,14 @@
                     )
                   )
               (vector-matrix*!
-                (the-as vector (-> this anchor-points data s4-0))
-                (the-as vector (-> this mesh anchor-transforms data s4-0))
+                (-> this anchor-points data s4-0 anchor-pos)
+                (-> this mesh anchor-transforms data s4-0 offset)
                 a2-0
                 )
               )
             (vector-float*!
-              (the-as vector (-> this anchor-points data s4-0))
-              (the-as vector (-> this anchor-points data s4-0))
+              (-> this anchor-points data s4-0 anchor-pos)
+              (-> this anchor-points data s4-0 anchor-pos)
               (/ 1.0 (-> this anchor-points data s4-0 anchor-pos w))
               )
             (set! (-> this anchor-points data s4-0 anchor-pos w) 1.0)
@@ -1882,7 +1882,7 @@
               (set! (-> s3-0 w) 1.0)
               (vector-matrix*!
                 s3-0
-                (the-as vector (-> this mesh sphere-transforms data s4-1))
+                (-> this mesh sphere-transforms data s4-1 offset)
                 (-> (the-as process-focusable s5-0)
                     node-list
                     data
@@ -1910,7 +1910,7 @@
           (s5-0
             (vector-matrix*!
               (the-as vector (+ (the-as uint (-> this disc-collision-constraints data 0 origin)) (* 48 s4-2)))
-              (the-as vector (-> this mesh disc-transforms data s4-2))
+              (-> this mesh disc-transforms data s4-2 offset)
               (-> (the-as process-focusable s5-0)
                   node-list
                   data
@@ -1920,7 +1920,7 @@
                   )
               )
             (vector-rotate*!
-              (the-as vector (-> this disc-collision-constraints data s4-2))
+              (-> this disc-collision-constraints data s4-2 normal)
               (the-as vector (+ (the-as uint (-> this mesh disc-transforms data 0 normal)) (* 48 s4-2)))
               (-> (the-as process-focusable s5-0)
                   node-list
