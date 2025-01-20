@@ -1359,7 +1359,7 @@
       (logclear! (-> self focus-status) (focus-status dead hit))
       (logclear! (-> self target-flags) (target-flags disable-attacks))
       )
-    ((method-of-type focus clear-focused) (the-as focus (-> self gun track-target)))
+    ((method-of-type focus clear-focused) (-> self gun track-target 0))
     (target-exit)
     )
   :trans (behavior ()
@@ -1817,7 +1817,7 @@
   (compute-alignment! (-> self align))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (when (not (logtest? (-> self align flags) (align-flags disabled)))
-      (vector-matrix*! gp-0 (the-as vector (-> self align delta)) (-> self control c-R-w))
+      (vector-matrix*! gp-0 (-> self align delta trans) (-> self control c-R-w))
       (vector-float*! (-> self control transv) gp-0 (-> self clock frames-per-second))
       )
     )
@@ -2183,11 +2183,7 @@
       )
     (cond
       ((-> *setting-control* user-current death-info)
-       (mem-copy!
-         (the-as pointer (-> self death-resetter))
-         (&-> (-> *setting-control* user-current death-info) node)
-         16
-         )
+       (mem-copy! (the-as pointer (-> self death-resetter)) (&-> *setting-control* user-current death-info node) 16)
        )
       (else
         (set! (-> self death-resetter continue) #f)

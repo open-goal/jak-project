@@ -404,14 +404,10 @@
                  (let ((v1-83 (-> this cam-view)))
                    (cond
                      ((zero? v1-83)
-                      (vector-matrix*!
-                        (the-as vector (-> s4-0 1 bbox))
-                        (the-as vector (-> this info camera look-pos-array))
-                        (the-as matrix (-> s4-0 1))
-                        )
+                      (vector-matrix*! (-> s4-0 1 bbox min) (-> this info camera look-pos-array 0) (the-as matrix (-> s4-0 1)))
                       )
                      ((= v1-83 1)
-                      (vector-matrix*! (the-as vector (-> s4-0 1 bbox)) (-> this info camera look-rear) (the-as matrix (-> s4-0 1)))
+                      (vector-matrix*! (-> s4-0 1 bbox min) (-> this info camera look-rear) (the-as matrix (-> s4-0 1)))
                       (matrix-rotate-yx! (the-as matrix (-> s4-0 1 best-other-tri normal)) 32768.0 3640.889)
                       (matrix*!
                         (the-as matrix (-> s4-0 1))
@@ -420,7 +416,7 @@
                         )
                       )
                      ((= v1-83 2)
-                      (vector-matrix*! (the-as vector (-> s4-0 1 bbox)) (-> this info camera look-left) (the-as matrix (-> s4-0 1)))
+                      (vector-matrix*! (-> s4-0 1 bbox min) (-> this info camera look-left) (the-as matrix (-> s4-0 1)))
                       (matrix-rotate-yx! (the-as matrix (-> s4-0 1 best-other-tri normal)) 16384.0 3640.889)
                       (matrix*!
                         (the-as matrix (-> s4-0 1))
@@ -429,11 +425,7 @@
                         )
                       )
                      ((= v1-83 3)
-                      (vector-matrix*!
-                        (the-as vector (-> s4-0 1 bbox))
-                        (-> this info camera look-right)
-                        (the-as matrix (-> s4-0 1))
-                        )
+                      (vector-matrix*! (-> s4-0 1 bbox min) (-> this info camera look-right) (the-as matrix (-> s4-0 1)))
                       (matrix-rotate-yx! (the-as matrix (-> s4-0 1 best-other-tri normal)) -16384.0 3640.889)
                       (matrix*!
                         (the-as matrix (-> s4-0 1))
@@ -442,11 +434,7 @@
                         )
                       )
                      (else
-                       (vector-matrix*!
-                         (the-as vector (-> s4-0 1 bbox))
-                         (the-as vector (-> this info camera look-pos-array))
-                         (the-as matrix (-> s4-0 1))
-                         )
+                       (vector-matrix*! (-> s4-0 1 bbox min) (-> this info camera look-pos-array 0) (the-as matrix (-> s4-0 1)))
                        )
                      )
                    )
@@ -478,10 +466,10 @@
                      (set! (-> v1-96 action-mask) (collide-action solid))
                      )
                    (vector-copy! (-> s4-0 0 start-pos) (-> this rbody position))
-                   (vector-! (-> s4-0 0 move-dist) (the-as vector (-> s4-0 1 bbox)) (-> s4-0 0 start-pos))
+                   (vector-! (-> s4-0 0 move-dist) (-> s4-0 1 bbox min) (-> s4-0 0 start-pos))
                    (let ((f0-23 (fill-and-probe-using-line-sphere *collide-cache* (-> s4-0 0))))
                      (if (>= f0-23 0.0)
-                         (vector+float*! (the-as vector (-> s4-0 1 bbox)) (-> s4-0 0 start-pos) (-> s4-0 0 move-dist) f0-23)
+                         (vector+float*! (-> s4-0 1 bbox min) (-> s4-0 0 start-pos) (-> s4-0 0 move-dist) f0-23)
                          )
                      )
                    )
@@ -520,7 +508,7 @@
                         (set! (-> a0-72 rvec w) 1.0)
                         )
                       (matrix-copy! (-> v1-132 0) (-> this rbody matrix))
-                      (vector-rotate*! s5-1 (the-as vector (-> v1-132 1)) (-> v1-132 0))
+                      (vector-rotate*! s5-1 (-> v1-132 1 rvec) (-> v1-132 0))
                       )
                     (persist-with-delay
                       *setting-control*
@@ -1057,10 +1045,10 @@
                  s0-0
                  )
              (set! (-> s5-0 1 point quad) (-> (get-trans (the-as process-focusable arg0) 3) quad))
-             (vector-! (-> s5-0 0 velocity) (the-as vector (-> s5-0 0)) (the-as vector (-> s5-0 1)))
+             (vector-! (-> s5-0 0 velocity) (-> s5-0 0 point) (-> s5-0 1 point))
              )
             (else
-              (vector-! (-> s5-0 0 velocity) (the-as vector (-> s5-0 0)) (-> arg0 root trans))
+              (vector-! (-> s5-0 0 velocity) (-> s5-0 0 point) (-> arg0 root trans))
               )
             )
           )
@@ -1134,7 +1122,7 @@
         (vector-copy! s3-1 (-> s5-0 0 velocity))
         (vector-normalize! s3-1 1.0)
         (vector-float*! s3-1 s3-1 (-> s5-0 0 impulse))
-        (apply-impact! (-> this rbody) (the-as vector (-> s5-0 0)) s3-1)
+        (apply-impact! (-> this rbody) (-> s5-0 0 point) s3-1)
         (rigid-body-control-method-12 (-> this rbody) 1.0)
         (init-velocities! (-> this rbody))
         (when #f
@@ -1144,15 +1132,8 @@
             (set! (-> *debug-vehicle-work* prim-sphere1 quad) (-> v1-84 prim1 cprim prim-core world-sphere quad))
             (set! (-> *debug-vehicle-work* prim-sphere2 quad) (-> v1-84 prim2 cprim prim-core world-sphere quad))
             )
-          (add-debug-x #t (bucket-id debug-no-zbuf1) (the-as vector (-> s5-0 0)) *color-blue*)
-          (add-debug-vector
-            #t
-            (bucket-id debug-no-zbuf1)
-            (the-as vector (-> s5-0 0))
-            s3-1
-            (meters 0.00024414062)
-            *color-blue*
-            )
+          (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 0 point) *color-blue*)
+          (add-debug-vector #t (bucket-id debug-no-zbuf1) (-> s5-0 0 point) s3-1 (meters 0.00024414062) *color-blue*)
           )
         )
       )
