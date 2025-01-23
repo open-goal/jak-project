@@ -147,6 +147,7 @@
   )
 
 (defmethod init-from-entity! ((this desert-eggwall) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this task-node) (game-task-node nest-eggs-wall))
   (cond
     ((task-node-closed? (-> this task-node))
@@ -264,7 +265,7 @@
                   (when s5-1
                     (setup-masks (-> self draw) 0 (the-as int (-> s5-1 prim-id)))
                     (set! (-> s5-1 prim-core collide-as) (collide-spec))
-                    (set! (-> gp-1 quad) (-> s5-1 prim-core world-sphere quad))
+                    (vector-copy! gp-1 (-> s5-1 prim-core world-sphere))
                     )
                   )
                 )
@@ -274,16 +275,16 @@
                    (-> self root)
                    (lambda ((arg0 collide-shape-prim)) (set! (-> arg0 prim-core collide-as) (collide-spec)) 0 (none))
                    )
-                 (set! (-> gp-1 quad) (-> self root root-prim prim-core world-sphere quad))
+                 (vector-copy! gp-1 (-> self root root-prim prim-core world-sphere))
                  )
                )
              (cond
                ((logtest? (-> *part-group-id-table* 1232 flags) (sp-group-flag sp13))
-                (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+                (vector-copy! (-> *launch-matrix* trans) gp-1)
                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1232))
                 )
                (else
-                 (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+                 (vector-copy! (-> *launch-matrix* trans) gp-1)
                  (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1232))
                  )
                )
@@ -329,6 +330,7 @@
   )
 
 (defmethod init-from-entity! ((this des-cactus-obstacle) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by)
           (penetrate

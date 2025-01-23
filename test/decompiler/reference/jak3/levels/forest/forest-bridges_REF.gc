@@ -146,14 +146,14 @@
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (sound-play "bridge-break")
     (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-      (set! (-> gp-1 fountain-rand-transv-lo quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 fountain-rand-transv-lo) (-> self root trans))
       (set! (-> gp-1 fountain-rand-transv-hi x) 4096.0)
       (set! (-> gp-1 fountain-rand-transv-hi y) 40960.0)
       (set! (-> gp-1 fountain-rand-transv-hi z) 4096.0)
       (set! (-> gp-1 fountain-rand-transv-hi w) 102400.0)
       (cond
         ((logtest? (-> *part-group-id-table* 577 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
          (part-tracker-spawn
            part-tracker-subsampler
            :to *entity-pool*
@@ -162,7 +162,7 @@
            )
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (part-tracker-spawn
             part-tracker
             :to *entity-pool*
@@ -195,6 +195,7 @@
 
 ;; definition for method 11 of type for-break-bridge-board
 (defmethod init-from-entity! ((this for-break-bridge-board) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 64)
   (when (task-node-closed? (game-task-node forest-kill-plants-resolution))
     (cleanup-for-death this)
@@ -325,7 +326,3 @@
 (defmethod get-skel ((this for-break-bridge-board-d))
   (art-group-get-by-name *level* "skel-for-break-bridge-board-d" (the-as (pointer level) #f))
   )
-
-
-
-

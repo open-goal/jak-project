@@ -309,9 +309,9 @@
           )
         (.lvf vf4 (&-> v1-2 quad))
         )
-      (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-      (.mul.x.vf acc vf5 vf7 :mask #b111)
-      (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+      (.add.x.vf.w vf6 vf0 vf0)
+      (.mul.x.vf.xyz acc vf5 vf7)
+      (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
       (.svf (&-> gp-0 quad) vf6)
       (let ((f30-0 (-> *part-id-table* 900 init-specs 4 initial-valuef)))
         (set! (-> *part-id-table* 900 init-specs 4 initial-valuef) (fmin f30-0 (vector-length s5-1)))
@@ -346,11 +346,11 @@
 (defmethod projectile-method-26 ((this ashelin-shot))
   (cond
     ((logtest? (-> *part-group-id-table* 222 flags) (sp-group-flag sp13))
-     (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
      (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 222))
      )
     (else
-      (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+      (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
       (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 222))
       )
     )
@@ -415,7 +415,7 @@
       (let ((v1-9 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> arg0 tail-pos) (-> s5-0 trans)) 2048.0))
             (a1-5 (-> arg0 hit-pos))
             )
-        (set! (-> a1-5 quad) (-> s5-0 trans quad))
+        (vector-copy! a1-5 (-> s5-0 trans))
         (vector+! a1-5 a1-5 v1-9)
         (move-to-point! (-> arg0 root) a1-5)
         )
@@ -492,14 +492,10 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-proj-settings! ((this ashelin-shot))
-  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (vector-copy! (-> this tail-pos) (-> this root trans))
   (set! (-> this attack-mode) 'eco-yellow)
   (set! (-> this max-speed) 307200.0)
   (set! (-> this move) ashelin-shot-move)
   (set! (-> this timeout) (seconds 1.335))
   (none)
   )
-
-
-
-

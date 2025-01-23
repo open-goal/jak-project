@@ -119,7 +119,7 @@
 (defmethod get-track-pt-and-scale ((this remote) (arg0 vector))
   (let ((s4-0 (handle->process (-> this focus handle))))
     (when s4-0
-      (set! (-> arg0 quad) (-> (get-trans (the-as process-focusable s4-0) 3) quad))
+      (vector-copy! arg0 (get-trans (the-as process-focusable s4-0) 3))
       (let ((a0-7 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s4-0) 0))))
         (vector+float*! arg0 arg0 a0-7 (* -16384.0 (- 1.0 (-> this blend))))
         )
@@ -162,9 +162,9 @@
             (.lvf vf5 (&-> a1-4 quad))
             )
           (.lvf vf4 (&-> v1-15 quad))
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> a0-8 quad) vf6)
           )
         (let ((v1-16 *particle-vel*)
@@ -188,10 +188,10 @@
   (let ((gp-0 (handle->process (-> self focus handle)))
         (s5-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> s5-0 quad) (-> self parent 0 trans quad))
+    (vector-copy! s5-0 (-> self parent 0 trans))
     (let ((f30-0 (get-track-pt-and-scale self s5-0)))
       (let ((a1-2 (new 'stack-no-clear 'vector)))
-        (set! (-> a1-2 quad) (-> self parent 0 trans quad))
+        (vector-copy! a1-2 (-> self parent 0 trans))
         (vector-lerp! (-> self root trans) a1-2 s5-0 (-> self blend))
         )
       (+! (-> self root trans y) (* 1638.4 (sin (* 54.613335 (the float (mod (current-time) 1200))))))
@@ -267,7 +267,7 @@
                  )
            )
       (if a1-1
-          (try-update-focus (-> self focus) (the-as process-focusable a1-1))
+          (focus-on! (-> self focus) (the-as process-focusable a1-1))
           )
       )
     )
@@ -425,8 +425,8 @@
 (defbehavior voicebox-init-by-other voicebox ((arg0 vector) (arg1 handle))
   (set! (-> self hint) arg1)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (set! (-> self base-trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
+  (vector-copy! (-> self base-trans) arg0)
   (init self)
   (set! (-> self event-hook) (-> (method-of-object self enter) event))
   (go-virtual enter)
@@ -494,7 +494,7 @@
 ;; definition for method 24 of type judge
 ;; INFO: Used lq/sq
 (defmethod get-track-pt-and-scale ((this judge) (arg0 vector))
-  (set! (-> arg0 quad) (-> this base-trans quad))
+  (vector-copy! arg0 (-> this base-trans))
   1.0
   )
 
@@ -554,7 +554,7 @@
                )
            (when s4-0
              (change-parent self (ppointer->process s4-0))
-             (try-update-focus (-> self focus) (the-as process-focusable s5-2))
+             (focus-on! (-> self focus) (the-as process-focusable s5-2))
              (go-virtual enter)
              )
            )
@@ -661,11 +661,12 @@
 ;; definition for method 11 of type judge
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this judge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (setup-collision! this)
   (init this)
   (process-drawable-from-entity! this arg0)
   (+! (-> this root trans y) 4096.0)
-  (set! (-> this base-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this base-trans) (-> this root trans))
   (set! (-> this total-time) (seconds 90))
   (go (method-of-object this wait))
   )
@@ -679,8 +680,8 @@
   (init self)
   (vector-identity! (-> self root scale))
   (quaternion-identity! (-> self root quat))
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (set! (-> self base-trans quad) (-> self root trans quad))
+  (vector-copy! (-> self root trans) arg0)
+  (vector-copy! (-> self base-trans) (-> self root trans))
   (set! (-> self total-time) (seconds 90))
   (set! (-> self timer?) arg2)
   (go-virtual wait)

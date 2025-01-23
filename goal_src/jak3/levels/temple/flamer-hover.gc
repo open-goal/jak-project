@@ -106,34 +106,34 @@
                                     :jump-height-min (meters 3)
                                     :jump-height-factor 0.5
                                     :knocked-seek-ry-clamp 2730.6667
-                                    :knocked-soft-vxz-lo 72089.6
-                                    :knocked-soft-vxz-hi 108134.4
-                                    :knocked-soft-vy-lo 81920.0
-                                    :knocked-soft-vy-hi 122880.0
-                                    :knocked-medium-vxz-lo 147456.0
-                                    :knocked-medium-vxz-hi 196608.0
-                                    :knocked-medium-vy-lo 135168.0
-                                    :knocked-medium-vy-hi 151552.0
-                                    :knocked-hard-vxz-lo 53248.0
-                                    :knocked-hard-vxz-hi 101580.8
-                                    :knocked-hard-vy-lo 60620.8
-                                    :knocked-hard-vy-hi 95027.2
-                                    :knocked-huge-vxz-lo 164659.2
-                                    :knocked-huge-vxz-hi 249036.8
-                                    :knocked-huge-vy-lo 183500.8
-                                    :knocked-huge-vy-hi 217907.2
-                                    :knocked-yellow-vxz-lo 40960.0
-                                    :knocked-yellow-vxz-hi 49152.0
-                                    :knocked-yellow-vy-lo 57344.0
-                                    :knocked-yellow-vy-hi 81920.0
-                                    :knocked-red-vxz-lo 24576.0
-                                    :knocked-red-vxz-hi 196608.0
-                                    :knocked-red-vy-lo 94208.0
-                                    :knocked-red-vy-hi 151552.0
-                                    :knocked-blue-vxz-lo 40960.0
-                                    :knocked-blue-vxz-hi 49152.0
-                                    :knocked-blue-vy-lo 24576.0
-                                    :knocked-blue-vy-hi 81920.0
+                                    :knocked-soft-vxz-lo (meters 17.6)
+                                    :knocked-soft-vxz-hi (meters 26.4)
+                                    :knocked-soft-vy-lo (meters 20)
+                                    :knocked-soft-vy-hi (meters 30)
+                                    :knocked-medium-vxz-lo (meters 36)
+                                    :knocked-medium-vxz-hi (meters 48)
+                                    :knocked-medium-vy-lo (meters 33)
+                                    :knocked-medium-vy-hi (meters 37)
+                                    :knocked-hard-vxz-lo (meters 13)
+                                    :knocked-hard-vxz-hi (meters 24.8)
+                                    :knocked-hard-vy-lo (meters 14.8)
+                                    :knocked-hard-vy-hi (meters 23.2)
+                                    :knocked-huge-vxz-lo (meters 40.2)
+                                    :knocked-huge-vxz-hi (meters 60.8)
+                                    :knocked-huge-vy-lo (meters 44.8)
+                                    :knocked-huge-vy-hi (meters 53.2)
+                                    :knocked-yellow-vxz-lo (meters 10)
+                                    :knocked-yellow-vxz-hi (meters 12)
+                                    :knocked-yellow-vy-lo (meters 14)
+                                    :knocked-yellow-vy-hi (meters 20)
+                                    :knocked-red-vxz-lo (meters 6)
+                                    :knocked-red-vxz-hi (meters 48)
+                                    :knocked-red-vy-lo (meters 23)
+                                    :knocked-red-vy-hi (meters 37)
+                                    :knocked-blue-vxz-lo (meters 10)
+                                    :knocked-blue-vxz-hi (meters 12)
+                                    :knocked-blue-vy-lo (meters 6)
+                                    :knocked-blue-vy-hi (meters 20)
                                     :ragdoll-info #f
                                     :shadow-size (meters 2)
                                     :shadow-max-y (meters 10)
@@ -157,6 +157,7 @@
   )
 
 (defmethod enemy-common-post ((this flamer-hover))
+  "Common implementation of post. Runs ja-post."
   (when (time-elapsed? (the-as int (-> this flit-timer)) (rand-vu-int-range (seconds 1.2) (seconds 3)))
     (set! (-> this flit-angle)
           (the float
@@ -166,11 +167,11 @@
     (set! (-> this flit-timer) (the-as uint (current-time)))
     )
   (let ((s5-1 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-1 quad) (-> *up-vector* quad))
+    (vector-copy! s5-1 *up-vector*)
     (vector-normalize! s5-1 2048.0)
     (vector/! s5-1 s5-1 (-> this root scale))
     (vector-rotate-around-z! s5-1 s5-1 (-> this flit-angle))
-    (vector-seek! (the-as vector (-> this flit-joint transform)) s5-1 (* 32768.0 (seconds-per-frame)))
+    (vector-seek! (-> this flit-joint transform trans) s5-1 (* 32768.0 (seconds-per-frame)))
     )
   (update-trans! (-> this sound) (-> this root trans))
   (update-vol! (-> this sound) (-> this sound-volume))
@@ -193,7 +194,7 @@
            (gp-0 (-> this draw shadow-ctrl settings shadow-dir))
            (f30-0 122880.0)
            )
-       (set! (-> s4-0 start-pos quad) (-> this root trans quad))
+       (vector-copy! (-> s4-0 start-pos) (-> this root trans))
        (vector-normalize-copy! (-> s4-0 move-dist) gp-0 f30-0)
        (let ((v1-12 s4-0))
          (set! (-> v1-12 radius) 3276.8)
@@ -330,7 +331,7 @@
     (if (and (time-elapsed? (the-as int (-> self last-fire-time)) (seconds 3))
              (and (< (vector-vector-distance (-> self focus-pos) (-> self root trans)) 245760.0)
                   (get-focus! self)
-                  (enemy-method-104 self (-> self focus-pos) 910.2222)
+                  (pointing-toward? self (-> self focus-pos) 910.2222)
                   )
              )
         (go-virtual attack)
@@ -350,7 +351,7 @@
                    (s5-1 (new 'stack-no-clear 'vector))
                    )
                (setup-from-to-xz-vel! (-> self shot-trajectory) gp-0 a2-1 122880.0 -102400.0)
-               (set! (-> s5-1 quad) (-> self shot-trajectory initial-velocity quad))
+               (vector-copy! s5-1 (-> self shot-trajectory initial-velocity))
                (vector-normalize! s5-1 1638.4)
                (vector+! gp-0 gp-0 s5-1)
                )
@@ -359,8 +360,8 @@
                (set! (-> a1-6 charge) 1.0)
                (set! (-> a1-6 options) (projectile-options))
                (logclear! (-> a1-6 options) (projectile-options po14 po15 po16))
-               (set! (-> a1-6 pos quad) (-> gp-0 quad))
-               (set! (-> a1-6 vel quad) (-> self shot-trajectory initial-velocity quad))
+               (vector-copy! (-> a1-6 pos) gp-0)
+               (vector-copy! (-> a1-6 vel) (-> self shot-trajectory initial-velocity))
                (set! (-> a1-6 notify-handle) (process->handle self))
                (set! (-> a1-6 owner-handle) (the-as handle #f))
                (set! (-> a1-6 target-handle) (the-as handle #f))
@@ -484,7 +485,8 @@
   :post enemy-falling-post
   )
 
-(defmethod enemy-method-50 ((this flamer-hover) (arg0 int))
+(defmethod update-collision-action ((this flamer-hover) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-0 arg0))
     (cond
       ((= v1-0 1)
@@ -519,6 +521,7 @@
 
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod knocked-anim ((this flamer-hover) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (let ((v1-0 (-> this incoming knocked-type)))
     (the-as
       symbol
@@ -529,7 +532,7 @@
                 (s4-0 (new 'static 'array uint64 3 #x12 #x13 #x14))
                 (s3-0 (new 'static 'array int32 4 0 0 0 0))
                 (a2-0 (ash 1 (-> s3-0 0)))
-                (v1-6 (enemy-method-131 this a1-3 a2-0))
+                (v1-6 (rnd-int-excluding-masked this a1-3 a2-0))
                 (s4-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-6 8) (the-as int s4-0))))))
                 )
            (set! (-> s3-0 0) v1-6)
@@ -571,10 +574,12 @@
   )
 
 (defmethod coin-flip? ((this flamer-hover))
+  "Return #t half the time, #f the other."
   #f
   )
 
 (defmethod init-enemy-collision! ((this flamer-hover))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -715,8 +720,9 @@
   )
 
 (defmethod init-enemy! ((this flamer-hover))
+  "Typical place for shared init code. Runs from entity or process style init."
   (hover-enemy-method-170 this)
-  (init-enemy-defaults! this (get-enemy-info this))
+  (setup-enemy! this (get-enemy-info this))
   (hover-enemy-method-176 this)
   (set! (-> this neck up) (the-as uint 1))
   (set! (-> this neck nose) (the-as uint 2))

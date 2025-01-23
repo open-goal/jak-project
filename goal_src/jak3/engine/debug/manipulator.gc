@@ -198,22 +198,17 @@
       (let* ((v0-1
                (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> *math-camera* trans) (-> this position)) 1.0)
                )
-             (s4-0 (< (fabs (vector-dot v0-1 (the-as vector (-> this mat)))) 0.9))
+             (s4-0 (< (fabs (vector-dot v0-1 (-> this mat rvec))) 0.9))
              (s3-0 (< (fabs (vector-dot v0-1 (-> this mat uvec))) 0.9))
              (s2-0 (< (fabs (vector-dot v0-1 (-> this mat fvec))) 0.9))
              (f30-1 (* 0.15 (vector-vector-distance (-> *math-camera* trans) s5-0)))
              )
         (if s4-0
-            (draw-axis
-              s5-0
-              (the-as vector (-> this mat))
-              f30-1
-              (/ f30-1 4)
-              (if (= (-> this action) (manipulator-action ma1))
-                  *color-yellow*
-                  *color-red*
-                  )
-              )
+            (draw-axis s5-0 (-> this mat rvec) f30-1 (/ f30-1 4) (if (= (-> this action) (manipulator-action ma1))
+                                                                     *color-yellow*
+                                                                     *color-red*
+                                                                     )
+                       )
             )
         (if s3-0
             (draw-axis s5-0 (-> this mat uvec) f30-1 (/ f30-1 4) (if (= (-> this action) (manipulator-action ma2))
@@ -241,7 +236,7 @@
               (let ((v1-26 s5-0))
                 (let ((a0-13 (vector+!
                                (new 'stack-no-clear 'vector)
-                               (the-as vector (-> *math-camera* inv-camera-rot))
+                               (-> *math-camera* inv-camera-rot rvec)
                                (-> *math-camera* inv-camera-rot uvec)
                                )
                              )
@@ -274,7 +269,7 @@
               (.svf (&-> a0-14 quad) vf6)
               )
             (add-debug-line #t (bucket-id debug-no-zbuf1) s1-0 s0-0 sv-240 #f (the-as rgba -1))
-            (set! (-> s1-0 quad) (-> s0-0 quad))
+            (vector-copy! s1-0 s0-0)
             (let ((a0-18 s0-0))
               (let ((v1-29 s0-0))
                 (let ((a1-12 (-> *math-camera* inv-camera-rot)))
@@ -291,7 +286,7 @@
               (.svf (&-> a0-18 quad) vf6)
               )
             (add-debug-line #t (bucket-id debug-no-zbuf1) s1-0 s0-0 sv-240 #f (the-as rgba -1))
-            (set! (-> s1-0 quad) (-> s0-0 quad))
+            (vector-copy! s1-0 s0-0)
             (let ((a0-22 s0-0))
               (let ((v1-31 s0-0))
                 (let ((a1-15 (-> *math-camera* inv-camera-rot uvec)))
@@ -308,7 +303,7 @@
               (.svf (&-> a0-22 quad) vf6)
               )
             (add-debug-line #t (bucket-id debug-no-zbuf1) s1-0 s0-0 sv-240 #f (the-as rgba -1))
-            (set! (-> s1-0 quad) (-> s0-0 quad))
+            (vector-copy! s1-0 s0-0)
             (let ((a0-26 s0-0))
               (let ((v1-33 s0-0))
                 (let ((a1-18 (-> *math-camera* inv-camera-rot)))
@@ -384,7 +379,7 @@
           (when s2-0
             (let ((a1-25 s1-1))
               (let ((v1-44 s5-0))
-                (let ((a0-37 (vector+! (new 'stack-no-clear 'vector) (the-as vector (-> this mat)) (-> this mat fvec))))
+                (let ((a0-37 (vector+! (new 'stack-no-clear 'vector) (-> this mat rvec) (-> this mat fvec))))
                   (let ((a2-24 f30-1))
                     (.mov vf7 a2-24)
                     )
@@ -399,7 +394,7 @@
               )
             (draw-axis
               s1-1
-              (vector-negate! (new 'stack-no-clear 'vector) (the-as vector (-> this mat)))
+              (vector-negate! (new 'stack-no-clear 'vector) (-> this mat rvec))
               (* 0.15 f30-1)
               (* 0.15 f30-1)
               (if (= (-> this action) (manipulator-action ma5))
@@ -421,7 +416,7 @@
           (set! s3-0 (and s4-0 s3-0))
           (when s3-0
             (let ((a0-44 s1-1))
-              (let ((v1-52 (vector+! (new 'stack-no-clear 'vector) (the-as vector (-> this mat)) (-> this mat uvec))))
+              (let ((v1-52 (vector+! (new 'stack-no-clear 'vector) (-> this mat rvec) (-> this mat uvec))))
                 (let ((a1-31 f30-1))
                   (.mov vf7 a1-31)
                   )
@@ -435,7 +430,7 @@
               )
             (draw-axis
               s1-1
-              (vector-negate! (new 'stack-no-clear 'vector) (the-as vector (-> this mat)))
+              (vector-negate! (new 'stack-no-clear 'vector) (-> this mat rvec))
               (* 0.15 f30-1)
               (* 0.15 f30-1)
               (if (= (-> this action) (manipulator-action ma4))
@@ -464,8 +459,8 @@
 
 (defmethod manipulator-method-12 ((this manipulator) (arg0 vector))
   (set! (-> this rotate-ref) (the int (-> *mouse* posx)))
-  (set! (-> this mouse-ref-position quad) (-> arg0 quad))
-  (set! (-> this drag-ref-position quad) (-> this position quad))
+  (vector-copy! (-> this mouse-ref-position) arg0)
+  (vector-copy! (-> this drag-ref-position) (-> this position))
   (set! (-> this dragging?) #t)
   (set! (-> this speed quad) (the-as uint128 0))
   0
@@ -483,7 +478,7 @@
     (init-vf0-vector)
     (cond
       ((= (-> this mode) (manipulator-mode mm0))
-       (set! (-> this speed quad) (-> this position quad))
+       (vector-copy! (-> this speed) (-> this position))
        (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
              (s4-1 (vector-! (new 'stack-no-clear 'vector) (-> this mouse-ref-position) arg0))
              )
@@ -501,36 +496,36 @@
                 ((= (-> this action) (manipulator-action ma1))
                  (cond
                    ((< (fabs (vector-dot s5-1 (-> this mat uvec))) (fabs (vector-dot s5-1 (-> this mat fvec))))
-                    (set! (-> s2-0 quad) (-> this mat fvec quad))
-                    (set! (-> s1-0 quad) (-> this mat uvec quad))
+                    (vector-copy! s2-0 (-> this mat fvec))
+                    (vector-copy! s1-0 (-> this mat uvec))
                     )
                    (else
-                     (set! (-> s2-0 quad) (-> this mat uvec quad))
-                     (set! (-> s1-0 quad) (-> this mat fvec quad))
+                     (vector-copy! s2-0 (-> this mat uvec))
+                     (vector-copy! s1-0 (-> this mat fvec))
                      )
                    )
                  )
                 ((= (-> this action) (manipulator-action ma2))
                  (cond
-                   ((< (fabs (vector-dot s5-1 (the-as vector (-> this mat)))) (fabs (vector-dot s5-1 (-> this mat fvec))))
-                    (set! (-> s2-0 quad) (-> this mat fvec quad))
-                    (set! (-> s1-0 quad) (-> this mat rvec quad))
+                   ((< (fabs (vector-dot s5-1 (-> this mat rvec))) (fabs (vector-dot s5-1 (-> this mat fvec))))
+                    (vector-copy! s2-0 (-> this mat fvec))
+                    (vector-copy! s1-0 (-> this mat rvec))
                     )
                    (else
-                     (set! (-> s2-0 quad) (-> this mat rvec quad))
-                     (set! (-> s1-0 quad) (-> this mat fvec quad))
+                     (vector-copy! s2-0 (-> this mat rvec))
+                     (vector-copy! s1-0 (-> this mat fvec))
                      )
                    )
                  )
                 ((= (-> this action) (manipulator-action ma3))
                  (cond
-                   ((< (fabs (vector-dot s5-1 (-> this mat uvec))) (fabs (vector-dot s5-1 (the-as vector (-> this mat)))))
-                    (set! (-> s2-0 quad) (-> this mat rvec quad))
-                    (set! (-> s1-0 quad) (-> this mat uvec quad))
+                   ((< (fabs (vector-dot s5-1 (-> this mat uvec))) (fabs (vector-dot s5-1 (-> this mat rvec))))
+                    (vector-copy! s2-0 (-> this mat rvec))
+                    (vector-copy! s1-0 (-> this mat uvec))
                     )
                    (else
-                     (set! (-> s2-0 quad) (-> this mat uvec quad))
-                     (set! (-> s1-0 quad) (-> this mat rvec quad))
+                     (vector-copy! s2-0 (-> this mat uvec))
+                     (vector-copy! s1-0 (-> this mat rvec))
                      )
                    )
                  )
@@ -581,16 +576,16 @@
                   )
               (cond
                 ((= (-> this action) (manipulator-action ma4))
-                 (set! (-> s2-0 quad) (-> *z-vector* quad))
+                 (vector-copy! s2-0 *z-vector*)
                  )
                 ((= (-> this action) (manipulator-action ma5))
-                 (set! (-> s2-0 quad) (-> *y-vector* quad))
+                 (vector-copy! s2-0 *y-vector*)
                  )
                 ((= (-> this action) (manipulator-action ma6))
-                 (set! (-> s2-0 quad) (-> *x-vector* quad))
+                 (vector-copy! s2-0 *x-vector*)
                  )
                 ((= (-> this action) (manipulator-action ma7))
-                 (set! (-> s2-0 quad) (-> *math-camera* inv-camera-rot fvec quad))
+                 (vector-copy! s2-0 (-> *math-camera* inv-camera-rot fvec))
                  )
                 )
               (vector-normalize! s2-0 1.0)
@@ -643,7 +638,7 @@
          (matrix-identity! s5-2)
          (cond
            ((= (-> this action) (manipulator-action ma1))
-            (matrix-axis-angle! s5-2 (the-as vector (-> this mat)) (* 182.04445 (the float s4-2)))
+            (matrix-axis-angle! s5-2 (-> this mat rvec) (* 182.04445 (the float s4-2)))
             )
            ((= (-> this action) (manipulator-action ma2))
             (matrix-axis-angle! s5-2 (-> this mat uvec) (* 182.04445 (the float s4-2)))
@@ -654,7 +649,7 @@
            )
          (matrix*! (-> this mat) (-> this mat) s5-2)
          )
-       (vector-normalize! (the-as vector (-> this mat)) 1.0)
+       (vector-normalize! (-> this mat rvec) 1.0)
        (vector-normalize! (-> this mat uvec) 1.0)
        (vector-normalize! (-> this mat fvec) 1.0)
        (matrix->eul (-> this angles) (-> this mat) 21)

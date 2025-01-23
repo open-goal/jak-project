@@ -98,7 +98,7 @@
     (.svf (&-> arg0 quad) vf3)
     (let* ((f0-0 (vector-length arg0))
            (f1-1 (vector-dot arg0 arg2))
-           (f0-2 (- (* 0.02 f0-0) f1-1))
+           (f0-2 (- (/ f0-0 50) f1-1))
            )
       (vector+float*! arg0 arg0 arg2 (fmin 16384.0 (* 16.0 f0-2)))
       )
@@ -107,7 +107,7 @@
 
 (defun vector-reflect-flat-gravity! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s4-0 quad) (-> arg1 quad))
+    (vector-copy! s4-0 arg1)
     (vector-reflect-flat! arg0 s4-0 arg2)
     ;; og:preserve-this
     (let* ((s2-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) s4-0 1.0)) ;; src normalized
@@ -679,16 +679,16 @@
     0.0
     (let ((s5-0 (new-stack-matrix0)))
       (vector-negate! s4-0 arg1)
-      (vector-flatten! s4-0 s4-0 (-> arg0 vector 2))
+      (vector-flatten! s4-0 s4-0 (-> arg0 fvec))
       (vector-normalize! s4-0 1.0)
-      (let ((f30-0 (vector-dot (-> arg0 vector 1) s4-0)))
+      (let ((f30-0 (vector-dot (-> arg0 uvec) s4-0)))
         (when (< f30-0 0.99999)
-          (vector-cross! s4-0 (-> arg0 vector 1) s4-0)
+          (vector-cross! s4-0 (-> arg0 uvec) s4-0)
           (let ((f0-4 (vector-length s4-0)))
-            (if (< 0.0 (vector-dot s4-0 (-> arg0 vector 2)))
+            (if (< 0.0 (vector-dot s4-0 (-> arg0 fvec)))
                 (set! f0-4 (- f0-4))
                 )
-            (matrix-axis-sin-cos! s5-0 (-> arg0 vector 2) f0-4 f30-0)
+            (matrix-axis-sin-cos! s5-0 (-> arg0 fvec) f0-4 f30-0)
             )
           (matrix*! arg0 arg0 s5-0)
           )
@@ -698,7 +698,7 @@
   arg0
   )
 
-(defun matrix-rot-diff! ((arg0 vector) (arg1 matrix) (arg2 matrix))
+(defun matrix-rot-diff! ((arg0 quaternion) (arg1 matrix) (arg2 matrix))
   "Get the difference of rotation between two matrices, expressed as a quaternion."
   (let ((s3-0 (new-stack-quaternion0))
         (s2-0 (new-stack-quaternion0))
@@ -715,8 +715,8 @@
         )
     (let ((f30-1 (* 2.0 (acos (-> s5-0 w)))))
       (set! (-> arg0 quad) (-> s5-0 quad))
-      (vector-negate! arg0 arg0)
-      (if (= (vector-normalize-ret-len! arg0 1.0) 0.0)
+      (vector-negate! (-> arg0 vec) (-> arg0 vec))
+      (if (= (vector-normalize-ret-len! (-> arg0 vec) 1.0) 0.0)
           (set! (-> arg0 y) 1.0)
           )
       f30-1
@@ -725,14 +725,14 @@
   )
 
 (defun quaternion-seek ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float) (arg4 float))
-  "Strange quaternion rotate toward function. Arg3 is ignored. Arg4 is the max seek amount."
+  "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount."
   (let ((s5-0 (new-stack-matrix0))
         (s4-0 (new-stack-matrix0))
         )
     (quaternion->matrix s5-0 arg1)
     (quaternion->matrix s4-0 arg2)
     (let ((s2-1 (new-stack-quaternion0)))
-      (quaternion-from-two-vectors-max-angle! s2-1 (-> s5-0 vector 2) (-> s4-0 vector 2) arg4)
+      (quaternion-from-two-vectors-max-angle! s2-1 (-> s5-0 fvec) (-> s4-0 fvec) arg4)
       (quaternion-normalize! (quaternion*! arg0 arg0 s2-1))
       )
     )
@@ -750,11 +750,11 @@
   "Slerp for vectors. (imagine that they are the z axis of two frames)"
   (cond
     ((>= 0.0 arg3)
-     (set! (-> arg0 quad) (-> arg1 quad))
+     (vector-copy! arg0 arg1)
      arg0
      )
     ((>= arg3 1.0)
-     (set! (-> arg0 quad) (-> arg2 quad))
+     (vector-copy! arg0 arg2)
      arg0
      )
     (else
@@ -775,10 +775,10 @@
   (local-vars (sv-112 (function float float float float)))
   (cond
     ((>= 0.0 arg3)
-     (set! (-> arg0 quad) (-> arg1 quad))
+     (vector-copy! arg0 arg1)
      )
     ((>= arg3 1.0)
-     (set! (-> arg0 quad) (-> arg2 quad))
+     (vector-copy! arg0 arg2)
      )
     (else
       (let* ((s0-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) arg1 1.0))
@@ -1433,7 +1433,7 @@
         (-> arg0 num-knots)
         )
       (dotimes (s2-0 s3-0)
-        (set! (-> s5-0 quad) (-> s4-0 quad))
+        (vector-copy! s5-0 s4-0)
         (curve-evaluate!
           s4-0
           (/ (the float (+ s2-0 1)) (the float s3-0))
@@ -1489,7 +1489,7 @@
               )
           (while (> s3-0 0)
             (+! s3-0 -1)
-            (set! f28-0 (* 0.5 f28-0))
+            (set! f28-0 (/ f28-0 2))
             (let ((v1-6 (cond
                           ((< f22-0 f20-0)
                            (curve-get-pos! s1-0 s0-1 arg0)
@@ -1601,11 +1601,13 @@
   (vector-normalize! arg0 1.0)
   )
 
-(defmethod lissajous-interp-method-9 ((this lissajous-interp) (arg0 vector))
-  (lissajous-method-9 (-> this current) arg0)
+(defmethod evaluate! ((this lissajous-interp) (arg0 vector))
+  "Set the x and y component of the vector to the current point on the curve."
+  (evaluate! (-> this current) arg0)
   )
 
-(defmethod lissajous-interp-method-10 ((this lissajous-interp))
+(defmethod update! ((this lissajous-interp))
+  "Update both the interpolation, and the curves themselves."
   (seek! (-> this current x-mag) (-> this dest x-mag) (-> this rate x-mag))
   (seek! (-> this current y-mag) (-> this dest y-mag) (-> this rate y-mag))
   (seek! (-> this current theta-rate) (-> this dest theta-rate) (-> this rate theta-rate))
@@ -1617,7 +1619,8 @@
         )
   )
 
-(defmethod lissajous-method-9 ((this lissajous) (arg0 vector))
+(defmethod evaluate! ((this lissajous) (arg0 vector))
+  "Set the x and y component of the vector to the current point on the curve."
   0.0
   0.0
   (let ((f30-0 (* (cos (* (-> this theta) (-> this wx))) (-> this x-mag)))

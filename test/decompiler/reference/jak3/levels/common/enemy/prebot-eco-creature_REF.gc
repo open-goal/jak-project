@@ -300,34 +300,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 16384.0
-    :knocked-red-vxz-hi 40960.0
-    :knocked-red-vy-lo 49152.0
-    :knocked-red-vy-hi 61440.0
-    :knocked-blue-vxz-lo 20480.0
-    :knocked-blue-vxz-hi 28672.0
-    :knocked-blue-vy-lo 16384.0
-    :knocked-blue-vy-hi 40960.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 4)
+    :knocked-red-vxz-hi (meters 10)
+    :knocked-red-vy-lo (meters 12)
+    :knocked-red-vy-hi (meters 15)
+    :knocked-blue-vxz-lo (meters 5)
+    :knocked-blue-vxz-hi (meters 7)
+    :knocked-blue-vy-lo (meters 4)
+    :knocked-blue-vy-hi (meters 10)
     :ragdoll-info (new 'static 'ragdoll-setup
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
       :bg-collide-with (collide-spec backgnd player-list)
@@ -702,31 +702,36 @@
 (set! (-> *prebot-large-eco-creature-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 ;; definition for method 74 of type prebot-large-eco-creature
-(defmethod go-ambush-delay ((this prebot-large-eco-creature))
+(defmethod go-ambush ((this prebot-large-eco-creature))
+  "May go to ambush-delay first, if set in the res-lump."
   (if (type? (ppointer->process (-> this parent)) prebot-large-eco-creature)
-      (go-idle2 this)
-      ((method-of-type nav-enemy go-ambush-delay) this)
+      (go-fallback-init this)
+      ((method-of-type nav-enemy go-ambush) this)
       )
   )
 
 ;; definition for method 71 of type prebot-large-eco-creature
 (defmethod go-dormant ((this prebot-large-eco-creature))
+  "Go to the dormant state. This disables drawing/processing/collision, and runs no logic."
   (if (type? (ppointer->process (-> this parent)) prebot-large-eco-creature)
-      (go-idle2 this)
+      (go-fallback-init this)
       ((method-of-type nav-enemy go-dormant) this)
       )
   )
 
 ;; definition for method 72 of type prebot-large-eco-creature
 (defmethod go-dormant-aware ((this prebot-large-eco-creature))
+  "Go to the dormat aware state.
+   Similar to dormant, drawing/collision are disabled, but enemies can exit dormant-aware."
   (if (type? (ppointer->process (-> this parent)) prebot-large-eco-creature)
-      (go-idle2 this)
+      (go-fallback-init this)
       ((method-of-type nav-enemy go-dormant-aware) this)
       )
   )
 
 ;; definition for method 82 of type prebot-large-eco-creature
 (defmethod event-handler ((this prebot-large-eco-creature) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('attack)
      (let ((s4-0 (the-as object (-> arg3 param 1))))
@@ -798,12 +803,14 @@
 
 ;; definition for method 67 of type prebot-large-eco-creature
 (defmethod coin-flip? ((this prebot-large-eco-creature))
+  "Return #t half the time, #f the other."
   #f
   )
 
 ;; definition for method 59 of type prebot-large-eco-creature
 ;; WARN: Return type mismatch int vs none.
 (defmethod enemy-common-post ((this prebot-large-eco-creature))
+  "Common implementation of post. Runs ja-post."
   (let ((t9-0 (method-of-type nav-enemy enemy-common-post)))
     (t9-0 this)
     )
@@ -972,7 +979,7 @@
     (logclear! (-> self flags) (eco-creature-flag ecf1))
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-9 *game-info*)
            (a0-5 (+ (-> v1-9 attack-id) 1))
@@ -1001,7 +1008,7 @@
         )
     )
   :trans (behavior ()
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     nav-state
     (if (logtest? (-> self enemy-flags) (enemy-flag victory))
         (logior! (-> self flags) (eco-creature-flag ecf1))
@@ -1051,7 +1058,7 @@
           (t9-0)
           )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1217,7 +1224,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1234,7 +1241,7 @@
   :trans (behavior ()
     (ja :num! (seek!))
     (if (ja-done? 0)
-        (go-best-state self)
+        (go-state-for-focused self)
         )
     )
   :code sleep-code
@@ -1327,13 +1334,13 @@
          (set! (-> self which-trajectory) 0)
          (set! (-> self x-rotate) 0.0)
          (set! (-> self y-rotate) 0.0)
-         (set! (-> self root trans quad) (-> (the-as vector s5-0) quad))
-         (set! (-> self launch-pos quad) (-> (the-as vector s5-0) quad))
-         (set! (-> self launch quad) (-> (the-as vector s5-0) quad))
+         (vector-copy! (-> self root trans) (the-as vector s5-0))
+         (vector-copy! (-> self launch-pos) (the-as vector s5-0))
+         (vector-copy! (-> self launch) (the-as vector s5-0))
          (let* ((v1-36 (-> self nav))
                 (f0-25 (-> v1-36 extra-nav-sphere w))
                 )
-           (set! (-> v1-36 extra-nav-sphere quad) (-> (the-as vector gp-0) quad))
+           (vector-copy! (-> v1-36 extra-nav-sphere) (the-as vector gp-0))
            (set! (-> v1-36 extra-nav-sphere w) f0-25)
            )
          )
@@ -1413,7 +1420,7 @@
               (-> self root trans)
               )
             (set-time! (-> self state-time))
-            (let ((gp-3 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (the-as vector (-> self traj)))))
+            (let ((gp-3 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (-> self traj initial-position))))
               (set! (-> gp-3 y) 0.0)
               (vector-normalize! gp-3 12288.0)
               (vector+! gp-3 gp-3 (-> self root trans))
@@ -1428,7 +1435,7 @@
               (-> self root trans)
               )
             (set-time! (-> self state-time))
-            (let ((gp-5 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (the-as vector (-> self traj)))))
+            (let ((gp-5 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (-> self traj initial-position))))
               (set! (-> gp-5 y) 0.0)
               (vector-normalize! gp-5 4096.0)
               (vector+! gp-5 gp-5 (-> self root trans))
@@ -1478,7 +1485,8 @@
   )
 
 ;; definition for method 122 of type prebot-large-eco-creature
-(defmethod go-idle2 ((this prebot-large-eco-creature))
+(defmethod go-fallback-init ((this prebot-large-eco-creature))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (set! (-> this event-hook) (-> (method-of-object this fly-to-dest) event))
   (go (method-of-object this fly-to-dest))
   )
@@ -1486,6 +1494,7 @@
 ;; definition for method 120 of type prebot-large-eco-creature
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this prebot-large-eco-creature))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1669,12 +1678,13 @@
 ;; definition for method 121 of type prebot-large-eco-creature
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this prebot-large-eco-creature))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cav-eco-lg" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *prebot-large-eco-creature-nav-enemy-info*)
+  (setup-enemy! this *prebot-large-eco-creature-nav-enemy-info*)
   (logior! (-> this draw global-effect) (draw-control-global-effect rim-lights2))
   (let ((v1-8 (-> this neck)))
     (set! (-> v1-8 up) (the-as uint 1))
@@ -1747,8 +1757,8 @@
   (let ((gp-1 (new 'stack-no-clear 'enemy-init-by-other-params)))
     (let ((v1-2 (new 'stack-no-clear 'vector)))
       (-> self root transv)
-      (set! (-> v1-2 quad) (-> self root trans quad))
-      (set! (-> gp-1 trans quad) (-> v1-2 quad))
+      (vector-copy! v1-2 (-> self root trans))
+      (vector-copy! (-> gp-1 trans) v1-2)
       )
     (quaternion-copy! (-> gp-1 quat) (-> self root quat))
     (set! (-> gp-1 entity) (-> self entity))
@@ -1956,34 +1966,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 49152.0
-    :knocked-red-vy-lo 57344.0
-    :knocked-red-vy-hi 69632.0
-    :knocked-blue-vxz-lo 32768.0
-    :knocked-blue-vxz-hi 40960.0
-    :knocked-blue-vy-lo 20480.0
-    :knocked-blue-vy-hi 53248.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 12)
+    :knocked-red-vy-lo (meters 14)
+    :knocked-red-vy-hi (meters 17)
+    :knocked-blue-vxz-lo (meters 8)
+    :knocked-blue-vxz-hi (meters 10)
+    :knocked-blue-vy-lo (meters 5)
+    :knocked-blue-vy-hi (meters 13)
     :ragdoll-info (new 'static 'ragdoll-setup
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
       :bg-collide-with (collide-spec backgnd player-list)
@@ -2464,7 +2474,8 @@
   )
 
 ;; definition for method 122 of type prebot-medium-eco-creature
-(defmethod go-idle2 ((this prebot-medium-eco-creature))
+(defmethod go-fallback-init ((this prebot-medium-eco-creature))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (set-vector! (-> this root scale) (-> this initial-scale) (-> this initial-scale) (-> this initial-scale) 1.0)
   (go (method-of-object this knocked))
   )
@@ -2472,6 +2483,7 @@
 ;; definition for method 120 of type prebot-medium-eco-creature
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this prebot-medium-eco-creature))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2602,12 +2614,13 @@
 ;; definition for method 121 of type prebot-medium-eco-creature
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this prebot-medium-eco-creature))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cav-eco-lg" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *prebot-medium-eco-creature-nav-enemy-info*)
+  (setup-enemy! this *prebot-medium-eco-creature-nav-enemy-info*)
   (logior! (-> this draw global-effect) (draw-control-global-effect rim-lights2))
   (let ((v1-8 (-> this neck)))
     (set! (-> v1-8 up) (the-as uint 1))
@@ -2724,7 +2737,7 @@
          )
        (set! (-> self is-top) #f)
        (set! (-> self is-bottom) #f)
-       (if (enemy-method-109 self)
+       (if (out-of-bounds? self)
            (go-die self)
            (go-hostile self)
            )
@@ -2881,34 +2894,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 32768.0
-    :knocked-red-vxz-hi 57344.0
-    :knocked-red-vy-lo 65536.0
-    :knocked-red-vy-hi 77824.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 61440.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 8)
+    :knocked-red-vxz-hi (meters 14)
+    :knocked-red-vy-lo (meters 16)
+    :knocked-red-vy-hi (meters 19)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 15)
     :ragdoll-info (new 'static 'ragdoll-setup
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
       :bg-collide-with (collide-spec backgnd player-list)
@@ -3285,6 +3298,7 @@
 ;; definition for method 120 of type prebot-small-eco-creature
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this prebot-small-eco-creature))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -3415,12 +3429,13 @@
 ;; definition for method 121 of type prebot-small-eco-creature
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this prebot-small-eco-creature))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cav-eco-lg" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *prebot-small-eco-creature-nav-enemy-info*)
+  (setup-enemy! this *prebot-small-eco-creature-nav-enemy-info*)
   (logior! (-> this draw global-effect) (draw-control-global-effect rim-lights2))
   (let ((v1-8 (-> this neck)))
     (set! (-> v1-8 up) (the-as uint 1))
@@ -3488,14 +3503,16 @@
 ;; definition for method 121 of type medium-eco-creature-launched
 ;; WARN: Return type mismatch vector vs none.
 (defmethod init-enemy! ((this medium-eco-creature-launched))
+  "Typical place for shared init code. Runs from entity or process style init."
   (call-parent-method this)
   (set-vector! (-> this root scale) (-> this final-scale) (-> this final-scale) (-> this final-scale) 1.0)
   (none)
   )
 
 ;; definition for method 122 of type medium-eco-creature-launched
-(defmethod go-idle2 ((this medium-eco-creature-launched))
-  ((method-of-type prebot-large-eco-creature go-idle2) this)
+(defmethod go-fallback-init ((this medium-eco-creature-launched))
+  "If there's no specific settings for initial state, go to this state after spawning."
+  ((method-of-type prebot-large-eco-creature go-fallback-init) this)
   )
 
 ;; definition of type small-eco-creature-launched
@@ -3519,14 +3536,16 @@
 ;; definition for method 121 of type small-eco-creature-launched
 ;; WARN: Return type mismatch vector vs none.
 (defmethod init-enemy! ((this small-eco-creature-launched))
+  "Typical place for shared init code. Runs from entity or process style init."
   (call-parent-method this)
   (set-vector! (-> this root scale) (-> this final-scale) (-> this final-scale) (-> this final-scale) 1.0)
   (none)
   )
 
 ;; definition for method 122 of type small-eco-creature-launched
-(defmethod go-idle2 ((this small-eco-creature-launched))
-  ((method-of-type prebot-large-eco-creature go-idle2) this)
+(defmethod go-fallback-init ((this small-eco-creature-launched))
+  "If there's no specific settings for initial state, go to this state after spawning."
+  ((method-of-type prebot-large-eco-creature go-fallback-init) this)
   )
 
 ;; definition of type large-eco-creature
@@ -3548,13 +3567,15 @@
   )
 
 ;; definition for method 122 of type large-eco-creature
-(defmethod go-idle2 ((this large-eco-creature))
-  ((method-of-type nav-enemy go-idle2) this)
+(defmethod go-fallback-init ((this large-eco-creature))
+  "If there's no specific settings for initial state, go to this state after spawning."
+  ((method-of-type nav-enemy go-fallback-init) this)
   )
 
 ;; definition for method 121 of type large-eco-creature
 ;; WARN: Return type mismatch eco-creature-flag vs none.
 (defmethod init-enemy! ((this large-eco-creature))
+  "Typical place for shared init code. Runs from entity or process style init."
   (call-parent-method this)
   (logior! (-> this flags) (eco-creature-flag ecf2))
   (none)
@@ -3579,13 +3600,15 @@
   )
 
 ;; definition for method 122 of type medium-eco-creature
-(defmethod go-idle2 ((this medium-eco-creature))
-  ((method-of-type nav-enemy go-idle2) this)
+(defmethod go-fallback-init ((this medium-eco-creature))
+  "If there's no specific settings for initial state, go to this state after spawning."
+  ((method-of-type nav-enemy go-fallback-init) this)
   )
 
 ;; definition for method 121 of type medium-eco-creature
 ;; WARN: Return type mismatch eco-creature-flag vs none.
 (defmethod init-enemy! ((this medium-eco-creature))
+  "Typical place for shared init code. Runs from entity or process style init."
   (call-parent-method this)
   (set-vector! (-> this root scale) (-> this final-scale) (-> this final-scale) (-> this final-scale) 1.0)
   (logior! (-> this flags) (eco-creature-flag ecf2))
@@ -3611,13 +3634,15 @@
   )
 
 ;; definition for method 122 of type small-eco-creature
-(defmethod go-idle2 ((this small-eco-creature))
-  ((method-of-type nav-enemy go-idle2) this)
+(defmethod go-fallback-init ((this small-eco-creature))
+  "If there's no specific settings for initial state, go to this state after spawning."
+  ((method-of-type nav-enemy go-fallback-init) this)
   )
 
 ;; definition for method 121 of type small-eco-creature
 ;; WARN: Return type mismatch eco-creature-flag vs none.
 (defmethod init-enemy! ((this small-eco-creature))
+  "Typical place for shared init code. Runs from entity or process style init."
   (call-parent-method this)
   (set-vector! (-> this root scale) (-> this final-scale) (-> this final-scale) (-> this final-scale) 1.0)
   (logior! (-> this flags) (eco-creature-flag ecf2))

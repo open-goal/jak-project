@@ -160,8 +160,8 @@
          (s4-0 (-> s5-0 info))
          (s3-0 (new 'stack-no-clear 'course-race-stack-var0))
          )
-    (set! (-> s3-0 vec1 quad) (-> s5-0 info start-sphere quad))
-    (set! (-> s3-0 vec2 quad) (-> s5-0 info start-dir quad))
+    (vector-copy! (-> s3-0 vec1) (-> s5-0 info start-sphere))
+    (vector-copy! (-> s3-0 vec2) (-> s5-0 info start-dir))
     (set! (-> s3-0 params object-type) (traffic-type vehicle-task))
     (set! (-> s3-0 params behavior) (the-as uint 10))
     (set! (-> s3-0 params id) (the-as uint 0))
@@ -179,7 +179,7 @@
       (let ((v1-10 (-> s5-0 racer-array s2-0))
             (s1-0 (-> s4-0 racer-array s2-0))
             )
-        (set! (-> s3-0 params position quad) (-> v1-10 start-position quad))
+        (vector-copy! (-> s3-0 params position) (-> v1-10 start-position))
         (set! (-> s3-0 params id) (the-as uint s2-0))
         (set! (-> s3-0 params user-data) (-> s1-0 rider))
         (logior! (-> s3-0 params flags) (traffic-spawn-flags tsf1))
@@ -187,7 +187,7 @@
         (vector-reset! (-> s3-0 params velocity))
         (let ((a0-16 (-> s1-0 rider)))
           (when (or (zero? a0-16) (= a0-16 1))
-            (set! (-> this start-pos quad) (-> v1-10 start-position quad))
+            (vector-copy! (-> this start-pos) (-> v1-10 start-position))
             (logclear! (-> s3-0 params flags) (traffic-spawn-flags tsf1))
             (logior! (-> s3-0 params flags) (traffic-spawn-flags tsf5))
             )
@@ -315,8 +315,8 @@
   (let ((t9-0 (method-of-type task-manager-race set-time-limit)))
     (t9-0 this)
     )
-  (set! (-> this start-pos quad) (-> (new 'static 'vector :x 11540444.0 :y 91835.19 :z 956374.6 :w 1.0) quad))
-  (set! (-> this fail-plane quad) (-> (new 'static 'vector :x -0.9241 :z -0.3819 :w 1.0) quad))
+  (vector-copy! (-> this start-pos) (new 'static 'vector :x 11540444.0 :y 91835.19 :z 956374.6 :w 1.0))
+  (vector-copy! (-> this fail-plane) (new 'static 'vector :x -0.9241 :z -0.3819 :w 1.0))
   (set! (-> this fail-plane w)
         (- (vector-dot (-> this fail-plane) (new 'static 'vector :x 10571776.0 :z 1187840.0 :w 1.0)))
         )
@@ -506,7 +506,7 @@
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior task-manager-desert-course-race-pre-race-sequence task-manager-desert-course-race ()
   (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-    (set! (-> gp-0 pos quad) (-> self start-pos quad))
+    (vector-copy! (-> gp-0 pos) (-> self start-pos))
     (quaternion-identity! (-> gp-0 quat))
     (set! (-> gp-0 flags) (task-arrow-flags taf3 taf5))
     (set! (-> gp-0 map-icon) (the-as uint 12))
@@ -741,7 +741,7 @@
 (defmethod draw ((this hud-wasbbv-goal-time))
   (local-vars (v1-7 int) (s5-0 int))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
+    (-> this sprites 0)
     (the int (+ (* -130.0 (-> this offset)) (* 65.0 (-> *video-params* relative-x-scale))))
     70
     )
@@ -777,8 +777,8 @@
     (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id s5-0) #f))
     (s4-0 s3-0 s2-0 *temp-string*)
     )
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 0 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) -40 -40)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) -40 -40)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -924,6 +924,7 @@
 
 ;; definition for method 11 of type des-rally-bollard
 (defmethod init-from-entity! ((this des-rally-bollard) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (logclear! (-> this mask) (process-mask actor-pause))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))

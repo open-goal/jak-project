@@ -47,10 +47,10 @@
     (.lvf vf2 (&-> (-> arg1 bone) transform vector 3 quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
     (.wait.vf)
-    (.mul.vf vf2 vf2 Q :mask #b111)
+    (.mul.vf.xyz vf2 vf2 Q)
     (.nop.vf)
     (.nop.vf)
-    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mov.vf.w vf2 vf0)
     (.svf (&-> arg0 quad) vf2)
     arg0
     )
@@ -167,7 +167,7 @@
           (set! gp-0 (the-as cspace-array #f))
           (goto cfg-16)
           )
-        (let ((v1-10 ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (-> gp-0 data)) #f)))
+        (let ((v1-10 ((method-of-type cspace reset-and-assign-geo!) (-> gp-0 data 0) #f)))
           (set! (-> v1-10 bone) (the-as bone (-> s4-1 bones)))
           (let ((a0-6 (-> gp-0 data)))
             (set! (-> a0-6 0 param0) cspace<-transformq!)
@@ -288,7 +288,7 @@
      )
     ((zero? (-> this skel))
      (matrix<-transformq+trans!
-       (the-as matrix (-> this draw skeleton bones 3))
+       (-> this draw skeleton bones 3 transform)
        (the-as transformq (-> this root trans))
        (-> this draw skeleton bones 0 transform vector 3)
        )
@@ -299,7 +299,7 @@
         (let ((s4-0 (+ s5-0 2)))
           (+ s4-0 1)
           ((-> this skel generate-frame-function)
-           (the-as (inline-array vector) (-> (the-as terrain-context #x70000000) work foreground joint-work mtx-acc))
+           (-> (the-as terrain-context #x70000000) work foreground joint-work mtx-acc 0 vector)
            s4-0
            this
            )

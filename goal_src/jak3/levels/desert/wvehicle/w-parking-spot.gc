@@ -33,7 +33,7 @@
 (defmethod w-parking-spot-method-24 ((this w-parking-spot))
   (let ((gp-0 (new 'stack-no-clear 'cquery-with-5vec)))
     (set! (-> gp-0 vec 0 quad) (-> this root trans quad))
-    (set! (-> gp-0 cquery start-pos quad) (-> gp-0 vec 0 quad))
+    (vector-copy! (-> gp-0 cquery start-pos) (-> gp-0 vec 0))
     (vector-reset! (-> gp-0 vec 1))
     (set! (-> gp-0 vec 1 y) 1.0)
     (vector-z-quaternion! (-> gp-0 vec 2) (-> this root quat))
@@ -52,20 +52,20 @@
       )
     (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache* (-> gp-0 cquery))))
       (when (>= f30-0 0.0)
-        (vector+float*! (the-as vector (-> gp-0 vec)) (-> gp-0 cquery start-pos) (-> gp-0 cquery move-dist) f30-0)
-        (set! (-> gp-0 vec 1 quad) (-> gp-0 cquery best-other-tri normal quad))
+        (vector+float*! (-> gp-0 vec 0) (-> gp-0 cquery start-pos) (-> gp-0 cquery move-dist) f30-0)
+        (vector-copy! (-> gp-0 vec 1) (-> gp-0 cquery best-other-tri normal))
         (when (< (-> gp-0 vec 1 y) (cos 3640.889))
           (vector-reset! (-> gp-0 vec 1))
           (set! (-> gp-0 vec 1 y) 1.0)
           )
-        (set! (-> this root trans quad) (-> gp-0 vec 0 quad))
+        (vector-copy! (-> this root trans) (-> gp-0 vec 0))
         (format #t "w-parking-spot::find-ground: ground y ~M~%" (-> gp-0 vec 0 y))
         )
       (if (< f30-0 0.0)
           (format #t "w-parking-spot::find-ground: could not find ground~%")
           )
       )
-    (set! (-> this root trans quad) (-> gp-0 vec 0 quad))
+    (vector-copy! (-> this root trans) (-> gp-0 vec 0))
     (forward-up-nopitch->quaternion (-> this root quat) (-> gp-0 vec 2) (-> gp-0 vec 1))
     )
   0
@@ -106,7 +106,7 @@
                 )
            (when (not (handle->process (-> this arrow)))
              (let ((s5-1 (new 'stack-no-clear 'task-arrow-params)))
-               (set! (-> s5-1 pos quad) (-> this root trans quad))
+               (vector-copy! (-> s5-1 pos) (-> this root trans))
                (quaternion-identity! (-> s5-1 quat))
                (set! (-> s5-1 flags) (task-arrow-flags taf8))
                (set! (-> s5-1 map-icon) (the-as uint 12))
@@ -163,7 +163,7 @@
         (set! (-> s4-0 guard-type) (the-as uint 11))
         (set! (-> s4-0 entity) #f)
         (vector-reset! (-> s4-0 velocity))
-        (set! (-> s4-0 position quad) (-> this root trans quad))
+        (vector-copy! (-> s4-0 position) (-> this root trans))
         (quaternion-copy! (-> s4-0 rotation) (-> this root quat))
         (let ((a0-22 (vehicle-spawn (the-as vehicle-type s5-0) s4-0)))
           (when a0-22
@@ -194,6 +194,7 @@
   )
 
 (defmethod init-from-entity! ((this w-parking-spot) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause movie))
@@ -206,7 +207,7 @@
   (let ((v1-9 (res-lump-struct arg0 'spawn-trans vector)))
     (cond
       (v1-9
-        (set! (-> this root trans quad) (-> v1-9 quad))
+        (vector-copy! (-> this root trans) v1-9)
         (let ((a1-5 (res-lump-struct arg0 'spawn-quat structure)))
           (when a1-5
             (quaternion-copy! (-> this root quat) (the-as quaternion a1-5))
@@ -244,7 +245,8 @@
         (w-parking-spot-method-23 self)
         )
     (until #f
-      (suspend-for (seconds 0.25))
+      (suspend-for (seconds 0.25)
+        )
       (w-parking-spot-method-21 self)
       (when (-> self should-spawn?)
         (let ((f0-0 (vector-vector-distance-squared (camera-pos) (-> self test-sphere)))

@@ -60,9 +60,9 @@
       (when (nonzero? (-> s5-0 num-tris))
         (find-grabbable-edges s5-0)
         (when (nonzero? (-> s5-0 num-edges))
-          (set! (-> s5-0 search-pt quad) (-> this control midpoint-of-hands quad))
+          (vector-copy! (-> s5-0 search-pt) (-> this control midpoint-of-hands))
           (when (!= (-> *cpad-list* cpads (-> this control cpad number) stick0-speed) 0.0)
-            (set! (-> s5-0 search-dir-vec quad) (-> this control to-target-pt-xz quad))
+            (vector-copy! (-> s5-0 search-dir-vec) (-> this control to-target-pt-xz))
             (search-for-edges s5-0 (-> s5-0 hold-list))
             (when (find-best-grab! s5-0 (-> s5-0 hold-list) *edge-grab-info*)
               (set! (-> *edge-grab-info* found-edge?) #t)
@@ -186,33 +186,26 @@
           )
         )
       (set! (-> arg1 tri-vertex 0 quad) (-> s1-0 vertex 0 quad))
-      (set! (-> arg1 world-vertex 4 quad) (-> s1-0 vertex 1 quad))
-      (set! (-> arg1 world-vertex 5 quad) (-> s1-0 vertex 2 quad))
+      (vector-copy! (-> arg1 world-vertex 4) (-> s1-0 vertex 1))
+      (vector-copy! (-> arg1 world-vertex 5) (-> s1-0 vertex 2))
       (set! (-> arg1 edge-tri-pat) (-> s1-0 pat))
-      (set! (-> arg1 center-hold quad) (-> arg0 center-pt quad))
+      (vector-copy! (-> arg1 center-hold) (-> arg0 center-pt))
       (set! (-> arg1 world-vertex 0 quad) (-> s2-0 vertex-ptr 0 0 quad))
-      (set! (-> arg1 world-vertex 1 quad) (-> s2-0 vertex-ptr 1 0 quad))
-      (set! (-> arg1 hanging-matrix uvec quad)
-            (-> (the-as collide-shape-moving (-> this process 0 root)) dynam gravity-normal quad)
-            )
-      (vector-normalize!
-        (vector-! (-> arg1 hanging-matrix fvec) (-> arg1 world-vertex 1) (the-as vector (-> arg1 world-vertex)))
-        1.0
-        )
-      (vector-normalize!
-        (vector-cross!
-          (the-as vector (-> arg1 hanging-matrix))
-          (-> arg1 hanging-matrix fvec)
-          (-> arg1 hanging-matrix uvec)
-          )
-        1.0
-        )
-      (vector-cross!
-        (-> arg1 hanging-matrix fvec)
-        (the-as vector (-> arg1 hanging-matrix))
+      (vector-copy! (-> arg1 world-vertex 1) (-> s2-0 vertex-ptr 1 0))
+      (vector-copy!
         (-> arg1 hanging-matrix uvec)
+        (-> (the-as collide-shape-moving (-> this process 0 root)) dynam gravity-normal)
         )
-      (set! (-> arg1 hanging-matrix trans quad) (-> arg1 center-hold quad))
+      (vector-normalize!
+        (vector-! (-> arg1 hanging-matrix fvec) (-> arg1 world-vertex 1) (-> arg1 world-vertex 0))
+        1.0
+        )
+      (vector-normalize!
+        (vector-cross! (-> arg1 hanging-matrix rvec) (-> arg1 hanging-matrix fvec) (-> arg1 hanging-matrix uvec))
+        1.0
+        )
+      (vector-cross! (-> arg1 hanging-matrix fvec) (-> arg1 hanging-matrix rvec) (-> arg1 hanging-matrix uvec))
+      (vector-copy! (-> arg1 hanging-matrix trans) (-> arg1 center-hold))
       (transform-vectors!
         (-> arg1 hanging-matrix)
         (-> this world-player-spheres)
@@ -287,9 +280,7 @@
     (dotimes (s2-0 6)
       ((method-of-type sphere new) (the-as symbol (-> s5-0 s2-0)) sphere)
       )
-    (set! (-> s4-0 uvec quad)
-          (-> (the-as collide-shape-moving (-> arg0 process 0 root)) dynam gravity-normal quad)
-          )
+    (vector-copy! (-> s4-0 uvec) (-> (the-as collide-shape-moving (-> arg0 process 0 root)) dynam gravity-normal))
     (vector-normalize! (vector-! (-> s4-0 fvec) (-> this vertex-ptr 1 0) (-> this vertex-ptr 0 0)) 1.0)
     (vector-normalize! (vector-cross! (-> s4-0 rvec) (-> s4-0 fvec) (-> s4-0 uvec)) 1.0)
     (vector-cross! (-> s4-0 fvec) (-> s4-0 rvec) (-> s4-0 uvec))
@@ -336,7 +327,7 @@
                            )
                   (set! (-> s5-0 left-dot) f30-0)
                   (set! (-> s5-0 found-left?) #t)
-                  (set! (-> arg1 adjacent-edge-left-vertex quad) (-> s1-0 vertex-ptr 0 0 quad))
+                  (vector-copy! (-> arg1 adjacent-edge-left-vertex) (-> s1-0 vertex-ptr 0 0))
                   0
                   )
                 )
@@ -352,7 +343,7 @@
                            )
                   (set! (-> s5-0 right-dot) f30-1)
                   (set! (-> s5-0 found-right?) #t)
-                  (set! (-> arg1 adjacent-edge-right-vertex quad) (-> s1-0 vertex-ptr 1 0 quad))
+                  (vector-copy! (-> arg1 adjacent-edge-right-vertex) (-> s1-0 vertex-ptr 1 0))
                   0
                   )
                 )
@@ -392,7 +383,7 @@
               (let ((f0-0 (vector-segment-distance-point! arg1 (-> v1-4 vertex-ptr 0 0) (-> v1-4 vertex-ptr 1 0) s2-0)))
                 (when (or (< f30-0 0.0) (< f0-0 f30-0))
                   (set! f30-0 f0-0)
-                  (set! (-> arg0 quad) (-> s2-0 quad))
+                  (vector-copy! arg0 s2-0)
                   )
                 )
               )
@@ -477,7 +468,7 @@
   (add-debug-line
     #t
     (bucket-id debug-no-zbuf1)
-    (the-as vector (-> this world-vertex))
+    (-> this world-vertex 0)
     (-> this world-vertex 1)
     (new 'static 'rgba :r #xff :a #x60)
     #f
@@ -509,7 +500,7 @@
         #t
         (bucket-id debug-no-zbuf1)
         (-> this adjacent-edge-left-vertex)
-        (the-as vector (-> this world-vertex))
+        (-> this world-vertex 0)
         (new 'static 'rgba :r #x80 :a #x60)
         #f
         (the-as rgba -1)
@@ -529,7 +520,7 @@
   (add-debug-outline-triangle
     #t
     (bucket-id debug-no-zbuf1)
-    (the-as vector (-> this tri-vertex))
+    (-> this tri-vertex 0)
     (-> this world-vertex 4)
     (-> this world-vertex 5)
     (new 'static 'rgba :r #xff :a #x30)
@@ -620,7 +611,7 @@
     (let ((s3-0 (new 'stack-no-clear 'vector))
           (s2-0 #t)
           )
-      (set! (-> s3-0 quad) (-> *target* control midpoint-of-hands quad))
+      (vector-copy! s3-0 (-> *target* control midpoint-of-hands))
       (while s4-0
         (+! s5-0 1)
         (set! (-> s3-0 y) (-> s4-0 center-pt y))
@@ -669,7 +660,7 @@
     (add-debug-sphere
       #t
       (bucket-id debug-no-zbuf1)
-      (the-as vector (-> this attempts s5-1))
+      (-> this attempts s5-1 vector)
       (meters 0.1)
       (new 'static 'rgba :a #x40)
       )
@@ -685,7 +676,7 @@
       (add-debug-outline-triangle
         #t
         (bucket-id debug-no-zbuf1)
-        (the-as vector (-> v1-3 vertex))
+        (-> v1-3 vertex 0)
         (-> v1-3 vertex 1)
         (-> v1-3 vertex 2)
         t1-0

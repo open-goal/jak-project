@@ -165,34 +165,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -266,7 +266,7 @@
   :trans (behavior ()
     (let ((v1-0 (-> self focus aware)))
       (cond
-        ((= v1-0 (enemy-aware ea4))
+        ((= v1-0 (enemy-aware flee))
          (go-flee self)
          )
         ((< (the-as int v1-0) 1)
@@ -359,7 +359,7 @@
       (label cfg-8)
       (if v1-12
           (vector+! (-> self move-dest) gp-0 s5-0)
-          (set! (-> self move-dest quad) (-> gp-0 quad))
+          (vector-copy! (-> self move-dest) gp-0)
           )
       )
     )
@@ -387,7 +387,7 @@
           )
       (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      (vector-copy! (-> a0-0 target-pos) v1-1)
       )
     0
     (nav-enemy-method-187 self)
@@ -416,21 +416,27 @@
   )
 
 (defmethod go-hostile ((this dogat))
+  "Go to the hostile state, actively trying to attack the target."
   (set-time! (-> this scared-timer))
   (go (method-of-object this flee))
   )
 
-(defmethod enemy-method-108 ((this dogat) (arg0 process-focusable))
+(defmethod should-flee-from? ((this dogat) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (or (< (vector-vector-xz-distance (-> this root trans) (get-trans arg0 0)) 143360.0)
       (not (time-elapsed? (-> this scared-timer) (seconds 4)))
       )
   )
 
-(defmethod send-attack-to-all-tshapes ((this dogat) (arg0 process-focusable) (arg1 event-message-block))
+(defmethod find-and-damage-attackers ((this dogat) (arg0 process-focusable) (arg1 event-message-block))
+  "Find things that have attacked us, then deal damage back.
+   This is used for attacks that damage both the player and the enemy,
+   like hitting a guard with a jetboard."
   0
   )
 
 (defmethod init-enemy-collision! ((this dogat))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -481,7 +487,8 @@
   (none)
   )
 
-(defmethod enemy-method-50 ((this dogat) (arg0 int))
+(defmethod update-collision-action ((this dogat) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-0 arg0))
     (cond
       ((= v1-0 1)
@@ -504,12 +511,13 @@
 
 ;; WARN: Return type mismatch shadow-control vs none.
 (defmethod init-enemy! ((this dogat))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dogat" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *dogat-nav-enemy-info*)
+  (setup-enemy! this *dogat-nav-enemy-info*)
   (set-vector! (-> this root scale) 2.5 2.5 2.5 1.0)
   (quaternion->matrix (-> this rotation-matrix) (-> this root quat))
   (logior! (-> this skel status) (joint-control-status sync-math))

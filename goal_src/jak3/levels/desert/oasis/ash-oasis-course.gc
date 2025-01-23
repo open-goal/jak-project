@@ -22,7 +22,8 @@
   )
 
 
-(defmethod go-idle2 ((this ashelin-oasis))
+(defmethod go-fallback-init ((this ashelin-oasis))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go-idle this)
   )
 
@@ -117,12 +118,12 @@
              (s3-2 (new 'stack-no-clear 'vector))
              )
         (if (< f30-0 122880.0)
-            (set! (-> s3-2 quad) (-> v1-7 quad))
-            (set! (-> s3-2 quad) (-> s4-1 quad))
+            (vector-copy! s3-2 v1-7)
+            (vector-copy! s3-2 s4-1)
             )
         (vector+! s3-2 s3-2 (math-camera-pos))
         (if arg0
-            (set! (-> this last-sound-trans quad) (-> s3-2 quad))
+            (vector-copy! (-> this last-sound-trans) s3-2)
             (vector-seek-3d-smooth! (-> this last-sound-trans) s3-2 (* 102400.0 (seconds-per-frame)) 1.0)
             )
         )
@@ -153,6 +154,7 @@
   )
 
 (defmethod enemy-common-post ((this ashelin-oasis))
+  "Common implementation of post. Runs ja-post."
   (let ((t9-0 (method-of-type ashelin enemy-common-post)))
     (t9-0 this)
     )
@@ -165,6 +167,7 @@
   )
 
 (defmethod event-handler ((this ashelin-oasis) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('impact-impulse)
      (let ((v1-1 (the-as object (-> arg3 param 0))))
@@ -197,7 +200,7 @@
         :skip-to -1
         :on-set (lambda ((arg0 ashelin-oasis))
           (bot-method-223 arg0)
-          (move-to-point! (-> arg0 root) (the-as vector (-> arg0 course spots 0)))
+          (move-to-point! (-> arg0 root) (-> arg0 course spots 0 center))
           (let ((v1-6 25))
             (set! (-> arg0 hit-points) (the float v1-6))
             (set! (-> arg0 enemy-info default-hit-points) (the float v1-6))
@@ -233,9 +236,9 @@
           (logior! (-> arg0 bot-flags) (bot-flag bf06))
           (logior! (-> arg0 bot-flags) (bot-flag bf20))
           (let ((s5-0 (-> arg0 course spots)))
-            (vector-! (the-as vector (-> arg0 frontline)) (the-as vector (-> s5-0 2)) (the-as vector (-> s5-0 1)))
+            (vector-! (the-as vector (-> arg0 frontline)) (-> s5-0 2 center) (-> s5-0 1 center))
             (vector-normalize! (-> arg0 frontline) 1.0)
-            (set! (-> arg0 frontline w) (- (vector-dot (the-as vector (-> arg0 frontline)) (the-as vector (-> s5-0 1)))))
+            (set! (-> arg0 frontline w) (- (vector-dot (the-as vector (-> arg0 frontline)) (-> s5-0 1 center))))
             )
           (set-frontline arg0)
           (let ((v1-23 (get-task-by-type (-> arg0 ai-ctrl) asht-wait-spot arg0)))

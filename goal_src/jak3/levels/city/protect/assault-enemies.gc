@@ -111,7 +111,7 @@
 (defmethod go-from-behavior ((this assault-metalhead-flitter) (arg0 traffic-object-spawn-params))
   (case (-> arg0 behavior)
     ((6)
-     (set! (-> this root trans quad) (-> arg0 position quad))
+     (vector-copy! (-> this root trans) (-> arg0 position))
      (go (method-of-object this exit-transport))
      )
     (else
@@ -150,7 +150,7 @@
 (defmethod go-from-behavior ((this assault-metalhead-grunt) (arg0 traffic-object-spawn-params))
   (case (-> arg0 behavior)
     ((6)
-     (set! (-> this root trans quad) (-> arg0 position quad))
+     (vector-copy! (-> this root trans) (-> arg0 position))
      (go (method-of-object this exit-transport))
      )
     (else
@@ -222,7 +222,7 @@
       (ja-eval)
       )
     (cond
-      ((enemy-method-109 self)
+      ((out-of-bounds? self)
        (go-die self)
        )
       ((< (vector-vector-xz-distance (-> self root trans) (-> self center-pos)) 16384.0)
@@ -246,12 +246,12 @@
   )
 
 (defmethod go-from-behavior ((this assault-citizen-norm) (arg0 assault-object-spawn-params))
-  (set! (-> this root trans quad) (-> arg0 position quad))
+  (vector-copy! (-> this root trans) (-> arg0 position))
   (set! (-> this hit-points)
         (the float (the int (lerp-scale-clamp 10.0 20.0 (the float (-> arg0 suck-level)) 4.0 12.0)))
         )
   (set! (-> this attacker-info max-num-attackers) (the-as uint 1))
-  (set! (-> this center-pos quad) (-> (the-as vector (-> arg0 user-data)) quad))
+  (vector-copy! (-> this center-pos) (the-as vector (-> arg0 user-data)))
   (set! (-> this min-flee-time) (-> arg0 flee-time))
   (go (method-of-object this flee-madly))
   )
@@ -273,7 +273,7 @@
           )
       (logclear! (-> a0-3 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-3 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-3 target-pos quad) (-> v1-11 quad))
+      (vector-copy! (-> a0-3 target-pos) v1-11)
       )
     0
     )
@@ -302,7 +302,7 @@
           (a2-0 (-> self nav state))
           (a1-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> a1-0 quad) (-> a2-0 target-pos quad))
+      (vector-copy! a1-0 (-> a2-0 target-pos))
       (when (< (t9-1 a0-2 a1-0) 12288.0)
         (let* ((gp-0 vector-rotate-around-y!)
                (s5-0 (new 'stack-no-clear 'vector))
@@ -325,7 +325,7 @@
           (let ((v1-23 (-> self nav state)))
             (logclear! (-> v1-23 flags) (nav-state-flag directional-mode))
             (logior! (-> v1-23 flags) (nav-state-flag target-poly-dirty))
-            (set! (-> v1-23 target-pos quad) (-> gp-1 quad))
+            (vector-copy! (-> v1-23 target-pos) gp-1)
             )
           )
         0
@@ -335,6 +335,7 @@
   )
 
 (defmethod event-handler ((this assault-citizen-norm) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('attack)
      (let ((a0-3 (find-offending-process-focusable arg0 (the-as attack-info (-> arg3 param 1)))))
@@ -353,7 +354,7 @@
   :virtual #t
   :trans (behavior ()
     (call-parent-state-handler trans)
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-virtual die)
         )
     )
@@ -458,11 +459,11 @@
 (defmethod go-from-behavior ((this assault-roboguard) (arg0 assault-object-spawn-params))
   (case (-> arg0 behavior)
     ((6)
-     (set! (-> this root trans quad) (-> arg0 position quad))
+     (vector-copy! (-> this root trans) (-> arg0 position))
      (go (method-of-object this exit-transport))
      )
     (else
-      (set! (-> this move-dest quad) (-> (the-as vector (-> arg0 user-data)) quad))
+      (vector-copy! (-> this move-dest) (the-as vector (-> arg0 user-data)))
       (go (method-of-object this roll-initial))
       )
     )
@@ -518,9 +519,7 @@
   :virtual #t
   :enter (behavior ()
     (let ((a0-0 (new 'stack-no-clear 'vector)))
-      (set! (-> a0-0 quad)
-            (-> (vector-! (new 'stack-no-clear 'vector) (-> self move-dest) (-> self root trans)) quad)
-            )
+      (vector-copy! a0-0 (vector-! (new 'stack-no-clear 'vector) (-> self move-dest) (-> self root trans)))
       (set! (-> a0-0 y) 0.0)
       (let ((a1-3 (vector-normalize! a0-0 1.0)))
         (quaternion-look-at! (-> self root quat) a1-3 *up-vector*)
@@ -531,7 +530,7 @@
           )
       (logclear! (-> a0-2 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-2 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-2 target-pos quad) (-> v1-5 quad))
+      (vector-copy! (-> a0-2 target-pos) v1-5)
       )
     0
     (nav-enemy-method-181 self)
@@ -549,7 +548,7 @@
     (let ((gp-0 (-> self nav state))
           (v1-28 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
           )
-      (set! (-> gp-0 heading quad) (-> v1-28 quad))
+      (vector-copy! (-> gp-0 heading) v1-28)
       )
     0
     (let ((f30-0 81920.0))
@@ -561,7 +560,7 @@
                     )
                   )
             )
-        (set! (-> s5-0 velocity quad) (-> gp-2 quad))
+        (vector-copy! (-> s5-0 velocity) gp-2)
         )
       0
       (let ((v1-37 (-> self nav)))
@@ -595,7 +594,7 @@
               (a2-0 (-> self nav state))
               (v1-7 (new 'stack-no-clear 'vector))
               )
-          (set! (-> v1-7 quad) (-> a2-0 velocity quad))
+          (vector-copy! v1-7 (-> a2-0 velocity))
           (set! (-> a0-4 param 0) (* f0-0 (sqrtf (+ (* (-> v1-7 x) (-> v1-7 x)) (* (-> v1-7 z) (-> v1-7 z))))))
           )
         (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-loop!)
@@ -746,7 +745,8 @@
 (defstate tracking (assault-cleanup)
   :virtual #t
   :code (behavior ()
-    (suspend-for (seconds 5))
+    (suspend-for (seconds 5)
+      )
     (set-time! (-> self offscreen-time))
     (until #f
       (suspend)
@@ -804,7 +804,7 @@
         (return (the-as handle #f))
         )
     (quaternion-identity! (-> s5-0 rotation))
-    (set! (-> s5-0 position quad) (-> (target-pos 0) quad))
+    (vector-copy! (-> s5-0 position) (target-pos 0))
     (set! (-> s5-0 lev) (-> *assault-levels* arg0))
     (set! (-> s5-0 velocity quad) (the-as uint128 0))
     (set! (-> s5-0 behavior) (the-as uint 1))
@@ -827,7 +827,7 @@
   )
 
 (defmethod go-from-behavior ((this assault-crimson-guard) (arg0 assault-object-spawn-params))
-  (set! (-> this center-pos quad) (-> (the-as vector (-> arg0 user-data)) quad))
+  (vector-copy! (-> this center-pos) (the-as vector (-> arg0 user-data)))
   (call-parent-method this arg0)
   )
 
@@ -863,6 +863,7 @@
   )
 
 (defmethod event-handler ((this assault-crimson-guard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('weaken)
      (set! (-> this hit-points) (fmin 1.0 (-> this hit-points)))
@@ -875,6 +876,7 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod enemy-common-post ((this assault-crimson-guard))
+  "Common implementation of post. Runs ja-post."
   (call-parent-method this)
   (when (and (or (not (logtest? (-> this draw status) (draw-control-status on-screen)))
                  (< 102400.0 (vector-vector-xz-distance (-> this root trans) (-> this center-pos)))
@@ -921,7 +923,7 @@
           )
       (logclear! (-> a0-5 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-5 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-5 target-pos quad) (-> v1-12 quad))
+      (vector-copy! (-> a0-5 target-pos) v1-12)
       )
     0
     )
@@ -1007,7 +1009,7 @@
   (set! (-> self pickup-amount) (-> *FACT-bank* health-default-inc))
   (set! (-> self pickup-type) (pickup-type health))
   (initialize-allocations self)
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (initialize-effects self (-> self pickup-type))
   (initialize-options self 0 1024.0 (the-as fact-info #f))
   (update-transforms (-> self root))
@@ -1073,7 +1075,7 @@
         )
       (set! (-> this root) s2-0)
       )
-    (set! (-> this root trans quad) (-> arg0 quad))
+    (vector-copy! (-> this root trans) arg0)
     (set! (-> this ammo-type) arg1)
     (set! (-> this gun-type) arg2)
     (quaternion-rotate-y! (-> this root quat) (-> this root quat) (rand-vu-float-range 0.0 65536.0))
@@ -1222,7 +1224,7 @@
     (when (nonzero? (-> self collect-effect))
       (cond
         ((logtest? (-> self collect-effect flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+         (vector-copy! (-> *launch-matrix* trans) (-> self root root-prim prim-core world-sphere))
          (part-tracker-spawn
            part-tracker-subsampler
            :to *target*
@@ -1231,7 +1233,7 @@
            )
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root root-prim prim-core world-sphere))
           (part-tracker-spawn
             part-tracker
             :to *target*
@@ -1330,6 +1332,7 @@
   )
 
 (defmethod enemy-common-post ((this assault-bombbot))
+  "Common implementation of post. Runs ja-post."
   (call-parent-method this)
   (none)
   )
@@ -1349,6 +1352,7 @@
 
 ;; WARN: Return type mismatch float vs none.
 (defmethod init-enemy! ((this assault-bombbot))
+  "Typical place for shared init code. Runs from entity or process style init."
   (with-pp
     (set! (-> pp level) (level-get *level* 'lctyass))
     (call-parent-method this)
@@ -1381,8 +1385,8 @@
             (let ((s3-0 (new 'stack-no-clear 'vector)))
               (vector-orient-by-quat! s3-0 (-> s4-0 pos-offset) (-> this root quat))
               (vector+! s3-0 s3-0 (-> this root trans))
-              (set! (-> s4-0 next-position quad) (-> s3-0 quad))
-              (set! (-> s4-0 position quad) (-> s3-0 quad))
+              (vector-copy! (-> s4-0 next-position) s3-0)
+              (vector-copy! (-> s4-0 position) s3-0)
               )
             (set! (-> s4-0 delta-y) 0.0)
             )
@@ -1468,7 +1472,7 @@
 
 (set! (-> *assault-bombbot-trail* zbuffer?) #f)
 
-(set! (-> *assault-bombbot-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *assault-bombbot-trail* lie-vector) *up-vector*)
 
 (set! (-> *assault-bombbot-trail* use-tape-mode?) #f)
 
@@ -1525,7 +1529,7 @@
 
 (set! (-> *assault-bombbot-trail-2* zbuffer?) #f)
 
-(set! (-> *assault-bombbot-trail-2* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *assault-bombbot-trail-2* lie-vector) *up-vector*)
 
 (set! (-> *assault-bombbot-trail-2* use-tape-mode?) #f)
 
@@ -1596,11 +1600,11 @@
 (defmethod projectile-method-26 ((this assault-bombbot-shot))
   (cond
     ((logtest? (-> *part-group-id-table* 1435 flags) (sp-group-flag sp13))
-     (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
      (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1435))
      )
     (else
-      (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+      (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
       (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1435))
       )
     )
@@ -1690,7 +1694,7 @@
         (set! (-> gp-0 damage) f0-1)
         )
       (logior! (-> gp-0 options) (projectile-options po14))
-      (set! (-> gp-0 pos quad) (-> arg0 quad))
+      (vector-copy! (-> gp-0 pos) arg0)
       (vector-normalize-copy! (-> gp-0 vel) v1-1 1.0)
       )
     (the-as (pointer projectile) (spawn-projectile assault-bombbot-shot gp-0 this *default-dead-pool*))
@@ -1715,7 +1719,7 @@
            )
       (cond
         (gp-0
-          (set! (-> this target-pos quad) (-> (get-trans gp-0 3) quad))
+          (vector-copy! (-> this target-pos) (get-trans gp-0 3))
           (let ((v1-3 (-> this target-pos)))
             (let ((a0-4 (-> gp-0 control trans)))
               (let ((a1-4 (-> gp-0 control transv)))
@@ -1731,9 +1735,9 @@
             (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> v1-3 quad) vf6)
             )
-          (set! (-> this start-target-pos quad) (-> this target-pos quad))
-          (set! (-> this start-target-vel quad) (-> gp-0 control transv quad))
-          (try-update-focus (-> this focus) gp-0 this)
+          (vector-copy! (-> this start-target-pos) (-> this target-pos))
+          (vector-copy! (-> this start-target-vel) (-> gp-0 control transv))
+          (focus-on! (-> this focus) gp-0 this)
           )
         (else
           (clear-focused (-> this focus))
@@ -1790,16 +1794,13 @@
       (let ((f30-0 0.3))
         (dotimes (s3-1 (the-as int (-> this city-path node-count)))
           (when (!= s3-1 (-> this current-node))
-            (let ((s2-1
-                    (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> this city-path node s3-1)) (-> this root trans))
-                    )
-                  )
+            (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) (-> this city-path node s3-1 position) (-> this root trans))))
               0.0
               (set! (-> s2-1 y) 0.0)
               (vector-normalize! s2-1 1.0)
               (let ((f28-0 (vector-dot s4-4 s2-1)))
                 (when (and (< f30-0 f28-0)
-                           (< 40960.0 (vector-vector-xz-distance (-> this root trans) (the-as vector (-> this city-path node s3-1))))
+                           (< 40960.0 (vector-vector-xz-distance (-> this root trans) (-> this city-path node s3-1 position)))
                            )
                   (set! f30-0 f28-0)
                   (set! s5-0 s3-1)
@@ -1826,7 +1827,7 @@
   )
 
 (defmethod bombbot-method-208 ((this assault-bombbot) (arg0 vector) (arg1 vector))
-  (set! (-> arg1 quad) (-> this target-pos quad))
+  (vector-copy! arg1 (-> this target-pos))
   (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0)))
     0.0
     (let* ((f0-1 (vector-normalize-ret-len! s4-1 1.0))
@@ -1882,7 +1883,7 @@
         )
       (when (< (-> self next-target) (current-time))
         (let ((a1-0 (new 'stack-no-clear 'vector)))
-          (set! (-> a1-0 quad) (-> self root trans quad))
+          (vector-copy! a1-0 (-> self root trans))
           (set! (-> a1-0 w) 204800.0)
           (bombbot-method-196 self a1-0)
           )
@@ -1894,8 +1895,8 @@
         (when v1-33
           (when (< (current-time) (+ (-> self next-target) (seconds -2)))
             (set-time! (-> self start-target))
-            (set! (-> self start-target-pos quad) (-> v1-33 root trans quad))
-            (set! (-> self start-target-vel quad) (-> v1-33 root transv quad))
+            (vector-copy! (-> self start-target-pos) (-> v1-33 root trans))
+            (vector-copy! (-> self start-target-vel) (-> v1-33 root transv))
             (vector-! (-> self target-delta) (-> v1-33 root trans) (-> self root trans))
             )
           (let ((a2-2 (-> self target-pos)))
@@ -1914,7 +1915,7 @@
             (.svf (&-> a2-2 quad) vf6)
             )
           (if (= (-> v1-33 type) target)
-              (set! (-> self target-pos quad) (-> self start-target-pos quad))
+              (vector-copy! (-> self target-pos) (-> self start-target-pos))
               )
           (if (< (+ (-> self next-target) (seconds -1)) (current-time))
               (bombbot-method-197 self)
@@ -1963,7 +1964,7 @@
            (-> self root trans)
            (-> self root trans)
            (vector-normalize!
-             (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> self city-path node gp-0)) (-> self root trans))
+             (vector-! (new 'stack-no-clear 'vector) (-> self city-path node gp-0 position) (-> self root trans))
              (-> *bombbot-nav-enemy-info* run-travel-speed)
              )
            )
@@ -1977,13 +1978,13 @@
                 )
             (logclear! (-> v1-29 flags) (nav-state-flag directional-mode))
             (logior! (-> v1-29 flags) (nav-state-flag target-poly-dirty))
-            (set! (-> v1-29 target-pos quad) (-> a0-20 position quad))
+            (vector-copy! (-> v1-29 target-pos) (-> a0-20 position))
             )
           0
           (nav-enemy-method-187 self)
           )
         )
-      (when (< (vector-vector-xz-distance (-> self root trans) (the-as vector (-> self city-path node gp-0))) 24576.0)
+      (when (< (vector-vector-xz-distance (-> self root trans) (-> self city-path node gp-0 position)) 24576.0)
         (set! (-> self current-node) (the-as uint gp-0))
         (set! (-> self next-node) (assault-bombbot-method-209 self))
         )

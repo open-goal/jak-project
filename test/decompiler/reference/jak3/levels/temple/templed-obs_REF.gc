@@ -733,11 +733,11 @@
   (set! sv-32 (-> this node-list data (tpl-bbridge-panel arg0) bone transform trans))
   (cond
     ((logtest? (-> *part-group-id-table* 701 flags) (sp-group-flag sp13))
-     (set! (-> *launch-matrix* trans quad) (-> sv-32 quad))
+     (vector-copy! (-> *launch-matrix* trans) sv-32)
      (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 701))
      )
     (else
-      (set! (-> *launch-matrix* trans quad) (-> sv-32 quad))
+      (vector-copy! (-> *launch-matrix* trans) sv-32)
       (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 701))
       )
     )
@@ -776,7 +776,7 @@
          (let ((v1-24 (-> this node-list data (tpl-bbridge-panel arg0) bone transform trans)))
            (cond
              ((logtest? (-> *part-group-id-table* 700 flags) (sp-group-flag sp13))
-              (set! (-> *launch-matrix* trans quad) (-> v1-24 quad))
+              (vector-copy! (-> *launch-matrix* trans) v1-24)
               (part-tracker-spawn
                 part-tracker-subsampler
                 :to *entity-pool*
@@ -785,7 +785,7 @@
                 )
               )
              (else
-               (set! (-> *launch-matrix* trans quad) (-> v1-24 quad))
+               (vector-copy! (-> *launch-matrix* trans) v1-24)
                (part-tracker-spawn
                  part-tracker
                  :to *entity-pool*
@@ -836,11 +836,11 @@
           (let ((v1-81 (-> this node-list data (tpl-bbridge-panel arg0) bone transform trans)))
             (cond
               ((logtest? (-> *part-group-id-table* 700 flags) (sp-group-flag sp13))
-               (set! (-> *launch-matrix* trans quad) (-> v1-81 quad))
+               (vector-copy! (-> *launch-matrix* trans) v1-81)
                (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 700))
                )
               (else
-                (set! (-> *launch-matrix* trans quad) (-> v1-81 quad))
+                (vector-copy! (-> *launch-matrix* trans) v1-81)
                 (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 700))
                 )
               )
@@ -1035,6 +1035,7 @@
 
 ;; definition for method 11 of type tpl-break-bridge
 (defmethod init-from-entity! ((this tpl-break-bridge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -1062,17 +1063,17 @@
       (let ((v1-16 (-> *tpl-bbridge-array* s5-2 tumble-axis)))
         (let ((f0-0 1.0))
           (.lvf vf1 (&-> v1-16 quad))
-          (.mul.vf vf2 vf1 vf1 :mask #b111)
+          (.mul.vf.xyz vf2 vf1 vf1)
           (let ((a0-9 f0-0))
             (.mov vf3 a0-9)
             )
           )
-        (.mul.x.vf acc vf0 vf2 :mask #b1000)
-        (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-        (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+        (.mul.x.vf.w acc vf0 vf2)
+        (.add.mul.y.vf.w acc vf0 vf2 acc)
+        (.add.mul.z.vf.w vf2 vf0 vf2 acc)
         (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
         (.wait.vf)
-        (.mul.vf vf1 vf1 Q :mask #b111)
+        (.mul.vf.xyz vf1 vf1 Q)
         (.nop.vf)
         (.nop.vf)
         (.nop.vf)
@@ -1104,7 +1105,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

@@ -21,13 +21,9 @@
 
 
 (defmethod draw ((this hud-eco-egg))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    165
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 165)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -20 50)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -20 50)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -264,7 +260,7 @@
       )
     0
     (let ((gp-1 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat))))
-      (set! (-> gp-1 trans quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 trans) (-> self root trans))
       (if (logtest? (-> *part-group-id-table* 325 flags) (sp-group-flag sp13))
           (part-tracker-spawn
             part-tracker-subsampler
@@ -315,7 +311,7 @@
     (set! sv-688 (new 'stack-no-clear 'collide-query))
     (set! sv-704 (the-as symbol #f))
     (set! sv-768 (new 'stack-no-clear 'vector))
-    (set! (-> sv-688 start-pos quad) (-> arg1 quad))
+    (vector-copy! (-> sv-688 start-pos) arg1)
     (set! sv-720 (-> sv-688 move-dist))
     (set! (-> sv-720 x) (rand-vu-float-range 0.0 65536.0))
     (set! (-> sv-720 y) (rand-vu-float-range 0.0 65536.0))
@@ -339,7 +335,7 @@
         )
       (when (>= (fill-and-probe-using-line-sphere *collide-cache* sv-688) 0.0)
         (set-time! (-> s5-0 last-valid-time))
-        (set! (-> sv-768 quad) (-> sv-688 best-other-tri intersect quad))
+        (vector-copy! sv-768 (-> sv-688 best-other-tri intersect))
         (when (< 16384.0 (vector-vector-distance sv-768 (-> sv-688 start-pos)))
           (set! sv-704 #t)
           (goto cfg-7)
@@ -373,7 +369,7 @@
                 (a0-26 *sp-particle-system-2d*)
                 (a2-5 *launch-matrix*)
                 )
-            (set! (-> a2-5 trans quad) (-> s5-0 end-pos quad))
+            (vector-copy! (-> a2-5 trans) (-> s5-0 end-pos))
             (t9-12 a0-26 arg4 a2-5 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
             )
           )
@@ -499,7 +495,7 @@
         )
       (sound-play "de-tower-zap" :id (-> self plasma-sound) :position (-> self root trans))
       (let ((s3-0 (new 'stack-no-clear 'vector)))
-        (set! (-> s3-0 quad) (-> self root trans quad))
+        (vector-copy! s3-0 (-> self root trans))
         (let ((s4-0 (new 'stack-no-clear 'collide-query))
               (s5-2 (new 'stack-no-clear 'vector))
               (gp-2 (new 'stack-no-clear 'vector))
@@ -510,10 +506,10 @@
                 )
             (set! (-> s3-0 y) (+ f0-6 (- f1-3 (* (the float (the int (/ f1-3 f2-3))) f2-3))))
             )
-          (set! (-> gp-2 quad) (-> s3-0 quad))
+          (vector-copy! gp-2 s3-0)
           (sound-play "tree-shocker" :id (-> self shock-sound) :position gp-2)
           (+! (-> s3-0 x) 28672.0)
-          (set! (-> s4-0 start-pos quad) (-> s3-0 quad))
+          (vector-copy! (-> s4-0 start-pos) s3-0)
           (vector-float*! (-> s4-0 move-dist) *x-vector* -40960.0)
           (let ((v1-39 s4-0))
             (set! (-> v1-39 radius) 2048.0)
@@ -529,7 +525,7 @@
                 (s3-1 (-> self discs))
                 )
             (when (>= f0-12 0.0)
-              (set! (-> s5-2 quad) (-> s4-0 best-other-tri intersect quad))
+              (vector-copy! s5-2 (-> s4-0 best-other-tri intersect))
               (let ((s4-1 *x-vector*)
                     (f30-0 9362.286)
                     (s2-0 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> s3-1 0 orient)))
@@ -563,7 +559,7 @@
           (set! (-> gp-3 spans data a0-37 random-offset-size-start) 4096.0)
           (set! (-> gp-3 spans-internal data a0-37 num-inner-points) 2)
           (set! (-> gp-3 spans data a0-37 inner-random-offset-size) 4096.0)
-          (set! (-> gp-3 span-pts-start data a0-37 quad) (-> v1-55 pts a0-37 quad))
+          (vector-copy! (-> gp-3 span-pts-start data a0-37) (-> v1-55 pts a0-37))
           )
         (set! (-> gp-3 spans data 0 random-offset-size-start) 0.0)
         (set! (-> gp-3 spans data 7 random-offset-size-start) 0.0)
@@ -667,9 +663,9 @@
   (set! (-> self shock-sound) (new-sound-id))
   (set! (-> self plasma-sound) (new-sound-id))
   (set! (-> self entity) arg0)
-  (set! (-> self root trans quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> self root trans) (-> arg0 extra trans))
   (quaternion-copy! (-> self root quat) (-> arg0 quat))
-  (set! (-> self root scale quad) (-> (res-lump-struct arg0 'scale vector) quad))
+  (vector-copy! (-> self root scale) (res-lump-struct arg0 'scale vector))
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dark-eco-orb" (the-as (pointer level) #f)))
@@ -736,7 +732,7 @@
     (set! (-> self root) s4-0)
     )
   (quaternion-identity! (-> self root quat))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (set-vector! (-> self root scale) arg1 arg1 arg1 1.0)
   (set! (-> self shock-sound) (new-sound-id))
   (set! (-> self plasma-sound) (new-sound-id))
@@ -836,6 +832,7 @@
   )
 
 (defmethod init-from-entity! ((this dark-eco-tower) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -886,9 +883,9 @@
       )
     (set! (-> self root) s5-0)
     )
-  (set! (-> self root trans quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> self root trans) (-> arg0 extra trans))
   (quaternion-copy! (-> self root quat) (-> arg0 quat))
-  (set! (-> self root scale quad) (-> (res-lump-struct arg0 'scale vector) quad))
+  (vector-copy! (-> self root scale) (res-lump-struct arg0 'scale vector))
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dark-eco-tower" (the-as (pointer level) #f)))
@@ -1255,8 +1252,8 @@
       (let ((s5-0 (new 'stack-no-clear 'vector))
             (gp-0 (new 'stack-no-clear 'vector))
             )
-        (set! (-> s5-0 quad) (-> self root trans quad))
-        (set! (-> gp-0 quad) (-> self root trans quad))
+        (vector-copy! s5-0 (-> self root trans))
+        (vector-copy! gp-0 (-> self root trans))
         (let ((s2-0 s5-0))
           (let ((s4-0 s5-0))
             (let ((s3-0 *x-vector*))
@@ -1375,7 +1372,7 @@
                   (a1-10 sv-52)
                   (a2-3 *launch-matrix*)
                   )
-              (set! (-> a2-3 trans quad) (-> s5-0 quad))
+              (vector-copy! (-> a2-3 trans) s5-0)
               (t9-10 a0-20 a1-10 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
               )
             (let ((t9-11 sp-launch-particles-var)
@@ -1383,7 +1380,7 @@
                   (a1-11 sv-52)
                   (a2-4 *launch-matrix*)
                   )
-              (set! (-> a2-4 trans quad) (-> gp-0 quad))
+              (vector-copy! (-> a2-4 trans) gp-0)
               (t9-11 a0-21 a1-11 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
               )
             )
@@ -1395,6 +1392,7 @@
   )
 
 (defmethod init-from-entity! ((this grind-electricity) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (go (method-of-object this idle))

@@ -369,7 +369,7 @@
               (f30-0 0.0)
               )
           (matrix-identity! s5-0)
-          (set! (-> s5-0 trans quad) (-> sv-160 quad))
+          (vector-copy! (-> s5-0 trans) sv-160)
           (let ((v1-8 s1-0))
             (cond
               ((zero? v1-8)
@@ -419,23 +419,12 @@
              (let* ((f0-2 (lerp-scale 1.0 0.1 (the float (mod s2-0 90)) 90.0 0.0))
                     (f30-1 (* 3686.4 f0-2))
                     )
-               (let* ((a2-2 s1-1)
-                      (a3-2 s5-0)
-                      (v1-64 (-> a3-2 rvec quad))
-                      (a0-9 (-> a3-2 uvec quad))
-                      (a1-3 (-> a3-2 fvec quad))
-                      (a3-3 (-> a3-2 trans quad))
-                      )
-                 (set! (-> a2-2 rvec quad) v1-64)
-                 (set! (-> a2-2 uvec quad) a0-9)
-                 (set! (-> a2-2 fvec quad) a1-3)
-                 (set! (-> a2-2 trans quad) a3-3)
-                 )
+               (matrix-copy! s1-1 s5-0)
                (vector+float*! (-> s1-1 trans) (-> s5-0 trans) (-> s5-0 rvec) (- f30-1))
                (vector+float*! (-> s1-1 trans) (-> s1-1 trans) (-> s5-0 fvec) (- f30-1))
                (spawn-from-mat (-> this reticle-corner-0) s1-1)
                (vector+float*! (-> s1-1 trans) (-> s1-1 trans) (-> s5-0 rvec) (* 2.0 f30-1))
-               (set! (-> s1-1 rvec quad) (-> s5-0 fvec quad))
+               (vector-copy! (-> s1-1 rvec) (-> s5-0 fvec))
                (vector-negate! (-> s1-1 fvec) (-> s5-0 rvec))
                (spawn-from-mat (-> this reticle-corner-1) s1-1)
                (vector+float*! (-> s1-1 trans) (-> s1-1 trans) (-> s5-0 fvec) (* 2.0 f30-1))
@@ -445,7 +434,7 @@
                (vector+float*! (-> s1-1 trans) (-> s1-1 trans) (-> s5-0 rvec) (* -2.0 f30-1))
                )
              (vector-negate! (-> s1-1 rvec) (-> s5-0 fvec))
-             (set! (-> s1-1 fvec quad) (-> s5-0 rvec quad))
+             (vector-copy! (-> s1-1 fvec) (-> s5-0 rvec))
              (spawn-from-mat (-> this reticle-corner-3) s1-1)
              )
            )
@@ -690,7 +679,7 @@
     (let ((t9-1 (method-of-type projectile init-proj-settings!)))
       (t9-1 this)
       )
-    (set! (-> this shot-dest quad) (-> this root transv quad))
+    (vector-copy! (-> this shot-dest) (-> this root transv))
     (set-time! (-> this traj-time))
     (cond
       ((type? this factory-boss-shockwave-bomb)
@@ -715,10 +704,10 @@
         )
       )
     (compute-transv-at-time (-> this traj) 0.0 (-> this root transv))
-    (set! (-> this pre-move-transv quad) (-> this root transv quad))
+    (vector-copy! (-> this pre-move-transv) (-> this root transv))
     (vector-normalize-copy! (-> this starting-dir) (-> this root transv) 1.0)
     (vector+float*! (-> this base-target-pos) (-> this root trans) (-> this starting-dir) 2048000.0)
-    (set! (-> this target-pos quad) (-> this base-target-pos quad))
+    (vector-copy! (-> this target-pos) (-> this base-target-pos))
     (set! (-> this impact-played) #f)
     (set! (-> this reticle-sound) (new-sound-id))
     (sound-play "reticle-lock" :id (-> this reticle-sound) :position (-> this shot-dest))
@@ -778,11 +767,11 @@
             (.mov at-0 f0-6)
             )
           (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> v1-22 quad) vf1)
           )
-        (set! (-> self root transv quad) (-> self pre-move-transv quad))
+        (vector-copy! (-> self root transv) (-> self pre-move-transv))
         (if (< 2191360.0 (-> gp-1 y))
             (integrate-and-collide! (-> self root) (-> self root transv))
             (projectile-move-fill-line-sphere self)
@@ -838,7 +827,7 @@
       )
     0
     (let ((gp-1 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-1 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 8192.0)
       (set! (-> gp-1 scale) 1.0)
@@ -914,7 +903,7 @@
       )
     0
     (let ((gp-1 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-1 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 8192.0)
       (set! (-> gp-1 scale) 1.0)
@@ -932,13 +921,13 @@
     (send-event (ppointer->process (-> self parent)) 'shot-hit (-> self root trans))
     (set-time! (-> self state-time))
     (let ((s5-1 (new 'stack-no-clear 'vector)))
-      (set! (-> s5-1 quad) (-> self root trans quad))
+      (vector-copy! s5-1 (-> self root trans))
       (let ((gp-2 (new 'stack-no-clear 'quaternion)))
         (let ((s4-0 (new 'stack-no-clear 'matrix)))
           (+! (-> s5-1 y) 409.6)
           (quaternion-set! gp-2 0.0 0.0 0.0 1.0)
           (matrix-identity! s4-0)
-          (set! (-> s4-0 trans quad) (-> s5-1 quad))
+          (vector-copy! (-> s4-0 trans) s5-1)
           )
         (let* ((s3-0 (get-process *default-dead-pool* manipy #x20000 1))
                (s4-1 (when s3-0
@@ -1046,7 +1035,7 @@
           (f28-1 (* 2048.0 (pow (the float (+ (- (seconds -0.05) (-> self state-time)) (current-time))) 0.85)))
           (s5-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> s5-0 quad) (-> self root trans quad))
+      (vector-copy! s5-0 (-> self root trans))
       (+! (-> s5-0 y) 409.6)
       (when *target*
         (let* ((gp-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) s5-0))
@@ -1114,7 +1103,7 @@
       )
     0
     (let ((gp-1 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-1 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 8192.0)
       (set! (-> gp-1 scale) 1.0)
@@ -1401,6 +1390,7 @@
 ;; definition for method 11 of type fac-drop-plat
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this fac-drop-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (with-pp
     (stack-size-set! (-> this main-thread) 32)
@@ -1563,11 +1553,11 @@
   (let ((v1-0 (new 'stack-no-clear 'vector))
         (a0-2 (new 'stack-no-clear 'vector))
         )
-    (set! (-> v1-0 quad) (-> this center quad))
+    (vector-copy! v1-0 (-> this center))
     (+! (-> v1-0 x) (-> this x-off))
     (+! (-> v1-0 z) (-> this z-off))
     (+! (-> v1-0 y) 9175.04)
-    (set! (-> a0-2 quad) (-> this center quad))
+    (vector-copy! a0-2 (-> this center))
     (set! (-> a0-2 x) (- (-> a0-2 x) (-> this x-off)))
     (set! (-> a0-2 z) (- (-> a0-2 z) (-> this z-off)))
     (+! (-> a0-2 y) 9011.2)
@@ -1582,7 +1572,7 @@
           (let ((a3-5 (-> this lightning a1-5))
                 (a2-15 a0-2)
                 )
-            (set! (-> a3-5 state meet data (+ (-> a3-5 state points-to-draw) -1) quad) (-> a2-15 quad))
+            (vector-copy! (-> a3-5 state meet data (+ (-> a3-5 state points-to-draw) -1)) a2-15)
             )
           (let ((a2-19 (-> this lightning a1-5))
                 (a3-8 1)
@@ -1609,10 +1599,10 @@
       )
     )
   (let ((s4-0 (new 'static 'inline-array vector 2 (new 'static 'vector) (new 'static 'vector))))
-    (set! (-> s4-0 0 quad) (-> this center quad))
+    (vector-copy! (-> s4-0 0) (-> this center))
     (+! (-> s4-0 0 x) (-> this x-off))
     (+! (-> s4-0 0 z) (-> this z-off))
-    (set! (-> s4-0 1 quad) (-> s4-0 0 quad))
+    (vector-copy! (-> s4-0 1) (-> s4-0 0))
     (set! (-> s4-0 1 x) (- (-> s4-0 1 x) (* 2.0 (-> this x-off))))
     (set! (-> s4-0 1 z) (- (-> s4-0 1 z) (* 2.0 (-> this z-off))))
     (when (not (handle->process (-> this blocking-plane)))
@@ -1675,7 +1665,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod factory-boss-lightning-gate-method-11 ((this factory-boss-lightning-gate) (arg0 vector) (arg1 float) (arg2 float) (arg3 process))
   (set-factoryd-light! 0.0)
-  (set! (-> this center quad) (-> arg0 quad))
+  (vector-copy! (-> this center) arg0)
   (set! (-> this x-off) arg1)
   (set! (-> this z-off) arg2)
   (set! (-> this blocking-plane) (the-as handle #f))
@@ -1843,9 +1833,9 @@
 ;; INFO: Used lq/sq
 (defmethod factory-boss-method-27 ((this factory-boss) (arg0 vector))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (set! (-> v1-0 quad) (-> arg0 quad))
+    (vector-copy! v1-0 arg0)
     (set! (-> v1-0 w) 16384.0)
-    (add-root-sphere-to-hash! (-> this nav) v1-0 255)
+    (check-sphere-blocked! (-> this nav) v1-0 255)
     )
   )
 
@@ -1988,6 +1978,7 @@
 ;; definition for method 11 of type factory-boss
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this factory-boss) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -2015,7 +2006,7 @@
   (logior! (-> this skel status) (joint-control-status eye-anim))
   (logior! (-> this mask) (process-mask enemy))
   (set-vector! (-> this root scale) 1.6 1.6 1.6 1.0)
-  (set! (-> this center quad) (-> this root trans quad))
+  (vector-copy! (-> this center) (-> this root trans))
   (+! (-> this center z) 83992.98)
   (+! (-> this center y) -65536.0)
   (+! (-> this center x) -83992.98)
@@ -2218,10 +2209,10 @@
   (set! (-> this reticle-sound) (new-sound-id))
   (set! (-> this reticle-sound-playing) #f)
   (let ((s5-2 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-2 quad) (-> this center quad))
+    (vector-copy! s5-2 (-> this center))
     (+! (-> s5-2 z) 141312.0)
     (factory-boss-lightning-gate-method-11 (-> this warp-blocker) s5-2 28672.0 0.0 this)
-    (set! (-> s5-2 quad) (-> this center quad))
+    (vector-copy! s5-2 (-> this center))
     (+! (-> s5-2 z) -141312.0)
     (factory-boss-lightning-gate-method-11 (-> this entry-blocker) s5-2 28672.0 0.0 this)
     )
@@ -2250,14 +2241,10 @@
 ;; definition for method 15 of type hud-factory-boss
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-factory-boss))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 472.0 (* 130.0 (-> this offset))))
-    160
-    )
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) 0 0)
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 472.0 (* 130.0 (-> this offset)))) 160)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 0 pos) 0 0)
   (let ((f30-0 (* 25.0 (the float (- 4 (-> this values 0 current))))))
-    (set-as-offset-from! (-> this sprites 5) (the-as vector4w (-> this sprites)) 8 67)
+    (set-as-offset-from! (-> this sprites 5) (-> this sprites 0 pos) 8 67)
     (set! (-> this sprites 5 scale-x) (* 0.164 f30-0))
     (cond
       ((< 50.0 f30-0)
@@ -2280,9 +2267,9 @@
         )
       )
     )
-  (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites)) 9 66)
-  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites)) -51 66)
-  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites)) 4 66)
+  (set-as-offset-from! (-> this sprites 4) (-> this sprites 0 pos) 9 66)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 0 pos) -51 66)
+  (set-as-offset-from! (-> this sprites 2) (-> this sprites 0 pos) 4 66)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -2475,6 +2462,7 @@
 
 ;; definition for method 11 of type fac-warp-effect
 (defmethod init-from-entity! ((this fac-warp-effect) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2484,7 +2472,3 @@
     )
   (go (method-of-object this idle))
   )
-
-
-
-

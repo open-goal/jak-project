@@ -109,7 +109,10 @@
   )
 
 ;; definition for method 114 of type bot
-(defmethod send-attack-to-all-tshapes ((this bot) (arg0 process-focusable) (arg1 event-message-block))
+(defmethod find-and-damage-attackers ((this bot) (arg0 process-focusable) (arg1 event-message-block))
+  "Find things that have attacked us, then deal damage back.
+   This is used for attacks that damage both the player and the enemy,
+   like hitting a guard with a jetboard."
   0
   )
 
@@ -204,8 +207,8 @@
                          )
                        (.sub.vf vf1 vf3 vf2)
                        (.mul.vf vf1 vf1 vf1)
-                       (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                       (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                       (.add.y.vf.x vf1 vf1 vf1)
+                       (.add.z.vf.x vf1 vf1 vf1)
                        (.mov a2-5 vf1)
                        (let ((f0-3 a2-5)
                              (f1-2 (+ (-> a1-2 world-sphere w) (the-as float (-> s5-0 param 3))))
@@ -245,8 +248,8 @@
                          )
                        (.sub.vf vf1 vf3 vf2)
                        (.mul.vf vf1 vf1 vf1)
-                       (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                       (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                       (.add.y.vf.x vf1 vf1 vf1)
+                       (.add.z.vf.x vf1 vf1 vf1)
                        (.mov a2-12 vf1)
                        (let ((f0-4 a2-12)
                              (f1-6 (+ (-> a1-14 world-sphere w) (the-as float (-> s5-0 param 3))))
@@ -299,14 +302,15 @@
 
 ;; definition for method 112 of type bot
 ;; WARN: Return type mismatch int vs none.
-(defmethod get-incoming-attack! ((this bot)
-                                (arg0 process-drawable)
-                                (arg1 event-message-block)
-                                (arg2 penetrate)
-                                (arg3 attack-info)
-                                (arg4 touching-shapes-entry)
-                                )
-  (let ((t9-0 (method-of-type nav-enemy get-incoming-attack!)))
+(defmethod handle-incoming-attack! ((this bot)
+                                   (arg0 process-drawable)
+                                   (arg1 event-message-block)
+                                   (arg2 penetrate)
+                                   (arg3 attack-info)
+                                   (arg4 touching-shapes-entry)
+                                   )
+  "Set up this enemy to handle an incoming attack event."
+  (let ((t9-0 (method-of-type nav-enemy handle-incoming-attack!)))
     (t9-0 this arg0 arg1 arg2 arg3 arg4)
     )
   (logclear! (-> this bot-flags) (bot-flag bf03 bf04))
@@ -359,6 +363,7 @@
 
 ;; definition for method 62 of type bot
 (defmethod get-damage-from-attack ((this bot) (arg0 object) (arg1 event-message-block))
+  "Compute hit point damage for an attack message."
   (let* ((t9-0 (method-of-type nav-enemy get-damage-from-attack))
          (v0-0 (t9-0 this arg0 arg1))
          (v1-1 (-> this bot-flags))
@@ -381,8 +386,9 @@
   )
 
 ;; definition for method 65 of type bot
-(defmethod penetrate->next-state ((this bot) (arg0 process) (arg1 event-message-block) (arg2 float))
-  (let* ((t9-0 (method-of-type nav-enemy penetrate->next-state))
+(defmethod msg-for-incoming-attack ((this bot) (arg0 process) (arg1 event-message-block) (arg2 float))
+  "Given an attack message, what do we do next? Returns a message name that should be sent to self."
+  (let* ((t9-0 (method-of-type nav-enemy msg-for-incoming-attack))
          (v0-0 (t9-0 this arg0 arg1 arg2))
          )
     (if (logtest? (-> this bot-flags) (bot-flag bf03))
@@ -427,19 +433,22 @@
 
 ;; definition for method 64 of type bot
 ;; WARN: Return type mismatch int vs enemy-aware.
-(defmethod update-awareness! ((this bot) (arg0 process-focusable) (arg1 enemy-best-focus))
+(defmethod get-awareness-of-proc ((this bot) (arg0 process-focusable) (arg1 enemy-best-focus))
+  "Check what the enemies awareness of this pfoc would be. Optionally return more awareness stats in enemy-best-focus."
   (the-as enemy-aware 3)
   )
 
 ;; definition for method 68 of type bot
 ;; WARN: Return type mismatch int vs enemy-aware.
-(defmethod get-enemy-aware ((this bot) (arg0 enemy-aware))
+(defmethod modify-awareness ((this bot) (arg0 enemy-aware))
+  "Apply modifications to awareness based on the reaction time of an enemy and other settings."
   (the-as enemy-aware 3)
   )
 
 ;; definition for method 140 of type bot
 ;; WARN: Return type mismatch object vs process.
 (defmethod update-focus ((this bot))
+  "Potentially update the focus, if there is something better to focus on."
   (local-vars (s5-1 process))
   (let ((s5-0 (-> this focus)))
     (cond
@@ -473,6 +482,7 @@
 
 ;; definition for method 106 of type bot
 (defmethod find-best-focus ((this bot))
+  "Search for the best thing to focus on."
   (let* ((s5-0 (handle->process (-> this attacker-handle)))
          (v1-3 (if (type? s5-0 process-focusable)
                    s5-0
@@ -555,7 +565,7 @@
         )
       (cond
         (s5-1
-          (try-update-focus (-> this focus) (the-as process-focusable s5-1) this)
+          (focus-on! (-> this focus) (the-as process-focusable s5-1) this)
           (if (and (logtest? (-> this bot-flags) (bot-flag attacked)) (!= (-> s5-1 type) target))
               (logclear! (-> this bot-flags) (bot-flag attacked))
               )
@@ -586,9 +596,9 @@
             )
         (set! (-> gp-0 proc) #f)
         (set! (-> gp-0 rating) 409600000.0)
-        (set! (-> gp-0 aware) (enemy-aware ea0))
+        (set! (-> gp-0 aware) (enemy-aware unaware))
         (when (< 0.0 f0-0)
-          (set! (-> s3-0 quad) (-> this root trans quad))
+          (vector-copy! s3-0 (-> this root trans))
           (set! (-> s3-0 w) (-> this notice-enemy-dist))
           (set! *actor-list-length* 0)
           (if (logtest? s4-0 512)
@@ -612,8 +622,8 @@
                           )
                         (.sub.vf vf1 vf3 vf2)
                         (.mul.vf vf1 vf1 vf1)
-                        (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                        (.add.y.vf.x vf1 vf1 vf1)
+                        (.add.z.vf.x vf1 vf1 vf1)
                         (.mov a2-5 vf1)
                         (let ((f0-2 a2-5)
                               (f1-3 (+ (-> a1-2 world-sphere w) (-> s3-0 w)))
@@ -653,8 +663,8 @@
                           )
                         (.sub.vf vf1 vf3 vf2)
                         (.mul.vf vf1 vf1 vf1)
-                        (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                        (.add.y.vf.x vf1 vf1 vf1)
+                        (.add.z.vf.x vf1 vf1 vf1)
                         (.mov a2-12 vf1)
                         (let ((f0-3 a2-12)
                               (f1-7 (+ (-> a1-14 world-sphere w) (-> s3-0 w)))
@@ -723,7 +733,8 @@
 
 ;; definition for method 20 of type bot
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this bot))
+(defmethod get-search-info-flag ((this bot))
+  "Get search-info-flag for this process."
   (the-as search-info-flag 0)
   )
 
@@ -731,6 +742,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: disable def twice: 272. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod event-handler ((this bot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (local-vars (v0-0 object))
   (case arg2
     (('combo)
@@ -857,7 +869,7 @@
         #t
         )
        (('follow-dir)
-        (set! (-> this follow-dir quad) (-> (the-as vector (-> arg3 param 1)) quad))
+        (vector-copy! (-> this follow-dir) (the-as vector (-> arg3 param 1)))
         #t
         )
        (else
@@ -906,7 +918,7 @@
         )
        (else
          (if (and (-> this next-state) (= (-> this next-state name) 'hidden))
-             (go-best-state this)
+             (go-state-for-focused this)
              )
          )
        )
@@ -931,7 +943,8 @@
   )
 
 ;; definition for method 110 of type bot
-(defmethod send-attack ((this bot) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+(defmethod send-attack-from-tshape ((this bot) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+  "Send an attack from this enemy to something else."
   (cond
     ((and (= (-> arg0 type) target) (not (logtest? (-> this bot-flags) (bot-flag attacked))))
      (when (send-event arg0 'shove #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
@@ -944,7 +957,7 @@
                                                           )
                        )
        (set! (-> this root penetrated-by) (the-as penetrate -1))
-       (reset-penetrate! this)
+       (reset-penetrate-later! this)
        #t
        )
      )
@@ -971,13 +984,14 @@
   )
 
 ;; definition for method 84 of type bot
-(defmethod send-attack-on-jump-or-knocked ((this bot) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-touched-handler ((this bot) (arg0 process) (arg1 event-message-block))
+  "General handler for when anything touches an enemy (automatic response)."
   (cond
     ((and (-> this next-state) (let ((v1-3 (-> this next-state name)))
                                  (or (= v1-3 'knocked) (= v1-3 'jump))
                                  )
           )
-     ((method-of-type nav-enemy send-attack-on-jump-or-knocked) this arg0 arg1)
+     ((method-of-type nav-enemy enemy-touched-handler) this arg0 arg1)
      )
     (else
       (when (!= (-> arg0 type) target)
@@ -1012,7 +1026,7 @@
                              )
                          )
                    )
-               (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+               (send-attack-from-tshape this arg0 (the-as touching-shapes-entry s3-0) a3-2)
                )
              )
             (else
@@ -1104,7 +1118,7 @@
                 (set-time! (-> this started-warning-time))
                 )
             (if (and (>= (current-time) (-> this next-too-far-warn-time)) (bot-method-216 this))
-                (set! (-> this next-too-far-warn-time) (+ (current-time) (set-reaction-time!
+                (set! (-> this next-too-far-warn-time) (+ (current-time) (rnd-time-frame
                                                                            this
                                                                            (the-as time-frame (-> this warn-min-delay))
                                                                            (the-as time-frame (-> this warn-max-delay))
@@ -1129,7 +1143,7 @@
 ;; WARN: Return type mismatch time-frame vs none.
 (defmethod reset-warn-time ((this bot))
   (set! (-> this started-warning-time) 0)
-  (set! (-> this next-too-far-warn-time) (+ (current-time) (set-reaction-time!
+  (set! (-> this next-too-far-warn-time) (+ (current-time) (rnd-time-frame
                                                              this
                                                              (the-as time-frame (-> this warn-min-delay))
                                                              (the-as time-frame (-> this warn-max-delay))
@@ -1141,6 +1155,7 @@
 
 ;; definition for method 59 of type bot
 (defmethod enemy-common-post ((this bot))
+  "Common implementation of post. Runs ja-post."
   (set! (-> this travel-prev-ry) (-> this travel-prev-ry1))
   (set! (-> this travel-prev-ry1) (quaternion-y-angle (-> this root quat)))
   (let ((f0-3 (/ (-> this hit-points) (-> this enemy-info default-hit-points))))
@@ -1443,6 +1458,7 @@
 ;; definition for method 121 of type bot
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this bot))
+  "Typical place for shared init code. Runs from entity or process style init."
   (process-entity-status! this (entity-perm-status bit-4) #t)
   (set! (-> this ai-ctrl) (new 'process 'ai-task-control *bot-task-pool*))
   (logclear! (-> this mask) (process-mask enemy))
@@ -1501,7 +1517,7 @@
   (when (logtest? (-> this bot-flags) (bot-flag bf00))
     (let ((a1-0 (handle->process (-> this focus handle))))
       (and a1-0
-           (= (-> this focus aware) (enemy-aware ea3))
+           (= (-> this focus aware) (enemy-aware hostile))
            (attacked-by-player? this (the-as process-focusable a1-0))
            (not (logtest? (-> this focus-status) (focus-status grabbed)))
            )
@@ -1522,8 +1538,8 @@
       (set! (-> gp-0 fproc) (the-as process-focusable s3-0))
       (set! (-> gp-0 los) 0)
       (when (the-as process-focusable s3-0)
-        (set! (-> gp-0 pos quad) (-> (get-trans (the-as process-focusable s3-0) 0) quad))
-        (set! (-> gp-0 bullseye quad) (-> (get-trans (the-as process-focusable s3-0) 3) quad))
+        (vector-copy! (-> gp-0 pos) (get-trans (the-as process-focusable s3-0) 0))
+        (vector-copy! (-> gp-0 bullseye) (get-trans (the-as process-focusable s3-0) 3))
         (vector-z-quaternion! (-> gp-0 my-facing-xz-dir) (-> this root quat))
         (set! (-> gp-0 my-facing-xz-dir y) 0.0)
         (vector-normalize! (-> gp-0 my-facing-xz-dir) 1.0)
@@ -1540,7 +1556,7 @@
       )
     (when (and arg0 s3-0 (zero? (-> gp-0 los)))
       (let ((s4-1 (new 'stack-no-clear 'collide-query)))
-        (set! (-> s4-1 start-pos quad) (-> this root trans quad))
+        (vector-copy! (-> s4-1 start-pos) (-> this root trans))
         (+! (-> s4-1 start-pos y) 8192.0)
         (vector-! (-> s4-1 move-dist) (-> gp-0 bullseye) (-> s4-1 start-pos))
         (let ((f0-19 (fmax 1.0 (+ -1638.4 (vector-length (-> s4-1 move-dist))))))
@@ -1610,7 +1626,7 @@
       (quaternion-copy! (-> arg0 src-quat) (-> s5-0 quat))
       (vector-z-quaternion! (-> arg0 facing-dir) (-> s5-0 quat))
       (set! (-> arg0 facing-ry) (atan (-> arg0 facing-dir x) (-> arg0 facing-dir z)))
-      (set! (-> arg0 targ-pos quad) (-> (get-trans arg1 3) quad))
+      (vector-copy! (-> arg0 targ-pos) (get-trans arg1 3))
       (set! (-> arg0 targ-ry)
             (atan (- (-> arg0 targ-pos x) (-> s5-0 trans x)) (- (-> arg0 targ-pos z) (-> s5-0 trans z)))
             )
@@ -1624,9 +1640,9 @@
           (.lvf vf5 (&-> a0-7 quad))
           (.lvf vf4 (&-> v1-4 quad))
           )
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> a1-6 quad) vf6)
         )
       (set! (-> arg0 predicted-targ-ry) (atan
@@ -1675,11 +1691,12 @@
 ;; definition for method 91 of type bot
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs object.
-(defmethod enemy-method-91 ((this bot) (arg0 enemy-jump-info))
+(defmethod check-jump-blocked? ((this bot) (arg0 enemy-jump-info))
+  "Is this jump blocked by something?"
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (set! (-> v1-0 quad) (-> arg0 dest-pos quad))
+    (vector-copy! v1-0 (-> arg0 dest-pos))
     (set! (-> v1-0 w) (-> this nav-radius-backup))
-    (add-root-sphere-to-hash! (-> this nav) v1-0 #x10006a)
+    (check-sphere-blocked! (-> this nav) v1-0 #x10006a)
     )
   )
 
@@ -1694,7 +1711,7 @@
         (s4-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> v1-0 quad) (-> this root trans quad))
+    (vector-copy! v1-0 (-> this root trans))
     (+! (-> v1-0 y) 9216.0)
     (vector-! s1-0 arg0 v1-0)
     (vector-normalize! s1-0 1.0)
@@ -1924,6 +1941,7 @@
 
 ;; definition for method 67 of type bot
 (defmethod coin-flip? ((this bot))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1956,9 +1974,9 @@
               )
             (.lvf vf4 (&-> v1-10 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> t2-1 quad) vf6)
           )
         (let ((a2-2 arg0))
@@ -1971,9 +1989,9 @@
               )
             (.lvf vf4 (&-> v1-11 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> a2-2 quad) vf6)
           )
         )
@@ -1987,9 +2005,9 @@
             )
           (.lvf vf4 (&-> a0-6 quad))
           )
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> v1-12 quad) vf6)
         )
       )

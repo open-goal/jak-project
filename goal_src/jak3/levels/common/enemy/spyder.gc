@@ -210,34 +210,34 @@
                                   :jump-height-min (meters 3)
                                   :jump-height-factor 0.5
                                   :knocked-seek-ry-clamp 2730.6667
-                                  :knocked-soft-vxz-lo 90112.0
-                                  :knocked-soft-vxz-hi 131072.0
-                                  :knocked-soft-vy-lo 114688.0
-                                  :knocked-soft-vy-hi 155648.0
-                                  :knocked-medium-vxz-lo 147456.0
-                                  :knocked-medium-vxz-hi 196608.0
-                                  :knocked-medium-vy-lo 135168.0
-                                  :knocked-medium-vy-hi 151552.0
-                                  :knocked-hard-vxz-lo 78643.2
-                                  :knocked-hard-vxz-hi 117964.8
-                                  :knocked-hard-vy-lo 183500.8
-                                  :knocked-hard-vy-hi 209715.2
-                                  :knocked-huge-vxz-lo 164659.2
-                                  :knocked-huge-vxz-hi 249036.8
-                                  :knocked-huge-vy-lo 183500.8
-                                  :knocked-huge-vy-hi 217907.2
-                                  :knocked-yellow-vxz-lo 40960.0
-                                  :knocked-yellow-vxz-hi 49152.0
-                                  :knocked-yellow-vy-lo 57344.0
-                                  :knocked-yellow-vy-hi 81920.0
-                                  :knocked-red-vxz-lo 24576.0
-                                  :knocked-red-vxz-hi 131072.0
-                                  :knocked-red-vy-lo 94208.0
-                                  :knocked-red-vy-hi 139264.0
-                                  :knocked-blue-vxz-lo 40960.0
-                                  :knocked-blue-vxz-hi 49152.0
-                                  :knocked-blue-vy-lo 57344.0
-                                  :knocked-blue-vy-hi 98304.0
+                                  :knocked-soft-vxz-lo (meters 22)
+                                  :knocked-soft-vxz-hi (meters 32)
+                                  :knocked-soft-vy-lo (meters 28)
+                                  :knocked-soft-vy-hi (meters 38)
+                                  :knocked-medium-vxz-lo (meters 36)
+                                  :knocked-medium-vxz-hi (meters 48)
+                                  :knocked-medium-vy-lo (meters 33)
+                                  :knocked-medium-vy-hi (meters 37)
+                                  :knocked-hard-vxz-lo (meters 19.2)
+                                  :knocked-hard-vxz-hi (meters 28.8)
+                                  :knocked-hard-vy-lo (meters 44.8)
+                                  :knocked-hard-vy-hi (meters 51.2)
+                                  :knocked-huge-vxz-lo (meters 40.2)
+                                  :knocked-huge-vxz-hi (meters 60.8)
+                                  :knocked-huge-vy-lo (meters 44.8)
+                                  :knocked-huge-vy-hi (meters 53.2)
+                                  :knocked-yellow-vxz-lo (meters 10)
+                                  :knocked-yellow-vxz-hi (meters 12)
+                                  :knocked-yellow-vy-lo (meters 14)
+                                  :knocked-yellow-vy-hi (meters 20)
+                                  :knocked-red-vxz-lo (meters 6)
+                                  :knocked-red-vxz-hi (meters 32)
+                                  :knocked-red-vy-lo (meters 23)
+                                  :knocked-red-vy-hi (meters 34)
+                                  :knocked-blue-vxz-lo (meters 10)
+                                  :knocked-blue-vxz-hi (meters 12)
+                                  :knocked-blue-vy-lo (meters 14)
+                                  :knocked-blue-vy-hi (meters 24)
                                   :ragdoll-info #f
                                   :shadow-size (meters 2)
                                   :shadow-max-y (meters 1)
@@ -278,6 +278,7 @@
 (set! (-> *spyder-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (defmethod event-handler ((this spyder) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -289,7 +290,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -408,7 +409,7 @@
             (vector+! s4-0 s5-0 s2-1)
             )
           )
-        (set! (-> this move-dest quad) (-> s5-0 quad))
+        (vector-copy! (-> this move-dest) s5-0)
         (closest-point-on-mesh (-> this nav) (-> this move-dest) s4-0 (the-as nav-poly #f))
         )
       )
@@ -418,6 +419,7 @@
   )
 
 (defmethod knocked-anim ((this spyder) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -437,7 +439,7 @@
             (s5-0 (new 'static 'array int64 3 17 18 19))
             (s4-0 (new 'static 'array int32 4 0 0 0 0))
             (a2-1 (ash 1 (-> s4-0 0)))
-            (v1-20 (enemy-method-131 this a1-4 a2-1))
+            (v1-20 (rnd-int-excluding-masked this a1-4 a2-1))
             (s5-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-20 8) (the-as int s5-0))))))
             )
        (set! (-> s4-0 0) v1-20)
@@ -487,6 +489,7 @@
   )
 
 (defmethod knocked-land-anim ((this spyder) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (cond
@@ -520,6 +523,7 @@
   )
 
 (defmethod jump-in-air-anim ((this spyder) (arg0 enemy-jump-info))
+  "Start playing the in-air anim"
   (let ((s5-0 (-> this draw art-group data (-> this enemy-info jump-in-air-anim))))
     (let ((v1-6 (if (> (-> this skel active-channels) 0)
                     (-> this skel root-channel 0 frame-group)
@@ -551,7 +555,7 @@
   )
 
 (defbehavior spyder-travel-post spyder ()
-  (set! (-> self face-pos quad) (-> self move-dest quad))
+  (vector-copy! (-> self face-pos) (-> self move-dest))
   (logior! (-> self status-flags) (spyder-flag sf3))
   (nav-enemy-travel-post)
   0
@@ -564,7 +568,7 @@
         (f30-0 (-> self nav max-rotation-rate))
         )
     (when gp-0
-      (set! (-> self face-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+      (vector-copy! (-> self face-pos) (get-trans (the-as process-focusable gp-0) 0))
       (let ((a0-4 self))
         (if (logtest? (enemy-flag ef38) (-> a0-4 enemy-flags))
             (seek-to-point-toward-point!
@@ -607,7 +611,7 @@
          (logclear! (-> this status-flags) (spyder-flag sf3))
          )
         (else
-          (set! (-> s4-1 quad) (-> s3-0 quad))
+          (vector-copy! s4-1 s3-0)
           )
         )
       (set! (-> s4-1 y) 0.0)
@@ -632,7 +636,7 @@
 (defmethod spyder-method-196 ((this spyder) (arg0 vector))
   (when (not (logtest? (-> this status-flags) (spyder-flag sf0)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-0 quad) (-> *up-vector* quad))
+      (vector-copy! s4-0 *up-vector*)
       (let ((s3-0 (new 'stack-no-clear 'quaternion)))
         (quaternion-from-two-vectors-max-angle! s3-0 s4-0 (-> this root gspot-normal) 4551.1113)
         (vector-orient-by-quat! s4-0 s4-0 s3-0)
@@ -650,12 +654,13 @@
   )
 
 (defmethod enemy-common-post ((this spyder))
+  "Common implementation of post. Runs ja-post."
   (spyder-method-197 this)
   (spyder-method-196 this (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
   (when (< 1 (the-as int (-> this focus aware)))
     (let ((s5-1 (handle->process (-> this focus handle))))
       (when s5-1
-        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable s5-1) 1) quad))
+        (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable s5-1) 1))
         (los-control-method-9
           (-> this los)
           (the-as process-focusable s5-1)
@@ -737,7 +742,7 @@
         (set! (-> a1-0 y) 22528.0)
         (set! (-> a1-0 z) 22528.0)
         (set! (-> a1-0 w) 1.0)
-        (vector-! (the-as vector v1-0) a0-2 a1-0)
+        (vector-! (-> v1-0 min) a0-2 a1-0)
         )
       (let ((v1-2 (-> s5-0 bbox max))
             (a0-4 (-> this root trans))
@@ -762,7 +767,7 @@
               (s3-0 (new 'stack-no-clear 'vector))
               )
           (let ((v1-15 (new 'stack-no-clear 'vector)))
-            (set! (-> v1-15 quad) (-> *y-vector* quad))
+            (vector-copy! v1-15 *y-vector*)
             (new 'stack-no-clear 'vector)
             (let ((s2-0 (new 'stack-no-clear 'vector)))
               (let ((a1-3 s3-0))
@@ -780,7 +785,7 @@
                 (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                 (.svf (&-> a1-3 quad) vf6)
                 )
-              (set! (-> s2-0 quad) (-> s3-0 quad))
+              (vector-copy! s2-0 s3-0)
               (set! (-> s2-0 y) (-> this root trans y))
               (let ((a2-10 (-> s5-0 start-pos)))
                 (let ((a0-12 s2-0))
@@ -877,7 +882,7 @@
     (let ((a0-1 (handle->process (-> self focus handle))))
       (when a0-1
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-1) 0) quad))
+          (vector-copy! gp-0 (get-trans (the-as process-focusable a0-1) 0))
           (let* ((s5-0 (-> self root trans))
                  (f30-0 (vector-vector-distance s5-0 gp-0))
                  (f0-0 (vector-vector-xz-distance s5-0 (-> self move-dest)))
@@ -904,7 +909,7 @@
           )
       (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      (vector-copy! (-> a0-0 target-pos) v1-1)
       )
     0
     (spyder-travel-post)
@@ -958,7 +963,7 @@
       (set! (-> gp-0 charge) 1.0)
       (set! (-> gp-0 options) (projectile-options))
       (logclear! (-> gp-0 options) (projectile-options po14 po15 po16))
-      (set! (-> gp-0 pos quad) (-> v1-0 quad))
+      (vector-copy! (-> gp-0 pos) v1-0)
       (set! (-> gp-0 notify-handle) (process->handle this))
       (set! (-> gp-0 owner-handle) (the-as handle #f))
       (set! (-> gp-0 target-handle) (the-as handle #f))
@@ -996,7 +1001,7 @@
           )
       (logclear! (-> v1-1 flags) (nav-state-flag directional-mode))
       (logior! (-> v1-1 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> v1-1 target-pos quad) (-> a0-1 quad))
+      (vector-copy! (-> v1-1 target-pos) a0-1)
       )
     0
     (let ((v1-4 self))
@@ -1025,11 +1030,11 @@
         )
     )
   :code (behavior ()
-    (when (not (enemy-method-105 self 2730.6667 #t))
+    (when (not (pointing-toward-focus? self 2730.6667 #t))
       (ja-channel-push! 1 (seconds 0.2))
       (ja :group! spyder-patrol0-ja)
       (ja :num-func num-func-identity :frame-num 0.0)
-      (until (enemy-method-105 self 910.2222 #t)
+      (until (pointing-toward-focus? self 910.2222 #t)
         (ja-blend-eval)
         (suspend)
         (ja :num! (loop! 0.75))
@@ -1052,9 +1057,9 @@
       (let ((a0-14 (handle->process (-> self focus handle))))
         (when a0-14
           (let ((gp-0 (new 'stack-no-clear 'vector)))
-            (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-14) 0) quad))
+            (vector-copy! gp-0 (get-trans (the-as process-focusable a0-14) 0))
             (let ((s5-0 (new 'stack-no-clear 'vector)))
-              (set! (-> s5-0 quad) (-> gp-0 quad))
+              (vector-copy! s5-0 gp-0)
               (let ((f28-0 0.0))
                 (dotimes (s4-0 8)
                   (let* ((f26-0 (fmin (-> self root trans y) (-> gp-0 y)))
@@ -1066,7 +1071,7 @@
                     (vector+! s2-1 gp-0 s2-1)
                     (set! (-> s2-1 y) f26-0)
                     (set! (-> self fire-info 0 quad) (-> s3-0 quad))
-                    (set! (-> self fire-info 1 quad) (-> s2-1 quad))
+                    (vector-copy! (-> self fire-info 1) s2-1)
                     )
                   (suspend-for (seconds 0.2)
                     (set! f30-0 (seek f30-0 (lerp-scale 0.0 1.0 (the float s4-0) 0.0 8.0) (seconds-per-frame)))
@@ -1074,10 +1079,10 @@
                     (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
                     )
                   (let ((f28-1 (+ 12288.0 f28-0)))
-                    (set! (-> gp-0 quad) (-> s5-0 quad))
+                    (vector-copy! gp-0 s5-0)
                     (let ((a0-31 (handle->process (-> self focus handle))))
                       (if a0-31
-                          (set! (-> s5-0 quad) (-> (get-trans (the-as process-focusable a0-31) 0) quad))
+                          (vector-copy! s5-0 (get-trans (the-as process-focusable a0-31) 0))
                           )
                       )
                     (set! f28-0 (fmax 0.0 (- f28-1 (vector-vector-distance gp-0 s5-0))))
@@ -1113,6 +1118,7 @@
   )
 
 (defmethod go-hostile ((this spyder))
+  "Go to the hostile state, actively trying to attack the target."
   (if (and (not (logtest? (-> this status-flags) (spyder-flag sf1)))
            (-> this next-state)
            (let ((v1-5 (-> this next-state name)))
@@ -1167,7 +1173,7 @@
         (a2-0 (-> arg0 state))
         (a1-1 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a1-1 quad) (-> a2-0 heading quad))
+    (vector-copy! a1-1 (-> a2-0 heading))
     (t9-0 this a1-1)
     )
   0
@@ -1175,10 +1181,12 @@
   )
 
 (defmethod coin-flip? ((this spyder))
+  "Return #t half the time, #f the other."
   #f
   )
 
 (defmethod init-enemy-collision! ((this spyder))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1287,12 +1295,13 @@
   )
 
 (defmethod init-enemy! ((this spyder))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-spyder" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *spyder-nav-enemy-info*)
+  (setup-enemy! this *spyder-nav-enemy-info*)
   (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
@@ -1306,12 +1315,12 @@
   0
   (set-gravity-length (-> this root dynam) 573440.0)
   (set-vector! (-> this root scale) 1.5 1.5 1.5 1.0)
-  (set! (-> this my-up-vector quad) (-> *up-vector* quad))
+  (vector-copy! (-> this my-up-vector) *up-vector*)
   (set! (-> this status-flags) (spyder-flag sf2))
   (if (rand-vu-percent? 0.5)
       (logior! (-> this status-flags) (spyder-flag sf4))
       )
-  (set! (-> this start-pos quad) (-> this root trans quad))
+  (vector-copy! (-> this start-pos) (-> this root trans))
   (set! (-> this sound)
         (new 'process 'ambient-sound (static-sound-spec "spyder-talk" :group 0 :fo-max 70) (-> this root trans) 0.0)
         )

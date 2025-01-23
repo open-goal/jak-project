@@ -93,6 +93,7 @@
   )
 
 (defmethod enemy-common-post ((this mh-squad-member))
+  "Common implementation of post. Runs ja-post."
   (local-vars (s5-0 int))
   (when (focus-test? this dangerous)
     (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
@@ -134,10 +135,11 @@
   (none)
   )
 
-(defmethod send-attack-on-jump-or-knocked ((this mh-squad-member) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-touched-handler ((this mh-squad-member) (arg0 process) (arg1 event-message-block))
+  "General handler for when anything touches an enemy (automatic response)."
   (cond
     (#f
-      ((method-of-type citizen send-attack-on-jump-or-knocked) this arg0 arg1)
+      ((method-of-type citizen enemy-touched-handler) this arg0 arg1)
       )
     (else
       (when (!= (-> arg0 type) target)
@@ -173,7 +175,7 @@
                              )
                          )
                    )
-               (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+               (send-attack-from-tshape this arg0 (the-as touching-shapes-entry s3-0) a3-2)
                )
              )
             (else
@@ -222,7 +224,7 @@
             (not (logtest? (-> (the-as process-focusable a0-18) focus-status) (focus-status disable dead inactive)))
             )
        (let* ((s5-1 this)
-              (s4-0 (method-of-object s5-1 enemy-method-70))
+              (s4-0 (method-of-object s5-1 set-focus!))
               (s3-0 (handle->process (-> this current-enemy)))
               )
          (s4-0

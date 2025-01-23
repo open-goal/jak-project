@@ -150,7 +150,7 @@
 
 (defmethod probe-backgnd-collision ((this squad-control) (arg0 vector) (arg1 vector))
   (let ((v1-0 (new 'stack-no-clear 'collide-query)))
-    (set! (-> v1-0 start-pos quad) (-> arg0 quad))
+    (vector-copy! (-> v1-0 start-pos) arg0)
     (vector-! (-> v1-0 move-dist) arg1 arg0)
     (let ((a0-4 v1-0))
       (set! (-> a0-4 radius) 2048.0)
@@ -176,12 +176,12 @@
          (logior! (-> s5-1 0 flags) (squad-target-flag updated))
          (cond
            ((or (logtest? (-> s5-1 0 flags) (squad-target-flag force-visible))
-                (probe-backgnd-collision this arg0 (the-as vector (-> s4-0 1)))
+                (probe-backgnd-collision this arg0 (-> s4-0 1 position))
                 )
             (logior! (-> s5-1 0 flags) (squad-target-flag visible-now visible-recently visible-ever))
             (set-time! (-> s5-1 0 last-seen-time))
-            (set! (-> s5-1 0 position quad) (-> s4-0 1 position quad))
-            (set! (-> s5-1 0 velocity quad) (-> s4-0 0 velocity quad))
+            (vector-copy! (-> s5-1 0 position) (-> s4-0 1 position))
+            (vector-copy! (-> s5-1 0 velocity) (-> s4-0 0 velocity))
             )
            (else
              (logclear! (-> s5-1 0 flags) (squad-target-flag visible-now))
@@ -198,8 +198,8 @@
     (else
       (logior! (-> arg2 flags) (squad-target-flag visible-now visible-recently visible-ever))
       (set-time! (-> arg2 last-seen-time))
-      (set! (-> arg2 position quad) (-> (get-trans arg1 3) quad))
-      (set! (-> arg2 velocity quad) (-> (get-transv arg1) quad))
+      (vector-copy! (-> arg2 position) (get-trans arg1 3))
+      (vector-copy! (-> arg2 velocity) (get-transv arg1))
       )
     )
   0
@@ -233,8 +233,8 @@
           (when (logtest? (-> s4-1 0 flags) (squad-target-flag visible-recently))
             (let ((s3-0 (new 'stack-no-clear 'primary-target-pos-vel)))
               (set-pos-vel this (the-as primary-target-pos-vel (-> s3-0 position)))
-              (set! (-> s4-1 0 position quad) (-> s3-0 position quad))
-              (set! (-> s4-1 0 velocity quad) (-> s3-0 velocity quad))
+              (vector-copy! (-> s4-1 0 position) (-> s3-0 position))
+              (vector-copy! (-> s4-1 0 velocity) (-> s3-0 velocity))
               )
             )
           (mem-copy! (the-as pointer arg2) (the-as pointer s4-1) 68)
@@ -258,8 +258,8 @@
          )
     (when s4-0
       (let ((s5-1 (new 'stack-no-clear 'primary-target-pos-vel)))
-        (set! (-> s5-1 position quad) (-> (get-trans (the-as process-focusable s4-0) 3) quad))
-        (set! (-> s5-1 velocity quad) (-> (get-transv (the-as process-focusable s4-0)) quad))
+        (vector-copy! (-> s5-1 position) (get-trans (the-as process-focusable s4-0) 3))
+        (vector-copy! (-> s5-1 velocity) (get-transv (the-as process-focusable s4-0)))
         (set! (-> s5-1 time) (the-as uint (current-time)))
         (if (>= (- (-> s5-1 time) (-> this primary-target-history 1 time)) (the-as uint 30))
             (qmem-copy->!
@@ -324,8 +324,8 @@
                )
          )
     (when s5-0
-      (set! (-> arg0 position quad) (-> (get-trans (the-as process-focusable s5-0) 3) quad))
-      (set! (-> arg0 velocity quad) (-> (get-transv (the-as process-focusable s5-0)) quad))
+      (vector-copy! (-> arg0 position) (get-trans (the-as process-focusable s5-0) 3))
+      (vector-copy! (-> arg0 velocity) (get-transv (the-as process-focusable s5-0)))
       )
     )
   arg0
@@ -461,8 +461,8 @@
                       #f
                       (the-as clamp-travel-vector-to-mesh-return-info #f)
                       )
-                    (set! (-> s2-0 cquery start-pos quad) (-> s5-0 quad))
-                    (set! (-> s2-0 cquery move-dist quad) (-> s2-0 vec0 quad))
+                    (vector-copy! (-> s2-0 cquery start-pos) s5-0)
+                    (vector-copy! (-> s2-0 cquery move-dist) (-> s2-0 vec0))
                     (let ((v1-34 (-> s2-0 cquery)))
                       (set! (-> v1-34 radius) 2048.0)
                       (set! (-> v1-34 collide-with) (collide-spec backgnd))
@@ -502,7 +502,7 @@
           )
         )
       (label cfg-19)
-      (set! (-> arg0 quad) (-> s5-0 quad))
+      (vector-copy! arg0 s5-0)
       )
     (none)
     )
@@ -517,7 +517,7 @@
          )
     (new 'stack-no-clear 'vector)
     (if a0-5
-        (set! (-> arg1 quad) (-> (get-trans (the-as process-focusable a0-5) 0) quad))
+        (vector-copy! arg1 (get-trans (the-as process-focusable a0-5) 0))
         )
     )
   arg1

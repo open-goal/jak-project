@@ -7,6 +7,7 @@
   )
 
 ;; definition for method 3 of type flying-formation
+;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this flying-formation))
   (when (not this)
     (set! this this)
@@ -206,34 +207,34 @@
     :ragdoll-rotate-velocity-mult 1.0
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 90112.0
-    :knocked-blue-vy-lo 90112.0
-    :knocked-blue-vy-hi 172032.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 22)
+    :knocked-blue-vy-lo (meters 22)
+    :knocked-blue-vy-hi (meters 42)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 10)
@@ -277,6 +278,7 @@
 ;; definition for method 82 of type flamer-lava
 ;; INFO: Used lq/sq
 (defmethod event-handler ((this flamer-lava) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-flinch 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -288,7 +290,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -421,7 +423,7 @@
                               )
                             (else
                               (let ((s1-0 (new 'stack-no-clear 'vector)))
-                                (set! (-> s1-0 quad) (-> (get-trans arg1 0) quad))
+                                (vector-copy! s1-0 (get-trans arg1 0))
                                 (let ((s3-1 (new 'stack-no-clear 'vector)))
                                   (let ((s2-1 (new 'stack-no-clear 'vector)))
                                     (vector-! s3-1 s1-0 (-> this root trans))
@@ -449,7 +451,7 @@
                     )
                   )
                  (else
-                   (set! (-> arg0 quad) (-> this idle-pos quad))
+                   (vector-copy! arg0 (-> this idle-pos))
                    arg0
                    )
                  )
@@ -490,7 +492,7 @@
         )
     (logclear! (-> a0-8 flags) (nav-state-flag directional-mode))
     (logior! (-> a0-8 flags) (nav-state-flag target-poly-dirty))
-    (set! (-> a0-8 target-pos quad) (-> v1-16 quad))
+    (vector-copy! (-> a0-8 target-pos) v1-16)
     )
   0
   (flamer-lava-method-197 self)
@@ -599,8 +601,8 @@
             (.mov at-0 f0-0)
             )
           (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> a2-2 quad) vf1)
           )
         (vector-! v1-1 a0-2 (-> this main-joint-vel))
@@ -610,11 +612,11 @@
             (.mov at-1 f0-1)
             )
           (.mov vf2 at-1)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> a2-4 quad) vf1)
           )
-        (set! (-> this main-joint-pos quad) (-> a1-1 quad))
+        (vector-copy! (-> this main-joint-pos) a1-1)
         (let* ((f0-2 0.4)
                (f1-1 (- 1.0 f0-2))
                (a1-5 (-> this main-joint-vel))
@@ -623,7 +625,7 @@
           (set! (-> a1-5 y) (+ (* f0-2 (-> a0-2 y)) (* f1-1 (-> a1-5 y))))
           (set! (-> a1-5 z) (+ (* f0-2 (-> a0-2 z)) (* f1-1 (-> a1-5 z))))
           )
-        (set! (-> this main-joint-acc quad) (-> v1-1 quad))
+        (vector-copy! (-> this main-joint-acc) v1-1)
         )
       0
       0
@@ -634,6 +636,7 @@
 
 ;; definition for method 59 of type flamer-lava
 (defmethod enemy-common-post ((this flamer-lava))
+  "Common implementation of post. Runs ja-post."
   (update-vol! (-> this sound) (-> this sound-volume))
   (shadow-draw-probe this)
   ((method-of-type nav-enemy enemy-common-post) this)
@@ -655,7 +658,7 @@
            (gp-0 (-> this draw shadow-ctrl settings shadow-dir))
            (f30-0 122880.0)
            )
-       (set! (-> s4-0 start-pos quad) (-> this root trans quad))
+       (vector-copy! (-> s4-0 start-pos) (-> this root trans))
        (vector-normalize-copy! (-> s4-0 move-dist) gp-0 f30-0)
        (let ((v1-12 s4-0))
          (set! (-> v1-12 radius) 3276.8)
@@ -769,7 +772,7 @@
       ((zero? v1-0)
        (let ((a1-1 (new 'stack-no-clear 'collide-query)))
          (cond
-           ((set-ground-pat! this a1-1 (collide-spec backgnd) 8192.0 30720.0 1024.0 (the-as process #f))
+           ((find-ground-and-set-pat! this a1-1 (collide-spec backgnd) 8192.0 30720.0 1024.0 (the-as process #f))
             (set! (-> this base-pos y) (+ 26624.0 (-> this root gspot-pos y)))
             )
            (else
@@ -804,11 +807,11 @@
       )
     )
   (let ((s5-2 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-2 quad) (-> *up-vector* quad))
+    (vector-copy! s5-2 *up-vector*)
     (vector-normalize! s5-2 2048.0)
     (vector/! s5-2 s5-2 (-> this root scale))
     (vector-rotate-around-z! s5-2 s5-2 (-> this flit-angle))
-    (vector-seek! (the-as vector (-> this flit-joint transform)) s5-2 (* 32768.0 (seconds-per-frame)))
+    (vector-seek! (-> this flit-joint transform trans) s5-2 (* 32768.0 (seconds-per-frame)))
     )
   (update-trans! (-> this sound) (-> this root trans))
   (update! (-> this sound))
@@ -851,7 +854,7 @@
           (t9-0)
           )
       )
-    (set! (-> self root trans quad) (-> self idle-pos quad))
+    (vector-copy! (-> self root trans) (-> self idle-pos))
     )
   )
 
@@ -864,7 +867,7 @@
           (t9-0)
           )
       )
-    (set! (-> self root trans quad) (-> self idle-pos quad))
+    (vector-copy! (-> self root trans) (-> self idle-pos))
     )
   :trans (behavior ()
     (when (and (time-elapsed? (-> self state-time) (-> self state-timeout)) (flamer-lava-method-196 self))
@@ -1030,7 +1033,7 @@
           )
       (logclear! (-> a0-18 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-18 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-18 target-pos quad) (-> v1-17 quad))
+      (vector-copy! (-> a0-18 target-pos) v1-17)
       )
     0
     (set! (-> self ground-mode) 1)
@@ -1180,7 +1183,7 @@
                    (gp-1 (new 'stack-no-clear 'vector))
                    )
                (setup-from-to-xz-vel! (-> self shot-trajectory) s5-0 a2-1 122880.0 -102400.0)
-               (set! (-> gp-1 quad) (-> self shot-trajectory initial-velocity quad))
+               (vector-copy! gp-1 (-> self shot-trajectory initial-velocity))
                (vector-normalize! gp-1 1638.4)
                (vector+! s5-0 s5-0 gp-1)
                )
@@ -1189,8 +1192,8 @@
                (set! (-> gp-2 charge) 1.0)
                (set! (-> gp-2 options) (projectile-options))
                (logclear! (-> gp-2 options) (projectile-options po14 po15 po16))
-               (set! (-> gp-2 pos quad) (-> s5-0 quad))
-               (set! (-> gp-2 vel quad) (-> self shot-trajectory initial-velocity quad))
+               (vector-copy! (-> gp-2 pos) s5-0)
+               (vector-copy! (-> gp-2 vel) (-> self shot-trajectory initial-velocity))
                (set! (-> gp-2 notify-handle) (process->handle self))
                (set! (-> gp-2 owner-handle) (the-as handle #f))
                (set! (-> gp-2 target-handle) (the-as handle #f))
@@ -1244,7 +1247,8 @@
 
 ;; definition for method 50 of type flamer-lava
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-50 ((this flamer-lava) (arg0 int))
+(defmethod update-collision-action ((this flamer-lava) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-0 arg0))
     (cond
       ((= v1-0 1)
@@ -1280,6 +1284,7 @@
 ;; definition for method 85 of type flamer-lava
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod knocked-anim ((this flamer-lava) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (let ((v1-0 (-> this incoming knocked-type)))
     (the-as
       symbol
@@ -1290,7 +1295,7 @@
                 (s4-0 (new 'static 'array int64 3 18 19 20))
                 (s3-0 (new 'static 'array int32 4 0 0 0 0))
                 (a2-0 (ash 1 (-> s3-0 0)))
-                (v1-6 (enemy-method-131 this a1-3 a2-0))
+                (v1-6 (rnd-int-excluding-masked this a1-3 a2-0))
                 (s4-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-6 8) (the-as int s4-0))))))
                 )
            (set! (-> s3-0 0) v1-6)
@@ -1349,7 +1354,7 @@
       (when (logtest? (-> gp-0 status) (collide-status on-surface))
         (when (not (-> self hit-surface?))
           (set! (-> self hit-surface?) #t)
-          (set! (-> self surface-normal quad) (-> gp-0 poly-normal quad))
+          (vector-copy! (-> self surface-normal) (-> gp-0 poly-normal))
           )
         )
       (when (and (-> self hit-surface?) (= (-> self hit-points) 0.0))
@@ -1466,12 +1471,14 @@
 
 ;; definition for method 67 of type flamer-lava
 (defmethod coin-flip? ((this flamer-lava))
+  "Return #t half the time, #f the other."
   #f
   )
 
 ;; definition for method 120 of type flamer-lava
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this flamer-lava))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1554,12 +1561,13 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this flamer-lava))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flamer-lava" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *flamer-lava-nav-enemy-info*)
+  (setup-enemy! this *flamer-lava-nav-enemy-info*)
   (set! (-> this neck up) (the-as uint 1))
   (set! (-> this neck nose) (the-as uint 2))
   (set! (-> this neck ear) (the-as uint 0))
@@ -1573,9 +1581,9 @@
   (set! (-> this root dynam gravity-length) 225280.0)
   (set! (-> this root dynam gravity-max) 225280.0)
   (let ((v1-25 (-> this root trans)))
-    (set! (-> this base-pos quad) (-> v1-25 quad))
+    (vector-copy! (-> this base-pos) v1-25)
     (+! (-> v1-25 y) 26624.0)
-    (set! (-> this idle-pos quad) (-> v1-25 quad))
+    (vector-copy! (-> this idle-pos) v1-25)
     )
   (init (-> this flit-joint) this (the-as uint 3) (joint-mod-base-flags attached trans))
   (let ((f0-7 (res-lump-float (-> this entity) 'rotoffset)))
@@ -1586,7 +1594,7 @@
   (let ((f0-8 (quaternion-y-angle (-> this root quat))))
     (matrix-rotate-y! (-> this zone-to-world) f0-8)
     )
-  (set! (-> this zone-to-world trans quad) (-> this root trans quad))
+  (vector-copy! (-> this zone-to-world trans) (-> this root trans))
   (matrix-inverse-of-rot-trans! (-> this world-to-zone) (-> this zone-to-world))
   (set! (-> this formation-entity) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (let ((s5-1 (-> this offset))
@@ -1601,9 +1609,10 @@
     (set! (-> t0-1 y) 0.0)
     (set! (-> t0-1 z) 94208.0)
     (set! (-> t0-1 w) 1.0)
-    (set! (-> s5-1 quad)
-          (-> (the-as vector (t9-12 a0-24 a1-13 a2-6 a3-2 t0-1 (the-as (pointer res-tag) #f) *res-static-buf*)) quad)
-          )
+    (vector-copy!
+      s5-1
+      (the-as vector (t9-12 a0-24 a1-13 a2-6 a3-2 t0-1 (the-as (pointer res-tag) #f) *res-static-buf*))
+      )
     )
   (set! (-> this path) (new 'process 'curve-control this 'intro -1000000000.0))
   (set! (-> this path-pos) 0.0)
@@ -1644,7 +1653,8 @@
 
 ;; definition for method 122 of type flamer-lava
 ;; WARN: Return type mismatch int vs object.
-(defmethod go-idle2 ((this flamer-lava))
+(defmethod go-fallback-init ((this flamer-lava))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (if (-> this formation-entity)
       (go (method-of-object this wait-for-formation))
       (go (method-of-object this idle))
@@ -1672,7 +1682,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

@@ -30,10 +30,10 @@
     (.add.mul.z.vf vf5 vf3 vf5 acc)
     (.div.vf Q vf9 vf5 :fsf #b0 :ftf #b11)
     (.wait.vf)
-    (.mul.vf vf5 vf5 Q :mask #b111)
+    (.mul.vf.xyz vf5 vf5 Q)
     (.add.vf vf5 vf5 vf8)
-    (.max.x.vf vf5 vf5 vf0 :mask #b1000)
-    (.min.x.vf vf5 vf5 vf6 :mask #b1000)
+    (.max.x.vf.w vf5 vf5 vf0)
+    (.min.x.vf.w vf5 vf5 vf6)
     (vftoi4.xyzw vf5 vf5)
     (.svf (&-> arg1 quad) vf5)
     arg1
@@ -391,7 +391,7 @@
     (set! (-> arg2 w) 1.0)
     (set! (-> arg3 w) 1.0)
     (set! (-> arg4 w) 1.0)
-    (when (and (transform-point-qword! (the-as vector4w (-> s5-0 vector)) arg2)
+    (when (and (transform-point-qword! (-> s5-0 vector 0) arg2)
                (transform-point-qword! (-> s5-0 vector 1) arg3)
                (transform-point-qword! (-> s5-0 vector 2) arg4)
                )
@@ -985,7 +985,7 @@
     arg0
     arg1
     (-> arg2 vector 3)
-    (the-as vector (-> arg2 vector))
+    (-> arg2 vector 0)
     (meters 2)
     (new 'static 'rgba :r #xff :a #x80)
     )
@@ -1010,14 +1010,7 @@
 
 ;; definition (debug) for function add-debug-rot-matrix
 (defun-debug add-debug-rot-matrix ((arg0 symbol) (arg1 bucket-id) (arg2 matrix) (arg3 vector))
-  (add-debug-vector
-    arg0
-    arg1
-    arg3
-    (the-as vector (-> arg2 vector))
-    (meters 2)
-    (new 'static 'rgba :r #xff :a #x80)
-    )
+  (add-debug-vector arg0 arg1 arg3 (-> arg2 vector 0) (meters 2) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-vector arg0 arg1 arg3 (-> arg2 vector 1) (meters 2) (new 'static 'rgba :g #xff :a #x80))
   (add-debug-vector arg0 arg1 arg3 (-> arg2 vector 2) (meters 2) (new 'static 'rgba :b #xff :a #x80))
   arg2
@@ -1336,7 +1329,6 @@
   )
 
 ;; definition for method 3 of type debug-vertex-stats
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this debug-vertex-stats))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))

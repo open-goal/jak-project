@@ -70,6 +70,7 @@
 
 
 (defmethod init-from-entity! ((this saberfish-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (process-entity-set! this arg0)
   (set! (-> this root) (new 'process 'trsqv))
@@ -350,7 +351,7 @@
       (let ((a0-4 (-> this nav-mesh-jumps data s4-0 mesh)))
         (when a0-4
           (when (or (= arg1 (saberfish-find-behavior none)) (= (-> this nav-mesh-jumps data s4-0 in-water?) sv-88))
-            (vector-! (the-as vector (-> sv-64 vertex)) sv-84 (the-as vector (-> a0-4 bounds)))
+            (vector-! (-> sv-64 vertex 0) sv-84 (the-as vector (-> a0-4 bounds)))
             (.lvf vf1 (&-> (-> sv-64 vertex) 0 quad))
             (.add.w.vf.x vf2 vf0 vf0)
             (.mul.vf vf1 vf1 vf1)
@@ -427,7 +428,7 @@
   (set! sv-56 -1)
   (set! sv-64 40960000000.0)
   (let ((v1-4 (new 'stack-no-clear 'vector)))
-    (set! (-> v1-4 quad) (-> arg0 root trans quad))
+    (vector-copy! v1-4 (-> arg0 root trans))
     (set! sv-68 v1-4)
     )
   (set! sv-72 (new 'stack-no-clear 'vector))
@@ -543,7 +544,7 @@
            )
        (logclear! (-> v1-74 flags) (nav-state-flag directional-mode))
        (logior! (-> v1-74 flags) (nav-state-flag target-poly-dirty))
-       (set! (-> v1-74 target-pos quad) (-> a0-46 quad))
+       (vector-copy! (-> v1-74 target-pos) a0-46)
        )
      0
      )
@@ -648,7 +649,7 @@
     (if (= arg1 'saberfish-crawl-out-of-tube)
         (sound-play "sf-spawner")
         )
-    (set! (-> s4-0 trans quad) (-> this entity extra trans quad))
+    (vector-copy! (-> s4-0 trans) (-> this entity extra trans))
     (quaternion-copy! (-> s4-0 quat) (-> this entity quat))
     (set! (-> s4-0 entity) (-> this entity))
     (set! (-> s4-0 directed?) #f)
@@ -657,7 +658,7 @@
     (set! (-> s4-0 spawn-parent) (process->handle this))
     (set! (-> s4-0 message) arg0)
     (set! (-> s4-0 initial-state) arg1)
-    (set! (-> s4-0 pos quad) (-> this root trans quad))
+    (vector-copy! (-> s4-0 pos) (-> this root trans))
     (quaternion-copy! (-> s4-0 orient) (-> this root quat))
     (set! (-> this last-spawned-process)
           (ppointer->handle (process-spawn saberfish this s4-0 :name "saberfish" :to arg2))
@@ -696,6 +697,7 @@
 
 
 (defmethod init-from-entity! ((this saberfish-spawn-manager-base) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   ;; og:preserve-this added
   (stack-size-set! (-> this main-thread) 2048)

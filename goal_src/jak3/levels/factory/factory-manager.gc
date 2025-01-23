@@ -91,7 +91,7 @@
 
 (set! (-> *factory-fighter-trail* zbuffer?) #f)
 
-(set! (-> *factory-fighter-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *factory-fighter-trail* lie-vector) *up-vector*)
 
 (set! (-> *factory-fighter-trail* use-tape-mode?) #f)
 
@@ -383,6 +383,7 @@
 
 ;; WARN: Return type mismatch none vs object.
 (defmethod init-from-entity! ((this factory-fighter-path) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (cleanup-for-death this)
   )
 
@@ -393,6 +394,7 @@
 
 ;; WARN: Return type mismatch none vs object.
 (defmethod init-from-entity! ((this factory-tanks-path) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (cleanup-for-death this)
   )
 
@@ -490,7 +492,7 @@
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       0.0
       0.0
-      (set! (-> s5-0 quad) (-> *target* control trans quad))
+      (vector-copy! s5-0 (-> *target* control trans))
       (dotimes (s4-0 (-> arg0 fpath npath))
         (when (logtest? (-> arg0 fpath inout s4-0 flags) (factory-inout-flag fi1))
           (get-point-at-percent-along-path! (-> arg0 fpath path s4-0) s5-0 0.0 'interp)
@@ -584,7 +586,7 @@
         (let ((s5-0 (new 'stack-no-clear 'vector))
               (s4-0 (new 'stack-no-clear 'vector))
               )
-          (set! (-> s4-0 quad) (-> (get-trans *target* 3) quad))
+          (vector-copy! s4-0 (get-trans *target* 3))
           (let ((v1-4 s5-0))
             (let ((a0-3 (-> this root trans)))
               (let ((a1-1 (-> this forw)))
@@ -694,7 +696,7 @@
               )
             )
           )
-        (set! (-> this ppos quad) (-> this root trans quad))
+        (vector-copy! (-> this ppos) (-> this root trans))
         (get-point-at-percent-along-path!
           (-> s5-0 fpath path (-> this path-idx))
           (-> this root trans)
@@ -708,10 +710,10 @@
               )
           (vector-! s2-0 (-> this root trans) (-> this ppos))
           (vector-float*! s2-0 s2-0 f28-0)
-          (set! (-> s4-0 quad) (-> s2-0 quad))
+          (vector-copy! s4-0 s2-0)
           (vector-normalize! s4-0 1.0)
           (vector-! s3-0 s2-0 (-> this pvel))
-          (set! (-> this pvel quad) (-> s2-0 quad))
+          (vector-copy! (-> this pvel) s2-0)
           (vector-float*! s3-0 s3-0 (/ f28-0 (meters 15)))
           (cond
             ((< 0.0 (-> this blendpath))
@@ -723,10 +725,10 @@
              (set! (-> this blendpath) (fmax 0.0 (- (-> this blendpath) (* 4.0 f30-0))))
              )
             ((zero? (-> this newpath))
-             (set! (-> this pacc quad) (-> s3-0 quad))
+             (vector-copy! (-> this pacc) s3-0)
              )
             (else
-              (set! (-> s3-0 quad) (-> this pacc quad))
+              (vector-copy! s3-0 (-> this pacc))
               (+! (-> this newpath) -1)
               (if (zero? (-> this newpath))
                   (set! (-> this blendpath) 1.0)
@@ -748,8 +750,8 @@
           (vector+! s5-1 *up-vector* s3-0)
           (vector-normalize! s5-1 1.0)
           (forward-up->quaternion (-> this root quat) s4-0 s5-1)
-          (set! (-> this forw quad) (-> s4-0 quad))
-          (set! (-> this upvc quad) (-> s5-1 quad))
+          (vector-copy! (-> this forw) s4-0)
+          (vector-copy! (-> this upvc) s5-1)
           )
         )
       )
@@ -771,7 +773,7 @@
     (let ((s5-0 (new 'stack-no-clear 'matrix))
           (gp-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> gp-0 quad) (-> self root trans quad))
+      (vector-copy! gp-0 (-> self root trans))
       (let ((s4-0 (new 'stack-no-clear 'vector)))
         (if (-> self disappear)
             (go-virtual die)
@@ -888,11 +890,11 @@
     0
     (cond
       ((logtest? (-> *part-group-id-table* 730 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 730))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 730))
         )
       )
@@ -950,11 +952,11 @@
     (set! (-> self root root-prim local-sphere w) 491520.0)
     (cond
       ((logtest? (-> *part-group-id-table* 730 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 730))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 730))
         )
       )
@@ -1232,6 +1234,7 @@
   )
 
 (defmethod init-from-entity! ((this fac-target) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
@@ -1470,11 +1473,11 @@
         (set! (-> gp-0 rot-speed) 16.0)
         (cond
           ((logtest? (-> *part-group-id-table* 733 flags) (sp-group-flag sp13))
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 733))
            )
           (else
-            (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+            (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
             (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 733))
             )
           )
@@ -1560,7 +1563,8 @@
   )
 
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this fac-target))
+(defmethod get-search-info-flag ((this fac-target))
+  "Get search-info-flag for this process."
   (let ((v0-0 0))
     (if (and (-> this next-state) (= (-> this next-state name) 'idle))
         (set! v0-0 (logior v0-0 40))
@@ -1829,13 +1833,13 @@
     ((= *fac-wave* 2)
      (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-fac-tower-01 factoryb-minimap)))
      (set! (-> this sprites 0 angle) 16384.0)
-     (set-hud-piece-position! (the-as hud-sprite (-> this sprites)) 455 225)
+     (set-hud-piece-position! (-> this sprites 0) 455 225)
      (set-hud-piece-position! (the-as hud-sprite (-> this strings 0 pos)) 488 257)
      )
     (else
       (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-fac-target-01 factoryb-minimap)))
       (set! (-> this sprites 0 angle) 0.0)
-      (set-hud-piece-position! (the-as hud-sprite (-> this sprites)) 488 225)
+      (set-hud-piece-position! (-> this sprites 0) 488 225)
       (set-hud-piece-position! (the-as hud-sprite (-> this strings 0 pos)) 488 257)
       )
     )

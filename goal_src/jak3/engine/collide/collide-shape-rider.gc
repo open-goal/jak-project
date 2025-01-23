@@ -21,7 +21,7 @@
                (logtest? (-> s5-0 prim-core action) (collide-action rideable))
                (logtest? (-> s4-0 prim-core action) (collide-action can-ride))
                )
-      (let ((f0-4 (- (- (vector-vector-distance (the-as vector (-> s5-0 prim-core)) (the-as vector (-> s4-0 prim-core)))
+      (let ((f0-4 (- (- (vector-vector-distance (-> s5-0 prim-core world-sphere) (-> s4-0 prim-core world-sphere))
                         (-> s5-0 prim-core world-sphere w)
                         )
                      (-> s4-0 prim-core world-sphere w)
@@ -51,7 +51,7 @@
       (when (and (logtest? (-> s3-0 prim-core collide-with) s4-0)
                  (logtest? (-> s3-0 prim-core action) (collide-action rideable))
                  )
-        (let ((f0-2 (- (- (vector-vector-distance (the-as vector (-> s3-0 prim-core)) (the-as vector (-> arg0 prim-core)))
+        (let ((f0-2 (- (- (vector-vector-distance (-> s3-0 prim-core world-sphere) (-> arg0 prim-core world-sphere))
                           (-> s3-0 prim-core world-sphere w)
                           )
                        (-> arg0 prim-core world-sphere w)
@@ -83,7 +83,7 @@
          (when (and (logtest? s4-0 (-> s3-0 prim-core collide-as))
                     (logtest? (-> s3-0 prim-core action) (collide-action can-ride))
                     )
-           (let ((f0-2 (- (- (vector-vector-distance (the-as vector (-> this prim-core)) (the-as vector (-> s3-0 prim-core)))
+           (let ((f0-2 (- (- (vector-vector-distance (-> this prim-core world-sphere) (-> s3-0 prim-core world-sphere))
                              (-> this prim-core world-sphere w)
                              )
                           (-> s3-0 prim-core world-sphere w)
@@ -105,14 +105,9 @@
          (let ((v1-13 (populate-for-prim-mesh *collide-mesh-cache* this)))
            (when v1-13
              (let* ((s4-1 (new 'stack-no-clear 'collide-tri-result))
-                    (f0-4 (sphere-on-platform-test
-                            s3-1
-                            (the-as collide-mesh-cache-tri (-> v1-13 tris))
-                            s4-1
-                            (the-as vector (-> arg0 prim-core))
-                            (-> arg1 best-dist)
-                            )
-                          )
+                    (f0-4
+                      (sphere-on-platform-test s3-1 (-> v1-13 tris 0) s4-1 (-> arg0 prim-core world-sphere) (-> arg1 best-dist))
+                      )
                     )
                (when (< f0-4 (-> arg1 best-dist))
                  (set! (-> arg1 best-dist) f0-4)
@@ -169,7 +164,7 @@
       (set! *actor-list-length* 0)
       (if (logtest? s5-0 (collide-spec hit-by-others-list))
           (set! *actor-list-length*
-                (fill-actor-list-for-box *actor-hash* (the-as vector (-> s4-0 prim-core)) *actor-list* 256)
+                (fill-actor-list-for-box *actor-hash* (-> s4-0 prim-core world-sphere) *actor-list* 256)
                 )
           )
       (when (logtest? s5-0 (collide-spec player-list))
@@ -361,7 +356,7 @@
         (let ((s2-0 (new 'stack-no-clear 'vector))
               (s3-0 (new 'stack-no-clear 'vector))
               )
-          (set! (-> s3-0 quad) (-> gp-0 trans quad))
+          (vector-copy! s3-0 (-> gp-0 trans))
           (vector-! s2-0 (-> arg0 rider-dest) s3-0)
           (cond
             ((logtest? (-> this root-prim prim-core action) (collide-action pull-rider-can-collide))
@@ -378,7 +373,7 @@
                (set! (-> this root-prim prim-core collide-as) s1-0)
                )
              (let ((s1-1 (new 'stack-no-clear 'vector)))
-               (set! (-> s1-1 quad) (-> s2-0 quad))
+               (vector-copy! s1-1 s2-0)
                (let ((v1-19 s1-1))
                  (.lvf vf1 (&-> s1-1 quad))
                  (let ((f0-2 (-> pp clock frames-per-second)))

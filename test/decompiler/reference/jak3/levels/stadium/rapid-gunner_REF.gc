@@ -167,34 +167,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 78643.2
-    :knocked-medium-vxz-hi 117964.8
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 135168.0
-    :knocked-hard-vy-hi 151552.0
-    :knocked-huge-vxz-lo 78643.2
-    :knocked-huge-vxz-hi 117964.8
-    :knocked-huge-vy-lo 135168.0
-    :knocked-huge-vy-hi 151552.0
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 19.2)
+    :knocked-medium-vxz-hi (meters 28.8)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 33)
+    :knocked-hard-vy-hi (meters 37)
+    :knocked-huge-vxz-lo (meters 19.2)
+    :knocked-huge-vxz-hi (meters 28.8)
+    :knocked-huge-vy-lo (meters 33)
+    :knocked-huge-vy-hi (meters 37)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 1.0 :w 32970.816)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -584,6 +584,7 @@
 ;; definition for method 120 of type rapid-gunner
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this rapid-gunner))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -859,7 +860,7 @@
           )
       (logclear! (-> a0-2 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-2 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-2 target-pos quad) (-> v1-8 quad))
+      (vector-copy! (-> a0-2 target-pos) v1-8)
       )
     0
     (nav-enemy-travel-post)
@@ -913,7 +914,7 @@
       (ja :num! (seek!))
       )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
+      (vector-copy! gp-0 (-> self root trans))
       (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
         (ja-no-eval :group! (-> self draw art-group data 19) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -1070,7 +1071,7 @@
            (a1-2 (-> self move-dest))
            (f0-0 (-> v1-14 extra-nav-sphere w))
            )
-      (set! (-> v1-14 extra-nav-sphere quad) (-> a1-2 quad))
+      (vector-copy! (-> v1-14 extra-nav-sphere) a1-2)
       (set! (-> v1-14 extra-nav-sphere w) f0-0)
       )
     0
@@ -1104,7 +1105,7 @@
       (ja :num! (seek!))
       )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
+      (vector-copy! gp-0 (-> self root trans))
       (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
         (ja-no-eval :group! (-> self draw art-group data 22) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -1122,7 +1123,7 @@
       (suspend)
       (nav-enemy-falling-post)
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1217,7 +1218,7 @@
       (suspend)
       (ja :num! (seek! max 0.2))
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post #f
   )
@@ -1259,7 +1260,7 @@
           )
         )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
@@ -1270,6 +1271,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs process.
 (defmethod update-focus ((this rapid-gunner))
+  "Potentially update the focus, if there is something better to focus on."
   (with-pp
     (let ((t9-0 (method-of-type enemy update-focus)))
       (t9-0 this)
@@ -1292,7 +1294,7 @@
       )
     (let ((a0-5 (handle->process (-> this focus handle))))
       (if a0-5
-          (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-5) 1) quad))
+          (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable a0-5) 1))
           )
       )
     (the-as process 0)
@@ -1301,7 +1303,8 @@
 
 ;; definition for method 108 of type rapid-gunner
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod enemy-method-108 ((this rapid-gunner) (arg0 process-focusable))
+(defmethod should-flee-from? ((this rapid-gunner) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (with-pp
     (the-as symbol (or (focus-test? arg0 invulnerable)
                        (let ((v1-3 (new 'stack-no-clear 'event-message-block)))
@@ -1317,6 +1320,7 @@
 
 ;; definition for method 82 of type rapid-gunner
 (defmethod event-handler ((this rapid-gunner) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -1328,7 +1332,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1357,19 +1361,21 @@
   )
 
 ;; definition for method 122 of type rapid-gunner
-(defmethod go-idle2 ((this rapid-gunner))
+(defmethod go-fallback-init ((this rapid-gunner))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (let ((v1-0 (-> this turret-actor)))
     (if (if v1-0
             (-> v1-0 extra process)
             )
         (go (method-of-object this turret-seek))
-        ((method-of-type nav-enemy go-idle2) this)
+        ((method-of-type nav-enemy go-fallback-init) this)
         )
     )
   )
 
 ;; definition for method 67 of type rapid-gunner
 (defmethod coin-flip? ((this rapid-gunner))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1377,12 +1383,13 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this rapid-gunner))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-rapid-gunner" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *rapid-gunner-nav-enemy-info*)
+  (setup-enemy! this *rapid-gunner-nav-enemy-info*)
   (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
@@ -1408,7 +1415,7 @@
     )
   (set! (-> this turret-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (if (-> this turret-actor)
-      (set! (-> this turret-pos quad) (-> this turret-actor extra trans quad))
+      (vector-copy! (-> this turret-pos) (-> this turret-actor extra trans))
       )
   (setup-masks (-> this draw) 0 4)
   (logior! (-> this focus collide-with) (collide-spec bot))
@@ -1420,13 +1427,10 @@
 ;; definition for method 56 of type rapid-gunner
 ;; WARN: Return type mismatch float vs object.
 (defmethod knocked-handler ((this rapid-gunner) (arg0 vector))
+  "Called when this enemy is knocked."
   (get-knockback-dir! this arg0)
   (let ((f30-0 (rnd-float-range this 0.0 1.0)))
     (vector-float*! arg0 arg0 (lerp 73728.0 90112.0 f30-0))
     (set! (-> arg0 y) (lerp 57344.0 65536.0 f30-0))
     )
   )
-
-
-
-

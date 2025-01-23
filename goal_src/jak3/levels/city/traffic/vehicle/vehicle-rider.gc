@@ -156,7 +156,7 @@
          (squad-control-method-18 (-> self squad) 2 *target*)
          (set! (-> gp-0 object-type) (traffic-type guard-a))
          )
-       (set! (-> gp-0 position quad) (-> self root trans quad))
+       (vector-copy! (-> gp-0 position) (-> self root trans))
        (quaternion-copy! (-> gp-0 rotation) (-> self root quat))
        (send-event *traffic-manager* 'activate-object gp-0)
        )
@@ -239,13 +239,14 @@
 
 ;; WARN: Return type mismatch entity-perm-status vs object.
 (defmethod init-from-entity! ((this vehicle-rider) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (process-entity-status! this (entity-perm-status dead) #t)
   )
 
 (defbehavior vehicle-rider-init-by-other vehicle-rider ((arg0 traffic-object-spawn-params))
   (set! (-> self squad) *ff-squad-control*)
   (initialize-collision self)
-  (set! (-> self root trans quad) (-> arg0 position quad))
+  (vector-copy! (-> self root trans) (-> arg0 position))
   (quaternion-copy! (-> self root quat) (-> arg0 rotation))
   (logior! (-> self focus-status) (focus-status pilot-riding))
   (setup-lods self)

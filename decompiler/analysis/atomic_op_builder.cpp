@@ -1689,6 +1689,62 @@ std::unique_ptr<AtomicOp> convert_vector_plus(const Instruction& i0,
       idx);
 }
 
+std::unique_ptr<AtomicOp> convert_vector_xyz_product(const Instruction& i0,
+                                                     const Instruction& i1,
+                                                     const Instruction& i2,
+                                                     const Instruction& i3,
+                                                     const Instruction& i4,
+                                                     int idx) {
+  /*
+    lqc2 vf4, 0(a1)
+    lqc2 vf5, 0(a2)
+    vaddx.w vf6, vf0, vf0
+    vmul.xyz vf6, vf4, vf5
+    sqc2 vf6, 0(a0)
+    */
+
+  // lqc2 vf4, 0(a1) (src1)
+  if (i0.kind != InstructionKind::LQC2 || i0.get_dst(0).get_reg() != make_vf(4) ||
+      !i0.get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register src1 = i0.get_src(1).get_reg();
+
+  // lqc2 vf5, 0(a2) (src2)
+  if (i1.kind != InstructionKind::LQC2 || i1.get_dst(0).get_reg() != make_vf(5) ||
+      !i1.get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register src2 = i1.get_src(1).get_reg();
+
+  // vaddx.w vf6, vf0, vf0
+  if (i2.kind != InstructionKind::VADD_BC || i2.get_dst(0).get_reg() != make_vf(6) ||
+      i2.get_src(0).get_reg() != make_vf(0) || i2.get_src(1).get_reg() != make_vf(0) ||
+      i2.cop2_dest != 1 || i2.cop2_bc != 0) {
+    return nullptr;
+  }
+
+  // vmul.xyz vf6, vf4, vf5
+  if (i3.kind != InstructionKind::VMUL || i3.get_dst(0).get_reg() != make_vf(6) ||
+      i3.get_src(0).get_reg() != make_vf(4) || i3.get_src(1).get_reg() != make_vf(5) ||
+      i3.cop2_dest != 14) {
+    return nullptr;
+  }
+
+  // sqc2 vf6, 0(a0) (dst)
+  if (i4.kind != InstructionKind::SQC2 || i4.get_src(0).get_reg() != make_vf(6) ||
+      !i4.get_src(1).is_imm(0)) {
+    return nullptr;
+  }
+  Register dst = i4.get_src(2).get_reg();
+
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_XYZ_PRODUCT, make_src_atom(dst, idx),
+                       make_src_atom(src1, idx), make_src_atom(src2, idx)),
+      idx);
+}
+
 std::unique_ptr<AtomicOp> convert_vector_minus(const Instruction& i0,
                                                const Instruction& i1,
                                                const Instruction& i2,
@@ -1817,6 +1873,11 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
   auto as_vector_plus = convert_vector_plus(i0, i1, i2, i3, i4, idx);
   if (as_vector_plus) {
     return as_vector_plus;
+  }
+
+  auto as_vector_xyz = convert_vector_xyz_product(i0, i1, i2, i3, i4, idx);
+  if (as_vector_xyz) {
+    return as_vector_xyz;
   }
 
   auto as_vector_minus = convert_vector_minus(i0, i1, i2, i3, i4, idx);

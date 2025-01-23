@@ -59,14 +59,14 @@
       (set! sv-128 (-> this alpha))
       (set! sv-132 (the-as float 0.0))
       (set! sv-136 (the-as float 0.0))
-      (set! (-> sv-112 quad) (-> this knots data s5-0 pos quad))
+      (vector-copy! sv-112 (-> this knots data s5-0 pos))
       (cond
         ((< s5-0 (+ (-> this knots length) -1))
-         (vector-! sv-116 (the-as vector (-> this knots data (+ s5-0 1))) sv-112)
-         (set! sv-136 (vector-vector-distance sv-112 (the-as vector (-> this knots data (+ s5-0 1)))))
+         (vector-! sv-116 (-> this knots data (+ s5-0 1) pos) sv-112)
+         (set! sv-136 (vector-vector-distance sv-112 (-> this knots data (+ s5-0 1) pos)))
          )
         (else
-          (vector-! sv-116 sv-112 (the-as vector (-> this knots data (+ s5-0 -1))))
+          (vector-! sv-116 sv-112 (-> this knots data (+ s5-0 -1) pos))
           )
         )
       (let ((f0-7 (/ f30-0 (-> this uv-repeat-dist))))
@@ -102,7 +102,7 @@
 (defmethod add-prim-vert ((this rope-prim-system) (arg0 prim-strip) (arg1 vector) (arg2 rgba) (arg3 float) (arg4 float))
   (when (< (-> arg0 num-verts) (-> arg0 allocated-num-verts))
     (let ((v1-5 (-> arg0 data (-> arg0 num-verts))))
-      (set! (-> v1-5 pos quad) (-> arg1 quad))
+      (vector-copy! (-> v1-5 pos) arg1)
       (set! (-> v1-5 col) arg2)
       (set! (-> v1-5 stq x) arg3)
       (set! (-> v1-5 stq y) arg4)
@@ -213,12 +213,12 @@
   (call-parent-method this)
   (let ((v1-1 (handle->process (-> this proc))))
     (vector<-cspace!
-      (the-as vector (-> this knots data))
+      (-> this knots data 0 pos)
       (-> (the-as process-drawable v1-1) node-list data (-> this info joint-info-array 0 joint-index))
       )
     )
   (let ((v0-3 (-> this knots data 0 prev-pos)))
-    (set! (-> v0-3 quad) (-> this knots data 0 pos quad))
+    (vector-copy! v0-3 (-> this knots data 0 pos))
     v0-3
     )
   )
@@ -245,14 +245,14 @@
                )
          (s2-0 (vector-normalize-copy!
                  (new 'stack-no-clear 'vector)
-                 (the-as vector (-> (the-as process-drawable s4-0)
-                                    node-list
-                                    data
-                                    (-> this info joint-info-array 0 joint-index)
-                                    bone
-                                    transform
-                                    )
-                         )
+                 (-> (the-as process-drawable s4-0)
+                     node-list
+                     data
+                     (-> this info joint-info-array 0 joint-index)
+                     bone
+                     transform
+                     rvec
+                     )
                  1.0
                  )
                )
@@ -279,7 +279,7 @@
             (a0-15 (-> this knots data s5-2))
             (s2-1 (new 'stack-no-clear 'vector))
             )
-        (vector-! s2-1 (the-as vector a0-15) (the-as vector v1-18))
+        (vector-! s2-1 (-> a0-15 pos) (-> v1-18 pos))
         (vector-normalize! s2-1 1.0)
         (let ((s3-1 (-> this joint-mods data s5-2)))
           (let ((s1-0 matrix-u-f-compose)

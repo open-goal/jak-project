@@ -270,6 +270,7 @@
 
 ;; definition for method 11 of type tpl-outer-airlock-door
 (defmethod init-from-entity! ((this tpl-outer-airlock-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -348,6 +349,7 @@
 
 ;; definition for method 11 of type tpl-mardoor
 (defmethod init-from-entity! ((this tpl-mardoor) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -479,7 +481,7 @@
   :enter (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
       (let ((a0-0 (-> self info sphere-array 0)))
-        (set! (-> gp-0 pos quad) (-> a0-0 quad))
+        (vector-copy! (-> gp-0 pos) a0-0)
         )
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags taf5))
@@ -1113,8 +1115,8 @@
       (let ((a2-4 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) *y-vector* (-> self kill-angle))))
         (quaternion*! (-> self root quat) (-> self kill-quat) a2-4)
         )
-      (set! (-> self other-eyeball-jmod transform scale quad) (-> self root scale quad))
-      (set! (-> self eyeball-jmod transform scale quad) (-> self root scale quad))
+      (vector-copy! (-> self other-eyeball-jmod transform scale) (-> self root scale))
+      (vector-copy! (-> self eyeball-jmod transform scale) (-> self root scale))
       (let* ((f0-9 (lerp-scale 1.0 0.0 (the float (- (current-time) (-> self state-time))) 0.0 60.0))
              (f0-11 (* f0-9 f0-9))
              )
@@ -1179,6 +1181,7 @@
 ;; definition for method 11 of type tpl-holo-eye
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-holo-eye) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 320)
   (set! (-> this root) (new 'process 'trsqv))
@@ -1201,7 +1204,7 @@
         )
       )
     )
-  (set! (-> this init-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this init-trans) (-> this root trans))
   (init (-> this eyeball-jmod) this (the-as uint 4) (joint-mod-base-flags attached scale))
   (init (-> this other-eyeball-jmod) this (the-as uint 9) (joint-mod-base-flags attached trans quat scale))
   (set! (-> this perm-part)
@@ -1391,6 +1394,7 @@
 
 ;; definition for method 11 of type tpl-spike-trap
 (defmethod init-from-entity! ((this tpl-spike-trap) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) projectile-bounce-reaction)
@@ -1541,9 +1545,9 @@
                  )
                (.lvf vf4 (&-> a1-4 quad))
                )
-             (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-             (.mul.x.vf acc vf5 vf7 :mask #b111)
-             (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+             (.add.x.vf.w vf6 vf0 vf0)
+             (.mul.x.vf.xyz acc vf5 vf7)
+             (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
              (.svf (&-> v1-16 quad) vf6)
              (set! (-> a0-5 state meet data 0 quad) (-> v1-16 quad))
              )
@@ -1559,11 +1563,11 @@
                  )
                (.lvf vf4 (&-> a1-6 quad))
                )
-             (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-             (.mul.x.vf acc vf5 vf7 :mask #b111)
-             (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+             (.add.x.vf.w vf6 vf0 vf0)
+             (.mul.x.vf.xyz acc vf5 vf7)
+             (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
              (.svf (&-> v1-20 quad) vf6)
-             (set! (-> a0-8 state meet data (+ (-> a0-8 state points-to-draw) -1) quad) (-> v1-20 quad))
+             (vector-copy! (-> a0-8 state meet data (+ (-> a0-8 state points-to-draw) -1)) v1-20)
              )
            )
          (let ((v1-24 (-> this lightning s5-0))
@@ -1765,6 +1769,7 @@
 ;; definition for method 11 of type tpl-elec-swing-pole
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-elec-swing-pole) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1779,7 +1784,7 @@
     (set! (-> this electrify) #f)
     (set! (-> this sound-id) (new-sound-id))
     (init-collision! this)
-    (set! (-> this root trans quad) (-> arg0 extra trans quad))
+    (vector-copy! (-> this root trans) (-> arg0 extra trans))
     (quaternion-copy! (-> this root quat) (-> arg0 quat))
     (vector-identity! (-> this root scale))
     (vector-z-quaternion! (-> this dir) (-> this root quat))
@@ -1828,9 +1833,9 @@
               )
             (.lvf vf4 (&-> a0-30 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> v1-39 quad) vf6)
           )
         (let ((v1-42 (-> this path curve cverts 1)))
@@ -1843,9 +1848,9 @@
               )
             (.lvf vf4 (&-> a0-32 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> v1-42 quad) vf6)
           )
         )
@@ -2043,6 +2048,7 @@
 ;; definition for method 11 of type tpl-spindle
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-spindle) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 int))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -2203,6 +2209,7 @@
 ;; definition for method 11 of type tpl-fan-two
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-fan-two) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 int))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -2349,6 +2356,7 @@
 ;; definition for method 11 of type tpl-fan-three
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-fan-three) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 int))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -2541,6 +2549,7 @@
 
 ;; definition for method 11 of type tpl-break-alcove
 (defmethod init-from-entity! ((this tpl-break-alcove) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
@@ -2729,6 +2738,7 @@
 
 ;; definition for method 11 of type tpl-break-door-a
 (defmethod init-from-entity! ((this tpl-break-door-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))

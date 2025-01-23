@@ -549,6 +549,7 @@
 
 ;; definition for method 11 of type pre-tformer
 (defmethod init-from-entity! ((this pre-tformer) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -613,6 +614,7 @@
 
 ;; definition for method 11 of type wall-window-big
 (defmethod init-from-entity! ((this wall-window-big) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -629,7 +631,7 @@
 (defbehavior wall-window-big-init-by-other wall-window-big ((arg0 vector) (arg1 entity-actor))
   (process-entity-set! self arg1)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-wall-window-big" (the-as (pointer level) #f)))
@@ -664,6 +666,7 @@
 
 ;; definition for method 11 of type precurd-door-a
 (defmethod init-from-entity! ((this precurd-door-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -748,7 +751,7 @@
 (defun precur-bridge-path-trigger ((arg0 int))
   (when *target*
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> (target-pos 0) quad))
+      (vector-copy! gp-0 (target-pos 0))
       (and (< (-> *precur-path-trigger-points* arg0) (-> gp-0 z))
            (< (-> gp-0 z) 2048000.0)
            (< -40960.0 (-> gp-0 x))
@@ -765,7 +768,7 @@
 (defun precur-bridge-path-2nd-trigger ((arg0 int))
   (when *target*
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> (target-pos 0) quad))
+      (vector-copy! gp-0 (target-pos 0))
       (and (< (-> *precur-path-2nd-trigger-points* arg0) (-> gp-0 z))
            (< (-> gp-0 z) 2129920.0)
            (< -40960.0 (-> gp-0 x))
@@ -782,7 +785,7 @@
 (defun precur-bridge-blocks-trigger ((arg0 int))
   (when *target*
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> (target-pos 0) quad))
+      (vector-copy! gp-0 (target-pos 0))
       (and (< (-> *precur-blocks-trigger-points* arg0) (-> gp-0 z))
            (< (-> gp-0 z) 2048000.0)
            (< -40960.0 (-> gp-0 x))
@@ -1373,6 +1376,7 @@
 ;; definition for method 11 of type precur-bridge-path-break
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this precur-bridge-path-break) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set-idx-by-name this)
   (init-collision! this)
@@ -2398,7 +2402,7 @@
       (('xform)
        (let ((v1-9 (-> block param 0)))
          (when (not (-> self triggered?))
-           (set! (-> self root trans quad) (-> self entity extra trans quad))
+           (vector-copy! (-> self root trans) (-> self entity extra trans))
            (vector+! (-> self root trans) (-> self root trans) (the-as vector (+ v1-9 48)))
            )
          )
@@ -2444,10 +2448,11 @@
              )
         (when (= (-> a0-8 type) collide-shape-prim-group)
           (dotimes (s4-0 (the-as int (-> gp-0 specific 0)))
-            (set! (-> (new 'stack-no-clear 'vector) quad)
-                  (-> (the-as collide-shape-prim-group gp-0) child s4-0 prim-core world-sphere quad)
-                  )
-            (set! (-> s5-0 quad) (-> (the-as collide-shape-prim-group gp-0) child s4-0 prim-core world-sphere quad))
+            (vector-copy!
+              (new 'stack-no-clear 'vector)
+              (-> (the-as collide-shape-prim-group gp-0) child s4-0 prim-core world-sphere)
+              )
+            (vector-copy! s5-0 (-> (the-as collide-shape-prim-group gp-0) child s4-0 prim-core world-sphere))
             (when (and (not (-> self toe-up? s4-0)) (< 831488.0 (-> s5-0 y)))
               (set! (-> self toe-up? s4-0) #t)
               (when (time-elapsed? *precurd-panel-tear-off-time* (seconds 1))
@@ -2484,6 +2489,7 @@
 
 ;; definition for method 11 of type precur-bridge-blocks-break
 (defmethod init-from-entity! ((this precur-bridge-blocks-break) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set-idx-by-name this)
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
@@ -2517,7 +2523,3 @@
     )
   (go (method-of-object this idle))
   )
-
-
-
-

@@ -33,6 +33,7 @@
 
 ;; definition for method 11 of type cav-break-bridge
 (defmethod init-from-entity! ((this cav-break-bridge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -79,7 +80,8 @@
 
 ;; definition for method 20 of type cav-railblocker
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this cav-railblocker))
+(defmethod get-search-info-flag ((this cav-railblocker))
+  "Get search-info-flag for this process."
   (the-as search-info-flag (if (-> this trackable)
                                24
                                1
@@ -220,7 +222,7 @@
         )
       )
     (let ((gp-1 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-1 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 8192.0)
       (set! (-> gp-1 scale) 1.0)
@@ -291,6 +293,7 @@
 ;; definition for method 11 of type cav-railblocker
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this cav-railblocker) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -364,6 +367,7 @@
 
 ;; definition for method 11 of type cav-minecar
 (defmethod init-from-entity! ((this cav-minecar) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -464,15 +468,15 @@
           0.5
           )
         (vector-! s5-0 gp-0 (-> self prev-position))
-        (set! (-> self prev-position quad) (-> gp-0 quad))
+        (vector-copy! (-> self prev-position) gp-0)
         (let ((v1-13 s5-0))
           (.lvf vf1 (&-> s5-0 quad))
           (let ((f0-7 (-> self clock frames-per-second)))
             (.mov at-0 f0-7)
             )
           (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> v1-13 quad) vf1)
           )
         (let ((f30-1 (fabs (- (-> gp-0 x) (-> (target-pos 0) x)))))
@@ -634,8 +638,8 @@
             )
           )
       (vector<-cspace! (-> s4-0 min) (-> self node-list data (-> s5-0 (+ (-> s5-0 length) -1) joint-index)))
-      (set! (-> s4-0 max quad) (-> s4-0 min quad))
-      (set! (-> s5-0 (+ (-> s5-0 length) -1) position quad) (-> s4-0 min quad))
+      (vector-copy! (-> s4-0 max) (-> s4-0 min))
+      (vector-copy! (-> s5-0 (+ (-> s5-0 length) -1) position) (-> s4-0 min))
       (dotimes (s3-0 (+ (-> s5-0 length) -1))
         (let ((s2-0 (new 'stack-no-clear 'vector)))
           (vector<-cspace! (-> s5-0 s3-0 position) (-> self node-list data (-> s5-0 s3-0 joint-index)))
@@ -659,7 +663,7 @@
       (mem-copy! (the-as pointer (-> gp-0 bbox)) (the-as pointer s4-0) 32)
       (fill-using-bounding-box *collide-cache* gp-0)
       (dotimes (s4-1 (+ (-> s5-0 length) -1))
-        (set! (-> gp-0 start-pos quad) (-> s5-0 s4-1 position quad))
+        (vector-copy! (-> gp-0 start-pos) (-> s5-0 s4-1 position))
         (vector-! (-> gp-0 move-dist) (-> s5-0 (+ s4-1 1) position) (-> gp-0 start-pos))
         (let ((v1-52 gp-0))
           (set! (-> v1-52 radius) 2048.0)
@@ -850,7 +854,7 @@
       )
     0
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-0 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-0 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-0 spawn-quat))
       (set! (-> gp-0 radius) 8192.0)
       (set! (-> gp-0 scale) 1.0)
@@ -886,17 +890,16 @@
          (set! (-> gp-0 charge) 1.0)
          (set! (-> gp-0 options) (projectile-options))
          (logclear! (-> gp-0 options) (projectile-options po14 po15 po16))
-         (set! (-> gp-0 pos quad)
-               (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node prebot-gun-lod0-jg gunTip)) quad)
-               )
-         (set! (-> gp-0 vel quad) (-> (vector-normalize-copy!
-                                        (new 'stack-no-clear 'vector)
-                                        (-> self node-list data 7 bone transform uvec)
-                                        (* 4096.0 (-> self clock frames-per-second))
-                                        )
-                                      quad
-                                      )
-               )
+         (vector-copy!
+           (-> gp-0 pos)
+           (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node prebot-gun-lod0-jg gunTip))
+           )
+         (vector-copy! (-> gp-0 vel) (vector-normalize-copy!
+                                       (new 'stack-no-clear 'vector)
+                                       (-> self node-list data 7 bone transform uvec)
+                                       (* 4096.0 (-> self clock frames-per-second))
+                                       )
+                       )
          (set! (-> gp-0 notify-handle) (the-as handle #f))
          (set! (-> gp-0 owner-handle) (the-as handle #f))
          (set! (-> gp-0 target-handle) (the-as handle #f))
@@ -1101,7 +1104,7 @@
        (let ((a1-12 (new 'stack 'debris-tuning (the-as uint 1))))
          (set! (-> a1-12 hit-xz-reaction) 0.95)
          (set! (-> a1-12 hit-y-reaction) 0.6)
-         (set! (-> a1-12 fountain-rand-transv-lo quad) (-> self root trans quad))
+         (vector-copy! (-> a1-12 fountain-rand-transv-lo) (-> self root trans))
          (+! (-> a1-12 fountain-rand-transv-lo z) 4096.0)
          (debris-spawn
            (the-as process-drawable (ppointer->process (-> self parent)))
@@ -1113,11 +1116,11 @@
        (sound-play "columns-break" :position (-> self root trans))
        (cond
          ((logtest? (-> *part-group-id-table* 1344 flags) (sp-group-flag sp13))
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1344))
           )
          (else
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1344))
            )
          )
@@ -1174,7 +1177,7 @@
       (set-vector! (-> self draw color-mult) f30-0 f30-0 f30-0 1.0)
       )
     (let ((a1-2 (new 'stack-no-clear 'vector)))
-      (set! (-> a1-2 quad) (-> self root trans quad))
+      (vector-copy! a1-2 (-> self root trans))
       (set! (-> a1-2 y) (-> self start-y))
       (spawn (-> self cool-part) a1-2)
       )
@@ -1200,7 +1203,7 @@
     )
   :trans (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'vector)))
-      (set! (-> a1-0 quad) (-> self root trans quad))
+      (vector-copy! a1-0 (-> self root trans))
       (set! (-> a1-0 y) (-> self start-y))
       (spawn (-> self part) a1-0)
       )
@@ -1239,7 +1242,7 @@
         (go-virtual wait-to-cool)
         )
     (let ((a1-1 (new 'stack-no-clear 'vector)))
-      (set! (-> a1-1 quad) (-> self root trans quad))
+      (vector-copy! a1-1 (-> self root trans))
       (set! (-> a1-1 y) (-> self start-y))
       (spawn (-> self part) a1-1)
       )
@@ -1272,7 +1275,7 @@
         (go-virtual grow)
         )
     (let ((a1-0 (new 'stack-no-clear 'vector)))
-      (set! (-> a1-0 quad) (-> self root trans quad))
+      (vector-copy! a1-0 (-> self root trans))
       (set! (-> a1-0 y) (-> self start-y))
       (spawn (-> self heat-part) a1-0)
       )
@@ -1357,6 +1360,7 @@
 
 ;; definition for method 11 of type cav-exit-door
 (defmethod init-from-entity! ((this cav-exit-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 2))

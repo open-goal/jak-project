@@ -4,13 +4,9 @@
 ;; definition for method 15 of type hud-marauder
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-marauder))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    195
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 195)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -10 33)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -10 33)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -207,34 +203,34 @@
     :jump-height-min (meters 1)
     :jump-height-factor 0.2
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 49152.0
-    :knocked-soft-vxz-hi 73728.0
-    :knocked-soft-vy-lo 32768.0
-    :knocked-soft-vy-hi 49152.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 32768.0
-    :knocked-medium-vy-hi 49152.0
-    :knocked-hard-vxz-lo 40960.0
-    :knocked-hard-vxz-hi 61440.0
-    :knocked-hard-vy-lo 32768.0
-    :knocked-hard-vy-hi 49152.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 49152.0
-    :knocked-yellow-vxz-hi 65536.0
-    :knocked-yellow-vy-lo 32768.0
-    :knocked-yellow-vy-hi 49152.0
-    :knocked-red-vxz-lo 65536.0
-    :knocked-red-vxz-hi 81920.0
-    :knocked-red-vy-lo 32768.0
-    :knocked-red-vy-hi 49152.0
-    :knocked-blue-vxz-lo 32768.0
-    :knocked-blue-vxz-hi 65536.0
-    :knocked-blue-vy-lo 32768.0
-    :knocked-blue-vy-hi 49152.0
+    :knocked-soft-vxz-lo (meters 12)
+    :knocked-soft-vxz-hi (meters 18)
+    :knocked-soft-vy-lo (meters 8)
+    :knocked-soft-vy-hi (meters 12)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 8)
+    :knocked-medium-vy-hi (meters 12)
+    :knocked-hard-vxz-lo (meters 10)
+    :knocked-hard-vxz-hi (meters 15)
+    :knocked-hard-vy-lo (meters 8)
+    :knocked-hard-vy-hi (meters 12)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 12)
+    :knocked-yellow-vxz-hi (meters 16)
+    :knocked-yellow-vy-lo (meters 8)
+    :knocked-yellow-vy-hi (meters 12)
+    :knocked-red-vxz-lo (meters 16)
+    :knocked-red-vxz-hi (meters 20)
+    :knocked-red-vy-lo (meters 8)
+    :knocked-red-vy-hi (meters 12)
+    :knocked-blue-vxz-lo (meters 8)
+    :knocked-blue-vxz-hi (meters 16)
+    :knocked-blue-vy-lo (meters 8)
+    :knocked-blue-vy-hi (meters 12)
     :ragdoll-info (new 'static 'ragdoll-setup
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
       :bg-collide-with (collide-spec backgnd crate obstacle hit-by-player-list hit-by-others-list pusher)
@@ -548,17 +544,18 @@
 ;; definition for method 92 of type marauder
 ;; INFO: Used lq/sq
 (defmethod init-jump-info! ((this marauder) (arg0 enemy-jump-info))
+  "Populate an enemy-jump-info for jumping to this enemy's event-param-point"
   (set! (-> arg0 flags) (enemy-jump-flags ejf0))
   (set! (-> arg0 anim-speed) (rnd-float-range this 0.9 1.1))
   (set! (-> arg0 hang-time) 0)
-  (set! (-> arg0 dest-pos quad) (-> this event-param-point quad))
-  (set! (-> arg0 start-pos quad) (-> this root trans quad))
+  (vector-copy! (-> arg0 dest-pos) (-> this event-param-point))
+  (vector-copy! (-> arg0 start-pos) (-> this root trans))
   (let ((s4-0 (new 'stack-no-clear 'collide-query)))
     (if (enemy-above-ground? this s4-0 (-> arg0 dest-pos) (-> this gnd-collide-with) 20480.0 81920.0 1024.0)
         (set! (-> arg0 dest-pos y) (-> s4-0 best-other-tri intersect y))
         )
     )
-  (setup-jump! this arg0)
+  (setup-jump-trajectory! this arg0)
   (none)
   )
 
@@ -606,6 +603,7 @@
 ;; definition for method 82 of type marauder
 ;; INFO: Used lq/sq
 (defmethod event-handler ((this marauder) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (local-vars (v0-1 object))
   (case arg2
     (('nav-mesh-moved)
@@ -613,8 +611,8 @@
        (-> arg3 param 1)
        (vector+! (-> this root trans) (-> this root trans) (the-as vector v1-1))
        (vector+!
-         (the-as vector (-> this jump-info traj))
-         (the-as vector (-> this jump-info traj))
+         (-> this jump-info traj initial-position)
+         (-> this jump-info traj initial-position)
          (the-as vector v1-1)
          )
        (vector+! (-> this jump-info start-pos) (-> this jump-info start-pos) (the-as vector v1-1))
@@ -647,7 +645,7 @@
      )
     (('save)
      (let ((a0-23 (the-as object (-> arg3 param 0))))
-       (set! (-> this save-pos quad) (-> (the-as vector a0-23) quad))
+       (vector-copy! (-> this save-pos) (the-as vector a0-23))
        )
      (set! v0-1 #t)
      (set! (-> this save) (the-as symbol v0-1))
@@ -671,7 +669,7 @@
      (let ((s4-1 (the-as vector (-> arg3 param 0)))
            (s5-1 (the-as vector (-> arg3 param 1)))
            )
-       (set! (-> this root trans quad) (-> s4-1 quad))
+       (vector-copy! (-> this root trans) s4-1)
        (quaternion<-rotate-y-vector (-> this root quat) (vector-! (new 'stack-no-clear 'vector) s5-1 s4-1))
        (set-vector! (-> this root scale) 0.6 0.6 0.6 1.0)
        (setup-from-to-height! (-> this traj) s4-1 s5-1 12288.0 -4.551111)
@@ -688,7 +686,8 @@
   )
 
 ;; definition for method 84 of type marauder
-(defmethod send-attack-on-jump-or-knocked ((this marauder) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-touched-handler ((this marauder) (arg0 process) (arg1 event-message-block))
+  "General handler for when anything touches an enemy (automatic response)."
   (when (!= (-> arg0 type) target)
     (let* ((s3-0 (-> arg1 param 0))
            (s2-0 arg0)
@@ -721,7 +720,7 @@
                          )
                      )
                )
-           (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+           (send-attack-from-tshape this arg0 (the-as touching-shapes-entry s3-0) a3-2)
            )
          )
         (else
@@ -735,6 +734,7 @@
 ;; definition for method 59 of type marauder
 ;; WARN: Return type mismatch int vs none.
 (defmethod enemy-common-post ((this marauder))
+  "Common implementation of post. Runs ja-post."
   (let ((t9-0 (method-of-type nav-enemy enemy-common-post)))
     (t9-0 this)
     )
@@ -766,22 +766,26 @@
   )
 
 ;; definition for method 123 of type marauder
-(defmethod enemy-method-123 ((this marauder))
+(defmethod allow-ragdoll? ((this marauder))
+  "Can this enemy ragdoll now?"
   (= (-> this hit-points) 0.0)
   )
 
 ;; definition for method 126 of type marauder
 (defmethod ragdoll-spawn! ((this marauder) (arg0 symbol) (arg1 symbol))
+  "If possible, spawn ragdoll and start using it."
   ((method-of-type nav-enemy ragdoll-spawn!) this arg0 arg1)
   )
 
 ;; definition for method 125 of type marauder
 (defmethod ragdoll-settled? ((this marauder))
+  "Has the ragdoll stopped moving?"
   ((method-of-type nav-enemy ragdoll-settled?) this)
   )
 
 ;; definition for method 85 of type marauder
 (defmethod knocked-anim ((this marauder) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (ja-channel-push! 1 0)
   (cond
     ((not (focus-test? this dead))
@@ -838,6 +842,7 @@
 
 ;; definition for method 86 of type marauder
 (defmethod knocked-land-anim ((this marauder) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (cond
     ((not (focus-test? this dead))
      (cond
@@ -893,6 +898,7 @@
 
 ;; definition for method 98 of type marauder
 (defmethod jump-wind-up-anim ((this marauder) (arg0 enemy-jump-info))
+  "Start playing the wind-up anim"
   (let ((a0-1 (-> this skel root-channel 0)))
     (set! (-> a0-1 param 0) 0.0)
     (set! (-> a0-1 param 1) 1.0)
@@ -929,6 +935,7 @@
 
 ;; definition for method 96 of type marauder
 (defmethod jump-in-air-anim ((this marauder) (arg0 enemy-jump-info))
+  "Start playing the in-air anim"
   (let ((v1-2 (if (> (-> this skel active-channels) 0)
                   (-> this skel root-channel 0 frame-group)
                   )
@@ -976,6 +983,7 @@
 
 ;; definition for method 97 of type marauder
 (defmethod jump-land-anim ((this marauder) (arg0 enemy-jump-info))
+  "Play the landing anim"
   (ja-channel-push! 1 0)
   (cond
     ((-> this jump-attack)
@@ -1046,7 +1054,7 @@
         (suspend)
         (ja :num! (loop! f30-0))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> (ja-linear-vel 0) quad))
+          (vector-copy! gp-0 (ja-linear-vel 0))
           (let ((v1-21 (-> self nav)))
             (set! (-> v1-21 target-speed) (-> gp-0 z))
             )
@@ -1062,7 +1070,7 @@
           )
       (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      (vector-copy! (-> a0-0 target-pos) v1-1)
       )
     0
     (nav-enemy-method-187 self)
@@ -1146,7 +1154,7 @@
     (let ((a0-0 (-> self nav state))
           (v1-8 *null-vector*)
           )
-      (set! (-> a0-0 velocity quad) (-> v1-8 quad))
+      (vector-copy! (-> a0-0 velocity) v1-8)
       )
     0
     )
@@ -1185,14 +1193,14 @@
             (let* ((v1-21 (get-trans (the-as process-focusable gp-0) 0))
                    (f30-0 (vector-length (vector-! (new 'stack-no-clear 'vector) v1-21 (-> self root trans))))
                    )
-              (when (enemy-method-105 self 8192.0 #t)
+              (when (pointing-toward-focus? self 8192.0 #t)
                 (should-check-los? (-> self los) 0)
                 (cond
                   ((< f30-0 32768.0)
                    (cond
                      ((rand-vu-percent? 0.5)
                       (let ((gp-1 (new 'stack-no-clear 'vector)))
-                        (set! (-> gp-1 quad) (-> self root trans quad))
+                        (vector-copy! gp-1 (-> self root trans))
                         (let ((a0-16 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
                               (a1-10 gp-1)
                               )
@@ -1203,9 +1211,9 @@
                             (.lvf vf5 (&-> a0-16 quad))
                             (.lvf vf4 (&-> v1-33 quad))
                             )
-                          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                          (.mul.x.vf acc vf5 vf7 :mask #b111)
-                          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                          (.add.x.vf.w vf6 vf0 vf0)
+                          (.mul.x.vf.xyz acc vf5 vf7)
+                          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                           (.svf (&-> a1-10 quad) vf6)
                           )
                         (set! (-> self jump-attack) #t)
@@ -1258,7 +1266,7 @@
         (suspend)
         (ja :num! (loop! f30-0))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (set! (-> gp-0 quad) (-> (ja-linear-vel 0) quad))
+          (vector-copy! gp-0 (ja-linear-vel 0))
           (let ((v1-21 (-> self nav)))
             (set! (-> v1-21 target-speed) (-> gp-0 z))
             )
@@ -1314,9 +1322,9 @@
             (.lvf vf5 (&-> s5-1 quad))
             (.lvf vf4 (&-> s4-1 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> s3-4 quad) vf6)
           )
         )
@@ -1337,9 +1345,9 @@
           )
         (.lvf vf5 (&-> s4-2 quad))
         (.lvf vf4 (&-> s5-2 quad))
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> a2-1 quad) vf6)
         (t9-13 this a1-11 a2-1 819200.0 (the-as vector #f))
         )
@@ -1366,7 +1374,7 @@
     (let ((a0-4 (handle->process (-> self focus handle))))
       (set! gp-0 (when a0-4
                    (set! gp-0 (-> self target-pos))
-                   (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-4) 3) quad))
+                   (vector-copy! gp-0 (get-trans (the-as process-focusable a0-4) 3))
                    gp-0
                    )
             )
@@ -1544,7 +1552,8 @@
 
 ;; definition for method 147 of type marauder
 ;; WARN: Return type mismatch enemy-flag vs none.
-(defmethod check-victory ((this marauder))
+(defmethod clear-stale-victory ((this marauder))
+  "Remove victory flag if needed."
   (if (or (time-elapsed? (-> this hit-focus-time) (seconds 4))
           (and (handle->process (-> this focus handle))
                (not (logtest? (-> (the-as process-focusable (handle->process (-> this focus handle))) focus-status)
@@ -1588,13 +1597,15 @@
   )
 
 ;; definition for method 65 of type marauder
-(defmethod penetrate->next-state ((this marauder) (arg0 process) (arg1 event-message-block) (arg2 float))
-  ((method-of-type nav-enemy penetrate->next-state) this arg0 arg1 arg2)
+(defmethod msg-for-incoming-attack ((this marauder) (arg0 process) (arg1 event-message-block) (arg2 float))
+  "Given an attack message, what do we do next? Returns a message name that should be sent to self."
+  ((method-of-type nav-enemy msg-for-incoming-attack) this arg0 arg1 arg2)
   )
 
 ;; definition for method 62 of type marauder
 ;; WARN: Return type mismatch number vs float.
 (defmethod get-damage-from-attack ((this marauder) (arg0 object) (arg1 event-message-block))
+  "Compute hit point damage for an attack message."
   (let ((v0-1 (the-as number (call-parent-method this arg0 arg1))))
     (if (logtest? (-> (the-as attack-info (-> arg1 param 1)) penetrate-using) (penetrate punch spin))
         (set! v0-1 #x40000000)
@@ -1612,14 +1623,15 @@
         )
     (logclear! (-> v1-1 flags) (nav-state-flag directional-mode))
     (logior! (-> v1-1 flags) (nav-state-flag target-poly-dirty))
-    (set! (-> v1-1 target-pos quad) (-> a0-2 quad))
+    (vector-copy! (-> v1-1 target-pos) a0-2)
     )
   0
   (none)
   )
 
 ;; definition for method 102 of type marauder
-(defmethod go-directed2 ((this marauder))
+(defmethod go-next-state-auto ((this marauder))
+  "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware."
   (cond
     ((-> this ambush?)
      (set! (-> this ambush?) #f)
@@ -1681,7 +1693,7 @@
         (suspend)
         (when (and (-> self skip-jump) (not (sphere-in-view-frustum? gp-0)))
           (let ((gp-1 (new 'stack-no-clear 'vector)))
-            (set! (-> gp-1 quad) (-> self root trans quad))
+            (vector-copy! gp-1 (-> self root trans))
             (let ((a0-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
                   (a1-1 gp-1)
                   )
@@ -1692,9 +1704,9 @@
                 (.lvf vf5 (&-> a0-6 quad))
                 (.lvf vf4 (&-> v1-13 quad))
                 )
-              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-              (.mul.x.vf acc vf5 vf7 :mask #b111)
-              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.add.x.vf.w vf6 vf0 vf0)
+              (.mul.x.vf.xyz acc vf5 vf7)
+              (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
               (.svf (&-> a1-1 quad) vf6)
               )
             (let ((a1-2 gp-1))
@@ -1707,12 +1719,12 @@
                   )
                 (.lvf vf4 (&-> v1-14 quad))
                 )
-              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-              (.mul.x.vf acc vf5 vf7 :mask #b111)
-              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.add.x.vf.w vf6 vf0 vf0)
+              (.mul.x.vf.xyz acc vf5 vf7)
+              (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
               (.svf (&-> a1-2 quad) vf6)
               )
-            (set! (-> self root trans quad) (-> gp-1 quad))
+            (vector-copy! (-> self root trans) gp-1)
             )
           (go-virtual hostile)
           )
@@ -1738,9 +1750,9 @@
                 )
               (.lvf vf4 (&-> s5-0 quad))
               )
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> gp-2 quad) vf6)
             )
           (+! f28-0 (seconds-per-frame))
@@ -1756,7 +1768,7 @@
         (set! (-> v1-58 prim-core collide-with) (-> self root backup-collide-with))
         )
       (let ((gp-3 (new 'stack-no-clear 'vector)))
-        (set! (-> gp-3 quad) (-> self root trans quad))
+        (vector-copy! gp-3 (-> self root trans))
         (let ((a0-22 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
               (a1-8 gp-3)
               )
@@ -1767,9 +1779,9 @@
             (.lvf vf5 (&-> a0-22 quad))
             (.lvf vf4 (&-> v1-63 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> a1-8 quad) vf6)
           )
         (let ((a1-9 gp-3))
@@ -1782,9 +1794,9 @@
               )
             (.lvf vf4 (&-> v1-64 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> a1-9 quad) vf6)
           )
         (set! (-> self enemy-flags)
@@ -1890,12 +1902,12 @@
     (let ((gp-0 (-> self root)))
       (cond
         ((focus-test? self under-water)
-         (accelerate-fall! self (-> gp-0 transv))
+         (adjust-transv-under-water! self (-> gp-0 transv))
          )
         (else
           (when (!= (-> self incoming knocked-type) (knocked-type yellow-shot))
             (let ((s5-0 (new 'stack-no-clear 'vector)))
-              (set! (-> s5-0 quad) (-> (ja-linear-vel 0) quad))
+              (vector-copy! s5-0 (ja-linear-vel 0))
               (vector-orient-by-quat! s5-0 s5-0 (-> gp-0 quat))
               )
             )
@@ -1919,12 +1931,14 @@
   )
 
 ;; definition for method 122 of type marauder
-(defmethod go-idle2 ((this marauder))
+(defmethod go-fallback-init ((this marauder))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go (method-of-object this ambush))
   )
 
 ;; definition for method 111 of type marauder
 (defmethod on-attack ((this marauder) (arg0 process-focusable))
+  "Handler after this enemy attacks something. By default focuses on the attacked, but could be overriden."
   (if (and (= (-> arg0 type) target) (-> this next-state) (let ((v1-4 (-> this next-state name)))
                                                             (or (= v1-4 'attack-run) (= v1-4 'jump))
                                                             )
@@ -1937,9 +1951,9 @@
 
 ;; definition for method 119 of type marauder
 ;; WARN: Return type mismatch int vs object.
-(defmethod init-enemy-defaults! ((this marauder) (arg0 nav-enemy-info))
+(defmethod setup-enemy! ((this marauder) (arg0 nav-enemy-info))
   (set! (-> arg0 nav-mesh) *default-nav-mesh*)
-  (let ((t9-0 (method-of-type nav-enemy init-enemy-defaults!)))
+  (let ((t9-0 (method-of-type nav-enemy setup-enemy!)))
     (t9-0 this arg0)
     )
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -1950,6 +1964,7 @@
 ;; definition for method 120 of type marauder
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this marauder))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2083,12 +2098,13 @@
 ;; definition for method 121 of type marauder
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod init-enemy! ((this marauder))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-marauder" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *marauder-nav-enemy-info*)
+  (setup-enemy! this *marauder-nav-enemy-info*)
   (if (logtest? (enemy-flag multi-focus) (-> this enemy-flags))
       (logior! (-> this fact enemy-options) (enemy-option multi-focus))
       )

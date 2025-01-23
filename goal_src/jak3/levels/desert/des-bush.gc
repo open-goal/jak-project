@@ -572,7 +572,7 @@
 
 (defmethod task-manager-desert-bbush-ring-method-33 ((this task-manager-desert-bbush-ring))
   (cond
-    ((= (status-of-level-and-borrows *level* 'waswide #f) 'active)
+    ((= (level-status? *level* 'waswide #f) 'active)
      (set-setting! 'extra-bank '((wascity3 bbush1)) 0.0 0)
      (set-setting! 'music 'wasring 0.0 0)
      )
@@ -629,10 +629,7 @@
 (defmethod hud-timer-handler ((this task-manager-desert-bbush-ring))
   (with-pp
     (cond
-      ((and *target*
-            (= (status-of-level-and-borrows *level* 'desert #f) 'active)
-            (focus-test? *target* pilot-riding)
-            )
+      ((and *target* (= (level-status? *level* 'desert #f) 'active) (focus-test? *target* pilot-riding))
        (when (nonzero? (-> this start-time))
          (let ((v1-8 (handle->process (-> this hud-timer))))
            (if (and *target* (not v1-8))
@@ -1035,17 +1032,17 @@
         (cond
           ((focus-test? v1-0 pilot)
            (let ((a2-1 (handle->process (-> v1-0 pilot vehicle))))
-             (set! (-> a1-0 quad) (-> (the-as vehicle a2-1) root root-prim prim-core world-sphere quad))
+             (vector-copy! a1-0 (-> (the-as vehicle a2-1) root root-prim prim-core world-sphere))
              )
            )
           (else
-            (set! (-> a1-0 quad) (-> v1-0 control trans quad))
+            (vector-copy! a1-0 (-> v1-0 control trans))
             (+! (-> a1-0 y) 12288.0)
             )
           )
         (vector-! a1-0 a1-0 (-> self root trans))
         (let ((a0-12 (-> self root quat)))
-          (when (desert-chase-ring-cleared? (the-as vector a0-12) a1-0 self)
+          (when (desert-chase-ring-cleared? (-> a0-12 vec) a1-0 self)
             (if (-> self is-final?)
                 (sound-play "ring-final")
                 (sound-play "ring-pass")
@@ -1143,12 +1140,13 @@
   )
 
 (defmethod init-from-entity! ((this desert-chase-ring) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set-ring-particle-texture)
   (alloc-trsqv! this)
   (process-drawable-from-entity! this arg0)
   (set! (-> this ring-radius) (res-lump-float arg0 'ring-radius :default 24576.0))
   (quaternion->matrix (-> this mat) (-> this root quat))
-  (set! (-> this mat trans quad) (-> this root trans quad))
+  (vector-copy! (-> this mat trans) (-> this root trans))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1547) this))
   (set! (-> this part-final) (create-launch-control (-> *part-group-id-table* 1548) this))
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -1178,11 +1176,11 @@
   :enter (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 1546 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 1546))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1546))
         )
       )
@@ -1280,7 +1278,7 @@
 (defbehavior spirit-init-by-other spirit ((arg0 vector))
   (set! (-> self play-pixie?) #f)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (set! (-> self sound-id) (new-sound-id))
   (set! (-> self sound-id-2) (new-sound-id))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1541) self))
@@ -1299,10 +1297,10 @@
 
 
 (defmethod draw ((this hud-spider-killed))
-  (set-hud-piece-position! (the-as hud-sprite (-> this sprites)) 65 125)
+  (set-hud-piece-position! (-> this sprites 0) 65 125)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 0 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) 0 -40)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) 0 -40)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -1645,7 +1643,7 @@
 
 (defmethod set-sbanks ((this task-manager-bbush-spirit-chase))
   (cond
-    ((= (status-of-level-and-borrows *level* 'waswide #f) 'active)
+    ((= (level-status? *level* 'waswide #f) 'active)
      (set-setting! 'extra-bank '((wascity3 bbush1)) 0.0 0)
      (set-setting! 'music 'waspirit 0.0 0)
      )
@@ -1960,8 +1958,8 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('trigger)
-       (set! (-> self src quad) (-> (the-as vector (-> block param 0)) quad))
-       (set! (-> self dst quad) (-> self root trans quad))
+       (vector-copy! (-> self src) (the-as vector (-> block param 0)))
+       (vector-copy! (-> self dst) (-> self root trans))
        (setup-from-to-duration! (-> self traj) (-> self src) (-> self dst) 300.0 -4.551111)
        (go-virtual idle)
        )
@@ -2037,6 +2035,7 @@
 
 ;; WARN: Return type mismatch entity-perm-status vs object.
 (defmethod init-from-entity! ((this score-drop) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (process-entity-status! this (entity-perm-status dead) #t)
   )
 
