@@ -34,11 +34,10 @@ int main(int argc, char** argv) {
   app.add_option("-g,--game", game, "Game version (only jak1 for now)")->required();
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
-  app.add_flag("-m,--mesh", params.gen_collide_mesh, "Whether to generate a collide-mesh for this model");
-  app.add_option("--texture-bucket", params.texture_bucket,
-                 "Texture bucket to set for this model");
-  app.add_option("--texture-level", params.texture_level,
-                 "Texture level to set for this model");
+  app.add_flag("-m,--mesh", params.gen_collide_mesh,
+               "Whether to generate a collide-mesh for this model");
+  app.add_option("--texture-bucket", params.texture_bucket, "Texture bucket to set for this model");
+  app.add_option("--texture-level", params.texture_level, "Texture level to set for this model");
   app.add_option("--joint-channel", params.joint_channel,
                  "Amount of joint channels to set for this model");
   app.validate_positionals();
