@@ -83,7 +83,7 @@ void dedup_tie_vertices(TieOutput& data) {
 bool prim_needs_tie(const tinygltf::Model& model, const tinygltf::Primitive& prim) {
   if (prim.material >= 0) {
     auto mat = model.materials.at(prim.material);
-    return mat.extensions.contains("KHR_materials_specular");
+    return envmap_is_valid(mat);
   }
   return false;
 }

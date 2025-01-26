@@ -281,16 +281,25 @@ void ArtJointGeo::add_res() {
     lump.add_res(
         std::make_unique<ResRef>("collide-mesh-group", "array", mesh_slot, DEFAULT_RES_TIME));
   }
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResVector>(
-  //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
-  //     DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResFloat>(
-  //     "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
-  //     DEFAULT_RES_TIME));
+  if (texture_bucket != -1) {
+    lump.add_res(std::make_unique<ResUint8>(
+        "texture-bucket", std::vector<u8>{static_cast<u8>(texture_bucket)}, DEFAULT_RES_TIME));
+  }
+  if (texture_level != -1) {
+    lump.add_res(std::make_unique<ResInt32>("texture-level", std::vector<s32>{texture_level},
+                                            DEFAULT_RES_TIME));
+  }
+  if (trans_offset != math::Vector4f{0.f, 0.f, 0.f, 1.f}) {
+    lump.add_res(std::make_unique<ResVector>(
+        "trans-offset", std::vector<math::Vector4f>{trans_offset}, DEFAULT_RES_TIME));
+  }
+  if (joint_channel != -1) {
+    lump.add_res(std::make_unique<ResInt32>("joint-channel", std::vector<s32>{joint_channel},
+                                            DEFAULT_RES_TIME));
+  }
+  if (!lod_dist.empty()) {
+    lump.add_res(std::make_unique<ResFloat>("lod-dist", lod_dist, DEFAULT_RES_TIME));
+  }
   lump.sort_res();
 }
 
@@ -721,7 +730,7 @@ std::vector<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
  */
 bool run_build_actor(const std::string& mdl_name,
                      const std::string& ag_out,
-                     bool gen_collide_mesh) {
+                     const BuildActorParams& params) {
   std::string ag_name;
   if (fs::exists(file_util::get_jak_project_dir() / mdl_name)) {
     ag_name = fs::path(mdl_name).stem().string();
@@ -766,11 +775,11 @@ bool run_build_actor(const std::string& mdl_name,
   }
 
   std::vector<CollideMesh> mesh;
-  if (gen_collide_mesh) {
+  if (params.gen_collide_mesh) {
     mesh = gen_collide_mesh_from_model(model, all_nodes, 3);
   }
 
-  std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints);
+  std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints, params);
 
   ag.elts.emplace_back(jgeo);
   // dummy merc-ctrl

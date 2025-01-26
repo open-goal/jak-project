@@ -247,8 +247,8 @@
     )
   )
 
-(defmacro build-custom-level (name)
+(defmacro build-custom-level (name &key (force-run #f) &key (gen-fr3 #t))
   (let* ((path (string-append "custom_assets/jak3/levels/" name "/" name ".jsonc")))
-    `(defstep :in ,path
+    `(defstep :in '(,path ,(symbol->string force-run) ,(symbol->string gen-fr3))
               :tool 'build-level3
               :out '(,(string-append "$OUT/obj/" name ".go")))))

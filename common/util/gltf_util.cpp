@@ -685,14 +685,15 @@ bool material_has_envmap(const tinygltf::Material& mat) {
 }
 
 bool envmap_is_valid(const tinygltf::Material& mat) {
-  if (material_has_envmap(mat) && mat.pbrMetallicRoughness.metallicRoughnessTexture.index < 0) {
+  auto envmap = material_has_envmap(mat);
+  if (envmap && mat.pbrMetallicRoughness.metallicRoughnessTexture.index < 0) {
     lg::warn(fmt::format(
         "Material \"{}\" has specular property set, but is missing a metallic roughness texture, "
         "ignoring envmap!",
         mat.name));
     return false;
   }
-  return true;
+  return envmap;
 }
 
 std::optional<int> find_single_skin(const tinygltf::Model& model,
