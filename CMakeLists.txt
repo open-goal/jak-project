@@ -254,9 +254,9 @@ build_third_party_lib(zstd libzstd_static)
 # build SDL
 include(SDLOptions)
 if(STATICALLY_LINK)
-    build_third_party_lib(SDL SDL2-static)
+    build_third_party_lib(SDL SDL3-static)
 else()
-    build_third_party_lib(SDL SDL2)
+    build_third_party_lib(SDL SDL3-shared)
 endif()
 
 # build imgui

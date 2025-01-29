@@ -22,7 +22,7 @@ class GameController : public InputDevice {
 
  private:
   int m_sdl_instance_id = -1;
-  SDL_GameController* m_device_handle;
+  SDL_Gamepad* m_device_handle;
   std::string m_device_name = "";
   bool m_has_led;
   bool m_has_rumble;

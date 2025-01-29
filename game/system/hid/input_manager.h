@@ -17,7 +17,7 @@
 #include "game/settings/settings.h"
 #include "game/system/hid/input_bindings.h"
 
-#include "third-party/SDL/include/SDL.h"
+#include "third-party/SDL/include/SDL3/SDL_main.h"
 
 /// Central class that:
 /// - keeps track of available input devices

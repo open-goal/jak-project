@@ -1,7 +1,5 @@
 #include "mouse.h"
 
-#include "game/system/hid/sdl_util.h"
-
 MouseDevice::MouseDevice(std::shared_ptr<game_settings::InputSettings> settings) {
   m_settings = settings;
   enable_relative_mode(m_control_camera);

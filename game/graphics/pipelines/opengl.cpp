@@ -31,10 +31,12 @@
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/core.h"
-#include "third-party/SDL/include/SDL.h"
+#include "third-party/SDL/include/SDL3/SDL_hints.h"
+#include "third-party/SDL/include/SDL3/SDL_main.h"
+#include "third-party/SDL/include/SDL3/SDL_version.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
-#include "third-party/imgui/imgui_impl_sdl.h"
+#include "third-party/imgui/imgui_impl_sdl3.h"
 #include "third-party/imgui/imgui_style.h"
 #define STBI_WINDOWS_UTF8
 #include "common/util/dialogs.h"
@@ -111,13 +113,11 @@ static int gl_init(GfxGlobalSettings& settings) {
 
   {
     auto p = scoped_prof("startup::sdl::get_version_info");
-    SDL_version compiled;
-    SDL_VERSION(&compiled);
-    SDL_version linked;
-    SDL_GetVersion(&linked);
-    lg::info("SDL Initialized, compiled with version - {}.{}.{} | linked with version - {}.{}.{}",
-             compiled.major, compiled.minor, compiled.patch, linked.major, linked.minor,
-             linked.patch);
+
+    auto compiled_sdl_version = SDL_VERSION;
+    auto linked_sdl_version = SDL_GetVersion();
+    lg::info("SDL Initialized, compiled with version - {} | linked with version - {}",
+             compiled_sdl_version, linked_sdl_version);
   }
 
   {
@@ -197,7 +197,7 @@ static void init_imgui(SDL_Window* window,
   }
 
   // set up to get inputs for this window
-  ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+  ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
 
   // NOTE: imgui's setup calls functions that may fail intentionally, and attempts to disable error
   // reporting so these errors are invisible. But it does not work, and some weird X11 default
@@ -217,13 +217,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   // Setup the window
   prof().instant_event("ROOT");
   prof().begin_event("startup::sdl::create_window");
-  // TODO - SDL2 doesn't seem to support HDR (and neither does windows)
-  //   Related -
-  //   https://answers.microsoft.com/en-us/windows/forum/all/hdr-monitor-low-brightness-after-exiting-full/999f7ee9-7ba3-4f9c-b812-bbeb9ff8dcc1
-  SDL_Window* window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                        width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+  SDL_Window* window =
+      SDL_CreateWindow(title, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
   // TODO - rendering code on hiDPI/Retina displays is not adequate, solve it properly so that
   // `SDL_WINDOW_ALLOW_HIGHDPI` can be added back to the window flags.
+  // TODO - test ^ with SDL3
   prof().end_event();
   if (!window) {
     sdl_util::log_error("gl_make_display failed - Could not create display window");
@@ -285,13 +283,11 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   {
     auto p = scoped_prof("startup::sdl::window_extras");
     float dpi = 1.0f;
-    int window_display_idx = SDL_GetWindowDisplayIndex(window);
-    if (window_display_idx >= 0) {
-      SDL_GetDisplayDPI(window_display_idx, &dpi, NULL, NULL);
-      dpi /= 96.0f;
-
-      if (dpi <= 0.0f) {
-        dpi = 1.0f;
+    int window_display_idx = SDL_GetDisplayForWindow(window);
+    if (window_display_idx > 0) {
+      auto display_scale = SDL_GetWindowDisplayScale(window);
+      if (display_scale > 0.0) {
+        dpi = display_scale * 96.0f;
       }
     }
 
@@ -306,10 +302,10 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       auto icon_data = stbi_load(image_path.string().c_str(), &icon_width, &icon_height, nullptr,
                                  STBI_rgb_alpha);
       if (icon_data) {
-        SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom(
-            (void*)icon_data, icon_width, icon_height, 32, 4 * icon_width, SDL_PIXELFORMAT_RGBA32);
+        SDL_Surface* icon_surf = SDL_CreateSurfaceFrom(
+            icon_width, icon_height, SDL_PIXELFORMAT_RGBA32, (void*)icon_data, 4 * icon_width);
         SDL_SetWindowIcon(window, icon_surf);
-        SDL_FreeSurface(icon_surf);
+        SDL_DestroySurface(icon_surf);
         stbi_image_free(icon_data);
       } else {
         lg::error("Could not load icon for OpenGL window, couldn't load image data");
@@ -362,10 +358,10 @@ GLDisplay::~GLDisplay() {
   io.IniFilename = nullptr;
   io.LogFilename = nullptr;
   ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplSDL2_Shutdown();
+  ImGui_ImplSDL3_Shutdown();
   ImGui::DestroyContext();
   // Cleanup SDL
-  SDL_GL_DeleteContext(m_gl_context);
+  SDL_GL_DestroyContext(m_gl_context);
   SDL_DestroyWindow(m_window);
   SDL_Quit();
   if (m_main) {
@@ -467,7 +463,7 @@ void render_game_frame(int game_width,
 void GLDisplay::process_sdl_events() {
   SDL_Event evt;
   while (SDL_PollEvent(&evt) != 0) {
-    if (evt.type == SDL_QUIT) {
+    if (evt.type == SDL_EVENT_QUIT) {
       m_should_quit = true;
     }
     {
@@ -477,7 +473,7 @@ void GLDisplay::process_sdl_events() {
     if (!m_should_quit) {
       {
         auto p = scoped_prof("imgui-sdl-process");
-        ImGui_ImplSDL2_ProcessEvent(&evt);
+        ImGui_ImplSDL3_ProcessEvent(&evt);
       }
     }
     {
@@ -528,13 +524,13 @@ void GLDisplay::render() {
   {
     auto p = scoped_prof("imgui-new-frame");
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
   }
 
   // framebuffer size
   int fbuf_w, fbuf_h;
-  SDL_GL_GetDrawableSize(m_window, &fbuf_w, &fbuf_h);
+  SDL_GetWindowSizeInPixels(m_window, &fbuf_w, &fbuf_h);
 
   // render game!
   g_gfx_data->debug_gui.master_enable = is_imgui_visible();

@@ -29,8 +29,7 @@ GPUTestOutput run_gpu_test(const std::string& test_type) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 #endif
     SDL_Window* window =
-        SDL_CreateWindow("OpenGL Version", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800,
-                         600, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
+        SDL_CreateWindow("OpenGL Version", 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN);
     if (!window) {
       output = {false, "SDL window creation failed",
                 sdl_util::log_and_return_error("SDL initialization failed")};
@@ -56,7 +55,7 @@ GPUTestOutput run_gpu_test(const std::string& test_type) {
           output.gpuVendorString = (const char*)vendorString;
         }
       }
-      SDL_GL_DeleteContext(glContext);
+      SDL_GL_DestroyContext(glContext);
     }
     SDL_DestroyWindow(window);
     SDL_Quit();

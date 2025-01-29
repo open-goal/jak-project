@@ -77,51 +77,51 @@ void DisplayManager::initialize_window_position_from_settings() {
 
 void DisplayManager::process_sdl_event(const SDL_Event& event) {
   const auto event_type = event.type;
-  if (event_type == SDL_WINDOWEVENT) {
+  if (event_type >= SDL_EVENT_WINDOW_FIRST && event_type <= SDL_EVENT_WINDOW_LAST) {
     // https://wiki.libsdl.org/SDL2/SDL_WindowEvent
     // https://wiki.libsdl.org/SDL2/SDL_WindowEventID
-    switch (event.window.event) {
-      case SDL_WINDOWEVENT_MINIMIZED:
+    switch (event.window.type) {
+      case SDL_EVENT_WINDOW_MINIMIZED:
         m_window_state = WindowState::Minimized;
         break;
-      case SDL_WINDOWEVENT_MAXIMIZED:
+      case SDL_EVENT_WINDOW_MAXIMIZED:
         m_window_state = WindowState::Maximized;
         break;
-      case SDL_WINDOWEVENT_RESTORED:
+      case SDL_EVENT_WINDOW_RESTORED:
         m_window_state = WindowState::Restored;
         break;
-      case SDL_WINDOWEVENT_MOVED:
+      case SDL_EVENT_WINDOW_MOVED:
         m_window_xpos = event.window.data1;
         m_window_ypos = event.window.data2;
         break;
-      case SDL_WINDOWEVENT_RESIZED:
-      case SDL_WINDOWEVENT_SIZE_CHANGED:
+      case SDL_EVENT_WINDOW_RESIZED:
+      case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
         m_window_width = event.window.data1;
         m_window_height = event.window.data2;
         break;
-      case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+      case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
         // NOTE - if the user changes the window to a display that doesn't support the same
         // framerate we don't handle that
         update_curr_display_info();
         break;
-      case SDL_WINDOWEVENT_ENTER:
+      case SDL_EVENT_WINDOW_MOUSE_ENTER:
         if (m_input_manager && m_input_manager.value()->auto_hiding_cursor()) {
           m_input_manager.value()->hide_cursor(true);
         }
         break;
-      case SDL_WINDOWEVENT_LEAVE:
+      case SDL_EVENT_WINDOW_MOUSE_LEAVE:
         m_input_manager.value()->hide_cursor(false);
         break;
     }
-  } else if (event_type == SDL_DISPLAYEVENT) {
+  } else if (event_type >= SDL_EVENT_DISPLAY_FIRST && event_type <= SDL_EVENT_DISPLAY_LAST) {
     // https://wiki.libsdl.org/SDL2/SDL_DisplayEventID
-    switch (event.display.event) {
-      case SDL_DISPLAYEVENT_CONNECTED:
-      case SDL_DISPLAYEVENT_DISCONNECTED:
+    switch (event.display.type) {
+      case SDL_EVENT_DISPLAY_ADDED:
+      case SDL_EVENT_DISPLAY_REMOVED:
         update_curr_display_info();
         update_video_modes();
         break;
-      case SDL_DISPLAYEVENT_ORIENTATION:
+      case SDL_EVENT_DISPLAY_ORIENTATION:
         update_video_modes();
         break;
     }
@@ -262,6 +262,7 @@ void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMod
             set_window_size(display_res.screen_width, display_res.screen_height);
           }
           // 3. fullscreen it!
+          // TODO - clean all this up...hopefully much easier in SDL3! windows have an explicit exclusive fullscreen flag
           result = SDL_SetWindowFullscreen(
               m_window, mode == game_settings::DisplaySettings::DisplayMode::Fullscreen
                             ? SDL_WINDOW_FULLSCREEN
@@ -305,12 +306,12 @@ void DisplayManager::set_display_id(int display_id) {
 
 void DisplayManager::update_curr_display_info() {
   lg::info("[DISPLAY] Updating current display info");
-  m_display_settings.display_id = SDL_GetWindowDisplayIndex(m_window);
+  m_display_settings.display_id = SDL_GetDisplayForWindow(m_window);
   if (get_active_display_id() < 0) {
     sdl_util::log_error("could not retrieve current window's display index");
   }
   lg::info("[DISPLAY] current display id is {}", m_display_settings.display_id);
-  SDL_GL_GetDrawableSize(m_window, &m_window_width, &m_window_height);
+  SDL_GetWindowSizeInPixels(m_window, &m_window_width, &m_window_height);
   SDL_GetWindowPosition(m_window, &m_window_xpos, &m_window_ypos);
   // Update the scale of the display as well
   // TODO - figure out how to do this on SDL
@@ -321,7 +322,7 @@ void DisplayManager::update_curr_display_info() {
 
 void DisplayManager::update_video_modes() {
   lg::info("[DISPLAY] Enumerating video modes");
-  const auto num_displays = SDL_GetNumVideoDisplays();
+  const auto num_displays = SDL_GetDisplays();
   if (num_displays < 0) {
     sdl_util::log_error("could not retrieve number of displays");
     return;
@@ -337,7 +338,7 @@ void DisplayManager::update_video_modes() {
           fmt::format("couldn't retrieve current display mode for display id {}", display_id));
       continue;
     }
-    auto display_orient = SDL_GetDisplayOrientation(display_id);
+    auto display_orient = SDL_GetCurrentDisplayOrientation(display_id);
     Orientation orient = Orientation::Unknown;
     switch (display_orient) {
       case SDL_ORIENTATION_LANDSCAPE:
@@ -380,7 +381,7 @@ void DisplayManager::update_resolutions() {
   // Enumerate display's display modes to get the resolutions
   const auto active_display_id = get_active_display_id();
   const auto active_refresh_rate = m_current_display_modes[active_display_id].refresh_rate;
-  auto num_display_modes = SDL_GetNumDisplayModes(active_display_id);
+  auto num_display_modes = SDL_GetFullscreenDisplayModes(active_display_id);
   SDL_DisplayMode curr_mode;
   for (int i = 0; i < num_display_modes; i++) {
     auto ok = SDL_GetDisplayMode(active_display_id, i, &curr_mode);
