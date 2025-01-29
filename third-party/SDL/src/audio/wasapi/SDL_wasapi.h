@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_wasapi_h_
 #define SDL_wasapi_h_
@@ -29,52 +29,33 @@ extern "C" {
 
 #include "../SDL_sysaudio.h"
 
-/* Hidden "this" pointer for the audio functions */
-#ifdef __cplusplus
-#define _THIS SDL_AudioDevice *_this
-#else
-#define _THIS SDL_AudioDevice *this
-#endif
-
 struct SDL_PrivateAudioData
 {
-    SDL_atomic_t refcount;
     WCHAR *devid;
     WAVEFORMATEX *waveformat;
     IAudioClient *client;
     IAudioRenderClient *render;
     IAudioCaptureClient *capture;
-    SDL_AudioStream *capturestream;
     HANDLE event;
     HANDLE task;
-    SDL_threadID open_threadid;
-    SDL_bool coinitialized;
+    bool coinitialized;
     int framesize;
-    int default_device_generation;
-    SDL_bool device_lost;
-    void *activation_handler;
-    SDL_atomic_t just_activated;
+    SDL_AtomicInt device_disconnecting;
+    bool device_lost;
+    bool device_dead;
 };
 
-/* win32 and winrt implementations call into these. */
-int WASAPI_PrepDevice(_THIS, const SDL_bool updatestream);
-void WASAPI_RefDevice(_THIS);
-void WASAPI_UnrefDevice(_THIS);
+// win32 implementation calls into these.
+bool WASAPI_PrepDevice(SDL_AudioDevice *device);
+void WASAPI_DisconnectDevice(SDL_AudioDevice *device);  // don't hold the device lock when calling this!
 
-/* These are functions that are implemented differently for Windows vs WinRT. */
-int WASAPI_PlatformInit(void);
-void WASAPI_PlatformDeinit(void);
-void WASAPI_EnumerateEndpoints(void);
-int WASAPI_GetDefaultAudioInfo(char **name, SDL_AudioSpec *spec, int iscapture);
-int WASAPI_ActivateDevice(_THIS, const SDL_bool isrecovery);
-void WASAPI_PlatformThreadInit(_THIS);
-void WASAPI_PlatformThreadDeinit(_THIS);
-void WASAPI_PlatformDeleteActivationHandler(void *handler);
+
+// BE CAREFUL: if you are holding the device lock and proxy to the management thread with wait_until_complete, and grab the lock again, you will deadlock.
+typedef bool (*ManagementThreadTask)(void *userdata);
+bool WASAPI_ProxyToManagementThread(ManagementThreadTask task, void *userdata, bool *wait_until_complete);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SDL_wasapi_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_wasapi_h_

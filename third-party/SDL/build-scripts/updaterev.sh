@@ -5,7 +5,7 @@
 outdir=`pwd`
 cd `dirname $0`
 srcdir=..
-header=$outdir/include/SDL_revision.h
+header=$outdir/include/SDL3/SDL_revision.h
 dist=
 vendor=
 
@@ -40,7 +40,6 @@ if [ "$rev" != "" ]; then
     echo "#else" >>"$header.new"
     echo "#define SDL_REVISION \"SDL-$rev\"" >>"$header.new"
     echo "#endif" >>"$header.new"
-    echo "#define SDL_REVISION_NUMBER 0" >>"$header.new"
     if diff $header $header.new >/dev/null 2>&1; then
         rm "$header.new"
     else

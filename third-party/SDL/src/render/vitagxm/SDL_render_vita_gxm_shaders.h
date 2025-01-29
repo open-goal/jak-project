@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -280,5 +280,3 @@ static const SceGxmProgram *const textureVertexProgramGxp = (const SceGxmProgram
 static const SceGxmProgram *const textureFragmentProgramGxp = (const SceGxmProgram *)gxm_shader_texture_f;
 
 #endif // SDL_RENDER_VITA_GXM_SHADERS_H
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
   Copyright (C) 2018-2019 EXL <exlmotodev@gmail.com>
 
   This software is provided 'as-is', without any express or implied
@@ -20,14 +20,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_HAIKU
 
-#include "SDL_messagebox.h"
 
-/* For application signature. */
-#include "../../main/haiku/SDL_BeApp.h"
+// For application signature.
+#include "../../core/haiku/SDL_BeApp.h"
 
 #include <Alert.h>
 #include <Application.h>
@@ -46,6 +45,7 @@
 #include <new>
 #include <vector>
 #include <algorithm>
+#include <memory>
 
 enum
 {
@@ -78,7 +78,7 @@ class HAIKU_SDL_MessageBox : public BAlert
 	SortButtonsPredicate(const SDL_MessageBoxButtonData *aButtonLeft,
 	                                 const SDL_MessageBoxButtonData *aButtonRight)
 	{
-		return aButtonLeft->buttonid < aButtonRight->buttonid;
+		return aButtonLeft->buttonID < aButtonRight->buttonID;
 	}
 
 	alert_type
@@ -154,7 +154,7 @@ class HAIKU_SDL_MessageBox : public BAlert
 		(aMessageBoxData->message[0]) ?
 			SetMessageText(aMessageBoxData->message) : SetMessageText(HAIKU_SDL_DefMessage);
 
-		SetType(ConvertMessageBoxType(static_cast<SDL_MessageBoxFlags>(aMessageBoxData->flags)));
+		SetType(ConvertMessageBoxType(aMessageBoxData->flags));
 	}
 
 	void
@@ -264,23 +264,12 @@ class HAIKU_SDL_MessageBox : public BAlert
 
 		size_t countButtons = fButtons.size();
 		for (size_t i = 0; i < countButtons; ++i) {
-			switch (fButtons[i]->flags)
-			{
-				case SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT:
-				{
-					fCloseButton = static_cast<int>(i);
-					break;
-				}
-				case SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT:
-				{
-					fDefaultButton = static_cast<int>(i);
-					break;
-				}
-				default:
-				{
-					break;
-				}
-			}
+			if (fButtons[i]->flags & SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT) {
+                fCloseButton = static_cast<int>(i);
+            }
+			if (fButtons[i]->flags & SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT) {
+                fDefaultButton = static_cast<int>(i);
+            }
 			AddButton(fButtons[i]->text);
 		}
 
@@ -294,7 +283,7 @@ public:
 		  fComputedMessageBoxWidth(0.0f),
 		  fCloseButton(G_CLOSE_BUTTON_ID), fDefaultButton(G_DEFAULT_BUTTON_ID),
 		  fCustomColorScheme(false), fThereIsLongLine(false),
-		  HAIKU_SDL_DefTitle("SDL2 MessageBox"),
+		  HAIKU_SDL_DefTitle("SDL MessageBox"),
 		  HAIKU_SDL_DefMessage("Some information has been lost."),
 		  HAIKU_SDL_DefButton("OK")
 	{
@@ -346,18 +335,18 @@ protected:
 extern "C" {
 #endif
 
-int HAIKU_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+bool HAIKU_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID)
 {
 	// Initialize button by closed or error value first.
-	*buttonid = G_CLOSE_BUTTON_ID;
+	*buttonID = G_CLOSE_BUTTON_ID;
 
 	// We need to check "be_app" pointer to "NULL". The "messageboxdata->window" pointer isn't appropriate here
 	// because it is possible to create a MessageBox from another thread. This fixes the following errors:
 	// "You need a valid BApplication object before interacting with the app_server."
 	// "2 BApplication objects were created. Only one is allowed."
-	BApplication *application = NULL;
+	std::unique_ptr<BApplication> application;
 	if (!be_app) {
-		application = new(std::nothrow) BApplication(SDL_signature);
+		application = std::unique_ptr<BApplication>(new(std::nothrow) BApplication(SDL_signature));
 		if (!application) {
 			return SDL_SetError("Cannot create the BApplication object. Lack of memory?");
 		}
@@ -381,20 +370,14 @@ int HAIKU_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid
 		delete messageBox;
 	}
 	*/
-	if (application) {
-		delete application;
-	}
-
 	// Initialize button by real pushed value then.
-	*buttonid = pushedButton;
+	*buttonID = pushedButton;
 
-	return 0;
+	return true;
 }
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* SDL_VIDEO_DRIVER_HAIKU */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_HAIKU

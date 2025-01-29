@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,36 +18,34 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_cocoamouse_h_
 #define SDL_cocoamouse_h_
 
 #include "SDL_cocoavideo.h"
 
-extern int Cocoa_InitMouse(_THIS);
-extern void Cocoa_HandleMouseEvent(_THIS, NSEvent * event);
-extern void Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent * event);
+extern bool Cocoa_InitMouse(SDL_VideoDevice *_this);
+extern NSWindow *Cocoa_GetMouseFocus();
+extern void Cocoa_HandleMouseEvent(SDL_VideoDevice *_this, NSEvent *event);
+extern void Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event);
 extern void Cocoa_HandleMouseWarp(CGFloat x, CGFloat y);
-extern void Cocoa_QuitMouse(_THIS);
+extern void Cocoa_QuitMouse(SDL_VideoDevice *_this);
 
-typedef struct {
-    /* Whether we've seen a cursor warp since the last move event. */
-    SDL_bool seenWarp;
-    /* What location our last cursor warp was to. */
+typedef struct
+{
+    // Whether we've seen a cursor warp since the last move event.
+    bool seenWarp;
+    // What location our last cursor warp was to.
     CGFloat lastWarpX;
     CGFloat lastWarpY;
-    /* What location we last saw the cursor move to. */
+    // What location we last saw the cursor move to.
     CGFloat lastMoveX;
     CGFloat lastMoveY;
-    /* If we just turned on relative mode, and should skip a single mouse motion event. */
-    SDL_bool justEnabledRelative;
 } SDL_MouseData;
 
 @interface NSCursor (InvisibleCursor)
 + (NSCursor *)invisibleCursor;
 @end
 
-#endif /* SDL_cocoamouse_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_cocoamouse_h_

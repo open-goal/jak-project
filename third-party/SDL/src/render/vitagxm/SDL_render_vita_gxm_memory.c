@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_RENDER_VITA_GXM
 
@@ -31,6 +31,8 @@ void *vita_mem_alloc(unsigned int type, unsigned int size, unsigned int alignmen
 
     if (type == SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW) {
         size = ALIGN(size, 256 * 1024);
+    } else if (type == SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_PHYCONT_NC_RW) {
+        size = ALIGN(size, 1024 * 1024);
     } else {
         size = ALIGN(size, 4 * 1024);
     }
@@ -174,6 +176,4 @@ void vita_mem_fragment_usse_free(SceUID uid)
     sceKernelFreeMemBlock(uid);
 }
 
-#endif /* SDL_VIDEO_RENDER_VITA_GXM */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_RENDER_VITA_GXM

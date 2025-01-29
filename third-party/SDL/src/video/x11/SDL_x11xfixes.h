@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_x11xfixes_h_
 #define SDL_x11xfixes_h_
@@ -28,14 +28,12 @@
 
 #define X11_BARRIER_HANDLED_BY_EVENT 1
 
-extern void X11_InitXfixes(_THIS);
-extern int X11_XfixesIsInitialized(void);
-extern void X11_SetWindowMouseRect(_THIS, SDL_Window *window);
-extern int X11_ConfineCursorWithFlags(_THIS, SDL_Window *window, const SDL_Rect *rect, int flags);
-extern void X11_DestroyPointerBarrier(_THIS, SDL_Window *window);
+extern void X11_InitXfixes(SDL_VideoDevice *_this);
+extern bool X11_XfixesIsInitialized(void);
+extern bool X11_SetWindowMouseRect(SDL_VideoDevice *_this, SDL_Window *window);
+extern bool X11_ConfineCursorWithFlags(SDL_VideoDevice *_this, SDL_Window *window, const SDL_Rect *rect, int flags);
+extern void X11_DestroyPointerBarrier(SDL_VideoDevice *_this, SDL_Window *window);
 extern int X11_GetXFixesSelectionNotifyEvent(void);
-#endif /* SDL_VIDEO_DRIVER_X11_XFIXES */
+#endif // SDL_VIDEO_DRIVER_X11_XFIXES
 
-#endif /* SDL_x11xfixes_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_x11xfixes_h_

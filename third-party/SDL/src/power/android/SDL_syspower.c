@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,17 +18,16 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_POWER_DISABLED
 #ifdef SDL_POWER_ANDROID
 
-#include "SDL_power.h"
 #include "../SDL_syspower.h"
 
 #include "../../core/android/SDL_android.h"
 
-SDL_bool SDL_GetPowerInfo_Android(SDL_PowerState *state, int *seconds, int *percent)
+bool SDL_GetPowerInfo_Android(SDL_PowerState *state, int *seconds, int *percent)
 {
     int battery;
     int plugged;
@@ -54,10 +53,8 @@ SDL_bool SDL_GetPowerInfo_Android(SDL_PowerState *state, int *seconds, int *perc
         *percent = -1;
     }
 
-    return SDL_TRUE;
+    return true;
 }
 
-#endif /* SDL_POWER_ANDROID */
-#endif /* SDL_POWER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_POWER_ANDROID
+#endif // SDL_POWER_DISABLED

@@ -1,13 +1,12 @@
 // Copyright 2016 Adrien Descamps
 // Distributed under BSD 3-Clause License
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_HAVE_YUV
-#include "yuv_rgb.h"
+#ifdef SDL_HAVE_YUV
+#include "yuv_rgb_lsx.h"
 #include "yuv_rgb_internal.h"
-#include "SDL_cpuinfo.h"
 
-#ifdef __loongarch_sx
+#ifdef SDL_LSX_INTRINSICS
 
 #define LSX_FUNCTION_NAME	yuv420_rgb24_lsx
 #define STD_FUNCTION_NAME	yuv420_rgb24_std
@@ -39,6 +38,6 @@
 #define RGB_FORMAT			RGB_FORMAT_ABGR
 #include "yuv_rgb_lsx_func.h"
 
-#endif  //__loongarch_sx
+#endif  // SDL_LSX_INTRINSICS
 
-#endif /* SDL_HAVE_YUV */
+#endif // SDL_HAVE_YUV

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,14 +18,14 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
+
+// !!! FIXME: clean out perror and fprintf calls in here.
 
 #ifdef SDL_AUDIO_DRIVER_OSS
 
-/* Allow access to a raw mixing buffer */
-
-#include <stdio.h>  /* For perror() */
-#include <string.h> /* For strerror() */
+#include <stdio.h>  // For perror()
+#include <string.h> // For strerror()
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -36,187 +36,150 @@
 
 #include <sys/soundcard.h>
 
-#include "SDL_timer.h"
-#include "SDL_audio.h"
-#include "../SDL_audio_c.h"
 #include "../SDL_audiodev_c.h"
 #include "SDL_dspaudio.h"
 
-static void DSP_DetectDevices(void)
+static void DSP_DetectDevices(SDL_AudioDevice **default_playback, SDL_AudioDevice **default_recording)
 {
-    SDL_EnumUnixAudioDevices(0, NULL);
+    SDL_EnumUnixAudioDevices(false, NULL);
 }
 
-static void DSP_CloseDevice(_THIS)
+static void DSP_CloseDevice(SDL_AudioDevice *device)
 {
-    if (this->hidden->audio_fd >= 0) {
-        close(this->hidden->audio_fd);
-    }
-    SDL_free(this->hidden->mixbuf);
-    SDL_free(this->hidden);
-}
-
-static int DSP_OpenDevice(_THIS, const char *devname)
-{
-    SDL_bool iscapture = this->iscapture;
-    const int flags = ((iscapture) ? OPEN_FLAGS_INPUT : OPEN_FLAGS_OUTPUT);
-    int format;
-    int value;
-    int frag_spec;
-    SDL_AudioFormat test_format;
-
-    /* We don't care what the devname is...we'll try to open anything. */
-    /*  ...but default to first name in the list... */
-    if (!devname) {
-        devname = SDL_GetAudioDeviceName(0, iscapture);
-        if (!devname) {
-            return SDL_SetError("No such audio device");
+    if (device->hidden) {
+        if (device->hidden->audio_fd >= 0) {
+            close(device->hidden->audio_fd);
         }
+        SDL_free(device->hidden->mixbuf);
+        SDL_free(device->hidden);
+    }
+}
+
+static bool DSP_OpenDevice(SDL_AudioDevice *device)
+{
+    // Make sure fragment size stays a power of 2, or OSS fails.
+    // (I don't know which of these are actually legal values, though...)
+    if (device->spec.channels > 8) {
+        device->spec.channels = 8;
+    } else if (device->spec.channels > 4) {
+        device->spec.channels = 4;
+    } else if (device->spec.channels > 2) {
+        device->spec.channels = 2;
     }
 
-    /* Make sure fragment size stays a power of 2, or OSS fails. */
-    /* I don't know which of these are actually legal values, though... */
-    if (this->spec.channels > 8) {
-        this->spec.channels = 8;
-    } else if (this->spec.channels > 4) {
-        this->spec.channels = 4;
-    } else if (this->spec.channels > 2) {
-        this->spec.channels = 2;
+    // Initialize all variables that we clean on shutdown
+    device->hidden = (struct SDL_PrivateAudioData *) SDL_calloc(1, sizeof(*device->hidden));
+    if (!device->hidden) {
+        return false;
     }
 
-    /* Initialize all variables that we clean on shutdown */
-    this->hidden = (struct SDL_PrivateAudioData *) SDL_malloc(sizeof(*this->hidden));
-    if (!this->hidden) {
-        return SDL_OutOfMemory();
-    }
-    SDL_zerop(this->hidden);
-
-    /* Open the audio device */
-    this->hidden->audio_fd = open(devname, flags | O_CLOEXEC, 0);
-    if (this->hidden->audio_fd < 0) {
-        return SDL_SetError("Couldn't open %s: %s", devname, strerror(errno));
+    // Open the audio device; we hardcode the device path in `device->name` for lack of better info, so use that.
+    const int flags = ((device->recording) ? OPEN_FLAGS_INPUT : OPEN_FLAGS_OUTPUT);
+    device->hidden->audio_fd = open(device->name, flags | O_CLOEXEC, 0);
+    if (device->hidden->audio_fd < 0) {
+        return SDL_SetError("Couldn't open %s: %s", device->name, strerror(errno));
     }
 
-    /* Make the file descriptor use blocking i/o with fcntl() */
+    // Make the file descriptor use blocking i/o with fcntl()
     {
-        long ctlflags;
-        ctlflags = fcntl(this->hidden->audio_fd, F_GETFL);
-        ctlflags &= ~O_NONBLOCK;
-        if (fcntl(this->hidden->audio_fd, F_SETFL, ctlflags) < 0) {
+        const long ctlflags = fcntl(device->hidden->audio_fd, F_GETFL) & ~O_NONBLOCK;
+        if (fcntl(device->hidden->audio_fd, F_SETFL, ctlflags) < 0) {
             return SDL_SetError("Couldn't set audio blocking mode");
         }
     }
 
-    /* Get a list of supported hardware formats */
-    if (ioctl(this->hidden->audio_fd, SNDCTL_DSP_GETFMTS, &value) < 0) {
+    // Get a list of supported hardware formats
+    int value;
+    if (ioctl(device->hidden->audio_fd, SNDCTL_DSP_GETFMTS, &value) < 0) {
         perror("SNDCTL_DSP_GETFMTS");
         return SDL_SetError("Couldn't get audio format list");
     }
 
-    /* Try for a closest match on audio format */
-    format = 0;
-    for (test_format = SDL_FirstAudioFormat(this->spec.format);
-         !format && test_format;) {
+    // Try for a closest match on audio format
+    int format = 0;
+    SDL_AudioFormat test_format;
+    const SDL_AudioFormat *closefmts = SDL_ClosestAudioFormats(device->spec.format);
+    while ((test_format = *(closefmts++)) != 0) {
 #ifdef DEBUG_AUDIO
         fprintf(stderr, "Trying format 0x%4.4x\n", test_format);
 #endif
         switch (test_format) {
-        case AUDIO_U8:
+        case SDL_AUDIO_U8:
             if (value & AFMT_U8) {
                 format = AFMT_U8;
             }
             break;
-        case AUDIO_S16LSB:
+        case SDL_AUDIO_S16LE:
             if (value & AFMT_S16_LE) {
                 format = AFMT_S16_LE;
             }
             break;
-        case AUDIO_S16MSB:
+        case SDL_AUDIO_S16BE:
             if (value & AFMT_S16_BE) {
                 format = AFMT_S16_BE;
             }
             break;
-#if 0
-/*
- * These formats are not used by any real life systems so they are not
- * needed here.
- */
-        case AUDIO_S8:
-            if (value & AFMT_S8) {
-                format = AFMT_S8;
-            }
-            break;
-        case AUDIO_U16LSB:
-            if (value & AFMT_U16_LE) {
-                format = AFMT_U16_LE;
-            }
-            break;
-        case AUDIO_U16MSB:
-            if (value & AFMT_U16_BE) {
-                format = AFMT_U16_BE;
-            }
-            break;
-#endif
+
         default:
-            format = 0;
-            break;
+            continue;
         }
-        if (!format) {
-            test_format = SDL_NextAudioFormat();
-        }
+        break;
     }
     if (format == 0) {
         return SDL_SetError("Couldn't find any hardware audio formats");
     }
-    this->spec.format = test_format;
+    device->spec.format = test_format;
 
-    /* Set the audio format */
+    // Set the audio format
     value = format;
-    if ((ioctl(this->hidden->audio_fd, SNDCTL_DSP_SETFMT, &value) < 0) ||
+    if ((ioctl(device->hidden->audio_fd, SNDCTL_DSP_SETFMT, &value) < 0) ||
         (value != format)) {
         perror("SNDCTL_DSP_SETFMT");
         return SDL_SetError("Couldn't set audio format");
     }
 
-    /* Set the number of channels of output */
-    value = this->spec.channels;
-    if (ioctl(this->hidden->audio_fd, SNDCTL_DSP_CHANNELS, &value) < 0) {
+    // Set the number of channels of output
+    value = device->spec.channels;
+    if (ioctl(device->hidden->audio_fd, SNDCTL_DSP_CHANNELS, &value) < 0) {
         perror("SNDCTL_DSP_CHANNELS");
         return SDL_SetError("Cannot set the number of channels");
     }
-    this->spec.channels = value;
+    device->spec.channels = value;
 
-    /* Set the DSP frequency */
-    value = this->spec.freq;
-    if (ioctl(this->hidden->audio_fd, SNDCTL_DSP_SPEED, &value) < 0) {
+    // Set the DSP frequency
+    value = device->spec.freq;
+    if (ioctl(device->hidden->audio_fd, SNDCTL_DSP_SPEED, &value) < 0) {
         perror("SNDCTL_DSP_SPEED");
         return SDL_SetError("Couldn't set audio frequency");
     }
-    this->spec.freq = value;
+    device->spec.freq = value;
 
-    /* Calculate the final parameters for this audio specification */
-    SDL_CalculateAudioSpec(&this->spec);
+    // Calculate the final parameters for this audio specification
+    SDL_UpdatedAudioDeviceFormat(device);
 
-    /* Determine the power of two of the fragment size */
-    for (frag_spec = 0; (0x01U << frag_spec) < this->spec.size; ++frag_spec) {
+    /* Determine the power of two of the fragment size
+       Since apps don't control this in SDL3, and this driver only accepts 8, 16
+       bit formats and 1, 2, 4, 8 channels, this should always be a power of 2 already. */
+    SDL_assert(SDL_powerof2(device->buffer_size) == device->buffer_size);
+
+    int frag_spec = 0;
+    while ((0x01U << frag_spec) < device->buffer_size) {
+        frag_spec++;
     }
-    if ((0x01U << frag_spec) != this->spec.size) {
-        return SDL_SetError("Fragment size must be a power of two");
-    }
-    frag_spec |= 0x00020000; /* two fragments, for low latency */
+    frag_spec |= 0x00020000; // two fragments, for low latency
 
-    /* Set the audio buffering parameters */
+    // Set the audio buffering parameters
 #ifdef DEBUG_AUDIO
     fprintf(stderr, "Requesting %d fragments of size %d\n",
             (frag_spec >> 16), 1 << (frag_spec & 0xFFFF));
 #endif
-    if (ioctl(this->hidden->audio_fd, SNDCTL_DSP_SETFRAGMENT, &frag_spec) < 0) {
+    if (ioctl(device->hidden->audio_fd, SNDCTL_DSP_SETFRAGMENT, &frag_spec) < 0) {
         perror("SNDCTL_DSP_SETFRAGMENT");
     }
 #ifdef DEBUG_AUDIO
     {
         audio_buf_info info;
-        ioctl(this->hidden->audio_fd, SNDCTL_DSP_GETOSPACE, &info);
+        ioctl(device->hidden->audio_fd, SNDCTL_DSP_GETOSPACE, &info);
         fprintf(stderr, "fragments = %d\n", info.fragments);
         fprintf(stderr, "fragstotal = %d\n", info.fragstotal);
         fprintf(stderr, "fragsize = %d\n", info.fragsize);
@@ -224,45 +187,69 @@ static int DSP_OpenDevice(_THIS, const char *devname)
     }
 #endif
 
-    /* Allocate mixing buffer */
-    if (!iscapture) {
-        this->hidden->mixlen = this->spec.size;
-        this->hidden->mixbuf = (Uint8 *)SDL_malloc(this->hidden->mixlen);
-        if (!this->hidden->mixbuf) {
-            return SDL_OutOfMemory();
+    // Allocate mixing buffer
+    if (!device->recording) {
+        device->hidden->mixbuf = (Uint8 *)SDL_malloc(device->buffer_size);
+        if (!device->hidden->mixbuf) {
+            return false;
         }
-        SDL_memset(this->hidden->mixbuf, this->spec.silence, this->spec.size);
+        SDL_memset(device->hidden->mixbuf, device->silence_value, device->buffer_size);
     }
 
-    /* We're ready to rock and roll. :-) */
-    return 0;
+    return true;  // We're ready to rock and roll. :-)
 }
 
-static void DSP_PlayDevice(_THIS)
+static bool DSP_WaitDevice(SDL_AudioDevice *device)
 {
-    struct SDL_PrivateAudioData *h = this->hidden;
-    if (write(h->audio_fd, h->mixbuf, h->mixlen) == -1) {
+    const unsigned long ioctlreq = device->recording ? SNDCTL_DSP_GETISPACE : SNDCTL_DSP_GETOSPACE;
+    struct SDL_PrivateAudioData *h = device->hidden;
+
+    while (!SDL_GetAtomicInt(&device->shutdown)) {
+        audio_buf_info info;
+        const int rc = ioctl(h->audio_fd, ioctlreq, &info);
+        if (rc < 0) {
+            if (errno == EAGAIN) {
+                continue;
+            }
+            // Hmm, not much we can do - abort
+            fprintf(stderr, "dsp WaitDevice ioctl failed (unrecoverable): %s\n", strerror(errno));
+            return false;
+        } else if (info.bytes < device->buffer_size) {
+            SDL_Delay(10);
+        } else {
+            break; // ready to go!
+        }
+    }
+
+    return true;
+}
+
+static bool DSP_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, int buflen)
+{
+    struct SDL_PrivateAudioData *h = device->hidden;
+    if (write(h->audio_fd, buffer, buflen) == -1) {
         perror("Audio write");
-        SDL_OpenedAudioDeviceDisconnected(this);
+        return false;
     }
 #ifdef DEBUG_AUDIO
     fprintf(stderr, "Wrote %d bytes of audio data\n", h->mixlen);
 #endif
+    return true;
 }
 
-static Uint8 *DSP_GetDeviceBuf(_THIS)
+static Uint8 *DSP_GetDeviceBuf(SDL_AudioDevice *device, int *buffer_size)
 {
-    return this->hidden->mixbuf;
+    return device->hidden->mixbuf;
 }
 
-static int DSP_CaptureFromDevice(_THIS, void *buffer, int buflen)
+static int DSP_RecordDevice(SDL_AudioDevice *device, void *buffer, int buflen)
 {
-    return (int)read(this->hidden->audio_fd, buffer, buflen);
+    return (int)read(device->hidden->audio_fd, buffer, buflen);
 }
 
-static void DSP_FlushCapture(_THIS)
+static void DSP_FlushRecording(SDL_AudioDevice *device)
 {
-    struct SDL_PrivateAudioData *h = this->hidden;
+    struct SDL_PrivateAudioData *h = device->hidden;
     audio_buf_info info;
     if (ioctl(h->audio_fd, SNDCTL_DSP_GETISPACE, &info) == 0) {
         while (info.bytes > 0) {
@@ -277,42 +264,40 @@ static void DSP_FlushCapture(_THIS)
     }
 }
 
-static SDL_bool InitTimeDevicesExist = SDL_FALSE;
-static int look_for_devices_test(int fd)
+static bool InitTimeDevicesExist = false;
+static bool look_for_devices_test(int fd)
 {
-    InitTimeDevicesExist = SDL_TRUE; /* note that _something_ exists. */
-    /* Don't add to the device list, we're just seeing if any devices exist. */
-    return 0;
+    InitTimeDevicesExist = true; // note that _something_ exists.
+    // Don't add to the device list, we're just seeing if any devices exist.
+    return false;
 }
 
-static SDL_bool DSP_Init(SDL_AudioDriverImpl *impl)
+static bool DSP_Init(SDL_AudioDriverImpl *impl)
 {
-    InitTimeDevicesExist = SDL_FALSE;
-    SDL_EnumUnixAudioDevices(0, look_for_devices_test);
+    InitTimeDevicesExist = false;
+    SDL_EnumUnixAudioDevices(false, look_for_devices_test);
     if (!InitTimeDevicesExist) {
         SDL_SetError("dsp: No such audio device");
-        return SDL_FALSE; /* maybe try a different backend. */
+        return false; // maybe try a different backend.
     }
 
-    /* Set the function pointers */
     impl->DetectDevices = DSP_DetectDevices;
     impl->OpenDevice = DSP_OpenDevice;
+    impl->WaitDevice = DSP_WaitDevice;
     impl->PlayDevice = DSP_PlayDevice;
     impl->GetDeviceBuf = DSP_GetDeviceBuf;
     impl->CloseDevice = DSP_CloseDevice;
-    impl->CaptureFromDevice = DSP_CaptureFromDevice;
-    impl->FlushCapture = DSP_FlushCapture;
+    impl->WaitRecordingDevice = DSP_WaitDevice;
+    impl->RecordDevice = DSP_RecordDevice;
+    impl->FlushRecording = DSP_FlushRecording;
 
-    impl->AllowsArbitraryDeviceNames = SDL_TRUE;
-    impl->HasCaptureSupport = SDL_TRUE;
+    impl->HasRecordingSupport = true;
 
-    return SDL_TRUE; /* this audio target is available. */
+    return true;
 }
 
 AudioBootStrap DSP_bootstrap = {
-    "dsp", "OSS /dev/dsp standard audio", DSP_Init, SDL_FALSE
+    "dsp", "Open Sound System (/dev/dsp)", DSP_Init, false
 };
 
-#endif /* SDL_AUDIO_DRIVER_OSS */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_AUDIO_DRIVER_OSS

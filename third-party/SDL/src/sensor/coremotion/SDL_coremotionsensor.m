@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,16 +18,13 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-
-#include "SDL_config.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_SENSOR_COREMOTION
 
-/* This is the system specific header for the SDL sensor API */
+// This is the system specific header for the SDL sensor API
 #include <CoreMotion/CoreMotion.h>
 
-#include "SDL_error.h"
-#include "SDL_sensor.h"
 #include "SDL_coremotionsensor.h"
 #include "../SDL_syssensor.h"
 #include "../SDL_sensor_c.h"
@@ -42,7 +39,7 @@ static CMMotionManager *SDL_motion_manager;
 static SDL_CoreMotionSensor *SDL_sensors;
 static int SDL_sensors_count;
 
-static int SDL_COREMOTION_SensorInit(void)
+static bool SDL_COREMOTION_SensorInit(void)
 {
     int i, sensors_count = 0;
 
@@ -60,23 +57,23 @@ static int SDL_COREMOTION_SensorInit(void)
     if (sensors_count > 0) {
         SDL_sensors = (SDL_CoreMotionSensor *)SDL_calloc(sensors_count, sizeof(*SDL_sensors));
         if (!SDL_sensors) {
-            return SDL_OutOfMemory();
+            return false;
         }
 
         i = 0;
         if (SDL_motion_manager.accelerometerAvailable) {
             SDL_sensors[i].type = SDL_SENSOR_ACCEL;
-            SDL_sensors[i].instance_id = SDL_GetNextSensorInstanceID();
+            SDL_sensors[i].instance_id = SDL_GetNextObjectID();
             ++i;
         }
         if (SDL_motion_manager.gyroAvailable) {
             SDL_sensors[i].type = SDL_SENSOR_GYRO;
-            SDL_sensors[i].instance_id = SDL_GetNextSensorInstanceID();
+            SDL_sensors[i].instance_id = SDL_GetNextObjectID();
             ++i;
         }
         SDL_sensors_count = sensors_count;
     }
-    return 0;
+    return true;
 }
 
 static int SDL_COREMOTION_SensorGetCount(void)
@@ -115,13 +112,13 @@ static SDL_SensorID SDL_COREMOTION_SensorGetDeviceInstanceID(int device_index)
     return SDL_sensors[device_index].instance_id;
 }
 
-static int SDL_COREMOTION_SensorOpen(SDL_Sensor *sensor, int device_index)
+static bool SDL_COREMOTION_SensorOpen(SDL_Sensor *sensor, int device_index)
 {
     struct sensor_hwdata *hwdata;
 
     hwdata = (struct sensor_hwdata *)SDL_calloc(1, sizeof(*hwdata));
     if (hwdata == NULL) {
-        return SDL_OutOfMemory();
+        return false;
     }
     sensor->hwdata = hwdata;
 
@@ -135,11 +132,13 @@ static int SDL_COREMOTION_SensorOpen(SDL_Sensor *sensor, int device_index)
     default:
         break;
     }
-    return 0;
+    return true;
 }
 
 static void SDL_COREMOTION_SensorUpdate(SDL_Sensor *sensor)
 {
+    Uint64 timestamp = SDL_GetTicksNS();
+
     switch (sensor->type) {
     case SDL_SENSOR_ACCEL:
     {
@@ -151,7 +150,7 @@ static void SDL_COREMOTION_SensorUpdate(SDL_Sensor *sensor)
             data[1] = -acceleration.y * SDL_STANDARD_GRAVITY;
             data[2] = -acceleration.z * SDL_STANDARD_GRAVITY;
             if (SDL_memcmp(data, sensor->hwdata->data, sizeof(data)) != 0) {
-                SDL_PrivateSensorUpdate(sensor, 0, data, SDL_arraysize(data));
+                SDL_SendSensorUpdate(timestamp, sensor, timestamp, data, SDL_arraysize(data));
                 SDL_memcpy(sensor->hwdata->data, data, sizeof(data));
             }
         }
@@ -166,7 +165,7 @@ static void SDL_COREMOTION_SensorUpdate(SDL_Sensor *sensor)
             data[1] = rotationRate.y;
             data[2] = rotationRate.z;
             if (SDL_memcmp(data, sensor->hwdata->data, sizeof(data)) != 0) {
-                SDL_PrivateSensorUpdate(sensor, 0, data, SDL_arraysize(data));
+                SDL_SendSensorUpdate(timestamp, sensor, timestamp, data, SDL_arraysize(data));
                 SDL_memcpy(sensor->hwdata->data, data, sizeof(data));
             }
         }
@@ -212,6 +211,4 @@ SDL_SensorDriver SDL_COREMOTION_SensorDriver = {
     SDL_COREMOTION_SensorQuit,
 };
 
-#endif /* SDL_SENSOR_COREMOTION */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_SENSOR_COREMOTION

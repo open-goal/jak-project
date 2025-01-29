@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,15 +19,14 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_POWER_DISABLED
 #ifdef SDL_POWER_PSP
 
-#include "SDL_power.h"
 #include <psppower.h>
 
-SDL_bool SDL_GetPowerInfo_PSP(SDL_PowerState *state, int *seconds, int *percent)
+bool SDL_GetPowerInfo_PSP(SDL_PowerState *state, int *seconds, int *percent)
 {
     int battery = scePowerIsBatteryExist();
     int plugged = scePowerIsPowerOnline();
@@ -55,10 +54,8 @@ SDL_bool SDL_GetPowerInfo_PSP(SDL_PowerState *state, int *seconds, int *percent)
         *seconds = scePowerGetBatteryLifeTime() * 60;
     }
 
-    return SDL_TRUE; /* always the definitive answer on PSP. */
+    return true; // always the definitive answer on PSP.
 }
 
-#endif /* SDL_POWER_PSP */
-#endif /* SDL_POWER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_POWER_PSP
+#endif // SDL_POWER_DISABLED

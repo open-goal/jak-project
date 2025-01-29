@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,13 +18,11 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_RENDER_VITA_GXM
 
-#include "SDL_hints.h"
 #include "../SDL_sysrender.h"
-#include "SDL_log.h"
 
 #include <psp2/kernel/processmgr.h>
 #include <psp2/appmgr.h>
@@ -376,7 +374,7 @@ int gxm_init(SDL_Renderer *renderer)
         .colorMask = SCE_GXM_COLOR_MASK_ALL
     };
 
-    VITA_GXM_RenderData *data = (VITA_GXM_RenderData *)renderer->driverdata;
+    VITA_GXM_RenderData *data = (VITA_GXM_RenderData *)renderer->internal;
 
     SceGxmInitializeParams initializeParams;
     SDL_memset(&initializeParams, 0, sizeof(SceGxmInitializeParams));
@@ -528,7 +526,7 @@ int gxm_init(SDL_Renderer *renderer)
     // set the stencil test reference (this is currently assumed to always remain 1 after here for region clipping)
     sceGxmSetFrontStencilRef(data->gxm_context, 1);
 
-    // set the stencil function (this wouldn't actually be needed, as the set clip rectangle function has to call this at the begginning of every scene)
+    // set the stencil function (this wouldn't actually be needed, as the set clip rectangle function has to call this at the beginning of every scene)
     sceGxmSetFrontStencilFunc(
         data->gxm_context,
         SCE_GXM_STENCIL_FUNC_ALWAYS,
@@ -736,16 +734,16 @@ int gxm_init(SDL_Renderer *renderer)
         // create color vertex format
         SceGxmVertexAttribute colorVertexAttributes[2];
         SceGxmVertexStream colorVertexStreams[1];
-        /* x,y: 2 float 32 bits */
+        // x,y: 2 float 32 bits
         colorVertexAttributes[0].streamIndex = 0;
         colorVertexAttributes[0].offset = 0;
         colorVertexAttributes[0].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         colorVertexAttributes[0].componentCount = 2; // (x, y)
         colorVertexAttributes[0].regIndex = sceGxmProgramParameterGetResourceIndex(paramColorPositionAttribute);
-        /* color: 4 unsigned char  = 32 bits */
+        // color: 4 floats = 4*32 bits
         colorVertexAttributes[1].streamIndex = 0;
         colorVertexAttributes[1].offset = 8; // (x, y) * 4 = 8 bytes
-        colorVertexAttributes[1].format = SCE_GXM_ATTRIBUTE_FORMAT_U8N;
+        colorVertexAttributes[1].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         colorVertexAttributes[1].componentCount = 4; // (color)
         colorVertexAttributes[1].regIndex = sceGxmProgramParameterGetResourceIndex(paramColorColorAttribute);
         // 16 bit (short) indices
@@ -775,22 +773,22 @@ int gxm_init(SDL_Renderer *renderer)
         // create texture vertex format
         SceGxmVertexAttribute textureVertexAttributes[3];
         SceGxmVertexStream textureVertexStreams[1];
-        /* x,y: 2 float 32 bits */
+        // x,y: 2 float 32 bits
         textureVertexAttributes[0].streamIndex = 0;
         textureVertexAttributes[0].offset = 0;
         textureVertexAttributes[0].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         textureVertexAttributes[0].componentCount = 2; // (x, y)
         textureVertexAttributes[0].regIndex = sceGxmProgramParameterGetResourceIndex(paramTexturePositionAttribute);
-        /* u,v: 2 floats 32 bits */
+        // u,v: 2 floats 32 bits
         textureVertexAttributes[1].streamIndex = 0;
         textureVertexAttributes[1].offset = 8; // (x, y) * 4 = 8 bytes
         textureVertexAttributes[1].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         textureVertexAttributes[1].componentCount = 2; // (u, v)
         textureVertexAttributes[1].regIndex = sceGxmProgramParameterGetResourceIndex(paramTextureTexcoordAttribute);
-        /* r,g,b,a: 4 unsigned chars 32 bits */
+        // r,g,b,a: 4 floats 4*32 bits
         textureVertexAttributes[2].streamIndex = 0;
         textureVertexAttributes[2].offset = 16; // (x, y, u, v) * 4 = 16 bytes
-        textureVertexAttributes[2].format = SCE_GXM_ATTRIBUTE_FORMAT_U8N;
+        textureVertexAttributes[2].format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
         textureVertexAttributes[2].componentCount = 4; // (r, g, b, a)
         textureVertexAttributes[2].regIndex = sceGxmProgramParameterGetResourceIndex(paramTextureColorAttribute);
         // 16 bit (short) indices
@@ -860,7 +858,7 @@ int gxm_init(SDL_Renderer *renderer)
 
 void gxm_finish(SDL_Renderer *renderer)
 {
-    VITA_GXM_RenderData *data = (VITA_GXM_RenderData *)renderer->driverdata;
+    VITA_GXM_RenderData *data = (VITA_GXM_RenderData *)renderer->internal;
 
     // wait until rendering is done
     sceGxmFinish(data->gxm_context);
@@ -1011,12 +1009,12 @@ gxm_texture *create_gxm_texture(VITA_GXM_RenderData *data, unsigned int w, unsig
     *return_h = h;
     *return_pitch = aligned_w * tex_format_to_bytespp(format);
 
-    /* Allocate a GPU buffer for the texture */
+    // Allocate a GPU buffer for the texture
     texture_data = vita_gpu_mem_alloc(
         data,
         tex_size);
 
-    /* Try SCE_KERNEL_MEMBLOCK_TYPE_USER_RW_UNCACHE in case we're out of VRAM */
+    // Try SCE_KERNEL_MEMBLOCK_TYPE_USER_RW_UNCACHE in case we're out of VRAM
     if (!texture_data) {
         SDL_LogWarn(SDL_LOG_CATEGORY_RENDER, "CDRAM texture allocation failed\n");
         texture_data = vita_mem_alloc(
@@ -1035,10 +1033,10 @@ gxm_texture *create_gxm_texture(VITA_GXM_RenderData *data, unsigned int w, unsig
         return NULL;
     }
 
-    /* Clear the texture */
+    // Clear the texture
     SDL_memset(texture_data, 0, tex_size);
 
-    /* Create the gxm texture */
+    // Create the gxm texture
     ret = sceGxmTextureInitLinear(&texture->gxm_tex, texture_data, format, texture_w, h, 0);
     if (ret < 0) {
         free_gxm_texture(data, texture);
@@ -1160,9 +1158,9 @@ void gxm_minimal_term_for_common_dialog(void)
 void gxm_init_for_common_dialog(void)
 {
     for (int i = 0; i < VITA_GXM_BUFFERS; i += 1) {
-        buffer_for_common_dialog[i].displayData.wait_vblank = SDL_TRUE;
+        buffer_for_common_dialog[i].displayData.wait_vblank = true;
         buffer_for_common_dialog[i].displayData.address = vita_mem_alloc(
-            SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW,
+            SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_PHYCONT_NC_RW,
             4 * VITA_GXM_SCREEN_STRIDE * VITA_GXM_SCREEN_HEIGHT,
             SCE_GXM_COLOR_SURFACE_ALIGNMENT,
             SCE_GXM_MEMORY_ATTRIB_READ | SCE_GXM_MEMORY_ATTRIB_WRITE,
@@ -1212,6 +1210,4 @@ void gxm_term_for_common_dialog(void)
     }
 }
 
-#endif /* SDL_VIDEO_RENDER_VITA_GXM */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_RENDER_VITA_GXM

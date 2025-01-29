@@ -1,9 +1,9 @@
 /**
  * Log test suite
  */
-#include "SDL.h"
-#include "SDL_test.h"
-
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_test.h>
+#include "testautomation_suites.h"
 
 static SDL_LogOutputFunction original_function;
 static void *original_userdata;
@@ -17,13 +17,13 @@ static void SDLCALL TestLogOutput(void *userdata, int category, SDL_LogPriority 
 static void EnableTestLog(int *message_count)
 {
     *message_count = 0;
-    SDL_LogGetOutputFunction(&original_function, &original_userdata);
-    SDL_LogSetOutputFunction(TestLogOutput, message_count);
+    SDL_GetLogOutputFunction(&original_function, &original_userdata);
+    SDL_SetLogOutputFunction(TestLogOutput, message_count);
 }
 
-static void DisableTestLog()
+static void DisableTestLog(void)
 {
-    SDL_LogSetOutputFunction(original_function, original_userdata);
+    SDL_SetLogOutputFunction(original_function, original_userdata);
 }
 
 /* Fixture */
@@ -33,7 +33,7 @@ static void DisableTestLog()
 /**
  * Check SDL_HINT_LOGGING functionality
  */
-static int log_testHint(void *arg)
+static int SDLCALL log_testHint(void *arg)
 {
     int count;
 
@@ -138,8 +138,8 @@ static int log_testHint(void *arg)
 
     }
 
-    SDL_SetHint(SDL_HINT_LOGGING, "0=4,3=2,2=0,*=3");
-    SDLTest_AssertPass("SDL_SetHint(SDL_HINT_LOGGING, \"0=4,3=2,2=0,*=3\")");
+    SDL_SetHint(SDL_HINT_LOGGING, "0=5,3=3,2=0,*=4");
+    SDLTest_AssertPass("SDL_SetHint(SDL_HINT_LOGGING, \"0=5,3=3,2=1,*=4\")");
     {
         EnableTestLog(&count);
         SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_WARN, "test");
@@ -192,7 +192,7 @@ static int log_testHint(void *arg)
 
 /* Log test cases */
 static const SDLTest_TestCaseReference logTestHint = {
-    (SDLTest_TestCaseFp)log_testHint, "log_testHint", "Check SDL_HINT_LOGGING functionality", TEST_ENABLED
+    log_testHint, "log_testHint", "Check SDL_HINT_LOGGING functionality", TEST_ENABLED
 };
 
 /* Sequence of Log test cases */

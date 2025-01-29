@@ -21,8 +21,7 @@
  */
 
 /* Author: Soren Sandmann <sandmann@redhat.com> */
-#include "../../SDL_internal.h"
-#include "SDL_stdinc.h"
+#include "SDL_internal.h"
 
 #include "edid.h"
 #include <stdlib.h>

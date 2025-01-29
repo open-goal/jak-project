@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,10 +22,9 @@
 #ifndef SDL_blit_slow_h_
 #define SDL_blit_slow_h_
 
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
 extern void SDL_Blit_Slow(SDL_BlitInfo *info);
+extern void SDL_Blit_Slow_Float(SDL_BlitInfo *info);
 
-#endif /* SDL_blit_slow_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_blit_slow_h_

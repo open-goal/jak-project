@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -14,55 +14,87 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 
 typedef int (*fntype)(const char *);
 
+static void log_usage(char *progname, SDLTest_CommonState *state) {
+    static const char *options[] = { "library", "functionname|--hello", NULL };
+    SDLTest_CommonLogUsage(state, progname, options);
+    SDL_Log("USAGE: %s <library> <functionname>\n", progname);
+    SDL_Log("       %s <lib with puts()> --hello\n", progname);
+}
+
 int main(int argc, char *argv[])
 {
-    int retval = 0;
+    int i;
+    int result = 0;
     int hello = 0;
     const char *libname = NULL;
     const char *symname = NULL;
-    void *lib = NULL;
+    SDL_SharedObject *lib = NULL;
     fntype fn = NULL;
+    SDLTest_CommonState *state;
 
-    if (argc != 3) {
-        const char *app = argv[0];
-        SDL_Log("USAGE: %s <library> <functionname>\n", app);
-        SDL_Log("       %s --hello <lib with puts()>\n", app);
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
+    }
+
+    /* Parse commandline */
+    for (i = 1; i < argc;) {
+        int consumed;
+
+        consumed = SDLTest_CommonArg(state, i);
+        if (!consumed) {
+            if (SDL_strcmp(argv[i], "--hello") == 0) {
+                if (!symname || SDL_strcmp(symname, "puts") == 0) {
+                    symname = "puts";
+                    consumed = 1;
+                    hello = 1;
+                }
+            } else if (!libname) {
+                libname = argv[i];
+                consumed = 1;
+            } else if (!symname) {
+                symname = argv[i];
+                consumed = 1;
+            }
+        }
+        if (consumed <= 0) {
+            log_usage(argv[0], state);
+            return 1;
+        }
+
+        i += consumed;
+    }
+
+    if (!libname || !symname) {
+        log_usage(argv[0], state);
         return 1;
     }
 
     /* Initialize SDL */
-    if (SDL_Init(0) < 0) {
+    if (!SDL_Init(0)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
         return 2;
-    }
-
-    if (SDL_strcmp(argv[1], "--hello") == 0) {
-        hello = 1;
-        libname = argv[2];
-        symname = "puts";
-    } else {
-        libname = argv[1];
-        symname = argv[2];
     }
 
     lib = SDL_LoadObject(libname);
     if (!lib) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_LoadObject('%s') failed: %s\n",
                      libname, SDL_GetError());
-        retval = 3;
+        result = 3;
     } else {
         fn = (fntype)SDL_LoadFunction(lib, symname);
         if (!fn) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_LoadFunction('%s') failed: %s\n",
                          symname, SDL_GetError());
-            retval = 4;
+            result = 4;
         } else {
             SDL_Log("Found %s in %s at %p\n", symname, libname, fn);
             if (hello) {
@@ -75,5 +107,6 @@ int main(int argc, char *argv[])
         SDL_UnloadObject(lib);
     }
     SDL_Quit();
-    return retval;
+    SDLTest_CommonDestroyState(state);
+    return result;
 }

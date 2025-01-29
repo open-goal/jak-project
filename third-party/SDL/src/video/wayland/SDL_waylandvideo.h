@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,8 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
-#include "SDL_stdinc.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_waylandvideo_h_
 #define SDL_waylandvideo_h_
@@ -34,13 +33,6 @@
 
 struct xkb_context;
 struct SDL_WaylandInput;
-struct SDL_WaylandTabletManager;
-
-#ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH
-struct SDL_WaylandTouch;
-struct qt_surface_extension;
-struct qt_windowmanager;
-#endif /* SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH */
 
 typedef struct
 {
@@ -48,11 +40,15 @@ typedef struct
     int size;
 } SDL_WaylandCursorTheme;
 
-typedef struct SDL_WaylandOutputData SDL_WaylandOutputData;
-
 typedef struct
 {
-    SDL_bool initializing;
+    struct wl_list link;
+    char wl_output_name[];
+} SDL_WaylandConnectorName;
+
+struct SDL_VideoData
+{
+    bool initializing;
     struct wl_display *display;
     int display_disconnected;
     struct wl_registry *registry;
@@ -70,6 +66,7 @@ typedef struct
     } shell;
     struct zwp_relative_pointer_manager_v1 *relative_pointer_manager;
     struct zwp_pointer_constraints_v1 *pointer_constraints;
+    struct wp_cursor_shape_manager_v1 *cursor_shape_manager;
     struct wl_data_device_manager *data_device_manager;
     struct zwp_primary_selection_device_manager_v1 *primary_selection_device_manager;
     struct zxdg_decoration_manager_v1 *decoration_manager;
@@ -80,59 +77,59 @@ typedef struct
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct wp_viewporter *viewporter;
     struct wp_fractional_scale_manager_v1 *fractional_scale_manager;
-
-    EGLDisplay edpy;
-    EGLContext context;
-    EGLConfig econf;
+    struct zwp_input_timestamps_manager_v1 *input_timestamps_manager;
+    struct zxdg_exporter_v2 *zxdg_exporter_v2;
+    struct xdg_wm_dialog_v1 *xdg_wm_dialog_v1;
+    struct wp_alpha_modifier_v1 *wp_alpha_modifier_v1;
+    struct xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager_v1;
+    struct frog_color_management_factory_v1 *frog_color_management_factory_v1;
+    struct zwp_tablet_manager_v2 *tablet_manager;
 
     struct xkb_context *xkb_context;
     struct SDL_WaylandInput *input;
-    struct SDL_WaylandTabletManager *tablet_manager;
-    SDL_WaylandOutputData *output_list;
-
-#ifdef SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH
-    struct SDL_WaylandTouch *touch;
-    struct qt_surface_extension *surface_extension;
-    struct qt_windowmanager *windowmanager;
-#endif /* SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH */
-
-    char *classname;
+    SDL_DisplayData **output_list;
+    int output_count;
+    int output_max;
 
     int relative_mouse_mode;
-    SDL_bool egl_transparency_enabled;
-} SDL_VideoData;
+    bool display_externally_owned;
 
-struct SDL_WaylandOutputData
+    bool scale_to_display_enabled;
+};
+
+struct SDL_DisplayData
 {
     SDL_VideoData *videodata;
     struct wl_output *output;
     struct zxdg_output_v1 *xdg_output;
+    char *wl_output_name;
+    double scale_factor;
     uint32_t registry_id;
-    float scale_factor;
-    int native_width, native_height;
-    int x, y, width, height, refresh, transform;
+    int logical_width, logical_height;
+    int pixel_width, pixel_height;
+    int x, y, refresh, transform;
     SDL_DisplayOrientation orientation;
-    int physical_width, physical_height;
-    float ddpi, hdpi, vdpi;
-    SDL_bool has_logical_position, has_logical_size;
-    int index;
+    int physical_width_mm, physical_height_mm;
+    bool has_logical_position, has_logical_size;
+    SDL_DisplayID display;
     SDL_VideoDisplay placeholder;
     int wl_output_done_count;
-    SDL_WaylandOutputData *next;
 };
 
-/* Needed here to get wl_surface declaration, fixes GitHub#4594 */
+// Needed here to get wl_surface declaration, fixes GitHub#4594
 #include "SDL_waylanddyn.h"
 
 extern void SDL_WAYLAND_register_surface(struct wl_surface *surface);
 extern void SDL_WAYLAND_register_output(struct wl_output *output);
-extern SDL_bool SDL_WAYLAND_own_surface(struct wl_surface *surface);
-extern SDL_bool SDL_WAYLAND_own_output(struct wl_output *output);
+extern bool SDL_WAYLAND_own_surface(struct wl_surface *surface);
+extern bool SDL_WAYLAND_own_output(struct wl_output *output);
 
-extern SDL_bool Wayland_LoadLibdecor(SDL_VideoData *data, SDL_bool ignore_xdg);
+extern SDL_WindowData *Wayland_GetWindowDataForOwnedSurface(struct wl_surface *surface);
+void Wayland_AddWindowDataToExternalList(SDL_WindowData *data);
+void Wayland_RemoveWindowDataFromExternalList(SDL_WindowData *data);
 
-extern SDL_bool Wayland_VideoReconnect(_THIS);
+extern bool Wayland_LoadLibdecor(SDL_VideoData *data, bool ignore_xdg);
 
-#endif /* SDL_waylandvideo_h_ */
+extern bool Wayland_VideoReconnect(SDL_VideoDevice *_this);
 
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_waylandvideo_h_

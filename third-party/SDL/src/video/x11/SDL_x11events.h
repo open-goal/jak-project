@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,18 +18,23 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_x11events_h_
 #define SDL_x11events_h_
 
-extern void X11_PumpEvents(_THIS);
-extern int X11_WaitEventTimeout(_THIS, int timeout);
-extern void X11_SendWakeupEvent(_THIS, SDL_Window *window);
-extern void X11_SuspendScreenSaver(_THIS);
-extern void X11_ReconcileKeyboardState(_THIS);
-extern void X11_GetBorderValues(void /*SDL_WindowData*/ *data);
+extern void X11_PumpEvents(SDL_VideoDevice *_this);
+extern int X11_WaitEventTimeout(SDL_VideoDevice *_this, Sint64 timeoutNS);
+extern void X11_SendWakeupEvent(SDL_VideoDevice *_this, SDL_Window *window);
+extern bool X11_SuspendScreenSaver(SDL_VideoDevice *_this);
+extern void X11_ReconcileKeyboardState(SDL_VideoDevice *_this);
+extern void X11_GetBorderValues(SDL_WindowData *data);
+extern Uint64 X11_GetEventTimestamp(unsigned long time);
+extern void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_KeyboardID keyboardID, XEvent *xevent);
+extern void X11_HandleButtonPress(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_MouseID mouseID, int button, float x, float y, unsigned long time);
+extern void X11_HandleButtonRelease(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_MouseID mouseID, int button, unsigned long time);
+extern SDL_WindowData *X11_FindWindow(SDL_VideoDevice *_this, Window window);
+extern bool X11_ProcessHitTest(SDL_VideoDevice *_this, SDL_WindowData *data, const float x, const float y, bool force_new_result);
+extern bool X11_TriggerHitTestAction(SDL_VideoDevice *_this, SDL_WindowData *data, const float x, const float y);
 
-#endif /* SDL_x11events_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_x11events_h_

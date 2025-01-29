@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -26,38 +26,33 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "SDL_thread.h"
-#include "SDL_timer.h"
+// Wrapper around POSIX 1003.1b semaphores
 
-/* Wrapper around POSIX 1003.1b semaphores */
-
-#if defined(__MACOSX__) || defined(__IPHONEOS__)
-/* Mac OS X doesn't support sem_getvalue() as of version 10.4 */
+#if defined(SDL_PLATFORM_MACOS) || defined(SDL_PLATFORM_IOS)
+// macOS doesn't support sem_getvalue() as of version 10.4
 #include "../generic/SDL_syssem.c"
 #else
 
-struct SDL_semaphore
+struct SDL_Semaphore
 {
     sem_t sem;
 };
 
-/* Create a semaphore, initialized with value */
-SDL_sem *SDL_CreateSemaphore(Uint32 initial_value)
+// Create a semaphore, initialized with value
+SDL_Semaphore *SDL_CreateSemaphore(Uint32 initial_value)
 {
-    SDL_sem *sem = (SDL_sem *)SDL_malloc(sizeof(SDL_sem));
+    SDL_Semaphore *sem = (SDL_Semaphore *)SDL_malloc(sizeof(SDL_Semaphore));
     if (sem) {
         if (sem_init(&sem->sem, 0, initial_value) < 0) {
             SDL_SetError("sem_init() failed");
             SDL_free(sem);
             sem = NULL;
         }
-    } else {
-        SDL_OutOfMemory();
     }
     return sem;
 }
 
-void SDL_DestroySemaphore(SDL_sem *sem)
+void SDL_DestroySemaphore(SDL_Semaphore *sem)
 {
     if (sem) {
         sem_destroy(&sem->sem);
@@ -65,60 +60,33 @@ void SDL_DestroySemaphore(SDL_sem *sem)
     }
 }
 
-int SDL_SemTryWait(SDL_sem *sem)
+bool SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
 {
-    int retval;
-
-    if (!sem) {
-        return SDL_InvalidParamError("sem");
-    }
-    retval = SDL_MUTEX_TIMEDOUT;
-    if (sem_trywait(&sem->sem) == 0) {
-        retval = 0;
-    }
-    return retval;
-}
-
-int SDL_SemWait(SDL_sem *sem)
-{
-    int retval;
-
-    if (!sem) {
-        return SDL_InvalidParamError("sem");
-    }
-
-    do {
-        retval = sem_wait(&sem->sem);
-    } while (retval < 0 && errno == EINTR);
-
-    if (retval < 0) {
-        retval = SDL_SetError("sem_wait() failed");
-    }
-    return retval;
-}
-
-int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
-{
-    int retval = 0;
 #ifdef HAVE_SEM_TIMEDWAIT
 #ifndef HAVE_CLOCK_GETTIME
     struct timeval now;
 #endif
     struct timespec ts_timeout;
 #else
-    Uint32 end;
+    Uint64 stop_time;
 #endif
 
     if (!sem) {
-        return SDL_InvalidParamError("sem");
+        return true;
     }
 
-    /* Try the easy cases first */
-    if (timeout == 0) {
-        return SDL_SemTryWait(sem);
+    // Try the easy cases first
+    if (timeoutNS == 0) {
+        return (sem_trywait(&sem->sem) == 0);
     }
-    if (timeout == SDL_MUTEX_MAXWAIT) {
-        return SDL_SemWait(sem);
+
+    if (timeoutNS < 0) {
+        int rc;
+        do {
+            rc = sem_wait(&sem->sem);
+        } while (rc < 0 && errno == EINTR);
+
+        return (rc == 0);
     }
 
 #ifdef HAVE_SEM_TIMEDWAIT
@@ -129,54 +97,47 @@ int SDL_SemWaitTimeout(SDL_sem *sem, Uint32 timeout)
 #ifdef HAVE_CLOCK_GETTIME
     clock_gettime(CLOCK_REALTIME, &ts_timeout);
 
-    /* Add our timeout to current time */
-    ts_timeout.tv_nsec += (timeout % 1000) * 1000000;
-    ts_timeout.tv_sec += timeout / 1000;
+    // Add our timeout to current time
+    ts_timeout.tv_sec += (timeoutNS / SDL_NS_PER_SECOND);
+    ts_timeout.tv_nsec += (timeoutNS % SDL_NS_PER_SECOND);
 #else
     gettimeofday(&now, NULL);
 
-    /* Add our timeout to current time */
-    ts_timeout.tv_sec = now.tv_sec + (timeout / 1000);
-    ts_timeout.tv_nsec = (now.tv_usec + (timeout % 1000) * 1000) * 1000;
+    // Add our timeout to current time
+    ts_timeout.tv_sec = now.tv_sec + (timeoutNS / SDL_NS_PER_SECOND);
+    ts_timeout.tv_nsec = SDL_US_TO_NS(now.tv_usec) + (timeoutNS % SDL_NS_PER_SECOND);
 #endif
 
-    /* Wrap the second if needed */
-    if (ts_timeout.tv_nsec > 1000000000) {
+    // Wrap the second if needed
+    while (ts_timeout.tv_nsec >= 1000000000) {
         ts_timeout.tv_sec += 1;
         ts_timeout.tv_nsec -= 1000000000;
     }
 
-    /* Wait. */
+    // Wait.
+    int rc;
     do {
-        retval = sem_timedwait(&sem->sem, &ts_timeout);
-    } while (retval < 0 && errno == EINTR);
+        rc = sem_timedwait(&sem->sem, &ts_timeout);
+    } while (rc < 0 && errno == EINTR);
 
-    if (retval < 0) {
-        if (errno == ETIMEDOUT) {
-            retval = SDL_MUTEX_TIMEDOUT;
-        } else {
-            SDL_SetError("sem_timedwait returned an error: %s", strerror(errno));
-        }
-    }
+    return (rc == 0);
 #else
-    end = SDL_GetTicks() + timeout;
-    while ((retval = SDL_SemTryWait(sem)) == SDL_MUTEX_TIMEDOUT) {
-        if (SDL_TICKS_PASSED(SDL_GetTicks(), end)) {
-            break;
+    stop_time = SDL_GetTicksNS() + timeoutNS;
+    while (sem_trywait(&sem->sem) != 0) {
+        if (SDL_GetTicksNS() >= stop_time) {
+            return false;
         }
-        SDL_Delay(1);
+        SDL_DelayNS(100);
     }
-#endif /* HAVE_SEM_TIMEDWAIT */
-
-    return retval;
+    return true;
+#endif // HAVE_SEM_TIMEDWAIT
 }
 
-Uint32 SDL_SemValue(SDL_sem *sem)
+Uint32 SDL_GetSemaphoreValue(SDL_Semaphore *sem)
 {
     int ret = 0;
 
     if (!sem) {
-        SDL_InvalidParamError("sem");
         return 0;
     }
 
@@ -187,20 +148,13 @@ Uint32 SDL_SemValue(SDL_sem *sem)
     return (Uint32)ret;
 }
 
-int SDL_SemPost(SDL_sem *sem)
+void SDL_SignalSemaphore(SDL_Semaphore *sem)
 {
-    int retval;
-
     if (!sem) {
-        return SDL_InvalidParamError("sem");
+        return;
     }
 
-    retval = sem_post(&sem->sem);
-    if (retval < 0) {
-        SDL_SetError("sem_post() failed");
-    }
-    return retval;
+    sem_post(&sem->sem);
 }
 
-#endif /* __MACOSX__ */
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_PLATFORM_MACOS

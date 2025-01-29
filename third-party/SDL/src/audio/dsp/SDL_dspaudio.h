@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,26 +18,20 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_dspaudio_h_
 #define SDL_dspaudio_h_
 
 #include "../SDL_sysaudio.h"
 
-/* Hidden "this" pointer for the audio functions */
-#define _THIS SDL_AudioDevice *this
-
 struct SDL_PrivateAudioData
 {
-    /* The file descriptor for the audio device */
+    // The file descriptor for the audio device
     int audio_fd;
 
-    /* Raw mixing buffer */
+    // Raw mixing buffer
     Uint8 *mixbuf;
-    int mixlen;
 };
-#define FUDGE_TICKS 10 /* The scheduler overhead ticks per frame */
 
-#endif /* SDL_dspaudio_h_ */
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_dspaudio_h_

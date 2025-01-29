@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -14,10 +14,9 @@
    integration with native windows
 */
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
 
-/* This header includes all the necessary system headers for native windows */
-#include "SDL_syswm.h"
+#include "SDL_build_config.h"
 
 typedef struct
 {
@@ -31,21 +30,17 @@ typedef struct
 extern NativeWindowFactory WindowsWindowFactory;
 #endif
 
+#ifdef SDL_VIDEO_DRIVER_WAYLAND
+#define TEST_NATIVE_WAYLAND
+extern NativeWindowFactory WaylandWindowFactory;
+#endif
+
 #ifdef SDL_VIDEO_DRIVER_X11
 #define TEST_NATIVE_X11
 extern NativeWindowFactory X11WindowFactory;
 #endif
 
 #ifdef SDL_VIDEO_DRIVER_COCOA
-/* Actually, we don't really do this, since it involves adding Objective C
-   support to the build system, which is a little tricky.  You can uncomment
-   it manually though and link testnativecocoa.m into the test application.
-*/
 #define TEST_NATIVE_COCOA
 extern NativeWindowFactory CocoaWindowFactory;
-#endif
-
-#ifdef SDL_VIDEO_DRIVER_OS2
-#define TEST_NATIVE_OS2
-extern NativeWindowFactory OS2WindowFactory;
 #endif

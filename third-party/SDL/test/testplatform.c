@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -9,10 +9,9 @@
   including commercial applications, and to alter it and redistribute it
   freely.
 */
-
-#include <stdio.h>
-
-#include "SDL.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 
 /*
  * Watcom C flags these as Warning 201: "Unreachable code" if you just
@@ -40,15 +39,21 @@ SDL_COMPILE_TIME_ASSERT(SDL_MIN_SINT32, SDL_MIN_SINT32 == ~0x7fffffff); /* Inste
 SDL_COMPILE_TIME_ASSERT(SDL_MAX_UINT32, SDL_MAX_UINT32 == 4294967295u);
 SDL_COMPILE_TIME_ASSERT(SDL_MIN_UINT32, SDL_MIN_UINT32 == 0);
 
-SDL_COMPILE_TIME_ASSERT(SDL_MAX_SINT64, SDL_MAX_SINT64 == 9223372036854775807ll);
-SDL_COMPILE_TIME_ASSERT(SDL_MIN_SINT64, SDL_MIN_SINT64 == ~0x7fffffffffffffffll); /* Instead of -9223372036854775808, which is treated as unsigned by compilers */
-SDL_COMPILE_TIME_ASSERT(SDL_MAX_UINT64, SDL_MAX_UINT64 == 18446744073709551615ull);
+SDL_COMPILE_TIME_ASSERT(SDL_MAX_SINT64, SDL_MAX_SINT64 == INT64_C(9223372036854775807));
+SDL_COMPILE_TIME_ASSERT(SDL_MIN_SINT64, SDL_MIN_SINT64 == ~INT64_C(0x7fffffffffffffff)); /* Instead of -9223372036854775808, which is treated as unsigned by compilers */
+SDL_COMPILE_TIME_ASSERT(SDL_MAX_UINT64, SDL_MAX_UINT64 == UINT64_C(18446744073709551615));
 SDL_COMPILE_TIME_ASSERT(SDL_MIN_UINT64, SDL_MIN_UINT64 == 0);
 
-int TestTypes(SDL_bool verbose)
+static int TestTypes(bool verbose)
 {
     int error = 0;
 
+    if (badsize(sizeof(bool), 1)) {
+        if (verbose) {
+            SDL_Log("sizeof(bool) != 1, instead = %u\n", (unsigned int)sizeof(bool));
+        }
+        ++error;
+    }
     if (badsize(sizeof(Uint8), 1)) {
         if (verbose) {
             SDL_Log("sizeof(Uint8) != 1, instead = %u\n", (unsigned int)sizeof(Uint8));
@@ -80,7 +85,7 @@ int TestTypes(SDL_bool verbose)
     return error ? 1 : 0;
 }
 
-int TestEndian(SDL_bool verbose)
+static int TestEndian(bool verbose)
 {
     int error = 0;
     Uint16 value = 0x1234;
@@ -175,8 +180,8 @@ int TestEndian(SDL_bool verbose)
 
 static int TST_allmul(void *a, void *b, int arg, void *result, void *expected)
 {
-    (*(long long *)result) = ((*(long long *)a) * (*(long long *)b));
-    return (*(long long *)result) == (*(long long *)expected);
+    (*(unsigned long long *)result) = ((*(unsigned long long *)a) * (*(unsigned long long *)b));
+    return (*(unsigned long long *)result) == (*(unsigned long long *)expected);
 }
 
 static int TST_alldiv(void *a, void *b, int arg, void *result, void *expected)
@@ -239,129 +244,129 @@ typedef struct
 } LL_Test;
 
 static LL_Test LL_Tests[] = {
-    /* UNDEFINED {"_allshl",   &TST_allshl,   0xFFFFFFFFFFFFFFFFll,                  0ll, 65, 0x0000000000000000ll}, */
-    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 1, 0xFFFFFFFFFFFFFFFEll },
-    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 32, 0xFFFFFFFF00000000ll },
-    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 33, 0xFFFFFFFE00000000ll },
-    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 0, 0xFFFFFFFFFFFFFFFFll },
+    /* UNDEFINED {"_allshl",   &TST_allshl,   0xFFFFFFFFFFFFFFFFllu,                  0llu, 65, 0x0000000000000000ll}, */
+    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 1, 0xFFFFFFFFFFFFFFFEllu },
+    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 32, 0xFFFFFFFF00000000llu },
+    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 33, 0xFFFFFFFE00000000llu },
+    { "_allshl", &TST_allshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 0, 0xFFFFFFFFFFFFFFFFllu },
 
-    { "_allshr", &TST_allshr, 0xAAAAAAAA55555555ll, 0ll, 63, 0xFFFFFFFFFFFFFFFFll },
-    /* UNDEFINED {"_allshr",   &TST_allshr,   0xFFFFFFFFFFFFFFFFll,                  0ll, 65, 0xFFFFFFFFFFFFFFFFll}, */
-    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 1, 0xFFFFFFFFFFFFFFFFll },
-    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 32, 0xFFFFFFFFFFFFFFFFll },
-    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 33, 0xFFFFFFFFFFFFFFFFll },
-    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 0, 0xFFFFFFFFFFFFFFFFll },
-    /* UNDEFINED {"_allshr",   &TST_allshr,   0x5F5F5F5F5F5F5F5Fll,                  0ll, 65, 0x0000000000000000ll}, */
-    { "_allshr", &TST_allshr, 0x5F5F5F5F5F5F5F5Fll, 0ll, 1, 0x2FAFAFAFAFAFAFAFll },
-    { "_allshr", &TST_allshr, 0x5F5F5F5F5F5F5F5Fll, 0ll, 32, 0x000000005F5F5F5Fll },
-    { "_allshr", &TST_allshr, 0x5F5F5F5F5F5F5F5Fll, 0ll, 33, 0x000000002FAFAFAFll },
+    { "_allshr", &TST_allshr, 0xAAAAAAAA55555555llu, 0llu, 63, 0xFFFFFFFFFFFFFFFFllu },
+    /* UNDEFINED {"_allshr",   &TST_allshr,   0xFFFFFFFFFFFFFFFFllu,                  0llu, 65, 0xFFFFFFFFFFFFFFFFll}, */
+    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 1, 0xFFFFFFFFFFFFFFFFllu },
+    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 32, 0xFFFFFFFFFFFFFFFFllu },
+    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 33, 0xFFFFFFFFFFFFFFFFllu },
+    { "_allshr", &TST_allshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 0, 0xFFFFFFFFFFFFFFFFllu },
+    /* UNDEFINED {"_allshr",   &TST_allshr,   0x5F5F5F5F5F5F5F5Fllu,                  0llu, 65, 0x0000000000000000ll}, */
+    { "_allshr", &TST_allshr, 0x5F5F5F5F5F5F5F5Fllu, 0llu, 1, 0x2FAFAFAFAFAFAFAFllu },
+    { "_allshr", &TST_allshr, 0x5F5F5F5F5F5F5F5Fllu, 0llu, 32, 0x000000005F5F5F5Fllu },
+    { "_allshr", &TST_allshr, 0x5F5F5F5F5F5F5F5Fllu, 0llu, 33, 0x000000002FAFAFAFllu },
 
-    /* UNDEFINED {"_aullshl",  &TST_aullshl,  0xFFFFFFFFFFFFFFFFll,                  0ll, 65, 0x0000000000000000ll}, */
-    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 1, 0xFFFFFFFFFFFFFFFEll },
-    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 32, 0xFFFFFFFF00000000ll },
-    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 33, 0xFFFFFFFE00000000ll },
-    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFll, 0ll, 0, 0xFFFFFFFFFFFFFFFFll },
+    /* UNDEFINED {"_aullshl",  &TST_aullshl,  0xFFFFFFFFFFFFFFFFllu,                  0llu, 65, 0x0000000000000000ll}, */
+    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 1, 0xFFFFFFFFFFFFFFFEllu },
+    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 32, 0xFFFFFFFF00000000llu },
+    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 33, 0xFFFFFFFE00000000llu },
+    { "_aullshl", &TST_aullshl, 0xFFFFFFFFFFFFFFFFllu, 0llu, 0, 0xFFFFFFFFFFFFFFFFllu },
 
-    /* UNDEFINED {"_aullshr",  &TST_aullshr,  0xFFFFFFFFFFFFFFFFll,                  0ll, 65, 0x0000000000000000ll}, */
-    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 1, 0x7FFFFFFFFFFFFFFFll },
-    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 32, 0x00000000FFFFFFFFll },
-    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 33, 0x000000007FFFFFFFll },
-    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFll, 0ll, 0, 0xFFFFFFFFFFFFFFFFll },
+    /* UNDEFINED {"_aullshr",  &TST_aullshr,  0xFFFFFFFFFFFFFFFFllu,                  0llu, 65, 0x0000000000000000ll}, */
+    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 1, 0x7FFFFFFFFFFFFFFFllu },
+    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 32, 0x00000000FFFFFFFFllu },
+    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 33, 0x000000007FFFFFFFllu },
+    { "_aullshr", &TST_aullshr, 0xFFFFFFFFFFFFFFFFllu, 0llu, 0, 0xFFFFFFFFFFFFFFFFllu },
 
-    { "_allmul", &TST_allmul, 0xFFFFFFFFFFFFFFFFll, 0x0000000000000000ll, 0, 0x0000000000000000ll },
-    { "_allmul", &TST_allmul, 0x0000000000000000ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_allmul", &TST_allmul, 0x000000000FFFFFFFll, 0x0000000000000001ll, 0, 0x000000000FFFFFFFll },
-    { "_allmul", &TST_allmul, 0x0000000000000001ll, 0x000000000FFFFFFFll, 0, 0x000000000FFFFFFFll },
-    { "_allmul", &TST_allmul, 0x000000000FFFFFFFll, 0x0000000000000010ll, 0, 0x00000000FFFFFFF0ll },
-    { "_allmul", &TST_allmul, 0x0000000000000010ll, 0x000000000FFFFFFFll, 0, 0x00000000FFFFFFF0ll },
-    { "_allmul", &TST_allmul, 0x000000000FFFFFFFll, 0x0000000000000100ll, 0, 0x0000000FFFFFFF00ll },
-    { "_allmul", &TST_allmul, 0x0000000000000100ll, 0x000000000FFFFFFFll, 0, 0x0000000FFFFFFF00ll },
-    { "_allmul", &TST_allmul, 0x000000000FFFFFFFll, 0x0000000010000000ll, 0, 0x00FFFFFFF0000000ll },
-    { "_allmul", &TST_allmul, 0x0000000010000000ll, 0x000000000FFFFFFFll, 0, 0x00FFFFFFF0000000ll },
-    { "_allmul", &TST_allmul, 0x000000000FFFFFFFll, 0x0000000080000000ll, 0, 0x07FFFFFF80000000ll },
-    { "_allmul", &TST_allmul, 0x0000000080000000ll, 0x000000000FFFFFFFll, 0, 0x07FFFFFF80000000ll },
-    { "_allmul", &TST_allmul, 0xFFFFFFFFFFFFFFFEll, 0x0000000080000000ll, 0, 0xFFFFFFFF00000000ll },
-    { "_allmul", &TST_allmul, 0x0000000080000000ll, 0xFFFFFFFFFFFFFFFEll, 0, 0xFFFFFFFF00000000ll },
-    { "_allmul", &TST_allmul, 0xFFFFFFFFFFFFFFFEll, 0x0000000080000008ll, 0, 0xFFFFFFFEFFFFFFF0ll },
-    { "_allmul", &TST_allmul, 0x0000000080000008ll, 0xFFFFFFFFFFFFFFFEll, 0, 0xFFFFFFFEFFFFFFF0ll },
-    { "_allmul", &TST_allmul, 0x00000000FFFFFFFFll, 0x00000000FFFFFFFFll, 0, 0xFFFFFFFE00000001ll },
+    { "_allmul", &TST_allmul, 0xFFFFFFFFFFFFFFFFllu, 0x0000000000000000llu, 0, 0x0000000000000000llu },
+    { "_allmul", &TST_allmul, 0x0000000000000000llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_allmul", &TST_allmul, 0x000000000FFFFFFFllu, 0x0000000000000001llu, 0, 0x000000000FFFFFFFllu },
+    { "_allmul", &TST_allmul, 0x0000000000000001llu, 0x000000000FFFFFFFllu, 0, 0x000000000FFFFFFFllu },
+    { "_allmul", &TST_allmul, 0x000000000FFFFFFFllu, 0x0000000000000010llu, 0, 0x00000000FFFFFFF0llu },
+    { "_allmul", &TST_allmul, 0x0000000000000010llu, 0x000000000FFFFFFFllu, 0, 0x00000000FFFFFFF0llu },
+    { "_allmul", &TST_allmul, 0x000000000FFFFFFFllu, 0x0000000000000100llu, 0, 0x0000000FFFFFFF00llu },
+    { "_allmul", &TST_allmul, 0x0000000000000100llu, 0x000000000FFFFFFFllu, 0, 0x0000000FFFFFFF00llu },
+    { "_allmul", &TST_allmul, 0x000000000FFFFFFFllu, 0x0000000010000000llu, 0, 0x00FFFFFFF0000000llu },
+    { "_allmul", &TST_allmul, 0x0000000010000000llu, 0x000000000FFFFFFFllu, 0, 0x00FFFFFFF0000000llu },
+    { "_allmul", &TST_allmul, 0x000000000FFFFFFFllu, 0x0000000080000000llu, 0, 0x07FFFFFF80000000llu },
+    { "_allmul", &TST_allmul, 0x0000000080000000llu, 0x000000000FFFFFFFllu, 0, 0x07FFFFFF80000000llu },
+    { "_allmul", &TST_allmul, 0xFFFFFFFFFFFFFFFEllu, 0x0000000080000000llu, 0, 0xFFFFFFFF00000000llu },
+    { "_allmul", &TST_allmul, 0x0000000080000000llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0xFFFFFFFF00000000llu },
+    { "_allmul", &TST_allmul, 0xFFFFFFFFFFFFFFFEllu, 0x0000000080000008llu, 0, 0xFFFFFFFEFFFFFFF0llu },
+    { "_allmul", &TST_allmul, 0x0000000080000008llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0xFFFFFFFEFFFFFFF0llu },
+    { "_allmul", &TST_allmul, 0x00000000FFFFFFFFllu, 0x00000000FFFFFFFFllu, 0, 0xFFFFFFFE00000001llu },
 
-    { "_alldiv", &TST_alldiv, 0x0000000000000000ll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_alldiv", &TST_alldiv, 0x0000000000000000ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_alldiv", &TST_alldiv, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0xFFFFFFFFFFFFFFFFll },
-    { "_alldiv", &TST_alldiv, 0xFFFFFFFFFFFFFFFFll, 0x0000000000000001ll, 0, 0xFFFFFFFFFFFFFFFFll },
-    { "_alldiv", &TST_alldiv, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0xFFFFFFFFFFFFFFFFll },
-    { "_alldiv", &TST_alldiv, 0x0000000000000001ll, 0x0000000000000001ll, 0, 0x0000000000000001ll },
-    { "_alldiv", &TST_alldiv, 0xFFFFFFFFFFFFFFFFll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000001ll },
-    { "_alldiv", &TST_alldiv, 0x000000000FFFFFFFll, 0x0000000000000001ll, 0, 0x000000000FFFFFFFll },
-    { "_alldiv", &TST_alldiv, 0x0000000FFFFFFFFFll, 0x0000000000000010ll, 0, 0x00000000FFFFFFFFll },
-    { "_alldiv", &TST_alldiv, 0x0000000000000100ll, 0x000000000FFFFFFFll, 0, 0x0000000000000000ll },
-    { "_alldiv", &TST_alldiv, 0x00FFFFFFF0000000ll, 0x0000000010000000ll, 0, 0x000000000FFFFFFFll },
-    { "_alldiv", &TST_alldiv, 0x07FFFFFF80000000ll, 0x0000000080000000ll, 0, 0x000000000FFFFFFFll },
-    { "_alldiv", &TST_alldiv, 0xFFFFFFFFFFFFFFFEll, 0x0000000080000000ll, 0, 0x0000000000000000ll },
-    { "_alldiv", &TST_alldiv, 0xFFFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0x0000000080000008ll },
-    { "_alldiv", &TST_alldiv, 0x7FFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0xC000000080000008ll },
-    { "_alldiv", &TST_alldiv, 0x7FFFFFFEFFFFFFF0ll, 0x0000FFFFFFFFFFFEll, 0, 0x0000000000007FFFll },
-    { "_alldiv", &TST_alldiv, 0x7FFFFFFEFFFFFFF0ll, 0x7FFFFFFEFFFFFFF0ll, 0, 0x0000000000000001ll },
+    { "_alldiv", &TST_alldiv, 0x0000000000000000llu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_alldiv", &TST_alldiv, 0x0000000000000000llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_alldiv", &TST_alldiv, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0xFFFFFFFFFFFFFFFFllu },
+    { "_alldiv", &TST_alldiv, 0xFFFFFFFFFFFFFFFFllu, 0x0000000000000001llu, 0, 0xFFFFFFFFFFFFFFFFllu },
+    { "_alldiv", &TST_alldiv, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0xFFFFFFFFFFFFFFFFllu },
+    { "_alldiv", &TST_alldiv, 0x0000000000000001llu, 0x0000000000000001llu, 0, 0x0000000000000001llu },
+    { "_alldiv", &TST_alldiv, 0xFFFFFFFFFFFFFFFFllu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000001llu },
+    { "_alldiv", &TST_alldiv, 0x000000000FFFFFFFllu, 0x0000000000000001llu, 0, 0x000000000FFFFFFFllu },
+    { "_alldiv", &TST_alldiv, 0x0000000FFFFFFFFFllu, 0x0000000000000010llu, 0, 0x00000000FFFFFFFFllu },
+    { "_alldiv", &TST_alldiv, 0x0000000000000100llu, 0x000000000FFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_alldiv", &TST_alldiv, 0x00FFFFFFF0000000llu, 0x0000000010000000llu, 0, 0x000000000FFFFFFFllu },
+    { "_alldiv", &TST_alldiv, 0x07FFFFFF80000000llu, 0x0000000080000000llu, 0, 0x000000000FFFFFFFllu },
+    { "_alldiv", &TST_alldiv, 0xFFFFFFFFFFFFFFFEllu, 0x0000000080000000llu, 0, 0x0000000000000000llu },
+    { "_alldiv", &TST_alldiv, 0xFFFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0x0000000080000008llu },
+    { "_alldiv", &TST_alldiv, 0x7FFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0xC000000080000008llu },
+    { "_alldiv", &TST_alldiv, 0x7FFFFFFEFFFFFFF0llu, 0x0000FFFFFFFFFFFEllu, 0, 0x0000000000007FFFllu },
+    { "_alldiv", &TST_alldiv, 0x7FFFFFFEFFFFFFF0llu, 0x7FFFFFFEFFFFFFF0llu, 0, 0x0000000000000001llu },
 
-    { "_allrem", &TST_allrem, 0x0000000000000000ll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x0000000000000000ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0xFFFFFFFFFFFFFFFFll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x0000000000000001ll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0xFFFFFFFFFFFFFFFFll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x000000000FFFFFFFll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x0000000FFFFFFFFFll, 0x0000000000000010ll, 0, 0x000000000000000Fll },
-    { "_allrem", &TST_allrem, 0x0000000000000100ll, 0x000000000FFFFFFFll, 0, 0x0000000000000100ll },
-    { "_allrem", &TST_allrem, 0x00FFFFFFF0000000ll, 0x0000000010000000ll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x07FFFFFF80000000ll, 0x0000000080000000ll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0xFFFFFFFFFFFFFFFEll, 0x0000000080000000ll, 0, 0xFFFFFFFFFFFFFFFEll },
-    { "_allrem", &TST_allrem, 0xFFFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x7FFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0x0000000000000000ll },
-    { "_allrem", &TST_allrem, 0x7FFFFFFEFFFFFFF0ll, 0x0000FFFFFFFFFFFEll, 0, 0x0000FFFF0000FFEEll },
-    { "_allrem", &TST_allrem, 0x7FFFFFFEFFFFFFF0ll, 0x7FFFFFFEFFFFFFF0ll, 0, 0x0000000000000000ll },
+    { "_allrem", &TST_allrem, 0x0000000000000000llu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x0000000000000000llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0xFFFFFFFFFFFFFFFFllu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x0000000000000001llu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0xFFFFFFFFFFFFFFFFllu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x000000000FFFFFFFllu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x0000000FFFFFFFFFllu, 0x0000000000000010llu, 0, 0x000000000000000Fllu },
+    { "_allrem", &TST_allrem, 0x0000000000000100llu, 0x000000000FFFFFFFllu, 0, 0x0000000000000100llu },
+    { "_allrem", &TST_allrem, 0x00FFFFFFF0000000llu, 0x0000000010000000llu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x07FFFFFF80000000llu, 0x0000000080000000llu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0xFFFFFFFFFFFFFFFEllu, 0x0000000080000000llu, 0, 0xFFFFFFFFFFFFFFFEllu },
+    { "_allrem", &TST_allrem, 0xFFFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x7FFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0x0000000000000000llu },
+    { "_allrem", &TST_allrem, 0x7FFFFFFEFFFFFFF0llu, 0x0000FFFFFFFFFFFEllu, 0, 0x0000FFFF0000FFEEllu },
+    { "_allrem", &TST_allrem, 0x7FFFFFFEFFFFFFF0llu, 0x7FFFFFFEFFFFFFF0llu, 0, 0x0000000000000000llu },
 
-    { "_ualldiv", &TST_ualldiv, 0x0000000000000000ll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_ualldiv", &TST_ualldiv, 0x0000000000000000ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_ualldiv", &TST_ualldiv, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFFFFFFFFFFll, 0x0000000000000001ll, 0, 0xFFFFFFFFFFFFFFFFll },
-    { "_ualldiv", &TST_ualldiv, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_ualldiv", &TST_ualldiv, 0x0000000000000001ll, 0x0000000000000001ll, 0, 0x0000000000000001ll },
-    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFFFFFFFFFFll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000001ll },
-    { "_ualldiv", &TST_ualldiv, 0x000000000FFFFFFFll, 0x0000000000000001ll, 0, 0x000000000FFFFFFFll },
-    { "_ualldiv", &TST_ualldiv, 0x0000000FFFFFFFFFll, 0x0000000000000010ll, 0, 0x00000000FFFFFFFFll },
-    { "_ualldiv", &TST_ualldiv, 0x0000000000000100ll, 0x000000000FFFFFFFll, 0, 0x0000000000000000ll },
-    { "_ualldiv", &TST_ualldiv, 0x00FFFFFFF0000000ll, 0x0000000010000000ll, 0, 0x000000000FFFFFFFll },
-    { "_ualldiv", &TST_ualldiv, 0x07FFFFFF80000000ll, 0x0000000080000000ll, 0, 0x000000000FFFFFFFll },
-    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFFFFFFFFFEll, 0x0000000080000000ll, 0, 0x00000001FFFFFFFFll },
-    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0x0000000000000000ll },
-    { "_ualldiv", &TST_ualldiv, 0x7FFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0x0000000000000000ll },
-    { "_ualldiv", &TST_ualldiv, 0x7FFFFFFEFFFFFFF0ll, 0x0000FFFFFFFFFFFEll, 0, 0x0000000000007FFFll },
-    { "_ualldiv", &TST_ualldiv, 0x7FFFFFFEFFFFFFF0ll, 0x7FFFFFFEFFFFFFF0ll, 0, 0x0000000000000001ll },
+    { "_ualldiv", &TST_ualldiv, 0x0000000000000000llu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_ualldiv", &TST_ualldiv, 0x0000000000000000llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_ualldiv", &TST_ualldiv, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFFFFFFFFFFllu, 0x0000000000000001llu, 0, 0xFFFFFFFFFFFFFFFFllu },
+    { "_ualldiv", &TST_ualldiv, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_ualldiv", &TST_ualldiv, 0x0000000000000001llu, 0x0000000000000001llu, 0, 0x0000000000000001llu },
+    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFFFFFFFFFFllu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000001llu },
+    { "_ualldiv", &TST_ualldiv, 0x000000000FFFFFFFllu, 0x0000000000000001llu, 0, 0x000000000FFFFFFFllu },
+    { "_ualldiv", &TST_ualldiv, 0x0000000FFFFFFFFFllu, 0x0000000000000010llu, 0, 0x00000000FFFFFFFFllu },
+    { "_ualldiv", &TST_ualldiv, 0x0000000000000100llu, 0x000000000FFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_ualldiv", &TST_ualldiv, 0x00FFFFFFF0000000llu, 0x0000000010000000llu, 0, 0x000000000FFFFFFFllu },
+    { "_ualldiv", &TST_ualldiv, 0x07FFFFFF80000000llu, 0x0000000080000000llu, 0, 0x000000000FFFFFFFllu },
+    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFFFFFFFFFEllu, 0x0000000080000000llu, 0, 0x00000001FFFFFFFFllu },
+    { "_ualldiv", &TST_ualldiv, 0xFFFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0x0000000000000000llu },
+    { "_ualldiv", &TST_ualldiv, 0x7FFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0x0000000000000000llu },
+    { "_ualldiv", &TST_ualldiv, 0x7FFFFFFEFFFFFFF0llu, 0x0000FFFFFFFFFFFEllu, 0, 0x0000000000007FFFllu },
+    { "_ualldiv", &TST_ualldiv, 0x7FFFFFFEFFFFFFF0llu, 0x7FFFFFFEFFFFFFF0llu, 0, 0x0000000000000001llu },
 
-    { "_uallrem", &TST_uallrem, 0x0000000000000000ll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0x0000000000000000ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000001ll },
-    { "_uallrem", &TST_uallrem, 0xFFFFFFFFFFFFFFFFll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0x0000000000000001ll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000001ll },
-    { "_uallrem", &TST_uallrem, 0x0000000000000001ll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0xFFFFFFFFFFFFFFFFll, 0xFFFFFFFFFFFFFFFFll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0x000000000FFFFFFFll, 0x0000000000000001ll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0x0000000FFFFFFFFFll, 0x0000000000000010ll, 0, 0x000000000000000Fll },
-    { "_uallrem", &TST_uallrem, 0x0000000000000100ll, 0x000000000FFFFFFFll, 0, 0x0000000000000100ll },
-    { "_uallrem", &TST_uallrem, 0x00FFFFFFF0000000ll, 0x0000000010000000ll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0x07FFFFFF80000000ll, 0x0000000080000000ll, 0, 0x0000000000000000ll },
-    { "_uallrem", &TST_uallrem, 0xFFFFFFFFFFFFFFFEll, 0x0000000080000000ll, 0, 0x000000007FFFFFFEll },
-    { "_uallrem", &TST_uallrem, 0xFFFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0xFFFFFFFEFFFFFFF0ll },
-    { "_uallrem", &TST_uallrem, 0x7FFFFFFEFFFFFFF0ll, 0xFFFFFFFFFFFFFFFEll, 0, 0x7FFFFFFEFFFFFFF0ll },
-    { "_uallrem", &TST_uallrem, 0x7FFFFFFEFFFFFFF0ll, 0x0000FFFFFFFFFFFEll, 0, 0x0000FFFF0000FFEEll },
-    { "_uallrem", &TST_uallrem, 0x7FFFFFFEFFFFFFF0ll, 0x7FFFFFFEFFFFFFF0ll, 0, 0x0000000000000000ll },
+    { "_uallrem", &TST_uallrem, 0x0000000000000000llu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0x0000000000000000llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000001llu },
+    { "_uallrem", &TST_uallrem, 0xFFFFFFFFFFFFFFFFllu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0x0000000000000001llu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000001llu },
+    { "_uallrem", &TST_uallrem, 0x0000000000000001llu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0xFFFFFFFFFFFFFFFFllu, 0xFFFFFFFFFFFFFFFFllu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0x000000000FFFFFFFllu, 0x0000000000000001llu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0x0000000FFFFFFFFFllu, 0x0000000000000010llu, 0, 0x000000000000000Fllu },
+    { "_uallrem", &TST_uallrem, 0x0000000000000100llu, 0x000000000FFFFFFFllu, 0, 0x0000000000000100llu },
+    { "_uallrem", &TST_uallrem, 0x00FFFFFFF0000000llu, 0x0000000010000000llu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0x07FFFFFF80000000llu, 0x0000000080000000llu, 0, 0x0000000000000000llu },
+    { "_uallrem", &TST_uallrem, 0xFFFFFFFFFFFFFFFEllu, 0x0000000080000000llu, 0, 0x000000007FFFFFFEllu },
+    { "_uallrem", &TST_uallrem, 0xFFFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0xFFFFFFFEFFFFFFF0llu },
+    { "_uallrem", &TST_uallrem, 0x7FFFFFFEFFFFFFF0llu, 0xFFFFFFFFFFFFFFFEllu, 0, 0x7FFFFFFEFFFFFFF0llu },
+    { "_uallrem", &TST_uallrem, 0x7FFFFFFEFFFFFFF0llu, 0x0000FFFFFFFFFFFEllu, 0, 0x0000FFFF0000FFEEllu },
+    { "_uallrem", &TST_uallrem, 0x7FFFFFFEFFFFFFF0llu, 0x7FFFFFFEFFFFFFF0llu, 0, 0x0000000000000000llu },
 
-    { NULL }
+    { NULL, NULL, 0, 0, 0, 0 }
 };
 
-int Test64Bit(SDL_bool verbose)
+static int Test64Bit(bool verbose)
 {
     LL_Test *t;
     int failed = 0;
@@ -382,20 +387,18 @@ int Test64Bit(SDL_bool verbose)
         }
     }
     if (verbose && (failed == 0)) {
-        SDL_Log("All 64bit instrinsic tests passed\n");
+        SDL_Log("All 64bit intrinsic tests passed\n");
     }
     return failed ? 1 : 0;
 }
 
-int TestCPUInfo(SDL_bool verbose)
+static int TestCPUInfo(bool verbose)
 {
     if (verbose) {
-        SDL_Log("CPU count: %d\n", SDL_GetCPUCount());
+        SDL_Log("Number of logical CPU cores: %d\n", SDL_GetNumLogicalCPUCores());
         SDL_Log("CPU cache line size: %d\n", SDL_GetCPUCacheLineSize());
-        SDL_Log("RDTSC %s\n", SDL_HasRDTSC() ? "detected" : "not detected");
         SDL_Log("AltiVec %s\n", SDL_HasAltiVec() ? "detected" : "not detected");
         SDL_Log("MMX %s\n", SDL_HasMMX() ? "detected" : "not detected");
-        SDL_Log("3DNow! %s\n", SDL_Has3DNow() ? "detected" : "not detected");
         SDL_Log("SSE %s\n", SDL_HasSSE() ? "detected" : "not detected");
         SDL_Log("SSE2 %s\n", SDL_HasSSE2() ? "detected" : "not detected");
         SDL_Log("SSE3 %s\n", SDL_HasSSE3() ? "detected" : "not detected");
@@ -413,7 +416,7 @@ int TestCPUInfo(SDL_bool verbose)
     return 0;
 }
 
-int TestAssertions(SDL_bool verbose)
+static int TestAssertions(bool verbose)
 {
     SDL_assert(1);
     SDL_assert_release(1);
@@ -443,15 +446,37 @@ int TestAssertions(SDL_bool verbose)
 
 int main(int argc, char *argv[])
 {
-    SDL_bool verbose = SDL_TRUE;
+    int i;
+    bool verbose = true;
     int status = 0;
+    SDLTest_CommonState *state;
 
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
-
-    if (argv[1] && (SDL_strcmp(argv[1], "-q") == 0)) {
-        verbose = SDL_FALSE;
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
     }
+
+    /* Parse commandline */
+    for (i = 1; i < argc;) {
+        int consumed;
+
+        consumed = SDLTest_CommonArg(state, i);
+        if (!consumed) {
+            if (SDL_strcmp(argv[i], "-q") == 0) {
+                verbose = false;
+                consumed = 1;
+            }
+        }
+        if (consumed <= 0) {
+            static const char *options[] = { "[-q]", NULL };
+            SDLTest_CommonLogUsage(state, argv[0], options);
+            return 1;
+        }
+
+        i += consumed;
+    }
+
     if (verbose) {
         SDL_Log("This system is running %s\n", SDL_GetPlatform());
     }
@@ -461,6 +486,9 @@ int main(int argc, char *argv[])
     status += Test64Bit(verbose);
     status += TestCPUInfo(verbose);
     status += TestAssertions(verbose);
+
+    SDL_Quit();
+    SDLTest_CommonDestroyState(state);
 
     return status;
 }

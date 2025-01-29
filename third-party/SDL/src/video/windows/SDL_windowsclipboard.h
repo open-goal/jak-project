@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,19 +18,17 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_windowsclipboard_h_
 #define SDL_windowsclipboard_h_
 
-/* Forward declaration */
+// Forward declaration
 struct SDL_VideoData;
 
-extern int WIN_SetClipboardText(_THIS, const char *text);
-extern char *WIN_GetClipboardText(_THIS);
-extern SDL_bool WIN_HasClipboardText(_THIS);
+extern bool WIN_SetClipboardData(SDL_VideoDevice *_this);
+extern void *WIN_GetClipboardData(SDL_VideoDevice *_this, const char *mime_type, size_t *size);
+extern bool WIN_HasClipboardData(SDL_VideoDevice *_this, const char *mime_type);
 extern void WIN_CheckClipboardUpdate(struct SDL_VideoData *data);
 
-#endif /* SDL_windowsclipboard_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_windowsclipboard_h_
