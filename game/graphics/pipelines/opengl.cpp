@@ -31,8 +31,8 @@
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/core.h"
+#include "third-party/SDL/include/SDL3/SDL.h"
 #include "third-party/SDL/include/SDL3/SDL_hints.h"
-#include "third-party/SDL/include/SDL3/SDL_main.h"
 #include "third-party/SDL/include/SDL3/SDL_version.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
@@ -103,7 +103,7 @@ static int gl_init(GfxGlobalSettings& settings) {
     auto p = scoped_prof("startup::sdl::init_sdl");
     // remove SDL garbage from hooking signal handler.
     SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
       sdl_util::log_error("Could not initialize SDL, exiting");
       dialogs::create_error_message_dialog("Critical Error Encountered",
                                            "Could not initialize SDL, exiting");
@@ -247,7 +247,7 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
   {
     auto p = scoped_prof("startup::sdl::assign_context");
-    if (SDL_GL_MakeCurrent(window, gl_context) != 0) {
+    if (!SDL_GL_MakeCurrent(window, gl_context)) {
       sdl_util::log_error("gl_make_display failed - Could not associated context with window");
       dialogs::create_error_message_dialog("Critical Error Encountered",
                                            "Unable to create OpenGL window with context.\nOpenGOAL "
@@ -337,7 +337,7 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
     : m_window(window),
       m_gl_context(gl_context),
       m_display_manager(std::make_shared<DisplayManager>(window)),
-      m_input_manager(std::make_shared<InputManager>()) {
+      m_input_manager(std::make_shared<InputManager>(window)) {
   m_main = is_main;
   m_display_manager->set_input_manager(m_input_manager);
   // Register commands

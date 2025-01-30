@@ -17,7 +17,7 @@
 #include "game/settings/settings.h"
 #include "game/system/hid/input_bindings.h"
 
-#include "third-party/SDL/include/SDL3/SDL_main.h"
+#include "third-party/SDL/include/SDL3/SDL.h"
 
 /// Central class that:
 /// - keeps track of available input devices
@@ -42,7 +42,7 @@ class InputManager {
   };
 
  public:
-  InputManager();
+  InputManager(SDL_Window* window);
   ~InputManager();
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
@@ -106,6 +106,7 @@ class InputManager {
   }
 
  private:
+  SDL_Window* m_window;
   std::mutex m_event_queue_mtx;
   std::queue<EEInputEvent> ee_event_queue;
 

@@ -14,11 +14,13 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "game/runtime.h"
 
+#include "third-party/SDL/include/SDL3/SDL_hints.h"
 #include "third-party/imgui/imgui.h"
 
-InputManager::InputManager()
-    // Load user settings
-    : m_settings(std::make_shared<game_settings::InputSettings>(game_settings::InputSettings())) {
+InputManager::InputManager(SDL_Window* window)
+    : m_window(window),
+      // Load user settings
+      m_settings(std::make_shared<game_settings::InputSettings>(game_settings::InputSettings())) {
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("input_manager::init");
@@ -27,7 +29,7 @@ InputManager::InputManager()
       auto p = scoped_prof("input_manager::init::sdl_init_subsystem");
       // initializing the controllers on startup can sometimes take a very long time
       // so we isolate that to here instead
-      if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
+      if (SDL_InitSubSystem(SDL_INIT_GAMEPAD) != 0) {
         sdl_util::log_error(
             "Could not initialize SDL Controller support, controllers will not work!");
       }
@@ -37,7 +39,7 @@ InputManager::InputManager()
     std::string mapping_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();
     if (file_util::file_exists(mapping_path)) {
-      SDL_GameControllerAddMappingsFromFile(mapping_path.c_str());
+      SDL_AddGamepadMappingsFromFile(mapping_path.c_str());
     } else {
       lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
     }
@@ -46,7 +48,7 @@ InputManager::InputManager()
     m_data[0] = std::make_shared<PadData>();
     m_data[1] = std::make_shared<PadData>();
     m_keyboard = KeyboardDevice(m_settings);
-    m_mouse = MouseDevice(m_settings);
+    m_mouse = MouseDevice(m_window, m_settings);
 
     if (m_data.find(m_keyboard_and_mouse_port) == m_data.end()) {
       m_data[m_keyboard_and_mouse_port] = std::make_shared<PadData>();
@@ -78,10 +80,11 @@ void InputManager::refresh_device_list() {
     // Enumerate devices
     // TODO - if this was done on a separate thread, there would be no hitch in the game thread
     // but of course, that presents other synchronization challenges.
-    const auto num_joysticks = SDL_NumJoysticks();
+    int num_joysticks = 0;
+    SDL_GetJoysticks(&num_joysticks);
     if (num_joysticks > 0) {
       for (int i = 0; i < num_joysticks; i++) {
-        if (!SDL_IsGameController(i)) {
+        if (!SDL_IsGamepad(i)) {
           lg::error("Controller with device id {} is not avaiable via the GameController API", i);
           continue;
         }
@@ -154,18 +157,22 @@ void InputManager::hide_cursor(const bool hide_cursor) {
   }
   // NOTE - seems like an SDL bug, but the cursor will be visible / locked to the center of the
   // screen if you use the 'start menu' to exit the window / return to it (atleast in windowed mode)
-  auto ok = SDL_ShowCursor(hide_cursor ? SDL_DISABLE : SDL_ENABLE);
-  if (ok < 0) {
-    sdl_util::log_error("Unable to show/hide mouse cursor");
-  } else {
-    m_mouse_currently_hidden = hide_cursor;
+  if (hide_cursor && !SDL_HideCursor()) {
+    sdl_util::log_error("Unable to hide mouse cursor");
+    return;
   }
+  if (!hide_cursor && !SDL_ShowCursor()) {
+    sdl_util::log_error("Unable to show mouse cursor");
+    return;
+  }
+  m_mouse_currently_hidden = hide_cursor;
 }
 
 void InputManager::process_sdl_event(const SDL_Event& event) {
+  // TODO - perhaps should handle `SDL_CONTROLLERDEVICEREMAPPED`?
   // Detect controller connections and disconnects
   if (sdl_util::is_any_event_type(event.type,
-                                  {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
+                                  {SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMOVED})) {
     lg::info("Controller added or removed. refreshing controller device list");
     refresh_device_list();
   }
@@ -197,9 +204,9 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
 
   // Adjust mouse cursor visibility
   if (m_auto_hide_mouse) {
-    if (event.type == SDL_MOUSEMOTION && !m_mouse.is_camera_being_controlled()) {
+    if (event.type == SDL_EVENT_MOUSE_MOTION && !m_mouse.is_camera_being_controlled()) {
       hide_cursor(false);
-    } else if (event.type == SDL_KEYDOWN || event.type == SDL_CONTROLLERBUTTONDOWN) {
+    } else if (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
       hide_cursor(true);
     }
   }

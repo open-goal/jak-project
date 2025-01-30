@@ -52,8 +52,7 @@ void DisplayManager::initialize_window_position_from_settings() {
   }
 
   SDL_Rect rect;
-  const auto ok = SDL_GetDisplayBounds(m_display_settings.display_id, &rect);
-  if (ok < 0) {
+  if (!SDL_GetDisplayBounds(m_display_settings.display_id, &rect)) {
     sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
                                     m_display_settings.display_id));
   } else {
@@ -235,47 +234,30 @@ void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMod
         sdl_util::log_error("unable to change window to windowed mode");
       }
       break;
-    case game_settings::DisplaySettings::DisplayMode::Fullscreen:
-    case game_settings::DisplaySettings::DisplayMode::Borderless:
-      // 1. exit fullscreen
-      result = SDL_SetWindowFullscreen(m_window, 0);
-      if (result == 0) {
-        SDL_Rect display_bounds;
-        result = SDL_GetDisplayBounds(get_active_display_id(), &display_bounds);
-        if (result < 0) {
-          sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
-                                          get_active_display_id()));
-        } else {
-          // 2. move it to the right monitor
-          lg::info("[DISPLAY] preparing fullscreen - moving window to {},{} on display id {}",
-                   display_bounds.x + 50, display_bounds.y + 50, get_active_display_id());
-          SDL_SetWindowPosition(m_window, display_bounds.x + 50, display_bounds.y + 50);
-          if (mode == game_settings::DisplaySettings::DisplayMode::Fullscreen) {
-            update_video_modes();
-            // If fullscreen, we have to resize the window to take up the full resolution
-            //
-            // Some people are weird and don't use the monitor's maximum supported resolution
-            // in which case, we use what the user actually has selected.
-            const auto& display_res = m_current_display_modes.at(get_active_display_id());
-            lg::info("[DISPLAY] preparing fullscreen - setting window resolution to {}x{}",
-                     display_res.screen_width, display_res.screen_height);
-            set_window_size(display_res.screen_width, display_res.screen_height);
-          }
-          // 3. fullscreen it!
-          // TODO - clean all this up...hopefully much easier in SDL3! windows have an explicit exclusive fullscreen flag
-          result = SDL_SetWindowFullscreen(
-              m_window, mode == game_settings::DisplaySettings::DisplayMode::Fullscreen
-                            ? SDL_WINDOW_FULLSCREEN
-                            : SDL_WINDOW_FULLSCREEN_DESKTOP);
-          if (result < 0) {
-            sdl_util::log_error("unable to switch window fullscreen or borderless fullscreen");
-          }
-        }
-      } else {
-        sdl_util::log_error(
-            "unable to switch window to windowed mode in order to change fullscreen modes");
+    case game_settings::DisplaySettings::DisplayMode::Fullscreen: {
+      const auto current_display_mode = SDL_GetDesktopDisplayMode(get_active_display_id());
+      if (!current_display_mode) {
+        sdl_util::log_error(fmt::format("unable to get current display mode for display id {}",
+                                        get_active_display_id()));
+      }
+      if (!SDL_SetWindowFullscreenMode(m_window, current_display_mode)) {
+        sdl_util::log_error(fmt::format("unable to set fullscreen display mode"));
+      }
+      if (!SDL_SetWindowFullscreen(m_window, true)) {
+        sdl_util::log_error(fmt::format("unable to enable fullscreen mode on window"));
       }
       break;
+    }
+
+    case game_settings::DisplaySettings::DisplayMode::Borderless: {
+      if (!SDL_SetWindowFullscreenMode(m_window, NULL)) {
+        sdl_util::log_error(fmt::format("unable to set fullscreen display mode"));
+      }
+      if (!SDL_SetWindowFullscreen(m_window, true)) {
+        sdl_util::log_error(fmt::format("unable to enable borderless fullscreen mode on window"));
+      }
+      break;
+    }
   }
   if (result != 0) {
     sdl_util::log_error(
@@ -322,18 +304,17 @@ void DisplayManager::update_curr_display_info() {
 
 void DisplayManager::update_video_modes() {
   lg::info("[DISPLAY] Enumerating video modes");
-  const auto num_displays = SDL_GetDisplays();
+  int num_displays = 0;
+  SDL_GetDisplays(&num_displays);
   if (num_displays < 0) {
     sdl_util::log_error("could not retrieve number of displays");
     return;
   }
 
   m_current_display_modes.clear();
-
-  SDL_DisplayMode curr_mode;
   for (int display_id = 0; display_id < num_displays; display_id++) {
-    const auto success = SDL_GetCurrentDisplayMode(display_id, &curr_mode);
-    if (success != 0) {
+    const auto curr_mode = SDL_GetCurrentDisplayMode(display_id);
+    if (!curr_mode) {
       sdl_util::log_error(
           fmt::format("couldn't retrieve current display mode for display id {}", display_id));
       continue;
@@ -365,8 +346,8 @@ void DisplayManager::update_video_modes() {
       display_name_str = display_name;
     }
 
-    DisplayMode new_mode = {display_name_str, curr_mode.format,       curr_mode.w,
-                            curr_mode.h,      curr_mode.refresh_rate, orient};
+    DisplayMode new_mode = {display_name_str, curr_mode->format,       curr_mode->w,
+                            curr_mode->h,     curr_mode->refresh_rate, orient};
     m_current_display_modes[display_id] = new_mode;
     lg::info(
         "[DISPLAY]: Found monitor {}, currently set to {}x{}@{}hz. Format: {}, Orientation: {}",
@@ -381,24 +362,31 @@ void DisplayManager::update_resolutions() {
   // Enumerate display's display modes to get the resolutions
   const auto active_display_id = get_active_display_id();
   const auto active_refresh_rate = m_current_display_modes[active_display_id].refresh_rate;
-  auto num_display_modes = SDL_GetFullscreenDisplayModes(active_display_id);
-  SDL_DisplayMode curr_mode;
+  int num_display_modes = 0;
+  SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(active_display_id, &num_display_modes);
+  if (!modes) {
+    sdl_util::log_error(
+        fmt::format("Unable to retrieve display modes for display id: {}", active_display_id));
+    return;
+  }
+
   for (int i = 0; i < num_display_modes; i++) {
-    auto ok = SDL_GetDisplayMode(active_display_id, i, &curr_mode);
-    if (ok != 0) {
+    auto display_mode = modes[i];
+    if (!display_mode) {
       sdl_util::log_error(
           fmt::format("unable to get display mode for display {}, index {}", active_display_id, i));
       continue;
     }
-    Resolution new_res = {curr_mode.w, curr_mode.h,
-                          static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
+    Resolution new_res = {
+        display_mode->w, display_mode->h,
+        static_cast<float>(display_mode->w) / static_cast<float>(display_mode->h)};
     // Skip resolutions that aren't using the current refresh rate, they won't work.
     // For example if your monitor is currently set to `60hz` and the monitor _could_ support
     // resolution X but only at `30hz`...then there's no reason for us to consider it as an option.
-    if (curr_mode.refresh_rate != active_refresh_rate) {
+    if (display_mode->refresh_rate != active_refresh_rate) {
       lg::debug(
           "[DISPLAY]: Skipping {}x{} as it requires {}hz but the monitor is currently set to {}hz",
-          curr_mode.w, curr_mode.h, curr_mode.refresh_rate, active_refresh_rate);
+          display_mode->w, display_mode->h, display_mode->refresh_rate, active_refresh_rate);
       // Allow it for windowed mode though
       m_available_window_sizes.push_back(new_res);
       continue;

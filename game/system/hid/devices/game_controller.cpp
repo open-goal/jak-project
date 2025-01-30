@@ -78,16 +78,16 @@ void GameController::process_event(const SDL_Event& event,
                                    std::optional<InputBindAssignmentMeta>& bind_assignment) {
   if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION && event.gaxis.which == m_sdl_instance_id) {
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerAxis
-    if ((int)event.gaxis.axis <= SDL_CONTROLLER_AXIS_INVALID ||
-        event.gaxis.axis >= SDL_CONTROLLER_AXIS_MAX) {
+    if ((int)event.gaxis.axis <= SDL_GAMEPAD_AXIS_INVALID ||
+        event.gaxis.axis >= SDL_GAMEPAD_AXIS_COUNT) {
       return;
     }
 
     auto& binds = m_settings->controller_binds.at(m_guid);
 
     // Handle analog stick binds
-    if (event.gaxis.axis >= SDL_CONTROLLER_AXIS_LEFTX &&
-        event.gaxis.axis <= SDL_CONTROLLER_AXIS_RIGHTY && !data->analogs_being_simulated() &&
+    if (event.gaxis.axis >= SDL_GAMEPAD_AXIS_LEFTX && event.gaxis.axis <= SDL_GAMEPAD_AXIS_LEFTY &&
+        !data->analogs_being_simulated() &&
         binds.analog_axii.find(event.gaxis.axis) != binds.analog_axii.end()) {
       for (const auto& bind : binds.analog_axii.at(event.gaxis.axis)) {
         // Adjust the value range to 0-255 (127 being neutral)
@@ -95,9 +95,9 @@ void GameController::process_event(const SDL_Event& event,
         int axis_val = ((event.gaxis.value + 32768) * 256) / 65536;
         data->analog_data.at(bind.pad_data_index) = axis_val;
       }
-    } else if (event.gaxis.axis >= SDL_CONTROLLER_AXIS_TRIGGERLEFT &&
-               event.gaxis.axis <= SDL_CONTROLLER_AXIS_TRIGGERRIGHT &&
-               binds.button_axii.find(event.caxis.axis) != binds.button_axii.end()) {
+    } else if (event.gaxis.axis >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER &&
+               event.gaxis.axis <= SDL_GAMEPAD_AXIS_RIGHT_TRIGGER &&
+               binds.button_axii.find(event.gaxis.axis) != binds.button_axii.end()) {
       // Binding re-assignment
       if (bind_assignment) {
         // In the event that the user binds an analog input to the confirm binds
@@ -129,18 +129,19 @@ void GameController::process_event(const SDL_Event& event,
         data->button_data.at(bind.pad_data_index) = event.gaxis.value > 0;
       }
     }
-  } else if ((event.type == SDL_CONTROLLERBUTTONDOWN || event.type == SDL_CONTROLLERBUTTONUP) &&
+  } else if ((event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ||
+              event.type == SDL_EVENT_GAMEPAD_BUTTON_UP) &&
              event.gbutton.which == m_sdl_instance_id) {
     auto& binds = m_settings->controller_binds.at(m_guid);
 
     // https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
-    if ((int)event.gbutton.button <= SDL_CONTROLLER_BUTTON_INVALID ||
-        event.gbutton.button >= SDL_CONTROLLER_BUTTON_MAX) {
+    if ((int)event.gbutton.button <= SDL_GAMEPAD_BUTTON_INVALID ||
+        event.gbutton.button >= SDL_GAMEPAD_BUTTON_COUNT) {
       return;
     }
 
     // Binding re-assignment
-    if (bind_assignment && event.type == SDL_CONTROLLERBUTTONDOWN) {
+    if (bind_assignment && event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
       if (bind_assignment->device_type == InputDeviceType::CONTROLLER &&
           !bind_assignment->for_analog) {
         binds.assign_button_bind(event.gbutton.button, bind_assignment.value());
@@ -154,11 +155,11 @@ void GameController::process_event(const SDL_Event& event,
 
     // Iterate the binds, and apply all of them
     for (const auto& bind : binds.buttons.at(event.gbutton.button)) {
-      data->button_data.at(bind.pad_data_index) = event.type == SDL_CONTROLLERBUTTONDOWN;
+      data->button_data.at(bind.pad_data_index) = event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN;
     }
 
     // Check for commands
-    if (event.type == SDL_CONTROLLERBUTTONDOWN &&
+    if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN &&
         commands.controller_binds.find(event.gbutton.button) != commands.controller_binds.end()) {
       for (const auto& command : commands.controller_binds.at(event.gbutton.button)) {
         command.command();

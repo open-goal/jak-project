@@ -11,6 +11,9 @@
 
 #include "third-party/imgui/imgui.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 // #define dprintf(...) printf(__VA_ARGS__)
 // #define dfmt(...) fmt::print(__VA_ARGS__)
 #define dprintf(...)
@@ -675,7 +678,7 @@ void imgui_show_tex(GLuint tex) {
   int w, h;
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-  ImGui::Image((void*)(u64)tex, ImVec2(w, h));
+  ImGui::Image((ImTextureID)(intptr_t)tex, ImVec2(w, h));
 }
 
 void TextureAnimator::draw_debug_window() {

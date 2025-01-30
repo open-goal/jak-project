@@ -2,7 +2,7 @@
 
 #include "common/log/log.h"
 
-#include "third-party/SDL/include/SDL3/SDL_main.h"
+#include "third-party/SDL/include/SDL3/SDL.h"
 
 namespace sdl_util {
 void log_error(const std::string& msg) {
