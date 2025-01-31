@@ -32,6 +32,11 @@ if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
         "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
 endif()
 
+# NOTE - for SDL, i think SDL3 regressed this - https://github.com/libsdl-org/SDL/pull/6455
+if (APPLE)
+  enable_language(OBJC)
+endif()
+
 # Setup compiler flags
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Clang Detected - Setting Defaults")
