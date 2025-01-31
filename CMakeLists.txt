@@ -33,6 +33,7 @@ if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
 endif()
 
 # NOTE - for SDL, i think SDL3 regressed this - https://github.com/libsdl-org/SDL/pull/6455
+# a more recent issue - https://github.com/libsdl-org/SDL/issues/12078
 if (APPLE)
   enable_language(OBJC)
 endif()
