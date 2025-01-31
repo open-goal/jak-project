@@ -12,7 +12,7 @@
 
 ## Please read first <!-- omit from toc -->
 
-> [!IMPORTANT]
+> [!IMPORTANT] 
 > Our repositories on GitHub are primarily for development of the project and tracking active issues. Most of the information you will find here pertains to setting up the project for development purposes and is not relevant to the end-user.
 
 For a setup guide on how to install and play the game there is the following video that you can check out: https://youtu.be/K84UUMnkJc4
@@ -37,8 +37,8 @@ Additionally, you can find further documentation and answers to **frequently ask
     - [Required Software](#required-software)
     - [Using Visual Studio](#using-visual-studio)
   - [MacOS](#macos)
-    - [Intel Based](#intel-based)
-    - [Apple Silicon](#apple-silicon)
+    - [Building for x86\_64](#building-for-x86_64)
+    - [Building for ARM64 (experimental, unsupported)](#building-for-arm64-experimental-unsupported)
   - [VSCode](#vscode)
     - [Building and Debugging](#building-and-debugging)
   - [Building and Running the Game](#building-and-running-the-game)
