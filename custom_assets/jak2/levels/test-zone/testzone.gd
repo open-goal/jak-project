@@ -5,5 +5,7 @@
 ("TSZ.DGO"
  (
   "prison-obs.o"
+  "test-zone-obs.o"
+  "test-actor-ag.go"
   "test-zone.go"
   ))

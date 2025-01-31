@@ -203,6 +203,14 @@ bool run_build_level(const std::string& input_file,
     }
   }
 
+  // add custom models to fr3
+  if (gen_fr3 && level_json.contains("custom_models") && !level_json.at("custom_models").empty()) {
+    auto models = level_json.at("custom_models").get<std::vector<std::string>>();
+    for (auto& name : models) {
+      add_model_to_level(GameVersion::Jak2, name, pc_level);
+    }
+  }
+
   // Save the PC level
   if (gen_fr3) {
     save_pc_data(file.name, pc_level,

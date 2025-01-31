@@ -252,3 +252,9 @@
     `(defstep :in '(,path ,(symbol->string force-run) ,(symbol->string gen-fr3))
               :tool 'build-level3
               :out '(,(string-append "$OUT/obj/" name ".go")))))
+
+(defmacro build-actor (name &key (gen-mesh #f) &key (force-run #f) &key (texture-bucket 0))
+  (let* ((path (string-append "custom_assets/jak3/models/custom_levels/" name ".glb")))
+    `(defstep :in '(,path ,(symbol->string gen-mesh) ,(symbol->string force-run) ,(if (integer? texture-bucket) (int->string texture-bucket) (symbol->string texture-bucket)))
+              :tool 'build-actor3
+              :out '(,(string-append "$OUT/obj/" name "-ag.go")))))

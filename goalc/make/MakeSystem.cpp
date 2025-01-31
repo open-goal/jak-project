@@ -112,6 +112,8 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<BuildLevel2Tool>();
   add_tool<BuildLevel3Tool>();
   add_tool<BuildActorTool>();
+  add_tool<BuildActor2Tool>();
+  add_tool<BuildActor3Tool>();
 }
 
 /*!

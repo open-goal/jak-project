@@ -339,3 +339,63 @@ bool BuildActorTool::run(const ToolInput& task, const PathMap& path_map) {
   }
   return jak1::run_build_actor(task.input.at(0), task.output.at(0), params);
 }
+
+BuildActor2Tool::BuildActor2Tool() : Tool("build-actor2") {}
+
+bool BuildActor2Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
+  if (task.input.size() > 4) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  auto rerun = task.input.at(2) == "#t";
+  std::vector<std::string> deps{task.input.at(0)};
+  return rerun || Tool::needs_run({deps, deps, task.output, task.arg}, path_map);
+}
+
+bool BuildActor2Tool::run(const ToolInput& task, const PathMap& path_map) {
+  (void)path_map;
+  if (task.input.size() > 4) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  jak2::BuildActorParams params;
+  params.gen_collide_mesh = task.input.at(1) == "#t";
+  if (task.input.at(3) == "#f") {
+    params.texture_bucket = -1;
+  } else {
+    try {
+      params.texture_bucket = static_cast<u8>(std::stoi(task.input.at(3)));
+    } catch (std::invalid_argument&) {
+      throw std::runtime_error("[build-actor2] texture-bucket must be #f or a valid integer.");
+    }
+  }
+  return jak2::run_build_actor(task.input.at(0), task.output.at(0), params);
+}
+
+BuildActor3Tool::BuildActor3Tool() : Tool("build-actor3") {}
+
+bool BuildActor3Tool::needs_run(const ToolInput& task, const PathMap& path_map) {
+  if (task.input.size() > 4) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  auto rerun = task.input.at(2) == "#t";
+  std::vector<std::string> deps{task.input.at(0)};
+  return rerun || Tool::needs_run({deps, deps, task.output, task.arg}, path_map);
+}
+
+bool BuildActor3Tool::run(const ToolInput& task, const PathMap& path_map) {
+  (void)path_map;
+  if (task.input.size() > 4) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  jak3::BuildActorParams params;
+  params.gen_collide_mesh = task.input.at(1) == "#t";
+  if (task.input.at(3) == "#f") {
+    params.texture_bucket = -1;
+  } else {
+    try {
+      params.texture_bucket = static_cast<u8>(std::stoi(task.input.at(3)));
+    } catch (std::invalid_argument&) {
+      throw std::runtime_error("[build-actor3] texture-bucket must be #f or a valid integer.");
+    }
+  }
+  return jak3::run_build_actor(task.input.at(0), task.output.at(0), params);
+}

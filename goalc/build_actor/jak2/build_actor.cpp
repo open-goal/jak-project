@@ -9,7 +9,7 @@
 #include "third-party/tiny_gltf/tiny_gltf.h"
 
 using namespace gltf_util;
-namespace jak1 {
+namespace jak2 {
 
 JointAnimCompressedHDR::JointAnimCompressedHDR(const anim::CompressedAnim& anim) {
   matrix_bits = 0;
@@ -133,22 +133,6 @@ ArtJointAnim::ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<J
   artist_step = 1.0f;
   master_art_group_name = name;
   master_art_group_index = 2;
-  for (auto& joint : joints) {
-    data.emplace_back(joint, anim.frames.size());
-  }
-}
-
-size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
-  gen.align_to_basic();
-  gen.add_type_tag("joint-anim-compressed");
-  size_t result = gen.current_offset_bytes();
-  gen.add_ref_to_string_in_pool(name);
-  gen.add_word((length << 16) + number);
-  // data is always nullptr.
-  // for (auto& word : data) {
-  //   gen.add_word(word);
-  // }
-  return result;
 }
 
 size_t JointAnimCompressedFrame::generate(DataObjectGenerator& gen) const {
@@ -356,9 +340,6 @@ size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
   }
   gen.align(4);
   gen.link_word_to_byte(ctrl_slot, frames.generate(gen));
-  for (int i = 0; i < length; i++) {
-    gen.link_word_to_byte(frame_slots.at(i), data.at(i).generate(gen));
-  }
   return result;
 }
 
@@ -483,9 +464,9 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.add_word(0);                                   // 12
   gen.add_symbol_link("#f");                         // 16 (res-lump)
   gen.add_word(joints);                              // 20 (num-joints)
-  gen.add_word(0x0);                                 // 24 (pad)
+  gen.add_word(0x0);                                 // 24 (seg-table)
   gen.add_word(0x0);                                 // 28 (pad)
-  gen.add_word(0x4181b897);                          // 32-112 (xyz-scale)
+  gen.add_word(0x4185c8ac);                          // 32-160 (xyz-scale)
   gen.add_word(0xc780ff80);                          // 36 (st-magic)
   gen.add_word(0x40798000);                          // 40 (st-out-a)
   gen.add_word(0x40eb4000);                          // 44 (st-out-b)
@@ -506,6 +487,18 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.add_word(0x0);                   // 100
   gen.add_word(0x0);                   // 104
   gen.add_word(0x0);                   // 108
+  gen.add_word(0x0);                   // 112
+  gen.add_word(0x0);                   // 116
+  gen.add_word(0x0);                   // 120
+  gen.add_word(0x0);                   // 124
+  gen.add_word(0x0);                   // 128
+  gen.add_word(0x0);                   // 132
+  gen.add_word(0x0);                   // 136
+  gen.add_word(0x0);                   // 140
+  gen.add_word(0x0);                   // 144
+  gen.add_word(0x0);                   // 148
+  gen.add_word(0x0);                   // 152
+  gen.add_word(0x0);                   // 156
   generate_merc_effects(gen, ag.merc_effect_count, joints);
   return result;
 }
@@ -608,7 +601,7 @@ bool run_build_actor(const std::string& mdl_name,
 
   std::vector<CollideMesh> mesh;
   if (params.gen_collide_mesh) {
-    mesh = gen_collide_mesh_from_model_jak1(model, all_nodes, 3);
+    mesh = gen_collide_mesh_from_model_jak2(model, all_nodes, 3);
   }
 
   std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints, params);
@@ -636,4 +629,4 @@ bool run_build_actor(const std::string& mdl_name,
                                ag_file.size());
   return true;
 }
-}  // namespace jak1
+}  // namespace jak2
