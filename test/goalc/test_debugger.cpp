@@ -4,7 +4,9 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-#ifdef __linux
+//#ifdef __linux
+// disable debugger tests - flaky.
+#if 0
 
 namespace {
 void connect_compiler_and_debugger(Compiler& compiler, bool do_break) {

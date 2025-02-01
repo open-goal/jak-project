@@ -159,12 +159,7 @@
   )
 
 (defmethod update-target-history ((this gungame-manager))
-  (let* ((s5-0 *target*)
-         (s4-0 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((s4-0 (the-as target (as-type *target* process-focusable))))
     (when s4-0
       (let ((s5-1 (new 'stack-no-clear 'primary-target-pos-vel)))
         (vector-copy! (-> s5-1 position) (get-trans s4-0 3))
@@ -1003,18 +998,16 @@
         (format 0 "Name is ~s~%" (-> this actor-group 2 data s3-0 actor))
         (set! (-> s4-0 pickup-type) (the-as pickup-type (-> *gun-course-info* (-> this course-type) ammo-type)))
         (set! (-> s4-0 pickup-spawn-amount) 30.0)
-        (let ((s2-1
-                (ppointer->process
-                  (process-spawn crate (-> this actor-group 2 data s3-0 actor) s5-0 'wood s4-0 :name "crate" :to *entity-pool*)
+        (set! (-> this course-crates s3-0)
+              (process->handle
+                (as-type
+                  (ppointer->process
+                    (process-spawn crate (-> this actor-group 2 data s3-0 actor) s5-0 'wood s4-0 :name "crate" :to *entity-pool*)
+                    )
+                  process-focusable
                   )
                 )
               )
-          (set! (-> this course-crates s3-0) (process->handle (if (type? s2-1 process-focusable)
-                                                                  s2-1
-                                                                  )
-                                                              )
-                )
-          )
         )
       )
     )
@@ -1544,15 +1537,9 @@
                      (new 'stack 'font-context *font-default-matrix* 32 t0-0 0.0 (font-color default) (font-flags shadow kerning))
                      )
                    )
-              (let ((v1-53 s5-1))
-                (set! (-> v1-53 width) (the float 440))
-                )
-              (let ((v1-54 s5-1))
-                (set! (-> v1-54 height) (the float 80))
-                )
-              (let ((v1-55 s5-1))
-                (set! (-> v1-55 scale) 0.7)
-                )
+              (set-width! s5-1 440)
+              (set-height! s5-1 80)
+              (set-scale! s5-1 0.7)
               (set! (-> s5-1 flags) (font-flags shadow kerning large))
               (dotimes (s4-0 (-> gp-1 length))
                 (let ((s3-0 (-> *gun-course-info* (-> self course-list (-> gp-1 s4-0)))))

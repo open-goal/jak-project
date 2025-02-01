@@ -260,9 +260,10 @@
         (go target-running-attack)
         )
     (when (and (turn-around?) (time-elapsed? (-> self state-time) (seconds 0.3)))
-      (set! (-> self control transv quad)
-            (-> self control transv-history (-> self control idx-of-fastest-xz-vel) quad)
-            )
+      (vector-copy!
+        (-> self control transv)
+        (-> self control transv-history (-> self control idx-of-fastest-xz-vel))
+        )
       (set! (-> self control transv w) 1.0)
       (go target-turn-around)
       )
@@ -2219,16 +2220,15 @@
         (align! (-> self align) (align-opts adjust-quat) 1.0 1.0 1.0)
         (set! (-> self control mod-surface) *attack-mods*)
         (when (and gp-0 (send-event (handle->process (-> self control unknown-combo-tracker00 target)) 'combo))
-          (let* ((s5-1 (handle->process (-> self control unknown-combo-tracker00 target)))
-                 (s5-2 (get-trans
-                         (the-as process-focusable (if (type? s5-1 process-focusable)
-                                                       (the-as process-focusable s5-1)
-                                                       )
-                                 )
-                         3
-                         )
-                       )
-                 )
+          (let ((s5-2 (get-trans
+                        (the-as
+                          process-focusable
+                          (as-type (handle->process (-> self control unknown-combo-tracker00 target)) process-focusable)
+                          )
+                        3
+                        )
+                      )
+                )
             (when (< 4096.0 (vector-vector-xz-distance s5-2 (-> self control trans)))
               (let ((f30-1 (-> self control transv y)))
                 (vector-! (-> self control transv) s5-2 (-> self control trans))
@@ -2377,18 +2377,9 @@
               (set-time! (-> self control sliding-start-time))
               (set-time! (-> self gun combo-window-start))
               (set! (-> self gun combo-window-state) (-> self state name))
-              (let ((v1-13 (if (type? proc process-focusable)
-                               proc
-                               )
-                           )
-                    )
+              (let ((v1-13 (as-type proc process-focusable)))
                 (when v1-13
-                  (let* ((s5-1 (-> (the-as process-focusable v1-13) root))
-                         (v1-14 (if (type? s5-1 collide-shape)
-                                    s5-1
-                                    )
-                                )
-                         )
+                  (let ((v1-14 (as-type (-> (the-as process-focusable v1-13) root) collide-shape)))
                     (if (and v1-14 (or (logtest? (-> v1-14 root-prim prim-core collide-as) (collide-spec enemy))
                                        (logtest? (-> v1-14 root-prim prim-core action) (collide-action no-smack))
                                        )

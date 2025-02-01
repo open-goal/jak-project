@@ -335,12 +335,7 @@
         (return (-> (the-as attack-info v1-0) penetrate-using))
         )
     )
-  (let* ((gp-0 arg0)
-         (v1-3 (if (type? gp-0 process-drawable)
-                   gp-0
-                   )
-               )
-         )
+  (let ((v1-3 (as-type arg0 process-drawable)))
     (when v1-3
       (let* ((gp-1 (-> v1-3 root))
              (v1-4 (if (the-as penetrate (type? gp-1 collide-shape))
@@ -386,12 +381,7 @@
 (defmethod focus-on-attacker! ((this enemy))
   "If possible, update this enemies focus to the attacker."
   (when (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
-    (let* ((s4-0 (handle->process (-> this incoming attacker-handle)))
-           (s5-0 (if (type? s4-0 process-focusable)
-                     s4-0
-                     )
-                 )
-           )
+    (let ((s5-0 (as-type (handle->process (-> this incoming attacker-handle)) process-focusable)))
       (when (can-focus-on? this (the-as process-focusable s5-0))
         (set-focus! this (the-as process-focusable s5-0) (the-as enemy-aware #f))
         (logior! (-> this focus flags) (enemy-flag look-at-focus))
@@ -659,11 +649,7 @@
     (set! (-> this root penetrated-by) (the-as penetrate -1))
     (reset-penetrate-later! this)
     )
-  (let ((s5-0 (if (type? arg0 process-focusable)
-                  arg0
-                  )
-              )
-        )
+  (let ((s5-0 (as-type arg0 process-focusable)))
     (when (can-focus-on? this s5-0)
       (let ((v1-10 (handle->process (-> this focus handle))))
         (when (or (= s5-0 v1-10) (and (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
@@ -1406,12 +1392,7 @@
           (while (!= v1-4 (-> *collide-player-list* alive-list-end))
             (let ((v1-5 (the-as collide-shape (-> (the-as connection v1-4) param1))))
               (when (logtest? s4-0 (-> v1-5 root-prim prim-core collide-as))
-                (let* ((s2-0 (-> v1-5 process))
-                       (a1-1 (if (type? s2-0 process-focusable)
-                                 s2-0
-                                 )
-                             )
-                       )
+                (let ((a1-1 (as-type (-> v1-5 process) process-focusable)))
                   (if (and a1-1
                            (and a1-1 (not (logtest? (-> (the-as process-focusable a1-1) focus-status) (focus-status disable dead))))
                            (!= this a1-1)
@@ -1436,12 +1417,7 @@
             (while (!= v1-19 (-> *collide-hit-by-player-list* alive-list-end))
               (let ((v1-20 (the-as collide-shape (-> (the-as connection v1-19) param1))))
                 (when (logtest? s4-0 (-> v1-20 root-prim prim-core collide-as))
-                  (let* ((s2-1 (-> v1-20 process))
-                         (a1-3 (if (type? s2-1 process-focusable)
-                                   s2-1
-                                   )
-                               )
-                         )
+                  (let ((a1-3 (as-type (-> v1-20 process) process-focusable)))
                     (if (and a1-3
                              (and a1-3 (not (logtest? (-> (the-as process-focusable a1-3) focus-status) (focus-status disable dead))))
                              (!= this a1-3)
@@ -1465,12 +1441,7 @@
             (while (!= v1-32 (-> *collide-hit-by-others-list* alive-list-end))
               (let ((v1-33 (the-as collide-shape (-> (the-as connection v1-32) param1))))
                 (when (logtest? s4-0 (-> v1-33 root-prim prim-core collide-as))
-                  (let* ((s2-2 (-> v1-33 process))
-                         (a1-5 (if (type? s2-2 process-focusable)
-                                   s2-2
-                                   )
-                               )
-                         )
+                  (let ((a1-5 (as-type (-> v1-33 process) process-focusable)))
                     (if (and a1-5
                              (and a1-5 (not (logtest? (-> (the-as process-focusable a1-5) focus-status) (focus-status disable dead))))
                              (!= this a1-5)
@@ -1661,20 +1632,11 @@
      )
     ((= msg 'touched)
      (when (logtest? (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
-       (let* ((s3-1 proc)
-              (v1-27 (if (type? s3-1 process-drawable)
-                         s3-1
-                         )
-                     )
-              )
+       (let ((v1-27 (as-type proc process-drawable)))
          (when v1-27
-           (let* ((s3-2 (-> (the-as process-drawable v1-27) root))
-                  (a1-5 (if (type? s3-2 collide-shape)
-                            s3-2
-                            )
-                        )
-                  (s3-3 (-> block param 0))
-                  )
+           (let ((a1-5 (as-type (-> (the-as process-drawable v1-27) root) collide-shape))
+                 (s3-3 (-> block param 0))
+                 )
              (if (and a1-5
                       s3-3
                       ((method-of-type touching-shapes-entry prims-touching-action?)
@@ -1793,10 +1755,7 @@
      )
     ((= msg 'impact-impulse)
      (let* ((s4-1 (the-as object (-> block param 0)))
-            (s3-5 (if (type? proc process-focusable)
-                      proc
-                      )
-                  )
+            (s3-5 (as-type proc process-focusable))
             (f30-1 (* (-> (the-as rigid-body-impact s4-1) impulse) (get-inv-mass this)))
             )
        (when (and s3-5 (< 20480.0 f30-1))
@@ -2225,13 +2184,9 @@
 
 (defmethod enemy-touch-handler ((this enemy) (arg0 process) (arg1 event-message-block))
   "General handler for an event when a process intentionally sends a touch event."
-  (let* ((s4-0 (-> arg1 param 0))
-         (s2-0 arg0)
-         (s3-0 (if (type? s2-0 process-focusable)
-                   s2-0
-                   )
-               )
-         )
+  (let ((s4-0 (-> arg1 param 0))
+        (s3-0 (as-type arg0 process-focusable))
+        )
     (when (and s4-0 s3-0)
       (cond
         ((and (focus-test? this dangerous)
