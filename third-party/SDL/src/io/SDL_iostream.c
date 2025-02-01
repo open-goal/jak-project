@@ -788,10 +788,13 @@ static bool SDLCALL mem_close(void *userdata)
 #if defined(HAVE_STDIO_H) && !defined(SDL_PLATFORM_WINDOWS)
 static bool IsRegularFileOrPipe(FILE *f)
 {
+#ifndef SDL_PLATFORM_EMSCRIPTEN
     struct stat st;
     if (fstat(fileno(f), &st) < 0 || !(S_ISREG(st.st_mode) || S_ISFIFO(st.st_mode))) {
         return false;
     }
+#endif // !SDL_PLATFORM_EMSCRIPTEN
+
     return true;
 }
 #endif
@@ -1153,7 +1156,7 @@ void *SDL_LoadFile_IO(SDL_IOStream *src, size_t *datasize, bool closeio)
         size = FILE_CHUNK_SIZE;
         loading_chunks = true;
     }
-    if (size >= SDL_SIZE_MAX) {
+    if (size >= SDL_SIZE_MAX - 1) {
         goto done;
     }
     data = (char *)SDL_malloc((size_t)(size + 1));
@@ -1166,7 +1169,7 @@ void *SDL_LoadFile_IO(SDL_IOStream *src, size_t *datasize, bool closeio)
         if (loading_chunks) {
             if ((size_total + FILE_CHUNK_SIZE) > size) {
                 size = (size_total + FILE_CHUNK_SIZE);
-                if (size >= SDL_SIZE_MAX) {
+                if (size >= SDL_SIZE_MAX - 1) {
                     newdata = NULL;
                 } else {
                     newdata = (char *)SDL_realloc(data, (size_t)(size + 1));

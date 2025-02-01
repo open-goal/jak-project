@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.2.0")
+project(SDL3 LANGUAGES C VERSION "3.2.1")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
@@ -1638,7 +1638,6 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
     endif()
 
     if(SDL_CAMERA AND HAVE_LINUX_VIDEODEV2_H)
-      message(FATAL_ERROR "DEBUGGING: why are we here?!")
       set(SDL_CAMERA_DRIVER_V4L2 1)
       set(HAVE_CAMERA TRUE)
       sdl_glob_sources("${SDL3_SOURCE_DIR}/src/camera/v4l2/*.c")

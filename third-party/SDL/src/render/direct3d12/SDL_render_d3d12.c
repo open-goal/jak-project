@@ -1453,7 +1453,7 @@ static bool D3D12_HandleDeviceLost(SDL_Renderer *renderer)
         SUCCEEDED(D3D12_CreateWindowSizeDependentResources(renderer))) {
         recovered = true;
     } else {
-        SDL_LogError(SDL_LOG_CATEGORY_RENDER, "Renderer couldn't recover from device lost: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_RENDER, "Renderer couldn't recover from device lost: %s", SDL_GetError());
         D3D12_ReleaseAll(renderer);
     }
 
@@ -2430,7 +2430,7 @@ static bool D3D12_UpdateViewport(SDL_Renderer *renderer)
          * SDL_CreateRenderer is calling it, and will call it again later
          * with a non-empty viewport.
          */
-        // SDL_Log("%s, no viewport was set!\n", __FUNCTION__);
+        // SDL_Log("%s, no viewport was set!", __FUNCTION__);
         return false;
     }
 
@@ -2497,7 +2497,7 @@ static bool D3D12_UpdateViewport(SDL_Renderer *renderer)
     d3dviewport.Height = orientationAlignedViewport.h;
     d3dviewport.MinDepth = 0.0f;
     d3dviewport.MaxDepth = 1.0f;
-    // SDL_Log("%s: D3D viewport = {%f,%f,%f,%f}\n", __FUNCTION__, d3dviewport.TopLeftX, d3dviewport.TopLeftY, d3dviewport.Width, d3dviewport.Height);
+    // SDL_Log("%s: D3D viewport = {%f,%f,%f,%f}", __FUNCTION__, d3dviewport.TopLeftX, d3dviewport.TopLeftY, d3dviewport.Width, d3dviewport.Height);
     ID3D12GraphicsCommandList_RSSetViewports(data->commandList, 1, &d3dviewport);
 
     data->viewportDirty = false;
@@ -2742,7 +2742,7 @@ static bool D3D12_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *
             textureSampler = &rendererData->samplers[D3D12_SAMPLER_NEAREST_WRAP];
             break;
         default:
-            return SDL_SetError("Unknown texture address mode: %d\n", cmd->data.draw.texture_address_mode);
+            return SDL_SetError("Unknown texture address mode: %d", cmd->data.draw.texture_address_mode);
         }
         break;
     case D3D12_FILTER_MIN_MAG_MIP_LINEAR:
@@ -2754,11 +2754,11 @@ static bool D3D12_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *
             textureSampler = &rendererData->samplers[D3D12_SAMPLER_LINEAR_WRAP];
             break;
         default:
-            return SDL_SetError("Unknown texture address mode: %d\n", cmd->data.draw.texture_address_mode);
+            return SDL_SetError("Unknown texture address mode: %d", cmd->data.draw.texture_address_mode);
         }
         break;
     default:
-        return SDL_SetError("Unknown scale mode: %d\n", textureData->scaleMode);
+        return SDL_SetError("Unknown scale mode: %d", textureData->scaleMode);
     }
 #ifdef SDL_HAVE_YUV
     if (textureData->yuv) {

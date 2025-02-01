@@ -539,7 +539,7 @@ static GLuint GLES2_CacheShader(GLES2_RenderData *data, GLES2_ShaderType type, G
                 SDL_asprintf(&message, "%s%s", last_message, shader_src_list[i]);
                 SDL_free(last_message);
             }
-            SDL_Log("%s\n", message);
+            SDL_Log("%s", message);
             SDL_free(message);
         }
 #endif
@@ -1041,7 +1041,7 @@ static bool SetTextureAddressMode(GLES2_RenderData *data, GLenum textype, SDL_Te
         data->glTexParameteri(textype, GL_TEXTURE_WRAP_T, GL_REPEAT);
         break;
     default:
-        return SDL_SetError("Unknown texture address mode: %d\n", addressMode);
+        return SDL_SetError("Unknown texture address mode: %d", addressMode);
     }
     return true;
 }

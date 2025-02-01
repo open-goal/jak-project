@@ -1025,6 +1025,10 @@ static void display_handle_done(void *data,
     // Expose the unscaled, native resolution if the scale is 1.0 or viewports are available...
     if (internal->scale_factor == 1.0 || video->viewporter) {
         SDL_AddFullscreenDisplayMode(dpy, &native_mode);
+        if (native_mode.w != desktop_mode.w ||
+            native_mode.h != desktop_mode.h) {
+            SDL_AddFullscreenDisplayMode(dpy, &desktop_mode);
+        }
     } else {
         // ...otherwise expose the integer scaled variants of the desktop resolution down to 1.
         int i;
@@ -1195,7 +1199,7 @@ static void libdecor_error(struct libdecor *context,
                            enum libdecor_error error,
                            const char *message)
 {
-    SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "libdecor error (%d): %s\n", error, message);
+    SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "libdecor error (%d): %s", error, message);
 }
 
 static struct libdecor_interface libdecor_interface = {
