@@ -4,8 +4,7 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-//#ifdef __linux
-// disable debugger tests - flaky.
+//  disable debugger tests - flaky.
 #if 0
 
 namespace {
