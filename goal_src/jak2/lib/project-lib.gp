@@ -135,11 +135,17 @@
     )
   )
 
-(defmacro build-custom-level (name)
+(defmacro build-custom-level (name &key (force-run #f) &key (gen-fr3 #t))
   (let* ((path (string-append "custom_assets/jak2/levels/" name "/" name ".jsonc")))
-    `(defstep :in ,path
+    `(defstep :in '(,path ,(symbol->string force-run) ,(symbol->string gen-fr3))
               :tool 'build-level2
               :out '(,(string-append "$OUT/obj/" name ".go")))))
+
+(defmacro build-actor (name &key (gen-mesh #f) &key (force-run #f) &key (texture-bucket 0))
+  (let* ((path (string-append "custom_assets/jak2/models/custom_levels/" name ".glb")))
+    `(defstep :in '(,path ,(symbol->string gen-mesh) ,(symbol->string force-run) ,(if (integer? texture-bucket) (int->string texture-bucket) (symbol->string texture-bucket)))
+              :tool 'build-actor2
+              :out '(,(string-append "$OUT/obj/" name "-ag.go")))))
 
 (defmacro group (name &rest stuff)
   `(defstep :in ""

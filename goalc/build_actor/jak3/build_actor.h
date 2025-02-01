@@ -7,27 +7,15 @@
 #include "goalc/build_actor/common/build_actor.h"
 #include "goalc/build_level/collide/common/collide_common.h"
 
-namespace jak1 {
+namespace jak3 {
 
-// Note: there's some weirdness with the Joint types here - I believe that very early on in
-// development, joint animations were stored separately per joint. However, all joint animations use
-// the "compressed" format, which combines data for all joints into a single structure.
-// By jak 2, they had cleaned this up, but for Jak 1, we have to deal with this weirdness.
+struct ArtElement3 : Art {
+  std::string master_art_group_name;
+  s32 master_art_group_index;
+  u8 pad[20];
+};
 
 // basic
-// This is one of those weird leftover types.
-// There's one of these per-joint, per-animation, and all it's useful for is storing the
-// length of the animation. The game only looks at the data for joint 0 and assumes the rest are
-// the same. (and by jak 2, this is gone entirely!)
-struct JointAnimCompressed {
-  std::string name;
-  s16 number;
-  s16 length;
-  std::vector<u32> data;
-  explicit JointAnimCompressed(const Joint& joint, s16 num_frames)
-      : name(joint.name), number(joint.number), length(num_frames) {}
-  size_t generate(DataObjectGenerator& gen) const;
-};
 
 // Header for a compressed joint animation - this tells the decompressor how to read
 // the data in the animation.
@@ -147,7 +135,7 @@ struct BuildActorParams {
   std::vector<float> lod_dist{};
 };
 
-struct ArtJointGeo : ArtElement {
+struct ArtJointGeo : ArtElement3 {
   std::vector<Joint> data;
   std::vector<CollideMesh> cmeshes;
   ResLump lump;
@@ -163,6 +151,8 @@ struct ArtJointGeo : ArtElement {
                        std::vector<Joint>& joints,
                        const BuildActorParams& params) {
     this->name = name + "-lod0";
+    master_art_group_name = name;
+    master_art_group_index = 0;
     length = joints.size();
     for (auto& joint : joints) {
       data.push_back(joint);
@@ -179,16 +169,13 @@ struct ArtJointGeo : ArtElement {
   size_t generate_mesh(DataObjectGenerator& gen) const;
 };
 
-struct ArtJointAnim : ArtElement {
+struct ArtJointAnim : ArtElement3 {
   MercEyeAnimBlock eye_anim_data;
   float speed;
   float artist_base;
   float artist_step;
-  std::string master_art_group_name;
-  s32 master_art_group_index;
   u8* blerc_data = nullptr;
   JointAnimCompressedControl frames;
-  std::vector<JointAnimCompressed> data;
 
   ArtJointAnim(const std::string& name, const std::vector<Joint>& joints) {
     this->name = name + "-idle";
@@ -198,9 +185,6 @@ struct ArtJointAnim : ArtElement {
     artist_step = 1.0f;
     master_art_group_name = name;
     master_art_group_index = 2;
-    for (auto& joint : joints) {
-      data.emplace_back(joint, 1);
-    }
   }
 
   ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<Joint>& joints);
@@ -210,15 +194,15 @@ struct ArtJointAnim : ArtElement {
 
 struct ArtGroup : Art {
   FileInfo info;
-  std::vector<std::shared_ptr<ArtElement>> elts;
+  std::vector<std::shared_ptr<ArtElement3>> elts;
   std::map<int, size_t> joint_map;
   int merc_effect_count;
 
   explicit ArtGroup(const std::string& file_name) {
     info.file_type = "art-group";
-    info.file_name = "/src/next/data/art-group6/" + file_name + "-ag.go";
+    info.file_name = "/src/next/data/art-group8/" + file_name + "-ag.go";
     name = file_name;
-    info.major_version = versions::jak1::ART_FILE_VERSION;
+    info.major_version = versions::jak3::ART_FILE_VERSION;
     info.minor_version = 0;
     info.tool_debug = "Created by OpenGOAL buildactor";
     info.mdb_file_name = "Unknown";
@@ -231,4 +215,4 @@ struct ArtGroup : Art {
 bool run_build_actor(const std::string& input_model,
                      const std::string& output_file,
                      const BuildActorParams& params);
-}  // namespace jak1
+}  // namespace jak3
