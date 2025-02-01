@@ -316,12 +316,7 @@
     (dotimes (group-idx (-> this actor-group-count))
       (let ((group (-> this actor-group group-idx)))
         (dotimes (actor-idx (-> group length))
-          (let* ((actor-proc (-> group data actor-idx actor extra process))
-                 (fodder-proc (if (type? actor-proc fodder)
-                                  (the-as fodder actor-proc)
-                                  )
-                              )
-                 )
+          (let ((fodder-proc (as-type (-> group data actor-idx actor extra process) fodder)))
             (when (and fodder-proc (!= fodder-proc this) (time-elapsed? (-> fodder-proc look-at-other-time) (seconds 0.25)))
               (let* ((dir-to-other-fodder
                        (vector-! (new 'stack-no-clear 'vector) (-> fodder-proc root trans) (-> this root trans))
@@ -379,15 +374,7 @@
   (let ((proc (the-as process-drawable #f)))
     (cond
       ((and (not (time-elapsed? (-> this look-at-other-time) (seconds 0.5)))
-            (begin
-              (let ((other-proc (handle->process (-> this look-at-other))))
-                (set! proc (if (type? other-proc process-drawable)
-                               (the-as process-drawable other-proc)
-                               )
-                      )
-                )
-              proc
-              )
+            (begin (set! proc (as-type (handle->process (-> this look-at-other)) process-drawable)) proc)
             )
        (let ((s5-1 (vector<-cspace! (new 'static 'vector) (-> proc node-list data 5))))
          (look-at-position! this s5-1)

@@ -4689,7 +4689,10 @@ Form* try_rewrite_as_as_type(CondNoElseElement* value,
   // silly cast situation:
   // sometimes there is something dumb like (the specific (as-type foo general))
   // we have to make sure that we keep the leading cast.
-  if (resulting_type != TypeSpec(new_type) && env.dts->ts.tc(TypeSpec(new_type), resulting_type)) {
+  // HACK: inserting casts more aggressively in Jak 2 because I am too lazy to fix up all the
+  // slightly wrong casts that matter now.
+  if (resulting_type != TypeSpec(new_type) &&
+      (env.version == GameVersion::Jak2 || env.dts->ts.tc(TypeSpec(new_type), resulting_type))) {
     return pool.form<CastElement>(resulting_type, result);
   } else {
     return result;
