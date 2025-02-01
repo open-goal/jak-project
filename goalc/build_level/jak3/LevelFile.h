@@ -9,6 +9,7 @@
 #include "goalc/build_level/collide/common/collide_common.h"
 #include "goalc/build_level/collide/jak3/collide.h"
 #include "goalc/build_level/common/Tfrag.h"
+#include "goalc/build_level/common/Tie.h"
 #include "goalc/build_level/jak3/Entity.h"
 #include "goalc/build_level/jak3/FileInfo.h"
 
@@ -16,8 +17,6 @@ namespace jak3 {
 struct VisibilityString {
   std::vector<u8> bytes;
 };
-
-struct DrawableTreeInstanceTie {};
 
 struct DrawableTreeActor {};
 

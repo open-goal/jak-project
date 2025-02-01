@@ -9,7 +9,7 @@
 #include "third-party/tiny_gltf/tiny_gltf.h"
 
 using namespace gltf_util;
-namespace jak1 {
+namespace jak3 {
 
 JointAnimCompressedHDR::JointAnimCompressedHDR(const anim::CompressedAnim& anim) {
   matrix_bits = 0;
@@ -133,22 +133,6 @@ ArtJointAnim::ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<J
   artist_step = 1.0f;
   master_art_group_name = name;
   master_art_group_index = 2;
-  for (auto& joint : joints) {
-    data.emplace_back(joint, anim.frames.size());
-  }
-}
-
-size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
-  gen.align_to_basic();
-  gen.add_type_tag("joint-anim-compressed");
-  size_t result = gen.current_offset_bytes();
-  gen.add_ref_to_string_in_pool(name);
-  gen.add_word((length << 16) + number);
-  // data is always nullptr.
-  // for (auto& word : data) {
-  //   gen.add_word(word);
-  // }
-  return result;
 }
 
 size_t JointAnimCompressedFrame::generate(DataObjectGenerator& gen) const {
@@ -310,13 +294,17 @@ size_t ArtJointGeo::generate(DataObjectGenerator& gen) {
   gen.align_to_basic();
   gen.add_type_tag("art-joint-geo");
   size_t result = gen.current_offset_bytes();
-  gen.add_word(0);                      // 4
-  gen.add_ref_to_string_in_pool(name);  // 8
-  gen.add_word(length);                 // 12
-  auto res_slot = gen.add_word(0);      // 16 (res-lump)
-  gen.add_word(0);                      // 20
-  gen.add_word(0);
-  gen.add_word(0);
+  gen.add_word(0);                                       // 4
+  gen.add_ref_to_string_in_pool(name);                   // 8
+  gen.add_word(length);                                  // 12
+  auto res_slot = gen.add_word(0);                       // 16 (res-lump)
+  gen.add_ref_to_string_in_pool(master_art_group_name);  // 20
+  gen.add_word(master_art_group_index);                  // 24
+  gen.add_word(0);                                       // 28
+  gen.add_word(0);                                       // 32
+  gen.add_word(0);                                       // 36
+  gen.add_word(0);                                       // 40
+  gen.add_word(0);                                       // 44
   std::vector<size_t> joint_slots;
   for (int i = 0; i < length; i++) {
     joint_slots.push_back(gen.add_word(0));
@@ -339,26 +327,27 @@ size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
   gen.align_to_basic();
   gen.add_type_tag("art-joint-anim");
   size_t result = gen.current_offset_bytes();
-  gen.add_symbol_link("#f");                             // 4 (eye block)
+  gen.add_word(0);                                       // 4
   gen.add_ref_to_string_in_pool(name);                   // 8
   gen.add_word(length);                                  // 12
   gen.add_symbol_link("#f");                             // 16 (res-lump)
-  gen.add_word_float(speed);                             // 20
-  gen.add_word_float(artist_base);                       // 24
-  gen.add_word_float(artist_step);                       // 28
-  gen.add_ref_to_string_in_pool(master_art_group_name);  // 32
-  gen.add_word(master_art_group_index);                  // 36
-  gen.add_symbol_link("#f");                             // 40 (blerc)
-  auto ctrl_slot = gen.add_word(0);
+  gen.add_ref_to_string_in_pool(master_art_group_name);  // 20
+  gen.add_word(master_art_group_index);                  // 24
+  gen.add_symbol_link("#f");                             // 28 (eye block)
+  gen.add_symbol_link("#f");                             // 32 (blerc)
+  auto ctrl_slot = gen.add_word(0);                      // 36 (frames)
+  gen.add_word(0);                                       // 40
+  gen.add_word(0);                                       // 44
+  gen.add_word_float(speed);                             // 48
+  gen.add_word_float(artist_base);                       // 52
+  gen.add_word_float(artist_step);                       // 56
+
   std::vector<size_t> frame_slots;
   for (int i = 0; i < length; i++) {
     frame_slots.push_back(gen.add_word(0));
   }
   gen.align(4);
   gen.link_word_to_byte(ctrl_slot, frames.generate(gen));
-  for (int i = 0; i < length; i++) {
-    gen.link_word_to_byte(frame_slots.at(i), data.at(i).generate(gen));
-  }
   return result;
 }
 
@@ -480,32 +469,48 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   auto joints = ((ArtJointGeo*)ag.elts.at(0).get())->length - 2;
   gen.add_word(0);                                   // 4
   gen.add_ref_to_string_in_pool(ag.name + "-lod0");  // 8
-  gen.add_word(0);                                   // 12
+  gen.add_word(joints);                              // 12 (num-joints)
   gen.add_symbol_link("#f");                         // 16 (res-lump)
-  gen.add_word(joints);                              // 20 (num-joints)
-  gen.add_word(0x0);                                 // 24 (pad)
-  gen.add_word(0x0);                                 // 28 (pad)
-  gen.add_word(0x4181b897);                          // 32-112 (xyz-scale)
-  gen.add_word(0xc780ff80);                          // 36 (st-magic)
-  gen.add_word(0x40798000);                          // 40 (st-out-a)
-  gen.add_word(0x40eb4000);                          // 44 (st-out-b)
-  gen.add_word(0x4780ff80);                          // 48 (st-vif-add)
-  gen.add_word(0x50000);                             // 52 ((st-int-off << 16) + st-int-scale)
-  gen.add_word(ag.merc_effect_count);                // 56 (effect-count)
-  gen.add_word(0x0);                                 // 60 (blend-target-count)
+  gen.add_ref_to_string_in_pool(ag.name);            // 20 (master-art-group-name)
+  gen.add_word(1);                                   // 24 (master-art-group-index)
+  gen.add_word(0x0);                                 // 28 (seg-table)
+  gen.add_word(0x0);                                 // 32 (pad?)
+  gen.add_word(0x0);                                 // 36 (pad?)
+  gen.add_word(0x0);                                 // 40 (pad?)
+  gen.add_word(0x0);                                 // 44 (pad?)
+  gen.add_word(0x4185c8ac);                          // 48-160 (xyz-scale)
+  gen.add_word(0xc780ff80);                          // 52 (st-magic)
+  gen.add_word(0x40798000);                          // 56 (st-out-a)
+  gen.add_word(0x40eb4000);                          // 60 (st-out-b)
+  gen.add_word(0x4780ff80);                          // 64 (st-vif-add)
+  gen.add_word(0x50000);                             // 68 ((st-int-off << 16) + st-int-scale)
+  gen.add_word(ag.merc_effect_count);                // 72 (effect-count)
+  gen.add_word(0x0);                                 // 76 (blend-target-count)
   gen.add_word((0x14 * ag.merc_effect_count << 16) +
-               ag.merc_effect_count);  // 64 ((fragment-count << 16) + tri-count)
-  gen.add_word(0x130101);              // 68
-  gen.add_word(0x13001d);              // 72
-  gen.add_word(0x0);                   // 76
-  gen.add_word(0x0);                   // 80
-  gen.add_word(0x10101);               // 84
-  gen.add_word(0x130000);              // 88
-  gen.add_word(0x3f319ca9);            // 92
+               ag.merc_effect_count);  // 80 ((fragment-count << 16) + tri-count)
+  gen.add_word(0x130101);              // 84
+  gen.add_word(0x13001d);              // 88
+  gen.add_word(0x0);                   // 92
   gen.add_word(0x0);                   // 96
-  gen.add_word(0x0);                   // 100
-  gen.add_word(0x0);                   // 104
-  gen.add_word(0x0);                   // 108
+  gen.add_word(0x10101);               // 100
+  gen.add_word(0x130000);              // 104
+  gen.add_word(0x3f319ca9);            // 108
+  gen.add_word(0x0);                   // 112
+  gen.add_word(0x0);                   // 116
+  gen.add_word(0x0);                   // 120
+  gen.add_word(0x0);                   // 124
+  gen.add_word(0x0);                   // 128
+  gen.add_word(0x0);                   // 132
+  gen.add_word(0x0);                   // 136
+  gen.add_word(0x0);                   // 140
+  gen.add_word(0x0);                   // 144
+  gen.add_word(0x0);                   // 148
+  gen.add_word(0x0);                   // 152
+  gen.add_word(0x0);                   // 156
+  gen.add_word(0x0);                   // 160
+  gen.add_word(0x0);                   // 164
+  gen.add_word(0x0);                   // 168
+  gen.add_word(0x0);                   // 172
   generate_merc_effects(gen, ag.merc_effect_count, joints);
   return result;
 }
@@ -608,7 +613,7 @@ bool run_build_actor(const std::string& mdl_name,
 
   std::vector<CollideMesh> mesh;
   if (params.gen_collide_mesh) {
-    mesh = gen_collide_mesh_from_model_jak1(model, all_nodes, 3);
+    mesh = gen_collide_mesh_from_model_jak3(model, all_nodes, 3);
   }
 
   std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints, params);
@@ -636,4 +641,4 @@ bool run_build_actor(const std::string& mdl_name,
                                ag_file.size());
   return true;
 }
-}  // namespace jak1
+}  // namespace jak3
