@@ -147,13 +147,9 @@
       )
     (else
       (when (!= (-> arg0 type) target)
-        (let* ((s3-0 (-> arg1 param 0))
-               (s2-0 arg0)
-               (v1-2 (if (type? s2-0 process-focusable)
-                         s2-0
-                         )
-                     )
-               )
+        (let ((s3-0 (-> arg1 param 0))
+              (v1-2 (as-type arg0 process-focusable))
+              )
           (cond
             ((and (focus-test? this dangerous)
                   (logtest? (process-mask enemy guard civilian kg-robot) (-> arg0 mask))
@@ -219,28 +215,15 @@
     (set! (-> this attacker-info next-update-target-time) (+ (current-time) (seconds 3)))
     (logclear! (-> this attacker-info flags) (city-attacker-info-flag cai2))
     )
-  (let* ((s5-0 (handle->process (-> this current-enemy)))
-         (a0-18 (if (type? s5-0 process-focusable)
-                    s5-0
-                    )
-                )
-         )
+  (let ((a0-18 (as-type (handle->process (-> this current-enemy)) process-focusable)))
     (cond
       ((and a0-18
             (not (logtest? (-> (the-as process-focusable a0-18) focus-status) (focus-status disable dead inactive)))
             )
-       (let* ((s5-1 this)
-              (s4-0 (method-of-object s5-1 set-focus!))
-              (s3-0 (handle->process (-> this current-enemy)))
-              )
-         (s4-0
-           s5-1
-           (the-as process-focusable (if (type? s3-0 process-focusable)
-                                         s3-0
-                                         )
-                   )
-           (the-as enemy-aware #f)
-           )
+       (set-focus!
+         this
+         (the-as process-focusable (as-type (handle->process (-> this current-enemy)) process-focusable))
+         (the-as enemy-aware #f)
          )
        (update-focus this)
        (let ((f0-0 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
@@ -278,12 +261,7 @@
   :virtual #t
   :trans (behavior ()
     (when (handle->process (-> self current-enemy))
-      (let* ((gp-0 (handle->process (-> self current-enemy)))
-             (v1-7 (if (type? gp-0 process-focusable)
-                       (the-as process-focusable gp-0)
-                       )
-                   )
-             )
+      (let ((v1-7 (as-type (handle->process (-> self current-enemy)) process-focusable)))
         (if (not (or (focus-test? v1-7 inactive) (focus-test? v1-7 disable)))
             (go-virtual hostile)
             )

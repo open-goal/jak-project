@@ -182,12 +182,7 @@
    @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('arrest)
-     (let* ((s4-0 (handle->process (-> this arrestor-handle)))
-            (v1-4 (if (type? s4-0 process-focusable)
-                      s4-0
-                      )
-                  )
-            )
+     (let ((v1-4 (the-as process (as-type (handle->process (-> this arrestor-handle)) process-focusable))))
        (when (or (not v1-4) (= v1-4 arg0) (and (!= v1-4 arg0) (time-elapsed? (-> this arrest-attempt-time) (seconds 0.1))))
          (set! (-> this arrestor-handle) (process->handle arg0))
          (set-time! (-> this arrest-attempt-time))
@@ -241,17 +236,9 @@
 
 ;; definition for method 97 of type kid-escort
 (defmethod enemy-method-97 ((this kid-escort))
-  (let* ((s4-0 (handle->process (-> this attacker-handle)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         (s3-0 (handle->process (-> this arrestor-handle)))
-         (s4-1 (if (type? s3-0 process-focusable)
-                   s3-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process (as-type (handle->process (-> this attacker-handle)) process-focusable)))
+        (s4-1 (the-as process (as-type (handle->process (-> this arrestor-handle)) process-focusable)))
+        )
     (when s5-0
       (cond
         ((= (-> s5-0 type) target)
@@ -297,12 +284,7 @@
             (empty)
             )
            (else
-             (let ((s5-1 (handle->process (-> this poi-handle))))
-               (set! s3-1 (if (type? s5-1 process-focusable)
-                              s5-1
-                              )
-                     )
-               )
+             (set! s3-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (if s3-1
                  (empty)
                  (set! s3-1 *target*)
@@ -319,12 +301,7 @@
              (set! s3-1 s5-0)
              )
            (else
-             (let ((s5-2 (handle->process (-> this poi-handle))))
-               (set! s3-1 (if (type? s5-2 process-focusable)
-                              s5-2
-                              )
-                     )
-               )
+             (set! s3-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (cond
                (s3-1
                  (empty)
@@ -531,19 +508,15 @@
 ;; definition for method 236 of type kid-escort
 ;; WARN: Return type mismatch object vs none.
 (defmethod check-arrest ((this kid-escort))
-  (let ((s5-0 (handle->process (-> this arrestor-handle))))
-    (cond
-      ((if (type? s5-0 process-focusable)
-           s5-0
-           )
-       (go (method-of-object this arrested))
-       )
-      ((logtest? (-> this bot-flags) (bot-flags bf15))
-       (go (method-of-object this move-to-vehicle))
-       )
-      (else
-        (go (method-of-object this waiting-idle))
-        )
+  (cond
+    ((the-as process (as-type (handle->process (-> this arrestor-handle)) process-focusable))
+     (go (method-of-object this arrested))
+     )
+    ((logtest? (-> this bot-flags) (bot-flags bf15))
+     (go (method-of-object this move-to-vehicle))
+     )
+    (else
+      (go (method-of-object this waiting-idle))
       )
     )
   (none)
