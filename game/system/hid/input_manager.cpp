@@ -25,11 +25,16 @@ InputManager::InputManager(SDL_Window* window)
   {
     auto p = scoped_prof("input_manager::init");
     m_settings->load_settings();
+    if (!SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER, "1")) {
+      sdl_util::log_error("Unable to set SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER to true!");
+    }
+    // TODO - might need to enable this for linux, not sure
+    // SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3, "1");
     {
       auto p = scoped_prof("input_manager::init::sdl_init_subsystem");
       // initializing the controllers on startup can sometimes take a very long time
       // so we isolate that to here instead
-      if (SDL_InitSubSystem(SDL_INIT_GAMEPAD) != 0) {
+      if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
         sdl_util::log_error(
             "Could not initialize SDL Controller support, controllers will not work!");
       }
@@ -81,14 +86,14 @@ void InputManager::refresh_device_list() {
     // TODO - if this was done on a separate thread, there would be no hitch in the game thread
     // but of course, that presents other synchronization challenges.
     int num_joysticks = 0;
-    SDL_GetJoysticks(&num_joysticks);
+    auto joysticks = SDL_GetJoysticks(&num_joysticks);
     if (num_joysticks > 0) {
       for (int i = 0; i < num_joysticks; i++) {
-        if (!SDL_IsGamepad(i)) {
+        if (!SDL_IsGamepad(joysticks[i])) {
           lg::error("Controller with device id {} is not avaiable via the GameController API", i);
           continue;
         }
-        auto controller = std::make_shared<GameController>(i, m_settings);
+        auto controller = std::make_shared<GameController>(joysticks[i], m_settings);
         if (!controller->is_loaded()) {
           lg::error("Unable to successfully connect to GameController with id {}, skipping", i);
           continue;
@@ -132,10 +137,10 @@ void InputManager::refresh_device_list() {
       lg::warn(
           "No active game controllers could be found or loaded successfully - inputs will not "
           "work!");
-      m_settings->keyboard_temp_enabled = true;
+      m_settings->_keyboard_temp_enabled = true;
     } else {
       lg::info("Found {} controllers", m_available_controllers.size());
-      m_settings->keyboard_temp_enabled = false;
+      m_settings->_keyboard_temp_enabled = false;
     }
   }
 }

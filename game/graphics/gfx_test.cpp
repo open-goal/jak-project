@@ -17,7 +17,7 @@ GPUTestOutput run_gpu_test(const std::string& test_type) {
   lg::info("Running GPU Test - {}", test_type);
   GPUTestOutput output = {false, "", ""};
   if (test_type == "opengl") {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
       output = {false, "SDL initialization failed",
                 sdl_util::log_and_return_error("SDL initialization failed")};
       return output;

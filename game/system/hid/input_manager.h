@@ -102,7 +102,7 @@ class InputManager {
   bool auto_hiding_cursor() { return m_auto_hide_mouse || m_mouse.is_camera_being_controlled(); }
   void hide_cursor(const bool hide_cursor);
   bool is_keyboard_enabled() {
-    return m_settings->keyboard_enabled || m_settings->keyboard_temp_enabled;
+    return m_settings->keyboard_enabled || m_settings->_keyboard_temp_enabled;
   }
 
  private:

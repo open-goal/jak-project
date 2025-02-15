@@ -70,14 +70,6 @@ void from_json(const json& j, InputBindingGroups& obj) {
   json_deserialize_if_exists(buttons);
 }
 
-const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER = {
-    PadData::ButtonIndex::DPAD_RIGHT, PadData::ButtonIndex::DPAD_LEFT,
-    PadData::ButtonIndex::DPAD_UP,    PadData::ButtonIndex::DPAD_DOWN,
-    PadData::ButtonIndex::TRIANGLE,   PadData::ButtonIndex::CIRCLE,
-    PadData::ButtonIndex::CROSS,      PadData::ButtonIndex::SQUARE,
-    PadData::ButtonIndex::L1,         PadData::ButtonIndex::R1,
-    PadData::ButtonIndex::L2,         PadData::ButtonIndex::R2};
-
 const InputBindingGroups DEFAULT_CONTROLLER_BINDS = InputBindingGroups(
     CONTROLLER,
     {{SDL_GAMEPAD_AXIS_LEFTX, {InputBinding(PadData::AnalogIndex::LEFT_X)}},

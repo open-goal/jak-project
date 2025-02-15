@@ -1,5 +1,7 @@
 #include "game_controller.h"
 
+#include "dualsense_effects.h"
+
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/core.h"
@@ -16,19 +18,20 @@ GameController::GameController(int sdl_device_id,
     return;
   }
 
-  auto joystick = SDL_GetGamepadJoystick(m_device_handle);
-  if (!joystick) {
+  m_low_device_handle = SDL_GetGamepadJoystick(m_device_handle);
+  if (!m_low_device_handle) {
     sdl_util::log_error(
         fmt::format("Could not get underlying joystick for gamecontroller: id {}", sdl_device_id));
     return;
   }
-  m_sdl_instance_id = SDL_GetJoystickID(joystick);
+  auto test = SDL_GetNumJoystickAxes(m_low_device_handle);
+  m_sdl_instance_id = SDL_GetJoystickID(m_low_device_handle);
   if (!m_sdl_instance_id) {
     sdl_util::log_error(
         fmt::format("Could not determine instance id for gamecontroller: id {}", sdl_device_id));
     return;
   }
-  const auto controller_guid = SDL_GetJoystickGUID(joystick);
+  const auto controller_guid = SDL_GetJoystickGUID(m_low_device_handle);
   if (sdl_util::is_SDL_GUID_zero(controller_guid)) {
     sdl_util::log_error(fmt::format("Could not determine controller guid: id {}", sdl_device_id));
     return;
@@ -59,17 +62,98 @@ GameController::GameController(int sdl_device_id,
         fmt::format("Unable to retrieve properties for gamepad: id {}", sdl_device_id));
     m_has_led = false;
     m_has_rumble = false;
+    m_has_trigger_rumble = false;
+    m_is_dualsense = false;
   } else {
     m_has_led = SDL_GetBooleanProperty(properties, SDL_PROP_GAMEPAD_CAP_RGB_LED_BOOLEAN, false);
     m_has_rumble = SDL_GetBooleanProperty(properties, SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN, false);
-    // TODO - trigger rumble?
+    m_has_trigger_rumble =
+        SDL_GetBooleanProperty(properties, SDL_PROP_GAMEPAD_CAP_TRIGGER_RUMBLE_BOOLEAN, false);
+    m_is_dualsense = SDL_GetGamepadType(m_device_handle) == SDL_GAMEPAD_TYPE_PS5;
   }
 
   if (m_settings->controller_binds.find(m_guid) == m_settings->controller_binds.end()) {
     m_settings->controller_binds[m_guid] = DEFAULT_CONTROLLER_BINDS;
   }
 
+  const auto num_axes = SDL_GetNumJoystickAxes(m_low_device_handle);
+  m_has_pressure_sensitive_buttons =
+      SDL_GetGamepadType(m_device_handle) == SDL_GAMEPAD_TYPE_PS3 && num_axes == 16;
+
+  if (m_has_pressure_sensitive_buttons) {
+    lg::info("Detected a PS3 controller with support for pressure sensitive buttons");
+  }
+
+  ///*
+  //{
+  //      // Offically recognized modes
+  //      // These are 100% safe and are the only effects that modify the trigger status nybble
+  //      Off       = 0x05, // 00 00 0 101
+  //      Feedback  = 0x21, // 00 10 0 001
+  //      Weapon    = 0x25, // 00 10 0 101
+  //      Vibration = 0x26, // 00 10 0 110
+  //  }
+  //*/
+
+  //// dont merge this
+  // u16 startAndStopZones = (u16)((1 << 5) | (1 << 7));
+  // u8 valA = (u8)((startAndStopZones >> 0) & 0xff);
+  // u8 valB = (u8)((startAndStopZones >> 8) & 0xff);
+
+  // u8 amplitude = 3;  // 0-9 inclusive
+  // u8 strengthValue = (u8)((amplitude - 1) & 0x07);
+  // u32 amplitudeZones = 0;
+  // u16 activeZones = 0;
+  // u8 position = 5;   // 0-9 inclusive
+  // u8 frequency = 1;  // hz;
+  // for (int i = position; i < 10; i++) {
+  //   amplitudeZones |= (u32)(strengthValue << (3 * i));
+  //   activeZones |= (u16)(1 << i);
+  // }
+
+  // DS5EffectsState_t effects;
+  // Uint8 trigger_effects[5][11] = {
+  //     /* Clear trigger effect */
+  //     {0x05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  //     /* Constant resistance across entire trigger pull */
+  //     {0x01, 0, 110, 0, 0, 0, 0, 0, 0, 0, 0},
+  //     /* Resistance and vibration when trigger is pulled */
+  //     {0x06, 15, 63, 128, 0, 0, 0, 0, 0, 0, 0},
+  //     // weapon
+  //     {0x25, valA, valB, 7, 0, 0, 0, 0, 0, 0, 0},
+  //     // vibration
+  //     {0x26, (u8)((activeZones >> 0) & 0xff), (u8)((activeZones >> 8) & 0xff),
+  //      (u8)((amplitudeZones >> 0) & 0xff), (u8)((amplitudeZones >> 8) & 0xff),
+  //      (u8)((amplitudeZones >> 16) & 0xff), (u8)((amplitudeZones >> 24) & 0xff), 0, 0, frequency,
+  //      0},
+  // };
+  // SDL_zero(effects);
+  // effects.ucEnableBits1 |= (0x04 | 0x08); /* Modify right and left trigger effect respectively */
+  // SDL_memcpy(effects.rgucRightTriggerEffect, trigger_effects[4], sizeof(trigger_effects[4]));
+  // SDL_memcpy(effects.rgucLeftTriggerEffect, trigger_effects[4], sizeof(trigger_effects[4]));
+  // SDL_SendGamepadEffect(m_device_handle, &effects, sizeof(effects));
+
   m_loaded = true;
+}
+
+static std::unordered_map<int, int> button_to_pressure_axes = {
+    {SDL_GAMEPAD_BUTTON_SOUTH, 6},          {SDL_GAMEPAD_BUTTON_EAST, 7},
+    {SDL_GAMEPAD_BUTTON_WEST, 8},           {SDL_GAMEPAD_BUTTON_NORTH, 9},
+    {SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, 10}, {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, 11},
+    {SDL_GAMEPAD_BUTTON_DPAD_UP, 12},       {SDL_GAMEPAD_BUTTON_DPAD_DOWN, 13},
+    {SDL_GAMEPAD_BUTTON_DPAD_LEFT, 14},     {SDL_GAMEPAD_BUTTON_DPAD_RIGHT, 15}};
+
+static std::unordered_map<int, int> pressure_axes_to_button = {
+    {6, SDL_GAMEPAD_BUTTON_SOUTH},          {7, SDL_GAMEPAD_BUTTON_EAST},
+    {8, SDL_GAMEPAD_BUTTON_WEST},           {9, SDL_GAMEPAD_BUTTON_NORTH},
+    {10, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER}, {11, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER},
+    {12, SDL_GAMEPAD_BUTTON_DPAD_UP},       {13, SDL_GAMEPAD_BUTTON_DPAD_DOWN},
+    {14, SDL_GAMEPAD_BUTTON_DPAD_LEFT},     {15, SDL_GAMEPAD_BUTTON_DPAD_RIGHT}};
+
+// Adjust the value range to 0-255 (127 being neutral)
+// Values come out of SDL as -32,768 to 32,767
+int normalize_axes_value(int sdl_val) {
+  return ((sdl_val + 32768) * 256) / 65536;
 }
 
 void GameController::process_event(const SDL_Event& event,
@@ -86,14 +170,11 @@ void GameController::process_event(const SDL_Event& event,
     auto& binds = m_settings->controller_binds.at(m_guid);
 
     // Handle analog stick binds
-    if (event.gaxis.axis >= SDL_GAMEPAD_AXIS_LEFTX && event.gaxis.axis <= SDL_GAMEPAD_AXIS_LEFTY &&
+    if (event.gaxis.axis >= SDL_GAMEPAD_AXIS_LEFTX && event.gaxis.axis <= SDL_GAMEPAD_AXIS_RIGHTY &&
         !data->analogs_being_simulated() &&
         binds.analog_axii.find(event.gaxis.axis) != binds.analog_axii.end()) {
       for (const auto& bind : binds.analog_axii.at(event.gaxis.axis)) {
-        // Adjust the value range to 0-255 (127 being neutral)
-        // Values come out of SDL as -32,768 + 32,767
-        int axis_val = ((event.gaxis.value + 32768) * 256) / 65536;
-        data->analog_data.at(bind.pad_data_index) = axis_val;
+        data->analog_data.at(bind.pad_data_index) = normalize_axes_value(event.gaxis.value);
       }
     } else if (event.gaxis.axis >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER &&
                event.gaxis.axis <= SDL_GAMEPAD_AXIS_RIGHT_TRIGGER &&
@@ -155,7 +236,24 @@ void GameController::process_event(const SDL_Event& event,
 
     // Iterate the binds, and apply all of them
     for (const auto& bind : binds.buttons.at(event.gbutton.button)) {
+      // 1. pressed flag
       data->button_data.at(bind.pad_data_index) = event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+      // 2. potentially get the pressure value as well
+      const auto pressure_index = data->button_index_to_pressure_index(
+          static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+      if (m_settings->enable_pressure_sensitivity && m_has_pressure_sensitive_buttons &&
+          button_to_pressure_axes.contains(event.gbutton.button)) {
+        if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+          // TODO - handle error
+          const auto pressure_val = SDL_GetJoystickAxis(
+              m_low_device_handle, button_to_pressure_axes.at(event.gbutton.button));
+          data->pressure_data.at(pressure_index) = normalize_axes_value(pressure_val);
+        }
+      } else if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+        // TODO - analog and keyboard need to do this as well!
+        data->pressure_data.at(pressure_index) =
+            event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN ? 255 : 0;
+      }
     }
 
     // Check for commands
@@ -163,6 +261,20 @@ void GameController::process_event(const SDL_Event& event,
         commands.controller_binds.find(event.gbutton.button) != commands.controller_binds.end()) {
       for (const auto& command : commands.controller_binds.at(event.gbutton.button)) {
         command.command();
+      }
+    }
+  } else if (SDL_EVENT_JOYSTICK_AXIS_MOTION && m_has_pressure_sensitive_buttons) {
+    if (m_settings->enable_pressure_sensitivity && m_has_pressure_sensitive_buttons &&
+        pressure_axes_to_button.contains(event.jaxis.axis)) {
+      auto& binds = m_settings->controller_binds.at(m_guid);
+      // Work backwords, get the button so we can iterate the binds
+      const auto sdl_button_index = pressure_axes_to_button.at(event.jaxis.axis);
+      for (const auto& bind : binds.buttons.at(sdl_button_index)) {
+        const auto pressure_index = data->button_index_to_pressure_index(
+            static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+        if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+          data->pressure_data.at(pressure_index) = normalize_axes_value(event.jaxis.value);
+        }
       }
     }
   }
