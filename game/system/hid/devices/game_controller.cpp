@@ -1,4 +1,5 @@
 #include "game_controller.h"
+#include <optional>
 
 #include "dualsense_effects.h"
 
@@ -83,17 +84,6 @@ GameController::GameController(int sdl_device_id,
   if (m_has_pressure_sensitive_buttons) {
     lg::info("Detected a PS3 controller with support for pressure sensitive buttons");
   }
-
-  ///*
-  //{
-  //      // Offically recognized modes
-  //      // These are 100% safe and are the only effects that modify the trigger status nybble
-  //      Off       = 0x05, // 00 00 0 101
-  //      Feedback  = 0x21, // 00 10 0 001
-  //      Weapon    = 0x25, // 00 10 0 101
-  //      Vibration = 0x26, // 00 10 0 110
-  //  }
-  //*/
 
   //// dont merge this
   // u16 startAndStopZones = (u16)((1 << 5) | (1 << 7));
@@ -206,6 +196,7 @@ void GameController::process_event(const SDL_Event& event,
       }
 
       // and analog triggers
+      // TODO - pressure
       for (const auto& bind : binds.button_axii.at(event.gaxis.axis)) {
         data->button_data.at(bind.pad_data_index) = event.gaxis.value > 0;
       }
@@ -282,6 +273,7 @@ void GameController::process_event(const SDL_Event& event,
 
 void GameController::close_device() {
   if (m_device_handle) {
+    // TODO - if dualsense, clear effects
     SDL_CloseGamepad(m_device_handle);
   }
 }
