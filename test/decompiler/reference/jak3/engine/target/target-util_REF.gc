@@ -1875,66 +1875,51 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod attack-info-method-9 ((this attack-info) (arg0 attack-info) (arg1 process-drawable) (arg2 process-drawable))
-  (local-vars (v1-14 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
+  (let ((s5-0 (as-type arg1 process-drawable)))
+    (let ((v1-0 (as-type arg2 process-drawable)))
+      (cond
+        ((logtest? (attack-mask attacker-velocity) (-> this mask))
+         (vector-copy! (-> arg0 attacker-velocity) (-> this attacker-velocity))
+         (vector-normalize-copy! (-> arg0 trans) (-> arg0 attacker-velocity) 1.0)
          )
-    (init-vf0-vector)
-    (let ((s5-0 (as-type arg1 process-drawable)))
-      (let ((v1-0 (as-type arg2 process-drawable)))
-        (cond
-          ((logtest? (attack-mask attacker-velocity) (-> this mask))
-           (vector-copy! (-> arg0 attacker-velocity) (-> this attacker-velocity))
-           (vector-normalize-copy! (-> arg0 trans) (-> arg0 attacker-velocity) 1.0)
-           )
-          (v1-0
-            (cond
-              (s5-0
-                (vector-! (-> arg0 trans) (-> v1-0 root trans) (-> s5-0 root trans))
-                (vector-normalize! (-> arg0 trans) 1.0)
-                (vector-copy! (-> arg0 attacker-velocity) (-> arg0 trans))
-                )
-              (else
-                (vector-z-quaternion! (-> arg0 trans) (-> v1-0 root quat))
-                (vector-negate-in-place! (-> arg0 trans))
-                (vector-normalize! (-> arg0 trans) 1.0)
-                (vector-copy! (-> arg0 attacker-velocity) (-> arg0 trans))
-                )
+        (v1-0
+          (cond
+            (s5-0
+              (vector-! (-> arg0 trans) (-> v1-0 root trans) (-> s5-0 root trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (vector-copy! (-> arg0 attacker-velocity) (-> arg0 trans))
+              )
+            (else
+              (vector-z-quaternion! (-> arg0 trans) (-> v1-0 root quat))
+              (vector-negate-in-place! (-> arg0 trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (vector-copy! (-> arg0 attacker-velocity) (-> arg0 trans))
               )
             )
-          (else
-            (set! (-> arg0 trans quad) (the-as uint128 0))
-            (set! (-> arg0 attacker-velocity quad) (the-as uint128 0))
-            )
+          )
+        (else
+          (set! (-> arg0 trans quad) (the-as uint128 0))
+          (set! (-> arg0 attacker-velocity quad) (the-as uint128 0))
           )
         )
-      (if s5-0
-          (vector-copy! (-> arg0 intersection) (-> s5-0 root trans))
-          (vector-copy! (-> arg0 intersection) (target-pos 0))
-          )
       )
-    (.lvf vf1 (&-> (-> arg0 trans) quad))
-    (.add.w.vf.x vf2 vf0 vf0)
-    (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf.x acc vf2 vf1)
-    (.add.mul.y.vf.x acc vf2 vf1 acc)
-    (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-    (.mov v1-14 vf1)
-    (cond
-      ((!= v1-14 0.0)
-       (vector-copy! (-> arg0 vector) (-> arg0 trans))
-       (set! (-> arg0 vector y) 0.0)
-       (vector-xz-normalize! (-> arg0 vector) 1.0)
-       )
-      (else
-        (set! (-> arg0 vector quad) (the-as uint128 0))
+    (if s5-0
+        (vector-copy! (-> arg0 intersection) (-> s5-0 root trans))
+        (vector-copy! (-> arg0 intersection) (target-pos 0))
         )
-      )
-    0
-    (none)
     )
+  (cond
+    ((!= (vector-length-squared (-> arg0 trans)) 0.0)
+     (vector-copy! (-> arg0 vector) (-> arg0 trans))
+     (set! (-> arg0 vector y) 0.0)
+     (vector-xz-normalize! (-> arg0 vector) 1.0)
+     )
+    (else
+      (set! (-> arg0 vector quad) (the-as uint128 0))
+      )
+    )
+  0
+  (none)
   )
 
 ;; definition for method 10 of type attack-info

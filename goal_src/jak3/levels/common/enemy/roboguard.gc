@@ -1099,67 +1099,44 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (rlet ((acc :class vf)
-           (vf0 :class vf)
-           (vf4 :class vf)
-           (vf5 :class vf)
-           (vf6 :class vf)
-           (vf7 :class vf)
-           )
-      (init-vf0-vector)
-      (sound-play "robo-explode")
-      (let ((v1-2 (-> self root root-prim)))
-        (set! (-> v1-2 prim-core collide-as) (collide-spec))
-        (set! (-> v1-2 prim-core collide-with) (collide-spec))
+    (sound-play "robo-explode")
+    (let ((v1-2 (-> self root root-prim)))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (set! (-> self root root-prim local-sphere w) 491520.0)
+    (send-event self 'death-start)
+    (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+      (let ((s5-1 (new 'stack-no-clear 'vector)))
+        (vector+*! (-> gp-1 fountain-rand-transv-lo) (-> self root trans) *up-vector* 2048.0)
+        (vector-copy! s5-1 (-> self incoming attack-direction))
+        (vector-normalize-copy! (-> gp-1 fountain-rand-transv-lo) s5-1 -20480.0)
+        (vector-normalize-copy! (-> gp-1 fountain-rand-transv-hi) s5-1 122880.0)
         )
-      0
-      (logior! (-> self draw status) (draw-control-status no-draw))
-      (set! (-> self root root-prim local-sphere w) 491520.0)
-      (send-event self 'death-start)
-      (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
-        (let ((s5-1 (new 'stack-no-clear 'vector)))
-          (let ((v1-14 (-> gp-1 fountain-rand-transv-lo)))
-            (let ((a0-8 (-> self root trans)))
-              (let ((a1-3 *up-vector*))
-                (let ((a2-3 2048.0))
-                  (.mov vf7 a2-3)
-                  )
-                (.lvf vf5 (&-> a1-3 quad))
-                )
-              (.lvf vf4 (&-> a0-8 quad))
-              )
-            (.add.x.vf.w vf6 vf0 vf0)
-            (.mul.x.vf.xyz acc vf5 vf7)
-            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-            (.svf (&-> v1-14 quad) vf6)
-            )
-          (vector-copy! s5-1 (-> self incoming attack-direction))
-          (vector-normalize-copy! (-> gp-1 fountain-rand-transv-lo) s5-1 -20480.0)
-          (vector-normalize-copy! (-> gp-1 fountain-rand-transv-hi) s5-1 122880.0)
-          )
-        (set! (-> gp-1 fountain-rand-transv-lo y) 40960.0)
-        (set! (-> gp-1 fountain-rand-transv-hi y) 81920.0)
-        (process-spawn
-          joint-exploder
-          (art-group-get-by-name *level* "skel-roboguard-explode" (the-as (pointer level) #f))
-          35
-          gp-1
-          *roboguard-exploder-params*
-          :name "joint-exploder"
-          :to self
-          :unk 0
-          )
+      (set! (-> gp-1 fountain-rand-transv-lo y) 40960.0)
+      (set! (-> gp-1 fountain-rand-transv-hi y) 81920.0)
+      (process-spawn
+        joint-exploder
+        (art-group-get-by-name *level* "skel-roboguard-explode" (the-as (pointer level) #f))
+        35
+        gp-1
+        *roboguard-exploder-params*
+        :name "joint-exploder"
+        :to self
+        :unk 0
         )
-      (let ((v1-25 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node roboguard-lod0-jg chest))))
-        (cond
-          ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
-           (vector-copy! (-> *launch-matrix* trans) v1-25)
-           (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
-           )
-          (else
-            (vector-copy! (-> *launch-matrix* trans) v1-25)
-            (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
-            )
+      )
+    (let ((v1-26 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node roboguard-lod0-jg chest))))
+      (cond
+        ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
+         (vector-copy! (-> *launch-matrix* trans) v1-26)
+         (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
+         )
+        (else
+          (vector-copy! (-> *launch-matrix* trans) v1-26)
+          (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
           )
         )
       )

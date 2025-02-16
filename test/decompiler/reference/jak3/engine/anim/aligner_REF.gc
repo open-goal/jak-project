@@ -5,7 +5,8 @@
 ;; INFO: Used lq/sq
 ;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
-(defmethod compute-alignment! ((this align-control))
+(defmethod compute-delta-align! ((this align-control))
+  "Compute the change in align since the last time this was called."
   (local-vars (disable? symbol) (s7-0 none) (ra-0 int))
   (update-anim-data (-> this process skel))
   (let ((num-chans (-> this process skel active-channels)))
@@ -105,16 +106,19 @@
 ;; definition for method 12 of type align-control
 ;; WARN: Return type mismatch (inline-array transform) vs transform.
 (defmethod first-transform ((this align-control))
+  "Get the more recent align transform"
   (the-as transform (-> this transform))
   )
 
 ;; definition for method 13 of type align-control
 (defmethod second-transform ((this align-control))
+  "Get the second most recent align trasnform"
   (-> this transform 1)
   )
 
 ;; definition for method 10 of type align-control
 (defmethod align! ((this align-control) (arg0 align-opts) (arg1 float) (arg2 float) (arg3 float))
+  "Apply the alignment to the process-drawable."
   (when (not (logtest? (-> this flags) (align-flags disabled)))
     (let* ((a0-1 (-> this process))
            (t9-0 (method-of-object a0-1 apply-alignment))
@@ -155,7 +159,9 @@
   )
 
 ;; definition for method 11 of type align-control
-(defmethod align-vel-and-quat-only! ((this align-control) (arg0 align-opts) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
+(defmethod adjust-root-no-gravity! ((this align-control) (arg0 align-opts) (arg1 vector) (arg2 int) (arg3 float) (arg4 float))
+  "Adjust the quat and transv of the process drawable to take into account the
+   most recent change in align."
   (with-pp
     (when (not (logtest? (-> this flags) (align-flags disabled)))
       (let ((s5-0 (-> this delta)))
