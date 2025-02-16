@@ -262,7 +262,9 @@ class SimpleExpression {
     VECTOR_3_DOT,
     VECTOR_4_DOT,
     VECTOR_LENGTH,            // jak 2 only.
+    VECTOR_LENGTH_SQUARED,    // jak 2 only.
     VECTOR_PLUS_FLOAT_TIMES,  // jak 2 only.
+    VECTOR_PLUS_TIMES,
     SET_ON_LESS_THAN,
     SET_ON_LESS_THAN_IMM
   };

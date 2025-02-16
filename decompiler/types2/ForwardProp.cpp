@@ -1611,6 +1611,7 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::VECTOR_3_DOT:
     case SimpleExpression::Kind::VECTOR_4_DOT:
     case SimpleExpression::Kind::VECTOR_LENGTH:
+    case SimpleExpression::Kind::VECTOR_LENGTH_SQUARED:
       types2_for_vectors_in_float_out(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_CROSS:
@@ -1623,6 +1624,7 @@ void types2_for_expr(types2::Type& type_out,
       types2_for_vector_float_product(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+    case SimpleExpression::Kind::VECTOR_PLUS_TIMES:
       types2_for_vector_plus_float_times(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::PCPYLD:
