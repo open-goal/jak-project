@@ -93,10 +93,8 @@ math::Vector3f vopmsub(math::Vector3f acc, math::Vector3f a, math::Vector3f b) {
 }
 
 /*!
- * Compute the normal transformation for a TIE from the TIE matrix.
- * Note that this isn't identical to the original game - we're missing the vf14 scaling factor
- * For now, I just set this to 1, then normalize in the shader. Though I think we could avoid
- * this by figuring out the value of vf14 here (I am just too lazy right now).
+ * Compute the normal transformation for a TIE from the TIE matrix. This will return properly scaled
+ * normals.
  */
 std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vector4f, 4>& m) {
   // let:
@@ -186,11 +184,21 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   // sqc2 vf12, -80(t8)
 }
 
+s16 saturate_for_s10(s16 s10) {
+  // our error should be less than 4
+  ASSERT(s10 >= -520 && s10 < 520);
+  if (s10 < -512) {
+    return -512;
+  }
+  if (s10 > 511) {
+    return 511;
+  }
+  return s10;
+}
+
 u32 pack_to_gl_normal(s16 nx, s16 ny, s16 nz) {
-  ASSERT(nx >= -512 && nx <= 511);
-  ASSERT(ny >= -512 && ny <= 511);
-  ASSERT(nz >= -512 && nz <= 511);
-  return (nx & 0x3ff) | ((ny & 0x3ff) << 10) | ((nz & 0x3ff) << 20);
+  return (saturate_for_s10(nx) & 0x3ff) | ((saturate_for_s10(ny) & 0x3ff) << 10) |
+         ((saturate_for_s10(nz) & 0x3ff) << 20);
 }
 
 /*!
