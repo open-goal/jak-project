@@ -185,7 +185,7 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
 }
 
 s16 saturate_for_s10(s16 s10) {
-  // our error should be less than 4
+  // our error should be 1 or less as an s8, or 4 as a s10.
   ASSERT(s10 >= -520 && s10 < 520);
   if (s10 < -512) {
     return -512;
