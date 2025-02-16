@@ -202,10 +202,10 @@ u32 unpack_tie_normal(const std::array<math::Vector3f, 3>& mat, s8 nx, s8 ny, s8
   nrm += mat[0] * nx;
   nrm += mat[1] * ny;
   nrm += mat[2] * nz;
-  // convert to s16 for OpenGL renderer
-  // nrm /= 0x100;  // number from EE asm
-  // nrm *= 0x200;  // for normalized s10 -> float conversion by OpenGL.
-  nrm *= 2;  // for normalized s10 -> float conversion by OpenGL.
+
+  // game used signed 8-bit normals, but OpenGL uses signed 10-bit
+  // multiply by 2^2 = 4
+  nrm *= 4;
 
   auto as_int = nrm.cast<s16>();
 
