@@ -2596,7 +2596,7 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
     case SimpleExpression::Kind::VECTOR_PLUS_TIMES:
       update_from_stack_vector_plus_float_times(
           env, pool, stack, FixedOperatorKind::VECTOR_PLUS_TIMES, result, allow_side_effects);
-    break;
+      break;
     default:
       throw std::runtime_error(
           fmt::format("SimpleExpressionElement::update_from_stack NYI for {}", to_string(env)));

@@ -2020,11 +2020,14 @@ std::unique_ptr<AtomicOp> convert_vector_length_squared(const Instruction* instr
       idx);
 }
 
-std::unique_ptr<AtomicOp> convert_7(const Instruction* instrs, int idx) {
-  auto as_vector_length_squared = convert_vector_length_squared(instrs, idx);
-  if (as_vector_length_squared) {
-    return as_vector_length_squared;
+std::unique_ptr<AtomicOp> convert_7(const Instruction* instrs, int idx, GameVersion version) {
+  if (version == GameVersion::Jak3) {
+    auto as_vector_length_squared = convert_vector_length_squared(instrs, idx);
+    if (as_vector_length_squared) {
+      return as_vector_length_squared;
+    }
   }
+
   return nullptr;
 }
 
@@ -2160,15 +2163,17 @@ std::unique_ptr<AtomicOp> convert_vector_plus_times(const Instruction* instrs, i
       idx);
 }
 
-std::unique_ptr<AtomicOp> convert_8(const Instruction* instrs, int idx) {
+std::unique_ptr<AtomicOp> convert_8(const Instruction* instrs, int idx, GameVersion version) {
   auto as_vector_float_plus_times = convert_vector_plus_float_times(instrs, idx);
   if (as_vector_float_plus_times) {
     return as_vector_float_plus_times;
   }
 
-  auto as_vector_plus_times = convert_vector_plus_times(instrs, idx);
-  if (as_vector_plus_times) {
-    return as_vector_plus_times;
+  if (version == GameVersion::Jak3) {
+    auto as_vector_plus_times = convert_vector_plus_times(instrs, idx);
+    if (as_vector_plus_times) {
+      return as_vector_plus_times;
+    }
   }
   return nullptr;
 }
@@ -2514,7 +2519,7 @@ int convert_block_to_atomic_ops(int begin_idx,
     }
 
     if (!converted && n_instr >= 8) {
-      op = convert_8(&instr[0], op_idx);
+      op = convert_8(&instr[0], op_idx, version);
       if (op) {
         converted = true;
         length = 8;
@@ -2522,7 +2527,7 @@ int convert_block_to_atomic_ops(int begin_idx,
     }
 
     if (!converted && n_instr >= 7) {
-      op = convert_7(&instr[0], op_idx);
+      op = convert_7(&instr[0], op_idx, version);
       if (op) {
         converted = true;
         length = 7;
