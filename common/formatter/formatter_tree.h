@@ -46,7 +46,7 @@ class FormatterTreeNode {
 
   FormatterTreeNode() = default;
   FormatterTreeNode(const std::string& source, const TSNode& node);
-  FormatterTreeNode(const Metadata& _metadata) : metadata(_metadata){};
+  FormatterTreeNode(const Metadata& _metadata) : metadata(_metadata) {};
 
   bool is_list() const { return !token.has_value(); }
   std::string token_str() const {
