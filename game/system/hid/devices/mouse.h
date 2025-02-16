@@ -21,7 +21,7 @@ class MouseDevice : public InputDevice {
     bool mouse5 = false;
   };
 
-  MouseDevice(){};
+  MouseDevice() {};
   MouseDevice(std::shared_ptr<game_settings::InputSettings> settings);
   ~MouseDevice() {}
 

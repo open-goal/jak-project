@@ -37,7 +37,7 @@ struct OGGlobalIndex {
 
 class WorkspaceOGFile {
  public:
-  WorkspaceOGFile(){};
+  WorkspaceOGFile() {};
   WorkspaceOGFile(const LSPSpec::DocumentUri& uri,
                   const std::string& content,
                   const GameVersion& game_version);
@@ -62,7 +62,7 @@ class WorkspaceOGFile {
 
 class WorkspaceIRFile {
  public:
-  WorkspaceIRFile(){};
+  WorkspaceIRFile() {};
   WorkspaceIRFile(const std::string& content);
   // TODO - make private
   int32_t version;
@@ -91,14 +91,14 @@ class WorkspaceIRFile {
 class WorkspaceAllTypesFile {
  public:
   WorkspaceAllTypesFile()
-      : m_dts(std::make_unique<decompiler::DecompilerTypeSystem>(GameVersion::Jak1)){};
+      : m_dts(std::make_unique<decompiler::DecompilerTypeSystem>(GameVersion::Jak1)) {};
   WorkspaceAllTypesFile(const LSPSpec::DocumentUri& uri,
                         const GameVersion version,
                         const fs::path file_path)
       : m_game_version(version),
         m_uri(uri),
         m_dts(std::make_unique<decompiler::DecompilerTypeSystem>(m_game_version)),
-        m_file_path(file_path){};
+        m_file_path(file_path) {};
 
   GameVersion m_game_version;
   LSPSpec::DocumentUri m_uri;
