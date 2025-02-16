@@ -550,84 +550,35 @@
 
 ;; WARN: Return type mismatch (pointer process) vs (pointer joint-exploder).
 (defmethod go-explode ((this fac-robotank))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (sound-play "tank-explode")
-    (cond
-      ((logtest? (-> *part-group-id-table* 732 flags) (sp-group-flag sp13))
-       (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
-       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 732))
-       )
-      (else
-        (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
-        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 732))
-        )
+  (sound-play "tank-explode")
+  (cond
+    ((logtest? (-> *part-group-id-table* 732 flags) (sp-group-flag sp13))
+     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+     (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 732))
+     )
+    (else
+      (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+      (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 732))
       )
-    (let ((s5-3 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
-      (let ((v1-34 (new 'stack-no-clear 'vector)))
-        (let ((a0-17 (-> s5-3 fountain-rand-transv-lo)))
-          (let ((a1-9 (-> this root trans)))
-            (let ((a2-12 *up-vector*))
-              (let ((a3-6 2048.0))
-                (.mov vf7 a3-6)
-                )
-              (.lvf vf5 (&-> a2-12 quad))
-              )
-            (.lvf vf4 (&-> a1-9 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a0-17 quad) vf6)
-          )
-        (vector-float*! v1-34 *up-vector* 81920.0)
-        (let ((a2-14 (-> s5-3 fountain-rand-transv-lo)))
-          (let ((a0-20 v1-34))
-            (let ((a1-11 *identity-vector*))
-              (let ((a3-8 -40960.0))
-                (.mov vf7 a3-8)
-                )
-              (.lvf vf5 (&-> a1-11 quad))
-              )
-            (.lvf vf4 (&-> a0-20 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a2-14 quad) vf6)
-          )
-        (let ((a1-12 (-> s5-3 fountain-rand-transv-hi)))
-          (let ((a0-21 *identity-vector*))
-            (let ((a2-16 40960.0))
-              (.mov vf7 a2-16)
-              )
-            (.lvf vf5 (&-> a0-21 quad))
-            )
-          (.lvf vf4 (&-> v1-34 quad))
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a1-12 quad) vf6)
-          )
-        )
-      (set! (-> s5-3 gravity) -122880.0)
-      (set! (-> s5-3 rot-speed) 16.0)
-      (process-spawn
-        joint-exploder
-        (art-group-get-by-name *level* "skel-fac-robotank-explode" (the-as (pointer level) #f))
-        9
-        s5-3
-        *fac-robotank-exploder-params*
-        :name "joint-exploder"
-        :to this
-        :unk 0
-        )
+    )
+  (let ((s5-3 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+    (let ((v1-34 (new 'stack-no-clear 'vector)))
+      (vector+*! (-> s5-3 fountain-rand-transv-lo) (-> this root trans) *up-vector* 2048.0)
+      (vector-float*! v1-34 *up-vector* 81920.0)
+      (vector+*! (-> s5-3 fountain-rand-transv-lo) v1-34 *identity-vector* -40960.0)
+      (vector+*! (-> s5-3 fountain-rand-transv-hi) v1-34 *identity-vector* 40960.0)
+      )
+    (set! (-> s5-3 gravity) -122880.0)
+    (set! (-> s5-3 rot-speed) 16.0)
+    (process-spawn
+      joint-exploder
+      (art-group-get-by-name *level* "skel-fac-robotank-explode" (the-as (pointer level) #f))
+      9
+      s5-3
+      *fac-robotank-exploder-params*
+      :name "joint-exploder"
+      :to this
+      :unk 0
       )
     )
   )

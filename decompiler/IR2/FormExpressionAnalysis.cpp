@@ -1652,6 +1652,7 @@ void SimpleExpressionElement::update_from_stack_vector_plus_float_times(
     const Env& env,
     FormPool& pool,
     FormStack& stack,
+    FixedOperatorKind op,
     std::vector<FormElement*>* result,
     bool allow_side_effects) {
   std::vector<Form*> popped_args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var(),
@@ -1668,9 +1669,8 @@ void SimpleExpressionElement::update_from_stack_vector_plus_float_times(
   }
 
   auto new_form = pool.alloc_element<GenericElement>(
-      GenericOperator::make_fixed(FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES),
-      std::vector<Form*>{popped_args.at(0), popped_args.at(1), popped_args.at(2),
-                         popped_args.at(3)});
+      GenericOperator::make_fixed(op), std::vector<Form*>{popped_args.at(0), popped_args.at(1),
+                                                          popped_args.at(2), popped_args.at(3)});
   result->push_back(new_form);
 }
 
@@ -2585,8 +2585,17 @@ void SimpleExpressionElement::update_from_stack(const Env& env,
       update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_LENGTH, env, pool, stack,
                                           result, allow_side_effects);
       break;
+    case SimpleExpression::Kind::VECTOR_LENGTH_SQUARED:
+      update_from_stack_vectors_in_common(FixedOperatorKind::VECTOR_LENGTH_SQUARED, env, pool,
+                                          stack, result, allow_side_effects);
+      break;
     case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
-      update_from_stack_vector_plus_float_times(env, pool, stack, result, allow_side_effects);
+      update_from_stack_vector_plus_float_times(
+          env, pool, stack, FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES, result, allow_side_effects);
+      break;
+    case SimpleExpression::Kind::VECTOR_PLUS_TIMES:
+      update_from_stack_vector_plus_float_times(
+          env, pool, stack, FixedOperatorKind::VECTOR_PLUS_TIMES, result, allow_side_effects);
       break;
     default:
       throw std::runtime_error(

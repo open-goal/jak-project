@@ -1890,8 +1890,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "mouse-hold?";
     case FixedOperatorKind::VECTOR_LENGTH:
       return "vector-length";
+    case FixedOperatorKind::VECTOR_LENGTH_SQUARED:
+      return "vector-length-squared";
     case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:
       return "vector+float*!";
+    case FixedOperatorKind::VECTOR_PLUS_TIMES:
+      return "vector+*!";
     case FixedOperatorKind::FOCUS_TEST:
       return "focus-test?";
     default:
