@@ -378,12 +378,8 @@
       )
     (set! (-> self gun active?) #f)
     ;; og:preserve-this trigger effects
-    (when (pc-get-trigger-effects-enabled?)
-      (pc-clear-trigger-effect! (pc-trigger-effect-option right))
-      ;; if we are driving, restore that trigger effect
-      (when (= (logand (focus-status pilot) (-> self focus-status)) (focus-status pilot))
-        (pc-send-trigger-effect-feedback! (pc-trigger-effect-option right) 0 2))
-      )
+    (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
+      (pc-clear-trigger-effect! (pc-trigger-effect-option right)))
     (cond
       ((and (not (logtest? (surface-flag gun-fast-exit) (-> self control current-surface flags)))
             (not (logtest? (-> self focus-status) (focus-status dead)))
@@ -641,7 +637,7 @@
   (set! (-> self game gun-type) (the-as pickup-type arg0))
 
   ;; og:preserve-this trigger effects
-  (when (pc-get-trigger-effects-enabled?)
+  (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
     (case (-> self game gun-type)
       (((pickup-type eco-red))
        (pc-send-trigger-effect-feedback! (pc-trigger-effect-option right) 0 4))
