@@ -136,7 +136,7 @@ std::array<u8, 11> trigger_effect_vibration(u8 position, u8 amplitude, u8 freque
     return trigger_effect_off();
   }
   if (amplitude > 0 && frequency > 0) {
-    u8 strengthValue = (byte)((amplitude - 1) & 0x07);
+    u8 strengthValue = (u8)((amplitude - 1) & 0x07);
     u32 amplitudeZones = 0;
     u16 activeZones = 0;
     for (int i = position; i < 10; i++) {

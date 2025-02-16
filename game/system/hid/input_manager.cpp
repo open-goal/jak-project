@@ -256,6 +256,7 @@ void InputManager::finish_polling() {
   }
 }
 
+// TODO - gotta move everything into events
 void InputManager::process_ee_events() {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
   // Fully process any events from the EE
@@ -266,8 +267,8 @@ void InputManager::process_ee_events() {
         ignore_background_controller_events(std::get<bool>(evt.param1));
         break;
       case EEInputEventType::UPDATE_RUMBLE:
-        update_rumble(std::get<int>(evt.param1), std::get<u8>(evt.param2),
-                      std::get<u8>(evt.param3));
+        controller_send_rumble(std::get<int>(evt.param1), std::get<u8>(evt.param2),
+                               std::get<u8>(evt.param3));
         break;
       case EEInputEventType::SET_CONTROLLER_LED:
         set_controller_led(std::get<int>(evt.param1), std::get<u8>(evt.param2),
@@ -407,6 +408,108 @@ bool InputManager::controller_has_rumble(const int port) {
   return m_available_controllers.at(id)->has_rumble();
 }
 
+bool InputManager::controller_has_pressure_sensitivity_support(const int port) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return false;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return false;
+  }
+  return m_available_controllers.at(id)->has_pressure_sensitivity_support();
+}
+
+bool InputManager::controller_has_trigger_effect_support(const int port) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return false;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return false;
+  }
+  return m_available_controllers.at(id)->has_trigger_effect_support();
+}
+
+int InputManager::controller_send_rumble(int port, u8 low_intensity, u8 high_intensity) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return 0;
+  }
+  return m_available_controllers.at(m_controller_port_mapping.at(port))
+      ->send_rumble(low_intensity, high_intensity);
+}
+
+void InputManager::controller_send_trigger_rumble(const int port,
+                                                  const u16 left_rumble,
+                                                  const u16 right_rumble,
+                                                  const u32 duration_ms) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  m_available_controllers.at(m_controller_port_mapping.at(port))
+      ->send_trigger_rumble(left_rumble, right_rumble, duration_ms);
+}
+
+void InputManager::controller_clear_trigger_effect(const int port,
+                                                   dualsense_effects::TriggerEffectOption option) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->clear_trigger_effect(option);
+}
+
+void InputManager::controller_send_trigger_effect_feedback(
+    const int port,
+    dualsense_effects::TriggerEffectOption option,
+    u8 position,
+    u8 strength) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->send_trigger_effect_feedback(option, position, strength);
+}
+
+void InputManager::controller_send_trigger_effect_vibrate(
+    const int port,
+    dualsense_effects::TriggerEffectOption option,
+    u8 position,
+    u8 amplitude,
+    u8 frequency) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->send_trigger_effect_vibrate(option, position, amplitude,
+                                                              frequency);
+}
+
+void InputManager::controller_send_trigger_effect_weapon(
+    const int port,
+    dualsense_effects::TriggerEffectOption option,
+    u8 start_position,
+    u8 end_position,
+    u8 strength) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->send_trigger_effect_weapon(option, start_position, end_position,
+                                                             strength);
+}
+
 void InputManager::enqueue_set_controller_led(const int port,
                                               const u8 red,
                                               const u8 green,
@@ -431,14 +534,6 @@ void InputManager::enqueue_update_rumble(const int port,
                                          const u8 high_intensity) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
   ee_event_queue.push({EEInputEventType::UPDATE_RUMBLE, port, low_intensity, high_intensity, {}});
-}
-
-int InputManager::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
-  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
-    return 0;
-  }
-  return m_available_controllers.at(m_controller_port_mapping.at(port))
-      ->update_rumble(low_intensity, high_intensity);
 }
 
 void InputManager::enable_keyboard(const bool enabled) {

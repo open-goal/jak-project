@@ -66,7 +66,7 @@ struct InputSettings {
   InputBindingGroups mouse_binds;
   bool keyboard_enabled = false;
   bool enable_trigger_effects = false;
-  bool enable_pressure_sensitivity;
+  bool enable_pressure_sensitivity = false;
   // not saved or restored, flips on if no controllers are detected
   bool _keyboard_temp_enabled = false;
 

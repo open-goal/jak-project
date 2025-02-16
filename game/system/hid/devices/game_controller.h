@@ -1,24 +1,30 @@
 #pragma once
 
+#include "dualsense_effects.h"
 #include "input_device.h"
 
 // TODO:
-//- new options:
-//  - enable/disable pressure sensitivity (all games, disable if not supported)
-//  - swap r1/r2 when using gun (jak 2)
-//  - trigger effects (disable if not using a ps5/xbox1) (jak 2)
-//- pressure sensitivity if PS3 controller and supported
-//  - gotta use SXS (unknown for Linux, needs testing)
-//- trigger effects:
-//  - xbox1:
-//    - small vibrate when collecting dark eco
-//    - big vibrate when changing to dark jak
-//    - vibrate when shooting gun, proportional to gun type
-//  - ps5:
-//    - resistance when changing hover zones (if gun isn't out or if swap disabled)
-//    - resistance when changing to dark jak
-//    - different gun shooting effects
-//- test all the other things (fullscreening, etc)
+// - new options:
+//   - enable/disable pressure sensitivity (all games, disable if not supported)
+// - pressure sensitivity if PS3 controller and supported
+//   - gotta use SXS on windows vs DsMiniHid or whatever
+//   - needs linux testing
+//
+// - trigger effects:
+//   - xbox1:
+//     - small vibrate when collecting dark eco
+//     - big vibrate when changing to dark jak
+//     - vibrate when shooting gun, proportional to gun type
+//   - ps5:
+//     - resistance when changing hover zones (if gun isn't out or if swap disabled)
+//     - resistance when changing to dark jak
+//     - different gun shooting effects
+//       - red (resistance)
+//       - yellow (weapon trigger)
+//       - blue (vibrates)
+//       - purple (less resistance)
+// - test all the other things (fullscreening, etc)
+// - try to debug that keybind issue once again
 
 // https://wiki.libsdl.org/SDL2/CategoryGameController
 class GameController : public InputDevice {
@@ -31,7 +37,22 @@ class GameController : public InputDevice {
                      std::shared_ptr<PadData> data,
                      std::optional<InputBindAssignmentMeta>& bind_assignment) override;
   void close_device() override;
-  int update_rumble(const u8 low_rumble, const u8 high_rumble);
+  int send_rumble(const u8 low_rumble, const u8 high_rumble);
+  void send_trigger_rumble(const u16 left_rumble,
+                           const u16 right_rumble,
+                           const u32 duration_ms = 100);
+  void clear_trigger_effect(dualsense_effects::TriggerEffectOption option);
+  void send_trigger_effect_feedback(dualsense_effects::TriggerEffectOption option,
+                                    u8 position,
+                                    u8 strength);
+  void send_trigger_effect_vibrate(dualsense_effects::TriggerEffectOption option,
+                                   u8 position,
+                                   u8 amplitude,
+                                   u8 frequency);
+  void send_trigger_effect_weapon(dualsense_effects::TriggerEffectOption option,
+                                  u8 start_position,
+                                  u8 end_position,
+                                  u8 strength);
   std::string get_name() const { return m_device_name; }
   bool has_led() { return m_has_led; }
   bool has_rumble() { return m_has_rumble; }
@@ -39,6 +60,8 @@ class GameController : public InputDevice {
   std::string get_guid() { return m_guid; }
   bool is_dualsense() { return m_is_dualsense; }
   bool has_trigger_rumble() { return m_has_trigger_rumble; }
+  bool has_trigger_effect_support() { return has_trigger_rumble() || is_dualsense(); }
+  bool has_pressure_sensitivity_support() { return m_has_pressure_sensitive_buttons; }
 
  private:
   int m_sdl_instance_id = -1;

@@ -591,7 +591,7 @@ void GLDisplay::render() {
   if (Gfx::g_global_settings.vsync != Gfx::g_global_settings.old_vsync) {
     Gfx::g_global_settings.old_vsync = Gfx::g_global_settings.vsync;
     // NOTE - -1 can be used for adaptive vsync, maybe useful for Jak 2+?
-    // https://wiki.libsdl.org/SDL2/SDL_GL_SetSwapInterval
+    // https://wiki.libsdl.org/SDL3/SDL_GL_SetSwapInterval
     SDL_GL_SetSwapInterval(Gfx::g_global_settings.vsync);
   }
 

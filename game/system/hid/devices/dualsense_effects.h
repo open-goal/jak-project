@@ -27,10 +27,14 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 #include "common/common_types.h"
 
 namespace dualsense_effects {
+
+enum class TriggerEffectOption { LEFT = 0, RIGHT = 1, BOTH = 2 };
+
 struct DS5EffectsState_t {
   u8 ucEnableBits1;              /* 0 */
   u8 ucEnableBits2;              /* 1 */

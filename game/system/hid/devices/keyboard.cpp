@@ -29,9 +29,20 @@ void KeyboardDevice::poll_state(std::shared_ptr<PadData> data) {
           bind.modifiers.has_necessary_modifiers(keyboard_modifier_state) &&
           !is_action_already_active(sdl_keycode)) {
         data->button_data.at(bind.pad_data_index) = true;  // press the button
+        const auto pressure_index = data->button_index_to_pressure_index(
+            static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+        if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+          data->pressure_data.at(pressure_index) = 255;
+        }
         m_active_actions.push_back(
             {sdl_keycode, bind, [](std::shared_ptr<PadData> data, InputBinding bind) {
-               data->button_data.at(bind.pad_data_index) = false;  // let go of the button
+               // let go of the button
+               data->button_data.at(bind.pad_data_index) = false;
+               const auto pressure_index = data->button_index_to_pressure_index(
+                   static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+               if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+                 data->pressure_data.at(pressure_index) = 0;
+               }
              }});
       }
     }
@@ -43,9 +54,20 @@ void KeyboardDevice::poll_state(std::shared_ptr<PadData> data) {
           bind.modifiers.has_necessary_modifiers(keyboard_modifier_state) &&
           !is_action_already_active(sdl_keycode)) {
         data->button_data.at(bind.pad_data_index) = true;  // press the button
+        const auto pressure_index = data->button_index_to_pressure_index(
+            static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+        if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+          data->pressure_data.at(pressure_index) = 255;
+        }
         m_active_actions.push_back(
             {sdl_keycode, bind, [](std::shared_ptr<PadData> data, InputBinding bind) {
-               data->button_data.at(bind.pad_data_index) = false;  // let go of the button
+               // let go of the button
+               data->button_data.at(bind.pad_data_index) = false;
+               const auto pressure_index = data->button_index_to_pressure_index(
+                   static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+               if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+                 data->pressure_data.at(pressure_index) = 0;
+               }
              }});
       }
     }
