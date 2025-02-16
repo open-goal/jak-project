@@ -95,9 +95,9 @@ class InputManager {
   bool controller_has_trigger_effect_support(const int port);
   int controller_send_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
   void controller_send_trigger_rumble(const int port,
-                                     const u16 left_rumble,
-                                     const u16 right_rumble,
-                                     const u32 duration_ms);
+                                      const u16 left_rumble,
+                                      const u16 right_rumble,
+                                      const u32 duration_ms);
   void controller_clear_trigger_effect(const int port,
                                        dualsense_effects::TriggerEffectOption option);
   void controller_send_trigger_effect_feedback(const int port,

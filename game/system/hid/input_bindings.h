@@ -12,7 +12,8 @@
 #include "common/util/json_util.h"
 
 #define GET_PRESSURE_BUTTON_DATA(button_name) \
-  {button_data.at(ButtonIndex::button_name), pressure_data.at(PressureIndex::button_name##_PRESSURE)};
+  {button_data.at(ButtonIndex::button_name),  \
+   pressure_data.at(PressureIndex::button_name##_PRESSURE)};
 
 /// A simple abstraction around the PS2 controller data with some convenience functions for
 /// pulling specific data out if it's useful.
