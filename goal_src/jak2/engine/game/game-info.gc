@@ -620,6 +620,13 @@
            (seek! (-> this eco-pill-dark) 0.0 (- arg1))
            )
          )
+       ;; og:preserve-this trigger effects
+       (when (pc-get-trigger-effects-enabled?)
+         (when (= (-> *FACT-bank* eco-pill-dark-max-default) (-> this eco-pill-dark))
+            (pc-send-trigger-effect-feedback! (pc-trigger-effect-option left) 0 4)
+            (pc-send-trigger-rumble! 32767 0 100))
+         (when (< (-> this eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
+           (pc-send-trigger-rumble! 16383 0 15)))
        (-> this eco-pill-dark)
        )
       (('fuel-cell)
@@ -1642,7 +1649,7 @@
   (* 0.25 (the float (you-suck-stage this #f)))
   )
 
-(defmethod adjust-to-screen-flip ((this cpad-info))
+(defmethod adjust-to-screen-flip! ((this cpad-info))
   ;; og:preserve-this mirror mode flag
   (when (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
             *PC-MIRROR-MODE-SET*)
