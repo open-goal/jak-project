@@ -2398,7 +2398,7 @@
 (define-extern quaternion-rotate-y-to-vector! (function quaternion quaternion quaternion float quaternion))
 (define-extern vector-rotate-around-axis!
   "Rotate along y so z-axis points to match another. Use arg3 as the max rotation amount."
-  (function vector quaternion float vector vector))
+  (function vector vector float vector vector))
 (define-extern vector-rotate-x! "Rotate vector along x axis." (function vector vector float vector))
 (define-extern vector-rotate-y! "Rotate vector along y axis." (function vector vector float vector))
 (define-extern vector-rotate-z! "Rotate vector along z axis." (function vector vector float vector))
@@ -17618,7 +17618,7 @@
     exit ;; 16
     )
   (:methods
-    (talker-method-17 (_type_) none) ;; 17
+    (draw-text (_type_) none) ;; 17
     )
   )
 
@@ -19477,6 +19477,21 @@
 ;; ---aligner-h:align-opts
 
 (deftype align-control (basic)
+  "Align-control is a utility for moving a process-drawable based on its animation.
+   The animation format has two special parent-like joints: prejoint and align.
+   The prejoint is the parent for all joints, so it causes all bones to move.
+   The align joint has no children, but the convention is that moving align will
+   cause the entire process-drawable's root to move, effectively moving the entire character.
+   Most of the time, this is the preferable way to move a character as part of an animation - 
+   it will update their velocity and when the animation ends or is canceled, 
+   the offset in position from playing the animation will stay. For example, if Jak punches,
+   his velocity will increase due to the animated align in the punch animation.
+   To implement this, the align-control computes the relative transform between align frames.
+   To apply the position offset, typically the velocity is updated, then the normal per-frame
+   physics update will end up moving the position. For orientation, there is no concept of
+   angular velocity, so instead align-control directly modifies the quaternion.
+   Unlike normal animation evaluation, the alignment's blend is computed in a different way
+   that doesn't blend and instead just picks the most recently pushed animation."
   ((flags       align-flags              :offset-assert 4) ;; guessed by decompiler
    (process     process-drawable         :offset-assert 8) ;; guessed by decompiler
    (frame-group art-joint-anim           :offset-assert 12) ;; guessed by decompiler
@@ -19492,11 +19507,12 @@
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_) ;; 0
-    (compute-alignment! (_type_) transformq) ;; 9
-    (align! (_type_ align-opts float float float) trsqv) ;; 10
-    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv) ;; 11
-    (first-transform (_type_) transform) ;; 12
-    (second-transform (_type_) transform) ;; 13
+    (compute-delta-align! "Compute the change in align since the last time this was called." (_type_) transformq) ;; 9
+    (align! "Apply the alignment to the process-drawable." (_type_ align-opts float float float) trsqv) ;; 10
+    (adjust-root-no-gravity! "Adjust the quat and transv of the process drawable to take into account the
+                              most recent change in align." (_type_ align-opts vector int float float) trsqv) ;; 11
+    (first-transform "Get the more recent align transform" (_type_) transform) ;; 12
+    (second-transform "Get the second most recent align trasnform" (_type_) transform) ;; 13
     )
   )
 
@@ -42344,6 +42360,7 @@
   )
 
 (deftype joint-exploder-list (structure)
+  "Linked list of joint-exploder-joint."
   ((head        int32                :offset-assert 0)
    (pre-moved?  symbol               :offset-assert 4) ;; guessed by decompiler
    (bbox-valid? symbol               :offset-assert 8) ;; guessed by decompiler
@@ -42364,6 +42381,8 @@
   )
 
 (deftype joint-exploder (process-drawable)
+  "The joint-exploder animates an object exploding into pieces.
+   For example, geyser rock dummies, or the jak 1 zoomer."
   ((parent                     (pointer process-drawable)           :override)
    (die-if-below-y             float                                :offset-assert 200)
    (die-if-beyond-xz-dist-sqrd float                                :offset-assert 204)
@@ -42379,14 +42398,14 @@
   :size-assert         #x158
   :flag-assert         #x1e00e00158
   (:methods
-    (add-joint-to-list (_type_ joint-exploder-list int) int) ;; 20
-    (update-bbox-for-joint (_type_ joint-exploder-list joint-exploder-joint) none) ;; 21
+    (add-joint-to-list "Add a joint to the given linked list of joints." (_type_ joint-exploder-list int) int) ;; 20
+    (update-bbox-for-joint "Update the bounding box to include the joint" (_type_ joint-exploder-list joint-exploder-joint) none) ;; 21
     (do-collision-response (_type_ joint-exploder-list) none) ;; 22
     (init-joint-list (_type_) none) ;; 23
-    (remove-from-list-and-reset (_type_ joint-exploder-list int) int) ;; 24
+    (remove-from-list-and-reset "Remove a joint from the list and clear its transform" (_type_ joint-exploder-list int) int) ;; 24
     (final-adjust (_type_ joint-exploder-list int) int) ;; 25
     (integrate-and-kill (_type_ joint-exploder-list) none) ;; 26
-    (remove-joint-from-list (_type_ joint-exploder-list int) int) ;; 27
+    (remove-joint-from-list "Remove a joint from the linked list and invalidate the bbox." (_type_ joint-exploder-list int) int) ;; 27
     (adjust-bbox-for-limits-along-axis (_type_ joint-exploder-list int) joint-exploder-list) ;; 28
     (adjust-bbox-for-limits (_type_ joint-exploder-list) none) ;; 29
     )
@@ -42395,7 +42414,7 @@
     )
   )
 
-(define-extern joint-exploder-joint-callback (function draw-control cspace-array joint-control none))
+(define-extern joint-exploder-joint-callback "Postbind callback to set bones to the result of the joint-exploder." (function draw-control cspace-array joint-control none))
 (define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-tuning joint-exploder-static-params object :behavior joint-exploder))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

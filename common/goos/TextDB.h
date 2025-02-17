@@ -41,7 +41,7 @@ class SourceText {
   // want
   virtual bool terminate_compiler_error() { return true; }
 
-  virtual ~SourceText(){};
+  virtual ~SourceText() {};
 
  protected:
   void build_offsets();

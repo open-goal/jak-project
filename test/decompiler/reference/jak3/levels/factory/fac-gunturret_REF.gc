@@ -813,73 +813,24 @@
 ;; definition for method 160 of type fac-gunturret
 ;; WARN: Return type mismatch (pointer process) vs (pointer joint-exploder).
 (defmethod go-explode ((this fac-gunturret))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
-      (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (sound-play "explosion")
-        (let ((v1-2 (-> s5-0 fountain-rand-transv-lo)))
-          (let ((a0-5 (-> this root trans)))
-            (let ((a1-2 *up-vector*))
-              (let ((a2-3 2048.0))
-                (.mov vf7 a2-3)
-                )
-              (.lvf vf5 (&-> a1-2 quad))
-              )
-            (.lvf vf4 (&-> a0-5 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> v1-2 quad) vf6)
-          )
-        (vector-float*! s4-0 *up-vector* (* 4096.0 (rand-vu-float-range 20.0 30.0)))
-        (let ((a1-4 (-> s5-0 fountain-rand-transv-lo)))
-          (let ((v1-4 s4-0))
-            (let ((a0-7 *identity-vector*))
-              (let ((a2-5 -204800.0))
-                (.mov vf7 a2-5)
-                )
-              (.lvf vf5 (&-> a0-7 quad))
-              )
-            (.lvf vf4 (&-> v1-4 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a1-4 quad) vf6)
-          )
-        (let ((a0-8 (-> s5-0 fountain-rand-transv-hi)))
-          (let ((v1-5 *identity-vector*))
-            (let ((a1-6 204800.0))
-              (.mov vf7 a1-6)
-              )
-            (.lvf vf5 (&-> v1-5 quad))
-            )
-          (.lvf vf4 (&-> s4-0 quad))
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a0-8 quad) vf6)
-          )
-        )
-      (set! (-> s5-0 gravity) -122880.0)
-      (process-spawn
-        joint-exploder
-        (-> this params explode-sg)
-        9
-        s5-0
-        *fac-gunturret-exploder-params*
-        :name "joint-exploder"
-        :to this
-        :unk 0
-        )
+  (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (sound-play "explosion")
+      (vector+*! (-> s5-0 fountain-rand-transv-lo) (-> this root trans) *up-vector* 2048.0)
+      (vector-float*! s4-0 *up-vector* (* 4096.0 (rand-vu-float-range 20.0 30.0)))
+      (vector+*! (-> s5-0 fountain-rand-transv-lo) s4-0 *identity-vector* -204800.0)
+      (vector+*! (-> s5-0 fountain-rand-transv-hi) s4-0 *identity-vector* 204800.0)
+      )
+    (set! (-> s5-0 gravity) -122880.0)
+    (process-spawn
+      joint-exploder
+      (-> this params explode-sg)
+      9
+      s5-0
+      *fac-gunturret-exploder-params*
+      :name "joint-exploder"
+      :to this
+      :unk 0
       )
     )
   )

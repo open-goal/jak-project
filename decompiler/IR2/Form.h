@@ -231,6 +231,7 @@ class SimpleExpressionElement : public FormElement {
   void update_from_stack_vector_plus_float_times(const Env& env,
                                                  FormPool& pool,
                                                  FormStack& stack,
+                                                 FixedOperatorKind op,
                                                  std::vector<FormElement*>* result,
                                                  bool allow_side_effects);
   void update_from_stack_vectors_in_common(FixedOperatorKind kind,
