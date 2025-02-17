@@ -119,7 +119,7 @@ void main() {
     float sp_sin = sin(quat.z);
     float sp_cos = cos(quat.z);
 
-    vec4 xy0_vf19 = xy_array[vert_id + flags_matrix.x];
+    vec4 xy0_vf19 = xy_array[vert_id + (flags_matrix.x & 15u)];
     vec4 vf12_rotated = (basis_x * sp_cos) - (basis_y * sp_sin);
     vec4 vf13_rotated_trans = (basis_x * sp_sin) + (basis_y * sp_cos);
 
@@ -141,7 +141,7 @@ void main() {
     float sp_sin = sin(quat.z);
     float sp_cos = cos(quat.z);
 
-    vec4 xy0_vf19 = xy_array[vert_id + flags_matrix.x];
+    vec4 xy0_vf19 = xy_array[vert_id + (flags_matrix.x & 15u)];
     vec4 vf12_rotated = (basis_x * sp_cos) - (basis_y * sp_sin);
     vec4 vf13_rotated_trans = (basis_x * sp_sin) + (basis_y * sp_cos);
 

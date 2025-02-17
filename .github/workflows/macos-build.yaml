@@ -17,22 +17,32 @@ on:
 jobs:
   build:
     name: Intel
-    runs-on: macos-12
+    runs-on: macos-13
     timeout-minutes: 120
 
     steps:
+      # minimal checkout if we're NOT uploading artifacts
       - name: Checkout Repository
+        if: ${{ ! inputs.uploadArtifacts }}
         uses: actions/checkout@v4
+
+      # full checkout with tags if we ARE uploading artifacts
+      - name: Checkout Repository with Tags
+        if: ${{ inputs.uploadArtifacts }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Install Package Dependencies
         run: brew install cmake nasm ninja
 
       - name: Setup sccache
-        uses: hendrikmuhs/ccache-action@v1.2.13
+        uses: hendrikmuhs/ccache-action@v1.2.16
         with:
           variant: sccache
-          key: macos-12-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
-          restore-keys: macos-12-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          key: macos-13-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
+          restore-keys: macos-13-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
           max-size: 1000M
 
       - name: CMake Generation

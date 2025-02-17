@@ -230,9 +230,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod common-post ((this grunt-mech))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   ((method-of-type grunt common-post) this)
   0
   (none)
@@ -343,11 +343,11 @@
              (vector-! a1-2 v1-4 (-> this root trans))
              (.lvf vf1 (&-> a1-2 quad))
              )
-           (.add.w.vf vf2 vf0 vf0 :mask #b1)
+           (.add.w.vf.x vf2 vf0 vf0)
            (.mul.vf vf1 vf1 vf1)
-           (.mul.x.vf acc vf2 vf1 :mask #b1)
-           (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-           (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+           (.mul.x.vf.x acc vf2 vf1)
+           (.add.mul.y.vf.x acc vf2 vf1 acc)
+           (.add.mul.z.vf.x vf1 vf2 vf1 acc)
            (.mov v1-5 vf1)
            (let ((f0-0 v1-5)
                  (f1-0 28672.0)
@@ -466,22 +466,22 @@
       (vector-normalize-copy! (-> s5-0 travel) arg0 (the-as float arg1))
       (set! (-> s5-0 pref-dir quad) (-> s5-0 travel quad))
       (avoid-spheres-1! (-> this nav) s5-0)
-      (when (>= (fabs (vector-dot (the-as vector (-> s5-0 out-travel)) arg2)) 0.0)
+      (when (>= (fabs (vector-dot (-> s5-0 out-travel 0) arg2)) 0.0)
         (let ((t0-0 (new 'stack-no-clear 'clamp-travel-vector-to-mesh-return-info)))
           (clamp-vector-to-mesh-no-gaps
             (-> this nav)
             (-> this root trans)
             (-> this nav state current-poly)
-            (the-as vector (-> s5-0 out-travel))
+            (-> s5-0 out-travel 0)
             t0-0
             )
           )
         (.lvf vf1 (&-> (-> s5-0 out-travel) 0 quad))
-        (.add.w.vf vf2 vf0 vf0 :mask #b1)
+        (.add.w.vf.x vf2 vf0 vf0)
         (.mul.vf vf1 vf1 vf1)
-        (.mul.x.vf acc vf2 vf1 :mask #b1)
-        (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-        (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+        (.mul.x.vf.x acc vf2 vf1)
+        (.add.mul.y.vf.x acc vf2 vf1 acc)
+        (.add.mul.z.vf.x vf1 vf2 vf1 acc)
         (.mov v1-13 vf1)
         (let ((f0-3 v1-13)
               (f1-1 14336.0)
@@ -492,7 +492,7 @@
               (set! (-> a1-3 w) (-> this nav-radius-backup))
               (when (not (add-root-sphere-to-hash! (-> this nav) a1-3 #x80068))
                 (let ((s4-1 (new 'stack-no-clear 'vector)))
-                  (vector+! s4-1 (-> this root trans) (the-as vector (-> s5-0 out-travel)))
+                  (vector+! s4-1 (-> this root trans) (-> s5-0 out-travel 0))
                   (let ((s5-1 (new 'stack-no-clear 'collide-query)))
                     (when (enemy-above-ground? this s5-1 s4-1 (the-as collide-spec (-> this gnd-collide)) 4096.0 122880.0 1024.0)
                       (set! (-> s4-1 y) (-> s5-1 best-other-tri intersect y))

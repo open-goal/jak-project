@@ -6,9 +6,6 @@ Additional PC port specific file for overriding/expanding the progress menu
 This gives us more freedom to write code how we want.
 |#
 
-;; in jak 2, the options dont have to be all-caps anymore!
-;; encode controller/display names - current bug waiting to happen
-
 (define *title-pc*
   (new 'static 'menu-option-list
     :y-center #xc6
@@ -38,6 +35,52 @@ This gives us more freedom to write code how we want.
       )
     )
   )
+
+(define *sound-options-pc*
+  (progress-new-generic-scrolling-page (text-id progress-root-sound-options)
+    (new 'static 'menu-generic-slider-option
+        :name (text-id progress-sound-sfx-volume)
+        :min-value 0.0
+        :max-value 1.0
+        :step 0.01
+        :show-decimal? #t
+        :get-value-fn (lambda () (-> *pc-settings* memcard-volume-sfx))
+        :on-confirm (lambda ((val float))
+          (set! (-> *pc-settings* memcard-volume-sfx) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default sfx-volume) val)))
+    (new 'static 'menu-generic-slider-option
+        :name (text-id progress-sound-music-volume)
+        :min-value 0.0
+        :max-value 1.0
+        :step 0.01
+        :show-decimal? #t
+        :get-value-fn (lambda () (-> *pc-settings* memcard-volume-music))
+        :on-confirm (lambda ((val float))
+          (set! (-> *pc-settings* memcard-volume-music) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default music-volume) val)))
+    (new 'static 'menu-generic-slider-option
+        :name (text-id progress-sound-speech-volume)
+        :min-value 0.0
+        :max-value 1.0
+        :step 0.01
+        :show-decimal? #t
+        :get-value-fn (lambda () (-> *pc-settings* memcard-volume-dialog))
+        :on-confirm (lambda ((val float))
+          (set! (-> *pc-settings* memcard-volume-dialog) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default dialog-volume) val)))
+    (new 'static 'menu-generic-carousel-option
+        :name (text-id progress-sound-format)
+        :get-max-size-fn (lambda () 3)
+        :get-item-label-fn (lambda ((index int))
+          (case index
+            ((0) (lookup-text! *common-text* (text-id progress-sound-mono) #f))
+            ((1) (lookup-text! *common-text* (text-id progress-sound-stereo) #f))
+            ((2) (lookup-text! *common-text* (text-id progress-sound-surround) #f))))
+        :get-item-index-fn (lambda () (-> *setting-control* user-default stereo-mode))
+        :on-confirm (lambda ((index int) (the-progress progress)) (set! (-> *setting-control* user-default stereo-mode) index)))))
 
 (define *options-pc* (new 'static 'menu-option-list
                     :y-center #xc6
@@ -138,7 +181,10 @@ This gives us more freedom to write code how we want.
         :truthy-text (text-id progress-on)
         :falsey-text (text-id progress-off)
         :get-value-fn (lambda () (-> *setting-control* user-default vibration))
-        :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default vibration) val)))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* memcard-vibration?) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default vibration) val)))
       (new 'static 'menu-generic-slider-option
         :name (text-id progress-controller-options-analog-deadzone)
         :min-value 0.0
@@ -285,7 +331,20 @@ This gives us more freedom to write code how we want.
       :truthy-text (text-id progress-on)
       :falsey-text (text-id progress-off)
       :get-value-fn (lambda () (-> *setting-control* user-default subtitle))
-      :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default subtitle) val))))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* memcard-subtitles?) val)
+        (pc-settings-save)
+        (set! (-> *setting-control* user-default subtitle) val))))
+
+(defmacro game-options-pc-hint-subtitle-toggle ()
+  `(new 'static 'menu-generic-boolean-option
+      :name (text-id progress-hint-subtitles)
+      :truthy-text (text-id progress-on)
+      :falsey-text (text-id progress-off)
+      :get-value-fn (lambda () (-> *pc-settings* hinttitles?))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* hinttitles?) val)
+        (pc-settings-save))))
 
 (defmacro game-options-pc-subtitle-language ()
   `(new 'static 'menu-generic-carousel-option
@@ -298,10 +357,27 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-italian)
                   (text-id language-name-japanese)
                   (text-id language-name-korean)
-                  (text-id language-name-english-uk))
-      :get-item-index-fn (lambda () (-> *setting-control* user-default subtitle-language))
+                  (text-id language-name-english-uk)
+                  (text-id language-name-finnish))
+      :get-item-index-fn (lambda ()
+        ;; workaround until all languages are added
+        (if (<= (-> *setting-control* user-default subtitle-language) (language-enum uk-english))
+          (-> *setting-control* user-default subtitle-language)
+          (case (-> *setting-control* user-default subtitle-language)
+            (((language-enum finnish)) 8)
+            (else
+              (format 0 "PROGRESS: Forgot to add subtitle language to workaround switch case, defaulting to english")
+              0))))
       :on-confirm (lambda ((index int) (the-progress progress))
-          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index)))))
+        ;; workaround until all languages are added
+        (if (<= index (language-enum uk-english))
+          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index))
+          (set! (-> *setting-control* user-default subtitle-language)
+                (case index
+                  ((8) (language-enum finnish))
+                  (else
+                    (format 0 "PROGRESS: Forgot to add subtitle language to workaround switch case, defaulting to english")
+                    (language-enum english))))))))
 
 (defmacro game-options-pc-sound-language ()
   `(new 'static 'menu-generic-carousel-option
@@ -329,14 +405,30 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-italian)
                   (text-id language-name-japanese)
                   (text-id language-name-korean)
-                  (text-id language-name-english-uk))
-      :get-item-index-fn (lambda () (-> *pc-settings* text-language))
+                  (text-id language-name-english-uk)
+                  (text-id language-name-finnish))
+      :get-item-index-fn (lambda ()
+          ;; workaround until all languages are added
+          (if (<= (-> *pc-settings* text-language) (pc-language uk-english))
+            (-> *pc-settings* text-language)
+            (case (-> *pc-settings* text-language)
+              (((pc-language finnish)) 8)
+              (else
+                (format 0 "PROGRESS: Forgot to add text language to workaround switch case, defaulting to english")
+                (pc-language english)))))
       :on-confirm (lambda ((index int) (the-progress progress))
+        ;; workaround until all languages are added
+        (if (<= index (pc-language uk-english))
           (set! (-> *pc-settings* text-language) (the-as pc-language index))
-          ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
-          ;; fix it eventually
-          (load-level-text-files (the-as int (-> *pc-settings* text-language)))
-          (pc-settings-save))))
+          (set! (-> *pc-settings* text-language)
+                (case index
+                  ((8) (pc-language finnish))
+                  (else
+                    (format 0 "PROGRESS: Forgot to add text language to workaround switch case, defaulting to english")
+                    (pc-language english)))))
+        ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
+        (load-level-text-files (the-as int (-> *pc-settings* text-language)))
+        (pc-settings-save))))
 
 (defmacro misc-options-pc-discord-rpc ()
   `(new 'static 'menu-generic-boolean-option
@@ -372,6 +464,7 @@ This gives us more freedom to write code how we want.
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
     (game-options-pc-input-options)
     (game-options-pc-subtitle-toggle)
+    (game-options-pc-hint-subtitle-toggle)
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
@@ -384,6 +477,7 @@ This gives us more freedom to write code how we want.
   (progress-new-generic-scrolling-page (text-id progress-root-game-options)
     (game-options-pc-input-options)
     (game-options-pc-subtitle-toggle)
+    (game-options-pc-hint-subtitle-toggle)
     (game-options-pc-subtitle-language)
     (game-options-pc-sound-language)
     (game-options-pc-text-language)
@@ -427,7 +521,7 @@ This gives us more freedom to write code how we want.
 
 (define *graphic-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-graphic-options)
-    ;; NOTE/TODO - this doesn't following the established generic menu pattern
+    ;; NOTE/TODO - this doesn't follow the established generic menu pattern
     ;; a generic scrolling list menu component should be created (similar to menu-generic-details-page)
     ;; so the code can be localized to functions instead of scattered around in a bunch of switch statements
     (new 'static 'menu-generic-to-resolutions-option
@@ -436,7 +530,7 @@ This gives us more freedom to write code how we want.
         (push-and-set-state the-progress 'resolutions)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-graphics-display)
-      :get-item-index-fn (lambda () (-> *pc-settings* monitor))
+      :get-item-index-fn (lambda () (pc-get-display-id))
       :get-max-size-fn (lambda () (pc-get-display-count))
       :get-item-label-fn (lambda ((index int))
         (let ((name (pc-get-display-name index *pc-cpp-temp-string*)))
@@ -445,9 +539,8 @@ This gives us more freedom to write code how we want.
               (string-format "Display ~D" index))
           ))
       :on-confirm (lambda ((index int) (the-progress progress))
-        (set-monitor! *pc-settings* index)
-        (pc-settings-save))
-      :should-disable? (lambda () (nmember (the basic (-> *pc-settings* display-mode)) '(windowed #f))))
+        (pc-set-display-id! index))
+      :should-disable? (lambda () (or (= (pc-get-display-mode) 'windowed) (<= (pc-get-display-count) 1))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-display-mode)
       :items (new 'static 'boxed-array :type text-id
@@ -455,16 +548,15 @@ This gives us more freedom to write code how we want.
         (text-id progress-fullscreen)
         (text-id progress-borderless))
       :get-item-index-fn (lambda ()
-        (case (-> *pc-settings* display-mode)
-          (('windowed #f) 0)
+        (case (pc-get-display-mode)
+          (('windowed) 0)
           (('fullscreen) 1)
-          (('borderless) 2)) )
+          (('borderless) 2)))
       :on-confirm (lambda ((index int) (the-progress progress))
         (case index
-          ((0) (set-display-mode! *pc-settings* 'windowed #t))
-          ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
-          ((2) (set-display-mode! *pc-settings* 'borderless #t)))
-        (pc-settings-save)))
+          ((0) (pc-set-display-mode! 'windowed))
+          ((1) (pc-set-display-mode! 'fullscreen))
+          ((2) (pc-set-display-mode! 'borderless)))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-aspect-ratio)
       :items (new 'static 'boxed-array :type text-id

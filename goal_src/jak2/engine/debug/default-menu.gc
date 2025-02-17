@@ -298,13 +298,13 @@
   (case arg0
     (('close)
      (if (and *math-camera* *subdivide-settings*)
-         (* 0.00024414062 (-> *subdivide-settings* close 7))
+         (/ (-> *subdivide-settings* close 7) METER_LENGTH)
          arg3
          )
      )
     (('far)
      (if (and *math-camera* *subdivide-settings*)
-         (* 0.00024414062 (-> *subdivide-settings* far 7))
+         (/ (-> *subdivide-settings* far 7) METER_LENGTH)
          arg3
          )
      )
@@ -559,7 +559,7 @@
     (if (= arg1 (debug-menu-msg press))
         (set! (-> v1-0 camera-to-bbox-dist) (* 4096.0 arg2))
         )
-    (* 0.00024414062 (-> v1-0 camera-to-bbox-dist))
+    (/ (-> v1-0 camera-to-bbox-dist) METER_LENGTH)
     )
   )
 
@@ -974,7 +974,7 @@
                    )
                  )
                )
-             (* 0.00024414062 f1-2)
+             (/ f1-2 METER_LENGTH)
              )
            )
           (else
@@ -1011,7 +1011,7 @@
                  (set! (-> (the-as prototype-bucket-tie gp-0) tie-vanish-far) f0-0)
                  )
                )
-             (* 0.00024414062 f0-0)
+             (/ f0-0 METER_LENGTH)
              )
            )
           (else
@@ -2550,7 +2550,7 @@
                     (set! (-> gp-0 dists x) (* 4096.0 arg2))
                     (prototype-bucket-recalc-fields gp-0)
                     )
-                  (* 0.00024414062 (-> gp-0 dists x))
+                  (/ (-> gp-0 dists x) METER_LENGTH)
                   )
                 (else
                   (empty)
@@ -2581,7 +2581,7 @@
                     (set! (-> gp-0 dists w) (* 4096.0 arg2))
                     (prototype-bucket-recalc-fields gp-0)
                     )
-                  (* 0.00024414062 (-> gp-0 dists w))
+                  (/ (-> gp-0 dists w) METER_LENGTH)
                   )
                 (else
                   (empty)
@@ -3055,6 +3055,13 @@
   #f
   )
 
+(defun dm-game-opengoal-cheat-toggle-pick-func ((arg0 int) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (logxor! (-> *pc-settings* cheats) (the-as uint (/ arg0 8)))
+      )
+  (logtest? (-> *pc-settings* cheats) (/ arg0 8))
+  )
+
 (defun debug-menu-context-make-default-menus ((arg0 debug-menu-context))
   (local-vars (sv-16 debug-menu-context))
   (let ((s5-0 (new 'debug 'debug-menu arg0 "Main menu")))
@@ -3205,6 +3212,40 @@
              )
            (function "Continue Start" #f ,(lambda () (start 'play (-> *game-info* current-continue))))
            (function "Kiosk Reset" #f ,(lambda () (auto-save-command 'restore 0 0 *default-pool* #f) (none)))
+           ;; og:preserve-this new menu option
+           (function "Give Ammo and Collectables" #f ,(lambda () (send-event *target* 'get-pickup (pickup-type ammo-yellow) 1000.0) (send-event *target* 'get-pickup (pickup-type ammo-red) 1000.0) (send-event *target* 'get-pickup (pickup-type ammo-blue) 1000.0) (send-event *target* 'get-pickup (pickup-type ammo-dark) 1000.0) (send-event *target* 'get-pickup (pickup-type eco-pill-dark) 1000.0) (send-event *target* 'get-pickup (pickup-type skill) 1000.0) (send-event *target* 'get-pickup (pickup-type gem) 5000.0)))
+           (function "Unlock Everything" #f ,(lambda () (logior! (-> *game-info* features) (game-feature gun gun-yellow gun-red gun-blue gun-dark gun-upgrade-speed gun-upgrade-ammo gun-upgrade-damage pass-red pass-green pass-yellow pass-blue board darkjak darkjak-bomb0 darkjak-bomb1 darkjak-invinc darkjak-giant))))
+           (function "Finish Story" #f ,(lambda () (task-node-close! (game-task-node city-win-introduction))))
+           (function "Finish Optional Missions"
+                     #f
+                     ,(lambda ()
+                        (task-node-close! (game-task-node city-oracle-level3-training))
+                        (task-node-close! (game-task-node city-burning-bush-ring-1-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-1-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-2-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-3-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-4-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-collection-1-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-racepoint-1-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-ring-2-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-5-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-6-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-shuttle-1-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-7-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-8-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-9-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-collection-2-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-10-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-11-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-ring-3-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-12-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-bombbot-1-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-13-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-14-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-get-to-15-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-collection-3-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-race-errol-resolution))
+                        (task-node-close! (game-task-node city-burning-bush-race-port-resolution))))
            (menu
              "Secrets"
              (flag "toggle-beard" 1 dm-game-secret-toggle-pick-func)
@@ -3218,7 +3259,7 @@
              (flag "level-select" 256 dm-game-secret-toggle-pick-func)
              (flag "scrap-book-1" 512 dm-game-secret-toggle-pick-func)
              (flag "scrap-book-2" 1024 dm-game-secret-toggle-pick-func)
-             ;; ;; og:preserve-this they missed one!
+             ;; og:preserve-this they missed one!
              (flag "scrap-book-3" 2048 dm-game-secret-toggle-pick-func)
              (flag "gungame-blue" 4096 dm-game-secret-toggle-pick-func)
              (flag "gungame-dark" 8192 dm-game-secret-toggle-pick-func)
@@ -3226,6 +3267,30 @@
              (flag "hero-mode" 32768 dm-game-secret-toggle-pick-func)
              (flag "big-head" 65536 dm-game-secret-toggle-pick-func)
              (flag "little-head" 131072 dm-game-secret-toggle-pick-func)
+             )
+           ;; og:preserve-this new menu
+           (menu
+             "OpenGOAL Cheats"
+             (flag "turbo-board" 1 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "health-bars" 2 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "vehicle-health-bars" 4 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "vehicle-invuln" 8 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "statistics" 16 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "suck-in-all" 32 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "music-player" 64 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "no-textures" 128 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "fast-movies" 256 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "slow-movies" 512 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "fast-speed" 1024 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "slow-speed" 2048 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "fast-travel" 4096 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "orb-tracker" 8192 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "real-time-of-day" 16384 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "city-peace" 32768 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "board-tricks" 65536 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "weather-bad" 131072 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "weather-good" 262144 dm-game-opengoal-cheat-toggle-pick-func)
+             (flag "hijack-lines" 524288 dm-game-opengoal-cheat-toggle-pick-func)
              )
            (menu "Continue")
            (menu
@@ -3351,6 +3416,7 @@
                (flag "japanese" 5 dm-setting-subtitle-language)
                (flag "korean" 6 dm-setting-subtitle-language)
                (flag "uk-english" 7 dm-setting-subtitle-language)
+               (flag "finnish" 9 dm-setting-subtitle-language)
                )
              (flag
                "play-hints "
@@ -4296,10 +4362,7 @@
              ,(lambda ()
                 (let ((v1-1 (process-spawn-function process (lambda ()
                                                               (set-master-mode 'game)
-                                                              (let ((gp-0 (current-time)))
-                                                                (until (time-elapsed? gp-0 (seconds 0.3))
-                                                                  (suspend)
-                                                                  )
+                                                              (suspend-for (seconds 0.3)
                                                                 )
                                                               (until #f
                                                                 (format *stdcon* "press x clear map, press circle cancel~%")
@@ -5186,13 +5249,13 @@
                             fog-dists
                             x
                             )
-                        (* 0.00024414062
-                           (-> *overide-mood-fog-table*
+                        (/ (-> *overide-mood-fog-table*
                                data
                                (the-as uint (logand (-> *time-of-day-context* mode) (time-of-day-palette-id unk0 unk1 unk2)))
                                fog-dists
                                x
                                )
+                           METER_LENGTH
                            )
                         )
                   (set! (-> *overide-mood-fog-table*
@@ -5201,13 +5264,13 @@
                             fog-dists
                             y
                             )
-                        (* 0.00024414062
-                           (-> *overide-mood-fog-table*
+                        (/ (-> *overide-mood-fog-table*
                                data
                                (the-as uint (logand (-> *time-of-day-context* mode) (time-of-day-palette-id unk0 unk1 unk2)))
                                fog-dists
                                y
                                )
+                           METER_LENGTH
                            )
                         )
                   )
@@ -5220,10 +5283,10 @@
                   (dotimes (v1-1 8)
                     (set! (-> *overide-mood-fog-table* data v1-1 fog-color w) 1.0)
                     (set! (-> *overide-mood-fog-table* data v1-1 fog-dists x)
-                          (* 0.00024414062 (-> *overide-mood-fog-table* data v1-1 fog-dists x))
+                          (/ (-> *overide-mood-fog-table* data v1-1 fog-dists x) METER_LENGTH)
                           )
                     (set! (-> *overide-mood-fog-table* data v1-1 fog-dists y)
-                          (* 0.00024414062 (-> *overide-mood-fog-table* data v1-1 fog-dists y))
+                          (/ (-> *overide-mood-fog-table* data v1-1 fog-dists y) METER_LENGTH)
                           )
                     )
                   #f
@@ -5550,10 +5613,10 @@
                   (set! (-> *overide-mood-color-table* data v1-2 amb-color w) 1.0)
                   (set! (-> *overide-mood-fog-table* data v1-2 fog-color w) 1.0)
                   (set! (-> *overide-mood-fog-table* data v1-2 fog-dists x)
-                        (* 0.00024414062 (-> *overide-mood-fog-table* data v1-2 fog-dists x))
+                        (/ (-> *overide-mood-fog-table* data v1-2 fog-dists x) METER_LENGTH)
                         )
                   (set! (-> *overide-mood-fog-table* data v1-2 fog-dists y)
-                        (* 0.00024414062 (-> *overide-mood-fog-table* data v1-2 fog-dists y))
+                        (/ (-> *overide-mood-fog-table* data v1-2 fog-dists y) METER_LENGTH)
                         )
                   (set-vector! (-> *time-of-day-context* times v1-2) 1.0 1.0 1.0 1.0)
                   )
@@ -5577,7 +5640,7 @@
            (flag "Sound channels" *display-iop-info* dm-boolean-toggle-pick-func)
            (function "Reload Banks" #f sound-bank-reload)
            (function "List Sounds" #f ,(lambda () (list-sounds) (none)))
-           ;(function "IOP Info" #f ,(lambda () (loader-test-command (sound-command iop-mem) (the-as uint 0)) (none)))
+           (function "IOP Info" #f ,(lambda () (loader-test-command (sound-command iop-mem) (the-as uint 0)) (none)))
            )
         )
       )

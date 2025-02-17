@@ -64,7 +64,6 @@ Config make_config_via_json(nlohmann::json& json) {
         inputs_json.at("str_art_file_names").get<std::vector<std::string>>();
   }
 
-  config.audio_dir_file_name = inputs_json.at("audio_dir_file_name").get<std::string>();
   config.streamed_audio_file_names =
       inputs_json.at("streamed_audio_file_names").get<std::vector<std::string>>();
 
@@ -96,6 +95,9 @@ Config make_config_via_json(nlohmann::json& json) {
   }
   config.disassemble_code = json.at("disassemble_code").get<bool>();
   config.decompile_code = json.at("decompile_code").get<bool>();
+  if (json.contains("format_code")) {
+    config.format_code = json.at("format_code").get<bool>();
+  }
   config.write_hex_near_instructions = json.at("write_hex_near_instructions").get<bool>();
   config.write_scripts = json.at("write_scripts").get<bool>();
   config.disassemble_data = json.at("disassemble_data").get<bool>();
@@ -317,6 +319,9 @@ Config make_config_via_json(nlohmann::json& json) {
   config.levels_extract = json.at("levels_extract").get<bool>();
   if (json.contains("save_texture_pngs")) {
     config.save_texture_pngs = json.at("save_texture_pngs").get<bool>();
+  }
+  if (json.contains("rip_streamed_audio")) {
+    config.rip_streamed_audio = json.at("rip_streamed_audio").get<bool>();
   }
 
   if (inputs_json.contains("animated_textures")) {

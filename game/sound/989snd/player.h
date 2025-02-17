@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: ISC
 #pragma once
 
+#include <map>
 #include <memory>
 #include <mutex>
 #include <span>
-#include <unordered_map>
 #include <vector>
 
 #include "ame_handler.h"
@@ -42,12 +42,14 @@ class Player {
                       s32 pan,
                       s32 pm,
                       s32 pb);
+  void DebugPrintAllSoundsInBank(BankHandle bank);
   void SetSoundReg(u32 sound_id, u8 reg, u8 value);
   void SetGlobalExcite(u8 value) { GlobalExcite = value; };
   bool SoundStillActive(u32 sound_id);
   void SetMasterVolume(u32 group, s32 volume);
   void UnloadBank(BankHandle bank_handle);
   void StopSound(u32 sound_handle);
+  u32 GetSoundID(u32 sound_handle);
   void SetPanTable(VolPair* pantable);
   void SetPlaybackMode(s32 mode);
   void PauseSound(s32 sound_handle);
@@ -70,7 +72,7 @@ class Player {
  private:
   std::recursive_mutex mTickLock;  // TODO does not need to recursive with some light restructuring
   IdAllocator mHandleAllocator;
-  std::unordered_map<u32, std::unique_ptr<SoundHandler>> mHandlers;
+  std::map<u32, std::unique_ptr<SoundHandler>> mHandlers;
 
   void Tick(s16Output* stream, int samples);
 

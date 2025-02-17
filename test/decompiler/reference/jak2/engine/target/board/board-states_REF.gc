@@ -40,8 +40,8 @@
           )
       )
     (set! (-> self board turn-anim-targ) (+ (lerp-scale
-                                              (* 0.5 (-> *TARGET_BOARD-bank* turn-frames))
-                                              (* -0.5 (-> *TARGET_BOARD-bank* turn-frames))
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) 2)
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) -2)
                                               f26-0
                                               -5461.3335
                                               5461.3335
@@ -54,8 +54,8 @@
                                               32768.0
                                               )
                                             (lerp-scale
-                                              (* 0.2 (-> *TARGET_BOARD-bank* turn-frames))
-                                              (* -0.2 (-> *TARGET_BOARD-bank* turn-frames))
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) 5)
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) -5)
                                               (-> self board turn-anim-mag)
                                               1.0
                                               -1.0
@@ -63,7 +63,7 @@
                                             )
           )
     (when (and (or (< (* f30-0 (-> self board turn-anim-targ)) 0.0) (= f30-0 0.0))
-               (and (< (* 0.2 (-> *TARGET_BOARD-bank* turn-frames)) (fabs (- f30-0 (-> self board turn-anim-targ))))
+               (and (< (/ (-> *TARGET_BOARD-bank* turn-frames) 5) (fabs (- f30-0 (-> self board turn-anim-targ))))
                     (>= (current-time) (-> self control turn-lockout-end-time))
                     )
                )
@@ -85,7 +85,7 @@
     (if (logtest? (-> self control status) (collide-status impact-surface))
         (+! (-> self board turn-anim-duck-vel) (lerp-scale 0.0 15.0 (-> self control normal-impact-vel) 0.0 81920.0))
         )
-    (let ((f0-38 (vector-dot (the-as vector (-> self board up-vector)) (-> self board up-vector 1))))
+    (let ((f0-38 (vector-dot (-> self board up-vector 0) (-> self board up-vector 1))))
       (if (< f0-38 1.0)
           (+! (-> self board turn-anim-duck-vel) (* (lerp-scale 400.0 0.0 f0-38 0.6 1.0) (seconds-per-frame)))
           )
@@ -1064,11 +1064,7 @@
        (set! (-> self control unknown-word04) (the-as uint #t))
        (let ((v1-6 *edge-grab-info*))
          (vector-normalize!
-           (vector-!
-             (-> self control edge-grab-edge-dir)
-             (the-as vector (-> v1-6 world-vertex))
-             (-> v1-6 world-vertex 1)
-             )
+           (vector-! (-> self control edge-grab-edge-dir) (-> v1-6 world-vertex 0) (-> v1-6 world-vertex 1))
            1.0
            )
          )
@@ -2210,7 +2206,7 @@
       (else
         (let ((f30-1
                 (* (lerp-scale 0.7 1.0 (fabs (-> self board ride-lean)) 0.0 1.0)
-                   (lerp-scale 0.8 1.0 (fabs (-> self board ride-speed)) 0.0 (* 0.5 (-> self control mod-surface transv-max)))
+                   (lerp-scale 0.8 1.0 (fabs (-> self board ride-speed)) 0.0 (/ (-> self control mod-surface transv-max) 2))
                    )
                 )
               (f0-23
@@ -2575,12 +2571,7 @@
       (set! (-> self control unknown-vector39 quad) (-> self control quat quad))
       (ja :group! s4-0 :num! (seek!) :frame-num 0.0)
       (until #f
-        (let* ((s3-0 (handle->process arg0))
-               (s4-1 (if (type? s3-0 process-focusable)
-                         s3-0
-                         )
-                     )
-               )
+        (let ((s4-1 (the-as process (as-type (handle->process arg0) process-focusable))))
           (when s4-1
             (set! (-> self control unknown-vector38 quad) (-> (get-trans (the-as process-focusable s4-1) 0) quad))
             (+! (-> self control unknown-vector38 y) 4096.0)
@@ -3003,10 +2994,7 @@
                  (let ((s4-1 (new-stack-vector0)))
                    (set! (-> s4-1 quad) (-> self control last-trans-on-ground quad))
                    (ja-channel-set! 0)
-                   (let ((s3-1 (current-time)))
-                     (until (time-elapsed? s3-1 (seconds 1))
-                       (suspend)
-                       )
+                   (suspend-for (seconds 1)
                      )
                    (move-to-point! (-> self control) s4-1)
                    )

@@ -52,14 +52,28 @@
 
 (defenum language-enum
   :type int64
-  (english)
-  (french)
-  (german)
-  (spanish)
-  (italian)
-  (japanese)
-  (korean)
-  (uk-english)
+  (english 0)
+  (french 1)
+  (german 2)
+  (spanish 3)
+  (italian 4)
+  (japanese 5)
+  (korean 6)
+  (uk-english 7)
+  ;; custom
+  (portuguese 8)
+  (finnish 9)
+  (swedish 10)
+  (danish 11)
+  (norwegian 12)
+  (dutch 13)
+  (br-portuguese 14)
+  (hungarian 15)
+  (catalan 16)
+  (icelandic 17)
+  (russian 18)
+  (polish 19)
+  (lithuanian 20)
   )
 
 (defenum runtime-exit-status
@@ -2515,6 +2529,7 @@
   (iop-mem             48)
   (cancel-dgo          49)
   (set-stereo-mode     50) ;; sound-rpc-set-stereo-mode
+  (set-mirror         201)
   )
 
 (defenum sound-group
@@ -2829,6 +2844,17 @@
   :flag-assert         #x900000004
   )
 
+; added
+(defenum sound-mirror-mode
+  :type uint8
+  (normal)
+  (mirrored)
+  )
+
+; added for mirror mode
+(deftype sound-rpc-set-mirror-mode (sound-rpc-cmd)
+  ((mirror sound-mirror-mode)))
+
 (deftype sound-rpc-union (structure)
   ((data              uint32                      20 :offset-assert 0)
    (load-bank         sound-rpc-load-bank            :offset        0)
@@ -2852,6 +2878,7 @@
    (shutdown          sound-rpc-shutdown             :offset        0)
    (list-sounds       sound-rpc-list-sounds          :offset        0)
    (unload-music      sound-rpc-unload-music         :offset        0)
+   (mirror-mode        sound-rpc-set-mirror-mode    :overlay-at (-> data 0))
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -4174,6 +4201,22 @@ and the state of the VU memory buffers at the end of the bucket."
     (r-analog-left 23)
     (confirm 24)
     )
+
+(defenum abutton-idx
+  :type uint8
+  (right 0)
+  (left 1)
+  (up 2)
+  (down 3)
+  (triangle 4)
+  (circle 5)
+  (x 6)
+  (square 7)
+  (l1 8)
+  (r1 9)
+  (l2 10)
+  (r2 11)
+  )
 
 (defenum mouse-buttons
     :bitfield #t
@@ -8774,6 +8817,8 @@ Unlike [[engine]], users can use [[engine-pers]] as a parent class."
   (progress-graphics-ps2-lod-dist #x1337)
   (progress-graphics-msaa-off #x1338)
   (progress-graphics-display #x1339)
+  (language-name-finnish #x133a)
+  (progress-hint-subtitles #x133b)
 )
 ;; ---text-id-h:text-id
 
@@ -9419,18 +9464,6 @@ Unlike [[engine]], users can use [[engine-pers]] as a parent class."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; settings-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defenum language-enum
-  :type int64
-  (english)
-  (french)
-  (german)
-  (spanish)
-  (italian)
-  (japanese)
-  (korean)
-  (uk-english)
-  )
 
 (defenum game-feature
   :type uint64

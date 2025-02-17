@@ -93,12 +93,7 @@
       (('attack)
        (let ((gp-0 (-> block param 0)))
          (-> block param 1)
-         (let* ((s5-0 proc)
-                (v1-2 (if (type? s5-0 process-drawable)
-                          s5-0
-                          )
-                      )
-                )
+         (let ((v1-2 (as-type proc process-drawable)))
            (when (and gp-0 v1-2)
              (logclear! (-> self mask) (process-mask actor-pause))
              (go-virtual die)
@@ -154,23 +149,20 @@
       (set! *nst-metalhead-eggs-last-sound-time* (current-time))
       )
     (let ((v1-18 (new 'stack-no-clear 'vector)))
-      (set! (-> v1-18 quad) (-> self root trans quad))
+      (vector-copy! v1-18 (-> self root trans))
       (+! (-> v1-18 y) 8192.0)
       (cond
         ((logtest? (-> *part-group-id-table* 611 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> v1-18 quad))
+         (vector-copy! (-> *launch-matrix* trans) v1-18)
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 611))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> v1-18 quad))
+          (vector-copy! (-> *launch-matrix* trans) v1-18)
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 611))
           )
         )
       )
-    (let ((gp-4 (current-time)))
-      (until (time-elapsed? gp-4 (seconds 0.5))
-        (suspend)
-        )
+    (suspend-for (seconds 0.5)
       )
     (cleanup-for-death self)
     )
@@ -197,13 +189,15 @@
 
 ;; definition for method 20 of type nst-metalhead-eggs
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this nst-metalhead-eggs))
+(defmethod get-search-info-flag ((this nst-metalhead-eggs))
+  "Get search-info-flag for this process."
   (the-as search-info-flag 24)
   )
 
 ;; definition for method 11 of type nst-metalhead-eggs
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this nst-metalhead-eggs) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
@@ -486,6 +480,7 @@
 ;; definition for method 11 of type nst-bridge-base
 ;; WARN: Return type mismatch none vs object.
 (defmethod init-from-entity! ((this nst-bridge-base) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
@@ -597,7 +592,7 @@
   :code (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 622 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
@@ -606,7 +601,7 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
@@ -641,6 +636,7 @@
 
 ;; definition for method 11 of type nst-falling-stone-bridge-goo
 (defmethod init-from-entity! ((this nst-falling-stone-bridge-goo) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -778,7 +774,7 @@
   :code (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 4 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 4 bone transform trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
@@ -787,7 +783,7 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 4 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 4 bone transform trans))
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
@@ -798,7 +794,7 @@
       )
     (cond
       ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 5 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 5 bone transform trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
@@ -807,7 +803,7 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 5 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 5 bone transform trans))
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
@@ -818,7 +814,7 @@
       )
     (cond
       ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 6 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 6 bone transform trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
@@ -827,7 +823,7 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 6 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 6 bone transform trans))
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
@@ -838,7 +834,7 @@
       )
     (cond
       ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 7 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 7 bone transform trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
@@ -847,7 +843,7 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 7 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 7 bone transform trans))
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
@@ -859,10 +855,7 @@
     (when (-> self actor-group)
       (let ((f30-0 (* 0.0005 (the float (-> self actor-group length)))))
         (dotimes (gp-8 (-> self actor-group length))
-          (let ((s5-0 (current-time)))
-            (until (time-elapsed? s5-0 (the int (* 300.0 f30-0)))
-              (suspend)
-              )
+          (suspend-for (the int (* 300.0 f30-0))
             )
           (let ((a1-24 (new 'stack-no-clear 'event-message-block)))
             (set! (-> a1-24 from) (process->ppointer self))
@@ -882,9 +875,10 @@
           (when (not (logtest? gp-8 1))
             (cond
               ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-               (set! (-> *launch-matrix* trans quad)
-                     (-> self node-list data (-> *nst-falling-stone-bridge-part-nodes* (logand gp-8 3)) bone transform trans quad)
-                     )
+               (vector-copy!
+                 (-> *launch-matrix* trans)
+                 (-> self node-list data (-> *nst-falling-stone-bridge-part-nodes* (logand gp-8 3)) bone transform trans)
+                 )
                (part-tracker-spawn
                  part-tracker-subsampler
                  :to *entity-pool*
@@ -893,9 +887,10 @@
                  )
                )
               (else
-                (set! (-> *launch-matrix* trans quad)
-                      (-> self node-list data (-> *nst-falling-stone-bridge-part-nodes* (logand gp-8 3)) bone transform trans quad)
-                      )
+                (vector-copy!
+                  (-> *launch-matrix* trans)
+                  (-> self node-list data (-> *nst-falling-stone-bridge-part-nodes* (logand gp-8 3)) bone transform trans)
+                  )
                 (part-tracker-spawn
                   part-tracker
                   :to *entity-pool*
@@ -946,7 +941,7 @@
             (when (= (the int f30-0) (+ gp-0 -10))
               (cond
                 ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-                 (set! (-> *launch-matrix* trans quad) (-> self node-list data 4 bone transform trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 4 bone transform trans))
                  (part-tracker-spawn
                    part-tracker-subsampler
                    :to *entity-pool*
@@ -955,7 +950,7 @@
                    )
                  )
                 (else
-                  (set! (-> *launch-matrix* trans quad) (-> self node-list data 4 bone transform trans quad))
+                  (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 4 bone transform trans))
                   (part-tracker-spawn
                     part-tracker
                     :to *entity-pool*
@@ -966,7 +961,7 @@
                 )
               (cond
                 ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-                 (set! (-> *launch-matrix* trans quad) (-> self node-list data 5 bone transform trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 5 bone transform trans))
                  (part-tracker-spawn
                    part-tracker-subsampler
                    :to *entity-pool*
@@ -975,7 +970,7 @@
                    )
                  )
                 (else
-                  (set! (-> *launch-matrix* trans quad) (-> self node-list data 5 bone transform trans quad))
+                  (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 5 bone transform trans))
                   (part-tracker-spawn
                     part-tracker
                     :to *entity-pool*
@@ -986,7 +981,7 @@
                 )
               (cond
                 ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-                 (set! (-> *launch-matrix* trans quad) (-> self node-list data 7 bone transform trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 7 bone transform trans))
                  (part-tracker-spawn
                    part-tracker-subsampler
                    :to *entity-pool*
@@ -995,7 +990,7 @@
                    )
                  )
                 (else
-                  (set! (-> *launch-matrix* trans quad) (-> self node-list data 7 bone transform trans quad))
+                  (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 7 bone transform trans))
                   (part-tracker-spawn
                     part-tracker
                     :to *entity-pool*
@@ -1006,7 +1001,7 @@
                 )
               (cond
                 ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-                 (set! (-> *launch-matrix* trans quad) (-> self node-list data 8 bone transform trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 8 bone transform trans))
                  (part-tracker-spawn
                    part-tracker-subsampler
                    :to *entity-pool*
@@ -1015,7 +1010,7 @@
                    )
                  )
                 (else
-                  (set! (-> *launch-matrix* trans quad) (-> self node-list data 8 bone transform trans quad))
+                  (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 8 bone transform trans))
                   (part-tracker-spawn
                     part-tracker
                     :to *entity-pool*
@@ -1026,7 +1021,7 @@
                 )
               (cond
                 ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-                 (set! (-> *launch-matrix* trans quad) (-> self node-list data 9 bone transform trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 9 bone transform trans))
                  (part-tracker-spawn
                    part-tracker-subsampler
                    :to *entity-pool*
@@ -1035,7 +1030,7 @@
                    )
                  )
                 (else
-                  (set! (-> *launch-matrix* trans quad) (-> self node-list data 9 bone transform trans quad))
+                  (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 9 bone transform trans))
                   (part-tracker-spawn
                     part-tracker
                     :to *entity-pool*
@@ -1046,7 +1041,7 @@
                 )
               (cond
                 ((logtest? (-> *part-group-id-table* 619 flags) (sp-group-flag sp13))
-                 (set! (-> *launch-matrix* trans quad) (-> self node-list data 10 bone transform trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 10 bone transform trans))
                  (part-tracker-spawn
                    part-tracker-subsampler
                    :to *entity-pool*
@@ -1055,7 +1050,7 @@
                    )
                  )
                 (else
-                  (set! (-> *launch-matrix* trans quad) (-> self node-list data 10 bone transform trans quad))
+                  (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 10 bone transform trans))
                   (part-tracker-spawn
                     part-tracker
                     :to *entity-pool*
@@ -1068,7 +1063,7 @@
             (when (= (the int f30-0) (+ gp-0 -3))
               (cond
                 ((logtest? (-> *part-group-id-table* 621 flags) (sp-group-flag sp13))
-                 (set! (-> *launch-matrix* trans quad) (-> self node-list data 12 bone transform trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 12 bone transform trans))
                  (part-tracker-spawn
                    part-tracker-subsampler
                    :to *entity-pool*
@@ -1077,7 +1072,7 @@
                    )
                  )
                 (else
-                  (set! (-> *launch-matrix* trans quad) (-> self node-list data 12 bone transform trans quad))
+                  (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 12 bone transform trans))
                   (part-tracker-spawn
                     part-tracker
                     :to *entity-pool*
@@ -1165,6 +1160,7 @@
 ;; definition for method 11 of type nst-falling-stone-bridge
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this nst-falling-stone-bridge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 512)
   (let ((t9-1 (method-of-type nst-bridge-base init-from-entity!)))
@@ -1368,10 +1364,7 @@
     )
   :code (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.2))
-        (suspend)
-        )
+    (suspend-for (seconds 0.2)
       )
     (when (-> self anim)
       (-> self draw bounds w)
@@ -1543,6 +1536,7 @@
 
 ;; definition for method 11 of type nst-collapsing-stone-bridge
 (defmethod init-from-entity! ((this nst-collapsing-stone-bridge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 512)
   (let ((t9-1 (method-of-type nst-bridge-base init-from-entity!)))
     (t9-1 this arg0)
@@ -1597,11 +1591,11 @@
 (defmethod projectile-method-26 ((this cocoon-grenade-shot))
   (cond
     ((logtest? (-> *part-group-id-table* 105 flags) (sp-group-flag sp13))
-     (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
      (part-tracker-spawn part-tracker-subsampler :to this :group (-> *part-group-id-table* 105))
      )
     (else
-      (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+      (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
       (part-tracker-spawn part-tracker :to this :group (-> *part-group-id-table* 105))
       )
     )
@@ -1762,34 +1756,34 @@
                                     :jump-height-min (meters 3)
                                     :jump-height-factor 0.5
                                     :knocked-seek-ry-clamp 2730.6667
-                                    :knocked-soft-vxz-lo 72089.6
-                                    :knocked-soft-vxz-hi 108134.4
-                                    :knocked-soft-vy-lo 81920.0
-                                    :knocked-soft-vy-hi 122880.0
-                                    :knocked-medium-vxz-lo 147456.0
-                                    :knocked-medium-vxz-hi 196608.0
-                                    :knocked-medium-vy-lo 135168.0
-                                    :knocked-medium-vy-hi 151552.0
-                                    :knocked-hard-vxz-lo 78643.2
-                                    :knocked-hard-vxz-hi 117964.8
-                                    :knocked-hard-vy-lo 183500.8
-                                    :knocked-hard-vy-hi 209715.2
-                                    :knocked-huge-vxz-lo 164659.2
-                                    :knocked-huge-vxz-hi 249036.8
-                                    :knocked-huge-vy-lo 183500.8
-                                    :knocked-huge-vy-hi 217907.2
-                                    :knocked-yellow-vxz-lo 40960.0
-                                    :knocked-yellow-vxz-hi 49152.0
-                                    :knocked-yellow-vy-lo 57344.0
-                                    :knocked-yellow-vy-hi 81920.0
-                                    :knocked-red-vxz-lo 24576.0
-                                    :knocked-red-vxz-hi 196608.0
-                                    :knocked-red-vy-lo 94208.0
-                                    :knocked-red-vy-hi 151552.0
-                                    :knocked-blue-vxz-lo 40960.0
-                                    :knocked-blue-vxz-hi 49152.0
-                                    :knocked-blue-vy-lo 24576.0
-                                    :knocked-blue-vy-hi 81920.0
+                                    :knocked-soft-vxz-lo (meters 17.6)
+                                    :knocked-soft-vxz-hi (meters 26.4)
+                                    :knocked-soft-vy-lo (meters 20)
+                                    :knocked-soft-vy-hi (meters 30)
+                                    :knocked-medium-vxz-lo (meters 36)
+                                    :knocked-medium-vxz-hi (meters 48)
+                                    :knocked-medium-vy-lo (meters 33)
+                                    :knocked-medium-vy-hi (meters 37)
+                                    :knocked-hard-vxz-lo (meters 19.2)
+                                    :knocked-hard-vxz-hi (meters 28.8)
+                                    :knocked-hard-vy-lo (meters 44.8)
+                                    :knocked-hard-vy-hi (meters 51.2)
+                                    :knocked-huge-vxz-lo (meters 40.2)
+                                    :knocked-huge-vxz-hi (meters 60.8)
+                                    :knocked-huge-vy-lo (meters 44.8)
+                                    :knocked-huge-vy-hi (meters 53.2)
+                                    :knocked-yellow-vxz-lo (meters 10)
+                                    :knocked-yellow-vxz-hi (meters 12)
+                                    :knocked-yellow-vy-lo (meters 14)
+                                    :knocked-yellow-vy-hi (meters 20)
+                                    :knocked-red-vxz-lo (meters 6)
+                                    :knocked-red-vxz-hi (meters 48)
+                                    :knocked-red-vy-lo (meters 23)
+                                    :knocked-red-vy-hi (meters 37)
+                                    :knocked-blue-vxz-lo (meters 10)
+                                    :knocked-blue-vxz-hi (meters 12)
+                                    :knocked-blue-vy-lo (meters 6)
+                                    :knocked-blue-vy-hi (meters 20)
                                     :ragdoll-info #f
                                     :shadow-size (meters 1)
                                     :shadow-max-y (meters 1)
@@ -1860,7 +1854,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1968,18 +1962,12 @@
             (set! (-> self cycling?) #t)
             (spawn (-> self charge-up-part) (-> self node-list data 12 bone transform trans))
             (set! (-> self cycle-rot) -1820.4445)
-            (let ((gp-0 (current-time)))
-              (until (time-elapsed? gp-0 (seconds 0.5))
-                (ja :num! (loop!))
-                (suspend)
-                )
+            (suspend-for (seconds 0.5)
+              (ja :num! (loop!))
               )
             (set! (-> self cycle-rot) 1820.4445)
-            (let ((gp-1 (current-time)))
-              (until (time-elapsed? gp-1 (seconds 0.5))
-                (ja :num! (loop!))
-                (suspend)
-                )
+            (suspend-for (seconds 0.5)
+              (ja :num! (loop!))
               )
             (set! (-> self cycling?) #f)
             (set! (-> self shots-left) (the-as uint 4))
@@ -2073,11 +2061,11 @@
   :code (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 617 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self incoming attack-position quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self incoming attack-position))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 617))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self incoming attack-position quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self incoming attack-position))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 617))
         )
       )
@@ -2122,7 +2110,7 @@
     (kill-particles (-> self charge-up-part))
     (cond
       ((logtest? (-> *part-group-id-table* 616 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 12 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 12 bone transform trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
@@ -2131,7 +2119,7 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 12 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 12 bone transform trans))
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
@@ -2162,18 +2150,12 @@
     (if (>= (-> self palette-id) 0)
         (set-nstb-lights! (-> self palette-id) 4.0 8.0 #f)
         )
-    (let ((gp-4 (current-time)))
-      (until (time-elapsed? gp-4 (seconds 0.5))
-        (suspend)
-        )
+    (suspend-for (seconds 0.5)
       )
     (if (>= (-> self palette-id) 0)
         (set-nstb-lights! (-> self palette-id) 0.0 6.0 #f)
         )
-    (let ((gp-5 (current-time)))
-      (until (time-elapsed? gp-5 (seconds 0.35))
-        (suspend)
-        )
+    (suspend-for (seconds 0.35)
       )
     (let ((gp-6 (-> self child)))
       (while gp-6
@@ -2192,6 +2174,7 @@
 
 ;; definition for method 82 of type nst-cocoon-a
 (defmethod event-handler ((this nst-cocoon-a) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (if (not (and (= arg2 'attack) (type? arg0 cocoon-grenade-shot)))
       ((method-of-type nav-enemy event-handler) (the-as nav-enemy this) arg0 arg1 arg2 arg3)
       )
@@ -2199,6 +2182,7 @@
 
 ;; definition for method 59 of type nst-cocoon-a
 (defmethod enemy-common-post ((this nst-cocoon-a))
+  "Common implementation of post. Runs ja-post."
   (let ((f0-1 (/ (-> this hit-points) (-> this enemy-info default-hit-points))))
     (set-vector! (-> this draw color-mult) 1.0 f0-1 f0-1 1.0)
     )
@@ -2246,7 +2230,7 @@
         (s5-0 (new 'stack-no-clear 'vector))
         )
     0.0
-    (set! (-> s5-0 quad) (-> this node-list data 5 bone transform fvec quad))
+    (vector-copy! s5-0 (-> this node-list data 5 bone transform fvec))
     (set! (-> s3-0 initial-tilt) (asin (-> s5-0 y)))
     (set! (-> s3-0 gravity) 102400.0)
     (let ((f30-0 4095996000.0)
@@ -2296,7 +2280,7 @@
         (set! (-> s2-0 charge) 1.0)
         (set! (-> s2-0 options) (projectile-options))
         (logclear! (-> s2-0 options) (projectile-options po14 po15 po16))
-        (set! (-> s2-0 pos quad) (-> this node-list data s1-0 bone transform trans quad))
+        (vector-copy! (-> s2-0 pos) (-> this node-list data s1-0 bone transform trans))
         (set! (-> s2-0 notify-handle) (the-as handle #f))
         (set! (-> s2-0 owner-handle) (process->handle this))
         (set! (-> s2-0 target-handle) (the-as handle #f))
@@ -2315,7 +2299,7 @@
         (logior! (-> s2-0 options) (projectile-options po15))
         (set! (-> s2-0 vehicle-impulse-factor) 1.5)
         (logior! (-> s2-0 options) (projectile-options po16))
-        (set! (-> s5-0 quad) (-> this node-list data s1-0 bone transform fvec quad))
+        (vector-copy! s5-0 (-> this node-list data s1-0 bone transform fvec))
         (vector-normalize-copy! (-> s2-0 vel) s5-0 (-> s3-0 initial-speed))
         (spawn-projectile cocoon-grenade-shot s2-0 this *default-dead-pool*)
         )
@@ -2328,7 +2312,8 @@
   )
 
 ;; definition for method 107 of type nst-cocoon-a
-(defmethod is-pfoc-in-mesh? ((this nst-cocoon-a) (arg0 process-focusable) (arg1 vector))
+(defmethod can-become-hostile-to? ((this nst-cocoon-a) (arg0 process-focusable) (arg1 vector))
+  "Return if this enemy can become hostile to the process."
   (cond
     ((= (-> this activate-distance) 0.0)
      (return #t)
@@ -2344,6 +2329,7 @@
 
 ;; definition for method 67 of type nst-cocoon-a
 (defmethod coin-flip? ((this nst-cocoon-a))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -2360,6 +2346,7 @@
 ;; definition for method 120 of type nst-cocoon-a
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this nst-cocoon-a))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2419,13 +2406,14 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch connection-minimap vs none.
 (defmethod init-enemy! ((this nst-cocoon-a))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-nst-cocoon-a" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
   (set! (-> this enemy-info) *nst-cocoon-a-enemy-info*)
-  (init-enemy-defaults! this (-> this enemy-info))
+  (setup-enemy! this (-> this enemy-info))
   (set! (-> this palette-id)
         (res-lump-value (-> this entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0)
         )
@@ -2456,13 +2444,15 @@
 
 ;; definition for method 11 of type nst-cocoon-a
 (defmethod init-from-entity! ((this nst-cocoon-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 512)
   (set! (-> this alt-actor) (entity-actor-lookup arg0 'alt-actor 0))
   ((method-of-type enemy init-from-entity!) this arg0)
   )
 
 ;; definition for method 122 of type nst-cocoon-a
-(defmethod go-idle2 ((this nst-cocoon-a))
+(defmethod go-fallback-init ((this nst-cocoon-a))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (if (or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
           (task-node-closed? (game-task-node nest-eggs-resolution))
           )
@@ -2601,6 +2591,7 @@
 
 ;; definition for method 11 of type nst-cocoon-b
 (defmethod init-from-entity! ((this nst-cocoon-b) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2689,19 +2680,9 @@
          )
        )
       (('touched)
-       (let* ((gp-1 proc)
-              (v1-5 (if (type? gp-1 process-focusable)
-                        gp-1
-                        )
-                    )
-              )
+       (let ((v1-5 (as-type proc process-focusable)))
          (when v1-5
-           (let* ((gp-2 (-> (the-as process-focusable v1-5) root))
-                  (a0-4 (if (type? gp-2 collide-shape)
-                            gp-2
-                            )
-                        )
-                  )
+           (let ((a0-4 (as-type (-> (the-as process-focusable v1-5) root) collide-shape)))
              (if (and a0-4 (logtest? (-> a0-4 root-prim prim-core collide-as) (collide-spec jak)))
                  #f
                  )
@@ -2762,9 +2743,10 @@
 ;; definition for method 11 of type nst-light-barrier
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this nst-light-barrier) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'trsqv)))
     (set! (-> this root) (the-as collide-shape s4-0))
-    (set! (-> s4-0 trans quad) (-> arg0 extra trans quad))
+    (vector-copy! (-> s4-0 trans) (-> arg0 extra trans))
     (quaternion-copy! (-> s4-0 quat) (-> arg0 quat))
     (vector-identity! (-> s4-0 scale))
     )
@@ -2778,7 +2760,3 @@
   (ja-post)
   (go (method-of-object this idle))
   )
-
-
-
-

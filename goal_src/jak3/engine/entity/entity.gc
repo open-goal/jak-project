@@ -299,12 +299,12 @@
         (gp-0 (the-as nav-mesh #f))
         )
     (when v1-1
-      (let* ((s5-1 (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as (pointer uint32) (&+ v1-1 (* arg2 4)))))))
-             (v1-3 (if (type? s5-1 entity-nav-mesh)
-                       s5-1
-                       )
-                   )
-             )
+      (let ((v1-3 (as-type
+                    (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as (pointer uint32) (&+ v1-1 (* arg2 4))))))
+                    entity-nav-mesh
+                    )
+                  )
+            )
         (if v1-3
             (set! gp-0 (-> v1-3 nav-mesh))
             )
@@ -423,12 +423,7 @@
   )
 
 (defun-debug process-status-bits ((arg0 process) (arg1 symbol))
-  (let* ((s5-0 arg0)
-         (s3-0 (if (type? s5-0 process-drawable)
-                   (the-as process-drawable s5-0)
-                   )
-               )
-         )
+  (let ((s3-0 (as-type arg0 process-drawable)))
     (if (and s3-0 (zero? (-> s3-0 draw)))
         (set! s3-0 (the-as process-drawable #f))
         )
@@ -589,12 +584,7 @@
             (-> this extra trans z)
             )
           )
-      (let* ((s3-2 (-> this extra process))
-             (s4-2 (if (type? s3-2 process-drawable)
-                       s3-2
-                       )
-                   )
-             )
+      (let ((s4-2 (as-type (-> this extra process) process-drawable)))
         (format
           #t
           ":pr #x~8X ~-18S ~-5S/~-5S "
@@ -693,7 +683,7 @@
         )
       )
     (set! (-> arg0 entity-link) v1-4)
-    (set! (-> v1-4 trans quad) (-> this trans quad))
+    (vector-copy! (-> v1-4 trans) (-> this trans))
     )
   (set! (-> this extra perm aid) arg2)
   (set! (-> this extra level) arg1)
@@ -787,29 +777,13 @@
               (set! sv-16 (res-lump-data s2-0 'visvol (inline-array vector)))
               (set! sv-20 (-> sv-16 0))
               (set! sv-24 (-> sv-16 1))
-              (let ((s2-1 (-> s2-0 extra process)))
-                (set! sv-28 (if (type? s2-1 process-drawable)
-                                s2-1
-                                )
-                      )
-                )
+              (set! sv-28 (as-type (-> s2-0 extra process) process-drawable))
               )
             (when sv-28
               (update-actor-vis-box (the-as process-drawable sv-28) sv-20 sv-24)
               (let ((s2-2 (-> sv-28 child)))
                 (while s2-2
-                  (let ((s1-0 update-actor-vis-box)
-                        (s0-0 (-> s2-2 0))
-                        )
-                    (s1-0
-                      (the-as process-drawable (if (type? s0-0 process-drawable)
-                                                   s0-0
-                                                   )
-                              )
-                      sv-20
-                      sv-24
-                      )
-                    )
+                  (update-actor-vis-box (the-as process-drawable (as-type (-> s2-2 0) process-drawable)) sv-20 sv-24)
                   (set! s2-2 (-> s2-2 0 brother))
                   )
                 )
@@ -889,14 +863,14 @@
                (let ((enemy-option (res-lump-value sv-40 'enemy-options enemy-option :time -1000000000.0)))
                  (cond
                    ((logtest? (enemy-option spawner) (the-as uint128 enemy-option))
-                    (set! (-> sv-20 quad) (-> sv-36 quad))
-                    (set! (-> sv-24 quad) (-> sv-36 quad))
+                    (vector-copy! sv-20 sv-36)
+                    (vector-copy! sv-24 sv-36)
                     (set! sv-28 (the-as float -409.6))
                     (set! sv-32 (the-as float 409.6))
                     )
                    ((string-prefix= "battle" (res-lump-struct sv-40 'name string))
-                    (set! (-> sv-20 quad) (-> sv-36 quad))
-                    (set! (-> sv-24 quad) (-> sv-36 quad))
+                    (vector-copy! sv-20 sv-36)
+                    (vector-copy! sv-24 sv-36)
                     (set! sv-48 (new 'static 'res-tag))
                     (let ((v1-29 (res-lump-data sv-40 'actor-groups (pointer actor-group) :tag-ptr (& sv-48))))
                       (when (and v1-29 (nonzero? (-> sv-48 elt-count)))
@@ -919,8 +893,8 @@
                  )
                )
               (else
-                (set! (-> sv-20 quad) (-> sv-36 quad))
-                (set! (-> sv-24 quad) (-> sv-36 quad))
+                (vector-copy! sv-20 sv-36)
+                (vector-copy! sv-24 sv-36)
                 )
               )
             (+! (-> sv-20 x) sv-28)
@@ -1247,12 +1221,7 @@
     (let ((v1-7 (handle->process (-> s4-0 handle))))
       (when (not v1-7)
         (when (-> s4-0 name)
-          (let ((s3-0 (process-by-name (-> s4-0 name) *active-pool*)))
-            (set! v1-7 (if (type? s3-0 process-drawable)
-                           s3-0
-                           )
-                  )
-            )
+          (set! v1-7 (as-type (process-by-name (-> s4-0 name) *active-pool*) process-drawable))
           (set! (-> s4-0 handle) (process->handle v1-7))
           )
         )
@@ -1372,12 +1341,7 @@
       )
   (cond
     (*debug-actor*
-      (let* ((s4-3 *debug-actor*)
-             (s5-4 (if (type? s4-3 process-drawable)
-                       (the-as process-drawable s4-3)
-                       )
-                   )
-             )
+      (let ((s5-4 (as-type *debug-actor* process-drawable)))
         (when s5-4
           (if (nonzero? (-> s5-4 skel))
               (debug-print-channels (-> s5-4 skel) (the-as symbol *stdcon*))
@@ -1577,6 +1541,11 @@
                    (s1-4 (-> s4-8 bsp region-trees s2-4))
                    )
               (while (< s2-4 s3-6)
+                ;; og:preserve-this pc port note: added this name and water check
+                (let ((tree-name (-> s1-4 name)))
+                (when (or (!= tree-name 'water) (not *debug-region-hide-water*))
+                (set! *debug-region-tree-name* tree-name)
+
                 (let ((s0-4 (-> s1-4 data2 (+ (-> s1-4 length) -1) length)))
                   (set! sv-128 0)
                   (let ((a0-128 (the-as object (+ (+ (* sv-128 32) 32) (the-as int (-> s1-4 data2 (+ (-> s1-4 length) -1)))))))
@@ -1587,6 +1556,7 @@
                       )
                     )
                   )
+                  ))
                 (+! s2-4 1)
                 (set! s1-4 (-> s4-8 bsp region-trees s2-4))
                 )
@@ -1811,12 +1781,7 @@
        )
      )
     (else
-      (let* ((s3-0 arg0)
-             (v1-55 (if (type? s3-0 process-drawable)
-                        s3-0
-                        )
-                    )
-             )
+      (let ((v1-55 (as-type arg0 process-drawable)))
         (when v1-55
           (cond
             ((and (nonzero? (-> (the-as process-drawable v1-55) part))
@@ -1940,7 +1905,7 @@
 (defun process-drawable-scale-from-entity! ((arg0 process-drawable) (arg1 entity))
   (let ((v1-1 (res-lump-struct arg1 'scale vector)))
     (if v1-1
-        (set! (-> arg0 root scale quad) (-> v1-1 quad))
+        (vector-copy! (-> arg0 root scale) v1-1)
         (vector-identity! (-> arg0 root scale))
         )
     )
@@ -1951,7 +1916,7 @@
 ;; WARN: Return type mismatch process-drawable vs none.
 (defun process-drawable-from-entity! ((arg0 process-drawable) (arg1 entity-actor))
   (logior! (-> arg0 mask) (process-mask actor-pause))
-  (set! (-> arg0 root trans quad) (-> arg1 extra trans quad))
+  (vector-copy! (-> arg0 root trans) (-> arg1 extra trans))
   (quaternion-copy! (-> arg0 root quat) (-> arg1 quat))
   (vector-identity! (-> arg0 root scale))
   (none)

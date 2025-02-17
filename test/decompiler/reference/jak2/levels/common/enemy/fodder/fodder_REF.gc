@@ -249,7 +249,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod look-at-target! ((this fodder) (arg0 enemy-flag))
   "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
-@param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
+   @param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   (let ((parent-method (method-of-type nav-enemy look-at-target!)))
     (parent-method this arg0)
     )
@@ -283,8 +283,8 @@
 ;; definition for method 179 of type fodder
 (defmethod look-at-position! ((this fodder) (position vector))
   "Adjusts the eyes to look at particular position, or the focused target
-@param position If this is provided, it will be used with [[joint-mod::target-set!]] to adjust the eyes, otherwise the `focus` position is used
-@return TODO - unsure what the return value is, but it seems to make the eyes more lazy"
+   @param position If this is provided, it will be used with [[joint-mod::target-set!]] to adjust the eyes, otherwise the `focus` position is used
+   @return TODO - unsure what the return value is, but it seems to make the eyes more lazy"
   (when (not position)
     (let ((focus-proc (handle->process (-> this focus handle))))
       (if focus-proc
@@ -316,12 +316,7 @@
     (dotimes (group-idx (-> this actor-group-count))
       (let ((group (-> this actor-group group-idx)))
         (dotimes (actor-idx (-> group length))
-          (let* ((actor-proc (-> group data actor-idx actor extra process))
-                 (fodder-proc (if (type? actor-proc fodder)
-                                  (the-as fodder actor-proc)
-                                  )
-                              )
-                 )
+          (let ((fodder-proc (as-type (-> group data actor-idx actor extra process) fodder)))
             (when (and fodder-proc (!= fodder-proc this) (time-elapsed? (-> fodder-proc look-at-other-time) (seconds 0.25)))
               (let* ((dir-to-other-fodder
                        (vector-! (new 'stack-no-clear 'vector) (-> fodder-proc root trans) (-> this root trans))
@@ -370,24 +365,16 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod common-post ((this fodder))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((parent-method (method-of-type nav-enemy common-post)))
     (parent-method this)
     )
   (let ((proc (the-as process-drawable #f)))
     (cond
       ((and (not (time-elapsed? (-> this look-at-other-time) (seconds 0.5)))
-            (begin
-              (let ((other-proc (handle->process (-> this look-at-other))))
-                (set! proc (if (type? other-proc process-drawable)
-                               (the-as process-drawable other-proc)
-                               )
-                      )
-                )
-              proc
-              )
+            (begin (set! proc (as-type (handle->process (-> this look-at-other)) process-drawable)) proc)
             )
        (let ((s5-1 (vector<-cspace! (new 'static 'vector) (-> proc node-list data 5))))
          (look-at-position! this s5-1)
@@ -552,7 +539,7 @@
                 (if s4-0
                     (set! v1-59 (- v1-59))
                     )
-                (vector+float*! gp-0 (-> s3-2 vector 2) (the-as vector (-> s3-2 vector)) v1-59)
+                (vector+float*! gp-0 (-> s3-2 vector 2) (-> s3-2 vector 0) v1-59)
                 )
               (vector-normalize! gp-0 16384.0)
               (vector+float*! gp-0 gp-0 (-> s3-2 vector 1) (rand-vu-float-range 5079.04 7168.0))

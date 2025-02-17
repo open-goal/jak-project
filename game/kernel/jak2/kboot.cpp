@@ -6,7 +6,7 @@
 
 #include "common/goal_constants.h"
 #include "common/log/log.h"
-#include "common/repl/util.h"
+#include "common/repl/repl_wrapper.h"
 #include "common/util/Timer.h"
 
 #include "game/common/game_common_types.h"

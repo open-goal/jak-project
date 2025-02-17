@@ -670,34 +670,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -744,6 +744,7 @@
 ;; definition for method 82 of type kg-grunt
 ;; INFO: Used lq/sq
 (defmethod event-handler ((this kg-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -755,7 +756,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -768,7 +769,7 @@
          (let ((s5-1 (new 'stack 'debris-tuning (the-as uint 1))))
            (set! (-> s5-1 hit-xz-reaction) 0.95)
            (set! (-> s5-1 hit-y-reaction) 0.6)
-           (set! (-> s5-1 fountain-rand-transv-lo quad) (-> this incoming attack-position quad))
+           (vector-copy! (-> s5-1 fountain-rand-transv-lo) (-> this incoming attack-position))
            (dotimes (s4-0 8)
              (let ((v1-32 (rand-vu-int-count-excluding 18 (the-as int (-> this debris-mask)))))
                (logior! (-> this debris-mask) (ash 1 v1-32))
@@ -805,7 +806,8 @@
   )
 
 ;; definition for method 74 of type kg-grunt
-(defmethod go-ambush-delay ((this kg-grunt))
+(defmethod go-ambush ((this kg-grunt))
+  "May go to ambush-delay first, if set in the res-lump."
   (cond
     ((logtest? (-> this fact enemy-options) (enemy-option user10))
      (go (method-of-object this falling-ambush))
@@ -838,17 +840,17 @@
     (let ((a1-1 (new 'stack 'debris-tuning (the-as uint 1))))
       (set! (-> a1-1 hit-xz-reaction) 0.95)
       (set! (-> a1-1 hit-y-reaction) 0.6)
-      (set! (-> a1-1 fountain-rand-transv-lo quad) (-> self incoming attack-position quad))
+      (vector-copy! (-> a1-1 fountain-rand-transv-lo) (-> self incoming attack-position))
       (debris-spawn self a1-1 *kg-grunt-debris-params* (the-as process-drawable #f))
       )
     (let ((v1-6 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node kg-grunt-lod0-jg chest))))
       (cond
         ((logtest? (-> *part-group-id-table* 220 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> v1-6 quad))
+         (vector-copy! (-> *launch-matrix* trans) v1-6)
          (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 220))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> v1-6 quad))
+          (vector-copy! (-> *launch-matrix* trans) v1-6)
           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 220))
           )
         )
@@ -873,12 +875,7 @@
             )
         )
       )
-    (let* ((gp-1 *target*)
-           (a0-4 (if (type? gp-1 process-focusable)
-                     gp-1
-                     )
-                 )
-           )
+    (let ((a0-4 (the-as target (as-type *target* process-focusable))))
       (when a0-4
         (let* ((gp-2 (-> self root))
                (s3-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (get-trans a0-4 0) (-> gp-2 trans)) 1.0))
@@ -908,10 +905,7 @@
       )
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.2))
-        (suspend)
-        )
+    (suspend-for (seconds 0.2)
       )
     (let ((v1-6 (-> self root root-prim)))
       (set! (-> v1-6 prim-core collide-as) (-> self root backup-collide-as))
@@ -936,13 +930,14 @@
   )
 
 ;; definition for method 102 of type kg-grunt
-(defmethod go-directed2 ((this kg-grunt))
+(defmethod go-next-state-auto ((this kg-grunt))
+  "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware."
   (case (-> this jump-why)
     ((2)
      (go (method-of-object this jumping-ambush-cont))
      )
     (else
-      ((method-of-type nav-enemy go-directed2) this)
+      ((method-of-type nav-enemy go-next-state-auto) this)
       )
     )
   )
@@ -994,7 +989,7 @@
           )
       (if (and (nonzero? a0-0) (< v1-1 (-> a0-0 curve num-cverts)))
           (set! (-> self jumping-ambush-path-pt) v1-1)
-          (go-best-state self)
+          (go-state-for-focused self)
           )
       )
     (until #f
@@ -1050,7 +1045,7 @@
           )
         0
         (let ((gp-0 (-> self draw art-group data (-> self patrol-anim anim-index)))
-              (s5-0 (set-reaction-time! self 1 (seconds 0.027)))
+              (s5-0 (rnd-time-frame self 1 (seconds 0.027)))
               )
           (let ((v1-37 (ja-group)))
             (if (not (and v1-37 (= v1-37 gp-0)))
@@ -1074,7 +1069,7 @@
             )
           0
           (let ((gp-1 (-> self draw art-group data (-> self patrol-anim anim-index)))
-                (s5-1 (set-reaction-time! self (seconds 0.007) (seconds 0.017)))
+                (s5-1 (rnd-time-frame self (seconds 0.007) (seconds 0.017)))
                 )
             (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
@@ -1107,7 +1102,7 @@
             (suspend)
             (ja :num! (seek! max f30-0))
             )
-          (until (not (enemy-method-134 self 0.2))
+          (until (not (rnd-chance-for-idle? self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
@@ -1134,53 +1129,38 @@
 
 ;; definition for method 197 of type kg-grunt
 (defmethod go-attack ((this kg-grunt) (arg0 float))
-  (local-vars (v1-5 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((gp-0 (get-focus! this)))
-      (when gp-0
-        (let ((v1-3 (get-trans gp-0 0))
-              (s4-0 (new 'stack-no-clear 'vector))
-              )
-          (vector-! s4-0 v1-3 (-> this root trans))
-          (.lvf vf1 (&-> s4-0 quad))
-          (.add.w.vf vf2 vf0 vf0 :mask #b1)
-          (.mul.vf vf1 vf1 vf1)
-          (.mul.x.vf acc vf2 vf1 :mask #b1)
-          (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-          (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
-          (.mov v1-5 vf1)
-          (let* ((f30-0 v1-5)
-                 (f0-0 arg0)
-                 (f28-0 (* f0-0 f0-0))
-                 (f0-2 12288.0)
-                 )
-            (when (or (>= (* f0-2 f0-2) f30-0) (>= f28-0 f30-0))
-              (let ((f26-0 (quaternion-y-angle (-> this root quat)))
-                    (f0-7 (atan (-> s4-0 x) (-> s4-0 z)))
-                    (f1-0 1228.8)
-                    )
-                (cond
-                  ((and (< (* f1-0 f1-0) f30-0) (>= f28-0 f30-0) (>= 8192.0 (fabs (deg- f26-0 f0-7))))
-                   (go (method-of-object this attack))
-                   )
-                  ((let ((f0-10 12288.0))
-                     (< f30-0 (* f0-10 f0-10))
-                     )
-                   (go (method-of-object this spin-attack))
-                   )
+  (let ((gp-0 (get-focus! this)))
+    (when gp-0
+      (let ((v1-3 (get-trans gp-0 0))
+            (s4-0 (new 'stack-no-clear 'vector))
+            )
+        (vector-! s4-0 v1-3 (-> this root trans))
+        (let* ((f30-0 (vector-length-squared s4-0))
+               (f0-0 arg0)
+               (f28-0 (* f0-0 f0-0))
+               (f0-2 12288.0)
+               )
+          (when (or (>= (* f0-2 f0-2) f30-0) (>= f28-0 f30-0))
+            (let ((f26-0 (quaternion-y-angle (-> this root quat)))
+                  (f0-7 (atan (-> s4-0 x) (-> s4-0 z)))
+                  (f1-0 1228.8)
                   )
+              (cond
+                ((and (< (* f1-0 f1-0) f30-0) (>= f28-0 f30-0) (>= 8192.0 (fabs (deg- f26-0 f0-7))))
+                 (go (method-of-object this attack))
+                 )
+                ((let ((f0-10 12288.0))
+                   (< f30-0 (* f0-10 f0-10))
+                   )
+                 (go (method-of-object this spin-attack))
+                 )
                 )
               )
             )
           )
         )
-      gp-0
       )
+    gp-0
     )
   )
 
@@ -1204,7 +1184,7 @@
                           )
                    )
           (sound-play "kg-grunt-warn")
-          (set! (-> self next-warn-time) (+ gp-0 (set-reaction-time! self (seconds 1) (seconds 1.2))))
+          (set! (-> self next-warn-time) (+ gp-0 (rnd-time-frame self (seconds 1) (seconds 1.2))))
           )
         )
       )
@@ -1272,7 +1252,7 @@
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (let* ((v1-10 *game-info*)
            (v0-1 (+ (-> v1-10 attack-id) 1))
            )
@@ -1288,7 +1268,7 @@
         )
     )
   :trans (behavior ()
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (when (logtest? (-> self enemy-flags) (enemy-flag victory))
       (logclear! (-> self enemy-flags) (enemy-flag victory))
       (sound-play "kg-grunt-hit")
@@ -1376,7 +1356,7 @@
       (if (not gp-0)
           (go-stare self)
           )
-      (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+      (vector-copy! (-> self focus-pos) (get-trans (the-as process-focusable gp-0) 0))
       )
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-21 *game-info*)
@@ -1413,7 +1393,7 @@
       (until (ja-done? 0)
         (let ((a0-9 (handle->process (-> self focus handle))))
           (if a0-9
-              (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable a0-9) 0) quad))
+              (vector-copy! (-> self focus-pos) (get-trans (the-as process-focusable a0-9) 0))
               )
           )
         (seek-to-point-toward-point! (-> self root) (-> self focus-pos) 546133.3 (seconds 0.1))
@@ -1626,6 +1606,7 @@
 
 ;; definition for method 85 of type kg-grunt
 (defmethod knocked-anim ((this kg-grunt) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (local-vars (v1-72 int) (a2-3 int) (a2-5 int))
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
@@ -1645,7 +1626,7 @@
            (set! a2-3 (logior v1-2 8))
            )
        )
-     (let ((s4-0 (enemy-method-131 this 4 a2-3)))
+     (let ((s4-0 (rnd-int-excluding-masked this 4 a2-3)))
        (set! (-> *kg-grunt-global-info* prev-yellow-hit-anim-index) s4-0)
        (set! (-> this yellow-hit-anim) (-> *kg-grunt-global-info* yellow-hit-anim s4-0))
        (let ((v1-11 (rnd-int this 3)))
@@ -1707,7 +1688,7 @@
              (set! a2-5 (logior v1-42 7))
              )
          )
-       (let ((v1-46 (enemy-method-131 this 6 a2-5)))
+       (let ((v1-46 (rnd-int-excluding-masked this 6 a2-5)))
          (set! (-> *kg-grunt-global-info* prev-blue-hit-anim-index) v1-46)
          (set! (-> this blue-hit-anim) (-> *kg-grunt-global-info* blue-hit-anim v1-46))
          )
@@ -1718,7 +1699,7 @@
                (set! a2-6 (logior a2-6 4))
                )
            )
-         (set! (-> this use-charge-anim-index) (enemy-method-131 this 3 a2-6))
+         (set! (-> this use-charge-anim-index) (rnd-int-excluding-masked this 3 a2-6))
          )
        )
      (let ((a1-26 (-> this draw art-group data (-> this blue-hit-anim anim-index)))
@@ -1747,7 +1728,7 @@
                   (set! s4-3 (logior s4-3 4))
                   )
               )
-            (set! v1-72 (enemy-method-131 this 3 s4-3))
+            (set! v1-72 (rnd-int-excluding-masked this 3 s4-3))
             )
           )
         )
@@ -1771,6 +1752,7 @@
 
 ;; definition for method 86 of type kg-grunt
 (defmethod knocked-land-anim ((this kg-grunt) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (cond
     ((= (-> this incoming knocked-type) (knocked-type blue-shot))
      #f
@@ -1798,6 +1780,7 @@
 
 ;; definition for method 81 of type kg-grunt
 (defmethod go-die ((this kg-grunt))
+  "Go to the die state."
   (go (method-of-object this explode))
   )
 
@@ -1871,6 +1854,7 @@
 ;; definition for method 120 of type kg-grunt
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this kg-grunt))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1973,6 +1957,7 @@
 ;; definition for method 121 of type kg-grunt
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this kg-grunt))
+  "Typical place for shared init code. Runs from entity or process style init."
   (if (and (-> this entity) (= (-> this entity extra level name) 'factoryd))
       (initialize-skeleton
         this
@@ -1986,7 +1971,7 @@
         )
       )
   (logior! (-> this mask) (process-mask kg-robot))
-  (init-enemy-defaults! this (get-nav-enemy-info this))
+  (setup-enemy! this (get-nav-enemy-info this))
   (let ((v1-17 (-> this neck)))
     (set! (-> v1-17 up) (the-as uint 1))
     (set! (-> v1-17 nose) (the-as uint 2))
@@ -2021,14 +2006,11 @@
 
 ;; definition for method 122 of type kg-grunt
 ;; WARN: Return type mismatch int vs object.
-(defmethod go-idle2 ((this kg-grunt))
+(defmethod go-fallback-init ((this kg-grunt))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (if (logtest? (-> this fact enemy-options) (enemy-option user9))
       (go (method-of-object this wait-for-focus))
       (go (method-of-object this idle))
       )
   0
   )
-
-
-
-

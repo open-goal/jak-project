@@ -1071,7 +1071,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2186
-  :init-specs ((:texture (new 'static 'texture-id :index #x34 :page #xc))
+  :init-specs ((:texture (explosion-wave effects))
     (:num 2.0)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0) (degrees 360) :store)
@@ -1097,7 +1097,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2185
-  :init-specs ((:texture (new 'static 'texture-id :index #x33 :page #xc))
+  :init-specs ((:texture (explosion-nebula effects))
     (:num 2.0)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0))
@@ -1143,7 +1143,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2182
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:scale-x (meters 10))
     (:rot-x (degrees 11.25))
@@ -1179,7 +1179,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2181
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 10))
     (:rot-x (degrees 11.25))
@@ -1215,7 +1215,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2184
-  :init-specs ((:texture (new 'static 'texture-id :index #x32 :page #xc))
+  :init-specs ((:texture (specs effects))
     (:num 12.0 2.0)
     (:x (meters 0.25))
     (:scale-x (meters 1) (meters 0.25))
@@ -1261,7 +1261,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2183
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 12.0 4.0)
     (:x (meters 0) (meters 0.6))
     (:scale-x (meters 2.5) (meters 2))
@@ -1473,13 +1473,9 @@
           (+ 8192.0 (* 16384.0 (the float (-> self row))))
           1.0
           )
-        (vector-matrix*!
-          (the-as vector (-> gp-1 vector))
-          (the-as vector (-> gp-1 vector))
-          (-> self puzzle local-to-world)
-          )
+        (vector-matrix*! (-> gp-1 vector 0) (-> gp-1 vector 0) (-> self puzzle local-to-world))
         (quaternion-copy! (the-as quaternion (-> gp-1 trans)) (-> self root quat))
-        (vector-! (-> self rot-axis) (the-as vector (-> gp-1 vector)) (-> gp-1 vector 1))
+        (vector-! (-> self rot-axis) (-> gp-1 vector 0) (-> gp-1 vector 1))
         (set! (-> self rot-axis y) 0.0)
         (vector-normalize! (-> self rot-axis) 1.0)
         (vector-rotate90-around-y! (-> self rot-axis) (-> self rot-axis))
@@ -1494,7 +1490,7 @@
           (let ((f30-0 (fmin 1.0 (* 0.022222223 (the float (- (current-time) (-> self state-time)))))))
             (let ((s5-1 (-> self root)))
               (set! (-> s5-1 transv quad) (-> s5-1 trans quad))
-              (vector-lerp! (-> s5-1 trans) (-> gp-1 vector 1) (the-as vector (-> gp-1 vector)) f30-0)
+              (vector-lerp! (-> s5-1 trans) (-> gp-1 vector 1) (-> gp-1 vector 0) f30-0)
               (set! (-> s5-1 trans y) (+ -8192.0 (* 11585.237 (sin (lerp 8192.0 24576.0 f30-0))) (-> s5-1 trans y)))
               (vector-! (-> s5-1 transv) (-> s5-1 trans) (-> s5-1 transv))
               (let ((v1-17 (-> s5-1 transv)))
@@ -1503,8 +1499,8 @@
                   (.mov at-0 f0-12)
                   )
                 (.mov vf2 at-0)
-                (.mov.vf vf1 vf0 :mask #b1000)
-                (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+                (.mov.vf.w vf1 vf0)
+                (.mul.x.vf.xyz vf1 vf1 vf2)
                 (.svf (&-> v1-17 quad) vf1)
                 )
               (quaternion-slerp!
@@ -1559,13 +1555,9 @@
           1.0
           )
         )
-      (vector-matrix*!
-        (the-as vector (-> gp-1 vector))
-        (the-as vector (-> gp-1 vector))
-        (-> self puzzle local-to-world)
-        )
+      (vector-matrix*! (-> gp-1 vector 0) (-> gp-1 vector 0) (-> self puzzle local-to-world))
       (quaternion-copy! (the-as quaternion (-> gp-1 trans)) (-> self root quat))
-      (vector-! (-> self rot-axis) (the-as vector (-> gp-1 vector)) (-> gp-1 vector 1))
+      (vector-! (-> self rot-axis) (-> gp-1 vector 0) (-> gp-1 vector 1))
       (set! (-> self rot-axis y) 0.0)
       (vector-normalize! (-> self rot-axis) 1.0)
       (vector-rotate90-around-y! (-> self rot-axis) (-> self rot-axis))
@@ -1580,7 +1572,7 @@
         (let ((f30-0 (fmin 1.0 (* 0.0074074073 (the float (- (current-time) (-> self state-time)))))))
           (let ((s5-1 (-> self root)))
             (set! (-> s5-1 transv quad) (-> s5-1 trans quad))
-            (vector-lerp! (-> s5-1 trans) (-> gp-1 vector 1) (the-as vector (-> gp-1 vector)) f30-0)
+            (vector-lerp! (-> s5-1 trans) (-> gp-1 vector 1) (-> gp-1 vector 0) f30-0)
             (set! (-> s5-1 trans y) (+ -8192.0 (* 11585.237 (sin (lerp 8192.0 24576.0 f30-0))) (-> s5-1 trans y)))
             (quaternion-slerp!
               (-> s5-1 quat)
@@ -1605,7 +1597,7 @@
                (f30-1 (fmax 0.0 (- 0.15 f1-9)))
                )
           (set! (-> s5-2 transv quad) (-> s5-2 trans quad))
-          (vector-lerp! (-> s5-2 trans) (-> gp-1 vector 1) (the-as vector (-> gp-1 vector)) f30-1)
+          (vector-lerp! (-> s5-2 trans) (-> gp-1 vector 1) (-> gp-1 vector 0) f30-1)
           (set! (-> s5-2 trans y) (+ -8192.0 (* 11585.237 (sin (lerp 8192.0 24576.0 f30-1))) (-> s5-2 trans y)))
           (quaternion-slerp!
             (-> s5-2 quat)
@@ -1929,7 +1921,7 @@
     (set-vector! (-> gp-0 vector 1) -8192.0 0.0 8192.0 1.0)
     (set-vector! (-> gp-0 vector 2) 8192.0 0.0 8192.0 1.0)
     (set-vector! (-> gp-0 trans) 8192.0 0.0 -8192.0 1.0)
-    (vector-float*! (the-as vector (-> gp-0 vector)) (the-as vector (-> gp-0 vector)) arg2)
+    (vector-float*! (-> gp-0 vector 0) (-> gp-0 vector 0) arg2)
     (vector-float*! (-> gp-0 vector 1) (-> gp-0 vector 1) arg2)
     (vector-float*! (-> gp-0 vector 2) (-> gp-0 vector 2) arg2)
     (vector-float*! (-> gp-0 trans) (-> gp-0 trans) arg2)
@@ -1939,12 +1931,12 @@
       (set! (-> v1-12 vector 0 z) (+ 8192.0 (* 16384.0 (the float arg1))))
       (set! (-> v1-12 vector 0 w) 1.0)
       )
-    (vector+! (the-as vector (-> gp-0 vector)) (the-as vector (-> gp-0 vector)) (the-as vector (&+ gp-0 64)))
+    (vector+! (-> gp-0 vector 0) (-> gp-0 vector 0) (the-as vector (&+ gp-0 64)))
     (vector+! (-> gp-0 vector 1) (-> gp-0 vector 1) (the-as vector (&+ gp-0 64)))
     (vector+! (-> gp-0 vector 2) (-> gp-0 vector 2) (the-as vector (&+ gp-0 64)))
     (vector+! (-> gp-0 trans) (-> gp-0 trans) (the-as vector (&+ gp-0 64)))
     (let ((s4-0 (-> this puzzle local-to-world)))
-      (vector-matrix*! (the-as vector (-> gp-0 vector)) (the-as vector (-> gp-0 vector)) s4-0)
+      (vector-matrix*! (-> gp-0 vector 0) (-> gp-0 vector 0) s4-0)
       (vector-matrix*! (-> gp-0 vector 1) (-> gp-0 vector 1) s4-0)
       (vector-matrix*! (-> gp-0 vector 2) (-> gp-0 vector 2) s4-0)
       (vector-matrix*! (-> gp-0 trans) (-> gp-0 trans) s4-0)
@@ -1952,7 +1944,7 @@
     (add-debug-line
       #t
       (bucket-id debug-no-zbuf1)
-      (the-as vector (-> gp-0 vector))
+      (-> gp-0 vector 0)
       (-> gp-0 vector 1)
       (the-as rgba arg3)
       #f
@@ -1980,7 +1972,7 @@
       #t
       (bucket-id debug-no-zbuf1)
       (-> gp-0 trans)
-      (the-as vector (-> gp-0 vector))
+      (-> gp-0 vector 0)
       (the-as rgba arg3)
       #f
       (the-as rgba -1)
@@ -2353,11 +2345,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this under-shoot-block) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)

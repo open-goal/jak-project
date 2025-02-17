@@ -12,7 +12,7 @@
 ;; definition for method 17 of type nav-branch
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-speed-limit ((this nav-branch) (arg0 float))
-  (set! (-> this speed-limit) (the-as uint (max 0 (min 255 (the int (+ 0.5 (* 0.0009765625 arg0)))))))
+  (set! (-> this speed-limit) (the-as uint (max 0 (min 255 (the int (+ 0.5 (/ arg0 1024)))))))
   0
   (none)
   )
@@ -20,7 +20,7 @@
 ;; definition for method 18 of type nav-branch
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-width ((this nav-branch) (arg0 float))
-  (set! (-> this width) (the-as uint (max 0 (min 255 (the int (+ 0.5 (* 0.00390625 arg0)))))))
+  (set! (-> this width) (the-as uint (max 0 (min 255 (the int (+ 0.5 (/ arg0 256)))))))
   0
   (none)
   )
@@ -83,8 +83,8 @@
                 )
               (.lvf vf4 (&-> a0-6 quad))
               )
-            (.add.x.vf vf5 vf0 vf0 :mask #b1000)
-            (.add.x.vf vf5 vf4 vf6 :mask #b111)
+            (.add.x.vf.w vf5 vf0 vf0)
+            (.add.x.vf.xyz vf5 vf4 vf6)
             (.svf (the-as (pointer uint128) (&-> a1-3 0)) vf5)
             )
           (let ((a1-4 (-> v1-8 dummy-node)))
@@ -94,15 +94,15 @@
                 )
               (.lvf vf4 (&-> a0-7 quad))
               )
-            (.add.x.vf vf5 vf0 vf0 :mask #b1000)
-            (.add.x.vf vf5 vf4 vf6 :mask #b111)
+            (.add.x.vf.w vf5 vf0 vf0)
+            (.add.x.vf.xyz vf5 vf4 vf6)
             (.svf (&-> a1-4 position quad) vf5)
             )
           (add-debug-box
             #t
             (bucket-id debug2)
             (the-as vector (&-> v1-8 id))
-            (the-as vector (-> v1-8 dummy-node))
+            (-> v1-8 dummy-node position)
             *color-yellow*
             )
           )
@@ -328,7 +328,7 @@
 ;; definition for method 16 of type nav-node
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-radius ((this nav-node) (arg0 float))
-  (set! (-> this radius) (the-as uint (max 0 (min 255 (the int (+ 0.5 (* 0.0009765625 arg0)))))))
+  (set! (-> this radius) (the-as uint (max 0 (min 255 (the int (+ 0.5 (/ arg0 1024)))))))
   0
   (none)
   )
@@ -973,17 +973,17 @@
                   (set! (-> a0-7 quad) (-> a2-0 position quad))
                   (set! (-> a0-7 w) 1.0)
                   )
-                (vector-! (-> s5-0 vector 2) (-> s5-0 vector 1) (the-as vector (-> s5-0 vector)))
+                (vector-! (-> s5-0 vector 2) (-> s5-0 vector 1) (-> s5-0 vector 0))
                 (let* ((f0-2 (vector-length (-> s5-0 vector 2)))
                        (f1-2 (fmax (* 0.75 f0-2) (+ -8192.0 f0-2)))
                        )
                   (vector-float*! (-> s5-0 vector 2) (-> s5-0 vector 2) (/ f1-2 f0-2))
                   )
-                (vector+! (-> s5-0 trans) (the-as vector (-> s5-0 vector)) (-> s5-0 vector 2))
+                (vector+! (-> s5-0 trans) (-> s5-0 vector 0) (-> s5-0 vector 2))
                 (add-debug-line
                   #t
                   (bucket-id debug2)
-                  (the-as vector (-> s5-0 vector))
+                  (-> s5-0 vector 0)
                   (-> s5-0 trans)
                   (cond
                     ((= (-> v1-9 id) #xffff)
@@ -1191,7 +1191,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod patch-nodes ((this nav-graph))
   "Patch nodes. Node pointers are stored as indices into arrays to be allocated on the level heap
-and patched at runtime after loading."
+   and patched at runtime after loading."
   (when (not (-> this patched))
     (set! (-> this patched) #t)
     (let ((s5-0 0))

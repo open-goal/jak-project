@@ -4,6 +4,7 @@ out vec4 color;
 
 uniform vec4 rgba;
 uniform int enable_tex;
+uniform int set_alpha;
 uniform int tcc;
 uniform ivec4 channel_scramble;
 uniform float alpha_multiply;
@@ -57,5 +58,9 @@ void main() {
   } else {
     color = (rgba / 128.);
   }
-  color.a *= alpha_multiply;
+  if (set_alpha == 1) {
+    color.a = 0.5;
+  } else {
+    color.a *= alpha_multiply;
+  }
 }

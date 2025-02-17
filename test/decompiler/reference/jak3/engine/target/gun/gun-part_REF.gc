@@ -867,7 +867,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *curve-linear-up-red*) (!= loading-level global))
   (set! *curve-linear-up-red* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *curve-linear-up-red* 2 'loading-level (the-as int #f))
+  (allocate! *curve-linear-up-red* 2 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -921,17 +921,15 @@ gun
 (set! (-> *red-shot-3-trail* uv-repeat-dist) 16384000.0)
 
 ;; failed to figure out what this is:
-(set! (-> *red-shot-3-trail* lie-mode) (the-as uint 0))
+(set! (-> *red-shot-3-trail* lie-mode) (lie-mode appearance0))
 
 ;; failed to figure out what this is:
 (set! (-> *red-shot-3-trail* max-age) (seconds 0.5))
 
 ;; failed to figure out what this is:
 (if #f
-    (set! (-> *red-shot-3-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *red-shot-3-trail* tex-id) (the-as uint #x100300))
+    (set! (-> *red-shot-3-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *red-shot-3-trail* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 ;; failed to figure out what this is:
@@ -950,7 +948,7 @@ gun
 (set! (-> *red-shot-3-trail* zbuffer?) #f)
 
 ;; failed to figure out what this is:
-(set! (-> *red-shot-3-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *red-shot-3-trail* lie-vector) *up-vector*)
 
 ;; failed to figure out what this is:
 (set! (-> *red-shot-3-trail* use-tape-mode?) #f)
@@ -964,7 +962,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *curve-yellow2-shot-alpha*) (!= loading-level global))
   (set! *curve-yellow2-shot-alpha* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *curve-yellow2-shot-alpha* 21 'loading-level (the-as int #f))
+  (allocate! *curve-yellow2-shot-alpha* 21 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -1157,17 +1155,15 @@ gun
 (set! (-> *yellow-shot-2-trail* uv-repeat-dist) 20480.0)
 
 ;; failed to figure out what this is:
-(set! (-> *yellow-shot-2-trail* lie-mode) (the-as uint 0))
+(set! (-> *yellow-shot-2-trail* lie-mode) (lie-mode appearance0))
 
 ;; failed to figure out what this is:
 (set! (-> *yellow-shot-2-trail* max-age) (seconds 0.5))
 
 ;; failed to figure out what this is:
 (if #f
-    (set! (-> *yellow-shot-2-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *yellow-shot-2-trail* tex-id) (the-as uint #x501e00))
+    (set! (-> *yellow-shot-2-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *yellow-shot-2-trail* tex-id) (new 'static 'texture-id :index #x1e :page #x5))
     )
 
 ;; failed to figure out what this is:
@@ -1186,7 +1182,7 @@ gun
 (set! (-> *yellow-shot-2-trail* zbuffer?) #f)
 
 ;; failed to figure out what this is:
-(set! (-> *yellow-shot-2-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *yellow-shot-2-trail* lie-vector) *up-vector*)
 
 ;; failed to figure out what this is:
 (set! (-> *yellow-shot-2-trail* use-tape-mode?) #f)
@@ -4084,7 +4080,7 @@ gun
           (s5-0 (new 'stack-no-clear 'vector))
           (s4-0 (new 'stack 'vector4w))
           )
-      (set! (-> s3-0 quad) (-> *target* gun fire-point quad))
+      (vector-copy! s3-0 (-> *target* gun fire-point))
       (set! (-> s5-0 x) (- (-> arg2 x) (-> s3-0 x)))
       (set! (-> s5-0 y) (- (-> arg2 y) (-> s3-0 y)))
       (set! (-> s5-0 z) (- (-> arg2 z) (-> s3-0 z)))
@@ -4136,7 +4132,7 @@ gun
              )
         (vector-normalize! s4-0 (lerp 10240.0 0.0 f0-5))
         )
-      (set! (-> s5-0 quad) (-> *target* gun fire-point quad))
+      (vector-copy! s5-0 (-> *target* gun fire-point))
       (set! (-> arg2 x) (+ (-> s4-0 x) (-> s5-0 x)))
       (set! (-> arg2 y) (+ (-> s4-0 y) (-> s5-0 y)))
       (set! (-> arg2 z) (+ (-> s4-0 z) (-> s5-0 z)))
@@ -4158,7 +4154,7 @@ gun
     (let* ((f0-4 (vector-normalize-ret-len! s5-0 1.0))
            (f0-6 (- (* 300.0 f0-4) (* f30-0 (seconds-per-frame))))
            (f0-7 (fmax 0.0 f0-6))
-           (f0-8 (* 0.0033333334 f0-7))
+           (f0-8 (/ f0-7 300))
            )
       (vector-normalize! s5-0 f0-8)
       )
@@ -4175,7 +4171,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *gun-dark-3-nuke-fade-curve*) (!= loading-level global))
   (set! *gun-dark-3-nuke-fade-curve* (new 'loading-level 'curve-color-piecewise))
-  (curve-color-piecewise-method-10 *gun-dark-3-nuke-fade-curve* 5 'loading-level (the-as uint #f))
+  (allocate! *gun-dark-3-nuke-fade-curve* 5 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -4262,7 +4258,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *gun-dark-3-nuke-blur-curve*) (!= loading-level global))
   (set! *gun-dark-3-nuke-blur-curve* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *gun-dark-3-nuke-blur-curve* 4 'loading-level (the-as int #f))
+  (allocate! *gun-dark-3-nuke-blur-curve* 4 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -4298,7 +4294,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *gun-dark-3-nuke-mushroom-size-curve-x*) (!= loading-level global))
   (set! *gun-dark-3-nuke-mushroom-size-curve-x* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *gun-dark-3-nuke-mushroom-size-curve-x* 2 'loading-level (the-as int #f))
+  (allocate! *gun-dark-3-nuke-mushroom-size-curve-x* 2 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -4316,7 +4312,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *gun-dark-3-nuke-mushroom-size-curve-y*) (!= loading-level global))
   (set! *gun-dark-3-nuke-mushroom-size-curve-y* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *gun-dark-3-nuke-mushroom-size-curve-y* 2 'loading-level (the-as int #f))
+  (allocate! *gun-dark-3-nuke-mushroom-size-curve-y* 2 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -4585,7 +4581,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *gun-dark-3-nuke-fade-curve-small*) (!= loading-level global))
   (set! *gun-dark-3-nuke-fade-curve-small* (new 'loading-level 'curve-color-piecewise))
-  (curve-color-piecewise-method-10 *gun-dark-3-nuke-fade-curve-small* 5 'loading-level (the-as uint #f))
+  (allocate! *gun-dark-3-nuke-fade-curve-small* 5 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -4672,7 +4668,7 @@ gun
 ;; failed to figure out what this is:
 (when (or (zero? *gun-dark-3-nuke-blur-curve-small*) (!= loading-level global))
   (set! *gun-dark-3-nuke-blur-curve-small* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *gun-dark-3-nuke-blur-curve-small* 4 'loading-level (the-as int #f))
+  (allocate! *gun-dark-3-nuke-blur-curve-small* 4 'loading-level #f)
   )
 
 ;; failed to figure out what this is:

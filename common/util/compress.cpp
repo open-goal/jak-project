@@ -46,4 +46,17 @@ std::vector<u8> decompress_zstd(const void* data, size_t size) {
   ASSERT(decomp_size == decompressed_size);
   return result;
 }
+
+std::vector<u8> compress_zstd_no_header(const void* data, size_t size) {
+  size_t max_compressed = ZSTD_compressBound(size);
+  std::vector<u8> result(max_compressed);
+
+  size_t compressed_size = ZSTD_compress(result.data(), max_compressed, data, size, 1);
+  if (ZSTD_isError(compressed_size)) {
+    ASSERT_MSG(false, fmt::format("ZSTD error: {}", ZSTD_getErrorName(compressed_size)));
+  }
+
+  result.resize(compressed_size);
+  return result;
+}
 }  // namespace compression

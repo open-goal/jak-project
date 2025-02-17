@@ -77,7 +77,7 @@
   (local-vars (sv-32 vector2h) (sv-36 vector))
   (set! sv-32 (new 'stack 'vector2h))
   (set! sv-36 (-> this bsphere))
-  (add-debug-x #t (bucket-id debug-no-zbuf1) sv-36 (new 'static 'rgba :r #xff :g #xff :a #x80))
+  (add-debug-x #t (bucket-id debug-no-zbuf1) sv-36 (#if PC_PORT (region-enter-color #x80) (new 'static 'rgba :r #xff :g #xff :a #x80)))
   (when (nonzero? (-> this region))
     (let ((s5-0 add-debug-text-3d)
           (s4-0 #t)
@@ -202,11 +202,15 @@
   )
 
 (defmethod debug-draw-region ((this drawable-region-sphere) (arg0 int))
+  (#when PC_PORT
+    (when (and *debug-region-hide-empty* (not (or (-> this region on-enter) (-> this region on-exit) (-> this region on-inside))))
+      ;; no scripts to run means the region is "empty" so do not render (unless enabled)
+      (return 0)))
   (let ((t9-0 (method-of-type drawable-region-prim debug-draw-region)))
     (t9-0 this arg0)
     )
   (let ((a2-0 (-> this bsphere)))
-    (add-debug-sphere #t (bucket-id debug) a2-0 (-> this bsphere w) (new 'static 'rgba :r #xff :a #x80))
+    (add-debug-sphere #t (bucket-id debug) a2-0 (-> this bsphere w) (#if PC_PORT (region-enter-color #x80) (new 'static 'rgba :r #xff :a #x80)))
     )
   0
   (none)
@@ -237,30 +241,32 @@
   )
 
 (defmethod debug-draw-region ((this drawable-region-face) (arg0 int))
+  (#when PC_PORT
+    (when (and *debug-region-hide-empty* (not (or (-> this region on-enter) (-> this region on-exit) (-> this region on-inside))))
+      ;; no scripts to run means the region is "empty" so do not render (unless enabled)
+      (return 0)))
   (when (zero? arg0)
     (let ((t9-0 (method-of-type drawable-region-prim debug-draw-region)))
       (t9-0 this arg0)
       )
     )
-  (let ((s5-0 (-> this bsphere)))
-    (add-debug-vector
-      #t
-      (bucket-id debug-no-zbuf1)
-      s5-0
-      (-> this data normal)
-      (meters 2)
-      (new 'static 'rgba :r #xff :g #xff :a #x80)
+  (#cond
+    (PC_PORT
+      (when *debug-region-show-bsphere*
+        (let ((s5-0 (-> this bsphere)))
+          (add-debug-vector #t (bucket-id debug-no-zbuf1) s5-0 (-> this data normal) (meters 2) (region-enter-color #x80))
+          (add-debug-sphere #t (bucket-id debug) s5-0 (-> this bsphere w) (region-exit-color #x30))
+          )
+        )
+      (add-debug-bound (bucket-id debug) (-> this data points) (the-as int (-> this data num-points)) (region-enter-color #x40) (region-exit-color #x40) 0)
       )
-    (add-debug-sphere #t (bucket-id debug) s5-0 (-> this bsphere w) (new 'static 'rgba :r #xff :a #x30))
-    )
-  (add-debug-bound
-    (bucket-id debug)
-    (-> this data points)
-    (the-as int (-> this data num-points))
-    (new 'static 'rgba :r #x80 :g #x80 :a #x40)
-    (new 'static 'rgba :r #x80 :a #x40)
-    0
-    )
+    (#t
+      (let ((s5-0 (-> this bsphere)))
+        (add-debug-vector #t (bucket-id debug-no-zbuf1) s5-0 (-> this data normal) (meters 2) (new 'static 'rgba :r #xff :g #xff :a #x80))
+        (add-debug-sphere #t (bucket-id debug) s5-0 (-> this bsphere w) (new 'static 'rgba :r #xff :a #x30))
+        )
+      (add-debug-bound (bucket-id debug) (-> this data points) (the-as int (-> this data num-points)) (new 'static 'rgba :r #x80 :g #x80 :a #x40) (new 'static 'rgba :r #x80 :a #x40) 0)
+      ))
   0
   (none)
   )
@@ -569,13 +575,13 @@
   )
 
 (defun region-execute ()
-  (set! (-> *level* camera-pos 1 quad) (-> *level* camera-pos 0 quad))
+  (vector-copy! (-> *level* camera-pos 1) (-> *level* camera-pos 0))
   (set! (-> *level* camera-pos 0 quad) (-> (camera-pos) quad))
-  (set! (-> *level* target-pos 1 quad) (-> *level* target-pos 0 quad))
+  (vector-copy! (-> *level* target-pos 1) (-> *level* target-pos 0))
   (set! (-> *level* target-pos 0 quad) (-> (target-pos 0) quad))
   (when (and *execute-regions* (-> *setting-control* user-current region-mode) (not (paused?)))
-    (region-tree-execute 'camera (-> *level* camera-pos 1) (the-as vector (-> *level* camera-pos)))
-    (region-tree-execute 'target (-> *level* target-pos 1) (the-as vector (-> *level* target-pos)))
+    (region-tree-execute 'camera (-> *level* camera-pos 1) (-> *level* camera-pos 0))
+    (region-tree-execute 'target (-> *level* target-pos 1) (-> *level* target-pos 0))
     )
   0
   (none)

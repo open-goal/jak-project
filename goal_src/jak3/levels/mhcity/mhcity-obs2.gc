@@ -59,6 +59,7 @@
   )
 
 (defmethod init-from-entity! ((this mhcity-puffer) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this 1.0)
   (process-drawable-from-entity! this arg0)
   (process-drawable-scale-from-entity! this arg0)
@@ -118,7 +119,7 @@
 (defbehavior puffer-init-by-other mhcity-puffer ((arg0 puffer-init-by-other-params))
   (set! (-> self level) (level-get *level* 'lctydest))
   (init-collision! self (-> arg0 scale))
-  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (vector-copy! (-> self root trans) (-> arg0 pos))
   (quaternion-copy! (-> self root quat) (-> arg0 orient))
   (initialize-skeleton
     self
@@ -223,7 +224,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('move-to)
-       (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+       (vector-copy! (-> self root trans) (the-as vector (-> block param 0)))
        (quaternion-copy! (-> self root quat) (the-as quaternion (-> block param 1)))
        )
       )
@@ -374,11 +375,7 @@
   :virtual #t
   :parent (mhcity-puffer-large puffer-active-base-state)
   :trans (behavior ()
-    (let ((t9-1 (-> (find-parent-state) trans)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler trans)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
@@ -397,11 +394,7 @@
   :virtual #t
   :parent (mhcity-puffer-large puffer-active-base-state)
   :trans (behavior ()
-    (let ((t9-1 (-> (find-parent-state) trans)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler trans)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))

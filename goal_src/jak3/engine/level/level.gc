@@ -52,6 +52,18 @@
       gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1
       gun-red-2 gun-yellow-2 gun-blue-2 gun-dark-2
       gun-red-3 gun-yellow-3 gun-blue-3 gun-dark-3))
+  (logior! (-> *game-info* debug-features)
+    (game-feature
+      jakc
+      board board-launch board-zap
+      darkeco
+      darkjak darkjak darkjak-smack darkjak-bomb0 darkjak-bomb1
+      lighteco
+      lightjak lightjak-regen lightjak-swoop lightjak-freeze lightjak-shield
+      gun
+      gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1
+      gun-red-2 gun-yellow-2 gun-blue-2 gun-dark-2
+      gun-red-3 gun-yellow-3 gun-blue-3 gun-dark-3))
   (logior! (-> *game-info* vehicles)
     (game-vehicles
       v-turtle
@@ -478,15 +490,11 @@
    it will kick out levels as needed to make a free slot, and set up a new level, and start
    the load. This should only be used when you might want to start a load."
   (local-vars (s5-1 level))
-
-  (start-debug "level-get-for-use: ~A ~A~%" arg0 arg1)
   (init-level-system this #f)
   (let* ((s2-0 (lookup-level-info arg0))
          (s1-0 (remap-level-name s2-0))
          )
-    (start-debug " remapped name: ~A~%" s1-0)
     (let ((s5-0 (level-get this s1-0)))
-      (start-debug " existing? ~A~%" s5-0)
       (when s5-0
         (level-status-update! s5-0 arg1)
         (set! s5-1 s5-0)
@@ -494,7 +502,6 @@
         )
       )
     (let ((a0-7 (level-get-most-disposable this)))
-      (start-debug " most disposable: ~A~%" a0-7)
       (set! s5-1 (if a0-7
                      (level-status-update! a0-7 'inactive)
                      a0-7
@@ -509,7 +516,7 @@
     (let ((s0-0 (-> s2-0 master-level)))
       (when s0-0
         (let ((a0-10 (lookup-level-info s0-0)))
-          (when (not (logtest? (level-flags lf17) (-> a0-10 level-flags)))
+          (when (not (logtest? (level-flags allow-unloaded) (-> a0-10 level-flags)))
             (dotimes (v1-16 (-> this length))
               (let ((a0-15 (-> this level v1-16)))
                 (when (or (= (-> a0-15 status) 'active) (= (-> a0-15 status) 'alive) (= (-> a0-15 status) 'loaded))
@@ -553,7 +560,7 @@
   (none)
   )
 
-(defmethod status-of-level-and-borrows ((this level-group) (arg0 symbol) (arg1 symbol))
+(defmethod level-status? ((this level-group) (arg0 symbol) (arg1 symbol))
   "Get the combined status of a level and borrow levels."
   (if (not arg0)
       (return #f)
@@ -570,7 +577,7 @@
             (let ((v1-14 (-> s4-0 info borrow borrow-info s3-1)))
               (when v1-14
                 (when (car (cdr v1-14))
-                  (let ((v1-15 (status-of-level-and-borrows this (the-as symbol (car v1-14)) arg1)))
+                  (let ((v1-15 (level-status? this (the-as symbol (car v1-14)) arg1)))
                     (if (!= v1-15 (-> s4-0 status))
                         (return v1-15)
                         )
@@ -606,11 +613,11 @@
            (while (and (> s4-1 0) (car s5-1))
              (when (and (!= (car s5-1) 'dummy)
                         (or (= arg1 'all) (let ((a0-31 (lookup-level-info (the-as symbol (car s5-1)))))
-                                            (and a0-31 (not (logtest? (-> a0-31 level-flags) (level-flags lf15))))
+                                            (and a0-31 (not (logtest? (-> a0-31 level-flags) (level-flags city-borrow-available))))
                                             )
                             )
                         )
-               (let ((v1-29 (status-of-level-and-borrows *level* (the-as symbol (car s5-1)) arg1)))
+               (let ((v1-29 (level-status? *level* (the-as symbol (car s5-1)) arg1)))
                  (if (!= v1-29 'active)
                      (return v1-29)
                      )
@@ -632,7 +639,6 @@
    This can do both loading, linking, login, and activation.
    This is somewhat similar to level-get-for-use, but requires that you already have the level object.
    This function is the way to transition from loaded to alive/active."
-  (start-debug "level-status-update: ~A ~A (current ~A)~%" this arg0 (-> this status))
   (case arg0
     (('inactive)
      (-> this status)
@@ -1696,7 +1702,7 @@
                                                          )
                )
            (-> this borrow-from-level)
-           (logtest? (-> this info level-flags) (level-flags lf6))
+           (logtest? (-> this info level-flags) (level-flags borrow-load))
            )
        (set! (-> this load-buffer-mode) (level-memory-mode borrow))
        (let ((t0-2 (logand -64 (&+ (-> this heap current) 63))))
@@ -1750,10 +1756,8 @@
 (defmethod login-begin ((this level))
   "Start logging in loaded level data."
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
-  (format 0 "LOGIN-BEGIN: ~A~%" this)
   (cond
     ((-> this bsp)
-     (format 0 " and with a bsp too~%")
      (let ((s5-0 (-> this bsp)))
        (set! (-> s5-0 level tfrag-gs-test)
              (if (logtest? (-> s5-0 texture-flags 0) (texture-page-flag alpha-enable))
@@ -2250,7 +2254,7 @@
   "Remove level from memory."
   (deactivate this)
   (when (!= (-> this status) 'inactive)
-    (when (not (logtest? (level-flags lf17) (-> this info level-flags)))
+    (when (not (logtest? (level-flags allow-unloaded) (-> this info level-flags)))
       (dotimes (s5-0 (-> *level* length))
         (let ((v1-10 (-> *level* level s5-0)))
           (when (or (= (-> v1-10 status) 'active) (= (-> v1-10 status) 'alive) (= (-> v1-10 status) 'loaded))
@@ -2530,7 +2534,6 @@
 (defmethod init-level-system ((this level-group) (arg0 symbol))
   "If needed, initialize the level system by loading common/art packages and allocating level heaps."
   (when (zero? (-> *level* heap base))
-    (start-debug "allocating levels~%")
     (kmemopen global "level-heaps")
     (when (nmember "game" *kernel-packages*)
       (set! *kernel-packages* (cons "art" *kernel-packages*))
@@ -2657,7 +2660,7 @@
         (dotimes (a0-3 (-> this length))
           (let ((a1-3 (-> this level a0-3)))
             (when (= (-> a1-3 status) 'active)
-              (if (and (= (-> a1-3 name) v1-1) (not (logtest? (-> a1-3 info level-flags) (level-flags lf1))))
+              (if (and (= (-> a1-3 name) v1-1) (not (logtest? (-> a1-3 info level-flags) (level-flags not-physical))))
                   (return a1-3)
                   )
               )
@@ -2669,7 +2672,7 @@
       (dotimes (a0-5 (-> this length))
         (let ((a1-8 (-> this level a0-5)))
           (when (= (-> a1-8 status) 'active)
-            (if (and (= (-> a1-8 name) v1-5) (not (logtest? (-> a1-8 info level-flags) (level-flags lf1))))
+            (if (and (= (-> a1-8 name) v1-5) (not (logtest? (-> a1-8 info level-flags) (level-flags not-physical))))
                 (return a1-8)
                 )
             )
@@ -2683,7 +2686,7 @@
             (when (= (-> s2-0 status) 'active)
               (let ((f0-0 (vector-vector-distance (-> s2-0 bsp bsphere) s5-0)))
                 (if (and (-> s2-0 inside-boxes?)
-                         (not (logtest? (-> s2-0 info level-flags) (level-flags lf1)))
+                         (not (logtest? (-> s2-0 info level-flags) (level-flags not-physical)))
                          (or (not s4-0) (< f0-0 f30-0))
                          )
                     (set! s4-0 s2-0)
@@ -2701,7 +2704,7 @@
   (dotimes (v1-26 (-> this length))
     (let ((a0-11 (-> this level v1-26)))
       (when (= (-> a0-11 status) 'active)
-        (if (and (-> a0-11 meta-inside?) (not (logtest? (-> a0-11 info level-flags) (level-flags lf1))))
+        (if (and (-> a0-11 meta-inside?) (not (logtest? (-> a0-11 info level-flags) (level-flags not-physical))))
             (return a0-11)
             )
         )
@@ -2712,7 +2715,7 @@
     (dotimes (v1-29 (-> this length))
       (let ((a0-16 (-> this level v1-29)))
         (when (= (-> a0-16 status) 'active)
-          (if (and (not v0-1) (not (logtest? (-> a0-16 info level-flags) (level-flags lf1))))
+          (if (and (not v0-1) (not (logtest? (-> a0-16 info level-flags) (level-flags not-physical))))
               (set! v0-1 a0-16)
               )
           )
@@ -2825,7 +2828,6 @@
 (defun play ((arg0 symbol) (arg1 symbol))
   "Start (or restart) the game!
    This will start up the display process, and load the initial level."
-  (start-debug "call to play!~%")
   (kmemopen global "level-boot")
   (when *kernel-boot-level*
     (bg (string->symbol (the-as string *kernel-boot-level*)))
@@ -3429,7 +3431,7 @@
                       (set! (-> s3-2 display?) (-> this target s5-2 display?))
                       )
                      (else
-                       (if (and (logtest? (-> s3-2 info level-flags) (level-flags lf11))
+                       (if (and (logtest? (-> s3-2 info level-flags) (level-flags display-wait))
                                 (!= (-> this target s5-2 display?) 'display-no-wait)
                                 )
                            (send-event *target* 'loading)
@@ -3492,7 +3494,7 @@
               (if (= (-> a2-32 name) (-> this vis-nick))
                   (goto cfg-137)
                   )
-              (if (or (not v1-131) (not (logtest? (-> a2-32 info level-flags) (level-flags lf1))))
+              (if (or (not v1-131) (not (logtest? (-> a2-32 info level-flags) (level-flags not-physical))))
                   (set! v1-131 a2-32)
                   )
               (+! a0-55 1)
@@ -3615,7 +3617,7 @@
                        )
                      (or (-> *level* border?) (logtest? (-> *game-info* current-continue flags) (continue-flags change-continue)))
                      (and (or (and (!= (-> s3-0 name) (-> *game-info* current-continue level))
-                                   (or (not (logtest? (level-flags lf18) (-> s3-0 info level-flags)))
+                                   (or (not (logtest? (level-flags check-taskname-for-continue) (-> s3-0 info level-flags)))
                                        (!= (-> s3-0 info taskname) (-> (lookup-level-info (-> *game-info* current-continue level)) taskname))
                                        )
                                    )
@@ -3842,12 +3844,13 @@
         )
       )
     )
-  (let ((v1-194 (- #x2000000 (the-as int (-> global current)))))
-    (if (and (not *debug-segment*) (or (< v1-194 #x4000) (= *cheat-mode* 'debug)))
+  ;; og:preserve-this this was hardcoded to the top of EE memory (#x2000000)
+  (let ((v1-194 (&- (-> global top-base) (-> global current))))
+    (if (and (not *debug-segment*) (or (< v1-194 (* 16 1024)) (= *cheat-mode* 'debug)))
         (format
           *stdcon*
           "~3Lglobal heap fatally low at ~D.~DK free~%~0L"
-          (sar v1-194 10)
+          (/ v1-194 (* 1024 1024))
           (/ (logand v1-194 1023) 103)
           )
         )
@@ -3895,8 +3898,6 @@
   (none)
   )
 
-(format 0 "about to start level stuff...~%")
-
 (when (zero? (-> *level* level0 art-group))
   (kmemopen global "level-struct")
   (let ((gp-0 *level*))
@@ -3942,5 +3943,3 @@
     )
   (kmemclose)
   )
-
-(format 0 "done level stuff...~%")

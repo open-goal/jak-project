@@ -113,7 +113,7 @@ extern int TrapSRAM[N_VAG_CMDS];
 extern int StreamVoice[N_VAG_CMDS];
 
 extern int ActiveVagStreams;
-extern int MasterVolume[17];
+extern int MasterVolume[32];
 
 void vag_init_globals();
 

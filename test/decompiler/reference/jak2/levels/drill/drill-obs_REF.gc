@@ -4,13 +4,9 @@
 ;; definition for method 15 of type hud-gruntegg
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-gruntegg))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    200
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 200)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -25 33)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -25 33)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -47,13 +43,9 @@
 ;; definition for method 15 of type hud-crimsonhover
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-crimsonhover))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    200
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 200)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -25 33)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -25 33)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -122,8 +114,8 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod start-bouncing! ((this drill-plat-falling))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
-and translate the platform via the `smush`
-@see [[smush-control]]"
+   and translate the platform via the `smush`
+   @see [[smush-control]]"
   (activate! (-> this smush) -1.0 24 120 1.0 1.0 (-> self clock))
   (set-time! (-> this bounce-time))
   (set! (-> this bouncing) #t)
@@ -195,11 +187,11 @@ and translate the platform via the `smush`
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-plat-falling) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
@@ -407,7 +399,7 @@ This commonly includes things such as:
     (until #f
       (let ((f30-0 (- (-> self extent 1 y) (-> self extent 0 y))))
         (when (!= f30-0 (-> self length))
-          (let ((f0-3 (* 0.000010172526 f30-0)))
+          (let ((f0-3 (/ f30-0 (meters 24))))
             (ja :num! (identity f0-3))
             )
           (transform-post)
@@ -498,10 +490,10 @@ This commonly includes things such as:
 ;; definition for method 43 of type drill-elevator
 (defmethod move-between-points ((this drill-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
-@param vec TODO not sure
-@param point-a The first point fetched from the elevator's path
-@param point-b The second point fetched from the path
-@see [[path-control]] and [[elevator]]"
+   @param vec TODO not sure
+   @param point-a The first point fetched from the elevator's path
+   @param point-b The second point fetched from the path
+   @see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg2 'interp))
         (v1-3 (-> this root trans))
@@ -546,7 +538,7 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-plat! ((this drill-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this shaft)
         (process-spawn drill-elevator-shaft (-> this entity extra trans) (-> this basetrans) :to this)
         )
@@ -629,12 +621,7 @@ For example for an elevator pre-compute the distance between the first and last 
 (defmethod commited-to-ride? ((this drill-mech-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (when (= (-> this move-pos 1) (-> this bottom-top 0))
-    (let* ((s5-0 *target*)
-           (a0-2 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((a0-2 (the-as target (as-type *target* process-focusable))))
       (when (and a0-2 (focus-test? a0-2 mech) (not (logtest? (-> a0-2 focus-status) (focus-status dead ignore))))
         (let* ((v1-5 (get-trans a0-2 0))
                (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> this root trans)))
@@ -659,8 +646,8 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Return type mismatch int vs none.
 (defmethod move-to-next-point! ((this drill-mech-elevator))
   "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
-do so.
-@see [[elevator::47]]"
+   do so.
+   @see [[elevator::47]]"
   (local-vars (sv-16 float))
   (let ((a0-1 *target*))
     (when (and a0-1
@@ -698,7 +685,7 @@ do so.
 ;; definition for method 33 of type drill-mech-elevator
 (defmethod init-plat! ((this drill-mech-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this running-sound-id) (new 'static 'sound-id))
   ((method-of-type drill-elevator init-plat!) this)
   (none)
@@ -767,12 +754,7 @@ For example for an elevator pre-compute the distance between the first and last 
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (the-as process (as-type proc process-focusable))))
          (when gp-0
            (when (or (focus-test? (the-as process-focusable gp-0) mech)
                      (time-elapsed? (-> self no-collision-timer) (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout)))
@@ -869,16 +851,16 @@ For example for an elevator pre-compute the distance between the first and last 
                (set! (-> s0-0 random-rangef) f30-0)
                )
            (if s5-0
-               (set! (-> s5-0 random-rangef) (* 0.5 f28-0))
+               (set! (-> s5-0 random-rangef) (/ f28-0 2))
                )
            (if gp-0
-               (set! (-> gp-0 random-rangef) (* 0.5 f30-0))
+               (set! (-> gp-0 random-rangef) (/ f30-0 2))
                )
            (if s4-0
-               (set! (-> s5-0 random-rangef) (* 0.5 f28-0))
+               (set! (-> s5-0 random-rangef) (/ f28-0 2))
                )
            (if v1-22
-               (set! (-> gp-0 random-rangef) (* 0.5 f30-0))
+               (set! (-> gp-0 random-rangef) (/ f30-0 2))
                )
            )
          (spawn-with-matrix (-> self part) (-> self local-to-world))
@@ -901,10 +883,10 @@ For example for an elevator pre-compute the distance between the first and last 
                 (set! (-> s4-1 random-rangef) f30-0)
                 )
             (if gp-1
-                (set! (-> gp-1 random-rangef) (* 0.5 f28-0))
+                (set! (-> gp-1 random-rangef) (/ f28-0 2))
                 )
             (if v1-39
-                (set! (-> v1-39 random-rangef) (* 0.5 f30-0))
+                (set! (-> v1-39 random-rangef) (/ f30-0 2))
                 )
             )
           (spawn-with-matrix (-> self part-off) (-> self local-to-world))
@@ -950,11 +932,11 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this fire-floor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -998,41 +980,41 @@ This commonly includes things such as:
         (s3-0 (-> this local-to-world))
         (s5-1 (-> this size))
         )
-    (get-point-in-path! (-> this path) (the-as vector (-> s4-1 vector)) 0.0 'interp)
+    (get-point-in-path! (-> this path) (-> s4-1 vector 0) 0.0 'interp)
     (get-point-in-path! (-> this path) (-> s4-1 vector 1) 1.0 'interp)
     (get-point-in-path! (-> this path) (-> s4-1 vector 2) 3.0 'interp)
     (matrix-identity! s3-0)
     (vector-normalize-copy!
-      (the-as vector (-> s3-0 vector))
-      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (the-as vector (-> s4-1 vector)))
+      (-> s3-0 vector 0)
+      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (-> s4-1 vector 0))
       1.0
       )
     (vector-normalize-copy!
       (-> s3-0 vector 2)
-      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (the-as vector (-> s4-1 vector)))
+      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (-> s4-1 vector 0))
       1.0
       )
-    (vector-normalize! (vector-cross! (-> s3-0 vector 1) (-> s3-0 vector 2) (the-as vector (-> s3-0 vector))) 1.0)
-    (vector-cross! (-> s3-0 vector 2) (the-as vector (-> s3-0 vector)) (-> s3-0 vector 1))
+    (vector-normalize! (vector-cross! (-> s3-0 vector 1) (-> s3-0 vector 2) (-> s3-0 vector 0)) 1.0)
+    (vector-cross! (-> s3-0 vector 2) (-> s3-0 vector 0) (-> s3-0 vector 1))
     (vector-normalize! (-> s3-0 vector 2) 1.0)
     (set! (-> s3-0 trans quad) (-> s4-1 vector 0 quad))
     (matrix-inverse-of-rot-trans! (-> this world-to-local) (-> this local-to-world))
-    (set! (-> this deadly-width) (vector-vector-distance (-> s4-1 vector 1) (the-as vector (-> s4-1 vector))))
-    (set! (-> this deadly-length) (vector-vector-distance (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
+    (set! (-> this deadly-width) (vector-vector-distance (-> s4-1 vector 1) (-> s4-1 vector 0)))
+    (set! (-> this deadly-length) (vector-vector-distance (-> s4-1 vector 2) (-> s4-1 vector 0)))
     (let ((v1-39 (-> this root root-prim)))
       (vector-reset! (-> v1-39 local-sphere))
-      (let* ((f0-14 (* 0.5 (-> this deadly-width)))
+      (let* ((f0-14 (/ (-> this deadly-width) 2))
              (f0-16 (* f0-14 f0-14))
-             (f1-7 (* 0.5 (-> this deadly-length)))
+             (f1-7 (/ (-> this deadly-length) 2))
              )
         (set! (-> v1-39 local-sphere w) (sqrtf (+ f0-16 (* f1-7 f1-7))))
         )
       )
     (set! (-> s5-1 0)
-          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (the-as vector (-> s4-1 vector))))
+          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (-> s4-1 vector 0)))
           )
     (set! (-> s5-1 1)
-          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
+          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (-> s4-1 vector 0)))
           )
     )
   (let* ((v1-46 *game-info*)
@@ -1085,7 +1067,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 1991
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 2.5))
     (:rot-x (degrees 4.5))
@@ -1112,7 +1094,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 1992
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 2.5))
     (:rot-x (degrees 4.5))
@@ -1473,7 +1455,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 1993
-  :init-specs ((:texture (new 'static 'texture-id :index #x83 :page #xc))
+  :init-specs ((:texture (pal-lightning effects))
     (:birth-func 'birth-func-set-quat)
     (:num 1.0)
     (:scale-x (meters 1))
@@ -1489,7 +1471,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 1994
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 2))
     (:scale-y :copy scale-x)
@@ -1508,7 +1490,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 1995
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 2))
     (:scale-y :copy scale-x)
@@ -1606,15 +1588,11 @@ This commonly includes things such as:
                (let ((f0-7 (probe-using-line-sphere *collide-cache* s5-1)))
                  (when (>= f0-7 0.0)
                    (vector-float*! (-> s5-1 move-dist) (-> s5-1 move-dist) f0-7)
-                   (let ((s4-2 (-> s5-1 best-other-tri collide-ptr)))
-                     (when (if (type? s4-2 collide-shape-prim-sphere)
-                               s4-2
-                               )
-                       (set! gp-0 #t)
-                       (if (zero? (-> self hit-sound-id))
-                           (set! (-> self hit-sound-id) (sound-play "drill-laser-cut"))
-                           )
-                       )
+                   (when (the-as basic (as-type (-> s5-1 best-other-tri collide-ptr) collide-shape-prim-sphere))
+                     (set! gp-0 #t)
+                     (if (zero? (-> self hit-sound-id))
+                         (set! (-> self hit-sound-id) (sound-play "drill-laser-cut"))
+                         )
                      )
                    )
                  )
@@ -1670,11 +1648,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-laser) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (set! (-> this firing?) #f)
   (set! (-> this hit-sound-id) (new 'static 'sound-id))

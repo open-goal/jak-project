@@ -81,7 +81,7 @@ class OfflineTestThreadStatus {
  public:
   enum class Stage { IDLE, PREPARING, DECOMPILING, COMPARING, COMPILING, FAILED, FINISHED };
 
-  OfflineTestThreadStatus(const OfflineTestConfig& _config) : config(_config){};
+  OfflineTestThreadStatus(const OfflineTestConfig& _config) : config(_config) {};
 
   Stage stage = Stage::IDLE;
   uint32_t total_steps = 0;

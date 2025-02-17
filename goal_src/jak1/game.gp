@@ -218,15 +218,15 @@
     )
   )
 
-(defmacro build-custom-level (name)
+(defmacro build-custom-level (name &key (force-run #f) &key (gen-fr3 #t))
   (let* ((path (string-append "custom_assets/jak1/levels/" name "/" name ".jsonc")))
-    `(defstep :in ,path
+    `(defstep :in '(,path ,(symbol->string force-run) ,(symbol->string gen-fr3))
               :tool 'build-level
               :out '(,(string-append "$OUT/obj/" name ".go")))))
 
-(defmacro build-actor (name)
-  (let* ((path (string-append "custom_assets/jak1/models/" name ".glb")))
-    `(defstep :in ,path
+(defmacro build-actor (name &key (gen-mesh #f) &key (force-run #f) &key (texture-bucket 0))
+  (let* ((path (string-append "custom_assets/jak1/models/custom_levels/" name ".glb")))
+    `(defstep :in '(,path ,(symbol->string gen-mesh) ,(symbol->string force-run) ,(if (integer? texture-bucket) (int->string texture-bucket) (symbol->string texture-bucket)))
               :tool 'build-actor
               :out '(,(string-append "$OUT/obj/" name "-ag.go")))))
 
@@ -1659,8 +1659,9 @@
 (custom-level-cgo "TSZ.DGO" "test-zone/testzone.gd")
 
 ;; generate the art group for a custom actor.
-;; requires a .glb model file in custom_assets/jak1/models
-(build-actor "test-actor")
+;; requires a .glb model file in custom_assets/jak1/models/custom_levels
+;; to also generate a collide-mesh, add :gen-mesh #t
+(build-actor "test-actor" :gen-mesh #t)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code

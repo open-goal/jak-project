@@ -105,7 +105,8 @@
               ((jakb-wings-wings-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
-              :shadow jakb-walk-down-ja
+              ;; og:preserve-this
+              :shadow jakb-wings-wings-shadow-mg
               :texture-level 10
               :sort 4
               :origin-joint-index 3
@@ -504,7 +505,7 @@
          (-> *TARGET-bank* spin-offset)
          (+ 8192.0 (-> *TARGET-bank* spin-radius))
          )
-       (set! (-> self control root-prim local-sphere quad) (-> s4-0 local-sphere quad))
+       (vector-copy! (-> self control root-prim local-sphere) (-> s4-0 local-sphere))
        )
       (('spin 'spin-air 'get-on)
        (sphere<-vector+r!
@@ -1197,7 +1198,7 @@
 (defmethod apply-alignment ((this target) (arg0 align-opts) (arg1 transformq) (arg2 vector))
   (with-pp
     (let ((s2-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s2-0 quad) (-> arg2 quad))
+      (vector-copy! s2-0 arg2)
       (set! (-> s2-0 z) (target-align-vel-z-adjust (-> s2-0 z)))
       (when (logtest? arg0 (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel))
         (let* ((s3-0 (-> this control c-R-w))
@@ -1253,7 +1254,7 @@
             )
           )
       )
-    (* 0.125 f30-0)
+    (/ f30-0 8)
     )
   )
 
@@ -1306,7 +1307,7 @@
 
 (defun find-collision-below ((arg0 vector) (arg1 vector) (arg2 float))
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
-    (set! (-> s5-0 start-pos quad) (-> arg1 quad))
+    (vector-copy! (-> s5-0 start-pos) arg1)
     (set-vector! (-> s5-0 move-dist) 0.0 (- arg2) 0.0 1.0)
     (let ((v1-2 s5-0))
       (set! (-> v1-2 radius) 40.96)
@@ -1319,7 +1320,7 @@
       (set! (-> v1-2 action-mask) (collide-action solid))
       )
     (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
-      (set! (-> arg0 quad) (-> s5-0 best-other-tri intersect quad))
+      (vector-copy! arg0 (-> s5-0 best-other-tri intersect))
       #t
       )
     )
@@ -1697,74 +1698,51 @@
   )
 
 (defmethod attack-info-method-9 ((this attack-info) (arg0 attack-info) (arg1 process-drawable) (arg2 process-drawable))
-  (local-vars (v1-14 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
+  (let ((s5-0 (as-type arg1 process-drawable)))
+    (let ((v1-0 (as-type arg2 process-drawable)))
+      (cond
+        ((logtest? (attack-mask attacker-velocity) (-> this mask))
+         (vector-copy! (-> arg0 attacker-velocity) (-> this attacker-velocity))
+         (vector-normalize-copy! (-> arg0 trans) (-> arg0 attacker-velocity) 1.0)
          )
-    (init-vf0-vector)
-    (let ((s5-0 (if (type? arg1 process-drawable)
-                    arg1
-                    )
-                )
-          )
-      (let ((v1-0 (if (type? arg2 process-drawable)
-                      arg2
-                      )
-                  )
-            )
-        (cond
-          ((logtest? (attack-mask attacker-velocity) (-> this mask))
-           (set! (-> arg0 attacker-velocity quad) (-> this attacker-velocity quad))
-           (vector-normalize-copy! (-> arg0 trans) (-> arg0 attacker-velocity) 1.0)
-           )
-          (v1-0
-            (cond
-              (s5-0
-                (vector-! (-> arg0 trans) (-> v1-0 root trans) (-> s5-0 root trans))
-                (vector-normalize! (-> arg0 trans) 1.0)
-                (set! (-> arg0 attacker-velocity quad) (-> arg0 trans quad))
-                )
-              (else
-                (vector-z-quaternion! (-> arg0 trans) (-> v1-0 root quat))
-                (vector-negate-in-place! (-> arg0 trans))
-                (vector-normalize! (-> arg0 trans) 1.0)
-                (set! (-> arg0 attacker-velocity quad) (-> arg0 trans quad))
-                )
+        (v1-0
+          (cond
+            (s5-0
+              (vector-! (-> arg0 trans) (-> v1-0 root trans) (-> s5-0 root trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (vector-copy! (-> arg0 attacker-velocity) (-> arg0 trans))
+              )
+            (else
+              (vector-z-quaternion! (-> arg0 trans) (-> v1-0 root quat))
+              (vector-negate-in-place! (-> arg0 trans))
+              (vector-normalize! (-> arg0 trans) 1.0)
+              (vector-copy! (-> arg0 attacker-velocity) (-> arg0 trans))
               )
             )
-          (else
-            (set! (-> arg0 trans quad) (the-as uint128 0))
-            (set! (-> arg0 attacker-velocity quad) (the-as uint128 0))
-            )
+          )
+        (else
+          (set! (-> arg0 trans quad) (the-as uint128 0))
+          (set! (-> arg0 attacker-velocity quad) (the-as uint128 0))
           )
         )
-      (if s5-0
-          (set! (-> arg0 intersection quad) (-> s5-0 root trans quad))
-          (set! (-> arg0 intersection quad) (-> (target-pos 0) quad))
-          )
       )
-    (.lvf vf1 (&-> (-> arg0 trans) quad))
-    (.add.w.vf vf2 vf0 vf0 :mask #b1)
-    (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf2 vf1 :mask #b1)
-    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
-    (.mov v1-14 vf1)
-    (cond
-      ((!= v1-14 0.0)
-       (set! (-> arg0 vector quad) (-> arg0 trans quad))
-       (set! (-> arg0 vector y) 0.0)
-       (vector-xz-normalize! (-> arg0 vector) 1.0)
-       )
-      (else
-        (set! (-> arg0 vector quad) (the-as uint128 0))
+    (if s5-0
+        (vector-copy! (-> arg0 intersection) (-> s5-0 root trans))
+        (vector-copy! (-> arg0 intersection) (target-pos 0))
         )
-      )
-    0
-    (none)
     )
+  (cond
+    ((!= (vector-length-squared (-> arg0 trans)) 0.0)
+     (vector-copy! (-> arg0 vector) (-> arg0 trans))
+     (set! (-> arg0 vector y) 0.0)
+     (vector-xz-normalize! (-> arg0 vector) 1.0)
+     )
+    (else
+      (set! (-> arg0 vector quad) (the-as uint128 0))
+      )
+    )
+  0
+  (none)
   )
 
 (defmethod compute-intersect-info ((this attack-info) (arg0 object) (arg1 process-drawable) (arg2 process) (arg3 touching-shapes-entry))
@@ -1846,38 +1824,28 @@
         (set! (-> this rotate-to) (-> arg0 rotate-to))
         )
     (if (logtest? s4-0 (attack-mask intersection))
-        (set! (-> this intersection quad) (-> arg0 intersection quad))
+        (vector-copy! (-> this intersection) (-> arg0 intersection))
         )
     (if (logtest? (attack-mask attacker-velocity) s4-0)
-        (set! (-> this attacker-velocity quad) (-> arg0 attacker-velocity quad))
+        (vector-copy! (-> this attacker-velocity) (-> arg0 attacker-velocity))
         )
     (cond
       ((not (logtest? s4-0 (attack-mask vector)))
-       (let* ((s2-0 (handle->process (-> this attacker)))
-              (v1-65 (if (type? s2-0 process-drawable)
-                         (the-as process-drawable s2-0)
-                         )
-                     )
-              )
+       (let ((v1-65 (as-type (handle->process (-> this attacker)) process-drawable)))
          (when (and v1-65 (nonzero? (-> v1-65 root)))
-           (set! (-> this trans quad) (-> v1-65 root trans quad))
+           (vector-copy! (-> this trans) (-> v1-65 root trans))
            (vector-! (-> this vector) (-> arg1 root trans) (-> v1-65 root trans))
            (logior! (-> this mask) (attack-mask vector))
            )
          )
        )
       (else
-        (let* ((s3-1 (handle->process (-> this attacker)))
-               (v1-72 (if (type? s3-1 process-drawable)
-                          (the-as process-drawable s3-1)
-                          )
-                      )
-               )
+        (let ((v1-72 (as-type (handle->process (-> this attacker)) process-drawable)))
           (if (and v1-72 (nonzero? (-> v1-72 root)))
-              (set! (-> this trans quad) (-> v1-72 root trans quad))
+              (vector-copy! (-> this trans) (-> v1-72 root trans))
               )
           )
-        (set! (-> this vector quad) (-> arg0 vector quad))
+        (vector-copy! (-> this vector) (-> arg0 vector))
         (when (not (logtest? s4-0 (attack-mask shove-back)))
           (let ((v1-79 (-> this vector)))
             (set! (-> this shove-back) (sqrtf (+ (* (-> v1-79 x) (-> v1-79 x)) (* (-> v1-79 z) (-> v1-79 z)))))
@@ -1892,7 +1860,7 @@
         (set! (-> this dist) (fabs (-> this shove-back)))
         )
     (if (logtest? s4-0 (attack-mask trans))
-        (set! (-> this trans quad) (-> arg0 trans quad))
+        (vector-copy! (-> this trans) (-> arg0 trans))
         )
     )
   this
@@ -1931,10 +1899,10 @@
         (f30-0 (fmax -1.0 (fmin 1.0 arg2)))
         )
     (let ((f1-5 (fabs (- f0-1 (-> arg0 blend 1)))))
-      (seek! (-> arg0 blend 1) f0-1 (fmax (fmin (* f1-5 arg3) (* 0.8 arg3)) (* 0.2 arg3)))
+      (seek! (-> arg0 blend 1) f0-1 (fmax (fmin (* f1-5 arg3) (* 0.8 arg3)) (/ arg3 5)))
       )
     (let ((f0-9 (fabs (- f30-0 (-> arg0 blend 2)))))
-      (seek! (-> arg0 blend 2) f30-0 (fmax (fmin (* f0-9 arg3) (* 0.8 arg3)) (* 0.2 arg3)))
+      (seek! (-> arg0 blend 2) f30-0 (fmax (fmin (* f0-9 arg3) (* 0.8 arg3)) (/ arg3 5)))
       )
     )
   (cond
@@ -2025,7 +1993,7 @@
        )
       ((logtest? (-> gp-0 target-flags) (target-flags tf14))
        (let ((s5-0 (new 'static 'vector)))
-         (set! (-> s5-0 quad) (-> gp-0 control camera-pos quad))
+         (vector-copy! s5-0 (-> gp-0 control camera-pos))
          (set! (-> s5-0 y) (fmax (-> s5-0 y) (-> gp-0 alt-cam-pos y)))
          (add-debug-sphere
            *display-camera-marks*
@@ -2076,7 +2044,7 @@
                  (not (logtest? (focus-status mech) (-> this focus-status)))
                  )
             (set! v0-0 (new 'static 'vector :w 1.0))
-            (set! (-> v0-0 quad) (-> this control trans quad))
+            (vector-copy! v0-0 (-> this control trans))
             (set! (-> v0-0 y) (-> this water height))
             v0-0
             )
@@ -2096,7 +2064,7 @@
        (cond
          ((logtest? (-> this draw status) (draw-control-status no-draw no-draw-temp))
           (set! v0-0 (new 'static 'vector))
-          (set! (-> v0-0 quad) (-> v1-0 trans quad))
+          (vector-copy! v0-0 (-> v1-0 trans))
           (vector+float*! v0-0 v0-0 (-> this control local-normal) 8192.0)
           )
          (else
@@ -2120,8 +2088,8 @@
          (cond
            ((and (< 0.0 f0-5) (focus-test? this in-air))
             (let* ((v0-1 (new 'static 'vector))
-                   (f0-6 (+ (* 0.0016666667 (-> v1-0 dynam gravity-length)) f0-5))
-                   (f0-9 (/ (* 0.5 f0-6 f0-6) (-> v1-0 dynam gravity-length)))
+                   (f0-6 (+ (/ (-> v1-0 dynam gravity-length) 600) f0-5))
+                   (f0-9 (/ (* (/ f0-6 2) f0-6) (-> v1-0 dynam gravity-length)))
                    )
               (vector+float*! v0-1 (-> v1-0 trans) (-> v1-0 dynam gravity-normal) f0-9)
               )
@@ -2201,6 +2169,7 @@
 
 ;; WARN: Return type mismatch float vs meters.
 (defmethod get-water-height ((this target))
+  "Get the height of the water that we're in."
   (the-as meters (if (logtest? (-> this water flags) (water-flag active))
                      (-> this water surface-height)
                      (-> this control trans y)
@@ -2322,12 +2291,8 @@
                        (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
                        )
                      )
-                 (let ((v1-14 gp-0))
-                   (set! (-> v1-14 width) (the float 340))
-                   )
-                 (let ((v1-15 gp-0))
-                   (set! (-> v1-15 height) (the float 80))
-                   )
+                 (set-width! gp-0 340)
+                 (set-height! gp-0 80)
                  (let ((v1-16 gp-0)
                        (a0-13 (-> *setting-control* user-default language))
                        )
@@ -2361,7 +2326,7 @@
            (lambda :behavior target
              ()
              (target-update-segs self)
-             (set! (-> self control trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
+             (vector-copy! (-> self control trans) (-> (the-as process-drawable (-> self parent 0)) root trans))
              (quaternion-copy! (-> self control quat) (-> (the-as process-drawable (-> self parent 0)) root quat))
              (none)
              )

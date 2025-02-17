@@ -55,28 +55,63 @@
 //  then it's actually treated as a palette texture, but we don't really do this.
 //  This breaks the fade-out/thresholding, and likely the colors. But it still looks vaguely like
 //  clouds.
+void debug_save_opengl_texture(const std::string& out, GLuint texture) {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  int w, h;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
+  lg::print("saving texture with size {} x {}\n", w, h);
+  std::vector<u8> data(w * h * 4);
+  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
+  file_util::write_rgba_png(out, data.data(), w, h);
+}
 
 /*!
  * A simple list of preallocated textures by size. If a texture needs to be resized, it's faster
  * to swap to a different OpenGL texture from this pool than glTexImage2D with a different size.
  */
-OpenGLTexturePool::OpenGLTexturePool() {
+OpenGLTexturePool::OpenGLTexturePool(GameVersion version) {
   struct Alloc {
     u64 w, h, n;
   };
   // list of sizes to preallocate: {width, height, count}.
-  for (const auto& a : std::vector<Alloc>{{4, 4, 2},
-                                          {4, 64, 2},
-                                          {16, 16, 5},
-                                          {32, 16, 1},
-                                          {32, 32, 10},
-                                          {32, 64, 1},
-                                          {64, 32, 6},
-                                          {64, 64, 30},
-                                          {64, 128, 4},
-                                          {128, 128, 10},
-                                          {256, 1, 2},
-                                          {256, 256, 7}}) {
+  PerGameVersion<std::vector<Alloc>> tex_allocs{{{4, 4, 2},
+                                                 {4, 64, 2},
+                                                 {16, 16, 5},
+                                                 {32, 16, 1},
+                                                 {32, 32, 10},
+                                                 {32, 64, 1},
+                                                 {64, 32, 6},
+                                                 {64, 64, 30},
+                                                 {64, 128, 4},
+                                                 {128, 128, 10},
+                                                 {256, 1, 2},
+                                                 {256, 256, 7}},
+                                                {{4, 4, 2},
+                                                 {4, 64, 2},
+                                                 {16, 16, 5},
+                                                 {32, 16, 1},
+                                                 {32, 32, 10},
+                                                 {32, 64, 1},
+                                                 {64, 32, 6},
+                                                 {64, 64, 30},
+                                                 {64, 128, 4},
+                                                 {128, 128, 10},
+                                                 {256, 1, 2},
+                                                 {256, 256, 7}},
+                                                {{4, 4, 3},
+                                                 {4, 64, 6},
+                                                 {16, 16, 5},
+                                                 {32, 16, 1},
+                                                 {32, 32, 20},
+                                                 {32, 64, 1},
+                                                 {64, 32, 15},
+                                                 {64, 64, 85},
+                                                 {64, 128, 4},
+                                                 {128, 128, 185},
+                                                 {256, 1, 2},
+                                                 {256, 256, 7}}};
+  for (const auto& a : tex_allocs[version]) {
     auto& l = textures[(a.w << 32) | a.h];
     l.resize(a.n);
     glGenTextures(a.n, l.data());
@@ -238,6 +273,71 @@ void opengl_upload_texture(GLint dest, const void* data, int w, int h) {
 }
 
 /*!
+ * Upload a texture and generate mipmaps. Assumes the usual RGBA format.
+ * The size of the destination and source texture don't need to match.
+ */
+void opengl_upload_resize_texture(FramebufferTexturePair& fbt,
+                                  const void* data,
+                                  const math::Vector2<int>& data_size,
+                                  ShaderLibrary& shaders) {
+  {
+    FramebufferTexturePairContext ctx(fbt);
+    GLuint temp_texture = 0;
+    GLuint vao = 0;
+    GLuint vertex_buffer = 0;
+    glGenTextures(1, &temp_texture);
+    glBindTexture(GL_TEXTURE_2D, temp_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, data_size.x(), data_size.y(), 0, GL_RGBA,
+                 GL_UNSIGNED_INT_8_8_8_8_REV, data);
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vertex_buffer);
+    glBindVertexArray(vao);
+
+    struct Vertex {
+      float x, y;
+    };
+
+    std::array<Vertex, 4> vertices = {
+        Vertex{-1, -1},
+        Vertex{-1, 1},
+        Vertex{1, -1},
+        Vertex{1, 1},
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4, vertices.data(), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,               // location 0 in the shader
+                          2,               // 2 floats per vert
+                          GL_FLOAT,        // floats
+                          GL_TRUE,         // normalized, ignored,
+                          sizeof(Vertex),  //
+                          nullptr          //
+    );
+
+    auto& shader = shaders[ShaderId::PLAIN_TEXTURE];
+    shader.activate();
+    glUniform1i(glGetUniformLocation(shader.id(), "tex_T0"), 0);
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, temp_texture);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vertex_buffer);
+    glDeleteTextures(1, &temp_texture);
+  }
+  glBindTexture(GL_TEXTURE_2D, fbt.texture());
+  glGenerateMipmap(GL_TEXTURE_2D);
+}
+
+/*!
  * Utility class to grab CLUTs from the source textures, blend them, and produce a destination RGBA
  * texture using the index data in dest.
  */
@@ -370,6 +470,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
                                  const tfrag3::Level* common_level,
                                  GameVersion version)
     : m_common_level(common_level),
+      m_opengl_texture_pool(version),
       m_psm32_to_psm8_8_8(8, 8, 8, 64),
       m_psm32_to_psm8_16_16(16, 16, 16, 64),
       m_psm32_to_psm8_32_32(32, 32, 16, 64),
@@ -391,7 +492,8 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
                             GL_UNSIGNED_INT_8_8_8_8_REV),
       m_slime_final_scroll_texture(kFinalSlimeTextureSize,
                                    kFinalSlimeTextureSize,
-                                   GL_UNSIGNED_INT_8_8_8_8_REV) {
+                                   GL_UNSIGNED_INT_8_8_8_8_REV),
+      m_shaders(&shaders) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
@@ -420,6 +522,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
   m_shader_id = shader.id();
   m_uniforms.rgba = glGetUniformLocation(shader.id(), "rgba");
   m_uniforms.enable_tex = glGetUniformLocation(shader.id(), "enable_tex");
+  m_uniforms.set_alpha = glGetUniformLocation(shader.id(), "set_alpha");
   m_uniforms.positions = glGetUniformLocation(shader.id(), "positions");
   m_uniforms.uvs = glGetUniformLocation(shader.id(), "uvs");
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
@@ -495,8 +598,28 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
     default:
       ASSERT_NOT_REACHED();
   }
-
   setup_sky();
+
+  // Patch up references to animated textures
+  std::map<std::string, u64> name_to_slot;
+  for (const auto& anim_array : m_fixed_anim_arrays) {
+    for (const auto& anim : anim_array.anims) {
+      name_to_slot[anim.def.tex_name] = anim.dest_slot;
+    }
+  }
+
+  for (auto& anim_array : m_fixed_anim_arrays) {
+    for (auto& anim : anim_array.anims) {
+      for (size_t i = 0; i < anim.src_textures.size(); i++) {
+        const auto& it = name_to_slot.find(anim.def.layers.at(i).tex_name);
+        if (it != name_to_slot.end()) {
+          lg::error("Patching ref to {} in {}", it->first, anim.def.tex_name);
+          anim.src_textures[i].is_anim_slot = true;
+          anim.src_textures[i].idx = it->second;
+        }
+      }
+    }
+  }
 }
 
 /*!
@@ -517,6 +640,11 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
     if (anim.def.override_size) {
       anim.fbt.emplace(anim.def.override_size->x(), anim.def.override_size->y(),
                        GL_UNSIGNED_INT_8_8_8_8_REV);
+      // I think there's kind of a bug here - if the game accesses a resized texture before
+      // the animation is run once, it can end up using the wrong size.
+      // For PC, we just resize the texture to the new size at startup, which avoids the texture
+      // changing sizes at runtime.
+      opengl_upload_resize_texture(*anim.fbt, dtex->data.data(), {dtex->w, dtex->h}, *m_shaders);
     } else {
       anim.fbt.emplace(dtex->w, dtex->h, GL_UNSIGNED_INT_8_8_8_8_REV);
       opengl_upload_texture(anim.fbt->texture(), dtex->data.data(), dtex->w, dtex->h);
@@ -528,7 +656,10 @@ int TextureAnimator::create_fixed_anim_array(const std::vector<FixedAnimDef>& de
     for (const auto& layer : def.layers) {
       auto* stex = tex_by_name(m_common_level, layer.tex_name);
       GLint gl_texture = m_opengl_texture_pool.allocate(stex->w, stex->h);
-      anim.src_textures.push_back(gl_texture);
+      FixedAnimSource src;
+      src.idx = gl_texture;
+      src.is_anim_slot = false;
+      anim.src_textures.push_back(src);
       opengl_upload_texture(gl_texture, stex->data.data(), stex->w, stex->h);
     }
 
@@ -605,10 +736,14 @@ void TextureAnimator::copy_private_to_public() {
 int TextureAnimator::create_clut_blender_group(const std::vector<std::string>& textures,
                                                const std::string& suffix0,
                                                const std::string& suffix1,
-                                               const std::optional<std::string>& dgo) {
+                                               const std::optional<std::string>& dgo,
+                                               bool add_to_pool) {
   int ret = m_clut_blender_groups.size();
   m_clut_blender_groups.emplace_back();
   add_to_clut_blender_group(ret, textures, suffix0, suffix1, dgo);
+  if (add_to_pool) {
+    m_clut_blender_groups.back().move_to_pool = true;
+  }
   return ret;
 }
 
@@ -642,7 +777,7 @@ GLuint TextureAnimator::get_by_slot(int idx) {
 }
 
 // IDs sent from GOAL telling us what texture operation to perform.
-enum PcTextureAnimCodes {
+enum class PcTextureAnimCodesJak2 : u16 {
   FINISH_ARRAY = 13,
   ERASE_DEST_TEXTURE = 14,
   UPLOAD_CLUT_16_16 = 15,
@@ -672,6 +807,361 @@ enum PcTextureAnimCodes {
   SLIME = 42,
   CLOUDS_HIRES = 43,
 };
+
+struct FixedAnimInfoJak2 {
+  PcTextureAnimCodesJak2 code = (PcTextureAnimCodesJak2)0;
+  std::string name;
+  int anim_array_idx = -1;
+};
+
+FixedAnimInfoJak2 anim_code_to_info(PcTextureAnimCodesJak2 code, const TextureAnimator& animator) {
+  ASSERT(code > (PcTextureAnimCodesJak2)0);
+  FixedAnimInfoJak2 anim;
+  anim.code = code;
+  switch (code) {
+    case PcTextureAnimCodesJak2::SKULL_GEM: {
+      anim.name = "skull-gem";
+      anim.anim_array_idx = animator.m_skull_gem_fixed_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::BOMB: {
+      anim.name = "bomb";
+      anim.anim_array_idx = animator.m_bomb_fixed_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::CAS_CONVEYOR: {
+      anim.name = "cas-conveyor";
+      anim.anim_array_idx = animator.m_cas_conveyor_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::SECURITY: {
+      anim.name = "security";
+      anim.anim_array_idx = animator.m_security_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::WATERFALL: {
+      anim.name = "waterfall";
+      anim.anim_array_idx = animator.m_waterfall_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::WATERFALL_B: {
+      anim.name = "waterfall-b";
+      anim.anim_array_idx = animator.m_waterfall_b_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::LAVA: {
+      anim.name = "lava";
+      anim.anim_array_idx = animator.m_lava_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::LAVA_B: {
+      anim.name = "lava-b";
+      anim.anim_array_idx = animator.m_lava_b_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::STADIUMB: {
+      anim.name = "stadiumb";
+      anim.anim_array_idx = animator.m_stadiumb_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::FORTRESS_PRIS: {
+      anim.name = "fort-pris";
+      anim.anim_array_idx = animator.m_fortress_pris_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::FORTRESS_WARP: {
+      anim.name = "fort-warp";
+      anim.anim_array_idx = animator.m_fortress_warp_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::METKOR: {
+      anim.name = "metkor";
+      anim.anim_array_idx = animator.m_metkor_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::SHIELD: {
+      anim.name = "shield";
+      anim.anim_array_idx = animator.m_shield_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak2::KREW_HOLO: {
+      anim.name = "krew-holo";
+      anim.anim_array_idx = animator.m_krew_holo_anim_array_idx;
+    } break;
+    default:
+      anim.name = "unknown";
+      lg::error("Unknown texture anim code {}", (int)code);
+  }
+  return anim;
+}
+
+enum class PcTextureAnimCodesJak3 : u16 {
+  FINISH_ARRAY = 13,
+  ERASE_DEST_TEXTURE = 14,
+  UPLOAD_CLUT_16_16 = 15,
+  GENERIC_UPLOAD = 16,
+  SET_SHADER = 17,
+  DRAW = 18,
+  DARKJAK = 22,
+  DARKJAK_HIGHRES = 23,
+  SKULL_GEM = 27,
+  DEFAULT_WATER = 28,
+  DEFAULT_WARP = 29,
+  TEMPLEA_WATER = 30,
+  TEMPLEA_WARP = 31,
+  TEMPLEB_WARP = 32,
+  TEMPLEC_WATER = 33,
+  SEWC_WATER = 34,
+  SEWD_WATER = 35,
+  SEWE_WATER = 36,
+  SEWG_WATER = 37,
+  SEWH_WATER = 38,
+  SEWI_WATER = 39,
+  SEWJ_WATER = 40,
+  SEWL_WATER = 41,
+  SEWM_WATER = 42,
+  SEWN_WATER = 43,
+  DESRESC_WARP = 44,
+  CTYSLUMB_WATER = 45,
+  NSTB_QUICKSAND = 46,
+  CTYSLUMC_WATER = 47,
+  FACTORYC_ALPHA = 48,
+  HFRAG = 49,
+  HANGA_SPRITE = 50,
+  HANGA_WATER = 51,
+  DESERTD_WATER = 52,
+  LMHCITYB_TFRAG = 53,
+  TOWERB_WATER = 54,
+  COMB_FIELD = 55,
+  WASSTADA_ALPHA = 56,
+  FACTORYB_WATER = 57,
+  LMHCITYA_TFRAG = 58,
+  MHCITYA_PRIS = 59,
+  RUBBLEA_WATER = 60,
+  RUBBLEA2_WATER = 61,
+  RUBBLEB_WATER = 62,
+  RUBBLEC_WATER = 63,
+  FORESTA_WATER = 64,
+  FORESTB_WATER = 65,
+  LFORPLNT_PRIS = 66,
+  LTNFXHIP = 67,
+  LGUNNORM_WATER = 68,
+  LJKDXVIN = 69,
+  SECURITY = 70,
+  WASPAL_WATER = 71,
+  MINED_TFRAG = 72,
+  VOLCANOX_WARP = 73,
+  TEMPLEX_WATER = 74,
+  VOLCANOA_WATER = 75,
+  DESHOVER = 76,
+  CLOUDS_AND_FOG = 77,
+  CLOUDS_HIRES = 78,
+};
+
+struct FixedAnimInfoJak3 {
+  PcTextureAnimCodesJak3 code = (PcTextureAnimCodesJak3)0;
+  std::string name;
+  int anim_array_idx = -1;
+};
+
+FixedAnimInfoJak3 anim_code_to_info(PcTextureAnimCodesJak3 code, const TextureAnimator& animator) {
+  ASSERT(code > (PcTextureAnimCodesJak3)0);
+  FixedAnimInfoJak3 anim;
+  anim.code = code;
+  switch (code) {
+    case PcTextureAnimCodesJak3::SKULL_GEM: {
+      anim.name = "skull-gem";
+      anim.anim_array_idx = animator.m_skull_gem_fixed_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::DEFAULT_WATER: {
+      anim.name = "default-water";
+      anim.anim_array_idx = animator.m_default_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::DEFAULT_WARP: {
+      anim.name = "default-warp";
+      anim.anim_array_idx = animator.m_default_warp_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::TEMPLEA_WATER: {
+      anim.name = "templea-water";
+      anim.anim_array_idx = animator.m_templea_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::TEMPLEA_WARP: {
+      anim.name = "templea-warp";
+      anim.anim_array_idx = animator.m_templea_warp_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::TEMPLEB_WARP: {
+      anim.name = "templeb-warp";
+      anim.anim_array_idx = animator.m_templeb_warp_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::TEMPLEC_WATER: {
+      anim.name = "templec-water";
+      anim.anim_array_idx = animator.m_templec_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWC_WATER: {
+      anim.name = "sewc-water";
+      anim.anim_array_idx = animator.m_sewc_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWD_WATER: {
+      anim.name = "sewd-water";
+      anim.anim_array_idx = animator.m_sewd_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWE_WATER: {
+      anim.name = "sewe-water";
+      anim.anim_array_idx = animator.m_sewe_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWG_WATER: {
+      anim.name = "sewg-water";
+      anim.anim_array_idx = animator.m_sewg_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWH_WATER: {
+      anim.name = "sewh-water";
+      anim.anim_array_idx = animator.m_sewh_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWI_WATER: {
+      anim.name = "sewi-water";
+      anim.anim_array_idx = animator.m_sewi_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWJ_WATER: {
+      anim.name = "sewj-water";
+      anim.anim_array_idx = animator.m_sewj_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWL_WATER: {
+      anim.name = "sewl-water";
+      anim.anim_array_idx = animator.m_sewl_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWM_WATER: {
+      anim.name = "sewm-water";
+      anim.anim_array_idx = animator.m_sewm_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SEWN_WATER: {
+      anim.name = "sewn-water";
+      anim.anim_array_idx = animator.m_sewn_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::DESRESC_WARP: {
+      anim.name = "desresc-warp";
+      anim.anim_array_idx = animator.m_desresc_warp_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::CTYSLUMB_WATER: {
+      anim.name = "ctyslumb-water";
+      anim.anim_array_idx = animator.m_ctyslumb_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::NSTB_QUICKSAND: {
+      anim.name = "nstb-quicksand";
+      anim.anim_array_idx = animator.m_nstb_quicksand_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::CTYSLUMC_WATER: {
+      anim.name = "ctyslumc-water";
+      anim.anim_array_idx = animator.m_ctyslumc_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::FACTORYC_ALPHA: {
+      anim.name = "factoryc-alpha";
+      anim.anim_array_idx = animator.m_factoryc_alpha_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::HFRAG: {
+      anim.name = "hfrag";
+      anim.anim_array_idx = animator.m_hfrag_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::HANGA_SPRITE: {
+      anim.name = "hanga-sprite";
+      anim.anim_array_idx = animator.m_hanga_sprite_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::HANGA_WATER: {
+      anim.name = "hanga-water";
+      anim.anim_array_idx = animator.m_hanga_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::DESERTD_WATER: {
+      anim.name = "desertd-water";
+      anim.anim_array_idx = animator.m_desertd_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::LMHCITYB_TFRAG: {
+      anim.name = "lmhcityb-tfrag";
+      anim.anim_array_idx = animator.m_lmhcityb_tfrag_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::TOWERB_WATER: {
+      anim.name = "towerb-water";
+      anim.anim_array_idx = animator.m_towerb_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::COMB_FIELD: {
+      anim.name = "comb-field";
+      anim.anim_array_idx = animator.m_comb_field_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::WASSTADA_ALPHA: {
+      anim.name = "wasstada-alpha";
+      anim.anim_array_idx = animator.m_wasstada_alpha_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::FACTORYB_WATER: {
+      anim.name = "factoryb-water";
+      anim.anim_array_idx = animator.m_factoryb_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::LMHCITYA_TFRAG: {
+      anim.name = "lmhcitya-tfrag";
+      anim.anim_array_idx = animator.m_lmhcitya_tfrag_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::MHCITYA_PRIS: {
+      anim.name = "mhcitya-pris";
+      anim.anim_array_idx = animator.m_mhcitya_pris_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::RUBBLEA_WATER: {
+      anim.name = "rubblea-water";
+      anim.anim_array_idx = animator.m_rubblea_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::RUBBLEA2_WATER: {
+      anim.name = "rubblea2-water";
+      anim.anim_array_idx = animator.m_rubblea2_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::RUBBLEB_WATER: {
+      anim.name = "rubbleb-water";
+      anim.anim_array_idx = animator.m_rubbleb_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::RUBBLEC_WATER: {
+      anim.name = "rubblec-water";
+      anim.anim_array_idx = animator.m_rubblec_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::FORESTA_WATER: {
+      anim.name = "foresta-water";
+      anim.anim_array_idx = animator.m_foresta_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::FORESTB_WATER: {
+      anim.name = "forestb-water";
+      anim.anim_array_idx = animator.m_forestb_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::LFORPLNT_PRIS: {
+      anim.name = "lforplnt-pris";
+      anim.anim_array_idx = animator.m_lforplnt_pris_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::LTNFXHIP: {
+      anim.name = "ltnfxhip";
+      anim.anim_array_idx = animator.m_ltnfxhip_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::LGUNNORM_WATER: {
+      anim.name = "lgunnorm-water";
+      anim.anim_array_idx = animator.m_lgunnorm_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::LJKDXVIN: {
+      anim.name = "ljkdxvin";
+      anim.anim_array_idx = animator.m_ljkdxvin_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::SECURITY: {
+      anim.name = "security";
+      anim.anim_array_idx = animator.m_security_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::WASPAL_WATER: {
+      anim.name = "waspal-water";
+      anim.anim_array_idx = animator.m_waspal_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::MINED_TFRAG: {
+      anim.name = "mined-tfrag";
+      anim.anim_array_idx = animator.m_mined_tfrag_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::VOLCANOX_WARP: {
+      anim.name = "volcanox-warp";
+      anim.anim_array_idx = animator.m_volcanox_warp_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::TEMPLEX_WATER: {
+      anim.name = "templex-water";
+      anim.anim_array_idx = animator.m_templex_water_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::VOLCANOA_WATER: {
+      anim.name = "volcanoa-water";
+      anim.anim_array_idx = animator.m_volcanoa_anim_array_idx;
+    } break;
+    case PcTextureAnimCodesJak3::DESHOVER: {
+      anim.name = "deshover";
+      anim.anim_array_idx = animator.m_deshover_anim_array_idx;
+    } break;
+    default:
+      anim.name = "unknown";
+      lg::error("Unknown texture anim code {}", (int)code);
+  }
+  return anim;
+}
 
 // metadata for an upload from GOAL memory
 struct TextureAnimPcUpload {
@@ -726,117 +1216,192 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
     auto tf = dma.read_and_advance();
     auto vif0 = tf.vifcode0();
     if (vif0.kind == VifCode::Kind::PC_PORT) {
-      switch (vif0.immediate) {
-        case UPLOAD_CLUT_16_16: {
-          auto p = scoped_prof("clut-16-16");
-          handle_upload_clut_16_16(tf, ee_mem);
-        } break;
-        case ERASE_DEST_TEXTURE: {
-          auto p = scoped_prof("erase");
-          handle_erase_dest(dma);
-        } break;
-        case GENERIC_UPLOAD: {
-          auto p = scoped_prof("generic-upload");
-          handle_generic_upload(tf, ee_mem);
-        } break;
-        case SET_SHADER: {
-          auto p = scoped_prof("set-shader");
-          handle_set_shader(dma);
-        } break;
-        case DRAW: {
-          auto p = scoped_prof("draw");
-          handle_draw(dma, *texture_pool);
-        } break;
-        case FINISH_ARRAY:
-          done = true;
+      switch (this->m_version) {
+        case GameVersion::Jak2:
+          switch (static_cast<PcTextureAnimCodesJak2>(vif0.immediate)) {
+            case PcTextureAnimCodesJak2::UPLOAD_CLUT_16_16: {
+              auto p = scoped_prof("clut-16-16");
+              handle_upload_clut_16_16(tf, ee_mem);
+            } break;
+            case PcTextureAnimCodesJak2::ERASE_DEST_TEXTURE: {
+              auto p = scoped_prof("erase");
+              handle_erase_dest(dma);
+            } break;
+            case PcTextureAnimCodesJak2::GENERIC_UPLOAD: {
+              auto p = scoped_prof("generic-upload");
+              handle_generic_upload(tf, ee_mem);
+            } break;
+            case PcTextureAnimCodesJak2::SET_SHADER: {
+              auto p = scoped_prof("set-shader");
+              handle_set_shader(dma);
+            } break;
+            case PcTextureAnimCodesJak2::DRAW: {
+              auto p = scoped_prof("draw");
+              handle_draw(dma, *texture_pool);
+            } break;
+            case PcTextureAnimCodesJak2::FINISH_ARRAY:
+              done = true;
+              break;
+            case PcTextureAnimCodesJak2::DARKJAK: {
+              auto p = scoped_prof("darkjak");
+              run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx, texture_pool);
+            } break;
+            case PcTextureAnimCodesJak2::PRISON_JAK: {
+              auto p = scoped_prof("prisonjak");
+              run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx, frame_idx, texture_pool);
+            } break;
+            case PcTextureAnimCodesJak2::ORACLE_JAK: {
+              auto p = scoped_prof("oraclejak");
+              run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx, frame_idx, texture_pool);
+            } break;
+            case PcTextureAnimCodesJak2::NEST_JAK: {
+              auto p = scoped_prof("nestjak");
+              run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx, frame_idx, texture_pool);
+            } break;
+            case PcTextureAnimCodesJak2::KOR_TRANSFORM: {
+              auto p = scoped_prof("kor");
+              run_clut_blender_group(tf, m_kor_transform_clut_blender_idx, frame_idx, texture_pool);
+            } break;
+            case PcTextureAnimCodesJak2::SKULL_GEM:
+            case PcTextureAnimCodesJak2::BOMB:
+            case PcTextureAnimCodesJak2::CAS_CONVEYOR:
+            case PcTextureAnimCodesJak2::SECURITY:
+            case PcTextureAnimCodesJak2::WATERFALL:
+            case PcTextureAnimCodesJak2::WATERFALL_B:
+            case PcTextureAnimCodesJak2::LAVA:
+            case PcTextureAnimCodesJak2::LAVA_B:
+            case PcTextureAnimCodesJak2::STADIUMB:
+            case PcTextureAnimCodesJak2::FORTRESS_PRIS:
+            case PcTextureAnimCodesJak2::FORTRESS_WARP:
+            case PcTextureAnimCodesJak2::METKOR:
+            case PcTextureAnimCodesJak2::SHIELD:
+            case PcTextureAnimCodesJak2::KREW_HOLO: {
+              auto anim =
+                  anim_code_to_info(static_cast<PcTextureAnimCodesJak2>(vif0.immediate), *this);
+              auto p = scoped_prof(anim.name.c_str());
+              run_fixed_animation_array(anim.anim_array_idx, tf, texture_pool);
+              break;
+            }
+            case PcTextureAnimCodesJak2::CLOUDS_AND_FOG:
+            case PcTextureAnimCodesJak2::CLOUDS_HIRES: {
+              auto p = scoped_prof("clouds-and-fog");
+              handle_clouds_and_fog(tf, texture_pool,
+                                    vif0.immediate == (u16)PcTextureAnimCodesJak2::CLOUDS_HIRES);
+            } break;
+            case PcTextureAnimCodesJak2::SLIME: {
+              auto p = scoped_prof("slime");
+              handle_slime(tf, texture_pool);
+              break;
+            }
+            default:
+              lg::print("bad imm: {}\n", vif0.immediate);
+              ASSERT_NOT_REACHED();
+          }
           break;
-        case DARKJAK: {
-          auto p = scoped_prof("darkjak");
-          run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx);
-        } break;
-        case PRISON_JAK: {
-          auto p = scoped_prof("prisonjak");
-          run_clut_blender_group(tf, m_jakb_prison_clut_blender_idx, frame_idx);
-        } break;
-        case ORACLE_JAK: {
-          auto p = scoped_prof("oraclejak");
-          run_clut_blender_group(tf, m_jakb_oracle_clut_blender_idx, frame_idx);
-        } break;
-        case NEST_JAK: {
-          auto p = scoped_prof("nestjak");
-          run_clut_blender_group(tf, m_jakb_nest_clut_blender_idx, frame_idx);
-        } break;
-        case KOR_TRANSFORM: {
-          auto p = scoped_prof("kor");
-          run_clut_blender_group(tf, m_kor_transform_clut_blender_idx, frame_idx);
-        } break;
-        case SKULL_GEM: {
-          auto p = scoped_prof("skull-gem");
-          run_fixed_animation_array(m_skull_gem_fixed_anim_array_idx, tf, texture_pool);
-        } break;
-        case BOMB: {
-          auto p = scoped_prof("bomb");
-          run_fixed_animation_array(m_bomb_fixed_anim_array_idx, tf, texture_pool);
-        } break;
-        case CAS_CONVEYOR: {
-          auto p = scoped_prof("cas-conveyor");
-          run_fixed_animation_array(m_cas_conveyor_anim_array_idx, tf, texture_pool);
-        } break;
-        case SECURITY: {
-          auto p = scoped_prof("security");
-          run_fixed_animation_array(m_security_anim_array_idx, tf, texture_pool);
-        } break;
-        case WATERFALL: {
-          auto p = scoped_prof("waterfall");
-          run_fixed_animation_array(m_waterfall_anim_array_idx, tf, texture_pool);
-        } break;
-        case WATERFALL_B: {
-          auto p = scoped_prof("waterfall-b");
-          run_fixed_animation_array(m_waterfall_b_anim_array_idx, tf, texture_pool);
-        } break;
-        case LAVA: {
-          auto p = scoped_prof("lava");
-          run_fixed_animation_array(m_lava_anim_array_idx, tf, texture_pool);
-        } break;
-        case LAVA_B: {
-          auto p = scoped_prof("lava-b");
-          run_fixed_animation_array(m_lava_b_anim_array_idx, tf, texture_pool);
-        } break;
-        case STADIUMB: {
-          auto p = scoped_prof("stadiumb");
-          run_fixed_animation_array(m_stadiumb_anim_array_idx, tf, texture_pool);
-        } break;
-        case FORTRESS_PRIS: {
-          auto p = scoped_prof("fort-pris");
-          run_fixed_animation_array(m_fortress_pris_anim_array_idx, tf, texture_pool);
-        } break;
-        case FORTRESS_WARP: {
-          auto p = scoped_prof("fort-warp");
-          run_fixed_animation_array(m_fortress_warp_anim_array_idx, tf, texture_pool);
-        } break;
-        case METKOR: {
-          auto p = scoped_prof("metkor");
-          run_fixed_animation_array(m_metkor_anim_array_idx, tf, texture_pool);
-        } break;
-        case SHIELD: {
-          auto p = scoped_prof("shield");
-          run_fixed_animation_array(m_shield_anim_array_idx, tf, texture_pool);
-        } break;
-        case KREW_HOLO: {
-          auto p = scoped_prof("krew-holo");
-          run_fixed_animation_array(m_krew_holo_anim_array_idx, tf, texture_pool);
-        } break;
-        case CLOUDS_AND_FOG:
-        case CLOUDS_HIRES: {
-          auto p = scoped_prof("clouds-and-fog");
-          handle_clouds_and_fog(tf, texture_pool, vif0.immediate == CLOUDS_HIRES);
-        } break;
-        case SLIME: {
-          auto p = scoped_prof("slime");
-          handle_slime(tf, texture_pool);
-        } break;
+        case GameVersion::Jak3:
+          switch (static_cast<PcTextureAnimCodesJak3>(vif0.immediate)) {
+            case PcTextureAnimCodesJak3::UPLOAD_CLUT_16_16: {
+              auto p = scoped_prof("clut-16-16");
+              handle_upload_clut_16_16(tf, ee_mem);
+            } break;
+            case PcTextureAnimCodesJak3::ERASE_DEST_TEXTURE: {
+              auto p = scoped_prof("erase");
+              handle_erase_dest(dma);
+            } break;
+            case PcTextureAnimCodesJak3::GENERIC_UPLOAD: {
+              auto p = scoped_prof("generic-upload");
+              handle_generic_upload(tf, ee_mem);
+            } break;
+            case PcTextureAnimCodesJak3::SET_SHADER: {
+              auto p = scoped_prof("set-shader");
+              handle_set_shader(dma);
+            } break;
+            case PcTextureAnimCodesJak3::DRAW: {
+              auto p = scoped_prof("draw");
+              handle_draw(dma, *texture_pool);
+            } break;
+            case PcTextureAnimCodesJak3::FINISH_ARRAY:
+              done = true;
+              break;
+            case PcTextureAnimCodesJak3::DARKJAK: {
+              auto p = scoped_prof("darkjak");
+              run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx, texture_pool);
+            } break;
+            case PcTextureAnimCodesJak3::DARKJAK_HIGHRES: {
+              auto p = scoped_prof("darkjak-highres");
+              run_clut_blender_group(tf, m_darkjak_highres_clut_blender_idx, frame_idx,
+                                     texture_pool);
+            } break;
+            case PcTextureAnimCodesJak3::SKULL_GEM:
+            case PcTextureAnimCodesJak3::DEFAULT_WATER:
+            case PcTextureAnimCodesJak3::DEFAULT_WARP:
+            case PcTextureAnimCodesJak3::TEMPLEA_WATER:
+            case PcTextureAnimCodesJak3::TEMPLEA_WARP:
+            case PcTextureAnimCodesJak3::TEMPLEB_WARP:
+            case PcTextureAnimCodesJak3::TEMPLEC_WATER:
+            case PcTextureAnimCodesJak3::SEWC_WATER:
+            case PcTextureAnimCodesJak3::SEWD_WATER:
+            case PcTextureAnimCodesJak3::SEWE_WATER:
+            case PcTextureAnimCodesJak3::SEWG_WATER:
+            case PcTextureAnimCodesJak3::SEWH_WATER:
+            case PcTextureAnimCodesJak3::SEWI_WATER:
+            case PcTextureAnimCodesJak3::SEWJ_WATER:
+            case PcTextureAnimCodesJak3::SEWL_WATER:
+            case PcTextureAnimCodesJak3::SEWM_WATER:
+            case PcTextureAnimCodesJak3::SEWN_WATER:
+            case PcTextureAnimCodesJak3::DESRESC_WARP:
+            case PcTextureAnimCodesJak3::CTYSLUMB_WATER:
+            case PcTextureAnimCodesJak3::NSTB_QUICKSAND:
+            case PcTextureAnimCodesJak3::CTYSLUMC_WATER:
+            case PcTextureAnimCodesJak3::FACTORYC_ALPHA:
+            case PcTextureAnimCodesJak3::HFRAG:
+            case PcTextureAnimCodesJak3::HANGA_SPRITE:
+            case PcTextureAnimCodesJak3::HANGA_WATER:
+            case PcTextureAnimCodesJak3::DESERTD_WATER:
+            case PcTextureAnimCodesJak3::LMHCITYB_TFRAG:
+            case PcTextureAnimCodesJak3::TOWERB_WATER:
+            case PcTextureAnimCodesJak3::COMB_FIELD:
+            case PcTextureAnimCodesJak3::WASSTADA_ALPHA:
+            case PcTextureAnimCodesJak3::FACTORYB_WATER:
+            case PcTextureAnimCodesJak3::LMHCITYA_TFRAG:
+            case PcTextureAnimCodesJak3::MHCITYA_PRIS:
+            case PcTextureAnimCodesJak3::RUBBLEA_WATER:
+            case PcTextureAnimCodesJak3::RUBBLEA2_WATER:
+            case PcTextureAnimCodesJak3::RUBBLEB_WATER:
+            case PcTextureAnimCodesJak3::RUBBLEC_WATER:
+            case PcTextureAnimCodesJak3::FORESTA_WATER:
+            case PcTextureAnimCodesJak3::FORESTB_WATER:
+            case PcTextureAnimCodesJak3::LFORPLNT_PRIS:
+            case PcTextureAnimCodesJak3::LTNFXHIP:
+            case PcTextureAnimCodesJak3::LGUNNORM_WATER:
+            case PcTextureAnimCodesJak3::LJKDXVIN:
+            case PcTextureAnimCodesJak3::SECURITY:
+            case PcTextureAnimCodesJak3::WASPAL_WATER:
+            case PcTextureAnimCodesJak3::MINED_TFRAG:
+            case PcTextureAnimCodesJak3::VOLCANOX_WARP:
+            case PcTextureAnimCodesJak3::TEMPLEX_WATER:
+            case PcTextureAnimCodesJak3::VOLCANOA_WATER:
+            case PcTextureAnimCodesJak3::DESHOVER: {
+              auto anim =
+                  anim_code_to_info(static_cast<PcTextureAnimCodesJak3>(vif0.immediate), *this);
+              auto p = scoped_prof(anim.name.c_str());
+              run_fixed_animation_array(anim.anim_array_idx, tf, texture_pool);
+              break;
+            }
+            case PcTextureAnimCodesJak3::CLOUDS_AND_FOG:
+            case PcTextureAnimCodesJak3::CLOUDS_HIRES: {
+              auto p = scoped_prof("clouds-and-fog");
+              handle_clouds_and_fog(tf, texture_pool,
+                                    vif0.immediate == (u16)PcTextureAnimCodesJak3::CLOUDS_HIRES);
+              break;
+            }
+            default:
+              lg::print("bad imm: {}\n", vif0.immediate);
+              ASSERT_NOT_REACHED();
+          }
+          break;
         default:
-          lg::print("bad imm: {}\n", vif0.immediate);
+          lg::print("unsupported game version {}\n", (int)this->m_version);
           ASSERT_NOT_REACHED();
       }
     } else {
@@ -1019,26 +1584,48 @@ PcTextureId TextureAnimator::get_id_for_tbp(TexturePool* pool, u64 tbp, u64 othe
   }
 }
 
-void debug_save_opengl_texture(const std::string& out, GLuint texture) {
-  glBindTexture(GL_TEXTURE_2D, texture);
-  int w, h;
-  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
-  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-  lg::print("saving texture with size {} x {}\n", w, h);
-  std::vector<u8> data(w * h * 4);
-  glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV, data.data());
-  file_util::write_rgba_png(out, data.data(), w, h);
-}
-
-void TextureAnimator::run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx) {
+void TextureAnimator::run_clut_blender_group(DmaTransfer& tf,
+                                             int idx,
+                                             u64 frame_idx,
+                                             TexturePool* texture_pool) {
+  auto& blenders = m_clut_blender_groups.at(idx);
+  const int tbps_size = sizeof(u32) * 4 * ((blenders.blenders.size() + 3) / 4);
   float f;
-  ASSERT(tf.size_bytes == 16);
+  ASSERT(tf.size_bytes == 16 + tbps_size);
   memcpy(&f, tf.data, sizeof(float));
   float weights[2] = {1.f - f, f};
-  auto& blender = m_clut_blender_groups.at(idx);
-  blender.last_updated_frame = frame_idx;
-  for (size_t i = 0; i < blender.blenders.size(); i++) {
-    m_private_output_slots[blender.outputs[i]] = blender.blenders[i].run(weights);
+  blenders.last_updated_frame = frame_idx;
+  for (size_t i = 0; i < blenders.blenders.size(); i++) {
+    m_private_output_slots[blenders.outputs[i]] = blenders.blenders[i].run(weights);
+  }
+
+  const u32* tbps = (const u32*)(tf.data + 16);
+
+  // give to the pool for renderers that don't know how to access this directly
+  if (blenders.move_to_pool) {
+    for (size_t i = 0; i < blenders.blenders.size(); i++) {
+      auto& blender = blenders.blenders[i];
+      const u32 tbp = tbps[i];
+      if (tbp == UINT32_MAX) {
+        continue;
+      }
+      ASSERT(tbp < 0x40000);
+      m_skip_tbps.push_back(tbp);  // known to be an output texture.
+      if (blender.pool_gpu_tex) {
+        // TODO: handle debug checkbox.
+        texture_pool->move_existing_to_vram(blender.pool_gpu_tex, tbp);
+        ASSERT(texture_pool->lookup(tbp).value() == blender.texture());
+      } else {
+        TextureInput in;
+        in.gpu_texture = blender.texture();
+        in.w = blender.w();
+        in.h = blender.h();
+        in.debug_page_name = "PC-ANIM";
+        in.debug_name = std::to_string(tbp);
+        in.id = get_id_for_tbp(texture_pool, tbp, idx);
+        blender.pool_gpu_tex = texture_pool->give_texture_and_load_to_vram(in, tbp);
+      }
+    }
   }
 }
 
@@ -1818,6 +2405,21 @@ void TextureAnimator::set_up_opengl_for_fixed(const FixedLayerDef& def,
                blend_c == GsAlpha::BlendMode::SOURCE && blend_d == GsAlpha::BlendMode::DEST) {
       glBlendEquation(GL_FUNC_ADD);
       glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+    } else if (blend_a == GsAlpha::BlendMode::SOURCE &&
+               blend_b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               blend_c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               blend_d == GsAlpha::BlendMode::ZERO_OR_FIXED && def.blend_fix == 128) {
+      glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
+    } else if (blend_a == GsAlpha::BlendMode::SOURCE &&
+               blend_b == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               blend_c == GsAlpha::BlendMode::ZERO_OR_FIXED &&
+               blend_d == GsAlpha::BlendMode::DEST) {
+      // 0, 2, 2, 1
+      // (Cs - 0) * FIX / 128 + Cd
+      // So source is fix / 128, and dest is 1
+      float color = (float)def.blend_fix / 128.f;
+      glBlendColor(color, color, color, color);
+      glBlendFuncSeparate(GL_CONSTANT_COLOR, GL_ONE, GL_ONE, GL_ZERO);
     } else {
       lg::print("unhandled blend: {} {} {} {}\n", (int)blend_a, (int)blend_b, (int)blend_c,
                 (int)blend_d);
@@ -1958,19 +2560,31 @@ void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
                                                       const LayerVals& vals,
                                                       int w,
                                                       int h) {
-  ASSERT(vals.rot == 0);
   result->color = (vals.color * 128.f).cast<u32>();
   math::Vector2f pos_scale(vals.scale.x() * w, vals.scale.y() * h);
   math::Vector2f pos_offset(2048.f + (vals.offset.x() * w), 2048.f + (vals.offset.y() * h));
   math::Vector2f st_scale = vals.st_scale;
   math::Vector2f st_offset = vals.st_offset;
-  const math::Vector2f corners[4] = {math::Vector2f{-0.5, -0.5}, math::Vector2f{0.5, -0.5},
-                                     math::Vector2f{-0.5, 0.5}, math::Vector2f{0.5, 0.5}};
+  const std::array<math::Vector2f, 4> fixed_corners = {
+      math::Vector2f{-0.5, -0.5}, math::Vector2f{0.5, -0.5}, math::Vector2f{-0.5, 0.5},
+      math::Vector2f{0.5, 0.5}};
+  auto pos_corners = fixed_corners;
+
+  if (vals.rot) {
+    const float rotation_radians = 2.f * M_PI * vals.rot / 65536.f;
+    const float sine = std::sin(rotation_radians);
+    const float cosine = std::cos(rotation_radians);
+    math::Vector2f vx(sine, cosine);
+    math::Vector2f vy(cosine, -sine);
+    for (auto& corner : pos_corners) {
+      corner = vx * corner.x() + vy * corner.y();
+    }
+  }
   math::Vector2f sts[4];
   math::Vector2<u32> poss[4];
 
   for (int i = 0; i < 4; i++) {
-    poss[i] = ((corners[i].elementwise_multiply(pos_scale) + pos_offset) * 16.f).cast<u32>();
+    poss[i] = ((pos_corners[i].elementwise_multiply(pos_scale) + pos_offset) * 16.f).cast<u32>();
   }
 
   if (vals.st_rot != 0) {
@@ -1980,12 +2594,12 @@ void TextureAnimator::set_draw_data_from_interpolated(DrawData* result,
     math::Vector2f vx(sine, cosine);
     math::Vector2f vy(cosine, -sine);
     for (int i = 0; i < 4; i++) {
-      math::Vector2f corner = corners[i].elementwise_multiply(st_scale);
+      math::Vector2f corner = fixed_corners[i].elementwise_multiply(st_scale);
       sts[i] = st_offset + vx * corner.x() + vy * corner.y();
     }
   } else {
     for (int i = 0; i < 4; i++) {
-      sts[i] = corners[i].elementwise_multiply(st_scale) + st_offset;
+      sts[i] = fixed_corners[i].elementwise_multiply(st_scale) + st_offset;
     }
   }
 
@@ -2031,7 +2645,6 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
 
     LayerVals interpolated_values;
     DrawData draw_data;
-
     // Loop over layers
     for (size_t layer_idx = 0; layer_idx < anim.def.layers.size(); layer_idx++) {
       auto& layer_def = anim.def.layers[layer_idx];
@@ -2041,13 +2654,22 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
         continue;
       }
 
+      if (layer_def.disable) {
+        continue;
+      }
+
       // interpolate
       interpolate_layer_values(
           (time - layer_def.start_time) / (layer_def.end_time - layer_def.start_time),
           &interpolated_values, layer_dyn.start_vals, layer_dyn.end_vals);
 
       // shader setup
-      set_up_opengl_for_fixed(layer_def, anim.src_textures.at(layer_idx));
+      const auto& src = anim.src_textures.at(layer_idx);
+      if (src.is_anim_slot) {
+        set_up_opengl_for_fixed(layer_def, m_private_output_slots.at(src.idx));
+      } else {
+        set_up_opengl_for_fixed(layer_def, src.idx);
+      }
 
       set_draw_data_from_interpolated(&draw_data, interpolated_values, anim.fbt->width(),
                                       anim.fbt->height());
@@ -2056,8 +2678,14 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
       if (true) {  // todo
         glColorMask(true, true, true, false);
         glUniform1f(m_uniforms.alpha_multiply, 2.f);
+        glUniform1i(m_uniforms.set_alpha, 0);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glColorMask(false, false, false, true);
+        if (anim.def.set_alpha) {
+          glUniform1i(m_uniforms.set_alpha, 1);
+          glUniform4f(m_uniforms.rgba, draw_data.color.x(), draw_data.color.x(),
+                      draw_data.color.x(), 128.f);
+        }
         glUniform1f(m_uniforms.alpha_multiply, 1.f);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
       } else {

@@ -212,11 +212,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this training-path) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s5-0 (length "training-path-"))
         (a0-3 (length (-> this name)))
         (v1-2 0)
@@ -285,15 +285,9 @@ This commonly includes things such as:
             )
           )
       (set! (-> s5-1 flags) (font-flags shadow kerning middle-vert large))
-      (let ((v1-4 s5-1))
-        (set! (-> v1-4 width) (the float 440))
-        )
-      (let ((v1-5 s5-1))
-        (set! (-> v1-5 height) (the float 80))
-        )
-      (let ((v1-6 s5-1))
-        (set! (-> v1-6 scale) 0.7)
-        )
+      (set-width! s5-1 440)
+      (set-height! s5-1 80)
+      (set-scale! s5-1 0.7)
       (let ((s4-0 print-game-text))
         (format (clear *temp-string*) (lookup-text! *common-text* arg0 #f))
         (s4-0 *temp-string* s5-1 #f 44 (bucket-id progress))
@@ -1873,13 +1867,9 @@ This commonly includes things such as:
       (suspend)
       )
     (when (> (-> self egg-count) 0)
-      (let* ((gp-0 (handle->process (-> self voicebox)))
-             (v1-8 (if (type? gp-0 process-drawable)
-                       (the-as process-drawable gp-0)
-                       )
-                   )
-             (t1-0 (new 'static 'fact-info))
-             )
+      (let ((v1-8 (as-type (handle->process (-> self voicebox)) process-drawable))
+            (t1-0 (new 'static 'fact-info))
+            )
         (set! (-> t1-0 options) (actor-option))
         (logior! (-> t1-0 options) (actor-option suck-in))
         (birth-pickup-at-point
@@ -1891,10 +1881,7 @@ This commonly includes things such as:
           t1-0
           )
         )
-      (let ((gp-1 (current-time)))
-        (until (time-elapsed? gp-1 (seconds 1))
-          (suspend)
-          )
+      (suspend-for (seconds 1)
         )
       (auto-save-user)
       )
@@ -1956,27 +1943,13 @@ This commonly includes things such as:
 
 ;; definition for method 26 of type training-manager
 (defmethod training-manager-method-26 ((this training-manager))
-  (local-vars (s3-0 object))
   (let ((gp-0 0))
     (dotimes (s4-0 (-> *entrance-gungame-crates-pos* length))
       (if (and (handle->process (-> this entrance-crates s4-0))
-               (begin
-                 (let* ((s3-1 #t)
-                        (s2-0 (-> this entrance-crates s4-0 process 0))
-                        (v1-11 (the-as focus-status (logand (-> (if (type? s2-0 process-focusable)
-                                                                    (the-as process-focusable s2-0)
-                                                                    )
-                                                                focus-status
-                                                                )
-                                                            (focus-status dead)
-                                                            )
-                                       )
-                               )
-                        )
-                   (cmove-#f-nonzero s3-0 v1-11 s3-1)
-                   )
-                 s3-0
-                 )
+               (not (logtest? (-> (as-type (-> this entrance-crates s4-0 process 0) process-focusable) focus-status)
+                              (focus-status dead)
+                              )
+                    )
                )
           (+! gp-0 1)
           )
@@ -2017,9 +1990,9 @@ This commonly includes things such as:
               (.lvf vf5 (&-> v1-5 quad))
               )
             (.lvf vf4 (&-> arg0 quad))
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> v0-1 quad) vf6)
             v0-1
             )
@@ -2134,12 +2107,10 @@ This commonly includes things such as:
         (training-manager-method-29 this s4-0)
         (set! (-> s3-0 pickup-type) (-> arg0 s2-0 ammo))
         (set! (-> s3-0 pickup-spawn-amount) (the float (-> arg0 s2-0 num)))
-        (let* ((s0-0 (ppointer->process (process-spawn crate #f s4-0 'wood s3-0 :to *entity-pool*)))
-               (s1-1 (if (type? s0-0 process-focusable)
-                         (the-as process-focusable s0-0)
-                         )
-                     )
-               )
+        (let ((s1-1
+                (as-type (ppointer->process (process-spawn crate #f s4-0 'wood s3-0 :to *entity-pool*)) process-focusable)
+                )
+              )
           (quaternion-vector-angle! (-> s1-1 root quat) *up-vector* (+ -4551.1113 (-> arg0 s2-0 pos w)))
           (set! (-> this course-crates s2-0) (process->handle s1-1))
           )
@@ -2224,11 +2195,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this training-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (set-setting! 'darkjak #f 0.0 0)
   (set! sv-16 (new 'static 'res-tag))
@@ -2369,11 +2340,8 @@ This commonly includes things such as:
     )
   :code (behavior ()
     (sound-play "gungame-door")
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 0.2))
-        (suspend)
-        (suspend)
-        )
+    (suspend-for (seconds 0.2)
+      (suspend)
       )
     (ja-no-eval :group! fort-entry-gate-idle-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
@@ -2520,11 +2488,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this gungame-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -2686,7 +2654,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 2330
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 0.4) (meters 0.1))
     (:rot-x (degrees 1.125))
@@ -2705,7 +2673,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 2329
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 0.1) (meters 0.05))
     (:rot-x (degrees 1.125))
@@ -2724,7 +2692,7 @@ This commonly includes things such as:
 
 ;; failed to figure out what this is:
 (defpart 2331
-  :init-specs ((:texture (new 'static 'texture-id :index #x4c :page #xc))
+  :init-specs ((:texture (lasersmoke-00 effects))
     (:num 3.0)
     (:z (meters 8))
     (:scale-x (meters 0.025) (meters 0.005))

@@ -9,7 +9,7 @@
 #include "common/util/string_util.h"
 
 #include "decompiler/level_extractor/extract_level.h"
-#include <goalc/build_actor/common/MercExtract.h>
+#include "goalc/build_actor/common/MercExtract.h"
 
 void save_pc_data(const std::string& nickname, tfrag3::Level& data, const fs::path& fr3_output_dir);
 std::vector<std::string> get_build_level_deps(const std::string& input_file);

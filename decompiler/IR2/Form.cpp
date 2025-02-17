@@ -281,9 +281,16 @@ void LoadSourceElement::get_modified_regs(RegSet& regs) const {
 /////////////////////////////
 
 SimpleAtomElement::SimpleAtomElement(const SimpleAtom& atom, bool omit_var_cast)
-    : m_atom(atom), m_omit_var_cast(omit_var_cast) {
+    : m_atom(atom), m_omit_var_cast(omit_var_cast), m_no_hex(false) {
   if (m_omit_var_cast) {
     ASSERT(atom.is_var());
+  }
+}
+
+SimpleAtomElement::SimpleAtomElement(int int_val, bool no_hex)
+    : m_atom(SimpleAtom::make_int_constant(int_val)), m_omit_var_cast(false), m_no_hex(no_hex) {
+  if (m_no_hex) {
+    m_atom.mark_as_no_hex();
   }
 }
 
@@ -1851,6 +1858,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-!";
     case FixedOperatorKind::VECTOR_PLUS:
       return "vector+!";
+    case FixedOperatorKind::VECTOR_XYZ_PRODUCT:
+      return "vector*!";
     case FixedOperatorKind::VECTOR_CROSS:
       return "vector-cross!";
     case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
@@ -1881,8 +1890,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "mouse-hold?";
     case FixedOperatorKind::VECTOR_LENGTH:
       return "vector-length";
+    case FixedOperatorKind::VECTOR_LENGTH_SQUARED:
+      return "vector-length-squared";
     case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:
       return "vector+float*!";
+    case FixedOperatorKind::VECTOR_PLUS_TIMES:
+      return "vector+*!";
     case FixedOperatorKind::FOCUS_TEST:
       return "focus-test?";
     default:
@@ -2137,6 +2150,15 @@ DerefToken to_token(const FieldReverseLookupOutput::Token& in) {
       // temp
       throw std::runtime_error("Cannot convert rd lookup token to deref token");
   }
+}
+
+std::vector<DerefToken> to_tokens(const std::vector<FieldReverseLookupOutput::Token>& in) {
+  std::vector<DerefToken> ret;
+  ret.reserve(in.size());
+  for (auto& x : in) {
+    ret.push_back(to_token(x));
+  }
+  return ret;
 }
 
 DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)
@@ -3175,7 +3197,7 @@ goos::Object DefskelgroupElement::ClothParams::to_list(const std::string& ag_nam
                                   pretty_print::to_symbol(std::to_string(timestep_freq))}));
   }
   if (secret != 0) {
-    auto bits = decompile_bitfield_enum_from_int(TypeSpec("game-secrets"), env.dts->ts, flags);
+    auto bits = decompile_bitfield_enum_from_int(TypeSpec("game-secrets"), env.dts->ts, secret);
     result.push_back(pretty_print::build_list(
         {pretty_print::to_symbol("secret-disable"),
          pretty_print::to_symbol(fmt::format("(game-secrets {})", fmt::join(bits, " ")))}));

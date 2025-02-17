@@ -164,13 +164,16 @@ AudioDir read_audio_dir(const decompiler::Config& config, const fs::path& path) 
         u64 data;
         struct {
           u64 name : 42;
-          bool stereo : 1;
-          bool international : 1;
-          u8 param : 4;
+          u64 stereo : 1;
+          u64 international : 1;
+          u64 param : 4;
           u64 offset : 16;
         };
       };
     };
+
+    static_assert(sizeof(DirEntryJak3) == sizeof(u64));
+
     dir = reader.read<VagDirJak3>();
     ASSERT(dir.id[0] == 0x41574756);
     ASSERT(dir.id[1] == 0x52494444);

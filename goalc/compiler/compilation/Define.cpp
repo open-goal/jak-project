@@ -66,15 +66,22 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
   }
 
+  auto explicit_no_typecheck = false;
+  if (args.has_named("no-typecheck")) {
+    explicit_no_typecheck = get_true_or_false(form, args.named.at("no-typecheck"));
+  }
   auto existing_type = m_symbol_types.lookup(sym.as_symbol());
   if (!existing_type) {
     m_symbol_types.set(sym.as_symbol(), in_gpr->type());
   } else {
-    bool do_typecheck = true;
-    if (args.has_named("no-typecheck")) {
-      do_typecheck = !get_true_or_false(form, args.named.at("no-typecheck"));
-    }
-    if (do_typecheck) {
+    if (!explicit_no_typecheck && m_repl && m_repl->repl_config.permissive_redefinitions) {
+      // Permissive redefinitions are allowed
+      if (in_gpr->type() != *existing_type) {
+        lg::warn("Redefining {}", sym.as_symbol().name_ptr);
+      }
+      m_symbol_types.set(sym.as_symbol(), in_gpr->type());
+    } else if (!explicit_no_typecheck) {
+      // Type check is required
       typecheck(form, *existing_type, in_gpr->type(),
                 fmt::format("define on existing symbol {}", sym.as_symbol().name_ptr));
     }

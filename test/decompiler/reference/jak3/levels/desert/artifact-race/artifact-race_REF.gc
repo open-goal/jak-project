@@ -97,8 +97,8 @@
 (defmethod find-ground ((this was-artifact))
   (let ((s4-0 #f))
     (let ((gp-0 (new 'stack-no-clear 'cquery-with-vec)))
-      (set! (-> gp-0 vec0 quad) (-> this root trans quad))
-      (set! (-> gp-0 cquery start-pos quad) (-> gp-0 vec0 quad))
+      (vector-copy! (-> gp-0 vec0) (-> this root trans))
+      (vector-copy! (-> gp-0 cquery start-pos) (-> gp-0 vec0))
       (+! (-> gp-0 cquery start-pos y) 40960.0)
       (vector-reset! (-> gp-0 vec1))
       (set! (-> gp-0 vec1 y) 1.0)
@@ -116,12 +116,12 @@
       (let ((f0-8 (fill-and-probe-using-line-sphere *collide-cache* (-> gp-0 cquery))))
         (when (>= f0-8 0.0)
           (vector+float*! (-> gp-0 vec0) (-> gp-0 cquery start-pos) (-> gp-0 cquery move-dist) f0-8)
-          (set! (-> gp-0 vec1 quad) (-> gp-0 cquery best-other-tri normal quad))
+          (vector-copy! (-> gp-0 vec1) (-> gp-0 cquery best-other-tri normal))
           (set! s4-0 #t)
           (format #t "was-artifact::find-ground: ground y ~M~%" (-> gp-0 vec0 y))
           )
         )
-      (set! (-> this root trans quad) (-> gp-0 vec0 quad))
+      (vector-copy! (-> this root trans) (-> gp-0 vec0))
       (forward-up-nopitch->quaternion (-> this root quat) (new 'static 'vector :z 1.0 :w 1.0) (-> gp-0 vec1))
       )
     s4-0
@@ -136,13 +136,14 @@
         (s5-0 (new 'stack-no-clear 'vector))
         )
     (when v1-0
-      (set! (-> s5-0 quad) (-> v1-0 control trans quad))
+      (vector-copy! s5-0 (-> v1-0 control trans))
       (set! (-> s5-0 w) 4096.0)
       (when (focus-test? v1-0 pilot)
         (let ((a1-4 (handle->process (-> v1-0 pilot vehicle))))
-          (set! (-> s5-0 quad)
-                (-> (the-as collide-shape (-> (the-as process-drawable a1-4) root)) root-prim prim-core world-sphere quad)
-                )
+          (vector-copy!
+            s5-0
+            (-> (the-as collide-shape (-> (the-as process-drawable a1-4) root)) root-prim prim-core world-sphere)
+            )
           )
         )
       (let ((f0-1 (vector-vector-xz-distance-squared (-> this root trans) s5-0))
@@ -209,8 +210,8 @@
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
       (let ((v1-0 (new 'stack-no-clear 'vector)))
-        (set! (-> v1-0 quad) (-> self root trans quad))
-        (set! (-> gp-0 pos quad) (-> v1-0 quad))
+        (vector-copy! v1-0 (-> self root trans))
+        (vector-copy! (-> gp-0 pos) v1-0)
         )
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags))
@@ -241,11 +242,11 @@
   :code (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 333 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 333))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 333))
         )
       )
@@ -297,11 +298,11 @@
     (set! (-> v1-13 prim-core collide-with) (collide-spec))
     )
   0
-  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (vector-copy! (-> self root trans) (-> arg0 pos))
   (quaternion-identity! (-> self root quat))
   (set-vector! (-> self root scale) 3.0 3.0 3.0 1.0)
   (find-ground self)
-  (set! (-> self pos quad) (-> self root trans quad))
+  (vector-copy! (-> self pos) (-> self root trans))
   (let* ((v1-23 (-> arg0 artifact-type))
          (a1-6 (cond
                  ((= v1-23 (artifact-type artifact-a))
@@ -422,7 +423,7 @@
   )
 
 ;; definition for symbol *artifact-race-speech-list*, type (inline-array talker-speech-class)
-(define *artifact-race-speech-list* (new 'static 'inline-array talker-speech-class 16
+(define *artifact-race-speech-list* (new 'static 'inline-array talker-speech-class 32
                                       (new 'static 'talker-speech-class :name "none")
                                       (new 'static 'talker-speech-class
                                         :name "dax128"
@@ -436,7 +437,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax163"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x2
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -446,7 +447,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax164"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x3
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -456,7 +457,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax165"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x4
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -466,7 +467,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax166"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x5
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -476,7 +477,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax167"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x6
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -486,7 +487,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax168"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x7
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -496,7 +497,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax169"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x8
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -506,7 +507,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax170"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #x9
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -516,7 +517,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax171"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #xa
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -526,7 +527,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax172"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #xb
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -536,7 +537,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax173"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #xc
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -546,7 +547,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax174"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #xd
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -556,7 +557,7 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax175"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #xe
                                         :text-duration (seconds 1)
                                         :neg #x1
@@ -566,8 +567,168 @@
                                       (new 'static 'talker-speech-class
                                         :name "dax176"
                                         :channel (gui-channel daxter)
-                                        :flags (talker-flags tf0)
+                                        :flags (talker-flags play-only-once)
                                         :speech #xf
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax177"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x10
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax178"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x11
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax179"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x12
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax180"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x13
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax181"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x14
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax182"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x15
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax183"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x16
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax184"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x17
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax185"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x18
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax186"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x19
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax187"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x1a
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax188"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x1b
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax189"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x1c
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax190"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x1d
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax191"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x1e
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax192"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags play-only-once)
+                                        :speech #x1f
                                         :text-duration (seconds 1)
                                         :neg #x1
                                         :on-close #f
@@ -711,9 +872,9 @@
     (format #t "artifact-race::initialize death-count ~d, suck-factor ~f~%" a2-4 (-> this suck-factor))
     )
   (set! (-> this extra-suck-time) (* 16.0 (-> this suck-factor)))
-  (set! (-> this begin-pos quad) (-> (new 'static 'vector :x 9263923.0 :y 129024.0 :z 1077248.0 :w 1.0) quad))
-  (set! (-> this end-pos quad) (-> (new 'static 'vector :x 9277440.0 :y 127795.2 :z 890880.0 :w 1.0) quad))
-  (set! (-> this door-plane quad) (-> (new 'static 'vector :z 1.0 :w 1.0) quad))
+  (vector-copy! (-> this begin-pos) (new 'static 'vector :x 9263923.0 :y 129024.0 :z 1077248.0 :w 1.0))
+  (vector-copy! (-> this end-pos) (new 'static 'vector :x 9277440.0 :y 127795.2 :z 890880.0 :w 1.0))
+  (vector-copy! (-> this door-plane) (new 'static 'vector :z 1.0 :w 1.0))
   (set! (-> this door-plane w)
         (- (vector-dot (-> this door-plane) (new 'static 'vector :x 9277440.0 :y 125747.2 :z 957235.2 :w 1.0)))
         )
@@ -745,7 +906,7 @@
              (let ((s3-0 (-> s5-0 0 data s4-0 actor))
                    (s2-0 (-> this objs s4-0))
                    )
-               (set! (-> s2-0 pos quad) (-> s3-0 extra trans quad))
+               (vector-copy! (-> s2-0 pos) (-> s3-0 extra trans))
                (set! (-> s2-0 time)
                      (the-as uint (the int (* 300.0 (+ (res-lump-float s3-0 'timeout :default 60.0) (-> this extra-suck-time)))))
                      )
@@ -798,7 +959,7 @@
     (set-fog-interp self (-> self dust-begin))
     (send-event (handle->process (-> *game-info* dust-storm)) 'set-intensity (-> self dust-begin))
     (set-setting! 'fog-special-interp-rate #f 0.01 0)
-    (while (!= (status-of-level-and-borrows *level* 'desert #f) 'active)
+    (while (!= (level-status? *level* 'desert #f) 'active)
       (suspend)
       )
     (while (or (not *target*) (not (logtest? (-> *target* focus-status) (focus-status pilot-riding))))
@@ -882,7 +1043,7 @@
     (open! (-> self node-info) 'event)
     (remove-setting! 'airlock)
     (let ((gp-3 (new 'stack-no-clear 'inline-array 'task-arrow-params 1)))
-      (set! (-> gp-3 0 pos quad) (-> self end-pos quad))
+      (vector-copy! (-> gp-3 0 pos) (-> self end-pos))
       (quaternion-identity! (-> gp-3 0 quat))
       (set! (-> gp-3 0 flags) (task-arrow-flags))
       (set! (-> gp-3 0 map-icon) (the-as uint 13))
@@ -911,8 +1072,8 @@
             (when (and (< 2048000.0 (-> gp-4 trans x)) (time-elapsed? (-> self speech-time) (seconds 4)))
               (vector-! (-> gp-4 uvec) (-> self end-pos) (-> (the-as process-drawable s5-2) root trans))
               (vector-normalize! (-> gp-4 uvec) 1.0)
-              (set! (-> gp-4 rvec quad) (-> (the-as process-drawable s5-2) node-list data 0 bone transform fvec quad))
-              (set! (-> gp-4 fvec quad) (-> (the-as process-drawable s5-2) root transv quad))
+              (vector-copy! (-> gp-4 rvec) (-> (the-as process-drawable s5-2) node-list data 0 bone transform fvec))
+              (vector-copy! (-> gp-4 fvec) (-> (the-as process-drawable s5-2) root transv))
               (when (and (< (vector-dot (-> gp-4 uvec) (-> gp-4 rvec)) (cos 10922.667))
                          (< (vector-dot (-> gp-4 uvec) (-> (the-as process-drawable s5-2) root transv)) 0.0)
                          (< 81920.0 (vector-length (-> gp-4 fvec)))
@@ -982,22 +1143,12 @@
     0
     (when (= (-> self node-info task) (game-task desert-artifact-race-1))
       (send-event *target* 'end-mode 'pilot)
-      (let ((gp-0 (current-time)))
-        (until (time-elapsed? gp-0 (seconds 0.5))
-          (suspend)
-          )
+      (suspend-for (seconds 0.5)
         )
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 0.5))
-        (suspend)
-        )
+    (suspend-for (seconds 0.5)
       )
-    (let ((t9-3 (-> (find-parent-state) code)))
-      (if t9-3
-          ((the-as (function none) t9-3))
-          )
-      )
+    (call-parent-state-handler code)
     )
   )
 
@@ -1018,7 +1169,3 @@
       )
     )
   )
-
-
-
-

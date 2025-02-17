@@ -270,7 +270,7 @@
         )
       (quaternion-copy! (-> self root quat) (the-as quaternion (&-> self stack 96)))
       (set-vector! (-> self root transv) 0.0 -4096.0 0.0 1.0)
-      (set! (-> self drop-point quad) (-> self origin quad))
+      (vector-copy! (-> self drop-point) (-> self origin))
       (go-virtual fall)
       )
     )
@@ -299,8 +299,8 @@
        (can-drop? self (the-as vector (-> block param 0)))
        )
       (('drop)
-       (set! (-> self root transv quad) (-> (the-as vector (-> block param 1)) quad))
-       (set! (-> self drop-point quad) (-> self root trans quad))
+       (vector-copy! (-> self root transv) (the-as vector (-> block param 1)))
+       (vector-copy! (-> self drop-point) (-> self root trans))
        (go-virtual fall)
        )
       )
@@ -332,16 +332,16 @@
          (if (handle->process (-> self carry other))
              (drop! (the-as carry-info (send-event (handle->process (-> self carry other)) 'carry-info)) (-> self carry))
              )
-         (set! (-> self root transv quad) (-> (the-as vector (-> block param 1)) quad))
-         (set! (-> self drop-point quad) (-> self root trans quad))
+         (vector-copy! (-> self root transv) (the-as vector (-> block param 1)))
+         (vector-copy! (-> self drop-point) (-> self root trans))
          (go-virtual fall)
          )
         (('move)
          (let ((s4-0 (-> self root))
                (s5-0 (new 'stack-no-clear 'vector))
                )
-           (set! (-> s5-0 quad) (-> s4-0 trans quad))
-           (set! (-> s4-0 transv quad) (-> (the-as vector (-> block param 0)) quad))
+           (vector-copy! s5-0 (-> s4-0 trans))
+           (vector-copy! (-> s4-0 transv) (the-as vector (-> block param 0)))
            (let ((s2-0 (-> self nav))
                  (s1-0 (-> s4-0 root-prim prim-core))
                  (s3-0 (new 'stack-no-clear 'vector))
@@ -351,8 +351,8 @@
                (.mov at-0 f0-0)
                )
              (.mov vf2 at-0)
-             (.mov.vf vf1 vf0 :mask #b1000)
-             (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+             (.mov.vf.w vf1 vf0)
+             (.mul.x.vf.xyz vf1 vf1 vf2)
              (.svf (&-> s3-0 quad) vf1)
              (set! (-> s3-0 y) 0.0)
              (vector-float*! s3-0 s3-0 10.0)
@@ -361,7 +361,7 @@
                      (a0-26 s1-0)
                      (a1-6 (new 'stack-no-clear 'nav-poly))
                      )
-                 (vector-! (the-as vector (-> a1-6 vertex)) (the-as vector a0-26) (the-as vector (-> v1-28 state mesh bounds)))
+                 (vector-! (-> a1-6 vertex 0) (-> a0-26 world-sphere) (the-as vector (-> v1-28 state mesh bounds)))
                  (set! (-> a1-6 vertex1 x) (-> v1-28 nearest-y-threshold))
                  (set! (-> a1-6 data 20) (the-as uint 2))
                  (let ((a2-4 (nav-mesh-method-45 (-> v1-28 state mesh) a1-6)))
@@ -369,7 +369,7 @@
                      (a2-4
                        (clamp-vector-to-mesh-cross-gaps
                          s2-0
-                         (the-as vector s1-0)
+                         (-> s1-0 world-sphere)
                          a2-4
                          s3-0
                          204.8
@@ -383,7 +383,7 @@
                    )
                  )
                )
-             (vector-float*! (-> s4-0 transv) s3-0 (* 0.1 (-> self clock frames-per-second)))
+             (vector-float*! (-> s4-0 transv) s3-0 (/ (-> self clock frames-per-second) 10))
              )
            (let ((v1-35 (-> s4-0 root-prim)))
              (set! (-> v1-35 prim-core collide-as) (-> s4-0 backup-collide-as))
@@ -405,7 +405,7 @@
                    (a0-41 (-> self root root-prim prim-core))
                    (a1-9 (new 'stack-no-clear 'nav-poly))
                    )
-               (vector-! (the-as vector (-> a1-9 vertex)) (the-as vector a0-41) (the-as vector (-> v1-44 state mesh bounds)))
+               (vector-! (-> a1-9 vertex 0) (-> a0-41 world-sphere) (the-as vector (-> v1-44 state mesh bounds)))
                (set! (-> a1-9 vertex1 x) (-> v1-44 nearest-y-threshold))
                (set! (-> a1-9 data 20) (the-as uint 2))
                (let ((v1-46 (nav-mesh-method-45 (-> v1-44 state mesh) a1-9)))
@@ -500,11 +500,11 @@
          (sound-play "block-break")
          (cond
            ((logtest? (-> *part-group-id-table* 195 flags) (sp-group-flag sp13))
-            (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+            (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
             (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 195))
             )
            (else
-             (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+             (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
              (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 195))
              )
            )
@@ -516,11 +516,11 @@
          (sound-play "block-break")
          (cond
            ((logtest? (-> *part-group-id-table* 195 flags) (sp-group-flag sp13))
-            (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+            (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
             (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 195))
             )
            (else
-             (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+             (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
              (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 195))
              )
            )
@@ -590,7 +590,7 @@
              (f0-6 (* f0-5 f0-5))
              (f0-7 (- 1.0 f0-6))
              )
-        (set! (-> s3-0 quad) (-> arg0 surface-normal quad))
+        (vector-copy! s3-0 (-> arg0 surface-normal))
         (set! (-> s3-0 y) 0.0)
         (vector-normalize! s3-0 f0-7)
         )
@@ -677,7 +677,8 @@
 
 ;; definition for method 20 of type precur-bomb
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this precur-bomb))
+(defmethod get-search-info-flag ((this precur-bomb))
+  "Get search-info-flag for this process."
   (the-as search-info-flag (logior 0 16))
   )
 
@@ -728,18 +729,16 @@
               s3-0
               s4-0
               self
-              (if (type? arg0 process-drawable)
-                  arg0
-                  )
+              (as-type arg0 process-drawable)
               (the-as touching-shapes-entry (-> arg3 param 0))
               )
             (when (logtest? (-> s3-0 mask) (attack-mask intersection))
               (let ((gp-1 (new 'stack-no-clear 'vector)))
                 (vector-z-quaternion! gp-1 (target-rot))
-                (set! (-> self drop-point quad) (-> self root trans quad))
+                (vector-copy! (-> self drop-point) (-> self root trans))
                 (vector-normalize-copy! gp-1 gp-1 102400.0)
                 (+! (-> gp-1 y) 102400.0)
-                (set! (-> self root transv quad) (-> gp-1 quad))
+                (vector-copy! (-> self root transv) gp-1)
                 )
               (when (zero? (-> self bomb-timer))
                 (set! (-> self bomb-timer) (the-as uint (current-time)))
@@ -772,10 +771,10 @@
       (('fall)
        (let ((gp-0 (new 'stack-no-clear 'vector)))
          (vector-z-quaternion! gp-0 (target-rot))
-         (set! (-> self drop-point quad) (-> self root trans quad))
+         (vector-copy! (-> self drop-point) (-> self root trans))
          (vector-normalize-copy! gp-0 gp-0 102400.0)
          (+! (-> gp-0 y) 102400.0)
-         (set! (-> self root transv quad) (-> gp-0 quad))
+         (vector-copy! (-> self root transv) gp-0)
          )
        (when (zero? (-> self bomb-timer))
          (set! (-> self bomb-timer) (the-as uint (current-time)))
@@ -880,17 +879,11 @@
             )
         (send-event (ppointer->process (-> self parent)) 'stop-hint)
         (set! (-> gp-0 flags) (font-flags shadow kerning large))
-        (let ((v1-9 gp-0))
-          (set! (-> v1-9 width) (the float 340))
-          )
-        (let ((v1-10 gp-0))
-          (set! (-> v1-10 height) (the float 80))
-          )
-        (let ((v1-11 gp-0))
-          (set! (-> v1-11 scale) 0.9)
-          )
+        (set-width! gp-0 340)
+        (set-height! gp-0 80)
+        (set-scale! gp-0 0.9)
         (let ((s5-0 print-game-text))
-          (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-077c) #f))
+          (format (clear *temp-string*) (lookup-text! *common-text* (text-id press-to-throw-held-objects) #f))
           (s5-0 *temp-string* gp-0 #f 44 (bucket-id hud-draw-hud-alpha))
           )
         )
@@ -958,10 +951,10 @@
       (go-virtual idle)
       )
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-1 quad) (-> self root transv quad))
+      (vector-copy! gp-1 (-> self root transv))
       (let ((f0-9 32768.0))
         (set! (-> gp-1 y) 0.0)
-        (let* ((f0-11 (* 0.000048828126 f0-9 (vector-length gp-1)))
+        (let* ((f0-11 (* (/ f0-9 (meters 5)) (vector-length gp-1)))
                (f30-0 (fmin 32768.0 f0-11))
                )
           (vector-normalize! gp-1 1.0)
@@ -971,7 +964,7 @@
         )
       )
     (quaternion*! (-> self root quat) (-> self spin-quat) (-> self root quat))
-    (if (< (* 0.00024414062 (-> self root trans y)) 500.0)
+    (if (< (/ (-> self root trans y) METER_LENGTH) 500.0)
         (go-virtual explode)
         )
     )
@@ -991,7 +984,7 @@
   :enter (behavior ()
     (sound-play "prec-bomb-xplo")
     (let ((gp-1 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-1 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-1 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 40960.0)
       (set! (-> gp-1 scale) 1.0)
@@ -1068,14 +1061,14 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-precur-bomb" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (mem-copy! (the-as pointer (-> self origin)) (the-as pointer (-> self root trans)) 48)
   (set! (-> self collide-timer) (the-as uint 0))
   (set! (-> self bomb-timer) (the-as uint 0))
   (set! (-> self blink-timer) (the-as uint 0))
   (set! (-> self blink-rate) 600.0)
   (set! (-> self blink) #t)
-  (set! (-> self default-emissive-color quad) (-> self draw color-emissive quad))
+  (vector-copy! (-> self default-emissive-color) (-> self draw color-emissive))
   (set! (-> self allow-drag?) #f)
   (set! (-> self reset-on-land?) #f)
   (let* ((v1-22 *game-info*)
@@ -1086,7 +1079,7 @@
     )
   (set! (-> self hit-something?) #f)
   (let ((gp-1 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-1 quad) (-> self root trans quad))
+    (vector-copy! gp-1 (-> self root trans))
     (+! (-> gp-1 y) 12288.0)
     (let ((v1-28 (new 'process 'carry-info self 3 (new 'static 'vector :w 1.0) (new 'static 'vector :w 1.0) 0.0)))
       (set! (-> v1-28 max-distance) 16384.0)
@@ -1159,6 +1152,7 @@
 
 ;; definition for method 11 of type precur-box
 (defmethod init-from-entity! ((this precur-box) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -1282,7 +1276,7 @@
 (defmethod spawn-bomb ((this precur-bomb-spawner))
   (local-vars (v1-10 (pointer process)))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this root trans quad))
+    (vector-copy! s5-0 (-> this root trans))
     (format 0 "spawning bomb~%")
     (sound-play "prec-bomb-spawn")
     (format 0 "spawning bomb-post~%")
@@ -1346,9 +1340,7 @@
                 s3-0
                 s4-0
                 self
-                (if (type? proc process-drawable)
-                    proc
-                    )
+                (as-type proc process-drawable)
                 (the-as touching-shapes-entry (-> block param 0))
                 )
               (when (logtest? (-> s3-0 mask) (attack-mask intersection))
@@ -1413,6 +1405,7 @@
 
 ;; definition for method 11 of type precur-bomb-spawner
 (defmethod init-from-entity! ((this precur-bomb-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
@@ -1618,7 +1611,7 @@
   (local-vars (sv-560 collide-query) (sv-564 float))
   (set! sv-560 (new 'stack-no-clear 'collide-query))
   (set! sv-564 83968.0)
-  (set! (-> sv-560 start-pos quad) (-> arg0 quad))
+  (vector-copy! (-> sv-560 start-pos) arg0)
   (vector-normalize-copy! arg1 arg1 sv-564)
   (vector-normalize-copy! (-> sv-560 move-dist) arg1 sv-564)
   (let ((v1-5 sv-560))
@@ -1695,7 +1688,7 @@
   (local-vars (sv-560 collide-query) (sv-564 float))
   (set! sv-560 (new 'stack-no-clear 'collide-query))
   (set! sv-564 83968.0)
-  (set! (-> sv-560 start-pos quad) (-> arg0 quad))
+  (vector-copy! (-> sv-560 start-pos) arg0)
   (vector-float*! (-> sv-560 move-dist) arg1 sv-564)
   (let ((v1-7 sv-560))
     (set! (-> v1-7 radius) 40.96)
@@ -1724,7 +1717,7 @@
         )
     (vector+float*! s3-0 arg0 arg1 sv-564)
     (matrix-f-compose s4-0 arg1)
-    (set! (-> s4-0 trans quad) (-> s3-0 quad))
+    (vector-copy! (-> s4-0 trans) s3-0)
     (if (logtest? (-> *part-group-id-table* 1326 flags) (sp-group-flag sp13))
         (part-tracker-spawn
           part-tracker-subsampler
@@ -1736,7 +1729,7 @@
         )
     (vector+float*! s3-0 arg0 arg1 (- sv-564))
     (matrix-f-compose s4-0 (vector-float*! (new 'stack-no-clear 'vector) arg1 -1.0))
-    (set! (-> s4-0 trans quad) (-> s3-0 quad))
+    (vector-copy! (-> s4-0 trans) s3-0)
     (if (logtest? (-> *part-group-id-table* 1326 flags) (sp-group-flag sp13))
         (part-tracker-spawn
           part-tracker-subsampler
@@ -1793,10 +1786,7 @@
     (let ((gp-0 (res-lump-data (-> self entity) 'actor-groups pointer :tag-ptr (& sv-16))))
       (cond
         ((and gp-0 (nonzero? (-> sv-16 elt-count)))
-         (let ((s5-0 (current-time)))
-           (until (time-elapsed? s5-0 (seconds 1))
-             (suspend)
-             )
+         (suspend-for (seconds 1)
            )
          (set! (-> self actor-group-count) (the-as int (-> sv-16 elt-count)))
          (set! (-> self actor-group) (the-as (pointer actor-group) gp-0))
@@ -1881,6 +1871,7 @@
 
 ;; definition for method 11 of type precur-laser-beam
 (defmethod init-from-entity! ((this precur-laser-beam) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (set! (-> this on-duration) 60.0)
@@ -2021,10 +2012,10 @@
 (defmethod task-manager-method-26 ((this task-manager-precura))
   (when *target*
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-0 quad) (-> (target-pos 0) quad))
+      (vector-copy! s4-0 (target-pos 0))
       (let ((s3-0 (new 'stack-no-clear 'vector)))
         (when (and (>= (-> s4-0 z) (-> *pca-sph1* z)) (>= (-> *pca-sph2* z) (-> s4-0 z)))
-          (set! (-> s3-0 quad) (-> *pca-sph1* quad))
+          (vector-copy! s3-0 *pca-sph1*)
           (set! (-> s4-0 z) 0.0)
           (set! (-> s3-0 z) 0.0)
           (when (< (vector-vector-distance s4-0 s3-0) (-> *pca-sph1* r))
@@ -2180,7 +2171,7 @@
     (set! sv-656 (new 'stack-no-clear 'matrix))
     (set! sv-672 (new 'stack-no-clear 'collide-query))
     (set! sv-688 (the-as symbol #f))
-    (set! (-> sv-672 start-pos quad) (-> arg4 quad))
+    (vector-copy! (-> sv-672 start-pos) arg4)
     (set! sv-704 (-> sv-672 move-dist))
     (set! (-> sv-704 x) (rand-vu-float-range 0.0 65536.0))
     (set! (-> sv-704 y) (rand-vu-float-range 0.0 65536.0))
@@ -2204,7 +2195,7 @@
         )
       (when (>= (fill-and-probe-using-line-sphere *collide-cache* sv-672) 0.0)
         (set-time! (-> s5-0 last-valid-time))
-        (set! (-> s5-0 end-pos quad) (-> sv-672 best-other-tri intersect quad))
+        (vector-copy! (-> s5-0 end-pos) (-> sv-672 best-other-tri intersect))
         (when (< 8192.0 (vector-vector-distance (-> s5-0 end-pos) (-> sv-672 start-pos)))
           (set! sv-688 #t)
           (goto cfg-7)
@@ -2238,7 +2229,7 @@
                 (a0-26 *sp-particle-system-2d*)
                 (a2-5 *launch-matrix*)
                 )
-            (set! (-> a2-5 trans quad) (-> s5-0 end-pos quad))
+            (vector-copy! (-> a2-5 trans) (-> s5-0 end-pos))
             (t9-12 a0-26 arg3 a2-5 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
             )
           )
@@ -2323,7 +2314,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defmethod set-inner-jmod-scale ((this precur-spot-shadow-effect) (arg0 vector))
-  (set! (-> this jmod-inner transform scale quad) (-> arg0 quad))
+  (vector-copy! (-> this jmod-inner transform scale) arg0)
   (none)
   )
 
@@ -2331,7 +2322,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defmethod set-outer-jmod-scale ((this precur-spot-shadow-effect) (arg0 vector))
-  (set! (-> this jmod-outer transform scale quad) (-> arg0 quad))
+  (vector-copy! (-> this jmod-outer transform scale) arg0)
   (none)
   )
 
@@ -2339,9 +2330,9 @@
 ;; INFO: Used lq/sq
 (defbehavior precur-spot-shadow-effect-init-by-other precur-spot-shadow-effect ((arg0 vector) (arg1 vector))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-copy! (-> self root quat) (the-as quaternion arg1))
-  (set! (-> self pre-flicker-pos quad) (-> self root trans quad))
+  (vector-copy! (-> self pre-flicker-pos) (-> self root trans))
   (set! (-> self level) (-> *level* level-default))
   (initialize-skeleton
     self
@@ -2497,7 +2488,7 @@
   (set! sv-576 (new 'stack-no-clear 'collide-query))
   (set! sv-580 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
   (set! sv-584 (vector-vector-distance arg0 arg1))
-  (set! (-> sv-576 start-pos quad) (-> arg0 quad))
+  (vector-copy! (-> sv-576 start-pos) arg0)
   (vector-normalize-copy! (-> sv-576 move-dist) sv-580 sv-584)
   (let ((v1-5 sv-576))
     (set! (-> v1-5 radius) 40.96)
@@ -2630,7 +2621,7 @@
             (let ((a0-8 (the-as precur-spot-shadow-effect (-> this shock-shadow-handle process 0)))
                   (a1-6 (new 'stack-no-clear 'vector))
                   )
-              (set! (-> a0-8 root trans quad) (-> s3-0 quad))
+              (vector-copy! (-> a0-8 root trans) s3-0)
               (set-vector! a1-6 (* 0.0001319679 f0-1) 0.4 0.4 1.0)
               (set-outer-jmod-scale a0-8 a1-6)
               )
@@ -2652,7 +2643,7 @@
       (+! (-> gp-0 span-pts-start data 0 y) 4096.0)
       )
     (when arg1
-      (set! (-> gp-0 span-pts-start data 1 quad) (-> arg1 quad))
+      (vector-copy! (-> gp-0 span-pts-start data 1) arg1)
       (+! (-> gp-0 span-pts-start data 1 y) 4096.0)
       )
     (set! (-> gp-0 spans-internal data 1 num-inner-points) 0)
@@ -2771,6 +2762,7 @@
 
 ;; definition for method 11 of type precur-path
 (defmethod init-from-entity! ((this precur-path) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (when (res-lump-data arg0 'patha pointer)
@@ -2846,6 +2838,7 @@
 
 ;; definition for method 11 of type precur-door-b
 (defmethod init-from-entity! ((this precur-door-b) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))

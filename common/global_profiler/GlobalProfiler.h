@@ -17,7 +17,8 @@ struct ProfNode {
 class GlobalProfiler {
  public:
   GlobalProfiler();
-  void set_max_events(size_t event_count);
+  size_t get_max_events() { return m_max_events; }
+  void update_event_buffer_size(size_t new_size);
   void set_waiting_for_event(const std::string& event_name);
   void instant_event(const char* name);
   void begin_event(const char* name);
@@ -25,11 +26,16 @@ class GlobalProfiler {
   void end_event();
   void clear();
   void set_enable(bool en);
-  void dump_to_json(const std::string& path);
+  void dump_to_json();
   void root_event();
+  bool is_enabled() { return m_enabled; }
+  size_t get_next_idx();
+
+  bool m_enable_compression = false;
 
  private:
   std::atomic_bool m_enabled = false;
+  size_t m_max_events = 65536;
   u64 m_t0 = 0;
   std::atomic_size_t m_next_idx = 0;
   std::vector<ProfNode> m_nodes;
@@ -41,7 +47,7 @@ class GlobalProfiler {
 };
 
 struct ScopedEvent {
-  ScopedEvent(GlobalProfiler* _prof) : prof(_prof){};
+  ScopedEvent(GlobalProfiler* _prof) : prof(_prof) {};
   ScopedEvent(const ScopedEvent&) = delete;
   ScopedEvent& operator=(const ScopedEvent&) = delete;
   GlobalProfiler* prof = nullptr;

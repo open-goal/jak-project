@@ -1,5 +1,7 @@
 #include "extract_merc.h"
 
+#include "merc_replacement.h"
+
 #include "common/log/log.h"
 #include "common/util/BitUtils.h"
 #include "common/util/FileUtil.h"
@@ -851,10 +853,17 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         u32 tidx = (env >> 8) & 0b1111'1111'1111;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
-      case GameVersion::Jak2:
-      case GameVersion::Jak3: {
+      case GameVersion::Jak2: {
         u32 tpage = 0x1f;
         u32 tidx = 2;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      case GameVersion::Jak3: {
+        // (define *generic-envmap-texture* (get-texture pal-environment-front environment-generic))
+        // (defconstant environment-generic 2) tpage
+        // (def-tex pal-environment-front environment-generic 1) texture
+        u32 tpage = 2;
+        u32 tidx = 1;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
       default:
@@ -1597,6 +1606,60 @@ void create_modifiable_vertex_data(
   }
 }
 
+void replace_model(tfrag3::Level& lvl, tfrag3::MercModel& model, const fs::path& mdl_path) {
+  if (model.max_bones < 100) {
+    auto lvl_name = lvl.level_name == "" ? "common" : lvl.level_name;
+    lg::info("Replacing {} for {}: {} effects, {} max bones, {} max draws\n", model.name, lvl_name,
+             model.effects.size(), model.max_bones, model.max_draws);
+
+    std::vector<tfrag3::MercVertex> old_verts;
+    for (auto& e : model.effects) {
+      for (auto& d : e.all_draws) {
+        for (size_t i = 0; i < d.index_count; i++) {
+          auto idx = lvl.merc_data.indices.at(i + d.first_index);
+          if (idx != UINT32_MAX) {
+            old_verts.push_back(lvl.merc_data.vertices[idx]);
+          }
+        }
+      }
+    }
+
+    auto swap_info = load_replacement_merc_model(model, lvl.merc_data.indices.size(),
+                                                 lvl.merc_data.vertices.size(), lvl.textures.size(),
+                                                 mdl_path.string(), old_verts, false);
+    model = swap_info.new_model;
+    size_t old_start = lvl.merc_data.vertices.size();
+    for (auto& ind : swap_info.new_indices) {
+      ASSERT(ind >= old_start);
+    }
+    lvl.merc_data.indices.insert(lvl.merc_data.indices.end(), swap_info.new_indices.begin(),
+                                 swap_info.new_indices.end());
+    lvl.merc_data.vertices.insert(lvl.merc_data.vertices.end(), swap_info.new_vertices.begin(),
+                                  swap_info.new_vertices.end());
+    lvl.textures.insert(lvl.textures.end(), swap_info.new_textures.begin(),
+                        swap_info.new_textures.end());
+  }
+}
+
+void add_custom_model_to_level(tfrag3::Level& lvl,
+                               const std::string& name,
+                               const fs::path& mdl_path) {
+  auto lvl_name = lvl.level_name == "" ? "common" : lvl.level_name;
+  lg::info("Adding custom model {} to {}", name, lvl_name);
+  auto merc_data =
+      load_custom_merc_model(name, lvl.merc_data.indices.size(), lvl.merc_data.vertices.size(),
+                             lvl.textures.size(), mdl_path.string(), {}, true);
+  for (auto& idx : merc_data.new_indices) {
+    lvl.merc_data.indices.push_back(idx);
+  }
+  for (auto& vert : merc_data.new_vertices) {
+    lvl.merc_data.vertices.push_back(vert);
+  }
+  lvl.merc_data.models.push_back(merc_data.new_model);
+  lvl.textures.insert(lvl.textures.end(), merc_data.new_textures.begin(),
+                      merc_data.new_textures.end());
+}
+
 /*!
  * Top-level merc extraction
  */
@@ -1606,7 +1669,8 @@ void extract_merc(const ObjectFileData& ag_data,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
                   bool dump_level,
-                  GameVersion version) {
+                  GameVersion version,
+                  MercSwapInfo& swapped_info) {
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
   }
@@ -1728,6 +1792,48 @@ void extract_merc(const ObjectFileData& ag_data,
       model.max_draws += e.all_draws.size();
       if (e.has_mod_draw) {
         model.max_draws += e.mod.mod_draw.size() + e.mod.fix_draw.size();
+      }
+    }
+  }
+
+  // do model replacement if present
+  for (auto& ctrl : ctrls) {
+    if (swapped_info.should_swap(ctrl.name)) {
+      auto merc_replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
+                                    game_version_names[version] / "merc_replacements";
+      if (!swapped_info.already_swapped(ctrl.name, out.level_name)) {
+        if (file_util::file_exists(merc_replacements_path.string())) {
+          std::string file_name(ctrl.name + ".glb");
+          auto mdl_path = merc_replacements_path / file_name;
+          if (file_util::file_exists(mdl_path.string())) {
+            auto it = std::find_if(out.merc_data.models.begin(), out.merc_data.models.end(),
+                                   [&](const auto& m) { return m.name == ctrl.name; });
+            if (it != out.merc_data.models.end()) {
+              auto& model = *it;
+              replace_model(out, model, mdl_path);
+              swapped_info.add_to_swapped_list(ctrl.name, out.level_name);
+            }
+          }
+        } else {
+          lg::info("{} in level {} was already swapped, skipping", ctrl.name, out.level_name);
+        }
+      }
+    }
+
+    // add custom models if present
+    auto lvl_name = out.level_name == "" ? "common" : out.level_name;
+    auto models_folder = file_util::get_jak_project_dir() / "custom_assets" /
+                         game_version_names[version] / "models" / lvl_name;
+    if (file_util::file_exists(models_folder.string())) {
+      auto custom_models = file_util::find_files_in_dir(models_folder, std::regex(".*\\.glb"));
+      for (auto& mdl : custom_models) {
+        auto name = mdl.stem().string();
+        if (!swapped_info.already_added(name, lvl_name)) {
+          add_custom_model_to_level(out, name, mdl);
+          swapped_info.add_to_custom_list(name, lvl_name);
+        } else {
+          lg::info("custom model {} was already added to level {}, skipping", name, lvl_name);
+        }
       }
     }
   }

@@ -188,7 +188,7 @@
         (toggle-status gp-0 (entity-perm-status dead) #t)
         (toggle-status s5-0 (entity-perm-status dead) #t)
         (kill-by-type wascity-airlock *active-pool*)
-        (set! (-> self root trans quad) (-> gp-0 extra trans quad))
+        (vector-copy! (-> self root trans) (-> gp-0 extra trans))
         (spawn-exploder self)
         )
       )
@@ -213,7 +213,7 @@
   (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
     (let ((v1-2 (vector-normalize! (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)) 327680.0)))
       (vector+! v1-2 v1-2 (-> this root trans))
-      (set! (-> gp-0 fountain-rand-transv-lo quad) (-> v1-2 quad))
+      (vector-copy! (-> gp-0 fountain-rand-transv-lo) v1-2)
       )
     (set! (-> gp-0 fountain-rand-transv-hi x) 81920.0)
     (set! (-> gp-0 fountain-rand-transv-hi y) 327680.0)
@@ -239,6 +239,7 @@
 
 ;; definition for method 11 of type wascity-airlock-debris
 (defmethod init-from-entity! ((this wascity-airlock-debris) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (go (method-of-object this idle))
@@ -288,7 +289,7 @@
 (defbehavior beam-generator-init-by-other beam-generator ((arg0 vector) (arg1 entity-actor))
   (process-entity-set! self arg1)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self pos quad) (-> arg0 quad))
+  (vector-copy! (-> self pos) arg0)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-beam-generator" (the-as (pointer level) #f)))
@@ -308,7 +309,7 @@
             )
       )
   (let ((s5-1 (new 'stack-no-clear 'task-arrow-params)))
-    (set! (-> s5-1 pos quad) (-> arg0 quad))
+    (vector-copy! (-> s5-1 pos) arg0)
     (quaternion-identity! (-> s5-1 quat))
     (set! (-> s5-1 flags) (task-arrow-flags taf3))
     (set! (-> s5-1 map-icon) (the-as uint 13))
@@ -354,11 +355,11 @@
         (s5-0 (new 'stack-no-clear 'vector))
         )
     (when v1-0
-      (set! (-> s5-0 quad) (-> v1-0 control trans quad))
+      (vector-copy! s5-0 (-> v1-0 control trans))
       (set! (-> s5-0 w) 4096.0)
       (when (focus-test? v1-0 pilot)
         (let ((a1-4 (the-as process-focusable (handle->process (-> v1-0 pilot vehicle)))))
-          (set! (-> s5-0 quad) (-> a1-4 root root-prim prim-core world-sphere quad))
+          (vector-copy! s5-0 (-> a1-4 root root-prim prim-core world-sphere))
           )
         )
       (let ((f0-1 (vector-vector-distance-squared (-> this root trans) s5-0))
@@ -411,6 +412,7 @@
 ;; definition for method 11 of type beam-generator
 ;; WARN: Return type mismatch entity-perm-status vs object.
 (defmethod init-from-entity! ((this beam-generator) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (process-entity-status! this (entity-perm-status dead) #t)
   )
 
@@ -441,9 +443,9 @@
     (the int (+ 30.0 (* -100.0 (-> this offset))))
     )
   (set! (-> this sprites 0 angle) (* 182.04445 (the float (- 270 (/ (* 90 (-> this values 0 current)) 100)))))
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 2)) 40 16)
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites 2)) 1 16)
-  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 2)) 15 10)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 2 pos) 40 16)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 2 pos) 1 16)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 2 pos) 15 10)
   (let ((f30-1
           (the float
                (+ (the int (* 127.0 (sin (* 182.04445 (the float (* (-> *display* game-clock frame-counter) 2)))))) 127)
@@ -518,13 +520,9 @@
 ;; definition for method 15 of type hud-desert-catapult-count
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-desert-catapult-count))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 482.0 (* 130.0 (-> this offset))))
-    25
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 482.0 (* 130.0 (-> this offset)))) 25)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -20 60)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -20 60)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -791,11 +789,7 @@
     (case arg2
       (('notify)
        (when (= (-> arg3 param 0) 'attack)
-         (let ((v1-2 (if (type? arg0 projectile)
-                         (the-as projectile arg0)
-                         )
-                     )
-               )
+         (let ((v1-2 (as-type arg0 projectile)))
            (if (and v1-2 (let ((f0-0 (vector-vector-distance-squared (-> v1-2 root trans) *desjump-wasdoors-pos*))
                                (f1-0 20480.0)
                                )
@@ -963,12 +957,7 @@
       (dotimes (gp-5 4)
         (let ((s5-3 (-> self interceptor gp-5)))
           (when (!= (-> s5-3 handle) #f)
-            (let* ((s4-2 (handle->process (-> s5-3 handle)))
-                   (a0-63 (if (type? s4-2 process-focusable)
-                              s4-2
-                              )
-                          )
-                   )
+            (let ((a0-63 (as-type (handle->process (-> s5-3 handle)) process-focusable)))
               (when a0-63
                 (cond
                   ((-> s5-3 kamikaze?)
@@ -1020,10 +1009,7 @@
           )
         )
       )
-    (let ((gp-7 (current-time)))
-      (until (time-elapsed? gp-7 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (send-event self 'complete)
     )
@@ -1068,15 +1054,10 @@
              (v1-17 (-> s4-1 handle))
              )
         (when (!= v1-17 #f)
-          (let* ((s2-0 (handle->process v1-17))
-                 (s3-0 (if (type? s2-0 process-focusable)
-                           (the-as process-focusable s2-0)
-                           )
-                       )
-                 )
+          (let ((s3-0 (as-type (handle->process v1-17) process-focusable)))
             (cond
               ((and s3-0 (not (logtest? (-> s3-0 focus-status) (focus-status dead))))
-               (set! (-> this last-catapult-pos quad) (-> s3-0 root trans quad))
+               (vector-copy! (-> this last-catapult-pos) (-> s3-0 root trans))
                (let ((s1-0 (-> *desjump-vehicle-path* (-> s4-1 path-type) (-> s4-1 path-pos)))
                      (s2-1 (= (+ (length (-> *desjump-vehicle-path* (-> s4-1 path-type))) -1) (-> s4-1 path-pos)))
                      )
@@ -1148,12 +1129,7 @@
              (v1-119 (-> s3-1 handle))
              )
         (when (!= v1-119 #f)
-          (let* ((s2-2 (handle->process v1-119))
-                 (s4-3 (if (type? s2-2 process-focusable)
-                           s2-2
-                           )
-                       )
-                 )
+          (let ((s4-3 (as-type (handle->process v1-119) process-focusable)))
             (cond
               ((and (the-as process-focusable s4-3)
                     (not (logtest? (-> (the-as process-focusable s4-3) focus-status) (focus-status dead)))
@@ -1244,7 +1220,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod spawn-beam-generator ((this desert-jump-manager) (arg0 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> arg0 quad))
+    (vector-copy! s5-0 arg0)
     (+! (-> s5-0 y) 8192.0)
     (set! (-> this generator)
           (ppointer->handle (process-spawn beam-generator s5-0 (-> this entity) :name "beam-generator" :to this))
@@ -1296,8 +1272,8 @@
         (set! (-> s0-0 params flags) (traffic-spawn-flags))
         (set! (-> s0-0 params guard-type) (the-as uint 11))
         (set! (-> s0-0 params entity) #f)
-        (set! (-> s0-0 params velocity quad) (-> s0-0 vec quad))
-        (set! (-> s0-0 params position quad) (-> s2-0 pos quad))
+        (vector-copy! (-> s0-0 params velocity) (-> s0-0 vec))
+        (vector-copy! (-> s0-0 params position) (-> s2-0 pos))
         (quaternion-copy! (-> s0-0 params rotation) (-> s2-0 quat))
         (let ((s2-1 (vehicle-spawn arg1 (-> s0-0 params))))
           (when s2-1

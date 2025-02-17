@@ -4,13 +4,9 @@
 ;; definition for method 15 of type hud-lurker
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-lurker))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 457.0 (* 130.0 (-> this offset))))
-    205
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 457.0 (* 130.0 (-> this offset)))) 205)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -19 27)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -19 27)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -33,7 +29,7 @@
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
   (logior! (-> this flags) (hud-flags show))
-  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x6 :page #x679)))
+  (set! (-> this sprites 0 tex) (get-texture hud-lurker-icon-01 ctywide-minimap))
   (set! (-> this sprites 0 scale-x) 1.2)
   (set! (-> this sprites 0 scale-y) 1.2)
   (set! (-> this sprites 0 flags) (the-as uint 4))
@@ -885,9 +881,9 @@
                  )
                (.lvf vf4 (&-> s1-0 quad))
                )
-             (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-             (.mul.x.vf acc vf5 vf7 :mask #b111)
-             (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+             (.add.x.vf.w vf6 vf0 vf0)
+             (.mul.x.vf.xyz acc vf5 vf7)
+             (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
              (.svf (&-> s2-0 quad) vf6)
              (s4-0 s5-1 s3-0 s2-0 (the-as nav-poly #f))
              )
@@ -2126,7 +2122,7 @@
 ;; INFO: Used lq/sq
 (defmethod general-event-handler ((this city-lurker) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('nav-mesh-kill)
      (format 0 "nav-mesh-kill event recieved by ~s ~d~%" (-> this name) arg2)
@@ -2313,12 +2309,7 @@
           (set! (-> gp-1 params 0 id) (the-as uint (+ s5-1 120)))
           (set! (-> gp-1 params 0 position quad) (-> s2-0 pos quad))
           (set! (-> gp-1 params 1 position quad) (-> s2-0 pos quad))
-          (let ((s4-0 (the-as
-                        paddywagon
-                        (vehicle-spawn *traffic-manager* paddywagon (the-as traffic-object-spawn-params (-> gp-1 params)))
-                        )
-                      )
-                )
+          (let ((s4-0 (the-as paddywagon (vehicle-spawn *traffic-manager* paddywagon (-> gp-1 params 0)))))
             (when s4-0
               (set! (-> s4-0 current-level) (-> s2-0 level))
               (set! (-> self slave (+ s5-1 (-> self max-count))) (process->handle s4-0))
@@ -2568,12 +2559,12 @@
                )
               ((zero? (-> self data-int32 s5-2))
                (when (the-as city-lurker s4-2)
-                 (let* ((s2-0 (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid))))
-                        (s3-2 (if (type? s2-0 entity-nav-mesh)
-                                  s2-0
-                                  )
-                              )
-                        )
+                 (let ((s3-2 (as-type
+                               (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid)))
+                               entity-nav-mesh
+                               )
+                             )
+                       )
                    (when (and s3-2 (!= (-> (the-as city-lurker s4-2) nav state mesh) (-> s3-2 nav-mesh)))
                      (when (nonzero? (-> (the-as city-lurker s4-2) nav state mesh))
                        (remove-process-drawable (-> (the-as city-lurker s4-2) nav state mesh) (the-as city-lurker s4-2))
@@ -2592,11 +2583,11 @@
                             )
                            (else
                              (.lvf vf1 (&-> (-> (the-as vehicle s3-3) root transv) quad))
-                             (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                             (.add.w.vf.x vf2 vf0 vf0)
                              (.mul.vf vf1 vf1 vf1)
-                             (.mul.x.vf acc vf2 vf1 :mask #b1)
-                             (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                             (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                             (.mul.x.vf.x acc vf2 vf1)
+                             (.add.mul.y.vf.x acc vf2 vf1 acc)
+                             (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                              (.mov v1-163 vf1)
                              (let ((f0-2 v1-163)
                                    (f1-0 32768.0)
@@ -2643,11 +2634,11 @@
                                    )
                                  (begin
                                    (.lvf vf1 (&-> (-> (the-as vehicle s2-1) root transv) quad))
-                                   (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                   (.add.w.vf.x vf2 vf0 vf0)
                                    (.mul.vf vf1 vf1 vf1)
-                                   (.mul.x.vf acc vf2 vf1 :mask #b1)
-                                   (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                                   (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                   (.mul.x.vf.x acc vf2 vf1)
+                                   (.add.mul.y.vf.x acc vf2 vf1 acc)
+                                   (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                                    (.mov v1-205 vf1)
                                    (let ((f0-5 v1-205)
                                          (f1-9 421888.0)
@@ -2683,12 +2674,12 @@
                  )
                )
               ((= (-> self data-int32 s5-2) 2)
-               (let* ((s3-8 (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid))))
-                      (a0-116 (if (type? s3-8 entity-nav-mesh)
-                                  s3-8
-                                  )
-                              )
-                      )
+               (let ((a0-116 (as-type
+                               (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid)))
+                               entity-nav-mesh
+                               )
+                             )
+                     )
                  (if a0-116
                      (change-to (-> a0-116 nav-mesh) (the-as city-lurker s4-2))
                      )
@@ -2903,12 +2894,7 @@
           (set! (-> gp-0 params 0 id) (the-as uint (+ s5-0 120)))
           (set! (-> gp-0 params 0 position quad) (-> s2-0 pos quad))
           (set! (-> gp-0 params 1 position quad) (-> s2-0 pos quad))
-          (let ((s4-0 (the-as
-                        paddywagon
-                        (vehicle-spawn *traffic-manager* paddywagon (the-as traffic-object-spawn-params (-> gp-0 params)))
-                        )
-                      )
-                )
+          (let ((s4-0 (the-as paddywagon (vehicle-spawn *traffic-manager* paddywagon (-> gp-0 params 0)))))
             (when s4-0
               (set! (-> s4-0 current-level) (-> s2-0 level))
               (set! (-> self slave (+ s5-0 (-> self max-count))) (process->handle s4-0))
@@ -3154,12 +3140,12 @@
                )
               ((zero? (-> self data-int32 s5-3))
                (when (the-as city-lurker s4-2)
-                 (let* ((s2-0 (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid))))
-                        (s3-2 (if (type? s2-0 entity-nav-mesh)
-                                  s2-0
-                                  )
-                              )
-                        )
+                 (let ((s3-2 (as-type
+                               (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid)))
+                               entity-nav-mesh
+                               )
+                             )
+                       )
                    (when (and s3-2 (!= (-> (the-as city-lurker s4-2) nav state mesh) (-> s3-2 nav-mesh)))
                      (when (nonzero? (-> (the-as city-lurker s4-2) nav state mesh))
                        (remove-process-drawable (-> (the-as city-lurker s4-2) nav state mesh) (the-as city-lurker s4-2))
@@ -3180,11 +3166,11 @@
                              (let ((v1-174 (get-best-seat-for-vehicle (the-as vehicle s3-3) (-> (the-as vehicle s3-3) root trans) 4 0)))
                                (when (!= v1-174 -1)
                                  (.lvf vf1 (&-> (-> (the-as vehicle s3-3) root transv) quad))
-                                 (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                 (.add.w.vf.x vf2 vf0 vf0)
                                  (.mul.vf vf1 vf1 vf1)
-                                 (.mul.x.vf acc vf2 vf1 :mask #b1)
-                                 (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                                 (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                 (.mul.x.vf.x acc vf2 vf1)
+                                 (.add.mul.y.vf.x acc vf2 vf1 acc)
+                                 (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                                  (.mov v1-178 vf1)
                                  (let ((f0-2 v1-178)
                                        (f1-0 32768.0)
@@ -3246,11 +3232,11 @@
                                    )
                                  (begin
                                    (.lvf vf1 (&-> (-> (the-as vehicle s2-2) root transv) quad))
-                                   (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                   (.add.w.vf.x vf2 vf0 vf0)
                                    (.mul.vf vf1 vf1 vf1)
-                                   (.mul.x.vf acc vf2 vf1 :mask #b1)
-                                   (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                                   (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                   (.mul.x.vf.x acc vf2 vf1)
+                                   (.add.mul.y.vf.x acc vf2 vf1 acc)
+                                   (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                                    (.mov v1-231 vf1)
                                    (let ((f0-6 v1-231)
                                          (f1-9 40960.0)
@@ -3272,12 +3258,12 @@
                  )
                )
               ((= (-> self data-int32 s5-3) 2)
-               (let* ((s3-6 (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid))))
-                      (a0-134 (if (type? s3-6 entity-nav-mesh)
-                                  s3-6
-                                  )
-                              )
-                      )
+               (let ((a0-134 (as-type
+                               (entity-nav-mesh-by-aid (the-as actor-id (-> (the-as city-lurker s4-2) nav-mesh-aid)))
+                               entity-nav-mesh
+                               )
+                             )
+                     )
                  (if a0-134
                      (change-to (-> a0-134 nav-mesh) (the-as city-lurker s4-2))
                      )

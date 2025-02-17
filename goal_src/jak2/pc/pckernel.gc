@@ -266,10 +266,10 @@
     (.lvf vf1 (&-> a quad))
     (.lvf vf2 (&-> b quad))
     (.mov vf4 alpha)
-    (.add.x.vf vf3 vf1 vf0 :mask #b1000)
+    (.add.x.vf.w vf3 vf1 vf0)
     (.sub.vf vf2 vf2 vf1)
     (.mul.x.vf vf2 vf2 vf4)
-    (.add.vf vf3 vf1 vf2 :mask #b111)
+    (.add.vf.xyz vf3 vf1 vf2)
     (.svf (&-> dest quad) vf3)
     dest
     )
@@ -283,7 +283,7 @@
     (init-vf0-vector)
     (.lvf dest-vf (&-> dest quad))
     (.lvf src-vf (&-> src quad))
-    (.add.vf dest-vf vf0 src-vf :mask #b111)
+    (.add.vf.xyz dest-vf vf0 src-vf)
     (.svf (&-> dest quad) dest-vf)
     dest
     )
@@ -314,12 +314,15 @@
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defmethod initialize ((obj pc-settings-jak2))
   "initial initialize method to be run after allocating"
-
   (set! (-> obj music-unlocked) (new 'global 'bit-array (-> *music-player-tracks* length)))
   ((method-of-type pc-settings initialize) obj)
+  (set! (-> *setting-control* user-default sfx-volume) (-> obj memcard-volume-sfx))
+  (set! (-> *setting-control* user-default music-volume) (-> obj memcard-volume-music))
+  (set! (-> *setting-control* user-default dialog-volume) (-> obj memcard-volume-dialog))
+  (set! (-> *setting-control* user-default vibration) (-> obj memcard-vibration?))
+  (set! (-> *setting-control* user-default subtitle) (-> obj memcard-subtitles?))
   obj)
 
 (defmethod set-game-setting! ((obj pc-settings-jak2) (setting symbol) (value symbol))
@@ -594,6 +597,9 @@
 (defmethod update-cheats ((obj pc-settings-jak2))
   "run cheats."
 
+  ;; sync mirror mode cheat
+  (set! *PC-MIRROR-MODE-SET* (logtest? (-> *game-info* secrets) (game-secrets hflip-screen)))
+
   ;; run cheats here.
   ;;;;;;;;;;;;;;;;;;;
 
@@ -634,6 +640,11 @@
     )
 
   (pc-set-gfx-hack (pc-gfx-hack no-tex) (pc-cheats? (-> obj cheats) no-textures))
+
+  (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+          *PC-MIRROR-MODE-SET*)
+    (sound-set-mirror-mode (sound-mirror-mode mirrored))
+    (sound-set-mirror-mode (sound-mirror-mode normal)))
 
   ;; run cheats end!!!
   ;;;;;;;;;;;;;;;;;;;;
@@ -756,6 +767,8 @@
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-backup") (file-stream-read-int file)) ;; TODO - Don't remove this, parsing code can't handle unexpected keys
+    (("memcard-subtitles?") (set! (-> obj memcard-subtitles?) (file-stream-read-symbol file)))
+    (("hint-subtitles?") (file-stream-read-symbol file))
     (("music-unlocked")
       (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
         (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
@@ -807,6 +820,7 @@
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
+  (format file "  (memcard-subtitles? ~A)~%" (-> obj memcard-subtitles?))
 
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))

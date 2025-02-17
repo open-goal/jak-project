@@ -38,7 +38,7 @@
 ;; definition for method 9 of type trajectory
 (defmethod eval-position! ((this trajectory) (time float) (result vector))
   (vector+float*! result (-> this initial-position) (-> this initial-velocity) time)
-  (+! (-> result y) (* 0.5 time time (-> this gravity)))
+  (+! (-> result y) (* (/ time 2) time (-> this gravity)))
   result
   )
 
@@ -95,7 +95,7 @@
     (if *target*
         (look-at-enemy!
           (-> *target* neck)
-          (the-as vector (-> this collide-info root-prim prim-core))
+          (-> this collide-info root-prim prim-core world-sphere)
           (if (logtest? (-> this nav-enemy-flags) (nav-enemy-flags navenmf2))
               'attacking
               )
@@ -1426,7 +1426,7 @@ nav-enemy-default-event-handler
         (vector-xz-normalize! s1-1 1.0)
         (vector-xz-normalize! s2-2 1.0)
         (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump drop-jump))
-        (if (or (>= (* 0.5 (-> self nav-info run-travel-speed)) f24-0) (>= (cos 3640.889) (vector-dot s1-1 s2-2)))
+        (if (or (>= (/ (-> self nav-info run-travel-speed) 2) f24-0) (>= (cos 3640.889) (vector-dot s1-1 s2-2)))
             (logior! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
             )
         )
@@ -1438,7 +1438,7 @@ nav-enemy-default-event-handler
       (logclear! (-> self nav-enemy-flags) (nav-enemy-flags standing-jump))
       (set! f30-0 2048.0)
       )
-    (setup-from-to-height! (-> self jump-trajectory) s4-0 arg0 f30-0 (* 0.000011111111 arg4))
+    (setup-from-to-height! (-> self jump-trajectory) s4-0 arg0 f30-0 (/ arg4 90000))
     )
   (set! (-> self nav extra-nav-sphere quad) (-> arg0 quad))
   (set! (-> self nav extra-nav-sphere w) (-> self collide-info nav-radius))
@@ -1697,12 +1697,9 @@ nav-enemy-default-event-handler
         )
       (ja-channel-push! 1 (seconds 0.1))
       (nav-enemy-turn-to-face-point (-> self event-param-point) 910.2222)
-      (let ((gp-0 (nav-enemy-rnd-int-range 0 150))
-            (s5-0 (current-time))
-            )
-        (until (time-elapsed? s5-0 gp-0)
+      (let ((gp-0 (nav-enemy-rnd-int-range 0 150)))
+        (suspend-for gp-0
           (ja :num! (loop! f30-0))
-          (suspend)
           )
         )
       )

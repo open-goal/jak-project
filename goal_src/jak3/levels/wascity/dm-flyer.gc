@@ -35,7 +35,7 @@
 
 (when (or (zero? *dm-flyer-curve-linear-up-red*) (!= loading-level global))
   (set! *dm-flyer-curve-linear-up-red* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *dm-flyer-curve-linear-up-red* 2 'loading-level (the-as int #f))
+  (allocate! *dm-flyer-curve-linear-up-red* 2 'loading-level #f)
   )
 
 (set! (-> *dm-flyer-curve-linear-up-red* pts data 0 first) 0.0)
@@ -95,15 +95,13 @@
 
 (set! (-> *dm-flyer-missile-trail* uv-repeat-dist) 16384000.0)
 
-(set! (-> *dm-flyer-missile-trail* lie-mode) (the-as uint 0))
+(set! (-> *dm-flyer-missile-trail* lie-mode) (lie-mode appearance0))
 
 (set! (-> *dm-flyer-missile-trail* max-age) (seconds 1))
 
 (if #f
-    (set! (-> *dm-flyer-missile-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *dm-flyer-missile-trail* tex-id) (the-as uint #x100300))
+    (set! (-> *dm-flyer-missile-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *dm-flyer-missile-trail* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 (set! (-> *dm-flyer-missile-trail* width-curve)
@@ -120,7 +118,7 @@
 
 (set! (-> *dm-flyer-missile-trail* zbuffer?) #f)
 
-(set! (-> *dm-flyer-missile-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *dm-flyer-missile-trail* lie-vector) *up-vector*)
 
 (set! (-> *dm-flyer-missile-trail* use-tape-mode?) #f)
 
@@ -171,18 +169,14 @@
       )
     )
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (when (-> self minimap)
       (logior! (-> self minimap flags) (minimap-flag fade-out))
       (set! (-> self minimap) #f)
       )
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (let ((s5-0 (new 'stack-no-clear 'explosion-init-params)))
-        (set! (-> s5-0 spawn-point quad) (-> self root trans quad))
+        (vector-copy! (-> s5-0 spawn-point) (-> self root trans))
         (quaternion-identity! (-> s5-0 spawn-quat))
         (set! (-> s5-0 radius) 40960.0)
         (set! (-> s5-0 scale) 1.0)
@@ -201,7 +195,7 @@
         (cond
           ((< (* f0-6 f0-6) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
            (forward-up->inv-matrix gp-0 (-> self pre-move-transv) *up-vector*)
-           (set! (-> gp-0 trans quad) (-> self root trans quad))
+           (vector-copy! (-> gp-0 trans) (-> self root trans))
            (if (logtest? (-> *part-group-id-table* 539 flags) (sp-group-flag sp13))
                (part-tracker-spawn
                  part-tracker-subsampler
@@ -215,7 +209,7 @@
            )
           (else
             (quaternion->matrix gp-0 (-> *target* control quat))
-            (set! (-> gp-0 trans quad) (-> *target* control trans quad))
+            (vector-copy! (-> gp-0 trans) (-> *target* control trans))
             (if (logtest? (-> *part-group-id-table* 541 flags) (sp-group-flag sp13))
                 (part-tracker-spawn
                   part-tracker-subsampler
@@ -253,11 +247,7 @@
 (defstate dissipate (dm-flyer-shot)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (when (-> self minimap)
       (logior! (-> self minimap flags) (minimap-flag fade-out))
       (set! (-> self minimap) #f)
@@ -297,21 +287,21 @@
             ((-> this hit-actor?)
              (cond
                ((logtest? (-> *part-group-id-table* 102 flags) (sp-group-flag sp13))
-                (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+                (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 102))
                 )
                (else
-                 (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
                  (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 102))
                  )
                )
              )
             ((logtest? (-> *part-group-id-table* 101 flags) (sp-group-flag sp13))
-             (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+             (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
              (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 101))
              )
             (else
-              (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+              (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
               (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 101))
               )
             )
@@ -340,7 +330,7 @@
        )
       ((= v1-0 (projectile-options po0 po1))
        (let* ((f0-0 (vector-vector-distance (target-pos 0) (-> this root trans)))
-              (f0-2 (+ 0.3 (* 0.0000012207031 f0-0)))
+              (f0-2 (+ 0.3 (/ f0-0 (meters 200))))
               )
          (sound-play-by-name
            (static-sound-name "missile-travel")
@@ -363,12 +353,7 @@
     (set! (-> arg0 swirl)
           (the float (sar (shl (the int (+ (-> arg0 swirl) (* (-> arg0 swirlvel) (seconds-per-frame)))) 48) 48))
           )
-    (let* ((s4-0 (handle->process (-> arg0 desired-target)))
-           (s2-0 (if (type? s4-0 process-focusable)
-                     s4-0
-                     )
-                 )
-           )
+    (let ((s2-0 (as-type (handle->process (-> arg0 desired-target)) process-focusable)))
       (when s2-0
         0.0
         (vector+float*!
@@ -403,7 +388,7 @@
       (let ((v1-32 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> arg0 tail-pos) (-> s5-0 trans)) 2048.0))
             (a1-13 (-> arg0 hit-pos))
             )
-        (set! (-> a1-13 quad) (-> s5-0 trans quad))
+        (vector-copy! a1-13 (-> s5-0 trans))
         (vector+! a1-13 a1-13 v1-32)
         (move-to-point! (-> arg0 root) a1-13)
         )
@@ -491,7 +476,7 @@
   (wascity-turret-add-radar (-> this root trans))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-0 quad) (-> this root transv quad))
+      (vector-copy! s4-0 (-> this root transv))
       (vector-normalize! s4-0 17612.8)
       (vector+! s5-0 (-> this root trans) s4-0)
       )
@@ -524,7 +509,7 @@
       (the-as pair 0)
       )
     (set! (-> this hit-actor?) #f)
-    (set! (-> this tail-pos quad) (-> this root trans quad))
+    (vector-copy! (-> this tail-pos) (-> this root trans))
     (set! (-> this swirl) (rand-vu-float-range 0.0 65536.0))
     (set! (-> this swirlvel) (rand-vu-float-range 8192.0 24576.0))
     (set! (-> this swirlvel) (* (-> this swirlvel) (if (>= (rand-vu) 0.5)
@@ -550,12 +535,7 @@
           )
     (set! (-> this desired-target) (process->handle *target*))
     (set! (-> this part) (create-launch-control (-> *part-group-id-table* 537) this))
-    (let* ((s5-1 (handle->process (-> this desired-target)))
-           (s3-0 (if (type? s5-1 process-focusable)
-                     s5-1
-                     )
-                 )
-           )
+    (let ((s3-0 (as-type (handle->process (-> this desired-target)) process-focusable)))
       (if s3-0
           (vector+float*!
             (-> this desired-target-pos)
@@ -572,7 +552,7 @@
       (set! (-> s5-5 track-immediately?) #t)
       (let* ((v0-12 (estimate-light-trail-mem-usage
                       (the-as uint (-> s5-5 max-num-crumbs))
-                      (the-as uint (= (-> s5-5 appearance lie-mode) 3))
+                      (the-as uint (= (-> s5-5 appearance lie-mode) (lie-mode use-two-strips)))
                       )
                     )
              (s4-2 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v0-12 8192) 1))

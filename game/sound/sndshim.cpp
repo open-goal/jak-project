@@ -105,6 +105,14 @@ void snd_StopSound(s32 sound_handle) {
   }
 }
 
+u32 snd_GetSoundID(s32 sound_handle) {
+  if (player) {
+    return player->GetSoundID(sound_handle);
+  } else {
+    return -1;
+  }
+}
+
 void snd_SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan) {
   if (player) {
     player->SetSoundVolPan(sound_handle, vol, pan);
@@ -218,6 +226,27 @@ snd::BankHandle snd_BankLoadEx(const char* filename,
   } else {
     return 0;
   }
+}
+
+namespace {
+bool started = false;
+std::vector<u8> sbk_data;
+}  // namespace
+
+void snd_BankLoadFromIOPPartialEx_Start() {
+  started = true;
+  sbk_data.clear();
+}
+
+void snd_BankLoadFromIOPPartialEx(const u8* data, u32 length, u32 spu_mem_loc, u32 spu_mem_size) {
+  sbk_data.insert(sbk_data.end(), data, data + length);
+}
+snd::BankHandle snd_BankLoadFromIOPPartialEx_Completion() {
+  ASSERT(started);
+  started = false;
+  auto ret = player->LoadBank(std::span(sbk_data));
+  sbk_data.clear();
+  return ret;
 }
 
 s32 snd_GetVoiceStatus(s32 voice) {

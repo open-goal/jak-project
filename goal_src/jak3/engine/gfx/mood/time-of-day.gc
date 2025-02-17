@@ -136,7 +136,8 @@
   (set! (-> self green-sun-count) 0)
   (set! (-> self moon-count) 0)
   (set! (-> self day-star-count) 0)
-  (update-time-and-speed *sky-work* (-> self time-of-day) (-> self time-ratio))
+  ;; og:preserve-this - High FPS Fix
+  (update-time-and-speed *sky-work* (-> self time-of-day) (* (-> self time-ratio) DISPLAY_FPS_RATIO))
   0
   (none)
   )
@@ -530,7 +531,7 @@
       (dotimes (v1-19 (-> *level* length))
         (let ((a0-52 (-> *level* level v1-19)))
           (when (= (-> a0-52 status) 'active)
-            (if (logtest? (-> a0-52 info level-flags) (level-flags lf9))
+            (if (logtest? (-> a0-52 info level-flags) (level-flags sky))
                 (set! (-> arg0 sky) #t)
                 )
             (if (and (= (-> a0-52 display?) 'display) (-> a0-52 info special-mood))
@@ -548,7 +549,9 @@
           )
       )
     (if (-> arg0 sky)
-        (set! (-> (&-> *level* level-default texture-anim-array 9) 0) *sky-texture-anim-array*)
+        ;; og:preserve-this
+        (set! (-> (&-> *level* level-default texture-anim-array 9) 0) (#if PC_PORT (if *hires-sky* *sky-hires-texture-anim-array* *sky-texture-anim-array*)
+                                                                                       *sky-texture-anim-array*))
         (set! (-> (&-> *level* level-default texture-anim-array 9) 0) #f)
         )
     (let ((s5-2 (level-get-target-inside *level*)))

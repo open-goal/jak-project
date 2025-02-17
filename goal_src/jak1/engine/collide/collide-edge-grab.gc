@@ -1,7 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
-
 (require "engine/collide/surface-h.gc")
 (require "engine/collide/collide-edge-grab-h.gc")
 (require "kernel/gstate.gc")
@@ -9,10 +8,6 @@
 (require "engine/target/target-h.gc")
 (require "engine/collide/collide-shape-h.gc")
 (require "engine/debug/debug.gc")
-
-;; name: collide-edge-grab.gc
-;; name in dgo: collide-edge-grab
-;; dgos: GAME, ENGINE
 
 ;; DECOMP BEGINS
 
@@ -25,31 +20,28 @@
          (vf4 :class vf)
          (vf5 :class vf)
          (vf6 :class vf)
-         (vf7 :class vf)
-         )
+         (vf7 :class vf))
     (let ((gp-0 *collide-edge-work*))
       ;; reset the edge work...
       (set! (-> gp-0 num-verts) (the-as uint 0))
       (set! (-> gp-0 num-edges) (the-as uint 0))
       (set! (-> gp-0 num-tris) (the-as uint 0))
-
       (let ((v1-0 (-> this control)))
         (set! (-> gp-0 ccache) arg0)
         (.lvf vf1 (&-> gp-0 local-cache-fill-box min quad))
         (.lvf vf2 (&-> gp-0 local-cache-fill-box max quad))
         (set! (-> gp-0 cshape) v1-0)
-        (.lvf vf3 (&-> v1-0 trans quad))
-        )
+        (.lvf vf3 (&-> v1-0 trans quad)))
       ;; translate the cache filling box
-      (.add.vf vf1 vf1 vf3 :mask #b111)
-      (.add.vf vf2 vf2 vf3 :mask #b111)
+      (.add.vf.xyz vf1 vf1 vf3)
+      (.add.vf.xyz vf2 vf2 vf3)
       (.svf (&-> gp-0 cache-fill-box min quad) vf1)
       (.svf (&-> gp-0 cache-fill-box max quad) vf2)
       ;; translate the reach box
       (.lvf vf4 (&-> gp-0 local-within-reach-box min quad))
       (.lvf vf5 (&-> gp-0 local-within-reach-box max quad))
-      (.add.vf vf4 vf4 vf3 :mask #b111)
-      (.add.vf vf5 vf5 vf3 :mask #b111)
+      (.add.vf.xyz vf4 vf4 vf3)
+      (.add.vf.xyz vf5 vf5 vf3)
       ;; and also provide an integer version of the box.
       (.ftoi.vf vf6 vf4)
       (.ftoi.vf vf7 vf5)
@@ -57,16 +49,12 @@
       (.svf (&-> gp-0 within-reach-box max quad) vf5)
       (.svf (&-> gp-0 within-reach-box4w min quad) vf6)
       (.svf (&-> gp-0 within-reach-box4w max quad) vf7)
-
       ;; Fill the collide cache!
-      (fill-using-bounding-box
-        arg0
-        (-> gp-0 cache-fill-box)
-        (-> this control root-prim collide-with)
-        this
-        (new 'static 'pat-surface :noentity #x1)
-        )
-
+      (fill-using-bounding-box arg0
+                               (-> gp-0 cache-fill-box)
+                               (-> this control root-prim collide-with)
+                               this
+                               (new 'static 'pat-surface :noentity #x1))
       ;; Filter out tris that can't be grabbed
       (find-grabbable-tris! gp-0)
       (when (nonzero? (-> gp-0 num-tris))
@@ -82,22 +70,13 @@
             (search-for-edges gp-0 (-> gp-0 hold-list))
             (when (find-best-grab! gp-0 (-> gp-0 hold-list) *edge-grab-info*)
               (send-event *target* 'edge-grab)
-              (return (the-as object #f))
-              )
-            )
+              (return (the-as object #f))))
           ;; use target's heading
           (vector-z-quaternion! (-> gp-0 search-dir-vec) (-> *target* control unknown-quaternion00))
           (search-for-edges gp-0 (-> gp-0 hold-list))
-          (if (find-best-grab! gp-0 (-> gp-0 hold-list) *edge-grab-info*)
-              (send-event *target* 'edge-grab)
-              )
-          0
-          )
-        )
-      )
-    0
-    )
-  )
+          (if (find-best-grab! gp-0 (-> gp-0 hold-list) *edge-grab-info*) (send-event *target* 'edge-grab))
+          0)))
+    0))
 
 (defmethod search-for-edges ((this collide-edge-work) (arg0 collide-edge-hold-list))
   "Iterate through edges, adding them to the collide-edge-hold-list, if they are good"
@@ -106,8 +85,7 @@
   (set! (-> arg0 num-attempts) (the-as uint 0))
   (set! (-> arg0 head) #f)
   (let ((s4-0 (the-as collide-edge-hold-item (-> arg0 items)))
-        (s3-0 (the-as collide-edge-edge (-> this edges)))
-        )
+        (s3-0 (the-as collide-edge-edge (-> this edges))))
     ;; loop over edges
     (countdown (s2-0 (-> this num-edges))
       (when (not (-> s3-0 ignore))
@@ -119,28 +97,19 @@
           (+! (-> arg0 num-allocs) 1)
           (when (= (-> arg0 num-allocs) 32)
             (format 0 "ERROR: Reached limit of edge grab hold items!~%")
-            (return #f)
-            )
-          (&+! s4-0 48)
-          )
-        )
-      (&+! s3-0 48)
-      )
-    )
-  #f
-  )
+            (return #f))
+          (&+! s4-0 48)))
+      (&+! s3-0 48)))
+  #f)
 
 ;; add to list.
 (defmethod-mips2c "(method 10 collide-edge-hold-list)" 10 collide-edge-hold-list)
 
 (deftype pbhp-stack-vars (structure)
-  ((edge         collide-edge-edge)
-   (allocated    basic)
-   (neg-hold-pt  vector  :inline)
-   (split-vec    vector  :inline)
-   )
-  )
-
+  ((edge        collide-edge-edge)
+   (allocated   basic)
+   (neg-hold-pt vector :inline)
+   (split-vec   vector :inline)))
 
 (defmethod-mips2c "(method 18 collide-edge-work)" 18 collide-edge-work)
 
@@ -148,29 +117,19 @@
   (local-vars (sv-144 (function vector vector vector float vector)) (sv-160 vector) (sv-176 vector))
   (let* ((s3-0 (-> arg0 edge))
          (s1-0 (-> s3-0 etri ctri))
-         (s4-0 (-> s1-0 prim-index))
-         )
+         (s4-0 (-> s1-0 prim-index)))
     (let ((s0-0 (new 'stack-no-clear 'vector)))
       (vector+*! s0-0 (-> arg0 center-pt) (-> s3-0 edge-vec-norm) 1105.92)
       (let ((f0-0 (collide-edge-work-method-14 this (-> arg1 right-hand-hold) s0-0 (the-as int s4-0))))
-        (if (< 491.52 f0-0)
-            (return #f)
-            )
-        )
+        (if (< 491.52 f0-0) (return #f)))
       (set! sv-144 vector+*!)
       (set! sv-160 s0-0)
       (set! sv-176 (-> arg0 center-pt))
       (let ((a2-3 (vector-negate! (new 'stack-no-clear 'vector) (-> s3-0 edge-vec-norm)))
-            (a3-2 1105.92)
-            )
-        (sv-144 sv-160 sv-176 a2-3 a3-2)
-        )
+            (a3-2 1105.92))
+        (sv-144 sv-160 sv-176 a2-3 a3-2))
       (let ((f0-1 (collide-edge-work-method-14 this (-> arg1 left-hand-hold) s0-0 (the-as int s4-0))))
-        (if (< 491.52 f0-1)
-            (return #f)
-            )
-        )
-      )
+        (if (< 491.52 f0-1) (return #f))))
     (set! (-> arg1 tri-vertex 0 quad) (-> s1-0 vertex 0 quad))
     (set! (-> arg1 world-vertex 4 quad) (-> s1-0 vertex 1 quad))
     (set! (-> arg1 world-vertex 5 quad) (-> s1-0 vertex 2 quad))
@@ -179,23 +138,15 @@
     (set! (-> arg1 world-vertex 0 quad) (-> s3-0 vertex-ptr 0 0 quad))
     (set! (-> arg1 world-vertex 1 quad) (-> s3-0 vertex-ptr 1 0 quad))
     (set! (-> arg1 hanging-matrix vector 1 quad) (-> *target* control dynam gravity-normal quad))
-    (vector-normalize!
-      (vector-! (-> arg1 hanging-matrix vector 2) (-> arg1 world-vertex 1) (the-as vector (-> arg1 world-vertex)))
-      1.0
-      )
-    (vector-normalize!
-      (vector-cross!
-        (the-as vector (-> arg1 hanging-matrix))
-        (-> arg1 hanging-matrix vector 2)
-        (-> arg1 hanging-matrix vector 1)
-        )
-      1.0
-      )
-    (vector-cross!
-      (-> arg1 hanging-matrix vector 2)
-      (the-as vector (-> arg1 hanging-matrix))
-      (-> arg1 hanging-matrix vector 1)
-      )
+    (vector-normalize! (vector-! (-> arg1 hanging-matrix vector 2) (-> arg1 world-vertex 1) (the-as vector (-> arg1 world-vertex)))
+                       1.0)
+    (vector-normalize! (vector-cross! (the-as vector (-> arg1 hanging-matrix))
+                                      (-> arg1 hanging-matrix vector 2)
+                                      (-> arg1 hanging-matrix vector 1))
+                       1.0)
+    (vector-cross! (-> arg1 hanging-matrix vector 2)
+                   (the-as vector (-> arg1 hanging-matrix))
+                   (-> arg1 hanging-matrix vector 1))
     (set! (-> arg1 hanging-matrix vector 3 quad) (-> arg1 center-hold quad))
     (transform-vectors! (-> arg1 hanging-matrix) (-> this world-player-spheres) (-> this local-player-spheres) 12)
     (let ((a1-13 (new 'stack-no-clear 'collide-using-spheres-params)))
@@ -205,37 +156,20 @@
       (set! (-> a1-13 proc) #f)
       (set! (-> a1-13 ignore-pat) (new 'static 'pat-surface :noentity #x1))
       (set! (-> a1-13 solid-only) #t)
-      (if (probe-using-spheres (-> this ccache) a1-13)
-          (return #f)
-          )
-      )
+      (if (probe-using-spheres (-> this ccache) a1-13) (return #f)))
     (let* ((v1-36 (the-as object (-> this ccache prims s4-0 prim)))
-           (a0-35 (-> (the-as collide-shape-prim v1-36) cshape))
-           )
+           (a0-35 (-> (the-as collide-shape-prim v1-36) cshape)))
       (cond
         (a0-35
-          (set! (-> arg1 actor-cshape-prim-offset) (- (the-as int v1-36) (the-as int (-> a0-35 process))))
-          (set! (-> arg1 actor-handle) (process->handle (-> a0-35 process)))
-          (let ((a1-19
-                  (-> a0-35 process node-list data (-> (the-as collide-shape-prim v1-36) transform-index) bone transform)
-                  )
-                (s5-1 (new 'stack-no-clear 'matrix))
-                )
-            (matrix-4x4-inverse! s5-1 a1-19)
-            (dotimes (s4-1 6)
-              (vector-matrix*! (-> arg1 local-vertex s4-1) (-> arg1 world-vertex s4-1) s5-1)
-              )
-            )
-          )
-        (else
-          (set! (-> arg1 actor-cshape-prim-offset) 0)
-          (set! (-> arg1 actor-handle) (the-as handle #f))
-          )
-        )
-      )
-    )
-  #t
-  )
+         (set! (-> arg1 actor-cshape-prim-offset) (- (the-as int v1-36) (the-as int (-> a0-35 process))))
+         (set! (-> arg1 actor-handle) (process->handle (-> a0-35 process)))
+         (let ((a1-19 (-> a0-35 process node-list data (-> (the-as collide-shape-prim v1-36) transform-index) bone transform))
+               (s5-1 (new 'stack-no-clear 'matrix)))
+           (matrix-4x4-inverse! s5-1 a1-19)
+           (dotimes (s4-1 6)
+             (vector-matrix*! (-> arg1 local-vertex s4-1) (-> arg1 world-vertex s4-1) s5-1))))
+        (else (set! (-> arg1 actor-cshape-prim-offset) 0) (set! (-> arg1 actor-handle) (the-as handle #f))))))
+  #t)
 
 (defmethod edge-grab-info-method-9 ((this edge-grab-info))
   (local-vars (v0-0 symbol) (v1-14 int))
@@ -248,36 +182,19 @@
          (vf4 :class vf)
          (vf5 :class vf)
          (vf6 :class vf)
-         (vf7 :class vf)
-         )
+         (vf7 :class vf))
     (init-vf0-vector)
     (let ((s5-0 (the-as object #f)))
       (set! (-> this center-hold-old quad) (-> this center-hold quad))
       (let ((v1-1 (-> this actor-cshape-prim-offset)))
         (when (nonzero? v1-1)
           (let ((a0-5 (handle->process (-> this actor-handle))))
-            (if (not (the-as process a0-5))
-                (return #f)
-                )
+            (if (not (the-as process a0-5)) (return #f))
             (set! s5-0 (+ (the-as int a0-5) v1-1))
-            (if (zero? (-> (the-as collide-shape-prim s5-0) prim-core collide-as))
-                (return #f)
-                )
-            (let ((s4-0
-                    (-> (the-as process-drawable a0-5)
-                        node-list
-                        data
-                        (-> (the-as collide-shape-prim s5-0) transform-index)
-                        bone
-                        transform
-                        )
-                    )
-                  )
+            (if (zero? (-> (the-as collide-shape-prim s5-0) prim-core collide-as)) (return #f))
+            (let ((s4-0 (-> (the-as process-drawable a0-5) node-list data (-> (the-as collide-shape-prim s5-0) transform-index) bone transform)))
               (dotimes (s3-0 6)
-                (vector-matrix*! (-> this world-vertex s3-0) (-> this local-vertex s3-0) s4-0)
-                )
-              )
-            )
+                (vector-matrix*! (-> this world-vertex s3-0) (-> this local-vertex s3-0) s4-0))))
           (.lvf vf1 (&-> this world-vertex 3 quad))
           (.lvf vf2 (&-> this world-vertex 4 quad))
           (.lvf vf3 (&-> this world-vertex 5 quad))
@@ -286,55 +203,35 @@
           (.outer.product.a.vf acc vf4 vf5)
           (.outer.product.b.vf vf6 vf5 vf4 acc)
           (.mul.vf vf7 vf6 vf6)
-          (.mul.x.vf acc vf0 vf7 :mask #b1000)
-          (.add.mul.y.vf acc vf0 vf7 acc :mask #b1000)
-          (.add.mul.z.vf vf7 vf0 vf7 acc :mask #b1000)
+          (.mul.x.vf.w acc vf0 vf7)
+          (.add.mul.y.vf.w acc vf0 vf7 acc)
+          (.add.mul.z.vf.w vf7 vf0 vf7 acc)
           (.isqrt.vf Q vf0 vf7 :fsf #b11 :ftf #b11)
           (let ((f1-0 0.707))
             (.wait.vf)
             (nop!)
-            (.mul.vf vf6 vf6 Q :mask #b111)
+            (.mul.vf.xyz vf6 vf6 Q)
             (.mov v1-14 vf6)
-            (b! (>= (the-as float (sar (the-as int v1-14) 32)) f1-0) cfg-17)
-            )
+            (b! (>= (the-as float (sar (the-as int v1-14) 32)) f1-0) cfg-17))
           (set! v0-0 #f)
           (b! #t cfg-27 :delay (nop!))
           (label cfg-17)
           (set! (-> this hanging-matrix vector 1 quad) (-> *target* control dynam gravity-normal quad))
-          (vector-normalize!
-            (vector-! (-> this hanging-matrix vector 2) (-> this world-vertex 1) (the-as vector (-> this world-vertex)))
-            1.0
-            )
-          (vector-normalize!
-            (vector-cross!
-              (the-as vector (-> this hanging-matrix))
-              (-> this hanging-matrix vector 2)
-              (-> this hanging-matrix vector 1)
-              )
-            1.0
-            )
-          (vector-cross!
-            (-> this hanging-matrix vector 2)
-            (the-as vector (-> this hanging-matrix))
-            (-> this hanging-matrix vector 1)
-            )
+          (vector-normalize! (vector-! (-> this hanging-matrix vector 2) (-> this world-vertex 1) (the-as vector (-> this world-vertex)))
+                             1.0)
+          (vector-normalize! (vector-cross! (the-as vector (-> this hanging-matrix))
+                                            (-> this hanging-matrix vector 2)
+                                            (-> this hanging-matrix vector 1))
+                             1.0)
+          (vector-cross! (-> this hanging-matrix vector 2)
+                         (the-as vector (-> this hanging-matrix))
+                         (-> this hanging-matrix vector 1))
           (set! (-> this hanging-matrix vector 3 quad) (-> this center-hold quad))
           (let ((v1-21 *collide-edge-work*))
-            (transform-vectors!
-              (-> this hanging-matrix)
-              (-> v1-21 world-player-spheres)
-              (-> v1-21 local-player-spheres)
-              12
-              )
-            )
-          )
-        )
+            (transform-vectors! (-> this hanging-matrix) (-> v1-21 world-player-spheres) (-> v1-21 local-player-spheres) 12))))
       (let ((v1-22 *collide-edge-work*)
-            (a1-14 (new 'stack-no-clear 'collide-using-spheres-params))
-            )
-        (let ((a0-24 'target-edge-grab-jump))
-          (b! (!= (-> *target* next-state name) a0-24) cfg-20 :delay (nop!))
-          )
+            (a1-14 (new 'stack-no-clear 'collide-using-spheres-params)))
+        (let ((a0-24 'target-edge-grab-jump)) (b! (!= (-> *target* next-state name) a0-24) cfg-20 :delay (nop!)))
         (set! (-> a1-14 spheres) (-> v1-22 world-player-leap-up-spheres))
         (set! (-> a1-14 num-spheres) (the-as uint 6))
         (set! (-> a1-14 collide-with) (-> v1-22 cshape root-prim collide-with))
@@ -350,26 +247,20 @@
         (set! (-> a1-14 ignore-pat) (new 'static 'pat-surface :noentity #x1))
         (set! (-> a1-14 solid-only) #t)
         (label cfg-21)
-        (b! (not (fill-and-probe-using-spheres *collide-cache* a1-14)) cfg-24)
-        )
+        (b! (not (fill-and-probe-using-spheres *collide-cache* a1-14)) cfg-24))
       (set! v0-0 #f)
       (b! #t cfg-27 :delay (nop!))
       (the-as none 0)
       (label cfg-24)
       (b! (not (the-as int s5-0)) cfg-26)
-      (let ((v1-40 (-> (the-as collide-shape-prim s5-0) cshape)))
-        (send-event (-> v1-40 process) 'edge-grabbed this)
-        )
-      )
+      (let ((v1-40 (-> (the-as collide-shape-prim s5-0) cshape))) (send-event (-> v1-40 process) 'edge-grabbed this)))
     (label cfg-26)
     (set! v0-0 #t)
     (label cfg-27)
-    v0-0
-    )
-  )
-
+    v0-0))
 
 (defmethod-mips2c "(method 16 collide-edge-work)" 16 collide-edge-work)
+
 (defmethod-mips2c "(method 15 collide-edge-work)" 15 collide-edge-work)
 
 (defmethod collide-edge-work-method-14 ((this collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
@@ -382,20 +273,11 @@
               (let ((f0-0 (vector-segment-distance-point! arg1 (-> v1-3 vertex-ptr 0 0) (-> v1-3 vertex-ptr 1 0) s2-0)))
                 (when (or (< f30-0 0.0) (< f0-0 f30-0))
                   (set! f30-0 f0-0)
-                  (set! (-> arg0 quad) (-> s2-0 quad))
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    f30-0
-    )
-  )
+                  (set! (-> arg0 quad) (-> s2-0 quad)))))))))
+    f30-0))
 
 ;; 17 cew
-(defmethod should-add-to-list? collide-edge-work ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 collide-edge-edge))
+(defmethod should-add-to-list? ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 collide-edge-edge))
   (local-vars
     (r0-0 uint128)
     (v1-1 uint128)
@@ -405,8 +287,7 @@
     (v1-6 float)
     (a3-1 uint128)
     (t0-0 uint128)
-    (t1-1 uint128)
-    )
+    (t1-1 uint128))
   (rlet ((Q :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -419,8 +300,7 @@
          (vf6 :class vf)
          (vf7 :class vf)
          (vf8 :class vf)
-         (vf9 :class vf)
-         )
+         (vf9 :class vf))
     (init-vf0-vector)
     (nop!)
     (nop!)
@@ -436,10 +316,7 @@
           (.pcgtw t1-1 t0-0 t1-0)
           (.lvf vf4 (&-> this outward-offset quad))
           (.pcgtw a3-1 a3-0 t0-0)
-          (.lvf vf5 (&-> v1-0 trans quad))
-          )
-        )
-      )
+          (.lvf vf5 (&-> v1-0 trans quad)))))
     (.por v1-1 t1-1 a3-1)
     (let ((f0-0 (-> this max-dist-sqrd-to-outward-pt)))
       (.ppach v1-2 r0-0 v1-1)
@@ -450,29 +327,27 @@
         (.add.vf vf10 vf10 vf1)
         (.sub.vf vf7 vf5 vf10)
         (.mul.vf vf7 vf7 vf7)
-        (.add.z.vf vf7 vf7 vf7 :mask #b1)
+        (.add.z.vf.x vf7 vf7 vf7)
         (.mov v1-4 vf7)
         (b! (< f0-0 v1-4) cfg-4)
         (.sub.vf vf8 vf1 vf5)
         (.mul.vf vf7 vf8 vf8)
-        (.add.z.vf vf7 vf7 vf7 :mask #b1)
+        (.add.z.vf.x vf7 vf7 vf7)
         (.isqrt.vf Q vf0 vf7 :fsf #b11 :ftf #b0)
         (nop!)
         (.wait.vf)
         (nop!)
-        (.mul.vf vf8 vf8 Q :mask #b101)
+        (.mul.vf.xz vf8 vf8 Q)
         (.mul.vf vf9 vf8 vf6)
-        (.add.z.vf vf9 vf9 vf9 :mask #b1)
+        (.add.z.vf.x vf9 vf9 vf9)
         (.mov v1-5 vf9)
-        (b! (< v1-5 f1-0) cfg-4)
-        )
-      )
+        (b! (< v1-5 f1-0) cfg-4)))
     (.sub.vf vf7 vf11 vf1)
     (.svf (&-> arg0 center-pt quad) vf1)
     (.mul.vf vf7 vf7 vf7)
     (set! (-> arg0 split) 0)
     (.svf (&-> arg0 outward-pt quad) vf10)
-    (.add.z.vf vf7 vf7 vf7 :mask #b1)
+    (.add.z.vf.x vf7 vf7 vf7)
     (set! (-> arg0 edge) arg1)
     (.mov v1-6 vf7)
     (set! (-> arg0 rating) v1-6)
@@ -483,10 +358,7 @@
       (b! #t cfg-6 :delay (nop!))
       (set! v0-0 (the-as symbol 0))
       (label cfg-6)
-      v0-0
-      )
-    )
-  )
+      v0-0)))
 
 (defmethod compute-center-point! ((this collide-edge-work) (arg0 collide-edge-edge) (arg1 vector))
   (local-vars (v0-0 float) (v1-1 float) (v1-2 float) (v1-3 float))
@@ -502,112 +374,76 @@
          (vf6 :class vf)
          (vf7 :class vf)
          (vf8 :class vf)
-         (vf9 :class vf)
-         )
+         (vf9 :class vf))
     (init-vf0-vector)
     (.mov.vf vf7 vf0)
     (.lvf vf1 (&-> this search-pt quad))
     (let ((f0-0 0.0))
       (let ((v1-0 (-> arg0 vertex-ptr 0))
-            (a0-1 (-> arg0 vertex-ptr 1))
-            )
+            (a0-1 (-> arg0 vertex-ptr 1)))
         (.lvf vf2 (&-> v1-0 0 quad))
-        (.lvf vf3 (&-> a0-1 0 quad))
-        )
+        (.lvf vf3 (&-> a0-1 0 quad)))
       (.sub.vf vf4 vf1 vf2)
       (.sub.vf vf5 vf3 vf2)
       (.mul.vf vf6 vf5 vf5)
-      (.add.z.vf vf6 vf6 vf6 :mask #b1)
+      (.add.z.vf.x vf6 vf6 vf6)
       (.sqrt.vf Q vf6 :ftf #b0)
       (nop!)
       (.wait.vf)
       (nop!)
-      (.add.vf vf6 vf0 Q :mask #b1)
+      (.add.vf.x vf6 vf0 Q)
       (.nop.vf)
       (.mov v1-1 vf6)
       (let ((f1-0 v1-1))
         (.div.vf Q vf0 vf6 :fsf #b11 :ftf #b0)
         (.wait.vf)
         (nop!)
-        (.add.vf vf8 vf0 Q :mask #b1)
+        (.add.vf.x vf8 vf0 Q)
         (.mul.x.vf vf9 vf5 vf8)
         (.mov v1-2 vf8)
         (.mul.vf vf10 vf9 vf4)
-        (.add.z.vf vf10 vf10 vf10 :mask #b1)
+        (.add.z.vf.x vf10 vf10 vf10)
         (let ((f2-0 v1-2))
           (.mov v1-3 vf10)
           (let ((f3-0 v1-3))
             (b! (< f3-0 f0-0) cfg-4 :likely-delay (set! f3-0 f0-0))
             (b! (< f1-0 f3-0) cfg-4 :likely-delay (set! f3-0 f1-0))
             (label cfg-4)
-            (let ((v1-4 (* f3-0 f2-0)))
-              (.mov vf11 v1-4)
-              )
-            )
-          )
-        )
-      )
-    (.mul.x.vf vf7 vf5 vf11 :mask #b111)
-    (.add.vf vf7 vf7 vf2 :mask #b111)
+            (let ((v1-4 (* f3-0 f2-0))) (.mov vf11 v1-4))))))
+    (.mul.x.vf.xyz vf7 vf5 vf11)
+    (.add.vf.xyz vf7 vf7 vf2)
     (.svf (&-> arg1 quad) vf7)
     (.mov v0-0 vf7)
-    v0-0
-    )
-  )
-
+    v0-0))
 
 (defmethod debug-draw ((this edge-grab-info))
-  (add-debug-line
-    #t
-    (bucket-id debug-no-zbuf)
-    (the-as vector (-> this world-vertex))
-    (-> this world-vertex 1)
-    (new 'static 'rgba :r #xff :a #x60)
-    #f
-    (the-as rgba -1)
-    )
-  (add-debug-sphere
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> this center-hold)
-    204.8
-    (new 'static 'rgba :r #xff :g #xff :a #x80)
-    )
-  (add-debug-sphere
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> this left-hand-hold)
-    204.8
-    (new 'static 'rgba :r #xff :g #xff :a #x60)
-    )
-  (add-debug-sphere
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> this right-hand-hold)
-    204.8
-    (new 'static 'rgba :r #xff :g #xff :a #x60)
-    )
-  (add-debug-outline-triangle
-    #t
-    (bucket-id debug-no-zbuf)
-    (the-as vector (-> this tri-vertex))
-    (-> this world-vertex 4)
-    (-> this world-vertex 5)
-    (new 'static 'rgba :r #xff :a #x30)
-    )
-  (the-as symbol (cond
-                   ((nonzero? (-> this actor-cshape-prim-offset))
-                    (if (handle->process (-> this actor-handle))
-                        (format *stdcon* "grab: ~A~%" (-> this actor-handle process 0 name))
-                        (format *stdcon* "grab: invalid handle~%")
-                        )
-                    )
-                   (else
-                     (format *stdcon* "grab: ground~%")
-                     )
-                   )
-          )
-  )
+  (add-debug-line #t
+                  (bucket-id debug-no-zbuf)
+                  (the-as vector (-> this world-vertex))
+                  (-> this world-vertex 1)
+                  (new 'static 'rgba :r #xff :a #x60)
+                  #f
+                  (the-as rgba -1))
+  (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> this center-hold) 204.8 (new 'static 'rgba :r #xff :g #xff :a #x80))
+  (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> this left-hand-hold) 204.8 (new 'static 'rgba :r #xff :g #xff :a #x60))
+  (add-debug-sphere #t
+                    (bucket-id debug-no-zbuf)
+                    (-> this right-hand-hold)
+                    204.8
+                    (new 'static 'rgba :r #xff :g #xff :a #x60))
+  (add-debug-outline-triangle #t
+                              (bucket-id debug-no-zbuf)
+                              (the-as vector (-> this tri-vertex))
+                              (-> this world-vertex 4)
+                              (-> this world-vertex 5)
+                              (new 'static 'rgba :r #xff :a #x30))
+  (the-as symbol
+          (cond
+            ((nonzero? (-> this actor-cshape-prim-offset))
+             (if (handle->process (-> this actor-handle))
+               (format *stdcon* "grab: ~A~%" (-> this actor-handle process 0 name))
+               (format *stdcon* "grab: invalid handle~%")))
+            (else (format *stdcon* "grab: ground~%")))))
 
 (defmethod debug-draw-edges ((this collide-edge-work))
   (let ((gp-0 0))
@@ -615,65 +451,41 @@
       (let* ((s3-0 (-> this edges s4-0))
              (a2-0 (-> s3-0 vertex-ptr 0 0))
              (a3-0 (-> s3-0 vertex-ptr 1 0))
-             (s2-0 (new 'stack-no-clear 'vector))
-             )
+             (s2-0 (new 'stack-no-clear 'vector)))
         (vector+! s2-0 a2-0 a3-0)
         (vector-float*! s2-0 s2-0 0.5)
         (cond
           ((-> s3-0 ignore)
-           (add-debug-line
-             #t
-             (bucket-id debug-no-zbuf)
-             a2-0
-             a3-0
-             (new 'static 'rgba :r #x7f :g #x7f :b #x7f :a #x50)
-             #f
-             (the-as rgba -1)
-             )
-           (+! gp-0 1)
-           )
+           (add-debug-line #t
+                           (bucket-id debug-no-zbuf)
+                           a2-0
+                           a3-0
+                           (new 'static 'rgba :r #x7f :g #x7f :b #x7f :a #x50)
+                           #f
+                           (the-as rgba -1))
+           (+! gp-0 1))
           (else
-            (add-debug-line
-              #t
-              (bucket-id debug-no-zbuf)
-              a2-0
-              a3-0
-              (new 'static 'rgba :r #xff :g #xff :b #xff :a #x60)
-              #f
-              (the-as rgba -1)
-              )
-            (add-debug-vector
-              #t
-              (bucket-id debug-no-zbuf)
-              s2-0
-              (-> s3-0 outward)
-              (meters 0.3)
-              (new 'static 'rgba :r #xff :a #x80)
-              )
-            )
-          )
-        )
-      )
-    (format *stdcon* "found ~D edges (and ~D ignored)~%" (- (-> this num-edges) (the-as uint gp-0)) gp-0)
-    )
-  )
+           (add-debug-line #t
+                           (bucket-id debug-no-zbuf)
+                           a2-0
+                           a3-0
+                           (new 'static 'rgba :r #xff :g #xff :b #xff :a #x60)
+                           #f
+                           (the-as rgba -1))
+           (add-debug-vector #t (bucket-id debug-no-zbuf) s2-0 (-> s3-0 outward) (meters 0.3) (new 'static 'rgba :r #xff :a #x80))))))
+    (format *stdcon* "found ~D edges (and ~D ignored)~%" (- (-> this num-edges) (the-as uint gp-0)) gp-0)))
 
 (defmethod debug-draw-sphere ((this collide-edge-work))
   (dotimes (s5-0 (the-as int (-> this num-verts)))
     (let ((a2-0 (-> this verts s5-0)))
-      (add-debug-sphere #t (bucket-id debug-no-zbuf) a2-0 819.2 (new 'static 'rgba :r #xff :g #xff :a #x80))
-      )
-    )
-  #f
-  )
+      (add-debug-sphere #t (bucket-id debug-no-zbuf) a2-0 819.2 (new 'static 'rgba :r #xff :g #xff :a #x80))))
+  #f)
 
 (defmethod debug-draw ((this collide-edge-hold-list))
   (let ((s4-0 (-> this head))
-        (s5-0 0)
-        )
+        (s5-0 0))
     (let ((s3-0 (new 'stack-no-clear 'vector))
-          (s2-0 #t)
-          )
+          (s2-0 #t))
       (set! (-> s3-0 quad) (-> *target* control unknown-vector90 quad))
       (while s4-0
         (+! s5-0 1)
@@ -681,129 +493,85 @@
         (add-debug-sphere #t (bucket-id debug-no-zbuf) s3-0 409.6 (new 'static 'rgba :a #x80))
         (cond
           (s2-0
-            (set! s2-0 #f)
-            (add-debug-sphere
-              #t
-              (bucket-id debug-no-zbuf)
-              (-> s4-0 center-pt)
-              614.4
-              (new 'static 'rgba :r #xff :g #xff :a #x80)
-              )
-            (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> s4-0 outward-pt) 409.6 (new 'static 'rgba :r #xff :a #x80))
-            )
+           (set! s2-0 #f)
+           (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> s4-0 center-pt) 614.4 (new 'static 'rgba :r #xff :g #xff :a #x80))
+           (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> s4-0 outward-pt) 409.6 (new 'static 'rgba :r #xff :a #x80)))
           (else
-            (add-debug-sphere
-              #t
-              (bucket-id debug-no-zbuf)
-              (-> s4-0 center-pt)
-              614.4
-              (new 'static 'rgba :r #x7f :g #x7f :a #x40)
-              )
-            (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> s4-0 outward-pt) 409.6 (new 'static 'rgba :r #x7f :a #x40))
-            )
-          )
-        (set! s4-0 (-> s4-0 next))
-        )
-      )
-    (format *stdcon* "hold list has ~D item(s)~%" s5-0)
-    )
+           (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> s4-0 center-pt) 614.4 (new 'static 'rgba :r #x7f :g #x7f :a #x40))
+           (add-debug-sphere #t (bucket-id debug-no-zbuf) (-> s4-0 outward-pt) 409.6 (new 'static 'rgba :r #x7f :a #x40))))
+        (set! s4-0 (-> s4-0 next))))
+    (format *stdcon* "hold list has ~D item(s)~%" s5-0))
   (dotimes (s5-1 (the-as int (-> this num-attempts)))
-    (add-debug-sphere
-      #t
-      (bucket-id debug-no-zbuf)
-      (the-as vector (-> this attempts s5-1))
-      409.6
-      (new 'static 'rgba :a #x40)
-      )
-    )
-  (format *stdcon* "hold list has ~D attempt(s)~%" (-> this num-attempts))
-  )
+    (add-debug-sphere #t (bucket-id debug-no-zbuf) (the-as vector (-> this attempts s5-1)) 409.6 (new 'static 'rgba :a #x40)))
+  (format *stdcon* "hold list has ~D attempt(s)~%" (-> this num-attempts)))
 
 (defmethod debug-draw-tris ((this collide-edge-work))
   (dotimes (s5-0 (the-as int (-> this num-tris)))
     (let* ((v1-3 (-> this tris s5-0 ctri))
-           (t1-0 (copy-and-set-field (-> *pat-mode-info* (-> v1-3 pat mode) color) a 64))
-           )
-      (add-debug-outline-triangle
-        #t
-        (bucket-id debug-no-zbuf)
-        (the-as vector (-> v1-3 vertex))
-        (-> v1-3 vertex 1)
-        (-> v1-3 vertex 2)
-        t1-0
-        )
-      )
-    )
-  (none)
-  )
+           (t1-0 (copy-and-set-field (-> *pat-mode-info* (-> v1-3 pat mode) color) a 64)))
+      (add-debug-outline-triangle #t
+                                  (bucket-id debug-no-zbuf)
+                                  (the-as vector (-> v1-3 vertex))
+                                  (-> v1-3 vertex 1)
+                                  (-> v1-3 vertex 2)
+                                  t1-0)))
+  (none))
 
-(let ((v1-1
-        (new 'static 'surface
-          :name '*rotate-surface*
-          :turnv 1.0
-          :turnvv 1.0
-          :tiltv 1.0
-          :tiltvv 1.0
-          :transv-max 1.0
-          :target-speed 1.0
-          :seek0 153600.0
-          :seek90 153600.0
-          :seek180 256000.0
-          :fric 153600.0
-          :nonlin-fric-dist 5120.0
-          :slip-factor 1.0
-          :slope-down-factor 10240.0
-          :slope-slip-angle 8192.0
-          :impact-fric 1.0
-          :bend-factor 0.8
-          :bend-speed 4.0
-          :alignv 1.0
-          :slope-up-traction 1.0
-          :align-speed 1.0
-          :flags (surface-flags moving-ground)
-          )
-        )
-      )
+(let ((v1-1 (new 'static
+                 'surface
+                 :name '*rotate-surface*
+                 :turnv 1.0
+                 :turnvv 1.0
+                 :tiltv 1.0
+                 :tiltvv 1.0
+                 :transv-max 1.0
+                 :target-speed 1.0
+                 :seek0 153600.0
+                 :seek90 153600.0
+                 :seek180 256000.0
+                 :fric 153600.0
+                 :nonlin-fric-dist 5120.0
+                 :slip-factor 1.0
+                 :slope-down-factor 10240.0
+                 :slope-slip-angle 8192.0
+                 :impact-fric 1.0
+                 :bend-factor 0.8
+                 :bend-speed 4.0
+                 :alignv 1.0
+                 :slope-up-traction 1.0
+                 :align-speed 1.0
+                 :flags (surface-flags moving-ground))))
   (define *rotate-surface* v1-1)
   (set! *rotate-surface* v1-1)
   (set! (-> v1-1 mult-hook)
-        (the-as
-          (function surface surface surface int none)
-          (lambda ((arg0 surface) (arg1 object) (arg2 object) (arg3 int)) (if (= arg3 1)
-                                                                              (set! (-> arg0 fric) 151756.8)
-                                                                              )
-                  )
-          )
-        )
+        (the-as (function surface surface surface int none)
+                (lambda ((arg0 surface) (arg1 object) (arg2 object) (arg3 int))
+                  (if (= arg3 1) (set! (-> arg0 fric) 151756.8)))))
   (set! (-> v1-1 touch-hook) nothing)
-  (set! (-> v1-1 active-hook) nothing)
-  )
+  (set! (-> v1-1 active-hook) nothing))
 
-(let ((v1-2 (new 'static 'surface
-              :name '*no-walk-surface*
-              :turnv 0.5
-              :turnvv 1.0
-              :tiltv 1.0
-              :tiltvv 1.0
-              :transv-max 0.7
-              :target-speed 0.7
-              :seek0 24576.0
-              :seek90 24576.0
-              :seek180 24576.0
-              :fric 23756.8
-              :nonlin-fric-dist 4091904.0
-              :slope-slip-angle 16384.0
-              :bend-speed 4.0
-              :alignv 0.5
-              :slope-up-traction 0.9
-              :align-speed 1.0
-              :flags (surface-flags no-turn-around always-rotate-toward-transv)
-              )
-            )
-      )
+(let ((v1-2 (new 'static
+                 'surface
+                 :name '*no-walk-surface*
+                 :turnv 0.5
+                 :turnvv 1.0
+                 :tiltv 1.0
+                 :tiltvv 1.0
+                 :transv-max 0.7
+                 :target-speed 0.7
+                 :seek0 24576.0
+                 :seek90 24576.0
+                 :seek180 24576.0
+                 :fric 23756.8
+                 :nonlin-fric-dist 4091904.0
+                 :slope-slip-angle 16384.0
+                 :bend-speed 4.0
+                 :alignv 0.5
+                 :slope-up-traction 0.9
+                 :align-speed 1.0
+                 :flags (surface-flags no-turn-around always-rotate-toward-transv))))
   (define *no-walk-surface* v1-2)
   (set! *no-walk-surface* v1-2)
   (set! (-> v1-2 mult-hook) (the-as (function surface surface surface int none) nothing))
   (set! (-> v1-2 touch-hook) nothing)
-  (set! (-> v1-2 active-hook) nothing)
-  )
+  (set! (-> v1-2 active-hook) nothing))

@@ -424,7 +424,7 @@ int InitMachine() {
  * Shutdown the runtime.
  */
 int ShutdownMachine() {
-  Msg(6, "kernel: machine shutdown (reason %d)\n", MasterExit);
+  Msg(6, "kernel: machine shutdown (reason %d)\n", (int)MasterExit);
 
   StopIOP();
   ShutdownSound();
@@ -505,19 +505,17 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   file_stream->name = name;
   file_stream->flags = 0;
   lg::print("****** CALL TO kopen() ******\n");
-  char buffer[128];
   // sprintf(buffer, "host:%s", Ptr<String>(name)->data());
-  sprintf(buffer, "%s", Ptr<String>(name)->data());
   if (!strcmp(symbol_name_cstr(*Ptr<Symbol4<u8>>(mode)), "read")) {
     // 0x1
-    file_stream->file = sceOpen(buffer, SCE_RDONLY);
+    file_stream->file = sceOpen(Ptr<String>(name)->data(), SCE_RDONLY);
   } else if (!strcmp(symbol_name_cstr(*Ptr<Symbol4<u8>>(mode)), "append")) {
     // new in jak 2!
     // 0x202
-    file_stream->file = sceOpen(buffer, SCE_CREAT | SCE_WRONLY);
+    file_stream->file = sceOpen(Ptr<String>(name)->data(), SCE_CREAT | SCE_WRONLY);
   } else {
     // 0x602
-    file_stream->file = sceOpen(buffer, SCE_TRUNC | SCE_CREAT | SCE_WRONLY);
+    file_stream->file = sceOpen(Ptr<String>(name)->data(), SCE_TRUNC | SCE_CREAT | SCE_WRONLY);
   }
 
   return fs;
@@ -541,7 +539,6 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("__pc-get-tex-remap", (void*)lookup_jak2_texture_dest_offset);
   make_function_symbol_from_c("pc-init-autosplitter-struct",
                               (void*)kmachine_extras::init_autosplit_struct);
-  make_function_symbol_from_c("pc-encode-utf8-string", (void*)kmachine_extras::encode_utf8_string);
 
   // discord rich presence
   make_function_symbol_from_c("pc-discord-rpc-update", (void*)kmachine_extras::update_discord_rpc);

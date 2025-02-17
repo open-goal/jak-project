@@ -74,7 +74,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-plat! ((this plat))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   0
   (none)
   )
@@ -89,9 +89,9 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 36 of type plat
 (defmethod plat-path-sync ((this plat))
   "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
-otherwise, [[plat::34]]
-
-@see [[sync-eased]]"
+   otherwise, [[plat::34]]
+   
+   @see [[sync-eased]]"
   (cond
     ((logtest? (-> this path flags) (path-control-flag not-found))
      (go (method-of-object this plat-idle))
@@ -166,11 +166,11 @@ otherwise, [[plat::34]]
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this plat) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (logior! (-> this mask) (process-mask platform))
   (init-plat-collision! this)
   (process-drawable-from-entity! this entity)
@@ -277,12 +277,7 @@ This commonly includes things such as:
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack 'bonk)
-       (let* ((proc-temp proc)
-              (proc-focus (if (type? proc-temp process-focusable)
-                              (the-as process-focusable proc-temp)
-                              )
-                          )
-              )
+       (let ((proc-focus (as-type proc process-focusable)))
          (cond
            ((and proc-focus (focus-test? proc-focus edge-grab))
             (set! (-> self safe-time) (+ (current-time) (seconds 0.2)))
@@ -293,10 +288,7 @@ This commonly includes things such as:
             )
            )
          (set! (-> self hit-point quad) (-> self root trans quad))
-         (set! proc-focus (if (type? proc process-focusable)
-                              (the-as process-focusable proc)
-                              )
-               )
+         (set! proc-focus (as-type proc process-focusable))
          (set! (-> self hit-point quad) (-> (get-trans proc-focus 0) quad))
          )
        (if (zero? (-> self bounce-time))

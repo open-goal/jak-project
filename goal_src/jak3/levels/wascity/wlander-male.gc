@@ -58,7 +58,8 @@
   )
 
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod enemy-method-123 ((this wlander))
+(defmethod allow-ragdoll? ((this wlander))
+  "Can this enemy ragdoll now?"
   (the-as
     symbol
     (or (and (>= (-> this incoming blue-juggle-count) (the-as uint 2)) (-> this incoming knocked-type) 6)
@@ -86,7 +87,8 @@
 ;   )
 
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this wlander))
+(defmethod get-search-info-flag ((this wlander))
+  "Get search-info-flag for this process."
   (let ((v1-1 (handle->process (-> this focus handle))))
     (the-as search-info-flag (if (if v1-1
                                      (= (-> v1-1 type) target)
@@ -100,6 +102,7 @@
 
 ;; WARN: Return type mismatch float vs vector.
 (defmethod ragdoll-spawn! ((this wlander) (arg0 symbol) (arg1 symbol))
+  "If possible, spawn ragdoll and start using it."
   (let ((t9-0 (method-of-type nav-enemy ragdoll-spawn!)))
     (t9-0 this arg0 arg1)
     )
@@ -113,6 +116,7 @@
   )
 
 (defmethod ragdoll-settled? ((this wlander))
+  "Has the ragdoll stopped moving?"
   (let ((s5-0 (handle->process (-> this ragdoll-proc))))
     (if s5-0
         (seek! (-> (the-as ragdoll-proc s5-0) ragdoll momentum) 0.7 (seconds-per-frame))
@@ -129,6 +133,7 @@
 
 ;; WARN: disable def twice: 165. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod event-handler ((this wlander) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('help)
      (let ((v1-1 (-> arg3 param 0))
@@ -157,14 +162,9 @@
      (+! (-> this mad-level) 1.0)
      (speech-control-method-14 *speech-control* (the-as handle this))
      (logior! (-> this flags) (citizen-flag hostile))
-     (let* ((s1-0 (handle->process (-> this incoming attacker-handle)))
-            (a1-12 (if (type? s1-0 process-focusable)
-                       s1-0
-                       )
-                   )
-            )
+     (let ((a1-12 (as-type (handle->process (-> this incoming attacker-handle)) process-focusable)))
        (when a1-12
-         (enemy-method-70 this (the-as process-focusable a1-12) (the-as enemy-aware #f))
+         (set-focus! this (the-as process-focusable a1-12) (the-as enemy-aware #f))
          (call-for-help this (* 4096.0 (* 10.0 (-> this mad-level))))
          (if (-> this male)
              (speech-control-method-12 *speech-control* this (speech-type civ-m-shot-by-player))
@@ -202,7 +202,7 @@
      (let ((v1-37 (the-as traffic-danger-info (-> arg3 param 0))))
        (set! (-> this cp-valid?) #t)
        (set! (-> this cp-sphere quad) (-> v1-37 sphere quad))
-       (set! (-> this cp-vec quad) (-> v1-37 velocity quad))
+       (vector-copy! (-> this cp-vec) (-> v1-37 velocity))
        (when (= (-> v1-37 danger-type) 8)
          (set! (-> this allow-dive) #f)
          (set! (-> this cp-factor) 50.0)
@@ -232,20 +232,16 @@
 (defstate knocked-recover (wlander)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (nav-enemy-method-184 self)
     (let ((a0-2 (-> self nav state))
           (v1-5 *null-vector*)
           )
       (logior! (-> a0-2 flags) (nav-state-flag directional-mode))
-      (set! (-> a0-2 travel quad) (-> v1-5 quad))
+      (vector-copy! (-> a0-2 travel) v1-5)
       )
     0
-    (try-locate-ground self (meters 10) (meters 10) #t (-> self gnd-collide-with))
+    (move-to-ground self (meters 10) (meters 10) #t (-> self gnd-collide-with))
     (set! (-> self gnd-height) (-> self root gspot-pos y))
     (vector-reset! (-> self root transv))
     )
@@ -302,7 +298,7 @@
     (let ((gp-0 (-> self root)))
       (cond
         ((focus-test? self under-water)
-         (accelerate-fall! self (-> gp-0 transv))
+         (adjust-transv-under-water! self (-> gp-0 transv))
          )
         (else
           (if (logtest? (-> gp-0 status) (collide-status touch-surface))
@@ -310,7 +306,7 @@
               )
           (when (and (not (-> self knocked-collide)) (!= (-> self incoming knocked-type) 4))
             (let ((s5-0 (new 'stack-no-clear 'vector)))
-              (set! (-> s5-0 quad) (-> (ja-linear-vel 0) quad))
+              (vector-copy! s5-0 (ja-linear-vel 0))
               (vector-orient-by-quat! s5-0 s5-0 (-> gp-0 quat))
               (vector-xz-normalize!
                 (-> gp-0 transv)
@@ -381,7 +377,7 @@
       s5-0
       s5-0
       gp-0
-      (* (+ 1.0 (* 0.00024414062 (-> this nav state speed))) (seconds-per-frame))
+      (* (+ 1.0 (/ (-> this nav state speed) METER_LENGTH)) (seconds-per-frame))
       )
     )
   0
@@ -446,6 +442,7 @@
   )
 
 (defmethod go-hostile ((this wlander))
+  "Go to the hostile state, actively trying to attack the target."
   (go (method-of-object this hostile))
   )
 
@@ -477,13 +474,9 @@
          (vf7 :class vf)
          )
     (init-vf0-vector)
-    (let* ((s5-0 (handle->process (-> this focus handle)))
-           (s4-0 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           (s5-1 (new 'stack-no-clear 'vector))
-           )
+    (let ((s4-0 (as-type (handle->process (-> this focus handle)) process-focusable))
+          (s5-1 (new 'stack-no-clear 'vector))
+          )
       (when s4-0
         (vector-! s5-1 (-> this root trans) (get-trans (the-as process-focusable s4-0) 0))
         (set! (-> s5-1 y) 0.0)
@@ -502,14 +495,14 @@
                (.lvf vf5 (&-> s5-1 quad))
                (.lvf vf4 (&-> s2-1 quad))
                )
-             (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-             (.mul.x.vf acc vf5 vf7 :mask #b111)
-             (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+             (.add.x.vf.w vf6 vf0 vf0)
+             (.mul.x.vf.xyz acc vf5 vf7)
+             (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
              (.svf (&-> s3-4 quad) vf6)
              )
            )
           (else
-            (set! (-> this target-pos quad) (-> (get-trans (the-as process-focusable s4-0) 3) quad))
+            (vector-copy! (-> this target-pos) (get-trans (the-as process-focusable s4-0) 3))
             )
           )
         )
@@ -518,7 +511,7 @@
       (new 'stack-no-clear 'vector)
       (let ((a0-15 t0-0))
         (let ((v1-25 t0-0))
-          (let ((a1-12 (&-> (-> this node-list data (-> this gun-joint) bone) transform quad (-> this gun-axis))))
+          (let ((a1-12 (&-> this node-list data (-> this gun-joint) bone transform quad (-> this gun-axis))))
             (let ((a2-3 (-> this gun-length)))
               (.mov vf7 a2-3)
               )
@@ -526,9 +519,9 @@
             )
           (.lvf vf4 (&-> v1-25 quad))
           )
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> a0-15 quad) vf6)
         )
       (spawn-guard-projectile this t0-0 (-> this target-pos) 819200.0 t0-0)
@@ -547,51 +540,30 @@
   )
 
 (defmethod try-activate ((this wlander))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))))
-      (new 'stack-no-clear 'vector)
-      (let ((gp-0 (new 'stack 'traffic-object-spawn-params)))
-        (set! (-> gp-0 object-type) (traffic-type wlander-male))
-        (set! (-> gp-0 behavior) (the-as uint 12))
-        (set! (-> gp-0 id) (the-as uint 0))
-        (set! (-> gp-0 nav-mesh) (-> this nav state mesh))
-        (set! (-> gp-0 nav-branch) #f)
-        (set! (-> gp-0 proc) #f)
-        (set! (-> gp-0 handle) (process->handle this))
-        (set! (-> gp-0 user-data) (the-as uint 0))
-        (set! (-> gp-0 flags) (traffic-spawn-flags))
-        (set! (-> gp-0 guard-type) (the-as uint 11))
-        (set! (-> gp-0 entity) #f)
-        (vector-reset! (-> gp-0 velocity))
-        (let ((v1-12 (-> gp-0 position)))
-          (let ((a0-8 (-> this root trans)))
-            (let ((a1-3 16384.0))
-              (.mov vf7 a1-3)
-              )
-            (.lvf vf5 (&-> s4-0 quad))
-            (.lvf vf4 (&-> a0-8 quad))
-            )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-          (.svf (&-> v1-12 quad) vf6)
+  (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))))
+    (new 'stack-no-clear 'vector)
+    (let ((gp-0 (new 'stack 'traffic-object-spawn-params)))
+      (set! (-> gp-0 object-type) (traffic-type wlander-male))
+      (set! (-> gp-0 behavior) (the-as uint 12))
+      (set! (-> gp-0 id) (the-as uint 0))
+      (set! (-> gp-0 nav-mesh) (-> this nav state mesh))
+      (set! (-> gp-0 nav-branch) #f)
+      (set! (-> gp-0 proc) #f)
+      (set! (-> gp-0 handle) (process->handle this))
+      (set! (-> gp-0 user-data) (the-as uint 0))
+      (set! (-> gp-0 flags) (traffic-spawn-flags))
+      (set! (-> gp-0 guard-type) (the-as uint 11))
+      (set! (-> gp-0 entity) #f)
+      (vector-reset! (-> gp-0 velocity))
+      (vector+*! (-> gp-0 position) (-> this root trans) s4-0 16384.0)
+      (quaternion-rotate-local-y! (-> gp-0 rotation) (-> this root quat) 32768.0)
+      (send-event *traffic-manager* 'activate-object gp-0)
+      (if (-> gp-0 proc)
+          (return #t)
           )
-        (quaternion-rotate-local-y! (-> gp-0 rotation) (-> this root quat) 32768.0)
-        (send-event *traffic-manager* 'activate-object gp-0)
-        (if (-> gp-0 proc)
-            (return #t)
-            )
-        )
       )
-    #f
     )
+  #f
   )
 
 (defstate standing (wlander)
@@ -637,7 +609,7 @@
           (clamp-vector-to-mesh-no-gaps (-> self nav) (-> self root trans) s4-0 s3-0 s5-0)
           )
         (if (-> s5-0 found-boundary)
-            (set! (-> self root trans quad) (-> s5-0 intersection quad))
+            (vector-copy! (-> self root trans) (-> s5-0 intersection))
             (vector+! (-> self root trans) (-> self root trans) gp-0)
             )
         )
@@ -696,12 +668,7 @@
         (set! (-> self mad-level) (- (-> self mad-level) (* 0.1 (seconds-per-frame))))
         )
       )
-    (let* ((s5-0 (handle->process (-> self focus handle)))
-           (gp-0 (if (type? s5-0 process-focusable)
-                     (the-as process-focusable s5-0)
-                     )
-                 )
-           )
+    (let ((gp-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
       (when (or (not gp-0) (focus-test? gp-0 inactive) (focus-test? gp-0 disable) (focus-test? gp-0 dead))
         (clear-focused (-> self focus))
         (set! (-> self mad-level) 0.0)
@@ -719,12 +686,12 @@
                 )
             (cond
               ((should-check-los? (-> self los) 0)
-               (set! (-> self target-pos quad) (-> (get-trans gp-0 3) quad))
-               (if (and (enemy-method-105 self 6371.5557 #t) (>= 12288.0 f30-0))
+               (vector-copy! (-> self target-pos) (get-trans gp-0 3))
+               (if (and (pointing-toward-focus? self 6371.5557 #t) (>= 12288.0 f30-0))
                    (go-virtual close-attack)
                    )
                (if (or (< f30-0 204800.0)
-                       (and (enemy-method-105 self 910.2222 #t) (< (seconds 4) (- (current-time) (-> self last-time-far))))
+                       (and (pointing-toward-focus? self 910.2222 #t) (< (seconds 4) (- (current-time) (-> self last-time-far))))
                        )
                    (go-virtual gun-shoot)
                    )
@@ -826,12 +793,7 @@
         )
     )
   :trans (behavior ()
-    (let* ((s5-0 (handle->process (-> self focus handle)))
-           (gp-0 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((gp-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
       (when (or (not gp-0)
                 (focus-test? (the-as process-focusable gp-0) inactive)
                 (focus-test? (the-as process-focusable gp-0) disable)
@@ -856,8 +818,8 @@
                )
           (cond
             ((should-check-los? (-> self los) 0)
-             (set! (-> self target-pos quad) (-> (get-trans (the-as process-focusable gp-0) 3) quad))
-             (if (and (enemy-method-105 self 6371.5557 #t) (>= 12288.0 f30-0))
+             (vector-copy! (-> self target-pos) (get-trans (the-as process-focusable gp-0) 3))
+             (if (and (pointing-toward-focus? self 6371.5557 #t) (>= 12288.0 f30-0))
                  (go-virtual close-attack)
                  )
              (set-time! (-> self last-time-los))
@@ -880,22 +842,12 @@
   (let ((v1-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'array 'collide-shape 64))
         )
-    (set! (-> v1-0 quad) (-> this root trans quad))
+    (vector-copy! v1-0 (-> this root trans))
     (set! (-> v1-0 w) arg0)
     (countdown (s4-0 (fill-actor-list-for-box *actor-hash* v1-0 s5-0 64))
-      (let* ((s3-0 (-> s5-0 s4-0))
-             (v1-3 (if (type? s3-0 collide-shape)
-                       s3-0
-                       )
-                   )
-             )
+      (let ((v1-3 (as-type (-> s5-0 s4-0) collide-shape)))
         (when v1-3
-          (let* ((s3-1 (-> v1-3 process))
-                 (a0-5 (if (type? s3-1 process-focusable)
-                           s3-1
-                           )
-                       )
-                 )
+          (let ((a0-5 (as-type (-> v1-3 process) process-focusable)))
             (new 'stack-no-clear 'vector)
             (when (and a0-5 (!= this a0-5))
               (when (send-event a0-5 'help (-> this focus handle) (-> this mad-level))
@@ -915,22 +867,12 @@
   (let ((a1-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'array 'collide-shape 64))
         )
-    (set! (-> a1-0 quad) (-> this root trans quad))
+    (vector-copy! a1-0 (-> this root trans))
     (set! (-> a1-0 w) 245760.0)
     (countdown (s4-0 (fill-actor-list-for-box *actor-hash* a1-0 s5-0 64))
-      (let* ((s3-0 (-> s5-0 s4-0))
-             (v1-5 (if (type? s3-0 collide-shape)
-                       s3-0
-                       )
-                   )
-             )
+      (let ((v1-5 (as-type (-> s5-0 s4-0) collide-shape)))
         (when v1-5
-          (let* ((s3-1 (-> v1-5 process))
-                 (a1-3 (if (type? s3-1 process-focusable)
-                           s3-1
-                           )
-                       )
-                 )
+          (let ((a1-3 (as-type (-> v1-5 process) process-focusable)))
             (new 'stack-no-clear 'vector)
             (when (and a1-3
                        (!= this a1-3)
@@ -939,7 +881,7 @@
                        (not (focus-test? (the-as process-focusable a1-3) dead))
                        (logtest? (process-mask enemy) (-> a1-3 mask))
                        )
-              (try-update-focus (-> this focus) (the-as process-focusable a1-3) this)
+              (focus-on! (-> this focus) (the-as process-focusable a1-3) this)
               (return #f)
               )
             )
@@ -1071,34 +1013,34 @@
     :jump-height-min (meters 0.5)
     :jump-height-factor 0.1
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 32768.0
-    :knocked-soft-vxz-hi 53248.0
-    :knocked-soft-vy-lo 61440.0
-    :knocked-soft-vy-hi 61440.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 49152.0
-    :knocked-medium-vy-hi 102400.0
-    :knocked-hard-vxz-lo 40960.0
-    :knocked-hard-vxz-hi 61440.0
-    :knocked-hard-vy-lo 98304.0
-    :knocked-hard-vy-hi 106496.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 20480.0
-    :knocked-yellow-vxz-hi 24576.0
-    :knocked-yellow-vy-lo 32768.0
-    :knocked-yellow-vy-hi 49152.0
-    :knocked-red-vxz-lo 65536.0
-    :knocked-red-vxz-hi 81920.0
-    :knocked-red-vy-lo 32768.0
-    :knocked-red-vy-hi 49152.0
-    :knocked-blue-vxz-lo 32768.0
-    :knocked-blue-vxz-hi 65536.0
-    :knocked-blue-vy-lo 32768.0
-    :knocked-blue-vy-hi 49152.0
+    :knocked-soft-vxz-lo (meters 8)
+    :knocked-soft-vxz-hi (meters 13)
+    :knocked-soft-vy-lo (meters 15)
+    :knocked-soft-vy-hi (meters 15)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 12)
+    :knocked-medium-vy-hi (meters 25)
+    :knocked-hard-vxz-lo (meters 10)
+    :knocked-hard-vxz-hi (meters 15)
+    :knocked-hard-vy-lo (meters 24)
+    :knocked-hard-vy-hi (meters 26)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 5)
+    :knocked-yellow-vxz-hi (meters 6)
+    :knocked-yellow-vy-lo (meters 8)
+    :knocked-yellow-vy-hi (meters 12)
+    :knocked-red-vxz-lo (meters 16)
+    :knocked-red-vxz-hi (meters 20)
+    :knocked-red-vy-lo (meters 8)
+    :knocked-red-vy-hi (meters 12)
+    :knocked-blue-vxz-lo (meters 8)
+    :knocked-blue-vxz-hi (meters 16)
+    :knocked-blue-vy-lo (meters 8)
+    :knocked-blue-vy-hi (meters 12)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 0.9955 :y 0.0573 :z 0.0754 :w 35528.34)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -1385,7 +1327,8 @@
   (none)
   )
 
-(defmethod enemy-method-123 ((this wlander-male))
+(defmethod allow-ragdoll? ((this wlander-male))
+  "Can this enemy ragdoll now?"
   (when (call-parent-method this)
     (set! (-> this skel postbind-function) wlander-male-joint-callback)
     #t
@@ -1393,6 +1336,7 @@
   )
 
 (defmethod knocked-anim ((this wlander-male) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (ja-channel-push! 1 (seconds 0.01))
   (cond
     ((zero? (-> this hit-face))
@@ -1422,6 +1366,7 @@
   )
 
 (defmethod knocked-land-anim ((this wlander-male) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (ja-channel-push! 1 (seconds 0.01))
   (cond
     ((zero? (-> this hit-face))
@@ -1462,13 +1407,8 @@
       (ja :num! (seek!))
       )
     (until #f
-      (while (not (enemy-method-105 self 4187.0225 #t))
-        (let* ((gp-0 (handle->process (-> self focus handle)))
-               (s5-0 (if (type? gp-0 process-focusable)
-                         gp-0
-                         )
-                     )
-               )
+      (while (not (pointing-toward-focus? self 4187.0225 #t))
+        (let ((s5-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
           (when s5-0
             (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
                   (gp-2
@@ -1522,12 +1462,7 @@
             )
           )
         )
-      (let* ((gp-3 (handle->process (-> self focus handle)))
-             (v1-167 (if (type? gp-3 process-focusable)
-                         gp-3
-                         )
-                     )
-             )
+      (let ((v1-167 (as-type (handle->process (-> self focus handle)) process-focusable)))
         (when v1-167
           (cond
             ((focus-test? (the-as process-focusable v1-167) ignore)
@@ -1599,6 +1534,7 @@
   )
 
 (defmethod init-enemy-collision! ((this wlander-male))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1680,12 +1616,13 @@
   )
 
 (defmethod init-enemy! ((this wlander-male))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-wlander-male" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *wlander-male-nav-enemy-info*)
+  (setup-enemy! this *wlander-male-nav-enemy-info*)
   (let ((v1-5 (-> this nav)))
     (set! (-> v1-5 speed-scale) 1.0)
     )
@@ -1836,7 +1773,7 @@
        )
       )
     )
-  (set! (-> this shoot-time) (set-reaction-time! this (seconds 1) (seconds 3)))
+  (set! (-> this shoot-time) (rnd-time-frame this (seconds 1) (seconds 3)))
   (set! (-> this shot-sound) (rnd-int this 7))
   (toggle-cspec this #f -1)
   (ja-channel-set! 0)
@@ -1972,34 +1909,34 @@
     :jump-height-min (meters 0.5)
     :jump-height-factor 0.1
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 32768.0
-    :knocked-soft-vxz-hi 53248.0
-    :knocked-soft-vy-lo 61440.0
-    :knocked-soft-vy-hi 61440.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 40960.0
-    :knocked-hard-vxz-hi 61440.0
-    :knocked-hard-vy-lo 98304.0
-    :knocked-hard-vy-hi 106496.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 20480.0
-    :knocked-yellow-vxz-hi 24576.0
-    :knocked-yellow-vy-lo 28672.0
-    :knocked-yellow-vy-hi 40960.0
-    :knocked-red-vxz-lo 65536.0
-    :knocked-red-vxz-hi 81920.0
-    :knocked-red-vy-lo 61440.0
-    :knocked-red-vy-hi 61440.0
-    :knocked-blue-vxz-lo 32768.0
-    :knocked-blue-vxz-hi 65536.0
-    :knocked-blue-vy-lo 16384.0
-    :knocked-blue-vy-hi 32768.0
+    :knocked-soft-vxz-lo (meters 8)
+    :knocked-soft-vxz-hi (meters 13)
+    :knocked-soft-vy-lo (meters 15)
+    :knocked-soft-vy-hi (meters 15)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 10)
+    :knocked-hard-vxz-hi (meters 15)
+    :knocked-hard-vy-lo (meters 24)
+    :knocked-hard-vy-hi (meters 26)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 5)
+    :knocked-yellow-vxz-hi (meters 6)
+    :knocked-yellow-vy-lo (meters 7)
+    :knocked-yellow-vy-hi (meters 10)
+    :knocked-red-vxz-lo (meters 16)
+    :knocked-red-vxz-hi (meters 20)
+    :knocked-red-vy-lo (meters 15)
+    :knocked-red-vy-hi (meters 15)
+    :knocked-blue-vxz-lo (meters 8)
+    :knocked-blue-vxz-hi (meters 16)
+    :knocked-blue-vy-lo (meters 4)
+    :knocked-blue-vy-hi (meters 8)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 1.0 :w 37977.51)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -2294,6 +2231,7 @@
   )
 
 (defmethod event-handler ((this wlander-female) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (local-vars (v0-0 object))
   (case arg2
     (('event-gunout)
@@ -2315,6 +2253,7 @@
   )
 
 (defmethod knocked-anim ((this wlander-female) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (ja-channel-push! 1 (seconds 0.01))
   (cond
     ((zero? (-> this hit-face))
@@ -2344,6 +2283,7 @@
   )
 
 (defmethod knocked-land-anim ((this wlander-female) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (ja-channel-push! 1 (seconds 0.01))
   (cond
     ((zero? (-> this hit-face))
@@ -2444,13 +2384,8 @@
       (ja :num! (seek!))
       )
     (until #f
-      (while (not (enemy-method-105 self 4187.0225 #t))
-        (let* ((gp-0 (handle->process (-> self focus handle)))
-               (s5-0 (if (type? gp-0 process-focusable)
-                         gp-0
-                         )
-                     )
-               )
+      (while (not (pointing-toward-focus? self 4187.0225 #t))
+        (let ((s5-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
           (when s5-0
             (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
                   (gp-2
@@ -2504,12 +2439,7 @@
             )
           )
         )
-      (let* ((gp-3 (handle->process (-> self focus handle)))
-             (v1-194 (if (type? gp-3 process-focusable)
-                         gp-3
-                         )
-                     )
-             )
+      (let ((v1-194 (as-type (handle->process (-> self focus handle)) process-focusable)))
         (when v1-194
           (cond
             ((focus-test? (the-as process-focusable v1-194) ignore)
@@ -2537,6 +2467,7 @@
   )
 
 (defmethod init-enemy-collision! ((this wlander-female))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2612,13 +2543,14 @@
   )
 
 (defmethod init-enemy! ((this wlander-female))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-wlander-female" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
   (set! (-> this skel postbind-function) wlander-female-joint-callback)
-  (init-enemy-defaults! this *wlander-female-nav-enemy-info*)
+  (setup-enemy! this *wlander-female-nav-enemy-info*)
   (let ((v1-6 (-> this nav)))
     (set! (-> v1-6 speed-scale) 1.0)
     )
@@ -2723,7 +2655,7 @@
       )
     )
   (set! (-> this anim-get-up-front) 17)
-  (set! (-> this shoot-time) (set-reaction-time! this (seconds 1) (seconds 3)))
+  (set! (-> this shoot-time) (rnd-time-frame this (seconds 1) (seconds 3)))
   (set! (-> this shot-sound) (rnd-int this 7))
   (set! (-> this gunout) (if (rnd-int this 2)
                              #f

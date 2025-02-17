@@ -153,34 +153,34 @@
                                  :ragdoll-rotate-velocity-mult 1.0
                                  :jump-height-min (meters 3)
                                  :jump-height-factor 0.5
-                                 :knocked-soft-vxz-lo 72089.6
-                                 :knocked-soft-vxz-hi 108134.4
-                                 :knocked-soft-vy-lo 81920.0
-                                 :knocked-soft-vy-hi 122880.0
-                                 :knocked-medium-vxz-lo 147456.0
-                                 :knocked-medium-vxz-hi 196608.0
-                                 :knocked-medium-vy-lo 135168.0
-                                 :knocked-medium-vy-hi 151552.0
-                                 :knocked-hard-vxz-lo 78643.2
-                                 :knocked-hard-vxz-hi 117964.8
-                                 :knocked-hard-vy-lo 183500.8
-                                 :knocked-hard-vy-hi 209715.2
-                                 :knocked-huge-vxz-lo 164659.2
-                                 :knocked-huge-vxz-hi 249036.8
-                                 :knocked-huge-vy-lo 183500.8
-                                 :knocked-huge-vy-hi 217907.2
-                                 :knocked-yellow-vxz-lo 40960.0
-                                 :knocked-yellow-vxz-hi 49152.0
-                                 :knocked-yellow-vy-lo 57344.0
-                                 :knocked-yellow-vy-hi 81920.0
-                                 :knocked-red-vxz-lo 57344.0
-                                 :knocked-red-vxz-hi 57344.0
-                                 :knocked-red-vy-lo 81920.0
-                                 :knocked-red-vy-hi 81920.0
-                                 :knocked-blue-vxz-lo 40960.0
-                                 :knocked-blue-vxz-hi 49152.0
-                                 :knocked-blue-vy-lo 24576.0
-                                 :knocked-blue-vy-hi 81920.0
+                                 :knocked-soft-vxz-lo (meters 17.6)
+                                 :knocked-soft-vxz-hi (meters 26.4)
+                                 :knocked-soft-vy-lo (meters 20)
+                                 :knocked-soft-vy-hi (meters 30)
+                                 :knocked-medium-vxz-lo (meters 36)
+                                 :knocked-medium-vxz-hi (meters 48)
+                                 :knocked-medium-vy-lo (meters 33)
+                                 :knocked-medium-vy-hi (meters 37)
+                                 :knocked-hard-vxz-lo (meters 19.2)
+                                 :knocked-hard-vxz-hi (meters 28.8)
+                                 :knocked-hard-vy-lo (meters 44.8)
+                                 :knocked-hard-vy-hi (meters 51.2)
+                                 :knocked-huge-vxz-lo (meters 40.2)
+                                 :knocked-huge-vxz-hi (meters 60.8)
+                                 :knocked-huge-vy-lo (meters 44.8)
+                                 :knocked-huge-vy-hi (meters 53.2)
+                                 :knocked-yellow-vxz-lo (meters 10)
+                                 :knocked-yellow-vxz-hi (meters 12)
+                                 :knocked-yellow-vy-lo (meters 14)
+                                 :knocked-yellow-vy-hi (meters 20)
+                                 :knocked-red-vxz-lo (meters 14)
+                                 :knocked-red-vxz-hi (meters 14)
+                                 :knocked-red-vy-lo (meters 20)
+                                 :knocked-red-vy-hi (meters 20)
+                                 :knocked-blue-vxz-lo (meters 10)
+                                 :knocked-blue-vxz-hi (meters 12)
+                                 :knocked-blue-vy-lo (meters 6)
+                                 :knocked-blue-vy-hi (meters 20)
                                  :ragdoll-info #f
                                  :shadow-size (meters 2)
                                  :shadow-max-y (meters 10)
@@ -219,6 +219,7 @@
 (set! (-> *manta-nav-enemy-info* fact-defaults) *fact-info-manta-defaults*)
 
 (defmethod init-enemy-collision! ((this manta))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -308,7 +309,7 @@
     (vector-rotate-y! gp-1 gp-1 (* (-> self orbit-speed) (seconds-per-frame)))
     (vector-xz-normalize! gp-1 81920.0)
     (let ((s2-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s2-0 quad) (-> s4-0 trans quad))
+      (vector-copy! s2-0 (-> s4-0 trans))
       (let ((s5-0 (-> self dest-pos)))
         (closest-point-on-mesh (-> self nav) s2-0 (-> s4-0 trans) (the-as nav-poly #f))
         (cond
@@ -327,7 +328,7 @@
         (let ((v1-15 (-> self nav state)))
           (logclear! (-> v1-15 flags) (nav-state-flag directional-mode))
           (logior! (-> v1-15 flags) (nav-state-flag target-poly-dirty))
-          (set! (-> v1-15 target-pos quad) (-> s5-0 quad))
+          (vector-copy! (-> v1-15 target-pos) s5-0)
           )
         )
       )
@@ -344,7 +345,7 @@
   (set! (-> self offset-difference) (- (-> self dest-pos y) (-> self root trans y)))
   (vector-! (-> self forward-dir) (-> self focus-pos) (-> self root trans))
   (vector-normalize! (-> self forward-dir) 1.0)
-  (set! (-> self up-dir quad) (-> *y-vector* quad))
+  (vector-copy! (-> self up-dir) *y-vector*)
   (manta-method-200 self)
   (do-impact self)
   (manta-method-203 self -4096.0)
@@ -491,8 +492,8 @@
       (logior! (-> v1-5 settings flags) (shadow-flags disable-draw))
       )
     0
-    (try-locate-ground self (meters 10) (meters 10) #t (collide-spec backgnd))
-    (set! (-> self landed-pos quad) (-> self root trans quad))
+    (move-to-ground self (meters 10) (meters 10) #t (collide-spec backgnd))
+    (vector-copy! (-> self landed-pos) (-> self root trans))
     (logior! (-> self draw status) (draw-control-status no-draw))
     )
   :exit (behavior ()
@@ -509,9 +510,9 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.1))
     (until #f
-      (let ((s5-0 (set-reaction-time! self (seconds 0.007) (seconds 0.015)))
+      (let ((s5-0 (rnd-time-frame self (seconds 0.007) (seconds 0.015)))
             (f28-0 (rnd-float-range self 0.5 0.3))
-            (gp-0 (set-reaction-time! self (seconds 0.007) (seconds 0.01)))
+            (gp-0 (rnd-time-frame self (seconds 0.007) (seconds 0.01)))
             (f30-0 (rnd-float-range self 0.5 0.3))
             )
         (dotimes (s4-0 s5-0)
@@ -548,14 +549,14 @@
     (logclear! (-> self flags) (manta-flags mf0))
     (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag ef43))))
     (logclear! (-> self nav flags) (nav-control-flag limit-rotation-rate update-heading-from-facing))
-    (set! (-> self dest-pos quad) (-> self landed-pos quad))
+    (vector-copy! (-> self dest-pos) (-> self landed-pos))
     (set! (-> self dest-pos y) (+ 8192.0 (-> self default-y-offset) (-> self landed-pos y)))
     (let ((a0-7 (-> self nav state))
           (v1-9 (-> self dest-pos))
           )
       (logclear! (-> a0-7 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-7 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-7 target-pos quad) (-> v1-9 quad))
+      (vector-copy! (-> a0-7 target-pos) v1-9)
       )
     0
     (set! (-> self go-enable) #t)
@@ -598,7 +599,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     (logclear! (-> self flags) (manta-flags mf0))
-    (set! (-> self dest-pos quad) (-> self landed-pos quad))
+    (vector-copy! (-> self dest-pos) (-> self landed-pos))
     (set! (-> self dest-pos y) (+ (-> self landed-pos y) (-> self default-y-offset)))
     (set! (-> self restart-fly-anims) #t)
     )
@@ -698,8 +699,8 @@
           (t9-0)
           )
       )
-    (try-locate-ground self (meters 10) (meters 10) #t (collide-spec backgnd))
-    (set! (-> self landed-pos quad) (-> self root trans quad))
+    (move-to-ground self (meters 10) (meters 10) #t (collide-spec backgnd))
+    (vector-copy! (-> self landed-pos) (-> self root trans))
     (manta-method-206 self)
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (logior! (-> self draw status) (draw-control-status force-fade))
@@ -753,7 +754,7 @@
     0
     (set! (-> self fly-anim-speed) 1.5)
     (set! (-> self y-offset) (-> self default-y-offset))
-    (set! (-> self dest-pos quad) (-> self root trans quad))
+    (vector-copy! (-> self dest-pos) (-> self root trans))
     (set! (-> self dest-pos y) (+ (-> self root gspot-pos y) (-> self y-offset)))
     )
   :exit (behavior ()
@@ -914,7 +915,7 @@
       (set! (-> self move-u) 0.0)
       (set! (-> self move-du) (* 0.94 f30-0))
       )
-    (set! (-> self attack-pos quad) (-> self focus-pos quad))
+    (vector-copy! (-> self attack-pos) (-> self focus-pos))
     (set! (-> self y-offset) (+ 24576.0 (-> self default-y-offset)))
     (set! (-> self move-matrix rvec quad) (-> self root trans quad))
     (manta-method-195 self)
@@ -1113,7 +1114,7 @@
         )
       )
     (let ((a1-9 (new 'stack-no-clear 'collide-query)))
-      (set! (-> a1-9 start-pos quad) (-> self rbody position quad))
+      (vector-copy! (-> a1-9 start-pos) (-> self rbody position))
       (vector-float*! (-> a1-9 move-dist) (-> self rbody lin-velocity) (seconds-per-frame))
       (let ((v1-21 a1-9))
         (set! (-> v1-21 radius) (+ 4096.0 (-> self root root-prim local-sphere w)))
@@ -1149,14 +1150,14 @@
         (ja :num! (seek! max 1.5))
         )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-      (set! (-> a1-0 start-pos quad) (-> self rbody position quad))
+      (vector-copy! (-> a1-0 start-pos) (-> self rbody position))
       (vector-float*! (-> a1-0 move-dist) (-> self rbody lin-velocity) (seconds-per-frame))
       (let ((v1-3 a1-0))
         (set! (-> v1-3 radius) (+ 4096.0 (-> self root root-prim local-sphere w)))
@@ -1173,10 +1174,11 @@
     )
   )
 
-(defmethod go-best-state ((this manta))
+(defmethod go-state-for-focused ((this manta))
+  "Go to the appropriate state for the current awareness of the focused process."
   (let ((s5-0 (-> this focus aware)))
     (cond
-      ((and (= s5-0 (enemy-aware ea3)) (get-focus! this))
+      ((and (= s5-0 (enemy-aware hostile)) (get-focus! this))
        (go-hostile this)
        )
       ((<= (the-as int s5-0) 0)
@@ -1185,7 +1187,7 @@
       ((>= 1 (the-as int s5-0))
        (go (method-of-object this land-approach))
        )
-      ((= s5-0 (enemy-aware ea4))
+      ((= s5-0 (enemy-aware flee))
        (go-flee this)
        )
       (else
@@ -1196,15 +1198,15 @@
   )
 
 (defmethod manta-method-195 ((this manta))
-  (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this focus-pos) (the-as vector (-> this move-matrix)))))
+  (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this focus-pos) (-> this move-matrix rvec))))
     (set! (-> s5-1 y) (-> this attack-y-offset))
     (vector-normalize! s5-1 (-> this move-force))
-    (set! (-> this move-matrix fvec quad) (-> s5-1 quad))
-    (vector+! (-> this move-matrix uvec) (the-as vector (-> this move-matrix)) s5-1)
+    (vector-copy! (-> this move-matrix fvec) s5-1)
+    (vector+! (-> this move-matrix uvec) (-> this move-matrix rvec) s5-1)
     )
   (vector-! (-> this move-matrix trans) (-> this focus-pos) (-> this move-matrix uvec))
   (vector-normalize! (-> this move-matrix trans) 24576.0)
-  (set! (-> this move-matrix trans y) (* -0.5 (-> this move-matrix trans y)))
+  (set! (-> this move-matrix trans y) (/ (-> this move-matrix trans y) -2))
   (matrix*! (-> this curve-matrix) *hermite-matrix* (-> this move-matrix))
   0
   (none)
@@ -1212,7 +1214,7 @@
 
 (defmethod manta-method-196 ((this manta))
   (let ((s3-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s3-0 quad) (-> this root trans quad))
+    (vector-copy! s3-0 (-> this root trans))
     (let* ((s5-0 (new 'stack-no-clear 'vector))
            (s4-0 (closest-point-on-mesh (-> this nav) s5-0 s3-0 (the-as nav-poly #f)))
            )
@@ -1234,6 +1236,7 @@
   )
 
 (defmethod get-focus! ((this manta))
+  "If we're focusing on something alive, return it."
   (let* ((t9-0 (method-of-type nav-enemy get-focus!))
          (v0-0 (t9-0 this))
          )
@@ -1265,11 +1268,13 @@
   (none)
   )
 
-(defmethod within-gspot-range? ((this manta))
+(defmethod invalid-height? ((this manta))
+  "Return #t if the enemy is too high in the air, or below the ground."
   #f
   )
 
-(defmethod enemy-method-88 ((this manta) (arg0 enemy-knocked-info))
+(defmethod done-being-knocked? ((this manta) (arg0 enemy-knocked-info))
+  "has the enemy hit the ground or stopped after being knocked back?"
   (let ((v1-0 (-> this root)))
     (or (>= (-> arg0 on-surface-count) 3)
         (>= (-> this hit-ground-count) (the-as uint 1))
@@ -1304,7 +1309,7 @@
     (let ((s3-0 (new 'stack-no-clear 'vector))
           (s5-0 (-> this root root-prim prim-core))
           )
-      (set! (-> s3-0 quad) (-> s5-0 world-sphere quad))
+      (vector-copy! s3-0 (-> s5-0 world-sphere))
       (set! (-> s3-0 w) (-> s5-0 world-sphere w))
       (let ((s4-0 544))
         (set! *actor-list-length* 0)
@@ -1329,8 +1334,8 @@
                         )
                       (.sub.vf vf1 vf3 vf2)
                       (.mul.vf vf1 vf1 vf1)
-                      (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                      (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                      (.add.y.vf.x vf1 vf1 vf1)
+                      (.add.z.vf.x vf1 vf1 vf1)
                       (.mov a2-5 vf1)
                       (let ((f0-1 a2-5)
                             (f1-1 (+ (-> a1-2 world-sphere w) (-> s3-0 w)))
@@ -1370,8 +1375,8 @@
                         )
                       (.sub.vf vf1 vf3 vf2)
                       (.mul.vf vf1 vf1 vf1)
-                      (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                      (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                      (.add.y.vf.x vf1 vf1 vf1)
+                      (.add.z.vf.x vf1 vf1 vf1)
                       (.mov a2-12 vf1)
                       (let ((f0-2 a2-12)
                             (f1-5 (+ (-> a1-14 world-sphere w) (-> s3-0 w)))
@@ -1398,7 +1403,7 @@
             (when (logtest? (the-as collide-spec s4-0) (-> v1-27 root-prim prim-core collide-as))
               (when (!= v1-27 (-> this root))
                 (let* ((s2-1
-                         (vector-! (new 'stack-no-clear 'vector) (the-as vector s5-0) (the-as vector (-> v1-27 root-prim prim-core)))
+                         (vector-! (new 'stack-no-clear 'vector) (-> s5-0 world-sphere) (-> v1-27 root-prim prim-core world-sphere))
                          )
                        (f0-3 (vector-length s2-1))
                        )
@@ -1423,10 +1428,7 @@
 (defmethod manta-method-201 ((this manta) (arg0 float))
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'matrix 2)))
     (set! (-> gp-0 0 rvec quad) (-> this move-vel quad))
-    (vector-normalize!
-      (the-as vector (-> gp-0 0))
-      (vector-vector-distance (-> this dest-pos) (-> this root trans))
-      )
+    (vector-normalize! (-> gp-0 0 rvec) (vector-vector-distance (-> this dest-pos) (-> this root trans)))
     (let ((v1-2 (-> gp-0 1)))
       (set! (-> v1-2 rvec x) 0.0)
       (set! (-> v1-2 rvec y) 0.0)
@@ -1434,7 +1436,7 @@
       (set! (-> v1-2 rvec w) 1.0)
       )
     (set-vector! (-> gp-0 1 uvec) 0.0 16384.0 0.0 1.0)
-    (set! (-> gp-0 0 uvec quad) (-> gp-0 0 rvec quad))
+    (vector-copy! (-> gp-0 0 uvec) (-> gp-0 0 rvec))
     (set! (-> gp-0 0 uvec y) 0.0)
     (let* ((v1-5 (-> gp-0 0))
            (f30-0 (sqrtf (+ (* (-> v1-5 rvec x) (-> v1-5 rvec x)) (* (-> v1-5 rvec z) (-> v1-5 rvec z)))))
@@ -1453,7 +1455,7 @@
         )
     (vector-float*! (-> gp-0 0 fvec) (-> gp-0 0 uvec) 4.0)
     (vector-float*! (-> gp-0 0 trans) (-> gp-0 0 uvec) 0.5)
-    (vector-orient-by-quat! (-> gp-0 1 fvec) (the-as vector (-> gp-0 1)) (-> this root quat))
+    (vector-orient-by-quat! (-> gp-0 1 fvec) (-> gp-0 1 rvec) (-> this root quat))
     (vector+! (-> gp-0 1 fvec) (-> gp-0 1 fvec) (-> this root trans))
     (apply-impact! (-> this rbody) (-> gp-0 1 fvec) (-> gp-0 0 fvec))
     (vector-orient-by-quat! (-> gp-0 1 fvec) (-> gp-0 1 uvec) (-> this root quat))
@@ -1561,7 +1563,7 @@
 
 (defmethod nav-enemy-method-161 ((this manta) (arg0 nav-control))
   (let ((a2-0 (-> arg0 state)))
-    (set! (-> this move-vel quad) (-> a2-0 velocity quad))
+    (vector-copy! (-> this move-vel) (-> a2-0 velocity))
     )
   (manta-method-201 this 201326600.0)
   (none)
@@ -1584,7 +1586,7 @@
            (gp-0 (-> this draw shadow-ctrl settings shadow-dir))
            (f30-0 81920.0)
            )
-       (set! (-> s4-0 start-pos quad) (-> this root trans quad))
+       (vector-copy! (-> s4-0 start-pos) (-> this root trans))
        (vector-normalize-copy! (-> s4-0 move-dist) gp-0 f30-0)
        (let ((v1-12 s4-0))
          (set! (-> v1-12 radius) 3276.8)
@@ -1640,11 +1642,12 @@
   )
 
 (defmethod enemy-common-post ((this manta))
-  (set! (-> this root gspot-pos quad) (-> this root trans quad))
+  "Common implementation of post. Runs ja-post."
+  (vector-copy! (-> this root gspot-pos) (-> this root trans))
   (cond
     ((and (-> this next-state) (= (-> this next-state name) 'knocked))
      (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-       (set-ground-pat!
+       (find-ground-and-set-pat!
          this
          a1-0
          (-> this enemy-info recover-gnd-collide-with)
@@ -1682,6 +1685,7 @@
 ;; WARN: disable def twice: 150. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 ;; WARN: disable def twice: 100. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod event-handler ((this manta) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (local-vars (v0-4 object))
   (case arg2
     (('hit 'hit-flinch 'hit-knocked)
@@ -1694,7 +1698,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1743,21 +1747,22 @@
   (let ((a0-2 (handle->process (-> this focus handle))))
     (cond
       (a0-2
-        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-2) 3) quad))
+        (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable a0-2) 3))
         (if (not (manta-method-196 this))
             (set-time! (-> this attack-path-blocked-time))
             )
         )
       (else
-        (set! (-> this focus-pos quad) (-> (target-pos 0) quad))
-        (set! (-> this dest-pos quad) (-> this root trans quad))
+        (vector-copy! (-> this focus-pos) (target-pos 0))
+        (vector-copy! (-> this dest-pos) (-> this root trans))
         )
       )
     )
   (none)
   )
 
-(defmethod enemy-method-50 ((this manta) (arg0 int))
+(defmethod update-collision-action ((this manta) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-0 arg0))
     (cond
       ((= v1-0 1)
@@ -1793,6 +1798,7 @@
   )
 
 (defmethod knocked-anim-handler ((this manta) (arg0 int) (arg1 enemy-knocked-info))
+  "start or play the approriate animation for an enemy being knocked."
   (case arg0
     ((1)
      (let ((s5-0 (ja-done? 0)))
@@ -1822,6 +1828,7 @@
   )
 
 (defmethod knocked-anim ((this manta) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (cond
     ((= (-> this hit-points) 0.0)
      (ja-channel-push! 1 (seconds 0.1))
@@ -1869,6 +1876,7 @@
   )
 
 (defmethod knocked-land-anim ((this manta) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (set! (-> arg0 anim-speed) 0.5)
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a0-2 (-> this skel root-channel 0)))
@@ -1914,13 +1922,14 @@
   )
 
 (defmethod init-enemy! ((this manta))
+  "Typical place for shared init code. Runs from entity or process style init."
   (local-vars (sv-16 res-tag))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-manta" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *manta-nav-enemy-info*)
+  (setup-enemy! this *manta-nav-enemy-info*)
   (let ((f0-0 (res-lump-float (-> this entity) 'rotoffset)))
     (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-0)
     )
@@ -1955,8 +1964,8 @@
   (logclear! (-> this nav flags) (nav-control-flag update-heading-from-facing))
   (set! (-> this enemy-flags) (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag ef44))))
   (set! (-> this go-enable) #t)
-  (set! (-> this up-dir quad) (-> *y-vector* quad))
-  (set! (-> this forward-dir quad) (-> *z-vector* quad))
+  (vector-copy! (-> this up-dir) *y-vector*)
+  (vector-copy! (-> this forward-dir) *z-vector*)
   (set! (-> this last-attack-time) 0)
   (set! (-> this attack-path-blocked-time) 0)
   (set! (-> this track-timer) 0)

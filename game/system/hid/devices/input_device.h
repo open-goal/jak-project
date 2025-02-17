@@ -14,7 +14,7 @@ class InputDevice {
   std::shared_ptr<game_settings::InputSettings> m_settings;
 
  public:
-  virtual ~InputDevice(){};
+  virtual ~InputDevice() {};
 
   virtual void process_event(const SDL_Event& event,
                              const CommandBindingGroups& commands,

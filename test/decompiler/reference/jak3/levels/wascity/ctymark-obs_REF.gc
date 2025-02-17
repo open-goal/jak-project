@@ -1203,74 +1203,37 @@
 
 ;; definition for function fruit-sparticle-next-on-mode-1
 (defun fruit-sparticle-next-on-mode-1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 (-> arg1 key)))
-      (cond
-        ((zero? (-> s5-0 state-mode 0))
-         (set! (-> arg1 next-time)
-               (the-as uint (* (max 1 (the-as int (-> *display* clock (-> arg1 clock-index) sparticle-data x))) 2))
-               )
-         )
-        (else
-          (let ((s4-0 (new 'stack-no-clear 'vector)))
-            0.0
-            0.0
-            0.0
-            (let* ((f28-0 (/ 1.0 (* 0.00024414062 (-> arg1 omega))))
-                   (f26-0 (* (rand-vu-float-range -136.53334 136.53334) f28-0))
-                   (f30-0 (* (rand-vu-float-range 0.0 136.53334) f28-0))
-                   (f0-8 (* (rand-vu-float-range -13.653334 54.613335) f28-0))
-                   )
-              (vector-float*! s4-0 (the-as vector (-> s5-0 origin)) f26-0)
-              (let ((a1-5 s4-0))
-                (let ((v1-8 s4-0))
-                  (let ((a0-10 (-> s5-0 origin uvec)))
-                    (let ((a2-1 f30-0))
-                      (.mov vf7 a2-1)
-                      )
-                    (.lvf vf5 (&-> a0-10 quad))
-                    )
-                  (.lvf vf4 (&-> v1-8 quad))
-                  )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-                (.svf (&-> a1-5 quad) vf6)
-                )
-              (let ((a1-6 s4-0))
-                (let ((v1-9 s4-0))
-                  (let ((a0-11 (-> s5-0 origin fvec)))
-                    (let ((a2-2 f0-8))
-                      (.mov vf7 a2-2)
-                      )
-                    (.lvf vf5 (&-> a0-11 quad))
-                    )
-                  (.lvf vf4 (&-> v1-9 quad))
-                  )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-                (.svf (&-> a1-6 quad) vf6)
-                )
-              )
-            (set! (-> arg1 vel-sxvel x) (-> s4-0 x))
-            (set! (-> arg1 vel-sxvel y) (-> s4-0 y))
-            (set! (-> arg1 vel-sxvel z) (-> s4-0 z))
+  (let ((s5-0 (-> arg1 key)))
+    (cond
+      ((zero? (-> s5-0 state-mode 0))
+       (set! (-> arg1 next-time)
+             (the-as uint (* (max 1 (the-as int (-> *display* clock (-> arg1 clock-index) sparticle-data x))) 2))
+             )
+       )
+      (else
+        (let ((s4-0 (new 'stack-no-clear 'vector)))
+          0.0
+          0.0
+          0.0
+          (let* ((f28-0 (/ 1.0 (/ (-> arg1 omega) METER_LENGTH)))
+                 (f26-0 (* (rand-vu-float-range -136.53334 136.53334) f28-0))
+                 (f30-0 (* (rand-vu-float-range 0.0 136.53334) f28-0))
+                 (f0-8 (* (rand-vu-float-range -13.653334 54.613335) f28-0))
+                 )
+            (vector-float*! s4-0 (-> s5-0 origin rvec) f26-0)
+            (vector+*! s4-0 s4-0 (-> s5-0 origin uvec) f30-0)
+            (vector+*! s4-0 s4-0 (-> s5-0 origin fvec) f0-8)
             )
-          (-> arg1 vel-sxvel)
-          (set! (-> arg1 user-float) (+ (-> s5-0 origin trans y) (-> arg1 omega)))
+          (set! (-> arg1 vel-sxvel x) (-> s4-0 x))
+          (set! (-> arg1 vel-sxvel y) (-> s4-0 y))
+          (set! (-> arg1 vel-sxvel z) (-> s4-0 z))
           )
+        (-> arg1 vel-sxvel)
+        (set! (-> arg1 user-float) (+ (-> s5-0 origin trans y) (-> arg1 omega)))
         )
       )
-    0.0
     )
+  0.0
   )
 
 ;; failed to figure out what this is:
@@ -1508,7 +1471,7 @@
               (s4-0 (-> *sp-particle-system-2d* cpuinfo-table (-> self sparts-index gp-0)))
               )
           (when (and (nonzero? (-> s4-0 key)) (= (-> s4-0 key group) (lookup-part-group-by-name "group-ctywide-fruit")))
-            (set! (-> s5-0 start-pos quad) (-> self sparts-pos gp-0 quad))
+            (vector-copy! (-> s5-0 start-pos) (-> self sparts-pos gp-0))
             (+! (-> s5-0 start-pos y) 4096.0)
             (set-vector! (-> s5-0 move-dist) 0.0 -40960.0 0.0 1.0)
             (let ((v1-11 s5-0))
@@ -1554,7 +1517,7 @@
            (initialize (-> self part) (-> *part-group-id-table* 253) self)
            (set! (-> self parts-alive?) #t)
            )
-         (spawn-from-cspace (-> self part) (the-as cspace (-> self node-list data)))
+         (spawn-from-cspace (-> self part) (-> self node-list data 0))
          )
         (else
           (when (-> self parts-alive?)
@@ -1609,6 +1572,7 @@
 
 ;; definition for method 11 of type fruit-stand
 (defmethod init-from-entity! ((this fruit-stand) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (fruit-stand-method-29 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

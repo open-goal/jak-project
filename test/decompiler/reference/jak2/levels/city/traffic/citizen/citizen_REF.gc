@@ -97,8 +97,8 @@
 ;; WARN: Return type mismatch int vs enemy-aware.
 (defmethod update-target-awareness! ((this citizen) (arg0 process-focusable) (arg1 enemy-best-focus))
   "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
-@TODO - flesh out docs
-@returns the value that sets `aware`"
+   @TODO - flesh out docs
+   @returns the value that sets `aware`"
   (when arg1
     (let ((f0-0 (vector-vector-distance (get-trans arg0 0) (-> this root trans))))
       (when (< f0-0 (-> arg1 rating))
@@ -218,7 +218,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod citizen-method-186 ((this citizen) (arg0 nav-segment))
   (vehicle-controller-method-11 (-> this controller))
-  (vehicle-controller-method-13 (-> this controller) (-> arg0 branch) (the-as vector (-> arg0 vertex)))
+  (vehicle-controller-method-13 (-> this controller) (-> arg0 branch) (-> arg0 vertex 0))
   0
   (none)
   )
@@ -263,7 +263,7 @@
 ;; INFO: Used lq/sq
 (defmethod general-event-handler ((this citizen) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-flinch 'hit-knocked)
      (let ((v1-1 #f))
@@ -281,12 +281,7 @@
           )
          )
        (when v1-1
-         (let* ((s5-0 (handle->process (-> this incoming attacker-handle)))
-                (a2-5 (if (type? s5-0 process-focusable)
-                          s5-0
-                          )
-                      )
-                )
+         (let ((a2-5 (the-as process (as-type (handle->process (-> this incoming attacker-handle)) process-focusable))))
            (if a2-5
                (trigger-alert this 1 (the-as target a2-5))
                )
@@ -386,9 +381,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod common-post ((this citizen))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (when (< (-> this next-time-look-at) (current-time))
     (when (nonzero? (-> this neck))
       (let ((a0-4 (handle->process (-> this focus handle))))
@@ -508,9 +503,9 @@
                 )
               (.lvf vf4 (&-> v1-14 quad))
               )
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> a2-2 quad) vf6)
             (when (t9-1 a0-14 a1-2 a2-2 (-> arg1 gnd-collide-with) 16384.0 81920.0 1024.0)
               (set! (-> gp-0 gspot-pos quad) (-> gp-0 trans quad))
@@ -618,7 +613,7 @@
         s5-1
         s5-1
         gp-0
-        (* (fmax 0.5 (* 0.00024414062 (-> arg0 state speed))) (seconds-per-frame))
+        (* (fmax 0.5 (/ (-> arg0 state speed) METER_LENGTH)) (seconds-per-frame))
         )
       )
     )
@@ -684,11 +679,11 @@
 ;; WARN: Return type mismatch entity-perm-status vs none.
 (defmethod init-from-entity! ((this citizen) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
@@ -1088,9 +1083,9 @@ This commonly includes things such as:
                    )
                  (.lvf vf4 (&-> v1-16 quad))
                  )
-               (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-               (.mul.x.vf acc vf5 vf7 :mask #b111)
-               (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+               (.add.x.vf.w vf6 vf0 vf0)
+               (.mul.x.vf.xyz acc vf5 vf7)
+               (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                (.svf (&-> a1-3 quad) vf6)
                )
              (vector+! s1-1 s1-1 s4-0)
@@ -1168,7 +1163,7 @@ This commonly includes things such as:
           (add-debug-line
             #t
             (bucket-id debug-no-zbuf1)
-            (the-as vector (-> gp-0 seg vertex))
+            (-> gp-0 seg vertex 0)
             (-> gp-0 seg vertex 1)
             *color-blue*
             #f
@@ -1268,7 +1263,7 @@ This commonly includes things such as:
           (add-debug-line
             #t
             (bucket-id debug-no-zbuf1)
-            (the-as vector (-> gp-0 seg vertex))
+            (-> gp-0 seg vertex 0)
             (-> gp-0 seg vertex 1)
             *color-blue*
             #f

@@ -267,7 +267,7 @@
                           (set! sv-164 (the-as float 0.0))
                           (set! sv-168 0)
                           (set! sv-176 (new-stack-vector0))
-                          (set! (-> sv-160 quad) (-> sv-240 quad))
+                          (vector-copy! sv-160 sv-240)
                           (set! sv-288 0)
                           (while (< sv-288 (the-as int (-> sv-16 elt-count)))
                             (when (and (!= sv-288 s1-0) (!= sv-288 sv-272))
@@ -277,7 +277,7 @@
                                    )
                                   ((zero? sv-168)
                                    (vector+float*! sv-160 sv-160 sv-208 f0-8)
-                                   (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
+                                   (vector-copy! sv-176 (-> s3-0 sv-288))
                                    (set! sv-164 (the-as float 8192000.0))
                                    (set! sv-168 1)
                                    )
@@ -291,7 +291,7 @@
                                    )
                                   (else
                                     (vector+float*! sv-160 sv-160 sv-208 f0-8)
-                                    (set! (-> sv-176 quad) (-> s3-0 sv-288 quad))
+                                    (vector-copy! sv-176 (-> s3-0 sv-288))
                                     (set! sv-168 (+ sv-168 1))
                                     (if (< (fabs f0-8) (fabs sv-164))
                                         (set! sv-164 (- sv-164 f0-8))
@@ -322,8 +322,8 @@
                                  (format 0 "ERROR <GMJ>: camera editing out of volume points~%")
                                  )
                                 (else
-                                  (set! (-> *volume-point* data *volume-point-current* quad) (-> sv-160 quad))
-                                  (set! (-> *volume-point* data (+ *volume-point-current* 1) quad) (-> sv-240 quad))
+                                  (vector-copy! (-> *volume-point* data *volume-point-current*) sv-160)
+                                  (vector-copy! (-> *volume-point* data (+ *volume-point-current* 1)) sv-240)
                                   (set! *volume-point-current* (+ *volume-point-current* 2))
                                   (+! (-> s2-0 point-count) 2)
                                   )
@@ -347,8 +347,8 @@
                        (format 0 "ERROR <GMJ>: camera editing out of volume normals~%")
                        )
                       (else
-                        (set! (-> *volume-normal* data *volume-normal-current* quad) (-> s0-0 quad))
-                        (set! (-> *volume-normal* data (+ *volume-normal-current* 1) quad) (-> s3-0 s1-0 quad))
+                        (vector-copy! (-> *volume-normal* data *volume-normal-current*) s0-0)
+                        (vector-copy! (-> *volume-normal* data (+ *volume-normal-current* 1)) (-> s3-0 s1-0))
                         (set! *volume-normal-current* (+ *volume-normal-current* 2))
                         (set! (-> s2-0 normal-count) (+ (-> s2-0 normal-count) 2))
                         )
@@ -461,7 +461,7 @@
     (arg0 s3-0 (-> arg1 from) (-> arg1 to) 0.0 (-> arg1 axis) 65536.0)
     (vector+! s3-0 s3-0 (-> arg1 origin))
     (dotimes (s2-0 10)
-      (set! (-> s5-0 quad) (-> s3-0 quad))
+      (vector-copy! s5-0 s3-0)
       (arg0 s3-0 (-> arg1 from) (-> arg1 to) (* 0.1 (+ 1.0 (the float s2-0))) (-> arg1 axis) 65536.0)
       (vector+! s3-0 s3-0 (-> arg1 origin))
       (camera-line s3-0 s5-0 (-> arg1 color))
@@ -482,7 +482,7 @@
     (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) 0.0)
     (vector+! s3-0 s3-0 (-> arg1 origin))
     (dotimes (s2-0 10)
-      (set! (-> s5-0 quad) (-> s3-0 quad))
+      (vector-copy! s5-0 s3-0)
       (arg0 s3-0 (-> arg1 from) (-> arg1 to) (-> arg1 axis) (* 182.04445 (* 18.0 (+ 1.0 (the float s2-0)))))
       (vector+! s3-0 s3-0 (-> arg1 origin))
       (camera-line s3-0 s5-0 (-> arg1 color))
@@ -501,18 +501,14 @@
   (if (not arg0)
       (return #f)
       )
-  (let ((s5-0 (new 'stack-no-clear 'matrix)))
-    (set! (-> s5-0 rvec quad) (the-as uint128 0))
-    (set! (-> s5-0 uvec quad) (the-as uint128 0))
-    (set! (-> s5-0 fvec quad) (the-as uint128 0))
-    (set! (-> s5-0 trans quad) (the-as uint128 0))
-    (let ((s4-0 (new-stack-vector0)))
-      (when (and (cam-slave-get-vector-with-offset arg0 s4-0 'trans)
-                 (or (!= *camera-layout-blink* 'camera) (logtest? (-> *display* real-frame-clock integral-frame-counter) 8))
-                 )
-        (cam-slave-get-rot arg0 s5-0)
-        (camera-fov-frame s5-0 s4-0 (* 0.5 (cam-slave-get-fov arg0)) 0.75 1.0 (new 'static 'vector4w :z #xff :w #x80))
+  (let ((s5-0 (new-stack-matrix0))
+        (s4-0 (new-stack-vector0))
         )
+    (when (and (cam-slave-get-vector-with-offset arg0 s4-0 'trans)
+               (or (!= *camera-layout-blink* 'camera) (logtest? (-> *display* real-frame-clock integral-frame-counter) 8))
+               )
+      (cam-slave-get-rot arg0 s5-0)
+      (camera-fov-frame s5-0 s4-0 (* 0.5 (cam-slave-get-fov arg0)) 0.75 1.0 (new 'static 'vector4w :z #xff :w #x80))
       )
     )
   (let ((s5-1 (new-stack-vector0)))
@@ -570,28 +566,27 @@
          (vector-! s4-1 s4-1 s5-4)
          )
         (else
-          (set! (-> s4-1 quad)
-                (-> (the-as
-                      vector
-                      ((method-of-type res-lump get-property-struct)
-                       arg0
-                       'spline-offset
-                       'interp
-                       -1000000000.0
-                       s4-1
-                       (the-as (pointer res-tag) #f)
-                       *res-static-buf*
-                       )
-                      )
-                    quad
-                    )
-                )
+          (vector-copy!
+            s4-1
+            (the-as
+              vector
+              ((method-of-type res-lump get-property-struct)
+               arg0
+               'spline-offset
+               'interp
+               -1000000000.0
+               s4-1
+               (the-as (pointer res-tag) #f)
+               *res-static-buf*
+               )
+              )
+            )
           )
         )
       (curve-get-pos! s5-4 0.0 s3-1)
       (vector+! s5-4 s5-4 s4-1)
       (dotimes (s1-1 8)
-        (set! (-> s2-0 quad) (-> s5-4 quad))
+        (vector-copy! s2-0 s5-4)
         (curve-get-pos! s5-4 (* 0.125 (the float (+ s1-1 1))) s3-1)
         (vector+! s5-4 s5-4 s4-1)
         (camera-line s2-0 s5-4 (new 'static 'vector4w :x #xff :y #xff :w #x80))
@@ -634,7 +629,7 @@
       (curve-get-pos! s5-5 0.0 s3-2)
       (vector+! s5-5 s5-5 s4-2)
       (dotimes (s1-3 8)
-        (set! (-> s2-1 quad) (-> s5-5 quad))
+        (vector-copy! s2-1 s5-5)
         (curve-get-pos! s5-5 (* 0.125 (the float (+ s1-3 1))) s3-2)
         (vector+! s5-5 s5-5 s4-2)
         (camera-line s2-1 s5-5 (new 'static 'vector4w :z #xff :w #x80))
@@ -802,14 +797,14 @@
       (when (logtest? (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
         (if (cpad-hold? arg2 r1)
             (set! (-> arg1 y)
-                  (+ 0.5 (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton 9)) 0.0 32.0 230.0 0.5) (-> arg1 y))
+                  (+ 0.5 (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton (abutton-idx r1))) 0.0 32.0 230.0 0.5) (-> arg1 y)) ;; og:preserve-this abutton indexing
                   )
             )
         )
       (when (logtest? (-> *camera* settings master-options) (cam-master-options READ_BUTTONS))
         (if (cpad-hold? arg2 l1)
             (set! (-> arg1 y)
-                  (- (-> arg1 y) (+ 0.5 (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton 8)) 0.0 32.0 230.0 0.5)))
+                  (- (-> arg1 y) (+ 0.5 (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton (abutton-idx l1))) 0.0 32.0 230.0 0.5))) ;; og:preserve-this abutton indexing
                   )
             )
         )
@@ -818,11 +813,7 @@
             )
       )
     )
-  (let ((s5-1 (new 'stack-no-clear 'matrix)))
-    (set! (-> s5-1 rvec quad) (the-as uint128 0))
-    (set! (-> s5-1 uvec quad) (the-as uint128 0))
-    (set! (-> s5-1 fvec quad) (the-as uint128 0))
-    (set! (-> s5-1 trans quad) (the-as uint128 0))
+  (let ((s5-1 (new-stack-matrix0)))
     (let ((a2-8 (new-stack-vector0)))
       (set! (-> a2-8 y) -1.0)
       (forward-down-nopitch->inv-matrix s5-1 (-> *math-camera* inv-camera-rot fvec) a2-8)
@@ -1062,7 +1053,7 @@
 (defbehavior clmf-look-through cam-layout ()
   (set! (-> *camera-other-fov* data) (cam-slave-get-fov (-> self cam-entity)))
   (cam-slave-get-vector-with-offset (the-as entity-actor (-> self cam-entity)) *camera-other-trans* 'trans)
-  (set! (-> *camera-other-root* quad) (-> *camera-other-trans* quad))
+  (vector-copy! *camera-other-root* *camera-other-trans*)
   (cam-slave-get-rot (the-as entity-actor (-> self cam-entity)) *camera-other-matrix*)
   (set! *camera-look-through-other* 10)
   (set-setting! 'master-options 'set 0.0 32)
@@ -1072,7 +1063,7 @@
 (defun fov->maya ((arg0 float))
   (if (= arg0 0.0)
       0.0
-      (/ 12.700255 (tan (* 0.5 arg0)))
+      (/ 12.700255 (tan (/ arg0 2)))
       )
   )
 
@@ -1126,7 +1117,7 @@
         (if arg0
             (format #t "setup trans ~M ~M ~M (maya)~%" (-> s1-0 x) (-> s1-0 y) (-> s1-0 z))
             )
-        (set! (-> s3-1 quad) (-> s1-0 quad))
+        (vector-copy! s3-1 s1-0)
         (when (the-as vector s5-1)
           (if arg0
               (format
@@ -1193,7 +1184,7 @@
       (when s2-0
         (if s5-1
             (vector+! s4-1 s2-0 s5-1)
-            (set! (-> s4-1 quad) (-> s2-0 quad))
+            (vector-copy! s4-1 s2-0)
             )
         (if arg0
             (format #t "setup pivot ~M ~M ~M~%" (-> s2-0 x) (-> s2-0 y) (-> s2-0 z))
@@ -1239,7 +1230,7 @@
       (when s2-0
         (if s5-1
             (vector+! s4-1 s2-0 s5-1)
-            (set! (-> s4-1 quad) (-> s2-0 quad))
+            (vector-copy! s4-1 s2-0)
             )
         (if arg0
             (format #t "setup align ~M ~M ~M~%" (-> s2-0 x) (-> s2-0 y) (-> s2-0 z))
@@ -1285,7 +1276,7 @@
       (when s2-0
         (if s5-1
             (vector+! s4-1 s2-0 s5-1)
-            (set! (-> s4-1 quad) (-> s2-0 quad))
+            (vector-copy! s4-1 s2-0)
             )
         (if arg0
             (format #t "setup interesting ~M ~M ~M~%" (-> s2-0 x) (-> s2-0 y) (-> s2-0 z))

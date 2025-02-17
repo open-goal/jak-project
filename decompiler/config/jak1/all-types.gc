@@ -287,25 +287,41 @@
   )
 
 (defenum pad-buttons
-    :bitfield #t
-    :type uint32
-    (select   0)
-    (l3       1)
-    (r3       2)
-    (start    3)
-    (up       4)
-    (right    5)
-    (down     6)
-    (left     7)
-    (l2       8)
-    (r2       9)
-    (l1       10)
-    (r1       11)
-    (triangle 12)
-    (circle   13)
-    (x        14)
-    (square   15)
-    )
+  :bitfield #t
+  :type uint32
+  (select   0)
+  (l3       1)
+  (r3       2)
+  (start    3)
+  (up       4)
+  (right    5)
+  (down     6)
+  (left     7)
+  (l2       8)
+  (r2       9)
+  (l1       10)
+  (r1       11)
+  (triangle 12)
+  (circle   13)
+  (x        14)
+  (square   15)
+  )
+
+(defenum abutton-idx
+  :type uint8
+  (right 0)
+  (left 1)
+  (up 2)
+  (down 3)
+  (triangle 4)
+  (circle 5)
+  (x 6)
+  (square 7)
+  (l1 8)
+  (r1 9)
+  (l2 10)
+  (r2 11)
+  )
 
 (defenum gs-psm
     :bitfield #f
@@ -19612,6 +19628,57 @@
   (wt31)
   )
 
+(defenum water-look
+  (water-anim-sunken-big-room 0)
+  (water-anim-sunken-first-room-from-entrance 1)
+  (water-anim-sunken-qbert-room 2)
+  (water-anim-sunken-first-right-branch 3)
+  (water-anim-sunken-circular-with-bullys 4)
+  (water-anim-sunken-hall-with-one-whirlpool 5)
+  (water-anim-sunken-hall-with-three-whirlpools 6)
+  (water-anim-sunken-start-of-helix-slide 7)
+  (water-anim-sunken-room-above-exit-chamber 8)
+  (water-anim-sunken-hall-before-big-room 9)
+  (water-anim-sunken-dark-eco-qbert 10)
+  (water-anim-sunken-short-piece 11)
+  (water-anim-sunken-big-room-upper-water 12)
+  (water-anim-sunken-dark-eco-platform-room 13)
+  (water-anim-maincave-water-with-crystal 14)
+  (water-anim-maincave-center-pool 15)
+  (water-anim-maincave-lower-right-pool 16)
+  (water-anim-maincave-mid-right-pool 17)
+  (water-anim-maincave-lower-left-pool 18)
+  (water-anim-maincave-mid-left-pool 19)
+  (water-anim-robocave-main-pool 20)
+  (water-anim-misty-mud-by-arena 21)
+  (water-anim-misty-mud-above-skeleton 22)
+  (water-anim-misty-mud-behind-skeleton 23)
+  (water-anim-misty-mud-above-skull-back 24)
+  (water-anim-misty-mud-above-skull-front 25)
+  (water-anim-misty-mud-other-near-skull 26)
+  (water-anim-misty-mud-near-skull 27)
+  (water-anim-misty-mud-under-spine 28)
+  (water-anim-misty-mud-by-dock 29)
+  (water-anim-misty-mud-island-near-dock 30)
+  (water-anim-misty-mud-lonely-island 31)
+  (water-anim-misty-dark-eco-pool 32)
+  (water-anim-ogre-lava 33)
+  (water-anim-jungle-river 34)
+  (water-anim-village3-lava 35)
+  (water-anim-training-lake 36)
+  (water-anim-darkcave-water-with-crystal 37)
+  (water-anim-rolling-water-back 38)
+  (water-anim-rolling-water-front 39)
+  (water-anim-sunken-dark-eco-helix-room 40)
+  (water-anim-finalboss-dark-eco-pool 41)
+  (water-anim-lavatube-energy-lava 42)
+  (water-anim-village1-rice-paddy 43)
+  (water-anim-village1-fountain 44)
+  (water-anim-village1-rice-paddy-mid 45)
+  (water-anim-village1-rice-paddy-top 46)
+  (water-anim-village2-bucket 47)
+  )
+
 (deftype water-control (basic)
   ((flags             water-flags           :offset-assert 4)
    (process           process-drawable      :offset-assert 8)
@@ -21102,7 +21169,7 @@
   :size-assert         #x94
   :flag-assert         #xf00300094
   (:methods
-    (dumb-15 (_type_) none))
+    (spawn-particles! (_type_) none))
   (:states
     hud-normal
     hud-coming-in
@@ -22303,20 +22370,20 @@
 
 ;; - Functions
 
-(define-extern calculate-rotation-and-color-for-slice (function int float int int int hud-particle none))
-(define-extern part-hud-health-01-func (function basic basic hud-particle none)) ;; TODO - i figured this out on another branch...all these particle functions get called by the particle system with the same beginning types iirc
-(define-extern part-hud-health-02-func (function basic basic hud-particle none))
-(define-extern part-hud-health-03-func (function basic basic hud-particle none))
+(define-extern calculate-rotation-and-color-for-slice (function int float int int int matrix none))
+(define-extern part-hud-health-01-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-health-02-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-health-03-func (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern fuel-cell-hud-orbit-callback (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern fuel-cell-hud-starburst-3-callback (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern fuel-cell-hud-starburst-4-callback (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern fuel-cell-hud-center-callback (function sparticle-system sparticle-cpuinfo matrix none))
-(define-extern part-hud-buzzer-func (function basic basic hud-particle none))
-(define-extern part-hud-eco-timer-01-func (function basic basic hud-particle none))
-(define-extern part-hud-eco-timer-02-func (function basic basic hud-particle none))
-(define-extern part-hud-eco-timer-03-func (function basic basic hud-particle none))
-(define-extern part-hud-eco-timer-backing-func (function basic basic hud-particle none))
-(define-extern part-hud-eco-timer-func (function basic basic hud-particle none))
+(define-extern part-hud-buzzer-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-eco-timer-01-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-eco-timer-02-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-eco-timer-03-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-eco-timer-backing-func (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern part-hud-eco-timer-func (function sparticle-system sparticle-cpuinfo matrix none))
 (define-extern show-hud (function none))
 
 ;; - Unknowns

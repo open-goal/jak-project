@@ -53,9 +53,9 @@ Without this corrector, the fogginess of the world would change as the FOV chang
 ;; ERROR: Failed store: (s.w! (+ a0-43 12) a1-11) at op 465
 (defun update-math-camera ((arg0 math-camera) (arg1 symbol) (arg2 symbol) (arg3 float))
   "Compute some one-time camera constants.
-These should only change when changing aspect ratio."
+   These should only change when changing aspect ratio."
   (local-vars (sv-16 float))
-  (set! (-> arg0 x-ratio) (tan (* 0.5 arg3)))
+  (set! (-> arg0 x-ratio) (tan (/ arg3 2)))
   (if (= arg2 'aspect4x3)
       (set! (-> arg0 y-ratio) (* 0.75 (-> arg0 x-ratio)))
       (set! (-> arg0 y-ratio) (* 0.5625 (-> arg0 x-ratio)))
@@ -285,8 +285,8 @@ These should only change when changing aspect ratio."
 ;; INFO: Used lq/sq
 (defun move-target-from-pad ((arg0 transform) (arg1 int))
   "Unused function to adjust trans based on inputs from the pad.
-This function must be extremely old because it takes a non-quaternion transform,
-and all [[target]] stuff uses quaternions."
+   This function must be extremely old because it takes a non-quaternion transform,
+   and all [[target]] stuff uses quaternions."
   (let ((s4-0 (new-stack-vector0)))
     (set! (-> s4-0 x) (cond
                         ((cpad-hold? arg1 circle)
@@ -350,8 +350,8 @@ and all [[target]] stuff uses quaternions."
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-vector! ((arg0 vector) (arg1 vector))
   "Apply camera transformation to a point. Return true if it is visible or not.
-This returns the point in GS coords, but as float instead of int, so it's
-not really useful. See [[transform-point-qword!]] for more details."
+   This returns the point in GS coords, but as float instead of int, so it's
+   not really useful. See [[transform-point-qword!]] for more details."
   (local-vars (v1-2 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -387,10 +387,10 @@ not really useful. See [[transform-point-qword!]] for more details."
     (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
     (.wait.vf)
     (.cfc2.i v1-2 Clipping)
-    (.mul.vf vf28 vf28 Q :mask #b111)
+    (.mul.vf.xyz vf28 vf28 Q)
     (.mul.vf vf23 vf23 Q)
     (.add.vf vf28 vf28 vf30)
-    (.max.x.vf vf28 vf28 vf0 :mask #b1000)
+    (.max.x.vf.w vf28 vf28 vf0)
     (.svf (&-> arg0 quad) vf28)
     (not (logtest? v1-2 63))
     )
@@ -401,7 +401,7 @@ not really useful. See [[transform-point-qword!]] for more details."
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-qword! ((arg0 vector4w) (arg1 vector))
   "Apply camera transformation to point, returning fixed point 28.4 position
-that can be given to the GS directly."
+   that can be given to the GS directly."
   (local-vars (v1-2 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -437,10 +437,10 @@ that can be given to the GS directly."
     (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
     (.wait.vf)
     (.cfc2.i v1-2 Clipping)
-    (.mul.vf vf28 vf28 Q :mask #b111)
+    (.mul.vf.xyz vf28 vf28 Q)
     (.mul.vf vf23 vf23 Q)
     (.add.vf vf28 vf28 vf30)
-    (.max.x.vf vf28 vf28 vf0 :mask #b1000)
+    (.max.x.vf.w vf28 vf28 vf0)
     (vftoi4.xyzw vf28 vf28)
     (.svf (&-> arg0 quad) vf28)
     (not (logtest? v1-2 63))
@@ -487,10 +487,10 @@ that can be given to the GS directly."
     (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
     (.wait.vf)
     (.cfc2.i v1-2 Clipping)
-    (.mul.vf vf28 vf28 Q :mask #b111)
+    (.mul.vf.xyz vf28 vf28 Q)
     (.mul.vf vf23 vf23 Q)
     (.add.vf vf28 vf28 vf30)
-    (.max.x.vf vf28 vf28 vf0 :mask #b1000)
+    (.max.x.vf.w vf28 vf28 vf0)
     (.svf (&-> arg0 quad) vf28)
     (not (logtest? v1-2 63))
     (.mov v0-0 vf23)
@@ -532,8 +532,8 @@ that can be given to the GS directly."
 ;; WARN: Return type mismatch symbol vs none.
 (defun init-for-transform ((arg0 matrix))
   "Sets up VU0 registers with camera info.
-This is probably a very old function and it's only used by camera debug.
-It stashes some data in vector float registers that must be there before calling transform-float-point."
+   This is probably a very old function and it's only used by camera debug.
+   It stashes some data in vector float registers that must be there before calling transform-float-point."
   (local-vars (v1-14 float))
   (rlet ((vf1 :class vf)
          (vf17 :class vf)

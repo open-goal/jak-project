@@ -258,6 +258,7 @@
 
 
 (defmethod init-from-entity! ((this wstd-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
@@ -665,7 +666,7 @@
 
 (defmethod update-part-and-sfx! ((this wstd-arena-plat))
   (when (nonzero? (-> this sound))
-    (set! (-> this sound trans quad) (-> this root trans quad))
+    (vector-copy! (-> this sound trans) (-> this root trans))
     (update! (-> this sound))
     )
   (none)
@@ -695,6 +696,7 @@
   )
 
 (defmethod init-from-entity! ((this wstd-arena-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (v1-75 uint128))
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
@@ -835,6 +837,7 @@
   )
 
 (defmethod init-from-entity! ((this wstd-flag-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -879,6 +882,7 @@
   )
 
 (defmethod init-from-entity! ((this wstd-blocker) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -1026,7 +1030,7 @@
           (when (and (time-elapsed? (+ (-> self dur-sound) (seconds 1.2)) (-> self next-sound)) (-> self start-sound))
             (set! (-> self snd-id-2) (-> self snd-id-1))
             (set! (-> self volume-2) (-> self volume-1))
-            (set! (-> self trans-2 quad) (-> self trans-1 quad))
+            (vector-copy! (-> self trans-2) (-> self trans-1))
             (cond
               ((nonzero? (-> self channel))
                32
@@ -1111,6 +1115,7 @@
   )
 
 (defmethod init-from-entity! ((this crowd-manager) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! *crowd-manager* (the-as (pointer crowd-manager) (process->ppointer this)))
   (set! (-> this snd-count) (the-as uint 0))
   (set! (-> this snd-id-1) (new 'static 'sound-id))
@@ -1119,6 +1124,6 @@
   (set! (-> this crowd-intensity) 0.0)
   (set! (-> this training?) (task-node-open? (game-task-node arena-training-1-collect)))
   (set! (-> this darkjak?) #f)
-  (set! (-> this trans quad) (-> arg0 trans quad))
+  (vector-copy! (-> this trans) (-> arg0 trans))
   (go (method-of-object this idle))
   )

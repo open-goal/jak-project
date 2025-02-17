@@ -216,7 +216,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
           structure->add_pointer_record(field_offset, sr.reference(),
                                         sr.reference()->get_addr_offset());
         } else if (sr.is_type()) {
-          if (field_info.type != TypeSpec("type")) {
+          if (field_info.type != TypeSpec("type") && field_info.type != TypeSpec("object")) {
             throw_compiler_error(form, "Cannot put a type reference in a field with type {}",
                                  field_info.type.print());
           }

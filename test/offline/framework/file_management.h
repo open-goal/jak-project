@@ -13,7 +13,7 @@ struct OfflineTestSourceFile {
       : path(_path),
         containing_dgo(_containing_dgo),
         name_in_dgo(_name_in_dgo),
-        unique_name(_unique_name){};
+        unique_name(_unique_name) {};
   fs::path path;
   std::string containing_dgo;
   std::string name_in_dgo;
@@ -24,7 +24,7 @@ struct OfflineTestArtFile {
   OfflineTestArtFile(std::string _containing_dgo,
                      std::string _name_in_dgo,
                      std::string _unique_name)
-      : containing_dgo(_containing_dgo), name_in_dgo(_name_in_dgo), unique_name(_unique_name){};
+      : containing_dgo(_containing_dgo), name_in_dgo(_name_in_dgo), unique_name(_unique_name) {};
   std::string containing_dgo;
   std::string name_in_dgo;
   std::string unique_name;

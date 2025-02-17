@@ -12,7 +12,6 @@ Also in general I found it _really_ hard to find modern and easy to understand a
 Atleast for me, it helps to understand the path code takes as it flows through the formatting process.  Originally I tried to do as much at once for sake of efficiency but this just makes things incredibly hard to reason about and fix bugs.  So like any problem that is complex, break it down, the formatter goes through many distinct phases chipping away at the problem:
 
 ```mermaid
-%%{init: {'theme': 'dark', "flowchart" : { "curve" : "basis" } } }%%
 flowchart TB
   subgraph top1 [Build a Formatting Tree]
     direction TB

@@ -148,8 +148,8 @@
 (defmethod init ((this widow-rand-vector) (arg0 int) (arg1 int) (arg2 float) (arg3 float))
   (set! (-> this min-time) arg0)
   (set! (-> this max-time) arg1)
-  (set! (-> this xz-max) (* 0.5 arg2))
-  (set! (-> this y-max) (* 0.5 arg3))
+  (set! (-> this xz-max) (/ arg2 2))
+  (set! (-> this y-max) (/ arg3 2))
   (set! (-> this timer) 0)
   (vector-reset! (-> this value))
   0
@@ -713,11 +713,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this tomb-boss-bridge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (case ((method-of-type res-lump get-property-struct)
          (-> this entity)
          'tomb-boss-bridge-type
@@ -1245,9 +1245,7 @@ This commonly includes things such as:
               (s5-2 (-> self node-list data 3 bone transform))
               (s4-3 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (the-as vector s4-2) v0-9) 1.0))
               (f30-0 (vector-dot s4-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-2 vector 2) 1.0)))
-              (f28-0
-                (vector-dot s4-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> s5-2 vector)) 1.0))
-                )
+              (f28-0 (vector-dot s4-3 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-2 vector 0) 1.0)))
               )
          (ja-channel-push! 1 (seconds 0.03))
          (set! (-> self drill-speed target) 0.0)
@@ -1288,7 +1286,7 @@ This commonly includes things such as:
                    (s5-8 (-> self node-list data 3 bone transform))
                    (f0-20 (vector-dot
                             (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (the-as vector gp-3) v0-28) 1.0)
-                            (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> s5-8 vector)) 1.0)
+                            (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-8 vector 0) 1.0)
                             )
                           )
                    )

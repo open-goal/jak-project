@@ -15,8 +15,15 @@ BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
                                      VoiceManager& vm,
                                      s32 sfx_vol,
                                      s32 sfx_pan,
-                                     SndPlayParams& params)
-    : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
+                                     SndPlayParams& params,
+                                     u32 sound_id,
+                                     s32 start_tick)
+    : m_group(sfx.VolGroup),
+      m_sfx(sfx),
+      m_vm(vm),
+      m_bank(bank),
+      m_sound_id(sound_id),
+      m_start_tick(start_tick) {
   s32 vol, pan, pitch_mod, pitch_bend;
   if (sfx_vol == -1) {
     sfx_vol = sfx.Vol;
@@ -295,6 +302,55 @@ void BlockSoundHandler::DoGrain() {
   }
 
   m_countdown = m_sfx.Grains[m_next_grain].Delay + ret;
+}
+
+SoundHandler* BlockSoundHandler::CheckInstanceLimit(
+    const std::map<u32, std::unique_ptr<SoundHandler>>& handlers,
+    s32 vol) {
+  if (!m_sfx.InstanceLimit) {
+    return nullptr;
+  }
+
+  if (!m_sfx.Flags.has_instlimit()) {
+    return nullptr;
+  }
+
+  BlockSoundHandler* weakest = nullptr;
+  int inst = 0;
+
+  for (const auto& [id, handler_ptr] : handlers) {
+    // Only compare to BlockSoundHandlers
+    auto* handler = dynamic_cast<BlockSoundHandler*>(handler_ptr.get());
+    if (!handler) {
+      continue;
+    }
+
+    // See if this is playing the same sound
+    // 989snd checks both an orig_sound and a SH.Sound, but we never change the sound.
+    // We'd need to revisit this if we eventually support BRANCH grains.
+    if (&handler->m_sfx == &m_sfx) {
+      inst++;
+      if (!weakest ||                                                                        //
+          (m_sfx.Flags.instlimit_vol() && handler->m_app_volume < weakest->m_app_volume) ||  //
+          (m_sfx.Flags.instlimit_tick() && handler->m_start_tick < weakest->m_start_tick)) {
+        weakest = handler;
+      }
+    }
+  }
+
+  // See if this handler would cause us to exceed the limit
+  if (m_sfx.InstanceLimit - 1 < inst) {
+    if (weakest && ((m_sfx.Flags.instlimit_vol() && weakest->m_app_volume < vol) ||
+                    m_sfx.Flags.instlimit_tick())) {
+      // existing weakest is worst
+      return weakest;
+    } else {
+      // new sound is weakest
+      return this;
+    }
+  } else {
+    return nullptr;
+  }
 }
 
 }  // namespace snd

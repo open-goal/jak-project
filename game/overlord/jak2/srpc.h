@@ -58,6 +58,7 @@ enum class Jak2SoundCommand : u16 {
   iop_mem = 48,
   cancel_dgo = 49,
   set_stereo_mode = 50,
+  mirror_mode = 201,
 };
 
 struct SoundRpcCommand {

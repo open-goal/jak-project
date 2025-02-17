@@ -121,11 +121,11 @@
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         (set! (-> gp-0 quad) (-> self root transv quad))
         (.lvf vf1 (&-> (-> self root transv) quad))
-        (.add.w.vf vf2 vf0 vf0 :mask #b1)
+        (.add.w.vf.x vf2 vf0 vf0)
         (.mul.vf vf1 vf1 vf1)
-        (.mul.x.vf acc vf2 vf1 :mask #b1)
-        (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-        (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+        (.mul.x.vf.x acc vf2 vf1)
+        (.add.mul.y.vf.x acc vf2 vf1 acc)
+        (.add.mul.z.vf.x vf1 vf2 vf1 acc)
         (.mov v1-5 vf1)
         (let ((f0-0 v1-5)
               (f1-0 409.6)
@@ -162,22 +162,22 @@
                (f0-3 (* f0-1 f0-1))
                )
           (.lvf vf1 (&-> gp-0 quad))
-          (.add.w.vf vf2 vf0 vf0 :mask #b1)
+          (.add.w.vf.x vf2 vf0 vf0)
           (.mul.vf vf1 vf1 vf1)
-          (.mul.x.vf acc vf2 vf1 :mask #b1)
-          (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-          (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+          (.mul.x.vf.x acc vf2 vf1)
+          (.add.mul.y.vf.x acc vf2 vf1 acc)
+          (.add.mul.z.vf.x vf1 vf2 vf1 acc)
           (.mov v1-27 vf1)
           (cond
             ((and (< f0-3 v1-27) (let* ((f0-4 81920.0)
                                         (f0-6 (* f0-4 f0-4))
                                         )
                                    (.lvf vf1 (&-> (-> self root transv) quad))
-                                   (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                   (.add.w.vf.x vf2 vf0 vf0)
                                    (.mul.vf vf1 vf1 vf1)
-                                   (.mul.x.vf acc vf2 vf1 :mask #b1)
-                                   (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                                   (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                   (.mul.x.vf.x acc vf2 vf1)
+                                   (.add.mul.y.vf.x acc vf2 vf1 acc)
+                                   (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                                    (.mov v1-34 vf1)
                                    (>= f0-6 v1-34)
                                    )
@@ -395,7 +395,7 @@
               )
             )
           (vector-normalize! (-> s2-0 vector 2) 1.0)
-          (vector-cross! (the-as vector (-> s2-0 vector)) (-> s2-0 vector 1) (-> s2-0 vector 2))
+          (vector-cross! (-> s2-0 vector 0) (-> s2-0 vector 1) (-> s2-0 vector 2))
           (matrix->quaternion gp-1 s2-0)
           )
         (sound-play "nboss-shoot-hit")
@@ -579,7 +579,7 @@
         (set! (-> a1-1 y) 32768.0)
         (set! (-> a1-1 z) 32768.0)
         (set! (-> a1-1 w) 1.0)
-        (vector-! (the-as vector v1-1) a0-2 a1-1)
+        (vector-! (-> v1-1 min) a0-2 a1-1)
         )
       (let ((v1-3 (-> gp-0 bbox max))
             (a0-4 (-> self root trans))
@@ -615,9 +615,9 @@
                   )
                 (.lvf vf4 (&-> a0-9 quad))
                 )
-              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-              (.mul.x.vf acc vf5 vf7 :mask #b111)
-              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.add.x.vf.w vf6 vf0 vf0)
+              (.mul.x.vf.xyz acc vf5 vf7)
+              (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
               (.svf (&-> a1-4 quad) vf6)
               )
             (set! (-> s3-0 quad) (-> s2-0 quad))
@@ -631,9 +631,9 @@
                   )
                 (.lvf vf4 (&-> a0-11 quad))
                 )
-              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-              (.mul.x.vf acc vf5 vf7 :mask #b111)
-              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.add.x.vf.w vf6 vf0 vf0)
+              (.mul.x.vf.xyz acc vf5 vf7)
+              (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
               (.svf (&-> a2-10 quad) vf6)
               )
             (vector-float*! (-> gp-0 move-dist) v1-15 -73728.0)
@@ -654,14 +654,14 @@
                      (set! (-> self foot-locks s4-0 lock target) 1.0)
                      )
                     (else
-                      (vector+float*! s3-0 (-> gp-0 start-pos) (-> gp-0 move-dist) (- f0-12 (* 0.000013563368 f1-2)))
+                      (vector+float*! s3-0 (-> gp-0 start-pos) (-> gp-0 move-dist) (- f0-12 (/ f1-2 (meters 18))))
                       (set! (-> self foot-locks s4-0 lock target) 0.0)
                       )
                     )
                   )
                 )
               )
-            ((method-of-type cam-float-seeker update!) (the-as cam-float-seeker (-> self foot-locks s4-0)) 0.0)
+            ((method-of-type cam-float-seeker update!) (-> self foot-locks s4-0 lock) 0.0)
             (cond
               ((-> self foot-locks s4-0 initialized)
                (let ((s2-1 vector-lerp!)
@@ -699,7 +699,7 @@
     (set-time! (-> self state-time))
     (dotimes (gp-0 6)
       (enable-set! (-> self joint-ik gp-0) #t)
-      ((method-of-type cam-float-seeker init) (the-as cam-float-seeker (-> self foot-locks gp-0)) 0.0 0.1 0.3 0.9)
+      ((method-of-type cam-float-seeker init) (-> self foot-locks gp-0 lock) 0.0 0.1 0.3 0.9)
       (set! (-> self foot-locks gp-0 initialized) #f)
       )
     )
@@ -977,7 +977,7 @@
                          (set! s2-2 #f)
                          )
                         (else
-                          (vector-! arg0 (target-pos 0) (the-as vector (-> this chain-joints arg1)))
+                          (vector-! arg0 (target-pos 0) (-> this chain-joints arg1 position))
                           (vector-normalize! arg0 12288.0)
                           )
                         )
@@ -1010,7 +1010,7 @@
                               (set! f28-0 0.0)
                               )
                              (else
-                               (* 0.5 f26-0)
+                               (/ f26-0 2)
                                )
                              )
                            )
@@ -1216,11 +1216,11 @@
       (set! (-> arg0 quad) (-> v1-2 position quad))
       (until (or (< 6 s3-0) (begin
                               (.lvf vf1 (&-> s4-1 quad))
-                              (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                              (.add.w.vf.x vf2 vf0 vf0)
                               (.mul.vf vf1 vf1 vf1)
-                              (.mul.x.vf acc vf2 vf1 :mask #b1)
-                              (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                              (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                              (.mul.x.vf.x acc vf2 vf1)
+                              (.add.mul.y.vf.x acc vf2 vf1 acc)
+                              (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                               (.mov v1-26 vf1)
                               (let ((f0-7 v1-26)
                                     (f1-5 409.6)
@@ -1304,11 +1304,7 @@
              (a0-9 (-> self tail))
              )
          (dotimes (a1-1 (the-as int (-> a0-9 num-joints)))
-           (vector+!
-             (the-as vector (-> a0-9 chain-joints a1-1))
-             (the-as vector (-> a0-9 chain-joints a1-1))
-             (the-as vector v1-7)
-             )
+           (vector+! (-> a0-9 chain-joints a1-1 position) (-> a0-9 chain-joints a1-1 position) (the-as vector v1-7))
            )
          )
        #f
@@ -1365,12 +1361,7 @@
       (('touch)
        (let ((s4-0 (new 'stack-no-clear 'vector)))
          (set! (-> s4-0 quad) (-> self entity trans quad))
-         (let* ((s3-0 proc)
-                (v1-36 (if (type? s3-0 process-drawable)
-                           s3-0
-                           )
-                       )
-                )
+         (let ((v1-36 (the-as process (as-type proc process-drawable))))
            (when v1-36
              (let ((s3-2 (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-drawable v1-36) root trans) s4-0))
                    (s4-2
@@ -1719,11 +1710,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this rift-ring-ingame) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1862,7 +1853,7 @@ This commonly includes things such as:
            (f30-0 (vector-normalize-ret-len! gp-1 1.0))
            )
       (quaternion-from-two-vectors! (-> self root quat) (new 'static 'vector :y -1.0) gp-1)
-      (set! (-> self root scale y) (* 0.000009042245 f30-0))
+      (set! (-> self root scale y) (/ f30-0 (meters 27)))
       )
     )
   :code sleep-code
@@ -1923,7 +1914,7 @@ This commonly includes things such as:
            (gp-2 (vector-! (new 'stack-no-clear 'vector) s5-0 (-> self target-pos)))
            )
       (let ((f0-4 (vector-normalize-ret-len! gp-2 1.0)))
-        (set! (-> self root scale y) (* 0.000009042245 f0-4))
+        (set! (-> self root scale y) (/ f0-4 (meters 27)))
         (vector+float*! (-> self root trans) s5-0 gp-2 (- f0-4))
         )
       (quaternion-from-two-vectors! (-> self root quat) (new 'static 'vector :y -1.0) gp-2)
@@ -1984,11 +1975,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this nest-break-precipice) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2011,13 +2002,13 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-metalkor))
   (set-hud-piece-position! (-> this sprites 1) (the int (+ 462.0 (* 130.0 (-> this offset)))) 350)
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -32 0)
-  (set-as-offset-from! (-> this sprites 5) (the-as vector4w (-> this sprites 1)) -62 14)
-  (set-as-offset-from! (-> this sprites 6) (the-as vector4w (-> this sprites 1)) -32 14)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 1 pos) -32 0)
+  (set-as-offset-from! (-> this sprites 5) (-> this sprites 1 pos) -62 14)
+  (set-as-offset-from! (-> this sprites 6) (-> this sprites 1 pos) -32 14)
   (let ((s5-0 (-> this values 0 current))
         (f30-0 (* 0.01 (the float (-> this values 1 current))))
         )
-    (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites 1)) -92 15)
+    (set-as-offset-from! (-> this sprites 4) (-> this sprites 1 pos) -92 15)
     (cond
       ((= s5-0 1)
        (set! (-> this sprites 4 color x) 0)
@@ -2054,21 +2045,21 @@ This commonly includes things such as:
   (set! (-> this values 0 target) 1)
   (set! (-> this values 1 target) 100)
   (logior! (-> this flags) (hud-flags show))
-  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3b :page #x67a)))
+  (set! (-> this sprites 0 tex) (get-texture hud-bmech-health-01 level-default-minimap))
   (set! (-> this sprites 0 flags) (the-as uint 4))
-  (set! (-> this sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3c :page #x67a)))
+  (set! (-> this sprites 1 tex) (get-texture hud-bmech-health-02 level-default-minimap))
   (set! (-> this sprites 1 flags) (the-as uint 4))
-  (set! (-> this sprites 5 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 5 tex) (get-texture hud-bmech-health-03 level-default-minimap))
   (set! (-> this sprites 5 scale-x) 0.5)
   (set! (-> this sprites 5 flags) (the-as uint 4))
-  (set! (-> this sprites 6 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 6 tex) (get-texture hud-bmech-health-03 level-default-minimap))
   (set! (-> this sprites 6 scale-x) 0.5)
   (set! (-> this sprites 6 flags) (the-as uint 4))
-  (set! (-> this sprites 4 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 4 tex) (get-texture hud-bmech-health-04 level-default-minimap))
   (set! (-> this sprites 4 scale-y) 3.25)
   (set! (-> this sprites 4 color z) 0)
   (set! (-> this sprites 4 flags) (the-as uint 4))
-  (set! (-> this sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 3 tex) (get-texture hud-bmech-health-04 level-default-minimap))
   (set! (-> this sprites 3 scale-y) 1.5)
   (set! (-> this sprites 3 color z) 0)
   (set! (-> this sprites 3 flags) (the-as uint 4))
@@ -2110,7 +2101,7 @@ This commonly includes things such as:
         (gp-0 (new 'stack-no-clear 'vector))
         )
     (let ((f30-0 4096.0))
-      (let ((f28-1 (* 0.00013563369 (tan (* 0.5 (-> *math-camera* fov))) f30-0)))
+      (let ((f28-1 (* 0.00013563369 (tan (/ (-> *math-camera* fov) 2)) f30-0)))
         (matrix->quaternion (-> self root quat) s5-0)
         (set-vector! (-> self root scale) f28-1 f28-1 f28-1 1.0)
         )
@@ -2524,8 +2515,8 @@ This commonly includes things such as:
             (.mov at-0 f0-1)
             )
           (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> v1-26 quad) vf1)
           )
         (integrate-and-collide! (-> self root) s5-1)

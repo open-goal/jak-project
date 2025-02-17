@@ -79,18 +79,18 @@ FormatterTree::FormatterTree(const std::string& source, const TSNode& root_node)
 }
 
 const std::unordered_map<std::string, std::vector<std::string>> node_type_ignorable_contents = {
-    {"list_lit", {"(", ")"}},
-    {"quoting_lit", {"'"}},
-    {"unquoting_lit", {","}},
-    {"quasi_quoting_lit", {"`"}}};
+    {"list_lit", {"(", ")"}}};
 
 // TODO make an imperative version eventually
+// TODO - cleanup duplication
 void FormatterTree::construct_formatter_tree_recursive(const std::string& source,
                                                        TSNode curr_node,
                                                        FormatterTreeNode& tree_node,
                                                        std::optional<std::string> node_prefix) {
   if (ts_node_child_count(curr_node) == 0) {
-    tree_node.refs.push_back(FormatterTreeNode(source, curr_node));
+    auto new_node = FormatterTreeNode(source, curr_node);
+    new_node.node_prefix = node_prefix;
+    tree_node.refs.push_back(new_node);
     return;
   }
   const std::string curr_node_type = ts_node_type(curr_node);
@@ -105,11 +105,37 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
     tree_node.refs.push_back(FormatterTreeNode(source, curr_node));
     return;
   } else if (curr_node_type == "quoting_lit") {
-    next_node_prefix = "'";
+    if (node_prefix) {
+      node_prefix.value() += "'";
+    } else {
+      node_prefix = "'";
+    }
+    construct_formatter_tree_recursive(source, ts_node_child(curr_node, 1), tree_node, node_prefix);
+    return;
   } else if (curr_node_type == "unquoting_lit") {
-    next_node_prefix = ",";
+    if (node_prefix) {
+      node_prefix.value() += ",";
+    } else {
+      node_prefix = ",";
+    }
+    construct_formatter_tree_recursive(source, ts_node_child(curr_node, 1), tree_node, node_prefix);
+    return;
   } else if (curr_node_type == "quasi_quoting_lit") {
-    next_node_prefix = "`";
+    if (node_prefix) {
+      node_prefix.value() += "`";
+    } else {
+      node_prefix = "`";
+    }
+    construct_formatter_tree_recursive(source, ts_node_child(curr_node, 1), tree_node, node_prefix);
+    return;
+  } else if (curr_node_type == "unquote_splicing_lit") {
+    if (node_prefix) {
+      node_prefix.value() += ",@";
+    } else {
+      node_prefix = ",@";
+    }
+    construct_formatter_tree_recursive(source, ts_node_child(curr_node, 1), tree_node, node_prefix);
+    return;
   }
   std::vector<std::string> skippable_nodes = {};
   if (node_type_ignorable_contents.find(curr_node_type) != node_type_ignorable_contents.end()) {
@@ -117,6 +143,7 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
   }
   for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     const auto child_node = ts_node_child(curr_node, i);
+    [[maybe_unused]] auto debug_child = ts_node_string(child_node);
     const auto contents = get_source_code(source, child_node);
     bool skip_node = false;
     for (const auto& skippable_content : skippable_nodes) {
@@ -129,19 +156,22 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
       continue;
     }
     if (curr_node_type == "list_lit") {
-      construct_formatter_tree_recursive(source, child_node, list_node, next_node_prefix);
+      construct_formatter_tree_recursive(source, child_node, list_node, {});
       if (node_prefix) {
         list_node.node_prefix = node_prefix;
       }
     } else {
-      construct_formatter_tree_recursive(source, child_node, tree_node, next_node_prefix);
-      // TODO - im not sure if this is correct
+      construct_formatter_tree_recursive(source, child_node, tree_node, node_prefix);
       if (node_prefix && !tree_node.refs.empty()) {
         tree_node.refs.at(tree_node.refs.size() - 1).node_prefix = node_prefix;
       }
     }
   }
   if (curr_node_type == "list_lit") {
+    // special case for empty lists
+    if (node_prefix && !list_node.node_prefix) {
+      list_node.node_prefix = node_prefix;
+    }
     tree_node.refs.push_back(list_node);
   }
 }

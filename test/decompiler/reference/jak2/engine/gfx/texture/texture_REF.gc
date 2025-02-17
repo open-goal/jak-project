@@ -65,7 +65,7 @@
 ;; definition for function texture-qwc
 (defun texture-qwc ((w int) (h int) (tex-format gs-psm))
   "Get the number of quadwords needed for a given texture size and format.
-Does not consider weird PS2 memory layout stuff."
+   Does not consider weird PS2 memory layout stuff."
   (let ((v1-0 (texture-bpp tex-format)))
     (/ (+ (* (* w h) v1-0) 127) 128)
     )
@@ -74,7 +74,7 @@ Does not consider weird PS2 memory layout stuff."
 ;; definition for function physical-address
 (defun physical-address ((addr pointer))
   "Strip off high 8-bits of a pointer, to bypass the uncached memory mappings.
-This gives an address suitable for DMAing from main memory."
+   This gives an address suitable for DMAing from main memory."
   (logand #xfffffff addr)
   )
 
@@ -82,8 +82,8 @@ This gives an address suitable for DMAing from main memory."
 ;; WARN: Return type mismatch symbol vs none.
 (defun dma-buffer-add-ref-texture ((dma-buf dma-buffer) (tex-data-ptr pointer) (width int) (height int) (tex-fmt gs-psm))
   "Upload a texture, by reference. Doesn't copy the texture into the DMA buffer - just a reference,
-so it is up to the user to make sure the texture is valid during DMA time.
-Doesn't set up GIF for receiving textures."
+   so it is up to the user to make sure the texture is valid during DMA time.
+   Doesn't set up GIF for receiving textures."
   (let ((padr (physical-address tex-data-ptr))
         (qwc-remaining (texture-qwc width height tex-fmt))
         )
@@ -295,9 +295,9 @@ Doesn't set up GIF for receiving textures."
 ;; definition for function gs-blocks-used
 (defun gs-blocks-used ((w int) (h int) (tex-format gs-psm))
   "Get the number of blocks used by a texture.
-If the texture isn't an even number of pages, the partially completed
-page will be counted as the largest used block.
-(gaps in this page are counted as used)"
+   If the texture isn't an even number of pages, the partially completed
+   page will be counted as the largest used block.
+   (gaps in this page are counted as used)"
   (let* ((s4-0 (gs-page-width tex-format))
          (v1-0 (gs-page-height tex-format))
          (a0-6 (* (/ (+ s4-0 -1 w) s4-0) s4-0))
@@ -435,7 +435,7 @@ page will be counted as the largest used block.
 ;; definition for method 9 of type texture-page
 (defmethod remove-data-from-heap ((this texture-page) (heap kheap))
   "Bump the kheap pointer to discard this texture data. All metadata is kept.
-This is only safe to use if the last thing on the kheap is this texture."
+   This is only safe to use if the last thing on the kheap is this texture."
   (set! (-> heap current) (-> this segment 0 block-data))
   this
   )
@@ -443,8 +443,8 @@ This is only safe to use if the last thing on the kheap is this texture."
 ;; definition for function texture-page-default-allocate
 (defun texture-page-default-allocate ((pool texture-pool) (tpage texture-page) (heap kheap) (tpage-id int))
   "Texture allocation function for textures that permanently live in VRAM.
-The texture data is immediately uploaded, then discarded from the heap.
-This should only be called during startup."
+   The texture data is immediately uploaded, then discarded from the heap.
+   This should only be called during startup."
   (dotimes (seg 3)
     (let ((vram-loc (allocate-vram-words! pool (the-as int (-> tpage segment seg size)))))
       (relocate-dests! tpage vram-loc seg)
@@ -470,8 +470,8 @@ This should only be called during startup."
 ;; definition for function texture-page-common-allocate
 (defun texture-page-common-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
   "Texture allocation function for textures that share the common segment.
-The texture remains in RAM, and is uploaded to VRAM as needed as part
-of the main drawing DMA chain."
+   The texture remains in RAM, and is uploaded to VRAM as needed as part
+   of the main drawing DMA chain."
   (let ((s5-0 (-> pool segment-common dest)))
     (dotimes (s4-0 3)
       (relocate-dests! page (the-as int s5-0) s4-0)
@@ -485,8 +485,8 @@ of the main drawing DMA chain."
 ;; definition for function texture-page-font-allocate
 (defun texture-page-font-allocate ((pool texture-pool) (tpage texture-page) (heap kheap) (tpage-id int))
   "Texture allocation function for font. This temporarily stores them in the common segment,
-removes them from RAM. This is a bit of hack. Later font setup code expects the font texture
-to be in common, and they will eventually be moved into the upper 8-bits of the depth buffer."
+   removes them from RAM. This is a bit of hack. Later font setup code expects the font texture
+   to be in common, and they will eventually be moved into the upper 8-bits of the depth buffer."
   (texture-page-common-allocate pool tpage heap tpage-id)
   (upload-now! tpage (tex-upload-mode seg0-1-2))
   (remove-data-from-heap tpage heap)
@@ -668,7 +668,7 @@ to be in common, and they will eventually be moved into the upper 8-bits of the 
 ;; definition for function texture-page-common-boot-allocate
 (defun texture-page-common-boot-allocate ((pool texture-pool) (tpage texture-page) (heap kheap) (tpage-id int))
   "Allocator function for texture loaded at startup time.
-For jak 3, this seems to always do default-allocate (permanently in vram?)"
+   For jak 3, this seems to always do default-allocate (permanently in vram?)"
   (let ((common-page-slot-id (get-common-page-slot-by-id pool tpage-id)))
     (cond
       ((>= common-page-slot-id 0)
@@ -753,9 +753,9 @@ For jak 3, this seems to always do default-allocate (permanently in vram?)"
                  (bucket bucket-id)
                  )
   "Add DMA to upload a texture page. Will only upload the portion of data that is not already present in VRAM.
-This is the old Jak 1 background texture uploading system, which had this near/far concept
-for different mip levels. By jak 2, the background system switched to masks and uses
-the -pris variant of this function."
+   This is the old Jak 1 background texture uploading system, which had this near/far concept
+   for different mip levels. By jak 2, the background system switched to masks and uses
+   the -pris variant of this function."
   (local-vars
     (data-ptr pointer)
     (vram-ptr uint)
@@ -903,10 +903,10 @@ the -pris variant of this function."
                       (arg4 (pointer int32))
                       )
   "Similar to upload-vram-pages, but skips the near/far mode and instead uses masks.
-The foreground/background renderers will generate masks telling us which textures are used.
-This lets us skip uploading entire textures, or mip levels that won't need.
-(side note: this optimization is what causes many of the texturing issues in pcsx2,
-where the ps2 and pcsx2 disagree on the mip level to use.)"
+   The foreground/background renderers will generate masks telling us which textures are used.
+   This lets us skip uploading entire textures, or mip levels that won't need.
+   (side note: this optimization is what causes many of the texturing issues in pcsx2,
+   where the ps2 and pcsx2 disagree on the mip level to use.)"
   (local-vars
     (data-ptr pointer)
     (vram-ptr uint)
@@ -1368,9 +1368,9 @@ where the ps2 and pcsx2 disagree on the mip level to use.)"
   "Turn on masks for skull gem textures, so they will be uploaded."
   (local-vars (v0-3 uint128) (v1-2 uint128) (v1-3 uint128))
   (let ((gp-0 (-> *level* default-level texture-mask)))
-    (let* ((s5-0 (lookup-texture-by-id (new 'static 'texture-id :index #x28 :page #x395)))
-           (s4-0 (lookup-texture-by-id (new 'static 'texture-id :index #x25 :page #x395)))
-           (a0-4 (lookup-texture-by-id (new 'static 'texture-id :index #x26 :page #x395)))
+    (let* ((s5-0 (get-texture skull-gem-alpha-00 level-default-tfrag))
+           (s4-0 (get-texture skull-gem-alpha-01 level-default-tfrag))
+           (a0-4 (get-texture skull-gem-alpha-02 level-default-tfrag))
            (v1-1 (-> gp-0 0 mask quad))
            (a1-0 (-> s5-0 masks data 0 mask quad))
            (a2-0 (-> s4-0 masks data 0 mask quad))
@@ -1614,8 +1614,8 @@ where the ps2 and pcsx2 disagree on the mip level to use.)"
 ;; WARN: Return type mismatch int vs none.
 (defmethod setup-font-texture ((this texture-pool))
   "Set up the font texture. In normal use, the font texture is allocated, and currently uploaded to, the common segment.
-This function copies that to the unused upper 8-bits of the depth buffer, and sets up the font
-renderer to point to that address."
+   This function copies that to the unused upper 8-bits of the depth buffer, and sets up the font
+   renderer to point to that address."
   (local-vars (sv-16 int) (sv-20 int))
   (let ((s3-0 (-> this font-palette)))
     (set! sv-16 (-> this cur))
@@ -1762,9 +1762,9 @@ renderer to point to that address."
 ;; definition for method 7 of type texture-page
 (defmethod relocate ((this texture-page) (loading-heap kheap) (name (pointer uint8)))
   "Handle a texture page that has been loaded by the linker.
-This must run in the linker, since we sometimes kick out textures from the loading heap, which
-requires no more allocations made after the texture, and the only time is right after the linker
-does the allocation for this GOAL object file."
+   This must run in the linker, since we sometimes kick out textures from the loading heap, which
+   requires no more allocations made after the texture, and the only time is right after the linker
+   does the allocation for this GOAL object file."
   (cond
     ((or (not this) (not (file-info-correct-version? (-> this info) (file-kind tpage) 0)))
      (the-as texture-page #f)
@@ -1811,9 +1811,9 @@ does the allocation for this GOAL object file."
 ;; definition for function relocate-later
 (defun relocate-later ()
   "Unused in jak 2 and likely unsed in jak 3. Feature to postpone some texture copying until
-a later frame. This is only used in cases when texture data must be memcpy'd in RAM, to patch up a hole left
-by some data that is now permanently in VRAM, and no longer needed.
-Note that Jak2/Jak3 don't have this problem since level textures are now never permanent"
+   a later frame. This is only used in cases when texture data must be memcpy'd in RAM, to patch up a hole left
+   by some data that is now permanently in VRAM, and no longer needed.
+   Note that Jak2/Jak3 don't have this problem since level textures are now never permanent"
   (let ((gp-0 *texture-relocate-later*))
     (let ((s5-0 (-> gp-0 entry))
           (s4-0 (-> gp-0 page))
@@ -1834,9 +1834,9 @@ Note that Jak2/Jak3 don't have this problem since level textures are now never p
 ;; definition for function texture-page-login
 (defun texture-page-login ((id texture-id) (alloc-func (function texture-pool texture-page kheap int texture-page)) (heap kheap))
   "'Login' (initialize) a texture page with the pool.
-This has a trick - it doesn't actually require you to pass a texture-page object - instead you pass an ID.
-If the texture was loaded at all, it will already be known to the texture pool, and this function will do nothing.
-However, if the texture is not present, it will be loaded through a call to `loado`, for use in development."
+   This has a trick - it doesn't actually require you to pass a texture-page object - instead you pass an ID.
+   If the texture was loaded at all, it will already be known to the texture pool, and this function will do nothing.
+   However, if the texture is not present, it will be loaded through a call to `loado`, for use in development."
   (when (and (nonzero? (-> id page)) (< (-> id page) (the-as uint (-> *texture-page-dir* length))))
     (let ((s5-0 (-> *texture-page-dir* entries (-> id page))))
       (when (not (-> s5-0 page))
@@ -1984,7 +1984,7 @@ However, if the texture is not present, it will be loaded through a call to `loa
 ;; definition for function link-texture-by-id
 (defun link-texture-by-id ((id texture-id) (shader adgif-shader))
   "Add this adgif shader to the linked list of shaders associated with the given texture ID.
-Will allocate the link array if it's not already."
+   Will allocate the link array if it's not already."
   (when (not (or (zero? (-> id page)) (>= (-> id page) (the-as uint (-> *texture-page-dir* length)))))
     (let ((s4-0 (-> *texture-page-dir* entries (-> id page))))
       (if (not (-> s4-0 link))
@@ -2082,8 +2082,8 @@ Will allocate the link array if it's not already."
 ;; definition for function adgif-shader-login
 (defun adgif-shader-login ((shader adgif-shader))
   "set up an adgif shader with the texture-pool, so it points to the right vram address.
-Will remap textures through the level remap table.
-If texture is missing, will load it on debug hardware."
+   Will remap textures through the level remap table.
+   If texture is missing, will load it on debug hardware."
   (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
     (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
     (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
@@ -2119,7 +2119,7 @@ If texture is missing, will load it on debug hardware."
 ;; definition for function adgif-shader-login-no-remap
 (defun adgif-shader-login-no-remap ((shader adgif-shader))
   "Set up an adgif shader with the texture-pool, so it points to the right vram adress.
-This does not do level tpage remapping, so the texture should be one that's not loaded in a combine level tpage."
+   This does not do level tpage remapping, so the texture should be one that's not loaded in a combine level tpage."
   (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
     (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
     (link-texture-by-id (-> shader texture-id) shader)
@@ -2149,9 +2149,9 @@ This does not do level tpage remapping, so the texture should be one that's not 
 ;; definition for function adgif-shader-login-fast
 (defun adgif-shader-login-fast ((shader adgif-shader))
   "Set up an adgif shader with the texture-pool, so it points to the right vram address.
-Will remap through the level table, so can be used to refer to textures inside 'squashed'
-level tpages.
-Will not load texture if it is missing."
+   Will remap through the level table, so can be used to refer to textures inside 'squashed'
+   level tpages.
+   Will not load texture if it is missing."
   (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
     (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
     (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
@@ -2182,8 +2182,8 @@ Will not load texture if it is missing."
 ;; definition for function adgif-shader-login-no-remap-fast
 (defun adgif-shader-login-no-remap-fast ((shader adgif-shader))
   "Set up an adgif shader with the texture-pool, so it points to the right vram address.
-Will not remap through the level tpage table.
-Will not load texture if it is missing."
+   Will not remap through the level tpage table.
+   Will not load texture if it is missing."
   (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
     (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
     (let ((v1-4 (-> shader texture-id)))
@@ -2219,7 +2219,7 @@ Will not load texture if it is missing."
 ;; definition for function adgif-shader<-texture-simple!
 (defun adgif-shader<-texture-simple! ((shader adgif-shader) (tex texture))
   "Simple adgif-shader to texture, just sets vram address and format stuff.
-Intended for use with fancy texture stuff that will later set the other regs."
+   Intended for use with fancy texture stuff that will later set the other regs."
   (set! (-> shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
   (set! (-> shader tex0 tfx) 0)
   (if tex

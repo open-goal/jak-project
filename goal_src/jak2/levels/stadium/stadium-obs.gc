@@ -66,11 +66,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this dummy-vehicle) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -174,11 +174,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this gar-curtain) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 8) 0)))
@@ -589,7 +589,7 @@ This commonly includes things such as:
               )
           (rigid-body-method-18 (-> v1-27 state) a1-12 a2-3)
           )
-        (vector-normalize-copy! s5-0 *y-vector* (* 0.5 f30-0 f28-0 (-> this escort-force 0 y)))
+        (vector-normalize-copy! s5-0 *y-vector* (* (/ f30-0 2) f28-0 (-> this escort-force 0 y)))
         (vector-orient-by-quat! gp-0 (-> *rift-rider-force-points* 1) (-> this root quat))
         (vector+! gp-0 gp-0 (-> this root trans))
         (let ((v1-34 (-> this rbody))
@@ -606,7 +606,7 @@ This commonly includes things such as:
               )
           (rigid-body-method-18 (-> v1-40 state) a1-21 a2-8)
           )
-        (vector-normalize-copy! s5-0 *y-vector* (* 0.5 f30-0 f28-0 (-> this escort-force 1 y)))
+        (vector-normalize-copy! s5-0 *y-vector* (* (/ f30-0 2) f28-0 (-> this escort-force 1 y)))
         )
       )
     (vector-orient-by-quat! gp-0 (-> *rift-rider-force-points* 3) (-> this root quat))
@@ -857,10 +857,7 @@ This commonly includes things such as:
         )
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1.2))
-        (suspend)
-        )
+    (suspend-for (seconds 1.2)
       )
     (rigid-body-object-method-39 self)
     (sleep-code)
@@ -1062,11 +1059,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this spotlight) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1092,11 +1089,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this gar-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   ;; og:preserve-this added
   (stack-size-set! (-> this main-thread) 560)
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
@@ -1170,17 +1167,17 @@ This commonly includes things such as:
               (let ((v1-12 (-> gp-0 heading)))
                 (let ((f0-5 1.0))
                   (.lvf vf1 (&-> v1-12 quad))
-                  (.mul.vf vf2 vf1 vf1 :mask #b111)
+                  (.mul.vf.xyz vf2 vf1 vf1)
                   (let ((a0-3 f0-5))
                     (.mov vf3 a0-3)
                     )
                   )
-                (.mul.x.vf acc vf0 vf2 :mask #b1000)
-                (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-                (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+                (.mul.x.vf.w acc vf0 vf2)
+                (.add.mul.y.vf.w acc vf0 vf2 acc)
+                (.add.mul.z.vf.w vf2 vf0 vf2 acc)
                 (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
                 (.wait.vf)
-                (.mul.vf vf1 vf1 Q :mask #b111)
+                (.mul.vf.xyz vf1 vf1 Q)
                 (.nop.vf)
                 (.nop.vf)
                 (.nop.vf)
@@ -1454,10 +1451,7 @@ This commonly includes things such as:
                      )
                 )
       (set! (-> self rift-rider-actor) (entity-actor-lookup (-> self entity) 'alt-actor 0))
-      (let ((gp-0 (current-time)))
-        (until (time-elapsed? gp-0 (seconds 0.31))
-          (suspend)
-          )
+      (suspend-for (seconds 0.31)
         )
       )
     (ja-no-eval :group! (-> self draw art-group data (-> self stand-anim)) :num! (seek!) :frame-num 0.0)
@@ -1606,7 +1600,7 @@ This commonly includes things such as:
     (ja-no-eval :group! (-> self draw art-group data (-> self walk-anim)) :num! (loop!) :frame-num 0.0)
     (until #f
       (suspend)
-      (let ((f0-3 (fmax 0.2 (* 0.00008138021 (-> self observed-speed)))))
+      (let ((f0-3 (fmax 0.2 (/ (-> self observed-speed) (meters 3)))))
         (ja :num! (loop! f0-3))
         )
       )
@@ -1878,10 +1872,7 @@ This commonly includes things such as:
           )
         )
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (send-event *camera* 'change-target #f)
     (cleanup-for-death self)
@@ -1948,11 +1939,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this stad-samos) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   ;; og:preserve-this added
   (stack-size-set! (-> this main-thread) #x180)
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
@@ -2091,7 +2082,7 @@ This commonly includes things such as:
       )
     (until #f
       (suspend)
-      (let ((f30-0 (fmax 0.2 (* 0.00008138021 (-> self observed-speed))))
+      (let ((f30-0 (fmax 0.2 (/ (-> self observed-speed) (meters 3))))
             (f28-0 0.0)
             )
         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
@@ -2232,11 +2223,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch entity-perm-status vs none.
 (defmethod init-from-entity! ((this stadium-barrier) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
@@ -2382,8 +2373,8 @@ This commonly includes things such as:
                     (.lvf vf4 (&-> v0-14 quad))
                     (.lvf vf5 (&-> v1-75 quad))
                     )
-                  (.mov.vf vf6 vf0 :mask #b1000)
-                  (.sub.vf vf6 vf4 vf5 :mask #b111)
+                  (.mov.vf.w vf6 vf0)
+                  (.sub.vf.xyz vf6 vf4 vf5)
                   (.svf (&-> sv-320 quad) vf6)
                   (let ((a2-9 (-> sv-272 normal)))
                     (sv-288 sv-304 sv-320 a2-9)
@@ -2568,11 +2559,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this stad-force-field) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (stad-force-field-method-28 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2601,11 +2592,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this stad-c-force-field) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (stad-force-field-method-28 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2634,11 +2625,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this stad-d-force-field) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (stad-force-field-method-28 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2858,11 +2849,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this brutter-balloon) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
@@ -3106,13 +3097,13 @@ This commonly includes things such as:
         (add-process *gui-control* this (gui-channel hud-center-left) (gui-action hidden) (-> this name) 81920.0 0)
         )
   (logior! (-> this flags) (hud-flags show))
-  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x1e :page #x67a)))
+  (set! (-> this sprites 0 tex) (get-texture hud-transparent-01 level-default-minimap))
   (set! (-> this sprites 0 scale-x) 12.0)
   (set! (-> this sprites 0 scale-y) 11.2)
   (set! (-> this sprites 0 pos z) #xfffff2)
-  (set! (-> this sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x25 :page #x67a)))
+  (set! (-> this sprites 1 tex) (get-texture hud-npcring-bar-01 level-default-minimap))
   (set! (-> this sprites 1 pos z) #xfffff0)
-  (set! (-> this sprites 2 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x12 :page #x67a)))
+  (set! (-> this sprites 2 tex) (get-texture hud-npcring-01 level-default-minimap))
   (set! (-> this sprites 2 pos z) #xffffff)
   (set! (-> this sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :page #xd5a)))
   (set! (-> this sprites 3 scale-x) 1.0)

@@ -18,6 +18,7 @@ class TextureUploadHandler : public BucketRenderer {
                        bool add_direct = false);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
+  bool empty() const override;
 
  private:
   struct TextureUpload {

@@ -377,6 +377,23 @@ namespace method_34_sky_work { extern void link(); }
 namespace method_35_sky_work { extern void link(); }
 namespace method_32_sky_work { extern void link(); }
 namespace set_sky_vf23_value { extern void link(); }
+namespace shadow_xform_verts { extern void link(); }
+namespace shadow_calc_dual_verts { extern void link(); }
+namespace shadow_scissor_edges { extern void link(); }
+namespace shadow_scissor_top { extern void link(); }
+namespace shadow_init_vars { extern void link(); }
+namespace shadow_find_facing_single_tris { extern void link(); }
+namespace shadow_find_facing_double_tris { extern void link(); }
+namespace shadow_find_single_edges { extern void link(); }
+namespace shadow_find_double_edges { extern void link(); }
+namespace shadow_add_verts { extern void link(); }
+namespace shadow_add_facing_single_tris { extern void link(); }
+namespace shadow_add_single_edges { extern void link(); }
+namespace shadow_add_double_edges { extern void link(); }
+namespace shadow_add_single_tris { extern void link(); }
+namespace shadow_add_double_tris { extern void link(); }
+namespace shadow_execute { extern void link(); }
+namespace method_21_cloth_system { extern void link(); }
 
 }
 // clang-format on
@@ -629,7 +646,17 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak3::method_29_sky_work::link, jak3::method_30_sky_work::link,
        jak3::method_31_sky_work::link, jak3::method_34_sky_work::link,
        jak3::method_35_sky_work::link, jak3::method_32_sky_work::link,
-       jak3::set_sky_vf23_value::link, jak3::draw_large_polygon::link}}}};
+       jak3::set_sky_vf23_value::link, jak3::draw_large_polygon::link}},
+     {"shadow-cpu",
+      {jak3::shadow_xform_verts::link, jak3::shadow_execute::link,
+       jak3::shadow_calc_dual_verts::link, jak3::shadow_scissor_edges::link,
+       jak3::shadow_scissor_top::link, jak3::shadow_init_vars::link,
+       jak3::shadow_find_facing_single_tris::link, jak3::shadow_find_facing_double_tris::link,
+       jak3::shadow_find_single_edges::link, jak3::shadow_find_double_edges::link,
+       jak3::shadow_add_verts::link, jak3::shadow_add_facing_single_tris::link,
+       jak3::shadow_add_single_edges::link, jak3::shadow_add_double_edges::link,
+       jak3::shadow_add_single_tris::link, jak3::shadow_add_double_tris::link}},
+     {"cloth", {jak3::method_21_cloth_system::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

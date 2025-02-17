@@ -122,18 +122,7 @@
     '()
     )
   :trans (behavior ()
-    (let* ((v1-0 (new 'stack-no-clear 'matrix))
-           (a3-0 (-> self node-list data 2 bone transform))
-           (a0-2 (-> a3-0 rvec quad))
-           (a1-0 (-> a3-0 uvec quad))
-           (a2-0 (-> a3-0 fvec quad))
-           (a3-1 (-> a3-0 trans quad))
-           )
-      (set! (-> v1-0 rvec quad) a0-2)
-      (set! (-> v1-0 uvec quad) a1-0)
-      (set! (-> v1-0 fvec quad) a2-0)
-      (set! (-> v1-0 trans quad) a3-1)
-      )
+    (matrix-copy! (new 'stack-no-clear 'matrix) (-> self node-list data 2 bone transform))
     )
   :code sleep-code
   :post ja-post
@@ -147,7 +136,7 @@
   :trans (behavior ()
     (when (not (time-elapsed? (-> self state-time) (seconds 0.5)))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (set! (-> gp-0 quad) (-> self root trans quad))
+        (vector-copy! gp-0 (-> self root trans))
         (+! (-> gp-0 z) (* 4096.0 (rand-vu-float-range -60.0 60.0)))
         (+! (-> gp-0 x) (* 4096.0 (rand-vu-float-range -20.0 20.0)))
         (+! (-> gp-0 y) (* 4096.0 (rand-vu-float-range 0.0 25.0)))
@@ -156,11 +145,11 @@
             ((zero? v1-9)
              (cond
                ((logtest? (-> *part-group-id-table* 217 flags) (sp-group-flag sp13))
-                (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+                (vector-copy! (-> *launch-matrix* trans) gp-0)
                 (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 217))
                 )
                (else
-                 (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+                 (vector-copy! (-> *launch-matrix* trans) gp-0)
                  (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 217))
                  )
                )
@@ -168,11 +157,11 @@
             ((= v1-9 1)
              (cond
                ((logtest? (-> *part-group-id-table* 218 flags) (sp-group-flag sp13))
-                (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+                (vector-copy! (-> *launch-matrix* trans) gp-0)
                 (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 218))
                 )
                (else
-                 (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+                 (vector-copy! (-> *launch-matrix* trans) gp-0)
                  (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 218))
                  )
                )
@@ -219,6 +208,7 @@
   )
 
 (defmethod init-from-entity! ((this krimson-wall-break) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-96 entity))
   (set! (-> this level) (level-get *level* (-> this level-name)))
   (stack-size-set! (-> this main-thread) 512)
@@ -395,10 +385,10 @@
             )
           )
         (if (nonzero? (-> this alt-actor 0))
-            (set! (-> gp-0 0 quad) (-> this alt-actor 0 extra trans quad))
+            (vector-copy! (-> gp-0 0) (-> this alt-actor 0 extra trans))
             )
         (if (nonzero? (-> this alt-actor 1))
-            (set! (-> gp-0 1 quad) (-> this alt-actor 1 extra trans quad))
+            (vector-copy! (-> gp-0 1) (-> this alt-actor 1 extra trans))
             )
         (spawn-security-wall this (-> gp-0 0) (-> gp-0 1) 77824.0 #f)
         (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> gp-0 1) (-> gp-0 0))))
@@ -425,6 +415,7 @@
   )
 
 (defmethod init-from-entity! ((this krimson-wall) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 2))

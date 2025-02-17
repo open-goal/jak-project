@@ -120,7 +120,7 @@
 
 ;; failed to figure out what this is:
 (defpart 728
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 4.0)
     (:x (meters -0.5) (meters 1))
     (:y (meters -0.5) (meters 1))
@@ -148,7 +148,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2075
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 4.0)
     (:x (meters -0.5) (meters 1))
     (:y (meters -0.5) (meters 1))
@@ -176,7 +176,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2076
-  :init-specs ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((:texture (rockbit effects))
     (:num 4.0)
     (:x (meters -0.5) (meters 1))
     (:y (meters -0.5) (meters 1))
@@ -208,7 +208,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2077
-  :init-specs ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((:texture (rockbit effects))
     (:num 8.0 8.0)
     (:x (meters -0.5) (meters 1))
     (:y (meters -0.5) (meters 1))
@@ -360,7 +360,7 @@
           (let* ((f0-5 (-> this path-u))
                  (f30-0 (* (-> this path-dir) f1-1 (seconds-per-frame)))
                  (s4-0 #t)
-                 (f0-6 (+ f0-5 (* 0.00024414062 (-> this path-units-per-meter) f30-0)))
+                 (f0-6 (+ f0-5 (* (/ (-> this path-units-per-meter) METER_LENGTH) f30-0)))
                  )
             (cond
               ((< f0-6 0.0)
@@ -473,12 +473,7 @@
       (when (and arg1 *target*)
         (set-target! (-> this neck) (target-pos 5))
         (if *target*
-            (look-at-enemy!
-              (-> *target* neck)
-              (the-as vector (-> this root-overeride root-prim prim-core))
-              'attacking
-              this
-              )
+            (look-at-enemy! (-> *target* neck) (-> this root-overeride root-prim prim-core world-sphere) 'attacking this)
             )
         )
       (let ((f30-3 (-> this drill-speed)))
@@ -635,7 +630,7 @@
              (let ((f0-3 (driller-lurker-method-23 this))
                    (f1-5 (-> this path-u))
                    )
-               (if (>= (* 0.1 (-> this path-units-per-meter)) (fabs (- f0-3 f1-5)))
+               (if (>= (/ (-> this path-units-per-meter) 10) (fabs (- f0-3 f1-5)))
                    (return #t)
                    )
                )
@@ -845,7 +840,7 @@
            )
       (target-pos 0)
       (let ((f0-1 (- (s5-0 gp-0) (-> self path-u))))
-        (when (>= (fabs f0-1) (* 0.1 (-> self path-units-per-meter)))
+        (when (>= (fabs f0-1) (/ (-> self path-units-per-meter) 10))
           (cond
             ((< 0.0 f0-1)
              (when (< (-> self path-dir) 0.0)

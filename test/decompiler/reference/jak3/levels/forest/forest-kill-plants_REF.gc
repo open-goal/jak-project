@@ -34,9 +34,9 @@
                 )
            )
         )
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 2)) 40 16)
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites 2)) 1 16)
-  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 2)) 8 2)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 2 pos) 40 16)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 2 pos) 1 16)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 2 pos) 8 2)
   (let ((f30-1
           (the float
                (+ (the int (* 127.0 (sin (* 182.04445 (the float (* (-> *display* game-clock frame-counter) 2)))))) 127)
@@ -49,7 +49,7 @@
     )
   (when (>= 10 (-> this values 0 current))
     (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-    (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites 3)) 20 62)
+    (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 3 pos) 20 62)
     )
   ((method-of-type hud draw) this)
   0
@@ -114,7 +114,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-green-eco-gauge))
   (set-hud-piece-position! (-> this sprites 1) 256 (- 40 (the int (* 50.0 (-> this offset)))))
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -55 -5)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 1 pos) -55 -5)
   (set! (-> this sprites 0 pos z) #xfffff1)
   (set! (-> this sprites 1 pos z) #xfffff2)
   (let ((f0-5 (if *target*
@@ -239,17 +239,15 @@
 (set! (-> *eco-green-trail* uv-repeat-dist) 102399.99)
 
 ;; failed to figure out what this is:
-(set! (-> *eco-green-trail* lie-mode) (the-as uint 3))
+(set! (-> *eco-green-trail* lie-mode) (lie-mode use-two-strips))
 
 ;; failed to figure out what this is:
 (set! (-> *eco-green-trail* max-age) (seconds 2))
 
 ;; failed to figure out what this is:
 (if #f
-    (set! (-> *eco-green-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *eco-green-trail* tex-id) (the-as uint #x500800))
+    (set! (-> *eco-green-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *eco-green-trail* tex-id) (new 'static 'texture-id :index #x8 :page #x5))
     )
 
 ;; failed to figure out what this is:
@@ -268,7 +266,7 @@
 (set! (-> *eco-green-trail* zbuffer?) #f)
 
 ;; failed to figure out what this is:
-(set! (-> *eco-green-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *eco-green-trail* lie-vector) *up-vector*)
 
 ;; failed to figure out what this is:
 (set! (-> *eco-green-trail* use-tape-mode?) #f)
@@ -299,12 +297,12 @@
 
 ;; definition for method 17 of type eco-green-trail-tracker
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod light-trail-tracker-method-17 ((this eco-green-trail-tracker) (arg0 process-focusable))
+(defmethod should-track? ((this eco-green-trail-tracker) (arg0 process-focusable))
   (the-as symbol (and *target* (focus-test? *target* board) (< 0.0 (-> *target* fact eco-green))))
   )
 
 ;; definition for method 16 of type eco-green-trail-tracker
-(defmethod light-trail-tracker-method-16 ((this eco-green-trail-tracker) (arg0 process-focusable) (arg1 vector))
+(defmethod get-tracked-object-pos ((this eco-green-trail-tracker) (arg0 process-focusable) (arg1 vector))
   (if *target*
       (vector<-cspace! arg1 (-> *target* node-list data 37))
       )
@@ -418,24 +416,14 @@
       (when a0-9
         (cond
           ((focus-test? a0-9 board)
-           (let* ((s4-0 (handle->process (-> this hud-green-eco)))
-                  (s5-0 (if (type? s4-0 hud)
-                            s4-0
-                            )
-                        )
-                  )
+           (let ((s5-0 (as-type (handle->process (-> this hud-green-eco)) hud)))
              (if (and s5-0 (hidden? (the-as hud s5-0)))
                  (send-event s5-0 'force-show)
                  )
              )
            )
           (else
-            (let* ((s4-1 (handle->process (-> this hud-green-eco)))
-                   (s5-1 (if (type? s4-1 hud)
-                             s4-1
-                             )
-                         )
-                   )
+            (let ((s5-1 (as-type (handle->process (-> this hud-green-eco)) hud)))
               (if (and s5-1 (not (hidden? (the-as hud s5-1))))
                   (send-event s5-1 'force-hide)
                   )
@@ -455,7 +443,7 @@
             (let* ((v1-62
                      (estimate-light-trail-mem-usage
                        (the-as uint (-> s5-2 max-num-crumbs))
-                       (the-as uint (= (-> s5-2 appearance lie-mode) 3))
+                       (the-as uint (= (-> s5-2 appearance lie-mode) (lie-mode use-two-strips)))
                        )
                      )
                    (s4-2 (get-process *default-dead-pool* eco-green-trail-tracker (+ v1-62 8192) 1))

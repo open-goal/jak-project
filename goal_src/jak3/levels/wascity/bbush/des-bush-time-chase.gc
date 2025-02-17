@@ -233,7 +233,7 @@
     (case message
       (('trans)
        (let ((v1-1 (the-as object (-> block param 0))))
-         (set! (-> self root trans quad) (-> (the-as vector v1-1) quad))
+         (vector-copy! (-> self root trans) (the-as vector v1-1))
          )
        (send-event (handle->process (-> self trail)) 'start-tracking)
        )
@@ -305,15 +305,13 @@
 
 (set! (-> *bb-timer-chase-trail* uv-repeat-dist) 163840.0)
 
-(set! (-> *bb-timer-chase-trail* lie-mode) (the-as uint 0))
+(set! (-> *bb-timer-chase-trail* lie-mode) (lie-mode appearance0))
 
 (set! (-> *bb-timer-chase-trail* max-age) (seconds 4))
 
 (if #f
-    (set! (-> *bb-timer-chase-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *bb-timer-chase-trail* tex-id) (the-as uint #x100300))
+    (set! (-> *bb-timer-chase-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *bb-timer-chase-trail* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 (set! (-> *bb-timer-chase-trail* width-curve) (the-as curve2d-piecewise *curve-linear-up*))
@@ -326,7 +324,7 @@
 
 (set! (-> *bb-timer-chase-trail* zbuffer?) #f)
 
-(set! (-> *bb-timer-chase-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *bb-timer-chase-trail* lie-vector) *up-vector*)
 
 (set! (-> *bb-timer-chase-trail* use-tape-mode?) #f)
 
@@ -404,12 +402,12 @@
         ((-> self start-tracking?)
          (when (time-elapsed? (-> self time-offset) (seconds 0.05))
            (set-time! (-> self time-offset))
-           (when (light-trail-tracker-method-17 self (the-as process-focusable gp-1))
+           (when (should-track? self (the-as process-focusable gp-1))
              (set! (-> self trail start-marker) (the-as uint 0))
              (set! (-> self trail end-marker) (the-as uint 0))
-             (light-trail-method-11
+             (add-crumb!
                (-> self trail)
-               (light-trail-tracker-method-16 self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
+               (get-tracked-object-pos self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
                0
                )
              )
@@ -432,26 +430,26 @@
   :post light-trail-tracker-common-post
   )
 
-(defmethod light-trail-tracker-method-19 ((this timer-chase-trail))
+(defmethod should-draw? ((this timer-chase-trail))
   #t
   )
 
 (defbehavior trail-effect-init-by-other trail-effect ((arg0 vector))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1534) self))
   (set! (-> self goal-part) (create-launch-control (-> *part-group-id-table* 1532) self))
   (let ((gp-1 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
     (set! (-> gp-1 tracked-obj) (process->handle self))
     (set! (-> gp-1 appearance) *bb-timer-chase-trail*)
     (set! (-> *bb-timer-chase-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name "des-bush-timer-chase-trail" (the-as string #f)))
+          (lookup-texture-id-by-name "des-bush-timer-chase-trail" (the-as string #f))
           )
     (set! (-> gp-1 max-num-crumbs) 500)
     (set! (-> gp-1 track-immediately?) #f)
     (let* ((v1-18 (estimate-light-trail-mem-usage
                     (the-as uint (-> gp-1 max-num-crumbs))
-                    (the-as uint (= (-> gp-1 appearance lie-mode) 3))
+                    (the-as uint (= (-> gp-1 appearance lie-mode) (lie-mode use-two-strips)))
                     )
                   )
            (s5-0 (get-process *default-dead-pool* timer-chase-trail (+ v1-18 8192) 1))
@@ -542,11 +540,11 @@
   :enter (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 1531 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 1531))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1531))
         )
       )
@@ -570,6 +568,7 @@
 
 ;; WARN: Return type mismatch entity-perm-status vs object.
 (defmethod init-from-entity! ((this bb-goal) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (process-entity-status! this (entity-perm-status dead) #t)
   )
 
@@ -1271,6 +1270,7 @@
 
 ;; WARN: Return type mismatch entity-perm-status vs object.
 (defmethod init-from-entity! ((this bb-freeze) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 32)
   (process-entity-status! this (entity-perm-status dead) #t)
   )
@@ -1332,14 +1332,14 @@
 
 
 (defmethod draw ((this freeze-time-hud))
-  (set-hud-piece-position! (the-as hud-sprite (-> this sprites)) 447 70)
+  (set-hud-piece-position! (-> this sprites 0) 447 70)
   (format (clear (-> this strings 0 text)) "~2,'0D" (/ (-> this values 0 current) 100))
   (format (clear (-> this strings 2 text)) ":")
   (format (clear (-> this strings 3 text)) "~2,'0D" (mod (-> this values 0 current) 100))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -15 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 2 pos)) (the-as vector4w (-> this sprites)) 0 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 3 pos)) (the-as vector4w (-> this sprites)) 15 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) 0 -40)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -15 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 2 pos)) (-> this sprites 0 pos) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 3 pos)) (-> this sprites 0 pos) 15 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) 0 -40)
   (let ((s5-3 (new
                 'stack
                 'font-context
@@ -1353,20 +1353,14 @@
               )
         )
     (set! (-> s5-3 flags) (font-flags kerning middle large))
-    (let ((v1-6 s5-3))
-      (set! (-> v1-6 width) (the float 160))
-      )
-    (let ((v1-7 s5-3))
-      (set! (-> v1-7 height) (the float 80))
-      )
-    (let ((v1-8 s5-3))
-      (set! (-> v1-8 scale) 0.6)
-      )
+    (set-width! s5-3 160)
+    (set-height! s5-3 80)
+    (set-scale! s5-3 0.6)
     (let ((a0-16 s5-3))
       (set! (-> a0-16 color) (-> this strings 1 color))
       )
     (let ((s4-0 print-game-text))
-      (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0861) #f))
+      (format (clear *temp-string*) (lookup-text! *common-text* (text-id extra-time) #f))
       (s4-0 *temp-string* s5-3 #f 44 (bucket-id hud-draw-hud-alpha))
       )
     )
@@ -1410,7 +1404,7 @@
         (gp-1 (clear (-> this strings 1 text)))
         (s4-0 "")
         )
-    (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0861) #f))
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id extra-time) #f))
     *temp-string*
     (s5-0 gp-1 s4-0)
     )
@@ -1504,7 +1498,7 @@
 
 (defmethod set-sbanks ((this task-manager-bbush-timer-chase))
   (cond
-    ((= (status-of-level-and-borrows *level* 'waswide #f) 'active)
+    ((= (level-status? *level* 'waswide #f) 'active)
      (set-setting! 'extra-bank '((wascity3 bbush1)) 0.0 0)
      (set-setting! 'music 'wastimer 0.0 0)
      )

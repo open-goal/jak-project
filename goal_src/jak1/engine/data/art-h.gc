@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
-
 (require "kernel/gcommon.gc")
-
-;; name: art-h.gc
-;; name in dgo: art-h
-;; dgos: GAME, ENGINE
 
 ;; DECOMP BEGINS
 
@@ -17,99 +12,73 @@
 ;; base type for all joint animations
 ;; note that this refers to an animation for a single joint.
 (deftype joint-anim (basic)
-  ((name    string)
-   (number  int16)
-   (length  int16)
-   )
-  )
+  ((name   string)
+   (number int16)
+   (length int16)))
 
 ;; unused? joint-anims
 
 (deftype joint-anim-matrix (joint-anim)
-  ((data  matrix  :inline :dynamic :offset  16)
-   )
-  )
+  ((data matrix :inline :dynamic :offset 16)))
 
 (deftype joint-anim-transformq (joint-anim)
-  ((data  transformq  :inline :dynamic :offset  16)
-   )
-  )
+  ((data transformq :inline :dynamic :offset 16)))
 
 (deftype joint-anim-drawable (joint-anim)
-  ((data  drawable  :dynamic)
-   )
-  )
+  ((data drawable :dynamic)))
 
 ;; joint-anim-compressed is the only type of joint-anim actually used.
 ;; the actual data isn't in here, this is just some metadata
 ;; again, this refers to a single joint
 (deftype joint-anim-compressed (joint-anim)
-  ((data  uint32  :dynamic)
-   )
-  )
+  ((data uint32 :dynamic)))
 
 ;; a single "frame" in an animation, consists of matrices for each joint.
 ;; unlike the previous types, this is for all of the joints involved in an animation.
 (deftype joint-anim-frame (structure)
-  ((matrices  matrix  2 :inline)
-   (data      matrix  :inline :dynamic)
-   )
+  ((matrices matrix 2 :inline)
+   (data     matrix :inline :dynamic))
   (:methods
-    (new (symbol type int) _type_)
-    )
-  )
-
+   (new (symbol type int) _type_)))
 
 (defmethod new joint-anim-frame ((allocation symbol) (type-to-make type) (arg0 int))
   "Create a new joint-anim-frame with enough room for arg0 matrices"
   (let ((v1-1 (max 0 (+ arg0 -2))))
-    (the-as
-      joint-anim-frame
-      (new-dynamic-structure allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 v1-1))))
-      )
-    )
-  )
+    (the-as joint-anim-frame
+            (new-dynamic-structure allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 v1-1)))))))
 
 ;; compression header - has info used by decompression algorithm
 (deftype joint-anim-compressed-hdr (structure)
-  ((control-bits  uint32  14)
-   (num-joints    uint32)
-   (matrix-bits   uint32)
-   )
-  )
+  ((control-bits uint32 14)
+   (num-joints   uint32)
+   (matrix-bits  uint32)))
 
 ;; this has the data needed to initialize the decompressor - I believe this
 ;; contains the starting poisition of the joints.
 (deftype joint-anim-compressed-fixed (structure)
-  ((hdr        joint-anim-compressed-hdr  :inline)
-   (offset-64  uint32)
-   (offset-32  uint32)
-   (offset-16  uint32)
-   (reserved   uint32)
-   (data       vector                     133 :inline)
-   )
-  )
+  ((hdr       joint-anim-compressed-hdr :inline)
+   (offset-64 uint32)
+   (offset-32 uint32)
+   (offset-16 uint32)
+   (reserved  uint32)
+   (data      vector 133 :inline)))
 
 ;; these are the actual compressed data frames.
 ;; dynamically sized, depends on the number of joints and the decompression.
 (deftype joint-anim-compressed-frame (structure)
-  ((offset-64  uint32)
-   (offset-32  uint32)
-   (offset-16  uint32)
-   (reserved   uint32)
-   (data       vector  133 :inline)
-   )
-  )
+  ((offset-64 uint32)
+   (offset-32 uint32)
+   (offset-16 uint32)
+   (reserved  uint32)
+   (data      vector 133 :inline)))
 
 ;; table of frames
 (deftype joint-anim-compressed-control (structure)
-  ((num-frames  uint32)
-   (fixed-qwc   uint32)
-   (frame-qwc   uint32)
-   (fixed       joint-anim-compressed-fixed)
-   (data        joint-anim-compressed-frame  1)
-   )
-  )
+  ((num-frames uint32)
+   (fixed-qwc  uint32)
+   (frame-qwc  uint32)
+   (fixed      joint-anim-compressed-fixed)
+   (data       joint-anim-compressed-frame 1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ART
@@ -118,90 +87,74 @@
 ;; "art" is an overly general parent class of all art data.
 ;; it can be either a container of arts (art-group) or a single art (art-element)
 (declare-type res-lump basic)
+
 (deftype art (basic)
-  ((name    string  :offset   8)
-   (length  int32)
-   (extra   res-lump)
-   )
+  ((name   string :offset 8)
+   (length int32)
+   (extra  res-lump))
   (:methods
-    (login (_type_) _type_)
-    (lookup-art (_type_ string type) joint)
-    (lookup-idx-of-art (_type_ string type) int)
-    (needs-link? (_type_) symbol)
-    )
-  )
+   (login (_type_) _type_)
+   (lookup-art (_type_ string type) joint)
+   (lookup-idx-of-art (_type_ string type) int)
+   (needs-link? (_type_) symbol)))
 
 ;; parent class of all single art things.
 (deftype art-element (art)
-  ((pad  uint8  12)
-   )
-  )
+  ((pad uint8 12)))
 
 ;; unused. all animations use joints/skeletons.
 (deftype art-mesh-anim (art-element)
-  ((data  basic  :dynamic)
-   )
-  )
+  ((data basic :dynamic)))
 
 ;; joint animation.
 (declare-type merc-eye-anim-block structure)
+
 (deftype art-joint-anim (art-element)
-  ((eye-anim-data           merc-eye-anim-block            :offset   4)
-   (speed                   float                          :overlay-at (-> pad 0))
-   (artist-base             float                          :overlay-at (-> pad 4))
-   (artist-step             float                          :overlay-at (-> pad 8))
-   (master-art-group-name   string                         :offset  32)
-   (master-art-group-index  int32                          :offset  36)
-   (blerc-data              (pointer uint8)                :offset  40)
-   (frames                  joint-anim-compressed-control  :offset  44)
-   (data                    joint-anim-compressed          :dynamic)
-   )
-  )
+  ((eye-anim-data          merc-eye-anim-block :offset 4)
+   (speed                  float :overlay-at (-> pad 0))
+   (artist-base            float :overlay-at (-> pad 4))
+   (artist-step            float :overlay-at (-> pad 8))
+   (master-art-group-name  string :offset 32)
+   (master-art-group-index int32 :offset 36)
+   (blerc-data             (pointer uint8) :offset 40)
+   (frames                 joint-anim-compressed-control :offset 44)
+   (data                   joint-anim-compressed :dynamic)))
 
 ;; a collection of arts.
 ;; this is often stored as a -ag file in static level data.
 (deftype art-group (art)
-  ((info  file-info             :offset   4)
-   (data  art-element  :dynamic :offset  32)
-   )
+  ((info file-info :offset 4)
+   (data art-element :dynamic :offset 32))
   (:methods
-    (relocate (_type_ kheap (pointer uint8)) none :replace)
-    (link-art! (_type_) art-group)
-    (unlink-art! (_type_) int)
-    )
-  )
+   (relocate (_type_ kheap (pointer uint8)) none :replace)
+   (link-art! (_type_) art-group)
+   (unlink-art! (_type_) int)))
 
 ;; unused
 (deftype art-mesh-geo (art-element)
-  ((data  basic  :dynamic)
-   )
-  )
+  ((data basic :dynamic)))
 
 ;; unused
 (deftype art-joint-geo (art-element)
-  ((data  joint  :dynamic)
-   )
-  )
+  ((data joint :dynamic)))
 
 ;; the "skeleton group" is defined in code and tells the engine
 ;; how to actually use the art from the level data for this object.
 (deftype skeleton-group (basic)
-  ((art-group-name  string)
-   (jgeo            int32)
-   (janim           int32)
-   (bounds          vector  :inline)
-   (radius          meters  :overlay-at (-> bounds w))
-   (mgeo            int16   4)
-   (max-lod         int32)
-   (lod-dist        float   4)
-   (longest-edge    meters)
-   (texture-level   int8)
-   (version         int8)
-   (shadow          int8)
-   (sort            int8)
-   (_pad            uint8   4)
-   )
-  )
+  ((art-group-name string)
+   (jgeo           int32)
+   (janim          int32)
+   (bounds         vector :inline)
+   (radius         meters :overlay-at (-> bounds w))
+   (mgeo           int16 4)
+   (max-lod        int32)
+   (lod-dist       float 4)
+   (longest-edge   meters)
+   (texture-level  int8)
+   (version        int8)
+   (shadow         int8)
+   (sort           int8)
+   (_pad           uint8 4)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Draw Control
@@ -213,37 +166,32 @@
 
 ;; a merc level of detail
 (deftype lod-group (structure)
-  ((geo   merc-ctrl)
-   (dist  meters)
-   )
-  :pack-me
-  )
+  ((geo  merc-ctrl)
+   (dist meters))
+  :pack-me)
 
 ;; the 4 levels of detail. the max-lod is the index of the highest lod that's actually used.
 ;; it is the lowest detail.
 (deftype lod-set (structure)
-  ((lod      lod-group  4 :inline)
-   (max-lod  int8)
-   )
+  ((lod     lod-group 4 :inline)
+   (max-lod int8))
   :pack-me
   (:methods
-    (setup-lods! (_type_ skeleton-group art-group entity) _type_)
-    )
-  )
+   (setup-lods! (_type_ skeleton-group art-group entity) _type_)))
 
 ;; the draw statuses are somewhat confusing, as some are set by the engine
 ;; and some are set by the game object code.
 (defenum draw-status
   :type uint8
   :bitfield #t
-  (needs-clip 0)          ;; set by engine, determines if object should be clipped
-  (hidden 1)              ;; set by user, can disable drawing and animation codes
-  (no-anim 2)             ;; set by engine, if there is no active joint animation
-  (was-drawn 3)           ;; set by engine, if we were drawn (passed cull checks)
-  (no-skeleton-update 4)  ;; set by engine, if our transforms are not valid
-  (skip-bones 5)          ;; set by user, skips call to draw-bones but does everything else
+  (needs-clip 0) ;; set by engine, determines if object should be clipped
+  (hidden 1) ;; set by user, can disable drawing and animation codes
+  (no-anim 2) ;; set by engine, if there is no active joint animation
+  (was-drawn 3) ;; set by engine, if we were drawn (passed cull checks)
+  (no-skeleton-update 4) ;; set by engine, if our transforms are not valid
+  (skip-bones 5) ;; set by user, skips call to draw-bones but does everything else
   (do-not-check-distance 6) ;; set by user, ignore in finding closest object for texture calcs
-  (has-joint-channels 7)    ;; set by engine, if the object has joint channels.
+  (has-joint-channels 7) ;; set by engine, if the object has joint channels.
   )
 
 ;; only title seems to be used?
@@ -256,143 +204,134 @@
   (drweff4 4)
   (drweff5 5)
   (drweff6 6)
-  (drweff7 7)
-  )
+  (drweff7 7))
 
 (declare-type ripple-control basic)
+
 (declare-type shadow-geo basic)
+
 (declare-type shadow-control basic)
 
 ;; the actual draw-control - this is just a collection of references to all info
 ;; needed to do drawing.
 (deftype draw-control (basic)
-  ((status                    draw-status)
-   (matrix-type               uint8)
-   (data-format               uint8)
-   (global-effect             draw-effect)
-   (art-group                 art-group)
-   (jgeo                      art-joint-geo)
-   (mgeo                      merc-ctrl)
-   (dma-add-func              (function process-drawable draw-control symbol object none))
-   (skeleton                  skeleton)
-   (lod-set                   lod-set    :inline)
-   (lod                       lod-group  4 :inline :overlay-at (-> lod-set lod 0))
-   (max-lod                   int8                 :overlay-at (-> lod-set max-lod))
-   (force-lod                 int8)
-   (cur-lod                   int8)
-   (desired-lod               int8)
-   (ripple                    ripple-control)
-   (longest-edge              meters)
-   (longest-edge?             uint32               :overlay-at longest-edge)
-   (light-index               uint8)
-   (dummy                     uint8      2)
-   (death-draw-overlap        uint8)
-   (death-timer               uint8)
-   (death-timer-org           uint8)
-   (death-vertex-skip         uint16)
-   (death-effect              uint32)
-   (sink-group                dma-foreground-sink-group)
-   (process                   process)
-   (shadow                    shadow-geo)
-   (shadow-ctrl               shadow-control)
-   (origin                    vector     :inline)
-   (bounds                    vector     :inline)
-   (radius                    meters               :overlay-at (-> bounds w))
-   (color-mult                rgbaf      :inline)
-   (color-emissive            rgbaf      :inline)
-   (secondary-interp          float)
-   (current-secondary-interp  float)
-   (shadow-mask               uint8)
-   (level-index               uint8)
-   (origin-joint-index        uint8)
-   (shadow-joint-index        uint8)
-   )
+  ((status                   draw-status)
+   (matrix-type              uint8)
+   (data-format              uint8)
+   (global-effect            draw-effect)
+   (art-group                art-group)
+   (jgeo                     art-joint-geo)
+   (mgeo                     merc-ctrl)
+   (dma-add-func             (function process-drawable draw-control symbol object none))
+   (skeleton                 skeleton)
+   (lod-set                  lod-set :inline)
+   (lod                      lod-group 4 :inline :overlay-at (-> lod-set lod 0))
+   (max-lod                  int8 :overlay-at (-> lod-set max-lod))
+   (force-lod                int8)
+   (cur-lod                  int8)
+   (desired-lod              int8)
+   (ripple                   ripple-control)
+   (longest-edge             meters)
+   (longest-edge?            uint32 :overlay-at longest-edge)
+   (light-index              uint8)
+   (dummy                    uint8 2)
+   (death-draw-overlap       uint8)
+   (death-timer              uint8)
+   (death-timer-org          uint8)
+   (death-vertex-skip        uint16)
+   (death-effect             uint32)
+   (sink-group               dma-foreground-sink-group)
+   (process                  process)
+   (shadow                   shadow-geo)
+   (shadow-ctrl              shadow-control)
+   (origin                   vector :inline)
+   (bounds                   vector :inline)
+   (radius                   meters :overlay-at (-> bounds w))
+   (color-mult               rgbaf :inline)
+   (color-emissive           rgbaf :inline)
+   (secondary-interp         float)
+   (current-secondary-interp float)
+   (shadow-mask              uint8)
+   (level-index              uint8)
+   (origin-joint-index       uint8)
+   (shadow-joint-index       uint8))
   (:methods
-    (new (symbol type process art-joint-geo) _type_)
-    (get-skeleton-origin (_type_) vector)
-    (lod-set! (_type_ int) none)
-    (lods-assign! (_type_ lod-set) none)
-    )
-  )
+   (new (symbol type process art-joint-geo) _type_)
+   (get-skeleton-origin (_type_) vector)
+   (lod-set! (_type_ int) none)
+   (lods-assign! (_type_ lod-set) none)))
 
 (defmethod get-skeleton-origin ((this draw-control))
   "Get the origin of the skeleton. Must have up-to-date bones."
-  (-> this skeleton bones 0 position)
-  )
+  (-> this skeleton bones 0 position))
 
 ;; look up the index of an art element in an art group.
 (desfun art-elt-index (ag-name elt-name)
   (if (number? elt-name)
-      elt-name
-      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
-          (if (not (car ag-info))
-              -1
-              (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
-                  (if (not (car elt-info))
-                      -1
-                      (cadr (cdr elt-info)))
-                  )
-              )
-          )
-      )
-  )
+    elt-name
+    (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+      (if (not (car ag-info))
+        -1
+        (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+          (if (not (car elt-info)) -1 (cadr (cdr elt-info))))))))
 
 (defmacro joint-node-index (jg-name name)
   (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
-      (if (not (car jg-info))
-          -1
-          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
-              (if (not (car joint-node))
-                  -1
-                  (cadr (cdr joint-node)))
-              )
-          )
-      )
-  )
+    (if (not (car jg-info))
+      -1
+      (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+        (if (not (car joint-node)) -1 (cadr (cdr joint-node)))))))
 
 (defmacro joint-node (jg name)
-  `(-> self node-list data (joint-node-index ,jg ,name))
-  )
+  `(-> self node-list data (joint-node-index ,jg ,name)))
 
-(defmacro defskelgroup (name art-name joint-geom joint-anim lods
-                        &key (shadow 0)
-                        &key bounds
-                        &key (longest-edge 0.0)
-                        &key (texture-level 0)
-                        &key (sort 0)
-                        &key (version 6) ;; do NOT use this!
-                        )
-
+(defmacro defskelgroup (name art-name joint-geom joint-anim lods &key (shadow 0) &key bounds &key (longest-edge 0.0) &key (texture-level 0) &key (sort 0))
   "define a new static skeleton group"
+  `(let ((skel (new 'static
+                   'skeleton-group
+                   :art-group-name ,(symbol->string art-name)
+                   :bounds ,bounds
+                   :longest-edge ,longest-edge
+                   :version 6
+                   :max-lod
+                   ,(- (length lods) 1)
+                   :shadow
+                   ,(art-elt-index (string->symbol-format "{}-ag" art-name) shadow)
+                   :texture-level ,texture-level
+                   :sort ,sort)))
+    ;; set joint geometry and joint bones
+    (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-geom))
+    (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-anim))
+    ;; set lods
+    ,@(apply-i (lambda (x i)
+               `(begin
+                 (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" art-name) (car x)))
+                 (set! (-> skel lod-dist ,i) ,(cadr x))))
+             lods)
+    ;; define skel group
+    (define ,name skel)))
 
-  `(let ((skel (new 'static 'skeleton-group
-                        :art-group-name ,(symbol->string art-name)
-                        :bounds ,bounds
-                        :longest-edge ,longest-edge
-                        :version ,version
-                        :max-lod ,(- (length lods) 1)
-                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" art-name) shadow)
-                        :texture-level ,texture-level
-                        :sort ,sort
-                        )))
-        ;; set joint geometry and joint bones
-        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-geom))
-        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" art-name) joint-anim))
-
-        ;; set lods
-        ,@(apply-i (lambda (x i)
-                      `(begin
-                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" art-name) (car x)))
-                          (set! (-> skel lod-dist ,i) ,(cadr x))
-                          )
-                      ) lods)
-
-        ;; define skel group
-        (define ,name skel)
-        )
-  )
-
-
+(defmacro def-actor (name &key (idle #f) &key (lods #f) &key (art (idle-ja)) &key (joints ()) &key (shadow 0) &key bounds &key (longest-edge 0.0) &key (texture-level 0) &key (sort 0))
+  `(begin
+    (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-jg" name) 0)
+    (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-mg" name) 1)
+    ,@(apply-i (lambda (x i)
+               `(def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-{}" name x) ,(+ i 2)))
+             art)
+    ,@(apply-i (lambda (x i) `(def-joint-node ,(string->symbol-format "{}-lod0-jg" name) ,(symbol->string x) ,(1+ i))) joints)
+    (defskelgroup ,(string->symbol-format "*{}-sg*" name)
+      ,name
+      ,(string->symbol-format "{}-lod0-jg" name)
+      ,(if idle (string->symbol-format "{}-{}" name idle) (string->symbol-format "{}-{}" name (car art)))
+      ,(if lods
+        `(,@(apply (lambda (x) `(,(string->symbol-format "{}-{}-mg" name (car x)) (meters ,(cadr x)))) lods))
+        `((,(string->symbol-format "{}-lod0-mg" name) (meters 999999))))
+      :shadow ,shadow
+      :bounds (static-spherem ,@bounds)
+      :longest-edge ,longest-edge
+      :texture-level ,texture-level
+      :sort ,sort)))
 
 (import "goal_src/jak1/engine/data/art-elts.gc")
+
 (import "goal_src/jak1/engine/data/joint-nodes.gc")

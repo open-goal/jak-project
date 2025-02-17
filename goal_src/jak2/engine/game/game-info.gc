@@ -1643,12 +1643,28 @@
   )
 
 (defmethod adjust-to-screen-flip ((this cpad-info))
-  (when (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+  ;; og:preserve-this mirror mode flag
+  (when (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+            *PC-MIRROR-MODE-SET*)
     (set! (-> this leftx) (- 255 (the-as int (-> this leftx))))
     (set! (-> this rightx) (- 255 (the-as int (-> this rightx))))
-    )
-  0
-  )
+    ;; while in the progress menu, invert left/right as well
+    (when *progress-process*
+      ;; right = 5th bit and 1st index for pressure
+      ;; left = 7th bit and 2nd index for pressure
+      (let ((right-pressed? (logtest? (-> this button0) (pad-buttons right)))
+            (right-pressure (-> this abutton (abutton-idx right))) ;; og:preserve-this abutton indexing
+            (left-pressed? (logtest? (-> this button0) (pad-buttons left)))
+            (left-pressure (-> this abutton (abutton-idx left)))) ;; og:preserve-this abutton indexing
+        (when right-pressed?
+          (logclear! (-> this button0) (pad-buttons right))
+          (logior! (-> this button0) (pad-buttons left)))
+        (when left-pressed?
+          (logclear! (-> this button0) (pad-buttons left))
+          (logior! (-> this button0) (pad-buttons right)))
+        (set! (-> this abutton (abutton-idx right)) left-pressure) ;; og:preserve-this abutton indexing
+        (set! (-> this abutton (abutton-idx left)) right-pressure)))) ;; og:preserve-this abutton indexing
+  0)
 
 (defmethod game-info-method-28 ((this game-info) (arg0 game-score) (arg1 float))
   (when (!= arg1 0.0)

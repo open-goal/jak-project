@@ -370,7 +370,7 @@
       )
     )
   (dotimes (v1-46 (-> *ctyport-package-positions* length))
-    (set! (-> *ctyport-attack-bbush-positions* v1-46 pos quad) (-> *ctyport-package-positions* v1-46 pos quad))
+    (vector-copy! (-> *ctyport-attack-bbush-positions* v1-46 pos) (-> *ctyport-package-positions* v1-46 pos))
     (set! (-> *ctyport-attack-bbush-positions* v1-46 on-water?) (-> *ctyport-package-positions* v1-46 on-water?))
     )
   (set! (-> *ctyport-attack-bbush-positions* length) (-> *ctyport-package-positions* length))
@@ -379,7 +379,7 @@
       (dotimes (a0-35 (-> this actor-group 0 length))
         (let ((a1-36 (-> this actor-group 0 data a0-35 actor)))
           (when a1-36
-            (set! (-> *ctyport-attack-bbush-positions* v1-53 pos quad) (-> a1-36 extra trans quad))
+            (vector-copy! (-> *ctyport-attack-bbush-positions* v1-53 pos) (-> a1-36 extra trans))
             (set! (-> *ctyport-attack-bbush-positions* v1-53 on-water?) #f)
             (set! (-> *ctyport-attack-bbush-positions* v1-53 probe?) #t)
             (+! v1-53 1)
@@ -426,7 +426,7 @@
     (suspend)
     (while (or (not *target*)
                (not *spawn-actors*)
-               (!= (status-of-level-and-borrows *level* 'lpatkcs #f) 'active)
+               (!= (level-status? *level* 'lpatkcs #f) 'active)
                (focus-test? *target* board)
                )
       (if *target*
@@ -496,19 +496,11 @@
 (defstate pickup-nukes (ctyport-attack-manager-bbush)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (set! (-> self countdown-timer) (the-as handle (current-time)))
     )
   :trans (behavior ()
-    (let ((t9-1 (-> (find-parent-state) trans)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler trans)
     (if (< (vector-vector-xz-distance (target-pos 0) *port-attack-bbush-fail-sphere*) *port-attack-bbush-fail-radius*)
         (send-event self 'fail)
         )
@@ -557,11 +549,11 @@
 
 ;; WARN: Return type mismatch quaternion vs object.
 (defmethod ctyport-attack-manager-method-51 ((this ctyport-attack-manager-bbush) (arg0 traffic-object-spawn-params))
-  (set! (-> arg0 position quad) (-> (new 'static 'vector :x 2492384.8 :y 34605.055 :z 6578958.5 :w 1.0) quad))
+  (vector-copy! (-> arg0 position) (new 'static 'vector :x 2492384.8 :y 34605.055 :z 6578958.5 :w 1.0))
   (quaternion-copy! (-> arg0 rotation) (new 'static 'quaternion :x 0.0002 :y 0.6305 :z 0.0011 :w -0.7761))
   (let ((v1-1 (the-as entity-actor (entity-by-name "port-attack-bbush-1"))))
     (when v1-1
-      (set! (-> arg0 position quad) (-> v1-1 extra trans quad))
+      (vector-copy! (-> arg0 position) (-> v1-1 extra trans))
       (quaternion-copy! (-> arg0 rotation) (-> v1-1 quat))
       )
     )

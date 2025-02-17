@@ -133,10 +133,10 @@
   (case arg2
     (('reset)
      (let ((v1-1 (the-as object (-> arg3 param 0))))
-       (set! (-> this root trans quad) (-> (the-as (inline-array vector) v1-1) 0 quad))
-       (set! (-> this starting-pos quad) (-> (the-as (inline-array vector) v1-1) 0 quad))
-       (set! (-> this root transv quad) (-> (the-as (inline-array vector) v1-1) 1 quad))
-       (set! (-> this pre-move-transv quad) (-> (the-as (inline-array vector) v1-1) 1 quad))
+       (vector-copy! (-> this root trans) (-> (the-as (inline-array vector) v1-1) 0))
+       (vector-copy! (-> this starting-pos) (-> (the-as (inline-array vector) v1-1) 0))
+       (vector-copy! (-> this root transv) (-> (the-as (inline-array vector) v1-1) 1))
+       (vector-copy! (-> this pre-move-transv) (-> (the-as (inline-array vector) v1-1) 1))
        )
      (set! (-> this hits) 0)
      (set-time! (-> this spawn-time))
@@ -162,11 +162,7 @@
 
 ;; definition for method 37 of type neo-juicer-shot
 (defmethod deal-damage! ((this neo-juicer-shot) (arg0 process) (arg1 event-message-block))
-  (let ((a0-2 (if (type? arg0 process-focusable)
-                  arg0
-                  )
-              )
-        )
+  (let ((a0-2 (as-type arg0 process-focusable)))
     (when a0-2
       (set! (-> this victim) (process->handle a0-2))
       #t
@@ -209,7 +205,7 @@
           (let ((a0-20 (-> this lightning s0-0))
                 (v1-25 s4-0)
                 )
-            (set! (-> a0-20 state meet data (+ (-> a0-20 state points-to-draw) -1) quad) (-> v1-25 quad))
+            (vector-copy! (-> a0-20 state meet data (+ (-> a0-20 state points-to-draw) -1)) v1-25)
             )
           )
         )
@@ -226,11 +222,11 @@
   (projectile-method-25 this)
   (cond
     ((logtest? (-> *part-group-id-table* 1524 flags) (sp-group-flag sp13))
-     (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
      (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1524))
      )
     (else
-      (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+      (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
       (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1524))
       )
     )
@@ -272,7 +268,7 @@
   (let ((s5-0 (handle->process (-> arg0 victim))))
     (cond
       (s5-0
-        (set! (-> arg0 root trans quad) (-> (get-trans (the-as process-focusable s5-0) 3) quad))
+        (vector-copy! (-> arg0 root trans) (get-trans (the-as process-focusable s5-0) 3))
         ((method-of-type projectile deal-damage!) arg0 s5-0 (the-as event-message-block #f))
         )
       (else
@@ -670,34 +666,34 @@
                                       :jump-height-min (meters 3)
                                       :jump-height-factor 0.5
                                       :knocked-seek-ry-clamp 6371.5557
-                                      :knocked-soft-vxz-lo 65536.0
-                                      :knocked-soft-vxz-hi 94208.0
-                                      :knocked-soft-vy-lo 77824.0
-                                      :knocked-soft-vy-hi 98304.0
-                                      :knocked-medium-vxz-lo 81920.0
-                                      :knocked-medium-vxz-hi 98304.0
-                                      :knocked-medium-vy-lo 81920.0
-                                      :knocked-medium-vy-hi 122880.0
-                                      :knocked-hard-vxz-lo 65536.0
-                                      :knocked-hard-vxz-hi 95846.4
-                                      :knocked-hard-vy-lo 122880.0
-                                      :knocked-hard-vy-hi 163840.0
-                                      :knocked-huge-vxz-lo 164659.2
-                                      :knocked-huge-vxz-hi 249036.8
-                                      :knocked-huge-vy-lo 183500.8
-                                      :knocked-huge-vy-hi 217907.2
-                                      :knocked-yellow-vxz-lo 40960.0
-                                      :knocked-yellow-vxz-hi 49152.0
-                                      :knocked-yellow-vy-lo 57344.0
-                                      :knocked-yellow-vy-hi 81920.0
-                                      :knocked-red-vxz-lo 24576.0
-                                      :knocked-red-vxz-hi 98304.0
-                                      :knocked-red-vy-lo 90112.0
-                                      :knocked-red-vy-hi 131072.0
-                                      :knocked-blue-vxz-lo 24576.0
-                                      :knocked-blue-vxz-hi 32768.0
-                                      :knocked-blue-vy-lo 24576.0
-                                      :knocked-blue-vy-hi 73728.0
+                                      :knocked-soft-vxz-lo (meters 16)
+                                      :knocked-soft-vxz-hi (meters 23)
+                                      :knocked-soft-vy-lo (meters 19)
+                                      :knocked-soft-vy-hi (meters 24)
+                                      :knocked-medium-vxz-lo (meters 20)
+                                      :knocked-medium-vxz-hi (meters 24)
+                                      :knocked-medium-vy-lo (meters 20)
+                                      :knocked-medium-vy-hi (meters 30)
+                                      :knocked-hard-vxz-lo (meters 16)
+                                      :knocked-hard-vxz-hi (meters 23.4)
+                                      :knocked-hard-vy-lo (meters 30)
+                                      :knocked-hard-vy-hi (meters 40)
+                                      :knocked-huge-vxz-lo (meters 40.2)
+                                      :knocked-huge-vxz-hi (meters 60.8)
+                                      :knocked-huge-vy-lo (meters 44.8)
+                                      :knocked-huge-vy-hi (meters 53.2)
+                                      :knocked-yellow-vxz-lo (meters 10)
+                                      :knocked-yellow-vxz-hi (meters 12)
+                                      :knocked-yellow-vy-lo (meters 14)
+                                      :knocked-yellow-vy-hi (meters 20)
+                                      :knocked-red-vxz-lo (meters 6)
+                                      :knocked-red-vxz-hi (meters 24)
+                                      :knocked-red-vy-lo (meters 22)
+                                      :knocked-red-vy-hi (meters 32)
+                                      :knocked-blue-vxz-lo (meters 6)
+                                      :knocked-blue-vxz-hi (meters 8)
+                                      :knocked-blue-vy-lo (meters 6)
+                                      :knocked-blue-vy-hi (meters 18)
                                       :ragdoll-info #f
                                       :shadow-size (meters 2)
                                       :shadow-max-y (meters 1)
@@ -747,7 +743,7 @@
       (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 4)))
             (s5-0 (new 'stack-no-clear 'vector))
             )
-        (set! (-> s5-0 quad) (-> (get-trans (the-as process-focusable s3-0) 3) quad))
+        (vector-copy! s5-0 (get-trans (the-as process-focusable s3-0) 3))
         (let ((s3-1
                 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this node-list data 4 bone transform fvec) 1.0)
                 )
@@ -786,6 +782,7 @@
 
 ;; definition for method 59 of type neo-juicer
 (defmethod enemy-common-post ((this neo-juicer))
+  "Common implementation of post. Runs ja-post."
   (let ((t9-0 (method-of-type nav-enemy enemy-common-post)))
     (t9-0 this)
     )
@@ -822,6 +819,7 @@
 
 ;; definition for method 82 of type neo-juicer
 (defmethod event-handler ((this neo-juicer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit-flinch)
      (cond
@@ -835,7 +833,7 @@
             (logior! (-> this focus-status) (focus-status dead))
             )
         (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-        (enemy-method-69 this)
+        (focus-on-attacker! this)
         (logior! (-> this enemy-flags) (enemy-flag lock-focus))
         (process-contact-action arg0)
         (send-event arg0 'get-attack-count 1)
@@ -865,7 +863,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -894,7 +892,7 @@
            (logior! (-> this focus-status) (focus-status dead))
            )
        (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-       (enemy-method-69 this)
+       (focus-on-attacker! this)
        (logior! (-> this enemy-flags) (enemy-flag lock-focus))
        (process-contact-action arg0)
        (send-event arg0 'get-attack-count 1)
@@ -935,7 +933,7 @@
     (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (let ((gp-0 (-> self draw art-group data (-> *neo-juicer-global-info* patrol-anim (rnd-int self 2) anim-index)))
-              (s5-0 (set-reaction-time! self 1 (seconds 0.027)))
+              (s5-0 (rnd-time-frame self 1 (seconds 0.027)))
               )
           (let ((v1-34 (ja-group)))
             (if (not (and v1-34 (= v1-34 gp-0)))
@@ -954,8 +952,8 @@
           (nav-enemy-method-182 self)
           (ja-channel-push! 1 (seconds 0.3))
           (let ((gp-1 0))
-            (until (not (enemy-method-134 self 0.4))
-              (let* ((v1-61 (enemy-method-131 self 3 gp-1))
+            (until (not (rnd-chance-for-idle? self 0.4))
+              (let* ((v1-61 (rnd-int-excluding-masked self 3 gp-1))
                      (a1-15 (-> self draw art-group data (-> *neo-juicer-global-info* idle-anim v1-61 anim-index)))
                      )
                 (set! gp-1 (ash 1 v1-61))
@@ -977,19 +975,21 @@
   )
 
 ;; definition for method 93 of type neo-juicer
-(defmethod setup-jump! ((this neo-juicer) (arg0 enemy-jump-info))
-  ((method-of-type nav-enemy setup-jump!) this arg0)
+(defmethod setup-jump-trajectory! ((this neo-juicer) (arg0 enemy-jump-info))
+  "Compute jump trajectory."
+  ((method-of-type nav-enemy setup-jump-trajectory!) this arg0)
   (none)
   )
 
 ;; definition for method 102 of type neo-juicer
-(defmethod go-directed2 ((this neo-juicer))
+(defmethod go-next-state-auto ((this neo-juicer))
+  "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware."
   (case (-> this jump-why)
     ((2)
      (go (method-of-object this ambush-cont))
      )
     (else
-      ((method-of-type nav-enemy go-directed2) this)
+      ((method-of-type nav-enemy go-next-state-auto) this)
       )
     )
   )
@@ -1044,7 +1044,7 @@
           )
       (if (< v1-1 (-> a0-0 curve num-cverts))
           (set! (-> self ambush-path-pt) v1-1)
-          (go-best-state self)
+          (go-state-for-focused self)
           )
       )
     (until #f
@@ -1097,14 +1097,14 @@
       (let ((f30-1 (rnd-float-range self 0.8 1.2))
             (gp-2 (new 'stack-no-clear 'vector))
             )
-        (let* ((a0-13 (enemy-method-131 self 2 s5-0))
+        (let* ((a0-13 (rnd-int-excluding-masked self 2 s5-0))
                (a1-8 (-> self draw art-group data (-> *neo-juicer-global-info* notice-anim a0-13 anim-index)))
                )
           (ja-no-eval :group! a1-8 :num! (seek! max f30-1) :frame-num 0.0)
           )
         (until (ja-done? 0)
           (let ((a1-9 (-> self nav state)))
-            (set! (-> gp-2 quad) (-> a1-9 travel quad))
+            (vector-copy! gp-2 (-> a1-9 travel))
             )
           (seek-toward-heading-vec! (-> self root) gp-2 (-> self nav max-rotation-rate) (seconds 0.02))
           (suspend)
@@ -1112,7 +1112,7 @@
           )
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1130,7 +1130,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1190,7 +1190,7 @@
           (let ((v1-8 (-> self nav state)))
             (logclear! (-> v1-8 flags) (nav-state-flag directional-mode))
             (logior! (-> v1-8 flags) (nav-state-flag target-poly-dirty))
-            (set! (-> v1-8 target-pos quad) (-> gp-0 quad))
+            (vector-copy! (-> v1-8 target-pos) gp-0)
             )
           0
           (if (and (>= 53248.0 f0-0) (should-check-los? (-> self los) 0) (get-focus! self))
@@ -1205,6 +1205,7 @@
 
 ;; definition for method 113 of type neo-juicer
 (defmethod get-focus! ((this neo-juicer))
+  "If we're focusing on something alive, return it."
   (let* ((t9-0 (method-of-type nav-enemy get-focus!))
          (v1-1 (t9-0 this))
          )
@@ -1299,7 +1300,7 @@
           )
       (logclear! (-> v1-1 flags) (nav-state-flag directional-mode))
       (logior! (-> v1-1 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> v1-1 target-pos quad) (-> a0-1 quad))
+      (vector-copy! (-> v1-1 target-pos) a0-1)
       )
     0
     (set! (-> self torso-track-player) (the-as joint-mod #t))
@@ -1343,57 +1344,55 @@
            (s5-0 (+ (-> v1-29 attack-id) 1))
            )
       (set! (-> v1-29 attack-id) s5-0)
-      (let ((s4-0 (current-time)))
-        (until (time-elapsed? s4-0 (seconds 0.25))
-          (ja-no-eval :group! neo-juicer-attack0-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (let ((s3-0 (handle->process (-> self focus handle))))
-              (when s3-0
-                (when (< 28672.0 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable s3-0) 0)))
-                  (spawn-proj! self (the-as process-focusable s3-0) s5-0)
-                  (current-time)
-                  (if (not gp-0)
-                      (set! gp-0 #t)
+      (suspend-for (seconds 0.25)
+        (ja-no-eval :group! neo-juicer-attack0-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (let ((s3-0 (handle->process (-> self focus handle))))
+            (when s3-0
+              (when (< 28672.0 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable s3-0) 0)))
+                (spawn-proj! self (the-as process-focusable s3-0) s5-0)
+                (current-time)
+                (if (not gp-0)
+                    (set! gp-0 #t)
+                    )
+                )
+              )
+            )
+          (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
+              (go-virtual victory)
+              )
+          (b!
+            (not (and (-> self using-turn-anim) (let ((v1-73 (ja-group)))
+                                                  (not (and v1-73 (= v1-73 neo-juicer-attack-turn-ja)))
+                                                  )
                       )
-                  )
-                )
-              )
-            (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
-                (go-virtual victory)
-                )
-            (b!
-              (not (and (-> self using-turn-anim) (let ((v1-73 (ja-group)))
-                                                    (not (and v1-73 (= v1-73 neo-juicer-attack-turn-ja)))
-                                                    )
-                        )
-                   )
-              cfg-31
-              :delay (empty-form)
-              )
+                 )
+            cfg-31
+            :delay (empty-form)
+            )
+          (ja-channel-push! 1 (seconds 0.05))
+          (ja :group! neo-juicer-attack-turn-ja)
+          (b! #t cfg-42 :delay (nop!))
+          (label cfg-31)
+          (when (and (not (-> self using-turn-anim)) (let ((v1-84 (ja-group)))
+                                                       (not (and v1-84 (= v1-84 neo-juicer-attack0-ja)))
+                                                       )
+                     )
             (ja-channel-push! 1 (seconds 0.05))
-            (ja :group! neo-juicer-attack-turn-ja)
-            (b! #t cfg-42 :delay (nop!))
-            (label cfg-31)
-            (when (and (not (-> self using-turn-anim)) (let ((v1-84 (ja-group)))
-                                                         (not (and v1-84 (= v1-84 neo-juicer-attack0-ja)))
-                                                         )
-                       )
-              (ja-channel-push! 1 (seconds 0.05))
-              (ja :group! neo-juicer-attack0-ja)
-              )
-            (label cfg-42)
-            (suspend)
-            (ja :num! (seek!))
+            (ja :group! neo-juicer-attack0-ja)
             )
-          (send-event (handle->process (-> self current-projectile)) 'die)
-          (let ((a0-37 (handle->process (-> self focus handle))))
-            (when a0-37
-              (if (>= 28672.0 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable a0-37) 0)))
-                  (go-virtual circling)
-                  )
-              )
-            )
+          (label cfg-42)
           (suspend)
+          (ja :num! (seek!))
+          )
+        (empty-form)
+        (send-event (handle->process (-> self current-projectile)) 'die)
+        (let ((a0-37 (handle->process (-> self focus handle))))
+          (when a0-37
+            (if (>= 28672.0 (vector-vector-distance (-> self root trans) (get-trans (the-as process-focusable a0-37) 0)))
+                (go-virtual circling)
+                )
+            )
           )
         )
       )
@@ -1537,7 +1536,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.6))
     (let ((f30-0 (rnd-float-range self 0.8 1.2)))
-      (let ((gp-0 (set-reaction-time! self (seconds 0.2) (seconds 0.7)))
+      (let ((gp-0 (rnd-time-frame self (seconds 0.2) (seconds 0.7)))
             (s5-0 (current-time))
             (f28-0 f30-0)
             )
@@ -1566,12 +1565,13 @@
 
 ;; definition for method 85 of type neo-juicer
 (defmethod knocked-anim ((this neo-juicer) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (local-vars (a2-2 int))
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (ja-channel-push! 1 0)
      (let* ((a2-0 (ash 1 (-> *neo-juicer-global-info* prev-yellow-hit)))
-            (v1-3 (enemy-method-131 this 4 a2-0))
+            (v1-3 (rnd-int-excluding-masked this 4 a2-0))
             (a1-6 (-> this draw art-group data (-> *neo-juicer-global-info* yellow-hit-anim v1-3 anim-index)))
             )
        (set! (-> *neo-juicer-global-info* prev-yellow-hit) v1-3)
@@ -1591,7 +1591,7 @@
            (set! a2-2 (logior v1-11 7))
            )
        )
-     (let* ((v1-15 (enemy-method-131 this 6 a2-2))
+     (let* ((v1-15 (rnd-int-excluding-masked this 6 a2-2))
             (s5-1 (-> this draw art-group data (-> *neo-juicer-global-info* blue-hit-anim v1-15 anim-index)))
             )
        (set! (-> *neo-juicer-global-info* prev-blue-hit) v1-15)
@@ -1632,6 +1632,7 @@
 
 ;; definition for method 86 of type neo-juicer
 (defmethod knocked-land-anim ((this neo-juicer) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (cond
     ((= (-> this incoming knocked-type) (knocked-type blue-shot))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -1690,13 +1691,15 @@
   )
 
 ;; definition for method 108 of type neo-juicer
-(defmethod enemy-method-108 ((this neo-juicer) (arg0 process-focusable))
+(defmethod should-flee-from? ((this neo-juicer) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (focus-test? arg0 invulnerable)
   )
 
 ;; definition for method 120 of type neo-juicer
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this neo-juicer))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1806,12 +1809,13 @@
 ;; definition for method 121 of type neo-juicer
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this neo-juicer))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-neo-juicer" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *neo-juicer-nav-enemy-info*)
+  (setup-enemy! this *neo-juicer-nav-enemy-info*)
   (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
@@ -1863,7 +1867,3 @@
   0
   (none)
   )
-
-
-
-

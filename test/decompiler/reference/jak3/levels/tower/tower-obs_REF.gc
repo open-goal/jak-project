@@ -113,6 +113,7 @@
 ;; definition for method 11 of type actor-group-watcher
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this actor-group-watcher) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-1 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
@@ -396,10 +397,7 @@
   :virtual #t
   :code (behavior ()
     (logclear! (-> self draw status) (draw-control-status force-fade))
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (process-spawn
       scene-player
@@ -437,6 +435,7 @@
 ;; definition for method 11 of type tow-large-plat
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tow-large-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -593,10 +592,7 @@
     (set-time! (-> self state-time))
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.75))
-        (suspend)
-        )
+    (suspend-for (seconds 0.75)
       )
     (let ((v1-6 (-> self root root-prim)))
       (set! (-> v1-6 prim-core collide-as) (-> self root backup-collide-as))
@@ -606,15 +602,12 @@
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (let ((f30-0 1.0))
       0.0
-      (let ((gp-2 (current-time)))
-        (until (time-elapsed? gp-2 (the int (* 300.0 f30-0)))
-          (let ((f0-2 (fmax 0.0 (fmin 1.0 (/ (the float (- (current-time) gp-2)) (* 300.0 f30-0))))))
-            (set-vector! (-> self draw color-mult) f0-2 f0-2 f0-2 1.0)
-            )
-          (spawn-from-cspace (-> self part) (joint-node tow-energy-bridge-lod0-jg main))
-          (ja-post)
-          (suspend)
+      (suspend-for (the int (* 300.0 f30-0))
+        (let ((f0-2 (fmax 0.0 (fmin 1.0 (/ (the float (- (current-time) time)) (* 300.0 f30-0))))))
+          (set-vector! (-> self draw color-mult) f0-2 f0-2 f0-2 1.0)
           )
+        (spawn-from-cspace (-> self part) (joint-node tow-energy-bridge-lod0-jg main))
+        (ja-post)
         )
       )
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
@@ -643,6 +636,7 @@
 
 ;; definition for method 11 of type tow-energy-bridge
 (defmethod init-from-entity! ((this tow-energy-bridge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -844,18 +838,7 @@
     (let ((a0-0 (joint-node tow-spawner-lod0-jg spawnerspew))
           (a1-0 (new 'stack-no-clear 'matrix))
           )
-      (let* ((v1-1 a1-0)
-             (t0-0 (-> a0-0 bone transform))
-             (a0-2 (-> t0-0 rvec quad))
-             (a2-0 (-> t0-0 uvec quad))
-             (a3-0 (-> t0-0 fvec quad))
-             (t0-1 (-> t0-0 trans quad))
-             )
-        (set! (-> v1-1 rvec quad) a0-2)
-        (set! (-> v1-1 uvec quad) a2-0)
-        (set! (-> v1-1 fvec quad) a3-0)
-        (set! (-> v1-1 trans quad) t0-1)
-        )
+      (matrix-copy! a1-0 (-> a0-0 bone transform))
       (vector+float*! (-> a1-0 trans) (-> a1-0 trans) (-> a1-0 fvec) 8192.0)
       (spawn-from-mat (-> self part) a1-0)
       )
@@ -876,7 +859,7 @@
        (let ((s3-0 (new 'stack-no-clear 'vector))
              (s4-0 (the-as (array collide-shape) (new 'stack 'boxed-array collide-shape 8)))
              )
-         (set! (-> s3-0 quad) (-> arg0 quad))
+         (vector-copy! s3-0 arg0)
          (set! (-> s3-0 w) arg1)
          (let ((gp-1 (fill-actor-list-for-box *actor-hash* s3-0 (-> s4-0 data) (-> s4-0 length))))
            (or (zero? gp-1) (begin
@@ -914,7 +897,7 @@
     (when (and (project-point-to-nav-mesh (-> this entity) s5-0 s5-0 (the-as nav-poly #f) 40960.0)
                (can-spawn-creature? this s5-0 12288.0)
                )
-      (set! (-> s3-0 trans quad) (-> s4-0 quad))
+      (vector-copy! (-> s3-0 trans) s4-0)
       (quaternion-copy! (-> s3-0 quat) (-> this root quat))
       (set! (-> s3-0 entity) (-> this entity))
       (set! (-> s3-0 directed?) #f)
@@ -950,6 +933,7 @@
 
 ;; definition for method 11 of type tow-spawner
 (defmethod init-from-entity! ((this tow-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1045,6 +1029,7 @@
 ;; definition for method 11 of type tow-tentacle
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tow-tentacle) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 collide-shape-prim-sphere) (sv-32 collide-shape-prim-sphere) (sv-48 vector))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))

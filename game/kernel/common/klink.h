@@ -125,7 +125,6 @@ struct link_control {
   }
 };
 
-void klink_init_globals();
 Ptr<u8> c_symlink2(Ptr<u8> objData, Ptr<u8> linkObj, Ptr<u8> relocTable);
 
 extern link_control saved_link_control;

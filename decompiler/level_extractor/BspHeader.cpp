@@ -1017,7 +1017,8 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
     for (int i = 0; i < 4; i++) {
       u32 start = index_start[i];
       u32 end = start + frag_count[i];
-      ASSERT(num_color_qwcs <= end);
+      // precd tie has a bug where geo 3's
+      // ASSERT(num_color_qwcs <= end);
       num_color_qwcs = std::max(end, num_color_qwcs);
     }
 
@@ -1987,6 +1988,13 @@ void HFragment::read_from_file(TypedRef ref, const decompiler::DecompilerTypeSys
   size = read_plain_data_field<u32>(ref, "size", dts);
 }
 
+void AdgifShaderArray::read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts) {
+  auto length = read_plain_data_field<s32>(ref, "length", dts);
+  adgifs.resize(length);
+  memcpy_plain_data((u8*)adgifs.data(), get_field_ref(ref, "data", dts),
+                    sizeof(AdGifData) * length);
+}
+
 void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
                                const decompiler::DecompilerTypeSystem& dts,
                                GameVersion version,
@@ -2000,6 +2008,19 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
   file_info.read_from_file(get_and_check_ref_to_basic(ref, "info", "file-info", dts), dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   name = read_symbol_field(ref, "name", dts);
+
+  if (version == GameVersion::Jak1) {
+    adgifs.read_from_file(get_and_check_ref_to_basic(ref, "adgifs", "adgif-shader-array", dts),
+                          dts);
+  }
+
+  texture_page_count = read_plain_data_field<s32>(ref, "texture-page-count", dts);
+  if (texture_page_count > 0) {
+    auto tex_id_ptr = deref_label(get_field_ref(ref, "texture-ids", dts));
+    for (int i = 0; i < texture_page_count; i++) {
+      texture_ids.push_back(deref_u32(tex_id_ptr, i));
+    }
+  }
 
   texture_remap_table.clear();
   s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);

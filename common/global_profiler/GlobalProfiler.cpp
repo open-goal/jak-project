@@ -26,6 +26,8 @@ u64 get_current_tid() {
 }
 #endif
 #include "common/log/log.h"
+#include "common/util/compress.h"
+#include "common/util/string_util.h"
 // clang-format on
 
 u64 get_current_ts() {
@@ -34,12 +36,12 @@ u64 get_current_ts() {
 
 GlobalProfiler::GlobalProfiler() {
   m_t0 = get_current_ts();
-  set_max_events(65536);
+  m_nodes.resize(m_max_events);
 }
 
-void GlobalProfiler::set_max_events(size_t event_count) {
-  ASSERT(!m_enabled);
-  m_nodes.resize(event_count);
+void GlobalProfiler::update_event_buffer_size(size_t new_size) {
+  m_max_events = new_size;
+  m_nodes.resize(m_max_events);
 }
 
 void GlobalProfiler::set_waiting_for_event(const std::string& event_name) {
@@ -72,6 +74,10 @@ void GlobalProfiler::root_event() {
   instant_event("ROOT");
 }
 
+size_t GlobalProfiler::get_next_idx() {
+  return (m_next_idx % m_nodes.size());
+}
+
 void GlobalProfiler::begin_event(const char* name) {
   event(name, ProfNode::BEGIN);
 }
@@ -96,8 +102,10 @@ void GlobalProfiler::set_enable(bool en) {
   m_enabled = en;
 }
 
-void GlobalProfiler::dump_to_json(const std::string& path) {
-  ASSERT(!m_enabled);
+void GlobalProfiler::dump_to_json() {
+  if (m_enabled) {
+    set_enable(false);
+  }
 
   nlohmann::json json;
   auto& trace_events = json["traceEvents"];
@@ -185,7 +193,20 @@ void GlobalProfiler::dump_to_json(const std::string& path) {
               t.second.highest_at_target);
   }
 
-  file_util::write_text_file(path, json.dump());
+  if (m_enable_compression) {
+    const auto json_str = json.dump();
+    const auto compressed_data =
+        compression::compress_zstd_no_header(json_str.data(), json_str.size());
+    auto file_path = file_util::get_jak_project_dir() / "profile_data" /
+                     fmt::format("prof-{}.json.zst", str_util::current_local_timestamp_no_colons());
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_binary_file(file_path, compressed_data.data(), compressed_data.size());
+  } else {
+    auto file_path = file_util::get_jak_project_dir() / "profile_data" /
+                     fmt::format("prof-{}.json", str_util::current_local_timestamp_no_colons());
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_text_file(file_path, json.dump());
+  }
 }
 
 GlobalProfiler gprof;

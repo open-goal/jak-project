@@ -144,7 +144,7 @@
 ;; definition for method 74 of type sig-under
 (defmethod general-event-handler ((this sig-under) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('set-task)
@@ -260,8 +260,8 @@
                       )
                     (.sub.vf vf1 vf3 vf2)
                     (.mul.vf vf1 vf1 vf1)
-                    (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                    (.add.y.vf.x vf1 vf1 vf1)
+                    (.add.z.vf.x vf1 vf1 vf1)
                     (.mov a2-5 vf1)
                     (let ((f0-1 a2-5)
                           (f1-1 (+ (-> a1-2 world-sphere w) (-> gp-0 r)))
@@ -301,8 +301,8 @@
                       )
                     (.sub.vf vf1 vf3 vf2)
                     (.mul.vf vf1 vf1 vf1)
-                    (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                    (.add.y.vf.x vf1 vf1 vf1)
+                    (.add.z.vf.x vf1 vf1 vf1)
                     (.mov a2-12 vf1)
                     (let ((f0-2 a2-12)
                           (f1-5 (+ (-> a1-14 world-sphere w) (-> gp-0 r)))
@@ -367,10 +367,10 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (move-to-point! (-> self root) (the-as vector (-> self sig5-course spots 0)))
+    (move-to-point! (-> self root) (-> self sig5-course spots 0 center))
     (quaternion-identity! (-> self root quat))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (vector-! gp-0 (the-as vector (-> self sig5-course spots 1)) (-> self root trans))
+      (vector-! gp-0 (-> self sig5-course spots 1 center) (-> self root trans))
       (vector-normalize! gp-0 1.0)
       (set-heading-vec! (-> self root) gp-0)
       )
@@ -877,7 +877,7 @@
                  (s5-1 (-> v1-7 8))
                  )
             (let ((v1-8 (-> v1-7 9)))
-              (vector-! (the-as vector (-> arg0 test-plane)) (the-as vector v1-8) (the-as vector s5-1))
+              (vector-! (the-as vector (-> arg0 test-plane)) (-> v1-8 center) (-> s5-1 center))
               )
             (set! (-> arg0 test-plane y) 0.0)
             (vector-normalize! (-> arg0 test-plane) 1.0)
@@ -952,7 +952,7 @@
         :on-set (lambda ((arg0 sig-under))
           (logior! (-> arg0 enemy-flags) (enemy-flag vulnerable vulnerable-backup))
           (reset-warn-time! arg0)
-          (move-to-point! (-> arg0 root) (the-as vector (-> arg0 sig5-course spots 10)))
+          (move-to-point! (-> arg0 root) (-> arg0 sig5-course spots 10 center))
           (set-vector! (-> arg0 root quat) 0.0 0.5874 0.0 0.8092)
           (play-speech arg0 8)
           (play-speech arg0 9)
@@ -1014,7 +1014,7 @@
         :skip-to -1
         :on-set (lambda ((arg0 sig-under))
           (let ((a1-0 (-> arg0 sig5-course spots)))
-            (vector-! (the-as vector (-> arg0 test-plane)) (the-as vector (-> a1-0 13)) (the-as vector (-> a1-0 12)))
+            (vector-! (the-as vector (-> arg0 test-plane)) (-> a1-0 13 center) (-> a1-0 12 center))
             )
           (vector-normalize! (-> arg0 test-plane) 1.0)
           (let ((v1-4 (get-task-by-type (-> arg0 ai-ctrl) sigt-wait-spot arg0)))
@@ -1360,7 +1360,7 @@
                          (logior! (-> arg1 waypoint-bits) (waypoint-bits wabits-0))
                          (process-release? arg1)
                          (sig-under-method-260 arg1)
-                         (move-to-point! (-> arg1 root) (the-as vector (-> arg1 sig5-course spots 20)))
+                         (move-to-point! (-> arg1 root) (-> arg1 sig5-course spots 20 center))
                          #f
                          )
                         ((not (logtest? (-> arg1 waypoint-bits) (waypoint-bits wabits-1)))
@@ -1401,7 +1401,7 @@
                  (s5-0 (-> v1-1 24))
                  )
             (let ((v1-2 (-> v1-1 25)))
-              (vector-! (the-as vector (-> arg0 test-plane)) (the-as vector v1-2) (the-as vector s5-0))
+              (vector-! (the-as vector (-> arg0 test-plane)) (-> v1-2 center) (-> s5-0 center))
               )
             (set! (-> arg0 test-plane y) 0.0)
             (vector-normalize! (-> arg0 test-plane) 1.0)
@@ -1448,9 +1448,7 @@
                                        (set! (-> s5-0 w) 1.0)
                                        (when (and (>= (vector4-dot (the-as vector (-> arg1 test-plane)) s5-0) 0.0)
                                                   (let ((f0-4 81920.0))
-                                                    (>= (* f0-4 f0-4)
-                                                        (vector-vector-xz-distance-squared (target-pos 0) (the-as vector (-> arg1 sig5-course spots 24)))
-                                                        )
+                                                    (>= (* f0-4 f0-4) (vector-vector-xz-distance-squared (target-pos 0) (-> arg1 sig5-course spots 24 center)))
                                                     )
                                                   )
                                          (set! v1-14 #t)

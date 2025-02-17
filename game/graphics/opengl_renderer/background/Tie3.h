@@ -30,6 +30,7 @@ class Tie3 : public BucketRenderer {
   Tie3(const std::string& name,
        int my_id,
        int level_id,
+       const std::vector<GLuint>* anim_slot_array,
        tfrag3::TieCategory category = tfrag3::TieCategory::NORMAL);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
@@ -130,6 +131,7 @@ class Tie3 : public BucketRenderer {
     std::vector<std::pair<int, int>> multidraw_offset_per_stripdraw;
     std::vector<GLsizei> multidraw_count_buffer;
     std::vector<void*> multidraw_index_offset_buffer;
+    u64 draw_mode = 0;  // strip or not, GL enum
   };
 
   void envmap_second_pass_draw(const Tree& tree,
@@ -168,7 +170,7 @@ class Tie3 : public BucketRenderer {
   } m_uniforms;
 
   EtieUniforms m_etie_uniforms, m_etie_base_uniforms;
-
+  const std::vector<GLuint>* m_anim_slot_array;
   static_assert(sizeof(WindWork) == 84 * 16);
 };
 

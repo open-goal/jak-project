@@ -39,10 +39,10 @@
 ;; definition for method 43 of type cpad-elevator
 (defmethod move-between-points ((this cpad-elevator) (vec vector) (point-a float) (point-b float))
   "Move between two points on the elevator's path
-@param vec TODO not sure
-@param point-a The first point fetched from the elevator's path
-@param point-b The second point fetched from the path
-@see [[path-control]] and [[elevator]]"
+   @param vec TODO not sure
+   @param point-a The first point fetched from the elevator's path
+   @param point-b The second point fetched from the path
+   @see [[path-control]] and [[elevator]]"
   (let ((path-point-a (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-a 'interp))
         (path-point-b (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-b 'interp))
         (elevator-trans (-> this root trans))
@@ -59,12 +59,7 @@
 ;; definition for method 45 of type cpad-elevator
 (defmethod commited-to-ride? ((this cpad-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
-  (let* ((target *target*)
-         (target-proc (if (type? target process-focusable)
-                          target
-                          )
-                      )
-         )
+  (let ((target-proc (the-as target (as-type *target* process-focusable))))
     (when target-proc
       (let* ((target-pos (get-trans target-proc 0))
              (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> this root trans)))
@@ -80,7 +75,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod configure-collision ((this cpad-elevator) (collide-with-jak? symbol))
   "Appropriately sets the collision on the elevator
-@param collide-with-jak? If set, the elevator will collide with Jak"
+   @param collide-with-jak? If set, the elevator will collide with Jak"
   (let ((prim (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1)))
     (cond
       (collide-with-jak?
@@ -121,10 +116,7 @@
       )
     )
   :code (behavior ()
-    (let ((frame-counter (current-time)))
-      (until (time-elapsed? frame-counter (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (until #f
@@ -185,7 +177,7 @@
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod init-plat! ((this cpad-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (let ((last-path-index (+ (-> this path curve num-cverts) -1)))
     (calc-dist-between-points! this 0 last-path-index)
     (calc-dist-between-points! this last-path-index 0)

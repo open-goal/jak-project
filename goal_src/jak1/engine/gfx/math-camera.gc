@@ -1,17 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
-
 (require "engine/math/quaternion-h.gc")
 (require "pc/pckernel-impl.gc")
 (require "engine/ps2/vu1-macros.gc")
 (require "engine/math/trigonometry.gc")
 (require "engine/math/transform-h.gc")
-
-;; name: math-camera.gc
-;; name in dgo: math-camera
-;; dgos: GAME, ENGINE
-
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; math camera basics
@@ -43,18 +37,14 @@
 ;; The fog-corrector stores a fog-end fog-start value that is corrected for the field of view.
 ;; the actual correction factor is computed in cam-update.gc
 (deftype fog-corrector (structure)
-  ((fog-end    float)
-   (fog-start  float)
-   )
-  )
-
+  ((fog-end   float)
+   (fog-start float)))
 
 (defun fog-corrector-setup ((corrector fog-corrector) (math-cam math-camera))
   "Set the fog corrector based on the supplied math-camera"
   (set! (-> corrector fog-end) (* (-> math-cam fog-end) (-> math-cam fov-correction-factor)))
   (set! (-> corrector fog-start) (* (-> math-cam fog-start) (-> math-cam fov-correction-factor)))
-  (none)
-  )
+  (none))
 
 (define *math-camera-fog-correction* (new 'global 'fog-corrector))
 
@@ -62,13 +52,11 @@
 
 (defun update-math-camera ((math-cam math-camera) (video-mode symbol) (aspect symbol))
   "Compute some one-time camera constants.  These should only change when changing aspect ratio."
-
   ;; the x/y ratio are frustum slopes
   (set! (-> math-cam x-ratio) (tan (* 0.5 (-> math-cam fov))))
   (if (= aspect 'aspect4x3)
-      (set! (-> math-cam y-ratio) (* (1/ ASPECT_4X3) (-> math-cam x-ratio)))
-      (set! (-> math-cam y-ratio) (* (1/ ASPECT_16X9) (-> math-cam x-ratio)))
-      )
+    (set! (-> math-cam y-ratio) (* (1/ ASPECT_4X3) (-> math-cam x-ratio)))
+    (set! (-> math-cam y-ratio) (* (1/ ASPECT_16X9) (-> math-cam x-ratio))))
   (with-pc
     (cond
       ((-> *pc-settings* use-vis?)
@@ -79,132 +67,93 @@
       ((real-movie?)
        ;; force the original 16x9 cropping during cutscenes.
        (if (<= (-> *pc-settings* aspect-ratio) ASPECT_16X9)
-           (set! (-> math-cam y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
-           (begin
-              (set! (-> math-cam y-ratio) (* (1/ ASPECT_16X9) (-> math-cam x-ratio)))
-              (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9))
-              )
-           )
-       )
+         (set! (-> math-cam y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
+         (begin
+           (set! (-> math-cam y-ratio) (* (1/ ASPECT_16X9) (-> math-cam x-ratio)))
+           (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9)))))
       (else
        ;; not using game vis, allow *extended* aspect ratios
        ;; there is no vertical cropping, and you can see more of the sides
        (set! (-> math-cam y-ratio) (* (1/ ASPECT_4X3) (-> math-cam x-ratio))) ;; same cropping as 4x3
        (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
-       )
-      )
-    )
-
+       )))
   ;; compute some culling constants. Not sure what these mean yet
   (let ((x-rat (-> math-cam x-ratio))
         (y-rat (-> math-cam y-ratio))
-        (cull-info (-> math-cam cull-info))
-        )
+        (cull-info (-> math-cam cull-info)))
     (let ((x-thing (/ (+ 1.0 (* 4.0 x-rat x-rat)) (+ 1.0 (* x-rat x-rat))))
           (y-thing (/ (+ 1.0 (* 4.0 y-rat y-rat)) (+ 1.0 (* y-rat y-rat)))))
       (set! (-> cull-info x-fact) (/ (+ 1.0 (* 4.0 x-rat x-rat)) (* x-rat (sqrtf (+ 1.0 (* 16.0 x-rat x-rat))))))
       (set! (-> cull-info y-fact) (/ (+ 1.0 (* 4.0 y-rat y-rat)) (* y-rat (sqrtf (+ 1.0 (* 16.0 y-rat y-rat))))))
       (set! (-> cull-info z-fact)
-            (sqrtf (+ (* (+ -4.0 y-thing) (+ -4.0 y-thing) y-rat y-rat) (* (+ -1.0 y-thing) (+ -1.0 y-thing))))
-            )
-      )
-
+            (sqrtf (+ (* (+ -4.0 y-thing) (+ -4.0 y-thing) y-rat y-rat) (* (+ -1.0 y-thing) (+ -1.0 y-thing))))))
     ;; radius of sphere containing camera origin and intersection of near plane and frustum
     (let* ((near-x (* x-rat (-> math-cam d)))
            (near-y (* y-rat (-> math-cam d)))
            (near-corner-dist-sqr (+ (* near-x near-x) (* near-y near-y)))
-           (near-z (-> math-cam d))
-           )
-      (set! (-> cull-info cam-radius) (sqrtf (+ near-corner-dist-sqr (* near-z near-z))))
-      )
-
+           (near-z (-> math-cam d)))
+      (set! (-> cull-info cam-radius) (sqrtf (+ near-corner-dist-sqr (* near-z near-z)))))
     ;; frustum plane equations coefficients?
     (let* ((dx-rat-2 (* (-> math-cam d) (-> math-cam x-ratio)))
            (d-temp-2 (-> math-cam d))
            (dx-rat-times-4 (* 4.0 dx-rat-2))
-           (d-temp-3 (-> math-cam d))
-           )
+           (d-temp-3 (-> math-cam d)))
       (let ((inverse-x-len (/ 1.0 (sqrtf (+ (* dx-rat-2 dx-rat-2) (* d-temp-2 d-temp-2)))))
-            (inverse-x-len-2 (/ 1.0 (sqrtf (+ (* dx-rat-times-4 dx-rat-times-4) (* d-temp-3 d-temp-3)))))
-            )
+            (inverse-x-len-2 (/ 1.0 (sqrtf (+ (* dx-rat-times-4 dx-rat-times-4) (* d-temp-3 d-temp-3))))))
         (set! (-> cull-info xz-dir-ax) (* dx-rat-2 inverse-x-len))
         (set! (-> cull-info xz-dir-az) (* d-temp-2 inverse-x-len))
         (set! (-> cull-info xz-dir-bx) (* dx-rat-times-4 inverse-x-len-2))
-        (set! (-> cull-info xz-dir-bz) (* d-temp-3 inverse-x-len-2))
-        )
-      (set! (-> cull-info xz-cross-ab) (- (* dx-rat-2 d-temp-3) (* d-temp-2 dx-rat-times-4)))
-      )
-
+        (set! (-> cull-info xz-dir-bz) (* d-temp-3 inverse-x-len-2)))
+      (set! (-> cull-info xz-cross-ab) (- (* dx-rat-2 d-temp-3) (* d-temp-2 dx-rat-times-4))))
     (let* ((dy-rat (* (-> math-cam d) (-> math-cam y-ratio)))
            (d-temp-4 (-> math-cam d))
            (dy-rat-times-4 (* 4.0 dy-rat))
-           (d-temp-5 (-> math-cam d))
-           )
+           (d-temp-5 (-> math-cam d)))
       (let ((inverse-y-len (/ 1.0 (sqrtf (+ (* dy-rat dy-rat) (* d-temp-4 d-temp-4)))))
-            (inverse-y-len-2 (/ 1.0 (sqrtf (+ (* dy-rat-times-4 dy-rat-times-4) (* d-temp-5 d-temp-5)))))
-            )
+            (inverse-y-len-2 (/ 1.0 (sqrtf (+ (* dy-rat-times-4 dy-rat-times-4) (* d-temp-5 d-temp-5))))))
         (set! (-> cull-info yz-dir-ay) (* dy-rat inverse-y-len))
         (set! (-> cull-info yz-dir-az) (* d-temp-4 inverse-y-len))
         (set! (-> cull-info yz-dir-by) (* dy-rat-times-4 inverse-y-len-2))
-        (set! (-> cull-info yz-dir-bz) (* d-temp-5 inverse-y-len-2))
-        )
-      (set! (-> cull-info yz-cross-ab) (- (* dy-rat d-temp-5) (* d-temp-4 dy-rat-times-4)))
-      )
-    )
-
+        (set! (-> cull-info yz-dir-bz) (* d-temp-5 inverse-y-len-2)))
+      (set! (-> cull-info yz-cross-ab) (- (* dy-rat d-temp-5) (* d-temp-4 dy-rat-times-4)))))
   ;; fog setup
   (fog-corrector-setup *math-camera-fog-correction* math-cam)
   ;; reset camera rotation
   (matrix-identity! (-> math-cam camera-rot))
-
   ;;;;;;;;;;;;;; Perspective matrix setup
-
   ;; these min/max depths are the values we'd want to write to the 24-bit integer depth buffer
   (let ((min-depth 100.0)
         (max-depth 16760631.0) ;; almost 2^24.
         )
     (let ((f0-21 16777115.0))) ;; unused. this is actually float closest to 2^24
-
     ;; next, compute the fog slope d(8bit_integer_fog_value)/d(game_world_distance).
     ;; the final fog values we want are an 8-bit integer.
     ;; note that this is the fog at the near plane too.
-    (let ((fog-slope
-           (/ (* (-> math-cam d) (- (-> math-cam fog-min) (-> math-cam fog-max)))
-              (- (-> *math-camera-fog-correction* fog-end)
-                 (-> *math-camera-fog-correction* fog-start)
-                 )
-              )
-            )
+    (let ((fog-slope (/ (* (-> math-cam d) (- (-> math-cam fog-min) (-> math-cam fog-max)))
+                        (- (-> *math-camera-fog-correction* fog-end) (-> *math-camera-fog-correction* fog-start))))
           ;; this is half the range of the depth buffer.
-          (depth-buffer-half-range (* -0.5 (- max-depth min-depth)))
-          )
+          (depth-buffer-half-range (* -0.5 (- max-depth min-depth))))
       ;; this is the slope to convert game world depths to depth buffer depths
       (let ((half-depth-buffer-slope (/ depth-buffer-half-range (* (-> math-cam d) (- (-> math-cam f) (-> math-cam d)))))
-            (cam-fov-mult (-> math-cam fov-correction-factor))
-            )
-
+            (cam-fov-mult (-> math-cam fov-correction-factor)))
         ;; finally, build the actual matrix.
         ;; x/y are just the usual scaling
-        (set! (-> math-cam perspective vector 0 x) (* cam-fov-mult (- (/ (-> math-cam x-pix) (* (-> math-cam x-ratio) (-> math-cam d))))))
-        (set! (-> math-cam perspective vector 1 y) (* cam-fov-mult (- (/ (-> math-cam y-pix) (* (-> math-cam y-ratio) (-> math-cam d))))))
+        (set! (-> math-cam perspective vector 0 x)
+              (* cam-fov-mult (- (/ (-> math-cam x-pix) (* (-> math-cam x-ratio) (-> math-cam d))))))
+        (set! (-> math-cam perspective vector 1 y)
+              (* cam-fov-mult (- (/ (-> math-cam y-pix) (* (-> math-cam y-ratio) (-> math-cam d))))))
         ;; depth scaling
         (set! (-> math-cam perspective vector 2 z) (* cam-fov-mult (+ (-> math-cam f) (-> math-cam d)) half-depth-buffer-slope))
         ;; depth to fog
         (set! (-> math-cam perspective vector 2 w) (* (/ cam-fov-mult (-> math-cam d)) fog-slope))
-
-        (set! (-> math-cam perspective vector 3 z) (* -2.0 half-depth-buffer-slope (-> math-cam f) (-> math-cam d) cam-fov-mult))
-        )
-
+        (set! (-> math-cam perspective vector 3 z)
+              (* -2.0 half-depth-buffer-slope (-> math-cam f) (-> math-cam d) cam-fov-mult)))
       ;; hvdf = horizontal, vertical, depth, fog offsets to be applied after transform.
       (let ((hvdf-x 2048.0)
             (hvdf-y 2048.0)
             (hvdf-w (/ (- (* (-> *math-camera-fog-correction* fog-end) (-> math-cam fog-max))
-                          (* (-> *math-camera-fog-correction* fog-start) (-> math-cam fog-min))
-                          )
-                       (- (-> *math-camera-fog-correction* fog-end) (-> *math-camera-fog-correction* fog-start))
-                       )
-                    )
-            )
+                          (* (-> *math-camera-fog-correction* fog-start) (-> math-cam fog-min)))
+                       (- (-> *math-camera-fog-correction* fog-end) (-> *math-camera-fog-correction* fog-start)))))
         (let ((hvdf-z (* 0.5 (+ max-depth min-depth))))
           (set! (-> math-cam hmge-scale x) (/ 1.0 (-> math-cam x-clip)))
           (set! (-> math-cam hmge-scale y) (/ 1.0 (-> math-cam y-clip)))
@@ -228,47 +177,30 @@
           ;; #xffffffff, which overflows the 24-bit z buffer.
           ;; cheating this by 1 bit seems to fix it.
           (#when PC_PORT
-                ;; #x4b002032 -> #x4b002031
-                (set! (-> math-cam isometric vector 3 z) (the-as float (1- (the-as int (-> math-cam isometric vector 3 z)))))
-                ;; also do mirror game check here.
-                (when (pc-cheats? (-> *pc-settings* cheats) mirror)
-                  (*! (-> math-cam perspective vector 0 x) -1.)
-                  )
-                )
-          )
+            ;; #x4b002032 -> #x4b002031
+            (set! (-> math-cam isometric vector 3 z) (the-as float (1- (the-as int (-> math-cam isometric vector 3 z)))))
+            ;; also do mirror game check here.
+            (when (pc-cheats? (-> *pc-settings* cheats) mirror)
+              (*! (-> math-cam perspective vector 0 x) -1.))))
         (set! (-> math-cam isometric vector 3 w) fog-slope)
-
         ;; perspective matrix
         (let ((persp-xx (-> math-cam perspective vector 0 x))
               (persp-yy (-> math-cam perspective vector 1 y))
-              (persp-x (* -1.9996 (-> math-cam perspective vector 0 x)))
-              )
+              (persp-x (* -1.9996 (-> math-cam perspective vector 0 x))))
           (let ((sprite-row-0 (-> math-cam sprite-2d)))
             (set! (-> sprite-row-0 vector 0 x) persp-x)
             (set! (-> sprite-row-0 vector 0 y) 0.0)
             (set! (-> sprite-row-0 vector 0 z) 0.0)
-            (set! (-> sprite-row-0 vector 0 w) 0.0)
-            )
+            (set! (-> sprite-row-0 vector 0 w) 0.0))
           (set-vector! (-> math-cam sprite-2d vector 1) 0.0 (- (* (/ persp-yy persp-xx) persp-x)) 0.0 0.0)
           (set-vector! (-> math-cam sprite-2d vector 2) 0.0 0.0 (- persp-x) 0.0)
-          (set-vector!
-            (-> math-cam sprite-2d vector 3)
-            0.0
-            0.0
-            (* 500000000.0 persp-x)
-            (* 60.0 persp-x (-> math-cam pfog0))
-            )
-          )
+          (set-vector! (-> math-cam sprite-2d vector 3) 0.0 0.0 (* 500000000.0 persp-x) (* 60.0 persp-x (-> math-cam pfog0))))
         (set! (-> math-cam sprite-2d-hvdf quad) (-> math-cam hvdf-off quad))
         (set! (-> math-cam sprite-2d-hvdf x) 2048.0)
         (set! (-> math-cam sprite-2d-hvdf y) 2048.0)
         (set! (-> math-cam sprite-2d-hvdf z) (-> math-cam hvdf-off z))
         (set! (-> math-cam pfog0) fog-slope)
-        (set! (-> math-cam pfog1) hvdf-w)
-        )
-      )
-    )
-
+        (set! (-> math-cam pfog1) hvdf-w))))
   ;; sets up some giftags, but they are totally wrong.
   ;; they use 32-bit variables to store 64-bit parts of the tag.
   0
@@ -279,36 +211,25 @@
       (set! (-> vis-gif-0 0 fog0) (the-as uint pfog))
       (set! (-> vis-gif-0 0 strip) (the-as uint #x301e4000))
       (set! (-> vis-gif-0 0 regs) (the-as uint 1042))
-      (set! (-> vis-gif-0 0 fan) (the-as uint #x301ec000))
-      )
+      (set! (-> vis-gif-0 0 fan) (the-as uint #x301ec000)))
     (let ((vis-gif-1 (&-> math-cam gifgr)))
       (set! (-> vis-gif-1 0) (the-as vis-gif-tag pfog))
       (set! (-> vis-gif-1 1) (the-as vis-gif-tag (make-u128 0 (shl #x20164000 32))))
       (set! (-> vis-gif-1 2) (the-as vis-gif-tag 65))
-      (set! (-> vis-gif-1 3) (the-as vis-gif-tag #x301ec000))
-      )
+      (set! (-> vis-gif-1 3) (the-as vis-gif-tag #x301ec000)))
     (let ((vis-gif-1-again (-> math-cam vis-gifs)))
       (set! (-> vis-gif-1-again 0 fog0) (the-as uint pfog))
       (set! (-> vis-gif-1-again 0 strip) (the-as uint #x303e4000))
       (set! (-> vis-gif-1-again 0 regs) (the-as uint 1042))
-      (set! (-> vis-gif-1-again 0 fan) (the-as uint #x303ec000))
-      )
+      (set! (-> vis-gif-1-again 0 fan) (the-as uint #x303ec000)))
     (let ((vis-gif-1-again-again (-> math-cam vis-gifs)))
       (set! (-> vis-gif-1-again-again 0 fog0) (the-as uint pfog))
       (set! (-> vis-gif-1-again-again 0 strip) (the-as uint #x303e4000))
       (set! (-> vis-gif-1-again-again 0 regs) (the-as uint 1042))
-      (set! (-> vis-gif-1-again-again 0 fan) (the-as uint #x303ec000))
-      )
-    )
-
+      (set! (-> vis-gif-1-again-again 0 fan) (the-as uint #x303ec000))))
   ;; update sprite distort vectors
-  (if (nonzero? sprite-distorter-generate-tables)
-      (sprite-distorter-generate-tables)
-      )
-  math-cam
-  )
-
-
+  (if (nonzero? sprite-distorter-generate-tables) (sprite-distorter-generate-tables))
+  math-cam)
 
 (defmethod new math-camera ((allocation symbol) (type-to-make type))
   "Set up a new math-camera in NTSC mode."
@@ -333,9 +254,7 @@
     (set! (-> gp-0 reset) 1)
     (set! (-> gp-0 smooth-step) 0.0)
     (set! (-> gp-0 smooth-t) 0.0)
-    (update-math-camera gp-0 'ntsc 'aspect4x3)
-    )
-  )
+    (update-math-camera gp-0 'ntsc 'aspect4x3)))
 
 (define *math-camera* (new 'global 'math-camera))
 
@@ -343,48 +262,29 @@
   "Unused camera smoothing"
   (set! (-> *math-camera* smooth-step) (/ 1.0 arg0))
   (set! (-> *math-camera* smooth-t) arg1)
-  (matrix->quaternion (-> *math-camera* inv-camera-rot-smooth-from) (-> *math-camera* inv-camera-rot-smooth))
-  )
+  (matrix->quaternion (-> *math-camera* inv-camera-rot-smooth-from) (-> *math-camera* inv-camera-rot-smooth)))
 
 (defun move-target-from-pad ((trans transform) (pad-idx int))
   "Unused function to adjust trans based on inputs from the pad.
    This function must be extremely old because it takes a non-quaternion transform,
    and all target stuff uses quaternions."
-
   ;; local-trans is the translation in the camera frame.
   (let ((local-trans (new-stack-vector0)))
     ;; circle/square move camera relative x (left and right)
-    (set! (-> local-trans x) (cond
-                               ((cpad-hold? pad-idx circle)
-                                -80.0
-                                )
-                               ((cpad-hold? pad-idx square)
-                                80.0
-                                )
-                               (else
-                                 0.0
-                                 )
-                               )
-          )
-
+    (set! (-> local-trans x)
+          (cond
+            ((cpad-hold? pad-idx circle) -80.0)
+            ((cpad-hold? pad-idx square) 80.0)
+            (else 0.0)))
     ;; no way to move camera relative y (up/down)
     (set! (-> local-trans y) 0.0)
-
     ;; in and out movement
-    (set! (-> local-trans z) (cond
-                               ((cpad-hold? pad-idx down)
-                                -80.0
-                                )
-                               ((cpad-hold? pad-idx up)
-                                80.0
-                                )
-                               (else
-                                 0.0
-                                 )
-                               )
-          )
+    (set! (-> local-trans z)
+          (cond
+            ((cpad-hold? pad-idx down) -80.0)
+            ((cpad-hold? pad-idx up) 80.0)
+            (else 0.0)))
     (set! (-> local-trans w) 1.0)
-
     ;; rotate this into world frame
     (let ((inv-cam-rot (new-stack-vector0))
           (cam-rot-mat (new-stack-matrix0)))
@@ -393,39 +293,20 @@
       ;; convert rotation to rotation matrix.
       (matrix-rotate-zyx! cam-rot-mat (-> trans rot))
       ;; and rotate the translation.
-      (vector-matrix*! local-trans local-trans cam-rot-mat)
-      )
-
+      (vector-matrix*! local-trans local-trans cam-rot-mat))
     ;; and update the transform
-    (vector+! (-> trans trans) (-> trans trans) local-trans)
-    )
-
+    (vector+! (-> trans trans) (-> trans trans) local-trans))
   ;; don't forget to fix w.
   (set! (-> trans trans w) 1.0)
-
   ;; global translation
-  (if (cpad-hold? pad-idx r1)
-      (+! (-> trans trans y) 80.0)
-      )
-  (if (cpad-hold? pad-idx r2)
-      (+! (-> trans trans y) -80.0)
-      )
-
+  (if (cpad-hold? pad-idx r1) (+! (-> trans trans y) 80.0))
+  (if (cpad-hold? pad-idx r2) (+! (-> trans trans y) -80.0))
   ;; rotation (don't allow camera roll)
-  (if (cpad-hold? pad-idx x)
-      (+! (-> trans rot x) 546.13336)
-      )
-  (if (cpad-hold? pad-idx triangle)
-      (+! (-> trans rot x) -546.13336)
-      )
-  (if (cpad-hold? pad-idx left)
-      (+! (-> trans rot y) 546.13336)
-      )
-  (if (cpad-hold? pad-idx right)
-      (+! (-> trans rot y) -546.13336)
-      )
-  trans
-  )
+  (if (cpad-hold? pad-idx x) (+! (-> trans rot x) 546.13336))
+  (if (cpad-hold? pad-idx triangle) (+! (-> trans rot x) -546.13336))
+  (if (cpad-hold? pad-idx left) (+! (-> trans rot y) 546.13336))
+  (if (cpad-hold? pad-idx right) (+! (-> trans rot y) -546.13336))
+  trans)
 
 (defun transform-point-vector! ((arg0 vector) (arg1 vector))
   "Apply camera transformation to a point. Return true if it is visible or not.
@@ -442,8 +323,7 @@
          (vf28 :class vf)
          (vf29 :class vf)
          (vf30 :class vf)
-         (vf31 :class vf)
-         )
+         (vf31 :class vf))
     (init-vf0-vector)
     0
     (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
@@ -464,15 +344,12 @@
       (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
       (.wait.vf)
       ;;(.cfc2.i v1-7 Clipping)
-      (.mul.vf vf28 vf28 Q :mask #b111)
+      (.mul.vf.xyz vf28 vf28 Q)
       (.mul.vf vf23 vf23 Q)
       (.add.vf vf28 vf28 vf30)
-      (.max.x.vf vf28 vf28 vf0 :mask #b1000)
+      (.max.x.vf.w vf28 vf28 vf0)
       (.svf (&-> arg0 quad) vf28)
-      (zero? (logand clip 63))
-      )
-    )
-  )
+      (zero? (logand clip 63)))))
 
 (defun transform-point-qword! ((arg0 vector4w) (arg1 vector))
   "Apply camera transformation to point, returning fixed point 28.4 position
@@ -488,62 +365,48 @@
          (vf28 :class vf)
          (vf29 :class vf)
          (vf30 :class vf)
-         (vf31 :class vf)
-         )
-   (init-vf0-vector)
-   (let ((v1-0 0))
-    )
-
-   ;; this camera matrix has both the projection and camera translation/rotation
-   (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
-   (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
-   (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
-   (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
-
-   ;; scaling
-   (.lvf vf29 (&-> *math-camera* hmge-scale quad))
-
-   ;; offset
-   (.lvf vf30 (&-> *math-camera* hvdf-off quad))
-
-   ;; input point
-   (.lvf vf28 (&-> arg1 quad))
-
-   ;; matrix multiply, result in vf28
-   (.mul.x.vf acc vf24 vf28)
-   (.add.mul.y.vf acc vf25 vf28 acc)
-   (.add.mul.z.vf acc vf26 vf28 acc)
-   (.add.mul.w.vf vf28 vf27 vf0 acc)
-
-
-   (.add.w.vf vf23 vf0 vf0) ;; set w = 1.0
-
-   ;; apply hmge scaling. the result of this multiply sets clipping flags appropriately
-   (.mul.vf vf31 vf28 vf29) ;; scale.
-   ;;(TODO.VCLIP vf31 vf31)
-   (let ((clip (vu-clip vf31 0))) ;; clip!
-
-     ;; perspective divide
-     (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
-     (.wait.vf)
-     ;;(.cfc2.i v1-7 Clipping)
-     ;; perspective
-     (.mul.vf vf28 vf28 Q :mask #b111)
-     ;; compute scale factor (w was 1.0)
-     (.mul.vf vf23 vf23 Q)
-     ;; apply hvdf offsets
-     (.add.vf vf28 vf28 vf30)
-     ;; saturate fog
-     (.max.x.vf vf28 vf28 vf0 :mask #b1000)
-     ;; convert to GS fixed point
-     (vftoi4.xyzw vf28 vf28)
-     ;; store result!
-     (.svf (&-> arg0 quad) vf28)
-     ;; return result of clipping.
-     (zero? (logand clip 63))
-     )
-   )
-  )
+         (vf31 :class vf))
+    (init-vf0-vector)
+    (let ((v1-0 0)))
+    ;; this camera matrix has both the projection and camera translation/rotation
+    (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
+    (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
+    (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
+    (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
+    ;; scaling
+    (.lvf vf29 (&-> *math-camera* hmge-scale quad))
+    ;; offset
+    (.lvf vf30 (&-> *math-camera* hvdf-off quad))
+    ;; input point
+    (.lvf vf28 (&-> arg1 quad))
+    ;; matrix multiply, result in vf28
+    (.mul.x.vf acc vf24 vf28)
+    (.add.mul.y.vf acc vf25 vf28 acc)
+    (.add.mul.z.vf acc vf26 vf28 acc)
+    (.add.mul.w.vf vf28 vf27 vf0 acc)
+    (.add.w.vf vf23 vf0 vf0) ;; set w = 1.0
+    ;; apply hmge scaling. the result of this multiply sets clipping flags appropriately
+    (.mul.vf vf31 vf28 vf29) ;; scale.
+    ;;(TODO.VCLIP vf31 vf31)
+    (let ((clip (vu-clip vf31 0))) ;; clip!
+      ;; perspective divide
+      (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
+      (.wait.vf)
+      ;;(.cfc2.i v1-7 Clipping)
+      ;; perspective
+      (.mul.vf.xyz vf28 vf28 Q)
+      ;; compute scale factor (w was 1.0)
+      (.mul.vf vf23 vf23 Q)
+      ;; apply hvdf offsets
+      (.add.vf vf28 vf28 vf30)
+      ;; saturate fog
+      (.max.x.vf.w vf28 vf28 vf0)
+      ;; convert to GS fixed point
+      (vftoi4.xyzw vf28 vf28)
+      ;; store result!
+      (.svf (&-> arg0 quad) vf28)
+      ;; return result of clipping.
+      (zero? (logand clip 63)))))
 
 (defun transform-point-vector-scale! ((arg0 vector) (arg1 vector))
   "Similar to transform-point-qword! but returns the scale factor instead."
@@ -559,39 +422,35 @@
          (vf28 :class vf)
          (vf29 :class vf)
          (vf30 :class vf)
-         (vf31 :class vf)
-         )
-   (init-vf0-vector)
-   (let ((v1-0 0))
-    )
-   (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
-   (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
-   (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
-   (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
-   (.lvf vf29 (&-> *math-camera* hmge-scale quad))
-   (.lvf vf30 (&-> *math-camera* hvdf-off quad))
-   (.lvf vf28 (&-> arg1 quad))
-   (.mul.x.vf acc vf24 vf28)
-   (.add.mul.y.vf acc vf25 vf28 acc)
-   (.add.mul.z.vf acc vf26 vf28 acc)
-   (.add.mul.w.vf vf28 vf27 vf0 acc)
-   (.add.w.vf vf23 vf0 vf0)
-   (.mul.vf vf31 vf28 vf29)
-   ;;(TODO.VCLIP vf31 vf31) clip result was unused
-   (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
-   (.wait.vf)
-   ;;(.cfc2.i v1-7 Clipping)
-   (.mul.vf vf28 vf28 Q :mask #b111)
-   (.mul.vf vf23 vf23 Q)
-   (.add.vf vf28 vf28 vf30)
-   (.max.x.vf vf28 vf28 vf0 :mask #b1000)
-   (.svf (&-> arg0 quad) vf28)
-   ;;(let ((a0-2 (zero? (logand v1-7 63))))
-   ;; )
-   (.mov v0-0 vf23)
-   v0-0
-   )
-  )
+         (vf31 :class vf))
+    (init-vf0-vector)
+    (let ((v1-0 0)))
+    (.lvf vf24 (&-> *math-camera* camera-temp vector 0 quad))
+    (.lvf vf25 (&-> *math-camera* camera-temp vector 1 quad))
+    (.lvf vf26 (&-> *math-camera* camera-temp vector 2 quad))
+    (.lvf vf27 (&-> *math-camera* camera-temp vector 3 quad))
+    (.lvf vf29 (&-> *math-camera* hmge-scale quad))
+    (.lvf vf30 (&-> *math-camera* hvdf-off quad))
+    (.lvf vf28 (&-> arg1 quad))
+    (.mul.x.vf acc vf24 vf28)
+    (.add.mul.y.vf acc vf25 vf28 acc)
+    (.add.mul.z.vf acc vf26 vf28 acc)
+    (.add.mul.w.vf vf28 vf27 vf0 acc)
+    (.add.w.vf vf23 vf0 vf0)
+    (.mul.vf vf31 vf28 vf29)
+    ;;(TODO.VCLIP vf31 vf31) clip result was unused
+    (.div.vf Q vf0 vf31 :fsf #b11 :ftf #b11)
+    (.wait.vf)
+    ;;(.cfc2.i v1-7 Clipping)
+    (.mul.vf.xyz vf28 vf28 Q)
+    (.mul.vf vf23 vf23 Q)
+    (.add.vf vf28 vf28 vf30)
+    (.max.x.vf.w vf28 vf28 vf0)
+    (.svf (&-> arg0 quad) vf28)
+    ;;(let ((a0-2 (zero? (logand v1-7 63))))
+    ;; )
+    (.mov v0-0 vf23)
+    v0-0))
 
 (defun init-for-transform ((arg0 matrix))
   "Sets up VU0 registers with camera info.
@@ -614,64 +473,49 @@
          (vf6 :class vf)
          (vf7 :class vf)
          (vf8 :class vf)
-         (vf9 :class vf)
-         )
+         (vf9 :class vf))
     (let ((gp-0 (new-stack-matrix0))
           (s5-0 (new-stack-matrix0))
           (s4-0 (new 'stack 'vector4s-3))
           (s3-0 (new-stack-vector0))
-          (s2-0 (new 'stack 'vector4s-3))
-          )
+          (s2-0 (new 'stack 'vector4s-3)))
       (matrix*! s5-0 arg0 (-> *math-camera* camera-temp))
       (matrix-3x3-inverse-transpose! gp-0 arg0)
-      (let ((v1-3 s3-0))
-        (set! (-> v1-3 x) 0.4)
-        (set! (-> v1-3 y) 0.4)
-        (set! (-> v1-3 z) 0.4)
-        (set! (-> v1-3 w) 1.0)
-        )
+      (let ((v1-3 s3-0)) (set! (-> v1-3 x) 0.4) (set! (-> v1-3 y) 0.4) (set! (-> v1-3 z) 0.4) (set! (-> v1-3 w) 1.0))
       (let ((v1-4 (-> s4-0 data)))
         (set! (-> v1-4 0) 1.0)
         (set! (-> v1-4 1) 1.0)
         (set! (-> v1-4 2) 1.0)
-        (set! (-> v1-4 3) 1.0)
-        )
+        (set! (-> v1-4 3) 1.0))
       (let ((v1-5 (&-> s4-0 data 4)))
         (set! (-> v1-5 0) 0.0)
         (set! (-> v1-5 1) 0.0)
         (set! (-> v1-5 2) 0.0)
-        (set! (-> v1-5 3) 1.0)
-        )
+        (set! (-> v1-5 3) 1.0))
       (let ((v1-6 (&-> s4-0 data 8)))
         (set! (-> v1-6 0) 0.0)
         (set! (-> v1-6 1) 0.0)
         (set! (-> v1-6 2) 0.0)
-        (set! (-> v1-6 3) 1.0)
-        )
+        (set! (-> v1-6 3) 1.0))
       (let ((v1-7 (-> s2-0 data)))
         (set! (-> v1-7 0) 1.0)
         (set! (-> v1-7 1) 0.0)
         (set! (-> v1-7 2) 0.0)
-        (set! (-> v1-7 3) 1.0)
-        )
+        (set! (-> v1-7 3) 1.0))
       (let ((v1-8 (&-> s2-0 data 4)))
         (set! (-> v1-8 0) 0.0)
         (set! (-> v1-8 1) 1.0)
         (set! (-> v1-8 2) 0.0)
-        (set! (-> v1-8 3) 1.0)
-        )
+        (set! (-> v1-8 3) 1.0))
       (let ((v1-9 (&-> s2-0 data 8)))
         (set! (-> v1-9 0) 0.0)
         (set! (-> v1-9 1) 0.0)
         (set! (-> v1-9 2) 1.0)
-        (set! (-> v1-9 3) 1.0)
-        )
+        (set! (-> v1-9 3) 1.0))
       (.lvf vf7 (&-> *math-camera* hmge-scale quad))
       (.lvf vf8 (&-> *math-camera* hvdf-off quad))
       (.lvf vf9 (&-> *math-camera* giftex))
-      (let ((v1-13 255))
-        (.mov vf6 v1-13)
-        )
+      (let ((v1-13 255)) (.mov vf6 v1-13))
       ;;(.mov v1-14 vf6)
       (.itof.vf vf6 vf6)
       (.svf (&-> *transform-regs* vf7) vf7)
@@ -688,13 +532,8 @@
       (set! (-> *transform-regs* vf23) (-> s2-0 quad 0))
       (set! (-> *transform-regs* vf24) (-> s2-0 quad 1))
       (set! (-> *transform-regs* vf25) (-> s2-0 quad 2))
-
       (set! (-> *transform-regs* vf27) (-> s4-0 quad 0))
       (set! (-> *transform-regs* vf28) (-> s4-0 quad 1))
       (set! (-> *transform-regs* vf29) (-> s4-0 quad 2))
-      (set! (-> *transform-regs* vf26) (-> s3-0 quad))
-
-      )
-    (none)
-    )
-  )
+      (set! (-> *transform-regs* vf26) (-> s3-0 quad)))
+    (none)))

@@ -489,7 +489,7 @@
       )
     (quaternion-set! (-> self root quat) 0.0 (-> s4-8 x) 0.0 (-> s4-8 y))
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (set! (-> self start-y) (-> self root trans y))
   (set! (-> self end-y) (+ (-> arg0 y) (-> arg1 height)))
   (set! (-> self vulnerable) #f)
@@ -502,7 +502,7 @@
 
 (when (or (zero? *prebot-sword-color-curve*) (!= loading-level global))
   (set! *prebot-sword-color-curve* (new 'loading-level 'curve-color-piecewise))
-  (curve-color-piecewise-method-10 *prebot-sword-color-curve* 2 'loading-level (the-as uint #t))
+  (allocate! *prebot-sword-color-curve* 2 'loading-level #t)
   )
 
 (set! (-> *prebot-sword-color-curve* pts data 0 first) 0.0)
@@ -527,7 +527,7 @@
 
 (when (or (zero? *prebot-sword-white-red-curve*) (!= loading-level global))
   (set! *prebot-sword-white-red-curve* (new 'loading-level 'curve-color-piecewise))
-  (curve-color-piecewise-method-10 *prebot-sword-white-red-curve* 3 'loading-level (the-as uint #t))
+  (allocate! *prebot-sword-white-red-curve* 3 'loading-level #t)
   )
 
 (set! (-> *prebot-sword-white-red-curve* pts data 0 first) 0.0)
@@ -595,15 +595,15 @@
 
 (set! (-> *prebot-sword-color-array* uv-repeat-dist) 40960.0)
 
-(set! (-> *prebot-sword-color-array* lie-mode) (the-as uint 0))
+(set! (-> *prebot-sword-color-array* lie-mode) (lie-mode appearance0))
 
 (set! (-> *prebot-sword-color-array* max-age) (seconds 0.3))
 
 (if #f
     (set! (-> *prebot-sword-color-array* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+          (lookup-texture-id-by-name (the-as string #f) (the-as string #f))
           )
-    (set! (-> *prebot-sword-color-array* tex-id) (the-as uint #x100300))
+    (set! (-> *prebot-sword-color-array* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 (set! (-> *prebot-sword-color-array* width-curve) (the-as curve2d-piecewise *prebot-sword-width-curve*))
@@ -616,7 +616,7 @@
 
 (set! (-> *prebot-sword-color-array* zbuffer?) #t)
 
-(set! (-> *prebot-sword-color-array* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *prebot-sword-color-array* lie-vector) *up-vector*)
 
 (set! (-> *prebot-sword-color-array* use-tape-mode?) #t)
 
@@ -649,8 +649,8 @@
     (set! (-> self root) s2-0)
     )
   (set! (-> self root pause-adjust-distance) 409600.0)
-  (set! (-> self root trans quad) (-> arg1 quad))
-  (set! (-> self prev-position quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) arg1)
+  (vector-copy! (-> self prev-position) arg1)
   (set! (-> self old-target-dist) 204800.0)
   (set! (-> self prefix) arg0)
   (initialize-skeleton
@@ -681,12 +681,10 @@
     (set! (-> s5-1 joint0) 3)
     (set! (-> s5-1 joint1) 5)
     (set! (-> s5-1 appearance) *prebot-sword-color-array*)
-    (set! (-> *prebot-sword-color-array* tex-id)
-          (the-as uint (lookup-texture-id-by-name "sword-trail-low" (the-as string #f)))
-          )
+    (set! (-> *prebot-sword-color-array* tex-id) (lookup-texture-id-by-name "sword-trail-low" (the-as string #f)))
     (let* ((v1-43 (estimate-light-trail-mem-usage
                     (the-as uint (-> s5-1 max-num-crumbs))
-                    (the-as uint (= (-> s5-1 appearance lie-mode) 3))
+                    (the-as uint (= (-> s5-1 appearance lie-mode) (lie-mode use-two-strips)))
                     )
                   )
            (s4-2 (get-process *default-dead-pool* weapon-trail-tracker (+ v1-43 8192) 1))
@@ -747,7 +745,7 @@
     (set! (-> self root) s4-0)
     )
   (set! (-> self root pause-adjust-distance) 409600.0)
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-copy! (-> self root quat) arg1)
   (initialize-skeleton
     self
@@ -790,7 +788,7 @@
     (set! (-> self root) s4-0)
     )
   (set! (-> self root pause-adjust-distance) 409600.0)
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) arg1)
   (set! (-> self prefix) arg0)
   (initialize-skeleton
     self
@@ -849,7 +847,7 @@
     (set! (-> self root) s3-0)
     )
   (set! (-> self root pause-adjust-distance) 409600.0)
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) arg1)
   (set! (-> self prefix) arg0)
   (initialize-skeleton
     self
@@ -889,6 +887,7 @@
   )
 
 (defmethod init-from-entity! ((this prebot) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -1046,7 +1045,7 @@
     (the-as pair 0)
     )
   (logior! (-> this mask) (process-mask enemy))
-  (set! (-> this original-position quad) (-> this root trans quad))
+  (vector-copy! (-> this original-position) (-> this root trans))
   (init (-> this position) (-> this original-position) 0.004096 2048.0 0.125)
   (set! (-> this draw light-index) (the-as uint 10))
   (dotimes (v1-64 28)

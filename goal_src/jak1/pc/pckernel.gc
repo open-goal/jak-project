@@ -1,90 +1,85 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
 (require "pc/util/pc-anim-util.gc")
 (require "engine/gfx/mood/time-of-day.gc")
 (require "engine/level/level.gc")
 (require "pc/pckernel-common.gc")
 
-
 #|
-
   This file runs the game-specific version of the pckernel.
 	See pckernel-common.gc for the bulk of the pckernel.
-
- |#
-
-
+|#
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmethod initialize ((obj pc-settings-jak1))
+  "initial initialize method to be run after allocating"
+  ((method-of-type pc-settings initialize) obj)
+  (set! (-> *setting-control* default sfx-volume) (-> obj memcard-volume-sfx))
+  (set! (-> *setting-control* default music-volume) (-> obj memcard-volume-music))
+  (set! (-> *setting-control* default dialog-volume) (-> obj memcard-volume-dialog))
+  (set! (-> *setting-control* default vibration) (-> obj memcard-vibration?))
+  (set! (-> *setting-control* default play-hints) (-> obj memcard-play-hints?))
+  obj)
 
-(defmethod set-game-setting! pc-settings-jak1 ((obj pc-settings-jak1) (setting symbol) (value symbol))
+(defmethod set-game-setting! ((obj pc-settings-jak1) (setting symbol) (value symbol))
   (case setting
     (('video-mode)
-      (set! (-> *setting-control* current video-mode) #f)
-      (set! (-> *setting-control* default video-mode) value)
-      )
-    (('aspect-ratio)
-      (set! (-> *setting-control* default aspect-ratio) value)
-      )
-    (else
-      (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))
-    )
-  )
+     (set! (-> *setting-control* current video-mode) #f)
+     (set! (-> *setting-control* default video-mode) value))
+    (('aspect-ratio) (set! (-> *setting-control* default aspect-ratio) value))
+    (else (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))))
 
-(defmethod get-game-setting pc-settings-jak1 ((obj pc-settings-jak1) (setting symbol))
+(defmethod get-game-setting ((obj pc-settings-jak1) (setting symbol))
   (case setting
-    (('video-mode)
-      (-> *setting-control* default video-mode)
-      )
-    (('aspect-ratio)
-      (-> *setting-control* default aspect-ratio)
-      )
-    (else
-      (format #t "unknown setting  ~A to get-game-setting" setting)
-      #f)
-    )
-  )
+    (('video-mode) (-> *setting-control* default video-mode))
+    (('aspect-ratio) (-> *setting-control* default aspect-ratio))
+    (else (format #t "unknown setting  ~A to get-game-setting" setting) #f)))
 
-(defmethod set-game-language! pc-settings-jak1 ((obj pc-settings-jak1) (lang language-enum))
-  (set! (-> *setting-control* default language) lang)
-  )
+(defmethod set-game-language! ((obj pc-settings-jak1) (lang language-enum))
+  (set! (-> *setting-control* default language) lang))
 
-(defmethod get-game-language pc-settings-jak1 ((obj pc-settings-jak1))
-  (-> *setting-control* default language)
-  )
+(defmethod get-game-language ((obj pc-settings-jak1))
+  (-> *setting-control* default language))
 
 ;; where we store the input progress for the cheat codes. make sure there's enough space for all cheats.
 (define *pc-cheat-temp* (new 'global 'inline-array 'uint8 PC_CHEAT_MAX))
 
-(defmethod update-cheats pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod update-cheats ((obj pc-settings-jak1))
   "run cheats."
-
   ;; first check for cheat inputs.
   (when (and (cpad-hold? 0 l2) (cpad-hold? 0 l1) (cpad-hold? 0 r2) (cpad-hold? 0 r1))
-    (pc-check-cheat-code (-> *pc-cheat-temp* 0) 0 spirit :extra (x)
-          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
-          (pc-cheat-toggle-and-tune (-> obj cheats) eco-blue))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 1) 0 spirit :extra (circle)
-          (logclear! (-> obj cheats) (pc-cheats eco-blue eco-yellow eco-green))
-          (pc-cheat-toggle-and-tune (-> obj cheats) eco-red))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 2) 0 spirit :extra (triangle)
-          (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-blue))
-          (pc-cheat-toggle-and-tune (-> obj cheats) eco-green))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 3) 0 spirit :extra (square)
-          (logclear! (-> obj cheats) (pc-cheats eco-red eco-blue eco-green))
-          (pc-cheat-toggle-and-tune (-> obj cheats) eco-yellow))
-
-    (pc-check-cheat-code (-> *pc-cheat-temp* 4) 0 undead
-          (logclear! (-> *target* state-flags) 16)
-          (pc-cheat-toggle-and-tune (-> obj cheats) invinc))
-
+    (pc-check-cheat-code (-> *pc-cheat-temp* 0)
+                         0
+                         spirit
+                         :extra (x)
+                         (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-green))
+                         (pc-cheat-toggle-and-tune (-> obj cheats) eco-blue))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 1)
+                         0
+                         spirit
+                         :extra (circle)
+                         (logclear! (-> obj cheats) (pc-cheats eco-blue eco-yellow eco-green))
+                         (pc-cheat-toggle-and-tune (-> obj cheats) eco-red))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 2)
+                         0
+                         spirit
+                         :extra (triangle)
+                         (logclear! (-> obj cheats) (pc-cheats eco-red eco-yellow eco-blue))
+                         (pc-cheat-toggle-and-tune (-> obj cheats) eco-green))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 3)
+                         0
+                         spirit
+                         :extra (square)
+                         (logclear! (-> obj cheats) (pc-cheats eco-red eco-blue eco-green))
+                         (pc-cheat-toggle-and-tune (-> obj cheats) eco-yellow))
+    (pc-check-cheat-code (-> *pc-cheat-temp* 4)
+                         0
+                         undead
+                         (logclear! (-> *target* state-flags) 16)
+                         (pc-cheat-toggle-and-tune (-> obj cheats) invinc))
     (pc-check-cheat-code (-> *pc-cheat-temp* 5) 0 bluemoon (pc-cheat-toggle-and-tune (-> obj cheats) sidekick-blue))
     (pc-check-cheat-code (-> *pc-cheat-temp* 6) 0 boombox (pc-cheat-toggle-and-tune (-> obj cheats) tunes))
     (pc-check-cheat-code (-> *pc-cheat-temp* 7) 0 skies (pc-cheat-toggle-and-tune (-> obj cheats) sky))
@@ -97,155 +92,113 @@
     ;(pc-check-cheat-code (-> *pc-cheat-temp* 14) 0 lunatic (pc-cheat-toggle-and-tune (-> obj cheats) hero-mode))
     (pc-check-cheat-code (-> *pc-cheat-temp* 15) 0 plzstop (pc-cheat-toggle-and-tune (-> obj cheats) huge-head))
     (pc-check-cheat-code (-> *pc-cheat-temp* 16) 0 evilbabe (pc-cheat-toggle-and-tune (-> obj cheats) oh-my-goodness))
-    (pc-check-cheat-code (-> *pc-cheat-temp* 17) 0 smart (pc-cheat-toggle-and-tune (-> obj cheats) big-head-npc))
-    )
-
+    (pc-check-cheat-code (-> *pc-cheat-temp* 17) 0 smart (pc-cheat-toggle-and-tune (-> obj cheats) big-head-npc)))
   ;; run cheats here.
   ;;;;;;;;;;;;;;;;;;;
   (when *target*
-      ;; hook custom animation callback
-      (if (nonzero? (-> *target* skel))
-          (set! (-> *target* skel postbind-function) target-joint-callback-pc))
-
-      (with-pp (protect ((-> *target* fact eco-source) *sound-player-enable*)
-      ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
-      (when (< 0 (-> *target* fact eco-level))
+    ;; hook custom animation callback
+    (if (nonzero? (-> *target* skel)) (set! (-> *target* skel postbind-function) target-joint-callback-pc))
+    (with-pp
+      (protect ((-> *target* fact eco-source)
+            *sound-player-enable*)
+        ;; act as if this isnt a new source of eco to prevent spamming sounds. then restore the old source!
+        (when (< 0 (-> *target* fact eco-level))
           (set! (-> *target* fact eco-source) (process->handle pp))
-          (false! *sound-player-enable*)
-          )
-
-      (cond
-        ;; green eco!
-        ((pc-cheats? (-> obj cheats) eco-green)
-         (when (or (= (-> *target* fact eco-type) (pickup-type eco-green))
-                   (<= (-> *target* fact eco-level) 0.0))
-            (define-extern vent type)
-            (protect ((-> pp type) (-> *target* control root-prim prim-core action))
-            (set! (-> pp type) vent)
-            (logior! (-> *target* control root-prim prim-core action) (collide-action racer))
-            (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))
-            )
-         )
-        ;; red eco!
-        ((pc-cheats? (-> obj cheats) eco-red)
-         (when (or (= (-> *target* fact eco-type) (pickup-type eco-red))
-                   (<= (-> *target* fact eco-level) 0.0))
-            (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc))
-            )
-         )
-        ;; blue eco!
-        ((pc-cheats? (-> obj cheats) eco-blue)
-         (when (or (= (-> *target* fact eco-type) (pickup-type eco-blue))
-                   (<= (-> *target* fact eco-level) 0.0))
-            (protect ((-> *target* event-hook))
-              (set! (-> *target* event-hook) target-generic-event-handler)
-              (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc))
-              )
-            (send-event *target* 'boost (-> *FACT-bank* eco-single-inc))
-            )
-         )
-        ;; yellow eco!
-        ((pc-cheats? (-> obj cheats) eco-yellow)
-         (when (or (= (-> *target* fact eco-type) (pickup-type eco-yellow))
-                   (<= (-> *target* fact eco-level) 0.0))
-            (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc))
-            )
-         )
-        )
-      ))
-
-      (when (pc-cheats? (-> obj cheats) invinc)
-        (logior! (-> *target* state-flags) (state-flags invulnerable))
-        )
-
-      )
-
-  (if (pc-cheats? (-> obj cheats) tunes)
-      (set! (-> obj flava-hack) -1)
-      (set! (-> obj flava-hack) 0)
-      )
-
+          (false! *sound-player-enable*))
+        (cond
+          ;; green eco!
+          ((pc-cheats? (-> obj cheats) eco-green)
+           (when (or (= (-> *target* fact eco-type) (pickup-type eco-green)) (<= (-> *target* fact eco-level) 0.0))
+             (define-extern vent type)
+             (protect ((-> pp type)
+                   (-> *target* control root-prim prim-core action))
+               (set! (-> pp type) vent)
+               (logior! (-> *target* control root-prim prim-core action) (collide-action racer))
+               (send-event *target* 'get-pickup (pickup-type eco-green) (-> *FACT-bank* eco-full-inc)))))
+          ;; red eco!
+          ((pc-cheats? (-> obj cheats) eco-red)
+           (when (or (= (-> *target* fact eco-type) (pickup-type eco-red)) (<= (-> *target* fact eco-level) 0.0))
+             (send-event *target* 'get-pickup (pickup-type eco-red) (-> *FACT-bank* eco-full-inc))))
+          ;; blue eco!
+          ((pc-cheats? (-> obj cheats) eco-blue)
+           (when (or (= (-> *target* fact eco-type) (pickup-type eco-blue)) (<= (-> *target* fact eco-level) 0.0))
+             (protect ((-> *target* event-hook))
+               (set! (-> *target* event-hook) target-generic-event-handler)
+               (send-event *target* 'get-pickup (pickup-type eco-blue) (-> *FACT-bank* eco-full-inc)))
+             (send-event *target* 'boost (-> *FACT-bank* eco-single-inc))))
+          ;; yellow eco!
+          ((pc-cheats? (-> obj cheats) eco-yellow)
+           (when (or (= (-> *target* fact eco-type) (pickup-type eco-yellow)) (<= (-> *target* fact eco-level) 0.0))
+             (send-event *target* 'get-pickup (pickup-type eco-yellow) (-> *FACT-bank* eco-full-inc)))))))
+    (when (pc-cheats? (-> obj cheats) invinc)
+      (logior! (-> *target* state-flags) (state-flags invulnerable))))
+  (if (pc-cheats? (-> obj cheats) tunes) (set! (-> obj flava-hack) -1) (set! (-> obj flava-hack) 0))
   (if (pc-cheats? (-> obj cheats) sky)
-      (let ((date (new 'stack-no-clear 'scf-time)))
-          (scf-get-time date)
-          (when (zero? (-> date stat))
-            (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))
-          ))
-
+    (let ((date (new 'stack-no-clear 'scf-time)))
+      (scf-get-time date)
+      (when (zero? (-> date stat))
+        (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))))
   (pc-set-gfx-hack (pc-gfx-hack no-tex) (logtest? (-> obj cheats) (pc-cheats no-tex)))
-
-  (if (pc-cheats? (-> obj cheats) mirror)
-      (sound-set-mirror-mode (sound-mirror-mode mirrored))
-      (sound-set-mirror-mode (sound-mirror-mode normal)))
-
+  (if (or (pc-cheats? (-> obj cheats) mirror) *PC-MIRROR-MODE-SET*)
+    (sound-set-mirror-mode (sound-mirror-mode mirrored))
+    (sound-set-mirror-mode (sound-mirror-mode normal)))
   ;; run cheats end!!!
   ;;;;;;;;;;;;;;;;;;;;
-
   (logior! (-> obj cheats-known) (-> obj cheats))
   0)
 
-(defmethod update-music-log pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod update-music-log ((obj pc-settings-jak1))
   "update music log settings."
-
   ;; add whatever is playing to the music log.
   (add-to-music-log obj (-> *setting-control* current music) (the int (-> *setting-control* current sound-flava)))
-
   ;; special cases. for example, npc's that despawn and you can't hear their music anymore.
   (if (task-closed? (game-task village1-buzzer) (task-status need-resolution))
-      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava assistant))))
+    (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava assistant))))
   (if (task-closed? (game-task village2-buzzer) (task-status need-resolution))
-      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava assistant))))
+    (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava assistant))))
   (if (task-closed? (game-task village3-buzzer) (task-status need-resolution))
-      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava assistant))))
+    (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava assistant))))
   (when (task-closed? (game-task beach-ecorocks) (task-status need-introduction))
-      (add-to-music-log obj 'village1 1)
-      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava sage)))
-      )
-  (if (task-closed? (game-task jungle-plant) (task-status need-resolution))
-      (add-to-music-log obj 'jungleb 2))
+    (add-to-music-log obj 'village1 1)
+    (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava sage))))
+  (if (task-closed? (game-task jungle-plant) (task-status need-resolution)) (add-to-music-log obj 'jungleb 2))
   (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
-      (add-to-music-log obj 'beach (flava-lookup 'beach (music-flava birdlady))))
+    (add-to-music-log obj 'beach (flava-lookup 'beach (music-flava birdlady))))
   (if (task-closed? (game-task beach-flutflut) (task-status need-resolution))
-      (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava birdlady))))
+    (add-to-music-log obj 'village1 (flava-lookup 'village1 (music-flava birdlady))))
   (if (task-closed? (game-task misty-warehouse) (task-status need-resolution))
-      (add-to-music-log obj 'misty (flava-lookup 'misty (music-flava misty-battle))))
-  (if (task-closed? (game-task misty-cannon) (task-status need-resolution))
-      (add-to-music-log obj 'misty 4))
-  (if (task-closed? (game-task firecanyon-end) (task-status need-resolution))
-      (add-to-music-log obj 'firecanyon 2))
+    (add-to-music-log obj 'misty (flava-lookup 'misty (music-flava misty-battle))))
+  (if (task-closed? (game-task misty-cannon) (task-status need-resolution)) (add-to-music-log obj 'misty 4))
+  (if (task-closed? (game-task firecanyon-end) (task-status need-resolution)) (add-to-music-log obj 'firecanyon 2))
   (if (task-closed? (game-task village2-levitator) (task-status need-hint))
-      (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava sage))))
-  (if (task-closed? (game-task swamp-billy) (task-status need-resolution))
-      (add-to-music-log obj 'swamp 1))
+    (add-to-music-log obj 'village2 (flava-lookup 'village2 (music-flava sage))))
+  (if (task-closed? (game-task swamp-billy) (task-status need-resolution)) (add-to-music-log obj 'swamp 1))
   (if (task-closed? (game-task swamp-battle) (task-status need-resolution))
-      (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
+    (add-to-music-log obj 'swamp (flava-lookup 'swamp (music-flava swamp-battle))))
   (if (task-closed? (game-task village3-button) (task-status need-hint))
-      (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava sage))))
+    (add-to-music-log obj 'village3 (flava-lookup 'village3 (music-flava sage))))
   (if (task-closed? (game-task snow-bunnies) (task-status need-resolution))
-      (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
+    (add-to-music-log obj 'snow (flava-lookup 'snow (music-flava snow-battle))))
   (if (task-closed? (game-task citadel-sage-yellow) (task-status need-resolution))
-      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-yellow))))
+    (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-yellow))))
   (if (task-closed? (game-task citadel-sage-red) (task-status need-resolution))
-      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-red))))
+    (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-red))))
   (if (task-closed? (game-task citadel-sage-blue) (task-status need-resolution))
-      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-blue))))
+    (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage-blue))))
   (if (task-closed? (game-task citadel-sage-green) (task-status need-resolution))
-      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
+    (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava sage))))
   (if (task-closed? (game-task citadel-buzzer) (task-status need-resolution))
-      (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
+    (add-to-music-log obj 'citadel (flava-lookup 'citadel (music-flava assistant))))
   (when (task-closed? (game-task finalboss-movies) (task-status unknown))
-      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-middle)))
-      (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-end)))
-      )
+    (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-middle)))
+    (add-to-music-log obj 'finalboss (flava-lookup 'finalboss (music-flava finalboss-end))))
   (when (and *target* (>= (float->int (send-event *target* 'query 'pickup (pickup-type fuel-cell))) 100))
-      (add-to-music-log obj 'credits 0)
-      (add-to-music-log obj 'credits 1)
-      (add-to-music-log obj 'credits 2)
-      )
-
+    (add-to-music-log obj 'credits 0)
+    (add-to-music-log obj 'credits 1)
+    (add-to-music-log obj 'credits 2))
   0)
 
-(defmethod update-discord-rpc pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod update-discord-rpc ((obj pc-settings-jak1))
   "update discord rpc module"
   (let ((info (new 'stack 'discord-info)))
     (set! (-> info fuel) (&-> *game-info* fuel))
@@ -255,65 +208,65 @@
     (set! (-> info status) "Playing Jak and Daxter: The Precursor Legacy™")
     (set! (-> info level) (symbol->string (-> (level-get-target-inside *level*) name))) ;; grab the name of level we're in
     (set! (-> info cutscene?) (real-movie?))
-    (set! (-> info ogreboss?) (aif (process-by-ename "ogreboss-1") (case (-> it next-state name) (
-                                      ('ogreboss-die
-                                       'ogreboss-idle
-                                       'ogreboss-stage1
-                                       'ogreboss-stage2
-                                       'ogreboss-stage3-hit
-                                       'ogreboss-stage3-shuffle
-                                       'ogreboss-stage3-throw
-                                       'ogreboss-wait-for-player) #t))))
-    (set! (-> info plant-boss?) (aif (process-by-ename "plant-boss-3") (case (-> it next-state name) (
-                                      ('plant-boss-idle
-                                       'plant-boss-hit
-                                       'plant-boss-vulnerable
-                                       'plant-boss-spawn
-                                       'plant-boss-reset
-                                       'plant-boss-attack) #t))))
-    (set! (-> info racer?) (aif *target* (case (-> it next-state name) (
-                                      ('target-racing
-                                       'target-racing-bounce
-                                       'target-racing-death
-                                       'target-racing-falling
-                                       'target-racing-grab
-                                       'target-racing-hit
-                                       'target-racing-jump
-                                       'target-racing-smack
-                                       'target-racing-start) #t))))
-    (set! (-> info flutflut?) (aif *target* (case (-> it next-state name) (
-                                      ('target-flut-air-attack
-                                       'target-flut-air-attack-hit-ground
-                                       'target-flut-double-jump
-                                       'target-flut-falling
-                                       'target-flut-grab
-                                       'target-flut-hit
-                                       'target-flut-hit-ground
-                                       'target-flut-jump
-                                       'target-flut-running-attack
-                                       'target-flut-stance
-                                       'target-flut-start
-                                       'target-flut-walk) #t))))
+    (set! (-> info ogreboss?)
+          (aif (process-by-ename "ogreboss-1")
+               (case (-> it next-state name)
+                 (('ogreboss-die 'ogreboss-idle
+                                'ogreboss-stage1
+                                'ogreboss-stage2
+                                'ogreboss-stage3-hit
+                                'ogreboss-stage3-shuffle
+                                'ogreboss-stage3-throw
+                                'ogreboss-wait-for-player)
+                  #t))))
+    (set! (-> info plant-boss?)
+          (aif (process-by-ename "plant-boss-3")
+               (case (-> it next-state name)
+                 (('plant-boss-idle 'plant-boss-hit 'plant-boss-vulnerable 'plant-boss-spawn 'plant-boss-reset 'plant-boss-attack) #t))))
+    (set! (-> info racer?)
+          (aif *target*
+               (case (-> it next-state name)
+                 (('target-racing 'target-racing-bounce
+                                 'target-racing-death
+                                 'target-racing-falling
+                                 'target-racing-grab
+                                 'target-racing-hit
+                                 'target-racing-jump
+                                 'target-racing-smack
+                                 'target-racing-start)
+                  #t))))
+    (set! (-> info flutflut?)
+          (aif *target*
+               (case (-> it next-state name)
+                 (('target-flut-air-attack 'target-flut-air-attack-hit-ground
+                                          'target-flut-double-jump
+                                          'target-flut-falling
+                                          'target-flut-grab
+                                          'target-flut-hit
+                                          'target-flut-hit-ground
+                                          'target-flut-jump
+                                          'target-flut-running-attack
+                                          'target-flut-stance
+                                          'target-flut-start
+                                          'target-flut-walk)
+                  #t))))
     (set! (-> info time-of-day) (&-> *time-of-day-context* time))
-
-    (with-profiler "discord-update" (pc-discord-rpc-update info)))
+    (with-profiler "discord-update"
+      (pc-discord-rpc-update info)))
   (none))
 
-(defmethod update-speedrun pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod update-speedrun ((obj pc-settings-jak1))
   "update speedrun module"
   (with-profiler "speedrun-update"
     (speedrun-mode-update))
   (none))
 
-(defmethod update-video-hacks pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod update-video-hacks ((obj pc-settings-jak1))
   "update the graphics hacks used for sprites and other things. ugh."
-
   (set! (-> (get-video-params) relative-x-scale) (-> obj aspect-ratio-reciprocal))
   (set! (-> (get-video-params) relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
   (set! (-> *font-default-matrix* vector 0 x) (-> (get-video-params) relative-x-scale))
-
   (set-hud-aspect-ratio 'aspect4x3 'ntsc) ;; set hud aspect ratios every frame because why not?
-
   (when *progress-process*
     ;; adjust sizes for progress.
     ;; video.gc sets the sizes in the normal game.
@@ -321,146 +274,119 @@
     (let ((pr (-> *progress-process*))
           ;(wide-adjust (* 4.0 (- (/ (-> obj aspect-ratio-scale) ASPECT_16X9_SCALE) (1/ ASPECT_16X9_SCALE))))
           )
-        (set! (-> pr sides-x-scale) 1.0)
-        (set! (-> pr sides-y-scale) 13.0)
-        ;(set! (-> pr left-x-offset) (+ 59 (the int (* (-> obj aspect-ratio-scale) -59))))
-        ;(set! (-> pr right-x-offset) 26)
-        ;(set! (-> pr button-scale) (+ 1.0 (* wide-adjust 0.1)))
-        )
-    )
-  )
+      (set! (-> pr sides-x-scale) 1.0)
+      (set! (-> pr sides-y-scale) 13.0)
+      ;(set! (-> pr left-x-offset) (+ 59 (the int (* (-> obj aspect-ratio-scale) -59))))
+      ;(set! (-> pr right-x-offset) 26)
+      ;(set! (-> pr button-scale) (+ 1.0 (* wide-adjust 0.1)))
+      )))
 
-(defmethod led-enabled? pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod led-enabled? ((obj pc-settings-jak1))
   "should the controller led be set?"
-  (or (-> obj controller-led-hp?)
-      (-> obj controller-led-eco?)
-      (-> obj controller-led-heat?)))
+  (or (-> obj controller-led-hp?) (-> obj controller-led-eco?) (-> obj controller-led-heat?)))
 
-(defmethod update-led pc-settings-jak1 ((obj pc-settings-jak1))
+(defmethod update-led ((obj pc-settings-jak1))
   "set the controller led color by modifying the controller-led-color vector"
-
   ;; default color is just blue.
   (set! (-> obj controller-led-color r) 0.0)
   (set! (-> obj controller-led-color g) 0.0)
   (set! (-> obj controller-led-color b) 1.0)
-
   (when *target*
     (let ((set-no-eco-color? #t))
-    (when (-> obj controller-led-hp?)
-      ;; flicker led according to hp. lower hp = faster and more intense flicker
-      (cond
-        ((= (-> *target* fact health) 0.0)
-          ;; dead. just set to minimum brightness.
-          (set! (-> obj controller-led-color a) (-> obj controller-led-min-brightness))
-          )
-        (else
-          (let ((flicker-speed (lerp-scale  2.0 0.0
-                                            (-> *target* fact health)
-                                            1.0 (-> *FACT-bank* health-max-default)))
-                (flicker-amp (lerp-scale  (- 1.0 (-> obj controller-led-min-brightness)) (- 1.0 (-> obj controller-led-max-brightness))
+      (when (-> obj controller-led-hp?)
+        ;; flicker led according to hp. lower hp = faster and more intense flicker
+        (cond
+          ((= (-> *target* fact health) 0.0)
+           ;; dead. just set to minimum brightness.
+           (set! (-> obj controller-led-color a) (-> obj controller-led-min-brightness)))
+          (else
+           (let ((flicker-speed (lerp-scale 2.0 0.0 (-> *target* fact health) 1.0 (-> *FACT-bank* health-max-default)))
+                 (flicker-amp (lerp-scale (- 1.0 (-> obj controller-led-min-brightness))
+                                          (- 1.0 (-> obj controller-led-max-brightness))
                                           (-> *target* fact health)
-                                          1.0 (-> *FACT-bank* health-max-default)))
-                )
-            (set! (-> obj controller-led-color a) (- 1.0 (* flicker-amp (/ (+ 1.0 (sin (* flicker-speed (degrees (-> *display* game-frame-counter))))) 2.0))))
-            )
-          )
-        )
-      )
-
-    (when (and  (-> obj controller-led-heat?)
-                (nonzero? (-> *target* racer))
-                (logtest? (-> *target* control root-prim prim-core action) (collide-action racer))
-                (or (= (-> *target* current-level name) 'lavatube)
-                    (= (-> *target* current-level name) 'firecanyon)
-                    (= (-> *target* current-level name) 'citadel)))
-      (defun-extern zoomer-heat-slice-color matrix float none)
-      (defun-extern zoomer-get-heat float)
-      (defun-extern zoomer-get-heat-max float)
-      (let ((temp-mtx (new-stack-matrix0))
-            (heat (/ (zoomer-get-heat) (zoomer-get-heat-max))))
-        (zoomer-heat-slice-color temp-mtx heat)
-        (when (< 0.0 heat)
-          (set! (-> obj controller-led-color r) (/ (-> temp-mtx vector 2 x) 128.0))
-          (set! (-> obj controller-led-color g) (/ (-> temp-mtx vector 2 y) 128.0))
-          (set! (-> obj controller-led-color b) (/ (-> temp-mtx vector 2 z) 128.0))
-          (false! set-no-eco-color?))
-        )
-      )
-
-    (when (-> obj controller-led-eco?)
-    ;; get remaining eco as a number from 0.0 to 1.0
-    (let ((eco-remain-fac (/ (the float (- (-> *target* fact eco-timeout) (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))
-                             (the float (-> *FACT-bank* eco-full-timeout)))))
-      (when set-no-eco-color?
-        (set! (-> obj controller-led-color r) 1.0)
-        (set! (-> obj controller-led-color g) 1.0)
-        (set! (-> obj controller-led-color b) 1.0))
-      ;; dont set eco color if we don't have eco.
-      (when (< 0.0 eco-remain-fac)
-        ;; set color according to eco type. matches the color in the meter!
-        (case (-> *target* fact eco-type)
-          (((pickup-type eco-blue))
-            (set! (-> obj controller-led-color r) 0.0)
-            (set! (-> obj controller-led-color g) 0.5)
-            (set! (-> obj controller-led-color b) 1.0)
-            )
-          (((pickup-type eco-yellow))
+                                          1.0
+                                          (-> *FACT-bank* health-max-default))))
+             (set! (-> obj controller-led-color a)
+                   (- 1.0 (* flicker-amp (/ (+ 1.0 (sin (* flicker-speed (degrees (-> *display* game-frame-counter))))) 2.0))))))))
+      (when (and (-> obj controller-led-heat?)
+                 (nonzero? (-> *target* racer))
+                 (logtest? (-> *target* control root-prim prim-core action) (collide-action racer))
+                 (or (= (-> *target* current-level name) 'lavatube)
+                     (= (-> *target* current-level name) 'firecanyon)
+                     (= (-> *target* current-level name) 'citadel)))
+        (defun-extern zoomer-heat-slice-color matrix float none)
+        (defun-extern zoomer-get-heat float)
+        (defun-extern zoomer-get-heat-max float)
+        (let ((temp-mtx (new-stack-matrix0))
+              (heat (/ (zoomer-get-heat) (zoomer-get-heat-max))))
+          (zoomer-heat-slice-color temp-mtx heat)
+          (when (< 0.0 heat)
+            (set! (-> obj controller-led-color r) (/ (-> temp-mtx vector 2 x) 128.0))
+            (set! (-> obj controller-led-color g) (/ (-> temp-mtx vector 2 y) 128.0))
+            (set! (-> obj controller-led-color b) (/ (-> temp-mtx vector 2 z) 128.0))
+            (false! set-no-eco-color?))))
+      (when (-> obj controller-led-eco?)
+        ;; get remaining eco as a number from 0.0 to 1.0
+        (let ((eco-remain-fac (/ (the float (- (-> *target* fact eco-timeout) (- (-> *display* game-frame-counter) (-> *target* fact eco-pickup-time))))
+                                 (the float (-> *FACT-bank* eco-full-timeout)))))
+          (when set-no-eco-color?
             (set! (-> obj controller-led-color r) 1.0)
-            (set! (-> obj controller-led-color g) 0.75)
-            (set! (-> obj controller-led-color b) 0.0)
-            )
-          (((pickup-type eco-red))
-            (set! (-> obj controller-led-color r) 1.0)
-            (set! (-> obj controller-led-color g) 0.25)
-            (set! (-> obj controller-led-color b) 0.0)
-            )
-          (((pickup-type eco-green))
-            (set! (-> obj controller-led-color r) 0.0)
             (set! (-> obj controller-led-color g) 1.0)
-            (set! (-> obj controller-led-color b) 0.25)
-            )
-          )
-        ;; less than 20% eco remaining, so we flash. same as eco meter.
-        (when (and (< eco-remain-fac 0.2)
-                  (zero? (logand (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 4)))
-          (*! (-> obj controller-led-color g) 2.0)
-          )
-        )
-      ))
-    ))
+            (set! (-> obj controller-led-color b) 1.0))
+          ;; dont set eco color if we don't have eco.
+          (when (< 0.0 eco-remain-fac)
+            ;; set color according to eco type. matches the color in the meter!
+            (case (-> *target* fact eco-type)
+              (((pickup-type eco-blue))
+               (set! (-> obj controller-led-color r) 0.0)
+               (set! (-> obj controller-led-color g) 0.5)
+               (set! (-> obj controller-led-color b) 1.0))
+              (((pickup-type eco-yellow))
+               (set! (-> obj controller-led-color r) 1.0)
+               (set! (-> obj controller-led-color g) 0.75)
+               (set! (-> obj controller-led-color b) 0.0))
+              (((pickup-type eco-red))
+               (set! (-> obj controller-led-color r) 1.0)
+               (set! (-> obj controller-led-color g) 0.25)
+               (set! (-> obj controller-led-color b) 0.0))
+              (((pickup-type eco-green))
+               (set! (-> obj controller-led-color r) 0.0)
+               (set! (-> obj controller-led-color g) 1.0)
+               (set! (-> obj controller-led-color b) 0.25)))
+            ;; less than 20% eco remaining, so we flash. same as eco meter.
+            (when (and (< eco-remain-fac 0.2) (zero? (logand (the int (* DISPLAY_FPS_RATIO (-> *display* integral-frame-counter))) 4)))
+              (*! (-> obj controller-led-color g) 2.0)))))))
   #t)
-
 
 (defun find-music-log ((music symbol))
   "return #t if the given music is logged into the *pc-settings*, #f otherwise."
   (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (if (= music (-> *pc-settings* secrets music i name))
-        (return #t)))
+    (if (= music (-> *pc-settings* secrets music i name)) (return #t)))
   #f)
 
 (defun find-flava-log ((music symbol) (flava-idx int))
   "return #t if the given music's flava is logged into the *pc-settings*, #f otherwise."
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (if (= music (-> *pc-settings* secrets music i name))
-        (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
+      (return (logtest? (-> *pc-settings* secrets music i flava-mask) (ash 1 flava-idx)))))
   #f)
 
 (defun-debug print-music-log ((out object))
   "prints the *pc-settings* music log."
-
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (if (-> *pc-settings* secrets music i name)
-        (format out "music log ~D: ~A (f #x~x)~%" i (-> *pc-settings* secrets music i name) (-> *pc-settings* secrets music i flava-mask)))
-    )
+      (format out
+              "music log ~D: ~A (f #x~x)~%"
+              i
+              (-> *pc-settings* secrets music i name)
+              (-> *pc-settings* secrets music i flava-mask))))
   0)
 
 (defun-debug unlock-music-log ()
   "fills the music log with every track and flava"
-
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (set! (-> *pc-settings* secrets music i name) #f)
-    (set! (-> *pc-settings* secrets music i flava-mask) 0)
-    )
+    (set! (-> *pc-settings* secrets music i flava-mask) 0))
   (set! (-> *pc-settings* secrets music 0 name) 'fishgame)
   (set! (-> *pc-settings* secrets music 1 name) 'danger)
   (set! (-> *pc-settings* secrets music 2 name) 'village1)
@@ -483,14 +409,11 @@
   (set! (-> *pc-settings* secrets music 19 name) 'finalboss)
   (set! (-> *pc-settings* secrets music 20 name) 'credits)
   (dotimes (i PC_MUSIC_LOG_LENGTH)
-    (set! (-> *pc-settings* secrets music i flava-mask) -1)
-    )
-  )
+    (set! (-> *pc-settings* secrets music i flava-mask) -1)))
 
-(defmethod add-to-music-log pc-settings-jak1 ((obj pc-settings-jak1) (music symbol) (flava int))
+(defmethod add-to-music-log ((obj pc-settings-jak1) (music symbol) (flava int))
   "add music and flava information to the music log.
    if music already exists, adds flava. if flava already exists, nothing happens."
-
   ;; go through our music log
   (dotimes (i PC_MUSIC_LOG_LENGTH)
     (cond
@@ -498,30 +421,20 @@
       ((or (not (-> obj secrets music i name)) (zero? (not (-> obj secrets music i name))))
        (set! (-> obj secrets music i name) music)
        (set! (-> obj secrets music i flava-mask) (ash 1 flava))
-       (return 0)
-       )
+       (return 0))
       ;; an existing log entry for the current music. fill flava.
-      ((= music (-> obj secrets music i name))
-       (logior! (-> obj secrets music i flava-mask) (ash 1 flava))
-       (return 0)
-       )
+      ((= music (-> obj secrets music i name)) (logior! (-> obj secrets music i flava-mask) (ash 1 flava)) (return 0))
       ;; something else. maybe the wrong entry, in which case nothing to do.
-      )
-    )
-
+      ))
   0)
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; file I/O
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(defmethod handle-input-settings pc-settings-jak1 ((obj pc-settings-jak1) (file file-stream))
+(defmethod handle-input-settings ((obj pc-settings-jak1) (file file-stream))
   "handle the text parsing input for the 'settings' group"
-
-	((method-of-type pc-settings handle-input-settings) obj file)
+  ((method-of-type pc-settings handle-input-settings) obj file)
   (case-str *pc-temp-string*
     (("money-starburst?") (set! (-> obj money-starburst?) (file-stream-read-symbol file)))
     (("extra-hud?") (set! (-> obj extra-hud?) (file-stream-read-symbol file)))
@@ -529,55 +442,42 @@
     (("subtitles?") (set! (-> obj subtitles?) (file-stream-read-symbol file)))
     (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-language (file-stream-read-int file))))
     (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
-    (("scenes-seen")
-      (dotimes (i PC_SPOOL_LOG_LENGTH)
-        (set! (-> obj scenes-seen i) (file-stream-read-int file))
-        )
-      )
+    (("scenes-seen") (dotimes (i PC_SPOOL_LOG_LENGTH) (set! (-> obj scenes-seen i) (file-stream-read-int file))))
+    (("memcard-play-hints?") (set! (-> obj memcard-play-hints?) (file-stream-read-symbol file)))
     (("secrets")
-      (dosettings (file)
-        (case-str *pc-temp-string*
-          (("hard-rats?") (set! (-> obj secrets hard-rats?) (file-stream-read-symbol file)))
-          (("hero-mode?") (set! (-> obj secrets hero-mode?) (file-stream-read-symbol file)))
-          (("hud-map?") (set! (-> obj secrets hud-map?) (file-stream-read-symbol file)))
-          (("hud-counters?") (set! (-> obj secrets hud-counters?) (file-stream-read-symbol file)))
-          (("hud-watch?") (set! (-> obj secrets hud-watch?) (file-stream-read-symbol file)))
-          (("watch-12hr?") (set! (-> obj secrets watch-12hr?) (file-stream-read-symbol file)))
-          (("art") (set! (-> obj secrets art) (the-as pc-jak1-concept-art (file-stream-read-int file))))
-          (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
-          (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
-          (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
-          (("cheats")
-            (set! (-> obj cheats-known) (the pc-cheats (file-stream-read-int file)))
-            (set! (-> obj cheats) (logand (-> obj cheats-known) (file-stream-read-int file)))
-            )
-          (("music")
-            (dotimes (i PC_MUSIC_LOG_LENGTH)
-              (when (!= #x29 (file-stream-get-next-char-ret file))
-                  (with-settings-scope (file)
-                    (set! (-> obj secrets music i name) (file-stream-read-symbol file))
-                    (set! (-> obj secrets music i flava-mask) (file-stream-read-int file))
-                    )
-                )
-              )
-            )
-          )
-        )
-      )
-    )
+     (dosettings (file)
+                 (case-str *pc-temp-string*
+                   (("hard-rats?") (set! (-> obj secrets hard-rats?) (file-stream-read-symbol file)))
+                   (("hero-mode?") (set! (-> obj secrets hero-mode?) (file-stream-read-symbol file)))
+                   (("hud-map?") (set! (-> obj secrets hud-map?) (file-stream-read-symbol file)))
+                   (("hud-counters?") (set! (-> obj secrets hud-counters?) (file-stream-read-symbol file)))
+                   (("hud-watch?") (set! (-> obj secrets hud-watch?) (file-stream-read-symbol file)))
+                   (("watch-12hr?") (set! (-> obj secrets watch-12hr?) (file-stream-read-symbol file)))
+                   (("art") (set! (-> obj secrets art) (the-as pc-jak1-concept-art (file-stream-read-int file))))
+                   (("hard-fish-hiscore") (set! (-> obj secrets hard-fish-hiscore) (file-stream-read-int file)))
+                   (("hard-rats-hiscore") (set! (-> obj secrets hard-rats-hiscore) (file-stream-read-int file)))
+                   (("hard-rats-hiwave") (set! (-> obj secrets hard-rats-hiwave) (file-stream-read-int file)))
+                   (("cheats")
+                    (set! (-> obj cheats-known) (the pc-cheats (file-stream-read-int file)))
+                    (set! (-> obj cheats) (logand (-> obj cheats-known) (file-stream-read-int file))))
+                   (("music")
+                    (dotimes (i PC_MUSIC_LOG_LENGTH)
+                      (when (!= #x29 (file-stream-get-next-char-ret file))
+                        (with-settings-scope (file)
+                                             (set! (-> obj secrets music i name) (file-stream-read-symbol file))
+                                             (set! (-> obj secrets music i flava-mask) (file-stream-read-int file))))))))))
   0)
 
-(defmethod handle-output-settings pc-settings-jak1 ((obj pc-settings-jak1) (file file-stream))
+(defmethod handle-output-settings ((obj pc-settings-jak1) (file file-stream))
   "handle the text writing output for the 'settings' group"
-
-	((method-of-type pc-settings handle-output-settings) obj file)
+  ((method-of-type pc-settings handle-output-settings) obj file)
   (format file "  (money-starburst? ~A)~%" (-> obj money-starburst?))
   (format file "  (extra-hud? ~A)~%" (-> obj extra-hud?))
   (format file "  (skip-movies? ~A)~%" (-> obj skip-movies?))
   (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
   (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
   (format file "  (text-language ~D)~%" (-> obj text-language))
-
+  (format file "  (memcard-play-hints? ~A)~%" (-> obj memcard-play-hints?))
   #|
   (format file "  (scenes-seen")
   (dotimes (i PC_SPOOL_LOG_LENGTH)
@@ -588,7 +488,6 @@
     )
   (format file "~%    )~%")
   |#
-
   (format file "  (secrets~%")
   #|
   (format file "    (art #x~X)~%" (-> obj secrets art))
@@ -601,14 +500,10 @@
   (format file "    (hard-rats-hiwave ~D)~%" (-> obj secrets hard-rats-hiwave))
   |#
   (format file "    (cheats #x~x #x~x)~%" (-> obj cheats-known) (-> obj cheats))
-
   (format file "    (music~%")
   (dotimes (i PC_MUSIC_LOG_LENGTH)
-  (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask))
-    )
-
+    (format file "      (~A #x~X)~%" (-> obj secrets music i name) (-> obj secrets music i flava-mask)))
   (format file "      )~%")
-
   (format file "    )~%")
   0)
 
@@ -616,29 +511,24 @@
 ;;;; PC settings
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (define-once *pc-settings* (new 'global 'pc-settings-jak1))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun draw-build-revision ()
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
-                                     (bucket-id debug-no-zbuf))
-          (draw-string-xy *pc-settings-built-sha*
-                          buf
-                          0 (* 10 (-> (get-video-params) relative-y-scale))
-                          (font-color flat-yellow)
-                          (font-flags shadow kerning))))
-
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf))
+    (draw-string-xy *pc-settings-built-sha*
+                    buf
+                    0
+                    (* 10 (-> (get-video-params) relative-y-scale))
+                    (font-color flat-yellow)
+                    (font-flags shadow kerning))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; process pools
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 ;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
 (define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) '*pc-dead-pool*))
-

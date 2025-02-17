@@ -345,10 +345,10 @@
   (set! (-> self joint-idx) arg0)
   (set! (-> self init-angle) arg1)
   (set! (-> self graphic-index) arg2)
-  (set! (-> self root trans quad) (-> self parent 0 root trans quad))
+  (vector-copy! (-> self root trans) (-> self parent 0 root trans))
   (quaternion-copy! (-> self root quat) (-> self parent 0 root quat))
   (quaternion-normalize! (-> self root quat))
-  (set! (-> self root scale quad) (-> self parent 0 root scale quad))
+  (vector-copy! (-> self root scale) (-> self parent 0 root scale))
   (let ((gp-1 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) *z-vector* (-> self init-angle))))
     (quaternion-normalize! gp-1)
     (quaternion*! (-> self root quat) (-> self root quat) gp-1)
@@ -1136,14 +1136,14 @@
            (seek-ease
              (-> self menu-transition)
              0.0
-             (* 0.1 (-> self clock time-adjust-ratio))
+             (/ (-> self clock time-adjust-ratio) 10)
              0.4
-             (* 0.01 (-> self clock time-adjust-ratio))
+             (/ (-> self clock time-adjust-ratio) 100)
              )
            )
      )
     (else
-      (seek! (-> self menu-transition) 1.0 (* 0.1 (-> self clock time-adjust-ratio)))
+      (seek! (-> self menu-transition) 1.0 (/ (-> self clock time-adjust-ratio) 10))
       (when (and (= (-> self menu-transition) 1.0)
                  (or (and (nonzero? (-> self state-pos)) (= (-> self anim-frame) 1.0))
                      (or (and (zero? (-> self state-pos)) (= (-> self anim-frame) 0.0))
@@ -1186,12 +1186,12 @@
   (if (= (-> self ring-angle) (-> self ring-want-angle))
       (respond-to-cpad self)
       )
-  (let ((f30-0 (* 0.005 (-> self clock time-adjust-ratio))))
+  (let ((f30-0 (/ (-> self clock time-adjust-ratio) 200)))
     (cond
       ((= (-> self menu-transition) 1.0)
        (if (and (zero? (-> self state-pos)) (= (-> self starting-state) 'main))
-           (seek! (-> self anim-frame) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
-           (seek! (-> self anim-frame) 1.0 (* 0.02 (-> self clock time-adjust-ratio)))
+           (seek! (-> self anim-frame) 0.0 (/ (-> self clock time-adjust-ratio) 50))
+           (seek! (-> self anim-frame) 1.0 (/ (-> self clock time-adjust-ratio) 50))
            )
        (let ((f0-27 (if (and (zero? (-> self state-pos)) (!= (-> self starting-state) 'title))
                         0.0
@@ -1201,14 +1201,14 @@
              )
          (when (= (-> self next) 'bigmap)
            (set! f0-27 0.4)
-           (set! f30-0 (* 0.008 (-> self clock time-adjust-ratio)))
+           (set! f30-0 (/ (-> self clock time-adjust-ratio) 125))
            )
          (seek! (-> self pos-transition) f0-27 f30-0)
          )
        )
       ((zero? (-> self state-pos))
        (if (= (-> self current) 'bigmap)
-           (set! f30-0 (* 0.05 (-> self clock time-adjust-ratio)))
+           (set! f30-0 (/ (-> self clock time-adjust-ratio) 20))
            )
        (if (!= (-> self starting-state) 'title)
            (seek! (-> self pos-transition) 0.0 f30-0)
@@ -1259,9 +1259,9 @@
       (set! (-> self swing) (seek-ease
                               (-> self swing)
                               4.0
-                              (* 0.05 (-> self clock time-adjust-ratio))
+                              (/ (-> self clock time-adjust-ratio) 20)
                               0.5
-                              (* 0.005 (-> self clock time-adjust-ratio))
+                              (/ (-> self clock time-adjust-ratio) 200)
                               )
             )
       (set! (-> self swing) (seek-ease
@@ -1371,7 +1371,7 @@
                   )
               )
         )
-    (set! (-> s5-0 quad) (-> (the-as vector gp-1) quad))
+    (vector-copy! s5-0 (the-as vector gp-1))
     (with-dma-buffer-add-bucket ((v1-12 (-> *display* frames (-> *display* on-screen) global-buf))
                                  (bucket-id hud-draw-hud-alpha)
                                  )
@@ -1492,25 +1492,21 @@
       (let ((s3-0 (-> self current-options y-center))
             (s5-0 (-> self current-options y-space))
             )
-        (let ((s2-0 (new 'stack-no-clear 'matrix)))
-          (set! (-> s2-0 rvec quad) (the-as uint128 0))
-          (set! (-> s2-0 uvec quad) (the-as uint128 0))
-          (set! (-> s2-0 fvec quad) (the-as uint128 0))
-          (set! (-> s2-0 trans quad) (the-as uint128 0))
-          (let ((s4-0 *progress-work*))
-            (mem-copy! (the-as pointer s2-0) (the-as pointer *font-default-matrix*) 64)
-            (set! sv-208 (new 'stack 'font-context s2-0 0 0 0.0 (font-color default) (font-flags shadow kerning)))
-            (set! sv-212 (- s3-0 (/ (* s5-0 (length gp-0)) 2)))
-            (set! sv-216 (new 'stack-no-clear 'hud-box))
-            (set! sv-220 (and (!= (-> self current) 'main) (or (= (-> self next) 'none) (> (-> self state-pos) 0))))
-            (progress-method-33 self (-> s4-0 small-screen))
-            (when sv-220
-              (begin-scan sv-216 self)
-              (let ((f30-0 (fmax 0.0 (* 2.0 (- 0.5 (-> self menu-transition))))))
-                (when (not (or (= (-> self current) 'bigmap) (= (-> self next) 'bigmap)))
-                  (progress-method-43 self (-> s4-0 small-screen) (* 144.0 f30-0))
-                  (progress-method-41 self (-> s4-0 small-screen) (* 128.0 f30-0))
-                  )
+        (let ((s2-0 (new-stack-matrix0))
+              (s4-0 *progress-work*)
+              )
+          (mem-copy! (the-as pointer s2-0) (the-as pointer *font-default-matrix*) 64)
+          (set! sv-208 (new 'stack 'font-context s2-0 0 0 0.0 (font-color default) (font-flags shadow kerning)))
+          (set! sv-212 (- s3-0 (/ (* s5-0 (length gp-0)) 2)))
+          (set! sv-216 (new 'stack-no-clear 'hud-box))
+          (set! sv-220 (and (!= (-> self current) 'main) (or (= (-> self next) 'none) (> (-> self state-pos) 0))))
+          (progress-method-33 self (-> s4-0 small-screen))
+          (when sv-220
+            (begin-scan sv-216 self)
+            (let ((f30-0 (fmax 0.0 (* 2.0 (- 0.5 (-> self menu-transition))))))
+              (when (not (or (= (-> self current) 'bigmap) (= (-> self next) 'bigmap)))
+                (progress-method-43 self (-> s4-0 small-screen) (* 144.0 f30-0))
+                (progress-method-41 self (-> s4-0 small-screen) (* 128.0 f30-0))
                 )
               )
             )
@@ -1521,17 +1517,11 @@
         )
       (dotimes (s5-1 (length gp-0))
         (set! (-> self current-index) s5-1)
-        (let ((v1-43 sv-208))
-          (set! (-> v1-43 scale) 0.5)
-          )
+        (set-scale! sv-208 0.5)
         (set! (-> sv-208 origin x) 70.0)
         (set! (-> sv-208 origin y) (the float sv-212))
-        (let ((v1-48 sv-208))
-          (set! (-> v1-48 width) (the float 375))
-          )
-        (let ((v1-49 sv-208))
-          (set! (-> v1-49 height) (the float 30))
-          )
+        (set-width! sv-208 375)
+        (set-height! sv-208 30)
         (set! (-> sv-208 flags) (font-flags kerning middle middle-vert large))
         (let ((v1-51 sv-208))
           (set! (-> v1-51 color) (if (and (= s5-1 (-> self option-index)) (= (-> self menu-transition) 0.0))
@@ -1553,9 +1543,9 @@
         (set! (-> self scanlines-alpha) (seek-ease
                                           (-> self scanlines-alpha)
                                           (- 1.0 (-> self menu-transition))
-                                          (* 0.05 (-> self clock time-adjust-ratio))
+                                          (/ (-> self clock time-adjust-ratio) 20)
                                           0.3
-                                          (* 0.001 (-> self clock time-adjust-ratio))
+                                          (/ (-> self clock time-adjust-ratio) 1000)
                                           )
               )
         )
@@ -1566,13 +1556,7 @@
     (progress-method-33 self (-> *progress-work* full-screen))
     (cond
       ((>= (-> self pos-transition) 0.38)
-       (let ((t9-15 (method-of-object *bigmap* bigmap-method-12)))
-         1792
-         1840
-         2304
-         2256
-         (t9-15)
-         )
+       (draw! *bigmap* 1792 1840 2304 2256)
        )
       (else
         (let ((s4-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 21)))
@@ -1582,15 +1566,9 @@
           (set! (-> gp-1 quad) (the-as uint128 0))
           (let ((s5-2 (new 'stack-no-clear 'vector4w)))
             (set! (-> s5-2 quad) (the-as uint128 0))
-            (when (and (transform-point-qword! gp-1 s4-1) (transform-point-qword! s5-2 s3-1))
-              (let ((t9-20 (method-of-object *bigmap* bigmap-method-12)))
-                (/ (-> s5-2 x) 16)
-                (/ (-> s5-2 y) 16)
-                (/ (-> gp-1 x) 16)
-                (/ (-> gp-1 y) 16)
-                (t9-20)
+            (if (and (transform-point-qword! gp-1 s4-1) (transform-point-qword! s5-2 s3-1))
+                (draw! *bigmap* (/ (-> s5-2 x) 16) (/ (-> s5-2 y) 16) (/ (-> gp-1 x) 16) (/ (-> gp-1 y) 16))
                 )
-              )
             )
           )
         )
@@ -1661,64 +1639,64 @@
           (let ((t9-0 format)
                 (a0-3 #t)
                 (a1-1 "DONE NOTIFY: ~S ~S~%")
-                (v1-3 (-> block param 1))
+                (v1-3 (the-as mc-status-code (-> block param 1)))
                 )
             (t9-0
               a0-3
               a1-1
               (cond
-                ((= v1-3 15)
+                ((= v1-3 (mc-status-code bad-version))
                  "bad-version"
                  )
-                ((= v1-3 13)
+                ((= v1-3 (mc-status-code no-save))
                  "no-save"
                  )
-                ((= v1-3 10)
+                ((= v1-3 (mc-status-code no-last))
                  "no-last"
                  )
-                ((= v1-3 14)
+                ((= v1-3 (mc-status-code no-space))
                  "no-space"
                  )
-                ((= v1-3 4)
+                ((= v1-3 (mc-status-code internal-error))
                  "internal-error"
                  )
-                ((= v1-3 8)
+                ((= v1-3 (mc-status-code no-memory))
                  "no-memory"
                  )
-                ((= v1-3 2)
+                ((= v1-3 (mc-status-code bad-handle))
                  "bad-handle"
                  )
-                ((zero? v1-3)
+                ((= v1-3 (mc-status-code busy))
                  "busy"
                  )
-                ((= v1-3 5)
+                ((= v1-3 (mc-status-code write-error))
                  "write-error"
                  )
-                ((= v1-3 6)
+                ((= v1-3 (mc-status-code read-error))
                  "read-error"
                  )
-                ((= v1-3 9)
+                ((= v1-3 (mc-status-code no-card))
                  "no-card"
                  )
-                ((= v1-3 11)
+                ((= v1-3 (mc-status-code no-format))
                  "no-format"
                  )
-                ((= v1-3 1)
+                ((= v1-3 (mc-status-code ok))
                  "ok"
                  )
-                ((= v1-3 16)
+                ((= v1-3 (mc-status-code no-process))
                  "no-process"
                  )
-                ((= v1-3 17)
+                ((= v1-3 (mc-status-code no-auto-save))
                  "no-auto-save"
                  )
-                ((= v1-3 12)
+                ((= v1-3 (mc-status-code no-file))
                  "no-file"
                  )
-                ((= v1-3 3)
+                ((= v1-3 (mc-status-code format-failed))
                  "format-failed"
                  )
-                ((= v1-3 7)
+                ((= v1-3 (mc-status-code new-game))
                  "new-game"
                  )
                 (else
@@ -1889,16 +1867,16 @@
       )
     )
   :trans (behavior ()
-    (seek! (-> self anim-frame) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
+    (seek! (-> self anim-frame) 0.0 (/ (-> self clock time-adjust-ratio) 50))
     (cond
       ((= (-> self anim-frame) 0.0)
-       (seek! (-> self pos-transition) 1.0 (* 0.02 (-> self clock time-adjust-ratio)))
+       (seek! (-> self pos-transition) 1.0 (/ (-> self clock time-adjust-ratio) 50))
        (if (= (-> self pos-transition) 1.0)
            (go-virtual gone)
            )
        )
       (else
-        (seek! (-> self pos-transition) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
+        (seek! (-> self pos-transition) 0.0 (/ (-> self clock time-adjust-ratio) 50))
         )
       )
     (set-ring-position self)
@@ -1944,15 +1922,15 @@
 ;; definition for method 9 of type menu-slider-option
 (defmethod respond-progress ((this menu-slider-option) (arg0 progress) (arg1 symbol))
   (with-pp
-    (when (bigmap-method-11 *bigmap*)
+    (when (loaded? *bigmap*)
       (let ((s5-0 (&+ (the-as (pointer float) *setting-control*) (-> this setting-offset)))
             (s3-0 #f)
             )
-        (let ((f30-0 (* 0.02 (-> pp clock time-adjust-ratio)))
+        (let ((f30-0 (/ (-> pp clock time-adjust-ratio) 50))
               (f28-0 0.0)
               )
           (when (type? this menu-picture-slider-option)
-            (set! f30-0 (* 0.005 (-> pp clock time-adjust-ratio)))
+            (set! f30-0 (/ (-> pp clock time-adjust-ratio) 200))
             (set! f28-0 0.25)
             )
           (cond
@@ -2001,7 +1979,7 @@
 
 ;; definition for method 9 of type menu-stereo-mode-sound-option
 (defmethod respond-progress ((this menu-stereo-mode-sound-option) (arg0 progress) (arg1 symbol))
-  (when (bigmap-method-11 *bigmap*)
+  (when (loaded? *bigmap*)
     (let ((a0-2 (-> *setting-control* user-default stereo-mode))
           (v1-4 #f)
           )
@@ -2282,7 +2260,7 @@
     (set-next-state arg0 a1-3 0)
     )
   (set! (-> arg0 selected-option) #f)
-  (when (bigmap-method-11 *bigmap*)
+  (when (loaded? *bigmap*)
     (cond
       ((cpad-pressed? 0 triangle)
        )
@@ -2907,7 +2885,7 @@
            (cond
              ((and (or (demo?) (kiosk?))
                    (or (= (-> arg0 current) 'select-kiosk-start) (= (-> arg0 current) 'select-kiosk-start-special))
-                   (= (status-of-level-and-borrows *level* 'title #f) 'active)
+                   (= (level-status? *level* 'title #f) 'active)
                    )
               (send-event (handle->process (-> *game-info* controller 0)) 'control-spec (get-play-list-idx s5-1))
               (set-master-mode 'game)
@@ -3096,7 +3074,7 @@
 
 ;; definition for method 9 of type menu-bigmap-option
 (defmethod respond-progress ((this menu-bigmap-option) (arg0 progress) (arg1 symbol))
-  ((method-of-object *bigmap* bigmap-method-13))
+  (handle-cpad-input *bigmap*)
   (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
   0
@@ -4155,13 +4133,10 @@
     process
     (lambda :behavior process
       ((arg0 int))
-      (let ((s5-0 (current-time)))
-        (until (time-elapsed? s5-0 (seconds 2.5))
-          (suspend)
-          )
+      (suspend-for (seconds 2.5)
         )
       (while (or (not (handle-command-list *gui-control* (gui-channel alert) (the-as gui-connection #f)))
-                 (= (status-of-level-and-borrows *level* 'title #f) 'active)
+                 (= (level-status? *level* 'title #f) 'active)
                  )
         (suspend)
         )

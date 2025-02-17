@@ -471,7 +471,7 @@
 
 ;; *user* is defined when goos starts!
 (when *user*
-  (fmt #t "Loading user scripts for user: {}...\n" *user*)
+  ;; (fmt #t "Loading user scripts for user: {}...\n" *user*)
   ;; i'm not sure what naming scheme to use here. user/<name>/user.gs?
   ;; the GOAL one is loaded in Compiler.cpp
   (try-load-file (fmt #f "goal_src/user/{}/user.gs" *user*))

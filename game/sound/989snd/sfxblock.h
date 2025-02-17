@@ -52,13 +52,15 @@ class SFXBlock : public SoundBank {
                                                            u32 sound_id,
                                                            s32 vol,
                                                            s32 pan,
-                                                           SndPlayParams& params) override;
+                                                           SndPlayParams& params,
+                                                           s32 current_tick) override;
 
   std::optional<std::string_view> GetName() override { return Name; };
   std::optional<u32> GetSoundByName(const char* name) override;
   std::optional<const SFXUserData*> GetSoundUserData(u32 sound_id) override {
     return &Sounds.at(sound_id).UserData;
   };
+  void DebugPrintAllSounds() override;
 };
 
 }  // namespace snd

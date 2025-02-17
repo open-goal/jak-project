@@ -5,10 +5,9 @@
 #include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 
-#include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "decompiler/config.h"
+#include "decompiler/decompilation_process.h"
 #include "decompiler/extractor/extractor_util.h"
-#include "decompiler/level_extractor/extract_level.h"
 #include "goalc/compiler/Compiler.h"
 
 #include "third-party/CLI11.hpp"
@@ -102,116 +101,24 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   };
 }
 
-// TODO - remove code duplication, most of this is copying what happens in decompiler's `main.cpp`
-void decompile(const fs::path& iso_data_path,
-               const std::string& data_subfolder,
-               const std::string& config_override) {
-  using namespace decompiler;
-
+ExtractorErrorCode decompile(const fs::path& in_folder,
+                             const std::string& data_subfolder,
+                             const std::string& config_override) {
   // Determine which config to use from the database
-  const auto version_info = get_version_info_or_default(iso_data_path);
+  const auto version_info = get_version_info_or_default(in_folder);
 
-  Config config = read_config_file(file_util::get_jak_project_dir() / "decompiler" / "config" /
-                                       version_info.game_name /
-                                       fmt::format("{}_config.jsonc", version_info.game_name),
-                                   version_info.decomp_config_version, config_override);
+  decompiler::Config config = decompiler::read_config_file(
+      file_util::get_jak_project_dir() / "decompiler" / "config" / version_info.game_name /
+          fmt::format("{}_config.jsonc", version_info.game_name),
+      version_info.decomp_config_version, config_override);
 
-  std::vector<fs::path> dgos, objs, tex_strs, art_strs;
-
-  // grab all DGOS we need (level + common)
-  // TODO - Jak 2 - jak 1 specific code?
-  for (const auto& dgo_name : config.dgo_names) {
-    std::string common_name = "GAME.CGO";
-    if (dgo_name.length() > 3 && dgo_name.substr(dgo_name.length() - 3) == "DGO") {
-      // ends in DGO, it's a level
-      dgos.push_back(iso_data_path / dgo_name);
-    } else if (dgo_name.length() >= common_name.length() &&
-               dgo_name.substr(dgo_name.length() - common_name.length()) == common_name) {
-      // it's COMMON.CGO, we need that too.
-      dgos.push_back(iso_data_path / dgo_name);
-    }
-  }
-
-  // grab all the object files we need (just text)
-  for (const auto& obj_name : config.object_file_names) {
-    if (obj_name.length() > 3 && obj_name.substr(obj_name.length() - 3) == "TXT") {
-      // ends in TXT
-      objs.push_back(iso_data_path / obj_name);
-    }
-  }
-
-  for (const auto& str_name : config.str_texture_file_names) {
-    tex_strs.push_back(iso_data_path / str_name);
-  }
-
-  for (const auto& str_name : config.str_art_file_names) {
-    art_strs.push_back(iso_data_path / str_name);
-  }
-
-  // set up objects
-  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, tex_strs, art_strs,
-                  config);
-
-  // save object files
   auto out_folder = file_util::get_jak_project_dir() / "decompiler_out" / data_subfolder;
-  auto raw_obj_folder = out_folder / "raw_obj";
-  file_util::create_dir_if_needed(raw_obj_folder);
-  db.dump_raw_objects(raw_obj_folder);
 
-  // analyze object file link data
-  db.process_link_data(config);
-  db.find_code(config);
-  db.process_labels();
-
-  // ensure asset dir exists
-  file_util::create_dir_if_needed(out_folder / "assets");
-
-  // text files
-  {
-    auto result = db.process_game_text_files(config);
-    if (!result.empty()) {
-      file_util::write_text_file(out_folder / "assets" / "game_text.txt", result);
-    }
+  const auto result = run_decompilation_process(config, in_folder, out_folder, true);
+  if (result != 0) {
+    return ExtractorErrorCode::DECOMPILATION_GENERIC_ERROR;
   }
-
-  // textures
-  decompiler::TextureDB tex_db;
-  auto textures_out = out_folder / "textures";
-  auto dump_out = out_folder / "import";
-  file_util::create_dir_if_needed(textures_out);
-  file_util::write_text_file(textures_out / "tpage-dir.txt",
-                             db.process_tpages(tex_db, textures_out, config, dump_out));
-
-  // texture merges
-  // TODO - put all this stuff in somewhere common
-  auto texture_merge_path = file_util::get_jak_project_dir() / "game" / "assets" /
-                            game_version_names[config.game_version] / "texture_merges";
-  if (fs::exists(texture_merge_path)) {
-    tex_db.merge_textures(texture_merge_path);
-  }
-
-  // texture replacements
-  auto replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
-                           game_version_names[config.game_version] / "texture_replacements";
-  if (fs::exists(replacements_path)) {
-    tex_db.replace_textures(replacements_path);
-  }
-
-  // game count
-  {
-    auto result = db.process_game_count_file();
-    if (!result.empty()) {
-      file_util::write_text_file(out_folder / "assets" / "game_count.txt", result);
-    }
-  }
-
-  // levels
-  {
-    auto level_out_path =
-        file_util::get_jak_project_dir() / "out" / game_version_names[config.game_version] / "fr3";
-    file_util::create_dir_if_needed(level_out_path);
-    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config, level_out_path);
-  }
+  return ExtractorErrorCode::SUCCESS;
 }
 
 const std::unordered_map<std::string, GameIsoFlags> game_iso_flag_names = {
@@ -315,11 +222,10 @@ int main(int argc, char** argv) {
   }
 
   // - SETUP
-  decompiler::init_opcode_info();
   if (!project_path_override.empty()) {
     if (!fs::exists(project_path_override)) {
       lg::error("Error: project path override '{}' does not exist", project_path_override.string());
-      return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
+      return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT_MISSING_FOLDER);
     }
     auto ok = file_util::setup_project_path(project_path_override);
     if (!ok) {
@@ -349,7 +255,7 @@ int main(int argc, char** argv) {
   // - INPUT VALIDATION
   if (!fs::exists(input_file_path)) {
     lg::error("Error: input game file path '{}' does not exist", input_file_path.string());
-    return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
+    return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT_MISSING_FOLDER);
   }
   if (data_subfolders.count(game_name) == 0) {
     lg::error("Error: input game name '{}' is not valid", game_name);
@@ -419,14 +325,18 @@ int main(int argc, char** argv) {
     } else if (fs::is_directory(input_file_path)) {
       if (!flag_folder) {
         // if we didn't request a folder explicitly, but we got one, assume something went wrong.
-        lg::error("got a folder, but didn't get folder flag");
+        lg::error("got a folder, but didn't provide the folder flag");
         return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
       }
       iso_data_path = input_file_path;
       // Get hash and file count
       const auto [hash, file_count] = calculate_extraction_hash(iso_data_path);
       // Validate
-      auto [version_info, code] = validate(iso_data_path, hash, file_count);
+      auto [version_info, validate_code] = validate(iso_data_path, hash, file_count);
+      if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
+          (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
+        return static_cast<int>(validate_code);
+      }
     }
 
     // write out a json file with some metadata for the game
@@ -455,7 +365,10 @@ int main(int argc, char** argv) {
 
   if (flag_decompile) {
     try {
-      decompile(iso_data_path, data_subfolder, decomp_config_override);
+      const auto status_code = decompile(iso_data_path, data_subfolder, decomp_config_override);
+      if (status_code != ExtractorErrorCode::SUCCESS) {
+        return static_cast<int>(status_code);
+      }
     } catch (std::exception& e) {
       lg::error("Error during decompile: {}", e.what());
       return static_cast<int>(ExtractorErrorCode::DECOMPILATION_GENERIC_ERROR);
@@ -463,7 +376,10 @@ int main(int argc, char** argv) {
   }
 
   if (flag_compile) {
-    compile(iso_data_path, data_subfolder);
+    const auto status_code = compile(iso_data_path, data_subfolder);
+    if (status_code != ExtractorErrorCode::SUCCESS) {
+      return static_cast<int>(status_code);
+    }
   }
 
   if (flag_play) {

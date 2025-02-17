@@ -20,7 +20,7 @@ class XSocketServer {
   XSocketServer(const XSocketServer&) = delete;
   XSocketServer& operator=(const XSocketServer&) = delete;
 
-  bool init_server();
+  bool init_server(bool failure_may_occur = false);
   void shutdown_server();
   void close_server_socket();
 

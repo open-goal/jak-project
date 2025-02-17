@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/goos/Interpreter.h"
+#include "common/util/FileUtil.h"
 
 #include "goalc/make/Tool.h"
 
@@ -70,6 +71,7 @@ class MakeSystem {
   }
 
   void clear_project();
+  std::vector<std::string> get_loaded_projects() const { return m_loaded_projects; }
 
   /*!
    * Get the prefix that the project has requested for all compiler outputs
@@ -91,6 +93,7 @@ class MakeSystem {
   goos::Interpreter m_goos;
 
   std::optional<REPL::Config> m_repl_config;
+  std::vector<std::string> m_loaded_projects;
 
   std::unordered_map<std::string, std::shared_ptr<MakeStep>> m_output_to_step;
   std::unordered_map<std::string, std::shared_ptr<Tool>> m_tools;

@@ -53,8 +53,8 @@
     (set! (-> v0-0 allocated-length) arg0)
     (set! (-> v0-0 data-size) arg1)
     (set! (-> v0-0 length) 0)
-    (set! (-> v0-0 data-base) (&-> (-> v0-0 tag) arg0))
-    (set! (-> v0-0 data-top) (&-> (-> v0-0 tag) arg0))
+    (set! (-> v0-0 data-base) (&-> v0-0 tag arg0))
+    (set! (-> v0-0 data-top) (&-> v0-0 tag arg0))
     v0-0
     )
   )
@@ -116,16 +116,16 @@
 ;; WARN: Return type mismatch int vs res-tag-pair.
 (defmethod lookup-tag-idx ((this res-lump) (arg0 symbol) (arg1 symbol) (arg2 float))
   "Look up the index of the tag containing with the given name and timestamp.
-Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
-Depending on the mode, they may be the same, or they may be two tags that you should interpolate
-between, if the exact time was not found.
-
-@param name-sym should be the name of the thing you want.
-@param time is for the timestamp you want.
-If mode = 'base, then both the indices are the same and the timestamp is ignored.
-If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found).
-If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
-If things go wrong, returns a negative number."
+   Correct lookups return a res-tag-pair, which contains one tag index in the lower 32 bits and one in the upper 32 bits.
+   Depending on the mode, they may be the same, or they may be two tags that you should interpolate
+   between, if the exact time was not found.
+   
+   @param name-sym should be the name of the thing you want.
+   @param time is for the timestamp you want.
+   If mode = 'base, then both the indices are the same and the timestamp is ignored.
+   If mode = 'interp, then it tries to get closest below/closest above (or both the same, if exact match found).
+   If mode = 'exact, then it requires an exact timestamp match and both indices are the same.
+   If things go wrong, returns a negative number."
   (local-vars (t4-1 int))
   (when (or (= arg0 'id)
             (= arg0 'aid)
@@ -185,7 +185,7 @@ If things go wrong, returns a negative number."
         (goto cfg-73)
         )
       (let ((t3-13 t4-1)
-            (t4-4 (&-> (-> this tag) t4-1))
+            (t4-4 (&-> this tag t4-1))
             )
         (while (not (or (>= t3-13 (-> this length))
                         (< t2-4 (-> (&+ (the-as (pointer uint64) (symbol->string (-> t4-4 0 name))) 4) 0))
@@ -227,9 +227,9 @@ If things go wrong, returns a negative number."
 ;; INFO: Used lq/sq
 (defmethod make-property-data ((this res-lump) (arg1 float) (tag-pair res-tag-pair) (arg3 pointer))
   "Returns (a pointer to) the value data of a property with the tag-pair.
-If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
-with the result written into buf. buf must have enough space to copy all of the data.
-Otherwise, simply returns an address to the resource binary."
+   If tag-pair does not represent an exact point in the timeline, then the data is interpolated based on time
+   with the result written into buf. buf must have enough space to copy all of the data.
+   Otherwise, simply returns an address to the resource binary."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          (vf3 :class vf)
@@ -420,10 +420,10 @@ Otherwise, simply returns an address to the resource binary."
                              (arg5 pointer)
                              )
   "Returns an address to a given property's data at a specific time stamp, or default on error.
-@param name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
-@param default is the default result returned in the case of an error.
-@param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
-@param buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
+   @param name is the name of the property you want, mode is its lookup mode ('interp 'base 'exact), time is the timestamp.
+   @param default is the default result returned in the case of an error.
+   @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if tag-addr is #f
+   @param buf-addr is an address to the data buffer used to write interpolated data to. It must have enough space! Only necessary for 'interp mode."
   (let ((s3-0 (lookup-tag-idx this arg0 arg1 arg2)))
     (cond
       ((< (the-as int s3-0) 0)
@@ -452,11 +452,11 @@ Otherwise, simply returns an address to the resource binary."
                                (arg5 pointer)
                                )
   "Returns a given struct property's value at a specific time stamp, or default on error.
-@param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
-@param default is the default result returned in the case of an error.
-@param tag-addr is an address to a [[res-tag]]. The current base tag is written to this. Ignored if tag-addr is #f.
-@param buf-addr is an address to the data buffer used to write interpolated data to.
-It must have enough space! Only necessary for 'interp mode."
+   @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
+   @param default is the default result returned in the case of an error.
+   @param tag-addr is an address to a [[res-tag]]. The current base tag is written to this. Ignored if tag-addr is #f.
+   @param buf-addr is an address to the data buffer used to write interpolated data to.
+   It must have enough space! Only necessary for 'interp mode."
   (let ((s3-0 (lookup-tag-idx this arg0 arg1 arg2)))
     (cond
       ((< (the-as int s3-0) 0)
@@ -491,11 +491,11 @@ It must have enough space! Only necessary for 'interp mode."
                               (arg5 pointer)
                               )
   "Returns a given value property's value at a specific time stamp, or default on error.
-@param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
-@param default is the default result returned in the case of an error.
-@param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if `tag-addr` is #f.
-@param buf-addr is an address to the data buffer used to write interpolated data to.
-It must have enough space! Only necessary for 'interp mode."
+   @param name is the name of the property you want, `mode` is its lookup mode ('interp 'base 'exact), `time` is the timestamp.
+   @param default is the default result returned in the case of an error.
+   @param tag-addr is an address to a res-tag. The current base tag is written to this. Ignored if `tag-addr` is #f.
+   @param buf-addr is an address to the data buffer used to write interpolated data to.
+   It must have enough space! Only necessary for 'interp mode."
   (let ((a2-1 (lookup-tag-idx this arg0 arg1 arg2)))
     (cond
       ((< (the-as int a2-1) 0)
@@ -677,10 +677,10 @@ It must have enough space! Only necessary for 'interp mode."
 ;; INFO: Used lq/sq
 (defmethod allocate-data-memory-for-tag! ((this res-lump) (arg0 res-tag))
   "Find space for the data described by arg0 in this.
-Returns a tag with data-offset set correctly for this res-lump.
-If the lump already contains memory for the given tag, and it is big enough,
-it will be reused. Alignment will be at least 8 bytes.
-If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
+   Returns a tag with data-offset set correctly for this res-lump.
+   If the lump already contains memory for the given tag, and it is big enough,
+   it will be reused. Alignment will be at least 8 bytes.
+   If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
   (local-vars (resource-mem pointer))
   (let* ((tag-pair (lookup-tag-idx this (-> arg0 name) 'exact (-> arg0 key-frame)))
          (existing-tag (-> this tag (-> tag-pair lo)))
@@ -746,8 +746,8 @@ If the input tag has elt-count = 0, it will return a tag for elt-count = 1."
 ;; definition for method 17 of type res-lump
 (defmethod add-data! ((this res-lump) (tag res-tag) (arg2 pointer))
   "Given a tag and a pointer to its data, copy it to this res-lump.
-This doesn't seem to do the right thing if the given tag is a non-inline tag
-with > 1 element."
+   This doesn't seem to do the right thing if the given tag is a non-inline tag
+   with > 1 element."
   (let ((a0-2 (allocate-data-memory-for-tag! this tag)))
     (when a0-2
       (let* ((v1-2 this)
@@ -787,7 +787,7 @@ with > 1 element."
 ;; INFO: Used lq/sq
 (defmethod get-curve-data! ((this res-lump) (arg0 curve) (arg1 symbol) (arg2 symbol) (arg3 float))
   "Read curve data and write it to curve-target. Return #t if both
-control points and knots data was succesfully read, #f otherwise."
+   control points and knots data was succesfully read, #f otherwise."
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s5-0 #f))
     (set! sv-16 (new 'static 'res-tag))

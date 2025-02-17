@@ -64,21 +64,21 @@
     (.lvf vf1 (&-> arg0 times 0 quad))
     (nop!)
     (.lvf vf2 (&-> arg0 times 1 quad))
-    (.mul.w.vf vf1 vf1 vf1 :mask #b111)
+    (.mul.w.vf.xyz vf1 vf1 vf1)
     (.lvf vf3 (&-> arg0 times 2 quad))
-    (.mul.w.vf vf2 vf2 vf2 :mask #b111)
+    (.mul.w.vf.xyz vf2 vf2 vf2)
     (.lvf vf4 (&-> arg0 times 3 quad))
-    (.mul.w.vf vf3 vf3 vf3 :mask #b111)
+    (.mul.w.vf.xyz vf3 vf3 vf3)
     (.lvf vf5 (&-> arg0 times 4 quad))
-    (.mul.w.vf vf4 vf4 vf4 :mask #b111)
+    (.mul.w.vf.xyz vf4 vf4 vf4)
     (.lvf vf6 (&-> arg0 times 5 quad))
-    (.mul.w.vf vf5 vf5 vf5 :mask #b111)
+    (.mul.w.vf.xyz vf5 vf5 vf5)
     (.lvf vf7 (&-> arg0 times 6 quad))
-    (.mul.w.vf vf6 vf6 vf6 :mask #b111)
+    (.mul.w.vf.xyz vf6 vf6 vf6)
     (.lvf vf8 (&-> arg0 times 7 quad))
-    (.mul.w.vf vf7 vf7 vf7 :mask #b111)
+    (.mul.w.vf.xyz vf7 vf7 vf7)
     (nop!)
-    (.mul.w.vf vf8 vf8 vf8 :mask #b111)
+    (.mul.w.vf.xyz vf8 vf8 vf8)
     (nop!)
     (vftoi12.xyzw vf1 vf1)
     (nop!)
@@ -480,7 +480,7 @@
                   (let ((s1-0 (-> arg0 times)))
                     (set! sv-64 (-> arg0 times 1))
                     (let ((s0-0 (-> arg0 light-group)))
-                      (vector4-lerp! (the-as vector s1-0) (-> sv-32 amb-color) (-> sv-48 amb-color) f30-0)
+                      (vector4-lerp! (-> s1-0 0) (-> sv-32 amb-color) (-> sv-48 amb-color) f30-0)
                       (vector4-lerp! sv-64 (-> sv-32 lgt-color) (-> sv-48 lgt-color) f30-0)
                       (set! (-> arg0 times 2 quad) (-> sv-64 quad))
                       (set! (-> arg0 times 3 quad) (-> sv-64 quad))
@@ -807,8 +807,8 @@
            (set! (-> arg0 times arg1 w) f30-1)
            (when (not (paused?))
              (if (< 0.75 f30-1)
-                 (set! (-> gp-0 fade) (- (-> gp-0 fade) (* 0.04 (-> pp clock time-adjust-ratio))))
-                 (set! (-> gp-0 fade) (- (-> gp-0 fade) (* 0.02 (-> pp clock time-adjust-ratio))))
+                 (set! (-> gp-0 fade) (- (-> gp-0 fade) (/ (-> pp clock time-adjust-ratio) 25)))
+                 (set! (-> gp-0 fade) (- (-> gp-0 fade) (/ (-> pp clock time-adjust-ratio) 50)))
                  )
              )
            )
@@ -1269,9 +1269,9 @@
 ;; WARN: Return type mismatch int vs sound-id.
 (defmethod play-or-stop-lightning! ((this mood-control) (arg0 sound-spec) (arg1 vector))
   "Handles playing/stopping of the lightning sound
-- Plays the lightning sound if we are not loading and `lightning-id` is zero
-- Stops the lightning sound first if `lightning-id` is non-zero
-Returns the current value of `lightning-id`"
+   - Plays the lightning sound if we are not loading and `lightning-id` is zero
+   - Stops the lightning sound first if `lightning-id` is non-zero
+   Returns the current value of `lightning-id`"
   (vector+! (new 'stack-no-clear 'vector) arg1 (math-camera-pos))
   (the-as sound-id (cond
                      ((or (load-in-progress? *level*) (movie?))
@@ -1350,8 +1350,8 @@ Returns the current value of `lightning-id`"
                (dotimes (s4-0 8)
                  (set-vector! s5-0 255.0 255.0 255.0 128.0)
                  (vector4-lerp!
-                   (the-as vector (-> this mood-fog-table data s4-0))
-                   (the-as vector (-> this mood-fog-table data s4-0))
+                   (-> this mood-fog-table data s4-0 fog-color)
+                   (-> this mood-fog-table data s4-0 fog-color)
                    s5-0
                    f30-0
                    )
@@ -1661,11 +1661,11 @@ Returns the current value of `lightning-id`"
                (format *stdcon* "overide fog ~f~%" (-> this overide fog))
                )
               (else
-                (format *stdcon* "time until random cloud ~f~%" (* 0.0033333334 (-> this time-until-random cloud)))
+                (format *stdcon* "time until random cloud ~f~%" (/ (-> this time-until-random cloud) 300))
                 (format *stdcon* "current cloud ~f~%" (-> this current-interp cloud))
                 (format *stdcon* "target cloud ~f~%" (-> this target-interp cloud))
                 (format *stdcon* "speed cloud ~f~%" (* (/ 1.0 (-> this speed-interp cloud)) (seconds-per-frame)))
-                (format *stdcon* "time until random fog ~f~%" (* 0.0033333334 (-> this time-until-random fog)))
+                (format *stdcon* "time until random fog ~f~%" (/ (-> this time-until-random fog) 300))
                 (format *stdcon* "current fog ~f~%" (-> this current-interp fog))
                 (format *stdcon* "target fog ~f~%" (-> this target-interp fog))
                 (format *stdcon* "speed fog ~f~%" (* (/ 1.0 (-> this speed-interp fog)) (seconds-per-frame)))
@@ -1684,8 +1684,8 @@ Returns the current value of `lightning-id`"
 ;; WARN: Return type mismatch int vs none.
 (defmethod update-mood-weather! ((this mood-control) (cloud-target float) (fog-target float) (cloud-speed float) (fog-speed float))
   "Set the `target-interp` and `speed-interp` for the clouds and fog
-If `*-speed` is 0.0, use the `*-target` args to set `current-interp`
-See [[mood-weather]]"
+   If `*-speed` is 0.0, use the `*-target` args to set `current-interp`
+   See [[mood-weather]]"
   (set! (-> this target-interp cloud) cloud-target)
   (set! (-> this target-interp fog) fog-target)
   (set! (-> this speed-interp cloud) cloud-speed)
@@ -1704,7 +1704,7 @@ See [[mood-weather]]"
 ;; WARN: Return type mismatch int vs none.
 (defmethod update-mood-range! ((this mood-control) (min-cloud float) (max-cloud float) (min-fog float) (max-fog float))
   "Set the minimum and maximum ranges of clouds and fog
-See [[mood-range]]"
+   See [[mood-range]]"
   (set! (-> this range min-cloud) min-cloud)
   (set! (-> this range max-cloud) max-cloud)
   (set! (-> this range min-fog) min-fog)
@@ -1717,7 +1717,7 @@ See [[mood-range]]"
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-time-for-random-weather! ((this mood-control) (arg0 float) (arg1 float))
   "Set the `time-until-random`'s cloud and fog values
-See [[mood-weather]]"
+   See [[mood-weather]]"
   (set! (-> this time-until-random cloud) arg0)
   (set! (-> this time-until-random fog) arg1)
   0

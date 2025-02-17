@@ -905,6 +905,16 @@ struct ExecutionContext {
     }
   }
 
+  void vmula_q(DEST mask, int src0) {
+    auto s0 = vf_src(src0);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] = s0.f[i] * Q;
+      }
+    }
+  }
+
   void vadda_bc(DEST mask, BC bc, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);
@@ -1019,7 +1029,14 @@ struct ExecutionContext {
   }
 
   void vrsqrt(int src0, BC bc0, int src1, BC bc1) {
-    Q = vf_src(src0).f[(int)bc0] / std::sqrt(std::abs(vf_src(src1).f[(int)bc1]));
+    const float s = std::sqrt(std::abs(vf_src(src1).f[(int)bc1]));
+    if (s == 0) {
+      // avoid propagating NaN's in Jak 3's cloth stuff, which sometimes runs the update method
+      // before doing setup.
+      Q = 0;
+    } else {
+      Q = vf_src(src0).f[(int)bc0] / s;
+    }
   }
 
   void vsqrt(int src, BC bc) { Q = std::sqrt(std::abs(vf_src(src).f[(int)bc])); }

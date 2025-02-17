@@ -93,15 +93,13 @@
 
 (set! (-> *wheel-trail-info* uv-repeat-dist) 8192.0)
 
-(set! (-> *wheel-trail-info* lie-mode) (the-as uint 0))
+(set! (-> *wheel-trail-info* lie-mode) (lie-mode appearance0))
 
 (set! (-> *wheel-trail-info* max-age) (seconds 3))
 
 (if #f
-    (set! (-> *wheel-trail-info* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *wheel-trail-info* tex-id) (the-as uint #x100300))
+    (set! (-> *wheel-trail-info* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *wheel-trail-info* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 (set! (-> *wheel-trail-info* width-curve) (the-as curve2d-piecewise *curve-unity*))
@@ -132,37 +130,205 @@
 (deftype tire-trail (light-trail)
   ()
   (:methods
-    (tire-trail-method-22 (_type_) none)
-    (tire-trail-method-23 (_type_) none)
+    (add-crumb-with-offset-and-uu (_type_ vector vector float) none)
+    (tire-trail-method-23 (_type_ vector vector float) none)
     )
   )
 
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod light-trail-method-18 ((this tire-trail) (arg0 light-trail-breadcrumb) (arg1 int) (arg2 vector) (arg3 vector))
+(defmethod calc-vertex-pos! ((this tire-trail) (arg0 light-trail-breadcrumb) (arg1 int) (arg2 vector) (arg3 vector))
   (set! (-> arg3 quad) (-> (&+ arg0 16) pos quad))
   (none)
   )
 
-(defmethod light-trail-method-9 ((this tire-trail) (arg0 light-trail-composition) (arg1 int))
+(defmethod setup! ((this tire-trail) (arg0 light-trail-composition) (arg1 int))
+  "Initialize, including allocation of crumbs and strips on the process heap."
   (set! (-> this crumb-size) (the-as uint 32))
   (call-parent-method this arg0 arg1)
   (none)
   )
 
+;; WARN: Return type mismatch float vs none.
+(defmethod add-crumb-with-offset-and-uu ((this tire-trail) (arg0 vector) (arg1 vector) (arg2 float))
+  (let ((v1-1 (add-crumb! this arg0 (seconds 10000))))
+    (when (!= v1-1 1)
+      (let ((v1-4 (the-as
+                    tire-trail-crumb
+                    (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ (-> this crumb-count) -1)))
+                    )
+                  )
+            )
+        (set! (-> v1-4 offset quad) (-> arg1 quad))
+        (set! (-> v1-4 uu) arg2)
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod tire-trail-method-23 ((this tire-trail) (arg0 vector) (arg1 vector) (arg2 float))
+  (local-vars (s5-0 tire-trail-crumb) (f0-1 float))
+  (with-pp
+    (let ((v1-0 (-> this crumb-count)))
+      0.0
+      (cond
+        ((zero? v1-0)
+         (add-crumb-with-offset-and-uu this arg0 arg1 arg2)
+         )
+        ((begin
+           (set! (-> this decision) (light-trail-decision added))
+           (set! s5-0
+                 (the-as tire-trail-crumb (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ v1-0 -1))))
+                 )
+           (set! f0-1 (vector-vector-distance (-> s5-0 pos) arg0))
+           (< f0-1 40.96)
+           )
+         (set! (-> this decision) (light-trail-decision not-added))
+         )
+        (else
+          (+! (-> this total-distance-traveled) f0-1)
+          (let ((f1-2 (the float (- (-> this start-marker) (-> this end-marker))))
+                (f2-0 (the float (-> this appearance max-age)))
+                (f0-5 0.0)
+                )
+            (if (-> this appearance use-tape-mode?)
+                (set! f0-5 (- f2-0 f1-2))
+                )
+            (set! (-> s5-0 pos quad) (-> arg0 quad))
+            (set! (-> s5-0 offset quad) (-> arg1 quad))
+            (set! (-> s5-0 birth-time)
+                  (the-as
+                    uint
+                    (the int (- (the float (+ (-> this start-marker) (- (current-time) (-> pp clock old-frame-counter)))) f0-5))
+                    )
+                  )
+            )
+          (set! (-> s5-0 uu) arg2)
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defmethod crumb-age-out-callback ((this tire-trail) (arg0 float) (arg1 int))
+  "To be implemented by the user to smoothly interpolate out non-default entries in their crumb type."
+  (let* ((s5-0 (the-as tire-trail-crumb (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) arg1))))
+         (s4-0
+           (the-as tire-trail-crumb (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ arg1 1))))
+           )
+         (f30-0 (-> s5-0 uu))
+         )
+    (vector-lerp! (-> s5-0 offset) (-> s4-0 offset) (-> s5-0 offset) arg0)
+    (set! (-> s5-0 uu) (lerp (-> s4-0 uu) f30-0 arg0))
+    )
+  (none)
+  )
+
+(defmethod add-tri-pair-to-prim! ((this tire-trail) (arg0 vector) (arg1 rgba) (arg2 float) (arg3 vector) (arg4 float))
+  "Add two vertices to the prim strip to add two triangles"
+  (when (< (+ (-> this strip allocated-num-verts) -2) (-> this strip num-verts))
+    (format 0 "Out of stuff (~d)~%" (-> this strip allocated-num-verts))
+    (return #f)
+    )
+  (let ((s3-0 (new 'stack-no-clear 'matrix)))
+    (vector+! (-> s3-0 rvec) arg0 arg3)
+    (vector-! (-> s3-0 uvec) arg0 arg3)
+    (add-vert-to-prim-strip! this (-> this strip) (-> s3-0 rvec) arg1 arg4 0.0)
+    (add-vert-to-prim-strip! this (-> this strip) (-> s3-0 uvec) arg1 arg4 1.0)
+    )
+  #f
+  )
+
+(deftype tire-trail-tracker (light-trail-tracker)
+  ((trail  tire-trail :override)
+   )
+  )
+
+
+(defbehavior tire-trail-tracker-init-by-other tire-trail-tracker ((arg0 light-trail-tracker-spawn-params))
+  (set! (-> self tracked-object) (-> arg0 tracked-obj))
+  (set! (-> self trail) (new 'process 'tire-trail))
+  (set! (-> self offscreen?) #f)
+  (set! (-> self next-line-check-time) 0)
+  (set! (-> self last-add-frame-val) (the-as uint 0))
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (change-parent self *rigid-body-queue-manager*)
+  (go-virtual tracking)
+  )
+
+(defstate tracking (tire-trail-tracker)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('reset)
+       (reset! (-> self trail))
+       )
+      (('die)
+       (go-virtual die)
+       )
+      )
+    )
+  :trans (behavior ()
+    (let ((v1-1 (handle->process (-> self tracked-object))))
+      (cond
+        (v1-1
+          (if (and v1-1 (nonzero? (-> (the-as process-drawable v1-1) draw)))
+              (setup-dma-and-tex (-> self trail strip) (-> (the-as process-drawable v1-1) draw))
+              )
+          (common-trans! (-> self trail))
+          )
+        (else
+          (go-virtual die)
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post light-trail-tracker-common-post
+  )
+
+;; WARN: Return type mismatch process vs tire-trail-tracker.
+(defun spawn-tire-trail-tracker ((arg0 process) (arg1 light-trail-tracker-spawn-params))
+  (let ((v1-2 (+ (estimate-light-trail-mem-usage (the-as uint (-> arg1 max-num-crumbs)) (the-as uint #f))
+                 (* (-> arg1 max-num-crumbs) 16)
+                 )
+              )
+        (s4-0 (the-as process #f))
+        )
+    (let* ((s3-0 (get-process *default-dead-pool* tire-trail-tracker (+ v1-2 1024) 1))
+           (v1-3 (when s3-0
+                   (let ((t9-2 (method-of-type process activate)))
+                     (t9-2 s3-0 arg0 "tire-trail" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 tire-trail-tracker-init-by-other arg1)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (if v1-3
+          (set! s4-0 (-> v1-3 0))
+          )
+      )
+    (the-as tire-trail-tracker s4-0)
+    )
+  )
+
 (defmethod wvehicle-method-195 ((this wvehicle))
-  ; TODO trail tracker stuff
-  ; (let ((s5-0 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
-  ;   (set! (-> s5-0 tracked-obj) (process->handle this))
-  ;   (set! (-> s5-0 max-num-crumbs) 80)
-  ;   (set! (-> s5-0 appearance) *wheel-trail-info*)
-  ;   (dotimes (s4-0 (-> this info physics-model wheel-count))
-  ;     (when (not (handle->process (-> this wheel s4-0 tread-tracker)))
-  ;       (set! (-> *wheel-trail-info* tex-id) (the-as uint (-> this wheel s4-0 info tread-tid)))
-  ;       (set! (-> this wheel s4-0 tread-tracker) (process->handle (spawn-tire-trail-tracker this s5-0)))
-  ;       )
-  ;     )
-  ;   )
+  (let ((s5-0 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
+    (set! (-> s5-0 tracked-obj) (process->handle this))
+    (set! (-> s5-0 max-num-crumbs) 80)
+    (set! (-> s5-0 appearance) *wheel-trail-info*)
+    (dotimes (s4-0 (-> this info physics-model wheel-count))
+      (when (not (handle->process (-> this wheel s4-0 tread-tracker)))
+        (set! (-> *wheel-trail-info* tex-id) (-> this wheel s4-0 info tread-tid))
+        (set! (-> this wheel s4-0 tread-tracker) (process->handle (spawn-tire-trail-tracker this s5-0)))
+        )
+      )
+    )
   0
   (none)
   )
@@ -539,7 +705,7 @@
                     )
                   )
                 )
-              (set! (-> *wheel-trail-info* tex-id) (the-as uint (-> s1-0 tread-tid)))
+              (set! (-> *wheel-trail-info* tex-id) (-> s1-0 tread-tid))
               )
             (let ((s1-1 (handle->process (-> s2-0 tread-tracker))))
               (when s1-1
@@ -569,35 +735,24 @@
                    (cond
                      ((>= (- (-> s5-0 cur-time) (-> s2-0 tread-time)) (the-as uint 50))
                       (set! (-> s2-0 tread-time) (-> s5-0 cur-time))
-                      (let* ((a0-42 (-> (the-as process-focusable s1-1) root))
-                             (t9-13 (method-of-object a0-42 y-angle))
-                             )
+                      (add-crumb-with-offset-and-uu
+                        (-> (the-as tire-trail-tracker s1-1) trail)
                         (-> s5-0 surface-pos)
                         (-> s5-0 offset)
-                        0
-                        (t9-13 a0-42)
+                        0.0
                         )
                       )
                      (else
-                       (let* ((a0-43 (-> (the-as process-focusable s1-1) root))
-                              (t9-14 (method-of-object a0-43 global-y-angle-to-point))
-                              (a1-29 (-> s5-0 surface-pos))
-                              )
-                         (-> s5-0 offset)
-                         0
-                         (t9-14 a0-43 a1-29)
-                         )
+                       (tire-trail-method-23 (-> (the-as tire-trail-tracker s1-1) trail) (-> s5-0 surface-pos) (-> s5-0 offset) 0.0)
                        )
                      )
                    (when (not (logtest? (-> s2-0 flags) 2))
                      (+! (-> s5-0 surface-pos y) -2048.0)
-                     (let* ((a0-44 (-> (the-as process-focusable s1-1) root))
-                            (t9-15 (method-of-object a0-44 y-angle))
-                            )
+                     (add-crumb-with-offset-and-uu
+                       (-> (the-as tire-trail-tracker s1-1) trail)
                        (-> s5-0 surface-pos)
                        (-> s5-0 zero-offset)
-                       0
-                       (t9-15 a0-44)
+                       0.0
                        )
                      (set! (-> s2-0 tread-time) (+ (-> s5-0 cur-time) -50))
                      )
@@ -606,22 +761,18 @@
                     (when (logtest? (-> s2-0 flags) 2)
                       (set! (-> s2-0 tread-time) (-> s5-0 cur-time))
                       (+! (-> s5-0 surface-pos y) -2048.0)
-                      (let* ((a0-45 (-> (the-as process-focusable s1-1) root))
-                             (t9-16 (method-of-object a0-45 y-angle))
-                             )
+                      (add-crumb-with-offset-and-uu
+                        (-> (the-as tire-trail-tracker s1-1) trail)
                         (-> s5-0 surface-pos)
                         (-> s5-0 zero-offset)
-                        0
-                        (t9-16 a0-45)
+                        0.0
                         )
                       (+! (-> s5-0 surface-pos y) 2048.0)
-                      (let* ((a0-46 (-> (the-as process-focusable s1-1) root))
-                             (t9-17 (method-of-object a0-46 y-angle))
-                             )
+                      (add-crumb-with-offset-and-uu
+                        (-> (the-as tire-trail-tracker s1-1) trail)
                         (-> s5-0 surface-pos)
                         (-> s5-0 offset)
-                        0
-                        (t9-17 a0-46)
+                        0.0
                         )
                       (set! (-> s2-0 tread-time) (+ (-> s5-0 cur-time) -50))
                       )

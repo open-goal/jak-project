@@ -93,7 +93,7 @@
 (defmethod draw ((this hud-wasbbv-goal))
   (local-vars (v1-7 int) (s5-0 int))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
+    (-> this sprites 0)
     (the int (+ (* -130.0 (-> this offset)) (* 65.0 (-> *video-params* relative-x-scale))))
     70
     )
@@ -151,8 +151,8 @@
         )
       )
     )
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 0 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) -40 -40)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) -40 -40)
   (set! (-> this strings 1 scale) 0.65)
   (case (-> *setting-control* user-default language)
     (((language-enum korean))
@@ -190,7 +190,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-wasbbv-score))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
+    (-> this sprites 0)
     (the int (+ (- 512.0 (* 72.0 (-> *video-params* relative-x-scale))) (* 130.0 (-> this offset))))
     70
     )
@@ -226,8 +226,8 @@
     (format (clear *temp-string*) (lookup-text! *common-text* (-> *wasbbv-hud-info* score-text) #f))
     (s5-1 s4-1 s3-0 *temp-string*)
     )
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 32 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) 40 -40)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 32 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) 40 -40)
   (let ((v1-9 (-> *setting-control* user-default language)))
     (set! (-> this strings 1 scale)
           (cond
@@ -281,7 +281,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-wasbbv-counter))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
+    (-> this sprites 0)
     (the int (+ (- 512.0 (* 72.0 (-> *video-params* relative-x-scale))) (* 130.0 (-> this offset))))
     95
     )
@@ -309,7 +309,7 @@
           )
         )
       )
-    (set-as-offset-from! (the-as hud-sprite (-> s5-0 0 pos)) (the-as vector4w (-> this sprites)) 32 -8)
+    (set-as-offset-from! (the-as hud-sprite (-> s5-0 0 pos)) (-> this sprites 0 pos) 32 -8)
     )
   ((method-of-type hud draw) this)
   0
@@ -440,15 +440,10 @@
 (defmethod task-manager-method-26 ((this task-manager-vehicle-bbush))
   (when (= (-> this player-vehicle) #f)
     (when (and *target* (focus-test? *target* pilot-riding))
-      (let* ((s5-0 (handle->process (-> *target* pilot vehicle)))
-             (v1-10 (if (type? s5-0 process-focusable)
-                        s5-0
-                        )
-                    )
-             )
+      (let ((v1-10 (as-type (handle->process (-> *target* pilot vehicle)) process-focusable)))
         (when v1-10
           (set! (-> this player-vehicle) (-> *target* pilot vehicle))
-          (set! (-> this ground-pos quad) (-> (the-as process-focusable v1-10) root trans quad))
+          (vector-copy! (-> this ground-pos) (-> (the-as process-focusable v1-10) root trans))
           (set-time! (-> this ground-time))
           (dotimes (s5-1 3)
             (send-event (handle->process (-> this player-vehicle)) 'turbo-pickup)
@@ -476,7 +471,7 @@
               )
             (set! (-> this max-distance) (fmax (-> this max-distance) (-> this distance)))
             (set! (-> this max-air-time) (fmax (-> this max-air-time) (-> this air-time)))
-            (set! (-> this ground-pos quad) (-> v1-26 root trans quad))
+            (vector-copy! (-> this ground-pos) (-> v1-26 root trans))
             (set-time! (-> this ground-time))
             (set! (-> this distance) 0.0)
             (set! (-> this air-time) 0.0)
@@ -612,13 +607,9 @@
                 (not (handle->process (-> self player-vehicle)))
                 )
       (when (and *target* (focus-test? *target* pilot-riding))
-        (let ((gp-3 (handle->process (-> *target* pilot vehicle))))
-          (if (if (type? gp-3 process-focusable)
-                  gp-3
-                  )
-              (set! (-> self player-vehicle) (-> *target* pilot vehicle))
-              )
-          )
+        (if (as-type (handle->process (-> *target* pilot vehicle)) process-focusable)
+            (set! (-> self player-vehicle) (-> *target* pilot vehicle))
+            )
         )
       (suspend)
       )
@@ -636,7 +627,7 @@
     :fail (new 'static 'resetter-spec :continue #f :reset-mode 'life :execute #f)
     :retry (new 'static 'resetter-spec :continue "desert-bbush-desc-4" :reset-mode 'try :execute #f)
     :reset-delay (seconds 6.5)
-    :text-message (text-id text-07cc)
+    :text-message (text-id out-of-time)
     )
   )
 
@@ -653,10 +644,7 @@
              (script-eval gp-0)
              )
          )
-       (let ((gp-1 (current-time)))
-         (until (time-elapsed? gp-1 (seconds 2))
-           (suspend)
-           )
+       (suspend-for (seconds 2)
          )
        (while (not (-> *setting-control* user-current speech-control))
          (suspend)
@@ -681,7 +669,7 @@
         (let ((gp-3 (on-fail self 'fail)))
           (when gp-3
             (mem-copy! (the-as pointer *bbv-fail-time-expired*) (the-as pointer gp-3) 48)
-            (set! (-> gp-3 text-message) (text-id text-07cc))
+            (set! (-> gp-3 text-message) (text-id out-of-time))
             )
           )
         (go-virtual fail *bbv-fail-time-expired*)
@@ -801,7 +789,7 @@
   (set! (-> this display-units) 0.00024414062)
   (set! (-> this time-limit) (seconds 30))
   (set! (-> this game-score) (the-as uint 6))
-  (set! (-> *wasbbv-hud-info* score-text) (text-id text-0833))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id your-distance))
   (set! (-> *wasbbv-hud-info* decimal-place-count) 1)
   (none)
   )
@@ -843,7 +831,7 @@
   (set! (-> this display-units) 0.00024414062)
   (set! (-> this time-limit) (seconds 60))
   (set! (-> this game-score) (the-as uint 7))
-  (set! (-> *wasbbv-hud-info* score-text) (text-id text-07ce))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id total-distance))
   (set! (-> *wasbbv-hud-info* decimal-place-count) 1)
   (none)
   )
@@ -890,7 +878,7 @@
   (set! (-> this time-limit) (seconds 60))
   (set! (-> this game-score) (the-as uint 8))
   (set! (-> this want-current-hud?) #f)
-  (set! (-> *wasbbv-hud-info* score-text) (text-id text-07cd))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id total-rolls))
   (set! (-> *wasbbv-hud-info* decimal-place-count) 0)
   0
   (none)
@@ -948,7 +936,7 @@
   (set! (-> this game-score) (the-as uint 16))
   (set! (-> this want-current-hud?) #f)
   (set! (-> this max-reserve-count) 1000)
-  (set! (-> *wasbbv-hud-info* score-text) (text-id text-07f6))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id kills))
   (set! (-> *wasbbv-hud-info* decimal-place-count) 0)
   (set! (-> *was-squad-control* target-count) 0)
   0
@@ -991,7 +979,3 @@
   (talker-spawn-func (-> *talker-speech* 317) *entity-pool* (target-pos 0) (the-as region #f))
   (none)
   )
-
-
-
-

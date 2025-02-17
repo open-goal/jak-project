@@ -12,7 +12,8 @@
 std::unordered_map<std::string, std::string> game_name_to_all_types = {
     {"jak1", "jak1/all-types.gc"},
     {"jak2", "jak2/all-types.gc"},
-    {"jak3", "jak3/all-types.gc"}};
+    {"jak3", "jak3/all-types.gc"},
+    {"jakx", "jakx/all-types.gc"}};
 
 void disassemble(OfflineTestDecompiler& dc) {
   dc.db->process_link_data(*dc.config);

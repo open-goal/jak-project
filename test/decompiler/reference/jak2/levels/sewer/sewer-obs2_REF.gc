@@ -39,10 +39,10 @@
 ;; definition for method 43 of type sew-elevator
 (defmethod move-between-points ((this sew-elevator) (arg1 vector) (point-a float) (point-b float))
   "Move between two points on the elevator's path
-@param vec TODO not sure
-@param point-a The first point fetched from the elevator's path
-@param point-b The second point fetched from the path
-@see [[path-control]] and [[elevator]]"
+   @param vec TODO not sure
+   @param point-a The first point fetched from the elevator's path
+   @param point-b The second point fetched from the path
+   @see [[path-control]] and [[elevator]]"
   (let ((path-point-a (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-a 'interp))
         (path-point-b (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-b 'interp))
         (elevator-pos (-> this root trans))
@@ -59,12 +59,7 @@
 ;; definition for method 45 of type sew-elevator
 (defmethod commited-to-ride? ((this sew-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
-  (let* ((target *target*)
-         (target-proc (if (type? target process-focusable)
-                          target
-                          )
-                      )
-         )
+  (let ((target-proc (the-as target (as-type *target* process-focusable))))
     (when target-proc
       (let* ((target-pos (get-trans target-proc 0))
              (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> this root trans)))
@@ -83,7 +78,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod configure-collision ((this sew-elevator) (collide-with-jak? symbol))
   "Appropriately sets the collision on the elevator
-@param collide-with-jak? If set, the elevator will collide with Jak"
+   @param collide-with-jak? If set, the elevator will collide with Jak"
   (let ((prim-group (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1)))
     (cond
       (collide-with-jak?
@@ -158,7 +153,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-plat! ((this sew-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this sound-id) (new-sound-id))
   0
   (none)
@@ -168,11 +163,11 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-defaults! ((this sew-elevator))
   "Initializes default settings related to the [[elevator]]:
-- `elevator-xz-threshold`
-- `elevator-y-threshold`
-- `elevator-start-pos`
-- `elevator-move-rate`
-- `elevator-flags`"
+   - `elevator-xz-threshold`
+   - `elevator-y-threshold`
+   - `elevator-start-pos`
+   - `elevator-move-rate`
+   - `elevator-flags`"
   (let ((func (method-of-type elevator init-defaults!)))
     (func this)
     )
@@ -338,7 +333,7 @@ For example for an elevator pre-compute the distance between the first and last 
            (f28-0 (seek-ease
                     f0-8
                     0.0
-                    (* (lerp 21299.2 8192.0 (* 0.000005086263 (-> self spin-rate))) (seconds-per-frame))
+                    (* (lerp 21299.2 8192.0 (/ (-> self spin-rate) (meters 48))) (seconds-per-frame))
                     12288.0
                     2.0
                     )
@@ -366,11 +361,11 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this sew-valve) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (tag-1 res-tag) (tag-2 res-tag))
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> cshape dynam) (copy *standard-dynamics* 'process))
@@ -664,11 +659,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this sew-mar-statue) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this spawned-debris?) #f)
   (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
@@ -738,8 +733,8 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod start-bouncing! ((this sew-catwalk))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
-and translate the platform via the `smush`
-@see [[smush-control]]"
+   and translate the platform via the `smush`
+   @see [[smush-control]]"
   (logclear! (-> this mask) (process-mask sleep))
   (logclear! (-> this mask) (process-mask sleep-code))
   0
@@ -785,11 +780,11 @@ and translate the platform via the `smush`
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this sew-catwalk) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 collide-shape-prim-mesh) (sv-32 symbol) (sv-48 type) (sv-64 collide-shape-moving))
   (stack-size-set! (-> this main-thread) 512)
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -908,12 +903,7 @@ This commonly includes things such as:
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (let* ((_proc proc)
-              (focus-proc (if (type? _proc process-focusable)
-                              (the-as process-focusable _proc)
-                              )
-                          )
-              )
+       (let ((focus-proc (as-type proc process-focusable)))
          (when focus-proc
            (let ((a0-4
                    (vector-normalize!
@@ -1000,10 +990,7 @@ This commonly includes things such as:
         )
       )
     (cleanup-for-death self)
-    (let ((frame-counter (current-time)))
-      (until (time-elapsed? frame-counter (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     )
   )
@@ -1046,11 +1033,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this sew-mine-a) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec pusher))
@@ -1147,11 +1134,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this sew-mine-b) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((cshape (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec pusher))
@@ -1396,11 +1383,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this sew-wall) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (stack-size-set! (-> this main-thread) 512)
   (logior! (-> this mask) (process-mask collectable))
   (let ((data ((method-of-type res-lump get-property-struct)
@@ -1556,11 +1543,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this sew-grill) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this entity)
   (initialize-skeleton
@@ -1731,12 +1718,7 @@ This commonly includes things such as:
     (logior! (-> self draw status) (draw-control-status no-draw))
     )
   :trans (behavior ()
-    (let* ((target *target*)
-           (target-proc (if (type? target process-focusable)
-                            target
-                            )
-                        )
-           )
+    (let ((target-proc (the-as target (as-type *target* process-focusable))))
       (when target-proc
         (cond
           ((< (vector-vector-distance (-> self root trans) (get-trans target-proc 0)) 20480.0)

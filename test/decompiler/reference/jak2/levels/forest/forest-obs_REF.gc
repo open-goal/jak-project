@@ -36,11 +36,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this forest-hover-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this entity) arg0)
   (hover-enemy-manager-init! this *forest-protect-battle*)
   (set! (-> this transport-actor 0) (entity-actor-lookup arg0 'alt-actor 0))
@@ -187,7 +187,7 @@ This commonly includes things such as:
       (go-virtual dormant)
       )
     )
-  (set! (-> *game-info* bot-health 0) (* 0.11111111 (-> self hit-points)))
+  (set! (-> *game-info* bot-health 0) (/ (-> self hit-points) 9))
   (transform-post)
   (none)
   )
@@ -201,46 +201,34 @@ This commonly includes things such as:
        (send-event proc 'touch (-> block param 0))
        )
       (('attack)
-       (let ((s4-0 *target*)
-             (s3-0 proc)
-             )
-         (when (!= (if (type? s3-0 process-focusable)
-                       (the-as process-focusable s3-0)
+       (when (!= (as-type proc process-focusable) *target*)
+         (let ((s5-1 (the-as attack-info (-> block param 1))))
+           (case (-> s5-1 mode)
+             (('eco-red 'eco-yellow 'eco-blue 'eco-dark)
+              #f
+              )
+             (else
+               (when (!= (-> s5-1 id) (-> self incoming-attack-id))
+                 (set! (-> self incoming-attack-id) (-> s5-1 id))
+                 (let ((v1-10 (as-type proc process-focusable)))
+                   (cond
+                     (v1-10
+                       (vector-! (-> self hit-dir) (-> self root trans) (-> v1-10 root trans))
+                       (vector-normalize! (-> self hit-dir) 1.0)
                        )
-                   s4-0
-                   )
-           (let ((s5-1 (the-as attack-info (-> block param 1))))
-             (case (-> s5-1 mode)
-               (('eco-red 'eco-yellow 'eco-blue 'eco-dark)
-                #f
-                )
-               (else
-                 (when (!= (-> s5-1 id) (-> self incoming-attack-id))
-                   (set! (-> self incoming-attack-id) (-> s5-1 id))
-                   (let ((v1-10 (if (type? proc process-focusable)
-                                    (the-as process-focusable proc)
-                                    )
-                                )
-                         )
-                     (cond
-                       (v1-10
-                         (vector-! (-> self hit-dir) (-> self root trans) (-> v1-10 root trans))
-                         (vector-normalize! (-> self hit-dir) 1.0)
-                         )
-                       ((logtest? (attack-mask attacker-velocity) (-> s5-1 mask))
-                        (vector-normalize-copy! (-> self hit-dir) (-> s5-1 attacker-velocity) 1.0)
-                        )
-                       (else
-                         (vector-reset! (-> self hit-dir))
-                         )
+                     ((logtest? (attack-mask attacker-velocity) (-> s5-1 mask))
+                      (vector-normalize-copy! (-> self hit-dir) (-> s5-1 attacker-velocity) 1.0)
+                      )
+                     (else
+                       (vector-reset! (-> self hit-dir))
                        )
                      )
-                   (+! (-> self hit-points) -1.0)
-                   (if (>= 0.0 (-> self hit-points))
-                       (go-virtual die)
-                       (go-virtual hit)
-                       )
                    )
+                 (+! (-> self hit-points) -1.0)
+                 (if (>= 0.0 (-> self hit-points))
+                     (go-virtual die)
+                     (go-virtual hit)
+                     )
                  )
                )
              )
@@ -382,10 +370,7 @@ This commonly includes things such as:
           )
         )
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (send-event *camera* 'change-target #f)
     (cleanup-for-death self)
@@ -443,11 +428,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this forest-youngsamos) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) forest-youngsamos-bounce-reaction)
@@ -649,10 +634,7 @@ This commonly includes things such as:
   (lambda :behavior task-manager
     ()
     (set-time! (-> self start-time))
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.5))
-        (suspend)
-        )
+    (suspend-for (seconds 0.5)
       )
     (let ((s5-0 (entity-by-name "transport-level-1"))
           (gp-1 (entity-by-name "transport-level-2"))
@@ -722,10 +704,7 @@ This commonly includes things such as:
               )
             )
           )
-        (let ((s3-0 (current-time)))
-          (until (time-elapsed? s3-0 (seconds 15))
-            (suspend)
-            )
+        (suspend-for (seconds 15)
           )
         (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-4 from) (process->ppointer self))
@@ -760,10 +739,7 @@ This commonly includes things such as:
             )
           )
         (dotimes (s3-1 3)
-          (let ((s2-0 (current-time)))
-            (until (time-elapsed? s2-0 (seconds 10))
-              (suspend)
-              )
+          (suspend-for (seconds 10)
             )
           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
             (set! (-> a1-6 from) (process->ppointer self))
@@ -797,10 +773,7 @@ This commonly includes things such as:
                 )
               )
             )
-          (let ((s2-1 (current-time)))
-            (until (time-elapsed? s2-1 (seconds 10))
-              (suspend)
-              )
+          (suspend-for (seconds 10)
             )
           (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
             (set! (-> a1-8 from) (process->ppointer self))
@@ -835,10 +808,7 @@ This commonly includes things such as:
               )
             )
           )
-        (let ((s3-2 (current-time)))
-          (until (time-elapsed? s3-2 (seconds 10))
-            (suspend)
-            )
+        (suspend-for (seconds 10)
           )
         (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
           (set! (-> a1-10 from) (process->ppointer self))
@@ -872,10 +842,7 @@ This commonly includes things such as:
               )
             )
           )
-        (let ((s3-3 (current-time)))
-          (until (time-elapsed? s3-3 (seconds 10))
-            (suspend)
-            )
+        (suspend-for (seconds 10)
           )
         (dotimes (s3-4 10)
           (let ((v1-114 s4-0))
@@ -886,10 +853,7 @@ This commonly includes things such as:
                 (goto cfg-74)
                 )
             )
-          (let ((s2-2 (current-time)))
-            (until (time-elapsed? s2-2 (seconds 1))
-              (suspend)
-              )
+          (suspend-for (seconds 1)
             )
           )
         (label cfg-74)
@@ -965,25 +929,16 @@ This commonly includes things such as:
                        )
                      )
                  )
-          (let ((s3-5 (current-time)))
-            (until (time-elapsed? s3-5 (seconds 1))
-              (suspend)
-              )
+          (suspend-for (seconds 1)
             )
           )
         )
-      (let ((s4-1 (current-time)))
-        (until (time-elapsed? s4-1 (seconds 0.5))
-          (suspend)
-          )
+      (suspend-for (seconds 0.5)
         )
       (set-setting! 'entity-name "camera-260" 0.0 0)
       (set-setting! 'process-mask 'set 0.0 (process-mask movie enemy))
       (process-grab? *target* #f)
-      (let ((s4-2 (current-time)))
-        (until (time-elapsed? s4-2 (seconds 0.5))
-          (suspend)
-          )
+      (suspend-for (seconds 0.5)
         )
       (send-event
         (if s5-0
@@ -991,10 +946,7 @@ This commonly includes things such as:
             )
         'leave
         )
-      (let ((s5-1 (current-time)))
-        (until (time-elapsed? s5-1 (seconds 0.2))
-          (suspend)
-          )
+      (suspend-for (seconds 0.2)
         )
       (send-event
         (if gp-1
@@ -1003,18 +955,12 @@ This commonly includes things such as:
         'leave
         )
       )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (seconds 3))
-        (suspend)
-        )
+    (suspend-for (seconds 3)
       )
     (remove-setting! 'entity-name)
     (remove-setting! 'process-mask)
     (process-release? *target*)
-    (let ((gp-3 (current-time)))
-      (until (time-elapsed? gp-3 (seconds 3))
-        (suspend)
-        )
+    (suspend-for (seconds 3)
       )
     (go-virtual complete)
     (while *target*

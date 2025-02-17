@@ -247,12 +247,8 @@
                   (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
                   )
                 )
-            (let ((v1-43 gp-0))
-              (set! (-> v1-43 width) (the float 340))
-              )
-            (let ((v1-44 gp-0))
-              (set! (-> v1-44 height) (the float 80))
-              )
+            (set-width! gp-0 340)
+            (set-height! gp-0 80)
             (let ((v1-45 gp-0)
                   (a0-21 (-> *setting-control* user-default language))
                   )
@@ -282,7 +278,7 @@
               (-> *target* neck)
               (vector+!
                 (new 'stack-no-clear 'vector)
-                (the-as vector (-> self root root-prim prim-core))
+                (-> self root root-prim prim-core world-sphere)
                 (new 'static 'vector :y 2048.0 :w 1.0)
                 )
               'nothing-special
@@ -352,11 +348,8 @@
     (ja-channel-set! 0)
     (ja-post)
     (when (not (and (-> self entity) (= (-> self entity extra process) self)))
-      (let ((s5-0 (current-time)))
-        (until (time-elapsed? s5-0 (seconds 0.1))
-          (spawn-part-and-sound! self)
-          (suspend)
-          )
+      (suspend-for (seconds 0.1)
+        (spawn-part-and-sound! self)
         )
       (deactivate self)
       )
@@ -374,11 +367,8 @@
       (spawn-part-and-sound! self)
       (suspend)
       )
-    (let ((s5-1 (current-time)))
-      (until (time-elapsed? s5-1 (seconds 1))
-        (spawn-part-and-sound! self)
-        (suspend)
-        )
+    (suspend-for (seconds 1)
+      (spawn-part-and-sound! self)
       )
     (go arg0)
     )
@@ -559,7 +549,7 @@
     (set-yaw-angle-clear-roll-pitch! (-> self root) (res-lump-float arg0 'rotoffset))
     )
   (when arg1
-    (set! (-> self root trans quad) (-> arg1 trans quad))
+    (vector-copy! (-> self root trans) (-> arg1 trans))
     (quaternion-copy! (-> self root quat) (-> arg1 quat))
     )
   (initialize-skeleton
@@ -603,6 +593,10 @@
   (set! (-> self draw light-index) (the-as uint 30))
   (logior! (-> self mask) (process-mask crate))
   (cond
+    ;; og:preserve-this hack to prevent NaNs
+    ((= (-> self level name) 'desliz)
+     (go-virtual idle)
+     )
     ((logtest? arg3 (flut-flag ff2))
      (go-virtual die)
      )
@@ -616,6 +610,7 @@
   )
 
 (defmethod init-from-entity! ((this flut) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (flut-init
     arg0
     (the-as transformq #f)

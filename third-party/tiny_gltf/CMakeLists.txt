@@ -6,5 +6,5 @@ endif()
 
 include_directories(../ ../stb_image)
 add_library(tiny_gltf tiny_gltf.cpp)
-target_link_libraries(tiny_gltf stb_image)
+target_link_libraries(tiny_gltf draco::draco stb_image)
 

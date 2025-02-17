@@ -11,274 +11,277 @@
 /*!
  * Main table for compiler forms
  */
-const std::unordered_map<
-    std::string,
-    std::pair<std::string,
-              Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>>
-    g_goal_forms = {
-        // INLINE ASM
-        {".nop", {"A simple no-op, does nothing", &Compiler::compile_nop}},
-        {".ret", {"", &Compiler::compile_asm_ret}},
-        {".push", {"", &Compiler::compile_asm_push}},
-        {".pop", {"", &Compiler::compile_asm_pop}},
-        {"rlet", {"", &Compiler::compile_rlet}},
-        {".jr", {"", &Compiler::compile_asm_jr}},
-        {".sub", {"", &Compiler::compile_asm_sub}},
-        {".add", {"", &Compiler::compile_asm_add}},
-        {".load-sym", {"", &Compiler::compile_asm_load_sym}},
-        {".mov", {"", &Compiler::compile_asm_mov}},
+const std::unordered_map<std::string, GoalCompilerForm> g_goal_forms = {
+    // INLINE ASM
+    {".nop",
+     {.docstring = "A simple no-op, does nothing", .form_function = &Compiler::compile_nop}},
+    {".ret", {.form_function = &Compiler::compile_asm_ret}},
+    {".push", {.form_function = &Compiler::compile_asm_push}},
+    {".pop", {.form_function = &Compiler::compile_asm_pop}},
+    {"rlet", {.form_function = &Compiler::compile_rlet}},
+    {".jr", {.form_function = &Compiler::compile_asm_jr}},
+    {".sub", {.form_function = &Compiler::compile_asm_sub}},
+    {".add", {.form_function = &Compiler::compile_asm_add}},
+    {".load-sym", {.form_function = &Compiler::compile_asm_load_sym}},
+    {".mov", {.form_function = &Compiler::compile_asm_mov}},
 
-        // INLINE ASM - VECTOR FLOAT OPERATIONS
-        {".lvf", {"", &Compiler::compile_asm_lvf}},
-        {".svf", {"", &Compiler::compile_asm_svf}},
-        {".mov.vf", {"", &Compiler::compile_asm_mov_vf}},
-        {".blend.vf", {"", &Compiler::compile_asm_blend_vf}},
+    // INLINE ASM - VECTOR FLOAT OPERATIONS
+    {".lvf", {.form_function = &Compiler::compile_asm_lvf}},
+    {".svf", {.form_function = &Compiler::compile_asm_svf}},
+    {".nop.vf", {.form_function = &Compiler::compile_asm_nop_vf}},
+    {".wait.vf", {.form_function = &Compiler::compile_asm_wait_vf}},
 
-        {".nop.vf", {"", &Compiler::compile_asm_nop_vf}},
-        {".wait.vf", {"", &Compiler::compile_asm_wait_vf}},
+    {".xor.p", {.form_function = &Compiler::compile_asm_xorp}},
 
-        {".xor.vf", {"", &Compiler::compile_asm_xor_vf}},
-        {".xor.p", {"", &Compiler::compile_asm_xorp}},
+    // Masked VF Operations
+    // You can specify them with an explicit `:mask 0b0000` arg
+    // or you can append a `.[xyzw]` to the end of the name
+    {".mov.vf", {.form_function = &Compiler::compile_asm_mov_vf}},
+    {".blend.vf", {.form_function = &Compiler::compile_asm_blend_vf}},
+    {".xor.vf", {.form_function = &Compiler::compile_asm_xor_vf}},
 
-        {".max.vf", {"", &Compiler::compile_asm_max_vf}},
-        {".max.x.vf", {"", &Compiler::compile_asm_max_x_vf}},
-        {".max.y.vf", {"", &Compiler::compile_asm_max_y_vf}},
-        {".max.z.vf", {"", &Compiler::compile_asm_max_z_vf}},
-        {".max.w.vf", {"", &Compiler::compile_asm_max_w_vf}},
+    {".max.vf", {.form_function = &Compiler::compile_asm_max_vf}},
+    {".max.x.vf", {.form_function = &Compiler::compile_asm_max_x_vf}},
+    {".max.y.vf", {.form_function = &Compiler::compile_asm_max_y_vf}},
+    {".max.z.vf", {.form_function = &Compiler::compile_asm_max_z_vf}},
+    {".max.w.vf", {.form_function = &Compiler::compile_asm_max_w_vf}},
 
-        {".min.vf", {"", &Compiler::compile_asm_min_vf}},
-        {".min.x.vf", {"", &Compiler::compile_asm_min_x_vf}},
-        {".min.y.vf", {"", &Compiler::compile_asm_min_y_vf}},
-        {".min.z.vf", {"", &Compiler::compile_asm_min_z_vf}},
-        {".min.w.vf", {"", &Compiler::compile_asm_min_w_vf}},
+    {".min.vf", {.form_function = &Compiler::compile_asm_min_vf}},
+    {".min.x.vf", {.form_function = &Compiler::compile_asm_min_x_vf}},
+    {".min.y.vf", {.form_function = &Compiler::compile_asm_min_y_vf}},
+    {".min.z.vf", {.form_function = &Compiler::compile_asm_min_z_vf}},
+    {".min.w.vf", {.form_function = &Compiler::compile_asm_min_w_vf}},
 
-        {".add.vf", {"", &Compiler::compile_asm_add_vf}},
-        {".add.x.vf", {"", &Compiler::compile_asm_add_x_vf}},
-        {".add.y.vf", {"", &Compiler::compile_asm_add_y_vf}},
-        {".add.z.vf", {"", &Compiler::compile_asm_add_z_vf}},
-        {".add.w.vf", {"", &Compiler::compile_asm_add_w_vf}},
+    {".add.vf", {.form_function = &Compiler::compile_asm_add_vf}},
+    {".add.x.vf", {.form_function = &Compiler::compile_asm_add_x_vf}},
+    {".add.y.vf", {.form_function = &Compiler::compile_asm_add_y_vf}},
+    {".add.z.vf", {.form_function = &Compiler::compile_asm_add_z_vf}},
+    {".add.w.vf", {.form_function = &Compiler::compile_asm_add_w_vf}},
 
-        {".sub.vf", {"", &Compiler::compile_asm_sub_vf}},
-        {".sub.x.vf", {"", &Compiler::compile_asm_sub_x_vf}},
-        {".sub.y.vf", {"", &Compiler::compile_asm_sub_y_vf}},
-        {".sub.z.vf", {"", &Compiler::compile_asm_sub_z_vf}},
-        {".sub.w.vf", {"", &Compiler::compile_asm_sub_w_vf}},
+    {".sub.vf", {.form_function = &Compiler::compile_asm_sub_vf}},
+    {".sub.x.vf", {.form_function = &Compiler::compile_asm_sub_x_vf}},
+    {".sub.y.vf", {.form_function = &Compiler::compile_asm_sub_y_vf}},
+    {".sub.z.vf", {.form_function = &Compiler::compile_asm_sub_z_vf}},
+    {".sub.w.vf", {.form_function = &Compiler::compile_asm_sub_w_vf}},
 
-        {".mul.vf", {"", &Compiler::compile_asm_mul_vf}},
-        {".mul.x.vf", {"", &Compiler::compile_asm_mul_x_vf}},
-        {".mul.y.vf", {"", &Compiler::compile_asm_mul_y_vf}},
-        {".mul.z.vf", {"", &Compiler::compile_asm_mul_z_vf}},
-        {".mul.w.vf", {"", &Compiler::compile_asm_mul_w_vf}},
+    {".mul.vf", {.form_function = &Compiler::compile_asm_mul_vf}},
+    {".mul.x.vf", {.form_function = &Compiler::compile_asm_mul_x_vf}},
+    {".mul.y.vf", {.form_function = &Compiler::compile_asm_mul_y_vf}},
+    {".mul.z.vf", {.form_function = &Compiler::compile_asm_mul_z_vf}},
+    {".mul.w.vf", {.form_function = &Compiler::compile_asm_mul_w_vf}},
 
-        {".add.mul.vf", {"", &Compiler::compile_asm_mul_add_vf}},
-        {".add.mul.x.vf", {"", &Compiler::compile_asm_mul_add_x_vf}},
-        {".add.mul.y.vf", {"", &Compiler::compile_asm_mul_add_y_vf}},
-        {".add.mul.z.vf", {"", &Compiler::compile_asm_mul_add_z_vf}},
-        {".add.mul.w.vf", {"", &Compiler::compile_asm_mul_add_w_vf}},
+    {".add.mul.vf", {.form_function = &Compiler::compile_asm_mul_add_vf}},
+    {".add.mul.x.vf", {.form_function = &Compiler::compile_asm_mul_add_x_vf}},
+    {".add.mul.y.vf", {.form_function = &Compiler::compile_asm_mul_add_y_vf}},
+    {".add.mul.z.vf", {.form_function = &Compiler::compile_asm_mul_add_z_vf}},
+    {".add.mul.w.vf", {.form_function = &Compiler::compile_asm_mul_add_w_vf}},
 
-        {".sub.mul.vf", {"", &Compiler::compile_asm_mul_sub_vf}},
-        {".sub.mul.x.vf", {"", &Compiler::compile_asm_mul_sub_x_vf}},
-        {".sub.mul.y.vf", {"", &Compiler::compile_asm_mul_sub_y_vf}},
-        {".sub.mul.z.vf", {"", &Compiler::compile_asm_mul_sub_z_vf}},
-        {".sub.mul.w.vf", {"", &Compiler::compile_asm_mul_sub_w_vf}},
+    {".sub.mul.vf", {.form_function = &Compiler::compile_asm_mul_sub_vf}},
+    {".sub.mul.x.vf", {.form_function = &Compiler::compile_asm_mul_sub_x_vf}},
+    {".sub.mul.y.vf", {.form_function = &Compiler::compile_asm_mul_sub_y_vf}},
+    {".sub.mul.z.vf", {.form_function = &Compiler::compile_asm_mul_sub_z_vf}},
+    {".sub.mul.w.vf", {.form_function = &Compiler::compile_asm_mul_sub_w_vf}},
 
-        {".abs.vf", {"", &Compiler::compile_asm_abs_vf}},
-        // NOTE - to compute the Outer Product with the VU, two back to back instructions were used
-        // involving the ACC
-        // However, we can be better than that and just provide a single instruction
-        // BUT - if things used side effects of the modified ACC or benefited from only doing 1/2
-        // operations, we'll need to implement them separately.
-        //
-        // ...and they did
-        {".outer.product.vf", {"", &Compiler::compile_asm_outer_product_vf}},
-        {".outer.product.a.vf", {"", &Compiler::compile_asm_outer_product_a_vf}},
-        {".outer.product.b.vf", {"", &Compiler::compile_asm_outer_product_b_vf}},
+    {".abs.vf", {.form_function = &Compiler::compile_asm_abs_vf}},
+    // ! -- end of masked operations
+    //
+    // NOTE - to compute the Outer Product with the VU, two back to back instructions were used
+    // involving the ACC
+    // However, we can be better than that and just provide a single instruction
+    // BUT - if things used side effects of the modified ACC or benefited from only doing 1/2
+    // operations, we'll need to implement them separately.
+    //
+    // ...and they did
+    {".outer.product.vf", {.form_function = &Compiler::compile_asm_outer_product_vf}},
+    {".outer.product.a.vf", {.form_function = &Compiler::compile_asm_outer_product_a_vf}},
+    {".outer.product.b.vf", {.form_function = &Compiler::compile_asm_outer_product_b_vf}},
 
-        {".div.vf", {"", &Compiler::compile_asm_div_vf}},
-        {".sqrt.vf", {"", &Compiler::compile_asm_sqrt_vf}},
-        {".isqrt.vf", {"", &Compiler::compile_asm_inv_sqrt_vf}},
-        {".itof.vf", {"", &Compiler::compile_asm_itof_vf}},
-        {".ftoi.vf", {"", &Compiler::compile_asm_ftoi_vf}},
+    {".div.vf", {.form_function = &Compiler::compile_asm_div_vf}},
+    {".sqrt.vf", {.form_function = &Compiler::compile_asm_sqrt_vf}},
+    {".isqrt.vf", {.form_function = &Compiler::compile_asm_inv_sqrt_vf}},
+    {".itof.vf", {.form_function = &Compiler::compile_asm_itof_vf}},
+    {".ftoi.vf", {.form_function = &Compiler::compile_asm_ftoi_vf}},
 
-        {".pw.sll", {"", &Compiler::compile_asm_pw_sll}},
-        {".pw.srl", {"", &Compiler::compile_asm_pw_srl}},
-        {".pw.sra", {"", &Compiler::compile_asm_pw_sra}},
+    {".pw.sll", {.form_function = &Compiler::compile_asm_pw_sll}},
+    {".pw.srl", {.form_function = &Compiler::compile_asm_pw_srl}},
+    {".pw.sra", {.form_function = &Compiler::compile_asm_pw_sra}},
 
-        {".por", {"", &Compiler::compile_asm_por}},
-        {".pxor", {"", &Compiler::compile_asm_pxor}},
-        {".pnor", {"", &Compiler::compile_asm_pnor}},
-        {".pand", {"", &Compiler::compile_asm_pand}},
+    {".por", {.form_function = &Compiler::compile_asm_por}},
+    {".pxor", {.form_function = &Compiler::compile_asm_pxor}},
+    {".pnor", {.form_function = &Compiler::compile_asm_pnor}},
+    {".pand", {.form_function = &Compiler::compile_asm_pand}},
 
-        {".pceqb", {"", &Compiler::compile_asm_pceqb}},
-        {".pceqh", {"", &Compiler::compile_asm_pceqh}},
-        {".pceqw", {"", &Compiler::compile_asm_pceqw}},
+    {".pceqb", {.form_function = &Compiler::compile_asm_pceqb}},
+    {".pceqh", {.form_function = &Compiler::compile_asm_pceqh}},
+    {".pceqw", {.form_function = &Compiler::compile_asm_pceqw}},
 
-        {".pcgtb", {"", &Compiler::compile_asm_pcgtb}},
-        {".pcgth", {"", &Compiler::compile_asm_pcgth}},
-        {".pcgtw", {"", &Compiler::compile_asm_pcgtw}},
+    {".pcgtb", {.form_function = &Compiler::compile_asm_pcgtb}},
+    {".pcgth", {.form_function = &Compiler::compile_asm_pcgth}},
+    {".pcgtw", {.form_function = &Compiler::compile_asm_pcgtw}},
 
-        {".pextlb", {"", &Compiler::compile_asm_pextlb}},
-        {".pextlh", {"", &Compiler::compile_asm_pextlh}},
-        {".pextlw", {"", &Compiler::compile_asm_pextlw}},
+    {".pextlb", {.form_function = &Compiler::compile_asm_pextlb}},
+    {".pextlh", {.form_function = &Compiler::compile_asm_pextlh}},
+    {".pextlw", {.form_function = &Compiler::compile_asm_pextlw}},
 
-        {".pextub", {"", &Compiler::compile_asm_pextub}},
-        {".pextuh", {"", &Compiler::compile_asm_pextuh}},
-        {".pextuw", {"", &Compiler::compile_asm_pextuw}},
+    {".pextub", {.form_function = &Compiler::compile_asm_pextub}},
+    {".pextuh", {.form_function = &Compiler::compile_asm_pextuh}},
+    {".pextuw", {.form_function = &Compiler::compile_asm_pextuw}},
 
-        {".pcpyld", {"", &Compiler::compile_asm_pcpyld}},
-        {".pcpyud", {"", &Compiler::compile_asm_pcpyud}},
-        {".pceqw", {"", &Compiler::compile_asm_pceqw}},
-        {".ppach", {"", &Compiler::compile_asm_ppach}},
-        {".ppacb", {"", &Compiler::compile_asm_ppacb}},
-        {".psubw", {"", &Compiler::compile_asm_psubw}},
-        {".paddb", {"", &Compiler::compile_asm_paddb}},
+    {".pcpyld", {.form_function = &Compiler::compile_asm_pcpyld}},
+    {".pcpyud", {.form_function = &Compiler::compile_asm_pcpyud}},
+    {".pceqw", {.form_function = &Compiler::compile_asm_pceqw}},
+    {".ppach", {.form_function = &Compiler::compile_asm_ppach}},
+    {".ppacb", {.form_function = &Compiler::compile_asm_ppacb}},
+    {".psubw", {.form_function = &Compiler::compile_asm_psubw}},
+    {".paddb", {.form_function = &Compiler::compile_asm_paddb}},
 
-        // BLOCK FORMS
-        {"top-level", {"", &Compiler::compile_top_level}},
-        {"begin", {"", &Compiler::compile_begin}},
-        {"block", {"", &Compiler::compile_block}},
-        {"return-from", {"", &Compiler::compile_return_from}},
-        {"label", {"", &Compiler::compile_label}},
-        {"goto", {"", &Compiler::compile_goto}},
-        {"nop!", {"", &Compiler::compile_nop}},
+    // BLOCK FORMS
+    {"top-level", {.form_function = &Compiler::compile_top_level}},
+    {"begin", {.form_function = &Compiler::compile_begin}},
+    {"block", {.form_function = &Compiler::compile_block}},
+    {"return-from", {.form_function = &Compiler::compile_return_from}},
+    {"label", {.form_function = &Compiler::compile_label}},
+    {"goto", {.form_function = &Compiler::compile_goto}},
+    {"nop!", {.form_function = &Compiler::compile_nop}},
 
-        // COMPILER CONTROL
-        {"repl-help", {"", &Compiler::compile_repl_help}},
-        {"repl-keybinds", {"", &Compiler::compile_repl_keybinds}},
-        {":clear", {"", &Compiler::compile_repl_clear_screen}},
-        {"gs", {"", &Compiler::compile_gs}},
-        {":exit", {"", &Compiler::compile_exit}},
-        {"asm-file", {"", &Compiler::compile_asm_file}},
-        {"asm-data-file", {"", &Compiler::compile_asm_data_file}},
-        {"asm-text-file", {"", &Compiler::compile_asm_text_file}},
-        {"listen-to-target", {"", &Compiler::compile_listen_to_target}},
-        {"reset-target", {"", &Compiler::compile_reset_target}},
-        {":status", {"", &Compiler::compile_poke}},
-        {"in-package", {"", &Compiler::compile_in_package}},
-        {"bundles", {"", &Compiler::compile_bundles}},
-        {"require", {"", &Compiler::compile_require}},
-        {"reload", {"", &Compiler::compile_reload}},
-        {"get-info", {"", &Compiler::compile_get_info}},
-        {"autocomplete", {"", &Compiler::compile_autocomplete}},
-        {"update-macro-metadata", {"", &Compiler::compile_update_macro_metadata}},
-        {"load-project", {"", &Compiler::compile_load_project}},
-        {"make", {"", &Compiler::compile_make}},
-        {"print-debug-compiler-stats", {"", &Compiler::compile_print_debug_compiler_stats}},
-        {"gen-docs", {"", &Compiler::compile_gen_docs}},
-        {"export-requires", {"", &Compiler::compile_export_requires}},
-        {"gc-text", {"", &Compiler::compile_gc_text}},
+    // COMPILER CONTROL
+    {"repl-help", {.form_function = &Compiler::compile_repl_help}},
+    {"repl-keybinds", {.form_function = &Compiler::compile_repl_keybinds}},
+    {":clear", {.form_function = &Compiler::compile_repl_clear_screen}},
+    {"gs", {.form_function = &Compiler::compile_gs}},
+    {":exit", {.form_function = &Compiler::compile_exit}},
+    {"asm-file", {.form_function = &Compiler::compile_asm_file}},
+    {"asm-data-file", {.form_function = &Compiler::compile_asm_data_file}},
+    {"asm-text-file", {.form_function = &Compiler::compile_asm_text_file}},
+    {"listen-to-target", {.form_function = &Compiler::compile_listen_to_target}},
+    {"reset-target", {.form_function = &Compiler::compile_reset_target}},
+    {":status", {.form_function = &Compiler::compile_poke}},
+    {"in-package", {.form_function = &Compiler::compile_in_package}},
+    {"bundles", {.form_function = &Compiler::compile_bundles}},
+    {"require", {.form_function = &Compiler::compile_require}},
+    {"reload", {.form_function = &Compiler::compile_reload}},
+    {"get-info", {.form_function = &Compiler::compile_get_info}},
+    {"autocomplete", {.form_function = &Compiler::compile_autocomplete}},
+    {"update-macro-metadata", {.form_function = &Compiler::compile_update_macro_metadata}},
+    {"load-project", {.form_function = &Compiler::compile_load_project}},
+    {"make", {.form_function = &Compiler::compile_make}},
+    {"print-debug-compiler-stats",
+     {.form_function = &Compiler::compile_print_debug_compiler_stats}},
+    {"gen-docs", {.form_function = &Compiler::compile_gen_docs}},
+    {"export-requires", {.form_function = &Compiler::compile_export_requires}},
+    {"gc-text", {.form_function = &Compiler::compile_gc_text}},
 
-        // CONDITIONAL COMPILATION
-        {"#cond", {"", &Compiler::compile_gscond}},
-        {"defglobalconstant", {"", &Compiler::compile_defglobalconstant}},
-        {"seval", {"", &Compiler::compile_seval}},
+    // CONDITIONAL COMPILATION
+    {"#cond", {.form_function = &Compiler::compile_gscond}},
+    {"defglobalconstant", {.form_function = &Compiler::compile_defglobalconstant}},
+    {"seval", {.form_function = &Compiler::compile_seval}},
 
-        // CONTROL FLOW
-        {"cond", {"", &Compiler::compile_cond}},
-        {"when-goto", {"", &Compiler::compile_when_goto}},
-        {"and", {"", &Compiler::compile_and_or}},
-        {"or", {"", &Compiler::compile_and_or}},
+    // CONTROL FLOW
+    {"cond", {.form_function = &Compiler::compile_cond}},
+    {"when-goto", {.form_function = &Compiler::compile_when_goto}},
+    {"and", {.form_function = &Compiler::compile_and_or}},
+    {"or", {.form_function = &Compiler::compile_and_or}},
 
-        // DEFINITION
-        {"define", {"", &Compiler::compile_define}},
-        {"define-extern", {"", &Compiler::compile_define_extern}},
-        {"set!", {"", &Compiler::compile_set}},
+    // DEFINITION
+    {"define", {.form_function = &Compiler::compile_define}},
+    {"define-extern", {.form_function = &Compiler::compile_define_extern}},
+    {"set!", {.form_function = &Compiler::compile_set}},
 
-        // DEBUGGING
-        {"dbs", {"", &Compiler::compile_dbs}},
-        {"dbg", {"", &Compiler::compile_dbg}},
-        {"dbgc", {"", &Compiler::compile_dbg_and_continue}},
-        {":cont", {"", &Compiler::compile_cont}},
-        {":stop", {"", &Compiler::compile_stop}},
-        {":break", {"", &Compiler::compile_break}},
-        {":dump-all-mem", {"", &Compiler::compile_dump_all}},
-        {":pm", {"", &Compiler::compile_pm}},
-        {":di", {"", &Compiler::compile_di}},
-        {":disasm", {"", &Compiler::compile_disasm}},
-        {":bp", {"", &Compiler::compile_bp}},
-        {":ubp", {"", &Compiler::compile_ubp}},
-        {":sym-name", {"", &Compiler::compile_d_sym_name}},
+    // DEBUGGING
+    {"dbs", {.form_function = &Compiler::compile_dbs}},
+    {"dbg", {.form_function = &Compiler::compile_dbg}},
+    {"dbgc", {.form_function = &Compiler::compile_dbg_and_continue}},
+    {":cont", {.form_function = &Compiler::compile_cont}},
+    {":stop", {.form_function = &Compiler::compile_stop}},
+    {":break", {.form_function = &Compiler::compile_break}},
+    {":dump-all-mem", {.form_function = &Compiler::compile_dump_all}},
+    {":pm", {.form_function = &Compiler::compile_pm}},
+    {":di", {.form_function = &Compiler::compile_di}},
+    {":disasm", {.form_function = &Compiler::compile_disasm}},
+    {":bp", {.form_function = &Compiler::compile_bp}},
+    {":ubp", {.form_function = &Compiler::compile_ubp}},
+    {":sym-name", {.form_function = &Compiler::compile_d_sym_name}},
 
-        // TYPE
-        {"deftype", {"", &Compiler::compile_deftype}},
-        {"defmethod", {"", &Compiler::compile_defmethod}},
-        {"defenum", {"", &Compiler::compile_defenum}},
-        {"->", {"", &Compiler::compile_deref}},
-        {"&", {"", &Compiler::compile_addr_of}},
-        {"the-as", {"", &Compiler::compile_the_as}},
-        {"the", {"", &Compiler::compile_the}},
-        {"print-type", {"", &Compiler::compile_print_type}},
-        {"new", {"", &Compiler::compile_new}},
-        {"car", {"", &Compiler::compile_car}},
-        {"cdr", {"", &Compiler::compile_cdr}},
-        {"method-of-type", {"", &Compiler::compile_method_of_type}},
-        {"method-id-of-type", {"", &Compiler::compile_method_id_of_type}},
-        {"method-of-object", {"", &Compiler::compile_method_of_object}},
-        {"declare-type", {"", &Compiler::compile_declare_type}},
-        {"none", {"", &Compiler::compile_none}},
-        {"size-of", {"", &Compiler::compile_size_of}},
-        {"psize-of", {"", &Compiler::compile_psize_of}},
-        {"current-method-id", {"", &Compiler::compile_current_method_id}},
-        {"cast-to-method-type", {"", &Compiler::compile_cast_to_method_type}},
+    // TYPE
+    {"deftype", {.form_function = &Compiler::compile_deftype}},
+    {"defmethod", {.form_function = &Compiler::compile_defmethod}},
+    {"defenum", {.form_function = &Compiler::compile_defenum}},
+    {"->", {.form_function = &Compiler::compile_deref}},
+    {"&", {.form_function = &Compiler::compile_addr_of}},
+    {"the-as", {.form_function = &Compiler::compile_the_as}},
+    {"the", {.form_function = &Compiler::compile_the}},
+    {"print-type", {.form_function = &Compiler::compile_print_type}},
+    {"new", {.form_function = &Compiler::compile_new}},
+    {"car", {.form_function = &Compiler::compile_car}},
+    {"cdr", {.form_function = &Compiler::compile_cdr}},
+    {"method-of-type", {.form_function = &Compiler::compile_method_of_type}},
+    {"method-id-of-type", {.form_function = &Compiler::compile_method_id_of_type}},
+    {"method-of-object", {.form_function = &Compiler::compile_method_of_object}},
+    {"declare-type", {.form_function = &Compiler::compile_declare_type}},
+    {"none", {.form_function = &Compiler::compile_none}},
+    {"size-of", {.form_function = &Compiler::compile_size_of}},
+    {"psize-of", {.form_function = &Compiler::compile_psize_of}},
+    {"current-method-id", {.form_function = &Compiler::compile_current_method_id}},
+    {"cast-to-method-type", {.form_function = &Compiler::compile_cast_to_method_type}},
 
-        // LAMBDA
-        {"lambda", {"", &Compiler::compile_lambda}},
-        {"declare", {"", &Compiler::compile_declare}},
-        {"inline", {"", &Compiler::compile_inline}},
-        {"local-vars", {"", &Compiler::compile_local_vars}},
-        {"declare-file", {"", &Compiler::compile_declare_file}},
-        //        {"with-inline", {"", &Compiler::compile_with_inline}},
-        //        {"get-ra-ptr", {"", &Compiler::compile_get_ra_ptr}},
+    // LAMBDA
+    {"lambda", {.form_function = &Compiler::compile_lambda}},
+    {"declare", {.form_function = &Compiler::compile_declare}},
+    {"inline", {.form_function = &Compiler::compile_inline}},
+    {"local-vars", {.form_function = &Compiler::compile_local_vars}},
+    {"declare-file", {.form_function = &Compiler::compile_declare_file}},
+    //        {"with-inline", {.form_function =  &Compiler::compile_with_inline}},
+    //        {"get-ra-ptr", {.form_function =  &Compiler::compile_get_ra_ptr}},
 
-        // MACRO
-        {"quote", {"", &Compiler::compile_quote}},
-        {"mlet", {"", &Compiler::compile_mlet}},
-        {"defconstant", {"", &Compiler::compile_defconstant}},
-        {"macro-expand",
-         {"Displays the expanded form of a macro without evaluating it.",
-          &Compiler::compile_macro_expand}},
+    // MACRO
+    {"quote", {.form_function = &Compiler::compile_quote}},
+    {"mlet", {.form_function = &Compiler::compile_mlet}},
+    {"defconstant", {.form_function = &Compiler::compile_defconstant}},
+    {"macro-expand",
+     {.docstring = "Displays the expanded form of a macro without evaluating it.",
+      .form_function = &Compiler::compile_macro_expand}},
 
-        // OBJECT
-        {"current-method-type", {"", &Compiler::compile_current_method_type}},
+    // OBJECT
+    {"current-method-type", {.form_function = &Compiler::compile_current_method_type}},
 
-        // MATH
-        {"+", {"", &Compiler::compile_add}},
-        {"-", {"", &Compiler::compile_sub}},
-        {"*", {"", &Compiler::compile_mul}},
-        {"imul64", {"", &Compiler::compile_imul64}},
-        {"/", {"", &Compiler::compile_div}},
-        {"shl", {"", &Compiler::compile_shl}},
-        {"shr", {"", &Compiler::compile_shr}},
-        {"sar", {"", &Compiler::compile_sar}},
-        {"mod", {"", &Compiler::compile_mod}},
-        {"logior", {"", &Compiler::compile_logior}},
-        {"logxor", {"", &Compiler::compile_logxor}},
-        {"logand", {"", &Compiler::compile_logand}},
-        {"lognot", {"", &Compiler::compile_lognot}},
-        {"=", {"", &Compiler::compile_condition_as_bool}},
-        {"!=", {"", &Compiler::compile_condition_as_bool}},
-        {"eq?", {"", &Compiler::compile_condition_as_bool}},
-        {"neq?", {"", &Compiler::compile_condition_as_bool}},
-        {"not", {"", &Compiler::compile_condition_as_bool}},
-        {"<=", {"", &Compiler::compile_condition_as_bool}},
-        {">=", {"", &Compiler::compile_condition_as_bool}},
-        {"<", {"", &Compiler::compile_condition_as_bool}},
-        {">", {"", &Compiler::compile_condition_as_bool}},
-        {"&+", {"", &Compiler::compile_pointer_add}},
-        {"fmax", {"", &Compiler::compile_fmax}},
-        {"fmin", {"", &Compiler::compile_fmin}},
-        {"sqrtf-no-fabs", {"", &Compiler::compile_sqrtf}},
+    // MATH
+    {"+", {.form_function = &Compiler::compile_add}},
+    {"-", {.form_function = &Compiler::compile_sub}},
+    {"*", {.form_function = &Compiler::compile_mul}},
+    {"imul64", {.form_function = &Compiler::compile_imul64}},
+    {"/", {.form_function = &Compiler::compile_div}},
+    {"shl", {.form_function = &Compiler::compile_shl}},
+    {"shr", {.form_function = &Compiler::compile_shr}},
+    {"sar", {.form_function = &Compiler::compile_sar}},
+    {"mod", {.form_function = &Compiler::compile_mod}},
+    {"logior", {.form_function = &Compiler::compile_logior}},
+    {"logxor", {.form_function = &Compiler::compile_logxor}},
+    {"logand", {.form_function = &Compiler::compile_logand}},
+    {"lognot", {.form_function = &Compiler::compile_lognot}},
+    {"=", {.form_function = &Compiler::compile_condition_as_bool}},
+    {"!=", {.form_function = &Compiler::compile_condition_as_bool}},
+    {"eq?", {.form_function = &Compiler::compile_condition_as_bool}},
+    {"neq?", {.form_function = &Compiler::compile_condition_as_bool}},
+    {"not", {.form_function = &Compiler::compile_condition_as_bool}},
+    {"<=", {.form_function = &Compiler::compile_condition_as_bool}},
+    {">=", {.form_function = &Compiler::compile_condition_as_bool}},
+    {"<", {.form_function = &Compiler::compile_condition_as_bool}},
+    {">", {.form_function = &Compiler::compile_condition_as_bool}},
+    {"&+", {.form_function = &Compiler::compile_pointer_add}},
+    {"fmax", {.form_function = &Compiler::compile_fmax}},
+    {"fmin", {.form_function = &Compiler::compile_fmin}},
+    {"sqrtf-no-fabs", {.form_function = &Compiler::compile_sqrtf}},
 
-        // BUILDER (build-dgo/build-cgo?)
-        {"build-dgos", {"", &Compiler::compile_build_dgo}},
+    // BUILDER (build-dgo/build-cgo?)
+    {"build-dgos", {.form_function = &Compiler::compile_build_dgo}},
 
-        // UTIL
-        {"set-config!", {"", &Compiler::compile_set_config}},
+    // UTIL
+    {"set-config!", {.form_function = &Compiler::compile_set_config}},
 
-        // STATE
-        {"define-state-hook", {"", &Compiler::compile_define_state_hook}},
-        {"go-hook", {"", &Compiler::compile_go_hook}},
-        {"define-virtual-state-hook", {"", &Compiler::compile_define_virtual_state_hook}},
+    // STATE
+    {"define-state-hook", {.form_function = &Compiler::compile_define_state_hook}},
+    {"go-hook", {.form_function = &Compiler::compile_go_hook}},
+    {"define-virtual-state-hook", {.form_function = &Compiler::compile_define_virtual_state_hook}},
 };
 
 Val* Compiler::compile_no_const_prop(const goos::Object& code, Env* env) {
@@ -330,8 +333,8 @@ Val* Compiler::compile_pair(const goos::Object& code, Env* env) {
     // next try as a goal compiler form
     auto kv_gfs = g_goal_forms.find(head_sym.name_ptr);
     if (kv_gfs != g_goal_forms.end()) {
-      auto& [docstring, func] = kv_gfs->second;
-      return ((*this).*(func))(code, rest, env);
+      auto& goal_form = kv_gfs->second;
+      return ((*this).*(goal_form.form_function))(code, rest, env);
     }
 
     // next try as an enum

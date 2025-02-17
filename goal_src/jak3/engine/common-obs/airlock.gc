@@ -391,7 +391,7 @@
       (level-status
         (let ((a1-3 (car s5-1)))
           (while (not (null? s5-1))
-            (let ((v1-4 (status-of-level-and-borrows *level* (the-as symbol a1-3) level-status)))
+            (let ((v1-4 (level-status? *level* (the-as symbol a1-3) level-status)))
               (case level-status
                 (('display)
                  (if (!= v1-4 'active)
@@ -720,7 +720,8 @@
           (goto cfg-42)
           )
         (suspend)
-        (ja :num! (seek! 0.0 (-> self close-speed-multiplier)))
+        ;; og:preserve-this added speed modifier
+        (ja :num! (seek! 0.0 (* (get-airlock-close-speed *pc-settings*) (-> self close-speed-multiplier))))
         (transform-post)
         )
       (label cfg-42)
@@ -887,7 +888,8 @@
             )
         (rotate-gear! self 65536.0)
         (suspend)
-        (ja :num! (seek! (ja-aframe (-> self lock-frame) 0) (-> self pre-open-speed)))
+        ;; og:preserve-this added speed modifier
+        (ja :num! (seek! (ja-aframe (-> self lock-frame) 0) (* (get-airlock-speed *pc-settings*) (-> self pre-open-speed))))
         (transform-post)
         )
       (when (nonzero? (-> self sound-id))
@@ -917,7 +919,8 @@
             )
         (rotate-gear! self 65536.0)
         (suspend)
-        (ja :num! (seek! (ja-aframe (-> self open-frame) 0) 2.0))
+        ;; og:preserve-this added speed modifier
+        (ja :num! (seek! (ja-aframe (-> self open-frame) 0) (* (get-airlock-speed *pc-settings*) 2.0)))
         (transform-post)
         )
       (when (nonzero? (-> self sound-id))
@@ -970,7 +973,8 @@
       (while (not (ja-max? 0))
         (rotate-gear! self 65536.0)
         (suspend)
-        (ja :num! (seek!))
+        ;; og:preserve-this added speed modifier
+        (ja :num! (seek! max (get-airlock-speed *pc-settings*)))
         (transform-post)
         )
       (when (nonzero? (-> self sound-id))
@@ -1020,6 +1024,7 @@
 
 
 (defmethod init-from-entity! ((this com-airlock-outer) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1078,6 +1083,7 @@
 
 
 (defmethod init-from-entity! ((this com-airlock-inner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1152,6 +1158,7 @@
 
 
 (defmethod init-from-entity! ((this cty-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1205,6 +1212,7 @@
 
 
 (defmethod init-from-entity! ((this vin-door-ctyinda) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1259,6 +1267,7 @@
 
 
 (defmethod init-from-entity! ((this com-airlock-outer-mhcity) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
@@ -1322,6 +1331,7 @@
 
 
 (defmethod init-from-entity! ((this hip-door-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))

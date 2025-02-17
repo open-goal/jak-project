@@ -411,15 +411,10 @@
       (sv-288 symbol)
       (sv-304 symbol)
       )
-    (let* ((target *target*)
-           (proc-focus (if (type? target process-focusable)
-                           target
-                           )
-                       )
-           )
+    (let ((proc-focus (the-as target (as-type *target* process-focusable))))
       (when proc-focus
         (let ((focus-trans (get-trans proc-focus 0)))
-          (let* ((a0-3 (vector-! (new 'stack-no-clear 'vector) focus-trans (the-as vector (-> self dividing-wall))))
+          (let* ((a0-3 (vector-! (new 'stack-no-clear 'vector) focus-trans (-> self dividing-wall pos)))
                  (s4-0 (-> self plane (if (< 0.0 (vector-dot a0-3 (-> self dividing-wall dir)))
                                           0
                                           1
@@ -773,7 +768,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-elec-scale-if-close! ((this elec-gate) (arg0 float))
   "If [[target]]'s position is within `80` [[meters]], set the scale to the value provided
-@see [[elec-gate::29]]"
+   @see [[elec-gate::29]]"
   (if (< (vector-vector-distance (-> this root trans) (target-pos 0)) 327680.0)
       (set-elec-scale! this arg0)
       )
@@ -786,10 +781,10 @@
 (defmethod spawn-particles ((this elec-gate) (sparticle-lc sparticle-launch-control))
   "TODO - Calls [[sparticle-launch-control::11]] on `part-spawner-left` and `part-spawner-right` if they are defined"
   (if (-> this part-spawner-left)
-      (spawn sparticle-lc (the-as vector (&-> (-> this part-spawner-left child) 8)))
+      (spawn sparticle-lc (the-as vector (&-> this part-spawner-left child 8)))
       )
   (if (-> this part-spawner-right)
-      (spawn sparticle-lc (the-as vector (&-> (-> this part-spawner-right child) 8)))
+      (spawn sparticle-lc (the-as vector (&-> this part-spawner-right child 8)))
       )
   0
   (none)
@@ -855,9 +850,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-state! ((this elec-gate))
   "If either [[actor-option::17]] is set on the [[elec-gate]] or the related subtask is completed
-make the gate `idle`.
-
-Otherwise, the gate will be `active`."
+   make the gate `idle`.
+   
+   Otherwise, the gate will be `active`."
   (if (or (logtest? (actor-option user17) (-> this fact options))
           (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
           )
@@ -872,11 +867,11 @@ Otherwise, the gate will be `active`."
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this elec-gate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (set! (-> this entity) arg0)
@@ -913,10 +908,10 @@ This commonly includes things such as:
     (vector-cross! v1-28 v1-28 *up-vector*)
     (set! (-> this dividing-wall pos quad) (-> s5-3 quad))
     (set! (-> this dividing-wall dir quad) (-> v1-28 quad))
-    (vector+float*! (the-as vector (-> this plane)) s5-3 v1-28 12288.0)
+    (vector+float*! (-> this plane 0 pos) s5-3 v1-28 12288.0)
     (set! (-> (the-as vector (-> this plane 0 dir)) quad) (-> v1-28 quad))
     (vector-float*! v1-28 v1-28 -1.0)
-    (vector+float*! (the-as vector (-> this plane 1)) s5-3 v1-28 12288.0)
+    (vector+float*! (-> this plane 1 pos) s5-3 v1-28 12288.0)
     (set! (-> (the-as vector (-> this plane 1 dir)) quad) (-> v1-28 quad))
     )
   (set! (-> this wall-xz)
@@ -925,7 +920,7 @@ This commonly includes things such as:
           (get-point-in-path! (-> this path-r) (new 'stack-no-clear 'vector) 0.0 'interp)
           )
         )
-  (set! (-> this wall-xz) (* 0.5 (-> this wall-xz)))
+  (set! (-> this wall-xz) (/ (-> this wall-xz) 2))
   (+! (-> this wall-xz) 4096.0)
   (set! (-> this wall-y)
         (fabs
@@ -974,8 +969,8 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-elec-scale! ((this fort-elec-gate) (scale float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-fordumpa-electricity-scale! scale)
   (set-forresca-electricity-scale! scale (-> this palette-id))
   (set-forrescb-electricity-scale! scale (-> this palette-id))
@@ -1016,8 +1011,8 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-elec-scale! ((this drill-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-drill-electricity-scale! arg0 (-> this palette-id))
   0
   (none)
@@ -1072,8 +1067,8 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-elec-scale! ((this castle-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-castle-electricity-scale! arg0)
   0
   (none)
@@ -1154,8 +1149,8 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-elec-scale! ((this palroof-elec-gate) (arg0 float))
   "Calls associated mood functions to set the scale with the value provided
-@see mood-funcs
-@see mood-funcs2"
+   @see mood-funcs
+   @see mood-funcs2"
   (set-palroof-electricity-scale! arg0 (-> this palette-id))
   0
   (none)

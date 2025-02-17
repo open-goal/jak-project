@@ -112,6 +112,7 @@
   )
 
 (defmethod deactivate ((this piston))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this looping-id))
   ((method-of-type process-focusable deactivate) this)
   (none)
@@ -120,11 +121,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this piston) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-64 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -251,7 +252,7 @@ This commonly includes things such as:
     (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* (-> self rotspeed) (seconds-per-frame)))
     (let ((f1-2 (- (-> self dest-height) (-> self root trans y))))
       (if (< 0.0 f1-2)
-          (+! (-> self root trans y) (* (fmax 6144.0 (* 0.5 f1-2)) (seconds-per-frame)))
+          (+! (-> self root trans y) (* (fmax 6144.0 (/ f1-2 2)) (seconds-per-frame)))
           )
       )
     (update! (-> self sound))
@@ -270,7 +271,7 @@ This commonly includes things such as:
     (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* (-> self rotspeed) (seconds-per-frame)))
     (let ((f1-2 (- (-> self dest-height) (-> self root trans y))))
       (if (< 0.0 f1-2)
-          (+! (-> self root trans y) (* (fmax 6144.0 (* 0.5 f1-2)) (seconds-per-frame)))
+          (+! (-> self root trans y) (* (fmax 6144.0 (/ f1-2 2)) (seconds-per-frame)))
           )
       )
     (update! (-> self sound))
@@ -281,11 +282,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this turbine) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -433,11 +434,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this liftcat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -556,42 +557,28 @@ This commonly includes things such as:
       )
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (the int (-> self cycle-offset)))
-        (suspend)
-        )
+    (suspend-for (the int (-> self cycle-offset))
       )
     (until #f
-      (let ((gp-1 (current-time)))
-        (until (time-elapsed? gp-1 (the int (-> self cycle-time)))
-          (suspend)
-          )
+      (suspend-for (the int (-> self cycle-time))
         )
       (activate! (-> self smush) -1.0 60 225 1.0 1.0 (-> self clock))
       (sound-play "rot-pipe-wiggle" :position (-> self root trans))
-      (let ((gp-3 (current-time)))
-        (until (time-elapsed? gp-3 (seconds 0.75))
-          (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush))))
-          (suspend)
-          )
+      (suspend-for (seconds 0.75)
+        (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush))))
         )
       (set! (-> self shudder-angle) 0.0)
       (set-zero! (-> self smush))
-      (let ((gp-4 (current-time)))
-        (until (time-elapsed? gp-4 (seconds 0.25))
-          (suspend)
-          )
+      (suspend-for (seconds 0.25)
         )
       (sound-play "rot-pipe-turn" :position (-> self root trans))
       (let* ((f0-7 2.0)
              (f30-1 (* 16384.0 f0-7))
-             (gp-6 (current-time))
              )
-        (until (time-elapsed? gp-6 (seconds 0.5))
+        (suspend-for (seconds 0.5)
           (set! (-> self rot-angle)
                 (the float (sar (shl (the int (+ (-> self rot-angle) (* f30-1 (seconds-per-frame)))) 48) 48))
                 )
-          (suspend)
           )
         )
       (let ((v1-42 #x4000))
@@ -615,11 +602,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this atollrotpipe) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -780,32 +767,34 @@ This commonly includes things such as:
   )
 
 (defmethod run-logic? ((this slider))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
 (defmethod deactivate ((this slider))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (the-as sound-id (-> this sound-id)))
   (call-parent-method this)
   (none)
   )
 
-(defmethod relocate ((this slider) (arg0 int))
+(defmethod relocate ((this slider) (offset int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this l-bolts v1-0))
-        (&+! (-> this l-bolts v1-0) arg0)
+        (&+! (-> this l-bolts v1-0) offset)
         )
     )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this slider) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -963,11 +952,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this atoll-windmill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (logior! (-> this mask) (process-mask ambient))
   (let ((a1-1 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-2 0))
@@ -1032,11 +1021,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this atoll-valve) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -1073,11 +1062,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this atoll-hatch) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (logior! (-> this mask) (process-mask ambient))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -1140,11 +1129,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this atoll-hellcat) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -1201,11 +1190,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this atoll-mar-symbol) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

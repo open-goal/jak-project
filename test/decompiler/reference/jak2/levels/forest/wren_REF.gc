@@ -105,8 +105,8 @@
             (.lvf vf1 (&-> v1-16 quad))
             (.lvf vf2 (&-> a0-9 quad))
             )
-          (.add.x.vf vf1 vf0 vf0 :mask #b10)
-          (.add.x.vf vf2 vf0 vf0 :mask #b10)
+          (.add.x.vf.y vf1 vf0 vf0)
+          (.add.x.vf.y vf2 vf0 vf0)
           (.outer.product.a.vf acc vf1 vf2)
           (.outer.product.b.vf vf3 vf2 vf1 acc)
           (.svf (&-> s5-1 quad) vf3)
@@ -138,13 +138,8 @@
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod spooked? ((this wren))
   "@returns a [[symbol]] indicating if Jak is considered close enough to the wren to spook it.
-If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
-  (let* ((gp-0 *target*)
-         (a0-2 (if (type? gp-0 process-focusable)
-                   gp-0
-                   )
-               )
-         )
+   If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
+  (let ((a0-2 (the-as target (as-type *target* process-focusable))))
     (the-as symbol (and a0-2 (< (vector-vector-xz-distance (-> this root trans) (get-trans a0-2 0)) 102400.0)))
     )
   )
@@ -191,8 +186,8 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
             (.mov at-0 f0-0)
             )
           (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> v1-1 quad) vf1)
           (vector+! (-> self root trans) (-> self root trans) v1-1)
           )
@@ -330,7 +325,7 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
         (seek! (-> self fly-interp) (lerp-scale 0.0 1.0 f0-11 -0.2 0.5) (seconds-per-frame))
         )
       (let ((f30-1 (-> self fly-interp)))
-        (seek! (-> self path-du-mod) (+ 0.9 (* 0.2 f30-1)) (* 0.5 (seconds-per-frame)))
+        (seek! (-> self path-du-mod) (+ 0.9 (/ f30-1 5)) (* 0.5 (seconds-per-frame)))
         (set! (-> self bob-level-seek) (+ -12288.0 (* 24576.0 f30-1)))
         (let ((v1-59 (-> self skel root-channel 0)))
           (let ((f0-23 (- 1.0 f30-1)))
@@ -457,11 +452,11 @@ If so, it transitions from [[wren::peck]] to [[wren::hunt]]"
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this wren) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

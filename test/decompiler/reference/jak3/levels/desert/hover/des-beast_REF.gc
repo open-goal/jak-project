@@ -4,7 +4,7 @@
 ;; failed to figure out what this is:
 (when (or (zero? *curve-beast-linear-up-red*) (!= loading-level global))
   (set! *curve-beast-linear-up-red* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *curve-beast-linear-up-red* 2 'loading-level (the-as int #f))
+  (allocate! *curve-beast-linear-up-red* 2 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -83,17 +83,15 @@
 (set! (-> *beast-grenade-trail* uv-repeat-dist) 16384000.0)
 
 ;; failed to figure out what this is:
-(set! (-> *beast-grenade-trail* lie-mode) (the-as uint 0))
+(set! (-> *beast-grenade-trail* lie-mode) (lie-mode appearance0))
 
 ;; failed to figure out what this is:
 (set! (-> *beast-grenade-trail* max-age) (seconds 0.5))
 
 ;; failed to figure out what this is:
 (if #f
-    (set! (-> *beast-grenade-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *beast-grenade-trail* tex-id) (the-as uint #x100300))
+    (set! (-> *beast-grenade-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *beast-grenade-trail* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 ;; failed to figure out what this is:
@@ -112,7 +110,7 @@
 (set! (-> *beast-grenade-trail* zbuffer?) #f)
 
 ;; failed to figure out what this is:
-(set! (-> *beast-grenade-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *beast-grenade-trail* lie-vector) *up-vector*)
 
 ;; failed to figure out what this is:
 (set! (-> *beast-grenade-trail* use-tape-mode?) #f)
@@ -1040,7 +1038,7 @@
     (set! (-> s5-1 track-immediately?) #t)
     (let* ((v1-22 (estimate-light-trail-mem-usage
                     (the-as uint (-> s5-1 max-num-crumbs))
-                    (the-as uint (= (-> s5-1 appearance lie-mode) 3))
+                    (the-as uint (= (-> s5-1 appearance lie-mode) (lie-mode use-two-strips)))
                     )
                   )
            (s4-1 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v1-22 8192) 1))
@@ -1059,7 +1057,7 @@
     (set! (-> v1-26 y) 8.0)
     (set! (-> v1-26 z) 8.0)
     (set! (-> v1-26 w) 1.0)
-    (set! (-> this root scale quad) (-> v1-26 quad))
+    (vector-copy! (-> this root scale) v1-26)
     )
   0
   (none)
@@ -1133,7 +1131,7 @@
     )
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-0 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-0 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-0 spawn-quat))
       (set! (-> gp-0 radius) (-> self blast-radius))
       (set! (-> gp-0 scale) 1.0)
@@ -1232,34 +1230,34 @@
                                    :jump-height-min (meters 3)
                                    :jump-height-factor 0.5
                                    :knocked-seek-ry-clamp 2730.6667
-                                   :knocked-soft-vxz-lo 72089.6
-                                   :knocked-soft-vxz-hi 108134.4
-                                   :knocked-soft-vy-lo 81920.0
-                                   :knocked-soft-vy-hi 122880.0
-                                   :knocked-medium-vxz-lo 147456.0
-                                   :knocked-medium-vxz-hi 196608.0
-                                   :knocked-medium-vy-lo 135168.0
-                                   :knocked-medium-vy-hi 151552.0
-                                   :knocked-hard-vxz-lo 78643.2
-                                   :knocked-hard-vxz-hi 117964.8
-                                   :knocked-hard-vy-lo 183500.8
-                                   :knocked-hard-vy-hi 209715.2
-                                   :knocked-huge-vxz-lo 164659.2
-                                   :knocked-huge-vxz-hi 249036.8
-                                   :knocked-huge-vy-lo 183500.8
-                                   :knocked-huge-vy-hi 217907.2
-                                   :knocked-yellow-vxz-lo 40960.0
-                                   :knocked-yellow-vxz-hi 49152.0
-                                   :knocked-yellow-vy-lo 57344.0
-                                   :knocked-yellow-vy-hi 81920.0
-                                   :knocked-red-vxz-lo 24576.0
-                                   :knocked-red-vxz-hi 196608.0
-                                   :knocked-red-vy-lo 94208.0
-                                   :knocked-red-vy-hi 151552.0
-                                   :knocked-blue-vxz-lo 40960.0
-                                   :knocked-blue-vxz-hi 49152.0
-                                   :knocked-blue-vy-lo 24576.0
-                                   :knocked-blue-vy-hi 81920.0
+                                   :knocked-soft-vxz-lo (meters 17.6)
+                                   :knocked-soft-vxz-hi (meters 26.4)
+                                   :knocked-soft-vy-lo (meters 20)
+                                   :knocked-soft-vy-hi (meters 30)
+                                   :knocked-medium-vxz-lo (meters 36)
+                                   :knocked-medium-vxz-hi (meters 48)
+                                   :knocked-medium-vy-lo (meters 33)
+                                   :knocked-medium-vy-hi (meters 37)
+                                   :knocked-hard-vxz-lo (meters 19.2)
+                                   :knocked-hard-vxz-hi (meters 28.8)
+                                   :knocked-hard-vy-lo (meters 44.8)
+                                   :knocked-hard-vy-hi (meters 51.2)
+                                   :knocked-huge-vxz-lo (meters 40.2)
+                                   :knocked-huge-vxz-hi (meters 60.8)
+                                   :knocked-huge-vy-lo (meters 44.8)
+                                   :knocked-huge-vy-hi (meters 53.2)
+                                   :knocked-yellow-vxz-lo (meters 10)
+                                   :knocked-yellow-vxz-hi (meters 12)
+                                   :knocked-yellow-vy-lo (meters 14)
+                                   :knocked-yellow-vy-hi (meters 20)
+                                   :knocked-red-vxz-lo (meters 6)
+                                   :knocked-red-vxz-hi (meters 48)
+                                   :knocked-red-vy-lo (meters 23)
+                                   :knocked-red-vy-hi (meters 37)
+                                   :knocked-blue-vxz-lo (meters 10)
+                                   :knocked-blue-vxz-hi (meters 12)
+                                   :knocked-blue-vy-lo (meters 6)
+                                   :knocked-blue-vy-hi (meters 20)
                                    :ragdoll-info #f
                                    :shadow-size (meters 1)
                                    :shadow-max-y (meters 1)
@@ -1326,34 +1324,34 @@
                                  :jump-height-min (meters 3)
                                  :jump-height-factor 0.5
                                  :knocked-seek-ry-clamp 2730.6667
-                                 :knocked-soft-vxz-lo 72089.6
-                                 :knocked-soft-vxz-hi 108134.4
-                                 :knocked-soft-vy-lo 81920.0
-                                 :knocked-soft-vy-hi 122880.0
-                                 :knocked-medium-vxz-lo 147456.0
-                                 :knocked-medium-vxz-hi 196608.0
-                                 :knocked-medium-vy-lo 135168.0
-                                 :knocked-medium-vy-hi 151552.0
-                                 :knocked-hard-vxz-lo 78643.2
-                                 :knocked-hard-vxz-hi 117964.8
-                                 :knocked-hard-vy-lo 183500.8
-                                 :knocked-hard-vy-hi 209715.2
-                                 :knocked-huge-vxz-lo 164659.2
-                                 :knocked-huge-vxz-hi 249036.8
-                                 :knocked-huge-vy-lo 183500.8
-                                 :knocked-huge-vy-hi 217907.2
-                                 :knocked-yellow-vxz-lo 40960.0
-                                 :knocked-yellow-vxz-hi 49152.0
-                                 :knocked-yellow-vy-lo 57344.0
-                                 :knocked-yellow-vy-hi 81920.0
-                                 :knocked-red-vxz-lo 24576.0
-                                 :knocked-red-vxz-hi 196608.0
-                                 :knocked-red-vy-lo 94208.0
-                                 :knocked-red-vy-hi 151552.0
-                                 :knocked-blue-vxz-lo 40960.0
-                                 :knocked-blue-vxz-hi 49152.0
-                                 :knocked-blue-vy-lo 24576.0
-                                 :knocked-blue-vy-hi 81920.0
+                                 :knocked-soft-vxz-lo (meters 17.6)
+                                 :knocked-soft-vxz-hi (meters 26.4)
+                                 :knocked-soft-vy-lo (meters 20)
+                                 :knocked-soft-vy-hi (meters 30)
+                                 :knocked-medium-vxz-lo (meters 36)
+                                 :knocked-medium-vxz-hi (meters 48)
+                                 :knocked-medium-vy-lo (meters 33)
+                                 :knocked-medium-vy-hi (meters 37)
+                                 :knocked-hard-vxz-lo (meters 19.2)
+                                 :knocked-hard-vxz-hi (meters 28.8)
+                                 :knocked-hard-vy-lo (meters 44.8)
+                                 :knocked-hard-vy-hi (meters 51.2)
+                                 :knocked-huge-vxz-lo (meters 40.2)
+                                 :knocked-huge-vxz-hi (meters 60.8)
+                                 :knocked-huge-vy-lo (meters 44.8)
+                                 :knocked-huge-vy-hi (meters 53.2)
+                                 :knocked-yellow-vxz-lo (meters 10)
+                                 :knocked-yellow-vxz-hi (meters 12)
+                                 :knocked-yellow-vy-lo (meters 14)
+                                 :knocked-yellow-vy-hi (meters 20)
+                                 :knocked-red-vxz-lo (meters 6)
+                                 :knocked-red-vxz-hi (meters 48)
+                                 :knocked-red-vy-lo (meters 23)
+                                 :knocked-red-vy-hi (meters 37)
+                                 :knocked-blue-vxz-lo (meters 10)
+                                 :knocked-blue-vxz-hi (meters 12)
+                                 :knocked-blue-vy-lo (meters 6)
+                                 :knocked-blue-vy-hi (meters 20)
                                  :ragdoll-info #f
                                  :shadow-size (meters 1)
                                  :shadow-max-y (meters 10)
@@ -1379,12 +1377,7 @@
     '()
     )
   :trans (behavior ()
-    (let* ((gp-0 (ppointer->process (-> self parent)))
-           (v1-2 (if (type? gp-0 process-focusable)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((v1-2 (as-type (ppointer->process (-> self parent)) process-focusable)))
       (when v1-2
         (let ((t9-1 vector-matrix*!)
               (a0-2 (-> self root trans))
@@ -1572,54 +1565,26 @@
 ;; definition for function des-beast-active-post
 ;; WARN: Return type mismatch int vs none.
 (defbehavior des-beast-active-post des-beast ()
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 *target*)
-          (s4-0 (new 'stack-no-clear 'vector))
-          (gp-0 (new 'stack-no-clear 'vector))
-          )
-      (when s5-0
-        (vector-! s4-0 (-> self root trans) (get-trans s5-0 0))
-        (vector-normalize! s4-0 1.0)
-        (vector-rotate90-around-y! gp-0 s4-0)
-        (let ((s3-3 (-> self target-gun-pos)))
-          (let ((s2-1 (get-trans s5-0 0)))
-            (let ((v1-8 (* 0.5 (vector-length (get-transv s5-0)))))
-              (.mov vf7 v1-8)
-              )
-            (.lvf vf5 (&-> s4-0 quad))
-            (.lvf vf4 (&-> s2-1 quad))
-            )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-          (.svf (&-> s3-3 quad) vf6)
-          )
-        (let ((s3-4 (-> self target-gun-pos)))
-          (let ((s4-1 (-> self target-gun-pos)))
-            (let ((v1-13 (* 0.2 (vector-length (get-transv s5-0)) (rand-vu-float-range -1.0 1.0))))
-              (.mov vf7 v1-13)
-              )
-            (.lvf vf5 (&-> gp-0 quad))
-            (.lvf vf4 (&-> s4-1 quad))
-            )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-          (.svf (&-> s3-4 quad) vf6)
-          )
+  (let ((s5-0 *target*)
+        (s4-0 (new 'stack-no-clear 'vector))
+        (gp-0 (new 'stack-no-clear 'vector))
+        )
+    (when s5-0
+      (vector-! s4-0 (-> self root trans) (get-trans s5-0 0))
+      (vector-normalize! s4-0 1.0)
+      (vector-rotate90-around-y! gp-0 s4-0)
+      (vector+*! (-> self target-gun-pos) (get-trans s5-0 0) s4-0 (* 0.5 (vector-length (get-transv s5-0))))
+      (vector+*!
+        (-> self target-gun-pos)
+        (-> self target-gun-pos)
+        gp-0
+        (* 0.2 (vector-length (get-transv s5-0)) (rand-vu-float-range -1.0 1.0))
         )
       )
-    (enemy-common-post self)
-    0
-    (none)
     )
+  (enemy-common-post self)
+  0
+  (none)
   )
 
 ;; failed to figure out what this is:
@@ -1639,7 +1604,7 @@
     )
   :trans (behavior ()
     (if (and (!= (-> self s-clock) 1.0) *camera*)
-        (set! (-> *camera* slave 0 trans quad) (-> *beast-camera-slow-motion* quad))
+        (vector-copy! (-> *camera* slave 0 trans) *beast-camera-slow-motion*)
         )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
       (let* ((a1-0 (the int (the float (the int (-> self path-pos)))))
@@ -1650,12 +1615,7 @@
         (if (= v1-9 (-> self des-path node-count))
             (set! v1-9 0)
             )
-        (vector-lerp!
-          gp-0
-          (the-as vector (-> self des-path node a1-0))
-          (the-as vector (-> self des-path node v1-9))
-          f0-8
-          )
+        (vector-lerp! gp-0 (-> self des-path node a1-0 position) (-> self des-path node v1-9 position) f0-8)
         )
       (seek-toward-heading-vec!
         (-> self root)
@@ -1743,7 +1703,7 @@
          )
         (else
           (let ((a1-6 (new 'stack-no-clear 'vector)))
-            (set! (-> a1-6 quad) (-> self root trans quad))
+            (vector-copy! a1-6 (-> self root trans))
             (set! (-> a1-6 w) 409600.0)
             (if (or (des-beast-method-167 self a1-6) (and (-> self can-turn?)
                                                           (time-elapsed? (-> self state-time) (seconds 6))
@@ -1952,6 +1912,7 @@
 
 ;; definition for method 82 of type des-beast
 (defmethod event-handler ((this des-beast) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('touch)
      #f
@@ -1966,7 +1927,7 @@
      #f
      )
     (('touched)
-     (send-attack-on-jump-or-knocked this arg0 arg3)
+     (enemy-touched-handler this arg0 arg3)
      )
     (('attack)
      (let ((s5-0 (the-as attack-info (-> arg3 param 1))))
@@ -2006,7 +1967,7 @@
      (let ((f30-0 (lerp-scale 3276.8 0.0 (vector-vector-distance (camera-pos) (-> this root trans)) 81920.0 573440.0)))
        (when (!= f30-0 0.0)
          (activate! *camera-smush-control* f30-0 37 600 1.0 0.1 (-> *display* camera-clock))
-         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 (the int (* 255.0 (* 0.00024414062 f30-0))) (seconds 0.2))
+         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 (the int (* 255.0 (/ f30-0 METER_LENGTH))) (seconds 0.2))
          )
        )
      )
@@ -2020,27 +1981,12 @@
     (set! (-> s5-0 y) 0.0)
     (let ((s4-0 (new 'stack-no-clear 'array 'collide-shape 64)))
       (countdown (s3-1 (fill-actor-list-for-box *actor-hash* arg0 s4-0 64))
-        (let* ((s2-0 (-> s4-0 s3-1))
-               (a0-4 (if (type? s2-0 collide-shape)
-                         s2-0
-                         )
-                     )
-               )
+        (let ((a0-4 (as-type (-> s4-0 s3-1) collide-shape)))
           (when a0-4
-            (let* ((s2-1 (-> a0-4 process))
-                   (s1-0 (if (type? s2-1 process-focusable)
-                             s2-1
-                             )
-                         )
-                   (s2-2 (new 'stack-no-clear 'vector))
-                   )
-              (when (and s1-0 (and (!= this s1-0) (let ((s0-0 s1-0))
-                                                    (if (type? s0-0 des-beast)
-                                                        s0-0
-                                                        )
-                                                    )
-                                   )
-                         )
+            (let ((s1-0 (as-type (-> a0-4 process) process-focusable))
+                  (s2-2 (new 'stack-no-clear 'vector))
+                  )
+              (when (and s1-0 (and (!= this s1-0) (as-type s1-0 des-beast)))
                 (vector-! s2-2 (-> s1-0 root trans) (-> this root trans))
                 (set! (-> s2-2 y) 0.0)
                 (if (< 0.0 (vector-dot s2-2 s5-0))
@@ -2058,7 +2004,8 @@
 
 ;; definition for method 84 of type des-beast
 ;; INFO: Used lq/sq
-(defmethod send-attack-on-jump-or-knocked ((this des-beast) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-touched-handler ((this des-beast) (arg0 process) (arg1 event-message-block))
+  "General handler for when anything touches an enemy (automatic response)."
   (cond
     ((= (-> arg0 type) target)
      (let ((s4-0 (-> arg1 param 0)))
@@ -2087,13 +2034,9 @@
        )
      )
     (else
-      (let* ((s4-1 (the-as object (-> arg1 param 0)))
-             (s2-0 arg0)
-             (s1-0 (if (type? s2-0 process-drawable)
-                       s2-0
-                       )
-                   )
-             )
+      (let ((s4-1 (the-as object (-> arg1 param 0)))
+            (s1-0 (as-type arg0 process-drawable))
+            )
         (when s1-0
           (cond
             ((and (nonzero? (-> this attack-id))
@@ -2101,7 +2044,7 @@
                   (not (logtest? (-> this entity extra perm status) (entity-perm-status dead)))
                   )
              (let ((s2-1 (new 'stack-no-clear 'vector)))
-               (set! (-> s2-1 quad) (-> this root transv quad))
+               (vector-copy! s2-1 (-> this root transv))
                (if (< (vector-length s2-1) 40960.0)
                    (vector-normalize! s2-1 40960.0)
                    )
@@ -2133,7 +2076,7 @@
                            (static-attack-info :mask (vehicle-impulse-factor) ((id (-> this attack-id))
                                                                                (damage 2.0)
                                                                                (vehicle-damage-factor 0.01)
-                                                                               (vehicle-impulse-factor (* 0.00012207031 f30-2))
+                                                                               (vehicle-impulse-factor (/ f30-2 (meters 2)))
                                                                                (attacker-velocity s3-4)
                                                                                )
                                                )
@@ -2145,7 +2088,7 @@
                        (persist-with-delay *setting-control* 'interp-time (seconds 4) 'interp-time 'abs 300.0 0)
                        (persist-with-delay *setting-control* 'music-volume (seconds 3) 'music-volume 'abs 0.0 0)
                        (let ((s5-1 (new 'stack-no-clear 'collide-query)))
-                         (set! (-> s5-1 start-pos quad) (-> this root trans quad))
+                         (vector-copy! (-> s5-1 start-pos) (-> this root trans))
                          (vector-float*! (-> s5-1 move-dist) s3-4 f30-2)
                          (let ((v1-64 s5-1))
                            (set! (-> v1-64 radius) 12288.0)
@@ -2164,7 +2107,7 @@
                            )
                          (vector+! *beast-camera-slow-motion* (-> s5-1 start-pos) (-> s5-1 move-dist))
                          )
-                       (set! (-> *camera* slave 0 trans quad) (-> *beast-camera-slow-motion* quad))
+                       (vector-copy! (-> *camera* slave 0 trans) *beast-camera-slow-motion*)
                        (set! (-> this s-clock) 0.25)
                        )
                      )
@@ -2228,7 +2171,7 @@
 ;; definition for method 161 of type des-beast
 ;; INFO: Used lq/sq
 (defmethod get-linear-vel! ((this des-beast) (arg0 vector))
-  (set! (-> arg0 quad) (-> (ja-linear-vel 0) quad))
+  (vector-copy! arg0 (ja-linear-vel 0))
   arg0
   )
 
@@ -2248,7 +2191,7 @@
   (let ((s5-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (s4-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> s4-0 quad) (-> this root gspot-normal quad))
+    (vector-copy! s4-0 (-> this root gspot-normal))
     (vector-cross! (new 'stack-no-clear 'vector) s5-1 s4-0)
     (let ((f0-2 (vector-vector-angle-safe s5-1 s4-0)))
       (when (< 1.8204443 f0-2)
@@ -2268,7 +2211,7 @@
   (let ((a1-11 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
         (v1-25 (new 'stack-no-clear 'vector))
         )
-    (set! (-> v1-25 quad) (-> *up-vector* quad))
+    (vector-copy! v1-25 *up-vector*)
     (seek! (-> this speed-factor) (- 1.0 (* 0.25 (vector-dot a1-11 v1-25))) (seconds-per-frame))
     )
   (seek! (-> this main-speed-factor) (-> this main-speed-factor-dest) (seconds-per-frame))
@@ -2283,7 +2226,7 @@
   (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 21)))
         (s5-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> s5-0 quad) (-> this node-list data 21 bone transform fvec quad))
+    (vector-copy! s5-0 (-> this node-list data 21 bone transform fvec))
     (new 'stack-no-clear 'vector)
     (new 'stack-no-clear 'vector)
     (vector-normalize! s5-0 81920.0)
@@ -2292,8 +2235,8 @@
       (set! (-> a1-2 charge) 1.0)
       (set! (-> a1-2 options) (projectile-options))
       (logclear! (-> a1-2 options) (projectile-options po14 po15 po16))
-      (set! (-> a1-2 pos quad) (-> s4-0 quad))
-      (set! (-> a1-2 vel quad) (-> s5-0 quad))
+      (vector-copy! (-> a1-2 pos) s4-0)
+      (vector-copy! (-> a1-2 vel) s5-0)
       (set! (-> a1-2 notify-handle) (the-as handle #f))
       (set! (-> a1-2 owner-handle) (process->handle this))
       (set! (-> a1-2 target-handle) (the-as handle #f))
@@ -2316,6 +2259,7 @@
 ;; definition for method 59 of type des-beast
 ;; WARN: Return type mismatch float vs none.
 (defmethod enemy-common-post ((this des-beast))
+  "Common implementation of post. Runs ja-post."
   (when (>= (+ (current-time) (seconds -2)) (-> this attack-id-time))
     (let* ((v1-4 *game-info*)
            (a0-3 (+ (-> v1-4 attack-id) 1))
@@ -2350,8 +2294,8 @@
       (add-debug-line
         #t
         (bucket-id debug-no-zbuf1)
-        (the-as vector (-> this des-path node s5-0))
-        (the-as vector (-> this des-path node (+ s5-0 1)))
+        (-> this des-path node s5-0 position)
+        (-> this des-path node (+ s5-0 1) position)
         *color-red*
         #f
         (the-as rgba -1)
@@ -2388,8 +2332,8 @@
           (.lvf vf4 (&-> sv-128 quad))
           (.lvf vf5 (&-> v0-2 quad))
           )
-        (.mov.vf vf6 vf0 :mask #b1000)
-        (.sub.vf vf6 vf4 vf5 :mask #b111)
+        (.mov.vf.w vf6 vf0)
+        (.sub.vf.xyz vf6 vf4 vf5)
         (.svf (&-> sv-144 quad) vf6)
         (rot-zxy-from-vector! s0-0 (-> arg0 bone transform fvec))
         (rot-zxy-from-vector! s1-0 sv-160)
@@ -2401,7 +2345,7 @@
               )
         (quaternion-vector-angle! s4-0 *up-vector* (-> (the-as des-beast s3-0) angle-turret))
         (quaternion->matrix (-> arg0 bone transform) s4-0)
-        (set! (-> arg0 bone transform trans quad) (-> s5-0 quad))
+        (vector-copy! (-> arg0 bone transform trans) s5-0)
         )
       )
     0
@@ -2434,8 +2378,8 @@
             (.lvf vf4 (&-> sv-112 quad))
             (.lvf vf5 (&-> v0-1 quad))
             )
-          (.mov.vf vf6 vf0 :mask #b1000)
-          (.sub.vf vf6 vf4 vf5 :mask #b111)
+          (.mov.vf.w vf6 vf0)
+          (.sub.vf.xyz vf6 vf4 vf5)
           (.svf (&-> sv-128 quad) vf6)
           (rot-zxy-from-vector! s2-0 (-> arg0 bone transform fvec))
           (rot-zxy-from-vector! s1-0 s0-0)
@@ -2455,7 +2399,8 @@
   )
 
 ;; definition for method 122 of type des-beast
-(defmethod go-idle2 ((this des-beast))
+(defmethod go-fallback-init ((this des-beast))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go (method-of-object this idle))
   )
 
@@ -2490,6 +2435,7 @@
 ;; definition for method 120 of type des-beast
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this des-beast))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2646,12 +2592,13 @@
 ;; definition for method 121 of type des-beast
 ;; WARN: Return type mismatch cspace vs none.
 (defmethod init-enemy! ((this des-beast))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-des-beast" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *des-beast-enemy-info*)
+  (setup-enemy! this *des-beast-enemy-info*)
   (set! (-> this event-hook) enemy-event-handler)
   (logclear! (-> this mask) (process-mask actor-pause))
   (logior! (-> this mask) (process-mask enemy))
@@ -2726,14 +2673,15 @@
 ;; definition for method 11 of type des-beast
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this des-beast) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-enemy-collision! this)
   (process-drawable-from-entity! this arg0)
   (set! (-> this manager) (the-as handle #f))
   (init-enemy! this)
-  (set! (-> this root trans quad) (-> this des-path node 0 position quad))
+  (vector-copy! (-> this root trans) (-> this des-path node 0 position))
   (set! (-> this hit-part) (create-launch-control (-> *part-group-id-table* 414) this))
   (des-beast-method-166 this)
-  (go-idle2 this)
+  (go-fallback-init this)
   )
 
 ;; definition for function des-beast-init-by-other
@@ -2743,11 +2691,11 @@
   (set! (-> self entity) arg1)
   (set! (-> self manager) arg4)
   (init-enemy-collision! self)
-  (set! (-> self root trans quad) (-> arg2 node 0 position quad))
+  (vector-copy! (-> self root trans) (-> arg2 node 0 position))
   (quaternion-copy! (-> self root quat) arg3)
   (set! (-> self des-path) arg2)
   (set! (-> self hit-part) (create-launch-control (-> *part-group-id-table* 414) self))
   (init-enemy! self)
   (des-beast-method-166 self)
-  (go-idle2 self)
+  (go-fallback-init self)
   )

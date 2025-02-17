@@ -267,7 +267,7 @@
 
 (defmethod general-event-handler ((this spyder) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -661,9 +661,9 @@
 
 (defmethod common-post ((this spyder))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (spyder-method-185 this)
   (spyder-method-184 this (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
   (update-trans! (-> this sound) (-> this root trans))
@@ -780,9 +780,9 @@
                     )
                   (.lvf vf4 (&-> a0-9 quad))
                   )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.add.x.vf.w vf6 vf0 vf0)
+                (.mul.x.vf.xyz acc vf5 vf7)
+                (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                 (.svf (&-> a1-3 quad) vf6)
                 )
               (set! (-> s2-0 quad) (-> s3-0 quad))
@@ -797,9 +797,9 @@
                     )
                   (.lvf vf4 (&-> a0-12 quad))
                   )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.add.x.vf.w vf6 vf0 vf0)
+                (.mul.x.vf.xyz acc vf5 vf7)
+                (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                 (.svf (&-> a2-10 quad) vf6)
                 )
               (vector-float*! (-> s5-0 move-dist) v1-15 -32768.0)
@@ -823,9 +823,9 @@
                         )
                       (.lvf vf4 (&-> v1-19 quad))
                       )
-                    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                    (.mul.x.vf acc vf5 vf7 :mask #b111)
-                    (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                    (.add.x.vf.w vf6 vf0 vf0)
+                    (.mul.x.vf.xyz acc vf5 vf7)
+                    (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                     (.svf (&-> a1-10 quad) vf6)
                     )
                   )
@@ -1035,7 +1035,7 @@
         )
       )
     (let ((v1-17 (-> self nav)))
-      (set! (-> v1-17 max-rotation-rate) (* 0.05 (-> *spyder-nav-enemy-info* maximum-rotation-rate)))
+      (set! (-> v1-17 max-rotation-rate) (/ (-> *spyder-nav-enemy-info* maximum-rotation-rate) 20))
       )
     0
     (ja-channel-push! 2 (seconds 0.2))
@@ -1067,13 +1067,10 @@
                     (set! (-> self fire-info 0 quad) (-> s3-0 quad))
                     (set! (-> self fire-info 1 quad) (-> s2-1 quad))
                     )
-                  (let ((s3-1 (current-time)))
-                    (until (time-elapsed? s3-1 (seconds 0.2))
-                      (set! f30-0 (seek f30-0 (lerp-scale 0.0 1.0 (the float s4-0) 0.0 8.0) (seconds-per-frame)))
-                      (ja :num! (loop!))
-                      (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
-                      (suspend)
-                      )
+                  (suspend-for (seconds 0.2)
+                    (set! f30-0 (seek f30-0 (lerp-scale 0.0 1.0 (the float s4-0) 0.0 8.0) (seconds-per-frame)))
+                    (ja :num! (loop!))
+                    (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
                     )
                   (let ((f28-1 (+ 12288.0 f28-0)))
                     (set! (-> gp-0 quad) (-> s5-0 quad))

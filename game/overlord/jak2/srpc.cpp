@@ -40,7 +40,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
   if (!PollSema(gSema)) {
     if (gMusic) {
       if (!gMusicPause && !LookupSound(666)) {
-        Sound* music = AllocateSound();
+        Sound* music = AllocateSound(true);
         if (music != nullptr) {
           gMusicFade = 0;
           gMusicFadeDir = 1;
@@ -117,7 +117,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
 
         } else {
           // new sound
-          sound = AllocateSound();
+          sound = AllocateSound(true);
           if (sound == nullptr) {
             // no free sounds
             break;
@@ -460,6 +460,9 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           snd_SetPlayBackMode(0);
         }
       } break;
+      case Jak2SoundCommand::mirror_mode: {
+        gMirrorMode = cmd->mirror.value;
+      } break;
       default:
         ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}", int(cmd->j2command)));
     }
@@ -472,11 +475,6 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
 }
 
 int VBlank_Handler(void*) {
-  bool bVar1;
-  int iVar2;
-  int iVar3;
-  uint8_t uVar4;
-
   IopTicks = IopTicks + 1;
   if (gSoundEnable == 0) {
     return 1;
@@ -543,18 +541,14 @@ LAB_00008d9c:
     info.diskspeed[1] = 0 /*DAT_00013488*/;
     info.lastspeed = 0 /*gLastSpeed*/;
     info.dupseg = 0 /*gDupSeg*/;
-    iVar2 = 1;
-    do {
-      iVar3 = snd_GetVoiceStatus(iVar2);
-      uVar4 = '\0';
-      if (iVar3 == 1) {
-        uVar4 = 0xff;
+    for (int i = 0; i < 48; i++) {
+      if (snd_GetVoiceStatus(i) == 1) {
+        info.chinfo[i] = -1;
+      } else {
+        info.chinfo[i] = 0;
       }
-      info.chinfo[iVar2] = uVar4;
-      bVar1 = iVar2 < 0x30;
-      iVar2 = iVar2 + 1;
-    } while (bVar1);
-    LookupSound(0x29a);  // lol idk
+    }
+    LookupSound(666);  // music
 
     /*
     local_38 = &info;

@@ -87,34 +87,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x -1.0 :w 1194.157)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -645,7 +645,7 @@
           )
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -672,7 +672,7 @@
              (a2-0 (-> self nav state))
              (a1-1 (new 'stack-no-clear 'vector))
              )
-         (set! (-> a1-1 quad) (-> a2-0 target-pos quad))
+         (vector-copy! a1-1 (-> a2-0 target-pos))
          (and (< (t9-2 a0-1 a1-1) 8192.0) (< (the-as int (-> self focus aware)) 4))
          )
        (go-stare self)
@@ -701,7 +701,7 @@
       (let ((v1-9 (-> self nav state)))
         (logclear! (-> v1-9 flags) (nav-state-flag directional-mode))
         (logior! (-> v1-9 flags) (nav-state-flag target-poly-dirty))
-        (set! (-> v1-9 target-pos quad) (-> gp-1 quad))
+        (vector-copy! (-> v1-9 target-pos) gp-1)
         )
       )
     0
@@ -741,6 +741,7 @@
 ;; definition for method 56 of type flut-wild
 ;; WARN: Return type mismatch float vs object.
 (defmethod knocked-handler ((this flut-wild) (arg0 vector))
+  "Called when this enemy is knocked."
   (get-knockback-dir! this arg0)
   (let ((f30-0 (rnd-float-range this 0.0 1.0)))
     (vector-float*! arg0 arg0 (lerp 24576.0 57344.0 f30-0))
@@ -750,16 +751,19 @@
 
 ;; definition for method 98 of type flut-wild
 (defmethod jump-wind-up-anim ((this flut-wild) (arg0 enemy-jump-info))
+  "Start playing the wind-up anim"
   #f
   )
 
 ;; definition for method 108 of type flut-wild
-(defmethod enemy-method-108 ((this flut-wild) (arg0 process-focusable))
+(defmethod should-flee-from? ((this flut-wild) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   #t
   )
 
 ;; definition for method 79 of type flut-wild
 (defmethod go-flee ((this flut-wild))
+  "Go to the flee state, running away."
   (if (< (path-control-method-23 (-> this path) (-> this root trans)) 1.0)
       (go (method-of-object this flee-path))
       (go (method-of-object this flee))
@@ -768,6 +772,7 @@
 
 ;; definition for method 59 of type flut-wild
 (defmethod enemy-common-post ((this flut-wild))
+  "Common implementation of post. Runs ja-post."
   (if (task-node-closed? (game-task-node volcano-darkeco-catch-flut))
       (go (method-of-object this disappear))
       )
@@ -789,12 +794,8 @@
             (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
             )
           )
-      (let ((v1-25 s5-0))
-        (set! (-> v1-25 width) (the float 340))
-        )
-      (let ((v1-26 s5-0))
-        (set! (-> v1-26 height) (the float 80))
-        )
+      (set-width! s5-0 340)
+      (set-height! s5-0 80)
       (let ((v1-27 s5-0)
             (a0-14 (-> *setting-control* user-default language))
             )
@@ -825,6 +826,7 @@
 ;; definition for method 82 of type flut-wild
 ;; INFO: Used lq/sq
 (defmethod event-handler ((this flut-wild) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -836,7 +838,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -861,6 +863,7 @@
 ;; definition for method 120 of type flut-wild
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod init-enemy-collision! ((this flut-wild))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -941,22 +944,24 @@
   )
 
 ;; definition for method 122 of type flut-wild
-(defmethod go-idle2 ((this flut-wild))
+(defmethod go-fallback-init ((this flut-wild))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (if (task-node-closed? (game-task-node volcano-darkeco-catch-flut))
       (go (method-of-object this disappear))
-      ((method-of-type nav-enemy go-idle2) this)
+      ((method-of-type nav-enemy go-fallback-init) this)
       )
   )
 
 ;; definition for method 121 of type flut-wild
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this flut-wild))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flut" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *flut-wild-enemy-info*)
+  (setup-enemy! this *flut-wild-enemy-info*)
   (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
@@ -1071,7 +1076,3 @@
   (set-setting! 'pilot-exit #f 0.0 0)
   (none)
   )
-
-
-
-

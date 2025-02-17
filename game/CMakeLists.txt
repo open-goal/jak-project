@@ -201,6 +201,7 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/sky.cpp
         mips2c/jak3_functions/texture.cpp
         mips2c/jak3_functions/particle_curves.cpp
+        mips2c/jak3_functions/cloth.cpp
         mips2c/jak3_functions/collide_cache.cpp
         mips2c/jak3_functions/collide_hash.cpp
         mips2c/jak3_functions/collide_edge_grab.cpp
@@ -213,6 +214,7 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/merc_blend_shape.cpp
         mips2c/jak3_functions/wvehicle_part.cpp
         mips2c/jak3_functions/ripple.cpp
+        mips2c/jak3_functions/shadow.cpp
         mips2c/jak3_functions/ocean.cpp
         mips2c/jak3_functions/ocean_vu0.cpp
         mips2c/jak3_functions/generic_merc.cpp
@@ -253,6 +255,29 @@ set(RUNTIME_SOURCE
         overlord/jak2/streamlfo.cpp
         overlord/jak2/streamlist.cpp
         overlord/jak2/vag.cpp
+        overlord/jak3/overlord.cpp
+        overlord/jak3/pagemanager.cpp
+        overlord/jak3/iso_cd.cpp
+        overlord/jak3/dma.cpp
+        overlord/jak3/iso.cpp
+        overlord/jak3/iso_queue.cpp
+        overlord/jak3/srpc.cpp
+        overlord/jak3/vag.cpp
+        overlord/jak3/ssound.cpp
+        overlord/jak3/iso_api.cpp
+        overlord/jak3/spustreams.cpp
+        overlord/jak3/list.cpp
+        overlord/jak3/vblank_handler.cpp
+        overlord/jak3/dvd_driver.cpp
+        overlord/jak3/basefile.cpp
+        overlord/jak3/basefilesystem.cpp
+        overlord/jak3/ramdisk.cpp
+        overlord/jak3/isocommon.cpp
+        overlord/jak3/init.cpp
+        overlord/jak3/stream.cpp
+        overlord/jak3/sbank.cpp
+        overlord/jak3/soundcommon.cpp
+        overlord/jak3/streamlist.cpp
         runtime.cpp
         sce/deci2.cpp
         sce/iop.cpp
@@ -297,3 +322,6 @@ endif()
 
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
+if(WIN32)
+    set_target_properties(gk PROPERTIES VS_DPI_AWARE "PerMonitor")
+endif()

@@ -7,6 +7,28 @@
 
 ;; DECOMP BEGINS
 
+;; og:preserve-this
+(defun fnv64 ((data pointer) (length int))
+  "64-bit hash for strings. This is extremely unlikely to have collisions for all strings
+   in the game. (modern ND games rely on this and use this hash function as unique ID's for
+   strings."
+  (let* ((ret (the uint #xcbf29ce484222325))
+         (ptr (the (pointer uint8) data))
+         (end (&+ ptr length)))
+    (while (!= ptr end)
+      (set! ret (imul64 (logxor (-> ptr) ret) 1099511628211))
+      (&+! ptr 1)
+      )
+    ret
+    )
+  )
+
+(defun fnv64-string ((str string))
+  (fnv64 (-> str data) (length str))
+  )
+
+(define *current-eye-merc-ctrl-name* (the string #f))
+
 (define *eye-work* (new 'static 'eye-work
                      :sprite-tmpl (new 'static 'dma-gif-packet
                        :dma-vif (new 'static 'dma-packet
@@ -137,6 +159,10 @@
                 (set! (-> (the-as (inline-array vector4w) v1-25) 1 quad) (-> *eye-work* sprite-tmpl quad 1))
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 2) 128 128 128 128)
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 3) 0 0 0 0)
+                ;; og:preserve-this: stash the hashed name of the merc-ctrl that will read these eyes:
+                (set! (-> (the (pointer uint64) v1-25) 6)
+                      (fnv64-string *current-eye-merc-ctrl-name*)
+                      )
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 4) (* s4-0 16) (the-as int (* s3-0 16)) #xffffff 0)
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 5) 0 0 0 0)
                 (set-vector!
@@ -425,6 +451,12 @@
                 (set! (-> (the-as (inline-array vector4w) v1-25) 1 quad) (-> *eye-work* sprite-tmpl quad 1))
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 2) 128 128 128 128)
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 3) 0 0 0 0)
+
+                ;; og:preserve-this: stash the hashed name of the merc-ctrl that will read these eyes:
+                (set! (-> (the (pointer uint64) v1-25) 6)
+                      (fnv64-string *current-eye-merc-ctrl-name*)
+                      )
+
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 4) (* s4-0 16) (the-as int (* s3-0 16)) #xffffff 0)
                 (set-vector! (-> (the-as (inline-array vector4w) v1-25) 5) 0 0 0 0)
                 (set-vector!
@@ -680,6 +712,7 @@
                    (logtest? (-> (the-as process-drawable v1-7) skel status) (joint-control-status eye-anim))
                    (logtest? (-> (the-as process-drawable v1-7) draw status) (draw-control-status on-screen))
                    )
+          (set! *current-eye-merc-ctrl-name* (-> (the process-drawable v1-7) draw mgeo name))
           (when (-> s5-0 shaders)
             (when (not (paused?))
               (cond

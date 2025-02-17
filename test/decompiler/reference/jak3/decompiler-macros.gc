@@ -37,6 +37,18 @@
      )
   )
 
+(defmacro new-stack-matrix0 ()
+  "Get a new matrix on the stack that's set to zero."
+  `(let ((mat (new 'stack-no-clear 'matrix)))
+     (set! (-> mat quad 0) (the-as uint128 0))
+     (set! (-> mat quad 1) (the-as uint128 0))
+     (set! (-> mat quad 2) (the-as uint128 0))
+     (set! (-> mat quad 3) (the-as uint128 0))
+     mat
+     )
+  )
+
+
 (defmacro with-pp (&rest body)
   "execute the body with pp bound to the current process register."
   `(rlet ((pp :reg r13 :reset-here #t :type process))
@@ -261,6 +273,13 @@
      ,*defstate-current-state-name*
      (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))
     )
+  )
+
+(defmacro call-parent-state-handler (handler &key (type (function none)) &rest args)
+  "Call the parent handler for this state."
+  `(let ((handler (-> (find-parent-state) ,handler)))
+     (if handler ((the ,type handler) ,@args))
+     )
   )
 
 (defmacro call-parent-method (&rest args)
@@ -945,6 +964,9 @@
   `(set! ,time (current-time))
   )
 
+(defmacro suspend-for (time &rest body)
+  `(let ((time (current-time))) (until (time-elapsed? time ,time) ,@body (suspend))))
+
 (defconstant *scratch-memory-top* (the pointer #x70004000))
 (defconstant DPROCESS_STACK_SIZE #x8000)
 
@@ -979,7 +1001,7 @@
   (with-gensyms (new-proc)
     `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size ,unk))))
         (when ,new-proc
-          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ',proc-type)) ,stack)
           (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
           (the (pointer ,proc-type) (-> ,new-proc ppointer))
           )
@@ -1724,6 +1746,17 @@
          )
    )
 )
+
+(defmacro as-type (this type)
+  (with-gensyms (obj)
+    `(the ,type (let ((,obj ,this))
+                  (if (type? ,obj ,type)
+                      ,obj
+                      )
+                  )
+          )
+    )
+  )
 
 (import "goal_src/jak3/engine/data/tpages.gc")
 (import "goal_src/jak3/engine/data/textures.gc")

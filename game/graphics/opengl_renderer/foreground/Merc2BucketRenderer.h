@@ -8,8 +8,10 @@ class Merc2BucketRenderer : public BucketRenderer {
   Merc2BucketRenderer(const std::string& name, int my_id, std::shared_ptr<Merc2> merc);
   void draw_debug_window() override;
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
+  bool empty() const override;
 
  private:
+  bool m_empty = false;
   std::shared_ptr<Merc2> m_renderer;
   MercDebugStats m_debug_stats;
 };

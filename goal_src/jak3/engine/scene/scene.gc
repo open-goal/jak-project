@@ -65,26 +65,24 @@
        (goto cfg-260)
        )
       )
-    (let* ((s4-1 (art-group-get-by-name *level* (-> this art-group) (the-as (pointer level) #f)))
-           (s3-0 (if (type? s4-1 skeleton-group)
-                     s4-1
-                     )
-                 )
-           (s0-0 (-> arg0 level))
-           (s1-0
-             (cond
-               ((or (string= (-> this name) "jak-highres")
-                    (string= (-> this name) "jak-highres-prison")
-                    (string= (-> this name) "darkjak-highres")
-                    )
-                'jakb
-                )
-               ((string= (-> this name) "jakc-highres")
-                'jakc
-                )
+    (let ((s3-0
+            (as-type (art-group-get-by-name *level* (-> this art-group) (the-as (pointer level) #f)) skeleton-group)
+            )
+          (s0-0 (-> arg0 level))
+          (s1-0
+            (cond
+              ((or (string= (-> this name) "jak-highres")
+                   (string= (-> this name) "jak-highres-prison")
+                   (string= (-> this name) "darkjak-highres")
+                   )
+               'jakb
                )
-             )
-           )
+              ((string= (-> this name) "jakc-highres")
+               'jakc
+               )
+              )
+            )
+          )
       (set! (-> arg0 level) #f)
       (set! s4-0
             (when s3-0
@@ -618,14 +616,11 @@
                         (-> *level* level-default)
                         )
                     )
-              (v1-53 (when level
-                       (let ((s0-0 (art-group-get-by-name *level* (-> s2-0 art-group) (the-as (pointer level) #f))))
-                         (if (type? s0-0 skeleton-group)
-                             s0-0
-                             )
-                         )
-                       )
-                     )
+              (v1-53
+                (if level
+                    (as-type (art-group-get-by-name *level* (-> s2-0 art-group) (the-as (pointer level) #f)) skeleton-group)
+                    )
+                )
               )
           (cond
             ((or (not s1-0) (not (or (= (-> s1-0 status) 'active) (= (-> s1-0 status) 'reserved))))
@@ -772,7 +767,7 @@
         )
       (let* ((v1-28 (-> s3-0 base))
              (a2-23
-               (+ (- 1793 (the-as int (shr (-> arg0 width) 1))) (the int (+ (-> arg1 origin x) (* 0.5 (-> arg1 width)))))
+               (+ (- 1793 (the-as int (shr (-> arg0 width) 1))) (the int (+ (-> arg1 origin x) (/ (-> arg1 width) 2))))
                )
              (a3-8 (+ (the int (-> arg1 origin y)) 1841))
              (a0-23 (+ a2-23 (-> arg0 width)))
@@ -789,7 +784,7 @@
       (&+! (-> s3-0 base) 112)
       (let* ((v1-32 (-> s3-0 base))
              (a1-38
-               (+ (- 1792 (the-as int (shr (-> arg0 width) 1))) (the int (+ (-> arg1 origin x) (* 0.5 (-> arg1 width)))))
+               (+ (- 1792 (the-as int (shr (-> arg0 width) 1))) (the int (+ (-> arg1 origin x) (/ (-> arg1 width) 2))))
                )
              (a3-11 (+ (the int (-> arg1 origin y)) 1840))
              (a0-30 (+ a1-38 (-> arg0 width)))
@@ -817,6 +812,10 @@
              )
     (let ((v1-9 (-> self skel root-channel 0 frame-group)))
       (when v1-9
+        ;; og:preserve-this send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
+        (#when PC_PORT
+            (if (= (-> self type) scene-player)
+                (send-event (ppointer->process *subtitle3*) 'movie-no-subtitle (-> (the scene-player self) anim name) #f (ja-aframe-num 0))))
         (let ((gp-0 (res-lump-struct (-> v1-9 extra) 'subtitle-range (array subtitle-range))))
           (when gp-0
             (let ((f30-0 (ja-aframe-num 0))
@@ -834,29 +833,19 @@
                                 (new 'stack 'font-context *font-default-matrix* 20 290 0.0 (font-color default) (font-flags shadow kerning))
                                 )
                               )
-                          (let ((v1-20 s2-0))
-                            (set! (-> v1-20 width) (the float 465))
-                            )
-                          (let ((v1-21 s2-0))
-                            (set! (-> v1-21 height) (the float 70))
-                            )
-                          (let ((v1-22 s2-0))
-                            (set! (-> v1-22 scale) 0.5)
-                            )
+                          (set-width! s2-0 465)
+                          (set-height! s2-0 70)
+                          (set-scale! s2-0 0.5)
                           (set! (-> s2-0 flags) (font-flags shadow kerning middle large))
                           (case (-> s3-0 type)
                             ((string)
                              (when (= (-> *setting-control* user-default subtitle-language) (language-enum korean))
                                (set! s3-0 (convert-korean-text (the-as string s3-0)))
-                               (let ((v1-27 s2-0))
-                                 (set! (-> v1-27 scale) 0.6)
-                                 )
+                               (set-scale! s2-0 0.6)
                                )
-                             (when (= (-> *setting-control* user-default subtitle-language) (language-enum russian))
-                               (let ((v1-30 s2-0))
-                                 (set! (-> v1-30 scale) 0.75)
+                             (if (= (-> *setting-control* user-default subtitle-language) (language-enum russian))
+                                 (set-scale! s2-0 0.75)
                                  )
-                               )
                              (set! (-> s2-0 flags) (font-flags kerning middle middle-vert large))
                              (+! (-> s2-0 origin x) -1.0)
                              (+! (-> s2-0 origin y) -1.0)
@@ -865,7 +854,14 @@
                              (+! (-> s2-0 origin y) 1.0)
                              (set! (-> s2-0 color) (font-color default))
                              (set! (-> s2-0 flags) (font-flags shadow kerning middle middle-vert large))
-                             (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2))
+                             ;; og:preserve-this subtitle3
+                             (#if PC_PORT
+                                  (if (or (!= (-> self type) scene-player)
+                                          (not (send-event (ppointer->process *subtitle3*) 'movie (-> (the scene-player self) anim name) s3-0 f30-0)))
+                                      (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2)))
+
+                                  (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2)))
+                             ; (print-game-text (the-as string s3-0) s2-0 #f 44 (bucket-id hud-draw-pris2))
                              (gui-control-method-12
                                *gui-control*
                                self
@@ -905,8 +901,6 @@
 (defstate wait (scene-player)
   :virtual #t
   :enter (behavior ((arg0 symbol))
-    (format 0 "scene-player: skipping scene~%")
-    (go-virtual release)
     (set-time! (-> self state-time))
     (if (= (-> *game-info* demo-state) 101)
         (set-setting! 'audio-language #f 0.0 5)
@@ -925,12 +919,10 @@
             (apply-settings *setting-control*)
             )
           (cond
-            ((and *target*
-                  (zero? (-> self scene-index))
-                  (or (not (-> self scene))
-                      (!= (status-of-level-and-borrows *level* (-> gp-0 vis-nick) #f) 'active)
-                      (logtest? (-> self scene scene-flags) (scene-flags scf5))
-                      )
+            ((and *target* (zero? (-> self scene-index)) (or (not (-> self scene))
+                                                             (!= (level-status? *level* (-> gp-0 vis-nick) #f) 'active)
+                                                             (logtest? (-> self scene scene-flags) (scene-flags scf5))
+                                                             )
                   )
              (send-event *target* 'continue gp-0)
              )
@@ -1076,7 +1068,7 @@
                    (dotimes (s4-1 10)
                      (when (not (or (not (-> gp-1 want s4-1 name))
                                     (not (-> gp-1 want s4-1 display?))
-                                    (= (status-of-level-and-borrows *level* (-> gp-1 want s4-1 name) 'all) 'active)
+                                    (= (level-status? *level* (-> gp-1 want s4-1 name) 'all) 'active)
                                     )
                                 )
                        (set! v1-124 #t)
@@ -1203,10 +1195,7 @@
         #x33001
         #t
         )
-      (let ((gp-0 (current-time)))
-        (until (time-elapsed? gp-0 (seconds 0.05))
-          (suspend)
-          )
+      (suspend-for (seconds 0.05)
         )
       (set! (-> *setting-control* user-current bg-a) 0.0)
       (remove-setting! 'movie)
@@ -1234,7 +1223,8 @@
       (disable *screen-filter*)
       (deactivate self)
       )
-    (when (< (-> self scene-index) (+ (-> self scene-list length) -1))
+    ;; og:preserve-this there is a bug here. scene-index has already been advanced by this point, so we need to backtrack when checking things
+    (when (< (#if PC_PORT (1- (-> self scene-index)) (-> self scene-index)) (+ (-> self scene-list length) -1))
       (set! (-> self scene-index) (+ (-> self scene-list length) -1))
       (scene-player-method-24 self (-> self scene-list (-> self scene-index)) #t)
       )
@@ -1456,7 +1446,7 @@
     (when (logtest? (-> self scene scene-flags) (scene-flags scf6))
       (let ((v1-26 (handle->process (-> *target* pilot vehicle))))
         (when v1-26
-          (set! (-> self root trans quad) (-> (the-as process-drawable v1-26) root trans quad))
+          (vector-copy! (-> self root trans) (-> (the-as process-drawable v1-26) root trans))
           (quaternion-copy! (-> self root quat) (-> (the-as process-drawable v1-26) root quat))
           )
         )
@@ -1539,16 +1529,13 @@
         (the-as
           (function process-drawable symbol)
           (if (logtest? (-> self scene scene-flags) (scene-flags scf1))
-              (lambda :behavior scene-player
-                ()
-                (when (cpad-pressed? 0 triangle)
-                  (set! (-> self aborted?) #t)
-                  (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
-                  (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
-                  #t
-                  )
-                (none)
-                )
+              (lambda :behavior scene-player () (when (cpad-pressed? 0 triangle)
+                                                  (set! (-> self aborted?) #t)
+                                                  (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons triangle))
+                                                  (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
+                                                  #t
+                                                  )
+                                             )
               false-func
               )
           )
@@ -1647,12 +1634,7 @@
               )
           (when (logtest? gp-4 (scene-controls special-fma-spheres))
             (dotimes (s5-3 (-> self scene actor length))
-              (let* ((s4-1 (handle->process (-> self scene actor s5-3 process)))
-                     (v1-66 (if (type? s4-1 process-drawable)
-                                (the-as process-drawable s4-1)
-                                )
-                            )
-                     )
+              (let ((v1-66 (as-type (handle->process (-> self scene actor s5-3 process)) process-drawable)))
                 (if (and v1-66 (nonzero? (-> v1-66 draw)))
                     (add-debug-sphere
                       #t
@@ -1667,12 +1649,7 @@
             )
           (when (logtest? gp-4 (scene-controls scene-controls-7))
             (dotimes (s5-4 (-> self scene actor length))
-              (let* ((s4-2 (handle->process (-> self scene actor s5-4 process)))
-                     (v1-82 (if (type? s4-2 process-drawable)
-                                (the-as process-drawable s4-2)
-                                )
-                            )
-                     )
+              (let ((v1-82 (as-type (handle->process (-> self scene actor s5-4 process)) process-drawable)))
                 (if (and v1-82 (nonzero? (-> v1-82 draw)))
                     (format
                       *stdcon*
@@ -1691,12 +1668,7 @@
             )
           (when (logtest? gp-4 (scene-controls scene-controls-8))
             (dotimes (gp-5 (-> self scene actor length))
-              (let* ((s5-5 (handle->process (-> self scene actor gp-5 process)))
-                     (v1-97 (if (type? s5-5 process-drawable)
-                                (the-as process-drawable s5-5)
-                                )
-                            )
-                     )
+              (let ((v1-97 (as-type (handle->process (-> self scene actor gp-5 process)) process-drawable)))
                 (if (and v1-97 (nonzero? (-> v1-97 draw)))
                     (add-debug-text-3d
                       #t
@@ -1724,15 +1696,9 @@
               (new 'stack 'font-context *font-default-matrix* 36 60 0.0 (font-color default) (font-flags shadow kerning))
               )
             )
-        (let ((v1-124 gp-6))
-          (set! (-> v1-124 width) (the float 440))
-          )
-        (let ((v1-125 gp-6))
-          (set! (-> v1-125 height) (the float 48))
-          )
-        (let ((v1-126 gp-6))
-          (set! (-> v1-126 scale) 0.5)
-          )
+        (set-width! gp-6 440)
+        (set-height! gp-6 48)
+        (set-scale! gp-6 0.5)
         (set! (-> gp-6 flags) (font-flags shadow kerning middle large))
         (print-game-text
           (lookup-text!

@@ -104,6 +104,7 @@
 
 ;; definition for method 11 of type sew-curved-door
 (defmethod init-from-entity! ((this sew-curved-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
@@ -269,10 +270,7 @@
 (defstate active (sew-cam-sequencer)
   :virtual #t
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.5))
-        (suspend)
-        )
+    (suspend-for (seconds 0.5)
       )
     (until (process-grab? *target* #f)
       (suspend)
@@ -282,20 +280,14 @@
           (sew-cam-eval-script a0-1)
           )
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (-> self timeout))
-        (suspend)
-        )
+    (suspend-for (-> self timeout)
       )
     (let ((a0-3 (-> self activate-script)))
       (if a0-3
           (sew-cam-eval-script a0-3)
           )
       )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (the-as time-frame (-> self offset)))
-        (suspend)
-        )
+    (suspend-for (the-as time-frame (-> self offset))
       )
     (let ((a0-5 (-> self exit-script)))
       (if a0-5
@@ -399,6 +391,7 @@
 
 ;; definition for method 11 of type sew-floor-switch
 (defmethod init-from-entity! ((this sew-floor-switch) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -631,34 +624,34 @@
                                :jump-height-min (meters 3)
                                :jump-height-factor 0.5
                                :knocked-seek-ry-clamp 2730.6667
-                               :knocked-soft-vxz-lo 72089.6
-                               :knocked-soft-vxz-hi 108134.4
-                               :knocked-soft-vy-lo 81920.0
-                               :knocked-soft-vy-hi 122880.0
-                               :knocked-medium-vxz-lo 147456.0
-                               :knocked-medium-vxz-hi 196608.0
-                               :knocked-medium-vy-lo 135168.0
-                               :knocked-medium-vy-hi 151552.0
-                               :knocked-hard-vxz-lo 78643.2
-                               :knocked-hard-vxz-hi 117964.8
-                               :knocked-hard-vy-lo 183500.8
-                               :knocked-hard-vy-hi 209715.2
-                               :knocked-huge-vxz-lo 164659.2
-                               :knocked-huge-vxz-hi 249036.8
-                               :knocked-huge-vy-lo 183500.8
-                               :knocked-huge-vy-hi 217907.2
-                               :knocked-yellow-vxz-lo 40960.0
-                               :knocked-yellow-vxz-hi 49152.0
-                               :knocked-yellow-vy-lo 57344.0
-                               :knocked-yellow-vy-hi 81920.0
-                               :knocked-red-vxz-lo 24576.0
-                               :knocked-red-vxz-hi 196608.0
-                               :knocked-red-vy-lo 94208.0
-                               :knocked-red-vy-hi 151552.0
-                               :knocked-blue-vxz-lo 40960.0
-                               :knocked-blue-vxz-hi 49152.0
-                               :knocked-blue-vy-lo 24576.0
-                               :knocked-blue-vy-hi 81920.0
+                               :knocked-soft-vxz-lo (meters 17.6)
+                               :knocked-soft-vxz-hi (meters 26.4)
+                               :knocked-soft-vy-lo (meters 20)
+                               :knocked-soft-vy-hi (meters 30)
+                               :knocked-medium-vxz-lo (meters 36)
+                               :knocked-medium-vxz-hi (meters 48)
+                               :knocked-medium-vy-lo (meters 33)
+                               :knocked-medium-vy-hi (meters 37)
+                               :knocked-hard-vxz-lo (meters 19.2)
+                               :knocked-hard-vxz-hi (meters 28.8)
+                               :knocked-hard-vy-lo (meters 44.8)
+                               :knocked-hard-vy-hi (meters 51.2)
+                               :knocked-huge-vxz-lo (meters 40.2)
+                               :knocked-huge-vxz-hi (meters 60.8)
+                               :knocked-huge-vy-lo (meters 44.8)
+                               :knocked-huge-vy-hi (meters 53.2)
+                               :knocked-yellow-vxz-lo (meters 10)
+                               :knocked-yellow-vxz-hi (meters 12)
+                               :knocked-yellow-vy-lo (meters 14)
+                               :knocked-yellow-vy-hi (meters 20)
+                               :knocked-red-vxz-lo (meters 6)
+                               :knocked-red-vxz-hi (meters 48)
+                               :knocked-red-vy-lo (meters 23)
+                               :knocked-red-vy-hi (meters 37)
+                               :knocked-blue-vxz-lo (meters 10)
+                               :knocked-blue-vxz-hi (meters 12)
+                               :knocked-blue-vy-lo (meters 6)
+                               :knocked-blue-vy-hi (meters 20)
                                :ragdoll-info #f
                                :shadow-size (meters 1)
                                :shadow-max-y (meters 1)
@@ -837,7 +830,7 @@
       (let ((v1-46 (vector-z-quaternion! gp-4 (-> self base-quat))))
         (vector-float*! v1-46 v1-46 (* 4096.0 (* 30.0 f30-4)))
         (let ((t1-1 (new 'static 'vector)))
-          (set! (-> t1-1 quad) (-> v1-46 quad))
+          (vector-copy! t1-1 v1-46)
           (set-setting! 'global-wind #f 0.0 t1-1)
           )
         )
@@ -864,7 +857,7 @@
 (defstate notice (sew-fan)
   :virtual #t
   :code (behavior ()
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -948,6 +941,7 @@
 
 ;; definition for method 82 of type sew-fan
 (defmethod event-handler ((this sew-fan) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('touched)
      (send-event arg0 'attack #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
@@ -1035,16 +1029,18 @@
 
 ;; definition for method 67 of type sew-fan
 (defmethod coin-flip? ((this sew-fan))
+  "Return #t half the time, #f the other."
   #f
   )
 
 ;; definition for method 103 of type sew-fan
 ;; INFO: Used lq/sq
-(defmethod enemy-method-103 ((this sew-fan) (arg0 vector) (arg1 float))
+(defmethod heading-matches-direction? ((this sew-fan) (arg0 vector) (arg1 float))
+  "Does this enemy's heading match the given heading? Threshold in degrees."
   (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this base-quat)))
         (s5-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> s5-0 quad) (-> arg0 quad))
+    (vector-copy! s5-0 arg0)
     (set! (-> s4-0 y) 0.0)
     (vector-normalize! s4-0 1.0)
     (set! (-> s5-0 y) 0.0)
@@ -1054,7 +1050,8 @@
   )
 
 ;; definition for method 107 of type sew-fan
-(defmethod is-pfoc-in-mesh? ((this sew-fan) (arg0 process-focusable) (arg1 vector))
+(defmethod can-become-hostile-to? ((this sew-fan) (arg0 process-focusable) (arg1 vector))
+  "Return if this enemy can become hostile to the process."
   (local-vars (v0-0 symbol))
   (cond
     ((= (-> this activate-distance) 0.0)
@@ -1069,7 +1066,7 @@
           (if (and *target* (focus-test? *target* edge-grab))
               (return #f)
               )
-          (return (enemy-method-103 this s5-1 5461.3335))
+          (return (heading-matches-direction? this s5-1 5461.3335))
           v0-0
           )
         )
@@ -1080,6 +1077,7 @@
 ;; definition for method 120 of type sew-fan
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this sew-fan))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1149,12 +1147,13 @@
 ;; definition for method 121 of type sew-fan
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod init-enemy! ((this sew-fan))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-fan" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *sew-fan-enemy-info*)
+  (setup-enemy! this *sew-fan-enemy-info*)
   (set! (-> this activate-distance) (res-lump-float (-> this entity) 'distance :default 122880.0))
   (set! (-> this path) (new 'process 'path-control this 'path 0.0 (-> this entity) #f))
   (when (logtest? (-> this path flags) (path-control-flag not-found))
@@ -1199,12 +1198,14 @@
 
 ;; definition for method 11 of type sew-fan
 (defmethod init-from-entity! ((this sew-fan) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 512)
   ((method-of-type enemy init-from-entity!) this arg0)
   )
 
 ;; definition for method 122 of type sew-fan
-(defmethod go-idle2 ((this sew-fan))
+(defmethod go-fallback-init ((this sew-fan))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go (method-of-object this idle))
   )
 
@@ -1286,6 +1287,7 @@
 
 ;; definition for method 11 of type sew-elevator
 (defmethod init-from-entity! ((this sew-elevator) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1384,6 +1386,7 @@
 
 ;; definition for method 11 of type sew-gate
 (defmethod init-from-entity! ((this sew-gate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -1527,19 +1530,13 @@
       )
     (let ((v1-25 (res-lump-value (-> self entity) 'extra-id uint128 :time -1000000000.0)))
       (when (= (the-as uint v1-25) 1)
-        (let ((gp-0 (current-time)))
-          (until (time-elapsed? gp-0 (seconds 0.5))
-            (suspend)
-            )
+        (suspend-for (seconds 0.5)
           )
         (set-setting! 'mode-name 'cam-fixed 0.0 0)
         (set-setting! 'interp-time 'abs 0.0 0)
         (set-setting! 'entity-name "camera-300" 0.0 0)
         (process-grab? *target* #f)
-        (let ((gp-1 (current-time)))
-          (until (time-elapsed? gp-1 (seconds 1))
-            (suspend)
-            )
+        (suspend-for (seconds 1)
           )
         (let ((gp-2 (-> self actor-group 1)))
           (dotimes (s5-0 (-> gp-2 length))
@@ -1560,18 +1557,12 @@
               )
             )
           )
-        (let ((gp-3 (current-time)))
-          (until (time-elapsed? gp-3 (seconds 2))
-            (suspend)
-            )
+        (suspend-for (seconds 2)
           )
         (remove-setting! 'mode-name)
         (remove-setting! 'interp-time)
         (remove-setting! 'entity-name)
-        (let ((gp-4 (current-time)))
-          (until (time-elapsed? gp-4 (seconds 0.5))
-            (suspend)
-            )
+        (suspend-for (seconds 0.5)
           )
         (process-release? *target*)
         (go-virtual opened)
@@ -1617,6 +1608,7 @@
 ;; definition for method 11 of type sew-wall-switch
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this sew-wall-switch) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -1689,6 +1681,7 @@
 
 ;; definition for method 11 of type sew-fence-gate
 (defmethod init-from-entity! ((this sew-fence-gate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
@@ -1882,12 +1875,7 @@
          (when (< 0.5 (-> self last-sync-val))
            )
          (when (< (vector-vector-distance (target-pos 0) (-> self root trans)) 14336.0)
-           (let* ((gp-1 *target*)
-                  (a0-8 (if (type? gp-1 process-focusable)
-                            gp-1
-                            )
-                        )
-                  )
+           (let ((a0-8 (the-as target (as-type *target* process-focusable))))
              (if a0-8
                  (send-event
                    a0-8
@@ -1935,6 +1923,7 @@
 
 ;; definition for method 11 of type sew-vent
 (defmethod init-from-entity! ((this sew-vent) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (let* ((v1-1 *game-info*)
@@ -2029,7 +2018,7 @@
         (want-levels *load-state* a1-2)
         )
       (want-display-level *load-state* 'ctyinda 'display)
-      (while (!= (status-of-level-and-borrows *level* 'ctyinda #f) 'active)
+      (while (!= (level-status? *level* 'ctyinda #f) 'active)
         (suspend)
         )
       (let ((gp-2 (add-process *gui-control* self (gui-channel background) (gui-action queue) "pwrdown" -99.0 0)))
@@ -2037,10 +2026,7 @@
         (set-setting! 'entity-name "camera-224" 0.0 0)
         (set-setting! 'allow-progress #f 0.0 0)
         (process-grab? *target* #f)
-        (let ((s5-0 (current-time)))
-          (until (time-elapsed? s5-0 (seconds 2))
-            (suspend)
-            )
+        (suspend-for (seconds 2)
           )
         (task-node-close! (game-task-node sewer-hum-kg-switch-off) 'event)
         (script-eval '(send-event "ctyinda-vingate-1" 'shutdown))
@@ -2055,10 +2041,7 @@
           (the-as process #f)
           )
         )
-      (let ((gp-3 (current-time)))
-        (until (time-elapsed? gp-3 (seconds 2.4))
-          (suspend)
-          )
+      (suspend-for (seconds 2.4)
         )
       (set-setting! 'string-startup-vector 'abs (new 'static 'vector :x 1.0) 0)
       (remove-setting! 'entity-name)
@@ -2080,6 +2063,7 @@
 
 ;; definition for method 11 of type sew-power-switch
 (defmethod init-from-entity! ((this sew-power-switch) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 512)
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -2136,6 +2120,7 @@
 
 ;; definition for method 11 of type sew-gas-step
 (defmethod init-from-entity! ((this sew-gas-step) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2211,12 +2196,7 @@
             (f1-0 14336.0)
             )
         (when (< f0-7 (* f1-0 f1-0))
-          (let* ((gp-2 *target*)
-                 (a0-9 (if (type? gp-2 process-focusable)
-                           gp-2
-                           )
-                       )
-                 )
+          (let ((a0-9 (the-as target (as-type *target* process-focusable))))
             (if a0-9
                 (send-event
                   a0-9

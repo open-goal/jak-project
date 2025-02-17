@@ -5,5 +5,6 @@
 namespace jak1 {
 bool run_build_level(const std::string& input_file,
                      const std::string& bsp_output_file,
-                     const std::string& output_prefix);
+                     const std::string& output_prefix,
+                     bool gen_fr3);
 }  // namespace jak1

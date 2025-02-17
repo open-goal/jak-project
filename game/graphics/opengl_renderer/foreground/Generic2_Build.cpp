@@ -190,6 +190,16 @@ void Generic2::determine_draw_modes(bool enable_at, bool default_fog) {
       current_mode.set_alpha_fail(reg.afail());
       current_mode.set_zt(reg.zte());
       current_mode.set_depth_test(reg.ztest());
+
+      // detect a strange way of disabling z writes by light-trail.
+      // we don't actually handle alpha_fail later on in Direct - it doesn't map well to modern
+      // graphics and would require a draw call per primitive.
+      if (current_mode.get_alpha_fail() == GsTest::AlphaFail::FB_ONLY &&
+          current_mode.get_aref() == 0x80 &&
+          current_mode.get_alpha_test() == DrawMode::AlphaTest::GEQUAL) {
+        current_mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
+        current_mode.disable_depth_write();
+      }
     }
 
     m_adgifs[i].mode = current_mode;
@@ -271,6 +281,10 @@ void Generic2::process_matrices() {
   bool found_proj_matrix = false;
   std::array<math::Vector4f, 4> projection_matrix, hud_matrix;
   for (u32 i = 0; i < m_next_free_frag; i++) {
+    if (m_drawing_config.uses_full_matrix) {
+      memcpy(&m_drawing_config.full_matrix, m_fragments[i].header, 64);
+      break;
+    }
     float mat_33;
     memcpy(&mat_33, m_fragments[i].header + 15 * sizeof(float), sizeof(float));
     if (mat_33 == 0) {

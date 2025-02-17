@@ -15,7 +15,9 @@
     )
 
   ;; first 4 quadwords are planes, then itimes
-  (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base))))
+  (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base)))
+        (vec-ptr (the-as (inline-array vector) (-> dma-buf base)))
+        )
     ;; the "use-camera-other" flag is set to "move" entire levels,
     ;; like the rotating city below in the throne room.
     (cond
@@ -38,7 +40,11 @@
           (set! (-> vec y) (-> *math-camera* fog-min))
           (set! (-> vec z) (-> *math-camera* fog-max))
           )
-        (set! (-> data-ptr 14) (-> *math-camera* trans-other quad))
+        ;; the "other" version of trans doesn't have the same meaning as the normal one.
+        ;; but inv-camera-rot-other is right, and we can just pull the translation from there.
+        ;; I'm not certain the most accurate way to get this - either way there is an extra rotation to do.
+        (set! (-> data-ptr 14) (-> *math-camera* inv-camera-rot-other vector 3 quad))
+        (set! (-> vec-ptr 14 w) 1.0)
 
         (set! (-> data-ptr 15) (-> *math-camera* camera-rot-other vector 0 quad))
         (set! (-> data-ptr 16) (-> *math-camera* camera-rot-other vector 1 quad))
@@ -70,6 +76,7 @@
           (set! (-> vec y) (-> *math-camera* fog-min))
           (set! (-> vec z) (-> *math-camera* fog-max))
           )
+        ;; use the camera-trans used to derive the camera matrix.
         (set! (-> data-ptr 14) (-> *math-camera* trans quad))
 
         (set! (-> data-ptr 15) (-> *math-camera* camera-rot vector 0 quad))

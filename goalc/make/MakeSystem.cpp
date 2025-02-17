@@ -91,8 +91,14 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
-  set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
-  set_constant("*use-iso-data-path*", false);
+  if (m_repl_config && !m_repl_config->iso_path.empty()) {
+    set_constant("*iso-data*",
+                 file_util::get_iso_dir_for_game(m_repl_config->game_version).string());
+    set_constant("*use-iso-data-path*", true);
+  } else {
+    set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
+    set_constant("*use-iso-data-path*", false);
+  }
 
   add_tool<DgoTool>();
   add_tool<TpageDirTool>();
@@ -106,6 +112,8 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<BuildLevel2Tool>();
   add_tool<BuildLevel3Tool>();
   add_tool<BuildActorTool>();
+  add_tool<BuildActor2Tool>();
+  add_tool<BuildActor3Tool>();
 }
 
 /*!
@@ -119,8 +127,9 @@ void MakeSystem::load_project_file(const std::string& file_path) {
   auto data = m_goos.reader.read_from_file({file_path});
   // interpret it, which will call various handlers.
   m_goos.eval(data, m_goos.global_environment.as_env_ptr());
-  lg::print("Loaded project {} with {} steps in {} ms\n", file_path, m_output_to_step.size(),
+  lg::debug("Loaded project {} with {} steps in {} ms\n", file_path, m_output_to_step.size(),
             (int)timer.getMs());
+  m_loaded_projects.push_back(file_path);
 }
 
 goos::Object MakeSystem::handle_defstep(const goos::Object& form,
@@ -187,6 +196,7 @@ goos::Object MakeSystem::handle_defstep(const goos::Object& form,
  *
  */
 void MakeSystem::clear_project() {
+  m_loaded_projects.clear();
   m_output_to_step.clear();
 }
 

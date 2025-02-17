@@ -10,6 +10,8 @@ uniform vec3 fog_constants;
 uniform vec4 scale;
 uniform float mat_23;
 uniform float mat_33;
+uniform bool use_full_matrix;
+uniform mat4 full_matrix;
 uniform vec4 hvdf_offset;
 uniform uint warp_sample_mode;
 
@@ -38,11 +40,17 @@ void main() {
 
   // maddax.xyzw ACC, vf08, vf16  matrix multiply X
   // vu.acc.madda(Mask::xyzw, gen.mat0, gen.vtx_load0.x());
-  transformed.xyz = position_in * scale.xyz;
-  transformed.z += mat_32;
-  transformed.w = mat_23 * position_in.z + mat_33;
-
-  transformed *= -1; // todo?
+  if (use_full_matrix) {
+    transformed = -full_matrix[3];
+    transformed -= full_matrix[0] * position_in.x ;
+    transformed -= full_matrix[1] * position_in.y;
+    transformed -= full_matrix[2] * position_in.z ;
+  } else {
+    transformed.xyz = position_in * scale.xyz;
+    transformed.z += mat_32;
+    transformed.w = mat_23 * position_in.z + mat_33;
+    transformed *= -1;
+  }
 
 
   // div Q, vf01.x, vf12.w        perspective divide

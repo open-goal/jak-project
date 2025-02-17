@@ -55,12 +55,7 @@
 ;; definition for method 29 of type vehicle-turret
 ;; WARN: Return type mismatch int vs none.
 (defmethod vehicle-turret-method-29 ((this vehicle-turret))
-  (let* ((s4-0 (ppointer->process (-> this parent)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process-tree (as-type (ppointer->process (-> this parent)) process-focusable))))
     (when s5-0
       (let ((a2-0 (matrix<-transformq!
                     (new 'stack-no-clear 'matrix)
@@ -84,13 +79,9 @@
     (update-joint-mod (-> self turret) (the-as joint-mod-rotate-local (-> self turret-jm)))
     (vehicle-turret-method-29 self)
     (when (and (nonzero? (-> self target)) (handle->process (-> self target)))
-      (let* ((s5-0 (handle->process (-> self target)))
-             (gp-0 (if (type? s5-0 process-focusable)
-                       s5-0
-                       )
-                   )
-             (s5-1 (new 'stack-no-clear 'vector))
-             )
+      (let ((gp-0 (the-as process (as-type (handle->process (-> self target)) process-focusable)))
+            (s5-1 (new 'stack-no-clear 'vector))
+            )
         (set! (-> s5-1 quad) (-> (get-trans (the-as process-focusable gp-0) 3) quad))
         (turret-control-method-11 (-> self turret) self s5-1 (-> (the-as process-focusable gp-0) root transv))
         )
@@ -607,11 +598,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this transport) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (transport-method-31 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

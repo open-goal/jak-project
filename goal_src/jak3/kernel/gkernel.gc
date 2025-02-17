@@ -414,7 +414,8 @@
   (format #t "~Theap-top: #x~X~%" (-> this heap-top))
   (format #t "~Theap-cur: #x~X~%" (-> this heap-cur))
   (let ((s5-0 *print-column*))
-    (set! *print-column* (+ *print-column* 64))
+    ;; og:preserve-this
+    (set! *print-column* (+ *print-column* *tab-size*))
     (format #t "----~%")
     (inspect-process-heap this)
     (format #t "----~%")
@@ -2352,7 +2353,7 @@
 (define *debug-dead-pool* (new 'debug 'dead-pool-heap "*debug-dead-pool*" 768 #x100000))
 
 )
-(define *nk-dead-pool* (new 'global 'dead-pool-heap "*nk-dead-pool*" 768 #x136000))
+(define *nk-dead-pool* (new 'global 'dead-pool-heap "*nk-dead-pool*" PROCESS_HEAP_MAX PROCESS_HEAP_SIZE))
 (define *default-dead-pool* (the-as dead-pool *nk-dead-pool*))
 (define *pickup-dead-pool* (the-as dead-pool *nk-dead-pool*))
 (define *dead-pool-list* '(*4k-dead-pool*
@@ -2369,6 +2370,11 @@
 (define *active-pool* (new 'global 'process-tree "active-pool"))
 
 (change-parent (define *display-pool* (new 'global 'process-tree "display-pool")) *active-pool*)
+
+;; og:preserve-this added pc pool
+(#when PC_PORT
+(change-parent (define *pc-pool* (new 'global 'process-tree "pc-pool")) *active-pool*)
+(set! (-> *pc-pool* mask) (process-mask freeze pause menu progress process-tree)))
 
 (change-parent (define *camera-pool* (new 'global 'process-tree "camera-pool")) *active-pool*)
 (set! (-> *camera-pool* mask) (process-mask freeze pause menu progress process-tree camera))

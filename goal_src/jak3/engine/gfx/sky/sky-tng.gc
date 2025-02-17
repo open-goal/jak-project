@@ -17,7 +17,29 @@
 ;; (def-mips2c clip-polygon-against-negative-hyperplane function)
 
 (def-mips2c render-sky-quad (function (inline-array sky-vertex) dma-buffer none))
+
 (def-mips2c render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
+
+(defun update-pc-sky-scaling ()
+  "Update values in sky-work so the moon/sun don't look stretched."
+  (let ((scale-factor (if (-> *pc-settings* use-vis?)
+                          1.0
+                          (-> *video-params* relative-x-scale))))
+    (set! (-> *sky-work* sun-coords 0 x) (* scale-factor -267.0))
+    (set! (-> *sky-work* sun-coords 1 x) (* scale-factor 267.0))
+    (set! (-> *sky-work* green-coords 0 x) (* scale-factor -126.0))
+    (set! (-> *sky-work* green-coords 1 x) (* scale-factor 126.0))
+    (set! (-> *sky-work* moon0-coords 0 x) (* scale-factor -357.0))
+    (set! (-> *sky-work* moon0-coords 1 x) (* scale-factor 357.0))
+    (set! (-> *sky-work* moon1-coords 0 x) (* scale-factor -1207.0))
+    (set! (-> *sky-work* moon1-coords 1 x) (* scale-factor 1207.0))
+    (set! (-> *sky-work* moon2-coords 0 x) (* scale-factor -232.0))
+    (set! (-> *sky-work* moon2-coords 1 x) (* scale-factor 232.0))
+    (set! (-> *sky-work* day-star-coords 0 x) (* scale-factor -126.0))
+    (set! (-> *sky-work* day-star-coords 1 x) (* scale-factor 126.0))
+    )
+  (none)
+  )
 
 ;; WARN: Return type mismatch pointer vs none.
 ;; ERROR: Function may read a register that is not set: ra
@@ -46,18 +68,7 @@
   (rlet ((vf0 :class vf))
     (init-vf0-vector)
     (let ((v1-0 (-> this cam-mat)))
-      (let* ((a0-1 v1-0)
-             (t0-0 arg0)
-             (a1-1 (-> t0-0 rvec quad))
-             (a2-0 (-> t0-0 uvec quad))
-             (a3-0 (-> t0-0 fvec quad))
-             (t0-1 (-> t0-0 trans quad))
-             )
-        (set! (-> a0-1 rvec quad) a1-1)
-        (set! (-> a0-1 uvec quad) a2-0)
-        (set! (-> a0-1 fvec quad) a3-0)
-        (set! (-> a0-1 trans quad) t0-1)
-        )
+      (matrix-copy! v1-0 arg0)
       (.svf (&-> v1-0 trans quad) vf0)
       (matrix*! v1-0 v1-0 (-> *math-camera* perspective))
       )
@@ -72,8 +83,8 @@
         (a0-2 (-> *level* level-default mood-context current-sky-color))
         )
     (dotimes (a1-1 12)
-      (set! (-> sky-base-polygons a1-1 col quad) (-> v1-1 quad))
-      (set! (-> sky-roof-polygons a1-1 col quad) (-> a0-2 quad))
+      (vector-copy! (-> sky-base-polygons a1-1 col) v1-1)
+      (vector-copy! (-> sky-roof-polygons a1-1 col) a0-2)
       )
     )
   0
@@ -118,7 +129,7 @@
              )
         (cond
           ((= a0-7 v1-7)
-           (set! (-> this sun0-color quad) (-> s5-0 data a0-7 lgt-color quad))
+           (vector-copy! (-> this sun0-color) (-> s5-0 data a0-7 lgt-color))
            )
           (else
             (let ((a1-5 (-> s5-0 data a0-7))
@@ -129,14 +140,14 @@
             )
           )
         )
-      (set! (-> this sun0-color-lower quad) (-> s3-0 times 1 quad))
-      (set! (-> this ambi-color-lower quad) (-> s3-0 times 0 quad))
+      (vector-copy! (-> this sun0-color-lower) (-> s3-0 times 1))
+      (vector-copy! (-> this ambi-color-lower) (-> s3-0 times 0))
       (set-vector! s4-0 1.9921875 1.9921875 1.9921875 1.0)
       (vector4-lerp! (-> this ambi-color) (-> this ambi-color-lower) s4-0 (-> *mood-control* lightning-flash))
       )
-    (set! (-> this sun0-color quad) (-> this sun0-color quad))
-    (set! (-> this sun1-color quad) (-> s5-0 data 7 lgt-color quad))
-    (set! (-> this moon-color quad) (-> s5-0 data 6 lgt-color quad))
+    (vector-copy! (-> this sun0-color) (-> this sun0-color))
+    (vector-copy! (-> this sun1-color) (-> s5-0 data 7 lgt-color))
+    (vector-copy! (-> this moon-color) (-> s5-0 data 6 lgt-color))
     )
   0
   (none)
@@ -172,12 +183,12 @@
         (f28-0 0.00390625)
         (f30-0 0.015625)
         )
-    (set! (-> arg0 quad) (-> arg1 quad))
+    (vector-copy! arg0 arg1)
     (vector--float*! (the-as vector s5-0) arg2 (-> arg3 sun0-normal) 9.0)
     (vector--float*! (the-as vector s2-0) arg2 (-> arg3 sun1-normal) 9.0)
     (vector--float*! (the-as vector s4-0) arg2 (-> arg3 moon-normal) 9.0)
     (vector4-scale! s5-0 s5-0 (* (-> arg3 sun0-scale) f28-0))
-    (vector4-madd! s5-0 s5-0 s2-0 (* 0.25 f28-0 (-> arg3 sun1-scale)))
+    (vector4-madd! s5-0 s5-0 s2-0 (* (/ f28-0 4) (-> arg3 sun1-scale)))
     (vector4-madd! s5-0 s5-0 s4-0 (* (-> arg3 moon-scale) f28-0))
     (+! (-> arg0 x) (fmax (fmin (-> s5-0 x) f30-0) (- f30-0)))
     (+! (-> arg0 y) (fmax (fmin (-> s5-0 z) f30-0) (- f30-0)))
@@ -192,7 +203,7 @@
         )
     (set! (-> s4-0 sun0-normal quad) (-> this upload-data data 0))
     (set! (-> s4-0 sun1-normal quad) (-> (&-> this upload-data data 4) 0))
-    (set! (-> s4-0 moon-normal quad) (-> this upload-data moon pos quad))
+    (vector-copy! (-> s4-0 moon-normal) (-> this upload-data moon pos))
     (vector-normalize! (-> s4-0 sun0-normal) 1.0)
     (vector-normalize! (-> s4-0 sun1-normal) 1.0)
     (vector-normalize! (-> s4-0 moon-normal) 1.0)
@@ -219,7 +230,7 @@
       (vector4-scale!
         (the-as vector4 (-> s4-0 sun1-color))
         (the-as vector4 (-> this sun1-color))
-        (* 0.5 (-> s4-0 sun1-scale))
+        (/ (-> s4-0 sun1-scale) 2)
         )
       (vector4-scale!
         (the-as vector4 (-> s4-0 moon-color))
@@ -265,11 +276,6 @@
 
 (defmethod draw-clouds ((this sky-work) (arg0 dma-buffer))
   (local-vars (v1-19 float) (sv-16 cloud-vert-array) (sv-20 (inline-array sky-vertex)) (sv-32 int))
-
-  (when (zero? *sky-texture-anim-array*) ;; added
-    (return #f)
-    )
-
   (rlet ((vf23 :class vf)
          (vf27 :class vf)
          )
@@ -375,7 +381,7 @@
         )
     (set! (-> s4-0 sun0-normal quad) (-> this upload-data data 0))
     (set! (-> s4-0 sun1-normal quad) (-> (&-> this upload-data data 4) 0))
-    (set! (-> s4-0 moon-normal quad) (-> this upload-data moon pos quad))
+    (vector-copy! (-> s4-0 moon-normal) (-> this upload-data moon pos))
     (vector-normalize! (-> s4-0 sun0-normal) 1.0)
     (vector-normalize! (-> s4-0 sun1-normal) 1.0)
     (vector-normalize! (-> s4-0 moon-normal) 1.0)
@@ -397,7 +403,7 @@
     (vector4-scale!
       (the-as vector4 (-> s4-0 sun1-color))
       (the-as vector4 (-> this sun1-color))
-      (* 0.5 (-> s4-0 sun1-scale))
+      (/ (-> s4-0 sun1-scale) 2)
       )
     (vector4-scale!
       (the-as vector4 (-> s4-0 moon-color))
@@ -549,40 +555,36 @@
   )
 
 (defmethod draw-fog ((this sky-work) (arg0 dma-buffer))
-  (when (zero? *sky-texture-anim-array*) ;; added
-    (return #f)
-    )
   (let ((s4-0 (-> *sky-texture-anim-array* array-data 8 tex)))
     (if s4-0
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0
-                                            :tcc #x1
-                                            :cld #x1
-                                            :psm (the-as int (-> s4-0 psm))
-                                            :cpsm (-> s4-0 clutpsm)
-                                            :cbp (-> s4-0 clutdest)
-                                            :th (log2 (-> s4-0 h))
-                                            :tw (log2 (-> s4-0 w))
-                                            :tbw (-> s4-0 width 0)
-                                            :tbp0 (-> s4-0 dest 0)
-                                            )
+                                         :tcc #x1
+                                         :cld #x1
+                                         :psm (the-as int (-> s4-0 psm))
+                                         :cpsm (-> s4-0 clutpsm)
+                                         :cbp (-> s4-0 clutdest)
+                                         :th (log2 (-> s4-0 h))
+                                         :tw (log2 (-> s4-0 w))
+                                         :tbw (-> s4-0 width 0)
+                                         :tbp0 (-> s4-0 dest 0)
+                                         )
                                        )
                                (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                                (test-1 (new 'static 'gs-test
-                                            :ate #x1
-                                            :atst (gs-atest greater-equal)
-                                            :aref #x70
-                                            :afail #x3
-                                            :zte #x1
-                                            :ztst (gs-ztest greater-equal)
-                                            )
+                                         :ate #x1
+                                         :atst (gs-atest greater-equal)
+                                         :aref #x70
+                                         :afail #x3
+                                         :zte #x1
+                                         :ztst (gs-ztest greater-equal)
+                                         )
                                        )
                                (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
                                (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                                )
         )
     )
-
   (let* ((v1-26 (the-as (inline-array qword) (-> arg0 base)))
          (a0-22 *fog-texture-work*)
          (f0-0 (-> a0-22 min-corner y))
@@ -645,13 +647,15 @@
   )
 
 (defmethod draw ((this sky-work))
+  ;; og:preserve-this
+  (update-pc-sky-scaling)
   (let ((s4-0 *time-of-day-context*)
         (v1-0 #f)
         )
     (dotimes (a0-1 (-> *level* length))
       (let ((a1-3 (-> *level* level a0-1)))
         (when (= (-> a1-3 status) 'active)
-          (if (and (= (-> a1-3 display?) 'display) (logtest? (-> a1-3 info level-flags) (level-flags lf9)))
+          (if (and (= (-> a1-3 display?) 'display) (logtest? (-> a1-3 info level-flags) (level-flags sky)))
               (set! v1-0 #t)
               )
           )
@@ -677,7 +681,7 @@
          (let ((s4-1 (the-as sky-work *fake-scratchpad-data*)))
            (mem-copy! (the-as pointer s4-1) (the-as pointer this) #x2814)
            (setup-stars s4-1 (-> s4-1 star-mat) (-> this upload-data))
-           (when (nonzero? (-> s4-1 star-colors 0 x))
+           (if (nonzero? (-> s4-1 star-colors 0 x))
                (stars-transform-asm s4-1)
                )
            (cond
@@ -739,7 +743,7 @@
        (with-dma-buffer-add-bucket ((s5-2 (-> *display* frames (-> *display* on-screen) global-buf))
                                     (bucket-id sky)
                                     )
-         (blit-displays-work-method-20 *blit-displays-work*)
+         (draw-sky *blit-displays-work* s5-2)
          )
        )
       (else

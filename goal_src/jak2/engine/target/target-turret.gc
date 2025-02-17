@@ -25,7 +25,7 @@
   )
 
 (defpart 927
-  :init-specs ((:texture (new 'static 'texture-id :index #x34 :page #xc))
+  :init-specs ((:texture (explosion-wave effects))
     (:num 1.0 1.0)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0) (degrees 360) :store)
@@ -52,7 +52,7 @@
   )
 
 (defpart 929
-  :init-specs ((:texture (new 'static 'texture-id :index #x33 :page #xc))
+  :init-specs ((:texture (explosion-nebula effects))
     (:num 1.0 1.0)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0))
@@ -110,7 +110,7 @@
   )
 
 (defpart 928
-  :init-specs ((:texture (new 'static 'texture-id :index #x47 :page #xc))
+  :init-specs ((:texture (bigstarflash effects))
     (:num 1.0)
     (:scale-x (meters 5))
     (:scale-y :copy scale-x)
@@ -143,7 +143,7 @@
   )
 
 (defpart 926
-  :init-specs ((:texture (new 'static 'texture-id :index #x32 :page #xc))
+  :init-specs ((:texture (specs effects))
     (:num 5.0 3.0)
     (:x (meters 0.25))
     (:scale-x (meters 1) (meters 0.25))
@@ -186,7 +186,7 @@
   )
 
 (defpart 924
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 3.0 1.0)
     (:x (meters 0) (meters 0.6))
     (:scale-x (meters 2) (meters 1.5))
@@ -237,7 +237,7 @@
   )
 
 (defpart 925
-  :init-specs ((:texture (new 'static 'texture-id :index #x31 :page #xc))
+  :init-specs ((:texture (flamingstick effects))
     (:num 4.0 2.0)
     (:scale-x (meters 0.1) (meters 0.25))
     (:rot-x 4)
@@ -384,7 +384,7 @@
           )
         )
       (set! (-> this sprites 28 color w)
-            (the int (* 0.00390625 (-> this fade-interp) (the float (-> this values 2 current))))
+            (the int (* (/ (-> this fade-interp) 256) (the float (-> this values 2 current))))
             )
       (set-as-offset-from!
         (-> this sprites 28)
@@ -714,13 +714,13 @@
 
 
 ;; WARN: Return type mismatch process-drawable vs base-turret.
-(defmethod relocate ((this base-turret) (arg0 int))
+(defmethod relocate ((this base-turret) (offset int))
   (countdown (v1-0 4)
     (if (-> this gun-recoil-jmod v1-0)
-        (&+! (-> this gun-recoil-jmod v1-0) arg0)
+        (&+! (-> this gun-recoil-jmod v1-0) offset)
         )
     )
-  (the-as base-turret ((method-of-type process-drawable relocate) this arg0))
+  (the-as base-turret ((method-of-type process-drawable relocate) this offset))
   )
 
 (defmethod base-turret-method-34 ((this base-turret) (arg0 process))
@@ -1250,8 +1250,9 @@
         )
       )
     (when (and (-> self enable-controls) (>= (-> *camera-combiner* interp-val) 1.0))
-      (set! (-> self rotyvv) (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 32.0 110.0 -98304.0))
-      (set! (-> self rotxvv) (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 32.0 110.0 -65536.0))
+      ;; og:preserve-this respect the camera settings
+      (set! (-> self rotyvv) (analog-input-horizontal-first (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 32.0 110.0 -98304.0))
+      (set! (-> self rotxvv) (analog-input-vertical-first (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 32.0 110.0 -65536.0))
       )
     (+! (-> self rotyv) (* (-> self rotyvv) (seconds-per-frame)))
     (seek! (-> self rotyv) 0.0 (* 32768.0 (seconds-per-frame)))
@@ -1457,10 +1458,7 @@
     (sound-stop (-> self sound-id 1))
     (sound-stop (-> self sound-id 2))
     (set! (-> self focus-status) (focus-status disable ignore inactive))
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.8))
-        (suspend)
-        )
+    (suspend-for (seconds 0.8)
       )
     (send-event
       (handle->process (-> self rider))
@@ -1592,7 +1590,9 @@
                    (f30-1 (vector-vector-angle-safe s2-2 (vector-! (new 'stack-no-clear 'vector) s5-1 s3-1)))
                    )
               (let ((f0-10 (- (atan (-> s4-1 x) (-> s4-1 y)))))
-                (if (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+                ;; og:preserve-this mirror mode
+                (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+                        *PC-MIRROR-MODE-SET*)
                     (set! f0-10 (* -1.0 f0-10))
                     )
                 (set! (-> this arrow-angle) (deg-seek (-> this arrow-angle) f0-10 (* 65536.0 (seconds-per-frame))))
@@ -1889,9 +1889,9 @@
               (.mov vf3 v1-25)
               )
             )
-          (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+          (.add.x.vf.w vf4 vf0 vf0)
           (.mul.x.vf acc vf2 vf3)
-          (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
+          (.add.mul.w.vf.xyz vf4 vf1 vf0 acc)
           (.svf (&-> sv-144 quad) vf4)
           (vector-! s1-0 s0-0 s4-1)
           (vector-! s2-1 s0-0 s3-1)
@@ -1977,6 +1977,7 @@
   )
 
 (defmethod deactivate ((this base-turret))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (valid? (-> this hud) (the-as type #f) "" #t 0)
       (send-event (handle->process (-> this hud)) 'hide-and-die)
       )
@@ -1990,11 +1991,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this base-turret) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (turret-init! this arg0 (the-as matrix #f))
   (go (method-of-object this idle))
   (none)

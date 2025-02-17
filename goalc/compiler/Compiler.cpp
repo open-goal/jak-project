@@ -58,14 +58,14 @@ Compiler::Compiler(GameVersion version,
 
   // add built-in forms to symbol info
   for (const auto& [builtin_name, builtin_info] : g_goal_forms) {
-    m_symbol_info.add_builtin(builtin_name, builtin_info.first);
+    m_symbol_info.add_builtin(builtin_name, builtin_info.docstring);
   }
 
   // load auto-complete history, only if we are running in the interactive mode.
   if (m_repl) {
     m_repl->load_history();
     // init repl
-    m_repl->print_welcome_message();
+    m_repl->print_welcome_message(m_make.get_loaded_projects());
     auto& examples = m_repl->examples;
     auto& regex_colors = m_repl->regex_colors;
     m_repl->init_settings();

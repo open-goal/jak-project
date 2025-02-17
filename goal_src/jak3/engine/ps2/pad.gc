@@ -49,6 +49,24 @@
   )
 ;; ---pad-buttons
 
+;; +++abutton-idx
+(defenum abutton-idx
+  :type uint8
+  (right 0)
+  (left 1)
+  (up 2)
+  (down 3)
+  (triangle 4)
+  (circle 5)
+  (x 6)
+  (square 7)
+  (l1 8)
+  (r1 9)
+  (l2 10)
+  (r2 11)
+  )
+;; ---abutton-idx
+
 ;; TODO
 ;; (#when PC_PORT
 ;; ;; redefined from C kernel
@@ -224,6 +242,36 @@
     )
   )
 
+ ;; Allocates enough input frames to support counting 50ms of time at 300fps.
+(deftype cpad-history (basic)
+  ((button0-abs pad-buttons 15) ;; bitmask of buttons, pressed or not, with history
+   (button0-rel pad-buttons 15) ;; bitmask of if button going down.
+  )
+)
+
+;; List of extended history for controllers at high fps. It always has 4 controllers.
+(deftype cpad-history-list (basic)
+  ((num-cpads  int32)
+   (cpads cpad-history 4)  ;; modified from 2->4 for PC 4-pad support
+   )
+  (:methods
+   (new (symbol type) _type_)
+   )
+  )
+
+(defmethod new cpad-history-list ((allocation symbol) (type-to-make type))
+  "Create a cpad-history-list for 4 controllers. It's fine to do this even if controllers
+   aren't connected yet. "
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> this num-cpads) 4)
+    (set! (-> this cpads 0) (new 'global 'cpad-history))
+    (set! (-> this cpads 1) (new 'global 'cpad-history))
+    (set! (-> this cpads 2) (new 'global 'cpad-history))
+    (set! (-> this cpads 3) (new 'global 'cpad-history))
+    this
+    )
+  )
+
 (defun analog-input ((arg0 int) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   "Convert integer input from pad into a float between -out-range and +out-range.
    The offset is applied directly to the input.
@@ -308,20 +356,32 @@
 
 (define *cpad-list* (new 'global 'cpad-list))
 
+;; the cpad-history for each controller
+(define *cpad-history-list* (new 'global 'cpad-history-list))
+
+(desfun generate-frame-checks (pad-idx frames)
+  (if (= frames 0)
+       0
+      `(logior (-> *cpad-history-list* cpads ,pad-idx button0-rel ,(- frames 1))
+               ,(generate-frame-checks pad-idx (- frames 1))
+        )
+  )
+)
+
 (define *cpad-debug* #f)
 
-;; TODO
-;; (#if PC_PORT
-;; (defconstant STICK_DEADZONE (-> *pc-settings* stick-deadzone))
-;; (defconstant STICK_DEADZONE 0.3)
-;; )
-(defconstant STICK_DEADZONE 0.3)
+(#if PC_PORT
+     (defconstant STICK_DEADZONE (-> *pc-settings* stick-deadzone))
+     (defconstant STICK_DEADZONE 0.3)
+ )
 
 (defun service-cpads ()
   "Read from cpads and update vibration."
   (let ((pads *cpad-list*))
     (dotimes (pad-idx (-> pads num-cpads))
-      (let ((pad (-> *cpad-list* cpads pad-idx)))
+      (let ((pad (-> *cpad-list* cpads pad-idx))
+	    ;; og:preserve-this high fps fix
+            (history (-> *cpad-history-list* cpads pad-idx)))
         (set! (-> pad old-leftx 1) (-> pad old-leftx 0))
         (set! (-> pad old-leftx 0) (-> pad leftx))
         (set! (-> pad old-lefty 1) (-> pad old-lefty 0))
@@ -374,74 +434,116 @@
            (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
            (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
            (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
+
+	   ;; og:preserve-this high fps fix
+           (when (>= (-> *pc-settings* target-fps) 300)
+              (set! (-> history button0-abs 14) (-> history button0-abs 13))
+              (set! (-> history button0-abs 13) (-> history button0-abs 12))
+              (set! (-> history button0-abs 12) (-> history button0-abs 11))
+
+              (set! (-> history button0-rel 14) (-> history button0-rel 13))
+              (set! (-> history button0-rel 13) (-> history button0-rel 12))
+              (set! (-> history button0-rel 12) (-> history button0-rel 11))
+            )
+           (when (>= (-> *pc-settings* target-fps) 240)
+              (set! (-> history button0-abs 11) (-> history button0-abs 10))
+              (set! (-> history button0-abs 10) (-> history button0-abs 9))
+              (set! (-> history button0-abs  9) (-> history button0-abs 8))
+              (set! (-> history button0-rel 11) (-> history button0-rel 10))
+              (set! (-> history button0-rel 10) (-> history button0-rel 9))
+              (set! (-> history button0-rel  9) (-> history button0-rel 8))
+            )
+           (when (>= (-> *pc-settings* target-fps) 165)
+              (set! (-> history button0-abs 8) (-> history button0-abs 7))
+              (set! (-> history button0-abs 7) (-> history button0-abs 6))
+              (set! (-> history button0-abs 6) (-> history button0-abs 5))
+              (set! (-> history button0-rel 8) (-> history button0-rel 7))
+              (set! (-> history button0-rel 7) (-> history button0-rel 6))
+              (set! (-> history button0-rel 6) (-> history button0-rel 5))
+            )
+           (when (>= (-> *pc-settings* target-fps) 120)
+              (set! (-> history button0-abs 5) (-> history button0-abs 4))
+              (set! (-> history button0-abs 4) (-> history button0-abs 3))
+              (set! (-> history button0-rel 5) (-> history button0-rel 4))
+              (set! (-> history button0-rel 4) (-> history button0-rel 3))
+            )
+           (when (>= (-> *pc-settings* target-fps) 75)
+              (set! (-> history button0-abs 3) (-> history button0-abs 2))
+              (set! (-> history button0-rel 3) (-> history button0-rel 2))
+            )
+           (set! (-> history button0-abs 2) (-> history button0-abs 1))
+           (set! (-> history button0-abs 1) (-> pad button0-shadow-abs 0))
+           (set! (-> history button0-rel 2) (-> history button0-rel 1))
+           (set! (-> history button0-rel 1) (-> pad button0-rel 0))
+
            (when (= (-> pad status) 115)
-             (set! (-> pad abutton 0) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons right))
+             (set! (-> pad abutton (abutton-idx right)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons right)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 1) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons left))
+             (set! (-> pad abutton (abutton-idx left)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons left)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 2) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons up))
+             (set! (-> pad abutton (abutton-idx up)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons up)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 3) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons down))
+             (set! (-> pad abutton (abutton-idx down)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons down)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 6) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons x))
+             (set! (-> pad abutton (abutton-idx x)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons x)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 5) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons circle))
+             (set! (-> pad abutton (abutton-idx circle)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons circle)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 4) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons triangle))
+             (set! (-> pad abutton (abutton-idx triangle)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons triangle)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 7) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons square))
+             (set! (-> pad abutton (abutton-idx square)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons square)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 8) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l1))
+             (set! (-> pad abutton (abutton-idx l1)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l1)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 10) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l2))
+             (set! (-> pad abutton (abutton-idx l2)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l2)) ;; og:preserve-this abutton indexing
                                                         255
                                                         0
                                                         )
                                                )
                    )
-             (set! (-> pad abutton 9) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r1))
+             (set! (-> pad abutton (abutton-idx r1)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r1)) ;; og:preserve-this abutton indexing
                                                        255
                                                        0
                                                        )
                                               )
                    )
-             (set! (-> pad abutton 11) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r2))
+             (set! (-> pad abutton (abutton-idx r2)) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r2)) ;; og:preserve-this abutton indexing
                                                         255
                                                         0
                                                         )
@@ -513,8 +615,10 @@
                )
              (set! (-> pad button0-shadow-abs 0) buttons-pressed)
              (set! (-> pad button0-abs 0) buttons-pressed)
+	     (set! (-> history button0-abs 0) (-> pad button0-abs 0))
              )
            (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
+	   (set! (-> history button0-rel 0) (-> pad button0-rel 0))
            (when *cpad-debug*
              (set! (-> pad leftx) (the-as uint 255))
              (set! (-> pad rightx) (the-as uint 255))
@@ -577,6 +681,11 @@
 (defmacro cpad-pressed? (pad-idx &rest buttons)
   `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
   )
+
+(defmacro recently-pressed? (&key (pad-idx (-> self control cpad number)) &key (frames 15) &rest buttons)
+  "Checks if a (pad-button) was pressed within the last 50ms, based on frames"
+  `(logtest? ,(generate-frame-checks pad-idx frames) (pad-buttons ,@buttons))
+)
 
 (defmacro cpad-hold? (pad-idx &rest buttons)
   `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))

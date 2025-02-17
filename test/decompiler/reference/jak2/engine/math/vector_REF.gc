@@ -19,8 +19,8 @@
     (init-vf0-vector)
     (.lvf vf1 (&-> arg1 quad))
     (.lvf vf2 (&-> arg2 quad))
-    (.add.x.vf vf1 vf0 vf0 :mask #b10)
-    (.add.x.vf vf2 vf0 vf0 :mask #b10)
+    (.add.x.vf.y vf1 vf0 vf0)
+    (.add.x.vf.y vf2 vf0 vf0)
     (.outer.product.a.vf acc vf1 vf2)
     (.outer.product.b.vf vf3 vf2 vf1 acc)
     (.svf (&-> arg0 quad) vf3)
@@ -39,8 +39,8 @@
     (init-vf0-vector)
     (.mov vf6 arg2)
     (.lvf vf4 (&-> arg1 quad))
-    (.add.x.vf vf5 vf0 vf0 :mask #b1000)
-    (.add.x.vf vf5 vf4 vf6 :mask #b111)
+    (.add.x.vf.w vf5 vf0 vf0)
+    (.add.x.vf.xyz vf5 vf4 vf6)
     (.svf (&-> arg0 quad) vf5)
     arg0
     )
@@ -49,19 +49,7 @@
 ;; definition for function vector*!
 (defun vector*! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Elementwise product. Set w = 1."
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (.lvf vf4 (&-> arg1 quad))
-    (.lvf vf5 (&-> arg2 quad))
-    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-    (.mul.vf vf6 vf4 vf5 :mask #b111)
-    (.svf (&-> arg0 quad) vf6)
-    arg0
-    )
+  (vector*! arg0 arg1 arg2)
   )
 
 ;; definition for function vector+*!
@@ -78,9 +66,9 @@
     (.mov vf7 arg3)
     (.lvf vf5 (&-> arg2 quad))
     (.lvf vf4 (&-> arg1 quad))
-    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-    (.mul.x.vf acc vf5 vf7 :mask #b111)
-    (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+    (.add.x.vf.w vf6 vf0 vf0)
+    (.mul.x.vf.xyz acc vf5 vf7)
+    (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
     (.svf (&-> arg0 quad) vf6)
     arg0
     )
@@ -100,9 +88,9 @@
     (.mov vf7 arg3)
     (.lvf vf5 (&-> arg2 quad))
     (.lvf vf4 (&-> arg1 quad))
-    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-    (.mul.w.vf acc vf4 vf0 :mask #b111)
-    (.sub.mul.x.vf vf6 vf5 vf7 acc :mask #b111)
+    (.add.x.vf.w vf6 vf0 vf0)
+    (.mul.w.vf.xyz acc vf4 vf0)
+    (.sub.mul.x.vf.xyz vf6 vf5 vf7 acc)
     (.svf (&-> arg0 quad) vf6)
     arg0
     )
@@ -111,7 +99,7 @@
 ;; definition for function vector/!
 (defun vector/! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Set arg0 = arg1 / arg2. The w component will be set to 1.
-The implementation is kind of crazy."
+   The implementation is kind of crazy."
   (rlet ((Q :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -122,19 +110,19 @@ The implementation is kind of crazy."
     (init-vf0-vector)
     (.lvf vf5 (&-> arg2 quad))
     (.div.vf Q vf0 vf5 :fsf #b11 :ftf #b1)
-    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+    (.add.x.vf.w vf6 vf0 vf0)
     (.lvf vf4 (&-> arg1 quad))
     (let ((v1-0 (/ (-> arg1 x) (-> arg2 x))))
       (.wait.vf)
-      (.mul.vf vf6 vf4 Q :mask #b10)
+      (.mul.vf.y vf6 vf4 Q)
       (.nop.vf)
       (.nop.vf)
       (.div.vf Q vf0 vf5 :fsf #b11 :ftf #b10)
       (.mov vf7 v1-0)
       )
-    (.add.x.vf vf6 vf0 vf7 :mask #b1)
+    (.add.x.vf.x vf6 vf0 vf7)
     (.wait.vf)
-    (.mul.vf vf6 vf4 Q :mask #b100)
+    (.mul.vf.z vf6 vf4 Q)
     (.nop.vf)
     (.nop.vf)
     (.svf (&-> arg0 quad) vf6)
@@ -152,8 +140,8 @@ The implementation is kind of crazy."
     (init-vf0-vector)
     (.lvf vf1 (&-> arg1 quad))
     (.mov vf2 arg2)
-    (.add.x.vf vf1 vf0 vf0 :mask #b1000)
-    (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+    (.add.x.vf.w vf1 vf0 vf0)
+    (.mul.x.vf.xyz vf1 vf1 vf2)
     (.svf (&-> arg0 quad) vf1)
     arg0
     )
@@ -175,9 +163,9 @@ The implementation is kind of crazy."
       (.lvf vf2 (&-> arg2 quad))
       (.mov vf3 v1-0)
       )
-    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.add.x.vf.w vf4 vf0 vf0)
     (.mul.x.vf acc vf1 vf3)
-    (.add.mul.x.vf vf4 vf2 vf3 acc :mask #b111)
+    (.add.mul.x.vf.xyz vf4 vf2 vf3 acc)
     (.svf (&-> arg0 quad) vf4)
     arg0
     )
@@ -197,9 +185,9 @@ The implementation is kind of crazy."
     (.lvf vf2 (&-> arg2 quad))
     (.lvf vf1 (&-> arg1 quad))
     (.mov vf3 arg3)
-    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.add.x.vf.w vf4 vf0 vf0)
     (.mul.x.vf acc vf2 vf3)
-    (.add.mul.w.vf vf4 vf1 vf0 acc :mask #b111)
+    (.add.mul.w.vf.xyz vf4 vf1 vf0 acc)
     (.svf (&-> arg0 quad) vf4)
     arg0
     )
@@ -208,7 +196,7 @@ The implementation is kind of crazy."
 ;; definition for function vector--float*!
 (defun vector--float*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Set arg0 = arg1 - (arg2 * arg3). The w component will be set to 1.
-Is this different from vector-*!"
+   Is this different from vector-*!"
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -220,9 +208,9 @@ Is this different from vector-*!"
     (.lvf vf2 (&-> arg2 quad))
     (.lvf vf1 (&-> arg1 quad))
     (.mov vf3 arg3)
-    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.add.x.vf.w vf4 vf0 vf0)
     (.mul.w.vf acc vf1 vf0)
-    (.sub.mul.x.vf vf4 vf2 vf3 acc :mask #b111)
+    (.sub.mul.x.vf.xyz vf4 vf2 vf3 acc)
     (.svf (&-> arg0 quad) vf4)
     arg0
     )
@@ -241,9 +229,9 @@ Is this different from vector-*!"
     (.mov vf3 arg2)
     (.div.vf Q vf0 vf3 :fsf #b11 :ftf #b0)
     (.lvf vf1 (&-> arg1 quad))
-    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.add.x.vf.w vf4 vf0 vf0)
     (.wait.vf)
-    (.mul.vf vf4 vf1 Q :mask #b111)
+    (.mul.vf.xyz vf4 vf1 Q)
     (.nop.vf)
     (.nop.vf)
     (.svf (&-> arg0 quad) vf4)
@@ -260,8 +248,8 @@ Is this different from vector-*!"
          )
     (init-vf0-vector)
     (.lvf vf1 (&-> arg1 quad))
-    (.sub.vf vf4 vf0 vf1 :mask #b111)
-    (.add.x.vf vf4 vf0 vf0 :mask #b1000)
+    (.sub.vf.xyz vf4 vf0 vf1)
+    (.add.x.vf.w vf4 vf0 vf0)
     (.svf (&-> arg0 quad) vf4)
     arg0
     )
@@ -275,7 +263,7 @@ Is this different from vector-*!"
          )
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
-    (.sub.vf vf1 vf0 vf1 :mask #b111)
+    (.sub.vf.xyz vf1 vf0 vf1)
     (.svf (&-> arg0 quad) vf1)
     arg0
     )
@@ -299,10 +287,10 @@ Is this different from vector-*!"
     (.lvf vf2 (&-> arg1 quad))
     (.sub.vf vf1 vf2 vf1)
     (.abs.vf vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.z.vf vf3 vf0 vf1 acc :mask #b1000)
-    (.add.w.vf vf3 vf0 vf3 :mask #b1)
+    (.mul.x.vf.w acc vf0 vf1)
+    (.add.mul.y.vf.w acc vf0 vf1 acc)
+    (.add.mul.z.vf.w vf3 vf0 vf1 acc)
+    (.add.w.vf.x vf3 vf0 vf3)
     (.mov v0-0 vf3)
     v0-0
     )
@@ -311,7 +299,7 @@ Is this different from vector-*!"
 ;; definition for function vector-seek!
 (defun vector-seek! ((arg0 vector) (arg1 vector) (arg2 float))
   "Seek arg0 toward arg1. The arg0 is both read and written.
-arg2 is saturated to (0, 1)"
+   arg2 is saturated to (0, 1)"
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -323,12 +311,12 @@ arg2 is saturated to (0, 1)"
     (.mov vf4 arg2)
     (.lvf vf1 (&-> arg1 quad))
     (.lvf vf2 (&-> arg0 quad))
-    (.add.x.vf vf1 vf0 vf0 :mask #b1000)
-    (.sub.x.vf vf5 vf0 vf4 :mask #b1)
-    (.sub.vf vf3 vf1 vf2 :mask #b111)
-    (.min.x.vf vf3 vf3 vf4 :mask #b111)
-    (.max.x.vf vf3 vf3 vf5 :mask #b111)
-    (.add.vf vf1 vf2 vf3 :mask #b111)
+    (.add.x.vf.w vf1 vf0 vf0)
+    (.sub.x.vf.x vf5 vf0 vf4)
+    (.sub.vf.xyz vf3 vf1 vf2)
+    (.min.x.vf.xyz vf3 vf3 vf4)
+    (.max.x.vf.xyz vf3 vf3 vf5)
+    (.add.vf.xyz vf1 vf2 vf3)
     (.svf (&-> arg0 quad) vf1)
     arg0
     )
@@ -337,9 +325,9 @@ arg2 is saturated to (0, 1)"
 ;; definition for function vector-smooth-seek!
 (defun vector-smooth-seek! ((arg0 vector) (arg1 vector) (arg2 float))
   "Smoothly seek vec toward target.
-The step always points toward the target and has length (dist * alpha).
-If the step is longer than max-step, the step is projected onto a _square_ with side length arg2.
-Note that this doesn't project to a circle like the function below..."
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a _square_ with side length arg2.
+   Note that this doesn't project to a circle like the function below..."
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -356,9 +344,9 @@ Note that this doesn't project to a circle like the function below..."
           )
         (.lvf vf5 (&-> v1-0 quad))
         (.lvf vf4 (&-> arg0 quad))
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> v0-0 quad) vf6)
         v0-0
         )
@@ -369,9 +357,9 @@ Note that this doesn't project to a circle like the function below..."
 ;; definition for function vector-seek-2d-xz-smooth!
 (defun vector-seek-2d-xz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   "Smoothly seek vec's x and z components toward target.
-The step always points toward the target and has length (dist * alpha).
-If the step is longer than max-step, the step is projected onto a circle of radius max-step.
-Doesn't touch y or w."
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch y or w."
   (let ((f0-1 (- (-> arg1 x) (-> arg0 x)))
         (f2-1 (- (-> arg1 z) (-> arg0 z)))
         )
@@ -401,9 +389,9 @@ Doesn't touch y or w."
 ;; definition for function vector-seek-2d-yz-smooth!
 (defun vector-seek-2d-yz-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   "Smoothly seek vec's y and z components toward target.
-The step always points toward the target and has length (dist * alpha).
-If the step is longer than max-step, the step is projected onto a circle of radius max-step.
-Doesn't touch x or w."
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch x or w."
   (let ((f0-1 (- (-> arg1 y) (-> arg0 y)))
         (f2-1 (- (-> arg1 z) (-> arg0 z)))
         )
@@ -433,9 +421,9 @@ Doesn't touch x or w."
 ;; definition for function vector-seek-3d-smooth!
 (defun vector-seek-3d-smooth! ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   "Smoothly seek vec's x, y, and z components toward target.
-The step always points toward the target and has length (dist * alpha).
-If the step is longer than max-step, the step is projected onto a circle of radius max-step.
-Doesn't touch w."
+   The step always points toward the target and has length (dist * alpha).
+   If the step is longer than max-step, the step is projected onto a circle of radius max-step.
+   Doesn't touch w."
   (let ((f0-1 (- (-> arg1 x) (-> arg0 x)))
         (f1-2 (- (-> arg1 y) (-> arg0 y)))
         (f3-1 (- (-> arg1 z) (-> arg0 z)))
@@ -469,8 +457,8 @@ Doesn't touch w."
 ;; definition for function seek-with-smooth
 (defun seek-with-smooth ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   "Move value closer to target.
-If we are within deadband, just go straight to target.
-If not, try to go alpha*err. If that is a larger step than max-step, limit to max-step"
+   If we are within deadband, just go straight to target.
+   If not, try to go alpha*err. If that is a larger step than max-step, limit to max-step"
   (let ((f0-1 (- arg1 arg0)))
     (cond
       ((>= arg4 (fabs f0-1))
@@ -526,7 +514,7 @@ If not, try to go alpha*err. If that is a larger step than max-step, limit to ma
 ;; definition for function vector-v!
 (defun vector-v! ((arg0 vector))
   "Convert a velocity to a displacement per frame. The velocity should be in X/actual_second.
-Uses the current process clock."
+   Uses the current process clock."
   (vector-float*! arg0 arg0 (seconds-per-frame))
   arg0
   )
@@ -580,8 +568,8 @@ Uses the current process clock."
         (.mov at-0 f0-0)
         )
       (.mov vf2 at-0)
-      (.mov.vf vf1 vf0 :mask #b1000)
-      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.mov.vf.w vf1 vf0)
+      (.mul.x.vf.xyz vf1 vf1 vf2)
       (.svf (&-> arg0 quad) vf1)
       arg0
       )
@@ -602,8 +590,8 @@ Uses the current process clock."
       (.mov at-0 f0-0)
       )
     (.mov vf2 at-0)
-    (.mov.vf vf1 vf0 :mask #b1000)
-    (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+    (.mov.vf.w vf1 vf0)
+    (.mul.x.vf.xyz vf1 vf1 vf2)
     (.svf (&-> arg0 quad) vf1)
     arg0
     )
@@ -626,11 +614,11 @@ Uses the current process clock."
          )
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
-    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+    (.add.w.vf.x vf2 vf0 vf0)
     (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf2 vf1 :mask #b1)
-    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+    (.mul.x.vf.x acc vf2 vf1)
+    (.add.mul.y.vf.x acc vf2 vf1 acc)
+    (.add.mul.z.vf.x vf1 vf2 vf1 acc)
     (.mov v0-0 vf1)
     v0-0
     )
@@ -664,13 +652,13 @@ Uses the current process clock."
     (.lvf vf3 (&-> arg1 quad))
     (.sub.vf vf1 vf3 vf2)
     (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.mul.x.vf.w acc vf0 vf1)
+    (.add.mul.y.vf.w acc vf0 vf1 acc)
+    (.add.mul.z.vf.w vf1 vf0 vf1 acc)
     (.sqrt.vf Q vf1 :ftf #b11)
-    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.add.w.vf.x vf1 vf0 vf0)
     (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.mul.vf.x vf1 vf1 Q)
     (.nop.vf)
     (.nop.vf)
     (.mov v0-0 vf1)
@@ -690,8 +678,8 @@ Uses the current process clock."
     (.lvf vf3 (&-> arg1 quad))
     (.sub.vf vf1 vf3 vf2)
     (.mul.vf vf1 vf1 vf1)
-    (.add.y.vf vf1 vf1 vf1 :mask #b1)
-    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.add.y.vf.x vf1 vf1 vf1)
+    (.add.z.vf.x vf1 vf1 vf1)
     (.mov v0-0 vf1)
     v0-0
     )
@@ -713,12 +701,12 @@ Uses the current process clock."
     (.lvf vf3 (&-> arg1 quad))
     (.sub.vf vf1 vf3 vf2)
     (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.z.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.mul.x.vf.w acc vf0 vf1)
+    (.add.mul.z.vf.w vf1 vf0 vf1 acc)
     (.sqrt.vf Q vf1 :ftf #b11)
-    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.add.w.vf.x vf1 vf0 vf0)
     (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.mul.vf.x vf1 vf1 Q)
     (.nop.vf)
     (.nop.vf)
     (.mov v0-0 vf1)
@@ -742,12 +730,12 @@ Uses the current process clock."
     (.lvf vf3 (&-> arg1 quad))
     (.sub.vf vf1 vf3 vf2)
     (.mul.vf vf1 vf1 vf1)
-    (.mul.x.vf acc vf0 vf1 :mask #b1000)
-    (.add.mul.y.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.mul.x.vf.w acc vf0 vf1)
+    (.add.mul.y.vf.w vf1 vf0 vf1 acc)
     (.sqrt.vf Q vf1 :ftf #b11)
-    (.add.w.vf vf1 vf0 vf0 :mask #b1)
+    (.add.w.vf.x vf1 vf0 vf0)
     (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b1)
+    (.mul.vf.x vf1 vf1 Q)
     (.nop.vf)
     (.nop.vf)
     (.mov v0-0 vf1)
@@ -767,7 +755,7 @@ Uses the current process clock."
     (.lvf vf3 (&-> arg1 quad))
     (.sub.vf vf1 vf3 vf2)
     (.mul.vf vf1 vf1 vf1)
-    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.add.z.vf.x vf1 vf1 vf1)
     (.mov v0-0 vf1)
     v0-0
     )
@@ -785,16 +773,16 @@ Uses the current process clock."
          )
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
-    (.mul.vf vf2 vf1 vf1 :mask #b111)
+    (.mul.vf.xyz vf2 vf1 vf1)
     (let ((v1-0 arg1))
       (.mov vf3 v1-0)
       )
-    (.mul.x.vf acc vf0 vf2 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-    (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+    (.mul.x.vf.w acc vf0 vf2)
+    (.add.mul.y.vf.w acc vf0 vf2 acc)
+    (.add.mul.z.vf.w vf2 vf0 vf2 acc)
     (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
     (.wait.vf)
-    (.mul.vf vf1 vf1 Q :mask #b111)
+    (.mul.vf.xyz vf1 vf1 Q)
     (.nop.vf)
     (.nop.vf)
     (.nop.vf)
@@ -806,7 +794,7 @@ Uses the current process clock."
 ;; definition for function vector-normalize-ret-len!
 (defun vector-normalize-ret-len! ((arg0 vector) (arg1 float))
   "Modify arg0 in place to have length arg1 for its xyz components.
-The w part isn't changed and the _original_ length is returned."
+   The w part isn't changed and the _original_ length is returned."
   (local-vars (v1-1 float))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -817,19 +805,19 @@ The w part isn't changed and the _original_ length is returned."
          )
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
-    (.mul.vf vf2 vf1 vf1 :mask #b111)
+    (.mul.vf.xyz vf2 vf1 vf1)
     (let ((v1-0 arg1))
       (.mov vf3 v1-0)
       )
-    (.mul.x.vf acc vf0 vf2 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-    (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+    (.mul.x.vf.w acc vf0 vf2)
+    (.add.mul.y.vf.w acc vf0 vf2 acc)
+    (.add.mul.z.vf.w vf2 vf0 vf2 acc)
     (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
-    (.add.w.vf vf2 vf0 vf2 :mask #b1)
+    (.add.w.vf.x vf2 vf0 vf2)
     (.mov v1-1 vf2)
     (let ((v0-0 (sqrtf v1-1)))
       (.wait.vf)
-      (.mul.vf vf1 vf1 Q :mask #b111)
+      (.mul.vf.xyz vf1 vf1 Q)
       (.nop.vf)
       (.nop.vf)
       (.nop.vf)
@@ -843,8 +831,8 @@ The w part isn't changed and the _original_ length is returned."
 ;; INFO: Used lq/sq
 (defun vector-normalize-copy! ((arg0 vector) (arg1 vector) (arg2 float))
   "Normalize, but not in place.
-This implementation is very good compared to the vector-normalize! one.
-The w component is set to 1."
+   This implementation is very good compared to the vector-normalize! one.
+   The w component is set to 1."
   (let ((f0-0 (vector-length arg1)))
     (cond
       ((= f0-0 0.0)
@@ -906,8 +894,8 @@ The w component is set to 1."
 ;; definition for function vector-length-max!
 (defun vector-length-max! ((arg0 vector) (arg1 float))
   "Make vector at most arg1 length (xyz only).
-If it is larger, project onto sphere.
-Doesn't touch w"
+   If it is larger, project onto sphere.
+   Doesn't touch w"
   (let ((f0-0 (vector-length arg0)))
     (when (not (or (= f0-0 0.0) (< f0-0 arg1)))
       (let ((f0-1 (/ f0-0 arg1)))
@@ -925,8 +913,8 @@ Doesn't touch w"
 ;; definition for function vector-xz-length-max!
 (defun vector-xz-length-max! ((arg0 vector) (arg1 float))
   "Make vector at most arg1 length (xz only).
-It it is larger, project onto circle.
-Doesn't touch w or y."
+   It it is larger, project onto circle.
+   Doesn't touch w or y."
   (let* ((v1-0 arg0)
          (f0-4 (sqrtf (+ (* (-> v1-0 x) (-> v1-0 x)) (* (-> v1-0 z) (-> v1-0 z)))))
          )
@@ -1046,7 +1034,7 @@ Doesn't touch w or y."
 ;; definition for function rot-zxy-from-vector!
 (defun rot-zxy-from-vector! ((arg0 vector) (arg1 vector))
   "I think this gives you a vector of euler angles to rotate some unit vector
-to arg1."
+   to arg1."
   (let* ((f28-0 (-> arg1 z))
          (f30-0 (-> arg1 x))
          (f0-0 (atan f30-0 f28-0))
@@ -1065,7 +1053,7 @@ to arg1."
 ;; definition for function rot-zyx-from-vector!
 (defun rot-zyx-from-vector! ((arg0 vector) (arg1 vector))
   "I think this gives you a vector of euler angles to rotate some unit vector
-to arg1."
+   to arg1."
   (let* ((f28-0 (-> arg1 z))
          (f30-0 (- (-> arg1 y)))
          (f0-1 (atan f30-0 f28-0))
@@ -1084,7 +1072,7 @@ to arg1."
 ;; definition for function vector-lerp!
 (defun vector-lerp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Linearly interpolate between two vectors. Alpha isn't clamped.
-w will be set to 1."
+   w will be set to 1."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -1095,10 +1083,10 @@ w will be set to 1."
     (.lvf vf1 (&-> arg1 quad))
     (.lvf vf2 (&-> arg2 quad))
     (.mov vf4 arg3)
-    (.add.x.vf vf3 vf0 vf0 :mask #b1000)
+    (.add.x.vf.w vf3 vf0 vf0)
     (.sub.vf vf2 vf2 vf1)
     (.mul.x.vf vf2 vf2 vf4)
-    (.add.vf vf3 vf1 vf2 :mask #b111)
+    (.add.vf.xyz vf3 vf1 vf2)
     (.svf (&-> arg0 quad) vf3)
     arg0
     )
@@ -1108,7 +1096,7 @@ w will be set to 1."
 ;; INFO: Used lq/sq
 (defun vector-lerp-clamp! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Linearly interpolate between two vectors, clamping alpha to 0, 1.
-w will be set to 1."
+   w will be set to 1."
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -1132,10 +1120,10 @@ w will be set to 1."
               (.mov vf4 a1-1)
               )
             )
-          (.add.x.vf vf3 vf0 vf0 :mask #b1000)
+          (.add.x.vf.w vf3 vf0 vf0)
           (.sub.vf vf2 vf2 vf1)
           (.mul.x.vf vf2 vf2 vf4)
-          (.add.vf vf3 vf1 vf2 :mask #b111)
+          (.add.vf.xyz vf3 vf1 vf2)
           (.svf (&-> v1-3 quad) vf3)
           )
         )
@@ -1203,9 +1191,9 @@ w will be set to 1."
 ;; INFO: Used lq/sq
 (defun vector-degi ((arg0 vector) (arg1 vector))
   "Convert a vector (in _rotations_) to degrees units, stored in an int.
-Truncates to the nearest _rotation_.
-Neither the input or output is a commonly used form.
-Unsurprisingly, this strange function is never used."
+   Truncates to the nearest _rotation_.
+   Neither the input or output is a commonly used form.
+   Unsurprisingly, this strange function is never used."
   (local-vars (v1-0 uint128) (v1-1 uint128))
   (rlet ((vf1 :class vf))
     (.lvf vf1 (&-> arg1 quad))
@@ -1221,8 +1209,8 @@ Unsurprisingly, this strange function is never used."
 ;; INFO: Used lq/sq
 (defun vector-degf ((arg0 vector) (arg1 vector))
   "Convert a vector (in integer degree units) to floating point rotations.
-Truncates to the nearest _rotation_.
-Like the previous function, this is stupid and unused."
+   Truncates to the nearest _rotation_.
+   Like the previous function, this is stupid and unused."
   (local-vars (v1-1 uint128))
   (rlet ((vf1 :class vf))
     (let ((v1-0 (-> arg1 quad)))
@@ -1238,7 +1226,7 @@ Like the previous function, this is stupid and unused."
 ;; definition for function vector-degmod
 (defun vector-degmod ((arg0 vector) (arg1 vector))
   "This one is actually right. Wraps degrees units (in floats, like they should be)
-to +/- half a rotation."
+   to +/- half a rotation."
   (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
   (rlet ((vf1 :class vf))
     (.lvf vf1 (&-> arg1 quad))
@@ -1581,13 +1569,13 @@ to +/- half a rotation."
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
     (.lvf vf2 (&-> arg1 quad))
-    (.sub.vf vf3 vf1 vf2 :mask #b111)
-    (.mul.vf vf3 vf3 vf3 :mask #b111)
-    (.add.w.vf vf4 vf1 vf2 :mask #b1000)
-    (.mul.w.vf vf4 vf4 vf4 :mask #b1000)
-    (.add.y.vf vf3 vf3 vf3 :mask #b1)
-    (.add.z.vf vf3 vf3 vf3 :mask #b1)
-    (.add.w.vf vf4 vf0 vf4 :mask #b1)
+    (.sub.vf.xyz vf3 vf1 vf2)
+    (.mul.vf.xyz vf3 vf3 vf3)
+    (.add.w.vf.w vf4 vf1 vf2)
+    (.mul.w.vf.w vf4 vf4 vf4)
+    (.add.y.vf.x vf3 vf3 vf3)
+    (.add.z.vf.x vf3 vf3 vf3)
+    (.add.w.vf.x vf4 vf0 vf4)
     (.mov a0-1 vf4)
     (.mov v1-0 vf3)
     (>= a0-1 v1-0)
@@ -1617,7 +1605,7 @@ to +/- half a rotation."
 ;; definition for function rand-vu-sphere-point!
 (defun rand-vu-sphere-point! ((arg0 vector) (arg1 float))
   "Get a random point on the sphere at the origin with radius arg1.
-The point is on the surface of the sphere."
+   The point is on the surface of the sphere."
   (set-vector!
     arg0
     (rand-vu-float-range -1.0 1.0)

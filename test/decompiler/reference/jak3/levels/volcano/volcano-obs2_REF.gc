@@ -68,11 +68,7 @@
   :virtual #t
   :event rigid-body-object-event-handler
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (get-point-at-percent-along-path! (-> self path) (-> self rbody position) (-> self path-u) 'interp)
     (ja-no-eval :group! vol-lava-plat-idle-ja :num! zero)
     (logclear! (-> self mask) (process-mask actor-pause))
@@ -245,6 +241,7 @@
 
 ;; definition for method 11 of type vol-lava-plat-spawner
 (defmethod init-from-entity! ((this vol-lava-plat-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this path) (new
                          'process
                          'curve-control
@@ -430,6 +427,7 @@
 
 ;; definition for method 11 of type vol-break-ground
 (defmethod init-from-entity! ((this vol-break-ground) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -934,7 +932,7 @@
           )
         )
       )
-    (set! (-> self player-force y) (* 0.1 (-> self player-force y)))
+    (set! (-> self player-force y) (/ (-> self player-force y) 10))
     (if (and (logtest? (-> self rbody flags) (rigid-body-flag enable-physics))
              (< (vector-length (-> self root transv)) 4096.0)
              (< (* (vector-length (-> self rbody lin-momentum)) (-> self info info inv-mass)) 2457.6)
@@ -988,7 +986,7 @@
       (set! (-> s4-0 z) 0.0)
       (set! (-> s4-0 w) 0.0)
       (let ((s3-0 (new 'stack-no-clear 'vector)))
-        (set! (-> s3-0 quad) (-> this rbody position quad))
+        (vector-copy! s3-0 (-> this rbody position))
         (let ((s2-0 (new 'stack-no-clear 'vector)))
           (set! (-> s2-0 x) 0.0)
           (set! (-> s2-0 y) 8192.0)
@@ -1002,10 +1000,10 @@
       )
     0
     (let ((s4-1 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-1 quad) (-> this to-hole-vec quad))
+      (vector-copy! s4-1 (-> this to-hole-vec))
       (let ((s3-1 (new 'stack-no-clear 'vector)))
-        (set! (-> s3-1 quad) (-> this rbody position quad))
-        (set! (-> s4-1 y) (* -0.1 (-> s4-1 y)))
+        (vector-copy! s3-1 (-> this rbody position))
+        (set! (-> s4-1 y) (/ (-> s4-1 y) -10))
         (vector-float*! s4-1 s4-1 (lerp-scale 0.0 30.0 (-> this hole-dist-xz) 20480.0 4096.0))
         (apply-impact! (-> this rbody) s3-1 s4-1)
         )
@@ -1066,21 +1064,13 @@
            (impulse-handler this)
            (let ((s4-0 (new 'stack-no-clear 'vector)))
              (let ((s3-0 (new 'stack-no-clear 'vector)))
-               (let ((a0-8 (cond
-                             ((nonzero? (-> (the-as attack-info s5-0) attacker))
-                              (let ((s2-0 (handle->process (-> (the-as attack-info s5-0) attacker))))
-                                (if (type? s2-0 process-focusable)
-                                    s2-0
-                                    )
-                                )
-                              )
-                             (else
+               (let ((a0-8 (if (nonzero? (-> (the-as attack-info s5-0) attacker))
+                               (as-type (handle->process (-> (the-as attack-info s5-0) attacker)) process-focusable)
                                *target*
                                )
-                             )
                            )
                      )
-                 (set! (-> s3-0 quad) (-> (get-trans (the-as process-focusable a0-8) 0) quad))
+                 (vector-copy! s3-0 (get-trans (the-as process-focusable a0-8) 0))
                  )
                (vector-reset! s4-0)
                (let ((s2-2 (-> this hole))
@@ -1172,7 +1162,7 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod rbody-post ((this vol-stone-lid))
   (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-    (set! (-> a1-0 start-pos quad) (-> this rbody position quad))
+    (vector-copy! (-> a1-0 start-pos) (-> this rbody position))
     (vector-float*! (-> a1-0 move-dist) (-> this rbody lin-velocity) (seconds-per-frame))
     (let ((v1-3 a1-0))
       (set! (-> v1-3 radius) (+ 4096.0 (-> this root root-prim local-sphere w)))
@@ -1239,7 +1229,3 @@
   (go-idle self)
   self
   )
-
-
-
-

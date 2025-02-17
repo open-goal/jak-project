@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
   // or because it's portable mode)
   if (enable_portable) {
     lg::info("Portable mod enabled");
-    user_config_dir_override = file_util::get_current_executable_path();
+    user_config_dir_override = fs::path(file_util::get_current_executable_path()).parent_path();
   }
   if (!user_config_dir_override.empty()) {
     lg::info("Overriding config directory with: {}", user_config_dir_override.string());
@@ -179,10 +179,26 @@ int main(int argc, char** argv) {
   setup_cpu_info();
   // If the CPU doesn't have AVX, GOAL code won't work and we exit.
   if (!get_cpu_info().has_avx) {
+// Check if we are on a modern enough version of macOS so that AVX can be
+// emulated via rosetta
+#ifdef __APPLE__
+    auto macos_major_version = get_macos_major_version();
+    if (macos_major_version < 15.0) {
+      lg::info(
+          "Your CPU does not support AVX. But the newer version of Rosetta supports it, update to "
+          "atleast Sequoia to run OpenGOAL!");
+      dialogs::create_error_message_dialog(
+          "Unmet Requirements",
+          "Your CPU does not support AVX. But the newer version of Rosetta supports it, update to "
+          "atleast Sequoia to run OpenGOAL!");
+      return -1;
+    }
+#else
     lg::info("Your CPU does not support AVX, which is required for OpenGOAL.");
     dialogs::create_error_message_dialog(
         "Unmet Requirements", "Your CPU does not support AVX, which is required for OpenGOAL.");
     return -1;
+#endif
   }
 
   // set up file paths for resources. This is the full repository when developing, and the data

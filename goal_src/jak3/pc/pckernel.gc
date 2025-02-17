@@ -161,10 +161,10 @@
     (.lvf vf1 (&-> a quad))
     (.lvf vf2 (&-> b quad))
     (.mov vf4 alpha)
-    (.add.x.vf vf3 vf1 vf0 :mask #b1000)
+    (.add.x.vf.w vf3 vf1 vf0)
     (.sub.vf vf2 vf2 vf1)
     (.mul.x.vf vf2 vf2 vf4)
-    (.add.vf vf3 vf1 vf2 :mask #b111)
+    (.add.vf.xyz vf3 vf1 vf2)
     (.svf (&-> dest quad) vf3)
     dest
     )
@@ -178,7 +178,7 @@
     (init-vf0-vector)
     (.lvf dest-vf (&-> dest quad))
     (.lvf src-vf (&-> src quad))
-    (.add.vf dest-vf vf0 src-vf :mask #b111)
+    (.add.vf.xyz dest-vf vf0 src-vf)
     (.svf (&-> dest quad) dest-vf)
     dest
     )
@@ -249,7 +249,13 @@
   )
 
 (defmethod get-game-language ((obj pc-settings-jak3))
-  (get-current-language)
+  ;; if the language is unintialized, return the default
+  (let ((lang (get-current-language)))
+    (if (= lang 255)
+        (scf-get-language)
+        lang
+        )
+    )
   )
 
 
@@ -303,9 +309,9 @@
 (defmethod update-speedrun ((obj pc-settings-jak3))
   "update speedrun module"
   ;; TODO - update to new with-profiler syntax
-  ;; (with-profiler "speedrun-update"
-  ;(update! *speedrun-info*)
-    ;;)
+  ; (with-profiler "speedrun-update"
+    (update! *speedrun-info*)
+    ; )
   (none))
 
 (defmethod update-video-hacks ((obj pc-settings-jak3))
@@ -445,17 +451,6 @@
   `(-> *pc-settings* flava-unlocked ,flava))
 
 
-(defun inside-city? ()
-  "are we inside haven city?"
-  (symbol-member? (-> *game-info* current-continue vis-nick) ;; TODO get actual level we're in?
-                  '(ctysluma  ctyslumb  ctyslumc
-                    ctygena   ctygenb   ctygenc
-                    ctymarka  ctymarkb
-                    ctyfarma  ctyfarmb
-                    ctyinda   ctyindb
-                    ctypal    ctyport   stadium)))
-
-
 (defmethod update-cheats ((obj pc-settings-jak3))
   "run cheats."
 
@@ -482,7 +477,7 @@
     ((and (pc-cheats? (-> obj cheats) turbo-board)
           *target*
           (focus-test? *target* board)
-          (inside-city?))
+          (= 'ctywide (-> *target* current-level info master-level)))
       (set-setting! 'string-spline-max-move 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 2)) 0)
       (set-setting! 'string-spline-accel 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.045)) 0)
       (set-setting! 'string-spline-max-move-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 1.5)) 0)
@@ -761,8 +756,9 @@
 
 
 ;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
-(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) "*pc-dead-pool*"))
-
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 128 1024) "*pc-dead-pool*"))
+(set! (-> *pc-pool* clock) (-> *display* base-clock))
+(+! (-> *display* base-clock ref-count) 1)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

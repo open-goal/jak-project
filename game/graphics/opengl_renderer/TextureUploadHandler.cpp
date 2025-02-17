@@ -119,3 +119,7 @@ void TextureUploadHandler::draw_debug_window() {
     m_direct->draw_debug_window();
   }
 }
+
+bool TextureUploadHandler::empty() const {
+  return m_upload_count == 0;
+}

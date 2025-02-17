@@ -2842,7 +2842,7 @@ TEST_F(FormRegressionTestJak1, Method19ResTag) {
       "     (goto cfg-73)\n"
       "     )\n"
       "    (let ((t3-13 t4-1)\n"
-      "          (t4-4 (&-> (-> arg0 tag) t4-1))\n"
+      "          (t4-4 (&-> arg0 tag t4-1))\n"
       "          )\n"
       "     (while\n"
       "      (not\n"

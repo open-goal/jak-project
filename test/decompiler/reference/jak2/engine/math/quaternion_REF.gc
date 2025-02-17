@@ -2,7 +2,6 @@
 (in-package goal)
 
 ;; definition for method 3 of type quaternion
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this quaternion))
   (format #t "[~8x] quaternion~%" this)
   (format #t "~T[~F] [~F] [~F] [~F]~%" (-> this x) (-> this y) (-> this z) (-> this w))
@@ -20,7 +19,7 @@
 (defun quaternion-axis-angle! ((arg0 quaternion) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   "Construct a quaternion from an axis and angle. The axis should be normalized."
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (sincos! s5-0 (* 0.5 arg4))
+    (sincos! s5-0 (/ arg4 2))
     (let ((f0-2 (-> s5-0 x)))
       (set! (-> arg0 x) (* arg1 f0-2))
       (set! (-> arg0 y) (* arg2 f0-2))
@@ -35,7 +34,7 @@
 (defun quaternion-vector-angle! ((arg0 quaternion) (arg1 vector) (arg2 float))
   "Construct a quaternion from an axis and angle. The axis should be normalized."
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (sincos! s5-0 (* 0.5 arg2))
+    (sincos! s5-0 (/ arg2 2))
     (let ((f0-2 (-> s5-0 x)))
       (set! (-> arg0 x) (* (-> arg1 x) f0-2))
       (set! (-> arg0 y) (* (-> arg1 y) f0-2))
@@ -68,8 +67,8 @@
 (defun quaternion-look-at! ((arg0 quaternion) (arg1 vector) (arg2 vector))
   "Look along arg1, with arg2 as up."
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
-    (vector-cross! (the-as vector (-> s5-0 vector)) arg2 arg1)
-    (vector-cross! (-> s5-0 vector 1) arg1 (the-as vector (-> s5-0 vector)))
+    (vector-cross! (-> s5-0 vector 0) arg2 arg1)
+    (vector-cross! (-> s5-0 vector 1) arg1 (-> s5-0 vector 0))
     (set! (-> (the-as vector (-> s5-0 vector 2)) quad) (-> arg1 quad))
     (quaternion-normalize! (matrix->quaternion arg0 s5-0))
     )
@@ -184,15 +183,15 @@
 ;; ERROR: Bad vector register dependency: vf2
 (defun quaternion-conjugate! ((arg0 quaternion) (arg1 quaternion))
   "Set arg0 to the conjugate of arg1 (negate only ijk).
-If arg1 is normalized, this is equivalent to the inverse
-NOTE: this gives you the inverse rotation."
+   If arg1 is normalized, this is equivalent to the inverse
+   NOTE: this gives you the inverse rotation."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          )
     (.lvf vf1 (&-> arg1 quad))
     (.sub.vf vf2 vf2 vf2)
-    (.sub.vf vf2 vf2 vf1 :mask #b111)
-    (.add.vf vf2 vf2 vf1 :mask #b1000)
+    (.sub.vf.xyz vf2 vf2 vf1)
+    (.add.vf.w vf2 vf2 vf1)
     (.svf (&-> arg0 quad) vf2)
     arg0
     )
@@ -232,9 +231,9 @@ NOTE: this gives you the inverse rotation."
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
     (.mul.vf vf1 vf1 vf1)
-    (.add.z.vf acc vf1 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.x.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.add.z.vf.w acc vf1 vf1)
+    (.add.mul.y.vf.w acc vf0 vf1 acc)
+    (.add.mul.x.vf.w vf1 vf0 vf1 acc)
     (.add.w.vf vf1 vf0 vf1)
     (.mov v0-0 vf1)
     v0-0
@@ -252,9 +251,9 @@ NOTE: this gives you the inverse rotation."
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
     (.mul.vf vf1 vf1 vf1)
-    (.add.z.vf acc vf1 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.x.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.add.z.vf.w acc vf1 vf1)
+    (.add.mul.y.vf.w acc vf0 vf1 acc)
+    (.add.mul.x.vf.w vf1 vf0 vf1 acc)
     (.add.w.vf vf1 vf0 vf1)
     (.mov v1-1 vf1)
     (sqrtf v1-1)
@@ -273,9 +272,9 @@ NOTE: this gives you the inverse rotation."
     (init-vf0-vector)
     (.lvf vf1 (&-> arg0 quad))
     (.mul.vf vf2 vf1 vf1)
-    (.add.z.vf acc vf2 vf2 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-    (.add.mul.x.vf vf2 vf0 vf2 acc :mask #b1000)
+    (.add.z.vf.w acc vf2 vf2)
+    (.add.mul.y.vf.w acc vf0 vf2 acc)
+    (.add.mul.x.vf.w vf2 vf0 vf2 acc)
     (.isqrt.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
     (.wait.vf)
     (.mul.vf vf2 vf1 Q)
@@ -290,7 +289,7 @@ NOTE: this gives you the inverse rotation."
 ;; ERROR: Bad vector register dependency: vf3
 (defun quaternion-inverse! ((arg0 quaternion) (arg1 quaternion))
   "Invert a quaternion. The inverse will satisfy q * q^-1 = identity, even if q is not normalized.
-If your quaternion is normalized, it is faster/more accurate to do quaternion-conjugate!"
+   If your quaternion is normalized, it is faster/more accurate to do quaternion-conjugate!"
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -302,12 +301,12 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
     (.lvf vf1 (&-> arg1 quad))
     (.mul.vf vf2 vf1 vf1)
     (.sub.vf vf3 vf3 vf3)
-    (.add.z.vf acc vf2 vf2 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-    (.add.mul.x.vf vf2 vf0 vf2 acc :mask #b1000)
-    (.sub.vf vf3 vf3 vf1 :mask #b111)
+    (.add.z.vf.w acc vf2 vf2)
+    (.add.mul.y.vf.w acc vf0 vf2 acc)
+    (.add.mul.x.vf.w vf2 vf0 vf2 acc)
+    (.sub.vf.xyz vf3 vf3 vf1)
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
-    (.add.vf vf3 vf3 vf1 :mask #b1000)
+    (.add.vf.w vf3 vf3 vf1)
     (.wait.vf)
     (.mul.vf vf3 vf3 Q)
     (.nop.vf)
@@ -330,9 +329,9 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
     (.lvf vf1 (&-> arg0 quad))
     (.lvf vf2 (&-> arg1 quad))
     (.mul.vf vf1 vf1 vf2)
-    (.add.z.vf acc vf1 vf1 :mask #b1000)
-    (.add.mul.y.vf acc vf0 vf1 acc :mask #b1000)
-    (.add.mul.x.vf vf1 vf0 vf1 acc :mask #b1000)
+    (.add.z.vf.w acc vf1 vf1)
+    (.add.mul.y.vf.w acc vf0 vf1 acc)
+    (.add.mul.x.vf.w vf1 vf0 vf1 acc)
     (.add.w.vf vf1 vf0 vf1)
     (.mov v0-0 vf1)
     v0-0
@@ -352,16 +351,16 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
     (init-vf0-vector)
     (.lvf vf1 (&-> arg1 quad))
     (.lvf vf2 (&-> arg2 quad))
-    (.sub.vf vf4 vf0 vf0 :mask #b1000)
+    (.sub.vf.w vf4 vf0 vf0)
     (.mul.vf vf3 vf1 vf2)
     (.outer.product.a.vf acc vf1 vf2)
     (.outer.product.b.vf vf4 vf2 vf1 acc)
     (.mul.w.vf acc vf1 vf2)
     (.add.mul.w.vf acc vf2 vf1 acc)
-    (.sub.mul.w.vf acc vf0 vf3 acc :mask #b1000)
-    (.sub.mul.z.vf acc vf0 vf3 acc :mask #b1000)
-    (.sub.mul.y.vf acc vf0 vf3 acc :mask #b1000)
-    (.sub.mul.x.vf acc vf0 vf3 acc :mask #b1000)
+    (.sub.mul.w.vf.w acc vf0 vf3 acc)
+    (.sub.mul.z.vf.w acc vf0 vf3 acc)
+    (.sub.mul.y.vf.w acc vf0 vf3 acc)
+    (.sub.mul.x.vf.w acc vf0 vf3 acc)
     (.add.mul.w.vf vf1 vf4 vf0 acc)
     (.svf (&-> arg0 quad) vf1)
     arg0
@@ -371,9 +370,9 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
 ;; definition for function quaternion-right-mult-matrix!
 (defun quaternion-right-mult-matrix! ((arg0 matrix) (arg1 quaternion))
   "Place quaternion coefficients into a matrix.
-You can convert a quaternion to a matrix by taking the product of this
-right-mult and left-mult matrix, but this method is not used.
-Instead, quaternion->matrix is a more efficient implementation."
+   You can convert a quaternion to a matrix by taking the product of this
+   right-mult and left-mult matrix, but this method is not used.
+   Instead, quaternion->matrix is a more efficient implementation."
   (let ((f3-0 (-> arg1 x))
         (f2-0 (-> arg1 y))
         (f1-0 (-> arg1 z))
@@ -442,27 +441,27 @@ Instead, quaternion->matrix is a more efficient implementation."
     (init-vf0-vector)
     (.lvf vf1 (&-> arg1 quad))
     (.add.vf vf5 vf1 vf1)
-    (.add.w.vf vf2 vf0 vf1 :mask #b1)
-    (.add.z.vf vf2 vf0 vf1 :mask #b10)
-    (.sub.y.vf vf2 vf0 vf1 :mask #b100)
-    (.sub.w.vf vf2 vf0 vf0 :mask #b1000)
-    (.sub.z.vf vf3 vf0 vf1 :mask #b1)
-    (.add.w.vf vf3 vf0 vf1 :mask #b10)
-    (.add.x.vf vf3 vf0 vf1 :mask #b100)
-    (.sub.w.vf vf3 vf0 vf0 :mask #b1000)
-    (.add.y.vf vf4 vf0 vf1 :mask #b1)
-    (.sub.x.vf vf4 vf0 vf1 :mask #b10)
-    (.add.w.vf vf4 vf0 vf1 :mask #b100)
-    (.sub.w.vf vf4 vf0 vf0 :mask #b1000)
+    (.add.w.vf.x vf2 vf0 vf1)
+    (.add.z.vf.y vf2 vf0 vf1)
+    (.sub.y.vf.z vf2 vf0 vf1)
+    (.sub.w.vf.w vf2 vf0 vf0)
+    (.sub.z.vf.x vf3 vf0 vf1)
+    (.add.w.vf.y vf3 vf0 vf1)
+    (.add.x.vf.z vf3 vf0 vf1)
+    (.sub.w.vf.w vf3 vf0 vf0)
+    (.add.y.vf.x vf4 vf0 vf1)
+    (.sub.x.vf.y vf4 vf0 vf1)
+    (.add.w.vf.z vf4 vf0 vf1)
+    (.sub.w.vf.w vf4 vf0 vf0)
     (.outer.product.a.vf acc vf5 vf2)
     (.outer.product.b.vf vf2 vf2 vf5 acc)
     (.outer.product.a.vf acc vf5 vf3)
     (.outer.product.b.vf vf3 vf3 vf5 acc)
     (.outer.product.a.vf acc vf5 vf4)
     (.outer.product.b.vf vf4 vf4 vf5 acc)
-    (.add.w.vf vf2 vf2 vf0 :mask #b1)
-    (.add.w.vf vf3 vf3 vf0 :mask #b10)
-    (.add.w.vf vf4 vf4 vf0 :mask #b100)
+    (.add.w.vf.x vf2 vf2 vf0)
+    (.add.w.vf.y vf3 vf3 vf0)
+    (.add.w.vf.z vf4 vf4 vf0)
     (.svf (&-> arg0 trans quad) vf0)
     (.svf (&-> arg0 quad 0) vf2)
     (.svf (&-> arg0 quad 1) vf3)
@@ -481,7 +480,7 @@ Instead, quaternion->matrix is a more efficient implementation."
     (cond
       ((< 0.0 f0-2)
        (let ((f0-4 (sqrtf (+ 1.0 f0-2))))
-         (set! (-> arg0 w) (* 0.5 f0-4))
+         (set! (-> arg0 w) (/ f0-4 2))
          (let ((f0-5 (/ 0.5 f0-4)))
            (set! (-> arg0 x) (* f0-5 (- (-> arg1 vector 1 z) (-> arg1 vector 2 y))))
            (set! (-> arg0 y) (* f0-5 (- (-> arg1 vector 2 x) (-> arg1 vector 0 z))))
@@ -516,7 +515,7 @@ Instead, quaternion->matrix is a more efficient implementation."
                     )
                   )
                 )
-            (set! (-> arg0 data a2-0) (* 0.5 f0-12))
+            (set! (-> arg0 data a2-0) (/ f0-12 2))
             (if (!= f0-12 0.0)
                 (set! f0-12 (/ 0.5 f0-12))
                 )
@@ -563,7 +562,7 @@ Instead, quaternion->matrix is a more efficient implementation."
          (vf7 :class vf)
          )
     (let ((v1-0 (new-stack-matrix0)))
-      (let* ((f0-1 (vector-dot (the-as vector (-> arg1 vector)) (the-as vector (-> arg1 vector))))
+      (let* ((f0-1 (vector-dot (-> arg1 vector 0) (-> arg1 vector 0)))
              (f1-1 (vector-dot (-> arg1 vector 1) (-> arg1 vector 1)))
              (f2-1 (vector-dot (-> arg1 vector 2) (-> arg1 vector 2)))
              (f0-3 (/ 1.0 (sqrtf f0-1)))
@@ -632,7 +631,7 @@ Instead, quaternion->matrix is a more efficient implementation."
 ;; definition for function quaternion-exp!
 (defun quaternion-exp! ((arg0 quaternion) (arg1 quaternion))
   "Quaternion exponentiation. Unused."
-  (let ((f30-0 (vector-length (the-as vector arg1))))
+  (let ((f30-0 (vector-length (-> arg1 vec))))
     (cond
       ((= f30-0 0.0)
        (set! (-> arg0 x) 0.0)
@@ -659,7 +658,7 @@ Instead, quaternion->matrix is a more efficient implementation."
 ;; definition for function quaternion-slerp!
 (defun quaternion-slerp! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Real quaternion slerp. Spherical-linear interpolation is a nice way to interpolate
-between quaternions."
+   between quaternions."
   (local-vars (v1-15 float))
   (rlet ((acc :class vf)
          (vf1 :class vf)
@@ -725,8 +724,8 @@ between quaternions."
 ;; definition for function quaternion-pseudo-slerp!
 (defun quaternion-pseudo-slerp! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "This is a bad interpolation between quaternions. It lerps then normalizes.
-It will behave extremely poorly for 180 rotations.
-It is unused."
+   It will behave extremely poorly for 180 rotations.
+   It is unused."
   (rlet ((acc :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -760,7 +759,7 @@ It is unused."
 ;; definition for function quaternion-pseudo-seek
 (defun quaternion-pseudo-seek ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Seek one quaternion toward another. Not using real slerp, so this is only good if the quaternions
-are pretty similar."
+   are pretty similar."
   (let ((s3-0 (new 'stack-no-clear 'quaternion)))
     (let ((s5-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-copy! s3-0 arg2)
@@ -821,17 +820,17 @@ are pretty similar."
       (.lvf vf1 (&-> gp-0 quad))
       (.lvf vf2 (&-> s5-0 quad))
       )
-    (.mul.x.vf vf4 vf0 vf1 :mask #b1000)
-    (.add.vf vf4 vf0 vf2 :mask #b111)
-    (.sub.vf vf4 vf0 vf4 :mask #b110)
-    (.add.vf vf3 vf0 vf1 :mask #b111)
-    (.mul.x.vf vf3 vf0 vf2 :mask #b1000)
+    (.mul.x.vf.w vf4 vf0 vf1)
+    (.add.vf.xyz vf4 vf0 vf2)
+    (.sub.vf.yz vf4 vf0 vf4)
+    (.add.vf.xyz vf3 vf0 vf1)
+    (.mul.x.vf.w vf3 vf0 vf2)
     (.outer.product.a.vf acc vf1 vf1)
     (.outer.product.b.vf vf6 vf0 vf0 acc)
     (.outer.product.a.vf acc vf2 vf2)
     (.outer.product.b.vf vf5 vf0 vf0 acc)
-    (.mul.x.vf vf6 vf0 vf6 :mask #b1000)
-    (.mul.x.vf vf5 vf0 vf5 :mask #b1000)
+    (.mul.x.vf.w vf6 vf0 vf6)
+    (.mul.x.vf.w vf5 vf0 vf5)
     (.mul.vf acc vf6 vf4)
     (.add.mul.vf vf7 vf5 vf3 acc)
     (.svf (&-> arg0 quad) vf7)

@@ -53,6 +53,8 @@ void DebugSettings::load_settings() {
 }
 
 void DebugSettings::save_settings() {
+  // Update the version string as we are now saving it back ground
+  version = current_version;
   json data = *this;
   auto debug_settings_filename =
       file_util::get_user_misc_dir(g_game_version) / "debug-settings.json";
@@ -65,12 +67,17 @@ void to_json(json& j, const DisplaySettings& obj) {
   json_serialize(display_id);
   json_serialize(window_xpos);
   json_serialize(window_ypos);
+  json_serialize(display_mode);
 }
 void from_json(const json& j, DisplaySettings& obj) {
   json_deserialize_if_exists(version);
   json_deserialize_if_exists(display_id);
   json_deserialize_if_exists(window_xpos);
   json_deserialize_if_exists(window_ypos);
+  if (j.contains("display_mode")) {
+    int mode = j.at("display_mode");
+    obj.display_mode = static_cast<DisplaySettings::DisplayMode>(mode);
+  }
 }
 
 DisplaySettings::DisplaySettings() {}
@@ -92,6 +99,8 @@ void DisplaySettings::load_settings() {
 }
 
 void DisplaySettings::save_settings() {
+  // Update the version string as we are now saving it back ground
+  version = current_version;
   json data = *this;
   auto file_path = file_util::get_user_settings_dir(g_game_version) / "display-settings.json";
   file_util::create_dir_if_needed_for_file(file_path);
@@ -139,6 +148,8 @@ void InputSettings::load_settings() {
 }
 
 void InputSettings::save_settings() {
+  // Update the version string as we are now saving it back ground
+  version = current_version;
   json data = *this;
   auto file_path = file_util::get_user_settings_dir(g_game_version) / "input-settings.json";
   file_util::create_dir_if_needed_for_file(file_path);
