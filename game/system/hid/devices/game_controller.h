@@ -8,25 +8,28 @@
 //   - enable/disable pressure sensitivity (all games, disable if not supported)
 // - pressure sensitivity if PS3 controller and supported
 //   - gotta use SXS on windows vs DsMiniHid or whatever
-//   - needs linux testing
-//
 // - trigger effects:
 //   - xbox1:
 //     - small vibrate when collecting dark eco
 //     - big vibrate when changing to dark jak
 //     - vibrate when shooting gun, proportional to gun type
 //   - ps5:
-//     - resistance when changing hover zones (if gun isn't out or if swap disabled)
 //     - resistance when changing to dark jak
 //     - different gun shooting effects
 //       - red (resistance)
 //       - yellow (weapon trigger)
 //       - blue (vibrates)
 //       - purple (less resistance)
-// - test all the other things (fullscreening, etc)
-// - try to debug that keybind issue once again
-
-// https://wiki.libsdl.org/SDL2/CategoryGameController
+// - tests todo:
+//   - display
+//     - [x] all mode switch permutations
+//     - [x] launch with all modes saved
+//     - [x] switch monitors / unplug monitor that was active, how does it handle it
+//     - [x] load with alternate monitor saved and all modes
+//   - controls
+//     - [x] keyboard and mouse still work
+//     - [?] pressure sensitivity on linux
+// https://wiki.libsdl.org/SDL3/CategoryGamepad
 class GameController : public InputDevice {
  public:
   GameController(int sdl_device_id, std::shared_ptr<game_settings::InputSettings> settings);

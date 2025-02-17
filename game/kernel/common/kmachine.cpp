@@ -450,7 +450,7 @@ u64 pc_get_mips2c(u32 name) {
 
 u64 pc_get_display_id() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_manager()->get_active_display_id();
+    return Display::GetMainDisplay()->get_display_manager()->get_active_display_index();
   }
   return 0;
 }
