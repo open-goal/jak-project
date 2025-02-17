@@ -225,8 +225,7 @@ void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMod
   int result = 0;
   switch (mode) {
     case game_settings::DisplaySettings::DisplayMode::Windowed:
-      result = SDL_SetWindowFullscreen(m_window, 0);
-      if (result == 0) {
+      if (SDL_SetWindowFullscreen(m_window, 0)) {
         lg::info("[DISPLAY] windowed mode - resizing window to {}x{}", m_window_width,
                  m_window_height);
         SDL_SetWindowSize(m_window, m_window_width, m_window_height);
@@ -235,7 +234,14 @@ void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMod
       }
       break;
     case game_settings::DisplaySettings::DisplayMode::Fullscreen: {
-      const auto current_display_mode = SDL_GetDesktopDisplayMode(get_active_display_id());
+      int num_displays = 0;
+      const auto display_ids = SDL_GetDisplays(&num_displays);
+      if (num_displays < get_active_display_id() || !display_ids) {
+        sdl_util::log_error("could not retrieve display ids");
+        return;
+      }
+      const auto current_display_mode =
+          SDL_GetDesktopDisplayMode(display_ids[get_active_display_id()]);
       if (!current_display_mode) {
         sdl_util::log_error(fmt::format("unable to get current display mode for display id {}",
                                         get_active_display_id()));
@@ -305,14 +311,15 @@ void DisplayManager::update_curr_display_info() {
 void DisplayManager::update_video_modes() {
   lg::info("[DISPLAY] Enumerating video modes");
   int num_displays = 0;
-  SDL_GetDisplays(&num_displays);
-  if (num_displays < 0) {
-    sdl_util::log_error("could not retrieve number of displays");
+  const auto display_ids = SDL_GetDisplays(&num_displays);
+  if (num_displays < 0 || !display_ids) {
+    sdl_util::log_error("could not retrieve display ids");
     return;
   }
 
   m_current_display_modes.clear();
-  for (int display_id = 0; display_id < num_displays; display_id++) {
+  for (int i = 0; i < num_displays; i++) {
+    SDL_DisplayID display_id = display_ids[i];
     const auto curr_mode = SDL_GetCurrentDisplayMode(display_id);
     if (!curr_mode) {
       sdl_util::log_error(
@@ -352,7 +359,7 @@ void DisplayManager::update_video_modes() {
                             curr_mode->h,
                             (int)curr_mode->refresh_rate,
                             orient};
-    m_current_display_modes[display_id] = new_mode;
+    m_current_display_modes[i] = new_mode;
     lg::info(
         "[DISPLAY]: Found monitor {}, currently set to {}x{}@{}hz. Format: {}, Orientation: {}",
         new_mode.display_name, new_mode.screen_width, new_mode.screen_height, new_mode.refresh_rate,
