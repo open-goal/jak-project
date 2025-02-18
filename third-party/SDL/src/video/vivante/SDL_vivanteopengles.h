@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_vivanteopengles_h_
 #define SDL_vivanteopengles_h_
@@ -28,21 +28,19 @@
 #include "../SDL_sysvideo.h"
 #include "../SDL_egl_c.h"
 
-/* OpenGLES functions */
-#define VIVANTE_GLES_GetAttribute SDL_EGL_GetAttribute
-#define VIVANTE_GLES_GetProcAddress SDL_EGL_GetProcAddress
-#define VIVANTE_GLES_UnloadLibrary SDL_EGL_UnloadLibrary
+// OpenGLES functions
+#define VIVANTE_GLES_GetAttribute    SDL_EGL_GetAttribute
+#define VIVANTE_GLES_GetProcAddress  SDL_EGL_GetProcAddressInternal
+#define VIVANTE_GLES_UnloadLibrary   SDL_EGL_UnloadLibrary
 #define VIVANTE_GLES_SetSwapInterval SDL_EGL_SetSwapInterval
 #define VIVANTE_GLES_GetSwapInterval SDL_EGL_GetSwapInterval
-#define VIVANTE_GLES_DeleteContext   SDL_EGL_DeleteContext
+#define VIVANTE_GLES_DestroyContext   SDL_EGL_DestroyContext
 
-extern int VIVANTE_GLES_LoadLibrary(_THIS, const char *path);
-extern SDL_GLContext VIVANTE_GLES_CreateContext(_THIS, SDL_Window *window);
-extern int VIVANTE_GLES_SwapWindow(_THIS, SDL_Window *window);
-extern int VIVANTE_GLES_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context);
+extern bool VIVANTE_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path);
+extern SDL_GLContext VIVANTE_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window *window);
+extern bool VIVANTE_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern bool VIVANTE_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context);
 
-#endif /* SDL_VIDEO_DRIVER_VIVANTE && SDL_VIDEO_OPENGL_EGL */
+#endif // SDL_VIDEO_DRIVER_VIVANTE && SDL_VIDEO_OPENGL_EGL
 
-#endif /* SDL_vivanteopengles_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_vivanteopengles_h_

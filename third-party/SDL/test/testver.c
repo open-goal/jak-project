@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -13,33 +13,28 @@
 /* Test program to compare the compile-time version of SDL with the linked
    version of SDL
 */
-
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "SDL.h"
-#include "SDL_revision.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_revision.h>
 
 int main(int argc, char *argv[])
 {
-    SDL_version compiled;
-    SDL_version linked;
+    if (argc > 1) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "USAGE: %s", argv[0]);
+        return 1;
+    }
 
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
-
-#if SDL_VERSION_ATLEAST(2, 0, 0)
-    SDL_Log("Compiled with SDL 2.0 or newer\n");
+#if SDL_VERSION_ATLEAST(3, 0, 0)
+    SDL_Log("Compiled with SDL 3.0 or newer");
 #else
-    SDL_Log("Compiled with SDL older than 2.0\n");
+    SDL_Log("Compiled with SDL older than 3.0");
 #endif
-    SDL_VERSION(&compiled);
-    SDL_Log("Compiled version: %d.%d.%d (%s)\n",
-            compiled.major, compiled.minor, compiled.patch,
+    SDL_Log("Compiled version: %d.%d.%d (%s)",
+            SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_MICRO_VERSION,
             SDL_REVISION);
-    SDL_GetVersion(&linked);
-    SDL_Log("Linked version: %d.%d.%d (%s)\n",
-            linked.major, linked.minor, linked.patch,
+    int version = SDL_GetVersion();
+    SDL_Log("Runtime version: %d.%d.%d (%s)",
+            SDL_VERSIONNUM_MAJOR(version), SDL_VERSIONNUM_MINOR(version), SDL_VERSIONNUM_MICRO(version),
             SDL_GetRevision());
     SDL_Quit();
     return 0;

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,20 +28,16 @@ extern "C" {
 
 #include "../SDL_sysvideo.h"
 
-extern int32 HAIKU_ColorSpaceToSDLPxFormat(uint32 colorspace);
+extern SDL_PixelFormat HAIKU_ColorSpaceToSDLPxFormat(uint32 colorspace);
 
-extern int HAIKU_InitModes(_THIS);
-extern int HAIKU_QuitModes(_THIS);
-extern int HAIKU_GetDisplayBounds(_THIS, SDL_VideoDisplay *display,
-                                  SDL_Rect *rect);
-extern void HAIKU_GetDisplayModes(_THIS, SDL_VideoDisplay *display);
-extern int HAIKU_SetDisplayMode(_THIS, SDL_VideoDisplay *display,
-                                SDL_DisplayMode *mode);
+extern bool HAIKU_InitModes(SDL_VideoDevice *_this);
+extern void HAIKU_QuitModes(SDL_VideoDevice *_this);
+extern bool HAIKU_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Rect *rect);
+extern bool HAIKU_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display);
+extern bool HAIKU_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */

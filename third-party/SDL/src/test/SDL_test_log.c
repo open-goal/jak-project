@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,17 +29,9 @@
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
 #define _CRT_SECURE_NO_WARNINGS
 #endif
+#include <SDL3/SDL_test.h>
 
-#include "SDL_config.h"
-
-#include <stdarg.h> /* va_list */
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-
-#include "SDL.h"
-
-#include "SDL_test.h"
+#include <time.h> /* Needed for localtime() */
 
 /* work around compiler warning on older GCCs. */
 #if (defined(__GNUC__) && (__GNUC__ <= 2))
@@ -53,7 +45,7 @@ static size_t strftime_gcc2_workaround(char *s, size_t max, const char *fmt, con
 #define strftime strftime_gcc2_workaround
 #endif
 
-/* !
+/**
  * Converts unix timestamp to its ascii representation in localtime
  *
  * Note: Uses a static buffer internally, so the return value
@@ -64,8 +56,7 @@ static size_t strftime_gcc2_workaround(char *s, size_t max, const char *fmt, con
  *
  * \return Ascii representation of the timestamp in localtime in the format '08/23/01 14:55:02'
  */
-static const char *
-SDLTest_TimestampToString(const time_t timestamp)
+static const char *SDLTest_TimestampToString(const time_t timestamp)
 {
     time_t copy;
     static char buffer[64];
@@ -119,4 +110,102 @@ void SDLTest_LogError(SDL_PRINTF_FORMAT_STRING const char *fmt, ...)
     SDL_LogMessage(SDL_LOG_CATEGORY_TEST, SDL_LOG_PRIORITY_ERROR, "%s: %s", SDLTest_TimestampToString(time(0)), logMessage);
 }
 
-/* vi: set ts=4 sw=4 expandtab: */
+static char nibble_to_char(Uint8 nibble)
+{
+    if (nibble < 0xa) {
+        return '0' + nibble;
+    } else {
+        return 'a' + nibble - 10;
+    }
+}
+
+void SDLTest_LogEscapedString(const char *prefix, const void *buffer, size_t size)
+{
+    const Uint8 *data = buffer;
+    char logMessage[SDLTEST_MAX_LOGMESSAGE_LENGTH];
+
+    if (data) {
+        size_t i;
+        size_t pos = 0;
+        #define NEED_X_CHARS(N) \
+            if (pos + (N) > sizeof(logMessage) - 2) { \
+                break;                                \
+            }
+
+        logMessage[pos++] = '"';
+        for (i = 0; i < size; i++) {
+            Uint8 c = data[i];
+            size_t pos_start = pos;
+            switch (c) {
+            case '\0':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = '0';
+                break;
+            case '"':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = '"';
+                break;
+            case '\n':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = 'n';
+                break;
+            case '\r':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = 'r';
+                break;
+            case '\t':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = 't';
+                break;
+            case '\f':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = 'f';
+                break;
+            case '\b':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = 'b';
+                break;
+            case '\\':
+                NEED_X_CHARS(2);
+                logMessage[pos++] = '\\';
+                logMessage[pos++] = '\\';
+                break;
+            default:
+                if (SDL_isprint(c)) {
+                    NEED_X_CHARS(1);
+                    logMessage[pos++] = c;
+                } else {
+                    NEED_X_CHARS(4);
+                    logMessage[pos++] = '\\';
+                    logMessage[pos++] = 'x';
+                    logMessage[pos++] = nibble_to_char(c >> 4);
+                    logMessage[pos++] = nibble_to_char(c & 0xf);
+                }
+                break;
+            }
+            if (pos == pos_start) {
+                break;
+            }
+        }
+        if (i < size) {
+            logMessage[sizeof(logMessage) - 4] = '.';
+            logMessage[sizeof(logMessage) - 3] = '.';
+            logMessage[sizeof(logMessage) - 2] = '.';
+            logMessage[sizeof(logMessage) - 1] = '\0';
+        } else {
+            logMessage[pos++] = '"';
+            logMessage[pos] = '\0';
+        }
+    } else {
+        SDL_strlcpy(logMessage, "(nil)", sizeof(logMessage));
+    }
+
+    SDLTest_Log("%s%s", prefix, logMessage);
+}

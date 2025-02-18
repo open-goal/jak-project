@@ -4,8 +4,7 @@
 
 #include "game/settings/settings.h"
 #include "game/system/hid/input_bindings.h"
-
-#include "third-party/SDL/include/SDL.h"
+#include "game/system/hid/sdl_util.h"
 
 // A distinct input device.  Only those devices that are "active" should be read
 class InputDevice {

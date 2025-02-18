@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,16 +18,18 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if (defined(SDL_VIDEO_RENDER_D3D) || defined(SDL_VIDEO_RENDER_D3D11) || defined(SDL_VIDEO_RENDER_D3D12)) && !defined(SDL_RENDER_DISABLED)
-#include "SDL_stdinc.h"
+#if defined(SDL_VIDEO_RENDER_D3D) || \
+    defined(SDL_VIDEO_RENDER_D3D11) || \
+    defined(SDL_VIDEO_RENDER_D3D12) || \
+    defined(SDL_VIDEO_RENDER_VULKAN)
 
 #include "SDL_d3dmath.h"
 
-/* Direct3D matrix math functions */
+// Direct3D matrix math functions
 
-Float4X4 MatrixIdentity()
+Float4X4 MatrixIdentity(void)
 {
     Float4X4 m;
     SDL_zero(m);
@@ -130,6 +132,4 @@ Float4X4 MatrixRotationZ(float r)
     return m;
 }
 
-#endif /* (SDL_VIDEO_RENDER_D3D || SDL_VIDEO_RENDER_D3D11 || SDL_VIDEO_RENDER_D3D12) && !SDL_RENDER_DISABLED */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_RENDER_D3D || SDL_VIDEO_RENDER_D3D11 || SDL_VIDEO_RENDER_D3D12 || SDL_VIDEO_RENDER_VULKAN

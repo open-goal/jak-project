@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -10,110 +10,145 @@
   freely.
 */
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
+
+static void log_usage(char *progname, SDLTest_CommonState *state) {
+    static const char *options[] = { "in.wav", "out.wav", "newfreq", "newchan", NULL };
+    SDLTest_CommonLogUsage(state, progname, options);
+}
 
 int main(int argc, char **argv)
 {
     SDL_AudioSpec spec;
-    SDL_AudioCVT cvt;
+    SDL_AudioSpec cvtspec;
+    SDL_AudioStream *stream = NULL;
+    Uint8 *dst_buf = NULL;
     Uint32 len = 0;
     Uint8 *data = NULL;
-    int cvtfreq = 0;
-    int cvtchans = 0;
     int bitsize = 0;
     int blockalign = 0;
     int avgbytes = 0;
-    SDL_RWops *io = NULL;
+    SDL_IOStream *io = NULL;
+    int dst_len;
+    int ret = 0;
+    int argpos = 0;
+    int i;
+    SDLTest_CommonState *state;
+    char *file_in = NULL;
+    char *file_out = NULL;
 
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
-
-    if (argc != 5) {
-        SDL_Log("USAGE: %s in.wav out.wav newfreq newchans\n", argv[0]);
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
         return 1;
     }
 
-    cvtfreq = SDL_atoi(argv[3]);
-    cvtchans = SDL_atoi(argv[4]);
+    SDL_zero(cvtspec);
 
-    if (SDL_Init(SDL_INIT_AUDIO) == -1) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init() failed: %s\n", SDL_GetError());
-        return 2;
+    /* Parse commandline */
+    for (i = 1; i < argc;) {
+        int consumed;
+
+        consumed = SDLTest_CommonArg(state, i);
+        if (!consumed) {
+            if (argpos == 0) {
+                file_in = argv[i];
+                argpos++;
+                consumed = 1;
+            } else if (argpos == 1) {
+                file_out = argv[i];
+                argpos++;
+                consumed = 1;
+            } else if (argpos == 2) {
+                char *endp;
+                cvtspec.freq  = (int)SDL_strtoul(argv[i], &endp, 0);
+                if (endp != argv[i] && *endp == '\0') {
+                    argpos++;
+                    consumed = 1;
+                }
+            } else if (argpos == 3) {
+                char *endp;
+                cvtspec.channels = (int)SDL_strtoul(argv[i], &endp, 0);
+                if (endp != argv[i] && *endp == '\0') {
+                    argpos++;
+                    consumed = 1;
+                }
+            }
+        }
+        if (consumed <= 0) {
+            log_usage(argv[0], state);
+            ret = 1;
+            goto end;
+        }
+
+        i += consumed;
     }
 
-    if (SDL_LoadWAV(argv[1], &spec, &data, &len) == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to load %s: %s\n", argv[1], SDL_GetError());
-        SDL_Quit();
-        return 3;
+    if (argpos != 4) {
+        log_usage(argv[0], state);
+        ret = 1;
+        goto end;
     }
 
-    if (SDL_BuildAudioCVT(&cvt, spec.format, spec.channels, spec.freq,
-                          spec.format, cvtchans, cvtfreq) == -1) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to build CVT: %s\n", SDL_GetError());
-        SDL_FreeWAV(data);
-        SDL_Quit();
-        return 4;
+    if (!SDL_Init(SDL_INIT_AUDIO)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init() failed: %s", SDL_GetError());
+        ret = 2;
+        goto end;
     }
 
-    cvt.len = len;
-    cvt.buf = (Uint8 *)SDL_malloc((size_t)len * cvt.len_mult);
-    if (!cvt.buf) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory.\n");
-        SDL_FreeWAV(data);
-        SDL_Quit();
-        return 5;
+    if (!SDL_LoadWAV(file_in, &spec, &data, &len)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to load %s: %s", file_in, SDL_GetError());
+        ret = 3;
+        goto end;
     }
-    SDL_memcpy(cvt.buf, data, len);
 
-    if (SDL_ConvertAudio(&cvt) == -1) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Conversion failed: %s\n", SDL_GetError());
-        SDL_free(cvt.buf);
-        SDL_FreeWAV(data);
-        SDL_Quit();
-        return 6;
+    cvtspec.format = spec.format;
+    if (!SDL_ConvertAudioSamples(&spec, data, len, &cvtspec, &dst_buf, &dst_len)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "failed to convert samples: %s", SDL_GetError());
+        ret = 4;
+        goto end;
     }
 
     /* write out a WAV header... */
-    io = SDL_RWFromFile(argv[2], "wb");
+    io = SDL_IOFromFile(file_out, "wb");
     if (!io) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "fopen('%s') failed: %s\n", argv[2], SDL_GetError());
-        SDL_free(cvt.buf);
-        SDL_FreeWAV(data);
-        SDL_Quit();
-        return 7;
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "opening '%s' failed: %s", file_out, SDL_GetError());
+        ret = 5;
+        goto end;
     }
 
     bitsize = SDL_AUDIO_BITSIZE(spec.format);
-    blockalign = (bitsize / 8) * cvtchans;
-    avgbytes = cvtfreq * blockalign;
+    blockalign = (bitsize / 8) * cvtspec.channels;
+    avgbytes = cvtspec.freq * blockalign;
 
-    SDL_WriteLE32(io, 0x46464952); /* RIFF */
-    SDL_WriteLE32(io, cvt.len_cvt + 36);
-    SDL_WriteLE32(io, 0x45564157);                             /* WAVE */
-    SDL_WriteLE32(io, 0x20746D66);                             /* fmt */
-    SDL_WriteLE32(io, 16);                                     /* chunk size */
-    SDL_WriteLE16(io, SDL_AUDIO_ISFLOAT(spec.format) ? 3 : 1); /* uncompressed */
-    SDL_WriteLE16(io, cvtchans);                               /* channels */
-    SDL_WriteLE32(io, cvtfreq);                                /* sample rate */
-    SDL_WriteLE32(io, avgbytes);                               /* average bytes per second */
-    SDL_WriteLE16(io, blockalign);                             /* block align */
-    SDL_WriteLE16(io, bitsize);                                /* significant bits per sample */
-    SDL_WriteLE32(io, 0x61746164);                             /* data */
-    SDL_WriteLE32(io, cvt.len_cvt);                            /* size */
-    SDL_RWwrite(io, cvt.buf, cvt.len_cvt, 1);
+    SDL_WriteU32LE(io, 0x46464952); /* RIFF */
+    SDL_WriteU32LE(io, dst_len + 36);
+    SDL_WriteU32LE(io, 0x45564157);                             /* WAVE */
+    SDL_WriteU32LE(io, 0x20746D66);                             /* fmt */
+    SDL_WriteU32LE(io, 16);                                     /* chunk size */
+    SDL_WriteU16LE(io, SDL_AUDIO_ISFLOAT(spec.format) ? 3 : 1); /* uncompressed */
+    SDL_WriteU16LE(io, (Uint16)cvtspec.channels);               /* channels */
+    SDL_WriteU32LE(io, cvtspec.freq);                           /* sample rate */
+    SDL_WriteU32LE(io, avgbytes);                               /* average bytes per second */
+    SDL_WriteU16LE(io, (Uint16)blockalign);                     /* block align */
+    SDL_WriteU16LE(io, (Uint16)bitsize);                        /* significant bits per sample */
+    SDL_WriteU32LE(io, 0x61746164);                             /* data */
+    SDL_WriteU32LE(io, dst_len);                                /* size */
+    SDL_WriteIO(io, dst_buf, dst_len);
 
-    if (SDL_RWclose(io) == -1) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "fclose('%s') failed: %s\n", argv[2], SDL_GetError());
-        SDL_free(cvt.buf);
-        SDL_FreeWAV(data);
-        SDL_Quit();
-        return 8;
-    } /* if */
+    if (!SDL_CloseIO(io)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "closing '%s' failed: %s", file_out, SDL_GetError());
+        ret = 6;
+        goto end;
+    }
 
-    SDL_free(cvt.buf);
-    SDL_FreeWAV(data);
+end:
+    SDL_free(dst_buf);
+    SDL_free(data);
+    SDL_DestroyAudioStream(stream);
     SDL_Quit();
-    return 0;
-} /* main */
-
-/* end of testresample.c ... */
+    SDLTest_CommonDestroyState(state);
+    return ret;
+}

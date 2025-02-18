@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,57 +18,54 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_FILESYSTEM_HAIKU
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* System dependent filesystem routines                                */
+// System dependent filesystem routines
+
+extern "C" {
+#include "../SDL_sysfilesystem.h"
+}
 
 #include <kernel/image.h>
 #include <storage/Directory.h>
 #include <storage/Entry.h>
+#include <storage/FindDirectory.h>
 #include <storage/Path.h>
 
-#include "SDL_error.h"
-#include "SDL_stdinc.h"
-#include "SDL_filesystem.h"
 
-char *SDL_GetBasePath(void)
+char *SDL_SYS_GetBasePath(void)
 {
-    image_info info;
-    int32 cookie = 0;
+    char name[MAXPATHLEN];
 
-    while (get_next_image_info(0, &cookie, &info) == B_OK) {
-        if (info.type == B_APP_IMAGE) {
-            break;
-        }
+    if (find_path(B_APP_IMAGE_SYMBOL, B_FIND_PATH_IMAGE_PATH, NULL, name, sizeof(name)) != B_OK) {
+        return NULL;
     }
 
-    BEntry entry(info.name, true);
+    BEntry entry(name, true);
     BPath path;
-    status_t rc = entry.GetPath(&path);  /* (path) now has binary's path. */
+    status_t rc = entry.GetPath(&path);  // (path) now has binary's path.
     SDL_assert(rc == B_OK);
-    rc = path.GetParent(&path); /* chop filename, keep directory. */
+    rc = path.GetParent(&path); // chop filename, keep directory.
     SDL_assert(rc == B_OK);
     const char *str = path.Path();
     SDL_assert(str != NULL);
 
     const size_t len = SDL_strlen(str);
-    char *retval = (char *) SDL_malloc(len + 2);
-    if (!retval) {
-        SDL_OutOfMemory();
-        return NULL;
+    char *result = (char *) SDL_malloc(len + 2);
+    if (result) {
+        SDL_memcpy(result, str, len);
+        result[len] = '/';
+        result[len+1] = '\0';
     }
 
-    SDL_memcpy(retval, str, len);
-    retval[len] = '/';
-    retval[len+1] = '\0';
-    return retval;
+    return result;
 }
 
 
-char *SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_SYS_GetPrefPath(const char *org, const char *app)
 {
     // !!! FIXME: is there a better way to do this?
     const char *home = SDL_getenv("HOME");
@@ -87,21 +84,73 @@ char *SDL_GetPrefPath(const char *org, const char *app)
         ++append; // home empty or ends with separator, skip the one from append
     }
     len += SDL_strlen(append) + SDL_strlen(org) + SDL_strlen(app) + 3;
-    char *retval = (char *) SDL_malloc(len);
-    if (!retval) {
-        SDL_OutOfMemory();
-    } else {
+    char *result = (char *) SDL_malloc(len);
+    if (result) {
         if (*org) {
-            SDL_snprintf(retval, len, "%s%s%s/%s/", home, append, org, app);
+            SDL_snprintf(result, len, "%s%s%s/%s/", home, append, org, app);
         } else {
-            SDL_snprintf(retval, len, "%s%s%s/", home, append, app);
+            SDL_snprintf(result, len, "%s%s%s/", home, append, app);
         }
-        create_directory(retval, 0700);  // Haiku api: creates missing dirs
+        create_directory(result, 0700);  // Haiku api: creates missing dirs
     }
 
-    return retval;
+    return result;
 }
 
-#endif /* SDL_FILESYSTEM_HAIKU */
+char *SDL_SYS_GetUserFolder(SDL_Folder folder)
+{
+    const char *home = NULL;
+    char *result;
 
-/* vi: set ts=4 sw=4 expandtab: */
+    home = SDL_getenv("HOME");
+    if (!home) {
+        SDL_SetError("No $HOME environment variable available");
+        return NULL;
+    }
+
+    switch (folder) {
+    case SDL_FOLDER_HOME:
+        result = (char *) SDL_malloc(SDL_strlen(home) + 2);
+        if (!result) {
+            return NULL;
+        }
+
+        if (SDL_snprintf(result, SDL_strlen(home) + 2, "%s/", home) < 0) {
+            SDL_SetError("Couldn't snprintf home path for Haiku: %s", home);
+            SDL_free(result);
+            return NULL;
+        }
+
+        return result;
+
+        // TODO: Is Haiku's desktop folder always ~/Desktop/ ?
+    case SDL_FOLDER_DESKTOP:
+        result = (char *) SDL_malloc(SDL_strlen(home) + 10);
+        if (!result) {
+            return NULL;
+        }
+
+        if (SDL_snprintf(result, SDL_strlen(home) + 10, "%s/Desktop/", home) < 0) {
+            SDL_SetError("Couldn't snprintf desktop path for Haiku: %s/Desktop/", home);
+            SDL_free(result);
+            return NULL;
+        }
+
+        return result;
+
+    case SDL_FOLDER_DOCUMENTS:
+    case SDL_FOLDER_DOWNLOADS:
+    case SDL_FOLDER_MUSIC:
+    case SDL_FOLDER_PICTURES:
+    case SDL_FOLDER_PUBLICSHARE:
+    case SDL_FOLDER_SAVEDGAMES:
+    case SDL_FOLDER_SCREENSHOTS:
+    case SDL_FOLDER_TEMPLATES:
+    case SDL_FOLDER_VIDEOS:
+    default:
+        SDL_SetError("Only HOME and DESKTOP available on Haiku");
+        return NULL;
+    }
+}
+
+#endif // SDL_FILESYSTEM_HAIKU

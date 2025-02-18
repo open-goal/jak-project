@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -12,28 +12,37 @@
 
 /* Print out all the scancodes we have, just to verify them */
 
-#include <stdio.h>
-#include <ctype.h>
 #include <stdlib.h>
-#include <string.h>
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
 
 int main(int argc, char *argv[])
 {
     SDL_Scancode scancode;
+    SDLTest_CommonState *state;
 
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
+    }
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
+    /* Parse commandline */
+    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
+        return 1;
+    }
+
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
         exit(1);
     }
-    for (scancode = 0; scancode < SDL_NUM_SCANCODES; ++scancode) {
-        SDL_Log("Scancode #%d, \"%s\"\n", scancode,
+    for (scancode = 0; scancode < SDL_SCANCODE_COUNT; ++scancode) {
+        SDL_Log("Scancode #%d, \"%s\"", scancode,
                 SDL_GetScancodeName(scancode));
     }
     SDL_Quit();
+    SDLTest_CommonDestroyState(state);
     return 0;
 }

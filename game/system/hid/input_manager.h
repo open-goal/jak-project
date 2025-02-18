@@ -11,13 +11,14 @@
 
 #include "common/common_types.h"
 
+#include "devices/dualsense_effects.h"
 #include "devices/game_controller.h"
 #include "devices/keyboard.h"
 #include "devices/mouse.h"
 #include "game/settings/settings.h"
 #include "game/system/hid/input_bindings.h"
 
-#include "third-party/SDL/include/SDL.h"
+#include "third-party/SDL/include/SDL3/SDL.h"
 
 /// Central class that:
 /// - keeps track of available input devices
@@ -42,7 +43,7 @@ class InputManager {
   };
 
  public:
-  InputManager();
+  InputManager(SDL_Window* window);
   ~InputManager();
 
   // Propagate and handle the SDL event, ignored it if it's not relevant
@@ -90,6 +91,29 @@ class InputManager {
   void set_controller_for_port(const int controller_id, const int port);
   bool controller_has_led(const int port);
   bool controller_has_rumble(const int port);
+  bool controller_has_pressure_sensitivity_support(const int port);
+  bool controller_has_trigger_effect_support(const int port);
+  int controller_send_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
+  void controller_send_trigger_rumble(const int port,
+                                      const u16 left_rumble,
+                                      const u16 right_rumble,
+                                      const u32 duration_ms);
+  void controller_clear_trigger_effect(const int port,
+                                       dualsense_effects::TriggerEffectOption option);
+  void controller_send_trigger_effect_feedback(const int port,
+                                               dualsense_effects::TriggerEffectOption option,
+                                               u8 position,
+                                               u8 strength);
+  void controller_send_trigger_effect_vibrate(const int port,
+                                              dualsense_effects::TriggerEffectOption option,
+                                              u8 position,
+                                              u8 amplitude,
+                                              u8 frequency);
+  void controller_send_trigger_effect_weapon(const int port,
+                                             dualsense_effects::TriggerEffectOption option,
+                                             u8 start_position,
+                                             u8 end_position,
+                                             u8 strength);
   void enable_keyboard(const bool enabled);
   bool get_waiting_for_bind() const { return m_waiting_for_bind.has_value(); }
   void set_wait_for_bind(const InputDeviceType device_type,
@@ -102,10 +126,19 @@ class InputManager {
   bool auto_hiding_cursor() { return m_auto_hide_mouse || m_mouse.is_camera_being_controlled(); }
   void hide_cursor(const bool hide_cursor);
   bool is_keyboard_enabled() {
-    return m_settings->keyboard_enabled || m_settings->keyboard_temp_enabled;
+    return m_settings->keyboard_enabled || m_settings->_keyboard_temp_enabled;
   }
+  bool is_pressure_sensitivity_enabled() { return m_settings->enable_pressure_sensitivity; }
+  bool set_pressure_sensitivity_enabled(bool enabled) {
+    return m_settings->enable_pressure_sensitivity = enabled;
+  }
+  bool are_trigger_effects_enabled() { return m_settings->enable_trigger_effects; }
+  bool set_trigger_effects_enabled(bool enabled) {
+    return m_settings->enable_trigger_effects = enabled;
+  };
 
  private:
+  SDL_Window* m_window;
   std::mutex m_event_queue_mtx;
   std::queue<EEInputEvent> ee_event_queue;
 
@@ -147,7 +180,6 @@ class InputManager {
   void clear_inputs();
 
   void ignore_background_controller_events(const bool ignore);
-  int update_rumble(const int port, const u8 low_intensity, const u8 high_intensity);
   void set_controller_led(const int port, const u8 red, const u8 green, const u8 blue);
   void update_mouse_options(const bool enabled,
                             const bool control_camera,

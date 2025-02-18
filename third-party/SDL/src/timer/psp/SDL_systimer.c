@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,69 +18,37 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_TIMER_PSP
 
-#include "SDL_thread.h"
-#include "SDL_timer.h"
-#include "SDL_error.h"
 #include "../SDL_timer_c.h"
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
 #include <pspthreadman.h>
+#include <psprtc.h>
 
-static struct timeval start;
-static SDL_bool ticks_started = SDL_FALSE;
-
-void SDL_TicksInit(void)
-{
-    if (ticks_started) {
-        return;
-    }
-    ticks_started = SDL_TRUE;
-
-    gettimeofday(&start, NULL);
-}
-
-void SDL_TicksQuit(void)
-{
-    ticks_started = SDL_FALSE;
-}
-
-Uint64 SDL_GetTicks64(void)
-{
-    struct timeval now;
-
-    if (!ticks_started) {
-        SDL_TicksInit();
-    }
-
-    gettimeofday(&now, NULL);
-    return (Uint64)(((Sint64)(now.tv_sec - start.tv_sec) * 1000) + ((now.tv_usec - start.tv_usec) / 1000));
-}
 
 Uint64 SDL_GetPerformanceCounter(void)
 {
-    return SDL_GetTicks64();
+    Uint64 ticks;
+    sceRtcGetCurrentTick(&ticks);
+    return ticks;
 }
 
 Uint64 SDL_GetPerformanceFrequency(void)
 {
-    return 1000;
+    return sceRtcGetTickResolution();
 }
 
-void SDL_Delay(Uint32 ms)
+void SDL_SYS_DelayNS(Uint64 ns)
 {
-    const Uint32 max_delay = 0xffffffffUL / 1000;
-    if (ms > max_delay) {
-        ms = max_delay;
+    const Uint64 max_delay = 0xffffffffLL * SDL_NS_PER_US;
+    if (ns > max_delay) {
+        ns = max_delay;
     }
-    sceKernelDelayThreadCB(ms * 1000);
+    sceKernelDelayThreadCB((SceUInt)SDL_NS_TO_US(ns));
 }
 
-#endif /* SDL_TIMER_PSP */
-
-/* vim: ts=4 sw=4
- */
+#endif // SDL_TIMER_PSP

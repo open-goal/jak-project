@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_pipewire_h_
 #define SDL_pipewire_h_
@@ -27,21 +27,17 @@
 #include "../SDL_sysaudio.h"
 #include <pipewire/pipewire.h>
 
-/* Hidden "this" pointer for the audio functions */
-#define _THIS SDL_AudioDevice *this
-
 struct SDL_PrivateAudioData
 {
     struct pw_thread_loop *loop;
     struct pw_stream *stream;
     struct pw_context *context;
-    struct SDL_DataQueue *buffer;
 
-    size_t input_buffer_packet_size;
-    Sint32 stride; /* Bytes-per-frame */
+    Sint32 stride; // Bytes-per-frame
     int stream_init_status;
+
+    // Set in GetDeviceBuf, filled in AudioThreadIterate, queued in PlayDevice
+    struct pw_buffer *pw_buf;
 };
 
-#endif /* SDL_pipewire_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_pipewire_h_

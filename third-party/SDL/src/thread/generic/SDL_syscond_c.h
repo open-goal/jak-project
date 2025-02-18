@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,25 +18,19 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
-
-#include "SDL_thread.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_syscond_generic_h_
 #define SDL_syscond_generic_h_
 
 #ifdef SDL_THREAD_GENERIC_COND_SUFFIX
 
-SDL_cond *SDL_CreateCond_generic(void);
-void SDL_DestroyCond_generic(SDL_cond *cond);
-int SDL_CondSignal_generic(SDL_cond *cond);
-int SDL_CondBroadcast_generic(SDL_cond *cond);
-int SDL_CondWait_generic(SDL_cond *cond, SDL_mutex *mutex);
-int SDL_CondWaitTimeout_generic(SDL_cond *cond,
-                                SDL_mutex *mutex, Uint32 ms);
+SDL_Condition *SDL_CreateCondition_generic(void);
+void SDL_DestroyCondition_generic(SDL_Condition *cond);
+void SDL_SignalCondition_generic(SDL_Condition *cond);
+void SDL_BroadcastCondition_generic(SDL_Condition *cond);
+bool SDL_WaitConditionTimeoutNS_generic(SDL_Condition *cond, SDL_Mutex *mutex, Sint64 timeoutNS);
 
-#endif /* SDL_THREAD_GENERIC_COND_SUFFIX */
+#endif // SDL_THREAD_GENERIC_COND_SUFFIX
 
-#endif /* SDL_syscond_generic_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_syscond_generic_h_

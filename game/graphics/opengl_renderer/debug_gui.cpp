@@ -129,6 +129,7 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Settings")) {
+      // ImGUI stuff
       if (ImGui::TreeNode("ImGui Styling (restart required for these)")) {
         ImGui::InputInt("Font Size", &Gfx::g_debug_settings.imgui_font_size);
         ImGui::Checkbox("Monospaced Font", &Gfx::g_debug_settings.monospaced_font);
@@ -142,6 +143,36 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         ImGui::TreePop();
       }
       ImGui::Checkbox("Ignore Hide ImGui Bind", &Gfx::g_debug_settings.ignore_hide_imgui);
+      // Controller Stuff
+      ImGui::Separator();
+      ImGui::Checkbox("Treat Controller Port 0 as Port 1",
+                      &Gfx::g_debug_settings.treat_pad0_as_pad1);
+      auto is_keyboard_enabled =
+          Display::GetMainDisplay()->get_input_manager()->is_keyboard_enabled();
+      if (ImGui::Checkbox("Enable Keyboard (forced on if no controllers detected)",
+                          &is_keyboard_enabled)) {
+        Display::GetMainDisplay()->get_input_manager()->enable_keyboard(is_keyboard_enabled);
+      }
+      for (int port = 0; port < 1; port++) {
+        const auto label = fmt::format("Selected Controller (Port {})", port);
+        if (ImGui::TreeNode(label.c_str())) {
+          const auto num_controllers =
+              Display::GetMainDisplay()->get_input_manager()->get_num_controllers();
+          for (int i = 0; i < num_controllers; i++) {
+            const auto controller_name =
+                Display::GetMainDisplay()->get_input_manager()->get_controller_name(i);
+            auto is_controller_active =
+                Display::GetMainDisplay()->get_input_manager()->get_controller_index(port) == i;
+            if (ImGui::RadioButton(controller_name.c_str(), is_controller_active)) {
+              Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(i, port);
+            }
+          }
+          ImGui::TreePop();
+        }
+      }
+
+      // FPS Stuff
+      ImGui::Separator();
       if (ImGui::TreeNode("Frame Rate")) {
         ImGui::Checkbox("Framelimiter", &Gfx::g_global_settings.framelimiter);
         ImGui::InputFloat("Target FPS", &target_fps_input);
@@ -152,13 +183,6 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         ImGui::Checkbox("Accurate Lag Mode", &Gfx::g_global_settings.experimental_accurate_lag);
         ImGui::Checkbox("Sleep in Frame Limiter", &Gfx::g_global_settings.sleep_in_frame_limiter);
         ImGui::TreePop();
-      }
-      ImGui::Checkbox("Treat Pad0 as Pad1", &Gfx::g_debug_settings.treat_pad0_as_pad1);
-      auto is_keyboard_enabled =
-          Display::GetMainDisplay()->get_input_manager()->is_keyboard_enabled();
-      if (ImGui::Checkbox("Enable Keyboard (forced on if no controllers detected)",
-                          &is_keyboard_enabled)) {
-        Display::GetMainDisplay()->get_input_manager()->enable_keyboard(is_keyboard_enabled);
       }
       ImGui::EndMenu();
     }

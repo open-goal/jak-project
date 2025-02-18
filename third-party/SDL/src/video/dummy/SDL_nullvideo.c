@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_DUMMY
 
@@ -37,46 +37,46 @@
  *  SDL video driver.  Renamed to "DUMMY" by Sam Lantinga.
  */
 
-#include "SDL_video.h"
-#include "SDL_mouse.h"
 #include "../SDL_sysvideo.h"
 #include "../SDL_pixels_c.h"
 #include "../../events/SDL_events_c.h"
+#ifdef SDL_INPUT_LINUXEV
+#include "../../core/linux/SDL_evdev.h"
+#endif
 
 #include "SDL_nullvideo.h"
 #include "SDL_nullevents_c.h"
 #include "SDL_nullframebuffer_c.h"
-#include "SDL_hints.h"
 
 #define DUMMYVID_DRIVER_NAME       "dummy"
 #define DUMMYVID_DRIVER_EVDEV_NAME "evdev"
 
-/* Initialization/Query functions */
-static int DUMMY_VideoInit(_THIS);
-static void DUMMY_VideoQuit(_THIS);
+// Initialization/Query functions
+static bool DUMMY_VideoInit(SDL_VideoDevice *_this);
+static void DUMMY_VideoQuit(SDL_VideoDevice *_this);
 
-#ifdef SDL_INPUT_LINUXEV
-static int evdev = 0;
-static void DUMMY_EVDEV_Poll(_THIS);
-#endif
-
-/* DUMMY driver bootstrap functions */
-
-static int DUMMY_Available(void)
+static bool DUMMY_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    const char *envr = SDL_GetHint(SDL_HINT_VIDEODRIVER);
-    if (envr) {
-        if (SDL_strcmp(envr, DUMMYVID_DRIVER_NAME) == 0) {
-            return 1;
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MOVED, window->pending.x, window->pending.y);
+    return true;
+}
+
+static void DUMMY_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
+{
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, window->pending.w, window->pending.h);
+}
+
+// DUMMY driver bootstrap functions
+
+static bool DUMMY_Available(const char *enable_hint)
+{
+    const char *hint = SDL_GetHint(SDL_HINT_VIDEO_DRIVER);
+    if (hint) {
+        if (SDL_strcmp(hint, enable_hint) == 0) {
+            return true;
         }
-#ifdef SDL_INPUT_LINUXEV
-        if (SDL_strcmp(envr, DUMMYVID_DRIVER_EVDEV_NAME) == 0) {
-            evdev = 1;
-            return 1;
-        }
-#endif
     }
-    return 0;
+    return false;
 }
 
 static void DUMMY_DeleteDevice(SDL_VideoDevice *device)
@@ -84,94 +84,97 @@ static void DUMMY_DeleteDevice(SDL_VideoDevice *device)
     SDL_free(device);
 }
 
-static SDL_VideoDevice *DUMMY_CreateDevice(void)
+static SDL_VideoDevice *DUMMY_InternalCreateDevice(const char *enable_hint)
 {
     SDL_VideoDevice *device;
 
-    if (!DUMMY_Available()) {
-        return 0;
+    if (!DUMMY_Available(enable_hint)) {
+        return NULL;
     }
 
-    /* Initialize all variables that we clean on shutdown */
+    // Initialize all variables that we clean on shutdown
     device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
-        SDL_OutOfMemory();
-        return 0;
+        return NULL;
     }
-    device->is_dummy = SDL_TRUE;
+    device->is_dummy = true;
 
-    /* Set the function pointers */
+    // Set the function pointers
     device->VideoInit = DUMMY_VideoInit;
     device->VideoQuit = DUMMY_VideoQuit;
     device->PumpEvents = DUMMY_PumpEvents;
-#ifdef SDL_INPUT_LINUXEV
-    if (evdev) {
-        device->PumpEvents = DUMMY_EVDEV_Poll;
-    }
-#endif
+    device->SetWindowSize = DUMMY_SetWindowSize;
+    device->SetWindowPosition = DUMMY_SetWindowPosition;
     device->CreateWindowFramebuffer = SDL_DUMMY_CreateWindowFramebuffer;
     device->UpdateWindowFramebuffer = SDL_DUMMY_UpdateWindowFramebuffer;
     device->DestroyWindowFramebuffer = SDL_DUMMY_DestroyWindowFramebuffer;
-
     device->free = DUMMY_DeleteDevice;
 
     return device;
 }
 
+static SDL_VideoDevice *DUMMY_CreateDevice(void)
+{
+    return DUMMY_InternalCreateDevice(DUMMYVID_DRIVER_NAME);
+}
+
 VideoBootStrap DUMMY_bootstrap = {
     DUMMYVID_DRIVER_NAME, "SDL dummy video driver",
     DUMMY_CreateDevice,
-    NULL /* no ShowMessageBox implementation */
+    NULL // no ShowMessageBox implementation
 };
 
 #ifdef SDL_INPUT_LINUXEV
-VideoBootStrap DUMMY_evdev_bootstrap = {
-    DUMMYVID_DRIVER_EVDEV_NAME, "SDL dummy video driver with evdev",
-    DUMMY_CreateDevice,
-    NULL /* no ShowMessageBox implementation */
-};
-void SDL_EVDEV_Init(void);
-void SDL_EVDEV_Poll();
-void SDL_EVDEV_Quit(void);
-static void DUMMY_EVDEV_Poll(_THIS)
+
+static void DUMMY_EVDEV_Poll(SDL_VideoDevice *_this)
 {
     (void)_this;
     SDL_EVDEV_Poll();
 }
-#endif
 
-int DUMMY_VideoInit(_THIS)
+static SDL_VideoDevice *DUMMY_EVDEV_CreateDevice(void)
+{
+    SDL_VideoDevice *device = DUMMY_InternalCreateDevice(DUMMYVID_DRIVER_EVDEV_NAME);
+    if (device) {
+        device->PumpEvents = DUMMY_EVDEV_Poll;
+    }
+    return device;
+}
+
+VideoBootStrap DUMMY_evdev_bootstrap = {
+    DUMMYVID_DRIVER_EVDEV_NAME, "SDL dummy video driver with evdev",
+    DUMMY_EVDEV_CreateDevice,
+    NULL // no ShowMessageBox implementation
+};
+
+#endif // SDL_INPUT_LINUXEV
+
+bool DUMMY_VideoInit(SDL_VideoDevice *_this)
 {
     SDL_DisplayMode mode;
 
-    /* Use a fake 32-bpp desktop mode */
+    // Use a fake 32-bpp desktop mode
     SDL_zero(mode);
-    mode.format = SDL_PIXELFORMAT_RGB888;
+    mode.format = SDL_PIXELFORMAT_XRGB8888;
     mode.w = 1024;
     mode.h = 768;
-    mode.refresh_rate = 60;
-    mode.driverdata = NULL;
-    if (SDL_AddBasicVideoDisplay(&mode) < 0) {
-        return -1;
+    if (SDL_AddBasicVideoDisplay(&mode) == 0) {
+        return false;
     }
-
-    SDL_AddDisplayMode(&_this->displays[0], &mode);
 
 #ifdef SDL_INPUT_LINUXEV
     SDL_EVDEV_Init();
 #endif
 
-    /* We're done! */
-    return 0;
+    // We're done!
+    return true;
 }
 
-void DUMMY_VideoQuit(_THIS)
+void DUMMY_VideoQuit(SDL_VideoDevice *_this)
 {
 #ifdef SDL_INPUT_LINUXEV
     SDL_EVDEV_Quit();
 #endif
 }
 
-#endif /* SDL_VIDEO_DRIVER_DUMMY */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_DUMMY
