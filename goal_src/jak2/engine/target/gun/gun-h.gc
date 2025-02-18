@@ -23,6 +23,25 @@
   (gutflags-4)
   )
 
+(defun gun-trigger-buttons-swap! ((obj cpad-info))
+  ;; og:preserve-this swapping r1 and r2 when gun is out
+  (when (-> *pc-settings* controller-swap-r1-r2?)
+    ;; r1 = 11th bit and 9st index for pressure
+    ;; r2 = 9th bit and 11nd index for pressure
+    (let ((r1-pressed? (logtest? (-> obj button0) (pad-buttons r1)))
+          (r1-pressure (-> obj abutton (abutton-idx r1)))
+          (r2-pressed? (logtest? (-> obj button0) (pad-buttons r2)))
+          (r2-pressure (-> obj abutton (abutton-idx r2))))
+      (when r1-pressed?
+        (logclear! (-> obj button0) (pad-buttons r1))
+        (logior! (-> obj button0) (pad-buttons r2)))
+      (when r2-pressed?
+        (logclear! (-> obj button0) (pad-buttons r2))
+        (logior! (-> obj button0) (pad-buttons r1)))
+      (set! (-> obj abutton (abutton-idx r1)) r2-pressure)
+      (set! (-> obj abutton (abutton-idx r2)) r1-pressure)))
+  (none))
+
 ;; DECOMP BEGINS
 
 (deftype gun (process-drawable)
@@ -165,25 +184,6 @@
 (defun using-gun? ((arg0 target))
   (nonzero? (-> arg0 gun gun-type))
   )
-
-(defmethod gun-trigger-swap! ((this cpad-info))
-  ;; og:preserve-this swapping r1 and r2 when gun is out
-  (when (-> *pc-settings* controller-swap-r1-r2?)
-    ;; r1 = 11th bit and 9st index for pressure
-    ;; r2 = 9th bit and 11nd index for pressure
-    (let ((r1-pressed? (logtest? (-> this button0) (pad-buttons r1)))
-          (r1-pressure (-> this abutton (abutton-idx r1)))
-          (r2-pressed? (logtest? (-> this button0) (pad-buttons r2)))
-          (r2-pressure (-> this abutton (abutton-idx r2))))
-      (when r1-pressed?
-        (logclear! (-> this button0) (pad-buttons r1))
-        (logior! (-> this button0) (pad-buttons r2)))
-      (when r2-pressed?
-        (logclear! (-> this button0) (pad-buttons r2))
-        (logior! (-> this button0) (pad-buttons r1)))
-      (set! (-> this abutton (abutton-idx r1)) r2-pressure)
-      (set! (-> this abutton (abutton-idx r2)) r1-pressure)))
-  0)
 
 (defun enabled-gun? ((arg0 target))
   (nonzero? (-> arg0 gun using-gun-type))
