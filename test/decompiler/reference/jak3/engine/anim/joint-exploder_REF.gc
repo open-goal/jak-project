@@ -162,6 +162,7 @@
 
 ;; definition of type joint-exploder-list
 (deftype joint-exploder-list (structure)
+  "Linked list of joint-exploder-joint."
   ((head         int32)
    (pre-moved?   symbol)
    (bbox-valid?  symbol)
@@ -211,6 +212,8 @@
 
 ;; definition of type joint-exploder
 (deftype joint-exploder (process-drawable)
+  "The joint-exploder animates an object exploding into pieces.
+For example, geyser rock dummies, or the jak 1 zoomer."
   ((parent                      (pointer process-drawable) :override)
    (die-if-below-y              float)
    (die-if-beyond-xz-dist-sqrd  float)
@@ -281,6 +284,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun joint-exploder-joint-callback ((arg0 draw-control) (arg1 cspace-array) (arg2 joint-control))
+  "Postbind callback to set bones to the result of the joint-exploder."
   (let ((s4-0 (the-as joint-exploder (-> arg0 process))))
     (let ((s3-0 (-> s4-0 joints)))
       (countdown (s2-0 (-> s3-0 num-joints))
@@ -314,6 +318,7 @@
 ;; definition for method 24 of type joint-exploder
 ;; INFO: Used lq/sq
 (defmethod remove-from-list-and-reset ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+  "Remove a joint from the list and clear its transform"
   (let ((v0-0 (remove-joint-from-list this arg0 arg1)))
     (let* ((v1-1 (-> this joints))
            (v1-2 (-> v1-1 joint arg1))
@@ -329,6 +334,7 @@
 
 ;; definition for method 27 of type joint-exploder
 (defmethod remove-joint-from-list ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+  "Remove a joint from the linked list and invalidate the bbox."
   (let* ((v1-0 (-> this joints))
          (a2-1 (-> v1-0 joint arg1))
          (a0-4 (-> a2-1 prev))
@@ -361,6 +367,7 @@
 
 ;; definition for method 20 of type joint-exploder
 (defmethod add-joint-to-list ((this joint-exploder) (arg0 joint-exploder-list) (arg1 int))
+  "Add a joint to the given linked list of joints."
   (let* ((v1-0 (-> this joints))
          (a3-0 (-> v1-0 joint arg1))
          (a0-4 (-> arg0 head))
@@ -378,6 +385,7 @@
 ;; definition for method 21 of type joint-exploder
 ;; INFO: Used lq/sq
 (defmethod update-bbox-for-joint ((this joint-exploder) (arg0 joint-exploder-list) (arg1 joint-exploder-joint))
+  "Update the bounding box to include the joint"
   (let ((a1-1 (-> arg1 mat trans)))
     (cond
       ((-> arg0 bbox-valid?)
@@ -607,62 +615,47 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod integrate-and-kill ((this joint-exploder) (arg0 joint-exploder-list))
-  (local-vars (v1-8 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (set! (-> arg0 bbox-valid?) #f)
-    (set! (-> arg0 pre-moved?) #t)
-    (let ((s4-0 (-> this joints))
-          (f30-0 (* (-> this tuning gravity) (seconds-per-frame)))
-          (s3-0 (-> arg0 head))
-          )
-      (while (>= s3-0 0)
-        (let* ((s2-0 (-> s4-0 joint s3-0))
-               (s1-0 (-> s2-0 mat trans))
-               )
-          (vector-copy! (-> s2-0 prev-pos) s1-0)
-          (+! (-> s2-0 transv y) f30-0)
-          (when (< 0.0 (-> this tuning friction))
-            (.lvf vf1 (&-> (-> s2-0 transv) quad))
-            (.add.w.vf.x vf2 vf0 vf0)
-            (.mul.vf vf1 vf1 vf1)
-            (.mul.x.vf.x acc vf2 vf1)
-            (.add.mul.y.vf.x acc vf2 vf1 acc)
-            (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-            (.mov v1-8 vf1)
-            (let* ((f0-4 v1-8)
-                   (f1-5 (* 0.00001 (seconds-per-frame) (-> this tuning friction) f0-4))
-                   (f0-6 (- (sqrtf f0-4) f1-5))
-                   )
-              (if (< f0-6 0.0)
-                  (set! f0-6 0.0)
-                  )
-              (vector-normalize! (-> s2-0 transv) f0-6)
-              )
-            )
-          (vector-v+! s1-0 s1-0 (-> s2-0 transv))
-          (matrix*! (-> s2-0 rmat) (-> s2-0 rmat) (-> s2-0 update-rmat))
-          (cond
-            ((or (< (-> s1-0 y) (-> this die-if-below-y))
-                 (< (-> this die-if-beyond-xz-dist-sqrd) (vector-vector-xz-distance s1-0 (-> this root trans)))
-                 )
-             (set! s3-0 (remove-from-list-and-reset this arg0 s3-0))
+  (set! (-> arg0 bbox-valid?) #f)
+  (set! (-> arg0 pre-moved?) #t)
+  (let ((s4-0 (-> this joints))
+        (f30-0 (* (-> this tuning gravity) (seconds-per-frame)))
+        (s3-0 (-> arg0 head))
+        )
+    (while (>= s3-0 0)
+      (let* ((s2-0 (-> s4-0 joint s3-0))
+             (s1-0 (-> s2-0 mat trans))
              )
-            (else
-              (update-bbox-for-joint this arg0 s2-0)
-              (set! s3-0 (-> s2-0 next))
-              )
+        (vector-copy! (-> s2-0 prev-pos) s1-0)
+        (+! (-> s2-0 transv y) f30-0)
+        (when (< 0.0 (-> this tuning friction))
+          (let* ((f0-4 (vector-length-squared (-> s2-0 transv)))
+                 (f1-5 (* 0.00001 (seconds-per-frame) (-> this tuning friction) f0-4))
+                 (f0-6 (- (sqrtf f0-4) f1-5))
+                 )
+            (if (< f0-6 0.0)
+                (set! f0-6 0.0)
+                )
+            (vector-normalize! (-> s2-0 transv) f0-6)
+            )
+          )
+        (vector-v+! s1-0 s1-0 (-> s2-0 transv))
+        (matrix*! (-> s2-0 rmat) (-> s2-0 rmat) (-> s2-0 update-rmat))
+        (cond
+          ((or (< (-> s1-0 y) (-> this die-if-below-y))
+               (< (-> this die-if-beyond-xz-dist-sqrd) (vector-vector-xz-distance s1-0 (-> this root trans)))
+               )
+           (set! s3-0 (remove-from-list-and-reset this arg0 s3-0))
+           )
+          (else
+            (update-bbox-for-joint this arg0 s2-0)
+            (set! s3-0 (-> s2-0 next))
             )
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 22 of type joint-exploder

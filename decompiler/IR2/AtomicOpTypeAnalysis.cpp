@@ -247,6 +247,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::VECTOR_3_DOT:
     case Kind::VECTOR_4_DOT:
     case Kind::VECTOR_LENGTH:
+    case Kind::VECTOR_LENGTH_SQUARED:
       return TP_Type::make_from_ts("float");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +

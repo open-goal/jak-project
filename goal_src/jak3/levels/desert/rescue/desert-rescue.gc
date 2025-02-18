@@ -1510,7 +1510,7 @@
           (else
             (vector-cross! s4-0 s5-0 s3-1)
             (let ((f0-6 (fmin (acos f0-4) (* 5461.3335 (seconds-per-frame)))))
-              (vector-rotate-around-axis! s5-0 (the-as quaternion s5-0) f0-6 s4-0)
+              (vector-rotate-around-axis! s5-0 s5-0 f0-6 s4-0)
               )
             )
           )
@@ -1975,30 +1975,15 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-1 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (if (< (vector-vector-xz-distance (target-pos 0) *home-pos*) 61440.0)
         (go-virtual finish-task)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-2 #t)
-                     (s5-0 (handle->process (-> self jak-vehicle)))
-                     (v1-17 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                           (the-as process-focusable s5-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-1 v1-17 gp-2)
-                )
-              gp-1
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2112,17 +2097,9 @@
   :enter (behavior ()
     (set-setting! 'music 'desres3 0.0 0)
     (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-      (let ((s5-0 (-> gp-0 pos))
-            (s4-0 (handle->process (-> self jak-vehicle)))
-            )
-        (vector-copy! s5-0 (get-trans
-                             (the-as process-focusable (if (type? s4-0 process-focusable)
-                                                           (the-as process-focusable s4-0)
-                                                           )
-                                     )
-                             0
-                             )
-                      )
+      (vector-copy!
+        (-> gp-0 pos)
+        (get-trans (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable)) 0)
         )
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags))
@@ -2211,7 +2188,6 @@
     (remove-setting! 'pilot)
     )
   :trans (behavior ()
-    (local-vars (gp-0 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (set! (-> *game-info* timer)
@@ -2221,23 +2197,9 @@
         (send-event self 'fail)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-1 #t)
-                     (s5-0 (handle->process (-> self jak-vehicle)))
-                     (v1-21 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                           (the-as process-focusable s5-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-0 v1-21 gp-1)
-                )
-              gp-0
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2304,7 +2266,6 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-3 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (let ((gp-0 (the-as wland-passenger (handle->process (-> self current-passenger)))))
@@ -2319,12 +2280,7 @@
         )
       )
     (when (time-elapsed? (-> self state-time) (seconds 1))
-      (let* ((gp-1 (handle->process (-> self current-passenger)))
-             (a0-16 (if (type? gp-1 process-focusable)
-                        (the-as process-focusable gp-1)
-                        )
-                    )
-             )
+      (let ((a0-16 (as-type (handle->process (-> self current-passenger)) process-focusable)))
         (if (or (not a0-16) (focus-test? a0-16 disable dead inactive))
             (send-event self 'fail-delay)
             )
@@ -2345,23 +2301,9 @@
         (send-event self 'fail)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-4 #t)
-                     (s5-1 (handle->process (-> self jak-vehicle)))
-                     (v1-70 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-1 process-focusable)
-                                                                                           (the-as process-focusable s5-1)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-3 v1-70 gp-4)
-                )
-              gp-3
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2401,7 +2343,6 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-0 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (set! (-> *game-info* timer)
@@ -2411,23 +2352,9 @@
         (send-event self 'fail)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-1 #t)
-                     (s5-0 (handle->process (-> self jak-vehicle)))
-                     (v1-21 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                           (the-as process-focusable s5-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-0 v1-21 gp-1)
-                )
-              gp-0
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2467,11 +2394,15 @@
   :code sleep-code
   )
 
-; (defmethod task-manager-method-25 ((this task-manager-desert-rescue))
-;   (send-event (handle->process (-> this current-passenger)) 'die-fast)
-;   (call-parent-method this)
-;   (none)
-;   )
+;; og:preserve-this
+;; duplicate method.
+#|
+(defmethod task-manager-method-25 ((this task-manager-desert-rescue))
+  (send-event (handle->process (-> this current-passenger)) 'die-fast)
+  (call-parent-method this)
+  (none)
+  )
+|#
 
 (defstate finish-task (task-manager-desert-rescue)
   :virtual #t

@@ -2429,7 +2429,6 @@
   )
 
 (defmethod neo-sat-method-210 ((this neo-sat))
-  (local-vars (s5-1 object))
   (let ((f0-0 143360.0))
     (if (< (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
         (go (method-of-object this ground-burst))
@@ -2476,39 +2475,23 @@
     (-> this disc-joint rotation)
     (* (-> this spin-speed) (seconds-per-frame))
     )
-  (let ((s5-0 (handle->process (-> this focus handle))))
-    (cond
-      ((and (if (type? s5-0 process-focusable)
-                s5-0
-                )
-            (begin
-              (let* ((s5-2 #t)
-                     (s4-0 (handle->process (-> this focus handle)))
-                     (v1-33 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s4-0 process-focusable)
-                                                                                           (the-as process-focusable s4-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status disable dead ignore grabbed)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-nonzero s5-1 v1-33 s5-2)
-                )
-              s5-1
-              )
-            )
-       (if (or (time-elapsed? (-> this new-spin-time) (seconds 3))
-               (and (< (-> this spin-speed) 910.2222) (< (fabs (- (-> this spin-current) (-> this spin-dest))) 546.13336))
+  (cond
+    ((and (as-type (handle->process (-> this focus handle)) process-focusable)
+          (not (logtest? (-> (the-as process-focusable (as-type (handle->process (-> this focus handle)) process-focusable))
+                             focus-status
+                             )
+                         (focus-status disable dead ignore grabbed)
+                         )
                )
-           (neo-sat-method-209 this)
-           )
-       )
-      (else
-        (set! (-> this spin-dest) (-> this spin-current))
-        )
+          )
+     (if (or (time-elapsed? (-> this new-spin-time) (seconds 3))
+             (and (< (-> this spin-speed) 910.2222) (< (fabs (- (-> this spin-current) (-> this spin-dest))) 546.13336))
+             )
+         (neo-sat-method-209 this)
+         )
+     )
+    (else
+      (set! (-> this spin-dest) (-> this spin-current))
       )
     )
   (vector-rotate-around-y! (new 'stack-no-clear 'vector) *z-vector* (-> this spin-dest))
@@ -2759,12 +2742,7 @@
     (let ((f28-2 (vector-vector-xz-distance (-> this root trans) (-> this focus-pos)))
           (s4-2 (the-as object #f))
           )
-      (let* ((s3-4 (handle->process (-> this focus handle)))
-             (v1-98 (if (type? s3-4 process-focusable)
-                        (the-as process-focusable s3-4)
-                        )
-                    )
-             )
+      (let ((v1-98 (as-type (handle->process (-> this focus handle)) process-focusable)))
         (when v1-98
           (let ((v1-99 (-> v1-98 root)))
             (set! s4-2 (and v1-99 (logtest? (-> (the-as collide-shape-moving v1-99) status) (collide-status on-surface))))
@@ -3512,29 +3490,18 @@
               )
           )
         (cond
-          ((and (-> s3-0 best-other-tri collide-ptr) (let ((s2-0 (-> s3-0 best-other-tri collide-ptr)))
-                                                       (if (type? s2-0 collide-shape-prim-sphere)
-                                                           s2-0
-                                                           )
-                                                       )
+          ((and (-> s3-0 best-other-tri collide-ptr)
+                (as-type (-> s3-0 best-other-tri collide-ptr) collide-shape-prim-sphere)
                 )
-           (let* ((s2-1 (-> s3-0 best-other-tri collide-ptr))
-                  (s2-2 (-> (the-as collide-shape-prim-sphere (if (type? s2-1 collide-shape-prim-sphere)
-                                                                  (the-as collide-shape-prim-sphere s2-1)
-                                                                  )
-                                    )
-                            cshape
-                            process
-                            )
-                        )
-                  (s1-0 (the-as object #f))
-                  )
-             (let* ((s0-0 s2-2)
-                    (v1-29 (if (type? s0-0 process-focusable)
-                               s0-0
-                               )
-                           )
-                    )
+           (let ((s2-2
+                   (-> (the-as collide-shape-prim-sphere (as-type (-> s3-0 best-other-tri collide-ptr) collide-shape-prim-sphere))
+                       cshape
+                       process
+                       )
+                   )
+                 (s1-0 (the-as object #f))
+                 )
+             (let ((v1-29 (as-type s2-2 process-focusable)))
                (when v1-29
                  (let ((v1-30 (-> v1-29 root)))
                    (set! s1-0 (and v1-30 (logtest? (-> (the-as collide-shape-moving v1-30) status) (collide-status on-surface))))
@@ -3606,22 +3573,16 @@
             )
         )
       (cond
-        ((and (-> s3-1 best-other-tri collide-ptr) (let ((s2-2 (-> s3-1 best-other-tri collide-ptr)))
-                                                     (if (type? s2-2 collide-shape-prim-sphere)
-                                                         s2-2
-                                                         )
-                                                     )
+        ((and (-> s3-1 best-other-tri collide-ptr)
+              (as-type (-> s3-1 best-other-tri collide-ptr) collide-shape-prim-sphere)
               )
-         (let* ((s2-3 (-> s3-1 best-other-tri collide-ptr))
-                (s2-4 (-> (the-as collide-shape-prim-sphere (if (type? s2-3 collide-shape-prim-sphere)
-                                                                (the-as collide-shape-prim-sphere s2-3)
-                                                                )
-                                  )
-                          cshape
-                          process
-                          )
-                      )
-                )
+         (let ((s2-4
+                 (-> (the-as collide-shape-prim-sphere (as-type (-> s3-1 best-other-tri collide-ptr) collide-shape-prim-sphere))
+                     cshape
+                     process
+                     )
+                 )
+               )
            (send-event
              s2-4
              'attack
@@ -3911,12 +3872,7 @@
 
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod neo-sat-shield-method-25 ((this neo-sat-shield))
-  (let* ((s5-0 (ppointer->process (-> this parent)))
-         (a0-2 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((a0-2 (as-type (ppointer->process (-> this parent)) process-focusable)))
     (vector-copy! (-> this root trans) (-> (the-as process-focusable a0-2) root trans))
     )
   (quaternion-identity! (-> this root quat))

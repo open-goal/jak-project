@@ -701,12 +701,7 @@
           (let ((gp-0 (new 'stack-no-clear 'vector))
                 (f30-0 32768.0)
                 )
-            (let* ((s4-0 (ppointer->process (-> self parent)))
-                   (v1-5 (if (type? s4-0 widow)
-                             (the-as widow s4-0)
-                             )
-                         )
-                   )
+            (let ((v1-5 (as-type (ppointer->process (-> self parent)) widow)))
               (vector-! gp-0 (-> self root trans) (-> (the-as widow arg0) root trans))
               (set! (-> gp-0 y) 0.0)
               (cond
@@ -780,12 +775,7 @@
 (defbehavior widow-bomb-back-handler widow-bomb ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('impact-control)
-     (let* ((s4-0 (ppointer->process (-> self parent)))
-            (s5-0 (if (type? s4-0 widow)
-                      (the-as widow s4-0)
-                      )
-                  )
-            )
+     (let ((s5-0 (as-type (ppointer->process (-> self parent)) widow)))
        (when s5-0
          (let ((a1-3 (vector<-cspace! (new 'stack-no-clear 'vector) (-> s5-0 node-list data 3))))
            (when (and (< (vector-vector-distance (-> self root trans) a1-3) 49152.0) (not (-> s5-0 flying)))
@@ -795,13 +785,9 @@
            )
          )
        )
-     (let ((s5-1 arg0))
-       (when (if (type? s5-1 widow)
-                 s5-1
-                 )
-         (send-event arg0 'bomb-hit (-> self root trans) 1)
-         (go-virtual explode)
-         )
+     (when (the-as process (as-type arg0 widow))
+       (send-event arg0 'bomb-hit (-> self root trans) 1)
+       (go-virtual explode)
        )
      )
     (('fizzle)
@@ -1622,32 +1608,28 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack)
-       (let ((gp-0 proc))
-         (when (if (type? gp-0 widow-shot)
-                   gp-0
-                   )
-           (+! (-> self segs-shot) 1)
-           (damage-pillar)
-           (cond
-             ((>= (-> self segs-shot) 16)
-              (go-virtual break-it)
+       (when (the-as process (as-type proc widow-shot))
+         (+! (-> self segs-shot) 1)
+         (damage-pillar)
+         (cond
+           ((>= (-> self segs-shot) 16)
+            (go-virtual break-it)
+            )
+           ((time-elapsed? (-> self last-pillar-hit) (seconds 2))
+            (process-spawn
+              part-tracker
+              :init part-tracker-init
+              (-> *part-group-id-table* 718)
+              0
+              #f
+              #f
+              self
+              0
+              :to *entity-pool*
               )
-             ((time-elapsed? (-> self last-pillar-hit) (seconds 2))
-              (process-spawn
-                part-tracker
-                :init part-tracker-init
-                (-> *part-group-id-table* 718)
-                0
-                #f
-                #f
-                self
-                0
-                :to *entity-pool*
-                )
-              (set-time! (-> self last-pillar-hit))
-              (sound-play "pillar-hit" :position (-> self root trans))
-              )
-             )
+            (set-time! (-> self last-pillar-hit))
+            (sound-play "pillar-hit" :position (-> self root trans))
+            )
            )
          )
        )
@@ -1868,37 +1850,33 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack)
-       (let ((gp-0 proc))
-         (when (if (type? gp-0 widow-shot)
-                   (the-as widow-shot gp-0)
-                   )
-           (let ((v1-2 (the-as object (-> block param 1)))
-                 (gp-1 (new 'stack-no-clear 'vector))
-                 )
-             (cond
-               ((logtest? (attack-mask attacker-velocity) (-> (the-as attack-info v1-2) mask))
-                (set! (-> gp-1 quad) (-> (the-as attack-info v1-2) attacker-velocity quad))
-                )
-               (else
-                 (let* ((a3-1 (the-as object (-> block param 0)))
-                        (a1-4 (-> (the-as touching-shapes-entry a3-1) head))
-                        )
-                   (get-intersect-point gp-1 a1-4 (-> self root) (the-as touching-shapes-entry a3-1))
-                   )
-                 (vector-! gp-1 (-> self root trans) gp-1)
-                 )
+       (when (as-type proc widow-shot)
+         (let ((v1-2 (the-as object (-> block param 1)))
+               (gp-1 (new 'stack-no-clear 'vector))
                )
-             (let ((s5-1 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat))))
-               (vector-flatten! gp-1 gp-1 (-> s5-1 vector 1))
-               (when (!= (vector-normalize-ret-len! gp-1 1.0) 0.0)
-                 (set! (-> s5-1 vector 2 quad) (-> gp-1 quad))
-                 (vector-cross! (-> s5-1 vector 0) (-> s5-1 vector 1) (-> s5-1 vector 2))
-                 (matrix->quaternion (-> self root quat) s5-1)
+           (cond
+             ((logtest? (attack-mask attacker-velocity) (-> (the-as attack-info v1-2) mask))
+              (set! (-> gp-1 quad) (-> (the-as attack-info v1-2) attacker-velocity quad))
+              )
+             (else
+               (let* ((a3-1 (the-as object (-> block param 0)))
+                      (a1-4 (-> (the-as touching-shapes-entry a3-1) head))
+                      )
+                 (get-intersect-point gp-1 a1-4 (-> self root) (the-as touching-shapes-entry a3-1))
                  )
+               (vector-! gp-1 (-> self root trans) gp-1)
                )
              )
-           (go-virtual break-it)
+           (let ((s5-1 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat))))
+             (vector-flatten! gp-1 gp-1 (-> s5-1 vector 1))
+             (when (!= (vector-normalize-ret-len! gp-1 1.0) 0.0)
+               (set! (-> s5-1 vector 2 quad) (-> gp-1 quad))
+               (vector-cross! (-> s5-1 vector 0) (-> s5-1 vector 1) (-> s5-1 vector 2))
+               (matrix->quaternion (-> self root quat) s5-1)
+               )
+             )
            )
+         (go-virtual break-it)
          )
        )
       )

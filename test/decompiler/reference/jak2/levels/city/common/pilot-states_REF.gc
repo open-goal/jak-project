@@ -560,14 +560,9 @@
   :event target-standard-event-handler
   :exit target-pilot-exit
   :trans (behavior ()
-    (let ((gp-0 (handle->process (-> self pilot vehicle))))
-      (when (not (if (type? gp-0 vehicle)
-                     gp-0
-                     )
-                 )
-        (ja-channel-set! 0)
-        (go target-falling #f)
-        )
+    (when (not (the-as process (as-type (handle->process (-> self pilot vehicle)) vehicle)))
+      (ja-channel-set! 0)
+      (go target-falling #f)
       )
     )
   :code (behavior ()
@@ -718,12 +713,7 @@
       (set! (-> gp-0 pilot-start-grab-pos quad) (-> self control trans quad))
       (set! (-> gp-0 actor-handle) (-> arg0 handle))
       ((-> target-edge-grab enter))
-      (let* ((s5-1 (handle->process (-> gp-0 actor-handle)))
-             (a0-9 (if (type? s5-1 process-focusable)
-                       s5-1
-                       )
-                   )
-             )
+      (let ((a0-9 (the-as process (as-type (handle->process (-> gp-0 actor-handle)) process-focusable))))
         (set! (-> gp-0 pilot-edge-grab?)
               (if (and a0-9
                        (< 24576.0 (fabs (- (-> (get-trans (the-as process-focusable a0-9) 0) y) (-> self control trans y))))

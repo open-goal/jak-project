@@ -122,12 +122,7 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod reset-attacker! ((this bot))
   (logclear! (-> this bot-flags) (bot-flags attacked))
-  (let* ((s5-0 (handle->process (-> this attacker-handle)))
-         (v1-5 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((v1-5 (the-as process (as-type (handle->process (-> this attacker-handle)) process-focusable))))
     (if (and v1-5 (= (-> v1-5 type) target))
         (set! (-> this attacker-handle) (the-as handle #f))
         )
@@ -276,12 +271,7 @@
          (dotimes (s3-0 *actor-list-length*)
            (let ((v1-26 (-> *actor-list* s3-0)))
              (when (logtest? (the-as collide-spec s4-0) (-> v1-26 root-prim prim-core collide-as))
-               (let* ((s2-0 (-> v1-26 process))
-                      (a1-26 (if (type? s2-0 process-focusable)
-                                 s2-0
-                                 )
-                             )
-                      )
+               (let ((a1-26 (the-as process-drawable (as-type (-> v1-26 process) process-focusable))))
                  (when a1-26
                    (set-next-focus! this (the-as enemy a1-26) (the-as enemy-best-focus (&-> s5-0 next)))
                    (if (-> s5-0 next)
@@ -309,12 +299,7 @@
     (t9-0 this arg0 arg1 arg2 arg3)
     )
   (logclear! (-> this bot-flags) (bot-flags bf03 bf04))
-  (let* ((s3-0 (handle->process (-> this incoming attacker-handle)))
-         (s5-0 (if (type? s3-0 process-focusable)
-                   s3-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process (as-type (handle->process (-> this incoming attacker-handle)) process-focusable))))
     (when s5-0
       (cond
         ((= (-> s5-0 type) target)
@@ -398,23 +383,12 @@
 ;; definition for method 180 of type bot
 (defmethod clear-poi-and-focus! ((this bot))
   "Clear our point of interest and focus handles."
-  (let* ((s4-0 (handle->process (-> this poi-handle)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable))))
     (when s5-0
       (set! (-> this poi-handle) (the-as handle #f))
-      (let ((s4-1 (handle->process (-> this focus handle))))
-        (if (= (if (type? s4-1 process-focusable)
-                   s4-1
-                   )
-               s5-0
-               )
-            (clear-focused (-> this focus))
-            )
-        )
+      (if (= (the-as process (as-type (handle->process (-> this focus handle)) process-focusable)) s5-0)
+          (clear-focused (-> this focus))
+          )
       )
     )
   (none)
@@ -482,12 +456,7 @@
 
 ;; definition for method 97 of type bot
 (defmethod enemy-method-97 ((this bot))
-  (let* ((s5-0 (handle->process (-> this attacker-handle)))
-         (v1-3 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((v1-3 (the-as process (as-type (handle->process (-> this attacker-handle)) process-focusable))))
     (when v1-3
       (cond
         ((= (-> v1-3 type) target)
@@ -522,12 +491,7 @@
             (empty)
             )
            (else
-             (let ((s4-0 (handle->process (-> this poi-handle))))
-               (set! s5-1 (if (type? s4-0 process-focusable)
-                              s4-0
-                              )
-                     )
-               )
+             (set! s5-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (if s5-1
                  (empty)
                  (set! s5-1 *target*)
@@ -541,12 +505,7 @@
              (set! s5-1 v1-3)
              )
            (else
-             (let ((s4-1 (handle->process (-> this poi-handle))))
-               (set! s5-1 (if (type? s4-1 process-focusable)
-                              s4-1
-                              )
-                     )
-               )
+             (set! s5-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (cond
                (s5-1
                  (empty)
@@ -691,12 +650,7 @@
           (dotimes (i *actor-list-length*)
             (let ((actor (-> *actor-list* i)))
               (when (logtest? (the-as int coll-spec) (-> actor root-prim prim-core collide-as))
-                (let* ((proc (-> actor process))
-                       (enemy (if (type? proc process-focusable)
-                                  proc
-                                  )
-                              )
-                       )
+                (let ((enemy (the-as process-drawable (as-type (-> actor process) process-focusable))))
                   (if (and enemy
                            enemy
                            (not (logtest? (-> (the-as process-focusable enemy) focus-status) (focus-status disable dead)))
@@ -857,13 +811,9 @@
     (('notify)
      (case (-> arg3 param 0)
        (('attack)
-        (let ((s5-2 (-> arg3 param 1)))
-          (when (if (type? s5-2 process-focusable)
-                    s5-2
-                    )
-            (logior! (-> this enemy-flags) (enemy-flag victory))
-            (set-time! (-> this hit-focus-time))
-            )
+        (when (the-as uint (as-type (-> arg3 param 1) process-focusable))
+          (logior! (-> this enemy-flags) (enemy-flag victory))
+          (set-time! (-> this hit-focus-time))
           )
         #t
         )
@@ -986,13 +936,9 @@
        )
       (else
         (when (!= (-> arg0 type) target)
-          (let* ((touch-entry (-> arg1 param 0))
-                 (s2-0 arg0)
-                 (v1-6 (if (type? s2-0 process-focusable)
-                           s2-0
-                           )
-                       )
-                 )
+          (let ((touch-entry (-> arg1 param 0))
+                (v1-6 (the-as process (as-type arg0 process-focusable)))
+                )
             (cond
               ((and (focus-test? this dangerous)
                     (logtest? (process-mask enemy) (-> arg0 mask))

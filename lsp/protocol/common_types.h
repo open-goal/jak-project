@@ -29,7 +29,7 @@ struct Range {
   Position m_start;
   Position m_end;
 
-  Range(){};
+  Range() {};
   Range(Position start, Position end);
   // point constructor
   Range(uint32_t line, uint32_t character);

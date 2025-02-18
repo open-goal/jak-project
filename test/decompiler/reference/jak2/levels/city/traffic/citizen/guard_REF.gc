@@ -609,12 +609,7 @@
     (('hit 'hit-flinch 'hit-knocked)
      (speech-control-method-13 *speech-control* (the-as handle this))
      (logior! (-> this flags) (citizen-flag hostile))
-     (let* ((s0-0 (handle->process (-> this incoming attacker-handle)))
-            (s1-0 (if (type? s0-0 process-focusable)
-                      s0-0
-                      )
-                  )
-            )
+     (let ((s1-0 (the-as process (as-type (handle->process (-> this incoming attacker-handle)) process-focusable))))
        (when s1-0
          (speech-control-method-12 *speech-control* this (speech-type speech-type-11))
          (trigger-alert this 1 (the-as target s1-0))
@@ -649,15 +644,10 @@
        (case (-> v1-38 danger-type)
          (((traffic-danger-type tdt7))
           (set! (-> this cp-factor) 20.0)
-          (let ((s5-1 (method-of-object this trigger-alert))
-                (s4-1 1)
-                (s3-1 (handle->process (-> v1-38 handle)))
-                )
-            (s5-1 this s4-1 (the-as target (if (type? s3-1 process-focusable)
-                                               s3-1
-                                               )
-                                    )
-                  )
+          (trigger-alert
+            this
+            1
+            (the-as target (the-as process (as-type (handle->process (-> v1-38 handle)) process-focusable)))
             )
           )
          )
@@ -1218,18 +1208,10 @@
   (case (-> arg0 behavior)
     ((5)
      (logior! (-> this flags) (citizen-flag persistent hostile))
-     (let ((s4-0 (-> this focus))
-           (s3-0 (method-of-type enemy-focus enemy-focus-method-13))
-           (s5-1 (handle->process (-> arg0 handle)))
-           )
-       (s3-0
-         s4-0
-         (the-as process-focusable (if (type? s5-1 process-focusable)
-                                       s5-1
-                                       )
-                 )
-         (enemy-aware enemy-aware-3)
-         )
+     (enemy-focus-method-13
+       (-> this focus)
+       (the-as process-focusable (the-as process (as-type (handle->process (-> arg0 handle)) process-focusable)))
+       (enemy-aware enemy-aware-3)
        )
      (go (method-of-object this arrest))
      )
@@ -1565,22 +1547,18 @@
         ((< (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
          0
          )
+        ((and (the-as basic (as-type (-> s5-0 best-other-tri collide-ptr) collide-shape-prim))
+              (< (vector-dot
+                   (-> s5-0 best-other-tri normal)
+                   (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
+                   )
+                 0.0
+                 )
+              )
+         2
+         )
         (else
-          (let ((s4-1 (-> s5-0 best-other-tri collide-ptr)))
-            (if (and (if (type? s4-1 collide-shape-prim)
-                         s4-1
-                         )
-                     (< (vector-dot
-                          (-> s5-0 best-other-tri normal)
-                          (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
-                          )
-                        0.0
-                        )
-                     )
-                2
-                0
-                )
-            )
+          0
           )
         )
       )
@@ -1614,12 +1592,8 @@
       (else
         (when (logtest? (enemy-flag multi-focus) (-> this enemy-flags))
           (logclear! (-> this enemy-flags) (enemy-flag multi-focus))
-          (let* ((s5-0 (handle->process (-> this traffic-target-status handle)))
-                 (v1-21 (if (type? s5-0 process-focusable)
-                            s5-0
-                            )
-                        )
-                 )
+          (let ((v1-21 (the-as process (as-type (handle->process (-> this traffic-target-status handle)) process-focusable)))
+                )
             (if (and v1-21 (!= (-> v1-21 type) target))
                 (set! (-> this traffic-target-status handle) (the-as handle #f))
                 )
@@ -1638,18 +1612,13 @@
                     )
                   )
             )
-        (let* ((s4-0 this)
-               (s3-0 (method-of-object s4-0 enemy-method-63))
-               (s2-0 (handle->process (-> this traffic-target-status handle)))
-               )
-          (s3-0
-            s4-0
-            (the-as process-focusable (if (type? s2-0 process-focusable)
-                                          s2-0
-                                          )
-                    )
-            (the-as enemy-aware #f)
+        (enemy-method-63
+          this
+          (the-as
+            process-focusable
+            (the-as process (as-type (handle->process (-> this traffic-target-status handle)) process-focusable))
             )
+          (the-as enemy-aware #f)
           )
         (let ((s4-1 (handle->process (-> this focus handle))))
           (cond
@@ -1959,11 +1928,7 @@
         )
       )
     (let* ((s5-0 (-> self traffic-target-status))
-           (s4-0 (handle->process (-> s5-0 handle)))
-           (gp-0 (if (type? s4-0 process-focusable)
-                     (the-as process-focusable s4-0)
-                     )
-                 )
+           (gp-0 (as-type (handle->process (-> s5-0 handle)) process-focusable))
            )
       (if (or (focus-test? gp-0 inactive) (focus-test? gp-0 disable))
           (set! gp-0 (the-as process-focusable #f))
@@ -3022,13 +2987,9 @@
            (set-point! (-> this l-control) 1 s5-0)
            (set! (-> this l-control spec) (-> *lightning-spec-id-table* 13))
            (+! (-> this l-control state points-to-draw) 2)
-           (let* ((s1-4 (-> s3-0 best-other-tri collide-ptr))
-                  (v1-43 (if (type? s1-4 collide-shape-prim)
-                             s1-4
-                             )
-                         )
-                  (s1-5 #t)
-                  )
+           (let ((v1-43 (the-as basic (as-type (-> s3-0 best-other-tri collide-ptr) collide-shape-prim)))
+                 (s1-5 #t)
+                 )
              (when v1-43
                (set! s1-5 #f)
                (let ((s0-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
@@ -3383,12 +3344,7 @@
 ;; definition for method 223 of type crimson-guard
 ;; WARN: Return type mismatch int vs none.
 (defmethod crimson-guard-method-223 ((this crimson-guard) (arg0 float))
-  (let* ((s3-0 (handle->process (-> this transport)))
-         (s4-0 (if (type? s3-0 process-focusable)
-                   (the-as process-focusable s3-0)
-                   )
-               )
-         )
+  (let ((s4-0 (as-type (handle->process (-> this transport)) process-focusable)))
     (when s4-0
       (let ((s2-0 (matrix<-transformq! (new 'stack-no-clear 'matrix) (the-as transformq (-> s4-0 root trans))))
             (s3-1 (new 'stack-no-clear 'vector))

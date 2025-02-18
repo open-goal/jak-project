@@ -621,12 +621,7 @@
 (defmethod commited-to-ride? ((this drill-mech-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (when (= (-> this move-pos 1) (-> this bottom-top 0))
-    (let* ((s5-0 *target*)
-           (a0-2 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((a0-2 (the-as target (as-type *target* process-focusable))))
       (when (and a0-2 (focus-test? a0-2 mech) (not (logtest? (-> a0-2 focus-status) (focus-status dead ignore))))
         (let* ((v1-5 (get-trans a0-2 0))
                (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> this root trans)))
@@ -759,12 +754,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (the-as process (as-type proc process-focusable))))
          (when gp-0
            (when (or (focus-test? (the-as process-focusable gp-0) mech)
                      (time-elapsed? (-> self no-collision-timer) (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout)))
@@ -1598,15 +1588,11 @@
                (let ((f0-7 (probe-using-line-sphere *collide-cache* s5-1)))
                  (when (>= f0-7 0.0)
                    (vector-float*! (-> s5-1 move-dist) (-> s5-1 move-dist) f0-7)
-                   (let ((s4-2 (-> s5-1 best-other-tri collide-ptr)))
-                     (when (if (type? s4-2 collide-shape-prim-sphere)
-                               s4-2
-                               )
-                       (set! gp-0 #t)
-                       (if (zero? (-> self hit-sound-id))
-                           (set! (-> self hit-sound-id) (sound-play "drill-laser-cut"))
-                           )
-                       )
+                   (when (the-as basic (as-type (-> s5-1 best-other-tri collide-ptr) collide-shape-prim-sphere))
+                     (set! gp-0 #t)
+                     (if (zero? (-> self hit-sound-id))
+                         (set! (-> self hit-sound-id) (sound-play "drill-laser-cut"))
+                         )
                      )
                    )
                  )

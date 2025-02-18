@@ -641,12 +641,7 @@
 ;; definition for method 37 of type bt-vehicle
 (defmethod bt-vehicle-method-37 ((this bt-vehicle))
   (dotimes (s5-0 (-> this rider-spots length))
-    (let* ((s3-0 (handle->process (-> this rider-spots data s5-0 rider)))
-           (s4-0 (if (type? s3-0 process-focusable)
-                     (the-as process-focusable s3-0)
-                     )
-                 )
-           )
+    (let ((s4-0 (as-type (handle->process (-> this rider-spots data s5-0 rider)) process-focusable)))
       (when s4-0
         (let ((a2-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)))
               (s3-1 (-> s4-0 root trans))
@@ -738,12 +733,7 @@
       )
     (send-event (handle->process (-> self task-man)) 'vehicle-explode)
     (dotimes (gp-3 (-> self rider-spots length))
-      (let* ((s5-1 (handle->process (-> self rider-spots data gp-3 rider)))
-             (a0-26 (if (type? s5-1 process-focusable)
-                        s5-1
-                        )
-                    )
-             )
+      (let ((a0-26 (as-type (handle->process (-> self rider-spots data gp-3 rider)) process-focusable)))
         (if a0-26
             (send-event a0-26 'die)
             )
@@ -779,11 +769,7 @@
     (attack-info-method-9 arg1 s2-0 arg2 this)
     (vector-copy! sv-64 (-> s2-0 intersection))
     )
-  (let ((a0-6 (if (type? arg2 process-focusable)
-                  arg2
-                  )
-              )
-        )
+  (let ((a0-6 (as-type arg2 process-focusable)))
     (if a0-6
         (vector-copy! sv-64 (get-trans a0-6 3))
         )
@@ -1390,7 +1376,7 @@
                   )
               (set! sv-176 f30-1)
               (let ((a3-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) arg2)))
-                (s4-1 s3-1 (the-as quaternion s0-1) sv-176 a3-1)
+                (s4-1 s3-1 s0-1 sv-176 a3-1)
                 )
               )
             (vector+! s2-0 s2-0 s1-0)
@@ -1984,18 +1970,12 @@
     )
   (dotimes (s5-0 (-> this num-onscreen-targets))
     (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (let ((s2-0 transform-point-vector!)
-            (s1-0 s3-0)
-            (s0-0 (handle->process (-> this onscreen-targets s5-0 hand)))
-            )
-        (s2-0 s1-0 (get-trans
-                     (the-as process-focusable (if (type? s0-0 process-focusable)
-                                                   (the-as process-focusable s0-0)
-                                                   )
-                             )
-                     3
-                     )
-              )
+      (transform-point-vector!
+        s3-0
+        (get-trans
+          (the-as process-focusable (as-type (handle->process (-> this onscreen-targets s5-0 hand)) process-focusable))
+          3
+          )
         )
       (let ((s2-1 (+ s5-0 1))
             (s1-1 (+ (-> this num-onscreen-targets) -1))
@@ -2053,16 +2033,12 @@
                (!= (-> (handle->process (-> this onscreen-targets s5-1 hand)) type) bt-barrel)
                )
       (set! sv-96 (new 'stack-no-clear 'vector))
-      (let ((s4-1 (handle->process (-> this onscreen-targets s5-1 hand))))
-        (set! sv-100 (get-trans
-                       (the-as process-focusable (if (type? s4-1 process-focusable)
-                                                     (the-as process-focusable s4-1)
-                                                     )
-                               )
-                       3
-                       )
+      (set! sv-100
+            (get-trans
+              (the-as process-focusable (as-type (handle->process (-> this onscreen-targets s5-1 hand)) process-focusable))
+              3
               )
-        )
+            )
       (transform-point-vector! sv-96 sv-100)
       (+! (-> sv-96 x) -1792.0)
       (+! (-> sv-96 y) -1840.0)
@@ -2488,12 +2464,7 @@
         (when v1-64
           (cond
             ((= (-> this look-mode) 2)
-             (let* ((s4-4 (-> v1-64 extra process))
-                    (a0-37 (if (type? s4-4 process-focusable)
-                               s4-4
-                               )
-                           )
-                    )
+             (let ((a0-37 (as-type (-> v1-64 extra process) process-focusable)))
                (cond
                  ((and a0-37
                        (not (logtest? (-> (the-as process-focusable a0-37) focus-status) (focus-status disable dead ignore inactive))
@@ -2516,12 +2487,7 @@
         )
       )
     (when (= (-> this look-mode) 3)
-      (let* ((s4-8 (handle->process (-> this look-proc)))
-             (a0-43 (if (type? s4-8 process-focusable)
-                        s4-8
-                        )
-                    )
-             )
+      (let ((a0-43 (as-type (handle->process (-> this look-proc)) process-focusable)))
         (if (and a0-43
                  (not (logtest? (-> (the-as process-focusable a0-43) focus-status) (focus-status disable dead ignore inactive))
                       )
@@ -2978,12 +2944,7 @@
                  (s4-0 (-> v1-5 root-prim))
                  )
             (when (logtest? (-> s4-0 prim-core collide-as) (collide-spec enemy obstacle hit-by-others-list))
-              (let ((s3-0 (-> v1-5 process)))
-                (set! sv-32 (if (type? s3-0 process-focusable)
-                                s3-0
-                                )
-                      )
-                )
+              (set! sv-32 (as-type (-> v1-5 process) process-focusable))
               (when (and sv-32
                          (< (-> this num-onscreen-targets) 32)
                          (not (logtest? (-> (the-as process-focusable sv-32) focus-status) (focus-status disable dead ignore inactive))
@@ -3071,12 +3032,7 @@
                    (s4-1 (-> v1-81 root-prim))
                    )
               (when (logtest? (-> s4-1 prim-core collide-as) (collide-spec enemy obstacle hit-by-others-list))
-                (let ((s3-9 (-> v1-81 process)))
-                  (set! sv-784 (if (type? s3-9 process-focusable)
-                                   s3-9
-                                   )
-                        )
-                  )
+                (set! sv-784 (as-type (-> v1-81 process) process-focusable))
                 (when (and sv-784
                            (< (-> this num-onscreen-targets) 32)
                            (not (logtest? (-> (the-as process-focusable sv-784) focus-status) (focus-status disable dead ignore inactive))
@@ -3163,12 +3119,7 @@
                    (s4-2 (-> v1-156 root-prim))
                    )
               (when (logtest? (-> s4-2 prim-core collide-as) (collide-spec enemy obstacle hit-by-others-list))
-                (let ((s3-18 (-> v1-156 process)))
-                  (set! sv-1536 (if (type? s3-18 process-focusable)
-                                    s3-18
-                                    )
-                        )
-                  )
+                (set! sv-1536 (as-type (-> v1-156 process) process-focusable))
                 (when (and sv-1536
                            (< (-> this num-onscreen-targets) 32)
                            (not (logtest? (-> (the-as process-focusable sv-1536) focus-status) (focus-status disable dead ignore inactive))
@@ -3289,12 +3240,7 @@
       (new 'stack-no-clear 'vector)
       491520.0
       (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat))
-      (let* ((s4-0 (handle->process (-> this parent-vehicle)))
-             (v1-22 (if (type? s4-0 process-focusable)
-                        (the-as process-focusable s4-0)
-                        )
-                    )
-             )
+      (let ((v1-22 (as-type (handle->process (-> this parent-vehicle)) process-focusable)))
         (when v1-22
           (vector<-cspace! s5-0 (-> v1-22 node-list data (-> *bt-hellcat-gun-nodes* (-> this fire-index))))
           (send-event (handle->process (-> this parent-vehicle)) 'fire (-> this fire-index))
@@ -3344,22 +3290,16 @@
                   )
                 )
               )
-            (when (and (-> s4-2 best-other-tri collide-ptr) (let ((s3-5 (-> s4-2 best-other-tri collide-ptr)))
-                                                              (if (type? s3-5 collide-shape-prim-sphere)
-                                                                  s3-5
-                                                                  )
-                                                              )
+            (when (and (-> s4-2 best-other-tri collide-ptr)
+                       (as-type (-> s4-2 best-other-tri collide-ptr) collide-shape-prim-sphere)
                        )
-              (let* ((s3-6 (-> s4-2 best-other-tri collide-ptr))
-                     (a0-50 (-> (the-as collide-shape-prim-sphere (if (type? s3-6 collide-shape-prim-sphere)
-                                                                      (the-as collide-shape-prim-sphere s3-6)
-                                                                      )
-                                        )
-                                cshape
-                                process
-                                )
-                            )
-                     )
+              (let ((a0-50
+                      (-> (the-as collide-shape-prim-sphere (as-type (-> s4-2 best-other-tri collide-ptr) collide-shape-prim-sphere))
+                          cshape
+                          process
+                          )
+                      )
+                    )
                 (if a0-50
                     (send-event
                       a0-50
@@ -3521,7 +3461,7 @@
             (s3-3 (-> this pitch-quat))
             )
         (let ((f28-1 (-> this roll-amount)))
-          (vector-rotate-around-axis! sv-268 (the-as quaternion sv-260) (-> v1-68 rot-y-shift) *up-vector*)
+          (vector-rotate-around-axis! sv-268 sv-260 (-> v1-68 rot-y-shift) *up-vector*)
           (quaternion-vector-angle! s3-3 sv-268 f28-1)
           )
         (quaternion*! s4-2 s3-3 s4-2)
@@ -4620,12 +4560,7 @@
      (set! (-> this dest-clock-scalar) (-> arg0 clock-scalar))
      )
     (((blow-tower-cmd-type play-sound))
-     (let* ((s3-9 (handle->process (-> this target-handles (-> arg0 target))))
-            (s4-7 (if (type? s3-9 process-focusable)
-                      (the-as process-focusable s3-9)
-                      )
-                  )
-            )
+     (let ((s4-7 (as-type (handle->process (-> this target-handles (-> arg0 target))) process-focusable)))
        (when s4-7
          (send-event (handle->process (-> this target-handles (-> arg0 target))) 'boost-thruster (-> arg0 time-offset))
          (sound-play "hc-whoosh" :position (-> s4-7 root trans))
@@ -4919,12 +4854,7 @@
     ((not (logtest? (-> arg1 mask) (attack-mask control)))
      (let ((s2-1 (new 'stack-no-clear 'attack-info)))
        (attack-info-method-9 arg1 s2-1 arg2 this)
-       (let* ((s1-1 arg2)
-              (a0-11 (if (type? s1-1 process-focusable)
-                         s1-1
-                         )
-                     )
-              )
+       (let ((a0-11 (as-type arg2 process-focusable)))
          (if a0-11
              (vector-copy! (-> s2-1 intersection) (get-trans a0-11 3))
              )

@@ -323,12 +323,7 @@
           )
          )
        (when v1-1
-         (let* ((s5-0 (handle->process (-> this incoming attacker-handle)))
-                (a2-5 (if (type? s5-0 process-focusable)
-                          s5-0
-                          )
-                      )
-                )
+         (let ((a2-5 (as-type (handle->process (-> this incoming attacker-handle)) process-focusable)))
            (if a2-5
                (citizen-method-210 this 1 a2-5)
                )
@@ -613,131 +608,111 @@
 
 (defmethod move-above-ground! ((this citizen) (arg0 vector) (arg1 move-above-ground-params))
   "Move the enemy. May keep the enemy snapped to the ground depending on flags."
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
+  (let ((gp-0 (-> this root)))
+    (set! (-> arg1 on-ground?) #f)
+    (set! (-> arg1 do-move?) #t)
+    (vector-copy! (-> arg1 old-gspot-pos) (-> gp-0 gspot-pos))
+    (vector-copy! (-> arg1 old-gspot-normal) (-> gp-0 gspot-normal))
+    (set! (-> gp-0 trans-old-old-old quad) (-> gp-0 trans-old-old quad))
+    (set! (-> gp-0 trans-old-old quad) (-> gp-0 trans-old quad))
+    (set! (-> gp-0 trans-old quad) (-> gp-0 trans quad))
+    (set! (-> gp-0 prev-status) (-> gp-0 status))
+    (vector-v+! (-> gp-0 trans) (-> gp-0 trans) arg0)
+    (vector-copy! (-> arg1 new-pos) (-> gp-0 trans))
+    (when (not (logtest? (logxor (-> this traffic-id) (the-as int (-> this probe-counter))) 7))
+      (let ((s2-0 (new 'stack-no-clear 'collide-query)))
+        (logclear! (-> gp-0 status) (collide-status on-ground))
+        (when (enemy-above-ground?
+                this
+                s2-0
+                (vector+*! (new 'stack-no-clear 'vector) (-> gp-0 trans) (-> gp-0 transv) 0.15)
+                (-> arg1 gnd-collide-with)
+                16384.0
+                81920.0
+                1024.0
+                )
+          (vector-copy! (-> gp-0 gspot-pos) (-> gp-0 trans))
+          (set! (-> gp-0 gspot-pos y) (-> s2-0 best-other-tri intersect y))
+          (vector-copy! (-> gp-0 gspot-normal) (-> s2-0 best-other-tri normal))
+          (logior! (-> gp-0 status) (collide-status on-ground))
+          (set! (-> gp-0 ground-pat) (-> s2-0 best-other-tri pat))
+          )
+        )
+      (set! (-> this gnd-height) (-> gp-0 gspot-pos y))
+      (set! (-> gp-0 gspot-pos y) (-> arg1 old-gspot-pos y))
+      )
+    (let ((f0-5 (- (-> this gnd-height) (-> gp-0 gspot-pos y))))
+      (cond
+        ((< 0.0 f0-5)
+         (+! (-> gp-0 gspot-pos y) (* 10.0 (seconds-per-frame) f0-5))
          )
-    (init-vf0-vector)
-    (let ((gp-0 (-> this root)))
-      (set! (-> arg1 on-ground?) #f)
-      (set! (-> arg1 do-move?) #t)
-      (vector-copy! (-> arg1 old-gspot-pos) (-> gp-0 gspot-pos))
-      (vector-copy! (-> arg1 old-gspot-normal) (-> gp-0 gspot-normal))
-      (set! (-> gp-0 trans-old-old-old quad) (-> gp-0 trans-old-old quad))
-      (set! (-> gp-0 trans-old-old quad) (-> gp-0 trans-old quad))
-      (set! (-> gp-0 trans-old quad) (-> gp-0 trans quad))
-      (set! (-> gp-0 prev-status) (-> gp-0 status))
-      (vector-v+! (-> gp-0 trans) (-> gp-0 trans) arg0)
-      (vector-copy! (-> arg1 new-pos) (-> gp-0 trans))
-      (when (not (logtest? (logxor (-> this traffic-id) (the-as int (-> this probe-counter))) 7))
-        (let ((s2-0 (new 'stack-no-clear 'collide-query)))
-          (logclear! (-> gp-0 status) (collide-status on-ground))
-          (let* ((a0-10 this)
-                 (t9-1 (method-of-object a0-10 enemy-above-ground?))
-                 (a1-2 s2-0)
-                 (a2-2 (new 'stack-no-clear 'vector))
-                 )
-            (let ((v1-15 (-> gp-0 trans)))
-              (let ((a3-0 (-> gp-0 transv)))
-                (let ((t0-1 0.15))
-                  (.mov vf7 t0-1)
-                  )
-                (.lvf vf5 (&-> a3-0 quad))
-                )
-              (.lvf vf4 (&-> v1-15 quad))
+        (else
+          (+! (-> gp-0 gspot-pos y) (* 10.0 (seconds-per-frame) f0-5))
+          (if (< (-> gp-0 gspot-pos y) (-> this gnd-height))
+              (set! (-> gp-0 gspot-pos y) (-> this gnd-height))
               )
-            (.add.x.vf.w vf6 vf0 vf0)
-            (.mul.x.vf.xyz acc vf5 vf7)
-            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-            (.svf (&-> a2-2 quad) vf6)
-            (when (t9-1 a0-10 a1-2 a2-2 (-> arg1 gnd-collide-with) 16384.0 81920.0 1024.0)
-              (vector-copy! (-> gp-0 gspot-pos) (-> gp-0 trans))
-              (set! (-> gp-0 gspot-pos y) (-> s2-0 best-other-tri intersect y))
-              (vector-copy! (-> gp-0 gspot-normal) (-> s2-0 best-other-tri normal))
-              (logior! (-> gp-0 status) (collide-status on-ground))
-              (set! (-> gp-0 ground-pat) (-> s2-0 best-other-tri pat))
-              )
-            )
-          )
-        (set! (-> this gnd-height) (-> gp-0 gspot-pos y))
-        (set! (-> gp-0 gspot-pos y) (-> arg1 old-gspot-pos y))
-        )
-      (let ((f0-5 (- (-> this gnd-height) (-> gp-0 gspot-pos y))))
-        (cond
-          ((< 0.0 f0-5)
-           (+! (-> gp-0 gspot-pos y) (* 10.0 (seconds-per-frame) f0-5))
-           )
-          (else
-            (+! (-> gp-0 gspot-pos y) (* 10.0 (seconds-per-frame) f0-5))
-            (if (< (-> gp-0 gspot-pos y) (-> this gnd-height))
-                (set! (-> gp-0 gspot-pos y) (-> this gnd-height))
-                )
-            )
           )
         )
-      (set! (-> arg1 on-ground?) #t)
-      (set! (-> arg1 pat) (-> gp-0 ground-pat))
-      (when (>= (-> gp-0 gspot-pos y) (-> arg1 new-pos y))
-        (set! (-> arg1 new-pos y) (-> gp-0 gspot-pos y))
-        (set! (-> gp-0 ground-impact-vel) (- (vector-dot arg0 (-> gp-0 dynam gravity-normal))))
-        (set! (-> arg0 y) 0.0)
-        )
-      (vector-copy! (-> gp-0 trans) (-> arg1 new-pos))
-      (when (-> arg1 do-move?)
-        (cond
-          ((-> arg1 on-ground?)
-           (let ((a1-3 (-> gp-0 gspot-pos))
-                 (a0-18 (-> gp-0 gspot-normal))
-                 (v1-42 (-> arg1 pat))
-                 )
-             (vector-copy! (-> gp-0 ground-touch-point) a1-3)
-             (vector-copy! (-> gp-0 poly-normal) a0-18)
-             (vector-copy! (-> gp-0 surface-normal) a0-18)
-             (vector-copy! (-> gp-0 local-normal) a0-18)
-             (vector-copy! (-> gp-0 ground-poly-normal) a0-18)
-             (set! (-> gp-0 poly-pat) v1-42)
-             (set! (-> gp-0 cur-pat) v1-42)
-             (set! (-> gp-0 ground-pat) v1-42)
-             )
-           (logior! (-> gp-0 status) (collide-status on-surface on-ground touch-surface))
+      )
+    (set! (-> arg1 on-ground?) #t)
+    (set! (-> arg1 pat) (-> gp-0 ground-pat))
+    (when (>= (-> gp-0 gspot-pos y) (-> arg1 new-pos y))
+      (set! (-> arg1 new-pos y) (-> gp-0 gspot-pos y))
+      (set! (-> gp-0 ground-impact-vel) (- (vector-dot arg0 (-> gp-0 dynam gravity-normal))))
+      (set! (-> arg0 y) 0.0)
+      )
+    (vector-copy! (-> gp-0 trans) (-> arg1 new-pos))
+    (when (-> arg1 do-move?)
+      (cond
+        ((-> arg1 on-ground?)
+         (let ((a1-3 (-> gp-0 gspot-pos))
+               (a0-18 (-> gp-0 gspot-normal))
+               (v1-42 (-> arg1 pat))
+               )
+           (vector-copy! (-> gp-0 ground-touch-point) a1-3)
+           (vector-copy! (-> gp-0 poly-normal) a0-18)
+           (vector-copy! (-> gp-0 surface-normal) a0-18)
+           (vector-copy! (-> gp-0 local-normal) a0-18)
+           (vector-copy! (-> gp-0 ground-poly-normal) a0-18)
+           (set! (-> gp-0 poly-pat) v1-42)
+           (set! (-> gp-0 cur-pat) v1-42)
+           (set! (-> gp-0 ground-pat) v1-42)
            )
-          (else
-            (logclear! (-> gp-0 status) (collide-status
-                                          on-surface
-                                          on-ground
-                                          touch-surface
-                                          touch-wall
-                                          touch-ceiling
-                                          touch-actor
-                                          on-special-surface
-                                          touch-edge
-                                          blocked
-                                          on-water
-                                          impact-surface
-                                          touch-background
-                                          stuck
-                                          glance
-                                          )
-                       )
-            (when (not (logtest? (-> gp-0 root-prim prim-core action) (collide-action no-normal-reset)))
-              (let ((v1-52 (-> gp-0 dynam gravity-normal)))
-                (vector-copy! (-> gp-0 local-normal) v1-52)
-                (vector-copy! (-> gp-0 surface-normal) v1-52)
-                (vector-copy! (-> gp-0 poly-normal) v1-52)
-                )
-              (set! (-> gp-0 coverage) 0.0)
-              (set! (-> gp-0 touch-angle) 0.0)
+         (logior! (-> gp-0 status) (collide-status on-surface on-ground touch-surface))
+         )
+        (else
+          (logclear! (-> gp-0 status) (collide-status
+                                        on-surface
+                                        on-ground
+                                        touch-surface
+                                        touch-wall
+                                        touch-ceiling
+                                        touch-actor
+                                        on-special-surface
+                                        touch-edge
+                                        blocked
+                                        on-water
+                                        impact-surface
+                                        touch-background
+                                        stuck
+                                        glance
+                                        )
+                     )
+          (when (not (logtest? (-> gp-0 root-prim prim-core action) (collide-action no-normal-reset)))
+            (let ((v1-52 (-> gp-0 dynam gravity-normal)))
+              (vector-copy! (-> gp-0 local-normal) v1-52)
+              (vector-copy! (-> gp-0 surface-normal) v1-52)
+              (vector-copy! (-> gp-0 poly-normal) v1-52)
               )
+            (set! (-> gp-0 coverage) 0.0)
+            (set! (-> gp-0 touch-angle) 0.0)
             )
           )
         )
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 (defmethod normalize-heading! ((this citizen) (arg0 nav-control))
@@ -1147,99 +1122,76 @@
 
 (defun iter-seg-clear-path ((arg0 iter-seg) (arg1 nav-segment))
   (with-pp
-    (rlet ((acc :class vf)
-           (vf0 :class vf)
-           (vf4 :class vf)
-           (vf5 :class vf)
-           (vf6 :class vf)
-           (vf7 :class vf)
-           )
-      (init-vf0-vector)
-      (let ((s2-0 (-> arg0 self))
-            (a0-1 (-> arg1 branch src-node))
-            (s4-0 (new 'stack-no-clear 'vector))
+    (let ((s2-0 (-> arg0 self))
+          (a0-1 (-> arg1 branch src-node))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (vector-copy! s4-0 (-> a0-1 position))
+      (set! (-> s4-0 w) 1.0)
+      (let ((a0-4 (-> arg1 branch dest-node))
+            (s3-0 (new 'stack-no-clear 'vector))
             )
-        (vector-copy! s4-0 (-> a0-1 position))
+        (vector-copy! s3-0 (-> a0-4 position))
+        (set! (-> s3-0 w) 1.0)
+        (set! (-> s4-0 y) 0.0)
+        (set! (-> s3-0 y) 0.0)
         (set! (-> s4-0 w) 1.0)
-        (let ((a0-4 (-> arg1 branch dest-node))
-              (s3-0 (new 'stack-no-clear 'vector))
-              )
-          (vector-copy! s3-0 (-> a0-4 position))
-          (set! (-> s3-0 w) 1.0)
-          (set! (-> s4-0 y) 0.0)
-          (set! (-> s3-0 y) 0.0)
-          (set! (-> s4-0 w) 1.0)
-          (set! (-> s3-0 w) 1.0)
-          (when *citizen-debug*
-            )
-          (when #t
-            (cond
-              ((< 0.0 (vector4-dot (the-as vector (-> arg0 cp-plane)) s3-0))
-               (let ((s0-1 (vector-! (new 'stack-no-clear 'vector) s3-0 s4-0))
-                     (s1-1 (vector-! (new 'stack-no-clear 'vector) (-> s2-0 root trans) s4-0))
-                     )
-                 (set! (-> s1-1 y) 0.0)
-                 (vector-rotate90-around-y! s0-1 s0-1)
-                 (vector-normalize! s0-1 1.0)
-                 (let ((a1-3 s1-1))
-                   (let ((v1-17 s1-1))
-                     (let ((a0-12 s0-1))
-                       (let ((a2-2 (- (vector-dot s0-1 s1-1))))
-                         (.mov vf7 a2-2)
-                         )
-                       (.lvf vf5 (&-> a0-12 quad))
-                       )
-                     (.lvf vf4 (&-> v1-17 quad))
-                     )
-                   (.add.x.vf.w vf6 vf0 vf0)
-                   (.mul.x.vf.xyz acc vf5 vf7)
-                   (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-                   (.svf (&-> a1-3 quad) vf6)
+        (set! (-> s3-0 w) 1.0)
+        (when *citizen-debug*
+          )
+        (when #t
+          (cond
+            ((< 0.0 (vector4-dot (the-as vector (-> arg0 cp-plane)) s3-0))
+             (let ((s0-1 (vector-! (new 'stack-no-clear 'vector) s3-0 s4-0))
+                   (s1-1 (vector-! (new 'stack-no-clear 'vector) (-> s2-0 root trans) s4-0))
                    )
-                 (vector+! s1-1 s1-1 s4-0)
-                 (cond
-                   ((< 0.0 (vector-dot (the-as vector (-> arg0 cp-plane)) (vector-! (new 'stack-no-clear 'vector) s3-0 s1-1)))
-                    (vector-vector-xz-distance s3-0 (-> s2-0 cp-sphere))
-                    (let ((s1-3 (vector-! (new 'stack-no-clear 'vector) s3-0 (the-as vector (-> s2-0 cp-sphere))))
-                          (s0-2 (new 'stack-no-clear 'vector))
-                          )
-                      (vector-copy! s0-2 (-> s2-0 cp-vec))
-                      (set! (-> s0-2 y) 0.0)
-                      (vector-normalize! s0-2 1.0)
-                      (set! (-> s1-3 y) 0.0)
-                      (let ((f30-0 (vector-dot s0-2 s1-3)))
-                        (if (and *cty-faction-manager* (not (logtest? (cty-faction-manager-method-9
-                                                                        *cty-faction-manager*
-                                                                        (the-as int (-> arg1 branch clock-type))
-                                                                        (-> pp level name)
-                                                                        )
-                                                                      1
+               (set! (-> s1-1 y) 0.0)
+               (vector-rotate90-around-y! s0-1 s0-1)
+               (vector-normalize! s0-1 1.0)
+               (vector+*! s1-1 s1-1 s0-1 (- (vector-dot s0-1 s1-1)))
+               (vector+! s1-1 s1-1 s4-0)
+               (cond
+                 ((< 0.0 (vector-dot (the-as vector (-> arg0 cp-plane)) (vector-! (new 'stack-no-clear 'vector) s3-0 s1-1)))
+                  (vector-vector-xz-distance s3-0 (-> s2-0 cp-sphere))
+                  (let ((s1-3 (vector-! (new 'stack-no-clear 'vector) s3-0 (the-as vector (-> s2-0 cp-sphere))))
+                        (s0-2 (new 'stack-no-clear 'vector))
+                        )
+                    (vector-copy! s0-2 (-> s2-0 cp-vec))
+                    (set! (-> s0-2 y) 0.0)
+                    (vector-normalize! s0-2 1.0)
+                    (set! (-> s1-3 y) 0.0)
+                    (let ((f30-0 (vector-dot s0-2 s1-3)))
+                      (if (and *cty-faction-manager* (not (logtest? (cty-faction-manager-method-9
+                                                                      *cty-faction-manager*
+                                                                      (the-as int (-> arg1 branch clock-type))
+                                                                      (-> pp level name)
                                                                       )
-                                                            )
-                                 )
-                            (set! f30-0 (+ -409600.0 f30-0))
-                            )
-                        (when (< (-> arg0 score) f30-0)
-                          (set! (-> arg0 score) f30-0)
-                          (set! (-> arg0 seg) arg1)
+                                                                    1
+                                                                    )
+                                                          )
+                               )
+                          (set! f30-0 (+ -409600.0 f30-0))
                           )
+                      (when (< (-> arg0 score) f30-0)
+                        (set! (-> arg0 score) f30-0)
+                        (set! (-> arg0 seg) arg1)
                         )
                       )
-                    (if *citizen-debug*
-                        (add-debug-line #t (bucket-id debug-no-zbuf1) s4-0 s3-0 *color-black* #f *color-white*)
-                        )
                     )
-                   (else
-                     (if *citizen-debug*
-                         (add-debug-line #t (bucket-id debug-no-zbuf1) s1-1 s3-0 *color-red* #f (the-as rgba -1))
-                         )
-                     )
+                  (if *citizen-debug*
+                      (add-debug-line #t (bucket-id debug-no-zbuf1) s4-0 s3-0 *color-black* #f *color-white*)
+                      )
+                  )
+                 (else
+                   (if *citizen-debug*
+                       (add-debug-line #t (bucket-id debug-no-zbuf1) s1-1 s3-0 *color-red* #f (the-as rgba -1))
+                       )
                    )
                  )
                )
-              (else
-                #f
-                )
+             )
+            (else
+              #f
               )
             )
           )

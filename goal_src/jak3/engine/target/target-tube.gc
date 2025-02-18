@@ -982,7 +982,7 @@
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! jakb-deatha-ja :num! (seek! (ja-aframe 134.0 0)) :frame-num 0.0)
     (until (ja-done? 0)
-      (compute-alignment! (-> self align))
+      (compute-delta-align! (-> self align))
       (let ((gp-2 (new 'stack-no-clear 'vector)))
         (when (not (logtest? (-> self align flags) (align-flags disabled)))
           (vector-matrix*! gp-2 (-> self align delta trans) (-> self control c-R-w))
@@ -1104,12 +1104,7 @@
        (go-virtual slide-control-watch)
        )
       (('update)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-drawable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (as-type proc process-drawable)))
          (if gp-0
              (find-target-point (-> (the-as process-drawable gp-0) root trans))
              )
@@ -1135,15 +1130,11 @@
     (process-entity-status! self (entity-perm-status no-kill) #f)
     )
   :trans (behavior ()
-    (let ((gp-0 (handle->process (-> self target))))
-      (cond
-        ((if (type? gp-0 process-drawable)
-             gp-0
-             )
-         )
-        (else
-          (go-virtual slide-control-watch)
-          )
+    (cond
+      ((as-type (handle->process (-> self target)) process-drawable)
+       )
+      (else
+        (go-virtual slide-control-watch)
         )
       )
     )

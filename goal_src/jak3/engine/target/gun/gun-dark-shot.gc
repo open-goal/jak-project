@@ -9,6 +9,8 @@
 (define-extern missile-bot type)
 (define-extern market-object type)
 (define-extern fruit-stand type)
+(declare-type market-object process-drawable)
+(declare-type fruit-stand process-drawable)
 
 ;; DECOMP BEGINS
 
@@ -739,19 +741,9 @@
     (set! (-> s4-0 w) 1228800.0)
     (let ((s3-0 (new 'stack-no-clear 'array 'collide-shape 384)))
       (countdown (s2-0 (fill-actor-list-for-box *actor-hash* s4-0 s3-0 384))
-        (let* ((s1-0 (-> s3-0 s2-0))
-               (v1-5 (if (type? s1-0 collide-shape)
-                         s1-0
-                         )
-                     )
-               )
+        (let ((v1-5 (as-type (-> s3-0 s2-0) collide-shape)))
           (when v1-5
-            (let* ((s0-0 (-> v1-5 process))
-                   (s1-1 (if (type? s0-0 process-focusable)
-                             s0-0
-                             )
-                         )
-                   )
+            (let ((s1-1 (as-type (-> v1-5 process) process-focusable)))
               (when s1-1
                 (when (and (!= *target* s1-1)
                            (not (focus-test? (the-as process-focusable s1-1) disable dead inactive))
@@ -787,12 +779,7 @@
           )
         )
       )
-    (let* ((s2-1 *target*)
-           (s3-1 (if (type? s2-1 process-focusable)
-                     s2-1
-                     )
-                 )
-           )
+    (let ((s3-1 (the-as target (as-type *target* process-focusable))))
       (when (and s3-1 (< (vector-vector-distance (get-trans s3-1 0) s4-0) (-> s4-0 w)))
         (when (and (!= *target* s3-1)
                    (not (focus-test? s3-1 disable dead inactive))
@@ -1630,20 +1617,11 @@
         (let ((s5-0 (new 'stack-no-clear 'matrix)))
           (let ((s4-0 (new 'stack-no-clear 'vector)))
             (vector-normalize-copy! s4-0 (-> self core-velocity) 1.0)
-            (let* ((s3-0 (handle->process (-> self track-target)))
-                   (s2-0 (if (type? s3-0 process-drawable)
-                             s3-0
-                             )
-                         )
-                   )
+            (let ((s2-0 (as-type (handle->process (-> self track-target)) process-drawable)))
               (when s2-0
                 (let ((s3-1 (new 'stack-no-clear 'vector)))
                   (vector-copy! s3-1 (-> (the-as process-focusable s2-0) root trans))
-                  (let ((a0-6 (if (type? s2-0 process-focusable)
-                                  s2-0
-                                  )
-                              )
-                        )
+                  (let ((a0-6 (as-type s2-0 process-focusable)))
                     (if a0-6
                         (vector-copy! s3-1 (get-trans (the-as process-focusable a0-6) 3))
                         )
@@ -1967,19 +1945,9 @@
           (set! (-> s4-0 w) (-> self blast-radius))
           (let ((s3-0 (new 'stack-no-clear 'array 'collide-shape 384)))
             (countdown (s2-0 (fill-actor-list-for-box *actor-hash* s4-0 s3-0 384))
-              (let* ((s1-0 (-> s3-0 s2-0))
-                     (v1-66 (if (type? s1-0 collide-shape)
-                                s1-0
-                                )
-                            )
-                     )
+              (let ((v1-66 (as-type (-> s3-0 s2-0) collide-shape)))
                 (when v1-66
-                  (let* ((s0-0 (-> v1-66 process))
-                         (s1-1 (if (type? s0-0 process-focusable)
-                                   s0-0
-                                   )
-                               )
-                         )
+                  (let ((s1-1 (as-type (-> v1-66 process) process-focusable)))
                     (when s1-1
                       (when (and (nonzero? (-> (the-as process-focusable s1-1) root root-prim prim-core collide-as))
                                  (logtest? (process-mask crate enemy guard vehicle civilian kg-robot metalhead) (-> s1-1 mask))
@@ -2016,12 +1984,7 @@
                 )
               )
             )
-          (let* ((s2-1 *target*)
-                 (s3-1 (if (type? s2-1 process-focusable)
-                           s2-1
-                           )
-                       )
-                 )
+          (let ((s3-1 (the-as target (as-type *target* process-focusable))))
             (when (and s3-1 (< (vector-vector-distance (get-trans s3-1 0) s4-0) (-> s4-0 w)))
               (when (and (nonzero? (-> s3-1 control root-prim prim-core collide-as))
                          (logtest? (process-mask crate enemy guard vehicle civilian kg-robot metalhead) (-> s3-1 mask))
@@ -2062,22 +2025,9 @@
         )
     (let ((gp-4 (handle->process (-> self result-array 0))))
       (deal-damage! self gp-4 (the-as event-message-block #f))
-      (let ((s5-3 gp-4))
-        (if (or (if (type? s5-3 crate)
-                    s5-3
-                    )
-                (let ((s5-4 gp-4))
-                  (if (type? s5-4 market-object)
-                      s5-4
-                      )
-                  )
-                (if (type? gp-4 fruit-stand)
-                    gp-4
-                    )
-                )
-            (process-spawn gun-dark-shot :init gun-dark-shot-init-fizzle (-> self root trans) :name "gun-dark-shot")
-            )
-        )
+      (if (or (as-type gp-4 crate) (as-type gp-4 market-object) (as-type gp-4 fruit-stand))
+          (process-spawn gun-dark-shot :init gun-dark-shot-init-fizzle (-> self root trans) :name "gun-dark-shot")
+          )
       )
     )
   :trans (behavior ()
@@ -2099,15 +2049,11 @@
                 process
                 (lambda :behavior process
                   ((arg0 handle) (arg1 float))
-                  (let* ((s3-0 (ppointer->process (-> self parent)))
-                         (s5-0 (if (type? s3-0 process-focusable)
-                                   s3-0
-                                   )
-                               )
-                         (s2-0 0)
-                         (s1-0 (current-time))
-                         (s3-1 #f)
-                         )
+                  (let ((s5-0 (as-type (ppointer->process (-> self parent)) process-focusable))
+                        (s2-0 0)
+                        (s1-0 (current-time))
+                        (s3-1 #f)
+                        )
                     (+! (-> self clock ref-count) -1)
                     (+! (-> s5-0 clock ref-count) 1)
                     (set! (-> self clock) (-> s5-0 clock))
@@ -2152,12 +2098,7 @@
                           )
                         )
                       (suspend)
-                      (let ((s5-1 (ppointer->process (-> self parent))))
-                        (set! s5-0 (if (type? s5-1 process-focusable)
-                                       s5-1
-                                       )
-                              )
-                        )
+                      (set! s5-0 (as-type (ppointer->process (-> self parent)) process-focusable))
                       (when (and (not s3-1) (time-elapsed? s1-0 (seconds 0.1)) (!= s5-0 (handle->process arg0)))
                         (set! s3-1 #t)
                         (send-event
@@ -2252,12 +2193,7 @@
 
 (defmethod spawn-part ((this gravity-spinner))
   (when (zero? (mod (the-as int (rand-uint31-gen *random-generator*)) 5))
-    (let* ((s5-0 (handle->process (-> this parent-hand)))
-           (gp-1 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((gp-1 (as-type (handle->process (-> this parent-hand)) process-focusable)))
       (when gp-1
         (when (and (-> (the-as process-focusable gp-1) node-list) (nonzero? (-> (the-as process-focusable gp-1) node-list)))
           (let* ((v1-12
@@ -2299,12 +2235,7 @@
          (vf5 :class vf)
          )
     (init-vf0-vector)
-    (let* ((gp-0 (handle->process (-> this parent-hand)))
-           (s3-0 (if (type? gp-0 process-focusable)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((s3-0 (as-type (handle->process (-> this parent-hand)) process-focusable)))
       (when s3-0
         (let* ((gp-1 (-> (the-as process-focusable s3-0) root))
                (s5-0 (-> gp-1 root-prim))
@@ -2340,12 +2271,7 @@
   )
 
 (defmethod get-float-speed ((this gravity-spinner))
-  (let* ((s4-0 (handle->process (-> this parent-hand)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (as-type (handle->process (-> this parent-hand)) process-focusable)))
     (when s5-0
       (let ((f0-2 (- (- (-> (get-trans (the-as process-focusable s5-0) 3) y)
                         (-> (the-as process-focusable s5-0) root root-prim local-sphere w)
@@ -2378,12 +2304,7 @@
 
 ;; WARN: Return type mismatch float vs none.
 (defmethod probe-ground ((this gravity-spinner))
-  (let* ((s4-0 (handle->process (-> this parent-hand)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (as-type (handle->process (-> this parent-hand)) process-focusable)))
     (when s5-0
       (let ((s4-1 (get-trans (the-as process-focusable s5-0) 3))
             (s3-0 (new 'stack-no-clear 'collide-query))
@@ -2425,12 +2346,7 @@
   (set! (-> self time-subtract) arg2)
   (set! (-> self cached-damage) 0.0)
   (set! (-> self was-hit-previously?) #f)
-  (let* ((s5-1 (handle->process (-> self parent-hand)))
-         (gp-1 (if (type? s5-1 process-focusable)
-                   s5-1
-                   )
-               )
-         )
+  (let ((gp-1 (as-type (handle->process (-> self parent-hand)) process-focusable)))
     (when gp-1
       (set! (-> self original-sphere-offset quad)
             (-> (the-as process-focusable gp-1) root root-prim local-sphere quad)
@@ -2495,7 +2411,7 @@
                (v1-39 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
                (v1-40 (the-as number (logior #x3f800000 v1-39)))
                )
-          (s3-1 s2-2 (the-as quaternion s1-0) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-40)))) *up-vector*)
+          (s3-1 s2-2 s1-0 (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-40)))) *up-vector*)
           )
         (let ((f0-18 (/ (-> self obj-radius) (meters 4))))
           0.0
@@ -2537,12 +2453,7 @@
     (sv-2308 vector)
     (sv-2312 float)
     )
-  (let* ((s3-0 (handle->process (-> this parent-hand)))
-         (s5-0 (if (type? s3-0 process-focusable)
-                   s3-0
-                   )
-               )
-         )
+  (let ((s5-0 (as-type (handle->process (-> this parent-hand)) process-focusable)))
     (when s5-0
       (set! sv-144 (new 'stack 'sphere))
       (set! sv-148 (the-as process (send-event *target* 'get-vehicle)))
@@ -2563,19 +2474,9 @@
       (set! (-> sv-144 r) sv-160)
       (let ((s3-2 (new 'stack-no-clear 'array 'collide-shape 384)))
         (countdown (s2-0 (fill-actor-list-for-box *actor-hash* sv-144 s3-2 384))
-          (let* ((s1-0 (-> s3-2 s2-0))
-                 (a0-15 (if (type? s1-0 collide-shape)
-                            s1-0
-                            )
-                        )
-                 )
+          (let ((a0-15 (as-type (-> s3-2 s2-0) collide-shape)))
             (when a0-15
-              (let* ((s1-1 (-> a0-15 process))
-                     (a0-17 (if (type? s1-1 process-focusable)
-                                s1-1
-                                )
-                            )
-                     )
+              (let ((a0-17 (as-type (-> a0-15 process) process-focusable)))
                 (when a0-17
                   (when (and (!= s5-0 a0-17)
                              (not (focus-test? (the-as process-focusable a0-17) disable dead inactive gun-no-target))
@@ -2633,12 +2534,7 @@
             )
           )
         )
-      (let* ((s2-1 *target*)
-             (s3-3 (if (type? s2-1 process-focusable)
-                       s2-1
-                       )
-                   )
-             )
+      (let ((s3-3 (the-as target (as-type *target* process-focusable))))
         (when (and s3-3 (< (vector-vector-distance (get-trans s3-3 0) sv-144) (-> sv-144 r)))
           (when (and (!= s5-0 s3-3)
                      (not (focus-test? s3-3 disable dead inactive gun-no-target))
@@ -2704,12 +2600,7 @@
 
 (defmethod gravity-spinner-method-16 ((this gravity-spinner) (arg0 vector) (arg1 vector))
   (local-vars (sv-48 vector) (sv-52 vector) (sv-56 float))
-  (let* ((s2-0 (handle->process (-> this parent-hand)))
-         (s4-0 (if (type? s2-0 process-focusable)
-                   s2-0
-                   )
-               )
-         )
+  (let ((s4-0 (as-type (handle->process (-> this parent-hand)) process-focusable)))
     (when s4-0
       (set! sv-48 (vector-! (new 'stack-no-clear 'vector) arg0 (get-trans (the-as process-focusable s4-0) 3)))
       (set! sv-52 (new 'stack-no-clear 'vector))
@@ -2729,12 +2620,7 @@
 
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod rotate! ((this gravity-spinner) (arg0 quaternion))
-  (let* ((s4-0 (handle->process (-> this parent-hand)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (as-type (handle->process (-> this parent-hand)) process-focusable)))
     (when s5-0
       (let* ((s4-1 (get-trans (the-as process-focusable s5-0) 3))
              (s3-1 (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-focusable s5-0) root trans) s4-1))
@@ -2771,11 +2657,8 @@
               (f0-3 (* 360.0 f0-2))
               (f0-4 (/ f0-3 5))
               (f30-0 (fmin 116508.445 f0-4))
-              (s4-0 (handle->process (-> this parent-hand)))
               )
-         (if (if (type? s4-0 process-focusable)
-                 s4-0
-                 )
+         (if (as-type (handle->process (-> this parent-hand)) process-focusable)
              (rotate! this (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) s5-1 (* f30-0 (seconds-per-frame))))
              )
          )
@@ -2785,12 +2668,7 @@
          )
      )
     (else
-      (let* ((s3-1 (handle->process (-> this parent-hand)))
-             (s4-2 (if (type? s3-1 process-focusable)
-                       s3-1
-                       )
-                   )
-             )
+      (let ((s4-2 (as-type (handle->process (-> this parent-hand)) process-focusable)))
         (when s4-2
           (let ((s2-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable s4-2) root quat)))
                 (s3-2 (new 'stack-no-clear 'quaternion))
@@ -2876,39 +2754,30 @@
            )
       (send-event (handle->process (-> self parent-hand)) 'gun-dark-2-off f0-2)
       )
-    (let ((gp-0 (handle->process (-> self parent-hand))))
-      (if (if (type? gp-0 process-focusable)
-              gp-0
-              )
-          (send-event
-            (handle->process (-> self parent-hand))
-            'attack
-            #f
-            (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
-                                                                (damage 0.0)
-                                                                (vehicle-damage-factor 1.0)
-                                                                (vehicle-impulse-factor 1.0)
-                                                                (penetrate-using (penetrate vehicle))
-                                                                (vector *zero-vector*)
-                                                                (attacker-velocity *zero-vector*)
-                                                                (mode 'gravity-end)
-                                                                )
-                                )
-            )
+    (if (as-type (handle->process (-> self parent-hand)) process-focusable)
+        (send-event
+          (handle->process (-> self parent-hand))
+          'attack
+          #f
+          (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                              (damage 0.0)
+                                                              (vehicle-damage-factor 1.0)
+                                                              (vehicle-impulse-factor 1.0)
+                                                              (penetrate-using (penetrate vehicle))
+                                                              (vector *zero-vector*)
+                                                              (attacker-velocity *zero-vector*)
+                                                              (mode 'gravity-end)
+                                                              )
+                              )
           )
-      )
+        )
     )
   )
 
 ;; WARN: Return type mismatch int vs object.
 (defbehavior zero-g-wait-for-land gravity-spinner ()
   (suspend-for (seconds 1.5)
-    (let* ((s4-0 (handle->process (-> self parent-hand)))
-           (s5-0 (if (type? s4-0 process-focusable)
-                     s4-0
-                     )
-                 )
-           )
+    (let ((s5-0 (as-type (handle->process (-> self parent-hand)) process-focusable)))
       (cond
         ((and s5-0
               (not (logtest? (-> (the-as process-focusable s5-0) focus-status) (focus-status disable dead inactive)))
@@ -2918,15 +2787,11 @@
                        )
                     (-> self ground-height)
                     )
-                 (let ((s4-1 (-> (the-as process-focusable s5-0) root)))
-                   (and (if (type? s4-1 collide-shape-moving)
-                            s4-1
-                            )
-                        (logtest? (-> (the-as collide-shape-moving (-> (the-as process-focusable s5-0) root)) status)
-                                  (collide-status on-surface touch-surface)
-                                  )
-                        )
-                   )
+                 (and (as-type (-> (the-as process-focusable s5-0) root) collide-shape-moving)
+                      (logtest? (-> (the-as collide-shape-moving (-> (the-as process-focusable s5-0) root)) status)
+                                (collide-status on-surface touch-surface)
+                                )
+                      )
                  )
              (return (the-as object 0))
              )
@@ -2978,17 +2843,13 @@
        )
       (('impact)
        (handle-impact self #f)
-       (let ((s5-1 (handle->process (-> self parent-hand))))
-         (when (if (type? s5-1 process-focusable)
-                   s5-1
-                   )
-           (let ((f0-0 (vector-length (the-as vector (-> block param 1)))))
-             0.0
-             (when (< 40960.0 f0-0)
-               (let ((f30-0 (/ f0-0 (meters 10))))
-                 (format 0 "Receving impact damage ~f~%" f30-0)
-                 (+! (-> self cached-damage) f30-0)
-                 )
+       (when (as-type (handle->process (-> self parent-hand)) process-focusable)
+         (let ((f0-0 (vector-length (the-as vector (-> block param 1)))))
+           0.0
+           (when (< 40960.0 f0-0)
+             (let ((f30-0 (/ f0-0 (meters 10))))
+               (format 0 "Receving impact damage ~f~%" f30-0)
+               (+! (-> self cached-damage) f30-0)
                )
              )
            )
@@ -3017,11 +2878,7 @@
            )
        (set! (-> sv-32 y) (* 0.15 (-> sv-32 y)))
        (+! (-> self cached-damage) sv-36)
-       (let ((s4-0 (if (type? proc process-focusable)
-                       proc
-                       )
-                   )
-             )
+       (let ((s4-0 (as-type proc process-focusable)))
          (when s4-0
            (vector-float*! sv-32 sv-32 (fmax 0.5 (gravity-spinner-method-18 self s4-0)))
            (vector+float*!
@@ -3101,12 +2958,7 @@
       (suspend)
       )
     (send-event (handle->process (-> self parent-hand)) 'gun-dark-2-off)
-    (let* ((s5-0 (handle->process (-> self parent-hand)))
-           (gp-0 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((gp-0 (as-type (handle->process (-> self parent-hand)) process-focusable)))
       (when gp-0
         (update-rotation self #t)
         (quaternion-normalize! (-> (the-as process-focusable gp-0) root quat))
@@ -3144,12 +2996,7 @@
             (+! (-> self cached-damage) f0-7)
             )
           )
-        (let* ((gp-1 (-> (the-as process-focusable gp-0) root))
-               (v1-37 (if (type? gp-1 collide-shape-moving)
-                          gp-1
-                          )
-                      )
-               )
+        (let ((v1-37 (as-type (-> (the-as process-focusable gp-0) root) collide-shape-moving)))
           (if v1-37
               (logclear! (-> (the-as collide-shape-moving v1-37) status) (collide-status on-surface touch-surface))
               )
@@ -3174,12 +3021,7 @@
                                                           )
                           )
       )
-    (let* ((s5-1 (handle->process (-> self parent-hand)))
-           (gp-2 (if (type? s5-1 process-focusable)
-                     s5-1
-                     )
-                 )
-           )
+    (let ((gp-2 (as-type (handle->process (-> self parent-hand)) process-focusable)))
       (when gp-2
         (vector-copy!
           (-> (the-as process-focusable gp-2) root root-prim local-sphere)
@@ -3659,19 +3501,9 @@
         (set! (-> s5-0 w) f28-0)
         (let ((s3-1 (new 'stack-no-clear 'array 'collide-shape 384)))
           (countdown (s2-0 (fill-actor-list-for-box *actor-hash* s5-0 s3-1 384))
-            (let* ((s1-0 (-> s3-1 s2-0))
-                   (v1-17 (if (type? s1-0 collide-shape)
-                              s1-0
-                              )
-                          )
-                   )
+            (let ((v1-17 (as-type (-> s3-1 s2-0) collide-shape)))
               (when v1-17
-                (let* ((s0-0 (-> v1-17 process))
-                       (s1-1 (if (type? s0-0 process-focusable)
-                                 s0-0
-                                 )
-                             )
-                       )
+                (let ((s1-1 (as-type (-> v1-17 process) process-focusable)))
                   (when s1-1
                     (when (and (!= *target* s1-1)
                                (not (focus-test? (the-as process-focusable s1-1) disable dead inactive))
@@ -3703,12 +3535,7 @@
               )
             )
           )
-        (let* ((s2-1 *target*)
-               (s3-2 (if (type? s2-1 process-focusable)
-                         s2-1
-                         )
-                     )
-               )
+        (let ((s3-2 (the-as target (as-type *target* process-focusable))))
           (when (and s3-2 (< (vector-vector-distance (get-trans s3-2 0) s5-0) (-> s5-0 w)))
             (when (and (!= *target* s3-2)
                        (not (focus-test? s3-2 disable dead inactive))

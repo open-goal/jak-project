@@ -28,7 +28,7 @@
       (ja-channel-push! 1 (seconds 0.1))
       (ja-no-eval :group! jakb-trip-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (compute-alignment! (-> self align))
+        (compute-delta-align! (-> self align))
         (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 1.0)
         (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
           (let ((v1-22 (process->ppointer self)))
@@ -650,12 +650,7 @@
     0
     (ja-channel-set! 0)
     (until #f
-      (let* ((s5-0 (handle->process arg0))
-             (a0-6 (if (type? s5-0 process-focusable)
-                       s5-0
-                       )
-                   )
-             )
+      (let ((a0-6 (as-type (handle->process arg0) process-focusable)))
         (if a0-6
             (move-to-point! (-> self control) (get-trans (the-as process-focusable a0-6) 0))
             )
@@ -1149,7 +1144,7 @@
             (target-compute-edge-rider)
             )
           )
-        (compute-alignment! (-> self align))
+        (compute-delta-align! (-> self align))
         (when (not (logtest? (-> self align flags) (align-flags disabled)))
           (vector-matrix*! s3-0 (-> self align delta trans) (-> self control c-R-w))
           (move-by-vector! (-> self control) s3-0)
@@ -1200,7 +1195,7 @@
           )
       (ja-no-eval :group! jakb-edge-grab-off-ja :num! (seek! (ja-aframe 191.0 0)) :frame-num 0.0)
       (until (ja-done? 0)
-        (compute-alignment! (-> self align))
+        (compute-delta-align! (-> self align))
         (when (not (logtest? (-> self align flags) (align-flags disabled)))
           (vector-matrix*! gp-0 (-> self align delta trans) (-> self control c-R-w))
           (move-by-vector! (-> self control) gp-0)
@@ -1324,7 +1319,7 @@
                       )
           (until (ja-done? 0)
             (gp-0)
-            (compute-alignment! (-> self align))
+            (compute-delta-align! (-> self align))
             (align!
               (-> self align)
               (align-opts adjust-y-vel)

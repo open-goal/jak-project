@@ -93,10 +93,8 @@ math::Vector3f vopmsub(math::Vector3f acc, math::Vector3f a, math::Vector3f b) {
 }
 
 /*!
- * Compute the normal transformation for a TIE from the TIE matrix.
- * Note that this isn't identical to the original game - we're missing the vf14 scaling factor
- * For now, I just set this to 1, then normalize in the shader. Though I think we could avoid
- * this by figuring out the value of vf14 here (I am just too lazy right now).
+ * Compute the normal transformation for a TIE from the TIE matrix. This will return properly scaled
+ * normals.
  */
 std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vector4f, 4>& m) {
   // let:
@@ -186,11 +184,21 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   // sqc2 vf12, -80(t8)
 }
 
+s16 saturate_for_s10(s16 s10) {
+  // our error should be 1 or less as an s8, or 4 as a s10.
+  ASSERT(s10 >= -520 && s10 < 520);
+  if (s10 < -512) {
+    return -512;
+  }
+  if (s10 > 511) {
+    return 511;
+  }
+  return s10;
+}
+
 u32 pack_to_gl_normal(s16 nx, s16 ny, s16 nz) {
-  ASSERT(nx >= -512 && nx <= 511);
-  ASSERT(ny >= -512 && ny <= 511);
-  ASSERT(nz >= -512 && nz <= 511);
-  return (nx & 0x3ff) | ((ny & 0x3ff) << 10) | ((nz & 0x3ff) << 20);
+  return (saturate_for_s10(nx) & 0x3ff) | ((saturate_for_s10(ny) & 0x3ff) << 10) |
+         ((saturate_for_s10(nz) & 0x3ff) << 20);
 }
 
 /*!
@@ -202,10 +210,10 @@ u32 unpack_tie_normal(const std::array<math::Vector3f, 3>& mat, s8 nx, s8 ny, s8
   nrm += mat[0] * nx;
   nrm += mat[1] * ny;
   nrm += mat[2] * nz;
-  // convert to s16 for OpenGL renderer
-  // nrm /= 0x100;  // number from EE asm
-  // nrm *= 0x200;  // for normalized s10 -> float conversion by OpenGL.
-  nrm *= 2;  // for normalized s10 -> float conversion by OpenGL.
+
+  // game used signed 8-bit normals, but OpenGL uses signed 10-bit
+  // multiply by 2^2 = 4
+  nrm *= 4;
 
   auto as_int = nrm.cast<s16>();
 

@@ -573,18 +573,10 @@
     (call-parent-state-handler trans)
     (let ((gp-0 (get-current-enemy self)))
       (when gp-0
-        (let* ((s5-0 self)
-               (s4-0 (method-of-object s5-0 set-focus!))
-               (s3-0 (handle->process (-> self target-status handle)))
-               )
-          (s4-0
-            s5-0
-            (the-as process-focusable (if (type? s3-0 process-focusable)
-                                          s3-0
-                                          )
-                    )
-            (the-as enemy-aware #f)
-            )
+        (set-focus!
+          self
+          (the-as process-focusable (as-type (handle->process (-> self target-status handle)) process-focusable))
+          (the-as enemy-aware #f)
           )
         (update-focus self)
         (set! (-> self target-status handle) (process->handle gp-0))
@@ -1318,19 +1310,9 @@
             (set! (-> gp-0 quad) (-> s5-0 prim-core world-sphere quad))
             (let ((s5-1 (new 'stack-no-clear 'array 'collide-shape 384)))
               (countdown (s4-0 (fill-actor-list-for-box *actor-hash* gp-0 s5-1 384))
-                (let* ((s3-0 (-> s5-1 s4-0))
-                       (v1-12 (if (type? s3-0 collide-shape)
-                                  s3-0
-                                  )
-                              )
-                       )
+                (let ((v1-12 (as-type (-> s5-1 s4-0) collide-shape)))
                   (when v1-12
-                    (let* ((s2-0 (-> v1-12 process))
-                           (s3-1 (if (type? s2-0 process-focusable)
-                                     s2-0
-                                     )
-                                 )
-                           )
+                    (let ((s3-1 (as-type (-> v1-12 process) process-focusable)))
                       (when s3-1
                         (if (and (!= *target* s3-1)
                                  (!= self s3-1)
@@ -1350,12 +1332,7 @@
                   )
                 )
               )
-            (let* ((s4-1 *target*)
-                   (s5-2 (if (type? s4-1 process-focusable)
-                             s4-1
-                             )
-                         )
-                   )
+            (let ((s5-2 (the-as target (as-type *target* process-focusable))))
               (when (and s5-2 (< (vector-vector-distance (get-trans s5-2 0) gp-0) (-> gp-0 r)))
                 (if (and (!= *target* s5-2)
                          (!= self s5-2)
@@ -2254,28 +2231,15 @@
     (vector-copy! v1-26 (-> this root trans))
     (+! (-> v1-26 y) 8192.0)
     )
-  (let* ((s5-0 (handle->process (-> this target-status handle)))
-         (a0-36 (if (type? s5-0 process-focusable)
-                    s5-0
-                    )
-                )
-         )
+  (let ((a0-36 (as-type (handle->process (-> this target-status handle)) process-focusable)))
     (cond
       ((and a0-36
             (not (logtest? (-> (the-as process-focusable a0-36) focus-status) (focus-status disable dead inactive)))
             )
-       (let* ((s5-1 this)
-              (s4-0 (method-of-object s5-1 set-focus!))
-              (s3-0 (handle->process (-> this target-status handle)))
-              )
-         (s4-0
-           s5-1
-           (the-as process-focusable (if (type? s3-0 process-focusable)
-                                         s3-0
-                                         )
-                   )
-           (the-as enemy-aware #f)
-           )
+       (set-focus!
+         this
+         (the-as process-focusable (as-type (handle->process (-> this target-status handle)) process-focusable))
+         (the-as enemy-aware #f)
          )
        (update-focus this)
        (let ((f0-2 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))

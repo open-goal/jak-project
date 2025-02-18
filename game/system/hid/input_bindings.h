@@ -230,14 +230,14 @@ void from_json(const json& j, InputModifiers& obj);
 /// should make him move towards the camera.
 struct InputBinding {
   InputBinding() = default;
-  InputBinding(int index) : pad_data_index(index){};
+  InputBinding(int index) : pad_data_index(index) {};
   InputBinding(int index, const std::optional<InputModifiers> _modifiers) : pad_data_index(index) {
     if (_modifiers) {
       modifiers = _modifiers.value();
     }
   };
   InputBinding(int index, bool _minimum_in_range)
-      : pad_data_index(index), minimum_in_range(_minimum_in_range){};
+      : pad_data_index(index), minimum_in_range(_minimum_in_range) {};
   InputBinding(int index, bool _minimum_in_range, const std::optional<InputModifiers> _modifiers)
       : pad_data_index(index), minimum_in_range(_minimum_in_range) {
     if (_modifiers) {
@@ -309,7 +309,7 @@ struct InputBindingGroups {
       : device_type(_device_type),
         analog_axii(_analog_axii),
         button_axii(_button_axii),
-        buttons(_buttons){};
+        buttons(_buttons) {};
 
   // TODO - make these private
   InputDeviceType device_type;
@@ -392,7 +392,7 @@ struct CommandBinding {
   enum Source { CONTROLLER, KEYBOARD, MOUSE };
 
   CommandBinding(const u32 _host_key, std::function<void()> _command)
-      : host_key(_host_key), command(_command){};
+      : host_key(_host_key), command(_command) {};
   u32 host_key;
   std::function<void()> command;
   InputModifiers modifiers;

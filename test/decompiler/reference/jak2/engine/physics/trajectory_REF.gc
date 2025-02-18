@@ -188,13 +188,9 @@
     )
   (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache* arg0)))
     (when (and arg1 (>= f30-0 0.0) (>= 0.0 (vector-dot (-> arg0 best-other-tri normal) (-> this dir))))
-      (let* ((s3-0 (new 'stack-no-clear 'touching-shapes-entry))
-             (s2-0 (-> arg0 best-other-tri collide-ptr))
-             (v1-12 (if (type? s2-0 collide-shape-prim)
-                        (the-as collide-shape-prim s2-0)
-                        )
-                    )
-             )
+      (let ((s3-0 (new 'stack-no-clear 'touching-shapes-entry))
+            (v1-12 (as-type (-> arg0 best-other-tri collide-ptr) collide-shape-prim))
+            )
         (set! (-> s3-0 cshape1) #f)
         (set! (-> s3-0 cshape2) (if v1-12
                                     (-> v1-12 cshape)
@@ -262,11 +258,7 @@
 (defmethod combo-tracker-method-13 ((this combo-tracker) (arg0 handle) (arg1 vector) (arg2 float) (arg3 vector) (arg4 float))
   (cond
     ((send-event (handle->process arg0) 'combo)
-     (let ((gp-1 (handle->process arg0)))
-       (if (type? gp-1 process-focusable)
-           gp-1
-           )
-       )
+     (the-as basic (as-type (handle->process arg0) process-focusable))
      )
     (else
       (let ((s1-0 (new 'stack-no-clear 'sphere))
@@ -286,25 +278,23 @@
                                  (-> s2-1 allocated-length)
                                  )
               )
-        (let ((gp-2 (find-nearest-focusable
-                      (the-as (array collide-shape) s2-1)
-                      arg1
-                      arg2
-                      (if (= arg4 65536.0)
-                          (search-info-flag crate enemy combo)
-                          (search-info-flag crate enemy prefer-angle cull-angle combo)
+        (the-as basic (as-type
+                        (find-nearest-focusable
+                          (the-as (array collide-shape) s2-1)
+                          arg1
+                          arg2
+                          (if (= arg4 65536.0)
+                              (search-info-flag crate enemy combo)
+                              (search-info-flag crate enemy prefer-angle cull-angle combo)
+                              )
+                          (search-info-flag)
+                          arg3
+                          (the-as vector #f)
+                          arg4
                           )
-                      (search-info-flag)
-                      arg3
-                      (the-as vector #f)
-                      arg4
-                      )
-                    )
-              )
-          (if (type? gp-2 process-focusable)
-              gp-2
-              )
-          )
+                        process-focusable
+                        )
+                )
         )
       )
     )
@@ -335,12 +325,7 @@
         (set! (-> a1-4 from) (process->ppointer pp))
         (set! (-> a1-4 num-params) 0)
         (set! (-> a1-4 message) 'nav-control)
-        (let* ((s3-0 (send-event-function (handle->process (-> this target)) a1-4))
-               (s4-1 (if (type? s3-0 nav-control)
-                         s3-0
-                         )
-                     )
-               )
+        (let ((s4-1 (the-as object (as-type (send-event-function (handle->process (-> this target)) a1-4) nav-control))))
           (when s4-1
             (let ((a2-3 ((method-of-type nav-control find-poly-containing-point-1) (the-as nav-control s4-1) arg1)))
               (if a2-3
