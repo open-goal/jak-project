@@ -3,32 +3,6 @@
 #include "dualsense_effects.h"
 #include "input_device.h"
 
-// TODO:
-// - new options:
-//   - enable/disable pressure sensitivity (all games, disable if not supported)
-// - pressure sensitivity if PS3 controller and supported
-//   - gotta use SXS on windows vs DsMiniHid or whatever
-// - trigger effects:
-//   - xbox1:
-//     - small vibrate when collecting dark eco
-//     - big vibrate when changing to dark jak
-//     - vibrate when shooting gun, proportional to gun type
-//   - ps5:
-//     - resistance when changing to dark jak
-//     - different gun shooting effects
-//       - red (resistance)
-//       - yellow (weapon trigger)
-//       - blue (vibrates)
-//       - purple (less resistance)
-// - tests todo:
-//   - display
-//     - [x] all mode switch permutations
-//     - [x] launch with all modes saved
-//     - [x] switch monitors / unplug monitor that was active, how does it handle it
-//     - [x] load with alternate monitor saved and all modes
-//   - controls
-//     - [x] keyboard and mouse still work
-//     - [?] pressure sensitivity on linux
 // https://wiki.libsdl.org/SDL3/CategoryGamepad
 class GameController : public InputDevice {
  public:
