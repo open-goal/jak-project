@@ -2005,7 +2005,7 @@ void TextureAnimator::load_clut_to_converter() {
 
   switch (clut_lookup->second.kind) {
     case VramEntry::Kind::CLUT16_16_IN_PSM32:
-      m_converter.upload_width(clut_lookup->second.data.data(), m_current_shader.tex0.cbp(), 16,
+      m_converter.upload(clut_lookup->second.data.data(), m_current_shader.tex0.cbp(), 16,
                                16);
       break;
     default:
@@ -2104,8 +2104,8 @@ GLuint TextureAnimator::make_or_get_gpu_texture_for_current_shader(TexturePool& 
             }
           } else {
             Timer timer;
-            m_converter.upload_width(vram_entry->data.data(), m_current_shader.tex0.tbp0(),
-                                     vram_entry->tex_width, vram_entry->tex_height);
+            m_converter.upload(vram_entry->data.data(), m_current_shader.tex0.tbp0(),
+                                   vram_entry->tex_width, vram_entry->tex_height);
 
             // also needs clut lookup
             load_clut_to_converter();
