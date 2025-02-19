@@ -162,7 +162,7 @@ std::array<u8, 11> trigger_effect_vibration(u8 position, u8 amplitude, u8 freque
   return trigger_effect_off();
 }
 
-std::array<u8, 11> trigger_effect_multiple_position_feedback(std::vector<u8> strength) {
+std::array<u8, 11> trigger_effect_multiple_position_feedback(const std::vector<u8>& strength) {
   if (strength.size() != 10) {
     lg::error(
         "Invalid argument for multiple_position_feedback trigger effect, strength array must be "
@@ -257,7 +257,7 @@ std::array<u8, 11> trigger_effect_slope_feedback(u8 start_position,
 }
 
 std::array<u8, 11> trigger_effect_multiple_position_vibrate(u8 frequency,
-                                                            std::vector<u8> amplitude) {
+                                                            const std::vector<u8>& amplitude) {
   if (amplitude.size() != 10) {
     lg::error("Invalid argument for slope_feedback trigger effect, amplitude must be length 10");
     return trigger_effect_off();

@@ -25,11 +25,15 @@ InputManager::InputManager(SDL_Window* window)
   {
     auto p = scoped_prof("input_manager::init");
     m_settings->load_settings();
+#ifdef WIN32
     if (!SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER, "1")) {
       sdl_util::log_error("Unable to set SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER to true!");
     }
-    // TODO - might need to enable this for linux, not sure
-    // SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3, "1");
+#elif
+    if (!SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3, "1")) {
+      sdl_util::log_error("Unable to set SDL_HINT_JOYSTICK_HIDAPI_PS3 to true!");
+    }
+#endif
     {
       auto p = scoped_prof("input_manager::init::sdl_init_subsystem");
       // initializing the controllers on startup can sometimes take a very long time
@@ -256,7 +260,6 @@ void InputManager::finish_polling() {
   }
 }
 
-// TODO - gotta move everything into events
 void InputManager::process_ee_events() {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
   // Fully process any events from the EE

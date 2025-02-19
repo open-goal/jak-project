@@ -73,7 +73,7 @@ GameController::GameController(int sdl_device_id,
     m_has_trigger_rumble =
         SDL_GetBooleanProperty(properties, SDL_PROP_GAMEPAD_CAP_TRIGGER_RUMBLE_BOOLEAN, false);
     m_is_dualsense = SDL_GetGamepadType(m_device_handle) == SDL_GAMEPAD_TYPE_PS5;
-    // TODO NOW - remove trigger effects
+    clear_trigger_effect(dualsense_effects::TriggerEffectOption::BOTH);
   }
 
   if (m_settings->controller_binds.find(m_guid) == m_settings->controller_binds.end()) {
@@ -227,7 +227,7 @@ void GameController::process_event(const SDL_Event& event,
     }
   } else if (SDL_EVENT_JOYSTICK_AXIS_MOTION && m_has_pressure_sensitive_buttons) {
     // handle changes in pressure on axii not mapped to the gamepad (ie. PS3 analog buttons)
-    if (m_settings->enable_pressure_sensitivity && m_has_pressure_sensitive_buttons &&
+    if (m_settings->enable_pressure_sensitivity &&
         pressure_axes_to_button.contains(event.jaxis.axis)) {
       auto& binds = m_settings->controller_binds.at(m_guid);
       // Work backwords, get the button so we can iterate the binds
@@ -245,7 +245,7 @@ void GameController::process_event(const SDL_Event& event,
 
 void GameController::close_device() {
   if (m_device_handle) {
-    // TODO NOW - if dualsense, clear effects
+    clear_trigger_effect(dualsense_effects::TriggerEffectOption::BOTH);
     SDL_CloseGamepad(m_device_handle);
   }
 }
@@ -276,23 +276,31 @@ void GameController::send_trigger_rumble(const u16 left_rumble,
   }
 }
 
+dualsense_effects::DS5EffectsState_t prepare_effects_struct(
+    const dualsense_effects::TriggerEffectOption option,
+    const std::array<u8, 11>& effect) {
+  dualsense_effects::DS5EffectsState_t effects;
+  SDL_zero(effects);
+  // Modify right (0x04) and left (0x08) trigger effect
+  if (option == dualsense_effects::TriggerEffectOption::LEFT ||
+      option == dualsense_effects::TriggerEffectOption::BOTH) {
+    effects.ucEnableBits1 |= 0x08;
+    SDL_memcpy(effects.rgucLeftTriggerEffect, effect.data(), sizeof(effect));
+  }
+  if (option == dualsense_effects::TriggerEffectOption::RIGHT ||
+      option == dualsense_effects::TriggerEffectOption::BOTH) {
+    effects.ucEnableBits1 |= 0x04;
+    SDL_memcpy(effects.rgucRightTriggerEffect, effect.data(), sizeof(effect));
+  }
+  return effects;
+}
+
 void GameController::clear_trigger_effect(dualsense_effects::TriggerEffectOption option) {
   if (m_is_dualsense && m_device_handle) {
-    dualsense_effects::DS5EffectsState_t effects;
-    SDL_zero(effects);
     const auto trigger_effect = dualsense_effects::trigger_effect_off();
-    // Modify right (0x04) and left (0x08) trigger effect
-    if (option == dualsense_effects::TriggerEffectOption::LEFT ||
-        option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x08;
-      SDL_memcpy(effects.rgucLeftTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    } else if (option == dualsense_effects::TriggerEffectOption::RIGHT ||
-               option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x04;
-      SDL_memcpy(effects.rgucRightTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    }
+    const auto effects = prepare_effects_struct(option, trigger_effect);
     if (!SDL_SendGamepadEffect(m_device_handle, &effects, sizeof(effects))) {
-      sdl_util::log_error("Unable to send dualsense trigger effect!");
+      sdl_util::log_error("Unable to clear dualsense trigger effect!");
     }
   }
 }
@@ -301,21 +309,10 @@ void GameController::send_trigger_effect_feedback(dualsense_effects::TriggerEffe
                                                   u8 position,
                                                   u8 strength) {
   if (m_is_dualsense && m_device_handle) {
-    dualsense_effects::DS5EffectsState_t effects;
-    SDL_zero(effects);
     const auto trigger_effect = dualsense_effects::trigger_effect_feedback(position, strength);
-    // Modify right (0x04) and left (0x08) trigger effect
-    if (option == dualsense_effects::TriggerEffectOption::LEFT ||
-        option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x08;
-      SDL_memcpy(effects.rgucLeftTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    } else if (option == dualsense_effects::TriggerEffectOption::RIGHT ||
-               option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x04;
-      SDL_memcpy(effects.rgucRightTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    }
+    const auto effects = prepare_effects_struct(option, trigger_effect);
     if (!SDL_SendGamepadEffect(m_device_handle, &effects, sizeof(effects))) {
-      sdl_util::log_error("Unable to send dualsense trigger effect!");
+      sdl_util::log_error("Unable to send dualsense feedback trigger effect!");
     }
   }
 }
@@ -325,22 +322,11 @@ void GameController::send_trigger_effect_vibrate(dualsense_effects::TriggerEffec
                                                  u8 amplitude,
                                                  u8 frequency) {
   if (m_is_dualsense && m_device_handle) {
-    dualsense_effects::DS5EffectsState_t effects;
-    SDL_zero(effects);
     const auto trigger_effect =
         dualsense_effects::trigger_effect_vibration(position, amplitude, frequency);
-    // Modify right (0x04) and left (0x08) trigger effect
-    if (option == dualsense_effects::TriggerEffectOption::LEFT ||
-        option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x08;
-      SDL_memcpy(effects.rgucLeftTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    } else if (option == dualsense_effects::TriggerEffectOption::RIGHT ||
-               option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x04;
-      SDL_memcpy(effects.rgucRightTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    }
+    const auto effects = prepare_effects_struct(option, trigger_effect);
     if (!SDL_SendGamepadEffect(m_device_handle, &effects, sizeof(effects))) {
-      sdl_util::log_error("Unable to send dualsense trigger effect!");
+      sdl_util::log_error("Unable to send dualsense vibrate trigger effect!");
     }
   }
 }
@@ -350,22 +336,11 @@ void GameController::send_trigger_effect_weapon(dualsense_effects::TriggerEffect
                                                 u8 end_position,
                                                 u8 strength) {
   if (m_is_dualsense && m_device_handle) {
-    dualsense_effects::DS5EffectsState_t effects;
-    SDL_zero(effects);
     const auto trigger_effect =
         dualsense_effects::trigger_effect_weapon(start_position, end_position, strength);
-    // Modify right (0x04) and left (0x08) trigger effect
-    if (option == dualsense_effects::TriggerEffectOption::LEFT ||
-        option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x08;
-      SDL_memcpy(effects.rgucLeftTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    } else if (option == dualsense_effects::TriggerEffectOption::RIGHT ||
-               option == dualsense_effects::TriggerEffectOption::BOTH) {
-      effects.ucEnableBits1 |= 0x04;
-      SDL_memcpy(effects.rgucRightTriggerEffect, trigger_effect.data(), sizeof(trigger_effect));
-    }
+    const auto effects = prepare_effects_struct(option, trigger_effect);
     if (!SDL_SendGamepadEffect(m_device_handle, &effects, sizeof(effects))) {
-      sdl_util::log_error("Unable to send dualsense trigger effect!");
+      sdl_util::log_error("Unable to send dualsense weapon trigger effect!");
     }
   }
 }

@@ -283,12 +283,9 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   {
     auto p = scoped_prof("startup::sdl::window_extras");
     float dpi = 1.0f;
-    int window_display_idx = SDL_GetDisplayForWindow(window);
-    if (window_display_idx > 0) {
-      auto display_scale = SDL_GetWindowDisplayScale(window);
-      if (display_scale > 0.0) {
-        dpi = display_scale * 96.0f;
-      }
+    float display_scale = SDL_GetWindowDisplayScale(window);
+    if (display_scale > 0.0) {
+      dpi = display_scale * 96.0f;
     }
 
     // Setup Window Icon
@@ -304,8 +301,12 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
       if (icon_data) {
         SDL_Surface* icon_surf = SDL_CreateSurfaceFrom(
             icon_width, icon_height, SDL_PIXELFORMAT_RGBA32, (void*)icon_data, 4 * icon_width);
-        SDL_SetWindowIcon(window, icon_surf);
-        SDL_DestroySurface(icon_surf);
+        if (!icon_surf) {
+          sdl_util::log_error("unable to generate surface from app icon data");
+        } else {
+          SDL_SetWindowIcon(window, icon_surf);
+          SDL_DestroySurface(icon_surf);
+        }
         stbi_image_free(icon_data);
       } else {
         lg::error("Could not load icon for OpenGL window, couldn't load image data");

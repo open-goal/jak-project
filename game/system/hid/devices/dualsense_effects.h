@@ -81,10 +81,12 @@ std::array<u8, 11> trigger_effect_off();
 /// The trigger status nybble will report 0 before the effect and 1 when in the effect.
 /// This is an offical effect and is expected to be present in future DualSense firmware.
 /// </summary>
-/// <param name="position">The starting zone of
-/// the trigger effect. Must be between 0 and 9 inclusive.</param> <param name="strength">The force
-/// of the resistance. Must be between 0 and 8 inclusive.</param> <returns>The success of the effect
-/// write.</returns>
+/// <param name="position">The starting zone of the trigger effect. Must be between 0 and 9
+/// inclusive.</param>
+///
+/// <param name="strength">The force of the resistance. Must be between 0 and 8 inclusive.</param>
+///
+/// <returns>The success of the effect write.</returns>
 std::array<u8, 11> trigger_effect_feedback(u8 position, u8 strength);
 
 /// <summary>
@@ -93,11 +95,15 @@ std::array<u8, 11> trigger_effect_feedback(u8 position, u8 strength);
 /// and 2 after until again before the start position.
 /// This is an offical effect and is expected to be present in future DualSense firmware.
 /// </summary>
-/// <param name="startPosition">The starting zone
-/// of the trigger effect. Must be between 2 and 7 inclusive.</param> <param name="endPosition">The
-/// ending zone of the trigger effect. Must be between <paramref name="startPosition"/>+1 and 8
-/// inclusive.</param> <param name="strength">The force of the resistance. Must be between 0 and 8
-/// inclusive.</param> <returns>The success of the effect write.</returns>
+/// <param name="start_position">The starting zone of the trigger effect. Must be between 2 and 7
+/// inclusive.</param>
+///
+/// <param name="end_position">The ending zone of the trigger effect. Must be between <paramref
+/// name="start_position"/>+1 and 8 inclusive.</param>
+///
+/// <param name="strength">The force of the resistance. Must be between 0 and 8 inclusive.</param>
+///
+/// <returns>The success of the effect write.</returns>
 std::array<u8, 11> trigger_effect_weapon(u8 start_position, u8 end_position, u8 strength);
 
 /// <summary>
@@ -105,11 +111,15 @@ std::array<u8, 11> trigger_effect_weapon(u8 start_position, u8 end_position, u8 
 /// The trigger status nybble will report 0 before the effect and 1 when in the effect.
 /// This is an offical effect and is expected to be present in future DualSense firmware.
 /// </summary>
-/// <param name="position">The starting zone of
-/// the trigger effect. Must be between 0 and 9 inclusive.</param> <param name="amplitude">Strength
-/// of the automatic cycling action. Must be between 0 and 8 inclusive.</param> <param
-/// name="frequency">Frequency of the automatic cycling action in hertz.</param> <returns>The
-/// success of the effect write.</returns>
+/// <param name="position">The starting zone of the trigger effect. Must be between 0 and 9
+/// inclusive.</param>
+///
+/// <param name="amplitude">Strength of the automatic cycling action. Must be between 0 and 8
+/// inclusive.</param>
+///
+/// <param name="frequency">Frequency of the automatic cycling action in hertz.</param>
+///
+/// <returns>The success of the effect write.</returns>
 std::array<u8, 11> trigger_effect_vibration(u8 position, u8 amplitude, u8 frequency);
 
 /// <summary>
@@ -117,23 +127,30 @@ std::array<u8, 11> trigger_effect_vibration(u8 position, u8 amplitude, u8 freque
 /// This is an offical effect and is expected to be present in future DualSense firmware.
 /// </summary>
 /// <seealso cref="Feedback(byte[], int, byte, byte)"/>
-/// <param name="strength">Array of 10 resistance
-/// values for zones 0 through 9. Must be between 0 and 8 inclusive.</param> <returns>The success of
-/// the effect write.</returns>
-std::array<u8, 11> trigger_effect_multiple_position_feedback(std::vector<u8> strength);
+/// <param name="strength">Array of 10 resistance values for zones 0 through 9. Must be between 0
+/// and 8 inclusive.</param>
+///
+/// <returns>The success of the effect write.</returns>
+std::array<u8, 11> trigger_effect_multiple_position_feedback(const std::vector<u8>& strength);
 
 /// <summary>
 /// Trigger will resist movement at a linear range of strengths.
 /// This is an offical effect and is expected to be present in future DualSense firmware.
 /// </summary>
 /// <seealso cref="Feedback(byte[], int, byte, byte)"/>
-/// <param name="startPosition">The starting zone
-/// of the trigger effect. Must be between 0 and 8 inclusive.</param> <param name="endPosition">The
-/// ending zone of the trigger effect. Must be between <paramref name="startPosition"/>+1 and 9
-/// inclusive.</param> <param name="startStrength">The force of the resistance at the start. Must be
-/// between 1 and 8 inclusive.</param> <param name="endStrength">The force of the resistance at the
-/// end. Must be between 1 and 8 inclusive.</param> <returns>The success of the effect
-/// write.</returns>
+/// <param name="startPosition">The starting zone of the trigger effect. Must be between 0 and 8
+/// inclusive.</param>
+///
+/// <param name="endPosition">The ending zone of the trigger effect. Must be between <paramref
+/// name="startPosition"/>+1 and 9 inclusive.</param>
+///
+/// <param name="startStrength">The force of the resistance at the start. Must be between 1 and 8
+/// inclusive.</param>
+///
+/// <param name="endStrength">The force of the resistance at the end. Must be between 1 and 8
+/// inclusive.</param>
+///
+/// <returns>The success of the effect write.</returns>
 std::array<u8, 11> trigger_effect_slope_feedback(u8 start_position,
                                                  u8 end_position,
                                                  u8 start_strength,
@@ -147,11 +164,13 @@ std::array<u8, 11> trigger_effect_slope_feedback(u8 start_position,
 /// Note this factory's results may not perform as expected.
 /// </remarks>
 /// <seealso cref="Vibration(byte[], int, byte, byte, byte)"/>
-/// <param name="amplitude">Array of 10 strength
-/// values for zones 0 through 9. Must be between 0 and 8 inclusive.</param> <param
-/// name="frequency">Frequency of the automatic cycling action in hertz.</param> <returns>The
-/// success of the effect write.</returns>
+/// <param name="amplitude">Array of 10 strength values for zones 0 through 9. Must be between 0 and
+/// 8 inclusive.</param>
+///
+/// <param name="frequency">Frequency of the automatic cycling action in hertz.</param>
+///
+/// <returns>The success of the effect write.</returns>
 std::array<u8, 11> trigger_effect_multiple_position_vibrate(u8 frequency,
-                                                            std::vector<u8> amplitude);
+                                                            const std::vector<u8>& amplitude);
 
 };  // namespace dualsense_effects

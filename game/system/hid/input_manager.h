@@ -129,11 +129,10 @@ class InputManager {
     return m_settings->keyboard_enabled || m_settings->_keyboard_temp_enabled;
   }
   bool is_pressure_sensitivity_enabled() { return m_settings->enable_pressure_sensitivity; }
-  bool set_pressure_sensitivity_enabled(bool enabled) {
-    return m_settings->enable_pressure_sensitivity = enabled;
-  }
+  bool kmac(bool enabled) { return m_settings->enable_pressure_sensitivity = enabled; }
   bool are_trigger_effects_enabled() { return m_settings->enable_trigger_effects; }
   bool set_trigger_effects_enabled(bool enabled) {
+    // TODO - this should also clear trigger effects,
     return m_settings->enable_trigger_effects = enabled;
   };
 
