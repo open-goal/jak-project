@@ -132,6 +132,7 @@
     :lines-base "game/assets/jak1/subtitle/subtitle_lines_en-US.json"
     :meta "game/assets/jak1/subtitle/subtitle_meta_lt-LT.json"
     :meta-base "game/assets/jak1/subtitle/subtitle_meta_en-US.json")
+  ;; TODO - add rest once crowdin re-syncs
   )
 
 

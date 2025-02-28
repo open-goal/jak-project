@@ -32,4 +32,5 @@
   (file-json 16 jak2 "common" '("game/assets/jak2/text/game_custom_text_ca-ES.json"))
   (file-json 17 jak2 "common" '("game/assets/jak2/text/game_custom_text_is-IS.json"))
   (file-json 18 jak2 "common" '("game/assets/jak2/text/game_custom_text_pl-PL.json"))
+  ;; TODO - add rest once crowdin re-syncs
   )
