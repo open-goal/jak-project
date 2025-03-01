@@ -558,6 +558,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"Z~Y~-22H~-4Vˇ~Z", "Ž"},
     {"U~Y~-13H~+2V,~Z", "Ų"},
     {"U~Y~-18H~-10V-~Z", "Ū"},
+    {"D~Y~-25H~-1V-~Z", "Đ"},
     {"I~Y~-8H~+1V,~Z", "Į"},
     // czech specific
     {"U~Y~-23H~-5Vº~Z", "Ů"},
@@ -984,6 +985,8 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"u~Y~-15H~+5V,~Z", "ų"},
     {"U~Y~-20H~-18V-~Z", "Ū"},
     {"u~Y~-18H~-15V-~Z", "ū"},
+    {"D~Y~-28H~-1V-~Z", "Đ"},
+    {"d~Y~-13H~-10V-~Z", "đ"},
     {"I~Y~-8H~+4V,~Z", "Į"},
     {"i~Y~-8H~+4V,~Z", "į"},
     // czech specific

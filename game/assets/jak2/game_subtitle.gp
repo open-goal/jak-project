@@ -61,4 +61,6 @@
     :lines "game/assets/jak2/subtitle/subtitle_lines_fi-FI.json"
     :meta "game/assets/jak2/subtitle/subtitle_meta_fi-FI.json"
     :lines-base "game/assets/jak2/subtitle/subtitle_lines_en-US.json"
-    :meta-base "game/assets/jak2/subtitle/subtitle_meta_en-US.json"))
+    :meta-base "game/assets/jak2/subtitle/subtitle_meta_en-US.json")
+  ;; TODO - add rest once crowdin re-syncs
+    )
