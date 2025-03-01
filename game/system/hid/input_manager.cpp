@@ -29,7 +29,7 @@ InputManager::InputManager(SDL_Window* window)
     if (!SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER, "1")) {
       sdl_util::log_error("Unable to set SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER to true!");
     }
-#elif
+#else
     if (!SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3, "1")) {
       sdl_util::log_error("Unable to set SDL_HINT_JOYSTICK_HIDAPI_PS3 to true!");
     }
