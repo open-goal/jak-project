@@ -284,6 +284,33 @@ void InputManager::process_ee_events() {
       case EEInputEventType::SET_AUTO_HIDE_MOUSE:
         set_auto_hide_mouse(std::get<bool>(evt.param1));
         break;
+      case EEInputEventType::CONTROLLER_CLEAR_TRIGGER_EFFECT:
+        controller_clear_trigger_effect(
+            std::get<int>(evt.param1),
+            std::get<dualsense_effects::TriggerEffectOption>(evt.param2));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_FEEDBACK:
+        controller_send_trigger_effect_feedback(
+            std::get<int>(evt.param1), std::get<dualsense_effects::TriggerEffectOption>(evt.param2),
+            std::get<u8>(evt.param3), std::get<u8>(evt.param4));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_VIBRATE:
+        controller_send_trigger_effect_vibrate(
+            std::get<int>(evt.param1), std::get<dualsense_effects::TriggerEffectOption>(evt.param2),
+            std::get<u8>(evt.param3), std::get<u8>(evt.param4), std::get<u8>(evt.param5));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_WEAPON:
+        controller_send_trigger_effect_weapon(
+            std::get<int>(evt.param1), std::get<dualsense_effects::TriggerEffectOption>(evt.param2),
+            std::get<u8>(evt.param3), std::get<u8>(evt.param4), std::get<u8>(evt.param5));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_RUMBLE:
+        controller_send_trigger_rumble(std::get<int>(evt.param1), std::get<u16>(evt.param2),
+                                       std::get<u16>(evt.param3), std::get<u32>(evt.param4));
+        break;
+      case EEInputEventType::SET_TRIGGER_EFFECTS_ENABLED:
+        set_trigger_effects_enabled(std::get<bool>(evt.param1));
+        break;
     }
     ee_event_queue.pop();
   }
@@ -513,6 +540,11 @@ void InputManager::controller_send_trigger_effect_weapon(
                                                              strength);
 }
 
+bool InputManager::set_trigger_effects_enabled(bool enabled) {
+  controller_clear_trigger_effect(0, dualsense_effects::TriggerEffectOption::BOTH);
+  return m_settings->enable_trigger_effects = enabled;
+};
+
 void InputManager::enqueue_set_controller_led(const int port,
                                               const u8 red,
                                               const u8 green,
@@ -642,6 +674,75 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
 void InputManager::enqueue_set_auto_hide_mouse(const bool auto_hide_mouse) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
   ee_event_queue.push({EEInputEventType::SET_AUTO_HIDE_MOUSE, auto_hide_mouse, {}, {}, {}});
+}
+
+void InputManager::enqueue_controller_clear_trigger_effect(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_CLEAR_TRIGGER_EFFECT,
+                       .param1 = port,
+                       .param2 = option});
+}
+
+void InputManager::enqueue_controller_send_trigger_effect_feedback(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option,
+    const u8 position,
+    const u8 strength) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_FEEDBACK,
+                       .param1 = port,
+                       .param2 = option,
+                       .param3 = position,
+                       .param4 = strength});
+}
+
+void InputManager::enqueue_controller_send_trigger_effect_vibrate(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option,
+    const u8 position,
+    const u8 amplitude,
+    const u8 frequency) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_VIBRATE,
+                       .param1 = port,
+                       .param2 = option,
+                       .param3 = position,
+                       .param4 = amplitude,
+                       .param5 = frequency});
+}
+
+void InputManager::enqueue_controller_send_trigger_effect_weapon(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option,
+    const u8 start_position,
+    const u8 end_position,
+    const u8 strength) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_WEAPON,
+                       .param1 = port,
+                       .param2 = option,
+                       .param3 = start_position,
+                       .param4 = end_position,
+                       .param5 = strength});
+}
+
+void InputManager::enqueue_controller_send_trigger_rumble(const int port,
+                                                          const u16 left_rumble,
+                                                          const u16 right_rumble,
+                                                          const u32 duration_ms) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_RUMBLE,
+                       .param1 = port,
+                       .param2 = left_rumble,
+                       .param3 = right_rumble,
+                       .param4 = duration_ms});
+}
+
+void InputManager::enqueue_set_trigger_effects_enabled(const bool enabled) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::SET_TRIGGER_EFFECTS_ENABLED, .param1 = enabled});
 }
 
 void InputManager::set_auto_hide_mouse(const bool auto_hide_mouse) {

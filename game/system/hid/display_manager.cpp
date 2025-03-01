@@ -81,8 +81,7 @@ void DisplayManager::initialize_window_position_from_settings() {
 void DisplayManager::process_sdl_event(const SDL_Event& event) {
   const auto event_type = event.type;
   if (event_type >= SDL_EVENT_WINDOW_FIRST && event_type <= SDL_EVENT_WINDOW_LAST) {
-    // https://wiki.libsdl.org/SDL2/SDL_WindowEvent
-    // https://wiki.libsdl.org/SDL2/SDL_WindowEventID
+    // https://wiki.libsdl.org/SDL3/SDL_WindowEvent
     switch (event.window.type) {
       case SDL_EVENT_WINDOW_MINIMIZED:
         m_window_state = WindowState::Minimized;
@@ -117,7 +116,7 @@ void DisplayManager::process_sdl_event(const SDL_Event& event) {
         break;
     }
   } else if (event_type >= SDL_EVENT_DISPLAY_FIRST && event_type <= SDL_EVENT_DISPLAY_LAST) {
-    // https://wiki.libsdl.org/SDL2/SDL_DisplayEventID
+    // https://wiki.libsdl.org/SDL3/SDL_DisplayEvent
     switch (event.display.type) {
       case SDL_EVENT_DISPLAY_ADDED:
       case SDL_EVENT_DISPLAY_REMOVED:
@@ -225,7 +224,7 @@ void DisplayManager::enqueue_set_window_display_mode(
 
 void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMode mode) {
   lg::info("[DISPLAY] Setting to display mode: {}", static_cast<int>(mode));
-  // https://wiki.libsdl.org/SDL2/SDL_SetWindowFullscreen
+  // https://wiki.libsdl.org/SDL3/SDL_SetWindowFullscreen
   int result = 0;
   switch (mode) {
     case game_settings::DisplaySettings::DisplayMode::Windowed:

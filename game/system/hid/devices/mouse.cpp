@@ -157,7 +157,7 @@ void MouseDevice::process_event(const SDL_Event& event,
   // We still want to keep track of the cursor location even if we aren't using it for inputs
   // return early
   if (event.type == SDL_EVENT_MOUSE_MOTION) {
-    // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
+    // https://wiki.libsdl.org/SDL3/SDL_MouseMotionEvent
     m_xcoord = event.motion.x;
     m_ycoord = event.motion.y;
     if (m_control_camera) {
@@ -176,7 +176,7 @@ void MouseDevice::process_event(const SDL_Event& event,
     }
   } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
     // Mouse Button Events
-    // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
+    // https://wiki.libsdl.org/SDL3/SDL_MouseButtonEvent
     const auto button_event = event.button;
     // Update the internal mouse tracking, this is for GOAL reasons.
     switch (button_event.button) {
@@ -221,7 +221,7 @@ void MouseDevice::process_event(const SDL_Event& event,
 }
 
 void MouseDevice::enable_relative_mode(const bool enable) {
-  // https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
+  // https://wiki.libsdl.org/SDL3/SDL_SetWindowRelativeMouseMode
   SDL_SetWindowRelativeMouseMode(m_window, enable);
 }
 

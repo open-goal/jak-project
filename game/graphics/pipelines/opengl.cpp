@@ -218,10 +218,8 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
   prof().instant_event("ROOT");
   prof().begin_event("startup::sdl::create_window");
   SDL_Window* window =
-      SDL_CreateWindow(title, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-  // TODO - rendering code on hiDPI/Retina displays is not adequate, solve it properly so that
-  // `SDL_WINDOW_ALLOW_HIGHDPI` can be added back to the window flags.
-  // TODO - test ^ with SDL3
+      SDL_CreateWindow(title, width, height,
+                       SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
   prof().end_event();
   if (!window) {
     sdl_util::log_error("gl_make_display failed - Could not create display window");

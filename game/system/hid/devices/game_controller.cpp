@@ -178,7 +178,7 @@ void GameController::process_event(const SDL_Event& event,
              event.gbutton.which == m_sdl_instance_id) {
     auto& binds = m_settings->controller_binds.at(m_guid);
 
-    // https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
+    // https://wiki.libsdl.org/SDL3/SDL_GamepadButton
     if ((int)event.gbutton.button <= SDL_GAMEPAD_BUTTON_INVALID ||
         event.gbutton.button >= SDL_GAMEPAD_BUTTON_COUNT) {
       return;

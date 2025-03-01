@@ -21,11 +21,11 @@ enum class WindowState { Minimized, Maximized, Restored };
 
 enum class Orientation { Landscape, LandscapeFlipped, Portrait, PortraitFlipped, Unknown };
 
-/// https://wiki.libsdl.org/SDL2/SDL_DisplayMode
+/// https://wiki.libsdl.org/SDL3/SDL_DisplayMode
 struct DisplayMode {
   SDL_DisplayID sdl_display_id;
   std::string display_name;
-  /// https://wiki.libsdl.org/SDL2/SDL_PixelFormatEnum
+  /// https://wiki.libsdl.org/SDL3/SDL_PixelFormat
   uint32_t sdl_pixel_format;
   int screen_width;
   int screen_height;

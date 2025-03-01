@@ -830,14 +830,15 @@ u64 pc_get_trigger_effects_enabled() {
 
 void pc_set_trigger_effects_enabled(u32 val) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->set_trigger_effects_enabled(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_set_trigger_effects_enabled(
         symbol_to_bool(val));
   }
 }
 
 void pc_clear_trigger_effect(dualsense_effects::TriggerEffectOption option) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->controller_clear_trigger_effect(0, option);
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_clear_trigger_effect(0,
+                                                                                            option);
   }
 }
 
@@ -845,7 +846,7 @@ void pc_send_trigger_effect_feedback(dualsense_effects::TriggerEffectOption opti
                                      u8 position,
                                      u8 strength) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->controller_send_trigger_effect_feedback(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_effect_feedback(
         0, option, position, strength);
   }
 }
@@ -855,7 +856,7 @@ void pc_send_trigger_effect_vibrate(dualsense_effects::TriggerEffectOption optio
                                     u8 amplitude,
                                     u8 frequency) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->controller_send_trigger_effect_vibrate(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_effect_vibrate(
         0, option, position, amplitude, frequency);
   }
 }
@@ -865,14 +866,14 @@ void pc_send_trigger_effect_weapon(dualsense_effects::TriggerEffectOption option
                                    u8 end_position,
                                    u8 strength) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->controller_send_trigger_effect_weapon(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_effect_weapon(
         0, option, start_position, end_position, strength);
   }
 }
 
 void pc_send_trigger_rumble(u16 left_rumble, u16 right_rumble, u32 duration_ms) {
   if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_input_manager()->controller_send_trigger_rumble(
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_rumble(
         0, left_rumble, right_rumble, duration_ms);
   }
 }

@@ -191,7 +191,7 @@ struct PadData {
   }
 };
 
-// https://wiki.libsdl.org/SDL2/SDL_Keymod
+// https://wiki.libsdl.org/SDL3/SDL_Keymod
 struct InputModifiers {
   InputModifiers() = default;
   InputModifiers(const u16 sdl_mod_state);
@@ -364,11 +364,11 @@ struct InputBindingGroups {
 void to_json(json& j, const InputBindingGroups& obj);
 void from_json(const json& j, InputBindingGroups& obj);
 
-/// https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
+/// https://wiki.libsdl.org/SDL3/SDL_GamepadButton
 extern const InputBindingGroups DEFAULT_CONTROLLER_BINDS;
-/// https://wiki.libsdl.org/SDL2/SDL_Keycode
+/// https://wiki.libsdl.org/SDL3/SDL_Keycode
 extern const InputBindingGroups DEFAULT_KEYBOARD_BINDS;
-/// https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
+/// https://wiki.libsdl.org/SDL3/SDL_MouseButtonEvent
 extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 
 /// A CommandBinding by contrast is a way to map some arbitrary runtime command to
