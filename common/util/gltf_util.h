@@ -59,7 +59,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
 DrawMode make_default_draw_mode();
 
 struct TexturePool {
-  std::unordered_map<std::string, int> textures_by_name;
+  std::unordered_map<std::string, std::vector<int>> textures_by_name;
   std::vector<tfrag3::Texture> textures_by_idx;
   std::map<std::pair<int, int>, int> envmap_textures_by_gltf_id;
 };
