@@ -32,6 +32,12 @@ if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
         "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
 endif()
 
+# NOTE - for SDL, i think SDL3 regressed this - https://github.com/libsdl-org/SDL/pull/6455
+# a more recent issue - https://github.com/libsdl-org/SDL/issues/12078
+if (APPLE)
+  enable_language(OBJC)
+endif()
+
 # Setup compiler flags
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Clang Detected - Setting Defaults")
@@ -254,9 +260,9 @@ build_third_party_lib(zstd libzstd_static)
 # build SDL
 include(SDLOptions)
 if(STATICALLY_LINK)
-    build_third_party_lib(SDL SDL2-static)
+    build_third_party_lib(SDL SDL3-static)
 else()
-    build_third_party_lib(SDL SDL2)
+    build_third_party_lib(SDL SDL3-shared)
 endif()
 
 # build imgui

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,9 +22,8 @@
 #ifndef SDL_RENDER_VITA_GXM_TOOLS_H
 #define SDL_RENDER_VITA_GXM_TOOLS_H
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#include "SDL_hints.h"
 #include "../SDL_sysrender.h"
 
 #include <psp2/kernel/processmgr.h>
@@ -61,6 +60,4 @@ void gxm_init_for_common_dialog(void);
 void gxm_swap_for_common_dialog(void);
 void gxm_term_for_common_dialog(void);
 
-#endif /* SDL_RENDER_VITA_GXM_TOOLS_H */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_RENDER_VITA_GXM_TOOLS_H

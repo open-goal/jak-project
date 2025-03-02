@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,18 +19,17 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_ANDROID
 
 #include "SDL_androidmouse.h"
 
-#include "SDL_events.h"
 #include "../../events/SDL_mouse_c.h"
 
 #include "../../core/android/SDL_android.h"
 
-/* See Android's MotionEvent class for constants */
+// See Android's MotionEvent class for constants
 #define ACTION_DOWN       0
 #define ACTION_UP         1
 #define ACTION_MOVE       2
@@ -42,17 +41,16 @@
 #define BUTTON_BACK       8
 #define BUTTON_FORWARD    16
 
-typedef struct
+struct SDL_CursorData
 {
     int custom_cursor;
     int system_cursor;
+};
 
-} SDL_AndroidCursorData;
-
-/* Last known Android mouse button state (includes all buttons) */
+// Last known Android mouse button state (includes all buttons)
 static int last_state;
 
-/* Blank cursor */
+// Blank cursor
 static SDL_Cursor *empty_cursor;
 
 static SDL_Cursor *Android_WrapCursor(int custom_cursor, int system_cursor)
@@ -61,26 +59,24 @@ static SDL_Cursor *Android_WrapCursor(int custom_cursor, int system_cursor)
 
     cursor = SDL_calloc(1, sizeof(*cursor));
     if (cursor) {
-        SDL_AndroidCursorData *data = (SDL_AndroidCursorData *)SDL_calloc(1, sizeof(*data));
+        SDL_CursorData *data = (SDL_CursorData *)SDL_calloc(1, sizeof(*data));
         if (data) {
             data->custom_cursor = custom_cursor;
             data->system_cursor = system_cursor;
-            cursor->driverdata = data;
+            cursor->internal = data;
         } else {
             SDL_free(cursor);
             cursor = NULL;
-            SDL_OutOfMemory();
         }
-    } else {
-        SDL_OutOfMemory();
     }
 
     return cursor;
 }
 
-static SDL_Cursor *Android_CreateDefaultCursor()
+static SDL_Cursor *Android_CreateDefaultCursor(void)
 {
-    return Android_WrapCursor(0, SDL_SYSTEM_CURSOR_ARROW);
+    SDL_SystemCursor id = SDL_GetDefaultSystemCursor();
+    return Android_WrapCursor(0, id);
 }
 
 static SDL_Cursor *Android_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
@@ -88,12 +84,12 @@ static SDL_Cursor *Android_CreateCursor(SDL_Surface *surface, int hot_x, int hot
     int custom_cursor;
     SDL_Surface *converted;
 
-    converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
+    converted = SDL_ConvertSurface(surface, SDL_PIXELFORMAT_ARGB8888);
     if (!converted) {
         return NULL;
     }
     custom_cursor = Android_JNI_CreateCustomCursor(converted, hot_x, hot_y);
-    SDL_FreeSurface(converted);
+    SDL_DestroySurface(converted);
     if (!custom_cursor) {
         SDL_Unsupported();
         return NULL;
@@ -108,28 +104,28 @@ static SDL_Cursor *Android_CreateSystemCursor(SDL_SystemCursor id)
 
 static void Android_FreeCursor(SDL_Cursor *cursor)
 {
-    SDL_AndroidCursorData *data = (SDL_AndroidCursorData *)cursor->driverdata;
+    SDL_CursorData *data = cursor->internal;
     if (data->custom_cursor != 0) {
         Android_JNI_DestroyCustomCursor(data->custom_cursor);
     }
-    SDL_free(cursor->driverdata);
+    SDL_free(cursor->internal);
     SDL_free(cursor);
 }
 
-static SDL_Cursor *Android_CreateEmptyCursor()
+static SDL_Cursor *Android_CreateEmptyCursor(void)
 {
     if (!empty_cursor) {
-        SDL_Surface *empty_surface = SDL_CreateRGBSurfaceWithFormat(0, 1, 1, 32, SDL_PIXELFORMAT_ARGB8888);
+        SDL_Surface *empty_surface = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_ARGB8888);
         if (empty_surface) {
             SDL_memset(empty_surface->pixels, 0, (size_t)empty_surface->h * empty_surface->pitch);
             empty_cursor = Android_CreateCursor(empty_surface, 0, 0);
-            SDL_FreeSurface(empty_surface);
+            SDL_DestroySurface(empty_surface);
         }
     }
     return empty_cursor;
 }
 
-static void Android_DestroyEmptyCursor()
+static void Android_DestroyEmptyCursor(void)
 {
     if (empty_cursor) {
         Android_FreeCursor(empty_cursor);
@@ -137,13 +133,13 @@ static void Android_DestroyEmptyCursor()
     }
 }
 
-static int Android_ShowCursor(SDL_Cursor *cursor)
+static bool Android_ShowCursor(SDL_Cursor *cursor)
 {
     if (!cursor) {
         cursor = Android_CreateEmptyCursor();
     }
     if (cursor) {
-        SDL_AndroidCursorData *data = (SDL_AndroidCursorData *)cursor->driverdata;
+        SDL_CursorData *data = cursor->internal;
         if (data->custom_cursor) {
             if (!Android_JNI_SetCustomCursor(data->custom_cursor)) {
                 return SDL_Unsupported();
@@ -153,14 +149,14 @@ static int Android_ShowCursor(SDL_Cursor *cursor)
                 return SDL_Unsupported();
             }
         }
-        return 0;
+        return true;
     } else {
-        /* SDL error set inside Android_CreateEmptyCursor() */
-        return -1;
+        // SDL error set inside Android_CreateEmptyCursor()
+        return false;
     }
 }
 
-static int Android_SetRelativeMouseMode(SDL_bool enabled)
+static bool Android_SetRelativeMouseMode(bool enabled)
 {
     if (!Android_JNI_SupportsRelativeMouse()) {
         return SDL_Unsupported();
@@ -170,7 +166,7 @@ static int Android_SetRelativeMouseMode(SDL_bool enabled)
         return SDL_Unsupported();
     }
 
-    return 0;
+    return true;
 }
 
 void Android_InitMouse(void)
@@ -193,7 +189,7 @@ void Android_QuitMouse(void)
     Android_DestroyEmptyCursor();
 }
 
-/* Translate Android mouse button state to SDL mouse button */
+// Translate Android mouse button state to SDL mouse button
 static Uint8 TranslateButton(int state)
 {
     if (state & BUTTON_PRIMARY) {
@@ -211,7 +207,7 @@ static Uint8 TranslateButton(int state)
     }
 }
 
-void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y, SDL_bool relative)
+void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y, bool relative)
 {
     int changes;
     Uint8 button;
@@ -225,25 +221,25 @@ void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y
         changes = state & ~last_state;
         button = TranslateButton(changes);
         last_state = state;
-        SDL_SendMouseMotion(window, 0, relative, (int)x, (int)y);
-        SDL_SendMouseButton(window, 0, SDL_PRESSED, button);
+        SDL_SendMouseMotion(0, window, SDL_DEFAULT_MOUSE_ID, relative, x, y);
+        SDL_SendMouseButton(0, window, SDL_DEFAULT_MOUSE_ID, button, true);
         break;
 
     case ACTION_UP:
         changes = last_state & ~state;
         button = TranslateButton(changes);
         last_state = state;
-        SDL_SendMouseMotion(window, 0, relative, (int)x, (int)y);
-        SDL_SendMouseButton(window, 0, SDL_RELEASED, button);
+        SDL_SendMouseMotion(0, window, SDL_DEFAULT_MOUSE_ID, relative, x, y);
+        SDL_SendMouseButton(0, window, SDL_DEFAULT_MOUSE_ID, button, false);
         break;
 
     case ACTION_MOVE:
     case ACTION_HOVER_MOVE:
-        SDL_SendMouseMotion(window, 0, relative, (int)x, (int)y);
+        SDL_SendMouseMotion(0, window, SDL_DEFAULT_MOUSE_ID, relative, x, y);
         break;
 
     case ACTION_SCROLL:
-        SDL_SendMouseWheel(window, 0, x, y, SDL_MOUSEWHEEL_NORMAL);
+        SDL_SendMouseWheel(0, window, SDL_DEFAULT_MOUSE_ID, x, y, SDL_MOUSEWHEEL_NORMAL);
         break;
 
     default:
@@ -251,6 +247,4 @@ void Android_OnMouse(SDL_Window *window, int state, int action, float x, float y
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_ANDROID */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_ANDROID

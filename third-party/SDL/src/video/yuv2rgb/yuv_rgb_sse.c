@@ -1,15 +1,11 @@
 // Copyright 2016 Adrien Descamps
 // Distributed under BSD 3-Clause License
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_HAVE_YUV
-#include "yuv_rgb.h"
+#ifdef SDL_HAVE_YUV
 #include "yuv_rgb_internal.h"
 
-#include "SDL_cpuinfo.h"
-/*#include <x86intrin.h>*/
-
-#ifdef __SSE2__
+#ifdef SDL_SSE2_INTRINSICS
 
 /* SDL doesn't use these atm and compiling them adds seconds onto the build.  --ryan.
 #define SSE_FUNCTION_NAME	yuv420_rgb565_sse
@@ -274,23 +270,23 @@ UNPACK_RGB24_32_STEP1(RGB1, RGB2, RGB3, RGB4, RGB5, RGB6, R1, R2, G1, G2, B1, B2
 
 #define RGB2YUV_16(R, G, B, Y, U, V) \
 Y = _mm_add_epi16(_mm_mullo_epi16(R, _mm_set1_epi16(param->matrix[0][0])), \
-                _mm_mullo_epi16(G, _mm_set1_epi16(param->matrix[0][1]))); \
+		_mm_mullo_epi16(G, _mm_set1_epi16(param->matrix[0][1]))); \
 Y = _mm_add_epi16(Y, _mm_mullo_epi16(B, _mm_set1_epi16(param->matrix[0][2]))); \
 Y = _mm_add_epi16(Y, _mm_set1_epi16((param->y_shift)<<PRECISION)); \
 Y = _mm_srai_epi16(Y, PRECISION); \
 U = _mm_add_epi16(_mm_mullo_epi16(R, _mm_set1_epi16(param->matrix[1][0])), \
-                _mm_mullo_epi16(G, _mm_set1_epi16(param->matrix[1][1]))); \
+		_mm_mullo_epi16(G, _mm_set1_epi16(param->matrix[1][1]))); \
 U = _mm_add_epi16(U, _mm_mullo_epi16(B, _mm_set1_epi16(param->matrix[1][2]))); \
 U = _mm_add_epi16(U, _mm_set1_epi16(128<<PRECISION)); \
 U = _mm_srai_epi16(U, PRECISION); \
 V = _mm_add_epi16(_mm_mullo_epi16(R, _mm_set1_epi16(param->matrix[2][0])), \
-                _mm_mullo_epi16(G, _mm_set1_epi16(param->matrix[2][1]))); \
+		_mm_mullo_epi16(G, _mm_set1_epi16(param->matrix[2][1]))); \
 V = _mm_add_epi16(V, _mm_mullo_epi16(B, _mm_set1_epi16(param->matrix[2][2]))); \
 V = _mm_add_epi16(V, _mm_set1_epi16(128<<PRECISION)); \
 V = _mm_srai_epi16(V, PRECISION);
 */
 
-#if 0  /* SDL doesn't use these atm and compiling them adds seconds onto the build.  --ryan. */
+#if 0  // SDL doesn't use these atm and compiling them adds seconds onto the build.  --ryan.
 #define RGB2YUV_32 \
 	__m128i r1, r2, b1, b2, g1, g2; \
 	__m128i r_16, g_16, b_16; \
@@ -386,79 +382,79 @@ V = _mm_srai_epi16(V, PRECISION);
 #endif
 
 /* SDL doesn't use these atm and compiling them adds seconds onto the build.  --ryan.
-void rgb24_yuv420_sse(uint32_t width, uint32_t height,
-        const uint8_t *RGB, uint32_t RGB_stride,
-        uint8_t *Y, uint8_t *U, uint8_t *V, uint32_t Y_stride, uint32_t UV_stride,
-        YCbCrType yuv_type)
+void SDL_TARGETING("sse2") rgb24_yuv420_sse(uint32_t width, uint32_t height,
+	const uint8_t *RGB, uint32_t RGB_stride,
+	uint8_t *Y, uint8_t *U, uint8_t *V, uint32_t Y_stride, uint32_t UV_stride,
+	YCbCrType yuv_type)
 {
-        #define LOAD_SI128 _mm_load_si128
-        #define SAVE_SI128 _mm_stream_si128
-        const RGB2YUVParam *const param = &(RGB2YUV[yuv_type]);
+	#define LOAD_SI128 _mm_load_si128
+	#define SAVE_SI128 _mm_stream_si128
+	const RGB2YUVParam *const param = &(RGB2YUV[yuv_type]);
 
-        uint32_t xpos, ypos;
-        for(ypos=0; ypos<(height-1); ypos+=2)
-        {
-                const uint8_t *rgb_ptr1=RGB+ypos*RGB_stride,
-                        *rgb_ptr2=RGB+(ypos+1)*RGB_stride;
+	uint32_t xpos, ypos;
+	for(ypos=0; ypos<(height-1); ypos+=2)
+	{
+		const uint8_t *rgb_ptr1=RGB+ypos*RGB_stride,
+			*rgb_ptr2=RGB+(ypos+1)*RGB_stride;
 
-                uint8_t *y_ptr1=Y+ypos*Y_stride,
-                        *y_ptr2=Y+(ypos+1)*Y_stride,
-                        *u_ptr=U+(ypos/2)*UV_stride,
-                        *v_ptr=V+(ypos/2)*UV_stride;
+		uint8_t *y_ptr1=Y+ypos*Y_stride,
+			*y_ptr2=Y+(ypos+1)*Y_stride,
+			*u_ptr=U+(ypos/2)*UV_stride,
+			*v_ptr=V+(ypos/2)*UV_stride;
 
-                for(xpos=0; xpos<(width-31); xpos+=32)
-                {
-                        RGB2YUV_32
+		for(xpos=0; xpos<(width-31); xpos+=32)
+		{
+			RGB2YUV_32
 
-                        rgb_ptr1+=96;
-                        rgb_ptr2+=96;
-                        y_ptr1+=32;
-                        y_ptr2+=32;
-                        u_ptr+=16;
-                        v_ptr+=16;
-                }
-        }
-        #undef LOAD_SI128
-        #undef SAVE_SI128
+			rgb_ptr1+=96;
+			rgb_ptr2+=96;
+			y_ptr1+=32;
+			y_ptr2+=32;
+			u_ptr+=16;
+			v_ptr+=16;
+		}
+	}
+	#undef LOAD_SI128
+	#undef SAVE_SI128
 }
 
-void rgb24_yuv420_sseu(uint32_t width, uint32_t height,
-        const uint8_t *RGB, uint32_t RGB_stride,
-        uint8_t *Y, uint8_t *U, uint8_t *V, uint32_t Y_stride, uint32_t UV_stride,
-        YCbCrType yuv_type)
+void SDL_TARGETING("sse2") rgb24_yuv420_sseu(uint32_t width, uint32_t height,
+	const uint8_t *RGB, uint32_t RGB_stride,
+	uint8_t *Y, uint8_t *U, uint8_t *V, uint32_t Y_stride, uint32_t UV_stride,
+	YCbCrType yuv_type)
 {
-        #define LOAD_SI128 _mm_loadu_si128
-        #define SAVE_SI128 _mm_storeu_si128
-        const RGB2YUVParam *const param = &(RGB2YUV[yuv_type]);
+	#define LOAD_SI128 _mm_loadu_si128
+	#define SAVE_SI128 _mm_storeu_si128
+	const RGB2YUVParam *const param = &(RGB2YUV[yuv_type]);
 
-        uint32_t xpos, ypos;
-        for(ypos=0; ypos<(height-1); ypos+=2)
-        {
-                const uint8_t *rgb_ptr1=RGB+ypos*RGB_stride,
-                        *rgb_ptr2=RGB+(ypos+1)*RGB_stride;
+	uint32_t xpos, ypos;
+	for(ypos=0; ypos<(height-1); ypos+=2)
+	{
+		const uint8_t *rgb_ptr1=RGB+ypos*RGB_stride,
+			*rgb_ptr2=RGB+(ypos+1)*RGB_stride;
 
-                uint8_t *y_ptr1=Y+ypos*Y_stride,
-                        *y_ptr2=Y+(ypos+1)*Y_stride,
-                        *u_ptr=U+(ypos/2)*UV_stride,
-                        *v_ptr=V+(ypos/2)*UV_stride;
+		uint8_t *y_ptr1=Y+ypos*Y_stride,
+			*y_ptr2=Y+(ypos+1)*Y_stride,
+			*u_ptr=U+(ypos/2)*UV_stride,
+			*v_ptr=V+(ypos/2)*UV_stride;
 
-                for(xpos=0; xpos<(width-31); xpos+=32)
-                {
-                        RGB2YUV_32
+		for(xpos=0; xpos<(width-31); xpos+=32)
+		{
+			RGB2YUV_32
 
-                        rgb_ptr1+=96;
-                        rgb_ptr2+=96;
-                        y_ptr1+=32;
-                        y_ptr2+=32;
-                        u_ptr+=16;
-                        v_ptr+=16;
-                }
-        }
-        #undef LOAD_SI128
-        #undef SAVE_SI128
+			rgb_ptr1+=96;
+			rgb_ptr2+=96;
+			y_ptr1+=32;
+			y_ptr2+=32;
+			u_ptr+=16;
+			v_ptr+=16;
+		}
+	}
+	#undef LOAD_SI128
+	#undef SAVE_SI128
 }
 */
 
-#endif //__SSE2__
+#endif // SDL_SSE2_INTRINSICS
 
-#endif /* SDL_HAVE_YUV */
+#endif // SDL_HAVE_YUV

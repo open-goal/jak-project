@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,71 +18,50 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_THREAD_N3DS
 
-/* An implementation of mutexes using libctru's RecursiveLock */
+// An implementation of mutexes using libctru's RecursiveLock
 
 #include "SDL_sysmutex_c.h"
 
-/* Create a mutex */
-SDL_mutex *SDL_CreateMutex(void)
+SDL_Mutex *SDL_CreateMutex(void)
 {
-    SDL_mutex *mutex;
-
-    /* Allocate mutex memory */
-    mutex = (SDL_mutex *)SDL_malloc(sizeof(*mutex));
+    SDL_Mutex *mutex = (SDL_Mutex *)SDL_malloc(sizeof(*mutex));
     if (mutex) {
         RecursiveLock_Init(&mutex->lock);
-    } else {
-        SDL_OutOfMemory();
     }
     return mutex;
 }
 
-/* Free the mutex */
-void SDL_DestroyMutex(SDL_mutex *mutex)
+void SDL_DestroyMutex(SDL_Mutex *mutex)
 {
     if (mutex) {
         SDL_free(mutex);
     }
 }
 
-/* Lock the mutex */
-int SDL_LockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
+void SDL_LockMutex(SDL_Mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS  // clang doesn't know about NULL mutexes
 {
-    if (mutex == NULL) {
-        return 0;
+    if (mutex) {
+        RecursiveLock_Lock(&mutex->lock);
     }
-
-    RecursiveLock_Lock(&mutex->lock);
-
-    return 0;
 }
 
-/* try Lock the mutex */
-int SDL_TryLockMutex(SDL_mutex *mutex)
+bool SDL_TryLockMutex(SDL_Mutex *mutex)
 {
-    if (!mutex) {
-        return 0;
+    if (mutex) {
+        return RecursiveLock_TryLock(&mutex->lock);
     }
-
-    return RecursiveLock_TryLock(&mutex->lock);
+    return true;
 }
 
-/* Unlock the mutex */
-int SDL_UnlockMutex(SDL_mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
+void SDL_UnlockMutex(SDL_Mutex *mutex) SDL_NO_THREAD_SAFETY_ANALYSIS // clang doesn't know about NULL mutexes
 {
-    if (mutex == NULL) {
-        return 0;
+    if (mutex) {
+        RecursiveLock_Unlock(&mutex->lock);
     }
-
-    RecursiveLock_Unlock(&mutex->lock);
-
-    return 0;
 }
 
-#endif /* SDL_THREAD_N3DS */
-
-/* vi: set sts=4 ts=4 sw=4 expandtab: */
+#endif // SDL_THREAD_N3DS
