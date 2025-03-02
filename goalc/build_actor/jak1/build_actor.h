@@ -212,7 +212,7 @@ struct ArtGroup : Art {
   FileInfo info;
   std::vector<std::shared_ptr<ArtElement>> elts;
   std::map<int, size_t> joint_map;
-  int merc_effect_count;
+  tfrag3::MercModel* mdl;
 
   explicit ArtGroup(const std::string& file_name) {
     info.file_type = "art-group";
