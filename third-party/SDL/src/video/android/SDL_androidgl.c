@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,17 +18,17 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #if defined(SDL_VIDEO_DRIVER_ANDROID) && defined(SDL_VIDEO_OPENGL_EGL)
 
-/* Android SDL video driver implementation */
+// Android SDL video driver implementation
 
-#include "SDL_video.h"
 #include "../SDL_egl_c.h"
 #include "SDL_androidwindow.h"
 
 #include "SDL_androidvideo.h"
+#include "SDL_androidevents.h"
 #include "SDL_androidgl.h"
 #include "../../core/android/SDL_android.h"
 
@@ -36,33 +36,35 @@
 
 #include <dlfcn.h>
 
-int Android_GLES_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)
+bool Android_GLES_MakeCurrent(SDL_VideoDevice *_this, SDL_Window *window, SDL_GLContext context)
 {
     if (window && context) {
-        return SDL_EGL_MakeCurrent(_this, ((SDL_WindowData *)window->driverdata)->egl_surface, context);
+        return SDL_EGL_MakeCurrent(_this, window->internal->egl_surface, context);
     } else {
         return SDL_EGL_MakeCurrent(_this, NULL, NULL);
     }
 }
 
-SDL_GLContext Android_GLES_CreateContext(_THIS, SDL_Window *window)
+SDL_GLContext Android_GLES_CreateContext(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_GLContext ret;
+    SDL_GLContext result;
 
-    Android_ActivityMutex_Lock_Running();
+    if (!Android_WaitActiveAndLockActivity()) {
+        return NULL;
+    }
 
-    ret = SDL_EGL_CreateContext(_this, ((SDL_WindowData *)window->driverdata)->egl_surface);
+    result = SDL_EGL_CreateContext(_this, window->internal->egl_surface);
 
-    SDL_UnlockMutex(Android_ActivityMutex);
+    Android_UnlockActivityMutex();
 
-    return ret;
+    return result;
 }
 
-int Android_GLES_SwapWindow(_THIS, SDL_Window *window)
+bool Android_GLES_SwapWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    int retval;
+    bool result;
 
-    SDL_LockMutex(Android_ActivityMutex);
+    Android_LockActivityMutex();
 
     /* The following two calls existed in the original Java code
      * If you happen to have a device that's affected by their removal,
@@ -71,18 +73,16 @@ int Android_GLES_SwapWindow(_THIS, SDL_Window *window)
 
     /*_this->egl_data->eglWaitNative(EGL_CORE_NATIVE_ENGINE);
     _this->egl_data->eglWaitGL();*/
-    retval = SDL_EGL_SwapBuffers(_this, ((SDL_WindowData *)window->driverdata)->egl_surface);
+    result = SDL_EGL_SwapBuffers(_this, window->internal->egl_surface);
 
-    SDL_UnlockMutex(Android_ActivityMutex);
+    Android_UnlockActivityMutex();
 
-    return retval;
+    return result;
 }
 
-int Android_GLES_LoadLibrary(_THIS, const char *path)
+bool Android_GLES_LoadLibrary(SDL_VideoDevice *_this, const char *path)
 {
     return SDL_EGL_LoadLibrary(_this, path, (NativeDisplayType)0, 0);
 }
 
-#endif /* SDL_VIDEO_DRIVER_ANDROID */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_ANDROID

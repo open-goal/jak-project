@@ -11,11 +11,12 @@
 #include "common/log/log.h"
 #include "common/util/json_util.h"
 
+#define GET_PRESSURE_BUTTON_DATA(button_name) \
+  {button_data.at(ButtonIndex::button_name),  \
+   pressure_data.at(PressureIndex::button_name##_PRESSURE)};
+
 /// A simple abstraction around the PS2 controller data with some convenience functions for
 /// pulling specific data out if it's useful.
-///
-/// Pressure is always assumed to be the max, barely any input library handles pressure properly
-/// and the VAST majority of controllers don't even support it either.
 struct PadData {
   enum AnalogIndex { LEFT_X = 0, LEFT_Y, RIGHT_X, RIGHT_Y = 3 };
 
@@ -36,6 +37,22 @@ struct PadData {
     CIRCLE,
     CROSS,
     SQUARE = 15
+  };
+
+  enum PressureIndex {
+    INVALID_PRESSURE = -1,
+    DPAD_RIGHT_PRESSURE = 0,
+    DPAD_LEFT_PRESSURE,
+    DPAD_UP_PRESSURE,
+    DPAD_DOWN_PRESSURE,
+    TRIANGLE_PRESSURE,
+    CIRCLE_PRESSURE,
+    CROSS_PRESSURE,
+    SQUARE_PRESSURE,
+    L1_PRESSURE,
+    R1_PRESSURE,
+    L2_PRESSURE,
+    R2_PRESSURE = 11
   };
 
   static const int ANALOG_NEUTRAL = 127;
@@ -75,29 +92,62 @@ struct PadData {
             std::clamp(analog_data.at(AnalogIndex::RIGHT_Y), 0, 255)};
   }
 
-  std::array<bool, 16> button_data = {};
+  std::array<bool, 16> button_data = {false, false, false, false, false, false, false, false,
+                                      false, false, false, false, false, false, false, false};
+  std::array<u8, 12> pressure_data = {255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255};
 
   // Normal Buttons
-  bool select() const { return button_data.at(ButtonIndex::SELECT); };
-  bool l3() const { return button_data.at(ButtonIndex::L3); };
-  bool r3() const { return button_data.at(ButtonIndex::R3); };
-  bool start() const { return button_data.at(ButtonIndex::START); };
+  bool select() const { return button_data.at(static_cast<int>(ButtonIndex::SELECT)); };
+  bool l3() const { return button_data.at(static_cast<int>(ButtonIndex::L3)); };
+  bool r3() const { return button_data.at(static_cast<int>(ButtonIndex::R3)); };
+  bool start() const { return button_data.at(static_cast<int>(ButtonIndex::START)); };
 
   // Pressure Buttons
-  std::pair<bool, u8> dpad_up() const { return {button_data.at(ButtonIndex::DPAD_UP), 255}; };
-  std::pair<bool, u8> dpad_right() const { return {button_data.at(ButtonIndex::DPAD_RIGHT), 255}; };
-  std::pair<bool, u8> dpad_down() const { return {button_data.at(ButtonIndex::DPAD_DOWN), 255}; };
-  std::pair<bool, u8> dpad_left() const { return {button_data.at(ButtonIndex::DPAD_LEFT), 255}; };
+  std::pair<bool, u8> dpad_up() const { return GET_PRESSURE_BUTTON_DATA(DPAD_UP); };
+  std::pair<bool, u8> dpad_right() const { return GET_PRESSURE_BUTTON_DATA(DPAD_RIGHT); };
+  std::pair<bool, u8> dpad_down() const { return GET_PRESSURE_BUTTON_DATA(DPAD_DOWN); };
+  std::pair<bool, u8> dpad_left() const { return GET_PRESSURE_BUTTON_DATA(DPAD_LEFT); };
 
-  std::pair<bool, u8> l2() const { return {button_data.at(ButtonIndex::L2), 255}; };
-  std::pair<bool, u8> r2() const { return {button_data.at(ButtonIndex::R2), 255}; };
-  std::pair<bool, u8> l1() const { return {button_data.at(ButtonIndex::L1), 255}; };
-  std::pair<bool, u8> r1() const { return {button_data.at(ButtonIndex::R1), 255}; };
+  std::pair<bool, u8> l2() const { return GET_PRESSURE_BUTTON_DATA(L2); };
+  std::pair<bool, u8> r2() const { return GET_PRESSURE_BUTTON_DATA(R2); };
+  std::pair<bool, u8> l1() const { return GET_PRESSURE_BUTTON_DATA(L1); };
+  std::pair<bool, u8> r1() const { return GET_PRESSURE_BUTTON_DATA(R1); };
 
-  std::pair<bool, u8> triangle() const { return {button_data.at(ButtonIndex::TRIANGLE), 255}; };
-  std::pair<bool, u8> circle() const { return {button_data.at(ButtonIndex::CIRCLE), 255}; };
-  std::pair<bool, u8> cross() const { return {button_data.at(ButtonIndex::CROSS), 255}; };
-  std::pair<bool, u8> square() const { return {button_data.at(ButtonIndex::SQUARE), 255}; };
+  std::pair<bool, u8> triangle() const { return GET_PRESSURE_BUTTON_DATA(TRIANGLE); };
+  std::pair<bool, u8> circle() const { return GET_PRESSURE_BUTTON_DATA(CIRCLE); };
+  std::pair<bool, u8> cross() const { return GET_PRESSURE_BUTTON_DATA(CROSS); };
+  std::pair<bool, u8> square() const { return GET_PRESSURE_BUTTON_DATA(SQUARE); };
+
+  PressureIndex button_index_to_pressure_index(ButtonIndex button_index) const {
+    switch (button_index) {
+      case ButtonIndex::DPAD_RIGHT:
+        return PressureIndex::DPAD_RIGHT_PRESSURE;
+      case ButtonIndex::DPAD_LEFT:
+        return PressureIndex::DPAD_LEFT_PRESSURE;
+      case ButtonIndex::DPAD_UP:
+        return PressureIndex::DPAD_UP_PRESSURE;
+      case ButtonIndex::DPAD_DOWN:
+        return PressureIndex::DPAD_DOWN_PRESSURE;
+      case ButtonIndex::TRIANGLE:
+        return PressureIndex::TRIANGLE_PRESSURE;
+      case ButtonIndex::CIRCLE:
+        return PressureIndex::CIRCLE_PRESSURE;
+      case ButtonIndex::CROSS:
+        return PressureIndex::CROSS_PRESSURE;
+      case ButtonIndex::SQUARE:
+        return PressureIndex::SQUARE_PRESSURE;
+      case ButtonIndex::L1:
+        return PressureIndex::L1_PRESSURE;
+      case ButtonIndex::R1:
+        return PressureIndex::R1_PRESSURE;
+      case ButtonIndex::L2:
+        return PressureIndex::L2_PRESSURE;
+      case ButtonIndex::R2:
+        return PressureIndex::R2_PRESSURE;
+      default:
+        return PressureIndex::INVALID_PRESSURE;
+    }
+  }
 
   // Analog Simulation Tracking
   // There exists a flaw with the described analog tracking approach described above, and that has
@@ -141,10 +191,7 @@ struct PadData {
   }
 };
 
-// order of pressure sensitive buttons in memory (not the same as their bit order...).
-extern const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER;
-
-// https://wiki.libsdl.org/SDL2/SDL_Keymod
+// https://wiki.libsdl.org/SDL3/SDL_Keymod
 struct InputModifiers {
   InputModifiers() = default;
   InputModifiers(const u16 sdl_mod_state);
@@ -317,11 +364,11 @@ struct InputBindingGroups {
 void to_json(json& j, const InputBindingGroups& obj);
 void from_json(const json& j, InputBindingGroups& obj);
 
-/// https://wiki.libsdl.org/SDL2/SDL_GameControllerButton
+/// https://wiki.libsdl.org/SDL3/SDL_GamepadButton
 extern const InputBindingGroups DEFAULT_CONTROLLER_BINDS;
-/// https://wiki.libsdl.org/SDL2/SDL_Keycode
+/// https://wiki.libsdl.org/SDL3/SDL_Keycode
 extern const InputBindingGroups DEFAULT_KEYBOARD_BINDS;
-/// https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
+/// https://wiki.libsdl.org/SDL3/SDL_MouseButtonEvent
 extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 
 /// A CommandBinding by contrast is a way to map some arbitrary runtime command to

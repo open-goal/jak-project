@@ -115,6 +115,8 @@ void to_json(json& j, const InputSettings& obj) {
   json_serialize(keyboard_binds);
   json_serialize(mouse_binds);
   json_serialize(keyboard_enabled);
+  json_serialize(enable_pressure_sensitivity);
+  json_serialize(enable_trigger_effects);
 }
 
 void from_json(const json& j, InputSettings& obj) {
@@ -125,6 +127,8 @@ void from_json(const json& j, InputSettings& obj) {
   json_deserialize_if_exists(keyboard_binds);
   json_deserialize_if_exists(mouse_binds);
   json_deserialize_if_exists(keyboard_enabled);
+  json_deserialize_if_exists(enable_pressure_sensitivity);
+  json_deserialize_if_exists(enable_trigger_effects);
 }
 
 InputSettings::InputSettings() {}

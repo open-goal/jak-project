@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,25 +18,23 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_FILESYSTEM_RISCOS
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/* System dependent filesystem routines                                */
+// System dependent filesystem routines
+
+#include "../SDL_sysfilesystem.h"
 
 #include <kernel.h>
 #include <swis.h>
 #include <unixlib/local.h>
 
-#include "SDL_error.h"
-#include "SDL_stdinc.h"
-#include "SDL_filesystem.h"
-
-/* Wrapper around __unixify_std that uses SDL's memory allocators */
+// Wrapper around __unixify_std that uses SDL's memory allocators
 static char *SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, int filetype)
 {
-    const char *const in_buf = buffer; /* = NULL if we allocate the buffer.  */
+    const char *const in_buf = buffer; // = NULL if we allocate the buffer.
 
     if (!buffer) {
         /* This matches the logic in __unixify, with an additional byte for the
@@ -46,7 +44,6 @@ static char *SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, 
         buffer = SDL_malloc(buf_len);
 
         if (!buffer) {
-            SDL_OutOfMemory();
             return NULL;
         }
     }
@@ -93,7 +90,6 @@ static char *canonicalisePath(const char *path, const char *pathVar)
     regs.r[5] = 1 - regs.r[5];
     buf = SDL_malloc(regs.r[5]);
     if (!buf) {
-        SDL_OutOfMemory();
         return NULL;
     }
     regs.r[2] = (int)buf;
@@ -129,11 +125,11 @@ static _kernel_oserror *createDirectoryRecursive(char *path)
     return _kernel_swi(OS_File, &regs, &regs);
 }
 
-char *SDL_GetBasePath(void)
+char *SDL_SYS_GetBasePath(void)
 {
     _kernel_swi_regs regs;
     _kernel_oserror *error;
-    char *canon, *ptr, *retval;
+    char *canon, *ptr, *result;
 
     error = _kernel_swi(OS_GetEnv, &regs, &regs);
     if (error) {
@@ -145,20 +141,20 @@ char *SDL_GetBasePath(void)
         return NULL;
     }
 
-    /* chop off filename. */
+    // chop off filename.
     ptr = SDL_strrchr(canon, '.');
     if (ptr) {
         *ptr = '\0';
     }
 
-    retval = SDL_unixify_std(canon, NULL, 0, __RISCOSIFY_FILETYPE_NOTSPECIFIED);
+    result = SDL_unixify_std(canon, NULL, 0, __RISCOSIFY_FILETYPE_NOTSPECIFIED);
     SDL_free(canon);
-    return retval;
+    return result;
 }
 
-char *SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_SYS_GetPrefPath(const char *org, const char *app)
 {
-    char *canon, *dir, *retval;
+    char *canon, *dir, *result;
     size_t len;
     _kernel_oserror *error;
 
@@ -178,7 +174,6 @@ char *SDL_GetPrefPath(const char *org, const char *app)
     len = SDL_strlen(canon) + SDL_strlen(org) + SDL_strlen(app) + 4;
     dir = (char *)SDL_malloc(len);
     if (!dir) {
-        SDL_OutOfMemory();
         SDL_free(canon);
         return NULL;
     }
@@ -198,11 +193,16 @@ char *SDL_GetPrefPath(const char *org, const char *app)
         return NULL;
     }
 
-    retval = SDL_unixify_std(dir, NULL, 0, __RISCOSIFY_FILETYPE_NOTSPECIFIED);
+    result = SDL_unixify_std(dir, NULL, 0, __RISCOSIFY_FILETYPE_NOTSPECIFIED);
     SDL_free(dir);
-    return retval;
+    return result;
 }
 
-#endif /* SDL_FILESYSTEM_RISCOS */
+// TODO
+char *SDL_SYS_GetUserFolder(SDL_Folder folder)
+{
+    SDL_Unsupported();
+    return NULL;
+}
 
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_FILESYSTEM_RISCOS

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,24 +18,20 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_PSP
 
 #include <stdio.h>
 
-#include "SDL_error.h"
-#include "SDL_mouse.h"
 #include "../../events/SDL_events_c.h"
 
 #include "SDL_pspmouse_c.h"
 
-/* The implementation dependent data for the window manager cursor */
+// The implementation dependent data for the window manager cursor
 struct WMcursor
 {
     int unused;
 };
 
-#endif /* SDL_VIDEO_DRIVER_PSP */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_PSP
