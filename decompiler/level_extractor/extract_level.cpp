@@ -339,8 +339,8 @@ void extract_common(const ObjectFileDB& db,
       compressed.data(), compressed.size());
 
   if (config.rip_levels) {
-    auto file_path = file_util::get_jak_project_dir() / "glb_out" /
-                     game_version_names[config.game_version] / "common";
+    auto file_path = file_util::get_jak_project_dir() / "decompiler_out" /
+                     game_version_names[config.game_version] / "levels" / "common";
     save_level_foreground_as_gltf(tfrag_level, art_group_data, file_path);
   }
 }
@@ -376,13 +376,13 @@ void extract_from_level(const ObjectFileDB& db,
                                compressed.data(), compressed.size());
 
   if (config.rip_levels) {
-    auto back_file_path = file_util::get_jak_project_dir() / "glb_out" /
-                          game_version_names[config.game_version] / level_data.level_name /
+    auto back_file_path = file_util::get_jak_project_dir() / "decompiler_out" /
+                          game_version_names[config.game_version] / "levels"/ level_data.level_name /
                           fmt::format("{}-background.glb", level_data.level_name);
     file_util::create_dir_if_needed_for_file(back_file_path);
     save_level_background_as_gltf(level_data, back_file_path);
-    auto fore_file_path = file_util::get_jak_project_dir() / "glb_out" /
-                          game_version_names[config.game_version] / level_data.level_name;
+    auto fore_file_path = file_util::get_jak_project_dir() / "decompiler_out" /
+                          game_version_names[config.game_version] / "levels" / level_data.level_name;
     save_level_foreground_as_gltf(level_data, art_group_data, fore_file_path);
   }
   file_util::write_text_file(entities_folder / fmt::format("{}-actors.json", level_data.level_name),
