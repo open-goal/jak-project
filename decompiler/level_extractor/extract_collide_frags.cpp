@@ -261,8 +261,9 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
 
   if (config.rip_collision) {
     auto debug_out = debug_dump_to_obj(all_frags);
-    auto file_path = file_util::get_file_path(
-        {fmt::format("decompiler_out/{}/collision", config.game_name), fmt::format("collide-{}.obj", debug_name)});
+    auto file_path =
+        file_util::get_file_path({fmt::format("decompiler_out/{}/collision", config.game_name),
+                                  fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
@@ -509,8 +510,9 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
     // out.collision.vertices every 3 vertices make a face, so it duplicates vertices in many cases
     // for now debug_dump_to_obj isn't smart and doesn't hash these to save space or anything
     auto debug_out = debug_dump_to_obj(out.collision.vertices);
-    auto file_path = file_util::get_file_path(
-        {fmt::format("decompiler_out/{}/collision", config.game_name), fmt::format("collide-{}.obj", debug_name)});
+    auto file_path =
+        file_util::get_file_path({fmt::format("decompiler_out/{}/collision", config.game_name),
+                                  fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
