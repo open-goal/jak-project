@@ -195,7 +195,7 @@ std::string debug_dump_to_obj(const std::vector<CollideListItem>& list) {
       faces.emplace_back(f.verts[0] + f_off, f.verts[1] + f_off, f.verts[2] + f_off);
     }
     for (u32 t = 0; t < item.unpacked.vu0_buffer.size(); t++) {
-      verts.push_back(item.unpacked.vu0_buffer[t] / 65536);
+      verts.push_back(item.unpacked.vu0_buffer[t] / 4096);
     }
   }
 
@@ -261,8 +261,9 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
 
   if (config.rip_collision) {
     auto debug_out = debug_dump_to_obj(all_frags);
-    auto file_path = file_util::get_file_path(
-        {fmt::format("debug_out/{}", config.game_name), fmt::format("collide-{}.obj", debug_name)});
+    auto file_path =
+        file_util::get_file_path({fmt::format("decompiler_out/{}/collision", config.game_name),
+                                  fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
@@ -509,8 +510,9 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
     // out.collision.vertices every 3 vertices make a face, so it duplicates vertices in many cases
     // for now debug_dump_to_obj isn't smart and doesn't hash these to save space or anything
     auto debug_out = debug_dump_to_obj(out.collision.vertices);
-    auto file_path = file_util::get_file_path(
-        {fmt::format("debug_out/{}", config.game_name), fmt::format("collide-{}.obj", debug_name)});
+    auto file_path =
+        file_util::get_file_path({fmt::format("decompiler_out/{}/collision", config.game_name),
+                                  fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
