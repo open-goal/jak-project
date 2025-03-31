@@ -16,6 +16,7 @@
 #include "common/util/string_util.h"
 #include "common/util/unicode_util.h"
 
+#include "fmt/base.h"
 #include "fmt/format.h"
 
 namespace goos {
@@ -1769,26 +1770,26 @@ Object Interpreter::eval_format(const Object& form,
     throw_eval_error(form, "format string must be a string");
   }
 
-  // Note: this might be relying on internal implementation details of libfmt to work properly
-  // and isn't a great solution.
-  std::vector<fmt::basic_format_arg<fmt::format_context>> args2;
   std::vector<std::string> strings;
   for (size_t i = 2; i < args.unnamed.size(); i++) {
-    if (args.unnamed.at(i).is_string()) {
-      strings.push_back(args.unnamed.at(i).as_string()->data);
-    } else {
-      strings.push_back(args.unnamed.at(i).print());
-    }
+      if (args.unnamed.at(i).is_string()) {
+          strings.push_back(args.unnamed.at(i).as_string()->data);
+      } else {
+          strings.push_back(args.unnamed.at(i).print());
+      }
   }
 
+  // Create a vector of fmt::format_arg
+  std::vector<fmt::basic_format_arg<fmt::format_context>> fmt_args;
   for (auto& x : strings) {
-    args2.push_back(fmt::detail::make_arg<fmt::format_context>(x));
+    fmt_args.push_back(fmt::make_format_args<fmt::format_context>(x));
   }
 
-  auto formatted =
-      fmt::vformat(format_str.as_string()->data,
-                   fmt::format_args(args2.data(), static_cast<unsigned>(args2.size())));
-
+  // Format the string using the public API
+  auto formatted = fmt::vformat(
+      format_str.as_string()->data,
+      fmt::basic_format_args(fmt_args.data(), static_cast<unsigned>(fmt_args.size()))
+  );
   if (truthy(dest)) {
     lg::print("{}", formatted.c_str());
   }
