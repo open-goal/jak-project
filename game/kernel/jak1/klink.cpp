@@ -12,7 +12,7 @@
 #include "game/kernel/jak1/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 static constexpr bool link_debug_printfs = false;
 /*!

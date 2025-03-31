@@ -6,7 +6,7 @@
 #include "common/versions/versions.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/replxx/include/replxx.hxx"
 
 namespace REPL {

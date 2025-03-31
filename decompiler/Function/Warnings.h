@@ -7,7 +7,7 @@
 
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 class DecompWarnings {

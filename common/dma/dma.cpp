@@ -2,7 +2,7 @@
 
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 std::string DmaTag::print() const {
   std::string result;

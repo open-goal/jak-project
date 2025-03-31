@@ -6,7 +6,7 @@
 
 #include "decompiler/util/config_parsers.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 

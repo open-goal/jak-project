@@ -5,7 +5,7 @@
 
 #include "subtitles_v1.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 void to_json(json& j, const SubtitleLineMetadata& obj) {
   json_serialize(frame_start);

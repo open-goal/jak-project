@@ -5,7 +5,7 @@
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace {
 template <typename T>

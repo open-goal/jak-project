@@ -21,7 +21,7 @@
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 /*!

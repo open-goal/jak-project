@@ -5,7 +5,7 @@
 #include "common/util/Assert.h"
 #include "common/versions/versions.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 /*!
  * Assert false if the char[] has non-null data after the null terminated string.

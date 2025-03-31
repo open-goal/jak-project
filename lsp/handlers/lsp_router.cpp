@@ -13,7 +13,7 @@
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 json error_resp(ErrorCodes error_code, const std::string& error_message) {
   json error{

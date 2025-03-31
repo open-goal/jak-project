@@ -27,7 +27,7 @@ EXPECTED OUTPUT
 #include "gtest/gtest.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 struct TestDefinition {
   std::string name;

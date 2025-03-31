@@ -8,7 +8,7 @@
 
 #include "game/sound/989snd/util.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace snd {
 /*

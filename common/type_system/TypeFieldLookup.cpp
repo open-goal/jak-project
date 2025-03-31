@@ -9,7 +9,7 @@
 
 #include "common/log/log.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace {
 // debug prints for the reverse lookup

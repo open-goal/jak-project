@@ -4,7 +4,7 @@
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 GameCountResult process_game_count(ObjectFileData& data) {

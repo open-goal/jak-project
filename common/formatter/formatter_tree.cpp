@@ -2,7 +2,7 @@
 
 #include "common/util/string_util.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 std::string get_source_code(const std::string& source, const TSNode& node) {
   uint32_t start = ts_node_start_byte(node);

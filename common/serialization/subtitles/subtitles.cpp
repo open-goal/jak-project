@@ -5,7 +5,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 void open_subtitle_project(const std::string& project_kind,
                            const std::string& file_path,

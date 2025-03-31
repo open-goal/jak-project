@@ -12,7 +12,7 @@
 #include "common/listener_common.h"
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 #ifdef _WIN32
 #define NOMINMAX

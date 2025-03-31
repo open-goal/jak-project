@@ -1,6 +1,6 @@
 #include "TP_Type.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 u32 regs_to_gpr_mask(const std::vector<Register>& regs) {

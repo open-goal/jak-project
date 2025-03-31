@@ -6,7 +6,7 @@
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/imgui/imgui.h"
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name,
