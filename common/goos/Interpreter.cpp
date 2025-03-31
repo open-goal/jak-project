@@ -16,7 +16,7 @@
 #include "common/util/string_util.h"
 #include "common/util/unicode_util.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace goos {
 Interpreter::Interpreter(const std::string& username) {

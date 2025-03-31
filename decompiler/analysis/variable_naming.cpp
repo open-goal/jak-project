@@ -10,7 +10,7 @@
 #include "decompiler/IR2/Env.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 

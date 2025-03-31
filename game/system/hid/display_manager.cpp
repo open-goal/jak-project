@@ -4,7 +4,7 @@
 
 #include "common/global_profiler/GlobalProfiler.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "fmt/format.h"
 
 DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
