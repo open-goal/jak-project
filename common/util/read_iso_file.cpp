@@ -93,7 +93,7 @@ void unpack_entry(FILE* fp,
                   const fs::path& dest,
                   bool print_progress) {
   std::string patched_name = entry.name;
-  if (patched_name == "WATER_AN.CGO") {
+  if (entry.name == "WATER_AN.CGO") {
     patched_name = "WATER-AN.CGO";
   }
   fs::path path_to_entry = dest / patched_name;
