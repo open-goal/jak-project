@@ -16,6 +16,58 @@
 (set! (-> *speedrun-info* active-practice-objective start-zone-init-params) (new 'static 'objective-zone-init-params))
 (set! (-> *speedrun-info* active-practice-objective end-zone-init-params) (new 'static 'objective-zone-init-params))
 
+;; dynamically populate continue-point list, for custom category menu
+(define *main-continue-point-list* '())
+
+(defun is-main-level? ((lvl-name symbol))
+  (case lvl-name
+    (('vinroom 'drillmid 'drill 'drillb 'sewer 'sewerb 'sewesc 'sewescb 'tomba 'tombb 'tombc 'tombd 'tombe 'tombboss 
+      'under 'underb 'palcab 'palshaft 'palboss 'palroof 'throne 'palent 'prison 'forexita 'forexitb 'forresca 'forrescb 
+      'fordumpa 'fordumpb 'fordumpc 'fordumpd 'strip 'ruins 'sagehut 'atoll 'mountain 'forest 'forestb 'mincan 
+      'ctygena 'ctygenb 'ctygenc 'ctysluma 'ctyslumb 'ctyslumc 'ctyport 'ctyfarma 'ctyfarmb 'ctyinda 'consite 'consiteb 
+      'ctyindb 'ctymarka 'ctymarkb 'ctypal 'stadium 'stadiumb 'stadiumc 'stadiumd 'skatea 'garage 'onintent 'kiosk 
+      'oracle 'hideout 'hiphog 'gungame 'dig1 'dig3a 'dig3b 'caspad 'castle 'casboss 'village1 'nest 'nestb) 
+      #t)
+    (else
+      #f)))
+
+(defun is-main-continue? ((cont continue-point))
+  (not (logtest? (-> cont flags) (continue-flags record-path demo-end record-sig demo intro title title-movie))))
+
+(defun build-main-continue-point-list ()
+  ;; reset list just to be safe
+  (set! *main-continue-point-list* '())
+  (let ((lvl-ptr *level-load-list*))
+    ;; loop thru levels
+    (while (not (null? lvl-ptr))
+      (let* ((lvl (the-as level-load-info (-> (the-as symbol (car lvl-ptr)) value)))
+             (continue-ptr (-> lvl continues)))
+        (when (is-main-level? (-> lvl name))
+          ;; loop thru level's continues
+          (while (not (null? continue-ptr))
+            (let ((cont (the-as continue-point (car continue-ptr))))
+              (when (is-main-continue? cont)
+                ;; this continue is valid, push to list
+                (cons! *main-continue-point-list* (-> cont name))))
+            (set! continue-ptr (cdr continue-ptr)))))
+      (set! lvl-ptr (cdr lvl-ptr)))))
+
+(build-main-continue-point-list)
+
+(defun get-main-continue-point-count ()
+  (let ((cont-ptr *main-continue-point-list*)
+        (count 0))
+    (while (not (null? cont-ptr))
+      (+! count 1)
+      (set! cont-ptr (cdr cont-ptr)))
+    count))
+
+(defun get-main-continue-point-by-idx ((idx int))
+  (let ((cont-ptr *main-continue-point-list*))
+    (dotimes (i idx)
+      (set! cont-ptr (cdr cont-ptr)))
+    (the string (car cont-ptr))))
+
 (defmethod draw-timer ((this speedrun-timer))
   (clear *temp-string*)
   (clear *pc-encoded-temp-string*)
@@ -87,7 +139,7 @@
         (clear *temp-string*)
         (pc-sr-mode-get-custom-category-continue-point (-> *speedrun-info* active-custom-category index) *temp-string*)
         (if (string= *temp-string* "")
-          (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+          (initialize! *game-info* 'game (the-as game-save #f) (-> *speedrun-info* active-custom-category continue-point))
           (initialize! *game-info* 'game (the-as game-save #f) *temp-string*))
         (until (and *target* (= (-> *target* next-state name) 'target-stance))
           (suspend))
@@ -369,6 +421,12 @@
                 :on-entry-confirm (lambda ((index int)) (set! (-> *speedrun-info* dump-custom-category completed-task) (the game-task index)))
                 :entry-selected? (lambda ((index int)) (= (-> *speedrun-info* dump-custom-category completed-task) (the game-task index)))
                 :on-reset (lambda () (set! (-> *speedrun-info* dump-custom-category completed-task) (game-task none))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Select starting continue"
+                :get-length (lambda () (get-main-continue-point-count))
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (get-main-continue-point-by-idx index)))
+                :on-entry-confirm (lambda ((index int)) (set! (-> *speedrun-info* dump-custom-category continue-point) (get-main-continue-point-by-idx index)))
+                :entry-selected? (lambda ((index int)) (string= (-> *speedrun-info* dump-custom-category continue-point) (get-main-continue-point-by-idx index)))
+                :on-reset (lambda () (set! (-> *speedrun-info* dump-custom-category continue-point) "game-start")))
               (new 'static 'popup-menu-button :label "Save new category to file"
                 :on-confirm (lambda () (pc-sr-mode-dump-new-custom-category (-> *speedrun-info* dump-custom-category))))))))
       (new 'static 'popup-menu-button :label "Exit"
