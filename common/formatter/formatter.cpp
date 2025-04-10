@@ -6,12 +6,12 @@
 #include "common/formatter/rules/rule_config.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/util/ast_util.h"
 #include "common/util/string_util.h"
 
 #include "tree_sitter/api.h"
 
 #include "fmt/format.h"
+#include "fmt/ranges.h"
 
 // Declare the `tree_sitter_opengoal` function, which is
 // implemented by the `tree-sitter-opengoal` library.

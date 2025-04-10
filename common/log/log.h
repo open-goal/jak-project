@@ -72,7 +72,7 @@ void print(const std::string& format, Args&&... args) {
 }
 template <typename... Args>
 void print(const fmt::text_style& ts, const std::string& format, Args&&... args) {
-  std::string formatted_message = fmt::format(ts, format, std::forward<Args>(args)...);
+  std::string formatted_message = fmt::vformat(ts, format, fmt::make_format_args(args...));
   internal::log_print(formatted_message.c_str());
 }
 
