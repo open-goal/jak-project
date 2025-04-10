@@ -4,7 +4,6 @@
 #include "common/util/Assert.h"
 
 #include "fmt/format.h"
-#include "fmt/format.h"
 
 namespace pretty_print {
 

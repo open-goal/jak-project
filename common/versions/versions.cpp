@@ -4,7 +4,6 @@
 #include "common/versions/revision.h"
 
 #include "fmt/format.h"
-#include "fmt/format.h"
 
 GameVersion game_name_to_version(const std::string& name) {
   if (name == "jak1") {

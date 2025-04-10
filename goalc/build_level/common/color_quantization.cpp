@@ -2,9 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <memory>
 #include <set>
 #include <unordered_map>
-#include <memory>
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"

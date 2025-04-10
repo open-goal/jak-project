@@ -7,7 +7,6 @@
 #include "goalc/emitter/IGen.h"
 
 #include "fmt/format.h"
-#include "fmt/format.h"
 
 using namespace emitter;
 namespace {
