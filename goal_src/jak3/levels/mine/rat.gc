@@ -192,34 +192,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 364.0889
-    :knocked-soft-vxz-lo 49152.0
-    :knocked-soft-vxz-hi 77824.0
-    :knocked-soft-vy-lo 65536.0
-    :knocked-soft-vy-hi 102400.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 12)
+    :knocked-soft-vxz-hi (meters 19)
+    :knocked-soft-vy-lo (meters 16)
+    :knocked-soft-vy-hi (meters 25)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 0.9898 :y 0.0756 :z 0.1191 :w 16871.352)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -626,6 +626,7 @@
 (set! (-> *rat-nav-enemy-info* fact-defaults) *fact-info-rat-defaults*)
 
 (defmethod init-enemy-collision! ((this rat))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -734,7 +735,7 @@
 (defstate idle (rat)
   :virtual #t
   :enter (behavior ()
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-virtual die)
         )
     (call-parent-state-handler enter)
@@ -771,7 +772,7 @@
       (if (enemy-above-ground? self s5-0 gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
           (set! (-> gp-0 y) (-> s5-0 best-other-tri intersect y))
           )
-      (set! (-> self root gspot-pos quad) (-> gp-0 quad))
+      (vector-copy! (-> self root gspot-pos) gp-0)
       )
     (sound-play "rat-spawner")
     )
@@ -794,7 +795,7 @@
     (ja-channel-push! 1 0)
     (ja-no-eval :group! rat-pipe-jump0-start-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
-      (compute-alignment! (-> self align))
+      (compute-delta-align! (-> self align))
       (align! (-> self align) (align-opts adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
       (vector-v++! (-> self root trans) (-> self root transv))
       (suspend)
@@ -802,7 +803,7 @@
       )
     (ja-no-eval :group! rat-pipe-jump0-end-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
-      (compute-alignment! (-> self align))
+      (compute-delta-align! (-> self align))
       (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 1.0)
       (cond
         ((>= (-> self root gspot-pos y) (-> self root trans y))
@@ -860,7 +861,7 @@
           )
       (logclear! (-> a0-22 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-22 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-22 target-pos quad) (-> v1-18 quad))
+      (vector-copy! (-> a0-22 target-pos) v1-18)
       )
     0
     )
@@ -931,7 +932,7 @@
           )
         )
       )
-    (if (enemy-method-103 self (-> self face-dir) 1820.4445)
+    (if (heading-matches-direction? self (-> self face-dir) 1820.4445)
         (go-virtual active)
         )
     )
@@ -999,7 +1000,7 @@
       (ja :num! (seek!))
       )
     (set-look-at-mode! self 1)
-    (dotimes (gp-0 (set-reaction-time! self (seconds 0.007) (seconds 0.015)))
+    (dotimes (gp-0 (rnd-time-frame self (seconds 0.007) (seconds 0.015)))
       (ja-no-eval :group! rat-sit-alert-idle-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
@@ -1011,7 +1012,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1062,7 +1063,7 @@
                      a1-0
                      )
                    )
-              (set! (-> gp-0 quad) (-> self wheel-actor extra trans quad))
+              (vector-copy! gp-0 (-> self wheel-actor extra trans))
               )
           )
         )
@@ -1073,7 +1074,7 @@
           )
       (logclear! (-> a0-7 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-7 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-7 target-pos quad) (-> v1-11 quad))
+      (vector-copy! (-> a0-7 target-pos) v1-11)
       )
     0
     (nav-enemy-method-187 self)
@@ -1099,7 +1100,7 @@
     )
   :code (behavior ()
     (until #f
-      (when (not (enemy-method-105 self 4551.1113 #t))
+      (when (not (pointing-toward-focus? self 4551.1113 #t))
         (let ((v1-3 self))
           (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-3 enemy-flags))))
           )
@@ -1107,7 +1108,7 @@
         (ja-channel-push! 1 (seconds 0.2))
         (ja :group! rat-turn-left-ja)
         (ja :num-func num-func-identity :frame-num 0.0)
-        (until (enemy-method-105 self 1820.4445 #t)
+        (until (pointing-toward-focus? self 1820.4445 #t)
           (ja-blend-eval)
           (suspend)
           (ja :num! (loop!))
@@ -1172,7 +1173,7 @@
       (suspend)
       (ja :num! (seek! max 1.5))
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post nav-enemy-chase-post
   )
@@ -1200,7 +1201,7 @@
       )
     0
     (set-look-at-mode! self 1)
-    (set! (-> self flee-focus-pos quad) (-> self focus-pos quad))
+    (vector-copy! (-> self flee-focus-pos) (-> self focus-pos))
     )
   :trans (behavior ()
     (when (time-elapsed? (-> self state-time) (seconds 1))
@@ -1213,7 +1214,7 @@
     )
   :code (behavior ()
     (until #f
-      (when (not (enemy-method-105 self 4551.1113 #t))
+      (when (not (pointing-toward-focus? self 4551.1113 #t))
         (let ((v1-3 self))
           (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-3 enemy-flags))))
           )
@@ -1221,7 +1222,7 @@
         (ja-channel-push! 1 (seconds 0.2))
         (ja :group! rat-turn-left-ja)
         (ja :num-func num-func-identity :frame-num 0.0)
-        (until (enemy-method-105 self 1820.4445 #t)
+        (until (pointing-toward-focus? self 1820.4445 #t)
           (ja-blend-eval)
           (suspend)
           (ja :num! (loop!))
@@ -1259,7 +1260,7 @@
     )
   :code (behavior ()
     (until #f
-      (when (not (enemy-method-105 self 4551.1113 #t))
+      (when (not (pointing-toward-focus? self 4551.1113 #t))
         (let ((v1-3 self))
           (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-3 enemy-flags))))
           )
@@ -1267,7 +1268,7 @@
         (ja-channel-push! 1 (seconds 0.2))
         (ja :group! rat-turn-left-ja)
         (ja :num-func num-func-identity :frame-num 0.0)
-        (until (enemy-method-105 self 1820.4445 #t)
+        (until (pointing-toward-focus? self 1820.4445 #t)
           (ja-blend-eval)
           (suspend)
           (ja :num! (loop!))
@@ -1324,12 +1325,12 @@
     (cond
       ((handle->process (-> self ragdoll-proc))
        (vector-reset! (-> self root transv))
-       (try-locate-ground self (meters 10) (meters 10) #t (collide-spec backgnd))
+       (move-to-ground self (meters 10) (meters 10) #t (collide-spec backgnd))
        (ja-channel-push! 1 0)
        (ja-no-eval :group! rat-ground-to-run-ja :num! (seek!) :frame-num 0.0)
        (let ((gp-0 (-> (the-as ragdoll-proc (-> self ragdoll-proc process 0)) ragdoll)))
          (enable-ragdoll! gp-0 self)
-         (quaternion-copy! (-> self root quat) (the-as quaternion (-> gp-0 ragdoll-joints)))
+         (quaternion-copy! (-> self root quat) (-> gp-0 ragdoll-joints 0 quat))
          )
        (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
          (set! (-> a1-6 from) (process->ppointer self))
@@ -1393,7 +1394,7 @@
           )
         )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-virtual flee)
         )
@@ -1584,17 +1585,20 @@
     (vector+!
       (-> arg0 bone transform trans)
       (-> arg0 bone transform trans)
-      (the-as vector (-> (the-as rat gp-0) roll-transform))
+      (-> (the-as rat gp-0) roll-transform trans)
       )
     )
   (none)
   )
 
-(defmethod enemy-method-108 ((this rat) (arg0 process-focusable))
+(defmethod should-flee-from? ((this rat) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (or (not (time-elapsed? (-> this scared-timer) (-> this scared-interval))) (-> this permanently-scared))
   )
 
-(defmethod enemy-method-109 ((this rat))
+(defmethod out-of-bounds? ((this rat))
+  "Has the enemy gone somewhere it shouldn't?
+   Used to kill some enemies that can be knocked of regions."
   (with-pp
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer pp))
@@ -1626,7 +1630,8 @@
     )
   )
 
-(defmethod within-gspot-range? ((this rat))
+(defmethod invalid-height? ((this rat))
+  "Return #t if the enemy is too high in the air, or below the ground."
   (with-pp
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer pp))
@@ -1642,7 +1647,7 @@
                    a1-0
                    )
                  )
-            ((method-of-type nav-enemy within-gspot-range?) this)
+            ((method-of-type nav-enemy invalid-height?) this)
             )
         )
       )
@@ -1650,6 +1655,7 @@
   )
 
 (defmethod ragdoll-settled? ((this rat))
+  "Has the ragdoll stopped moving?"
   (with-pp
     (and (or (time-elapsed? (-> this state-time) (seconds 3)) (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
                                                                 (set! (-> a1-0 from) (process->ppointer pp))
@@ -1674,6 +1680,7 @@
 
 ;; WARN: Return type mismatch float vs object.
 (defmethod knocked-handler ((this rat) (arg0 vector))
+  "Called when this enemy is knocked."
   (get-knockback-dir! this arg0)
   (let ((f30-0 (rnd-float-range this 0.9 1.0)))
     (let ((f0-0 0.0)
@@ -1685,7 +1692,10 @@
     )
   )
 
-(defmethod enemy-method-63 ((this rat) (arg0 float))
+(defmethod apply-incoming-hitpoint-mods ((this rat) (arg0 float))
+  "Modify the hitpoints from an incoming attack.
+   Keeps enemy alive for a bit while being shot with a blue gun.
+   This looks cool because you can shoot them many times."
   (if (= (-> this hit-points) (-> this enemy-info default-hit-points))
       1.0
       0.0
@@ -1694,6 +1704,7 @@
 
 ;; WARN: Return type mismatch int vs knocked-type.
 (defmethod penetrate->knocked-type ((this rat) (arg0 penetrate))
+  "Based on the penetrate of an attacker, pick the knocked-type."
   (the-as knocked-type (cond
                          ((logtest? arg0 (penetrate vehicle))
                           7
@@ -1715,6 +1726,7 @@
   )
 
 (defmethod go-hostile ((this rat))
+  "Go to the hostile state, actively trying to attack the target."
   (if (logtest? (-> this fact enemy-options) (enemy-option user8))
       (go (method-of-object this wait-by-wheel-seek))
       (go (method-of-object this hostile))
@@ -1722,18 +1734,20 @@
   )
 
 (defmethod coin-flip? ((this rat))
+  "Return #t half the time, #f the other."
   #f
   )
 
 (defmethod enemy-common-post ((this rat))
+  "Common implementation of post. Runs ja-post."
   (let ((a0-2 (handle->process (-> this focus handle))))
     (if a0-2
-        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-2) 3) quad))
+        (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable a0-2) 3))
         )
     )
   (when (-> this return-to-nav-mesh?)
     (format *stdebug* "~s ~d off nav-mesh~%" (-> this name) (-> this pid))
-    (when (enemy-method-109 this)
+    (when (out-of-bounds? this)
       (set! (-> this return-to-nav-mesh?) #f)
       (go-die this)
       )
@@ -1752,7 +1766,8 @@
   (none)
   )
 
-(defmethod enemy-method-50 ((this rat) (arg0 int))
+(defmethod update-collision-action ((this rat) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-0 arg0))
     (cond
       ((= v1-0 1)
@@ -1776,11 +1791,13 @@
   )
 
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this rat))
+(defmethod get-search-info-flag ((this rat))
+  "Get search-info-flag for this process."
   (the-as search-info-flag 8)
   )
 
 (defmethod event-handler ((this rat) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (local-vars (v0-5 object))
   (case arg2
     (('hit 'hit-knocked 'hit-flinch)
@@ -1793,7 +1810,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1830,6 +1847,7 @@
   )
 
 (defmethod init-enemy! ((this rat))
+  "Typical place for shared init code. Runs from entity or process style init."
   (with-pp
     (rlet ((vf0 :class vf))
       (init-vf0-vector)
@@ -1838,7 +1856,7 @@
         (the-as skeleton-group (art-group-get-by-name *level* "skel-rat" (the-as (pointer level) #f)))
         (the-as pair 0)
         )
-      (init-enemy-defaults! this *rat-nav-enemy-info*)
+      (setup-enemy! this *rat-nav-enemy-info*)
       (let ((v1-5 (-> this neck)))
         (set! (-> v1-5 up) (the-as uint 1))
         (set! (-> v1-5 nose) (the-as uint 2))
@@ -1965,7 +1983,7 @@
         (let ((s5-2 (-> self entity))
               (gp-2 (new 'stack-no-clear 'enemy-init-by-other-params))
               )
-          (set! (-> gp-2 trans quad) (-> s5-2 extra trans quad))
+          (vector-copy! (-> gp-2 trans) (-> s5-2 extra trans))
           (quaternion-copy! (-> gp-2 quat) (-> s5-2 quat))
           (set! (-> gp-2 entity) s5-2)
           (set! (-> gp-2 directed?) #f)
@@ -2006,6 +2024,7 @@
   )
 
 (defmethod init-from-entity! ((this rat-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set! (-> this wheel-entity) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this rats-spawned) (the-as uint 0))

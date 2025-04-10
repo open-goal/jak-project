@@ -177,6 +177,7 @@
 
 ;; definition for method 11 of type desert-eggwall
 (defmethod init-from-entity! ((this desert-eggwall) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this task-node) (game-task-node nest-eggs-wall))
   (cond
     ((task-node-closed? (-> this task-node))
@@ -248,11 +249,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack 'touched)
-       (let* ((s3-0 proc)
-              (s2-0 (if (type? s3-0 process-focusable)
-                        s3-0
-                        )
-                    )
+       (let* ((s2-0 (as-type proc process-focusable))
               (s3-1 (and s2-0 (focus-test? (the-as process-focusable s2-0) flut)))
               )
          (cond
@@ -310,7 +307,7 @@
                   (when s5-1
                     (setup-masks (-> self draw) 0 (the-as int (-> s5-1 prim-id)))
                     (set! (-> s5-1 prim-core collide-as) (collide-spec))
-                    (set! (-> gp-1 quad) (-> s5-1 prim-core world-sphere quad))
+                    (vector-copy! gp-1 (-> s5-1 prim-core world-sphere))
                     )
                   )
                 )
@@ -320,16 +317,16 @@
                    (-> self root)
                    (lambda ((arg0 collide-shape-prim)) (set! (-> arg0 prim-core collide-as) (collide-spec)) 0 (none))
                    )
-                 (set! (-> gp-1 quad) (-> self root root-prim prim-core world-sphere quad))
+                 (vector-copy! gp-1 (-> self root root-prim prim-core world-sphere))
                  )
                )
              (cond
                ((logtest? (-> *part-group-id-table* 1232 flags) (sp-group-flag sp13))
-                (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+                (vector-copy! (-> *launch-matrix* trans) gp-1)
                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1232))
                 )
                (else
-                 (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+                 (vector-copy! (-> *launch-matrix* trans) gp-1)
                  (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1232))
                  )
                )
@@ -377,6 +374,7 @@
 
 ;; definition for method 11 of type des-cactus-obstacle
 (defmethod init-from-entity! ((this des-cactus-obstacle) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by)
           (penetrate
@@ -467,7 +465,3 @@
   (logior! (-> this mask) (process-mask crate))
   (go (method-of-object this idle))
   )
-
-
-
-

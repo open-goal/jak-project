@@ -1120,7 +1120,7 @@
 
 ;; failed to figure out what this is:
 (dotimes (v1-20 (-> *desresc-transport-path-0* length))
-  (set! (-> *__transport-path__* v1-20 quad) (-> *desresc-transport-path-0* v1-20 pos quad))
+  (vector-copy! (-> *__transport-path__* v1-20) (-> *desresc-transport-path-0* v1-20 pos))
   )
 
 ;; definition for method 0 of type transport-path-control
@@ -1206,7 +1206,7 @@
 (set! (-> *transport-tread-settings* zbuffer?) #f)
 
 ;; failed to figure out what this is:
-(set! (-> *transport-tread-settings* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *transport-tread-settings* lie-vector) *up-vector*)
 
 ;; failed to figure out what this is:
 (set! (-> *transport-tread-settings* use-tape-mode?) #f)
@@ -1318,7 +1318,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod desert-rescue-transport-method-43 ((this desert-rescue-transport))
   (let ((s2-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s2-0 quad) (-> this root trans quad))
+    (vector-copy! s2-0 (-> this root trans))
     (let ((v1-4 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)))
           (s3-0 (new 'stack-no-clear 'vector))
           (s5-0 (new 'stack-no-clear 'vector))
@@ -1371,7 +1371,7 @@
       )
     (cond
       ((>= (fill-and-probe-using-line-sphere *collide-cache* gp-0) 0.0)
-       (set! (-> arg1 quad) (-> gp-0 best-other-tri normal quad))
+       (vector-copy! arg1 (-> gp-0 best-other-tri normal))
        (-> gp-0 best-other-tri intersect y)
        )
       (else
@@ -1529,7 +1529,7 @@
   (ja :group! (-> self draw art-group data 3) :num! (identity 1.0))
   (set! (-> self desresc-path) (-> arg0 desresc-path))
   (set! (-> self path) (new 'process 'transport-path-control self (-> arg0 path-pts) (-> arg0 num-pts)))
-  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (vector-copy! (-> self root trans) (-> arg0 pos))
   (quaternion-copy! (-> self root quat) (-> arg0 quat))
   (set! (-> self target-pitch) 0.0)
   (set! (-> self pitch) 0.0)
@@ -1684,12 +1684,12 @@
       (let ((f0-4 (vector-dot s3-1 s5-0)))
         (cond
           ((>= f0-4 0.9999)
-           (set! (-> s5-0 quad) (-> s3-1 quad))
+           (vector-copy! s5-0 s3-1)
            )
           (else
             (vector-cross! s4-0 s5-0 s3-1)
             (let ((f0-6 (fmin (acos f0-4) (* 5461.3335 (seconds-per-frame)))))
-              (vector-rotate-around-axis! s5-0 (the-as quaternion s5-0) f0-6 s4-0)
+              (vector-rotate-around-axis! s5-0 s5-0 f0-6 s4-0)
               )
             )
           )
@@ -1728,7 +1728,7 @@
 ;; INFO: Used lq/sq
 (defmethod desert-rescue-transport-method-44 ((this desert-rescue-transport))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-0 quad) (-> this root trans quad))
+    (vector-copy! gp-0 (-> this root trans))
     (let ((a1-1 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)))
           (f30-0 43008.0)
           )
@@ -1743,7 +1743,7 @@
 ;; INFO: Used lq/sq
 (defmethod desert-rescue-transport-method-45 ((this desert-rescue-transport))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
-    (set! (-> gp-0 quad) (-> this root trans quad))
+    (vector-copy! gp-0 (-> this root trans))
     (let ((a1-1 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)))
           (f30-0 43008.0)
           )
@@ -1979,7 +1979,7 @@
   :virtual #t
   :event task-manager-event-handler
   :code (behavior ()
-    (while (or (not *target*) (not *spawn-actors*) (!= (status-of-level-and-borrows *level* 'desrescg #f) 'active))
+    (while (or (not *target*) (not *spawn-actors*) (!= (level-status? *level* 'desrescg #f) 'active))
       (suspend)
       )
     (set-time-limit self)
@@ -2033,7 +2033,7 @@
          (set! (-> gp-0 guard-type) (the-as uint 11))
          (set! (-> gp-0 entity) #f)
          (vector-reset! (-> gp-0 velocity))
-         (set! (-> gp-0 position quad) (-> *snake-start-pos* quad))
+         (vector-copy! (-> gp-0 position) *snake-start-pos*)
          (quaternion-identity! (-> gp-0 rotation))
          (quaternion-rotate-y! (-> gp-0 rotation) (-> gp-0 rotation) *snake-start-angle*)
          (set! (-> self jak-vehicle) (process->handle (vehicle-spawn (vehicle-type v-snake) gp-0)))
@@ -2062,7 +2062,7 @@
          (set! (-> gp-2 guard-type) (the-as uint 11))
          (set! (-> gp-2 entity) #f)
          (vector-reset! (-> gp-2 velocity))
-         (set! (-> gp-2 position quad) (-> *snake-start-pos* quad))
+         (vector-copy! (-> gp-2 position) *snake-start-pos*)
          (quaternion-identity! (-> gp-2 rotation))
          (quaternion-rotate-y! (-> gp-2 rotation) (-> gp-2 rotation) *snake-start-angle*)
          (set! (-> self jak-vehicle) (process->handle (vehicle-spawn (vehicle-type v-snake) gp-2)))
@@ -2079,7 +2079,7 @@
        )
       (else
         (task-manager-desert-rescue-method-49 self)
-        (when (= (status-of-level-and-borrows *level* 'desert #f) 'active)
+        (when (= (level-status? *level* 'desert #f) 'active)
           (send-event (handle->process (-> *game-info* dust-storm)) 'set-intensity #x3e4ccccd)
           (when (and *target* (focus-test? *target* pilot-riding))
             (set! (-> self jak-vehicle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
@@ -2107,7 +2107,7 @@
 (defmethod init-transport-params! ((this task-manager-desert-rescue) (arg0 desert-rescue-transport-init-params))
   (set! (-> arg0 path-pts) *__transport-path__*)
   (set! (-> arg0 num-pts) (-> this desresc-path allocated-length))
-  (set! (-> arg0 pos quad) (-> this desresc-path 0 pos quad))
+  (vector-copy! (-> arg0 pos) (-> this desresc-path 0 pos))
   (set! (-> arg0 desresc-path) (-> this desresc-path))
   (quaternion-identity! (-> arg0 quat))
   (none)
@@ -2162,7 +2162,7 @@
     (set-setting! 'dust-storm-sound-scalar #f 1.0 0)
     (remove-setting! 'vehicles)
     (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-      (set! (-> gp-0 pos quad) (-> *home-pos* quad))
+      (vector-copy! (-> gp-0 pos) *home-pos*)
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags))
       (set! (-> gp-0 map-icon) (the-as uint 12))
@@ -2177,30 +2177,15 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-1 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (if (< (vector-vector-xz-distance (target-pos 0) *home-pos*) 61440.0)
         (go-virtual finish-task)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-2 #t)
-                     (s5-0 (handle->process (-> self jak-vehicle)))
-                     (v1-17 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                           (the-as process-focusable s5-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-1 v1-17 gp-2)
-                )
-              gp-1
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2317,19 +2302,9 @@
   :enter (behavior ()
     (set-setting! 'music 'desres3 0.0 0)
     (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-      (let ((s5-0 (-> gp-0 pos))
-            (s4-0 (handle->process (-> self jak-vehicle)))
-            )
-        (set! (-> s5-0 quad) (-> (get-trans
-                                   (the-as process-focusable (if (type? s4-0 process-focusable)
-                                                                 (the-as process-focusable s4-0)
-                                                                 )
-                                           )
-                                   0
-                                   )
-                                 quad
-                                 )
-              )
+      (vector-copy!
+        (-> gp-0 pos)
+        (get-trans (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable)) 0)
         )
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags))
@@ -2406,7 +2381,7 @@
         (set! (-> gp-0 guard-type) (the-as uint 11))
         (set! (-> gp-0 entity) #f)
         (vector-reset! (-> gp-0 velocity))
-        (set! (-> gp-0 position quad) (-> *snake-start-pos* quad))
+        (vector-copy! (-> gp-0 position) *snake-start-pos*)
         (quaternion-identity! (-> gp-0 rotation))
         (quaternion-rotate-y! (-> gp-0 rotation) (-> gp-0 rotation) *snake-start-angle*)
         (set! (-> self jak-vehicle) (process->handle (vehicle-spawn (vehicle-type v-snake) gp-0)))
@@ -2419,7 +2394,6 @@
     (remove-setting! 'pilot)
     )
   :trans (behavior ()
-    (local-vars (gp-0 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (set! (-> *game-info* timer)
@@ -2429,23 +2403,9 @@
         (send-event self 'fail)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-1 #t)
-                     (s5-0 (handle->process (-> self jak-vehicle)))
-                     (v1-21 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                           (the-as process-focusable s5-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-0 v1-21 gp-1)
-                )
-              gp-0
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2515,7 +2475,6 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-3 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (let ((gp-0 (the-as wland-passenger (handle->process (-> self current-passenger)))))
@@ -2530,12 +2489,7 @@
         )
       )
     (when (time-elapsed? (-> self state-time) (seconds 1))
-      (let* ((gp-1 (handle->process (-> self current-passenger)))
-             (a0-16 (if (type? gp-1 process-focusable)
-                        (the-as process-focusable gp-1)
-                        )
-                    )
-             )
+      (let ((a0-16 (as-type (handle->process (-> self current-passenger)) process-focusable)))
         (if (or (not a0-16) (focus-test? a0-16 disable dead inactive))
             (send-event self 'fail-delay)
             )
@@ -2556,23 +2510,9 @@
         (send-event self 'fail)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-4 #t)
-                     (s5-1 (handle->process (-> self jak-vehicle)))
-                     (v1-70 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-1 process-focusable)
-                                                                                           (the-as process-focusable s5-1)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-3 v1-70 gp-4)
-                )
-              gp-3
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2604,7 +2544,7 @@
     (task-manager-desert-rescue-method-45 self 1)
     (send-event (handle->process (-> self current-transport)) 'passenger-pickup)
     (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-      (set! (-> gp-0 pos quad) (-> self passenger-pos (-> self current-passenger-index) beacon-pos quad))
+      (vector-copy! (-> gp-0 pos) (-> self passenger-pos (-> self current-passenger-index) beacon-pos))
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags))
       (set! (-> gp-0 map-icon) (the-as uint 13))
@@ -2613,7 +2553,6 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-0 symbol))
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-44 self)
     (set! (-> *game-info* timer)
@@ -2623,23 +2562,9 @@
         (send-event self 'fail)
         )
     (if (or (not (handle->process (-> self jak-vehicle)))
-            (begin
-              (let* ((gp-1 #t)
-                     (s5-0 (handle->process (-> self jak-vehicle)))
-                     (v1-21 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                           (the-as process-focusable s5-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-0 v1-21 gp-1)
-                )
-              gp-0
+            (focus-test?
+              (the-as process-focusable (as-type (handle->process (-> self jak-vehicle)) process-focusable))
+              dead
               )
             )
         (send-event self 'fail)
@@ -2748,10 +2673,10 @@
        (let ((s5-0 (mod (-> this current-passenger-index) 3)))
          0
          (let ((s4-0 (new 'stack-no-clear 'vector)))
-           (set! (-> s4-0 quad) (-> (target-pos 0) quad))
+           (vector-copy! s4-0 (target-pos 0))
            (let ((a0-8 (the-as process-focusable (handle->process (-> this current-passenger)))))
              (if a0-8
-                 (set! (-> s4-0 quad) (-> (get-trans a0-8 3) quad))
+                 (vector-copy! s4-0 (get-trans a0-8 3))
                  )
              )
            (let ((s4-1 (speech-play (-> *rescue-speech-array* s5-0) arg0 *desert-rescue-speech-list* s4-0)))

@@ -352,34 +352,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 364.0889
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 61440.0
-    :knocked-medium-vxz-hi 61440.0
-    :knocked-medium-vy-lo 49152.0
-    :knocked-medium-vy-hi 69632.0
-    :knocked-hard-vxz-lo 61440.0
-    :knocked-hard-vxz-hi 90112.0
-    :knocked-hard-vy-lo 49152.0
-    :knocked-hard-vy-hi 73728.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 61440.0
-    :knocked-yellow-vxz-hi 61440.0
-    :knocked-yellow-vy-lo 49152.0
-    :knocked-yellow-vy-hi 69632.0
-    :knocked-red-vxz-lo 61440.0
-    :knocked-red-vxz-hi 90112.0
-    :knocked-red-vy-lo 49152.0
-    :knocked-red-vy-hi 73728.0
-    :knocked-blue-vxz-lo 20480.0
-    :knocked-blue-vxz-hi 28672.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 15)
+    :knocked-medium-vxz-hi (meters 15)
+    :knocked-medium-vy-lo (meters 12)
+    :knocked-medium-vy-hi (meters 17)
+    :knocked-hard-vxz-lo (meters 15)
+    :knocked-hard-vxz-hi (meters 22)
+    :knocked-hard-vy-lo (meters 12)
+    :knocked-hard-vy-hi (meters 18)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 15)
+    :knocked-yellow-vxz-hi (meters 15)
+    :knocked-yellow-vy-lo (meters 12)
+    :knocked-yellow-vy-hi (meters 17)
+    :knocked-red-vxz-lo (meters 15)
+    :knocked-red-vxz-hi (meters 22)
+    :knocked-red-vy-lo (meters 12)
+    :knocked-red-vy-hi (meters 18)
+    :knocked-blue-vxz-lo (meters 5)
+    :knocked-blue-vxz-hi (meters 7)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 0.9983 :y -0.0558 :z 0.0132 :w 27913.42)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -677,6 +677,7 @@
 (set! (-> *saberfish-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (defmethod init-enemy-collision! ((this saberfish))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -773,12 +774,13 @@
   )
 
 (defmethod init-enemy! ((this saberfish))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-saberfish" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *saberfish-nav-enemy-info*)
+  (setup-enemy! this *saberfish-nav-enemy-info*)
   (set! (-> this last-attack-time) 0)
   (set! (-> this scare-start-time) 0)
   (set! (-> this scare-time) 0)
@@ -820,7 +822,7 @@
   (set! (-> this scare-time) 0)
   (set! (-> this desired-dest-mesh-index) (-> this current-nav-mesh-index))
   (set! (-> this is-submerged?) #f)
-  (set! (-> this root trans quad) (-> this pos-start quad))
+  (vector-copy! (-> this root trans) (-> this pos-start))
   (quaternion-copy! (-> this root quat) (-> this quat-start))
   (set! (-> this move-to-ground?) #f)
   (let ((s5-1 (-> this skel root-channel 0)))
@@ -855,7 +857,7 @@
                )
               )
             )
-          (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable s4-0) 0) quad))
+          (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable s4-0) 0))
           (set-dest-nav! this (-> this focus-pos) (find-behavior<-in-water? (the-as symbol s5-0)))
           )
         )
@@ -965,45 +967,28 @@
   )
 
 (defbehavior saberfish-chase-post saberfish ()
-  (local-vars (v1-10 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((a0-1 (handle->process (-> self focus handle))))
-      (when a0-1
-        (let ((gp-0 (get-trans (the-as process-focusable a0-1) 1)))
-          (let ((s5-0 (new 'stack-no-clear 'vector)))
-            (vector-! s5-0 (-> self root trans) gp-0)
-            (let ((f0-0 16384.0))
-              (.lvf vf1 (&-> s5-0 quad))
-              (.add.w.vf.x vf2 vf0 vf0)
-              (.mul.vf vf1 vf1 vf1)
-              (.mul.x.vf.x acc vf2 vf1)
-              (.add.mul.y.vf.x acc vf2 vf1 acc)
-              (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-              (.mov v1-10 vf1)
-              (if (< f0-0 v1-10)
-                  (vector-normalize! s5-0 16384.0)
-                  )
+  (let ((a0-1 (handle->process (-> self focus handle))))
+    (when a0-1
+      (let ((gp-0 (get-trans (the-as process-focusable a0-1) 1)))
+        (let ((s5-0 (new 'stack-no-clear 'vector)))
+          (vector-! s5-0 (-> self root trans) gp-0)
+          (if (< 16384.0 (vector-length-squared s5-0))
+              (vector-normalize! s5-0 16384.0)
               )
-            (vector+! gp-0 gp-0 s5-0)
-            )
-          (let ((v1-15 (-> self nav state)))
-            (logclear! (-> v1-15 flags) (nav-state-flag directional-mode))
-            (logior! (-> v1-15 flags) (nav-state-flag target-poly-dirty))
-            (set! (-> v1-15 target-pos quad) (-> gp-0 quad))
-            )
+          (vector+! gp-0 gp-0 s5-0)
           )
-        0
+        (let ((v1-15 (-> self nav state)))
+          (logclear! (-> v1-15 flags) (nav-state-flag directional-mode))
+          (logior! (-> v1-15 flags) (nav-state-flag target-poly-dirty))
+          (vector-copy! (-> v1-15 target-pos) gp-0)
+          )
         )
+      0
       )
-    (nav-enemy-method-187 self)
-    0
-    (none)
     )
+  (nav-enemy-method-187 self)
+  0
+  (none)
   )
 
 (defstate hit (saberfish)
@@ -1025,7 +1010,7 @@
   :trans (behavior ()
     (let ((a0-1 (handle->process (-> self focus handle))))
       (if a0-1
-          (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable a0-1) 0) quad))
+          (vector-copy! (-> self focus-pos) (get-trans (the-as process-focusable a0-1) 0))
           )
       )
     (let ((a1-2 (get-cmd self)))
@@ -1369,7 +1354,7 @@
       (let ((v1-8 (-> self nav state)))
         (logclear! (-> v1-8 flags) (nav-state-flag directional-mode))
         (logior! (-> v1-8 flags) (nav-state-flag target-poly-dirty))
-        (set! (-> v1-8 target-pos quad) (-> gp-0 quad))
+        (vector-copy! (-> v1-8 target-pos) gp-0)
         )
       )
     0
@@ -1415,7 +1400,7 @@
     (let ((a1-0 (-> self nav state))
           (v1-8 (new 'stack-no-clear 'vector))
           )
-      (set! (-> v1-8 quad) (-> a1-0 target-pos quad))
+      (vector-copy! v1-8 (-> a1-0 target-pos))
       (let ((gp-0 (new 'stack-no-clear 'vector)))
         0.0
         (vector-! gp-0 (-> self root trans) v1-8)
@@ -1426,7 +1411,7 @@
             (let ((v1-13 (-> self nav state)))
               (logclear! (-> v1-13 flags) (nav-state-flag directional-mode))
               (logior! (-> v1-13 flags) (nav-state-flag target-poly-dirty))
-              (set! (-> v1-13 target-pos quad) (-> s5-0 quad))
+              (vector-copy! (-> v1-13 target-pos) s5-0)
               )
             )
           0
@@ -1441,7 +1426,7 @@
     (vector-z-quaternion! (-> self nav-velocity) (-> self root quat))
     (set! (-> self nav-velocity y) 0.0)
     (vector-normalize! (-> self nav-velocity) 1.0)
-    (set! (-> self nav-dir quad) (-> self nav-velocity quad))
+    (vector-copy! (-> self nav-dir) (-> self nav-velocity))
     (set! (-> self doing-180-spin?) #f)
     (set-time! (-> self last-swim-flip-time))
     (set! (-> self saberfish-y-rotate) 0.0)
@@ -1458,7 +1443,7 @@
     (vector-float*! (-> self post-spinflip-expected-heading) (-> self post-spinflip-expected-heading) -1.0)
     (let ((gp-0 #f))
       (until (ja-done? 0)
-        (compute-alignment! (-> self align))
+        (compute-delta-align! (-> self align))
         (set! (-> self root transv quad) (the-as uint128 0))
         (vector-float*! (-> self root transv) (-> self root transv) -1.0)
         (vector-v++! (-> self root trans) (-> self root transv))
@@ -1472,7 +1457,7 @@
             (let ((a0-16 (-> self nav state))
                   (s2-0 (new 'stack-no-clear 'vector))
                   )
-              (set! (-> s2-0 quad) (-> a0-16 travel quad))
+              (vector-copy! s2-0 (-> a0-16 travel))
               (let ((s3-0 (new 'stack-no-clear 'quaternion))
                     (s5-1 (new 'stack-no-clear 'quaternion))
                     )
@@ -1483,7 +1468,7 @@
                     (when (not gp-0)
                       (set! gp-0 #t)
                       (let ((a1-10 (new 'stack-no-clear 'vector)))
-                        (set! (-> a1-10 quad) (-> self root trans quad))
+                        (vector-copy! a1-10 (-> self root trans))
                         (splash-spawn 0.0 a1-10 1)
                         )
                       )
@@ -1587,7 +1572,7 @@
       (let ((f0-0 (-> this swim-speed)))
         0.0
         0.0
-        (set! (-> v1-3 quad) (-> arg0 quad))
+        (vector-copy! v1-3 arg0)
         (set! (-> v1-3 y) (fmin (-> v1-3 y) (+ -8192.0 (-> this water surface-height))))
         (vector-! s5-0 v1-3 (-> this root trans))
         (let ((f1-4 (-> s5-0 y))
@@ -1623,7 +1608,7 @@
     (let ((a0-0 (-> self nav state))
           (s5-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> s5-0 quad) (-> a0-0 travel quad))
+      (vector-copy! s5-0 (-> a0-0 travel))
       (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
         (let ((f30-0 (-> self swim-speed)))
           (let ((s4-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
@@ -1642,7 +1627,7 @@
               (#f
                 (set! f26-0 (-> self swim-anim-last-dot))
                 (set! f28-0 (-> self swim-rotate-last-dot))
-                (set! (-> s5-0 quad) (-> gp-0 quad))
+                (vector-copy! s5-0 gp-0)
                 )
               (else
                 (let ((f0-6 (vector-dot s4-0 s5-0)))
@@ -1675,7 +1660,7 @@
                         (a2-2 (-> self nav state))
                         (a1-7 (new 'stack-no-clear 'vector))
                         )
-                    (set! (-> a1-7 quad) (-> a2-2 target-pos quad))
+                    (vector-copy! a1-7 (-> a2-2 target-pos))
                     (< f26-1 (t9-8 a0-15 a1-7))
                     )
                   (let ((v1-37 (ja-group)))
@@ -1685,7 +1670,7 @@
              (set! (-> self swim-travel-anim) -1)
              )
             ((< 0.99999 f28-0)
-             (set! (-> gp-0 quad) (-> s5-0 quad))
+             (vector-copy! gp-0 s5-0)
              )
             (else
               (let ((s4-1 (new 'stack-no-clear 'vector)))
@@ -1693,7 +1678,7 @@
                 (let ((f30-1 (fmin (acos f28-0) (* 0.53333336 (seconds-per-frame) f30-0))))
                   (vector-cross! s4-1 gp-0 s5-0)
                   (vector-normalize! s4-1 1.0)
-                  (vector-rotate-around-axis! gp-0 (the-as quaternion gp-0) f30-1 s4-1)
+                  (vector-rotate-around-axis! gp-0 gp-0 f30-1 s4-1)
                   )
                 )
               (set! (-> gp-0 y) 0.0)
@@ -1704,13 +1689,13 @@
         (let ((a0-27 (-> self nav state))
               (v1-48 gp-0)
               )
-          (set! (-> a0-27 heading quad) (-> v1-48 quad))
+          (vector-copy! (-> a0-27 heading) v1-48)
           )
         0
-        (set! (-> self nav-dir quad) (-> gp-0 quad))
+        (vector-copy! (-> self nav-dir) gp-0)
         (vector-normalize! gp-0 (-> self swim-speed))
         (let ((s5-1 (new 'stack-no-clear 'vector)))
-          (set! (-> s5-1 quad) (-> gp-0 quad))
+          (vector-copy! s5-1 gp-0)
           (set! (-> s5-1 y) 0.0)
           (vector-normalize! s5-1 24576.0)
           (saberfish-method-234 self s5-1)
@@ -1723,10 +1708,10 @@
         (let ((a0-34 (-> self nav state))
               (v1-65 gp-0)
               )
-          (set! (-> a0-34 velocity quad) (-> v1-65 quad))
+          (vector-copy! (-> a0-34 velocity) v1-65)
           )
         0
-        (set! (-> self nav-velocity quad) (-> gp-0 quad))
+        (vector-copy! (-> self nav-velocity) gp-0)
         )
       )
     )
@@ -1811,7 +1796,7 @@
         (let ((s4-0 #f))
           (let ((s3-0 #f))
             (when s5-0
-              (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable s5-0) 3) quad))
+              (vector-copy! gp-0 (get-trans (the-as process-focusable s5-0) 3))
               (let ((f0-2 (- (vector-dot (-> self root trans) (-> self attack-dir)) (vector-dot gp-0 (-> self attack-dir)))))
                 (if (< -61440.0 f0-2)
                     (set! s3-0 #t)
@@ -1830,7 +1815,7 @@
                   )
               (logclear! (-> a0-7 flags) (nav-state-flag directional-mode))
               (logior! (-> a0-7 flags) (nav-state-flag target-poly-dirty))
-              (set! (-> a0-7 target-pos quad) (-> v1-27 quad))
+              (vector-copy! (-> a0-7 target-pos) v1-27)
               )
             0
             (when (or (not (-> self adjusted-y-yet?)) (not s3-0))
@@ -1992,10 +1977,12 @@
   )
 
 (defmethod coin-flip? ((this saberfish))
+  "Return #t half the time, #f the other."
   #f
   )
 
-(defmethod enemy-method-108 ((this saberfish) (arg0 process-focusable))
+(defmethod should-flee-from? ((this saberfish) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (not (time-elapsed? (-> this scare-start-time) (-> this scare-time)))
   )
 
@@ -2011,6 +1998,7 @@
 
 ;; WARN: Return type mismatch enemy-jump-flags vs none.
 (defmethod init-jump-info! ((this saberfish) (arg0 enemy-jump-info))
+  "Populate an enemy-jump-info for jumping to this enemy's event-param-point"
   (call-parent-method this arg0)
   (if (saberfish-method-243 this)
       (logior! (-> arg0 flags) (enemy-jump-flags ejf0))
@@ -2079,7 +2067,7 @@
     (ja-no-eval :group! (-> self draw art-group data (-> self jump land-anim)) :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (set! (-> self root transv quad) (the-as uint128 0))
-      (compute-alignment! (-> self align))
+      (compute-delta-align! (-> self align))
       (align! (-> self align) (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
       (vector-v++! (-> self root trans) (-> self root transv))
       (set! (-> self root transv quad) (the-as uint128 0))
@@ -2175,7 +2163,7 @@
         (set! (-> gp-0 y) 0.0)
         (vector-normalize! gp-0 (-> self swim-speed))
         (vector-v++! (-> self root trans) gp-0)
-        (compute-alignment! (-> self align))
+        (compute-delta-align! (-> self align))
         (align! (-> self align) (align-opts adjust-y-vel) 1.0 1.0 1.0)
         (set! (-> self root transv x) 0.0)
         (set! (-> self root transv z) 0.0)
@@ -2198,7 +2186,7 @@
 
 (defbehavior jump-from-land-dive-anim saberfish ()
   (let ((f30-0 1.0))
-    (compute-alignment! (-> self align))
+    (compute-delta-align! (-> self align))
     (cond
       ((< (ja-frame-num 0) 4.5)
        (align! (-> self align) (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
@@ -2428,11 +2416,11 @@
             (cond
               ((< sv-256 sv-252)
                (vector+float*! sv-192 (-> this root trans) sv-244 sv-196)
-               (set! (-> sv-204 quad) (-> sv-244 quad))
+               (vector-copy! sv-204 sv-244)
                )
               (else
                 (vector+float*! sv-192 (-> this root trans) sv-248 sv-196)
-                (set! (-> sv-204 quad) (-> sv-248 quad))
+                (vector-copy! sv-204 sv-248)
                 )
               )
             (when (< (* sv-196 sv-196) (vector-vector-xz-distance-squared sv-192 (-> this jump-point-start)))
@@ -2499,16 +2487,16 @@
                     (set! sv-256 (vector-dot s0-1 sv-200))
                     (cond
                       ((< f30-2 40.96)
-                       (set! (-> s2-1 quad) (-> s3-2 quad))
+                       (vector-copy! s2-1 s3-2)
                        )
                       ((< f0-28 40.96)
-                       (set! (-> s2-1 quad) (-> s1-1 quad))
+                       (vector-copy! s2-1 s1-1)
                        )
                       ((< sv-256 sv-252)
-                       (set! (-> s2-1 quad) (-> s3-2 quad))
+                       (vector-copy! s2-1 s3-2)
                        )
                       (else
-                        (set! (-> s2-1 quad) (-> s1-1 quad))
+                        (vector-copy! s2-1 s1-1)
                         )
                       )
                     )
@@ -2541,8 +2529,8 @@
                        (set! sv-532 (the-as float 0.0))
                        (set! sv-536 (new 'stack-no-clear 'vector))
                        (set! sv-540 (new 'stack-no-clear 'vector))
-                       (set! (-> sv-536 quad) (-> this root trans quad))
-                       (set! (-> sv-540 quad) (-> s2-1 quad))
+                       (vector-copy! sv-536 (-> this root trans))
+                       (vector-copy! sv-540 s2-1)
                        (set! (-> sv-536 y) (-> sv-512 y))
                        (set! (-> sv-540 y) (-> sv-512 y))
                        (let ((a1-37 (vector-! (new 'stack-no-clear 'vector) sv-516 sv-512))
@@ -2553,15 +2541,15 @@
                          (set-vector! v1-76 (- (-> s0-2 z)) 0.0 (-> s0-2 x) 1.0)
                          (set! sv-252 (vector-dot a0-60 a1-37))
                          (if (< 0.0 sv-252)
-                             (set! (-> sv-520 quad) (-> a0-60 quad))
-                             (set! (-> sv-520 quad) (-> v1-76 quad))
+                             (vector-copy! sv-520 a0-60)
+                             (vector-copy! sv-520 v1-76)
                              )
                          (set-vector! a0-60 (-> s1-2 z) 0.0 (- (-> s1-2 x)) 1.0)
                          (set-vector! v1-76 (- (-> s1-2 z)) 0.0 (-> s1-2 x) 1.0)
                          (set! sv-252 (vector-dot a0-60 a1-37))
                          (if (< 0.0 sv-252)
-                             (set! (-> sv-524 quad) (-> v1-76 quad))
-                             (set! (-> sv-524 quad) (-> a0-60 quad))
+                             (vector-copy! sv-524 v1-76)
+                             (vector-copy! sv-524 a0-60)
                              )
                          )
                        )
@@ -2660,7 +2648,7 @@
     (if (not a0-2)
         (return (the-as nav-poly #f))
         )
-    (vector-! (the-as vector (-> gp-0 vertex)) (-> this root trans) (the-as vector (-> a0-2 bounds)))
+    (vector-! (-> gp-0 vertex 0) (-> this root trans) (the-as vector (-> a0-2 bounds)))
     (set! (-> gp-0 vertex1 x) 40960.0)
     (set! (-> gp-0 data 20) (the-as uint 3))
     (nav-mesh-method-45 a0-2 gp-0)
@@ -2676,7 +2664,7 @@
   (set! sv-80 (new 'stack-no-clear 'vector))
   (set! sv-84 (the-as float -1.0))
   (if arg2
-      (set! (-> sv-64 quad) (-> arg3 quad))
+      (vector-copy! sv-64 arg3)
       (vector-! sv-64 (-> this jump-point-start) (-> this jump-point-end))
       )
   (set! (-> sv-64 y) 0.0)
@@ -2700,7 +2688,7 @@
             )
           (when (< sv-84 f0-7)
             (set! sv-84 f0-7)
-            (set! (-> sv-80 quad) (-> arg0 quad))
+            (vector-copy! sv-80 arg0)
             )
           )
         (if (= (logand s0-0 1) 1)
@@ -2709,7 +2697,7 @@
             )
         (set! sv-76 (+ sv-76 arg1))
         )
-      (set! (-> arg0 quad) (-> sv-80 quad))
+      (vector-copy! arg0 sv-80)
       (set! (-> arg0 y) (-> this water surface-height))
       (return #t)
       )
@@ -2734,7 +2722,7 @@
   )
 
 (defmethod set-dest-nav! ((this saberfish) (arg0 vector) (arg1 saberfish-find-behavior))
-  (set! (-> this desired-dest-nav-point quad) (-> arg0 quad))
+  (vector-copy! (-> this desired-dest-nav-point) arg0)
   (set! (-> this desired-dest-mesh-index) (get-nav-mesh-idx this arg0 arg1))
   (when (= (-> this desired-dest-mesh-index) -1)
     )
@@ -2766,11 +2754,11 @@
             )
        (cond
          ((or (saberfish-method-243 this) (not (logtest? (enemy-flag ef37) (-> this enemy-flags))))
-          (set! (-> s5-0 quad) (-> this nav-dir quad))
+          (vector-copy! s5-0 (-> this nav-dir))
           )
          (else
            (let ((a1-3 (-> this nav state)))
-             (set! (-> s5-0 quad) (-> a1-3 heading quad))
+             (vector-copy! s5-0 (-> a1-3 heading))
              )
            )
          )
@@ -2799,6 +2787,7 @@
   )
 
 (defmethod jump-wind-up-anim ((this saberfish) (arg0 enemy-jump-info))
+  "Start playing the wind-up anim"
   (when (not (saberfish-method-243 this))
     (ja-channel-push! 1 (seconds 0.1))
     (let ((a1-2 (-> this draw art-group data (-> this jump windup-anim)))
@@ -2815,6 +2804,7 @@
   )
 
 (defmethod jump-in-air-anim ((this saberfish) (arg0 enemy-jump-info))
+  "Start playing the in-air anim"
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this jump air-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -2829,6 +2819,7 @@
   )
 
 (defmethod jump-land-anim ((this saberfish) (arg0 enemy-jump-info))
+  "Play the landing anim"
   (cond
     ((zero? (-> this jump land-anim))
      #f
@@ -2850,7 +2841,8 @@
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod setup-jump! ((this saberfish) (arg0 enemy-jump-info))
+(defmethod setup-jump-trajectory! ((this saberfish) (arg0 enemy-jump-info))
+  "Compute jump trajectory."
   (let ((f0-0 (vector-vector-xz-distance (-> arg0 start-pos) (-> arg0 dest-pos))))
     (fmax (-> this enemy-info jump-height-min) (* (-> this enemy-info jump-height-factor) f0-0))
     )
@@ -2869,8 +2861,8 @@
       )
     )
   (let ((s4-0 (new 'stack-no-clear 'traj3d-params)))
-    (set! (-> s4-0 dest quad) (-> arg0 dest-pos quad))
-    (set! (-> s4-0 src quad) (-> arg0 start-pos quad))
+    (vector-copy! (-> s4-0 dest) (-> arg0 dest-pos))
+    (vector-copy! (-> s4-0 src) (-> arg0 start-pos))
     (let ((f30-1 11832.889))
       (if (not (saberfish-method-243 this))
           (set! f30-1 8192.0)
@@ -2882,7 +2874,7 @@
     (set! (-> arg0 traj initial-position quad) (-> arg0 start-pos quad))
     (set! (-> arg0 traj gravity) -4.551111)
     (set! (-> arg0 traj time) (-> s4-0 time))
-    (set! (-> arg0 traj initial-velocity quad) (-> s4-0 initial-velocity quad))
+    (vector-copy! (-> arg0 traj initial-velocity) (-> s4-0 initial-velocity))
     )
   (none)
   )
@@ -2905,7 +2897,7 @@
          (a2-0 (-> this nav state))
          (a1-1 (new 'stack-no-clear 'vector))
          )
-    (set! (-> a1-1 quad) (-> a2-0 target-pos quad))
+    (vector-copy! a1-1 (-> a2-0 target-pos))
     (t9-2 a0-3 a1-1 (saberfish-find-behavior none))
     )
   (if (saberfish-method-228 this)
@@ -2918,7 +2910,7 @@
 (defmethod nav-enemy-method-166 ((this saberfish) (arg0 vector) (arg1 vector))
   (cond
     (#t
-      (set! (-> arg0 quad) (-> this flee-point-temp quad))
+      (vector-copy! arg0 (-> this flee-point-temp))
       #t
       )
     (else
@@ -2990,7 +2982,8 @@
     )
   )
 
-(defmethod is-pfoc-in-mesh? ((this saberfish) (arg0 process-focusable) (arg1 vector))
+(defmethod can-become-hostile-to? ((this saberfish) (arg0 process-focusable) (arg1 vector))
+  "Return if this enemy can become hostile to the process."
   (if (and arg0 (not arg1))
       (set! arg1 (get-trans arg0 1))
       )
@@ -3012,6 +3005,7 @@
   )
 
 (defmethod enemy-common-post ((this saberfish))
+  "Common implementation of post. Runs ja-post."
   (if (not (handle->process (-> this spawn-parent)))
       (go (method-of-object this die))
       )
@@ -3019,7 +3013,7 @@
   (let ((a1-1 (-> this nav state))
         (a0-6 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a0-6 quad) (-> a1-1 heading quad))
+    (vector-copy! a0-6 (-> a1-1 heading))
     (set! (-> a0-6 y) 0.0)
     (vector-normalize! a0-6 1.0)
     )
@@ -3036,7 +3030,7 @@
   (let ((a1-8 (-> this nav state))
         (a0-14 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a0-14 quad) (-> a1-8 travel quad))
+    (vector-copy! a0-14 (-> a1-8 travel))
     (set! (-> a0-14 y) 0.0)
     (vector-normalize! a0-14 1.0)
     )
@@ -3053,11 +3047,11 @@
   (none)
   )
 
-(defmethod jump-anim-handler ((this saberfish) (arg0 int) (arg1 enemy-jump-info))
+(defmethod jump-anim-handler ((this saberfish) (arg0 jump-stage) (arg1 enemy-jump-info))
   (when (saberfish-method-243 this)
     (case arg0
-      ((5)
-       (compute-alignment! (-> this align))
+      (((jump-stage landing))
+       (compute-delta-align! (-> this align))
        (align! (-> this align) (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
        (vector-v++! (-> this root trans) (-> this root transv))
        (when (< (ja-frame-num 0) 8.0)
@@ -3080,14 +3074,16 @@
   (call-parent-method this arg0 arg1)
   )
 
-(defmethod go-directed2 ((this saberfish))
+(defmethod go-next-state-auto ((this saberfish))
+  "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware."
   (if (saberfish-method-243 this)
       (go (method-of-object this water-land))
       (call-parent-method this)
       )
   )
 
-(defmethod enemy-method-50 ((this saberfish) (arg0 int))
+(defmethod update-collision-action ((this saberfish) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-0 arg0))
     (cond
       ((= v1-0 1)
@@ -3176,7 +3172,7 @@
       )
     (change-nav-mesh self)
     (water-control-method-10 (-> self water))
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
@@ -3184,12 +3180,14 @@
   )
 
 (defmethod go-die ((this saberfish))
+  "Go to the die state."
   (sound-play "sabfish-death")
   (send-event (handle->process (-> this spawn-parent)) 'child-die)
   (call-parent-method this)
   )
 
-(defmethod process-mask->search-info-flag ((this saberfish))
+(defmethod get-search-info-flag ((this saberfish))
+  "Get search-info-flag for this process."
   (let ((v0-1 (call-parent-method this)))
     (if (-> this is-submerged?)
         (set! v0-1 (logior v0-1 (search-info-flag abort)))
@@ -3213,7 +3211,7 @@
   :trans (behavior ()
     (when (time-elapsed? (-> self state-time) (-> self state-timeout))
       (cond
-        ((= (-> self focus aware) (enemy-aware ea1))
+        ((= (-> self focus aware) (enemy-aware aware1))
          (go-virtual active)
          )
         ((< 1 (the-as int (-> self focus aware)))
@@ -3361,7 +3359,8 @@
     )
   )
 
-(defmethod go-idle2 ((this saberfish))
+(defmethod go-fallback-init ((this saberfish))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (case (-> this initial-state)
     (('saberfish-crawl-out-of-tube)
      (go (method-of-object this saberfish-crawl-out-of-tube))
@@ -3379,19 +3378,20 @@
   )
 
 (defmethod init-from-entity! ((this saberfish) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this ground-only?) #t)
   (set! (-> this spawn-parent) (process->handle this))
   (set! (-> *saberfish-nav-enemy-info* nav-mesh)
         (find-nearest-nav-mesh (-> arg0 extra trans) (the-as float #x7f800000))
         )
   (set! (-> this initial-state) 'idle)
-  (set! (-> this pos-start quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> this pos-start) (-> arg0 extra trans))
   (quaternion-copy! (-> this quat-start) (-> arg0 quat))
   (call-parent-method this arg0)
   )
 
 (defbehavior saberfish-init-by-other saberfish ((arg0 process-drawable) (arg1 saberfish-init-by-other-params))
-  (set! (-> self pos-start quad) (-> arg1 pos quad))
+  (vector-copy! (-> self pos-start) (-> arg1 pos))
   (quaternion-copy! (-> self quat-start) (-> arg1 orient))
   (set! (-> self spawn-parent) (-> arg1 spawn-parent))
   (set! (-> self initial-state) (-> arg1 initial-state))
@@ -3420,6 +3420,7 @@
   )
 
 (defmethod should-move-to-ground? ((this saberfish))
+  "Should this enemy be moved to the ground while moving?"
   (-> this move-to-ground?)
   )
 
@@ -3427,11 +3428,11 @@
 (defmethod copy-nav-state-vel! ((this saberfish) (arg0 vector))
   (cond
     ((saberfish-method-243 this)
-     (set! (-> arg0 quad) (-> this nav-velocity quad))
+     (vector-copy! arg0 (-> this nav-velocity))
      )
     (else
       (let ((a0-2 (-> this nav state)))
-        (set! (-> arg0 quad) (-> a0-2 velocity quad))
+        (vector-copy! arg0 (-> a0-2 velocity))
         )
       )
     )
@@ -3439,6 +3440,7 @@
   )
 
 (defmethod go-flee ((this saberfish))
+  "Go to the flee state, running away."
   (go (method-of-object this flee))
   )
 
@@ -3447,7 +3449,7 @@
     (when s5-0
       (disable-for-duration (the-as ragdoll-proc s5-0) arg0)
       (logclear! (-> (the-as ragdoll-proc s5-0) ragdoll ragdoll-flags) (ragdoll-flag rf9))
-      (enemy-method-90 this (the-as ragdoll-proc s5-0))
+      (copy-ragdoll-orientation-to-root this (the-as ragdoll-proc s5-0))
       )
     )
   0
@@ -3470,6 +3472,7 @@
 
 ;; WARN: Return type mismatch symbol vs object.
 (defmethod ragdoll-settled? ((this saberfish))
+  "Has the ragdoll stopped moving?"
   (let* ((s5-0 (handle->process (-> this ragdoll-proc)))
          (v0-0
            (or (not s5-0)
@@ -3495,7 +3498,8 @@
     )
   )
 
-(defmethod within-gspot-range? ((this saberfish))
+(defmethod invalid-height? ((this saberfish))
+  "Return #t if the enemy is too high in the air, or below the ground."
   (if (-> this knocked-under-water?)
       #f
       (call-parent-method this)
@@ -3626,6 +3630,7 @@
   )
 
 (defmethod event-handler ((this saberfish) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('saberfish-query)
      (let ((s5-1 (the-as saberfish-spawner-query-msg (-> arg3 param 0))))

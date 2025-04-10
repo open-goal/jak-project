@@ -268,7 +268,7 @@
             (set! (-> s1-0 random-rangef) (lerp-scale 0.0 1.0 f30-0 0.0 f28-0))
             )
           (let ((a1-8 (forward-up-nopitch->inv-matrix (new 'stack-no-clear 'matrix) s2-0 *up-vector*)))
-            (set! (-> a1-8 trans quad) (-> s4-0 quad))
+            (vector-copy! (-> a1-8 trans) s4-0)
             (+! (-> a1-8 trans y) -2498.56)
             (spawn-from-mat (-> self part) a1-8)
             )
@@ -282,7 +282,7 @@
             )
           )
         )
-      (set! (-> s5-0 pos quad) (-> s4-0 quad))
+      (vector-copy! (-> s5-0 pos) s4-0)
       )
     )
   (let ((v1-48 (-> self path-info data (-> self path-index))))
@@ -312,12 +312,7 @@
            )
       0.0
       (when (and (or (< f0-32 f26-0) (< f26-0 f1-13)) (time-elapsed? (-> self buzz-timer) (the int (/ f28-1 2))))
-        (let* ((gp-1 *target*)
-               (a0-37 (if (type? gp-1 process-focusable)
-                          gp-1
-                          )
-                      )
-               )
+        (let ((a0-37 (the-as target (as-type *target* process-focusable))))
           (if a0-37
               (lerp-scale 1.0 0.0 (vector-vector-distance (-> self root trans) (get-trans a0-37 0)) 81920.0 327680.0)
               )
@@ -358,8 +353,8 @@
             (quaternion-rotate-local-x! s4-2 s4-2 f30-4)
             )
           )
-        (vector-orient-by-quat! (the-as vector (-> self pov-cam-offset)) (-> self pov-cam-offset 1) s4-2)
-        (vector+! (the-as vector (-> self pov-cam-offset)) (the-as vector (-> self pov-cam-offset)) s3-4)
+        (vector-orient-by-quat! (-> self pov-cam-offset 0) (-> self pov-cam-offset 1) s4-2)
+        (vector+! (-> self pov-cam-offset 0) (-> self pov-cam-offset 0) s3-4)
         )
       )
     )
@@ -473,12 +468,7 @@
     (if (not *target*)
         (go-virtual die)
         )
-    (let* ((gp-0 *target*)
-           (a0-1 (if (type? gp-0 process-focusable)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((a0-1 (the-as target (as-type *target* process-focusable))))
       (when a0-1
         (if (< (-> (get-trans a0-1 0) y) (+ -18432.0 (-> self root trans y)))
             (go-virtual die)
@@ -499,12 +489,7 @@
     )
   :post (behavior ()
     (when (logtest? (-> self flags) (robotank-flag r2))
-      (let* ((gp-0 *target*)
-             (a0-1 (if (type? gp-0 process-focusable)
-                       gp-0
-                       )
-                   )
-             )
+      (let ((a0-1 (the-as target (as-type *target* process-focusable))))
         (cond
           (a0-1
             (get-trans a0-1 0)
@@ -565,84 +550,35 @@
 
 ;; WARN: Return type mismatch (pointer process) vs (pointer joint-exploder).
 (defmethod go-explode ((this fac-robotank))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (sound-play "tank-explode")
-    (cond
-      ((logtest? (-> *part-group-id-table* 732 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
-       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 732))
-       )
-      (else
-        (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
-        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 732))
-        )
+  (sound-play "tank-explode")
+  (cond
+    ((logtest? (-> *part-group-id-table* 732 flags) (sp-group-flag sp13))
+     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+     (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 732))
+     )
+    (else
+      (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+      (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 732))
       )
-    (let ((s5-3 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
-      (let ((v1-34 (new 'stack-no-clear 'vector)))
-        (let ((a0-17 (-> s5-3 fountain-rand-transv-lo)))
-          (let ((a1-9 (-> this root trans)))
-            (let ((a2-12 *up-vector*))
-              (let ((a3-6 2048.0))
-                (.mov vf7 a3-6)
-                )
-              (.lvf vf5 (&-> a2-12 quad))
-              )
-            (.lvf vf4 (&-> a1-9 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a0-17 quad) vf6)
-          )
-        (vector-float*! v1-34 *up-vector* 81920.0)
-        (let ((a2-14 (-> s5-3 fountain-rand-transv-lo)))
-          (let ((a0-20 v1-34))
-            (let ((a1-11 *identity-vector*))
-              (let ((a3-8 -40960.0))
-                (.mov vf7 a3-8)
-                )
-              (.lvf vf5 (&-> a1-11 quad))
-              )
-            (.lvf vf4 (&-> a0-20 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a2-14 quad) vf6)
-          )
-        (let ((a1-12 (-> s5-3 fountain-rand-transv-hi)))
-          (let ((a0-21 *identity-vector*))
-            (let ((a2-16 40960.0))
-              (.mov vf7 a2-16)
-              )
-            (.lvf vf5 (&-> a0-21 quad))
-            )
-          (.lvf vf4 (&-> v1-34 quad))
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a1-12 quad) vf6)
-          )
-        )
-      (set! (-> s5-3 gravity) -122880.0)
-      (set! (-> s5-3 rot-speed) 16.0)
-      (process-spawn
-        joint-exploder
-        (art-group-get-by-name *level* "skel-fac-robotank-explode" (the-as (pointer level) #f))
-        9
-        s5-3
-        *fac-robotank-exploder-params*
-        :name "joint-exploder"
-        :to this
-        :unk 0
-        )
+    )
+  (let ((s5-3 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+    (let ((v1-34 (new 'stack-no-clear 'vector)))
+      (vector+*! (-> s5-3 fountain-rand-transv-lo) (-> this root trans) *up-vector* 2048.0)
+      (vector-float*! v1-34 *up-vector* 81920.0)
+      (vector+*! (-> s5-3 fountain-rand-transv-lo) v1-34 *identity-vector* -40960.0)
+      (vector+*! (-> s5-3 fountain-rand-transv-hi) v1-34 *identity-vector* 40960.0)
+      )
+    (set! (-> s5-3 gravity) -122880.0)
+    (set! (-> s5-3 rot-speed) 16.0)
+    (process-spawn
+      joint-exploder
+      (art-group-get-by-name *level* "skel-fac-robotank-explode" (the-as (pointer level) #f))
+      9
+      s5-3
+      *fac-robotank-exploder-params*
+      :name "joint-exploder"
+      :to this
+      :unk 0
       )
     )
   )

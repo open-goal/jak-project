@@ -919,7 +919,7 @@
            (set! (-> s5-1 time-base) -1)
            )
          )
-       (set! (-> s5-1 trans quad) (-> trans quad))
+       (vector-copy! (-> s5-1 trans) trans)
        s5-1
        )
      )
@@ -1054,7 +1054,7 @@
 
 (defmethod update-trans! ((this ambient-sound) (new-trans vector))
   "Change the trans of the sound."
-  (set! (-> this trans quad) (-> new-trans quad))
+  (vector-copy! (-> this trans) new-trans)
   0
   )
 
@@ -1186,15 +1186,11 @@
       ((or (movie?) *external-cam-mode*)
        (math-camera-pos)
        )
-      ((and (= mode 1) (begin
-                         (let ((s5-1 (handle->process (-> *setting-control* user-current sound-ear))))
-                           (set! gp-0 (if (type? s5-1 process-focusable)
-                                          (the-as process-focusable s5-1)
-                                          )
-                                 )
-                           )
-                         gp-0
-                         )
+      ((and (= mode 1)
+            (begin
+              (set! gp-0 (as-type (handle->process (-> *setting-control* user-current sound-ear)) process-focusable))
+              gp-0
+              )
             )
        (get-trans gp-0 11)
        )
@@ -1267,7 +1263,7 @@
     (vector-! (-> gp-0 0) (target-pos 0) sound-pos)
     (if *target*
         (vector-! (-> gp-0 1) sound-vel (-> *target* control transv))
-        (set! (-> gp-0 1 quad) (-> sound-vel quad))
+        (vector-copy! (-> gp-0 1) sound-vel)
         )
     (vector-normalize! (-> gp-0 0) 1.0)
     (let ((f0-1 (/ 1228800.0 (fmax 0.1 (- 1228800.0 (vector-dot (-> gp-0 0) (-> gp-0 1)))))))

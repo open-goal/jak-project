@@ -213,34 +213,34 @@
     :jump-height-min (meters 0.5)
     :jump-height-factor 0.1
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 20480.0
-    :knocked-soft-vxz-hi 28672.0
-    :knocked-soft-vy-lo 36864.0
-    :knocked-soft-vy-hi 45056.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 49152.0
-    :knocked-hard-vxz-hi 57344.0
-    :knocked-hard-vy-lo 49152.0
-    :knocked-hard-vy-hi 57344.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 20480.0
-    :knocked-yellow-vxz-hi 28672.0
-    :knocked-yellow-vy-lo 36864.0
-    :knocked-yellow-vy-hi 4096.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 114688.0
-    :knocked-red-vy-lo 53248.0
-    :knocked-red-vy-hi 69632.0
-    :knocked-blue-vxz-lo 16384.0
-    :knocked-blue-vxz-hi 20480.0
-    :knocked-blue-vy-lo 16384.0
-    :knocked-blue-vy-hi 32768.0
+    :knocked-soft-vxz-lo (meters 5)
+    :knocked-soft-vxz-hi (meters 7)
+    :knocked-soft-vy-lo (meters 9)
+    :knocked-soft-vy-hi (meters 11)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 12)
+    :knocked-hard-vxz-hi (meters 14)
+    :knocked-hard-vy-lo (meters 12)
+    :knocked-hard-vy-hi (meters 14)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 5)
+    :knocked-yellow-vxz-hi (meters 7)
+    :knocked-yellow-vy-lo (meters 9)
+    :knocked-yellow-vy-hi (meters 1)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 28)
+    :knocked-red-vy-lo (meters 13)
+    :knocked-red-vy-hi (meters 17)
+    :knocked-blue-vxz-lo (meters 4)
+    :knocked-blue-vxz-hi (meters 5)
+    :knocked-blue-vy-lo (meters 4)
+    :knocked-blue-vy-hi (meters 8)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -289,6 +289,7 @@
 
 ;; definition for method 82 of type missile-bot
 (defmethod event-handler ((this missile-bot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('lift-off)
      (go (method-of-object this lift-off))
@@ -300,7 +301,10 @@
   )
 
 ;; definition for method 63 of type missile-bot
-(defmethod enemy-method-63 ((this missile-bot) (arg0 float))
+(defmethod apply-incoming-hitpoint-mods ((this missile-bot) (arg0 float))
+  "Modify the hitpoints from an incoming attack.
+   Keeps enemy alive for a bit while being shot with a blue gun.
+   This looks cool because you can shoot them many times."
   (fmax 0.0 (fmin arg0 (-> this hit-points)))
   )
 
@@ -340,83 +344,56 @@
 ;; definition for function missile-bot-find-dest
 ;; INFO: Used lq/sq
 (defbehavior missile-bot-find-dest missile-bot ((arg0 vector))
-  (local-vars (v1-22 float) (a2-3 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node missile-bot-lod0-jg main))))
-      (set! (-> arg0 quad) (-> s4-0 quad))
-      (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) s4-0 (target-pos 0)))
-             (s2-0 (ppointer->process (-> self parent)))
-             (s3-1 (if (type? s2-0 factory-boss)
-                       s2-0
-                       )
-                   )
-             (s0-0 (new 'stack-no-clear 'vector))
-             (s2-1 (new 'stack-no-clear 'vector))
-             (s1-0 (new 'stack-no-clear 'vector))
-             )
-        (when s3-1
-          (set! (-> s5-1 y) 0.0)
-          (vector-normalize! s5-1 1.0)
-          (vector-! s0-0 (-> s3-1 center) s4-0)
-          (set! (-> s0-0 y) 0.0)
-          (vector-float*! s2-1 s5-1 (vector-dot s5-1 s0-0))
-          (vector-! s1-0 s2-1 s0-0)
-          (let* ((v1-10 arg0)
-                 (a0-11 s2-1)
-                 (a1-7 s5-1)
-                 (f0-4 110592.0)
-                 (f0-6 (* f0-4 f0-4))
-                 )
-            (.lvf vf1 (&-> s1-0 quad))
-            (.add.w.vf vf2 vf0 vf0 :mask #b1)
-            (.mul.vf vf1 vf1 vf1)
-            (.mul.x.vf acc vf2 vf1 :mask #b1)
-            (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-            (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
-            (.mov a2-3 vf1)
-            (vector+float*! v1-10 a0-11 a1-7 (sqrtf (- f0-6 a2-3)))
-            )
-          (if (< (vector-dot s5-1 arg0) 0.0)
-              (vector-reset! arg0)
+  (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node missile-bot-lod0-jg main))))
+    (vector-copy! arg0 s4-0)
+    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) s4-0 (target-pos 0)))
+          (s3-1 (as-type (ppointer->process (-> self parent)) factory-boss))
+          (s0-0 (new 'stack-no-clear 'vector))
+          (s2-1 (new 'stack-no-clear 'vector))
+          (s1-0 (new 'stack-no-clear 'vector))
+          )
+      (when s3-1
+        (set! (-> s5-1 y) 0.0)
+        (vector-normalize! s5-1 1.0)
+        (vector-! s0-0 (-> s3-1 center) s4-0)
+        (set! (-> s0-0 y) 0.0)
+        (vector-float*! s2-1 s5-1 (vector-dot s5-1 s0-0))
+        (vector-! s1-0 s2-1 s0-0)
+        (let ((v1-10 arg0)
+              (a0-11 s2-1)
+              (a1-7 s5-1)
+              (f0-4 110592.0)
               )
-          (vector+! s2-1 s2-1 s4-0)
-          (vector+! arg0 arg0 s4-0)
-          (let ((s2-3 (vector-! (new 'stack-no-clear 'vector) (-> s3-1 root trans) arg0)))
-            0.0
-            (let ((f0-13 (* -0.5 (vector-vector-distance arg0 s4-0))))
-              (set! (-> s2-3 y) 0.0)
-              (.lvf vf1 (&-> s2-3 quad))
-              (.add.w.vf vf2 vf0 vf0 :mask #b1)
-              (.mul.vf vf1 vf1 vf1)
-              (.mul.x.vf acc vf2 vf1 :mask #b1)
-              (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-              (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
-              (.mov v1-22 vf1)
-              (let ((f1-3 v1-22)
-                    (f2-0 20480.0)
-                    )
-                (if (< (* f2-0 f2-0) f1-3)
-                    (vector-float*! s2-3 s2-3 (/ 20480.0 (sqrtf f1-3)))
-                    )
-                )
-              (let ((f1-7 (vector-dot s2-3 s5-1)))
-                (if (< f1-7 f0-13)
-                    (vector-float*! s2-3 s2-3 (/ f0-13 f1-7))
-                    )
-                )
-              )
-            (vector+! arg0 arg0 s2-3)
+          (vector+float*! v1-10 a0-11 a1-7 (sqrtf (- (* f0-4 f0-4) (vector-length-squared s1-0))))
+          )
+        (if (< (vector-dot s5-1 arg0) 0.0)
+            (vector-reset! arg0)
             )
+        (vector+! s2-1 s2-1 s4-0)
+        (vector+! arg0 arg0 s4-0)
+        (let ((s2-3 (vector-! (new 'stack-no-clear 'vector) (-> s3-1 root trans) arg0)))
+          0.0
+          (let ((f0-13 (* -0.5 (vector-vector-distance arg0 s4-0))))
+            (set! (-> s2-3 y) 0.0)
+            (let ((f1-3 (vector-length-squared s2-3))
+                  (f2-0 20480.0)
+                  )
+              (if (< (* f2-0 f2-0) f1-3)
+                  (vector-float*! s2-3 s2-3 (/ 20480.0 (sqrtf f1-3)))
+                  )
+              )
+            (let ((f1-7 (vector-dot s2-3 s5-1)))
+              (if (< f1-7 f0-13)
+                  (vector-float*! s2-3 s2-3 (/ f0-13 f1-7))
+                  )
+              )
+            )
+          (vector+! arg0 arg0 s2-3)
           )
         )
       )
-    arg0
     )
+  arg0
   )
 
 ;; failed to figure out what this is:
@@ -495,7 +472,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -519,7 +496,7 @@
           ((or (>= 2 (the-as int gp-0)) (not (get-focus! self)))
            (go-stare self)
            )
-          ((= gp-0 (enemy-aware ea4))
+          ((= gp-0 (enemy-aware flee))
            (go-flee self)
            )
           )
@@ -616,7 +593,7 @@
     (set! (-> self root penetrate-using)
           (the-as penetrate (logclear (-> self root penetrate-using) (penetrate knocked)))
           )
-    (enemy-method-50 self 2)
+    (update-collision-action self 2)
     (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
@@ -743,12 +720,7 @@
     (set! (-> self initial-y) (-> self root trans y))
     (set! (-> self explosion-sound-index) 0)
     (set! (-> self will-hit-errol) #f)
-    (let* ((gp-0 (ppointer->process (-> self parent)))
-           (v1-3 (if (type? gp-0 factory-boss)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((v1-3 (as-type (ppointer->process (-> self parent)) factory-boss)))
       (when v1-3
         (let ((f0-2 (vector-vector-xz-distance-squared (-> self root trans) (-> v1-3 root trans)))
               (f1-0 20480.0)
@@ -764,17 +736,17 @@
             (f30-0 (rand-vu-float-range 1228.8 2048.0))
             (f28-0 (rand-vu-float-range 30.0 120.0))
             )
-        (set! (-> gp-0 quad) (-> self root trans quad))
+        (vector-copy! gp-0 (-> self root trans))
         (+! (-> gp-0 y) (rand-vu-float-range 6144.0 10240.0))
         (setup-from-to-duration-and-height! (-> self traj) (-> self root trans) gp-0 f28-0 f30-0)
         )
       (cond
         ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
          (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
           )
         )
@@ -834,11 +806,11 @@
     (set! (-> self root root-prim local-sphere w) 491520.0)
     (cond
       ((logtest? (-> *part-group-id-table* 217 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 217))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 217))
         )
       )
@@ -860,6 +832,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod enemy-common-post ((this missile-bot))
+  "Common implementation of post. Runs ja-post."
   (local-vars (sv-272 vector) (sv-288 vector) (sv-304 vector))
   (with-pp
     (cond
@@ -896,12 +869,12 @@
     (update-with-delay! (-> this main-wobble-rand))
     (when (not (stunned?))
       (let ((a1-4 (new 'stack-no-clear 'vector)))
-        (set! (-> a1-4 quad) (-> this main-wobble-rand value quad))
+        (vector-copy! a1-4 (-> this main-wobble-rand value))
         (vector+! a1-4 a1-4 (new 'static 'vector :y 1.0))
         (update! (-> this main-wobble) a1-4)
         )
       )
-    (let ((a2-5 (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this main-wobble)) 1.0)))
+    (let ((a2-5 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this main-wobble value) 1.0)))
       (quaternion-from-two-vectors! (-> this main-jm quat) (new 'static 'vector :y 1.0) a2-5)
       )
     (let ((t9-13 (method-of-type nav-enemy enemy-common-post)))
@@ -953,10 +926,7 @@
             ((zero? v1-85)
              (vector<-cspace! s5-1 (-> this node-list data 3))
              (+! (-> s5-1 y) 8192.0)
-             (let ((v0-33
-                     (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this lightning-wobble)) 819.2)
-                     )
-                   )
+             (let ((v0-33 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this lightning-wobble 0 value) 819.2)))
                (vector+! s5-1 s5-1 v0-33)
                )
              (set! sv-304 s4-0)
@@ -980,10 +950,7 @@
              (vector-normalize! s5-1 4096.0)
              (vector+! s5-1 s5-1 s2-0)
              (+! (-> s5-1 y) 4096.0)
-             (let ((v0-36
-                     (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this lightning-wobble 1)) 819.2)
-                     )
-                   )
+             (let ((v0-36 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this lightning-wobble 1 value) 819.2)))
                (vector+! s5-1 s5-1 v0-36)
                )
              (set! sv-304 s4-0)
@@ -1007,10 +974,7 @@
              (vector-normalize! s5-1 4096.0)
              (vector+! s5-1 s5-1 s1-0)
              (+! (-> s5-1 y) 4096.0)
-             (let ((v0-39
-                     (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this lightning-wobble 2)) 819.2)
-                     )
-                   )
+             (let ((v0-39 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this lightning-wobble 2 value) 819.2)))
                (vector+! s5-1 s5-1 v0-39)
                )
              (set! sv-304 s4-0)
@@ -1034,7 +998,7 @@
         (let ((a0-67 (-> this lightning s0-0))
               (v1-116 s4-0)
               )
-          (set! (-> a0-67 state meet data (+ (-> a0-67 state points-to-draw) -1) quad) (-> v1-116 quad))
+          (vector-copy! (-> a0-67 state meet data (+ (-> a0-67 state points-to-draw) -1)) v1-116)
           )
         (cond
           ((or (= (-> this lightning-mode) 2) (and (= (-> this lightning-mode) 1) (< s0-0 2)))
@@ -1151,6 +1115,7 @@
 
 ;; definition for method 67 of type missile-bot
 (defmethod coin-flip? ((this missile-bot))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1200,7 +1165,8 @@
 
 ;; definition for method 50 of type missile-bot
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-50 ((this missile-bot) (arg0 int))
+(defmethod update-collision-action ((this missile-bot) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-3 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0))
         (a0-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1))
         )
@@ -1232,6 +1198,7 @@
 ;; definition for method 120 of type missile-bot
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this missile-bot))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1283,6 +1250,7 @@
 ;; definition for method 121 of type missile-bot
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this missile-bot))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-missile-bot" (the-as (pointer level) #f)))
@@ -1291,7 +1259,7 @@
   (set! (-> this enemy-flags)
         (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
         )
-  (init-enemy-defaults! this *missile-bot-nav-enemy-info*)
+  (setup-enemy! this *missile-bot-nav-enemy-info*)
   (set! (-> this top-angle) 0.0)
   (set! (-> this top-spin-jm) (new 'process 'joint-mod (joint-mod-mode joint-set*) this 4))
   (set! (-> this top-spin-jm track-mode) (track-mode no-trans no-scale))

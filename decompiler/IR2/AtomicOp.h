@@ -256,12 +256,15 @@ class SimpleExpression {
     VECTOR_PLUS,
     VECTOR_MINUS,
     VECTOR_FLOAT_PRODUCT,
+    VECTOR_XYZ_PRODUCT,  // vector*!, elementwise xyz, jak3 only
     VECTOR_CROSS,
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
     VECTOR_3_DOT,
     VECTOR_4_DOT,
     VECTOR_LENGTH,            // jak 2 only.
+    VECTOR_LENGTH_SQUARED,    // jak 2 only.
     VECTOR_PLUS_FLOAT_TIMES,  // jak 2 only.
+    VECTOR_PLUS_TIMES,
     SET_ON_LESS_THAN,
     SET_ON_LESS_THAN_IMM
   };

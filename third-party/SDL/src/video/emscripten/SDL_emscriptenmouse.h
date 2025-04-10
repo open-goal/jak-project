@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,20 +22,13 @@
 #ifndef SDL_emscriptenmouse_h_
 #define SDL_emscriptenmouse_h_
 
-#include "SDL_stdinc.h"
-
-typedef struct _Emscripten_CursorData
+struct SDL_CursorData
 {
     const char *system_cursor;
-    SDL_bool is_custom;
-} Emscripten_CursorData;
+    bool is_custom;
+};
 
-extern void
-Emscripten_InitMouse();
+extern void Emscripten_InitMouse(void);
+extern void Emscripten_QuitMouse(void);
 
-extern void
-Emscripten_FiniMouse();
-
-#endif /* SDL_emscriptenmouse_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_emscriptenmouse_h_

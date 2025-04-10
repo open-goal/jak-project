@@ -14,20 +14,31 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "game/runtime.h"
 
+#include "third-party/SDL/include/SDL3/SDL_hints.h"
 #include "third-party/imgui/imgui.h"
 
-InputManager::InputManager()
-    // Load user settings
-    : m_settings(std::make_shared<game_settings::InputSettings>(game_settings::InputSettings())) {
+InputManager::InputManager(SDL_Window* window)
+    : m_window(window),
+      // Load user settings
+      m_settings(std::make_shared<game_settings::InputSettings>(game_settings::InputSettings())) {
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("input_manager::init");
     m_settings->load_settings();
+#ifdef WIN32
+    if (!SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER, "1")) {
+      sdl_util::log_error("Unable to set SDL_HINT_JOYSTICK_HIDAPI_PS3_SIXAXIS_DRIVER to true!");
+    }
+#else
+    if (!SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS3, "1")) {
+      sdl_util::log_error("Unable to set SDL_HINT_JOYSTICK_HIDAPI_PS3 to true!");
+    }
+#endif
     {
       auto p = scoped_prof("input_manager::init::sdl_init_subsystem");
       // initializing the controllers on startup can sometimes take a very long time
       // so we isolate that to here instead
-      if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
+      if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
         sdl_util::log_error(
             "Could not initialize SDL Controller support, controllers will not work!");
       }
@@ -37,7 +48,7 @@ InputManager::InputManager()
     std::string mapping_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();
     if (file_util::file_exists(mapping_path)) {
-      SDL_GameControllerAddMappingsFromFile(mapping_path.c_str());
+      SDL_AddGamepadMappingsFromFile(mapping_path.c_str());
     } else {
       lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
     }
@@ -46,7 +57,7 @@ InputManager::InputManager()
     m_data[0] = std::make_shared<PadData>();
     m_data[1] = std::make_shared<PadData>();
     m_keyboard = KeyboardDevice(m_settings);
-    m_mouse = MouseDevice(m_settings);
+    m_mouse = MouseDevice(m_window, m_settings);
 
     if (m_data.find(m_keyboard_and_mouse_port) == m_data.end()) {
       m_data[m_keyboard_and_mouse_port] = std::make_shared<PadData>();
@@ -78,14 +89,15 @@ void InputManager::refresh_device_list() {
     // Enumerate devices
     // TODO - if this was done on a separate thread, there would be no hitch in the game thread
     // but of course, that presents other synchronization challenges.
-    const auto num_joysticks = SDL_NumJoysticks();
+    int num_joysticks = 0;
+    auto joysticks = SDL_GetJoysticks(&num_joysticks);
     if (num_joysticks > 0) {
       for (int i = 0; i < num_joysticks; i++) {
-        if (!SDL_IsGameController(i)) {
+        if (!SDL_IsGamepad(joysticks[i])) {
           lg::error("Controller with device id {} is not avaiable via the GameController API", i);
           continue;
         }
-        auto controller = std::make_shared<GameController>(i, m_settings);
+        auto controller = std::make_shared<GameController>(joysticks[i], m_settings);
         if (!controller->is_loaded()) {
           lg::error("Unable to successfully connect to GameController with id {}, skipping", i);
           continue;
@@ -129,10 +141,10 @@ void InputManager::refresh_device_list() {
       lg::warn(
           "No active game controllers could be found or loaded successfully - inputs will not "
           "work!");
-      m_settings->keyboard_temp_enabled = true;
+      m_settings->_keyboard_temp_enabled = true;
     } else {
       lg::info("Found {} controllers", m_available_controllers.size());
-      m_settings->keyboard_temp_enabled = false;
+      m_settings->_keyboard_temp_enabled = false;
     }
   }
 }
@@ -154,18 +166,22 @@ void InputManager::hide_cursor(const bool hide_cursor) {
   }
   // NOTE - seems like an SDL bug, but the cursor will be visible / locked to the center of the
   // screen if you use the 'start menu' to exit the window / return to it (atleast in windowed mode)
-  auto ok = SDL_ShowCursor(hide_cursor ? SDL_DISABLE : SDL_ENABLE);
-  if (ok < 0) {
-    sdl_util::log_error("Unable to show/hide mouse cursor");
-  } else {
-    m_mouse_currently_hidden = hide_cursor;
+  if (hide_cursor && !SDL_HideCursor()) {
+    sdl_util::log_error("Unable to hide mouse cursor");
+    return;
   }
+  if (!hide_cursor && !SDL_ShowCursor()) {
+    sdl_util::log_error("Unable to show mouse cursor");
+    return;
+  }
+  m_mouse_currently_hidden = hide_cursor;
 }
 
 void InputManager::process_sdl_event(const SDL_Event& event) {
+  // TODO - perhaps should handle `SDL_CONTROLLERDEVICEREMAPPED`?
   // Detect controller connections and disconnects
   if (sdl_util::is_any_event_type(event.type,
-                                  {SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED})) {
+                                  {SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMOVED})) {
     lg::info("Controller added or removed. refreshing controller device list");
     refresh_device_list();
   }
@@ -197,9 +213,9 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
 
   // Adjust mouse cursor visibility
   if (m_auto_hide_mouse) {
-    if (event.type == SDL_MOUSEMOTION && !m_mouse.is_camera_being_controlled()) {
+    if (event.type == SDL_EVENT_MOUSE_MOTION && !m_mouse.is_camera_being_controlled()) {
       hide_cursor(false);
-    } else if (event.type == SDL_KEYDOWN || event.type == SDL_CONTROLLERBUTTONDOWN) {
+    } else if (event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
       hide_cursor(true);
     }
   }
@@ -254,8 +270,8 @@ void InputManager::process_ee_events() {
         ignore_background_controller_events(std::get<bool>(evt.param1));
         break;
       case EEInputEventType::UPDATE_RUMBLE:
-        update_rumble(std::get<int>(evt.param1), std::get<u8>(evt.param2),
-                      std::get<u8>(evt.param3));
+        controller_send_rumble(std::get<int>(evt.param1), std::get<u8>(evt.param2),
+                               std::get<u8>(evt.param3));
         break;
       case EEInputEventType::SET_CONTROLLER_LED:
         set_controller_led(std::get<int>(evt.param1), std::get<u8>(evt.param2),
@@ -267,6 +283,33 @@ void InputManager::process_ee_events() {
         break;
       case EEInputEventType::SET_AUTO_HIDE_MOUSE:
         set_auto_hide_mouse(std::get<bool>(evt.param1));
+        break;
+      case EEInputEventType::CONTROLLER_CLEAR_TRIGGER_EFFECT:
+        controller_clear_trigger_effect(
+            std::get<int>(evt.param1),
+            std::get<dualsense_effects::TriggerEffectOption>(evt.param2));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_FEEDBACK:
+        controller_send_trigger_effect_feedback(
+            std::get<int>(evt.param1), std::get<dualsense_effects::TriggerEffectOption>(evt.param2),
+            std::get<u8>(evt.param3), std::get<u8>(evt.param4));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_VIBRATE:
+        controller_send_trigger_effect_vibrate(
+            std::get<int>(evt.param1), std::get<dualsense_effects::TriggerEffectOption>(evt.param2),
+            std::get<u8>(evt.param3), std::get<u8>(evt.param4), std::get<u8>(evt.param5));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_WEAPON:
+        controller_send_trigger_effect_weapon(
+            std::get<int>(evt.param1), std::get<dualsense_effects::TriggerEffectOption>(evt.param2),
+            std::get<u8>(evt.param3), std::get<u8>(evt.param4), std::get<u8>(evt.param5));
+        break;
+      case EEInputEventType::CONTROLLER_SEND_TRIGGER_RUMBLE:
+        controller_send_trigger_rumble(std::get<int>(evt.param1), std::get<u16>(evt.param2),
+                                       std::get<u16>(evt.param3), std::get<u32>(evt.param4));
+        break;
+      case EEInputEventType::SET_TRIGGER_EFFECTS_ENABLED:
+        set_trigger_effects_enabled(std::get<bool>(evt.param1));
         break;
     }
     ee_event_queue.pop();
@@ -395,6 +438,113 @@ bool InputManager::controller_has_rumble(const int port) {
   return m_available_controllers.at(id)->has_rumble();
 }
 
+bool InputManager::controller_has_pressure_sensitivity_support(const int port) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return false;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return false;
+  }
+  return m_available_controllers.at(id)->has_pressure_sensitivity_support();
+}
+
+bool InputManager::controller_has_trigger_effect_support(const int port) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return false;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return false;
+  }
+  return m_available_controllers.at(id)->has_trigger_effect_support();
+}
+
+int InputManager::controller_send_rumble(int port, u8 low_intensity, u8 high_intensity) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return 0;
+  }
+  return m_available_controllers.at(m_controller_port_mapping.at(port))
+      ->send_rumble(low_intensity, high_intensity);
+}
+
+void InputManager::controller_send_trigger_rumble(const int port,
+                                                  const u16 left_rumble,
+                                                  const u16 right_rumble,
+                                                  const u32 duration_ms) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  m_available_controllers.at(m_controller_port_mapping.at(port))
+      ->send_trigger_rumble(left_rumble, right_rumble, duration_ms);
+}
+
+void InputManager::controller_clear_trigger_effect(const int port,
+                                                   dualsense_effects::TriggerEffectOption option) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->clear_trigger_effect(option);
+}
+
+void InputManager::controller_send_trigger_effect_feedback(
+    const int port,
+    dualsense_effects::TriggerEffectOption option,
+    u8 position,
+    u8 strength) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->send_trigger_effect_feedback(option, position, strength);
+}
+
+void InputManager::controller_send_trigger_effect_vibrate(
+    const int port,
+    dualsense_effects::TriggerEffectOption option,
+    u8 position,
+    u8 amplitude,
+    u8 frequency) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->send_trigger_effect_vibrate(option, position, amplitude,
+                                                              frequency);
+}
+
+void InputManager::controller_send_trigger_effect_weapon(
+    const int port,
+    dualsense_effects::TriggerEffectOption option,
+    u8 start_position,
+    u8 end_position,
+    u8 strength) {
+  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
+    return;
+  }
+  const auto id = m_controller_port_mapping.at(port);
+  if (id >= (int)m_available_controllers.size()) {
+    return;
+  }
+  m_available_controllers.at(id)->send_trigger_effect_weapon(option, start_position, end_position,
+                                                             strength);
+}
+
+bool InputManager::set_trigger_effects_enabled(bool enabled) {
+  controller_clear_trigger_effect(0, dualsense_effects::TriggerEffectOption::BOTH);
+  return m_settings->enable_trigger_effects = enabled;
+};
+
 void InputManager::enqueue_set_controller_led(const int port,
                                               const u8 red,
                                               const u8 green,
@@ -419,14 +569,6 @@ void InputManager::enqueue_update_rumble(const int port,
                                          const u8 high_intensity) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
   ee_event_queue.push({EEInputEventType::UPDATE_RUMBLE, port, low_intensity, high_intensity, {}});
-}
-
-int InputManager::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
-  if (m_controller_port_mapping.find(port) == m_controller_port_mapping.end()) {
-    return 0;
-  }
-  return m_available_controllers.at(m_controller_port_mapping.at(port))
-      ->update_rumble(low_intensity, high_intensity);
 }
 
 void InputManager::enable_keyboard(const bool enabled) {
@@ -532,6 +674,75 @@ void InputManager::reset_input_bindings_to_defaults(const int port,
 void InputManager::enqueue_set_auto_hide_mouse(const bool auto_hide_mouse) {
   const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
   ee_event_queue.push({EEInputEventType::SET_AUTO_HIDE_MOUSE, auto_hide_mouse, {}, {}, {}});
+}
+
+void InputManager::enqueue_controller_clear_trigger_effect(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_CLEAR_TRIGGER_EFFECT,
+                       .param1 = port,
+                       .param2 = option});
+}
+
+void InputManager::enqueue_controller_send_trigger_effect_feedback(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option,
+    const u8 position,
+    const u8 strength) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_FEEDBACK,
+                       .param1 = port,
+                       .param2 = option,
+                       .param3 = position,
+                       .param4 = strength});
+}
+
+void InputManager::enqueue_controller_send_trigger_effect_vibrate(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option,
+    const u8 position,
+    const u8 amplitude,
+    const u8 frequency) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_VIBRATE,
+                       .param1 = port,
+                       .param2 = option,
+                       .param3 = position,
+                       .param4 = amplitude,
+                       .param5 = frequency});
+}
+
+void InputManager::enqueue_controller_send_trigger_effect_weapon(
+    const int port,
+    const dualsense_effects::TriggerEffectOption option,
+    const u8 start_position,
+    const u8 end_position,
+    const u8 strength) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_EFFECT_WEAPON,
+                       .param1 = port,
+                       .param2 = option,
+                       .param3 = start_position,
+                       .param4 = end_position,
+                       .param5 = strength});
+}
+
+void InputManager::enqueue_controller_send_trigger_rumble(const int port,
+                                                          const u16 left_rumble,
+                                                          const u16 right_rumble,
+                                                          const u32 duration_ms) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::CONTROLLER_SEND_TRIGGER_RUMBLE,
+                       .param1 = port,
+                       .param2 = left_rumble,
+                       .param3 = right_rumble,
+                       .param4 = duration_ms});
+}
+
+void InputManager::enqueue_set_trigger_effects_enabled(const bool enabled) {
+  const std::lock_guard<std::mutex> lock(m_event_queue_mtx);
+  ee_event_queue.push({.type = EEInputEventType::SET_TRIGGER_EFFECTS_ENABLED, .param1 = enabled});
 }
 
 void InputManager::set_auto_hide_mouse(const bool auto_hide_mouse) {

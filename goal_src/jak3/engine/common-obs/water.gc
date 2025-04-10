@@ -174,7 +174,7 @@
 
 (set! (-> *water-wake-trail* zbuffer?) #f)
 
-(set! (-> *water-wake-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *water-wake-trail* lie-vector) *up-vector*)
 
 (set! (-> *water-wake-trail* use-tape-mode?) #t)
 
@@ -237,7 +237,7 @@
                       )
               )
         (set! (-> this base-height) (-> s5-0 base-height))
-        (set! (-> this normal quad) (-> s5-0 normal quad))
+        (vector-copy! (-> this normal) (-> s5-0 normal))
         (set! (-> this base-ocean-offset) (- (-> s5-0 trans y) (-> s5-0 base-height)))
         )
       (cond
@@ -256,10 +256,10 @@
          (logclear! (-> this flags) (water-flag break-surface))
          )
         ((begin
-           (set! (-> this top 1 quad) (-> this top 0 quad))
-           (vector<-cspace! (the-as vector (-> this top)) (-> this process node-list data (-> this joint-index)))
+           (vector-copy! (-> this top 1) (-> this top 0))
+           (vector<-cspace! (-> this top 0) (-> this process node-list data (-> this joint-index)))
            (+! (-> this top 0 y) (-> this top-y-offset))
-           (set! (-> this bottom 1 quad) (-> this bottom 0 quad))
+           (vector-copy! (-> this bottom 1) (-> this bottom 0))
            (set! (-> this bottom 0 quad) (-> this process control trans quad))
            (logclear! (-> this flags) (water-flag under-water head-under-water bouncing wading swimming break-surface))
            (set! (-> this bob-offset) (update! (-> this bob)))
@@ -317,7 +317,7 @@
          (cond
            ((>= (-> this top 0 y) (-> this height))
             (let ((s3-0 (new 'stack-no-clear 'vector)))
-              (set! (-> s3-0 quad) (-> this bottom 0 quad))
+              (vector-copy! s3-0 (-> this bottom 0))
               (let ((v1-82 (-> this process control transv)))
                 (sqrtf (+ (* (-> v1-82 x) (-> v1-82 x)) (* (-> v1-82 z) (-> v1-82 z))))
                 )
@@ -345,7 +345,7 @@
                       (s1-0 s0-0 (sv-336 sv-352 a1-11 a2-2) (-> s5-0 normal))
                       )
                     )
-                  (set! (-> s2-0 trans quad) (-> s3-0 quad))
+                  (vector-copy! (-> s2-0 trans) s3-0)
                   (set! (-> *part-id-table* 762 init-specs 1 initial-valuef) (* 0.000004150391 f30-0))
                   (set! (-> *part-id-table* 762 init-specs 16 initial-valuef) 0.0)
                   (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 762) s2-0 :origin-is-matrix #t)
@@ -397,11 +397,7 @@
                          )
                       )
                )
-           (let* ((s3-2 (-> this process control))
-                  (v1-167 (if (type? s3-2 control-info)
-                              s3-2
-                              )
-                          )
+           (let* ((v1-167 (as-type (-> this process control) control-info))
                   (v1-168 (and v1-167 (not (time-elapsed? (-> v1-167 last-time-on-surface) (seconds 0.5)))))
                   )
              (if (and (logtest? (-> this flags) (water-flag swim-ground))
@@ -445,7 +441,7 @@
                         (not (logtest? (water-flag jump-out) (-> this flags)))
                         )
                    (let ((v1-191 (new 'stack-no-clear 'vector)))
-                     (set! (-> v1-191 quad) (-> this bottom 0 quad))
+                     (vector-copy! v1-191 (-> this bottom 0))
                      (set! (-> v1-191 y) (- (-> this height) (-> this swim-height)))
                      (let ((s3-3 (-> this process control)))
                        (when (and (not (logtest? (-> s3-3 status) (collide-status touch-background)))
@@ -489,7 +485,7 @@
                       )
              (logior! (-> this flags) (water-flag swimming))
              (let ((a1-42 (new 'stack-no-clear 'vector)))
-               (set! (-> a1-42 quad) (-> this bottom 0 quad))
+               (vector-copy! a1-42 (-> this bottom 0))
                (let ((s4-1 (-> this process control)))
                  (set! (-> a1-42 y) f30-1)
                  (when (not (logtest? (focus-status board pilot) (-> this process focus-status)))
@@ -610,7 +606,7 @@
                       (< (-> this height) (-> v0-32 y))
                       )
              (set! (-> this drip-joint-index) s5-1)
-             (set! (-> this drip-old-pos quad) (-> v0-32 quad))
+             (vector-copy! (-> this drip-old-pos) v0-32)
              (logior! (-> this flags) (water-flag spawn-drip))
              )
            )
@@ -696,7 +692,7 @@
                    )
                (sp-group-flag sp13)
                )
-     (set! (-> *launch-matrix* trans quad) (-> arg1 quad))
+     (vector-copy! (-> *launch-matrix* trans) arg1)
      (part-tracker-spawn
        part-tracker-subsampler
        :to *entity-pool*
@@ -709,7 +705,7 @@
        )
      )
     (else
-      (set! (-> *launch-matrix* trans quad) (-> arg1 quad))
+      (vector-copy! (-> *launch-matrix* trans) arg1)
       (part-tracker-spawn
         part-tracker
         :to *entity-pool*
@@ -833,7 +829,7 @@
                  )
           )
     (when s1-0
-      (set! (-> arg0 trans quad) (-> arg2 (+ arg3 -1) sphere quad))
+      (vector-copy! (-> arg0 trans) (-> arg2 (+ arg3 -1) sphere))
       (set-vector! (-> arg0 normal) 0.0 1.0 0.0 1.0)
       (case (-> (the-as pair (-> (the-as pair s1-0) cdr)) car)
         (('height)
@@ -942,12 +938,7 @@
                (logior! (-> arg0 flags) (water-flag mud))
                )
               ((= v1-56 'mech)
-               (let* ((s0-2 arg4)
-                      (a0-50 (if (type? s0-2 process-focusable)
-                                 s0-2
-                                 )
-                             )
-                      )
+               (let ((a0-50 (as-type arg4 process-focusable)))
                  (when (and a0-50 (not (logtest? (focus-status mech) (-> (the-as process-focusable a0-50) focus-status))))
                    (set! (-> arg0 flags) (water-flag))
                    0

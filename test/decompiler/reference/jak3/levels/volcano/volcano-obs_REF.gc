@@ -107,6 +107,7 @@
 
 ;; definition for method 11 of type vol-rising-step
 (defmethod init-from-entity! ((this vol-rising-step) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 32)
   (vol-rising-step-method-24 this)
   (process-drawable-from-entity! this arg0)
@@ -439,12 +440,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (as-type proc process-focusable)))
          (when gp-0
            (when (or (focus-test? (the-as process-focusable gp-0) mech)
                      (time-elapsed? (-> self no-collision-timer) (-> *TARGET-bank* hit-invulnerable-timeout))
@@ -530,7 +526,7 @@
       )
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (quaternion->matrix gp-0 (-> self root quat))
-      (set! (-> gp-0 trans quad) (-> self root trans quad))
+      (vector-copy! (-> gp-0 trans) (-> self root trans))
       (spawn-from-mat (-> self part) gp-0)
       )
     0
@@ -547,6 +543,7 @@
 
 ;; definition for method 11 of type lava-shoot
 (defmethod init-from-entity! ((this lava-shoot) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -842,7 +839,7 @@
          (s2-0 (new 'stack-no-clear 'vector))
          (s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) s4-0))
          )
-    (let ((s1-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> s4-0 bone transform)) 1.0)))
+    (let ((s1-0 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s4-0 bone transform rvec) 1.0)))
       (vector-float*!
         s2-0
         s1-0
@@ -961,13 +958,13 @@
   (set! (-> this rope) (new 'process 'vol-balance-plat-chain-physics))
   (chain-physics-initialize this (-> this rope) 4 8192.0 *vol-balance-plat-chain-setup*)
   (alloc-rbody-control! this *vol-balance-plat-rigid-body-constants*)
-  (set! (-> this init-pos quad) (-> this root trans quad))
+  (vector-copy! (-> this init-pos) (-> this root trans))
   (let ((a0-10 (-> this node-list data 4)))
     (set! (-> a0-10 param0)
           (lambda ((arg0 cspace) (arg1 transformq))
             (let ((gp-0 (-> arg0 param1)))
               (cspace<-parented-transformq-joint! arg0 arg1)
-              (set! (-> arg0 bone transform trans quad) (-> (the-as vol-balance-plat gp-0) init-pos quad))
+              (vector-copy! (-> arg0 bone transform trans) (-> (the-as vol-balance-plat gp-0) init-pos))
               )
             (none)
             )
@@ -1159,12 +1156,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack 'touch)
-       (let* ((s5-0 proc)
-              (gp-0 (if (type? s5-0 process-focusable)
-                        s5-0
-                        )
-                    )
-              )
+       (let ((gp-0 (as-type proc process-focusable)))
          (when gp-0
            (when (or (focus-test? (the-as process-focusable gp-0) mech)
                      (time-elapsed? (-> self no-collision-timer) (-> *TARGET-bank* hit-invulnerable-timeout))
@@ -1290,20 +1282,9 @@
         )
       )
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
-      (let* ((a2-22 gp-0)
-             (a3-29 *identity-matrix*)
-             (v1-18 (-> a3-29 rvec quad))
-             (a0-6 (-> a3-29 uvec quad))
-             (a1-4 (-> a3-29 fvec quad))
-             (a3-30 (-> a3-29 trans quad))
-             )
-        (set! (-> a2-22 rvec quad) v1-18)
-        (set! (-> a2-22 uvec quad) a0-6)
-        (set! (-> a2-22 fvec quad) a1-4)
-        (set! (-> a2-22 trans quad) a3-30)
-        )
+      (matrix-copy! gp-0 *identity-matrix*)
       (matrix<-quat gp-0 (-> self root quat))
-      (set! (-> gp-0 trans quad) (-> self root trans quad))
+      (vector-copy! (-> gp-0 trans) (-> self root trans))
       (spawn-from-mat (-> self part) gp-0)
       )
     0
@@ -1320,6 +1301,7 @@
 
 ;; definition for method 11 of type vol-steam-explosion
 (defmethod init-from-entity! ((this vol-steam-explosion) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 128)
   (vol-steam-explosion-method-23 this)
   (process-drawable-from-entity! this arg0)
@@ -1650,12 +1632,7 @@
        (go-virtual done)
        )
       (('touch)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (as-type proc process-focusable)))
          (when gp-0
            (when (time-elapsed? (-> self no-collision-timer) (-> *TARGET-bank* hit-invulnerable-timeout))
              (let ((s4-2
@@ -1748,7 +1725,7 @@
       )
     (set! (-> self root) s5-0)
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-vol-lava-ball" (the-as (pointer level) #f)))
@@ -1886,20 +1863,9 @@
           )
         )
       (let ((gp-2 (new 'stack-no-clear 'matrix)))
-        (let* ((a2-5 gp-2)
-               (a3-3 *identity-matrix*)
-               (v1-38 (-> a3-3 rvec quad))
-               (a0-23 (-> a3-3 uvec quad))
-               (a1-8 (-> a3-3 fvec quad))
-               (a3-4 (-> a3-3 trans quad))
-               )
-          (set! (-> a2-5 rvec quad) v1-38)
-          (set! (-> a2-5 uvec quad) a0-23)
-          (set! (-> a2-5 fvec quad) a1-8)
-          (set! (-> a2-5 trans quad) a3-4)
-          )
+        (matrix-copy! gp-2 *identity-matrix*)
         (matrix<-quat gp-2 (-> self root quat))
-        (set! (-> gp-2 trans quad) (-> self root trans quad))
+        (vector-copy! (-> gp-2 trans) (-> self root trans))
         (spawn-from-mat (-> self part) gp-2)
         )
       )
@@ -1916,6 +1882,7 @@
 
 ;; definition for method 11 of type vol-lava-ball-spout
 (defmethod init-from-entity! ((this vol-lava-ball-spout) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (let ((a1-3 (new 'stack-no-clear 'sync-info-params)))
@@ -2037,6 +2004,7 @@
 
 ;; definition for method 11 of type vol-collapsing-rock
 (defmethod init-from-entity! ((this vol-collapsing-rock) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))

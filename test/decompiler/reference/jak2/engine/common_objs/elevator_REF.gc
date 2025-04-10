@@ -169,7 +169,7 @@
           (when (< 0.0 f0-5)
             (vector-float*! (-> s5-0 move-dist) (-> s5-0 move-dist) f0-5)
             (vector+! (-> s5-0 move-dist) (-> s5-0 move-dist) (-> s5-0 start-pos))
-            (vector-! (-> s5-0 move-dist) (-> s5-0 move-dist) (the-as vector (-> s4-0 prim-core)))
+            (vector-! (-> s5-0 move-dist) (-> s5-0 move-dist) (-> s4-0 prim-core world-sphere))
             (move-by-vector! (-> target control) (-> s5-0 move-dist))
             )
           )
@@ -310,12 +310,7 @@
        (set! (-> self move-pos 0) (-> self move-pos 1))
        (cond
          ((not (logtest? (-> event param 0) 7))
-          (let ((gp-0 (the-as number (-> event param 0))))
-            (set! (-> self move-pos 1) (if (type? (the-as uint gp-0) float)
-                                           (the-as float gp-0)
-                                           )
-                  )
-            )
+          (set! (-> self move-pos 1) (as-type (-> event param 0) float))
           )
          (else
            (case (-> event param 0)
@@ -334,12 +329,7 @@
     (('jump-to)
      (cond
        ((not (logtest? (-> event param 0) 7))
-        (let ((gp-1 (the-as number (-> event param 0))))
-          (set! (-> self move-pos 1) (if (type? (the-as uint gp-1) float)
-                                         (the-as float gp-1)
-                                         )
-                )
-          )
+        (set! (-> self move-pos 1) (as-type (-> event param 0) float))
         )
        (else
          (case (-> event param 0)
@@ -465,12 +455,7 @@
 ;; definition for method 44 of type elevator
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod elevator-method-44 ((this elevator))
-  (let* ((target-temp *target*)
-         (target (if (type? target-temp process-focusable)
-                     target-temp
-                     )
-                 )
-         )
+  (let ((target (the-as target (as-type *target* process-focusable))))
     (the-as
       symbol
       (and target (move-between-points this (get-trans target 0) (-> this move-pos 0) (-> this move-pos 1)))
@@ -877,12 +862,7 @@
     )
   (set! sv-32 (the-as float 0.0))
   (set! sv-36 (-> this path))
-  (let ((s5-2 *target*))
-    (set! sv-40 (if (type? s5-2 process-focusable)
-                    s5-2
-                    )
-          )
-    )
+  (set! sv-40 (the-as target (as-type *target* process-focusable)))
   (if (not (and sv-40
                 (logtest? (-> this params flags) (elevator-flags elevator-flags-4))
                 (find-closest-point-in-path! this (get-trans sv-40 0) (& sv-32) #f #t)

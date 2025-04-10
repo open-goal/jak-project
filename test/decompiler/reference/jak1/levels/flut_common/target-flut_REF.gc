@@ -775,11 +775,10 @@
                 (-> self control)
                 (the-as uint 6)
                 )
-               (< 0.0
-                  (vector-dot
-                    (-> self control dynam gravity-normal)
-                    (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> self control trans-old)) (-> self control trans))
-                    )
+               (< 0.0 (vector-dot
+                        (-> self control dynam gravity-normal)
+                        (vector-! (new 'stack-no-clear 'vector) (-> self control trans-old 0) (-> self control trans))
+                        )
                   )
                )
       (send-event proc 'bonk (-> block param 0) (-> self control ground-impact-vel))
@@ -1408,11 +1407,10 @@
               (-> self control)
               (the-as uint 6)
               )
-             (< 0.0
-                (vector-dot
-                  (-> self control dynam gravity-normal)
-                  (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> self control trans-old)) (-> self control trans))
-                  )
+             (< 0.0 (vector-dot
+                      (-> self control dynam gravity-normal)
+                      (vector-! (new 'stack-no-clear 'vector) (-> self control trans-old 0) (-> self control trans))
+                      )
                 )
              )
         (send-event proc 'bonk (-> block param 0) (-> self control ground-impact-vel))
@@ -1660,7 +1658,7 @@
                     )
                   (move-to-point! (-> self control) s4-1)
                   )
-                (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
+                (set! (-> (&-> self control unknown-qword00) 0) (-> self control trans quad))
                 (send-event *camera* 'teleport)
                 (go target-flut-stance)
                 )
@@ -1803,7 +1801,7 @@
           (compute-alignment! (-> self align))
           (let ((gp-5 (new 'stack-no-clear 'vector)))
             (when (not (logtest? (-> self align flags) (align-flags disabled)))
-              (vector-matrix*! gp-5 (the-as vector (-> self align delta)) (-> self control unknown-matrix01))
+              (vector-matrix*! gp-5 (-> self align delta trans) (-> self control unknown-matrix01))
               (vector-float*! (-> self control transv) gp-5 (-> *display* frames-per-second))
               )
             )
@@ -1830,7 +1828,7 @@
   :exit (-> target-flut-start exit)
   :code (behavior ((arg0 handle))
     (set! (-> self control transv quad) (the-as uint128 0))
-    (set! (-> self alt-cam-pos quad) (-> (&-> (-> self control) unknown-qword00) 0))
+    (set! (-> self alt-cam-pos quad) (-> (&-> self control unknown-qword00) 0))
     (logior! (-> self state-flags) (state-flags use-alt-cam-pos))
     (set-time! (-> self state-time))
     (let ((gp-0 (new 'stack-no-clear 'vector)))

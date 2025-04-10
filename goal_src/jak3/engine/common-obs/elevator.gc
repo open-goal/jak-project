@@ -123,7 +123,7 @@
       (let ((s4-0 (-> gp-0 control collision-spheres 0))
             (s5-0 (new 'stack-no-clear 'collide-query))
             )
-        (set! (-> s5-0 start-pos quad) (-> s4-0 prim-core world-sphere quad))
+        (vector-copy! (-> s5-0 start-pos) (-> s4-0 prim-core world-sphere))
         (+! (-> s5-0 start-pos y) 8192.0)
         (set! (-> s5-0 start-pos w) 1.0)
         (vector-reset! (-> s5-0 move-dist))
@@ -140,7 +140,7 @@
           (when (< 0.0 f0-5)
             (vector-float*! (-> s5-0 move-dist) (-> s5-0 move-dist) f0-5)
             (vector+! (-> s5-0 move-dist) (-> s5-0 move-dist) (-> s5-0 start-pos))
-            (vector-! (-> s5-0 move-dist) (-> s5-0 move-dist) (the-as vector (-> s4-0 prim-core)))
+            (vector-! (-> s5-0 move-dist) (-> s5-0 move-dist) (-> s4-0 prim-core world-sphere))
             (move-by-vector! (-> gp-0 control) (-> s5-0 move-dist))
             )
           )
@@ -150,6 +150,7 @@
   (none)
   )
 
+;; WARN: Return type mismatch object vs none.
 (defmethod toggle-fence-collision ((this elevator) (arg0 symbol))
   (when (and (logtest? (-> this params flags) (elevator-flags fence)) (nonzero? (-> this fence-prim-index)))
     (let ((v1-7 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child (-> this fence-prim-index))))
@@ -250,13 +251,7 @@
        (set! (-> self move-pos 0) (-> self move-pos 1))
        (cond
          ((not (logtest? (-> arg3 param 0) 7))
-          (let ((gp-0 (-> arg3 param 0)))
-            (set! (-> self move-pos 1) (the-as float (if (type? gp-0 float)
-                                                         (the-as float gp-0)
-                                                         )
-                                               )
-                  )
-            )
+          (set! (-> self move-pos 1) (the-as float (as-type (-> arg3 param 0) float)))
           )
          (else
            (case (-> arg3 param 0)
@@ -275,13 +270,7 @@
     (('jump-to)
      (cond
        ((not (logtest? (-> arg3 param 0) 7))
-        (let ((gp-1 (-> arg3 param 0)))
-          (set! (-> self move-pos 1) (the-as float (if (type? gp-1 float)
-                                                       (the-as float gp-1)
-                                                       )
-                                             )
-                )
-          )
+        (set! (-> self move-pos 1) (the-as float (as-type (-> arg3 param 0) float)))
         )
        (else
          (case (-> arg3 param 0)
@@ -405,12 +394,7 @@
   )
 
 (defmethod elevator-method-46 ((this elevator))
-  (let* ((s5-0 *target*)
-         (a0-2 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((a0-2 (the-as target (as-type *target* process-focusable))))
     (and a0-2 (point-inside-shaft? this (get-trans a0-2 0) (-> this move-pos 0) (-> this move-pos 1)))
     )
   )
@@ -725,7 +709,7 @@
              (f0-9 (+ f30-0 (* (ease-value-in-out (-> self path-pos) 0.08) (- f28-0 f30-0))))
              (gp-0 (new 'stack-no-clear 'vector))
              )
-        (set! (-> gp-0 quad) (-> self basetrans quad))
+        (vector-copy! gp-0 (-> self basetrans))
         (get-point-in-path! (-> self path) (-> self basetrans) f0-9 'interp)
         (set! (-> self speed) (* (- (-> self basetrans y) (-> gp-0 y)) (-> self clock frames-per-second)))
         )
@@ -855,6 +839,7 @@
 
 ;; WARN: Return type mismatch none vs object.
 (defmethod init-from-entity! ((this elevator) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-32 float) (sv-36 path-control) (sv-40 target))
   (stack-size-set! (-> this main-thread) 1024)
   (set! (-> this sound-running-loop) #f)
@@ -921,12 +906,7 @@
     )
   (set! sv-32 (the-as float 0.0))
   (set! sv-36 (-> this path))
-  (let ((s5-2 *target*))
-    (set! sv-40 (if (type? s5-2 process-focusable)
-                    s5-2
-                    )
-          )
-    )
+  (set! sv-40 (the-as target (as-type *target* process-focusable)))
   (if (not (and sv-40
                 (logtest? (-> this params flags) (elevator-flags teleport))
                 (find-closest-point-in-path! this (get-trans sv-40 0) (& sv-32) #f #t)

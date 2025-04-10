@@ -371,8 +371,8 @@
       (let ((a2-4 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) *y-vector* (-> self kill-angle))))
         (quaternion*! (-> self root quat) (-> self kill-quat) a2-4)
         )
-      (set! (-> self other-eyeball-jmod transform scale quad) (-> self root scale quad))
-      (set! (-> self eyeball-jmod transform scale quad) (-> self root scale quad))
+      (vector-copy! (-> self other-eyeball-jmod transform scale) (-> self root scale))
+      (vector-copy! (-> self eyeball-jmod transform scale) (-> self root scale))
       (let* ((f0-9 (lerp-scale 1.0 0.0 (the float (- (current-time) (-> self state-time))) 0.0 60.0))
              (f0-11 (* f0-9 f0-9))
              )
@@ -429,6 +429,7 @@
   )
 
 (defmethod init-from-entity! ((this vol-holo-eye) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -450,7 +451,7 @@
         )
       )
     )
-  (set! (-> this init-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this init-trans) (-> this root trans))
   (init (-> this eyeball-jmod) this (the-as uint 4) (joint-mod-base-flags attached scale))
   (init (-> this other-eyeball-jmod) this (the-as uint 9) (joint-mod-base-flags attached trans quat scale))
   (set! (-> this perm-part)
@@ -514,6 +515,7 @@
   )
 
 (defmethod init-from-entity! ((this tpl-glider-broken) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -637,6 +639,7 @@
   )
 
 (defmethod init-from-entity! ((this dm-spines) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this level) (level-get *level* 'volcanox))
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   "init for the auto spawner"

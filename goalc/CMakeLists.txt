@@ -60,7 +60,10 @@ add_library(compiler
         data_compiler/dir_tpages.cpp
         data_compiler/game_count.cpp
         data_compiler/DataObjectGenerator.cpp
+        build_actor/common/build_actor.cpp
         build_actor/jak1/build_actor.cpp
+        build_actor/jak2/build_actor.cpp
+        build_actor/jak3/build_actor.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         listener/Listener.cpp

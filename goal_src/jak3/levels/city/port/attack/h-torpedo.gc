@@ -163,7 +163,7 @@
 
 (set! (-> *torpedo-wake-trail* zbuffer?) #f)
 
-(set! (-> *torpedo-wake-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *torpedo-wake-trail* lie-vector) *up-vector*)
 
 (set! (-> *torpedo-wake-trail* use-tape-mode?) #t)
 
@@ -250,7 +250,7 @@
   )
 
 (defun spt-func-nuke-water-splash ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
-  (sparticle-motion-blur arg0 arg1 (the-as vector arg2))
+  (sparticle-motion-blur arg0 arg1 (-> arg2 launchrot))
   (sparticle-2d-spline-align-instant arg0 arg1 (the-as sprite-vec-data-2d arg2))
   (none)
   )
@@ -563,7 +563,7 @@
           (f2-0 8192.0)
           (f0-0 1024.0)
           )
-      (set! (-> s5-0 start-pos quad) (-> this rbody position quad))
+      (vector-copy! (-> s5-0 start-pos) (-> this rbody position))
       (+! (-> s5-0 start-pos y) f2-0)
       (vector-reset! (-> s5-0 move-dist))
       (set! (-> s5-0 move-dist y) (- (+ f2-0 f1-0)))
@@ -1103,11 +1103,11 @@
     (let ((v1-45
             (cond
               ((logtest? (-> *part-group-id-table* 529 flags) (sp-group-flag sp13))
-               (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+               (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
                (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 529))
                )
               (else
-                (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+                (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
                 (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 529))
                 )
               )
@@ -1467,7 +1467,7 @@
 (defmethod get-tracked-object-pos ((this light-trail-tracker-torpedo) (arg0 process-focusable) (arg1 vector))
   (let ((v1-0 arg0))
     (when v1-0
-      (set! (-> arg1 quad) (-> v1-0 root trans quad))
+      (vector-copy! arg1 (-> v1-0 root trans))
       (set! (-> arg1 y) 4505.6)
       (vector+float*! arg1 arg1 (-> v1-0 node-list data 0 bone transform fvec) 49152.0)
       )
@@ -1613,14 +1613,14 @@
                 (quaternion-rotate-local-z! s1-0 s1-0 (-> this cam-roll))
                 (quaternion-normalize! s1-0)
                 (quaternion->matrix s5-0 s1-0)
-                (set! (-> s5-0 trans quad) (-> this rbody matrix trans quad))
-                (vector-matrix*! (-> s3-0 0 saved-pt) (the-as vector (-> this info camera look-pos-array)) s5-0)
+                (vector-copy! (-> s5-0 trans) (-> this rbody matrix trans))
+                (vector-matrix*! (-> s3-0 0 saved-pt) (-> this info camera look-pos-array 0) s5-0)
                 (vector+float*! (-> s3-0 0 saved-pt) (-> s3-0 0 saved-pt) s2-0 0.0)
                 )
               (let ((v1-18 (-> s3-0 0 tracking)))
                 (set! (-> v1-18 inv-mat rvec quad) (-> s5-0 rvec quad))
-                (set! (-> v1-18 inv-mat uvec quad) (-> s5-0 uvec quad))
-                (set! (-> v1-18 inv-mat fvec quad) (-> s5-0 fvec quad))
+                (vector-copy! (-> v1-18 inv-mat uvec) (-> s5-0 uvec))
+                (vector-copy! (-> v1-18 inv-mat fvec) (-> s5-0 fvec))
                 )
               )
             (set! (-> gp-0 slave 0 saved-pt y) (fmax 6144.0 (-> gp-0 slave 0 saved-pt y)))

@@ -47,7 +47,7 @@ class GlobalProfiler {
 };
 
 struct ScopedEvent {
-  ScopedEvent(GlobalProfiler* _prof) : prof(_prof){};
+  ScopedEvent(GlobalProfiler* _prof) : prof(_prof) {};
   ScopedEvent(const ScopedEvent&) = delete;
   ScopedEvent& operator=(const ScopedEvent&) = delete;
   GlobalProfiler* prof = nullptr;

@@ -567,34 +567,34 @@
                               :jump-height-min (meters 3)
                               :jump-height-factor 0.5
                               :knocked-seek-ry-clamp 364.0889
-                              :knocked-soft-vxz-lo 72089.6
-                              :knocked-soft-vxz-hi 108134.4
-                              :knocked-soft-vy-lo 81920.0
-                              :knocked-soft-vy-hi 122880.0
-                              :knocked-medium-vxz-lo 147456.0
-                              :knocked-medium-vxz-hi 196608.0
-                              :knocked-medium-vy-lo 135168.0
-                              :knocked-medium-vy-hi 151552.0
-                              :knocked-hard-vxz-lo 78643.2
-                              :knocked-hard-vxz-hi 117964.8
-                              :knocked-hard-vy-lo 183500.8
-                              :knocked-hard-vy-hi 209715.2
-                              :knocked-huge-vxz-lo 164659.2
-                              :knocked-huge-vxz-hi 249036.8
-                              :knocked-huge-vy-lo 183500.8
-                              :knocked-huge-vy-hi 217907.2
-                              :knocked-yellow-vxz-lo 40960.0
-                              :knocked-yellow-vxz-hi 49152.0
-                              :knocked-yellow-vy-lo 57344.0
-                              :knocked-yellow-vy-hi 81920.0
-                              :knocked-red-vxz-lo 24576.0
-                              :knocked-red-vxz-hi 196608.0
-                              :knocked-red-vy-lo 94208.0
-                              :knocked-red-vy-hi 151552.0
-                              :knocked-blue-vxz-lo 40960.0
-                              :knocked-blue-vxz-hi 49152.0
-                              :knocked-blue-vy-lo 24576.0
-                              :knocked-blue-vy-hi 81920.0
+                              :knocked-soft-vxz-lo (meters 17.6)
+                              :knocked-soft-vxz-hi (meters 26.4)
+                              :knocked-soft-vy-lo (meters 20)
+                              :knocked-soft-vy-hi (meters 30)
+                              :knocked-medium-vxz-lo (meters 36)
+                              :knocked-medium-vxz-hi (meters 48)
+                              :knocked-medium-vy-lo (meters 33)
+                              :knocked-medium-vy-hi (meters 37)
+                              :knocked-hard-vxz-lo (meters 19.2)
+                              :knocked-hard-vxz-hi (meters 28.8)
+                              :knocked-hard-vy-lo (meters 44.8)
+                              :knocked-hard-vy-hi (meters 51.2)
+                              :knocked-huge-vxz-lo (meters 40.2)
+                              :knocked-huge-vxz-hi (meters 60.8)
+                              :knocked-huge-vy-lo (meters 44.8)
+                              :knocked-huge-vy-hi (meters 53.2)
+                              :knocked-yellow-vxz-lo (meters 10)
+                              :knocked-yellow-vxz-hi (meters 12)
+                              :knocked-yellow-vy-lo (meters 14)
+                              :knocked-yellow-vy-hi (meters 20)
+                              :knocked-red-vxz-lo (meters 6)
+                              :knocked-red-vxz-hi (meters 48)
+                              :knocked-red-vy-lo (meters 23)
+                              :knocked-red-vy-hi (meters 37)
+                              :knocked-blue-vxz-lo (meters 10)
+                              :knocked-blue-vxz-hi (meters 12)
+                              :knocked-blue-vy-lo (meters 6)
+                              :knocked-blue-vy-hi (meters 20)
                               :ragdoll-info (new 'static 'ragdoll-setup
                                 :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
                                 :bg-collide-with (collide-spec backgnd)
@@ -983,6 +983,7 @@
 (set! (-> *mh-bat-enemy-info* fact-defaults) *fact-info-mh-bat-defaults*)
 
 (defmethod init-enemy-collision! ((this mh-bat))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1060,7 +1061,7 @@
       (let ((s5-0 (cubic-curve-method-12 (-> self move-curve) (new 'stack-no-clear 'vector) 0.0))
             (s4-0 (vector-flatten! (new 'stack-no-clear 'vector) (-> self root transv) (-> self rotation-matrix fvec)))
             )
-        (vector-flatten! s5-0 s5-0 (the-as vector (-> self rotation-matrix)))
+        (vector-flatten! s5-0 s5-0 (-> self rotation-matrix rvec))
         (set! (-> s5-0 y) (fmax 0.0 (-> s5-0 y)))
         (seek!
           (-> self flap-interp)
@@ -1113,30 +1114,18 @@
         (vector-length-max! s5-0 327680.0)
         (vector-v++! s4-0 s5-0)
         )
-      (let* ((v1-13 (vector-flatten! (new 'stack-no-clear 'vector) s5-0 (the-as vector (-> self rotation-matrix))))
+      (let* ((v1-13 (vector-flatten! (new 'stack-no-clear 'vector) s5-0 (-> self rotation-matrix rvec)))
              (f0-3 (lerp-scale 9102.223 -9102.223 (vector-dot (-> self rotation-matrix fvec) v1-13) 245760.0 -245760.0))
              )
         (seek! (-> self pitch-angle) f0-3 (* 32768.0 (seconds-per-frame)))
         )
-      (vector-rotate-around-axis!
-        gp-0
-        (the-as quaternion *y-vector*)
-        (-> self pitch-angle)
-        (the-as vector (-> self rotation-matrix))
-        )
+      (vector-rotate-around-axis! gp-0 *y-vector* (-> self pitch-angle) (-> self rotation-matrix rvec))
       (let* ((v1-17 (vector-flatten! (new 'stack-no-clear 'vector) s5-0 *y-vector*))
-             (f0-9 (lerp-scale
-                     -15473.777
-                     15473.777
-                     (vector-dot (the-as vector (-> self rotation-matrix)) v1-17)
-                     163840.0
-                     -163840.0
-                     )
-                   )
+             (f0-9 (lerp-scale -15473.777 15473.777 (vector-dot (-> self rotation-matrix rvec) v1-17) 163840.0 -163840.0))
              )
         (seek! (-> self bank-angle) f0-9 (* 10922.667 (seconds-per-frame)))
         )
-      (vector-rotate-around-axis! gp-0 (the-as quaternion gp-0) (-> self bank-angle) (-> self rotation-matrix fvec))
+      (vector-rotate-around-axis! gp-0 gp-0 (-> self bank-angle) (-> self rotation-matrix fvec))
       )
     )
   0
@@ -1174,7 +1163,7 @@
   :enter (behavior ()
     (call-parent-state-handler enter)
     (set-time! (-> self state-time))
-    (set! (-> self start-pos quad) (-> self root trans quad))
+    (vector-copy! (-> self start-pos) (-> self root trans))
     (set-vector! (-> self root transv) 0.0 -81920.0 0.0 0.0)
     (set! (-> self orbit-angle)
           (vector-vector-angle-safe
@@ -1222,7 +1211,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (set! (-> self event-param-point quad) (-> self start-pos quad))
+    (vector-copy! (-> self event-param-point) (-> self start-pos))
     (vector-reset! (-> self target-velocity))
     )
   :code (behavior ()
@@ -1262,10 +1251,10 @@
                                                        ((>= 1 (the-as int gp-0))
                                                         (go-virtual retreat)
                                                         )
-                                                       ((and (= gp-0 (enemy-aware ea3)) (get-focus! self))
+                                                       ((and (= gp-0 (enemy-aware hostile)) (get-focus! self))
                                                         (go-hostile self)
                                                         )
-                                                       ((= gp-0 (enemy-aware ea4))
+                                                       ((= gp-0 (enemy-aware flee))
                                                         (go-flee self)
                                                         )
                                                        )
@@ -1442,7 +1431,7 @@
         (logior! (-> gp-0 options) (projectile-options po14))
         (set! (-> gp-0 vehicle-impulse-factor) 1.5)
         (logior! (-> gp-0 options) (projectile-options po16))
-        (set! (-> gp-0 pos quad) (-> a2-2 quad))
+        (vector-copy! (-> gp-0 pos) a2-2)
         (vector-normalize-copy! (-> gp-0 vel) (vector-! (new 'stack-no-clear 'vector) v1-23 a2-2) 532480.0)
         )
       (spawn-projectile metalhead-shot gp-0 self *default-dead-pool*)
@@ -1499,7 +1488,7 @@
           )
         )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
@@ -1530,14 +1519,14 @@
           (.svf (&-> a0-2 quad) vf1)
           )
         (let ((s3-0 (new 'stack-no-clear 'nav-poly)))
-          (vector-! (the-as vector (-> s3-0 vertex)) v1-1 (the-as vector (-> s5-0 bounds)))
+          (vector-! (-> s3-0 vertex 0) v1-1 (the-as vector (-> s5-0 bounds)))
           (set! (-> s3-0 vertex1 x) 40960000.0)
           (set! (-> s3-0 data 20) (the-as uint 3))
           (let ((a2-0 (nav-mesh-method-45 s5-0 s3-0)))
             (when a2-0
               (clamp-vector-to-mesh-cross-gaps
                 s5-0
-                (the-as vector (-> s3-0 vertex))
+                (-> s3-0 vertex 0)
                 a2-0
                 s4-0
                 2048.0
@@ -1611,7 +1600,7 @@
              (s5-0 (-> this draw shadow-ctrl settings shadow-dir))
              (f30-0 81920.0)
              )
-         (set! (-> s4-0 start-pos quad) (-> this root trans quad))
+         (vector-copy! (-> s4-0 start-pos) (-> this root trans))
          (vector-normalize-copy! (-> s4-0 move-dist) s5-0 f30-0)
          (let ((v1-17 s4-0))
            (set! (-> v1-17 radius) 3276.8)
@@ -1667,11 +1656,13 @@
   (none)
   )
 
-(defmethod within-gspot-range? ((this mh-bat))
+(defmethod invalid-height? ((this mh-bat))
+  "Return #t if the enemy is too high in the air, or below the ground."
   #f
   )
 
-(defmethod enemy-method-50 ((this mh-bat) (arg0 int))
+(defmethod update-collision-action ((this mh-bat) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
   (let ((v1-0 arg0))
     (cond
       ((or (zero? v1-0) (= v1-0 2))
@@ -1695,6 +1686,7 @@
 
 ;; WARN: Return type mismatch ragdoll-flag vs vector.
 (defmethod ragdoll-spawn! ((this mh-bat) (arg0 symbol) (arg1 symbol))
+  "If possible, spawn ragdoll and start using it."
   (let ((t9-0 (method-of-type enemy ragdoll-spawn!)))
     (t9-0 this arg0 arg1)
     )
@@ -1714,6 +1706,7 @@
   )
 
 (defmethod enemy-common-post ((this mh-bat))
+  "Common implementation of post. Runs ja-post."
   (if (not (logtest? (-> this draw status) (draw-control-status on-screen)))
       (set-time! (-> this last-off-screen-time))
       )
@@ -1721,8 +1714,8 @@
   (when (< 1 (the-as int (-> this focus aware)))
     (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
       (when s5-0
-        (set! (-> this focus-pos quad) (-> (get-trans s5-0 0) quad))
-        (set! (-> this focus-bullseye-pos quad) (-> (get-trans s5-0 3) quad))
+        (vector-copy! (-> this focus-pos) (get-trans s5-0 0))
+        (vector-copy! (-> this focus-bullseye-pos) (get-trans s5-0 3))
         (vector-! (-> this focus-xz-dir) (-> this focus-pos) (-> this root trans))
         (set! (-> this focus-xz-dir y) 0.0)
         (vector-xz-normalize! (-> this focus-xz-dir) 1.0)
@@ -1735,6 +1728,7 @@
   )
 
 (defmethod event-handler ((this mh-bat) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -1746,7 +1740,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1775,16 +1769,18 @@
   )
 
 (defmethod coin-flip? ((this mh-bat))
+  "Return #t half the time, #f the other."
   #f
   )
 
 (defmethod init-enemy! ((this mh-bat))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mh-bat" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *mh-bat-enemy-info*)
+  (setup-enemy! this *mh-bat-enemy-info*)
   (set-scale! this 1.0)
   (set! (-> this root pause-adjust-distance) 368640.0)
   (let ((v1-9 (-> this neck)))

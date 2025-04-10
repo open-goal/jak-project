@@ -162,34 +162,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 57344.0
-    :knocked-soft-vxz-hi 57344.0
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 81920.0
-    :knocked-medium-vxz-lo 57344.0
-    :knocked-medium-vxz-hi 57344.0
-    :knocked-medium-vy-lo 81920.0
-    :knocked-medium-vy-hi 81920.0
-    :knocked-hard-vxz-lo 57344.0
-    :knocked-hard-vxz-hi 57344.0
-    :knocked-hard-vy-lo 81920.0
-    :knocked-hard-vy-hi 81920.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 57344.0
-    :knocked-yellow-vxz-hi 57344.0
-    :knocked-yellow-vy-lo 81920.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 57344.0
-    :knocked-red-vxz-hi 57344.0
-    :knocked-red-vy-lo 81920.0
-    :knocked-red-vy-hi 81920.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 40960.0
+    :knocked-soft-vxz-lo (meters 14)
+    :knocked-soft-vxz-hi (meters 14)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 20)
+    :knocked-medium-vxz-lo (meters 14)
+    :knocked-medium-vxz-hi (meters 14)
+    :knocked-medium-vy-lo (meters 20)
+    :knocked-medium-vy-hi (meters 20)
+    :knocked-hard-vxz-lo (meters 14)
+    :knocked-hard-vxz-hi (meters 14)
+    :knocked-hard-vy-lo (meters 20)
+    :knocked-hard-vy-hi (meters 20)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 14)
+    :knocked-yellow-vxz-hi (meters 14)
+    :knocked-yellow-vy-lo (meters 20)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 14)
+    :knocked-red-vxz-hi (meters 14)
+    :knocked-red-vy-lo (meters 20)
+    :knocked-red-vy-hi (meters 20)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 10)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -228,6 +228,7 @@
 (set! (-> *ashelin-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (defmethod get-penetrated-by ((this ashelin))
+  "Figure out the penetrated-by mask for this process."
   (let* ((t9-0 (method-of-type bot get-penetrated-by))
          (v0-0 (t9-0 this))
          )
@@ -263,14 +264,15 @@
     )
   )
 
-(defmethod get-incoming-attack! ((this ashelin)
-                                (arg0 process-drawable)
-                                (arg1 event-message-block)
-                                (arg2 penetrate)
-                                (arg3 attack-info)
-                                (arg4 touching-shapes-entry)
-                                )
-  (let ((t9-0 (method-of-type bot get-incoming-attack!)))
+(defmethod handle-incoming-attack! ((this ashelin)
+                                   (arg0 process-drawable)
+                                   (arg1 event-message-block)
+                                   (arg2 penetrate)
+                                   (arg3 attack-info)
+                                   (arg4 touching-shapes-entry)
+                                   )
+  "Set up this enemy to handle an incoming attack event."
+  (let ((t9-0 (method-of-type bot handle-incoming-attack!)))
     (t9-0 this arg0 arg1 arg2 arg3 arg4)
     )
   (if (!= (-> this incoming knocked-type) (knocked-type blue-shot))
@@ -279,7 +281,8 @@
   (none)
   )
 
-(defmethod send-attack ((this ashelin) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+(defmethod send-attack-from-tshape ((this ashelin) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+  "Send an attack from this enemy to something else."
   (if (and (= (-> arg0 type) target)
            (-> this next-state)
            (let ((v1-4 (-> this next-state name)))
@@ -287,17 +290,13 @@
              )
            )
       #f
-      ((method-of-type bot send-attack) this arg0 arg1 arg2)
+      ((method-of-type bot send-attack-from-tshape) this arg0 arg1 arg2)
       )
   )
 
 (defmethod find-best-focus ((this ashelin))
-  (let* ((s5-0 (handle->process (-> this attacker-handle)))
-         (v1-3 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  "Search for the best thing to focus on."
+  (let ((v1-3 (as-type (handle->process (-> this attacker-handle)) process-focusable)))
     (when v1-3
       (cond
         ((= (-> v1-3 type) target)
@@ -307,13 +306,13 @@
            (if (logtest? (-> this bot-flags) (bot-flag attacked))
                (bot-method-199 this)
                )
-           (set! v1-3 (the-as process #f))
+           (set! v1-3 (the-as process-focusable #f))
            (set! (-> this attacker-handle) (the-as handle #f))
            )
          )
         (else
           (when (time-elapsed? (-> this attacker-time) (seconds 2.5))
-            (set! v1-3 (the-as process #f))
+            (set! v1-3 (the-as process-focusable #f))
             (set! (-> this attacker-handle) (the-as handle #f))
             )
           )
@@ -332,12 +331,7 @@
             (empty)
             )
            (else
-             (let ((s4-0 (handle->process (-> this poi-handle))))
-               (set! s5-1 (if (type? s4-0 process-focusable)
-                              s4-0
-                              )
-                     )
-               )
+             (set! s5-1 (as-type (handle->process (-> this poi-handle)) process-focusable))
              (if s5-1
                  (empty)
                  (set! s5-1 *target*)
@@ -351,12 +345,7 @@
              (set! s5-1 v1-3)
              )
            (else
-             (let ((s4-1 (handle->process (-> this poi-handle))))
-               (set! s5-1 (if (type? s4-1 process-focusable)
-                              s4-1
-                              )
-                     )
-               )
+             (set! s5-1 (as-type (handle->process (-> this poi-handle)) process-focusable))
              (cond
                (s5-1
                  (empty)
@@ -374,7 +363,7 @@
         )
       (cond
         (s5-1
-          (try-update-focus (-> this focus) (the-as process-focusable s5-1) this)
+          (focus-on! (-> this focus) (the-as process-focusable s5-1) this)
           (if (and (logtest? (-> this bot-flags) (bot-flag attacked)) (!= (-> s5-1 type) target))
               (logclear! (-> this bot-flags) (bot-flag attacked))
               )
@@ -403,6 +392,7 @@
   )
 
 (defmethod init-enemy-collision! ((this ashelin))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -457,6 +447,7 @@
   )
 
 (defmethod init-enemy! ((this ashelin))
+  "Typical place for shared init code. Runs from entity or process style init."
   (init-fields! this)
   (set! (-> this channel) (gui-channel ashelin))
   (set! (-> this travel-anim-interp) 0.0)
@@ -469,7 +460,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ashelin" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *ashelin-nav-enemy-info*)
+  (setup-enemy! this *ashelin-nav-enemy-info*)
   (let ((v1-12 (-> this neck)))
     (set! (-> v1-12 up) (the-as uint 1))
     (set! (-> v1-12 nose) (the-as uint 2))
@@ -677,7 +668,7 @@
                (a0-8 (new 'stack-no-clear 'vector))
                )
            (vector-float*! a2-0 (the-as vector (-> this frontline)) (- (-> this frontline w)))
-           (set! (-> a0-8 quad) (-> this root trans quad))
+           (vector-copy! a0-8 (-> this root trans))
            (set! (-> a0-8 y) 0.0)
            (>= (intersect-ray-plane a0-8 s5-0 a2-0 (-> this frontline)) 8192.0)
            )
@@ -712,10 +703,11 @@
   )
 
 (defmethod go-hostile ((this ashelin))
+  "Go to the hostile state, actively trying to attack the target."
   (bot-method-235 this #t)
   (cond
     ((not (bot-method-226 this))
-     (go-best-state this)
+     (go-state-for-focused this)
      )
     ((ashelin-method-250 this #t #f)
      (go (method-of-object this standing-idle))
@@ -729,7 +721,8 @@
     )
   )
 
-(defmethod go-best-state ((this ashelin))
+(defmethod go-state-for-focused ((this ashelin))
+  "Go to the appropriate state for the current awareness of the focused process."
   (if (bot-method-226 this)
       (go-hostile this)
       (go-idle this)
@@ -737,13 +730,15 @@
   )
 
 (defmethod go-idle ((this ashelin))
+  "Go to an idle state."
   (if (bot-method-226 this)
       (go (method-of-object this standing-idle))
       (go (method-of-object this waiting-idle))
       )
   )
 
-(defmethod go-idle2 ((this ashelin))
+(defmethod go-fallback-init ((this ashelin))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go (method-of-object this hidden))
   )
 
@@ -768,7 +763,7 @@
       )
     (set! (-> s4-0 timeout) (seconds 4))
     (vector<-cspace! (-> s4-0 pos) (-> this node-list data 22))
-    (set! (-> s4-0 vel quad) (-> arg0 quad))
+    (vector-copy! (-> s4-0 vel) arg0)
     (vector-! (-> s4-0 vel) (-> s4-0 vel) (-> s4-0 pos))
     (vector-normalize! (-> s4-0 vel) 307200.0)
     (spawn-projectile ashelin-shot s4-0 this *default-dead-pool*)
@@ -906,6 +901,7 @@
 
 ;; WARN: Return type mismatch float vs degrees.
 (defmethod get-knockback-angle ((this ashelin))
+  "Get the yaw angle for the current knock."
   (local-vars (v1-36 art-element))
   (let ((f28-0 (quaternion-y-angle (-> this root quat))))
     (case (-> this incoming knocked-type)
@@ -914,7 +910,7 @@
          (when a0-4
            (get-trans a0-4 0)
            (let ((s5-0 (new 'stack-no-clear 'vector)))
-             (set! (-> s5-0 quad) (-> this root transv quad))
+             (vector-copy! s5-0 (-> this root transv))
              (if (< (vector-dot (-> this root transv) (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
                     0.0
                     )
@@ -967,6 +963,7 @@
   )
 
 (defmethod knocked-anim ((this ashelin) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (local-vars (a2-0 int))
   (case (-> this incoming knocked-type)
     (((knocked-type blue-shot))
@@ -988,7 +985,7 @@
            )
          )
        )
-     (let* ((v1-9 (enemy-method-131 this 6 a2-0))
+     (let* ((v1-9 (rnd-int-excluding-masked this 6 a2-0))
             (s5-2 (-> this draw art-group data (-> *ashelin-global-info* blue-hit-anim v1-9 anim-index)))
             )
        (set! (-> *ashelin-global-info* prev-blue-hit) v1-9)
@@ -1034,6 +1031,7 @@
   )
 
 (defmethod knocked-land-anim ((this ashelin) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (let ((v1-0 (-> this incoming knocked-type)))
     (cond
       ((= v1-0 (knocked-type blue-shot))
@@ -1118,6 +1116,7 @@
   )
 
 (defmethod knocked-anim-handler ((this ashelin) (arg0 int) (arg1 enemy-knocked-info))
+  "start or play the approriate animation for an enemy being knocked."
   (cond
     ((= arg0 3)
      (let ((s5-0 (ja-done? 0)))
@@ -1231,59 +1230,45 @@
   )
 
 (defmethod ashelin-method-248 ((this ashelin) (arg0 vector) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
-  (local-vars (v1-23 float) (sv-272 vector))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
+  (local-vars (sv-272 vector))
+  (let* ((v1-0 (-> this nav))
+         (a0-3 (-> v1-0 state mesh sphere-hash sphere-array))
+         (a1-1 (-> v1-0 sphere-id-array))
+         (a2-2 (-> v1-0 state mesh bounds))
+         (a3-1 (-> v1-0 root-nav-sphere))
+         (t0-1 (-> v1-0 sphere-count))
          )
-    (init-vf0-vector)
-    (let* ((v1-0 (-> this nav))
-           (a0-3 (-> v1-0 state mesh sphere-hash sphere-array))
-           (a1-1 (-> v1-0 sphere-id-array))
-           (a2-2 (-> v1-0 state mesh bounds))
-           (a3-1 (-> v1-0 root-nav-sphere))
-           (t0-1 (-> v1-0 sphere-count))
-           )
-      (dotimes (t1-1 t0-1)
-        (let ((t3-0 (-> a0-3 (-> a1-1 t1-1)))
-              (t2-4 (-> v1-0 sphere-array t1-1))
-              )
-          (vector-! (the-as vector t2-4) (the-as vector t3-0) (the-as vector a2-2))
-          (set! (-> t2-4 r) (+ (-> t3-0 r) (-> a3-1 w)))
-          )
-        )
-      )
-    0
-    (let ((s0-0 (new 'stack-no-clear 'nav-avoid-spheres-params)))
-      (vector-! (-> s0-0 current-pos) (-> this root trans) (the-as vector (-> this nav state mesh bounds)))
-      (set! sv-272 (-> s0-0 travel))
-      (set! (-> sv-272 x) (sin arg1))
-      (set! (-> sv-272 y) 0.0)
-      (set! (-> sv-272 z) (cos arg1))
-      (set! (-> sv-272 w) 1.0)
-      (vector-float*! (-> s0-0 travel) (-> s0-0 travel) arg3)
-      (set! (-> s0-0 pref-dir quad) (-> s0-0 travel quad))
-      (avoid-spheres-1! (-> this nav) s0-0)
-      (set! (-> arg0 quad) (-> s0-0 out-travel 0 quad))
-      )
-    0
-    (when (>= arg2 (fabs (deg- arg1 (atan (-> arg0 x) (-> arg0 z)))))
-      (let ((t0-2 (new 'stack-no-clear 'clamp-travel-vector-to-mesh-return-info)))
-        (clamp-vector-to-mesh-no-gaps (-> this nav) (-> this root trans) (-> this nav state current-poly) arg0 t0-2)
-        )
-      (.lvf vf1 (&-> arg0 quad))
-      (.add.w.vf.x vf2 vf0 vf0)
-      (.mul.vf vf1 vf1 vf1)
-      (.mul.x.vf.x acc vf2 vf1)
-      (.add.mul.y.vf.x acc vf2 vf1 acc)
-      (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-      (.mov v1-23 vf1)
-      (let ((f0-11 v1-23)
-            (f1-1 arg4)
+    (dotimes (t1-1 t0-1)
+      (let ((t3-0 (-> a0-3 (-> a1-1 t1-1)))
+            (t2-4 (-> v1-0 sphere-array t1-1))
             )
-        (>= f0-11 (* f1-1 f1-1))
+        (vector-! (the-as vector t2-4) (the-as vector t3-0) (the-as vector a2-2))
+        (set! (-> t2-4 r) (+ (-> t3-0 r) (-> a3-1 w)))
         )
+      )
+    )
+  0
+  (let ((s0-0 (new 'stack-no-clear 'nav-avoid-spheres-params)))
+    (vector-! (-> s0-0 current-pos) (-> this root trans) (the-as vector (-> this nav state mesh bounds)))
+    (set! sv-272 (-> s0-0 travel))
+    (set! (-> sv-272 x) (sin arg1))
+    (set! (-> sv-272 y) 0.0)
+    (set! (-> sv-272 z) (cos arg1))
+    (set! (-> sv-272 w) 1.0)
+    (vector-float*! (-> s0-0 travel) (-> s0-0 travel) arg3)
+    (vector-copy! (-> s0-0 pref-dir) (-> s0-0 travel))
+    (avoid-spheres-1! (-> this nav) s0-0)
+    (vector-copy! arg0 (-> s0-0 out-travel 0))
+    )
+  0
+  (when (>= arg2 (fabs (deg- arg1 (atan (-> arg0 x) (-> arg0 z)))))
+    (let ((t0-2 (new 'stack-no-clear 'clamp-travel-vector-to-mesh-return-info)))
+      (clamp-vector-to-mesh-no-gaps (-> this nav) (-> this root trans) (-> this nav state current-poly) arg0 t0-2)
+      )
+    (let ((f0-11 (vector-length-squared arg0))
+          (f1-1 arg4)
+          )
+      (>= f0-11 (* f1-1 f1-1))
       )
     )
   )
@@ -1360,7 +1345,7 @@
             )
           )
       (when (>= s5-0 0)
-        (set! (-> this victory-speech-time) (+ (set-reaction-time! this (seconds 4) (seconds 7)) (current-time)))
+        (set! (-> this victory-speech-time) (+ (rnd-time-frame this (seconds 4) (seconds 7)) (current-time)))
         (play-speech-by-id this s5-0)
         )
       )
@@ -1369,7 +1354,8 @@
   )
 
 ;; WARN: Return type mismatch enemy-flag vs none.
-(defmethod check-victory ((this ashelin))
+(defmethod clear-stale-victory ((this ashelin))
+  "Remove victory flag if needed."
   (if (time-elapsed? (-> this hit-focus-time) (seconds 2))
       (logclear! (-> this enemy-flags) (enemy-flag victory))
       )
@@ -1394,9 +1380,9 @@
     (the int (+ 30.0 (* -100.0 (-> this offset))))
     )
   (set! (-> this sprites 0 angle) (* 182.04445 (the float (- 270 (/ (* 90 (-> this values 0 current)) 100)))))
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 2)) 40 16)
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites 2)) 1 16)
-  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 2)) 8 2)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 2 pos) 40 16)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 2 pos) 1 16)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 2 pos) 8 2)
   ((method-of-type hud draw) this)
   0
   (none)

@@ -60,6 +60,8 @@
 ;; DECOMP BEGINS
 
 (deftype joint-mod (basic)
+  "Utility to modify a joint transform from code, rather than just getting it from animation.
+This is used to make jak look toward an enemy, for example."
   ((mode                     joint-mod-mode)
    (process                  process-drawable)
    (joint                    cspace)
@@ -119,13 +121,15 @@
   )
 
 
-(defun-debug joint-mod-debug-draw ((arg0 joint-mod))
-  (add-debug-matrix #t (bucket-id debug-no-zbuf1) (-> arg0 joint bone transform) (meters 2))
+(defun-debug joint-mod-debug-draw ((jmod joint-mod))
+  "Debug draw the bone transform for the associated bone of a joint-mod"
+  (add-debug-matrix #t (bucket-id debug-no-zbuf1) (-> jmod joint bone transform) (meters 2))
   0
   (none)
   )
 
 (defmethod reset-blend! ((this joint-mod))
+  "Set the blend to 0."
   (set! (-> this blend) 0.0)
   this
   )
@@ -196,6 +200,7 @@
   )
 
 (deftype joint-mod-set-local (basic)
+  "Override the trans, quat, and scale of the joint transform. The component to override is selected by the flag."
   ((transform        transformq  :inline)
    (set-rotation     symbol)
    (set-scale        symbol)
@@ -209,6 +214,7 @@
 
 
 (defun joint-mod-set-local-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-rotate-local. See comment on that type."
   (let ((v1-0 (the-as joint-mod-set-local (-> arg0 param1))))
     (cond
       ((-> v1-0 enable)
@@ -256,6 +262,8 @@
   )
 
 (deftype joint-mod-add-local (basic)
+  "Add to the trans, rotate the quat, and multiply the scale of the joint transform. The components can be selected by the flag.
+Unlike jak 2, this actually multiplies the scale, instead of adding."
   ((transform        transformq  :inline)
    (add-rotation     symbol)
    (add-scale        symbol)
@@ -269,6 +277,7 @@
 
 
 (defun joint-mod-add-local-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-add-local. See comment on that type."
   (let ((s4-0 (the-as joint-mod-add-local (-> arg0 param1))))
     (when (-> s4-0 enable)
       (if (-> s4-0 add-translation)
@@ -311,6 +320,8 @@
   )
 
 (deftype joint-mod-set-world (basic)
+  "Directly overwrite the _bone_ transform (ignoring the parent entirely).
+This does not pay attention to the flags."
   ((transform   transformq  :inline)
    (node-index  int32)
    (enable      symbol)
@@ -323,6 +334,7 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defun joint-mod-set-world-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-set-world. See comment on that type."
   (let ((v1-0 (the-as joint-mod-set-world (-> arg0 param1))))
     (if (-> v1-0 enable)
         (cspace<-transformq! arg0 (-> v1-0 transform))
@@ -348,6 +360,8 @@
   )
 
 (deftype joint-mod-blend-local (basic)
+  "Blend the _joint_ transform between this transform and the animated one.
+Then, apply the normal parented transform."
   ((transform        transformq  :inline)
    (blend-transform  transformq  :inline)
    (node-index       int32)
@@ -361,6 +375,7 @@
 
 
 (defun joint-mod-blend-local-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-blend-local. See comment on that type."
   (let ((gp-0 (the-as joint-mod-blend-local (-> arg0 param1))))
     (cond
       ((-> gp-0 enable)
@@ -399,6 +414,7 @@
   )
 
 (deftype joint-mod-spinner (basic)
+  "Control a joint by just spinning it around an axis."
   ((spin-axis  vector  :inline)
    (angle      float)
    (spin-rate  float)
@@ -410,29 +426,30 @@
   )
 
 
-(defun joint-mod-spinner-callback ((arg0 cspace) (arg1 transformq))
-  (let ((gp-0 (the-as joint-mod-spinner (-> arg0 param1))))
+(defun joint-mod-spinner-callback ((bone-cspace cspace) (joint-transform transformq))
+  "cspace callback for joint-mod-spinner. Update the cspace's bone from the parent transformq, plus the rotation from this spinner."
+  (let ((gp-0 (the-as joint-mod-spinner (-> bone-cspace param1))))
     (when (-> gp-0 enable)
       (let ((f30-0
               (the float (sar (shl (the int (+ (-> gp-0 angle) (* (-> gp-0 spin-rate) (seconds-per-frame)))) 48) 48))
               )
             )
-        (quaternion-vector-angle! (-> arg1 quat) (-> gp-0 spin-axis) f30-0)
+        (quaternion-vector-angle! (-> joint-transform quat) (-> gp-0 spin-axis) f30-0)
         (set! (-> gp-0 angle) f30-0)
         )
       )
     )
-  (cspace<-parented-transformq-joint! arg0 arg1)
+  (cspace<-parented-transformq-joint! bone-cspace joint-transform)
   (none)
   )
 
-(defmethod new joint-mod-spinner ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 vector) (arg3 float))
+(defmethod new joint-mod-spinner ((allocation symbol) (type-to-make type) (proc process-drawable) (bone-idx int) (axis vector) (rate float))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 spin-axis quad) (-> arg2 quad))
-    (set! (-> v0-0 spin-rate) arg3)
+    (set! (-> v0-0 spin-axis quad) (-> axis quad))
+    (set! (-> v0-0 spin-rate) rate)
     (set! (-> v0-0 enable) #t)
     (set! (-> v0-0 angle) 0.0)
-    (let ((a0-3 (-> arg0 node-list data arg1)))
+    (let ((a0-3 (-> proc node-list data bone-idx)))
       (set! (-> a0-3 param0) joint-mod-spinner-callback)
       (set! (-> a0-3 param1) v0-0)
       )
@@ -441,6 +458,7 @@
   )
 
 (deftype joint-mod-blend-world (basic)
+  "Blend the _bone_ transform between this one and the animated one."
   ((transform        transformq  :inline)
    (blend-transform  transformq  :inline)
    (blend-flags      joint-mod-blend-flags)
@@ -456,80 +474,66 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defun joint-mod-blend-world-callback ((arg0 cspace) (arg1 transformq))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((gp-0 (the-as joint-mod-blend-world (-> arg0 param1))))
-      (cond
-        ((-> gp-0 enable)
-         (let ((f30-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags trans))
-                          (-> gp-0 blend)
-                          0.0
-                          )
-                      )
-               (f28-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags scale))
-                          (-> gp-0 blend)
-                          0.0
-                          )
-                      )
-               (f26-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags rotation))
-                          (-> gp-0 blend)
-                          0.0
-                          )
-                      )
-               (s0-0 (new 'stack-no-clear 'matrix))
-               (s2-0 (new 'stack-no-clear 'matrix))
-               (s3-0 (new 'stack-no-clear 'quaternion))
-               )
-           (let ((s1-0 (new 'stack-no-clear 'vector)))
-             (if (= (-> arg0 parent bone scale w) 0.0)
-                 (matrix<-transformq! s0-0 arg1)
-                 (matrix<-parented-transformq! s0-0 arg1 (-> arg0 parent bone scale))
-                 )
-             (matrix*! s2-0 s0-0 (-> arg0 parent bone transform))
-             (set-vector!
-               s1-0
-               (vector-length (the-as vector (-> s2-0 vector)))
-               (vector-length (-> s2-0 vector 1))
-               (vector-length (-> s2-0 vector 2))
-               1.0
-               )
-             (let ((v1-19 (-> gp-0 blend-transform scale)))
-               (let ((a0-11 (-> arg1 scale)))
-                 (.lvf vf4 (&-> s1-0 quad))
-                 (.lvf vf5 (&-> a0-11 quad))
-                 )
-               (.add.x.vf.w vf6 vf0 vf0)
-               (.mul.vf.xyz vf6 vf4 vf5)
-               (.svf (&-> v1-19 quad) vf6)
-               )
+  "Callback for joint-mod-blend-local. See comment on that type."
+  (let ((gp-0 (the-as joint-mod-blend-world (-> arg0 param1))))
+    (cond
+      ((-> gp-0 enable)
+       (let ((f30-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags trans))
+                        (-> gp-0 blend)
+                        0.0
+                        )
+                    )
+             (f28-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags scale))
+                        (-> gp-0 blend)
+                        0.0
+                        )
+                    )
+             (f26-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags rotation))
+                        (-> gp-0 blend)
+                        0.0
+                        )
+                    )
+             (s0-0 (new 'stack-no-clear 'matrix))
+             (s2-0 (new 'stack-no-clear 'matrix))
+             (s3-0 (new 'stack-no-clear 'quaternion))
              )
-           (vector-lerp!
-             (the-as vector (-> gp-0 blend-transform))
-             (-> s2-0 trans)
-             (the-as vector (-> gp-0 transform))
-             f30-0
+         (let ((s1-0 (new 'stack-no-clear 'vector)))
+           (if (= (-> arg0 parent bone scale w) 0.0)
+               (matrix<-transformq! s0-0 arg1)
+               (matrix<-parented-transformq! s0-0 arg1 (-> arg0 parent bone scale))
+               )
+           (matrix*! s2-0 s0-0 (-> arg0 parent bone transform))
+           (set-vector!
+             s1-0
+             (vector-length (the-as vector (-> s2-0 vector)))
+             (vector-length (-> s2-0 vector 1))
+             (vector-length (-> s2-0 vector 2))
+             1.0
              )
-           (vector-lerp! (-> gp-0 blend-transform scale) (-> gp-0 blend-transform scale) (-> gp-0 transform scale) f28-0)
-           (quaternion-slerp!
-             (-> gp-0 blend-transform quat)
-             (matrix->quaternion s3-0 s2-0)
-             (-> gp-0 transform quat)
-             f26-0
-             )
+           (vector*! (-> gp-0 blend-transform scale) s1-0 (-> arg1 scale))
            )
-         (cspace<-transformq! arg0 (-> gp-0 blend-transform))
+         (vector-lerp!
+           (the-as vector (-> gp-0 blend-transform))
+           (-> s2-0 trans)
+           (the-as vector (-> gp-0 transform))
+           f30-0
+           )
+         (vector-lerp! (-> gp-0 blend-transform scale) (-> gp-0 blend-transform scale) (-> gp-0 transform scale) f28-0)
+         (quaternion-slerp!
+           (-> gp-0 blend-transform quat)
+           (matrix->quaternion s3-0 s2-0)
+           (-> gp-0 transform quat)
+           f26-0
+           )
          )
-        (else
-          (cspace<-parented-transformq-joint! arg0 arg1)
-          )
+       (cspace<-transformq! arg0 (-> gp-0 blend-transform))
+       )
+      (else
+        (cspace<-parented-transformq-joint! arg0 arg1)
         )
       )
-    (none)
     )
+  (none)
   )
 
 (defmethod new joint-mod-blend-world ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 symbol) (arg3 float))
@@ -559,6 +563,7 @@
 
 
 (defun joint-mod-rotate-local-callback ((arg0 cspace) (arg1 transformq))
+  "Apply an additional rotation to the transform (left side quaternion multiplication"
   (let ((v1-0 (the-as joint-mod-rotate-local (-> arg0 param1))))
     (new 'stack-no-clear 'vector)
     (if (-> v1-0 enable)

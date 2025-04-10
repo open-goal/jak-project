@@ -366,9 +366,11 @@ DrawMode make_default_draw_mode() {
 
 int texture_pool_debug_checker(TexturePool* pool) {
   const auto& existing = pool->textures_by_name.find("DEBUG_CHECKERBOARD");
-  if (existing == pool->textures_by_name.end()) {
+  if (existing == pool->textures_by_name.end() || existing->second.size() == 0) {
     size_t idx = pool->textures_by_idx.size();
-    pool->textures_by_name["DEBUG_CHECKERBOARD"] = idx;
+    std::vector<int> v;
+    v.push_back(idx);
+    pool->textures_by_name["DEBUG_CHECKERBOARD"] = v;
     auto& tex = pool->textures_by_idx.emplace_back();
     tex.w = 16;
     tex.h = 16;
@@ -386,25 +388,36 @@ int texture_pool_debug_checker(TexturePool* pool) {
     }
     return idx;
   } else {
-    return existing->second;
+    return existing->second[0];
   }
 }
 
 int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int alpha_shift) {
   const auto& existing = pool->textures_by_name.find(tex.name);
-  if (existing != pool->textures_by_name.end()) {
-    lg::info("Reusing image: {}", tex.name);
-    return existing->second;
+  if (existing != pool->textures_by_name.end() && existing->second.size() > 0) {
+    // name was found, see if we have a match on height+width+data
+    for (int ti : existing->second) {
+      auto& t = pool->textures_by_idx[ti];
+      if (t.w == tex.width && t.h == tex.height &&
+          memcmp(t.data.data(), tex.image.data(), t.data.size() * 4) == 0) {
+        lg::info("Reusing image: {} at idx {}", tex.name, ti);
+        return ti;
+      }
+    }
   } else {
-    lg::info("adding new texture: {}, size {} kB", tex.name, tex.width * tex.height * 4 / 1024);
+    // new name, insert empty vector
+    std::vector<int> v;
+    pool->textures_by_name[tex.name] = v;
   }
+
+  lg::info("adding new texture: {}, size {} kB", tex.name, tex.width * tex.height * 4 / 1024);
 
   ASSERT(tex.bits == 8);
   ASSERT(tex.component == 4);
   ASSERT(tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
 
   size_t idx = pool->textures_by_idx.size();
-  pool->textures_by_name[tex.name] = idx;
+  pool->textures_by_name[tex.name].push_back(idx);
   auto& tt = pool->textures_by_idx.emplace_back();
   tt.w = tex.width;
   tt.h = tex.height;
@@ -685,14 +698,15 @@ bool material_has_envmap(const tinygltf::Material& mat) {
 }
 
 bool envmap_is_valid(const tinygltf::Material& mat) {
-  if (material_has_envmap(mat) && mat.pbrMetallicRoughness.metallicRoughnessTexture.index < 0) {
+  auto envmap = material_has_envmap(mat);
+  if (envmap && mat.pbrMetallicRoughness.metallicRoughnessTexture.index < 0) {
     lg::warn(fmt::format(
         "Material \"{}\" has specular property set, but is missing a metallic roughness texture, "
         "ignoring envmap!",
         mat.name));
     return false;
   }
-  return true;
+  return envmap;
 }
 
 std::optional<int> find_single_skin(const tinygltf::Model& model,

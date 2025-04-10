@@ -1858,6 +1858,8 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "vector-!";
     case FixedOperatorKind::VECTOR_PLUS:
       return "vector+!";
+    case FixedOperatorKind::VECTOR_XYZ_PRODUCT:
+      return "vector*!";
     case FixedOperatorKind::VECTOR_CROSS:
       return "vector-cross!";
     case FixedOperatorKind::VECTOR_FLOAT_PRODUCT:
@@ -1888,8 +1890,12 @@ std::string fixed_operator_to_string(FixedOperatorKind kind) {
       return "mouse-hold?";
     case FixedOperatorKind::VECTOR_LENGTH:
       return "vector-length";
+    case FixedOperatorKind::VECTOR_LENGTH_SQUARED:
+      return "vector-length-squared";
     case FixedOperatorKind::VECTOR_PLUS_FLOAT_TIMES:
       return "vector+float*!";
+    case FixedOperatorKind::VECTOR_PLUS_TIMES:
+      return "vector+*!";
     case FixedOperatorKind::FOCUS_TEST:
       return "focus-test?";
     default:
@@ -2144,6 +2150,15 @@ DerefToken to_token(const FieldReverseLookupOutput::Token& in) {
       // temp
       throw std::runtime_error("Cannot convert rd lookup token to deref token");
   }
+}
+
+std::vector<DerefToken> to_tokens(const std::vector<FieldReverseLookupOutput::Token>& in) {
+  std::vector<DerefToken> ret;
+  ret.reserve(in.size());
+  for (auto& x : in) {
+    ret.push_back(to_token(x));
+  }
+  return ret;
 }
 
 DerefElement::DerefElement(Form* base, bool is_addr_of, DerefToken token)

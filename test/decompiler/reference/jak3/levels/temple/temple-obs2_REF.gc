@@ -219,6 +219,7 @@
 
 ;; definition for method 11 of type tpl-gate
 (defmethod init-from-entity! ((this tpl-gate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
@@ -524,15 +525,9 @@
                 (new 'stack 'font-context *font-default-matrix* 90 300 0.0 (font-color default) (font-flags shadow kerning))
                 )
               )
-          (let ((v1-5 gp-0))
-            (set! (-> v1-5 width) (the float 340))
-            )
-          (let ((v1-6 gp-0))
-            (set! (-> v1-6 height) (the float 60))
-            )
-          (let ((v1-7 gp-0))
-            (set! (-> v1-7 scale) 0.6)
-            )
+          (set-width! gp-0 340)
+          (set-height! gp-0 60)
+          (set-scale! gp-0 0.6)
           (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
           (print-game-text
             (lookup-text!
@@ -564,11 +559,12 @@
 ;; definition for method 11 of type tpl-watcher-manager
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-watcher-manager) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set! (-> this within-outer-ring) #f)
   (set! (-> this within-inner-ring) #f)
   (set! (-> this ouched) #f)
-  (set! (-> this trans quad) (-> arg0 trans quad))
+  (vector-copy! (-> this trans) (-> arg0 trans))
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-4 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
@@ -698,7 +694,8 @@
 
 ;; definition for method 20 of type tpl-watcher
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this tpl-watcher))
+(defmethod get-search-info-flag ((this tpl-watcher))
+  "Get search-info-flag for this process."
   (with-pp
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer pp))
@@ -770,12 +767,7 @@
   :trans watcher-bob-trans
   :code sleep-code
   :post (behavior ()
-    (let* ((gp-0 *target*)
-           (a1-1 (if (type? gp-0 process-focusable)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((a1-1 (the-as target (as-type *target* process-focusable))))
       (if a1-1
           (los-control-method-9 (-> self los) a1-1 (the-as vector #f) 819.2 4096.0)
           )
@@ -869,24 +861,24 @@
                    (s2-0 vector-xz-normalize!)
                    (a0-7 v1-10)
                    )
-              (set! (-> a0-7 quad) (-> v1-10 quad))
+              (vector-copy! a0-7 v1-10)
               (set! (-> a0-7 y) 0.0)
               (let* ((a1-7 (s2-0 (vector-normalize! a0-7 1.0) 1.0))
                      (a2-2 (vector-lerp-clamp! (new 'stack-no-clear 'vector) a1-7 *up-vector* f30-0))
                      )
                 (let ((f0-2 1.0))
                   (.lvf vf1 (&-> a2-2 quad))
-                  (.mul.vf vf2 vf1 vf1 :mask #b111)
+                  (.mul.vf.xyz vf2 vf1 vf1)
                   (let ((v1-13 f0-2))
                     (.mov vf3 v1-13)
                     )
                   )
-                (.mul.x.vf acc vf0 vf2 :mask #b1000)
-                (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-                (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+                (.mul.x.vf.w acc vf0 vf2)
+                (.add.mul.y.vf.w acc vf0 vf2 acc)
+                (.add.mul.z.vf.w vf2 vf0 vf2 acc)
                 (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
                 (.wait.vf)
-                (.mul.vf vf1 vf1 Q :mask #b111)
+                (.mul.vf.xyz vf1 vf1 Q)
                 (.nop.vf)
                 (.nop.vf)
                 (.nop.vf)
@@ -897,17 +889,17 @@
                       )
                   (let ((f0-3 1.0))
                     (.lvf vf1 (&-> a1-9 quad))
-                    (.mul.vf vf2 vf1 vf1 :mask #b111)
+                    (.mul.vf.xyz vf2 vf1 vf1)
                     (let ((v1-18 f0-3))
                       (.mov vf3 v1-18)
                       )
                     )
-                  (.mul.x.vf acc vf0 vf2 :mask #b1000)
-                  (.add.mul.y.vf acc vf0 vf2 acc :mask #b1000)
-                  (.add.mul.z.vf vf2 vf0 vf2 acc :mask #b1000)
+                  (.mul.x.vf.w acc vf0 vf2)
+                  (.add.mul.y.vf.w acc vf0 vf2 acc)
+                  (.add.mul.z.vf.w vf2 vf0 vf2 acc)
                   (.isqrt.vf Q vf3 vf2 :fsf #b0 :ftf #b11)
                   (.wait.vf)
-                  (.mul.vf vf1 vf1 Q :mask #b111)
+                  (.mul.vf.xyz vf1 vf1 Q)
                   (.nop.vf)
                   (.nop.vf)
                   (.nop.vf)
@@ -1017,11 +1009,11 @@
   :code (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 672 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 672))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 672))
         )
       )
@@ -1177,6 +1169,7 @@
 ;; definition for method 11 of type tpl-watcher
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-watcher) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 384)
   (init-collision! this)
@@ -1365,6 +1358,7 @@
 
 ;; definition for method 11 of type tpl-door-switch
 (defmethod init-from-entity! ((this tpl-door-switch) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -1447,6 +1441,7 @@
 
 ;; definition for method 11 of type tpl-door-a
 (defmethod init-from-entity! ((this tpl-door-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((a0-2 (res-lump-struct arg0 'task-name structure)))
     (when (and a0-2 (task-closed? (the-as string a0-2)))
       (cleanup-for-death this)
@@ -1532,6 +1527,7 @@
 
 ;; definition for method 11 of type tpl-door-b
 (defmethod init-from-entity! ((this tpl-door-b) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1666,12 +1662,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (as-type proc process-focusable)))
          (when (and gp-0 ((method-of-type touching-shapes-entry prims-touching?)
                           (the-as touching-shapes-entry (-> block param 0))
                           (-> self root)
@@ -1894,6 +1885,7 @@
 ;; definition for method 11 of type tpl-spinning-plat
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-spinning-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (tpl-spinning-plat-method-24 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1902,7 +1894,7 @@
     (the-as pair 0)
     )
   (logclear! (-> this mask) (process-mask actor-pause))
-  (set! (-> this basal-trans quad) (-> this root trans quad))
+  (vector-copy! (-> this basal-trans) (-> this root trans))
   (let* ((v1-8 *game-info*)
          (a0-10 (+ (-> v1-8 attack-id) 1))
          )
@@ -1970,6 +1962,7 @@
 
 ;; definition for method 11 of type tpl-oracle-eye
 (defmethod init-from-entity! ((this tpl-oracle-eye) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2056,6 +2049,7 @@
 
 ;; definition for method 11 of type tpl-banner-b
 (defmethod init-from-entity! ((this tpl-banner-b) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2214,6 +2208,7 @@
 
 ;; definition for method 11 of type tpl-banner
 (defmethod init-from-entity! ((this tpl-banner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

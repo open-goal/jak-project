@@ -138,27 +138,6 @@ ArtJointAnim::ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<J
   }
 }
 
-std::map<int, size_t> g_joint_map;
-
-size_t Joint::generate(DataObjectGenerator& gen) const {
-  gen.align_to_basic();
-  gen.add_type_tag("joint");
-  size_t result = gen.current_offset_bytes();
-  gen.add_ref_to_string_in_pool(name);
-  gen.add_word(number);
-  if (parent == -1) {
-    gen.add_symbol_link("#f");
-  } else {
-    gen.link_word_to_byte(gen.add_word(0), g_joint_map[parent]);
-  }
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      gen.add_word_float(bind_pose(i, j));
-    }
-  }
-  return result;
-}
-
 size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
   gen.align_to_basic();
   gen.add_type_tag("joint-anim-compressed");
@@ -281,16 +260,25 @@ void ArtJointGeo::add_res() {
     lump.add_res(
         std::make_unique<ResRef>("collide-mesh-group", "array", mesh_slot, DEFAULT_RES_TIME));
   }
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResVector>(
-  //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
-  //     DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResFloat>(
-  //     "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
-  //     DEFAULT_RES_TIME));
+  if (texture_bucket != -1) {
+    lump.add_res(std::make_unique<ResUint8>(
+        "texture-bucket", std::vector<u8>{static_cast<u8>(texture_bucket)}, DEFAULT_RES_TIME));
+  }
+  if (texture_level != -1) {
+    lump.add_res(std::make_unique<ResInt32>("texture-level", std::vector<s32>{texture_level},
+                                            DEFAULT_RES_TIME));
+  }
+  if (trans_offset != math::Vector4f{0.f, 0.f, 0.f, 1.f}) {
+    lump.add_res(std::make_unique<ResVector>(
+        "trans-offset", std::vector<math::Vector4f>{trans_offset}, DEFAULT_RES_TIME));
+  }
+  if (joint_channel != -1) {
+    lump.add_res(std::make_unique<ResInt32>("joint-channel", std::vector<s32>{joint_channel},
+                                            DEFAULT_RES_TIME));
+  }
+  if (!lod_dist.empty()) {
+    lump.add_res(std::make_unique<ResFloat>("lod-dist", lod_dist, DEFAULT_RES_TIME));
+  }
   lump.sort_res();
 }
 
@@ -458,23 +446,24 @@ size_t gen_dummy_extra_info(DataObjectGenerator& gen) {
   return result;
 }
 
-void generate_merc_effects(DataObjectGenerator& gen, int effect_count, int joints) {
+void generate_merc_effects(DataObjectGenerator& gen, tfrag3::MercModel* mdl, int joints) {
   struct EffectLocs {
     size_t frag_geo;
     size_t frag_ctrl;
     size_t extra_info;
   };
   std::vector<EffectLocs> locs;
-  for (int i = 0; i < effect_count; i++) {
+  for (auto& e : mdl->effects) {
     EffectLocs loc{};
-    loc.frag_geo = gen.add_word(0);    // 112-140 (effect)
-    loc.frag_ctrl = gen.add_word(0);   // 116 (frag-ctrl)
-    gen.add_word(0x0);                 // 120 (blend-data)
-    gen.add_word(0x0);                 // 124 (blend-ctrl)
-    gen.add_word(0x10000);             // 128
-    gen.add_word(0x140000);            // 132
-    gen.add_word(0x100001d);           // 136
-    loc.extra_info = gen.add_word(0);  // 140 (extra-info)
+    auto envmap = (int)e.has_envmap;
+    loc.frag_geo = gen.add_word(0);       // 112-140 (effect)
+    loc.frag_ctrl = gen.add_word(0);      // 116 (frag-ctrl)
+    gen.add_word(0x0);                    // 120 (blend-data)
+    gen.add_word(0x0);                    // 124 (blend-ctrl)
+    gen.add_word(0x10000);                // 128
+    gen.add_word(0x140000);               // 132
+    gen.add_word((envmap << 24) + 0x1d);  // 136
+    loc.extra_info = gen.add_word(0);     // 140 (extra-info)
     locs.push_back(loc);
   }
   for (auto& loc : locs) {
@@ -490,6 +479,7 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   size_t result = gen.current_offset_bytes();
   // excluding align and prejoint
   auto joints = ((ArtJointGeo*)ag.elts.at(0).get())->length - 2;
+  auto effect_count = ag.mdl->effects.size();
   gen.add_word(0);                                   // 4
   gen.add_ref_to_string_in_pool(ag.name + "-lod0");  // 8
   gen.add_word(0);                                   // 12
@@ -503,22 +493,22 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.add_word(0x40eb4000);                          // 44 (st-out-b)
   gen.add_word(0x4780ff80);                          // 48 (st-vif-add)
   gen.add_word(0x50000);                             // 52 ((st-int-off << 16) + st-int-scale)
-  gen.add_word(ag.merc_effect_count);                // 56 (effect-count)
+  gen.add_word(effect_count);                        // 56 (effect-count)
   gen.add_word(0x0);                                 // 60 (blend-target-count)
-  gen.add_word((0x14 * ag.merc_effect_count << 16) +
-               ag.merc_effect_count);  // 64 ((fragment-count << 16) + tri-count)
-  gen.add_word(0x130101);              // 68
-  gen.add_word(0x13001d);              // 72
-  gen.add_word(0x0);                   // 76
-  gen.add_word(0x0);                   // 80
-  gen.add_word(0x10101);               // 84
-  gen.add_word(0x130000);              // 88
-  gen.add_word(0x3f319ca9);            // 92
-  gen.add_word(0x0);                   // 96
-  gen.add_word(0x0);                   // 100
-  gen.add_word(0x0);                   // 104
-  gen.add_word(0x0);                   // 108
-  generate_merc_effects(gen, ag.merc_effect_count, joints);
+  gen.add_word((0x14 * effect_count << 16) +
+               effect_count);  // 64 ((fragment-count << 16) + tri-count)
+  gen.add_word(0x130101);      // 68
+  gen.add_word(0x13001d);      // 72
+  gen.add_word(0x0);           // 76
+  gen.add_word(0x0);           // 80
+  gen.add_word(0x10101);       // 84
+  gen.add_word(0x130000);      // 88
+  gen.add_word(0x3f319ca9);    // 92
+  gen.add_word(0x0);           // 96
+  gen.add_word(0x0);           // 100
+  gen.add_word(0x0);           // 104
+  gen.add_word(0x0);           // 108
+  generate_merc_effects(gen, ag.mdl, joints);
   return result;
 }
 
@@ -570,158 +560,11 @@ int ArtGroup::get_joint_idx(const std::string& name) {
 }
 
 /*!
- * Load tinygltf::Model from a .glb file (binary format), fatal error if it fails.
- */
-tinygltf::Model load_gltf_model(const fs::path& path) {
-  tinygltf::TinyGLTF loader;
-  tinygltf::Model model;
-  std::string err, warn;
-  bool res = loader.LoadBinaryFromFile(&model, &err, &warn, path.string());
-  ASSERT_MSG(warn.empty(), warn.c_str());
-  ASSERT_MSG(err.empty(), err.c_str());
-  ASSERT_MSG(res, "Failed to load GLTF file!");
-  return model;
-}
-
-struct GltfJoint {
-  math::Matrix4f bind_pose_T_w;  // inverse bind pose
-  std::string name;
-  int gltf_node_index = 0;
-  int parent = -1;
-  std::vector<int> children;
-};
-
-/*!
- * Extract the "skeleton" structure from a GLTF model's skin. This requires that the skin's joints
- * are topologically sorted (parents always have lower index than children).
- */
-std::vector<GltfJoint> extract_skeleton(const tinygltf::Model& model, int skin_idx) {
-  const auto& skin = model.skins.at(skin_idx);
-  lg::info("skin name is {}", skin.name);
-  lg::info("skeleton root is {}", skin.skeleton);
-  auto inverse_bind_matrices = extract_mat4(model, skin.inverseBindMatrices);
-  ASSERT(inverse_bind_matrices.size() == skin.joints.size());
-
-  std::map<int, int> node_to_joint;
-  std::map<int, int> joint_to_node;
-  std::vector<GltfJoint> joints;
-
-  for (size_t i = 0; i < skin.joints.size(); i++) {
-    auto joint_node_idx = skin.joints[i];
-    const auto& joint_node = model.nodes.at(joint_node_idx);
-    // auto ibm = inverse_bind_matrices[i];
-    // lg::info(" joint {}", joint_node_idx);
-    // lg::info("  {}", joint_node.name);
-    // lg::info("\n{}", ibm.to_string_aligned());
-    node_to_joint[joint_node_idx] = i;
-    joint_to_node[i] = joint_node_idx;
-
-    auto& gjoint = joints.emplace_back();
-    gjoint.bind_pose_T_w = inverse_bind_matrices[i];
-    gjoint.name = joint_node.name;
-    gjoint.gltf_node_index = joint_node_idx;
-  }
-
-  for (size_t i = 0; i < skin.joints.size(); i++) {
-    auto joint_node_idx = skin.joints[i];
-    const auto& joint_node = model.nodes.at(joint_node_idx);
-
-    // set up children
-    for (int child_node_idx : joint_node.children) {
-      int child_joint_idx = node_to_joint.at(child_node_idx);
-      joints.at(i).children.push_back(child_joint_idx);
-      auto& child = joints.at(child_joint_idx);
-      ASSERT(child.parent == -1);
-      child.parent = i;
-      ASSERT(child_joint_idx > (int)i);
-    }
-  }
-  ASSERT(joints.at(0).parent == -1);
-
-  // for (auto& joint : joints) {
-  //   if (joint.parent == -1) {
-  //     lg::warn("parentless {}", joint.name);
-  //   } else {
-  //     lg::info("joint {}, child of {}", joint.name, joints.at(joint.parent).name);
-  //   }
-  // }
-  lg::info("total of {} joints", joints.size());
-  return joints;
-}
-
-/*!
- * Convert from GLTF joint format to game joint format.
- * @param joint_index the index of the joint, in the GLTF file.
- * @param prefix_joint_count number of joints to be inserted before GLTF joints in the game
- * @param parent_of_gltf the parent game joint of all GLTF joints.
- */
-Joint convert_joint(const GltfJoint& joint,
-                    int joint_index,
-                    int prefix_joint_count,
-                    int parent_of_gltf) {
-  // node matrix is p_T_myself
-  // p_T_myself = parent_bind_pose_T_w * w_T_bind_pose
-  int parent;
-  if (joint.parent == -1) {
-    parent = parent_of_gltf;
-  } else {
-    parent = joint.parent + prefix_joint_count;
-  }
-  math::Matrix4f fixed_matrix = joint.bind_pose_T_w;
-
-  for (int i = 0; i < 3; i++) {
-    fixed_matrix(i, 3) *= 4096;
-  }
-
-  return Joint(joint.name, joint_index + prefix_joint_count, parent, fixed_matrix.transposed());
-}
-
-constexpr int kGltfToGameJointOffset = 1;
-/*!
- * Convert GTLF joint list to game joint list.
- * Currently, this inserts a single "align" joint and places the root joint of the GLTF as the
- * prejoint. However, we might want to change this, to allow GLTF files to specify "align" at some
- * point.
- */
-std::vector<Joint> convert_joints(const std::vector<GltfJoint>& gjoints) {
-  std::vector<Joint> joints;
-  joints.emplace_back("align", 0, -1, math::Matrix4f::identity());
-  ASSERT(kGltfToGameJointOffset == joints.size());
-  for (int gjoint_idx = 0; gjoint_idx < int(gjoints.size()); gjoint_idx++) {
-    // using -1 as the parent index since gltf's shouldn't be child of align.
-    joints.push_back(convert_joint(gjoints[gjoint_idx], gjoint_idx, kGltfToGameJointOffset, -1));
-  }
-
-  return joints;
-}
-
-std::vector<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
-                                               const std::vector<GltfJoint>& gjoints) {
-  if (model.animations.empty()) {
-    lg::warn("no animations detected!");  // TODO: make up a dummy one
-    return {};
-  }
-
-  std::map<int, int> node_to_joint;
-  for (size_t i = 0; i < gjoints.size(); i++) {
-    node_to_joint[gjoints[i].gltf_node_index] = i + kGltfToGameJointOffset;
-  }
-
-  std::vector<anim::CompressedAnim> ret;
-  for (auto& anim : model.animations) {
-    lg::info("Processing animation {}", anim.name);
-    ret.push_back(
-        anim::compress_animation(anim::extract_anim_from_gltf(model, anim, node_to_joint, 60)));
-  }
-  return ret;
-}
-
-/*!
  * Build GOAL format data for an actor. This doesn't generate the data for the .FR3.
  */
 bool run_build_actor(const std::string& mdl_name,
                      const std::string& ag_out,
-                     bool gen_collide_mesh) {
+                     const BuildActorParams& params) {
   std::string ag_name;
   if (fs::exists(file_util::get_jak_project_dir() / mdl_name)) {
     ag_name = fs::path(mdl_name).stem().string();
@@ -742,7 +585,7 @@ bool run_build_actor(const std::string& mdl_name,
   std::vector<Joint> joints;
   MercExtractData extract_data;
   extract("test", extract_data, model, all_nodes, 0, 0, 0);
-  ag.merc_effect_count = extract_data.new_model.effects.size();
+  ag.mdl = &extract_data.new_model;
   // MercSwapData out;
   // merc_convert(out, extract_data);
   // Set up joints:
@@ -766,11 +609,11 @@ bool run_build_actor(const std::string& mdl_name,
   }
 
   std::vector<CollideMesh> mesh;
-  if (gen_collide_mesh) {
-    mesh = gen_collide_mesh_from_model(model, all_nodes, 3);
+  if (params.gen_collide_mesh) {
+    mesh = gen_collide_mesh_from_model_jak1(model, all_nodes, 3);
   }
 
-  std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints);
+  std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints, params);
 
   ag.elts.emplace_back(jgeo);
   // dummy merc-ctrl

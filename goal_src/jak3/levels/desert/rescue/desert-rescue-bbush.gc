@@ -80,14 +80,14 @@
         )
 
 (dotimes (v1-10 (-> *desresc-transport-path-1* length))
-  (set! (-> *__bbush-transport-path__* v1-10 quad) (-> *desresc-transport-path-1* v1-10 pos quad))
+  (vector-copy! (-> *__bbush-transport-path__* v1-10) (-> *desresc-transport-path-1* v1-10 pos))
   )
 
 ;; WARN: Return type mismatch quaternion vs none.
 (defmethod init-transport-params! ((this task-manager-desert-rescue-bbush) (arg0 desert-rescue-transport-init-params))
   (set! (-> arg0 path-pts) *__bbush-transport-path__*)
   (set! (-> arg0 num-pts) (-> this desresc-path allocated-length))
-  (set! (-> arg0 pos quad) (-> this desresc-path 0 pos quad))
+  (vector-copy! (-> arg0 pos) (-> this desresc-path 0 pos))
   (set! (-> arg0 desresc-path) (-> this desresc-path))
   (quaternion-identity! (-> arg0 quat))
   (none)
@@ -123,12 +123,11 @@
   (set! (-> this passenger-pos length) (-> *passenger-pos* length))
   (when (-> this actor-group)
     (dotimes (s5-2 (-> this actor-group 0 length))
-      (set! (-> *bbush-passenger-pos* s5-2 passenger-pos quad)
-            (-> this actor-group 0 data s5-2 actor extra trans quad)
-            )
-      (set! (-> *bbush-passenger-pos* s5-2 beacon-pos quad)
-            (-> this actor-group 1 data s5-2 actor extra trans quad)
-            )
+      (vector-copy!
+        (-> *bbush-passenger-pos* s5-2 passenger-pos)
+        (-> this actor-group 0 data s5-2 actor extra trans)
+        )
+      (vector-copy! (-> *bbush-passenger-pos* s5-2 beacon-pos) (-> this actor-group 1 data s5-2 actor extra trans))
       (set! (-> *bbush-passenger-pos* s5-2 is-final?) #f)
       (let ((s4-0
               (res-lump-value
@@ -186,7 +185,7 @@
   :trans (behavior ()
     ((-> (method-of-type task-manager active) trans))
     (task-manager-desert-rescue-method-49 self)
-    (when (= (status-of-level-and-borrows *level* 'desert #f) 'active)
+    (when (= (level-status? *level* 'desert #f) 'active)
       (send-event (handle->process (-> *game-info* dust-storm)) 'set-intensity #x3e4ccccd)
       (when (and *target* (focus-test? *target* pilot-riding))
         (set! (-> self jak-vehicle) (process->handle (the-as process (send-event *target* 'get-vehicle))))
@@ -228,7 +227,7 @@
     (let ((a0-1 (entity-by-name "des-burning-bush-40")))
       (when a0-1
         (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-          (set! (-> gp-0 pos quad) (-> a0-1 extra trans quad))
+          (vector-copy! (-> gp-0 pos) (-> a0-1 extra trans))
           (quaternion-identity! (-> gp-0 quat))
           (set! (-> gp-0 flags) (task-arrow-flags))
           (set! (-> gp-0 map-icon) (the-as uint 13))

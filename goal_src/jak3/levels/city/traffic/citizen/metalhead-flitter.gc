@@ -130,34 +130,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 275251.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 67.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -212,6 +212,7 @@
   )
 
 (defmethod knocked-anim ((this metalhead-flitter) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -254,6 +255,7 @@
   )
 
 (defmethod knocked-land-anim ((this metalhead-flitter) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (case (-> this incoming knocked-type)
     (((knocked-type blue-shot))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -276,7 +278,7 @@
   )
 
 (defmethod go-stare2 ((this metalhead-flitter))
-  (if (and (= (-> this focus aware) (enemy-aware ea2)) (not (nav-enemy-method-174 this)))
+  (if (and (= (-> this focus aware) (enemy-aware aware2)) (not (nav-enemy-method-174 this)))
       (go (method-of-object this pacing))
       (go (method-of-object this stare))
       )
@@ -315,11 +317,11 @@
       (('ruins)
        (cond
          ((logtest? (-> *part-group-id-table* 255 flags) (sp-group-flag sp13))
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 255))
           )
          (else
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 255))
            )
          )
@@ -327,11 +329,11 @@
       (('strip)
        (cond
          ((logtest? (-> *part-group-id-table* 256 flags) (sp-group-flag sp13))
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 256))
           )
          (else
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 256))
            )
          )
@@ -378,11 +380,11 @@
       (when (< (-> self base-height) (-> self root trans y))
         (cond
           ((logtest? (-> *part-group-id-table* 257 flags) (sp-group-flag sp13))
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 257))
            )
           (else
-            (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+            (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
             (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 257))
             )
           )
@@ -437,35 +439,31 @@
   :post nav-enemy-falling-post
   )
 
-(defmethod enemy-method-108 ((this metalhead-flitter) (arg0 process-focusable))
+(defmethod should-flee-from? ((this metalhead-flitter) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (focus-test? arg0 mech)
   )
 
 (defmethod metalhead-flitter-method-224 ((this metalhead-flitter))
-  (let* ((s5-0 (handle->process (-> this focus handle)))
-         (s3-0 (if (type? s5-0 process-focusable)
-                   (the-as process-focusable s5-0)
-                   )
-               )
-         )
+  (let ((s3-0 (as-type (handle->process (-> this focus handle)) process-focusable)))
     (when s3-0
       (let* ((s5-1 (get-trans s3-0 0))
              (s4-1 (vector-! (new 'stack-no-clear 'vector) s5-1 (-> this root trans)))
              (f30-0 (vector-length s4-1))
              )
         (cond
-          ((enemy-method-108 this s3-0)
+          ((should-flee-from? this s3-0)
            (go-flee this)
            )
           ((and (< f30-0 32768.0) (not (metalhead-flitter-method-226 this s3-0)))
            (go (method-of-object this circling))
            )
           ((and (< f30-0 (-> this enemy-info notice-nav-radius)) (time-elapsed? (-> this state-time) (seconds 0.2)))
-           (set! (-> this target-pos quad) (-> s5-1 quad))
+           (vector-copy! (-> this target-pos) s5-1)
            (let ((s3-1 (new 'stack-no-clear 'vector)))
-             (set! (-> s3-1 quad) (-> s4-1 quad))
+             (vector-copy! s3-1 s4-1)
              (let ((s5-2 (new 'stack-no-clear 'vector)))
-               (set! (-> s5-2 quad) (-> this root transv quad))
+               (vector-copy! s5-2 (-> this root transv))
                (vector-normalize! s5-2 f30-0)
                (if (>= (vector-dot s3-1 s5-2) 0.98)
                    (go (method-of-object this attack))
@@ -474,7 +472,7 @@
              )
            )
           ((< f30-0 32768.0)
-           (set! (-> this target-pos quad) (-> s5-1 quad))
+           (vector-copy! (-> this target-pos) s5-1)
            )
           ((or (time-elapsed? (-> this last-change-dir) (-> this change-dir-time))
                (< (vector-vector-distance-squared (-> this root trans) (-> this target-pos)) 0.1)
@@ -498,7 +496,7 @@
                )
              (clamp-vector-to-mesh-cross-gaps (-> this nav state) s3-2)
              (vector+! s2-0 s5-1 s3-2)
-             (set! (-> this target-pos quad) (-> s2-0 quad))
+             (vector-copy! (-> this target-pos) s2-0)
              )
            )
           )
@@ -523,12 +521,8 @@
   (local-vars (v1-29 symbol))
   (stop-look-at! self)
   (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim arg0))
-  (let ((s4-1 (get-knockback-dir! self (new 'stack-no-clear 'vector)))
-        (s3-0 (-> self root))
-        )
-    (when (if (type? s3-0 collide-shape-moving)
-              s3-0
-              )
+  (let ((s4-1 (get-knockback-dir! self (new 'stack-no-clear 'vector))))
+    (when (as-type (-> self root) collide-shape-moving)
       (set! (-> self root transv y) 33775.48)
       (ja :num-func num-func-identity :frame-num 0.0)
       (set-time! (-> self state-time))
@@ -566,7 +560,7 @@
     (ja-channel-push! 1 (seconds 0.1))
     (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (until #f
-        (when (not (enemy-method-105 self 2730.6667 #t))
+        (when (not (pointing-toward-focus? self 2730.6667 #t))
           (let ((v1-5 self))
             (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-5 enemy-flags))))
             )
@@ -575,7 +569,7 @@
           (ja-channel-push! 1 (seconds 0.2))
           (ja :group! (-> self draw art-group data 9))
           (ja :num-func num-func-identity :frame-num 0.0)
-          (until (enemy-method-105 self 1820.4445 #t)
+          (until (pointing-toward-focus? self 1820.4445 #t)
             (ja-blend-eval)
             (suspend)
             (ja :num! (loop! 0.75))
@@ -640,7 +634,7 @@
           )
       (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      (vector-copy! (-> a0-0 target-pos) v1-1)
       )
     0
     (nav-enemy-travel-post)
@@ -702,12 +696,7 @@
     )
   :trans (behavior ()
     (local-vars (s5-2 object))
-    (let* ((s5-0 (handle->process (-> self focus handle)))
-           (gp-0 (if (type? s5-0 process-focusable)
-                     (the-as process-focusable s5-0)
-                     )
-                 )
-           )
+    (let ((gp-0 (as-type (handle->process (-> self focus handle)) process-focusable)))
       (set! s5-2 (cond
                    ((and gp-0
                          (not (time-elapsed? (-> self state-time) (seconds 1.5)))
@@ -719,7 +708,7 @@
                           )
                       (logclear! (-> s5-1 flags) (nav-state-flag directional-mode))
                       (logior! (-> s5-1 flags) (nav-state-flag target-poly-dirty))
-                      (set! (-> s5-1 target-pos quad) (-> v1-10 quad))
+                      (vector-copy! (-> s5-1 target-pos) v1-10)
                       )
                     0
                     (set! s5-2 (-> self attack-pos))
@@ -767,7 +756,7 @@
         (ja :num! (seek!))
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post nav-enemy-travel-post
   )
@@ -786,7 +775,7 @@
     (ja-channel-push! 1 (seconds 0.1))
     (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (until #f
-        (when (not (enemy-method-105 self 2730.6667 #t))
+        (when (not (pointing-toward-focus? self 2730.6667 #t))
           (let ((v1-5 self))
             (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-5 enemy-flags))))
             )
@@ -795,7 +784,7 @@
           (ja-channel-push! 1 (seconds 0.2))
           (ja :group! (-> self draw art-group data 9))
           (ja :num-func num-func-identity :frame-num 0.0)
-          (until (enemy-method-105 self 1820.4445 #t)
+          (until (pointing-toward-focus? self 1820.4445 #t)
             (ja-blend-eval)
             (suspend)
             (ja :num! (loop! 0.75))
@@ -846,25 +835,19 @@
   :trans (behavior ()
     (let ((gp-0 (handle->process (-> self focus handle))))
       (if (the-as process-focusable gp-0)
-          (set! (-> self focus-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+          (vector-copy! (-> self focus-pos) (get-trans (the-as process-focusable gp-0) 0))
           )
       (when (time-elapsed? (-> self state-time) (seconds 0.1))
         (let ((v1-11 (-> self focus aware)))
           (cond
-            ((= v1-11 (enemy-aware ea3))
+            ((= v1-11 (enemy-aware hostile))
              (cond
-               ((when gp-0
-                  (let* ((gp-1 self)
-                         (s5-1 (method-of-object gp-1 metalhead-flitter-method-226))
-                         (s4-0 (handle->process (-> self focus handle)))
-                         )
-                    (s5-1 gp-1 (the-as process-focusable (if (type? s4-0 process-focusable)
-                                                             s4-0
-                                                             )
-                                       )
-                          )
+               ((if gp-0
+                    (metalhead-flitter-method-226
+                      self
+                      (the-as process-focusable (as-type (handle->process (-> self focus handle)) process-focusable))
+                      )
                     )
-                  )
                 (if (and (get-focus! self) (time-elapsed? (-> self off-screen-timer) (seconds 0.3)))
                     (go-hostile self)
                     )
@@ -874,7 +857,7 @@
                  )
                )
              )
-            ((= v1-11 (enemy-aware ea2))
+            ((= v1-11 (enemy-aware aware2))
              (go-stare self)
              )
             ((>= 1 (the-as int v1-11))
@@ -921,6 +904,7 @@
   )
 
 (defmethod init-enemy-collision! ((this metalhead-flitter))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -973,12 +957,13 @@
   )
 
 (defmethod init-enemy! ((this metalhead-flitter))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mh-flitter" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *metalhead-flitter-nav-enemy-info*)
+  (setup-enemy! this *metalhead-flitter-nav-enemy-info*)
   (set! (-> this move-angle) 10922.667)
   (set! (-> this heading) (if (= (rand-vu-int-range 0 1) 1)
                               #t

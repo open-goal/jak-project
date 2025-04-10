@@ -14,38 +14,36 @@ Build Dependencies
 
 Ubuntu 18.04, all available features enabled:
 
-    sudo apt-get install build-essential git make autoconf automake libtool \
+    sudo apt-get install build-essential git make \
     pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev \
-    libaudio-dev libjack-dev libsndio-dev libsamplerate0-dev libx11-dev libxext-dev \
-    libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libwayland-dev \
+    libaudio-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
+    libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev \
     libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
     libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev fcitx-libs-dev
 
-Ubuntu 22.04+ can also add `libpipewire-0.3-dev libdecor-0-dev` to that command line.
+Ubuntu 22.04+ can also add `libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev` to that command line.
 
 Fedora 35, all available features enabled:
 
-    sudo yum install gcc git-core make cmake autoconf automake libtool \
+    sudo yum install gcc git-core make cmake \
     alsa-lib-devel pulseaudio-libs-devel nas-devel pipewire-devel \
     libX11-devel libXext-devel libXrandr-devel libXcursor-devel libXfixes-devel \
     libXi-devel libXScrnSaver-devel dbus-devel ibus-devel fcitx-devel \
     systemd-devel mesa-libGL-devel libxkbcommon-devel mesa-libGLES-devel \
     mesa-libEGL-devel vulkan-devel wayland-devel wayland-protocols-devel \
     libdrm-devel mesa-libgbm-devel libusb-devel libdecor-devel \
-    libsamplerate-devel pipewire-jack-audio-connection-kit-devel \
+    pipewire-jack-audio-connection-kit-devel \
+
+Fedora 39+ can also add `liburing-devel` to that command line.
 
 NOTES:
-- This includes all the audio targets except arts and esd, because Ubuntu
-  (and/or Debian) pulled their packages, but in theory SDL still supports them.
-  The sndio audio target is also unavailable on Fedora.
-- libsamplerate0-dev lets SDL optionally link to libresamplerate at runtime
-  for higher-quality audio resampling. SDL will work without it if the library
-  is missing, so it's safe to build in support even if the end user doesn't
-  have this library installed.
-- DirectFB isn't included because the configure script (currently) fails to find
-  it at all. You can do "sudo apt-get install libdirectfb-dev" and fix the
-  configure script to include DirectFB support. Send patches.  :)
+- The sndio audio target is unavailable on Fedora (but probably not what you
+  should want to use anyhow).
 
+openSUSE Tumbleweed:
+
+    sudo zypper in libunwind-devel libusb-1_0-devel Mesa-libGL-devel libxkbcommon-devel libdrm-devel \
+    libgbm-devel pipewire-devel libpulse-devel sndio-devel Mesa-libEGL-devel
 
 Joystick does not work
 --------------------------------------------------------------------------------

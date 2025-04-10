@@ -178,8 +178,8 @@
     (set! (-> this mem-mesh) arg0)
     (cond
       ((= (-> arg0 work mesh-struct-in-scratch) 1)
-       (set! (-> this nav-mesh-addr) (the-as nav-mesh (&-> (-> this nav-mesh-addr) poly-array)))
-       (mem-copy! (&-> (-> this nav-mesh-addr) type) (&-> arg0 type) 112)
+       (set! (-> this nav-mesh-addr) (the-as nav-mesh (&-> this nav-mesh-addr poly-array)))
+       (mem-copy! (&-> this nav-mesh-addr type) (&-> arg0 type) 112)
        )
       (else
         (set! (-> this nav-mesh-addr) arg0)
@@ -231,7 +231,7 @@
           ((-> (the-as connection v1-6) param2)
            (let ((s1-0 (-> (the-as process-focusable a0-4) nav)))
              (set! (-> s1-0 sec-per-frame) (-> (the-as process-focusable a0-4) clock seconds-per-frame))
-             (set! (-> s1-0 root-nav-sphere quad) (-> (the-as collide-shape s2-0) trans quad))
+             (vector-copy! (-> s1-0 root-nav-sphere) (-> (the-as collide-shape s2-0) trans))
              (set! (-> s1-0 root-nav-sphere w) (-> (the-as collide-shape s2-0) nav-radius))
              (if (logtest? (-> s1-0 flags) (nav-control-flag output-sphere-hash))
                  (set! (-> this output-sphere-hash) (the-as uint 1))
@@ -258,7 +258,7 @@
           (else
             (when (logtest? (-> (the-as collide-shape s2-0) nav-flags) (nav-flags has-root-sphere))
               (let ((a1-5 (new 'stack-no-clear 'vector)))
-                (set! (-> a1-5 quad) (-> (the-as collide-shape s2-0) trans quad))
+                (vector-copy! a1-5 (-> (the-as collide-shape s2-0) trans))
                 (set! (-> a1-5 w) (-> (the-as collide-shape s2-0) nav-radius))
                 (add-a-sphere-with-flag arg0 a1-5 (the-as int (-> (the-as collide-shape s2-0) backup-collide-as)))
                 )
@@ -279,7 +279,7 @@
               (+! s1-1 -1)
               (when (and (logtest? (collide-action nav-sphere) (-> s2-1 prim-core action)) (= (-> s2-1 prim-core prim-type) -1))
                 (let ((a1-6 (new 'stack-no-clear 'vector)))
-                  (set! (-> a1-6 quad) (-> s2-1 prim-core world-sphere quad))
+                  (vector-copy! a1-6 (-> s2-1 prim-core world-sphere))
                   (set! (-> a1-6 w) (-> (the-as collide-shape-prim-sphere s2-1) nav-radius))
                   (add-a-sphere-with-flag arg0 a1-6 (the-as int (-> s2-1 prim-core collide-as)))
                   )
@@ -310,7 +310,7 @@
     (when *target*
       (let ((a1-0 (new 'stack-no-clear 'vector)))
         (let ((v1-8 (-> *target* control)))
-          (set! (-> a1-0 quad) (-> v1-8 trans quad))
+          (vector-copy! a1-0 (-> v1-8 trans))
           (set! (-> a1-0 w) (-> v1-8 nav-radius))
           )
         (add-a-sphere-with-flag gp-0 a1-0 2)
@@ -541,14 +541,14 @@
     (set! (-> gp-0 0 q-size) (the-as uint (* 18 (-> gp-0 0 nav-count))))
     (set! (-> gp-0 0 done) 0)
     (when (> (-> gp-0 0 nav-count) 0)
-      (upload-nav-to-spr this (the-as nav-engine-spr-buffer gp-0))
+      (upload-nav-to-spr this (-> gp-0 0))
       (dma-sync (the-as pointer #x1000d400) 0 0)
-      (reloc-ptrs-to-spad this (the-as nav-engine-spr-buffer gp-0))
+      (reloc-ptrs-to-spad this (-> gp-0 0))
       (while (< (-> gp-0 0 i-pass) (-> this max-pass-count))
-        (do-callbacks this (the-as nav-engine-spr-buffer gp-0))
+        (do-callbacks this (-> gp-0 0))
         (+! (-> gp-0 0 i-pass) 1)
         )
-      (reloc-ptrs-to-mem this (the-as nav-engine-spr-buffer gp-0))
+      (reloc-ptrs-to-mem this (-> gp-0 0))
       (dotimes (s4-0 (-> gp-0 0 nav-count))
         (let ((a2-1 (-> gp-0 0 spr-addr s4-0 state mesh)))
           (when (>= (the-as uint a2-1) (the-as uint #x70000000))
@@ -558,7 +558,7 @@
             )
           )
         )
-      (download-nav-from-spr this (the-as nav-engine-spr-buffer gp-0))
+      (download-nav-from-spr this (-> gp-0 0))
       (dma-sync (the-as pointer #x1000d000) 0 0)
       (dotimes (s5-1 (-> gp-0 0 nav-count))
         (let ((a2-3 (-> (&+ (-> gp-0 0 mem-addr) (* 288 s5-1)) 31)))
@@ -613,7 +613,3 @@
   0
   (none)
   )
-
-
-
-

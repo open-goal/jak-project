@@ -180,7 +180,7 @@ gltf_util::MercSwapData load_merc_model(u32 current_idx_count,
   return result;
 }
 
-std::vector<jak1::CollideMesh> gen_collide_mesh_from_model(
+std::vector<jak1::CollideMesh> gen_collide_mesh_from_model_jak1(
     const tinygltf::Model& model,
     const std::vector<gltf_util::NodeWithTransform>& all_nodes,
     int joint_idx) {
@@ -260,6 +260,204 @@ std::vector<jak1::CollideMesh> gen_collide_mesh_from_model(
         tri.vert_idx[1] = prim.indices.at(i + 1);
         tri.vert_idx[2] = prim.indices.at(i + 2);
         tri.pat = prim.pat.pat;
+      }
+    }
+    ASSERT_MSG(vert_count <= 255, fmt::format("Mesh {} has too many vertices (max 255, actual {})",
+                                              prims.at(p).mesh_name, vert_count));
+    auto& cmesh = cmeshes.emplace_back();
+    // TODO joint idx as a custom property in blender?
+    cmesh.joint_id = joint_idx;
+    cmesh.vertices.reserve(255);
+    cmesh.vertices.insert(cmesh.vertices.begin(), verts.begin(), verts.end());
+    cmesh.num_verts = cmesh.vertices.size();
+    cmesh.num_tris = tris.size();
+    cmesh.tris.reserve(cmesh.num_tris);
+    for (size_t j = 0; j < cmesh.num_tris; j++) {
+      cmesh.tris.push_back(tris.at(j));
+    }
+  }
+  return cmeshes;
+}
+
+std::vector<jak2::CollideMesh> gen_collide_mesh_from_model_jak2(
+    const tinygltf::Model& model,
+    const std::vector<gltf_util::NodeWithTransform>& all_nodes,
+    int joint_idx) {
+  // data for a single primitive
+  struct PrimWork {
+    std::string mesh_name;
+    std::vector<math::Vector4f> verts;
+    std::vector<u32> indices;
+    gltf_mesh_extract::PatResult pat;
+  };
+  std::vector<std::vector<PrimWork>> mesh_data;
+  int mesh_count = 0;
+  // int prim_count = 0;
+  for (const auto& n : all_nodes) {
+    const auto& node = model.nodes[n.node_idx];
+    gltf_mesh_extract::PatResult mesh_default_collide =
+        gltf_mesh_extract::custom_props_to_pat(node.extras, node.name);
+    if (node.mesh >= 0) {
+      const auto& mesh = model.meshes[node.mesh];
+      mesh_count++;
+      std::vector<PrimWork> prims;
+      for (const auto& prim : mesh.primitives) {
+        // get material
+        const auto& mat_idx = prim.material;
+        gltf_mesh_extract::PatResult pat = mesh_default_collide;
+        if (mat_idx != -1) {
+          const auto& mat = model.materials[mat_idx];
+          auto mat_pat = gltf_mesh_extract::custom_props_to_pat(mat.extras, mat.name);
+          if (mat_pat.set) {
+            pat = mat_pat;
+          }
+        }
+        if (pat.set && pat.ignore) {
+          continue;  // skip, no collide here
+        }
+        auto& prim_data = prims.emplace_back();
+        prim_data.mesh_name = mesh.name;
+        prim_data.pat = pat;
+        // prim_count++;
+        // extract index buffer
+        std::vector<u32> prim_indices = gltf_util::gltf_index_buffer(model, prim.indices, 0);
+        ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES,
+                   fmt::format("Mesh {}: Unsupported triangle mode {}", mesh.name, prim.mode));
+        // extract vertices
+        auto verts =
+            gltf_util::gltf_vertices(model, prim.attributes, n.w_T_node, true, true, mesh.name);
+        ASSERT_MSG(verts.vtx.size() <= 255,
+                   fmt::format("primitive of mesh {} has too many vertices (max 255, actual {})",
+                               mesh.name, verts.vtx.size()));
+        prim_data.verts.reserve(verts.vtx.size());
+        for (auto& vert : verts.vtx) {
+          prim_data.verts.emplace_back(vert.x, vert.y, vert.z, 1.0);
+        }
+        prim_data.indices = prim_indices;
+        mesh_data.push_back(prims);
+      }
+    }
+  }
+
+  std::vector<jak2::CollideMesh> cmeshes;
+  cmeshes.reserve(mesh_count);
+  // we extracted all of the prim data for each mesh, now combine
+  for (size_t p = 0; p < mesh_data.size(); p++) {
+    auto& prims = mesh_data.at(p);
+    std::vector<math::Vector4f> verts;
+    std::vector<jak2::CollideMeshTri> tris;
+    int vert_count = 0;
+    for (auto& prim : prims) {
+      if (prim.pat.ignore) {
+        continue;
+      }
+      vert_count += verts.size();
+      verts.insert(verts.end(), prim.verts.begin(), prim.verts.end());
+      for (size_t i = 0; i < prim.indices.size(); i += 3) {
+        auto& tri = tris.emplace_back();
+        tri.vert_idx[0] = prim.indices.at(i);
+        tri.vert_idx[1] = prim.indices.at(i + 1);
+        tri.vert_idx[2] = prim.indices.at(i + 2);
+        tri.pat = jak2_pat(prim.pat.pat);
+      }
+    }
+    ASSERT_MSG(vert_count <= 255, fmt::format("Mesh {} has too many vertices (max 255, actual {})",
+                                              prims.at(p).mesh_name, vert_count));
+    auto& cmesh = cmeshes.emplace_back();
+    // TODO joint idx as a custom property in blender?
+    cmesh.joint_id = joint_idx;
+    cmesh.vertices.reserve(255);
+    cmesh.vertices.insert(cmesh.vertices.begin(), verts.begin(), verts.end());
+    cmesh.num_verts = cmesh.vertices.size();
+    cmesh.num_tris = tris.size();
+    cmesh.tris.reserve(cmesh.num_tris);
+    for (size_t j = 0; j < cmesh.num_tris; j++) {
+      cmesh.tris.push_back(tris.at(j));
+    }
+  }
+  return cmeshes;
+}
+
+std::vector<jak3::CollideMesh> gen_collide_mesh_from_model_jak3(
+    const tinygltf::Model& model,
+    const std::vector<gltf_util::NodeWithTransform>& all_nodes,
+    int joint_idx) {
+  // data for a single primitive
+  struct PrimWork {
+    std::string mesh_name;
+    std::vector<math::Vector4f> verts;
+    std::vector<u32> indices;
+    gltf_mesh_extract::PatResult pat;
+  };
+  std::vector<std::vector<PrimWork>> mesh_data;
+  int mesh_count = 0;
+  // int prim_count = 0;
+  for (const auto& n : all_nodes) {
+    const auto& node = model.nodes[n.node_idx];
+    gltf_mesh_extract::PatResult mesh_default_collide =
+        gltf_mesh_extract::custom_props_to_pat(node.extras, node.name);
+    if (node.mesh >= 0) {
+      const auto& mesh = model.meshes[node.mesh];
+      mesh_count++;
+      std::vector<PrimWork> prims;
+      for (const auto& prim : mesh.primitives) {
+        // get material
+        const auto& mat_idx = prim.material;
+        gltf_mesh_extract::PatResult pat = mesh_default_collide;
+        if (mat_idx != -1) {
+          const auto& mat = model.materials[mat_idx];
+          auto mat_pat = gltf_mesh_extract::custom_props_to_pat(mat.extras, mat.name);
+          if (mat_pat.set) {
+            pat = mat_pat;
+          }
+        }
+        if (pat.set && pat.ignore) {
+          continue;  // skip, no collide here
+        }
+        auto& prim_data = prims.emplace_back();
+        prim_data.mesh_name = mesh.name;
+        prim_data.pat = pat;
+        // prim_count++;
+        // extract index buffer
+        std::vector<u32> prim_indices = gltf_util::gltf_index_buffer(model, prim.indices, 0);
+        ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES,
+                   fmt::format("Mesh {}: Unsupported triangle mode {}", mesh.name, prim.mode));
+        // extract vertices
+        auto verts =
+            gltf_util::gltf_vertices(model, prim.attributes, n.w_T_node, true, true, mesh.name);
+        ASSERT_MSG(verts.vtx.size() <= 255,
+                   fmt::format("primitive of mesh {} has too many vertices (max 255, actual {})",
+                               mesh.name, verts.vtx.size()));
+        prim_data.verts.reserve(verts.vtx.size());
+        for (auto& vert : verts.vtx) {
+          prim_data.verts.emplace_back(vert.x, vert.y, vert.z, 1.0);
+        }
+        prim_data.indices = prim_indices;
+        mesh_data.push_back(prims);
+      }
+    }
+  }
+
+  std::vector<jak3::CollideMesh> cmeshes;
+  cmeshes.reserve(mesh_count);
+  // we extracted all of the prim data for each mesh, now combine
+  for (size_t p = 0; p < mesh_data.size(); p++) {
+    auto& prims = mesh_data.at(p);
+    std::vector<math::Vector4f> verts;
+    std::vector<jak3::CollideMeshTri> tris;
+    int vert_count = 0;
+    for (auto& prim : prims) {
+      if (prim.pat.ignore) {
+        continue;
+      }
+      vert_count += verts.size();
+      verts.insert(verts.end(), prim.verts.begin(), prim.verts.end());
+      for (size_t i = 0; i < prim.indices.size(); i += 3) {
+        auto& tri = tris.emplace_back();
+        tri.vert_idx[0] = prim.indices.at(i);
+        tri.vert_idx[1] = prim.indices.at(i + 1);
+        tri.vert_idx[2] = prim.indices.at(i + 2);
+        tri.pat = jak3_pat(prim.pat.pat);
       }
     }
     ASSERT_MSG(vert_count <= 255, fmt::format("Mesh {} has too many vertices (max 255, actual {})",

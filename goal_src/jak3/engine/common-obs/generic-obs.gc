@@ -132,15 +132,10 @@
                    )
             )
        (when arg1
-         (let* ((s5-1 (-> self root))
-                (a0-7 (if (type? s5-1 collide-shape)
-                          s5-1
-                          )
-                      )
-                )
+         (let ((a0-7 (as-type (-> self root) collide-shape)))
            (if a0-7
                (move-to-point! (the-as collide-shape a0-7) (-> (the-as process-drawable gp-0) root trans))
-               (set! (-> self root trans quad) (-> (the-as process-drawable gp-0) root trans quad))
+               (vector-copy! (-> self root trans) (-> (the-as process-drawable gp-0) root trans))
                )
            )
          (quaternion-copy! (-> self root quat) (-> (the-as process-drawable gp-0) root quat))
@@ -152,12 +147,7 @@
        (if (or (zero? (-> self skel active-channels)) (not (-> self skel root-channel 0 frame-group)))
            (logior! (-> self draw status) (draw-control-status no-draw-temp))
            )
-       (let* ((gp-1 self)
-              (v1-38 (if (type? gp-1 manipy)
-                         gp-1
-                         )
-                     )
-              )
+       (let ((v1-38 (as-type self manipy)))
          (if (and v1-38 (not (-> (the-as manipy v1-38) draw?)))
              (logior! (-> self draw status) (draw-control-status no-draw-temp))
              )
@@ -219,14 +209,14 @@
              )
          (let ((s4-0 (-> (the-as process-drawable v1-15) node-list data (-> this joint-track))))
            (vector<-cspace! s5-1 s4-0)
-           (vector-normalize-copy! (-> this dir) (the-as vector (-> s4-0 bone transform)) 1.0)
+           (vector-normalize-copy! (-> this dir) (-> s4-0 bone transform rvec) 1.0)
            )
          (move-to-point! (the-as collide-shape (-> this root)) s5-1)
          )
        )
       )
     (when (nonzero? (-> this sound))
-      (set! (-> this sound trans quad) (-> this root trans quad))
+      (vector-copy! (-> this sound trans) (-> this root trans))
       (let ((f30-0 (lerp-scale -0.1 -0.05 (-> this speed) 8192.0 20480.0))
             (f0-6 (lerp-scale 0.7 1.0 (-> this speed) 8192.0 20480.0))
             )
@@ -279,18 +269,15 @@
   :code (behavior ((arg0 handle))
     (swingpole-method-22 self)
     (suspend)
-    (while (let* ((s5-0 (handle->process arg0))
-                  (a0-7 (if (type? s5-0 process-focusable)
-                            s5-0
-                            )
-                        )
-                  )
+    (while (let ((a0-7 (as-type (handle->process arg0) process-focusable)))
              (and a0-7 (focus-test? (the-as process-focusable a0-7) pole))
              )
       (swingpole-method-22 self)
       (suspend)
       )
-    (suspend-for (seconds 0.5) (swingpole-method-22 self))
+    (suspend-for (seconds 0.5)
+      (swingpole-method-22 self)
+      )
     (go-virtual idle)
     )
   )
@@ -320,10 +307,11 @@
   )
 
 (defmethod init-from-entity! ((this swingpole) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   "Copy defaults from the entity."
   (stack-size-set! (-> this main-thread) 128)
   (init-collision! this)
-  (set! (-> this root trans quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> this root trans) (-> arg0 extra trans))
   (quaternion-copy! (-> this root quat) (-> arg0 quat))
   (vector-identity! (-> this root scale))
   (vector-y-quaternion! (-> this dir) (-> this root quat))
@@ -380,7 +368,7 @@
       )
     (set! (-> self root) s5-0)
     )
-  (set! (-> self root trans quad) (-> (the-as process-drawable (-> self parent 0)) root trans quad))
+  (vector-copy! (-> self root trans) (-> (the-as process-drawable (-> self parent 0)) root trans))
   (quaternion-identity! (-> self root quat))
   (vector-identity! (-> self root scale))
   (set! (-> self joint-track) arg0)
@@ -395,6 +383,7 @@
   )
 
 (defmethod init-from-entity! ((this process-hidden) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   "Copy defaults from the entity."
   (process-entity-status! this (entity-perm-status dead) #t)
   (go (method-of-object this die))
@@ -565,7 +554,7 @@
                      (s3-0 (new 'stack-no-clear 'collide-query))
                      (f28-0 122880.0)
                      )
-                 (set! (-> s3-0 start-pos quad) (-> s4-1 quad))
+                 (vector-copy! (-> s3-0 start-pos) s4-1)
                  (vector-normalize-copy! (-> s3-0 move-dist) s5-2 f28-0)
                  (let ((v1-91 s3-0))
                    (set! (-> v1-91 radius) 1638.4)
@@ -898,7 +887,7 @@
                 (vector-! (new 'stack-no-clear 'vector) gp-1 (-> self old-grab-pos))
                 )
               )
-          (set! (-> self old-grab-pos quad) (-> gp-1 quad))
+          (vector-copy! (-> self old-grab-pos) gp-1)
           )
         )
       )
@@ -1061,7 +1050,7 @@
       (set! (-> self root) (the-as collide-shape (new 'process 'trsqv)))
       )
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (initialize-skeleton self arg2 (the-as pair 0))
   (if (type? (-> self root) collide-shape)
       (update-transforms (-> self root))
@@ -1138,25 +1127,8 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod notify-parent-of-death ((this part-tracker))
-  (with-pp
-    (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> gp-0 from) (process->ppointer pp))
-      (set! (-> gp-0 num-params) 1)
-      (set! (-> gp-0 message) 'notify)
-      (set! (-> gp-0 param 0) (the-as uint 'die))
-      (let ((s5-0 send-event-function)
-            (s4-0 (ppointer->process (-> this parent)))
-            )
-        (s5-0
-          (if (type? s4-0 process)
-              s4-0
-              )
-          gp-0
-          )
-        )
-      )
-    (none)
-    )
+  (send-event (as-type (ppointer->process (-> this parent)) process) 'notify 'die)
+  (none)
   )
 
 ;; WARN: Return type mismatch process vs part-tracker-subsampler.
@@ -1209,23 +1181,18 @@
     (if (-> self callback)
         ((-> self callback) self)
         )
-    (let* ((gp-0 (handle->process (-> self target)))
-           (v1-15 (if (type? gp-0 process-drawable)
-                      gp-0
-                      )
-                  )
-           )
+    (let ((v1-15 (as-type (handle->process (-> self target)) process-drawable)))
       (cond
         ((and v1-15
               (nonzero? (-> (the-as process-drawable v1-15) root))
               (nonzero? (-> (the-as process-drawable v1-15) node-list))
               )
          (spawn-from-cspace (-> self part) (-> (the-as process-drawable v1-15) node-list data (-> self target-joint)))
-         (set! (-> self root trans quad) (-> self part origin trans quad))
+         (vector-copy! (-> self root trans) (-> self part origin trans))
          )
         (else
           (let ((a0-11 (-> self root trans)))
-            (set! (-> self mat trans quad) (-> a0-11 quad))
+            (vector-copy! (-> self mat trans) a0-11)
             )
           (spawn-from-mat (-> self part) (-> self mat))
           )
@@ -1247,12 +1214,7 @@
     (if (time-elapsed? (-> self state-time) (-> self linger-duration))
         (go-virtual die)
         )
-    (let* ((gp-0 (handle->process (-> self target)))
-           (v1-13 (if (type? gp-0 process-drawable)
-                      gp-0
-                      )
-                  )
-           )
+    (let ((v1-13 (as-type (handle->process (-> self target)) process-drawable)))
       (if (and v1-13
                (nonzero? (-> (the-as process-drawable v1-13) root))
                (nonzero? (-> (the-as process-drawable v1-13) node-list))
@@ -1287,12 +1249,7 @@
     (if (-> self callback)
         ((-> self callback) self)
         )
-    (let* ((gp-0 (handle->process (-> self target)))
-           (v1-15 (if (type? gp-0 process-drawable)
-                      gp-0
-                      )
-                  )
-           )
+    (let ((v1-15 (as-type (handle->process (-> self target)) process-drawable)))
       (cond
         ((and v1-15
               (nonzero? (-> (the-as process-drawable v1-15) root))
@@ -1302,11 +1259,11 @@
            (-> self subsampler)
            (-> (the-as process-drawable v1-15) node-list data (-> self target-joint) bone transform)
            )
-         (set! (-> self root trans quad) (-> self subsampler spawn-mat trans quad))
+         (vector-copy! (-> self root trans) (-> self subsampler spawn-mat trans))
          )
         (else
           (let ((a0-11 (-> self root trans)))
-            (set! (-> self mat trans quad) (-> a0-11 quad))
+            (vector-copy! (-> self mat trans) a0-11)
             )
           (init-with-mat! (-> self subsampler) (-> self mat))
           )
@@ -1334,39 +1291,17 @@
       (set! (-> self target-joint) (the-as int arg5))
       )
     ((logtest? (-> arg0 flags) (sp-group-flag sp5))
-     (let* ((s1-1 (-> self mat))
-            (a2-1 (math-camera-matrix))
-            (v1-18 (-> a2-1 rvec quad))
-            (a0-10 (-> a2-1 uvec quad))
-            (a1-2 (-> a2-1 fvec quad))
-            (a2-2 (-> a2-1 trans quad))
-            )
-       (set! (-> s1-1 rvec quad) v1-18)
-       (set! (-> s1-1 uvec quad) a0-10)
-       (set! (-> s1-1 fvec quad) a1-2)
-       (set! (-> s1-1 trans quad) a2-2)
-       )
-     (set! (-> self mat trans quad) (-> (the-as matrix arg5) trans quad))
-     (set! (-> self offset quad) (-> self mat trans quad))
+     (matrix-copy! (-> self mat) (math-camera-matrix))
+     (vector-copy! (-> self mat trans) (-> (the-as matrix arg5) trans))
+     (vector-copy! (-> self offset) (-> self mat trans))
      )
     (else
-      (let* ((v1-21 (-> self mat))
-             (a3-1 (the-as matrix arg5))
-             (a0-15 (-> a3-1 rvec quad))
-             (a1-3 (-> a3-1 uvec quad))
-             (a2-3 (-> a3-1 fvec quad))
-             (a3-2 (-> a3-1 trans quad))
-             )
-        (set! (-> v1-21 rvec quad) a0-15)
-        (set! (-> v1-21 uvec quad) a1-3)
-        (set! (-> v1-21 fvec quad) a2-3)
-        (set! (-> v1-21 trans quad) a3-2)
-        )
-      (set! (-> self offset quad) (-> self mat trans quad))
+      (matrix-copy! (-> self mat) (the-as matrix arg5))
+      (vector-copy! (-> self offset) (-> self mat trans))
       )
     )
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> self mat trans quad))
+  (vector-copy! (-> self root trans) (-> self mat trans))
   (if (zero? arg0)
       (go process-drawable-art-error "null group")
       )
@@ -1506,50 +1441,25 @@
                )
          (v0-1 (-> arg0 root trans))
          )
-    (set! (-> v0-1 quad) (-> v1-2 quad))
+    (vector-copy! v0-1 v1-2)
     v0-1
     )
   )
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod notify-parent-of-death ((this lightning-tracker))
-  (with-pp
-    (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> gp-0 from) (process->ppointer pp))
-      (set! (-> gp-0 num-params) 1)
-      (set! (-> gp-0 message) 'notify)
-      (set! (-> gp-0 param 0) (the-as uint 'die))
-      (let ((s5-0 send-event-function)
-            (s4-0 (ppointer->process (-> this parent)))
-            )
-        (s5-0
-          (if (type? s4-0 process)
-              s4-0
-              )
-          gp-0
-          )
-        )
-      )
-    (none)
-    )
+  (send-event (as-type (ppointer->process (-> this parent)) process) 'notify 'die)
+  (none)
   )
 
 (defmethod update ((this lightning-tracker))
   (if (-> this callback)
       ((-> this callback) this)
       )
-  (let ((a0-6 (cond
-                ((>= (-> this target-joint0) 0)
-                 (let ((s5-0 (handle->process (-> this target0))))
-                   (if (type? s5-0 process-drawable)
-                       s5-0
-                       )
-                   )
-                 )
-                (else
+  (let ((a0-6 (if (>= (-> this target-joint0) 0)
+                  (as-type (handle->process (-> this target0)) process-drawable)
                   (the-as process #f)
                   )
-                )
               )
         )
     (cond
@@ -1585,18 +1495,10 @@
         )
       )
     )
-  (let ((a0-22 (cond
-                 ((>= (-> this target-joint1) 0)
-                  (let ((s5-3 (handle->process (-> this target1))))
-                    (if (type? s5-3 process-drawable)
-                        (the-as process-focusable s5-3)
-                        )
-                    )
-                  )
-                 (else
+  (let ((a0-22 (if (>= (-> this target-joint1) 0)
+                   (the-as process-focusable (as-type (handle->process (-> this target1)) process-drawable))
                    (the-as process-focusable #f)
                    )
-                 )
                )
         )
     (cond
@@ -1605,7 +1507,7 @@
          (let ((a0-26 (-> this lightning))
                (v1-44 (-> this offset1))
                )
-           (set! (-> a0-26 state meet data (+ (-> a0-26 state points-to-draw) -1) quad) (-> v1-44 quad))
+           (vector-copy! (-> a0-26 state meet data (+ (-> a0-26 state points-to-draw) -1)) v1-44)
            )
          )
        )
@@ -1616,14 +1518,14 @@
        (let ((gp-1 (-> this lightning))
              (v1-51 (get-trans a0-22 3))
              )
-         (set! (-> gp-1 state meet data (+ (-> gp-1 state points-to-draw) -1) quad) (-> v1-51 quad))
+         (vector-copy! (-> gp-1 state meet data (+ (-> gp-1 state points-to-draw) -1)) v1-51)
          )
        )
       (else
         (let ((s5-4 (-> this lightning))
               (v1-54 (vector<-cspace! (new 'stack-no-clear 'vector) (-> a0-22 node-list data (-> this target-joint1))))
               )
-          (set! (-> s5-4 state meet data (+ (-> s5-4 state points-to-draw) -1) quad) (-> v1-54 quad))
+          (vector-copy! (-> s5-4 state meet data (+ (-> s5-4 state points-to-draw) -1)) v1-54)
           )
         )
       )
@@ -1673,18 +1575,14 @@
     (let ((gp-1 (-> self lightning spec sound)))
       (when gp-1
         (let ((s5-1 (new 'stack-no-clear 'vector)))
-          (set! (-> s5-1 quad) (-> self offset1 quad))
+          (vector-copy! s5-1 (-> self offset1))
           (when (and (>= (-> self target-joint1) 0) (< (-> self target-joint1) 256))
-            (let* ((s4-0 (handle->process (-> self target1)))
-                   (v1-28 (if (type? s4-0 process-drawable)
-                              (the-as process-drawable s4-0)
-                              )
-                          )
-                   )
+            (let ((v1-28 (as-type (handle->process (-> self target1)) process-drawable)))
               (if (and v1-28 (nonzero? (-> v1-28 root)))
-                  (set! (-> s5-1 quad)
-                        (-> (vector<-cspace! (new 'stack-no-clear 'vector) (-> v1-28 node-list data (-> self target-joint1))) quad)
-                        )
+                  (vector-copy!
+                    s5-1
+                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> v1-28 node-list data (-> self target-joint1)))
+                    )
                   )
               )
             )
@@ -1876,12 +1774,7 @@
 
 ;; WARN: Return type mismatch object vs symbol.
 (defbehavior process-release? process ((arg0 process))
-  (let* ((gp-0 (command-get-process arg0 *target*))
-         (a0-2 (if (type? gp-0 process-focusable)
-                   gp-0
-                   )
-               )
-         )
+  (let ((a0-2 (as-type (command-get-process arg0 *target*) process-focusable)))
     (the-as symbol (if (and a0-2 (focus-test? (the-as process-focusable a0-2) grabbed))
                        (send-event a0-2 'end-mode 'grab)
                        #t
@@ -1997,6 +1890,7 @@
   )
 
 (defmethod init-from-entity! ((this med-res-level) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 128)
   (let ((s4-0 (res-lump-struct arg0 'art-name structure))
         (s3-0 (res-lump-struct (-> this entity) 'level structure))
@@ -2085,6 +1979,7 @@
   )
 
 (defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 string))
   (stack-size-set! (-> this main-thread) 64)
   (logior! (-> this mask) (process-mask ambient))
@@ -2092,7 +1987,7 @@
   (+! (-> *display* part-clock ref-count) 1)
   (set! (-> this clock) (-> *display* part-clock))
   (set! (-> this root) (new 'process 'trsqv))
-  (set! (-> this root trans quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> this root trans) (-> arg0 extra trans))
   (quaternion-copy! (-> this root quat) (-> arg0 quat))
   (vector-identity! (-> this root scale))
   (set! (-> this radius) 12288.0)
@@ -2429,22 +2324,18 @@
 
 (defbehavior cam-launcher-joystick camera-slave ()
   (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-    (let ((s5-0 (new 'stack-no-clear 'matrix)))
-      (set! (-> s5-0 rvec quad) (the-as uint128 0))
-      (set! (-> s5-0 uvec quad) (the-as uint128 0))
-      (set! (-> s5-0 fvec quad) (the-as uint128 0))
-      (set! (-> s5-0 trans quad) (the-as uint128 0))
-      (let ((gp-0 (vector-reset! (new 'stack-no-clear 'vector))))
-        (let* ((f0-0 (analog-input (the-as int (+ (-> *cpad-list* cpads 0 rightx) -128)) 0.0 48.0 110.0 -1.0))
-               (f0-1 (* -546.13336 f0-0))
-               (f0-3 (fmin 546.13336 (fmax -546.13336 f0-1)))
-               )
-          (matrix-axis-angle! s5-0 (-> *camera* local-down) f0-3)
+    (let ((s5-0 (new-stack-matrix0))
+          (gp-0 (vector-reset! (new 'stack-no-clear 'vector)))
           )
-        (vector-! gp-0 (-> self trans) (-> *camera* tpos-curr))
-        (vector-matrix*! gp-0 gp-0 s5-0)
-        (vector+! (-> self trans) gp-0 (-> *camera* tpos-curr))
+      (let* ((f0-0 (analog-input (the-as int (+ (-> *cpad-list* cpads 0 rightx) -128)) 0.0 48.0 110.0 -1.0))
+             (f0-1 (* -546.13336 f0-0))
+             (f0-3 (fmin 546.13336 (fmax -546.13336 f0-1)))
+             )
+        (matrix-axis-angle! s5-0 (-> *camera* local-down) f0-3)
         )
+      (vector-! gp-0 (-> self trans) (-> *camera* tpos-curr))
+      (vector-matrix*! gp-0 gp-0 s5-0)
+      (vector+! (-> self trans) gp-0 (-> *camera* tpos-curr))
       )
     )
   )
@@ -2466,7 +2357,7 @@
         (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
         (vector-flatten! gp-0 (-> self tracking inv-mat fvec) (-> *camera* local-down))
         (vector-normalize! gp-0 1.0)
-        (set! (-> self pivot-pt quad) (-> gp-0 quad))
+        (vector-copy! (-> self pivot-pt) gp-0)
         (vector+float*! gp-0 gp-0 (-> *camera* local-down) 1000.0)
         (vector-normalize-copy! (-> self tracking inv-mat fvec) gp-0 1.0)
         )
@@ -2504,11 +2395,7 @@
 
 (defbehavior cam-launcher-long-joystick camera-slave ()
   (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-    (let ((gp-0 (new 'stack-no-clear 'matrix)))
-      (set! (-> gp-0 rvec quad) (the-as uint128 0))
-      (set! (-> gp-0 uvec quad) (the-as uint128 0))
-      (set! (-> gp-0 fvec quad) (the-as uint128 0))
-      (set! (-> gp-0 trans quad) (the-as uint128 0))
+    (let ((gp-0 (new-stack-matrix0)))
       (let* ((f0-0 (analog-input (the-as int (+ (-> *cpad-list* cpads 0 rightx) -128)) 0.0 48.0 110.0 -1.0))
              (f0-1 (* -546.13336 f0-0))
              (f0-3 (fmin 546.13336 (fmax -546.13336 f0-1)))
@@ -2722,6 +2609,7 @@
   )
 
 (defmethod init-from-entity! ((this launcher) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -2803,7 +2691,7 @@
       )
     (set! (-> self root) s2-0)
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
   (set-vector! (-> self root quat) 0.0 0.0 0.0 1.0)
   (update-transforms (the-as collide-shape (-> self root)))
@@ -2916,23 +2804,14 @@
   :code (behavior ()
     (set-time! (-> self state-time))
     (while ((-> self run-function))
-      (let* ((gp-0 (handle->process (-> self target)))
-             (a0-4 (if (type? gp-0 process-drawable)
-                       gp-0
-                       )
-                   )
-             )
+      (let ((a0-4 (as-type (handle->process (-> self target)) process-drawable)))
         (when a0-4
-          (let* ((gp-1 (-> (the-as process-drawable a0-4) root))
-                 (a0-6 (if (type? gp-1 collide-shape)
-                           gp-1
-                           )
-                       )
-                 )
+          (let ((a0-6 (as-type (-> (the-as process-drawable a0-4) root) collide-shape)))
             (if a0-6
-                (set! (-> (the-as collide-shape (-> self root)) trans quad)
-                      (-> (the-as collide-shape a0-6) root-prim prim-core world-sphere quad)
-                      )
+                (vector-copy!
+                  (-> (the-as collide-shape (-> self root)) trans)
+                  (-> (the-as collide-shape a0-6) root-prim prim-core world-sphere)
+                  )
                 )
             )
           )
@@ -2994,7 +2873,7 @@
     (set! (-> s4-0 event-self) 'touched)
     (set! (-> self root) s4-0)
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (set! (-> self duration) arg2)
   (set! (-> self target) (the-as handle #f))
   (set! (-> self event) #f)
@@ -3031,7 +2910,7 @@
     (set! (-> self root) s5-0)
     )
   (set! (-> (the-as collide-shape (-> self root)) event-self) 'touched)
-  (set! (-> self root trans quad) (-> arg0 spawn-point quad))
+  (vector-copy! (-> self root trans) (-> arg0 spawn-point))
   (quaternion-copy! (-> self root quat) (-> arg0 spawn-quat))
   (vector-identity! (-> self root scale))
   (vector-float*! (-> self root scale) (-> self root scale) (-> arg0 scale))
@@ -3120,7 +2999,7 @@
                      (logtest? (-> s2-0 prim-core action) (collide-action solid))
                      (logtest? (-> s2-0 prim-core collide-as) arg2)
                      )
-            (set! (-> s3-0 y) (vector-vector-distance arg1 (the-as vector (-> s2-0 prim-core))))
+            (set! (-> s3-0 y) (vector-vector-distance arg1 (-> s2-0 prim-core world-sphere)))
             (set! (-> s3-0 y) (fmax 0.0 (- (-> s3-0 y) (-> s2-0 prim-core world-sphere w))))
             (when (< (-> s3-0 y) (-> s3-0 x))
               (set! (-> s3-0 x) (-> s3-0 y))
@@ -3144,15 +3023,11 @@
     (case message
       (('touched)
        (let ((s4-0 (new 'stack-no-clear 'mystery-cquery-type0)))
-         (set! (-> s4-0 explosion-trans quad)
-               (-> (the-as collide-shape (-> self root)) root-prim prim-core world-sphere quad)
-               )
-         (let* ((s2-0 proc)
-                (s3-0 (if (type? s2-0 process-drawable)
-                          s2-0
-                          )
-                      )
-                )
+         (vector-copy!
+           (-> s4-0 explosion-trans)
+           (-> (the-as collide-shape (-> self root)) root-prim prim-core world-sphere)
+           )
+         (let ((s3-0 (as-type proc process-drawable)))
            (when (and s3-0 (!= s3-0 (handle->process (-> self params ignore-proc))))
              (let ((v1-6 (find-closest-solid-sphere-prim
                            (the-as collide-shape (-> (the-as process-drawable s3-0) root))
@@ -3163,29 +3038,16 @@
                    )
                (cond
                  (v1-6
-                   (set! (-> s4-0 proc-trans quad) (-> v1-6 prim-core world-sphere quad))
+                   (vector-copy! (-> s4-0 proc-trans) (-> v1-6 prim-core world-sphere))
                    )
-                 ((begin
-                    (let ((s2-2 proc))
-                      (set! a0-13 (if (type? s2-2 process-focusable)
-                                      s2-2
-                                      )
-                            )
-                      )
-                    a0-13
-                    )
-                  (set! (-> s4-0 proc-trans quad) (-> (get-trans (the-as process-focusable a0-13) 3) quad))
+                 ((begin (set! a0-13 (as-type proc process-focusable)) a0-13)
+                  (vector-copy! (-> s4-0 proc-trans) (get-trans (the-as process-focusable a0-13) 3))
                   )
                  (else
-                   (let* ((s2-4 (-> (the-as process-focusable s3-0) root))
-                          (v1-12 (if (type? s2-4 collide-shape)
-                                     s2-4
-                                     )
-                                 )
-                          )
+                   (let ((v1-12 (as-type (-> (the-as process-focusable s3-0) root) collide-shape)))
                      (if v1-12
-                         (set! (-> s4-0 proc-trans quad) (-> v1-12 root-prim prim-core world-sphere quad))
-                         (set! (-> s4-0 proc-trans quad) (-> (the-as process-focusable s3-0) root trans quad))
+                         (vector-copy! (-> s4-0 proc-trans) (-> v1-12 root-prim prim-core world-sphere))
+                         (vector-copy! (-> s4-0 proc-trans) (-> (the-as process-focusable s3-0) root trans))
                          )
                      )
                    )
@@ -3195,7 +3057,7 @@
              (set! (-> s4-0 dist) (fmax 0.0 (- (-> s4-0 dist) (-> s4-0 proc-trans w))))
              (set! (-> s4-0 probe) -1.0)
              (when (< 0.0 (-> s4-0 dist))
-               (set! (-> s4-0 cquery start-pos quad) (-> s4-0 explosion-trans quad))
+               (vector-copy! (-> s4-0 cquery start-pos) (-> s4-0 explosion-trans))
                (vector-! (-> s4-0 cquery move-dist) (-> s4-0 proc-trans) (-> s4-0 explosion-trans))
                (let ((v1-23 (-> s4-0 cquery)))
                  (set! (-> v1-23 radius) 40.96)
@@ -3279,7 +3141,7 @@
       ((and (nonzero? s4-0) (type? s4-0 collide-shape))
        (vector+!
          arg1
-         (the-as vector (-> (the-as collide-shape s4-0) root-prim prim-core))
+         (-> (the-as collide-shape s4-0) root-prim prim-core world-sphere)
          (rand-vu-sphere-point! arg1 (-> (the-as collide-shape s4-0) root-prim prim-core world-sphere w))
          )
        )
@@ -3318,6 +3180,7 @@
 
 
 (defmethod init-from-entity! ((this simple-prim) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (allocate-trans-and-strip! this)
   (process-entity-set! this arg0)
   (process-drawable-from-entity! this arg0)
@@ -3360,8 +3223,8 @@
 
 (defbehavior simple-prim-init-by-other simple-prim ((arg0 vector) (arg1 vector) (arg2 texture-id))
   (allocate-trans-and-strip! self)
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (set! (-> self root scale quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) arg0)
+  (vector-copy! (-> self root scale) arg1)
   (set! (-> self strip tex-id) arg2)
   (go-virtual active)
   )
@@ -3415,7 +3278,7 @@
     (let ((v1-8 (-> this strip data)))
       (vector+! s4-0 (-> this root trans) s2-0)
       (vector+! s4-0 s4-0 s3-0)
-      (set! (-> v1-8 0 pos quad) (-> s4-0 quad))
+      (vector-copy! (-> v1-8 0 pos) s4-0)
       (set! (-> v1-8 0 stq z) 0.0)
       (set! (-> v1-8 0 stq x) 0.0)
       (set! (-> v1-8 0 stq y) 0.0)
@@ -3424,7 +3287,7 @@
       (let ((v1-9 (-> v1-8 1)))
         (vector+float*! s4-0 (-> this root trans) s2-0 -1.0)
         (vector+! s4-0 s4-0 s3-0)
-        (set! (-> v1-9 pos quad) (-> s4-0 quad))
+        (vector-copy! (-> v1-9 pos) s4-0)
         (set! (-> v1-9 stq z) 0.0)
         (set! (-> v1-9 stq x) 1.0)
         (set! (-> v1-9 stq y) 0.0)
@@ -3433,7 +3296,7 @@
         (let ((v1-10 (&+ v1-9 32)))
           (vector+! s4-0 (-> this root trans) s2-0)
           (vector+float*! s4-0 s4-0 s3-0 -1.0)
-          (set! (-> v1-10 pos quad) (-> s4-0 quad))
+          (vector-copy! (-> v1-10 pos) s4-0)
           (set! (-> v1-10 stq z) 0.0)
           (set! (-> v1-10 stq x) 0.0)
           (set! (-> v1-10 stq y) 1.0)
@@ -3442,7 +3305,7 @@
           (let ((v1-11 (&+ v1-10 32)))
             (vector+float*! s4-0 (-> this root trans) s2-0 -1.0)
             (vector+float*! s4-0 s4-0 s3-0 -1.0)
-            (set! (-> v1-11 pos quad) (-> s4-0 quad))
+            (vector-copy! (-> v1-11 pos) s4-0)
             (set! (-> v1-11 stq z) 0.0)
             (set! (-> v1-11 stq x) 1.0)
             (set! (-> v1-11 stq y) 1.0)
@@ -3618,6 +3481,7 @@
   )
 
 (defmethod init-from-entity! ((this part-controller) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag) (sv-32 string))
   (stack-size-set! (-> this main-thread) 32)
   (set! sv-16 (new 'static 'res-tag))
@@ -3712,7 +3576,7 @@
           (sound-play-by-name (-> self spawn-sound) (new-sound-id) 1024 0 0 (sound-group) gp-1)
           (cond
             ((logtest? (-> self particle-launchers (-> self current-part-index) 0 flags) (sp-group-flag sp13))
-             (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+             (vector-copy! (-> *launch-matrix* trans) gp-1)
              (part-tracker-spawn
                part-tracker-subsampler
                :to *entity-pool*
@@ -3720,7 +3584,7 @@
                )
              )
             (else
-              (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+              (vector-copy! (-> *launch-matrix* trans) gp-1)
               (part-tracker-spawn
                 part-tracker
                 :to *entity-pool*
@@ -3751,6 +3615,7 @@
 
 
 (defmethod init-from-entity! ((this sound-controller) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 32)
   (let ((a0-3 (the-as string ((method-of-type res-lump get-property-struct)
                               arg0
@@ -3766,7 +3631,7 @@
         )
     (set! (-> this spawn-sound) (string->sound-name a0-3))
     )
-  (set! (-> this pos quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> this pos) (-> arg0 extra trans))
   (let ((a1-3 (new 'stack-no-clear 'sync-info-params)))
     (let ((v1-5 0))
       (if #f
@@ -3859,6 +3724,7 @@
   )
 
 (defmethod init-from-entity! ((this sound-on-path) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 32)
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -3936,7 +3802,7 @@
           (gp-1 (new 'stack-no-clear 'vector))
           )
       (get-point-at-percent-along-path! (-> self path) gp-1 f0-0 'interp)
-      (set! (-> self root trans quad) (-> gp-1 quad))
+      (vector-copy! (-> self root trans) gp-1)
       (cond
         ((-> self is-spooling?)
          (case (get-status *gui-control* (the-as sound-id (-> self loop-sound)))
@@ -3978,19 +3844,22 @@
     (set-setting! 'mode-name 'cam-fixed 0.0 0)
     (set-setting! 'interp-time 'abs 450.0 0)
     (set-setting! 'entity-name (res-lump-struct (-> self entity) 'camera-name structure) 0.0 0)
-    (suspend-for (-> self pause-time))
+    (suspend-for (-> self pause-time)
+      )
     (if (-> self blur)
         (set-setting! 'blur-a 'abs 0.5 0)
         )
     (remove-setting! 'mode-name)
     (remove-setting! 'entity-name)
     (remove-setting! 'interp-time)
-    (suspend-for (seconds 0.5))
+    (suspend-for (seconds 0.5)
+      )
     (while (not (process-release? *target*))
       (suspend)
       )
     (remove-setting! 'interp-time)
-    (suspend-for (seconds 0.5))
+    (suspend-for (seconds 0.5)
+      )
     (remove-setting! 'blur-a)
     (process-entity-status! self (entity-perm-status no-kill) #f)
     )
@@ -4015,6 +3884,7 @@
 
 
 (defmethod init-from-entity! ((this level-exit) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (set! (-> this minimap) #f)

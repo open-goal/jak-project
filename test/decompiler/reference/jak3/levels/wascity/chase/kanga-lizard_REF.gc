@@ -720,34 +720,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 0.9999 :y -0.0032 :z 0.0024 :w 13772.991)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -991,6 +991,7 @@
 
 ;; definition for method 67 of type kanga-lizard
 (defmethod coin-flip? ((this kanga-lizard))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1006,6 +1007,7 @@
 
 ;; definition for method 82 of type kanga-lizard
 (defmethod event-handler ((this kanga-lizard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('death-end)
      (when (-> this minimap)
@@ -1019,7 +1021,8 @@
   )
 
 ;; definition for method 122 of type kanga-lizard
-(defmethod go-idle2 ((this kanga-lizard))
+(defmethod go-fallback-init ((this kanga-lizard))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (when (= (-> this nav state mesh) *default-nav-mesh*)
     (set! (-> *kanga-lizard-nav-enemy-info* nav-mesh) #f)
     (go (method-of-object this reinit-if-find-nav-mesh))
@@ -1065,17 +1068,20 @@
   )
 
 ;; definition for method 108 of type kanga-lizard
-(defmethod enemy-method-108 ((this kanga-lizard) (arg0 process-focusable))
+(defmethod should-flee-from? ((this kanga-lizard) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (not (logtest? (-> arg0 focus-status) (focus-status ignore)))
   )
 
 ;; definition for method 107 of type kanga-lizard
-(defmethod is-pfoc-in-mesh? ((this kanga-lizard) (arg0 process-focusable) (arg1 vector))
+(defmethod can-become-hostile-to? ((this kanga-lizard) (arg0 process-focusable) (arg1 vector))
+  "Return if this enemy can become hostile to the process."
   #t
   )
 
 ;; definition for method 64 of type kanga-lizard
-(defmethod update-awareness! ((this kanga-lizard) (arg0 process-focusable) (arg1 enemy-best-focus))
+(defmethod get-awareness-of-proc ((this kanga-lizard) (arg0 process-focusable) (arg1 enemy-best-focus))
+  "Check what the enemies awareness of this pfoc would be. Optionally return more awareness stats in enemy-best-focus."
   (cond
     ((< (+ (current-time) (seconds -3)) (-> this last-focus-ping))
      (set! (-> this enemy-info notice-distance) 409600.0)
@@ -1090,7 +1096,7 @@
       (set! (-> this enemy-info proximity-notice-distance) 286720.0)
       )
     )
-  (let* ((t9-0 (method-of-type nav-enemy update-awareness!))
+  (let* ((t9-0 (method-of-type nav-enemy get-awareness-of-proc))
          (v0-0 (t9-0 this arg0 arg1))
          )
     (set! (-> this enemy-info notice-distance) 286720.0)
@@ -1101,7 +1107,8 @@
 
 ;; definition for method 20 of type kanga-lizard
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this kanga-lizard))
+(defmethod get-search-info-flag ((this kanga-lizard))
+  "Get search-info-flag for this process."
   (set-time! (-> this last-focus-ping))
   (the-as search-info-flag 0)
   )
@@ -1109,6 +1116,7 @@
 ;; definition for method 120 of type kanga-lizard
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this kanga-lizard))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1155,6 +1163,7 @@
 ;; definition for method 121 of type kanga-lizard
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this kanga-lizard))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-kanga-lizard" (the-as (pointer level) #f)))
@@ -1164,7 +1173,7 @@
       (set! (-> *kanga-lizard-nav-enemy-info* nav-mesh) #f)
       (set! (-> *kanga-lizard-nav-enemy-info* nav-mesh) *default-nav-mesh*)
       )
-  (init-enemy-defaults! this *kanga-lizard-nav-enemy-info*)
+  (setup-enemy! this *kanga-lizard-nav-enemy-info*)
   (let ((v1-8 (-> this nav)))
     (set! (-> v1-8 speed-scale) 1.0)
     )
@@ -1397,13 +1406,9 @@
 ;; definition for method 15 of type hud-kanga-lizard
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-kanga-lizard))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 472.0 (* 130.0 (-> this offset))))
-    160
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 472.0 (* 130.0 (-> this offset)))) 160)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 65)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -16 65)
   ((method-of-type hud draw) this)
   0
   (none)

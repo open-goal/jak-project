@@ -142,7 +142,7 @@
         (let ((a0-5 (-> s2-0 bolt))
               (v1-6 s3-0)
               )
-          (set! (-> a0-5 state meet data (+ (-> a0-5 state points-to-draw) -1) quad) (-> v1-6 quad))
+          (vector-copy! (-> a0-5 state meet data (+ (-> a0-5 state points-to-draw) -1)) v1-6)
           )
         (when (-> gp-0 ring-spec)
           (let ((s1-0 (-> gp-0 ring-spec num-points))
@@ -378,7 +378,7 @@
       (when gp-0
         (when (not (focus-test? gp-0 disable dead ignore grabbed pilot-riding pilot mech teleporting invulnerable))
           (let* ((v1-5 (get-trans gp-0 0))
-                 (a1-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (the-as vector (-> self dividing-wall))))
+                 (a1-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> self dividing-wall pos)))
                  (s5-0 (-> self plane (if (< 0.0 (vector-dot a1-2 (-> self dividing-wall dir)))
                                           0
                                           1
@@ -785,10 +785,10 @@
 
 (defmethod spawn-particles ((this elec-gate) (arg0 sparticle-launch-control))
   (if (-> this part-spawner-left)
-      (spawn arg0 (the-as vector (&-> (-> this part-spawner-left child) 8)))
+      (spawn arg0 (the-as vector (&-> this part-spawner-left child 8)))
       )
   (if (-> this part-spawner-right)
-      (spawn arg0 (the-as vector (&-> (-> this part-spawner-right child) 8)))
+      (spawn arg0 (the-as vector (&-> this part-spawner-right child 8)))
       )
   0
   (none)
@@ -858,6 +858,7 @@
   )
 
 (defmethod init-from-entity! ((this elec-gate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (set! (-> this entity) arg0)
@@ -893,12 +894,12 @@
          )
     (vector-cross! v1-31 v1-31 *up-vector*)
     (set! (-> this dividing-wall pos quad) (-> s5-3 quad))
-    (set! (-> this dividing-wall dir quad) (-> v1-31 quad))
-    (vector+float*! (the-as vector (-> this plane)) s5-3 v1-31 12288.0)
-    (set! (-> this plane 0 dir quad) (-> v1-31 quad))
+    (vector-copy! (-> this dividing-wall dir) v1-31)
+    (vector+float*! (-> this plane 0 pos) s5-3 v1-31 12288.0)
+    (vector-copy! (-> this plane 0 dir) v1-31)
     (vector-float*! v1-31 v1-31 -1.0)
-    (vector+float*! (the-as vector (-> this plane 1)) s5-3 v1-31 12288.0)
-    (set! (-> this plane 1 dir quad) (-> v1-31 quad))
+    (vector+float*! (-> this plane 1 pos) s5-3 v1-31 12288.0)
+    (vector-copy! (-> this plane 1 dir) v1-31)
     )
   (set! (-> this wall-xz)
         (vector-vector-distance
@@ -948,6 +949,7 @@
   )
 
 (defmethod init-from-entity! ((this sewer-elec-gate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this gate-index) (res-lump-value (-> this entity) 'index int :time -1000000000.0))
   (call-parent-method this arg0)
   )

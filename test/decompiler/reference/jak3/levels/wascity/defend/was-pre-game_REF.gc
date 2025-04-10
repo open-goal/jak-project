@@ -1936,7 +1936,7 @@
                        )
                    (sp-group-flag sp13)
                    )
-         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
          (let ((gp-0 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
            (when gp-0
              (let ((t9-1 (method-of-type part-tracker-subsampler activate)))
@@ -1981,7 +1981,7 @@
            )
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000 0)))
             (when gp-1
               (let ((t9-4 (method-of-type part-tracker activate)))
@@ -2082,7 +2082,7 @@
                             )
                         (sp-group-flag sp13)
                         )
-              (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+              (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
               (let ((gp-4 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
                 (when gp-4
                   (let ((t9-10 (method-of-type part-tracker-subsampler activate)))
@@ -2127,7 +2127,7 @@
                 )
               )
              (else
-               (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+               (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
                (let ((gp-5 (get-process *default-dead-pool* part-tracker #x4000 0)))
                  (when gp-5
                    (let ((t9-13 (method-of-type part-tracker activate)))
@@ -2201,7 +2201,7 @@
                        )
                    (sp-group-flag sp13)
                    )
-         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
          (let ((gp-0 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
            (when gp-0
              (let ((t9-1 (method-of-type part-tracker-subsampler activate)))
@@ -2246,7 +2246,7 @@
            )
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000 0)))
             (when gp-1
               (let ((t9-4 (method-of-type part-tracker activate)))
@@ -2311,7 +2311,7 @@
   (set! (-> self start-delay) arg3)
   (set! (-> self gravity) arg4)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self screen-pos quad) (-> arg1 quad))
+  (vector-copy! (-> self screen-pos) arg1)
   (logclear! (-> self mask) (process-mask actor-pause))
   (initialize-skeleton
     self
@@ -2400,12 +2400,7 @@
               (s3-1 0)
               )
           (while s2-1
-            (let* ((s0-0 (ppointer->process s2-1))
-                   (s1-0 (if (type? s0-0 pre-game-bubble)
-                             (the-as pre-game-bubble s0-0)
-                             )
-                         )
-                   )
+            (let ((s1-0 (as-type (ppointer->process s2-1) pre-game-bubble)))
               (when (and s1-0 (type? s1-0 pre-game-bubble) (= (-> s1-0 bubble-type) (-> s4-0 index)))
                 (let ((f0-1 (* 0.01 (vector-length (-> s1-0 screen-pos)))))
                   (when (and (not (time-elapsed? (-> s4-0 fire-time) (seconds 0.02)))
@@ -2757,12 +2752,8 @@
                    (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
                    )
                  )
-             (let ((v1-29 gp-1))
-               (set! (-> v1-29 width) (the float 340))
-               )
-             (let ((v1-30 gp-1))
-               (set! (-> v1-30 height) (the float 80))
-               )
+             (set-width! gp-1 340)
+             (set-height! gp-1 80)
              (let ((v1-31 gp-1)
                    (a0-21 (-> *setting-control* user-default language))
                    )
@@ -3111,6 +3102,7 @@
 
 ;; definition for method 11 of type was-pre-game
 (defmethod init-from-entity! ((this was-pre-game) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)

@@ -23,19 +23,20 @@
     (lambda :behavior process
       ()
       (let ((gp-0 (current-time)))
-        (suspend-for (seconds 1) (when (time-elapsed? gp-0 (seconds 0.03))
-                                   (set! gp-0 (current-time))
-                                   (process-drawable-shock-effect
-                                     *target*
-                                     (-> *lightning-spec-id-table* 1)
-                                     lightning-probe-callback
-                                     (-> *part-id-table* 160)
-                                     0
-                                     0
-                                     40960.0
-                                     )
-                                   )
-                     )
+        (suspend-for (seconds 1)
+          (when (time-elapsed? gp-0 (seconds 0.03))
+            (set! gp-0 (current-time))
+            (process-drawable-shock-effect
+              *target*
+              (-> *lightning-spec-id-table* 1)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              0
+              0
+              40960.0
+              )
+            )
+          )
         )
       #f
       )
@@ -156,6 +157,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-switch) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -300,6 +302,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-jump-plate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set-time! (-> this state-time))
   (set-time! (-> this turn-start))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -466,7 +469,7 @@
           )
         )
       (let ((gp-1 (new 'stack-no-clear 'vector)))
-        (set! (-> gp-1 quad) (-> self root trans quad))
+        (vector-copy! gp-1 (-> self root trans))
         (vector-! gp-1 (target-pos 0) (-> self root trans))
         (set! (-> gp-1 y) 0.0)
         (vector-normalize! gp-1 1.0)
@@ -631,11 +634,11 @@
     (set-time! (-> self state-time))
     (cond
       ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
         )
       )
@@ -690,6 +693,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-generator-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
@@ -801,11 +805,11 @@
     (set-time! (-> self state-time))
     (cond
       ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
         )
       )
@@ -848,6 +852,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-generator-b) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
@@ -1002,11 +1007,11 @@
     (set-time! (-> self state-time))
     (cond
       ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
         )
       )
@@ -1042,15 +1047,18 @@
       )
     (logior! (-> self draw status) (draw-control-status no-draw))
     (transform-post)
-    (suspend-for (seconds 1.2))
+    (suspend-for (seconds 1.2)
+      )
     (when (res-lump-struct (-> self entity) 'art-name structure)
       (logclear! (-> self mask) (process-mask actor-pause))
       (process-grab? *target* #f)
       (set-setting! 'entity-name "camera-359" 0.0 0)
-      (suspend-for (seconds 2))
+      (suspend-for (seconds 2)
+        )
       (task-close! "precursor-tour-generator-trigger")
       (send-event (process-by-name "precur-door-b-4" *active-pool*) 'open)
-      (suspend-for (seconds 1))
+      (suspend-for (seconds 1)
+        )
       (set-setting! 'interp-time 'abs 450.0 0)
       (remove-setting! 'entity-name)
       (process-release? *target*)
@@ -1062,6 +1070,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-generator-c) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (stack-size-set! (-> this main-thread) 512)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
@@ -1141,8 +1150,8 @@
        (let ((v1-1 (the-as object (-> block param 0)))
              (gp-0 (new 'stack-no-clear 'vector))
              )
-         (set! (-> gp-0 quad) (-> (the-as vector (-> block param 1)) quad))
-         (set! (-> self root trans quad) (-> (the-as vector v1-1) quad))
+         (vector-copy! gp-0 (the-as vector (-> block param 1)))
+         (vector-copy! (-> self root trans) (the-as vector v1-1))
          (set! (-> gp-0 y) 0.0)
          (vector-normalize! gp-0 1.0)
          (quaternion-look-at! (-> self root quat) gp-0 *up-vector*)
@@ -1181,7 +1190,7 @@
     (vector-rotate-around-y! (-> self offset-vec) (-> self offset-vec) (* (-> self ang-vel) (seconds-per-frame)))
     (vector+! (-> self root trans) (-> self init-pos) (-> self offset-vec))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self offset-vec quad))
+      (vector-copy! gp-0 (-> self offset-vec))
       (set! (-> gp-0 y) 0.0)
       (vector-normalize! gp-0 1.0)
       (quaternion-look-at! (-> self root quat) gp-0 *up-vector*)
@@ -1216,7 +1225,7 @@
       )
     (vector+! (-> self root trans) (-> self init-pos) (-> self offset-vec))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self offset-vec quad))
+      (vector-copy! gp-0 (-> self offset-vec))
       (let ((s5-0 (new 'stack-no-clear 'vector)))
         (rand-vu-sphere-point! s5-0 3072.0)
         (vector+! (-> self root trans) (-> self root trans) s5-0)
@@ -1245,11 +1254,11 @@
     (transform-post)
     (cond
       ((logtest? (-> *part-group-id-table* 1318 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1318))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1318))
         )
       )
@@ -1290,11 +1299,11 @@
     (set! (-> self root) s3-0)
     )
   (set! (-> self sound-id) (new-sound-id))
-  (set! (-> self offset-vec quad) (-> arg2 quad))
+  (vector-copy! (-> self offset-vec) arg2)
   (set! (-> self ang-vel) arg1)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1317) self))
-  (set! (-> self root trans quad) (-> arg0 quad))
-  (set! (-> self init-pos quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
+  (vector-copy! (-> self init-pos) arg0)
   (initialize-skeleton
     self
     (the-as
@@ -1373,7 +1382,7 @@
 
 (defmethod spawn-gems ((this precur-generator-d))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this root trans quad))
+    (vector-copy! s5-0 (-> this root trans))
     (set! (-> this proc-handle 0) (ppointer->handle (process-spawn
                                                       precur-generator-d-gem
                                                       s5-0
@@ -1456,11 +1465,11 @@
     (set-time! (-> self state-time))
     (cond
       ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
         )
       )
@@ -1512,11 +1521,11 @@
       (set! (-> gp-0 y) -20480.0)
       (cond
         ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-0 (-> self root trans) gp-0) quad))
+         (vector-copy! (-> *launch-matrix* trans) (vector+! gp-0 (-> self root trans) gp-0))
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-0 (-> self root trans) gp-0) quad))
+          (vector-copy! (-> *launch-matrix* trans) (vector+! gp-0 (-> self root trans) gp-0))
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
           )
         )
@@ -1525,11 +1534,11 @@
       (set! (-> gp-0 y) -32768.0)
       (cond
         ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-0 (-> self root trans) gp-0) quad))
+         (vector-copy! (-> *launch-matrix* trans) (vector+! gp-0 (-> self root trans) gp-0))
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-0 (-> self root trans) gp-0) quad))
+          (vector-copy! (-> *launch-matrix* trans) (vector+! gp-0 (-> self root trans) gp-0))
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
           )
         )
@@ -1554,11 +1563,11 @@
       (set! (-> gp-4 y) -61440.0)
       (cond
         ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-4 (-> self root trans) gp-4) quad))
+         (vector-copy! (-> *launch-matrix* trans) (vector+! gp-4 (-> self root trans) gp-4))
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-4 (-> self root trans) gp-4) quad))
+          (vector-copy! (-> *launch-matrix* trans) (vector+! gp-4 (-> self root trans) gp-4))
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
           )
         )
@@ -1567,11 +1576,11 @@
       (set! (-> gp-4 y) -20480.0)
       (cond
         ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-4 (-> self root trans) gp-4) quad))
+         (vector-copy! (-> *launch-matrix* trans) (vector+! gp-4 (-> self root trans) gp-4))
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-4 (-> self root trans) gp-4) quad))
+          (vector-copy! (-> *launch-matrix* trans) (vector+! gp-4 (-> self root trans) gp-4))
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
           )
         )
@@ -1585,11 +1594,11 @@
       (set! (-> gp-8 y) -61440.0)
       (cond
         ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-8 (-> self root trans) gp-8) quad))
+         (vector-copy! (-> *launch-matrix* trans) (vector+! gp-8 (-> self root trans) gp-8))
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-8 (-> self root trans) gp-8) quad))
+          (vector-copy! (-> *launch-matrix* trans) (vector+! gp-8 (-> self root trans) gp-8))
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
           )
         )
@@ -1598,11 +1607,11 @@
       (set! (-> gp-8 y) -20480.0)
       (cond
         ((logtest? (-> *part-group-id-table* 1313 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-8 (-> self root trans) gp-8) quad))
+         (vector-copy! (-> *launch-matrix* trans) (vector+! gp-8 (-> self root trans) gp-8))
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1313))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> (vector+! gp-8 (-> self root trans) gp-8) quad))
+          (vector-copy! (-> *launch-matrix* trans) (vector+! gp-8 (-> self root trans) gp-8))
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1313))
           )
         )
@@ -1616,6 +1625,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-generator-d) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
@@ -1835,6 +1845,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-platform-round) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -1959,9 +1970,7 @@
                 s3-0
                 s4-0
                 self
-                (if (type? proc process-drawable)
-                    proc
-                    )
+                (as-type proc process-drawable)
                 (the-as touching-shapes-entry (-> block param 0))
                 )
               (if (logtest? (-> s3-0 mask) (attack-mask intersection))
@@ -1980,7 +1989,7 @@
           )
       (quaternion-copy! s5-0 (-> self root quat))
       (quaternion-rotate-local-y! s5-0 s5-0 16384.0)
-      (when (= (status-of-level-and-borrows *level* 'lmech #f) 'active)
+      (when (= (level-status? *level* 'lmech #f) 'active)
         (mech-target-spawn
           (vector-matrix*! (new 'stack-no-clear 'vector) (new 'static 'vector :x 8192.0 :w 1.0) gp-0)
           self
@@ -2053,6 +2062,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-door-d) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
@@ -2154,91 +2164,28 @@
 
 ;; WARN: Return type mismatch (pointer process) vs (pointer joint-exploder).
 (defmethod spawn-exploder ((this precur-door-c))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
-      (let ((s4-0 (new 'stack-no-clear 'vector))
-            (f0-0 (rand-vu-float-range 0.5 1.5))
-            )
-        (let ((v1-1 (-> gp-0 fountain-rand-transv-lo)))
-          (let ((a0-4 (-> this root trans)))
-            (let ((a1-2 *up-vector*))
-              (let ((a2-1 0.0))
-                (.mov vf7 a2-1)
-                )
-              (.lvf vf5 (&-> a1-2 quad))
-              )
-            (.lvf vf4 (&-> a0-4 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> v1-1 quad) vf6)
+  (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+    (let ((s4-0 (new 'stack-no-clear 'vector))
+          (f0-0 (rand-vu-float-range 0.5 1.5))
           )
-        (vector-reset! s4-0)
-        (let ((a1-3 s4-0))
-          (let ((v1-3 s4-0))
-            (let ((a0-5 *up-vector*))
-              (let ((a2-3 40960.0))
-                (.mov vf7 a2-3)
-                )
-              (.lvf vf5 (&-> a0-5 quad))
-              )
-            (.lvf vf4 (&-> v1-3 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a1-3 quad) vf6)
-          )
-        (let ((a1-4 (-> gp-0 fountain-rand-transv-lo)))
-          (let ((v1-4 s4-0))
-            (let ((a0-6 *identity-vector*))
-              (let ((a2-5 (* -204800.0 f0-0)))
-                (.mov vf7 a2-5)
-                )
-              (.lvf vf5 (&-> a0-6 quad))
-              )
-            (.lvf vf4 (&-> v1-4 quad))
-            )
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a1-4 quad) vf6)
-          )
-        (let ((a0-7 (-> gp-0 fountain-rand-transv-hi)))
-          (let ((v1-5 *identity-vector*))
-            (let ((a1-6 (* 204800.0 f0-0)))
-              (.mov vf7 a1-6)
-              )
-            (.lvf vf5 (&-> v1-5 quad))
-            )
-          (.lvf vf4 (&-> s4-0 quad))
-          (.add.x.vf.w vf6 vf0 vf0)
-          (.mul.x.vf.xyz acc vf5 vf7)
-          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
-          (.svf (&-> a0-7 quad) vf6)
-          )
-        )
-      (set! (-> gp-0 gravity) -122880.0)
-      (set! (-> gp-0 rot-speed) 16.0)
-      (set! (-> gp-0 friction) 0.3)
-      (process-spawn
-        joint-exploder
-        (art-group-get-by-name *level* "skel-precur-door-c-explode" (the-as (pointer level) #f))
-        5
-        gp-0
-        *precur-door-c-exploder-params*
-        :name "joint-exploder"
-        :to this
-        :unk 0
-        )
+      (vector+*! (-> gp-0 fountain-rand-transv-lo) (-> this root trans) *up-vector* 0.0)
+      (vector-reset! s4-0)
+      (vector+*! s4-0 s4-0 *up-vector* 40960.0)
+      (vector+*! (-> gp-0 fountain-rand-transv-lo) s4-0 *identity-vector* (* -204800.0 f0-0))
+      (vector+*! (-> gp-0 fountain-rand-transv-hi) s4-0 *identity-vector* (* 204800.0 f0-0))
+      )
+    (set! (-> gp-0 gravity) -122880.0)
+    (set! (-> gp-0 rot-speed) 16.0)
+    (set! (-> gp-0 friction) 0.3)
+    (process-spawn
+      joint-exploder
+      (art-group-get-by-name *level* "skel-precur-door-c-explode" (the-as (pointer level) #f))
+      5
+      gp-0
+      *precur-door-c-exploder-params*
+      :name "joint-exploder"
+      :to this
+      :unk 0
       )
     )
   )
@@ -2310,6 +2257,7 @@
   )
 
 (defmethod init-from-entity! ((this precur-door-c) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -2416,6 +2364,7 @@
 
 
 (defmethod init-from-entity! ((this precura-door-a) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this open-started) 0)
   (set! (-> this open-frame) 45.0)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
@@ -2494,7 +2443,8 @@
                    (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status subtask-complete)))
                         )
                    )
-          (suspend-for (seconds 1.5))
+          (suspend-for (seconds 1.5)
+            )
           (set-setting! 'entity-name "camera-420" 0.0 0)
           (process-grab? *target* #f)
           (process-entity-status! self (entity-perm-status subtask-complete) #t)
@@ -2568,7 +2518,8 @@
     )
   :code (behavior ()
     (when (-> self precur-tour?)
-      (suspend-for (seconds 2.5))
+      (suspend-for (seconds 2.5)
+        )
       (remove-setting! 'entity-name)
       (process-release? *target*)
       )

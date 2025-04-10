@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -13,6 +13,8 @@
 #include "testnative.h"
 
 #ifdef TEST_NATIVE_X11
+
+#include <X11/Xlib.h>
 
 static void *CreateWindowX11(int w, int h);
 static void DestroyWindowX11(void *window);

@@ -54,12 +54,7 @@
   (if (= (-> this shield-type) (shield-type shield-type-0))
       (seek! (-> this heat-info current-heat-value) 0.0 (* 0.2 (seconds-per-frame)))
       )
-  (let* ((s4-0 (handle->process (-> this owner)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (as-type (handle->process (-> this owner)) process-focusable)))
     (cond
       (s5-0
         (quaternion-copy! (-> this root quat) (-> (the-as process-focusable s5-0) root quat))
@@ -431,34 +426,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 73728.0
-    :knocked-medium-vxz-hi 102400.0
-    :knocked-medium-vy-lo 81920.0
-    :knocked-medium-vy-hi 122880.0
-    :knocked-hard-vxz-lo 81920.0
-    :knocked-hard-vxz-hi 122880.0
-    :knocked-hard-vy-lo 90112.0
-    :knocked-hard-vy-hi 143360.0
-    :knocked-huge-vxz-lo 102400.0
-    :knocked-huge-vxz-hi 143360.0
-    :knocked-huge-vy-lo 102400.0
-    :knocked-huge-vy-hi 163840.0
-    :knocked-yellow-vxz-lo 32768.0
-    :knocked-yellow-vxz-hi 40960.0
-    :knocked-yellow-vy-lo 36864.0
-    :knocked-yellow-vy-hi 57344.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 65536.0
-    :knocked-red-vy-lo 65536.0
-    :knocked-red-vy-hi 102400.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 18)
+    :knocked-medium-vxz-hi (meters 25)
+    :knocked-medium-vy-lo (meters 20)
+    :knocked-medium-vy-hi (meters 30)
+    :knocked-hard-vxz-lo (meters 20)
+    :knocked-hard-vxz-hi (meters 30)
+    :knocked-hard-vy-lo (meters 22)
+    :knocked-hard-vy-hi (meters 35)
+    :knocked-huge-vxz-lo (meters 25)
+    :knocked-huge-vxz-hi (meters 35)
+    :knocked-huge-vy-lo (meters 25)
+    :knocked-huge-vy-hi (meters 40)
+    :knocked-yellow-vxz-lo (meters 8)
+    :knocked-yellow-vxz-hi (meters 10)
+    :knocked-yellow-vy-lo (meters 9)
+    :knocked-yellow-vy-hi (meters 14)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 16)
+    :knocked-red-vy-lo (meters 16)
+    :knocked-red-vy-hi (meters 25)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 1.0 :w 34422.13)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -1045,6 +1040,7 @@
 ;; definition for method 120 of type dp-bipedal
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this dp-bipedal))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1132,6 +1128,7 @@
 
 ;; definition for method 62 of type dp-bipedal
 (defmethod get-damage-from-attack ((this dp-bipedal) (arg0 object) (arg1 event-message-block))
+  "Compute hit point damage for an attack message."
   (if (type? arg0 guard-shot)
       0.5
       ((method-of-type nav-enemy get-damage-from-attack) this arg0 arg1)
@@ -1238,14 +1235,14 @@
 (defmethod dp-bipedal-method-209 ((this dp-bipedal) (arg0 vector) (arg1 float))
   (local-vars (s4-0 vector))
   (let ((a1-1 (new 'stack-no-clear 'vector)))
-    (set! (-> a1-1 quad) (-> arg0 quad))
+    (vector-copy! a1-1 arg0)
     (set! (-> a1-1 w) arg1)
-    (and (not (add-root-sphere-to-hash! (-> this nav) a1-1 #x100068))
+    (and (not (check-sphere-blocked! (-> this nav) a1-1 #x100068))
          (let ((a0-5 (vector-! (new 'stack-no-clear 'vector) (-> this focus-pos) arg0)))
            (and (< (vector-x-angle a0-5) 5461.3335)
                 (begin
                   (set! s4-0 (new 'stack-no-clear 'vector))
-                  (set! (-> s4-0 quad) (-> arg0 quad))
+                  (vector-copy! s4-0 arg0)
                   (+! (-> s4-0 y) 15974.399)
                   (region-check-has-los s4-0 (-> this focus-bullseye) 8192.0)
                   )
@@ -1269,9 +1266,9 @@
               )
             (not (dp-bipedal-method-209 self (-> self formation-position) 13977.6))
             )
-    (set! (-> self focus-formation-source quad) (-> self focus-pos quad))
+    (vector-copy! (-> self focus-formation-source) (-> self focus-pos))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
+      (vector-copy! gp-0 (-> self root trans))
       (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (-> self focus-formation-source))))
         (when (< 0.0 (vector-length s5-1))
           (dotimes (s4-0 (-> *dp-bipedal-formation-table* length))
@@ -1285,7 +1282,7 @@
               (when (and (closest-point-on-mesh (-> self nav) s3-0 s3-0 (the-as nav-poly #f))
                          (dp-bipedal-method-209 self s3-0 13977.6)
                          )
-                (set! (-> gp-0 quad) (-> s3-0 quad))
+                (vector-copy! gp-0 s3-0)
                 #t
                 (goto cfg-26)
                 )
@@ -1294,7 +1291,7 @@
           )
         )
       (label cfg-26)
-      (set! (-> self formation-position quad) (-> gp-0 quad))
+      (vector-copy! (-> self formation-position) gp-0)
       )
     )
   0
@@ -1315,7 +1312,7 @@
         )
     (logclear! (-> a0-1 flags) (nav-state-flag directional-mode))
     (logior! (-> a0-1 flags) (nav-state-flag target-poly-dirty))
-    (set! (-> a0-1 target-pos quad) (-> v1-4 quad))
+    (vector-copy! (-> a0-1 target-pos) v1-4)
     )
   0
   (nav-enemy-method-187 self)
@@ -1333,7 +1330,7 @@
         (-> self focus-pos)
         (* (vector-length (ja-linear-vel 0)) (seconds-per-frame))
         )
-      (try-locate-ground self (meters 10) (meters 10) #t (-> self gnd-collide-with))
+      (move-to-ground self (meters 10) (meters 10) #t (-> self gnd-collide-with))
       )
     )
   (nav-enemy-simple-post)
@@ -1643,11 +1640,11 @@
     (set! (-> self effect-rate) 0.4)
     (cond
       ((logtest? (-> *part-group-id-table* 242 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root root-prim prim-core world-sphere))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 242))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root root-prim prim-core world-sphere))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 242))
         )
       )
@@ -1721,7 +1718,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((gp-0 (set-reaction-time! self 1 (seconds 0.01))))
+    (let ((gp-0 (rnd-time-frame self 1 (seconds 0.01))))
       (dotimes (s5-0 gp-0)
         (ja-no-eval :group! dp-bipedal-idle0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -1770,7 +1767,7 @@
     (when (time-elapsed? (-> self state-time) (seconds 0.05))
       (let ((v1-25 (new 'stack-no-clear 'inline-array 'vector 1)))
         (let ((a2-0 (-> self nav state)))
-          (set! (-> v1-25 0 quad) (-> a2-0 target-pos quad))
+          (vector-copy! (-> v1-25 0) (-> a2-0 target-pos))
           )
         (when (< (vector-vector-xz-distance (-> self root trans) (-> v1-25 0)) 4096.0)
           (if (should-check-los? (-> self los) (seconds 0.3))
@@ -1889,7 +1886,7 @@
       (set! (-> gp-0 shield-strength) 10)
       (set! (-> gp-0 shield-type) (shield-type shield-type-0))
       (if (new 'static 'vector :z -7168.0 :w 1.0)
-          (set! (-> gp-0 offset-vec quad) (-> (new 'static 'vector :z -7168.0 :w 1.0) quad))
+          (vector-copy! (-> gp-0 offset-vec) (new 'static 'vector :z -7168.0 :w 1.0))
           (vector-reset! (-> gp-0 offset-vec))
           )
       (let ((s5-0 (the-as process #f)))
@@ -1932,7 +1929,7 @@
         ((>= 1 (the-as int v1-10))
          (go-virtual active)
          )
-        ((= v1-10 (enemy-aware ea4))
+        ((= v1-10 (enemy-aware flee))
          (go-flee self)
          )
         )
@@ -2015,7 +2012,7 @@
     (set-collide-spec! self #t)
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (let* ((v1-7 *game-info*)
            (v0-2 (+ (-> v1-7 attack-id) 1))
            )
@@ -2032,7 +2029,7 @@
     (set-collide-spec! self #f)
     )
   :trans (behavior ()
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
@@ -2158,7 +2155,7 @@
   :virtual #t
   :trans (behavior ()
     (if (and (time-elapsed? (-> self state-time) (seconds 0.01))
-             (and (not (handle->process (-> self ragdoll-proc))) (within-gspot-range? self))
+             (and (not (handle->process (-> self ragdoll-proc))) (invalid-height? self))
              )
         (go-die self)
         )
@@ -2197,7 +2194,7 @@
           )
         )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
@@ -2208,12 +2205,12 @@
           (a1-1 (new 'stack-no-clear 'collide-query))
           (s5-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> s5-0 quad) (-> gp-0 gspot-pos quad))
+      (vector-copy! s5-0 (-> gp-0 gspot-pos))
       (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (set! (-> s4-0 quad) (-> gp-0 gspot-normal quad))
+        (vector-copy! s4-0 (-> gp-0 gspot-normal))
         (when (not (find-ground gp-0 a1-1 (-> self enemy-info gnd-collide-with) 8192.0 81920.0 1024.0 (the-as process #f)))
-          (set! (-> gp-0 gspot-pos quad) (-> s5-0 quad))
-          (set! (-> gp-0 gspot-normal quad) (-> s4-0 quad))
+          (vector-copy! (-> gp-0 gspot-pos) s5-0)
+          (vector-copy! (-> gp-0 gspot-normal) s4-0)
           )
         )
       )
@@ -2356,7 +2353,7 @@
           )
       (logclear! (-> a0-3 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-3 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-3 target-pos quad) (-> v1-11 quad))
+      (vector-copy! (-> a0-3 target-pos) v1-11)
       )
     0
     (nav-enemy-travel-post)
@@ -2405,7 +2402,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.05))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
+      (vector-copy! gp-0 (-> self root trans))
       (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
         (ja-no-eval :group! dp-bipedal-turret-jump-on-start-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -2562,7 +2559,7 @@
            (a1-2 (-> self move-dest))
            (f0-0 (-> v1-14 extra-nav-sphere w))
            )
-      (set! (-> v1-14 extra-nav-sphere quad) (-> a1-2 quad))
+      (vector-copy! (-> v1-14 extra-nav-sphere) a1-2)
       (set! (-> v1-14 extra-nav-sphere w) f0-0)
       )
     0
@@ -2596,7 +2593,7 @@
       (ja :num! (seek!))
       )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
+      (vector-copy! gp-0 (-> self root trans))
       (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
         (ja-no-eval :group! dp-bipedal-turret-jump-off-jump-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -2614,7 +2611,7 @@
       (suspend)
       (nav-enemy-falling-post)
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -2632,8 +2629,8 @@
 ;; INFO: Used lq/sq
 (defun trajectory-prediction ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector) (arg5 float) (arg6 float))
   (let ((s2-0 (new 'stack-no-clear 'inline-array 'vector 6)))
-    (set! (-> s2-0 0 quad) (-> arg3 quad))
-    (set! (-> s2-0 1 quad) (-> arg4 quad))
+    (vector-copy! (-> s2-0 0) arg3)
+    (vector-copy! (-> s2-0 1) arg4)
     (vector-! (-> s2-0 5) (-> s2-0 0) arg1)
     (set! (-> s2-0 2 x) (vector-length (-> s2-0 5)))
     (vector-normalize! (-> s2-0 5) 1.0)
@@ -2793,11 +2790,13 @@
 
 ;; definition for method 73 of type dp-bipedal
 (defmethod go-idle ((this dp-bipedal))
+  "Go to an idle state."
   (go (method-of-object this de-ambush))
   )
 
 ;; definition for method 78 of type dp-bipedal
 (defmethod go-hostile ((this dp-bipedal))
+  "Go to the hostile state, actively trying to attack the target."
   (cond
     ((or (and (-> this enemy-info use-frustration) (logtest? (enemy-flag ef40) (-> this enemy-flags)))
          (nav-enemy-method-174 this)
@@ -2826,6 +2825,7 @@
 
 ;; definition for method 85 of type dp-bipedal
 (defmethod knocked-anim ((this dp-bipedal) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (set! (-> arg0 anim-speed) 1.5)
@@ -2879,6 +2879,7 @@
 
 ;; definition for method 86 of type dp-bipedal
 (defmethod knocked-land-anim ((this dp-bipedal) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot))
      (ja-channel-push! 1 (seconds 0.1))
@@ -2934,7 +2935,8 @@
   )
 
 ;; definition for method 123 of type dp-bipedal
-(defmethod enemy-method-123 ((this dp-bipedal))
+(defmethod allow-ragdoll? ((this dp-bipedal))
+  "Can this enemy ragdoll now?"
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot) (knocked-type blue-shot))
      (= (-> this hit-points) 0.0)
@@ -2949,15 +2951,17 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs vector.
 (defmethod ragdoll-spawn! ((this dp-bipedal) (arg0 symbol) (arg1 symbol))
+  "If possible, spawn ragdoll and start using it."
   (let ((t9-0 (method-of-type nav-enemy ragdoll-spawn!)))
     (t9-0 this arg0 arg1)
     )
   (let ((v1-2 (handle->process (-> this ragdoll-proc))))
     (the-as vector (when v1-2
                      (set-vector! (-> (the-as ragdoll-proc v1-2) ragdoll gravity) 0.0 -1.4 0.0 1.0)
-                     (set! (-> (the-as ragdoll-proc v1-2) ragdoll gravity-target quad)
-                           (-> (the-as ragdoll-proc v1-2) ragdoll gravity quad)
-                           )
+                     (vector-copy!
+                       (-> (the-as ragdoll-proc v1-2) ragdoll gravity-target)
+                       (-> (the-as ragdoll-proc v1-2) ragdoll gravity)
+                       )
                      (set! (-> (the-as ragdoll-proc v1-2) ragdoll maximum-stretch) 0.8)
                      )
             )
@@ -2992,6 +2996,7 @@
 ;; definition for method 59 of type dp-bipedal
 ;; INFO: Used lq/sq
 (defmethod enemy-common-post ((this dp-bipedal))
+  "Common implementation of post. Runs ja-post."
   (quaternion->matrix (-> this rotation-matrix) (-> this root quat))
   (if (or (logtest? (-> this fact enemy-options) (enemy-option user0))
           (and (logtest? (-> this draw status) (draw-control-status on-screen))
@@ -3023,8 +3028,8 @@
   (when (< 1 (the-as int (-> this focus aware)))
     (let ((s5-2 (handle->process (-> this focus handle))))
       (when s5-2
-        (set! (-> this focus-bullseye quad) (-> (get-trans (the-as process-focusable s5-2) 3) quad))
-        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable s5-2) 0) quad))
+        (vector-copy! (-> this focus-bullseye) (get-trans (the-as process-focusable s5-2) 3))
+        (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable s5-2) 0))
         (vector-! (-> this focus-dir) (-> this focus-pos) (-> this root trans))
         (vector-normalize! (-> this focus-dir) 1.0)
         (-> this focus-dir)
@@ -3078,7 +3083,8 @@
   )
 
 ;; definition for method 108 of type dp-bipedal
-(defmethod enemy-method-108 ((this dp-bipedal) (arg0 process-focusable))
+(defmethod should-flee-from? ((this dp-bipedal) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (or (focus-test? arg0 invulnerable)
       (and (focus-test? arg0 mech) (< (vector-vector-distance (-> this root trans) (get-trans arg0 1)) 28672.0))
       )
@@ -3106,6 +3112,7 @@
 
 ;; definition for method 148 of type dp-bipedal
 (defmethod go-gun-dark-2-stretch ((this dp-bipedal))
+  "Go to the gun-dark-2-stretch state."
   (with-pp
     (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-0 from) (process->ppointer pp))
@@ -3128,6 +3135,7 @@
 
 ;; definition for method 82 of type dp-bipedal
 (defmethod event-handler ((this dp-bipedal) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked 'hit-flinch)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -3139,7 +3147,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -3180,6 +3188,7 @@
 
 ;; definition for method 67 of type dp-bipedal
 (defmethod coin-flip? ((this dp-bipedal))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -3211,13 +3220,14 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this dp-bipedal))
+  "Typical place for shared init code. Runs from entity or process style init."
   (local-vars (sv-16 res-tag))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dp-bipedal" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *dp-bipedal-nav-enemy-info*)
+  (setup-enemy! this *dp-bipedal-nav-enemy-info*)
   (set! (-> this state-stack) (new 'process 'boxed-array state 4))
   (set! (-> this state-stack length) 0)
   (set! (-> this root pause-adjust-distance) 163840.0)
@@ -3328,7 +3338,7 @@
                (let ((a2-1 (new 'stack-no-clear 'array 'collide-shape 1))
                      (a1-1 (new 'stack-no-clear 'vector))
                      )
-                 (set! (-> a1-1 quad) (-> self entity extra trans quad))
+                 (vector-copy! a1-1 (-> self entity extra trans))
                  (set! (-> a1-1 w) 24576.0)
                  (zero? (fill-actor-list-for-box *actor-hash* a1-1 a2-1 1))
                  )
@@ -3336,7 +3346,7 @@
       (let ((s5-0 (-> self entity))
             (gp-2 (new 'stack-no-clear 'enemy-init-by-other-params))
             )
-        (set! (-> gp-2 trans quad) (-> s5-0 extra trans quad))
+        (vector-copy! (-> gp-2 trans) (-> s5-0 extra trans))
         (quaternion-copy! (-> gp-2 quat) (-> s5-0 quat))
         (set! (-> gp-2 entity) s5-0)
         (set! (-> gp-2 directed?) #f)
@@ -3376,7 +3386,8 @@
 ;; definition for method 11 of type dp-bipedal-spawner
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this dp-bipedal-spawner) (arg0 entity-actor))
-  (set! (-> this spawn-pos quad) (-> arg0 extra trans quad))
+  "Set up a newly created process from the entity that created it."
+  (vector-copy! (-> this spawn-pos) (-> arg0 extra trans))
   (set! (-> this spawn-timer) 0)
   (set! (-> this enemies-spawned) 0)
   (set! (-> this enemies-to-spawn)

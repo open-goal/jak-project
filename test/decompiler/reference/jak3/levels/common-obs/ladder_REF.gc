@@ -57,12 +57,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (let* ((s4-0 proc)
-              (s2-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((s2-0 (as-type proc process-focusable)))
          (when s2-0
            (let ((s4-1 (ladder-method-25 self (new 'stack-no-clear 'matrix) 0.0))
                  (s3-0 (ladder-method-25 self (new 'stack-no-clear 'matrix) 1.0))
@@ -140,13 +135,9 @@
     )
   :code (behavior ((arg0 handle))
     (set-time! (-> self rider-time))
-    (while (let ((s5-0 (handle->process arg0)))
-             (and (if (type? s5-0 process-focusable)
-                      s5-0
-                      )
-                  (not (time-elapsed? (-> self rider-time) (seconds 0.1)))
-                  )
-             )
+    (while (and (as-type (handle->process arg0) process-focusable)
+                (not (time-elapsed? (-> self rider-time) (seconds 0.1)))
+                )
       (nop self)
       (suspend)
       )
@@ -206,19 +197,8 @@
 ;; INFO: Used lq/sq
 (defmethod ladder-method-25 ((this ladder) (arg0 matrix) (arg1 float))
   (let ((s4-0 (-> this node-list data 4 bone transform))
-        (s3-0 (new 'stack-no-clear 'matrix))
+        (s3-0 (matrix-copy! (new 'stack-no-clear 'matrix) (-> this node-list data 5 bone transform)))
         )
-    (let* ((a2-1 (-> this node-list data 5 bone transform))
-           (v1-4 (-> a2-1 rvec quad))
-           (a0-1 (-> a2-1 uvec quad))
-           (a1-1 (-> a2-1 fvec quad))
-           (a2-2 (-> a2-1 trans quad))
-           )
-      (set! (-> s3-0 rvec quad) v1-4)
-      (set! (-> s3-0 uvec quad) a0-1)
-      (set! (-> s3-0 fvec quad) a1-1)
-      (set! (-> s3-0 trans quad) a2-2)
-      )
     (vector+!
       (-> s3-0 trans)
       (-> s3-0 trans)
@@ -237,6 +217,7 @@
 
 ;; definition for method 11 of type ladder
 (defmethod init-from-entity! ((this ladder) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (init-skel! this)

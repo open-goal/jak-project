@@ -31,7 +31,6 @@ void main() {
   vec3 nrm_vf23 = cam_no_persp[0].xyz * normal.x
                 + cam_no_persp[1].xyz * normal.y
                 + cam_no_persp[2].xyz * normal.z;
-  vec3 r_nrm = nrm_vf23;
 
   // transform the point
   vec4 vf17 = cam_no_persp[3];

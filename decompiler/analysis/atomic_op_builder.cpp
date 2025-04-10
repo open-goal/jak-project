@@ -1689,6 +1689,62 @@ std::unique_ptr<AtomicOp> convert_vector_plus(const Instruction& i0,
       idx);
 }
 
+std::unique_ptr<AtomicOp> convert_vector_xyz_product(const Instruction& i0,
+                                                     const Instruction& i1,
+                                                     const Instruction& i2,
+                                                     const Instruction& i3,
+                                                     const Instruction& i4,
+                                                     int idx) {
+  /*
+    lqc2 vf4, 0(a1)
+    lqc2 vf5, 0(a2)
+    vaddx.w vf6, vf0, vf0
+    vmul.xyz vf6, vf4, vf5
+    sqc2 vf6, 0(a0)
+    */
+
+  // lqc2 vf4, 0(a1) (src1)
+  if (i0.kind != InstructionKind::LQC2 || i0.get_dst(0).get_reg() != make_vf(4) ||
+      !i0.get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register src1 = i0.get_src(1).get_reg();
+
+  // lqc2 vf5, 0(a2) (src2)
+  if (i1.kind != InstructionKind::LQC2 || i1.get_dst(0).get_reg() != make_vf(5) ||
+      !i1.get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register src2 = i1.get_src(1).get_reg();
+
+  // vaddx.w vf6, vf0, vf0
+  if (i2.kind != InstructionKind::VADD_BC || i2.get_dst(0).get_reg() != make_vf(6) ||
+      i2.get_src(0).get_reg() != make_vf(0) || i2.get_src(1).get_reg() != make_vf(0) ||
+      i2.cop2_dest != 1 || i2.cop2_bc != 0) {
+    return nullptr;
+  }
+
+  // vmul.xyz vf6, vf4, vf5
+  if (i3.kind != InstructionKind::VMUL || i3.get_dst(0).get_reg() != make_vf(6) ||
+      i3.get_src(0).get_reg() != make_vf(4) || i3.get_src(1).get_reg() != make_vf(5) ||
+      i3.cop2_dest != 14) {
+    return nullptr;
+  }
+
+  // sqc2 vf6, 0(a0) (dst)
+  if (i4.kind != InstructionKind::SQC2 || i4.get_src(0).get_reg() != make_vf(6) ||
+      !i4.get_src(1).is_imm(0)) {
+    return nullptr;
+  }
+  Register dst = i4.get_src(2).get_reg();
+
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_XYZ_PRODUCT, make_src_atom(dst, idx),
+                       make_src_atom(src1, idx), make_src_atom(src2, idx)),
+      idx);
+}
+
 std::unique_ptr<AtomicOp> convert_vector_minus(const Instruction& i0,
                                                const Instruction& i1,
                                                const Instruction& i2,
@@ -1819,6 +1875,11 @@ std::unique_ptr<AtomicOp> convert_5(const Instruction& i0,
     return as_vector_plus;
   }
 
+  auto as_vector_xyz = convert_vector_xyz_product(i0, i1, i2, i3, i4, idx);
+  if (as_vector_xyz) {
+    return as_vector_xyz;
+  }
+
   auto as_vector_minus = convert_vector_minus(i0, i1, i2, i3, i4, idx);
   if (as_vector_minus) {
     return as_vector_minus;
@@ -1901,6 +1962,75 @@ std::unique_ptr<AtomicOp> convert_6(const Instruction& i0,
   return nullptr;
 }
 
+std::unique_ptr<AtomicOp> convert_vector_length_squared(const Instruction* instrs, int idx) {
+  // 0: lqc2 vf1, 0(a0)
+  if (instrs[0].kind != InstructionKind::LQC2 || instrs[0].get_dst(0).get_reg() != make_vf(1) ||
+      !instrs[0].get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register vec_src = instrs[0].get_src(1).get_reg();
+
+  auto vf0 = make_vf(0);
+  auto vf1 = make_vf(1);
+  auto vf2 = make_vf(2);
+
+  // 1: vaddw.x vf2, vf0, vf0
+  if (instrs[1].kind != InstructionKind::VADD_BC || instrs[1].get_dst(0).get_reg() != vf2 ||
+      instrs[1].get_src(0).get_reg() != vf0 || instrs[1].get_src(1).get_reg() != vf0 ||
+      instrs[1].cop2_dest != 0b1000 || instrs[1].cop2_bc != 3) {
+    return nullptr;
+  }
+
+  // 2: vmul.xyzw vf1, vf1, vf1
+  if (instrs[2].kind != InstructionKind::VMUL || instrs[2].get_dst(0).get_reg() != vf1 ||
+      instrs[2].get_src(0).get_reg() != vf1 || instrs[2].get_src(1).get_reg() != vf1 ||
+      instrs[2].cop2_dest != 0b1111) {
+    return nullptr;
+  }
+
+  // 3: vmulax.x acc, vf2, vf1
+  if (instrs[3].kind != InstructionKind::VMULA_BC || instrs[3].get_src(0).get_reg() != vf2 ||
+      instrs[3].get_src(1).get_reg() != vf1 || instrs[3].cop2_dest != 0b1000 ||
+      instrs[3].cop2_bc != 0) {
+    return nullptr;
+  }
+
+  // 4: vmadday.x acc, vf2, vf1
+  if (instrs[4].kind != InstructionKind::VMADDA_BC || instrs[4].get_src(0).get_reg() != vf2 ||
+      instrs[4].get_src(1).get_reg() != vf1 || instrs[4].cop2_dest != 0b1000 ||
+      instrs[4].cop2_bc != 1) {
+    return nullptr;
+  }
+
+  // 5: vmaddz.x vf1, vf2, vf1
+  if (instrs[5].kind != InstructionKind::VMADD_BC || instrs[5].get_dst(0).get_reg() != vf1 ||
+      instrs[5].get_src(0).get_reg() != vf2 || instrs[5].get_src(1).get_reg() != vf1 ||
+      instrs[5].cop2_dest != 0b1000 || instrs[5].cop2_bc != 2) {
+    return nullptr;
+  }
+
+  // 6: qmfc2.i v0, vf1
+  if (instrs[6].kind != InstructionKind::QMFC2 || instrs[6].src->get_reg() != vf1) {
+    return nullptr;
+  }
+  auto dst = instrs[6].get_dst(0).get_reg();
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_LENGTH_SQUARED, make_src_atom(vec_src, idx)),
+      idx);
+}
+
+std::unique_ptr<AtomicOp> convert_7(const Instruction* instrs, int idx, GameVersion version) {
+  if (version == GameVersion::Jak3) {
+    auto as_vector_length_squared = convert_vector_length_squared(instrs, idx);
+    if (as_vector_length_squared) {
+      return as_vector_length_squared;
+    }
+  }
+
+  return nullptr;
+}
+
 std::unique_ptr<AtomicOp> convert_vector_plus_float_times(const Instruction* instrs, int idx) {
   //  lqc2 vf2, 0(a2)
   if (instrs[0].kind != InstructionKind::LQC2 || instrs[0].get_dst(0).get_reg() != make_vf(2) ||
@@ -1968,10 +2098,82 @@ std::unique_ptr<AtomicOp> convert_vector_plus_float_times(const Instruction* ins
       idx);
 }
 
-std::unique_ptr<AtomicOp> convert_8(const Instruction* instrs, int idx) {
+std::unique_ptr<AtomicOp> convert_vector_plus_times(const Instruction* instrs, int idx) {
+  // 0: mfc1 a3, f0
+  if (instrs[0].kind != InstructionKind::MFC1) {
+    return nullptr;
+  }
+  Register flt_src_3 = instrs[0].get_src(0).get_reg();
+  Register temp = instrs[0].get_dst(0).get_reg();
+
+  // 1: qmtc2.i vf7, a3
+  if (instrs[1].kind != InstructionKind::QMTC2 || instrs[1].get_dst(0).get_reg() != make_vf(7) ||
+      instrs[1].get_src(0).get_reg() != temp) {
+    return nullptr;
+  }
+  // 2: lqc2 vf5, 0(a2)
+  if (instrs[2].kind != InstructionKind::LQC2 || instrs[2].get_dst(0).get_reg() != make_vf(5) ||
+      !instrs[2].get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register vec_src_2 = instrs[2].get_src(1).get_reg();
+
+  // 3: lqc2 vf4, 0(a1)
+  if (instrs[3].kind != InstructionKind::LQC2 || instrs[3].get_dst(0).get_reg() != make_vf(4) ||
+      !instrs[3].get_src(0).is_imm(0)) {
+    return nullptr;
+  }
+  Register vec_src_1 = instrs[3].get_src(1).get_reg();
+
+  // 4: vaddx.w vf6, vf0, vf0
+  if (instrs[4].kind != InstructionKind::VADD_BC || instrs[4].get_dst(0).get_reg() != make_vf(6) ||
+      instrs[4].get_src(0).get_reg() != make_vf(0) ||
+      instrs[4].get_src(1).get_reg() != make_vf(0) || instrs[4].cop2_bc != 0 ||
+      instrs[4].cop2_dest != 0b0001) {
+    return nullptr;
+  }
+  // 5: vmulax.xyz acc, vf5, vf7
+  //    vmulax.xyz acc, vf5, vf7
+  if (instrs[5].kind != InstructionKind::VMULA_BC || instrs[5].get_src(0).get_reg() != make_vf(5) ||
+      instrs[5].get_src(1).get_reg() != make_vf(7) || instrs[5].cop2_dest != 0b1110 ||
+      instrs[5].cop2_bc != 0) {
+    return nullptr;
+  }
+
+  // 6: vmaddw.xyz vf6, vf4, vf0
+  if (instrs[6].kind != InstructionKind::VMADD_BC || instrs[6].get_dst(0).get_reg() != make_vf(6) ||
+      instrs[6].get_src(0).get_reg() != make_vf(4) ||
+      instrs[6].get_src(1).get_reg() != make_vf(0) || instrs[6].cop2_dest != 0b1110 ||
+      instrs[6].cop2_bc != 3) {
+    return nullptr;
+  }
+
+  // 7: sqc2 vf6, 0(a0)
+  if (instrs[7].kind != InstructionKind::SQC2 || instrs[7].get_src(0).get_reg() != make_vf(6) ||
+      !instrs[7].get_src(1).is_imm(0)) {
+    return nullptr;
+  }
+  Register dst = instrs[7].get_src(2).get_reg();
+
+  return std::make_unique<SetVarOp>(
+      make_dst_var(dst, idx),
+      SimpleExpression(SimpleExpression::Kind::VECTOR_PLUS_TIMES, make_src_atom(dst, idx),
+                       make_src_atom(vec_src_1, idx), make_src_atom(vec_src_2, idx),
+                       make_src_atom(flt_src_3, idx)),
+      idx);
+}
+
+std::unique_ptr<AtomicOp> convert_8(const Instruction* instrs, int idx, GameVersion version) {
   auto as_vector_float_plus_times = convert_vector_plus_float_times(instrs, idx);
   if (as_vector_float_plus_times) {
     return as_vector_float_plus_times;
+  }
+
+  if (version == GameVersion::Jak3) {
+    auto as_vector_plus_times = convert_vector_plus_times(instrs, idx);
+    if (as_vector_plus_times) {
+      return as_vector_plus_times;
+    }
   }
   return nullptr;
 }
@@ -2317,10 +2519,18 @@ int convert_block_to_atomic_ops(int begin_idx,
     }
 
     if (!converted && n_instr >= 8) {
-      op = convert_8(&instr[0], op_idx);
+      op = convert_8(&instr[0], op_idx, version);
       if (op) {
         converted = true;
         length = 8;
+      }
+    }
+
+    if (!converted && n_instr >= 7) {
+      op = convert_7(&instr[0], op_idx, version);
+      if (op) {
+        converted = true;
+        length = 7;
       }
     }
 

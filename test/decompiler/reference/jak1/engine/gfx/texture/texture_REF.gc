@@ -723,7 +723,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod allocate-defaults! ((this texture-pool))
   (allocate-segment! this (-> this segment-common) #x1c000)
-  (allocate-segment! this (the-as texture-pool-segment (-> this segment)) #x62000)
+  (allocate-segment! this (-> this segment 0) #x62000)
   (set! *sky-base-vram-word* (allocate-vram-words! this #x7000))
   (set! *sky-base-block* (/ *sky-base-vram-word* 64))
   (set! *sky-base-page* (sar *sky-base-vram-word* 11))
@@ -1116,7 +1116,7 @@
       )
     )
   (upload-now! page 2)
-  (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
+  (update-vram-pages pool (-> pool segment 0) page 2)
   (let ((page-seg-2-size (logand -4096 (+ (-> page segment 2 size) 4095))))
     (cond
       ((< (the-as uint #x24000) page-seg-2-size)
@@ -1156,7 +1156,7 @@
         )
       )
     (upload-now! page 2)
-    (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
+    (update-vram-pages pool (-> pool segment 0) page 2)
     (cond
       ((< (the-as uint #x24000) seg2-size)
        (set! (-> page segment 2 size) (+ -147456 seg2-size))
@@ -1390,13 +1390,8 @@
       (when tfrag-page
         (set! (-> level upload-size 0) 0)
         (if (< distance 81920.0)
-            (+! (-> level upload-size 0) (upload-vram-pages
-                                           this
-                                           (the-as texture-pool-segment (-> this segment))
-                                           tfrag-page
-                                           2
-                                           (the-as bucket-id tfrag-bucket)
-                                           )
+            (+! (-> level upload-size 0)
+                (upload-vram-pages this (-> this segment 0) tfrag-page 2 (the-as bucket-id tfrag-bucket))
                 )
             )
         (cond

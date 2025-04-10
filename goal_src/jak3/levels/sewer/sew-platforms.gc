@@ -57,6 +57,7 @@
   )
 
 (defmethod init-from-entity! ((this sew-plat-updown) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
@@ -211,7 +212,7 @@
           (quaternion-copy! s5-0 (-> self entity quat))
           (quaternion->matrix gp-0 s5-0)
           )
-        (set! (-> gp-0 trans quad) (-> self entity extra trans quad))
+        (vector-copy! (-> gp-0 trans) (-> self entity extra trans))
         (+! (-> gp-0 trans y) 20480.0)
         (spawn-from-mat (-> self part) gp-0)
         )
@@ -283,6 +284,7 @@
   )
 
 (defmethod init-from-entity! ((this sew-moving-step-b) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (alloc-trsqv! this)
   (process-drawable-from-entity! this arg0)
   (set! (-> this sound-idle) (new-sound-id))
@@ -323,8 +325,8 @@
          (vector-! s4-0 s4-0 s3-1)
          (vector-! s5-3 s5-3 s3-1)
          )
-       (set! (-> this start-step-pos quad) (-> s4-0 quad))
-       (set! (-> this end-step-pos quad) (-> s5-3 quad))
+       (vector-copy! (-> this start-step-pos) s4-0)
+       (vector-copy! (-> this end-step-pos) s5-3)
        )
      (go (method-of-object this active))
      )
@@ -395,9 +397,9 @@
 (defbehavior sew-moving-step-b-step-init-by-other sew-moving-step-b-step ((arg0 sew-moving-step-b-step-param))
   (process-entity-set! self (-> arg0 ent))
   (init-collision! self)
-  (set! (-> self root trans quad) (-> arg0 start-pos quad))
-  (set! (-> self start-pos quad) (-> arg0 start-pos quad))
-  (set! (-> self end-pos quad) (-> arg0 end-pos quad))
+  (vector-copy! (-> self root trans) (-> arg0 start-pos))
+  (vector-copy! (-> self start-pos) (-> arg0 start-pos))
+  (vector-copy! (-> self end-pos) (-> arg0 end-pos))
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-moving-step-b" (the-as (pointer level) #f)))
@@ -433,8 +435,8 @@
 ;; WARN: Return type mismatch process vs sew-moving-step-b-step.
 (defun spawn-moving-step-b-step ((arg0 sew-moving-step-b) (arg1 float))
   (let ((gp-0 (new 'stack-no-clear 'sew-moving-step-b-step-param)))
-    (set! (-> gp-0 start-pos quad) (-> arg0 start-step-pos quad))
-    (set! (-> gp-0 end-pos quad) (-> arg0 end-step-pos quad))
+    (vector-copy! (-> gp-0 start-pos) (-> arg0 start-step-pos))
+    (vector-copy! (-> gp-0 end-pos) (-> arg0 end-step-pos))
     (set! (-> gp-0 ent) (-> arg0 entity))
     (set! (-> gp-0 period) (the-as time-frame (-> arg0 sync period)))
     (set! (-> gp-0 offset) arg1)
@@ -671,7 +673,7 @@
     (plat-event proc argc message block)
     )
   :enter (behavior ()
-    (set! (-> self basetrans quad) (-> self positions (-> self current-pos-index) quad))
+    (vector-copy! (-> self basetrans) (-> self positions (-> self current-pos-index)))
     )
   :trans (behavior ()
     (plat-trans)
@@ -686,7 +688,7 @@
   )
 
 (defmethod sew-move-plat-method-37 ((this sew-move-plat))
-  (let ((f30-0 (vector-vector-xz-distance-squared (target-pos 0) (the-as vector (-> this positions)))))
+  (let ((f30-0 (vector-vector-xz-distance-squared (target-pos 0) (-> this positions 0))))
     (logand (+ (-> this dest-pos-index) 1) 1)
     (if (< f30-0 (vector-vector-xz-distance-squared (target-pos 0) (-> this positions 1)))
         0
@@ -733,7 +735,7 @@
            )
           (else
             (vector+float*! (-> self basetrans) (-> self basetrans) gp-2 f1-2)
-            (set! (-> self root trans quad) (-> self basetrans quad))
+            (vector-copy! (-> self root trans) (-> self basetrans))
             )
           )
         )
@@ -769,6 +771,7 @@
   )
 
 (defmethod init-from-entity! ((this sew-move-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -795,9 +798,9 @@
   (set! (-> this current-pos-index) 0)
   (set! (-> this path) (new 'process 'path-control this 'path 0.0 arg0 #f))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
-  (get-point-at-percent-along-path! (-> this path) (the-as vector (-> this positions)) 0.0 'interp)
+  (get-point-at-percent-along-path! (-> this path) (-> this positions 0) 0.0 'interp)
   (get-point-at-percent-along-path! (-> this path) (-> this positions 1) 1.0 'interp)
-  (set! (-> this basetrans quad) (-> this root trans quad))
+  (vector-copy! (-> this basetrans) (-> this root trans))
   (set! (-> this current-pos-index) (sew-move-plat-method-37 this))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go (method-of-object this waiting))

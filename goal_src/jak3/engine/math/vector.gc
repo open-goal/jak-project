@@ -9,6 +9,7 @@
 
 (defun vector-cross! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Compute the cross product. The w component is set to junk."
+  (declare (inline))
   (rlet ((acc :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -62,6 +63,7 @@
 
 (defun vector*! ((arg0 vector) (arg1 vector) (arg2 vector))
   "Elementwise product. Set w = 1."
+  (declare (inline))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
          (vf5 :class vf)
@@ -79,6 +81,7 @@
 
 (defun vector+*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "set arg0 = arg1 + (arg3 * arg2). The w component will be set to 1."
+  (declare (inline))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -100,6 +103,7 @@
 
 (defun vector-*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "Set arg0 = arg1 - (arg3 * arg2). The w component will be set to 1."
+  (declare (inline))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -194,6 +198,7 @@
 
 (defun vector+float*! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   "arg0 = arg1 + arg2 * arg3."
+  (declare (inline))
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf1 :class vf)
@@ -912,7 +917,7 @@
   (let ((f0-0 (vector-length arg1)))
     (cond
       ((= f0-0 0.0)
-       (set! (-> arg0 quad) (-> arg1 quad))
+       (vector-copy! arg0 arg1)
        )
       (else
         (let ((v1-3 (/ arg2 f0-0)))
@@ -949,7 +954,7 @@
          )
     (cond
       ((= f0-4 0.0)
-       (set! (-> arg0 quad) (-> arg1 quad))
+       (vector-copy! arg0 arg1)
        )
       (else
         (let ((v1-3 (/ arg2 f0-4)))
@@ -1005,7 +1010,7 @@
          (f2-0 (-> arg1 z))
          (f0-1 (-> arg1 y))
          )
-    (set! (-> arg0 quad) (-> arg1 quad))
+    (vector-copy! arg0 arg1)
     (set! (-> arg0 z) (- (* f2-0 f30-0) (* f0-1 f1-0)))
     (set! (-> arg0 y) (+ (* f2-0 f1-0) (* f0-1 f30-0)))
     )
@@ -1019,7 +1024,7 @@
         (f28-0 (cos arg2))
         (f0-0 (sin arg2))
         )
-    (set! (-> arg0 quad) (-> arg1 quad))
+    (vector-copy! arg0 arg1)
     (set! (-> arg0 z) (- (* f26-0 f28-0) (* f30-0 f0-0)))
     (set! (-> arg0 x) (+ (* f26-0 f0-0) (* f30-0 f28-0)))
     )
@@ -1028,7 +1033,7 @@
 
 (defun vector-rotate90-around-y! ((arg0 vector) (arg1 vector))
   "Rotate a vector 90 degrees around y."
-  (set! (-> arg0 quad) (-> arg1 quad))
+  (vector-copy! arg0 arg1)
   (let ((f0-0 (-> arg0 x)))
     (set! (-> arg0 x) (- (-> arg1 z)))
     (set! (-> arg0 z) f0-0)
@@ -1043,7 +1048,7 @@
         (f28-0 (cos arg2))
         (f0-0 (sin arg2))
         )
-    (set! (-> arg0 quad) (-> arg1 quad))
+    (vector-copy! arg0 arg1)
     (set! (-> arg0 x) (- (* f26-0 f28-0) (* f30-0 f0-0)))
     (set! (-> arg0 y) (+ (* f26-0 f0-0) (* f30-0 f28-0)))
     )
@@ -1163,10 +1168,10 @@
     (init-vf0-vector)
     (cond
       ((>= 0.0 arg3)
-       (set! (-> arg0 quad) (-> arg1 quad))
+       (vector-copy! arg0 arg1)
        )
       ((>= arg3 1.0)
-       (set! (-> arg0 quad) (-> arg2 quad))
+       (vector-copy! arg0 arg2)
        )
       (else
         (let ((v1-3 arg0))
@@ -1216,10 +1221,10 @@
          )
     (cond
       ((>= 0.0 arg3)
-       (set! (-> arg0 quad) (-> arg1 quad))
+       (vector-copy! arg0 arg1)
        )
       ((>= arg3 1.0)
-       (set! (-> arg0 quad) (-> arg2 quad))
+       (vector-copy! arg0 arg2)
        )
       (else
         (let ((v1-3 arg0))
@@ -1327,10 +1332,10 @@
   "Apply deg-lerp-clamp to the xyz components of a vector. Sets w = 1."
   (cond
     ((>= 0.0 arg3)
-     (set! (-> arg0 quad) (-> arg1 quad))
+     (vector-copy! arg0 arg1)
      )
     ((>= arg3 1.0)
-     (set! (-> arg0 quad) (-> arg2 quad))
+     (vector-copy! arg0 arg2)
      )
     (else
       (set! (-> arg0 x) (deg-lerp-clamp (-> arg1 x) (-> arg2 x) arg3))
@@ -1640,33 +1645,19 @@
   )
 
 (defun rand-vu-sphere-point-uniform! ((arg0 vector) (arg1 float))
-  (local-vars (v1-3 float) (f0-5 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    666.6
-    (until (>= 1.0 f0-5)
-      (set-vector!
-        arg0
-        (rand-vu-float-range -1.0 1.0)
-        (rand-vu-float-range -1.0 1.0)
-        (rand-vu-float-range -1.0 1.0)
-        1.0
-        )
-      (.lvf vf1 (&-> arg0 quad))
-      (.add.w.vf.x vf2 vf0 vf0)
-      (.mul.vf vf1 vf1 vf1)
-      (.mul.x.vf.x acc vf2 vf1)
-      (.add.mul.y.vf.x acc vf2 vf1 acc)
-      (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-      (.mov v1-3 vf1)
-      (set! f0-5 v1-3)
+  (local-vars (f0-5 float))
+  666.6
+  (until (>= 1.0 f0-5)
+    (set-vector!
+      arg0
+      (rand-vu-float-range -1.0 1.0)
+      (rand-vu-float-range -1.0 1.0)
+      (rand-vu-float-range -1.0 1.0)
+      1.0
       )
-    (vector-float*! arg0 arg0 arg1)
+    (set! f0-5 (vector-length-squared arg0))
     )
+  (vector-float*! arg0 arg0 arg1)
   )
 
 (defmethod print ((this vector2))
@@ -1709,7 +1700,7 @@
         (set! v1-0 2)
         )
       )
-    (set! (-> arg0 quad) (-> arg1 quad))
+    (vector-copy! arg0 arg1)
     (set! (-> arg0 data v1-0) 1.0)
     )
   arg0
@@ -1723,7 +1714,7 @@
       )
     (vector-! s5-0 arg2 s5-0)
     (vector-normalize! s5-0 1.0)
-    (set! (-> arg0 quad) (-> s5-0 quad))
+    (vector-copy! arg0 s5-0)
     )
   arg0
   )

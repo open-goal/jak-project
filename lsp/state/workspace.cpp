@@ -19,8 +19,8 @@ extern const TSLanguage* tree_sitter_opengoal();
 
 const TSLanguage* g_opengoalLang = tree_sitter_opengoal();
 
-Workspace::Workspace(){};
-Workspace::~Workspace(){};
+Workspace::Workspace() {};
+Workspace::~Workspace() {};
 
 bool Workspace::is_initialized() {
   return m_initialized;

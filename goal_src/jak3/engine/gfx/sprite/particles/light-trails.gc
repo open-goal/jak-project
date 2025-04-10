@@ -80,7 +80,7 @@
         (if (-> this appearance use-tape-mode?)
             (set! f0-5 (- f2-0 f1-2))
             )
-        (set! (-> a1-5 pos quad) (-> arg0 quad))
+        (vector-copy! (-> a1-5 pos) arg0)
         (set! (-> a1-5 birth-time) (the-as uint (the int (- (the float (+ (-> this start-marker) arg1)) f0-5))))
         )
       (mem-copy!
@@ -126,7 +126,7 @@
               (if (-> this appearance use-tape-mode?)
                   (set! f0-4 (- f2-0 f1-3))
                   )
-              (set! (-> gp-0 pos quad) (-> arg0 quad))
+              (vector-copy! (-> gp-0 pos) arg0)
               (set! (-> gp-0 birth-time)
                     (the-as
                       uint
@@ -145,7 +145,7 @@
 (defmethod add-vert-to-prim-strip! ((this light-trail) (arg0 prim-strip) (arg1 vector) (arg2 rgba) (arg3 float) (arg4 float))
   "Add a single vertex to the prim."
   (let ((v1-3 (-> arg0 data (-> arg0 num-verts))))
-    (set! (-> v1-3 pos quad) (-> arg1 quad))
+    (vector-copy! (-> v1-3 pos) arg1)
     (set! (-> v1-3 col) arg2)
     (set! (-> v1-3 stq x) arg3)
     (set! (-> v1-3 stq y) arg4)
@@ -163,7 +163,7 @@
   (cond
     ((= (-> this appearance lie-mode) (lie-mode use-two-strips))
      (let ((s1-0 (new 'stack-no-clear 'vector)))
-       (set! (-> s1-0 quad) (-> this cache-vector 0 quad))
+       (vector-copy! s1-0 (-> this cache-vector 0))
        (vector-normalize! s1-0 (/ arg2 2))
        (add-vert-to-prim-strip!
          this
@@ -183,7 +183,7 @@
          )
        )
      (let ((s1-1 (new 'stack-no-clear 'vector)))
-       (set! (-> s1-1 quad) (-> this cache-vector 1 quad))
+       (vector-copy! s1-1 (-> this cache-vector 1))
        (vector-normalize! s1-1 (/ arg2 2))
        (add-vert-to-prim-strip!
          this
@@ -205,7 +205,7 @@
      )
     (else
       (let ((s1-2 (new 'stack-no-clear 'vector)))
-        (set! (-> s1-2 quad) (-> arg3 quad))
+        (vector-copy! s1-2 arg3)
         (vector-normalize! s1-2 (/ arg2 2))
         (add-vert-to-prim-strip!
           this
@@ -304,7 +304,7 @@
        (vector-cross! arg3 v1-0 (-> this appearance lie-vector))
        (set! (-> arg3 y) 0.0)
        (vector-cross! arg3 v1-0 arg3)
-       (set! (-> this cache-vector 1 quad) (-> arg3 quad))
+       (vector-copy! (-> this cache-vector 1) arg3)
        )
       )
     )
@@ -576,10 +576,10 @@
               )
             )
           (set! sv-92 sv-152)
-          (set! (-> sv-104 quad) (-> (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)) quad))
+          (vector-copy! sv-104 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)))
           (set! sv-96 sv-196)
           (set! (-> sv-100 quad) (-> sv-200 quad))
-          (set! (-> sv-132 quad) (-> sv-204 quad))
+          (vector-copy! sv-132 sv-204)
           )
         )
       )
@@ -793,13 +793,9 @@
   )
 
 (defmethod get-tracked-object-pos ((this light-trail-tracker) (arg0 process-focusable) (arg1 vector))
-  (let ((a0-2 (if (type? arg0 process-focusable)
-                  arg0
-                  )
-              )
-        )
+  (let ((a0-2 (as-type arg0 process-focusable)))
     (if a0-2
-        (set! (-> arg1 quad) (-> (get-trans a0-2 0) quad))
+        (vector-copy! arg1 (get-trans a0-2 0))
         )
     )
   arg1
@@ -810,15 +806,11 @@
   )
 
 (defmethod get-tracked-object-pos ((this light-trail-tracker-water) (arg0 process-focusable) (arg1 vector))
-  (let ((a0-2 (if (type? arg0 process-focusable)
-                  arg0
-                  )
-              )
-        )
+  (let ((a0-2 (as-type arg0 process-focusable)))
     (when a0-2
       (let ((s5-1 (-> a0-2 water)))
         (when (and s5-1 a0-2 (nonzero? s5-1))
-          (set! (-> arg1 quad) (-> (get-trans a0-2 0) quad))
+          (vector-copy! arg1 (get-trans a0-2 0))
           (set! (-> arg1 y) (+ 40.96 (-> s5-1 surface-height)))
           )
         )
@@ -841,11 +833,7 @@
   )
 
 (defmethod should-end? ((this light-trail-tracker-water) (arg0 process-focusable))
-  (let ((v1-0 (if (type? arg0 process-focusable)
-                  arg0
-                  )
-              )
-        )
+  (let ((v1-0 (as-type arg0 process-focusable)))
     (or (not v1-0)
         (not (-> v1-0 water))
         (not (logtest? (water-flag touch-water) (-> v1-0 water flags)))
@@ -878,7 +866,7 @@
 (defmethod get-tracked-object-pos ((this light-trail-tracker-projectile) (arg0 process-focusable) (arg1 vector))
   (let ((a0-1 arg0))
     (if a0-1
-        (set! (-> arg1 quad) (-> a0-1 root trans quad))
+        (vector-copy! arg1 (-> a0-1 root trans))
         )
     )
   arg1
@@ -1034,7 +1022,7 @@
 
 ;; WARN: Return type mismatch vector vs none.
 (defmethod calc-vertex-pos! ((this weapon-trail) (arg0 light-trail-breadcrumb) (arg1 int) (arg2 vector) (arg3 vector))
-  (set! (-> arg3 quad) (-> (&+ arg0 16) pos quad))
+  (vector-copy! arg3 (-> (&+ arg0 16) pos))
   (none)
   )
 
@@ -1109,8 +1097,8 @@
             (if (-> this appearance use-tape-mode?)
                 (set! f0-6 (- f2-0 f1-2))
                 )
-            (set! (-> gp-0 pos quad) (-> s3-0 quad))
-            (set! (-> gp-0 offset quad) (-> s4-0 quad))
+            (vector-copy! (-> gp-0 pos) s3-0)
+            (vector-copy! (-> gp-0 offset) s4-0)
             (set! (-> gp-0 birth-time)
                   (the-as
                     uint
@@ -1144,7 +1132,7 @@
     )
   (vector-float*! arg3 arg3 arg2)
   (let ((s2-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s2-0 quad) (-> arg3 quad))
+    (vector-copy! s2-0 arg3)
     (add-vert-to-prim-strip!
       this
       (-> this strip)
@@ -1249,7 +1237,7 @@
               (if (-> this appearance use-tape-mode?)
                   (set! f0-4 (- f2-0 f1-3))
                   )
-              (set! (-> s5-0 pos quad) (-> arg0 quad))
+              (vector-copy! (-> s5-0 pos) arg0)
               (set! (-> s5-0 birth-time)
                     (the-as
                       uint
@@ -1257,7 +1245,7 @@
                       )
                     )
               )
-            (set! (-> s5-0 normal quad) (-> arg1 quad))
+            (vector-copy! (-> s5-0 normal) arg1)
             )
           )
         )

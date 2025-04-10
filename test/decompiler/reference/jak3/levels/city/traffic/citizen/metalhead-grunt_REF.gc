@@ -181,34 +181,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 51609.6
-    :knocked-soft-vxz-hi 87654.4
-    :knocked-soft-vy-lo 49152.0
-    :knocked-soft-vy-hi 73728.0
-    :knocked-medium-vxz-lo 73728.0
-    :knocked-medium-vxz-hi 98304.0
-    :knocked-medium-vy-lo 65536.0
-    :knocked-medium-vy-hi 73728.0
-    :knocked-hard-vxz-lo 41779.2
-    :knocked-hard-vxz-hi 60620.8
-    :knocked-hard-vy-lo 93388.8
-    :knocked-hard-vy-hi 103219.2
-    :knocked-huge-vxz-lo 82739.2
-    :knocked-huge-vxz-hi 126156.8
-    :knocked-huge-vy-lo 101580.8
-    :knocked-huge-vy-hi 111411.2
-    :knocked-yellow-vxz-lo 20480.0
-    :knocked-yellow-vxz-hi 24576.0
-    :knocked-yellow-vy-lo 28672.0
-    :knocked-yellow-vy-hi 40960.0
-    :knocked-red-vxz-lo 12288.0
-    :knocked-red-vxz-hi 81920.0
-    :knocked-red-vy-lo 49152.0
-    :knocked-red-vy-hi 73728.0
-    :knocked-blue-vxz-lo 20480.0
-    :knocked-blue-vxz-hi 24576.0
-    :knocked-blue-vy-lo 12288.0
-    :knocked-blue-vy-hi 40960.0
+    :knocked-soft-vxz-lo (meters 12.6)
+    :knocked-soft-vxz-hi (meters 21.4)
+    :knocked-soft-vy-lo (meters 12)
+    :knocked-soft-vy-hi (meters 18)
+    :knocked-medium-vxz-lo (meters 18)
+    :knocked-medium-vxz-hi (meters 24)
+    :knocked-medium-vy-lo (meters 16)
+    :knocked-medium-vy-hi (meters 18)
+    :knocked-hard-vxz-lo (meters 10.2)
+    :knocked-hard-vxz-hi (meters 14.8)
+    :knocked-hard-vy-lo (meters 22.8)
+    :knocked-hard-vy-hi (meters 25.2)
+    :knocked-huge-vxz-lo (meters 20.2)
+    :knocked-huge-vxz-hi (meters 30.8)
+    :knocked-huge-vy-lo (meters 24.8)
+    :knocked-huge-vy-hi (meters 27.2)
+    :knocked-yellow-vxz-lo (meters 5)
+    :knocked-yellow-vxz-hi (meters 6)
+    :knocked-yellow-vy-lo (meters 7)
+    :knocked-yellow-vy-hi (meters 10)
+    :knocked-red-vxz-lo (meters 3)
+    :knocked-red-vxz-hi (meters 20)
+    :knocked-red-vy-lo (meters 12)
+    :knocked-red-vy-hi (meters 18)
+    :knocked-blue-vxz-lo (meters 5)
+    :knocked-blue-vxz-hi (meters 6)
+    :knocked-blue-vy-lo (meters 3)
+    :knocked-blue-vy-hi (meters 10)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 1.0 :w 10625.897)
       :scale (new 'static 'vector :x 0.6399 :y 0.6399 :z 0.6399)
@@ -721,6 +721,7 @@
 
 ;; definition for method 82 of type metalhead-grunt
 (defmethod event-handler ((this metalhead-grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -732,7 +733,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -779,7 +780,8 @@
   )
 
 ;; definition for method 74 of type metalhead-grunt
-(defmethod go-ambush-delay ((this metalhead-grunt))
+(defmethod go-ambush ((this metalhead-grunt))
+  "May go to ambush-delay first, if set in the res-lump."
   (cond
     ((logtest? (-> this fact enemy-options) (enemy-option user10))
      (go (method-of-object this falling-ambush))
@@ -807,12 +809,7 @@
             )
         )
       )
-    (let* ((gp-1 *target*)
-           (a0-4 (if (type? gp-1 process-focusable)
-                     gp-1
-                     )
-                 )
-           )
+    (let ((a0-4 (the-as target (as-type *target* process-focusable))))
       (when a0-4
         (let* ((gp-2 (-> self root))
                (s3-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (get-trans a0-4 0) (-> gp-2 trans)) 1.0))
@@ -846,13 +843,14 @@
   )
 
 ;; definition for method 102 of type metalhead-grunt
-(defmethod go-directed2 ((this metalhead-grunt))
+(defmethod go-next-state-auto ((this metalhead-grunt))
+  "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware."
   (case (-> this jump-why)
     ((2)
      (go (method-of-object this jumping-ambush-cont))
      )
     (else
-      ((method-of-type mh-squad-member go-directed2) this)
+      ((method-of-type mh-squad-member go-next-state-auto) this)
       )
     )
   )
@@ -904,7 +902,7 @@
           )
       (if (< v1-1 (-> a0-0 curve num-cverts))
           (set! (-> self jumping-ambush-path-pt) v1-1)
-          (go-best-state self)
+          (go-state-for-focused self)
           )
       )
     (until #f
@@ -955,7 +953,7 @@
           )
         0
         (let ((gp-0 (-> self draw art-group data (-> self patrol-anim anim-index)))
-              (s5-0 (set-reaction-time! self 1 (seconds 0.027)))
+              (s5-0 (rnd-time-frame self 1 (seconds 0.027)))
               )
           (let ((v1-37 (ja-group)))
             (if (not (and v1-37 (= v1-37 gp-0)))
@@ -979,7 +977,7 @@
             )
           0
           (let ((gp-1 (-> self draw art-group data (-> self patrol-anim anim-index)))
-                (s5-1 (set-reaction-time! self (seconds 0.007) (seconds 0.017)))
+                (s5-1 (rnd-time-frame self (seconds 0.007) (seconds 0.017)))
                 )
             (ja-no-eval :group! gp-1 :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
@@ -1012,7 +1010,7 @@
             (suspend)
             (ja :num! (seek! max f30-0))
             )
-          (until (not (enemy-method-134 self 0.2))
+          (until (not (rnd-chance-for-idle? self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
@@ -1039,53 +1037,38 @@
 
 ;; definition for method 228 of type metalhead-grunt
 (defmethod metalhead-grunt-method-228 ((this metalhead-grunt) (arg0 float))
-  (local-vars (v1-5 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((gp-0 (get-focus! this)))
-      (when gp-0
-        (let ((v1-3 (get-trans gp-0 0))
-              (s4-0 (new 'stack-no-clear 'vector))
-              )
-          (vector-! s4-0 v1-3 (-> this root trans))
-          (.lvf vf1 (&-> s4-0 quad))
-          (.add.w.vf vf2 vf0 vf0 :mask #b1)
-          (.mul.vf vf1 vf1 vf1)
-          (.mul.x.vf acc vf2 vf1 :mask #b1)
-          (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-          (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
-          (.mov v1-5 vf1)
-          (let* ((f30-0 v1-5)
-                 (f0-0 arg0)
-                 (f28-0 (* f0-0 f0-0))
-                 (f0-2 12288.0)
-                 )
-            (when (or (>= (* f0-2 f0-2) f30-0) (>= f28-0 f30-0))
-              (let ((f26-0 (quaternion-y-angle (-> this root quat)))
-                    (f0-7 (atan (-> s4-0 x) (-> s4-0 z)))
-                    (f1-0 1228.8)
-                    )
-                (cond
-                  ((and (< (* f1-0 f1-0) f30-0) (>= f28-0 f30-0) (>= 8192.0 (fabs (deg- f26-0 f0-7))))
-                   (go (method-of-object this attack))
-                   )
-                  ((let ((f0-10 12288.0))
-                     (< f30-0 (* f0-10 f0-10))
-                     )
-                   (go (method-of-object this spin-attack))
-                   )
+  (let ((gp-0 (get-focus! this)))
+    (when gp-0
+      (let ((v1-3 (get-trans gp-0 0))
+            (s4-0 (new 'stack-no-clear 'vector))
+            )
+        (vector-! s4-0 v1-3 (-> this root trans))
+        (let* ((f30-0 (vector-length-squared s4-0))
+               (f0-0 arg0)
+               (f28-0 (* f0-0 f0-0))
+               (f0-2 12288.0)
+               )
+          (when (or (>= (* f0-2 f0-2) f30-0) (>= f28-0 f30-0))
+            (let ((f26-0 (quaternion-y-angle (-> this root quat)))
+                  (f0-7 (atan (-> s4-0 x) (-> s4-0 z)))
+                  (f1-0 1228.8)
                   )
+              (cond
+                ((and (< (* f1-0 f1-0) f30-0) (>= f28-0 f30-0) (>= 8192.0 (fabs (deg- f26-0 f0-7))))
+                 (go (method-of-object this attack))
+                 )
+                ((let ((f0-10 12288.0))
+                   (< f30-0 (* f0-10 f0-10))
+                   )
+                 (go (method-of-object this spin-attack))
+                 )
                 )
               )
             )
           )
         )
-      gp-0
       )
+    gp-0
     )
   )
 
@@ -1109,7 +1092,7 @@
                           )
                    )
           (sound-play "grunt-warn")
-          (set! (-> self next-warn-time) (+ gp-0 (set-reaction-time! self (seconds 1) (seconds 1.2))))
+          (set! (-> self next-warn-time) (+ gp-0 (rnd-time-frame self (seconds 1) (seconds 1.2))))
           )
         )
       )
@@ -1153,7 +1136,7 @@
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (let* ((v1-10 *game-info*)
            (a0-5 (+ (-> v1-10 attack-id) 1))
            )
@@ -1168,7 +1151,7 @@
     (logclear! (-> self focus-status) (focus-status dangerous))
     )
   :trans (behavior ()
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (when (logtest? (-> self enemy-flags) (enemy-flag victory))
       (logclear! (-> self enemy-flags) (enemy-flag victory))
       (sound-play "grunt-hit")
@@ -1256,7 +1239,7 @@
       (if (not gp-0)
           (go-stare self)
           )
-      (set! (-> self focus-pos quad) (-> (get-trans gp-0 0) quad))
+      (vector-copy! (-> self focus-pos) (get-trans gp-0 0))
       )
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-21 *game-info*)
@@ -1292,7 +1275,7 @@
       (until (ja-done? 0)
         (let ((a0-9 (the-as process-focusable (handle->process (-> self focus handle)))))
           (if a0-9
-              (set! (-> self focus-pos quad) (-> (get-trans a0-9 0) quad))
+              (vector-copy! (-> self focus-pos) (get-trans a0-9 0))
               )
           )
         (seek-to-point-toward-point! (-> self root) (-> self focus-pos) 546133.3 (seconds 0.1))
@@ -1408,6 +1391,7 @@
 ;; definition for method 120 of type metalhead-grunt
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this metalhead-grunt))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1535,12 +1519,13 @@
 ;; definition for method 121 of type metalhead-grunt
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this metalhead-grunt))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mh-grunt" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this (get-nav-info this))
+  (setup-enemy! this (get-nav-info this))
   (let ((v1-6 (-> this neck)))
     (set! (-> v1-6 up) (the-as uint 1))
     (set! (-> v1-6 nose) (the-as uint 2))
@@ -1593,7 +1578,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
@@ -1627,7 +1612,3 @@
     (go-inactive self)
     )
   )
-
-
-
-

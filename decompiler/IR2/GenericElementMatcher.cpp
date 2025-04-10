@@ -91,6 +91,14 @@ Matcher Matcher::cast(const std::string& type, Matcher value) {
   return m;
 }
 
+Matcher Matcher::numeric_cast(const std::string& type, Matcher value) {
+  Matcher m;
+  m.m_kind = Kind::NUMERIC_CAST;
+  m.m_str = type;
+  m.m_sub_matchers = {value};
+  return m;
+}
+
 Matcher Matcher::cast_to_any(int type_out, Matcher value) {
   Matcher m;
   m.m_kind = Kind::CAST_TO_ANY;
@@ -405,6 +413,16 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
     case Kind::CAST: {
       auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
       if (as_cast) {
+        if (as_cast->type().print() == m_str) {
+          return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out, env);
+        }
+      }
+      return false;
+    } break;
+
+    case Kind::NUMERIC_CAST: {
+      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
+      if (as_cast && as_cast->numeric()) {
         if (as_cast->type().print() == m_str) {
           return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out, env);
         }

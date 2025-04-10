@@ -86,34 +86,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 1)
     :shadow-max-y (meters 1)
@@ -172,7 +172,7 @@
            )
       (when v1-9
         (let ((a1-1 (new 'stack-no-clear 'vector)))
-          (set! (-> a1-1 quad) (-> self root trans quad))
+          (vector-copy! a1-1 (-> self root trans))
           (let ((a0-11 (-> (the-as process-drawable v1-9) root quat)))
             (new 'stack-no-clear 'vector)
             (+! (-> a1-1 y) 8192.0)
@@ -359,7 +359,7 @@
             (gp-0 (new 'stack-no-clear 'vector))
             )
         (b! (not a0-5) cfg-20 :delay (nop!))
-        (set! (-> gp-0 quad) (-> a0-5 extra trans quad))
+        (vector-copy! gp-0 (-> a0-5 extra trans))
         (let ((f0-0 (vector-vector-xz-distance gp-0 (-> self root trans)))
               (f30-0 (- (-> gp-0 y) (-> self root trans y)))
               )
@@ -368,7 +368,7 @@
                 )
             (logclear! (-> a0-10 flags) (nav-state-flag directional-mode))
             (logior! (-> a0-10 flags) (nav-state-flag target-poly-dirty))
-            (set! (-> a0-10 target-pos quad) (-> v1-9 quad))
+            (vector-copy! (-> a0-10 target-pos) v1-9)
             )
           0
           (when (and (< f0-0 40960.0) (< 24576.0 (+ -8192.0 f30-0)))
@@ -424,18 +424,22 @@
   )
 
 (defmethod jump-land-anim ((this flut-racer) (arg0 enemy-jump-info))
+  "Play the landing anim"
   #f
   )
 
 (defmethod jump-wind-up-anim ((this flut-racer) (arg0 enemy-jump-info))
+  "Start playing the wind-up anim"
   #f
   )
 
-(defmethod go-directed2 ((this flut-racer))
+(defmethod go-next-state-auto ((this flut-racer))
+  "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware."
   (go (method-of-object this race))
   )
 
-(defmethod enemy-method-108 ((this flut-racer) (arg0 process-focusable))
+(defmethod should-flee-from? ((this flut-racer) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   #t
   )
 
@@ -445,19 +449,21 @@
   )
 
 (defmethod get-damage-from-attack ((this flut-racer) (arg0 object) (arg1 event-message-block))
+  "Compute hit point damage for an attack message."
   0.0
   )
 
-(defmethod go-idle2 ((this flut-racer))
+(defmethod go-fallback-init ((this flut-racer))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go (method-of-object this wait))
   )
 
 ;; WARN: Return type mismatch object vs symbol.
 ;; WARN: disable def twice: 5. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod jump-anim-handler ((this flut-racer) (arg0 int) (arg1 enemy-jump-info))
+(defmethod jump-anim-handler ((this flut-racer) (arg0 jump-stage) (arg1 enemy-jump-info))
   (let ((v1-0 arg0))
     (the-as symbol (cond
-                     ((= v1-0 4)
+                     ((= v1-0 (jump-stage touchdown))
                       (when (not (focus-test? this dangerous))
                         (let ((v0-0 (the-as object (logior (-> this focus-status) (focus-status dangerous)))))
                           (set! (-> this focus-status) (the-as focus-status v0-0))
@@ -474,6 +480,7 @@
   )
 
 (defmethod event-handler ((this flut-racer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('trigger)
      (if (and (-> this next-state) (= (-> this next-state name) 'wait))
@@ -493,67 +500,42 @@
   )
 
 (defmethod nav-enemy-method-187 ((this flut-racer))
-  (local-vars (v1-26 float) (v1-40 float))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf1 :class vf)
-         (vf2 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((t9-0 (method-of-type nav-enemy nav-enemy-method-187)))
-      (t9-0 this)
+  (let ((t9-0 (method-of-type nav-enemy nav-enemy-method-187)))
+    (t9-0 this)
+    )
+  (let ((s5-0 (new 'stack 'traffic-danger-info)))
+    (set! (-> s5-0 danger-type) (the-as uint 8))
+    (set! (-> s5-0 sphere quad) (-> this root trans quad))
+    (set! (-> s5-0 sphere r) 122880.0)
+    (copy-nav-state-vel! this (-> s5-0 velocity))
+    (vector-normalize! (-> s5-0 velocity) 122880.0)
+    (set! (-> s5-0 danger-level) 0.5)
+    (set! (-> s5-0 notify-radius) 491520.0)
+    (set! (-> s5-0 decay-rate) 0.0)
+    (add-danger *traffic-engine* s5-0)
+    )
+  (let ((s5-1 (new 'stack-no-clear 'vector)))
+    (vector-normalize!
+      (vector-z-quaternion! s5-1 (-> this root quat))
+      (* (-> this nav target-speed) (seconds-per-frame) (seconds-per-frame))
       )
-    (let ((s5-0 (new 'stack 'traffic-danger-info)))
-      (set! (-> s5-0 danger-type) (the-as uint 8))
-      (set! (-> s5-0 sphere quad) (-> this root trans quad))
-      (set! (-> s5-0 sphere r) 122880.0)
-      (copy-nav-state-vel! this (-> s5-0 velocity))
-      (vector-normalize! (-> s5-0 velocity) 122880.0)
-      (set! (-> s5-0 danger-level) 0.5)
-      (set! (-> s5-0 notify-radius) 491520.0)
-      (set! (-> s5-0 decay-rate) 0.0)
-      (add-danger *traffic-engine* s5-0)
-      )
-    (let ((s5-1 (new 'stack-no-clear 'vector)))
-      (vector-normalize!
-        (vector-z-quaternion! s5-1 (-> this root quat))
-        (* (-> this nav target-speed) (seconds-per-frame) (seconds-per-frame))
-        )
-      (vector+! s5-1 s5-1 (-> this root trans))
-      (set! (-> s5-1 w) 16384.0)
-      (let ((s4-1 (new 'stack-no-clear 'array 'collide-shape 384)))
-        (countdown (s3-0 (fill-actor-list-for-box *actor-hash* s5-1 s4-1 384))
-          (let* ((s2-0 (-> s4-1 s3-0))
-                 (v1-21 (if (type? s2-0 collide-shape)
-                            s2-0
-                            )
-                        )
-                 )
-            (when v1-21
-              (let* ((s1-0 (-> v1-21 process))
-                     (s2-1 (if (type? s1-0 process-focusable)
-                               s1-0
-                               )
-                           )
-                     )
-                (when s2-1
-                  (when (and (!= *target* s2-1) (type? s2-1 civilian))
-                    (let ((v1-25 (vector-! (new 'stack-no-clear 'vector) (-> s2-1 root trans) s5-1)))
-                      0.0
-                      (.lvf vf1 (&-> v1-25 quad))
-                      )
-                    (.add.w.vf.x vf2 vf0 vf0)
-                    (.mul.vf vf1 vf1 vf1)
-                    (.mul.x.vf.x acc vf2 vf1)
-                    (.add.mul.y.vf.x acc vf2 vf1 acc)
-                    (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-                    (.mov v1-26 vf1)
-                    (let ((f0-10 v1-26)
+    (vector+! s5-1 s5-1 (-> this root trans))
+    (set! (-> s5-1 w) 16384.0)
+    (let ((s4-1 (new 'stack-no-clear 'array 'collide-shape 384)))
+      (countdown (s3-0 (fill-actor-list-for-box *actor-hash* s5-1 s4-1 384))
+        (let ((v1-21 (as-type (-> s4-1 s3-0) collide-shape)))
+          (when v1-21
+            (let ((s2-1 (as-type (-> v1-21 process) process-focusable)))
+              (when s2-1
+                (when (and (!= *target* s2-1) (type? s2-1 civilian))
+                  (let ((v1-25 (vector-! (new 'stack-no-clear 'vector) (-> s2-1 root trans) s5-1)))
+                    0.0
+                    (let ((f0-10 (vector-length-squared v1-25))
                           (f1-2 (-> s5-1 w))
                           )
                       (when (>= (* f1-2 f1-2) f0-10)
                         (set! (-> this enemy-info attack-damage) 15)
-                        (send-attack this s2-1 (the-as touching-shapes-entry #f) (-> this attack-id))
+                        (send-attack-from-tshape this s2-1 (the-as touching-shapes-entry #f) (-> this attack-id))
                         (set! (-> this enemy-info attack-damage) 0)
                         0
                         )
@@ -565,30 +547,18 @@
             )
           )
         )
-      (let* ((s3-1 *target*)
-             (s4-2 (if (type? s3-1 process-focusable)
-                       s3-1
-                       )
-                   )
-             )
-        (when (and s4-2 (< (vector-vector-distance (get-trans s4-2 0) s5-1) (-> s5-1 w)))
-          (when (and (!= *target* s4-2) (type? s4-2 civilian))
-            (let ((v1-39 (vector-! (new 'stack-no-clear 'vector) (-> s4-2 control trans) s5-1)))
-              0.0
-              (.lvf vf1 (&-> v1-39 quad))
-              )
-            (.add.w.vf.x vf2 vf0 vf0)
-            (.mul.vf vf1 vf1 vf1)
-            (.mul.x.vf.x acc vf2 vf1)
-            (.add.mul.y.vf.x acc vf2 vf1 acc)
-            (.add.mul.z.vf.x vf1 vf2 vf1 acc)
-            (.mov v1-40 vf1)
-            (let ((f0-13 v1-40)
+      )
+    (let ((s4-2 (the-as target (as-type *target* process-focusable))))
+      (when (and s4-2 (< (vector-vector-distance (get-trans s4-2 0) s5-1) (-> s5-1 w)))
+        (when (and (!= *target* s4-2) (type? s4-2 civilian))
+          (let ((v1-39 (vector-! (new 'stack-no-clear 'vector) (-> s4-2 control trans) s5-1)))
+            0.0
+            (let ((f0-13 (vector-length-squared v1-39))
                   (f1-6 (-> s5-1 w))
                   )
               (when (>= (* f1-6 f1-6) f0-13)
                 (set! (-> this enemy-info attack-damage) 15)
-                (send-attack this s4-2 (the-as touching-shapes-entry #f) (-> this attack-id))
+                (send-attack-from-tshape this s4-2 (the-as touching-shapes-entry #f) (-> this attack-id))
                 (set! (-> this enemy-info attack-damage) 0)
                 0
                 )
@@ -597,17 +567,18 @@
           )
         )
       )
-    (none)
     )
+  (none)
   )
 
 (defmethod init-enemy! ((this flut-racer))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flut-racer" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *flut-racer-enemy-info*)
+  (setup-enemy! this *flut-racer-enemy-info*)
   (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
     (set! (-> v1-5 nose) (the-as uint 2))
@@ -688,6 +659,7 @@
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod init-enemy-collision! ((this flut-racer))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)

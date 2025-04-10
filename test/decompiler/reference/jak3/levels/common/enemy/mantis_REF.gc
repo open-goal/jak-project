@@ -402,34 +402,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.3
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 106496.0
-    :knocked-red-vxz-hi 106496.0
-    :knocked-red-vy-lo 55296.0
-    :knocked-red-vy-hi 55296.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 26)
+    :knocked-red-vxz-hi (meters 26)
+    :knocked-red-vy-lo (meters 13.5)
+    :knocked-red-vy-hi (meters 13.5)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 0.9971 :y -0.0748 :z -0.0134 :w 36483.785)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -721,7 +721,7 @@
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (until #f
-      (let ((gp-0 (set-reaction-time! self (seconds 0.01) (seconds 0.017))))
+      (let ((gp-0 (rnd-time-frame self (seconds 0.01) (seconds 0.017))))
         (dotimes (s5-0 gp-0)
           (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
@@ -772,12 +772,7 @@
       (set! (-> v1-12 prim-core collide-with) (collide-spec))
       )
     0
-    (let* ((gp-1 *target*)
-           (a0-4 (if (type? gp-1 process-focusable)
-                     gp-1
-                     )
-                 )
-           )
+    (let ((a0-4 (the-as target (as-type *target* process-focusable))))
       (when a0-4
         (let* ((gp-2 (-> self root))
                (s3-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (get-trans a0-4 0) (-> gp-2 trans)) 1.0))
@@ -790,15 +785,15 @@
     )
   :code (behavior ()
     (let ((v1-0 (new 'stack-no-clear 'vector)))
-      (set! (-> v1-0 quad) (-> self root trans quad))
+      (vector-copy! v1-0 (-> self root trans))
       (+! (-> v1-0 y) -18841.6)
       (cond
         ((logtest? (-> *part-group-id-table* 1406 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> v1-0 quad))
+         (vector-copy! (-> *launch-matrix* trans) v1-0)
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1406))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> v1-0 quad))
+          (vector-copy! (-> *launch-matrix* trans) v1-0)
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1406))
           )
         )
@@ -813,7 +808,7 @@
            (a1-7 (-> self root trans))
            (f0-6 (-> v1-45 extra-nav-sphere w))
            )
-      (set! (-> v1-45 extra-nav-sphere quad) (-> a1-7 quad))
+      (vector-copy! (-> v1-45 extra-nav-sphere) a1-7)
       (set! (-> v1-45 extra-nav-sphere w) f0-6)
       )
     0
@@ -956,77 +951,56 @@
     (logclear! (-> self flags) (mantis-flag attack1-enabled))
     )
   :trans (behavior ()
-    (rlet ((acc :class vf)
-           (vf0 :class vf)
-           (vf4 :class vf)
-           (vf5 :class vf)
-           (vf6 :class vf)
-           (vf7 :class vf)
-           )
-      (init-vf0-vector)
-      (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
-        (if t9-0
-            (t9-0)
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((gp-0 (handle->process (-> self focus handle))))
+      (when gp-0
+        (let* ((s4-0 (-> self focus-pos))
+               (s5-1 (vector-! (new 'stack-no-clear 'vector) s4-0 (-> self root trans)))
+               )
+          (let ((s2-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable gp-0) 0))))
+            (vector+*! s5-1 s5-1 s2-1 (* 2.0 (vector-length (get-transv (the-as process-focusable gp-0)))))
             )
-        )
-      (let ((gp-0 (handle->process (-> self focus handle))))
-        (when gp-0
-          (let* ((s4-0 (-> self focus-pos))
-                 (s5-1 (vector-! (new 'stack-no-clear 'vector) s4-0 (-> self root trans)))
+          (let ((f30-1 (vector-length s5-1)))
+            (when (not (logtest? (-> self flags) (mantis-flag tracked)))
+              (cond
+                ((not (time-elapsed? (-> self attack-timer) (seconds 5)))
+                 (if (and (< 73728.0 f30-1) (mantis-method-206 self))
+                     (go-virtual crawl)
+                     )
                  )
-            (let ((s2-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable gp-0) 0)))
-                  (s1-0 s5-1)
-                  )
-              (let ((s3-1 s5-1))
-                (let ((v1-14 (* 2.0 (vector-length (get-transv (the-as process-focusable gp-0))))))
-                  (.mov vf7 v1-14)
-                  )
-                (.lvf vf5 (&-> s2-1 quad))
-                (.lvf vf4 (&-> s3-1 quad))
-                )
-              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-              (.mul.x.vf acc vf5 vf7 :mask #b111)
-              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-              (.svf (&-> s1-0 quad) vf6)
-              )
-            (let ((f30-1 (vector-length s5-1)))
-              (when (not (logtest? (-> self flags) (mantis-flag tracked)))
-                (cond
-                  ((not (time-elapsed? (-> self attack-timer) (seconds 5)))
-                   (if (and (< 73728.0 f30-1) (mantis-method-206 self))
-                       (go-virtual crawl)
-                       )
-                   )
-                  ((< 40960.0 f30-1)
-                   (mantis-method-202 self (the-as process-focusable gp-0) s5-1)
-                   )
-                  )
-                )
-              (when (and (and gp-0
-                              (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
-                              )
-                         (and (time-elapsed? (-> self attack-timer) (seconds 5)) (enemy-method-104 self s4-0 8192.0) (< f30-1 32768.0))
-                         )
-                (cond
-                  ((< 24576.0 f30-1)
-                   (if (logtest? (-> self flags) (mantis-flag attack1-enabled))
-                       (go-virtual attack1)
-                       )
-                   )
-                  ((< 16384.0 f30-1)
-                   (go-virtual attack0)
-                   )
-                  )
+                ((< 40960.0 f30-1)
+                 (mantis-method-202 self (the-as process-focusable gp-0) s5-1)
+                 )
                 )
               )
-            (if (enemy-method-104 self s4-0 10922.667)
-                (mantis-method-199 self)
+            (when (and (and gp-0
+                            (not (logtest? (-> (the-as process-focusable gp-0) focus-status) (focus-status disable dead ignore grabbed)))
+                            )
+                       (and (time-elapsed? (-> self attack-timer) (seconds 5)) (pointing-toward? self s4-0 8192.0) (< f30-1 32768.0))
+                       )
+              (cond
+                ((< 24576.0 f30-1)
+                 (if (logtest? (-> self flags) (mantis-flag attack1-enabled))
+                     (go-virtual attack1)
+                     )
+                 )
+                ((< 16384.0 f30-1)
+                 (go-virtual attack0)
+                 )
                 )
-            (if (logtest? (-> self flags) (mantis-flag tracked))
-                (mantis-method-204 self (the-as process-focusable gp-0) s5-1)
-                (mantis-method-203 self (the-as process-focusable gp-0) s5-1)
-                )
+              )
             )
+          (if (pointing-toward? self s4-0 10922.667)
+              (mantis-method-199 self)
+              )
+          (if (logtest? (-> self flags) (mantis-flag tracked))
+              (mantis-method-204 self (the-as process-focusable gp-0) s5-1)
+              (mantis-method-203 self (the-as process-focusable gp-0) s5-1)
+              )
           )
         )
       )
@@ -1067,7 +1041,7 @@
         (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
         )
       0
-      (dotimes (gp-0 (set-reaction-time! self 1 (seconds 0.007)))
+      (dotimes (gp-0 (rnd-time-frame self 1 (seconds 0.007)))
         (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
@@ -1128,7 +1102,7 @@
                   )
               (logclear! (-> a0-21 flags) (nav-state-flag directional-mode))
               (logior! (-> a0-21 flags) (nav-state-flag target-poly-dirty))
-              (set! (-> a0-21 target-pos quad) (-> v1-70 quad))
+              (vector-copy! (-> a0-21 target-pos) v1-70)
               )
             0
             )
@@ -1143,7 +1117,7 @@
         (set! (-> v1-73 nav callback-info) (-> v1-73 enemy-info callback-info))
         )
       0
-      (dotimes (gp-2 (set-reaction-time! self (seconds 0.01) (seconds 0.017)))
+      (dotimes (gp-2 (rnd-time-frame self (seconds 0.01) (seconds 0.017)))
         (ja-no-eval :group! mantis-run0-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
@@ -1308,7 +1282,7 @@
 ;; definition for function mantis-roll-post
 (defbehavior mantis-roll-post mantis ()
   (let ((gp-0 (new 'stack-no-clear 'collide-query)))
-    (if (set-ground-pat! self gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0 (the-as process #f))
+    (if (find-ground-and-set-pat! self gp-0 (collide-spec backgnd) 8192.0 81920.0 1024.0 (the-as process #f))
         (set! (-> self root trans y) (-> gp-0 best-other-tri intersect y))
         )
     )
@@ -1403,68 +1377,48 @@
     '()
     )
   :code (behavior ()
-    (rlet ((acc :class vf)
-           (vf0 :class vf)
-           (vf4 :class vf)
-           (vf5 :class vf)
-           (vf6 :class vf)
-           (vf7 :class vf)
-           )
-      (init-vf0-vector)
-      (ja-channel-push! 1 (seconds 0.2))
-      (until #f
-        (let ((gp-0 (handle->process (-> self focus handle))))
-          (when gp-0
-            (let* ((v1-5 (-> self focus-pos))
-                   (s5-1 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> self root trans)))
-                   )
-              (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable gp-0) 0))))
-                (if (and (>= (vector-length s5-1) 122880.0) (mantis-method-206 self))
-                    (go-virtual crawl)
-                    )
-                (let ((s2-0 s5-1))
-                  (let ((s3-1 s5-1))
-                    (let ((v1-21 (* 0.2 (vector-length (get-transv (the-as process-focusable gp-0))))))
-                      (.mov vf7 v1-21)
-                      )
-                    (.lvf vf5 (&-> s4-1 quad))
-                    (.lvf vf4 (&-> s3-1 quad))
-                    )
-                  (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                  (.mul.x.vf acc vf5 vf7 :mask #b111)
-                  (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-                  (.svf (&-> s2-0 quad) vf6)
-                  )
-                )
-              (if (not (or (mantis-method-203 self (the-as process-focusable gp-0) s5-1) (not (mantis-method-206 self))))
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (let ((gp-0 (handle->process (-> self focus handle))))
+        (when gp-0
+          (let* ((v1-5 (-> self focus-pos))
+                 (s5-1 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> self root trans)))
+                 )
+            (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable gp-0) 0))))
+              (if (and (>= (vector-length s5-1) 122880.0) (mantis-method-206 self))
                   (go-virtual crawl)
                   )
+              (vector+*! s5-1 s5-1 s4-1 (* 0.2 (vector-length (get-transv (the-as process-focusable gp-0)))))
               )
-            (if (and (time-elapsed? (-> self state-time) (-> self reaction-time))
-                     (>= (the-as int (-> self focus aware)) 3)
-                     (get-focus! self)
-                     )
-                (go-hostile self)
+            (if (not (or (mantis-method-203 self (the-as process-focusable gp-0) s5-1) (not (mantis-method-206 self))))
+                (go-virtual crawl)
                 )
             )
-          )
-        (dotimes (gp-1 (set-reaction-time! self (seconds 0.007) (seconds 0.015)))
-          (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
-          (until (ja-done? 0)
-            (suspend)
-            (ja :num! (seek!))
-            )
+          (if (and (time-elapsed? (-> self state-time) (-> self reaction-time))
+                   (>= (the-as int (-> self focus aware)) 3)
+                   (get-focus! self)
+                   )
+              (go-hostile self)
+              )
           )
         )
-      #f
+      (dotimes (gp-1 (rnd-time-frame self (seconds 0.007) (seconds 0.015)))
+        (ja-no-eval :group! mantis-idle0-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
       )
+    #f
     )
   :post nav-enemy-face-focus-post
   )
 
 ;; definition for method 74 of type mantis
 ;; INFO: Used lq/sq
-(defmethod go-ambush-delay ((this mantis))
+(defmethod go-ambush ((this mantis))
+  "May go to ambush-delay first, if set in the res-lump."
   (let ((s5-0 (new 'stack-no-clear 'collide-query)))
     (if (enemy-above-ground? this s5-0 (-> this root trans) (collide-spec backgnd) 8192.0 81920.0 1024.0)
         (set! (-> this base-height) (-> s5-0 best-other-tri intersect y))
@@ -1500,6 +1454,7 @@
 
 ;; definition for method 82 of type mantis
 (defmethod event-handler ((this mantis) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('track)
      (if (and (-> arg3 param 0) (time-elapsed? (-> this track-timer) (seconds 0.5)))
@@ -1524,7 +1479,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1573,14 +1528,17 @@
 ;; definition for method 136 of type mantis
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod set-ground-pat! ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float) (arg5 process))
+(defmethod find-ground-and-set-pat! ((this mantis) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float) (arg5 process))
+  "Figure out what ground we're standing on and update the ground-pat.
+   Usually this will be done automatically by the collision system.
+   This method should be called after manually repositioning an enemy."
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4 (the-as process #f))
       (set! (-> this root ground-pat) (-> arg0 best-other-tri pat))
       (when (time-elapsed? (-> this gspot-timer) (seconds 0.2))
         (let ((a1-2 (new 'stack-no-clear 'collide-query)))
-          (set! (-> a1-2 start-pos quad) (-> this root gspot-pos quad))
+          (vector-copy! (-> a1-2 start-pos) (-> this root gspot-pos))
           (+! (-> a1-2 start-pos y) 2048.0)
           (set-vector! (-> a1-2 move-dist) 0.0 -6144.0 0.0 0.0)
           (let ((v1-10 a1-2))
@@ -1597,8 +1555,8 @@
           (vector-reset! s5-1)
           (dotimes (s4-1 (-> *collide-cache* num-tris))
             (let* ((v1-16 (-> *collide-cache* tris s4-1))
-                   (s2-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 1) (the-as vector (-> v1-16 vertex))))
-                   (s1-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 2) (the-as vector (-> v1-16 vertex))))
+                   (s2-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 1) (-> v1-16 vertex 0)))
+                   (s1-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 2) (-> v1-16 vertex 0)))
                    (s3-0 (new 'stack-no-clear 'vector))
                    )
               (vector-normalize! s2-1 1.0)
@@ -1643,7 +1601,7 @@
      )
     (else
       (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (set! (-> s4-0 quad) (-> *up-vector* quad))
+        (vector-copy! s4-0 *up-vector*)
         (let ((s3-0 (new 'stack-no-clear 'quaternion)))
           (quaternion-from-two-vectors-max-angle! s3-0 s4-0 (-> this gspot-normal) 10922.667)
           (vector-orient-by-quat! s4-0 s4-0 s3-0)
@@ -1670,7 +1628,7 @@
         (a2-0 (-> arg0 state))
         (a1-1 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a1-1 quad) (-> a2-0 heading quad))
+    (vector-copy! a1-1 (-> a2-0 heading))
     (t9-0 this a1-1)
     )
   0
@@ -1681,6 +1639,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defmethod enemy-common-post ((this mantis))
+  "Common implementation of post. Runs ja-post."
   (local-vars (s5-0 vector))
   (let ((t9-0 (method-of-type nav-enemy enemy-common-post)))
     (t9-0 this)
@@ -1689,7 +1648,7 @@
   (let ((a0-4 (handle->process (-> this focus handle))))
     (set! s5-0 (when a0-4
                  (set! s5-0 (-> this focus-pos))
-                 (set! (-> s5-0 quad) (-> (get-trans (the-as process-focusable a0-4) 0) quad))
+                 (vector-copy! s5-0 (get-trans (the-as process-focusable a0-4) 0))
                  s5-0
                  )
           )
@@ -1721,16 +1680,16 @@
                      #f
                      )
                     ((let ((a1-5 (new 'stack-no-clear 'vector)))
-                       (set! (-> a1-5 quad) (-> s3-0 quad))
+                       (vector-copy! a1-5 s3-0)
                        (set! (-> a1-5 w) (-> arg0 root nav-radius))
-                       (add-root-sphere-to-hash! (-> arg0 nav) a1-5 1134)
+                       (check-sphere-blocked! (-> arg0 nav) a1-5 1134)
                        )
                      #f
                      )
                     (else
                       (let ((a1-6 (new 'stack-no-clear 'collide-query)))
-                        (set! (-> a1-6 start-pos quad) (-> arg1 trans quad))
-                        (set! (-> a1-6 move-dist quad) (-> arg2 quad))
+                        (vector-copy! (-> a1-6 start-pos) (-> arg1 trans))
+                        (vector-copy! (-> a1-6 move-dist) arg2)
                         (let ((v1-14 a1-6))
                           (set! (-> v1-14 radius) 2048.0)
                           (set! (-> v1-14 collide-with) (-> arg1 root-prim prim-core collide-with))
@@ -1764,40 +1723,19 @@
 
 ;; definition for method 200 of type mantis
 (defmethod mantis-method-200 ((this mantis))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 (handle->process (-> this focus handle))))
-      (when s5-0
-        (let* ((v1-4 (-> this focus-pos))
-               (s4-1 (vector-! (new 'stack-no-clear 'vector) v1-4 (-> this root trans)))
-               )
-          (let ((s2-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s5-0) 0)))
-                (s1-0 s4-1)
-                )
-            (let ((s3-1 s4-1))
-              (let ((v1-10 (* 0.2 (vector-length (get-transv (the-as process-focusable s5-0))))))
-                (.mov vf7 v1-10)
-                )
-              (.lvf vf5 (&-> s2-1 quad))
-              (.lvf vf4 (&-> s3-1 quad))
-              )
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-            (.svf (&-> s1-0 quad) vf6)
-            )
-          (mantis-method-203 this (the-as process-focusable s5-0) s4-1)
+  (let ((s5-0 (handle->process (-> this focus handle))))
+    (when s5-0
+      (let* ((v1-4 (-> this focus-pos))
+             (s4-1 (vector-! (new 'stack-no-clear 'vector) v1-4 (-> this root trans)))
+             )
+        (let ((s2-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (get-quat (the-as process-focusable s5-0) 0))))
+          (vector+*! s4-1 s4-1 s2-1 (* 0.2 (vector-length (get-transv (the-as process-focusable s5-0)))))
           )
+        (mantis-method-203 this (the-as process-focusable s5-0) s4-1)
         )
       )
-    (none)
     )
+  (none)
   )
 
 ;; definition for method 75 of type mantis
@@ -1922,8 +1860,8 @@
                (when (< 0.8 (/ (vector-length s2-0) arg2))
                  (vector+! s5-1 s3-0 s2-0)
                  (let ((a1-7 (new 'stack-no-clear 'collide-query)))
-                   (set! (-> a1-7 start-pos quad) (-> s3-0 quad))
-                   (set! (-> a1-7 move-dist quad) (-> s2-0 quad))
+                   (vector-copy! (-> a1-7 start-pos) s3-0)
+                   (vector-copy! (-> a1-7 move-dist) s2-0)
                    (+! (-> a1-7 start-pos y) (* 1.5 (-> arg0 enemy-info jump-height-min)))
                    (let ((v1-17 a1-7))
                      (set! (-> v1-17 radius) 409.6)
@@ -1937,8 +1875,8 @@
                      )
                    (when (< (fill-and-probe-using-line-sphere *collide-cache* a1-7) 0.0)
                      (set! (-> s5-1 w) (-> arg0 root nav-radius))
-                     (when (not (add-root-sphere-to-hash! (-> arg0 nav) s5-1 #x10046e))
-                       (set! (-> arg4 quad) (-> s5-1 quad))
+                     (when (not (check-sphere-blocked! (-> arg0 nav) s5-1 #x10046e))
+                       (vector-copy! arg4 s5-1)
                        (return arg4)
                        v0-3
                        )
@@ -1968,6 +1906,7 @@
 
 ;; definition for method 98 of type mantis
 (defmethod jump-wind-up-anim ((this mantis) (arg0 enemy-jump-info))
+  "Start playing the wind-up anim"
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this jump start-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -1983,6 +1922,7 @@
 
 ;; definition for method 96 of type mantis
 (defmethod jump-in-air-anim ((this mantis) (arg0 enemy-jump-info))
+  "Start playing the in-air anim"
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this jump air-anim)))
         (a0-4 (-> this skel root-channel 0))
@@ -1998,39 +1938,41 @@
 
 ;; definition for method 101 of type mantis
 ;; WARN: Return type mismatch quaternion vs none.
-(defmethod enemy-method-101 ((this mantis) (arg0 int) (arg1 enemy-jump-info))
-  (let ((v1-0 arg0))
-    (when (or (zero? v1-0) (= v1-0 1) (= v1-0 2) (= v1-0 3))
-      (let ((a0-4 this))
-        (when (logtest? (enemy-flag ef38) (-> a0-4 enemy-flags))
-          (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg1 dest-pos) (-> this root trans))))
-            (vector-normalize! s5-1 1.0)
-            (let ((v1-5 (-> this jump direction)))
-              (cond
-                ((zero? v1-5)
-                 )
-                ((= v1-5 1)
-                 (vector-negate! s5-1 s5-1)
-                 )
-                ((= v1-5 2)
-                 (vector-rotate-y! s5-1 s5-1 -16384.0)
-                 )
-                ((= v1-5 3)
-                 (vector-rotate-y! s5-1 s5-1 16384.0)
-                 )
+(defmethod adjust-heading-for-jump ((this mantis) (arg0 jump-stage) (arg1 enemy-jump-info))
+  "Can be overriden. Yaw the enemy in response to an ongoing jump."
+  (case arg0
+    (((jump-stage init) (jump-stage winding-up) (jump-stage takeoff) (jump-stage in-air))
+     (let ((a0-4 this))
+       (when (logtest? (enemy-flag ef38) (-> a0-4 enemy-flags))
+         (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> arg1 dest-pos) (-> this root trans))))
+           (vector-normalize! s5-1 1.0)
+           (let ((v1-5 (-> this jump direction)))
+             (cond
+               ((zero? v1-5)
                 )
-              )
-            (seek-toward-heading-vec! (-> this root) s5-1 (-> this nav max-rotation-rate) (seconds 0.02))
-            )
-          )
-        )
-      )
+               ((= v1-5 1)
+                (vector-negate! s5-1 s5-1)
+                )
+               ((= v1-5 2)
+                (vector-rotate-y! s5-1 s5-1 -16384.0)
+                )
+               ((= v1-5 3)
+                (vector-rotate-y! s5-1 s5-1 16384.0)
+                )
+               )
+             )
+           (seek-toward-heading-vec! (-> this root) s5-1 (-> this nav max-rotation-rate) (seconds 0.02))
+           )
+         )
+       )
+     )
     )
   (none)
   )
 
 ;; definition for method 97 of type mantis
 (defmethod jump-land-anim ((this mantis) (arg0 enemy-jump-info))
+  "Play the landing anim"
   (cond
     ((zero? (-> this jump land-anim))
      #f
@@ -2053,12 +1995,14 @@
 
 ;; definition for method 67 of type mantis
 (defmethod coin-flip? ((this mantis))
+  "Return #t half the time, #f the other."
   #f
   )
 
 ;; definition for method 120 of type mantis
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod init-enemy-collision! ((this mantis))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -2164,15 +2108,16 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this mantis))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mantis" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *mantis-nav-enemy-info*)
+  (setup-enemy! this *mantis-nav-enemy-info*)
   (set! (-> this flags) (mantis-flag))
-  (set! (-> this my-up-vector quad) (-> *y-vector* quad))
-  (set! (-> this gspot-normal quad) (-> *y-vector* quad))
+  (vector-copy! (-> this my-up-vector) *y-vector*)
+  (vector-copy! (-> this gspot-normal) *y-vector*)
   (set! (-> this gspot-timer) 0)
   (set! (-> this attack-timer) (+ (current-time) (seconds -5)))
   (set! (-> this track-timer) 0)

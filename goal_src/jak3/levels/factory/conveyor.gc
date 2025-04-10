@@ -106,7 +106,7 @@
 
 (defmethod push-focus ((this conveyor) (arg0 process-focusable))
   (let ((s4-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s4-0 quad) (-> (get-trans arg0 0) quad))
+    (vector-copy! s4-0 (get-trans arg0 0))
     (set! (-> s4-0 w) 1.0)
     (when (>= (vector4-dot s4-0 (the-as vector (-> this leading))) 0.0)
       (let* ((a1-2 (-> this sections))
@@ -267,11 +267,7 @@
             (.mov a0-10 vf3)
             (let ((s4-0 (-> v1-23 process)))
               (b! (< f0-2 a0-10) cfg-27)
-              (let ((a1-29 (if (type? s4-0 process-focusable)
-                               s4-0
-                               )
-                           )
-                    )
+              (let ((a1-29 (as-type s4-0 process-focusable)))
                 (if a1-29
                     (push-focus this (the-as process-focusable a1-29))
                     )
@@ -302,7 +298,7 @@
         (set! sv-32 (the-as conveyor-section #f))
         (dotimes (s0-0 s1-0)
           (set! sv-48 (-> s2-0 data s0-0))
-          (set! (-> sv-48 start quad) (-> s3-0 quad))
+          (vector-copy! (-> sv-48 start) s3-0)
           (get-point-in-path! s5-0 s3-0 (the float (+ s0-0 1)) 'exact)
           (vector+! (the-as vector (-> this collide-bounds)) (the-as vector (-> this collide-bounds)) s3-0)
           (vector-! (-> sv-48 pull-dir) s3-0 (-> sv-48 start))
@@ -330,7 +326,7 @@
       (set! (-> this leading quad) (-> s2-1 0 pull-dir quad))
       (set! (-> this leading y) 0.0)
       (vector-normalize! (-> this leading) 1.0)
-      (set! (-> this leading w) (- (vector-dot (the-as vector (-> s2-1 0)) (the-as vector (-> this leading)))))
+      (set! (-> this leading w) (- (vector-dot (-> s2-1 0 start) (the-as vector (-> this leading)))))
       )
     (let ((f0-19 (/ 1.0 (the float s4-0)))
           (f30-0 0.0)
@@ -369,6 +365,7 @@
   )
 
 (defmethod init-from-entity! ((this conveyor) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (alloc-trsqv! this)
   (process-drawable-from-entity! this arg0)
   (init-skel! this)

@@ -645,34 +645,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 1)
     :shadow-max-y (meters 1)
@@ -711,6 +711,7 @@
 (set! (-> *spydroid-orig-nav-enemy-info* fact-defaults) *fact-info-spydroid-orig-defaults*)
 
 (defmethod enemy-common-post ((this spydroid-orig))
+  "Common implementation of post. Runs ja-post."
   (let ((t9-0 (method-of-type nav-enemy enemy-common-post)))
     (t9-0 this)
     )
@@ -749,7 +750,7 @@
         (let ((a0-13 (-> this lightning s3-0))
               (v1-28 s4-0)
               )
-          (set! (-> a0-13 state meet data (+ (-> a0-13 state points-to-draw) -1) quad) (-> v1-28 quad))
+          (vector-copy! (-> a0-13 state meet data (+ (-> a0-13 state points-to-draw) -1)) v1-28)
           )
         (when (not (and (-> this next-state) (let ((v1-33 (-> this next-state name)))
                                                (or (= v1-33 'die-falling) (= v1-33 'explode))
@@ -812,6 +813,7 @@
   )
 
 (defmethod event-handler ((this spydroid-orig) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (local-vars (v1-8 structure) (sv-144 vector))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
@@ -824,12 +826,7 @@
        (cond
          ((logtest? (-> this flags) (spydroid-orig-flag sof0))
           (set! sv-144 (the-as vector (send-event (ppointer->process (-> this parent)) 'widow-get-center)))
-          (let* ((s1-0 arg0)
-                 (s0-0 (if (type? s1-0 process-drawable)
-                           s1-0
-                           )
-                       )
-                 )
+          (let ((s0-0 (as-type arg0 process-drawable)))
             (let ((v1-7 sv-144))
               (b! (not v1-7) cfg-16 :likely-delay (set! v1-8 sv-144))
               )
@@ -979,7 +976,7 @@
            (logior! (-> this focus-status) (focus-status dead))
            )
        (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-       (enemy-method-69 this)
+       (focus-on-attacker! this)
        (logior! (-> this enemy-flags) (enemy-flag lock-focus))
        (process-contact-action arg0)
        (send-event arg0 'get-attack-count 1)
@@ -1049,14 +1046,14 @@
         )
       )
     (let ((v1-25 (new 'stack-no-clear 'vector)))
-      (set! (-> v1-25 quad) (-> self root trans quad))
+      (vector-copy! v1-25 (-> self root trans))
       (cond
         ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> v1-25 quad))
+         (vector-copy! (-> *launch-matrix* trans) v1-25)
          (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> v1-25 quad))
+          (vector-copy! (-> *launch-matrix* trans) v1-25)
           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
           )
         )
@@ -1158,7 +1155,7 @@
       )
     0
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (let* ((v1-14 *game-info*)
            (a0-11 (+ (-> v1-14 attack-id) 1))
            )
@@ -1184,7 +1181,7 @@
         )
     )
   :trans (behavior ()
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     nav-state
     (if (logtest? (-> self enemy-flags) (enemy-flag victory))
         (logior! (-> self flags) (spydroid-orig-flag sof2))
@@ -1272,7 +1269,7 @@
           (t9-0)
           )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1511,6 +1508,7 @@
   )
 
 (defmethod init-enemy-collision! ((this spydroid-orig))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1572,6 +1570,7 @@
   )
 
 (defmethod coin-flip? ((this spydroid-orig))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1604,12 +1603,13 @@
   )
 
 (defmethod init-enemy! ((this spydroid-orig))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-spydroid-orig" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *spydroid-orig-nav-enemy-info*)
+  (setup-enemy! this *spydroid-orig-nav-enemy-info*)
   (dotimes (s5-1 4)
     (set! (-> this lightning s5-1)
           (new

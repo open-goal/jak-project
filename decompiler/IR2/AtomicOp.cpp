@@ -353,6 +353,8 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "pcypld";
     case SimpleExpression::Kind::VECTOR_PLUS:
       return "vector+!2";
+    case SimpleExpression::Kind::VECTOR_XYZ_PRODUCT:
+      return "vector-xyz-product!";
     case SimpleExpression::Kind::VECTOR_MINUS:
       return "vector-!2";
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
@@ -367,8 +369,12 @@ std::string get_simple_expression_op_name(SimpleExpression::Kind kind) {
       return "vec4dot";
     case SimpleExpression::Kind::VECTOR_LENGTH:
       return "veclength";
+    case SimpleExpression::Kind::VECTOR_LENGTH_SQUARED:
+      return "veclength-squared";
     case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
       return "vecplusfloattimes";
+    case SimpleExpression::Kind::VECTOR_PLUS_TIMES:
+      return "vecplustimes";
     case SimpleExpression::Kind::SET_ON_LESS_THAN:
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return "set-on-less-than";
@@ -427,6 +433,7 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
     case SimpleExpression::Kind::VECTOR_CROSS:
+    case SimpleExpression::Kind::VECTOR_XYZ_PRODUCT:
       return 3;
     case SimpleExpression::Kind::SUBU_L32_S7:
       return 1;
@@ -437,8 +444,10 @@ int get_simple_expression_arg_count(SimpleExpression::Kind kind) {
     case SimpleExpression::Kind::SET_ON_LESS_THAN_IMM:
       return 2;
     case SimpleExpression::Kind::VECTOR_LENGTH:
+    case SimpleExpression::Kind::VECTOR_LENGTH_SQUARED:
       return 1;
     case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+    case SimpleExpression::Kind::VECTOR_PLUS_TIMES:
       return 4;
     default:
       ASSERT(false);

@@ -34,7 +34,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "dax373"
                                      :channel (gui-channel daxter)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x2
                                      :neg #x1
                                      :on-close #f
@@ -99,7 +99,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "dax381"
                                      :channel (gui-channel daxter)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #xa
                                      :neg #x1
                                      :on-close #f
@@ -236,7 +236,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak103"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x1b
                                      :neg #x1
                                      :on-close #f
@@ -269,7 +269,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak107"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x1f
                                      :neg #x1
                                      :on-close #f
@@ -294,7 +294,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak110"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x22
                                      :neg #x1
                                      :on-close #f
@@ -311,7 +311,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "jak112"
                                      :channel (gui-channel jak)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x24
                                      :neg #x1
                                      :on-close #f
@@ -320,7 +320,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "torn149"
                                      :channel (gui-channel voicebox)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x25
                                      :neg #x1
                                      :on-close #f
@@ -353,7 +353,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "torn153"
                                      :channel (gui-channel voicebox)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x29
                                      :neg #x1
                                      :on-close #f
@@ -813,7 +813,7 @@
     ((= arg0 3)
      (let ((gp-1 (new 'static 'vector)))
        (if (-> this is-naughty-ottsel?)
-           (set! (-> gp-1 quad) (-> this root trans quad))
+           (vector-copy! gp-1 (-> this root trans))
            (vector<-cspace! gp-1 (-> this node-list data 16))
            )
        gp-1
@@ -922,7 +922,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-cty-missile-lure" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (vector-copy! (-> self root trans) (-> arg0 pos))
   (quaternion-copy! (-> self root quat) (-> arg0 orient))
   (set-vector! (-> self root scale) 3.0 3.0 3.0 1.0)
   (set! (-> self is-naughty-ottsel?) (-> arg0 is-naughty-ottsel?))
@@ -1013,7 +1013,7 @@
 
 (defmethod find-and-lure-missiles ((this cty-missile-lure))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
-    (set! (-> v1-0 quad) (-> this root trans quad))
+    (vector-copy! v1-0 (-> this root trans))
     (set! (-> v1-0 w) 327680.0)
     )
   (when #f
@@ -1023,12 +1023,7 @@
         (while (!= v1-3 (-> *collide-player-list* alive-list-end))
           (let ((v1-4 (the-as collide-shape (-> (the-as connection v1-3) param1))))
             (when (logtest? (-> v1-4 root-prim prim-core collide-as) (collide-spec enemy hit-by-others-list))
-              (let* ((s5-0 (-> v1-4 process))
-                     (a0-12 (if (type? s5-0 process-focusable)
-                                s5-0
-                                )
-                            )
-                     )
+              (let ((a0-12 (as-type (-> v1-4 process) process-focusable)))
                 (if (= (-> a0-12 type) cty-hijack-missile)
                     (send-event a0-12 'lure)
                     )
@@ -1050,12 +1045,7 @@
           (while (!= v1-15 (-> *collide-hit-by-player-list* alive-list-end))
             (let ((v1-16 (the-as collide-shape (-> (the-as connection v1-15) param1))))
               (when (logtest? (-> v1-16 root-prim prim-core collide-as) (collide-spec enemy hit-by-others-list))
-                (let* ((s5-1 (-> v1-16 process))
-                       (a0-24 (if (type? s5-1 process-focusable)
-                                  s5-1
-                                  )
-                              )
-                       )
+                (let ((a0-24 (as-type (-> v1-16 process) process-focusable)))
                   (if (= (-> a0-24 type) cty-hijack-missile)
                       (send-event a0-24 'lure)
                       )
@@ -1076,12 +1066,7 @@
           (while (!= v1-26 (-> *collide-hit-by-others-list* alive-list-end))
             (let ((v1-27 (the-as collide-shape (-> (the-as connection v1-26) param1))))
               (when (logtest? (-> v1-27 root-prim prim-core collide-as) (collide-spec enemy hit-by-others-list))
-                (let* ((s5-2 (-> v1-27 process))
-                       (a0-36 (if (type? s5-2 process-focusable)
-                                  s5-2
-                                  )
-                              )
-                       )
+                (let ((a0-36 (as-type (-> v1-27 process) process-focusable)))
                   (if (= (-> a0-36 type) cty-hijack-missile)
                       (send-event a0-36 'lure)
                       )
@@ -1366,7 +1351,7 @@
     (set-setting! 'exclusive-load '((ignore lctyhijk)) 0.0 0)
     (let ((gp-0 (new 'stack 'traffic-object-spawn-params)))
       (set! (-> gp-0 flags) (traffic-spawn-flags))
-      (set! (-> gp-0 position quad) (-> *pickup-start-pos* quad))
+      (vector-copy! (-> gp-0 position) *pickup-start-pos*)
       (quaternion-identity! (-> gp-0 rotation))
       (quaternion-rotate-y! (-> gp-0 rotation) (-> gp-0 rotation) *pickup-start-angle*)
       (set! (-> gp-0 velocity quad) (the-as uint128 0))
@@ -1388,7 +1373,7 @@
         )
       )
     (let ((gp-1 (new 'stack-no-clear 'task-arrow-params)))
-      (set! (-> gp-1 pos quad) (-> *pickup-start-pos* quad))
+      (vector-copy! (-> gp-1 pos) *pickup-start-pos*)
       (quaternion-identity! (-> gp-1 quat))
       (set! (-> gp-1 flags) (task-arrow-flags taf8))
       (set! (-> gp-1 map-icon) (the-as uint 12))
@@ -1397,20 +1382,14 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-1 symbol))
     (when (not (-> self vehicle-is-visible?))
-      (let* ((s5-0 (handle->process (-> self hpickup)))
-             (gp-0 (if (type? s5-0 process-focusable)
-                       (the-as process-focusable s5-0)
-                       )
-                   )
-             )
+      (let ((gp-0 (as-type (handle->process (-> self hpickup)) process-focusable)))
         (when gp-0
           (when (logtest? (-> gp-0 draw status) (draw-control-status on-screen))
             (when (time-elapsed? (-> self last-check-vehicle-vis-time) (seconds 0.5))
               (set-time! (-> self last-check-vehicle-vis-time))
               (let ((s5-1 (new 'stack-no-clear 'collide-query)))
-                (set! (-> s5-1 start-pos quad) (-> (target-pos 0) quad))
+                (vector-copy! (-> s5-1 start-pos) (target-pos 0))
                 (vector-! (-> s5-1 move-dist) (get-trans gp-0 0) (-> s5-1 start-pos))
                 (let ((v1-20 s5-1))
                   (set! (-> v1-20 radius) 40.96)
@@ -1432,33 +1411,11 @@
         )
       )
     (if (or (not (handle->process (-> self hpickup)))
-            (begin
-              (let* ((gp-2 #t)
-                     (s5-2 (handle->process (-> self hpickup)))
-                     (v1-34 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-2 process-focusable)
-                                                                                           (the-as process-focusable s5-2)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-1 v1-34 gp-2)
-                )
-              gp-1
-              )
+            (focus-test? (the-as process-focusable (as-type (handle->process (-> self hpickup)) process-focusable)) dead)
             )
         (send-event self 'fail)
         )
-    (let* ((s5-3 (handle->process (-> self hpickup)))
-           (gp-3 (if (type? s5-3 process-focusable)
-                     (the-as process-focusable s5-3)
-                     )
-                 )
-           )
+    (let ((gp-3 (as-type (handle->process (-> self hpickup)) process-focusable)))
       (cond
         ((and gp-3 (and (< 184320.0 (vector-vector-xz-distance (target-pos 0) (get-trans gp-3 0)))
                         (> (get-alert-level1 *kg-squad-control*) 0)
@@ -1551,7 +1508,6 @@
     (auto-save-user)
     )
   :trans (behavior ()
-    (local-vars (gp-1 symbol))
     ((-> (method-of-type task-manager active) trans))
     (let ((v1-6 (handle->process (-> self missiles (-> self current-leader-missile)))))
       (if v1-6
@@ -1633,24 +1589,7 @@
         (send-event (handle->process (-> self missiles (-> self current-leader-missile))) 'explode)
         )
     (if (or (not (handle->process (-> self hpickup)))
-            (begin
-              (let* ((gp-2 #t)
-                     (s5-0 (handle->process (-> self hpickup)))
-                     (v1-164 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                            (the-as process-focusable s5-0)
-                                                                                            )
-                                                                      )
-                                                              focus-status
-                                                              )
-                                                          (focus-status dead)
-                                                          )
-                                     )
-                             )
-                     )
-                (cmove-#f-zero gp-1 v1-164 gp-2)
-                )
-              gp-1
-              )
+            (focus-test? (the-as process-focusable (as-type (handle->process (-> self hpickup)) process-focusable)) dead)
             )
         (send-event self 'fail)
         )
@@ -1759,7 +1698,7 @@
         (set! (-> s4-0 is-leader?) #t)
         (set! (-> s4-0 is-leader?) #f)
         )
-    (set! (-> s4-0 pos quad) (-> arg0 quad))
+    (vector-copy! (-> s4-0 pos) arg0)
     (quaternion-copy! (-> s4-0 quat) arg1)
     (set! (-> s4-0 track-obj) (-> this hpickup))
     (let* ((s3-0 (get-process *default-dead-pool* cty-hijack-missile #x4000 1))
@@ -1835,7 +1774,7 @@
     (let ((gp-0 (new 'stack-no-clear 'cty-missile-lure-init-params)))
       (dotimes (s5-0 (-> *cty-hijack-lure-positions* length))
         (let ((a0-21 (-> *cty-hijack-lure-positions* s5-0)))
-          (set! (-> gp-0 pos quad) (-> a0-21 pos quad))
+          (vector-copy! (-> gp-0 pos) (-> a0-21 pos))
           )
         (quaternion-identity! (-> gp-0 orient))
         (set! (-> gp-0 is-naughty-ottsel?) #f)
@@ -1843,7 +1782,7 @@
         )
       )
     (let ((gp-1 (new 'stack-no-clear 'cty-missile-lure-init-params)))
-      (set! (-> gp-1 pos quad) (-> *naughty-ottsel-pos* quad))
+      (vector-copy! (-> gp-1 pos) *naughty-ottsel-pos*)
       (quaternion-identity! (-> gp-1 orient))
       (set! (-> gp-1 is-naughty-ottsel?) #t)
       (let ((s5-1 (get-process *default-dead-pool* cty-missile-lure #x4000 1)))
@@ -1870,7 +1809,6 @@
     (set-time! (-> self state-time))
     )
   :trans (behavior ()
-    (local-vars (gp-1 symbol))
     (let ((v1-4 (handle->process (-> self missiles (-> self current-leader-missile)))))
       (if v1-4
           (sound-play
@@ -1900,24 +1838,7 @@
       (go-virtual decoy-stage)
       )
     (if (or (not (handle->process (-> self hpickup)))
-            (begin
-              (let* ((gp-2 #t)
-                     (s5-0 (handle->process (-> self hpickup)))
-                     (v1-69 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                           (the-as process-focusable s5-0)
-                                                                                           )
-                                                                     )
-                                                             focus-status
-                                                             )
-                                                         (focus-status dead)
-                                                         )
-                                    )
-                            )
-                     )
-                (cmove-#f-zero gp-1 v1-69 gp-2)
-                )
-              gp-1
-              )
+            (focus-test? (the-as process-focusable (as-type (handle->process (-> self hpickup)) process-focusable)) dead)
             )
         (send-event self 'fail)
         )
@@ -1940,6 +1861,7 @@
               )
 
 (defmethod init-from-entity! ((this cty-missile-launcher) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
@@ -2137,11 +2059,11 @@
   (dotimes (s5-0 (-> *guide-arrow-list* length))
     (let ((a0-1 (new 'stack-no-clear 'guide-arrow-init-params)))
       (let ((v1-0 (new 'stack-no-clear 'vector)))
-        (set! (-> v1-0 quad) (-> *guide-arrow-list* s5-0 pos quad))
+        (vector-copy! v1-0 (-> *guide-arrow-list* s5-0 pos))
         (let ((a1-5 (new 'stack-no-clear 'vector)))
-          (set! (-> a1-5 quad) (-> *guide-arrow-list* s5-0 facing quad))
-          (set! (-> a0-1 pos quad) (-> v1-0 quad))
-          (set! (-> a0-1 facing quad) (-> a1-5 quad))
+          (vector-copy! a1-5 (-> *guide-arrow-list* s5-0 facing))
+          (vector-copy! (-> a0-1 pos) v1-0)
+          (vector-copy! (-> a0-1 facing) a1-5)
           )
         )
       (set! (-> a0-1 xz?) #t)

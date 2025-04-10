@@ -4,6 +4,7 @@
 
 #include "goalc/build_actor/common/animation_processing.h"
 #include "goalc/build_actor/common/art_types.h"
+#include "goalc/build_actor/common/build_actor.h"
 #include "goalc/build_level/collide/common/collide_common.h"
 
 namespace jak1 {
@@ -12,22 +13,6 @@ namespace jak1 {
 // development, joint animations were stored separately per joint. However, all joint animations use
 // the "compressed" format, which combines data for all joints into a single structure.
 // By jak 2, they had cleaned this up, but for Jak 1, we have to deal with this weirdness.
-
-struct Joint {
-  std::string name;
-  s32 number;
-  int parent;
-  math::Matrix4f bind_pose{};
-
-  Joint(const std::string& name, int number, int parent, math::Matrix4f bind_pose) {
-    this->name = name;
-    this->number = number;
-    this->parent = parent;
-    this->bind_pose = bind_pose;
-  }
-
-  size_t generate(DataObjectGenerator& gen) const;
-};
 
 // basic
 // This is one of those weird leftover types.
@@ -153,21 +138,41 @@ struct CollideMesh {
   }
 };
 
+struct BuildActorParams {
+  bool gen_collide_mesh = false;
+  s8 texture_bucket = -1;
+  s32 texture_level = -1;
+  s32 joint_channel = -1;
+  math::Vector4f trans_offset = {0.f, 0.f, 0.f, 1.f};
+  std::vector<float> lod_dist{};
+};
+
 struct ArtJointGeo : ArtElement {
   std::vector<Joint> data;
   std::vector<CollideMesh> cmeshes;
   ResLump lump;
   size_t mesh_slot;
+  s8 texture_bucket;
+  s32 texture_level;
+  s32 joint_channel;
+  math::Vector4f trans_offset;
+  std::vector<float> lod_dist;
 
   explicit ArtJointGeo(const std::string& name,
                        std::vector<CollideMesh> cmeshes,
-                       std::vector<Joint>& joints) {
+                       std::vector<Joint>& joints,
+                       const BuildActorParams& params) {
     this->name = name + "-lod0";
     length = joints.size();
     for (auto& joint : joints) {
       data.push_back(joint);
     }
     this->cmeshes = std::move(cmeshes);
+    this->texture_bucket = params.texture_bucket;
+    this->texture_level = params.texture_level;
+    this->joint_channel = params.joint_channel;
+    this->trans_offset = params.trans_offset;
+    this->lod_dist = params.lod_dist;
   }
   void add_res();
   size_t generate(DataObjectGenerator& gen);
@@ -207,7 +212,7 @@ struct ArtGroup : Art {
   FileInfo info;
   std::vector<std::shared_ptr<ArtElement>> elts;
   std::map<int, size_t> joint_map;
-  int merc_effect_count;
+  tfrag3::MercModel* mdl;
 
   explicit ArtGroup(const std::string& file_name) {
     info.file_type = "art-group";
@@ -225,5 +230,5 @@ struct ArtGroup : Art {
 
 bool run_build_actor(const std::string& input_model,
                      const std::string& output_file,
-                     bool gen_collide_mesh);
+                     const BuildActorParams& params);
 }  // namespace jak1
