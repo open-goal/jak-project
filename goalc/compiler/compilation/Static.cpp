@@ -9,7 +9,7 @@
 
 #include "goalc/compiler/Compiler.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 /*!
  * Compile the fields of a static structure into the given StaticStructure*, applying an offset.

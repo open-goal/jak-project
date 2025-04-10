@@ -2,7 +2,7 @@
 
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 std::string IRegister::to_string() const {
   //  if (with_constraints) {

@@ -4,7 +4,7 @@
 
 #include "common/util/string_util.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace lsp_util {
 

@@ -13,7 +13,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/analysis/final_output.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 

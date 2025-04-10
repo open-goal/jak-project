@@ -13,7 +13,7 @@
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 CompilerTool::CompilerTool(Compiler* compiler) : Tool("goalc"), m_compiler(compiler) {}
 

@@ -19,7 +19,7 @@
 #include "game/sce/sif_ee.h"
 #include "game/sce/sif_ee_memcard.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 static constexpr bool memcard_debug = false;
 

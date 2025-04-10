@@ -24,7 +24,7 @@
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/magic_enum.hpp"
 
 using namespace iop;

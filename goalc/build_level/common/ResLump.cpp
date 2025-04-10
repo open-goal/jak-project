@@ -6,7 +6,7 @@
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 /*
  *  name: crate-3141
