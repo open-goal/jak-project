@@ -339,8 +339,10 @@ int main(int argc, char** argv) {
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);
       }
-      data_subfolder = data_subfolders.at(version_info->game_name);
-      game_name = version_info->game_name;
+      if (!version_info.empty()) {
+        data_subfolder = data_subfolders.at(version_info->game_name);
+        game_name = version_info->game_name;
+      }
     }
 
     // write out a json file with some metadata for the game
