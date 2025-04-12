@@ -12,7 +12,7 @@
 #include "game/graphics/texture/jak2_tpage_dir.h"
 #include "game/graphics/texture/jak3_tpage_dir.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/imgui/imgui.h"
 
 namespace {
