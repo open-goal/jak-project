@@ -6,7 +6,8 @@
 #include "common/versions/versions.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
+#include "fmt/ranges.h"
 #include "third-party/replxx/include/replxx.hxx"
 
 namespace REPL {
@@ -41,7 +42,7 @@ void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_proje
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  .        ---        .");
   message +=
       fmt::format("  Project Path: {}\n",
-                  fmt::format(fg(fmt::color::gray), file_util::get_jak_project_dir().string()));
+                  fmt::styled(file_util::get_jak_project_dir().string(), fg(fmt::color::gray)));
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  -       :===:       -");
   std::string effective_iso_path;
   if (repl_config.iso_path.empty()) {
@@ -50,7 +51,7 @@ void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_proje
     effective_iso_path = repl_config.iso_path;
   }
   message +=
-      fmt::format("  ISO Data Path: {}\n", fmt::format(fg(fmt::color::gray), effective_iso_path));
+      fmt::format("  ISO Data Path: {}\n", fmt::styled(effective_iso_path, fg(fmt::color::gray)));
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  --.   .--: :--.   .--");
   message += "  nREPL:";
   if (!nrepl_alive) {
@@ -63,7 +64,7 @@ void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_proje
   message += "  Source File Search Dirs: ";
   const auto search_dir_string =
       fmt::format("{}", fmt::join(repl_config.asm_file_search_dirs, ","));
-  message += fmt::format("[{}]\n", fmt::format(fg(fmt::color::gray), search_dir_string));
+  message += fmt::format("[{}]\n", fmt::styled(search_dir_string, fg(fmt::color::gray)));
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "   .-=====-. .-=====-");
   message += fmt::format("    {} or {} for basic help and usage\n",
                          fmt::format(fg(fmt::color::cyan), "(repl-help)"),

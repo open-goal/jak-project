@@ -14,6 +14,8 @@
 #include "goalc/build_level/jak1/FileInfo.h"
 #include "goalc/build_level/jak1/LevelFile.h"
 
+#include "fmt/ranges.h"
+
 namespace jak1 {
 bool run_build_level(const std::string& input_file,
                      const std::string& bsp_output_file,
@@ -191,6 +193,9 @@ bool run_build_level(const std::string& input_file,
       for (auto& dgo : config.dgo_names) {
         // remove "DGO/" prefix
         const auto& dgo_name = dgo.substr(4);
+        ASSERT_MSG(
+            db.obj_files_by_dgo.contains(dgo_name),
+            fmt::format("{} DGO expected to be part of the ObjectDB but it is not!", dgo_name));
         const auto& files = db.obj_files_by_dgo.at(dgo_name);
         auto art_groups =
             find_art_groups(processed_art_groups,
