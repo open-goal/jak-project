@@ -149,6 +149,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
 
     init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                          BucketId::OCEAN_MID_FAR);
+    // 7 (hack for progress menu box)
+    init_bucket_renderer<DirectRenderer>("progress-hack", BucketCategory::OTHER,
+                                         BucketId::PROGRESS_HACK, 0x8000);
 
     // 8 (in tfrag category for now, just for stat reporting.)
     init_bucket_renderer<Hfrag>("hfrag", BucketCategory::TFRAG, BucketId::HFRAG);
