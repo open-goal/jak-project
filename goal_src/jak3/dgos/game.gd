@@ -167,6 +167,8 @@
   "cam-update-h.o"
   "hud-h.o"
   "progress-h.o"
+  "progress-h-pc.o" ;; added
+  "progress-generic-h-pc.o" ;; added
   "rpc-h.o"
   "path-h.o"
   "nav-mesh-h.o"
@@ -388,8 +390,13 @@
   "hud-classes.o"
   "secrets-menu.o"
   "progress-static.o"
+  "progress-static-pc.o" ;; added
   "progress.o"
+  "progress-pc.o" ;; added
+  "progress-generic-pc.o" ;; added
   "progress-draw.o"
+  "progress-draw-pc.o" ;; added
+  "progress-generic-draw-pc.o" ;; added
   "ocean.o"
   "ocean-vu0.o"
   "ocean-texture.o"
