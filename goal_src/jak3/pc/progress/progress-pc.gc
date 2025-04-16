@@ -33,6 +33,68 @@
 (defun mc-status-code->string ((status mc-status-code))
   (enum->string mc-status-code status))
 
+(defmethod progress-method-33 ((this progress) (arg0 progress-box))
+  (set! (-> this scissor-count) (min 7 (+ (-> this scissor-count) 1)))
+  (let ((s5-0 (-> this scissor-stack (-> this scissor-count)))
+        (box (new 'stack 'hud-box))
+        (gp-1 (if (= (get-aspect-ratio) 'aspect4x3)
+                  (-> arg0 aspect4x3)
+                  (-> arg0 aspect16x9)
+                  )
+              )
+        )
+    (vector-copy! s5-0 (the-as vector gp-1))
+    (mem-copy! (the pointer box) (the pointer gp-1) (size-of hud-box))
+    (set! gp-1 box)
+    (#when PC_PORT
+      (when (not (-> *pc-settings* use-vis?))
+        (set! (-> gp-1 max x) (the float (adjust-game-x (-> gp-1 max x))))
+        )
+      )
+    (with-dma-buffer-add-bucket ((v1-12 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id hud-draw-hud-alpha)
+                                 )
+      (dma-buffer-add-gs-set v1-12
+                             (scissor-1
+                               (new 'static 'gs-scissor
+                                 :scax0 (the int (-> gp-1 box min x))
+                                 :scay0 (the int (-> gp-1 box min y))
+                                 :scax1 (the int (-> gp-1 box max x))
+                                 :scay1 (the int (-> gp-1 box max y))
+                                 )
+                               )
+                             )
+      )
+    (with-dma-buffer-add-bucket ((v1-23 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id particles)
+                                 )
+      (dma-buffer-add-gs-set v1-23
+                             (scissor-1
+                               (new 'static 'gs-scissor
+                                 :scax0 (the int (-> gp-1 box min x))
+                                 :scay0 (the int (-> gp-1 box min y))
+                                 :scax1 (the int (-> gp-1 box max x))
+                                 :scay1 (the int (-> gp-1 box max y))
+                                 )
+                               )
+                             )
+      )
+    (with-dma-buffer-add-bucket ((v1-34 (-> *display* frames (-> *display* on-screen) global-buf))
+                                 (bucket-id hud-draw-pris2)
+                                 )
+      (dma-buffer-add-gs-set v1-34 (scissor-1 (new 'static 'gs-scissor
+                                                :scax0 (the int (-> gp-1 box min x))
+                                                :scay0 (the int (-> gp-1 box min y))
+                                                :scax1 (the int (-> gp-1 box max x))
+                                                :scay1 (the int (-> gp-1 box max y))
+                                                )
+                                              )
+                             )
+      )
+    )
+  0
+  )
+
 (defbehavior progress-trans progress ()
   ;; og:preserve-this added variable
   (let ((speed-mod (if (-> *pc-settings* fast-progress?) (-> *pc-cheat-state* progress-speed) 1.0)))
