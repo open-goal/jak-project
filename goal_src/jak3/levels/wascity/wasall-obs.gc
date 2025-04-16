@@ -391,7 +391,9 @@
     (sound-stop (-> self sound-id-loop))
     )
   :trans (behavior ()
-    (while (and *target* (not (logtest? (-> *target* focus-status) (focus-status dead))))
+    ;; og:preserve-this fix infinite loop when this state is entered while debug hovering
+    ; (while (and *target* (not (logtest? (-> *target* focus-status) (focus-status dead))))
+    (when (and *target* (not (focus-test? *target* dead)))
       (send-event
         *target*
         'attack-invinc
