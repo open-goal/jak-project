@@ -720,6 +720,36 @@
           (set! (-> arg1 width) (* 0.75 (-> *pc-settings* aspect-ratio-reciprocal) f30-0))
           (set! (-> arg1 width) (* 0.75 f30-0))
           )
+        ;; hack to scissor top part of highscore display
+        ;; top right icon
+        (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id hud-draw-pris2))
+          (let ((hiscore0-box (case (get-aspect-ratio)
+                                (('aspect4x3) (-> s0-0 highscore-0 aspect4x3 box))
+                                (('aspect16x9) (-> s0-0 highscore-0 aspect16x9 box)))))
+                (dma-buffer-add-gs-set buf
+                                      (scissor-1
+                                        (new 'static 'gs-scissor
+                                          :scax0 (the int (adjust-x-if-needed (-> hiscore0-box min x)))
+                                          :scay0 (the int (-> hiscore0-box min y))
+                                          :scax1 (the int (adjust-x-if-needed (-> hiscore0-box max x)))
+                                          :scay1 (the int (-> hiscore0-box max y)))))))
+        ;; text
+        (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id hud-draw-hud-alpha))
+          (let ((hiscore0-box (case (get-aspect-ratio)
+                                (('aspect4x3) (-> s0-0 highscore-0 aspect4x3 box))
+                                (('aspect16x9) (-> s0-0 highscore-0 aspect16x9 box))))
+                (hiscore1-box (case (get-aspect-ratio)
+                                (('aspect4x3) (-> s0-0 highscore-1 aspect4x3 box))
+                                (('aspect16x9) (-> s0-0 highscore-1 aspect16x9 box)))))
+                (dma-buffer-add-gs-set buf
+                                      (scissor-1
+                                        (new 'static 'gs-scissor
+                                          :scax0 (the int (adjust-x-if-needed (-> hiscore0-box min x)))
+                                          :scay0 (the int (-> hiscore0-box min y))
+                                          :scax1 (the int (adjust-x-if-needed (-> hiscore0-box max x)))
+                                          :scay1 (the int (-> hiscore1-box max y)))))))
         (string-format "~S" (lookup-text! *common-text* (-> this text) #f))
         (print-game-text *temp-string* arg1 #f 32 (bucket-id hud-draw-hud-alpha))
         (draw-icon-array!
