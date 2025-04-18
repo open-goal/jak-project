@@ -112,10 +112,22 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
                                    std::map<std::string, level_tools::ArtData>& art_group_data) {
   if (db.obj_files_by_dgo.count(dgo_name)) {
     const auto& files = db.obj_files_by_dgo.at(dgo_name);
+    MercSwapInfo swapped_info;
+    // build list of models to replace
+    auto merc_replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
+                                  game_version_names[db.version()] / "merc_replacements";
+    if (file_util::file_exists(merc_replacements_path.string())) {
+      auto custom_models =
+          file_util::find_files_in_dir(merc_replacements_path, std::regex(".*\\.glb"));
+      for (auto& mdl : custom_models) {
+        swapped_info.add_to_swap_list(mdl.stem().string());
+      }
+    }
     for (const auto& file : files) {
       if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
         const auto& ag_file = db.lookup_record(file);
-        extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version());
+        extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version(),
+                     swapped_info);
         extract_joint_group(ag_file, db.dts, db.version(), art_group_data);
       }
     }
@@ -327,8 +339,8 @@ void extract_common(const ObjectFileDB& db,
       compressed.data(), compressed.size());
 
   if (config.rip_levels) {
-    auto file_path = file_util::get_jak_project_dir() / "glb_out" /
-                     game_version_names[config.game_version] / "common";
+    auto file_path = file_util::get_jak_project_dir() / "decompiler_out" /
+                     game_version_names[config.game_version] / "levels" / "common";
     save_level_foreground_as_gltf(tfrag_level, art_group_data, file_path);
   }
 }
@@ -364,13 +376,15 @@ void extract_from_level(const ObjectFileDB& db,
                                compressed.data(), compressed.size());
 
   if (config.rip_levels) {
-    auto back_file_path = file_util::get_jak_project_dir() / "glb_out" /
-                          game_version_names[config.game_version] / level_data.level_name /
+    auto back_file_path = file_util::get_jak_project_dir() / "decompiler_out" /
+                          game_version_names[config.game_version] / "levels" /
+                          level_data.level_name /
                           fmt::format("{}-background.glb", level_data.level_name);
     file_util::create_dir_if_needed_for_file(back_file_path);
     save_level_background_as_gltf(level_data, back_file_path);
-    auto fore_file_path = file_util::get_jak_project_dir() / "glb_out" /
-                          game_version_names[config.game_version] / level_data.level_name;
+    auto fore_file_path = file_util::get_jak_project_dir() / "decompiler_out" /
+                          game_version_names[config.game_version] / "levels" /
+                          level_data.level_name;
     save_level_foreground_as_gltf(level_data, art_group_data, fore_file_path);
   }
   file_util::write_text_file(entities_folder / fmt::format("{}-actors.json", level_data.level_name),

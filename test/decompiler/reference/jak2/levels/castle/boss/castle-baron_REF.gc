@@ -168,12 +168,7 @@
 ;; definition for method 45 of type cboss-elevator
 (defmethod commited-to-ride? ((this cboss-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
-  (let* ((gp-0 *target*)
-         (a0-2 (if (type? gp-0 process-focusable)
-                   gp-0
-                   )
-               )
-         )
+  (let ((a0-2 (the-as target (as-type *target* process-focusable))))
     (when a0-2
       (let* ((v1-1 (get-trans a0-2 0))
              (gp-2 (vector-! (new 'stack-no-clear 'vector) v1-1 (-> this root trans)))
@@ -1134,7 +1129,7 @@
          (f2-2 f1-1)
          (f2-4 (/ 1.0 f2-2))
          )
-    (+ 1.0 (* 0.2 f0-0))
+    (+ 1.0 (/ f0-0 5))
     (set! (-> this delta-wiggle-angle) (* 182.04445 f1-1))
     (set! (-> this wiggle-factor) (* 2.0 f2-4))
     )
@@ -1168,9 +1163,9 @@
         )
       (.lvf vf5 (&-> s3-0 quad))
       (.lvf vf4 (&-> arg0 quad))
-      (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-      (.mul.x.vf acc vf5 vf7 :mask #b111)
-      (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+      (.add.x.vf.w vf6 vf0 vf0)
+      (.mul.x.vf.xyz acc vf5 vf7)
+      (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
       (.svf (&-> s4-0 quad) vf6)
       (let ((v1-8 (-> this nav state)))
         (logclear! (-> v1-8 flags) (nav-state-flag directional-mode))
@@ -1524,15 +1519,15 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-krew-boss))
   (set-hud-piece-position! (-> this sprites 1) (the int (+ 462.0 (* 130.0 (-> this offset)))) 350)
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -32 0)
-  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 1)) -96 0)
-  (set-as-offset-from! (-> this sprites 5) (the-as vector4w (-> this sprites 1)) -62 14)
-  (set-as-offset-from! (-> this sprites 6) (the-as vector4w (-> this sprites 1)) -32 14)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 1 pos) -32 0)
+  (set-as-offset-from! (-> this sprites 2) (-> this sprites 1 pos) -96 0)
+  (set-as-offset-from! (-> this sprites 5) (-> this sprites 1 pos) -62 14)
+  (set-as-offset-from! (-> this sprites 6) (-> this sprites 1 pos) -32 14)
   (let ((s5-0 (-> this values 0 current))
         (f28-0 (* 0.01 (the float (-> this values 1 current))))
         (f30-0 (* 0.01 (the float (-> this values 2 current))))
         )
-    (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 1)) -92 15)
+    (set-as-offset-from! (-> this sprites 3) (-> this sprites 1 pos) -92 15)
     (cond
       ((zero? s5-0)
        (set! (-> this sprites 3 color x) 0)
@@ -1551,7 +1546,7 @@
         )
       )
     (set! (-> this sprites 3 scale-x) (* -7.25 f28-0))
-    (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites 1)) -84 4)
+    (set-as-offset-from! (-> this sprites 4) (-> this sprites 1 pos) -84 4)
     (cond
       ((< f30-0 0.5)
        (set! (-> this sprites 4 color x) 255)
@@ -1611,25 +1606,25 @@
   (set! (-> this values 0 target) 0)
   (set! (-> this values 1 target) 100)
   (logior! (-> this flags) (hud-flags show))
-  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3b :page #x67a)))
+  (set! (-> this sprites 0 tex) (get-texture hud-bmech-health-01 level-default-minimap))
   (set! (-> this sprites 0 flags) (the-as uint 4))
-  (set! (-> this sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3c :page #x67a)))
+  (set! (-> this sprites 1 tex) (get-texture hud-bmech-health-02 level-default-minimap))
   (set! (-> this sprites 1 flags) (the-as uint 4))
   (set! (-> this sprites 2 tex)
         (lookup-texture-by-name "hud-baronsymbol-01" (the-as string #f) (the-as (pointer texture-page) #f))
         )
   (set! (-> this sprites 2 flags) (the-as uint 4))
-  (set! (-> this sprites 5 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 5 tex) (get-texture hud-bmech-health-03 level-default-minimap))
   (set! (-> this sprites 5 scale-x) 0.5)
   (set! (-> this sprites 5 flags) (the-as uint 4))
-  (set! (-> this sprites 6 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 6 tex) (get-texture hud-bmech-health-03 level-default-minimap))
   (set! (-> this sprites 6 scale-x) 0.5)
   (set! (-> this sprites 6 flags) (the-as uint 4))
-  (set! (-> this sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 3 tex) (get-texture hud-bmech-health-04 level-default-minimap))
   (set! (-> this sprites 3 scale-y) 3.25)
   (set! (-> this sprites 3 color z) 0)
   (set! (-> this sprites 3 flags) (the-as uint 4))
-  (set! (-> this sprites 4 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 4 tex) (get-texture hud-bmech-health-04 level-default-minimap))
   (set! (-> this sprites 4 scale-y) 1.5)
   (set! (-> this sprites 4 color z) 0)
   (set! (-> this sprites 4 flags) (the-as uint 4))
@@ -1660,7 +1655,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5175
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 0.25))
@@ -1679,7 +1674,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5176
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 0.5))
@@ -1698,7 +1693,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5177
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 0.75))
@@ -1717,7 +1712,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5178
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 1.25))
@@ -1977,9 +1972,9 @@
               (.lvf vf5 (&-> v1-5 quad))
               )
             (.lvf vf4 (&-> arg0 quad))
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> v0-1 quad) vf6)
             v0-1
             )
@@ -2772,12 +2767,7 @@
           (+! (-> self next-shooting-frame) 5)
           )
         )
-      (let* ((gp-5 *target*)
-             (a0-40 (if (type? gp-5 process-focusable)
-                        gp-5
-                        )
-                    )
-             )
+      (let ((a0-40 (the-as target (as-type *target* process-focusable))))
         (when a0-40
           (let ((gp-6 (new 'stack-no-clear 'projectile-init-by-other-params)))
             (let ((s4-0 (new 'stack-no-clear 'vector)))

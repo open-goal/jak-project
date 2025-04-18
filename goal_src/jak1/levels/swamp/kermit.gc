@@ -31,7 +31,7 @@
 
 (defpart 1360
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  ((:texture (middot effects))
    (:num 0.1 1.0)
    (:x (meters -0.75) (meters 1.5))
    (:y (meters 0.5))
@@ -49,7 +49,7 @@
 
 (defpart 1359
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 0.05 0.1)
    (:x (meters -0.75) (meters 1.5))
    (:y (meters 0.5))
@@ -67,7 +67,7 @@
 
 (defpart 1356
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1f :page #x2))
+  ((:texture (lightning effects))
    (:num 1.0)
    (:sound (static-sound-spec "eco-blue-spark1" :num 0.05 :volume 70.0))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -86,7 +86,7 @@
 
 (defpart 1357
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x23 :page #x2))
+  ((:texture (lightning2 effects))
    (:num 1.0)
    (:sound (static-sound-spec "eco-blue-spark2" :num 0.075 :volume 100.0))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -105,7 +105,7 @@
 
 (defpart 1358
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x24 :page #x2))
+  ((:texture (lightning3 effects))
    (:num 1.0)
    (:sound (static-sound-spec "eco-blue-spark3" :num 0.05 :volume 70.0))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -124,7 +124,7 @@
 
 (defpart 1361
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1f :page #x2))
+  ((:texture (lightning effects))
    (:num 0.1 0.5)
    (:x (meters -0.5) (meters 1))
    (:y (meters 0.5))
@@ -145,7 +145,7 @@
 
 (defpart 1362
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x23 :page #x2))
+  ((:texture (lightning2 effects))
    (:num 0.2 0.4)
    (:x (meters -0.5) (meters 1))
    (:y (meters 0.5))
@@ -166,7 +166,7 @@
 
 (defpart 1363
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x24 :page #x2))
+  ((:texture (lightning3 effects))
    (:num 0.3 0.1)
    (:x (meters -0.5) (meters 1))
    (:y (meters 0.5))
@@ -196,7 +196,7 @@
 
 (defpart 1365
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0 1.0)
    (:scale-x (meters 0.1) (meters 0.3))
    (:rot-z (degrees 0) (degrees 360))
@@ -226,7 +226,7 @@
 
 (defpart 1368
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:scale-x (meters 3))
    (:scale-y :copy scale-x)
@@ -250,7 +250,7 @@
 
 (defpart 1366
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 2.0)
    (:y (meters 4) (meters 16))
    (:z (meters 0))
@@ -274,7 +274,7 @@
 
 (defpart 1367
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:scale-x (meters 0.85))
    (:scale-y :copy scale-x)
@@ -297,7 +297,7 @@
 
 (defpart 1371
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 8.0)
    (:x (meters -0.1) (meters 0.2))
    (:y (meters -0.1) (meters 0.2))
@@ -332,7 +332,7 @@
 
 (defpart 1372
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  ((:texture (middot effects))
    (:num 32.0)
    (:x (meters -0.1) (meters 0.2))
    (:y (meters -0.1) (meters 0.2))
@@ -371,8 +371,9 @@
   (:methods
    (new (symbol type kermit int function int int) _type_)))
 
-(defmethod relocate ((this joint-mod-tracker) (arg0 int))
-  (&+! (-> this process) arg0)
+
+(defmethod relocate ((this joint-mod-tracker) (offset int))
+  (&+! (-> this process) offset)
   this)
 
 (defun build-matrix-from-up-and-forward-axes! ((arg0 matrix) (arg1 vector) (arg2 int) (arg3 vector) (arg4 int))
@@ -442,6 +443,7 @@
   (:states
    kermit-pulse-idle
    kermit-pulse-impact))
+
 
 (defstate kermit-pulse-idle (kermit-pulse)
   :event
@@ -542,10 +544,11 @@
    kermit-retract-tongue
    kermit-tongue-stuck))
 
-(defmethod relocate ((this kermit) (arg0 int))
-  (if (nonzero? (-> this tongue-control)) (&+! (-> this tongue-control) arg0))
-  (if (nonzero? (-> this charging-part)) (&+! (-> this charging-part) arg0))
-  (the-as kermit ((method-of-type nav-enemy relocate) this arg0)))
+
+(defmethod relocate ((this kermit) (offset int))
+  (if (nonzero? (-> this tongue-control)) (&+! (-> this tongue-control) offset))
+  (if (nonzero? (-> this charging-part)) (&+! (-> this charging-part) offset))
+  (the-as kermit ((method-of-type nav-enemy relocate) this offset)))
 
 (defmethod deactivate ((this kermit))
   (if (nonzero? (-> this charging-part)) (kill-and-free-particles (-> this charging-part)))
@@ -655,8 +658,8 @@
   (set! (-> self rotate-speed) 1820444.5)
   (let ((f0-2 (fmin arg0 (vector-vector-distance (-> self collide-info trans) (-> self nav target-pos)))))
     (cond
-      ((< 16384.0 f0-2) (set! (-> self target-speed) (* 0.045454547 (-> *display* frames-per-second) f0-2)) (kermit-long-hop))
-      (else (set! (-> self target-speed) (* 0.1 (-> *display* frames-per-second) f0-2)) (kermit-short-hop))))
+      ((< 16384.0 f0-2) (set! (-> self target-speed) (* (/ (-> *display* frames-per-second) 22) f0-2)) (kermit-long-hop))
+      (else (set! (-> self target-speed) (* (/ (-> *display* frames-per-second) 10) f0-2)) (kermit-short-hop))))
   (set! (-> self airborne) #f)
   #f)
 

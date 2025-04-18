@@ -51,6 +51,7 @@
    driller-lurker-patrol
    driller-lurker-patrol-pause))
 
+
 (defskelgroup *driller-lurker-sg*
   driller-lurker
   driller-lurker-lod0-jg
@@ -87,7 +88,7 @@
 
 (defpart 728
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 4.0)
    (:x (meters -0.5) (meters 1))
    (:y (meters -0.5) (meters 1))
@@ -113,7 +114,7 @@
 
 (defpart 2075
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 4.0)
    (:x (meters -0.5) (meters 1))
    (:y (meters -0.5) (meters 1))
@@ -139,7 +140,7 @@
 
 (defpart 2076
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 4.0)
    (:x (meters -0.5) (meters 1))
    (:y (meters -0.5) (meters 1))
@@ -167,7 +168,7 @@
 
 (defpart 2077
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 8.0 8.0)
    (:x (meters -0.5) (meters 1))
    (:y (meters -0.5) (meters 1))
@@ -253,7 +254,7 @@
           (let* ((f0-5 (-> this path-u))
                  (f30-0 (* (-> this path-dir) f1-1 (seconds-per-frame)))
                  (s4-0 #t)
-                 (f0-6 (+ f0-5 (* 0.00024414062 (-> this path-units-per-meter) f30-0))))
+                 (f0-6 (+ f0-5 (* (/ (-> this path-units-per-meter) METER_LENGTH) f30-0))))
             (cond
               ((< f0-6 0.0)
                (set! s4-0 #f)
@@ -405,7 +406,7 @@
             ((< f0-2 143360.0)
              (let ((f0-3 (driller-lurker-method-23 this))
                    (f1-5 (-> this path-u)))
-               (if (>= (* 0.1 (-> this path-units-per-meter)) (fabs (- f0-3 f1-5))) (return #t)))))))))
+               (if (>= (/ (-> this path-units-per-meter) 10) (fabs (- f0-3 f1-5))) (return #t)))))))))
   #f)
 
 (defmethod driller-lurker-method-27 ((this driller-lurker))
@@ -546,7 +547,7 @@
              (s5-0 (method-of-object gp-0 path-control-method-20)))
         (target-pos 0)
         (let ((f0-1 (- (s5-0 gp-0) (-> self path-u))))
-          (when (>= (fabs f0-1) (* 0.1 (-> self path-units-per-meter)))
+          (when (>= (fabs f0-1) (/ (-> self path-units-per-meter) 10))
             (cond
               ((< 0.0 f0-1) (when (< (-> self path-dir) 0.0) (set! (-> self path-dir) 1.0) (set! (-> self path-speed) 0.0)))
               (else (when (>= (-> self path-dir) 0.0) (set! (-> self path-dir) -1.0) (set! (-> self path-speed) 0.0)))))))
@@ -632,11 +633,11 @@
       (cleanup-for-death self))
   :post ja-post)
 
-(defmethod relocate ((this driller-lurker) (arg0 int))
-  (if (nonzero? (-> this neck)) (&+! (-> this neck) arg0))
-  (if (nonzero? (-> this drill)) (&+! (-> this drill) arg0))
-  (if (nonzero? (-> this sound2)) (&+! (-> this sound2) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this driller-lurker) (offset int))
+  (if (nonzero? (-> this neck)) (&+! (-> this neck) offset))
+  (if (nonzero? (-> this drill)) (&+! (-> this drill) offset))
+  (if (nonzero? (-> this sound2)) (&+! (-> this sound2) offset))
+  (call-parent-method this offset))
 
 (defmethod deactivate ((this driller-lurker))
   (if (nonzero? (-> this sound2)) (stop! (-> this sound2)))

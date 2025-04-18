@@ -62,7 +62,7 @@
       )
     (set! (-> this root) s3-0)
     )
-  (set! (-> this root trans quad) (-> arg0 extra trans quad))
+  (vector-copy! (-> this root trans) (-> arg0 extra trans))
   (update-transforms (-> this root))
   (set! (-> this root pause-adjust-distance) 409600.0)
   (set! (-> this fact) (new 'process 'fact-info this arg1 (-> *FACT-bank* eco-full-inc)))
@@ -218,23 +218,13 @@
     (when (-> self show-particles)
       (when (nonzero? (-> self collect-effect))
         (when (time-elapsed? (-> self collect-effect-time) (seconds 1))
-          (let* ((s5-0 (handle->process arg0))
-                 (gp-0 (if (type? s5-0 process-drawable)
-                           s5-0
-                           )
-                       )
-                 )
+          (let ((gp-0 (as-type (handle->process arg0) process-drawable)))
             (when gp-0
-              (let* ((s5-1 (-> (the-as process-focusable gp-0) root))
-                     (v1-9 (if (type? s5-1 collide-shape)
-                               s5-1
-                               )
-                           )
-                     )
+              (let ((v1-9 (as-type (-> (the-as process-focusable gp-0) root) collide-shape)))
                 (when v1-9
                   (cond
                     ((logtest? (-> self collect-effect flags) (sp-group-flag sp13))
-                     (set! (-> *launch-matrix* trans quad) (-> v1-9 root-prim prim-core world-sphere quad))
+                     (vector-copy! (-> *launch-matrix* trans) (-> v1-9 root-prim prim-core world-sphere))
                      (part-tracker-spawn
                        part-tracker-subsampler
                        :to gp-0
@@ -243,13 +233,13 @@
                        )
                      )
                     (else
-                      (set! (-> *launch-matrix* trans quad) (-> v1-9 root-prim prim-core world-sphere quad))
+                      (vector-copy! (-> *launch-matrix* trans) (-> v1-9 root-prim prim-core world-sphere))
                       (part-tracker-spawn part-tracker :to gp-0 :group (-> self collect-effect) :callback part-tracker-track-target)
                       )
                     )
                   (cond
                     ((logtest? (-> self collect-effect2 flags) (sp-group-flag sp13))
-                     (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+                     (vector-copy! (-> *launch-matrix* trans) (-> self root root-prim prim-core world-sphere))
                      (part-tracker-spawn
                        part-tracker-subsampler
                        :to self
@@ -258,7 +248,7 @@
                        )
                      )
                     (else
-                      (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+                      (vector-copy! (-> *launch-matrix* trans) (-> self root root-prim prim-core world-sphere))
                       (part-tracker-spawn
                         part-tracker
                         :to self
@@ -299,6 +289,7 @@
 
 ;; definition for method 11 of type ecovent
 (defmethod init-from-entity! ((this ecovent) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init! this arg0 (pickup-type eco-green))
   )
 
@@ -469,6 +460,7 @@
 
 ;; definition for method 11 of type light-eco-vent
 (defmethod init-from-entity! ((this light-eco-vent) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
@@ -696,6 +688,7 @@
 
 ;; definition for method 11 of type dark-eco-vent
 (defmethod init-from-entity! ((this dark-eco-vent) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
@@ -745,7 +738,3 @@
   (set-falloff-mode! (-> this sound) 9)
   (go (method-of-object this open) #t)
   )
-
-
-
-

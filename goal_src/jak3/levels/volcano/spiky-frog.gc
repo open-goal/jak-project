@@ -134,34 +134,34 @@
     :jump-height-min (meters 2.87)
     :jump-height-factor 0.1
     :knocked-seek-ry-clamp 4551.1113
-    :knocked-soft-vxz-lo 75776.0
-    :knocked-soft-vxz-hi 75776.0
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 81920.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 79872.0
-    :knocked-hard-vxz-hi 79872.0
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 75776.0
-    :knocked-yellow-vxz-hi 75776.0
-    :knocked-yellow-vy-lo 81920.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 73728.0
-    :knocked-red-vxz-hi 73728.0
-    :knocked-red-vy-lo 96256.0
-    :knocked-red-vy-hi 96256.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 18.5)
+    :knocked-soft-vxz-hi (meters 18.5)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 20)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.5)
+    :knocked-hard-vxz-hi (meters 19.5)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 18.5)
+    :knocked-yellow-vxz-hi (meters 18.5)
+    :knocked-yellow-vy-lo (meters 20)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 18)
+    :knocked-red-vxz-hi (meters 18)
+    :knocked-red-vy-lo (meters 23.5)
+    :knocked-red-vy-hi (meters 23.5)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :scale (new 'static 'vector :x 0.8 :y 0.8 :z 0.8)
       :bg-collide-with (collide-spec backgnd crate obstacle)
@@ -415,7 +415,7 @@
       (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
       )
     0
-    (dotimes (gp-0 (set-reaction-time! self (seconds 0.007) (seconds 0.01)))
+    (dotimes (gp-0 (rnd-time-frame self (seconds 0.007) (seconds 0.01)))
       (cond
         ((zero? (rnd-int self 4))
          (let ((v1-7 (ja-group)))
@@ -504,7 +504,7 @@
         (ja :num! (seek! max f30-0))
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -540,6 +540,7 @@
   )
 
 (defmethod go-hostile ((this spiky-frog))
+  "Go to the hostile state, actively trying to attack the target."
   (if (get-focus! this)
       (go (method-of-object this rolling-start))
       (go (method-of-object this hostile))
@@ -554,7 +555,7 @@
         ((get-focus! self)
          (go-virtual rolling-start)
          )
-        ((not (enemy-method-104 self (-> self focus-pos) 8192.0))
+        ((not (pointing-toward? self (-> self focus-pos) 8192.0))
          (go-virtual turn)
          )
         )
@@ -582,7 +583,7 @@
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (let* ((v1-9 *game-info*)
            (a0-5 (+ (-> v1-9 attack-id) 1))
            )
@@ -645,7 +646,7 @@
       (let ((v1-16 (-> self nav state)))
         (logclear! (-> v1-16 flags) (nav-state-flag directional-mode))
         (logior! (-> v1-16 flags) (nav-state-flag target-poly-dirty))
-        (set! (-> v1-16 target-pos quad) (-> gp-0 quad))
+        (vector-copy! (-> v1-16 target-pos) gp-0)
         )
       )
     0
@@ -751,7 +752,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post (behavior ()
     (let ((a0-0 self))
@@ -798,7 +799,7 @@
             )
         (logclear! (-> a0-3 flags) (nav-state-flag directional-mode))
         (logior! (-> a0-3 flags) (nav-state-flag target-poly-dirty))
-        (set! (-> a0-3 target-pos quad) (-> v1-17 quad))
+        (vector-copy! (-> a0-3 target-pos) v1-17)
         )
       )
     0
@@ -873,7 +874,7 @@
           )
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post nav-enemy-simple-post
   )
@@ -899,7 +900,7 @@
           )
       )
     (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-      (set-ground-pat! self a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0 (the-as process #f))
+      (find-ground-and-set-pat! self a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0 (the-as process #f))
       )
     )
   :exit (behavior ()
@@ -919,8 +920,7 @@
                    :num! (identity (the float (+ (-> (the-as art-joint-anim spiky-frog-ball0-end-ja) frames num-frames) -1)))
                    )
        (enable-ragdoll! (-> (the-as ragdoll-proc (handle->process (-> self ragdoll-proc))) ragdoll) self)
-       (suspend-for
-         (seconds 0.411)
+       (suspend-for (seconds 0.411)
          (if (!= (-> self root gspot-pos y) -40959590.0)
              (seek! (-> self root trans y) (-> self root gspot-pos y) (* 409600.0 (seconds-per-frame)))
              )
@@ -935,14 +935,16 @@
           )
         )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
     )
   )
 
+;; WARN: Return type mismatch symbol vs object.
 (defmethod ragdoll-settled? ((this spiky-frog))
+  "Has the ragdoll stopped moving?"
   (let ((s5-0 (the-as ragdoll-proc (handle->process (-> this ragdoll-proc)))))
     (or (not s5-0)
         (or (ragdoll-proc-method-19 s5-0)
@@ -967,7 +969,7 @@
       (set! (-> a0-2 param0)
             (lambda ((arg0 cspace) (arg1 transformq))
               (let ((v1-0 (-> arg0 param1)))
-                (vector+! (-> arg1 trans) (-> arg1 trans) (the-as vector (-> (the-as spiky-frog v1-0) roll-transform)))
+                (vector+! (-> arg1 trans) (-> arg1 trans) (-> (the-as spiky-frog v1-0) roll-transform trans))
                 (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> (the-as spiky-frog v1-0) roll-transform quat))
                 )
               (quaternion-normalize! (-> arg1 quat))
@@ -989,6 +991,7 @@
   )
 
 (defmethod event-handler ((this spiky-frog) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-flinch 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -1000,7 +1003,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1014,10 +1017,11 @@
   )
 
 (defmethod enemy-common-post ((this spiky-frog))
+  "Common implementation of post. Runs ja-post."
   (when (< 1 (the-as int (-> this focus aware)))
     (let ((a0-3 (handle->process (-> this focus handle))))
       (if a0-3
-          (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-3) 1) quad))
+          (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable a0-3) 1))
           )
       )
     )
@@ -1040,6 +1044,7 @@
   )
 
 (defmethod init-enemy-collision! ((this spiky-frog))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1119,12 +1124,13 @@
   )
 
 (defmethod init-enemy! ((this spiky-frog))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-spiky-frog" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *spiky-frog-nav-enemy-info*)
+  (setup-enemy! this *spiky-frog-nav-enemy-info*)
   (init-eyes! this 0 24)
   (init-eyes! this 1 25)
   (set! (-> this sound-id) (new-sound-id))

@@ -578,6 +578,12 @@ void* RPC_Loader(unsigned int, void* msg, int size) {
         }
       } break;
 
+      // added
+      case SoundCommand::LIST_SOUNDS: {
+        PrintBanks();
+        PrintSounds();
+      } break;
+
       default:
         ovrld_log(LogCategory::WARN, "[RPC Loader] Unsupported Loader {}",
                   (int)((const Rpc_Player_Base_Cmd*)m_ptr)->command);

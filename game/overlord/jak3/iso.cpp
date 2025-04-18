@@ -511,7 +511,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
       if (!internal_stereo_cmd) {
         // allocating stereo failed, give up.
         internal_cmd->flags.scanned = 0;
-        ASSERT_NOT_REACHED();
+        // ASSERT_NOT_REACHED();
         ReleaseMessage(internal_cmd);
         RemoveVagCmd(internal_cmd);
         FreeVagCmd(internal_cmd);
@@ -733,7 +733,7 @@ void ProcessMusic() {
   // handle pausing request.
   if (!g_bMusicIsPaused && g_bMusicPause) {
     cmd = FindMusicStreamName(g_szCurrentMusicName);
-    if (cmd && cmd->id & !cmd->flags.stop) {
+    if (cmd && cmd->id && !cmd->flags.stop) {
       PauseVAG(cmd);
     }
     g_bMusicIsPaused = true;
@@ -821,7 +821,7 @@ u32 ISOThread() {
   // ISOFileDef* file_def = nullptr;
 
   while (true) {
-    dma_intr_hack();
+    // dma_intr_hack();
     // Part 1: Handle incoming messages from the user:
 
     int poll_result = PollMbx((MsgPacket**)&mbx_cmd, g_nISOMbx);
@@ -1738,7 +1738,7 @@ EIsoStatus CopyData(ISO_LoadCommon* cmd, CopyKind kind) {
                 snd_BankLoadFromIOPPartialEx(buffer->m_pCurrentData, len, bank_info->m_nSpuMemLoc,
                                              bank_info->m_nSpuMemSize);
                 if (cmd->progress_bytes + len == cmd->length_to_copy) {
-                  snd_BankLoadFromIOPPartialEx_Completion();
+                  bank_info->snd_handle = snd_BankLoadFromIOPPartialEx_Completion();
                   snd_ResolveBankXREFS();
                   // TODO: this also set field_0x28... is that needed??
                 }

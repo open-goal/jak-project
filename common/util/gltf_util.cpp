@@ -1,5 +1,7 @@
 #include "gltf_util.h"
 
+#include "image_resize.h"
+
 #include "common/log/log.h"
 
 namespace gltf_util {
@@ -364,9 +366,11 @@ DrawMode make_default_draw_mode() {
 
 int texture_pool_debug_checker(TexturePool* pool) {
   const auto& existing = pool->textures_by_name.find("DEBUG_CHECKERBOARD");
-  if (existing == pool->textures_by_name.end()) {
+  if (existing == pool->textures_by_name.end() || existing->second.size() == 0) {
     size_t idx = pool->textures_by_idx.size();
-    pool->textures_by_name["DEBUG_CHECKERBOARD"] = idx;
+    std::vector<int> v;
+    v.push_back(idx);
+    pool->textures_by_name["DEBUG_CHECKERBOARD"] = v;
     auto& tex = pool->textures_by_idx.emplace_back();
     tex.w = 16;
     tex.h = 16;
@@ -384,25 +388,36 @@ int texture_pool_debug_checker(TexturePool* pool) {
     }
     return idx;
   } else {
-    return existing->second;
+    return existing->second[0];
   }
 }
 
 int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int alpha_shift) {
   const auto& existing = pool->textures_by_name.find(tex.name);
-  if (existing != pool->textures_by_name.end()) {
-    lg::info("Reusing image: {}", tex.name);
-    return existing->second;
+  if (existing != pool->textures_by_name.end() && existing->second.size() > 0) {
+    // name was found, see if we have a match on height+width+data
+    for (int ti : existing->second) {
+      auto& t = pool->textures_by_idx[ti];
+      if (t.w == tex.width && t.h == tex.height &&
+          memcmp(t.data.data(), tex.image.data(), t.data.size() * 4) == 0) {
+        lg::info("Reusing image: {} at idx {}", tex.name, ti);
+        return ti;
+      }
+    }
   } else {
-    lg::info("adding new texture: {}, size {} kB", tex.name, tex.width * tex.height * 4 / 1024);
+    // new name, insert empty vector
+    std::vector<int> v;
+    pool->textures_by_name[tex.name] = v;
   }
+
+  lg::info("adding new texture: {}, size {} kB", tex.name, tex.width * tex.height * 4 / 1024);
 
   ASSERT(tex.bits == 8);
   ASSERT(tex.component == 4);
   ASSERT(tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
 
   size_t idx = pool->textures_by_idx.size();
-  pool->textures_by_name[tex.name] = idx;
+  pool->textures_by_name[tex.name].push_back(idx);
   auto& tt = pool->textures_by_idx.emplace_back();
   tt.w = tex.width;
   tt.h = tex.height;
@@ -421,6 +436,64 @@ int texture_pool_add_texture(TexturePool* pool, const tinygltf::Image& tex, int 
     color &= 0xff'ff'ff;
     color |= (alpha << 24);
   }
+  return idx;
+}
+
+int texture_pool_add_envmap_control_texture(TexturePool* pool,
+                                            const tinygltf::Model& model,
+                                            int rgb_image_id,
+                                            int mr_image_id,
+                                            bool wrap_w,
+                                            bool wrap_h) {
+  const auto& existing = pool->envmap_textures_by_gltf_id.find({rgb_image_id, mr_image_id});
+  if (existing != pool->envmap_textures_by_gltf_id.end()) {
+    lg::info("Reusing envmap textures");
+    return existing->second;
+  }
+  const auto& rgb_tex = model.images.at(rgb_image_id);
+  const auto& mr_tex = model.images.at(mr_image_id);
+  lg::info("new envmap texture {} {}", rgb_tex.name, mr_tex.name);
+  ASSERT(rgb_tex.bits == 8);
+  ASSERT(rgb_tex.component == 4);
+  ASSERT(rgb_tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
+
+  ASSERT(mr_tex.bits == 8);
+  ASSERT(mr_tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
+  ASSERT(mr_tex.component == 4);
+
+  std::vector<u8> resized_mr_tex;
+  const u8* mr_src;
+  if (rgb_tex.width == mr_tex.width && rgb_tex.height == mr_tex.height) {
+    mr_src = mr_tex.image.data();
+  } else {
+    resized_mr_tex.resize(rgb_tex.width * rgb_tex.height * 4);
+    resize_rgba_image(resized_mr_tex.data(), rgb_tex.width, rgb_tex.height, mr_tex.image.data(),
+                      mr_tex.width, mr_tex.height, wrap_w, wrap_h);
+    mr_src = resized_mr_tex.data();
+  }
+
+  size_t idx = pool->textures_by_idx.size();
+  pool->envmap_textures_by_gltf_id[{rgb_image_id, mr_image_id}] = idx;
+  auto& tt = pool->textures_by_idx.emplace_back();
+  tt.w = rgb_tex.width;
+  tt.h = rgb_tex.height;
+  tt.debug_name = rgb_tex.name;
+  tt.debug_tpage_name = "custom-level";
+  tt.load_to_pool = false;
+  tt.combo_id = 0;  // doesn't matter, not a pool tex
+  tt.data.resize(tt.w * tt.h);
+  ASSERT(rgb_tex.image.size() >= tt.data.size());
+  memcpy(tt.data.data(), rgb_tex.image.data(), tt.data.size() * 4);
+
+  // adjust alpha from metallic channel
+  for (size_t i = 0; i < tt.data.size(); i++) {
+    u32 rgb = tt.data[i];
+    u32 metal = mr_src[4 * i + 2] / 4;
+    rgb &= 0xff'ff'ff;
+    rgb |= (metal << 24);
+    tt.data[i] = rgb;
+  }
+
   return idx;
 }
 
@@ -607,6 +680,35 @@ void setup_draw_mode_from_sampler(const tinygltf::Sampler& sampler, DrawMode* mo
   }
 }
 
+EnvmapSettings envmap_settings_from_gltf(const tinygltf::Material& mat) {
+  EnvmapSettings settings;
+
+  ASSERT(mat.extensions.contains("KHR_materials_specular"));
+  const auto& specular_extension = mat.extensions.at("KHR_materials_specular");
+  ASSERT(specular_extension.Has("specularColorTexture"));
+
+  auto& texture = specular_extension.Get("specularColorTexture");
+  ASSERT(texture.Has("index"));
+  settings.texture_idx = texture.Get("index").Get<int>();
+  return settings;
+}
+
+bool material_has_envmap(const tinygltf::Material& mat) {
+  return mat.extensions.contains("KHR_materials_specular");
+}
+
+bool envmap_is_valid(const tinygltf::Material& mat) {
+  auto envmap = material_has_envmap(mat);
+  if (envmap && mat.pbrMetallicRoughness.metallicRoughnessTexture.index < 0) {
+    lg::warn(fmt::format(
+        "Material \"{}\" has specular property set, but is missing a metallic roughness texture, "
+        "ignoring envmap!",
+        mat.name));
+    return false;
+  }
+  return envmap;
+}
+
 std::optional<int> find_single_skin(const tinygltf::Model& model,
                                     const std::vector<NodeWithTransform>& all_nodes) {
   std::optional<int> skin_index;
@@ -620,6 +722,11 @@ std::optional<int> find_single_skin(const tinygltf::Model& model,
     }
   }
   return skin_index;
+}
+
+int get_joint_count(const tinygltf::Model& model, int skin_idx) {
+  const auto& skin = model.skins.at(skin_idx);
+  return skin.joints.size();
 }
 
 std::vector<float> extract_floats(const tinygltf::Model& model, int accessor_idx) {
@@ -662,5 +769,90 @@ tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8, 4>>&
   }
   return colors;
 }
+
+void process_normal_merc_draw(const tinygltf::Model& model,
+                              MercExtractData& out,
+                              u32 tex_offset,
+                              tfrag3::MercEffect& eff,
+                              int mat_idx,
+                              const tfrag3::MercDraw& d_) {
+  const auto& mat = model.materials[mat_idx];
+  eff.all_draws.push_back(d_);
+  auto& draw = eff.all_draws.back();
+  draw.mode = gltf_util::make_default_draw_mode();
+
+  if (mat_idx == -1) {
+    lg::warn("Draw had a material index of -1, using default texture.");
+    draw.tree_tex_id = 0;
+    return;
+  }
+  int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
+  if (tex_idx == -1) {
+    lg::warn("Material {} has no texture, using default texture.", mat.name);
+    draw.tree_tex_id = 0;
+    return;
+  }
+
+  const auto& tex = model.textures[tex_idx];
+  ASSERT(tex.sampler >= 0);
+  ASSERT(tex.source >= 0);
+  gltf_util::setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
+  gltf_util::setup_alpha_from_material(mat, &draw.mode);
+
+  const auto& img = model.images[tex.source];
+  draw.tree_tex_id = tex_offset + texture_pool_add_texture(&out.tex_pool, img);
+};
+
+void process_envmap_merc_draw(const tinygltf::Model& model,
+                              MercExtractData& out,
+                              u32 tex_offset,
+                              tfrag3::MercEffect& eff,
+                              int mat_idx,
+                              const tfrag3::MercDraw& d_) {
+  const auto& mat = model.materials[mat_idx];
+  eff.all_draws.push_back(d_);
+  auto& draw = eff.all_draws.back();
+  draw.mode = gltf_util::make_default_draw_mode();
+
+  if (mat_idx == -1) {
+    lg::warn("Envmap draw had a material index of -1, using default texture.");
+    draw.tree_tex_id = texture_pool_debug_checker(&out.tex_pool);
+    return;
+  }
+  int base_tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
+  if (base_tex_idx == -1) {
+    lg::warn("Envmap material {} has no texture, using default texture.", mat.name);
+    draw.tree_tex_id = texture_pool_debug_checker(&out.tex_pool);
+    return;
+  }
+
+  const auto& base_tex = model.textures[base_tex_idx];
+  ASSERT(base_tex.sampler >= 0);
+  ASSERT(base_tex.source >= 0);
+  gltf_util::setup_draw_mode_from_sampler(model.samplers.at(base_tex.sampler), &draw.mode);
+  gltf_util::setup_alpha_from_material(mat, &draw.mode);
+  const auto& roughness_tex =
+      model.textures.at(mat.pbrMetallicRoughness.metallicRoughnessTexture.index);
+  ASSERT(roughness_tex.sampler >= 0);
+  ASSERT(roughness_tex.source >= 0);
+
+  draw.tree_tex_id =
+      tex_offset + gltf_util::texture_pool_add_envmap_control_texture(
+                       &out.tex_pool, model, base_tex.source, roughness_tex.source,
+                       !draw.mode.get_clamp_s_enable(), !draw.mode.get_clamp_t_enable());
+
+  // now, setup envmap draw:
+  auto envmap_settings = gltf_util::envmap_settings_from_gltf(mat);
+  const auto& envmap_tex = model.textures[envmap_settings.texture_idx];
+  ASSERT(envmap_tex.sampler >= 0);
+  ASSERT(envmap_tex.source >= 0);
+  auto env_mode = gltf_util::make_default_draw_mode();
+  gltf_util::setup_draw_mode_from_sampler(model.samplers.at(envmap_tex.sampler), &env_mode);
+  eff.envmap_texture = tex_offset + gltf_util::texture_pool_add_texture(
+                                        &out.tex_pool, model.images[envmap_tex.source]);
+  env_mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+  env_mode.enable_ab();
+  eff.envmap_mode = env_mode;
+};
 
 }  // namespace gltf_util

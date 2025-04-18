@@ -163,12 +163,8 @@
                   (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
                   )
                 )
-            (let ((v1-31 gp-0))
-              (set! (-> v1-31 width) (the float 340))
-              )
-            (let ((v1-32 gp-0))
-              (set! (-> v1-32 height) (the float 80))
-              )
+            (set-width! gp-0 340)
+            (set-height! gp-0 80)
             (let ((v1-33 gp-0)
                   (a0-19 (-> *setting-control* user-default language))
                   )
@@ -196,7 +192,7 @@
               (-> *target* neck)
               (vector+!
                 (new 'stack-no-clear 'vector)
-                (the-as vector (-> self root root-prim prim-core))
+                (-> self root root-prim prim-core world-sphere)
                 (new 'static 'vector :y 2048.0 :w 1.0)
                 )
               'nothing-special
@@ -340,7 +336,7 @@
     (set-yaw-angle-clear-roll-pitch! (-> self root) (res-lump-float arg0 'rotoffset))
     )
   (when arg1
-    (set! (-> self root trans quad) (-> arg1 vector 0 quad))
+    (vector-copy! (-> self root trans) (-> arg1 vector 0))
     (quaternion-copy! (-> self root quat) (the-as quaternion (-> arg1 vector 1)))
     )
   (initialize-skeleton
@@ -382,6 +378,7 @@
 
 ;; definition for method 11 of type mech
 (defmethod init-from-entity! ((this mech) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (mech-init arg0 (the-as matrix3 #f) (the-as handle #f) 100.0)
   )
 
@@ -508,7 +505,7 @@
     )
   (label cfg-12)
   (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-copy! (-> self root quat) arg1)
   (set! (-> self root scale x) 0.0)
   (set! (-> self root scale y) 0.0)

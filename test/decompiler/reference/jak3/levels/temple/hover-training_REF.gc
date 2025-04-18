@@ -22,13 +22,9 @@
 ;; definition for method 15 of type hud-hover
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-hover))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    165
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 165)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -20 50)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -20 50)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -547,12 +543,12 @@
                                 )
                             )
                      )
-                 (set! (-> gp-4 s1-0 quad) (-> self entity trans quad))
+                 (vector-copy! (-> gp-4 s1-0) (-> self entity trans))
                  (let ((s3-1 (+ s1-0 1)))
                    (dotimes (s1-1 (length (-> self actor-group (-> self group-num))))
                      (let ((v1-61 (-> self actor-group (-> self group-num) data s1-1)))
                        (when (and v1-61 (-> v1-61 actor))
-                         (set! (-> gp-4 s3-1 quad) (-> v1-61 actor trans quad))
+                         (vector-copy! (-> gp-4 s3-1) (-> v1-61 actor trans))
                          (+! s3-1 1)
                          )
                        )
@@ -616,7 +612,7 @@
           (let ((v1-117 (-> self actor-group 0 data)))
             (when (and v1-117 (-> v1-117 0 actor))
               (let ((gp-7 (new 'stack-no-clear 'vector)))
-                (set! (-> gp-7 quad) (-> v1-117 0 actor trans quad))
+                (vector-copy! gp-7 (-> v1-117 0 actor trans))
                 (vector-seek-3d-smooth! (-> self root trans) gp-7 (* 409600.0 (seconds-per-frame)) 0.5)
                 (cond
                   ((< 409.6 (vector-vector-distance (-> self root trans) gp-7))
@@ -640,6 +636,7 @@
 ;; definition for method 11 of type tpl-token
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this tpl-token) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (with-pp
     (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
@@ -752,15 +749,9 @@
               )
             )
         (set! (-> s5-1 flags) (font-flags shadow kerning middle middle-vert large))
-        (let ((v1-11 s5-1))
-          (set! (-> v1-11 width) (the float 440))
-          )
-        (let ((v1-12 s5-1))
-          (set! (-> v1-12 height) (the float 80))
-          )
-        (let ((v1-13 s5-1))
-          (set! (-> v1-13 scale) 0.8)
-          )
+        (set-width! s5-1 440)
+        (set-height! s5-1 80)
+        (set-scale! s5-1 0.8)
         (let ((s4-0 print-game-text))
           (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id arg0) #f))
           (s4-0 *temp-string* s5-1 #f 44 (bucket-id hud-draw-hud-alpha))
@@ -995,6 +986,7 @@
 ;; definition for method 11 of type hover-training-manager
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this hover-training-manager) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (process-entity-set! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -1323,6 +1315,7 @@
 
 ;; definition for method 11 of type tpl-symbol
 (defmethod init-from-entity! ((this tpl-symbol) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

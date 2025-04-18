@@ -51,7 +51,7 @@
       )
 
 (defpart 429
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 0.3) (meters 0.2))
     (:rot-x (degrees 11.25))
@@ -68,7 +68,7 @@
   )
 
 (defpart 430
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 1) (meters 4))
     (:rot-x (degrees 11.25))
@@ -391,8 +391,8 @@
           (.mov at-0 f0-12)
           )
         (.mov vf2 at-0)
-        (.mov.vf vf1 vf0 :mask #b1000)
-        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.mov.vf.w vf1 vf0)
+        (.mul.x.vf.xyz vf1 vf1 vf2)
         (.svf (&-> v1-31 quad) vf1)
         )
       (projectile-move-fill-line-sphere self)
@@ -400,6 +400,9 @@
           (go-virtual impact)
           )
       (sound-play "pmkr-fire" :id (-> self fire-sound) :position (-> self root trans))
+      ;; og:preserve-this trigger effects
+      (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
+         (pc-send-trigger-rumble! 0 32767 50))
       (sound-play "pmkr-trail" :id (-> self trail-sound) :position (-> self root trans))
       )
     )
@@ -820,7 +823,8 @@
                 (-> self result-array (+ gp-2 -1))
                 :to s4-1
                 )
-              (suspend-for (seconds 0.1))
+              (suspend-for (seconds 0.1)
+                )
               )
             )
           )

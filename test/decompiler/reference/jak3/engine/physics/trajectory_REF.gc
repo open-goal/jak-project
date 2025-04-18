@@ -4,14 +4,14 @@
 ;; definition for method 9 of type trajectory
 (defmethod compute-trans-at-time ((this trajectory) (arg0 float) (arg1 vector))
   (vector+float*! arg1 (-> this initial-position) (-> this initial-velocity) arg0)
-  (+! (-> arg1 y) (* 0.5 arg0 arg0 (-> this gravity)))
+  (+! (-> arg1 y) (* (/ arg0 2) arg0 (-> this gravity)))
   arg1
   )
 
 ;; definition for method 10 of type trajectory
 ;; INFO: Used lq/sq
 (defmethod compute-transv-at-time ((this trajectory) (arg0 float) (arg1 vector))
-  (set! (-> arg1 quad) (-> this initial-velocity quad))
+  (vector-copy! arg1 (-> this initial-velocity))
   (+! (-> arg1 y) (* arg0 (-> this gravity)))
   arg1
   )
@@ -25,14 +25,14 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod setup-from-to-duration! ((this trajectory) (arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
-  (set! (-> this initial-position quad) (-> arg0 quad))
+  (vector-copy! (-> this initial-position) arg0)
   (set! (-> this gravity) arg3)
   (set! (-> this time) arg2)
   (let ((f0-3 (/ (vector-vector-xz-distance arg1 arg0) arg2)))
     (vector-! (-> this initial-velocity) arg1 arg0)
     (vector-xz-normalize! (-> this initial-velocity) f0-3)
     )
-  (set! (-> this initial-velocity y) (- (/ (- (-> arg1 y) (-> arg0 y)) arg2) (* 0.5 arg2 (-> this gravity))))
+  (set! (-> this initial-velocity y) (- (/ (- (-> arg1 y) (-> arg0 y)) arg2) (* (/ arg2 2) (-> this gravity))))
   0
   (none)
   )
@@ -126,9 +126,9 @@
               (s4-0 (new 'stack-no-clear 'vector))
               (s3-0 10)
               )
-          (set! (-> s4-0 quad) (-> arg0 initial-position quad))
+          (vector-copy! s4-0 (-> arg0 initial-position))
           (dotimes (s2-0 s3-0)
-            (set! (-> s5-0 quad) (-> s4-0 quad))
+            (vector-copy! s5-0 s4-0)
             (let ((f0-1 (* (-> arg0 time) (/ (+ 1.0 (the float s2-0)) (the float s3-0)))))
               (compute-trans-at-time arg0 f0-1 s4-0)
               )
@@ -168,9 +168,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod update-from-cspace ((this impact-control))
   (when (>= (-> this joint) 0)
-    (set! (-> this trans 1 quad) (-> this trans 0 quad))
-    (vector<-cspace! (the-as vector (-> this trans)) (-> this process 0 node-list data (-> this joint)))
-    (vector-! (-> this dir) (the-as vector (-> this trans)) (-> this trans 1))
+    (vector-copy! (-> this trans 1) (-> this trans 0))
+    (vector<-cspace! (-> this trans 0) (-> this process 0 node-list data (-> this joint)))
+    (vector-! (-> this dir) (-> this trans 0) (-> this trans 1))
     )
   0
   (none)
@@ -179,8 +179,8 @@
 ;; definition for method 11 of type impact-control
 ;; INFO: Used lq/sq
 (defmethod impact-control-method-11 ((this impact-control) (arg0 collide-query) (arg1 process) (arg2 pat-surface))
-  (set! (-> arg0 start-pos quad) (-> this trans 1 quad))
-  (set! (-> arg0 move-dist quad) (-> this dir quad))
+  (vector-copy! (-> arg0 start-pos) (-> this trans 1))
+  (vector-copy! (-> arg0 move-dist) (-> this dir))
   (let ((v1-2 (ppointer->process (-> this process)))
         (a0-6 arg0)
         )
@@ -193,13 +193,9 @@
     )
   (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache* arg0)))
     (when (and arg1 (>= f30-0 0.0) (>= 0.0 (vector-dot (-> arg0 best-other-tri normal) (-> this dir))))
-      (let* ((s3-0 (new 'stack-no-clear 'touching-shapes-entry))
-             (s2-0 (-> arg0 best-other-tri collide-ptr))
-             (v1-12 (if (type? s2-0 collide-shape-prim)
-                        s2-0
-                        )
-                    )
-             )
+      (let ((s3-0 (new 'stack-no-clear 'touching-shapes-entry))
+            (v1-12 (as-type (-> arg0 best-other-tri collide-ptr) collide-shape-prim))
+            )
         (set! (-> s3-0 cshape1) #f)
         (set! (-> s3-0 cshape2) (if v1-12
                                     (-> (the-as collide-shape-prim v1-12) cshape)
@@ -229,7 +225,7 @@
 ;; INFO: Used lq/sq
 (defmethod initialize ((this point-tracker) (arg0 vector) (arg1 vector))
   (set! (-> this trans 0 quad) (-> arg0 quad))
-  (set! (-> this trans 1 quad) (-> arg1 quad))
+  (vector-copy! (-> this trans 1) arg1)
   this
   )
 
@@ -238,10 +234,10 @@
 (defmethod point-tracker-method-10 ((this point-tracker) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
   (cond
     ((>= 0.0 arg3)
-     (set! (-> arg0 quad) (-> arg1 quad))
+     (vector-copy! arg0 arg1)
      )
     ((>= arg3 1.0)
-     (set! (-> arg0 quad) (-> arg2 quad))
+     (vector-copy! arg0 arg2)
      )
     (else
       (let ((a1-2 (vector+float*! arg0 arg2 (vector-! (new 'stack-no-clear 'vector) arg1 arg2) (- 1.0 arg3))))
@@ -266,51 +262,42 @@
 ;; definition for method 13 of type combo-tracker
 ;; WARN: Return type mismatch process vs process-focusable.
 (defmethod combo-tracker-method-13 ((this combo-tracker) (arg0 handle) (arg1 vector) (arg2 float) (arg3 vector) (arg4 float))
-  (the-as
-    process-focusable
-    (cond
-      ((send-event (handle->process arg0) 'combo)
-       (let ((gp-1 (handle->process arg0)))
-         (if (type? gp-1 process-focusable)
-             gp-1
-             )
-         )
-       )
-      (else
-        (let ((s1-0 (new 'stack-no-clear 'vector))
-              (s2-1 (new 'stack 'boxed-array collide-shape 32))
-              )
-          (sphere<-vector+r! (the-as sphere s1-0) arg1 arg2)
-          (set! (-> s2-1 length) (fill-actor-list-for-box
-                                   *actor-hash*
-                                   s1-0
-                                   (the-as (pointer collide-shape) (-> s2-1 data))
-                                   (-> s2-1 allocated-length)
-                                   )
-                )
-          (let ((gp-2 (find-nearest-focusable
-                        (the-as (array collide-shape) s2-1)
-                        arg1
-                        arg2
-                        (if (= arg4 65536.0)
-                            (search-info-flag crate enemy combo)
-                            (search-info-flag crate enemy prefer-angle cull-angle combo)
-                            )
-                        (search-info-flag)
-                        arg3
-                        (the-as vector #f)
-                        arg4
-                        )
-                      )
-                )
-            (if (type? gp-2 process-focusable)
-                gp-2
-                )
-            )
+  (the-as process-focusable (cond
+                              ((send-event (handle->process arg0) 'combo)
+                               (as-type (handle->process arg0) process-focusable)
+                               )
+                              (else
+                                (let ((s1-0 (new 'stack-no-clear 'vector))
+                                      (s2-1 (new 'stack 'boxed-array collide-shape 32))
+                                      )
+                                  (sphere<-vector+r! (the-as sphere s1-0) arg1 arg2)
+                                  (set! (-> s2-1 length) (fill-actor-list-for-box
+                                                           *actor-hash*
+                                                           s1-0
+                                                           (the-as (pointer collide-shape) (-> s2-1 data))
+                                                           (-> s2-1 allocated-length)
+                                                           )
+                                        )
+                                  (as-type
+                                    (find-nearest-focusable
+                                      (the-as (array collide-shape) s2-1)
+                                      arg1
+                                      arg2
+                                      (if (= arg4 65536.0)
+                                          (search-info-flag crate enemy combo)
+                                          (search-info-flag crate enemy prefer-angle cull-angle combo)
+                                          )
+                                      (search-info-flag)
+                                      arg3
+                                      (the-as vector #f)
+                                      arg4
+                                      )
+                                    process-focusable
+                                    )
+                                  )
+                                )
+                              )
           )
-        )
-      )
-    )
   )
 
 ;; definition for method 12 of type combo-tracker
@@ -338,12 +325,7 @@
         (set! (-> a1-4 from) (process->ppointer pp))
         (set! (-> a1-4 num-params) 0)
         (set! (-> a1-4 message) 'nav-control)
-        (let* ((s3-0 (send-event-function (handle->process (-> this target)) a1-4))
-               (s4-1 (if (type? s3-0 nav-control)
-                         s3-0
-                         )
-                     )
-               )
+        (let ((s4-1 (as-type (send-event-function (handle->process (-> this target)) a1-4) nav-control)))
           (when s4-1
             (let ((a2-3 ((method-of-type nav-control find-poly-containing-point-1) (the-as nav-control s4-1) arg1)))
               (if a2-3
@@ -368,8 +350,8 @@
           (.mov at-0 f0-0)
           )
         (.mov vf2 at-0)
-        (.mov.vf vf1 vf0 :mask #b1000)
-        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.mov.vf.w vf1 vf0)
+        (.mul.x.vf.xyz vf1 vf1 vf2)
         (.svf (&-> v1-12 quad) vf1)
         )
       arg0
@@ -435,47 +417,24 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod cubic-curve-method-9 ((this cubic-curve) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (set! (-> this vec 0 quad) (-> arg0 quad))
-    (set! (-> this mat uvec quad) (-> arg1 quad))
-    (let ((v1-2 (new 'stack-no-clear 'trajectory)))
-      (vector-! (-> v1-2 initial-velocity) arg2 arg0)
-      (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) 3.0)
-      (let ((t1-7 (-> v1-2 initial-position)))
-        (let ((a1-3 (-> v1-2 initial-position)))
-          (let ((a3-2 arg1))
-            (let ((t2-1 -2.0))
-              (.mov vf7 t2-1)
-              )
-            (.lvf vf5 (&-> a3-2 quad))
-            )
-          (.lvf vf4 (&-> a1-3 quad))
-          )
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-        (.svf (&-> t1-7 quad) vf6)
-        )
-      (vector-! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
-      (set! (-> this mat fvec quad) (-> v1-2 initial-position quad))
-      (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) -2.0)
-      (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg1)
-      (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
-      (set! (-> this mat trans quad) (-> v1-2 initial-position quad))
-      )
-    (dotimes (v1-5 4)
-      (set! (-> this vec v1-5 w) 0.0)
-      )
-    0
-    (none)
+  (set! (-> this vec 0 quad) (-> arg0 quad))
+  (vector-copy! (-> this mat uvec) arg1)
+  (let ((v1-2 (new 'stack-no-clear 'trajectory)))
+    (vector-! (-> v1-2 initial-velocity) arg2 arg0)
+    (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) 3.0)
+    (vector+*! (-> v1-2 initial-position) (-> v1-2 initial-position) arg1 -2.0)
+    (vector-! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
+    (vector-copy! (-> this mat fvec) (-> v1-2 initial-position))
+    (vector-float*! (-> v1-2 initial-position) (-> v1-2 initial-velocity) -2.0)
+    (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg1)
+    (vector+! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)
+    (vector-copy! (-> this mat trans) (-> v1-2 initial-position))
     )
+  (dotimes (v1-5 4)
+    (set! (-> this vec v1-5 w) 0.0)
+    )
+  0
+  (none)
   )
 
 ;; definition for method 10 of type cubic-curve
@@ -520,7 +479,7 @@
     (cubic-curve-method-10 this (-> s5-0 initial-velocity) 0.0)
     (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 initial-velocity) *color-red*)
     (dotimes (s3-0 s4-0)
-      (set! (-> s5-0 initial-position quad) (-> s5-0 initial-velocity quad))
+      (vector-copy! (-> s5-0 initial-position) (-> s5-0 initial-velocity))
       (let ((f0-2 (/ (+ 1.0 (the float s3-0)) (the float s4-0))))
         (cubic-curve-method-10 this (-> s5-0 initial-velocity) f0-2)
         )

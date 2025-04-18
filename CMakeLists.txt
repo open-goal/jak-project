@@ -6,9 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(jak)
 include(CTest)
 
-# Options
-option(BUILD_X86_ON_MACOS "Builds the project for macOS for Rosetta 2" OFF)
-
 # Include third-party modules
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/third-party/cmake/modules/)
 
@@ -35,6 +32,12 @@ if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
         "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
 endif()
 
+# NOTE - for SDL, i think SDL3 regressed this - https://github.com/libsdl-org/SDL/pull/6455
+# a more recent issue - https://github.com/libsdl-org/SDL/issues/12078
+if (APPLE)
+  enable_language(OBJC)
+endif()
+
 # Setup compiler flags
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Clang Detected - Setting Defaults")
@@ -47,6 +50,10 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -Wall \
         -Wno-c++11-narrowing \
         -Wno-c++98-compat \
+        -Wno-deprecated-this-capture \
+        -Wno-missing-field-initializers \
+        -Wno-sign-compare \
+        -Wno-ignored-qualifiers \
         -O3 \
         -D_CRT_SECURE_NO_WARNINGS")
 
@@ -56,7 +63,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # Note: this is only _reserved_ memory, not necessarily _committed_ memory
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LDFLAGS} -Xlinker /STACK:16000000")
     else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -g -Wextra")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb -g")
     endif()
 
     # additional c++ and linker flags for release mode for our projects
@@ -123,11 +130,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     
     # pin to AVX for macOS, hopefully all macOS runners have atleast this architecture
     # technically speaking, SSE4 is the cutoff for Apple Silicon so...only a matter of time!
-    if (BUILD_X86_ON_MACOS)
-        message("Targetting x86 on macOS via Rosetta 2 (requires Sequoia)")
-        set(CMAKE_OSX_ARCHITECTURES "x86_64")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
-    elseif(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
+    if(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
     endif()
 
@@ -257,9 +260,9 @@ build_third_party_lib(zstd libzstd_static)
 # build SDL
 include(SDLOptions)
 if(STATICALLY_LINK)
-    build_third_party_lib(SDL SDL2-static)
+    build_third_party_lib(SDL SDL3-static)
 else()
-    build_third_party_lib(SDL SDL2)
+    build_third_party_lib(SDL SDL3-shared)
 endif()
 
 # build imgui

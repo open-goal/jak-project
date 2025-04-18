@@ -56,7 +56,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2477
-  :init-specs ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  :init-specs ((:texture (middot effects))
     (:num 0.0 1.0)
     (:scale-x (meters 0.1) (meters 0.35))
     (:scale-y :copy scale-x)
@@ -94,8 +94,8 @@
             (.mov at-0 f0-2)
             )
           (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> v1-1 quad) vf1)
           )
         (when (>= (fill-and-probe-using-line-sphere
@@ -214,7 +214,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2498
-  :init-specs ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  :init-specs ((:texture (middot effects))
     (:num 1.0 2.0)
     (:scale-x (meters 0.1) (meters 0.35))
     (:scale-y :copy scale-x)
@@ -589,7 +589,7 @@
            (vector-identity! (-> this root scale))
            )
           (else
-            (let ((f0-2 (* 0.000048828126 f0-1)))
+            (let ((f0-2 (/ f0-1 (meters 5))))
               (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)
               )
             )
@@ -625,7 +625,7 @@
           (case (-> this mode)
             ((1 2)
              (if *target*
-                 (look-at-enemy! (-> *target* neck) (the-as vector (-> this root root-prim prim-core)) 'attacking this)
+                 (look-at-enemy! (-> *target* neck) (-> this root root-prim prim-core world-sphere) 'attacking this)
                  )
              )
             )
@@ -714,8 +714,8 @@
                    (.mov at-0 f0-7)
                    )
                  (.mov vf2 at-0)
-                 (.mov.vf vf1 vf0 :mask #b1000)
-                 (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+                 (.mov.vf.w vf1 vf0)
+                 (.mul.x.vf.xyz vf1 vf1 vf2)
                  (.svf (&-> v1-20 quad) vf1)
                  )
                (when (>= (fill-and-probe-using-line-sphere
@@ -777,7 +777,7 @@
       (vector+! v1-51 (-> this root trans) (-> this anchor-trans))
       (vector-float*! v1-51 v1-51 0.5)
       (vector-! v1-51 v1-51 (-> this root trans))
-      (set! (-> v1-51 w) (+ 28672.0 (* 0.5 (-> this dist-from-anchor))))
+      (set! (-> v1-51 w) (+ 28672.0 (/ (-> this dist-from-anchor) 2)))
       )
     (cond
       ((!= (-> this spin-vel) 0.0)
@@ -1609,7 +1609,7 @@
         (set! (-> arg0 vector 0 y) (-> arg0 vector 2 x))
         )
       )
-    (vector-cross! (-> arg0 vector 1) (the-as vector (-> arg0 vector)) (-> arg0 vector 2))
+    (vector-cross! (-> arg0 vector 1) (-> arg0 vector 0) (-> arg0 vector 2))
     (vector-normalize! (-> arg0 vector 1) 1.0)
     (set! (-> arg0 vector 0 w) 0.0)
     (set! (-> arg0 vector 1 w) 0.0)

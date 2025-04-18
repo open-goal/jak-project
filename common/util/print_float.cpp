@@ -5,7 +5,7 @@
 #include "common/goal_constants.h"
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/dragonbox.h"
 
 /*!

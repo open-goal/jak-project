@@ -71,6 +71,11 @@
   (uk-english 11)
   )
 
+(defenum language-enum-s32
+  :type int32
+  :copy-entries language-enum
+  )
+
 (define-extern *debug-segment* symbol)
 (define-extern nothing (function none))
 (define-extern _format (function _varargs_ object))
@@ -218,31 +223,6 @@
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-
-#|
-(deftype array (UNKNOWN)
-  ((allocated-length int32            :offset-assert 4)
-   (length           int32            :offset-assert 0)
-   (content-type     type             :offset-assert 8) ;; guessed by decompiler
-   (data             uint8   :dynamic :offset-assert 12) ;; guessed by decompiler
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   (UNKNOWN          UNKNOWN          :offset-assert -1) ;; field could not be read.
-   )
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
 
 (define-extern identity
                "The identity function."
@@ -557,9 +537,9 @@
     (new "Allocate a process-tree with the kernel clock." (symbol type string) _type_) ;; 0
     (activate "Move a process from dead to active, moving it to the given tree." (_type_ process-tree string pointer) process-tree) ;; 9
     (deactivate "Make a process dead, clean it up, remove it from the active pool, and return to dead pool." (_type_) none) ;; 10
-    (init-from-entity! (_type_ entity-actor) object) ;; 11
+    (init-from-entity! "Set up a newly created process from the entity that created it." (_type_ entity-actor) object) ;; 11
     (run-logic? "Should this process be run? Checked by execute-process-tree." (_type_) symbol) ;; 12
-    (process-tree-method-13 () none) ;; 13
+    (entity-info-slot "Not a method. This vtable slot stores entity-info for this type." () none) ;; 13
     )
   )
 
@@ -1971,6 +1951,8 @@
   )
 
 (deftype lissajous (structure)
+  "A curve where the x and y position are set by two different sinusoids.
+   This stores the parameters and state for evaluating this curve."
   ((x-mag        float  :offset-assert 0)
    (y-mag        float  :offset-assert 4)
    (theta        float  :offset-assert 8)
@@ -1984,11 +1966,14 @@
   :size-assert         #x1c
   :flag-assert         #xa0000001c
   (:methods
-    (lissajous-method-9 (_type_ vector) vector) ;; 9
+    (evaluate! "Set the x and y component of the vector to the current point on the curve." 
+               (_type_ vector) vector) ;; 9
     )
   )
 
 (deftype lissajous-interp (structure)
+  "Handles interpolating between two different lissajous parameters, and also
+   stepping forward the dynamics."
   ((current lissajous :inline :offset-assert 0)
    (dest    lissajous :inline :offset-assert 28)
    (rate    lissajous :inline :offset-assert 56)
@@ -1997,8 +1982,10 @@
   :size-assert         #x54
   :flag-assert         #xb00000054
   (:methods
-    (lissajous-interp-method-9 (_type_ vector) vector) ;; 9
-    (lissajous-interp-method-10 (_type_) float) ;; 10
+    (evaluate! "Set the x and y component of the vector to the current point on the curve."
+               (_type_ vector) vector) ;; 9
+    (update! "Update both the interpolation, and the curves themselves."
+             (_type_) float) ;; 10
     )
   )
 
@@ -2012,6 +1999,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype transformq (transform)
+  "A transform, but the rotation is represented with a quaternion."
   ((quat quaternion :inline :offset 16 :score 1)
    )
   :method-count-assert 9
@@ -2020,6 +2008,7 @@
   )
 
 (deftype trsq (trs)
+  "A trs, but the rotation is represented with a quaternion."
   ((quat quaternion :inline :offset 32 :score 1)
    )
   :method-count-assert 9
@@ -2296,8 +2285,6 @@
 ;; quaternion                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; quaternion is already defined!
-
 (define-extern quaternion-axis-angle!
   "Construct a quaternion from an axis and angle. The axis should be normalized."
   (function quaternion float float float float quaternion))
@@ -2416,7 +2403,7 @@
 (define-extern quaternion-rotate-y-to-vector! (function quaternion quaternion quaternion float quaternion))
 (define-extern vector-rotate-around-axis!
   "Rotate along y so z-axis points to match another. Use arg3 as the max rotation amount."
-  (function vector quaternion float vector vector))
+  (function vector vector float vector vector))
 (define-extern vector-rotate-x! "Rotate vector along x axis." (function vector vector float vector))
 (define-extern vector-rotate-y! "Rotate vector along y axis." (function vector vector float vector))
 (define-extern vector-rotate-z! "Rotate vector along z axis." (function vector vector float vector))
@@ -5861,7 +5848,7 @@
 (define-extern matrix-remove-z-rot "Remove the z rotation component of a rotation." (function matrix vector matrix))
 (define-extern matrix-rot-diff!
   "Get the difference of rotation between two matrices, expressed as a quaternion."
-  (function vector matrix matrix float))
+  (function quaternion matrix matrix float))
 (define-extern quaternion-seek
   "Strange quaternion rotate toward function. arg3 is ignored. arg4 is the max seek amount."
   (function quaternion quaternion quaternion float float quaternion))
@@ -7903,7 +7890,7 @@
     (update-vis-volumes (_type_) none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
     (level-group-method-24 (_type_) none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
     (print-volume-sizes (_type_) none) ;; 25
-    (status-of-level-and-borrows "Get the combined status of a level and borrow levels." (_type_ symbol symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
+    (level-status? "Get the combined status of a level and borrow levels." (_type_ symbol symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
     (do-nothing "Empty method." (_type_) none) ;; 27
     (load-in-progress? "Is there a load happening now?" (_type_) symbol) ;; 28 ;; (level-status (_type_ symbol) symbol)
     (is-load-allowed? "Does the exclusive-load setting allow us to load this level?" (_type_ (pointer symbol)) symbol) ;; 29
@@ -10054,8 +10041,258 @@
   (credits-08b6 #x08b6)
 
   ;; PC port IDs START
-  (discord-rpc-not-in-mission #x1200)
-  (discord-rpc-in-side-mission #x1201)
+  (discord-rpc-not-in-mission #x11fe)
+  (discord-rpc-in-side-mission #x11ff)
+  (progress-display-mode #x1200)
+  (progress-windowed #x1201)
+  (progress-fullscreen #x1202)
+  (progress-borderless #x1203)
+  (progress-aspect-ratio-auto #x1204)
+  (progress-aspect-ratio-custom #x1205)
+  (progress-aspect-ratio-4x3 #x1206)
+  (progress-aspect-ratio-16x9 #x1207)
+  (progress-aspect-ratio-custom-title #x1208)
+  (progress-aspect-ratio-custom-pad-x #x1209)
+  (progress-aspect-ratio-custom-pad-circle #x120a)
+  (progress-aspect-ratio-custom-warn #x120b)
+  (progress-music-player #x120c)
+  (progress-vsync #x120d)
+  (progress-text-language #x120e)
+  (progress-cheats #x120f)
+  (progress-aspect-ratio-custom-width #x1210)
+  (progress-aspect-ratio-custom-height #x1211)
+  (progress-music-player-locked #x1212)
+  (progress-music-player-now-playing #x1213)
+  (progress-music-player-no-track #x1214)
+  (progress-music-player-flava-default #x1215)
+  (progress-music-player-flava-gun #x1216)
+  (progress-music-player-flava-board #x1217)
+  (progress-music-player-flava-mech #x1218)
+  (progress-music-player-flava-darkjak #x1219)
+  (progress-music-player-flava-pilot #x121a)
+  (progress-music-player-danger #x121b)
+  (progress-music-player-danger-0 #x121c)
+  (progress-music-player-danger-1 #x121d)
+  (progress-music-player-danger-2 #x121e)
+  (progress-music-player-danger-3 #x121f)
+  (progress-music-player-city #x1220)
+  (progress-music-player-city-battle #x1221)
+  (progress-music-player-battle #x1222)
+  (progress-music-player-danger2 #x1223)
+  (progress-music-player-danger3 #x1224)
+  (progress-music-player-danger4 #x1225)
+  (progress-music-player-danger6 #x1226)
+  (progress-music-player-danger7 #x1227)
+  (progress-music-player-danger9 #x1228)
+  (progress-music-player-danger10 #x1229)
+  (progress-music-player-danger11 #x122a)
+  (progress-music-player-atoll #x122b)
+  (progress-music-player-atoll-battle #x122c)
+  (progress-music-player-strip #x122d)
+  (progress-music-player-forest #x122e)
+  (progress-music-player-forest-battle #x122f)
+  (progress-music-player-sewer #x1230)
+  (progress-music-player-sewer-battle #x1231)
+  (progress-music-player-mountain #x1232)
+  (progress-music-player-mountain-battle #x1233)
+  (progress-music-player-palcab #x1234)
+  (progress-music-player-palcab-battle #x1235)
+  (progress-music-player-race #x1236)
+  (progress-music-player-ruins #x1237)
+  (progress-window-size #x1238)
+  (progress-window-size-decoration #x1239)
+  (progress-game-res #x123a)
+  (progress-game-res-decoration #x123b)
+  (progress-lod-bg #x123c)
+  (progress-lod-fg #x123d)
+  (progress-subtitle-speaker #x123f)
+  (progress-subtitle-speaker-off #x1240)
+  (progress-subtitle-speaker-auto #x1241)
+  (progress-subtitle-speaker-on #x1242)
+  (progress-territory #x1243)
+  (progress-territory-scea #x1244)
+  (progress-territory-scee #x1245)
+  (progress-territory-scei #x1246)
+  (progress-territory-scek #x1247)
+  (progress-msaa #x1248)
+  (progress-msaa-x #x1249)
+  (progress-led-options #x124a)
+  (progress-led-state #x124b)
+  (progress-led-health #x124c)
+  (progress-disable-auto-save #x124d)
+  (progress-auto-save-disabled #x124e)
+  (progress-disable-auto-save-warn #x124f)
+  (progress-cheats-turbo-board #x1250)
+  (progress-cheats-health-bars #x1251)
+  (progress-cheats-vehicle-health-bars #x1252)
+  (progress-cheats-vehicle-invuln #x1253)
+  (progress-cheats-statistics #x1254)
+  (progress-cheats-suck-in-all #x1255)
+  (progress-cheats-music-player #x1256)
+  (progress-cheats-no-textures #x1257)
+  (progress-cheats-fast-movies #x1258)
+  (progress-cheats-slow-movies #x1259)
+  (progress-cheats-fast-speed #x125a)
+  (progress-cheats-slow-speed #x125b)
+  (progress-cheats-fast-travel #x125c)
+  (progress-cheats-orb-tracker #x125d)
+  (progress-cheats-real-time-of-day #x125e)
+  (progress-cheats-city-peace #x125f)
+  (progress-cheats-board-tricks #x1260)
+  (progress-cheats-weather-bad #x1261)
+  (progress-cheats-weather-good #x1262)
+  (progress-cheats-hijack-lines #x1263)
+  (progress-cheats-locked #x1264)
+  (progress-cheats-turbo-board-unlock #x1265)
+  (progress-cheats-health-bars-unlock #x1266)
+  (progress-cheats-vehicle-health-bars-unlock #x1267)
+  (progress-cheats-statistics-unlock #x1268)
+  (progress-cheats-suck-in-all-unlock #x1269)
+  (progress-cheats-fast-travel-unlock #x126a)
+  ; (progress-camera-options #x1280)
+  ; (progress-camera-options-first-horz #x1281)
+  ; (progress-camera-options-first-vert #x1282)
+  ; (progress-camera-options-third-horz #x1283)
+  ; (progress-camera-options-third-vert #x1284)
+  (progress-normal #x1286)
+  (progress-inverted #x1287)
+  (progress-ps2-parts #x1288)
+  (progress-discord-rpc #x1289)
+  (progress-lod-default #x128a)
+  (progress-lod-low #x128b)
+  (progress-lod-high #x128c)
+  (progress-credits #x128d)
+  (progress-frame-rate #x128e)
+  (progress-misc-game-options #x128f)
+  (progress-speedrunner-mode  #x1290)
+  (progress-menu-input-options #x1291)
+  (progress-restore-defaults #x1292)
+  (progress-menu-controller-options #x1293)
+  (progress-controller-options-select-controller #x1294)
+  (progress-controller-options-analog-deadzone #x1295)
+  (progress-controller-options-ignore-if-unfocused #x1296)
+  (progress-controller-options-led-hp #x1297)
+  (progress-controller-options-led-state #x1298)
+  (progress-input-options-enable-keyboard #x1299)
+  (progress-input-options-enable-mouse #x129a)
+  (progress-menu-mouse-options #x129b)
+  (progress-mouse-options-track-camera #x129c)
+  (progress-mouse-options-horz-sens #x129d)
+  (progress-mouse-options-vert-sens #x129e)
+  (progress-mouse-options-player-movement #x129f)
+  (progress-shadows #x12a0)
+  (progress-shadows-normal #x12a1)
+  (progress-shadows-extended #x12a2)
+  (progress-error-no-resolutions #x12a3)
+  (progress-territory-auto #x12a4)
+  (progress-kill-stats #x12a5)
+  (progress-other-stats #x12a6)
+  (progress-ks-total-killed #x12a7)
+  (progress-ks-killed-by-jak #x12a8)
+  (progress-ks-killed-by-darkjak #x12a9)
+  (progress-ks-killed-by-daxter #x12aa)
+  (progress-ks-killed-by-others #x12ab)
+  (progress-ks-source-gun-yellow #x12ac)
+  (progress-ks-source-gun-red #x12ad)
+  (progress-ks-source-gun-blue #x12ae)
+  (progress-ks-source-gun-dark #x12af)
+  (progress-ks-source-board #x12b0)
+  (progress-ks-source-board-trick #x12b1)
+  (progress-ks-source-mech #x12b2)
+  (progress-ks-source-mech-bonk #x12b3)
+  (progress-ks-source-turret #x12b4)
+  (progress-ks-source-punch #x12b5)
+  (progress-ks-source-flop #x12b6)
+  (progress-ks-source-uppercut #x12b7)
+  (progress-ks-source-spin #x12b8)
+  (progress-ks-source-roll #x12b9)
+  (progress-ks-source-darkjak-punch #x12ba)
+  (progress-ks-source-darkjak-flop #x12bb)
+  (progress-ks-source-darkjak-uppercut #x12bc)
+  (progress-ks-source-darkjak-spin #x12bd)
+  (progress-ks-source-darkjak-roll #x12be)
+  (progress-ks-source-darkjak-bomb0 #x12bf)
+  (progress-ks-source-darkjak-bomb1 #x12c0)
+  (progress-ks-source-indax-punch #x12c1)
+  (progress-ks-source-indax-spin #x12c2)
+  (progress-ks-source-guard #x12c3)
+  (progress-ks-source-sig #x12c4)
+  (progress-ks-source-ashelin #x12c5)
+  (progress-ks-source-jinx #x12c6)
+  (progress-ks-source-grim #x12c7)
+  (progress-ks-source-mog #x12c8)
+  (progress-ks-source-metalhead #x12c9)
+  (progress-ks-source-other-bot #x12ca)
+  (progress-ks-source-other-enemy #x12cb)
+  (progress-input-options-auto-hide-cursor #x1300)
+  (progress-menu-reassign-binds #x1301)
+  (progress-reassign-binds-controller #x1302)
+  (progress-reassign-binds-keyboard #x1303)
+  (progress-reassign-binds-mouse #x1304)
+  (progress-multiselect-no-items-found #x1305)
+  (progress-keybinds-waiting-for-bind #x1306)
+  (progress-keybinds-unset #x1307)
+  (progress-unknown-option #x1308)
+  (progress-hires-sky #x1309)
+  (progress-fast-airlock #x130a)
+  (progress-fast-elevator #x130b)
+  (progress-highscores-header-speedrun #x130c)
+  (progress-highscores-subheader-speedrun-any #x130d)
+  (progress-highscores-subheader-speedrun-anyhoverless #x130e)
+  (progress-highscores-subheader-speedrun-allmissions #x130f)
+  (progress-highscores-subheader-speedrun-100 #x1310)
+  (progress-highscores-subheader-speedrun-anyorbs #x1311)
+  (progress-highscores-subheader-speedrun-anyhero #x1312)
+  (progress-highscores-local-time #x1313)
+  (progress-fps-disclaimer-warning #x1314)
+  (progress-fps-disclaimer #x1315)
+  (progress-highscores-local-score #x1316)
+  (trick-board-none #x1320)
+  (trick-board-spin #x1321)
+  (trick-board-boost #x1322)
+  (trick-board-flip #x1323)
+  (trick-board-rail #x1324)
+  (trick-board-rail-jump #x1325)
+  (trick-board-nosegrab #x1326)
+  (trick-board-method #x1327)
+  (trick-board-board-spin #x1328)
+  (trick-board-board-flip #x1329)
+  (trick-board-noseflip #x132a)
+  (trick-board-kickflip #x132b)
+  (trick-board-jump #x132c)
+  (trick-board-duck-jump #x132d)
+  (trick-board-quick-jump #x132e)
+  (trick-darkjak #x132f)
+  (trick-darkjak-bomb0 #x1330)
+  (trick-darkjak-bomb1 #x1331)
+  (trick-darkjak-giant #x1332)
+  (progress-graphics-ps2 #x1333)
+  (progress-graphics-actor-culling #x1334)
+  (progress-graphics-force-envmap #x1335)
+  (progress-fast-progress #x1336)
+  (progress-graphics-ps2-lod-dist #x1337)
+  (progress-graphics-msaa-off #x1338)
+  (progress-graphics-display #x1339)
+  (language-name-finnish #x133a)
+  (progress-hint-subtitles #x133b)
+  (language-name-portuguese #x133c)
+  (language-name-swedish #x133d)
+  (language-name-danish #x133e)
+  (language-name-norwegian #x133f)
+  (language-name-dutch #x1340)
+  (language-name-br-portuguese #x1341)
+  (language-name-hungarian #x1342)
+  (language-name-catalan #x1343)
+  (language-name-icelandic #x1344)
+  (language-name-polish #x1345)
+  (language-name-lithuanian #x1346)
+  (language-name-czech #x1347)
+  (language-name-croatian #x1348)
+  (language-name-galician #x1349)
+  (progress-controller-options-enable-pressure-sensitivity #x134a)
+  (progress-controller-options-swap-r1-r2 #x134b)
+  (progress-controller-options-enable-trigger-effects #x134c)
+  (progress-misc-fix-projectile-focus #x134d)
   )
 ;; ---text-h:text-id
 
@@ -17330,7 +17567,7 @@
    (task-node-commands     (array game-task-node-command) :offset-assert 416)
    (task-node-exclusive    (array uint16)            :offset-assert 420)
    (task-counter           uint32                    :offset-assert 424)
-   (unknown-arr4           (array uint16)            :offset-assert 428)
+   (talker-state           (array uint16)            :offset-assert 428)
    (level-opened           uint8             32      :offset-assert 432)
    (total-deaths           int32                     :offset-assert 464)
    (continue-deaths        int32                     :offset-assert 468)
@@ -17567,20 +17804,25 @@
 (defenum talker-flags
   :type uint16
   :bitfield #t
-  (tf0 0)
-  (tf1 1)
-  (tf2 2)
-  (tf3 3)
-  (tf4 4)
-  (tf5 5)
-  (tf6 6)
-  (tf7 7)
-  (tf8 8)
+  (play-only-once 0)
+  (reduce-volume 1)
+  (auto-save-on-each-start 2)
+  (auto-save-once-on-exit 3)
+  (only-play-in-region 4)
+  (fade-in 5)
+  (slide-in 6)
+  (bigger-font 7)
+  (long-timeout 8)
   )
 ;; ---ambient-h:talker-flags
 
 (deftype talker-speech-class (structure)
-  "Contains metadata about a voice line or hint text being played/displayed."
+  "Contains metadata about a voice line or hint text being played/displayed.
+   In the talker state, there's a pos-state and neg-state.
+   Calling yes-play! adjusts the pos-state and no-play! adjusts the neg-state.
+   Playback is only allowed if the pos-state is less than or equal to pos
+   and neg-state is greater than or equal to neg.
+   "
   ((name          string       :offset-assert 0)
    (channel       gui-channel  :offset-assert 4)
    (flags         talker-flags :offset-assert 6)
@@ -17599,11 +17841,11 @@
   :flag-assert         #xe00000020
   ;; field on-close uses ~A with a signed load.
   (:methods
-    (talker-speech-class-method-9 (_type_) symbol) ;; 9
-    (play-communicator-speech! (_type_) none) ;; 10
-    (talker-speech-class-method-11 (_type_) none) ;; 11
-    (talker-speech-class-method-12 (_type_ int) none) ;; 12
-    (talker-speech-class-method-13 (_type_ int) none) ;; 13
+    (should-play? "Return if the talker is in a state where it should play." (_type_) symbol) ;; 9
+    (mark-played! "Mark something as played by making its state UINT16_MAX" (_type_) none) ;; 10
+    (reset-state! "Reset the state of this talker to 0 (the initial value)" (_type_) none) ;; 11
+    (yes-play! (_type_ int) none) ;; 12
+    (no-play! (_type_ int) none) ;; 13
     )
   )
 
@@ -17631,7 +17873,7 @@
     exit ;; 16
     )
   (:methods
-    (talker-method-17 (_type_) none) ;; 17
+    (draw-text (_type_) none) ;; 17
     )
   )
 
@@ -19466,11 +19708,6 @@
   :bitfield #t
   :type uint32
   (disabled) ;; keep object velocity
-  (af01)
-  (af02)
-  (af03)
-  (af04)
-  (af05)
   )
 ;; ---aligner-h:align-flags
 
@@ -19495,6 +19732,21 @@
 ;; ---aligner-h:align-opts
 
 (deftype align-control (basic)
+  "Align-control is a utility for moving a process-drawable based on its animation.
+   The animation format has two special parent-like joints: prejoint and align.
+   The prejoint is the parent for all joints, so it causes all bones to move.
+   The align joint has no children, but the convention is that moving align will
+   cause the entire process-drawable's root to move, effectively moving the entire character.
+   Most of the time, this is the preferable way to move a character as part of an animation - 
+   it will update their velocity and when the animation ends or is canceled, 
+   the offset in position from playing the animation will stay. For example, if Jak punches,
+   his velocity will increase due to the animated align in the punch animation.
+   To implement this, the align-control computes the relative transform between align frames.
+   To apply the position offset, typically the velocity is updated, then the normal per-frame
+   physics update will end up moving the position. For orientation, there is no concept of
+   angular velocity, so instead align-control directly modifies the quaternion.
+   Unlike normal animation evaluation, the alignment's blend is computed in a different way
+   that doesn't blend and instead just picks the most recently pushed animation."
   ((flags       align-flags              :offset-assert 4) ;; guessed by decompiler
    (process     process-drawable         :offset-assert 8) ;; guessed by decompiler
    (frame-group art-joint-anim           :offset-assert 12) ;; guessed by decompiler
@@ -19510,11 +19762,12 @@
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_) ;; 0
-    (compute-alignment! (_type_) transformq) ;; 9
-    (align! (_type_ align-opts float float float) trsqv) ;; 10
-    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv) ;; 11
-    (first-transform (_type_) transform) ;; 12
-    (second-transform (_type_) transform) ;; 13
+    (compute-delta-align! "Compute the change in align since the last time this was called." (_type_) transformq) ;; 9
+    (align! "Apply the alignment to the process-drawable." (_type_ align-opts float float float) trsqv) ;; 10
+    (adjust-root-no-gravity! "Adjust the quat and transv of the process drawable to take into account the
+                              most recent change in align." (_type_ align-opts vector int float float) trsqv) ;; 11
+    (first-transform "Get the more recent align transform" (_type_) transform) ;; 12
+    (second-transform "Get the second most recent align trasnform" (_type_) transform) ;; 13
     )
   )
 
@@ -19656,9 +19909,9 @@
   (sf23 23)
   (sf24 24)
   (sf25 25)
-  (sf26 26)
+  (hang 26)
   (sf27 27)
-  (sf28 28)
+  (invisible 28)
   (sf29 29)
   (sf30 30)
   (sf31 31)
@@ -22017,8 +22270,8 @@
    (unknown-float37                                float                                  :offset 5636)
    (unknown-vector37                               vector                     :inline     :offset 5648)
    (unknown-vector38                               vector                     :inline     :offset 5664)
-   (unknown-vector39                               vector                     :inline     :offset 5680)
-   (unknown-vector40                               vector                     :inline     :offset 5696)
+   (unknown-quat39                                 quaternion                 :inline     :offset 5680)
+   (unknown-quat40                                 quaternion                 :inline     :offset 5696)
    (sliding-start-time                             time-frame                             :offset 5712)
    (unknown-time-frame18                           time-frame                             :offset 5720)
    (unknown-sound-id00                             sound-id                               :offset 5776)
@@ -22466,12 +22719,12 @@
   :size-assert         #xd0
   :flag-assert         #x1c005000d0
   (:methods
-    (process-mask->search-info-flag (_type_) search-info-flag) ;; 20
+    (get-search-info-flag "Get search-info-flag for this process." (_type_) search-info-flag) ;; 20
     (get-trans "Get the `trans` for this process." (_type_ int) vector) ;; 21
     (get-quat "Get the quaternion for this process." (_type_ int) quaternion) ;; 22
     (get-transv "Get the `transv` for this process." (_type_) vector) ;; 23
     (time-to-apex-or-ground (_type_ int) int) ;; 24
-    (get-water-height (_type_) meters) ;; 25
+    (get-water-height "Get the height of the water that we're in." (_type_) meters) ;; 25
     (get-notice-time (_type_) time-frame) ;; 26
     (get-inv-mass (_type_) float) ;; 27
     )
@@ -22551,7 +22804,7 @@
        check that the [[collide-spec]] of the focus and the process match."
       (_type_ process-focusable) object) ;; 10
     (reset-to-collide-spec "Reset this focus with the given [[collide-spec]]." (_type_ collide-spec) none) ;; 11
-    (try-update-focus "Try to set the `handle` of this focus to the given process." (_type_ process-focusable) symbol) ;; 12
+    (focus-on! "Set the `handle` of this focus to the given process. Return if the handle changed." (_type_ process-focusable) symbol) ;; 12
     )
   )
 
@@ -23125,7 +23378,7 @@
     (disable-for-duration (_type_ time-frame) none) ;; 16
     (ragdoll-proc-method-17 (_type_ ragdoll-edit-info) none) ;; 17
     (ragdoll-proc-method-18 (_type_ ragdoll-edit-info) none) ;; 18
-    (ragdoll-proc-method-19 (_type_) none) ;; 19
+    (ragdoll-proc-method-19 (_type_) symbol) ;; 19
     )
   )
 
@@ -25794,7 +26047,7 @@
   (bit-4 4)
   (bit-5 5)
   (subtask-complete 6)
-  (bit-7 7)
+  (special 7)
   (complete 8)
   (bit-9 9)
   (bit-10 10)
@@ -27742,30 +27995,30 @@
    (state-array             symbol           8       :offset-assert 432)
    (option-index-stack      int32            8       :offset-assert 464) ;; guessed by decompiler
    (state-pos               int32                    :offset-assert 496)
-   (secret-buying           basic                    :offset-assert 500)
-   (secret-buy-choice       basic                    :offset-assert 504)
+   (secret-buying           symbol                   :offset-assert 500)
+   (secret-buy-choice       symbol                   :offset-assert 504)
    (scanlines-alpha         float                    :offset-assert 508)
    (start-time              time-frame               :offset-assert 512)
    (which-slot              int32                    :offset-assert 520)
-   (starting-state          basic                    :offset-assert 524)
-   (yes-no-choice           basic                    :offset-assert 528)
+   (starting-state          symbol                   :offset-assert 524)
+   (yes-no-choice           symbol                   :offset-assert 528)
    (time-out                time-frame               :offset-assert 536)
    (last-sound              time-frame               :offset-assert 544)
    (last-move               time-frame               :offset-assert 552)
    (center-x-backup         int32                    :offset-assert 560)
    (center-y-backup         int32                    :offset-assert 564)
-   (flip-horizontal         basic                    :offset-assert 568)
-   (flip-vertical           basic                    :offset-assert 572)
-   (progressive-scan        basic                    :offset-assert 576)
-   (aspect-ratio            basic                    :offset-assert 580)
-   (video-mode              basic                    :offset-assert 584)
+   (flip-horizontal         symbol                   :offset-assert 568)
+   (flip-vertical           symbol                   :offset-assert 572)
+   (progressive-scan        symbol                   :offset-assert 576)
+   (aspect-ratio            symbol                   :offset-assert 580)
+   (video-mode              symbol                   :offset-assert 584)
    (stereo-mode-backup      int32                    :offset-assert 588)
-   (vibrations              basic                    :offset-assert 592)
-   (subtitles               basic                    :offset-assert 596)
-   (languages               int32            3       :offset-assert 600)
-   (subtitle-language-index int32                    :offset 600)
-   (language-index          int32                    :offset 604)
-   (audio-language-index    int32                    :offset 608)
+   (vibrations              symbol                   :offset-assert 592)
+   (subtitles               symbol                   :offset-assert 596)
+   (languages               language-enum-s32 3      :offset-assert 600)
+   (subtitle-language-index language-enum-s32        :offset 600)
+   (language-index          language-enum-s32        :offset 604)
+   (audio-language-index    language-enum-s32        :offset 608)
    (current-task-index      int32                    :offset-assert 612)
    (current-line-index      int32                    :offset-assert 616)
    (first-closed-line-index int32                    :offset-assert 620)
@@ -27791,7 +28044,7 @@
     )
   (:methods
     (init-defaults (_type_) object) ;; 24
-    (respond-to-cpad (_type_) none) ;; 25
+    (respond-to-cpad (_type_) object) ;; 25
     (gone? (_type_) object) ;; 26
     (can-go-back? (_type_) symbol) ;; 27
     (get-state-check-card (_type_ symbol) symbol) ;; 28
@@ -27799,27 +28052,27 @@
     (pop-state (_type_) int) ;; 30
     (set-next-state (_type_ symbol int) int) ;; 31
     (set-menu-options (_type_ symbol) int) ;; 32
-    (progress-method-33 (_type_ progress-box) none) ;; 33
-    (progress-method-34 (_type_) none) ;; 34
+    (progress-method-33 (_type_ progress-box) object) ;; 33
+    (progress-method-34 (_type_) object) ;; 34
     (get-scissor-stack-top (_type_) vector) ;; 35
     (get-language-by-idx (_type_ int) int) ;; 36
-    (progress-method-37 (_type_) none) ;; 37
-    (progress-method-38 (_type_ font-context float) none) ;; 38
-    (progress-method-39 (_type_) none) ;; 39
-    (progress-method-40 (_type_ font-context int int float) none) ;; 40
-    (progress-method-41 (_type_ progress-box float) none) ;; 41
-    (progress-method-42 (_type_ progress-box float) none) ;; 42
-    (progress-method-43 (_type_ progress-box float) none) ;; 43
-    (progress-method-44 (_type_ font-context string) none) ;; 44
+    (set-selected-color (_type_) object) ;; 37
+    (adjust-font-origin-y (_type_ font-context float) object) ;; 38
+    (progress-method-39 (_type_) object) ;; 39
+    (draw-highlight-bar (_type_ font-context int int float) object) ;; 40
+    (draw-bg-box-outline (_type_ progress-box float) object) ;; 41
+    (draw-bg-box-alpha-2 (_type_ progress-box float) object) ;; 42
+    (draw-bg-box-alpha-1 (_type_ progress-box float) object) ;; 43
+    (progress-method-44 (_type_ font-context string) object) ;; 44
     (progress-method-45 (_type_ font-context float float string float float int) float) ;; 45
-    (progress-method-46 (_type_ font-context float int) none) ;; 46
-    (progress-method-47 (_type_ font-context symbol symbol) none) ;; 47
-    (draw-prev-next-footer (_type_ font-context float) none) ;; 48
-    (draw-yes-no-style-footer (_type_ font-context text-id text-id) none) ;; 49
-    (progress-method-50 (_type_ font-context text-id text-id text-id symbol symbol float) none) ;; 50
-    (progress-method-51 (_type_ font-context) none) ;; 51
-    (progress-method-52 (_type_ font-context string float float float float float) none) ;; 52
-    (progress-method-53 (_type_ font-context) none) ;; 53
+    (draw-header (_type_ font-context float text-id) object) ;; 46
+    (progress-method-47 (_type_ font-context symbol symbol) object) ;; 47
+    (draw-prev-next-footer (_type_ font-context float) object) ;; 48
+    (draw-yes-no-style-footer (_type_ font-context text-id text-id) object) ;; 49
+    (progress-method-50 (_type_ font-context text-id text-id text-id symbol symbol float) object) ;; 50
+    (progress-method-51 (_type_ font-context) object) ;; 51
+    (draw-slider-option (_type_ font-context string float float float float float) object) ;; 52
+    (progress-method-53 (_type_ font-context) object) ;; 53
     )
   )
 
@@ -27846,7 +28099,7 @@
    (load-save-3b     progress-box :inline :offset-assert 1216)
    (last-slot-saved  int32                :offset-assert 1280)
    (selected-num     int32                :offset-assert 1284)
-   (secrets-unlocked basic                :offset-assert 1288)
+   (secrets-unlocked symbol               :offset-assert 1288)
    (hero-mode-save   symbol               :offset-assert 1292)
    )
   :method-count-assert 9
@@ -28172,7 +28425,7 @@
   ((current-index float  :offset-assert 64)
    (target-index  float  :offset-assert 68)
    (scroll-speed  float  :offset-assert 72)
-   (on-screen     basic  :offset-assert 76)
+   (on-screen     symbol :offset-assert 76)
    )
   :method-count-assert 12
   :size-assert         #x50
@@ -29132,7 +29385,7 @@
     (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none) ;; 21
     (find-first-sphere-and-update-avoid-params (_type_ vector nav-avoid-spheres-params) float) ;; 22
     (set-spheres-from-nav-ids (_type_) none) ;; 23
-    (add-root-sphere-to-hash! (_type_ vector int) symbol) ;; 24
+    (check-sphere-blocked! (_type_ vector int) symbol) ;; 24
     (get-max-rotation-rate (_type_) float) ;; 25
     (get-sphere-mask (_type_) uint) ;; 26
     (get-target-speed (_type_) meters) ;; 27
@@ -29286,7 +29539,7 @@
     (add-a-sphere-with-flag (_type_ vector int) int) ;; 27
     (update-from-spheres (_type_) none) ;; 28
     (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params) none) ;; 29
-    (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params int int) symbol) ;; 30
+    (check-sphere-blocked (_type_ vector int int) symbol) ;; 30
     (add-sphere-with-mask-and-id (_type_ vector vector float int) symbol) ;; 31
     (sphere-hash-method-32 (_type_ sphere int) symbol) ;; 32
     )
@@ -34704,7 +34957,7 @@
 (deftype level-exit (process-drawable)
   ((minimap      connection-minimap  :offset-assert 200)
    (task-counter uint32              :offset-assert 204)
-   (ent          basic               :offset-assert 208)
+   (ent          entity-actor        :offset-assert 208)
    )
   :method-count-assert 21
   :size-assert         #xd4
@@ -35906,7 +36159,7 @@
    (stick-lock       symbol             :offset-assert 80)
    (flap-sound-id    uint32             :offset-assert 84)
    (mode-sound-bank  connection         :offset-assert 88)
-   (mode             basic              :offset-assert 92)
+   (mode             symbol             :offset-assert 92)
    (color-index      int32              :offset-assert 96)
    (as-daxter?       symbol             :offset-assert 100)
    (art-group-backup art-group          :offset-assert 104)
@@ -36065,8 +36318,8 @@
    (fall-height                      meters          :offset-assert 648)
    (mech-jump-thrust-fuel            float           :offset-assert 652)
    (strafe-jump-pre-window           time-frame      :offset-assert 656)
-   (strafe-jump                      basic           :offset-assert 664)
-   (strafe-duck-jump                 basic           :offset-assert 668)
+   (strafe-jump                      symbol          :offset-assert 664)
+   (strafe-duck-jump                 symbol          :offset-assert 668)
    (dark-jump-height-min             meters          :offset-assert 672)
    (dark-jump-height-max             meters          :offset-assert 676)
    (ladder-walk-up-speed             meters          :offset-assert 680)
@@ -37750,8 +38003,8 @@
    (mech-start-time       time-frame                 :offset-assert 96) ;; time-frame
    (mech-time             time-frame                 :offset-assert 104) ;; time-frame
    (no-get-off-time       time-frame                 :offset-assert 112) ;; time-frame
-   (stick-lock            basic                      :offset-assert 120)
-   (stick-off             basic                      :offset-assert 124)
+   (stick-lock            symbol                     :offset-assert 120)
+   (stick-off             symbol                     :offset-assert 124)
    (forward-vel           meters                     :offset-assert 128)
    (jump-thrust           meters                     :offset-assert 132)
    (jump-thrust-fuel      float                      :offset-assert 136)
@@ -37774,8 +38027,8 @@
    (exhaust-local-dir     vector             2 :inline :offset-assert 400) ;; guessed by decompiler
    (smoke-local-pos       vector             2 :inline :offset-assert 432) ;; guessed by decompiler
    (smoke-local-vel       vector             2 :inline :offset-assert 464) ;; guessed by decompiler
-   (particle-system-2d    basic                      :offset-assert 496)
-   (particle-system-3d    basic                      :offset-assert 500)
+   (particle-system-2d    sparticle-system           :offset-assert 496)
+   (particle-system-3d    sparticle-system           :offset-assert 500)
    (part-thruster         sparticle-launcher         :offset-assert 504)
    (part-thruster-scale-x sp-field-init-spec         :offset-assert 508)
    (part-thruster-scale-y sp-field-init-spec         :offset-assert 512)
@@ -38694,7 +38947,7 @@
   )
 
 (deftype ammo-collectable (collectable)
-  ((ammo-effect basic  :offset-assert 404)
+  ((ammo-effect sparticle-launch-group :offset-assert 404)
    )
   :method-count-assert 36
   :size-assert         #x198
@@ -41339,11 +41592,11 @@
 ;; +++enemy-h:enemy-aware
 (defenum enemy-aware
   :type uint64
-  (ea0 0)
-  (ea1 1)
-  (ea2 2)
-  (ea3 3)
-  (ea4 4)
+  (unaware 0)
+  (aware1 1)
+  (aware2 2)
+  (hostile 3)
+  (flee 4)
   )
 ;; ---enemy-h:enemy-aware
 
@@ -41388,6 +41641,7 @@
   (death-start 34)
   (auto-death-phase-out 35)
   (has-gem 36)
+  ;; these seem to be an extension of the flags for nav-enemy.
   (ef37 37)
   (ef38 38)
   (ef39 39)
@@ -41408,8 +41662,10 @@
   :size-assert         #x20
   :flag-assert         #xe00000020
   (:methods
-    (try-update-focus (_type_ process-focusable enemy) symbol :replace) ;; 12
-    (enemy-focus-method-13 (_type_ process-focusable enemy-aware) symbol) ;; 13
+    (focus-on! "Make this enemy focus on the process-focusable. If already focused, update awareness."
+               (_type_ process-focusable enemy) symbol :replace) ;; 12
+    (focus-on-with-awareness! "Focus on the process-focusable, updating the aware."
+                              (_type_ process-focusable enemy-aware) symbol) ;; 13
     )
   )
 
@@ -41463,34 +41719,34 @@
    (jump-height-min                     meters                               :offset-assert 244)
    (jump-height-factor                  float                                :offset-assert 248)
    (knocked-seek-ry-clamp               float                                :offset-assert 252)
-   (knocked-soft-vxz-lo                 float                                :offset-assert 256)
-   (knocked-soft-vxz-hi                 float                                :offset-assert 260)
-   (knocked-soft-vy-lo                  float                                :offset-assert 264)
-   (knocked-soft-vy-hi                  float                                :offset-assert 268)
-   (knocked-medium-vxz-lo               float                                :offset-assert 272)
-   (knocked-medium-vxz-hi               float                                :offset-assert 276)
-   (knocked-medium-vy-lo                float                                :offset-assert 280)
-   (knocked-medium-vy-hi                float                                :offset-assert 284)
-   (knocked-hard-vxz-lo                 float                                :offset-assert 288)
-   (knocked-hard-vxz-hi                 float                                :offset-assert 292)
-   (knocked-hard-vy-lo                  float                                :offset-assert 296)
-   (knocked-hard-vy-hi                  float                                :offset-assert 300)
-   (knocked-huge-vxz-lo                 float                                :offset-assert 304)
-   (knocked-huge-vxz-hi                 float                                :offset-assert 308)
-   (knocked-huge-vy-lo                  float                                :offset-assert 312)
-   (knocked-huge-vy-hi                  float                                :offset-assert 316)
-   (knocked-yellow-vxz-lo               float                                :offset-assert 320)
-   (knocked-yellow-vxz-hi               float                                :offset-assert 324)
-   (knocked-yellow-vy-lo                float                                :offset-assert 328)
-   (knocked-yellow-vy-hi                float                                :offset-assert 332)
-   (knocked-red-vxz-lo                  float                                :offset-assert 336)
-   (knocked-red-vxz-hi                  float                                :offset-assert 340)
-   (knocked-red-vy-lo                   float                                :offset-assert 344)
-   (knocked-red-vy-hi                   float                                :offset-assert 348)
-   (knocked-blue-vxz-lo                 float                                :offset-assert 352)
-   (knocked-blue-vxz-hi                 float                                :offset-assert 356)
-   (knocked-blue-vy-lo                  float                                :offset-assert 360)
-   (knocked-blue-vy-hi                  float                                :offset-assert 364)
+   (knocked-soft-vxz-lo                 meters                                :offset-assert 256)
+   (knocked-soft-vxz-hi                 meters                                :offset-assert 260)
+   (knocked-soft-vy-lo                  meters                                :offset-assert 264)
+   (knocked-soft-vy-hi                  meters                                :offset-assert 268)
+   (knocked-medium-vxz-lo               meters                                :offset-assert 272)
+   (knocked-medium-vxz-hi               meters                                :offset-assert 276)
+   (knocked-medium-vy-lo                meters                                :offset-assert 280)
+   (knocked-medium-vy-hi                meters                                :offset-assert 284)
+   (knocked-hard-vxz-lo                 meters                                :offset-assert 288)
+   (knocked-hard-vxz-hi                 meters                                :offset-assert 292)
+   (knocked-hard-vy-lo                  meters                                :offset-assert 296)
+   (knocked-hard-vy-hi                  meters                                :offset-assert 300)
+   (knocked-huge-vxz-lo                 meters                                :offset-assert 304)
+   (knocked-huge-vxz-hi                 meters                                :offset-assert 308)
+   (knocked-huge-vy-lo                  meters                                :offset-assert 312)
+   (knocked-huge-vy-hi                  meters                                :offset-assert 316)
+   (knocked-yellow-vxz-lo               meters                                :offset-assert 320)
+   (knocked-yellow-vxz-hi               meters                                :offset-assert 324)
+   (knocked-yellow-vy-lo                meters                                :offset-assert 328)
+   (knocked-yellow-vy-hi                meters                                :offset-assert 332)
+   (knocked-red-vxz-lo                  meters                                :offset-assert 336)
+   (knocked-red-vxz-hi                  meters                                :offset-assert 340)
+   (knocked-red-vy-lo                   meters                                :offset-assert 344)
+   (knocked-red-vy-hi                   meters                                :offset-assert 348)
+   (knocked-blue-vxz-lo                 meters                                :offset-assert 352)
+   (knocked-blue-vxz-hi                 meters                                :offset-assert 356)
+   (knocked-blue-vy-lo                  meters                                :offset-assert 360)
+   (knocked-blue-vy-hi                  meters                                :offset-assert 364)
    (ragdoll-info                        ragdoll-setup                        :offset-assert 368)
    (shadow-size                         meters                               :offset-assert 372)
    (shadow-max-y                        meters                               :offset-assert 376)
@@ -41533,6 +41789,16 @@
   (ejf5 5)
   (ejf6 6)
   (ejf7 7)
+  )
+
+(defenum jump-stage
+  :type int32
+  (init 0)
+  (winding-up 1)
+  (takeoff 2)
+  (in-air 3)
+  (touchdown 4)
+  (landing 5)
   )
 ;; ---enemy-h:enemy-jump-flags
 
@@ -41658,109 +41924,125 @@
     gun-dark-2-stretch ;; 49
     )
   (:methods
-    (enemy-method-50 (_type_ int) none) ;; 50
-    (accelerate-fall! (_type_ vector) float) ;; 51
-    (damage-enemy! (_type_ object event-message-block) float) ;; 52
-    (reset-penetrate! (_type_) none) ;; 53
-    (get-knockback-dir! (_type_ vector) vector) ;; 54
-    (get-knockback-angle (_type_) degrees) ;; 55
-    (knocked-handler (_type_ vector) object) ;; 56
-    (can-collide-with-focus? (_type_ process-focusable) object) ;; 57
-    (check-water (_type_) object) ;; 58
-    (enemy-common-post (_type_) none) ;; 59
-    (lerp-damage (_type_ float) float) ;; 60
-    (scale-impact-vel-y! (_type_ vector vector float) vector) ;; 61
-    (get-damage-from-attack (_type_ object event-message-block) float) ;; 62
-    (enemy-method-63 (_type_ float) float) ;; 63
-    (update-awareness! (_type_ process-focusable enemy-best-focus) enemy-aware) ;; 64
-    (penetrate->next-state (_type_ process event-message-block float) symbol) ;; 65
-    (get-penetrated-by (_type_) penetrate) ;; 66
-    (coin-flip? (_type_) symbol) ;; 67
-    (get-enemy-aware (_type_ enemy-aware) enemy-aware) ;; 68
-    (enemy-method-69 (_type_) none) ;; 69
-    (enemy-method-70 (_type_ process-focusable enemy-aware) none) ;; 70
-    (go-dormant (_type_) object) ;; 71
-    (go-dormant-aware (_type_) object) ;; 72
-    (go-idle (_type_) object) ;; 73
-    (go-ambush-delay (_type_) object) ;; 74
+    (update-collision-action "Change the collision for certain conditions (knocked, etc)" (_type_ int) none) ;; 50
+    (adjust-transv-under-water! "Modify the velocity as needed if the enemy is underwater." (_type_ vector) float) ;; 51
+    (damage-enemy-from-attack! "Given an attack message, apply damage." (_type_ object event-message-block) float) ;; 52
+    (reset-penetrate-later! "After a little bit, reset the penetrate flags back to default." (_type_) none) ;; 53
+    (get-knockback-dir! "Compute the knockback direction for an incoming attack." (_type_ vector) vector) ;; 54
+    (get-knockback-angle "Get the yaw angle for the current knock." (_type_) degrees) ;; 55
+    (knocked-handler "Called when this enemy is knocked." (_type_ vector) object) ;; 56
+    (can-focus-on? "Check that this enemy can focus on the given focusable.
+                    This reuses the collide bitmask, but isn't actually a collision." (_type_ process-focusable) object) ;; 57
+    (check-water "Respond to possibly being in water." (_type_) object) ;; 58
+    (enemy-common-post "Common implementation of post. Runs ja-post." (_type_) none) ;; 59
+    (impact-velocity-to-hit-points "Given an impact velocity, compute hit points." (_type_ float) float) ;; 60
+    (attack-direction-from-impact-vel "Compute the direction of an attack given an impact velocity.
+                                       This reduces the vertical component, probably to avoid sending the enemy into the air too much." (_type_ vector vector float) vector) ;; 61
+    (get-damage-from-attack "Compute hit point damage for an attack message." (_type_ object event-message-block) float) ;; 62
+    (apply-incoming-hitpoint-mods "Modify the hitpoints from an incoming attack.
+                                   Keeps enemy alive for a bit while being shot with a blue gun.
+                                   This looks cool because you can shoot them many times." (_type_ float) float) ;; 63
+    (get-awareness-of-proc "Check what the enemies awareness of this pfoc would be. Optionally return more awareness stats in enemy-best-focus." (_type_ process-focusable enemy-best-focus) enemy-aware) ;; 64
+    (msg-for-incoming-attack "Given an attack message, what do we do next? Returns a message name that should be sent to self." (_type_ process event-message-block float) symbol) ;; 65
+    (get-penetrated-by "Figure out the penetrated-by mask for this process." (_type_) penetrate) ;; 66
+    (coin-flip? "Return #t half the time, #f the other." (_type_) symbol) ;; 67
+    (modify-awareness "Apply modifications to awareness based on the reaction time of an enemy and other settings." (_type_ enemy-aware) enemy-aware) ;; 68
+    (focus-on-attacker! "If possible, update this enemies focus to the attacker." (_type_) none) ;; 69
+    (set-focus! "Change our focus to the given process. Optionally, specify awareness." (_type_ process-focusable enemy-aware) none) ;; 70
+    (go-dormant "Go to the dormant state. This disables drawing/processing/collision, and runs no logic." (_type_) object) ;; 71
+    (go-dormant-aware "Go to the dormat aware state.
+                      Similar to dormant, drawing/collision are disabled, but enemies can exit dormant-aware." (_type_) object) ;; 72
+    (go-idle "Go to an idle state." (_type_) object) ;; 73
+    (go-ambush "May go to ambush-delay first, if set in the res-lump." (_type_) object) ;; 74
     (go-stare (_type_) object) ;; 75
     (go-stare2 (_type_) object) ;; 76
-    (go-directed (_type_) object) ;; 77
-    (go-hostile (_type_) object) ;; 78
-    (go-flee (_type_) object) ;; 79
-    (go-best-state (_type_) object) ;; 80
-    (go-die (_type_) object) ;; 81
-    (event-handler (_type_ process int symbol event-message-block) object :behavior enemy) ;; 82
-    (enemy-touch-handler (_type_ process event-message-block) object) ;; 83
-    (send-attack-on-jump-or-knocked (_type_ process event-message-block) object) ;; 84
-    (knocked-anim (_type_ enemy-knocked-info) symbol) ;; 85
-    (knocked-land-anim (_type_ enemy-knocked-info) symbol) ;; 86
-    (knocked-anim-handler (_type_ int enemy-knocked-info) symbol) ;; 87
-    (enemy-method-88 (_type_ enemy-knocked-info) symbol) ;; 88
-    (within-gspot-range? (_type_) symbol) ;; 89
-    (enemy-method-90 (_type_ ragdoll-proc) none) ;; 90
-    (enemy-method-91 (_type_ enemy-jump-info) object) ;; 91
-    (init-jump-info! (_type_ enemy-jump-info) none) ;; 92
-    (setup-jump! (_type_ enemy-jump-info) none) ;; 93
-    (move-to-gspot! (_type_) float) ;; 94
-    (on-ground? (_type_ enemy-jump-info) symbol) ;; 95
-    (jump-in-air-anim (_type_ enemy-jump-info) symbol) ;; 96
-    (jump-land-anim (_type_ enemy-jump-info) symbol) ;; 97
-    (jump-wind-up-anim (_type_ enemy-jump-info) symbol) ;; 98
-    (jump-anim-handler (_type_ int enemy-jump-info) symbol) ;; 99
-    (in-jump-handler (_type_ int enemy-jump-info) none) ;; 100
-    (enemy-method-101 (_type_ int enemy-jump-info) none) ;; 101
-    (go-directed2 (_type_) object) ;; 102
-    (enemy-method-103 (_type_ vector float) symbol) ;; 103
-    (enemy-method-104 (_type_ vector float) symbol) ;; 104
-    (enemy-method-105 (_type_ float symbol) symbol) ;; 105
-    (find-best-focus (_type_) process) ;; 106
-    (is-pfoc-in-mesh? (_type_ process-focusable vector) symbol) ;; 107
-    (enemy-method-108 (_type_ process-focusable) symbol) ;; 108
-    (enemy-method-109 (_type_) symbol) ;; 109
-    (send-attack (_type_ process touching-shapes-entry uint) symbol) ;; 110
-    (on-attack (_type_ process-focusable) none) ;; 111
-    (get-incoming-attack! (_type_ process-drawable event-message-block penetrate attack-info touching-shapes-entry) none) ;; 112
-    (get-focus! (_type_) process-focusable) ;; 113
-    (send-attack-to-all-tshapes (_type_ process-focusable event-message-block) int) ;; 114
-    (set-look-at-mode! (_type_ int) none) ;; 115
-    (stop-look-at! (_type_) none) ;; 116
-    (apply-friction (_type_) none) ;; 117
-    (init-enemy-info! (_type_ enemy-info) none) ;; 118
-    (init-enemy-defaults! (_type_ enemy-info) none) ;; 119
-    (init-enemy-collision! (_type_) none) ;; 120
-    (init-enemy! (_type_) none) ;; 121
-    (go-idle2 (_type_) object) ;; 122
-    (enemy-method-123 (_type_) symbol) ;; 123
-    (disable-ragdoll (_type_) none) ;; 124
-    (ragdoll-settled? (_type_) object) ;; 125
-    (ragdoll-spawn! (_type_ symbol symbol) vector) ;; 126
-    (deactivate-ragdoll! (_type_) none) ;; 127
-    (rnd-float (_type_) float) ;; 128
-    (rnd-float-range (_type_ float float) float) ;; 129
-    (rnd-int (_type_ int) int) ;; 130
-    (enemy-method-131 (_type_ int int) int) ;; 131
-    (set-reaction-time! (_type_ time-frame time-frame) time-frame) ;; 132
-    (rnd-chance? (_type_ float) symbol) ;; 133
-    (enemy-method-134 (_type_ float) symbol) ;; 134
+    (go-directed "Go to the directed state which assumes that something else will control the enemy." (_type_) object) ;; 77
+    (go-hostile "Go to the hostile state, actively trying to attack the target." (_type_) object) ;; 78
+    (go-flee "Go to the flee state, running away." (_type_) object) ;; 79
+    (go-state-for-focused "Go to the appropriate state for the current awareness of the focused process." (_type_) object) ;; 80
+    (go-die "Go to the die state." (_type_) object) ;; 81
+    (event-handler "Commmon handler for events." (_type_ process int symbol event-message-block) object :behavior enemy) ;; 82
+    (enemy-touch-handler "General handler for an event when a process intentionally sends a touch event." (_type_ process event-message-block) object) ;; 83
+    (enemy-touched-handler "General handler for when anything touches an enemy (automatic response)." (_type_ process event-message-block) object) ;; 84
+    (knocked-anim "start the knocked animation." (_type_ enemy-knocked-info) symbol) ;; 85
+    (knocked-land-anim "start the knocked-land animation." (_type_ enemy-knocked-info) symbol) ;; 86
+    (knocked-anim-handler "start or play the approriate animation for an enemy being knocked." (_type_ int enemy-knocked-info) symbol) ;; 87
+    (done-being-knocked? "has the enemy hit the ground or stopped after being knocked back?" (_type_ enemy-knocked-info) symbol) ;; 88
+    (invalid-height? "Return #t if the enemy is too high in the air, or below the ground." (_type_) symbol) ;; 89
+    (copy-ragdoll-orientation-to-root "Apply rotational offset from ragdolling back to the enemy.
+                                       Used when disabling a ragdoll to update the enemy
+                                       orientation to match the end of ragdoll orientation." (_type_ ragdoll-proc) none) ;; 90
+    (check-jump-blocked? "Is this jump blocked by something?" (_type_ enemy-jump-info) object) ;; 91
+    (init-jump-info! "Populate an enemy-jump-info for jumping to this enemy's event-param-point" (_type_ enemy-jump-info) none) ;; 92
+    (setup-jump-trajectory! "Compute jump trajectory." (_type_ enemy-jump-info) none) ;; 93
+    (move-to-gspot! "Snap the enemy down onto the cached ground spot (gspot)." (_type_) float) ;; 94
+    (landed-jump-yet? "Is this on, or close to, the ground?" (_type_ enemy-jump-info) symbol) ;; 95
+    (jump-in-air-anim "Start playing the in-air anim" (_type_ enemy-jump-info) symbol) ;; 96
+    (jump-land-anim "Play the landing anim" (_type_ enemy-jump-info) symbol) ;; 97
+    (jump-wind-up-anim "Start playing the wind-up anim" (_type_ enemy-jump-info) symbol) ;; 98
+    (jump-anim-handler (_type_ jump-stage enemy-jump-info) symbol) ;; 99
+    (move-along-ballistic-trajectory-for-jump "Adjust trans, transv for the jump, if we're airborne." (_type_ jump-stage enemy-jump-info) none) ;; 100
+    (adjust-heading-for-jump "Can be overriden. Yaw the enemy in response to an ongoing jump." (_type_ jump-stage enemy-jump-info) none) ;; 101
+    (go-next-state-auto "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware." (_type_) object) ;; 102
+    (heading-matches-direction? "Does this enemy's heading match the given heading? Threshold in degrees." (_type_ vector float) symbol) ;; 103
+    (pointing-toward? "Is this enemy pointing toward the given point? Threshold in degrees." (_type_ vector float) symbol) ;; 104
+    (pointing-toward-focus? "Is this enemy pointing toward its focused process?" (_type_ float symbol) symbol) ;; 105
+    (find-best-focus "Search for the best thing to focus on." (_type_) process) ;; 106
+    (can-become-hostile-to? "Return if this enemy can become hostile to the process." (_type_ process-focusable vector) symbol) ;; 107
+    (should-flee-from? "Return if this enemy should flee from the process." (_type_ process-focusable) symbol) ;; 108
+    (out-of-bounds? "Has the enemy gone somewhere it shouldn't?
+                     Used to kill some enemies that can be knocked of regions." (_type_) symbol) ;; 109
+    (send-attack-from-tshape "Send an attack from this enemy to something else." (_type_ process touching-shapes-entry uint) symbol) ;; 110
+    (on-attack "Handler after this enemy attacks something. By default focuses on the attacked, but could be overriden." (_type_ process-focusable) none) ;; 111
+    (handle-incoming-attack! "Set up this enemy to handle an incoming attack event." (_type_ process-drawable event-message-block penetrate attack-info touching-shapes-entry) none) ;; 112
+    (get-focus! "If we're focusing on something alive, return it." (_type_) process-focusable) ;; 113
+    (find-and-damage-attackers "Find things that have attacked us, then deal damage back.
+                                This is used for attacks that damage both the player and the enemy,
+                                like hitting a guard with a jetboard." (_type_ process-focusable event-message-block) int) ;; 114
+    (set-look-at-mode! "Pick between 1: look at the focus, or 2: look at where you're going." (_type_ int) none) ;; 115
+    (stop-look-at! "Stop looking at something. Disables neck joint mod." (_type_) none) ;; 116
+    (apply-friction "Slow down the enemy due to friction with the ground." (_type_) none) ;; 117
+    (set-enemy-info! "Set the enemy-info" (_type_ enemy-info) none) ;; 118
+    (setup-enemy! "Initialize the enemy by setting all the enemy-specific fields." (_type_ enemy-info) none) ;; 119
+    (init-enemy-collision! "Typical place to construct collision shapes" (_type_) none) ;; 120
+    (init-enemy! "Typical place for shared init code. Runs from entity or process style init." (_type_) none) ;; 121
+    (go-fallback-init "If there's no specific settings for initial state, go to this state after spawning." (_type_) object) ;; 122
+    (allow-ragdoll? "Can this enemy ragdoll now?" (_type_) symbol) ;; 123
+    (disable-ragdoll "Smoothly disable the ragdoll and transition back to normal control." (_type_) none) ;; 124
+    (ragdoll-settled? "Has the ragdoll stopped moving?" (_type_) object) ;; 125
+    (ragdoll-spawn! "If possible, spawn ragdoll and start using it." (_type_ symbol symbol) vector) ;; 126
+    (deactivate-ragdoll! "Deactivate the ragdoll process." (_type_) none) ;; 127
+    (rnd-float "Get a random number from 0 to 1" (_type_) float) ;; 128
+    (rnd-float-range "Get a random float in the range" (_type_ float float) float) ;; 129
+    (rnd-int "Get a random int from to to the specified int" (_type_ int) int) ;; 130
+    (rnd-int-excluding-masked "Get a random int in the range. Exclude a value n by setting the n-th bit of the mask."(_type_ int int) int) ;; 131
+    (rnd-time-frame "Get a random time frame." (_type_ time-frame time-frame) time-frame) ;; 132
+    (rnd-chance? "Returns true with the given probability." (_type_ float) symbol) ;; 133
+    (rnd-chance-for-idle? 
+      "Like rnd-chance, but is more likely to return true when the game is close to not fitting in frame rate.
+       This makes enemies start idling more if the game isn't running fast enough." (_type_ float) symbol) ;; 134
     (enemy-method-135 (_type_) none) ;; 135
-    (set-ground-pat! (_type_ collide-query collide-spec float float float process) pat-surface) ;; 136
-    (enemy-above-ground? (_type_ collide-query vector collide-spec float float float) symbol) ;; 137
-    (try-locate-ground (_type_ meters meters symbol collide-spec) symbol) ;; 138
-    (move-above-ground! (_type_ vector move-above-ground-params) none) ;; 139
-    (update-focus (_type_) process) ;; 140
-    (enemy-method-141 (_type_ float) symbol) ;; 141
-    (penetrate->knocked-type (_type_ penetrate) knocked-type) ;; 142
+    (find-ground-and-set-pat! "Figure out what ground we're standing on and update the ground-pat.
+                               Usually this will be done automatically by the collision system.
+                               This method should be called after manually repositioning an enemy." (_type_ collide-query collide-spec float float float process) pat-surface) ;; 136
+    (enemy-above-ground? "Is this enemy above the ground?" (_type_ collide-query vector collide-spec float float float) symbol) ;; 137
+    (move-to-ground "Snap the enemy to the ground below." (_type_ meters meters symbol collide-spec) symbol) ;; 138
+    (move-above-ground! "Move the enemy. May keep the enemy snapped to the ground depending on flags." (_type_ vector move-above-ground-params) none) ;; 139
+    (update-focus "Potentially update the focus, if there is something better to focus on." (_type_) process) ;; 140
+    (check-awareness-trigger "Check triggering logic for awareness to see if this enemy can become aware yet." (_type_ float) symbol) ;; 141
+    (penetrate->knocked-type "Based on the penetrate of an attacker, pick the knocked-type." (_type_ penetrate) knocked-type) ;; 142
     (on-dying (_type_) none) ;; 143
     (falling? (_type_) symbol) ;; 144
-    (find-offending-pfoc (_type_ process attack-info) process-focusable) ;; 145
-    (play-damage-sound (_type_ int) sound-id) ;; 146
-    (check-victory (_type_) none) ;; 147
-    (go-gun-dark-2-stretch (_type_) object) ;; 148
-    (have-more-than-10-joints? (_type_) object) ;; 149
-    (enemy-method-150 (_type_) symbol) ;; 150
-    (should-move-to-ground? (_type_) symbol) ;; 151
-    (enemy-method-152 (_type_) float) ;; 152
+    (find-offending-pfoc "Figure out the attacker process from the attack message sender and attack-info.
+                          This is to handle cases where the attacker process is a non-focusable subprocess,
+                          or the attacker is driving a vehicle."(_type_ process attack-info) process-focusable) ;; 145
+    (play-damage-sound "Pick and play the damage/death sound." (_type_ int) sound-id) ;; 146
+    (clear-stale-victory "Remove victory flag if needed." (_type_) none) ;; 147
+    (go-gun-dark-2-stretch "Go to the gun-dark-2-stretch state." (_type_) object) ;; 148
+    (have-more-than-10-joints? "Does what it says, unused" (_type_) object) ;; 149
+    (can-be-nuked? "Can this enemy be instantly destroyed by the nuke?" (_type_) symbol) ;; 150
+    (should-move-to-ground? "Should this enemy be moved to the ground while moving?" (_type_) symbol) ;; 151
+    (gem-chance "The chance of this enemy having a gem." (_type_) float) ;; 152
     (get-gem-pool-idx (_type_) int) ;; 153
     (mark-as-dead (_type_) none) ;; 154
     )
@@ -41834,8 +42116,8 @@
     debug-control ;; 159
     )
   (:methods
-    (init-enemy-info! (_type_ nav-enemy-info) none :replace) ;; 118
-    (init-enemy-defaults! (_type_ nav-enemy-info) object :replace) ;; 125
+    (set-enemy-info! (_type_ nav-enemy-info) none :replace) ;; 118
+    (setup-enemy! (_type_ nav-enemy-info) object :replace) ;; 125
     (normalize-heading! (_type_ nav-control) none) ;; 160
     (nav-enemy-method-161 (_type_ nav-control) none) ;; 161
     (nav-enemy-method-162 (_type_) none) ;; 162
@@ -41884,13 +42166,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *enemy-dummy-shadow-control* shadow-control)
-(define-extern get-penetrate-using-from-attack-event (function process-drawable event-message-block penetrate))
-(define-extern enemy-setup-gem (function object :behavior enemy))
-(define-extern enemy-init-by-other (function process-drawable enemy-init-by-other-params object :behavior enemy))
-(define-extern enemy-event-handler (function process int symbol event-message-block object :behavior enemy))
-(define-extern enemy-simple-post (function none :behavior enemy))
-(define-extern enemy-falling-post (function none :behavior enemy))
-(define-extern enemy-die-falling-post (function none :behavior enemy))
+(define-extern get-penetrate-using-from-attack-event "Given an attack event to an enemy, return the penetrate that should be applied to the enemy" 
+               (function process-drawable event-message-block penetrate))
+(define-extern enemy-setup-gem "Determine if the enemy should have a gem and set drawing masks/particles as needed." (function object :behavior enemy))
+(define-extern enemy-init-by-other "Function to initialize an enemy from a parent process." (function process-drawable enemy-init-by-other-params object :behavior enemy))
+(define-extern enemy-event-handler "Default event handler for enemy." (function process int symbol event-message-block object :behavior enemy))
+(define-extern enemy-simple-post "Default post for enemy." (function none :behavior enemy))
+(define-extern enemy-falling-post "Post function that simply makes the enemy go down.
+                                   Collision is enabled, so enemy will bounce off of walls or similar." (function none :behavior enemy))
+(define-extern enemy-die-falling-post "Post function that causes the enemy to go down until it hits the ground.
+                                       Doesn't use full collision system - enemy will stop moving as soon as it hits any ground."(function none :behavior enemy))
 (define-extern *shockwave-knock-scalar* curve2d-fast)
 (define-extern ja-group-index? (function int symbol :behavior enemy))
 
@@ -42330,6 +42615,7 @@
   )
 
 (deftype joint-exploder-list (structure)
+  "Linked list of joint-exploder-joint."
   ((head        int32                :offset-assert 0)
    (pre-moved?  symbol               :offset-assert 4) ;; guessed by decompiler
    (bbox-valid? symbol               :offset-assert 8) ;; guessed by decompiler
@@ -42350,6 +42636,8 @@
   )
 
 (deftype joint-exploder (process-drawable)
+  "The joint-exploder animates an object exploding into pieces.
+   For example, geyser rock dummies, or the jak 1 zoomer."
   ((parent                     (pointer process-drawable)           :override)
    (die-if-below-y             float                                :offset-assert 200)
    (die-if-beyond-xz-dist-sqrd float                                :offset-assert 204)
@@ -42365,14 +42653,14 @@
   :size-assert         #x158
   :flag-assert         #x1e00e00158
   (:methods
-    (add-joint-to-list (_type_ joint-exploder-list int) int) ;; 20
-    (update-bbox-for-joint (_type_ joint-exploder-list joint-exploder-joint) none) ;; 21
+    (add-joint-to-list "Add a joint to the given linked list of joints." (_type_ joint-exploder-list int) int) ;; 20
+    (update-bbox-for-joint "Update the bounding box to include the joint" (_type_ joint-exploder-list joint-exploder-joint) none) ;; 21
     (do-collision-response (_type_ joint-exploder-list) none) ;; 22
     (init-joint-list (_type_) none) ;; 23
-    (remove-from-list-and-reset (_type_ joint-exploder-list int) int) ;; 24
+    (remove-from-list-and-reset "Remove a joint from the list and clear its transform" (_type_ joint-exploder-list int) int) ;; 24
     (final-adjust (_type_ joint-exploder-list int) int) ;; 25
     (integrate-and-kill (_type_ joint-exploder-list) none) ;; 26
-    (remove-joint-from-list (_type_ joint-exploder-list int) int) ;; 27
+    (remove-joint-from-list "Remove a joint from the linked list and invalidate the bbox." (_type_ joint-exploder-list int) int) ;; 27
     (adjust-bbox-for-limits-along-axis (_type_ joint-exploder-list int) joint-exploder-list) ;; 28
     (adjust-bbox-for-limits (_type_ joint-exploder-list) none) ;; 29
     )
@@ -42381,7 +42669,7 @@
     )
   )
 
-(define-extern joint-exploder-joint-callback (function draw-control cspace-array joint-control none))
+(define-extern joint-exploder-joint-callback "Postbind callback to set bones to the result of the joint-exploder." (function draw-control cspace-array joint-control none))
 (define-extern joint-exploder-init-by-other (function skeleton-group int joint-exploder-tuning joint-exploder-static-params object :behavior joint-exploder))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49371,7 +49659,7 @@
     in-ditch ;; 192
     )
   (:methods
-    (init-enemy-defaults! (_type_ nav-enemy-info) none :replace)
+    ;(init-enemy-defaults! (_type_ nav-enemy-info) none :replace)
     (set-squad (_type_) none) ;; 193
     (citizen-method-194 (_type_) none) ;; 194
     (citizen-method-195 (_type_) none) ;; 195
@@ -54908,8 +55196,8 @@
   )
 
 (deftype prebot-medium-eco-creature (prebot-large-eco-creature)
-  ((is-top        basic  :offset-assert 776)
-   (is-bottom     basic  :offset-assert 780)
+  ((is-top        symbol :offset-assert 776)
+   (is-bottom     symbol :offset-assert 780)
    (initial-scale float  :offset-assert 784)
    (final-scale   float  :offset-assert 788)
    )

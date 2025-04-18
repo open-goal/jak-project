@@ -316,7 +316,7 @@
   )
 
 (defmethod init-proj-settings! ((this mh-wasp-shot))
-  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (vector-copy! (-> this tail-pos) (-> this root trans))
   (set! (-> this attack-mode) 'mh-wasp-shot)
   (set! (-> this max-speed) 491520.0)
   (set! (-> this move) metalhead-shot-move)
@@ -439,34 +439,34 @@
                                :jump-height-min (meters 3)
                                :jump-height-factor 0.5
                                :knocked-seek-ry-clamp 2730.6667
-                               :knocked-soft-vxz-lo 72089.6
-                               :knocked-soft-vxz-hi 108134.4
-                               :knocked-soft-vy-lo 81920.0
-                               :knocked-soft-vy-hi 122880.0
-                               :knocked-medium-vxz-lo 147456.0
-                               :knocked-medium-vxz-hi 196608.0
-                               :knocked-medium-vy-lo 135168.0
-                               :knocked-medium-vy-hi 151552.0
-                               :knocked-hard-vxz-lo 53248.0
-                               :knocked-hard-vxz-hi 101580.8
-                               :knocked-hard-vy-lo 60620.8
-                               :knocked-hard-vy-hi 95027.2
-                               :knocked-huge-vxz-lo 164659.2
-                               :knocked-huge-vxz-hi 249036.8
-                               :knocked-huge-vy-lo 183500.8
-                               :knocked-huge-vy-hi 217907.2
-                               :knocked-yellow-vxz-lo 40960.0
-                               :knocked-yellow-vxz-hi 49152.0
-                               :knocked-yellow-vy-lo 57344.0
-                               :knocked-yellow-vy-hi 81920.0
-                               :knocked-red-vxz-lo 24576.0
-                               :knocked-red-vxz-hi 196608.0
-                               :knocked-red-vy-lo 94208.0
-                               :knocked-red-vy-hi 151552.0
-                               :knocked-blue-vxz-lo 40960.0
-                               :knocked-blue-vxz-hi 49152.0
-                               :knocked-blue-vy-lo 24576.0
-                               :knocked-blue-vy-hi 81920.0
+                               :knocked-soft-vxz-lo (meters 17.6)
+                               :knocked-soft-vxz-hi (meters 26.4)
+                               :knocked-soft-vy-lo (meters 20)
+                               :knocked-soft-vy-hi (meters 30)
+                               :knocked-medium-vxz-lo (meters 36)
+                               :knocked-medium-vxz-hi (meters 48)
+                               :knocked-medium-vy-lo (meters 33)
+                               :knocked-medium-vy-hi (meters 37)
+                               :knocked-hard-vxz-lo (meters 13)
+                               :knocked-hard-vxz-hi (meters 24.8)
+                               :knocked-hard-vy-lo (meters 14.8)
+                               :knocked-hard-vy-hi (meters 23.2)
+                               :knocked-huge-vxz-lo (meters 40.2)
+                               :knocked-huge-vxz-hi (meters 60.8)
+                               :knocked-huge-vy-lo (meters 44.8)
+                               :knocked-huge-vy-hi (meters 53.2)
+                               :knocked-yellow-vxz-lo (meters 10)
+                               :knocked-yellow-vxz-hi (meters 12)
+                               :knocked-yellow-vy-lo (meters 14)
+                               :knocked-yellow-vy-hi (meters 20)
+                               :knocked-red-vxz-lo (meters 6)
+                               :knocked-red-vxz-hi (meters 48)
+                               :knocked-red-vy-lo (meters 23)
+                               :knocked-red-vy-hi (meters 37)
+                               :knocked-blue-vxz-lo (meters 10)
+                               :knocked-blue-vxz-hi (meters 12)
+                               :knocked-blue-vy-lo (meters 6)
+                               :knocked-blue-vy-hi (meters 20)
                                :ragdoll-info #f
                                :shadow-size (meters 2)
                                :shadow-max-y (meters 10)
@@ -481,6 +481,7 @@
 (set! (-> *mh-wasp-enemy-info* fact-defaults) *fact-info-mh-wasp-defaults*)
 
 (defmethod event-handler ((this mh-wasp) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -492,7 +493,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -509,6 +510,7 @@
   )
 
 (defmethod knocked-handler ((this mh-wasp) (arg0 vector))
+  "Called when this enemy is knocked."
   (let ((s4-0 (-> this root)))
     (case (-> this incoming knocked-type)
       (((knocked-type explode-or-darkjak))
@@ -544,7 +546,8 @@
     )
   )
 
-(defmethod go-idle2 ((this mh-wasp))
+(defmethod go-fallback-init ((this mh-wasp))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (if (logtest? (enemy-option ambush) (-> this fact enemy-options))
       (go (method-of-object this ambush))
       (go (method-of-object this notice))
@@ -552,14 +555,17 @@
   )
 
 (defmethod go-hostile ((this mh-wasp))
+  "Go to the hostile state, actively trying to attack the target."
   (go (method-of-object this hostile))
   )
 
-(defmethod go-best-state ((this mh-wasp))
+(defmethod go-state-for-focused ((this mh-wasp))
+  "Go to the appropriate state for the current awareness of the focused process."
   (go-hostile this)
   )
 
 (defmethod enemy-common-post ((this mh-wasp))
+  "Common implementation of post. Runs ja-post."
   (seek! (-> this gun-x-angle) (-> this gun-x-angle-final) (* 21845.334 (seconds-per-frame)))
   ((method-of-type hover-enemy enemy-common-post) this)
   (none)
@@ -715,7 +721,7 @@
            (gp-0 (new 'stack-no-clear 'vector))
            )
       (let ((v1-4 (new 'stack-no-clear 'vector)))
-        (set! (-> v1-4 quad) (-> self focus-pos quad))
+        (vector-copy! v1-4 (-> self focus-pos))
         (+! (-> v1-4 y) (-> self attack-miss-dist-curr))
         (vector-! gp-0 v1-4 a0-2)
         )
@@ -803,11 +809,11 @@
       )
     (cond
       ((logtest? (-> *part-group-id-table* 1530 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 1530))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1530))
         )
       )
@@ -830,7 +836,8 @@
     0
     (set! (-> self hit-points) 0.0)
     (do-effect (-> self skel effect) (the-as string 'death-default) 0.0 -1)
-    (suspend-for (seconds 1))
+    (suspend-for (seconds 1)
+      )
     (send-event self 'death-end)
     (cleanup-for-death self)
     )
@@ -838,6 +845,7 @@
   )
 
 (defmethod get-focus! ((this mh-wasp))
+  "If we're focusing on something alive, return it."
   (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
     (when s5-0
       (let* ((a0-4 (-> this root))
@@ -849,7 +857,7 @@
         (if (and (and s5-0 (not (logtest? (-> s5-0 focus-status) (focus-status disable dead ignore grabbed))))
                  (< 0.0 (vector-dot s2-1 s3-2))
                  (< (vector-vector-distance s4-1 (-> this focus-pos)) 225280.0)
-                 (and (< (fabs (vector-x-angle s3-2)) 3640.889) (enemy-method-104 this (-> this focus-pos) 5461.3335))
+                 (and (< (fabs (vector-x-angle s3-2)) 3640.889) (pointing-toward? this (-> this focus-pos) 5461.3335))
                  )
             s5-0
             )
@@ -859,6 +867,7 @@
   )
 
 (defmethod knocked-anim ((this mh-wasp) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (cond
     ((rnd-chance? this 0.5)
      (set! (-> this knocked-anim) 10)
@@ -883,6 +892,7 @@
   )
 
 (defmethod knocked-land-anim ((this mh-wasp) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (let ((v1-4 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
         (a0-3 (-> this skel root-channel 0))
         )
@@ -895,16 +905,19 @@
   #t
   )
 
-(defmethod enemy-method-88 ((this mh-wasp) (arg0 enemy-knocked-info))
+(defmethod done-being-knocked? ((this mh-wasp) (arg0 enemy-knocked-info))
+  "has the enemy hit the ground or stopped after being knocked back?"
   (-> this root)
   (>= (-> arg0 on-surface-count) 1)
   )
 
-(defmethod within-gspot-range? ((this mh-wasp))
+(defmethod invalid-height? ((this mh-wasp))
+  "Return #t if the enemy is too high in the air, or below the ground."
   #f
   )
 
 (defmethod go-die ((this mh-wasp))
+  "Go to the die state."
   (cond
     ((and (-> this next-state) (= (-> this next-state name) 'knocked))
      (go (method-of-object this die-now))
@@ -959,7 +972,7 @@
                   (-> arg0 scale)
                   (quaternion-rotate-local-z! (the-as quaternion sv-208) a1-3 sv-192)
                   (quaternion->matrix s5-0 (the-as quaternion sv-208))
-                  (set! (-> s2-1 quad) (-> arg0 root scale quad))
+                  (vector-copy! s2-1 (-> arg0 root scale))
                   (scale-matrix! s5-0 s2-1 s5-0)
                   (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root quat)))
                          (t9-6 vector-inv-orient-by-quat!)
@@ -972,10 +985,10 @@
                              (-> arg0 thrust s3-0)
                              (+ (* 0.4 (fmax 0.0 (* (-> v0-6 x) s0-0)))
                                 (fmax 0.0 (-> v0-6 y))
-                                (fabs (* 0.2 (-> v0-6 z)))
+                                (fabs (/ (-> v0-6 z) 5))
                                 (fmax 0.0 (-> s1-1 y))
                                 )
-                             (* 0.2 f30-0)
+                             (/ f30-0 5)
                              )
                            )
                          )
@@ -999,12 +1012,12 @@
                           (set! (-> *part-id-table* 5032 init-specs 0 initial-valuef) (* f24-0 f0-15))
                           (set! (-> arg0 thrust s3-0) f28-0)
                           (let ((f0-16 (* f26-0 f0-15)))
-                            (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 uvec) (* -0.5 f0-16))
+                            (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 uvec) (/ f0-16 -2))
                             )
                           )
                         )
                       )
-                    (set! (-> s5-0 trans quad) (-> s4-0 quad))
+                    (vector-copy! (-> s5-0 trans) s4-0)
                     (spawn-from-mat (-> arg0 engine-part) s5-0)
                     (let ((f0-18 (lerp-scale 0.75 1.0 f28-0 1638.4 f30-0)))
                       (sound-play-by-name
@@ -1050,6 +1063,7 @@
   )
 
 (defmethod init-enemy-collision! ((this mh-wasp))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1227,9 +1241,10 @@
   )
 
 (defmethod init-enemy! ((this mh-wasp))
+  "Typical place for shared init code. Runs from entity or process style init."
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag) (sv-64 res-tag))
   (hover-enemy-method-170 this)
-  (init-enemy-defaults! this (get-enemy-info this))
+  (setup-enemy! this (get-enemy-info this))
   (hover-enemy-method-176 this)
   (set! (-> this neck up) (the-as uint 1))
   (set! (-> this neck nose) (the-as uint 2))

@@ -11,7 +11,7 @@
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 struct DmaStats {
   double sync_time_ms = 0;
@@ -37,7 +37,7 @@ struct DmaTag {
   DmaTag(u64 value) {
     spr = (value >> 63);
     addr = (value >> 32) & 0x7fffffff;
-    qwc = value & 0xfff;
+    qwc = value & 0xffff;
     kind = Kind((value >> 28) & 0b111);
   }
 

@@ -149,13 +149,9 @@
 ;; definition for method 15 of type hud-desert-lizards
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-desert-lizards))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    160
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 160)
   (format (clear (-> this strings 0 text)) "~D/~D" (-> this values 0 current) 3)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -20 45)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -20 45)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -342,7 +338,7 @@
         ((and *target* (focus-test? *target* flut))
          (when (not (-> self arrow-handle))
            (let ((gp-4 (new 'stack-no-clear 'task-arrow-params)))
-             (set! (-> gp-4 pos quad) (-> *minimap-class-list* 121 default-position quad))
+             (vector-copy! (-> gp-4 pos) (-> *minimap-class-list* 121 default-position))
              (quaternion-identity! (-> gp-4 quat))
              (set! (-> gp-4 flags) (task-arrow-flags taf8))
              (set! (-> gp-4 map-icon) (the-as uint 12))
@@ -728,15 +724,9 @@
                 (new 'stack 'font-context *font-default-matrix* 40 300 0.0 (font-color default) (font-flags shadow kerning))
                 )
               )
-          (let ((v1-26 s5-0))
-            (set! (-> v1-26 width) (the float 340))
-            )
-          (let ((v1-27 s5-0))
-            (set! (-> v1-27 height) (the float 60))
-            )
-          (let ((v1-28 s5-0))
-            (set! (-> v1-28 scale) 0.6)
-            )
+          (set-width! s5-0 340)
+          (set-height! s5-0 60)
+          (set-scale! s5-0 0.6)
           (set! (-> s5-0 flags) (font-flags shadow kerning middle-vert large))
           (if (and *target* (focus-test? *target* flut))
               (print-game-text
@@ -817,7 +807,7 @@
                   )
             (s5-2 0)
             )
-        (set! (-> s3-0 quad) (-> this corral-pos quad))
+        (vector-copy! s3-0 (-> this corral-pos))
         (set! (-> s4-3 length) (fill-actor-list-for-box *actor-hash* s3-0 (-> s4-3 data) (-> s4-3 allocated-length)))
         (dotimes (s3-1 (-> s4-3 length))
           (if (type? (-> s4-3 s3-1 process) flut)
@@ -987,6 +977,7 @@
 
 ;; definition for method 11 of type kleever-catch-lizards
 (defmethod init-from-entity! ((this kleever-catch-lizards) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))

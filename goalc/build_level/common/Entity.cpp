@@ -116,7 +116,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<int>());
            }
-           return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+           return std::make_unique<ResInt32>(name, data, DEFAULT_RES_TIME);
          }},
         {"uint32",
          [](const std::string& name,
@@ -127,7 +127,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<u32>());
            }
-           return std::make_unique<ResUint32>(name, data, -1000000000.0000);
+           return std::make_unique<ResUint32>(name, data, DEFAULT_RES_TIME);
          }},
         {"enum-int32",
          [](const std::string& name,
@@ -137,7 +137,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data = enum_from_json<s32>(json[i], dts);
            }
-           return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+           return std::make_unique<ResInt32>(name, data, DEFAULT_RES_TIME);
          }},
         {"enum-uint32",
          [](const std::string& name,
@@ -147,7 +147,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data = enum_from_json<u32>(json[i], dts);
            }
-           return std::make_unique<ResUint32>(name, data, -1000000000.0000);
+           return std::make_unique<ResUint32>(name, data, DEFAULT_RES_TIME);
          }},
         // special lumps
         {"eco-info",
@@ -159,7 +159,7 @@ static std::unordered_map<std::string,
            data.push_back(static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts)));
            // amount
            data.push_back(static_cast<s32>(get_enum_or_int(json[2], dts)));
-           return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+           return std::make_unique<ResInt32>(name, data, DEFAULT_RES_TIME);
          }},
         {"cell-info",
          [](const std::string& name,
@@ -169,7 +169,7 @@ static std::unordered_map<std::string,
            // (pickup-type fuel-cell)
            data.push_back(6);
            data.push_back(static_cast<s32>(get_enum_or_int(json[1], dts)));
-           return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+           return std::make_unique<ResInt32>(name, data, DEFAULT_RES_TIME);
          }},
         {"buzzer-info",
          [](const std::string& name,
@@ -181,7 +181,7 @@ static std::unordered_map<std::string,
            auto task = static_cast<s32>(get_enum_val(json[1].get<std::string>(), dts));
            auto buzzer = json[2].get<int>();
            data.push_back(task + (buzzer * (1 << 16)));
-           return std::make_unique<ResInt32>(name, data, -1000000000.0000);
+           return std::make_unique<ResInt32>(name, data, DEFAULT_RES_TIME);
          }},
         {"water-height",
          [](const std::string& name,
@@ -200,7 +200,7 @@ static std::unordered_map<std::string,
            if (json.size() >= 6) {
              data.push_back(json[5].get<float>() * METER_LENGTH);
            }
-           return std::make_unique<ResFloat>(name, data, -1000000000.0000);
+           return std::make_unique<ResFloat>(name, data, DEFAULT_RES_TIME);
          }},
         {"symbol",
          [](const std::string& name,
@@ -211,7 +211,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<std::string>());
            }
-           return std::make_unique<ResSymbol>(name, data, -1000000000.0000);
+           return std::make_unique<ResSymbol>(name, data, DEFAULT_RES_TIME);
          }},
         {"type",
          [](const std::string& name,
@@ -222,7 +222,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<std::string>());
            }
-           return std::make_unique<ResType>(name, data, -1000000000.0000);
+           return std::make_unique<ResType>(name, data, DEFAULT_RES_TIME);
          }},
         {"string",
          [](const std::string& name,
@@ -233,7 +233,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<std::string>());
            }
-           return std::make_unique<ResString>(name, data, -1000000000.0000);
+           return std::make_unique<ResString>(name, data, DEFAULT_RES_TIME);
          }},
         // vectors
         {"vector",
@@ -245,7 +245,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(vector_from_json(json[i]));
            }
-           return std::make_unique<ResVector>(name, data, -1000000000.0000);
+           return std::make_unique<ResVector>(name, data, DEFAULT_RES_TIME);
          }},
         {"vector4m",
          [](const std::string& name,
@@ -256,7 +256,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(vectorm4_from_json(json[i]));
            }
-           return std::make_unique<ResVector>(name, data, -1000000000.0000);
+           return std::make_unique<ResVector>(name, data, DEFAULT_RES_TIME);
          }},
         {"vector3m",
          [](const std::string& name,
@@ -267,7 +267,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(vectorm3_from_json(json[i]));
            }
-           return std::make_unique<ResVector>(name, data, -1000000000.0000);
+           return std::make_unique<ResVector>(name, data, DEFAULT_RES_TIME);
          }},
         {"movie-pos",
          [](const std::string& name,
@@ -278,7 +278,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(movie_pos_from_json(json[i]));
            }
-           return std::make_unique<ResVector>(name, data, -1000000000.0000);
+           return std::make_unique<ResVector>(name, data, DEFAULT_RES_TIME);
          }},
         {"vector-vol",
          [](const std::string& name,
@@ -289,7 +289,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(vector_vol_from_json(json[i]));
            }
-           return std::make_unique<ResVector>(name, data, -1000000000.0000);
+           return std::make_unique<ResVector>(name, data, DEFAULT_RES_TIME);
          }},
         // floats
         {"float",
@@ -301,7 +301,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<float>());
            }
-           return std::make_unique<ResFloat>(name, data, -1000000000.0000);
+           return std::make_unique<ResFloat>(name, data, DEFAULT_RES_TIME);
          }},
         {"meters",
          [](const std::string& name,
@@ -312,7 +312,7 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<float>() * METER_LENGTH);
            }
-           return std::make_unique<ResFloat>(name, data, -1000000000.0000);
+           return std::make_unique<ResFloat>(name, data, DEFAULT_RES_TIME);
          }},
         {"degrees", [](const std::string& name,
                        const nlohmann::json& json,
@@ -322,17 +322,26 @@ static std::unordered_map<std::string,
            for (size_t i = 1; i < json.size(); i++) {
              data.push_back(json[i].get<float>() * DEGREES_LENGTH);
            }
-           return std::make_unique<ResFloat>(name, data, -1000000000.0000);
+           return std::make_unique<ResFloat>(name, data, DEFAULT_RES_TIME);
          }}};
 
 std::unique_ptr<Res> res_from_json_array(const std::string& name,
                                          const nlohmann::json& json_array,
                                          decompiler::DecompilerTypeSystem& dts) {
-  ASSERT(!json_array.empty());
-  std::string array_type = json_array[0].get<std::string>();
+  if (json_array.empty()) {
+    throw std::runtime_error(fmt::format("json for {} lump was empty", name));
+  }
+  auto& lump = json_array[0];
+  if (lump.type() != nlohmann::detail::value_t::string) {
+    throw std::runtime_error(
+        fmt::format("first entry of lump \"{}\" has json type {}, but should be string", name,
+                    lump.type_name()));
+  }
+  auto array_type = lump.get<std::string>();
   if (lump_map.find(array_type) != lump_map.end()) {
     return lump_map[array_type](name, json_array, dts);
   } else {
-    ASSERT_MSG(false, fmt::format("unsupported array type: {}\n", array_type));
+    throw std::runtime_error(
+        fmt::format("unsupported array type for lump {}: {}\n", name, array_type));
   }
 }

@@ -56,17 +56,6 @@ maddz.xyzw vf26, vf28, vf25
 ```
 */
 void main() {
-  //  vec4 transformed = -perspective3.xyzw;
-  //  transformed += -perspective0 * position_in.x;
-  //  transformed += -perspective1 * position_in.y;
-  //  transformed += -perspective2 * position_in.z;
-
-
-  //  vec4 transformed = -hmat3.xyzw;
-  //  transformed += -hmat0 * position_in.x;
-  //  transformed += -hmat1 * position_in.y;
-  //  transformed += -hmat2 * position_in.z;
-
   vec4 p = vec4(position_in, 1);
   vec4 vtx_pos = -bones[mats[0]].X * p * weights_in[0];
   vec3 rotated_nrm = bones[mats[0]].R * normal_in * weights_in[0];

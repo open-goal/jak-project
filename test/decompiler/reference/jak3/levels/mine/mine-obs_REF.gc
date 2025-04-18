@@ -163,6 +163,7 @@
 ;; definition for method 11 of type rat-light-manager
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this rat-light-manager) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-1 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
@@ -422,7 +423,7 @@
       )
     )
   :enter (behavior ()
-    (set! (-> self force-pos quad) (-> self root trans quad))
+    (vector-copy! (-> self force-pos) (-> self root trans))
     )
   :trans (behavior ()
     (if (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 204800.0)
@@ -443,7 +444,7 @@
   :virtual #t
   :event (-> (method-of-type min-rat-engine inactive) event)
   :trans (behavior ()
-    (set! (-> self force-pos quad) (-> self root trans quad))
+    (vector-copy! (-> self force-pos) (-> self root trans))
     (rider-trans)
     (if (< 245760.0 (vector-vector-xz-distance (target-pos 0) (-> self root trans)))
         (go-virtual inactive)
@@ -667,7 +668,7 @@
   (when (= arg0 this)
     (let ((a2-1 (handle->process (-> arg1 handle))))
       (if a2-1
-          (set! (-> this force-pos quad) (-> (the-as process-focusable a2-1) root trans quad))
+          (vector-copy! (-> this force-pos) (-> (the-as process-focusable a2-1) root trans))
           )
       )
     )
@@ -687,7 +688,7 @@
         (the float
              (sar
                (shl
-                 (the int (+ (-> this wheel-angle) (* 182.04445 (seconds-per-frame) (* 0.00024414062 (-> this ang-momentum)))))
+                 (the int (+ (-> this wheel-angle) (* 182.04445 (seconds-per-frame) (/ (-> this ang-momentum) METER_LENGTH))))
                  48
                  )
                48
@@ -749,6 +750,7 @@
 ;; definition for method 11 of type min-rat-engine
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this min-rat-engine) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (min-rat-engine-method-24 this)
   (process-drawable-from-entity! this arg0)
@@ -925,6 +927,7 @@
 
 ;; definition for method 11 of type min-crane
 (defmethod init-from-entity! ((this min-crane) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (min-crane-method-21 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1294,7 +1297,8 @@
 
 ;; definition for method 20 of type min-target-sign
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this min-target-sign))
+(defmethod get-search-info-flag ((this min-target-sign))
+  "Get search-info-flag for this process."
   (let ((v0-0 0))
     (if (and (-> this next-state) (= (-> this next-state name) 'idle))
         (set! v0-0 (logior v0-0 40))
@@ -1305,6 +1309,7 @@
 
 ;; definition for method 11 of type min-target-sign
 (defmethod init-from-entity! ((this min-target-sign) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((t9-0 (method-of-type mine-platform-base init-from-entity!)))
     (t9-0 this arg0)
     )
@@ -1776,6 +1781,7 @@
 
 ;; definition for method 11 of type min-elev-doors
 (defmethod init-from-entity! ((this min-elev-doors) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (min-elev-doors-method-23 this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1862,7 +1868,7 @@
                (= (-> self rog) #f)
                )
       (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-        (set! (-> gp-0 pos quad) (-> self root trans quad))
+        (vector-copy! (-> gp-0 pos) (-> self root trans))
         (quaternion-identity! (-> gp-0 quat))
         (set! (-> gp-0 flags) (task-arrow-flags taf8))
         (set! (-> gp-0 map-icon) (the-as uint 13))
@@ -2110,6 +2116,7 @@
 
 ;; definition for method 11 of type min-door
 (defmethod init-from-entity! ((this min-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (cond
     ((or (task-node-closed? (game-task-node mine-blow-resolution))
          (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
@@ -2333,6 +2340,7 @@
 
 ;; definition for method 11 of type min-airlock-door
 (defmethod init-from-entity! ((this min-airlock-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 penetrated-by) (penetrate))
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))

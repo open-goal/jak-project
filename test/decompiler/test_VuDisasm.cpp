@@ -5,7 +5,7 @@
 #include "decompiler/util/DataParser.h"
 #include "gtest/gtest.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 using namespace decompiler;
 

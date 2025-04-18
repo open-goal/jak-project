@@ -2,6 +2,7 @@
 
 #include "common/common_types.h"
 #include "common/log/log.h"
+#include "common/util/string_util.h"
 
 #ifdef __APPLE__
 #include <stdio.h>
@@ -112,7 +113,7 @@ CpuInfo& get_cpu_info() {
   return gCpuInfo;
 }
 
-std::optional<double> get_macos_version() {
+std::optional<double> get_macos_major_version() {
 #ifndef __APPLE__
   return {};
 #else
@@ -124,7 +125,11 @@ std::optional<double> get_macos_version() {
     return {};
   }
   try {
-    return std::stod(buffer);
+    std::string macos_major_version = buffer;
+    if (str_util::contains(buffer, ".")) {
+      macos_major_version = str_util::split_string(macos_major_version, ".")[0];
+    }
+    return std::stod(macos_major_version);
   } catch (std::exception& e) {
     lg::error("Error occured when attempting to convert sysctl value {} to number", buffer);
     return {};

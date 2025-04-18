@@ -427,7 +427,7 @@
     (matrix->quaternion (-> self root quat) rotation-matrix)
     (set! (-> self run-blend-interp) (acos (vector-dot flee-direction-vec (-> self facing))))
     (set! (-> self run-blend-interp) (* 0.0002746582 (-> self run-blend-interp)))
-    (if (< (vector-dot (-> self facing) (the-as vector (-> rotation-matrix vector))) 0.0)
+    (if (< (vector-dot (-> self facing) (-> rotation-matrix vector 0)) 0.0)
         (set! (-> self run-blend-interp) (- (-> self run-blend-interp)))
         )
     (set! (-> self facing quad) (-> flee-direction-vec quad))
@@ -694,7 +694,7 @@
       (if (not (time-elapsed? (-> self targetted-timer) (seconds 5)))
           (set! interpolated-speed (fmax 163840.0 interpolated-speed))
           )
-      (let ((movement-speed (* 0.0033333334 interpolated-speed)))
+      (let ((movement-speed (/ interpolated-speed 300)))
         (cond
           ((< (vector-dot dir-to-target (-> self tangent)) 0.0)
            (if (< 0.0 (-> self speed))

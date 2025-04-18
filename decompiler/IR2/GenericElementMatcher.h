@@ -21,6 +21,7 @@ struct MatchResult {
     std::unordered_map<int, Form*> forms;
     std::unordered_map<int, s64> label;
     std::unordered_map<int, s64> ints;
+    std::unordered_map<int, float> floats;
   } maps;
 
   Form* int_or_form_to_form(FormPool& pool, int key_idx) {
@@ -51,11 +52,13 @@ class Matcher {
   static Matcher set_var(const Matcher& src, int dst_match_id);  // var-form
   static Matcher match_or(const std::vector<Matcher>& args);
   static Matcher cast(const std::string& type, Matcher value);
+  static Matcher numeric_cast(const std::string& type, Matcher value);
   static Matcher cast_to_any(int type_out, Matcher value);
   static Matcher any(int match_id = -1);
   static Matcher integer(std::optional<int> value);
   static Matcher any_integer(int match_id = -1);
   static Matcher single(std::optional<float> value);
+  static Matcher any_single(int match_id = -1);
   static Matcher any_reg_cast_to_int_or_uint(int match_id = -1);
   static Matcher any_quoted_symbol(int match_id = -1);
   static Matcher any_symbol(int match_id = -1);
@@ -86,11 +89,13 @@ class Matcher {
     GENERIC_OP_WITH_REST,
     OR,
     CAST,
+    NUMERIC_CAST,
     CAST_TO_ANY,
     ANY,
     INT,
     ANY_INT,
     FLOAT,
+    ANY_FLOAT,
     ANY_QUOTED_SYMBOL,
     ANY_SYMBOL,
     DEREF_OP,
@@ -132,6 +137,7 @@ class Matcher {
     int m_form_match;
     int m_label_out_id;
     int m_int_out_id;
+    int m_float_out_id;
   };
   std::optional<int> m_int_match;
   std::optional<float> m_float_match;

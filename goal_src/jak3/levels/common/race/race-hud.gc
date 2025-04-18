@@ -8,11 +8,7 @@
 ;; DECOMP BEGINS
 
 (defmethod draw ((this hud-race-timer))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    266
-    (the int (+ 50.0 (* -100.0 (-> this offset))))
-    )
+  (set-hud-piece-position! (-> this sprites 0) 266 (the int (+ 50.0 (* -100.0 (-> this offset)))))
   (let ((s5-0 (new 'stack-no-clear 'array 'time-frame 5)))
     (set! (-> s5-0 0) (the-as time-frame (min #x1b773f (-> *game-info* race-timer))))
     (set! (-> s5-0 2) (the-as time-frame (/ (-> s5-0 0) #x4650)))
@@ -27,7 +23,7 @@
     (format (-> this strings 1 text) "~2,'0D:" (-> s5-0 3))
     (format (-> this strings 2 text) "~2,'0D" (-> s5-0 4))
     )
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -40 -22)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -40 -22)
   (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this strings 0 pos) 40 0)
   (set-as-offset-from! (the-as hud-sprite (-> this strings 2 pos)) (-> this strings 1 pos) 33 0)
   ((method-of-type hud draw) this)
@@ -69,16 +65,12 @@
   )
 
 (defmethod draw ((this hud-race-lap-counter))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    504
-    (the int (+ 20.0 (* -100.0 (-> this offset))))
-    )
+  (set-hud-piece-position! (-> this sprites 0) 504 (the int (+ 20.0 (* -100.0 (-> this offset)))))
   (set! (-> this strings 0 scale) 0.55)
   (format (clear (-> this strings 0 text)) "~D/~D" (-> this values 0 current) (-> this values 1 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -40 5)
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) -20 0)
-  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 1)) -50 0)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -40 5)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 0 pos) -20 0)
+  (set-as-offset-from! (-> this sprites 2) (-> this sprites 1 pos) -50 0)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -126,11 +118,7 @@
 
 (defmethod draw ((this hud-race-position))
   (local-vars (s4-0 int))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    20
-    (the int (+ 20.0 (* -100.0 (-> this offset))))
-    )
+  (set-hud-piece-position! (-> this sprites 0) 20 (the int (+ 20.0 (* -100.0 (-> this offset)))))
   (let ((s5-0 (-> this values 0 current)))
     (dotimes (v1-2 16)
       (set! (-> this sprites v1-2 scale-x) 0.0)
@@ -138,7 +126,7 @@
       )
     (set! (-> this sprites s5-0 scale-x) 0.8)
     (set! (-> this sprites s5-0 scale-y) 0.8)
-    (set-as-offset-from! (-> this sprites s5-0) (the-as vector4w (-> this sprites)) 0 0)
+    (set-as-offset-from! (-> this sprites s5-0) (-> this sprites 0 pos) 0 0)
     0
     (let ((v1-14 (-> *common-text* language-id)))
       (cond
@@ -166,7 +154,7 @@
     (when (!= s4-0 -1)
       (set-as-offset-from!
         (-> this sprites s4-0)
-        (the-as vector4w (-> this sprites s5-0))
+        (-> this sprites s5-0 pos)
         (if (zero? s5-0)
             28
             52
@@ -313,12 +301,8 @@
         (set! (-> this strings 0 scale) 0.0)
         (set! (-> sv-112 origin x) 45.0)
         (set! (-> sv-112 origin y) 20.0)
-        (let ((v1-11 sv-112))
-          (set! (-> v1-11 width) (the float 422))
-          )
-        (let ((v1-12 sv-112))
-          (set! (-> v1-12 height) (the float 80))
-          )
+        (set-width! sv-112 422)
+        (set-height! sv-112 80)
         (let ((a0-6 sv-112))
           (set! (-> a0-6 color) (font-color red))
           )
@@ -326,14 +310,10 @@
           (set! (-> a0-7 flags) (font-flags kerning middle middle-vert large))
           )
         (let ((s0-0 80))
-          (let ((v1-15 sv-112))
-            (set! (-> v1-15 scale) 1.6)
-            )
-          (when (= (-> *setting-control* user-default language) (language-enum german))
-            (let ((v1-18 sv-112))
-              (set! (-> v1-18 scale) 1.0)
+          (set-scale! sv-112 1.6)
+          (if (= (-> *setting-control* user-default language) (language-enum german))
+              (set-scale! sv-112 1.0)
               )
-            )
           (cond
             ((-> s1-0 player-win?)
              (let ((s1-1 print-game-text)

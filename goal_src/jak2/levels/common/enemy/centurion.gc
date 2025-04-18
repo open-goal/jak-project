@@ -60,7 +60,7 @@
   )
 
 (defpart 2104
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 9) (meters 0.5))
     (:rot-x (degrees 2.25))
@@ -76,7 +76,7 @@
   )
 
 (defpart 2103
-  :init-specs ((:texture (new 'static 'texture-id :index #x29 :page #xc))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:x (meters 0.1))
     (:y (meters 0))
@@ -98,7 +98,7 @@
   )
 
 (defpart 2102
-  :init-specs ((:texture (new 'static 'texture-id :index #x13 :page #xc))
+  :init-specs ((:texture (harddot effects))
     (:num 1.0)
     (:x (meters 0.1))
     (:y (meters 0))
@@ -120,7 +120,7 @@
   )
 
 (defpart 2101
-  :init-specs ((:texture (new 'static 'texture-id :index #x2c :page #xc))
+  :init-specs ((:texture (water-ring effects))
     (:num 1.0)
     (:x (meters 0.1))
     (:y (meters 0))
@@ -407,7 +407,7 @@
 
 (defmethod general-event-handler ((this centurion) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('jump)
      #f
@@ -675,7 +675,7 @@
                  (set! (-> s2-0 quad) (-> (get-trans (the-as process-focusable s0-0) 3) quad))
                  (let ((s1-2 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) s2-0)))
                    (let* ((f0-0 (vector-length s1-2))
-                          (f0-1 (* 0.0000030517579 f0-0))
+                          (f0-1 (/ f0-0 (meters 80)))
                           (a0-7 s2-0)
                           )
                      (let ((v1-17 s2-0))
@@ -687,9 +687,9 @@
                          )
                        (.lvf vf4 (&-> v1-17 quad))
                        )
-                     (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                     (.mul.x.vf acc vf5 vf7 :mask #b111)
-                     (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                     (.add.x.vf.w vf6 vf0 vf0)
+                     (.mul.x.vf.xyz acc vf5 vf7)
+                     (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                      (.svf (&-> a0-7 quad) vf6)
                      )
                    (set! (-> s1-2 y) 0.0)
@@ -881,9 +881,9 @@
 
 (defmethod common-post ((this centurion))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (rlet ((acc :class vf)
          (vf0 :class vf)
          (vf4 :class vf)
@@ -1019,9 +1019,9 @@
               )
             (.lvf vf4 (&-> v1-143 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> a1-20 quad) vf6)
           )
         (spawn-with-matrix (-> this part) s5-1)
@@ -1127,9 +1127,9 @@
                 )
               (.lvf vf4 (&-> v1-11 quad))
               )
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> a0-4 quad) vf6)
             )
           (let ((f30-0 (vector-vector-xz-distance gp-0 (-> self root trans))))
@@ -1474,11 +1474,11 @@
   (none)
   )
 
-(defmethod relocate ((this centurion) (arg0 int))
+(defmethod relocate ((this centurion) (offset int))
   (if (nonzero? (-> this joint))
-      (&+! (-> this joint) arg0)
+      (&+! (-> this joint) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod init-enemy! ((this centurion))

@@ -220,7 +220,6 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
               priority = priority + -1;
             }
           }
-          s = s + 1;
         }
         SignalSema(g_EEStreamsList.sema);
       } break;

@@ -377,6 +377,9 @@
       (-> v1-16 id)
       )
     (set! (-> self gun active?) #f)
+    ;; og:preserve-this trigger effects
+    (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
+      (pc-clear-trigger-effect! (pc-trigger-effect-option right)))
     (cond
       ((and (not (logtest? (surface-flag gun-fast-exit) (-> self control current-surface flags)))
             (not (logtest? (-> self focus-status) (focus-status dead)))
@@ -632,6 +635,19 @@
       )
     )
   (set! (-> self game gun-type) (the-as pickup-type arg0))
+
+  ;; og:preserve-this trigger effects
+  (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
+    (case (-> self game gun-type)
+      (((pickup-type eco-red))
+       (pc-send-trigger-effect-feedback! (pc-trigger-effect-option right) 0 4))
+      (((pickup-type eco-yellow))
+       (pc-send-trigger-effect-weapon! (pc-trigger-effect-option right) 2 4 4))
+      (((pickup-type eco-blue))
+       (pc-send-trigger-effect-vibrate! (pc-trigger-effect-option right) 0 4 30))
+      (((pickup-type eco-dark))
+       (pc-send-trigger-effect-feedback! (pc-trigger-effect-option right) 0 2))))
+
   (set! (-> self gun track-turnv-range) 81920.0)
   (set! (-> self gun track-tilt-range) 0.0)
   (set! (-> self gun track-turn-range) 0.0)
@@ -1637,7 +1653,7 @@
                   (dotimes (s4-1 1)
                     ((method-of-type sphere new) (the-as symbol (-> s5-2 s4-1)) sphere)
                     )
-                  (let ((f30-1 (seek (-> self control collide-mode-transition) 1.0 (* 0.1 (-> self clock time-adjust-ratio)))))
+                  (let ((f30-1 (seek (-> self control collide-mode-transition) 1.0 (/ (-> self clock time-adjust-ratio) 10))))
                     (set! (-> s5-2 0 quad) (-> self control collision-spheres 2 prim-core world-sphere quad))
                     (set! (-> s5-2 0 r) (lerp-scale (-> *TARGET-bank* body-radius) 7372.8 f30-1 0.0 1.0))
                     (let ((v1-212 gp-3))
@@ -1726,7 +1742,7 @@
         (let* ((f0-28 (deg-diff (y-angle (-> self control)) (vector-y-angle (-> self control to-target-pt-xz))))
                (f0-30 (fmax -5461.3335 (fmin 5461.3335 f0-28)))
                )
-          (seek! (-> self upper-body twist z) f0-30 (fabs (* 0.2 f0-30)))
+          (seek! (-> self upper-body twist z) f0-30 (fabs (/ f0-30 5)))
           )
         )
        )

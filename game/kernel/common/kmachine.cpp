@@ -450,7 +450,7 @@ u64 pc_get_mips2c(u32 name) {
 
 u64 pc_get_display_id() {
   if (Display::GetMainDisplay()) {
-    return Display::GetMainDisplay()->get_display_manager()->get_active_display_id();
+    return Display::GetMainDisplay()->get_display_manager()->get_active_display_index();
   }
   return 0;
 }
@@ -788,6 +788,96 @@ void pc_set_auto_hide_cursor(u32 val) {
   }
 }
 
+u64 pc_get_pressure_sensitivity_enabled() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(
+        Display::GetMainDisplay()->get_input_manager()->is_pressure_sensitivity_enabled());
+  }
+  return bool_to_symbol(false);
+}
+
+void pc_set_pressure_sensitivity_enabled(u32 val) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->set_pressure_sensitivity_enabled(
+        symbol_to_bool(val));
+  }
+}
+
+u64 pc_current_controller_has_pressure_sensitivity() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(
+        Display::GetMainDisplay()->get_input_manager()->controller_has_pressure_sensitivity_support(
+            0));
+  }
+  return bool_to_symbol(false);
+}
+
+u64 pc_current_controller_has_trigger_effect_support() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(
+        Display::GetMainDisplay()->get_input_manager()->controller_has_trigger_effect_support(0));
+  }
+  return bool_to_symbol(false);
+}
+
+u64 pc_get_trigger_effects_enabled() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(
+        Display::GetMainDisplay()->get_input_manager()->are_trigger_effects_enabled());
+  }
+  return bool_to_symbol(false);
+}
+
+void pc_set_trigger_effects_enabled(u32 val) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->enqueue_set_trigger_effects_enabled(
+        symbol_to_bool(val));
+  }
+}
+
+void pc_clear_trigger_effect(dualsense_effects::TriggerEffectOption option) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_clear_trigger_effect(0,
+                                                                                            option);
+  }
+}
+
+void pc_send_trigger_effect_feedback(dualsense_effects::TriggerEffectOption option,
+                                     u8 position,
+                                     u8 strength) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_effect_feedback(
+        0, option, position, strength);
+  }
+}
+
+void pc_send_trigger_effect_vibrate(dualsense_effects::TriggerEffectOption option,
+                                    u8 position,
+                                    u8 amplitude,
+                                    u8 frequency) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_effect_vibrate(
+        0, option, position, amplitude, frequency);
+  }
+}
+
+void pc_send_trigger_effect_weapon(dualsense_effects::TriggerEffectOption option,
+                                   u8 start_position,
+                                   u8 end_position,
+                                   u8 strength) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_effect_weapon(
+        0, option, start_position, end_position, strength);
+  }
+}
+
+void pc_send_trigger_rumble(u16 left_rumble, u16 right_rumble, u32 duration_ms) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_input_manager()->enqueue_controller_send_trigger_rumble(
+        0, left_rumble, right_rumble, duration_ms);
+  }
+}
+
 void pc_set_vsync(u32 sym_val) {
   Gfx::g_global_settings.vsync = symbol_to_bool(sym_val);
 }
@@ -979,6 +1069,21 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-stop-waiting-for-bind!", (void*)pc_stop_waiting_for_bind);
   make_func_symbol_func("pc-reset-bindings-to-defaults!", (void*)pc_reset_bindings_to_defaults);
   make_func_symbol_func("pc-set-auto-hide-cursor!", (void*)pc_set_auto_hide_cursor);
+  make_func_symbol_func("pc-get-pressure-sensitivity-enabled?",
+                        (void*)pc_get_pressure_sensitivity_enabled);
+  make_func_symbol_func("pc-set-pressure-sensitivity-enabled!",
+                        (void*)pc_set_pressure_sensitivity_enabled);
+  make_func_symbol_func("pc-current-controller-has-pressure-sensitivity?",
+                        (void*)pc_current_controller_has_pressure_sensitivity);
+  make_func_symbol_func("pc-current-controller-has-trigger-effect-support?",
+                        (void*)pc_current_controller_has_trigger_effect_support);
+  make_func_symbol_func("pc-get-trigger-effects-enabled?", (void*)pc_get_trigger_effects_enabled);
+  make_func_symbol_func("pc-set-trigger-effects-enabled!", (void*)pc_set_trigger_effects_enabled);
+  make_func_symbol_func("pc-clear-trigger-effect!", (void*)pc_clear_trigger_effect);
+  make_func_symbol_func("pc-send-trigger-effect-feedback!", (void*)pc_send_trigger_effect_feedback);
+  make_func_symbol_func("pc-send-trigger-effect-vibrate!", (void*)pc_send_trigger_effect_vibrate);
+  make_func_symbol_func("pc-send-trigger-effect-weapon!", (void*)pc_send_trigger_effect_weapon);
+  make_func_symbol_func("pc-send-trigger-rumble!", (void*)pc_send_trigger_rumble);
 
   // graphics things
   make_func_symbol_func("pc-set-vsync", (void*)pc_set_vsync);

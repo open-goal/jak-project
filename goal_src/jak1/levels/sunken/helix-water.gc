@@ -26,6 +26,7 @@
    helix-slide-door-idle-closed
    helix-slide-door-idle-open))
 
+
 (defskelgroup *helix-slide-door-sg*
   helix-slide-door
   helix-slide-door-lod0-jg
@@ -47,6 +48,7 @@
    helix-button-quick-activate
    helix-button-startup))
 
+
 (defskelgroup *helix-button-sg*
   helix-button
   helix-button-lod0-jg
@@ -55,6 +57,7 @@
   :bounds (static-spherem 0 3.5 0 5.4))
 
 (deftype helix-dark-eco (dark-eco-pool) ())
+
 
 (deftype helix-water (process-drawable)
   ((last-alt-actor-consumed int32)
@@ -69,6 +72,7 @@
   (:states
    helix-water-activated
    helix-water-idle))
+
 
 (defstate water-vol-idle (helix-dark-eco)
   :virtual #t
@@ -407,7 +411,7 @@
           (when (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
             (let* ((f0-5 (- f0-4 (-> self root trans y)))
                    (f0-6 (+ -40960.0 f0-5))
-                   (f0-7 (* 0.000024414063 f0-6)))
+                   (f0-7 (/ f0-6 (meters 10))))
               (cond
                 ((< f0-7 0.0) (set! f0-7 0.0))
                 ((< 1.0 f0-7) (set! f0-7 1.0)))
@@ -424,9 +428,9 @@
         (suspend)))
   :post ja-post)
 
-(defmethod relocate ((this helix-water) (arg0 int))
-  (if (nonzero? (-> this alt-actors)) (&+! (-> this alt-actors) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this helix-water) (offset int))
+  (if (nonzero? (-> this alt-actors)) (&+! (-> this alt-actors) offset))
+  (call-parent-method this offset))
 
 (defmethod init-from-entity! ((this helix-water) (arg0 entity-actor))
   (set! (-> this last-alt-actor-consumed) -1)

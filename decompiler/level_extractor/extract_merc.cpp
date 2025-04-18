@@ -1624,7 +1624,7 @@ void replace_model(tfrag3::Level& lvl, tfrag3::MercModel& model, const fs::path&
       }
     }
 
-    auto swap_info = load_replacement_merc_model(model.name, lvl.merc_data.indices.size(),
+    auto swap_info = load_replacement_merc_model(model, lvl.merc_data.indices.size(),
                                                  lvl.merc_data.vertices.size(), lvl.textures.size(),
                                                  mdl_path.string(), old_verts, false);
     model = swap_info.new_model;
@@ -1647,8 +1647,8 @@ void add_custom_model_to_level(tfrag3::Level& lvl,
   auto lvl_name = lvl.level_name == "" ? "common" : lvl.level_name;
   lg::info("Adding custom model {} to {}", name, lvl_name);
   auto merc_data =
-      load_replacement_merc_model(name, lvl.merc_data.indices.size(), lvl.merc_data.vertices.size(),
-                                  lvl.textures.size(), mdl_path.string(), {}, true);
+      load_custom_merc_model(name, lvl.merc_data.indices.size(), lvl.merc_data.vertices.size(),
+                             lvl.textures.size(), mdl_path.string(), {}, true);
   for (auto& idx : merc_data.new_indices) {
     lvl.merc_data.indices.push_back(idx);
   }
@@ -1669,7 +1669,8 @@ void extract_merc(const ObjectFileData& ag_data,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
                   bool dump_level,
-                  GameVersion version) {
+                  GameVersion version,
+                  MercSwapInfo& swapped_info) {
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
   }
@@ -1795,31 +1796,45 @@ void extract_merc(const ObjectFileData& ag_data,
     }
   }
 
-  // do model replacements if present
-  auto merc_replacement_folder = file_util::get_jak_project_dir() / "custom_assets" /
-                                 game_version_names[version] / "merc_replacements";
-  if (file_util::file_exists(merc_replacement_folder.string())) {
-    auto merc_replacements =
-        file_util::find_files_in_dir(merc_replacement_folder, std::regex(".*\\.glb"));
-    for (auto& path : merc_replacements) {
-      auto name = path.stem().string();
-      auto it = std::find_if(out.merc_data.models.begin(), out.merc_data.models.end(),
-                             [&](const auto& m) { return m.name == name; });
-      if (it != out.merc_data.models.end()) {
-        auto& model = *it;
-        replace_model(out, model, path);
+  // do model replacement if present
+  for (auto& ctrl : ctrls) {
+    if (swapped_info.should_swap(ctrl.name)) {
+      auto merc_replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
+                                    game_version_names[version] / "merc_replacements";
+      if (!swapped_info.already_swapped(ctrl.name, out.level_name)) {
+        if (file_util::file_exists(merc_replacements_path.string())) {
+          std::string file_name(ctrl.name + ".glb");
+          auto mdl_path = merc_replacements_path / file_name;
+          if (file_util::file_exists(mdl_path.string())) {
+            auto it = std::find_if(out.merc_data.models.begin(), out.merc_data.models.end(),
+                                   [&](const auto& m) { return m.name == ctrl.name; });
+            if (it != out.merc_data.models.end()) {
+              auto& model = *it;
+              replace_model(out, model, mdl_path);
+              swapped_info.add_to_swapped_list(ctrl.name, out.level_name);
+            }
+          }
+        } else {
+          lg::info("{} in level {} was already swapped, skipping", ctrl.name, out.level_name);
+        }
       }
     }
-  }
 
-  // add custom models if present
-  auto lvl_name = out.level_name == "" ? "common" : out.level_name;
-  auto models_folder = file_util::get_jak_project_dir() / "custom_assets" /
-                       game_version_names[version] / "models" / lvl_name;
-  if (file_util::file_exists(models_folder.string())) {
-    auto custom_models = file_util::find_files_in_dir(models_folder, std::regex(".*\\.glb"));
-    for (auto& mdl : custom_models) {
-      add_custom_model_to_level(out, mdl.stem().string(), mdl);
+    // add custom models if present
+    auto lvl_name = out.level_name == "" ? "common" : out.level_name;
+    auto models_folder = file_util::get_jak_project_dir() / "custom_assets" /
+                         game_version_names[version] / "models" / lvl_name;
+    if (file_util::file_exists(models_folder.string())) {
+      auto custom_models = file_util::find_files_in_dir(models_folder, std::regex(".*\\.glb"));
+      for (auto& mdl : custom_models) {
+        auto name = mdl.stem().string();
+        if (!swapped_info.already_added(name, lvl_name)) {
+          add_custom_model_to_level(out, name, mdl);
+          swapped_info.add_to_custom_list(name, lvl_name);
+        } else {
+          lg::info("custom model {} was already added to level {}, skipping", name, lvl_name);
+        }
+      }
     }
   }
 }

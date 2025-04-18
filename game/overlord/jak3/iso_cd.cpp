@@ -381,6 +381,7 @@ ISOFileDef* CISOCDFileSystem::FindIN(const jak3::ISOName* name) {
  * Get the length of a file, in bytes.
  */
 int CISOCDFileSystem::GetLength(const jak3::ISOFileDef* file) {
+  // actually open the file and get the length, in case it changed.
   // return file->length;
   lg::info("getlength");
   file_util::assert_file_exists(file->full_path.c_str(), "CISOCDFileSystem GetLength");
@@ -405,7 +406,10 @@ CBaseFile* CISOCDFileSystem::Open(const jak3::ISOFileDef* file_def,
   ASSERT(file_kind == 1);
 
   file->m_FileKind = CBaseFile::Kind::NORMAL;
-  file->m_nLength = file_def->length;
+  // get the length again. Note that the file length could still change in between here and
+  // when we actually go to read it... but this is unlikely and not easy to support - we'd need to
+  // move the FILE* into the CBaseFile.
+  file->m_nLength = GetLength(file_def);
   file->m_LengthPages = (0x7fff + file->m_nLength) >> 0xf;
   if (file->m_LengthPages < 1) {
     ASSERT_NOT_REACHED();
@@ -494,11 +498,6 @@ void CISOCDFileSystem::ReadDirectory() {
       MakeISOName(&e.name, file_name.c_str());
       e.full_path =
           fmt::format("{}/out/jak3/iso/{}", file_util::get_jak_project_dir().string(), file_name);
-      auto* fp = file_util::open_file(e.full_path, "rb");
-      ASSERT(fp);
-      fseek(fp, 0, SEEK_END);
-      e.length = ftell(fp);
-      fclose(fp);
     }
   }
 }
@@ -513,8 +512,11 @@ void CISOCDFileSystem::LoadMusicTweaks() {
   if (file) {
     auto fp = file_util::open_file(file->full_path, "rb");
     ASSERT(fp);
-    ASSERT(file->length <= sizeof(gMusicTweakInfo));
-    auto ret = fread(&gMusicTweakInfo, file->length, 1, fp);
+    fseek(fp, 0, SEEK_END);
+    auto size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    ASSERT(size <= sizeof(gMusicTweakInfo));
+    auto ret = fread(&gMusicTweakInfo, size, 1, fp);
     ASSERT(ret == 1);
     fclose(fp);
   } else {

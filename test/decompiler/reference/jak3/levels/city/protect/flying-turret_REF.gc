@@ -76,34 +76,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 1)
     :shadow-max-y (meters 1)
@@ -273,6 +273,7 @@
 ;; definition for method 120 of type flying-turret
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this flying-turret))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -322,15 +323,12 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs process.
 (defmethod update-focus ((this flying-turret))
+  "Potentially update the focus, if there is something better to focus on."
   (the-as process (when (handle->process (-> this focus handle))
-                    (let* ((s5-1 (handle->process (-> this focus handle)))
-                           (a0-9 (if (type? s5-1 process-focusable)
-                                     (the-as process-focusable s5-1)
-                                     )
-                                 )
-                           (s5-0 (-> this focus-pos))
-                           )
-                      (set! (-> s5-0 quad) (-> (get-trans a0-9 3) quad))
+                    (let ((a0-9 (as-type (handle->process (-> this focus handle)) process-focusable))
+                          (s5-0 (-> this focus-pos))
+                          )
+                      (vector-copy! s5-0 (get-trans a0-9 3))
                       s5-0
                       )
                     )
@@ -368,28 +366,15 @@
   (if (time-elapsed? (-> this pursuit-start-time) (seconds 5))
       (logclear! (-> this flags) (citizen-flag persistent in-pursuit))
       )
-  (let* ((s5-0 (handle->process (-> this current-enemy)))
-         (a0-27 (if (type? s5-0 process-focusable)
-                    s5-0
-                    )
-                )
-         )
+  (let ((a0-27 (as-type (handle->process (-> this current-enemy)) process-focusable)))
     (cond
       ((and a0-27
             (not (logtest? (-> (the-as process-focusable a0-27) focus-status) (focus-status disable dead inactive)))
             )
-       (let* ((s5-1 this)
-              (s4-0 (method-of-object s5-1 enemy-method-70))
-              (s3-0 (handle->process (-> this current-enemy)))
-              )
-         (s4-0
-           s5-1
-           (the-as process-focusable (if (type? s3-0 process-focusable)
-                                         s3-0
-                                         )
-                   )
-           (the-as enemy-aware #f)
-           )
+       (set-focus!
+         this
+         (the-as process-focusable (as-type (handle->process (-> this current-enemy)) process-focusable))
+         (the-as enemy-aware #f)
          )
        (update-focus this)
        (let ((f0-0 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
@@ -442,7 +427,7 @@
   (let ((v1-8 (vector-float*! (new 'stack-no-clear 'vector) (-> this thrust-dir) (-> this speed-target)))
         (a0-6 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a0-6 quad) (-> this root transv quad))
+    (vector-copy! a0-6 (-> this root transv))
     (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) v1-8 a0-6))
           (f30-0 0.0)
           )
@@ -467,7 +452,7 @@
                     (s2-0 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
                     (s3-0 (new 'stack-no-clear 'vector))
                     )
-               (set! (-> s3-0 quad) (-> this root transv quad))
+               (vector-copy! s3-0 (-> this root transv))
                (when s1-0
                  (set! (-> s3-0 y) 0.0)
                  (clamp-vector-to-mesh-no-gaps (-> this nav) s4-0 s1-0 s3-0 s2-0)
@@ -478,7 +463,7 @@
                )
              (vector+float*! (-> this root transv) (-> this root transv) s5-1 (* f28-0 (seconds-per-frame)))
              (let* ((f0-19 (fmax 61440.0 (* (vector-length s5-1) f28-0)))
-                    (f28-1 (* 0.000008138021 f0-19))
+                    (f28-1 (/ f0-19 (meters 30)))
                     (f26-0 0.8)
                     (f24-0 0.40000004)
                     (v1-53 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -492,7 +477,7 @@
          )
         (else
           (let* ((f0-30 (fmax 61440.0 (* 3.0 (vector-length (-> this root transv)))))
-                 (f28-2 (* 0.000008138021 f0-30))
+                 (f28-2 (/ f0-30 (meters 30)))
                  (f26-1 0.8)
                  (f24-1 0.40000004)
                  (v1-68 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -509,7 +494,7 @@
                (s2-1 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
                (s3-1 (new 'stack-no-clear 'vector))
                )
-          (set! (-> s3-1 quad) (-> s4-2 quad))
+          (vector-copy! s3-1 s4-2)
           (when s0-0
             (set! (-> s3-1 y) 0.0)
             (clamp-vector-to-mesh-no-gaps (-> this nav) s1-1 s0-0 s3-1 s2-1)
@@ -533,7 +518,7 @@
       (let ((s2-2 (new 'stack-no-clear 'vector))
             (s4-3 (quaternion-identity! (new 'stack-no-clear 'quaternion)))
             )
-        (set! (-> s2-2 quad) (-> this thrust-dir quad))
+        (vector-copy! s2-2 (-> this thrust-dir))
         (set! (-> s2-2 y) 0.0)
         (vector-normalize! s2-2 1.0)
         (let ((s3-2 (new 'stack-no-clear 'quaternion))
@@ -548,7 +533,7 @@
           )
         (when (zero? (-> this thrust-mode))
           (let ((s3-3 (new 'stack-no-clear 'vector)))
-            (set! (-> s3-3 quad) (-> s5-1 quad))
+            (vector-copy! s3-3 s5-1)
             (let ((s5-2 (new 'stack-no-clear 'vector)))
               (let ((s2-3 *up-vector*))
                 (set! (-> s3-3 y) 0.0)
@@ -585,7 +570,7 @@
   (let ((s4-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)))
         (gp-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> gp-0 quad) (-> this root trans quad))
+    (vector-copy! gp-0 (-> this root trans))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (vector+float*! gp-0 gp-0 (-> s4-0 fvec) -3276.8)
       (vector+float*! gp-0 gp-0 (-> s4-0 uvec) -409.6)
@@ -599,7 +584,7 @@
             )
         (let ((f0-8 (* (lerp 3072.0 8601.6 f0-6) (-> this thruster-intensity-scalar))))
           (set! (-> *part-id-table* 4709 init-specs 4 initial-valuef) f0-8)
-          (set! (-> *part-id-table* 4709 init-specs 3 initial-valuef) (* 0.5 f0-8))
+          (set! (-> *part-id-table* 4709 init-specs 3 initial-valuef) (/ f0-8 2))
           )
         )
       (draw-beam (-> *part-id-table* 4709) gp-0 s5-0 #f)
@@ -613,6 +598,7 @@
 ;; definition for method 59 of type flying-turret
 ;; INFO: Used lq/sq
 (defmethod enemy-common-post ((this flying-turret))
+  "Common implementation of post. Runs ja-post."
   (with-pp
     (logclear! (-> this nav flags) (nav-control-flag limit-rotation-rate update-heading-from-facing))
     (if (not (and (-> this next-state) (= (-> this next-state name) 'exit-transport)))
@@ -620,7 +606,7 @@
         )
     (flying-turret-method-227 this)
     (let* ((f0-0 (vector-length (-> this root transv)))
-           (f0-1 (* 0.000016276043 f0-0))
+           (f0-1 (/ f0-0 (meters 15)))
            )
       0.0
       0.0
@@ -692,7 +678,7 @@
     (flying-turret-method-225 this)
     (set-vector! (-> this ground-point) (-> this root trans x) (-> this ground-height) (-> this root trans z) 1.0)
     (let ((a1-13 (new 'stack-no-clear 'vector)))
-      (set! (-> a1-13 quad) (-> this ground-point quad))
+      (vector-copy! a1-13 (-> this ground-point))
       (set-virtual-cur-pos! (-> this nav state) a1-13)
       )
     (let ((f0-56 (+ (-> this desired-height-offset) (-> this ground-height))))
@@ -769,12 +755,13 @@
 
 ;; definition for method 121 of type flying-turret
 (defmethod init-enemy! ((this flying-turret))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-flying-turret" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *flying-turret-nav-enemy-info*)
+  (setup-enemy! this *flying-turret-nav-enemy-info*)
   (call-parent-method this)
   (set! (-> this align) (new 'process 'align-control this))
   (set! (-> this anim-shuffle) 2)
@@ -811,15 +798,15 @@
      (let ((a2-0 (-> arg0 state))
            (v1-8 (new 'stack-no-clear 'vector))
            )
-       (set! (-> v1-8 quad) (-> a2-0 heading quad))
+       (vector-copy! v1-8 (-> a2-0 heading))
        (let ((f30-0 (-> arg0 state speed)))
-         (set! (-> this thrust-dir quad) (-> v1-8 quad))
+         (vector-copy! (-> this thrust-dir) v1-8)
          (let ((t9-0 vector-vector-xz-distance)
                (a0-7 (-> this root trans))
                (a2-3 (-> this nav state))
                (a1-1 (new 'stack-no-clear 'vector))
                )
-           (set! (-> a1-1 quad) (-> a2-3 target-pos quad))
+           (vector-copy! a1-1 (-> a2-3 target-pos))
            (let ((f0-1 (t9-0 a0-7 a1-1)))
              (set! (-> this speed-target) f30-0)
              (if (!= (-> this chase-mode) 3)
@@ -861,7 +848,7 @@
         (s2-0 (new 'stack-no-clear 'vector))
         )
     (let ((s3-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s3-0 quad) (-> s4-0 focus-pos quad))
+      (vector-copy! s3-0 (-> s4-0 focus-pos))
       (cspace<-parented-transformq-joint! arg0 arg1)
       (vector-! s2-0 s3-0 (-> arg0 bone transform trans))
       )
@@ -951,8 +938,8 @@
       (set! (-> gp-0 vehicle-impulse-factor) 2.0)
       (logior! (-> gp-0 options) (projectile-options po16))
       (if arg4
-          (set! (-> gp-0 pos quad) (-> arg4 quad))
-          (set! (-> gp-0 pos quad) (-> arg1 quad))
+          (vector-copy! (-> gp-0 pos) arg4)
+          (vector-copy! (-> gp-0 pos) arg1)
           )
       (vector-normalize-copy! (-> gp-0 vel) v1-1 arg3)
       )
@@ -965,7 +952,7 @@
 (defmethod fire-shot-from-joint-idx ((this flying-turret) (arg0 int))
   (local-vars (a0-12 city-attacker-info))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this node-list data arg0 bone transform uvec quad))
+    (vector-copy! s5-0 (-> this node-list data arg0 bone transform uvec))
     (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data arg0))))
       (set! (-> s5-0 y) 0.0)
       (when (or (< (-> this num-shots-fired) 3) (not (logtest? (-> this draw status) (draw-control-status on-screen))))
@@ -1092,6 +1079,7 @@
 
 ;; definition for method 82 of type flying-turret
 (defmethod event-handler ((this flying-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('notify)
      (case (-> arg3 param 0)
@@ -1131,7 +1119,7 @@
     (nav-enemy-method-181 self)
     )
   :trans (behavior ()
-    (local-vars (a0-34 city-attacker-info) (a0-39 city-attacker-info) (a0-48 city-attacker-info) (s4-1 object))
+    (local-vars (a0-34 city-attacker-info) (a0-39 city-attacker-info) (a0-48 city-attacker-info))
     (when (not (handle->process (-> self focus handle)))
       (flying-turret-method-226 self)
       (if (not (handle->process (-> self focus handle)))
@@ -1143,7 +1131,7 @@
           )
       (cond
         ((< (* f1-0 f1-0) f0-0)
-         (set! (-> self move-dest quad) (-> self focus-pos quad))
+         (vector-copy! (-> self move-dest) (-> self focus-pos))
          (set! (-> self chase-mode) (the-as uint 0))
          0
          )
@@ -1152,7 +1140,7 @@
                                            )
               )
          (set! (-> self chase-mode) (the-as uint 1))
-         (set! (-> self move-dest quad) (-> self root trans quad))
+         (vector-copy! (-> self move-dest) (-> self root trans))
          )
         )
       )
@@ -1178,7 +1166,7 @@
                    (set! (-> self num-shots-fired) 0)
                    (set! (-> self hit-player?) #f)
                    )
-                 (set! (-> self move-dest quad) (-> self root trans quad))
+                 (vector-copy! (-> self move-dest) (-> self root trans))
                  )
                )
              )
@@ -1223,50 +1211,34 @@
                    (begin (set! a0-48 (get-attacker-at-idx (-> self mission-squad) (-> self attacker-info enemy-index))) a0-48)
                    (logtest? (-> a0-48 flags) (city-attacker-info-flag cai4))
                    )
-          (let ((s4-0 (handle->process (-> self focus handle))))
-            (cond
-              ((not (and (if (type? s4-0 process-focusable)
-                             s4-0
-                             )
-                         (begin
-                           (let* ((s4-2 #t)
-                                  (s3-0 (handle->process (-> self focus handle)))
-                                  (v1-106 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s3-0 process-focusable)
-                                                                                                         (the-as process-focusable s3-0)
-                                                                                                         )
-                                                                                   )
-                                                                           focus-status
-                                                                           )
-                                                                       (focus-status disable dead ignore grabbed)
-                                                                       )
-                                                  )
+          (cond
+            ((not (and (as-type (handle->process (-> self focus handle)) process-focusable)
+                       (not (logtest? (-> (the-as process-focusable (as-type (handle->process (-> self focus handle)) process-focusable))
+                                          focus-status
                                           )
-                                  )
-                             (cmove-#f-nonzero s4-1 v1-106 s4-2)
-                             )
-                           s4-1
-                           )
-                         )
-                    )
-               (set! s5-0 #f)
+                                      (focus-status disable dead ignore grabbed)
+                                      )
+                            )
+                       )
+                  )
+             (set! s5-0 #f)
+             )
+            ((>= (-> self num-shots-fired) 4)
+             (set! gp-0 #t)
+             )
+            ((< (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 40960.0)
+             (set! gp-0 #t)
+             )
+            ((let ((a0-60 (new 'stack-no-clear 'sphere)))
+               (set! (-> a0-60 quad) (-> self root trans quad))
+               (set! (-> a0-60 r) (-> self root root-prim local-sphere w))
+               (or (not (sphere-in-view-frustum? a0-60))
+                   (not (logtest? (-> self draw status) (draw-control-status on-screen)))
+                   )
                )
-              ((>= (-> self num-shots-fired) 4)
-               (set! gp-0 #t)
-               )
-              ((< (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 40960.0)
-               (set! gp-0 #t)
-               )
-              ((let ((a0-60 (new 'stack-no-clear 'sphere)))
-                 (set! (-> a0-60 quad) (-> self root trans quad))
-                 (set! (-> a0-60 r) (-> self root root-prim local-sphere w))
-                 (or (not (sphere-in-view-frustum? a0-60))
-                     (not (logtest? (-> self draw status) (draw-control-status on-screen)))
-                     )
-                 )
-               (+! (-> self num-shots-fired) 1)
-               (set! s5-0 #f)
-               )
-              )
+             (+! (-> self num-shots-fired) 1)
+             (set! s5-0 #f)
+             )
             )
           )
         (cond
@@ -1298,7 +1270,7 @@
           )
       (logclear! (-> a0-71 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-71 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-71 target-pos quad) (-> v1-142 quad))
+      (vector-copy! (-> a0-71 target-pos) v1-142)
       )
     0
     )
@@ -1382,11 +1354,11 @@
   :code (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 221 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 221))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 221))
         )
       )
@@ -1394,7 +1366,7 @@
       (let ((v1-36 (new 'stack 'debris-tuning (the-as uint 1))))
         (set! (-> v1-36 hit-xz-reaction) 0.5)
         (set! (-> v1-36 hit-y-reaction) 0.6)
-        (set! (-> v1-36 fountain-rand-transv-lo quad) (-> self incoming attack-position quad))
+        (vector-copy! (-> v1-36 fountain-rand-transv-lo) (-> self incoming attack-position))
         )
       )
     (if (not (-> *setting-control* user-current gun-special-mode))
@@ -1440,7 +1412,7 @@
 (defmethod go-from-behavior ((this flying-turret) (arg0 traffic-object-spawn-params))
   (case (-> arg0 behavior)
     ((6)
-     (set! (-> this root trans quad) (-> arg0 position quad))
+     (vector-copy! (-> this root trans) (-> arg0 position))
      (when (handle->process (-> arg0 handle))
        (let ((s5-1 (vector+float*!
                      (new 'stack-no-clear 'vector)
@@ -1454,7 +1426,7 @@
          (let ((v1-13 (-> this nav state)))
            (logclear! (-> v1-13 flags) (nav-state-flag directional-mode))
            (logior! (-> v1-13 flags) (nav-state-flag target-poly-dirty))
-           (set! (-> v1-13 target-pos quad) (-> s5-1 quad))
+           (vector-copy! (-> v1-13 target-pos) s5-1)
            )
          )
        0
@@ -1485,7 +1457,7 @@
     (let ((a0-4 (-> self nav state))
           (v1-15 *null-vector*)
           )
-      (set! (-> a0-4 velocity quad) (-> v1-15 quad))
+      (vector-copy! (-> a0-4 velocity) v1-15)
       )
     0
     (let ((v1-18 (-> self nav)))
@@ -1500,7 +1472,7 @@
           (a3-0 (-> self nav state))
           (a2-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> a2-0 quad) (-> a3-0 target-pos quad))
+      (vector-copy! a2-0 (-> a3-0 target-pos))
       (t9-0 a0-0 (the-as bucket-id a1-0) a2-0 (meters 2) *color-red*)
       )
     (let ((t9-1 vector-vector-xz-distance)
@@ -1508,7 +1480,7 @@
           (a2-1 (-> self nav state))
           (a1-1 (new 'stack-no-clear 'vector))
           )
-      (set! (-> a1-1 quad) (-> a2-1 target-pos quad))
+      (vector-copy! a1-1 (-> a2-1 target-pos))
       (if (< (t9-1 a0-1 a1-1) 16384.0)
           (go-virtual active)
           )
@@ -1527,7 +1499,7 @@
   (case arg0
     ((3)
      (let ((s5-1 (new 'static 'vector)))
-       (set! (-> s5-1 quad) (-> this root trans quad))
+       (vector-copy! s5-1 (-> this root trans))
        (vector<-cspace! s5-1 (-> this node-list data (-> this enemy-info bullseye-joint)))
        (set! (-> s5-1 w) 10240.0)
        s5-1

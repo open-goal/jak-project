@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,15 +18,13 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #import <UIKit/UIKit.h>
 
 #include "../SDL_sysvideo.h"
 
-#include "SDL_touch.h"
-
-#if TARGET_OS_TV
+#ifdef SDL_PLATFORM_TVOS
 #import <GameController/GameController.h>
 #define SDLRootViewController GCEventViewController
 #else
@@ -43,34 +41,36 @@
 @interface SDL_uikitviewcontroller : SDLRootViewController
 #endif
 
-@property (nonatomic, assign) SDL_Window *window;
+@property(nonatomic, assign) SDL_Window *window;
 
 - (instancetype)initWithSDLWindow:(SDL_Window *)_window;
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection;
+
 - (void)setAnimationCallback:(int)interval
-                    callback:(void (*)(void*))callback
-               callbackParam:(void*)callbackParam;
+                    callback:(void (*)(void *))callback
+               callbackParam:(void *)callbackParam;
 
 - (void)startAnimation;
 - (void)stopAnimation;
 
-- (void)doLoop:(CADisplayLink*)sender;
+- (void)doLoop:(CADisplayLink *)sender;
 
 - (void)loadView;
 - (void)viewDidLayoutSubviews;
 
-#if !TARGET_OS_TV
+#ifndef SDL_PLATFORM_TVOS
 - (NSUInteger)supportedInterfaceOrientations;
 - (BOOL)prefersStatusBarHidden;
 - (BOOL)prefersHomeIndicatorAutoHidden;
 - (UIRectEdge)preferredScreenEdgesDeferringSystemGestures;
 
-@property (nonatomic, assign) int homeIndicatorHidden;
+@property(nonatomic, assign) int homeIndicatorHidden;
 #endif
 
 #ifdef SDL_IPHONE_KEYBOARD
-- (void)showKeyboard;
-- (void)hideKeyboard;
+- (bool)startTextInput;
+- (bool)stopTextInput;
 - (void)initKeyboard;
 - (void)deinitKeyboard;
 
@@ -79,17 +79,18 @@
 
 - (void)updateKeyboard;
 
-@property (nonatomic, assign, getter=isKeyboardVisible) BOOL keyboardVisible;
-@property (nonatomic, assign) SDL_Rect textInputRect;
-@property (nonatomic, assign) int keyboardHeight;
+@property(nonatomic, assign, getter=isTextFieldFocused) BOOL textFieldFocused;
+@property(nonatomic, assign) SDL_Rect textInputRect;
+@property(nonatomic, assign) int keyboardHeight;
 #endif
 
 @end
 
 #ifdef SDL_IPHONE_KEYBOARD
-SDL_bool UIKit_HasScreenKeyboardSupport(_THIS);
-void UIKit_ShowScreenKeyboard(_THIS, SDL_Window *window);
-void UIKit_HideScreenKeyboard(_THIS, SDL_Window *window);
-SDL_bool UIKit_IsScreenKeyboardShown(_THIS, SDL_Window *window);
-void UIKit_SetTextInputRect(_THIS, const SDL_Rect *rect);
+bool UIKit_HasScreenKeyboardSupport(SDL_VideoDevice *_this);
+bool UIKit_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props);
+bool UIKit_StopTextInput(SDL_VideoDevice *_this, SDL_Window *window);
+void UIKit_SetTextInputProperties(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props);
+bool UIKit_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window);
+bool UIKit_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window);
 #endif

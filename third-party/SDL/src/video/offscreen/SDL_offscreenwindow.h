@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,25 +18,23 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#ifndef _SDL_offscreenwindow_h
-#define _SDL_offscreenwindow_h
+#ifndef SDL_offscreenwindow_h
+#define SDL_offscreenwindow_h
 
 #include "SDL_offscreenvideo.h"
 
-typedef struct
+struct SDL_WindowData
 {
     SDL_Window *sdl_window;
 #ifdef SDL_VIDEO_OPENGL_EGL
     EGLSurface egl_surface;
 #endif
+};
 
-} OFFSCREEN_Window;
+extern bool OFFSCREEN_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
+extern void OFFSCREEN_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern void OFFSCREEN_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window);
 
-extern int OFFSCREEN_CreateWindow(_THIS, SDL_Window *window);
-extern void OFFSCREEN_DestroyWindow(_THIS, SDL_Window *window);
-
-#endif /* _SDL_offscreenwindow */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_offscreenwindow_h

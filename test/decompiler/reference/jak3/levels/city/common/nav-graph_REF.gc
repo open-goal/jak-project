@@ -12,7 +12,7 @@
 ;; definition for method 17 of type nav-branch
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-speed-limit ((this nav-branch) (arg0 float))
-  (set! (-> this speed-limit) (the-as uint (max 0 (min 255 (the int (+ 0.5 (* 0.0009765625 arg0)))))))
+  (set! (-> this speed-limit) (the-as uint (max 0 (min 255 (the int (+ 0.5 (/ arg0 1024)))))))
   0
   (none)
   )
@@ -20,7 +20,7 @@
 ;; definition for method 18 of type nav-branch
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-width ((this nav-branch) (arg0 float))
-  (set! (-> this width) (the-as uint (max 0 (min 255 (the int (+ 0.5 (* 0.00390625 arg0)))))))
+  (set! (-> this width) (the-as uint (max 0 (min 255 (the int (+ 0.5 (/ arg0 256)))))))
   0
   (none)
   )
@@ -67,7 +67,7 @@
       (let ((a1-0 this)
             (v1-0 gp-0)
             )
-        (set! (-> v1-0 quad) (-> a1-0 position quad))
+        (vector-copy! v1-0 (-> a1-0 position))
         (set! (-> v1-0 w) 1.0)
         )
       (set! (-> s4-0 quad) (-> gp-0 quad))
@@ -83,8 +83,8 @@
                 )
               (.lvf vf4 (&-> a0-6 quad))
               )
-            (.add.x.vf vf5 vf0 vf0 :mask #b1000)
-            (.add.x.vf vf5 vf4 vf6 :mask #b111)
+            (.add.x.vf.w vf5 vf0 vf0)
+            (.add.x.vf.xyz vf5 vf4 vf6)
             (.svf (&-> a1-3 quad) vf5)
             )
           (let ((a1-4 (-> v1-8 1)))
@@ -94,8 +94,8 @@
                 )
               (.lvf vf4 (&-> a0-7 quad))
               )
-            (.add.x.vf vf5 vf0 vf0 :mask #b1000)
-            (.add.x.vf vf5 vf4 vf6 :mask #b111)
+            (.add.x.vf.w vf5 vf0 vf0)
+            (.add.x.vf.xyz vf5 vf4 vf6)
             (.svf (&-> a1-4 quad) vf5)
             )
           (add-debug-box #t (bucket-id debug) (-> v1-8 0) (-> v1-8 1) *color-yellow*)
@@ -274,7 +274,7 @@
     (let ((a2-6 this)
           (a0-19 v1-24)
           )
-      (set! (-> a0-19 quad) (-> a2-6 position quad))
+      (vector-copy! a0-19 (-> a2-6 position))
       (set! (-> a0-19 w) 1.0)
       )
     (format arg0 "~S~T       :position (~4,,2M ~4,,2M ~4,,2M)~%" arg1 (-> v1-24 x) (-> v1-24 y) (-> v1-24 z))
@@ -304,7 +304,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-pos-xyz ((this nav-node) (arg0 vector))
   (let ((f0-0 (-> this position w)))
-    (set! (-> this position quad) (-> arg0 quad))
+    (vector-copy! (-> this position) arg0)
     (set! (-> this position w) f0-0)
     )
   0
@@ -322,7 +322,7 @@
 ;; definition for method 16 of type nav-node
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-radius ((this nav-node) (arg0 float))
-  (set! (-> this radius) (the-as uint (max 0 (min 255 (the int (+ 0.5 (* 0.0009765625 arg0)))))))
+  (set! (-> this radius) (the-as uint (max 0 (min 255 (the int (+ 0.5 (/ arg0 1024)))))))
   0
   (none)
   )
@@ -903,7 +903,7 @@
           (let ((a2-0 a0-2)
                 (v1-4 s4-0)
                 )
-            (set! (-> v1-4 quad) (-> a2-0 position quad))
+            (vector-copy! v1-4 (-> a2-0 position))
             (set! (-> v1-4 w) 1.0)
             )
           (vector+! s4-0 s4-0 arg0)
@@ -954,7 +954,7 @@
           (let ((a1-0 s3-0)
                 (v1-6 (-> s5-0 rvec))
                 )
-            (set! (-> v1-6 quad) (-> a1-0 position quad))
+            (vector-copy! v1-6 (-> a1-0 position))
             (set! (-> v1-6 w) 1.0)
             )
           (dotimes (s2-0 (-> s3-0 branch-count))
@@ -963,7 +963,7 @@
                 (let ((a2-0 v1-9)
                       (a0-7 (-> s5-0 uvec))
                       )
-                  (set! (-> a0-7 quad) (-> a2-0 position quad))
+                  (vector-copy! a0-7 (-> a2-0 position))
                   (set! (-> a0-7 w) 1.0)
                   )
                 (vector-! (-> s5-0 fvec) (-> s5-0 uvec) (-> s5-0 rvec))
@@ -1020,7 +1020,7 @@
             (let ((a2-1 s1-0)
                   (v1-8 a1-1)
                   )
-              (set! (-> v1-8 quad) (-> a2-1 position quad))
+              (vector-copy! v1-8 (-> a2-1 position))
               (set! (-> v1-8 w) 1.0)
               )
             (let ((f0-3 (vector-vector-distance-squared arg0 a1-1)))
@@ -1052,7 +1052,7 @@
         (let ((a1-0 s4-0)
               (v1-8 s3-0)
               )
-          (set! (-> v1-8 quad) (-> a1-0 position quad))
+          (vector-copy! v1-8 (-> a1-0 position))
           (set! (-> v1-8 w) 1.0)
           )
         (let ((a1-3 s3-0))
@@ -1078,7 +1078,7 @@
       (let ((a1-0 s4-0)
             (v1-1 s3-0)
             )
-        (set! (-> v1-1 quad) (-> a1-0 position quad))
+        (vector-copy! v1-1 (-> a1-0 position))
         (set! (-> v1-1 w) 1.0)
         )
       (when (logtest? (-> s4-0 flags) (nav-node-flag-byte pedestrian))
@@ -1100,7 +1100,7 @@
                         (let ((a0-10 (-> v1-16 nav-mesh))
                               (a1-5 (new 'stack-no-clear 'nav-poly))
                               )
-                          (vector-! (the-as vector (-> a1-5 vertex)) s3-0 (the-as vector (-> a0-10 bounds)))
+                          (vector-! (-> a1-5 vertex 0) s3-0 (the-as vector (-> a0-10 bounds)))
                           (set! (-> a1-5 vertex1 x) 40960.0)
                           (set! (-> a1-5 data 20) (the-as uint 2))
                           (if (nav-mesh-method-45 a0-10 a1-5)
@@ -1234,7 +1234,7 @@
       (let ((t0-0 a0-12)
             (a2-8 (-> a1-7 position))
             )
-        (set! (-> a2-8 quad) (-> t0-0 position quad))
+        (vector-copy! a2-8 (-> t0-0 position))
         (set! (-> a2-8 w) 1.0)
         )
       (set! (-> a1-7 level_name) (-> a0-12 level))
@@ -1462,7 +1462,3 @@
          )
     )
   )
-
-
-
-

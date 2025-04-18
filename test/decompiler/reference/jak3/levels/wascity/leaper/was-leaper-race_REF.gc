@@ -425,7 +425,7 @@
             (set! (-> self minimap) (add-icon! *minimap* self (the-as uint 13) (the-as int #f) (the-as vector #t) 0))
             )
         (when s4-0
-          (set! (-> gp-0 quad) (-> s4-0 control trans quad))
+          (vector-copy! gp-0 (-> s4-0 control trans))
           (+! (-> gp-0 y) 8192.0)
           (vector-! gp-0 gp-0 (-> self root trans))
           (let ((s5-0 (-> self root quat)))
@@ -614,13 +614,14 @@
 ;; definition for method 11 of type wascity-race-ring
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this wascity-race-ring) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (set! (-> this active?) #f)
   (set! (-> this minimap) #f)
   (quaternion->matrix (-> this mat) (-> this root quat))
-  (set! (-> this mat trans quad) (-> this root trans quad))
+  (vector-copy! (-> this mat trans) (-> this root trans))
   (set! (-> this taskman) (the-as handle #f))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 518) this))
   (set! (-> this player-part) (create-launch-control (-> *part-group-id-table* 519) this))
@@ -788,7 +789,7 @@
                                    (new 'static 'talker-speech-class
                                      :name "dax366"
                                      :channel (gui-channel daxter)
-                                     :flags (talker-flags tf0)
+                                     :flags (talker-flags play-only-once)
                                      :speech #x14
                                      :neg #x1
                                      :on-close #f
@@ -1212,9 +1213,7 @@
               )
             )
           (when (not s5-2)
-            (when (and (= (status-of-level-and-borrows *level* 'wascitya #f) 'active)
-                       (= (status-of-level-and-borrows *level* 'wascityb #f) 'active)
-                       )
+            (when (and (= (level-status? *level* 'wascitya #f) 'active) (= (level-status? *level* 'wascityb #f) 'active))
               (let ((s4-3 (-> (level-get *level* 'wasleapr) bsp nav-meshes 0 nav-mesh)))
                 (when s4-3
                   (set! (-> s4-3 next-nav-mesh) (the-as surface (nav-mesh-from-res-tag (-> s4-3 entity) 'next-actor 0)))
@@ -1356,7 +1355,3 @@
   (set-setting! 'airlock #f 0.0 0)
   (none)
   )
-
-
-
-

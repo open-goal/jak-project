@@ -1,10 +1,7 @@
 # Set a more convenient ARM flag
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" AND (NOT BUILD_X86_ON_MACOS))
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     set(ARM64_ARCH TRUE)
     message(STATUS "ARM64 architecture detected")
-elseif()
-    set(ARM64_ARCH FALSE)
-    message(STATUS "Forcefully targetting x86 via Rosetta 2")
 else()
     set(ARM64_ARCH FALSE)
     message(STATUS "Non-ARM64 architecture detected")
@@ -295,6 +292,7 @@ set(RUNTIME_SOURCE
         settings/settings.cpp
         system/background_worker.cpp
         system/Deci2Server.cpp
+        system/hid/devices/dualsense_effects.cpp
         system/hid/devices/game_controller.cpp
         system/hid/devices/keyboard.cpp
         system/hid/devices/mouse.cpp
@@ -316,7 +314,7 @@ add_subdirectory(sound)
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt SDL2::SDL2 imgui discord-rpc sound stb_image libco libcurl)
+target_link_libraries(runtime common fmt SDL3::SDL3 imgui discord-rpc sound stb_image libco libcurl)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()

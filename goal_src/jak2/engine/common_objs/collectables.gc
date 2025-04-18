@@ -880,7 +880,7 @@
       (set! (-> self root trans y) (-> self base y))
       (cond
         ((< (-> self root transv y) -8192.0)
-         (set! (-> self root transv y) (* -0.5 (-> self root transv y)))
+         (set! (-> self root transv y) (/ (-> self root transv y) -2))
          )
         (else
           (if (and (logtest? (-> self fact options) (actor-option suck-in))
@@ -1014,7 +1014,7 @@
              )
             (else
               (if (nonzero? (-> self part))
-                  (set! (-> self part fade) (* 0.0033333334 f0-1))
+                  (set! (-> self part fade) (/ f0-1 300))
                   )
               (when (nonzero? (-> self draw))
                 (logior! (-> self draw status) (draw-control-status force-fade))
@@ -1240,11 +1240,11 @@
 
 (defmethod init-from-entity! ((this eco-yellow) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-common this arg0 (pickup-type eco-yellow) (-> *FACT-bank* eco-single-inc))
   (none)
   )
@@ -1256,11 +1256,11 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this eco-red) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-common this arg0 (pickup-type eco-red) (-> *FACT-bank* eco-single-inc))
   (none)
   )
@@ -1272,11 +1272,11 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this eco-blue) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-common this arg0 (pickup-type eco-blue) (-> *FACT-bank* eco-single-inc))
   (none)
   )
@@ -1288,11 +1288,11 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this eco-green) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-common this arg0 (pickup-type eco-green) (-> *FACT-bank* eco-single-inc))
   (none)
   )
@@ -1304,11 +1304,11 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this health) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-common this arg0 (pickup-type health) (-> *FACT-bank* health-default-inc))
   (none)
   )
@@ -1344,16 +1344,17 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this eco-pill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-common this arg0 (pickup-type eco-pill-green) (-> *FACT-bank* health-small-inc))
   (none)
   )
 
 (defmethod deactivate ((this eco-pill))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (+! (-> *game-info* live-eco-pill-count) -1)
   ((method-of-type collectable deactivate) this)
   (none)
@@ -1396,6 +1397,7 @@ This commonly includes things such as:
 
 
 (defmethod run-logic? ((this money))
+  "Should this process be run? Checked by execute-process-tree."
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (and (nonzero? (-> this draw))
                (logtest? (-> this draw status) (draw-control-status on-screen))
@@ -1410,6 +1412,7 @@ This commonly includes things such as:
   )
 
 (defmethod deactivate ((this money))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (when (and (-> this next-state) (= (-> this next-state name) 'pickup))
     (case (-> this pickup-type)
       (((pickup-type gem))
@@ -1546,11 +1549,11 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this money) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (initialize-allocations this)
   (process-drawable-from-entity! this (-> this entity))
   (initialize-options this 0 1024.0 (the-as fact-info #f))
@@ -1629,6 +1632,7 @@ This commonly includes things such as:
 
 
 (defmethod deactivate ((this gem))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (+! (-> *game-info* live-gem-count) -1)
   (call-parent-method this)
   (none)
@@ -1980,11 +1984,11 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this trick-point) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (initialize-allocations this)
   (process-drawable-from-entity! this (-> this entity))
   (initialize-options this 0 1024.0 (the-as fact-info #f))
@@ -2234,11 +2238,11 @@ This commonly includes things such as:
 
 (defmethod init-from-entity! ((this eco) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((v1-1 (res-lump-value (-> this entity) 'eco-info uint128 :time -1000000000.0)))
     (set! (-> this type) (cond
                            ((= (the-as uint v1-1) 3)
@@ -2557,14 +2561,14 @@ This commonly includes things such as:
                   )
                  ((and (>= f22-0 f0-5) (logtest? s2-1 (game-feature gun-red)))
                   (set! s2-0 (pickup-type ammo-red))
-                  (set! f30-0 (* 0.5 f30-0))
+                  (set! f30-0 (/ f30-0 2))
                   )
                  ((and (>= f24-0 f0-5) (logtest? s2-1 (game-feature gun-blue)))
                   (set! s2-0 (pickup-type ammo-blue))
                   )
                  ((and (>= f28-0 f0-5) (logtest? s2-1 (game-feature gun-dark)))
                   (set! s2-0 (pickup-type ammo-dark))
-                  (set! f30-0 (* 0.1 f30-0))
+                  (set! f30-0 (/ f30-0 10))
                   )
                  (else
                    (set! s2-0 (pickup-type eco-pill-dark))

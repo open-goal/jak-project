@@ -260,7 +260,9 @@
        )
      )
     (('menu)
-     (set-master-mode (cond
+     ;; og:preserve-this Let the popup menu code handle inputs instead of the code written for the original debug menu
+     (when (not *popup-menu-open*)
+      (set-master-mode (cond
                         ((and *debug-segment* (cpad-hold? 0 l3) (cpad-pressed? 0 select start))
                          'menu
                          )
@@ -280,7 +282,7 @@
                           *master-mode*
                           )
                         )
-                      )
+                      ))
      (set! *pause-lock* #f)
      )
     (('pause)
@@ -339,9 +341,9 @@
       (.lvf vf1 (&-> this color-dest quad))
       (.lvf vf2 (&-> this color quad))
       (.sub.vf vf3 vf1 vf2)
-      (.add.x.vf vf4 vf4 vf4 :mask #b10)
-      (.min.w.vf vf4 vf4 vf0 :mask #b10)
-      (.max.y.vf vf4 vf4 vf0 :mask #b10)
+      (.add.x.vf.y vf4 vf4 vf4)
+      (.min.w.vf.y vf4 vf4 vf0)
+      (.max.y.vf.y vf4 vf4 vf0)
       (.mul.y.vf vf3 vf3 vf4)
       (.add.vf vf1 vf2 vf3)
       (.svf (&-> this extra quad) vf4)
@@ -390,9 +392,9 @@
                  )
   "Initialize the screen-filter with the given settings."
   (set! (-> this draw?) #t)
-  (set! (-> this color quad) (-> arg0 quad))
-  (set! (-> this color-src quad) (-> arg0 quad))
-  (set! (-> this color-dest quad) (-> arg1 quad))
+  (vector-copy! (-> this color) arg0)
+  (vector-copy! (-> this color-src) arg0)
+  (vector-copy! (-> this color-dest) arg1)
   (set! (-> this extra x) arg2)
   (set! (-> this extra y) 0.0)
   (set! (-> this bucket) arg3)
@@ -1508,10 +1510,12 @@
     ;     (draw-color-bars *blit-displays-work*)
     ;     )
 
-    ;; run debug menu
-    (*menu-hook*)
+    ;; draw and update menus
+    ;; og:preserve-this Let the popup menu code handle inputs instead of the code written for the original debug menu
+    (when (not *popup-menu-open*)
+      (*menu-hook*))
+
     ; load the right language file.
-    ;; disabled for now: seems to load 255COMMON.TXT.
     (load-level-text-files -1)
 
     ;; draw screen filter

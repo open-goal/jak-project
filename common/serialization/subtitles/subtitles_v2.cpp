@@ -5,7 +5,7 @@
 
 #include "subtitles_v1.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 void to_json(json& j, const SubtitleLineMetadata& obj) {
   json_serialize(frame_start);
@@ -131,15 +131,17 @@ const std::unordered_map<std::string, u16> jak3_speaker_name_to_enum_val = {
     {"ottsel-veger", 33},
     {"ottsel-tess", 34},
     {"computer", 35},
-    {"krew", 36},
-    {"baron", 37},
-    {"scherr", 38},
-    {"arey", 39},
-    {"baldwin", 40},
-    {"schimpf", 41},
-    {"martinsen", 42},
-    {"phillips", 43},
-    {"yates", 44},
+    {"ottsel-voice-before-outro", 36},
+    {"ottsel-voice", 37},
+    {"krew", 38},
+    {"baron", 39},
+    {"scherr", 40},
+    {"arey", 41},
+    {"baldwin", 42},
+    {"schimpf", 43},
+    {"martinsen", 44},
+    {"phillips", 45},
+    {"yates", 46},
 };
 
 GameSubtitlePackage read_json_files_v2(const GameSubtitleDefinitionFile& file_info) {

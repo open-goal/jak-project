@@ -16,7 +16,7 @@
     (clear-focused (_type_) none)
     (collide-spec-match? (_type_ process-focusable) object)
     (reset-to-collide-spec (_type_ collide-spec) none)
-    (try-update-focus (_type_ process-focusable) symbol)
+    (focus-on! (_type_ process-focusable) symbol)
     )
   )
 
@@ -33,19 +33,14 @@
   "If the focused process is not dead,
    check that the [[collide-spec]] of the focus and the process match."
   (when (and proc (not (logtest? (-> proc focus-status) (focus-status disable dead))))
-    (let* ((root (-> proc root))
-           (cshape (if (type? root collide-shape)
-                       root
-                       )
-                   )
-           )
+    (let ((cshape (as-type (-> proc root) collide-shape)))
       (and cshape (logtest? (-> this collide-with) (-> cshape root-prim prim-core collide-as)))
       )
     )
   )
 
-(defmethod try-update-focus ((this focus) (proc process-focusable))
-  "Try to set the `handle` of this focus to the given process."
+(defmethod focus-on! ((this focus) (proc process-focusable))
+  "Set the `handle` of this focus to the given process. Return if the handle changed."
   (when (!= (handle->process (-> this handle)) proc)
     (set! (-> this handle) (process->handle proc))
     #t

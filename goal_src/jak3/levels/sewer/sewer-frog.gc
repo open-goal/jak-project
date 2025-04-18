@@ -154,34 +154,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 364.0889
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 0.0676 :y -0.6016 :z 0.7959 :w 30666.041)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -496,6 +496,7 @@
 (set! (-> *sewer-frog-nav-enemy-info* fact-defaults) *fact-info-sewer-frog-defaults*)
 
 (defmethod init-enemy-collision! ((this sewer-frog))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -569,7 +570,7 @@
   (let ((a1-0 (-> self nav state))
         (a0-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> a0-0 quad) (-> a1-0 target-pos quad))
+    (vector-copy! a0-0 (-> a1-0 target-pos))
     (let* ((f0-0 (vector-vector-xz-distance a0-0 (-> self root trans)))
            (gp-0 (-> self enemy-info))
            (f30-0 (lerp-scale 0.0 1.0 f0-0 12288.0 28672.0))
@@ -739,7 +740,7 @@
             (a1-0 (-> self nav state))
             (a0-3 (new 'stack-no-clear 'vector))
             )
-        (set! (-> a0-3 quad) (-> a1-0 target-pos quad))
+        (vector-copy! a0-3 (-> a1-0 target-pos))
         (t9-3 a0-3)
         )
       ((-> (method-of-type nav-enemy active) trans))
@@ -784,7 +785,7 @@
           )
       )
     (if (and (time-elapsed? (-> self state-time) (-> self reaction-time))
-             (not (enemy-method-104 self (-> self focus-pos) 10012.444))
+             (not (pointing-toward? self (-> self focus-pos) 10012.444))
              )
         (go-virtual turn-to-face-focus)
         )
@@ -824,7 +825,7 @@
             (a1-3 (-> self nav state))
             (a0-4 (new 'stack-no-clear 'vector))
             )
-        (set! (-> a0-4 quad) (-> a1-3 target-pos quad))
+        (vector-copy! a0-4 (-> a1-3 target-pos))
         (t9-4 a0-4)
         )
       (sewer-frog-method-192 self)
@@ -900,7 +901,7 @@
       (ja :num! (seek!))
       )
     (set! (-> self scared-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range self 3.8 5.6)))))
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   :post nav-enemy-chase-post
   )
@@ -908,9 +909,9 @@
 ;; WARN: Return type mismatch object vs none.
 (defbehavior sewer-frog-check-hop sewer-frog ()
   (let ((a1-0 (new 'stack-no-clear 'vector)))
-    (set! (-> a1-0 quad) (-> self move-dest quad))
+    (vector-copy! a1-0 (-> self move-dest))
     (set! (-> a1-0 w) (-> self nav-radius-backup))
-    (if (add-root-sphere-to-hash! (-> self nav) a1-0 #x100068)
+    (if (check-sphere-blocked! (-> self nav) a1-0 #x100068)
         (go-virtual stare)
         )
     )
@@ -941,7 +942,7 @@
             (a1-3 (-> self nav state))
             (a0-4 (new 'stack-no-clear 'vector))
             )
-        (set! (-> a0-4 quad) (-> a1-3 target-pos quad))
+        (vector-copy! a0-4 (-> a1-3 target-pos))
         (t9-5 a0-4)
         )
       ((-> (method-of-type nav-enemy flee) trans))
@@ -982,14 +983,14 @@
       vector
       (when (and a0-2 (nav-enemy-method-166 this s5-0 (get-trans (the-as process-focusable a0-2) 0)))
         (set! (-> s5-0 w) (-> this nav-radius-backup))
-        (not (add-root-sphere-to-hash! (-> this nav) s5-0 #x100068))
+        (not (check-sphere-blocked! (-> this nav) s5-0 #x100068))
         )
       )
     )
   )
 
 (defmethod go-stare2 ((this sewer-frog))
-  (if (not (enemy-method-104 this (-> this focus-pos) 6371.5557))
+  (if (not (pointing-toward? this (-> this focus-pos) 6371.5557))
       (go (method-of-object this turn-to-face-focus))
       (go (method-of-object this stare))
       )
@@ -1012,7 +1013,9 @@
   (none)
   )
 
+;; WARN: Return type mismatch symbol vs object.
 (defmethod ragdoll-settled? ((this sewer-frog))
+  "Has the ragdoll stopped moving?"
   (let ((a0-2 (handle->process (-> this ragdoll-proc))))
     (or (not a0-2)
         (ragdoll-proc-method-19 (the-as ragdoll-proc a0-2))
@@ -1022,7 +1025,8 @@
   )
 
 ;; WARN: disable def twice: 22. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
-(defmethod enemy-method-108 ((this sewer-frog) (arg0 process-focusable))
+(defmethod should-flee-from? ((this sewer-frog) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   (or (< (current-time) (-> this scared-timer))
       (let ((v1-4 (handle->process (-> this focus handle))))
         (if v1-4
@@ -1036,6 +1040,7 @@
   )
 
 (defmethod play-damage-sound ((this sewer-frog) (arg0 int))
+  "Pick and play the damage/death sound."
   (case arg0
     ((2)
      (if (and (-> this next-state) (= (-> this next-state name) 'knocked))
@@ -1050,10 +1055,11 @@
   )
 
 (defmethod enemy-common-post ((this sewer-frog))
+  "Common implementation of post. Runs ja-post."
   (when (< 1 (the-as int (-> this focus aware)))
     (let ((a0-3 (handle->process (-> this focus handle))))
       (if a0-3
-          (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-3) 3) quad))
+          (vector-copy! (-> this focus-pos) (get-trans (the-as process-focusable a0-3) 3))
           )
       )
     )
@@ -1063,6 +1069,7 @@
   )
 
 (defmethod event-handler ((this sewer-frog) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -1074,7 +1081,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1089,12 +1096,13 @@
   )
 
 (defmethod init-enemy! ((this sewer-frog))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sewer-frog" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *sewer-frog-nav-enemy-info*)
+  (setup-enemy! this *sewer-frog-nav-enemy-info*)
   (set! (-> this water) (new 'process 'water-control this 0 4096.0 8192.0 2048.0))
   (set! (-> this water flags)
         (water-flag active use-water-anim touch-water part-splash part-drip part-rings part-water find-water)

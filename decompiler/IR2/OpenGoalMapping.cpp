@@ -207,6 +207,13 @@ std::string OpenGOALAsm::full_function_name() {
       func_name = fmt::format(fmt::runtime(func_name), bc);
     }
   }
+
+  // Handle destination masks
+  if (func.allows_modifier(MOD::DEST_MASK) && m_instr.cop2_dest != 0xff &&
+      m_instr.cop2_dest != 15) {
+    func_name += m_instr.cop2_dest_to_char();
+  }
+
   return func_name;
 }
 
@@ -268,13 +275,6 @@ std::vector<goos::Object> OpenGOALAsm::get_args(const std::vector<DecompilerLabe
   // Handle third-argument accumulator
   if (func.allows_modifier(MOD::ACC_THIRD_SRC_ARG)) {
     args.push_back(pretty_print::to_symbol("acc"));
-  }
-
-  // Handle destination masks
-  if (func.allows_modifier(MOD::DEST_MASK) && m_instr.cop2_dest != 0xff &&
-      m_instr.cop2_dest != 15) {
-    named_args.push_back(
-        pretty_print::to_symbol(fmt::format(":mask #b{:b}", m_instr.cop2_dest_mask_intel())));
   }
 
   // Some functions are configured, or its easiest to swap the source args

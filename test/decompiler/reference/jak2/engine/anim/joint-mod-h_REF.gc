@@ -369,7 +369,7 @@ Unlike jak 2, this actually multiplies the scale, instead of adding."
   (let ((s4-0 (the-as joint-mod-add-local (-> arg0 param1))))
     (when (-> s4-0 enable)
       (if (-> s4-0 add-translation)
-          (vector+! (-> arg1 trans) (-> arg1 trans) (the-as vector (-> s4-0 transform)))
+          (vector+! (-> arg1 trans) (-> arg1 trans) (-> s4-0 transform trans))
           )
       (if (-> s4-0 add-rotation)
           (quaternion-normalize! (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> s4-0 transform quat)))
@@ -503,12 +503,7 @@ Then, apply the normal parented transform."
   (let ((gp-0 (the-as joint-mod-blend-local (-> arg0 param1))))
     (cond
       ((-> gp-0 enable)
-       (vector-lerp!
-         (the-as vector (-> gp-0 blend-transform))
-         (-> arg1 trans)
-         (the-as vector (-> gp-0 transform))
-         (-> gp-0 blend)
-         )
+       (vector-lerp! (-> gp-0 blend-transform trans) (-> arg1 trans) (-> gp-0 transform trans) (-> gp-0 blend))
        (vector-lerp! (-> gp-0 blend-transform scale) (-> arg1 scale) (-> gp-0 transform scale) (-> gp-0 blend))
        (quaternion-slerp! (-> gp-0 blend-transform quat) (-> arg1 quat) (-> gp-0 transform quat) (-> gp-0 blend))
        (cspace<-parented-transformq-joint! arg0 (-> gp-0 blend-transform))
@@ -637,80 +632,60 @@ Then, apply the normal parented transform."
 ;; WARN: Return type mismatch object vs none.
 (defun joint-mod-blend-world-callback ((arg0 cspace) (arg1 transformq))
   "Callback for joint-mod-blend-local. See comment on that type."
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((gp-0 (the-as joint-mod-blend-world (-> arg0 param1))))
-      (cond
-        ((-> gp-0 enable)
-         (let ((f30-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags trans))
-                          (-> gp-0 blend)
-                          0.0
-                          )
-                      )
-               (f28-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags scale))
-                          (-> gp-0 blend)
-                          0.0
-                          )
-                      )
-               (f26-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags rotation))
-                          (-> gp-0 blend)
-                          0.0
-                          )
-                      )
-               (s0-0 (new 'stack-no-clear 'matrix))
-               (s2-0 (new 'stack-no-clear 'matrix))
-               (s3-0 (new 'stack-no-clear 'quaternion))
-               )
-           (let ((s1-0 (new 'stack-no-clear 'vector)))
-             (if (= (-> arg0 parent bone scale w) 0.0)
-                 (matrix<-transformq! s0-0 arg1)
-                 (matrix<-parented-transformq! s0-0 arg1 (-> arg0 parent bone scale))
-                 )
-             (matrix*! s2-0 s0-0 (-> arg0 parent bone transform))
-             (set-vector!
-               s1-0
-               (vector-length (the-as vector (-> s2-0 vector)))
-               (vector-length (-> s2-0 vector 1))
-               (vector-length (-> s2-0 vector 2))
-               1.0
-               )
-             (let ((v1-19 (-> gp-0 blend-transform scale)))
-               (let ((a0-11 (-> arg1 scale)))
-                 (.lvf vf4 (&-> s1-0 quad))
-                 (.lvf vf5 (&-> a0-11 quad))
-                 )
-               (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-               (.mul.vf vf6 vf4 vf5 :mask #b111)
-               (.svf (&-> v1-19 quad) vf6)
-               )
+  (let ((gp-0 (the-as joint-mod-blend-world (-> arg0 param1))))
+    (cond
+      ((-> gp-0 enable)
+       (let ((f30-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags trans))
+                        (-> gp-0 blend)
+                        0.0
+                        )
+                    )
+             (f28-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags scale))
+                        (-> gp-0 blend)
+                        0.0
+                        )
+                    )
+             (f26-0 (if (logtest? (-> gp-0 blend-flags) (joint-mod-blend-flags rotation))
+                        (-> gp-0 blend)
+                        0.0
+                        )
+                    )
+             (s0-0 (new 'stack-no-clear 'matrix))
+             (s2-0 (new 'stack-no-clear 'matrix))
+             (s3-0 (new 'stack-no-clear 'quaternion))
              )
-           (vector-lerp!
-             (the-as vector (-> gp-0 blend-transform))
-             (-> s2-0 trans)
-             (the-as vector (-> gp-0 transform))
-             f30-0
+         (let ((s1-0 (new 'stack-no-clear 'vector)))
+           (if (= (-> arg0 parent bone scale w) 0.0)
+               (matrix<-transformq! s0-0 arg1)
+               (matrix<-parented-transformq! s0-0 arg1 (-> arg0 parent bone scale))
+               )
+           (matrix*! s2-0 s0-0 (-> arg0 parent bone transform))
+           (set-vector!
+             s1-0
+             (vector-length (-> s2-0 vector 0))
+             (vector-length (-> s2-0 vector 1))
+             (vector-length (-> s2-0 vector 2))
+             1.0
              )
-           (vector-lerp! (-> gp-0 blend-transform scale) (-> gp-0 blend-transform scale) (-> gp-0 transform scale) f28-0)
-           (quaternion-slerp!
-             (-> gp-0 blend-transform quat)
-             (matrix->quaternion s3-0 s2-0)
-             (-> gp-0 transform quat)
-             f26-0
-             )
+           (vector*! (-> gp-0 blend-transform scale) s1-0 (-> arg1 scale))
            )
-         (cspace<-transformq! arg0 (-> gp-0 blend-transform))
+         (vector-lerp! (-> gp-0 blend-transform trans) (-> s2-0 trans) (-> gp-0 transform trans) f30-0)
+         (vector-lerp! (-> gp-0 blend-transform scale) (-> gp-0 blend-transform scale) (-> gp-0 transform scale) f28-0)
+         (quaternion-slerp!
+           (-> gp-0 blend-transform quat)
+           (matrix->quaternion s3-0 s2-0)
+           (-> gp-0 transform quat)
+           f26-0
+           )
          )
-        (else
-          (cspace<-parented-transformq-joint! arg0 arg1)
-          )
+       (cspace<-transformq! arg0 (-> gp-0 blend-transform))
+       )
+      (else
+        (cspace<-parented-transformq-joint! arg0 arg1)
         )
       )
-    (none)
     )
+  (none)
   )
 
 ;; definition for method 0 of type joint-mod-blend-world

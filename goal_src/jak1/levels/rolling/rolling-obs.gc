@@ -11,7 +11,9 @@
 
 (deftype rolling-part (part-spawner) ())
 
+
 (deftype rollingcam (process-hidden) ())
+
 
 (defskelgroup *rollingcam-sg*
   rollingcam
@@ -24,16 +26,19 @@
   ((root      collide-shape-moving :override)
    (max-frame float)))
 
+
 (deftype pusher (pusher-base)
   ((sync sync-info-paused :inline)
    (cyl  cylinder :inline))
   (:states
    pusher-idle))
 
+
 (deftype gorge-pusher (pusher-base)
   ((min-frame float))
   (:states
    gorge-pusher-idle))
+
 
 (defskelgroup *pusher-sg*
   pusher
@@ -138,6 +143,7 @@
    dark-plant-idle
    dark-plant-sprout
    dark-plant-startup))
+
 
 (defskelgroup *dark-plant-sg*
   dark-plant
@@ -280,7 +286,7 @@
 
 (defpart 2356
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters 2))
    (:scale-x (meters 12))
@@ -297,7 +303,7 @@
 
 (defpart 1764
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 128.0)
    (:scale-x (meters 0.2) (meters 0.4))
    (:scale-y :copy scale-x)
@@ -340,6 +346,7 @@
    happy-plant-init
    happy-plant-opened
    happy-plant-opening))
+
 
 (defskelgroup *happy-plant-sg*
   happy-plant
@@ -462,6 +469,7 @@
   ((digit int8 5))
   :pack-me)
 
+
 (defun race-time-copy! ((arg0 race-time) (arg1 race-time))
   (dotimes (v1-0 5)
     (set! (-> arg0 digit v1-0) (-> arg1 digit v1-0)))
@@ -470,9 +478,9 @@
 (defun seconds->race-time ((arg0 race-time) (arg1 time-frame))
   (let* ((v1-1 (max 0 (min #x2bf1d arg1)))
          (f0-1 (* 0.0033333334 (the float v1-1))))
-    (set! (-> arg0 digit 0) (the int (* 0.016666668 f0-1)))
+    (set! (-> arg0 digit 0) (the int (/ f0-1 60)))
     (let ((f0-2 (- f0-1 (* 60.0 (the float (-> arg0 digit 0))))))
-      (set! (-> arg0 digit 1) (the int (* 0.1 f0-2)))
+      (set! (-> arg0 digit 1) (the int (/ f0-2 10)))
       (let ((f0-3 (- f0-2 (* 10.0 (the float (-> arg0 digit 1))))))
         (set! (-> arg0 digit 2) (the int f0-3))
         (let ((f0-4 (- f0-3 (the float (-> arg0 digit 2)))))
@@ -527,6 +535,7 @@
    (broken-look lod-set :inline))
   (:states (rolling-start-break symbol)
    rolling-start-whole))
+
 
 (defstate rolling-start-break (rolling-start)
   :event
@@ -584,6 +593,7 @@
    (radius    float)
    (thickness float)))
 
+
 (defbehavior gorge-init gorge ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float))
   (forward-down->inv-matrix (-> self coord) arg1 (new 'static 'vector :y -1.0))
   (matrix-transpose! (-> self coord) (-> self coord))
@@ -609,14 +619,17 @@
    gorge-start-racing
    gorge-start-ready))
 
+
 (deftype gorge-finish (gorge)
   ((alt-actor entity-actor))
   (:states
    gorge-finish-idle))
 
+
 (deftype gorge-abort (gorge) ()
   (:states
    gorge-abort-idle))
+
 
 (defun gorge-behind ((arg0 gorge))
   (if (not *target*) (return #f))
@@ -904,6 +917,7 @@
   (none))
 
 (deftype rolling-water (water-anim) ())
+
 
 (define ripple-for-rolling-water
   (the-as object

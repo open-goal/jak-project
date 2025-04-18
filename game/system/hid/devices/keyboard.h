@@ -20,7 +20,7 @@ struct ActiveKeyboardAction {
 
 class KeyboardDevice : public InputDevice {
  public:
-  KeyboardDevice(){};
+  KeyboardDevice() {};
   KeyboardDevice(std::shared_ptr<game_settings::InputSettings> settings);
   ~KeyboardDevice() {}
 

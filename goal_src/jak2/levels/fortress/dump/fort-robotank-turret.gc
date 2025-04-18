@@ -191,8 +191,8 @@
   :code (behavior ()
     (until #f
       (when (and (not (paused?)) (time-elapsed? (-> self state-time) (seconds 1)))
-        (seek! (-> self anim-frame) 0.0 (* 0.2 (-> self clock time-adjust-ratio)))
-        (seek! (-> self transition) 1.0 (* 0.01 (-> self clock time-adjust-ratio)))
+        (seek! (-> self anim-frame) 0.0 (/ (-> self clock time-adjust-ratio) 5))
+        (seek! (-> self transition) 1.0 (/ (-> self clock time-adjust-ratio) 100))
         )
       (set-roboscreen-alpha! (-> self transition))
       (ja :num-func num-func-identity :frame-num (-> self anim-frame))
@@ -218,7 +218,7 @@
   :code (behavior ()
     (until #f
       (when (not (paused?))
-        (seek! (-> self anim-frame) 15.0 (* 0.2 (-> self clock time-adjust-ratio)))
+        (seek! (-> self anim-frame) 15.0 (/ (-> self clock time-adjust-ratio) 5))
         (seek! (-> self transition) 0.0 (* 0.015 (-> self clock time-adjust-ratio)))
         )
       (set-roboscreen-alpha! (-> self transition))
@@ -240,8 +240,7 @@
 (defstate die (fort-roboscreen)
   :virtual #t
   :code (behavior ()
-    (suspend-for
-      (seconds 1)
+    (suspend-for (seconds 1)
       (seek! (-> self transition) 0.0 (seconds-per-frame))
       (set-roboscreen-alpha! (-> self transition))
       )
@@ -275,9 +274,9 @@
           )
         (.lvf vf5 (&-> s5-0 quad))
         (.lvf vf4 (&-> gp-0 quad))
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> v1-10 quad) vf6)
         )
       )
@@ -328,7 +327,7 @@
   )
 
 (defpart 2471
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.5 1.0)
     (:x (meters -3) (meters 5))
     (:y (meters -0.1) (meters 0.3))
@@ -433,7 +432,7 @@
        (let ((f0-0 (vector-length (vector-! (new 'stack-no-clear 'vector) (the-as vector gp-0) (the-as vector s5-0))))
              (gp-1 (-> self sight-scale))
              )
-         (set! (-> gp-1 z) (* 0.000024414063 f0-0))
+         (set! (-> gp-1 z) (/ f0-0 (meters 10)))
          (let ((f0-1 (lerp-scale 0.1 6.0 f0-0 61440.0 163840.0)))
            (set! (-> gp-1 x) f0-1)
            (set! (-> gp-1 y) f0-1)
@@ -686,7 +685,7 @@
               )
 
 (defpart 2473
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 1.5) (meters 0.1))
     (:rot-x (degrees 1.125))
@@ -903,7 +902,7 @@
              (let* ((f0-29 (fmax -4551.1113 (fmin 4551.1113 (- 16384.0 (acos (- (vector-dot gp-2 *y-vector*)))))))
                     (f2-1 (- (-> self gun-elev-cam) f0-29))
                     (f1-12 (if (< f2-1 0.0)
-                               (fmin 3640.889 (* (fabs (* 0.1 f2-1)) (-> self clock frames-per-second)))
+                               (fmin 3640.889 (* (fabs (/ f2-1 10)) (-> self clock frames-per-second)))
                                910.2222
                                )
                            )
@@ -1184,7 +1183,8 @@
       (logior! (-> self flags) (robotank-turret-flags rotflags-3))
       (set! (-> self firing-sight-pos quad) (-> self sight-pos quad))
       (send-event (handle->process (-> self reticle)) 'lock)
-      (suspend-for (seconds 0.5))
+      (suspend-for (seconds 0.5)
+        )
       (let ((gp-2 (max 2 (min 3 (rand-vu-int-range 0 3)))))
         0
         (dotimes (s5-2 gp-2)
@@ -1211,7 +1211,8 @@
               )
             )
           (let ((f30-0 (rand-vu-float-range 0.05 0.43)))
-            (suspend-for (the int (* 300.0 f30-0)))
+            (suspend-for (the int (* 300.0 f30-0))
+              )
             )
           )
         )
@@ -1230,7 +1231,8 @@
                      )
                    )
             )
-        (suspend-for (the int (* 300.0 f30-1)))
+        (suspend-for (the int (* 300.0 f30-1))
+          )
         )
       )
     #f
@@ -1243,7 +1245,8 @@
   :code (behavior ()
     (send-event (handle->process (-> self reticle)) 'die)
     (send-event (handle->process (-> self screen)) 'die)
-    (suspend-for (seconds 1))
+    (suspend-for (seconds 1)
+      )
     (while (-> self child)
       (suspend)
       )

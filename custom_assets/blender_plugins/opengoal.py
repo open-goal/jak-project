@@ -90,6 +90,9 @@ def draw_func_ob(self, context):
     layout = self.layout
     ob = context.object
     layout.prop(ob, "set_invisible")
+    layout.prop(ob, "enable_custom_weights")
+    layout.prop(ob, "copy_eye_draws")
+    layout.prop(ob, "copy_mod_draws")
     layout.prop(ob, "set_collision")
     if (ob.set_collision):
         layout.prop(ob, "ignore")
@@ -116,6 +119,9 @@ def register():
 
     bpy.types.Object.set_invisible = bpy.props.BoolProperty(name="Invisible")
     bpy.types.Object.set_collision = bpy.props.BoolProperty(name="Apply Collision Properties")
+    bpy.types.Object.enable_custom_weights = bpy.props.BoolProperty(name="Use Custom Bone Weights")
+    bpy.types.Object.copy_eye_draws = bpy.props.BoolProperty(name="Copy Eye Draws")
+    bpy.types.Object.copy_mod_draws = bpy.props.BoolProperty(name="Copy Mod Draws")
     bpy.types.Object.ignore = bpy.props.BoolProperty(name="ignore")
     bpy.types.Object.noedge = bpy.props.BoolProperty(name="No-Edge")
     bpy.types.Object.noentity = bpy.props.BoolProperty(name="No-Entity")

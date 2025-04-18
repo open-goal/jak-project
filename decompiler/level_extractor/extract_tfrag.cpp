@@ -2032,6 +2032,20 @@ s32 find_or_add_texture_to_level(u32 combo_tex_id,
       if (ok_to_miss) {
         // we're missing a texture, just use the first one.
         tex_it = tdb.textures.begin();
+        // some tfrags in jak 3 are missing textures, so we use some suitable
+        // replacements instead of the default eye texture
+        static std::map<std::string, std::string> per_level_tex_hacks = {
+            {"wasintro", "des-rock-01"},
+            {"intpfall", "common-black"},
+            {"powergd", "common-black"},
+        };
+        auto it = std::find_if(tdb.textures.begin(), tdb.textures.end(),
+                               [&](const std::pair<u32, TextureDB::TextureData> val) {
+                                 return val.second.name == per_level_tex_hacks[level_name];
+                               });
+        if (it != tdb.textures.end()) {
+          tex_it = it;
+        }
       } else {
         ASSERT_MSG(
             false,

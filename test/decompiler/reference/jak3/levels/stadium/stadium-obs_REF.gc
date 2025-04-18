@@ -51,6 +51,7 @@
 
 ;; definition for method 11 of type stadium-flag-base
 (defmethod init-from-entity! ((this stadium-flag-base) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
@@ -225,11 +226,11 @@
     (sound-play "door-blow")
     (cond
       ((logtest? (-> *part-group-id-table* 1001 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 3 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 3 bone transform trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1001))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 3 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 3 bone transform trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1001))
         )
       )
@@ -275,6 +276,7 @@
 
 ;; definition for method 11 of type rub-dark-jak-door
 (defmethod init-from-entity! ((this rub-dark-jak-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (when (and (task-node-closed? (game-task-node palace-ruins-patrol-resolution))
              (not (task-node-closed? (game-task-node palace-ruins-attack-resolution)))
              )
@@ -413,6 +415,7 @@
 ;; definition for method 11 of type rub-falling-step
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this rub-falling-step) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -613,7 +616,7 @@
     )
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 150) this))
   (quaternion->matrix (-> this mat) (-> this root quat))
-  (set! (-> this mat trans quad) (-> this root trans quad))
+  (vector-copy! (-> this mat trans) (-> this root trans))
   (go (method-of-object this idle))
   )
 
@@ -784,11 +787,7 @@
 
 ;; definition for method 31 of type rub-rhino-door
 (defmethod impact-breaks-door? ((this rub-rhino-door) (arg0 rigid-body-impact) (arg1 wvehicle))
-  (let ((v1-0 (if (type? arg1 wvehicle)
-                  arg1
-                  )
-              )
-        )
+  (let ((v1-0 (as-type arg1 wvehicle)))
     (when (or (< 2457600.0 (-> arg0 impulse))
               (and v1-0 (logtest? (-> v1-0 controls flags) (vehicle-controls-flag vcf2)))
               )
@@ -803,7 +802,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod do-explode ((this rub-rhino-door))
   (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> gp-0 fountain-rand-transv-lo quad) (-> (target-pos 0) quad))
+    (vector-copy! (-> gp-0 fountain-rand-transv-lo) (target-pos 0))
     (set! (-> gp-0 fountain-rand-transv-hi x) 122880.0)
     (set! (-> gp-0 fountain-rand-transv-hi y) 245760.0)
     (set! (-> gp-0 fountain-rand-transv-hi z) 4096.0)
@@ -857,6 +856,7 @@
 
 ;; definition for method 11 of type rub-rhino-door
 (defmethod init-from-entity! ((this rub-rhino-door) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (when (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
     (cleanup-for-death this)
     (return #f)
@@ -983,13 +983,10 @@
 
 ;; definition for method 11 of type mh-tower-smoke-stda
 (defmethod init-from-entity! ((this mh-tower-smoke-stda) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1004) this))
   (go (method-of-object this idle))
   )
-
-
-
-
