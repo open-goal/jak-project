@@ -18,7 +18,7 @@ void to_json(json& j, const DebugSettings& obj) {
   json_serialize(text_check_range);
   json_serialize(text_max_range);
   json_serialize(hide_imgui_key);
-  j["toggle_fullscreen_keys"] = obj.toggle_fullscreen_keys;
+  j["toggle_fullscreen_key"] = obj.toggle_fullscreen_key;
 }
 
 void from_json(const json& j, DebugSettings& obj) {
@@ -32,8 +32,8 @@ void from_json(const json& j, DebugSettings& obj) {
   json_deserialize_if_exists(text_check_range);
   json_deserialize_if_exists(text_max_range);
   json_deserialize_if_exists(hide_imgui_key);
-  if (j.contains("toggle_fullscreen_keys")) {
-    j.at("toggle_fullscreen_keys").get_to(obj.toggle_fullscreen_keys);
+  if (j.contains("toggle_fullscreen_key")) {
+    j.at("toggle_fullscreen_key").get_to(obj.toggle_fullscreen_key);
   }
 }
 
