@@ -40,10 +40,7 @@ struct DebugSettings {
   u32 hide_imgui_key = SDLK_LALT;
 
   std::vector<KeyWithModifiers> toggle_fullscreen_keys = {
-      KeyWithModifiers(SDLK_RETURN, InputModifiers(SDL_KMOD_ALT)),
-      KeyWithModifiers(SDLK_F12, InputModifiers())};
-
-  void load_settings();
+      KeyWithModifiers(SDLK_RETURN, InputModifiers(SDL_KMOD_ALT)) void load_settings();
   void save_settings();
 };
 
