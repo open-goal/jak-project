@@ -41,8 +41,8 @@ struct DebugSettings {
 
   std::vector<KeyWithModifiers> toggle_fullscreen_keys = {
       KeyWithModifiers(SDLK_RETURN, InputModifiers(SDL_KMOD_ALT)) void load_settings();
-  void save_settings();
-};
+} void save_settings();
+};  // namespace game_settings
 
 void to_json(json& j, const DebugSettings& obj);
 void from_json(const json& j, DebugSettings& obj);
