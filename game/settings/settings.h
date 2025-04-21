@@ -39,7 +39,8 @@ struct DebugSettings {
 
   u32 hide_imgui_key = SDLK_LALT;
 
-  KeyWithModifiers toggle_fullscreen_key = KeyWithModifiers(SDLK_RETURN, InputModifiers(SDL_KMOD_ALT));
+  KeyWithModifiers toggle_fullscreen_key =
+      KeyWithModifiers(SDLK_RETURN, InputModifiers(SDL_KMOD_ALT));
 
   void load_settings();
   void save_settings();
