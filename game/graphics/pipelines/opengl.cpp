@@ -349,7 +349,6 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
   m_input_manager->register_command(
       CommandBinding::Source::KEYBOARD,
       CommandBinding(SDLK_F2, [&]() { m_take_screenshot_next_frame = true; }));
-  bool toggle_pressed = false;
 
   for (const auto& bind : Gfx::g_debug_settings.toggle_fullscreen_keys) {
     m_input_manager->register_command(
