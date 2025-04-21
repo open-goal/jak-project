@@ -300,6 +300,36 @@ void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMod
   }
 }
 
+void DisplayManager::toggle_display_mode() {
+  const auto current_mode = m_display_settings.display_mode;
+
+  lg::info("Current display mode: ");
+  switch (current_mode) {
+    case game_settings::DisplaySettings::DisplayMode::Fullscreen:
+      lg::info("Fullscreen\n");
+      lg::info("Switching to Windowed mode...\n");
+      enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Windowed);
+      break;
+
+    case game_settings::DisplaySettings::DisplayMode::Windowed:
+      lg::info("Windowed\n");
+      lg::info("Switching to Fullscreen mode...\n");
+      //maybe there is a arguement for bordless here instead?
+      enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Fullscreen);
+      break;
+
+    case game_settings::DisplaySettings::DisplayMode::Borderless:
+      lg::info("Borderless\n");
+      lg::info("Switching to Windowed mode...\n");
+      enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Windowed);
+      break;
+
+    default:
+      lg::info("Unknown display mode!\n");
+      break;
+  }
+}
+
 void DisplayManager::enqueue_set_display_id(int display_id) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
   ee_event_queue.push({EEDisplayEventType::SET_DISPLAY_ID, display_id, {}});

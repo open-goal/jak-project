@@ -10,6 +10,7 @@
 #include "common/common_types.h"
 #include "common/log/log.h"
 #include "common/util/json_util.h"
+#include "SDL3/SDL.h"
 
 #define GET_PRESSURE_BUTTON_DATA(button_name) \
   {button_data.at(ButtonIndex::button_name),  \
@@ -391,11 +392,24 @@ extern const InputBindingGroups DEFAULT_MOUSE_BINDS;
 struct CommandBinding {
   enum Source { CONTROLLER, KEYBOARD, MOUSE };
 
-  CommandBinding(const u32 _host_key, std::function<void()> _command)
-      : host_key(_host_key), command(_command) {};
   u32 host_key;
-  std::function<void()> command;
   InputModifiers modifiers;
+
+  // Three types of callbacks: one with SDL_Event, one without, and one with input modifiers
+  std::function<void()> command = nullptr;
+  std::function<void(const SDL_Event&)> event_command = nullptr;
+
+  CommandBinding(u32 _host_key, std::function<void()> _command)
+      : host_key(_host_key), command(std::move(_command)) {}
+
+ 
+  CommandBinding(u32 _host_key, std::function<void(const SDL_Event&)> _command)
+      : host_key(_host_key), event_command(std::move(_command)) {}
+
+  CommandBinding(u32 _host_key,
+                 const InputModifiers& _modifiers,
+                 std::function<void(const SDL_Event&)> _command)
+      : host_key(_host_key), modifiers(_modifiers), event_command(std::move(_command)) {}
 };
 
 struct CommandBindingGroups {

@@ -88,6 +88,7 @@ class DisplayManager {
   // Mutators
   void enqueue_set_window_size(int width, int height);
   void enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode mode);
+  void toggle_display_mode();
   void enqueue_set_display_id(int display_id);
 
   void set_game_size(int width, int height) {

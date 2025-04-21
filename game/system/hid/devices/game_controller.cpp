@@ -222,7 +222,13 @@ void GameController::process_event(const SDL_Event& event,
     if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN &&
         commands.controller_binds.find(event.gbutton.button) != commands.controller_binds.end()) {
       for (const auto& command : commands.controller_binds.at(event.gbutton.button)) {
-        command.command();
+        if (command.event_command) {
+          command.event_command(event);
+        } else if (command.command) {
+          command.command();
+        } else {
+          lg::warn("CommandBinding has no valid callback for controller bind");
+        }
       }
     }
   } else if (SDL_EVENT_JOYSTICK_AXIS_MOTION && m_has_pressure_sensitive_buttons) {
