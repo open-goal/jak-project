@@ -5,7 +5,7 @@
 
 #include "gtest/gtest.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 using namespace goos;
 

@@ -14,7 +14,7 @@
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 using namespace goos;
 
