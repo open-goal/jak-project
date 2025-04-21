@@ -37,8 +37,6 @@ void from_json(const json& j, DebugSettings& obj) {
   }
 }
 
-
-
 void DebugSettings::load_settings() {
   try {
     std::string file_path =

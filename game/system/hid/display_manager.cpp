@@ -314,7 +314,7 @@ void DisplayManager::toggle_display_mode() {
     case game_settings::DisplaySettings::DisplayMode::Windowed:
       lg::info("Windowed\n");
       lg::info("Switching to Fullscreen mode...\n");
-      //maybe there is a arguement for bordless here instead?
+      // maybe there is a arguement for bordless here instead?
       enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Fullscreen);
       break;
 
