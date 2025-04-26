@@ -3,13 +3,25 @@
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
 
+#include "SDL3/SDL.h"
 #include "game/system/hid/input_bindings.h"
 #include "game/system/hid/sdl_util.h"
 #include "game/tools/filter_menu/filter_menu.h"
 
 namespace game_settings {
+
+struct KeyWithModifiers {
+  u32 key;
+  InputModifiers modifiers;
+
+  KeyWithModifiers() = default;
+  KeyWithModifiers(u32 k, const InputModifiers& m) : key(k), modifiers(m) {}
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(KeyWithModifiers, key, modifiers)
+
 struct DebugSettings {
-  DebugSettings();
+  DebugSettings() = default;
 
   std::string current_version = "1.2";
   std::string version = current_version;
@@ -24,11 +36,16 @@ struct DebugSettings {
   std::vector<DebugTextFilter> text_filters = {};
   bool text_check_range = false;
   float text_max_range = 0;
+
   u32 hide_imgui_key = SDLK_LALT;
+
+  KeyWithModifiers toggle_fullscreen_key =
+      KeyWithModifiers(SDLK_RETURN, InputModifiers(SDL_KMOD_ALT));
 
   void load_settings();
   void save_settings();
 };
+
 void to_json(json& j, const DebugSettings& obj);
 void from_json(const json& j, DebugSettings& obj);
 
