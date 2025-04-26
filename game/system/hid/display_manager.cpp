@@ -302,7 +302,10 @@ void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMod
 
 void DisplayManager::toggle_display_mode() {
   const auto current_mode = m_display_settings.display_mode;
-
+  // Store the current prefered fullscreen mode
+  if (current_mode != game_settings::DisplaySettings::DisplayMode::Windowed) {
+    m_previous_fullscreen_display_mode = current_mode;
+  }
   lg::info("Current display mode: ");
   switch (current_mode) {
     case game_settings::DisplaySettings::DisplayMode::Fullscreen:
@@ -313,9 +316,16 @@ void DisplayManager::toggle_display_mode() {
 
     case game_settings::DisplaySettings::DisplayMode::Windowed:
       lg::info("Windowed\n");
-      lg::info("Switching to Fullscreen mode...\n");
-      // maybe there is a arguement for bordless here instead?
-      enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Fullscreen);
+      if (m_previous_fullscreen_display_mode ==
+          game_settings::DisplaySettings::DisplayMode::Fullscreen) {
+        lg::info("Switching to Fullscreen mode...\n");
+      } else if (m_previous_fullscreen_display_mode ==
+                 game_settings::DisplaySettings::DisplayMode::Borderless) {
+        lg::info("Switching to Borderless mode...\n");
+      } else {
+        lg::info("Switching to unknown preferred mode...\n");
+      }
+      enqueue_set_window_display_mode(m_previous_fullscreen_display_mode);
       break;
 
     case game_settings::DisplaySettings::DisplayMode::Borderless:

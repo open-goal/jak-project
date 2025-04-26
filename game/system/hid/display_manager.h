@@ -47,7 +47,8 @@ struct Resolution {
 class DisplayManager {
  private:
   enum class EEDisplayEventType { SET_WINDOW_SIZE, SET_DISPLAY_MODE, SET_DISPLAY_ID };
-
+  game_settings::DisplaySettings::DisplayMode m_previous_fullscreen_display_mode =
+      game_settings::DisplaySettings::DisplayMode::Fullscreen;
   struct EEDisplayEvent {
     EEDisplayEventType type;
     std::variant<bool, int, game_settings::DisplaySettings::DisplayMode> param1;
