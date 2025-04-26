@@ -309,7 +309,8 @@ void DisplayManager::toggle_display_mode() {
   lg::info("Current display mode: ");
   switch (current_mode) {
     case game_settings::DisplaySettings::DisplayMode::Fullscreen:
-      lg::info("Fullscreen\n");
+    case game_settings::DisplaySettings::DisplayMode::Borderless:
+      lg::info("Fullscreen/Borderless\n");
       lg::info("Switching to Windowed mode...\n");
       enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Windowed);
       break;
