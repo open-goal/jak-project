@@ -728,7 +728,11 @@
         ;; og:preserve-this send a movie-no-subtitle message so the pc subtitle system at least knows there's a movie playing
         (#when PC_PORT
             (if (= (-> self type) scene-player)
-                (send-event (ppointer->process *subtitle2*) 'movie-no-subtitle (-> (the scene-player self) anim name) #f (ja-aframe-num 0))))
+                (send-event (ppointer->process *subtitle2*) 'movie-no-subtitle (-> (the scene-player self) anim name) #f (ja-aframe-num 0)))
+            ;; if this isn't a default language -- get out before you crash!
+            (when (> (the-as int (-> *setting-control* user-current subtitle-language))
+                     (the-as int (language-enum uk-english)))
+              (return #f)))
         (let ((gp-0 (res-lump-struct (-> v1-9 extra) 'subtitle-range (array subtitle-range))))
           (when gp-0
             (let ((f30-0 (ja-aframe-num 0))

@@ -124,7 +124,6 @@ class GameSubtitleBank {
   std::optional<std::string> m_file_base_path;
 
   std::map<std::string, GameSubtitleSceneInfo> m_base_scenes;
-  std::map<std::string, GameSubtitleSceneInfo> m_lang_scenes;
   std::map<std::string, GameSubtitleSceneInfo> m_scenes;
   bool scene_exists(const std::string& name) const { return m_scenes.find(name) != m_scenes.end(); }
   GameSubtitleSceneInfo new_scene_from_meta(
