@@ -377,6 +377,14 @@ GLDisplay::~GLDisplay() {
   // Cleanup SDL
   SDL_GL_DestroyContext(m_gl_context);
   SDL_DestroyWindow(m_window);
+  // cleanup SDL related sub-systems before we quit SDL
+  if (m_display_manager) {
+    m_display_manager.reset();
+  }
+  if (m_input_manager) {
+    m_input_manager.reset();
+  }
+  // now quit SDL
   SDL_Quit();
   if (m_main) {
     gl_exit();

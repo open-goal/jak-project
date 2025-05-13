@@ -253,6 +253,7 @@ void GameController::close_device() {
   if (m_device_handle) {
     clear_trigger_effect(dualsense_effects::TriggerEffectOption::BOTH);
     SDL_CloseGamepad(m_device_handle);
+    m_device_handle = NULL;
   }
 }
 
