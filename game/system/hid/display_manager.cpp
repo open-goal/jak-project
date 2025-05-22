@@ -238,8 +238,8 @@ void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMod
         if (!SDL_SetWindowSize(m_window, window_width, window_height)) {
           sdl_util::log_error("unable to change window size");
         }
-        // if we are changing from fullscreen/borderless back to windowed - make sure it's not annoyingly at the edge
-        // of the screen
+        // if we are changing from fullscreen/borderless back to windowed - make sure it's not
+        // annoyingly at the edge of the screen
         if (m_display_settings.display_mode !=
                 game_settings::DisplaySettings::DisplayMode::Windowed &&
             !SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED)) {
