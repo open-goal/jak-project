@@ -52,7 +52,8 @@ class DisplayManager {
   struct EEDisplayEvent {
     EEDisplayEventType type;
     std::variant<bool, int, game_settings::DisplaySettings::DisplayMode> param1;
-    std::variant<bool, int, game_settings::DisplaySettings::DisplayMode> param2;
+    std::variant<bool, int> param2;
+    std::variant<int> param3;
   };
 
  public:
@@ -88,7 +89,9 @@ class DisplayManager {
 
   // Mutators
   void enqueue_set_window_size(int width, int height);
-  void enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode mode);
+  void enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode mode,
+                                       const int window_width,
+                                       const int window_height);
   void toggle_display_mode();
   void enqueue_set_display_id(int display_id);
 
@@ -134,6 +137,8 @@ class DisplayManager {
   void update_resolutions();
 
   void set_window_size(int width, int height);
-  void set_display_mode(game_settings::DisplaySettings::DisplayMode mode);
+  void set_display_mode(game_settings::DisplaySettings::DisplayMode mode,
+                        const int window_width,
+                        const int window_height);
   void set_display_id(int display_id);
 };
