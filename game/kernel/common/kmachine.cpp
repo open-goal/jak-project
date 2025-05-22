@@ -496,19 +496,19 @@ u32 pc_get_display_mode() {
   }
 }
 
-void pc_set_display_mode(u32 symptr) {
+void pc_set_display_mode(u32 symptr, u64 window_width, u64 window_height) {
   if (!Display::GetMainDisplay()) {
     return;
   }
   if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        game_settings::DisplaySettings::DisplayMode::Windowed);
+        game_settings::DisplaySettings::DisplayMode::Windowed, window_width, window_height);
   } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        game_settings::DisplaySettings::DisplayMode::Borderless);
+        game_settings::DisplaySettings::DisplayMode::Borderless, window_width, window_height);
   } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        game_settings::DisplaySettings::DisplayMode::Fullscreen);
+        game_settings::DisplaySettings::DisplayMode::Fullscreen, window_width, window_height);
   }
 }
 
