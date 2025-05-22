@@ -142,6 +142,9 @@ class InputManager {
     return m_settings->enable_pressure_sensitivity = enabled;
   }
   bool are_trigger_effects_enabled() { return m_settings->enable_trigger_effects; }
+  float axis_scale() { return m_settings->axis_scale; }
+  float set_axis_scale(float value) { return m_settings->axis_scale = value; }
+  float pressure_scale() { return m_settings->pressure_scale; }
 
  private:
   SDL_Window* m_window;

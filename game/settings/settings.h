@@ -84,6 +84,8 @@ struct InputSettings {
   bool keyboard_enabled = false;
   bool enable_trigger_effects = false;
   bool enable_pressure_sensitivity = false;
+  float axis_scale = 1.33f;     // multiplies analog stick axis input after reading from drivers.
+  float pressure_scale = 1.0f;  // trigger and pressure sensitivity values.
   // not saved or restored, flips on if no controllers are detected
   bool _keyboard_temp_enabled = false;
 
