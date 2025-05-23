@@ -158,7 +158,10 @@ struct joystick_hwdata
     Uint8 wgi_correlation_count;
     Uint8 wgi_uncorrelate_count;
     WindowsGamingInputGamepadState *wgi_slot;
+    struct __x_ABI_CWindows_CGaming_CInput_CGamepadVibration vibration;
 #endif
+
+    bool triggers_rumbling;
 
     SDL_RAWINPUT_Device *device;
 };
@@ -447,7 +450,6 @@ typedef struct WindowsGamingInputGamepadState
     bool used;      // Is currently mapped to an SDL device
     bool connected; // Just used during update to track disconnected
     Uint8 correlation_id;
-    struct __x_ABI_CWindows_CGaming_CInput_CGamepadVibration vibration;
 } WindowsGamingInputGamepadState;
 
 static struct
@@ -909,9 +911,11 @@ static void RAWINPUT_AddDevice(HANDLE hDevice)
         char *product_string = NULL;
         WCHAR string[128];
 
+        string[0] = 0;
         if (SDL_HidD_GetManufacturerString(hFile, string, sizeof(string))) {
             manufacturer_string = WIN_StringToUTF8W(string);
         }
+        string[0] = 0;
         if (SDL_HidD_GetProductString(hFile, string, sizeof(string))) {
             product_string = WIN_StringToUTF8W(string);
         }
@@ -1459,7 +1463,7 @@ static bool RAWINPUT_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency
 
 #ifdef SDL_JOYSTICK_RAWINPUT_XINPUT
     // Prefer XInput over WGI because it allows rumble in the background
-    if (!rumbled && ctx->xinput_correlated) {
+    if (!rumbled && ctx->xinput_correlated && !ctx->triggers_rumbling) {
         XINPUT_VIBRATION XVibration;
 
         if (!XINPUTSETSTATE) {
@@ -1477,12 +1481,12 @@ static bool RAWINPUT_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency
 #endif // SDL_JOYSTICK_RAWINPUT_XINPUT
 
 #ifdef SDL_JOYSTICK_RAWINPUT_WGI
+    // Save off the motor state in case trigger rumble is started
+    ctx->vibration.LeftMotor = (DOUBLE)low_frequency_rumble / SDL_MAX_UINT16;
+    ctx->vibration.RightMotor = (DOUBLE)high_frequency_rumble / SDL_MAX_UINT16;
     if (!rumbled && ctx->wgi_correlated) {
         WindowsGamingInputGamepadState *gamepad_state = ctx->wgi_slot;
-        HRESULT hr;
-        gamepad_state->vibration.LeftMotor = (DOUBLE)low_frequency_rumble / SDL_MAX_UINT16;
-        gamepad_state->vibration.RightMotor = (DOUBLE)high_frequency_rumble / SDL_MAX_UINT16;
-        hr = __x_ABI_CWindows_CGaming_CInput_CIGamepad_put_Vibration(gamepad_state->gamepad, gamepad_state->vibration);
+        HRESULT hr = __x_ABI_CWindows_CGaming_CInput_CIGamepad_put_Vibration(gamepad_state->gamepad, ctx->vibration);
         if (SUCCEEDED(hr)) {
             rumbled = true;
         }
@@ -1504,15 +1508,15 @@ static bool RAWINPUT_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_
 #ifdef SDL_JOYSTICK_RAWINPUT_WGI
     RAWINPUT_DeviceContext *ctx = joystick->hwdata;
 
+    ctx->vibration.LeftTrigger = (DOUBLE)left_rumble / SDL_MAX_UINT16;
+    ctx->vibration.RightTrigger = (DOUBLE)right_rumble / SDL_MAX_UINT16;
     if (ctx->wgi_correlated) {
         WindowsGamingInputGamepadState *gamepad_state = ctx->wgi_slot;
-        HRESULT hr;
-        gamepad_state->vibration.LeftTrigger = (DOUBLE)left_rumble / SDL_MAX_UINT16;
-        gamepad_state->vibration.RightTrigger = (DOUBLE)right_rumble / SDL_MAX_UINT16;
-        hr = __x_ABI_CWindows_CGaming_CInput_CIGamepad_put_Vibration(gamepad_state->gamepad, gamepad_state->vibration);
+        HRESULT hr = __x_ABI_CWindows_CGaming_CInput_CIGamepad_put_Vibration(gamepad_state->gamepad, ctx->vibration);
         if (!SUCCEEDED(hr)) {
             return SDL_SetError("Setting vibration failed: 0x%lx", hr);
         }
+        ctx->triggers_rumbling = (left_rumble > 0 || right_rumble > 0);
         return true;
     } else {
         return SDL_SetError("Controller isn't correlated yet, try hitting a button first");
