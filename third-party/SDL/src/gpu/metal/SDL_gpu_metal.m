@@ -478,8 +478,6 @@ typedef struct MetalGraphicsPipeline
 {
     id<MTLRenderPipelineState> handle;
 
-    Uint32 sample_mask;
-
     SDL_GPURasterizerState rasterizerState;
     SDL_GPUPrimitiveType primitiveType;
 
@@ -842,6 +840,10 @@ static MetalLibraryFunction METAL_INTERNAL_CompileShader(
     dispatch_data_t data;
     id<MTLFunction> function;
 
+    if (!entrypoint) {
+        entrypoint = "main0";
+    }
+
     if (format == SDL_GPU_SHADERFORMAT_MSL) {
         NSString *codeString = [[NSString alloc]
             initWithBytes:code
@@ -856,7 +858,7 @@ static MetalLibraryFunction METAL_INTERNAL_CompileShader(
             code,
             codeSize,
             dispatch_get_global_queue(0, 0),
-            ^{ /* do nothing */ });
+            DISPATCH_DATA_DESTRUCTOR_DEFAULT);
         library = [renderer->device newLibraryWithData:data error:&error];
     } else {
         SDL_assert(!"SDL_gpu.c should have already validated this!");
@@ -1181,9 +1183,7 @@ static SDL_GPUGraphicsPipeline *METAL_CreateGraphicsPipeline(
             for (Uint32 i = 0; i < createinfo->vertex_input_state.num_vertex_buffers; i += 1) {
                 binding = METAL_FIRST_VERTEX_BUFFER_SLOT + createinfo->vertex_input_state.vertex_buffer_descriptions[i].slot;
                 vertexDescriptor.layouts[binding].stepFunction = SDLToMetal_StepFunction[createinfo->vertex_input_state.vertex_buffer_descriptions[i].input_rate];
-                vertexDescriptor.layouts[binding].stepRate = (createinfo->vertex_input_state.vertex_buffer_descriptions[i].input_rate == SDL_GPU_VERTEXINPUTRATE_INSTANCE)
-                    ? createinfo->vertex_input_state.vertex_buffer_descriptions[i].instance_step_rate
-                    : 1;
+                vertexDescriptor.layouts[binding].stepRate = 1;
                 vertexDescriptor.layouts[binding].stride = createinfo->vertex_input_state.vertex_buffer_descriptions[i].pitch;
             }
 
@@ -1202,13 +1202,8 @@ static SDL_GPUGraphicsPipeline *METAL_CreateGraphicsPipeline(
             SET_ERROR_AND_RETURN("Creating render pipeline failed: %s", [[error description] UTF8String], NULL);
         }
 
-        Uint32 sampleMask = createinfo->multisample_state.enable_mask ?
-            createinfo->multisample_state.sample_mask :
-            0xFFFFFFFF;
-
         result = SDL_calloc(1, sizeof(MetalGraphicsPipeline));
         result->handle = pipelineState;
-        result->sample_mask = sampleMask;
         result->depth_stencil_state = depthStencilState;
         result->rasterizerState = createinfo->rasterizer_state;
         result->primitiveType = createinfo->primitive_type;
@@ -1503,7 +1498,9 @@ static SDL_GPUTexture *METAL_CreateTexture(
         // Copy properties so we don't lose information when the client destroys them
         container->header.info = *createinfo;
         container->header.info.props = SDL_CreateProperties();
-        SDL_CopyProperties(createinfo->props, container->header.info.props);
+        if (createinfo->props) {
+            SDL_CopyProperties(createinfo->props, container->header.info.props);
+        }
 
         container->activeTexture = texture;
         container->textureCapacity = 1;

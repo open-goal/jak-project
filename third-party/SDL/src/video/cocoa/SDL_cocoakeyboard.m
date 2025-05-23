@@ -30,8 +30,11 @@
 
 #include <Carbon/Carbon.h>
 
-// #define DEBUG_IME NSLog
+#if 0
+#define DEBUG_IME NSLog
+#else
 #define DEBUG_IME(...)
+#endif
 
 @interface SDL3TranslatorResponder : NSView <NSTextInputClient>
 {
@@ -133,8 +136,12 @@
     // This key event was consumed by the IME
     [self clearPendingKey];
 
+    NSUInteger utf32SelectedRangeLocation = [[aString substringToIndex:selectedRange.location] lengthOfBytesUsingEncoding:NSUTF32StringEncoding] / 4;
+    NSUInteger utf32SelectionRangeEnd = [[aString substringToIndex:(selectedRange.location + selectedRange.length)] lengthOfBytesUsingEncoding:NSUTF32StringEncoding] / 4;
+    NSUInteger utf32SelectionRangeLength = utf32SelectionRangeEnd - utf32SelectedRangeLocation;
+
     SDL_SendEditingText([aString UTF8String],
-                        (int)selectedRange.location, (int)selectedRange.length);
+                        (int)utf32SelectedRangeLocation, (int)utf32SelectionRangeLength);
 
     DEBUG_IME(@"setMarkedText: %@, (%d, %d) replacement range (%d, %d)", _markedText,
               (int)selectedRange.location, (int)selectedRange.length,
