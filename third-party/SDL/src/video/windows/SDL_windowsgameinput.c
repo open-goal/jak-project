@@ -27,9 +27,7 @@
 
 #ifdef HAVE_GAMEINPUT_H
 
-#define COBJMACROS
-#include <gameinput.h>
-
+#include "../../core/windows/SDL_gameinput.h"
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_keyboard_c.h"
 #include "../../events/scancodes_windows.h"
@@ -61,7 +59,6 @@ typedef struct GAMEINPUT_Device
 
 struct WIN_GameInputData
 {
-    void *hGameInputDLL;
     IGameInput *pGameInput;
     GameInputCallbackToken gameinput_callback_token;
     int num_devices;
@@ -237,20 +234,7 @@ bool WIN_InitGameInput(SDL_VideoDevice *_this)
         goto done;
     }
 
-    data->hGameInputDLL = SDL_LoadObject("gameinput.dll");
-    if (!data->hGameInputDLL) {
-        goto done;
-    }
-
-    typedef HRESULT (WINAPI *GameInputCreate_t)(IGameInput * *gameInput);
-    GameInputCreate_t GameInputCreateFunc = (GameInputCreate_t)SDL_LoadFunction(data->hGameInputDLL, "GameInputCreate");
-    if (!GameInputCreateFunc) {
-        goto done;
-    }
-
-    hr = GameInputCreateFunc(&data->pGameInput);
-    if (FAILED(hr)) {
-        SDL_SetError("GameInputCreate failure with HRESULT of %08X", hr);
+    if (!SDL_InitGameInput(&data->pGameInput)) {
         goto done;
     }
 
@@ -485,12 +469,13 @@ void WIN_UpdateGameInput(SDL_VideoDevice *_this)
                         device->last_mouse_reading = reading;
                     }
                     if (hr != GAMEINPUT_E_READING_NOT_FOUND) {
-                        // The last reading is too old, resynchronize
-                        IGameInputReading_Release(device->last_mouse_reading);
-                        device->last_mouse_reading = NULL;
+                        if (SUCCEEDED(IGameInput_GetCurrentReading(data->pGameInput, GameInputKindMouse, device->pDevice, &reading))) {
+                            GAMEINPUT_HandleMouseDelta(data, window, device, device->last_mouse_reading, reading);
+                            IGameInputReading_Release(device->last_mouse_reading);
+                            device->last_mouse_reading = reading;
+                        }
                     }
-                }
-                if (!device->last_mouse_reading) {
+                } else {
                     if (SUCCEEDED(IGameInput_GetCurrentReading(data->pGameInput, GameInputKindMouse, device->pDevice, &reading))) {
                         GAMEINPUT_InitialMouseReading(data, window, device, reading);
                         device->last_mouse_reading = reading;
@@ -514,12 +499,13 @@ void WIN_UpdateGameInput(SDL_VideoDevice *_this)
                             device->last_keyboard_reading = reading;
                         }
                         if (hr != GAMEINPUT_E_READING_NOT_FOUND) {
-                            // The last reading is too old, resynchronize
-                            IGameInputReading_Release(device->last_keyboard_reading);
-                            device->last_keyboard_reading = NULL;
+                            if (SUCCEEDED(IGameInput_GetCurrentReading(data->pGameInput, GameInputKindKeyboard, device->pDevice, &reading))) {
+                                GAMEINPUT_HandleKeyboardDelta(data, window, device, device->last_keyboard_reading, reading);
+                                IGameInputReading_Release(device->last_keyboard_reading);
+                                device->last_keyboard_reading = reading;
+                            }
                         }
-                    }
-                    if (!device->last_keyboard_reading) {
+                    } else {
                         if (SUCCEEDED(IGameInput_GetCurrentReading(data->pGameInput, GameInputKindKeyboard, device->pDevice, &reading))) {
                             GAMEINPUT_InitialKeyboardReading(data, window, device, reading);
                             device->last_keyboard_reading = reading;
@@ -587,9 +573,9 @@ void WIN_QuitGameInput(SDL_VideoDevice *_this)
         data->pGameInput = NULL;
     }
 
-    if (data->hGameInputDLL) {
-        SDL_UnloadObject(data->hGameInputDLL);
-        data->hGameInputDLL = NULL;
+    if (data->pGameInput) {
+        SDL_QuitGameInput();
+        data->pGameInput = NULL;
     }
 
     if (data->lock) {

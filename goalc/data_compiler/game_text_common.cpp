@@ -26,7 +26,7 @@
 
 #include "game/runtime.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace {
 

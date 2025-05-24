@@ -4,7 +4,7 @@
 #include "common/cross_sockets/XSocket.h"
 #include "common/common_types.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 #ifdef _WIN32
 #define NOMINMAX

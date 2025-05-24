@@ -1,6 +1,6 @@
 #include "LabelDB.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 

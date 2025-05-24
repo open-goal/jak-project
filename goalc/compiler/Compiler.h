@@ -21,7 +21,7 @@
 #include "goalc/make/MakeSystem.h"
 
 #include "fmt/color.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 

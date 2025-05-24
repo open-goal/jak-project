@@ -6390,18 +6390,17 @@ class MatcherBase : private MatcherDescriberInterface {
   }
 
  protected:
-  MatcherBase() : vtable_(nullptr), buffer_() {}
+  MatcherBase() : vtable_(nullptr) {}
 
   // Constructs a matcher from its implementation.
   template <typename U>
-  explicit MatcherBase(const MatcherInterface<U>* impl)
-      : vtable_(nullptr), buffer_() {
+  explicit MatcherBase(const MatcherInterface<U>* impl) {
     Init(impl);
   }
 
   template <typename M, typename = typename std::remove_reference<
                             M>::type::is_gtest_matcher>
-  MatcherBase(M&& m) : vtable_(nullptr), buffer_() {  // NOLINT
+  MatcherBase(M&& m) {  // NOLINT
     Init(std::forward<M>(m));
   }
 

@@ -233,7 +233,7 @@ void SDL_SetX11EventHook(SDL_X11EventHook callback, void *userdata)
 #ifdef SDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS
 static void X11_HandleGenericEvent(SDL_VideoDevice *_this, XEvent *xev)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->internal;
+    SDL_VideoData *videodata = _this->internal;
 
     // event is a union, so cookie == &event, but this is type safe.
     XGenericEventCookie *cookie = &xev->xcookie;
@@ -310,6 +310,12 @@ static void X11_ReconcileModifiers(SDL_VideoData *viddata)
         viddata->xkb.sdl_modifiers &= ~SDL_KMOD_MODE;
     }
 
+    if (xk_modifiers & LockMask) {
+        viddata->xkb.sdl_modifiers |= SDL_KMOD_CAPS;
+    } else {
+        viddata->xkb.sdl_modifiers &= ~SDL_KMOD_CAPS;
+    }
+
     if (xk_modifiers & viddata->xkb.numlock_mask) {
         viddata->xkb.sdl_modifiers |= SDL_KMOD_NUM;
     } else {
@@ -325,10 +331,11 @@ static void X11_ReconcileModifiers(SDL_VideoData *viddata)
     SDL_SetModState(viddata->xkb.sdl_modifiers);
 }
 
-static void X11_HandleModifierKeys(SDL_VideoData *viddata, SDL_Scancode scancode, bool pressed, bool reconcile)
+static void X11_HandleModifierKeys(SDL_VideoData *viddata, SDL_Scancode scancode, bool pressed, bool allow_reconciliation)
 {
     const SDL_Keycode keycode = SDL_GetKeyFromScancode(scancode, SDL_KMOD_NONE, false);
     SDL_Keymod mod = SDL_KMOD_NONE;
+    bool reconcile = false;
 
     /* SDL clients expect modifier state to be activated at the same time as the
      * source keypress, so we set pressed modifier state with the usual modifier
@@ -367,7 +374,36 @@ static void X11_HandleModifierKeys(SDL_VideoData *viddata, SDL_Scancode scancode
     case SDLK_LEVEL5_SHIFT:
         mod = SDL_KMOD_LEVEL5;
         break;
+    case SDLK_CAPSLOCK:
+    case SDLK_NUMLOCKCLEAR:
+    case SDLK_SCROLLLOCK:
+    {
+        /* For locking modifier keys, query the lock state directly, or we may have to wait until the next
+         * key press event to know if a lock was actually activated from the key event.
+         */
+        unsigned int cur_mask = viddata->xkb.xkb_modifiers;
+        X11_UpdateSystemKeyModifiers(viddata);
+
+        if (viddata->xkb.xkb_modifiers & LockMask) {
+            cur_mask |= LockMask;
+        } else {
+            cur_mask &= ~LockMask;
+        }
+        if (viddata->xkb.xkb_modifiers & viddata->xkb.numlock_mask) {
+            cur_mask |= viddata->xkb.numlock_mask;
+        } else {
+            cur_mask &= ~viddata->xkb.numlock_mask;
+        }
+        if (viddata->xkb.xkb_modifiers & viddata->xkb.scrolllock_mask) {
+            cur_mask |= viddata->xkb.scrolllock_mask;
+        } else {
+            cur_mask &= ~viddata->xkb.scrolllock_mask;
+        }
+
+        viddata->xkb.xkb_modifiers = cur_mask;
+    } SDL_FALLTHROUGH;
     default:
+        reconcile = true;
         break;
     }
 
@@ -377,8 +413,12 @@ static void X11_HandleModifierKeys(SDL_VideoData *viddata, SDL_Scancode scancode
         viddata->xkb.sdl_modifiers &= ~mod;
     }
 
-    if (reconcile) {
-        X11_ReconcileModifiers(viddata);
+    if (allow_reconciliation) {
+        if (reconcile) {
+            X11_ReconcileModifiers(viddata);
+        } else {
+            SDL_SetModState(viddata->xkb.sdl_modifiers);
+        }
     }
 }
 
@@ -466,17 +506,32 @@ static void X11_DispatchFocusOut(SDL_VideoDevice *_this, SDL_WindowData *data)
 static void X11_DispatchMapNotify(SDL_WindowData *data)
 {
     SDL_Window *window = data->window;
-    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
+
     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_SHOWN, 0, 0);
-    if (!(window->flags & SDL_WINDOW_HIDDEN) && (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
+    data->was_shown = true;
+
+    // This may be sent when restoring a minimized window.
+    if (window->flags & SDL_WINDOW_MINIMIZED) {
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
+        SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_EXPOSED, 0, 0);
+    }
+
+    if (window->flags & SDL_WINDOW_INPUT_FOCUS) {
         SDL_UpdateWindowGrab(window);
     }
 }
 
 static void X11_DispatchUnmapNotify(SDL_WindowData *data)
 {
-    SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_HIDDEN, 0, 0);
-    SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MINIMIZED, 0, 0);
+    SDL_Window *window = data->window;
+
+    // This may be sent when minimizing a window.
+    if (!window->is_hiding) {
+        SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MINIMIZED, 0, 0);
+        SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_OCCLUDED, 0, 0);
+    } else {
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_HIDDEN, 0, 0);
+    }
 }
 
 static void DispatchWindowMove(SDL_VideoDevice *_this, const SDL_WindowData *data, const SDL_Point *point)
@@ -857,7 +912,7 @@ static int XLookupStringAsUTF8(XKeyEvent *event_struct, char *buffer_return, int
 
 SDL_WindowData *X11_FindWindow(SDL_VideoDevice *_this, Window window)
 {
-    const SDL_VideoData *videodata = (SDL_VideoData *)_this->internal;
+    const SDL_VideoData *videodata = _this->internal;
     int i;
 
     if (videodata && videodata->windowlist) {
@@ -879,7 +934,7 @@ Uint64 X11_GetEventTimestamp(unsigned long time)
 
 void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_KeyboardID keyboardID, XEvent *xevent)
 {
-    SDL_VideoData *videodata = (SDL_VideoData *)_this->internal;
+    SDL_VideoData *videodata = _this->internal;
     Display *display = videodata->display;
     KeyCode keycode = xevent->xkey.keycode;
     KeySym keysym = NoSymbol;
@@ -906,7 +961,7 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
 #endif // DEBUG SCANCODES
 
     text[0] = '\0';
-    X11_UpdateSystemKeyModifiers(videodata);
+    videodata->xkb.xkb_modifiers = xevent->xkey.state;
 
     if (SDL_TextInputActive(windowdata->window)) {
         // filter events catches XIM events and sends them to the correct handler
@@ -937,7 +992,7 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
             X11_HandleModifierKeys(videodata, scancode, true, true);
             SDL_SendKeyboardKeyIgnoreModifiers(timestamp, keyboardID, keycode, scancode, true);
 
-            if (*text) {
+            if (*text && !(SDL_GetModState() & (SDL_KMOD_CTRL | SDL_KMOD_ALT))) {
                 text[text_length] = '\0';
                 X11_ClearComposition(windowdata);
                 SDL_SendKeyboardText(text);
@@ -961,7 +1016,7 @@ void X11_HandleKeyEvent(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_
 void X11_HandleButtonPress(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_MouseID mouseID, int button, float x, float y, unsigned long time)
 {
     SDL_Window *window = windowdata->window;
-    const SDL_VideoData *videodata = (SDL_VideoData *)_this->internal;
+    const SDL_VideoData *videodata = _this->internal;
     Display *display = videodata->display;
     int xticks = 0, yticks = 0;
     Uint64 timestamp = X11_GetEventTimestamp(time);
@@ -1008,7 +1063,7 @@ void X11_HandleButtonPress(SDL_VideoDevice *_this, SDL_WindowData *windowdata, S
 void X11_HandleButtonRelease(SDL_VideoDevice *_this, SDL_WindowData *windowdata, SDL_MouseID mouseID, int button, unsigned long time)
 {
     SDL_Window *window = windowdata->window;
-    const SDL_VideoData *videodata = (SDL_VideoData *)_this->internal;
+    const SDL_VideoData *videodata = _this->internal;
     Display *display = videodata->display;
     // The X server sends a Release event for each Press for wheels. Ignore them.
     int xticks = 0, yticks = 0;
@@ -1054,6 +1109,41 @@ void X11_GetBorderValues(SDL_WindowData *data)
     } else {
         data->border_left = data->border_top = data->border_right = data->border_bottom = 0;
     }
+}
+
+void X11_EmitConfigureNotifyEvents(SDL_WindowData *data, XConfigureEvent *xevent)
+{
+    if (xevent->x != data->last_xconfigure.x ||
+        xevent->y != data->last_xconfigure.y) {
+        if (!data->size_move_event_flags) {
+            SDL_Window *w;
+            int x = xevent->x;
+            int y = xevent->y;
+
+            data->pending_operation &= ~X11_PENDING_OP_MOVE;
+            SDL_GlobalToRelativeForWindow(data->window, x, y, &x, &y);
+            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MOVED, x, y);
+
+            for (w = data->window->first_child; w; w = w->next_sibling) {
+                // Don't update hidden child popup windows, their relative position doesn't change
+                if (SDL_WINDOW_IS_POPUP(w) && !(w->flags & SDL_WINDOW_HIDDEN)) {
+                    X11_UpdateWindowPosition(w, true);
+                }
+            }
+        }
+    }
+
+    if (xevent->width != data->last_xconfigure.width ||
+        xevent->height != data->last_xconfigure.height) {
+        if (!data->size_move_event_flags) {
+            data->pending_operation &= ~X11_PENDING_OP_RESIZE;
+            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESIZED,
+                                xevent->width,
+                                xevent->height);
+        }
+    }
+
+    SDL_copyp(&data->last_xconfigure, xevent);
 }
 
 static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
@@ -1251,8 +1341,10 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
             SDL_SendMouseMotion(0, data->window, SDL_GLOBAL_MOUSE_ID, false, (float)xevent->xcrossing.x, (float)xevent->xcrossing.y);
         }
 
-        // We ungrab in LeaveNotify, so we may need to grab again here
-        SDL_UpdateWindowGrab(data->window);
+        // We ungrab in LeaveNotify, so we may need to grab again here, but not if captured, as the capture can be lost.
+        if (!(data->window->flags & SDL_WINDOW_MOUSE_CAPTURE)) {
+            SDL_UpdateWindowGrab(data->window);
+        }
 
         X11_ProcessHitTest(_this, data, mouse->last_x, mouse->last_y, true);
     } break;
@@ -1280,7 +1372,7 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
             xevent->xcrossing.detail != NotifyInferior) {
 
             /* In order for interaction with the window decorations and menu to work properly
-               on Mutter, we need to ungrab the keyboard when the the mouse leaves. */
+               on Mutter, we need to ungrab the keyboard when the mouse leaves. */
             if (!(data->window->flags & SDL_WINDOW_FULLSCREEN)) {
                 X11_SetWindowKeyboardGrab(_this, data->window, false);
             }
@@ -1407,9 +1499,8 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                xevent->xconfigure.x, xevent->xconfigure.y,
                xevent->xconfigure.width, xevent->xconfigure.height);
 #endif
-            // Real configure notify events are relative to the parent, synthetic events are absolute.
-            if (!xevent->xconfigure.send_event)
-        {
+        // Real configure notify events are relative to the parent, synthetic events are absolute.
+        if (!xevent->xconfigure.send_event) {
             unsigned int NumChildren;
             Window ChildReturn, Root, Parent;
             Window *Children;
@@ -1422,41 +1513,23 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                                       &ChildReturn);
         }
 
-        if (xevent->xconfigure.x != data->last_xconfigure.x ||
-            xevent->xconfigure.y != data->last_xconfigure.y) {
-            if (!data->size_move_event_flags) {
-                SDL_Window *w;
-                int x = xevent->xconfigure.x;
-                int y = xevent->xconfigure.y;
+        /* Xfce sends ConfigureNotify before PropertyNotify when toggling fullscreen and maximized, which
+         * is backwards from every other window manager, as well as what is expected by SDL and its clients.
+         * Defer emitting the size/move events until the corresponding PropertyNotify arrives.
+         */
+        const Uint32 changed = X11_GetNetWMState(_this, data->window, xevent->xproperty.window) ^ data->window->flags;
+        if (changed & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED)) {
+            SDL_copyp(&data->pending_xconfigure, &xevent->xconfigure);
+            data->emit_size_move_after_property_notify = true;
+        }
 
-                data->pending_operation &= ~X11_PENDING_OP_MOVE;
-                SDL_GlobalToRelativeForWindow(data->window, x, y, &x, &y);
-                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_MOVED, x, y);
-
-                for (w = data->window->first_child; w; w = w->next_sibling) {
-                    // Don't update hidden child popup windows, their relative position doesn't change
-                    if (SDL_WINDOW_IS_POPUP(w) && !(w->flags & SDL_WINDOW_HIDDEN)) {
-                        X11_UpdateWindowPosition(w, true);
-                    }
-                }
-            }
+        if (!data->emit_size_move_after_property_notify) {
+            X11_EmitConfigureNotifyEvents(data, &xevent->xconfigure);
         }
 
 #ifdef SDL_VIDEO_DRIVER_X11_XSYNC
         X11_HandleConfigure(data->window, &xevent->xconfigure);
 #endif /* SDL_VIDEO_DRIVER_X11_XSYNC */
-
-        if (xevent->xconfigure.width != data->last_xconfigure.width ||
-            xevent->xconfigure.height != data->last_xconfigure.height) {
-            if (!data->size_move_event_flags) {
-                data->pending_operation &= ~X11_PENDING_OP_RESIZE;
-                SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESIZED,
-                                    xevent->xconfigure.width,
-                                    xevent->xconfigure.height);
-            }
-        }
-
-        data->last_xconfigure = xevent->xconfigure;
     } break;
 
         // Have we been requested to quit (or another client message?)
@@ -1742,19 +1815,15 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
 
         if (xevent->xproperty.atom == data->videodata->atoms._NET_WM_STATE) {
             /* Get the new state from the window manager.
-               Compositing window managers can alter visibility of windows
-               without ever mapping / unmapping them, so we handle that here,
-               because they use the NETWM protocol to notify us of changes.
+             * Compositing window managers can alter visibility of windows
+             * without ever mapping / unmapping them, so we handle that here,
+             * because they use the NETWM protocol to notify us of changes.
              */
             const SDL_WindowFlags flags = X11_GetNetWMState(_this, data->window, xevent->xproperty.window);
             const SDL_WindowFlags changed = flags ^ data->window->flags;
 
-            if ((changed & (SDL_WINDOW_HIDDEN | SDL_WINDOW_FULLSCREEN)) != 0) {
-                if (flags & SDL_WINDOW_HIDDEN) {
-                    X11_DispatchUnmapNotify(data);
-                } else {
-                    X11_DispatchMapNotify(data);
-                }
+            if ((changed & SDL_WINDOW_HIDDEN) && !(flags & SDL_WINDOW_HIDDEN)) {
+                X11_DispatchMapNotify(data);
             }
 
             if (!SDL_WINDOW_IS_POPUP(data->window)) {
@@ -1765,6 +1834,8 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                         if (!(flags & SDL_WINDOW_MINIMIZED)) {
                             const bool commit = SDL_memcmp(&data->window->current_fullscreen_mode, &data->requested_fullscreen_mode, sizeof(SDL_DisplayMode)) != 0;
 
+                            // Ensure the maximized flag is cleared before entering fullscreen.
+                            SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_RESTORED, 0, 0);
                             SDL_SendWindowEvent(data->window, SDL_EVENT_WINDOW_ENTER_FULLSCREEN, 0, 0);
                             if (commit) {
                                 /* This was initiated by the compositor, or the mode was changed between the request and the window
@@ -1855,6 +1926,10 @@ static void X11_DispatchEvent(SDL_VideoDevice *_this, XEvent *xevent)
                             X11_XResizeWindow(display, data->xwindow, data->window->pending.w, data->window->pending.h);
                         }
                     }
+                }
+                if (data->emit_size_move_after_property_notify) {
+                    X11_EmitConfigureNotifyEvents(data, &data->pending_xconfigure);
+                    data->emit_size_move_after_property_notify = false;
                 }
                 if ((flags & SDL_WINDOW_INPUT_FOCUS)) {
                     if (data->pending_move) {
@@ -2073,6 +2148,7 @@ void X11_PumpEvents(SDL_VideoDevice *_this)
                 SDL_LogError(SDL_LOG_CATEGORY_VIDEO,
                              "Time out elapsed after mode switch on display %" SDL_PRIu32 " with no window becoming fullscreen; reverting", _this->displays[i]->id);
                 SDL_SetDisplayModeForDisplay(_this->displays[i], NULL);
+                _this->displays[i]->internal->mode_switch_deadline_ns = 0;
             }
         }
     }

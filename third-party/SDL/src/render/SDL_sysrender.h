@@ -34,6 +34,7 @@ extern "C" {
 
 typedef enum SDL_TextureAddressMode
 {
+    SDL_TEXTURE_ADDRESS_INVALID = -1,
     SDL_TEXTURE_ADDRESS_AUTO,
     SDL_TEXTURE_ADDRESS_CLAMP,
     SDL_TEXTURE_ADDRESS_WRAP,
@@ -65,8 +66,15 @@ typedef struct SDL_RenderViewState
     SDL_Rect pixel_clip_rect;
     bool clipping_enabled;
     SDL_FPoint scale;
+
+    // Support for logical output coordinates
+    SDL_RendererLogicalPresentation logical_presentation_mode;
+    int logical_w, logical_h;
+    SDL_FRect logical_src_rect;
+    SDL_FRect logical_dst_rect;
     SDL_FPoint logical_scale;
     SDL_FPoint logical_offset;
+
     SDL_FPoint current_scale;  // this is just `scale * logical_scale`, precalculated, since we use it a lot.
 } SDL_RenderViewState;
 
@@ -148,6 +156,7 @@ typedef struct SDL_RenderCommand
             SDL_FColor color;
             SDL_BlendMode blend;
             SDL_Texture *texture;
+            SDL_ScaleMode texture_scale_mode;
             SDL_TextureAddressMode texture_address_mode;
         } draw;
         struct
@@ -217,7 +226,6 @@ struct SDL_Renderer
     bool (*LockTexture)(SDL_Renderer *renderer, SDL_Texture *texture,
                        const SDL_Rect *rect, void **pixels, int *pitch);
     void (*UnlockTexture)(SDL_Renderer *renderer, SDL_Texture *texture);
-    void (*SetTextureScaleMode)(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scaleMode);
     bool (*SetRenderTarget)(SDL_Renderer *renderer, SDL_Texture *texture);
     SDL_Surface *(*RenderReadPixels)(SDL_Renderer *renderer, const SDL_Rect *rect);
     bool (*RenderPresent)(SDL_Renderer *renderer);
@@ -248,17 +256,8 @@ struct SDL_Renderer
     Uint64 simulate_vsync_interval_ns;
     Uint64 last_present;
 
-    // Support for logical output coordinates
-    SDL_RendererLogicalPresentation logical_presentation_mode;
-    int logical_w, logical_h;
-    SDL_FRect logical_src_rect;
-    SDL_FRect logical_dst_rect;
-
     SDL_RenderViewState *view;
     SDL_RenderViewState main_view;
-
-    // Cache the output size in pixels
-    int output_pixel_w, output_pixel_h;
 
     // The window pixel to point coordinate scale
     SDL_FPoint dpi_scale;

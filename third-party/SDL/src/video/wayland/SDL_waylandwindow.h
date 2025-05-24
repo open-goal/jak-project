@@ -116,6 +116,9 @@ struct SDL_WindowData
     struct wp_alpha_modifier_surface_v1 *wp_alpha_modifier_surface_v1;
     struct xdg_toplevel_icon_v1 *xdg_toplevel_icon_v1;
     struct frog_color_managed_surface *frog_color_managed_surface;
+    struct wp_color_management_surface_feedback_v1 *wp_color_management_surface_feedback;
+
+    struct Wayland_ColorInfoState *color_info_state;
 
     SDL_AtomicInt swap_interval_ready;
 
@@ -127,7 +130,8 @@ struct SDL_WindowData
     char *app_id;
     double scale_factor;
 
-    struct Wayland_SHMBuffer icon;
+    struct Wayland_SHMBuffer *icon_buffers;
+    int icon_buffer_count;
 
     struct
     {
@@ -184,6 +188,8 @@ struct SDL_WindowData
     int fullscreen_deadline_count;
     int maximized_restored_deadline_count;
     Uint64 last_focus_event_time_ns;
+    int icc_fd;
+    Uint32 icc_size;
     bool floating;
     bool suspended;
     bool resizing;
@@ -192,6 +198,7 @@ struct SDL_WindowData
     bool is_fullscreen;
     bool fullscreen_exclusive;
     bool drop_fullscreen_requests;
+    bool showing_window;
     bool fullscreen_was_positioned;
     bool show_hide_sync_required;
     bool scale_to_display;
@@ -231,6 +238,7 @@ extern void Wayland_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 extern bool Wayland_SuspendScreenSaver(SDL_VideoDevice *_this);
 extern bool Wayland_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *icon);
 extern float Wayland_GetWindowContentScale(SDL_VideoDevice *_this, SDL_Window *window);
+extern void *Wayland_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size_t *size);
 
 extern bool Wayland_SetWindowHitTest(SDL_Window *window, bool enabled);
 extern bool Wayland_FlashWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_FlashOperation operation);

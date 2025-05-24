@@ -12,7 +12,7 @@
 
 #include "decompiler/util/DecompilerTypeSystem.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "third-party/CLI11.hpp"
 #include "third-party/json.hpp"
 

@@ -2,7 +2,7 @@
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 std::string DirTpageResult::to_source() const {

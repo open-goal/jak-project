@@ -4,7 +4,7 @@
 
 #include "decompiler/Disasm/DecompilerLabel.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 

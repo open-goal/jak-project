@@ -367,15 +367,15 @@ SDL_TrayMenu *SDL_GetTraySubmenu(SDL_TrayEntry *entry)
     return entry->submenu;
 }
 
-const SDL_TrayEntry **SDL_GetTrayEntries(SDL_TrayMenu *menu, int *size)
+const SDL_TrayEntry **SDL_GetTrayEntries(SDL_TrayMenu *menu, int *count)
 {
     if (!menu) {
         SDL_InvalidParamError("menu");
         return NULL;
     }
 
-    if (size) {
-        *size = menu->nEntries;
+    if (count) {
+        *count = menu->nEntries;
     }
     return (const SDL_TrayEntry **)menu->entries;
 }
@@ -544,7 +544,7 @@ void SDL_SetTrayEntryLabel(SDL_TrayEntry *entry, const char *label)
     mii.dwTypeData = label_w;
     mii.cch = (UINT) SDL_wcslen(label_w);
 
-    if (!SetMenuItemInfoW(entry->parent->hMenu, (UINT) entry->id, TRUE, &mii)) {
+    if (!SetMenuItemInfoW(entry->parent->hMenu, (UINT) entry->id, FALSE, &mii)) {
         SDL_SetError("Couldn't update tray entry label");
     }
 

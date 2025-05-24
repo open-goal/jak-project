@@ -85,7 +85,9 @@
 #include <kernel.h>
 #include <swis.h>
 #endif
-
+#ifdef SDL_PLATFORM_3DS
+#include <3ds.h>
+#endif
 #ifdef SDL_PLATFORM_PS2
 #include <kernel.h>
 #endif
@@ -113,7 +115,11 @@
 #define CPU_CFG2_LSX  (1 << 6)
 #define CPU_CFG2_LASX (1 << 7)
 
-#if defined(SDL_ALTIVEC_BLITTERS) && defined(HAVE_SETJMP) && !defined(SDL_PLATFORM_MACOS) && !defined(SDL_PLATFORM_OPENBSD) && !defined(SDL_PLATFORM_FREEBSD)
+#if !defined(SDL_CPUINFO_DISABLED) && \
+    !((defined(SDL_PLATFORM_MACOS) && (defined(__ppc__) || defined(__ppc64__))) || (defined(SDL_PLATFORM_OPENBSD) && defined(__powerpc__))) && \
+    !(defined(SDL_PLATFORM_FREEBSD) && defined(__powerpc__)) && \
+    !(defined(SDL_PLATFORM_LINUX) && defined(__powerpc__) && defined(HAVE_GETAUXVAL)) && \
+    defined(SDL_ALTIVEC_BLITTERS) && defined(HAVE_SETJMP)
 /* This is the brute force way of detecting instruction sets...
    the idea is borrowed from the libmpeg2 library - thanks!
  */
@@ -342,6 +348,8 @@ static int CPU_haveAltiVec(void)
     elf_aux_info(AT_HWCAP, &cpufeatures, sizeof(cpufeatures));
     altivec = cpufeatures & PPC_FEATURE_HAS_ALTIVEC;
     return altivec;
+#elif defined(SDL_PLATFORM_LINUX) && defined(__powerpc__) && defined(HAVE_GETAUXVAL)
+    altivec = getauxval(AT_HWCAP) & PPC_FEATURE_HAS_ALTIVEC;
 #elif defined(SDL_ALTIVEC_BLITTERS) && defined(HAVE_SETJMP)
     void (*handler)(int sig);
     handler = signal(SIGILL, illegal_instruction);
@@ -641,6 +649,15 @@ int SDL_GetNumLogicalCPUCores(void)
             SYSTEM_INFO info;
             GetSystemInfo(&info);
             SDL_NumLogicalCPUCores = info.dwNumberOfProcessors;
+        }
+#endif
+#ifdef SDL_PLATFORM_3DS
+        if (SDL_NumLogicalCPUCores <= 0) {
+            bool isNew3DS = false;
+            APT_CheckNew3DS(&isNew3DS);
+            // 1 core is always dedicated to the OS
+            // Meaning that the New3DS has 3 available core, and the Old3DS only one.
+            SDL_NumLogicalCPUCores = isNew3DS ? 4 : 2;
         }
 #endif
         // There has to be at least 1, right? :)
@@ -1154,6 +1171,12 @@ int SDL_GetSystemRAM(void)
             if (_kernel_swi(OS_Memory, &regs, &regs) == NULL) {
                 SDL_SystemRAM = (int)(regs.r[1] * regs.r[2] / (1024 * 1024));
             }
+        }
+#endif
+#ifdef SDL_PLATFORM_3DS
+        if (SDL_SystemRAM <= 0) {
+            // The New3DS has 255MiB, the Old3DS 127MiB
+            SDL_SystemRAM = (int)(osGetMemRegionSize(MEMREGION_ALL) / (1024 * 1024));
         }
 #endif
 #ifdef SDL_PLATFORM_VITA

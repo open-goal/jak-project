@@ -13,7 +13,7 @@
 #include "common/util/BitUtils.h"
 #include "common/util/string_util.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace {
 const goos::Object& car(const goos::Object* x) {

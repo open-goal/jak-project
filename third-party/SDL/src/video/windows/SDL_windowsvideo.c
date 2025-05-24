@@ -76,10 +76,15 @@ static void SDLCALL UpdateWindowFrameUsableWhileCursorHidden(void *userdata, con
 #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
 static bool WIN_SuspendScreenSaver(SDL_VideoDevice *_this)
 {
+    DWORD result;
     if (_this->suspend_screensaver) {
-        SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
+        result = SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED);
     } else {
-        SetThreadExecutionState(ES_CONTINUOUS);
+        result = SetThreadExecutionState(ES_CONTINUOUS);
+    }
+    if (result == 0) {
+        SDL_SetError("SetThreadExecutionState() failed");
+        return false;
     }
     return true;
 }
@@ -102,6 +107,9 @@ static void WIN_DeleteDevice(SDL_VideoDevice *device)
     }
     if (data->shcoreDLL) {
         SDL_UnloadObject(data->shcoreDLL);
+    }
+    if (data->dwmapiDLL) {
+        SDL_UnloadObject(data->dwmapiDLL);
     }
 #endif
 #ifdef HAVE_DXGI_H
@@ -175,6 +183,17 @@ static SDL_VideoDevice *WIN_CreateDevice(void)
         /* *INDENT-OFF* */ // clang-format off
         data->GetDpiForMonitor = (HRESULT (WINAPI *)(HMONITOR, MONITOR_DPI_TYPE, UINT *, UINT *))SDL_LoadFunction(data->shcoreDLL, "GetDpiForMonitor");
         data->SetProcessDpiAwareness = (HRESULT (WINAPI *)(PROCESS_DPI_AWARENESS))SDL_LoadFunction(data->shcoreDLL, "SetProcessDpiAwareness");
+        /* *INDENT-ON* */ // clang-format on
+    } else {
+        SDL_ClearError();
+    }
+
+    data->dwmapiDLL = SDL_LoadObject("DWMAPI.DLL");
+    if (data->dwmapiDLL) {
+        /* *INDENT-OFF* */ // clang-format off
+        data->DwmFlush = (HRESULT (WINAPI *)(void))SDL_LoadFunction(data->dwmapiDLL, "DwmFlush");
+        data->DwmEnableBlurBehindWindow = (HRESULT (WINAPI *)(HWND hwnd, const DWM_BLURBEHIND *pBlurBehind))SDL_LoadFunction(data->dwmapiDLL, "DwmEnableBlurBehindWindow");
+        data->DwmSetWindowAttribute = (HRESULT (WINAPI *)(HWND hwnd, DWORD dwAttribute, LPCVOID pvAttribute, DWORD cbAttribute))SDL_LoadFunction(data->dwmapiDLL, "DwmSetWindowAttribute");
         /* *INDENT-ON* */ // clang-format on
     } else {
         SDL_ClearError();
@@ -330,10 +349,11 @@ static SDL_VideoDevice *WIN_CreateDevice(void)
 VideoBootStrap WINDOWS_bootstrap = {
     "windows", "SDL Windows video driver", WIN_CreateDevice,
     #if !defined(SDL_PLATFORM_XBOXONE) && !defined(SDL_PLATFORM_XBOXSERIES)
-    WIN_ShowMessageBox
+    WIN_ShowMessageBox,
     #else
-    NULL
+    NULL,
     #endif
+    false
 };
 
 static BOOL WIN_DeclareDPIAwareUnaware(SDL_VideoDevice *_this)

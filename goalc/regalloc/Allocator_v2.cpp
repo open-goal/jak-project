@@ -7,7 +7,7 @@
 #include "common/log/log.h"
 #include "common/util/Range.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 /*!
  Documentation:

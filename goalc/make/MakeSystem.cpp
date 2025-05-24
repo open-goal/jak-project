@@ -10,7 +10,7 @@
 #include "goalc/make/Tools.h"
 
 #include "fmt/color.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 std::string MakeStep::print() const {
   std::string result = fmt::format("Tool {} with inputs", tool);

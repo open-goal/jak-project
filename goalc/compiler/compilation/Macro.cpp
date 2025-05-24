@@ -3,7 +3,7 @@
 
 #include "goalc/compiler/Compiler.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 using namespace goos;
 

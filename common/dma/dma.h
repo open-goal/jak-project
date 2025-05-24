@@ -11,7 +11,7 @@
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 struct DmaStats {
   double sync_time_ms = 0;

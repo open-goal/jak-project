@@ -1,6 +1,6 @@
 #include "ParseHelpers.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace goos {
 

@@ -335,11 +335,6 @@ static void GPU_UnlockTexture(SDL_Renderer *renderer, SDL_Texture *texture)
     GPU_UpdateTexture(renderer, texture, rect, pixels, data->pitch);
 }
 
-static void GPU_SetTextureScaleMode(SDL_Renderer *renderer, SDL_Texture *texture, SDL_ScaleMode scale_mode)
-{
-    // nothing to do in this backend.
-}
-
 static bool GPU_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture)
 {
     GPU_RenderData *data = (GPU_RenderData *)renderer->internal;
@@ -450,7 +445,6 @@ static void GPU_InvalidateCachedState(SDL_Renderer *renderer)
 {
     GPU_RenderData *data = (GPU_RenderData *)renderer->internal;
 
-    data->state.render_target = NULL;
     data->state.scissor_enabled = false;
 }
 
@@ -494,8 +488,7 @@ static void PushUniforms(GPU_RenderData *data, SDL_RenderCommand *cmd)
     SDL_PushGPUVertexUniformData(data->state.command_buffer, 0, &uniforms, sizeof(uniforms));
 }
 
-static SDL_GPUSampler **SamplerPointer(
-    GPU_RenderData *data, SDL_TextureAddressMode address_mode, SDL_ScaleMode scale_mode)
+static SDL_GPUSampler **SamplerPointer(GPU_RenderData *data, SDL_TextureAddressMode address_mode, SDL_ScaleMode scale_mode)
 {
     return &data->samplers[scale_mode][address_mode - 1];
 }
@@ -575,7 +568,7 @@ static void Draw(
     if (tdata) {
         SDL_GPUTextureSamplerBinding sampler_bind;
         SDL_zero(sampler_bind);
-        sampler_bind.sampler = *SamplerPointer(data, cmd->data.draw.texture_address_mode, cmd->data.draw.texture->scaleMode);
+        sampler_bind.sampler = *SamplerPointer(data, cmd->data.draw.texture_address_mode, cmd->data.draw.texture_scale_mode);
         sampler_bind.texture = tdata->texture;
         SDL_BindGPUFragmentSamplers(pass, 0, &sampler_bind, 1);
     }
@@ -785,6 +778,8 @@ static bool GPU_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, 
                same texture, we can combine them all into a single draw call. */
             SDL_Texture *thistexture = cmd->data.draw.texture;
             SDL_BlendMode thisblend = cmd->data.draw.blend;
+            SDL_ScaleMode thisscalemode = cmd->data.draw.texture_scale_mode;
+            SDL_TextureAddressMode thisaddressmode = cmd->data.draw.texture_address_mode;
             const SDL_RenderCommandType thiscmdtype = cmd->command;
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
@@ -795,7 +790,10 @@ static bool GPU_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, 
                 const SDL_RenderCommandType nextcmdtype = nextcmd->command;
                 if (nextcmdtype != thiscmdtype) {
                     break; // can't go any further on this draw call, different render command up next.
-                } else if (nextcmd->data.draw.texture != thistexture || nextcmd->data.draw.blend != thisblend) {
+                } else if (nextcmd->data.draw.texture != thistexture ||
+                           nextcmd->data.draw.texture_scale_mode != thisscalemode ||
+                           nextcmd->data.draw.texture_address_mode != thisaddressmode ||
+                           nextcmd->data.draw.blend != thisblend) {
                     // FIXME should we check address mode too?
                     break; // can't go any further on this draw call, different texture/blendmode copy up next.
                 } else {
@@ -1176,7 +1174,6 @@ static bool GPU_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_P
     renderer->UpdateTexture = GPU_UpdateTexture;
     renderer->LockTexture = GPU_LockTexture;
     renderer->UnlockTexture = GPU_UnlockTexture;
-    renderer->SetTextureScaleMode = GPU_SetTextureScaleMode;
     renderer->SetRenderTarget = GPU_SetRenderTarget;
     renderer->QueueSetViewport = GPU_QueueNoOp;
     renderer->QueueSetDrawColor = GPU_QueueNoOp;
@@ -1242,10 +1239,10 @@ static bool GPU_CreateRenderer(SDL_Renderer *renderer, SDL_Window *window, SDL_P
 
     SDL_SetGPUAllowedFramesInFlight(data->device, 1);
 
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBA32);
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_BGRA32);
-    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBX32);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBA32);
     SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_BGRX32);
+    SDL_AddSupportedTextureFormat(renderer, SDL_PIXELFORMAT_RGBX32);
 
     SDL_SetNumberProperty(SDL_GetRendererProperties(renderer), SDL_PROP_RENDERER_MAX_TEXTURE_SIZE_NUMBER, 16384);
 

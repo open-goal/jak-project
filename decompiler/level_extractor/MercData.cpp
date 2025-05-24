@@ -6,7 +6,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 

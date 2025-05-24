@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 class Error : public std::runtime_error {
  public:

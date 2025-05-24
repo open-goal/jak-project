@@ -191,11 +191,27 @@
 #define SDL_VIDEO_RENDER_SW 1
 #endif
 
+/* STB image conversion */
+#if !defined(SDL_HAVE_STB) && !defined(SDL_LEAN_AND_MEAN)
+#define SDL_HAVE_STB 1
+#endif
+
 /* YUV formats
    - handling of YUV surfaces
    - blitting and conversion functions */
 #if !defined(SDL_HAVE_YUV) && !defined(SDL_LEAN_AND_MEAN)
 #define SDL_HAVE_YUV 1
+#endif
+
+#ifdef SDL_CAMERA_DISABLED
+#undef SDL_CAMERA_DRIVER_ANDROID
+#undef SDL_CAMERA_DRIVER_COREMEDIA
+#undef SDL_CAMERA_DRIVER_DUMMY
+#undef SDL_CAMERA_DRIVER_EMSCRIPTEN
+#undef SDL_CAMERA_DRIVER_MEDIAFOUNDATION
+#undef SDL_CAMERA_DRIVER_PIPEWIRE
+#undef SDL_CAMERA_DRIVER_V4L2
+#undef SDL_CAMERA_DRIVER_VITA
 #endif
 
 #ifdef SDL_RENDER_DISABLED

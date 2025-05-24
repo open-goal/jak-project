@@ -7,7 +7,7 @@
 
 #include "game/sound/common/voice.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 std::shared_ptr<snd::Voice> voices[kNVoices];
 u8 spu_memory[0x15160 * 10];

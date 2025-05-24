@@ -813,6 +813,12 @@ static Uint8 GetDefaultInputMode(SDL_DriverSwitch_Context *ctx)
         }
         break;
     }
+
+    // Wired controllers break if they are put into simple controller state
+    if (input_mode == k_eSwitchInputReportIDs_SimpleControllerState &&
+        !ctx->device->is_bluetooth) {
+        input_mode = k_eSwitchInputReportIDs_FullControllerState;
+    }
     return input_mode;
 }
 
@@ -869,33 +875,22 @@ static void SetEnhancedModeAvailable(SDL_DriverSwitch_Context *ctx)
     }
 }
 
-static void SetEnhancedMode(SDL_DriverSwitch_Context *ctx, bool bEnabled)
-{
-    if (bEnabled) {
-        SetEnhancedModeAvailable(ctx);
-    }
-
-    if (bEnabled != ctx->m_bEnhancedMode) {
-        ctx->m_bEnhancedMode = bEnabled;
-
-        UpdateInputMode(ctx);
-    }
-}
-
 static void SetEnhancedReportHint(SDL_DriverSwitch_Context *ctx, HIDAPI_Switch_EnhancedReportHint eEnhancedReportHint)
 {
+    ctx->m_eEnhancedReportHint = eEnhancedReportHint;
+
     switch (eEnhancedReportHint) {
     case SWITCH_ENHANCED_REPORT_HINT_OFF:
-        SetEnhancedMode(ctx, false);
+        ctx->m_bEnhancedMode = false;
         break;
     case SWITCH_ENHANCED_REPORT_HINT_ON:
-        SetEnhancedMode(ctx, true);
+        SetEnhancedModeAvailable(ctx);
+        ctx->m_bEnhancedMode = true;
         break;
     case SWITCH_ENHANCED_REPORT_HINT_AUTO:
         SetEnhancedModeAvailable(ctx);
         break;
     }
-    ctx->m_eEnhancedReportHint = eEnhancedReportHint;
 
     UpdateInputMode(ctx);
 }
@@ -954,8 +949,20 @@ static bool LoadStickCalibration(SDL_DriverSwitch_Context *ctx)
     readFactoryParams.unAddress = k_unSPIStickFactoryCalibrationStartOffset;
     readFactoryParams.ucLength = k_unSPIStickFactoryCalibrationLength;
 
-    if (!WriteSubcommand(ctx, k_eSwitchSubcommandIDs_SPIFlashRead, (uint8_t *)&readFactoryParams, sizeof(readFactoryParams), &factory_reply)) {
-        return false;
+    const int MAX_ATTEMPTS = 3;
+    for (int attempt = 0; ; ++attempt) {
+        if (!WriteSubcommand(ctx, k_eSwitchSubcommandIDs_SPIFlashRead, (uint8_t *)&readFactoryParams, sizeof(readFactoryParams), &factory_reply)) {
+            return false;
+        }
+
+        if (factory_reply->stickFactoryCalibration.opData.unAddress == k_unSPIStickFactoryCalibrationStartOffset) {
+            // We successfully read the calibration data
+            break;
+        }
+
+        if (attempt == MAX_ATTEMPTS) {
+            return false;
+        }
     }
 
     // Automatically select the user calibration if magic bytes are set
@@ -1519,6 +1526,10 @@ static bool HIDAPI_DriverSwitch_OpenJoystick(SDL_HIDAPI_Device *device, SDL_Joys
     ctx->m_bSyncWrite = true;
 
     if (!ctx->m_bInputOnly) {
+#ifdef SDL_PLATFORM_MACOS
+        // Wait for the OS to finish its handshake with the controller
+        SDL_Delay(250);
+#endif
         GetInitialInputMode(ctx);
         ctx->m_nCurrentInputMode = ctx->m_nInitialInputMode;
 
@@ -2727,6 +2738,7 @@ static bool HIDAPI_DriverSwitch_UpdateDevice(SDL_HIDAPI_Device *device)
 
     // Reconnect the Bluetooth device once the USB device is gone
     if (device->num_joysticks == 0 && device->is_bluetooth && packet_count > 0 &&
+        !device->parent &&
         !HIDAPI_HasConnectedUSBDevice(device->serial)) {
         HIDAPI_JoystickConnected(device, NULL);
     }

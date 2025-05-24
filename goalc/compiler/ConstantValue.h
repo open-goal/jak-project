@@ -6,7 +6,7 @@
 #include "common/util/Assert.h"
 #include "common/util/BitUtils.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 struct U128 {
   U128() = default;

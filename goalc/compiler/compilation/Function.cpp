@@ -8,7 +8,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace {
 

@@ -2,7 +2,6 @@
 
 #include "common/log/log.h"
 
-#include "fmt/ranges.h"
 #include "third-party/SDL/include/SDL3/SDL.h"
 
 namespace sdl_util {

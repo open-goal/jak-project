@@ -83,11 +83,11 @@ struct SDL_Surface
 // Surface functions
 extern bool SDL_SurfaceValid(SDL_Surface *surface);
 extern void SDL_UpdateSurfaceLockFlag(SDL_Surface *surface);
+extern bool SDL_CalculateSurfaceSize(SDL_PixelFormat format, int width, int height, size_t *size, size_t *pitch, bool minimalPitch);
 extern float SDL_GetDefaultSDRWhitePoint(SDL_Colorspace colorspace);
 extern float SDL_GetSurfaceSDRWhitePoint(SDL_Surface *surface, SDL_Colorspace colorspace);
 extern float SDL_GetDefaultHDRHeadroom(SDL_Colorspace colorspace);
 extern float SDL_GetSurfaceHDRHeadroom(SDL_Surface *surface, SDL_Colorspace colorspace);
 extern SDL_Surface *SDL_GetSurfaceImage(SDL_Surface *surface, float display_scale);
-extern bool SDL_SoftStretch(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
 
 #endif // SDL_surface_c_h_

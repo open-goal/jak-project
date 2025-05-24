@@ -2860,7 +2860,6 @@ GTEST_DISABLE_MSC_WARNINGS_POP_()  //  4251
 #ifndef GOOGLEMOCK_INCLUDE_GMOCK_GMOCK_SPEC_BUILDERS_H_
 #define GOOGLEMOCK_INCLUDE_GMOCK_GMOCK_SPEC_BUILDERS_H_
 
-#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
@@ -8647,22 +8646,22 @@ class GTEST_API_ Mock {
 
   // Tells Google Mock to allow uninteresting calls on the given mock
   // object.
-  static void AllowUninterestingCalls(uintptr_t mock_obj)
+  static void AllowUninterestingCalls(const void* mock_obj)
       GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex);
 
   // Tells Google Mock to warn the user about uninteresting calls on
   // the given mock object.
-  static void WarnUninterestingCalls(uintptr_t mock_obj)
+  static void WarnUninterestingCalls(const void* mock_obj)
       GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex);
 
   // Tells Google Mock to fail uninteresting calls on the given mock
   // object.
-  static void FailUninterestingCalls(uintptr_t mock_obj)
+  static void FailUninterestingCalls(const void* mock_obj)
       GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex);
 
   // Tells Google Mock the given mock object is being destroyed and
   // its entry in the call-reaction table should be removed.
-  static void UnregisterCallReaction(uintptr_t mock_obj)
+  static void UnregisterCallReaction(const void* mock_obj)
       GTEST_LOCK_EXCLUDED_(internal::g_gmock_mutex);
 
   // Returns the reaction Google Mock will have on uninteresting calls
@@ -11418,7 +11417,6 @@ MATCHER(IsFalse, negation ? "is true" : "is false") {
 #ifndef GOOGLEMOCK_INCLUDE_GMOCK_GMOCK_NICE_STRICT_H_
 #define GOOGLEMOCK_INCLUDE_GMOCK_GMOCK_NICE_STRICT_H_
 
-#include <cstdint>
 #include <type_traits>
 
 
@@ -11463,37 +11461,25 @@ constexpr bool HasStrictnessModifier() {
 template <typename Base>
 class NiceMockImpl {
  public:
-  NiceMockImpl() {
-    ::testing::Mock::AllowUninterestingCalls(reinterpret_cast<uintptr_t>(this));
-  }
+  NiceMockImpl() { ::testing::Mock::AllowUninterestingCalls(this); }
 
-  ~NiceMockImpl() {
-    ::testing::Mock::UnregisterCallReaction(reinterpret_cast<uintptr_t>(this));
-  }
+  ~NiceMockImpl() { ::testing::Mock::UnregisterCallReaction(this); }
 };
 
 template <typename Base>
 class NaggyMockImpl {
  public:
-  NaggyMockImpl() {
-    ::testing::Mock::WarnUninterestingCalls(reinterpret_cast<uintptr_t>(this));
-  }
+  NaggyMockImpl() { ::testing::Mock::WarnUninterestingCalls(this); }
 
-  ~NaggyMockImpl() {
-    ::testing::Mock::UnregisterCallReaction(reinterpret_cast<uintptr_t>(this));
-  }
+  ~NaggyMockImpl() { ::testing::Mock::UnregisterCallReaction(this); }
 };
 
 template <typename Base>
 class StrictMockImpl {
  public:
-  StrictMockImpl() {
-    ::testing::Mock::FailUninterestingCalls(reinterpret_cast<uintptr_t>(this));
-  }
+  StrictMockImpl() { ::testing::Mock::FailUninterestingCalls(this); }
 
-  ~StrictMockImpl() {
-    ::testing::Mock::UnregisterCallReaction(reinterpret_cast<uintptr_t>(this));
-  }
+  ~StrictMockImpl() { ::testing::Mock::UnregisterCallReaction(this); }
 };
 
 }  // namespace internal

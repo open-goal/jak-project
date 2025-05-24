@@ -5,7 +5,7 @@
 #include "common/cross_sockets/XSocket.h"
 #include "common/log/log.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 // clang-format off
 #ifdef _WIN32

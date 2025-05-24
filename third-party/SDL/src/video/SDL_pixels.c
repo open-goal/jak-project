@@ -155,6 +155,7 @@ const char *SDL_GetPixelFormatName(SDL_PixelFormat format)
         CASE(SDL_PIXELFORMAT_NV21)
         CASE(SDL_PIXELFORMAT_P010)
         CASE(SDL_PIXELFORMAT_EXTERNAL_OES)
+        CASE(SDL_PIXELFORMAT_MJPG)
 
     default:
         return "SDL_PIXELFORMAT_UNKNOWN";
@@ -647,7 +648,7 @@ const SDL_PixelFormatDetails *SDL_GetPixelFormatDetails(SDL_PixelFormat format)
     SDL_PixelFormatDetails *details;
 
     if (SDL_ShouldInit(&SDL_format_details_init)) {
-        SDL_format_details = SDL_CreateHashTable(NULL, 8, SDL_HashID, SDL_KeyMatchID, SDL_NukeFreeValue, true, false);
+        SDL_format_details = SDL_CreateHashTable(0, true, SDL_HashID, SDL_KeyMatchID, SDL_DestroyHashValue, NULL);
         if (!SDL_format_details) {
             SDL_SetInitialized(&SDL_format_details_init, false);
             return NULL;
@@ -670,9 +671,13 @@ const SDL_PixelFormatDetails *SDL_GetPixelFormatDetails(SDL_PixelFormat format)
         return NULL;
     }
 
-    if (!SDL_InsertIntoHashTable(SDL_format_details, (const void *)(uintptr_t)format, (void *)details)) {
+    if (!SDL_InsertIntoHashTable(SDL_format_details, (const void *)(uintptr_t)format, (void *)details, false)) {
         SDL_free(details);
-        return NULL;
+        // uh...did another thread beat us to inserting this?
+        if (SDL_FindInHashTable(SDL_format_details, (const void *)(uintptr_t)format, (const void **)&details)) {
+            return details;
+        }
+        return NULL;  // oh well.
     }
 
     return details;
@@ -687,10 +692,40 @@ void SDL_QuitPixelFormatDetails(void)
     }
 }
 
+void SDL_Get8888AlphaMaskAndShift(const SDL_PixelFormatDetails *fmt, Uint32 *mask, Uint32 *shift)
+{
+    if (fmt->Amask) {
+        *mask = fmt->Amask;
+        *shift = fmt->Ashift;
+    } else {
+        *mask = ~(fmt->Rmask | fmt->Gmask | fmt->Bmask);
+        switch (*mask) {
+        case 0x000000FF:
+            *shift = 0;
+            break;
+        case 0x0000FF00:
+            *shift = 8;
+            break;
+        case 0x00FF0000:
+            *shift = 16;
+            break;
+        case 0xFF000000:
+            *shift = 24;
+            break;
+        default:
+            // Should never happen
+            *shift = 0;
+            break;
+        }
+    }
+}
+
 SDL_Colorspace SDL_GetDefaultColorspaceForFormat(SDL_PixelFormat format)
 {
     if (SDL_ISPIXELFORMAT_FOURCC(format)) {
-        if (format == SDL_PIXELFORMAT_P010) {
+        if (format == SDL_PIXELFORMAT_MJPG) {
+            return SDL_COLORSPACE_SRGB;
+        } else if (format == SDL_PIXELFORMAT_P010) {
             return SDL_COLORSPACE_HDR10;
         } else {
             return SDL_COLORSPACE_YUV_DEFAULT;
@@ -1130,7 +1165,7 @@ Uint8 SDL_LookupRGBAColor(SDL_HashTable *palette_map, Uint32 pixel, const SDL_Pa
         Uint8 b = (Uint8)((pixel >>  8) & 0xFF);
         Uint8 a = (Uint8)((pixel >>  0) & 0xFF);
         color_index = SDL_FindColor(pal, r, g, b, a);
-        SDL_InsertIntoHashTable(palette_map, (const void *)(uintptr_t)pixel, (const void *)(uintptr_t)color_index);
+        SDL_InsertIntoHashTable(palette_map, (const void *)(uintptr_t)pixel, (const void *)(uintptr_t)color_index, true);
     }
     return color_index;
 }
@@ -1496,7 +1531,7 @@ bool SDL_MapSurface(SDL_Surface *src, SDL_Surface *dst)
     } else {
         if (SDL_ISPIXELFORMAT_INDEXED(dstfmt->format)) {
             // BitField --> Palette
-            map->info.palette_map = SDL_CreateHashTable(NULL, 32, SDL_HashID, SDL_KeyMatchID, NULL, false, false);
+            map->info.palette_map = SDL_CreateHashTable(0, false, SDL_HashID, SDL_KeyMatchID, NULL, NULL);
         } else {
             // BitField --> BitField
             if (srcfmt == dstfmt) {

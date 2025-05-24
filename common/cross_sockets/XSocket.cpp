@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "common/log/log.h"
 // clang-format on
 
