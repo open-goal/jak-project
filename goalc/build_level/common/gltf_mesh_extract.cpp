@@ -638,6 +638,7 @@ void extract(const Input& in,
 
   lg::info("{} out of {} faces appeared to have wrong orientation and were flipped",
            suspicious_faces, out.faces.size());
+  lg::info("{} faces were too big and were subdivided", fix_count);
   // lg::info("Collision extract{} {}", mesh_count, prim_count);
 }
 
