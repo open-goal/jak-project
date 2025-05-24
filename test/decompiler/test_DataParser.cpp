@@ -7,7 +7,7 @@
 #include "decompiler/util/data_decompile.h"
 #include "gtest/gtest.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 using namespace decompiler;
 

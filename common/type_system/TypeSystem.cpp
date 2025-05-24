@@ -15,7 +15,7 @@
 #include "common/util/math_util.h"
 
 #include "fmt/color.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace {
 template <typename... Args>

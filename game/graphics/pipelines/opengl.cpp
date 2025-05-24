@@ -30,7 +30,7 @@
 #include "game/system/hid/input_manager.h"
 #include "game/system/hid/sdl_util.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "third-party/SDL/include/SDL3/SDL.h"
 #include "third-party/SDL/include/SDL3/SDL_hints.h"
 #include "third-party/SDL/include/SDL3/SDL_version.h"

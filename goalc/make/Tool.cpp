@@ -5,7 +5,7 @@
 
 #include "common/util/FileUtil.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 Tool::Tool(const std::string& name) : m_name(name) {}
 

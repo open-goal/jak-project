@@ -2,6 +2,7 @@
 
 #include "common/util/Assert.h"
 
+#include "fmt/core.h"
 #include "fmt/format.h"
 
 std::string reg_descriptor_name(GifTag::RegisterDescriptor reg) {

@@ -7,7 +7,7 @@
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 

@@ -12,7 +12,7 @@
 
 #include "game/sound/989snd/musicbank.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace snd {
 

@@ -13,7 +13,7 @@
 #include "test/offline/config/config.h"
 
 #include "fmt/color.h"
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "fmt/ranges.h"
 
 OfflineTestThreadManager g_offline_test_thread_manager;

@@ -13,7 +13,7 @@
 #include "common/type_system/state.h"
 #include "common/util/string_util.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 /*!
  * Missing Features

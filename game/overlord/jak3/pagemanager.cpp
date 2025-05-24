@@ -2,7 +2,6 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <memory>
 
 #include "common/log/log.h"
 #include "common/util/Assert.h"

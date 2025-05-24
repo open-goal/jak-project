@@ -3,6 +3,7 @@
 #include "common/util/Assert.h"
 #include "common/versions/revision.h"
 
+#include "fmt/core.h"
 #include "fmt/format.h"
 
 GameVersion game_name_to_version(const std::string& name) {

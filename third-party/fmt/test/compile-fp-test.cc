@@ -8,7 +8,10 @@
 #include "fmt/compile.h"
 #include "gmock/gmock.h"
 
-#if FMT_USE_CONSTEVAL
+#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806 && \
+    defined(__cpp_constexpr) && __cpp_constexpr >= 201907 &&       \
+    defined(__cpp_constexpr_dynamic_alloc) &&                      \
+    __cpp_constexpr_dynamic_alloc >= 201907 && FMT_CPLUSPLUS >= 202002L
 
 template <size_t max_string_length, typename Char = char> struct test_string {
   template <typename T> constexpr bool operator==(const T& rhs) const noexcept {
@@ -57,5 +60,4 @@ TEST(compile_time_formatting_test, floating_point) {
   EXPECT_EQ("+inf", test_format<5>(FMT_COMPILE("{:+}"), inf));
   EXPECT_EQ("-inf", test_format<5>(FMT_COMPILE("{}"), -inf));
 }
-
-#endif  // FMT_USE_CONSTEVAL
+#endif

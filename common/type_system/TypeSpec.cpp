@@ -7,7 +7,7 @@
 
 #include <stdexcept>
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 bool TypeTag::operator==(const TypeTag& other) const {
   return name == other.name && value == other.value;

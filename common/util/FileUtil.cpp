@@ -22,7 +22,7 @@
 // This disables the use of PCLMULQDQ which is probably ok, but let's just be safe and disable it
 // because nobody will care if png compression is 10% slower.
 #define FPNG_NO_SSE 1
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "third-party/fpng/fpng.cpp"
 #include "third-party/fpng/fpng.h"
 #include "third-party/lzokay/lzokay.hpp"

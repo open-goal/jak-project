@@ -1,6 +1,6 @@
 #include "BucketRenderer.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
 std::string BucketRenderer::name() const {

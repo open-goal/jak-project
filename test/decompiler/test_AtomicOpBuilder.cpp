@@ -6,6 +6,7 @@
 #include "decompiler/analysis/atomic_op_builder.h"
 #include "gtest/gtest.h"
 
+#include "fmt/core.h"
 #include "fmt/format.h"
 
 using namespace decompiler;

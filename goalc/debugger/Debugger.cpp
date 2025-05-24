@@ -17,7 +17,7 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.

@@ -18,7 +18,7 @@
 #include "CodeTester.h"
 #include "IGen.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 namespace emitter {
 

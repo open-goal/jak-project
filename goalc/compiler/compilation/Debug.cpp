@@ -4,7 +4,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/debugger/disassemble.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 u32 Compiler::parse_address_spec(const goos::Object& form) {
   if (form.is_int()) {

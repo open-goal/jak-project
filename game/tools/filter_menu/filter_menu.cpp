@@ -2,7 +2,7 @@
 
 #include "game/graphics/gfx.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_stdlib.h"
 

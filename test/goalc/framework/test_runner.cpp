@@ -12,7 +12,7 @@
 #include "goalc/listener/Listener.h"
 #include "gtest/gtest.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 namespace GoalTest {

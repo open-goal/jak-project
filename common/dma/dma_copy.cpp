@@ -6,7 +6,7 @@
 #include "common/log/log.h"
 #include "common/util/Timer.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 /*!
  * Convert a DMA chain to an array of bytes that can be directly fed to VIF.

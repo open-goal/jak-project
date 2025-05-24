@@ -5,7 +5,7 @@
 
 #include "common/util/Assert.h"
 
-#include "fmt/format.h"
+#include "fmt/core.h"
 
 /*
  * Allowable lines:
