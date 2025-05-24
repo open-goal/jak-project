@@ -435,11 +435,15 @@ std::optional<std::vector<jak1::CollideFace>> subdivide_face_if_needed(jak1::Col
   }
 }
 
-PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/) {
+PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/, float plugin_version) {
   PatResult result;
   if (!val.IsObject() || !val.Has("set_collision") || !val.Get("set_collision").Get<int>()) {
-    // unset.
-    result.set = false;
+    if (plugin_version >= 0.04f) {
+      result.set = true;
+      result.pat.set_mode(jak1::PatSurface::Mode::AUTO);
+    } else {
+      result.set = false;
+    }
     return result;
   }
 
@@ -471,6 +475,8 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
     int mode = val.Get("collide_mode").Get<int>();
     ASSERT(mode < (int)jak1::PatSurface::Mode::MAX_MODE);
     result.pat.set_mode(jak1::PatSurface::Mode(mode));
+  } else if (plugin_version >= 0.04f) {
+    result.pat.set_mode(jak1::PatSurface::Mode::AUTO);
   }
 
   if (val.Get("nocamera").Get<int>()) {
@@ -487,14 +493,15 @@ PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*d
 void extract(const Input& in,
              CollideOutput& out,
              const tinygltf::Model& model,
-             const std::vector<NodeWithTransform>& all_nodes) {
+             const std::vector<NodeWithTransform>& all_nodes,
+             const float plugin_version) {
   [[maybe_unused]] int mesh_count = 0;
   [[maybe_unused]] int prim_count = 0;
   int suspicious_faces = 0;
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    PatResult mesh_default_collide = custom_props_to_pat(node.extras, node.name);
+    PatResult mesh_default_collide = custom_props_to_pat(node.extras, node.name, plugin_version);
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
@@ -588,19 +595,45 @@ void extract(const Input& in,
 
   out.faces = std::move(fixed_faces);
 
-  if (in.auto_wall_enable) {
-    lg::info("automatically detecting walls with angle {}", in.auto_wall_angle);
+  if (plugin_version >= 0.04f) {
+    lg::info("automatically detecting auto faces with angle {}", in.auto_wall_angle);
+    int auto_count = 0;
     int wall_count = 0;
+    int ground_count = 0;
     float wall_cos = std::cos(in.auto_wall_angle * 2.f * 3.14159 / 360.f);
     for (auto& face : out.faces) {
-      math::Vector3f face_normal =
-          (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
-      if (face_normal[1] < wall_cos) {
-        face.pat.set_mode(jak1::PatSurface::Mode::WALL);
-        wall_count++;
+      if (face.pat.get_mode() == jak1::PatSurface::Mode::AUTO) {
+        auto_count++;
+        math::Vector3f face_normal =
+            (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
+        if (face_normal[1] < wall_cos) {
+          face.pat.set_mode(jak1::PatSurface::Mode::WALL);
+          wall_count++;
+        } else {
+          face.pat.set_mode(jak1::PatSurface::Mode::GROUND);
+          ground_count++;
+        }
       }
     }
-    lg::info("automatic wall: {}/{} converted to walls", wall_count, out.faces.size());
+    lg::info("automatic angle: {} auto faces converted to {} ground and {} wall",
+        auto_count, ground_count, wall_count);
+  }
+
+  if (plugin_version < 0.04f) {
+    if (in.auto_wall_enable) {
+      lg::info("automatically detecting walls with angle {}", in.auto_wall_angle);
+      int wall_count = 0;
+      float wall_cos = std::cos(in.auto_wall_angle * 2.f * 3.14159 / 360.f);
+      for (auto& face : out.faces) {
+        math::Vector3f face_normal =
+            (face.v[1] - face.v[0]).cross(face.v[2] - face.v[0]).normalized();
+        if (face_normal[1] < wall_cos) {
+          face.pat.set_mode(jak1::PatSurface::Mode::WALL);
+          wall_count++;
+        }
+      }
+      lg::info("automatic wall: {}/{} converted to walls", wall_count, out.faces.size());
+    }
   }
 
   lg::info("{} out of {} faces appeared to have wrong orientation and were flipped",
@@ -619,9 +652,27 @@ void extract(const Input& in, Output& out) {
   ASSERT_MSG(warn.empty(), warn.c_str());
   ASSERT_MSG(err.empty(), err.c_str());
   ASSERT_MSG(res, "Failed to load GLTF file!");
+  float plugin_version = 0.03f;
+  for (const auto& material : model.materials) {
+    if (material.extras.IsObject() && material.extras.Has("plugin_version")) {
+      const auto& version = material.extras.Get("plugin_version");
+      plugin_version = static_cast<float>(version.Get<double>());
+      break;
+    }
+  }
+  if (plugin_version == 0.03f) {
+    for (const auto& node : model.nodes) {
+      if (node.extras.IsObject() && node.extras.Has("plugin_version")) {
+        const auto& version = node.extras.Get("plugin_version");
+        plugin_version = static_cast<float>(version.Get<double>());
+        break;
+      }
+    }
+  }
+  lg::info("GLTF uses plugin version: {}", plugin_version);
   auto all_nodes = flatten_nodes_from_all_scenes(model);
   extract(in, out.tfrag, model, all_nodes);
-  extract(in, out.collide, model, all_nodes);
+  extract(in, out.collide, model, all_nodes, plugin_version);
   extract(in, out.tie, model, all_nodes);
   lg::info("GLTF total took {:.2f} ms", read_timer.getMs());
 }
