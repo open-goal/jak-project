@@ -24,6 +24,7 @@
 #include "SDL_video_c.h"
 #include "SDL_RLEaccel_c.h"
 #include "SDL_pixels_c.h"
+#include "SDL_stb_c.h"
 #include "SDL_yuv_c.h"
 #include "../render/SDL_sysrender.h"
 
@@ -103,6 +104,11 @@ bool SDL_CalculateSurfaceSize(SDL_PixelFormat format, int width, int height, siz
     }
 
     if (SDL_ISPIXELFORMAT_FOURCC(format)) {
+        if (format == SDL_PIXELFORMAT_MJPG) {
+            // We don't know in advance what it will be, we'll figure it out later.
+            return true;
+        }
+
         if (!SDL_CalculateYUVSize(format, width, height, &sz, &p)) {
             // Overflow...
             return false;
@@ -198,6 +204,11 @@ SDL_Surface *SDL_CreateSurface(int width, int height, SDL_PixelFormat format)
         return NULL;
     }
 
+    if (format == SDL_PIXELFORMAT_UNKNOWN) {
+        SDL_InvalidParamError("format");
+        return NULL;
+    }
+
     if (!SDL_CalculateSurfaceSize(format, width, height, &size, &pitch, false /* not minimal pitch */)) {
         // Overflow...
         return NULL;
@@ -213,7 +224,7 @@ SDL_Surface *SDL_CreateSurface(int width, int height, SDL_PixelFormat format)
         return NULL;
     }
 
-    if (surface->w && surface->h) {
+    if (surface->w && surface->h && format != SDL_PIXELFORMAT_MJPG) {
         surface->flags &= ~SDL_SURFACE_PREALLOCATED;
         surface->pixels = SDL_aligned_alloc(SDL_GetSIMDAlignment(), size);
         if (!surface->pixels) {
@@ -241,6 +252,11 @@ SDL_Surface *SDL_CreateSurfaceFrom(int width, int height, SDL_PixelFormat format
 
     if (height < 0) {
         SDL_InvalidParamError("height");
+        return NULL;
+    }
+
+    if (format == SDL_PIXELFORMAT_UNKNOWN) {
+        SDL_InvalidParamError("format");
         return NULL;
     }
 
@@ -1085,9 +1101,9 @@ bool SDL_BlitSurfaceScaled(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surfac
     int dst_w, dst_h;
 
     // Make sure the surfaces aren't locked
-    if (!SDL_SurfaceValid(src)) {
+    if (!SDL_SurfaceValid(src) || !src->pixels) {
         return SDL_InvalidParamError("src");
-    } else if (!SDL_SurfaceValid(dst)) {
+    } else if (!SDL_SurfaceValid(dst) || !dst->pixels) {
         return SDL_InvalidParamError("dst");
     } else if ((src->flags & SDL_SURFACE_LOCKED) || (dst->flags & SDL_SURFACE_LOCKED)) {
         return SDL_SetError("Surfaces must not be locked during blit");
@@ -1115,6 +1131,13 @@ bool SDL_BlitSurfaceScaled(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surfac
     if (dst_w == src_w && dst_h == src_h) {
         // No scaling, defer to regular blit
         return SDL_BlitSurface(src, srcrect, dst, dstrect);
+    }
+
+    if (src_w == 0) {
+        src_w = 1;
+    }
+    if (src_h == 0) {
+        src_h = 1;
     }
 
     scaling_w = (double)dst_w / src_w;
@@ -1256,7 +1279,7 @@ bool SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect, S
             src->format == dst->format &&
             !SDL_ISPIXELFORMAT_INDEXED(src->format) &&
             SDL_BYTESPERPIXEL(src->format) <= 4) {
-            return SDL_SoftStretch(src, srcrect, dst, dstrect, SDL_SCALEMODE_NEAREST);
+            return SDL_StretchSurface(src, srcrect, dst, dstrect, SDL_SCALEMODE_NEAREST);
         } else if (SDL_BITSPERPIXEL(src->format) < 8) {
             // Scaling bitmap not yet supported, convert to RGBA for blit
             bool result = false;
@@ -1276,7 +1299,7 @@ bool SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect, S
             SDL_BYTESPERPIXEL(src->format) == 4 &&
             src->format != SDL_PIXELFORMAT_ARGB2101010) {
             // fast path
-            return SDL_SoftStretch(src, srcrect, dst, dstrect, SDL_SCALEMODE_LINEAR);
+            return SDL_StretchSurface(src, srcrect, dst, dstrect, SDL_SCALEMODE_LINEAR);
         } else if (SDL_BITSPERPIXEL(src->format) < 8) {
             // Scaling bitmap not yet supported, convert to RGBA for blit
             bool result = false;
@@ -1335,7 +1358,7 @@ bool SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect, S
             if (is_complex_copy_flags || src->format != dst->format) {
                 SDL_Rect tmprect;
                 SDL_Surface *tmp2 = SDL_CreateSurface(dstrect->w, dstrect->h, src->format);
-                SDL_SoftStretch(src, &srcrect2, tmp2, NULL, SDL_SCALEMODE_LINEAR);
+                SDL_StretchSurface(src, &srcrect2, tmp2, NULL, SDL_SCALEMODE_LINEAR);
 
                 SDL_SetSurfaceColorMod(tmp2, r, g, b);
                 SDL_SetSurfaceAlphaMod(tmp2, alpha);
@@ -1348,7 +1371,7 @@ bool SDL_BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect, S
                 result = SDL_BlitSurfaceUnchecked(tmp2, &tmprect, dst, dstrect);
                 SDL_DestroySurface(tmp2);
             } else {
-                result = SDL_SoftStretch(src, &srcrect2, dst, dstrect, SDL_SCALEMODE_LINEAR);
+                result = SDL_StretchSurface(src, &srcrect2, dst, dstrect, SDL_SCALEMODE_LINEAR);
             }
 
             SDL_DestroySurface(tmp1);
@@ -1916,7 +1939,18 @@ SDL_Surface *SDL_ConvertSurfaceAndColorspace(SDL_Surface *surface, SDL_PixelForm
     SDL_SetSurfaceColorspace(convert, colorspace);
 
     if (SDL_ISPIXELFORMAT_FOURCC(format) || SDL_ISPIXELFORMAT_FOURCC(surface->format)) {
-        if (!SDL_ConvertPixelsAndColorspace(surface->w, surface->h, surface->format, src_colorspace, src_properties, surface->pixels, surface->pitch, convert->format, colorspace, props, convert->pixels, convert->pitch)) {
+        if (surface->format == SDL_PIXELFORMAT_MJPG && format == SDL_PIXELFORMAT_MJPG) {
+            // Just do a straight pixel copy of the JPEG image
+            size_t size = (size_t)surface->pitch;
+            convert->pixels = SDL_malloc(size);
+            if (!convert->pixels) {
+                goto error;
+            }
+            convert->flags &= ~SDL_SURFACE_PREALLOCATED;
+            convert->pitch = surface->pitch;
+            SDL_memcpy(convert->pixels, surface->pixels, size);
+
+        } else if (!SDL_ConvertPixelsAndColorspace(surface->w, surface->h, surface->format, src_colorspace, src_properties, surface->pixels, surface->pitch, convert->format, colorspace, props, convert->pixels, convert->pitch)) {
             goto error;
         }
 
@@ -2277,6 +2311,10 @@ bool SDL_ConvertPixelsAndColorspace(int width, int height,
         dst_colorspace = SDL_GetDefaultColorspaceForFormat(dst_format);
     }
 
+    if (src_format == SDL_PIXELFORMAT_MJPG) {
+        return SDL_ConvertPixels_STB(width, height, src_format, src_colorspace, src_properties, src, src_pitch, dst_format, dst_colorspace, dst_properties, dst, dst_pitch);
+    }
+
 #ifdef SDL_HAVE_YUV
     if (SDL_ISPIXELFORMAT_FOURCC(src_format) && SDL_ISPIXELFORMAT_FOURCC(dst_format)) {
         return SDL_ConvertPixels_YUV_to_YUV(width, height, src_format, src_colorspace, src_properties, src, src_pitch, dst_format, dst_colorspace, dst_properties, dst, dst_pitch);
@@ -2293,13 +2331,17 @@ bool SDL_ConvertPixelsAndColorspace(int width, int height,
 
     // Fast path for same format copy
     if (src_format == dst_format && src_colorspace == dst_colorspace) {
-        int i;
-        const int bpp = SDL_BYTESPERPIXEL(src_format);
-        width *= bpp;
-        for (i = height; i--;) {
-            SDL_memcpy(dst, src, width);
-            src = (const Uint8 *)src + src_pitch;
-            dst = (Uint8 *)dst + dst_pitch;
+        if (src_pitch == dst_pitch) {
+            SDL_memcpy(dst, src, height * src_pitch);
+        } else {
+            int i;
+            const int bpp = SDL_BYTESPERPIXEL(src_format);
+            width *= bpp;
+            for (i = height; i--;) {
+                SDL_memcpy(dst, src, width);
+                src = (const Uint8 *)src + src_pitch;
+                dst = (Uint8 *)dst + dst_pitch;
+            }
         }
         return true;
     }

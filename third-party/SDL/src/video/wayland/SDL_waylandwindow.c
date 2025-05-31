@@ -23,6 +23,8 @@
 
 #ifdef SDL_VIDEO_DRIVER_WAYLAND
 
+#include <sys/mman.h>
+
 #include "../SDL_sysvideo.h"
 #include "../../events/SDL_events_c.h"
 #include "../../core/unix/SDL_appid.h"
@@ -31,6 +33,7 @@
 #include "SDL_waylandwindow.h"
 #include "SDL_waylandvideo.h"
 #include "../../SDL_hints_c.h"
+#include "SDL_waylandcolor.h"
 
 #include "alpha-modifier-v1-client-protocol.h"
 #include "xdg-shell-client-protocol.h"
@@ -43,6 +46,7 @@
 #include "xdg-dialog-v1-client-protocol.h"
 #include "frog-color-management-v1-client-protocol.h"
 #include "xdg-toplevel-icon-v1-client-protocol.h"
+#include "color-management-v1-client-protocol.h"
 
 #ifdef HAVE_LIBDECOR_H
 #include <libdecor.h>
@@ -441,15 +445,13 @@ static bool ConfigureWindowGeometry(SDL_Window *window)
      */
     SetMinMaxDimensions(window);
 
-    if (data->shell_surface_status != WAYLAND_SHELL_SURFACE_STATUS_HIDDEN) {
-        // Unconditionally send the window and drawable size, the video core will deduplicate when required.
-        if (!data->scale_to_display) {
-            SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, window_width, window_height);
-        } else {
-            SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, data->current.pixel_width, data->current.pixel_height);
-        }
-        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED, data->current.pixel_width, data->current.pixel_height);
+    // Unconditionally send the window and drawable size, the video core will deduplicate when required.
+    if (!data->scale_to_display) {
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, window_width, window_height);
+    } else {
+        SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, data->current.pixel_width, data->current.pixel_height);
     }
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED, data->current.pixel_width, data->current.pixel_height);
 
     /* Send an exposure event if the window is in the shown state and the size has changed,
      * even if the window is occluded, as the client needs to commit a new frame for the
@@ -704,6 +706,9 @@ static void surface_frame_done(void *data, struct wl_callback *cb, uint32_t time
                 }
             }
         }
+
+        // Create the pointer confinement region, if necessary.
+        Wayland_input_confine_pointer(wind->waylandData->input, wind->sdlwindow);
 
         /* If the window was initially set to the suspended state, send the occluded event now,
          * as we don't want to mark the window as occluded until at least one frame has been submitted.
@@ -1649,6 +1654,18 @@ static const struct frog_color_managed_surface_listener frog_surface_listener = 
     frog_preferred_metadata_handler
 };
 
+static void feedback_surface_preferred_changed(void *data,
+                                               struct wp_color_management_surface_feedback_v1 *wp_color_management_surface_feedback_v1,
+                                               uint32_t identity)
+{
+    SDL_WindowData *wind = (SDL_WindowData *)data;
+    Wayland_GetColorInfoForWindow(wind, false);
+}
+
+static const struct wp_color_management_surface_feedback_v1_listener color_management_surface_feedback_listener = {
+    feedback_surface_preferred_changed
+};
+
 static void SetKeyboardFocus(SDL_Window *window, bool set_focus)
 {
     SDL_Window *toplevel = window;
@@ -1840,7 +1857,10 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
         } else {
             libdecor_frame_set_app_id(data->shell_surface.libdecor.frame, data->app_id);
             libdecor_frame_map(data->shell_surface.libdecor.frame);
-            libdecor_frame_set_visibility(data->shell_surface.libdecor.frame, !(window->flags & SDL_WINDOW_BORDERLESS));
+            if (window->flags & SDL_WINDOW_BORDERLESS) {
+                // Note: Calling this with 'true' immediately after mapping will cause the libdecor Cairo plugin to crash.
+                libdecor_frame_set_visibility(data->shell_surface.libdecor.frame, false);
+            }
 
             if (c->zxdg_exporter_v2) {
                 data->exported = zxdg_exporter_v2_export_toplevel(c->zxdg_exporter_v2, data->surface);
@@ -2034,6 +2054,10 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     data->show_hide_sync_required = true;
     struct wl_callback *cb = wl_display_sync(_this->internal->display);
     wl_callback_add_listener(cb, &show_hide_sync_listener, (void*)((uintptr_t)window->id));
+
+    data->showing_window = true;
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_SHOWN, 0, 0);
+    data->showing_window = false;
 
     // Send an exposure event to signal that the client should draw.
     if (data->shell_surface_status == WAYLAND_SHELL_SURFACE_STATUS_WAITING_FOR_FRAME) {
@@ -2257,6 +2281,11 @@ SDL_FullscreenResult Wayland_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Win
         return SDL_FULLSCREEN_FAILED;
     }
 
+    // Drop fullscreen leave requests when showing the window.
+    if (wind->showing_window && fullscreen == SDL_FULLSCREEN_OP_LEAVE) {
+        return SDL_FULLSCREEN_SUCCEEDED;
+    }
+
     if (wind->show_hide_sync_required) {
         WAYLAND_wl_display_roundtrip(_this->internal->display);
     }
@@ -2282,8 +2311,8 @@ SDL_FullscreenResult Wayland_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Win
     }
 
     // Don't send redundant fullscreen set/unset events.
-    if (fullscreen != wind->is_fullscreen) {
-        wind->fullscreen_was_positioned = fullscreen;
+    if (!!fullscreen != wind->is_fullscreen) {
+        wind->fullscreen_was_positioned = !!fullscreen;
         SetFullscreen(window, fullscreen ? output : NULL);
     } else if (wind->is_fullscreen) {
         /*
@@ -2310,6 +2339,11 @@ SDL_FullscreenResult Wayland_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Win
 void Wayland_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *wind = window->internal;
+
+    // Drop restore requests when showing the window.
+    if (wind->showing_window) {
+        return;
+    }
 
     // Not currently fullscreen or maximized, and no state pending; nothing to do.
     if (!(window->flags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED)) &&
@@ -2596,7 +2630,11 @@ bool Wayland_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Proper
     }
 
     if (!custom_surface_role) {
-        if (c->frog_color_management_factory_v1) {
+        if (c->wp_color_manager_v1) {
+            data->wp_color_management_surface_feedback = wp_color_manager_v1_get_surface_feedback(c->wp_color_manager_v1, data->surface);
+            wp_color_management_surface_feedback_v1_add_listener(data->wp_color_management_surface_feedback, &color_management_surface_feedback_listener, data);
+            Wayland_GetColorInfoForWindow(data, true);
+        } else if (c->frog_color_management_factory_v1) {
             data->frog_color_managed_surface = frog_color_management_factory_v1_get_color_managed_surface(c->frog_color_management_factory_v1, data->surface);
             frog_color_managed_surface_add_listener(data->frog_color_managed_surface, &frog_surface_listener, data);
         }
@@ -2839,28 +2877,56 @@ bool Wayland_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfa
     struct xdg_toplevel *toplevel = NULL;
 
     if (!_this->internal->xdg_toplevel_icon_manager_v1) {
-        return SDL_SetError("wayland: cannot set icon; xdg_toplevel_icon_v1 protocol not supported");
+        return SDL_SetError("wayland: cannot set icon; required xdg_toplevel_icon_v1 protocol not supported");
     }
 
     if (icon->w != icon->h) {
         return SDL_SetError("wayland: icon width and height must be equal, got %ix%i", icon->w, icon->h);
     }
 
+    int image_count = 0;
+    SDL_Surface **images = SDL_GetSurfaceImages(icon, &image_count);
+    if (!images || !image_count) {
+        return false;
+    }
+
+    // Release the old icon resources.
     if (wind->xdg_toplevel_icon_v1) {
         xdg_toplevel_icon_v1_destroy(wind->xdg_toplevel_icon_v1);
         wind->xdg_toplevel_icon_v1 = NULL;
     }
 
-    // TODO: Add high-DPI icon support
-    Wayland_ReleaseSHMBuffer(&wind->icon);
-    if (!Wayland_AllocSHMBuffer(icon->w, icon->h, &wind->icon)) {
-        return SDL_SetError("wayland: failed to allocate SHM buffer for the icon");
+    for (int i = 0; i < wind->icon_buffer_count; ++i) {
+        Wayland_ReleaseSHMBuffer(&wind->icon_buffers[i]);
     }
-
-    SDL_PremultiplyAlpha(icon->w, icon->h, icon->format, icon->pixels, icon->pitch, SDL_PIXELFORMAT_ARGB8888, wind->icon.shm_data, icon->w * 4, true);
+    SDL_free(wind->icon_buffers);
+    wind->icon_buffer_count = 0;
 
     wind->xdg_toplevel_icon_v1 = xdg_toplevel_icon_manager_v1_create_icon(_this->internal->xdg_toplevel_icon_manager_v1);
-    xdg_toplevel_icon_v1_add_buffer(wind->xdg_toplevel_icon_v1, wind->icon.wl_buffer, 1);
+    wind->icon_buffers = SDL_calloc(image_count, sizeof(struct Wayland_SHMBuffer));
+    if (!wind->icon_buffers) {
+        goto failure_cleanup;
+    }
+
+    for (int i = 0; i < image_count; ++i) {
+        if (images[i]->w == images[i]->h) {
+            struct Wayland_SHMBuffer *buffer = &wind->icon_buffers[wind->icon_buffer_count];
+
+            if (!Wayland_AllocSHMBuffer(images[i]->w, images[i]->h, buffer)) {
+                SDL_SetError("wayland: failed to allocate SHM buffer for the icon");
+                goto failure_cleanup;
+            }
+
+            SDL_PremultiplyAlpha(images[i]->w, images[i]->h, images[i]->format, images[i]->pixels, images[i]->pitch, SDL_PIXELFORMAT_ARGB8888, buffer->shm_data, images[i]->w * 4, true);
+            const int scale = (int)SDL_ceil((double)images[i]->w / (double)icon->w);
+            xdg_toplevel_icon_v1_add_buffer(wind->xdg_toplevel_icon_v1, buffer->wl_buffer, scale);
+            wind->icon_buffer_count++;
+        } else {
+            SDL_LogWarn(SDL_LOG_CATEGORY_VIDEO, "wayland: icon width and height must be equal, got %ix%i for image level %i; skipping", images[i]->w, images[i]->h, i);
+        }
+    }
+
+    SDL_free(images);
 
 #ifdef HAVE_LIBDECOR_H
     if (wind->shell_surface_type == WAYLAND_SHELL_SURFACE_TYPE_LIBDECOR && wind->shell_surface.libdecor.frame) {
@@ -2876,6 +2942,42 @@ bool Wayland_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfa
     }
 
     return true;
+
+failure_cleanup:
+
+    if (wind->xdg_toplevel_icon_v1) {
+        xdg_toplevel_icon_v1_destroy(wind->xdg_toplevel_icon_v1);
+        wind->xdg_toplevel_icon_v1 = NULL;
+    }
+
+    for (int i = 0; i < wind->icon_buffer_count; ++i) {
+        Wayland_ReleaseSHMBuffer(&wind->icon_buffers[i]);
+    }
+    SDL_free(wind->icon_buffers);
+    wind->icon_buffers = NULL;
+    wind->icon_buffer_count = 0;
+
+    return false;
+}
+
+void *Wayland_GetWindowICCProfile(SDL_VideoDevice *_this, SDL_Window *window, size_t *size)
+{
+    SDL_WindowData *wind = window->internal;
+    void *ret = NULL;
+
+    if (wind->icc_size > 0) {
+        void *icc_map = mmap(NULL, wind->icc_size, PROT_READ, MAP_PRIVATE, wind->icc_fd, 0);
+        if (icc_map != MAP_FAILED) {
+            ret = SDL_malloc(wind->icc_size);
+            if (ret) {
+                *size = wind->icc_size;
+                SDL_memcpy(ret, icc_map, *size);
+            }
+            munmap(icc_map, wind->icc_size);
+        }
+    }
+
+    return ret;
 }
 
 bool Wayland_SyncWindow(SDL_VideoDevice *_this, SDL_Window *window)
@@ -2997,6 +3099,11 @@ void Wayland_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
             frog_color_managed_surface_destroy(wind->frog_color_managed_surface);
         }
 
+        if (wind->wp_color_management_surface_feedback) {
+            Wayland_FreeColorInfoState(wind->color_info_state);
+            wp_color_management_surface_feedback_v1_destroy(wind->wp_color_management_surface_feedback);
+        }
+
         SDL_free(wind->outputs);
         SDL_free(wind->app_id);
 
@@ -3020,7 +3127,11 @@ void Wayland_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
             xdg_toplevel_icon_v1_destroy(wind->xdg_toplevel_icon_v1);
         }
 
-        Wayland_ReleaseSHMBuffer(&wind->icon);
+        for (int i = 0; i < wind->icon_buffer_count; ++i) {
+            Wayland_ReleaseSHMBuffer(&wind->icon_buffers[i]);
+        }
+        SDL_free(wind->icon_buffers);
+        wind->icon_buffer_count = 0;
 
         SDL_free(wind);
         WAYLAND_wl_display_flush(data->display);

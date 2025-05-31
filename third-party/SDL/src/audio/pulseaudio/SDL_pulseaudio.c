@@ -409,7 +409,7 @@ static bool PULSEAUDIO_WaitDevice(SDL_AudioDevice *device)
     struct SDL_PrivateAudioData *h = device->hidden;
     bool result = true;
 
-    //SDL_Log("PULSEAUDIO PLAYDEVICE START! mixlen=%d", available);
+    //SDL_Log("PULSEAUDIO WAITDEVICE START! mixlen=%d", available);
 
     PULSEAUDIO_pa_threaded_mainloop_lock(pulseaudio_threaded_mainloop);
 
@@ -543,7 +543,7 @@ static void PULSEAUDIO_FlushRecording(SDL_AudioDevice *device)
 {
     struct SDL_PrivateAudioData *h = device->hidden;
     const void *data = NULL;
-    size_t nbytes = 0;
+    size_t nbytes = 0, buflen = 0;
 
     PULSEAUDIO_pa_threaded_mainloop_lock(pulseaudio_threaded_mainloop);
 
@@ -553,7 +553,8 @@ static void PULSEAUDIO_FlushRecording(SDL_AudioDevice *device)
         h->recordinglen = 0;
     }
 
-    while (!SDL_GetAtomicInt(&device->shutdown) && (PULSEAUDIO_pa_stream_readable_size(h->stream) > 0)) {
+    buflen = PULSEAUDIO_pa_stream_readable_size(h->stream);
+    while (!SDL_GetAtomicInt(&device->shutdown) && (buflen > 0)) {
         PULSEAUDIO_pa_threaded_mainloop_wait(pulseaudio_threaded_mainloop);
         if ((PULSEAUDIO_pa_context_get_state(pulseaudio_context) != PA_CONTEXT_READY) || (PULSEAUDIO_pa_stream_get_state(h->stream) != PA_STREAM_READY)) {
             //SDL_Log("PULSEAUDIO DEVICE FAILURE IN FLUSHRECORDING!");
@@ -561,11 +562,11 @@ static void PULSEAUDIO_FlushRecording(SDL_AudioDevice *device)
             break;
         }
 
-        if (PULSEAUDIO_pa_stream_readable_size(h->stream) > 0) {
-            // a new fragment is available! Just dump it.
-            PULSEAUDIO_pa_stream_peek(h->stream, &data, &nbytes);
-            PULSEAUDIO_pa_stream_drop(h->stream); // drop this fragment.
-        }
+        // a fragment of audio present before FlushCapture was call is
+        // still available! Just drop it.
+        PULSEAUDIO_pa_stream_peek(h->stream, &data, &nbytes);
+        PULSEAUDIO_pa_stream_drop(h->stream);
+        buflen -= nbytes;
     }
 
     PULSEAUDIO_pa_threaded_mainloop_unlock(pulseaudio_threaded_mainloop);
@@ -700,7 +701,10 @@ static bool PULSEAUDIO_OpenDevice(SDL_AudioDevice *device)
         PULSEAUDIO_pa_stream_set_state_callback(h->stream, PulseStreamStateChangeCallback, NULL);
 
         // SDL manages device moves if the default changes, so don't ever let Pulse automatically migrate this stream.
-        flags |= PA_STREAM_DONT_MOVE;
+        // UPDATE: This prevents users from moving the audio to a new sink (device) using standard tools. This is slightly in conflict
+        //  with how SDL wants to manage audio devices, but if people want to do it, we should let them, so this is commented out
+        //  for now. We might revisit later.
+        //flags |= PA_STREAM_DONT_MOVE;
 
         const char *device_path = ((PulseDeviceHandle *) device->handle)->device_path;
         if (recording) {
@@ -778,8 +782,8 @@ static void AddPulseAudioDevice(const bool recording, const char *description, c
             SDL_free(handle);
         } else {
             handle->device_index = index;
+            SDL_AddAudioDevice(recording, description, &spec, handle);
         }
-        SDL_AddAudioDevice(recording, description, &spec, handle);
     }
 }
 
@@ -1030,7 +1034,7 @@ static bool PULSEAUDIO_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap PULSEAUDIO_bootstrap = {
-    "pulseaudio", "PulseAudio", PULSEAUDIO_Init, false
+    "pulseaudio", "PulseAudio", PULSEAUDIO_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_PULSEAUDIO

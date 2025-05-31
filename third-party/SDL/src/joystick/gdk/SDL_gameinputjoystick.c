@@ -24,9 +24,7 @@
 
 #include "../SDL_sysjoystick.h"
 #include "../usb_ids.h"
-
-#define COBJMACROS
-#include <gameinput.h>
+#include "../../core/windows/SDL_gameinput.h"
 
 // Default value for SDL_HINT_JOYSTICK_GAMEINPUT
 #if defined(SDL_PLATFORM_GDK)
@@ -67,11 +65,9 @@ typedef struct joystick_hwdata
 } GAMEINPUT_InternalJoystickHwdata;
 
 static GAMEINPUT_InternalList g_GameInputList = { NULL };
-static SDL_SharedObject *g_hGameInputDLL = NULL;
 static IGameInput *g_pGameInput = NULL;
 static GameInputCallbackToken g_GameInputCallbackToken = GAMEINPUT_INVALID_CALLBACK_TOKEN_VALUE;
 static Uint64 g_GameInputTimestampOffset;
-
 
 static bool GAMEINPUT_InternalIsGamepad(const GameInputDeviceInfo *info)
 {
@@ -245,24 +241,8 @@ static bool GAMEINPUT_JoystickInit(void)
         return true;
     }
 
-    if (!g_hGameInputDLL) {
-        g_hGameInputDLL = SDL_LoadObject("gameinput.dll");
-        if (!g_hGameInputDLL) {
-            return false;
-        }
-    }
-
-    if (!g_pGameInput) {
-        typedef HRESULT (WINAPI *GameInputCreate_t)(IGameInput * *gameInput);
-        GameInputCreate_t GameInputCreateFunc = (GameInputCreate_t)SDL_LoadFunction(g_hGameInputDLL, "GameInputCreate");
-        if (!GameInputCreateFunc) {
-            return false;
-        }
-
-        hR = GameInputCreateFunc(&g_pGameInput);
-        if (FAILED(hR)) {
-            return SDL_SetError("GameInputCreate failure with HRESULT of %08lX", hR);
-        }
+    if (!SDL_InitGameInput(&g_pGameInput)) {
+        return false;
     }
 
     hR = IGameInput_RegisterDeviceCallback(g_pGameInput,
@@ -615,6 +595,7 @@ static void GAMEINPUT_JoystickUpdate(SDL_Joystick *joystick)
     } else {
         bool *button_state = SDL_stack_alloc(bool, info->controllerButtonCount);
         float *axis_state = SDL_stack_alloc(float, info->controllerAxisCount);
+        GameInputSwitchPosition *switch_state = SDL_stack_alloc(GameInputSwitchPosition, info->controllerSwitchCount);
 
         if (button_state) {
             uint32_t i;
@@ -635,6 +616,46 @@ static void GAMEINPUT_JoystickUpdate(SDL_Joystick *joystick)
             SDL_stack_free(axis_state);
         }
 #undef CONVERT_AXIS
+
+        if (switch_state) {
+            uint32_t i;
+            uint32_t switch_count = IGameInputReading_GetControllerSwitchState(reading, info->controllerSwitchCount, switch_state);
+            for (i = 0; i < switch_count; ++i) {
+                Uint8 hat;
+                switch (switch_state[i]) {
+                case GameInputSwitchUp:
+                    hat = SDL_HAT_UP;
+                    break;
+                case GameInputSwitchUpRight:
+                    hat = SDL_HAT_UP | SDL_HAT_RIGHT;
+                    break;
+                case GameInputSwitchRight:
+                    hat = SDL_HAT_RIGHT;
+                    break;
+                case GameInputSwitchDownRight:
+                    hat = SDL_HAT_DOWN | SDL_HAT_RIGHT;
+                    break;
+                case GameInputSwitchDown:
+                    hat = SDL_HAT_DOWN;
+                    break;
+                case GameInputSwitchDownLeft:
+                    hat = SDL_HAT_DOWN | SDL_HAT_LEFT;
+                    break;
+                case GameInputSwitchLeft:
+                    hat = SDL_HAT_LEFT;
+                    break;
+                case GameInputSwitchUpLeft:
+                    hat = SDL_HAT_UP | SDL_HAT_LEFT;
+                    break;
+                case GameInputSwitchCenter:
+                default:
+                    hat = SDL_HAT_CENTERED;
+                    break;
+                }
+                SDL_SendJoystickHat(timestamp, joystick, (Uint8)i, hat);
+            }
+            SDL_stack_free(switch_state);
+        }
     }
 
     if (info->supportedInput & GameInputKindTouch) {
@@ -689,13 +710,8 @@ static void GAMEINPUT_JoystickQuit(void)
             GAMEINPUT_InternalRemoveByIndex(0);
         }
 
-        IGameInput_Release(g_pGameInput);
+        SDL_QuitGameInput();
         g_pGameInput = NULL;
-    }
-
-    if (g_hGameInputDLL) {
-        SDL_UnloadObject(g_hGameInputDLL);
-        g_hGameInputDLL = NULL;
     }
 }
 

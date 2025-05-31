@@ -37,6 +37,7 @@
 #include "SDL_uikitvulkan.h"
 #include "SDL_uikitmetalview.h"
 #include "SDL_uikitmessagebox.h"
+#include "SDL_uikitpen.h"
 
 #define UIKITVID_DRIVER_NAME "uikit"
 
@@ -144,7 +145,8 @@ static SDL_VideoDevice *UIKit_CreateDevice(void)
 VideoBootStrap UIKIT_bootstrap = {
     UIKITVID_DRIVER_NAME, "SDL UIKit video driver",
     UIKit_CreateDevice,
-    UIKit_ShowMessageBox
+    UIKit_ShowMessageBox,
+    false
 };
 
 static bool UIKit_VideoInit(SDL_VideoDevice *_this)
@@ -169,6 +171,7 @@ static void UIKit_VideoQuit(SDL_VideoDevice *_this)
 
     SDL_QuitGCKeyboard();
     SDL_QuitGCMouse();
+    UIKit_QuitPen(_this);
 
     UIKit_QuitModes(_this);
 }

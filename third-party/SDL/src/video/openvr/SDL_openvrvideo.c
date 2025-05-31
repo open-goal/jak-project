@@ -911,7 +911,7 @@ static SDL_GLContext OPENVR_GL_CreateContext(SDL_VideoDevice *_this, SDL_Window 
 
     OPENVR_SetupFrame(_this, window);
 
-    SDL_GLContext result = malloc(sizeof(struct SDL_GLContextState));
+    SDL_GLContext result = SDL_malloc(sizeof(struct SDL_GLContextState));
     if (!result) {
         return NULL;
     }
@@ -1657,7 +1657,7 @@ error:
 }
 
 VideoBootStrap OPENVR_bootstrap = {
-    "openvr", "SDL OpenVR video driver", OPENVR_CreateDevice
+    "openvr", "SDL OpenVR video driver", OPENVR_CreateDevice, NULL, false
 };
 
 #endif // SDL_VIDEO_DRIVER_WINDOWS

@@ -54,6 +54,10 @@ extern void SDL_CameraThreadSetup(SDL_Camera *device);
 extern bool SDL_CameraThreadIterate(SDL_Camera *device);
 extern void SDL_CameraThreadShutdown(SDL_Camera *device);
 
+// Backends can call this if they have to finish initializing later, like Emscripten. Most backends should _not_ call this directly!
+extern bool SDL_PrepareCameraSurfaces(SDL_Camera *device);
+
+
 // common utility functionality to gather up camera specs. Not required!
 typedef struct CameraFormatAddData
 {
@@ -190,7 +194,7 @@ typedef struct SDL_CameraDriver
     const char *desc;  // The description of this camera driver
     SDL_CameraDriverImpl impl; // the backend's interface
 
-    SDL_RWLock *device_hash_lock;  // A rwlock that protects `device_hash`
+    SDL_RWLock *device_hash_lock;  // A rwlock that protects `device_hash`   // !!! FIXME: device_hash _also_ has a rwlock, see if we still need this one.
     SDL_HashTable *device_hash;  // the collection of currently-available camera devices
     SDL_PendingCameraEvent pending_events;
     SDL_PendingCameraEvent *pending_events_tail;
