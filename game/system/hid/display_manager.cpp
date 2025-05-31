@@ -24,7 +24,7 @@ DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
     m_display_settings.load_settings();
     // Adjust window / monitor position
     initialize_window_position_from_settings();
-    set_display_mode(m_display_settings.display_mode);
+    set_display_mode(m_display_settings.display_mode, m_window_width, m_window_height);
   }
 }
 
@@ -139,7 +139,8 @@ void DisplayManager::process_ee_events() {
         set_window_size(std::get<int>(evt.param1), std::get<int>(evt.param2));
         break;
       case EEDisplayEventType::SET_DISPLAY_MODE:
-        set_display_mode(std::get<game_settings::DisplaySettings::DisplayMode>(evt.param1));
+        set_display_mode(std::get<game_settings::DisplaySettings::DisplayMode>(evt.param1),
+                         std::get<int>(evt.param2), std::get<int>(evt.param3));
         break;
       case EEDisplayEventType::SET_DISPLAY_ID:
         set_display_id(std::get<int>(evt.param1));
@@ -216,22 +217,34 @@ void DisplayManager::set_window_size(int width, int height) {
 }
 
 void DisplayManager::enqueue_set_window_display_mode(
-    game_settings::DisplaySettings::DisplayMode mode) {
+    game_settings::DisplaySettings::DisplayMode mode,
+    const int window_width,
+    const int window_height) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
-  ee_event_queue.push({EEDisplayEventType::SET_DISPLAY_MODE, mode, {}});
+  ee_event_queue.push({EEDisplayEventType::SET_DISPLAY_MODE, mode, window_width, window_height});
 }
 
-void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMode mode) {
-  lg::info("[DISPLAY] Setting to display mode: {}", static_cast<int>(mode));
+void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMode mode,
+                                      const int window_width,
+                                      const int window_height) {
+  lg::info("[DISPLAY] Setting to display mode: {}, with window_size: {},{}", static_cast<int>(mode),
+           window_width, window_height);
   // https://wiki.libsdl.org/SDL3/SDL_SetWindowFullscreen
   int result = 0;
   switch (mode) {
     case game_settings::DisplaySettings::DisplayMode::Windowed:
       if (SDL_SetWindowFullscreen(m_window, false)) {
-        lg::info("[DISPLAY] windowed mode - resizing window to {}x{}", m_window_width,
-                 m_window_height);
-        if (!SDL_SetWindowSize(m_window, m_window_width, m_window_height)) {
+        lg::info("[DISPLAY] windowed mode - resizing window to {}x{}", window_width, window_height);
+        if (!SDL_SetWindowSize(m_window, window_width, window_height)) {
           sdl_util::log_error("unable to change window size");
+        }
+        // if we are changing from fullscreen/borderless back to windowed - make sure it's not
+        // annoyingly at the edge of the screen
+        if (m_display_settings.display_mode !=
+                game_settings::DisplaySettings::DisplayMode::Windowed &&
+            !SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED)) {
+          sdl_util::log_error(fmt::format("unable to move window to center"));
+          break;
         }
       } else {
         sdl_util::log_error("unable to change window to windowed mode");
@@ -312,7 +325,7 @@ void DisplayManager::toggle_display_mode() {
     case game_settings::DisplaySettings::DisplayMode::Borderless:
       lg::info("Fullscreen/Borderless\n");
       lg::info("Switching to Windowed mode...\n");
-      enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Windowed);
+      enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode::Windowed, 0, 0);
       break;
 
     case game_settings::DisplaySettings::DisplayMode::Windowed:
@@ -326,7 +339,10 @@ void DisplayManager::toggle_display_mode() {
       } else {
         lg::info("Switching to unknown preferred mode...\n");
       }
-      enqueue_set_window_display_mode(m_previous_fullscreen_display_mode);
+      // TODO - we'd have to track the intended window size, that info is stored in the GOAL
+      // settings right now so clean this and a few other things up eventually when those settings
+      // are extracted out of there for now, just use the default window size.
+      enqueue_set_window_display_mode(m_previous_fullscreen_display_mode, 640, 480);
       break;
 
     default:
@@ -347,7 +363,8 @@ void DisplayManager::set_display_id(int display_id) {
   }
   m_display_settings.display_id = display_id;
   if (get_display_mode() != game_settings::DisplaySettings::DisplayMode::Windowed) {
-    set_display_mode((game_settings::DisplaySettings::DisplayMode)m_display_settings.display_mode);
+    set_display_mode((game_settings::DisplaySettings::DisplayMode)m_display_settings.display_mode,
+                     0, 0);
   }
   m_display_settings.save_settings();
 }
@@ -377,7 +394,7 @@ void DisplayManager::update_curr_display_info() {
     return;
   }
   m_display_settings.display_id = display_index;
-  lg::info("[DISPLAY] current display idndex is {}", m_display_settings.display_id);
+  lg::info("[DISPLAY] current display index is {}", m_display_settings.display_id);
   SDL_GetWindowSizeInPixels(m_window, &m_window_width, &m_window_height);
   SDL_GetWindowPosition(m_window, &m_window_xpos, &m_window_ypos);
   // Update the scale of the display as well
