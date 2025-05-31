@@ -5,6 +5,8 @@
 ;; name in dgo: eye
 ;; dgos: GAME
 
+;; note: changed for high fps
+
 ;; DECOMP BEGINS
 
 ;; og:preserve-this
@@ -717,16 +719,20 @@
             (when (not (paused?))
               (cond
                 ((and (>= (-> s5-0 left lid) 0.0) (>= (-> s5-0 right lid) 0.0))
-                 (set! (-> s5-0 random-time) (the-as uint 60))
+                 (set! (-> s5-0 random-time)
+                   (the int (* (1/ DISPLAY_FPS_RATIO) ;; og:preserve-this changed for high fps
+                     (the-as uint 60))))
                  (set! (-> s5-0 blink) 0.0)
                  )
                 (else
                   (+! (-> s5-0 random-time) -1)
-                  (let ((v1-19 (-> s5-0 random-time)))
+                  (let ((v1-19 (the int (* DISPLAY_FPS_RATIO  (-> s5-0 random-time))))) ;; og:preserve-this changed for high fps
                     (when (< v1-19 (the-as uint 10))
                       (set! (-> s5-0 blink) (-> *eye-work* blink-table v1-19))
                       (if (zero? v1-19)
-                          (set! (-> s5-0 random-time) (the-as uint (the int (rand-vu-float-range 60.0 240.0))))
+                          (set! (-> s5-0 random-time) (the-as uint (the int
+                            (* (1/ DISPLAY_FPS_RATIO) ;; og:preserve-this changed for high fps
+                              (rand-vu-float-range 60.0 240.0)))))
                           )
                       )
                     )
