@@ -496,19 +496,19 @@ u32 pc_get_display_mode() {
   }
 }
 
-void pc_set_display_mode(u32 symptr) {
+void pc_set_display_mode(u32 symptr, u64 window_width, u64 window_height) {
   if (!Display::GetMainDisplay()) {
     return;
   }
   if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        game_settings::DisplaySettings::DisplayMode::Windowed);
+        game_settings::DisplaySettings::DisplayMode::Windowed, window_width, window_height);
   } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        game_settings::DisplaySettings::DisplayMode::Borderless);
+        game_settings::DisplaySettings::DisplayMode::Borderless, window_width, window_height);
   } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        game_settings::DisplaySettings::DisplayMode::Fullscreen);
+        game_settings::DisplaySettings::DisplayMode::Fullscreen, window_width, window_height);
   }
 }
 
@@ -803,6 +803,22 @@ void pc_set_pressure_sensitivity_enabled(u32 val) {
   }
 }
 
+void pc_set_axis_scale(u32 val) {
+  if (Display::GetMainDisplay()) {
+    // wow dangerous i guess
+    Display::GetMainDisplay()->get_input_manager()->set_axis_scale(*((float*)&val));
+  }
+}
+
+u32 pc_get_axis_scale() {
+  float out = 1.33f;
+  if (Display::GetMainDisplay()) {
+    out = Display::GetMainDisplay()->get_input_manager()->axis_scale();
+  }
+  // wow dangerous i guess
+  return *((u32*)&out);
+}
+
 u64 pc_current_controller_has_pressure_sensitivity() {
   if (Display::GetMainDisplay()) {
     return bool_to_symbol(
@@ -1073,6 +1089,8 @@ void init_common_pc_port_functions(
                         (void*)pc_get_pressure_sensitivity_enabled);
   make_func_symbol_func("pc-set-pressure-sensitivity-enabled!",
                         (void*)pc_set_pressure_sensitivity_enabled);
+  make_func_symbol_func("pc-set-axis-scale!", (void*)pc_set_axis_scale);
+  make_func_symbol_func("pc-get-axis-scale", (void*)pc_get_axis_scale);
   make_func_symbol_func("pc-current-controller-has-pressure-sensitivity?",
                         (void*)pc_current_controller_has_pressure_sensitivity);
   make_func_symbol_func("pc-current-controller-has-trigger-effect-support?",

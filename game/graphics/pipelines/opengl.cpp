@@ -340,12 +340,16 @@ GLDisplay::GLDisplay(SDL_Window* window, SDL_GLContext gl_context, bool is_main)
   m_main = is_main;
   m_display_manager->set_input_manager(m_input_manager);
   // Register commands
-  m_input_manager->register_command(CommandBinding::Source::KEYBOARD,
-                                    CommandBinding(Gfx::g_debug_settings.hide_imgui_key, [&]() {
-                                      if (!Gfx::g_debug_settings.ignore_hide_imgui) {
-                                        set_imgui_visible(!is_imgui_visible());
-                                      }
-                                    }));
+  m_input_manager->register_command(
+      CommandBinding::Source::KEYBOARD,
+      CommandBinding(Gfx::g_debug_settings.hide_imgui_key, [&](const SDL_Event& event) {
+        if (event.type == SDL_EVENT_KEY_DOWN && event.key.repeat == 0) {
+          if (!Gfx::g_debug_settings.ignore_hide_imgui) {
+            set_imgui_visible(!is_imgui_visible());
+          }
+        }
+      }));
+  ;
   m_input_manager->register_command(
       CommandBinding::Source::KEYBOARD,
       CommandBinding(SDLK_F2, [&]() { m_take_screenshot_next_frame = true; }));
@@ -373,6 +377,14 @@ GLDisplay::~GLDisplay() {
   // Cleanup SDL
   SDL_GL_DestroyContext(m_gl_context);
   SDL_DestroyWindow(m_window);
+  // cleanup SDL related sub-systems before we quit SDL
+  if (m_display_manager) {
+    m_display_manager.reset();
+  }
+  if (m_input_manager) {
+    m_input_manager.reset();
+  }
+  // now quit SDL
   SDL_Quit();
   if (m_main) {
     gl_exit();

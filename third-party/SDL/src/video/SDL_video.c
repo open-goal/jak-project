@@ -596,6 +596,7 @@ const char *SDL_GetVideoDriver(int index)
     if (index >= 0 && index < SDL_GetNumVideoDrivers()) {
         return deduped_bootstrap[index]->name;
     }
+    SDL_InvalidParamError("index");
     return NULL;
 }
 
@@ -654,7 +655,8 @@ bool SDL_VideoInit(const char *driver_name)
                                                                      : SDL_strlen(driver_attempt);
 
             for (i = 0; bootstrap[i]; ++i) {
-                if ((driver_attempt_len == SDL_strlen(bootstrap[i]->name)) &&
+                if (!bootstrap[i]->is_preferred &&
+                    (driver_attempt_len == SDL_strlen(bootstrap[i]->name)) &&
                     (SDL_strncasecmp(bootstrap[i]->name, driver_attempt, driver_attempt_len) == 0)) {
                     video = bootstrap[i]->create();
                     if (video) {
@@ -1433,6 +1435,11 @@ void SDL_SetDesktopDisplayMode(SDL_VideoDisplay *display, const SDL_DisplayMode 
 {
     SDL_DisplayMode last_mode;
 
+    if (display->fullscreen_active) {
+        // This is a temporary mode change, don't save the desktop mode
+        return;
+    }
+
     SDL_copyp(&last_mode, &display->desktop_mode);
 
     if (display->desktop_mode.internal) {
@@ -1724,11 +1731,24 @@ SDL_VideoDisplay *SDL_GetVideoDisplayForFullscreenWindow(SDL_Window *window)
     return SDL_GetVideoDisplay(displayID);
 }
 
+#define SDL_PROP_SDL2_COMPAT_WINDOW_PREFERRED_FULLSCREEN_DISPLAY "sdl2-compat.window.preferred_fullscreen_display"
+
 SDL_DisplayID SDL_GetDisplayForWindow(SDL_Window *window)
 {
     SDL_DisplayID displayID = 0;
 
     CHECK_WINDOW_MAGIC(window, 0);
+
+    /* sdl2-compat calls this function to get a display on which to make the window fullscreen,
+     * so pass it the preferred fullscreen display ID in a property.
+     */
+    SDL_PropertiesID window_props = SDL_GetWindowProperties(window);
+    SDL_VideoDisplay *fs_display = SDL_GetVideoDisplayForFullscreenWindow(window);
+    if (fs_display) {
+        SDL_SetNumberProperty(window_props, SDL_PROP_SDL2_COMPAT_WINDOW_PREFERRED_FULLSCREEN_DISPLAY, fs_display->id);
+    } else {
+        SDL_ClearProperty(window_props, SDL_PROP_SDL2_COMPAT_WINDOW_PREFERRED_FULLSCREEN_DISPLAY);
+    }
 
     // An explicit fullscreen display overrides all
     if (window->flags & SDL_WINDOW_FULLSCREEN) {
@@ -1942,6 +1962,8 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
             SDL_MinimizeWindow(display->fullscreen_window);
         }
 
+        display->fullscreen_active = window->fullscreen_exclusive;
+
         if (!SDL_SetDisplayModeForDisplay(display, mode)) {
             goto error;
         }
@@ -1959,6 +1981,7 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
                     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_ENTER_FULLSCREEN, 0, 0);
                 }
             } else if (ret == SDL_FULLSCREEN_FAILED) {
+                display->fullscreen_active = false;
                 goto error;
             }
         }
@@ -1974,17 +1997,23 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
              * This is also unnecessary on Cocoa, Wayland, Win32, and X11 (will send SDL_EVENT_WINDOW_RESIZED).
              */
             if (!SDL_SendsFullscreenDimensions(_this)) {
+                SDL_Rect displayRect;
+
                 if (mode) {
                     mode_w = mode->w;
                     mode_h = mode->h;
+                    SDL_GetDisplayBounds(mode->displayID, &displayRect);
                 } else {
                     mode_w = display->desktop_mode.w;
                     mode_h = display->desktop_mode.h;
+                    SDL_GetDisplayBounds(display->id, &displayRect);
                 }
 
                 if (window->w != mode_w || window->h != mode_h) {
                     resized = true;
                 }
+
+                SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MOVED, displayRect.x, displayRect.y);
 
                 if (resized) {
                     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, mode_w, mode_h);
@@ -2003,6 +2032,8 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
 
         // Restore the desktop mode
         if (display) {
+            display->fullscreen_active = false;
+
             SDL_SetDisplayModeForDisplay(display, NULL);
         }
         if (commit) {
@@ -2032,6 +2063,7 @@ bool SDL_UpdateFullscreenMode(SDL_Window *window, SDL_FullscreenOp fullscreen, b
             }
 
             if (!SDL_SendsFullscreenDimensions(_this)) {
+                SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MOVED, window->windowed.x, window->windowed.y);
                 if (resized) {
                     SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, window->windowed.w, window->windowed.h);
                 } else {
@@ -2154,7 +2186,7 @@ void SDL_ToggleDragAndDropSupport(void)
     }
 }
 
-SDL_Window **SDLCALL SDL_GetWindows(int *count)
+SDL_Window ** SDLCALL SDL_GetWindows(int *count)
 {
     if (count) {
         *count = 0;
@@ -2765,9 +2797,16 @@ bool SDL_SetWindowTitle(SDL_Window *window, const char *title)
     if (title == window->title) {
         return true;
     }
+    if (!title) {
+        title = "";
+    }
+    if (window->title && SDL_strcmp(title, window->title) == 0) {
+        return true;
+    }
+
     SDL_free(window->title);
 
-    window->title = SDL_strdup(title ? title : "");
+    window->title = SDL_strdup(title);
 
     if (_this->SetWindowTitle) {
         _this->SetWindowTitle(_this, window);
@@ -2898,11 +2937,12 @@ bool SDL_GetWindowPosition(SDL_Window *window, int *x, int *y)
             }
         }
     } else {
+        const bool use_pending = (window->flags & SDL_WINDOW_HIDDEN) && window->last_position_pending;
         if (x) {
-            *x = window->x;
+            *x = use_pending ? window->pending.x : window->x;
         }
         if (y) {
-            *y = window->y;
+            *y = use_pending ? window->pending.y : window->y;
         }
     }
     return true;
@@ -4132,6 +4172,31 @@ SDL_Window *SDL_GetToplevelForKeyboardFocus(void)
     return focus;
 }
 
+bool SDL_AddWindowRenderer(SDL_Window *window, SDL_Renderer *renderer)
+{
+    SDL_Renderer **renderers = (SDL_Renderer **)SDL_realloc(window->renderers, (window->num_renderers + 1) * sizeof(*renderers));
+    if (!renderers) {
+        return false;
+    }
+
+    window->renderers = renderers;
+    window->renderers[window->num_renderers++] = renderer;
+    return true;
+}
+
+void SDL_RemoveWindowRenderer(SDL_Window *window, SDL_Renderer *renderer)
+{
+    for (int i = 0; i < window->num_renderers; ++i) {
+        if (window->renderers[i] == renderer) {
+            if (i < (window->num_renderers - 1)) {
+                SDL_memmove(&window->renderers[i], &window->renderers[i + 1], (window->num_renderers - i - 1) * sizeof(window->renderers[i]));
+            }
+            --window->num_renderers;
+            break;
+        }
+    }
+}
+
 void SDL_DestroyWindow(SDL_Window *window)
 {
     CHECK_WINDOW_MAGIC(window,);
@@ -4238,6 +4303,7 @@ void SDL_DestroyWindow(SDL_Window *window)
         _this->windows = window->next;
     }
 
+    SDL_free(window->renderers);
     SDL_free(window);
 
 #ifdef SDL_VIDEO_DRIVER_UIKIT
@@ -4294,7 +4360,9 @@ void SDL_VideoQuit(void)
     }
 
     // Halt event processing before doing anything else
+#if 0 // This was moved to the end to fix a memory leak
     SDL_QuitPen();
+#endif
     SDL_QuitTouch();
     SDL_QuitMouse();
     SDL_QuitKeyboard();
@@ -4325,6 +4393,9 @@ void SDL_VideoQuit(void)
     }
     _this->free(_this);
     _this = NULL;
+
+    // This needs to happen after the video subsystem has removed pen data
+    SDL_QuitPen();
 }
 
 bool SDL_GL_LoadLibrary(const char *path)
@@ -5347,6 +5418,10 @@ bool SDL_GetTextInputMultiline(SDL_PropertiesID props)
 static bool AutoShowingScreenKeyboard(void)
 {
     const char *hint = SDL_GetHint(SDL_HINT_ENABLE_SCREEN_KEYBOARD);
+    if (!hint) {
+        // Steam will eventually have smarts about whether a keyboard is active, so always request the on-screen keyboard on Steam Deck
+        hint = SDL_GetHint("SteamDeck");
+    }
     if (((!hint || SDL_strcasecmp(hint, "auto") == 0) && !SDL_HasKeyboard()) ||
         SDL_GetStringBoolean(hint, false)) {
         return true;
