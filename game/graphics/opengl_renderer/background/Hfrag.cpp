@@ -420,7 +420,6 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-
     const auto& bucket = lev->hfrag->buckets[bucket_idx];
     for (u32 corner_idx : bucket.corners) {
       const auto& corner = lev->hfrag->corners[corner_idx];
