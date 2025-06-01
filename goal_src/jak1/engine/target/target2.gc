@@ -28,7 +28,9 @@
           (send-event *camera* 'joystick 0.0 0.0)
           (suspend)
           (ja :num! (seek!)))
-        (suspend-for (seconds 0.3) (suspend) (ja :num! (seek! (ja-aframe (the-as float 19.0) 0) 0.05)))
+        (suspend-for (seconds 0.3)
+          (suspend)
+          (ja :num! (seek! (ja-aframe (the-as float 19.0) 0) 0.05)))
         (ja-channel-push! 1 (seconds 0.3))
         (ja-no-eval :group! eichar-painful-land-ja :num! (seek!) :frame-num (ja-aframe (the-as float 40.0) 0))
         (until (ja-done? 0)
@@ -111,6 +113,7 @@
    hud-going-out
    hud-normal
    hud-waiting))
+
 
 (define *fp-hud-stack* (malloc 'global #x3800))
 
@@ -363,9 +366,9 @@
                       (s1-0 projectile-init-by-other)
                       (s0-0 (-> self entity)))
                   (set! sv-48 s5-1)
-                  (let ((v0-3 (camera-pos))) (.mov.vf vf6 vf0 :mask #b1000) (.lvf vf4 (&-> v0-3 quad)))
+                  (let ((v0-3 (camera-pos))) (.mov.vf.w vf6 vf0) (.lvf vf4 (&-> v0-3 quad)))
                   (.lvf vf5 (&-> s5-1 quad))
-                  (.add.vf vf6 vf4 vf5 :mask #b111)
+                  (.add.vf.xyz vf6 vf4 vf5)
                   (.svf (&-> sv-48 quad) vf6)
                   (let ((t1-0 (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max)) 56 40))
                         (t2-0 #f))
@@ -442,9 +445,9 @@
                       (s1-0 projectile-init-by-other)
                       (s0-0 (-> self entity)))
                   (set! sv-48 s5-1)
-                  (let ((v0-4 (camera-pos))) (.mov.vf vf6 vf0 :mask #b1000) (.lvf vf4 (&-> v0-4 quad)))
+                  (let ((v0-4 (camera-pos))) (.mov.vf.w vf6 vf0) (.lvf vf4 (&-> v0-4 quad)))
                   (.lvf vf5 (&-> s5-1 quad))
-                  (.add.vf vf6 vf4 vf5 :mask #b111)
+                  (.add.vf.xyz vf6 vf4 vf5)
                   (.svf (&-> sv-48 quad) vf6)
                   (let ((t1-0 (if (>= (-> self fact eco-level) (-> *FACT-bank* eco-level-max)) 120 104))
                         (t2-0 #f))
@@ -669,7 +672,7 @@
       (ja :group! eichar-pole-jump-loop-ja :num! min)
       (let ((f0-1 (target-height-above-ground))
             (f1-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
-        (while (not (and (< (fabs (/ f0-1 (* 0.0033333334 f1-1))) 40.0) (and (< f1-1 0.0) (ja-min? 0))))
+        (while (not (and (< (fabs (/ f0-1 (/ f1-1 300))) 40.0) (and (< f1-1 0.0) (ja-min? 0))))
           (suspend)
           (ja :num! (loop!))
           (set! f0-1 (target-height-above-ground))
@@ -1150,8 +1153,8 @@
         (loop
           (let ((f0-10 (fmax -1.0 (fmin 1.0 (* 2.0 (-> self control unknown-float61)))))
                 (f24-0 (fmax -1.0 (fmin 1.0 (* 1.6 (-> self control unknown-float62))))))
-            (let ((f1-4 (fabs (- f0-10 f30-1)))) (set! f30-1 (seek f30-1 f0-10 (fmax 0.05 (fmin 0.2 (* 0.25 f1-4))))))
-            (let ((f0-14 (fabs (- f24-0 f28-0)))) (set! f28-0 (seek f28-0 f24-0 (fmax 0.05 (fmin 0.2 (* 0.25 f0-14)))))))
+            (let ((f1-4 (fabs (- f0-10 f30-1)))) (set! f30-1 (seek f30-1 f0-10 (fmax 0.05 (fmin 0.2 (/ f1-4 4))))))
+            (let ((f0-14 (fabs (- f24-0 f28-0)))) (set! f28-0 (seek f28-0 f24-0 (fmax 0.05 (fmin 0.2 (/ f0-14 4)))))))
           (ja :chan 3 :group! eichar-walk-down-ja :dist (-> *TARGET-bank* walk-down-cycle-dist))
           (if (>= f30-1 0.0)
             (ja :chan 3 :group! eichar-walk-up-ja :frame-interp (fabs f30-1) :dist (-> *TARGET-bank* walk-up-cycle-dist))

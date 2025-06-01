@@ -4,13 +4,9 @@
 ;; definition for method 15 of type hud-nest-cocoons
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-nest-cocoons))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    200
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 200)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -25 33)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -25 33)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -122,7 +118,7 @@
 (defmethod task-manager-method-26 ((this task-manager-nest-cocoons))
   (set-nst-poison! (the-as mood-context 0))
   (cond
-    ((= (status-of-level-and-borrows *level* 'nstb #f) 'active)
+    ((= (level-status? *level* 'nstb #f) 'active)
      (if (task-manager-nest-cocoons-method-34 this)
          (task-manager-nest-cocoons-method-33 this)
          (init-actor-group! this)
@@ -136,10 +132,8 @@
       )
     )
   (cond
-    ((and (< 819200.0 (vector-vector-xz-distance (target-pos 0) (the-as vector (-> *minimap-class-list* 9))))
-          (or (= (status-of-level-and-borrows *level* 'desert #f) 'active)
-              (= (status-of-level-and-borrows *level* 'waswide #f) 'active)
-              )
+    ((and (< 819200.0 (vector-vector-xz-distance (target-pos 0) (-> *minimap-class-list* 9 default-position)))
+          (or (= (level-status? *level* 'desert #f) 'active) (= (level-status? *level* 'waswide #f) 'active))
           )
      (if (not (-> this minimap))
          (set! (-> this minimap) (add-icon! *minimap* this (the-as uint 9) (the-as int #f) (the-as vector #f) 0))
@@ -151,12 +145,7 @@
      )
     )
   (when (and *target* (not (logtest? (focus-status teleporting) (-> *target* focus-status))))
-    (let* ((s5-2 (handle->process (-> this vehicle-handle)))
-           (a0-29 (if (type? s5-2 process-focusable)
-                      s5-2
-                      )
-                  )
-           )
+    (let ((a0-29 (as-type (handle->process (-> this vehicle-handle)) process-focusable)))
       (if (and a0-29 (focus-test? (the-as process-focusable a0-29) dead))
           (send-event this 'fail)
           )

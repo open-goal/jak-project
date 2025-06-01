@@ -59,10 +59,10 @@
     (.lvf vf2 (&-> (-> arg1 bone) transform trans quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
     (.wait.vf)
-    (.mul.vf vf2 vf2 Q :mask #b111)
+    (.mul.vf.xyz vf2 vf2 Q)
     (.nop.vf)
     (.nop.vf)
-    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mov.vf.w vf2 vf0)
     (.svf (&-> arg0 quad) vf2)
     arg0
     )
@@ -78,10 +78,10 @@
     (.lvf vf2 (&-> arg1 trans quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
     (.wait.vf)
-    (.mul.vf vf2 vf2 Q :mask #b111)
+    (.mul.vf.xyz vf2 vf2 Q)
     (.nop.vf)
     (.nop.vf)
-    (.mov.vf vf2 vf0 :mask #b1000)
+    (.mov.vf.w vf2 vf0)
     (.svf (&-> arg0 quad) vf2)
     arg0
     )
@@ -304,7 +304,7 @@
           (set! s5-0 (the-as cspace-array #f))
           (goto cfg-13)
           )
-        (let ((v1-9 ((method-of-type cspace reset-and-assign-geo!) (the-as cspace (-> s5-0 data)) (the-as drawable #f))))
+        (let ((v1-9 ((method-of-type cspace reset-and-assign-geo!) (-> s5-0 data 0) (the-as drawable #f))))
           (set! (-> v1-9 bone) (the-as bone (-> s3-1 bones)))
           )
         (let ((v1-10 (-> s5-0 data)))
@@ -463,7 +463,7 @@
        )
       ((zero? jcontrol)
        (matrix<-transformq+trans!
-         (the-as matrix (-> this skeleton bones 3))
+         (-> this skeleton bones 3 transform)
          (the-as transformq (-> this process root trans))
          (-> this skeleton bones 0 transform trans)
          )
@@ -478,13 +478,9 @@
               ((-> jcontrol postbind-function) this joints jcontrol)
               )
           (let ((a1-5 (new 'stack-no-clear 'vector)))
-            (set! (-> a1-5 quad) (-> this bounds quad))
+            (vector-copy! a1-5 (-> this bounds))
             (set! (-> a1-5 w) 1.0)
-            (vector-norm-matrix*!
-              (-> this origin)
-              a1-5
-              (the-as matrix (-> this skeleton bones (-> this origin-joint-index)))
-              )
+            (vector-norm-matrix*! (-> this origin) a1-5 (-> this skeleton bones (-> this origin-joint-index) transform))
             )
           (let ((f0-2 (-> this bounds w)))
             (set! (-> this origin w) f0-2)
@@ -591,12 +587,7 @@
         (remove! a0-3)
         )
     )
-  (let* ((s5-0 (-> this root))
-         (a0-5 (if (type? s5-0 collide-shape)
-                   s5-0
-                   )
-               )
-         )
+  (let ((a0-5 (as-type (-> this root) collide-shape)))
     (when a0-5
       (let ((a2-0 (-> (the-as collide-shape a0-5) actor-hash-index))
             (v1-12 *actor-hash*)
@@ -666,12 +657,7 @@
     (if (-> self entity)
         (logior! (-> self entity extra perm status) (entity-perm-status error))
         )
-    (let* ((gp-0 (-> self root))
-           (v1-12 (if (type? gp-0 collide-shape)
-                      (the-as collide-shape gp-0)
-                      )
-                  )
-           )
+    (let ((v1-12 (as-type (-> self root) collide-shape)))
       (when v1-12
         (let ((a0-6 (-> v1-12 root-prim)))
           (set! (-> a0-6 prim-core collide-as) (collide-spec))
@@ -766,7 +752,7 @@
       (set! (-> v1-35 origin-joint-index) (the-as uint (-> skelgroup origin-joint-index)))
       (set! (-> v1-35 shadow-joint-index) (the-as uint (-> skelgroup shadow-joint-index)))
       )
-    (set! (-> s2-0 bounds quad) (-> skelgroup bounds quad))
+    (vector-copy! (-> s2-0 bounds) (-> skelgroup bounds))
     (let ((v1-37 (-> skelgroup shadow)))
       (when (and (> v1-37 0) (< v1-37 sv-20))
         (let ((s0-0 (-> s1-0 data v1-37)))
@@ -806,12 +792,7 @@
                                   (-> skelgroup light-index)
                                   )
         )
-  (let* ((gp-1 (ppointer->process (-> proc parent)))
-         (v1-65 (if (type? gp-1 process-drawable)
-                    gp-1
-                    )
-                )
-         )
+  (let ((v1-65 (as-type (ppointer->process (-> proc parent)) process-drawable)))
     (when (and v1-65 (nonzero? (-> (the-as process-drawable v1-65) draw)))
       (set! (-> s2-0 light-index) (-> (the-as process-drawable v1-65) draw light-index))
       (set! (-> s2-0 shadow-mask) (-> (the-as process-drawable v1-65) draw shadow-mask))
@@ -872,19 +853,17 @@
          )
        )
       (else
-        (set! (-> s3-0 skeleton bones 0 transform trans quad) (-> (the-as vector (get-property-struct
-                                                                                   (-> s3-0 jgeo extra)
-                                                                                   'trans-offset
-                                                                                   'interp
-                                                                                   -1000000000.0
-                                                                                   *null-vector*
-                                                                                   (the-as (pointer res-tag) #f)
-                                                                                   *res-static-buf*
-                                                                                   )
-                                                                          )
-                                                                  quad
-                                                                  )
-              )
+        (vector-copy! (-> s3-0 skeleton bones 0 transform trans) (the-as vector (get-property-struct
+                                                                                  (-> s3-0 jgeo extra)
+                                                                                  'trans-offset
+                                                                                  'interp
+                                                                                  -1000000000.0
+                                                                                  *null-vector*
+                                                                                  (the-as (pointer res-tag) #f)
+                                                                                  *res-static-buf*
+                                                                                  )
+                                                                         )
+                      )
         )
       )
     )
@@ -1082,53 +1061,36 @@
 ;; INFO: Used lq/sq
 (defbehavior ja-linear-vel process-drawable ((chan int))
   (local-vars (s4-1 vector) (sv-16 res-tag))
-  (rlet ((vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
+  (let* ((s4-0 (-> self skel root-channel chan))
+         (v1-2 (-> s4-0 frame-group))
          )
-    (init-vf0-vector)
-    (let* ((s4-0 (-> self skel root-channel chan))
-           (v1-2 (-> s4-0 frame-group))
-           )
-      (cond
-        ((-> v1-2 extra)
-         (set! sv-16 (new 'static 'res-tag))
-         (let ((gp-0 (res-lump-data (-> v1-2 extra) 'linear-vel pointer :tag-ptr (& sv-16))))
-           (cond
-             (gp-0
-               (let* ((s5-0 (the int (the float (the int (-> s4-0 frame-num)))))
-                      (f0-5 (-> s4-0 frame-num))
-                      (f28-0 (- f0-5 (the float (the int f0-5))))
-                      )
-                 (set! s4-1 (new 'static 'vector))
-                 (let ((f30-0 (ja-rate 0)))
-                   (vector-lerp! s4-1 (the-as vector (&+ gp-0 (* s5-0 16))) (the-as vector (&+ gp-0 (* (+ s5-0 1) 16))) f28-0)
-                   (let ((a0-7 s4-1))
-                     (let ((v1-9 s4-1)
-                           (a1-3 (-> self root scale))
-                           )
-                       (.lvf vf4 (&-> v1-9 quad))
-                       (.lvf vf5 (&-> a1-3 quad))
-                       )
-                     (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                     (.mul.vf vf6 vf4 vf5 :mask #b111)
-                     (.svf (&-> a0-7 quad) vf6)
-                     )
-                   (vector-float*! s4-1 s4-1 f30-0)
-                   )
+    (cond
+      ((-> v1-2 extra)
+       (set! sv-16 (new 'static 'res-tag))
+       (let ((gp-0 (res-lump-data (-> v1-2 extra) 'linear-vel pointer :tag-ptr (& sv-16))))
+         (cond
+           (gp-0
+             (let* ((s5-0 (the int (the float (the int (-> s4-0 frame-num)))))
+                    (f0-5 (-> s4-0 frame-num))
+                    (f28-0 (- f0-5 (the float (the int f0-5))))
+                    )
+               (set! s4-1 (new 'static 'vector))
+               (let ((f30-0 (ja-rate 0)))
+                 (vector-lerp! s4-1 (the-as vector (&+ gp-0 (* s5-0 16))) (the-as vector (&+ gp-0 (* (+ s5-0 1) 16))) f28-0)
+                 (vector*! s4-1 s4-1 (-> self root scale))
+                 (vector-float*! s4-1 s4-1 f30-0)
                  )
                )
-             (else
-               (set! s4-1 *null-vector*)
-               )
+             )
+           (else
+             (set! s4-1 *null-vector*)
              )
            )
-         s4-1
          )
-        (else
-          *null-vector*
-          )
+       s4-1
+       )
+      (else
+        *null-vector*
         )
       )
     )
@@ -2079,8 +2041,8 @@
         (set! v1-0 (-> self entity))
         )
     (if arg1
-        (set! (-> gp-0 quad) (-> arg1 quad))
-        (set! (-> gp-0 quad) (-> v1-0 extra trans quad))
+        (vector-copy! gp-0 arg1)
+        (vector-copy! gp-0 (-> v1-0 extra trans))
         )
     (let ((s5-0 (-> v1-0 extra perm task))
           (s4-0 (new 'static 'fact-info))
@@ -2108,14 +2070,9 @@
 ;; WARN: Return type mismatch object vs process-focusable.
 (defbehavior find-offending-process-focusable process-drawable ((arg0 process-tree) (arg1 attack-info))
   (let ((s5-0 (the-as object #f)))
-    (when (and arg1 (logtest? (-> arg1 mask) (attack-mask attacker)))
-      (let ((s4-0 (handle->process (-> arg1 attacker))))
-        (set! s5-0 (if (type? s4-0 process-focusable)
-                       s4-0
-                       )
-              )
+    (if (and arg1 (logtest? (-> arg1 mask) (attack-mask attacker)))
+        (set! s5-0 (as-type (handle->process (-> arg1 attacker)) process-focusable))
         )
-      )
     (when (not (the-as process s5-0))
       (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
         (set! (-> a1-3 from) (process->ppointer self))

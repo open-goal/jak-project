@@ -2212,6 +2212,50 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   return elt;
 }
 
+FormElement* rewrite_set_font_single(LetElement* in,
+                                     const Env& env,
+                                     FormPool& pool,
+                                     const char* deref_name,
+                                     const char* op_name,
+                                     bool cast_to_float) {
+  /*
+  (let ((v1-10 gp-0))
+     (set! (-> v1-10 scale) 0.6)
+     )
+  */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+  if (in->body()->elts().size() != 1) {
+    return nullptr;
+  }
+
+  Form* font_obj_expr = in->entries().at(0).src;
+  RegisterAccess font_obj_reg = in->entries().at(0).dest;
+
+  if (env.get_variable_type(font_obj_reg, true) != TypeSpec("font-context")) {
+    return nullptr;
+  }
+
+  auto src_matcher =
+      cast_to_float ? Matcher::numeric_cast("float", Matcher::any(0)) : Matcher::any(0);
+  Matcher set_matcher = Matcher::set(Matcher::deref(Matcher::reg(font_obj_reg.reg()), false,
+                                                    {DerefTokenMatcher::string(deref_name)}),
+                                     src_matcher);
+  auto set_mr = match(set_matcher, in->body()->at(0));
+
+  if (!set_mr.matched) {
+    return nullptr;
+  }
+
+  auto elt = pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>(op_name)),
+      std::vector<Form*>{font_obj_expr, set_mr.maps.forms.at(0)});
+  elt->parent_form = in->parent_form;
+  return elt;
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -2318,6 +2362,24 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_call_parent_state) {
     stats.call_parent_state_handler++;
     return as_call_parent_state;
+  }
+
+  auto as_font_scale = rewrite_set_font_single(in, env, pool, "scale", "set-scale!", false);
+  if (as_font_scale) {
+    stats.font_method++;
+    return as_font_scale;
+  }
+
+  auto as_font_width = rewrite_set_font_single(in, env, pool, "width", "set-width!", true);
+  if (as_font_width) {
+    stats.font_method++;
+    return as_font_width;
+  }
+
+  auto as_font_height = rewrite_set_font_single(in, env, pool, "height", "set-height!", true);
+  if (as_font_height) {
+    stats.font_method++;
+    return as_font_height;
   }
 
   // nothing matched.
@@ -2687,6 +2749,59 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   return elt;
 }
 
+FormElement* rewrite_set_font_origin(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+           (let ((v1-9 gp-0)
+                  (a1-1 36)
+                  (a0-4 140)
+                  )
+              (set! (-> v1-9 origin x) (the float a1-1))
+              (set! (-> v1-9 origin y) (the float a0-4))
+              )
+    */
+  if (in->entries().size() != 3) {
+    return nullptr;
+  }
+  if (in->body()->elts().size() != 2) {
+    return nullptr;
+  }
+
+  Form* font_obj_expr = in->entries().at(0).src;
+  RegisterAccess font_obj_reg = in->entries().at(0).dest;
+
+  if (env.get_variable_type(font_obj_reg, true) != TypeSpec("font-context")) {
+    return nullptr;
+  }
+
+  Form* x_val = in->entries().at(1).src;
+  Form* y_val = in->entries().at(2).src;
+
+  Matcher x_matcher = Matcher::set(
+      Matcher::deref(Matcher::reg(font_obj_reg.reg()), false,
+                     {DerefTokenMatcher::string("origin"), DerefTokenMatcher::string("x")}),
+      Matcher::numeric_cast("float", Matcher::reg(in->entries().at(1).dest.reg())));
+  auto x_mr = match(x_matcher, in->body()->at(0));
+
+  Matcher y_matcher = Matcher::set(
+      Matcher::deref(Matcher::reg(font_obj_reg.reg()), false,
+                     {DerefTokenMatcher::string("origin"), DerefTokenMatcher::string("y")}),
+      Matcher::numeric_cast("float", Matcher::reg(in->entries().at(2).dest.reg())));
+  auto y_mr = match(y_matcher, in->body()->at(1));
+
+  if (!x_mr.matched) {
+    return nullptr;
+  }
+  if (!y_mr.matched) {
+    return nullptr;
+  }
+
+  auto elt = pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("set-origin!")),
+      std::vector<Form*>{font_obj_expr, x_val, y_val});
+  elt->parent_form = in->parent_form;
+  return elt;
+}
+
 FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& pool) {
   /*
    * (let ((t9-0 sp-launch-particles-var)
@@ -2716,8 +2831,12 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
   }
 
   auto set_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(0));
+  GenericElement* vector_copy_elt = nullptr;
   if (!set_elt) {
-    return nullptr;
+    vector_copy_elt = dynamic_cast<GenericElement*>(in->body()->at(0));
+    if (!vector_copy_elt || vector_copy_elt->op().to_form(env).print() != "vector-copy!") {
+      return nullptr;
+    }
   }
 
   auto func_elt = dynamic_cast<GenericElement*>(in->body()->at(1));
@@ -2747,19 +2866,24 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
     return nullptr;
   }
 
-  auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
-  if (!origin) {
-    return nullptr;
-  }
-  auto tokens = origin->tokens().size();
-  Form* origin_form;
-  // remove only the quad if there are multiple derefs
-  if (tokens > 1) {
-    origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
-    auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
-    orig->tokens().pop_back();
+  Form* origin_form = nullptr;
+  if (set_elt) {
+    auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
+    auto tokens = origin->tokens().size();
+    // remove only the quad if there are multiple derefs
+    if (tokens > 1) {
+      origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
+      auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
+      orig->tokens().pop_back();
+    } else {
+      origin_form = origin->base();
+    }
   } else {
-    origin_form = origin->base();
+    // the vector copy rewrite already did the logic above.
+    origin_form = vector_copy_elt->elts().at(1);
+  }
+  if (!origin_form) {
+    return nullptr;
   }
 
   auto launch_state = func_elt->elts().at(func_elt->elts().size() - 3);
@@ -2835,6 +2959,12 @@ FormElement* rewrite_multi_let(LetElement* in,
       stats.vector_dot++;
       return as_vector_dot;
     }
+  }
+
+  auto as_font_set_origin = rewrite_set_font_origin(in, env, pool);
+  if (as_font_set_origin) {
+    stats.font_method++;
+    return as_font_set_origin;
   }
 
   return in;

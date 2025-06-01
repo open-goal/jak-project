@@ -8,7 +8,7 @@
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace {
 
@@ -247,8 +247,8 @@ void Compiler::generate_field_description(const goos::Object& form,
     str_template += fmt::format("{}{}: #x~X~%", tabs, f.name());
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(form, env));
   } else {
-    // Otherwise, we havn't implemented it!
-    str_template += fmt::format("{}{}: Undefined!~%", tabs, f.name());
+    // Otherwise, we haven't implemented it!
+    str_template += fmt::format("{}{}: Print not implemented!~%", tabs, f.name());
   }
 
   compile_format_string(form, env, str_template, format_args);

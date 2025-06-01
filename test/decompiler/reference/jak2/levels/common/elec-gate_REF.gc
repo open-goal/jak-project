@@ -411,15 +411,10 @@
       (sv-288 symbol)
       (sv-304 symbol)
       )
-    (let* ((target *target*)
-           (proc-focus (if (type? target process-focusable)
-                           target
-                           )
-                       )
-           )
+    (let ((proc-focus (the-as target (as-type *target* process-focusable))))
       (when proc-focus
         (let ((focus-trans (get-trans proc-focus 0)))
-          (let* ((a0-3 (vector-! (new 'stack-no-clear 'vector) focus-trans (the-as vector (-> self dividing-wall))))
+          (let* ((a0-3 (vector-! (new 'stack-no-clear 'vector) focus-trans (-> self dividing-wall pos)))
                  (s4-0 (-> self plane (if (< 0.0 (vector-dot a0-3 (-> self dividing-wall dir)))
                                           0
                                           1
@@ -786,10 +781,10 @@
 (defmethod spawn-particles ((this elec-gate) (sparticle-lc sparticle-launch-control))
   "TODO - Calls [[sparticle-launch-control::11]] on `part-spawner-left` and `part-spawner-right` if they are defined"
   (if (-> this part-spawner-left)
-      (spawn sparticle-lc (the-as vector (&-> (-> this part-spawner-left child) 8)))
+      (spawn sparticle-lc (the-as vector (&-> this part-spawner-left child 8)))
       )
   (if (-> this part-spawner-right)
-      (spawn sparticle-lc (the-as vector (&-> (-> this part-spawner-right child) 8)))
+      (spawn sparticle-lc (the-as vector (&-> this part-spawner-right child 8)))
       )
   0
   (none)
@@ -913,10 +908,10 @@
     (vector-cross! v1-28 v1-28 *up-vector*)
     (set! (-> this dividing-wall pos quad) (-> s5-3 quad))
     (set! (-> this dividing-wall dir quad) (-> v1-28 quad))
-    (vector+float*! (the-as vector (-> this plane)) s5-3 v1-28 12288.0)
+    (vector+float*! (-> this plane 0 pos) s5-3 v1-28 12288.0)
     (set! (-> (the-as vector (-> this plane 0 dir)) quad) (-> v1-28 quad))
     (vector-float*! v1-28 v1-28 -1.0)
-    (vector+float*! (the-as vector (-> this plane 1)) s5-3 v1-28 12288.0)
+    (vector+float*! (-> this plane 1 pos) s5-3 v1-28 12288.0)
     (set! (-> (the-as vector (-> this plane 1 dir)) quad) (-> v1-28 quad))
     )
   (set! (-> this wall-xz)
@@ -925,7 +920,7 @@
           (get-point-in-path! (-> this path-r) (new 'stack-no-clear 'vector) 0.0 'interp)
           )
         )
-  (set! (-> this wall-xz) (* 0.5 (-> this wall-xz)))
+  (set! (-> this wall-xz) (/ (-> this wall-xz) 2))
   (+! (-> this wall-xz) 4096.0)
   (set! (-> this wall-y)
         (fabs

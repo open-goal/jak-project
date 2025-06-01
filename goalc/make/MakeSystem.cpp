@@ -10,7 +10,7 @@
 #include "goalc/make/Tools.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 std::string MakeStep::print() const {
   std::string result = fmt::format("Tool {} with inputs", tool);
@@ -112,6 +112,8 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<BuildLevel2Tool>();
   add_tool<BuildLevel3Tool>();
   add_tool<BuildActorTool>();
+  add_tool<BuildActor2Tool>();
+  add_tool<BuildActor3Tool>();
 }
 
 /*!

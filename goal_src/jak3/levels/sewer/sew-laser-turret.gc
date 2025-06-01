@@ -466,34 +466,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 1)
     :shadow-max-y (meters 1)
@@ -513,8 +513,8 @@
     (new 'stack-no-clear 'vector)
     (let ((a1-3 (new 'stack-no-clear 'vector)))
       (-> a0-2 y)
-      (set! (-> a1-3 quad) (-> this node-list data arg1 bone transform fvec quad))
-      (set! (-> a1-3 y) (* 0.5 (-> a1-3 y)))
+      (vector-copy! a1-3 (-> this node-list data arg1 bone transform fvec))
+      (set! (-> a1-3 y) (/ (-> a1-3 y) 2))
       (fire-laser! a0-2 a1-3 (the-as sew-laser-guard this) 491520.0)
       )
     )
@@ -535,12 +535,7 @@
 
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod sew-laser-turret-method-163 ((this sew-laser-turret))
-  (let* ((s5-0 *target*)
-         (a0-2 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((a0-2 (the-as target (as-type *target* process-focusable))))
     (cond
       (a0-2
         (set! (-> this target-distance) (vector-vector-xz-distance (get-trans a0-2 0) (-> this root trans)))
@@ -556,23 +551,13 @@
 
 (defmethod check-suitable-focus ((this sew-laser-turret))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this root trans quad))
+    (vector-copy! s5-0 (-> this root trans))
     (set! (-> s5-0 w) (-> this awareness-radius))
     (let ((s4-0 (new 'stack-no-clear 'array 'collide-shape 384)))
       (countdown (s3-0 (fill-actor-list-for-box *actor-hash* s5-0 s4-0 384))
-        (let* ((s2-0 (-> s4-0 s3-0))
-               (v1-4 (if (type? s2-0 collide-shape)
-                         s2-0
-                         )
-                     )
-               )
+        (let ((v1-4 (as-type (-> s4-0 s3-0) collide-shape)))
           (when v1-4
-            (let* ((s2-1 (-> v1-4 process))
-                   (v1-5 (if (type? s2-1 process-focusable)
-                             s2-1
-                             )
-                         )
-                   )
+            (let ((v1-5 (as-type (-> v1-4 process) process-focusable)))
               (when v1-5
                 (if (and (!= this v1-5)
                          (not (focus-test? (the-as process-focusable v1-5) inactive))
@@ -589,12 +574,7 @@
           )
         )
       )
-    (let* ((s3-1 *target*)
-           (s4-1 (if (type? s3-1 process-focusable)
-                     s3-1
-                     )
-                 )
-           )
+    (let ((s4-1 (the-as target (as-type *target* process-focusable))))
       (when (and s4-1 (< (vector-vector-distance (get-trans s4-1 0) s5-0) (-> s5-0 w)))
         (if (and (!= this s4-1)
                  (not (focus-test? s4-1 inactive))
@@ -708,9 +688,9 @@
 ;; WARN: Return type mismatch uint vs none.
 (defmethod generate-prim-verts! ((this sew-laser-turret) (arg0 float) (arg1 float))
   (let ((s3-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s3-0 quad) (-> *x-vector* quad))
+    (vector-copy! s3-0 *x-vector*)
     (let ((s5-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s5-0 quad) (-> *z-vector* quad))
+      (vector-copy! s5-0 *z-vector*)
       (let ((s4-0 (new 'stack-no-clear 'vector))
             ;; og:preserve-this
             ;; (s0-0 (new 'stack-no-clear 'rgbaf))
@@ -746,13 +726,13 @@
           (vector+! s4-0 s4-0 s5-0)
           (dotimes (v1-39 3)
             (let ((a0-21 (-> this strip data (-> this strip num-verts))))
-              (set! (-> a0-21 pos quad) (-> s4-0 quad))
+              (vector-copy! (-> a0-21 pos) s4-0)
               (set! (-> a0-21 stq z) (the-as float #x1))
               )
             (+! (-> this strip num-verts) 1)
             )
           (let ((v1-46 (-> this strip data (-> this strip num-verts))))
-            (set! (-> v1-46 pos quad) (-> s4-0 quad))
+            (vector-copy! (-> v1-46 pos) s4-0)
             (set! (-> v1-46 stq z) 0.0)
             (set! (-> v1-46 stq x) 0.0)
             (set! (-> v1-46 stq y) 0.0)
@@ -761,7 +741,7 @@
             (let ((v1-47 (&+ v1-46 32)))
               (vector+float*! s4-0 (-> this root trans) s3-0 -1.0)
               (vector+! s4-0 s4-0 s5-0)
-              (set! (-> v1-47 pos quad) (-> s4-0 quad))
+              (vector-copy! (-> v1-47 pos) s4-0)
               (set! (-> v1-47 stq z) 0.0)
               (set! (-> v1-47 stq x) 1.0)
               (set! (-> v1-47 stq y) 0.0)
@@ -770,7 +750,7 @@
               (let ((v1-48 (&+ v1-47 32)))
                 (vector+! s4-0 (-> this root trans) s3-0)
                 (vector+float*! s4-0 s4-0 s5-0 -1.0)
-                (set! (-> v1-48 pos quad) (-> s4-0 quad))
+                (vector-copy! (-> v1-48 pos) s4-0)
                 (set! (-> v1-48 stq z) 0.0)
                 (set! (-> v1-48 stq x) 0.0)
                 (set! (-> v1-48 stq y) 1.0)
@@ -779,7 +759,7 @@
                 (let ((v1-49 (&+ v1-48 32)))
                   (vector+float*! s4-0 (-> this root trans) s3-0 -1.0)
                   (vector+float*! s4-0 s4-0 s5-0 -1.0)
-                  (set! (-> v1-49 pos quad) (-> s4-0 quad))
+                  (vector-copy! (-> v1-49 pos) s4-0)
                   (set! (-> v1-49 stq z) 0.0)
                   (set! (-> v1-49 stq x) 1.0)
                   (set! (-> v1-49 stq y) 1.0)
@@ -833,7 +813,7 @@
           )
     (setup-dma-and-tex (-> self strip) (-> self draw))
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
+      (vector-copy! gp-0 (-> self root trans))
       (set! (-> gp-0 w) (-> self awareness-radius))
       (let* ((s5-0 (new 'stack-no-clear 'array 'collide-shape 384))
              (s4-0 (fill-actor-list-for-box *actor-hash* gp-0 s5-0 384))
@@ -865,19 +845,9 @@
                 )
             (when (< f26-0 0.9)
               (countdown (s1-1 s4-0)
-                (let* ((s0-1 (-> s5-0 s1-1))
-                       (v1-53 (if (type? s0-1 collide-shape)
-                                  s0-1
-                                  )
-                              )
-                       )
+                (let ((v1-53 (as-type (-> s5-0 s1-1) collide-shape)))
                   (when v1-53
-                    (let* ((s0-2 (-> v1-53 process))
-                           (a2-4 (if (type? s0-2 process-focusable)
-                                     s0-2
-                                     )
-                                 )
-                           )
+                    (let ((a2-4 (as-type (-> v1-53 process) process-focusable)))
                       (when a2-4
                         (when (and (!= self a2-4)
                                    (not (focus-test? (the-as process-focusable a2-4) inactive))
@@ -895,12 +865,7 @@
                     )
                   )
                 )
-              (let* ((s0-3 *target*)
-                     (s1-2 (if (type? s0-3 process-focusable)
-                               s0-3
-                               )
-                           )
-                     )
+              (let ((s1-2 (the-as target (as-type *target* process-focusable))))
                 (when (and s1-2 (< (vector-vector-distance (get-trans s1-2 0) gp-0) (-> gp-0 w)))
                   (when (and (!= self s1-2)
                              (not (focus-test? s1-2 inactive))
@@ -988,6 +953,7 @@
   )
 
 (defmethod event-handler ((this sew-laser-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('start)
      (let ((v0-0 (the-as object #t)))
@@ -1042,7 +1008,7 @@
       )
     0
     (set! (-> self hit-points) 0.0)
-    (play-communicator-speech! (-> *talker-speech* 49))
+    (mark-played! (-> *talker-speech* 49))
     )
   :code (behavior ()
     (new 'stack 'joint-exploder-tuning (the-as uint 0))
@@ -1052,11 +1018,14 @@
     (cleanup-for-death self)
     (ja-channel-set! 0)
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-1 quad) (-> self root trans quad))
+      (vector-copy! gp-1 (-> self root trans))
       (+! (-> gp-1 y) 10240.0)
-      (suspend-for (seconds 2) (spawn (-> self part) gp-1))
+      (suspend-for (seconds 2)
+        (spawn (-> self part) gp-1)
+        )
       )
-    (suspend-for (seconds 1))
+    (suspend-for (seconds 1)
+      )
     (send-event self 'death-end)
     (while (-> self child)
       (suspend)
@@ -1068,6 +1037,7 @@
   )
 
 (defmethod init-enemy-collision! ((this sew-laser-turret))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1128,6 +1098,7 @@
   )
 
 (defmethod coin-flip? ((this sew-laser-turret))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1151,12 +1122,13 @@
   )
 
 (defmethod init-enemy! ((this sew-laser-turret))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-laser-turret" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *sew-laser-turret-enemy-info*)
+  (setup-enemy! this *sew-laser-turret-enemy-info*)
   (logclear! (-> this mask) (process-mask actor-pause))
   (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1518) this))
@@ -1182,11 +1154,13 @@
   (none)
   )
 
-(defmethod go-idle2 ((this sew-laser-turret))
+(defmethod go-fallback-init ((this sew-laser-turret))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go (method-of-object this alert))
   )
 
 (defmethod go-hostile ((this sew-laser-turret))
+  "Go to the hostile state, actively trying to attack the target."
   (cond
     ((and (not (and (-> this next-state) (let ((v1-3 (-> this next-state name)))
                                            (or (= v1-3 'spinning-up) (= v1-3 'hostile))

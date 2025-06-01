@@ -15,7 +15,8 @@
 #include "common/util/FileUtil.h"
 #include "common/util/FontUtils.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
+#include "fmt/ranges.h"
 
 namespace goos {
 

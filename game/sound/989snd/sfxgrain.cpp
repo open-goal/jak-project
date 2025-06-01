@@ -158,7 +158,8 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STARTCHILDSOUND(BlockSoundHandler& handler) {
   s32 index = psp.sound_id;
 
   if (index >= 0) {
-    auto child_handler = block.MakeHandler(handler.m_vm, index, vol, pan, params);
+    auto child_handler =
+        block.MakeHandler(handler.m_vm, index, vol, pan, params, handler.m_start_tick);
     if (child_handler.has_value()) {
       handler.m_children.emplace_front(std::move(child_handler.value()));
     }
@@ -254,10 +255,10 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STOP(BlockSoundHandler& handler) {
 }
 
 s32 Grain::snd_SFX_GRAIN_TYPE_RAND_PLAY(BlockSoundHandler& handler) {
-  auto cp = std::get<ControlParams>(data);
+  auto& cp = std::get<ControlParams>(data);
   auto options = cp.param[0];
   auto count = cp.param[1];
-  auto previous = cp.param[2];
+  auto& previous = cp.param[2];
 
   int rnd = rand() % options;
   if (rnd == previous) {

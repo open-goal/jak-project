@@ -21,7 +21,7 @@
 
 (defpart 665
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:scale-x (meters 1) (meters 1))
    (:scale-y :copy scale-x)
@@ -66,6 +66,7 @@
    seagull-soaring
    seagull-takeoff))
 
+
 (deftype seagullflock (process)
   ((self-override      seagullflock :overlay-at self)
    (path               path-control)
@@ -91,11 +92,12 @@
    seagullflock-at-waterfall
    seagullflock-idle))
 
-(defmethod relocate ((this seagullflock) (arg0 int))
-  (if (nonzero? (-> this path)) (&+! (-> this path) arg0))
-  (if (nonzero? (-> this link)) (&+! (-> this link) arg0))
-  (if (nonzero? (-> this squall)) (&+! (-> this squall) arg0))
-  (the-as seagullflock ((method-of-type process relocate) this arg0)))
+
+(defmethod relocate ((this seagullflock) (offset int))
+  (if (nonzero? (-> this path)) (&+! (-> this path) offset))
+  (if (nonzero? (-> this link)) (&+! (-> this link) offset))
+  (if (nonzero? (-> this squall)) (&+! (-> this squall) offset))
+  (the-as seagullflock ((method-of-type process relocate) this offset)))
 
 (defmethod deactivate ((this seagullflock))
   (if (nonzero? (-> this squall)) (stop! (-> this squall)))
@@ -421,8 +423,8 @@
         (.lvf vf1 (&-> s5-0 quad))
         (let ((f0-0 (seconds-per-frame))) (.mov at-0 f0-0))
         (.mov vf2 at-0)
-        (.mov.vf vf1 vf0 :mask #b1000)
-        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.mov.vf.w vf1 vf0)
+        (.mul.x.vf.xyz vf1 vf1 vf2)
         (.svf (&-> a2-0 quad) vf1))
       (vector+! a1-1 a0-2 v1-0)
       (if (points-in-air? a0-2 a1-1 *seagull-boxes* 10)

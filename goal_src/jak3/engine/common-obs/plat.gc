@@ -134,6 +134,7 @@
   )
 
 (defmethod init-from-entity! ((this plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (logior! (-> this mask) (process-mask platform))
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
@@ -219,12 +220,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack 'bonk)
-       (let* ((s5-0 proc)
-              (a0-5 (if (type? s5-0 process-focusable)
-                        s5-0
-                        )
-                    )
-              )
+       (let ((a0-5 (as-type proc process-focusable)))
          (cond
            ((and a0-5 (focus-test? (the-as process-focusable a0-5) edge-grab))
             (set! (-> self safe-time) (+ (current-time) (seconds 0.2)))
@@ -235,13 +231,9 @@
             )
            )
          )
-       (set! (-> self hit-point quad) (-> self root trans quad))
-       (let ((a0-13 (if (type? proc process-focusable)
-                        proc
-                        )
-                    )
-             )
-         (set! (-> self hit-point quad) (-> (get-trans (the-as process-focusable a0-13) 0) quad))
+       (vector-copy! (-> self hit-point) (-> self root trans))
+       (let ((a0-13 (as-type proc process-focusable)))
+         (vector-copy! (-> self hit-point) (get-trans (the-as process-focusable a0-13) 0))
          )
        (if (zero? (-> self bounce-time))
            (start-bounce! self)

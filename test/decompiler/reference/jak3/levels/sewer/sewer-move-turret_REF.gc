@@ -45,7 +45,7 @@
           )
       (vector-! gp-1 (target-pos 0) (-> self root trans))
       (let ((f0-1 (vector-dot gp-1 (-> self node-list data 5 bone transform fvec)))
-            (f1-2 (fabs (vector-dot gp-1 (the-as vector (-> self node-list data 5 bone transform)))))
+            (f1-2 (fabs (vector-dot gp-1 (-> self node-list data 5 bone transform rvec))))
             )
         (if (and (< 4096.0 f0-1) (>= 81920.0 f1-2) (< f30-0 450560.0))
             (go-virtual active)
@@ -77,7 +77,7 @@
           )
       (vector-! gp-1 (target-pos 0) (-> self root trans))
       (let ((f0-1 (vector-dot gp-1 (-> self node-list data 5 bone transform fvec)))
-            (f1-2 (fabs (vector-dot gp-1 (the-as vector (-> self node-list data 5 bone transform)))))
+            (f1-2 (fabs (vector-dot gp-1 (-> self node-list data 5 bone transform rvec))))
             )
         (when (or (>= 0.0 f0-1) (< 81920.0 f1-2) (>= f30-0 450560.0))
           (if (nonzero? (-> self sound-id))
@@ -124,7 +124,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod sew-move-turret-method-22 ((this sew-move-turret) (arg0 int))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this node-list data arg0 bone transform fvec quad))
+    (vector-copy! s5-0 (-> this node-list data arg0 bone transform fvec))
     (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data arg0))))
       (let ((f0-0 (ja-frame-num 0)))
         (cond
@@ -132,13 +132,13 @@
            (let ((f1-1 1228.8))
              (cond
                ((< f0-0 5.0)
-                (set! f1-1 (* 0.2 f0-0 f1-1))
+                (set! f1-1 (* (/ f0-0 5) f1-1))
                 )
                ((< 40.0 f0-0)
                 (set! f1-1 (* 0.2 (- 45.0 f0-0) f1-1))
                 )
                )
-             (vector+float*! s4-0 s4-0 (the-as vector (-> this node-list data arg0 bone transform)) f1-1)
+             (vector+float*! s4-0 s4-0 (-> this node-list data arg0 bone transform rvec) f1-1)
              )
            )
           (else
@@ -151,7 +151,7 @@
                  (set! f1-2 (* 0.2 (- 90.0 f0-0) f1-2))
                  )
                 )
-              (vector+float*! s4-0 s4-0 (the-as vector (-> this node-list data arg0 bone transform)) f1-2)
+              (vector+float*! s4-0 s4-0 (-> this node-list data arg0 bone transform rvec) f1-2)
               )
             )
           )
@@ -172,6 +172,7 @@
 
 ;; definition for method 11 of type sew-move-turret
 (defmethod init-from-entity! ((this sew-move-turret) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -420,36 +421,18 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod projectile-method-25 ((this sew-move-turret-shot))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
+  (let* ((a1-0 (-> this root trans))
+         (v1-1 (-> this tail-pos))
+         (a0-2 (vector-! (new 'stack-no-clear 'vector) a1-0 v1-1))
          )
-    (init-vf0-vector)
-    (let* ((a1-0 (-> this root trans))
-           (v1-1 (-> this tail-pos))
-           (a0-2 (vector-! (new 'stack-no-clear 'vector) a1-0 v1-1))
-           )
-      (vector-length a0-2)
-      (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (let ((a1-4 0.8))
-          (.mov vf7 a1-4)
-          )
-        (.lvf vf5 (&-> a0-2 quad))
-        (.lvf vf4 (&-> v1-1 quad))
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-        (.svf (&-> gp-0 quad) vf6)
-        (launch-particles (-> *part-id-table* 4940) gp-0)
-        (launch-particles (-> *part-id-table* 4941) gp-0)
-        )
+    (vector-length a0-2)
+    (let ((gp-1 (vector+*! (new 'stack-no-clear 'vector) v1-1 a0-2 0.8)))
+      (launch-particles (-> *part-id-table* 4940) gp-1)
+      (launch-particles (-> *part-id-table* 4941) gp-1)
       )
-    0
-    (none)
     )
+  0
+  (none)
   )
 
 ;; definition for method 24 of type sew-move-turret-shot
@@ -475,28 +458,28 @@
          (v1-1 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this tail-pos) (-> s4-0 trans)) 2048.0))
          (gp-0 (new 'stack-no-clear 'vector))
          )
-    (set! (-> gp-0 quad) (-> s4-0 trans quad))
+    (vector-copy! gp-0 (-> s4-0 trans))
     (vector+! gp-0 gp-0 v1-1)
     (cond
       ((-> this hit-actor?)
        (sound-play "bullet-hit-jak")
        (cond
          ((logtest? (-> *part-group-id-table* 1506 flags) (sp-group-flag sp13))
-          (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+          (vector-copy! (-> *launch-matrix* trans) gp-0)
           (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1506))
           )
          (else
-           (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+           (vector-copy! (-> *launch-matrix* trans) gp-0)
            (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1506))
            )
          )
        )
       ((begin (sound-play "bullet-ricco") (logtest? (-> *part-group-id-table* 1507 flags) (sp-group-flag sp13)))
-       (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+       (vector-copy! (-> *launch-matrix* trans) gp-0)
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1507))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+        (vector-copy! (-> *launch-matrix* trans) gp-0)
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1507))
         )
       )
@@ -528,8 +511,8 @@
         )
       (set! (-> gp-0 timeout) (seconds 4))
       (if arg4
-          (set! (-> gp-0 pos quad) (-> arg4 quad))
-          (set! (-> gp-0 pos quad) (-> arg1 quad))
+          (vector-copy! (-> gp-0 pos) arg4)
+          (vector-copy! (-> gp-0 pos) arg1)
           )
       (vector-normalize-copy! (-> gp-0 vel) v1-1 40960.0)
       )
@@ -590,7 +573,3 @@
   (call-parent-method this)
   (none)
   )
-
-
-
-

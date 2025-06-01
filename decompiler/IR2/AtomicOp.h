@@ -190,6 +190,7 @@ class SimpleAtom {
     ASSERT(is_sym_ptr() || is_sym_val() || is_sym_val_ptr());
     return m_string;
   }
+  void mark_as_no_hex();
   void mark_as_float();
   bool is_integer_promoted_to_float() const;
   float get_integer_promoted_to_float() const;
@@ -200,6 +201,7 @@ class SimpleAtom {
   s64 m_int = -1;        // for integer constant and static address label id
   RegisterAccess m_variable;
   bool m_display_int_as_float = false;
+  bool m_no_display_int_as_hex = false;
 };
 
 /*!
@@ -254,12 +256,15 @@ class SimpleExpression {
     VECTOR_PLUS,
     VECTOR_MINUS,
     VECTOR_FLOAT_PRODUCT,
+    VECTOR_XYZ_PRODUCT,  // vector*!, elementwise xyz, jak3 only
     VECTOR_CROSS,
     SUBU_L32_S7,  // use SUBU X, src0, s7 to check if lower 32-bits are s7.
     VECTOR_3_DOT,
     VECTOR_4_DOT,
     VECTOR_LENGTH,            // jak 2 only.
+    VECTOR_LENGTH_SQUARED,    // jak 2 only.
     VECTOR_PLUS_FLOAT_TIMES,  // jak 2 only.
+    VECTOR_PLUS_TIMES,
     SET_ON_LESS_THAN,
     SET_ON_LESS_THAN_IMM
   };

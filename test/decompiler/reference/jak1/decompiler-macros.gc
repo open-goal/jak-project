@@ -817,7 +817,10 @@
                           `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value (sp-cpuinfo-flag ,@param0) :random-mult 1)
                           )
                         ((eq? field-name 'texture)
-                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                          (if (eq? (car param0) 'new)
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,(string->symbol-format "{}-{}" (car param0) (cadr param0)) :flags (sp-flag int))
+                            )
                           )
                         ((eq? field-name 'next-launcher)
                           `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value ,param0 :flags (sp-flag launcher))
@@ -1710,3 +1713,22 @@
 
 (defmacro suspend-for (time &rest body)
   `(let ((time (current-time))) (until (time-elapsed? time ,time) ,@body (suspend))))
+
+(defmacro get-texture (name tpage)
+  `(lookup-texture-by-id ,(string->symbol-format "{}-{}" name tpage)))
+
+(defmacro as-type (this type)
+  "If this is the specified type, return this cast to that type. Otherwise, return #f."
+  (with-gensyms (obj)
+    `(the ,type (let ((,obj ,this))
+                  (if (type? ,obj ,type)
+                      ,obj
+                      )
+                  )
+          )
+    )
+  )
+
+
+(import "goal_src/jak1/engine/data/tpages.gc")
+(import "goal_src/jak1/engine/data/textures.gc")

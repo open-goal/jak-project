@@ -138,6 +138,7 @@
 
 ;; definition for method 59 of type kg-squad-member
 (defmethod enemy-common-post ((this kg-squad-member))
+  "Common implementation of post. Runs ja-post."
   (local-vars (s5-0 int))
   (when (focus-test? this dangerous)
     (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
@@ -179,20 +180,17 @@
   )
 
 ;; definition for method 84 of type kg-squad-member
-(defmethod send-attack-on-jump-or-knocked ((this kg-squad-member) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-touched-handler ((this kg-squad-member) (arg0 process) (arg1 event-message-block))
+  "General handler for when anything touches an enemy (automatic response)."
   (cond
     (#f
-      ((method-of-type citizen send-attack-on-jump-or-knocked) this arg0 arg1)
+      ((method-of-type citizen enemy-touched-handler) this arg0 arg1)
       )
     (else
       (when (!= (-> arg0 type) target)
-        (let* ((s3-0 (-> arg1 param 0))
-               (s2-0 arg0)
-               (v1-2 (if (type? s2-0 process-focusable)
-                         s2-0
-                         )
-                     )
-               )
+        (let ((s3-0 (-> arg1 param 0))
+              (v1-2 (as-type arg0 process-focusable))
+              )
           (cond
             ((and (focus-test? this dangerous)
                   (logtest? (process-mask enemy guard civilian metalhead) (-> arg0 mask))
@@ -218,7 +216,7 @@
                              )
                          )
                    )
-               (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+               (send-attack-from-tshape this arg0 (the-as touching-shapes-entry s3-0) a3-2)
                )
              )
             (else

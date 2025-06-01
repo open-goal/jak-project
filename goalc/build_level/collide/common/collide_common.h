@@ -1,6 +1,7 @@
 #pragma once
 #include "common/common_types.h"
 #include "common/math/Vector.h"
+#include "common/util/Assert.h"
 
 struct CollideVertex {
   float x, y, z;
@@ -531,3 +532,261 @@ struct CollideFace {
   PatSurface pat;
 };
 }  // namespace jak3
+
+/*!
+ * Convert jak1-format PatSurface to Jak 2.
+ */
+inline jak2::PatSurface jak2_pat(jak1::PatSurface jak1) {
+  jak2::PatSurface result;
+
+  switch (jak1.get_mode()) {
+    case jak1::PatSurface::Mode::GROUND:
+      result.set_mode(jak2::PatSurface::Mode::GROUND);
+      break;
+    case jak1::PatSurface::Mode::WALL:
+      result.set_mode(jak2::PatSurface::Mode::WALL);
+      break;
+    case jak1::PatSurface::Mode::OBSTACLE:
+      result.set_mode(jak2::PatSurface::Mode::OBSTACLE);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  switch (jak1.get_material()) {
+    case jak1::PatSurface::Material::STONE:
+      result.set_material(jak2::PatSurface::Material::STONE);
+      break;
+    case jak1::PatSurface::Material::ICE:
+      result.set_material(jak2::PatSurface::Material::ICE);
+      break;
+    case jak1::PatSurface::Material::QUICKSAND:
+      result.set_material(jak2::PatSurface::Material::QUICKSAND);
+      break;
+    case jak1::PatSurface::Material::WATERBOTTOM:
+      result.set_material(jak2::PatSurface::Material::WATERBOTTOM);
+      break;
+    case jak1::PatSurface::Material::TAR:
+      result.set_material(jak2::PatSurface::Material::TAR);
+      break;
+    case jak1::PatSurface::Material::SAND:
+      result.set_material(jak2::PatSurface::Material::SAND);
+      break;
+    case jak1::PatSurface::Material::WOOD:
+      result.set_material(jak2::PatSurface::Material::WOOD);
+      break;
+    case jak1::PatSurface::Material::GRASS:
+      result.set_material(jak2::PatSurface::Material::GRASS);
+      break;
+    case jak1::PatSurface::Material::PCMETAL:
+      result.set_material(jak2::PatSurface::Material::PCMETAL);
+      break;
+    case jak1::PatSurface::Material::SNOW:
+      result.set_material(jak2::PatSurface::Material::SNOW);
+      break;
+    case jak1::PatSurface::Material::DEEPSNOW:
+      result.set_material(jak2::PatSurface::Material::DEEPSNOW);
+      break;
+    case jak1::PatSurface::Material::HOTCOALS:
+      result.set_material(jak2::PatSurface::Material::HOTCOALS);
+      break;
+    case jak1::PatSurface::Material::LAVA:
+      result.set_material(jak2::PatSurface::Material::LAVA);
+      break;
+    case jak1::PatSurface::Material::CRWOOD:
+      result.set_material(jak2::PatSurface::Material::CRWOOD);
+      break;
+    case jak1::PatSurface::Material::GRAVEL:
+      result.set_material(jak2::PatSurface::Material::GRAVEL);
+      break;
+    case jak1::PatSurface::Material::DIRT:
+      result.set_material(jak2::PatSurface::Material::DIRT);
+      break;
+    case jak1::PatSurface::Material::METAL:
+      result.set_material(jak2::PatSurface::Material::METAL);
+      break;
+    case jak1::PatSurface::Material::STRAW:
+      result.set_material(jak2::PatSurface::Material::STRAW);
+      break;
+    case jak1::PatSurface::Material::TUBE:
+      result.set_material(jak2::PatSurface::Material::TUBE);
+      break;
+    case jak1::PatSurface::Material::SWAMP:
+      result.set_material(jak2::PatSurface::Material::SWAMP);
+      break;
+    case jak1::PatSurface::Material::STOPPROJ:
+      result.set_material(jak2::PatSurface::Material::STOPPROJ);
+      break;
+    case jak1::PatSurface::Material::ROTATE:
+      result.set_material(jak2::PatSurface::Material::ROTATE);
+      break;
+    case jak1::PatSurface::Material::NEUTRAL:
+      result.set_material(jak2::PatSurface::Material::NEUTRAL);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  switch (jak1.get_event()) {
+    case jak1::PatSurface::Event::NONE:
+      result.set_event(jak2::PatSurface::Event::NONE);
+      break;
+    case jak1::PatSurface::Event::DEADLY:
+      result.set_event(jak2::PatSurface::Event::DEADLY);
+      break;
+    case jak1::PatSurface::Event::ENDLESSFALL:
+      result.set_event(jak2::PatSurface::Event::ENDLESSFALL);
+      break;
+    case jak1::PatSurface::Event::BURN:
+      result.set_event(jak2::PatSurface::Event::BURN);
+      break;
+    case jak1::PatSurface::Event::DEADLYUP:
+      result.set_event(jak2::PatSurface::Event::DEADLYUP);
+      break;
+    case jak1::PatSurface::Event::BURNUP:
+      result.set_event(jak2::PatSurface::Event::BURNUP);
+      break;
+    case jak1::PatSurface::Event::MELT:
+      result.set_event(jak2::PatSurface::Event::MELT);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  result.set_noentity(jak1.get_noentity());
+  result.set_nocamera(jak1.get_nocamera());
+
+  result.set_noedge(jak1.get_noedge());
+  result.set_nolineofsight(jak1.get_nolineofsight());
+
+  return result;
+}
+
+/*!
+ * Convert jak1-format PatSurface to Jak 3.
+ */
+inline jak3::PatSurface jak3_pat(jak1::PatSurface jak1) {
+  jak3::PatSurface result;
+
+  switch (jak1.get_mode()) {
+    case jak1::PatSurface::Mode::GROUND:
+      result.set_mode(jak3::PatSurface::Mode::GROUND);
+      break;
+    case jak1::PatSurface::Mode::WALL:
+      result.set_mode(jak3::PatSurface::Mode::WALL);
+      break;
+    case jak1::PatSurface::Mode::OBSTACLE:
+      result.set_mode(jak3::PatSurface::Mode::OBSTACLE);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  switch (jak1.get_material()) {
+    case jak1::PatSurface::Material::STONE:
+      result.set_material(jak3::PatSurface::Material::STONE);
+      break;
+    case jak1::PatSurface::Material::ICE:
+      result.set_material(jak3::PatSurface::Material::ICE);
+      break;
+    case jak1::PatSurface::Material::QUICKSAND:
+      result.set_material(jak3::PatSurface::Material::QUICKSAND);
+      break;
+    case jak1::PatSurface::Material::WATERBOTTOM:
+      result.set_material(jak3::PatSurface::Material::WATERBOTTOM);
+      break;
+    case jak1::PatSurface::Material::TAR:
+      result.set_material(jak3::PatSurface::Material::TAR);
+      break;
+    case jak1::PatSurface::Material::SAND:
+      result.set_material(jak3::PatSurface::Material::SAND);
+      break;
+    case jak1::PatSurface::Material::WOOD:
+      result.set_material(jak3::PatSurface::Material::WOOD);
+      break;
+    case jak1::PatSurface::Material::GRASS:
+      result.set_material(jak3::PatSurface::Material::GRASS);
+      break;
+    case jak1::PatSurface::Material::PCMETAL:
+      result.set_material(jak3::PatSurface::Material::PCMETAL);
+      break;
+    case jak1::PatSurface::Material::SNOW:
+      result.set_material(jak3::PatSurface::Material::SNOW);
+      break;
+    case jak1::PatSurface::Material::DEEPSNOW:
+      result.set_material(jak3::PatSurface::Material::DEEPSNOW);
+      break;
+    case jak1::PatSurface::Material::HOTCOALS:
+      result.set_material(jak3::PatSurface::Material::HOTCOALS);
+      break;
+    case jak1::PatSurface::Material::LAVA:
+      result.set_material(jak3::PatSurface::Material::LAVA);
+      break;
+    case jak1::PatSurface::Material::CRWOOD:
+      result.set_material(jak3::PatSurface::Material::CRWOOD);
+      break;
+    case jak1::PatSurface::Material::GRAVEL:
+      result.set_material(jak3::PatSurface::Material::GRAVEL);
+      break;
+    case jak1::PatSurface::Material::DIRT:
+      result.set_material(jak3::PatSurface::Material::DIRT);
+      break;
+    case jak1::PatSurface::Material::METAL:
+      result.set_material(jak3::PatSurface::Material::METAL);
+      break;
+    case jak1::PatSurface::Material::STRAW:
+      result.set_material(jak3::PatSurface::Material::STRAW);
+      break;
+    case jak1::PatSurface::Material::TUBE:
+      result.set_material(jak3::PatSurface::Material::TUBE);
+      break;
+    case jak1::PatSurface::Material::SWAMP:
+      result.set_material(jak3::PatSurface::Material::SWAMP);
+      break;
+    case jak1::PatSurface::Material::STOPPROJ:
+      result.set_material(jak3::PatSurface::Material::STOPPROJ);
+      break;
+    case jak1::PatSurface::Material::ROTATE:
+      result.set_material(jak3::PatSurface::Material::ROTATE);
+      break;
+    case jak1::PatSurface::Material::NEUTRAL:
+      result.set_material(jak3::PatSurface::Material::NEUTRAL);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  switch (jak1.get_event()) {
+    case jak1::PatSurface::Event::NONE:
+      result.set_event(jak3::PatSurface::Event::NONE);
+      break;
+    case jak1::PatSurface::Event::DEADLY:
+      result.set_event(jak3::PatSurface::Event::DEADLY);
+      break;
+    case jak1::PatSurface::Event::ENDLESSFALL:
+      result.set_event(jak3::PatSurface::Event::ENDLESSFALL);
+      break;
+    case jak1::PatSurface::Event::BURN:
+      result.set_event(jak3::PatSurface::Event::BURN);
+      break;
+    case jak1::PatSurface::Event::DEADLYUP:
+      result.set_event(jak3::PatSurface::Event::DEADLYUP);
+      break;
+    case jak1::PatSurface::Event::BURNUP:
+      result.set_event(jak3::PatSurface::Event::BURNUP);
+      break;
+    case jak1::PatSurface::Event::MELT:
+      result.set_event(jak3::PatSurface::Event::MELT);
+      break;
+    default:
+      ASSERT_NOT_REACHED();
+  }
+
+  result.set_noentity(jak1.get_noentity());
+  result.set_nocamera(jak1.get_nocamera());
+
+  result.set_noedge(jak1.get_noedge());
+  result.set_nolineofsight(jak1.get_nolineofsight());
+
+  return result;
+}

@@ -513,7 +513,7 @@
 
 (defpart 2896
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xa :page #x2))
+  ((:texture (water-wave effects))
    (:num 0.06)
    (:x (meters 10))
    (:scale-x (meters 1.5) (meters 3))
@@ -541,7 +541,7 @@
     (set! (-> *part-id-table* 2896 init-specs 4 initial-valuef) (+ 24576.0 arg1))
     (set! (-> *part-id-table* 2896 init-specs 19 initial-valuef) (+ 49152.0 arg1))
     (set! (-> *part-id-table* 2896 init-specs 1 initial-valuef) (* 0.0000036621095 arg2))
-    (set! (-> *part-id-table* 2896 init-specs 2 initial-valuef) (* 0.1 arg2))
+    (set! (-> *part-id-table* 2896 init-specs 2 initial-valuef) (/ arg2 10))
     (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2896) gp-0))
   0
   (none))
@@ -566,7 +566,7 @@
   (cond
     ((< 0.0 (-> self engine-sound-envelope))
      (if (zero? (-> self engine-sound-id)) (set! (-> self engine-sound-id) (new-sound-id)))
-     (* 0.0000008138021 (-> self engine-thrust))
+     (/ (-> self engine-thrust) (meters 300))
      (let ((f30-0 (* 100.0 (-> self engine-sound-envelope)))
            (f28-0 (+ -1.0 (* 2.0 (-> self engine-sound-envelope))))
            (gp-0 (new 'stack-no-clear 'vector)))
@@ -897,7 +897,7 @@
 (defbehavior fishermans-boat-set-throttle-by-speed fishermans-boat ((arg0 float))
   (let* ((f0-0 (vector-xz-length (-> self rbody lin-velocity)))
          (f1-2 (/ (- arg0 f0-0) arg0))
-         (f30-0 (* 0.005 f1-2)))
+         (f30-0 (/ f1-2 200)))
     (format *stdcon* "current ~M target ~M throttle ~f~%" f0-0 arg0 (-> self controller throttle))
     (set! (-> self controller throttle) (fmax 0.0 (fmin 1.0 (+ (-> self controller throttle) f30-0)))))
   0
@@ -928,7 +928,9 @@
               (suspend))
             (vector-z-quaternion! gp-0 (-> self root-overlay quat))
             (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
-            (suspend-for (seconds 1) (fishermans-boat-set-throttle-by-speed f30-0) (suspend)))
+            (suspend-for (seconds 1)
+              (fishermans-boat-set-throttle-by-speed f30-0)
+              (suspend)))
           (vector-z-quaternion! gp-0 (-> self root-overlay quat))
           (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
           (+! s5-0 1)))

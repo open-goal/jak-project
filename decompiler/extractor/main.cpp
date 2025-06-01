@@ -92,7 +92,8 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     }
     lg::error("Overall ISO content's hash does not match. Expected '{}', Actual '{}'", all_expected,
               expected_hash);
-    return {std::nullopt, ExtractorErrorCode::VALIDATION_FILE_CONTENTS_UNEXPECTED};
+    return {std::make_optional(version_info),
+            ExtractorErrorCode::VALIDATION_FILE_CONTENTS_UNEXPECTED};
   }
 
   return {
@@ -302,6 +303,7 @@ int main(int argc, char** argv) {
         // We know the version since we just extracted it, so the user didn't need to provide this
         // explicitly
         data_subfolder = data_subfolders.at(version_info->game_name);
+        game_name = version_info->game_name;
         if (!extraction_path.empty()) {
           iso_data_path = extraction_path / data_subfolder;
         } else {
@@ -336,6 +338,10 @@ int main(int argc, char** argv) {
       if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);
+      }
+      if (version_info) {
+        data_subfolder = data_subfolders.at(version_info->game_name);
+        game_name = version_info->game_name;
       }
     }
 

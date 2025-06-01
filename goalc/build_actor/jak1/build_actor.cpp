@@ -138,27 +138,6 @@ ArtJointAnim::ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<J
   }
 }
 
-std::map<int, size_t> g_joint_map;
-
-size_t Joint::generate(DataObjectGenerator& gen) const {
-  gen.align_to_basic();
-  gen.add_type_tag("joint");
-  size_t result = gen.current_offset_bytes();
-  gen.add_ref_to_string_in_pool(name);
-  gen.add_word(number);
-  if (parent == -1) {
-    gen.add_symbol_link("#f");
-  } else {
-    gen.link_word_to_byte(gen.add_word(0), g_joint_map[parent]);
-  }
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      gen.add_word_float(bind_pose(i, j));
-    }
-  }
-  return result;
-}
-
 size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
   gen.align_to_basic();
   gen.add_type_tag("joint-anim-compressed");
@@ -281,16 +260,25 @@ void ArtJointGeo::add_res() {
     lump.add_res(
         std::make_unique<ResRef>("collide-mesh-group", "array", mesh_slot, DEFAULT_RES_TIME));
   }
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResVector>(
-  //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
-  //     DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResFloat>(
-  //     "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
-  //     DEFAULT_RES_TIME));
+  if (texture_bucket != -1) {
+    lump.add_res(std::make_unique<ResUint8>(
+        "texture-bucket", std::vector<u8>{static_cast<u8>(texture_bucket)}, DEFAULT_RES_TIME));
+  }
+  if (texture_level != -1) {
+    lump.add_res(std::make_unique<ResInt32>("texture-level", std::vector<s32>{texture_level},
+                                            DEFAULT_RES_TIME));
+  }
+  if (trans_offset != math::Vector4f{0.f, 0.f, 0.f, 1.f}) {
+    lump.add_res(std::make_unique<ResVector>(
+        "trans-offset", std::vector<math::Vector4f>{trans_offset}, DEFAULT_RES_TIME));
+  }
+  if (joint_channel != -1) {
+    lump.add_res(std::make_unique<ResInt32>("joint-channel", std::vector<s32>{joint_channel},
+                                            DEFAULT_RES_TIME));
+  }
+  if (!lod_dist.empty()) {
+    lump.add_res(std::make_unique<ResFloat>("lod-dist", lod_dist, DEFAULT_RES_TIME));
+  }
   lump.sort_res();
 }
 
@@ -376,107 +364,25 @@ size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
 
 static size_t gen_dummy_frag_geo(DataObjectGenerator& gen) {
   size_t result = gen.current_offset_bytes();
-  // frag geo stolen from money-lod0
+  // frag geo stolen from money-lod2
   static std::vector<u32> words = {
-      0xa4320c04, 0x8000026,  0x302a0000, 0x604,      0xa910,     0xac16,     0x100af1c,
-      0xb23d,     0x100b585,  0x100b870,  0xbb76,     0xbe52,     0x80808080, 0x80808080,
+      0x51180504, 0x1000013,  0x1b150000, 0x604,      0x5225,     0x80808080, 0x80808080,
       0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
       0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x0,        0x0,        0x89b78086, 0xf1a910a,  0x3a4b7000, 0x5f818086,
-      0xf1a1094,  0x29347014, 0x49648186, 0x91313,    0x4e5d8024, 0x354b8186, 0xf1a6416,
-      0x3a497024, 0x40538186, 0x91919,    0x647b8034, 0x24348186, 0xf1a371c,  0x647f7034,
-      0x495d8186, 0x91f1f,    0x7a9c8044, 0x35498086, 0xf1a2231,  0x8eb57044, 0x5f7b8186,
-      0x92525,    0x83ad8054, 0x5f7f8186, 0xf1a2828,  0x9fcc7054, 0x759c8186, 0x92b2b,
-      0x7aa38064, 0x1c257f86, 0x273b2e2e, 0x94b86040, 0xe198186,  0x2737d034, 0x71936038,
-      0xe188186,  0x273bcd3a, 0x57676030, 0x1c2a8186, 0x2737613d, 0x34456028, 0xe1b8086,
-      0x485d40c7, 0x2e3c5028, 0x293c8186, 0x485d5b43, 0x131a5020, 0x26398186, 0x6e804646,
-      0xf164020,  0x4b688186, 0x6e805549, 0x34018,    0x4c688186, 0x979f4c4c, 0x5073018,
-      0x72978086, 0x979f4fc1, 0x5073010,  0x73988086, 0x6e807352, 0x34010,    0x4c698186,
-      0x485d6d58, 0x5085018,  0x2f488086, 0x273b5e67, 0x21256020, 0x526d8186, 0x2737a66a,
-      0x13196018, 0x72988186, 0x485da070, 0x5085010,  0x98c78086, 0x6e80767f, 0xf164008,
-      0x95c48186, 0x979fc479, 0x13193008, 0xb0e68186, 0x979f7c7c, 0x2e3b3000, 0xb4ea8186,
-      0x6e808282, 0x2b394000, 0x95c48186, 0x485d9d85, 0x131b5008, 0xb0e68186, 0x485d8888,
-      0x2e3c5000, 0x8fbb8186, 0x2737978b, 0x212a6008, 0xa2db8186, 0x273b8e8e, 0x34486000,
-      0x6c998086, 0x273b9aa3, 0x13186010, 0x87f86,    0x485dcaca, 0x51685030, 0x75a37f86,
-      0x90707,    0x4e648000, 0x5f858186, 0x90d0d,    0x45538014, 0x0,        0x0,
-      0xcb01005f, 0xcb00fffa, 0xcb010064, 0x5101e01,  0x0,        0x0,        0x306,
-      0x60030000, 0x120,      0x0,        0x1cf02c14, 0x2008044,  0x0,        0x0,
-      0x34,       0x81010000, 0x0,        0x0,        0x8,        0x6d100000, 0x44,
-      0x80,       0x42,       0x30000,    0x86321604, 0x400001c,  0x2422440e, 0x4,
-      0x1004f28,  0x1008b4c,  0xb225,     0xca4c,     0x1000128,  0x1000422,  0x1000a2e,
-      0x10064ca,  0x6a34,     0x1006d2e,  0x70ca,     0x1007340,  0x7946,     0x7f4c,
-      0x100884c,  0x8e4f,     0x9479,     0x9a7c,     0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x0,        0x0,        0x131a8086,
-      0x215d0d9d, 0x87c45040, 0x38186,    0x4780a313, 0x65984038, 0x38186,    0x47806116,
-      0x3d684030, 0x5078186,  0x709fa919, 0x3e693030, 0x13198186, 0x709f5b1c, 0x1b3c3028,
-      0x21208186, 0x96bbaf1f, 0x21452028, 0x34428186, 0x96bf5522, 0xe242020,  0x3a408086,
-      0xb6da252e, 0x27411024, 0x647f8186, 0xb6da4628, 0x16261014, 0x647a8186, 0xcbf1402b,
-      0x32450014, 0x4e528086, 0xcbf1313a, 0x3b5b0024, 0x29268086, 0xb6da34b5, 0x51811034,
-      0x45458186, 0xcbf13737, 0x51860034, 0x64808186, 0xd3ff3d3d, 0x51800040, 0x7aa58186,
-      0xcbf14343, 0x3b520000, 0x8ebf8186, 0xb6dac749, 0x27401000, 0x71948186, 0x96bf854c,
-      0x132010,   0x57668186, 0x96bb8252, 0x122018,   0x2e3b8186, 0x709f7c58, 0x1a3020,
-      0xf168186,  0x4780765e, 0x18394028, 0x94bb8086, 0x96bb91c4, 0xe202008,  0xa7dc8086,
-      0x96bf97c1, 0x21422000, 0xf167f86,  0x4780a0a0, 0x8ac74040, 0x5078186,  0x709fbea6,
-      0x64983038, 0x13138186, 0x96bfb8ac, 0x446c2030, 0x13128186, 0x96bbbbbb, 0x5e9a2038,
-      0x34458186, 0x370707,   0x94d66048, 0x5088186,  0x215d6710, 0x64975038, 0xcb010064,
-      0xcb00ffd3, 0xcb010051, 0x5021000,  0x4088003,  0x10306060, 0x3,        0x0,
-      0x8d301104, 0x300001f,  0x2624430a, 0x4,        0x910a,     0x100a928,  0xc42b,
-      0x1006aa0,  0x70a6,     0x73bb,     0x9a07,     0xa00d,     0x100a3a0,  0x100a6bb,
-      0xac34,     0xb237,     0xb83d,     0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x8ccc8186,
-      0xf1a4c07,  0x16817074, 0x7bb58186, 0xf1a550a,  0x40b77064, 0x94d68186, 0x2737460d,
-      0x46bb6068, 0x81b88186, 0x273b8e10, 0x59db6060, 0x87c48186, 0x485d4013, 0x67e65060,
-      0x64978186, 0x485d8816, 0x75f85058, 0x65988186, 0x6e803a19, 0x7afd4058, 0x3d688186,
-      0x6e80821c, 0x7afd4050, 0x3e698186, 0x979f341f, 0x75f93050, 0x1b3c8186, 0x979f7c22,
-      0x67e73048, 0x21458086, 0xbdbb252e, 0x59e02048, 0xe248086,  0xbdbf2876, 0x46be2040,
-      0x27418186, 0xdddaaf2b, 0x40c01044, 0x446c8186, 0xbdbfc731, 0x67ed2050, 0x64988186,
-      0x979f3737, 0x75f93058, 0x8ac78186, 0x6e803d3d, 0x6bea4060, 0xa2e58186, 0x485d4343,
-      0x4cc45068, 0xa2e88186, 0x273b4949, 0x23996070, 0x679c7f86, 0x95252,    0x2ca38064,
-      0x517f8086, 0xf1a5894,  0x51cc7054, 0x5e938186, 0x27378b5b, 0x67e76058, 0x44678086,
-      0x273b5e97, 0x67e86050, 0x3e688186, 0x485d8561, 0x75f85050, 0x1b3c8186, 0x485d9d64,
-      0x67e55048, 0x18398186, 0x6e807f67, 0x6bea4048, 0x1a8186,   0x979f796d, 0x4cc53040,
-      0x3b5b8086, 0xf2f1b5be, 0x2cae0044, 0x51868186, 0xf2f1bbbb, 0x35bb0054, 0x51818186,
-      0xdddac1c1, 0x51da1054, 0x67a37f86, 0x90101,    0x648080,   0x70ad7f86, 0x94f04,
-      0x16858074, 0x0,        0x0,        0x0,        0xcb010051, 0xcb00fffa, 0xcb010016,
-      0x5021000,  0xc008003,  0x81860080, 0x0,        0x0,        0x92351604, 0x300001f,
-      0x2826450f, 0x4,        0xac31,     0x100af5e,  0x100c449,  0xa01,      0x1000d07,
-      0x6143,     0x100643d,  0x10079c1,  0x8537,     0x883d,     0x1008b07,  0x1008e49,
-      0x100b243,  0xb549,     0x100b837,  0xbe31,     0xc1c1,     0xc7bb,     0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x0,        0x0,        0x0,        0x808186,   0x707,
-      0x39800040, 0x2ab78186, 0x141a1010, 0xf4b7080,  0x51e78186, 0x2c379113, 0x2c6d6078,
-      0x43db8186, 0x2c3b1616, 0x9486080,  0x5ff88186, 0x4d5d9719, 0x26695078, 0x51e68186,
-      0x4d5d1c1c, 0x33c5080,  0x64fd8186, 0x73809d1f, 0x25684078, 0x55ea8186, 0x73802222,
-      0x394080,   0x5ff98186, 0x9c9fa325, 0x26683078, 0x51e68186, 0x9c9f2828, 0x33b3080,
-      0x51ee8186, 0xc2bba92b, 0x2c662078, 0x43dc8186, 0xc2bf2e2e, 0x9422080,  0x3bda8186,
-      0xe2da4631, 0x397f1074, 0x2abf8186, 0xe2da3434, 0xf401080,  0x1fbb8086, 0xf7f13740,
-      0x397a0074, 0x16a58186, 0xf7f13a3a, 0x23520080, 0x808186,   0xffffcd3d, 0x39800040,
-      0x16ae8186, 0xf7f1ca43, 0x4fa50064, 0x2ac08186, 0xe2da7649, 0x63bf1064, 0x51ed8186,
-      0xc2bfa64c, 0x46942070, 0x43e08186, 0xc2bb734f, 0x69bb2068, 0x5ff98186, 0x9c9fa052,
-      0x4c973070, 0x51e78186, 0x9c9f6d55, 0x6fc43068, 0x64fd8186, 0x73809a58, 0x4d984070,
-      0x55ea8186, 0x7380675b, 0x72c74068, 0x5ff88186, 0x4d5d945e, 0x4c985070, 0x36c58186,
-      0x9c9f826a, 0x8ae63060, 0x30be8186, 0xc2bf7c70, 0x7cdc2060, 0xd9a8086,  0xc2bb7fbb,
-      0x8aee2058, 0x16a37f86, 0x5090101,  0x23640000, 0x1fad7f86, 0x5090404,  0x39850074,
-      0x0,        0x0,        0x0,        0xcb010000, 0xcb00ffff, 0xcb010039, 0x5021000,
-      0x20001b,   0x6c00c102, 0x2,        0x0,        0x210f0904, 0x6,        0xb090b05,
-      0x4,        0x101,      0x707,      0x1307,     0x1c04,     0x1f07,     0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x0,        0x538186,
-      0x90d0d,    0x1f7b0034, 0x95d7f86,  0x91010,    0x359c0044, 0x1f7b8186, 0x91616,
-      0x3ead0054, 0x359c8186, 0x91919,    0x35a30064, 0x1f857f86, 0x90404,    0x530014,
-      0x9648186,  0x90a0a,    0x95d0024,  0x0,        0x0,        0xcb01001f, 0xcb00fffa,
-      0xcb01001f, 0x1021000,  0x223,      0x0,        0x0,        0x0};
+      0x80808080, 0x80808080, 0x80808080, 0xb4e48086, 0x757d3a0a, 0x1e324000, 0x1e328186,
+      0x757d3410, 0x1c4020,   0x432e8186, 0x251313,   0x71a28044, 0x1c8186,   0x757d2e16,
+      0x96ce4040, 0x719b8186, 0x151919,   0x71c08064, 0x96ce8186, 0x757d281c, 0xb4e44060,
+      0x71d28186, 0x251f1f,   0x435e8080, 0xb4e48186, 0x757d4322, 0x1e324080, 0x71cc7f86,
+      0xffdb4025, 0x71ad0064, 0x435c8186, 0xffea582b, 0x71bc0044, 0x43348186, 0xffdb5b31,
+      0x43530024, 0x71a48086, 0xffea3755, 0x43440000, 0x71a47f86, 0xffea3d3d, 0x43440080,
+      0x432e7f86, 0x254646,   0x71a20044, 0x43657f86, 0x154949,   0x43400024, 0x719b8186,
+      0x154c4c,   0x71c00064, 0x71d28186, 0x254f4f,   0x435e0000, 0x71d27f86, 0x250707,
+      0x435e8000, 0x43658186, 0x150d0d,   0x43408024, 0x0,        0x0,        0x0,
+      0xcb01005a, 0xcb00fffa, 0xcb01005a, 0x2101e01,  0x0,        0x0,        0x306,
+      0x4030000,  0x120,      0x0,        0x1cf02c14, 0x66c801d,  0x0,        0x0,
+      0x34,       0x0,        0x0,        0x0,        0x8,        0x0,        0x44,
+      0x80,       0x42,       0x0,
+  };
   for (auto& word : words) {
     gen.add_word(word);
   }
@@ -485,12 +391,8 @@ static size_t gen_dummy_frag_geo(DataObjectGenerator& gen) {
 
 size_t gen_dummy_frag_ctrl(DataObjectGenerator& gen) {
   size_t result = gen.current_offset_bytes();
-  gen.add_word(0x1067232);
-  gen.add_word(0x54320603);
-  gen.add_word(0x5d300002);
-  gen.add_word(0x5d350002);
-  gen.add_word(0x120f0002);
-  gen.add_word(0x2);
+  gen.add_word(0x1063918);
+  gen.add_word(0x603);
   gen.add_word(0x0);
   gen.add_word(0x0);
   return result;
@@ -501,11 +403,11 @@ size_t gen_dummy_frag_ctrl_for_uploads(DataObjectGenerator& gen, int n) {
 
   std::vector<u8> packed_frag_ctrls;
 
-  // this is still a bit of a hack - the dummy_frag_ctrl above has 8 fragments, so we need to
+  // this is still a bit of a hack - the dummy_frag_ctrl above has 4 fragments, so we need to
   // provide fragment controls for each. The PC merc renderer will de-duplicate bone uploads over
   // all effects and fragments, so we just need to have a single fragment that asks for all bones,
   // and everything will work out.
-  for (int k = 0; k < 8; k++) {
+  for (int k = 0; k < 4; k++) {
     packed_frag_ctrls.push_back(0);
     packed_frag_ctrls.push_back(0);
     packed_frag_ctrls.push_back(0);
@@ -544,12 +446,40 @@ size_t gen_dummy_extra_info(DataObjectGenerator& gen) {
   return result;
 }
 
+void generate_merc_effects(DataObjectGenerator& gen, tfrag3::MercModel* mdl, int joints) {
+  struct EffectLocs {
+    size_t frag_geo;
+    size_t frag_ctrl;
+    size_t extra_info;
+  };
+  std::vector<EffectLocs> locs;
+  for (auto& e : mdl->effects) {
+    EffectLocs loc{};
+    auto envmap = (int)e.has_envmap;
+    loc.frag_geo = gen.add_word(0);       // 112-140 (effect)
+    loc.frag_ctrl = gen.add_word(0);      // 116 (frag-ctrl)
+    gen.add_word(0x0);                    // 120 (blend-data)
+    gen.add_word(0x0);                    // 124 (blend-ctrl)
+    gen.add_word(0x10000);                // 128
+    gen.add_word(0x140000);               // 132
+    gen.add_word((envmap << 24) + 0x1d);  // 136
+    loc.extra_info = gen.add_word(0);     // 140 (extra-info)
+    locs.push_back(loc);
+  }
+  for (auto& loc : locs) {
+    gen.link_word_to_byte(loc.extra_info, gen_dummy_extra_info(gen));
+    gen.link_word_to_byte(loc.frag_ctrl, gen_dummy_frag_ctrl_for_uploads(gen, joints + 3));
+    gen.link_word_to_byte(loc.frag_geo, gen_dummy_frag_geo(gen));
+  }
+}
+
 size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.align_to_basic();
   gen.add_type_tag("merc-ctrl");
   size_t result = gen.current_offset_bytes();
   // excluding align and prejoint
   auto joints = ((ArtJointGeo*)ag.elts.at(0).get())->length - 2;
+  auto effect_count = ag.mdl->effects.size();
   gen.add_word(0);                                   // 4
   gen.add_ref_to_string_in_pool(ag.name + "-lod0");  // 8
   gen.add_word(0);                                   // 12
@@ -557,37 +487,28 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.add_word(joints);                              // 20 (num-joints)
   gen.add_word(0x0);                                 // 24 (pad)
   gen.add_word(0x0);                                 // 28 (pad)
-  gen.add_word(0x4188ee86);                          // 32-112 (xyz-scale)
+  gen.add_word(0x4181b897);                          // 32-112 (xyz-scale)
   gen.add_word(0xc780ff80);                          // 36 (st-magic)
   gen.add_word(0x40798000);                          // 40 (st-out-a)
   gen.add_word(0x40eb4000);                          // 44 (st-out-b)
   gen.add_word(0x4780ff80);                          // 48 (st-vif-add)
   gen.add_word(0x50000);                             // 52 ((st-int-off << 16) + st-int-scale)
-  gen.add_word(0x1);                                 // 56 (effect-count)
+  gen.add_word(effect_count);                        // 56 (effect-count)
   gen.add_word(0x0);                                 // 60 (blend-target-count)
-  gen.add_word(0xe00005);                            // 64 ((fragment-count << 16) + tri-count)
-  gen.add_word(0x860101);                            // 68
-  gen.add_word(0x86011b);                            // 72
-  gen.add_word(0x0);                                 // 76
-  gen.add_word(0x0);                                 // 80
-  gen.add_word(0x120101);                            // 84
-  gen.add_word(0x83002c);                            // 88
-  gen.add_word(0x3e780184);                          // 92
-  gen.add_word(0x0);                                 // 96
-  gen.add_word(0x0);                                 // 100
-  gen.add_word(0x0);                                 // 104
-  gen.add_word(0x0);                                 // 108
-  auto frag_geo_slot = gen.add_word(0);              // 112-140 (effect)
-  auto frag_ctrl_slot = gen.add_word(0);             // 116 (frag-ctrl)
-  gen.add_word(0x0);                                 // 120 (blend-data)
-  gen.add_word(0x0);                                 // 124 (blend-ctrl)
-  gen.add_word(0x50000);                             // 128
-  gen.add_word(0xe00000);                            // 132
-  gen.add_word(0x100011b);                           // 136
-  auto extra_info_slot = gen.add_word(0);            // 140 (extra-info)
-  gen.link_word_to_byte(extra_info_slot, gen_dummy_extra_info(gen));
-  gen.link_word_to_byte(frag_ctrl_slot, gen_dummy_frag_ctrl_for_uploads(gen, joints + 3));
-  gen.link_word_to_byte(frag_geo_slot, gen_dummy_frag_geo(gen));
+  gen.add_word((0x14 * effect_count << 16) +
+               effect_count);  // 64 ((fragment-count << 16) + tri-count)
+  gen.add_word(0x130101);      // 68
+  gen.add_word(0x13001d);      // 72
+  gen.add_word(0x0);           // 76
+  gen.add_word(0x0);           // 80
+  gen.add_word(0x10101);       // 84
+  gen.add_word(0x130000);      // 88
+  gen.add_word(0x3f319ca9);    // 92
+  gen.add_word(0x0);           // 96
+  gen.add_word(0x0);           // 100
+  gen.add_word(0x0);           // 104
+  gen.add_word(0x0);           // 108
+  generate_merc_effects(gen, ag.mdl, joints);
   return result;
 }
 
@@ -639,158 +560,11 @@ int ArtGroup::get_joint_idx(const std::string& name) {
 }
 
 /*!
- * Load tinygltf::Model from a .glb file (binary format), fatal error if it fails.
- */
-tinygltf::Model load_gltf_model(const fs::path& path) {
-  tinygltf::TinyGLTF loader;
-  tinygltf::Model model;
-  std::string err, warn;
-  bool res = loader.LoadBinaryFromFile(&model, &err, &warn, path.string());
-  ASSERT_MSG(warn.empty(), warn.c_str());
-  ASSERT_MSG(err.empty(), err.c_str());
-  ASSERT_MSG(res, "Failed to load GLTF file!");
-  return model;
-}
-
-struct GltfJoint {
-  math::Matrix4f bind_pose_T_w;  // inverse bind pose
-  std::string name;
-  int gltf_node_index = 0;
-  int parent = -1;
-  std::vector<int> children;
-};
-
-/*!
- * Extract the "skeleton" structure from a GLTF model's skin. This requires that the skin's joints
- * are topologically sorted (parents always have lower index than children).
- */
-std::vector<GltfJoint> extract_skeleton(const tinygltf::Model& model, int skin_idx) {
-  const auto& skin = model.skins.at(skin_idx);
-  lg::info("skin name is {}", skin.name);
-  lg::info("skeleton root is {}", skin.skeleton);
-  auto inverse_bind_matrices = extract_mat4(model, skin.inverseBindMatrices);
-  ASSERT(inverse_bind_matrices.size() == skin.joints.size());
-
-  std::map<int, int> node_to_joint;
-  std::map<int, int> joint_to_node;
-  std::vector<GltfJoint> joints;
-
-  for (size_t i = 0; i < skin.joints.size(); i++) {
-    auto joint_node_idx = skin.joints[i];
-    const auto& joint_node = model.nodes.at(joint_node_idx);
-    // auto ibm = inverse_bind_matrices[i];
-    // lg::info(" joint {}", joint_node_idx);
-    // lg::info("  {}", joint_node.name);
-    // lg::info("\n{}", ibm.to_string_aligned());
-    node_to_joint[joint_node_idx] = i;
-    joint_to_node[i] = joint_node_idx;
-
-    auto& gjoint = joints.emplace_back();
-    gjoint.bind_pose_T_w = inverse_bind_matrices[i];
-    gjoint.name = joint_node.name;
-    gjoint.gltf_node_index = joint_node_idx;
-  }
-
-  for (size_t i = 0; i < skin.joints.size(); i++) {
-    auto joint_node_idx = skin.joints[i];
-    const auto& joint_node = model.nodes.at(joint_node_idx);
-
-    // set up children
-    for (int child_node_idx : joint_node.children) {
-      int child_joint_idx = node_to_joint.at(child_node_idx);
-      joints.at(i).children.push_back(child_joint_idx);
-      auto& child = joints.at(child_joint_idx);
-      ASSERT(child.parent == -1);
-      child.parent = i;
-      ASSERT(child_joint_idx > (int)i);
-    }
-  }
-  ASSERT(joints.at(0).parent == -1);
-
-  // for (auto& joint : joints) {
-  //   if (joint.parent == -1) {
-  //     lg::warn("parentless {}", joint.name);
-  //   } else {
-  //     lg::info("joint {}, child of {}", joint.name, joints.at(joint.parent).name);
-  //   }
-  // }
-  lg::info("total of {} joints", joints.size());
-  return joints;
-}
-
-/*!
- * Convert from GLTF joint format to game joint format.
- * @param joint_index the index of the joint, in the GLTF file.
- * @param prefix_joint_count number of joints to be inserted before GLTF joints in the game
- * @param parent_of_gltf the parent game joint of all GLTF joints.
- */
-Joint convert_joint(const GltfJoint& joint,
-                    int joint_index,
-                    int prefix_joint_count,
-                    int parent_of_gltf) {
-  // node matrix is p_T_myself
-  // p_T_myself = parent_bind_pose_T_w * w_T_bind_pose
-  int parent;
-  if (joint.parent == -1) {
-    parent = parent_of_gltf;
-  } else {
-    parent = joint.parent + prefix_joint_count;
-  }
-  math::Matrix4f fixed_matrix = joint.bind_pose_T_w;
-
-  for (int i = 0; i < 3; i++) {
-    fixed_matrix(i, 3) *= 4096;
-  }
-
-  return Joint(joint.name, joint_index + prefix_joint_count, parent, fixed_matrix.transposed());
-}
-
-constexpr int kGltfToGameJointOffset = 1;
-/*!
- * Convert GTLF joint list to game joint list.
- * Currently, this inserts a single "align" joint and places the root joint of the GLTF as the
- * prejoint. However, we might want to change this, to allow GLTF files to specify "align" at some
- * point.
- */
-std::vector<Joint> convert_joints(const std::vector<GltfJoint>& gjoints) {
-  std::vector<Joint> joints;
-  joints.emplace_back("align", 0, -1, math::Matrix4f::identity());
-  ASSERT(kGltfToGameJointOffset == joints.size());
-  for (int gjoint_idx = 0; gjoint_idx < int(gjoints.size()); gjoint_idx++) {
-    // using -1 as the parent index since gltf's shouldn't be child of align.
-    joints.push_back(convert_joint(gjoints[gjoint_idx], gjoint_idx, kGltfToGameJointOffset, -1));
-  }
-
-  return joints;
-}
-
-std::vector<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
-                                               const std::vector<GltfJoint>& gjoints) {
-  if (model.animations.empty()) {
-    lg::warn("no animations detected!");  // TODO: make up a dummy one
-    return {};
-  }
-
-  std::map<int, int> node_to_joint;
-  for (size_t i = 0; i < gjoints.size(); i++) {
-    node_to_joint[gjoints[i].gltf_node_index] = i + kGltfToGameJointOffset;
-  }
-
-  std::vector<anim::CompressedAnim> ret;
-  for (auto& anim : model.animations) {
-    lg::info("Processing animation {}", anim.name);
-    ret.push_back(
-        anim::compress_animation(anim::extract_anim_from_gltf(model, anim, node_to_joint, 60)));
-  }
-  return ret;
-}
-
-/*!
  * Build GOAL format data for an actor. This doesn't generate the data for the .FR3.
  */
 bool run_build_actor(const std::string& mdl_name,
                      const std::string& ag_out,
-                     bool gen_collide_mesh) {
+                     const BuildActorParams& params) {
   std::string ag_name;
   if (fs::exists(file_util::get_jak_project_dir() / mdl_name)) {
     ag_name = fs::path(mdl_name).stem().string();
@@ -811,6 +585,7 @@ bool run_build_actor(const std::string& mdl_name,
   std::vector<Joint> joints;
   MercExtractData extract_data;
   extract("test", extract_data, model, all_nodes, 0, 0, 0);
+  ag.mdl = &extract_data.new_model;
   // MercSwapData out;
   // merc_convert(out, extract_data);
   // Set up joints:
@@ -834,11 +609,11 @@ bool run_build_actor(const std::string& mdl_name,
   }
 
   std::vector<CollideMesh> mesh;
-  if (gen_collide_mesh) {
-    mesh = gen_collide_mesh_from_model(model, all_nodes, 3);
+  if (params.gen_collide_mesh) {
+    mesh = gen_collide_mesh_from_model_jak1(model, all_nodes, 3);
   }
 
-  std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints);
+  std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints, params);
 
   ag.elts.emplace_back(jgeo);
   // dummy merc-ctrl

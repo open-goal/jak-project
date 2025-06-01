@@ -149,6 +149,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
 
     init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                          BucketId::OCEAN_MID_FAR);
+    // 7 (hack for progress menu box)
+    init_bucket_renderer<DirectRenderer>("progress-hack", BucketCategory::OTHER,
+                                         BucketId::PROGRESS_HACK, 0x8000);
 
     // 8 (in tfrag category for now, just for stat reporting.)
     init_bucket_renderer<Hfrag>("hfrag", BucketCategory::TFRAG, BucketId::HFRAG);
@@ -372,7 +375,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     init_bucket_renderer<ProgressRenderer>("hud-draw-hud-alpha", BucketCategory::OTHER,
                                            BucketId::HUD_DRAW_HUD_ALPHA, 0x8000);
     init_bucket_renderer<TextureUploadHandler>("tex-hud-pris2", BucketCategory::TEX,
-                                               BucketId::TEX_HUD_PRIS2, m_texture_animator);
+                                               BucketId::TEX_HUD_PRIS2, m_texture_animator, true);
     init_bucket_renderer<ProgressRenderer>("hud-draw-pris2", BucketCategory::OTHER,
                                            BucketId::HUD_DRAW_PRIS2, 0x8000);
     init_bucket_renderer<ProgressRenderer>("progress", BucketCategory::OTHER, BucketId::BUCKET582,

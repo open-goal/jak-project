@@ -37,7 +37,7 @@
 
 ;; failed to figure out what this is:
 (defpart 828
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.5 0.5)
     (:y (meters 0.2))
     (:scale-x (meters 0.5) (meters 0.5))
@@ -63,7 +63,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2013
-  :init-specs ((:texture (new 'static 'texture-id :index #x9 :page #x2))
+  :init-specs ((:texture (lakedrop effects))
     (:num 0.1 1.0)
     (:x (meters -0.7) (meters 0.5))
     (:z (meters -0.1) (meters 0.2))
@@ -92,7 +92,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2001
-  :init-specs ((:texture (new 'static 'texture-id :index #x9 :page #x2))
+  :init-specs ((:texture (lakedrop effects))
     (:num 0.1 1.0)
     (:x (meters -0.4) (meters 0.5))
     (:z (meters -0.25) (meters 0.5))
@@ -121,7 +121,7 @@
 
 ;; failed to figure out what this is:
 (defpart 831
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 2.0)
     (:scale-x (meters 5) (meters 1))
     (:scale-y :copy scale-x)
@@ -136,7 +136,7 @@
 
 ;; failed to figure out what this is:
 (defpart 830
-  :init-specs ((:texture (new 'static 'texture-id :index #x2 :page #x2))
+  :init-specs ((:texture (flare effects))
     (:num 16.0)
     (:scale-x (meters 2) (meters 2))
     (:rot-x 4)
@@ -1020,7 +1020,7 @@
         (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 1)
         )
       )
-    (set! (-> self vel) (* 0.25 (-> self vel)))
+    (set! (-> self vel) (/ (-> self vel) 4))
     (while (< 0.1 (-> self root scale x))
       (set! (-> self offset) (-> (the-as fisher (-> self parent 0)) paddle))
       (fisher-fish-move)
@@ -1136,15 +1136,9 @@
           (new 'stack 'font-context *font-default-matrix* 435 10 0.0 (font-color red) (font-flags shadow kerning))
           )
         )
-    (let ((v1-1 s5-0))
-      (set! (-> v1-1 width) (the float 200))
-      )
-    (let ((v1-2 s5-0))
-      (set! (-> v1-2 height) (the float 30))
-      )
-    (let ((v1-3 s5-0))
-      (set! (-> v1-3 scale) 0.7)
-      )
+    (set-width! s5-0 200)
+    (set-height! s5-0 30)
+    (set-scale! s5-0 0.7)
     (set! (-> s5-0 flags) (font-flags shadow kerning right large))
     (print-game-text (lookup-text! *common-text* (text-id caught) #f) s5-0 #f 128 22)
     (set! (-> s5-0 origin x) 488.0)
@@ -1571,7 +1565,7 @@
   (set! (-> self paddle) (fmax 0.0 (fmin 1.0 (-> self paddle))))
   (vector-lerp!
     (-> self paddle-pos)
-    (the-as vector (-> self paddle-end))
+    (-> self paddle-end 0)
     (the-as vector (&-> self stack 288))
     (-> self paddle)
     )
@@ -2017,7 +2011,7 @@
         )
     (+! (-> s5-0 y) 2457.6)
     (vector-normalize! (vector-rotate-y! s4-0 s4-0 16384.0) (-> *FISHER-bank* width))
-    (vector-! (the-as vector (-> this paddle-end)) s5-0 s4-0)
+    (vector-! (-> this paddle-end 0) s5-0 s4-0)
     (vector+! (the-as vector (&-> this stack 288)) s5-0 s4-0)
     )
   (set! (-> this music) 'fishgame)

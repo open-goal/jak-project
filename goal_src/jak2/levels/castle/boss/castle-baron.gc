@@ -38,11 +38,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this cboss-tractor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -101,6 +101,7 @@ This commonly includes things such as:
   )
 
 (defmethod deactivate ((this cboss-elevator))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -108,7 +109,7 @@ This commonly includes things such as:
 
 (defmethod init-plat! ((this cboss-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this sound-id) (new-sound-id))
   0
   (none)
@@ -116,10 +117,10 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defmethod move-between-points ((this cboss-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
-@param vec TODO not sure
-@param point-a The first point fetched from the elevator's path
-@param point-b The second point fetched from the path
-@see [[path-control]] and [[elevator]]"
+   @param vec TODO not sure
+   @param point-a The first point fetched from the elevator's path
+   @param point-b The second point fetched from the path
+   @see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg2 'interp))
         (v1-3 (-> this root trans))
@@ -703,9 +704,9 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defmethod common-post ((this krew-boss-clone))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
@@ -779,7 +780,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defmethod general-event-handler ((this krew-boss-clone) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (with-pp
     (case arg2
       (('touch 'bonk 'attack)
@@ -1023,7 +1024,7 @@ For example for an elevator pre-compute the distance between the first and last 
          (f2-2 f1-1)
          (f2-4 (/ 1.0 f2-2))
          )
-    (+ 1.0 (* 0.2 f0-0))
+    (+ 1.0 (/ f0-0 5))
     (set! (-> this delta-wiggle-angle) (* 182.04445 f1-1))
     (set! (-> this wiggle-factor) (* 2.0 f2-4))
     )
@@ -1054,9 +1055,9 @@ For example for an elevator pre-compute the distance between the first and last 
         )
       (.lvf vf5 (&-> s3-0 quad))
       (.lvf vf4 (&-> arg0 quad))
-      (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-      (.mul.x.vf acc vf5 vf7 :mask #b111)
-      (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+      (.add.x.vf.w vf6 vf0 vf0)
+      (.mul.x.vf.xyz acc vf5 vf7)
+      (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
       (.svf (&-> s4-0 quad) vf6)
       (let ((v1-8 (-> this nav state)))
         (logclear! (-> v1-8 flags) (nav-state-flag directional-mode))
@@ -1232,13 +1233,13 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; WARN: Return type mismatch nav-enemy vs krew-boss-clone.
-(defmethod relocate ((this krew-boss-clone) (arg0 int))
+(defmethod relocate ((this krew-boss-clone) (offset int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this lightning v1-0))
-        (&+! (-> this lightning v1-0) arg0)
+        (&+! (-> this lightning v1-0) offset)
         )
     )
-  (the-as krew-boss-clone ((method-of-type nav-enemy relocate) this arg0))
+  (the-as krew-boss-clone ((method-of-type nav-enemy relocate) this offset))
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -1451,25 +1452,25 @@ For example for an elevator pre-compute the distance between the first and last 
   (set! (-> this values 0 target) 0)
   (set! (-> this values 1 target) 100)
   (logior! (-> this flags) (hud-flags show))
-  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3b :page #x67a)))
+  (set! (-> this sprites 0 tex) (get-texture hud-bmech-health-01 level-default-minimap))
   (set! (-> this sprites 0 flags) (the-as uint 4))
-  (set! (-> this sprites 1 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3c :page #x67a)))
+  (set! (-> this sprites 1 tex) (get-texture hud-bmech-health-02 level-default-minimap))
   (set! (-> this sprites 1 flags) (the-as uint 4))
   (set! (-> this sprites 2 tex)
         (lookup-texture-by-name "hud-baronsymbol-01" (the-as string #f) (the-as (pointer texture-page) #f))
         )
   (set! (-> this sprites 2 flags) (the-as uint 4))
-  (set! (-> this sprites 5 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 5 tex) (get-texture hud-bmech-health-03 level-default-minimap))
   (set! (-> this sprites 5 scale-x) 0.5)
   (set! (-> this sprites 5 flags) (the-as uint 4))
-  (set! (-> this sprites 6 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3d :page #x67a)))
+  (set! (-> this sprites 6 tex) (get-texture hud-bmech-health-03 level-default-minimap))
   (set! (-> this sprites 6 scale-x) 0.5)
   (set! (-> this sprites 6 flags) (the-as uint 4))
-  (set! (-> this sprites 3 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 3 tex) (get-texture hud-bmech-health-04 level-default-minimap))
   (set! (-> this sprites 3 scale-y) 3.25)
   (set! (-> this sprites 3 color z) 0)
   (set! (-> this sprites 3 flags) (the-as uint 4))
-  (set! (-> this sprites 4 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x41 :page #x67a)))
+  (set! (-> this sprites 4 tex) (get-texture hud-bmech-health-04 level-default-minimap))
   (set! (-> this sprites 4 scale-y) 1.5)
   (set! (-> this sprites 4 color z) 0)
   (set! (-> this sprites 4 flags) (the-as uint 4))
@@ -1498,7 +1499,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 (defpart 5175
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 0.25))
@@ -1516,7 +1517,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 (defpart 5176
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 0.5))
@@ -1534,7 +1535,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 (defpart 5177
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 0.75))
@@ -1552,7 +1553,7 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 (defpart 5178
-  :init-specs ((:texture (new 'static 'texture-id :index #xca :page #xc))
+  :init-specs ((:texture (glow-soft effects))
     (:num 1.0)
     (:x (meters -0.05))
     (:scale-x (meters 1.25))
@@ -1805,9 +1806,9 @@ For example for an elevator pre-compute the distance between the first and last 
               (.lvf vf5 (&-> v1-5 quad))
               )
             (.lvf vf4 (&-> arg0 quad))
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> v0-1 quad) vf6)
             v0-1
             )
@@ -1938,7 +1939,7 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: disable def twice: 22. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod general-event-handler ((this krew-boss) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('track)
      (cond
@@ -2240,8 +2241,7 @@ For example for an elevator pre-compute the distance between the first and last 
     )
   :trans (behavior ()
     (local-vars
-      ;; og:preserve-this array -> pointer
-      (sv-752 (pointer collide-shape))
+      (sv-752 (array collide-shape))
       (sv-756 sphere)
       (sv-760 (pointer uint32))
       (sv-768 int)
@@ -2395,8 +2395,8 @@ For example for an elevator pre-compute the distance between the first and last 
                             (.lvf vf4 (&-> sv-896 quad))
                             (.lvf vf5 (&-> v0-17 quad))
                             )
-                          (.mov.vf vf6 vf0 :mask #b1000)
-                          (.sub.vf vf6 vf4 vf5 :mask #b111)
+                          (.mov.vf.w vf6 vf0)
+                          (.sub.vf.xyz vf6 vf4 vf5)
                           (.svf (&-> sv-912 quad) vf6)
                           (let ((f30-1 (vector-y-angle (-> s1-1 vector 2))))
                             (cond
@@ -2426,8 +2426,7 @@ For example for an elevator pre-compute the distance between the first and last 
                     )
                   )
                 )
-              ;; og:preserve-this array -> pointer
-              (set! sv-752 (the-as (pointer collide-shape) (new 'stack-no-clear 'array 'collide-shape 10)))
+              (set! sv-752 (the-as (array collide-shape) (new 'stack 'boxed-array collide-shape 10)))
               (let ((v1-121 (new 'stack-no-clear 'sphere)))
                 (set! (-> v1-121 quad) (-> s5-1 quad))
                 (set! sv-756 v1-121)
@@ -2501,8 +2500,7 @@ For example for an elevator pre-compute the distance between the first and last 
                     )
               (set! sv-768 0)
               (set! (-> sv-756 r) 10240.0)
-              ;; og:preserve-this
-              (set! sv-768 (fill-actor-list-for-sphere *actor-hash* sv-756 sv-752 10))
+              (set! sv-768 (fill-actor-list-for-sphere *actor-hash* sv-756 (-> sv-752 data) (-> sv-752 allocated-length)))
               (if s4-1
                   (set! sv-768 (+ sv-768 -1))
                   )

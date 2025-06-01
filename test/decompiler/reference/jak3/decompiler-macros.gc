@@ -37,6 +37,18 @@
      )
   )
 
+(defmacro new-stack-matrix0 ()
+  "Get a new matrix on the stack that's set to zero."
+  `(let ((mat (new 'stack-no-clear 'matrix)))
+     (set! (-> mat quad 0) (the-as uint128 0))
+     (set! (-> mat quad 1) (the-as uint128 0))
+     (set! (-> mat quad 2) (the-as uint128 0))
+     (set! (-> mat quad 3) (the-as uint128 0))
+     mat
+     )
+  )
+
+
 (defmacro with-pp (&rest body)
   "execute the body with pp bound to the current process register."
   `(rlet ((pp :reg r13 :reset-here #t :type process))
@@ -1734,6 +1746,17 @@
          )
    )
 )
+
+(defmacro as-type (this type)
+  (with-gensyms (obj)
+    `(the ,type (let ((,obj ,this))
+                  (if (type? ,obj ,type)
+                      ,obj
+                      )
+                  )
+          )
+    )
+  )
 
 (import "goal_src/jak3/engine/data/tpages.gc")
 (import "goal_src/jak3/engine/data/textures.gc")

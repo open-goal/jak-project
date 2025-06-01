@@ -36,7 +36,7 @@
 (defmethod projectile-method-26 ((this rub-missile))
   (cond
     ((logtest? (-> *part-group-id-table* 1021 flags) (sp-group-flag sp13))
-     (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
      (part-tracker-spawn
        part-tracker-subsampler
        :to this
@@ -45,7 +45,7 @@
        )
      )
     (else
-      (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+      (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
       (part-tracker-spawn part-tracker :to this :group (-> *part-group-id-table* 1021) :duration (seconds 0.167))
       )
     )
@@ -304,7 +304,7 @@
 
 (defbehavior dm-missile-target-init-by-other dm-missile-target ((arg0 vector))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (initialize-skeleton
     self
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dm-missile-target" (the-as (pointer level) #f)))
@@ -486,7 +486,7 @@
         )
       (set! (-> s5-0 y) (+ 204800.0 (-> s3-0 y) (-> s5-0 y)))
       (let ((s4-1 (new 'stack-no-clear 'collide-query)))
-        (set! (-> s4-1 start-pos quad) (-> s5-0 quad))
+        (vector-copy! (-> s4-1 start-pos) s5-0)
         (set-vector! (-> s4-1 move-dist) 0.0 -409600.0 0.0 1.0)
         (let ((v1-21 s4-1))
           (set! (-> v1-21 radius) 40.96)
@@ -507,7 +507,7 @@
                     )
                 (cond
                   (s2-0
-                    (set! (-> s1-1 quad) (-> s2-0 quad))
+                    (vector-copy! s1-1 s2-0)
                     )
                   (else
                     (let ((s0-2 s1-1)
@@ -524,8 +524,8 @@
                   )
                 (set! (-> s4-2 initial-tilt) 8192.0)
                 (set! (-> s4-2 gravity) 409600.0)
-                (set! (-> s4-2 src quad) (-> s1-1 quad))
-                (set! (-> s4-2 dest quad) (-> s5-0 quad))
+                (vector-copy! (-> s4-2 src) s1-1)
+                (vector-copy! (-> s4-2 dest) s5-0)
                 (when (traj3d-calc-initial-velocity-using-tilt s4-2)
                   (let ((s3-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
                     (set! (-> this missile-target)
@@ -535,11 +535,11 @@
                     (set! (-> s3-1 charge) 1.0)
                     (set! (-> s3-1 options) (projectile-options))
                     (logclear! (-> s3-1 options) (projectile-options po14 po15 po16))
-                    (set! (-> s3-1 pos quad) (-> s1-1 quad))
+                    (vector-copy! (-> s3-1 pos) s1-1)
                     (set! (-> s3-1 notify-handle) (the-as handle #f))
                     (set! (-> s3-1 owner-handle) (process->handle this))
                     (set! (-> s3-1 target-handle) (ppointer->handle (-> this missile-target process)))
-                    (set! (-> s3-1 target-pos quad) (-> s5-0 quad))
+                    (vector-copy! (-> s3-1 target-pos) s5-0)
                     (set! (-> s3-1 ignore-handle) (process->handle this))
                     (let* ((v1-56 *game-info*)
                            (a0-50 (+ (-> v1-56 attack-id) 1))
@@ -554,7 +554,7 @@
                     (logior! (-> s3-1 options) (projectile-options po15))
                     (set! (-> s3-1 vehicle-impulse-factor) 7.5)
                     (logior! (-> s3-1 options) (projectile-options po16))
-                    (set! (-> s3-1 vel quad) (-> s4-2 initial-velocity quad))
+                    (vector-copy! (-> s3-1 vel) (-> s4-2 initial-velocity))
                     (set! (-> this missile) (process->handle (-> (spawn-projectile rub-missile s3-1 this *default-dead-pool*) 0)))
                     )
                   )
@@ -668,7 +668,7 @@
     )
   :code (behavior ()
     (local-vars (v1-23 object))
-    (while (!= (status-of-level-and-borrows *level* 'lpattack #f) 'active)
+    (while (!= (level-status? *level* 'lpattack #f) 'active)
       (set-time! (-> self missile-timer))
       (suspend)
       )

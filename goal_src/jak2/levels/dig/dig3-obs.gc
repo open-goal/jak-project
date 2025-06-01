@@ -16,7 +16,7 @@
   )
 
 (defpart 4978
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:scale-x (meters 3) (meters 1))
     (:rot-z (degrees 0) (degrees 360))
@@ -40,7 +40,7 @@
   )
 
 (defpart 4980
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:x (meters 0) (meters 3))
     (:scale-x (meters 3) (meters 1))
@@ -64,7 +64,7 @@
   )
 
 (defpart 4979
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:scale-x (meters 1.5) (meters 0.5))
     (:rot-z (degrees 0) (degrees 360))
@@ -166,7 +166,7 @@
   )
 
 (defpart 4982
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 32.0)
     (:y (meters 3))
     (:scale-x (meters 2.5) (meters 2.5))
@@ -189,7 +189,7 @@
   )
 
 (defpart 4981
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 1.0)
     (:scale-x (meters 1) (meters 0.1))
     (:rot-z (degrees 0) (degrees 3600))
@@ -209,7 +209,7 @@
   )
 
 (defpart 4983
-  :init-specs ((:texture (new 'static 'texture-id :index #xc :page #xc))
+  :init-specs ((:texture (crate-wood-01-splinter effects))
     (:num 16.0)
     (:y (meters 3))
     (:scale-x (meters 0.5) (meters 0.2))
@@ -261,21 +261,25 @@
   :virtual #t
   :trans rider-trans
   :code (behavior ()
-    (suspend-for (the int (-> self cycle-offset)))
+    (suspend-for (the int (-> self cycle-offset))
+      )
     (until #f
-      (suspend-for (the int (-> self cycle-time)))
+      (suspend-for (the int (-> self cycle-time))
+        )
       (activate! (-> self smush) -1.0 60 225 1.0 1.0 (-> self clock))
       (sound-play "spikey-shake" :position (-> self root trans))
-      (suspend-for (seconds 0.75) (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush)))))
+      (suspend-for (seconds 0.75)
+        (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush))))
+        )
       (set! (-> self shudder-angle) 0.0)
       (set-zero! (-> self smush))
-      (suspend-for (seconds 0.25))
+      (suspend-for (seconds 0.25)
+        )
       (sound-play "spikey-turn" :position (-> self root trans))
       (let* ((f0-7 1.0)
              (f30-1 (* 65536.0 f0-7))
              )
-        (suspend-for
-          (seconds 1)
+        (suspend-for (seconds 1)
           (set! (-> self rot-angle)
                 (the float (sar (shl (the int (+ (-> self rot-angle) (* f30-1 (seconds-per-frame)))) 48) 48))
                 )
@@ -420,7 +424,8 @@
       )
     (sound-play "spikey-break")
     (suspend)
-    (suspend-for (seconds 4))
+    (suspend-for (seconds 4)
+      )
     (let ((t9-7 (-> (method-of-type projectile-bounce die) code)))
       (if t9-7
           ((the-as (function none) t9-7))
@@ -650,7 +655,8 @@
   :virtual #t
   :code (behavior ()
     (sound-play "spikey-door")
-    (suspend-for (seconds 0.1))
+    (suspend-for (seconds 0.1)
+      )
     (let ((gp-2 (new 'stack-no-clear 'vector))
           (s5-1 (new 'static 'vector :x -16384.0 :y -16384.0))
           )
@@ -825,7 +831,7 @@
       (let* ((f30-0 (the float (ja-num-frames 0)))
              (f0-10
                (+ (* 1.5 f30-0 (get-norm! (-> self parent-ptr 0 swing-sync) 0)) (if (= (-> self parent-ptr 0 options) 1)
-                                                                                    (* 0.5 f30-0)
+                                                                                    (/ f30-0 2)
                                                                                     0.0
                                                                                     )
                   )
@@ -844,7 +850,7 @@
             1.0
             0.0
             )
-        (* 0.02 (-> self clock time-adjust-ratio))
+        (/ (-> self clock time-adjust-ratio) 50)
         )
       (dig-balloon-lurker-trapeze-method-21 self)
       (suspend)
@@ -1049,7 +1055,7 @@
               -0.5
               0.5
               )
-          (* 0.01 (-> self clock time-adjust-ratio))
+          (/ (-> self clock time-adjust-ratio) 100)
           )
         (let ((f0-7 (+ -1.0 (fabs (* 2.0 (-> self pedal-anim-speed)))))
               (f1-5 (* 2.0 (fabs (-> self pedal-anim-speed))))
@@ -1247,7 +1253,7 @@
                  )
                 )
          )
-    (set! (-> this anim-speed) (* 0.000015258789 f0-18))
+    (set! (-> this anim-speed) (/ f0-18 (meters 16)))
     )
   (go (method-of-object this idle))
   (none)

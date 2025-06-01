@@ -2,7 +2,7 @@
 
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/imgui/imgui.h"
 
 namespace {

@@ -368,34 +368,34 @@
                                      :jump-height-min (meters 3)
                                      :jump-height-factor 0.5
                                      :knocked-seek-ry-clamp 2730.6667
-                                     :knocked-soft-vxz-lo 72089.6
-                                     :knocked-soft-vxz-hi 108134.4
-                                     :knocked-soft-vy-lo 81920.0
-                                     :knocked-soft-vy-hi 122880.0
-                                     :knocked-medium-vxz-lo 147456.0
-                                     :knocked-medium-vxz-hi 196608.0
-                                     :knocked-medium-vy-lo 135168.0
-                                     :knocked-medium-vy-hi 151552.0
-                                     :knocked-hard-vxz-lo 78643.2
-                                     :knocked-hard-vxz-hi 117964.8
-                                     :knocked-hard-vy-lo 183500.8
-                                     :knocked-hard-vy-hi 209715.2
-                                     :knocked-huge-vxz-lo 164659.2
-                                     :knocked-huge-vxz-hi 249036.8
-                                     :knocked-huge-vy-lo 183500.8
-                                     :knocked-huge-vy-hi 217907.2
-                                     :knocked-yellow-vxz-lo 40960.0
-                                     :knocked-yellow-vxz-hi 49152.0
-                                     :knocked-yellow-vy-lo 57344.0
-                                     :knocked-yellow-vy-hi 81920.0
-                                     :knocked-red-vxz-lo 24576.0
-                                     :knocked-red-vxz-hi 196608.0
-                                     :knocked-red-vy-lo 94208.0
-                                     :knocked-red-vy-hi 151552.0
-                                     :knocked-blue-vxz-lo 40960.0
-                                     :knocked-blue-vxz-hi 49152.0
-                                     :knocked-blue-vy-lo 24576.0
-                                     :knocked-blue-vy-hi 81920.0
+                                     :knocked-soft-vxz-lo (meters 17.6)
+                                     :knocked-soft-vxz-hi (meters 26.4)
+                                     :knocked-soft-vy-lo (meters 20)
+                                     :knocked-soft-vy-hi (meters 30)
+                                     :knocked-medium-vxz-lo (meters 36)
+                                     :knocked-medium-vxz-hi (meters 48)
+                                     :knocked-medium-vy-lo (meters 33)
+                                     :knocked-medium-vy-hi (meters 37)
+                                     :knocked-hard-vxz-lo (meters 19.2)
+                                     :knocked-hard-vxz-hi (meters 28.8)
+                                     :knocked-hard-vy-lo (meters 44.8)
+                                     :knocked-hard-vy-hi (meters 51.2)
+                                     :knocked-huge-vxz-lo (meters 40.2)
+                                     :knocked-huge-vxz-hi (meters 60.8)
+                                     :knocked-huge-vy-lo (meters 44.8)
+                                     :knocked-huge-vy-hi (meters 53.2)
+                                     :knocked-yellow-vxz-lo (meters 10)
+                                     :knocked-yellow-vxz-hi (meters 12)
+                                     :knocked-yellow-vy-lo (meters 14)
+                                     :knocked-yellow-vy-hi (meters 20)
+                                     :knocked-red-vxz-lo (meters 6)
+                                     :knocked-red-vxz-hi (meters 48)
+                                     :knocked-red-vy-lo (meters 23)
+                                     :knocked-red-vy-hi (meters 37)
+                                     :knocked-blue-vxz-lo (meters 10)
+                                     :knocked-blue-vxz-hi (meters 12)
+                                     :knocked-blue-vy-lo (meters 6)
+                                     :knocked-blue-vy-hi (meters 20)
                                      :ragdoll-info #f
                                      :shadow-size (meters 1)
                                      :shadow-max-y (meters 1)
@@ -414,7 +414,7 @@
     ((and arg0 (-> this los-clear))
      (let ((a0-2 (the-as process-focusable (handle->process (-> this focus handle)))))
        (when a0-2
-         (set! (-> this aim-pos quad) (-> (get-trans a0-2 3) quad))
+         (vector-copy! (-> this aim-pos) (get-trans a0-2 3))
          (vector+! (-> this aim-pos) (-> this aim-pos) (-> this aim-offset))
          )
        )
@@ -431,7 +431,7 @@
       (vector-flatten! s4-0 s4-0 (-> this init-mat uvec))
       (vector-normalize! s4-0 1.0)
       (set! (-> this desired-twist)
-            (atan (vector-dot (the-as vector (-> this init-mat)) s4-0) (vector-dot (-> this init-mat fvec) s4-0))
+            (atan (vector-dot (-> this init-mat rvec) s4-0) (vector-dot (-> this init-mat fvec) s4-0))
             )
       (cond
         (#t
@@ -478,7 +478,7 @@
 (defmethod check-los ((this fac-gunturret))
   (let ((a0-2 (the-as process-focusable (handle->process (-> this focus handle)))))
     (if a0-2
-        (set! (-> this aim-pos quad) (-> (get-trans a0-2 3) quad))
+        (vector-copy! (-> this aim-pos) (get-trans a0-2 3))
         )
     )
   (let* ((s4-0
@@ -490,8 +490,8 @@
              (cos 364.0889)
              )
       (let ((a1-5 (new 'stack-no-clear 'collide-query)))
-        (set! (-> a1-5 start-pos quad) (-> s4-0 quad))
-        (set! (-> a1-5 move-dist quad) (-> s5-3 quad))
+        (vector-copy! (-> a1-5 start-pos) s4-0)
+        (vector-copy! (-> a1-5 move-dist) s5-3)
         (let ((v1-17 a1-5))
           (set! (-> v1-17 radius) 409.6)
           (set! (-> v1-17 collide-with)
@@ -540,7 +540,7 @@
       (set! (-> s4-0 charge) 1.0)
       (set! (-> s4-0 options) (projectile-options))
       (logclear! (-> s4-0 options) (projectile-options po14 po15 po16))
-      (set! (-> s4-0 pos quad) (-> s0-0 quad))
+      (vector-copy! (-> s4-0 pos) s0-0)
       (set! (-> s4-0 notify-handle) (process->handle this))
       (set! (-> s4-0 owner-handle) (the-as handle #f))
       (set! (-> s4-0 target-handle) (the-as handle #f))
@@ -566,7 +566,7 @@
       (vector+! (-> s4-0 vel) (-> s4-0 vel) s2-0)
       )
     (if (-> this use-alt-barrel)
-        (set! (-> s4-0 pos quad) (-> s3-0 quad))
+        (vector-copy! (-> s4-0 pos) s3-0)
         )
     (set! (-> this use-alt-barrel) (not (-> this use-alt-barrel)))
     (spawn-projectile fturret-shot s4-0 this *default-dead-pool*)
@@ -626,10 +626,9 @@
         (sound-group)
         (-> self root trans)
         )
-      (suspend-for
-        (seconds 0.75)
+      (suspend-for (seconds 0.75)
         (let ((s5-2 (new 'stack-no-clear 'vector)))
-          (set! (-> s5-2 quad) (-> self aim-pos quad))
+          (vector-copy! s5-2 (-> self aim-pos))
           (track-target self #t)
           (vector-! s5-2 (-> self aim-pos) s5-2)
           (when (time-elapsed? (-> self snd-cmd-time) (seconds 0.12))
@@ -694,6 +693,7 @@
   )
 
 (defmethod event-handler ((this fac-gunturret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (if (and (= arg2 'notify) (< 1 arg1) (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) *target*))
       (set-time! (-> this last-hit-time))
       )
@@ -732,73 +732,24 @@
 
 ;; WARN: Return type mismatch (pointer process) vs (pointer joint-exploder).
 (defmethod go-explode ((this fac-gunturret))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
-      (let ((s4-0 (new 'stack-no-clear 'vector)))
-        (sound-play "explosion")
-        (let ((v1-2 (-> s5-0 fountain-rand-transv-lo)))
-          (let ((a0-5 (-> this root trans)))
-            (let ((a1-2 *up-vector*))
-              (let ((a2-3 2048.0))
-                (.mov vf7 a2-3)
-                )
-              (.lvf vf5 (&-> a1-2 quad))
-              )
-            (.lvf vf4 (&-> a0-5 quad))
-            )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-          (.svf (&-> v1-2 quad) vf6)
-          )
-        (vector-float*! s4-0 *up-vector* (* 4096.0 (rand-vu-float-range 20.0 30.0)))
-        (let ((a1-4 (-> s5-0 fountain-rand-transv-lo)))
-          (let ((v1-4 s4-0))
-            (let ((a0-7 *identity-vector*))
-              (let ((a2-5 -204800.0))
-                (.mov vf7 a2-5)
-                )
-              (.lvf vf5 (&-> a0-7 quad))
-              )
-            (.lvf vf4 (&-> v1-4 quad))
-            )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-          (.svf (&-> a1-4 quad) vf6)
-          )
-        (let ((a0-8 (-> s5-0 fountain-rand-transv-hi)))
-          (let ((v1-5 *identity-vector*))
-            (let ((a1-6 204800.0))
-              (.mov vf7 a1-6)
-              )
-            (.lvf vf5 (&-> v1-5 quad))
-            )
-          (.lvf vf4 (&-> s4-0 quad))
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-          (.svf (&-> a0-8 quad) vf6)
-          )
-        )
-      (set! (-> s5-0 gravity) -122880.0)
-      (process-spawn
-        joint-exploder
-        (-> this params explode-sg)
-        9
-        s5-0
-        *fac-gunturret-exploder-params*
-        :name "joint-exploder"
-        :to this
-        :unk 0
-        )
+  (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (sound-play "explosion")
+      (vector+*! (-> s5-0 fountain-rand-transv-lo) (-> this root trans) *up-vector* 2048.0)
+      (vector-float*! s4-0 *up-vector* (* 4096.0 (rand-vu-float-range 20.0 30.0)))
+      (vector+*! (-> s5-0 fountain-rand-transv-lo) s4-0 *identity-vector* -204800.0)
+      (vector+*! (-> s5-0 fountain-rand-transv-hi) s4-0 *identity-vector* 204800.0)
+      )
+    (set! (-> s5-0 gravity) -122880.0)
+    (process-spawn
+      joint-exploder
+      (-> this params explode-sg)
+      9
+      s5-0
+      *fac-gunturret-exploder-params*
+      :name "joint-exploder"
+      :to this
+      :unk 0
       )
     )
   )
@@ -826,11 +777,14 @@
     (cleanup-for-death self)
     (ja-channel-set! 0)
     (let ((gp-1 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-1 quad) (-> self root trans quad))
+      (vector-copy! gp-1 (-> self root trans))
       (+! (-> gp-1 y) 12288.0)
-      (suspend-for (seconds 2) (spawn (-> self part) gp-1))
+      (suspend-for (seconds 2)
+        (spawn (-> self part) gp-1)
+        )
       )
-    (suspend-for (seconds 1))
+    (suspend-for (seconds 1)
+      )
     (send-event self 'death-end)
     (while (-> self child)
       (suspend)
@@ -842,6 +796,7 @@
   )
 
 (defmethod init-enemy-collision! ((this fac-gunturret))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -907,7 +862,8 @@
   (none)
   )
 
-(defmethod is-pfoc-in-mesh? ((this fac-gunturret) (arg0 process-focusable) (arg1 vector))
+(defmethod can-become-hostile-to? ((this fac-gunturret) (arg0 process-focusable) (arg1 vector))
+  "Return if this enemy can become hostile to the process."
   (if (= (-> this activate-distance) 0.0)
       (return #t)
       (return (< (fabs (vector-dot
@@ -939,6 +895,7 @@
   )
 
 (defmethod coin-flip? ((this fac-gunturret))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -989,9 +946,10 @@
   )
 
 (defmethod init-enemy! ((this fac-gunturret))
+  "Typical place for shared init code. Runs from entity or process style init."
   (init-turret-params! this)
   (initialize-skeleton this (-> this params normal-sg) (the-as pair 0))
-  (init-enemy-defaults! this (-> this params enemy-info))
+  (setup-enemy! this (-> this params enemy-info))
   (set! (-> this draw light-index) (the-as uint 10))
   (logclear! (-> this mask) (process-mask actor-pause))
   (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
@@ -1023,7 +981,8 @@
   (none)
   )
 
-(defmethod go-idle2 ((this fac-gunturret))
+(defmethod go-fallback-init ((this fac-gunturret))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (go (method-of-object this idle))
   )
 

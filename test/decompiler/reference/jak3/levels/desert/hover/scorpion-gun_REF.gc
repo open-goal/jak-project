@@ -7,7 +7,7 @@
                                      (new 'static 'talker-speech-class
                                        :name "sig175"
                                        :channel (gui-channel sig)
-                                       :flags (talker-flags tf0)
+                                       :flags (talker-flags play-only-once)
                                        :speech #x1
                                        :neg #x1
                                        :on-close #f
@@ -16,7 +16,7 @@
                                      (new 'static 'talker-speech-class
                                        :name "sig176"
                                        :channel (gui-channel sig)
-                                       :flags (talker-flags tf0)
+                                       :flags (talker-flags play-only-once)
                                        :speech #x2
                                        :neg #x1
                                        :on-close #f
@@ -25,7 +25,7 @@
                                      (new 'static 'talker-speech-class
                                        :name "sig177"
                                        :channel (gui-channel sig)
-                                       :flags (talker-flags tf0)
+                                       :flags (talker-flags play-only-once)
                                        :speech #x3
                                        :neg #x1
                                        :on-close #f
@@ -34,7 +34,7 @@
                                      (new 'static 'talker-speech-class
                                        :name "sig178"
                                        :channel (gui-channel sig)
-                                       :flags (talker-flags tf0)
+                                       :flags (talker-flags play-only-once)
                                        :speech #x4
                                        :neg #x1
                                        :on-close #f
@@ -43,7 +43,7 @@
                                      (new 'static 'talker-speech-class
                                        :name "sig197"
                                        :channel (gui-channel sig)
-                                       :flags (talker-flags tf0)
+                                       :flags (talker-flags play-only-once)
                                        :speech #x5
                                        :neg #x1
                                        :on-close #f
@@ -554,7 +554,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-scorpion-gun))
   (set! (-> this sprites 0 color w) 0)
-  (set-hud-piece-position! (the-as hud-sprite (-> this sprites)) 32 208)
+  (set-hud-piece-position! (-> this sprites 0) 32 208)
   (set! (-> this sprites 0 color w) (the int (-> this alpha 0)))
   (set! (-> this sprites 1 color w) 0)
   (set-hud-piece-position! (-> this sprites 1) 480 208)
@@ -672,7 +672,7 @@
     (case message
       (('draw)
        (set! (-> self draw?) #t)
-       (set! (-> self screen-pos quad) (-> (the-as vector (-> block param 0)) quad))
+       (vector-copy! (-> self screen-pos) (the-as vector (-> block param 0)))
        (let ((v0-0 (the-as object (-> block param 1))))
          (set! (-> self color) (the-as rgba v0-0))
          v0-0
@@ -780,7 +780,7 @@
                 )
             (vector-cross! (-> a1-7 rvec) *y-vector* s2-0)
             (vector-cross! (-> a1-7 uvec) s2-0 (-> a1-7 rvec))
-            (set! (-> a1-7 fvec quad) (-> s2-0 quad))
+            (vector-copy! (-> a1-7 fvec) s2-0)
             (matrix->eul (the-as euler-angles s1-0) a1-7 21)
             (vector-negate! s3-2 s1-0)
             (let ((a0-14 s3-2))
@@ -790,8 +790,8 @@
                   )
                 (.lvf vf4 (&-> v1-16 quad))
                 )
-              (.add.x.vf vf5 vf0 vf0 :mask #b1000)
-              (.add.x.vf vf5 vf4 vf6 :mask #b111)
+              (.add.x.vf.w vf5 vf0 vf0)
+              (.add.x.vf.xyz vf5 vf4 vf6)
               (.svf (&-> a0-14 quad) vf5)
               )
             (sparticle-set-conerot s5-0 s3-2)
@@ -802,11 +802,11 @@
       )
     (cond
       ((logtest? (-> *part-group-id-table* 228 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 228))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 228))
         )
       )
@@ -908,8 +908,8 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-proj-settings! ((this scorpion-gun-shot))
   (with-pp
-    (set! (-> this init-pos quad) (-> this root trans quad))
-    (set! (-> this init-dir quad) (-> this starting-dir quad))
+    (vector-copy! (-> this init-pos) (-> this root trans))
+    (vector-copy! (-> this init-dir) (-> this starting-dir))
     (vector-normalize-copy!
       (-> this root transv)
       (-> this init-dir)
@@ -1018,7 +1018,7 @@
        (vector+float*! sv-32 sv-32 (-> s5-0 bone transform fvec) -24576.0)
        (set! (-> sv-32 y) (fmax (-> sv-32 y) (-> s5-0 bone transform trans y)))
        (let ((s4-0 (new 'stack-no-clear 'vector)))
-         (set! (-> s4-0 quad) (-> self root trans quad))
+         (vector-copy! s4-0 (-> self root trans))
          (let ((s3-0 (new 'stack-no-clear 'vector)))
            (set! (-> s3-0 x) 0.0)
            (set! (-> s3-0 y) 0.0)
@@ -1160,9 +1160,9 @@
                   )
               (when (logtest? (process-mask enemy projectile) (-> s1-0 mask))
                 (if #f
-                    (add-debug-sphere #t (bucket-id debug) (the-as vector s0-0) (-> s0-0 world-sphere w) *color-red*)
+                    (add-debug-sphere #t (bucket-id debug) (-> s0-0 world-sphere) (-> s0-0 world-sphere w) *color-red*)
                     )
-                (let* ((a1-7 (vector-! (new 'stack-no-clear 'vector) (the-as vector s0-0) (-> gp-0 trans)))
+                (let* ((a1-7 (vector-! (new 'stack-no-clear 'vector) (-> s0-0 world-sphere) (-> gp-0 trans)))
                        (f28-0 (vector-length a1-7))
                        )
                   (when (< f28-0 1024000.0)
@@ -1199,23 +1199,13 @@
       )
     )
   (let ((gp-1 (-> self node-list data 7 bone transform)))
-    (set! (-> self aim-dir quad) (-> gp-1 fvec quad))
+    (vector-copy! (-> self aim-dir) (-> gp-1 fvec))
     (when (-> self target-handle)
-      (let* ((s5-1 (handle->process (-> self target-handle)))
-             (s4-2 (if (type? s5-1 process-drawable)
-                       s5-1
-                       )
-                   )
-             )
-        (when (and s4-2 (let ((s5-2 (-> (the-as process-drawable s4-2) root)))
-                          (if (type? s5-2 collide-shape)
-                              s5-2
-                              )
-                          )
-                   )
+      (let ((s4-2 (as-type (handle->process (-> self target-handle)) process-drawable)))
+        (when (and s4-2 (as-type (-> (the-as process-drawable s4-2) root) collide-shape))
           (let ((s5-4 (vector-!
                         (new 'stack-no-clear 'vector)
-                        (the-as vector (-> (the-as process-focusable s4-2) root root-prim prim-core))
+                        (-> (the-as process-focusable s4-2) root root-prim prim-core world-sphere)
                         (-> gp-1 trans)
                         )
                       )
@@ -1235,7 +1225,7 @@
   (set! sv-1304 (-> self aim-dir))
   (set! sv-1308 (new 'stack-no-clear 'vector))
   (set! sv-1312 (the-as rgba (new 'stack-no-clear 'array 'rgba 1)))
-  (set! (-> sv-1300 start-pos quad) (-> sv-1296 bone transform trans quad))
+  (vector-copy! (-> sv-1300 start-pos) (-> sv-1296 bone transform trans))
   (vector-float*! (-> sv-1300 move-dist) sv-1304 1024000.0)
   (let ((v1-73 sv-1300))
     (set! (-> v1-73 radius) 819.2)
@@ -1379,7 +1369,7 @@
           (set! (-> s5-0 params options) (projectile-options))
           (logclear! (-> s5-0 params options) (projectile-options po14 po15 po16))
           (set! (-> s5-0 params pos quad) (-> gp-0 bone transform trans quad))
-          (set! (-> s5-0 params vel quad) (-> s5-0 vec0 quad))
+          (vector-copy! (-> s5-0 params vel) (-> s5-0 vec0))
           (set! (-> s5-0 params notify-handle) (the-as handle #f))
           (set! (-> s5-0 params owner-handle) (process->handle s4-0))
           (set! (-> s5-0 params target-handle) (the-as handle #f))
@@ -1400,18 +1390,7 @@
               )
           )
         (let ((s5-1 (new 'stack-no-clear 'matrix)))
-          (let* ((v1-37 s5-1)
-                 (a3-1 (-> gp-0 bone transform))
-                 (a0-30 (-> a3-1 rvec quad))
-                 (a1-6 (-> a3-1 uvec quad))
-                 (a2-4 (-> a3-1 fvec quad))
-                 (a3-2 (-> a3-1 trans quad))
-                 )
-            (set! (-> v1-37 rvec quad) a0-30)
-            (set! (-> v1-37 uvec quad) a1-6)
-            (set! (-> v1-37 fvec quad) a2-4)
-            (set! (-> v1-37 trans quad) a3-2)
-            )
+          (matrix-copy! s5-1 (-> gp-0 bone transform))
           (matrix->trans (-> gp-0 bone transform) (-> s5-1 trans))
           (if (logtest? (-> *part-group-id-table* 227 flags) (sp-group-flag sp13))
               (part-tracker-spawn
@@ -1458,7 +1437,7 @@
         (s5-0 (-> this root))
         )
     (when gp-0
-      (set! (-> s5-0 transv quad) (-> (the-as process-drawable gp-0) root transv quad))
+      (vector-copy! (-> s5-0 transv) (-> (the-as process-drawable gp-0) root transv))
       (quaternion-copy! (-> this scorp-quat) (-> (the-as process-drawable gp-0) root quat))
       (vector-matrix*!
         (-> s5-0 trans)
@@ -1706,7 +1685,7 @@
      )
     (('trans 'player-pos)
      (let ((v1-1 (new 'stack-no-clear 'vector)))
-       (set! (-> v1-1 quad) (-> self trans quad))
+       (vector-copy! v1-1 (-> self trans))
        (+! (-> v1-1 y) -12288.0)
        (set! v0-0 (-> arg3 param 0))
        (set! (-> (the-as vector v0-0) quad) (-> v1-1 quad))
@@ -1883,7 +1862,7 @@
       (set! (-> gp-0 guard-type) (the-as uint 11))
       (set! (-> gp-0 entity) #f)
       (vector-reset! (-> gp-0 velocity))
-      (set! (-> gp-0 position quad) (-> (target-pos 0) quad))
+      (vector-copy! (-> gp-0 position) (target-pos 0))
       (quaternion-copy!
         (-> gp-0 rotation)
         (quaternion-axis-angle! (new 'stack-no-clear 'quaternion) 0.0 1.0 0.0 0.0)
@@ -1910,12 +1889,8 @@
               (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
               )
             )
-        (let ((v1-21 gp-1))
-          (set! (-> v1-21 width) (the float 340))
-          )
-        (let ((v1-22 gp-1))
-          (set! (-> v1-22 height) (the float 80))
-          )
+        (set-width! gp-1 340)
+        (set-height! gp-1 80)
         (let ((v1-23 gp-1)
               (a0-15 (-> *setting-control* user-default language))
               )
@@ -2051,22 +2026,21 @@
             (s3-0 (-> gp-0 path node (-> gp-0 prev-pos)))
             (s4-0 (new 'stack-no-clear 'inline-array 'vector 1))
             )
-        (let ((f30-1 (vector-segment-distance-point! (-> self trans) (the-as vector s3-0) (the-as vector s5-0) (-> s4-0 0)))
-              )
+        (let ((f30-1 (vector-segment-distance-point! (-> self trans) (-> s3-0 position) (-> s5-0 position) (-> s4-0 0))))
           (set! (-> gp-0 curr-pos)
-                (+ (the float (-> gp-0 prev-pos)) (/ (vector-vector-distance (the-as vector s3-0) (-> s4-0 0))
-                                                     (vector-vector-distance (the-as vector s3-0) (the-as vector s5-0))
+                (+ (the float (-> gp-0 prev-pos)) (/ (vector-vector-distance (-> s3-0 position) (-> s4-0 0))
+                                                     (vector-vector-distance (-> s3-0 position) (-> s5-0 position))
                                                      )
                    )
                 )
           (let ((s3-1 (new 'stack-no-clear 'inline-array 'vector 2)))
-            (vector-! (-> s3-1 1) (the-as vector s5-0) (-> s4-0 0))
+            (vector-! (-> s3-1 1) (-> s5-0 position) (-> s4-0 0))
             (vector+float*! (-> s3-1 0) (-> s4-0 0) (-> s3-1 1) (lerp-scale 0.0 1.0 f30-1 122880.0 20480.0))
             (send-event (handle->process (-> self scorp)) 'ai-set-target-position (-> s3-1 0))
             )
           )
         (send-event (handle->process (-> self scorp)) 'ai-set-target-speed #x48700000)
-        (when (< (vector-vector-distance (the-as vector s5-0) (-> s4-0 0)) 40960.0)
+        (when (< (vector-vector-distance (-> s5-0 position) (-> s4-0 0)) 40960.0)
           (+! (-> gp-0 prev-pos) 1)
           (+! (-> gp-0 next-pos) 1)
           (when (>= (-> gp-0 next-pos) (the-as int (-> gp-0 path node-count)))
@@ -2088,8 +2062,8 @@
           (add-debug-line
             #t
             (bucket-id debug-no-zbuf1)
-            (the-as vector (-> self path-info path node gp-1))
-            (the-as vector (-> self path-info path node (+ gp-1 1)))
+            (-> self path-info path node gp-1 position)
+            (-> self path-info path node (+ gp-1 1) position)
             *color-red*
             #f
             (the-as rgba -1)
@@ -2213,7 +2187,7 @@
             )
         (let ((f30-0 0.0))
           (dotimes (s4-0 (the-as int (-> gp-0 path node-count)))
-            (let ((f0-0 (vector-vector-distance (target-pos 0) (the-as vector (-> gp-0 path node s4-0)))))
+            (let ((f0-0 (vector-vector-distance (target-pos 0) (-> gp-0 path node s4-0 position))))
               (when (or (= s5-0 -1) (< f0-0 f30-0))
                 (set! s5-0 s4-0)
                 (set! f30-0 f0-0)
@@ -2250,7 +2224,7 @@
 (defmethod scorpion-gun-manager-method-21 ((this scorpion-gun-manager))
   (let ((v1-1 (handle->process (-> this scorp))))
     (when v1-1
-      (set! (-> this trans quad) (-> (the-as process-drawable v1-1) root trans quad))
+      (vector-copy! (-> this trans) (-> (the-as process-drawable v1-1) root trans))
       (quaternion-copy! (-> this quat) (-> (the-as process-drawable v1-1) root quat))
       )
     )
@@ -2266,7 +2240,7 @@
     (dotimes (gp-0 (-> *desbeast-battle-path-table* length))
       (let ((s5-0 (-> *desbeast-battle-path-table* gp-0)))
         (let ((s4-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s4-0 quad) (-> s5-0 node 0 position quad))
+          (vector-copy! s4-0 (-> s5-0 node 0 position))
           (+! (-> s4-0 y) 12288.0)
           (let ((s3-0 add-debug-text-3d)
                 (s2-0 #t)
@@ -2280,8 +2254,8 @@
           (add-debug-line
             #t
             (bucket-id debug-no-zbuf1)
-            (the-as vector (-> s5-0 node s4-1))
-            (the-as vector (-> s5-0 node (+ s4-1 1)))
+            (-> s5-0 node s4-1 position)
+            (-> s5-0 node (+ s4-1 1) position)
             *color-red*
             #f
             (the-as rgba -1)
@@ -2295,7 +2269,7 @@
               s2-1
               (the-as bucket-id s1-1)
               *temp-string*
-              (the-as vector (-> s5-0 node s4-1))
+              (-> s5-0 node s4-1 position)
               (font-color red)
               (the-as vector2h #f)
               )
@@ -2320,7 +2294,8 @@
 ;; definition for method 11 of type scorpion-gun-manager
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this scorpion-gun-manager) (arg0 entity-actor))
-  (set! (-> this trans quad) (-> arg0 extra trans quad))
+  "Set up a newly created process from the entity that created it."
+  (vector-copy! (-> this trans) (-> arg0 extra trans))
   (quaternion-copy! (-> this quat) (-> arg0 quat))
   (logclear! (-> this mask) (process-mask actor-pause))
   (let ((v1-3 (-> this path-info)))
@@ -2401,7 +2376,7 @@
   :event cam-standard-event-handler
   :enter (behavior ()
     (when (not (-> self enter-has-run))
-      (set! (-> self saved-pt quad) (-> self trans quad))
+      (vector-copy! (-> self saved-pt) (-> self trans))
       (set! (-> self blend-from-type) (camera-blend-from-type unknown-1))
       (set! (-> self blend-to-type) (camera-blend-to-type unknown-0))
       0
@@ -2425,7 +2400,7 @@
                 (when v1-8
                   (let ((gp-0 (new 'stack-no-clear 'vector)))
                     (if (send-event (handle->process v1-8) 'get-cam-info (-> self trans) gp-0)
-                        (forward-up->inv-matrix (the-as matrix (-> self tracking)) gp-0 *y-vector*)
+                        (forward-up->inv-matrix (-> self tracking inv-mat) gp-0 *y-vector*)
                         )
                     )
                   )

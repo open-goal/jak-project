@@ -224,12 +224,7 @@
       (set! (-> this root root-prim local-sphere w) (* 2.5 (-> this root root-prim local-sphere w)))
       )
   (when (and arg2 (nonzero? (-> this draw)))
-    (let* ((s5-0 (-> arg2 process))
-           (v1-56 (if (type? s5-0 process-drawable)
-                      s5-0
-                      )
-                  )
-           )
+    (let ((v1-56 (the-as process (as-type (-> arg2 process) process-drawable))))
       (if v1-56
           (set! (-> this draw light-index) (-> (the-as process-drawable v1-56) draw light-index))
           )
@@ -421,7 +416,7 @@
         (ja-post)
         )
     (if (nonzero? s5-0)
-        (spawn s5-0 (the-as vector s4-0))
+        (spawn s5-0 (-> s4-0 world-sphere))
         )
     )
   (if (nonzero? (-> this sound))
@@ -543,11 +538,9 @@
                 (lambda ((arg0 part-tracker))
                   (let ((v1-1 (handle->process (-> arg0 userdata))))
                     (when (the-as process v1-1)
-                      (let* ((s5-0 (handle->process (-> (the-as collectable v1-1) pickup-handle)))
-                             (a0-9 (if (type? s5-0 process-focusable)
-                                       s5-0
-                                       )
-                                   )
+                      (let* ((a0-9
+                               (the-as process (as-type (handle->process (-> (the-as collectable v1-1) pickup-handle)) process-focusable))
+                               )
                              (a2-0 (if (not a0-9)
                                        (-> arg0 root trans)
                                        (get-trans (the-as process-focusable a0-9) 3)
@@ -604,23 +597,14 @@
 
 ;; definition for function check-blue-suck
 (defbehavior check-blue-suck eco ((arg0 process-drawable))
-  (let ((v1-0 (if (type? arg0 process-drawable)
-                  arg0
-                  )
-              )
-        )
+  (let ((v1-0 (as-type arg0 process-drawable)))
     (when v1-0
-      (let* ((gp-1 (-> v1-0 root))
-             (v1-1 (if (type? gp-1 collide-shape)
-                       gp-1
-                       )
-                   )
-             )
+      (let ((v1-1 (the-as trsqv (as-type (-> v1-0 root) collide-shape))))
         (when v1-1
           (let ((a0-5 (-> self root root-prim prim-core))
                 (a1-2 (-> (the-as collide-shape v1-1) root-prim prim-core))
                 )
-            (when (< (vector-vector-distance (the-as vector a0-5) (the-as vector a1-2)) (-> *FACT-bank* suck-suck-dist))
+            (when (< (vector-vector-distance (-> a0-5 world-sphere) (-> a1-2 world-sphere)) (-> *FACT-bank* suck-suck-dist))
               (logior! (-> self flags) (collectable-flag suck-in))
               #t
               )
@@ -633,26 +617,17 @@
 
 ;; definition for function add-blue-motion
 (defbehavior add-blue-motion eco ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 symbol))
-  (let* ((gp-0 (handle->process (-> self target)))
-         (s2-0 (if (type? gp-0 process-drawable)
-                   gp-0
-                   )
-               )
-         )
+  (let ((s2-0 (the-as process (as-type (handle->process (-> self target)) process-drawable))))
     (when s2-0
-      (let ((a0-6 (if (type? s2-0 process-focusable)
-                      (the-as process-focusable s2-0)
-                      )
-                  )
-            )
+      (let ((a0-6 (as-type s2-0 process-focusable)))
         (when a0-6
           (let ((s2-1 (-> self root root-prim prim-core))
                 (gp-1 (get-trans a0-6 3))
                 )
             (if (and arg1 (rand-vu-percent? 0.25))
-                (eco-blue-glow (the-as vector s2-1))
+                (eco-blue-glow (-> s2-1 world-sphere))
                 )
-            (let ((f0-0 (vector-vector-distance (the-as vector s2-1) gp-1)))
+            (let ((f0-0 (vector-vector-distance (-> s2-1 world-sphere) gp-1)))
               (cond
                 ((and arg3 (< f0-0 8192.0))
                  (return #t)
@@ -702,7 +677,7 @@
                  (go-virtual wait)
                  )
                 (arg1
-                  (add-blue-shake (-> self root trans) (the-as vector s2-1) gp-1)
+                  (add-blue-shake (-> self root trans) (-> s2-1 world-sphere) gp-1)
                   )
                 )
               )
@@ -947,7 +922,7 @@
       (set! (-> self root trans y) (-> self base y))
       (cond
         ((< (-> self root transv y) -8192.0)
-         (set! (-> self root transv y) (* -0.5 (-> self root transv y)))
+         (set! (-> self root transv y) (/ (-> self root transv y) -2))
          )
         (else
           (if (and (logtest? (-> self fact options) (actor-option suck-in))
@@ -1084,7 +1059,7 @@
              )
             (else
               (if (nonzero? (-> self part))
-                  (set! (-> self part fade) (* 0.0033333334 f0-1))
+                  (set! (-> self part fade) (/ f0-1 300))
                   )
               (when (nonzero? (-> self draw))
                 (logior! (-> self draw status) (draw-control-status force-fade))
@@ -1869,7 +1844,7 @@
         (a1-3 (-> this draw skeleton bones 3))
         )
     (if (nonzero? a0-7)
-        (spawn-with-matrix a0-7 (the-as matrix a1-3))
+        (spawn-with-matrix a0-7 (-> a1-3 transform))
         )
     )
   0
@@ -3039,14 +3014,14 @@
                   )
                  ((and (>= f22-0 f0-5) (logtest? s2-1 (game-feature gun-red)))
                   (set! s2-0 (pickup-type ammo-red))
-                  (set! f30-0 (* 0.5 f30-0))
+                  (set! f30-0 (/ f30-0 2))
                   )
                  ((and (>= f24-0 f0-5) (logtest? s2-1 (game-feature gun-blue)))
                   (set! s2-0 (pickup-type ammo-blue))
                   )
                  ((and (>= f28-0 f0-5) (logtest? s2-1 (game-feature gun-dark)))
                   (set! s2-0 (pickup-type ammo-dark))
-                  (set! f30-0 (* 0.1 f30-0))
+                  (set! f30-0 (/ f30-0 10))
                   )
                  (else
                    (set! s2-0 (pickup-type eco-pill-dark))

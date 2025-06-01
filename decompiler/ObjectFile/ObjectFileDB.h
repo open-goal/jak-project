@@ -21,7 +21,7 @@
 #include "decompiler/data/TextureDB.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 /*!
@@ -81,12 +81,13 @@ struct LetRewriteStats {
   int launch_particles = 0;
   int call_parent_state_handler = 0;
   int suspend_for = 0;
+  int font_method = 0;
 
   int total() const {
     return dotimes + countdown + abs + abs2 + unused + ja + case_no_else + case_with_else +
            set_vector + set_vector2 + send_event + font_context_meth + proc_new + attack_info +
            vector_dot + rand_float_gen + set_let + with_dma_buf_add_bucket + dma_buffer_add_gs_set +
-           launch_particles + call_parent_state_handler + suspend_for;
+           launch_particles + call_parent_state_handler + suspend_for + font_method;
   }
 
   std::string print() const {
@@ -115,6 +116,7 @@ struct LetRewriteStats {
     out += fmt::format("  launch_particles: {}\n", launch_particles);
     out += fmt::format("  call_parent_state_handler: {}\n", call_parent_state_handler);
     out += fmt::format("  suspend_for: {}\n", suspend_for);
+    out += fmt::format("  font_method: {}\n", font_method);
     return out;
   }
 

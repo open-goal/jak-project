@@ -9,7 +9,7 @@
 
 (defmethod compute-trans-at-time ((this trajectory) (arg0 float) (arg1 vector))
   (vector+float*! arg1 (-> this initial-position) (-> this initial-velocity) arg0)
-  (+! (-> arg1 y) (* 0.5 arg0 arg0 (-> this gravity)))
+  (+! (-> arg1 y) (* (/ arg0 2) arg0 (-> this gravity)))
   arg1
   )
 
@@ -31,7 +31,7 @@
     (vector-! (-> this initial-velocity) arg1 arg0)
     (vector-xz-normalize! (-> this initial-velocity) f0-3)
     )
-  (set! (-> this initial-velocity y) (- (/ (- (-> arg1 y) (-> arg0 y)) arg2) (* 0.5 arg2 (-> this gravity))))
+  (set! (-> this initial-velocity y) (- (/ (- (-> arg1 y) (-> arg0 y)) arg2) (* (/ arg2 2) (-> this gravity))))
   0
   (none)
   )
@@ -337,8 +337,8 @@
           (.mov at-0 f0-0)
           )
         (.mov vf2 at-0)
-        (.mov.vf vf1 vf0 :mask #b1000)
-        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.mov.vf.w vf1 vf0)
+        (.mul.x.vf.xyz vf1 vf1 vf2)
         (.svf (&-> v1-12 quad) vf1)
         )
       arg0
@@ -422,9 +422,9 @@
             )
           (.lvf vf4 (&-> a1-3 quad))
           )
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> t1-7 quad) vf6)
         )
       (vector-! (-> v1-2 initial-position) (-> v1-2 initial-position) arg3)

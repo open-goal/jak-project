@@ -83,7 +83,7 @@
   )
 
 (defmethod init-proj-settings! ((this metalhead-predator-shot))
-  (set! (-> this tail-pos quad) (-> this root trans quad))
+  (vector-copy! (-> this tail-pos) (-> this root trans))
   (set! (-> this attack-mode) 'predator-shot)
   (set! (-> this max-speed) 532480.0)
   (set! (-> this move) metalhead-shot-move)
@@ -219,34 +219,34 @@
     :jump-height-min (meters 0.5)
     :jump-height-factor 0.1
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 81920.0
-    :knocked-soft-vxz-hi 81920.0
-    :knocked-soft-vy-lo 69632.0
-    :knocked-soft-vy-hi 69632.0
-    :knocked-medium-vxz-lo 81920.0
-    :knocked-medium-vxz-hi 81920.0
-    :knocked-medium-vy-lo 69632.0
-    :knocked-medium-vy-hi 69632.0
-    :knocked-hard-vxz-lo 81920.0
-    :knocked-hard-vxz-hi 81920.0
-    :knocked-hard-vy-lo 69632.0
-    :knocked-hard-vy-hi 69632.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 53248.0
-    :knocked-yellow-vy-lo 40960.0
-    :knocked-yellow-vy-hi 53248.0
-    :knocked-red-vxz-lo 102400.0
-    :knocked-red-vxz-hi 102400.0
-    :knocked-red-vy-lo 81920.0
-    :knocked-red-vy-hi 81920.0
-    :knocked-blue-vxz-lo 32768.0
-    :knocked-blue-vxz-hi 65536.0
-    :knocked-blue-vy-lo 32768.0
-    :knocked-blue-vy-hi 49152.0
+    :knocked-soft-vxz-lo (meters 20)
+    :knocked-soft-vxz-hi (meters 20)
+    :knocked-soft-vy-lo (meters 17)
+    :knocked-soft-vy-hi (meters 17)
+    :knocked-medium-vxz-lo (meters 20)
+    :knocked-medium-vxz-hi (meters 20)
+    :knocked-medium-vy-lo (meters 17)
+    :knocked-medium-vy-hi (meters 17)
+    :knocked-hard-vxz-lo (meters 20)
+    :knocked-hard-vxz-hi (meters 20)
+    :knocked-hard-vy-lo (meters 17)
+    :knocked-hard-vy-hi (meters 17)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 13)
+    :knocked-yellow-vy-lo (meters 10)
+    :knocked-yellow-vy-hi (meters 13)
+    :knocked-red-vxz-lo (meters 25)
+    :knocked-red-vxz-hi (meters 25)
+    :knocked-red-vy-lo (meters 20)
+    :knocked-red-vy-hi (meters 20)
+    :knocked-blue-vxz-lo (meters 8)
+    :knocked-blue-vxz-hi (meters 16)
+    :knocked-blue-vy-lo (meters 8)
+    :knocked-blue-vy-hi (meters 12)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -387,10 +387,11 @@
   )
 
 (defmethod enemy-common-post ((this metalhead-predator))
+  "Common implementation of post. Runs ja-post."
   (when (< 1 (the-as int (-> this focus aware)))
     (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
       (when s5-0
-        (set! (-> this focus-pos quad) (-> (get-trans s5-0 5) quad))
+        (vector-copy! (-> this focus-pos) (get-trans s5-0 5))
         (los-control-method-9 (-> this los) s5-0 (-> this focus-pos) 819.2 4096.0)
         )
       )
@@ -404,6 +405,7 @@
 
 ;; WARN: disable def twice: 21. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod event-handler ((this metalhead-predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('attack)
      (set! (-> this shock-effect-end) (+ (current-time) (seconds 1)))
@@ -421,6 +423,7 @@
   )
 
 (defmethod knocked-anim ((this metalhead-predator) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (cond
     ((= (-> this hit-points) 0.0)
      (case (-> this incoming knocked-type)
@@ -513,6 +516,7 @@
   )
 
 (defmethod knocked-land-anim ((this metalhead-predator) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (cond
     ((= (-> this hit-points) 0.0)
      (case (-> this incoming knocked-type)
@@ -596,7 +600,7 @@
     (let ((f0-0 1228.8)
           (f30-0 6144.0)
           )
-      (set! (-> s5-0 start-pos quad) (-> arg0 quad))
+      (vector-copy! (-> s5-0 start-pos) arg0)
       (vector-! (-> s5-0 move-dist) arg1 arg0)
       (let ((v1-4 s5-0))
         (set! (-> v1-4 radius) f0-0)
@@ -629,7 +633,7 @@
             )
           )
         )
-      (set! (-> s5-0 start-pos quad) (-> arg0 quad))
+      (vector-copy! (-> s5-0 start-pos) arg0)
       (let ((v1-14 s5-0))
         (set! (-> v1-14 radius) f30-0)
         (set! (-> v1-14 collide-with) (collide-spec enemy hit-by-player-list hit-by-others-list))
@@ -646,20 +650,16 @@
        #t
        )
       (else
-        (let ((s4-1 (-> s5-0 best-other-tri collide-ptr)))
-          (if (and (if (type? s4-1 collide-shape-prim)
-                       s4-1
-                       )
-                   (< (vector-dot
-                        (-> s5-0 best-other-tri normal)
-                        (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
-                        )
-                      0.0
+        (if (and (as-type (-> s5-0 best-other-tri collide-ptr) collide-shape-prim)
+                 (< (vector-dot
+                      (-> s5-0 best-other-tri normal)
+                      (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
                       )
-                   )
-              #f
-              )
-          )
+                    0.0
+                    )
+                 )
+            #f
+            )
         )
       )
     )
@@ -700,7 +700,7 @@
             )
         (when s3-0
           (seek! (-> this miss-amount) (* 0.2 (vector-length (-> s3-0 root transv))) 4096.0)
-          (set! (-> s2-0 quad) (-> (get-trans s3-0 3) quad))
+          (vector-copy! s2-0 (get-trans s3-0 3))
           (set! sv-272 (new 'stack-no-clear 'vector))
           (let ((v1-28 (-> s5-0 pos))
                 (a0-19 s2-0)
@@ -708,47 +708,33 @@
             (.lvf vf4 (&-> v1-28 quad))
             (.lvf vf5 (&-> a0-19 quad))
             )
-          (.mov.vf vf6 vf0 :mask #b1000)
-          (.sub.vf vf6 vf4 vf5 :mask #b111)
+          (.mov.vf.w vf6 vf0)
+          (.sub.vf.xyz vf6 vf4 vf5)
           (.svf (&-> sv-272 quad) vf6)
           (let* ((f0-5 (vector-length sv-272))
-                 (f0-6 (* 0.0000018780048 f0-5))
+                 (f0-6 (/ f0-5 (meters 130)))
                  )
             (set! sv-288 (new 'stack-no-clear 'vector))
             (let ((s0-0 (new 'stack-no-clear 'vector))
                   (s1-1 (new 'stack-no-clear 'vector))
                   )
-              (let ((a0-20 s2-0))
-                (let ((v1-34 s2-0))
-                  (let ((a1-6 (-> s3-0 root transv)))
-                    (let ((a2-2 f0-6))
-                      (.mov vf7 a2-2)
-                      )
-                    (.lvf vf5 (&-> a1-6 quad))
-                    )
-                  (.lvf vf4 (&-> v1-34 quad))
-                  )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-                (.svf (&-> a0-20 quad) vf6)
-                )
+              (vector+*! s2-0 s2-0 (-> s3-0 root transv) f0-6)
               (vector-normalize! sv-272 1.0)
               (vector-flatten! sv-288 *up-vector* sv-272)
               (vector-normalize! sv-288 1.0)
               (vector-cross! s0-0 sv-272 sv-288)
               (vector-normalize! s0-0 1.0)
-              (let ((a2-5 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) sv-272 (-> this shoot-angle))))
-                (vector-orient-by-quat! sv-288 sv-288 a2-5)
+              (let ((a2-4 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) sv-272 (-> this shoot-angle))))
+                (vector-orient-by-quat! sv-288 sv-288 a2-4)
                 )
               (let* ((t9-9 quaternion-vector-angle!)
-                     (a0-28 (new 'stack-no-clear 'quaternion))
-                     (a2-6 (-> this shoot-angle))
-                     (a2-7 (t9-9 a0-28 sv-272 a2-6))
+                     (a0-29 (new 'stack-no-clear 'quaternion))
+                     (a2-5 (-> this shoot-angle))
+                     (a2-6 (t9-9 a0-29 sv-272 a2-5))
                      )
-                (vector-orient-by-quat! s0-0 s0-0 a2-7)
+                (vector-orient-by-quat! s0-0 s0-0 a2-6)
                 )
-              (let ((a0-30 s1-1))
+              (let ((a0-31 s1-1))
                 (let ((v1-36 s2-0))
                   (let ((a1-17 (-> this miss-amount)))
                     (.mov vf7 a1-17)
@@ -756,22 +742,12 @@
                   (.lvf vf5 (&-> sv-288 quad))
                   (.lvf vf4 (&-> v1-36 quad))
                   )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-                (.svf (&-> a0-30 quad) vf6)
+                (.add.x.vf.w vf6 vf0 vf0)
+                (.mul.x.vf.xyz acc vf5 vf7)
+                (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
+                (.svf (&-> a0-31 quad) vf6)
                 )
-              (let ((v1-37 s2-0))
-                (let ((a0-31 (* arg1 (-> this miss-amount))))
-                  (.mov vf7 a0-31)
-                  )
-                (.lvf vf5 (&-> s0-0 quad))
-                (.lvf vf4 (&-> s1-1 quad))
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-                (.svf (&-> v1-37 quad) vf6)
-                )
+              (vector+*! s2-0 s1-1 s0-0 (* arg1 (-> this miss-amount)))
               )
             )
           (vector-! (-> s5-0 vel) s2-0 (-> s5-0 pos))
@@ -953,7 +929,7 @@
     (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (let* ((v1-9 *game-info*)
            (a0-5 (+ (-> v1-9 attack-id) 1))
            )
@@ -974,7 +950,7 @@
         )
     )
   :trans (behavior ()
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
@@ -1022,6 +998,7 @@
   )
 
 (defmethod init-enemy-collision! ((this metalhead-predator))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1105,12 +1082,13 @@
   )
 
 (defmethod init-enemy! ((this metalhead-predator))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-metalhead-predator" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *metalhead-predator-nav-enemy-info*)
+  (setup-enemy! this *metalhead-predator-nav-enemy-info*)
   (let ((v1-5 (-> this nav)))
     (set! (-> v1-5 speed-scale) 1.0)
     )

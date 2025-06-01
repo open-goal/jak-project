@@ -23,7 +23,7 @@
 
 (defpart 2014
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 12.0)
    (:x (meters -3) (meters 6))
    (:scale-x (meters 1) (meters 1))
@@ -56,12 +56,14 @@
   (:states
    keg-conveyor-idle))
 
+
 (deftype keg-conveyor-paddle (process-drawable)
   ((root             collide-shape-moving :override)
    (object-on-paddle (pointer bouncing-float))
    (sync             sync-info :inline))
   (:states
    keg-conveyor-paddle-idle))
+
 
 (deftype keg (process-drawable)
   ((root                collide-shape-moving :override)
@@ -77,6 +79,7 @@
    keg-on-paddle
    keg-on-path
    keg-paddle-to-path))
+
 
 (defskelgroup *keg-conveyor-sg*
   keg-conveyor
@@ -406,9 +409,9 @@
   (go keg-conveyor-paddle-idle)
   (none))
 
-(defmethod relocate ((this keg-conveyor) (arg0 int))
-  (if (nonzero? (-> this pivot)) (&+! (-> this pivot) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this keg-conveyor) (offset int))
+  (if (nonzero? (-> this pivot)) (&+! (-> this pivot) offset))
+  (call-parent-method this offset))
 
 ;; WARN: Function (method 11 keg-conveyor) has a return type of none, but the expression builder found a return statement.
 (defmethod init-from-entity! ((this keg-conveyor) (arg0 entity-actor))

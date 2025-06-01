@@ -10,7 +10,7 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/util/type_utils.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 
@@ -238,6 +238,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::VECTOR_PLUS:
     case Kind::VECTOR_MINUS:
     case Kind::VECTOR_CROSS:
+    case Kind::VECTOR_XYZ_PRODUCT:
       return TP_Type::make_from_ts("vector");
     case Kind::VECTOR_FLOAT_PRODUCT:
       return TP_Type::make_from_ts("vector");
@@ -246,6 +247,7 @@ TP_Type SimpleExpression::get_type(const TypeState& input,
     case Kind::VECTOR_3_DOT:
     case Kind::VECTOR_4_DOT:
     case Kind::VECTOR_LENGTH:
+    case Kind::VECTOR_LENGTH_SQUARED:
       return TP_Type::make_from_ts("float");
     default:
       throw std::runtime_error("Simple expression cannot get_type: " +

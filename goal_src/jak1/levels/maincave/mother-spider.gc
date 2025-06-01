@@ -63,7 +63,7 @@
 
 (defpart 2477
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  ((:texture (middot effects))
    (:num 0.0 1.0)
    (:scale-x (meters 0.1) (meters 0.35))
    (:scale-y :copy scale-x)
@@ -95,8 +95,8 @@
             (.lvf vf1 (&-> (-> self transv) quad))
             (let ((f0-2 (seconds-per-frame))) (.mov at-0 f0-2))
             (.mov vf2 at-0)
-            (.mov.vf vf1 vf0 :mask #b1000)
-            (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+            (.mov.vf.w vf1 vf0)
+            (.mul.x.vf.xyz vf1 vf1 vf2)
             (.svf (&-> v1-1 quad) vf1))
           (when (>= (fill-and-probe-using-line-sphere *collide-cache*
                                                       (-> self root trans)
@@ -183,7 +183,7 @@
 
 (defpart 2498
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  ((:texture (middot effects))
    (:num 1.0 2.0)
    (:scale-x (meters 0.1) (meters 0.35))
    (:scale-y :copy scale-x)
@@ -399,7 +399,7 @@
       (let ((f0-1 (fmax 0.0 (- (-> this dist-from-anchor) (-> this idle-dist-from-anchor)))))
         (cond
           ((>= f0-1 20480.0) (vector-identity! (-> this root scale)))
-          (else (let ((f0-2 (* 0.000048828126 f0-1))) (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)))))
+          (else (let ((f0-2 (/ f0-1 (meters 5)))) (set-vector! (-> this root scale) f0-2 f0-2 f0-2 1.0)))))
       (if arg0 (shadow-handler this))
       (let ((s4-1 (-> this leg-socket-part-mask)))
         (when (nonzero? s4-1)
@@ -462,8 +462,8 @@
                  (.lvf vf1 (&-> (-> this swing-vel) quad))
                  (let ((f0-7 (seconds-per-frame))) (.mov at-0 f0-7))
                  (.mov vf2 at-0)
-                 (.mov.vf vf1 vf0 :mask #b1000)
-                 (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+                 (.mov.vf.w vf1 vf0)
+                 (.mul.x.vf.xyz vf1 vf1 vf2)
                  (.svf (&-> v1-20 quad) vf1))
                (when (>= (fill-and-probe-using-line-sphere *collide-cache*
                                                            s4-0
@@ -503,7 +503,7 @@
       (vector+! v1-51 (-> this root trans) (-> this anchor-trans))
       (vector-float*! v1-51 v1-51 0.5)
       (vector-! v1-51 v1-51 (-> this root trans))
-      (set! (-> v1-51 w) (+ 28672.0 (* 0.5 (-> this dist-from-anchor)))))
+      (set! (-> v1-51 w) (+ 28672.0 (/ (-> this dist-from-anchor) 2))))
     (cond
       ((!= (-> this spin-vel) 0.0)
        (let ((f0-44 (+ (-> this orient-rot y) (* (-> this spin-vel) (seconds-per-frame)))))
@@ -1064,9 +1064,9 @@
           (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
           (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-status no-skeleton-update))))))
 
-(defmethod relocate ((this mother-spider) (arg0 int))
-  (if (nonzero? (-> this neck)) (&+! (-> this neck) arg0))
-  (the-as mother-spider ((method-of-type process-drawable relocate) this arg0)))
+(defmethod relocate ((this mother-spider) (offset int))
+  (if (nonzero? (-> this neck)) (&+! (-> this neck) offset))
+  (the-as mother-spider ((method-of-type process-drawable relocate) this offset)))
 
 (defmethod init-from-entity! ((this mother-spider) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-64 vector))

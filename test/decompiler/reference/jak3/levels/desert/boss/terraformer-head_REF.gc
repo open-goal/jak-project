@@ -325,7 +325,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-target! ((this joint-mod-disc-look-at) (arg0 vector))
-  (set! (-> this target quad) (-> arg0 quad))
+  (vector-copy! (-> this target) arg0)
   0
   (none)
   )
@@ -424,11 +424,11 @@
       (let* ((t9-2 vector-normalize-copy!)
              (a0-3 (new 'stack-no-clear 'vector))
              (v1-3 (abs (-> s4-0 nose)))
-             (s3-0 (t9-2 a0-3 (the-as vector (&-> (-> arg0 bone) transform quad v1-3)) 1.0))
+             (s3-0 (t9-2 a0-3 (the-as vector (&-> arg0 bone transform quad v1-3)) 1.0))
              (t9-3 vector-normalize-copy!)
              (a0-4 (new 'stack-no-clear 'vector))
              (v1-6 (abs (-> s4-0 up)))
-             (s1-0 (t9-3 a0-4 (the-as vector (&-> (-> arg0 bone) transform quad v1-6)) 1.0))
+             (s1-0 (t9-3 a0-4 (the-as vector (&-> arg0 bone transform quad v1-6)) 1.0))
              (s2-1 (vector-! (new 'stack-no-clear 'vector) (-> s4-0 target) (-> arg0 bone transform trans)))
              (s5-1 (new 'stack-no-clear 'matrix))
              )
@@ -444,7 +444,7 @@
         (let ((s4-1 (matrix->trans (-> arg0 bone transform) (new 'stack-no-clear 'vector))))
           (set-vector! (-> arg0 bone transform trans) 0.0 0.0 0.0 1.0)
           (matrix*! (-> arg0 bone transform) (-> arg0 bone transform) s5-1)
-          (set! (-> arg0 bone transform trans quad) (-> s4-1 quad))
+          (vector-copy! (-> arg0 bone transform trans) s4-1)
           )
         )
       )
@@ -479,7 +479,8 @@
 
 ;; definition for method 20 of type terraformer-head-target
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this terraformer-head-target))
+(defmethod get-search-info-flag ((this terraformer-head-target))
+  "Get search-info-flag for this process."
   (the-as search-info-flag 16)
   )
 
@@ -616,8 +617,8 @@
       (case message
         (('move)
          (let ((v1-1 (-> self root)))
-           (set! (-> self starting-pos quad) (-> (the-as vector (-> block param 0)) quad))
-           (set! (-> self root trans quad) (-> self starting-pos quad))
+           (vector-copy! (-> self starting-pos) (the-as vector (-> block param 0)))
+           (vector-copy! (-> self root trans) (-> self starting-pos))
            (vector-! (-> self root transv) (the-as vector (-> block param 1)) (-> self starting-pos))
            (let ((a0-7 (-> self root transv)))
              (.lvf vf1 (&-> (-> self root transv) quad))
@@ -625,11 +626,11 @@
                (.mov at-0 f0-0)
                )
              (.mov vf2 at-0)
-             (.mov.vf vf1 vf0 :mask #b1000)
-             (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+             (.mov.vf.w vf1 vf0)
+             (.mul.x.vf.xyz vf1 vf1 vf2)
              (.svf (&-> a0-7 quad) vf1)
              )
-           (set! (-> self pre-move-transv quad) (-> v1-1 transv quad))
+           (vector-copy! (-> self pre-move-transv) (-> v1-1 transv))
            )
          (vector-normalize-copy! (-> self starting-dir) (-> self root transv) 1.0)
          (set! (-> self hits) 0)
@@ -914,7 +915,8 @@
 
 ;; definition for method 20 of type terraformer-head
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this terraformer-head))
+(defmethod get-search-info-flag ((this terraformer-head))
+  "Get search-info-flag for this process."
   (the-as search-info-flag 1)
   )
 
@@ -986,8 +988,8 @@
         (set! (-> a1-2 charge) 1.0)
         (set! (-> a1-2 options) (projectile-options))
         (logclear! (-> a1-2 options) (projectile-options po14 po15 po16))
-        (set! (-> a1-2 pos quad) (-> self root trans quad))
-        (set! (-> a1-2 vel quad) (-> (new 'static 'vector :x 1.0) quad))
+        (vector-copy! (-> a1-2 pos) (-> self root trans))
+        (vector-copy! (-> a1-2 vel) (new 'static 'vector :x 1.0))
         (set! (-> a1-2 notify-handle) (the-as handle #f))
         (set! (-> a1-2 owner-handle) (the-as handle #f))
         (set! (-> a1-2 target-handle) (the-as handle #f))
@@ -1076,7 +1078,7 @@
          (set! (-> a0-29 pickup-type) (pickup-type ammo-random))
          (set! (-> a0-29 pickup-amount) 10.0)
          (let ((s3-1 (new 'stack-no-clear 'vector)))
-           (set! (-> s3-1 quad) (-> self root trans quad))
+           (vector-copy! s3-1 (-> self root trans))
            (set! (-> self root trans quad)
                  (-> (the-as (pointer uint128) (+ (the-as uint (-> self ammo 0 where)) (* 48 s4-1))))
                  )
@@ -1084,7 +1086,7 @@
            (set! (-> self ammo s4-1 handle)
                  (ppointer->handle (drop-pickup a0-29 #t *entity-pool* (the-as fact-info #f) 0 #t))
                  )
-           (set! (-> self root trans quad) (-> s3-1 quad))
+           (vector-copy! (-> self root trans) s3-1)
            )
          )
        )
@@ -1199,7 +1201,7 @@
       )
     )
   (update! (-> self position-seeker) (the-as vector #f))
-  (set! (-> self root trans quad) (-> self position-seeker value quad))
+  (vector-copy! (-> self root trans) (-> self position-seeker value))
   (dotimes (gp-2 8)
     (let* ((s5-3 (-> self critter gp-2))
            (s4-3 (handle->process (-> s5-3 handle)))
@@ -1995,9 +1997,9 @@
 ;; INFO: Used lq/sq
 (defbehavior terraformer-head-point-occupied? terraformer-head ((arg0 vector))
   (let ((a1-0 (new 'stack-no-clear 'vector)))
-    (set! (-> a1-0 quad) (-> arg0 quad))
+    (vector-copy! a1-0 arg0)
     (set! (-> a1-0 w) 16384.0)
-    (add-root-sphere-to-hash! (-> self nav) a1-0 255)
+    (check-sphere-blocked! (-> self nav) a1-0 255)
     )
   )
 
@@ -2035,7 +2037,7 @@
               )
           (when (terraformer-head-get-spawn-point gp-0 (-> s5-0 dest))
             (set! (-> s5-0 flags) (terraformer-head-critter-tracker-flag))
-            (set! (-> s4-0 trans quad) (-> gp-0 quad))
+            (vector-copy! (-> s4-0 trans) gp-0)
             (quaternion-copy! (-> s4-0 quat) (-> self root quat))
             (set! (-> s4-0 entity) (-> self entity))
             (set! (-> s4-0 directed?) #f)
@@ -2135,7 +2137,7 @@
                  (set-vector! (-> s4-4 fvec) 0.0 1.0 0.0 0.0)
                  (vector-cross! (-> s4-4 rvec) (-> s4-4 uvec) (-> s4-4 fvec))
                  (set! (-> s4-4 rvec w) 0.0)
-                 (set! (-> s4-4 trans quad) (-> gp-0 quad))
+                 (vector-copy! (-> s4-4 trans) gp-0)
                  (+! (-> s4-4 trans y) 8192.0)
                  (set! (-> s4-4 trans w) 1.0)
                  )
@@ -2290,7 +2292,7 @@
   :enter (behavior ()
     (terraformer-head-send-group-event 0 'retract)
     (let ((v1-0 (new 'stack-no-clear 'vector)))
-      (set! (-> v1-0 quad) (-> self initial-position quad))
+      (vector-copy! v1-0 (-> self initial-position))
       (+! (-> v1-0 x) 204800.0)
       (+! (-> v1-0 y) -102400.0)
       (set! (-> self position-seeker target quad) (-> v1-0 quad))
@@ -2350,11 +2352,11 @@
     (let ((gp-0 (get-trans self 3)))
       (cond
         ((logtest? (-> *part-group-id-table* 217 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+         (vector-copy! (-> *launch-matrix* trans) gp-0)
          (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 217))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> gp-0 quad))
+          (vector-copy! (-> *launch-matrix* trans) gp-0)
           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 217))
           )
         )
@@ -2443,7 +2445,7 @@
     (logior! (-> self skel status) (joint-control-status sync-math))
     (set-time! (-> self state-time))
     (let ((v1-7 (new 'stack-no-clear 'vector)))
-      (set! (-> v1-7 quad) (-> self initial-position quad))
+      (vector-copy! v1-7 (-> self initial-position))
       (+! (-> v1-7 x) 204800.0)
       (+! (-> v1-7 y) -223232.0)
       (set! (-> self position-seeker target quad) (-> v1-7 quad))
@@ -2829,6 +2831,7 @@
 ;; definition for method 11 of type terraformer-head
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this terraformer-head) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 38) 0)))
@@ -3114,7 +3117,7 @@
     (set! (-> this root) s4-0)
     )
   (process-drawable-from-entity! this arg0)
-  (set! (-> this initial-position quad) (-> this root trans quad))
+  (vector-copy! (-> this initial-position) (-> this root trans))
   (+! (-> this root trans x) 204800.0)
   (+! (-> this root trans y) -57344.0)
   (init (-> this position-seeker) (-> this root trans) 40.96 4096.0 0.3)
@@ -3139,7 +3142,7 @@
   (set! (-> this neck-aim-jm up) 1)
   (set! (-> this neck-aim-jm nose) 2)
   (logior! (-> this neck-aim-jm flags) (jmod-disc-lookat-flag jdl1))
-  (set! (-> this target-position quad) (-> (target-pos 0) quad))
+  (vector-copy! (-> this target-position) (target-pos 0))
   (tracking-spline-method-10 (-> this target-spline) (-> this target-position))
   (set! (-> this beam-projectile) (the-as handle #f))
   (set! (-> this hit-points) 1.0)
@@ -3190,7 +3193,3 @@
   (set! (-> this warmup-sound-id) (new-sound-id))
   (go (method-of-object this initial-state))
   )
-
-
-
-

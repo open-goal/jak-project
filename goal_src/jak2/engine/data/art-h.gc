@@ -420,5 +420,30 @@
         )
   )
 
+(defmacro def-actor (name &key (idle #f) &key (lods #f) &key (art (idle-ja)) &key (joints ()) &key (shadow 0) &key bounds &key (longest-edge 0.0) &key (texture-level 0) &key (sort 0) &key (version 7) &key (origin-joint-index 0) &key (shadow-joint-index 0) &key (light-index 0))
+  `(begin
+    (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-jg" name) 0)
+    (def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-lod0-mg" name) 1)
+    ,@(apply-i (lambda (x i)
+               `(def-art-elt ,(string->symbol-format "{}-ag" name) ,(string->symbol-format "{}-{}" name x) ,(+ i 2)))
+             art)
+    ,@(apply-i (lambda (x i) `(def-joint-node ,(string->symbol-format "{}-lod0-jg" name) ,(symbol->string x) ,(1+ i))) joints)
+    (defskelgroup ,(string->symbol-format "*{}-sg*" name)
+      ,name
+      ,(string->symbol-format "{}-lod0-jg" name)
+      ,(if idle (string->symbol-format "{}-{}" name idle) (string->symbol-format "{}-{}" name (car art)))
+      ,(if lods
+        `(,@(apply (lambda (x) `(,(string->symbol-format "{}-{}-mg" name (car x)) (meters ,(cadr x)))) lods))
+        `((,(string->symbol-format "{}-lod0-mg" name) (meters 999999))))
+      :version ,version
+      :shadow ,shadow
+      :bounds (static-spherem ,@bounds)
+      :longest-edge ,longest-edge
+      :texture-level ,texture-level
+      :sort ,sort
+      :origin-joint-index ,origin-joint-index
+      :shadow-joint-index ,shadow-joint-index
+      :light-index ,light-index)))
+
 (import "goal_src/jak2/engine/data/art-elts.gc")
 (import "goal_src/jak2/engine/data/joint-nodes.gc")

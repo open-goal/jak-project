@@ -373,34 +373,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x 0.135 :y 0.9566 :z 0.258 :w 1296.2657)
       :scale (new 'static 'vector :x 1.3 :y 1.3 :z 1.3)
@@ -664,6 +664,7 @@
 
 ;; WARN: Return type mismatch int vs sound-id.
 (defmethod play-damage-sound ((this robo-hover) (arg0 int))
+  "Pick and play the damage/death sound."
   (if (and (zero? arg0) (logtest? (penetrate enemy-yellow-shot) (-> this incoming penetrate-using)))
       (sound-play "hover-take-hit")
       (call-parent-method this arg0)
@@ -767,7 +768,7 @@
   :trans (behavior ()
     (exit-ambush?)
     (if (or (los-control-method-11 (-> self los) (seconds 0.2))
-            (not (enemy-method-104 self (-> self focus-pos) 9102.223))
+            (not (pointing-toward? self (-> self focus-pos) 9102.223))
             )
         (go-virtual ambush-fly)
         )
@@ -858,13 +859,8 @@
         )
       )
     (let ((gp-0 (-> self dest-pos)))
-      (let* ((s5-0 (handle->process (-> self focus handle)))
-             (a0-6 (if (type? s5-0 process-focusable)
-                       s5-0
-                       )
-                   )
-             )
-        (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-6) 0) quad))
+      (let ((a0-6 (as-type (handle->process (-> self focus handle)) process-focusable)))
+        (vector-copy! gp-0 (get-trans (the-as process-focusable a0-6) 0))
         )
       (+! (-> gp-0 y) -20480.0)
       (hover-nav-control-method-12 (-> self hover) gp-0)
@@ -955,7 +951,7 @@
     )
   :trans (behavior ()
     (if (or (los-control-method-11 (-> self los) (seconds 0.2))
-            (not (enemy-method-104 self (-> self focus-pos) 9102.223))
+            (not (pointing-toward? self (-> self focus-pos) 9102.223))
             )
         (go-hostile self)
         )
@@ -977,7 +973,7 @@
     (set! (-> self gun-blend)
           (seek-ease (-> self gun-blend) 1.0 (* 3.0 (seconds-per-frame)) 0.9 (* 0.4 (seconds-per-frame)))
           )
-    (set! (-> self aim-position quad) (-> self focus-pos quad))
+    (vector-copy! (-> self aim-position) (-> self focus-pos))
     (set! (-> self aim-position y) (+ 6144.0 (-> self attack-miss-dist-curr) (-> self aim-position y)))
     (hover-enemy-hostile-post)
     )
@@ -1036,7 +1032,7 @@
           )
         )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
@@ -1059,17 +1055,17 @@
     (let ((a1-3 (new 'stack 'debris-tuning (the-as uint 1))))
       (set! (-> a1-3 hit-xz-reaction) 0.95)
       (set! (-> a1-3 hit-y-reaction) 0.6)
-      (set! (-> a1-3 fountain-rand-transv-lo quad) (-> self incoming attack-position quad))
+      (vector-copy! (-> a1-3 fountain-rand-transv-lo) (-> self incoming attack-position))
       (debris-spawn self a1-3 *robo-hover-debris-params* (the-as process-drawable #f))
       )
     (let ((v1-16 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node robo-hover-lod0-jg chest))))
       (cond
         ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> v1-16 quad))
+         (vector-copy! (-> *launch-matrix* trans) v1-16)
          (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> v1-16 quad))
+          (vector-copy! (-> *launch-matrix* trans) v1-16)
           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
           )
         )
@@ -1089,6 +1085,7 @@
   )
 
 (defmethod event-handler ((this robo-hover) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (local-vars (v1-15 enemy-flag))
   (case arg2
     (('attack-invinc)
@@ -1168,7 +1165,7 @@
                                                    (get-focus! this)
                                                    (< f30-0 225280.0)
                                                    (and (< (fabs (vector-x-angle s5-2)) 3640.889)
-                                                        (enemy-method-104 this (-> this focus-pos) 5461.3335)
+                                                        (pointing-toward? this (-> this focus-pos) 5461.3335)
                                                         (should-check-los? (-> this los) (seconds 0.4))
                                                         )
                                                    )
@@ -1203,6 +1200,7 @@
   )
 
 (defmethod knocked-handler ((this robo-hover) (arg0 vector))
+  "Called when this enemy is knocked."
   (let ((s4-0 (-> this root)))
     (case (-> this incoming knocked-type)
       (((knocked-type explode-or-darkjak))
@@ -1251,6 +1249,7 @@
   )
 
 (defmethod enemy-common-post ((this robo-hover))
+  "Common implementation of post. Runs ja-post."
   ((method-of-type hover-enemy enemy-common-post) this)
   0
   (none)
@@ -1276,7 +1275,7 @@
                   (-> arg0 scale)
                   (quaternion-rotate-local-z! (the-as quaternion sv-208) a1-3 sv-192)
                   (quaternion->matrix s5-0 (the-as quaternion sv-208))
-                  (set! (-> s2-1 quad) (-> arg0 root scale quad))
+                  (vector-copy! s2-1 (-> arg0 root scale))
                   (scale-matrix! s5-0 s2-1 s5-0)
                   (let* ((s1-1 (vector-inv-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 (-> arg0 root quat)))
                          (t9-6 vector-inv-orient-by-quat!)
@@ -1289,10 +1288,10 @@
                              (-> arg0 thrust s3-0)
                              (+ (* 0.4 (fmax 0.0 (* (-> v0-6 x) s0-0)))
                                 (fmax 0.0 (-> v0-6 y))
-                                (fabs (* 0.2 (-> v0-6 z)))
+                                (fabs (/ (-> v0-6 z) 5))
                                 (fmax 0.0 (-> s1-1 y))
                                 )
-                             (* 0.2 f30-0)
+                             (/ f30-0 5)
                              )
                            )
                          )
@@ -1314,11 +1313,11 @@
                         (set! (-> *part-id-table* 2213 init-specs 0 initial-valuef) (* f24-0 f0-14))
                         (set! (-> arg0 thrust s3-0) f28-0)
                         (let ((f0-15 (* f26-0 f0-14)))
-                          (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 uvec) (* -0.5 f0-15))
+                          (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 uvec) (/ f0-15 -2))
                           )
                         )
                       )
-                    (set! (-> s5-0 trans quad) (-> s4-0 quad))
+                    (vector-copy! (-> s5-0 trans) s4-0)
                     (spawn-from-mat (-> arg0 engine-part) s5-0)
                     (let ((f0-17 (lerp-scale 0.4 1.0 f28-0 1638.4 f30-0)))
                       (sound-play-by-name
@@ -1389,7 +1388,7 @@
           )
         (set! (-> *part-id-table* 2213 init-specs 0 initial-valuef) f1-0)
         )
-      (let ((v1-29 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 uvec) (* -0.5 f0-0))))
+      (let ((v1-29 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 uvec) (/ f0-0 -2))))
         (vector+! (-> s5-0 trans) s4-0 v1-29)
         )
       )
@@ -1405,11 +1404,7 @@
   (let ((s3-1
           (quaternion-vector-angle!
             (new 'stack-no-clear 'quaternion)
-            (vector-normalize-copy!
-              (new 'stack-no-clear 'vector)
-              (the-as vector (-> this node-list data arg2 bone transform))
-              1.0
-              )
+            (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this node-list data arg2 bone transform rvec) 1.0)
             (* 273.06668 arg3)
             )
           )
@@ -1426,6 +1421,7 @@
   )
 
 (defmethod go-die ((this robo-hover))
+  "Go to the die state."
   (cond
     ((and (-> this next-state) (= (-> this next-state name) 'knocked))
      (go (method-of-object this explode))
@@ -1450,6 +1446,7 @@
   )
 
 (defmethod init-enemy-collision! ((this robo-hover))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1584,6 +1581,7 @@
   )
 
 (defmethod coin-flip? ((this robo-hover))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1632,8 +1630,8 @@
           (let ((v1-1 s1-0))
             (.lvf vf4 (&-> s0-0 quad))
             (.lvf vf5 (&-> sv-80 quad))
-            (.mov.vf vf6 vf0 :mask #b1000)
-            (.sub.vf vf6 vf4 vf5 :mask #b111)
+            (.mov.vf.w vf6 vf0)
+            (.sub.vf.xyz vf6 vf4 vf5)
             (.svf (&-> v1-1 quad) vf6)
             )
           (vector-normalize! s1-0 1.0)
@@ -1660,9 +1658,10 @@
   )
 
 (defmethod init-enemy! ((this robo-hover))
+  "Typical place for shared init code. Runs from entity or process style init."
   (local-vars (sv-16 res-tag) (sv-32 res-tag) (sv-48 res-tag) (sv-64 res-tag))
   (hover-enemy-method-170 this)
-  (init-enemy-defaults! this (get-enemy-info this))
+  (setup-enemy! this (get-enemy-info this))
   (hover-enemy-method-176 this)
   (set! (-> this neck up) (the-as uint 1))
   (set! (-> this neck nose) (the-as uint 2))
@@ -1765,7 +1764,7 @@
     (set! (-> v1-23 param2) (the-as basic 1))
     )
   (quaternion-from-two-vectors!
-    (the-as quaternion (-> this wrist-quat))
+    (-> this wrist-quat 0)
     (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this node-list data 14 bone transform uvec) 1.0)
     (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this node-list data 15 bone transform uvec) 1.0)
     )

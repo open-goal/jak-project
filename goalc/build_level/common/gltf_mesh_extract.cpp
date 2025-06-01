@@ -12,9 +12,10 @@
 #include "common/math/geometry.h"
 #include "common/util/Timer.h"
 #include "common/util/gltf_util.h"
-#include <common/util/image_resize.h>
+#include "common/util/image_resize.h"
 
 using namespace gltf_util;
+constexpr int kColorTreeDepth = 13;
 namespace gltf_mesh_extract {
 
 void dedup_tfrag_vertices(TfragOutput& data) {
@@ -82,26 +83,9 @@ void dedup_tie_vertices(TieOutput& data) {
 bool prim_needs_tie(const tinygltf::Model& model, const tinygltf::Primitive& prim) {
   if (prim.material >= 0) {
     auto mat = model.materials.at(prim.material);
-    return mat.extensions.contains("KHR_materials_specular");
+    return envmap_is_valid(mat);
   }
   return false;
-}
-
-struct EnvmapSettings {
-  int texture_idx = -1;
-};
-
-EnvmapSettings envmap_settings_from_gltf(const tinygltf::Material& mat) {
-  EnvmapSettings settings;
-
-  ASSERT(mat.extensions.contains("KHR_materials_specular"));
-  const auto& specular_extension = mat.extensions.at("KHR_materials_specular");
-  ASSERT(specular_extension.Has("specularColorTexture"));
-
-  auto& texture = specular_extension.Get("specularColorTexture");
-  ASSERT(texture.Has("index"));
-  settings.texture_idx = texture.Get("index").Get<int>();
-  return settings;
 }
 
 void extract(const Input& in,
@@ -218,7 +202,7 @@ void extract(const Input& in,
            out.tfrag_vertices.size());
 
   Timer quantize_timer;
-  auto quantized = quantize_colors_kd_tree(all_vtx_colors, 10);
+  auto quantized = quantize_colors_kd_tree(all_vtx_colors, kColorTreeDepth);
   for (size_t i = 0; i < out.tfrag_vertices.size(); i++) {
     out.tfrag_vertices[i].color_index = quantized.vtx_to_color[i];
   }
@@ -258,64 +242,6 @@ void add_to_packed_verts(std::vector<tfrag3::PackedTieVertices::Vertex>* out,
     x.ny = normal_to_s8(normals[i].y());
     x.nz = normal_to_s8(normals[i].z());
   }
-}
-
-int texture_pool_add_envmap_control_texture(TexturePool* pool,
-                                            const tinygltf::Model& model,
-                                            int rgb_image_id,
-                                            int mr_image_id,
-                                            bool wrap_w,
-                                            bool wrap_h) {
-  const auto& existing = pool->envmap_textures_by_gltf_id.find({rgb_image_id, mr_image_id});
-  if (existing != pool->envmap_textures_by_gltf_id.end()) {
-    lg::info("Reusing envmap textures");
-    return existing->second;
-  }
-  const auto& rgb_tex = model.images.at(rgb_image_id);
-  const auto& mr_tex = model.images.at(mr_image_id);
-  lg::info("new envmap texture {} {}", rgb_tex.name, mr_tex.name);
-  ASSERT(rgb_tex.bits == 8);
-  ASSERT(rgb_tex.component == 4);
-  ASSERT(rgb_tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
-
-  ASSERT(mr_tex.bits == 8);
-  ASSERT(mr_tex.pixel_type == TINYGLTF_TEXTURE_TYPE_UNSIGNED_BYTE);
-  ASSERT(mr_tex.component == 4);
-
-  std::vector<u8> resized_mr_tex;
-  const u8* mr_src;
-  if (rgb_tex.width == mr_tex.width && rgb_tex.height == mr_tex.height) {
-    mr_src = mr_tex.image.data();
-  } else {
-    resized_mr_tex.resize(rgb_tex.width * rgb_tex.height * 4);
-    resize_rgba_image(resized_mr_tex.data(), rgb_tex.width, rgb_tex.height, mr_tex.image.data(),
-                      mr_tex.width, mr_tex.height, wrap_w, wrap_h);
-    mr_src = resized_mr_tex.data();
-  }
-
-  size_t idx = pool->textures_by_idx.size();
-  pool->envmap_textures_by_gltf_id[{rgb_image_id, mr_image_id}] = idx;
-  auto& tt = pool->textures_by_idx.emplace_back();
-  tt.w = rgb_tex.width;
-  tt.h = rgb_tex.height;
-  tt.debug_name = rgb_tex.name;
-  tt.debug_tpage_name = "custom-level";
-  tt.load_to_pool = false;
-  tt.combo_id = 0;  // doesn't matter, not a pool tex
-  tt.data.resize(tt.w * tt.h);
-  ASSERT(rgb_tex.image.size() >= tt.data.size());
-  memcpy(tt.data.data(), rgb_tex.image.data(), tt.data.size() * 4);
-
-  // adjust alpha from metallic channel
-  for (size_t i = 0; i < tt.data.size(); i++) {
-    u32 rgb = tt.data[i];
-    u32 metal = mr_src[4 * i + 2] / 4;
-    rgb &= 0xff'ff'ff;
-    rgb |= (metal << 24);
-    tt.data[i] = rgb;
-  }
-
-  return idx;
 }
 
 void extract(const Input& in,
@@ -440,7 +366,7 @@ void extract(const Input& in,
            out.vertices.size());
 
   Timer quantize_timer;
-  auto quantized = quantize_colors_kd_tree(all_vtx_colors, 10);
+  auto quantized = quantize_colors_kd_tree(all_vtx_colors, kColorTreeDepth);
   for (size_t i = 0; i < out.vertices.size(); i++) {
     out.color_indices.push_back(quantized.vtx_to_color[i]);
   }

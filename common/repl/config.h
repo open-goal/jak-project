@@ -29,7 +29,7 @@ void from_json(const json& j, KeyBind& obj);
 // TODO - per-game config
 struct Config {
   GameVersion game_version;
-  Config(GameVersion _game_version) : game_version(_game_version){};
+  Config(GameVersion _game_version) : game_version(_game_version) {};
 
   // this is the default REPL configuration
   int nrepl_port = 8181;

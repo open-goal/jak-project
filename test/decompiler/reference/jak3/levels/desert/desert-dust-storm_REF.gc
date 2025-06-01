@@ -92,7 +92,7 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self level) arg0)
   (set! (-> self enabled-screen-filter?) #f)
-  (set! (-> self origin quad) (-> arg2 quad))
+  (vector-copy! (-> self origin) arg2)
   (set-time! (-> self state-time))
   (set! (-> self current-wind-angle-speed) 0.0)
   (set! (-> self current-wind-angle) 0.0)
@@ -173,7 +173,7 @@
        (go-virtual die)
        )
       (('hold-pos)
-       (set! (-> self origin quad) (-> (the-as vector (-> block param 0)) quad))
+       (vector-copy! (-> self origin) (the-as vector (-> block param 0)))
        (set! (-> self dest-wind-angle) (the-as float (-> block param 1)))
        (go-virtual hold-pos)
        )
@@ -182,7 +182,7 @@
   :trans (behavior ()
     (desert-dust-storm-method-20 self)
     (set! *duststorm-stationary?* #f)
-    (set! (-> self origin quad) (-> (math-camera-pos) quad))
+    (vector-copy! (-> self origin) (math-camera-pos))
     (desert-dust-storm-method-18 self)
     (desert-dust-storm-method-17 self)
     )
@@ -220,7 +220,7 @@
        (-> self intensity)
        )
       (('hold-pos)
-       (set! (-> self origin quad) (-> (the-as vector (-> block param 0)) quad))
+       (vector-copy! (-> self origin) (the-as vector (-> block param 0)))
        (set! (-> self dest-wind-angle) (the-as float (-> block param 1)))
        (set! v0-0 (current-time))
        (set! (-> self last-hold-time) (the-as time-frame v0-0))
@@ -424,7 +424,7 @@
     ((>= (/ (the float (- (current-time) (-> this state-time))) (the float (-> this new-generate-time))) 1.0)
      (set-time! (-> this state-time))
      (let ((s5-0 (new 'stack-no-clear 'vector)))
-       (set! (-> s5-0 quad) (-> (math-camera-matrix) fvec quad))
+       (vector-copy! s5-0 (-> (math-camera-matrix) fvec))
        0.0
        (set! (-> s5-0 y) 0.0)
        (vector-normalize! s5-0 1.0)
@@ -463,7 +463,7 @@
      )
     (else
       (let ((s5-1 (new 'stack-no-clear 'vector)))
-        (set! (-> s5-1 quad) (-> (math-camera-matrix) fvec quad))
+        (vector-copy! s5-1 (-> (math-camera-matrix) fvec))
         0.0
         (let ((f28-3 1.0))
           (set! (-> s5-1 y) 0.0)
@@ -492,7 +492,7 @@
                   (set! f0-44 (+ 65536.0 f0-44))
                   )
               (let* ((f0-46 (+ (* 5.0 f0-44) (* 5.0 (- (-> this current-wind-angle-speed)))))
-                     (f1-23 (* 0.2 f0-46 f28-3))
+                     (f1-23 (* (/ f0-46 5) f28-3))
                      )
                 (+! (-> this current-wind-angle-speed) (* f1-23 (seconds-per-frame)))
                 )
@@ -540,7 +540,7 @@
          (s3-0 (new 'stack-no-clear 'vector))
          )
     (dotimes (s2-0 15)
-      (set! (-> s3-0 quad) (-> this origin quad))
+      (vector-copy! s3-0 (-> this origin))
       (let ((s1-0 s3-0)
             (s0-0 s3-0)
             )
@@ -637,7 +637,7 @@
           (vector+float*! s4-0 s4-0 (get-transv *target*) 0.2)
           )
       (vector+float*! s4-0 s4-0 (-> (math-camera-matrix) fvec) 20480.0)
-      (let ((f30-4 (* 0.000061035156 (-> this stretch-val))))
+      (let ((f30-4 (/ (-> this stretch-val) (meters 4))))
         (set! (-> *part-id-table* 1421 init-specs 2 initial-valuef) (lerp 20480.0 61440.0 f30-4))
         (set! (-> *part-id-table* 1422 init-specs 2 initial-valuef) (lerp 20480.0 61440.0 f30-4))
         )
@@ -694,7 +694,7 @@
          #t
          (let* ((f0-12 (vector-dot s5-2 (-> this fog-plane-dir)))
                 (f0-13 (fmax 0.0 f0-12))
-                (f1-5 (* 0.000016276043 f0-13))
+                (f1-5 (/ f0-13 (meters 15)))
                 (f0-15 (fmax 0.0 (fmin 1.0 f1-5)))
                 )
            (set! f28-0 (lerp (fmin 0.8 (-> this intensity)) (-> this intensity) f0-15))
@@ -726,7 +726,7 @@
            (f30-2 (* f30-1 (+ f28-1 (* f26-0 (+ -1.0 (the-as float v1-34))))))
            (s5-3 (new 'stack-no-clear 'vector))
            )
-      (set! (-> s5-3 quad) (-> *duststorm-wind-vec* quad))
+      (vector-copy! s5-3 *duststorm-wind-vec*)
       (let* ((f28-2 -0.3)
              (f26-1 0.6)
              (v1-41 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
@@ -736,7 +736,7 @@
         )
       (vector-float*! s5-3 s5-3 f30-2)
       (let ((t1-0 (new 'static 'vector)))
-        (set! (-> t1-0 quad) (-> s5-3 quad))
+        (vector-copy! t1-0 s5-3)
         (set-setting! 'global-wind #f 0.0 t1-0)
         )
       )
@@ -751,7 +751,7 @@
             (send-event
               *target*
               'push-trans
-              (vector-float*! (new 'stack-no-clear 'vector) *duststorm-wind-vec* (* 0.02 *duststorm-wind-vel*))
+              (vector-float*! (new 'stack-no-clear 'vector) *duststorm-wind-vec* (/ (the float *duststorm-wind-vel*) 50))
               (seconds 0.11)
               )
             )
@@ -786,7 +786,7 @@
      (let ((f0-48 (+ -1.0 (-> this intensity))))
        0.0
        (let ((a2-8 (new 'stack-no-clear 'vector)))
-         (set! (-> a2-8 quad) (-> *time-of-day-context* current-fog fog-color quad))
+         (vector-copy! a2-8 (-> *time-of-day-context* current-fog fog-color))
          (set! (-> a2-8 w) (* 128.0 f0-48))
          (set! (-> this enabled-screen-filter?) #t)
          (setup *screen-filter* a2-8 a2-8 10000.0 (bucket-id generic-sprite-1) #x20000 #x30003 #t)
@@ -826,7 +826,3 @@
   (set! (-> *game-info* dust-storm) (the-as handle #f))
   (none)
   )
-
-
-
-

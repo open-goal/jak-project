@@ -139,6 +139,7 @@
   )
 
 (defmethod init-from-entity! ((this comb-pillar) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
@@ -250,7 +251,7 @@
   )
 
 (defmethod set-attack-vel! ((this comb-pillar) (arg0 vector))
-  (set! (-> this attack-vel quad) (-> arg0 quad))
+  (vector-copy! (-> this attack-vel) arg0)
   (if (< 81920.0 (vector-length (-> this attack-vel)))
       (vector-normalize! (-> this attack-vel) 81920.0)
       )
@@ -355,7 +356,8 @@
         :unk 0
         )
       )
-    (suspend-for (seconds 2))
+    (suspend-for (seconds 2)
+      )
     (cleanup-for-death self)
     )
   :post #f
@@ -447,6 +449,7 @@
   )
 
 (defmethod init-from-entity! ((this comb-block) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
@@ -549,7 +552,7 @@
   )
 
 (defmethod set-attack-vel! ((this comb-block) (arg0 vector))
-  (set! (-> this attack-vel quad) (-> arg0 quad))
+  (vector-copy! (-> this attack-vel) arg0)
   (if (< 81920.0 (vector-length (-> this attack-vel)))
       (vector-normalize! (-> this attack-vel) 81920.0)
       )
@@ -632,7 +635,7 @@
   :code (behavior ()
     (sound-play "sentry-explode")
     (let ((gp-1 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-1 spawn-point quad) (-> self node-list data 5 bone transform trans quad))
+      (vector-copy! (-> gp-1 spawn-point) (-> self node-list data 5 bone transform trans))
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 40960.0)
       (set! (-> gp-1 scale) 1.0)
@@ -672,7 +675,8 @@
         :unk 0
         )
       )
-    (suspend-for (seconds 2))
+    (suspend-for (seconds 2)
+      )
     (cleanup-for-death self)
     )
   :post #f
@@ -780,9 +784,9 @@
       (set! (-> gp-0 spans data v1-6 inner-random-offset-size) 4096.0)
       )
     (set! (-> gp-0 span-pts-start data 0 quad) (-> arg0 quad))
-    (set! (-> gp-0 span-pts-start data 2 quad) (-> arg0 quad))
-    (set! (-> gp-0 span-pts-start data 1 quad) (-> arg1 quad))
-    (set! (-> gp-0 span-pts-start data 3 quad) (-> arg1 quad))
+    (vector-copy! (-> gp-0 span-pts-start data 2) arg0)
+    (vector-copy! (-> gp-0 span-pts-start data 1) arg1)
+    (vector-copy! (-> gp-0 span-pts-start data 3) arg1)
     (set! (-> gp-0 spans data 0 random-offset-size-start) 0.0)
     (set! (-> gp-0 spans data 1 random-offset-size-start) 0.0)
     (set! (-> gp-0 spans data 2 random-offset-size-start) 0.0)
@@ -799,6 +803,7 @@
   )
 
 (defmethod init-from-entity! ((this comb-energy-ring) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (the-as penetrate -1))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
@@ -912,8 +917,8 @@
   (let ((v1-13 (-> this root root-prim)))
     (update-bolt
       this
-      (the-as vector (-> (the-as collide-shape-prim-group v1-13) child 0 prim-core))
-      (the-as vector (-> (the-as collide-shape-prim-group v1-13) child 1 prim-core))
+      (-> (the-as collide-shape-prim-group v1-13) child 0 prim-core world-sphere)
+      (-> (the-as collide-shape-prim-group v1-13) child 1 prim-core world-sphere)
       )
     )
   0
@@ -986,18 +991,12 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (format #t "comb-turbo: got event ~s from ~s~%" message proc)
     (when (= message 'touched)
-      (let ((s5-1 proc))
-        (when (and (if (type? s5-1 vehicle)
-                       s5-1
-                       )
-                   (not (-> self player-got))
-                   )
-          (set! (-> self player-got) #t)
-          (send-event proc 'turbo-pad (-> self boost))
-          (let ((v0-1 (current-time)))
-            (set! (-> self touch-time) v0-1)
-            v0-1
-            )
+      (when (and (as-type proc vehicle) (not (-> self player-got)))
+        (set! (-> self player-got) #t)
+        (send-event proc 'turbo-pad (-> self boost))
+        (let ((v0-1 (current-time)))
+          (set! (-> self touch-time) v0-1)
+          v0-1
           )
         )
       )
@@ -1054,8 +1053,8 @@
       (quaternion-rotate-local-y! s4-0 (-> this root quat) 16384.0)
       (quaternion->matrix s5-0 s4-0)
       )
-    (set! (-> s5-0 trans quad) (-> this root trans quad))
-    (set! (-> this plane quad) (-> s5-0 rvec quad))
+    (vector-copy! (-> s5-0 trans) (-> this root trans))
+    (vector-copy! (-> this plane) (-> s5-0 rvec))
     )
   (set! (-> this plane w) (- (vector-dot (-> this plane) (-> this root trans))))
   (update-transforms (-> this root))
@@ -1067,6 +1066,7 @@
   )
 
 (defmethod init-from-entity! ((this comb-turbo) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (init-fields! this)
@@ -1090,15 +1090,9 @@
             )
           )
       (set! (-> s5-1 flags) (font-flags shadow kerning middle middle-vert large))
-      (let ((v1-4 s5-1))
-        (set! (-> v1-4 width) (the float 440))
-        )
-      (let ((v1-5 s5-1))
-        (set! (-> v1-5 height) (the float 80))
-        )
-      (let ((v1-6 s5-1))
-        (set! (-> v1-6 scale) 0.8)
-        )
+      (set-width! s5-1 440)
+      (set-height! s5-1 80)
+      (set-scale! s5-1 0.8)
       (let ((s4-0 print-game-text))
         (format (clear *temp-string*) (lookup-text! *common-text* arg0 #f))
         (s4-0 *temp-string* s5-1 #f 44 (bucket-id hud-draw-hud-alpha))
@@ -1137,7 +1131,9 @@
       (print-text self (text-id text-05f8))
       (suspend)
       )
-    (suspend-for (seconds 6) (print-text self (text-id light-jak-shield-how-to)))
+    (suspend-for (seconds 6)
+      (print-text self (text-id light-jak-shield-how-to))
+      )
     (send-event *target* 'end-mode 'lightjak)
     (go-virtual complete)
     )

@@ -14,6 +14,8 @@
 ;; Once the camera's position and orientation has been calculated,
 ;; the camera and visibility outputs are updated in this file.
 
+;; DECOMP BEGINS
+
 (defun plane-from-points ((arg0 (inline-array plane)) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 int))
   "Get a plane that contains the 3 given points."
   (let ((s4-0 (new 'stack-no-clear 'vector)))
@@ -127,7 +129,7 @@
                         (if (< (-> s4-0 length) (-> s4-0 from-bsp current-leaf-idx)) (set! v1-32 #f)))
                       ;; see if we want adj vis.
                       (when s3-0
-                        (set! a0-16 (nonzero? (logand (shl #x8000 16) (-> s3-0 flags))))
+                        (set! a0-16 (logtest? (shl #x8000 16) (-> s3-0 flags)))
                         (if (< (-> s3-0 length) (-> s3-0 from-bsp current-leaf-idx)) (set! a0-16 #f)))
                       v1-32 ;; this is the cond condition, and is if we want the self vis.
                       ))
@@ -252,10 +254,10 @@
                             (new 'static 'rgba :r #xff :a #x80))
           (format *stdcon*
                   "~f ~f ~f ~f~%"
-                  (* 0.00024414062 (-> s5-1 info bsphere x))
-                  (* 0.00024414062 (-> s5-1 info bsphere y))
-                  (* 0.00024414062 (-> s5-1 info bsphere z))
-                  (* 0.00024414062 (-> s5-1 info bsphere w)))))))
+                  (/ (-> s5-1 info bsphere x) METER_LENGTH)
+                  (/ (-> s5-1 info bsphere y) METER_LENGTH)
+                  (/ (-> s5-1 info bsphere z) METER_LENGTH)
+                  (/ (-> s5-1 info bsphere w) METER_LENGTH))))))
   (update-math-camera *math-camera* (-> *setting-control* current video-mode) (-> *setting-control* current aspect-ratio))
   (update! *camera-smush-control*)
   (cond

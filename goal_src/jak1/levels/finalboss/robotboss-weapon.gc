@@ -16,6 +16,7 @@
    (torus-method-11 (_type_ vector) symbol)
    (torus-method-12 (_type_ vector) vector)))
 
+
 (defmethod torus-method-10 ((this torus) (arg0 collide-prim-core) (arg1 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
@@ -39,6 +40,7 @@
 
 (deftype torus-verts (structure)
   ((vert vector 8 :inline)))
+
 
 (defmethod torus-method-9 ((this torus) (arg0 vector))
   (local-vars (sv-256 int) (sv-272 int) (sv-288 int))
@@ -112,6 +114,7 @@
   (:states
    arcing-shot-debug-trajectory))
 
+
 (defbehavior arcing-shot-setup arcing-shot ((arg0 vector) (arg1 vector) (arg2 float))
   (set! (-> self from quad) (-> arg0 quad))
   (set! (-> self to quad) (-> arg1 quad))
@@ -127,7 +130,7 @@
     (vector-lerp! arg0 (-> self from) (-> self to) s5-0)
     (set! (-> arg0 y) (-> self from y))
     (+! (-> arg0 y) (* (-> self y-vel) s5-0))
-    (set! (-> arg0 y) (+ (-> arg0 y) (* 0.5 s5-0 s5-0 (-> self grav))))))
+    (set! (-> arg0 y) (+ (-> arg0 y) (* (/ s5-0 2) s5-0 (-> self grav))))))
 
 (defbehavior arcing-shot-draw arcing-shot ()
   (let ((gp-0 (new 'stack-no-clear 'vector))
@@ -160,6 +163,7 @@
    (darkecobomb-explode symbol)
    darkecobomb-idle
    darkecobomb-land))
+
 
 (defskelgroup *darkecobomb-sg*
   darkecobomb
@@ -341,6 +345,7 @@
   (:states
    greenshot-idle))
 
+
 (defskelgroup *greenshot-sg*
   greenshot
   greenshot-lod0-jg
@@ -404,10 +409,11 @@
    redshot-idle
    redshot-wait))
 
-(defmethod relocate ((this redshot) (arg0 int))
-  (if (nonzero? (-> this shot-particle)) (&+! (-> this shot-particle) arg0))
-  (if (nonzero? (-> this test-particle)) (&+! (-> this test-particle) arg0))
-  (the-as redshot ((method-of-type arcing-shot relocate) this arg0)))
+
+(defmethod relocate ((this redshot) (offset int))
+  (if (nonzero? (-> this shot-particle)) (&+! (-> this shot-particle) offset))
+  (if (nonzero? (-> this test-particle)) (&+! (-> this test-particle) offset))
+  (the-as redshot ((method-of-type arcing-shot relocate) this offset)))
 
 (defmethod deactivate ((this redshot))
   (if (nonzero? (-> this shot-particle)) (kill-and-free-particles (-> this shot-particle)))
@@ -480,7 +486,7 @@
   :code
     (behavior ()
       (loop
-        (ja :num-func num-func-identity :frame-num (* 0.000016276043 (-> self ring radius-primary)))
+        (ja :num-func num-func-identity :frame-num (/ (-> self ring radius-primary) (meters 15)))
         (suspend)))
   :post transform-post)
 
@@ -558,6 +564,7 @@
   ((flight-time time-frame))
   (:states
    yellowshot-idle))
+
 
 (defstate yellowshot-idle (yellowshot)
   :event

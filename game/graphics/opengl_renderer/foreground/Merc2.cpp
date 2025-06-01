@@ -538,14 +538,11 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   auto* flags = (const PcMercFlags*)input_data;
   int num_effects = flags->effect_count;  // mostly just a sanity check
   ASSERT(num_effects < kMaxEffect);
-  // hack for custom models to disable blerc/mod draws
-  bool is_custom_model = model->effects.at(0).all_draws.at(0).no_strip;
   u64 current_ignore_alpha_bits = flags->ignore_alpha_mask;  // shader settings
   u64 current_effect_enable_bits = flags->enable_mask;       // mask for game to disable an effect
-  bool model_uses_mod =
-      flags->bitflags & 1 && !is_custom_model;  // if we should update vertices from game.
+  bool model_uses_mod = flags->bitflags & 1;  // if we should update vertices from game.
   bool model_disables_fog = flags->bitflags & 2;
-  bool model_uses_pc_blerc = flags->bitflags & 4 && !is_custom_model;
+  bool model_uses_pc_blerc = flags->bitflags & 4;
   bool model_disables_envmap = flags->bitflags & 8;
   bool model_no_texture = flags->bitflags & 16;
   input_data += 32;
@@ -566,6 +563,13 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   input_data += (((num_effects * 4) + 15) / 16) * 16;
 
   // Next is pointers to merc data, needed so we can update vertices
+
+  // custom models are likely to have a different number of effects than what GOAL reports, update
+  // the count here (after reading DMA) so we don't potentially go out of bounds when we do
+  // blerc/mod draws
+  if (model->effects.at(0).all_draws.at(0).no_strip) {
+    num_effects = model->effects.size();
+  }
 
   // will hold opengl buffers for the updated vertices
   ModBuffers mod_opengl_buffers[kMaxEffect];
@@ -1079,6 +1083,7 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
   draw->first_bone = args.first_bone;
   draw->light_idx = args.lights;
   draw->num_triangles = mdraw.num_triangles;
+  draw->no_strip = mdraw.no_strip;
   for (int i = 0; i < 4; i++) {
     draw->fade[i] = args.fade[i];
   }

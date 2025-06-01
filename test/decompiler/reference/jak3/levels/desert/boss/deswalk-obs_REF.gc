@@ -189,6 +189,7 @@
 
 ;; definition for method 11 of type dm-urchin
 (defmethod init-from-entity! ((this dm-urchin) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
@@ -430,6 +431,7 @@
 
 ;; definition for method 11 of type desw-eco-tank
 (defmethod init-from-entity! ((this desw-eco-tank) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
@@ -536,9 +538,9 @@
         (deactivate self)
         )
     (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> (target-pos 0) quad))
+      (vector-copy! gp-0 (target-pos 0))
       (if *target*
-          (set! (-> gp-0 quad) (-> (get-trans *target* 3) quad))
+          (vector-copy! gp-0 (get-trans *target* 3))
           )
       (vector-! gp-0 gp-0 (-> self root trans))
       (let ((f0-0 (vector-normalize-ret-len! gp-0 1.0)))
@@ -572,7 +574,7 @@
     (set! (-> s5-0 event-self) 'touched)
     (set! (-> self root) s5-0)
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 444) self))
   (go-virtual idle)
   )
@@ -774,13 +776,13 @@
        )
       (else
         (let ((s5-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s5-0 quad) (-> this gravity quad))
+          (vector-copy! s5-0 (-> this gravity))
           (let ((s2-0 (-> this ragdoll-joints arg1)))
             (let ((f0-1 5.0))
               (case (-> this mode)
                 ((1)
                  (set! f30-0 2.0)
-                 (set! (-> this gravity quad) (-> arg3 uvec quad))
+                 (vector-copy! (-> this gravity) (-> arg3 uvec))
                  )
                 ((2)
                  (set! f30-0 0.0)
@@ -844,7 +846,7 @@
                )
               )
             )
-          (set! (-> this gravity quad) (-> s5-0 quad))
+          (vector-copy! (-> this gravity) s5-0)
           )
         )
       )
@@ -927,9 +929,10 @@
   :virtual #t
   :trans (behavior ()
     (if (and (-> self ragdoll) (nonzero? (-> self ragdoll)))
-        (set! (-> self ragdoll ragdoll-joints 0 position quad)
-              (-> (ppointer->process (-> self parent)) root trans quad)
-              )
+        (vector-copy!
+          (-> self ragdoll ragdoll-joints 0 position)
+          (-> (ppointer->process (-> self parent)) root trans)
+          )
         )
     (cond
       ((or (not (-> self ragdoll)) (zero? (-> self ragdoll)))
@@ -1028,7 +1031,8 @@
 
 ;; definition for method 20 of type dm-tentacle
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this dm-tentacle))
+(defmethod get-search-info-flag ((this dm-tentacle))
+  "Get search-info-flag for this process."
   (the-as search-info-flag (if (and (-> this next-state) (= (-> this next-state name) 'die))
                                1
                                16
@@ -1183,7 +1187,7 @@
                            (gp-2 (new 'stack-no-clear 'vector))
                            (s5-3 (-> s5-2 ragdoll))
                            )
-                       (vector-! gp-2 (the-as vector (-> s4-0 prim-core)) v1-46)
+                       (vector-! gp-2 (-> s4-0 prim-core world-sphere) v1-46)
                        (set! (-> gp-2 y) 0.0)
                        (vector-normalize! gp-2 (lerp-scale 4096.0 16384.0 f30-0 2.0 16.0))
                        (dotimes (v1-47 (the-as int (-> s5-3 num-joints)))
@@ -1681,7 +1685,7 @@
     (sound-play "snake-spawn" :position (-> self initial-position))
     (let ((gp-1 (new 'stack-no-clear 'matrix)))
       (matrix-identity! gp-1)
-      (set! (-> gp-1 trans quad) (-> self initial-position quad))
+      (vector-copy! (-> gp-1 trans) (-> self initial-position))
       (if (logtest? (-> *part-group-id-table* 446 flags) (sp-group-flag sp13))
           (part-tracker-spawn
             part-tracker-subsampler
@@ -1725,7 +1729,7 @@
     (set-time! (-> self state-time))
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (matrix-identity! gp-0)
-      (set! (-> gp-0 trans quad) (-> self initial-position quad))
+      (vector-copy! (-> gp-0 trans) (-> self initial-position))
       (if (logtest? (-> *part-group-id-table* 445 flags) (sp-group-flag sp13))
           (part-tracker-spawn
             part-tracker-subsampler
@@ -1857,6 +1861,7 @@
 ;; definition for method 11 of type dm-tentacle
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this dm-tentacle) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 10))
@@ -1943,7 +1948,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dm-tentacle" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (set! (-> this initial-position quad) (-> this root trans quad))
+  (vector-copy! (-> this initial-position) (-> this root trans))
   (logior! (-> this mask) (process-mask enemy))
   (set! (-> this hit-points) 10.0)
   (set! (-> this incoming-attack-id) (the-as uint 0))
@@ -1987,13 +1992,9 @@
 ;; definition for method 15 of type hud-deswalk
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-deswalk))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 472.0 (* 130.0 (-> this offset))))
-    160
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 472.0 (* 130.0 (-> this offset)))) 160)
   (let ((f30-0 (the float (-> this values 0 current))))
-    (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites)) 8 67)
+    (set-as-offset-from! (-> this sprites 4) (-> this sprites 0 pos) 8 67)
     (set! (-> this sprites 4 scale-x) (* 0.164 f30-0))
     (cond
       ((< 90.0 f30-0)
@@ -2022,9 +2023,9 @@
         )
       )
     )
-  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites)) 9 66)
-  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites)) -51 66)
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) 4 66)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 0 pos) 9 66)
+  (set-as-offset-from! (-> this sprites 2) (-> this sprites 0 pos) -51 66)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 0 pos) 4 66)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -2341,6 +2342,7 @@
 ;; definition for method 11 of type desw-snake-stump
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this desw-snake-stump) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -2387,7 +2389,3 @@
   (set! (-> this up-timer) 0)
   (go (method-of-object this moving))
   )
-
-
-
-

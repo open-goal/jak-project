@@ -21,7 +21,8 @@ int find_max_joint(const tinygltf::Animation& anim, const std::map<int, int>& no
 template <typename T>
 std::vector<T> compute_keyframes(const std::vector<float>& times,
                                  const std::vector<T>& values,
-                                 float framerate) {
+                                 float framerate,
+                                 bool quaternion_interp) {
   std::vector<T> ret;
   ASSERT(!times.empty());
   ASSERT(times.size() == values.size());
@@ -36,8 +37,15 @@ std::vector<T> compute_keyframes(const std::vector<float>& times,
     }
 
     const float fraction = (t - times.at(i)) / (times.at(i + 1) - times.at(i));
-    ret.push_back(values.at(i) * (1.f - fraction) + values.at(i + 1) * fraction);
-    // lg::info("{} + {:.3f}, {}", i, fraction, ret.back().to_string_aligned());
+    if (quaternion_interp) {
+      float multiplier = 1;
+      if (values.at(i).dot(values.at(i + 1)) < 0) {
+        multiplier = -1;
+      }
+      ret.push_back(values.at(i) * (1.f - fraction) + values.at(i + 1) * fraction * multiplier);
+    } else {
+      ret.push_back(values.at(i) * (1.f - fraction) + values.at(i + 1) * fraction);
+    }
     t += 1.f / framerate;
   }
   return ret;
@@ -47,12 +55,13 @@ template <int n>
 std::vector<math::Vector<float, n>> extract_keyframed_gltf_vecn(
     const tinygltf::Model& model,
     const tinygltf::AnimationSampler& sampler,
-    float framerate) {
+    float framerate,
+    bool quaternion_interp) {
   std::vector<float> times = gltf_util::extract_floats(model, sampler.input);
   std::vector<math::Vector<float, n>> values =
       gltf_util::extract_vec<float, n>(model, sampler.output, TINYGLTF_COMPONENT_TYPE_FLOAT);
   ASSERT(times.size() == values.size());
-  return compute_keyframes(times, values, framerate);
+  return compute_keyframes(times, values, framerate, quaternion_interp);
 }
 }  // namespace
 
@@ -75,13 +84,13 @@ UncompressedJointAnim extract_anim_from_gltf(const tinygltf::Model& model,
     const auto& sampler = anim.samplers.at(channel.sampler);
     if (channel.target_path == "translation") {
       out.joints.at(channel_joint).trans_frames =
-          extract_keyframed_gltf_vecn<3>(model, sampler, framerate);
+          extract_keyframed_gltf_vecn<3>(model, sampler, framerate, false);
     } else if (channel.target_path == "rotation") {
       out.joints.at(channel_joint).quat_frames =
-          extract_keyframed_gltf_vecn<4>(model, sampler, framerate);
+          extract_keyframed_gltf_vecn<4>(model, sampler, framerate, true);
     } else if (channel.target_path == "scale") {
       out.joints.at(channel_joint).scale_frames =
-          extract_keyframed_gltf_vecn<3>(model, sampler, framerate);
+          extract_keyframed_gltf_vecn<3>(model, sampler, framerate, false);
     } else {
       lg::die("unknown target_path {}", channel.target_path);
     }
@@ -179,11 +188,12 @@ void compress_frame_to_matrix(CompressedFrame* frame,
 void compress_trans(CompressedFrame* frame, const math::Vector3f& trans, bool big) {
   if (big) {
     // 64, 64, 32
+    const math::Vector3f scaled_trans = trans * 4096.f;
     u64 data[1];
-    memcpy(data, trans.data(), 2 * sizeof(float));
+    memcpy(data, scaled_trans.data(), 2 * sizeof(float));
     frame->data64.push_back(data[0]);
     u32 data_32[1];
-    memcpy(data_32, &trans.z(), sizeof(float));
+    memcpy(data_32, &scaled_trans.z(), sizeof(float));
     frame->data32.push_back(data_32[0]);
   } else {
     constexpr float kTransScale = 4.f / 4096.f;

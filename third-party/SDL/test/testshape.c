@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -9,203 +9,139 @@
   including commercial applications, and to alter it and redistribute it
   freely.
 */
-#include <stdlib.h>
-#include <math.h>
-#include <stdio.h>
-#include "SDL.h"
-#include "SDL_shape.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
-#define SHAPED_WINDOW_X         150
-#define SHAPED_WINDOW_Y         150
-#define SHAPED_WINDOW_DIMENSION 640
+#include "glass.h"
 
-typedef struct LoadedPicture
+
+static SDL_HitTestResult SDLCALL ShapeHitTest(SDL_Window *window, const SDL_Point *area, void *userdata)
 {
-    SDL_Surface *surface;
-    SDL_Texture *texture;
-    SDL_WindowShapeMode mode;
-    const char *name;
-} LoadedPicture;
+    SDL_Surface *shape = (SDL_Surface *)userdata;
+    Uint8 r, g, b, a;
 
-void render(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Rect texture_dimensions)
-{
-    /* Clear render-target to blue. */
-    SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0xff, 0xff);
-    SDL_RenderClear(renderer);
-
-    /* Render the texture. */
-    SDL_RenderCopy(renderer, texture, &texture_dimensions, &texture_dimensions);
-
-    SDL_RenderPresent(renderer);
+    if (SDL_ReadSurfacePixel(shape, area->x, area->y, &r, &g, &b, &a)) {
+        if (a != SDL_ALPHA_TRANSPARENT) {
+            /* We'll just make everything draggable */
+            return SDL_HITTEST_DRAGGABLE;
+        }
+    }
+    return SDL_HITTEST_NORMAL;
 }
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
-    Uint8 num_pictures;
-    LoadedPicture *pictures;
-    int i, j;
-    SDL_PixelFormat *format = NULL;
-    SDL_Window *window;
-    SDL_Renderer *renderer;
-    SDL_Color black = { 0, 0, 0, 0xff };
+    const char *image_file = NULL;
+    SDL_Window *window = NULL;
+    SDL_Renderer *renderer = NULL;
+    SDL_Surface *shape = NULL;
+    bool resizable = false;
+    SDL_WindowFlags flags;
+    bool done = false;
     SDL_Event event;
-    int should_exit = 0;
-    unsigned int current_picture;
-    int button_down;
-    Uint32 pixelFormat = 0;
-    int access = 0;
-    SDL_Rect texture_dimensions;
+    int i;
+    int return_code = 1;
 
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
-
-    if (argc < 2) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Shape requires at least one bitmap file as argument.");
-        exit(-1);
-    }
-
-    if (SDL_VideoInit(NULL) == -1) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not initialize SDL video.");
-        exit(-2);
-    }
-
-    num_pictures = argc - 1;
-    pictures = (LoadedPicture *)SDL_malloc(sizeof(LoadedPicture) * num_pictures);
-    if (!pictures) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not allocate memory.");
-        exit(1);
-    }
-    for (i = 0; i < num_pictures; i++) {
-        pictures[i].surface = NULL;
-    }
-    for (i = 0; i < num_pictures; i++) {
-        pictures[i].surface = SDL_LoadBMP(argv[i + 1]);
-        pictures[i].name = argv[i + 1];
-        if (pictures[i].surface == NULL) {
-            for (j = 0; j < num_pictures; j++) {
-                SDL_FreeSurface(pictures[j].surface);
-            }
-            SDL_free(pictures);
-            SDL_VideoQuit();
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not load surface from named bitmap file: %s", argv[i + 1]);
-            exit(-3);
-        }
-
-        format = pictures[i].surface->format;
-        if (SDL_ISPIXELFORMAT_ALPHA(format->format)) {
-            pictures[i].mode.mode = ShapeModeBinarizeAlpha;
-            pictures[i].mode.parameters.binarizationCutoff = 255;
+    for (i = 1; i < argc; ++i) {
+        if (SDL_strcmp(argv[i], "--resizable") == 0) {
+            resizable = true;
+        } else if (!image_file) {
+            image_file = argv[i];
         } else {
-            pictures[i].mode.mode = ShapeModeColorKey;
-            pictures[i].mode.parameters.colorKey = black;
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Usage: %s [--resizable] [shape.bmp]", argv[0]);
+            goto quit;
         }
     }
 
-    window = SDL_CreateShapedWindow("SDL_Shape test",
-                                    SHAPED_WINDOW_X, SHAPED_WINDOW_Y,
-                                    SHAPED_WINDOW_DIMENSION, SHAPED_WINDOW_DIMENSION,
-                                    0);
-    SDL_SetWindowPosition(window, SHAPED_WINDOW_X, SHAPED_WINDOW_Y);
+    if (image_file) {
+        shape = SDL_LoadBMP(image_file);
+        if (!shape) {
+            SDL_Log("Couldn't load %s: %s", image_file, SDL_GetError());
+            goto quit;
+        }
+    } else {
+        SDL_IOStream *stream = SDL_IOFromConstMem(glass_bmp, sizeof(glass_bmp));
+        if (!stream) {
+            SDL_Log("Couldn't create iostream for glass.bmp: %s", SDL_GetError());
+            goto quit;
+        }
+        shape = SDL_LoadBMP_IO(stream, true);
+        if (!shape) {
+            SDL_Log("Couldn't load glass.bmp: %s", SDL_GetError());
+            goto quit;
+        }
+    }
+
+    /* Create the window hidden so we can set the shape before it's visible */
+    flags = (SDL_WINDOW_HIDDEN | SDL_WINDOW_TRANSPARENT);
+    if (resizable) {
+        flags |= SDL_WINDOW_RESIZABLE;
+    } else {
+        flags |= SDL_WINDOW_BORDERLESS;
+    }
+    window = SDL_CreateWindow("SDL Shape Test", shape->w, shape->h, flags);
     if (!window) {
-        for (i = 0; i < num_pictures; i++) {
-            SDL_FreeSurface(pictures[i].surface);
-        }
-        SDL_free(pictures);
-        SDL_VideoQuit();
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create shaped window for SDL_Shape.");
-        exit(-4);
+        SDL_Log("Couldn't create transparent window: %s", SDL_GetError());
+        goto quit;
     }
-    renderer = SDL_CreateRenderer(window, -1, 0);
+
+    renderer = SDL_CreateRenderer(window, NULL);
     if (!renderer) {
-        SDL_DestroyWindow(window);
-        for (i = 0; i < num_pictures; i++) {
-            SDL_FreeSurface(pictures[i].surface);
-        }
-        SDL_free(pictures);
-        SDL_VideoQuit();
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create rendering context for SDL_Shape window.");
-        exit(-5);
+        SDL_Log("Couldn't create renderer: %s", SDL_GetError());
+        goto quit;
     }
 
-    for (i = 0; i < num_pictures; i++) {
-        pictures[i].texture = NULL;
+    if (!SDL_ISPIXELFORMAT_ALPHA(shape->format)) {
+        /* Set the colorkey to the top-left pixel */
+        Uint8 r, g, b, a;
+
+        SDL_ReadSurfacePixel(shape, 0, 0, &r, &g, &b, &a);
+        SDL_SetSurfaceColorKey(shape, 1, SDL_MapSurfaceRGBA(shape, r, g, b, a));
     }
-    for (i = 0; i < num_pictures; i++) {
-        pictures[i].texture = SDL_CreateTextureFromSurface(renderer, pictures[i].surface);
-        if (pictures[i].texture == NULL) {
-            for (i = 0; i < num_pictures; i++) {
-                if (pictures[i].texture != NULL) {
-                    SDL_DestroyTexture(pictures[i].texture);
-                }
-            }
-            for (i = 0; i < num_pictures; i++) {
-                SDL_FreeSurface(pictures[i].surface);
-            }
-            SDL_free(pictures);
-            SDL_DestroyRenderer(renderer);
-            SDL_DestroyWindow(window);
-            SDL_VideoQuit();
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create texture for SDL_shape.");
-            exit(-6);
+
+    if (!resizable) {
+        /* Set the hit test callback so we can drag the window */
+        if (!SDL_SetWindowHitTest(window, ShapeHitTest, shape)) {
+            SDL_Log("Couldn't set hit test callback: %s", SDL_GetError());
+            goto quit;
         }
     }
 
-    should_exit = 0;
-    current_picture = 0;
-    button_down = 0;
-    texture_dimensions.h = 0;
-    texture_dimensions.w = 0;
-    texture_dimensions.x = 0;
-    texture_dimensions.y = 0;
-    SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Changing to shaped bmp: %s", pictures[current_picture].name);
-    SDL_QueryTexture(pictures[current_picture].texture, &pixelFormat, &access, &texture_dimensions.w, &texture_dimensions.h);
-    SDL_SetWindowSize(window, texture_dimensions.w, texture_dimensions.h);
-    SDL_SetWindowShape(window, pictures[current_picture].surface, &pictures[current_picture].mode);
-    while (should_exit == 0) {
+    /* Set the window size to the size of our shape and show it */
+    SDL_SetWindowShape(window, shape);
+    SDL_ShowWindow(window);
+
+    /* We're ready to go! */
+    while (!done) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_KEYDOWN) {
-                button_down = 1;
-                if (event.key.keysym.sym == SDLK_ESCAPE) {
-                    should_exit = 1;
-                    break;
+            switch (event.type) {
+            case SDL_EVENT_KEY_DOWN:
+                if (event.key.key == SDLK_ESCAPE) {
+                    done = true;
                 }
-            }
-            if (button_down && event.type == SDL_KEYUP) {
-                button_down = 0;
-                current_picture += 1;
-                if (current_picture >= num_pictures) {
-                    current_picture = 0;
-                }
-                SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "Changing to shaped bmp: %s", pictures[current_picture].name);
-                SDL_QueryTexture(pictures[current_picture].texture, &pixelFormat, &access, &texture_dimensions.w, &texture_dimensions.h);
-                SDL_SetWindowSize(window, texture_dimensions.w, texture_dimensions.h);
-                SDL_SetWindowShape(window, pictures[current_picture].surface, &pictures[current_picture].mode);
-            }
-            if (event.type == SDL_QUIT) {
-                should_exit = 1;
+                break;
+            case SDL_EVENT_QUIT:
+                done = true;
+                break;
+            default:
                 break;
             }
         }
-        render(renderer, pictures[current_picture].texture, texture_dimensions);
-        SDL_Delay(10);
+
+        /* We'll clear to white, but you could do other drawing here */
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
+        SDL_RenderClear(renderer);
+
+        /* Show everything on the screen and wait a bit */
+        SDL_RenderPresent(renderer);
+        SDL_Delay(100);
     }
 
-    /* Free the textures. */
-    for (i = 0; i < num_pictures; i++) {
-        SDL_DestroyTexture(pictures[i].texture);
-    }
-    SDL_DestroyRenderer(renderer);
-    /* Destroy the window. */
-    SDL_DestroyWindow(window);
-    /* Free the original surfaces backing the textures. */
-    for (i = 0; i < num_pictures; i++) {
-        SDL_FreeSurface(pictures[i].surface);
-    }
-    SDL_free(pictures);
-    /* Call SDL_VideoQuit() before quitting. */
-    SDL_VideoQuit();
+    /* Success! */
+    return_code = 0;
 
-    return 0;
+quit:
+    SDL_DestroySurface(shape);
+    SDL_Quit();
+    return return_code;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

@@ -19,6 +19,7 @@
 
 
 (defmethod enemy-common-post ((this citizen-enemy))
+  "Common implementation of post. Runs ja-post."
   (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
     (set! (-> a1-0 options) (overlaps-others-options))
     (set! (-> a1-0 collide-with-filter) (-> this enemy-info overlaps-others-collide-with-filter))
@@ -39,23 +40,20 @@
   (none)
   )
 
-(defmethod send-attack-on-jump-or-knocked ((this citizen-enemy) (arg0 process) (arg1 event-message-block))
+(defmethod enemy-touched-handler ((this citizen-enemy) (arg0 process) (arg1 event-message-block))
+  "General handler for when anything touches an enemy (automatic response)."
   (cond
     ((and (-> this next-state) (let ((v1-3 (-> this next-state name)))
                                  (or (= v1-3 'knocked) (= v1-3 'jump))
                                  )
           )
-     ((method-of-type citizen send-attack-on-jump-or-knocked) this arg0 arg1)
+     ((method-of-type citizen enemy-touched-handler) this arg0 arg1)
      )
     (else
       (when (!= (-> arg0 type) target)
-        (let* ((s3-0 (-> arg1 param 0))
-               (s2-0 arg0)
-               (v1-6 (if (type? s2-0 process-focusable)
-                         s2-0
-                         )
-                     )
-               )
+        (let ((s3-0 (-> arg1 param 0))
+              (v1-6 (as-type arg0 process-focusable))
+              )
           (cond
             ((and (focus-test? this dangerous)
                   (logtest? (process-mask guard civilian) (-> arg0 mask))
@@ -80,7 +78,7 @@
                              )
                          )
                    )
-               (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+               (send-attack-from-tshape this arg0 (the-as touching-shapes-entry s3-0) a3-2)
                )
              )
             (else
@@ -94,6 +92,7 @@
   )
 
 (defmethod event-handler ((this citizen-enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('event-death)
      #f
@@ -138,7 +137,7 @@
   (let ((a1-0 (new 'stack-no-clear 'traffic-danger-info)))
     (set! (-> a1-0 sphere quad) (-> this root trans quad))
     (set! (-> a1-0 sphere r) 40960.0)
-    (set! (-> a1-0 velocity quad) (-> this root transv quad))
+    (vector-copy! (-> a1-0 velocity) (-> this root transv))
     (set! (-> a1-0 notify-radius) 122880.0)
     (set! (-> a1-0 danger-level) 1.0)
     (set! (-> a1-0 decay-rate) 0.0)
@@ -154,25 +153,15 @@
 ;; WARN: Return type mismatch int vs object.
 (defmethod find-new-focus ((this citizen-enemy))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this root trans quad))
+    (vector-copy! s5-0 (-> this root trans))
     (set! (-> s5-0 w) 122880.0)
     (let ((s4-0 (the-as process-drawable #f)))
       (let ((f30-0 122880.0))
         (let ((s3-0 (new 'stack-no-clear 'array 'collide-shape 64)))
           (countdown (s2-0 (fill-actor-list-for-box *actor-hash* s5-0 s3-0 64))
-            (let* ((s1-0 (-> s3-0 s2-0))
-                   (a0-6 (if (type? s1-0 collide-shape)
-                             s1-0
-                             )
-                         )
-                   )
+            (let ((a0-6 (as-type (-> s3-0 s2-0) collide-shape)))
               (when a0-6
-                (let* ((s0-0 (-> a0-6 process))
-                       (s1-1 (if (type? s0-0 process-focusable)
-                                 s0-0
-                                 )
-                             )
-                       )
+                (let ((s1-1 (as-type (-> a0-6 process) process-focusable)))
                   (when (and s1-1
                              (!= this s1-1)
                              (not (focus-test? (the-as process-focusable s1-1) inactive))
@@ -200,7 +189,7 @@
             )
         )
       (when s4-0
-        (try-update-focus (-> this focus) (the-as process-focusable s4-0) this)
+        (focus-on! (-> this focus) (the-as process-focusable s4-0) this)
         (go-hostile this)
         )
       )
@@ -279,10 +268,12 @@
   )
 
 (defmethod go-die ((this citizen-enemy))
+  "Go to the die state."
   ((method-of-type nav-enemy go-die) this)
   )
 
 (defmethod go-hostile ((this citizen-enemy))
+  "Go to the hostile state, actively trying to attack the target."
   (if (not (and (-> this next-state) (= (-> this next-state name) 'hostile)))
       (go (method-of-object this hostile))
       )

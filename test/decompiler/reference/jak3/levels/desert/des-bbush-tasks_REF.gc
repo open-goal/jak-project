@@ -93,7 +93,7 @@
 (defmethod draw ((this hud-wasbbv-goal))
   (local-vars (v1-7 int) (s5-0 int))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
+    (-> this sprites 0)
     (the int (+ (* -130.0 (-> this offset)) (* 65.0 (-> *video-params* relative-x-scale))))
     70
     )
@@ -151,8 +151,8 @@
         )
       )
     )
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 0 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) -40 -40)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) -40 -40)
   (set! (-> this strings 1 scale) 0.65)
   (case (-> *setting-control* user-default language)
     (((language-enum korean))
@@ -190,7 +190,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-wasbbv-score))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
+    (-> this sprites 0)
     (the int (+ (- 512.0 (* 72.0 (-> *video-params* relative-x-scale))) (* 130.0 (-> this offset))))
     70
     )
@@ -226,8 +226,8 @@
     (format (clear *temp-string*) (lookup-text! *common-text* (-> *wasbbv-hud-info* score-text) #f))
     (s5-1 s4-1 s3-0 *temp-string*)
     )
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 32 -8)
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) 40 -40)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 32 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) 40 -40)
   (let ((v1-9 (-> *setting-control* user-default language)))
     (set! (-> this strings 1 scale)
           (cond
@@ -281,7 +281,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-wasbbv-counter))
   (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
+    (-> this sprites 0)
     (the int (+ (- 512.0 (* 72.0 (-> *video-params* relative-x-scale))) (* 130.0 (-> this offset))))
     95
     )
@@ -309,7 +309,7 @@
           )
         )
       )
-    (set-as-offset-from! (the-as hud-sprite (-> s5-0 0 pos)) (the-as vector4w (-> this sprites)) 32 -8)
+    (set-as-offset-from! (the-as hud-sprite (-> s5-0 0 pos)) (-> this sprites 0 pos) 32 -8)
     )
   ((method-of-type hud draw) this)
   0
@@ -440,15 +440,10 @@
 (defmethod task-manager-method-26 ((this task-manager-vehicle-bbush))
   (when (= (-> this player-vehicle) #f)
     (when (and *target* (focus-test? *target* pilot-riding))
-      (let* ((s5-0 (handle->process (-> *target* pilot vehicle)))
-             (v1-10 (if (type? s5-0 process-focusable)
-                        s5-0
-                        )
-                    )
-             )
+      (let ((v1-10 (as-type (handle->process (-> *target* pilot vehicle)) process-focusable)))
         (when v1-10
           (set! (-> this player-vehicle) (-> *target* pilot vehicle))
-          (set! (-> this ground-pos quad) (-> (the-as process-focusable v1-10) root trans quad))
+          (vector-copy! (-> this ground-pos) (-> (the-as process-focusable v1-10) root trans))
           (set-time! (-> this ground-time))
           (dotimes (s5-1 3)
             (send-event (handle->process (-> this player-vehicle)) 'turbo-pickup)
@@ -476,7 +471,7 @@
               )
             (set! (-> this max-distance) (fmax (-> this max-distance) (-> this distance)))
             (set! (-> this max-air-time) (fmax (-> this max-air-time) (-> this air-time)))
-            (set! (-> this ground-pos quad) (-> v1-26 root trans quad))
+            (vector-copy! (-> this ground-pos) (-> v1-26 root trans))
             (set-time! (-> this ground-time))
             (set! (-> this distance) 0.0)
             (set! (-> this air-time) 0.0)
@@ -612,13 +607,9 @@
                 (not (handle->process (-> self player-vehicle)))
                 )
       (when (and *target* (focus-test? *target* pilot-riding))
-        (let ((gp-3 (handle->process (-> *target* pilot vehicle))))
-          (if (if (type? gp-3 process-focusable)
-                  gp-3
-                  )
-              (set! (-> self player-vehicle) (-> *target* pilot vehicle))
-              )
-          )
+        (if (as-type (handle->process (-> *target* pilot vehicle)) process-focusable)
+            (set! (-> self player-vehicle) (-> *target* pilot vehicle))
+            )
         )
       (suspend)
       )

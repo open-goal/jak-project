@@ -14,7 +14,7 @@
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 using namespace goos;
 
@@ -58,7 +58,7 @@ Compiler::Compiler(GameVersion version,
 
   // add built-in forms to symbol info
   for (const auto& [builtin_name, builtin_info] : g_goal_forms) {
-    m_symbol_info.add_builtin(builtin_name, builtin_info.first);
+    m_symbol_info.add_builtin(builtin_name, builtin_info.docstring);
   }
 
   // load auto-complete history, only if we are running in the interactive mode.

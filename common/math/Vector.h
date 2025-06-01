@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace math {
 

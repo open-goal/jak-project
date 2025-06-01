@@ -723,7 +723,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod allocate-defaults! ((this texture-pool))
   (allocate-segment! this (-> this segment-common) #x1c000)
-  (allocate-segment! this (the-as texture-pool-segment (-> this segment)) #x62000)
+  (allocate-segment! this (-> this segment 0) #x62000)
   (set! *sky-base-vram-word* (allocate-vram-words! this #x7000))
   (set! *sky-base-block* (/ *sky-base-vram-word* 64))
   (set! *sky-base-page* (sar *sky-base-vram-word* 11))
@@ -1116,7 +1116,7 @@
       )
     )
   (upload-now! page 2)
-  (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
+  (update-vram-pages pool (-> pool segment 0) page 2)
   (let ((page-seg-2-size (logand -4096 (+ (-> page segment 2 size) 4095))))
     (cond
       ((< (the-as uint #x24000) page-seg-2-size)
@@ -1156,7 +1156,7 @@
         )
       )
     (upload-now! page 2)
-    (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
+    (update-vram-pages pool (-> pool segment 0) page 2)
     (cond
       ((< (the-as uint #x24000) seg2-size)
        (set! (-> page segment 2 size) (+ -147456 seg2-size))
@@ -1390,13 +1390,8 @@
       (when tfrag-page
         (set! (-> level upload-size 0) 0)
         (if (< distance 81920.0)
-            (+! (-> level upload-size 0) (upload-vram-pages
-                                           this
-                                           (the-as texture-pool-segment (-> this segment))
-                                           tfrag-page
-                                           2
-                                           (the-as bucket-id tfrag-bucket)
-                                           )
+            (+! (-> level upload-size 0)
+                (upload-vram-pages this (-> this segment 0) tfrag-page 2 (the-as bucket-id tfrag-bucket))
                 )
             )
         (cond
@@ -2029,7 +2024,7 @@
   (let ((font-clut (-> this font-palette)))
     (set! heap-before-font-tex (-> this cur))
     (set! clut-dest-addr (/ font-clut 64))
-    (set! *font-texture* (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #x4fe)))
+    (set! *font-texture* (get-texture ascii.12lo gamefontnew))
     (let ((main-font-tx
             (texture-page-login (new 'static 'texture-id :index #x1 :page #x4fe) texture-page-default-allocate global)
             )
@@ -2055,7 +2050,7 @@
             (the-as uint clut-dest-addr)
             )
           )
-        (let ((font-tx-0 (lookup-texture-by-id (new 'static 'texture-id :page #x4fe)))
+        (let ((font-tx-0 (get-texture ascii.12hi gamefontnew))
               (font-tx-0-dest #xe0000)
               (font-tx-0-fmt 44)
               )
@@ -2068,7 +2063,7 @@
             (the-as uint clut-dest-addr)
             )
           )
-        (let ((font-tx-3 (lookup-texture-by-id (new 'static 'texture-id :index #x3 :page #x4fe)))
+        (let ((font-tx-3 (get-texture ascii.24lo gamefontnew))
               (font-tx-3-dest #xe6000)
               (font-tx-3-fmt 36)
               )
@@ -2081,7 +2076,7 @@
             (the-as uint clut-dest-addr)
             )
           )
-        (let ((font-tx-2 (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #x4fe)))
+        (let ((font-tx-2 (get-texture ascii.24hi gamefontnew))
               (font-tx-2-dest #xe6000)
               (font-tx-2-fmt 44)
               )

@@ -21,7 +21,7 @@
 #include "goalc/make/MakeSystem.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 
@@ -743,8 +743,9 @@ class Compiler {
   Val* compile_gc_text(const goos::Object& form, const goos::Object& rest, Env* env);
 };
 
-extern const std::unordered_map<
-    std::string,
-    std::pair<std::string,
-              Val* (Compiler::*)(const goos::Object& form, const goos::Object& rest, Env* env)>>
-    g_goal_forms;
+struct GoalCompilerForm {
+  std::string docstring = "";
+  Val* (Compiler::*form_function)(const goos::Object& form, const goos::Object& rest, Env* env);
+};
+
+extern const std::unordered_map<std::string, GoalCompilerForm> g_goal_forms;
