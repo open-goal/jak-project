@@ -83,9 +83,9 @@ extractor_iso_database() {
            {{18445016742498932084U,  // hash of ELF
              {"Jak II",              // canonical name
               GAME_TERRITORY_SCEA,
-              593,                                           // number of files
-              {4835330407820245819U, 5223305410190549348U},  // iso hash
-              "ntsc_v1",                                     // decompiler config
+              593,                                                                // number of files
+              {4835330407820245819U, 5223305410190549348U, 3212700152698192932},  // iso hash
+              "ntsc_v1",  // decompiler config
               "jak2",
               {}}}}},
           // Jak 2 PAL
