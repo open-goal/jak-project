@@ -96,7 +96,7 @@ struct PadData {
 
   std::array<bool, 16> button_data = {false, false, false, false, false, false, false, false,
                                       false, false, false, false, false, false, false, false};
-  std::array<u8, 12> pressure_data = {255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255};
+  std::array<u8, 12> pressure_data = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
   // Normal Buttons
   bool select() const { return button_data.at(static_cast<int>(ButtonIndex::SELECT)); };
