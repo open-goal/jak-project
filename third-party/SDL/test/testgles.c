@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -10,19 +10,17 @@
   freely.
 */
 #include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
 
-#include "SDL_test_common.h"
+#include <SDL3/SDL_test_common.h>
+#include <SDL3/SDL_main.h>
 
-#if defined(__IPHONEOS__) || defined(__ANDROID__)
+#if defined(SDL_PLATFORM_IOS) || defined(SDL_PLATFORM_ANDROID)
 #define HAVE_OPENGLES
 #endif
 
 #ifdef HAVE_OPENGLES
 
-#include "SDL_opengles.h"
+#include <SDL3/SDL_opengles.h>
 
 static SDLTest_CommonState *state;
 static SDL_GLContext *context = NULL;
@@ -37,7 +35,7 @@ quit(int rc)
     if (context) {
         for (i = 0; i < state->num_windows; i++) {
             if (context[i]) {
-                SDL_GL_DeleteContext(context[i]);
+                SDL_GL_DestroyContext(context[i]);
             }
         }
 
@@ -45,11 +43,14 @@ quit(int rc)
     }
 
     SDLTest_CommonQuit(state);
-    exit(rc);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
 static void
-Render()
+Render(void)
 {
     static GLubyte color[8][4] = { { 255, 0, 0, 0 },
                                    { 255, 0, 0, 255 },
@@ -100,13 +101,9 @@ int main(int argc, char *argv[])
     int fsaa, accel;
     int value;
     int i, done;
-    SDL_DisplayMode mode;
+    const SDL_DisplayMode *mode;
     SDL_Event event;
     Uint32 then, now, frames;
-    int status;
-
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     /* Initialize parameters */
     fsaa = 0;
@@ -117,6 +114,7 @@ int main(int argc, char *argv[])
     if (!state) {
         return 1;
     }
+
     for (i = 1; i < argc;) {
         int consumed;
 
@@ -133,8 +131,13 @@ int main(int argc, char *argv[])
                 if (!argv[i]) {
                     consumed = -1;
                 } else {
-                    depth = SDL_atoi(argv[i]);
-                    consumed = 1;
+                    char *endptr = NULL;
+                    depth = (int)SDL_strtol(argv[i], &endptr, 0);
+                    if (endptr != argv[i] && *endptr == '\0') {
+                        consumed = 1;
+                    } else {
+                        consumed = -1;
+                    }
                 }
             } else {
                 consumed = -1;
@@ -170,7 +173,7 @@ int main(int argc, char *argv[])
 
     context = (SDL_GLContext *)SDL_calloc(state->num_windows, sizeof(*context));
     if (!context) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory!\n");
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory!");
         quit(2);
     }
 
@@ -178,77 +181,68 @@ int main(int argc, char *argv[])
     for (i = 0; i < state->num_windows; i++) {
         context[i] = SDL_GL_CreateContext(state->windows[i]);
         if (!context[i]) {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GL_CreateContext(): %s\n", SDL_GetError());
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GL_CreateContext(): %s", SDL_GetError());
             quit(2);
         }
     }
 
-    if (state->render_flags & SDL_RENDERER_PRESENTVSYNC) {
-        SDL_GL_SetSwapInterval(1);
-    } else {
-        SDL_GL_SetSwapInterval(0);
-    }
+    SDL_GL_SetSwapInterval(state->render_vsync);
 
-    SDL_GetCurrentDisplayMode(0, &mode);
-    SDL_Log("Screen bpp: %d\n", SDL_BITSPERPIXEL(mode.format));
-    SDL_Log("\n");
-    SDL_Log("Vendor     : %s\n", glGetString(GL_VENDOR));
-    SDL_Log("Renderer   : %s\n", glGetString(GL_RENDERER));
-    SDL_Log("Version    : %s\n", glGetString(GL_VERSION));
-    SDL_Log("Extensions : %s\n", glGetString(GL_EXTENSIONS));
-    SDL_Log("\n");
+    mode = SDL_GetCurrentDisplayMode(SDL_GetPrimaryDisplay());
+    if (mode) {
+        SDL_Log("Screen bpp: %d", SDL_BITSPERPIXEL(mode->format));
+        SDL_Log("%s", "");
+    }
+    SDL_Log("Vendor     : %s", glGetString(GL_VENDOR));
+    SDL_Log("Renderer   : %s", glGetString(GL_RENDERER));
+    SDL_Log("Version    : %s", glGetString(GL_VERSION));
+    SDL_Log("Extensions : %s", glGetString(GL_EXTENSIONS));
+    SDL_Log("%s", "");
 
-    status = SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &value);
-    if (!status) {
-        SDL_Log("SDL_GL_RED_SIZE: requested %d, got %d\n", 5, value);
+    if (SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &value)) {
+        SDL_Log("SDL_GL_RED_SIZE: requested %d, got %d", 5, value);
     } else {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_RED_SIZE: %s\n",
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_RED_SIZE: %s",
                      SDL_GetError());
     }
-    status = SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE, &value);
-    if (!status) {
-        SDL_Log("SDL_GL_GREEN_SIZE: requested %d, got %d\n", 5, value);
+    if (SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE, &value)) {
+        SDL_Log("SDL_GL_GREEN_SIZE: requested %d, got %d", 5, value);
     } else {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_GREEN_SIZE: %s\n",
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_GREEN_SIZE: %s",
                      SDL_GetError());
     }
-    status = SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE, &value);
-    if (!status) {
-        SDL_Log("SDL_GL_BLUE_SIZE: requested %d, got %d\n", 5, value);
+    if (SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE, &value)) {
+        SDL_Log("SDL_GL_BLUE_SIZE: requested %d, got %d", 5, value);
     } else {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_BLUE_SIZE: %s\n",
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_BLUE_SIZE: %s",
                      SDL_GetError());
     }
-    status = SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE, &value);
-    if (!status) {
-        SDL_Log("SDL_GL_DEPTH_SIZE: requested %d, got %d\n", depth, value);
+    if (SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE, &value)) {
+        SDL_Log("SDL_GL_DEPTH_SIZE: requested %d, got %d", depth, value);
     } else {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_DEPTH_SIZE: %s\n",
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_DEPTH_SIZE: %s",
                      SDL_GetError());
     }
     if (fsaa) {
-        status = SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &value);
-        if (!status) {
-            SDL_Log("SDL_GL_MULTISAMPLEBUFFERS: requested 1, got %d\n", value);
+        if (SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &value)) {
+            SDL_Log("SDL_GL_MULTISAMPLEBUFFERS: requested 1, got %d", value);
         } else {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_MULTISAMPLEBUFFERS: %s\n",
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_MULTISAMPLEBUFFERS: %s",
                          SDL_GetError());
         }
-        status = SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &value);
-        if (!status) {
-            SDL_Log("SDL_GL_MULTISAMPLESAMPLES: requested %d, got %d\n", fsaa,
+        if (SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &value)) {
+            SDL_Log("SDL_GL_MULTISAMPLESAMPLES: requested %d, got %d", fsaa,
                     value);
         } else {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_MULTISAMPLESAMPLES: %s\n",
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_MULTISAMPLESAMPLES: %s",
                          SDL_GetError());
         }
     }
     if (accel) {
-        status = SDL_GL_GetAttribute(SDL_GL_ACCELERATED_VISUAL, &value);
-        if (!status) {
-            SDL_Log("SDL_GL_ACCELERATED_VISUAL: requested 1, got %d\n", value);
+        if (SDL_GL_GetAttribute(SDL_GL_ACCELERATED_VISUAL, &value)) {
+            SDL_Log("SDL_GL_ACCELERATED_VISUAL: requested 1, got %d", value);
         } else {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_ACCELERATED_VISUAL: %s\n",
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get SDL_GL_ACCELERATED_VISUAL: %s",
                          SDL_GetError());
         }
     }
@@ -257,9 +251,8 @@ int main(int argc, char *argv[])
     for (i = 0; i < state->num_windows; ++i) {
         float aspectAdjust;
 
-        status = SDL_GL_MakeCurrent(state->windows[i], context[i]);
-        if (status) {
-            SDL_Log("SDL_GL_MakeCurrent(): %s\n", SDL_GetError());
+        if (!SDL_GL_MakeCurrent(state->windows[i], context[i])) {
+            SDL_Log("SDL_GL_MakeCurrent(): %s", SDL_GetError());
 
             /* Continue for next window */
             continue;
@@ -285,26 +278,20 @@ int main(int argc, char *argv[])
         /* Check for events */
         ++frames;
         while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-            case SDL_WINDOWEVENT:
-                switch (event.window.event) {
-                case SDL_WINDOWEVENT_RESIZED:
-                    for (i = 0; i < state->num_windows; ++i) {
-                        if (event.window.windowID == SDL_GetWindowID(state->windows[i])) {
-                            status = SDL_GL_MakeCurrent(state->windows[i], context[i]);
-                            if (status) {
-                                SDL_Log("SDL_GL_MakeCurrent(): %s\n", SDL_GetError());
-                                break;
-                            }
-                            /* Change view port to the new window dimensions */
-                            glViewport(0, 0, event.window.data1, event.window.data2);
-                            /* Update window content */
-                            Render();
-                            SDL_GL_SwapWindow(state->windows[i]);
+            if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+                for (i = 0; i < state->num_windows; ++i) {
+                    if (event.window.windowID == SDL_GetWindowID(state->windows[i])) {
+                        if (!SDL_GL_MakeCurrent(state->windows[i], context[i])) {
+                            SDL_Log("SDL_GL_MakeCurrent(): %s", SDL_GetError());
                             break;
                         }
+                        /* Change view port to the new window dimensions */
+                        glViewport(0, 0, event.window.data1, event.window.data2);
+                        /* Update window content */
+                        Render();
+                        SDL_GL_SwapWindow(state->windows[i]);
+                        break;
                     }
-                    break;
                 }
             }
             SDLTest_CommonEvent(state, &event, &done);
@@ -313,9 +300,8 @@ int main(int argc, char *argv[])
             if (state->windows[i] == NULL) {
                 continue;
             }
-            status = SDL_GL_MakeCurrent(state->windows[i], context[i]);
-            if (status) {
-                SDL_Log("SDL_GL_MakeCurrent(): %s\n", SDL_GetError());
+            if (!SDL_GL_MakeCurrent(state->windows[i], context[i])) {
+                SDL_Log("SDL_GL_MakeCurrent(): %s", SDL_GetError());
 
                 /* Continue for next window */
                 continue;
@@ -328,10 +314,10 @@ int main(int argc, char *argv[])
     /* Print out some timing information */
     now = SDL_GetTicks();
     if (now > then) {
-        SDL_Log("%2.2f frames per second\n",
+        SDL_Log("%2.2f frames per second",
                 ((double)frames * 1000) / (now - then));
     }
-#if !defined(__ANDROID__)
+#ifndef SDL_PLATFORM_ANDROID
     quit(0);
 #endif
     return 0;
@@ -341,10 +327,8 @@ int main(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "No OpenGL ES support on this system\n");
+    SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "No OpenGL ES support on this system");
     return 1;
 }
 
 #endif /* HAVE_OPENGLES */
-
-/* vi: set ts=4 sw=4 expandtab: */

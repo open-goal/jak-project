@@ -377,22 +377,24 @@ void InitMachine_PCPort() {
   make_function_symbol_from_c("alloc-vagdir-names", (void*)kmachine_extras::alloc_vagdir_names);
 
   // external RPCs
-  /*
   make_function_symbol_from_c("pc-fetch-external-speedrun-times",
-                              (void*)pc_fetch_external_speedrun_times);
-  make_function_symbol_from_c("pc-fetch-external-race-times", (void*)pc_fetch_external_race_times);
-  make_function_symbol_from_c("pc-fetch-external-highscores", (void*)pc_fetch_external_highscores);
+                              (void*)kmachine_extras::pc_fetch_external_speedrun_times);
+  make_function_symbol_from_c("pc-fetch-external-race-times",
+                              (void*)kmachine_extras::pc_fetch_external_race_times);
+  make_function_symbol_from_c("pc-fetch-external-highscores",
+                              (void*)kmachine_extras::pc_fetch_external_highscores);
   make_function_symbol_from_c("pc-get-external-speedrun-time",
-                              (void*)pc_get_external_speedrun_time);
-  make_function_symbol_from_c("pc-get-external-race-time", (void*)pc_get_external_race_time);
-  make_function_symbol_from_c("pc-get-external-highscore", (void*)pc_get_external_highscore);
+                              (void*)kmachine_extras::pc_get_external_speedrun_time);
+  make_function_symbol_from_c("pc-get-external-race-time",
+                              (void*)kmachine_extras::pc_get_external_race_time);
+  make_function_symbol_from_c("pc-get-external-highscore",
+                              (void*)kmachine_extras::pc_get_external_highscore);
   make_function_symbol_from_c("pc-get-num-external-speedrun-times",
-                              (void*)pc_get_num_external_speedrun_times);
+                              (void*)kmachine_extras::pc_get_num_external_speedrun_times);
   make_function_symbol_from_c("pc-get-num-external-race-times",
-                              (void*)pc_get_num_external_race_times);
+                              (void*)kmachine_extras::pc_get_num_external_race_times);
   make_function_symbol_from_c("pc-get-num-external-highscores",
-                              (void*)pc_get_num_external_highscores);
- */
+                              (void*)kmachine_extras::pc_get_num_external_highscores);
 
   // speedrunning stuff
   make_function_symbol_from_c("pc-sr-mode-get-practice-entries-amount",

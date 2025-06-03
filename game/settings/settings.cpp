@@ -18,6 +18,7 @@ void to_json(json& j, const DebugSettings& obj) {
   json_serialize(text_check_range);
   json_serialize(text_max_range);
   json_serialize(hide_imgui_key);
+  j["toggle_fullscreen_key"] = obj.toggle_fullscreen_key;
 }
 
 void from_json(const json& j, DebugSettings& obj) {
@@ -31,9 +32,10 @@ void from_json(const json& j, DebugSettings& obj) {
   json_deserialize_if_exists(text_check_range);
   json_deserialize_if_exists(text_max_range);
   json_deserialize_if_exists(hide_imgui_key);
+  if (j.contains("toggle_fullscreen_key")) {
+    j.at("toggle_fullscreen_key").get_to(obj.toggle_fullscreen_key);
+  }
 }
-
-DebugSettings::DebugSettings() {}
 
 void DebugSettings::load_settings() {
   try {
@@ -115,6 +117,10 @@ void to_json(json& j, const InputSettings& obj) {
   json_serialize(keyboard_binds);
   json_serialize(mouse_binds);
   json_serialize(keyboard_enabled);
+  json_serialize(enable_pressure_sensitivity);
+  json_serialize(enable_trigger_effects);
+  json_serialize(axis_scale);
+  json_serialize(pressure_scale);
 }
 
 void from_json(const json& j, InputSettings& obj) {
@@ -125,6 +131,10 @@ void from_json(const json& j, InputSettings& obj) {
   json_deserialize_if_exists(keyboard_binds);
   json_deserialize_if_exists(mouse_binds);
   json_deserialize_if_exists(keyboard_enabled);
+  json_deserialize_if_exists(enable_pressure_sensitivity);
+  json_deserialize_if_exists(enable_trigger_effects);
+  json_deserialize_if_exists(axis_scale);
+  json_deserialize_if_exists(pressure_scale);
 }
 
 InputSettings::InputSettings() {}

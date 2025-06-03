@@ -195,6 +195,17 @@ This gives us more freedom to write code how we want.
         :on-confirm (lambda ((val float))
           (set! (-> *pc-settings* stick-deadzone) val)
           (pc-settings-save)))
+      (new 'static 'menu-generic-slider-option
+        :name (text-id progress-controller-options-analog-sensitivity)
+        :min-value 50.0
+        :max-value 200.0
+        :step 1.0
+        :show-decimal? #f
+        :get-value-fn (lambda () (-> *pc-settings* stick-sensitivity))
+        :on-confirm (lambda ((val float))
+          (pc-set-axis-scale! (/ val 100.0))
+          (set! (-> *pc-settings* stick-sensitivity) val)
+          (pc-settings-save)))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-controller-options-ignore-if-unfocused)
         :truthy-text (text-id progress-on)
@@ -221,10 +232,34 @@ This gives us more freedom to write code how we want.
         :on-confirm (lambda ((val symbol))
           (set! (-> *pc-settings* controller-led-eco?) val)
           (pc-settings-save)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-controller-options-enable-pressure-sensitivity)
+        :should-disable? (lambda () (not (pc-current-controller-has-pressure-sensitivity?)))
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (pc-get-pressure-sensitivity-enabled?))
+        :on-confirm (lambda ((val symbol)) (pc-set-pressure-sensitivity-enabled! val)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-controller-options-swap-r1-r2)
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (-> *pc-settings* controller-swap-r1-r2?))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* controller-swap-r1-r2?) val)
+          (pc-settings-save)))
+      (new 'static 'menu-generic-boolean-option
+        :name (text-id progress-controller-options-enable-trigger-effects)
+        :should-disable? (lambda () (not (pc-current-controller-has-trigger-effect-support?)))
+        :truthy-text (text-id progress-on)
+        :falsey-text (text-id progress-off)
+        :get-value-fn (lambda () (pc-get-trigger-effects-enabled?))
+        :on-confirm (lambda ((val symbol)) (pc-set-trigger-effects-enabled! val)))
       (new 'static 'menu-generic-confirm-option
         :name (text-id progress-restore-defaults)
         :on-confirm (lambda ((val symbol))
           (reset-input *pc-settings* 'controller #t)
+          (pc-set-pressure-sensitivity-enabled! #f)
+          (pc-set-trigger-effects-enabled! #f)
           (set-ignore-controller-in-bg! *pc-settings* (-> *pc-settings* ignore-controller-win-unfocused?))
           (pc-settings-save))))
     (new 'static 'menu-generic-boolean-option
@@ -373,9 +408,11 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-czech)
                   (text-id language-name-croatian)
                   (text-id language-name-galician))
-      :get-item-index-fn (lambda () (-> *setting-control* user-default subtitle-language))
+      :get-item-index-fn (lambda () (-> *pc-settings* subtitle-language))
       :on-confirm (lambda ((index int) (the-progress progress))
-          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index)))))
+          (set! (-> *pc-settings* subtitle-language) (the-as pc-language index))
+          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index))
+          (pc-settings-save))))
 
 (defmacro game-options-pc-sound-language ()
   `(new 'static 'menu-generic-carousel-option
@@ -532,7 +569,7 @@ This gives us more freedom to write code how we want.
         (let ((name (pc-get-display-name index *pc-cpp-temp-string*)))
           (if name
               (string-format "(~D) ~S" index *pc-cpp-temp-string*)
-              (string-format "Display ~D" index))
+              (string-format "Dis~+7Vp~-7Vla~+7Vy~-7V ~D" index))
           ))
       :on-confirm (lambda ((index int) (the-progress progress))
         (pc-set-display-id! index))
@@ -550,9 +587,9 @@ This gives us more freedom to write code how we want.
           (('borderless) 2)))
       :on-confirm (lambda ((index int) (the-progress progress))
         (case index
-          ((0) (pc-set-display-mode! 'windowed))
-          ((1) (pc-set-display-mode! 'fullscreen))
-          ((2) (pc-set-display-mode! 'borderless)))))
+          ((0) (pc-set-display-mode! 'windowed (-> *pc-settings* window-width) (-> *pc-settings* window-height)))
+          ((1) (pc-set-display-mode! 'fullscreen 0 0))
+          ((2) (pc-set-display-mode! 'borderless 0 0)))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-aspect-ratio)
       :items (new 'static 'boxed-array :type text-id

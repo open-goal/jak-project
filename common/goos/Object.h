@@ -57,7 +57,7 @@
 #include "common/util/Assert.h"
 #include "common/util/crc32.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace goos {
 

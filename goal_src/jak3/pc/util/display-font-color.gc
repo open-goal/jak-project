@@ -1,0 +1,42 @@
+;;-*-Lisp-*-
+(in-package goal)
+(require "engine/gfx/hw/display-h.gc")
+(require "kernel/gstring.gc")
+(require "kernel/gstate.gc")
+
+(defun font-color->string ((val font-color))
+  (enum->string font-color val))
+
+(deftype color-display (process) ())
+
+(define *color-displays* (the color-display #f))
+
+(defmethod relocate ((this color-display) (offset int))
+  (set! *color-displays* this)
+  (if *color-displays* (&+! *color-displays* offset))
+  (call-parent-method this offset))
+
+(defun draw-all-font-colors ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf2))
+    (dotimes (i 44)
+      (draw-string-xy (string-format "~2D ~S" i (font-color->string (the font-color i)))
+                      buf
+                      (+ 4 (* (get-screen-x 0.5) (mod i 2)))
+                      (+ 8 (* 8 (/ i 2)))
+                      (the font-color i)
+                      (font-flags shadow)))))
+
+(defun start-display-text-colors ()
+  (if *color-displays*
+    (format #t "Colors are already being displayed")
+    (set! *color-displays*
+          (the color-display (ppointer->process (process-spawn-function color-display
+                              :name "color-display"
+                              (lambda :behavior color-display ()
+                                (loop
+                                  (draw-all-font-colors)
+                                  (suspend)))))))))
+
+(defun-debug stop-display-text-colors ()
+  "Kill the example text color display"
+  (kill-by-name "color-display" *active-pool*))

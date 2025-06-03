@@ -957,6 +957,16 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
       use_alpha_blend = true;
     }
 
+    // workaround for https://github.com/open-goal/jak-project/issues/3682
+    // when the pillar is very close to the screen, they fade it out, to avoid blocking the camera.
+    // but, for unknown reasons, they move this to an alpha bucket as well (normally not required
+    // for fade), but rely on merc disabling alpha blend. OpenGOAL's detection of alpha blending
+    // just checks the bucket, but there's more logic than this in the shader. Rather than figuring
+    // this out, just fix this specific case for now:
+    if (debug_name == "comb-pillar-lod0") {
+      use_alpha_blend = false;
+    }
+
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
                 merc_memories[memory_buffer_toggle], can_be_modified, combined_lump4_addr, fi);
     u32 vert_count = frag.lump4_unpacked.size() / 3;
