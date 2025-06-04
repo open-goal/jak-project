@@ -389,8 +389,9 @@ void extract_from_level(const ObjectFileDB& db,
   }
   file_util::write_text_file(entities_folder / fmt::format("{}-actors.json", level_data.level_name),
                              extract_actors_to_json(bsp_header.actors));
-  file_util::write_text_file(entities_folder / fmt::format("{}-ambients.json", level_data.level_name),
-                             extract_ambients_to_json(bsp_header.ambients));
+  if (config.game_version == GameVersion::Jak1)
+    file_util::write_text_file(entities_folder / fmt::format("{}-ambients.json", level_data.level_name),
+                               extract_ambients_to_json(bsp_header.ambients));
 }
 
 void extract_all_levels(const ObjectFileDB& db,
