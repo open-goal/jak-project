@@ -1045,6 +1045,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"A~Y~-26H~-8V¨~Z", "Ä"},
     {"a~Y~-25H~-5V¨~Z", "ä"},
     {"E~Y~-20H~-5V¨~Z", "Ë"},
+    {"e~Y~-25H~-5V¨~Z", "ë"},
     {"I~Y~-19H~-5V¨~Z", "Ï"},
     {"i~Y~-26H~-4V¨~Z", "ï"},
     {"O~Y~-26H~-8V¨~Z", "Ö"},

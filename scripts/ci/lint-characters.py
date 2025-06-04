@@ -63,7 +63,7 @@ JAK2_ALLOWED_CHARACTERS = [
     "Ů", "ů", "Ý", "ý", "Č", "č", "Ň", "ň", "Ř", "ř", "Š", "š", "Ť", "ť", "Ž", "ž", "Đ", "đ",
     "æ", "ø", "œ",
     "Ñ", "Ã", "Õ", "Á", "É", "Í", "Ó", "Ú", "Ć", "Ń", "Ś", "Ź", "ź", "Ő", "Ű", "Â", "Ê", "Î", "Ô", "Û", "À", "È", "Ì", "Ò", "Ù", "Ä", "Ë", "Ï", "ï", "Ö", "ö", "Ü", "Ė","Č","Š","Ž","Ų","Ū","Į",
-    "ñ", "á", "é", "í", "ó", "ú", "â", "ê", "î", "ô", "û", "à", "è", "ì", "ò", "ù", "ä", "ö", "ü", "ś", "å", "õ", "ã", "ę", "ż", "ć", "ą", "ł", "ń", "ű", "ő", "ė","č","š","ž","ų","ū","į",
+    "ñ", "á", "é", "í", "ó", "ú", "â", "ê", "î", "ô", "û", "à", "è", "ì", "ò", "ù", "ë", "ä", "ö", "ü", "ś", "å", "õ", "ã", "ę", "ż", "ć", "ą", "ł", "ń", "ű", "ő", "ė","č","š","ž","ų","ū","į",
     "Ǎ","Ě","Ǧ","Ǐ","Ǒ","Ǔ","Y̌","ǎ","ě","ǧ","ǐ","ǒ","ǔ","y̌",
     "・", "゛", "゜", "ー", "『", "』",
     "海", "界", "学", "ワ", "ヲ", "ン", "岩", "旧", "空", "ヮ", "撃", "賢", "湖", "口", "行", "合", "士", "寺", "山", "者", "所", "書", "小", "沼", "上", "城", "場", "出", "闇", "遺", "黄", "屋", "下", "家", "火", "花", "レ", "ロ", "青", "宝", "石", "赤", "跡", "川", "戦", "村", "隊", "台", "長", "鳥", "艇", "洞", "道", "発", "飛", "噴", "池", "中", "塔", "島", "部", "砲", "産", "眷", "力", "緑", "岸", "像", "谷", "心", "森", "水", "船", "世",
@@ -100,7 +100,18 @@ JAK2_AUTO_REPLACEMENTS = {
     "〜": "~",
     "。": ".",
     "×": "x",
-    "？": "?"
+    "？": "?",
+    "一": "-",
+    ";": ",",
+    "：": ": ",
+    "…": "...",
+    "«": "<",
+    "»": ">",
+    " ": " ",
+    "“": "\"",
+    "'̂'": "",
+    "ų": "ų",
+    "‘": "'"
 }
 # fmt: on
 
@@ -158,8 +169,8 @@ def lint_jak1_characters(text):
                         char_fixed = True
                 if not char_fixed:
                     print(
-                        "Character '{}' not allowed - Found in {}".format(
-                            character, text
+                        "Character '{}' not allowed - Found in {} in string {}".format(
+                            character, text, text
                         )
                     )
                     # text = jak1_replace_character(text, pos, "?")
@@ -272,8 +283,8 @@ def lint_jak2_characters(text):
                         char_fixed = True
                 if not char_fixed:
                     print(
-                        "Character '{}' not allowed - Found in {}".format(
-                            character, text
+                        "Character '{}' not allowed - Found in {} in string {}".format(
+                            character, text, text
                         )
                     )
                     # text = jak2_replace_character(text, pos, "?")
@@ -306,39 +317,39 @@ for text_file in text_files:
             json.dump(file_data, f, indent=2, ensure_ascii=False)
             f.write("\n")
 
-# subtitle_files = glob.glob("./game/assets/jak2/subtitle/*lines*.json")
+subtitle_files = glob.glob("./game/assets/jak2/subtitle/*lines*.json")
 
-# for subtitle_file in subtitle_files:
-#     print("Checking {}...".format(subtitle_file))
-#     with open(subtitle_file, encoding="utf-8") as f:
-#         file_data = json.load(f)
-#     # Check Speakers
-#     for id, text in file_data["speakers"].items():
-#         invalid_chars_exist, new_text = lint_jak2_characters(text)
-#         if args.fix and new_text != text:
-#             file_data["speakers"][id] = new_text
-#         if invalid_chars_exist:
-#             invalid_characters_found = True
-#     # Check Lines
-#     for id, lines in file_data["cutscenes"].items():
-#         for i, line in enumerate(lines):
-#             invalid_chars_exist, new_text = lint_jak2_characters(line)
-#             if args.fix and new_text != line:
-#                 lines[i] = new_text
-#             if invalid_chars_exist:
-#                 invalid_characters_found = True
-#     for id, lines in file_data["hints"].items():
-#         for i, line in enumerate(lines):
-#             invalid_chars_exist, new_text = lint_jak2_characters(line)
-#             if args.fix and new_text != line:
-#                 lines[i] = new_text
-#             if invalid_chars_exist:
-#                 invalid_characters_found = True
-#     if args.fix:
-#         # save the modified file back out
-#         with open(subtitle_file, "w", encoding="utf-8") as f:
-#             json.dump(file_data, f, indent=2, ensure_ascii=False)
-#             f.write("\n")
+for subtitle_file in subtitle_files:
+    print("Checking {}...".format(subtitle_file))
+    with open(subtitle_file, encoding="utf-8") as f:
+        file_data = json.load(f)
+    # Check Speakers
+    for id, text in file_data["speakers"].items():
+        invalid_chars_exist, new_text = lint_jak2_characters(text)
+        if args.fix and new_text != text:
+            file_data["speakers"][id] = new_text
+        if invalid_chars_exist:
+            invalid_characters_found = True
+    # Check Lines
+    for id, lines in file_data["cutscenes"].items():
+        for i, line in enumerate(lines):
+            invalid_chars_exist, new_text = lint_jak2_characters(line)
+            if args.fix and new_text != line:
+                lines[i] = new_text
+            if invalid_chars_exist:
+                invalid_characters_found = True
+    for id, lines in file_data["other"].items():
+        for i, line in enumerate(lines):
+            invalid_chars_exist, new_text = lint_jak2_characters(line)
+            if args.fix and new_text != line:
+                lines[i] = new_text
+            if invalid_chars_exist:
+                invalid_characters_found = True
+    if args.fix:
+        # save the modified file back out
+        with open(subtitle_file, "w", encoding="utf-8") as f:
+            json.dump(file_data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
 
 if invalid_characters_found:
     print("Invalid characters were found, see above")
