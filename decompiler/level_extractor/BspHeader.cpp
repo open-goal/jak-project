@@ -527,6 +527,13 @@ std::string DrawableActor::print(const PrintSettings& /*settings*/, int indent) 
   return result;
 }
 
+std::string DrawableAmbient::print(const PrintSettings& /*settings*/, int indent) const {
+  std::string is(indent, ' ');
+  std::string result;
+  result += fmt::format("{}bsphere: {}", is, bsphere.print_meters());
+  return result;
+}
+
 void InstanceTie::read_from_file(TypedRef ref,
                                  const decompiler::DecompilerTypeSystem& dts,
                                  GameVersion /*version*/) {
@@ -1952,6 +1959,109 @@ void DrawableInlineArrayActor::read_from_file(TypedRef ref,
   }
 }
 
+void EntityAmbient::read_from_file(TypedRef ref,
+                                   const decompiler::DecompilerTypeSystem& dts,
+                                   GameVersion /*version*/) {
+  trans.read_from_file(get_field_ref(ref, "trans", dts));
+  aid = read_plain_data_field<u32>(ref, "aid", dts);
+  //ambientData = read_plain_data_field<u128>(ref, "extra", dts); // to-do: get ambient-data, not sure if nessecary tho
+
+  int res_length = read_plain_data_field<int32_t>(ref, "length", dts);
+  // int res_allocated_length = read_plain_data_field<int32_t>(ref, "allocated-length", dts);
+
+  auto tags = deref_label(get_field_ref(ref, "tag", dts));
+  auto data_base = deref_label(get_field_ref(ref, "data-base", dts));
+
+  for (int i = 0; i < res_length; i++) {
+    auto& res = res_list.emplace_back();
+    res.name = read_symbol(tags);
+    tags.byte_offset += 4;
+    res.key_frame = deref_float(tags, 0);
+    tags.byte_offset += 4;
+    res.elt_type = read_type(tags);
+    tags.byte_offset += 4;
+    const u32 vals = deref_u32(tags, 0);
+    const u32 offset = vals & 0xffff;   // 16 bits
+    res.count = (vals >> 16) & 0x7fff;  // 15 bits
+    res.inlined = vals & 0x8000'0000;
+
+    Ref data = data_base;
+    data.byte_offset += offset;
+
+    if (res.elt_type == "string") {
+      ASSERT(!res.inlined);
+      for (int j = 0; j < res.count; j++) {
+        res.strings.push_back(read_string_ref(data));
+        data.byte_offset += 4;
+      }
+    } else if (res.elt_type == "symbol") {
+      ASSERT(!res.inlined);
+      for (int j = 0; j < res.count; j++) {
+        res.strings.push_back(read_symbol(data));
+        data.byte_offset += 4;
+      }
+    } else if (res.elt_type == "type") {
+      ASSERT(!res.inlined);
+      for (int j = 0; j < res.count; j++) {
+        res.strings.push_back(read_type(data));
+        data.byte_offset += 4;
+      }
+    } else if (res.elt_type == "vector") {
+      ASSERT(res.inlined);
+      res.inlined_storage = bytes_from_plain_data(data, 16 * res.count);
+    } else if (res.elt_type == "float") {
+      fill_res_with_value_types<float>(res, data);
+    } else if (res.elt_type == "int32") {
+      fill_res_with_value_types<int32_t>(res, data);
+    } else if (res.elt_type == "int16") {
+      fill_res_with_value_types<int16_t>(res, data);
+    } else if (res.elt_type == "int8") {
+      fill_res_with_value_types<int8_t>(res, data);
+    } else if (res.elt_type == "uint32") {
+      fill_res_with_value_types<uint32_t>(res, data);
+    } else if (res.elt_type == "uint8") {
+      fill_res_with_value_types<uint8_t>(res, data);
+    } else if (res.elt_type == "actor-group") {
+      // TODO: unsupported.
+    } else if (res.elt_type == "pair") {
+      ASSERT(res.count == 1);
+      ASSERT(!res.inlined);
+      data = deref_label(data);
+      res.script = data.data->to_form_script(data.seg, (data.byte_offset) / 4, nullptr);
+    } else {
+      fmt::print("unhandled elt_type: {}\n", res.elt_type);
+      ASSERT_NOT_REACHED();
+    }
+
+    tags.byte_offset += 4;
+  }
+}
+
+void DrawableAmbient::read_from_file(TypedRef ref,
+                                     const decompiler::DecompilerTypeSystem& dts,
+                                     GameVersion version){
+  bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+  ambient.read_from_file(get_and_check_ref_to_basic(ref, "ambient", "entity-ambient", dts), dts,
+                         version);
+}
+
+void DrawableInlineArrayAmbient::read_from_file(TypedRef ref,
+                                              const decompiler::DecompilerTypeSystem& dts,
+                                              GameVersion version){
+  int numAmbients = read_plain_data_field<int16_t>(ref, "length", dts);
+  auto data_ref = get_field_ref(ref, "data", dts);
+  for (int i = 0; i < numAmbients; i++) {
+    Ref obj_ref = data_ref;
+    obj_ref.byte_offset += 32 * i;  // todo not a constant here
+    auto type = get_type_of_basic(obj_ref);
+    if (type != "drawable-ambient") {
+      throw Error("bad drawable-ambient type: {}", type);
+    }
+    drawable_ambients.emplace_back();
+    drawable_ambients.back().read_from_file(typed_ref_from_basic(obj_ref, dts), dts, version);
+  }
+}
+
 void CollideHash::read_from_file(TypedRef ref,
                                  const decompiler::DecompilerTypeSystem& dts,
                                  GameVersion /*version*/) {
@@ -2065,6 +2175,11 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
     actors.read_from_file(
         get_and_check_ref_to_basic(ref, "actors", "drawable-inline-array-actor", dts), dts,
         version);
+    if (get_word_kind_for_field(ref, "ambients", dts) == decompiler::LinkedWord::PTR) {
+      ambients.read_from_file(
+          get_and_check_ref_to_basic(ref, "ambients", "drawable-inline-array-ambient", dts), dts,
+          version);
+    }
   }
 
   if (version > GameVersion::Jak1 &&
