@@ -83,12 +83,12 @@ extractor_iso_database() {
            {{18445016742498932084U,  // hash of ELF
              {"Jak II",              // canonical name
               GAME_TERRITORY_SCEA,
-              593,                   // number of files
+              593,  // number of files
               {
-                3212700152698192932U, // NTSC-U v1
-                18208811100399420450U // NTSC-U V2
-              },          // iso hash(es)
-              "ntsc_v1",  // decompiler config
+                  3212700152698192932U,  // NTSC-U v1
+                  18208811100399420450U  // NTSC-U V2
+              },                         // iso hash(es)
+              "ntsc_v1",                 // decompiler config
               "jak2",
               {}}}}},
           // Jak 2 PAL
@@ -96,9 +96,9 @@ extractor_iso_database() {
            {{18188891052467821088U,  // hash of ELF
              {"Jak II: Renegade",    // canonical name
               GAME_TERRITORY_SCEE,
-              593,                     // number of files
+              593,                      // number of files
               {15637648662558474533U},  // iso hash
-              "pal",                   // decompiler config
+              "pal",                    // decompiler config
               "jak2",
               {}}}}},
           // Jak 2 NTSC-J
@@ -106,9 +106,9 @@ extractor_iso_database() {
            {{7409991384254810731U,      // hash of ELF
              {"ジャックＸダクスター2",  // canonical name
               GAME_TERRITORY_SCEI,
-              593,                     // number of files
+              593,                    // number of files
               {709902535083998969U},  // iso hash
-              "jp",                    // decompiler config
+              "jp",                   // decompiler config
               "jak2",
               {}}}}},
           // Jak 2 NTSC-K
