@@ -146,4 +146,61 @@ std::string extract_actors_to_json(const level_tools::DrawableInlineArrayActor& 
   return json.dump(2);
 }
 
+std::string extract_ambients_to_json(const level_tools::DrawableInlineArrayAmbient& actors) {
+  nlohmann::json json;
+
+  for (const auto& damb : actors.drawable_ambients) {
+    const auto& ambient = damb.ambient;
+    auto& json_ambient = json.emplace_back();
+    json_ambient["bsphere"] = vectorm_json(damb.bsphere);
+    // drawable ID?
+
+    json_ambient["trans"] = vectorm_json(ambient.trans);
+    json_ambient["aid"] = ambient.aid;  // aid
+
+    auto& json_lump = json_ambient["lump"];
+    for (const auto& res : ambient.res_list) {
+      if (res.elt_type == "string") {
+        json_lump[res.name] = strings_json(res.strings, false);
+      } else if (res.elt_type == "symbol") {
+        json_lump[res.name] = strings_json(res.strings, true);
+      } else if (res.elt_type == "type") {
+        // TODO: confusion with symbols
+        json_lump[res.name] = strings_json(res.strings, true);
+      } else if (res.elt_type == "vector") {
+        const float* data = (const float*)res.inlined_storage.data();
+        if (res.count == 1) {
+          json_lump[res.name] = vector_json(data);
+        } else {
+          for (int i = 0; i < res.count; i++) {
+            json_lump[res.name].push_back(vector_json(data + 4 * i));
+          }
+        }
+      } else if (res.elt_type == "pair") {
+        json_lump[res.name] = pretty_print::to_string(res.script);
+      } else if (res.elt_type == "float") {
+        json_lump[res.name] = value_json<float>(res.inlined_storage, res.count);
+      } else if (res.elt_type == "int32") {
+        json_lump[res.name] = value_json<int32_t>(res.inlined_storage, res.count);
+      } else if (res.elt_type == "int16") {
+        json_lump[res.name] = value_json<int16_t>(res.inlined_storage, res.count);
+      } else if (res.elt_type == "int8") {
+        json_lump[res.name] = value_json<int8_t>(res.inlined_storage, res.count);
+      } else if (res.elt_type == "uint32") {
+        json_lump[res.name] = value_json<uint32_t>(res.inlined_storage, res.count);
+      } else if (res.elt_type == "uint16") {
+        json_lump[res.name] = value_json<uint16_t>(res.inlined_storage, res.count);
+      } else if (res.elt_type == "uint8") {
+        json_lump[res.name] = value_json<uint8_t>(res.inlined_storage, res.count);
+      } else if (res.elt_type == "actor-group") {
+        // not supported.
+      } else {
+        ASSERT_NOT_REACHED();
+      }
+    }
+  }
+
+  return json.dump(2);
+}
+
 }  // namespace decompiler
