@@ -9,7 +9,7 @@ struct CollideVertex {
 
 namespace jak1 {
 struct PatSurface {
-  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, MAX_MODE = 3 };
+  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, AUTO = 4, MAX_MODE = 5 };
   enum class Material {
     STONE = 0,
     ICE = 1,
@@ -116,7 +116,7 @@ struct CollideFace {
 
 namespace jak2 {
 struct PatSurface {
-  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, HALFPIPE = 3, MAX_MODE = 4 };
+  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, HALFPIPE = 3, AUTO = 4, MAX_MODE = 5 };
   enum class Material {
     NONE = 0,
     ICE = 1,
@@ -316,7 +316,7 @@ struct CollideFace {
 
 namespace jak3 {
 struct PatSurface {
-  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, HALFPIPE = 3, MAX_MODE = 4 };
+  enum class Mode { GROUND = 0, WALL = 1, OBSTACLE = 2, HALFPIPE = 3, AUTO = 4, MAX_MODE = 5 };
   enum class Material {
     NONE = 0,
     ICE = 1,
