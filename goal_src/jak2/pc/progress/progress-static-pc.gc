@@ -195,6 +195,17 @@ This gives us more freedom to write code how we want.
         :on-confirm (lambda ((val float))
           (set! (-> *pc-settings* stick-deadzone) val)
           (pc-settings-save)))
+      (new 'static 'menu-generic-slider-option
+        :name (text-id progress-controller-options-analog-sensitivity)
+        :min-value 50.0
+        :max-value 200.0
+        :step 1.0
+        :show-decimal? #f
+        :get-value-fn (lambda () (-> *pc-settings* stick-sensitivity))
+        :on-confirm (lambda ((val float))
+          (pc-set-axis-scale! (/ val 100.0))
+          (set! (-> *pc-settings* stick-sensitivity) val)
+          (pc-settings-save)))
       (new 'static 'menu-generic-boolean-option
         :name (text-id progress-controller-options-ignore-if-unfocused)
         :truthy-text (text-id progress-on)
@@ -400,6 +411,7 @@ This gives us more freedom to write code how we want.
       :get-item-index-fn (lambda () (-> *pc-settings* subtitle-language))
       :on-confirm (lambda ((index int) (the-progress progress))
           (set! (-> *pc-settings* subtitle-language) (the-as pc-language index))
+          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index))
           (pc-settings-save))))
 
 (defmacro game-options-pc-sound-language ()
@@ -575,9 +587,9 @@ This gives us more freedom to write code how we want.
           (('borderless) 2)))
       :on-confirm (lambda ((index int) (the-progress progress))
         (case index
-          ((0) (pc-set-display-mode! 'windowed))
-          ((1) (pc-set-display-mode! 'fullscreen))
-          ((2) (pc-set-display-mode! 'borderless)))))
+          ((0) (pc-set-display-mode! 'windowed (-> *pc-settings* window-width) (-> *pc-settings* window-height)))
+          ((1) (pc-set-display-mode! 'fullscreen 0 0))
+          ((2) (pc-set-display-mode! 'borderless 0 0)))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-aspect-ratio)
       :items (new 'static 'boxed-array :type text-id

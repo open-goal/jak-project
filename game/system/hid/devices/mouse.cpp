@@ -213,7 +213,13 @@ void MouseDevice::process_event(const SDL_Event& event,
         commands.mouse_binds.find(button_event.button) != commands.mouse_binds.end()) {
       for (const auto& command : commands.mouse_binds.at(button_event.button)) {
         if (command.modifiers.has_necessary_modifiers(SDL_GetModState())) {
-          command.command();
+          if (command.event_command) {
+            command.event_command(event);
+          } else if (command.command) {
+            command.command();
+          } else {
+            lg::warn("CommandBinding has no valid callback for mouse bind");
+          }
         }
       }
     }

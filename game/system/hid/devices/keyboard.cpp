@@ -169,7 +169,13 @@ void KeyboardDevice::process_event(const SDL_Event& event,
         commands.keyboard_binds.find(key_event.key) != commands.keyboard_binds.end()) {
       for (const auto& command : commands.keyboard_binds.at(key_event.key)) {
         if (command.modifiers.has_necessary_modifiers(key_event.mod)) {
-          command.command();
+          if (command.event_command) {
+            command.event_command(event);
+          } else if (command.command) {
+            command.command();
+          } else {
+            lg::warn("CommandBinding has no valid callback for keyboard bind");
+          }
         }
       }
     }

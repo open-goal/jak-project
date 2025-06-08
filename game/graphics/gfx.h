@@ -65,7 +65,7 @@ struct GfxGlobalSettings {
   int game_res_h = 480;
 
   // multi-sampled anti-aliasing sample count. 1 = disabled.
-  int msaa_samples = 2;
+  int msaa_samples = 1;
 
   // current renderer
   const GfxRendererModule* renderer;

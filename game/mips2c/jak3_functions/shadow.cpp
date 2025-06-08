@@ -265,6 +265,16 @@ block_1:
   c->lqc2(vf4, 48, t0);                             // lqc2 vf4, 48(t0)
   // nop                                            // sll r0, r0, 0
   c->lqc2(vf9, 0, a2);                              // lqc2 vf9, 0(a2)
+
+  // if our bones became nans, then set the transformation matrix to 0 instead.
+  // leaving them as NaN may cause all triangles to become single, overflowing the 8-bit .num field
+  // of a vif unpack.
+  if (std::isnan(c->vf_src(1).f[0])) {
+    c->vfs[1].vf.fill(0);
+    c->vfs[2].vf.fill(0);
+    c->vfs[3].vf.fill(0);
+    c->vfs[4].vf.fill(0);
+  }
   c->vmula_bc(DEST::xyzw, BC::w, vf4, vf0);         // vmulaw.xyzw acc, vf4, vf0
   // nop                                            // sll r0, r0, 0
   c->vmadda_bc(DEST::xyzw, BC::x, vf1, vf9);        // vmaddax.xyzw acc, vf1, vf9

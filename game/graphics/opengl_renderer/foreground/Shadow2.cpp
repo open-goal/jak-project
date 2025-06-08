@@ -155,6 +155,13 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
       u16 addr = up.addr_qw;
 
       u32 offset = 4 * vif1.num;
+      if (transfer.size_bytes > 16 + 255 * 4) {
+        printf("shadow overflow detected, skipping all shadows for this frame!");
+        while (dma.current_tag_offset() == render_state->next_bucket) {
+          dma.read_and_advance();
+        }
+        return;
+      }
       ASSERT(offset + 16 == transfer.size_bytes);
 
       u32 after[4];

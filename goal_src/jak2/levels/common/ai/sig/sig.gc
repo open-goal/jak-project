@@ -1438,3 +1438,14 @@
   0
   (none)
   )
+
+;; og:preserve-this Hack to prevent this issue from happening again - https://github.com/open-goal/jak-project/issues/3929
+;; this should be safe because you never interact with an enemy at the origin, especially the snipers
+(defmethod enemy-method-95 ((this sig) (arg0 vector) (arg1 float))
+  (when (and (= 0.0 (-> arg0 x)) (= 0.0 (-> arg0 y)) (= 0.0 (-> arg0 z)))
+    (format 0 "HACK: sig::95 got a zero'd vector, implying NaNs, see issue #3929, returning true~%")
+    (return #t))
+  (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this root trans))))
+    (enemy-method-94 this v1-1 arg1)
+    )
+  )
