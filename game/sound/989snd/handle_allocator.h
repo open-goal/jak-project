@@ -14,7 +14,7 @@ class IdAllocator {
   void FreeId(u32) {}
 
  private:
-  u32 mNextId{0};
+  u32 mNextId{1};
 };
 
 }  // namespace snd
