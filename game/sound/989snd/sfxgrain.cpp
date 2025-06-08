@@ -206,7 +206,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_BRANCH(BlockSoundHandler& handler) {
   if (index <= -1) {
     lg::error("Unsupported BRANCH sound not specified by ID");
     // unsure exactly how this case worked
-    ASSERT_NOT_REACHED();
+    return 0;
   }
 
   // kill voices
