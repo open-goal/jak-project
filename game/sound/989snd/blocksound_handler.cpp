@@ -328,8 +328,6 @@ SoundHandler* BlockSoundHandler::CheckInstanceLimit(
     }
 
     // See if this is playing the same sound
-    // 989snd checks both an orig_sound and a SH.Sound, but we never change the sound.
-    // We'd need to revisit this if we eventually support BRANCH grains.
     if ((parent && handler->m_orig_sfx == m_sfx) || handler->m_sfx == m_sfx) {
       inst++;
       if (!weakest ||                                                                         //
