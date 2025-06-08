@@ -729,7 +729,7 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
                                  GameVersion version) {
   s32 idx_in_level_texture = INT32_MAX;
   for (s32 i = 0; i < (int)out.textures.size(); i++) {
-    if (out.textures[i].combo_id == pc_combo_tex_id) {
+    if (out.textures[i].combo_id == pc_combo_tex_id && out.textures[i].debug_name == debug_name) {
       idx_in_level_texture = i;
       break;
     }
@@ -746,6 +746,7 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
         for (size_t i = 0; i < out.textures.size(); i++) {
           auto& existing = out.textures[i];
           if (existing.debug_name == "yak-medfur-end") {
+            lg::info("found yak-medfur-end to replace missing yakow-lod0");
             idx_in_level_texture = i;
             break;
           }
