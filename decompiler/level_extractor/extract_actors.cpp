@@ -165,7 +165,10 @@ std::string extract_ambients_to_json(const level_tools::DrawableInlineArrayAmbie
 
     for (const auto& res : ambient.res_list) {
       if (res.elt_type == "string") {
-        json_lump[res.name] = strings_json(res.strings, false);
+        if (res.name == "name")
+          json_lump[res.name] = strings_json(res.strings, false);
+        else
+          json_lump[res.name] = strings_json(res.strings, true);
       } else if (res.elt_type == "symbol") {
         if (res.name == "effect-name") {
           if (++effectCount > effectParamCount) {
