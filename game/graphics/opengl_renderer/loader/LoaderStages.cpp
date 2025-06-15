@@ -689,6 +689,68 @@ bool MercLoaderStage::run(Timer& /*timer*/, LoaderInput& data) {
   return true;
 }
 
+ShadowLoaderStage::ShadowLoaderStage() : LoaderStage("shadow") {}
+void ShadowLoaderStage::reset() {
+  m_done = false;
+  m_opengl = false;
+  m_vtx_uploaded = false;
+  m_idx = 0;
+}
+
+bool ShadowLoaderStage::run(Timer& /*timer*/, LoaderInput& data) {
+  if (m_done) {
+    return true;
+  }
+
+  if (!m_opengl) {
+    glGenBuffers(1, &data.lev_data->shadow_indices);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.lev_data->shadow_indices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 data.lev_data->level->shadow_data.indices.size() * sizeof(u32), nullptr,
+                 GL_STATIC_DRAW);
+
+    glGenBuffers(1, &data.lev_data->shadow_vertices);
+    glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->shadow_vertices);
+    glBufferData(GL_ARRAY_BUFFER,
+                 data.lev_data->level->shadow_data.vertices.size() * sizeof(tfrag3::ShadowVertex),
+                 nullptr, GL_STATIC_DRAW);
+    m_opengl = true;
+  }
+
+  if (!m_vtx_uploaded) {
+    u32 start = m_idx;
+    m_idx = std::min(start + 32768, (u32)data.lev_data->level->shadow_data.indices.size());
+    glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->shadow_indices);
+    glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(u32), (m_idx - start) * sizeof(u32),
+                    data.lev_data->level->shadow_data.indices.data() + start);
+    if (m_idx != data.lev_data->level->shadow_data.indices.size()) {
+      return false;
+    } else {
+      m_idx = 0;
+      m_vtx_uploaded = true;
+    }
+  }
+
+  u32 start = m_idx;
+  m_idx = std::min(start + 32768, (u32)data.lev_data->level->shadow_data.vertices.size());
+  glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->shadow_vertices);
+  glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(tfrag3::ShadowVertex),
+                  (m_idx - start) * sizeof(tfrag3::ShadowVertex),
+                  data.lev_data->level->shadow_data.vertices.data() + start);
+
+  if (m_idx != data.lev_data->level->shadow_data.vertices.size()) {
+    return false;
+  } else {
+    m_done = true;
+    for (auto& model : data.lev_data->level->shadow_data.models) {
+      data.lev_data->shadow_model_lookup[model.name] = &model;
+      (*data.shadows)[model.name].push_back({&model, data.lev_data->load_id, data.lev_data});
+    }
+    return true;
+  }
+  return true;
+}
+
 std::vector<std::unique_ptr<LoaderStage>> make_loader_stages() {
   std::vector<std::unique_ptr<LoaderStage>> ret;
   ret.push_back(std::make_unique<TieLoadStage>());
@@ -697,6 +759,7 @@ std::vector<std::unique_ptr<LoaderStage>> make_loader_stages() {
   ret.push_back(std::make_unique<ShrubLoadStage>());
   ret.push_back(std::make_unique<CollideLoaderStage>());
   ret.push_back(std::make_unique<MercLoaderStage>());
+  ret.push_back(std::make_unique<ShadowLoaderStage>());
   ret.push_back(std::make_unique<HfragLoaderStage>());
   ret.push_back(std::make_unique<StallLoaderStage>());
   return ret;

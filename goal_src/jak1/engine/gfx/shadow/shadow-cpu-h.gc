@@ -103,6 +103,35 @@
 
 (define *shadow-queue* (new 'global 'shadow-queue))
 
+;; og:preserve-this
+;; new shadow queue for drawing PC shadows.
+(declare-type pc-shadow-request structure)
+(deftype pc-shadow-request (structure)
+  (
+   (dma-next   dma-packet        :inline)
+   (settings   shadow-settings   :inline)
+   (geo-name   string)          ;; name to send to PC renderer
+   (mtx        pointer)         ;; pointer to DMA memory that will contain bones
+   (num-joints uint32)          ;; number of joints needed for shadow
+   (next       pc-shadow-request)
+   )
+  )
+
+
+(deftype pc-shadow-run (structure)
+  ((first pc-shadow-request)
+   (next (pointer pc-shadow-request)))
+  )
+
+(deftype pc-shadow-queue (structure)
+  ((cur-run uint32)
+   (run     pc-shadow-run 16 :inline)
+   )
+  )
+
+(define *pc-shadow-queue* (new 'global 'pc-shadow-queue))
+
+
 (deftype shadow-vertex (structure)
   ((x      float)
    (y      float)

@@ -112,6 +112,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   }
 
   m_merc2 = std::make_shared<Merc2>(m_render_state.shaders, anim_slot_array());
+  m_shadow3 = std::make_shared<Shadow3>(m_render_state.shaders);
   m_generic2 = std::make_shared<Generic2>(m_render_state.shaders);
 
   // initialize all renderers
@@ -757,8 +758,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
 
   init_bucket_renderer<Generic2BucketRenderer>("common-alpha-generic", BucketCategory::GENERIC,
                                                BucketId::GENERIC_ALPHA, m_generic2,
-                                               Generic2::Mode::NORMAL);                     // 46
-  init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW);  // 47
+                                               Generic2::Mode::NORMAL);  // 46
+  init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW,
+                                       m_shadow3);  // 47
 
   //-----------------------
   // LEVEL 0 pris texture

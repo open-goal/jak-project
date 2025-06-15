@@ -27,6 +27,27 @@
 
 (defglobalconstant BACKWARD_COMPAT_MERC_CLIP #f)
 
+;; when set, render some environment mapped stuff with jak 2's emerc.
+;; this is much faster, and does significantly speed up the game thread on finalboss.
+(define *emerc-hack* #t)
+
+;; when set, use merc for blerc instead of generic.
+(define *blerc-hack* #t)
+
+;; when true, uses the PC float blerc implementation.
+(define *use-fp-blerc* #t)
+
+(define *texscroll-force-generic* #f)
+
+(define *ripple-force-generic* #f)
+
+;; when set, use the rewritten PC shadow render (faster)
+(define *use-pc-shadow* #f)
+
+;; use rewritten bones math (GOAL asm instead of mips2c)
+(define *use-new-bones* #t)
+
+
 ;;;;;;;;;;;;;;;;;;
 ;; calc list
 ;;;;;;;;;;;;;;;;;;
@@ -326,6 +347,10 @@
     (let ((v1-13 (-> gp-1 run (-> gp-1 cur-run))))
       (set! (-> v1-13 first) (the-as dma-packet 0))
       (set! (-> v1-13 next) (the-as (pointer dma-packet) 0))))
+  ;; og:preserve-this
+  (set! (-> *pc-shadow-queue* run (-> *pc-shadow-queue* cur-run) first) (the pc-shadow-request 0))
+  (set! (-> *pc-shadow-queue* run (-> *pc-shadow-queue* cur-run) next) (the (pointer pc-shadow-request) 0))
+  
   0
   (none))
 
@@ -464,7 +489,6 @@
         (.svf (&-> out n-mtx quad 2) nmat2))))
   (none))
 
-(define *use-new-bones* #t)
 
 (defun bones-mtx-calc-execute ()
   "Do all pending bone calculations"
@@ -660,7 +684,83 @@
        (new 'static 'plane :y 1.0 :w 4096.0)
        :fade-dist 409600.0))
 
+;; og:preserve-this
+(defun pc-draw-bones-shadow ((dc draw-control) (mtx pointer) (dma-ptr pointer))
+  "Add shadows for this draw-control to the *pc-shadow-queue* to be drawn in pc-shadow-execute-all.
+   This places a pc-shadow-request in the DMA buffer and adds it to the linked list of requests
+   for the currently selected run in *pc-shadow-queue*"
+  (let* ((pse      (the pc-shadow-request dma-ptr))
+         (sgeo     (-> dc shadow))
+         (settings (if (-> dc shadow-ctrl) (-> dc shadow-ctrl settings) *default-shadow-settings*))
+         (flags    (-> settings flags))
+         )
+    
+    ;; if fade is enabled, and we're all the way faded out, disable draw
+    (when (not (logtest? flags (shadow-flags disable-fade)))
+      (let ((dist (-> (scratchpad-object terrain-context) work foreground bone-mem work distance w)))
+        (if (< (-> settings fade-dist) dist)
+            (logior! flags (shadow-flags disable-draw))
+            )
+        )
+      )
+    
+    ;; if disabled, early return
+    (if (logtest? flags (shadow-flags disable-draw))
+        (return dma-ptr)
+        )
+    
+    
+    ;; settings
+    (mem-copy! (the pointer (-> pse settings)) (the pointer settings) (size-of shadow-settings))
+    
+    ;; update the "center" position.
+    (let ((center-pos (-> dc skeleton bones (-> dc shadow-joint-index) position)))
+      (set! (-> pse settings center x) (-> center-pos x))
+      (set! (-> pse settings center y) (-> center-pos y))
+      (set! (-> pse settings center z) (-> center-pos z))
+      )
+    
+    ;; set the other properties
+    (set! (-> pse geo-name) (-> sgeo name))
+    (set! (-> pse mtx) mtx)
+    (set! (-> pse num-joints) (-> sgeo header num-joints))
+    
+    ;; set up linked list.
+    (let* ((run (-> *pc-shadow-queue* run (-> *pc-shadow-queue* cur-run)))
+           (next (-> run next))
+           )
+
+      ;; if we're the first in the list, store in the run
+      (if (zero? (-> run first)) (set! (-> run first) pse))
+      
+      ;; patch next pointer of previous
+      (if (nonzero? next) (set! (-> next 0) pse))
+      
+      ;; remember where to patch for the next one
+      (set! (-> run next) (&-> pse next))
+      
+      ;; clear our next pointer in case we're last
+      (set! (-> pse next) (the pc-shadow-request 0))
+
+      ;; set up next tag at the start, to skip over this data.
+      ;; this is a bit of a hack, this function gets called when building merc chains,
+      ;; and inserts a bit of shadow dma that will later be referenced by the shadow bucket.
+      ;; but the original game did the same thing!
+      (&+! dma-ptr (size-of pc-shadow-request))
+      (set! (-> pse dma-next dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int dma-ptr)))
+      (set! (-> pse dma-next vif0) (new 'static 'vif-tag))
+      (set! (-> pse dma-next vif1) (new 'static 'vif-tag))
+      )
+    
+    dma-ptr
+    )
+  )
+
 (defun draw-bones-shadow ((arg0 draw-control) (arg1 pointer) (arg2 pointer))
+  ;; og:preserve-this
+  (when *use-pc-shadow*
+    (return (pc-draw-bones-shadow arg0 arg1 arg2))
+    )
   ;; (local-vars (ra-0 int))
   ;;      the dma packet we'll use for shadow in the end.
   (let* ((v1-0 (the-as dma-packet (&+ arg2 0)))
@@ -1025,19 +1125,7 @@
       (set! dma-buf (the pointer (&+ packet 16))))
     dma-buf))
 
-;; when set, render some environment mapped stuff with jak 2's emerc.
-;; this is much faster, and does significantly speed up the game thread on finalboss.
-(define *emerc-hack* #t)
 
-;; when set, use merc for blerc instead of generic.
-(define *blerc-hack* #t)
-
-;; when true, uses the PC float blerc implementation.
-(define *use-fp-blerc* #t)
-
-(define *texscroll-force-generic* #f)
-
-(define *ripple-force-generic* #f)
 
 (defun draw-bones ((arg0 draw-control) (dma-buf dma-buffer) (arg2 float))
   "Main draw function for all bone-related renderers. Will set up merc, generic and shadow.

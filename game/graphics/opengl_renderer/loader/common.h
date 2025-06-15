@@ -28,6 +28,10 @@ struct LevelData {
   GLuint merc_indices;
   std::unordered_map<std::string, const tfrag3::MercModel*> merc_model_lookup;
 
+  GLuint shadow_vertices;
+  GLuint shadow_indices;
+  std::unordered_map<std::string, const tfrag3::ShadowModel*> shadow_model_lookup;
+
   GLuint hfrag_vertices;
   GLuint hfrag_indices;
 
@@ -43,10 +47,20 @@ struct MercRef {
   }
 };
 
+struct ShadowRef {
+  const tfrag3::ShadowModel* model = nullptr;
+  u64 load_id = 0;
+  const LevelData* level = nullptr;
+  bool operator==(const ShadowRef& other) const {
+    return model == other.model && load_id == other.load_id;
+  }
+};
+
 struct LoaderInput {
   LevelData* lev_data;
   TexturePool* tex_pool;
   std::unordered_map<std::string, std::vector<MercRef>>* mercs;
+  std::unordered_map<std::string, std::vector<ShadowRef>>* shadows;
 };
 
 class LoaderStage {
