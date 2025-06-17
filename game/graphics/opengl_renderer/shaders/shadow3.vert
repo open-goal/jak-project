@@ -51,6 +51,7 @@ vec4 dual(vec4 p, vec4 plane) {
 }
 
 vec4 scissor(vec4 p, vec4 plane) {
+  return p;
   float plane_offset = dot(p, plane);
   if (plane_offset > 0) {
     vec4 offset = vec4(origin, 1) - p;
@@ -62,25 +63,29 @@ vec4 scissor(vec4 p, vec4 plane) {
 
 void main() {
   vec4 p = vec4(position_in, 1);
+  vec4 vtx_pos;
 
-  vec4 vtx_pos = -bones[mats[0] + offset].X * p * weight_in;
-
-  if (weight_in > 1) {
-    vtx_pos += -bones[mats[1] + offset].X * p * (1.f - weight_in);
-  }
-
-
-  if (bottom_cap) {
-    vtx_pos = dual(vtx_pos, bottom_plane);
+  if (mats[0] == 255) {
+    // debug hack!
+    vtx_pos = vec4(position_in, weight_in);
   } else {
-    if ((flags & uint(1)) != 0) {
+    vtx_pos = -bones[mats[0] + offset].X * p * weight_in;
+
+    if (weight_in > 1) {
+      vtx_pos += -bones[mats[1] + offset].X * p * (1.f - weight_in);
+    }
+
+
+    if (bottom_cap) {
       vtx_pos = dual(vtx_pos, bottom_plane);
     } else {
-      vtx_pos = scissor(vtx_pos, top_plane);
+      if ((flags & uint(1)) != 0) {
+        vtx_pos = dual(vtx_pos, bottom_plane);
+      } else {
+        vtx_pos = scissor(vtx_pos, top_plane);
+      }
     }
   }
-
-
 
   vec4 transformed = perspective_matrix * vtx_pos;
 
@@ -98,5 +103,5 @@ void main() {
   gl_Position = transformed;
 
 
-  vtx_color = vec4(debug_color, 1.0);
+  vtx_color = vec4(debug_color, 0.5);
 }

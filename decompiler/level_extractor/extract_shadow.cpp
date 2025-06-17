@@ -276,6 +276,41 @@ std::vector<tfrag3::ShadowVertex> convert_vertices(const ShadowData& data) {
   return result;
 }
 
+tfrag3::ShadowTri convert_tri(const ShadowTri& tri) {
+  tfrag3::ShadowTri result;
+  for (int i = 0; i < 3; i++) {
+    result.verts[i] = tri.verts[i];
+  }
+  return result;
+}
+
+tfrag3::ShadowEdge convert_edge(const ShadowEdge& edge) {
+  tfrag3::ShadowEdge result;
+  for (int i = 0; i < 2; i++) {
+    result.ind[i] = edge.ind[i];
+    result.tri[i] = edge.tri[i];
+  }
+  return result;
+}
+
+std::vector<tfrag3::ShadowTri> convert_tris(const std::vector<ShadowTri>& tris) {
+  std::vector<tfrag3::ShadowTri> result;
+  result.reserve(tris.size());
+  for (auto& tri : tris) {
+    result.push_back(convert_tri(tri));
+  }
+  return result;
+}
+
+std::vector<tfrag3::ShadowEdge> convert_edges(const std::vector<ShadowEdge>& edges) {
+  std::vector<tfrag3::ShadowEdge> result;
+  result.reserve(edges.size());
+  for (auto& edge : edges) {
+    result.push_back(convert_edge(edge));
+  }
+  return result;
+}
+
 void extract_shadow(const ObjectFileData& ag_data,
                     const DecompilerTypeSystem& dts,
                     tfrag3::Level& out,
@@ -297,8 +332,22 @@ void extract_shadow(const ObjectFileData& ag_data,
   for (auto loc : geo_locations) {
     const ShadowData data = extract_shadow_data(ag_data.linked_data, dts, loc);
 
+    auto& model = sd.models.emplace_back();
+    model.name = data.name;
+    model.max_bones = data.num_joints;
+    model.single_tris = convert_tris(data.single_tris);
+    model.double_tris = convert_tris(data.double_tris);
+    model.single_edges = convert_edges(data.single_edges);
+    model.double_edges = convert_edges(data.double_edges);
+
     const u32 vertex_offset = sd.vertices.size();
-    const u32 num_vertices = data.one_bone_vertices.size() + data.two_bone_vertices.size();
+
+    model.first_vertex = vertex_offset;
+    model.num_one_bone_vertices = data.one_bone_vertices.size();
+    model.num_two_bone_vertices = data.two_bone_vertices.size();
+    ASSERT(model.num_one_bone_vertices + model.num_two_bone_vertices <=
+           tfrag3::ShadowModel::kMaxVertices);
+    ASSERT(model.single_tris.size() + model.double_tris.size() <= tfrag3::ShadowModel::kMaxTris);
 
     // insert top vertices
     auto vertices = convert_vertices(data);
@@ -309,53 +358,6 @@ void extract_shadow(const ObjectFileData& ag_data,
       v.flags = 1;
     }
     sd.vertices.insert(sd.vertices.end(), vertices.begin(), vertices.end());
-
-    auto& model = sd.models.emplace_back();
-    model.name = data.name;
-    model.max_bones = data.num_joints;
-
-    // single triangles
-    model.single_tris.first_index = sd.indices.size();
-    for (auto& stri : data.single_tris) {
-      sd.indices.push_back(static_cast<u32>(stri.verts[0]) + vertex_offset);
-      sd.indices.push_back(static_cast<u32>(stri.verts[1]) + vertex_offset);
-      sd.indices.push_back(static_cast<u32>(stri.verts[2]) + vertex_offset);
-    }
-    model.single_tris.count = sd.indices.size() - model.single_tris.first_index;
-
-    // double triangles
-    model.double_tris.first_index = sd.indices.size();
-    for (auto& dtri : data.double_tris) {
-      sd.indices.push_back(static_cast<u32>(dtri.verts[0]) + vertex_offset + num_vertices);
-      sd.indices.push_back(static_cast<u32>(dtri.verts[1]) + vertex_offset + num_vertices);
-      sd.indices.push_back(static_cast<u32>(dtri.verts[2]) + vertex_offset + num_vertices);
-    }
-    model.double_tris.count = sd.indices.size() - model.double_tris.first_index;
-
-    // single edges
-    model.single_edges.first_index = sd.indices.size();
-    for (auto& se : data.single_edges) {
-      sd.indices.push_back(static_cast<u32>(se.ind[0]) + vertex_offset + num_vertices);
-      sd.indices.push_back(static_cast<u32>(se.ind[0]) + vertex_offset);
-      sd.indices.push_back(static_cast<u32>(se.ind[1]) + vertex_offset + num_vertices);
-
-      sd.indices.push_back(static_cast<u32>(se.ind[1]) + vertex_offset + num_vertices);
-      sd.indices.push_back(static_cast<u32>(se.ind[0]) + vertex_offset);
-      sd.indices.push_back(static_cast<u32>(se.ind[1]) + vertex_offset);
-    }
-    model.single_edges.count = sd.indices.size() - model.single_edges.first_index;
-
-    model.double_edges.first_index = sd.indices.size();
-    for (auto& se : data.double_edges) {
-      sd.indices.push_back(static_cast<u32>(se.ind[0]) + vertex_offset + num_vertices);
-      sd.indices.push_back(static_cast<u32>(se.ind[0]) + vertex_offset);
-      sd.indices.push_back(static_cast<u32>(se.ind[1]) + vertex_offset + num_vertices);
-
-      sd.indices.push_back(static_cast<u32>(se.ind[1]) + vertex_offset + num_vertices);
-      sd.indices.push_back(static_cast<u32>(se.ind[0]) + vertex_offset);
-      sd.indices.push_back(static_cast<u32>(se.ind[1]) + vertex_offset);
-    }
-    model.double_edges.count = sd.indices.size() - model.double_edges.first_index;
 
     if (dump_level) {
       auto file_path = file_util::get_file_path(

@@ -693,7 +693,6 @@ ShadowLoaderStage::ShadowLoaderStage() : LoaderStage("shadow") {}
 void ShadowLoaderStage::reset() {
   m_done = false;
   m_opengl = false;
-  m_vtx_uploaded = false;
   m_idx = 0;
 }
 
@@ -703,32 +702,12 @@ bool ShadowLoaderStage::run(Timer& /*timer*/, LoaderInput& data) {
   }
 
   if (!m_opengl) {
-    glGenBuffers(1, &data.lev_data->shadow_indices);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.lev_data->shadow_indices);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                 data.lev_data->level->shadow_data.indices.size() * sizeof(u32), nullptr,
-                 GL_STATIC_DRAW);
-
     glGenBuffers(1, &data.lev_data->shadow_vertices);
     glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->shadow_vertices);
     glBufferData(GL_ARRAY_BUFFER,
                  data.lev_data->level->shadow_data.vertices.size() * sizeof(tfrag3::ShadowVertex),
                  nullptr, GL_STATIC_DRAW);
     m_opengl = true;
-  }
-
-  if (!m_vtx_uploaded) {
-    u32 start = m_idx;
-    m_idx = std::min(start + 32768, (u32)data.lev_data->level->shadow_data.indices.size());
-    glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->shadow_indices);
-    glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(u32), (m_idx - start) * sizeof(u32),
-                    data.lev_data->level->shadow_data.indices.data() + start);
-    if (m_idx != data.lev_data->level->shadow_data.indices.size()) {
-      return false;
-    } else {
-      m_idx = 0;
-      m_vtx_uploaded = true;
-    }
   }
 
   u32 start = m_idx;

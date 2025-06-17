@@ -590,15 +590,17 @@ void MercModelGroup::serialize(Serializer& ser) {
 void ShadowModel::serialize(Serializer& ser) {
   ser.from_str(&name);
   ser.from_ptr(&max_bones);
-  ser.from_ptr(&single_tris);
-  ser.from_ptr(&double_tris);
-  ser.from_ptr(&single_edges);
-  ser.from_ptr(&double_edges);
+  ser.from_ptr(&first_vertex);
+  ser.from_ptr(&num_one_bone_vertices);
+  ser.from_ptr(&num_two_bone_vertices);
+  ser.from_pod_vector(&single_tris);
+  ser.from_pod_vector(&double_tris);
+  ser.from_pod_vector(&single_edges);
+  ser.from_pod_vector(&double_edges);
 }
 
 void ShadowModelGroup::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
-  ser.from_pod_vector(&indices);
   if (ser.is_saving()) {
     ser.save<size_t>(models.size());
   } else {
@@ -794,7 +796,6 @@ void Hfragment::memory_usage(tfrag3::MemoryUsageTracker* tracker) const {
 
 void ShadowModelGroup::memory_usage(MemoryUsageTracker* tracker) const {
   tracker->add(SHADOW_VERTS, vertices.size() * sizeof(ShadowVertex));
-  tracker->add(SHADOW_INDEX, indices.size() * sizeof(u32));
 }
 
 void Level::memory_usage(MemoryUsageTracker* tracker) const {

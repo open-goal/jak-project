@@ -29,7 +29,6 @@ struct LevelData {
   std::unordered_map<std::string, const tfrag3::MercModel*> merc_model_lookup;
 
   GLuint shadow_vertices;
-  GLuint shadow_indices;
   std::unordered_map<std::string, const tfrag3::ShadowModel*> shadow_model_lookup;
 
   GLuint hfrag_vertices;

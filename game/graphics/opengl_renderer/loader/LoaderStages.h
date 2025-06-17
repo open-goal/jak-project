@@ -27,6 +27,5 @@ public:
 private:
   bool m_done = false;
   bool m_opengl = false;
-  bool m_vtx_uploaded = false;
   u32 m_idx = 0;
 };

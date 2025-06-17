@@ -504,7 +504,6 @@ void Loader::update(TexturePool& texture_pool) {
         m_garbage_buffers.push_back(lev->collide_vertices);
         m_garbage_buffers.push_back(lev->merc_vertices);
         m_garbage_buffers.push_back(lev->merc_indices);
-        m_garbage_buffers.push_back(lev->shadow_indices);
         m_garbage_buffers.push_back(lev->shadow_vertices);
 
         for (auto& model : lev->level->merc_data.models) {

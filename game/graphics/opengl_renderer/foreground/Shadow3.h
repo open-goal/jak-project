@@ -1,5 +1,7 @@
 #pragma once
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/foreground/Shadow3CPU.h"
+#include "game/graphics/opengl_renderer/opengl_utils.h"
 
 struct Jak1ShadowSettings {
   math::Vector<float, 3> center;
@@ -38,7 +40,9 @@ class Shadow3 {
     math::Vector4f top_plane, bottom_plane;
     math::Vector3f light_dir;
     ShadowRequest* next = nullptr;
+    const u8* bones = nullptr;
     u32 bone_idx = 0;
+    u32 flags = 0;
   };
 
   struct LevelChain {
@@ -62,6 +66,8 @@ class Shadow3 {
 
   struct {
     GLuint vao = -1;
+    GLuint indices = -1;
+    GLuint debug_verts = -1;
     GLuint bones_buffer = -1;
     int buffer_alignment = 0;
   } m_opengl;
@@ -78,4 +84,12 @@ class Shadow3 {
     GLuint bottom_cap = 0;
   } m_uniforms;
   bool m_did_first_time_setup = false;
+
+  bool m_hacks = false;
+  bool m_near_plane_hack = false;
+  int m_debug_tri = 0;
+
+  ShadowCPUWorkspace m_cpu_workspace;
+  ShadowCPUOutput m_cpu_output;
+  FullScreenDraw m_full_screen_draw;
 };

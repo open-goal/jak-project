@@ -623,23 +623,35 @@ struct ShadowVertex {
   u8 mats[2];
   u8 flags;
 };
+static_assert(sizeof(ShadowVertex) == 20);
+
+struct ShadowTri {
+  u8 verts[3];
+};
+
+struct ShadowEdge {
+  u8 ind[2];
+  u8 tri[2];
+};
 
 struct ShadowModel {
+  static constexpr int kMaxVertices = 254;
+  static constexpr int kMaxTris = 254;
   std::string name;
   u32 max_bones;
 
-  struct Run {
-    u32 first_index;
-    u32 count;
-  };
-  Run single_tris, double_tris, single_edges, double_edges;
+  std::vector<ShadowTri> single_tris, double_tris;
+  std::vector<ShadowEdge> single_edges, double_edges;
+
+  u32 first_vertex;
+  u32 num_one_bone_vertices;
+  u32 num_two_bone_vertices;
 
   void serialize(Serializer& ser);
 };
 
 struct ShadowModelGroup {
   std::vector<ShadowVertex> vertices;
-  std::vector<u32> indices;
   std::vector<ShadowModel> models;
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
