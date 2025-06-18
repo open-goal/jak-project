@@ -108,7 +108,7 @@ void Profiler::draw_node(ProfilerNode& node, bool expand, int depth, float start
   bool color_orange = false;
   ImGui::PushStyleColor(ImGuiCol_Text, color);
   auto str =
-      fmt::format("{:20s} {:.2f}ms {:6d} tri {:4d} draw", node.m_name, node.m_stats.duration * 1000,
+      fmt::format("{:20s} {:.3f}ms {:6d} tri {:4d} draw", node.m_name, node.m_stats.duration * 1000,
                   node.m_stats.triangles, node.m_stats.draw_calls);
   if (node.m_children.empty()) {
     ImGui::Text("   %s", str.c_str());
@@ -154,7 +154,7 @@ std::string Profiler::to_string() {
 
 void ProfilerNode::to_string_helper(std::string& str, int depth) const {
   str +=
-      fmt::format("{}{:.2f} ms {:30s}\n", std::string(depth, ' '), m_stats.duration * 1000, m_name);
+      fmt::format("{}{:.3f} ms {:30s}\n", std::string(depth, ' '), m_stats.duration * 1000, m_name);
   for (const auto& child : m_children) {
     child.to_string_helper(str, depth + 1);
   }

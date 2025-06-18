@@ -62,7 +62,7 @@ void transform_vertices(const ShadowCPUInput& input, ShadowCPUWorkspace* work) {
  * of casting shadows on the "wrong side of the ground", and reduces fill.
  */
 void calc_dual_verts(const ShadowCPUInput& input, ShadowCPUWorkspace* work) {
-  int num_verts = input.model->num_one_bone_vertices + input.model->num_two_bone_vertices;
+  const int num_verts = input.model->num_one_bone_vertices + input.model->num_two_bone_vertices;
   for (int i = 0; i < num_verts; i++) {
     math::Vector4f origin(input.origin.x(), input.origin.y(), input.origin.z(), 1.f);
     math::Vector4f p = work->vertices[i];
@@ -77,12 +77,23 @@ void calc_dual_verts(const ShadowCPUInput& input, ShadowCPUWorkspace* work) {
  * reduces fill.
  */
 void scissor_top(const ShadowCPUInput& input, ShadowCPUWorkspace* work) {
-  // TODO
+  const int num_verts = input.model->num_one_bone_vertices + input.model->num_two_bone_vertices;
+  for (int i = 0; i < num_verts; i++) {
+    auto& original_vertex = work->vertices[i];
+    const auto& dual_vertex = work->dual_vertices[i];
+    const float above = original_vertex.dot(input.top_plane);
+    if (above > 0) {
+      const math::Vector4f offset = dual_vertex - original_vertex;
+      float scale = above / offset.xyz().dot(input.top_plane.xyz());
+      original_vertex -= offset * scale;
+    }
+  }
 }
 
 /**
  * Clip against the near plane. I'm not sure why this is needed, but it may be another fill-reducing
- * trick, or maybe just allows them to avoid scissoring against the near plane in the VU program.
+ * trick, or maybe just allows them to avoid scissoring against the near plane in the VU program?
+ * Either way, it seems like this isn't really needed.
  */
 void scissor_edges(const ShadowCPUInput& input, ShadowCPUWorkspace* work) {
   // TODO
@@ -265,7 +276,9 @@ void calc_shadow_indices(const ShadowCPUInput& input,
 
   transform_vertices(input, work);
   calc_dual_verts(input, work);
-  scissor_top(input, work);
+  if (input.scissor_top) {
+    scissor_top(input, work);
+  }
   scissor_edges(input, work);
   find_facing_single_tris(input, work, output, input.model->single_tris);
   find_single_edges(input, work, output);

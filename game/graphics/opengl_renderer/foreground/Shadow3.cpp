@@ -35,6 +35,7 @@ Shadow3::Shadow3(ShaderLibrary& shaders) {
     m_uniforms.origin = glGetUniformLocation(id, "origin");
     m_uniforms.top_plane = glGetUniformLocation(id, "top_plane");
     m_uniforms.bottom_plane = glGetUniformLocation(id, "bottom_plane");
+    m_uniforms.scissor_top = glGetUniformLocation(id, "scissor_top");
   }
 
   std::vector<u8> temp(MAX_SHADER_BONE_VECTORS * sizeof(math::Vector4f));
@@ -52,7 +53,7 @@ Shadow3::~Shadow3() {
 
 void Shadow3::setup_for_level(SharedRenderState* render_state, const LevelData* level_data) {
   glBindVertexArray(m_opengl.vao);
-  glBindBuffer(GL_ARRAY_BUFFER, level_data->shadow_vertices);
+  glBindBuffer(GL_ARRAY_BUFFER, m_hacks ? m_opengl.debug_verts : level_data->shadow_vertices);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
   glEnableVertexAttribArray(2);
@@ -92,10 +93,10 @@ void Shadow3::setup_for_level(SharedRenderState* render_state, const LevelData* 
 }
 
 namespace {
-void set_uniform(GLuint uniform, const math::Vector3f& val) {
+void set_uniform(GLint uniform, const math::Vector3f& val) {
   glUniform3f(uniform, val.x(), val.y(), val.z());
 }
-void set_uniform(GLuint uniform, const math::Vector4f& val) {
+void set_uniform(GLint uniform, const math::Vector4f& val) {
   glUniform4f(uniform, val.x(), val.y(), val.z(), val.w());
 }
 
@@ -112,21 +113,21 @@ void Shadow3::draw_model(SharedRenderState* render_state,
       .bones = request->bones,
       .model = request->model.model,
       .vertices = &request->model.level->level->shadow_data.vertices,
-      .flags = request->flags,
+      .scissor_top = request->scissor_top,
       .debug_highlight_tri = m_debug_tri,
   };
   calc_shadow_indices(input, &m_cpu_workspace, &m_cpu_output);
   glBindBuffer(GL_UNIFORM_BUFFER, m_opengl.bones_buffer);
   glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_opengl.bones_buffer,
                     sizeof(math::Vector4f) * request->bone_idx, 128 * 16 * 4);
-  const auto* geo = request->model.model;
+  // const auto* geo = request->model.model;
   // printf("draw %s\n", geo->name.c_str());
 
   set_uniform(m_uniforms.origin, request->origin);
   set_uniform(m_uniforms.top_plane, request->top_plane);
   set_uniform(m_uniforms.bottom_plane, request->bottom_plane);
+  glUniform1i(m_uniforms.scissor_top, request->scissor_top);
 
-  // glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
   if (m_hacks) {
     auto* model = request->model.model;
     int num_verts = model->num_one_bone_vertices + model->num_two_bone_vertices;
@@ -230,14 +231,16 @@ void Shadow3::draw_model(SharedRenderState* render_state,
 void Shadow3::finish(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // finally, draw shadow.
   if (!m_hacks) {
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    // glStencilFunc(GL_GREATER, 0, 0);
     glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
     glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
     glDepthFunc(GL_ALWAYS);
+
     glEnable(GL_BLEND);
-    glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
-    glColorMask(true, true, true, false);
-    glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
-    m_full_screen_draw.draw(math::Vector4f(0.5, 0.4, 0.3, 0.5), render_state, prof);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ONE, GL_ZERO);
+    m_full_screen_draw.draw(m_color, render_state, prof);
   }
 
   // restore
@@ -270,7 +273,6 @@ void Shadow3::flush_requests(SharedRenderState* render_state, ScopedProfilerNode
   for (auto& c : m_level_chains) {
     if (!c.head)
       continue;
-    // printf("in level %s\n", c.level->level->level_name.c_str());
     setup_for_level(render_state, c.level);
     ShadowRequest* iter = c.head;
     while (iter) {
@@ -309,9 +311,7 @@ void Shadow3::render_jak1(DmaFollower& dma,
                           SharedRenderState* render_state,
                           ScopedProfilerNode& prof) {
   m_did_first_time_setup = false;
-
   while (dma.current_tag_offset() != render_state->next_bucket) {
-    // auto dmatag = dma.current_tag();
     auto data = dma.read_and_advance();
     if (data.vifcode0().kind == VifCode::Kind::PC_PORT) {
       u32 next = data.data_offset;
@@ -330,23 +330,15 @@ void Shadow3::render_jak1(DmaFollower& dma,
           printf("   SKIP: no model data\n");
           continue;
         }
-        /*
-        *  (shdf00) ;; unused
-        (disable-fade)
-        (shdf02) ;; only set, never used.
-        (shdf03)
-        (shdf04) ;; unused
-        (disable-draw)
-        */
+
         constexpr u32 kCullWhenUnderPlane = 1;
-        constexpr u32 kDisableFade = 2;
+        // constexpr u32 kDisableFade = 2;
         constexpr u32 kAbsolutePlanes = 4;
-        constexpr u32 kFlag3 = 8;
-        constexpr u32 kFlag4 = 16;
+        constexpr u32 kUpperClip = 8;
+        // constexpr u32 kFlag4 = 16;
         constexpr u32 kDisableDraw = 32;
 
         if (game_request.settings.flags & kDisableDraw) {
-          printf("   SKIP: disable flag set\n");
           continue;
         }
 
@@ -380,7 +372,9 @@ void Shadow3::render_jak1(DmaFollower& dma,
         request.origin = game_request.settings.center +
                          game_request.settings.shadow_dir * game_request.settings.dist_to_locus;
         request.bones = g_ee_main_mem + game_request.mtx;
-        request.flags = game_request.settings.flags;
+        request.scissor_top = game_request.settings.flags & kUpperClip;
+        request.color = game_request.color;
+        m_color = request.color;
 
         // copy bones to buffer
         constexpr int in_stride = 8 * 4 * sizeof(float);
@@ -397,8 +391,6 @@ void Shadow3::render_jak1(DmaFollower& dma,
         request.top_plane = game_request.settings.top_plane;
         request.bottom_plane = game_request.settings.bot_plane;
         if (!(kAbsolutePlanes & game_request.settings.flags)) {
-          // printf("relative plane mode, base is %f, move by %f\n",
-          //        -request.bottom_plane.w() / 4096.0, game_request.settings.center.y() / 4096.0);
           // in relative planes mode, the height of the plane is adjusted to be relative to the
           // height of the center, so the planes move and down with the model
           request.top_plane.w() -= game_request.settings.center.y();
@@ -413,7 +405,6 @@ void Shadow3::render_jak1(DmaFollower& dma,
           if (render_state->camera_pos.xyz().dot(request.bottom_plane.xyz()) +
                   request.bottom_plane.w() <
               0) {
-            // printf("   SKIP: camera below lower clipping plane.\n");
             m_next_request--;
             continue;
           }
@@ -425,21 +416,10 @@ void Shadow3::render_jak1(DmaFollower& dma,
         // detect if the origin is below the clipping plane and if so, move it up.
         const float dot = request.bottom_plane.xyz().dot(request.origin);
         if (dot + request.bottom_plane.w() > 0) {
-          // printf("   the origin is below the clipping plane, moving it up.\n");
-          // printf("    center was %s\n",
-          // game_request.settings.center.to_string_aligned().c_str()); printf("    dir was %s\n",
-          // game_request.settings.shadow_dir.to_string_aligned().c_str()); printf("    locus %f\n",
-          // game_request.settings.dist_to_locus); printf("    bottom plane was %s\n",
-          //        game_request.settings.bot_plane.to_string_aligned().c_str());
-          // printf("    adjusted bottom plane was %s\n",
-          //        request.bottom_plane.to_string_aligned().c_str());
-          // printf("    abs flag %d\n", game_request.settings.flags & kAbsolutePlanes);
-
           request.bottom_plane.w() = -dot;
         }
 
         const auto& cam_rot = render_state->camera_rot;
-        const auto& cam_pos = render_state->camera_pos;
 
         request.light_dir = game_request.settings.shadow_dir;
 
@@ -457,26 +437,10 @@ void Shadow3::render_jak1(DmaFollower& dma,
           return math::Vector4f(xyz.x(), xyz.y(), xyz.z(), in.w() - xyz.dot(cam_rot[3].xyz()));
         };
 
-        // printf("plane offset before: %f\n",
-        //        game_request.settings.center.dot(request.bottom_plane.xyz()) +
-        //            request.bottom_plane.w());
-
         request.light_dir = rotate(request.light_dir);
         request.top_plane = rotate_plane(request.top_plane);
         request.bottom_plane = rotate_plane(request.bottom_plane);
         request.origin = transform(request.origin);
-
-        math::Vector3f up_rt_w = math::Vector3f(0, 1, 0);
-        math::Vector3f up_rt_cam = rotate(up_rt_w);
-        // printf("ups: %f\n", up_rt_cam.dot(request.bottom_plane.xyz()));
-
-        // printf("plane offset after: %f\n",
-        //        transform(game_request.settings.center).dot(request.bottom_plane.xyz()) +
-        //            request.bottom_plane.w());
-        // printf("rot3: %s\n", cam_rot[3].to_string_aligned().c_str());
-        // printf("   2: %s\n", cam_pos.to_string_aligned().c_str());
-
-        // printf("  origin: %s\n", (request.origin / 4096.f).to_string_aligned().c_str());
       }
     }
   }

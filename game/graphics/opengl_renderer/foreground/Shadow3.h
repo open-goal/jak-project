@@ -20,6 +20,7 @@ static_assert(sizeof(Jak1ShadowSettings) == 5 * 16);
 struct Jak1ShadowRequest {
   u8 dma[16];
   Jak1ShadowSettings settings;
+  math::Vector4f color;
   u32 geo_name;
   u32 mtx;
   u32 num_joints;
@@ -39,10 +40,11 @@ class Shadow3 {
     math::Vector<float, 3> origin;
     math::Vector4f top_plane, bottom_plane;
     math::Vector3f light_dir;
+    math::Vector4f color;
     ShadowRequest* next = nullptr;
     const u8* bones = nullptr;
     u32 bone_idx = 0;
-    u32 flags = 0;
+    bool scissor_top = false;
   };
 
   struct LevelChain {
@@ -73,14 +75,15 @@ class Shadow3 {
   } m_opengl;
 
   struct {
-    GLuint hvdf_offset = 0;
-    GLuint fog_constants = 0;
-    GLuint perspective_matrix = 0;
-    GLuint camera_rot = 0;
-    GLuint debug_color = 0;
-    GLuint bottom_plane = 0;
-    GLuint top_plane = 0;
-    GLuint origin = 0;
+    GLint hvdf_offset = 0;
+    GLint fog_constants = 0;
+    GLint perspective_matrix = 0;
+    GLint camera_rot = 0;
+    GLint debug_color = 0;
+    GLint bottom_plane = 0;
+    GLint top_plane = 0;
+    GLint origin = 0;
+    GLint scissor_top = 0;
   } m_uniforms;
   bool m_did_first_time_setup = false;
 
@@ -92,4 +95,5 @@ class Shadow3 {
   ShadowCPUWorkspace m_cpu_workspace;
   ShadowCPUOutput m_cpu_output;
   FullScreenDraw m_full_screen_draw;
+  math::Vector4f m_color;
 };

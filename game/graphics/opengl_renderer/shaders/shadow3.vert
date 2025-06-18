@@ -15,6 +15,7 @@ uniform vec3 debug_color;
 uniform vec4 bottom_plane;
 uniform vec4 top_plane;
 uniform vec3 origin;
+uniform bool scissor_top;
 
 // output
 out vec4 vtx_color;
@@ -48,7 +49,6 @@ vec4 dual(vec4 p, vec4 plane) {
 }
 
 vec4 scissor(vec4 p, vec4 plane) {
-  return p;
   float plane_offset = dot(p, plane);
   if (plane_offset > 0) {
     vec4 offset = vec4(origin, 1) - p;
@@ -77,7 +77,9 @@ void main() {
     if ((flags & uint(1)) != 0) {
       vtx_pos = dual(vtx_pos, bottom_plane);
     } else {
-      vtx_pos = scissor(vtx_pos, top_plane);
+      if (scissor_top) {
+        vtx_pos = scissor(vtx_pos, top_plane);
+      }
     }
   }
 

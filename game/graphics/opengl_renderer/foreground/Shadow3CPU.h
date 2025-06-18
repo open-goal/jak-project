@@ -9,7 +9,7 @@ struct ShadowCPUInput {
   const u8* bones = nullptr;
   const tfrag3::ShadowModel* model = nullptr;
   std::vector<tfrag3::ShadowVertex>* vertices = nullptr;
-  u32 flags = 0;
+  bool scissor_top = false;
   int debug_highlight_tri = 0;
 };
 

@@ -326,7 +326,7 @@ void ShadowRenderer::render(DmaFollower& dma,
       m_color.y() = g / 255.0f;
       m_color.z() = b / 255.0f;
       m_color.w() = a / 128.0f;
-      // fmt::print("rgba: {} {} {} {}\n", r, g, b, a);
+      // fmt::print("rgba: {}\n", m_color.to_string_aligned());
     } else {
       ASSERT_MSG(false, fmt::format("{} {}", next.vifcode0().print(), next.vifcode1().print()));
     }
