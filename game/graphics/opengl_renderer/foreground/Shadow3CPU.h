@@ -14,7 +14,7 @@ struct ShadowCPUInput {
 };
 
 struct ShadowCPUOutput {
-  static constexpr int kMaxIndices = (256 * 3) + (256 * 3 * 2);
+  static constexpr int kMaxIndices = (256 * 3 * 2) + (256 * 3 * 2);
 
   void push_index(u32 i, bool facing) {
     indices[num_indices++] = i;

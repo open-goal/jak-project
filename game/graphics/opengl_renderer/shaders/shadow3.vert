@@ -15,12 +15,9 @@ uniform vec3 debug_color;
 uniform vec4 bottom_plane;
 uniform vec4 top_plane;
 uniform vec3 origin;
-uniform bool bottom_cap;
 
 // output
 out vec4 vtx_color;
-
-int offset = 0;
 
 struct MercMatrixData {
   mat4 X;
@@ -62,6 +59,7 @@ vec4 scissor(vec4 p, vec4 plane) {
 }
 
 void main() {
+  float w_debug = 7;
   vec4 p = vec4(position_in, 1);
   vec4 vtx_pos;
 
@@ -69,25 +67,23 @@ void main() {
     // debug hack!
     vtx_pos = vec4(position_in, weight_in);
   } else {
-    vtx_pos = -bones[mats[0] + offset].X * p * weight_in;
+    vtx_pos = bones[mats[0]].X * p * weight_in;
 
-    if (weight_in > 1) {
-      vtx_pos += -bones[mats[1] + offset].X * p * (1.f - weight_in);
+    if (weight_in < 1) {
+      vtx_pos += bones[mats[1]].X * p * (1.f - weight_in);
     }
 
-
-    if (bottom_cap) {
+    w_debug = vtx_pos.w;
+    if ((flags & uint(1)) != 0) {
       vtx_pos = dual(vtx_pos, bottom_plane);
     } else {
-      if ((flags & uint(1)) != 0) {
-        vtx_pos = dual(vtx_pos, bottom_plane);
-      } else {
-        vtx_pos = scissor(vtx_pos, top_plane);
-      }
+      vtx_pos = scissor(vtx_pos, top_plane);
     }
   }
 
-  vec4 transformed = perspective_matrix * vtx_pos;
+
+
+  vec4 transformed = perspective_matrix * -vtx_pos;
 
   float Q = fog_constants.x / transformed[3];
 
@@ -103,5 +99,5 @@ void main() {
   gl_Position = transformed;
 
 
-  vtx_color = vec4(debug_color, 0.5);
+  vtx_color = vec4(debug_color, w_debug);
 }

@@ -81,11 +81,11 @@ class Shadow3 {
     GLuint bottom_plane = 0;
     GLuint top_plane = 0;
     GLuint origin = 0;
-    GLuint bottom_cap = 0;
   } m_uniforms;
   bool m_did_first_time_setup = false;
 
   bool m_hacks = false;
+  bool m_cull_back = false;
   bool m_near_plane_hack = false;
   int m_debug_tri = 0;
 
