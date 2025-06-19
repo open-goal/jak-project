@@ -385,6 +385,10 @@
   (set! (-> *speedrun-info* should-display?) #f)
   (none))
 
+(defun mark-speedrun-started ()
+  (true! (-> *speedrun-info* has-started?))
+  (none))
+
 (defun speedrun-mode-update ()
   "A per frame update for speedrunning related stuff"
   (when (-> *pc-settings* speedrunner-mode?)
@@ -397,7 +401,7 @@
                ;; target has landed on ground/water, or we're about to enter target-hit-ground state
                (or (logtest? (-> *target* control status) (cshape-moving-flags onground onsurf on-water))
                    (= (-> *target* next-state name) 'target-hit-ground)))
-      (true! (-> *speedrun-info* has-started?))
+      (mark-speedrun-started)
       ;; spawn a process that resets autosplitter after suspending for 1 frame
       (process-spawn-function process
         (lambda ()
