@@ -60,6 +60,7 @@ void Shadow3::setup_for_level(SharedRenderState* render_state, const LevelData* 
   glEnableVertexAttribArray(3);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_GEQUAL);
+  glDepthMask(GL_FALSE);  // no depth writes.
 
   glVertexAttribPointer(0,                                          // location 0 in the shader
                         3,                                          // 3 values per vert
@@ -200,7 +201,6 @@ void Shadow3::draw_model(SharedRenderState* render_state,
       glEnable(GL_DEPTH_TEST);
       glDisable(GL_BLEND);
       glDepthFunc(GL_GEQUAL);
-      glDepthMask(GL_FALSE);  // no depth writes.
 
       if (false) {
         glEnable(GL_CULL_FACE);
@@ -232,6 +232,8 @@ void Shadow3::draw_model(SharedRenderState* render_state,
 void Shadow3::finish(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // finally, draw shadow.
   if (!m_hacks) {
+    glDepthMask(GL_FALSE);  // no depth writes.
+
     if (render_state->version == GameVersion::Jak1) {
       glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
       glStencilFunc(GL_NOTEQUAL, 0, 0xFF);

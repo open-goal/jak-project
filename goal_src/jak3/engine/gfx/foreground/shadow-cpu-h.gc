@@ -120,12 +120,27 @@
 
 
 (define *shadow-globals* (new 'global 'shadow-globals))
-
 (set! (-> *shadow-globals* bucket 0 bucket-id) (bucket-id shadow))
-
 (set! (-> *shadow-globals* bucket 1 bucket-id) (bucket-id shadow2))
-
 (set! (-> *shadow-globals* bucket 2 bucket-id) (bucket-id shadow3))
+
+;; og:preserve-this
+;; separate copy of shadow-globals for storing only the PC format requests.
+(define *pc-shadow-globals* (new 'global 'shadow-globals))
+(declare-type pc-shadow-request structure)
+(deftype pc-shadow-request (structure)
+  ((dma-next   dma-packet        :inline)
+   (settings   shadow-settings   :inline)
+   (color      vector            :inline)
+   (geo-name   string)          ;; name to send to PC renderer
+   (mtx        pointer)         ;; pointer to DMA memory that will contain bones
+   (num-joints uint32)          ;; number of joints needed for shadow
+   (next       pc-shadow-request)
+   )
+  )
+(set! (-> *pc-shadow-globals* bucket 0 bucket-id) (bucket-id shadow))
+(set! (-> *pc-shadow-globals* bucket 1 bucket-id) (bucket-id shadow2))
+(set! (-> *pc-shadow-globals* bucket 2 bucket-id) (bucket-id shadow3))
 
 (deftype shadow-vertex (structure)
   ((x       float)

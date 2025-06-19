@@ -191,7 +191,6 @@ void find_facing_double_tris(const ShadowCPUInput& input,
                              ShadowCPUOutput* output,
                              const std::vector<tfrag3::ShadowTri>& tris) {
   const int num_verts = input.model->num_one_bone_vertices + input.model->num_two_bone_vertices;
-  const int flag_offset = 0;
 
   for (size_t i = 0; i < tris.size(); i++) {
     const auto& tri = tris[i];
@@ -200,7 +199,7 @@ void find_facing_double_tris(const ShadowCPUInput& input,
     math::Vector3f v2 = work->vertices[tri.verts[2]].xyz();
     math::Vector3f n = (v1 - v0).cross(v2 - v0);
     if (n.dot(input.light_dir) < 0.f) {
-      work->tri_flags[i + flag_offset] = 1;
+      work->tri_flags[i] = 1;
       // treat this as a normal single-sided triangle that is facing.
       output->push_index(tri.verts[0], false);
       output->push_index(tri.verts[1], false);
@@ -209,7 +208,7 @@ void find_facing_double_tris(const ShadowCPUInput& input,
       output->push_index(static_cast<int>(tri.verts[2]) + num_verts, false);
       output->push_index(static_cast<int>(tri.verts[1]) + num_verts, false);
     } else {
-      work->tri_flags[i + flag_offset] = 0;
+      work->tri_flags[i] = 0;
       // we need to flip vertices to face the light.
       output->push_index(tri.verts[0], false);
       output->push_index(tri.verts[2], false);

@@ -356,8 +356,8 @@ void add_data_to_level(tfrag3::ShadowModelGroup& sd, const std::vector<ShadowDat
     out_frag.num_two_bone_vertices = in_frag.two_bone_vertices.size();
     ASSERT(out_frag.num_one_bone_vertices + out_frag.num_two_bone_vertices <=
            tfrag3::ShadowModel::kMaxVertices);
-    ASSERT(out_frag.single_tris.size() + out_frag.double_tris.size() <=
-           tfrag3::ShadowModel::kMaxTris);
+    ASSERT(out_frag.single_tris.size() <= tfrag3::ShadowModel::kMaxTris);
+    ASSERT(out_frag.double_tris.size() <= tfrag3::ShadowModel::kMaxTris);
 
     // insert top vertices
     auto vertices = convert_vertices(in_frag);
