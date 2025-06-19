@@ -232,16 +232,58 @@ void Shadow3::draw_model(SharedRenderState* render_state,
 void Shadow3::finish(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   // finally, draw shadow.
   if (!m_hacks) {
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-    // glStencilFunc(GL_GREATER, 0, 0);
-    glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-    glDepthFunc(GL_ALWAYS);
+    if (render_state->version == GameVersion::Jak1) {
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+      glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+      glDepthFunc(GL_ALWAYS);
+      glEnable(GL_BLEND);
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ONE, GL_ZERO);
+      m_full_screen_draw.draw(m_color, render_state, prof);
 
-    glEnable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFuncSeparate(GL_DST_COLOR, GL_ZERO, GL_ONE, GL_ZERO);
-    m_full_screen_draw.draw(m_color, render_state, prof);
+    } else {
+      glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+      glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+      glDepthFunc(GL_ALWAYS);
+
+      glEnable(GL_BLEND);
+      glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ONE, GL_ZERO);
+
+      bool have_darken = false;
+      bool have_lighten = false;
+      bool lighten_channel[3] = {false, false, false};
+      bool darken_channel[3] = {false, false, false};
+      for (int i = 0; i < 3; i++) {
+        if (m_color[i] > 128) {
+          have_lighten = true;
+          lighten_channel[i] = true;
+        } else if (m_color[i] < 128) {
+          have_darken = true;
+          darken_channel[i] = true;
+        }
+      }
+
+      if (have_darken) {
+        glColorMask(darken_channel[0], darken_channel[1], darken_channel[2], false);
+        glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+        m_full_screen_draw.draw(
+            math::Vector4f((m_color[3] - m_color[0]) / 256.f, (m_color[3] - m_color[1]) / 256.f,
+                           (m_color[3] - m_color[2]) / 256.f, 0) *
+                0.5f,
+            render_state, prof);
+      }
+
+      if (have_lighten) {
+        glColorMask(lighten_channel[0], lighten_channel[1], lighten_channel[2], false);
+        glBlendEquation(GL_FUNC_ADD);
+        m_full_screen_draw.draw(
+            math::Vector4f((m_color[0] - m_color[3]) / 256.f, (m_color[1] - m_color[3]) / 256.f,
+                           (m_color[2] - m_color[3]) / 256.f, 0) *
+                0.5f,
+            render_state, prof);
+      }
+    }
   }
 
   // restore
@@ -293,6 +335,7 @@ void Shadow3::flush_requests(SharedRenderState* render_state, ScopedProfilerNode
 void Shadow3::first_time_setup(SharedRenderState* render_state) {
   glClearStencil(0);
   glClear(GL_STENCIL_BUFFER_BIT);
+  render_state->stencil_dirty = true;
 
   render_state->shaders[ShaderId::SHADOW3].activate();
   glUniformMatrix4fv(m_uniforms.camera_rot, 1, GL_FALSE, &render_state->camera_rot[0].x());
@@ -314,6 +357,7 @@ void Shadow3::render_jak1(DmaFollower& dma,
   m_did_first_time_setup = false;
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto data = dma.read_and_advance();
+
     if (data.vifcode0().kind == VifCode::Kind::PC_PORT) {
       u32 next = data.data_offset;
       while (next) {
@@ -328,7 +372,7 @@ void Shadow3::render_jak1(DmaFollower& dma,
 
         auto model = render_state->loader->get_shadow_model(name);
         if (!model) {
-          printf("   SKIP: no model data\n");
+          // printf("   SKIP: no model data\n");
           continue;
         }
 
@@ -375,7 +419,9 @@ void Shadow3::render_jak1(DmaFollower& dma,
         request.bones = g_ee_main_mem + game_request.mtx;
         request.scissor_top = game_request.settings.flags & kUpperClip;
         request.color = game_request.color;
+        request.dist_to_locus = game_request.settings.dist_to_locus;
         m_color = request.color;
+        // m_color = {0.2, 0.8, 0.2, 1.};
 
         // copy bones to buffer
         constexpr int in_stride = 8 * 4 * sizeof(float);
@@ -415,9 +461,22 @@ void Shadow3::render_jak1(DmaFollower& dma,
         chain->head = &request;
 
         // detect if the origin is below the clipping plane and if so, move it up.
-        const float dot = request.bottom_plane.xyz().dot(request.origin);
-        if (dot + request.bottom_plane.w() > 0) {
-          request.bottom_plane.w() = -dot;
+        // the logic for this changed in jak2, to support shadows with negative dist_from_locus
+        if (render_state->version == GameVersion::Jak1) {
+          const float dot = request.bottom_plane.xyz().dot(request.origin);
+          if (dot + request.bottom_plane.w() > 0) {
+            request.bottom_plane.w() = -dot;
+          }
+        } else {
+          const float bot_offset = request.origin.dot(request.bottom_plane.xyz());
+          const float top_offset = request.origin.dot(request.top_plane.xyz());
+          if ((request.bottom_plane.w() < bot_offset) && (top_offset < request.top_plane.w())) {
+            if (request.dist_to_locus > 0) {
+              request.bottom_plane.w() = -bot_offset;
+            } else {
+              request.top_plane.w() = -top_offset;
+            }
+          }
         }
 
         const auto& cam_rot = render_state->camera_rot;

@@ -249,11 +249,10 @@ std::vector<ShadowData> extract_jak2_shadow_data(const LinkedObjectFile& file,
     // lg::info("{} {} fragments", name, num_fragments);
     auto frags_ref =
         TypedRef(get_field_ref(tr, "frags", dts), dts.ts.lookup_type("shadow-frag-ref"));
-
-    auto header_ref = TypedRef(deref_label(get_field_ref(frags_ref, "header", dts)),
-                               dts.ts.lookup_type("shadow-frag-header"));
-    u32 size_qwc = read_plain_data_field<s32>(frags_ref, "qwc", dts);
     for (u32 i = 0; i < num_fragments; i++) {
+      auto header_ref = TypedRef(deref_label(get_field_ref(frags_ref, "header", dts)),
+                                 dts.ts.lookup_type("shadow-frag-header"));
+      u32 size_qwc = read_plain_data_field<s32>(frags_ref, "qwc", dts);
       shadow_datas.push_back(
           extract_shadow_data(file, dts, header_ref, name, size_qwc, num_joints));
       frags_ref.ref.byte_offset += 8;

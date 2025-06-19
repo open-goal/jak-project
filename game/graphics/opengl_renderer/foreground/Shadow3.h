@@ -40,6 +40,7 @@ class Shadow3 {
     math::Vector<float, 3> origin;
     math::Vector4f top_plane, bottom_plane;
     math::Vector3f light_dir;
+    float dist_to_locus;
     math::Vector4f color;
     ShadowRequest* next = nullptr;
     const u8* bones = nullptr;
