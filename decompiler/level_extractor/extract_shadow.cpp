@@ -242,6 +242,10 @@ std::vector<ShadowData> extract_jak2_shadow_data(const LinkedObjectFile& file,
   } else if (version == 1) {
     u32 num_joints = read_plain_data_field<u32>(tr, "num-joints", dts);
     uint32_t num_fragments = read_plain_data_field<u32>(tr, "num-fragments", dts);
+    if (num_fragments == 0) {
+      lg::error("Shadow geo {} with no fragments! Skipping\n", name);
+      return {};
+    }
     // lg::info("{} {} fragments", name, num_fragments);
     auto frags_ref =
         TypedRef(get_field_ref(tr, "frags", dts), dts.ts.lookup_type("shadow-frag-ref"));
@@ -406,7 +410,8 @@ void extract_shadow(const ObjectFileData& ag_data,
 
     auto geo_locations = find_objects_with_type(ag_data.linked_data, "shadow-geo");
     for (auto loc : geo_locations) {
-      extract_jak2_shadow_data(ag_data.linked_data, dts, loc);
+      auto shadow_datas = extract_jak2_shadow_data(ag_data.linked_data, dts, loc);
+      add_data_to_level(sd, shadow_datas);
     }
   }
 }

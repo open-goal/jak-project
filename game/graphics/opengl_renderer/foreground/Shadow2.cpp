@@ -2,7 +2,8 @@
 
 #include "third-party/imgui/imgui.h"
 
-Shadow2::Shadow2(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
+Shadow2::Shadow2(const std::string& name, int my_id, std::shared_ptr<Shadow3> shadow3)
+    : BucketRenderer(name, my_id), m_shadow3(shadow3) {
   m_vertex_buffer.resize(kMaxVerts);
   m_front_index_buffer.resize(kMaxInds);
   m_back_index_buffer.resize(kMaxInds);
@@ -53,7 +54,11 @@ void Shadow2::init_shaders(ShaderLibrary& shaders) {
 }
 
 void Shadow2::draw_debug_window() {
-  ImGui::Checkbox("volume", &m_debug_draw_volume);
+  if (m_using_shadow3) {
+    m_shadow3->draw_debug_window();
+  } else {
+    ImGui::Checkbox("volume", &m_debug_draw_volume);
+  }
 }
 
 void Shadow2::reset_buffers() {
@@ -71,6 +76,13 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     return;
   }
 
+
+  m_using_shadow3 = dma.current_tag_vifcode0().kind == VifCode::Kind::PC_PORT;
+  if (m_using_shadow3) {
+    m_shadow3->render_jak1(dma, render_state, prof);
+    return;
+  }
+
   auto maybe_constants = dma.read_and_advance();
   if (maybe_constants.size_bytes == 0 && maybe_constants.vif0() == 0 &&
       maybe_constants.vif1() == 0) {
@@ -79,6 +91,7 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
   }
 
   reset_buffers();
+
 
   // shadow-vu1-constants
   ASSERT(maybe_constants.size_bytes >= sizeof(ShadowVu1Constants));
