@@ -587,9 +587,7 @@ void MercModelGroup::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
 }
 
-void ShadowModel::serialize(Serializer& ser) {
-  ser.from_str(&name);
-  ser.from_ptr(&max_bones);
+void ShadowModelFragment::serialize(Serializer& ser) {
   ser.from_ptr(&first_vertex);
   ser.from_ptr(&num_one_bone_vertices);
   ser.from_ptr(&num_two_bone_vertices);
@@ -597,6 +595,20 @@ void ShadowModel::serialize(Serializer& ser) {
   ser.from_pod_vector(&double_tris);
   ser.from_pod_vector(&single_edges);
   ser.from_pod_vector(&double_edges);
+}
+
+void ShadowModel::serialize(Serializer& ser) {
+  ser.from_str(&name);
+  ser.from_ptr(&max_bones);
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(fragments.size());
+  } else {
+    fragments.resize(ser.load<size_t>());
+  }
+  for (auto& frag : fragments) {
+    frag.serialize(ser);
+  }
 }
 
 void ShadowModelGroup::serialize(Serializer& ser) {

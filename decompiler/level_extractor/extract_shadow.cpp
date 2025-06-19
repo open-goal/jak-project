@@ -7,38 +7,6 @@
 
 namespace decompiler {
 
-/*
-*(deftype shadow-header (structure)
-((qwc-data         uint32  :offset-assert 0)
-(num-joints       uint32  :offset-assert 4)
-(num-verts        uint16  :offset-assert 8)
-(num-twos         uint16  :offset-assert 10)
-(num-single-tris  uint16  :offset-assert 12)
-(num-single-edges uint16  :offset-assert 14)
-(num-double-tris  uint16  :offset-assert 16)
-(num-double-edges uint16  :offset-assert 18)
-(ofs-verts        uint32  :offset-assert 20)
-(ofs-refs         uint32  :offset-assert 24)
-(ofs-single-tris  uint32  :offset-assert 28)
-(ofs-single-edges uint32  :offset-assert 32)
-(ofs-double-tris  uint32  :offset-assert 36)
-(ofs-double-edges uint32  :offset-assert 40)
-)
-:method-count-assert 9
-:size-assert         #x2c
-:flag-assert         #x90000002c
-)
-
-(deftype shadow-geo (art-element)
-((total-size uint32                 :offset-assert 32)
-(header     shadow-header :inline  :offset 32)
-(rest       uint64       :dynamic :offset-assert 80)
-)
-:method-count-assert 13
-:size-assert         #x50
-:flag-assert         #xd00000050
-)*/
-
 struct ShadowVertex {
   math::Vector3f pos;
   float weight;
@@ -106,37 +74,33 @@ std::string debug_dump_to_ply(const ShadowData& data) {
   return result;
 }
 
+constexpr int kHeaderSize = 48;
+
 ShadowData extract_shadow_data(const LinkedObjectFile& file,
                                const DecompilerTypeSystem& dts,
-                               int word_idx) {
-  Ref ref;
-  ref.data = &file;
-  ref.seg = 0;
-  ref.byte_offset = word_idx * 4;
-  auto tr = typed_ref_from_basic(ref, dts);
-  constexpr int kHeaderSize = 48;
-
+                               TypedRef header_ref,
+                               const std::string& name,
+                               int size_qwc,
+                               int num_joints) {
   ShadowData shadow_data;
 
-  auto header_ref = TypedRef(get_field_ref(tr, "header", dts), dts.ts.lookup_type("shadow-header"));
-  u32 size_qwc = read_plain_data_field<s32>(header_ref, "qwc-data", dts);
   ASSERT(size_qwc < 1024 * 1024);  // something reasonable
   std::vector<u8> data(size_qwc * 16);
   Ref shadow_ref = header_ref.ref;
   shadow_ref.byte_offset += kHeaderSize;
   memcpy_from_plain_data(data.data(), shadow_ref, size_qwc * 16 - kHeaderSize);
 
-  lg::info("name is {}, has {} joints, size {} bytes", read_string_field(tr, "name", dts, false),
-           read_plain_data_field<s32>(header_ref, "num-joints", dts), data.size());
+  // lg::info("name is {}, has {} joints, size {} bytes", name,
+  // read_plain_data_field<s32>(header_ref, "num-joints", dts), data.size());
 
-  shadow_data.name = read_string_field(tr, "name", dts, false);
-  shadow_data.num_joints = read_plain_data_field<s32>(header_ref, "num-joints", dts);
+  shadow_data.name = name;
+  shadow_data.num_joints = num_joints;
 
   const u32 num_verts = read_plain_data_field<u16>(header_ref, "num-verts", dts);
   const u32 num_twos = read_plain_data_field<u16>(header_ref, "num-twos", dts);
   ASSERT(num_verts >= num_twos);
   const u32 num_ones = num_verts - num_twos;
-  lg::info("  vert counts {} {}", num_ones, num_twos);
+  // lg::info("  vert counts {} {}", num_ones, num_twos);
 
   const u32 ofs_verts = read_plain_data_field<u32>(header_ref, "ofs-verts", dts);
   const u32 ofs_refs = read_plain_data_field<u32>(header_ref, "ofs-refs", dts);
@@ -152,8 +116,8 @@ ShadowData extract_shadow_data(const LinkedObjectFile& file,
 
   ASSERT(ofs_verts == kHeaderSize);  // verts always right after the header
 
-  lg::info(" offsets {} {} {} {} {} {}", ofs_verts, ofs_refs, ofs_single_tris, ofs_single_edges,
-           ofs_double_tris, ofs_double_edges);
+  // lg::info(" offsets {} {} {} {} {} {}", ofs_verts, ofs_refs, ofs_single_tris, ofs_single_edges,
+  //          ofs_double_tris, ofs_double_edges);
 
   // vertices
   ASSERT(ofs_refs - ofs_verts == 16 * num_verts);
@@ -241,6 +205,61 @@ ShadowData extract_shadow_data(const LinkedObjectFile& file,
   return shadow_data;
 }
 
+ShadowData extract_jak1_shadow_data(const LinkedObjectFile& file,
+                                    const DecompilerTypeSystem& dts,
+                                    int geo_word_idx) {
+  Ref ref;
+  ref.data = &file;
+  ref.seg = 0;
+  ref.byte_offset = geo_word_idx * 4;
+  auto tr = typed_ref_from_basic(ref, dts);
+  auto header_ref = TypedRef(get_field_ref(tr, "header", dts), dts.ts.lookup_type("shadow-header"));
+  u32 size_qwc = read_plain_data_field<s32>(header_ref, "qwc-data", dts);
+  const std::string name = read_string_field(tr, "name", dts, false);
+  int num_joints = read_plain_data_field<s32>(header_ref, "num-joints", dts);
+  return extract_shadow_data(file, dts, header_ref, name, size_qwc, num_joints);
+}
+
+std::vector<ShadowData> extract_jak2_shadow_data(const LinkedObjectFile& file,
+                                                 const DecompilerTypeSystem& dts,
+                                                 int geo_word_idx) {
+  std::vector<ShadowData> shadow_datas;
+  Ref ref;
+  ref.data = &file;
+  ref.seg = 0;
+  ref.byte_offset = geo_word_idx * 4;
+  auto tr = typed_ref_from_basic(ref, dts);
+  uint32_t version = read_plain_data_field<u32>(tr, "version", dts);
+  std::string name = read_string_field(tr, "name", dts, false);
+
+  if (version == 0) {
+    tr.type = dts.ts.lookup_type("shadow-geo-old");
+    auto header_ref =
+        TypedRef(get_field_ref(tr, "header", dts), dts.ts.lookup_type("shadow-frag-header"));
+    u32 size_qwc = read_plain_data_field<s32>(header_ref, "qwc-data", dts);
+    int num_joints = read_plain_data_field<s32>(header_ref, "num-joints", dts);
+    shadow_datas.push_back(extract_shadow_data(file, dts, header_ref, name, size_qwc, num_joints));
+  } else if (version == 1) {
+    u32 num_joints = read_plain_data_field<u32>(tr, "num-joints", dts);
+    uint32_t num_fragments = read_plain_data_field<u32>(tr, "num-fragments", dts);
+    // lg::info("{} {} fragments", name, num_fragments);
+    auto frags_ref =
+        TypedRef(get_field_ref(tr, "frags", dts), dts.ts.lookup_type("shadow-frag-ref"));
+
+    auto header_ref = TypedRef(deref_label(get_field_ref(frags_ref, "header", dts)),
+                               dts.ts.lookup_type("shadow-frag-header"));
+    u32 size_qwc = read_plain_data_field<s32>(frags_ref, "qwc", dts);
+    for (u32 i = 0; i < num_fragments; i++) {
+      shadow_datas.push_back(
+          extract_shadow_data(file, dts, header_ref, name, size_qwc, num_joints));
+      frags_ref.ref.byte_offset += 8;
+    }
+  } else {
+    lg::die("unknown version {}\n", version);
+  }
+  return shadow_datas;
+}
+
 std::vector<tfrag3::ShadowVertex> convert_vertices(const ShadowData& data) {
   std::vector<tfrag3::ShadowVertex> result;
 
@@ -311,6 +330,51 @@ std::vector<tfrag3::ShadowEdge> convert_edges(const std::vector<ShadowEdge>& edg
   return result;
 }
 
+void add_data_to_level(tfrag3::ShadowModelGroup& sd, const std::vector<ShadowData>& fragments) {
+  if (fragments.empty()) {
+    return;
+  }
+  auto& model = sd.models.emplace_back();
+  model.name = fragments.front().name;
+  model.max_bones = fragments.front().num_joints;
+
+  for (auto& in_frag : fragments) {
+    auto& out_frag = model.fragments.emplace_back();
+
+    out_frag.single_tris = convert_tris(in_frag.single_tris);
+    out_frag.double_tris = convert_tris(in_frag.double_tris);
+    out_frag.single_edges = convert_edges(in_frag.single_edges);
+    out_frag.double_edges = convert_edges(in_frag.double_edges);
+
+    const u32 vertex_offset = sd.vertices.size();
+
+    out_frag.first_vertex = vertex_offset;
+    out_frag.num_one_bone_vertices = in_frag.one_bone_vertices.size();
+    out_frag.num_two_bone_vertices = in_frag.two_bone_vertices.size();
+    ASSERT(out_frag.num_one_bone_vertices + out_frag.num_two_bone_vertices <=
+           tfrag3::ShadowModel::kMaxVertices);
+    ASSERT(out_frag.single_tris.size() + out_frag.double_tris.size() <=
+           tfrag3::ShadowModel::kMaxTris);
+
+    // insert top vertices
+    auto vertices = convert_vertices(in_frag);
+    sd.vertices.insert(sd.vertices.end(), vertices.begin(), vertices.end());
+
+    // bottom vertices
+    for (auto& v : vertices) {
+      v.flags = 1;
+    }
+    sd.vertices.insert(sd.vertices.end(), vertices.begin(), vertices.end());
+  }
+  // if (dump_level) {
+  //   auto file_path = file_util::get_file_path(
+  //       {"debug_out/shadow", fmt::format("{}_{}.ply", ag_data.name_in_dgo, i)});
+  //   file_util::create_dir_if_needed_for_file(file_path);
+  //   file_util::write_text_file(file_path, debug_dump_to_ply(data));
+  // }
+  // i++;
+}
+
 void extract_shadow(const ObjectFileData& ag_data,
                     const DecompilerTypeSystem& dts,
                     tfrag3::Level& out,
@@ -322,50 +386,28 @@ void extract_shadow(const ObjectFileData& ag_data,
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/shadow"}));
   }
-  auto geo_locations = find_objects_with_type(ag_data.linked_data, "shadow-geo");
-  if (!geo_locations.empty()) {
-    lg::error("{} has {} shadows", ag_data.name_in_dgo, geo_locations.size());
-  }
-
-  int i = 0;
   auto& sd = out.shadow_data;
-  for (auto loc : geo_locations) {
-    const ShadowData data = extract_shadow_data(ag_data.linked_data, dts, loc);
 
-    auto& model = sd.models.emplace_back();
-    model.name = data.name;
-    model.max_bones = data.num_joints;
-    model.single_tris = convert_tris(data.single_tris);
-    model.double_tris = convert_tris(data.double_tris);
-    model.single_edges = convert_edges(data.single_edges);
-    model.double_edges = convert_edges(data.double_edges);
+  if (version == GameVersion::Jak1) {
+    auto geo_locations = find_objects_with_type(ag_data.linked_data, "shadow-geo");
+    // if (!geo_locations.empty()) {
+    //   lg::error("{} has {} shadows", ag_data.name_in_dgo, geo_locations.size());
+    // }
 
-    const u32 vertex_offset = sd.vertices.size();
-
-    model.first_vertex = vertex_offset;
-    model.num_one_bone_vertices = data.one_bone_vertices.size();
-    model.num_two_bone_vertices = data.two_bone_vertices.size();
-    ASSERT(model.num_one_bone_vertices + model.num_two_bone_vertices <=
-           tfrag3::ShadowModel::kMaxVertices);
-    ASSERT(model.single_tris.size() + model.double_tris.size() <= tfrag3::ShadowModel::kMaxTris);
-
-    // insert top vertices
-    auto vertices = convert_vertices(data);
-    sd.vertices.insert(sd.vertices.end(), vertices.begin(), vertices.end());
-
-    // bottom vertices
-    for (auto& v : vertices) {
-      v.flags = 1;
+    for (auto loc : geo_locations) {
+      const ShadowData data = extract_jak1_shadow_data(ag_data.linked_data, dts, loc);
+      add_data_to_level(sd, {data});
     }
-    sd.vertices.insert(sd.vertices.end(), vertices.begin(), vertices.end());
+  } else {
+    // Jak2 has two versions of shadow. The "new" version has multiple fragments.
+    // Although there is a shadow-geo-old type in GOAL code, it's not actually used in the game
+    // data: both new and old types simply have shadow-geo type tags.
+    ASSERT(find_objects_with_type(ag_data.linked_data, "shadow-geo-old").empty());
 
-    if (dump_level) {
-      auto file_path = file_util::get_file_path(
-          {"debug_out/shadow", fmt::format("{}_{}.ply", ag_data.name_in_dgo, i)});
-      file_util::create_dir_if_needed_for_file(file_path);
-      file_util::write_text_file(file_path, debug_dump_to_ply(data));
+    auto geo_locations = find_objects_with_type(ag_data.linked_data, "shadow-geo");
+    for (auto loc : geo_locations) {
+      extract_jak2_shadow_data(ag_data.linked_data, dts, loc);
     }
-    i++;
   }
 }
 }  // namespace decompiler

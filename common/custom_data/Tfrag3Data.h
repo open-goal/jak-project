@@ -634,18 +634,21 @@ struct ShadowEdge {
   u8 tri[2];
 };
 
+struct ShadowModelFragment {
+  std::vector<ShadowTri> single_tris, double_tris;
+  std::vector<ShadowEdge> single_edges, double_edges;
+  u32 first_vertex;
+  u32 num_one_bone_vertices;
+  u32 num_two_bone_vertices;
+  void serialize(Serializer& ser);
+};
+
 struct ShadowModel {
   static constexpr int kMaxVertices = 254;
   static constexpr int kMaxTris = 254;
   std::string name;
   u32 max_bones;
-
-  std::vector<ShadowTri> single_tris, double_tris;
-  std::vector<ShadowEdge> single_edges, double_edges;
-
-  u32 first_vertex;
-  u32 num_one_bone_vertices;
-  u32 num_two_bone_vertices;
+  std::vector<ShadowModelFragment> fragments;
 
   void serialize(Serializer& ser);
 };

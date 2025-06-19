@@ -105,126 +105,127 @@ void set_uniform(GLint uniform, const math::Vector4f& val) {
 void Shadow3::draw_model(SharedRenderState* render_state,
                          ShadowRequest* request,
                          ScopedProfilerNode& prof) {
-  ShadowCPUInput input{
-      .origin = request->origin,
-      .top_plane = request->top_plane,
-      .bottom_plane = request->bottom_plane,
-      .light_dir = request->light_dir,
-      .bones = request->bones,
-      .model = request->model.model,
-      .vertices = &request->model.level->level->shadow_data.vertices,
-      .scissor_top = request->scissor_top,
-      .debug_highlight_tri = m_debug_tri,
-  };
-  calc_shadow_indices(input, &m_cpu_workspace, &m_cpu_output);
-  glBindBuffer(GL_UNIFORM_BUFFER, m_opengl.bones_buffer);
-  glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_opengl.bones_buffer,
-                    sizeof(math::Vector4f) * request->bone_idx, 128 * 16 * 4);
-  // const auto* geo = request->model.model;
-  // printf("draw %s\n", geo->name.c_str());
+  for (const auto& frag : request->model.model->fragments) {
+    ShadowCPUInput input{
+        .origin = request->origin,
+        .top_plane = request->top_plane,
+        .bottom_plane = request->bottom_plane,
+        .light_dir = request->light_dir,
+        .bones = request->bones,
+        .model = &frag,
+        .vertices = &request->model.level->level->shadow_data.vertices,
+        .scissor_top = request->scissor_top,
+        .debug_highlight_tri = m_debug_tri,
+    };
+    calc_shadow_indices(input, &m_cpu_workspace, &m_cpu_output);
+    glBindBuffer(GL_UNIFORM_BUFFER, m_opengl.bones_buffer);
+    glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_opengl.bones_buffer,
+                      sizeof(math::Vector4f) * request->bone_idx, 128 * 16 * 4);
+    // const auto* geo = request->model.model;
+    // printf("draw %s\n", geo->name.c_str());
 
-  set_uniform(m_uniforms.origin, request->origin);
-  set_uniform(m_uniforms.top_plane, request->top_plane);
-  set_uniform(m_uniforms.bottom_plane, request->bottom_plane);
-  glUniform1i(m_uniforms.scissor_top, request->scissor_top);
+    set_uniform(m_uniforms.origin, request->origin);
+    set_uniform(m_uniforms.top_plane, request->top_plane);
+    set_uniform(m_uniforms.bottom_plane, request->bottom_plane);
+    glUniform1i(m_uniforms.scissor_top, request->scissor_top);
 
-  if (m_hacks) {
-    auto* model = request->model.model;
-    int num_verts = model->num_one_bone_vertices + model->num_two_bone_vertices;
-    std::vector<tfrag3::ShadowVertex> verts;
-    for (size_t i = 0; i < num_verts; ++i) {
-      auto& out = verts.emplace_back();
-      out.flags = 255;
-      out.mats[0] = 255;
-      out.mats[1] = 255;
-      out.pos[0] = m_cpu_workspace.vertices[i].x();
-      out.pos[1] = m_cpu_workspace.vertices[i].y();
-      out.pos[2] = m_cpu_workspace.vertices[i].z();
-      out.weight = m_cpu_workspace.vertices[i].w();
-    }
+    if (m_hacks) {
+      int num_verts = frag.num_one_bone_vertices + frag.num_two_bone_vertices;
+      std::vector<tfrag3::ShadowVertex> verts;
+      for (size_t i = 0; i < num_verts; ++i) {
+        auto& out = verts.emplace_back();
+        out.flags = 255;
+        out.mats[0] = 255;
+        out.mats[1] = 255;
+        out.pos[0] = m_cpu_workspace.vertices[i].x();
+        out.pos[1] = m_cpu_workspace.vertices[i].y();
+        out.pos[2] = m_cpu_workspace.vertices[i].z();
+        out.weight = m_cpu_workspace.vertices[i].w();
+      }
 
-    for (size_t i = 0; i < num_verts; ++i) {
-      auto& out = verts.emplace_back();
-      out.flags = 255;
-      out.mats[0] = 255;
-      out.mats[1] = 255;
-      out.pos[0] = m_cpu_workspace.dual_vertices[i].x();
-      out.pos[1] = m_cpu_workspace.dual_vertices[i].y();
-      out.pos[2] = m_cpu_workspace.dual_vertices[i].z();
-      out.weight = m_cpu_workspace.dual_vertices[i].w();
-    }
+      for (size_t i = 0; i < num_verts; ++i) {
+        auto& out = verts.emplace_back();
+        out.flags = 255;
+        out.mats[0] = 255;
+        out.mats[1] = 255;
+        out.pos[0] = m_cpu_workspace.dual_vertices[i].x();
+        out.pos[1] = m_cpu_workspace.dual_vertices[i].y();
+        out.pos[2] = m_cpu_workspace.dual_vertices[i].z();
+        out.weight = m_cpu_workspace.dual_vertices[i].w();
+      }
 
-    glEnable(GL_DEPTH_TEST);
-    glDisable(GL_BLEND);
-    glDepthFunc(GL_GEQUAL);
-    glDepthMask(GL_TRUE);
-    glEnable(GL_CULL_FACE);
-    glCullFace(m_cull_back ? GL_BACK : GL_FRONT);
-    glBindBuffer(GL_ARRAY_BUFFER, m_opengl.debug_verts);
-    glBufferData(GL_ARRAY_BUFFER, num_verts * 2 * sizeof(tfrag3::ShadowVertex), verts.data(),
-                 GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_opengl.indices);
-    set_uniform(m_uniforms.debug_color, math::Vector3f(0.5f, 0.5f, 0.5f));
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_cpu_output.num_f0_indices * sizeof(u32),
-                 m_cpu_output.f0_indices, GL_DYNAMIC_DRAW);
-    glDrawElements(GL_TRIANGLES, m_cpu_output.num_f0_indices, GL_UNSIGNED_INT, nullptr);
-    set_uniform(m_uniforms.debug_color, math::Vector3f(0.f, 0.f, 0.f));
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_TRIANGLES, m_cpu_output.num_f0_indices, GL_UNSIGNED_INT, nullptr);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_cpu_output.num_f1_indices * sizeof(u32),
-                 m_cpu_output.f1_indices, GL_DYNAMIC_DRAW);
-    set_uniform(m_uniforms.debug_color, math::Vector3f(0.f, 0.f, 0.f));
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_TRIANGLES, m_cpu_output.num_f1_indices, GL_UNSIGNED_INT, nullptr);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    glEnable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
-    set_uniform(m_uniforms.debug_color, math::Vector3f(0.5f, 0.78f, 0.5f));
-    glDrawElements(GL_TRIANGLES, m_cpu_output.num_f1_indices, GL_UNSIGNED_INT, nullptr);
-
-    glBindBuffer(GL_ARRAY_BUFFER, request->model.level->shadow_vertices);
-    glDisable(GL_CULL_FACE);
-
-  } else {
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_opengl.indices);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_cpu_output.num_indices * sizeof(u32),
-                 m_cpu_output.indices, GL_DYNAMIC_DRAW);
-    // enable stencil!
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  // no color writes.
-    glEnable(GL_STENCIL_TEST);
-    glStencilMask(0xFF);
-    glEnable(GL_DEPTH_TEST);
-    glDisable(GL_BLEND);
-    glDepthFunc(GL_GEQUAL);
-    glDepthMask(GL_FALSE);  // no depth writes.
-
-    if (false) {
+      glEnable(GL_DEPTH_TEST);
+      glDisable(GL_BLEND);
+      glDepthFunc(GL_GEQUAL);
+      glDepthMask(GL_TRUE);
       glEnable(GL_CULL_FACE);
-      glCullFace(GL_BACK);
-      glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
-      glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);  // increment on depth fail
-      glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
-      glCullFace(GL_FRONT);
-      glStencilFunc(GL_ALWAYS, 0, 0);
-      glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);  // decrement on depth pass.
-      glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
+      glCullFace(m_cull_back ? GL_BACK : GL_FRONT);
+      glBindBuffer(GL_ARRAY_BUFFER, m_opengl.debug_verts);
+      glBufferData(GL_ARRAY_BUFFER, num_verts * 2 * sizeof(tfrag3::ShadowVertex), verts.data(),
+                   GL_DYNAMIC_DRAW);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_opengl.indices);
+      set_uniform(m_uniforms.debug_color, math::Vector3f(0.5f, 0.5f, 0.5f));
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_cpu_output.num_f0_indices * sizeof(u32),
+                   m_cpu_output.f0_indices, GL_DYNAMIC_DRAW);
+      glDrawElements(GL_TRIANGLES, m_cpu_output.num_f0_indices, GL_UNSIGNED_INT, nullptr);
+      set_uniform(m_uniforms.debug_color, math::Vector3f(0.f, 0.f, 0.f));
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glDrawElements(GL_TRIANGLES, m_cpu_output.num_f0_indices, GL_UNSIGNED_INT, nullptr);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_cpu_output.num_f1_indices * sizeof(u32),
+                   m_cpu_output.f1_indices, GL_DYNAMIC_DRAW);
+      set_uniform(m_uniforms.debug_color, math::Vector3f(0.f, 0.f, 0.f));
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      glDrawElements(GL_TRIANGLES, m_cpu_output.num_f1_indices, GL_UNSIGNED_INT, nullptr);
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+      glEnable(GL_BLEND);
+      glBlendEquation(GL_FUNC_ADD);
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+      set_uniform(m_uniforms.debug_color, math::Vector3f(0.5f, 0.78f, 0.5f));
+      glDrawElements(GL_TRIANGLES, m_cpu_output.num_f1_indices, GL_UNSIGNED_INT, nullptr);
+
+      glBindBuffer(GL_ARRAY_BUFFER, request->model.level->shadow_vertices);
+      glDisable(GL_CULL_FACE);
+
     } else {
-      glEnable(GL_CULL_FACE);
-      glCullFace(GL_FRONT);
-      glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
-      glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);  // increment on depth fail
-      glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
-      glCullFace(GL_BACK);
-      glStencilFunc(GL_ALWAYS, 0, 0);
-      glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);  // decrement on depth pass.
-      glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
-    }
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_opengl.indices);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_cpu_output.num_indices * sizeof(u32),
+                   m_cpu_output.indices, GL_DYNAMIC_DRAW);
+      // enable stencil!
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  // no color writes.
+      glEnable(GL_STENCIL_TEST);
+      glStencilMask(0xFF);
+      glEnable(GL_DEPTH_TEST);
+      glDisable(GL_BLEND);
+      glDepthFunc(GL_GEQUAL);
+      glDepthMask(GL_FALSE);  // no depth writes.
 
-    glDisable(GL_CULL_FACE);
+      if (false) {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
+        glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);  // increment on depth fail
+        glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
+        glCullFace(GL_FRONT);
+        glStencilFunc(GL_ALWAYS, 0, 0);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);  // decrement on depth pass.
+        glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
+      } else {
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT);
+        glStencilFunc(GL_ALWAYS, 0, 0);          // always pass stencil
+        glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);  // increment on depth fail
+        glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
+        glCullFace(GL_BACK);
+        glStencilFunc(GL_ALWAYS, 0, 0);
+        glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);  // decrement on depth pass.
+        glDrawElements(GL_TRIANGLES, m_cpu_output.num_indices, GL_UNSIGNED_INT, nullptr);
+      }
+
+      glDisable(GL_CULL_FACE);
+    }
   }
 }
 

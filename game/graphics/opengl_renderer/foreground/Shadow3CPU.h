@@ -7,7 +7,7 @@ struct ShadowCPUInput {
   math::Vector4f top_plane, bottom_plane;
   math::Vector3f light_dir;
   const u8* bones = nullptr;
-  const tfrag3::ShadowModel* model = nullptr;
+  const tfrag3::ShadowModelFragment* model = nullptr;
   std::vector<tfrag3::ShadowVertex>* vertices = nullptr;
   bool scissor_top = false;
   int debug_highlight_tri = 0;

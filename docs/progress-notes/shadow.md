@@ -896,7 +896,7 @@ B3:  ;; case where both tris are set.
     lbu t4, 3(t3)     ;; t4 = tri-0.faces
     sll r0, r0, 0
     lbu t5, 3(t5)     ;; t5 = tri-1.faces
-    sltiu t3, t4, 1   ;; t3 = tri-0.faces < 1
+    sltiu t3, t4, 1   ;; t3 = tri-0.faces < 1 = (tri0.faces == 0) == 
     sll r0, r0, 0
     beq t4, t5, L70   ;; if facing is equal skip this.
     sll r0, r0, 0
@@ -919,7 +919,7 @@ L68:  ;; case where tri 1 is 255
 B6:
 L69:
     dsubu t4, t1, t0 ;; t4 = edge idx
-    sh t3, 2(v1)     ;; store (0, or, tri0.faces < 1)
+    sh t3, 2(v1)     ;; store (0, or, tri0.faces == 0)
     sh t4, 0(v1)     ;; store the edge idx.
     daddiu v1, v1, 4
 B7:
@@ -934,6 +934,62 @@ L71:
     sw a0, 24(a1)
     sw v1, 16(a1)
     or v0, r0, r0
+    jr ra
+    daddu sp, sp, r0
+```
+
+## OOO add-facing-single-tris
+
+```
+L41:
+    lw v1, *shadow-data*(s7)
+    or a3, v1, r0              ;; a3 = shadow-data
+    lw v1, 20(a1)              ;; v1 = num-facing
+    lw a0, 32(a1)              ;; a0 = single-tri-list
+    beq v1, r0, L43
+    daddiu a1, v1, 1           ;; a1 = num-facing + 1
+
+B1:
+    daddiu a1, a1, 3           ;; a1 += 3
+    dsra t0, a1, 2             ;; shift right/left to align
+    dsll a1, t0, 2
+    daddiu t0, t0, 1           ;; add one
+    ld t1, 80(a3)              ;; t1 = dma-cnt
+    daddu t0, t1, t0           ;; setup dma stuff
+    lw a3, 92(a3)              ;; unpack
+    sd t0, 0(a2)               ;; 
+    addiu t0, r0, 16728
+    sw r0, 8(a2)
+    sw a3, 12(a2)
+    sb a1, 14(a2)
+    dsll a1, a1, 2
+    sh t0, 12(a2)
+    daddiu a2, a2, 16
+    daddu a1, a2, a1
+    sq r0, -16(a1)
+    sw v1, 0(a2)
+    daddiu a2, a2, 4
+B2:
+L42:
+    lw a3, 0(a0)
+    daddiu a0, a0, 4
+    lw a3, 0(a3)
+    daddiu v1, v1, -1
+    sw a3, 0(a2)
+    daddiu a2, a2, 4
+    bgtz v1, L42
+    sll r0, r0, 0
+
+B3:
+    or v1, a1, r0
+    lui a0, 5376
+    ori a0, a0, 2
+    sq r0, 0(v1)
+    sw a0, 12(v1)
+    daddiu a2, v1, 16
+B4:
+L43:
+    or v0, a2, r0
     jr ra
     daddu sp, sp, r0
 ```
@@ -961,33 +1017,33 @@ B1:
 B2:
 L52:
     daddiu a3, a3, -1
-    lbu t3, 3(t1)
+    lbu t3, 3(t1)      ;; t3 = tri1
     sll r0, r0, 0
-    lbu t4, 2(t1)
+    lbu t4, 2(t1)      ;; t4 = tri0
     beq t3, t2, L53
     or t5, r0, r0
 
-B3:
+B3:                    ;; if tri1 != 255
     dsll t4, t4, 2
     dsll t3, t3, 2
     daddu t4, t4, t0
     daddu t3, t3, t0
     sll r0, r0, 0
-    lbu t4, 3(t4)
+    lbu t4, 3(t4)      ;; t4 = tri0->face
     sll r0, r0, 0
-    lbu t3, 3(t3)
-    beq t4, t3, L54
+    lbu t3, 3(t3)      ;; t3 = tri1->face
+    beq t4, t3, L54    ;; skip if facing equal
     sll r0, r0, 0
 
 B4:
-    sltiu t4, t4, 1
+    sltiu t4, t4, 1   ;; t4 = (tri0->face == 0)
     sll r0, r0, 0
-    sltu t3, r0, t3
+    sltu t3, r0, t3   ;; t3 = (tri1->face != 0)
     sll r0, r0, 0
     sll r0, r0, 0
-    sh t4, 2(v1)
+    sh t4, 2(v1)      ;; flip0 = (tri0->face == 0)
     dsubu t4, t1, a0
-    sh t3, 6(v1)
+    sh t3, 6(v1)      ;; flip1 = (tri1->face != 0)
     sll r0, r0, 0
     sh t4, 0(v1)
     sll r0, r0, 0
@@ -996,7 +1052,7 @@ B4:
     daddiu v1, v1, 8
 
 B5:
-L53:
+L53:             ;; if tri1 == 255
     dsll t3, t4, 2
     sll r0, r0, 0
     daddu t3, t3, t0
