@@ -54,6 +54,10 @@
 #include "game/kernel/jak3/kdgo.h"
 #include "game/kernel/jak3/klisten.h"
 #include "game/kernel/jak3/kscheme.h"
+#include "game/kernel/jakx/kboot.h"
+#include "game/kernel/jakx/kdgo.h"
+#include "game/kernel/jakx/klisten.h"
+#include "game/kernel/jakx/kscheme.h"
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/sbank.h"
@@ -233,8 +237,7 @@ void ee_runner(SystemThreadInterface& iface) {
       jak3::goal_main(g_argc, g_argv);
       break;
     case GameVersion::JakX:
-    // TODO: point at a Jak X goal_main
-      jak3::goal_main(g_argc, g_argv);
+      jakx::goal_main(g_argc, g_argv);
     default:
       ASSERT_MSG(false, "Unsupported game version");
   }
