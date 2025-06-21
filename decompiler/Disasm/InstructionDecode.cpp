@@ -10,7 +10,7 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 // utility class to extract fields of an opcode.

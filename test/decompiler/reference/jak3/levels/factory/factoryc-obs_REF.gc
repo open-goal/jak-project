@@ -107,7 +107,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defmethod set-jmod-inner-scale! ((this generic-spot-shadow-effect) (arg0 vector))
-  (set! (-> this jmod-inner transform scale quad) (-> arg0 quad))
+  (vector-copy! (-> this jmod-inner transform scale) arg0)
   (none)
   )
 
@@ -115,7 +115,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
 (defmethod set-jmod-outer-scale! ((this generic-spot-shadow-effect) (arg0 vector))
-  (set! (-> this jmod-outer transform scale quad) (-> arg0 quad))
+  (vector-copy! (-> this jmod-outer transform scale) arg0)
   (none)
   )
 
@@ -123,9 +123,9 @@
 ;; INFO: Used lq/sq
 (defbehavior generic-spot-shadow-effect-init-by-other generic-spot-shadow-effect ((arg0 vector) (arg1 quaternion))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-copy! (-> self root quat) arg1)
-  (set! (-> self pre-flicker-pos quad) (-> self root trans quad))
+  (vector-copy! (-> self pre-flicker-pos) (-> self root trans))
   (set! (-> self level) (-> *level* level-default))
   (initialize-skeleton
     self
@@ -338,7 +338,7 @@
       (let ((a0-5 (-> self lightning))
             (v1-4 s5-0)
             )
-        (set! (-> a0-5 state meet data (+ (-> a0-5 state points-to-draw) -1) quad) (-> v1-4 quad))
+        (vector-copy! (-> a0-5 state meet data (+ (-> a0-5 state points-to-draw) -1)) v1-4)
         )
       (until #f
         (let ((v1-9 (mod (+ (current-time) (-> self phase-offset)) (+ (-> self on-duration) (-> self off-duration)))))
@@ -421,6 +421,7 @@
 
 ;; definition for method 11 of type fac-zapper
 (defmethod init-from-entity! ((this fac-zapper) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this entity) arg0)
   (set! (-> this path) (new 'process 'path-control this 'path 0.0 arg0 #f))
   (set! (-> this lightning) (new 'process 'lightning-control (-> *lightning-spec-id-table* 33) this 0.0))
@@ -571,31 +572,10 @@
            )
         )
       (let ((gp-1 (new 'stack-no-clear 'matrix)))
-        (let* ((v1-9 gp-1)
-               (a3-0 (-> self node-list data 4 bone transform))
-               (a0-5 (-> a3-0 rvec quad))
-               (a1-2 (-> a3-0 uvec quad))
-               (a2-2 (-> a3-0 fvec quad))
-               (a3-1 (-> a3-0 trans quad))
-               )
-          (set! (-> v1-9 rvec quad) a0-5)
-          (set! (-> v1-9 uvec quad) a1-2)
-          (set! (-> v1-9 fvec quad) a2-2)
-          (set! (-> v1-9 trans quad) a3-1)
-          )
+        (matrix-copy! gp-1 (-> self node-list data 4 bone transform))
         (vector-negate-in-place! (-> gp-1 uvec))
         (vector-negate-in-place! (-> gp-1 fvec))
-        (let ((a2-3 (-> self particle-hack))
-              (v1-10 (-> gp-1 rvec quad))
-              (a0-8 (-> gp-1 uvec quad))
-              (a1-3 (-> gp-1 fvec quad))
-              (a3-2 (-> gp-1 trans quad))
-              )
-          (set! (-> a2-3 rvec quad) v1-10)
-          (set! (-> a2-3 uvec quad) a0-8)
-          (set! (-> a2-3 fvec quad) a1-3)
-          (set! (-> a2-3 trans quad) a3-2)
-          )
+        (matrix-copy! (-> self particle-hack) gp-1)
         )
       (add-debug-rot-matrix #t (bucket-id debug-no-zbuf1) (-> self particle-hack) (-> self root trans))
       (spawn-from-mat (-> self part) (-> self particle-hack))
@@ -625,6 +605,7 @@
 
 ;; definition for method 11 of type fac-fire-torch
 (defmethod init-from-entity! ((this fac-fire-torch) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -785,7 +766,7 @@
            (s5-0 (new 'stack-no-clear 'enemy-init-by-other-params))
            )
        (vector+! v1-5 (-> arg0 root trans) (new 'static 'vector :w 1.0))
-       (set! (-> s5-0 trans quad) (-> v1-5 quad))
+       (vector-copy! (-> s5-0 trans) v1-5)
        (quaternion-copy! (-> s5-0 quat) (-> arg0 root quat))
        (set! (-> s5-0 entity) (-> arg0 entity))
        (set! (-> s5-0 directed?) #f)
@@ -966,13 +947,9 @@
   :virtual #t
   :enter (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (let* ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1)))
-           (s5-0 *target*)
-           (a0-3 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1)))
+          (a0-3 (the-as target (as-type *target* process-focusable)))
+          )
       (when a0-3
         (get-trans a0-3 0)
         (let ((s5-1 (-> *target* control transv)))
@@ -989,11 +966,11 @@
         (sound-play "fac-hatch-explo")
         (cond
           ((logtest? (-> *part-group-id-table* 752 flags) (sp-group-flag sp13))
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 752))
            )
           (else
-            (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+            (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
             (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 752))
             )
           )
@@ -1015,11 +992,11 @@
     (set! (-> self root root-prim prim-core action) (collide-action))
     (cond
       ((logtest? (-> *part-group-id-table* 218 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 218))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 218))
         )
       )
@@ -1059,6 +1036,7 @@
 
 ;; definition for method 11 of type fac-robopod
 (defmethod init-from-entity! ((this fac-robopod) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -1160,7 +1138,7 @@
               )
           (set! (-> self beams gp-0 state meet data 0 quad) (-> s4-0 quad))
           (let ((a0-9 (-> self beams gp-0)))
-            (set! (-> a0-9 state meet data (+ (-> a0-9 state points-to-draw) -1) quad) (-> v1-2 quad))
+            (vector-copy! (-> a0-9 state meet data (+ (-> a0-9 state points-to-draw) -1)) v1-2)
             )
           )
         (set! (-> self beams-on gp-0) #t)
@@ -1204,78 +1182,73 @@
 (defstate flickering (factory-elec-gate)
   :virtual #t
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 3))
-        (let ((s5-0 (the-as int (rand-uint31-gen *random-generator*))))
-          (let ((s4-0 0)
-                (s3-0 3)
-                )
-            (while (>= s3-0 s4-0)
-              (cond
-                ((logtest? s5-0 1)
-                 (when (not (-> self beams-on s4-0))
-                   (let ((v1-8 (-> self beams s4-0))
-                         (a0-1 1)
-                         )
-                     (let ((a1-1 (!= a0-1 (-> v1-8 state mode))))
-                       (case a0-1
-                         ((3)
-                          (if a1-1
-                              (set! (-> v1-8 state counter) 0.0)
-                              )
-                          )
-                         ((1)
-                          (set! (-> v1-8 state start-color) (-> v1-8 spec start-color))
-                          (set! (-> v1-8 state end-color) (-> v1-8 spec end-color))
-                          )
-                         )
+    (suspend-for (seconds 3)
+      (let ((s5-0 (the-as int (rand-uint31-gen *random-generator*))))
+        (let ((s4-0 0)
+              (s3-0 3)
+              )
+          (while (>= s3-0 s4-0)
+            (cond
+              ((logtest? s5-0 1)
+               (when (not (-> self beams-on s4-0))
+                 (let ((v1-8 (-> self beams s4-0))
+                       (a0-1 1)
                        )
-                     (set! (-> v1-8 state mode) (the-as uint a0-1))
-                     )
-                   (set! (-> self beams-on s4-0) #t)
-                   (set-factoryc-light! 1.0 1)
-                   )
-                 )
-                (else
-                  (when (-> self beams-on s4-0)
-                    (let ((v1-17 (-> self beams s4-0))
-                          (a0-5 3)
-                          )
-                      (let ((a1-12 (!= a0-5 (-> v1-17 state mode))))
-                        (case a0-5
-                          ((3)
-                           (if a1-12
-                               (set! (-> v1-17 state counter) 0.0)
-                               )
-                           )
-                          ((1)
-                           (set! (-> v1-17 state start-color) (-> v1-17 spec start-color))
-                           (set! (-> v1-17 state end-color) (-> v1-17 spec end-color))
-                           )
-                          )
+                   (let ((a1-1 (!= a0-1 (-> v1-8 state mode))))
+                     (case a0-1
+                       ((3)
+                        (if a1-1
+                            (set! (-> v1-8 state counter) 0.0)
+                            )
                         )
-                      (set! (-> v1-17 state mode) (the-as uint a0-5))
+                       ((1)
+                        (set! (-> v1-8 state start-color) (-> v1-8 spec start-color))
+                        (set! (-> v1-8 state end-color) (-> v1-8 spec end-color))
+                        )
+                       )
+                     )
+                   (set! (-> v1-8 state mode) (the-as uint a0-1))
+                   )
+                 (set! (-> self beams-on s4-0) #t)
+                 (set-factoryc-light! 1.0 1)
+                 )
+               )
+              (else
+                (when (-> self beams-on s4-0)
+                  (let ((v1-17 (-> self beams s4-0))
+                        (a0-5 3)
+                        )
+                    (let ((a1-12 (!= a0-5 (-> v1-17 state mode))))
+                      (case a0-5
+                        ((3)
+                         (if a1-12
+                             (set! (-> v1-17 state counter) 0.0)
+                             )
+                         )
+                        ((1)
+                         (set! (-> v1-17 state start-color) (-> v1-17 spec start-color))
+                         (set! (-> v1-17 state end-color) (-> v1-17 spec end-color))
+                         )
+                        )
                       )
-                    (set! (-> self beams-on s4-0) #f)
-                    (set-factoryc-light! 0.0 1)
+                    (set! (-> v1-17 state mode) (the-as uint a0-5))
                     )
+                  (set! (-> self beams-on s4-0) #f)
+                  (set-factoryc-light! 0.0 1)
                   )
                 )
-              (set! s5-0 (/ s5-0 2))
-              (+! s4-0 1)
               )
-            )
-          (let ((s4-1 (current-time)))
-            (until (time-elapsed? s4-1 (seconds 0.1))
-              (if (logand s5-0 1)
-                  (sound-play "laser-loop" :id (-> self bzzt-sound) :position (-> self entity trans))
-                  )
-              (suspend)
-              )
+            (set! s5-0 (/ s5-0 2))
+            (+! s4-0 1)
             )
           )
-        (suspend)
+        (suspend-for (seconds 0.1)
+          (if (logand s5-0 1)
+              (sound-play "laser-loop" :id (-> self bzzt-sound) :position (-> self entity trans))
+              )
+          )
         )
+      (empty-form)
       )
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     (process-entity-status! self (entity-perm-status dead) #t)
@@ -1324,6 +1297,7 @@
 ;; definition for method 11 of type factory-elec-gate
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this factory-elec-gate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (when (task-node-closed? (game-task-node factory-assault-get-vehicle))
     (process-entity-status! this (entity-perm-status dead) #t)
@@ -1363,7 +1337,3 @@
       (go (method-of-object this flickering))
       )
   )
-
-
-
-

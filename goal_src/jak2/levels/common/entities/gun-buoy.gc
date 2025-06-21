@@ -74,8 +74,8 @@
             (.mov at-0 f0-2)
             )
           (.mov vf2 at-0)
-          (.mov.vf vf1 vf0 :mask #b1000)
-          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.mov.vf.w vf1 vf0)
+          (.mul.x.vf.xyz vf1 vf1 vf2)
           (.svf (&-> v1-12 quad) vf1)
           )
         (let ((v1-13 s3-0))
@@ -516,7 +516,7 @@
                                (* 40.96 (seconds-per-frame))
                                )
           )
-    (let ((f30-0 (- 1.0 (fabs (* 0.000012207031 (-> self y-offset))))))
+    (let ((f30-0 (- 1.0 (fabs (/ (-> self y-offset) (meters 20))))))
       (let ((f0-7 (* f30-0 f30-0)))
         (set-vector! (-> self root scale) f30-0 f30-0 f30-0 1.0)
         (let ((t9-1 vector-lerp!)
@@ -552,7 +552,7 @@
   :code sleep-code
   :post (behavior ()
     (seek! (-> self y-offset) -81920.0 (* 49152.0 (seconds-per-frame)))
-    (let ((f30-0 (- 1.0 (fabs (* 0.000012207031 (-> self y-offset))))))
+    (let ((f30-0 (- 1.0 (fabs (/ (-> self y-offset) (meters 20))))))
       (let ((f0-5 (* f30-0 f30-0)))
         (set-vector! (-> self root scale) f30-0 f30-0 f30-0 1.0)
         (let ((t9-1 vector-lerp!)
@@ -826,10 +826,7 @@
             (gun-buoy-method-183 self a1-1)
             )
         )
-      (let ((s5-1 (current-time)))
-        (until (time-elapsed? s5-1 (seconds 0.75))
-          (suspend)
-          )
+      (suspend-for (seconds 0.75)
         )
       )
     (go-virtual hostile)
@@ -856,10 +853,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (go-virtual exit-ambush)
     )
@@ -875,7 +869,7 @@
 
 (defmethod general-event-handler ((this gun-buoy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('jump)
      #f
@@ -888,9 +882,9 @@
 
 (defmethod common-post ((this gun-buoy))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (-> this root)
   (let* ((s4-0 *target*)
          (s5-0 (if (type? s4-0 process-focusable)
@@ -973,10 +967,10 @@
 ;; WARN: disable def twice: 40. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod in-aggro-range? ((this gun-buoy) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
-- if `activate-distance` is `0.0`, always true
-- otherwise, check if the provided process is close enough
-@param proc The process used to distance check
-@returns true/false"
+   - if `activate-distance` is `0.0`, always true
+   - otherwise, check if the provided process is close enough
+   @param proc The process used to distance check
+   @returns true/false"
   (local-vars (v1-19 process-focusable) (f30-1 meters))
   (if (and arg0 (not arg1))
       (set! arg1 (get-trans arg0 0))
@@ -1101,7 +1095,7 @@
          (f1-1 (-> this elev-angle))
          (f0-7 (fmax -728.1778 (fmin 728.1778 f1-1)))
          (f1-2 (- f1-1 f0-7))
-         (f2-3 (* 0.2 f1-2))
+         (f2-3 (/ f1-2 5))
          (f30-0 (+ f0-7 (* 0.8 f1-2)))
          )
     (quaternion-vector-angle! s5-1 *x-vector* f2-3)
@@ -1142,11 +1136,11 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs gun-buoy.
-(defmethod relocate ((this gun-buoy) (arg0 int))
+(defmethod relocate ((this gun-buoy) (offset int))
   (if (nonzero? (-> this gun-elev-jmod))
-      (&+! (-> this gun-elev-jmod) arg0)
+      (&+! (-> this gun-elev-jmod) offset)
       )
-  (the-as gun-buoy ((method-of-type nav-enemy relocate) this arg0))
+  (the-as gun-buoy ((method-of-type nav-enemy relocate) this offset))
   )
 
 ;; WARN: Return type mismatch collide-shape-moving vs none.

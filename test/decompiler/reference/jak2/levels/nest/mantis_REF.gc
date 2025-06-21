@@ -12,7 +12,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5221
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 6.0)
     (:scale-x (meters 0.6) (meters 0.4))
     (:rot-z (degrees 0) (degrees 360))
@@ -124,7 +124,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5224
-  :init-specs ((:texture (new 'static 'texture-id :index #x3 :page #xd15))
+  :init-specs ((:texture (pebble1-nest nest-sprite))
     (:birth-func 'birth-func-texture-group)
     (:num 0.1 0.5)
     (:x (meters 0) (meters 1))
@@ -154,7 +154,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5223
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.0 0.2)
     (:sound (static-sound-spec "debris-fall" :num 0.01 :volume 100.0))
     (:scale-x (meters 0.3) (meters 0.1))
@@ -177,7 +177,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5222
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.0 0.2)
     (:scale-x (meters 0.3) (meters 0.1))
     (:scale-y (meters 1) (meters 0.2))
@@ -199,7 +199,7 @@
 
 ;; failed to figure out what this is:
 (defpart 5226
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 1.0 1.0)
     (:scale-x (meters 1) (meters 0.5))
     (:scale-y (meters 1) (meters 0.5))
@@ -512,12 +512,7 @@
           (set! (-> self base-height) (-> self root trans y))
           )
       )
-    (let* ((gp-2 *target*)
-           (a0-5 (if (type? gp-2 process-focusable)
-                     gp-2
-                     )
-                 )
-           )
+    (let ((a0-5 (the-as target (as-type *target* process-focusable))))
       (when a0-5
         (let* ((gp-3 (-> self root))
                (s3-0 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (get-trans a0-5 0) (-> gp-3 trans)) 1.0))
@@ -568,16 +563,10 @@
           )
         )
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 0.6))
-        (suspend)
-        )
+    (suspend-for (seconds 0.6)
       )
     (logior! (-> self draw status) (draw-control-status no-draw))
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (the int (* 300.0 (rnd-float-range self 0.0 0.6))))
-        (suspend)
-        )
+    (suspend-for (the int (* 300.0 (rnd-float-range self 0.0 0.6)))
       )
     (logclear! (-> self draw status) (draw-control-status no-draw))
     (if (rnd-percent? self 0.5)
@@ -684,13 +673,10 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (if (logtest? (-> self root status) (collide-status on-ground))
-            (goto cfg-32)
-            )
-        (suspend)
-        )
+    (suspend-for (seconds 1)
+      (if (logtest? (-> self root status) (collide-status on-ground))
+          (goto cfg-32)
+          )
       )
     (label cfg-32)
     (go-virtual hostile)
@@ -733,9 +719,9 @@
                 (.lvf vf5 (&-> s2-1 quad))
                 (.lvf vf4 (&-> s3-1 quad))
                 )
-              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-              (.mul.x.vf acc vf5 vf7 :mask #b111)
-              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.add.x.vf.w vf6 vf0 vf0)
+              (.mul.x.vf.xyz acc vf5 vf7)
+              (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
               (.svf (&-> s1-0 quad) vf6)
               )
             (let ((f30-1 (vector-length s5-1)))
@@ -1206,9 +1192,9 @@
                     (.lvf vf5 (&-> s4-1 quad))
                     (.lvf vf4 (&-> s3-1 quad))
                     )
-                  (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                  (.mul.x.vf acc vf5 vf7 :mask #b111)
-                  (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                  (.add.x.vf.w vf6 vf0 vf0)
+                  (.mul.x.vf.xyz acc vf5 vf7)
+                  (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                   (.svf (&-> s2-0 quad) vf6)
                   )
                 )
@@ -1416,8 +1402,8 @@
           (vector-reset! s5-1)
           (dotimes (s4-1 (-> *collide-cache* num-tris))
             (let* ((v1-16 (-> *collide-cache* tris s4-1))
-                   (s2-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 1) (the-as vector (-> v1-16 vertex))))
-                   (s1-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 2) (the-as vector (-> v1-16 vertex))))
+                   (s2-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 1) (-> v1-16 vertex 0)))
+                   (s1-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-16 vertex 2) (-> v1-16 vertex 0)))
                    (s3-0 (new 'stack-no-clear 'vector))
                    )
               (vector-normalize! s2-1 1.0)
@@ -1613,9 +1599,9 @@
               (.lvf vf5 (&-> s2-1 quad))
               (.lvf vf4 (&-> s3-1 quad))
               )
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> s1-0 quad) vf6)
             )
           (mantis-method-191 this (the-as vector s5-0) s4-1)

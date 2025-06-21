@@ -260,7 +260,7 @@
 (set! (-> *roboguard-level-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
 (defpart 5116
-  :init-specs ((:texture (new 'static 'texture-id :index #x83 :page #xc))
+  :init-specs ((:texture (pal-lightning effects))
     (:birth-func 'birth-func-set-quat)
     (:num 1.0)
     (:scale-x (meters 1))
@@ -275,7 +275,7 @@
   )
 
 (defpart 5117
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 1))
     (:scale-y :copy scale-x)
@@ -293,7 +293,7 @@
   )
 
 (defpart 5118
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 1))
     (:scale-y :copy scale-x)
@@ -332,11 +332,7 @@
 (defstate ambush (roboguard-level)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (logand! (-> self flags) -9)
     (logior! (-> self flags) 4)
     (logior! (-> self nav flags) (nav-control-flag output-sphere-hash))
@@ -398,11 +394,7 @@
 (defstate idle (roboguard-level)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (roboguard-level-method-185 self (the-as symbol 0))
     )
   :code (behavior ()
@@ -468,21 +460,17 @@
 (defstate stare (roboguard-level)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (roboguard-level-method-185 self (the-as symbol 0))
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
     (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
-        (ja-no-eval :group! roboguard-idle0-ja :num! (seek! 10.0 (* 0.1 f30-0)) :frame-num 9.0)
+        (ja-no-eval :group! roboguard-idle0-ja :num! (seek! 10.0 (/ f30-0 10)) :frame-num 9.0)
         (until (ja-done? 0)
           (suspend)
-          (ja :num! (seek! 10.0 (* 0.1 f30-0)))
+          (ja :num! (seek! 10.0 (/ f30-0 10)))
           )
         )
       )
@@ -731,11 +719,7 @@
 (defstate die (roboguard-level)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (roboguard-level-method-185 self (the-as symbol 0))
     )
   :code (behavior ()
@@ -935,7 +919,7 @@
 
 (defmethod general-event-handler ((this roboguard-level) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('attack)
      (cond
@@ -1063,9 +1047,9 @@
                           (.lvf vf5 (&-> s2-1 quad))
                           (.lvf vf4 (&-> v1-20 quad))
                           )
-                        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                        (.mul.x.vf acc vf5 vf7 :mask #b111)
-                        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                        (.add.x.vf.w vf6 vf0 vf0)
+                        (.mul.x.vf.xyz acc vf5 vf7)
+                        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                         (.svf (&-> a0-16 quad) vf6)
                         )
                       )
@@ -1123,7 +1107,7 @@
         s5-1
         s5-1
         gp-0
-        (* (fmax 0.5 (* 0.00024414062 (-> arg0 state speed))) (seconds-per-frame))
+        (* (fmax 0.5 (/ (-> arg0 state speed) METER_LENGTH)) (seconds-per-frame))
         )
       )
     )

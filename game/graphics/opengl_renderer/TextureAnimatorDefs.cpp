@@ -21,7 +21,7 @@ void TextureAnimator::setup_texture_anims_jak3() {
           "jakchires-facert",
           "jakchires-hair",
       },
-      "-norm", "-dark", "MHCTYCST.DGO");
+      "-norm", "-dark", "MHCTYCST.DGO", true);
 
   // default-water
   {
@@ -199,14 +199,19 @@ void TextureAnimator::setup_texture_anims_jak3() {
       foam.tex_name = "splash-foam";
       //    :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
       foam.set_no_z_write_no_z_test();
-      foam.channel_masks[3] = false;  // no alpha writes.
+      if (i == 16) {
+        // this layer is configured, but most of the settings do nothing because it uses
+        // set-alpha-texture-anim-layer-func
+        foam.disable = true;
+      }
       //    :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
       foam.set_clamp();
       foam.set_blend_b2_d1();
     }
+    dest2.set_alpha = true;
     dest2.set_times({
-        {0.f, 25.f},
-        {25.f, 150.f},
+        {0.f, 25.f},    // 0
+        {25.f, 150.f},  // 1
         {25.f, 50.f},
         {50.f, 150.f},
         {0.f, 25.f},
@@ -1786,13 +1791,13 @@ void TextureAnimator::setup_texture_anims_jak2() {
   // MISSING FINGER
   m_jakb_oracle_clut_blender_idx = create_clut_blender_group(
       {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "ORACLE.DGO");
+      "-dark", "ORACLE.DGO", true);
 
   // NEST
   // MISSING FINGER
   m_jakb_nest_clut_blender_idx = create_clut_blender_group(
       {"jakb-eyebrow", "jakb-eyelid", "jakb-facelft", "jakb-facert", "jakb-hairtrans"}, "-norm",
-      "-dark", "NEB.DGO");
+      "-dark", "NEB.DGO", true);
 
   // KOR (doesn't work??)
   m_kor_transform_clut_blender_idx = create_clut_blender_group(

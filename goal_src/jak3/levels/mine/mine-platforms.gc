@@ -39,6 +39,7 @@
 
 ;; WARN: Return type mismatch none vs object.
 (defmethod init-from-entity! ((this mine-platform-base) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
@@ -77,7 +78,7 @@
   (stack-size-set! (-> self main-thread) 32)
   (set! (-> self root) (new 'process 'trsqv))
   (set! (-> self spool-sound) (new-sound-id))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (queue-drill-sound self)
   (go-virtual active)
   )
@@ -239,6 +240,7 @@
   )
 
 (defmethod init-from-entity! ((this min-moving-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((t9-0 (method-of-type mine-platform-base init-from-entity!)))
     (t9-0 this arg0)
     )
@@ -437,10 +439,7 @@
     )
   :code (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (let ((gp-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
           (s5-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
@@ -465,8 +464,8 @@
                (vector+float*! (-> s3-1 trans) (-> s3-1 trans) gp-1 (* 106496.0 (-> self root scale x)))
                (vector+float*! (-> s3-1 trans) (-> s3-1 trans) s5-0 (* -8192.0 (-> self root scale x)))
                (vector-float*! (-> s3-1 fvec) gp-1 1.0)
-               (set! (-> s3-1 uvec quad) (-> *up-vector* quad))
-               (set! (-> s3-1 rvec quad) (-> s5-0 quad))
+               (vector-copy! (-> s3-1 uvec) *up-vector*)
+               (vector-copy! (-> s3-1 rvec) s5-0)
                (launch-particles (-> *part-id-table* 2316) s3-1 :origin-is-matrix #t)
                (launch-particles (-> *part-id-table* 2315) s3-1 :origin-is-matrix #t)
                )
@@ -550,6 +549,7 @@
   )
 
 (defmethod init-from-entity! ((this min-rotating-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((t9-0 (method-of-type mine-platform-base init-from-entity!)))
     (t9-0 this arg0)
     )
@@ -614,10 +614,7 @@
   :trans plat-trans
   :code (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (ja-channel-push! 1 0)
     (ja-no-eval :group! min-rotating-plat-idle-ja :num! min)
@@ -922,7 +919,8 @@
               )
 
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this min-falling-step))
+(defmethod get-search-info-flag ((this min-falling-step))
+  "Get search-info-flag for this process."
   (let ((v0-0 0))
     (cond
       ((and (-> this next-state) (= (-> this next-state name) 'idle))
@@ -1086,6 +1084,7 @@
   )
 
 (defmethod init-from-entity! ((this min-falling-step) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((t9-0 (method-of-type mine-platform-base init-from-entity!)))
     (t9-0 this arg0)
@@ -1233,10 +1232,7 @@
     )
   :trans rider-trans
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1.5))
-        (suspend)
-        )
+    (suspend-for (seconds 1.5)
       )
     (when (-> self stop-sound)
       (set! (-> self stop-sound) #f)
@@ -1282,6 +1278,7 @@
   )
 
 (defmethod init-from-entity! ((this min-folding-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -1432,10 +1429,7 @@
     )
   :code (behavior ()
     (when (-> self play-ramp-sound?)
-      (let ((gp-0 (current-time)))
-        (until (time-elapsed? gp-0 (seconds 3))
-          (suspend)
-          )
+      (suspend-for (seconds 3)
         )
       (until (= (get-status *gui-control* (-> self ramp-sound)) (gui-status ready))
         (suspend)
@@ -1479,6 +1473,7 @@
   )
 
 (defmethod init-from-entity! ((this min-ramp) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (s5-3 symbol))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -1598,10 +1593,7 @@
   :trans rider-trans
   :code (behavior ()
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1.5))
-        (suspend)
-        )
+    (suspend-for (seconds 1.5)
       )
     (when (-> self stop-bridge-sound)
       (set! (-> self stop-bridge-sound) #f)
@@ -1695,6 +1687,7 @@
   )
 
 (defmethod init-from-entity! ((this min-bridge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -1772,6 +1765,7 @@
 
 ;; WARN: Return type mismatch none vs object.
 (defmethod init-from-entity! ((this min-plat-updown) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))

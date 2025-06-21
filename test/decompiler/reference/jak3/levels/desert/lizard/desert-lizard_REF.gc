@@ -109,34 +109,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 2730.6667
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info (new 'static 'ragdoll-setup
       :orient-tform (new 'static 'vector :x -1.0 :w 1194.157)
       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -583,7 +583,7 @@
     (when s4-0
       (let ((gp-0 (-> self move-dest)))
         (let ((s5-0 (new 'stack-no-clear 'vector)))
-          (set! (-> s5-0 quad) (-> (get-trans s4-0 0) quad))
+          (vector-copy! s5-0 (get-trans s4-0 0))
           (let ((a1-3 (get-quat s4-0 0)))
             (when (focus-test? s4-0 pilot-riding)
               (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) a1-3))
@@ -620,12 +620,12 @@
         (let ((a0-15 (-> self nav state))
               (a1-8 (new 'stack-no-clear 'vector))
               )
-          (set! (-> a1-8 quad) (-> a0-15 target-pos quad))
+          (vector-copy! a1-8 (-> a0-15 target-pos))
           (when (< 2048.0 (vector-vector-xz-distance gp-0 a1-8))
             (let ((v1-38 (-> self nav state)))
               (logclear! (-> v1-38 flags) (nav-state-flag directional-mode))
               (logior! (-> v1-38 flags) (nav-state-flag target-poly-dirty))
-              (set! (-> v1-38 target-pos quad) (-> gp-0 quad))
+              (vector-copy! (-> v1-38 target-pos) gp-0)
               )
             0
             )
@@ -692,7 +692,7 @@
         )
       )
     (set! (-> self catch-timer) (the-as uint (current-time)))
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -932,7 +932,7 @@
         (let ((f0-2 (vector-vector-xz-distance arg1 arg0)))
           (when (< f28-0 f0-2)
             (set! f28-0 f0-2)
-            (set! (-> s3-0 quad) (-> arg0 quad))
+            (vector-copy! s3-0 arg0)
             )
           )
         (set! f30-0 (cond
@@ -948,7 +948,7 @@
         (+! f24-0 f26-0)
         )
       (when (and (!= f28-0 0.0) (< 4096.0 (vector-vector-xz-distance (-> this root trans) s3-0)))
-        (set! (-> arg0 quad) (-> s3-0 quad))
+        (vector-copy! arg0 s3-0)
         arg0
         )
       )
@@ -962,7 +962,7 @@
   (local-vars (sv-160 vector) (sv-176 int) (sv-192 vector))
   (with-pp
     (let ((s5-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s5-0 quad) (-> arg1 quad))
+      (vector-copy! s5-0 arg1)
       (cond
         ((-> this graph)
          (let ((s2-0 (-> this graph point))
@@ -983,7 +983,7 @@
                    (when (or (< f0-0 f30-0) (= s1-0 -1))
                      (set! f30-0 f0-0)
                      (set! s1-0 sv-176)
-                     (set! (-> s0-0 quad) (-> sv-192 quad))
+                     (vector-copy! s0-0 sv-192)
                      )
                    )
                  )
@@ -992,7 +992,7 @@
              (when (!= s1-0 -1)
                (cond
                  ((< 24576.0 f30-0)
-                  (set! (-> s5-0 quad) (-> s0-0 quad))
+                  (vector-copy! s5-0 s0-0)
                   )
                  (else
                    (let ((s0-1 (new 'stack-no-clear 'inline-array 'vector 1)))
@@ -1002,7 +1002,7 @@
                        (-> s2-0 (-> this graph edge s1-0 index 1))
                        (-> s0-1 0)
                        )
-                     (set! (-> s5-0 quad) (-> s0-1 0 quad))
+                     (vector-copy! s5-0 (-> s0-1 0))
                      )
                    )
                  )
@@ -1044,10 +1044,11 @@
 ;; definition for method 56 of type desert-lizard
 ;; INFO: Used lq/sq
 (defmethod knocked-handler ((this desert-lizard) (arg0 vector))
+  "Called when this enemy is knocked."
   (get-knockback-dir! this arg0)
   (case (-> this incoming knocked-type)
     (((knocked-type vehicle))
-     (set! (-> arg0 quad) (-> this incoming attack-direction quad))
+     (vector-copy! arg0 (-> this incoming attack-direction))
      arg0
      )
     (else
@@ -1064,16 +1065,19 @@
 
 ;; definition for method 98 of type desert-lizard
 (defmethod jump-wind-up-anim ((this desert-lizard) (arg0 enemy-jump-info))
+  "Start playing the wind-up anim"
   #f
   )
 
 ;; definition for method 97 of type desert-lizard
 (defmethod jump-land-anim ((this desert-lizard) (arg0 enemy-jump-info))
+  "Play the landing anim"
   #f
   )
 
 ;; definition for method 108 of type desert-lizard
-(defmethod enemy-method-108 ((this desert-lizard) (arg0 process-focusable))
+(defmethod should-flee-from? ((this desert-lizard) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
   #t
   )
 
@@ -1095,6 +1099,7 @@
 ;; definition for method 82 of type desert-lizard
 ;; INFO: Used lq/sq
 (defmethod event-handler ((this desert-lizard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -1106,7 +1111,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1133,7 +1138,8 @@
   )
 
 ;; definition for method 122 of type desert-lizard
-(defmethod go-idle2 ((this desert-lizard))
+(defmethod go-fallback-init ((this desert-lizard))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
       (go (method-of-object this disappear))
       (go (method-of-object this idle))
@@ -1143,6 +1149,7 @@
 ;; definition for method 120 of type desert-lizard
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod init-enemy-collision! ((this desert-lizard))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1198,12 +1205,13 @@
 ;; definition for method 121 of type desert-lizard
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this desert-lizard))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-desert-lizard" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *desert-lizard-enemy-info*)
+  (setup-enemy! this *desert-lizard-enemy-info*)
   (set! (-> this root pause-adjust-distance) 819200.0)
   (let ((v1-7 (-> this neck)))
     (set! (-> v1-7 up) (the-as uint 1))
@@ -1302,7 +1310,7 @@
                )
       (let ((gp-3 (new 'stack-no-clear 'enemy-init-by-other-params)))
         (let ((s5-2 (-> self entity)))
-          (set! (-> gp-3 trans quad) (-> s5-2 extra trans quad))
+          (vector-copy! (-> gp-3 trans) (-> s5-2 extra trans))
           (quaternion-copy! (-> gp-3 quat) (-> s5-2 quat))
           (set! (-> gp-3 entity) s5-2)
           )
@@ -1329,11 +1337,8 @@
 
 ;; definition for method 11 of type desert-lizard-spawner
 (defmethod init-from-entity! ((this desert-lizard-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this suppress-spawn-time) 0)
   (go (method-of-object this idle))
   )
-
-
-
-

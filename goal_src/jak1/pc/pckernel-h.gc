@@ -67,7 +67,7 @@
 
 (defconstant PC_MIN_HEIGHT 240)
 
-(defconstant PC_DEFAULT_MSAA 2)
+(defconstant PC_DEFAULT_MSAA 1)
 
 ;; how many entries the music log has. the game only has 21 tracks but let's have more space for no reason.
 (defconstant PC_MUSIC_LOG_LENGTH 30)
@@ -144,7 +144,9 @@
    (controller-led-max-brightness    float)
    (controller-led-color             rgbaf :inline)
    (stick-deadzone                   float) ;; analog stick deadzone. 0-1
+   (stick-sensitivity                float) ;; NOTE - this is here solely to satisfy jak 1's menu design, the setting has been moved into `input-settings.json`
    (keyboard-enabled?                symbol) ;; NOTE - this is here solely to satisfy jak 1's menu design, the setting has been moved into `input-settings.json`
+   (pressure-sensitivity-enabled?    symbol) ;; NOTE - this is here solely to satisfy jak 1's menu design, the setting has been moved into `input-settings.json`
    (mouse-enabled?                   symbol)
    (mouse-camera?                    symbol)
    (mouse-xsens                      float)
@@ -198,8 +200,7 @@
    (memcard-volume-sfx               float)
    (memcard-volume-music             float)
    (memcard-volume-dialog            float)
-   (memcard-vibration?               symbol)
-   )
+   (memcard-vibration?               symbol))
   (:methods
    (new (symbol type) _type_)
    (initialize (_type_) _type_)
@@ -326,12 +327,17 @@
   (let* ((saved-width (-> obj width))
          (saved-height (-> obj height))
          (supported-resolution? (pc-is-supported-resolution? saved-width saved-height)))
-   (cond
-     (supported-resolution?
-      (format 0 "[PC Settings]: Valid default game-size resolution set ~D x ~D~%" saved-width saved-height))
-     (else
-      (pc-get-active-display-size (&-> obj width) (&-> obj height))
-      (format 0 "[PC Settings]: Invalid game-size resolution ~D x ~D, defaulting to ~D x ~D~%" saved-width saved-height (-> obj width) (-> obj height)))))
+    (cond
+      (supported-resolution?
+       (format 0 "[PC Settings]: Valid default game-size resolution set ~D x ~D~%" saved-width saved-height))
+      (else
+       (pc-get-active-display-size (&-> obj width) (&-> obj height))
+       (format 0
+               "[PC Settings]: Invalid game-size resolution ~D x ~D, defaulting to ~D x ~D~%"
+               saved-width
+               saved-height
+               (-> obj width)
+               (-> obj height)))))
   (format 0 "[PC Settings]: fullscreen resolution defaulted to ~D x ~D~%" (-> obj width) (-> obj height))
   (set! (-> obj gfx-msaa) PC_DEFAULT_MSAA) ;; default msaa
   0)
@@ -354,11 +360,13 @@
     (set! (-> obj controller-led-eco?) #t)
     (set! (-> obj controller-led-heat?) #t)
     (set! (-> obj stick-deadzone) 0.3)
+    (set! (-> obj stick-sensitivity) 133.0)
     (set! (-> obj controller-led-brightness) 1.0)
     (set! (-> obj controller-led-min-brightness) 0.25)
     (set! (-> obj controller-led-max-brightness) 1.0))
   (when (or (= device 'all) (= device 'input))
     (set! (-> obj keyboard-enabled?) #f)
+    (set! (-> obj pressure-sensitivity-enabled?) #f)
     (set! (-> obj mouse-enabled?) #f)
     (set! (-> obj auto-hide-cursor?) #t))
   (when (or (= device 'all) (= device 'mouse))
@@ -422,8 +430,7 @@
   `(debug-font-scale-factor *pc-settings*))
 
 (defmacro fullscreen? ()
-  `(or (= (pc-get-display-mode) 'fullscreen)
-       (= (pc-get-display-mode) 'borderless)))
+  `(or (= (pc-get-display-mode) 'fullscreen) (= (pc-get-display-mode) 'borderless)))
 
 (defun bcd->dec ((bcd uint))
   "Convert a number encoded in BCD to its decimal equivalent"

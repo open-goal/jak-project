@@ -438,11 +438,11 @@
                       )
                     (cond
                       ((logtest? (-> *part-group-id-table* 579 flags) (sp-group-flag sp13))
-                       (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+                       (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
                        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 579))
                        )
                       (else
-                        (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+                        (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
                         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 579))
                         )
                       )
@@ -464,7 +464,7 @@
                      (let ((f0-18 (vector-dot s3-0 s4-3)))
                        (cond
                          ((< 0.9999 f0-18)
-                          (set! (-> s4-3 quad) (-> s3-0 quad))
+                          (vector-copy! s4-3 s3-0)
                           )
                          (else
                            (let ((s5-2 (new 'stack-no-clear 'vector))
@@ -474,7 +474,7 @@
                              (vector-cross! s5-2 s3-0 s4-3)
                              (vector-normalize! s5-2 1.0)
                              (let ((f0-21 (deg-seek f28-1 f26-0 (* 49152.0 (seconds-per-frame)))))
-                               (vector-rotate-around-axis! s4-3 (the-as quaternion s4-3) (* -1.0 f0-21) s5-2)
+                               (vector-rotate-around-axis! s4-3 s4-3 (* -1.0 f0-21) s5-2)
                                )
                              )
                            )
@@ -482,7 +482,7 @@
                        )
                      (add-debug-vector #t (bucket-id debug-no-zbuf1) (-> this root trans) s4-3 (meters 1) *color-yellow*)
                      (add-debug-vector #t (bucket-id debug-no-zbuf1) (-> this root trans) s3-0 (meters 1) *color-dark-yellow*)
-                     (set! (-> this root transv quad) (-> s4-3 quad))
+                     (vector-copy! (-> this root transv) s4-3)
                      )
                    (vector-normalize! (-> this root transv) f30-1)
                    )
@@ -525,10 +525,7 @@
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
         )
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 8))
-        (suspend)
-        )
+    (suspend-for (seconds 8)
       )
     )
   )
@@ -549,6 +546,7 @@
 
 ;; WARN: Return type mismatch float vs object.
 (defmethod init-from-entity! ((this for-race-ring-finder) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (process-entity-status! this (entity-perm-status dead) #t)
   (set! (-> this ring-finder-speed) 163840.0)
   )
@@ -556,7 +554,7 @@
 (defbehavior for-race-ring-finder-init-by-other for-race-ring-finder ((arg0 vector) (arg1 entity))
   (process-entity-set! self arg1)
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self path-pos) 0.0)
   (set! (-> self ring-finder-speed) 163840.0)
@@ -681,13 +679,14 @@
           (cond
             ((focus-test? v1-3 pilot)
              (let ((a2-1 (handle->process (-> v1-3 pilot vehicle))))
-               (set! (-> a1-1 quad)
-                     (-> (the-as collide-shape (-> (the-as process-drawable a2-1) root)) root-prim prim-core world-sphere quad)
-                     )
+               (vector-copy!
+                 a1-1
+                 (-> (the-as collide-shape (-> (the-as process-drawable a2-1) root)) root-prim prim-core world-sphere)
+                 )
                )
              )
             (else
-              (set! (-> a1-1 quad) (-> v1-3 control trans quad))
+              (vector-copy! a1-1 (-> v1-3 control trans))
               (+! (-> a1-1 y) 8192.0)
               )
             )
@@ -791,10 +790,11 @@
   )
 
 (defmethod init-from-entity! ((this for-race-ring) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (for-race-ring-method-23 this)
   (process-drawable-from-entity! this arg0)
   (quaternion->matrix (-> this mat) (-> this root quat))
-  (set! (-> this mat trans quad) (-> this root trans quad))
+  (vector-copy! (-> this mat trans) (-> this root trans))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 589) this))
   (set! (-> this part-final) (create-launch-control (-> *part-group-id-table* 590) this))
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -1024,7 +1024,7 @@
   :code (behavior ()
     (cond
       ((logtest? (-> *part-group-id-table* 584 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 3 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 3 bone transform trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to self
@@ -1033,24 +1033,21 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 3 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 3 bone transform trans))
         (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 584) :duration (seconds 1))
         )
       )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (seconds 1))
-        (if (nonzero? (-> self sound-id))
-            (sound-play "statue-expl-bu" :id (-> self sound-id))
-            )
-        (suspend)
-        )
+    (suspend-for (seconds 1)
+      (if (nonzero? (-> self sound-id))
+          (sound-play "statue-expl-bu" :id (-> self sound-id))
+          )
       )
     (if (nonzero? (-> self sound-id))
         (sound-stop (-> self sound-id))
         )
     (cond
       ((logtest? (-> *part-group-id-table* 585 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self node-list data 3 bone transform trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 3 bone transform trans))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
@@ -1059,7 +1056,7 @@
          )
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self node-list data 3 bone transform trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 3 bone transform trans))
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
@@ -1079,10 +1076,7 @@
     (transform-post)
     (sound-play "statue-explode")
     (for-statue-method-28 self)
-    (let ((gp-6 (current-time)))
-      (until (time-elapsed? gp-6 (seconds 3))
-        (suspend)
-        )
+    (suspend-for (seconds 3)
       )
     (cleanup-for-death self)
     (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
@@ -1181,6 +1175,7 @@
   )
 
 (defmethod init-from-entity! ((this for-statue) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (with-pp
     (for-statue-method-27 this)
     (process-drawable-from-entity! this arg0)
@@ -1248,13 +1243,9 @@
 
 
 (defmethod draw ((this hud-forest-ring-chase))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    150
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 150)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 5 55)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 5 55)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -2199,11 +2190,10 @@
                      (not (logtest? (-> s5-1 extra perm status) (entity-perm-status subtask-complete)))
                      )
             (let ((s2-0 (new 'stack-no-clear 'task-arrow-params)))
-              (set! (-> s2-0 pos quad)
-                    (-> (vector+! (new 'stack-no-clear 'vector) (-> s5-1 extra trans) (new 'static 'vector :y -4096.0 :w 1.0))
-                        quad
-                        )
-                    )
+              (vector-copy!
+                (-> s2-0 pos)
+                (vector+! (new 'stack-no-clear 'vector) (-> s5-1 extra trans) (new 'static 'vector :y -4096.0 :w 1.0))
+                )
               (quaternion-identity! (-> s2-0 quat))
               (set! (-> s2-0 flags) (task-arrow-flags taf8))
               (set! (-> s2-0 map-icon) (the-as uint 13))
@@ -2304,11 +2294,8 @@
         )
       (suspend)
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 3))
-        (format *stdebug* "task-manager-forest-ring-chase: done!~%")
-        (suspend)
-        )
+    (suspend-for (seconds 3)
+      (format *stdebug* "task-manager-forest-ring-chase: done!~%")
       )
     (while (-> self use-camera?)
       (suspend)
@@ -2448,7 +2435,7 @@
     )
   (set-setting! 'airlock #f 0.0 0)
   (let ((s5-0 (new 'stack-no-clear 'task-arrow-params)))
-    (set! (-> s5-0 pos quad) (-> (new 'static 'vector :x -2937746.8 :y 249443.12 :z 4155934.0 :w 1.0) quad))
+    (vector-copy! (-> s5-0 pos) (new 'static 'vector :x -2937746.8 :y 249443.12 :z 4155934.0 :w 1.0))
     (quaternion-identity! (-> s5-0 quat))
     (set! (-> s5-0 flags) (task-arrow-flags))
     (set! (-> s5-0 map-icon) (the-as uint 12))

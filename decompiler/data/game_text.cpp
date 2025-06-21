@@ -15,7 +15,7 @@
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 namespace {
@@ -616,7 +616,7 @@ std::string write_spool_subtitles(
     bool has_spools = false;
     for (auto& [spool_name, subs] : data) {
       result += "    \"" + spool_name + "\": {\n";
-      result += "      \"scene\": true,\n";
+      // result += "      \"scene\": true,\n";
       result += "      \"lines\": [\n";
       bool has_subs = false;
       for (auto& sub : subs) {
@@ -625,20 +625,20 @@ std::string write_spool_subtitles(
           continue;
         }
         result += "        {\n";
-        result += "          \"end\": " + float_to_string(sub.end_frame) + ",\n";
+        result += "          \"frame_end\": " + float_to_string(sub.end_frame) + ",\n";
+        result += "          \"frame_start\": " + float_to_string(sub.start_frame) + ",\n";
         if (dump_text) {
           result += "          \"merge\": false,\n";
         } else {
           result += "          \"merge\": true,\n";
         }
         result += "          \"offscreen\": false,\n";
-        result += "          \"speaker\": \"none\",\n";
-        result += "          \"start\": " + float_to_string(sub.start_frame) + ",\n";
         if (dump_text) {
-          result += "          \"text\": \"" + msg.text + "\"\n";
+          result += "          \"text\": \"" + msg.text + "\",\n";
         } else {
-          result += "          \"text\": \"\"\n";
+          // result += "          \"text\": \"\",\n";
         }
+        result += "          \"speaker\": \"none\"\n";
         result += "        },\n";
         has_subs = true;
       }

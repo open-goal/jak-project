@@ -41,6 +41,8 @@ struct Sound {
   s32 auto_time;
   SoundParams params;
   SoundRecord* bank_entry;
+
+  s64 add_index = 0;
 };
 
 struct Curve {
@@ -61,7 +63,7 @@ extern u32 sLastTick;
 void ssound_init_globals();
 
 Sound* LookupSound(s32 id);
-Sound* AllocateSound();
+Sound* AllocateSound(bool remove_old_sounds);
 s32 GetVolume(Sound* sound);
 void UpdateVolume(Sound* sound);
 s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max);

@@ -12,23 +12,67 @@
 #include "common/math/geometry.h"
 #include "common/util/Timer.h"
 #include "common/util/gltf_util.h"
+#include "common/util/image_resize.h"
 
 using namespace gltf_util;
+constexpr int kColorTreeDepth = 13;
 namespace gltf_mesh_extract {
 
-void dedup_vertices(TfragOutput& data) {
+void dedup_tfrag_vertices(TfragOutput& data) {
   Timer timer;
-  size_t original_size = data.vertices.size();
+  size_t original_size = data.tfrag_vertices.size();
   std::vector<tfrag3::PreloadedVertex> new_verts;
   std::vector<u32> old_to_new;
 
-  gltf_util::dedup_vertices(data.vertices, new_verts, old_to_new);
-  data.vertices = std::move(new_verts);
+  gltf_util::dedup_vertices(data.tfrag_vertices, new_verts, old_to_new);
+  data.tfrag_vertices = std::move(new_verts);
 
-  for (auto& draw : data.strip_draws) {
-    ASSERT(draw.runs.empty());  // not supported yet
-    for (auto& idx : draw.plain_indices) {
-      idx = old_to_new.at(idx);
+  // TODO: properly split vertices between trees...
+  for (auto drawlist : {&data.normal_strip_draws, &data.trans_strip_draws}) {
+    for (auto& draw : *drawlist) {
+      ASSERT(draw.runs.empty());  // not supported yet
+      for (auto& idx : draw.plain_indices) {
+        idx = old_to_new.at(idx);
+      }
+    }
+  }
+
+  lg::info("Deduplication took {:.2f} ms, {} -> {} ({:.2f} %)", timer.getMs(), original_size,
+           data.tfrag_vertices.size(), 100.f * data.tfrag_vertices.size() / original_size);
+}
+
+void dedup_tie_vertices(TieOutput& data) {
+  Timer timer;
+  size_t original_size = data.vertices.size();
+
+  std::vector<TieFullVertex> old_verts;
+  old_verts.reserve(data.vertices.size());
+  for (size_t i = 0; i < data.vertices.size(); i++) {
+    auto& x = old_verts.emplace_back();
+    x.color_index = data.color_indices[i];
+    x.vertex = data.vertices[i];
+  }
+
+  std::vector<TieFullVertex> new_verts;
+  std::vector<u32> old_to_new;
+
+  gltf_util::dedup_vertices(old_verts, new_verts, old_to_new);
+  data.vertices.clear();
+  data.color_indices.clear();
+  data.vertices.reserve(new_verts.size());
+  data.color_indices.reserve(new_verts.size());
+  for (auto& x : new_verts) {
+    data.vertices.push_back(x.vertex);
+    data.color_indices.push_back(x.color_index);
+  }
+
+  // TODO: properly split vertices between trees...
+  for (auto drawlist : {&data.base_draws, &data.envmap_draws}) {
+    for (auto& draw : *drawlist) {
+      ASSERT(draw.runs.empty());  // not supported yet
+      for (auto& idx : draw.plain_indices) {
+        idx = old_to_new.at(idx);
+      }
     }
   }
 
@@ -36,13 +80,26 @@ void dedup_vertices(TfragOutput& data) {
            data.vertices.size(), 100.f * data.vertices.size() / original_size);
 }
 
+bool prim_needs_tie(const tinygltf::Model& model, const tinygltf::Primitive& prim) {
+  if (prim.material >= 0) {
+    auto mat = model.materials.at(prim.material);
+    return envmap_is_valid(mat);
+  }
+  return false;
+}
+
 void extract(const Input& in,
              TfragOutput& out,
              const tinygltf::Model& model,
              const std::vector<NodeWithTransform>& all_nodes) {
   std::vector<math::Vector<u8, 4>> all_vtx_colors;
-  ASSERT(out.vertices.empty());
-  std::map<int, tfrag3::StripDraw> draw_by_material;
+  ASSERT(out.tfrag_vertices.empty());
+
+  struct MaterialInfo {
+    tfrag3::StripDraw draw;
+    bool needs_tie = false;
+  };
+  std::map<int, MaterialInfo> info_by_material;
   int mesh_count = 0;
   int prim_count = 0;
 
@@ -59,85 +116,264 @@ void extract(const Input& in,
             model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
           continue;
         }
+
+        if (prim_needs_tie(model, prim)) {
+          continue;
+        }
         prim_count++;
         // extract index buffer
-        std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
+        std::vector<u32> prim_indices =
+            gltf_index_buffer(model, prim.indices, out.tfrag_vertices.size());
         ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
         // extract vertices
-        auto verts =
-            gltf_vertices(model, prim.attributes, n.w_T_node, in.get_colors, false, mesh.name);
-        out.vertices.insert(out.vertices.end(), verts.vtx.begin(), verts.vtx.end());
-        if (in.get_colors) {
-          all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
-                                verts.vtx_colors.end());
-          ASSERT(all_vtx_colors.size() == out.vertices.size());
-        }
+        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, true, false, mesh.name);
+        out.tfrag_vertices.insert(out.tfrag_vertices.end(), verts.vtx.begin(), verts.vtx.end());
+        all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
+                              verts.vtx_colors.end());
+        ASSERT(all_vtx_colors.size() == out.tfrag_vertices.size());
 
-        // TODO: just putting it all in one material
-        auto& draw = draw_by_material[prim.material];
-        draw.mode = make_default_draw_mode();                        // todo rm
-        draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);  // todo rm
-        draw.num_triangles += prim_indices.size() / 3;
-        if (draw.vis_groups.empty()) {
-          auto& grp = draw.vis_groups.emplace_back();
+        auto& info = info_by_material[prim.material];
+        info.draw.mode = make_default_draw_mode();                        // todo rm
+        info.draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);  // todo rm
+        info.draw.num_triangles += prim_indices.size() / 3;
+        if (info.draw.vis_groups.empty()) {
+          auto& grp = info.draw.vis_groups.emplace_back();
           grp.num_inds += prim_indices.size();
-          grp.num_tris += draw.num_triangles;
+          grp.num_tris += info.draw.num_triangles;
           grp.vis_idx_in_pc_bvh = UINT16_MAX;
         } else {
-          auto& grp = draw.vis_groups.back();
+          auto& grp = info.draw.vis_groups.back();
           grp.num_inds += prim_indices.size();
-          grp.num_tris += draw.num_triangles;
+          grp.num_tris += info.draw.num_triangles;
           grp.vis_idx_in_pc_bvh = UINT16_MAX;
         }
 
-        draw.plain_indices.insert(draw.plain_indices.end(), prim_indices.begin(),
-                                  prim_indices.end());
+        info.draw.plain_indices.insert(info.draw.plain_indices.end(), prim_indices.begin(),
+                                       prim_indices.end());
       }
     }
   }
 
-  for (const auto& [mat_idx, d_] : draw_by_material) {
-    out.strip_draws.push_back(d_);
-    auto& draw = out.strip_draws.back();
+  for (const auto& [mat_idx, d_] : info_by_material) {
+    // out.strip_draws.push_back(d_);
+    // auto& draw = out.strip_draws.back();
+    tfrag3::StripDraw draw = d_.draw;
     draw.mode = make_default_draw_mode();
 
     if (mat_idx == -1) {
       lg::warn("Draw had a material index of -1, using default texture.");
       draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      out.normal_strip_draws.push_back(draw);
       continue;
     }
+
     const auto& mat = model.materials[mat_idx];
+    setup_alpha_from_material(mat, &draw.mode);
     int tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
     if (tex_idx == -1) {
       lg::warn("Material {} has no texture, using default texture.", mat.name);
       draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      if (draw.mode.get_ab_enable()) {
+        out.trans_strip_draws.push_back(draw);
+      } else {
+        out.normal_strip_draws.push_back(draw);
+      }
       continue;
     }
 
     const auto& tex = model.textures[tex_idx];
     ASSERT(tex.sampler >= 0);
     ASSERT(tex.source >= 0);
-    draw.mode = draw_mode_from_sampler(model.samplers.at(tex.sampler));
+    setup_draw_mode_from_sampler(model.samplers.at(tex.sampler), &draw.mode);
 
     const auto& img = model.images[tex.source];
     draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, img);
+
+    if (draw.mode.get_ab_enable()) {
+      out.trans_strip_draws.push_back(draw);
+    } else {
+      out.normal_strip_draws.push_back(draw);
+    }
   }
-  lg::info("total of {} unique materials", out.strip_draws.size());
+  lg::info("total of {} normal, {} transparent unique materials", out.normal_strip_draws.size(),
+           out.trans_strip_draws.size());
+
+  lg::info("Merged {} meshes and {} prims into {} vertices", mesh_count, prim_count,
+           out.tfrag_vertices.size());
+
+  Timer quantize_timer;
+  auto quantized = quantize_colors_kd_tree(all_vtx_colors, kColorTreeDepth);
+  for (size_t i = 0; i < out.tfrag_vertices.size(); i++) {
+    out.tfrag_vertices[i].color_index = quantized.vtx_to_color[i];
+  }
+  out.color_palette = std::move(quantized.final_colors);
+  lg::info("Color palette generation took {:.2f} ms", quantize_timer.getMs());
+
+  dedup_tfrag_vertices(out);
+}
+
+s8 normal_to_s8(float in) {
+  s32 in_s32 = in * 127.f;
+  ASSERT(in_s32 <= INT8_MAX);
+  ASSERT(in_s32 >= INT8_MIN);
+  return in_s32;
+}
+
+void add_to_packed_verts(std::vector<tfrag3::PackedTieVertices::Vertex>* out,
+                         const std::vector<tfrag3::PreloadedVertex>& vtx,
+                         const std::vector<math::Vector3f>& normals) {
+  ASSERT(vtx.size() == normals.size());
+  for (size_t i = 0; i < normals.size(); i++) {
+    auto& x = out->emplace_back();
+    // currently not supported.
+    x.r = 255;
+    x.g = 255;
+    x.b = 255;
+    x.a = 255;
+
+    x.x = vtx[i].x;
+    x.y = vtx[i].y;
+    x.z = vtx[i].z;
+
+    x.s = vtx[i].s;
+    x.t = vtx[i].t;
+
+    x.nx = normal_to_s8(normals[i].x());
+    x.ny = normal_to_s8(normals[i].y());
+    x.nz = normal_to_s8(normals[i].z());
+  }
+}
+
+void extract(const Input& in,
+             TieOutput& out,
+             const tinygltf::Model& model,
+             const std::vector<NodeWithTransform>& all_nodes) {
+  std::vector<math::Vector<u8, 4>> all_vtx_colors;
+
+  struct MaterialInfo {
+    tfrag3::StripDraw draw;
+    bool needs_tie = false;
+  };
+  std::map<int, MaterialInfo> info_by_material;
+  int mesh_count = 0;
+  int prim_count = 0;
+
+  for (const auto& n : all_nodes) {
+    const auto& node = model.nodes[n.node_idx];
+    if (node.extras.Has("set_invisible") && node.extras.Get("set_invisible").Get<int>()) {
+      continue;
+    }
+    if (node.mesh >= 0) {
+      const auto& mesh = model.meshes[node.mesh];
+      mesh_count++;
+      for (const auto& prim : mesh.primitives) {
+        if (prim.material >= 0 && model.materials[prim.material].extras.Has("set_invisible") &&
+            model.materials[prim.material].extras.Get("set_invisible").Get<int>()) {
+          continue;
+        }
+
+        if (!prim_needs_tie(model, prim)) {
+          continue;
+        }
+        prim_count++;
+        // extract index buffer
+        std::vector<u32> prim_indices = gltf_index_buffer(model, prim.indices, out.vertices.size());
+        ASSERT_MSG(prim.mode == TINYGLTF_MODE_TRIANGLES, "Unsupported triangle mode");
+        // extract vertices
+        auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, true, true, mesh.name);
+        add_to_packed_verts(&out.vertices, verts.vtx, verts.normals);
+        all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(),
+                              verts.vtx_colors.end());
+        ASSERT(all_vtx_colors.size() == out.vertices.size());
+
+        auto& info = info_by_material[prim.material];
+        info.draw.mode = make_default_draw_mode();                        // todo rm
+        info.draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);  // todo rm
+        info.draw.num_triangles += prim_indices.size() / 3;
+        if (info.draw.vis_groups.empty()) {
+          auto& grp = info.draw.vis_groups.emplace_back();
+          grp.num_inds += prim_indices.size();
+          grp.num_tris += info.draw.num_triangles;
+          grp.vis_idx_in_pc_bvh = UINT16_MAX;
+        } else {
+          auto& grp = info.draw.vis_groups.back();
+          grp.num_inds += prim_indices.size();
+          grp.num_tris += info.draw.num_triangles;
+          grp.vis_idx_in_pc_bvh = UINT16_MAX;
+        }
+
+        info.draw.plain_indices.insert(info.draw.plain_indices.end(), prim_indices.begin(),
+                                       prim_indices.end());
+      }
+    }
+  }
+
+  for (const auto& [mat_idx, d_] : info_by_material) {
+    // out.strip_draws.push_back(d_);
+    // auto& draw = out.strip_draws.back();
+    tfrag3::StripDraw draw = d_.draw;
+    draw.mode = make_default_draw_mode();
+
+    if (mat_idx == -1) {
+      lg::warn("Draw had a material index of -1, using default texture.");
+      draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      out.base_draws.push_back(draw);
+      continue;
+    }
+
+    const auto& mat = model.materials[mat_idx];
+    setup_alpha_from_material(mat, &draw.mode);
+    int base_tex_idx = mat.pbrMetallicRoughness.baseColorTexture.index;
+    if (base_tex_idx == -1) {
+      lg::warn("Material {} has no texture, using default texture.", mat.name);
+      draw.tree_tex_id = texture_pool_debug_checker(in.tex_pool);
+      out.base_draws.push_back(draw);
+      continue;
+    }
+    int roughness_tex_idx = mat.pbrMetallicRoughness.metallicRoughnessTexture.index;
+    ASSERT(roughness_tex_idx >= 0);
+    const auto& base_tex = model.textures[base_tex_idx];
+    ASSERT(base_tex.sampler >= 0);
+    ASSERT(base_tex.source >= 0);
+    setup_draw_mode_from_sampler(model.samplers.at(base_tex.sampler), &draw.mode);
+    const auto& roughness_tex = model.textures.at(roughness_tex_idx);
+    ASSERT(roughness_tex.sampler >= 0);
+    ASSERT(roughness_tex.source >= 0);
+
+    // draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, model.images[base_tex.source]);
+    draw.tree_tex_id = texture_pool_add_envmap_control_texture(
+        in.tex_pool, model, base_tex.source, roughness_tex.source, !draw.mode.get_clamp_s_enable(),
+        !draw.mode.get_clamp_t_enable());
+    out.base_draws.push_back(draw);
+
+    // now, setup envmap draw:
+    auto envmap_settings = envmap_settings_from_gltf(mat);
+    const auto& envmap_tex = model.textures[envmap_settings.texture_idx];
+    ASSERT(envmap_tex.sampler >= 0);
+    ASSERT(envmap_tex.source >= 0);
+    draw.mode = make_default_draw_mode();
+    setup_draw_mode_from_sampler(model.samplers.at(envmap_tex.sampler), &draw.mode);
+    draw.tree_tex_id = texture_pool_add_texture(in.tex_pool, model.images[envmap_tex.source]);
+    draw.mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_0_DST_DST);
+    draw.mode.enable_ab();
+
+    out.envmap_draws.push_back(draw);
+  }
+  lg::info("total of {} normal TIE draws, {} envmap", out.base_draws.size(),
+           out.envmap_draws.size());
 
   lg::info("Merged {} meshes and {} prims into {} vertices", mesh_count, prim_count,
            out.vertices.size());
 
-  if (in.get_colors) {
-    Timer quantize_timer;
-    auto quantized = quantize_colors_octree(all_vtx_colors, 1024);
-    for (size_t i = 0; i < out.vertices.size(); i++) {
-      out.vertices[i].color_index = quantized.vtx_to_color[i];
-    }
-    out.color_palette = std::move(quantized.final_colors);
-    lg::info("Color palette generation took {:.2f} ms", quantize_timer.getMs());
+  Timer quantize_timer;
+  auto quantized = quantize_colors_kd_tree(all_vtx_colors, kColorTreeDepth);
+  for (size_t i = 0; i < out.vertices.size(); i++) {
+    out.color_indices.push_back(quantized.vtx_to_color[i]);
   }
+  out.color_palette = std::move(quantized.final_colors);
+  lg::info("Color palette generation took {:.2f} ms", quantize_timer.getMs());
 
-  dedup_vertices(out);
+  dedup_tie_vertices(out);
 }
 
 std::optional<std::vector<jak1::CollideFace>> subdivide_face_if_needed(jak1::CollideFace face_in) {
@@ -386,6 +622,7 @@ void extract(const Input& in, Output& out) {
   auto all_nodes = flatten_nodes_from_all_scenes(model);
   extract(in, out.tfrag, model, all_nodes);
   extract(in, out.collide, model, all_nodes);
+  extract(in, out.tie, model, all_nodes);
   lg::info("GLTF total took {:.2f} ms", read_timer.getMs());
 }
 }  // namespace gltf_mesh_extract

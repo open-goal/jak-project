@@ -20,6 +20,7 @@
    (debug-t     float)
    (debug-step  float)))
 
+
 (define *CAM_LAYOUT-bank*
   (new 'static
        'cam-layout-bank
@@ -34,6 +35,7 @@
 
 (deftype clm-basic (basic) ())
 
+
 (deftype clm-item-action (structure)
   ((button      uint64)
    (options     uint64)
@@ -43,10 +45,12 @@
    (parm1-basic basic :offset 24)
    (parm1       symbol :overlay-at parm1-basic)))
 
+
 (deftype clm-item (clm-basic)
   ((description   string)
    (button-symbol symbol)
    (action        clm-item-action :inline)))
+
 
 (deftype clm-list-item (basic)
   ((description     string)
@@ -58,14 +62,17 @@
    (val-parm1       symbol :overlay-at val-parm1-basic)
    (actions         (array clm-item-action))))
 
+
 (deftype clm-list (clm-basic)
   ((tracker       symbol)
    (cur-list-item int32)
    (items         (array clm-list-item))))
 
+
 (deftype clm (basic)
   ((title string)
    (items (array clm-basic))))
+
 
 (define *volume-point-current* 0)
 
@@ -77,6 +84,7 @@
 
 (deftype volume-descriptor-array (inline-array-class)
   ((data plane-volume :inline :dynamic :offset 16)))
+
 
 (set! (-> volume-descriptor-array heap-base) (the-as uint 24))
 
@@ -96,6 +104,7 @@
   :heap-base #x200
   (:states
    cam-layout-active))
+
 
 (defun cam-layout-print ((arg0 int) (arg1 int) (arg2 string))
   (let* ((s5-0 (-> *display* frames (-> *display* on-screen) frame debug-buf))
@@ -289,6 +298,7 @@
    (color  vector4w)
    (axis   vector)
    (disp   string)))
+
 
 (defun interp-test ((arg0 (function vector vector vector float vector float none)) (arg1 interp-test-info))
   (let ((s3-0 (new-stack-vector0))
@@ -556,7 +566,7 @@
        (if (cpad-hold? arg2 r1)
          (set! (-> arg1 y)
                (+ 0.5
-                  (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton 9))
+                  (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
                                 (the-as float 0.0)
                                 (the-as float 32.0)
                                 (the-as float 230.0)
@@ -567,7 +577,7 @@
          (set! (-> arg1 y)
                (- (-> arg1 y)
                   (+ 0.5
-                     (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton 8))
+                     (analog-input (the-as int (-> *cpad-list* cpads arg2 abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
                                    (the-as float 0.0)
                                    (the-as float 32.0)
                                    (the-as float 230.0)
@@ -756,7 +766,7 @@
   #f)
 
 (defun fov->maya ((arg0 float))
-  (the-as float (if (= arg0 0.0) 0.0 (/ 12.700255 (tan (* 0.5 arg0))))))
+  (the-as float (if (= arg0 0.0) 0.0 (/ 12.700255 (tan (/ arg0 2))))))
 
 (defun cam-layout-save-cam-rot ((arg0 symbol) (arg1 string) (arg2 entity-actor))
   (let ((s3-0 (-> arg2 quat))
@@ -1435,6 +1445,7 @@
   ((key       float)
    (force-on  int32)
    (force-off int32)))
+
 
 (defbehavior clmf-cam-flag-toggle cam-layout ((arg0 int) (arg1 int))
   (let ((s4-0 (/ arg0 8))

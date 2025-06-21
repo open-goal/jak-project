@@ -92,7 +92,8 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
     }
     lg::error("Overall ISO content's hash does not match. Expected '{}', Actual '{}'", all_expected,
               expected_hash);
-    return {std::nullopt, ExtractorErrorCode::VALIDATION_FILE_CONTENTS_UNEXPECTED};
+    return {std::make_optional(version_info),
+            ExtractorErrorCode::VALIDATION_FILE_CONTENTS_UNEXPECTED};
   }
 
   return {
@@ -225,7 +226,7 @@ int main(int argc, char** argv) {
   if (!project_path_override.empty()) {
     if (!fs::exists(project_path_override)) {
       lg::error("Error: project path override '{}' does not exist", project_path_override.string());
-      return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
+      return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT_MISSING_FOLDER);
     }
     auto ok = file_util::setup_project_path(project_path_override);
     if (!ok) {
@@ -255,7 +256,7 @@ int main(int argc, char** argv) {
   // - INPUT VALIDATION
   if (!fs::exists(input_file_path)) {
     lg::error("Error: input game file path '{}' does not exist", input_file_path.string());
-    return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
+    return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT_MISSING_FOLDER);
   }
   if (data_subfolders.count(game_name) == 0) {
     lg::error("Error: input game name '{}' is not valid", game_name);
@@ -302,6 +303,7 @@ int main(int argc, char** argv) {
         // We know the version since we just extracted it, so the user didn't need to provide this
         // explicitly
         data_subfolder = data_subfolders.at(version_info->game_name);
+        game_name = version_info->game_name;
         if (!extraction_path.empty()) {
           iso_data_path = extraction_path / data_subfolder;
         } else {
@@ -325,7 +327,7 @@ int main(int argc, char** argv) {
     } else if (fs::is_directory(input_file_path)) {
       if (!flag_folder) {
         // if we didn't request a folder explicitly, but we got one, assume something went wrong.
-        lg::error("got a folder, but didn't get folder flag");
+        lg::error("got a folder, but didn't provide the folder flag");
         return static_cast<int>(ExtractorErrorCode::INVALID_CLI_INPUT);
       }
       iso_data_path = input_file_path;
@@ -336,6 +338,10 @@ int main(int argc, char** argv) {
       if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);
+      }
+      if (version_info) {
+        data_subfolder = data_subfolders.at(version_info->game_name);
+        game_name = version_info->game_name;
       }
     }
 

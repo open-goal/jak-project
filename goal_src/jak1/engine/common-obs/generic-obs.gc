@@ -86,7 +86,7 @@
         (when (and *target*
                    (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
                    (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-possible))
-                   (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range)))))
+                   (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (/ (-> self range) 2))))
           (if (send-event *target* 'pole-grab self) (go swingpole-active)))
         (suspend))))
 
@@ -96,7 +96,7 @@
       (suspend)
       (while (and *target* (= (handle->process (-> *target* control unknown-handle10)) self))
         (suspend))
-      (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 0.5)) (suspend)))
+      (suspend-for (seconds 0.5))
       (go swingpole-stance)))
 
 (defmethod init-from-entity! ((this swingpole) (arg0 entity-actor))
@@ -127,7 +127,9 @@
 
 (deftype target-start (process-hidden) ())
 
+
 (deftype camera-start (process-hidden) ())
+
 
 (defstate manipy-idle (manipy)
   :event
@@ -365,10 +367,8 @@
               (vector+! (-> self root trans) (-> (the-as process-drawable gp-0) root trans) (-> self offset)))))
         (let ((gp-1 (-> self root trans))) (if (-> self callback) ((-> self callback) self)) (spawn (-> self part) gp-1))
         (suspend))
-      (let ((gp-2 (current-time)))
-        (until (time-elapsed? gp-2 (-> self linger-duration))
-          (if (-> self linger-callback) ((-> self linger-callback) self))
-          (suspend)))
+      (suspend-for (-> self linger-duration)
+        (if (-> self linger-callback) ((-> self linger-callback) self)))
       (if (-> self linger-callback) ((-> self linger-callback) self))
       (part-tracker-notify)
       (suspend)
@@ -551,11 +551,7 @@
                       (set! s2-1 (cdr s2-1))
                       (set! a1-5 (car s2-1)))))))
              (('not) (set! gp-0 (not (eval this (the-as pair (car s4-0))))))
-             (('wait-for 'wait 'suspend)
-              (let ((s5-1 (command-get-time (car s4-0) 1))
-                    (s4-1 (current-time)))
-                (until (time-elapsed? s4-1 s5-1)
-                  (suspend))))
+             (('wait-for 'wait 'suspend) (let ((s5-1 (command-get-time (car s4-0) 1))) (suspend-for s5-1)))
              (('message?) (when (= (-> this message) (car s4-0)) (set! gp-0 (-> this message)) (set! (-> this message) #f)))
              (('send-event)
               (let ((s5-2 (command-get-process (car s4-0) *target*))
@@ -688,6 +684,7 @@
   (:states
    med-res-level-idle))
 
+
 (defstate med-res-level-idle (med-res-level)
   :code
     (behavior ()
@@ -715,7 +712,7 @@
                   (a0-18 (new 'stack-no-clear 'vector)))
               (.lvf vf16 (&-> v1-36 origin quad))
               (.lvf vf17 (&-> v1-36 bounds quad))
-              (.mul.x.vf vf16 vf16 vf0 :mask #b1000)
+              (.mul.x.vf.w vf16 vf16 vf0)
               (.add.vf vf16 vf16 vf17)
               (.svf (&-> a0-18 quad) vf16))
             (.mov v1-37 vf16))
@@ -836,6 +833,7 @@
    launcher-deactivated
    launcher-idle))
 
+
 (defpartgroup group-beach-launcher
   :id 37
   :bounds (static-bspherem 0 3 0 5)
@@ -867,7 +865,7 @@
 
 (defpart 46
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:x (meters 0) (meters 1.8))
    (:scale-x (meters 0.2))
@@ -886,7 +884,7 @@
 
 (defpart 47
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 2.0)
    (:x (meters 1.8) (meters 1))
    (:scale-x (meters 0.2))
@@ -905,7 +903,7 @@
 
 (defpart 48
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x17 :page #x2))
+  ((:texture (woodchip effects))
    (:num 1.5)
    (:x (meters 2.9) (meters 2.5))
    (:y (meters -0.5))
@@ -928,7 +926,7 @@
 
 (defpart 49
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5)
    (:x (meters 2.9) (meters 2.5))
    (:y (meters -0.5))
@@ -965,7 +963,7 @@
 
 (defpart 52
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:x (meters 0) (meters 1.4))
    (:scale-x (meters 0.2))
@@ -984,7 +982,7 @@
 
 (defpart 53
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 2.0)
    (:x (meters 1.4) (meters 0.9))
    (:scale-x (meters 0.2))
@@ -1003,7 +1001,7 @@
 
 (defpart 54
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5)
    (:x (meters 2.9) (meters 2.5))
    (:y (meters -0.5))
@@ -1037,7 +1035,7 @@
 
 (defpart 55
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5)
    (:x (meters 2.9) (meters 2.5))
    (:y (meters -0.5))
@@ -1458,13 +1456,13 @@
         ((< (-> v1-0 w) 0.0)
          (.lvf vf1 (&-> a0-1 conerot quad))
          (.lvf vf2 (&-> v1-0 vec quad))
-         (.sub.vf vf1 vf0 vf2 :mask #b111)
+         (.sub.vf.xyz vf1 vf0 vf2)
          (.svf (&-> a0-1 conerot quad) vf1)
          (.mov a0-2 vf1))
         (else
          (.lvf vf1 (&-> a0-1 conerot quad))
          (.lvf vf2 (&-> v1-0 vec quad))
-         (.add.vf vf1 vf0 vf2 :mask #b111)
+         (.add.vf.xyz vf1 vf0 vf2)
          (.svf (&-> a0-1 conerot quad) vf1)
          (.mov a0-3 vf1))))
     0
@@ -1472,7 +1470,7 @@
 
 (defpart 2528
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xc :page #x2))
+  ((:texture (citadel-shield effects))
    (:birth-func 'birth-func-set-quat)
    (:num 1.0)
    (:scale-x (meters 2) (meters 0.5))

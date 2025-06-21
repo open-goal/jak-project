@@ -87,11 +87,11 @@
        (sound-play "rub-fall-impact")
        (cond
          ((logtest? (-> *part-group-id-table* 1026 flags) (sp-group-flag sp13))
-          (set! (-> *launch-matrix* trans quad) (-> self node-list data 11 bone transform trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 11 bone transform trans))
           (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1026))
           )
          (else
-           (set! (-> *launch-matrix* trans quad) (-> self node-list data 11 bone transform trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self node-list data 11 bone transform trans))
            (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1026))
            )
          )
@@ -129,12 +129,7 @@
 
 (defmethod check-impact ((this rub-tower) (arg0 rigid-body-impact) (arg1 vehicle))
   (let ((f30-0 (-> arg0 impulse)))
-    (let* ((s5-0 arg1)
-           (v1-0 (if (type? s5-0 wvehicle)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((v1-0 (as-type arg1 wvehicle)))
       (b!
         (not (or (< 921600.0 f30-0) (and v1-0 (logtest? (-> v1-0 controls flags) (vehicle-controls-flag vcf2)))))
         cfg-11
@@ -211,6 +206,7 @@
   )
 
 (defmethod init-from-entity! ((this rub-tower) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -316,11 +312,11 @@
     (spawn-joint-exploder self)
     (cond
       ((logtest? (-> *part-group-id-table* 1024 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1024))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1024))
         )
       )
@@ -353,11 +349,7 @@
   )
 
 (defmethod check-impact ((this rub-electric-gate-switch) (arg0 rigid-body-impact) (arg1 vehicle))
-  (let ((v1-0 (if (type? arg1 wvehicle)
-                  arg1
-                  )
-              )
-        )
+  (let ((v1-0 (as-type arg1 wvehicle)))
     (when (or (< 1024000.0 (-> arg0 impulse))
               (and v1-0 (logtest? (-> v1-0 controls flags) (vehicle-controls-flag vcf2)))
               )
@@ -369,7 +361,7 @@
 
 (defmethod spawn-joint-exploder ((this rub-electric-gate-switch))
   (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-    (set! (-> gp-0 fountain-rand-transv-lo quad) (-> (target-pos 0) quad))
+    (vector-copy! (-> gp-0 fountain-rand-transv-lo) (target-pos 0))
     (set! (-> gp-0 fountain-rand-transv-hi x) 122880.0)
     (set! (-> gp-0 fountain-rand-transv-hi y) 245760.0)
     (set! (-> gp-0 fountain-rand-transv-hi z) 4096.0)
@@ -415,6 +407,7 @@
   )
 
 (defmethod init-from-entity! ((this rub-electric-gate-switch) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (logclear! (-> this mask) (process-mask actor-pause))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by) (penetrate))
@@ -517,13 +510,9 @@
        (go-virtual die)
        )
       (('blocking-plane-hit)
-       (let* ((s5-0 proc)
-              (v1-3 (if (type? s5-0 process-drawable)
-                        s5-0
-                        )
-                    )
-              (gp-1 (the-as object (-> block param 0)))
-              )
+       (let ((v1-3 (as-type proc process-drawable))
+             (gp-1 (the-as object (-> block param 0)))
+             )
          (when (and v1-3 (the-as uint gp-1))
            (sound-play
              "ruins-gate-hit"
@@ -532,11 +521,11 @@
              )
            (cond
              ((logtest? (-> *part-group-id-table* 1027 flags) (sp-group-flag sp13))
-              (set! (-> *launch-matrix* trans quad) (-> (the-as rigid-body-impact gp-1) point quad))
+              (vector-copy! (-> *launch-matrix* trans) (-> (the-as rigid-body-impact gp-1) point))
               (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1027))
               )
              (else
-               (set! (-> *launch-matrix* trans quad) (-> (the-as rigid-body-impact gp-1) point quad))
+               (vector-copy! (-> *launch-matrix* trans) (-> (the-as rigid-body-impact gp-1) point))
                (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1027))
                )
              )
@@ -687,60 +676,37 @@
   )
 
 (defmethod toggle-blocking-plane ((this rub-elec-gate) (arg0 symbol))
-  (rlet ((acc :class vf)
-         (vf0 :class vf)
-         (vf4 :class vf)
-         (vf5 :class vf)
-         (vf6 :class vf)
-         (vf7 :class vf)
-         )
-    (init-vf0-vector)
-    (cond
-      (arg0
-        (when (and (nonzero? (-> this path)) (nonzero? (-> this path-r)))
-          (let ((gp-0 (new 'static 'inline-array vector 2 (new 'static 'vector) (new 'static 'vector))))
-            (let ((s4-0 (new 'stack-no-clear 'vector))
-                  (s2-0 (new 'stack-no-clear 'vector))
-                  (s3-0 (new 'stack-no-clear 'vector))
-                  )
-              (get-point-at-percent-along-path! (-> this path) (-> gp-0 0) 0.0 'interp)
-              (get-point-at-percent-along-path! (-> this path) (-> gp-0 1) 1.0 'interp)
-              (vector-! s3-0 (-> gp-0 1) (-> gp-0 0))
-              (get-point-at-percent-along-path! (-> this path-r) (-> gp-0 1) 0.0 'interp)
-              (vector-! s2-0 (-> gp-0 1) (-> gp-0 0))
-              (set! (-> this width) (vector-length s2-0))
-              (set! (-> this height) (vector-length s3-0))
-              (let ((a1-8 (-> this root trans)))
-                (let ((v1-17 (-> gp-0 0)))
-                  (let ((a0-7 s2-0))
-                    (let ((a2-4 0.5))
-                      (.mov vf7 a2-4)
-                      )
-                    (.lvf vf5 (&-> a0-7 quad))
-                    )
-                  (.lvf vf4 (&-> v1-17 quad))
-                  )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
-                (.svf (&-> a1-8 quad) vf6)
+  (cond
+    (arg0
+      (when (and (nonzero? (-> this path)) (nonzero? (-> this path-r)))
+        (let ((gp-0 (new 'static 'inline-array vector 2 (new 'static 'vector) (new 'static 'vector))))
+          (let ((s4-0 (new 'stack-no-clear 'vector))
+                (s2-0 (new 'stack-no-clear 'vector))
+                (s3-0 (new 'stack-no-clear 'vector))
                 )
-              (vector-normalize! (vector-cross! s4-0 s2-0 s3-0) 1.0)
-              (quaternion-look-at! (-> this root quat) s4-0 s3-0)
-              )
-            (+! (-> gp-0 0 y) -20480.0)
-            (+! (-> gp-0 1 y) -20480.0)
-            (blocking-plane-spawn (the-as curve-control #f) gp-0 122880.0)
+            (get-point-at-percent-along-path! (-> this path) (-> gp-0 0) 0.0 'interp)
+            (get-point-at-percent-along-path! (-> this path) (-> gp-0 1) 1.0 'interp)
+            (vector-! s3-0 (-> gp-0 1) (-> gp-0 0))
+            (get-point-at-percent-along-path! (-> this path-r) (-> gp-0 1) 0.0 'interp)
+            (vector-! s2-0 (-> gp-0 1) (-> gp-0 0))
+            (set! (-> this width) (vector-length s2-0))
+            (set! (-> this height) (vector-length s3-0))
+            (vector+*! (-> this root trans) (-> gp-0 0) s2-0 0.5)
+            (vector-normalize! (vector-cross! s4-0 s2-0 s3-0) 1.0)
+            (quaternion-look-at! (-> this root quat) s4-0 s3-0)
             )
+          (+! (-> gp-0 0 y) -20480.0)
+          (+! (-> gp-0 1 y) -20480.0)
+          (blocking-plane-spawn (the-as curve-control #f) gp-0 122880.0)
           )
         )
-      (else
-        (blocking-plane-destroy)
-        )
       )
-    0
-    (none)
+    (else
+      (blocking-plane-destroy)
+      )
     )
+  0
+  (none)
   )
 
 ;; WARN: Return type mismatch process-drawable vs rub-elec-gate.
@@ -761,6 +727,7 @@
   )
 
 (defmethod init-from-entity! ((this rub-elec-gate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -853,6 +820,7 @@
   )
 
 (defmethod init-from-entity! ((this rub-electric-gate-panel) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))

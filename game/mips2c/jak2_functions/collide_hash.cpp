@@ -1066,9 +1066,11 @@ u64 execute(void* ctxt) {
   c->ppach(a3, r0, a3);                             // ppach a3, r0, a3
   c->lqc2(vf11, 272, a2);                           // lqc2 vf11, 272(a2)
   c->dsll(a3, a3, 16);                              // dsll a3, a3, 16
-  c->vftoi0(DEST::xyzw, vf3, vf3);                  // vftoi0.xyzw vf3, vf3
+
+  // patch vftoi0 calls because there's more bogus collide fragments
+  c->vftoi0_sat(DEST::xyzw, vf3, vf3);              // vftoi0.xyzw vf3, vf3
   bc = c->sgpr64(a3) != 0;                          // bne a3, r0, L63
-  c->vftoi0(DEST::xyzw, vf4, vf4);                  // vftoi0.xyzw vf4, vf4
+  c->vftoi0_sat(DEST::xyzw, vf4, vf4);              // vftoi0.xyzw vf4, vf4
   if (bc) {goto block_22;}                          // branch non-likely
 
   // nop                                            // sll r0, r0, 0

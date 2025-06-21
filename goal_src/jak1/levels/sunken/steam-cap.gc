@@ -10,6 +10,7 @@
   ((trans  vector :inline)
    (transv vector :inline)))
 
+
 (deftype steam-cap (process-drawable)
   ((root              collide-shape-moving :override)
    (do-burst?         symbol)
@@ -28,6 +29,7 @@
    (steam-cap-method-21 (_type_) quaternion))
   (:states
    steam-cap-idle))
+
 
 (defpartgroup group-steam-cap-sides
   :id 441
@@ -74,7 +76,7 @@
 
 (defpart 1718
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.0 2.0)
    (:y (meters -0.5))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -101,7 +103,7 @@
 
 (defpart 1721
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.0 2.0)
    (:y (meters -0.5))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -128,7 +130,7 @@
 
 (defpart 1719
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.0 2.0)
    (:y (meters -0.5))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -155,7 +157,7 @@
 
 (defpart 1722
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.0 2.0)
    (:y (meters -0.5))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -182,7 +184,7 @@
 
 (defpart 1720
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.0 2.0)
    (:y (meters -0.5))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -209,7 +211,7 @@
 
 (defpart 1723
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.0 2.0)
    (:y (meters -0.5))
    (:scale-x (meters 0.5) (meters 1.5))
@@ -273,7 +275,7 @@
 
 (defpart 1732
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5)
    (:y (meters -0.5))
    (:scale-x (meters 1) (meters 1))
@@ -299,7 +301,7 @@
 
 (defpart 1731
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5)
    (:y (meters -0.5))
    (:scale-x (meters 1) (meters 1))
@@ -328,7 +330,7 @@
 
 (defpart 1727
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5 0.5)
    (:x (meters 0) (meters 1))
    (:y (meters -1))
@@ -349,7 +351,7 @@
 
 (defpart 1728
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5 0.5)
    (:x (meters 0) (meters 0.5))
    (:y (meters -1))
@@ -460,8 +462,8 @@
              (.lvf vf1 (&-> (-> s2-0 transv) quad))
              (let ((f0-17 (seconds-per-frame))) (.mov at-0 f0-17))
              (.mov vf2 at-0)
-             (.mov.vf vf1 vf0 :mask #b1000)
-             (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+             (.mov.vf.w vf1 vf0)
+             (.mul.x.vf.xyz vf1 vf1 vf2)
              (.svf (&-> a0-21 quad) vf1)
              (vector+! a1-10 v1-42 a0-21))
            (when (< (-> s3-3 y) (-> this down y))
@@ -490,8 +492,8 @@
                (.lvf vf1 (&-> (-> s2-0 transv) quad))
                (let ((f1-27 (seconds-per-frame))) (.mov at-1 f1-27))
                (.mov vf2 at-1)
-               (.mov.vf vf1 vf0 :mask #b1000)
-               (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+               (.mov.vf.w vf1 vf0)
+               (.mul.x.vf.xyz vf1 vf1 vf2)
                (.svf (&-> a0-26 quad) vf1)
                (vector+! a1-14 v1-61 a0-26))
              (let ((f1-29 (- (-> this up y) (-> s3-3 y)))
@@ -505,7 +507,7 @@
     (let ((f0-31 0.0))
       (dotimes (v1-71 3)
         (+! f0-31 (-> this control-pt v1-71 trans y)))
-      (let ((f0-32 (* 0.33333334 f0-31))
+      (let ((f0-32 (/ f0-31 3))
             (a1-16 (new 'stack-no-clear 'vector)))
         (set! (-> a1-16 quad) (-> this root trans quad))
         (set! (-> a1-16 y) f0-32)
@@ -529,10 +531,10 @@
         (suspend)))
   :post rider-post)
 
-(defmethod relocate ((this steam-cap) (arg0 int))
-  (if (nonzero? (-> this part2)) (&+! (-> this part2) arg0))
-  (if (nonzero? (-> this part3)) (&+! (-> this part3) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this steam-cap) (offset int))
+  (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
+  (if (nonzero? (-> this part3)) (&+! (-> this part3) offset))
+  (call-parent-method this offset))
 
 (defmethod deactivate ((this steam-cap))
   (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))

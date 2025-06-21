@@ -14,7 +14,7 @@
 
 (defpart 1931
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:scale-x (meters 2) (meters 0.5))
    (:rot-z (degrees 0) (degrees 360))
@@ -31,7 +31,7 @@
 
 (defpart 2167
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0 8.0)
    (:scale-x (meters 0.5) (meters 0.3))
    (:scale-y :copy scale-x)
@@ -67,7 +67,7 @@
 
 (defpart 2168
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 8.0)
    (:y (meters -5.5))
    (:scale-x (meters 0.2) (meters 0.1))
@@ -94,7 +94,7 @@
 
 (defpart 2177
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 8.0)
    (:scale-x (meters 0.3) (meters 0.2))
    (:rot-z (degrees 0) (degrees 360))
@@ -116,7 +116,7 @@
 
 (defpart 2169
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters -5.5))
    (:scale-x (meters 8) (meters 4))
@@ -130,7 +130,7 @@
 
 (defpart 2170
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters -5.5))
    (:scale-x (meters 12) (meters 8))
@@ -145,7 +145,7 @@
 
 (defpart 2171
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters -5))
    (:scale-x (meters 12) (meters 8))
@@ -163,7 +163,7 @@
 
 (defpart 2172
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 2.0)
    (:y (meters -5.5))
    (:scale-x (meters 0.5))
@@ -182,7 +182,7 @@
 
 (defpart 2173
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1f :page #x2))
+  ((:texture (lightning effects))
    (:num 1.0)
    (:scale-x (meters 8) (meters 6))
    (:rot-x 4)
@@ -203,7 +203,7 @@
 
 (defpart 2174
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x23 :page #x2))
+  ((:texture (lightning2 effects))
    (:num 1.0)
    (:scale-x (meters 8) (meters 4))
    (:rot-x 4)
@@ -221,7 +221,7 @@
 
 (defpart 2175
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x24 :page #x2))
+  ((:texture (lightning3 effects))
    (:num 1.0)
    (:scale-x (meters 8) (meters 4))
    (:rot-x 4)
@@ -249,7 +249,7 @@
 
 (defpart 2180
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 8.0)
    (:y (meters 0))
    (:scale-x (meters 0.5) (meters 1))
@@ -276,7 +276,7 @@
 
 (defpart 2182
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 6.0)
    (:y (meters 0))
    (:scale-x (meters 0.4))
@@ -293,7 +293,7 @@
 
 (defpart 2179
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters 0))
    (:scale-x (meters 40))
@@ -308,7 +308,7 @@
 
 (defpart 2181
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 12.0)
    (:x (meters -2) (meters 4))
    (:y (meters -2) (meters 4))
@@ -342,6 +342,7 @@
    energydoor-closing
    energydoor-opened
    energydoor-opening))
+
 
 (defskelgroup *energydoor-sg*
   energydoor
@@ -490,6 +491,7 @@
    energybase-stopped
    energybase-stopping))
 
+
 (defskelgroup *energybase-sg*
   energybase
   energybase-lod0-jg
@@ -511,7 +513,7 @@
         (loop
           (ja-no-eval :group! (ja-group) :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
-            (set! f30-0 (- f30-0 (* 0.002 (-> *display* time-adjust-ratio))))
+            (set! f30-0 (- f30-0 (/ (-> *display* time-adjust-ratio) 500)))
             (if (< f30-0 0.0) (go energybase-stopped))
             (suspend)
             (ja :num! (seek! max f30-0))))))
@@ -556,6 +558,7 @@
    energyhub-stop
    energyhub-stopped))
 
+
 (deftype energyarm (process-drawable)
   ((root               collide-shape-moving :override)
    (parent-overide     (pointer energyhub) :overlay-at parent)
@@ -575,11 +578,13 @@
    energyarm-no-ball
    energyarm-stop))
 
+
 (deftype energyball (process-drawable)
   ((root           collide-shape-moving :override)
    (parent-overide (pointer energyarm) :overlay-at parent))
   (:states
    energyball-idle))
+
 
 (defskelgroup *energyball-sg*
   energyball
@@ -1023,6 +1028,7 @@
 (deftype energylava (process-drawable) ()
   (:states
    energylava-idle))
+
 
 (defskelgroup *energylava-sg*
   energylava

@@ -167,7 +167,7 @@ FullName extract_name(const std::string& file_info_name) {
   name.name = name.name.substr(0, name.name.length() - 6);
   int chunk_id = 0;
   int place = 0;
-  for (int i = 2; i-- > 0;) {
+  for (int i = 3; i-- > 0;) {
     char c = name.name.back();
     if (c >= '0' && c <= '9') {
       int val = (c - '0');
@@ -259,9 +259,8 @@ std::string StrFileReader::get_full_name(const std::string& short_name) const {
   return result;
 }
 
-std::string StrFileReader::get_texture_name() const {
-  ASSERT(m_chunks.size() == 1);
-  const auto& chunk = m_chunks[0];
+std::string StrFileReader::get_chunk_texture_name(int idx) const {
+  const auto& chunk = m_chunks[idx];
   auto find_string = get_texture_page_file_info_string();
   int offset;
   if (find_string_in_data(chunk.data(), int(chunk.size()), find_string, &offset)) {

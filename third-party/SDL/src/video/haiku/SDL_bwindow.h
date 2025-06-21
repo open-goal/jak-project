@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,29 +24,23 @@
 
 #include "../SDL_sysvideo.h"
 
-extern int HAIKU_CreateWindow(_THIS, SDL_Window *window);
-extern int HAIKU_CreateWindowFrom(_THIS, SDL_Window * window, const void *data);
-extern void HAIKU_SetWindowTitle(_THIS, SDL_Window * window);
-extern void HAIKU_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon);
-extern void HAIKU_SetWindowPosition(_THIS, SDL_Window * window);
-extern void HAIKU_SetWindowSize(_THIS, SDL_Window * window);
-extern void HAIKU_SetWindowMinimumSize(_THIS, SDL_Window * window);
-extern void HAIKU_ShowWindow(_THIS, SDL_Window * window);
-extern void HAIKU_HideWindow(_THIS, SDL_Window * window);
-extern void HAIKU_RaiseWindow(_THIS, SDL_Window * window);
-extern void HAIKU_MaximizeWindow(_THIS, SDL_Window * window);
-extern void HAIKU_MinimizeWindow(_THIS, SDL_Window * window);
-extern void HAIKU_RestoreWindow(_THIS, SDL_Window * window);
-extern void HAIKU_SetWindowBordered(_THIS, SDL_Window * window, SDL_bool bordered);
-extern void HAIKU_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable);
-extern void HAIKU_SetWindowFullscreen(_THIS, SDL_Window * window, SDL_VideoDisplay * display, SDL_bool fullscreen);
-extern int HAIKU_SetWindowGammaRamp(_THIS, SDL_Window * window, const Uint16 * ramp);
-extern int HAIKU_GetWindowGammaRamp(_THIS, SDL_Window * window, Uint16 * ramp);
-extern void HAIKU_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
-extern void HAIKU_DestroyWindow(_THIS, SDL_Window * window);
-extern SDL_bool HAIKU_GetWindowWMInfo(_THIS, SDL_Window * window,
-                                    struct SDL_SysWMinfo *info);
+extern bool HAIKU_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props);
+extern void HAIKU_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
+extern bool HAIKU_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_SetWindowMinimumSize(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_HideWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window);
+extern void HAIKU_SetWindowBordered(SDL_VideoDevice *_this, SDL_Window *window, bool bordered);
+extern void HAIKU_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, bool resizable);
+extern SDL_FullscreenResult HAIKU_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Window *window, SDL_VideoDisplay *display, SDL_FullscreenOp fullscreen);
+extern bool HAIKU_SetWindowMouseGrab(SDL_VideoDevice *_this, SDL_Window *window, bool grabbed);
+extern bool HAIKU_SetWindowParent(SDL_VideoDevice *_this, SDL_Window *window, SDL_Window *parent);
+extern bool HAIKU_SetWindowModal(SDL_VideoDevice *_this, SDL_Window *window, bool modal);
+extern void HAIKU_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);
 
 #endif
-
-/* vi: set ts=4 sw=4 expandtab: */

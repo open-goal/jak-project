@@ -108,7 +108,7 @@
 
 (set! (-> *maker-grenade-trail* zbuffer?) #f)
 
-(set! (-> *maker-grenade-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *maker-grenade-trail* lie-vector) *up-vector*)
 
 (set! (-> *maker-grenade-trail* use-tape-mode?) #f)
 
@@ -697,11 +697,7 @@
       )
     )
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (when (-> self minimap)
       (logior! (-> self minimap flags) (minimap-flag fade-out))
       (set! (-> self minimap) #f)
@@ -710,7 +706,7 @@
   :code (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (let ((s5-0 (new 'stack-no-clear 'explosion-init-params)))
-        (set! (-> s5-0 spawn-point quad) (-> self root trans quad))
+        (vector-copy! (-> s5-0 spawn-point) (-> self root trans))
         (quaternion-identity! (-> s5-0 spawn-quat))
         (set! (-> s5-0 radius) (-> self blast-radius))
         (set! (-> s5-0 scale) 1.0)
@@ -729,7 +725,7 @@
         (cond
           ((< (* f0-6 f0-6) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
            (forward-up->inv-matrix gp-0 (-> self pre-move-transv) *up-vector*)
-           (set! (-> gp-0 trans quad) (-> self root trans quad))
+           (vector-copy! (-> gp-0 trans) (-> self root trans))
            (if (logtest? (-> *part-group-id-table* 539 flags) (sp-group-flag sp13))
                (part-tracker-spawn
                  part-tracker-subsampler
@@ -743,7 +739,7 @@
            )
           (else
             (quaternion->matrix gp-0 (-> *target* control quat))
-            (set! (-> gp-0 trans quad) (-> *target* control trans quad))
+            (vector-copy! (-> gp-0 trans) (-> *target* control trans))
             (if (logtest? (-> *part-group-id-table* 541 flags) (sp-group-flag sp13))
                 (part-tracker-spawn
                   part-tracker-subsampler
@@ -769,11 +765,8 @@
       (set! (-> v1-85 prim-core collide-with) (collide-spec))
       )
     0
-    (let ((gp-4 (current-time)))
-      (until (time-elapsed? gp-4 (seconds 3))
-        (suspend)
-        (suspend)
-        )
+    (suspend-for (seconds 3)
+      (suspend)
       )
     )
   )
@@ -782,7 +775,7 @@
   (let ((t9-0 (method-of-type projectile-bounce handle-proj-hit!)))
     (when (not (t9-0 this arg0 arg1))
       (when (type? arg0 wascity-turret-shot)
-        (set! (-> this pre-move-transv quad) (-> (the-as wascity-turret-shot arg0) pre-move-transv quad))
+        (vector-copy! (-> this pre-move-transv) (-> (the-as wascity-turret-shot arg0) pre-move-transv))
         (go (method-of-object this impact))
         )
       )

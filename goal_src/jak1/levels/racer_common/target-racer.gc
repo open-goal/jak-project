@@ -133,8 +133,8 @@
   (let ((f30-1 (if (or (< (* arg1 arg0) 0.0) (not (racer-on-ground?)))
                  1.0
                  (+ 1.0 (* (fabs arg1) (lerp-scale 0.0 3.0 (-> self control unknown-float01) 0.0 (-> self racer transv-max))))))
-        (f28-1 (lerp-scale 32768.0 20024.889 (-> self control unknown-float01) 0.0 (* 0.5 (-> self racer transv-max))))
-        (f0-18 (lerp-scale 91022.22 236657.78 (-> self control unknown-float01) 0.0 (* 0.125 (-> self racer transv-max)))))
+        (f28-1 (lerp-scale 32768.0 20024.889 (-> self control unknown-float01) 0.0 (/ (-> self racer transv-max) 2)))
+        (f0-18 (lerp-scale 91022.22 236657.78 (-> self control unknown-float01) 0.0 (/ (-> self racer transv-max) 8))))
     (seek! (-> self racer rotv y) (* arg0 f30-1 (- f28-1)) (* f0-18 (seconds-per-frame))))
   (set! (-> self racer rotv y)
         (* (-> self racer rotv y) (lerp-scale 0.99 0.9 (-> self control unknown-float01) 0.0 (-> self racer transv-max))))
@@ -192,7 +192,7 @@
     (when (< 0.0 f0-0)
       (let ((f1-4 (* f0-0 (+ (-> self control unknown-surface01 target-speed) (-> self racer boost-output) (-> self racer hill-boost)))))
         (+! (-> self control unknown-vector00 z) (* f1-4 (seconds-per-frame)))))
-    (seek! (-> self racer front-rotv) (+ 65536.0 (* 364088.88 (+ f0-0 (* 0.1 arg1)))) (* 364088.88 (seconds-per-frame))))
+    (seek! (-> self racer front-rotv) (+ 65536.0 (* 364088.88 (+ f0-0 (/ arg1 10)))) (* 364088.88 (seconds-per-frame))))
   (set! (-> self racer front-rot)
         (the float (sar (shl (the int (+ (-> self racer front-rot) (* (-> self racer front-rotv) (seconds-per-frame)))) 48) 48)))
   (let* ((f1-12 (-> self control unknown-surface01 fric))
@@ -438,7 +438,7 @@
                          (set! (-> *part-id-table* 2275 init-specs 4 initial-valuef) (+ 24576.0 f1-3))
                          (set! (-> *part-id-table* 2275 init-specs 19 initial-valuef) (+ 49152.0 f1-3))
                          (set! (-> *part-id-table* 2275 init-specs 1 initial-valuef) (* 0.0000036621095 f0-17))
-                         (set! (-> *part-id-table* 2275 init-specs 2 initial-valuef) (* 0.1 f0-17))
+                         (set! (-> *part-id-table* 2275 init-specs 2 initial-valuef) (/ f0-17 10))
                          (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2275) s4-2)
                          (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2276) s4-2)))
                      (-> *part-id-table* 2208))
@@ -508,8 +508,8 @@
        (set! f26-0 (-> *RACER-bank* lavatube-surface-heat-inc))
        (set! f30-2 (-> *RACER-bank* lavatube-jump-heat-inc))))
     (let* ((f20-0 (get-health-percent-lost *game-info* #f))
-           (f22-1 (lerp-scale f22-0 (* 0.5 f22-0) f20-0 0.0 1.0))
-           (f24-1 (lerp-scale f24-0 (* 0.33333334 f24-0) f20-0 0.0 1.0)))
+           (f22-1 (lerp-scale f22-0 (/ f22-0 2) f20-0 0.0 1.0))
+           (f24-1 (lerp-scale f24-0 (/ f24-0 3) f20-0 0.0 1.0)))
       (case (-> self control poly-pat material)
         (((pat-material hotcoals)) (seek! (-> self racer heat) (-> *RACER-bank* heat-max) (* f22-1 (seconds-per-frame))))
         (((pat-material lava))
@@ -659,7 +659,7 @@
   (set-twist! (-> self racer tail) (the-as float #f) (the-as float #f) (* -273.06668 (-> self racer tail-anim-frame)))
   (let ((f30-2 (fmin 1.0 (* 2.0 (fabs (-> self racer slide-shift-x))))))
     (ja :num-func num-func-identity :frame-num (ja-aframe (-> self racer turn-anim-frame) 0))
-    (ja :chan 1 :num! (chan 0) :frame-interp (+ 0.5 (* 0.025 (-> self racer tail-anim-frame))))
+    (ja :chan 1 :num! (chan 0) :frame-interp (+ 0.5 (/ (-> self racer tail-anim-frame) 40)))
     (let ((gp-2 (-> self skel root-channel 2)))
       ;; og:preserve-this changed for high fps
       (let ((f0-82 (lerp (-> self racer slide-interp) f30-2 (* DISPLAY_FPS_RATIO 0.125))))
@@ -671,7 +671,7 @@
       :num!
       (chan 0)
       :frame-interp
-      (* (-> self racer slide-interp) (+ 0.5 (* 0.025 (-> self racer tail-anim-frame)))))
+      (* (-> self racer slide-interp) (+ 0.5 (/ (-> self racer tail-anim-frame) 40))))
   0
   (none))
 
@@ -687,7 +687,7 @@
           (set! s4-0 s5-0)))
       (suspend)
       (let ((f0-4 (lerp-scale 2.0 1.0 (ja-aframe-num 0) 0.0 22.0)))
-        (if (= (-> self next-state name) 'target-racing-falling) (set! f0-4 (* 0.5 f0-4)))
+        (if (= (-> self next-state name) 'target-racing-falling) (set! f0-4 (/ f0-4 2)))
         (ja :num! (seek! max f0-4)))
       (set! f30-0 (ja-aframe-num 0))
       (ja-blend-eval)))
@@ -748,23 +748,23 @@
                (f28-1 (* f28-0
                          (cond
                            ((zero? v1-17)
-                            (- (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 8))
+                            (- (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
                                                    0.0
                                                    32.0
                                                    255.0
                                                    1.0)
-                                     (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 9))
+                                     (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
                                                    0.0
                                                    32.0
                                                    255.0
                                                    1.0))))
                            ((= v1-17 1)
-                            (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 8))
+                            (fmax (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
                                                 0.0
                                                 32.0
                                                 255.0
                                                 1.0)
-                                  (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 9))
+                                  (analog-input (the-as int (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
                                                 0.0
                                                 32.0
                                                 255.0
@@ -803,8 +803,8 @@
              (let ((f1-16 (+ (-> self racer bob-timer) (* (-> self racer bob-meta-timer) (-> *display* time-adjust-ratio))))
                    (f2-12 (-> self racer bob-period)))
                (set! (-> self racer bob-timer) (- f1-16 (* (the float (the int (/ f1-16 f2-12))) f2-12))))
-             (when (!= (the int (/ f0-52 (* 0.5 (-> self racer bob-period))))
-                       (the int (/ (-> self racer bob-timer) (* 0.5 (-> self racer bob-period)))))
+             (when (!= (the int (/ f0-52 (/ (-> self racer bob-period) 2)))
+                       (the int (/ (-> self racer bob-timer) (/ (-> self racer bob-period) 2))))
                (seek! (-> self racer bob-mult-trans) 1.0 0.75)
                (if (< 1.5 (-> self racer bob-meta-meta-timer)) (seek! (-> self racer bob-meta-meta-timer) 1.0 0.5))
                (when (time-elapsed? (-> self racer bob-meta-time) (seconds 2.2))
@@ -825,7 +825,7 @@
                              ((= v1-128 2) (* -0.035555556 f0-77))
                              ((= v1-128 3) (* -0.017777778 f0-77))
                              (else (* -0.13333334 f0-77)))))
-               (if (-> self racer hop?) (set! f1-36 (* 0.5 f1-36)))
+               (if (-> self racer hop?) (set! f1-36 (/ f1-36 2)))
                (if (= (-> self control unknown-surface00 mode) 'air)
                  (set! (-> self racer targ-rotx) (fmax -2730.6667 (fmin 5461.3335 f1-36)))))
              (cond

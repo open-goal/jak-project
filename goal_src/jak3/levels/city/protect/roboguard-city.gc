@@ -239,34 +239,34 @@
     :jump-height-min (meters 0.5)
     :jump-height-factor 0.1
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 20480.0
-    :knocked-soft-vxz-hi 28672.0
-    :knocked-soft-vy-lo 36864.0
-    :knocked-soft-vy-hi 45056.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 49152.0
-    :knocked-hard-vxz-hi 57344.0
-    :knocked-hard-vy-lo 49152.0
-    :knocked-hard-vy-hi 57344.0
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 20480.0
-    :knocked-yellow-vxz-hi 28672.0
-    :knocked-yellow-vy-lo 36864.0
-    :knocked-yellow-vy-hi 40960.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 114688.0
-    :knocked-red-vy-lo 53248.0
-    :knocked-red-vy-hi 69632.0
-    :knocked-blue-vxz-lo 16384.0
-    :knocked-blue-vxz-hi 20480.0
-    :knocked-blue-vy-lo 16384.0
-    :knocked-blue-vy-hi 32768.0
+    :knocked-soft-vxz-lo (meters 5)
+    :knocked-soft-vxz-hi (meters 7)
+    :knocked-soft-vy-lo (meters 9)
+    :knocked-soft-vy-hi (meters 11)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 12)
+    :knocked-hard-vxz-hi (meters 14)
+    :knocked-hard-vy-lo (meters 12)
+    :knocked-hard-vy-hi (meters 14)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 5)
+    :knocked-yellow-vxz-hi (meters 7)
+    :knocked-yellow-vy-lo (meters 9)
+    :knocked-yellow-vy-hi (meters 10)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 28)
+    :knocked-red-vy-lo (meters 13)
+    :knocked-red-vy-hi (meters 17)
+    :knocked-blue-vxz-lo (meters 4)
+    :knocked-blue-vxz-hi (meters 5)
+    :knocked-blue-vy-lo (meters 4)
+    :knocked-blue-vy-hi (meters 8)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -356,6 +356,7 @@
   )
 
 (defmethod init-enemy-collision! ((this roboguard-city))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -417,7 +418,7 @@
   (let ((v1-3 (joint-node roboguard-city-lod0-jg chest))
         (gp-0 (new 'stack-no-clear 'vector))
         )
-    (set! (-> gp-0 quad) (-> v1-3 bone transform fvec quad))
+    (vector-copy! gp-0 (-> v1-3 bone transform fvec))
     (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> v1-3 bone transform trans))))
       (set! (-> gp-0 y) 0.0)
       (set! (-> s5-1 y) 0.0)
@@ -439,10 +440,7 @@
 (defbehavior roboguard-city-turret-code roboguard-city ()
   (ja-channel-push! 1 (seconds 0.2))
   (ja-no-eval :group! roboguard-city-idle-shoot0-loop-ja :num! zero)
-  (let ((gp-0 (current-time)))
-    (until (time-elapsed? gp-0 (seconds 0.2))
-      (suspend)
-      )
+  (suspend-for (seconds 0.2)
     )
   (let ((gp-1
           (lambda :behavior process
@@ -459,10 +457,7 @@
         )
     (until #f
       (when (< (fabs (-> self me-to-focus-angle)) f30-0)
-        (let ((s5-0 (current-time)))
-          (until (time-elapsed? s5-0 (seconds 0.5))
-            (suspend)
-            )
+        (suspend-for (seconds 0.5)
           )
         (while (< (fabs (-> self me-to-focus-angle)) f30-0)
           (suspend)
@@ -484,10 +479,7 @@
           )
         )
       (when (< (fabs (-> self me-to-focus-angle)) f30-0)
-        (let ((s5-2 (current-time)))
-          (until (time-elapsed? s5-2 (seconds 0.5))
-            (suspend)
-            )
+        (suspend-for (seconds 0.5)
           )
         (while (< (fabs (-> self me-to-focus-angle)) f30-0)
           (suspend)
@@ -578,25 +570,13 @@
   :virtual #t
   :trans (behavior ()
     (nav-enemy-method-181 self)
-    (let ((t9-2 (-> (find-parent-state) trans)))
-      (if t9-2
-          (t9-2)
-          )
-      )
+    (call-parent-state-handler trans)
     (let ((gp-0 (get-current-enemy self)))
       (when gp-0
-        (let* ((s5-0 self)
-               (s4-0 (method-of-object s5-0 enemy-method-70))
-               (s3-0 (handle->process (-> self target-status handle)))
-               )
-          (s4-0
-            s5-0
-            (the-as process-focusable (if (type? s3-0 process-focusable)
-                                          s3-0
-                                          )
-                    )
-            (the-as enemy-aware #f)
-            )
+        (set-focus!
+          self
+          (the-as process-focusable (as-type (handle->process (-> self target-status handle)) process-focusable))
+          (the-as enemy-aware #f)
           )
         (update-focus self)
         (set! (-> self target-status handle) (process->handle gp-0))
@@ -634,9 +614,9 @@
 
 (defmethod roboguard-city-method-233 ((this roboguard-city) (arg0 vector) (arg1 vector))
   (let ((a1-1 (new 'stack-no-clear 'vector)))
-    (set! (-> a1-1 quad) (-> this root trans quad))
+    (vector-copy! a1-1 (-> this root trans))
     (set! (-> a1-1 w) (-> this root nav-radius))
-    (when (not (add-root-sphere-to-hash! (-> this nav) a1-1 255))
+    (when (not (check-sphere-blocked! (-> this nav) a1-1 255))
       (let* ((s3-0 (new 'stack-no-clear 'vector))
              (s2-0 (closest-point-on-mesh (-> this nav) s3-0 arg0 (the-as nav-poly #f)))
              (s4-1 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
@@ -914,13 +894,13 @@
     (let ((gp-0 (-> self nav state))
           (v1-19 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
           )
-      (set! (-> gp-0 heading quad) (-> v1-19 quad))
+      (vector-copy! (-> gp-0 heading) v1-19)
       )
     0
     (let ((gp-1 (-> self nav state))
           (v1-24 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
           )
-      (set! (-> gp-1 velocity quad) (-> v1-24 quad))
+      (vector-copy! (-> gp-1 velocity) v1-24)
       )
     0
     (set-time! (-> self state-time))
@@ -948,7 +928,7 @@
         (-> self move-dest)
         self
         (-> self target-status handle)
-        (* 0.5 (-> self attack-distance))
+        (/ (-> self attack-distance) 2)
         (-> self random-offset-search)
         )
       (roboguard-city-method-239 self)
@@ -959,7 +939,7 @@
           )
       (logclear! (-> a0-9 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-9 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-9 target-pos quad) (-> v1-25 quad))
+      (vector-copy! (-> a0-9 target-pos) v1-25)
       )
     0
     (when (time-elapsed? (-> self state-time) (-> self reaction-time))
@@ -979,7 +959,7 @@
               (a2-0 (-> self nav state))
               (v1-7 (new 'stack-no-clear 'vector))
               )
-          (set! (-> v1-7 quad) (-> a2-0 velocity quad))
+          (vector-copy! v1-7 (-> a2-0 velocity))
           (set! (-> a0-4 param 0) (* f0-0 (sqrtf (+ (* (-> v1-7 x) (-> v1-7 x)) (* (-> v1-7 z) (-> v1-7 z))))))
           )
         (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-loop!)
@@ -1075,7 +1055,7 @@
                (-> this move-dest)
                this
                (-> this target-status handle)
-               (* 0.5 (-> this attack-distance))
+               (/ (-> this attack-distance) 2)
                (-> this random-offset-search)
                )
              (roboguard-city-method-239 this)
@@ -1095,7 +1075,7 @@
               (-> this move-dest)
               this
               (-> this target-status handle)
-              (* 0.5 (-> this attack-distance))
+              (/ (-> this attack-distance) 2)
               (-> this random-offset-search)
               )
             (roboguard-city-method-235 this)
@@ -1129,13 +1109,13 @@
       (let ((gp-0 (-> self nav state))
             (v1-12 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
             )
-        (set! (-> gp-0 heading quad) (-> v1-12 quad))
+        (vector-copy! (-> gp-0 heading) v1-12)
         )
       0
       (let ((gp-1 (-> self nav state))
             (v1-17 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
             )
-        (set! (-> gp-1 velocity quad) (-> v1-17 quad))
+        (vector-copy! (-> gp-1 velocity) v1-17)
         )
       0
       (let ((v1-20 (-> self nav)))
@@ -1155,7 +1135,7 @@
           )
       (logclear! (-> gp-0 flags) (nav-state-flag directional-mode))
       (logior! (-> gp-0 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> gp-0 target-pos quad) (-> v1-5 quad))
+      (vector-copy! (-> gp-0 target-pos) v1-5)
       )
     0
     )
@@ -1192,13 +1172,13 @@
       (let ((gp-0 (-> self nav state))
             (v1-18 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
             )
-        (set! (-> gp-0 heading quad) (-> v1-18 quad))
+        (vector-copy! (-> gp-0 heading) v1-18)
         )
       0
       (let ((gp-1 (-> self nav state))
             (v1-23 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
             )
-        (set! (-> gp-1 velocity quad) (-> v1-23 quad))
+        (vector-copy! (-> gp-1 velocity) v1-23)
         )
       0
       )
@@ -1254,7 +1234,7 @@
           )
       (logclear! (-> a0-2 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-2 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-2 target-pos quad) (-> v1-1 quad))
+      (vector-copy! (-> a0-2 target-pos) v1-1)
       )
     0
     (nav-enemy-method-187 self)
@@ -1330,19 +1310,9 @@
             (set! (-> gp-0 quad) (-> s5-0 prim-core world-sphere quad))
             (let ((s5-1 (new 'stack-no-clear 'array 'collide-shape 384)))
               (countdown (s4-0 (fill-actor-list-for-box *actor-hash* gp-0 s5-1 384))
-                (let* ((s3-0 (-> s5-1 s4-0))
-                       (v1-12 (if (type? s3-0 collide-shape)
-                                  s3-0
-                                  )
-                              )
-                       )
+                (let ((v1-12 (as-type (-> s5-1 s4-0) collide-shape)))
                   (when v1-12
-                    (let* ((s2-0 (-> v1-12 process))
-                           (s3-1 (if (type? s2-0 process-focusable)
-                                     s2-0
-                                     )
-                                 )
-                           )
+                    (let ((s3-1 (as-type (-> v1-12 process) process-focusable)))
                       (when s3-1
                         (if (and (!= *target* s3-1)
                                  (!= self s3-1)
@@ -1354,7 +1324,7 @@
                                    (< f0-0 (* f1-0 f1-0))
                                    )
                                  )
-                            (send-attack self s3-1 (the-as touching-shapes-entry #f) (-> self persistent-attack-id))
+                            (send-attack-from-tshape self s3-1 (the-as touching-shapes-entry #f) (-> self persistent-attack-id))
                             )
                         )
                       )
@@ -1362,12 +1332,7 @@
                   )
                 )
               )
-            (let* ((s4-1 *target*)
-                   (s5-2 (if (type? s4-1 process-focusable)
-                             s4-1
-                             )
-                         )
-                   )
+            (let ((s5-2 (the-as target (as-type *target* process-focusable))))
               (when (and s5-2 (< (vector-vector-distance (get-trans s5-2 0) gp-0) (-> gp-0 r)))
                 (if (and (!= *target* s5-2)
                          (!= self s5-2)
@@ -1379,7 +1344,7 @@
                            (< f0-2 (* f1-4 f1-4))
                            )
                          )
-                    (send-attack self s5-2 (the-as touching-shapes-entry #f) (-> self persistent-attack-id))
+                    (send-attack-from-tshape self s5-2 (the-as touching-shapes-entry #f) (-> self persistent-attack-id))
                     )
                 )
               )
@@ -1637,17 +1602,14 @@
   )
 
 (defmethod go-die ((this roboguard-city))
+  "Go to the die state."
   (go (method-of-object this explode))
   )
 
 (defstate knocked-recover (roboguard-city)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type kg-squad-member knocked-recover) trans)))
@@ -1655,7 +1617,7 @@
           (t9-0)
           )
       )
-    (if (enemy-method-109 self)
+    (if (out-of-bounds? self)
         (go-die self)
         (go-hostile self)
         )
@@ -1663,6 +1625,7 @@
   )
 
 (defmethod go-hostile ((this roboguard-city))
+  "Go to the hostile state, actively trying to attack the target."
   (local-vars (v1-3 enemy-flag) (v1-5 enemy-flag))
   (logior! (-> this enemy-flags) (enemy-flag vulnerable))
   (let ((v1-2 (-> this enemy-flags)))
@@ -1714,11 +1677,11 @@
     (let ((v1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node roboguard-city-lod0-jg chest))))
       (cond
         ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> v1-1 quad))
+         (vector-copy! (-> *launch-matrix* trans) v1-1)
          (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> v1-1 quad))
+          (vector-copy! (-> *launch-matrix* trans) v1-1)
           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
           )
         )
@@ -1727,7 +1690,7 @@
       (let ((v1-32 (new 'stack 'debris-tuning (the-as uint 1))))
         (set! (-> v1-32 hit-xz-reaction) 0.95)
         (set! (-> v1-32 hit-y-reaction) 0.6)
-        (set! (-> v1-32 fountain-rand-transv-lo quad) (-> self incoming attack-position quad))
+        (vector-copy! (-> v1-32 fountain-rand-transv-lo) (-> self incoming attack-position))
         )
       )
     (cleanup-for-death self)
@@ -1781,8 +1744,8 @@
       (set! (-> gp-0 vehicle-impulse-factor) 2.0)
       (logior! (-> gp-0 options) (projectile-options po16))
       (if arg4
-          (set! (-> gp-0 pos quad) (-> arg4 quad))
-          (set! (-> gp-0 pos quad) (-> arg1 quad))
+          (vector-copy! (-> gp-0 pos) arg4)
+          (vector-copy! (-> gp-0 pos) arg1)
           )
       (vector-normalize-copy! (-> gp-0 vel) v1-1 arg3)
       )
@@ -1815,6 +1778,7 @@
   )
 
 (defmethod knocked-anim ((this roboguard-city) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (ja-channel-push! 1 0)
   (let ((v1-0 #t))
     (case (-> this incoming knocked-type)
@@ -1854,6 +1818,7 @@
   )
 
 (defmethod knocked-land-anim ((this roboguard-city) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (let ((v1-0 #t))
     (case (-> this incoming knocked-type)
       (((knocked-type none) (knocked-type mech-punch) (knocked-type yellow-shot) (knocked-type blue-shot))
@@ -1892,6 +1857,7 @@
   )
 
 (defmethod event-handler ((this roboguard-city) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('attack)
      (set-time! (-> this pursuit-start-time))
@@ -1911,7 +1877,7 @@
          (logior! (-> this focus-status) (focus-status dead))
          )
      (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
-     (enemy-method-69 this)
+     (focus-on-attacker! this)
      (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
@@ -1937,14 +1903,16 @@
 
 ;; WARN: Return type mismatch int vs process.
 (defmethod update-focus ((this roboguard-city))
+  "Potentially update the focus, if there is something better to focus on."
   (the-as process 0)
   )
 
 (defmethod enemy-common-post ((this roboguard-city))
+  "Common implementation of post. Runs ja-post."
   (roboguard-city-method-237 this)
   (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
     (when s5-0
-      (set! (-> this focus-pos quad) (-> (get-trans s5-0 3) quad))
+      (vector-copy! (-> this focus-pos) (get-trans s5-0 3))
       (los-control-method-9 (-> this los) s5-0 (-> this focus-pos) 819.2 4096.0)
       )
     )
@@ -1955,7 +1923,7 @@
          (s5-1 (-> this rotation-matrix))
          (f0-1 (vector-vector-angle-safe (-> this me-to-focus-dir) a1-6))
          )
-    (if (< (vector-dot (-> this me-to-focus-dir) (the-as vector s5-1)) 0.0)
+    (if (< (vector-dot (-> this me-to-focus-dir) (-> s5-1 rvec)) 0.0)
         (set! f0-1 (* -1.0 f0-1))
         )
     (set! (-> this me-to-focus-angle) f0-1)
@@ -1969,7 +1937,7 @@
       (-> this move-dest)
       this
       (-> this target-status handle)
-      (* 0.5 (-> this attack-distance))
+      (/ (-> this attack-distance) 2)
       (-> this random-offset-search)
       )
     (roboguard-city-method-239 this)
@@ -1982,11 +1950,11 @@
        (let ((a1-9 (-> this nav state))
              (v1-35 (new 'stack-no-clear 'vector))
              )
-         (set! (-> v1-35 quad) (-> a1-9 heading quad))
+         (vector-copy! v1-35 (-> a1-9 heading))
          0.0
          (let* ((f0-8 (vector-dot s5-3 v1-35))
                 (f0-9 (+ 1.0 f0-8))
-                (f0-10 (* 0.5 f0-9))
+                (f0-10 (/ f0-9 2))
                 (f0-11 (lerp -0.2 0.0 f0-10))
                 )
            (sound-play-by-name
@@ -2019,6 +1987,7 @@
   )
 
 (defmethod coin-flip? ((this roboguard-city))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -2124,7 +2093,7 @@
            (f0-21 (+ -1.0 (the-as float v1-61)))
            )
       (cond
-        ((< f0-21 (* 0.5 f30-1))
+        ((< f0-21 (/ f30-1 2))
          (set! s5-0 (logior s5-0 2))
          )
         ((< f0-21 f30-1)
@@ -2140,6 +2109,7 @@
   )
 
 (defmethod init-enemy! ((this roboguard-city))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-roboguard-city" (the-as (pointer level) #f)))
@@ -2149,7 +2119,7 @@
   (set! (-> this enemy-flags)
         (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
         )
-  (init-enemy-defaults! this *roboguard-city-nav-enemy-info*)
+  (setup-enemy! this *roboguard-city-nav-enemy-info*)
   (let ((t9-4 (method-of-type kg-squad-member init-enemy!)))
     (t9-4 this)
     )
@@ -2258,31 +2228,18 @@
       (logclear! (-> this flags) (citizen-flag persistent in-pursuit))
       )
   (let ((v1-26 (new 'stack-no-clear 'vector)))
-    (set! (-> v1-26 quad) (-> this root trans quad))
+    (vector-copy! v1-26 (-> this root trans))
     (+! (-> v1-26 y) 8192.0)
     )
-  (let* ((s5-0 (handle->process (-> this target-status handle)))
-         (a0-36 (if (type? s5-0 process-focusable)
-                    s5-0
-                    )
-                )
-         )
+  (let ((a0-36 (as-type (handle->process (-> this target-status handle)) process-focusable)))
     (cond
       ((and a0-36
             (not (logtest? (-> (the-as process-focusable a0-36) focus-status) (focus-status disable dead inactive)))
             )
-       (let* ((s5-1 this)
-              (s4-0 (method-of-object s5-1 enemy-method-70))
-              (s3-0 (handle->process (-> this target-status handle)))
-              )
-         (s4-0
-           s5-1
-           (the-as process-focusable (if (type? s3-0 process-focusable)
-                                         s3-0
-                                         )
-                   )
-           (the-as enemy-aware #f)
-           )
+       (set-focus!
+         this
+         (the-as process-focusable (as-type (handle->process (-> this target-status handle)) process-focusable))
+         (the-as enemy-aware #f)
          )
        (update-focus this)
        (let ((f0-2 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
@@ -2347,7 +2304,8 @@
     )
   )
 
-(defmethod penetrate->next-state ((this roboguard-city) (arg0 process) (arg1 event-message-block) (arg2 float))
+(defmethod msg-for-incoming-attack ((this roboguard-city) (arg0 process) (arg1 event-message-block) (arg2 float))
+  "Given an attack message, what do we do next? Returns a message name that should be sent to self."
   (cond
     ((logtest? (penetrate emp-blast) (-> this incoming penetrate-using))
      (set-time! (-> this dizzy-start-time))
@@ -2380,7 +2338,7 @@
       )
   (case (-> arg0 behavior)
     ((6)
-     (set! (-> this root trans quad) (-> arg0 position quad))
+     (vector-copy! (-> this root trans) (-> arg0 position))
      (go (method-of-object this exit-transport))
      )
     (else

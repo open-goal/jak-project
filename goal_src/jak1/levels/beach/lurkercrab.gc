@@ -15,7 +15,7 @@
 
 (defpart 663
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.3 0.3)
    (:y (meters -2))
    (:scale-x (meters 2) (meters 2))
@@ -33,7 +33,7 @@
 
 (defpart 664
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 0.1 1.0)
    (:y (meters -2))
    (:scale-x (meters 0.2) (meters 0.2))
@@ -55,6 +55,7 @@
   ((orient basic))
   (:states
    lurkercrab-pushed))
+
 
 (defskelgroup *lurkercrab-sg*
   lurkercrab
@@ -146,13 +147,13 @@ nav-enemy-default-event-handler
       (ja-channel-push! 1 (seconds 0.075))
       (loop
         (ja :group! lurkercrab-idle-ja :num! (identity (ja-aframe 1.0 0)))
-        (let ((gp-1 (current-time))) (until (time-elapsed? gp-1 (seconds 3)) (suspend)))
+        (suspend-for (seconds 3))
         (ja-no-eval :group! lurkercrab-idle-ja :num! (seek! (ja-aframe 19.0 0)) :frame-num (ja-aframe 1.0 0))
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! (ja-aframe 19.0 0))))
         (ja :num-func num-func-identity :frame-num (ja-aframe 19.0 0))
-        (let ((gp-5 (current-time))) (until (time-elapsed? gp-5 (seconds 1)) (suspend)))
+        (suspend-for (seconds 1))
         (ja-no-eval :group! lurkercrab-idle-ja :num! (seek! (ja-aframe 1.0 0)) :frame-num (ja-aframe 19.0 0))
         (until (ja-done? 0)
           (suspend)
@@ -199,7 +200,7 @@ nav-enemy-default-event-handler
           (nav-enemy-rnd-int-range 2 6)
           (until (not (nav-enemy-rnd-go-idle? 0.2))
             (ja :group! lurkercrab-idle-ja :num! (identity (ja-aframe 1.0 0)))
-            (let ((gp-2 (current-time))) (until (time-elapsed? gp-2 (seconds 2)) (suspend))))
+            (suspend-for (seconds 2)))
           (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-rotate))
           (ja-no-eval :group! lurkercrab-idle-to-walk-ja :num! (seek!) :frame-num 0.0)
           (until (ja-done? 0)
@@ -326,8 +327,8 @@ nav-enemy-default-event-handler
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! (ja-aframe 18.0 0) 0.75)))
-      (let ((gp-2 (current-time))) (until (time-elapsed? gp-2 (seconds 0.25)) (suspend)))
-      (let ((gp-3 (current-time))) (until (time-elapsed? gp-3 (seconds 0.1)) (suspend)))
+      (suspend-for (seconds 0.25))
+      (suspend-for (seconds 0.1))
       (go-virtual nav-enemy-chase))
   :post
     (behavior ()

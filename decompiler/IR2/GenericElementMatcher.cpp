@@ -91,6 +91,14 @@ Matcher Matcher::cast(const std::string& type, Matcher value) {
   return m;
 }
 
+Matcher Matcher::numeric_cast(const std::string& type, Matcher value) {
+  Matcher m;
+  m.m_kind = Kind::NUMERIC_CAST;
+  m.m_str = type;
+  m.m_sub_matchers = {value};
+  return m;
+}
+
 Matcher Matcher::cast_to_any(int type_out, Matcher value) {
   Matcher m;
   m.m_kind = Kind::CAST_TO_ANY;
@@ -124,6 +132,13 @@ Matcher Matcher::single(std::optional<float> value) {
   Matcher m;
   m.m_kind = Kind::FLOAT;
   m.m_float_match = value;
+  return m;
+}
+
+Matcher Matcher::any_single(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_FLOAT;
+  m.m_float_out_id = match_id;
   return m;
 }
 
@@ -207,6 +222,13 @@ Matcher Matcher::set_var(const Matcher& src, int dst_match_id) {
 Matcher Matcher::while_loop(const Matcher& condition, const Matcher& body) {
   Matcher m;
   m.m_kind = Kind::WHILE_LOOP;
+  m.m_sub_matchers = {condition, body};
+  return m;
+}
+
+Matcher Matcher::until_loop(const Matcher& condition, const Matcher& body) {
+  Matcher m;
+  m.m_kind = Kind::UNTIL_LOOP;
   m.m_sub_matchers = {condition, body};
   return m;
 }
@@ -398,6 +420,16 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       return false;
     } break;
 
+    case Kind::NUMERIC_CAST: {
+      auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
+      if (as_cast && as_cast->numeric()) {
+        if (as_cast->type().print() == m_str) {
+          return m_sub_matchers.at(0).do_match(as_cast->source(), maps_out, env);
+        }
+      }
+      return false;
+    } break;
+
     case Kind::CAST_TO_ANY: {
       auto as_cast = dynamic_cast<CastElement*>(input->try_as_single_active_element());
       if (as_cast) {
@@ -462,6 +494,30 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         if (atom.is_int()) {
           if (m_int_out_id != -1) {
             maps_out->ints[m_int_out_id] = atom.get_int();
+          }
+          return true;
+        }
+      }
+
+      return false;
+    } break;
+
+    case Kind::ANY_FLOAT: {
+      auto as_const_float =
+          dynamic_cast<ConstantFloatElement*>(input->try_as_single_active_element());
+      if (as_const_float) {
+        if (m_float_out_id != -1) {
+          maps_out->floats[m_float_out_id] = as_const_float->value();
+        }
+        return true;
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        const auto& atom = as_expr->expr().get_arg(0);
+        if (atom.is_integer_promoted_to_float()) {
+          if (m_float_out_id != -1) {
+            maps_out->floats[m_float_out_id] = atom.get_integer_promoted_to_float();
           }
           return true;
         }
@@ -666,6 +722,22 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
       }
 
       if (!m_sub_matchers.at(1).do_match(as_while->body, maps_out, env)) {
+        return false;
+      }
+      return true;
+    } break;
+
+    case Kind::UNTIL_LOOP: {
+      auto as_until = dynamic_cast<UntilElement*>(input->try_as_single_active_element());
+      if (!as_until) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(0).do_match(as_until->condition, maps_out, env)) {
+        return false;
+      }
+
+      if (!m_sub_matchers.at(1).do_match(as_until->body, maps_out, env)) {
         return false;
       }
       return true;

@@ -161,10 +161,10 @@
     (.lvf vf1 (&-> a quad))
     (.lvf vf2 (&-> b quad))
     (.mov vf4 alpha)
-    (.add.x.vf vf3 vf1 vf0 :mask #b1000)
+    (.add.x.vf.w vf3 vf1 vf0)
     (.sub.vf vf2 vf2 vf1)
     (.mul.x.vf vf2 vf2 vf4)
-    (.add.vf vf3 vf1 vf2 :mask #b111)
+    (.add.vf.xyz vf3 vf1 vf2)
     (.svf (&-> dest quad) vf3)
     dest
     )
@@ -178,7 +178,7 @@
     (init-vf0-vector)
     (.lvf dest-vf (&-> dest quad))
     (.lvf src-vf (&-> src quad))
-    (.add.vf dest-vf vf0 src-vf :mask #b111)
+    (.add.vf.xyz dest-vf vf0 src-vf)
     (.svf (&-> dest quad) dest-vf)
     dest
     )
@@ -214,6 +214,11 @@
 
   (set! (-> obj music-unlocked) (new 'global 'bit-array (-> *music-player-tracks* length)))
   ((method-of-type pc-settings initialize) obj)
+  (set! (-> *setting-control* user-default sfx-volume) (-> obj memcard-volume-sfx))
+  (set! (-> *setting-control* user-default music-volume) (-> obj memcard-volume-music))
+  (set! (-> *setting-control* user-default dialog-volume) (-> obj memcard-volume-dialog))
+  (set! (-> *setting-control* user-default vibration) (-> obj memcard-vibration?))
+  (set! (-> *setting-control* user-default subtitle) (-> obj memcard-subtitles?))
   obj)
 
 (defmethod set-game-setting! ((obj pc-settings-jak3) (setting symbol) (value symbol))
@@ -249,7 +254,13 @@
   )
 
 (defmethod get-game-language ((obj pc-settings-jak3))
-  (get-current-language)
+  ;; if the language is unintialized, return the default
+  (let ((lang (get-current-language)))
+    (if (= lang 255)
+        (scf-get-language)
+        lang
+        )
+    )
   )
 
 
@@ -303,9 +314,9 @@
 (defmethod update-speedrun ((obj pc-settings-jak3))
   "update speedrun module"
   ;; TODO - update to new with-profiler syntax
-  ;; (with-profiler "speedrun-update"
-  ;(update! *speedrun-info*)
-    ;;)
+  ; (with-profiler "speedrun-update"
+    (update! *speedrun-info*)
+    ; )
   (none))
 
 (defmethod update-video-hacks ((obj pc-settings-jak3))
@@ -606,6 +617,7 @@
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-backup") (file-stream-read-int file)) ;; TODO - Don't remove this, parsing code can't handle unexpected keys
+    (("memcard-subtitles?") (set! (-> obj memcard-subtitles?) (file-stream-read-symbol file)))
     (("music-unlocked")
       (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
         (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
@@ -657,6 +669,7 @@
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
+  (format file "  (memcard-subtitles? ~A)~%" (-> obj memcard-subtitles?))
 
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
@@ -750,8 +763,9 @@
 
 
 ;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
-(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 16 1024) "*pc-dead-pool*"))
-
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 128 1024) "*pc-dead-pool*"))
+(set! (-> *pc-pool* clock) (-> *display* base-clock))
+(+! (-> *display* base-clock ref-count) 1)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -4,7 +4,8 @@
 (require "engine/game/task/game-task-h.gc")
 (require "pc/pckernel-common.gc")
 (require "pc/features/autosplit-h.gc")
-(define *speedrun-info* (new 'static 'speedrun-info-jak1 :should-display? #t :needs-post-blackout-setup? #f))
+(define *speedrun-info*
+  (new 'static 'speedrun-info-jak1 :should-display? #t :needs-post-blackout-setup? #f :has-started? #f))
 
 (define *hub1-cell-list*
   (new 'static
@@ -140,20 +141,18 @@
   (set! (-> *pc-settings* ps2-actor-vis?) #t)
   ;; ensure FPS set to `60`
   (when (!= (-> *pc-settings* target-fps) 60)
-    (set-frame-rate! *pc-settings* 60 #t)
-    )
-  (none)
-  )
+    (set-frame-rate! *pc-settings* 60 #t))
+  (none))
 
 (defun start-speedrun ((category speedrun-category))
-  ;; randomize game id so the autosplitter knows to restart
-  (update-autosplit-jak1-new-game)
   ;; disable hints (turned back on later for all-cutscenes category)
-  (set! (-> *setting-control* default play-hints) #f)
+  (false! (-> *setting-control* default play-hints))
   ;; turn on speedrun verification display and flip flag for setting up speedrun after initialize!
-  (set! (-> *speedrun-info* should-display?) #t)
-  (set! (-> *speedrun-info* needs-post-blackout-setup?) #t)
-  ;; start new game with specified checkpoint, if any (otherwise we're resetting current category)
+  (true! (-> *speedrun-info* should-display?))
+  (true! (-> *speedrun-info* needs-post-blackout-setup?))
+  ;; reset has-started? flag so we can flip it back to #t when jak touches ground
+  (false! (-> *speedrun-info* has-started?))
+  ;; start new game with specified category, if any (otherwise we're resetting current category)
   (if category (set! (-> *speedrun-info* category) category))
   (case (-> *speedrun-info* category)
     (((speedrun-category full-game))
@@ -386,9 +385,28 @@
   (set! (-> *speedrun-info* should-display?) #f)
   (none))
 
+(defun mark-speedrun-started ()
+  (true! (-> *speedrun-info* has-started?))
+  (none))
+
 (defun speedrun-mode-update ()
   "A per frame update for speedrunning related stuff"
   (when (-> *pc-settings* speedrunner-mode?)
+    ;; Check if run/autosplitter should be started (out of blackout and player has control of jak)
+    (when (and (not (-> *speedrun-info* has-started?))
+               *target*
+               ;; not in blackout
+               (>= (-> *display* base-frame-counter) (-> *game-info* blackout-time))
+               (!= (-> *setting-control* current bg-a-force) 1.0)
+               ;; target has landed on ground/water, or we're about to enter target-hit-ground state
+               (or (logtest? (-> *target* control status) (cshape-moving-flags onground onsurf on-water))
+                   (= (-> *target* next-state name) 'target-hit-ground)))
+      (mark-speedrun-started)
+      ;; spawn a process that resets autosplitter after suspending for 1 frame
+      (process-spawn-function process
+        (lambda ()
+          (suspend)
+          (update-autosplit-jak1-new-game))))
     ;; Update auto-splitter
     (update-autosplit-info-jak1)
     ;; Draw info to the screen
@@ -407,13 +425,14 @@
   "Draw speedrun related settings in the bottom left corner"
   (when (and (-> *pc-settings* speedrunner-mode?) (not (paused?)) (-> *speedrun-info* should-display?))
     (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id subtitle))
-      (draw-string-xy (string-format "Speedrunner Mode ~%OpenGOAL Version: ~S ~%Category: ~S ~%Cutscene Skips ~A"
+      (draw-string-xy (string-format "Speedrunner Mode ~%OpenGOAL Version: ~S ~%Category: ~S ~S~%Run Started: ~S"
                                      *pc-settings-built-sha*
                                      (enum->string speedrun-category (-> *speedrun-info* category))
-                                     (-> *pc-settings* skip-movies?))
+                                     (if (-> *pc-settings* skip-movies?) "(CS Skips)" "(No CS Skips)")
+                                     (if (-> *speedrun-info* has-started?) "Yes" "No"))
                       buf
-                      0
-                      (- 220 (* 8 4))
+                      4
+                      (- 222 (* 8 4))
                       (font-color flat-yellow)
                       (font-flags shadow kerning))))
   (none))

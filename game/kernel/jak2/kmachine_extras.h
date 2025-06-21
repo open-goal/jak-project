@@ -11,8 +11,6 @@ void pc_set_levels(u32 lev_list);
 void pc_set_active_levels(u32 lev_list);
 u32 alloc_vagdir_names(u32 heap_sym);
 inline u64 bool_to_symbol(const bool val);
-// TODO - move to common
-void encode_utf8_string(u32 src_str_ptr, u32 str_dest_ptr);
 void init_autosplit_struct();
 void callback_fetch_external_speedrun_times(bool success,
                                             const std::string& cache_id,

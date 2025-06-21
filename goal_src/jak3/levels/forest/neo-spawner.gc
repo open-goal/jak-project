@@ -53,11 +53,11 @@
      )
     (('set-hud-pos)
      (set-hud-piece-position!
-       (the-as hud-sprite (-> this sprites))
+       (-> this sprites 0)
        (the-as int (+ (-> arg3 param 0) -16))
        (the-as int (-> arg3 param 1))
        )
-     (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) 2 2)
+     (set-as-offset-from! (-> this sprites 1) (-> this sprites 0 pos) 2 2)
      (set! (-> this sprites 0 pos z) (the-as int (-> arg3 param 2)))
      (set! v0-0 (+ (-> this sprites 0 pos z) 1))
      (set! (-> this sprites 1 pos z) (the-as int v0-0))
@@ -162,6 +162,7 @@
   )
 
 (defmethod init-from-entity! ((this neo-spawner-manager) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (set! (-> this total-spawned) 0)
   (set! (-> this max-spawned) 0)
@@ -338,7 +339,7 @@
            (gp-0 (new 'stack-no-clear 'vector4w))
            )
        (set! (-> gp-0 quad) (the-as uint128 0))
-       (set! (-> s5-0 quad) (-> self node-list data 3 bone transform trans quad))
+       (vector-copy! s5-0 (-> self node-list data 3 bone transform trans))
        (+! (-> s5-0 y) -6144.0)
        (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (camera-pos) s5-0)))
          (vector-normalize! s4-1 9420.8)
@@ -516,7 +517,7 @@
                )
          )
     (when s4-0
-      (set! (-> s5-0 trans quad) (-> this root trans quad))
+      (vector-copy! (-> s5-0 trans) (-> this root trans))
       (quaternion-copy! (-> s5-0 quat) (-> this root quat))
       (set! (-> s5-0 entity) (-> this entity))
       (set! (-> s5-0 directed?) #f)
@@ -605,7 +606,7 @@
       (let ((a1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
         (matrix-f-compose gp-0 a1-5)
         )
-      (set! (-> gp-0 trans quad) (-> self root trans quad))
+      (vector-copy! (-> gp-0 trans) (-> self root trans))
       (if (logtest? (-> *part-group-id-table* 566 flags) (sp-group-flag sp13))
           (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 566) :mat-joint gp-0)
           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 566) :mat-joint gp-0)
@@ -679,7 +680,7 @@
       (new 'stack-no-clear 'vector)
       (set! (-> a1-7 hit-xz-reaction) 0.95)
       (set! (-> a1-7 hit-y-reaction) 0.6)
-      (set! (-> a1-7 fountain-rand-transv-lo quad) (-> self root trans quad))
+      (vector-copy! (-> a1-7 fountain-rand-transv-lo) (-> self root trans))
       (set! (-> a1-7 fountain-rand-transv-hi x) 24576.0)
       (set! (-> a1-7 fountain-rand-transv-hi y) 163840.0)
       (set! (-> a1-7 fountain-rand-transv-hi z) 24576.0)
@@ -689,11 +690,11 @@
       )
     (cond
       ((logtest? (-> *part-group-id-table* 565 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 565))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 565))
         )
       )
@@ -717,18 +718,7 @@
   :code sleep-code
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'matrix)))
-      (let* ((v1-0 a1-0)
-             (t0-0 (-> self node-list data 3 bone transform))
-             (a0-2 (-> t0-0 rvec quad))
-             (a2-0 (-> t0-0 uvec quad))
-             (a3-0 (-> t0-0 fvec quad))
-             (t0-1 (-> t0-0 trans quad))
-             )
-        (set! (-> v1-0 rvec quad) a0-2)
-        (set! (-> v1-0 uvec quad) a2-0)
-        (set! (-> v1-0 fvec quad) a3-0)
-        (set! (-> v1-0 trans quad) t0-1)
-        )
+      (matrix-copy! a1-0 (-> self node-list data 3 bone transform))
       (vector+float*! (-> a1-0 trans) (-> a1-0 trans) (-> a1-0 fvec) 8192.0)
       (spawn-from-mat (-> self dead-part) a1-0)
       )
@@ -736,7 +726,8 @@
   )
 
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this neo-spawner))
+(defmethod get-search-info-flag ((this neo-spawner))
+  "Get search-info-flag for this process."
   (the-as search-info-flag 1)
   )
 
@@ -758,6 +749,7 @@
   )
 
 (defmethod init-from-entity! ((this neo-spawner) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))

@@ -72,11 +72,8 @@
     )
   :code (behavior ()
     (when (-> self first-run?)
-      (let ((gp-0 (the int (* 300.0 (rand-vu-float-range 0.05 0.12))))
-            (s5-0 (current-time))
-            )
-        (until (time-elapsed? s5-0 gp-0)
-          (suspend)
+      (let ((gp-0 (the int (* 300.0 (rand-vu-float-range 0.05 0.12)))))
+        (suspend-for gp-0
           )
         )
       (set! (-> self path-base-u) (the float (rand-vu-int-count (-> self path curve num-cverts))))
@@ -157,11 +154,8 @@
   :virtual #t
   :event tizard-event-handler
   :code (behavior ()
-    (let ((gp-0 (the int (* 300.0 (rand-vu-float-range 1.0 2.0))))
-          (s5-0 (current-time))
-          )
-      (until (time-elapsed? s5-0 gp-0)
-        (suspend)
+    (let ((gp-0 (the int (* 300.0 (rand-vu-float-range 1.0 2.0)))))
+      (suspend-for gp-0
         )
       )
     (if (< 17294.223 (acos (vector-dot (-> self rotation-matrix fvec) (-> self path-dir))))
@@ -194,7 +188,7 @@
            )
       (quaternion-normalize! s4-1)
       (quaternion-normalize! s3-0)
-      (dotimes (s2-0 (the int (* 0.000061035156 f30-0)))
+      (dotimes (s2-0 (the int (/ f30-0 (meters 4))))
         (cond
           (s5-0
             (ja-no-eval :group! tizard-turn-left0-ja :num! (seek!) :frame-num 0.0)
@@ -365,7 +359,8 @@
   )
 
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this tizard))
+(defmethod get-search-info-flag ((this tizard))
+  "Get search-info-flag for this process."
   (the-as search-info-flag 8)
   )
 
@@ -419,6 +414,7 @@
   )
 
 (defmethod init-from-entity! ((this tizard) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))

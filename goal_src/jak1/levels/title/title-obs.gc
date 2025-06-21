@@ -24,9 +24,10 @@
    hidden
    ndi))
 
-(defmethod relocate ((this logo) (arg0 int))
-  (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) arg0))
-  (the-as logo ((method-of-type process-drawable relocate) this arg0)))
+
+(defmethod relocate ((this logo) (offset int))
+  (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) offset))
+  (the-as logo ((method-of-type process-drawable relocate) this offset)))
 
 (deftype logo-slave (process-drawable)
   ((parent-process (pointer logo) :overlay-at parent)
@@ -34,9 +35,10 @@
   (:state-methods
    idle))
 
-(defmethod relocate ((this logo-slave) (arg0 int))
-  (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) arg0))
-  (the-as logo-slave ((method-of-type process-drawable relocate) this arg0)))
+
+(defmethod relocate ((this logo-slave) (offset int))
+  (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) offset))
+  (the-as logo-slave ((method-of-type process-drawable relocate) this offset)))
 
 (defskelgroup *logo-sg*
   logo
@@ -324,7 +326,7 @@
       (let ((gp-0 *master-mode*)) (set! *master-mode* 'game) (clear-rec *art-control*) (set! *master-mode* gp-0))
       (loop
         (when (and (none-reserved? *art-control*) (not (paused?)))
-          (let ((gp-1 (current-time))) (until (time-elapsed? gp-1 (seconds 0.1)) (set! *camera-look-through-other* 2) (suspend)))
+          (suspend-for (seconds 0.1) (set! *camera-look-through-other* 2))
           (go-virtual idle))
         (set! *camera-look-through-other* 2)
         (suspend))))
@@ -534,7 +536,7 @@
            (while (!= (file-status *art-control* "ndi-intro" 0) 'active)
              (set-blackout-frames (seconds 0.05))
              (suspend))
-           (let ((s5-1 (current-time))) (until (time-elapsed? s5-1 (seconds 0.25)) (set-blackout-frames (seconds 0.05)) (suspend)))))
+           (suspend-for (seconds 0.25) (set-blackout-frames (seconds 0.05)))))
         (label cfg-8)
         (let ((s5-2 (new 'stack-no-clear 'mc-slot-info)))
           (mc-get-slot-info 0 s5-2)
@@ -560,7 +562,7 @@
             (apply-settings *setting-control*)
             (while *progress-process*
               (suspend))
-            (let ((gp-2 (current-time))) (until (time-elapsed? gp-2 (seconds 0.01)) (suspend)))
+            (suspend-for (seconds 0.01))
             (goto cfg-41))))
       (label cfg-41)
       (let ((gp-3 (entity-by-name "logo-1")))

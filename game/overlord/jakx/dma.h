@@ -2,6 +2,8 @@
 
 #include "common/common_types.h"
 
+#include "game/overlord/jakx/rpc_interface.h"
+
 namespace jakx {
 void jakx_overlord_init_globals_dma();
 struct ISO_VAGCommand;
@@ -29,4 +31,18 @@ struct DmaQueueEntry {
   u32 num_isobuffered_chunks = 0;
 };
 void dma_intr_hack();
+
+struct OverlordStreamMemory {
+  struct Info {
+    SoundStreamName name;
+    int idx = 0;
+  };
+  Info infos[6][2];
+
+  OverlordStreamMemory();
+  void update_name(const char* input, int stream, int side);
+};
+
+extern OverlordStreamMemory g_overlord_stream_memory;
+
 }  // namespace jakx

@@ -24,6 +24,7 @@
    plunger-lurker-idle
    plunger-lurker-plunge))
 
+
 (defskelgroup *plunger-lurker-sg*
   plunger-lurker
   plunger-lurker-lod0-jg
@@ -235,6 +236,7 @@
    flying-lurker-sleep
    flying-lurker-start))
 
+
 (defskelgroup *flying-lurker-sg*
   flying-lurker
   flying-lurker-lod0-jg
@@ -344,7 +346,7 @@
           0.0
           (let* ((f1-6 (* -81920.0 (the float (-> self rank))))
                  (f0-10 (+ (if (< f26-0 f0-6) (fmax (+ -81920.0 f1-6) (- f26-0 f0-6)) (fmin (+ 245760.0 f1-6) (- f26-0 f0-6))) f28-0))
-                 (f1-10 (* 0.000012207031 f0-10))
+                 (f1-10 (/ f0-10 (meters 20)))
                  (f0-12 (fmax -0.5 (fmin 0.5 f1-10))))
             (set! (-> self speed) (+ (* (+ 0.5 f0-12) (- arg2 arg3)) arg3))))
         ;; og:preserve-this PAL patch here
@@ -607,7 +609,7 @@
   (process-release? *target*)
   (process-spawn-function process
     (lambda :behavior process ()
-      (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 0.1)) (suspend)))
+      (suspend-for (seconds 0.1))
       (level-hint-spawn (text-id ogre-race-hint) "asstvb24" (the-as entity #f) *entity-pool* (game-task none))
       (none))
     :to
@@ -761,7 +763,7 @@
            (if (= (get-task-status (game-task plunger-lurker-hit)) (task-status invalid)) (go flying-lurker-die))
            (when (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
              (process-grab? *target*)
-             (let ((s5-0 (current-time))) (until (time-elapsed? s5-0 (seconds 1)) (suspend)))
+             (suspend-for (seconds 1))
              (process-release? *target*)
              (send-event self 'saw-player))
            (suspend)

@@ -588,10 +588,12 @@
           (* (-> this icons v1-55 scale-x) (-> *video-params* relative-x-scale))
           1.0
           )
-        (if (-> *blit-displays-work* horizontal-flip-flag)
-            (set! (-> this icons v1-55 icon 0 root trans x) (the float (- 256 (-> this icons v1-55 pos 0))))
-            (set! (-> this icons v1-55 icon 0 root trans x) (the float (+ (-> this icons v1-55 pos 0) -256)))
-            )
+        ;; og:preserve-this not needed with how mirror mode is currently being done
+        ;; (if (-> *blit-displays-work* horizontal-flip-flag)
+        ;;     (set! (-> this icons v1-55 icon 0 root trans x) (the float (- 256 (-> this icons v1-55 pos 0))))
+        ;;     (set! (-> this icons v1-55 icon 0 root trans x) (the float (+ (-> this icons v1-55 pos 0) -256)))
+        ;;     )
+        (set! (-> this icons v1-55 icon 0 root trans x) (the float (+ (-> this icons v1-55 pos 0) -256)))
         (set! (-> this icons v1-55 icon 0 root trans y) (the float (* (+ (-> this icons v1-55 pos 1) -208) 2)))
         (set! (-> this icons v1-55 icon 0 root trans z) (the float (-> this icons v1-55 pos 2)))
         )
@@ -922,7 +924,7 @@
   :code (behavior ()
     (until #f
       (if (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask pause)))
-          (seek! (-> self offset) 0.0 (* 0.1 (-> self clock time-adjust-ratio)))
+          (seek! (-> self offset) 0.0 (/ (-> self clock time-adjust-ratio) 10))
           )
       (if (>= 0.0 (-> self offset))
           (go hud-in)

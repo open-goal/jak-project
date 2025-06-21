@@ -1,33 +1,141 @@
 #include "build_actor.h"
 
 #include "common/log/log.h"
+#include "common/math/geometry.h"
 
 #include "goalc/build_actor/common/MercExtract.h"
+#include "goalc/build_actor/common/animation_processing.h"
 
 #include "third-party/tiny_gltf/tiny_gltf.h"
 
 using namespace gltf_util;
 namespace jak1 {
 
-std::map<int, size_t> g_joint_map;
+JointAnimCompressedHDR::JointAnimCompressedHDR(const anim::CompressedAnim& anim) {
+  matrix_bits = 0;
+  if (anim.matrix_animated[0]) {
+    matrix_bits |= 1;
+  }
+  if (anim.matrix_animated[1]) {
+    matrix_bits |= 2;
+  }
 
-size_t Joint::generate(DataObjectGenerator& gen) const {
-  gen.align_to_basic();
-  gen.add_type_tag("joint");
-  size_t result = gen.current_offset_bytes();
-  gen.add_ref_to_string_in_pool(name);
-  gen.add_word(number);
-  if (parent == -1) {
-    gen.add_symbol_link("#f");
-  } else {
-    gen.link_word_to_byte(gen.add_word(0), g_joint_map[parent]);
+  for (auto& word : control_bits) {
+    word = 0;
   }
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      gen.add_word_float(bind_pose(i, j));
+
+  for (size_t i = 0; i < anim.joint_metadata.size(); i++) {
+    const int word_idx = i / 8;
+    if (word_idx >= 14) {
+      lg::error("too many joints!!");
+      break;
     }
+
+    u32 val = 0;
+    const auto& metadata = anim.joint_metadata[i];
+    if (metadata.animated_trans) {
+      val |= (0b1);
+    }
+    if (metadata.animated_quat) {
+      val |= (0b10);
+    }
+    if (metadata.animated_scale) {
+      val |= (0b100);
+    }
+    if (metadata.big_trans_mode) {
+      val |= (0b1000);
+    }
+    val = (val << (4 * (i % 8)));
+    control_bits[word_idx] |= val;
   }
-  return result;
+
+  num_joints = 2 + anim.joint_metadata.size();
+}
+
+JointAnimCompressedFixed::JointAnimCompressedFixed(const anim::CompressedAnim& anim) : hdr(anim) {
+  u8* dest = (u8*)data;
+  const u8* u64_src = (const u8*)anim.fixed.data64.data();
+  const u8* u32_src = (const u8*)anim.fixed.data32.data();
+  const u8* u16_src = (const u8*)anim.fixed.data16.data();
+
+  const int u64_size = anim.fixed.data64.size() * sizeof(u64);
+  const int u32_size = anim.fixed.data32.size() * sizeof(u32);
+  const int u16_size = anim.fixed.data16.size() * sizeof(u16);
+
+  if (u64_size + u32_size + u16_size > 133 * 4 * 4) {
+    lg::die("fixed sizes are {} and {}", 133 * 4 * 4, u64_size + u32_size + u16_size);
+  }
+  ASSERT(u64_size + u32_size + u16_size <= 133 * 4 * 4);
+
+  offset_64 = 0;
+  memcpy(dest, u64_src, u64_size);
+  dest += u64_size;
+
+  offset_32 = offset_64 + u64_size;
+  memcpy(dest, u32_src, u32_size);
+  dest += u32_size;
+
+  offset_16 = offset_32 + u32_size;
+  memcpy(dest, u16_src, u16_size);
+  reserved = 0;
+
+  num_data_qw_used = (15 + u64_size + u32_size + u16_size) / 16;
+  ASSERT(num_data_qw_used <= 133);
+}
+
+JointAnimCompressedFrame::JointAnimCompressedFrame(const anim::CompressedFrame& frame) {
+  reserved = 0;
+  u8* dest = (u8*)data;
+  const u8* u64_src = (const u8*)frame.data64.data();
+  const u8* u32_src = (const u8*)frame.data32.data();
+  const u8* u16_src = (const u8*)frame.data16.data();
+
+  const int u64_size = frame.data64.size() * sizeof(u64);
+  const int u32_size = frame.data32.size() * sizeof(u32);
+  const int u16_size = frame.data16.size() * sizeof(u16);
+
+  if (u64_size + u32_size + u16_size > 133 * 4 * 4) {
+    lg::die("frame sizes are {} and {}", 133 * 4 * 4, u64_size + u32_size + u16_size);
+  }
+
+  offset_64 = 0;
+  memcpy(dest, u64_src, u64_size);
+  dest += u64_size;
+
+  offset_32 = offset_64 + u64_size;
+  memcpy(dest, u32_src, u32_size);
+  dest += u32_size;
+
+  offset_16 = offset_32 + u32_size;
+  memcpy(dest, u16_src, u16_size);
+  reserved = 0;
+
+  num_data_qw_used = (15 + u64_size + u32_size + u16_size) / 16;
+  ASSERT(num_data_qw_used <= 133);
+}
+
+JointAnimCompressedControl::JointAnimCompressedControl(const anim::CompressedAnim& anim)
+    : fixed(anim) {
+  num_frames = anim.frames.size();
+  for (auto& in_frame : anim.frames) {
+    frame.emplace_back(in_frame);
+  }
+  fixed_qwc = fixed.num_data_qw_used;
+  frame_qwc = frame.at(0).num_data_qw_used;
+}
+
+ArtJointAnim::ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<Joint>& joints)
+    : frames(anim) {
+  this->name = anim.name;
+  length = joints.size();
+  speed = 1.0f;
+  artist_base = 0.0f;
+  artist_step = 1.0f;
+  master_art_group_name = name;
+  master_art_group_index = 2;
+  for (auto& joint : joints) {
+    data.emplace_back(joint, anim.frames.size());
+  }
 }
 
 size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
@@ -36,6 +144,7 @@ size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
   size_t result = gen.current_offset_bytes();
   gen.add_ref_to_string_in_pool(name);
   gen.add_word((length << 16) + number);
+  // data is always nullptr.
   // for (auto& word : data) {
   //   gen.add_word(word);
   // }
@@ -43,12 +152,19 @@ size_t JointAnimCompressed::generate(DataObjectGenerator& gen) const {
 }
 
 size_t JointAnimCompressedFrame::generate(DataObjectGenerator& gen) const {
+  gen.align(16);  // might have been 8, but 16 doesn't hurt.
+
   size_t result = gen.current_offset_bytes();
   gen.add_word(offset_64);  // 0
   gen.add_word(offset_32);  // 4
   gen.add_word(offset_16);  // 8
   gen.add_word(reserved);   // 12
-  gen.align(4);
+
+  for (u32 i = 0; i < num_data_qw_used; i++) {
+    for (int j = 0; j < 4; j++) {
+      gen.add_word_float(data[i][j]);
+    }
+  }
   return result;
 }
 
@@ -59,11 +175,11 @@ size_t JointAnimCompressedHDR::generate(DataObjectGenerator& gen) const {
   }
   gen.add_word(num_joints);
   gen.add_word(matrix_bits);
-  gen.align(4);
   return result;
 }
 
 size_t JointAnimCompressedFixed::generate(DataObjectGenerator& gen) const {
+  gen.align(16);  // might have been 8, but 16 doesn't hurt.
   size_t result = gen.current_offset_bytes();
   hdr.generate(gen);        // 0-64 (inline)
   gen.add_word(offset_64);  // 64
@@ -71,12 +187,13 @@ size_t JointAnimCompressedFixed::generate(DataObjectGenerator& gen) const {
   gen.add_word(offset_16);  // 72
   gen.add_word(reserved);   // 76
   // default joint poses (taken from money-idle)
-  for (size_t i = 0; i < 8; i++) {
+  for (int i = 0; i < num_data_qw_used; i++) {
     gen.add_word_float(data[i].x());
     gen.add_word_float(data[i].y());
     gen.add_word_float(data[i].z());
     gen.add_word_float(data[i].w());
   }
+  // -- not sure what this is, part of the dummy data maybe?
   gen.add_word(0);
   gen.add_word(0x7fff0000);
   gen.add_word(0x2250000);
@@ -90,16 +207,22 @@ size_t JointAnimCompressedFixed::generate(DataObjectGenerator& gen) const {
 }
 
 size_t JointAnimCompressedControl::generate(DataObjectGenerator& gen) const {
+  gen.align(16);
   size_t result = gen.current_offset_bytes();
   gen.add_word(num_frames);  // 0
   gen.add_word(fixed_qwc);   // 4
   gen.add_word(frame_qwc);   // 8
 
   auto ja_fixed_slot = gen.add_word(0);
-  auto ja_frame_slot = gen.add_word(0);
-  gen.align(4);
+  std::vector<int> ja_frame_slots;
+  for (u32 i = 0; i < num_frames; i++) {
+    ja_frame_slots.push_back(gen.add_word(0));
+  }
   gen.link_word_to_byte(ja_fixed_slot, fixed.generate(gen));
-  gen.link_word_to_byte(ja_frame_slot, frame[0].generate(gen));
+  ASSERT(num_frames == frame.size());
+  for (size_t i = 0; i < num_frames; i++) {
+    gen.link_word_to_byte(ja_frame_slots[i], frame[i].generate(gen));
+  }
   return result;
 }
 
@@ -137,16 +260,25 @@ void ArtJointGeo::add_res() {
     lump.add_res(
         std::make_unique<ResRef>("collide-mesh-group", "array", mesh_slot, DEFAULT_RES_TIME));
   }
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResVector>(
-  //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
-  //     DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResFloat>(
-  //     "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
-  //     DEFAULT_RES_TIME));
+  if (texture_bucket != -1) {
+    lump.add_res(std::make_unique<ResUint8>(
+        "texture-bucket", std::vector<u8>{static_cast<u8>(texture_bucket)}, DEFAULT_RES_TIME));
+  }
+  if (texture_level != -1) {
+    lump.add_res(std::make_unique<ResInt32>("texture-level", std::vector<s32>{texture_level},
+                                            DEFAULT_RES_TIME));
+  }
+  if (trans_offset != math::Vector4f{0.f, 0.f, 0.f, 1.f}) {
+    lump.add_res(std::make_unique<ResVector>(
+        "trans-offset", std::vector<math::Vector4f>{trans_offset}, DEFAULT_RES_TIME));
+  }
+  if (joint_channel != -1) {
+    lump.add_res(std::make_unique<ResInt32>("joint-channel", std::vector<s32>{joint_channel},
+                                            DEFAULT_RES_TIME));
+  }
+  if (!lod_dist.empty()) {
+    lump.add_res(std::make_unique<ResFloat>("lod-dist", lod_dist, DEFAULT_RES_TIME));
+  }
   lump.sort_res();
 }
 
@@ -161,6 +293,7 @@ size_t ArtJointGeo::generate_mesh(DataObjectGenerator& gen) const {
   gen.add_type_tag("collide-mesh");  // 8 (content-type)
   content_slots.reserve(cmeshes.size());
   for (auto& data : cmeshes) {
+    (void)data;
     content_slots.push_back(gen.add_word(0));  // 12 (data)
   }
   gen.align(4);
@@ -185,11 +318,11 @@ size_t ArtJointGeo::generate(DataObjectGenerator& gen) {
   gen.add_word(0);
   gen.add_word(0);
   std::vector<size_t> joint_slots;
-  for (size_t i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++) {
     joint_slots.push_back(gen.add_word(0));
   }
   gen.align(4);
-  for (size_t i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++) {
     auto joint = data.at(i).generate(gen);
     gen.link_word_to_byte(joint_slots.at(i), joint);
     g_joint_map[data.at(i).number] = joint;
@@ -218,12 +351,12 @@ size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
   gen.add_symbol_link("#f");                             // 40 (blerc)
   auto ctrl_slot = gen.add_word(0);
   std::vector<size_t> frame_slots;
-  for (size_t i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++) {
     frame_slots.push_back(gen.add_word(0));
   }
   gen.align(4);
   gen.link_word_to_byte(ctrl_slot, frames.generate(gen));
-  for (size_t i = 0; i < length; i++) {
+  for (int i = 0; i < length; i++) {
     gen.link_word_to_byte(frame_slots.at(i), data.at(i).generate(gen));
   }
   return result;
@@ -231,107 +364,25 @@ size_t ArtJointAnim::generate(DataObjectGenerator& gen) const {
 
 static size_t gen_dummy_frag_geo(DataObjectGenerator& gen) {
   size_t result = gen.current_offset_bytes();
-  // frag geo stolen from money-lod0
+  // frag geo stolen from money-lod2
   static std::vector<u32> words = {
-      0xa4320c04, 0x8000026,  0x302a0000, 0x604,      0xa910,     0xac16,     0x100af1c,
-      0xb23d,     0x100b585,  0x100b870,  0xbb76,     0xbe52,     0x80808080, 0x80808080,
+      0x51180504, 0x1000013,  0x1b150000, 0x604,      0x5225,     0x80808080, 0x80808080,
       0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
       0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x0,        0x0,        0x89b78086, 0xf1a910a,  0x3a4b7000, 0x5f818086,
-      0xf1a1094,  0x29347014, 0x49648186, 0x91313,    0x4e5d8024, 0x354b8186, 0xf1a6416,
-      0x3a497024, 0x40538186, 0x91919,    0x647b8034, 0x24348186, 0xf1a371c,  0x647f7034,
-      0x495d8186, 0x91f1f,    0x7a9c8044, 0x35498086, 0xf1a2231,  0x8eb57044, 0x5f7b8186,
-      0x92525,    0x83ad8054, 0x5f7f8186, 0xf1a2828,  0x9fcc7054, 0x759c8186, 0x92b2b,
-      0x7aa38064, 0x1c257f86, 0x273b2e2e, 0x94b86040, 0xe198186,  0x2737d034, 0x71936038,
-      0xe188186,  0x273bcd3a, 0x57676030, 0x1c2a8186, 0x2737613d, 0x34456028, 0xe1b8086,
-      0x485d40c7, 0x2e3c5028, 0x293c8186, 0x485d5b43, 0x131a5020, 0x26398186, 0x6e804646,
-      0xf164020,  0x4b688186, 0x6e805549, 0x34018,    0x4c688186, 0x979f4c4c, 0x5073018,
-      0x72978086, 0x979f4fc1, 0x5073010,  0x73988086, 0x6e807352, 0x34010,    0x4c698186,
-      0x485d6d58, 0x5085018,  0x2f488086, 0x273b5e67, 0x21256020, 0x526d8186, 0x2737a66a,
-      0x13196018, 0x72988186, 0x485da070, 0x5085010,  0x98c78086, 0x6e80767f, 0xf164008,
-      0x95c48186, 0x979fc479, 0x13193008, 0xb0e68186, 0x979f7c7c, 0x2e3b3000, 0xb4ea8186,
-      0x6e808282, 0x2b394000, 0x95c48186, 0x485d9d85, 0x131b5008, 0xb0e68186, 0x485d8888,
-      0x2e3c5000, 0x8fbb8186, 0x2737978b, 0x212a6008, 0xa2db8186, 0x273b8e8e, 0x34486000,
-      0x6c998086, 0x273b9aa3, 0x13186010, 0x87f86,    0x485dcaca, 0x51685030, 0x75a37f86,
-      0x90707,    0x4e648000, 0x5f858186, 0x90d0d,    0x45538014, 0x0,        0x0,
-      0xcb01005f, 0xcb00fffa, 0xcb010064, 0x5101e01,  0x0,        0x0,        0x306,
-      0x60030000, 0x120,      0x0,        0x1cf02c14, 0x2008044,  0x0,        0x0,
-      0x34,       0x81010000, 0x0,        0x0,        0x8,        0x6d100000, 0x44,
-      0x80,       0x42,       0x30000,    0x86321604, 0x400001c,  0x2422440e, 0x4,
-      0x1004f28,  0x1008b4c,  0xb225,     0xca4c,     0x1000128,  0x1000422,  0x1000a2e,
-      0x10064ca,  0x6a34,     0x1006d2e,  0x70ca,     0x1007340,  0x7946,     0x7f4c,
-      0x100884c,  0x8e4f,     0x9479,     0x9a7c,     0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x0,        0x0,        0x131a8086,
-      0x215d0d9d, 0x87c45040, 0x38186,    0x4780a313, 0x65984038, 0x38186,    0x47806116,
-      0x3d684030, 0x5078186,  0x709fa919, 0x3e693030, 0x13198186, 0x709f5b1c, 0x1b3c3028,
-      0x21208186, 0x96bbaf1f, 0x21452028, 0x34428186, 0x96bf5522, 0xe242020,  0x3a408086,
-      0xb6da252e, 0x27411024, 0x647f8186, 0xb6da4628, 0x16261014, 0x647a8186, 0xcbf1402b,
-      0x32450014, 0x4e528086, 0xcbf1313a, 0x3b5b0024, 0x29268086, 0xb6da34b5, 0x51811034,
-      0x45458186, 0xcbf13737, 0x51860034, 0x64808186, 0xd3ff3d3d, 0x51800040, 0x7aa58186,
-      0xcbf14343, 0x3b520000, 0x8ebf8186, 0xb6dac749, 0x27401000, 0x71948186, 0x96bf854c,
-      0x132010,   0x57668186, 0x96bb8252, 0x122018,   0x2e3b8186, 0x709f7c58, 0x1a3020,
-      0xf168186,  0x4780765e, 0x18394028, 0x94bb8086, 0x96bb91c4, 0xe202008,  0xa7dc8086,
-      0x96bf97c1, 0x21422000, 0xf167f86,  0x4780a0a0, 0x8ac74040, 0x5078186,  0x709fbea6,
-      0x64983038, 0x13138186, 0x96bfb8ac, 0x446c2030, 0x13128186, 0x96bbbbbb, 0x5e9a2038,
-      0x34458186, 0x370707,   0x94d66048, 0x5088186,  0x215d6710, 0x64975038, 0xcb010064,
-      0xcb00ffd3, 0xcb010051, 0x5021000,  0x4088003,  0x10306060, 0x3,        0x0,
-      0x8d301104, 0x300001f,  0x2624430a, 0x4,        0x910a,     0x100a928,  0xc42b,
-      0x1006aa0,  0x70a6,     0x73bb,     0x9a07,     0xa00d,     0x100a3a0,  0x100a6bb,
-      0xac34,     0xb237,     0xb83d,     0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x8ccc8186,
-      0xf1a4c07,  0x16817074, 0x7bb58186, 0xf1a550a,  0x40b77064, 0x94d68186, 0x2737460d,
-      0x46bb6068, 0x81b88186, 0x273b8e10, 0x59db6060, 0x87c48186, 0x485d4013, 0x67e65060,
-      0x64978186, 0x485d8816, 0x75f85058, 0x65988186, 0x6e803a19, 0x7afd4058, 0x3d688186,
-      0x6e80821c, 0x7afd4050, 0x3e698186, 0x979f341f, 0x75f93050, 0x1b3c8186, 0x979f7c22,
-      0x67e73048, 0x21458086, 0xbdbb252e, 0x59e02048, 0xe248086,  0xbdbf2876, 0x46be2040,
-      0x27418186, 0xdddaaf2b, 0x40c01044, 0x446c8186, 0xbdbfc731, 0x67ed2050, 0x64988186,
-      0x979f3737, 0x75f93058, 0x8ac78186, 0x6e803d3d, 0x6bea4060, 0xa2e58186, 0x485d4343,
-      0x4cc45068, 0xa2e88186, 0x273b4949, 0x23996070, 0x679c7f86, 0x95252,    0x2ca38064,
-      0x517f8086, 0xf1a5894,  0x51cc7054, 0x5e938186, 0x27378b5b, 0x67e76058, 0x44678086,
-      0x273b5e97, 0x67e86050, 0x3e688186, 0x485d8561, 0x75f85050, 0x1b3c8186, 0x485d9d64,
-      0x67e55048, 0x18398186, 0x6e807f67, 0x6bea4048, 0x1a8186,   0x979f796d, 0x4cc53040,
-      0x3b5b8086, 0xf2f1b5be, 0x2cae0044, 0x51868186, 0xf2f1bbbb, 0x35bb0054, 0x51818186,
-      0xdddac1c1, 0x51da1054, 0x67a37f86, 0x90101,    0x648080,   0x70ad7f86, 0x94f04,
-      0x16858074, 0x0,        0x0,        0x0,        0xcb010051, 0xcb00fffa, 0xcb010016,
-      0x5021000,  0xc008003,  0x81860080, 0x0,        0x0,        0x92351604, 0x300001f,
-      0x2826450f, 0x4,        0xac31,     0x100af5e,  0x100c449,  0xa01,      0x1000d07,
-      0x6143,     0x100643d,  0x10079c1,  0x8537,     0x883d,     0x1008b07,  0x1008e49,
-      0x100b243,  0xb549,     0x100b837,  0xbe31,     0xc1c1,     0xc7bb,     0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080,
-      0x80808080, 0x80808080, 0x0,        0x0,        0x0,        0x808186,   0x707,
-      0x39800040, 0x2ab78186, 0x141a1010, 0xf4b7080,  0x51e78186, 0x2c379113, 0x2c6d6078,
-      0x43db8186, 0x2c3b1616, 0x9486080,  0x5ff88186, 0x4d5d9719, 0x26695078, 0x51e68186,
-      0x4d5d1c1c, 0x33c5080,  0x64fd8186, 0x73809d1f, 0x25684078, 0x55ea8186, 0x73802222,
-      0x394080,   0x5ff98186, 0x9c9fa325, 0x26683078, 0x51e68186, 0x9c9f2828, 0x33b3080,
-      0x51ee8186, 0xc2bba92b, 0x2c662078, 0x43dc8186, 0xc2bf2e2e, 0x9422080,  0x3bda8186,
-      0xe2da4631, 0x397f1074, 0x2abf8186, 0xe2da3434, 0xf401080,  0x1fbb8086, 0xf7f13740,
-      0x397a0074, 0x16a58186, 0xf7f13a3a, 0x23520080, 0x808186,   0xffffcd3d, 0x39800040,
-      0x16ae8186, 0xf7f1ca43, 0x4fa50064, 0x2ac08186, 0xe2da7649, 0x63bf1064, 0x51ed8186,
-      0xc2bfa64c, 0x46942070, 0x43e08186, 0xc2bb734f, 0x69bb2068, 0x5ff98186, 0x9c9fa052,
-      0x4c973070, 0x51e78186, 0x9c9f6d55, 0x6fc43068, 0x64fd8186, 0x73809a58, 0x4d984070,
-      0x55ea8186, 0x7380675b, 0x72c74068, 0x5ff88186, 0x4d5d945e, 0x4c985070, 0x36c58186,
-      0x9c9f826a, 0x8ae63060, 0x30be8186, 0xc2bf7c70, 0x7cdc2060, 0xd9a8086,  0xc2bb7fbb,
-      0x8aee2058, 0x16a37f86, 0x5090101,  0x23640000, 0x1fad7f86, 0x5090404,  0x39850074,
-      0x0,        0x0,        0x0,        0xcb010000, 0xcb00ffff, 0xcb010039, 0x5021000,
-      0x20001b,   0x6c00c102, 0x2,        0x0,        0x210f0904, 0x6,        0xb090b05,
-      0x4,        0x101,      0x707,      0x1307,     0x1c04,     0x1f07,     0x80808080,
-      0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x80808080, 0x0,        0x538186,
-      0x90d0d,    0x1f7b0034, 0x95d7f86,  0x91010,    0x359c0044, 0x1f7b8186, 0x91616,
-      0x3ead0054, 0x359c8186, 0x91919,    0x35a30064, 0x1f857f86, 0x90404,    0x530014,
-      0x9648186,  0x90a0a,    0x95d0024,  0x0,        0x0,        0xcb01001f, 0xcb00fffa,
-      0xcb01001f, 0x1021000,  0x223,      0x0,        0x0,        0x0};
+      0x80808080, 0x80808080, 0x80808080, 0xb4e48086, 0x757d3a0a, 0x1e324000, 0x1e328186,
+      0x757d3410, 0x1c4020,   0x432e8186, 0x251313,   0x71a28044, 0x1c8186,   0x757d2e16,
+      0x96ce4040, 0x719b8186, 0x151919,   0x71c08064, 0x96ce8186, 0x757d281c, 0xb4e44060,
+      0x71d28186, 0x251f1f,   0x435e8080, 0xb4e48186, 0x757d4322, 0x1e324080, 0x71cc7f86,
+      0xffdb4025, 0x71ad0064, 0x435c8186, 0xffea582b, 0x71bc0044, 0x43348186, 0xffdb5b31,
+      0x43530024, 0x71a48086, 0xffea3755, 0x43440000, 0x71a47f86, 0xffea3d3d, 0x43440080,
+      0x432e7f86, 0x254646,   0x71a20044, 0x43657f86, 0x154949,   0x43400024, 0x719b8186,
+      0x154c4c,   0x71c00064, 0x71d28186, 0x254f4f,   0x435e0000, 0x71d27f86, 0x250707,
+      0x435e8000, 0x43658186, 0x150d0d,   0x43408024, 0x0,        0x0,        0x0,
+      0xcb01005a, 0xcb00fffa, 0xcb01005a, 0x2101e01,  0x0,        0x0,        0x306,
+      0x4030000,  0x120,      0x0,        0x1cf02c14, 0x66c801d,  0x0,        0x0,
+      0x34,       0x0,        0x0,        0x0,        0x8,        0x0,        0x44,
+      0x80,       0x42,       0x0,
+  };
   for (auto& word : words) {
     gen.add_word(word);
   }
@@ -340,14 +391,45 @@ static size_t gen_dummy_frag_geo(DataObjectGenerator& gen) {
 
 size_t gen_dummy_frag_ctrl(DataObjectGenerator& gen) {
   size_t result = gen.current_offset_bytes();
-  gen.add_word(0x1067232);
-  gen.add_word(0x54320603);
-  gen.add_word(0x5d300002);
-  gen.add_word(0x5d350002);
-  gen.add_word(0x120f0002);
-  gen.add_word(0x2);
+  gen.add_word(0x1063918);
+  gen.add_word(0x603);
   gen.add_word(0x0);
   gen.add_word(0x0);
+  return result;
+}
+
+size_t gen_dummy_frag_ctrl_for_uploads(DataObjectGenerator& gen, int n) {
+  size_t result = gen.current_offset_bytes();
+
+  std::vector<u8> packed_frag_ctrls;
+
+  // this is still a bit of a hack - the dummy_frag_ctrl above has 4 fragments, so we need to
+  // provide fragment controls for each. The PC merc renderer will de-duplicate bone uploads over
+  // all effects and fragments, so we just need to have a single fragment that asks for all bones,
+  // and everything will work out.
+  for (int k = 0; k < 4; k++) {
+    packed_frag_ctrls.push_back(0);
+    packed_frag_ctrls.push_back(0);
+    packed_frag_ctrls.push_back(0);
+    if (k == 0) {  // for the first frag, do all matrix uploads.
+      // note that these are bogus destination addresses, but nothing uses it on PC
+      packed_frag_ctrls.push_back(n);
+      for (int i = 0; i < n; i++) {
+        packed_frag_ctrls.push_back(i);
+        packed_frag_ctrls.push_back(i);
+      }
+    } else {
+      // remaining frags can have empty matrix upload lists.
+      packed_frag_ctrls.push_back(0);
+    }
+  }
+
+  std::vector<u32> u32s((packed_frag_ctrls.size() + 3) / 4);
+  memcpy(u32s.data(), packed_frag_ctrls.data(), packed_frag_ctrls.size());
+  for (auto x : u32s) {
+    gen.add_word(x);
+  }
+
   return result;
 }
 
@@ -364,12 +446,40 @@ size_t gen_dummy_extra_info(DataObjectGenerator& gen) {
   return result;
 }
 
+void generate_merc_effects(DataObjectGenerator& gen, tfrag3::MercModel* mdl, int joints) {
+  struct EffectLocs {
+    size_t frag_geo;
+    size_t frag_ctrl;
+    size_t extra_info;
+  };
+  std::vector<EffectLocs> locs;
+  for (auto& e : mdl->effects) {
+    EffectLocs loc{};
+    auto envmap = (int)e.has_envmap;
+    loc.frag_geo = gen.add_word(0);       // 112-140 (effect)
+    loc.frag_ctrl = gen.add_word(0);      // 116 (frag-ctrl)
+    gen.add_word(0x0);                    // 120 (blend-data)
+    gen.add_word(0x0);                    // 124 (blend-ctrl)
+    gen.add_word(0x10000);                // 128
+    gen.add_word(0x140000);               // 132
+    gen.add_word((envmap << 24) + 0x1d);  // 136
+    loc.extra_info = gen.add_word(0);     // 140 (extra-info)
+    locs.push_back(loc);
+  }
+  for (auto& loc : locs) {
+    gen.link_word_to_byte(loc.extra_info, gen_dummy_extra_info(gen));
+    gen.link_word_to_byte(loc.frag_ctrl, gen_dummy_frag_ctrl_for_uploads(gen, joints + 3));
+    gen.link_word_to_byte(loc.frag_geo, gen_dummy_frag_geo(gen));
+  }
+}
+
 size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.align_to_basic();
   gen.add_type_tag("merc-ctrl");
   size_t result = gen.current_offset_bytes();
   // excluding align and prejoint
-  auto joints = ((ArtJointGeo*)ag.elts.at(0))->length - 2;
+  auto joints = ((ArtJointGeo*)ag.elts.at(0).get())->length - 2;
+  auto effect_count = ag.mdl->effects.size();
   gen.add_word(0);                                   // 4
   gen.add_ref_to_string_in_pool(ag.name + "-lod0");  // 8
   gen.add_word(0);                                   // 12
@@ -377,37 +487,28 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.add_word(joints);                              // 20 (num-joints)
   gen.add_word(0x0);                                 // 24 (pad)
   gen.add_word(0x0);                                 // 28 (pad)
-  gen.add_word(0x4188ee86);                          // 32-112 (xyz-scale)
+  gen.add_word(0x4181b897);                          // 32-112 (xyz-scale)
   gen.add_word(0xc780ff80);                          // 36 (st-magic)
   gen.add_word(0x40798000);                          // 40 (st-out-a)
   gen.add_word(0x40eb4000);                          // 44 (st-out-b)
   gen.add_word(0x4780ff80);                          // 48 (st-vif-add)
   gen.add_word(0x50000);                             // 52 ((st-int-off << 16) + st-int-scale)
-  gen.add_word(0x1);                                 // 56 (effect-count)
+  gen.add_word(effect_count);                        // 56 (effect-count)
   gen.add_word(0x0);                                 // 60 (blend-target-count)
-  gen.add_word(0xe00005);                            // 64 ((fragment-count << 16) + tri-count)
-  gen.add_word(0x860101);                            // 68
-  gen.add_word(0x86011b);                            // 72
-  gen.add_word(0x0);                                 // 76
-  gen.add_word(0x0);                                 // 80
-  gen.add_word(0x120101);                            // 84
-  gen.add_word(0x83002c);                            // 88
-  gen.add_word(0x3e780184);                          // 92
-  gen.add_word(0x0);                                 // 96
-  gen.add_word(0x0);                                 // 100
-  gen.add_word(0x0);                                 // 104
-  gen.add_word(0x0);                                 // 108
-  auto frag_geo_slot = gen.add_word(0);              // 112-140 (effect)
-  auto frag_ctrl_slot = gen.add_word(0);             // 116 (frag-ctrl)
-  gen.add_word(0x0);                                 // 120 (blend-data)
-  gen.add_word(0x0);                                 // 124 (blend-ctrl)
-  gen.add_word(0x50000);                             // 128
-  gen.add_word(0xe00000);                            // 132
-  gen.add_word(0x100011b);                           // 136
-  auto extra_info_slot = gen.add_word(0);            // 140 (extra-info)
-  gen.link_word_to_byte(extra_info_slot, gen_dummy_extra_info(gen));
-  gen.link_word_to_byte(frag_ctrl_slot, gen_dummy_frag_ctrl(gen));
-  gen.link_word_to_byte(frag_geo_slot, gen_dummy_frag_geo(gen));
+  gen.add_word((0x14 * effect_count << 16) +
+               effect_count);  // 64 ((fragment-count << 16) + tri-count)
+  gen.add_word(0x130101);      // 68
+  gen.add_word(0x13001d);      // 72
+  gen.add_word(0x0);           // 76
+  gen.add_word(0x0);           // 80
+  gen.add_word(0x10101);       // 84
+  gen.add_word(0x130000);      // 88
+  gen.add_word(0x3f319ca9);    // 92
+  gen.add_word(0x0);           // 96
+  gen.add_word(0x0);           // 100
+  gen.add_word(0x0);           // 104
+  gen.add_word(0x0);           // 108
+  generate_merc_effects(gen, ag.mdl, joints);
   return result;
 }
 
@@ -428,15 +529,16 @@ std::vector<u8> ArtGroup::save_object_file() const {
   gen.set_word(28 / 4, 0);
   if (!elts.empty()) {
     if (elts.at(0)) {
-      auto jgeo = (ArtJointGeo*)elts.at(0);
+      auto jgeo = (ArtJointGeo*)elts.at(0).get();
       gen.link_word_to_byte(32 / 4, jgeo->generate(gen));
     }
     if (!elts.at(1)) {
       gen.link_word_to_byte(36 / 4, generate_dummy_merc_ctrl(gen, *this));
     }
-    if (elts.at(2)) {
-      auto ja = (ArtJointAnim*)elts.at(2);
-      gen.link_word_to_byte(40 / 4, ja->generate(gen));
+
+    for (size_t i = 2; i < elts.size(); i++) {
+      auto ja = (ArtJointAnim*)elts.at(i).get();
+      gen.link_word_to_byte((32 + i * 4) / 4, ja->generate(gen));
     }
   }
 
@@ -446,7 +548,7 @@ std::vector<u8> ArtGroup::save_object_file() const {
 int ArtGroup::get_joint_idx(const std::string& name) {
   for (auto& elt : this->elts) {
     if (elt && typeid(*elt) == typeid(ArtJointGeo)) {
-      auto jgeo = (ArtJointGeo*)elt;
+      auto jgeo = (ArtJointGeo*)elt.get();
       for (auto& joint : jgeo->data) {
         if (joint.name == name) {
           return joint.number;
@@ -457,9 +559,12 @@ int ArtGroup::get_joint_idx(const std::string& name) {
   return -1;
 }
 
+/*!
+ * Build GOAL format data for an actor. This doesn't generate the data for the .FR3.
+ */
 bool run_build_actor(const std::string& mdl_name,
                      const std::string& ag_out,
-                     bool gen_collide_mesh) {
+                     const BuildActorParams& params) {
   std::string ag_name;
   if (fs::exists(file_util::get_jak_project_dir() / mdl_name)) {
     ag_name = fs::path(mdl_name).stem().string();
@@ -467,51 +572,60 @@ bool run_build_actor(const std::string& mdl_name,
     ASSERT_MSG(false, "Model file not found: " + mdl_name);
   }
 
+  // Load GLTF file to check for a skeleton
+  tinygltf::Model model = load_gltf_model(file_util::get_jak_project_dir() / mdl_name);
+  auto all_nodes = flatten_nodes_from_all_scenes(model);
+  auto skin_idx = find_single_skin(model, all_nodes);
+  if (skin_idx) {
+    lg::info("GLTF file contained a skin, this actor will have a real skeleton");
+  }
+  std::vector<anim::CompressedAnim> user_anims;
+
   ArtGroup ag(ag_name);
   std::vector<Joint> joints;
-  auto identity = math::Matrix4f::identity();
-  joints.emplace_back("align", 0, -1, identity);
-  joints.emplace_back("prejoint", 1, -1, identity);
-  // matrix stolen from "egg" joint from "money" art group
-  auto main_pose = math::Matrix4f::zero();
-  main_pose(0, 0) = 1.0f;
-  main_pose(0, 1) = -0.0f;
-  main_pose(0, 2) = 0.0f;
-  main_pose(0, 3) = -0.0f;
-  main_pose(1, 0) = -0.0f;
-  main_pose(1, 1) = 1.0f;
-  main_pose(1, 2) = -0.0f;
-  main_pose(1, 3) = 0.0f;
-  main_pose(2, 0) = 0.0f;
-  main_pose(2, 1) = -0.0f;
-  main_pose(2, 2) = 1.0f;
-  main_pose(2, 3) = -0.0f;
-  main_pose(3, 0) = -0.0f;
-  main_pose(3, 1) = -2194.1628418f;
-  main_pose(3, 2) = -0.0f;
-  main_pose(3, 3) = 1.0f;
-  Joint main("main", 2, 1, main_pose);
-  joints.emplace_back(main);
-  std::vector<CollideMesh> mesh;
-  if (gen_collide_mesh) {
-    tinygltf::TinyGLTF loader;
-    tinygltf::Model model;
-    std::string err, warn;
-    std::string path = (file_util::get_jak_project_dir() / mdl_name).string();
-    bool res = loader.LoadBinaryFromFile(&model, &err, &warn, path);
-    ASSERT_MSG(warn.empty(), warn.c_str());
-    ASSERT_MSG(err.empty(), err.c_str());
-    ASSERT_MSG(res, "Failed to load GLTF file!");
-    auto all_nodes = flatten_nodes_from_all_scenes(model);
-    mesh = gen_collide_mesh_from_model(model, all_nodes, 3);
-  }
-  ArtJointGeo jgeo(ag.name, mesh, joints);
-  ArtJointAnim ja(ag.name, joints);
+  MercExtractData extract_data;
+  extract("test", extract_data, model, all_nodes, 0, 0, 0);
+  ag.mdl = &extract_data.new_model;
+  // MercSwapData out;
+  // merc_convert(out, extract_data);
+  // Set up joints:
+  if (skin_idx) {
+    // read skeleton data out of GLTF
+    auto skeleton_joints = extract_skeleton(model, *skin_idx);
+    // convert to game format
+    joints = convert_joints(skeleton_joints);
+    // get animation from user.
+    user_anims = process_anim(model, skeleton_joints);
 
-  ag.elts.emplace_back(&jgeo);
+  } else {
+    auto identity = math::Matrix4f::identity();
+    joints.emplace_back("align", 0, -1, identity);
+    joints.emplace_back("prejoint", 1, -1, identity);
+    // matrix stolen from "egg" joint from "money" art group
+    auto main_pose = math::Matrix4f::identity();
+    main_pose(3, 1) = -2194.1628418f;
+    Joint main("main", 2, 1, main_pose);
+    joints.emplace_back(main);
+  }
+
+  std::vector<CollideMesh> mesh;
+  if (params.gen_collide_mesh) {
+    mesh = gen_collide_mesh_from_model_jak1(model, all_nodes, 3);
+  }
+
+  std::shared_ptr<ArtJointGeo> jgeo = std::make_shared<ArtJointGeo>(ag.name, mesh, joints, params);
+
+  ag.elts.emplace_back(jgeo);
   // dummy merc-ctrl
   ag.elts.emplace_back(nullptr);
-  ag.elts.emplace_back(&ja);
+
+  if (!user_anims.empty()) {
+    for (auto& anim : user_anims) {
+      ag.elts.emplace_back(std::make_shared<ArtJointAnim>(anim, joints));
+    }
+  } else {
+    ag.elts.emplace_back(std::make_shared<ArtJointAnim>(ag.name, joints));
+  }
 
   ag.length = ag.elts.size();
 

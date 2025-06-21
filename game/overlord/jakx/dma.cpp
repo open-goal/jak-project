@@ -13,6 +13,7 @@
 #define VOICE_BIT(voice) (1 << ((voice) >> 1))
 
 namespace jakx {
+OverlordStreamMemory g_overlord_stream_memory;
 using namespace iop;
 namespace {
 
@@ -48,7 +49,10 @@ struct DmaInterruptHandlerHack {
   sceSdTransIntrHandler cb = nullptr;
   void* data;
   int countdown = 0;
+  bool pending = false;
 } g_DmaInterruptHack;
+
+const char* g_current_stream_name = 0;
 
 }  // namespace
 
@@ -87,9 +91,19 @@ void set_dma_intr_handler_hack(s32 chan, sceSdTransIntrHandler cb, void* data) {
   g_DmaInterruptHack.cb = cb;
   g_DmaInterruptHack.data = data;
   g_DmaInterruptHack.countdown = 10;
+  g_DmaInterruptHack.pending = true;
 }
 
 int SPUDmaIntr(int channel, void* userdata);
+
+void complete_dma_now() {
+  if (g_DmaInterruptHack.pending) {
+    int chan = g_DmaInterruptHack.chan;
+    void* data = g_DmaInterruptHack.data;
+    g_DmaInterruptHack = {};
+    SPUDmaIntr(chan, data);
+  }
+}
 
 void dma_intr_hack() {
   if (g_DmaInterruptHack.countdown) {
@@ -128,7 +142,71 @@ int voice_trans_wrapper(s16 chan, u32 mode, const void* iop_addr, u32 spu_addr, 
   } else {
     g_voiceTransRunning = true;
     g_voiceTransTime = GetSystemTimeLow();
+
+    switch (spu_addr) {
+      case 0x5040:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 0, 0);
+        break;
+      case 0x7040:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 0, 1);
+        break;
+      case 0x9080:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 1, 0);
+        break;
+      case 0xb080:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 1, 1);
+        break;
+      case 0xd0c0:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 2, 0);
+        break;
+      case 0xf0c0:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 2, 1);
+        break;
+      case 0x11100:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 3, 0);
+        break;
+      case 0x13100:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 3, 1);
+        break;
+      case 0x15140:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 4, 0);
+        break;
+      case 0x17140:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 4, 1);
+        break;
+      case 0x19180:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 5, 0);
+        break;
+      case 0x1b180:
+        g_overlord_stream_memory.update_name(g_current_stream_name, 5, 1);
+        break;
+    }
     return sceSdVoiceTrans(chan, mode, iop_addr, spu_addr, size);
+  }
+}
+
+OverlordStreamMemory::OverlordStreamMemory() {
+  for (auto& x : infos) {
+    for (auto& y : x) {
+      y.idx = 0;
+      strcpy(y.name.chars, "Uninitialized");
+    }
+  }
+}
+
+void OverlordStreamMemory::update_name(const char* input, int stream, int side) {
+  auto& info = infos[stream][side];
+  if (!input) {
+    strcpy(info.name.chars, "???");
+    info.idx = 0;
+  } else {
+    if (strcmp(input, info.name.chars) == 0) {
+      info.idx++;
+    } else {
+      info.idx = 0;
+      strncpy(info.name.chars, input, 48);
+      info.name.chars[47] = 0;
+    }
   }
 }
 
@@ -453,6 +531,13 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
   ovrld_log(LogCategory::SPU_DMA_STR,
             "DMA to SPU requested for {}, {} bytes to 0x{:x}, currently busy? {}",
             cmd ? cmd->name : "NO-CMD", length, spu_addr, g_bSpuDmaBusy);
+  if (cmd) {
+    g_current_stream_name = cmd->name;
+  } else {
+    const static char* unknown = "unknown";
+    g_current_stream_name = unknown;
+  }
+
   if (g_bSpuDmaBusy == 0) {
     // not busy, we can actually start dma now.
     g_nSpuDmaChannel = snd_GetFreeSPUDMA();
@@ -498,11 +583,25 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
     }
   }
 
-  // kick off dma, if we decided not to queue.
+  // Note on DMA interrupts.
+  // The DMA completion interrupt handler function may start more DMA transfers.
+  // If the second transfer's completion interrupt runs before the first transfer's completion
+  // interrupt returns, things break. This wasn't an issue on the real PS2 since the DMA takes
+  // longer. On PC, this means that we can't just call the completion handler from the DMA start
+  // function. Instead, put it at the end of this function.
+
+  // kick off dma, if we decided not to queue. This copies data immediately to the SPU buffer, but
+  // doesn't run the completion interrupt.
   if (!defer) {
     g_bSpuDmaBusy = true;
     set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, user_data);
     voice_trans_wrapper(g_nSpuDmaChannel, 0, iop_mem, spu_addr, length);
+  }
+
+  // run completion interrupts. the interrupt may start another DMA transfer, which should also
+  // finish here.
+  while (g_DmaInterruptHack.pending) {
+    complete_dma_now();
   }
   return ret;
 }

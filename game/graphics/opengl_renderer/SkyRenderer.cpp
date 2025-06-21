@@ -122,6 +122,7 @@ void SkyBlendHandler::draw_debug_window() {
 
   if (ImGui::TreeNode("tfrag")) {
     m_tfrag_renderer.draw_debug_window();
+    ImGui::Checkbox("enable", &m_tfrag_renderer.enabled());
     ImGui::TreePop();
   }
 }

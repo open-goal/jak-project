@@ -36,14 +36,14 @@
   (let ((display-mode (pc-get-display-mode)))
     (cond
       ((= display-mode 'windowed)
-        (set! (-> obj window-width) width)
-        (set! (-> obj window-height) height)
-        (format 0 "Setting window size to ~D x ~D~%" width height)
-        (pc-set-window-size! (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
+       (set! (-> obj window-width) width)
+       (set! (-> obj window-height) height)
+       (format 0 "Setting window size to ~D x ~D~%" width height)
+       (pc-set-window-size! (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
       (else
-        (format 0 "Setting borderless/fullscreen size to ~D x ~D~%" width height)
-        (set! (-> obj width) width)
-        (set! (-> obj height) height))))
+       (format 0 "Setting borderless/fullscreen size to ~D x ~D~%" width height)
+       (set! (-> obj width) width)
+       (set! (-> obj height) height))))
   (none))
 
 (defmethod set-aspect! ((obj pc-settings) (aw int) (ah int))
@@ -412,30 +412,30 @@
     (let ((version PC_KERNEL_VERSION))
       (with-settings-scope (file)
                            (case-str (file-stream-read-word file)
-                                     (("settings")
-                                      (set! version (the pckernel-version (file-stream-read-int file)))
-                                      (cond
-                                        ((and (= (-> version major) PC_KERNEL_VER_MAJOR) (= (-> version minor) PC_KERNEL_VER_MINOR))
-                                         ;; minor or no difference
-                                         )
-                                        (else
-                                         ;; major difference
-                                         (format 0
-                                                 "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%"
-                                                 PC_KERNEL_VER_MAJOR
-                                                 PC_KERNEL_VER_MINOR
-                                                 (-> version major)
-                                                 (-> version minor))
-                                         (file-stream-close file)
-                                         (return #f)))
-                                      (dosettings (file) (handle-input-settings obj file))
-                                      ;; upgrade settings if minor changes
-                                      ;; remember to delete this when major changes to the version number are made
-                                      (when (and (= PC_KERNEL_VER_MAJOR 1)
-                                                 (= PC_KERNEL_VER_MINOR 10)
-                                                 (or (> 3 (-> version build)) (and (= 3 (-> version build)) (> 1 (-> version revision)))))
-                                        ;; 1.10 upgrade: turn envmap on
-                                        (set! (-> obj force-envmap?) #t))))))
+                             (("settings")
+                              (set! version (the pckernel-version (file-stream-read-int file)))
+                              (cond
+                                ((and (= (-> version major) PC_KERNEL_VER_MAJOR) (= (-> version minor) PC_KERNEL_VER_MINOR))
+                                 ;; minor or no difference
+                                 )
+                                (else
+                                 ;; major difference
+                                 (format 0
+                                         "PC kernel version mismatch! Got ~D.~D vs ~D.~D~%"
+                                         PC_KERNEL_VER_MAJOR
+                                         PC_KERNEL_VER_MINOR
+                                         (-> version major)
+                                         (-> version minor))
+                                 (file-stream-close file)
+                                 (return #f)))
+                              (dosettings (file) (handle-input-settings obj file))
+                              ;; upgrade settings if minor changes
+                              ;; remember to delete this when major changes to the version number are made
+                              (when (and (= PC_KERNEL_VER_MAJOR 1)
+                                         (= PC_KERNEL_VER_MINOR 10)
+                                         (or (> 3 (-> version build)) (and (= 3 (-> version build)) (> 1 (-> version revision)))))
+                                ;; 1.10 upgrade: turn envmap on
+                                (set! (-> obj force-envmap?) #t))))))
     (file-stream-close file))
   (format 0 "pc settings file read: ~A~%" filename)
   ;; restore the windowed mode resolution properly
@@ -446,108 +446,113 @@
 (defmethod handle-input-settings ((obj pc-settings) (file file-stream))
   "handle the text parsing input for the 'settings' group"
   (case-str *pc-temp-string*
-            (("fps") (set-frame-rate! obj (file-stream-read-int file) #t))
-            (("window-size")
-             (set! (-> obj window-width) (file-stream-read-int file))
-             (set! (-> obj window-height) (file-stream-read-int file)))
-            (("game-size")
-             ;; Check to see if the game-size is a valid resolution on this persons device
-             ;; on some machines, this has been proven to cause the black-screen issue https://github.com/open-goal/jak-project/issues/3563
-             ;; Correlating with logs like:
-             ;; - OpenGL error 0x502 S8246 T824C: GL_INVALID_OPERATION error generated. Source and destination dimensions must be identical with the current filtering modes.
-             (let* ((saved-width (file-stream-read-int file))
-                    (saved-height (file-stream-read-int file))
-                    (supported-resolution? (pc-is-supported-resolution? saved-width saved-height)))
-              (cond
-               (supported-resolution?
-                (format 0 "[PC Settings]: Valid game-size resolution ~D x ~D~%" saved-width saved-height)
-                (set! (-> obj width) saved-width)
-                (set! (-> obj height) saved-height))
-               (else
-                (pc-get-active-display-size (&-> obj width) (&-> obj height))
-                (format 0 "[PC Settings]: Invalid game-size resolution ~D x ~D, defaulting to ~D x ~D~%" saved-width saved-height (-> obj width) (-> obj height))))))
-            (("msaa") (set! (-> obj gfx-msaa) (file-stream-read-int file)))
-            (("aspect-state")
-             ;; game aspect
-             (set-game-setting! obj 'aspect-ratio (file-stream-read-symbol file))
-             ;; aspect ratio
-             (set! (-> obj aspect-custom-x) (file-stream-read-int file))
-             (set! (-> obj aspect-custom-y) (file-stream-read-int file))
-             ;; aspect auto
-             (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file))
-             (unless (-> obj aspect-ratio-auto?)
-               (set-aspect! obj (-> obj aspect-custom-x) (-> obj aspect-custom-y))))
-            ;; TODO - moved to C++, has to remain because settings parsing can't handle
-            ;; unexpected keys
-            (("display-mode") (file-stream-read-symbol file))
-            ;; TODO - moved to C++, has to remain because settings parsing can't handle
-            ;; unexpected keys
-            (("monitor") (file-stream-read-int file))
-            (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
-            (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
-            (("font-scale") (set! (-> obj font-scale) (file-stream-read-float file)))
-            (("audio-latency-ms") (set! (-> obj audio-latency-ms) (file-stream-read-int file)))
-            (("audio-pan-override") (set! (-> obj audio-pan-override) (file-stream-read-float file)))
-            (("audio-volume-override") (set! (-> obj audio-volume-override) (file-stream-read-float file)))
-            (("audio-channel-nb") (set! (-> obj audio-channel-nb) (file-stream-read-int file)))
-            (("gfx-renderer") (set! (-> obj gfx-renderer) (the-as pc-gfx-renderer (file-stream-read-int file))))
-            (("gfx-resolution") (set! (-> obj gfx-resolution) (file-stream-read-float file)))
-            (("gfx-anisotropy") (set! (-> obj gfx-anisotropy) (file-stream-read-float file)))
-            (("shrub-dist-mod") (set! (-> obj shrub-dist-mod) (file-stream-read-float file)))
-            (("lod-dist-mod") (set! (-> obj lod-dist-mod) (file-stream-read-float file)))
-            (("lod-force-tfrag") (set! (-> obj lod-force-tfrag) (file-stream-read-int file)))
-            (("lod-force-tie") (set! (-> obj lod-force-tie) (file-stream-read-int file)))
-            (("lod-force-ocean") (set! (-> obj lod-force-ocean) (file-stream-read-int file)))
-            (("lod-force-actor") (set! (-> obj lod-force-actor) (file-stream-read-int file)))
-            (("game-language") (set-game-language! obj (the-as language-enum (file-stream-read-int file))))
-            (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
-            (("territory") (set! (-> obj territory) (file-stream-read-int file)))
-            (("ignore-controller-win-unfocused?") (set-ignore-controller-in-bg! obj (file-stream-read-symbol file)))
-            (("controller-hp-led?") (set! (-> obj controller-led-hp?) (file-stream-read-symbol file)))
-            (("controller-eco-led?") (set! (-> obj controller-led-eco?) (file-stream-read-symbol file)))
-            (("controller-heat-led?") (set! (-> obj controller-led-heat?) (file-stream-read-symbol file)))
-            (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
-            ;; TODO - remove this eventually, setting moved into json input-settings
-            ;; has to stay here or the settings parsing code explodes
-            (("keyboard-enabled?") (file-stream-read-symbol file))
-            (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
-            (("mouse-camera?") (set! (-> obj mouse-camera?) (file-stream-read-symbol file)))
-            (("mouse-xsens") (set! (-> obj mouse-xsens) (file-stream-read-float file)))
-            (("mouse-ysens") (set! (-> obj mouse-ysens) (file-stream-read-float file)))
-            (("mouse-movement?") (set! (-> obj mouse-movement?) (file-stream-read-symbol file)))
-            (("auto-hide-cursor?") (set! (-> obj auto-hide-cursor?) (file-stream-read-symbol file)))
-            (("ps2-read-speed?") (set! (-> obj ps2-read-speed?) (file-stream-read-symbol file)))
-            (("ps2-parts?") (set! (-> obj ps2-parts?) (file-stream-read-symbol file)))
-            (("ps2-music?") (set! (-> obj ps2-music?) (file-stream-read-symbol file)))
-            (("ps2-se?") (set! (-> obj ps2-se?) (file-stream-read-symbol file)))
-            (("ps2-hints?") (set! (-> obj ps2-hints?) (file-stream-read-symbol file)))
-            (("ps2-shadow?") (set! (-> obj ps2-shadow?) (file-stream-read-symbol file)))
-            (("ps2-lod-dist?") (set! (-> obj ps2-lod-dist?) (file-stream-read-symbol file)))
-            (("force-envmap?") (set! (-> obj force-envmap?) (file-stream-read-symbol file)))
-            (("force-actors?") (set! (-> obj ps2-actor-vis?) (not (file-stream-read-symbol file))))
-            (("music-fade?") (file-stream-read-symbol file)) ;; TODO remove
-            (("use-vis?") (set! (-> obj use-vis?) (file-stream-read-symbol file)))
-            (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
-            (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
-            (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
-            (("cutscene-skips?") (file-stream-read-symbol file)) ;; TODO remove
-            (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
-            (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
-            (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
-            (("third-camera-v-inverted?") (set! (-> obj third-camera-v-inverted?) (file-stream-read-symbol file)))
-            (("music-fadein?") (set! (-> obj music-fadein?) (file-stream-read-symbol file)))
-            (("music-fadeout?") (set! (-> obj music-fadeout?) (file-stream-read-symbol file)))
-            (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
-            (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
-            (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
-            (("memcard-volume-sfx") (set! (-> obj memcard-volume-sfx) (file-stream-read-float file)))
-            (("memcard-volume-music") (set! (-> obj memcard-volume-music) (file-stream-read-float file)))
-            (("memcard-volume-dialog") (set! (-> obj memcard-volume-dialog) (file-stream-read-float file)))
-            (("memcard-vibration?") (set! (-> obj memcard-vibration?) (file-stream-read-symbol file)))
-            ;; debug
-            (("debug-font-scale") (set! (-> obj debug-font-scale) (file-stream-read-float file)))
-            (("debug-font-scale-auto?") (set! (-> obj debug-font-scale-auto?) (file-stream-read-symbol file)))
-            (("panic") (when (file-stream-read-symbol file) (reset obj #t) (return #f))))
+    (("fps") (set-frame-rate! obj (file-stream-read-int file) #t))
+    (("window-size")
+     (set! (-> obj window-width) (file-stream-read-int file))
+     (set! (-> obj window-height) (file-stream-read-int file)))
+    (("game-size")
+     ;; Check to see if the game-size is a valid resolution on this persons device
+     ;; on some machines, this has been proven to cause the black-screen issue https://github.com/open-goal/jak-project/issues/3563
+     ;; Correlating with logs like:
+     ;; - OpenGL error 0x502 S8246 T824C: GL_INVALID_OPERATION error generated. Source and destination dimensions must be identical with the current filtering modes.
+     (let* ((saved-width (file-stream-read-int file))
+            (saved-height (file-stream-read-int file))
+            (supported-resolution? (pc-is-supported-resolution? saved-width saved-height)))
+       (cond
+         (supported-resolution?
+          (format 0 "[PC Settings]: Valid game-size resolution ~D x ~D~%" saved-width saved-height)
+          (set! (-> obj width) saved-width)
+          (set! (-> obj height) saved-height))
+         (else
+          (pc-get-active-display-size (&-> obj width) (&-> obj height))
+          (format 0
+                  "[PC Settings]: Invalid game-size resolution ~D x ~D, defaulting to ~D x ~D~%"
+                  saved-width
+                  saved-height
+                  (-> obj width)
+                  (-> obj height))))))
+    (("msaa") (set! (-> obj gfx-msaa) (file-stream-read-int file)))
+    (("aspect-state")
+     ;; game aspect
+     (set-game-setting! obj 'aspect-ratio (file-stream-read-symbol file))
+     ;; aspect ratio
+     (set! (-> obj aspect-custom-x) (file-stream-read-int file))
+     (set! (-> obj aspect-custom-y) (file-stream-read-int file))
+     ;; aspect auto
+     (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file))
+     (unless (-> obj aspect-ratio-auto?)
+       (set-aspect! obj (-> obj aspect-custom-x) (-> obj aspect-custom-y))))
+    ;; TODO - moved to C++, has to remain because settings parsing can't handle
+    ;; unexpected keys
+    (("display-mode") (file-stream-read-symbol file))
+    ;; TODO - moved to C++, has to remain because settings parsing can't handle
+    ;; unexpected keys
+    (("monitor") (file-stream-read-int file))
+    (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
+    (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
+    (("font-scale") (set! (-> obj font-scale) (file-stream-read-float file)))
+    (("audio-latency-ms") (set! (-> obj audio-latency-ms) (file-stream-read-int file)))
+    (("audio-pan-override") (set! (-> obj audio-pan-override) (file-stream-read-float file)))
+    (("audio-volume-override") (set! (-> obj audio-volume-override) (file-stream-read-float file)))
+    (("audio-channel-nb") (set! (-> obj audio-channel-nb) (file-stream-read-int file)))
+    (("gfx-renderer") (set! (-> obj gfx-renderer) (the-as pc-gfx-renderer (file-stream-read-int file))))
+    (("gfx-resolution") (set! (-> obj gfx-resolution) (file-stream-read-float file)))
+    (("gfx-anisotropy") (set! (-> obj gfx-anisotropy) (file-stream-read-float file)))
+    (("shrub-dist-mod") (set! (-> obj shrub-dist-mod) (file-stream-read-float file)))
+    (("lod-dist-mod") (set! (-> obj lod-dist-mod) (file-stream-read-float file)))
+    (("lod-force-tfrag") (set! (-> obj lod-force-tfrag) (file-stream-read-int file)))
+    (("lod-force-tie") (set! (-> obj lod-force-tie) (file-stream-read-int file)))
+    (("lod-force-ocean") (set! (-> obj lod-force-ocean) (file-stream-read-int file)))
+    (("lod-force-actor") (set! (-> obj lod-force-actor) (file-stream-read-int file)))
+    (("game-language") (set-game-language! obj (the-as language-enum (file-stream-read-int file))))
+    (("subtitle-speaker") (set! (-> obj subtitle-speaker?) (file-stream-read-symbol file)))
+    (("territory") (set! (-> obj territory) (file-stream-read-int file)))
+    (("ignore-controller-win-unfocused?") (set-ignore-controller-in-bg! obj (file-stream-read-symbol file)))
+    (("controller-hp-led?") (set! (-> obj controller-led-hp?) (file-stream-read-symbol file)))
+    (("controller-eco-led?") (set! (-> obj controller-led-eco?) (file-stream-read-symbol file)))
+    (("controller-heat-led?") (set! (-> obj controller-led-heat?) (file-stream-read-symbol file)))
+    (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
+    ;; TODO - remove this eventually, setting moved into json input-settings
+    ;; has to stay here or the settings parsing code explodes
+    (("keyboard-enabled?") (file-stream-read-symbol file))
+    (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
+    (("mouse-camera?") (set! (-> obj mouse-camera?) (file-stream-read-symbol file)))
+    (("mouse-xsens") (set! (-> obj mouse-xsens) (file-stream-read-float file)))
+    (("mouse-ysens") (set! (-> obj mouse-ysens) (file-stream-read-float file)))
+    (("mouse-movement?") (set! (-> obj mouse-movement?) (file-stream-read-symbol file)))
+    (("auto-hide-cursor?") (set! (-> obj auto-hide-cursor?) (file-stream-read-symbol file)))
+    (("ps2-read-speed?") (set! (-> obj ps2-read-speed?) (file-stream-read-symbol file)))
+    (("ps2-parts?") (set! (-> obj ps2-parts?) (file-stream-read-symbol file)))
+    (("ps2-music?") (set! (-> obj ps2-music?) (file-stream-read-symbol file)))
+    (("ps2-se?") (set! (-> obj ps2-se?) (file-stream-read-symbol file)))
+    (("ps2-hints?") (set! (-> obj ps2-hints?) (file-stream-read-symbol file)))
+    (("ps2-shadow?") (set! (-> obj ps2-shadow?) (file-stream-read-symbol file)))
+    (("ps2-lod-dist?") (set! (-> obj ps2-lod-dist?) (file-stream-read-symbol file)))
+    (("force-envmap?") (set! (-> obj force-envmap?) (file-stream-read-symbol file)))
+    (("force-actors?") (set! (-> obj ps2-actor-vis?) (not (file-stream-read-symbol file))))
+    (("music-fade?") (file-stream-read-symbol file)) ;; TODO remove
+    (("use-vis?") (set! (-> obj use-vis?) (file-stream-read-symbol file)))
+    (("hinttitles?") (set! (-> obj hinttitles?) (file-stream-read-symbol file)))
+    (("discord-rpc?") (set! (-> obj discord-rpc?) (file-stream-read-symbol file)))
+    (("speedrunner-mode?") (set! (-> obj speedrunner-mode?) (file-stream-read-symbol file)))
+    (("cutscene-skips?") (file-stream-read-symbol file)) ;; TODO remove
+    (("first-camera-h-inverted?") (set! (-> obj first-camera-h-inverted?) (file-stream-read-symbol file)))
+    (("first-camera-v-inverted?") (set! (-> obj first-camera-v-inverted?) (file-stream-read-symbol file)))
+    (("third-camera-h-inverted?") (set! (-> obj third-camera-h-inverted?) (file-stream-read-symbol file)))
+    (("third-camera-v-inverted?") (set! (-> obj third-camera-v-inverted?) (file-stream-read-symbol file)))
+    (("music-fadein?") (set! (-> obj music-fadein?) (file-stream-read-symbol file)))
+    (("music-fadeout?") (set! (-> obj music-fadeout?) (file-stream-read-symbol file)))
+    (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
+    (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
+    (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
+    (("memcard-volume-sfx") (set! (-> obj memcard-volume-sfx) (file-stream-read-float file)))
+    (("memcard-volume-music") (set! (-> obj memcard-volume-music) (file-stream-read-float file)))
+    (("memcard-volume-dialog") (set! (-> obj memcard-volume-dialog) (file-stream-read-float file)))
+    (("memcard-vibration?") (set! (-> obj memcard-vibration?) (file-stream-read-symbol file)))
+    ;; debug
+    (("debug-font-scale") (set! (-> obj debug-font-scale) (file-stream-read-float file)))
+    (("debug-font-scale-auto?") (set! (-> obj debug-font-scale-auto?) (file-stream-read-symbol file)))
+    (("panic") (when (file-stream-read-symbol file) (reset obj #t) (return #f))))
   0)
 
 (defmethod handle-output-settings ((obj pc-settings) (file file-stream))
@@ -644,10 +649,10 @@
        (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
        (reset obj #t)))
     (else
-      (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*)
-      (reset obj #t)
-      ;; save the file so users aren't confused, and so we can debug what the game is producing for them
-      (commit-to-file obj)))
+     (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*)
+     (reset obj #t)
+     ;; save the file so users aren't confused, and so we can debug what the game is producing for them
+     (commit-to-file obj)))
   0)
 
 (defmethod initialize ((obj pc-settings))
@@ -657,7 +662,10 @@
   ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
   (load-settings obj)
   ;; any post-operations that need to be done after loading
+  ;; remove these once jak 1's menu is finally modernized, need this for state in the menu code...
   (set! (-> obj keyboard-enabled?) (pc-get-keyboard-enabled?))
+  (set! (-> obj pressure-sensitivity-enabled?) (pc-get-pressure-sensitivity-enabled?))
+  (set! (-> obj stick-sensitivity) (* 100.0 (pc-get-axis-scale)))
   (update-mouse-controls! obj)
   obj)
 

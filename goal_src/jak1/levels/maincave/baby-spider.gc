@@ -23,6 +23,7 @@
    (init! (_type_ symbol symbol symbol symbol int int symbol) none)
    (set-delay! (_type_ time-frame) none)))
 
+
 (deftype baby-spider (nav-enemy)
   ((die-if-not-visible?               symbol)
    (hack-move-above-ground?           symbol)
@@ -44,6 +45,7 @@
    baby-spider-die-fast
    baby-spider-hatching
    baby-spider-resume))
+
 
 (defskelgroup *baby-spider-sg*
   baby-spider
@@ -214,7 +216,7 @@ baby-spider-default-event-handler
          (f1-1 (+ 1.0 (* 2.0 f0-0)))
          (f2-2 f1-1)
          (f2-4 (/ 1.0 f2-2))
-         (f0-2 (+ 1.0 (* 0.2 f0-0))))
+         (f0-2 (+ 1.0 (/ f0-0 5))))
     (set! (-> this delta-wiggle-angle) (* 910.2222 f1-1))
     (set! (-> this wiggle-factor) (* 1.5 f2-4))
     (set! (-> this target-speed) (* 28672.0 f0-2)))
@@ -380,12 +382,10 @@ baby-spider-default-event-handler
             (ja :num! (seek! max f30-0)))
           (ja-no-eval :num! (loop!))
           (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-          (let ((gp-0 (rand-vu-int-range 300 600))
-                (s5-0 (current-time)))
-            (until (time-elapsed? s5-0 gp-0)
+          (let ((gp-0 (rand-vu-int-range 300 600)))
+            (suspend-for gp-0
               (ja :num-func num-func-identity :frame-num 0.0)
               (ja-blend-eval)
-              (suspend)
               (suspend)))))))
 
 (defstate nav-enemy-give-up (baby-spider)

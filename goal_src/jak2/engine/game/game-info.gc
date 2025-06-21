@@ -620,6 +620,11 @@
            (seek! (-> this eco-pill-dark) 0.0 (- arg1))
            )
          )
+       ;; og:preserve-this trigger effects
+       (when (pc-get-trigger-effects-enabled?)
+         (if (= (-> *FACT-bank* eco-pill-dark-max-default) (-> this eco-pill-dark))
+            (pc-send-trigger-effect-feedback! (pc-trigger-effect-option left) 0 4)
+            (pc-send-trigger-rumble! 16383 0 15)))
        (-> this eco-pill-dark)
        )
       (('fuel-cell)
@@ -1653,17 +1658,17 @@
       ;; right = 5th bit and 1st index for pressure
       ;; left = 7th bit and 2nd index for pressure
       (let ((right-pressed? (logtest? (-> this button0) (pad-buttons right)))
-            (right-pressure (-> this abutton 0))
+            (right-pressure (-> this abutton (abutton-idx right))) ;; og:preserve-this abutton indexing
             (left-pressed? (logtest? (-> this button0) (pad-buttons left)))
-            (left-pressure (-> this abutton 1)))
+            (left-pressure (-> this abutton (abutton-idx left)))) ;; og:preserve-this abutton indexing
         (when right-pressed?
           (logclear! (-> this button0) (pad-buttons right))
           (logior! (-> this button0) (pad-buttons left)))
         (when left-pressed?
           (logclear! (-> this button0) (pad-buttons left))
           (logior! (-> this button0) (pad-buttons right)))
-        (set! (-> this abutton 0) left-pressure)
-        (set! (-> this abutton 1) right-pressure))))
+        (set! (-> this abutton (abutton-idx right)) left-pressure) ;; og:preserve-this abutton indexing
+        (set! (-> this abutton (abutton-idx left)) right-pressure)))) ;; og:preserve-this abutton indexing
   0)
 
 (defmethod game-info-method-28 ((this game-info) (arg0 game-score) (arg1 float))

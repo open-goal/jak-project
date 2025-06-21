@@ -112,8 +112,6 @@ void* RPC_STR(unsigned int, void* msg_in, int size) {
 
       if (cache_entry == STR_INDEX_CACHE_SIZE) {
         // cache miss, we need to load the header to the header cache on the IOP
-        ovrld_log(LogCategory::STR_RPC,
-                  "STR_RPC header cache miss - loading .str file header now.");
         cache_entry = oldest_idx;
         sCache[oldest_idx].filedef = filedef;
         sCache[oldest_idx].countdown = INT32_MAX - 1;
@@ -220,7 +218,6 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
               priority = priority + -1;
             }
           }
-          s = s + 1;
         }
         SignalSema(g_EEStreamsList.sema);
       } break;

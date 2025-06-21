@@ -12,7 +12,7 @@
 #include "game/graphics/texture/jak2_tpage_dir.h"
 #include "game/graphics/texture/jak3_tpage_dir.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/imgui/imgui.h"
 
 namespace {
@@ -383,7 +383,7 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
   if (ImGui::TreeNode(fmt::format("{}) {}", slot, name).c_str())) {
     ImGui::Text("P: %s sz: %d x %d", get_debug_texture_name(tex->tex_id).c_str(), tex->w, tex->h);
     if (!tex->is_placeholder) {
-      ImGui::Image((void*)(u64)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
+      ImGui::Image((ImTextureID)(intptr_t)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
     } else {
       ImGui::Text("PLACEHOLDER");
     }

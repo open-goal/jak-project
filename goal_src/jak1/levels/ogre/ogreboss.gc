@@ -106,6 +106,7 @@
    ogreboss-missile-impact
    ogreboss-missile-seek))
 
+
 (defstate ogreboss-missile-idle (ogreboss-missile)
   :enter
     (behavior ()
@@ -272,6 +273,7 @@
    (blast-radius float)
    (pickup-type  pickup-type)))
 
+
 (defbehavior ogreboss-missile-init-by-other ogreboss-missile ((arg0 ogreboss-missile-init-data) (arg1 entity-actor))
   (set! (-> self entity) arg1)
   (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
@@ -337,6 +339,7 @@
    ogreboss-super-boulder-land
    ogreboss-super-boulder-roll
    ogreboss-super-boulder-throw))
+
 
 (defbehavior ogreboss-super-boulder-event-handler ogreboss-super-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -532,9 +535,9 @@
       (transform-post)
       0))
 
-(defmethod relocate ((this ogreboss-super-boulder) (arg0 int))
-  (if (nonzero? (-> this joint)) (&+! (-> this joint) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this ogreboss-super-boulder) (offset int))
+  (if (nonzero? (-> this joint)) (&+! (-> this joint) offset))
+  (call-parent-method this offset))
 
 (defstate ogreboss-super-boulder-killed-player (ogreboss-super-boulder)
   :code
@@ -593,6 +596,7 @@
    (boulder-type    int8))
   (:states
    ogreboss-bounce-boulder-idle))
+
 
 (defbehavior ogreboss-bounce-boulder-event-handler ogreboss-bounce-boulder ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -722,6 +726,7 @@
    ogreboss-stage3-throw
    ogreboss-wait-for-player))
 
+
 (defbehavior ogreboss-inc-try-count ogreboss ()
   (when (not (-> self try-counted))
     (set! (-> self try-counted) #t)
@@ -757,7 +762,7 @@
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe (the-as float 140.0) 0))))
-         (let ((gp-2 (current-time))) (until (time-elapsed? gp-2 (seconds 0.167)) (suspend)))
+         (suspend-for (seconds 0.167))
          (ja-no-eval :group!
                      ogreboss-idle-ja
                      :num!
@@ -767,7 +772,7 @@
          (until (ja-done? 0)
            (suspend)
            (ja :num! (seek! (ja-aframe (the-as float 168.0) 0))))
-         (let ((gp-5 (current-time))) (until (time-elapsed? gp-5 (seconds 0.167)) (suspend)))
+         (suspend-for (seconds 0.167))
          (ja-no-eval :group! ogreboss-idle-ja :num! (seek!) :frame-num (ja-aframe (the-as float 168.0) 0))
          (until (ja-done? 0)
            (suspend)
@@ -881,7 +886,7 @@
       ;; og:preserve-this
       (set! (-> gp-0 src) (-> self node-list data (#if *jak1-full-game* 50 52) bone transform vector 3))
       (set! (-> gp-0 duration)
-            (the-as time-frame (the int (* 300.0 (+ 1.25 (* -0.25 (-> self level)) (/ 0.5 (-> self difficulty)))))))
+            (the-as time-frame (the int (* 300.0 (+ 1.25 (/ (-> self level) -4) (/ 0.5 (-> self difficulty)))))))
       (set! (-> gp-0 pickup-type) arg0)
       (set! (-> gp-0 blast-radius) 32768.0)
       (cond
@@ -945,7 +950,7 @@
          (ja :num! (seek! max arg1)))))
     (logior! (-> self draw status) (draw-status hidden))
     (set! (-> self submerged) #t)
-    (let ((s5-1 (current-time))) (until (time-elapsed? s5-1 arg0) (suspend))))
+    (suspend-for arg0))
   0
   (none))
 
@@ -1052,7 +1057,7 @@
               (set! f28-0
                     (cond
                       ((< (-> self try-count) (the-as uint 5)) (* 0.0 f28-0))
-                      ((< (-> self try-count) (the-as uint 10)) (* 0.5 f28-0))
+                      ((< (-> self try-count) (the-as uint 10)) (/ f28-0 2))
                       (else (empty) f28-0)))
               (if (and *target* (< (rand-vu) f28-0)) (set! boulder-pickup (pickup-type eco-green))))
             (ogreboss-shoot-boulder (the-as pickup-type boulder-pickup)))
@@ -1094,7 +1099,7 @@
       (when (and (> (-> self hit-count) 0) (>= 45.0 f30-0))
         (set! f0-0
               (+ (ja-aframe (the-as float 0.0) 1)
-                 (* 0.022222223 f30-0 (- (ja-aframe (the-as float 8.0) 1) (ja-aframe (the-as float 0.0) 1)))))
+                 (* (/ f30-0 45) (- (ja-aframe (the-as float 8.0) 1) (ja-aframe (the-as float 0.0) 1)))))
         (set! f1-0
               (cond
                 ((< f30-0 7.5) (* 0.120000005 f30-0))
@@ -1205,7 +1210,7 @@
   :code
     (behavior ()
       (set! (-> self shuffle-pos) 0.0)
-      (let ((f30-0 (+ 1.0 (* 0.25 (-> self difficulty) (-> self level))))
+      (let ((f30-0 (+ 1.0 (* (/ (-> self difficulty) 4) (-> self level))))
             (gp-0 (if (rand-vu-percent? (the-as float 0.5)) 0 1)))
         (ja-channel-push! 1 (seconds 0.2))
         (ja-no-eval :group! ogreboss-shuffle-prepare-ja :num! (seek! max f30-0) :frame-num 0.0)

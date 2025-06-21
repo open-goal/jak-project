@@ -63,12 +63,7 @@
                                              )
             )
        (when arg1
-         (let* ((s5-1 (-> self root))
-                (a0-7 (if (type? s5-1 collide-shape)
-                          (the-as collide-shape s5-1)
-                          )
-                      )
-                )
+         (let ((a0-7 (as-type (-> self root) collide-shape)))
            (if a0-7
                (move-to-point! a0-7 (-> (the-as process-drawable gp-0) root trans))
                (set! (-> self root trans quad) (-> (the-as process-drawable gp-0) root trans quad))
@@ -83,12 +78,7 @@
        (if (or (zero? (-> self skel active-channels)) (not (-> self skel root-channel 0 frame-group)))
            (logior! (-> self draw status) (draw-control-status no-draw-temp))
            )
-       (let* ((gp-1 self)
-              (v1-38 (if (type? gp-1 manipy)
-                         gp-1
-                         )
-                     )
-              )
+       (let ((v1-38 (the-as process-drawable (as-type self manipy))))
          (if (and v1-38 (not (-> (the-as manipy v1-38) draw?)))
              (logior! (-> self draw status) (draw-control-status no-draw-temp))
              )
@@ -216,22 +206,14 @@
   :code (behavior ((arg0 handle))
     (move-along-path self)
     (suspend)
-    (while (let* ((s5-0 (handle->process arg0))
-                  (a0-7 (if (type? s5-0 process-focusable)
-                            s5-0
-                            )
-                        )
-                  )
+    (while (let ((a0-7 (the-as process (as-type (handle->process arg0) process-focusable))))
              (and a0-7 (focus-test? (the-as process-focusable a0-7) pole))
              )
       (move-along-path self)
       (suspend)
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 0.5))
-        (move-along-path self)
-        (suspend)
-        )
+    (suspend-for (seconds 0.5)
+      (move-along-path self)
       )
     (go-virtual idle)
     )
@@ -1317,25 +1299,8 @@
 ;; definition for method 15 of type part-tracker
 ;; WARN: Return type mismatch object vs none.
 (defmethod notify-parent-of-death ((this part-tracker))
-  (with-pp
-    (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> gp-0 from) (process->ppointer pp))
-      (set! (-> gp-0 num-params) 1)
-      (set! (-> gp-0 message) 'notify)
-      (set! (-> gp-0 param 0) (the-as uint 'die))
-      (let ((s5-0 send-event-function)
-            (s4-0 (ppointer->process (-> this parent)))
-            )
-        (s5-0
-          (if (type? s4-0 process)
-              s4-0
-              )
-          gp-0
-          )
-        )
-      )
-    (none)
-    )
+  (send-event (the-as process-tree (as-type (ppointer->process (-> this parent)) process)) 'notify 'die)
+  (none)
   )
 
 ;; failed to figure out what this is:
@@ -1356,12 +1321,7 @@
       (if (-> self callback)
           ((-> self callback) self)
           )
-      (let* ((gp-0 (handle->process (-> self target)))
-             (v1-8 (if (type? gp-0 process-drawable)
-                       gp-0
-                       )
-                   )
-             )
+      (let ((v1-8 (the-as process (as-type (handle->process (-> self target)) process-drawable))))
         (cond
           ((and v1-8
                 (nonzero? (-> (the-as process-drawable v1-8) root))
@@ -1380,28 +1340,20 @@
         )
       (suspend)
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (the-as time-frame (-> self linger-duration)))
-        (if (-> self linger-callback)
-            ((-> self linger-callback) self)
-            )
-        (let* ((s5-0 (handle->process (-> self target)))
-               (v1-30 (if (type? s5-0 process-drawable)
-                          s5-0
-                          )
-                      )
-               )
-          (if (and v1-30
-                   (nonzero? (-> (the-as process-drawable v1-30) root))
-                   (nonzero? (-> (the-as process-drawable v1-30) node-list))
-                   )
-              (vector<-cspace!
-                (-> self root trans)
-                (-> (the-as process-drawable v1-30) node-list data (-> self target-joint))
-                )
-              )
+    (suspend-for (the-as time-frame (-> self linger-duration))
+      (if (-> self linger-callback)
+          ((-> self linger-callback) self)
           )
-        (suspend)
+      (let ((v1-30 (the-as process (as-type (handle->process (-> self target)) process-drawable))))
+        (if (and v1-30
+                 (nonzero? (-> (the-as process-drawable v1-30) root))
+                 (nonzero? (-> (the-as process-drawable v1-30) node-list))
+                 )
+            (vector<-cspace!
+              (-> self root trans)
+              (-> (the-as process-drawable v1-30) node-list data (-> self target-joint))
+              )
+            )
         )
       )
     (if (-> self linger-callback)
@@ -1542,25 +1494,8 @@
 ;; definition for method 15 of type lightning-tracker
 ;; WARN: Return type mismatch object vs none.
 (defmethod notify-parent-of-death ((this lightning-tracker))
-  (with-pp
-    (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> gp-0 from) (process->ppointer pp))
-      (set! (-> gp-0 num-params) 1)
-      (set! (-> gp-0 message) 'notify)
-      (set! (-> gp-0 param 0) (the-as uint 'die))
-      (let ((s5-0 send-event-function)
-            (s4-0 (ppointer->process (-> this parent)))
-            )
-        (s5-0
-          (if (type? s4-0 process)
-              s4-0
-              )
-          gp-0
-          )
-        )
-      )
-    (none)
-    )
+  (send-event (the-as process-tree (as-type (ppointer->process (-> this parent)) process)) 'notify 'die)
+  (none)
   )
 
 ;; definition for method 16 of type lightning-tracker
@@ -1570,18 +1505,10 @@
   (if (-> this callback)
       ((-> this callback) this)
       )
-  (let ((a0-6 (cond
-                ((>= (-> this target-joint0) 0)
-                 (let ((s5-0 (handle->process (-> this target0))))
-                   (if (type? s5-0 process-drawable)
-                       s5-0
-                       )
-                   )
-                 )
-                (else
+  (let ((a0-6 (if (>= (-> this target-joint0) 0)
+                  (the-as process (as-type (handle->process (-> this target0)) process-drawable))
                   (the-as process #f)
                   )
-                )
               )
         )
     (cond
@@ -1617,18 +1544,10 @@
         )
       )
     )
-  (let ((a0-22 (cond
-                 ((>= (-> this target-joint1) 0)
-                  (let ((s5-3 (handle->process (-> this target1))))
-                    (if (type? s5-3 process-drawable)
-                        s5-3
-                        )
-                    )
-                  )
-                 (else
+  (let ((a0-22 (if (>= (-> this target-joint1) 0)
+                   (the-as process (as-type (handle->process (-> this target1)) process-drawable))
                    (the-as process #f)
                    )
-                 )
                )
         )
     (cond
@@ -1712,12 +1631,7 @@
         (let ((s5-1 (new 'stack-no-clear 'vector)))
           (set! (-> s5-1 quad) (-> self offset1 quad))
           (when (and (>= (-> self target-joint1) 0) (< (-> self target-joint1) 256))
-            (let* ((s4-0 (handle->process (-> self target1)))
-                   (v1-28 (if (type? s4-0 process-drawable)
-                              s4-0
-                              )
-                          )
-                   )
+            (let ((v1-28 (the-as process (as-type (handle->process (-> self target1)) process-drawable))))
               (if (and v1-28 (nonzero? (-> (the-as process-drawable v1-28) root)))
                   (set! (-> s5-1 quad) (-> (vector<-cspace!
                                              (new 'stack-no-clear 'vector)
@@ -1814,14 +1728,11 @@
 (defbehavior lightning-tracker-init lightning-tracker ((arg0 lightning-spec) (arg1 time-frame) (arg2 symbol) (arg3 process-drawable) (arg4 vector) (arg5 vector))
   (stack-size-set! (-> self main-thread) 128)
   (set! (-> self target0) (process->handle arg3))
-  (let ((s1-1 (ppointer->process (-> self parent))))
-    (set! (-> self target1) (process->handle (the-as process (if (type? s1-1 process-drawable)
-                                                                 s1-1
-                                                                 )
-                                                     )
-                                             )
+  (set! (-> self target1)
+        (process->handle
+          (the-as process (the-as process-tree (as-type (ppointer->process (-> self parent)) process-drawable)))
           )
-    )
+        )
   (cond
     ((>= 256 (the-as int arg4))
      (set! (-> self target-joint0) (the-as int arg4))
@@ -1910,12 +1821,7 @@
 ;; definition for function process-release?
 ;; WARN: Return type mismatch object vs symbol.
 (defbehavior process-release? process ((arg0 process))
-  (let* ((gp-0 (command-get-process arg0 *target*))
-         (a0-2 (if (type? gp-0 process-focusable)
-                   (the-as process-focusable gp-0)
-                   )
-               )
-         )
+  (let ((a0-2 (as-type (command-get-process arg0 *target*) process-focusable)))
     (the-as symbol (if (and a0-2 (focus-test? a0-2 grabbed))
                        (send-event a0-2 'end-mode)
                        #t
@@ -2270,7 +2176,7 @@
 
 ;; failed to figure out what this is:
 (defpart 78
-  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+  :init-specs ((:texture (hotdot effects))
     (:num 1.0)
     (:x (meters 0) (meters 1.8))
     (:scale-x (meters 0.2))
@@ -2291,7 +2197,7 @@
 
 ;; failed to figure out what this is:
 (defpart 79
-  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+  :init-specs ((:texture (hotdot effects))
     (:num 2.0)
     (:x (meters 1.8) (meters 1))
     (:scale-x (meters 0.2))
@@ -2312,7 +2218,7 @@
 
 ;; failed to figure out what this is:
 (defpart 80
-  :init-specs ((:texture (new 'static 'texture-id :index #x2f :page #xc))
+  :init-specs ((:texture (woodchip effects))
     (:num 1.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -2337,7 +2243,7 @@
 
 ;; failed to figure out what this is:
 (defpart 81
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -2380,7 +2286,7 @@
 
 ;; failed to figure out what this is:
 (defpart 84
-  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+  :init-specs ((:texture (hotdot effects))
     (:num 1.0)
     (:x (meters 0) (meters 1.4))
     (:scale-x (meters 0.2))
@@ -2401,7 +2307,7 @@
 
 ;; failed to figure out what this is:
 (defpart 85
-  :init-specs ((:texture (new 'static 'texture-id :index #xc9 :page #xc))
+  :init-specs ((:texture (hotdot effects))
     (:num 2.0)
     (:x (meters 1.4) (meters 0.9))
     (:scale-x (meters 0.2))
@@ -2422,7 +2328,7 @@
 
 ;; failed to figure out what this is:
 (defpart 86
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -2460,7 +2366,7 @@
 
 ;; failed to figure out what this is:
 (defpart 87
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -2986,19 +2892,9 @@
   :code (behavior ()
     (set-time! (-> self state-time))
     (while ((-> self run-function))
-      (let* ((gp-0 (handle->process (-> self target)))
-             (a0-4 (if (type? gp-0 process-drawable)
-                       gp-0
-                       )
-                   )
-             )
+      (let ((a0-4 (the-as process (as-type (handle->process (-> self target)) process-drawable))))
         (when a0-4
-          (let* ((gp-1 (-> (the-as process-drawable a0-4) root))
-                 (a0-6 (if (type? gp-1 collide-shape)
-                           gp-1
-                           )
-                       )
-                 )
+          (let ((a0-6 (the-as trsqv (as-type (-> (the-as process-drawable a0-4) root) collide-shape))))
             (if a0-6
                 (set! (-> self root trans quad) (-> (the-as collide-shape a0-6) root-prim prim-core world-sphere quad))
                 )
@@ -3169,12 +3065,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touched)
-       (let* ((s4-0 proc)
-              (v1-1 (if (type? s4-0 process-drawable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((v1-1 (the-as process (as-type proc process-drawable))))
          (when v1-1
            (let ((a0-3 (-> (the-as process-drawable v1-1) root))
                  (a1-2 (new 'stack-no-clear 'collide-query))
@@ -3184,7 +3075,7 @@
                    )
                0.0
                (set! (-> a1-2 start-pos quad) (-> v1-4 world-sphere quad))
-               (vector-! (-> a1-2 move-dist) (the-as vector a0-5) (the-as vector v1-4))
+               (vector-! (-> a1-2 move-dist) (-> a0-5 world-sphere) (-> v1-4 world-sphere))
                )
              (let ((v1-5 a1-2))
                (set! (-> v1-5 radius) 40.96)
@@ -3244,7 +3135,7 @@
       ((and (nonzero? s4-0) (type? s4-0 collide-shape))
        (vector+!
          arg1
-         (the-as vector (-> (the-as collide-shape s4-0) root-prim prim-core))
+         (-> (the-as collide-shape s4-0) root-prim prim-core world-sphere)
          (rand-vu-sphere-point! arg1 (-> (the-as collide-shape s4-0) root-prim prim-core world-sphere w))
          )
        )

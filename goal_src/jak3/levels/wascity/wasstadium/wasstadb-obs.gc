@@ -71,30 +71,20 @@
     (set! (-> this strings 0 scale) 0.0)
     (set! (-> s5-0 origin x) 45.0)
     (set! (-> s5-0 origin y) 20.0)
-    (let ((v1-5 s5-0))
-      (set! (-> v1-5 width) (the float 422))
-      )
-    (let ((v1-6 s5-0))
-      (set! (-> v1-6 height) (the float 80))
-      )
+    (set-width! s5-0 422)
+    (set-height! s5-0 80)
     (let ((a0-4 s5-0))
       (set! (-> a0-4 color) (font-color red))
       )
     (let ((a0-5 s5-0))
       (set! (-> a0-5 flags) (font-flags kerning middle middle-vert large))
       )
-    (let ((v1-9 s5-0))
-      (set! (-> v1-9 scale) 1.0)
-      )
+    (set-scale! s5-0 1.0)
     (let ((s4-0 80))
-      (let ((v1-10 s5-0))
-        (set! (-> v1-10 scale) 1.6)
-        )
-      (when (= (-> *setting-control* user-default language) (language-enum german))
-        (let ((v1-13 s5-0))
-          (set! (-> v1-13 scale) 1.0)
+      (set-scale! s5-0 1.6)
+      (if (= (-> *setting-control* user-default language) (language-enum german))
+          (set-scale! s5-0 1.0)
           )
-        )
       (print-game-text
         (lookup-text! *common-text* (text-id text-0076) #f)
         s5-0
@@ -168,13 +158,9 @@
   )
 
 (defmethod draw ((this hud-arena-tokens))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    180
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 180)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -14 33)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -14 33)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -405,11 +391,11 @@
       (('touch 'attack)
        (cond
          ((logtest? (-> *part-group-id-table* 500 flags) (sp-group-flag sp13))
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 500))
           )
          (else
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 500))
            )
          )
@@ -445,11 +431,11 @@
           (ppointer->handle
             (cond
               ((logtest? (-> *part-group-id-table* 501 flags) (sp-group-flag sp13))
-               (set! (-> *launch-matrix* trans quad) (-> self gspot quad))
+               (vector-copy! (-> *launch-matrix* trans) (-> self gspot))
                (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 501))
                )
               (else
-                (set! (-> *launch-matrix* trans quad) (-> self gspot quad))
+                (vector-copy! (-> *launch-matrix* trans) (-> self gspot))
                 (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 501))
                 )
               )
@@ -536,7 +522,7 @@
 
 (defmethod probe-background ((this arena-token))
   (let ((s5-0 (new 'stack 'collide-query)))
-    (set! (-> s5-0 start-pos quad) (-> this root trans quad))
+    (vector-copy! (-> s5-0 start-pos) (-> this root trans))
     (set-vector! (-> s5-0 move-dist) 0.0 -204800.0 0.0 1.0)
     (let ((v1-3 s5-0))
       (set! (-> v1-3 radius) 40.96)
@@ -549,7 +535,7 @@
       (set! (-> v1-3 action-mask) (collide-action solid))
       )
     (when (>= (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
-      (set! (-> this gspot quad) (-> s5-0 best-other-tri intersect quad))
+      (vector-copy! (-> this gspot) (-> s5-0 best-other-tri intersect))
       (+! (-> this gspot y) 204.8)
       #t
       )
@@ -557,6 +543,7 @@
   )
 
 (defmethod init-from-entity! ((this arena-token) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (logior! (-> this mask) (process-mask collectable))
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
@@ -669,14 +656,9 @@
     (case message
       (('attack)
        (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-         (let* ((s5-0 *target*)
-                (a0-5 (if (type? s5-0 process-focusable)
-                          s5-0
-                          )
-                      )
-                )
+         (let ((a0-5 (the-as target (as-type *target* process-focusable))))
            (if a0-5
-               (set! (-> gp-0 fountain-rand-transv-lo quad) (-> (get-trans a0-5 0) quad))
+               (vector-copy! (-> gp-0 fountain-rand-transv-lo) (get-trans a0-5 0))
                )
            )
          (set! (-> gp-0 fountain-rand-transv-hi x) 24576.0)
@@ -741,6 +723,7 @@
   )
 
 (defmethod init-from-entity! ((this wstd-training-dummy) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
@@ -788,7 +771,7 @@
   :parent (task-manager-arena-training active)
   :enter (behavior ()
     (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-      (set! (-> gp-0 pos quad) (-> self entity trans quad))
+      (vector-copy! (-> gp-0 pos) (-> self entity trans))
       (quaternion-identity! (-> gp-0 quat))
       (set! (-> gp-0 flags) (task-arrow-flags taf3))
       (set! (-> gp-0 map-icon) (the-as uint 13))
@@ -997,16 +980,10 @@
             (new 'stack 'font-context *font-default-matrix* 70 20 0.0 (font-color orange) (font-flags shadow kerning))
             )
           )
-      (let ((v1-4 gp-1))
-        (set! (-> v1-4 scale) 0.7)
-        )
-      (let ((v1-5 gp-1))
-        (set! (-> v1-5 width) (the float 300))
-        )
-      (let ((v1-6 gp-1))
-        (set! (-> v1-6 height) (the float 70))
-        )
-      (set! (-> gp-1 origin x) (the float (- 256 (the int (* 0.5 (-> gp-1 width))))))
+      (set-scale! gp-1 0.7)
+      (set-width! gp-1 300)
+      (set-height! gp-1 70)
+      (set! (-> gp-1 origin x) (the float (- 256 (the int (/ (-> gp-1 width) 2)))))
       (set! (-> gp-1 origin y) 320.0)
       (set! (-> gp-1 flags) (font-flags shadow kerning middle middle-vert large))
       (let ((s5-0 print-game-text))
@@ -1058,7 +1035,7 @@
       )
     (let ((gp-1 (new 'stack-no-clear 'task-arrow-params)))
       (let ((a0-16 (new 'static 'vector :x 9527214.0 :y 196812.8 :z -1693368.4 :w 1.0)))
-        (set! (-> gp-1 pos quad) (-> a0-16 quad))
+        (vector-copy! (-> gp-1 pos) a0-16)
         )
       (quaternion-identity! (-> gp-1 quat))
       (set! (-> gp-1 flags) (task-arrow-flags))
@@ -1081,10 +1058,7 @@
       )
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (set! *arena-trainer-checkpoint-valid* #t)
     (copy-string<-string (-> *training-fail* fail continue) "wasstada-checkpoint-3")
@@ -1272,14 +1246,9 @@
     ((lambda () (with-pp
                   (sound-play "trap-door")
                   (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
-                    (let* ((s5-1 *target*)
-                           (a0-4 (if (type? s5-1 process-focusable)
-                                     s5-1
-                                     )
-                                 )
-                           )
+                    (let ((a0-4 (the-as target (as-type *target* process-focusable))))
                       (when a0-4
-                        (set! (-> gp-1 fountain-rand-transv-lo quad) (-> (get-trans a0-4 0) quad))
+                        (vector-copy! (-> gp-1 fountain-rand-transv-lo) (get-trans a0-4 0))
                         (+! (-> gp-1 fountain-rand-transv-lo y) -16384.0)
                         )
                       )
@@ -1303,10 +1272,7 @@
      )
     (suspend)
     (ja-channel-set! 0)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (send-event self 'death-end)
     (while (-> self child)
@@ -1318,6 +1284,7 @@
   )
 
 (defmethod init-from-entity! ((this wstd-trapdoor) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -1381,6 +1348,7 @@
   )
 
 (defmethod init-from-entity! ((this wstd-flag) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

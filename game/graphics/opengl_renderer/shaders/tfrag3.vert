@@ -5,6 +5,8 @@ layout (location = 1) in vec3 tex_coord_in;
 layout (location = 2) in int time_of_day_index;
 
 uniform vec4 hvdf_offset;
+uniform vec4 cam_trans;
+uniform mat4 pc_camera;
 uniform mat4 camera;
 uniform float fog_constant;
 uniform float fog_min;
@@ -31,32 +33,18 @@ void main() {
 
   // the itof0 is done in the preprocessing step.  now we have floats.
 
-  // Step 3, the camera transform
-  vec4 transformed = -camera[3];
-  transformed -= camera[0] * position_in.x;
-  transformed -= camera[1] * position_in.y;
-  transformed -= camera[2] * position_in.z;
 
-  // compute Q
-  float Q = fog_constant / transformed.w;
+  // Step 3, the camera transform
+  vec3 vert = position_in - cam_trans.xyz;
+  vec4 transformed = -pc_camera[3];
+  transformed.w = 0;
+  transformed -= pc_camera[0] * vert.x;
+  transformed -= pc_camera[1] * vert.y;
+  transformed -= pc_camera[2] * vert.z;
 
   // do fog!
   fogginess = 255 - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
 
-  // perspective divide!
-  transformed.xyz *= Q;
-  // offset
-  transformed.xyz += hvdf_offset.xyz;
-  // correct xy offset
-  transformed.xy -= (2048.);
-  // correct z scale
-  transformed.z /= (8388608);
-  transformed.z -= 1;
-  // correct xy scale
-  transformed.x /= (256);
-  transformed.y /= -(128);
-  // hack
-  transformed.xyz *= transformed.w;
   // scissoring area adjust
   transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
   gl_Position = transformed;

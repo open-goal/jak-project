@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace math {
 
@@ -367,6 +367,17 @@ struct Matrix {
     }
 
     return result;
+  }
+
+  Matrix<T, Rows, Cols> transposed() const {
+    static_assert(Rows == Cols);
+    Matrix<T, Rows, Cols> ret;
+    for (int i = 0; i < Rows; i++) {
+      for (int j = 0; j < Cols; j++) {
+        ret(i, j) = operator()(j, i);
+      }
+    }
+    return ret;
   }
 
   template <int OtherCols>

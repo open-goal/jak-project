@@ -331,7 +331,7 @@
 
 (defmethod general-event-handler ((this grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -450,11 +450,7 @@
       )
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.2))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 0.2))
     (let ((v1-6 (-> self root root-prim)))
       (set! (-> v1-6 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-6 prim-core collide-with) (-> self root backup-collide-with))
@@ -686,11 +682,11 @@
               )
           (vector-! s4-0 v1-3 (-> this root trans))
           (.lvf vf1 (&-> s4-0 quad))
-          (.add.w.vf vf2 vf0 vf0 :mask #b1)
+          (.add.w.vf.x vf2 vf0 vf0)
           (.mul.vf vf1 vf1 vf1)
-          (.mul.x.vf acc vf2 vf1 :mask #b1)
-          (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-          (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+          (.mul.x.vf.x acc vf2 vf1)
+          (.add.mul.y.vf.x acc vf2 vf1 acc)
+          (.add.mul.z.vf.x vf1 vf2 vf1 acc)
           (.mov v1-5 vf1)
           (let* ((f30-0 v1-5)
                  (f0-0 arg0)
@@ -1411,11 +1407,11 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs grunt.
-(defmethod relocate ((this grunt) (arg0 int))
+(defmethod relocate ((this grunt) (offset int))
   (if (nonzero? (-> this intro-path))
-      (&+! (-> this intro-path) arg0)
+      (&+! (-> this intro-path) offset)
       )
-  (the-as grunt ((method-of-type nav-enemy relocate) this arg0))
+  (the-as grunt ((method-of-type nav-enemy relocate) this offset))
   )
 
 (defmethod init-enemy-collision! ((this grunt))

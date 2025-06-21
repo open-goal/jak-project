@@ -10,7 +10,7 @@
 #include "goalc/make/Tools.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 std::string MakeStep::print() const {
   std::string result = fmt::format("Tool {} with inputs", tool);
@@ -91,8 +91,14 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
 
   m_goos.set_global_variable_to_symbol("ASSETS", "#t");
 
-  set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
-  set_constant("*use-iso-data-path*", false);
+  if (m_repl_config && !m_repl_config->iso_path.empty()) {
+    set_constant("*iso-data*",
+                 file_util::get_iso_dir_for_game(m_repl_config->game_version).string());
+    set_constant("*use-iso-data-path*", true);
+  } else {
+    set_constant("*iso-data*", file_util::get_file_path({"iso_data"}));
+    set_constant("*use-iso-data-path*", false);
+  }
 
   add_tool<DgoTool>();
   add_tool<TpageDirTool>();
@@ -106,6 +112,8 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<BuildLevel2Tool>();
   add_tool<BuildLevel3Tool>();
   add_tool<BuildActorTool>();
+  add_tool<BuildActor2Tool>();
+  add_tool<BuildActor3Tool>();
 }
 
 /*!

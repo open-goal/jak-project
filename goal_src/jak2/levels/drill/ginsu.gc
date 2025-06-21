@@ -14,7 +14,7 @@
   )
 
 (defpart 2105
-  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+  :init-specs ((:texture (motion-blur-part effects))
     (:num 2.0 3.0)
     (:scale-x (meters 2.5))
     (:rot-x 4)
@@ -39,7 +39,7 @@
   )
 
 (defpart 2106
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:x (meters 0.5) (meters 0.5))
     (:scale-x (meters 1) (meters 0.5))
@@ -70,7 +70,7 @@
   )
 
 (defpart 2107
-  :init-specs ((:texture (new 'static 'texture-id :page #xa05))
+  :init-specs ((:texture (drill-enemy-blade-blur drillmid-sprite))
     (:num 1.0)
     (:y (meters 0.09))
     (:scale-x (meters 3) (meters 0.5))
@@ -89,7 +89,7 @@
   )
 
 (defpart 2108
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:x (meters 0.5) (meters 0.5))
     (:scale-x (meters 1) (meters 0.5))
@@ -348,9 +348,9 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod common-post ((this ginsu))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (ginsu-method-180 this)
   (let ((t9-1 (method-of-type nav-enemy common-post)))
     (t9-1 this)
@@ -501,7 +501,7 @@
         s4-0
         s4-0
         s5-3
-        (* (fmax 0.5 (* 0.00024414062 (-> this nav state speed))) (seconds-per-frame))
+        (* (fmax 0.5 (/ (-> this nav state speed) METER_LENGTH)) (seconds-per-frame))
         )
       )
     )
@@ -512,7 +512,7 @@
 ;; WARN: disable def twice: 11. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod general-event-handler ((this ginsu) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-1 object))
   (case arg2
     (('touched)
@@ -903,6 +903,7 @@
   )
 
 (defmethod deactivate ((this ginsu))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this blade-part))
       (kill-and-free-particles (-> this blade-part))
       )
@@ -917,17 +918,17 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs ginsu.
-(defmethod relocate ((this ginsu) (arg0 int))
+(defmethod relocate ((this ginsu) (offset int))
   (if (nonzero? (-> this blade-jm))
-      (&+! (-> this blade-jm) arg0)
+      (&+! (-> this blade-jm) offset)
       )
   (if (nonzero? (-> this blade-part))
-      (&+! (-> this blade-part) arg0)
+      (&+! (-> this blade-part) offset)
       )
   (if (nonzero? (-> this ambush-path))
-      (&+! (-> this ambush-path) arg0)
+      (&+! (-> this ambush-path) offset)
       )
-  (the-as ginsu ((method-of-type nav-enemy relocate) this arg0))
+  (the-as ginsu ((method-of-type nav-enemy relocate) this offset))
   )
 
 (defmethod ginsu-method-183 ((this ginsu) (arg0 symbol))

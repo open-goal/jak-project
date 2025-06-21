@@ -15,6 +15,7 @@
    (max-caught int32)
    (max-missed int32)))
 
+
 (define *FISHER-bank*
   (new 'static 'fisher-bank :width (meters 3.3) :net-radius (meters 0.7) :max-caught #xc8 :max-missed 20))
 
@@ -28,7 +29,7 @@
 
 (defpart 828
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5 0.5)
    (:y (meters 0.2))
    (:scale-x (meters 0.5) (meters 0.5))
@@ -50,7 +51,7 @@
 
 (defpart 2013
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x9 :page #x2))
+  ((:texture (lakedrop effects))
    (:num 0.1 1.0)
    (:x (meters -0.7) (meters 0.5))
    (:z (meters -0.1) (meters 0.2))
@@ -75,7 +76,7 @@
 
 (defpart 2001
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x9 :page #x2))
+  ((:texture (lakedrop effects))
    (:num 0.1 1.0)
    (:x (meters -0.4) (meters 0.5))
    (:z (meters -0.25) (meters 0.5))
@@ -100,7 +101,7 @@
 
 (defpart 831
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 2.0)
    (:scale-x (meters 5) (meters 1))
    (:scale-y :copy scale-x)
@@ -113,7 +114,7 @@
 
 (defpart 830
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x2 :page #x2))
+  ((:texture (flare effects))
    (:num 16.0)
    (:scale-x (meters 2) (meters 2))
    (:rot-x 4)
@@ -147,6 +148,7 @@
    (deadly-percent  float)
    (powerup-percent float))
   :allow-misaligned)
+
 
 (define *fisher-params*
   (new 'static
@@ -696,6 +698,7 @@
    fisher-done
    fisher-playing))
 
+
 (deftype fisher-fish (process-drawable)
   ((dir    vector :inline)
    (offset float)
@@ -707,6 +710,7 @@
    fisher-fish-caught
    fisher-fish-die
    fisher-fish-fall))
+
 
 (defskelgroup *catch-fisha-sg*
   catch-fisha
@@ -851,7 +855,7 @@
                         *entity-pool*)
          (sound-play "get-small-fish")
          (send-event (ppointer->process (-> self parent)) 'fisher-fish-caught 1)))
-      (set! (-> self vel) (* 0.25 (-> self vel)))
+      (set! (-> self vel) (/ (-> self vel) 4))
       (while (< 0.1 (-> self root scale x))
         (set! (-> self offset) (-> (the-as fisher (-> self parent 0)) paddle))
         (fisher-fish-move)
@@ -1084,7 +1088,7 @@
                    (-> gp-2 user-uint8 6)))
          (process-spawn-function process
            (lambda :behavior process ()
-             (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 0.1)) (suspend)))
+             (suspend-for (seconds 0.1))
              (ambient-hint-spawn "st-lose" (the-as vector #f) *entity-pool* 'stinger)
              (none)))
          (send-event *target* 'lose))))
@@ -1400,13 +1404,13 @@
           (launch-particles (-> *part-id-table* 828) gp-0)
           (launch-particles (-> *part-id-table* 2013) gp-0)
           (fisher-fish-water gp-0 (+ 32768.0 (vector-y-angle (-> self node-list data 80 bone transform vector 1))))))
-      (let ((t9-14 (-> (find-parent-state) trans))) (if t9-14 (t9-14)))))
+      (call-parent-state-handler trans)))
 
 (defstate idle (fisher)
   :virtual #t
   :trans
     (behavior ()
-      (let ((t9-1 (-> (find-parent-state) trans))) (if t9-1 (t9-1)))
+      (call-parent-state-handler trans)
       (when (task-complete? *game-info* (-> self entity extra perm task))
         (when (nonzero? (-> *cpad-list* cpads 0 button0-rel 0))
           (let ((v1-9 (-> self cheat-temp)))

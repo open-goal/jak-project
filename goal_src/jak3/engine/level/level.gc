@@ -52,6 +52,18 @@
       gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1
       gun-red-2 gun-yellow-2 gun-blue-2 gun-dark-2
       gun-red-3 gun-yellow-3 gun-blue-3 gun-dark-3))
+  (logior! (-> *game-info* debug-features)
+    (game-feature
+      jakc
+      board board-launch board-zap
+      darkeco
+      darkjak darkjak darkjak-smack darkjak-bomb0 darkjak-bomb1
+      lighteco
+      lightjak lightjak-regen lightjak-swoop lightjak-freeze lightjak-shield
+      gun
+      gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1
+      gun-red-2 gun-yellow-2 gun-blue-2 gun-dark-2
+      gun-red-3 gun-yellow-3 gun-blue-3 gun-dark-3))
   (logior! (-> *game-info* vehicles)
     (game-vehicles
       v-turtle
@@ -548,7 +560,7 @@
   (none)
   )
 
-(defmethod status-of-level-and-borrows ((this level-group) (arg0 symbol) (arg1 symbol))
+(defmethod level-status? ((this level-group) (arg0 symbol) (arg1 symbol))
   "Get the combined status of a level and borrow levels."
   (if (not arg0)
       (return #f)
@@ -565,7 +577,7 @@
             (let ((v1-14 (-> s4-0 info borrow borrow-info s3-1)))
               (when v1-14
                 (when (car (cdr v1-14))
-                  (let ((v1-15 (status-of-level-and-borrows this (the-as symbol (car v1-14)) arg1)))
+                  (let ((v1-15 (level-status? this (the-as symbol (car v1-14)) arg1)))
                     (if (!= v1-15 (-> s4-0 status))
                         (return v1-15)
                         )
@@ -605,7 +617,7 @@
                                             )
                             )
                         )
-               (let ((v1-29 (status-of-level-and-borrows *level* (the-as symbol (car s5-1)) arg1)))
+               (let ((v1-29 (level-status? *level* (the-as symbol (car s5-1)) arg1)))
                  (if (!= v1-29 'active)
                      (return v1-29)
                      )
@@ -3832,12 +3844,13 @@
         )
       )
     )
-  (let ((v1-194 (- #x2000000 (the-as int (-> global current)))))
-    (if (and (not *debug-segment*) (or (< v1-194 #x4000) (= *cheat-mode* 'debug)))
+  ;; og:preserve-this this was hardcoded to the top of EE memory (#x2000000)
+  (let ((v1-194 (&- (-> global top-base) (-> global current))))
+    (if (and (not *debug-segment*) (or (< v1-194 (* 16 1024)) (= *cheat-mode* 'debug)))
         (format
           *stdcon*
           "~3Lglobal heap fatally low at ~D.~DK free~%~0L"
-          (sar v1-194 10)
+          (/ v1-194 (* 1024 1024))
           (/ (logand v1-194 1023) 103)
           )
         )

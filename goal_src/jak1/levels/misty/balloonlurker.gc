@@ -16,7 +16,7 @@
 
 (defpart 2015
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters 1))
    (:scale-x (meters 16))
@@ -60,7 +60,7 @@
 
 (defpart 964
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 1.5)
    (:y (meters 0.5) (meters 0.5))
    (:scale-x (meters 2.5) (meters 1.5))
@@ -89,7 +89,7 @@
 
 (defpart 965
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x2 :page #x2))
+  ((:texture (flare effects))
    (:num 6.0)
    (:y (meters 0.75))
    (:scale-x (meters 8) (meters 8))
@@ -115,7 +115,7 @@
 
 (defpart 966
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters 1))
    (:scale-x (meters 24) (meters 16))
@@ -130,7 +130,7 @@
 
 (defpart 967
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:y (meters 1))
    (:scale-x (meters 24) (meters 16))
@@ -145,7 +145,7 @@
 
 (defpart 968
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 5.0 10.0)
    (:x (meters -0.5) (meters 1))
    (:y (meters 0.25) (meters 1.5))
@@ -180,7 +180,7 @@
 
 (defpart 963
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 2.0)
    (:x (meters -0.25) (meters 0.5))
    (:y (meters -0.25) (meters 0.5))
@@ -210,6 +210,7 @@
    (throttle-close-distance     float)
    (explosion-force             float)
    (mine-weight                 float)))
+
 
 (define *BALLOONLURKER-bank*
   (new 'static
@@ -281,6 +282,7 @@
    (balloonlurker-mine-explode int)
    balloonlurker-patrol))
 
+
 (deftype balloonlurker-pilot (process-drawable)
   ((root            collide-shape-moving :override)
    (parent-override (pointer balloonlurker) :overlay-at parent))
@@ -290,6 +292,7 @@
   (:states
    balloonlurker-pilot-die
    balloonlurker-pilot-idle))
+
 
 (defskelgroup *balloonlurker-sg*
   balloonlurker
@@ -396,8 +399,7 @@
                           (-> this info max-buoyancy-depth))))
             (vector-float*! s5-0
                             *y-vector*
-                            (* 0.25
-                               (-> this buoyancy-factor)
+                            (* (/ (-> this buoyancy-factor) 4)
                                (-> this info gravity-factor)
                                (fmax 0.3 (fmin 1.0 f0-6))
                                (-> this info gravity)
@@ -495,7 +497,7 @@
        (seek! (-> self throttle-control) 0.0 (* 0.25 (seconds-per-frame))))))
   (seek! (-> self engine-thrust)
          (* (-> self throttle-control) (-> *BALLOONLURKER-bank* max-engine-thrust))
-         (* 0.005 (-> *BALLOONLURKER-bank* max-engine-thrust)))
+         (/ (-> *BALLOONLURKER-bank* max-engine-thrust) 200))
   (let ((f0-31 60.0)
         (f1-14 1820.4445)
         (f2-6 6735.6445)
@@ -586,7 +588,7 @@
         (apply-all (-> self link) actor-link-dead-hook (& sv-16))
         (when (and sv-16 sv-24)
           (process-grab? *target*)
-          (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 1)) (suspend)))
+          (suspend-for (seconds 1))
           (process-release? *target*)
           (while (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
                    (set! (-> a1-4 from) self)
@@ -607,12 +609,12 @@
         (suspend)))
   :post balloonlurker-post)
 
-(defmethod relocate ((this balloonlurker) (arg0 int))
-  (if (nonzero? (-> this propeller)) (&+! (-> this propeller) arg0))
-  (if (nonzero? (-> this rudder)) (&+! (-> this rudder) arg0))
-  (if (nonzero? (-> this mine 0)) (&+! (-> this mine 0) arg0))
-  (if (nonzero? (-> this mine 1)) (&+! (-> this mine 1) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this balloonlurker) (offset int))
+  (if (nonzero? (-> this propeller)) (&+! (-> this propeller) offset))
+  (if (nonzero? (-> this rudder)) (&+! (-> this rudder) offset))
+  (if (nonzero? (-> this mine 0)) (&+! (-> this mine 0) offset))
+  (if (nonzero? (-> this mine 1)) (&+! (-> this mine 1) offset))
+  (call-parent-method this offset))
 
 (defstate balloonlurker-pilot-idle (balloonlurker-pilot)
   :event

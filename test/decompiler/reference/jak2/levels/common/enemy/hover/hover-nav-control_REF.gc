@@ -925,12 +925,7 @@
     (let ((v1-2 (the-as list-node (-> this sphere-list))))
       (while v1-2
         (let ((s5-0 (-> v1-2 next)))
-          (let* ((s3-0 (handle->process (-> (the-as hover-nav-sphere v1-2) handle)))
-                 (s4-0 (if (type? s3-0 hover-enemy)
-                           s3-0
-                           )
-                       )
-                 )
+          (let ((s4-0 (the-as process (as-type (handle->process (-> (the-as hover-nav-sphere v1-2) handle)) hover-enemy))))
             (when s4-0
               (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
                 (set! (-> a1-9 from) (process->ppointer pp))
@@ -1118,7 +1113,7 @@
                          (nav-network-method-22
                            (-> this nav)
                            s5-0
-                           (the-as vector (hover-nav-control-method-17 this))
+                           (-> (hover-nav-control-method-17 this) world-sphere)
                            (-> s4-0 s2-1 pos)
                            -1
                            -1
@@ -1142,7 +1137,7 @@
                           (nav-network-method-22
                             (-> this nav)
                             s5-0
-                            (the-as vector (hover-nav-control-method-17 this))
+                            (-> (hover-nav-control-method-17 this) world-sphere)
                             (-> s4-0 s2-1 pos)
                             -1
                             -1
@@ -1444,7 +1439,7 @@
                  )
              (hover-nav-control-method-28
                this
-               (vector+! (new 'stack-no-clear 'vector) (the-as vector (hover-nav-control-method-17 this)) s4-0)
+               (vector+! (new 'stack-no-clear 'vector) (-> (hover-nav-control-method-17 this) world-sphere) s4-0)
                arg0
                )
              )
@@ -1561,7 +1556,7 @@
       (vector-normalize-copy! (-> s5-0 curve-matrix vector 2) s3-0 1.0)
       (vector-normalize-copy! (-> s5-0 curve-matrix trans) s4-0 1.0)
       (set! (-> s5-0 pos-index 0) (vector-dot s3-0 (-> s5-0 curve-matrix trans)))
-      (set! (-> s5-0 pos-index 1) (/ (* 0.5 (-> s5-0 pos-index 0) (-> s5-0 pos-index 0)) (* 0.2 f28-0)))
+      (set! (-> s5-0 pos-index 1) (/ (* (/ (-> s5-0 pos-index 0) 2) (-> s5-0 pos-index 0)) (/ f28-0 5)))
       (set! (-> s5-0 dist) (vector-dot (-> this dest-vel) (-> s5-0 curve-matrix trans)))
       (vector-normalize-copy! (-> s5-0 curve-matrix vector 1) s4-0 (-> this target-speed))
       (vector-! (the-as vector (-> s5-0 curve-matrix)) (-> s5-0 curve-matrix vector 1) s3-0)
@@ -1648,8 +1643,8 @@
         (.mov at-0 f0-0)
         )
       (.mov vf2 at-0)
-      (.mov.vf vf1 vf0 :mask #b1000)
-      (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+      (.mov.vf.w vf1 vf0)
+      (.mul.x.vf.xyz vf1 vf1 vf2)
       (.svf (&-> a1-0 quad) vf1)
       (vector+! v1-5 a0-4 a1-0)
       )
@@ -1689,7 +1684,7 @@
   (local-vars (sv-112 float) (sv-128 float) (sv-144 float) (sv-160 float))
   (let* ((s5-0 (-> this root))
          (s3-0 (hover-nav-control-method-17 this))
-         (v1-2 (vector-! (new 'stack-no-clear 'vector) (the-as vector s3-0) (-> s5-0 trans)))
+         (v1-2 (vector-! (new 'stack-no-clear 'vector) (-> s3-0 world-sphere) (-> s5-0 trans)))
          (s4-1 (vector-! (new 'stack-no-clear 'vector) (-> this dest-pos) v1-2))
          )
     (when (not (logtest? (-> this flags) (hover-nav-flags honflags-0)))
@@ -1703,12 +1698,12 @@
         (set! sv-144 (the-as float 0.0))
         (let* ((t0-0 (hover-nav-control-method-30 this))
                (f0-4 (s1-0 s0-0 sv-112 sv-128 sv-144 t0-0))
-               (t0-2 (vector+float*! (new 'stack-no-clear 'vector) (the-as vector s3-0) s2-0 (/ f0-4 f30-0)))
+               (t0-2 (vector+float*! (new 'stack-no-clear 'vector) (-> s3-0 world-sphere) s2-0 (/ f0-4 f30-0)))
                (s2-1 (nav-network-method-26
                        (-> this nav)
                        (new 'stack-no-clear 'vector)
                        (-> this root process)
-                       (the-as vector s3-0)
+                       (-> s3-0 world-sphere)
                        t0-2
                        (-> s3-0 world-sphere w)
                        )
@@ -1730,7 +1725,7 @@
           (add-debug-vector
             #t
             (bucket-id debug-no-zbuf1)
-            (the-as vector s3-0)
+            (-> s3-0 world-sphere)
             (-> this nav-collide-impulse)
             (meters 0.00024414062)
             *color-red*

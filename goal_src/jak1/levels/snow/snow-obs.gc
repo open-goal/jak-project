@@ -12,6 +12,7 @@
 (deftype snowcam (pov-camera)
   ((seq uint64)))
 
+
 (defskelgroup *snowcam-sg*
   snowcam
   snowcam-lod0-jg
@@ -42,7 +43,7 @@
            (until (ja-done? 0)
              (suspend)
              (ja :num! (seek!)))
-           (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 4.5)) (suspend))))
+           (suspend-for (seconds 4.5)))
           ((= v1-0 1)
            (let ((gp-2 (ppointer->handle (process-spawn fuel-cell
                                                         :init
@@ -82,6 +83,7 @@
    snow-eggtop-idle-down
    snow-eggtop-idle-up))
 
+
 (defskelgroup *snow-eggtop-sg*
   snow-eggtop
   snow-eggtop-lod0-jg
@@ -107,7 +109,7 @@
 
 (defpart 1995
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x2 :page #x2))
+  ((:texture (flare effects))
    (:num 30.0)
    (:y (meters -4))
    (:scale-x (meters 20) (meters 10))
@@ -133,7 +135,7 @@
 
 (defpart 1990
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:y (meters -4))
    (:scale-x (meters 10) (meters 2))
@@ -147,7 +149,7 @@
 
 (defpart 1991
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  ((:texture (hotdot effects))
    (:num 1.0)
    (:y (meters -4))
    (:scale-x (meters 3) (meters 2))
@@ -161,7 +163,7 @@
 
 (defpart 1992
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1f :page #x2))
+  ((:texture (lightning effects))
    (:num 0.5 1.0)
    (:y (meters -4))
    (:scale-x (meters 3) (meters 3))
@@ -183,7 +185,7 @@
 
 (defpart 1993
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1f :page #x2))
+  ((:texture (lightning effects))
    (:num 0.5 1.0)
    (:y (meters -4))
    (:scale-x (meters 3) (meters 3))
@@ -202,7 +204,7 @@
 
 (defpart 1994
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1f :page #x2))
+  ((:texture (lightning effects))
    (:num 1.0 1.0)
    (:y (meters -6.5) (meters 1))
    (:scale-x (meters 6) (meters 2))
@@ -370,6 +372,7 @@
   (:states
    snowpusher-idle))
 
+
 (defskelgroup *snowpusher-sg*
   snowpusher
   snowpusher-lod0-jg
@@ -451,6 +454,7 @@
   (:states
    snow-spatula-idle))
 
+
 (defskelgroup *snow-spatula-sg*
   snow-spatula
   snow-spatula-lod0-jg
@@ -525,6 +529,7 @@
    snow-fort-gate-idle-closed
    snow-fort-gate-idle-open))
 
+
 (defskelgroup *snow-fort-gate-sg*
   snow-fort-gate
   snow-fort-gate-lod0-jg
@@ -541,7 +546,7 @@
 
 (defpart 1896
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 0.5 1.0)
    (:x (meters -10) (meters 20))
    (:y (meters 0.5) (meters 1))
@@ -575,7 +580,7 @@
 
 (defpart 1898
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 64.0)
    (:x (meters -10) (meters 20))
    (:y (meters 0.5) (meters 1))
@@ -624,7 +629,7 @@
 
 (defpart 2271
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  ((:texture (middot effects))
    (:num 0.25)
    (:x (meters -1) (meters 2))
    (:z (meters -1) (meters 2))
@@ -648,7 +653,7 @@
 
 (defpart 2272
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x4 :page #x2))
+  ((:texture (middot effects))
    (:num 1.0)
    (:x (meters -0.5) (meters 1))
    (:y (meters 1))
@@ -670,7 +675,7 @@
 
 (defpart 2273
   :init-specs
-  ((:texture (new 'static 'texture-id :index #xb :page #x2))
+  ((:texture (lava-part-01 effects))
    (:num 0.25)
    (:x (meters -0.5) (meters 1))
    (:y (meters 1))
@@ -768,10 +773,10 @@
   ((method-of-type process-drawable deactivate) this)
   (none))
 
-(defmethod relocate ((this snow-fort-gate) (arg0 int))
-  (if (nonzero? (-> this part2)) (&+! (-> this part2) arg0))
-  (if (nonzero? (-> this part3)) (&+! (-> this part3) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this snow-fort-gate) (offset int))
+  (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
+  (if (nonzero? (-> this part3)) (&+! (-> this part3) offset))
+  (call-parent-method this offset))
 
 (defmethod init-from-entity! ((this snow-fort-gate) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
@@ -817,6 +822,7 @@
    snow-gears-idle
    snow-gears-stopped))
 
+
 (defskelgroup *snow-gears-sg*
   snow-gears
   snow-gears-lod0-jg
@@ -833,7 +839,7 @@
 
 (defpart 1900
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 0.5)
    (:x (meters -9) (meters 18))
    (:y (meters -6))
@@ -855,7 +861,7 @@
 
 (defpart 1901
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 1.0)
    (:y (meters -7))
    (:scale-x (meters 3) (meters 4.5))
@@ -980,6 +986,7 @@
    snow-switch-activate
    snow-switch-idle-down
    snow-switch-idle-up))
+
 
 (defskelgroup *snow-switch-sg*
   snow-switch
@@ -1120,6 +1127,7 @@
    snow-log-hidden
    snow-log-wait-for-master))
 
+
 (defskelgroup *snow-log-sg*
   snow-log
   snow-log-lod0-jg
@@ -1257,6 +1265,7 @@
    snow-log-button-activate
    snow-log-button-idle-down
    snow-log-button-idle-up))
+
 
 (defbehavior snow-log-button-event-handler snow-log-button ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (local-vars (v0-2 basic))

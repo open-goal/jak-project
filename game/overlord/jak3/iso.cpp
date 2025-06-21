@@ -367,8 +367,6 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
         }
 
         // open the file!!
-        ovrld_log(LogCategory::VAG_SETUP, "vag dir entry offset is {}",
-                  vag_dir_entry->words[1] >> 16);
         auto* base_file = get_file_system()->OpenWAD(filedef, vag_dir_entry->words[1] >> 16);
         internal_cmd->m_pBaseFile = base_file;
 
@@ -440,7 +438,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
   // mysterious case to reject a command
   if (user_cmd->vag_dir_entry && (user_cmd->vag_dir_entry->words[1] & 0x400U) != 0 &&
       HowManyBelowThisPriority(user_cmd->priority_pq) < 2) {
-    ovrld_log(LogCategory::WARN, "mysterious rejection of a queued vag stream");
+    ovrld_log(LogCategory::WARN, "mysterious rejection of a queued vag stream: {}", user_cmd->name);
     return;
   }
 
@@ -511,7 +509,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
       if (!internal_stereo_cmd) {
         // allocating stereo failed, give up.
         internal_cmd->flags.scanned = 0;
-        ASSERT_NOT_REACHED();
+        // ASSERT_NOT_REACHED();
         ReleaseMessage(internal_cmd);
         RemoveVagCmd(internal_cmd);
         FreeVagCmd(internal_cmd);
@@ -733,7 +731,7 @@ void ProcessMusic() {
   // handle pausing request.
   if (!g_bMusicIsPaused && g_bMusicPause) {
     cmd = FindMusicStreamName(g_szCurrentMusicName);
-    if (cmd && cmd->id & !cmd->flags.stop) {
+    if (cmd && cmd->id && !cmd->flags.stop) {
       PauseVAG(cmd);
     }
     g_bMusicIsPaused = true;
@@ -821,7 +819,7 @@ u32 ISOThread() {
   // ISOFileDef* file_def = nullptr;
 
   while (true) {
-    dma_intr_hack();
+    // dma_intr_hack();
     // Part 1: Handle incoming messages from the user:
 
     int poll_result = PollMbx((MsgPacket**)&mbx_cmd, g_nISOMbx);
@@ -840,8 +838,8 @@ u32 ISOThread() {
         mbx_cmd->m_pBaseFile = nullptr;
         auto msg_kind = mbx_cmd->msg_type;
 
-        ovrld_log(LogCategory::ISO_QUEUE, "Incoming message to the ISO Queue with type 0x{:x}",
-                  (int)msg_kind);
+        // ovrld_log(LogCategory::ISO_QUEUE, "Incoming message to the ISO Queue with type 0x{:x}",
+        //          (int)msg_kind);
 
         // if we're a simple file loading command:
         if (msg_kind == ISO_Hdr::MsgType::LOAD_EE || msg_kind == ISO_Hdr::MsgType::LOAD_EE_CHUNK ||
@@ -872,21 +870,21 @@ u32 ISOThread() {
           // handle opening the file:
           switch (msg_kind) {
             case ISO_Hdr::MsgType::LOAD_EE_CHUNK: {
-              ovrld_log(LogCategory::ISO_QUEUE, "Opening File {} for EE Chunk Load offset {}",
-                        mbx_cmd->file_def->name.data, ((ISO_LoadSingle*)mbx_cmd)->sector_offset);
+              // ovrld_log(LogCategory::ISO_QUEUE, "Opening File {} for EE Chunk Load offset {}",
+              //           mbx_cmd->file_def->name.data, ((ISO_LoadSingle*)mbx_cmd)->sector_offset);
               mbx_cmd->m_pBaseFile = get_file_system()->Open(
                   mbx_cmd->file_def, ((ISO_LoadSingle*)mbx_cmd)->sector_offset, 1);
             } break;
             case ISO_Hdr::MsgType::LOAD_IOP:
             case ISO_Hdr::MsgType::LOAD_EE:
-              ovrld_log(LogCategory::ISO_QUEUE, "Opening File {} for Load {}",
-                        msg_kind == ISO_Hdr::MsgType::LOAD_EE ? "EE" : "IOP",
-                        mbx_cmd->file_def->name.data);
+              // ovrld_log(LogCategory::ISO_QUEUE, "Opening File {} for Load {}",
+              //           msg_kind == ISO_Hdr::MsgType::LOAD_EE ? "EE" : "IOP",
+              //           mbx_cmd->file_def->name.data);
               mbx_cmd->m_pBaseFile = get_file_system()->Open(mbx_cmd->file_def, -1, 1);
               break;
             case ISO_Hdr::MsgType::LOAD_SOUNDBANK: {
-              ovrld_log(LogCategory::ISO_QUEUE, "Opening for LOAD_SOUNDBANK {} ",
-                        load_sbk_cmd->name);
+              // ovrld_log(LogCategory::ISO_QUEUE, "Opening for LOAD_SOUNDBANK {} ",
+              //           load_sbk_cmd->name);
               // build name
               ASSERT(load_sbk_cmd->name);
               strncpy(local_name, load_sbk_cmd->name, 0xc);
@@ -991,11 +989,8 @@ u32 ISOThread() {
               break;
             case ISO_Hdr::MsgType::VAG_SET_PITCH_VOL:
               vag_cmd = (ISO_VAGCommand*)mbx_cmd;
-              ovrld_log(LogCategory::ISO_QUEUE, "VAG_SET_PITCH_VOL (id {})", vag_cmd->id);
               internal_vag_cmd = FindVagStreamId(vag_cmd->id);
               if (internal_vag_cmd) {
-                ovrld_log(LogCategory::ISO_QUEUE, "VAG_SET_PITCH_VOL lookup ok, got {}",
-                          internal_vag_cmd->name);
                 internal_vag_cmd->pitch_cmd = vag_cmd->pitch_cmd;
                 SetVAGVol(internal_vag_cmd);
               }
@@ -1549,7 +1544,7 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
     return;
   }
   if (sLoadDGO.last_id < cmd->cgo_id) {
-    ovrld_log(LogCategory::RPC, "DGO RPC: new command ID, starting a load for {}\n", cmd->name);
+    ovrld_log(LogCategory::RPC, "DGO RPC: new command ID, starting a load for {}", cmd->name);
     CancelDGO(nullptr);
     sLoadDGO.msg_type = ISO_Hdr::MsgType::DGO_LOAD;
     sLoadDGO.selected_id = cmd->cgo_id;
@@ -1567,12 +1562,8 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
     sLoadDGO.nosync_cancel_ack = 0;
     // CpuResumeIntr(local_18[0]);
     ASSERT(sLoadDGO.msg_type != ISO_Hdr::MsgType::MSG_0);
-    ovrld_log(LogCategory::RPC, "------------------DGO: RPC sending mbox (reply size is {})",
-              MbxSize(g_nDGOMbx));
     SendMbx(g_nISOMbx, &sLoadDGO);
-    ovrld_log(LogCategory::RPC, "DGO: RPC waiting mbox (now has {})", MbxSize(g_nDGOMbx));
     WaitMbx(g_nDGOMbx);
-    ovrld_log(LogCategory::RPC, "DGO: RPC recv mbox: {}", int(sLoadDGO.status));
     if (sLoadDGO.status == EIsoStatus::OK_2) {
       cmd->status = 2;
       return;
@@ -1630,7 +1621,7 @@ void LoadNextDGO(RPC_Dgo_Cmd* cmd) {
 }
 
 void CancelDGO(RPC_Dgo_Cmd* param_1) {
-  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGO {}\n", param_1 ? param_1->name : "NO CMD");
+  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGO {}", param_1 ? param_1->name : "NO CMD");
   if (sLoadDGO.msg_type != ISO_Hdr::MsgType::MSG_0) {
     sLoadDGO.want_abort = 1;
     if (NotifyDGO()) {
@@ -1645,7 +1636,7 @@ void CancelDGO(RPC_Dgo_Cmd* param_1) {
 }
 
 void CancelDGONoSync(int id) {
-  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGONoSync {}\n", id);
+  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGONoSync {}", id);
   // CpuSuspendIntr(local_10);
   sLoadDGO.nosync_cancel_pending_flag = 1;
   if (0 < id - sLoadDGO.last_id) {
@@ -1738,7 +1729,7 @@ EIsoStatus CopyData(ISO_LoadCommon* cmd, CopyKind kind) {
                 snd_BankLoadFromIOPPartialEx(buffer->m_pCurrentData, len, bank_info->m_nSpuMemLoc,
                                              bank_info->m_nSpuMemSize);
                 if (cmd->progress_bytes + len == cmd->length_to_copy) {
-                  snd_BankLoadFromIOPPartialEx_Completion();
+                  bank_info->snd_handle = snd_BankLoadFromIOPPartialEx_Completion();
                   snd_ResolveBankXREFS();
                   // TODO: this also set field_0x28... is that needed??
                 }

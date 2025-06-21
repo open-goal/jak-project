@@ -3,7 +3,6 @@
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
 #include "fmt/format.h"
 
 namespace pretty_print {
@@ -295,7 +294,7 @@ void break_list(Node* node) {
       }
     } else if (name == "until" || name == "while" || name == "dotimes" || name == "countdown" ||
                name == "when" || name == "behavior" || name == "lambda" || name == "defpart" ||
-               name == "define") {
+               name == "define" || name == "suspend-for") {
       node->top_line_count = 2;
     } else if (name == "let" || name == "let*" || name == "rlet" ||
                name == "with-dma-buffer-add-bucket") {
@@ -341,9 +340,9 @@ void break_list(Node* node) {
 
 void insert_required_breaks(const std::vector<Node*>& bfs_order) {
   const std::unordered_set<std::string> always_break = {
-      "when",    "defun-debug", "countdown", "case",     "defun",   "defmethod", "let",
-      "until",   "while",       "if",        "dotimes",  "cond",    "else",      "defbehavior",
-      "with-pp", "rlet",        "defstate",  "behavior", "defpart", "loop",      "let*"};
+      "when",     "defun-debug", "countdown", "case", "defun", "defmethod",   "let",     "until",
+      "while",    "if",          "dotimes",   "cond", "else",  "defbehavior", "with-pp", "rlet",
+      "defstate", "behavior",    "defpart",   "loop", "let*",  "suspend-for"};
   for (auto node : bfs_order) {
     if (!node->break_list && node->kind == Node::Kind::LIST &&
         node->child_nodes.at(0).kind == Node::Kind::ATOM) {

@@ -31,18 +31,7 @@
     (set! (-> gp-1 vec10 y) 204800.0)
     (set! (-> gp-1 vec10 z) 409600.0)
     (set! (-> gp-1 vec10 w) 163840.0)
-    (let* ((v1-9 (-> gp-1 mat0))
-           (a3-1 (-> this rbody matrix))
-           (a0-4 (-> a3-1 rvec quad))
-           (a1-1 (-> a3-1 uvec quad))
-           (a2-1 (-> a3-1 fvec quad))
-           (a3-2 (-> a3-1 trans quad))
-           )
-      (set! (-> v1-9 rvec quad) a0-4)
-      (set! (-> v1-9 uvec quad) a1-1)
-      (set! (-> v1-9 fvec quad) a2-1)
-      (set! (-> v1-9 trans quad) a3-2)
-      )
+    (matrix-copy! (-> gp-1 mat0) (-> this rbody matrix))
     (let ((v1-10 (new 'static 'inline-array vector 2
                    (new 'static 'vector :x 3686.4 :y 5324.8 :z 6144.0 :w 1.0)
                    (new 'static 'vector :x -3686.4 :y 5324.8 :z 6144.0 :w 1.0)
@@ -55,7 +44,7 @@
     (vector-reset! (-> gp-1 vec4))
     (set! (-> gp-1 vec4 z) (-> gp-1 vec10 y))
     (set! (-> gp-1 vec4 y) (* 0.2678 (-> gp-1 vec10 y)))
-    (set! (-> gp-1 vec8 quad) (-> gp-1 mat0 fvec quad))
+    (vector-copy! (-> gp-1 vec8) (-> gp-1 mat0 fvec))
     (vector-float*! (-> gp-1 vec9) (-> gp-1 vec8) (- (-> gp-1 vec10 z) (-> gp-1 vec10 x)))
     (vector+float*! (-> gp-1 vec3) (-> gp-1 vec0) (-> gp-1 vec8) (+ 32768.0 (-> gp-1 vec10 x)))
     (let ((s4-1 (new 'stack 'boxed-array collide-shape 128)))
@@ -82,8 +71,8 @@
                   )
             )
         (when s4-2
-          (set! (-> gp-1 vec6 quad) (-> (get-trans s4-2 3) quad))
-          (set! (-> gp-1 vec7 quad) (-> (get-transv s4-2) quad))
+          (vector-copy! (-> gp-1 vec6) (get-trans s4-2 3))
+          (vector-copy! (-> gp-1 vec7) (get-transv s4-2))
           (vector+float*! (-> gp-1 vec2) (-> this rbody lin-velocity) (-> gp-1 vec8) (-> gp-1 vec10 y))
           (vector-! (-> gp-1 vec5) (-> gp-1 vec6) (-> gp-1 vec0))
           (set! (-> gp-1 vec11 x) (vector-dot (-> gp-1 vec8) (-> gp-1 vec5)))
@@ -92,7 +81,7 @@
           (set! (-> gp-1 vec11 w) (fmax 0.1 (/ (-> gp-1 vec11 x) (fmax 4096.0 (- (-> gp-1 vec11 y))))))
           (set! (-> gp-1 vec11 z) (+ (-> gp-1 vec6 y) (* (-> gp-1 vec11 w) (-> gp-1 vec7 y))))
           (set! (-> gp-1 vec4 y) (+ (* (/ 1.0 (-> gp-1 vec11 w)) (- (-> gp-1 vec11 z) (-> gp-1 vec0 y)))
-                                    (* 0.5 (-> gp-1 vec11 w) (-> gp-1 vec10 w))
+                                    (* (/ (-> gp-1 vec11 w) 2) (-> gp-1 vec10 w))
                                     )
                 )
           (set! (-> gp-1 vec4 y) (* (-> gp-1 vec4 y) (/ 1.0 (fmax 0.1 (-> gp-1 mat0 uvec y)))))
@@ -108,7 +97,7 @@
     (set! (-> gp-1 params options) (projectile-options))
     (logclear! (-> gp-1 params options) (projectile-options po14 po15 po16))
     (set! (-> gp-1 params pos quad) (-> gp-1 vec0 quad))
-    (set! (-> gp-1 params vel quad) (-> gp-1 vec2 quad))
+    (vector-copy! (-> gp-1 params vel) (-> gp-1 vec2))
     (set! (-> gp-1 params notify-handle) (the-as handle #f))
     (set! (-> gp-1 params owner-handle) (process->handle this))
     (set! (-> gp-1 params target-handle) (the-as handle #f))
@@ -187,10 +176,10 @@
   (alloc-rbody-control! this *v-mirage-constants*)
   (set! (-> this shoot-delay) (the-as uint 240))
   (set! (-> this local-gun-pos 0 quad) (-> (new 'static 'vector :x 3686.4 :y 5324.8 :z 6144.0 :w 1.0) quad))
-  (set! (-> this local-gun-pos 1 quad) (-> (new 'static 'vector :x -3686.4 :y 5324.8 :z 6144.0 :w 1.0) quad))
+  (vector-copy! (-> this local-gun-pos 1) (new 'static 'vector :x -3686.4 :y 5324.8 :z 6144.0 :w 1.0))
   (set! (-> this rider-hand-joint-array 0) 17)
   ((method-of-type joint-mod-rotate-local init)
-   (the-as joint-mod-rotate-local (-> this jmod-axles))
+   (-> this jmod-axles 0)
    this
    (the-as uint 5)
    (joint-mod-base-flags attached)
@@ -199,7 +188,7 @@
   (init (-> this jmod-axles 2) this (the-as uint 4) (joint-mod-base-flags attached))
   (init (-> this jmod-axles 3) this (the-as uint 7) (joint-mod-base-flags attached))
   ((method-of-type joint-mod-rotate-local init)
-   (the-as joint-mod-rotate-local (-> this jmod-shock-tops))
+   (-> this jmod-shock-tops 0)
    this
    (the-as uint 11)
    (joint-mod-base-flags attached)
@@ -208,7 +197,7 @@
   (init (-> this jmod-shock-tops 2) this (the-as uint 9) (joint-mod-base-flags attached))
   (init (-> this jmod-shock-tops 3) this (the-as uint 13) (joint-mod-base-flags attached))
   ((method-of-type joint-mod-set-local init)
-   (the-as joint-mod-set-local (-> this jmod-shock-mids))
+   (-> this jmod-shock-mids 0)
    this
    (the-as uint 12)
    (joint-mod-base-flags attached trans)
@@ -238,7 +227,3 @@
   0
   (none)
   )
-
-
-
-

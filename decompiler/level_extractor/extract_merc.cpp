@@ -729,7 +729,7 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
                                  GameVersion version) {
   s32 idx_in_level_texture = INT32_MAX;
   for (s32 i = 0; i < (int)out.textures.size(); i++) {
-    if (out.textures[i].combo_id == pc_combo_tex_id) {
+    if (out.textures[i].combo_id == pc_combo_tex_id && out.textures[i].debug_name == debug_name) {
       idx_in_level_texture = i;
       break;
     }
@@ -746,6 +746,7 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
         for (size_t i = 0; i < out.textures.size(); i++) {
           auto& existing = out.textures[i];
           if (existing.debug_name == "yak-medfur-end") {
+            lg::info("found yak-medfur-end to replace missing yakow-lod0");
             idx_in_level_texture = i;
             break;
           }
@@ -853,11 +854,18 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
         u32 tidx = (env >> 8) & 0b1111'1111'1111;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
-      case GameVersion::Jak2:
-      case GameVersion::Jak3:
-      case GameVersion::JakX: {
+      case GameVersion::Jak2: {
         u32 tpage = 0x1f;
         u32 tidx = 2;
+        tex_combo = (((u32)tpage) << 16) | tidx;
+      } break;
+      case GameVersion::Jak3:
+      case GameVersion::JakX: {
+        // (define *generic-envmap-texture* (get-texture pal-environment-front environment-generic))
+        // (defconstant environment-generic 2) tpage
+        // (def-tex pal-environment-front environment-generic 1) texture
+        u32 tpage = 2;
+        u32 tidx = 1;
         tex_combo = (((u32)tpage) << 16) | tidx;
       } break;
       default:
@@ -949,6 +957,16 @@ ConvertedMercEffect convert_merc_effect(const MercEffect& input_effect,
 
     if (input_effect.effect_bits & kTransEffectBit) {
       use_alpha_blend = true;
+    }
+
+    // workaround for https://github.com/open-goal/jak-project/issues/3682
+    // when the pillar is very close to the screen, they fade it out, to avoid blocking the camera.
+    // but, for unknown reasons, they move this to an alpha bucket as well (normally not required
+    // for fade), but rely on merc disabling alpha blend. OpenGOAL's detection of alpha blending
+    // just checks the bucket, but there's more logic than this in the shader. Rather than figuring
+    // this out, just fix this specific case for now:
+    if (debug_name == "comb-pillar-lod0") {
+      use_alpha_blend = false;
     }
 
     handle_frag(debug_name, ctrl_header, frag, frag_ctrl, merc_state, result.vertices,
@@ -1618,7 +1636,7 @@ void replace_model(tfrag3::Level& lvl, tfrag3::MercModel& model, const fs::path&
       }
     }
 
-    auto swap_info = load_replacement_merc_model(model.name, lvl.merc_data.indices.size(),
+    auto swap_info = load_replacement_merc_model(model, lvl.merc_data.indices.size(),
                                                  lvl.merc_data.vertices.size(), lvl.textures.size(),
                                                  mdl_path.string(), old_verts, false);
     model = swap_info.new_model;
@@ -1641,8 +1659,8 @@ void add_custom_model_to_level(tfrag3::Level& lvl,
   auto lvl_name = lvl.level_name == "" ? "common" : lvl.level_name;
   lg::info("Adding custom model {} to {}", name, lvl_name);
   auto merc_data =
-      load_replacement_merc_model(name, lvl.merc_data.indices.size(), lvl.merc_data.vertices.size(),
-                                  lvl.textures.size(), mdl_path.string(), {}, true);
+      load_custom_merc_model(name, lvl.merc_data.indices.size(), lvl.merc_data.vertices.size(),
+                             lvl.textures.size(), mdl_path.string(), {}, true);
   for (auto& idx : merc_data.new_indices) {
     lvl.merc_data.indices.push_back(idx);
   }
@@ -1663,7 +1681,8 @@ void extract_merc(const ObjectFileData& ag_data,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
                   bool dump_level,
-                  GameVersion version) {
+                  GameVersion version,
+                  MercSwapInfo& swapped_info) {
   if (dump_level) {
     file_util::create_dir_if_needed(file_util::get_file_path({"debug_out/merc"}));
   }
@@ -1789,31 +1808,45 @@ void extract_merc(const ObjectFileData& ag_data,
     }
   }
 
-  // do model replacements if present
-  auto merc_replacement_folder = file_util::get_jak_project_dir() / "custom_assets" /
-                                 game_version_names[version] / "merc_replacements";
-  if (file_util::file_exists(merc_replacement_folder.string())) {
-    auto merc_replacements =
-        file_util::find_files_in_dir(merc_replacement_folder, std::regex(".*\\.glb"));
-    for (auto& path : merc_replacements) {
-      auto name = path.stem().string();
-      auto it = std::find_if(out.merc_data.models.begin(), out.merc_data.models.end(),
-                             [&](const auto& m) { return m.name == name; });
-      if (it != out.merc_data.models.end()) {
-        auto& model = *it;
-        replace_model(out, model, path);
+  // do model replacement if present
+  for (auto& ctrl : ctrls) {
+    if (swapped_info.should_swap(ctrl.name)) {
+      auto merc_replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
+                                    game_version_names[version] / "merc_replacements";
+      if (!swapped_info.already_swapped(ctrl.name, out.level_name)) {
+        if (file_util::file_exists(merc_replacements_path.string())) {
+          std::string file_name(ctrl.name + ".glb");
+          auto mdl_path = merc_replacements_path / file_name;
+          if (file_util::file_exists(mdl_path.string())) {
+            auto it = std::find_if(out.merc_data.models.begin(), out.merc_data.models.end(),
+                                   [&](const auto& m) { return m.name == ctrl.name; });
+            if (it != out.merc_data.models.end()) {
+              auto& model = *it;
+              replace_model(out, model, mdl_path);
+              swapped_info.add_to_swapped_list(ctrl.name, out.level_name);
+            }
+          }
+        } else {
+          lg::info("{} in level {} was already swapped, skipping", ctrl.name, out.level_name);
+        }
       }
     }
-  }
 
-  // add custom models if present
-  auto lvl_name = out.level_name == "" ? "common" : out.level_name;
-  auto models_folder = file_util::get_jak_project_dir() / "custom_assets" /
-                       game_version_names[version] / "models" / lvl_name;
-  if (file_util::file_exists(models_folder.string())) {
-    auto custom_models = file_util::find_files_in_dir(models_folder, std::regex(".*\\.glb"));
-    for (auto& mdl : custom_models) {
-      add_custom_model_to_level(out, mdl.stem().string(), mdl);
+    // add custom models if present
+    auto lvl_name = out.level_name == "" ? "common" : out.level_name;
+    auto models_folder = file_util::get_jak_project_dir() / "custom_assets" /
+                         game_version_names[version] / "models" / lvl_name;
+    if (file_util::file_exists(models_folder.string())) {
+      auto custom_models = file_util::find_files_in_dir(models_folder, std::regex(".*\\.glb"));
+      for (auto& mdl : custom_models) {
+        auto name = mdl.stem().string();
+        if (!swapped_info.already_added(name, lvl_name)) {
+          add_custom_model_to_level(out, name, mdl);
+          swapped_info.add_to_custom_list(name, lvl_name);
+        } else {
+          lg::info("custom model {} was already added to level {}, skipping", name, lvl_name);
+        }
+      }
     }
   }
 }

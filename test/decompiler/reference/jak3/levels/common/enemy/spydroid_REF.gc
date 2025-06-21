@@ -327,34 +327,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 6371.5557
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 1)
     :shadow-max-y (meters 1)
@@ -396,6 +396,7 @@
 ;; definition for method 59 of type spydroid
 ;; WARN: Return type mismatch int vs none.
 (defmethod enemy-common-post ((this spydroid))
+  "Common implementation of post. Runs ja-post."
   (spydroid-method-236 this)
   ((method-of-type kg-squad-member enemy-common-post) this)
   0
@@ -404,6 +405,7 @@
 
 ;; definition for method 82 of type spydroid
 (defmethod event-handler ((this spydroid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('jump)
      (set! (-> this floor) (-> (the-as enemy-jump-info (-> arg3 param 1)) anim-speed))
@@ -422,15 +424,17 @@
     (sound-play "droid-explode")
     (cond
       ((logtest? (-> *part-group-id-table* 221 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad)
-             (-> (vector+float*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 2048.0) quad)
-             )
+       (vector-copy!
+         (-> *launch-matrix* trans)
+         (vector+float*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 2048.0)
+         )
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 221))
        )
       (else
-        (set! (-> *launch-matrix* trans quad)
-              (-> (vector+float*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 2048.0) quad)
-              )
+        (vector-copy!
+          (-> *launch-matrix* trans)
+          (vector+float*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 2048.0)
+          )
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 221))
         )
       )
@@ -462,11 +466,11 @@
     (when (not (time-elapsed? (-> self state-time) (seconds 2)))
       (cond
         ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
-         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 219))
          )
         (else
-          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 219))
           )
         )
@@ -487,7 +491,7 @@
     (let ((s4-0 (handle->process (-> this focus handle)))
           (s3-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> s3-0 quad) (-> (the-as process-focusable s4-0) root root-prim prim-core world-sphere quad))
+      (vector-copy! s3-0 (-> (the-as process-focusable s4-0) root root-prim prim-core world-sphere))
       (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) s3-0 (-> this root trans))))
         0.0
         (set! (-> s5-1 y) 0.0)
@@ -551,7 +555,7 @@
             (let ((v1-26 (-> self nav state)))
               (logclear! (-> v1-26 flags) (nav-state-flag directional-mode))
               (logior! (-> v1-26 flags) (nav-state-flag target-poly-dirty))
-              (set! (-> v1-26 target-pos quad) (-> s4-2 quad))
+              (vector-copy! (-> v1-26 target-pos) s4-2)
               )
             )
           )
@@ -704,10 +708,10 @@
       (let ((a0-2 (the-as process-focusable (handle->process (-> self focus handle)))))
         (when a0-2
           (let ((gp-0 (new 'stack-no-clear 'vector)))
-            (set! (-> gp-0 quad) (-> (get-trans a0-2 3) quad))
+            (vector-copy! gp-0 (get-trans a0-2 3))
             (set! f0-0 (spydroid-method-234 self gp-0))
             )
-          (set! f28-0 (* 0.00024414062 f0-0))
+          (set! f28-0 (/ f0-0 METER_LENGTH))
           )
         )
       (if (logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
@@ -750,7 +754,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
-    (reset-penetrate! self)
+    (reset-penetrate-later! self)
     (logior! (-> self focus-status) (focus-status dangerous))
     (nav-enemy-method-182 self)
     (let* ((v1-7 *game-info*)
@@ -768,7 +772,7 @@
       (let ((a0-2 (the-as process-focusable (handle->process (-> self focus handle)))))
         (when a0-2
           (let ((s5-0 (new 'stack-no-clear 'vector)))
-            (set! (-> s5-0 quad) (-> (get-trans a0-2 3) quad))
+            (vector-copy! s5-0 (get-trans a0-2 3))
             (vector-! gp-0 s5-0 (-> self root trans))
             )
           )
@@ -784,12 +788,12 @@
                  (s2-0 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
                  (s3-0 (new 'stack-no-clear 'vector))
                  )
-            (set! (-> s3-0 quad) (-> s5-2 quad))
+            (vector-copy! s3-0 s5-2)
             (when s1-0
               (set! (-> s3-0 y) 0.0)
               (clamp-vector-to-mesh-no-gaps (-> self nav) s4-0 s1-0 s3-0 s2-0)
               (if (-> s2-0 found-boundary)
-                  (set! (-> s5-2 quad) (-> s3-0 quad))
+                  (vector-copy! s5-2 s3-0)
                   )
               )
             )
@@ -875,7 +879,7 @@
   (let ((v1-28 (-> this alert-level)))
     (cond
       ((zero? v1-28)
-       (enemy-method-70 this (get-target-focus (-> this squad)) (the-as enemy-aware #f))
+       (set-focus! this (get-target-focus (-> this squad)) (the-as enemy-aware #f))
        )
       ((= v1-28 3)
        (if (and (zero? (get-alert-level1 (-> this squad))) (= (-> this faction-mode) 0))
@@ -913,7 +917,7 @@
     (let ((a0-10 (the-as process-focusable (handle->process (-> this focus handle))))
           (s5-0 (new 'stack-no-clear 'vector))
           )
-      (set! (-> s5-0 quad) (-> (get-trans a0-10 3) quad))
+      (vector-copy! s5-0 (get-trans a0-10 3))
       (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) s5-0 (-> this root trans))))
         0.0
         0.0
@@ -921,7 +925,7 @@
               (f0-2 (-> s4-1 y))
               )
           (if (not (logtest? (-> this draw status) (draw-control-status on-screen)))
-              (set! f30-0 (* 0.1 f30-0))
+              (set! f30-0 (/ f30-0 10))
               )
           (when (< f0-2 40960.0)
             (set! (-> s4-1 y) 0.0)
@@ -933,7 +937,7 @@
                   (let ((f30-1 (vector-dot s4-1 s3-0)))
                     (when (or (< 0.707 f30-1) (and (< -0.7 f30-1) (< f28-0 18432.0)) (< f28-0 16384.0))
                       (let ((a1-6 (new 'stack-no-clear 'collide-query)))
-                        (set! (-> a1-6 start-pos quad) (-> this root trans quad))
+                        (vector-copy! (-> a1-6 start-pos) (-> this root trans))
                         (+! (-> a1-6 start-pos y) 4096.0)
                         (vector-! (-> a1-6 move-dist) s5-0 (-> a1-6 start-pos))
                         (let ((v1-45 a1-6))
@@ -980,13 +984,13 @@
       (('panic)
        (let ((gp-0 (the-as traffic-danger-info (-> block param 0))))
          (when (spydroid-method-237 self gp-0)
-           (set! (-> self move-dest quad) (-> gp-0 sphere quad))
+           (vector-copy! (-> self move-dest) (-> gp-0 sphere))
            (let ((a0-4 (-> self nav state))
                  (v1-5 (-> self move-dest))
                  )
              (logclear! (-> a0-4 flags) (nav-state-flag directional-mode))
              (logior! (-> a0-4 flags) (nav-state-flag target-poly-dirty))
-             (set! (-> a0-4 target-pos quad) (-> v1-5 quad))
+             (vector-copy! (-> a0-4 target-pos) v1-5)
              )
            0
            )
@@ -1003,7 +1007,7 @@
           )
       (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      (vector-copy! (-> a0-0 target-pos) v1-1)
       )
     0
     (set-time! (-> self state-time))
@@ -1025,7 +1029,7 @@
         )
     (when (> (get-alert-level1 (-> self squad)) 0)
       (spydroid-method-231 self (the-as uint 3))
-      (enemy-method-70 self (get-target-focus (-> self squad)) (the-as enemy-aware #f))
+      (set-focus! self (get-target-focus (-> self squad)) (the-as enemy-aware #f))
       (go-virtual hostile)
       )
     )
@@ -1152,6 +1156,7 @@
 ;; definition for method 120 of type spydroid
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this spydroid))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1216,6 +1221,7 @@
 
 ;; definition for method 67 of type spydroid
 (defmethod coin-flip? ((this spydroid))
+  "Return #t half the time, #f the other."
   #f
   )
 
@@ -1315,21 +1321,10 @@
           )
       (let ((s2-0 (new 'stack-no-clear 'vector)))
         (let ((a1-1 (-> this node-list data (-> s3-0 joint))))
-          (let* ((v1-13 s4-0)
-                 (t0-0 (-> a1-1 bone transform))
-                 (a0-5 (-> t0-0 rvec quad))
-                 (a2-0 (-> t0-0 uvec quad))
-                 (a3-0 (-> t0-0 fvec quad))
-                 (t0-1 (-> t0-0 trans quad))
-                 )
-            (set! (-> v1-13 rvec quad) a0-5)
-            (set! (-> v1-13 uvec quad) a2-0)
-            (set! (-> v1-13 fvec quad) a3-0)
-            (set! (-> v1-13 trans quad) t0-1)
-            )
+          (matrix-copy! s4-0 (-> a1-1 bone transform))
           (vector<-cspace! (-> s4-0 trans) a1-1)
           )
-        (set! (-> s2-0 quad) (-> s3-0 offset quad))
+        (vector-copy! s2-0 (-> s3-0 offset))
         (set! (-> s2-0 w) 1.0)
         (vector-matrix*! (-> s4-0 trans) s2-0 s4-0)
         )
@@ -1343,12 +1338,13 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this spydroid))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-spydroid" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *spydroid-nav-enemy-info*)
+  (setup-enemy! this *spydroid-nav-enemy-info*)
   (call-parent-method this)
   (let ((v1-5 (-> this neck)))
     (set! (-> v1-5 up) (the-as uint 1))
@@ -1464,7 +1460,7 @@
       (('panic)
        (let ((gp-0 (the-as traffic-danger-info (-> block param 0))))
          (when (spydroid-method-237 self gp-0)
-           (set! (-> self move-dest quad) (-> gp-0 sphere quad))
+           (vector-copy! (-> self move-dest) (-> gp-0 sphere))
            (go-virtual search)
            )
          )
@@ -1475,21 +1471,13 @@
       )
     )
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (spydroid-method-231 self (the-as uint 0))
     (set-time! (-> self state-time))
     (logior! (-> self flags) (citizen-flag neck-no-auto-look-at))
     )
   :trans (behavior ()
-    (let ((t9-1 (-> (find-parent-state) trans)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler trans)
     (when (or (!= (-> self faction-mode) 0) (logtest? (-> self flags) (citizen-flag in-mission)))
       (spydroid-method-236 self)
       (go-virtual hostile)
@@ -1501,7 +1489,7 @@
       )
     (when (> (get-alert-level1 (-> self squad)) 0)
       (spydroid-method-231 self (the-as uint 3))
-      (enemy-method-70 self (get-target-focus (-> self squad)) (the-as enemy-aware #f))
+      (set-focus! self (get-target-focus (-> self squad)) (the-as enemy-aware #f))
       (go-virtual hostile)
       )
     )
@@ -1525,28 +1513,15 @@
     (set! (-> this attacker-info next-update-target-time) (+ (current-time) (seconds 3)))
     (logclear! (-> this attacker-info flags) (city-attacker-info-flag cai2))
     )
-  (let* ((s5-0 (handle->process (-> this current-enemy)))
-         (a0-18 (if (type? s5-0 process-focusable)
-                    s5-0
-                    )
-                )
-         )
+  (let ((a0-18 (as-type (handle->process (-> this current-enemy)) process-focusable)))
     (cond
       ((and a0-18
             (not (logtest? (-> (the-as process-focusable a0-18) focus-status) (focus-status disable dead inactive)))
             )
-       (let* ((s5-1 this)
-              (s4-0 (method-of-object s5-1 enemy-method-70))
-              (s3-0 (handle->process (-> this current-enemy)))
-              )
-         (s4-0
-           s5-1
-           (the-as process-focusable (if (type? s3-0 process-focusable)
-                                         s3-0
-                                         )
-                   )
-           (the-as enemy-aware #f)
-           )
+       (set-focus!
+         this
+         (the-as process-focusable (as-type (handle->process (-> this current-enemy)) process-focusable))
+         (the-as enemy-aware #f)
          )
        (update-focus this)
        (let ((f0-0 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
@@ -1611,7 +1586,7 @@
 (defmethod go-from-behavior ((this spydroid) (arg0 traffic-object-spawn-params))
   (case (-> arg0 behavior)
     ((6)
-     (set! (-> this root trans quad) (-> arg0 position quad))
+     (vector-copy! (-> this root trans) (-> arg0 position))
      (go (method-of-object this exit-transport))
      )
     (else

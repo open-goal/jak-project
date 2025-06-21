@@ -21,6 +21,7 @@
   (:states
    windmill-one-idle))
 
+
 (defskelgroup *windmill-one-sg*
   windmill-one
   windmill-one-lod0-jg
@@ -105,7 +106,7 @@
 
 (defpart 539
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 0.5)
    (:x (meters -9) (meters 18))
    (:y (meters -6))
@@ -127,7 +128,7 @@
 
 (defpart 540
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 12.0)
    (:y (meters -7))
    (:scale-x (meters 3) (meters 4.5))
@@ -166,6 +167,7 @@
    grottopole-idle
    grottopole-moving-down
    grottopole-moving-up))
+
 
 (defskelgroup *grottopole-sg*
   grottopole
@@ -319,6 +321,7 @@
   (:states (ecoventrock-break symbol)
    ecoventrock-idle))
 
+
 (defskelgroup *ecoventrock-sg*
   ecoventrock
   ecoventrock-lod0-jg
@@ -341,7 +344,7 @@
 
 (defpart 547
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  ((:texture (starflash effects))
    (:num 1.0)
    (:scale-x (meters 15))
    (:scale-y :copy scale-x)
@@ -355,7 +358,7 @@
 
 (defpart 543
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 4.0 6.0)
    (:scale-x (meters 0.1) (meters 0.3))
    (:rot-z (degrees 0) (degrees 360))
@@ -377,7 +380,7 @@
 
 (defpart 544
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 4.0 6.0)
    (:scale-x (meters 0.1) (meters 0.3))
    (:rot-z (degrees 0) (degrees 360))
@@ -399,7 +402,7 @@
 
 (defpart 545
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  ((:texture (rockbit effects))
    (:num 4.0 6.0)
    (:scale-x (meters 0.1) (meters 0.3))
    (:rot-z (degrees 0) (degrees 360))
@@ -424,7 +427,7 @@
 
 (defpart 548
   :init-specs
-  ((:texture (new 'static 'texture-id :page #x2))
+  ((:texture (bigpuff effects))
    (:num 16.0)
    (:y (meters 0.5) (meters 1))
    (:scale-x (meters 2.5) (meters 1.5))
@@ -517,7 +520,7 @@
           (set-vector! s4-0 (+ (-> s5-1 x) (-> s3-0 x)) (-> s5-1 y) (+ (-> s5-1 z) (-> s3-0 z)) 1.0)
           (vector-float*! s3-0 s3-0 10.0)
           (spawn-flying-rock s4-0 s3-0 1.0 (-> self entity))
-          (set-vector! s3-0 (+ (* -0.866 f26-0) (* 0.5 f28-0)) (* 0.5 f30-0) (+ (* 0.866 f28-0) (* 0.5 f26-0)) 1.0)
+          (set-vector! s3-0 (+ (* -0.866 f26-0) (/ f28-0 2)) (/ f30-0 2) (+ (* 0.866 f28-0) (/ f26-0 2)) 1.0)
           (set-vector! s4-0 (-> s5-1 x) (+ 3276.8 (-> s5-1 y)) (-> s5-1 z) 1.0)
           (vector-float*! s3-0 s3-0 10.0)
           (spawn-flying-rock s4-0 s3-0 1.0 (-> self entity))))
@@ -525,7 +528,7 @@
         (set! sv-128 (the-as symbol #f))
         (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-128))
         (when sv-128
-          (let ((s5-2 (current-time))) (until (time-elapsed? s5-2 (seconds 0.5)) (suspend)))
+          (suspend-for (seconds 0.5))
           (let ((gp-1 (cond
                         (arg0 (the-as int #f))
                         (else
@@ -569,6 +572,7 @@
   (:states
    flying-rock-idle
    flying-rock-rolling))
+
 
 (defskelgroup *kickrock-sg*
   kickrock
@@ -675,6 +679,7 @@
   (:states
    bladeassm-idle))
 
+
 (defskelgroup *bladeassm-sg*
   bladeassm
   bladeassm-lod0-jg
@@ -739,6 +744,7 @@
    flutflutegg-physics
    flutflutegg-physics-fall))
 
+
 (defskelgroup *flutflutegg-sg*
   flutflutegg
   flutflutegg-lod0-jg
@@ -753,9 +759,9 @@
   ((flutflut-lod0-mg (meters 999999)))
   :bounds (static-spherem 0 0 0 8))
 
-(defmethod relocate ((this flutflutegg) (arg0 int))
-  (if (nonzero? (-> this wobbler)) (&+! (-> this wobbler) arg0))
-  (call-parent-method this arg0))
+(defmethod relocate ((this flutflutegg) (offset int))
+  (if (nonzero? (-> this wobbler)) (&+! (-> this wobbler) offset))
+  (call-parent-method this offset))
 
 ;; WARN: Function (method 20 flutflutegg) has a return type of none, but the expression builder found a return statement.
 (defmethod flutflutegg-method-20 ((this flutflutegg) (arg0 float) (arg1 float) (arg2 float))
@@ -875,7 +881,7 @@
                          (suspend))
                        (camera-change-to "camera-135" 0 #f)
                        (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 9))
-                       (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 4)) (suspend)))
+                       (suspend-for (seconds 4))
                        (while (not (process-release? (handle->process (-> self grab-target))))
                          (suspend))
                        (camera-look-at (the-as pair *target*) (the-as uint 0))
@@ -994,6 +1000,7 @@
    harvester-idle
    (harvester-inflate symbol)))
 
+
 (defskelgroup *harvester-sg*
   harvester
   harvester-lod0-jg
@@ -1093,6 +1100,7 @@
   (none))
 
 (deftype beachcam (process-hidden) ())
+
 
 (defun beachcam-spawn ()
   (with-pp

@@ -77,6 +77,10 @@ class ClutBlender {
   GLuint texture() const { return m_texture; }
   bool at_default() const { return m_current_weights[0] == 1.f && m_current_weights[1] == 0.f; }
 
+  int w() const { return m_dest->w; }
+  int h() const { return m_dest->h; }
+  GpuTexture* pool_gpu_tex = nullptr;
+
  private:
   const tfrag3::IndexTexture* m_dest;
   std::array<const std::array<math::Vector4<u8>, 256>*, 2> m_cluts;
@@ -145,6 +149,7 @@ struct FixedLayerDef {
   bool clamp_v = false;
   bool blend_enable = true;
   bool channel_masks[4] = {true, true, true, true};
+  bool disable = false;
   GsAlpha::BlendMode blend_modes[4];  // abcd
   u8 blend_fix = 0;
 
@@ -208,14 +213,17 @@ struct DynamicLayerData {
   LayerVals start_vals, end_vals;
 };
 
+struct FixedAnimSource {
+  u64 idx = 0;
+  bool is_anim_slot = false;
+};
+
 struct FixedAnim {
   FixedAnimDef def;
   std::vector<DynamicLayerData> dynamic_data;
-  // GLint dest_texture;
   std::optional<FramebufferTexturePair> fbt;
   int dest_slot;
-  std::vector<GLint> src_textures;
-
+  std::vector<FixedAnimSource> src_textures;
   GpuTexture* pool_gpu_tex = nullptr;
 };
 
@@ -392,6 +400,7 @@ class TextureAnimator {
     std::vector<ClutBlender> blenders;
     std::vector<int> outputs;
     u64 last_updated_frame = 0;
+    bool move_to_pool = false;
   };
   std::vector<ClutBlenderGroup> m_clut_blender_groups;
 
@@ -404,13 +413,14 @@ class TextureAnimator {
   int create_clut_blender_group(const std::vector<std::string>& textures,
                                 const std::string& suffix0,
                                 const std::string& suffix1,
-                                const std::optional<std::string>& dgo);
+                                const std::optional<std::string>& dgo,
+                                bool send_to_pool = false);
   void add_to_clut_blender_group(int idx,
                                  const std::vector<std::string>& textures,
                                  const std::string& suffix0,
                                  const std::string& suffix1,
                                  const std::optional<std::string>& dgo);
-  void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
+  void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx, TexturePool* texture_pool);
   GLint run_clouds(const SkyInput& input, bool hires);
   void run_slime(const SlimeInput& input);
 
@@ -528,6 +538,7 @@ class TextureAnimator {
   GpuTexture* m_slime_scroll_pool_gpu_tex = nullptr;
   int m_slime_output_slot = -1;
   int m_slime_scroll_output_slot = -1;
+  ShaderLibrary* m_shaders = nullptr;
 };
 
 int output_slot_by_idx(GameVersion version, const std::string& name);

@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Compare
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
 
     steps:
@@ -26,11 +26,11 @@ jobs:
             libxi-dev zip ninja-build libgl1-mesa-dev libssl-dev
 
       - name: Setup sccache
-        uses: hendrikmuhs/ccache-action@v1.2.13
+        uses: hendrikmuhs/ccache-action@v1.2.18
         with:
           variant: sccache
-          key: linux-ubuntu-20.04--Release-linux-clang-asan-${{ github.sha }}
-          restore-keys: linux-ubuntu-20.04--Release-linux-clang-asan
+          key: linux-ubuntu-22.04--Release-linux-clang-static-${{ github.sha }}
+          restore-keys: linux-ubuntu-22.04--Release-linux-clang-static
           max-size: 1000M
 
       - name: CMake Generation (master)
@@ -38,21 +38,14 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          cmake -B build --preset=Release-linux-clang-asan \
+          cmake -B build --preset=Release-linux-clang-static \
             -DCMAKE_C_COMPILER_LAUNCHER=sccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build goalc (master)
-        run: cmake --build build --parallel $((`nproc`)) --target goalc
-
-      - name: Compile and preserve (master)
         run: |
-          ./build/goalc/goalc --game jak1 --cmd "(make-group \"all-code\")"
-          ./build/goalc/goalc --game jak2 --cmd "(make-group \"all-code\")"
-          ./build/goalc/goalc --game jak3 --cmd "(make-group \"all-code\")"
-          mv ./out/jak1/obj ./out/jak1/obj.master
-          mv ./out/jak2/obj ./out/jak2/obj.master
-          mv ./out/jak3/obj ./out/jak3/obj.master
+          cmake --build build --parallel $((`nproc`)) --target goalc
+          mv ./build ./build.master
 
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -64,12 +57,21 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          cmake -B build --preset=Release-linux-clang-asan \
+          cmake -B build --preset=Release-linux-clang-static \
             -DCMAKE_C_COMPILER_LAUNCHER=sccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build goalc (PR)
         run: cmake --build build --parallel $((`nproc`)) --target goalc
+
+      - name: Compile and preserve (master)
+        run: |
+          ./build.master/goalc/goalc --game jak1 --cmd "(make-group \"all-code\")"
+          ./build.master/goalc/goalc --game jak2 --cmd "(make-group \"all-code\")"
+          ./build.master/goalc/goalc --game jak3 --cmd "(make-group \"all-code\")"
+          mv ./out/jak1/obj ./out/jak1/obj.master
+          mv ./out/jak2/obj ./out/jak2/obj.master
+          mv ./out/jak3/obj ./out/jak3/obj.master
 
       - name: Compile and preserve (PR)
         run: |

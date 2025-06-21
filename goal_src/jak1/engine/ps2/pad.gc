@@ -45,6 +45,21 @@
   (x 14)
   (square 15))
 
+(defenum abutton-idx
+  :type uint8
+  (right 0)
+  (left 1)
+  (up 2)
+  (down 3)
+  (triangle 4)
+  (circle 5)
+  (x 6)
+  (square 7)
+  (l1 8)
+  (r1 9)
+  (l2 10)
+  (r2 11))
+
 (defenum pad-type
   (normal 4)
   (analog 5)
@@ -156,22 +171,19 @@
     (set! (-> gp-0 cpads 3) (new 'global 'cpad-info 3))
     gp-0))
 
- ;; Allocates enough input frames to support counting 50ms of time at 300fps.
+;; Allocates enough input frames to support counting 50ms of time at 300fps.
 (deftype cpad-history (basic)
   ((button0-abs pad-buttons 15) ;; bitmask of buttons, pressed or not, with history
    (button0-rel pad-buttons 15) ;; bitmask of if button going down.
-  )
-)
+   ))
 
 ;; List of extended history for controllers at high fps. It always has 4 controllers.
 (deftype cpad-history-list (basic)
-  ((num-cpads  int32)
-   (cpads cpad-history 4)  ;; modified from 2->4 for PC 4-pad support
+  ((num-cpads int32)
+   (cpads     cpad-history 4) ;; modified from 2->4 for PC 4-pad support
    )
   (:methods
-   (new (symbol type) _type_)
-   )
-  )
+   (new (symbol type) _type_)))
 
 (defmethod new cpad-history-list ((allocation symbol) (type-to-make type))
   "Create a cpad-history-list for 4 controllers. It's fine to do this even if controllers
@@ -182,9 +194,7 @@
     (set! (-> this cpads 1) (new 'global 'cpad-history))
     (set! (-> this cpads 2) (new 'global 'cpad-history))
     (set! (-> this cpads 3) (new 'global 'cpad-history))
-    this
-    )
-  )
+    this))
 
 (defun analog-input ((in int) (offset float) (center-val float) (max-val float) (out-range float))
   "Convert integer input from pad into a float between -out-range and +out-range.
@@ -245,17 +255,14 @@
 
 ;; the four controllers
 (define *cpad-list* (new 'global 'cpad-list))
+
 ;; the cpad-history for each controller
 (define *cpad-history-list* (new 'global 'cpad-history-list))
 
 (desfun generate-frame-checks (pad-idx frames)
   (if (= frames 0)
-       0
-      `(logior (-> *cpad-history-list* cpads ,pad-idx button0-rel ,(- frames 1))
-               ,(generate-frame-checks pad-idx (- frames 1))
-        )
-  )
-)
+    0
+    `(logior (-> *cpad-history-list* cpads ,pad-idx button0-rel ,(- frames 1)) ,(generate-frame-checks pad-idx (- frames 1)))))
 
 ;; weird leftover debug thing, enabling overrides the x position of both sticks on all controllers.
 (define *cpad-debug* #f)
@@ -268,7 +275,7 @@
   (let ((pad-list *cpad-list*))
     (dotimes (pad-idx (-> pad-list num-cpads))
       (let ((pad (-> *cpad-list* cpads pad-idx))
-	    (history (-> *cpad-history-list* cpads pad-idx)))
+            (history (-> *cpad-history-list* cpads pad-idx)))
         ;; read from hardware.
         (cpad-get-data pad)
         (cond
@@ -295,61 +302,49 @@
            (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
            (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
            (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
-
-	   ;; og:preserve-this high fps fix
+           ;; og:preserve-this high fps fix
            (when (>= (-> *pc-settings* target-fps) 300)
-              (set! (-> history button0-abs 14) (-> history button0-abs 13))
-              (set! (-> history button0-abs 13) (-> history button0-abs 12))
-              (set! (-> history button0-abs 12) (-> history button0-abs 11))
-
-              (set! (-> history button0-rel 14) (-> history button0-rel 13))
-              (set! (-> history button0-rel 13) (-> history button0-rel 12))
-              (set! (-> history button0-rel 12) (-> history button0-rel 11))
-            )
+             (set! (-> history button0-abs 14) (-> history button0-abs 13))
+             (set! (-> history button0-abs 13) (-> history button0-abs 12))
+             (set! (-> history button0-abs 12) (-> history button0-abs 11))
+             (set! (-> history button0-rel 14) (-> history button0-rel 13))
+             (set! (-> history button0-rel 13) (-> history button0-rel 12))
+             (set! (-> history button0-rel 12) (-> history button0-rel 11)))
            (when (>= (-> *pc-settings* target-fps) 240)
-              (set! (-> history button0-abs 11) (-> history button0-abs 10))
-              (set! (-> history button0-abs 10) (-> history button0-abs 9))
-              (set! (-> history button0-abs  9) (-> history button0-abs 8))
-              (set! (-> history button0-rel 11) (-> history button0-rel 10))
-              (set! (-> history button0-rel 10) (-> history button0-rel 9))
-              (set! (-> history button0-rel  9) (-> history button0-rel 8))
-            )
+             (set! (-> history button0-abs 11) (-> history button0-abs 10))
+             (set! (-> history button0-abs 10) (-> history button0-abs 9))
+             (set! (-> history button0-abs 9) (-> history button0-abs 8))
+             (set! (-> history button0-rel 11) (-> history button0-rel 10))
+             (set! (-> history button0-rel 10) (-> history button0-rel 9))
+             (set! (-> history button0-rel 9) (-> history button0-rel 8)))
            (when (>= (-> *pc-settings* target-fps) 165)
-              (set! (-> history button0-abs 8) (-> history button0-abs 7))
-              (set! (-> history button0-rel 8) (-> history button0-rel 7))
-             )
-	   (when (>= (-> *pc-settings* target-fps) 150)
-	     (set! (-> history button0-abs 7) (-> history button0-abs 6))
-	     (set! (-> history button0-abs 6) (-> history button0-abs 5))
-
-	     (set! (-> history button0-rel 7) (-> history button0-rel 6))
-             (set! (-> history button0-rel 6) (-> history button0-rel 5))
-            )
+             (set! (-> history button0-abs 8) (-> history button0-abs 7))
+             (set! (-> history button0-rel 8) (-> history button0-rel 7)))
+           (when (>= (-> *pc-settings* target-fps) 150)
+             (set! (-> history button0-abs 7) (-> history button0-abs 6))
+             (set! (-> history button0-abs 6) (-> history button0-abs 5))
+             (set! (-> history button0-rel 7) (-> history button0-rel 6))
+             (set! (-> history button0-rel 6) (-> history button0-rel 5)))
            (when (>= (-> *pc-settings* target-fps) 120)
-              (set! (-> history button0-abs 5) (-> history button0-abs 4))
-              (set! (-> history button0-abs 4) (-> history button0-abs 3))
-              (set! (-> history button0-rel 5) (-> history button0-rel 4))
-              (set! (-> history button0-rel 4) (-> history button0-rel 3))
-            )
+             (set! (-> history button0-abs 5) (-> history button0-abs 4))
+             (set! (-> history button0-abs 4) (-> history button0-abs 3))
+             (set! (-> history button0-rel 5) (-> history button0-rel 4))
+             (set! (-> history button0-rel 4) (-> history button0-rel 3)))
            (when (>= (-> *pc-settings* target-fps) 75)
-              (set! (-> history button0-abs 3) (-> history button0-abs 2))
-              (set! (-> history button0-rel 3) (-> history button0-rel 2))
-            )
+             (set! (-> history button0-abs 3) (-> history button0-abs 2))
+             (set! (-> history button0-rel 3) (-> history button0-rel 2)))
            (set! (-> history button0-abs 2) (-> history button0-abs 1))
            (set! (-> history button0-abs 1) (-> pad button0-shadow-abs 0))
            (set! (-> history button0-rel 2) (-> history button0-rel 1))
            (set! (-> history button0-rel 1) (-> pad button0-rel 0))
-
            ;; we might want to clear a button after it is pressed, so we back it up in a "shadow" field
            (let ((current-button0 (-> pad button0)))
              (set! (-> pad button0-shadow-abs 0) (the-as pad-buttons current-button0))
              (set! (-> pad button0-abs 0) (the-as pad-buttons current-button0))
-	     (set! (-> history button0-abs 0) (-> pad button0-abs 0))
-	     )
+             (set! (-> history button0-abs 0) (-> pad button0-abs 0)))
            ;; buttons going down
            (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
-	   (set! (-> history button0-rel 0) (-> pad button0-rel 0))
-
+           (set! (-> history button0-rel 0) (-> pad button0-rel 0))
            ;; some debugging thing they wrote at some point
            (when *cpad-debug*
              (set! (-> pad leftx) (the-as uint 255))
@@ -369,7 +364,9 @@
                     (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty)))))))
                 (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
                 (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0))))))
-              (if (< (-> pad stick0-speed) STICK_DEADZONE) (set! (-> pad stick0-speed) 0.0)))
+              (if (< (-> pad stick0-speed) STICK_DEADZONE) (set! (-> pad stick0-speed) 0.0))
+              ;; (format *stdcon* "pad ~D - left: ~3D / ~3D (~f at ~f)~%" pad-idx (-> pad leftx) (-> pad lefty) (/ (* 360.0 (-> pad stick0-dir)) DEGREES_PER_ROT) (-> pad stick0-speed))
+              )
              (else
               ;; analog is invalid? set to zero.
               (set! (-> pad leftx) (the-as uint 128))

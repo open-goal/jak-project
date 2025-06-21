@@ -63,12 +63,7 @@
 ;; definition for method 45 of type com-elevator
 (defmethod commited-to-ride? ((this com-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
-  (let* ((s5-0 *target*)
-         (a0-2 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((a0-2 (the-as target (as-type *target* process-focusable))))
     (and (when a0-2
            (let* ((v1-2 (get-trans a0-2 0))
                   (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-2 (-> this root trans)))
@@ -110,11 +105,7 @@
 (defstate dormant (com-elevator)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
     )
   )
@@ -145,10 +136,7 @@
     (remove-setting! 'allow-look-around)
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (sound-play "com-elevator-s")
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
@@ -310,10 +298,7 @@
         )
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (until #f

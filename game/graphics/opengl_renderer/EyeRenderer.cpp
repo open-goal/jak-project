@@ -257,16 +257,6 @@ std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma
       pair_idx = y0 / SINGLE_EYE_SIZE;
       l_draw.pair = pair_idx;
       r_draw.pair = pair_idx;
-      if (tex0 && tex0->get_data_ptr()) {
-        u32 tex_val;
-        memcpy(&tex_val, tex0->get_data_ptr(), 4);
-        l_draw.clear_color = tex_val;
-        r_draw.clear_color = tex_val;
-      } else {
-        fmt::print("clear lookup failed\n");
-        l_draw.clear_color = 0;
-        r_draw.clear_color = 0;
-      }
     }
 
     // up next is the pupil background
@@ -463,6 +453,33 @@ int add_draw_to_buffer_64(int idx,
   return idx;
 }
 
+int add_clear_draw_to_buffer(int idx, float* data) {
+  // the entire eye texture is cleared using the 0,0 value from the iris texture
+  const float center = 768;
+  const float upper = center + 256;
+  const float lower = center - 256;
+  data[idx++] = lower;
+  data[idx++] = lower;
+  data[idx++] = 0;
+  data[idx++] = 0;
+
+  data[idx++] = upper;
+  data[idx++] = lower;
+  data[idx++] = 0;
+  data[idx++] = 0;
+
+  data[idx++] = lower;
+  data[idx++] = upper;
+  data[idx++] = 0;
+  data[idx++] = 0;
+
+  data[idx++] = upper;
+  data[idx++] = upper;
+  data[idx++] = 0;
+  data[idx++] = 0;
+  return idx;
+}
+
 void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
                           SharedRenderState* render_state) {
   if (draws.empty()) {
@@ -475,6 +492,7 @@ void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
   // the first thing we'll do is prepare the vertices
   int buffer_idx = 0;
   for (const auto& draw : draws) {
+    buffer_idx = add_clear_draw_to_buffer(buffer_idx, m_gpu_vertex_buffer);
     if (draw.using_64) {
       buffer_idx =
           add_draw_to_buffer_64(buffer_idx, draw.iris, m_gpu_vertex_buffer, draw.pair, draw.lr);
@@ -517,12 +535,17 @@ void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
     out_tex.fnv_name_hash = draw.fnv_name_hash;
     out_tex.lr = draw.lr;
 
-    // first, the clear
-    float clear[4] = {0, 0, 0, 0};
-    for (int i = 0; i < 4; i++) {
-      clear[i] = ((draw.clear_color >> (8 * i)) & 0xff) / 255.f;
-    }
+    // clear: not really needed, but we do it to help debugging in case all the textures are missing
+    float clear[4] = {1.0, 0, 0, 0};
     glClearBufferfv(GL_COLOR, 0, clear);
+
+    // background
+    if (draw.iris_tex) {
+      glDisable(GL_BLEND);
+      glBindTexture(GL_TEXTURE_2D, draw.iris_gl_tex);
+      glDrawArrays(GL_TRIANGLE_STRIP, buffer_idx / 4, 4);
+    }
+    buffer_idx += 4 * 4;
 
     // iris
     if (draw.iris_tex) {

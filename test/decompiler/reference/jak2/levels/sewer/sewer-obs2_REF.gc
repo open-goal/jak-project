@@ -59,12 +59,7 @@
 ;; definition for method 45 of type sew-elevator
 (defmethod commited-to-ride? ((this sew-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
-  (let* ((target *target*)
-         (target-proc (if (type? target process-focusable)
-                          target
-                          )
-                      )
-         )
+  (let ((target-proc (the-as target (as-type *target* process-focusable))))
     (when target-proc
       (let* ((target-pos (get-trans target-proc 0))
              (dist-from-center (vector-! (new 'stack-no-clear 'vector) target-pos (-> this root trans)))
@@ -338,7 +333,7 @@
            (f28-0 (seek-ease
                     f0-8
                     0.0
-                    (* (lerp 21299.2 8192.0 (* 0.000005086263 (-> self spin-rate))) (seconds-per-frame))
+                    (* (lerp 21299.2 8192.0 (/ (-> self spin-rate) (meters 48))) (seconds-per-frame))
                     12288.0
                     2.0
                     )
@@ -908,12 +903,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (let* ((_proc proc)
-              (focus-proc (if (type? _proc process-focusable)
-                              (the-as process-focusable _proc)
-                              )
-                          )
-              )
+       (let ((focus-proc (as-type proc process-focusable)))
          (when focus-proc
            (let ((a0-4
                    (vector-normalize!
@@ -1000,10 +990,7 @@
         )
       )
     (cleanup-for-death self)
-    (let ((frame-counter (current-time)))
-      (until (time-elapsed? frame-counter (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     )
   )
@@ -1731,12 +1718,7 @@
     (logior! (-> self draw status) (draw-control-status no-draw))
     )
   :trans (behavior ()
-    (let* ((target *target*)
-           (target-proc (if (type? target process-focusable)
-                            target
-                            )
-                        )
-           )
+    (let ((target-proc (the-as target (as-type *target* process-focusable))))
       (when target-proc
         (cond
           ((< (vector-vector-distance (-> self root trans) (get-trans target-proc 0)) 20480.0)

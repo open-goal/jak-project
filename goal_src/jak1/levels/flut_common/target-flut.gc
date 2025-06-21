@@ -18,6 +18,7 @@
    (stick-lock    basic)
    (flap-sound-id sound-id)))
 
+
 (deftype flut-bank (basic)
   ((jump-height-min        meters)
    (jump-height-max        meters)
@@ -25,6 +26,7 @@
    (double-jump-height-max meters)
    (air-attack-speed       meters)
    (ground-timeout         time-frame)))
+
 
 (define *FLUT-bank*
   (new 'static
@@ -385,8 +387,7 @@
     (behavior ()
       (if (move-legs?) (go target-flut-walk))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max)))
       (if (can-hands? #t) (go target-flut-running-attack))
       (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
@@ -437,8 +438,7 @@
     (behavior ()
       (if (not (move-legs?)) (go target-flut-stance))
       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max)))
       (if (can-hands? #t) (go target-flut-running-attack))
       (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
@@ -483,7 +483,7 @@
                   ((ja-group? eichar-flut-walk-ja) (set! f28-0 (ja-frame-num 0)) (-> self skel root-channel 1 frame-interp))
                   (else (ja-channel-push! 2 (the-as time-frame gp-0)) f30-0))))
         (ja-no-eval :group! eichar-flut-walk-ja :num! (loop!) :dist 49152.0 :frame-num f28-0)
-        (ja-no-eval :chan 1 :group! eichar-flut-run-ja :num! (identity (* 0.5 f28-0)) :frame-interp f30-0 :dist 40960.0)
+        (ja-no-eval :chan 1 :group! eichar-flut-run-ja :num! (identity (/ f28-0 2)) :frame-interp f30-0 :dist 40960.0)
         (loop
           (suspend)
           (let ((f0-13 (lerp-scale (the-as float 0.0)
@@ -545,7 +545,7 @@
     (behavior ()
       (set! (-> self control unknown-float123)
             (fmax (-> self control unknown-float123)
-                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton 6)))))
+                  (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control unknown-cpad-info00 number) abutton (abutton-idx x)))))) ;; og:preserve-this abutton indexing
       (if (logtest? (-> self control status) (cshape-moving-flags onsurf)) (go target-flut-hit-ground))
       (if (and (cpad-pressed? (-> self control unknown-cpad-info00 number) x)
                (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 40960.0)
@@ -690,10 +690,9 @@
     (-> target-flut-start
         exit)
   :trans
-     (behavior ()
-       ;; og:preserve-this - High FPS Fix
-      (if (and (recently-pressed? x)
-               (can-jump? #f))
+    (behavior ()
+      ;; og:preserve-this - High FPS Fix
+      (if (and (recently-pressed? x) (can-jump? #f))
         (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max)))
       (if (move-legs?) (go target-flut-walk))
       (if (and (not (logtest? (-> self control status) (cshape-moving-flags onsurf)))
@@ -1087,7 +1086,7 @@
                   (let ((s4-1 (new-stack-vector0)))
                     (set! (-> s4-1 quad) (-> self control last-known-safe-ground quad))
                     (ja-channel-set! 0)
-                    (let ((s3-1 (current-time))) (until (time-elapsed? s3-1 (seconds 1)) (suspend)))
+                    (suspend-for (seconds 1))
                     (move-to-point! (-> self control) s4-1))
                   (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
                   (send-event *camera* 'teleport)
@@ -1162,24 +1161,22 @@
                (vector+! (-> self control transv)
                          (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f30-0)
                          (vector-float*! gp-3 gp-3 (/ f0-4 f1-3))))))
-         (let ((gp-4 (current-time)))
-           (until (time-elapsed? gp-4 (seconds 1))
-             (target-flut-falling-anim-trans)
-             (vector-seek! (-> self draw color-mult) *zero-vector* (seconds-per-frame))
-             (let ((s5-2 (new-stack-vector0))
-                   (f30-1 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
-               0.0
-               (vector-! s5-2
-                         (-> self control transv)
-                         (vector-float*! s5-2 (-> self control dynam gravity-normal) (the-as float f30-1)))
-               (let* ((f0-10 (vector-length s5-2))
-                      (f1-4 f0-10))
-                 (if (< (the-as float (-> self control unknown-uint20)) (the-as float f30-1)) (set! f30-1 (-> self control unknown-uint20)))
-                 (vector+! (-> self control transv)
-                           (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float f30-1))
-                           (vector-float*! s5-2 s5-2 (/ f0-10 f1-4)))))
-             (target-flut-post-post)
-             (suspend)))
+         (suspend-for (seconds 1)
+           (target-flut-falling-anim-trans)
+           (vector-seek! (-> self draw color-mult) *zero-vector* (seconds-per-frame))
+           (let ((s5-2 (new-stack-vector0))
+                 (f30-1 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))))
+             0.0
+             (vector-! s5-2
+                       (-> self control transv)
+                       (vector-float*! s5-2 (-> self control dynam gravity-normal) (the-as float f30-1)))
+             (let* ((f0-10 (vector-length s5-2))
+                    (f1-4 f0-10))
+               (if (< (the-as float (-> self control unknown-uint20)) (the-as float f30-1)) (set! f30-1 (-> self control unknown-uint20)))
+               (vector+! (-> self control transv)
+                         (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float f30-1))
+                         (vector-float*! s5-2 s5-2 (/ f0-10 f1-4)))))
+           (target-flut-post-post))
          (camera-change-to (the-as string 'base) 0 #f))
         (else
          (set! (-> self control unknown-surface00) *neutral-mods*)

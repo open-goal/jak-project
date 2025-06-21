@@ -16,7 +16,6 @@
 
 #include "common/util/Assert.h"
 
-#include "fmt/core.h"
 #include "fmt/format.h"
 
 const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
@@ -559,7 +558,10 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"Z~Y~-22H~-4Vˇ~Z", "Ž"},
     {"U~Y~-13H~+2V,~Z", "Ų"},
     {"U~Y~-18H~-10V-~Z", "Ū"},
+    {"D~Y~-25H~-1V-~Z", "Đ"},
     {"I~Y~-8H~+1V,~Z", "Į"},
+    // czech specific
+    {"U~Y~-23H~-5Vº~Z", "Ů"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -576,6 +578,8 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"N~Y~-21H~-5V'~Z", "Ń"},
     {"S~Y~-21H~-5V'~Z", "Ś"},
     {"Z~Y~-21H~-5V'~Z", "Ź"},
+    // czech specific
+    {"Y~Y~-25H~-4V'~Z", "Ý"},
 
     // double acute accents
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},   // custom
@@ -602,6 +606,22 @@ static std::vector<ReplaceInfo> s_replace_info_jak1 = {
     {"O~Y~-22H~-4V¨~Z", "Ö"},
     {"O~Y~-22H~-3V¨~Z", "ö"},  // dumb
     {"U~Y~-22H~-3V¨~Z", "Ü"},
+
+    // caron - Ǎ ǎ Ě ě Ǧ ǧ Ǐ ǐ Ǒ ǒ Ǔ ǔ Y̌ y̌
+    {"A~Y~-20H~-4Vˇ~Z", "Ǎ"},
+    {"E~Y~-20H~-5Vˇ~Z", "Ě"},
+    {"G~Y~-20H~-5Vˇ~Z", "Ǧ"},
+    {"I~Y~-19H~-5Vˇ~Z", "Ǐ"},
+    {"O~Y~-20H~-4Vˇ~Z", "Ǒ"},
+    {"U~Y~-24H~-3Vˇ~Z", "Ǔ"},
+    {"Y~Y~-24H~-3Vˇ~Z", "Y̌"},
+    // czech specific - Č Ň Ř Š Ž Ť
+    {"C~Y~-25H~-9Vˇ~Z", "Č"},
+    {"N~Y~-23H~-5Vˇ~Z", "Ň"},
+    {"R~Y~-24H~-5Vˇ~Z", "Ř"},
+    {"S~Y~-24H~-5Vˇ~Z", "Š"},
+    {"T~Y~-23H~-5Vˇ~Z", "Ť"},
+    {"Z~Y~-23H~-5Vˇ~Z", "Ž"},
 
     // dakuten katakana
     {"~Yウ~Z゛", "ヴ"},
@@ -965,8 +985,14 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"u~Y~-15H~+5V,~Z", "ų"},
     {"U~Y~-20H~-18V-~Z", "Ū"},
     {"u~Y~-18H~-15V-~Z", "ū"},
+    {"D~Y~-28H~-1V-~Z", "Đ"},
+    {"d~Y~-13H~-10V-~Z", "đ"},
     {"I~Y~-8H~+4V,~Z", "Į"},
     {"i~Y~-8H~+4V,~Z", "į"},
+    // czech specific
+    {"U~Y~-24H~-7Vº~Z", "Ů"},
+    {"u~Y~-23H~-5Vº~Z", "ů"},
+    {"t~Y~-7H~-21V,~Z", "ť"},
 
     // tildes
     {"N~Y~-22H~-4V<TIL>~Z", "Ñ"},
@@ -988,6 +1014,9 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"u~Y~-24H~-3V'~Z", "ú"},
     {"Z~Y~-24H~-3V'~Z", "Ź"},
     {"z~Y~-24H~-3V'~Z", "ź"},
+    // czech specific
+    {"Y~Y~-26H~-5V'~Z", "Ý"},
+    {"~+7Vy~-7V~Y~-24H~-3V'~Z", "ý"},
 
     // circumflex
     {"A~Y~-20H~-4V^~Z", "Â"},
@@ -1017,12 +1046,41 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"A~Y~-26H~-8V¨~Z", "Ä"},
     {"a~Y~-25H~-5V¨~Z", "ä"},
     {"E~Y~-20H~-5V¨~Z", "Ë"},
+    {"e~Y~-25H~-5V¨~Z", "ë"},
     {"I~Y~-19H~-5V¨~Z", "Ï"},
     {"i~Y~-26H~-4V¨~Z", "ï"},
     {"O~Y~-26H~-8V¨~Z", "Ö"},
     {"o~Y~-26H~-4V¨~Z", "ö"},
     {"U~Y~-25H~-8V¨~Z", "Ü"},
     {"u~Y~-24H~-3V¨~Z", "ü"},
+
+    // caron - Ǎ ǎ Ě ě Ǧ ǧ Ǐ ǐ Ǒ ǒ Ǔ ǔ Y̌ y̌
+    {"A~Y~-25H~-9Vˇ~Z", "Ǎ"},
+    {"a~Y~-24H~-5Vˇ~Z", "ǎ"},
+    {"E~Y~-22H~-8Vˇ~Z", "Ě"},
+    {"e~Y~-25H~-4Vˇ~Z", "ě"},
+    {"G~Y~-24H~-8Vˇ~Z", "Ǧ"},
+    {"~+7Vg~-7V~Y~-25H~-4Vˇ~Z", "ǧ"},
+    {"I~Y~-19H~-8Vˇ~Z", "Ǐ"},
+    {"i~Y~-19H~-8Vˇ~Z", "ǐ"},
+    {"O~Y~-25H~-7Vˇ~Z", "Ǒ"},
+    {"o~Y~-25H~-4Vˇ~Z", "ǒ"},
+    {"U~Y~-25H~-6Vˇ~Z", "Ǔ"},
+    {"u~Y~-24H~-3Vˇ~Z", "ǔ"},
+    {"Y~Y~-25H~-5Vˇ~Z", "Y̌"},
+    {"~+7Vy~-7V~Y~-25H~-3Vˇ~Z", "y̌"},
+    // czech specific - Č č Ň ň Ř ř Š š Ž ž Ť
+    {"C~Y~-25H~-9Vˇ~Z", "Č"},
+    {"c~Y~-24H~-5Vˇ~Z", "č"},
+    {"N~Y~-25H~-9Vˇ~Z", "Ň"},
+    {"n~Y~-24H~-5Vˇ~Z", "ň"},
+    {"R~Y~-25H~-9Vˇ~Z", "Ř"},
+    {"r~Y~-22H~-5Vˇ~Z", "ř"},
+    {"S~Y~-25H~-9Vˇ~Z", "Š"},
+    {"s~Y~-22H~-5Vˇ~Z", "š"},
+    {"T~Y~-24H~-7Vˇ~Z", "Ť"},
+    {"Z~Y~-25H~-9Vˇ~Z", "Ž"},
+    {"z~Y~-24H~-5Vˇ~Z", "ž"},
 
     // dakuten katakana
     {"~Yウ~Z゛", "ヴ"},
@@ -1157,6 +1215,25 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
      "<FLAG_KOREA>"},
     {"~Y~1L<FLAG_PART_FILL>~]~-1H~Y~1L<FLAG_PART_FILL>~Z~-11H~3L<FLAG_PART_JAPAN_SUN>~Z~+26H",
      "<FLAG_JAPAN>"},
+    {"~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_VERT_STRIPE_RIGHT>~]"
+     "~-1H~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~+26H",
+     "<FLAG_FINLAND>"},
+    {"~Y~7L<FLAG_PART_FILL>~Z~5L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~5L<FLAG_PART_VERT_STRIPE_RIGHT>~]"
+     "~-1H~Y~7L<FLAG_PART_FILL>~Z~5L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~+26H",
+     "<FLAG_SWEDEN>"},
+    {"~Y~3L<FLAG_PART_FILL>~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~1L<FLAG_PART_VERT_STRIPE_RIGHT>~]"
+     "~-1H~Y~3L<FLAG_PART_FILL>~Z~1L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~+26H",
+     "<FLAG_DENMARK>"},
+    {"~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_PART_TOP_BOTTOM_STRIPE>~]~-1H~Y~1L<FLAG_PART_FILL>~Z~3L<FLAG_"
+     "PART_TOP_BOTTOM_STRIPE>~Z~-19H~1L<FLAG_PART_VERT_STRIPE_MIDDLE>~Z~-23H~7L<FLAG_PART_VERT_"
+     "STRIPE_RIGHT>~Z~-23H~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~"
+     "+26H",
+     "<FLAG_NORWAY>"},
+    {"~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_PART_TOP_BOTTOM_STRIPE>~]~-1H~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_"
+     "PART_TOP_BOTTOM_STRIPE>~Z~-19H~1L<FLAG_PART_VERT_STRIPE_MIDDLE>~Z~-23H~3L<FLAG_PART_VERT_"
+     "STRIPE_RIGHT>~Z~-23H~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~"
+     "+26H",
+     "<FLAG_ICELAND>"},
 
     // weird stuff
     // - descenders

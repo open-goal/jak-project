@@ -43,6 +43,7 @@ void SetPlaybackMode(s32 mode);
 void SetCurve(int curve_idx, u32, u32, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 u32 CalculateFalloffVolume(s32* trans, u32 vol, u32 fo_curve, u32 fo_min, u32 fo_max, u32*, u32*);
 s32 CalculateAngle(s32* trans, u32 fo_curve, u32);
+void PrintSounds();
 
 extern u32 g_anStreamVoice[6];
 extern VolumePair g_aPanTable[361];

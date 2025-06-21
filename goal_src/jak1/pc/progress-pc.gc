@@ -225,10 +225,14 @@
             :name (text-id input-options)
             :scale #t
             :param3 (game-option-menu input-options))
-       (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id play-hints) :scale #t
-        :on-confirm
-        (lambda ()
-          (set! (-> *setting-control* default play-hints) (-> *pc-settings* memcard-play-hints?))))
+       (new 'static
+            'game-option
+            :option-type (game-option-type on-off)
+            :name (text-id play-hints)
+            :scale #t
+            :on-confirm
+            (lambda ()
+              (set! (-> *setting-control* default play-hints) (-> *pc-settings* memcard-play-hints?))))
        (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id subtitles) :scale #t)
        (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id hinttitles) :scale #t)
        (new 'static 'game-option :option-type (game-option-type language) :name (text-id language) :scale #t)
@@ -401,6 +405,21 @@
             :slider-show-decimal? #t)
        (new 'static
             'game-option
+            :option-type (game-option-type slider)
+            :name (text-id input-opts-analog-sensitivity)
+            :scale #t
+            :param1 50.0
+            :param2 200.0
+            :slider-step-size 1.0
+            :slider-show-decimal? #f
+            :on-change
+            (lambda ((val object))
+              (let ((val-float (the-as float val)))
+                (pc-set-axis-scale! (/ val-float 100.0))
+                (set! (-> *pc-settings* stick-sensitivity) val-float)
+                (none))))
+       (new 'static
+            'game-option
             :option-type (game-option-type on-off)
             :name (text-id input-opts-ignore-controller-win-focus)
             :scale #t
@@ -431,6 +450,20 @@
             :option-disabled-func
             (lambda ()
               (not (pc-current-controller-has-led?))))
+       (new 'static
+            'game-option
+            :option-type (game-option-type on-off)
+            :name (text-id input-opts-controller-pressure-sensitivity)
+            :scale #t
+            :on-change
+            (lambda ((val object))
+              (let ((val-sym (the-as symbol val)))
+                (pc-set-pressure-sensitivity-enabled! val-sym)
+                (set! (-> *pc-settings* pressure-sensitivity-enabled?) val-sym)
+                (none)))
+            :option-disabled-func
+            (lambda ()
+              (not (pc-current-controller-has-pressure-sensitivity?))))
        (new 'static
             'game-option
             :option-type (game-option-type confirmation)
@@ -649,8 +682,12 @@
        (new 'static 'game-option :option-type (game-option-type lod-fg) :name (text-id lod-fg) :scale #t)
        (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id ps2-parts) :scale #t)
        (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id force-envmap) :scale #t)
-       (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id force-actors) :scale #t
-          :option-disabled-func
+       (new 'static
+            'game-option
+            :option-type (game-option-type on-off)
+            :name (text-id force-actors)
+            :scale #t
+            :option-disabled-func
             (lambda ()
               (-> *pc-settings* speedrunner-mode?)))
        (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
@@ -1078,7 +1115,10 @@
                                   catalan
                                   icelandic
                                   polish
-                                  lithuanian))
+                                  lithuanian
+                                  czech
+                                  croatian
+                                  galician))
 
 (define *text-languages*
   (static-text-list-array english
@@ -1097,7 +1137,10 @@
                           dutch
                           hungarian
                           polish
-                          lithuanian))
+                          lithuanian
+                          czech
+                          croatian
+                          galician))
 
 (define *subtitle-languages*
   (static-text-list-array english
@@ -1112,7 +1155,10 @@
                           danish
                           dutch
                           polish
-                          lithuanian))
+                          lithuanian
+                          czech
+                          croatian
+                          galician))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  DYNAMIC MENU THINGS
@@ -1171,7 +1217,7 @@
   (let ((window-width 0)
         (window-height 0)
         (window-aspect-ratio 0.0)
-        (num-resolutions (pc-get-num-resolutions))
+        (num-resolutions (pc-get-num-resolutions (= (pc-get-display-mode) 'windowed)))
         (num-resolutions-added 0))
     (when (> num-resolutions 0)
       (pc-get-window-size (& window-width) (& window-height))
@@ -1180,7 +1226,7 @@
         (let ((res-width 0)
               (res-height 0)
               (res-aspect-ratio 0.0))
-          (pc-get-resolution i (& res-width) (& res-height))
+          (pc-get-resolution i (= (pc-get-display-mode) 'windowed) (& res-width) (& res-height))
           (set! res-aspect-ratio (/ (the float res-width) (the float res-height)))
           ;; Ignore those that aren't relevant to the current window's aspect ratio
           ;; we only do this when we aren't in windowed mode, because in windowed mode
@@ -1420,362 +1466,378 @@
 
 (defun pc-sprite-adjust-left ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 20.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 4.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) -6.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) -10.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) -14.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) -16.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) -25.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) -26.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) -37.0)
-   (else
-    (+ 121.37227965381875
-     (* -145.13874571806738 aspect-ratio)
-     (* 48.695824268929236 aspect-ratio aspect-ratio)
-     (* -5.737940185600177 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 20.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 4.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) -6.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) -10.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) -14.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) -16.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) -25.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) -26.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) -37.0)
+    (else
+     (+ 121.37227965381875
+        (* -145.13874571806738 aspect-ratio)
+        (* 48.695824268929236 aspect-ratio aspect-ratio)
+        (* -5.737940185600177 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-right ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) -33.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) -6.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 12.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 18.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 26.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 29.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 45.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 46.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 65.0)
-   (else
-    (+ -205.4294994422315
-     (* 245.07283711809043 aspect-ratio)
-     (* -81.04347133064093 aspect-ratio aspect-ratio)
-     (* 9.423126530695802 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) -33.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) -6.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 12.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 18.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 26.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 29.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 45.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 46.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 65.0)
+    (else
+     (+ -205.4294994422315
+        (* 245.07283711809043 aspect-ratio)
+        (* -81.04347133064093 aspect-ratio aspect-ratio)
+        (* 9.423126530695802 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-cross-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) -20.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) -5.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 5.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 8.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 17.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 30.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 30.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 45.0)
-   (else
-    (+ -98.75041386103345
-     (* 104.4004528706783 aspect-ratio)
-     (* -27.27525895954647 aspect-ratio aspect-ratio)
-     (* 2.6112419651912617 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) -20.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) -5.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 5.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 8.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 17.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 30.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 30.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 45.0)
+    (else
+     (+ -98.75041386103345
+        (* 104.4004528706783 aspect-ratio)
+        (* -27.27525895954647 aspect-ratio aspect-ratio)
+        (* 2.6112419651912617 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-cross-y ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) -20.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 5.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 20.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 20.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 25.0)
-   (else
-    (+ -92.55990871923132
-     (* 104.71302956908977 aspect-ratio)
-     (* -32.46993312399963 aspect-ratio aspect-ratio)
-     (* 3.4672700107735115 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) -20.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 5.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 20.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 20.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 25.0)
+    (else
+     (+ -92.55990871923132
+        (* 104.71302956908977 aspect-ratio)
+        (* -32.46993312399963 aspect-ratio aspect-ratio)
+        (* 3.4672700107735115 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-square-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) -5.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 5.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 5.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 8.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 8.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 17.0)
-   (else
-    (+ -22.034620779370684
-     (* 15.66980500404166 aspect-ratio)
-     (* 2.6395010789749374 aspect-ratio aspect-ratio)
-     (* -1.1122480459486384 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) -5.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 5.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 5.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 8.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 8.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 17.0)
+    (else
+     (+ -22.034620779370684
+        (* 15.66980500404166 aspect-ratio)
+        (* 2.6395010789749374 aspect-ratio aspect-ratio)
+        (* -1.1122480459486384 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-square-y ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) -10.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 15.0)
-   (else
-    (+ -35.887413062108386
-     (* 28.768844269882614 aspect-ratio)
-     (* -0.854904339304392 aspect-ratio aspect-ratio)
-     (* -0.9020647898186882 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) -10.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 15.0)
+    (else
+     (+ -35.887413062108386
+        (* 28.768844269882614 aspect-ratio)
+        (* -0.854904339304392 aspect-ratio aspect-ratio)
+        (* -0.9020647898186882 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-triangle-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 2.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 2.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 3.0)
-   (else
-    (+ 9.074933988821043
-     (* -16.012653345486786 aspect-ratio)
-     (* 8.413647131791468 aspect-ratio aspect-ratio)
-     (* -1.2341491172835792 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 2.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 2.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 3.0)
+    (else
+     (+ 9.074933988821043
+        (* -16.012653345486786 aspect-ratio)
+        (* 8.413647131791468 aspect-ratio aspect-ratio)
+        (* -1.2341491172835792 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-triangle-y ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 5.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 5.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 5.0)
-   (else
-    (+ 24.319264777517994
-     (* -43.26989970602368 aspect-ratio)
-     (* 23.07604741978599 aspect-ratio aspect-ratio)
-     (* -3.494974989657488 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 5.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 5.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 5.0)
+    (else
+     (+ 24.319264777517994
+        (* -43.26989970602368 aspect-ratio)
+        (* 23.07604741978599 aspect-ratio aspect-ratio)
+        (* -3.494974989657488 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-circle-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 2.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 2.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 5.0)
-   (else
-    (+ 7.769390144448719
-     (* -13.422040271641388 aspect-ratio)
-     (* 6.780103459545601 aspect-ratio aspect-ratio)
-     (* -0.9064673601247457 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 2.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 2.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 5.0)
+    (else
+     (+ 7.769390144448719
+        (* -13.422040271641388 aspect-ratio)
+        (* 6.780103459545601 aspect-ratio aspect-ratio)
+        (* -0.9064673601247457 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-circle-y ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) -7.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) -7.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) -10.0)
-   (else
-    (+ -32.088654921966715
-     (* 56.69193997766507 aspect-ratio)
-     (* -29.856150879331594 aspect-ratio aspect-ratio)
-     (* 4.401442349782235 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) -7.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) -7.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) -10.0)
+    (else
+     (+ -32.088654921966715
+        (* 56.69193997766507 aspect-ratio)
+        (* -29.856150879331594 aspect-ratio aspect-ratio)
+        (* 4.401442349782235 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-percent-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 12.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 12.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 18.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 18.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 25.0)
-   (else
-    (+ -46.209527361482614
-     (* 59.19334582683605 aspect-ratio)
-     (* -17.978708435875035 aspect-ratio aspect-ratio)
-     (* 1.9546083242648873 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 12.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 12.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 18.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 18.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 25.0)
+    (else
+     (+ -46.209527361482614
+        (* 59.19334582683605 aspect-ratio)
+        (* -17.978708435875035 aspect-ratio aspect-ratio)
+        (* 1.9546083242648873 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-autosave-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 10.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 15.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 18.0)
-   (else
-    (+ -25.454818080453748
-     (* 28.58764000115764 aspect-ratio)
-     (* -5.122397663089315 aspect-ratio aspect-ratio)
-     (* 0.1450488213340339 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 10.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 15.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 18.0)
+    (else
+     (+ -25.454818080453748
+        (* 28.58764000115764 aspect-ratio)
+        (* -5.122397663089315 aspect-ratio aspect-ratio)
+        (* 0.1450488213340339 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-orb-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 5.0)
-   (else
-    (+ -3.26385961093079
-     (* 6.476532684613467 aspect-ratio)
-     (* -4.083859180614655 aspect-ratio aspect-ratio)
-     (* 0.819204392897082 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 5.0)
+    (else
+     (+ -3.26385961093079
+        (* 6.476532684613467 aspect-ratio)
+        (* -4.083859180614655 aspect-ratio aspect-ratio)
+        (* 0.819204392897082 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-orb-glow-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 4.0)
-   (else
-    (+ -2.6110876887446324
-     (* 5.181226147690773 aspect-ratio)
-     (* -3.267087344491723 aspect-ratio aspect-ratio)
-     (* 0.6553635143176653 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 4.0)
+    (else
+     (+ -2.6110876887446324
+        (* 5.181226147690773 aspect-ratio)
+        (* -3.267087344491723 aspect-ratio aspect-ratio)
+        (* 0.6553635143176653 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-orb-text-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 10.0)
-   (else
-    (+ -6.52771922186158
-     (* 12.953065369226934 aspect-ratio)
-     (* -8.16771836122931 aspect-ratio aspect-ratio)
-     (* 1.638408785794164 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 10.0)
+    (else
+     (+ -6.52771922186158
+        (* 12.953065369226934 aspect-ratio)
+        (* -8.16771836122931 aspect-ratio aspect-ratio)
+        (* 1.638408785794164 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-cell-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) -10.0)
-   (else
-    (+ 6.52771922186158
-     (* -12.953065369226934 aspect-ratio)
-     (* 8.16771836122931 aspect-ratio aspect-ratio)
-     (* -1.638408785794164 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) -10.0)
+    (else
+     (+ 6.52771922186158
+        (* -12.953065369226934 aspect-ratio)
+        (* 8.16771836122931 aspect-ratio aspect-ratio)
+        (* -1.638408785794164 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-cell-text-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 2.0)
-   (else
-    (+ -1.3055438443723162
-     (* 2.5906130738453865 aspect-ratio)
-     (* -1.6335436722458616 aspect-ratio aspect-ratio)
-     (* 0.32768175715883263 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 2.0)
+    (else
+     (+ -1.3055438443723162
+        (* 2.5906130738453865 aspect-ratio)
+        (* -1.6335436722458616 aspect-ratio aspect-ratio)
+        (* 0.32768175715883263 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-buzzer-text-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) -5.0)
-   (else
-    (+ 3.26385961093079
-     (* -6.476532684613467 aspect-ratio)
-     (* 4.083859180614655 aspect-ratio aspect-ratio)
-     (* -0.819204392897082 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) -5.0)
+    (else
+     (+ 3.26385961093079
+        (* -6.476532684613467 aspect-ratio)
+        (* 4.083859180614655 aspect-ratio aspect-ratio)
+        (* -0.819204392897082 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (defun pc-sprite-adjust-options-text-x ((aspect-ratio float))
   (cond
-   ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
-   ((fequal-epsilon? aspect-ratio 3.56 0.01) 3.0)
-   (else
-    (+ -1.9583157665584714
-     (* 3.885919610768078 aspect-ratio)
-     (* -2.450315508368792 aspect-ratio aspect-ratio)
-     (* 0.491522635738249 aspect-ratio aspect-ratio aspect-ratio)))))
+    ((fequal-epsilon? aspect-ratio 1.0 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.25 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.5 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.6 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.78 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 1.85 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.33 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 2.35 0.01) 0.0)
+    ((fequal-epsilon? aspect-ratio 3.56 0.01) 3.0)
+    (else
+     (+ -1.9583157665584714
+        (* 3.885919610768078 aspect-ratio)
+        (* -2.450315508368792 aspect-ratio aspect-ratio)
+        (* 0.491522635738249 aspect-ratio aspect-ratio aspect-ratio)))))
 
 (define *PC-CROSS-X-ADJUST* 0.0)
+
 (define *PC-CROSS-Y-ADJUST* 0.0)
+
 (define *PC-SQUARE-X-ADJUST* 0.0)
+
 (define *PC-SQUARE-Y-ADJUST* 0.0)
+
 (define *PC-TRIANGLE-X-ADJUST* 0.0)
+
 (define *PC-TRIANGLE-Y-ADJUST* 0.0)
+
 (define *PC-CIRCLE-X-ADJUST* 0.0)
+
 (define *PC-CIRCLE-Y-ADJUST* 0.0)
+
 (define *PC-PERCENT-X-ADJUST* 0.0)
+
 (define *PC-AUTOSAVE-X-ADJUST* 0.0)
+
 (define *PC-ORB-X-ADJUST* 0.0)
+
 (define *PC-ORB-GLOW-X-ADJUST* 0.0)
+
 (define *PC-ORB-TEXT-X-ADJUST* 0.0)
+
 (define *PC-CELL-X-ADJUST* 0.0)
+
 (define *PC-CELL-TEXT-X-ADJUST* 0.0)
+
 (define *PC-BUZZER-TEXT-X-ADJUST* 0.0)
+
 (define *PC-OPTIONS-TEXT-X-ADJUST* 0.0)
 
 (defmethod adjust-ratios ((this progress) (aspect symbol) (video-mode symbol))
@@ -1878,7 +1940,11 @@
       (let ((s4-2 (new 'stack
                        'font-context
                        *font-default-matrix*
-                       (the int (+ *PC-OPTIONS-TEXT-X-ADJUST* (- 423.0 (the float (/ (-> this left-x-offset) 2))) f30-0 (the float (adjust-pos s5-0 150))))
+                       (the int
+                            (+ *PC-OPTIONS-TEXT-X-ADJUST*
+                               (- 423.0 (the float (/ (-> this left-x-offset) 2)))
+                               f30-0
+                               (the float (adjust-pos s5-0 150))))
                        131
                        0.0
                        (font-color default)
@@ -1893,7 +1959,9 @@
         (let ((v1-36 s4-2)) (set! (-> v1-36 scale) 1.3))
         (let ((a0-31 s4-2)) (set! (-> a0-31 color) (font-color progress-percent)))
         (set! (-> s4-2 origin x)
-              (+ *PC-PERCENT-X-ADJUST* (- 435.0 (the float (if (< (-> *progress-process* 0 completion-percentage) 10.0) 93 80))) f30-0))
+              (+ *PC-PERCENT-X-ADJUST*
+                 (- 435.0 (the float (if (< (-> *progress-process* 0 completion-percentage) 10.0) 93 80)))
+                 f30-0))
         (set! (-> s4-2 origin y) 180.0)
         (set! (-> s4-2 flags) (font-flags shadow kerning middle middle-vert large))
         (let ((s3-3 print-game-text))
@@ -1947,13 +2015,15 @@
     (let* ((f28-2 (* 0.00024414062 (the float (-> *progress-process* 0 in-out-position))))
            (f30-1 (* 300.0 f28-2)))
       (set! (-> this particles 18 init-pos x)
-            (+ *PC-ORB-GLOW-X-ADJUST* (the float (+ (the int (the float (adjust-pos s5-0 50))) 394 (the int f30-1) (-> this right-x-offset)))))
+            (+ *PC-ORB-GLOW-X-ADJUST*
+               (the float (+ (the int (the float (adjust-pos s5-0 50))) 394 (the int f30-1) (-> this right-x-offset)))))
       (set! (-> this particles 18 init-pos y) (the float (- 40 (the int (* 80.0 f28-2)))))
       (set! (-> this icons 5 icon-x)
             (+ (the int *PC-ORB-X-ADJUST*) (the int (the float (adjust-pos s5-0 50))) 393 (the int f30-1) (-> this right-x-offset)))
       (set! (-> this icons 5 icon-y) (- (-> this small-orb-y-offset) (the int (* 80.0 f28-2))))
       (set! (-> this particles 16 init-pos x)
-            (+ *PC-CELL-X-ADJUST* (the float (+ (the int (the float (adjust-pos s5-0 100))) 425 (the int f30-1) (-> this right-x-offset)))))
+            (+ *PC-CELL-X-ADJUST*
+               (the float (+ (the int (the float (adjust-pos s5-0 100))) 425 (the int f30-1) (-> this right-x-offset)))))
       (set! (-> this particles 16 init-pos y) (the float (- 112 (the int (* 60.0 f28-2)))))
       (set! (-> this particles 17 init-pos x)
             (the float
@@ -1964,7 +2034,6 @@
   (set! (-> this particles 17 init-pos y) 193.0)
   0
   (none))
-
 
 (defun init-game-options ((obj progress))
   "Set the options for all of the menus."
@@ -2077,10 +2146,12 @@
   ;; input options
   (set! (-> *controller-options* 1 value-to-modify) (&-> *pc-settings* memcard-vibration?))
   (set! (-> *controller-options* 2 value-to-modify) (&-> *pc-settings* stick-deadzone))
-  (set! (-> *controller-options* 3 value-to-modify) (&-> *pc-settings* ignore-controller-win-unfocused?))
-  (set! (-> *controller-options* 4 value-to-modify) (&-> *pc-settings* controller-led-hp?))
-  (set! (-> *controller-options* 5 value-to-modify) (&-> *pc-settings* controller-led-eco?))
-  (set! (-> *controller-options* 6 value-to-modify) (&-> *pc-settings* controller-led-heat?))
+  (set! (-> *controller-options* 3 value-to-modify) (&-> *pc-settings* stick-sensitivity))
+  (set! (-> *controller-options* 4 value-to-modify) (&-> *pc-settings* ignore-controller-win-unfocused?))
+  (set! (-> *controller-options* 5 value-to-modify) (&-> *pc-settings* controller-led-hp?))
+  (set! (-> *controller-options* 6 value-to-modify) (&-> *pc-settings* controller-led-eco?))
+  (set! (-> *controller-options* 7 value-to-modify) (&-> *pc-settings* controller-led-heat?))
+  (set! (-> *controller-options* 8 value-to-modify) (&-> *pc-settings* pressure-sensitivity-enabled?))
   (set! (-> *mouse-options* 0 value-to-modify) (&-> *pc-settings* mouse-camera?))
   (set! (-> *mouse-options* 1 value-to-modify) (&-> *pc-settings* mouse-xsens))
   (set! (-> *mouse-options* 2 value-to-modify) (&-> *pc-settings* mouse-ysens))
@@ -2240,6 +2311,9 @@
                       (set! sound? #t)))))
                 ;; play sound
                 (when sound?
+                  ;; if the option has an explicit on-change function, call it
+                  (when (nonzero? (-> options (-> obj option-index) on-change))
+                    ((-> options (-> obj option-index) on-change) (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))))
                   (let ((vol 100.0))
                     (case (-> options (-> obj option-index) name)
                       (((text-id music-volume) (text-id speech-volume))
@@ -2319,6 +2393,9 @@
                             (-> options (-> obj option-index) param2))
                       (set! sound? #t)))))
                 (when sound?
+                  ;; if the option has an explicit on-change function, call it
+                  (when (nonzero? (-> options (-> obj option-index) on-change))
+                    ((-> options (-> obj option-index) on-change) (-> (the-as (pointer float) (-> options (-> obj option-index) value-to-modify)))))
                   (let ((vol 100.0))
                     (case (-> options (-> obj option-index) name)
                       (((text-id music-volume) (text-id speech-volume))
@@ -2676,9 +2753,9 @@
               (((game-option-type display-mode))
                ;; same thing.
                (case (-> *progress-carousell* int-backup)
-                 ((0) (pc-set-display-mode! 'windowed))
-                 ((1) (pc-set-display-mode! 'fullscreen))
-                 ((2) (pc-set-display-mode! 'borderless))))
+                 ((0) (pc-set-display-mode! 'windowed (-> *pc-settings* window-width) (-> *pc-settings* window-height)))
+                 ((1) (pc-set-display-mode! 'fullscreen 0 0))
+                 ((2) (pc-set-display-mode! 'borderless 0 0))))
               (((game-option-type msaa))
                (case (-> *progress-carousell* int-backup)
                  ((0) (set! (-> *pc-settings* gfx-msaa) 1))
@@ -3022,10 +3099,7 @@
                      ;; this ugliness is just decompiler stuff. all it does is fade the alpha according to value.
                      (let* ((v1-82 (the-as uint #x8000ffff))
                             ;; calculate the percentage of the bar based on the actual range, instead of assuming 0-100
-                            ;; low = param1 / high = param2
-                            ;; (actual + abs(low)) / (high + abs(low)) = percentage
-                            (percentage (/ (+ (-> (the-as (pointer float) (-> options index value-to-modify))) (fabs (-> options index param1)))
-                                           (+ (-> options index param2) (fabs (-> options index param1)))))
+                            (percentage (lerp-scale 0.0 1.0 (-> (the-as (pointer float) (-> options index value-to-modify))) (-> options index param1) (-> options index param2)))
                             (a0-34 (logior (logand v1-82 -256) (shr (shl (the int (+ 64.0 (* 191.0 percentage))) 56) 56)))
                             (color (logior (logand a0-34 -65281) (shr (shl (shr (shl a0-34 56) 56) 56) 48))))
                        (draw-percent-bar (- 75 (-> obj left-x-offset)) (+ y-off 8) percentage (the-as rgba color))

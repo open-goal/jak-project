@@ -182,7 +182,7 @@
      )
     (('move-to-y)
      (let ((a1-2 (new 'stack-no-clear 'vector)))
-       (set! (-> a1-2 quad) (-> self root trans quad))
+       (vector-copy! a1-2 (-> self root trans))
        (set! (-> a1-2 y) (the-as float (-> arg3 param 0)))
        (move-to-point! self a1-2)
        )
@@ -191,13 +191,9 @@
      v0-1
      )
     (('water)
-     (let* ((s5-0 (the-as object (-> arg3 param 0)))
-            (s4-0 (-> arg3 param 1))
-            (gp-0 (if (type? s4-0 process-focusable)
-                      s4-0
-                      )
-                  )
-            )
+     (let ((s5-0 (the-as object (-> arg3 param 0)))
+           (gp-0 (as-type (-> arg3 param 1) process-focusable))
+           )
        (when (and (logtest? (-> self flags) (water-flag deadly))
                   (logtest? (water-flag touch-water) (-> (the-as water-info s5-0) flags))
                   (the-as uint gp-0)
@@ -306,7 +302,7 @@
 ;; definition for method 22 of type water-anim
 ;; INFO: Used lq/sq
 (defmethod move-to-point! ((this water-anim) (arg0 vector))
-  (set! (-> this root trans quad) (-> arg0 quad))
+  (vector-copy! (-> this root trans) arg0)
   (set! (-> this water-height) (-> this root trans y))
   (if (nonzero? (-> this sound))
       (update-trans! (-> this sound) (-> this root trans))
@@ -473,6 +469,7 @@
 
 ;; definition for method 11 of type water-anim
 (defmethod init-from-entity! ((this water-anim) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stub this)
   (alloc-root! this)
   (water-anim-init! this)
@@ -480,7 +477,3 @@
   (init-water! this)
   (go (method-of-object this idle))
   )
-
-
-
-

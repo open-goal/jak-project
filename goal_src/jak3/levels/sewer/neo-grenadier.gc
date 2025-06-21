@@ -290,34 +290,34 @@
     :jump-height-min (meters 3)
     :jump-height-factor 0.5
     :knocked-seek-ry-clamp 0.18204445
-    :knocked-soft-vxz-lo 72089.6
-    :knocked-soft-vxz-hi 108134.4
-    :knocked-soft-vy-lo 81920.0
-    :knocked-soft-vy-hi 122880.0
-    :knocked-medium-vxz-lo 147456.0
-    :knocked-medium-vxz-hi 196608.0
-    :knocked-medium-vy-lo 135168.0
-    :knocked-medium-vy-hi 151552.0
-    :knocked-hard-vxz-lo 78643.2
-    :knocked-hard-vxz-hi 117964.8
-    :knocked-hard-vy-lo 183500.8
-    :knocked-hard-vy-hi 209715.2
-    :knocked-huge-vxz-lo 164659.2
-    :knocked-huge-vxz-hi 249036.8
-    :knocked-huge-vy-lo 183500.8
-    :knocked-huge-vy-hi 217907.2
-    :knocked-yellow-vxz-lo 40960.0
-    :knocked-yellow-vxz-hi 49152.0
-    :knocked-yellow-vy-lo 57344.0
-    :knocked-yellow-vy-hi 81920.0
-    :knocked-red-vxz-lo 24576.0
-    :knocked-red-vxz-hi 196608.0
-    :knocked-red-vy-lo 94208.0
-    :knocked-red-vy-hi 151552.0
-    :knocked-blue-vxz-lo 40960.0
-    :knocked-blue-vxz-hi 49152.0
-    :knocked-blue-vy-lo 24576.0
-    :knocked-blue-vy-hi 81920.0
+    :knocked-soft-vxz-lo (meters 17.6)
+    :knocked-soft-vxz-hi (meters 26.4)
+    :knocked-soft-vy-lo (meters 20)
+    :knocked-soft-vy-hi (meters 30)
+    :knocked-medium-vxz-lo (meters 36)
+    :knocked-medium-vxz-hi (meters 48)
+    :knocked-medium-vy-lo (meters 33)
+    :knocked-medium-vy-hi (meters 37)
+    :knocked-hard-vxz-lo (meters 19.2)
+    :knocked-hard-vxz-hi (meters 28.8)
+    :knocked-hard-vy-lo (meters 44.8)
+    :knocked-hard-vy-hi (meters 51.2)
+    :knocked-huge-vxz-lo (meters 40.2)
+    :knocked-huge-vxz-hi (meters 60.8)
+    :knocked-huge-vy-lo (meters 44.8)
+    :knocked-huge-vy-hi (meters 53.2)
+    :knocked-yellow-vxz-lo (meters 10)
+    :knocked-yellow-vxz-hi (meters 12)
+    :knocked-yellow-vy-lo (meters 14)
+    :knocked-yellow-vy-hi (meters 20)
+    :knocked-red-vxz-lo (meters 6)
+    :knocked-red-vxz-hi (meters 48)
+    :knocked-red-vy-lo (meters 23)
+    :knocked-red-vy-hi (meters 37)
+    :knocked-blue-vxz-lo (meters 10)
+    :knocked-blue-vxz-hi (meters 12)
+    :knocked-blue-vy-lo (meters 6)
+    :knocked-blue-vy-hi (meters 20)
     :ragdoll-info #f
     :shadow-size (meters 2)
     :shadow-max-y (meters 1)
@@ -358,6 +358,7 @@
 (set! (-> *neo-grenadier-nav-enemy-info* fact-defaults) *fact-info-neo-grenadier-defaults*)
 
 (defmethod event-handler ((this neo-grenadier) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('hit-knocked)
      (when (= (-> this incoming knocked-type) (knocked-type yellow-shot))
@@ -411,9 +412,9 @@
 ;; WARN: Return type mismatch vector vs none.
 (defmethod set-bank-info! ((this neo-grenadier) (arg0 vector))
   (closest-point-on-mesh (-> this nav) arg0 arg0 (the-as nav-poly #f))
-  (set! (-> this bank final-pos quad) (-> arg0 quad))
-  (set! (-> this bank tangent-pos quad) (-> arg0 quad))
-  (set! (-> this move-pos quad) (-> this bank tangent-pos quad))
+  (vector-copy! (-> this bank final-pos) arg0)
+  (vector-copy! (-> this bank tangent-pos) arg0)
+  (vector-copy! (-> this move-pos) (-> this bank tangent-pos))
   (none)
   )
 
@@ -487,7 +488,7 @@
           (suspend)
           (ja :num! (seek! max f30-0))
           )
-        (when (enemy-method-134 self 0.2)
+        (when (rnd-chance-for-idle? self 0.2)
           (ja-no-eval :num! (loop!))
           (ja-channel-push! 1 (seconds 0.6))
           (nav-enemy-method-182 self)
@@ -500,7 +501,7 @@
             (suspend)
             (ja :num! (seek! max f30-0))
             )
-          (until (not (enemy-method-134 self 0.2))
+          (until (not (rnd-chance-for-idle? self 0.2))
             (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
                         :num! (seek! max f30-0)
                         :frame-num 0.0
@@ -571,18 +572,18 @@
              (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) gp-0 s5-0))
                    (s4-0 (new 'stack-no-clear 'vector))
                    )
-               (set! (-> s4-0 quad) (-> self root trans quad))
+               (vector-copy! s4-0 (-> self root trans))
                (new 'stack-no-clear 'vector)
                (vector-normalize! s3-1 49152.0)
                (closest-point-on-mesh (-> self nav) s4-0 (vector+! s4-0 s5-0 s3-1) (the-as nav-poly #f))
                (when (< 32768.0 (vector-vector-distance gp-0 s4-0))
-                 (set! (-> self move-pos quad) (-> s4-0 quad))
+                 (vector-copy! (-> self move-pos) s4-0)
                  (let ((a0-11 (-> self nav state))
                        (v1-32 (-> self move-pos))
                        )
                    (logclear! (-> a0-11 flags) (nav-state-flag directional-mode))
                    (logior! (-> a0-11 flags) (nav-state-flag target-poly-dirty))
-                   (set! (-> a0-11 target-pos quad) (-> v1-32 quad))
+                   (vector-copy! (-> a0-11 target-pos) v1-32)
                    )
                  0
                  (go-virtual backup)
@@ -630,7 +631,7 @@
   :post (behavior ()
     (let ((gp-0 (-> self bank)))
       (if (< (vector-vector-xz-distance (-> self root trans) (-> gp-0 tangent-pos)) 9830.4)
-          (set! (-> self move-pos quad) (-> gp-0 final-pos quad))
+          (vector-copy! (-> self move-pos) (-> gp-0 final-pos))
           )
       )
     (let ((a0-3 (-> self nav state))
@@ -638,7 +639,7 @@
           )
       (logclear! (-> a0-3 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-3 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-3 target-pos quad) (-> v1-5 quad))
+      (vector-copy! (-> a0-3 target-pos) v1-5)
       )
     0
     (nav-enemy-travel-post)
@@ -675,7 +676,7 @@
           )
       (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
       (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      (vector-copy! (-> a0-0 target-pos) v1-1)
       )
     0
     (nav-enemy-travel-post)
@@ -738,6 +739,7 @@
   )
 
 (defmethod knocked-anim ((this neo-grenadier) (arg0 enemy-knocked-info))
+  "start the knocked animation."
   (case (-> this incoming knocked-type)
     (((knocked-type yellow-shot) (knocked-type none))
      (let ((s4-1 (-> this
@@ -750,7 +752,7 @@
                         )
                        ((= (-> this incoming knocked-type) (knocked-type yellow-shot))
                         (let ((s4-0 (new 'stack-no-clear 'vector)))
-                          (set! (-> s4-0 quad) (-> this root transv quad))
+                          (vector-copy! s4-0 (-> this root transv))
                           (let* ((s3-0 quaternion-rotate-y-to-vector!)
                                  (s2-0 (new 'stack-no-clear 'quaternion))
                                  (s1-0 (-> this root quat))
@@ -791,7 +793,7 @@
             (s5-1 (new 'static 'array uint64 3 #x1b #x1c #x1d))
             (s4-2 (new 'static 'array int32 4 0 0 0 0))
             (a2-3 (ash 1 (-> s4-2 0)))
-            (v1-23 (enemy-method-131 this a1-11 a2-3))
+            (v1-23 (rnd-int-excluding-masked this a1-11 a2-3))
             (s5-2 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-23 8) (the-as int s5-1))))))
             )
        (set! (-> s4-2 0) v1-23)
@@ -822,6 +824,7 @@
   )
 
 (defmethod knocked-land-anim ((this neo-grenadier) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
   (cond
     ((= (-> this incoming knocked-type) (knocked-type blue-shot))
      (when (>= (-> this incoming blue-juggle-count) (the-as uint 2))
@@ -891,7 +894,7 @@
                    (setup-from-to-xz-vel! (-> self shot-trajectory) gp-0 s4-1 f0-2 -102400.0)
                    )
                  )
-               (set! (-> s5-1 quad) (-> self shot-trajectory initial-velocity quad))
+               (vector-copy! s5-1 (-> self shot-trajectory initial-velocity))
                (vector-normalize! s5-1 1638.4)
                (vector+! gp-0 gp-0 s5-1)
                )
@@ -900,8 +903,8 @@
                (set! (-> a1-9 charge) 1.0)
                (set! (-> a1-9 options) (projectile-options))
                (logclear! (-> a1-9 options) (projectile-options po14 po15 po16))
-               (set! (-> a1-9 pos quad) (-> gp-0 quad))
-               (set! (-> a1-9 vel quad) (-> self shot-trajectory initial-velocity quad))
+               (vector-copy! (-> a1-9 pos) gp-0)
+               (vector-copy! (-> a1-9 vel) (-> self shot-trajectory initial-velocity))
                (set! (-> a1-9 notify-handle) (process->handle self))
                (set! (-> a1-9 owner-handle) (the-as handle #f))
                (set! (-> a1-9 target-handle) (the-as handle #f))
@@ -936,7 +939,7 @@
           )
       (logclear! (-> v1-1 flags) (nav-state-flag directional-mode))
       (logior! (-> v1-1 flags) (nav-state-flag target-poly-dirty))
-      (set! (-> v1-1 target-pos quad) (-> a0-1 quad))
+      (vector-copy! (-> v1-1 target-pos) a0-1)
       )
     0
     (nav-enemy-method-181 self)
@@ -969,7 +972,7 @@
           (let* ((v1-8 (vector-float*! (new 'stack-no-clear 'vector) (-> self root transv) 0.3))
                  (a2-2 (vector+! (new 'stack-no-clear 'vector) (-> self root trans) v1-8))
                  )
-            (set! (-> self move-pos quad) (-> self root trans quad))
+            (vector-copy! (-> self move-pos) (-> self root trans))
             (closest-point-on-mesh (-> self nav) (-> self move-pos) a2-2 (the-as nav-poly #f))
             )
           (let ((a0-10 (-> self nav state))
@@ -977,7 +980,7 @@
                 )
             (logclear! (-> a0-10 flags) (nav-state-flag directional-mode))
             (logior! (-> a0-10 flags) (nav-state-flag target-poly-dirty))
-            (set! (-> a0-10 target-pos quad) (-> v1-13 quad))
+            (vector-copy! (-> a0-10 target-pos) v1-13)
             )
           0
           (logclear! (-> self nav flags) (nav-control-flag update-heading-from-facing))
@@ -1007,12 +1010,12 @@
          (logclear! (-> self status-flags) (grenadier-status-flag gsf0))
          )
         (else
-          (when (not (enemy-method-105 self 1820.4445 #t))
+          (when (not (pointing-toward-focus? self 1820.4445 #t))
             (nav-enemy-method-183 self)
             (ja-channel-push! 1 (seconds 0.2))
             (ja :group! neo-grenadier-throw-turn-in-place-ja)
             (ja :num-func num-func-identity :frame-num 0.0)
-            (until (enemy-method-105 self 910.2222 #t)
+            (until (pointing-toward-focus? self 910.2222 #t)
               (ja-blend-eval)
               (suspend)
               (ja :num! (loop! 0.75))
@@ -1133,7 +1136,7 @@
     (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (logclear! (-> self focus-status) (focus-status hit))
     (cond
-      ((= (-> self focus aware) (enemy-aware ea3))
+      ((= (-> self focus aware) (enemy-aware hostile))
        (if (and (handle->process (-> self focus handle))
                 (not (logtest? (-> (the-as process-focusable (handle->process (-> self focus handle))) focus-status)
                                (focus-status disable dead ignore grabbed)
@@ -1152,6 +1155,7 @@
   )
 
 (defmethod go-hostile ((this neo-grenadier))
+  "Go to the hostile state, actively trying to attack the target."
   (if (and (and (-> this next-state) (= (-> this next-state name) 'knocked))
            (and (logtest? (-> this status-flags) (grenadier-status-flag gsf0))
                 (handle->process (-> this focus handle))
@@ -1188,7 +1192,7 @@
           )
         )
       )
-    (go-best-state self)
+    (go-state-for-focused self)
     )
   )
 
@@ -1201,7 +1205,7 @@
       (vector-reset! a2-0)
       (set! (-> a2-0 y) 1.0)
       (let ((t0-0 (-> arg0 state)))
-        (set! (-> v1-3 quad) (-> t0-0 heading quad))
+        (vector-copy! v1-3 (-> t0-0 heading))
         )
       (let* ((a1-3 (-> *perf-stats* data 33))
              (a3-3 (-> a1-3 ctrl))
@@ -1242,6 +1246,7 @@
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod enemy-common-post ((this neo-grenadier))
+  "Common implementation of post. Runs ja-post."
   (let ((t9-0 (method-of-type nav-enemy enemy-common-post)))
     (t9-0 this)
     )
@@ -1252,6 +1257,7 @@
   )
 
 (defmethod init-enemy-collision! ((this neo-grenadier))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1347,12 +1353,13 @@
   )
 
 (defmethod init-enemy! ((this neo-grenadier))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-neo-grenadier" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *neo-grenadier-nav-enemy-info*)
+  (setup-enemy! this *neo-grenadier-nav-enemy-info*)
   (let ((v1-5 (-> this neck)))
     (when v1-5
       (set! (-> v1-5 up) (the-as uint 1))

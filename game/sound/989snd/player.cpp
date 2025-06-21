@@ -6,7 +6,7 @@
 
 #include "sfxblock.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -137,9 +137,17 @@ u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm
     return 0;
   }
 
-  auto handler = bank->MakeHandler(mVmanager, sound_id, vol, pan, pm, pb);
+  auto handler = bank->MakeHandler(mVmanager, sound_id, vol, pan, pm, pb, GetTick());
   if (!handler.has_value()) {
     return 0;
+  }
+
+  auto handler_to_stop = handler.value()->CheckInstanceLimit(mHandlers, vol, true);
+  if (handler_to_stop) {
+    handler_to_stop->Stop();
+    if (handler_to_stop == handler.value().get()) {
+      return 0;
+    }
   }
 
   u32 handle = mHandleAllocator.GetId();
@@ -147,6 +155,16 @@ u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm
   // fmt::print("play_sound {}:{} - {}\n", bank_id, sound_id, handle);
 
   return handle;
+}
+
+void Player::DebugPrintAllSoundsInBank(BankHandle bank_id) {
+  std::scoped_lock lock(mTickLock);
+  auto* bank = mLoader.GetBankByHandle(bank_id);
+  if (!bank) {
+    lg::error("DebugPrintAllSoundsInBank: invalid bank");
+    return;
+  }
+  bank->DebugPrintAllSounds();
 }
 
 u32 Player::PlaySoundByName(BankHandle bank_id,

@@ -158,6 +158,7 @@
   )
 
 (defmethod init-from-entity! ((this cty-sniper-button-top) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
     this
@@ -173,7 +174,7 @@
 
 (defbehavior cty-sniper-button-top-init-by-other cty-sniper-button-top ((arg0 vector) (arg1 quaternion))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-copy! (-> self root quat) arg1)
   (initialize-skeleton
     self
@@ -304,10 +305,7 @@
     (ja-channel-set! 1)
     (ja :group! cty-sniper-button-pushdown-ja :num! (identity (the float (ja-num-frames 0))))
     (ja-post)
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (-> self stay-down-time))
-        (suspend)
-        )
+    (suspend-for (-> self stay-down-time)
       )
     (send-event (handle->process (-> self lid)) 'up #x3e800000)
     (ja-no-eval :group! cty-sniper-button-popup-ja :num! (seek! max 0.25) :frame-num 0.0)
@@ -378,6 +376,7 @@
   )
 
 (defmethod init-from-entity! ((this cty-sniper-button) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -799,11 +798,11 @@
     (sound-play "destroy-battery")
     (cond
       ((logtest? (-> *part-group-id-table* 1464 flags) (sp-group-flag sp13))
-       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
        (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1464))
        )
       (else
-        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
         (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1464))
         )
       )
@@ -861,6 +860,7 @@
   )
 
 (defmethod init-from-entity! ((this cty-sniper-battery) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
@@ -954,7 +954,7 @@
     (set! (-> s4-0 event-self) 'touched)
     (set! (-> self root) s4-0)
     )
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-copy! (-> self root quat) arg1)
   (initialize-skeleton
     self

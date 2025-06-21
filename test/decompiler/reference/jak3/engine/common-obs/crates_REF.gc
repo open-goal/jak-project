@@ -546,7 +546,8 @@
 
 ;; definition for method 20 of type crate
 ;; WARN: Return type mismatch int vs search-info-flag.
-(defmethod process-mask->search-info-flag ((this crate))
+(defmethod get-search-info-flag ((this crate))
+  "Get search-info-flag for this process."
   (the-as search-info-flag (if (logtest? (actor-option no-track) (-> this fact options))
                                0
                                2
@@ -705,7 +706,7 @@
      )
     (('fall)
      (when (not (and (-> self next-state) (= (-> self next-state name) 'fall)))
-       (set! (-> self root transv quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (vector-copy! (-> self root transv) (the-as vector (-> arg3 param 0)))
        (go-virtual fall)
        )
      )
@@ -778,7 +779,7 @@
        (-> self carry)
        )
       (('drop)
-       (set! (-> self root transv quad) (-> (the-as vector (-> block param 1)) quad))
+       (vector-copy! (-> self root transv) (the-as vector (-> block param 1)))
        (go-virtual fall)
        )
       )
@@ -824,7 +825,7 @@
       (vector-reset! (-> self root transv))
       (when (= (vector-length (-> self root transv)) 0.0)
         (set! (-> self root root-prim local-sphere w) (-> self carry backup-radius))
-        (set! (-> self base quad) (-> self root trans quad))
+        (vector-copy! (-> self base) (-> self root trans))
         (let ((v1-16 (-> self root root-prim)))
           (set! (-> v1-16 prim-core collide-as) (-> self root backup-collide-as))
           (set! (-> v1-16 prim-core collide-with) (-> self root backup-collide-with))
@@ -888,23 +889,13 @@
   :code (behavior ((arg0 handle))
     (set! (-> self target) arg0)
     (until #f
-      (let* ((gp-0 (handle->process (-> self target)))
-             (v1-3 (if (type? gp-0 process-drawable)
-                       gp-0
-                       )
-                   )
-             )
+      (let ((v1-3 (as-type (handle->process (-> self target)) process-drawable)))
         (when v1-3
-          (let* ((gp-1 (-> (the-as process-drawable v1-3) root))
-                 (v1-4 (if (type? gp-1 collide-shape)
-                           gp-1
-                           )
-                       )
-                 )
+          (let ((v1-4 (as-type (-> (the-as process-drawable v1-3) root) collide-shape)))
             (when v1-4
               (let* ((gp-2 (-> self root root-prim prim-core))
                      (a1-3 (-> (the-as collide-shape v1-4) root-prim prim-core))
-                     (f30-0 (vector-vector-distance (the-as vector gp-2) (the-as vector a1-3)))
+                     (f30-0 (vector-vector-distance (-> gp-2 world-sphere) (-> a1-3 world-sphere)))
                      )
                 (when (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (!= (-> self defense) 'steel))
                   (logior! (-> self fact options) (actor-option suck-in))
@@ -988,10 +979,7 @@
           )
       )
     (when (not arg0)
-      (let ((s5-1 (current-time)))
-        (until (time-elapsed? s5-1 (seconds 0.04))
-          (suspend)
-          )
+      (suspend-for (seconds 0.04)
         )
       (case (-> self look)
         (('iron)
@@ -1031,11 +1019,11 @@
           ((= v1-55 'darkeco)
            (cond
              ((logtest? (-> *part-group-id-table* 197 flags) (sp-group-flag sp13))
-              (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+              (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
               (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 197))
               )
              (else
-               (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+               (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
                (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 197))
                )
              )
@@ -1043,21 +1031,21 @@
           ((or (= v1-55 'steel) (= v1-55 'iron))
            (cond
              ((logtest? (-> *part-group-id-table* 196 flags) (sp-group-flag sp13))
-              (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+              (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
               (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 196))
               )
              (else
-               (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+               (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
                (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 196))
                )
              )
            )
           ((logtest? (-> *part-group-id-table* 195 flags) (sp-group-flag sp13))
-           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
            (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 195))
            )
           (else
-            (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+            (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
             (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 195))
             )
           )
@@ -1084,16 +1072,10 @@
     (drop-pickup (-> self fact) #t *entity-pool* (the-as fact-info #f) arg1 #t)
     (process-entity-status! self (entity-perm-status dead) #t)
     (process-entity-status! self (entity-perm-status subtask-complete) #t)
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 5))
-        (suspend)
-        )
+    (suspend-for (seconds 5)
       )
     (when (logtest? (actor-option cond-respawn) (-> self fact options))
-      (let ((gp-2 (current-time)))
-        (until (time-elapsed? gp-2 (seconds 15))
-          (suspend)
-          )
+      (suspend-for (seconds 15)
         )
       (go-virtual hide)
       )
@@ -1184,7 +1166,7 @@
 (defbehavior crate-init-by-other crate ((arg0 entity) (arg1 vector) (arg2 symbol) (arg3 fact-info-crate))
   (process-entity-set! self arg0)
   (init! self (the-as entity-actor arg0))
-  (set! (-> self root trans quad) (-> arg1 quad))
+  (vector-copy! (-> self root trans) arg1)
   (set! (-> self look) arg2)
   (set! (-> self defense) arg2)
   (init-skel! self)
@@ -1200,6 +1182,7 @@
 ;; definition for method 11 of type crate
 ;; WARN: Return type mismatch none vs object.
 (defmethod init-from-entity! ((this crate) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (init! this arg0)
   (init-skel! this)
   (set! (-> this draw light-index) (the-as uint 10))
@@ -1389,7 +1372,7 @@
         )
       )
     )
-  (set! (-> this base quad) (-> this root trans quad))
+  (vector-copy! (-> this base) (-> this root trans))
   (crate-post)
   (nav-mesh-connect-from-ent this)
   (none)
@@ -1440,9 +1423,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod smush-update! ((this crate))
   (let ((f0-0 (update! (-> this smush))))
-    (set! (-> this root scale x) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> this root scale x) (+ 1.0 (/ f0-0 -2)))
     (set! (-> this root scale y) (+ 1.0 f0-0))
-    (set! (-> this root scale z) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> this root scale z) (+ 1.0 (/ f0-0 -2)))
     )
   0
   (none)

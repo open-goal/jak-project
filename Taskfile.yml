@@ -10,35 +10,35 @@ dotenv:
 tasks:
   # SETTINGS / CONFIGURATION
   settings:
-    - 'python ./scripts/tasks/update-env.py --info'
+    - '{{.PYTHON}} ./scripts/tasks/update-env.py --info'
   set-game-jak1:
-    - 'python ./scripts/tasks/update-env.py --game jak1'
+    - '{{.PYTHON}} ./scripts/tasks/update-env.py --game jak1'
   set-game-jak2:
-    - 'python ./scripts/tasks/update-env.py --game jak2'
+    - '{{.PYTHON}} ./scripts/tasks/update-env.py --game jak2'
   set-game-jak3:
-    - 'python ./scripts/tasks/update-env.py --game jak3'
+    - '{{.PYTHON}} ./scripts/tasks/update-env.py --game jak3'
   set-game-jakx:
-    - 'python ./scripts/tasks/update-env.py --game jakx'
+    - '{{.PYTHON}} ./scripts/tasks/update-env.py --game jakx'
   set-decomp-ntscv1:
     desc: "aka black label"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv1'
+      - '{{.PYTHON}} ./scripts/tasks/update-env.py --decomp_config ntscv1'
   set-decomp-ntscv2:
     desc: "aka red label"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config ntscv2'
+      - '{{.PYTHON}} ./scripts/tasks/update-env.py --decomp_config ntscv2'
   set-decomp-pal:
     desc: "PAL region version"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config pal'
+      - '{{.PYTHON}} ./scripts/tasks/update-env.py --decomp_config pal'
   set-decomp-ntscjp:
     desc: "NTSC-J region version"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config ntscjp'
+      - '{{.PYTHON}} ./scripts/tasks/update-env.py --decomp_config ntscjp'
   set-decomp-ntscko:
     desc: "NTSC-K region version"
     cmds:
-      - 'python ./scripts/tasks/update-env.py --decomp_config ntscko'
+      - '{{.PYTHON}} ./scripts/tasks/update-env.py --decomp_config ntscko'
   # GENERAL
   extract:
     desc: "Extracts the game's assets from './iso_data' with the set decompiler config"
@@ -69,6 +69,14 @@ tasks:
     cmds:
       - "{{.GK_BIN_RELEASE_DIR}}/gk -v --game {{.GAME}} -- -fakeiso -debug"
   # DEVELOPMENT
+  gen-cmake:
+    desc: "Generate the CMake"
+    cmds:
+      - "cmake -B build --preset={{.CMAKE_PRESET}}"
+  build:
+    desc: "Build the project using the generated CMake"
+    cmds:
+      - "cmake --build build --parallel {{.CMAKE_NUM_THREADS}}"
   repl:
     desc: "Start the REPL"
     preconditions:
@@ -85,9 +93,9 @@ tasks:
   format:
     desc: "Format code"
     cmds:
-      - cmd: python ./scripts/cpp/format-includes.py
-      - cmd: python ./scripts/ci/lint-trailing-whitespace.py --fix
-      - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
+      - cmd: '{{.PYTHON}} ./scripts/cpp/format-includes.py'
+      - cmd: '{{.PYTHON}} ./scripts/ci/lint-trailing-whitespace.py --fix'
+      - cmd: '{{.PYTHON}} ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i'
       - task: format-json
   format-gsrc:
     desc: "Run formatter on gsrc file"
@@ -105,28 +113,28 @@ tasks:
       - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": true, \"levels_extract\": false, \"allowed_objects\": [\"{{.FILE}}\"]}'"
   decomp-clean:
     cmds:
-      - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
+      - '{{.PYTHON}} ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"'
   lint-gsrc-file:
     cmds:
-      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file "{{.FILE}}"
+      - '{{.PYTHON}} ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file "{{.FILE}}"'
   update-gsrc:
     cmds:
-      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}
+      - '{{.PYTHON}} ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}'
   update-gsrc-glob:
     cmds:
-      - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --file_pattern "{{.GLOB}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}
+      - '{{.PYTHON}} ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --file_pattern "{{.GLOB}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}'
   update-gsrc-file:
     cmds:
       - task: decomp-file
-      - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file "{{.FILE}}"
+      - '{{.PYTHON}} ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file "{{.FILE}}"'
       - task: lint-gsrc-file
   copy-common-naming:
     cmds:
-      - python ./scripts/gsrc/copy-common-naming.py --file "{{.FILE}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"
+      - '{{.PYTHON}} ./scripts/gsrc/copy-common-naming.py --file "{{.FILE}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"'
       - task: format-json
   copy-common-naming-from-refs:
     cmds:
-      - python ./scripts/gsrc/copy-common-naming.py --update-names-from-refs --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"
+      - '{{.PYTHON}} ./scripts/gsrc/copy-common-naming.py --update-names-from-refs --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"'
       - task: format-json
   # ASSET RIPPING
   rip-textures:
@@ -138,13 +146,16 @@ tasks:
   rip-collision:
     cmds:
       - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"extract_collision\": true, \"rip_collision\": true}'"
+  rip-audio:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"rip_streamed_audio\": true}'"
   # TOOLS
   analyze-ee-memory:
     cmds:
-      - python ./scripts/tasks/extract-zip.py --file "{{.FILE}}" --out ./savestate_out/
+      - '{{.PYTHON}} ./scripts/tasks/extract-zip.py --file "{{.FILE}}" --out ./savestate_out/'
       - '{{.MEMDUMP_BIN_RELEASE_DIR}}/memory_dump_tool ./savestate_out/eeMemory.bin --output-path ./ --game {{.GAME}} > ee-analysis.log'
   watch-pcsx2:
-    # python -m pip install -U "watchdog[watchmedo]"
+    # {{.PYTHON}} -m pip install -U "watchdog[watchmedo]"
     cmds:
       - watchmedo shell-command --drop --patterns="*.p2s" --recursive --command='task analyze-ee-memory FILE="${watch_src_path}"' "{{.SAVESTATE_DIR}}"
     vars:
@@ -157,15 +168,23 @@ tasks:
     desc: Updates locally built tree-sitter rules
     cmds:
       - cd ../tree-sitter-opengoal && yarn gen
-      - python ./scripts/tasks/cp.py --src "../tree-sitter-opengoal/src/*" --dest "./third-party/tree-sitter/tree-sitter-opengoal"
-      - python ./scripts/tasks/cp.py --src "../tree-sitter-opengoal/grammar.js" --dest "./third-party/tree-sitter/tree-sitter-opengoal"
+      - '{{.PYTHON}} ./scripts/tasks/cp.py --src "../tree-sitter-opengoal/src/*" --dest "./third-party/tree-sitter/tree-sitter-opengoal"'
+      - '{{.PYTHON}} ./scripts/tasks/cp.py --src "../tree-sitter-opengoal/grammar.js" --dest "./third-party/tree-sitter/tree-sitter-opengoal"'
   fix-translations:
     desc: Finds and tries to fix invalid translation Characters
     cmds:
-      - python ./scripts/ci/lint-characters.py --fix
+      - '{{.PYTHON}} ./scripts/ci/lint-characters.py --fix'
+      - '{{.PYTHON}} ./scripts/ci/lint-autoglottonyms.py --fix'
   lint:
     cmds:
-      - python ./scripts/ci/lint-trailing-whitespace.py
+      - '{{.PYTHON}} ./scripts/ci/lint-trailing-whitespace.py'
+  run-gpu-test:
+    desc: "Runs the game's built in GPU test"
+    preconditions:
+      - sh: test -f {{.GK_BIN_RELEASE_DIR}}/gk{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate runtime executable in '{{.GK_BIN_RELEASE_DIR}}/gk'"
+    cmds:
+      - "{{.GK_BIN_RELEASE_DIR}}/gk -v --gpu-test opengl --gpu-test-out-path ./gpu-test.json"
   # TESTS
   offline-tests: # ran by jenkins
     cmds:
@@ -179,17 +198,17 @@ tasks:
   # TODO - amalgamate offline-tests and this task, run twice if the previous step fails
   update-ref-tests:
     cmds:
-      - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
+      - cmd: '{{.PYTHON}} ./scripts/tasks/delete-file-or-folder.py --path failures'
       - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --game {{.GAME}} --pretty-print --num_threads 32 --dump_current_output --fail-on-cmp'
         ignore_error: true
-      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
+      - '{{.PYTHON}} ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}'
       - task: offline-tests-fast
   update-ref-file:
     cmds:
-      - cmd: python ./scripts/tasks/delete-file-or-folder.py --path failures
+      - cmd: '{{.PYTHON}} ./scripts/tasks/delete-file-or-folder.py --path failures'
       - cmd: '{{.OFFLINETEST_BIN_RELEASE_DIR}}/offline-test --iso_data_path "./iso_data/{{.GAME}}" --file {{.FILE}} --game {{.GAME}} --dump_current_output --fail-on-cmp'
         ignore_error: true
-      - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
+      - '{{.PYTHON}} ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}'
       - task: offline-test-file
   type-test:
     cmds:

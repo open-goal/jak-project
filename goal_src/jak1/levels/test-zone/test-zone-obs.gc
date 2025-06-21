@@ -1,6 +1,5 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
 (deftype test-actor (process-drawable)
   ((root       collide-shape-moving :override)
    (birth-time time-frame)
@@ -9,20 +8,12 @@
    (bob-offset int64)
    (bob-amount float))
   (:methods
-   (init-collision! (_type_) none))
+   (init-collision! (_type_) object))
   (:state-methods
    idle))
 
-(def-art-elt test-actor-ag test-actor-lod0-jg 0)
-(def-art-elt test-actor-ag test-actor-lod0-mg 1)
-(def-art-elt test-actor-ag test-actor-idle-ja 2)
-(defskelgroup *test-actor-sg*
-  test-actor
-  test-actor-lod0-jg
-  test-actor-idle-ja
-  ((test-actor-lod0-mg (meters 9999999)))
-  :bounds (static-spherem 0 0 0 5)
-  :texture-level 2)
+(def-actor test-actor
+  :bounds (0 0 0 5))
 
 (defmethod init-collision! ((this test-actor))
   (let ((cshape (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
@@ -55,8 +46,7 @@
       )
     (set! (-> cshape nav-radius) (* 0.75 (-> cshape root-prim local-sphere w)))
     (backup-collide-with-as cshape)
-    (set! (-> this root) cshape))
-  (none))
+    (set! (-> this root) cshape)))
 
 (defmethod init-from-entity! ((this test-actor) (e entity-actor))
   (logior! (-> this mask) (process-mask enemy))

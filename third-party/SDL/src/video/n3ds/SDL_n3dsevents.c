@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_N3DS
 
@@ -28,19 +28,18 @@
 #include "SDL_n3dsevents_c.h"
 #include "SDL_n3dstouch.h"
 
-void N3DS_PumpEvents(_THIS)
+void N3DS_PumpEvents(SDL_VideoDevice *_this)
 {
     hidScanInput();
-    N3DS_PollTouch();
+    N3DS_PollTouch(_this);
 
     if (!aptMainLoop()) {
         SDL_Event ev;
-        ev.type = SDL_QUIT;
+        ev.type = SDL_EVENT_QUIT;
+        ev.common.timestamp = 0;
         SDL_PushEvent(&ev);
         return;
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_N3DS */
-
-/* vi: set sts=4 ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_N3DS

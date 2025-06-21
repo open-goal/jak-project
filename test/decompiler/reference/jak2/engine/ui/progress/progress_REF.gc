@@ -1167,14 +1167,14 @@
            (seek-ease
              (-> self menu-transition)
              0.0
-             (* 0.1 (-> self clock time-adjust-ratio))
+             (/ (-> self clock time-adjust-ratio) 10)
              0.4
-             (* 0.01 (-> self clock time-adjust-ratio))
+             (/ (-> self clock time-adjust-ratio) 100)
              )
            )
      )
     (else
-      (seek! (-> self menu-transition) 1.0 (* 0.1 (-> self clock time-adjust-ratio)))
+      (seek! (-> self menu-transition) 1.0 (/ (-> self clock time-adjust-ratio) 10))
       (when (and (= (-> self menu-transition) 1.0)
                  (or (and (nonzero? (-> self state-pos)) (= (-> self anim-frame) 1.0))
                      (or (and (zero? (-> self state-pos)) (= (-> self anim-frame) 0.0))
@@ -1215,12 +1215,12 @@
   (if (= (-> self ring-angle) (-> self ring-want-angle))
       (respond-to-cpad self)
       )
-  (let ((f30-0 (* 0.005 (-> self clock time-adjust-ratio))))
+  (let ((f30-0 (/ (-> self clock time-adjust-ratio) 200)))
     (cond
       ((= (-> self menu-transition) 1.0)
        (if (and (zero? (-> self state-pos)) (= (-> *progress-state* starting-state) 'main))
-           (seek! (-> self anim-frame) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
-           (seek! (-> self anim-frame) 1.0 (* 0.02 (-> self clock time-adjust-ratio)))
+           (seek! (-> self anim-frame) 0.0 (/ (-> self clock time-adjust-ratio) 50))
+           (seek! (-> self anim-frame) 1.0 (/ (-> self clock time-adjust-ratio) 50))
            )
        (let ((f0-27 (if (and (zero? (-> self state-pos)) (!= (-> *progress-state* starting-state) 'title))
                         0.0
@@ -1230,14 +1230,14 @@
              )
          (when (= (-> self next) 'bigmap)
            (set! f0-27 0.4)
-           (set! f30-0 (* 0.008 (-> self clock time-adjust-ratio)))
+           (set! f30-0 (/ (-> self clock time-adjust-ratio) 125))
            )
          (seek! (-> self pos-transition) f0-27 f30-0)
          )
        )
       ((zero? (-> self state-pos))
        (if (= (-> self current) 'bigmap)
-           (set! f30-0 (* 0.05 (-> self clock time-adjust-ratio)))
+           (set! f30-0 (/ (-> self clock time-adjust-ratio) 20))
            )
        (if (!= (-> *progress-state* starting-state) 'title)
            (seek! (-> self pos-transition) 0.0 f30-0)
@@ -1288,9 +1288,9 @@
       (set! (-> self swing) (seek-ease
                               (-> self swing)
                               4.0
-                              (* 0.05 (-> self clock time-adjust-ratio))
+                              (/ (-> self clock time-adjust-ratio) 20)
                               0.5
-                              (* 0.005 (-> self clock time-adjust-ratio))
+                              (/ (-> self clock time-adjust-ratio) 200)
                               )
             )
       (set! (-> self swing) (seek-ease
@@ -1424,17 +1424,11 @@
           (+! s5-0 20)
           )
       (dotimes (s4-1 (length gp-0))
-        (let ((v1-24 sv-144))
-          (set! (-> v1-24 scale) 0.5)
-          )
+        (set-scale! sv-144 0.5)
         (set! (-> sv-144 origin x) 79.0)
         (set! (-> sv-144 origin y) (the float sv-148))
-        (let ((v1-29 sv-144))
-          (set! (-> v1-29 width) (the float 355))
-          )
-        (let ((v1-30 sv-144))
-          (set! (-> v1-30 height) (the float 30))
-          )
+        (set-width! sv-144 355)
+        (set-height! sv-144 30)
         (set! (-> sv-144 flags) (if (= (-> *setting-control* user-default language) (language-enum japanese))
                                     (font-flags middle middle-vert large)
                                     (font-flags kerning middle middle-vert large)
@@ -1464,9 +1458,9 @@
       (set! (-> self scanlines-alpha) (seek-ease
                                         (-> self scanlines-alpha)
                                         (- 1.0 (-> self menu-transition))
-                                        (* 0.05 (-> self clock time-adjust-ratio))
+                                        (/ (-> self clock time-adjust-ratio) 20)
                                         0.3
-                                        (* 0.001 (-> self clock time-adjust-ratio))
+                                        (/ (-> self clock time-adjust-ratio) 1000)
                                         )
             )
       (end-scan sv-152 (-> self scanlines-alpha))
@@ -1769,16 +1763,16 @@
       )
     )
   :trans (behavior ()
-    (seek! (-> self anim-frame) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
+    (seek! (-> self anim-frame) 0.0 (/ (-> self clock time-adjust-ratio) 50))
     (cond
       ((= (-> self anim-frame) 0.0)
-       (seek! (-> self pos-transition) 1.0 (* 0.02 (-> self clock time-adjust-ratio)))
+       (seek! (-> self pos-transition) 1.0 (/ (-> self clock time-adjust-ratio) 50))
        (if (= (-> self pos-transition) 1.0)
            (go-virtual gone)
            )
        )
       (else
-        (seek! (-> self pos-transition) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
+        (seek! (-> self pos-transition) 0.0 (/ (-> self clock time-adjust-ratio) 50))
         )
       )
     (set-ring-position self)
@@ -1926,13 +1920,13 @@
         (arg1
           (cond
             ((cpad-hold? 0 left l-analog-left)
-             (seek! (-> (the-as (pointer float) gp-0)) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
+             (seek! (-> (the-as (pointer float) gp-0)) 0.0 (/ (-> self clock time-adjust-ratio) 50))
              (if (!= (-> (the-as (pointer float) gp-0)) 0.0)
                  (set! s4-0 #t)
                  )
              )
             ((cpad-hold? 0 right l-analog-right)
-             (seek! (-> (the-as (pointer float) gp-0)) 1.0 (* 0.02 (-> self clock time-adjust-ratio)))
+             (seek! (-> (the-as (pointer float) gp-0)) 1.0 (/ (-> self clock time-adjust-ratio) 50))
              (if (!= (-> (the-as (pointer float) gp-0)) 1.0)
                  (set! s4-0 #t)
                  )
@@ -1945,13 +1939,13 @@
         (else
           (cond
             ((cpad-hold? 0 left l-analog-left)
-             (seek! (-> (the-as (pointer float) gp-0)) 0.0 (* 0.02 (-> self clock time-adjust-ratio)))
+             (seek! (-> (the-as (pointer float) gp-0)) 0.0 (/ (-> self clock time-adjust-ratio) 50))
              (if (!= (-> (the-as (pointer float) gp-0)) 0.0)
                  (set! s4-0 #t)
                  )
              )
             ((cpad-hold? 0 right l-analog-right)
-             (seek! (-> (the-as (pointer float) gp-0)) 1.0 (* 0.02 (-> self clock time-adjust-ratio)))
+             (seek! (-> (the-as (pointer float) gp-0)) 1.0 (/ (-> self clock time-adjust-ratio) 50))
              (if (!= (-> (the-as (pointer float) gp-0)) 1.0)
                  (set! s4-0 #t)
                  )
@@ -2952,9 +2946,9 @@
   (set! (-> arg0 sliding-height) (seek-ease
                                    (-> arg0 sliding-height)
                                    0.0
-                                   (* 0.1 (-> self clock time-adjust-ratio))
+                                   (/ (-> self clock time-adjust-ratio) 10)
                                    0.3
-                                   (* 0.001 (-> self clock time-adjust-ratio))
+                                   (/ (-> self clock time-adjust-ratio) 1000)
                                    )
         )
   (let ((s4-0 #f))
@@ -3048,9 +3042,9 @@
   (set! (-> arg0 sliding-height) (seek-ease
                                    (-> arg0 sliding-height)
                                    0.0
-                                   (* 0.1 (-> self clock time-adjust-ratio))
+                                   (/ (-> self clock time-adjust-ratio) 10)
                                    0.3
-                                   (* 0.01 (-> self clock time-adjust-ratio))
+                                   (/ (-> self clock time-adjust-ratio) 100)
                                    )
         )
   (let ((gp-0 #f))
@@ -3133,9 +3127,9 @@
   (set! (-> arg0 sliding-height) (seek-ease
                                    (-> arg0 sliding-height)
                                    0.0
-                                   (* 0.1 (-> self clock time-adjust-ratio))
+                                   (/ (-> self clock time-adjust-ratio) 10)
                                    0.3
-                                   (* 0.01 (-> self clock time-adjust-ratio))
+                                   (/ (-> self clock time-adjust-ratio) 100)
                                    )
         )
   (let ((s5-0 #f))
@@ -3183,17 +3177,17 @@
   (set! (-> progress sliding) (seek-ease
                                 (-> progress sliding)
                                 0.0
-                                (* 0.1 (-> self clock time-adjust-ratio))
+                                (/ (-> self clock time-adjust-ratio) 10)
                                 0.3
-                                (* 0.001 (-> self clock time-adjust-ratio))
+                                (/ (-> self clock time-adjust-ratio) 1000)
                                 )
         )
   (set! (-> progress sliding-off) (seek-ease
                                     (-> progress sliding-off)
                                     1.0
-                                    (* 0.1 (-> self clock time-adjust-ratio))
+                                    (/ (-> self clock time-adjust-ratio) 10)
                                     -0.3
-                                    (* 0.001 (-> self clock time-adjust-ratio))
+                                    (/ (-> self clock time-adjust-ratio) 1000)
                                     )
         )
   (when (-> *bigmap* progress-minimap)
@@ -3263,9 +3257,9 @@
     (set! (-> arg0 sliding) (seek-ease
                               (-> arg0 sliding)
                               0.0
-                              (* 0.1 (-> self clock time-adjust-ratio))
+                              (/ (-> self clock time-adjust-ratio) 10)
                               0.3
-                              (* 0.001 (-> self clock time-adjust-ratio))
+                              (/ (-> self clock time-adjust-ratio) 1000)
                               )
           )
     (cond

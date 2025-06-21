@@ -545,9 +545,9 @@
                   )
               )
         )
-    (set! (-> int-trans 0) (the int (* 0.0625 (-> v1-0 x))))
-    (set! (-> int-trans 1) (the int (* 0.0625 (-> v1-0 y))))
-    (set! (-> int-trans 2) (the int (* 0.0625 (-> v1-0 z))))
+    (set! (-> int-trans 0) (the int (/ (-> v1-0 x) 16)))
+    (set! (-> int-trans 1) (the int (/ (-> v1-0 y) 16)))
+    (set! (-> int-trans 2) (the int (/ (-> v1-0 z) 16)))
     )
   0
   )
@@ -919,7 +919,7 @@
            (set! (-> s5-1 time-base) -1)
            )
          )
-       (set! (-> s5-1 trans quad) (-> trans quad))
+       (vector-copy! (-> s5-1 trans) trans)
        s5-1
        )
      )
@@ -1054,7 +1054,7 @@
 
 (defmethod update-trans! ((this ambient-sound) (new-trans vector))
   "Change the trans of the sound."
-  (set! (-> this trans quad) (-> new-trans quad))
+  (vector-copy! (-> this trans) new-trans)
   0
   )
 
@@ -1071,7 +1071,7 @@
   )
 
 (defmethod set-falloff-far! ((this ambient-sound) (arg0 float))
-  (set! (-> this falloff-far) (the int (* 0.00024414062 arg0)))
+  (set! (-> this falloff-far) (the int (/ arg0 METER_LENGTH)))
   0
   (none)
   )
@@ -1186,15 +1186,11 @@
       ((or (movie?) *external-cam-mode*)
        (math-camera-pos)
        )
-      ((and (= mode 1) (begin
-                         (let ((s5-1 (handle->process (-> *setting-control* user-current sound-ear))))
-                           (set! gp-0 (if (type? s5-1 process-focusable)
-                                          (the-as process-focusable s5-1)
-                                          )
-                                 )
-                           )
-                         gp-0
-                         )
+      ((and (= mode 1)
+            (begin
+              (set! gp-0 (as-type (handle->process (-> *setting-control* user-current sound-ear)) process-focusable))
+              gp-0
+              )
             )
        (get-trans gp-0 11)
        )
@@ -1267,7 +1263,7 @@
     (vector-! (-> gp-0 0) (target-pos 0) sound-pos)
     (if *target*
         (vector-! (-> gp-0 1) sound-vel (-> *target* control transv))
-        (set! (-> gp-0 1 quad) (-> sound-vel quad))
+        (vector-copy! (-> gp-0 1) sound-vel)
         )
     (vector-normalize! (-> gp-0 0) 1.0)
     (let ((f0-1 (/ 1228800.0 (fmax 0.1 (- 1228800.0 (vector-dot (-> gp-0 0) (-> gp-0 1)))))))
@@ -1291,10 +1287,7 @@
           (set! (-> a1-3 0) 'empty0)
           (want-sound-banks *load-state* a1-3)
           )
-        (let ((s5-0 (current-time)))
-          (until (time-elapsed? s5-0 (seconds 1))
-            (suspend)
-            )
+        (suspend-for (seconds 1)
           )
         (let ((a1-4 (new 'stack-no-clear 'array 'symbol 4)))
           (set! (-> a1-4 2) (-> gp-0 4))

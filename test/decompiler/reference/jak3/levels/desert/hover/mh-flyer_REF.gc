@@ -134,7 +134,7 @@
 (set! (-> *mh-flyer-missile-trail* zbuffer?) #f)
 
 ;; failed to figure out what this is:
-(set! (-> *mh-flyer-missile-trail* lie-vector quad) (-> *up-vector* quad))
+(vector-copy! (-> *mh-flyer-missile-trail* lie-vector) *up-vector*)
 
 ;; failed to figure out what this is:
 (set! (-> *mh-flyer-missile-trail* use-tape-mode?) #f)
@@ -211,17 +211,13 @@
       )
     )
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (when (-> self minimap)
       (logior! (-> self minimap flags) (minimap-flag fade-out))
       (set! (-> self minimap) #f)
       )
     (let ((gp-0 (new 'stack-no-clear 'explosion-init-params)))
-      (set! (-> gp-0 spawn-point quad) (-> self root trans quad))
+      (vector-copy! (-> gp-0 spawn-point) (-> self root trans))
       (quaternion-identity! (-> gp-0 spawn-quat))
       (set! (-> gp-0 radius) 40960.0)
       (set! (-> gp-0 scale) 1.0)
@@ -259,11 +255,7 @@
 (defstate dissipate (mh-flyer-shot)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (when (-> self minimap)
       (logior! (-> self minimap flags) (minimap-flag fade-out))
       (set! (-> self minimap) #f)
@@ -311,21 +303,21 @@
             ((-> this hit-actor?)
              (cond
                ((logtest? (-> *part-group-id-table* 102 flags) (sp-group-flag sp13))
-                (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+                (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 102))
                 )
                (else
-                 (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+                 (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
                  (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 102))
                  )
                )
              )
             ((logtest? (-> *part-group-id-table* 101 flags) (sp-group-flag sp13))
-             (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+             (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
              (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 101))
              )
             (else
-              (set! (-> *launch-matrix* trans quad) (-> this root trans quad))
+              (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
               (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 101))
               )
             )
@@ -372,12 +364,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defun mh-flyer-shot-move ((arg0 mh-flyer-shot))
   (let ((s5-0 (-> arg0 root)))
-    (let* ((s4-0 (handle->process (-> arg0 desired-target)))
-           (s2-0 (if (type? s4-0 process-focusable)
-                     s4-0
-                     )
-                 )
-           )
+    (let ((s2-0 (as-type (handle->process (-> arg0 desired-target)) process-focusable)))
       (if s2-0
           (vector+float*!
             (-> arg0 desired-target-pos)
@@ -407,7 +394,7 @@
       (let ((v1-23 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> arg0 tail-pos) (-> s5-0 trans)) 2048.0))
             (a1-12 (-> arg0 hit-pos))
             )
-        (set! (-> a1-12 quad) (-> s5-0 trans quad))
+        (vector-copy! a1-12 (-> s5-0 trans))
         (vector+! a1-12 a1-12 v1-23)
         (move-to-point! (-> arg0 root) a1-12)
         )
@@ -501,7 +488,7 @@
       (the-as pair 0)
       )
     (set! (-> this hit-actor?) #f)
-    (set! (-> this tail-pos quad) (-> this root trans quad))
+    (vector-copy! (-> this tail-pos) (-> this root trans))
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
     (set! (-> this attack-mode) 'eco-yellow)
     (set! (-> this max-speed) 327680.0)
@@ -517,12 +504,7 @@
           (new 'process 'sparticle-subsampler *sp-particle-system-2d* (-> *part-id-table* 1715) 8.0)
           )
     (set! (-> this desired-target) (-> *vehicle-info* handle-by-vehicle-type 14))
-    (let* ((s5-1 (handle->process (-> this desired-target)))
-           (s3-0 (if (type? s5-1 process-focusable)
-                     s5-1
-                     )
-                 )
-           )
+    (let ((s3-0 (as-type (handle->process (-> this desired-target)) process-focusable)))
       (if s3-0
           (vector+float*!
             (-> this desired-target-pos)
@@ -773,34 +755,34 @@
                                 :jump-height-min (meters 3)
                                 :jump-height-factor 0.5
                                 :knocked-seek-ry-clamp 364.0889
-                                :knocked-soft-vxz-lo 72089.6
-                                :knocked-soft-vxz-hi 108134.4
-                                :knocked-soft-vy-lo 81920.0
-                                :knocked-soft-vy-hi 122880.0
-                                :knocked-medium-vxz-lo 147456.0
-                                :knocked-medium-vxz-hi 196608.0
-                                :knocked-medium-vy-lo 135168.0
-                                :knocked-medium-vy-hi 151552.0
-                                :knocked-hard-vxz-lo 78643.2
-                                :knocked-hard-vxz-hi 117964.8
-                                :knocked-hard-vy-lo 183500.8
-                                :knocked-hard-vy-hi 209715.2
-                                :knocked-huge-vxz-lo 164659.2
-                                :knocked-huge-vxz-hi 249036.8
-                                :knocked-huge-vy-lo 183500.8
-                                :knocked-huge-vy-hi 217907.2
-                                :knocked-yellow-vxz-lo 40960.0
-                                :knocked-yellow-vxz-hi 49152.0
-                                :knocked-yellow-vy-lo 57344.0
-                                :knocked-yellow-vy-hi 81920.0
-                                :knocked-red-vxz-lo 24576.0
-                                :knocked-red-vxz-hi 196608.0
-                                :knocked-red-vy-lo 94208.0
-                                :knocked-red-vy-hi 151552.0
-                                :knocked-blue-vxz-lo 40960.0
-                                :knocked-blue-vxz-hi 49152.0
-                                :knocked-blue-vy-lo 24576.0
-                                :knocked-blue-vy-hi 81920.0
+                                :knocked-soft-vxz-lo (meters 17.6)
+                                :knocked-soft-vxz-hi (meters 26.4)
+                                :knocked-soft-vy-lo (meters 20)
+                                :knocked-soft-vy-hi (meters 30)
+                                :knocked-medium-vxz-lo (meters 36)
+                                :knocked-medium-vxz-hi (meters 48)
+                                :knocked-medium-vy-lo (meters 33)
+                                :knocked-medium-vy-hi (meters 37)
+                                :knocked-hard-vxz-lo (meters 19.2)
+                                :knocked-hard-vxz-hi (meters 28.8)
+                                :knocked-hard-vy-lo (meters 44.8)
+                                :knocked-hard-vy-hi (meters 51.2)
+                                :knocked-huge-vxz-lo (meters 40.2)
+                                :knocked-huge-vxz-hi (meters 60.8)
+                                :knocked-huge-vy-lo (meters 44.8)
+                                :knocked-huge-vy-hi (meters 53.2)
+                                :knocked-yellow-vxz-lo (meters 10)
+                                :knocked-yellow-vxz-hi (meters 12)
+                                :knocked-yellow-vy-lo (meters 14)
+                                :knocked-yellow-vy-hi (meters 20)
+                                :knocked-red-vxz-lo (meters 6)
+                                :knocked-red-vxz-hi (meters 48)
+                                :knocked-red-vy-lo (meters 23)
+                                :knocked-red-vy-hi (meters 37)
+                                :knocked-blue-vxz-lo (meters 10)
+                                :knocked-blue-vxz-hi (meters 12)
+                                :knocked-blue-vy-lo (meters 6)
+                                :knocked-blue-vy-hi (meters 20)
                                 :ragdoll-info (new 'static 'ragdoll-setup
                                   :orient-tform (new 'static 'vector :x 0.9952 :y 0.0483 :z -0.0847 :w 19014.305)
                                   :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
@@ -1085,7 +1067,7 @@
 ;; INFO: Used lq/sq
 (defbehavior mh-flyer-fly-post mh-flyer ()
   (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-    (set-ground-pat! self a1-0 (collide-spec backgnd) 8192.0 163840.0 4096.0 (the-as process #f))
+    (find-ground-and-set-pat! self a1-0 (collide-spec backgnd) 8192.0 163840.0 4096.0 (the-as process #f))
     )
   (if (!= (-> self root gspot-pos y) -40959590.0)
       (set! (-> self move-dest y) (+ 81920.0 (fmax (-> self move-dest y) (-> self root gspot-pos y))))
@@ -1109,32 +1091,20 @@
         (vector-length-max! s5-0 655360.0)
         (vector-v++! s4-0 s5-0)
         )
-      (let* ((v1-21 (vector-flatten! (new 'stack-no-clear 'vector) s5-0 (the-as vector (-> self rotation-matrix))))
+      (let* ((v1-21 (vector-flatten! (new 'stack-no-clear 'vector) s5-0 (-> self rotation-matrix rvec)))
              (f0-6 (lerp-scale 9102.223 -9102.223 (vector-dot (-> self rotation-matrix fvec) v1-21) 245760.0 -245760.0))
              )
         (seek! (-> self pitch-angle) f0-6 (* 32768.0 (seconds-per-frame)))
         )
-      (vector-rotate-around-axis!
-        gp-0
-        (the-as quaternion *y-vector*)
-        (-> self pitch-angle)
-        (the-as vector (-> self rotation-matrix))
-        )
+      (vector-rotate-around-axis! gp-0 *y-vector* (-> self pitch-angle) (-> self rotation-matrix rvec))
       (let* ((v1-25 (vector-flatten! (new 'stack-no-clear 'vector) s5-0 *y-vector*))
-             (f0-12 (lerp-scale
-                      -15473.777
-                      15473.777
-                      (vector-dot (the-as vector (-> self rotation-matrix)) v1-25)
-                      131072.0
-                      -131072.0
-                      )
-                    )
+             (f0-12 (lerp-scale -15473.777 15473.777 (vector-dot (-> self rotation-matrix rvec) v1-25) 131072.0 -131072.0))
              )
         (seek! (-> self bank-angle) f0-12 (* 10922.667 (seconds-per-frame)))
         )
-      (vector-rotate-around-axis! gp-0 (the-as quaternion gp-0) (-> self bank-angle) (-> self rotation-matrix fvec))
+      (vector-rotate-around-axis! gp-0 gp-0 (-> self bank-angle) (-> self rotation-matrix fvec))
       (let ((s5-1 (new 'stack-no-clear 'inline-array 'vector 2)))
-        (set! (-> s5-1 1 quad) (-> self root transv quad))
+        (vector-copy! (-> s5-1 1) (-> self root transv))
         (vector-normalize! (-> s5-1 1) 1.0)
         (forward-up->quaternion (the-as quaternion (-> s5-1 0)) (-> s5-1 1) gp-0)
         (quaternion-slerp!
@@ -1161,7 +1131,7 @@
   :enter (behavior ()
     (set! (-> self bank-angle) 0.0)
     (set! (-> self pitch-angle) 0.0)
-    (set! (-> self init-pos quad) (-> self root trans quad))
+    (vector-copy! (-> self init-pos) (-> self root trans))
     (vector-reset! (-> self root transv))
     (let ((f0-3 (* 65536.0 (get-interp-mod-time 10.0 -0.2)))
           (gp-0 (new 'stack-no-clear 'vector))
@@ -1253,9 +1223,7 @@
             (set! (-> gp-1 charge) (lerp-scale 0.0 1.0 (the float (-> self missiles-fired)) 0.0 3.0))
             (set! (-> gp-1 options) (projectile-options))
             (logclear! (-> gp-1 options) (projectile-options po14 po15 po16))
-            (set! (-> gp-1 pos quad)
-                  (-> (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node mh-flyer-lod0-jg jaw)) quad)
-                  )
+            (vector-copy! (-> gp-1 pos) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node mh-flyer-lod0-jg jaw)))
             (set! (-> gp-1 notify-handle) (the-as handle #f))
             (set! (-> gp-1 owner-handle) (the-as handle #f))
             (set! (-> gp-1 target-handle) (the-as handle #f))
@@ -1287,8 +1255,8 @@
         (go empty-state)
         )
     (let ((a1-10 (-> self des-path node (-> self path-pos))))
-      (set! (-> self move-dest quad) (-> a1-10 position quad))
-      (if (< (vector-vector-distance (-> self root trans) (the-as vector a1-10)) 327680.0)
+      (vector-copy! (-> self move-dest) (-> a1-10 position))
+      (if (< (vector-vector-distance (-> self root trans) (-> a1-10 position)) 327680.0)
           (+! (-> self path-pos) 1)
           )
       )
@@ -1316,7 +1284,7 @@
   :code (behavior ()
     (local-vars (v1-14 object))
     (let ((gp-0 (-> self root transv)))
-      (set! (-> gp-0 quad) (-> self target-velocity quad))
+      (vector-copy! gp-0 (-> self target-velocity))
       (vector-length-max! gp-0 245760.0)
       (set! (-> gp-0 y) (fmax -163840.0 (fmin 163840.0 (-> gp-0 y))))
       (vector-float*! gp-0 gp-0 0.5)
@@ -1334,10 +1302,7 @@
     (if (-> self skel effect)
         (do-effect (-> self skel effect) "death-default" 0.0 -1)
         )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (cleanup-for-death self)
     )
@@ -1347,18 +1312,14 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs process.
 (defmethod update-focus ((this mh-flyer))
+  "Potentially update the focus, if there is something better to focus on."
   (let ((t9-0 (method-of-type enemy update-focus)))
     (t9-0 this)
     )
-  (let* ((s4-0 *target*)
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as target (as-type *target* process-focusable))))
     (when s5-0
-      (set! (-> this focus-bullseye-pos quad) (-> (get-trans s5-0 3) quad))
-      (set! (-> this focus-pos quad) (-> (get-trans s5-0 3) quad))
+      (vector-copy! (-> this focus-bullseye-pos) (get-trans s5-0 3))
+      (vector-copy! (-> this focus-pos) (get-trans s5-0 3))
       (vector-! (-> this focus-xz-dir) (-> this focus-pos) (-> this root trans))
       (set! (-> this focus-xz-dir y) 0.0)
       (vector-xz-normalize! (-> this focus-xz-dir) 1.0)
@@ -1386,7 +1347,7 @@
        (set! (-> gp-0 z) 0.0)
        (set! (-> gp-0 w) 0.0)
        (let ((f30-0 163840.0))
-         (set! (-> s4-0 start-pos quad) (-> this root trans quad))
+         (vector-copy! (-> s4-0 start-pos) (-> this root trans))
          (vector-normalize-copy! (-> s4-0 move-dist) gp-0 f30-0)
          (let ((v1-11 s4-0))
            (set! (-> v1-11 radius) 3276.8)
@@ -1444,6 +1405,7 @@
 
 ;; definition for method 59 of type mh-flyer
 (defmethod enemy-common-post ((this mh-flyer))
+  "Common implementation of post. Runs ja-post."
   (quaternion->matrix (-> this rotation-matrix) (-> this root quat))
   (mh-flyer-method-157 this)
   ((method-of-type enemy enemy-common-post) this)
@@ -1452,6 +1414,7 @@
 
 ;; definition for method 82 of type mh-flyer
 (defmethod event-handler ((this mh-flyer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Commmon handler for events."
   (case arg2
     (('attack)
      (-> arg3 param 1)
@@ -1465,7 +1428,8 @@
   )
 
 ;; definition for method 122 of type mh-flyer
-(defmethod go-idle2 ((this mh-flyer))
+(defmethod go-fallback-init ((this mh-flyer))
+  "If there's no specific settings for initial state, go to this state after spawning."
   (let ((v1-1 (res-lump-value (-> this entity) 'extra-id uint128 :time -1000000000.0)))
     (cond
       ((zero? v1-1)
@@ -1489,6 +1453,7 @@
 ;; definition for method 120 of type mh-flyer
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this mh-flyer))
+  "Typical place to construct collision shapes"
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -1562,12 +1527,13 @@
 ;; definition for method 121 of type mh-flyer
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this mh-flyer))
+  "Typical place for shared init code. Runs from entity or process style init."
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-mh-flyer" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (init-enemy-defaults! this *mh-flyer-enemy-info*)
+  (setup-enemy! this *mh-flyer-enemy-info*)
   (set! (-> this root pause-adjust-distance) 368640.0)
   (logclear! (-> this mask) (process-mask actor-pause))
   (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
@@ -1592,7 +1558,7 @@
   (set! (-> self entity) arg1)
   (set! (-> self manager) arg4)
   (init-enemy-collision! self)
-  (set! (-> self root trans quad) (-> arg2 node 0 position quad))
+  (vector-copy! (-> self root trans) (-> arg2 node 0 position))
   (quaternion-copy! (-> self root quat) arg3)
   (set! (-> self des-path) arg2)
   (init-enemy! self)

@@ -93,10 +93,8 @@ math::Vector3f vopmsub(math::Vector3f acc, math::Vector3f a, math::Vector3f b) {
 }
 
 /*!
- * Compute the normal transformation for a TIE from the TIE matrix.
- * Note that this isn't identical to the original game - we're missing the vf14 scaling factor
- * For now, I just set this to 1, then normalize in the shader. Though I think we could avoid
- * this by figuring out the value of vf14 here (I am just too lazy right now).
+ * Compute the normal transformation for a TIE from the TIE matrix. This will return properly scaled
+ * normals.
  */
 std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vector4f, 4>& m) {
   // let:
@@ -186,11 +184,21 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   // sqc2 vf12, -80(t8)
 }
 
+s16 saturate_for_s10(s16 s10) {
+  // our error should be 1 or less as an s8, or 4 as a s10.
+  ASSERT(s10 >= -520 && s10 < 520);
+  if (s10 < -512) {
+    return -512;
+  }
+  if (s10 > 511) {
+    return 511;
+  }
+  return s10;
+}
+
 u32 pack_to_gl_normal(s16 nx, s16 ny, s16 nz) {
-  ASSERT(nx >= -512 && nx <= 511);
-  ASSERT(ny >= -512 && ny <= 511);
-  ASSERT(nz >= -512 && nz <= 511);
-  return (nx & 0x3ff) | ((ny & 0x3ff) << 10) | ((nz & 0x3ff) << 20);
+  return (saturate_for_s10(nx) & 0x3ff) | ((saturate_for_s10(ny) & 0x3ff) << 10) |
+         ((saturate_for_s10(nz) & 0x3ff) << 20);
 }
 
 /*!
@@ -202,10 +210,10 @@ u32 unpack_tie_normal(const std::array<math::Vector3f, 3>& mat, s8 nx, s8 ny, s8
   nrm += mat[0] * nx;
   nrm += mat[1] * ny;
   nrm += mat[2] * nz;
-  // convert to s16 for OpenGL renderer
-  // nrm /= 0x100;  // number from EE asm
-  // nrm *= 0x200;  // for normalized s10 -> float conversion by OpenGL.
-  nrm *= 2;  // for normalized s10 -> float conversion by OpenGL.
+
+  // game used signed 8-bit normals, but OpenGL uses signed 10-bit
+  // multiply by 2^2 = 4
+  nrm *= 4;
 
   auto as_int = nrm.cast<s16>();
 
@@ -304,13 +312,15 @@ void TieTree::unpack() {
 
   for (auto& draw : static_draws) {
     draw.unpacked.idx_of_first_idx_in_full_buffer = unpacked.indices.size();
-    ASSERT(draw.plain_indices.empty());
+    // indices can come from either runs or already in plain indices.
     for (auto& run : draw.runs) {
       for (u32 ri = 0; ri < run.length; ri++) {
         unpacked.indices.push_back(run.vertex0 + ri);
       }
       unpacked.indices.push_back(UINT32_MAX);
     }
+    unpacked.indices.insert(unpacked.indices.end(), draw.plain_indices.begin(),
+                            draw.plain_indices.end());
   }
 }
 
@@ -405,6 +415,8 @@ void TieTree::serialize(Serializer& ser) {
   packed_vertices.serialize(ser);
   colors.serialize(ser);
   bvh.serialize(ser);
+
+  ser.from_ptr(&use_strips);
 
   ser.from_ptr(&has_per_proto_visibility_toggle);
   ser.from_string_vector(&proto_names);
@@ -848,6 +860,13 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
 std::size_t PreloadedVertex::hash::operator()(const PreloadedVertex& v) const {
   return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
          std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^ std::hash<u16>()(v.color_index);
+}
+
+std::size_t PackedTieVertices::Vertex::hash::operator()(const Vertex& v) const {
+  return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
+         std::hash<float>()(v.r) ^ std::hash<float>()(v.g) ^ std::hash<float>()(v.b) ^
+         std::hash<float>()(v.a) ^ std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^
+         std::hash<float>()(v.nx) ^ std::hash<float>()(v.ny) ^ std::hash<float>()(v.nz);
 }
 
 }  // namespace tfrag3

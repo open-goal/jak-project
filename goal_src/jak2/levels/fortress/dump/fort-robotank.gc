@@ -38,7 +38,7 @@
   )
 
 (defpart 2474
-  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+  :init-specs ((:texture (motion-blur-part effects))
     (:num 1.0 6.0)
     (:x (meters -4) (meters 8))
     (:scale-x (meters 1))
@@ -374,7 +374,7 @@
            (f1-16 (- 1.0 f0-44))
            (f26-0 0.0)
            )
-      (when (and (or (< f0-44 f24-0) (< f24-0 f1-16)) (time-elapsed? (-> self buzz-timer) (the int (* 0.5 f30-2))))
+      (when (and (or (< f0-44 f24-0) (< f24-0 f1-16)) (time-elapsed? (-> self buzz-timer) (the int (/ f30-2 2))))
         (let* ((gp-2 *target*)
                (a0-43 (if (type? gp-2 process-focusable)
                           gp-2
@@ -391,7 +391,7 @@
           (-> *cpad-list* cpads 0)
           1
           (the int (* 255.0 (* 0.49 f26-0)))
-          (the-as time-frame (max 45 (the int (* 0.25 f30-2))))
+          (the-as time-frame (max 45 (the int (/ f30-2 4))))
           )
         (set-time! (-> self buzz-timer))
         )
@@ -769,10 +769,7 @@
     )
   :code (behavior ()
     (logclear! (-> self flags) (robotank-flags roflags-2))
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.1))
-        (suspend)
-        )
+    (suspend-for (seconds 0.1)
       )
     (logior! (-> self flags) (robotank-flags roflags-2))
     (sleep-code)
@@ -901,10 +898,7 @@
     (remove-setting! 'process-mask)
     (remove-setting! 'target-height)
     (send-event (handle->process (-> self turret)) 'die)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 2))
-        (suspend)
-        )
+    (suspend-for (seconds 2)
       )
     (while (-> self child)
       (suspend)
@@ -914,36 +908,37 @@
   )
 
 (defmethod deactivate ((this fort-robotank))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (stop! (-> this idle-sound))
   (stop! (-> this barrel-sound))
   ((method-of-type process-drawable deactivate) this)
   (none)
   )
 
-(defmethod relocate ((this fort-robotank) (arg0 int))
+(defmethod relocate ((this fort-robotank) (offset int))
   (if (nonzero? (-> this barrel-part))
-      (&+! (-> this barrel-part) arg0)
+      (&+! (-> this barrel-part) offset)
       )
   (if (nonzero? (-> this roller-jmod))
-      (&+! (-> this roller-jmod) arg0)
+      (&+! (-> this roller-jmod) offset)
       )
   (if (nonzero? (-> this vibe-jmod))
-      (&+! (-> this vibe-jmod) arg0)
+      (&+! (-> this vibe-jmod) offset)
       )
   (if (nonzero? (-> this idle-sound))
-      (&+! (-> this idle-sound) arg0)
+      (&+! (-> this idle-sound) offset)
       )
   (if (nonzero? (-> this barrel-sound))
-      (&+! (-> this barrel-sound) arg0)
+      (&+! (-> this barrel-sound) offset)
       )
   (let ((v1-20 (-> this path-info)))
     (when (nonzero? v1-20)
       (dotimes (a0-2 (-> this path-count))
         (if (nonzero? (-> v1-20 data a0-2 path))
-            (&+! (-> v1-20 data a0-2 path) arg0)
+            (&+! (-> v1-20 data a0-2 path) offset)
             )
         )
-      (&+! (-> this path-info) arg0)
+      (&+! (-> this path-info) offset)
       )
     )
   (dotimes (v1-24 2)
@@ -961,24 +956,24 @@
                       joint-mod
                       (-> (the-as (pointer uint32) (&+ (&+ (the-as (pointer uint32) this) (* 144 v1-24)) (* a0-4 16))) 55)
                       )
-                    arg0
+                    offset
                     )
                   )
                 )
           )
       )
     )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this fort-robotank) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)

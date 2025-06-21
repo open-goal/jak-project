@@ -2,6 +2,14 @@
 
 #include "common/common_types.h"
 #include "common/log/log.h"
+#include "common/util/string_util.h"
+
+#ifdef __APPLE__
+#include <stdio.h>
+
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#endif
 
 #ifdef _WIN32
 // clang-format off
@@ -103,4 +111,28 @@ void setup_cpu_info() {
 
 CpuInfo& get_cpu_info() {
   return gCpuInfo;
+}
+
+std::optional<double> get_macos_major_version() {
+#ifndef __APPLE__
+  return {};
+#else
+  char buffer[128];
+  size_t bufferlen = 128;
+  auto ok = sysctlbyname("kern.osproductversion", &buffer, &bufferlen, NULL, 0);
+  if (ok != 0) {
+    lg::warn("Unable to check for `kern.osproductversion` to determine macOS version");
+    return {};
+  }
+  try {
+    std::string macos_major_version = buffer;
+    if (str_util::contains(buffer, ".")) {
+      macos_major_version = str_util::split_string(macos_major_version, ".")[0];
+    }
+    return std::stod(macos_major_version);
+  } catch (std::exception& e) {
+    lg::error("Error occured when attempting to convert sysctl value {} to number", buffer);
+    return {};
+  }
+#endif
 }

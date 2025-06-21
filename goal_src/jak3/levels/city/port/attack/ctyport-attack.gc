@@ -21,7 +21,7 @@
                                        (new 'static 'talker-speech-class
                                          :name "torn208"
                                          :channel (gui-channel voicebox)
-                                         :flags (talker-flags tf0)
+                                         :flags (talker-flags play-only-once)
                                          :speech #x1
                                          :neg #x1
                                          :on-close #f
@@ -30,7 +30,7 @@
                                        (new 'static 'talker-speech-class
                                          :name "torn209"
                                          :channel (gui-channel voicebox)
-                                         :flags (talker-flags tf0)
+                                         :flags (talker-flags play-only-once)
                                          :speech #x2
                                          :neg #x1
                                          :on-close #f
@@ -39,7 +39,7 @@
                                        (new 'static 'talker-speech-class
                                          :name "torn210"
                                          :channel (gui-channel voicebox)
-                                         :flags (talker-flags tf0)
+                                         :flags (talker-flags play-only-once)
                                          :speech #x3
                                          :neg #x1
                                          :on-close #f
@@ -48,7 +48,7 @@
                                        (new 'static 'talker-speech-class
                                          :name "torn211"
                                          :channel (gui-channel voicebox)
-                                         :flags (talker-flags tf0)
+                                         :flags (talker-flags play-only-once)
                                          :speech #x4
                                          :neg #x1
                                          :on-close #f
@@ -121,7 +121,7 @@
                                        (new 'static 'talker-speech-class
                                          :name "torn220"
                                          :channel (gui-channel voicebox)
-                                         :flags (talker-flags tf0)
+                                         :flags (talker-flags play-only-once)
                                          :speech #xd
                                          :neg #x1
                                          :on-close #f
@@ -130,7 +130,7 @@
                                        (new 'static 'talker-speech-class
                                          :name "torn221"
                                          :channel (gui-channel voicebox)
-                                         :flags (talker-flags tf0)
+                                         :flags (talker-flags play-only-once)
                                          :speech #xe
                                          :neg #x1
                                          :on-close #f
@@ -403,7 +403,7 @@
                                        (new 'static 'talker-speech-class
                                          :name "port-attack-jump-hint"
                                          :channel (gui-channel message)
-                                         :flags (talker-flags tf0)
+                                         :flags (talker-flags play-only-once)
                                          :speech #x30
                                          :text-duration (seconds 3)
                                          :neg #x1
@@ -1045,7 +1045,7 @@
 
 (defun record-pos ()
   (when (cpad-pressed? 0 r1)
-    (set! (-> *recorded-pos* *recorded-length* quad) (-> (target-pos 0) quad))
+    (vector-copy! (-> *recorded-pos* *recorded-length*) (target-pos 0))
     (set! *recorded-length* (+ *recorded-length* 1))
     )
   (none)
@@ -1649,7 +1649,7 @@
     (case message
       (('activate)
        (let ((v1-1 (the-as object (-> block param 0))))
-         (set! (-> self root trans quad) (-> (the-as vector v1-1) quad))
+         (vector-copy! (-> self root trans) (the-as vector v1-1))
          )
        (logclear! (-> self mask) (process-mask actor-pause))
        (go-virtual idle)
@@ -1837,10 +1837,7 @@
              process
              (lambda :behavior process
                ()
-               (let ((gp-0 (current-time)))
-                 (until (time-elapsed? gp-0 (seconds 0.75))
-                   (suspend)
-                   )
+               (suspend-for (seconds 0.75)
                  )
                (let ((a0-0 (ppointer->process (-> self parent))))
                  (if a0-0
@@ -1890,7 +1887,7 @@
             (let ((a0-42 *ctyport-barrier-pos*)
                   (s5-1 (new 'stack-no-clear 'task-arrow-params))
                   )
-              (set! (-> s5-1 pos quad) (-> a0-42 quad))
+              (vector-copy! (-> s5-1 pos) a0-42)
               (quaternion-identity! (-> s5-1 quat))
               (set! (-> s5-1 flags) (task-arrow-flags))
               (set! (-> s5-1 map-icon) (the-as uint 12))
@@ -1926,7 +1923,7 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (set! (-> self hum-sound) (new-sound-id))
   (set! (-> self root) (new 'process 'trsqv))
-  (set! (-> self root trans quad) (-> arg0 quad))
+  (vector-copy! (-> self root trans) arg0)
   (quaternion-identity! (-> self root quat))
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 530) self))
   (go-virtual idle)
@@ -1991,10 +1988,7 @@
   :virtual #t
   :code (behavior ()
     (sound-stop (-> self hum-sound))
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (disable *screen-filter*)
     (deactivate self)
@@ -2004,7 +1998,7 @@
 ;; WARN: Return type mismatch int vs handle.
 (defmethod ctyport-attack-manager-method-45 ((this ctyport-attack-manager))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
-    (set! (-> s5-0 quad) (-> this package-positions (-> this current-package-index) pos quad))
+    (vector-copy! s5-0 (-> this package-positions (-> this current-package-index) pos))
     (let ((s4-0 (process-spawn ctyport-attack-package s5-0 :name "ctyport-attack-package" :to this))
           (s3-1 (new 'stack-no-clear 'task-arrow-params))
           )
@@ -2014,7 +2008,7 @@
       (when (-> this package-positions (-> this current-package-index) probe?)
         (let ((s2-0 (new 'stack-no-clear 'collide-query)))
           (let ((v1-21 (new 'stack-no-clear 'vector)))
-            (set! (-> v1-21 quad) (-> s5-0 quad))
+            (vector-copy! v1-21 s5-0)
             (vector+float*! (-> s2-0 start-pos) v1-21 *up-vector* 24576.0)
             )
           (set! (-> s2-0 move-dist quad) (the-as uint128 0))
@@ -2035,7 +2029,7 @@
               )
           )
         )
-      (set! (-> s3-1 pos quad) (-> s5-0 quad))
+      (vector-copy! (-> s3-1 pos) s5-0)
       (quaternion-identity! (-> s3-1 quat))
       (set! (-> s3-1 flags) (task-arrow-flags))
       (set! (-> s3-1 map-icon) (the-as uint 13))
@@ -2051,12 +2045,12 @@
 (defmethod ctyport-attack-manager-method-51 ((this ctyport-attack-manager) (arg0 traffic-object-spawn-params))
   (cond
     ((task-node-closed? (game-task-node city-port-attack-mission))
-     (set! (-> arg0 position quad) (-> (new 'static 'vector :x -197263.36 :y 52101.12 :z 5516165.0 :w 1.0) quad))
+     (vector-copy! (-> arg0 position) (new 'static 'vector :x -197263.36 :y 52101.12 :z 5516165.0 :w 1.0))
      (quaternion-identity! (-> arg0 rotation))
      (quaternion-rotate-y! (-> arg0 rotation) (-> arg0 rotation) -9102.223)
      )
     (else
-      (set! (-> arg0 position quad) (-> (entity-by-name "cty-dax-missile-launcher-1") extra trans quad))
+      (vector-copy! (-> arg0 position) (-> (entity-by-name "cty-dax-missile-launcher-1") extra trans))
       (quaternion-copy!
         (-> arg0 rotation)
         (-> (the-as entity-actor (entity-by-name "cty-dax-missile-launcher-1")) quat)
@@ -2144,7 +2138,7 @@
 (defstate wait (ctyport-attack-manager)
   :virtual #t
   :code (behavior ()
-    (while (or (not *target*) (not *spawn-actors*) (!= (status-of-level-and-borrows *level* 'lpatkcs #f) 'active))
+    (while (or (not *target*) (not *spawn-actors*) (!= (level-status? *level* 'lpatkcs #f) 'active))
       (if *target*
           (process-grab? *target* #f)
           )
@@ -2181,10 +2175,7 @@
         )
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (let ((gp-1 (new 'stack-no-clear 'event-message-block)))
       (set! (-> gp-1 from) (process->ppointer self))
@@ -2271,15 +2262,9 @@
             (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
             )
           )
-      (let ((v1-1 gp-0))
-        (set! (-> v1-1 width) (the float 340))
-        )
-      (let ((v1-2 gp-0))
-        (set! (-> v1-2 height) (the float 80))
-        )
-      (let ((v1-3 gp-0))
-        (set! (-> v1-3 scale) 0.9)
-        )
+      (set-width! gp-0 340)
+      (set-height! gp-0 80)
+      (set-scale! gp-0 0.9)
       (set! (-> gp-0 flags) (font-flags shadow kerning large))
       (print-game-text
         (lookup-text! *common-text* (text-id text-0086) #f)
@@ -2300,14 +2285,10 @@
   (when (not (-> this passed-cutscene-trigger?))
     (let ((f30-0 (vector-dot *cutscene-trigger-plane-normal* *cutscene-trigger-plane-pt*)))
       (when (handle->process (-> this active-torpedo))
-        (let* ((s5-0 (handle->process (-> this active-torpedo)))
-               (a1-3 (if (type? s5-0 process-focusable)
-                         s5-0
-                         )
-                     )
-               (a0-10 (new 'stack-no-clear 'vector))
-               )
-          (set! (-> a0-10 quad) (-> (the-as process-focusable a1-3) rbody position quad))
+        (let ((a1-3 (as-type (handle->process (-> this active-torpedo)) process-focusable))
+              (a0-10 (new 'stack-no-clear 'vector))
+              )
+          (vector-copy! a0-10 (-> (the-as process-focusable a1-3) rbody position))
           (if (and (< f30-0 (vector-dot *cutscene-trigger-plane-normal* a0-10))
                    (< (vector-vector-xz-distance a0-10 *cutscene-trigger-plane-pt*) 225280.0)
                    )
@@ -2378,23 +2359,18 @@
     (if (< (vector-vector-xz-distance (target-pos 0) *port-attack-fail-sphere*) *port-attack-fail-radius*)
         (send-event self 'fail)
         )
-    (let ((gp-1 (handle->process (-> self active-torpedo))))
-      (cond
-        ((focus-test?
-           (the-as process-focusable (if (type? gp-1 process-focusable)
-                                         (the-as process-focusable gp-1)
-                                         )
-                   )
-           dead
-           )
-         (send-event self 'fail)
+    (cond
+      ((focus-test?
+         (the-as process-focusable (as-type (handle->process (-> self active-torpedo)) process-focusable))
+         dead
          )
-        ((hit-cutscene-trigger? self)
-         (send-event (handle->process (-> self active-torpedo)) 'hide)
-         (send-event (handle->process (-> self rod-of-god)) 'leave)
-         (send-event self 'complete)
-         )
-        )
+       (send-event self 'fail)
+       )
+      ((hit-cutscene-trigger? self)
+       (send-event (handle->process (-> self active-torpedo)) 'hide)
+       (send-event (handle->process (-> self rod-of-god)) 'leave)
+       (send-event self 'complete)
+       )
       )
     )
   :code sleep-code
@@ -2427,7 +2403,6 @@
       )
     )
   :trans (behavior ()
-    (local-vars (gp-1 symbol))
     ((-> (method-of-type task-manager active) trans))
     (if (and (time-elapsed? (-> self state-time) (seconds 0.2))
              (not (time-elapsed? (-> self state-time) (seconds 0.5)))
@@ -2464,23 +2439,9 @@
       ((< (-> self current-package-index) (-> self package-positions length))
        (if (or (not *target*)
                (not (handle->process (-> self active-torpedo)))
-               (begin
-                 (let* ((gp-2 #t)
-                        (s5-0 (handle->process (-> self active-torpedo)))
-                        (v1-67 (the-as focus-status (logand (-> (the-as process-focusable (if (type? s5-0 process-focusable)
-                                                                                              (the-as process-focusable s5-0)
-                                                                                              )
-                                                                        )
-                                                                focus-status
-                                                                )
-                                                            (focus-status dead)
-                                                            )
-                                       )
-                               )
-                        )
-                   (cmove-#f-zero gp-1 v1-67 gp-2)
-                   )
-                 gp-1
+               (focus-test?
+                 (the-as process-focusable (as-type (handle->process (-> self active-torpedo)) process-focusable))
+                 dead
                  )
                )
            (send-event self 'fail)
@@ -2554,7 +2515,7 @@
   :event ctyport-attack-manager-event-handler
   :trans (behavior ()
     ((-> (method-of-type task-manager active) trans))
-    (if (!= (status-of-level-and-borrows *level* 'hiphog #f) 'active)
+    (if (!= (level-status? *level* 'hiphog #f) 'active)
         (go-virtual get-on-nuke)
         )
     )
@@ -2579,7 +2540,7 @@
                (time-elapsed? (-> *port-attack-speech* 0 play-time) (seconds 1))
                )
       (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
-        (set! (-> gp-0 pos quad) (-> (entity-by-name "cty-dax-missile-launcher-1") extra trans quad))
+        (vector-copy! (-> gp-0 pos) (-> (entity-by-name "cty-dax-missile-launcher-1") extra trans))
         (quaternion-identity! (-> gp-0 quat))
         (set! (-> gp-0 flags) (task-arrow-flags))
         (set! (-> gp-0 map-icon) (the-as uint 13))
@@ -2587,27 +2548,22 @@
         (set! (-> self rod-of-god) (process->handle (task-arrow-spawn gp-0 self)))
         )
       )
-    (when (and *target* (and (handle-command-list *gui-control* (gui-channel voicebox) (the-as gui-connection #f))
-                             (not (focus-test? *target* pilot-riding))
-                             (let ((gp-1 vector-vector-xz-distance)
-                                   (s5-1 (target-pos 0))
-                                   (s4-0 (handle->process (-> self active-torpedo)))
-                                   )
-                               (and (< (gp-1 s5-1 (get-trans
-                                                    (the-as process-focusable (if (type? s4-0 process-focusable)
-                                                                                  (the-as process-focusable s4-0)
-                                                                                  )
-                                                            )
-                                                    0
-                                                    )
-                                             )
-                                       32768.0
-                                       )
-                                    (> (-> *port-attack-speech* 0 play-time) 0)
-                                    (time-elapsed? (-> *port-attack-speech* 0 play-time) (seconds 1))
-                                    )
-                               )
-                             )
+    (when (and *target*
+               (and (handle-command-list *gui-control* (gui-channel voicebox) (the-as gui-connection #f))
+                    (not (focus-test? *target* pilot-riding))
+                    (and (< (vector-vector-xz-distance
+                              (target-pos 0)
+                              (get-trans
+                                (the-as process-focusable (as-type (handle->process (-> self active-torpedo)) process-focusable))
+                                0
+                                )
+                              )
+                            32768.0
+                            )
+                         (> (-> *port-attack-speech* 0 play-time) 0)
+                         (time-elapsed? (-> *port-attack-speech* 0 play-time) (seconds 1))
+                         )
+                    )
                )
       (send-event (handle->process (-> self rod-of-god)) 'leave)
       (go-virtual play-get-on-movie)
@@ -2677,16 +2633,13 @@
     0.0
     (new 'stack-no-clear 'vector)
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (set! (-> s4-0 quad) (-> *x-vector* quad))
+      (vector-copy! s4-0 *x-vector*)
       (let ((f30-0 (-> arg0 initial-angle)))
         (cond
           ((-> arg0 inout?)
            (let* ((f0-2 (* 0.0033333334 (the float (- (current-time) (-> this mine-clock)))))
-                  (f1-3 (* 0.0033333334 (-> arg0 period)))
-                  (f0-5 (+ (/ (- f0-2 (* (the float (the int (/ f0-2 f1-3))) f1-3)) (* 0.0033333334 (-> arg0 period)))
-                           (-> arg0 offset)
-                           )
-                        )
+                  (f1-3 (/ (-> arg0 period) 300))
+                  (f0-5 (+ (/ (- f0-2 (* (the float (the int (/ f0-2 f1-3))) f1-3)) (/ (-> arg0 period) 300)) (-> arg0 offset)))
                   (f0-6 (- f0-5 (* (the float (the int (/ f0-5 1.0))) 1.0)))
                   )
              (if (< 0.5 f0-6)
@@ -2698,11 +2651,11 @@
              )
            )
           (else
-            (set! (-> s5-0 quad) (-> arg0 origin quad))
+            (vector-copy! s5-0 (-> arg0 origin))
             )
           )
         (if (-> arg0 spin?)
-            (+! f30-0 (* 0.0033333334 (-> arg0 spinrate) (the float (- (current-time) (-> this mine-clock)))))
+            (+! f30-0 (* (/ (-> arg0 spinrate) 300) (the float (- (current-time) (-> this mine-clock)))))
             )
         (vector-rotate-around-y! s4-0 s4-0 f30-0)
         )
@@ -2755,7 +2708,7 @@
 
 (defun copy-record-pos ()
   (dotimes (v1-0 *recorded-length*)
-    (set! (-> *ctyport-package-positions* v1-0 pos quad) (-> *recorded-pos* v1-0 quad))
+    (vector-copy! (-> *ctyport-package-positions* v1-0 pos) (-> *recorded-pos* v1-0))
     )
   #f
   )
@@ -2817,6 +2770,7 @@
 
 
 (defmethod init-from-entity! ((this cty-dax-missile-launcher) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
   (stack-size-set! (-> this main-thread) 128)
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
@@ -2865,12 +2819,7 @@
             )
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (new 'stack-no-clear 'vector)
-      (let* ((s3-0 (handle->process (-> this active-torpedo)))
-             (s4-0 (if (type? s3-0 process-focusable)
-                       s3-0
-                       )
-                   )
-             )
+      (let ((s4-0 (as-type (handle->process (-> this active-torpedo)) process-focusable)))
         (when (the-as process-focusable s4-0)
           (let ((s3-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> (the-as process-focusable s4-0) root quat))))
             (set! (-> s3-1 y) 0.0)
@@ -2893,19 +2842,9 @@
             (let ((s3-4 0))
               (let ((s2-0 (new 'stack-no-clear 'array 'collide-shape 384)))
                 (countdown (s1-0 (fill-actor-list-for-box *actor-hash* s5-0 s2-0 384))
-                  (let* ((s0-0 (-> s2-0 s1-0))
-                         (v1-52 (if (type? s0-0 collide-shape)
-                                    s0-0
-                                    )
-                                )
-                         )
+                  (let ((v1-52 (as-type (-> s2-0 s1-0) collide-shape)))
                     (when v1-52
-                      (let* ((s0-1 (-> v1-52 process))
-                             (v1-53 (if (type? s0-1 process-focusable)
-                                        s0-1
-                                        )
-                                    )
-                             )
+                      (let ((v1-53 (as-type (-> v1-52 process) process-focusable)))
                         (when v1-53
                           (if (and (!= v1-53 *target*) (!= v1-53 s4-0) (logtest? (process-mask guard civilian) (-> v1-53 mask)))
                               (+! s3-4 1)
@@ -2916,12 +2855,7 @@
                     )
                   )
                 )
-              (let* ((s1-1 *target*)
-                     (s2-1 (if (type? s1-1 process-focusable)
-                               s1-1
-                               )
-                           )
-                     )
+              (let ((s2-1 (the-as target (as-type *target* process-focusable))))
                 (when (and s2-1 (< (vector-vector-distance (get-trans s2-1 0) s5-0) (-> s5-0 w)))
                   (if (and (!= s2-1 *target*) (!= s2-1 s4-0) (logtest? (process-mask guard civilian) (-> s2-1 mask)))
                       (+! s3-4 1)
@@ -2997,12 +2931,12 @@
     (the int (+ 65.0 (* 18.0 (-> *video-params* relative-x-scale)) (* -130.0 (-> this offset))))
     (the int (+ 350.0 (* 130.0 (-> this offset))))
     )
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 2)) 5 -25)
-  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 2)) 5 5)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 2 pos) 5 -25)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 2 pos) 5 5)
   (logior! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
   (logior! (-> this sprites 2 flags) (hud-sprite-flags hsf3 hsf4))
   (logior! (-> this sprites 3 flags) (hud-sprite-flags hsf3))
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites 2)) 1110 0)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 2 pos) 1110 0)
   (logior! (-> this sprites 1 flags) (hud-sprite-flags hsf3 hsf5))
   (set! (-> this sprites 2 scale-x) 1.4)
   (set! (-> this sprites 1 scale-x) 1.4)

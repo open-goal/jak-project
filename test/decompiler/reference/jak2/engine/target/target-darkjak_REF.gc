@@ -603,7 +603,7 @@
     (set-setting! 'rapid-tracking #f 0.0 0)
     ((lambda :behavior target
        ()
-       (set! (-> self control bend-target) (* 0.5 (-> self control bend-target)))
+       (set! (-> self control bend-target) (/ (-> self control bend-target) 2))
        (if (logtest? (water-flags touch-water) (-> self water flags))
            (sound-play "swim-stroke")
            )
@@ -745,12 +745,12 @@
                   )
                 (send-event (handle->process (-> self control unknown-combo-tracker00 target)) 'combo)
                 )
-           (let* ((s5-0 (handle->process (-> self control unknown-combo-tracker00 target)))
-                  (gp-0 (if (type? s5-0 process-focusable)
-                            s5-0
-                            )
-                        )
-                  )
+           (let ((gp-0 (the-as
+                         process
+                         (as-type (handle->process (-> self control unknown-combo-tracker00 target)) process-focusable)
+                         )
+                       )
+                 )
              (let ((s5-1 (get-trans (the-as process-focusable gp-0) 3)))
                (when (and (< 2048.0 (vector-vector-distance (-> self control trans) s5-1))
                           (or (and (= gp-0 (handle->process sv-56)) (not (time-elapsed? (the-as time-frame sv-64) (seconds 0.1))))
@@ -1506,10 +1506,10 @@
               (set! (-> sv-176 y) (rand-vu-float-range -8192.0 8192.0))
               (set! (-> sv-176 z) (rand-vu-float-range -40960.0 40960.0))
               (set! (-> sv-176 w) 1.0)
-              (.mov.vf vf6 vf0 :mask #b1000)
+              (.mov.vf.w vf6 vf0)
               (.lvf vf4 (&-> sv-160 quad))
               (.lvf vf5 (&-> sv-176 quad))
-              (.add.vf vf6 vf4 vf5 :mask #b111)
+              (.add.vf.xyz vf6 vf4 vf5)
               (.svf (&-> sv-192 quad) vf6)
               ((the-as (function object object object object object object object object none) s5-1)
                s4-1
@@ -1742,12 +1742,7 @@
       (set! sv-40 (fill-actor-list-for-sphere *actor-hash* sv-56 (-> sv-32 data) (-> sv-32 allocated-length)))
       (set! (-> sv-32 length) sv-40)
       (countdown (s5-0 sv-40)
-        (let* ((s4-0 (-> sv-32 s5-0 process))
-               (v1-53 (if (type? s4-0 process-focusable)
-                          s4-0
-                          )
-                      )
-               )
+        (let ((v1-53 (the-as process-drawable (as-type (-> sv-32 s5-0 process) process-focusable))))
           (when (and v1-53 (logtest? (process-mask enemy guard vehicle) (-> v1-53 mask)))
             (set! (-> sv-60 sv-48) (process->handle v1-53))
             (set! sv-48 (+ sv-48 1))
@@ -1943,7 +1938,3 @@
     )
   :post (-> target-grab post)
   )
-
-
-
-

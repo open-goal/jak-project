@@ -66,8 +66,8 @@
           )
       )
     (set! (-> self board turn-anim-targ) (+ (lerp-scale
-                                              (* 0.5 (-> *TARGET_BOARD-bank* turn-frames))
-                                              (* -0.5 (-> *TARGET_BOARD-bank* turn-frames))
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) 2)
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) -2)
                                               f26-0
                                               -5461.3335
                                               5461.3335
@@ -80,8 +80,8 @@
                                               32768.0
                                               )
                                             (lerp-scale
-                                              (* 0.2 (-> *TARGET_BOARD-bank* turn-frames))
-                                              (* -0.2 (-> *TARGET_BOARD-bank* turn-frames))
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) 5)
+                                              (/ (-> *TARGET_BOARD-bank* turn-frames) -5)
                                               (-> self board turn-anim-mag)
                                               1.0
                                               -1.0
@@ -89,7 +89,7 @@
                                             )
           )
     (when (and (or (< (* f30-0 (-> self board turn-anim-targ)) 0.0) (= f30-0 0.0))
-               (and (< (* 0.2 (-> *TARGET_BOARD-bank* turn-frames)) (fabs (- f30-0 (-> self board turn-anim-targ))))
+               (and (< (/ (-> *TARGET_BOARD-bank* turn-frames) 5) (fabs (- f30-0 (-> self board turn-anim-targ))))
                     (>= (current-time) (-> self control turn-lockout-end-time))
                     )
                )
@@ -993,7 +993,7 @@
     (set! (-> self control unknown-float36)
           (fmax
             (-> self control unknown-float36)
-            (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton 6)))
+            (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx x)))) ;; og:preserve-this abutton indexing
             )
           )
     (mod-var-jump #t #f (cpad-hold? (-> self control cpad number) x) (-> self control transv))
@@ -1541,7 +1541,7 @@
         (set! (-> self control unknown-float36)
               (fmax
                 (-> self control unknown-float36)
-                (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton 6)))
+                (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx x)))) ;; og:preserve-this abutton indexing
                 )
               )
         (mod-var-jump #t #f (cpad-hold? (-> self control cpad number) x) (-> self control transv))
@@ -1693,7 +1693,7 @@
         (set! (-> self control unknown-float36)
               (fmax
                 (-> self control unknown-float36)
-                (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton 6)))
+                (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx x)))) ;; og:preserve-this abutton indexing
                 )
               )
         (mod-var-jump #t #f (cpad-hold? (-> self control cpad number) x) (-> self control transv))
@@ -1830,7 +1830,7 @@
       (set! (-> self control unknown-float36)
             (fmax
               (-> self control unknown-float36)
-              (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton 6)))
+              (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton (abutton-idx x)))) ;; og:preserve-this abutton indexing
               )
             )
       (mod-var-jump #t #f (cpad-hold? (-> self control cpad number) x) (-> self control transv))
@@ -2187,7 +2187,7 @@
       (else
         (let ((f30-1
                 (* (lerp-scale 0.7 1.0 (fabs (-> self board ride-lean)) 0.0 1.0)
-                   (lerp-scale 0.8 1.0 (fabs (-> self board ride-speed)) 0.0 (* 0.5 (-> self control mod-surface transv-max)))
+                   (lerp-scale 0.8 1.0 (fabs (-> self board ride-speed)) 0.0 (/ (-> self control mod-surface transv-max) 2))
                    )
                 )
               (f0-23
@@ -2973,10 +2973,7 @@
                  (let ((s4-1 (new-stack-vector0)))
                    (set! (-> s4-1 quad) (-> self control last-trans-on-ground quad))
                    (ja-channel-set! 0)
-                   (let ((s3-1 (current-time)))
-                     (until (time-elapsed? s3-1 (seconds 1))
-                       (suspend)
-                       )
+                   (suspend-for (seconds 1)
                      )
                    (move-to-point! (-> self control) s4-1)
                    )

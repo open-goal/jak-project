@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 41;
+constexpr int TFRAG3_VERSION = 43;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -116,6 +116,16 @@ struct PackedTieVertices {
     float s, t;
     s8 nx, ny, nz;
     u8 r, g, b, a;
+
+    struct hash {
+      std::size_t operator()(const Vertex& x) const;
+    };
+
+    bool operator==(const Vertex& other) const {
+      return x == other.x && y == other.y && z == other.z && s == other.s && t == other.t &&
+             nx == other.nx && ny == other.ny && nz == other.nz && r == other.r && g == other.g &&
+             b == other.b && a == other.a;
+    }
   };
 
   struct MatrixGroup {
@@ -231,7 +241,7 @@ struct ShrubDraw {
 
 struct InstancedStripDraw {
   DrawMode mode;        // the OpenGL draw settings.
-  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+  s32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
   // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
   // will use to start a new strip.
@@ -419,6 +429,8 @@ struct TieTree {
   // jak 2 and later can toggle on and off visibility per proto by name
   bool has_per_proto_visibility_toggle = false;
   std::vector<std::string> proto_names;
+
+  bool use_strips = true;
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices

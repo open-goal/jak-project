@@ -12,7 +12,7 @@
 #include "game/kernel/jakx/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace {
 bool is_opengoal_object(void* data) {

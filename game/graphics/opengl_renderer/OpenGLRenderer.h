@@ -26,7 +26,7 @@ struct RenderOptions {
   bool draw_filters_window = false;
 
   // internal rendering settings - The OpenGLRenderer will internally use this resolution/format.
-  int msaa_samples = 2;
+  int msaa_samples = 1;
   int game_res_w = 640;
   int game_res_h = 480;
 

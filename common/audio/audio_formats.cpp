@@ -3,7 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/BinaryWriter.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 /*!
  * Write a wave file from a vector of samples.
