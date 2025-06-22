@@ -113,7 +113,10 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     }
 
     // escape characters
-    if (font_bank_exists(version)) {
+    // TODO - hack, skip korean for now, i want the raw bytes
+    if (language == 6) {
+      result.text[text_id] = goos::get_byte_string(text.c_str());
+    } else if (font_bank_exists(version)) {
       result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
     } else {
       result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!

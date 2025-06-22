@@ -1310,6 +1310,8 @@ static std::vector<EncodeInfo> s_encode_info_jak2 = {
 
     {"œ", {0x5e}},  // ligature o+e
 
+    // TODO - there is a bug if original text has one of these hex values, it will get replaced with these
+    // ie. korean or japanese
     {"<FLAG_PART_HORZ_STRIPE_MIDDLE>", {0x7f}},
     {"<FLAG_PART_HORZ_STRIPE_BOTTOM>", {0x80}},
     {"<FLAG_PART_VERT_STRIPE_LARGE>", {0x81}},

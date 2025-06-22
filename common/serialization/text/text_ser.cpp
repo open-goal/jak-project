@@ -122,9 +122,15 @@ void parse_text_goal(const goos::Object& data,
                 if (b_i >= int(banks.size())) {
                   throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
                 }
-
-                auto line = font->convert_utf8_to_game(entry.as_string()->data);
-                banks[b_i++]->set_line(id, line);
+                // TODO - hack, cleanup before merging
+                b_i++;
+                if (b_i == 6) {
+                  // dont change korean!
+                  banks[b_i]->set_line(id, entry.as_string()->data);
+                } else {
+                  auto line = font->convert_utf8_to_game(entry.as_string()->data);
+                  banks[b_i]->set_line(id, line);
+                }
               } else {
                 throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
               }
@@ -165,8 +171,15 @@ void parse_text_goal(const goos::Object& data,
               throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
             }
 
-            auto line = font->convert_utf8_to_game(entry.as_string()->data);
-            banks[i++]->set_line(id, line);
+            // TODO - hack, cleanup before merging
+            if (i == 6) {
+              // dont change korean!
+              banks[i]->set_line(id, entry.as_string()->data);
+            } else {
+              auto line = font->convert_utf8_to_game(entry.as_string()->data);
+              banks[i]->set_line(id, line);
+            }
+            i++;
           } else {
             throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
           }

@@ -905,4 +905,13 @@ std::string get_readable_string(const char* in) {
   }
   return result;
 }
+
+std::string get_byte_string(const char* in) {
+  std::string result;
+  while (*in) {
+    result += fmt::format("\\c{:02x}", uint8_t(*in));
+    in++;
+  }
+  return result;
+}
 }  // namespace goos

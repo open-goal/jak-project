@@ -5,6 +5,19 @@
 ;; name in dgo: gstring
 ;; dgos: KERNEL
 
+(defun print-string-bytes ((arg0 string))
+  (let ((str-ptr (-> arg0 data))
+        (first-line-break #f))
+    (while (and (nonzero? (-> str-ptr 0)))
+      (when (and first-line-break (or (= (-> str-ptr 0) #x4) (= (-> str-ptr 0) #x59)))
+        (format #t "~%"))
+      (when (or (= (-> str-ptr 0) #x4) (= (-> str-ptr 0) #x59))
+        (set! first-line-break #t))
+      (format #t "0x~X " (-> str-ptr 0))
+      (set! str-ptr (&-> str-ptr 1))))
+  (format #t "~%")
+  (none))
+
 ;; DECOMP BEGINS
 
 (defmethod length ((this string))
