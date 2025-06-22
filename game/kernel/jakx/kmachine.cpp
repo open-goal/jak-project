@@ -293,7 +293,7 @@ int InitMachine() {
   return status;
 }
 
-int ShutdownMachine() {
+int ShutdownMachine(int reasonIndex) {
   Msg(6, "kernel: machine shutdown (reason %d)\n", (int)MasterExit);
 
   StopIOP();

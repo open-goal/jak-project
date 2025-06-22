@@ -24,7 +24,7 @@
 // main
 
 namespace jakx {
-void KernelCheckAndDispatch();
+int KernelCheckAndDispatch();
 
 char DebugBootUser[64];
 char DebugBootArtGroup[64];
@@ -40,6 +40,12 @@ void kboot_init_globals() {
 }
 
 s32 goal_main(int argc, const char* const* argv) {
+  // s32 thread_id = GetThreadId();
+  // ChangeThreadPriority(thread_id, 0x18);
+  // sceGsSyncVCallback(FUN_0026a918_probably_kernel);
+  // DAT_002833fc = 1;
+  // InitOnce_WS();
+
   // only in PC port
   InitParms(argc, argv);
 
@@ -50,7 +56,7 @@ s32 goal_main(int argc, const char* const* argv) {
   masterConfig.timeout = 0;
   switch (sony_language) {
     case SCE_JAPANESE_LANGUAGE:
-      masterConfig.language = 6;  // ???
+      masterConfig.language = 6;  // NOTE: Why UK_English and not Japanese?
       break;
     case SCE_FRENCH_LANGUAGE:  // 2 -> 1
       masterConfig.language = (u16)Language::French;
@@ -79,17 +85,29 @@ s32 goal_main(int argc, const char* const* argv) {
   //  DiskBoot = 1;
   //  MasterDebug = 0;
   //  DebugSegment = 0;
+  //  DebugSymbols = 0;
 
   // Launch GOAL!
-  if (InitMachine() >= 0) {    // init kernel
-    KernelCheckAndDispatch();  // run kernel
-    ShutdownMachine();         // kernel died, we should too.
-    // movie playback stuff removed.
-  } else {
-    fprintf(stderr, "InitMachine failed\n");
-    exit(1);
+  int initMachineResult = InitMachine();
+  bool result = (initMachineResult & 0xfff00000) == 0xfff00000;
+  int shutdownReason;
+  if (result) {
+    printf("kboot: error; failed to initialize machine (result=0x%08x)\n", initMachineResult);
+    shutdownReason = 2;
   }
-  return 0;
+  else {
+    shutdownReason = KernelCheckAndDispatch();  // run kernel
+  }
+  ShutdownMachine(shutdownReason);         // kernel died, we should too.
+  // movie playback stuff?
+  if (MasterExit == RuntimeExitStatus::EXIT) {
+    // LoadExecPS2("cdrom0:\\NETGUI\\NTGUI_EU.ELF;1", 1, &movie_args_Q);
+  }
+  else if (MasterExit == RuntimeExitStatus::RESTART_IN_DEBUG) {
+    char printBuffer[32];
+    sprintf(printBuffer, "cdrom0:\\SCES_%.3s.%2s;1", "532", "86");
+  }
+  return result;
 }
 
 void KernelDispatch(u32 dispatcher_func) {
@@ -152,13 +170,19 @@ void KernelDispatch(u32 dispatcher_func) {
 }
 
 void KernelShutdown(u32 reason) {
-  MasterExit = (RuntimeExitStatus)reason;
+  if ((u32)MasterExit < reason) {
+    MasterExit = (RuntimeExitStatus)reason;
+  }
 }
 
-void KernelCheckAndDispatch() {
-  while (MasterExit == RuntimeExitStatus::RUNNING) {
+int KernelCheckAndDispatch() {
+  while (MasterExit == RuntimeExitStatus::RUNNING && !POWERING_OFF_W) {
     KernelDispatch(kernel_dispatcher->value());
   }
+  if (POWERING_OFF_W) {
+    KernelShutdown(3);
+  }
+  return (u32)MasterExit;
 }
 
 }  // namespace jakx
