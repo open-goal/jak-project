@@ -6,6 +6,11 @@
 #include "game/kernel/common/Ptr.h"
 
 extern u32 sMsgNum;
+
+extern bool IOP_RUNNING_W;
+
+extern u32 sShowStallMsg;
+
 s32 RpcCall(s32 rpcChannel,
             u32 fno,
             bool async,
@@ -19,9 +24,8 @@ u32 RpcBusy(s32 channel);
 void RpcSync(s32 channel);
 void LoadDGOTest();
 void kdgo_init_globals();
-u32 InitRPC();
-void StopIOP();
-
-extern u32 sShowStallMsg;
+s32 InitRPC();
+int StopIOP();
 
 bool setStallMsg_GW(bool show);
+bool Is_RPC_Initialized_G();
