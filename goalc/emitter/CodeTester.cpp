@@ -119,7 +119,7 @@ void CodeTester::clear() {
  * Execute the buffered code with no arguments, return the value of RAX.
  */
 u64 CodeTester::execute() {
-  return ((u64 (*)())code_buffer)();
+  return ((u64(*)())code_buffer)();
 }
 
 /*!
