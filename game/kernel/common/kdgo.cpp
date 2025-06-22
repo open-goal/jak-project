@@ -34,7 +34,8 @@ s32 RpcCall(s32 rpcChannel,
             void* sendBuff,
             s32 sendSize,
             void* recvBuff,
-            s32 recvSize) {
+            s32 recvSize,
+            void* callback) {
   return sceSifCallRpc(&cd[rpcChannel], fno, async, sendBuff, sendSize, recvBuff, recvSize, nullptr,
                        nullptr);
 }
@@ -199,4 +200,13 @@ void LoadDGOTest() {
 
   sShowStallMsg = lastShowStall;
    */
+}
+
+bool setStallMsg_GW(bool show)
+{
+  bool oldShowStallMsg;
+  
+  oldShowStallMsg = sShowStallMsg;
+  sShowStallMsg = show;
+  return oldShowStallMsg;
 }

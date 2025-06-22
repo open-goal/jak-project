@@ -12,7 +12,8 @@ s32 RpcCall(s32 rpcChannel,
             void* sendBuff,
             s32 sendSize,
             void* recvBuff,
-            s32 recvSize);
+            s32 recvSize,
+            void* callback = nullptr);
 u64 RpcCall_wrapper(void* _args);
 u32 RpcBusy(s32 channel);
 void RpcSync(s32 channel);
@@ -22,3 +23,5 @@ u32 InitRPC();
 void StopIOP();
 
 extern u32 sShowStallMsg;
+
+bool setStallMsg_GW(bool show);
