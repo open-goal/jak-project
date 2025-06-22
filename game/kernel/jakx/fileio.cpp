@@ -43,8 +43,8 @@ char* DecodeFileName(const char* name) {
       result = MakeFileName(MISC_FILE_TYPE, name + 6, 0);
     } else if (!strncmp(name, "$MAP/", 5)) {
       result = MakeFileName(MAP_FILE_TYPE, name + 5, 0);
-    } else if (!strncmp(name, "$ISO/", 5)) {
-      result = MakeFileName(ISO_FILE_TYPE, name + 5, 0);
+    } else if (!strncmp(name, "$FLASH/", 7)) {
+      result = MakeFileName(FLASH_FILE_TYPE, name + 7, 0);
     } else {
       printf("[ERROR] DecodeFileName: UNKNOWN FILE NAME %s\n", name);
       result = nullptr;
@@ -68,7 +68,7 @@ char* MakeFileName(int type, const char* name, int new_string) {
   char* buf = strend(buffer_633);
 
   // prefix to build directory
-  char prefix[64];
+  char prefix[128];
   kstrcpy(prefix, FOLDER_PREFIX);
 
   switch (type) {
@@ -111,7 +111,7 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // texture page
     case TX_PAGE_FILE_TYPE:  // 0x21
-      // sprintf(buf, "%sdata/texture-page%d/%s.go", prefix, TX_PAGE_VERSION, name);
+      // sprintf(buf, "%sfinal/texture-page%d/%s.go", prefix, TX_PAGE_VERSION, name);
       sprintf(buf, "%sout/jakx/obj/%s.go", prefix, name);
       break;
 
@@ -137,12 +137,17 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // text group perhaps?
     case TG_FILE_TYPE:
-      sprintf(buf, "%sdb/%s-tg.go", prefix, name);
+      sprintf(buf, "%sfinal/%s-tg.go", prefix, name);
       break;
 
       // level file
     case LEVEL_FILE_TYPE:  // 0x27
-      sprintf(buf, "%sdb/level%d/%s-bt.go", prefix, LEVEL_FILE_VERSION, name);
+      sprintf(buf, "%sfinal/level%d/%s-bt.go", prefix, LEVEL_FILE_VERSION, name);
+      break;
+
+    case 0x28:  // 0x28
+    case 0x29:  // 0x29
+      sprintf(buf, "%sfinal/texture-page%d/%s.go", prefix, ART_FILE_VERSION, name);
       break;
 
       // Everybody's favorite "art group" file. Container of different art.
@@ -159,7 +164,7 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // GOAL data object file containing text. Likely the same format as the .TXT in final ISOs.
     case TX_FILE_TYPE:  // 0x32
-      sprintf(buf, "%sfinal/res%d/%s-tx.go", prefix, 1, name);
+      sprintf(buf, "%sfinal/res%d/%s-tx.go", prefix, DGO_FILE_VERSION, name);
       break;
 
       // Binary format visibility. Likely the format of Jak 1's .VIS files.
@@ -193,7 +198,7 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // Jak 1 had a weird game-cnt.gco file containing the total number of orbs/cells.
     case CNT_FILE_TYPE:  // 0x3a
-      sprintf(buf, "%sfinal/res%d/game-cnt.go", prefix, 1);
+      sprintf(buf, "%sfinal/res%d/game-cnt.go", prefix, DGO_FILE_VERSION);
       break;
 
       // Any res file with .go extension.
@@ -224,7 +229,7 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // possible minimap/bigmap data
     case MAP_FILE_TYPE:
-      sprintf(buf, "%sfinal/map%d/%s", prefix, 1, name);  // v1
+      sprintf(buf, "%sfinal/map%d/%s.go", prefix, DGO_FILE_VERSION, name);  // v1
       break;
 
       // jak 3 cloth animation file.
@@ -232,9 +237,13 @@ char* MakeFileName(int type, const char* name, int new_string) {
       sprintf(buf, "%sdb/artdata%d/%s-cl.go", prefix, ART_FILE_VERSION, name);
       break;
 
+    case FLASH_FILE_TYPE:  // 0x42:
+      sprintf(buf, "%sfinal/flash%d/%s.go", prefix, DGO_FILE_VERSION, name);
+      break;
+
       // no idea
     case REFPLANT_FILE_TYPE:  // 0x301
-      sprintf(buf, "%sdb/refplant/%s", prefix, name);
+      sprintf(buf, "%sdb/config/refplant/%s", prefix, name);
       break;
     default:
       printf("UNKNOWN FILE TYPE %d\n", type);
