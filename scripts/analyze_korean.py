@@ -1,4 +1,4 @@
-# The idea is to parse through all of the game's korean strings and 
+# The idea is to parse through all of the game's korean strings and
 # determine the glyph combinations that are used to construct the syllable blocks
 
 # In terms of font setting, korean syllable blocks have 6 main configurations
@@ -20,7 +20,12 @@
 # and then any glyphs left over we can do manually.
 
 # read in the `game_text.txt` file and extract all the korean strings
-with open("../decompiler_out/jak2/assets/game_text.txt", mode="r", encoding="utf-8") as f:
+from pprint import pprint
+
+
+with open(
+    "../decompiler_out/jak2/assets/game_text.txt", mode="r", encoding="utf-8"
+) as f:
     game_text_lines = f.readlines()
 
 korean_lines = {}
@@ -29,12 +34,11 @@ while i < len(game_text_lines):
     curr_line = game_text_lines[i].strip()
     if curr_line.startswith("(#x"):
         id = curr_line.split("(#x")[1]
-        korean_lines[id] = game_text_lines[i+7].strip().replace("\\c",",0x")[2:]
+        korean_lines[id] = game_text_lines[i + 7].strip().replace("\\c", ",0x")[2:-1]
     i = i + 1
 
 print(f"Analyzing {len(korean_lines)} lines of korean text")
 
-seen_glyphs = []
 # we will fill up this structure, which will allow us to recreate / fill in the gaps in their korean encoding
 jamo_combinations = {
     # jamo : 6 orientations
@@ -44,338 +48,601 @@ jamo_combinations = {
     #
     # we will store these surrounding "context" characters to deduce a pattern at the end
     # ie. 0x06 is always used for ᄀ unless if it becomes before ᅦ then it uses 0x33
-    # 
+    #
     # Choseong (initial)
-    'ᄀ': [[],[],[],[],[],[]],
-    'ᄁ': [[],[],[],[],[],[]],
-    'ᄂ': [[],[],[],[],[],[]],
-    'ᄃ': [[],[],[],[],[],[]],
-    'ᄄ': [[],[],[],[],[],[]],
-    'ᄅ': [[],[],[],[],[],[]],
-    'ᄆ': [[],[],[],[],[],[]],
-    'ᄇ': [[],[],[],[],[],[]],
-    'ᄈ': [[],[],[],[],[],[]],
-    'ᄉ': [[],[],[],[],[],[]],
-    'ᄊ': [[],[],[],[],[],[]],
-    'ᄋ': [[],[],[],[],[],[]],
-    'ᄌ': [[],[],[],[],[],[]],
-    'ᄍ': [[],[],[],[],[],[]],
-    'ᄎ': [[],[],[],[],[],[]],
-    'ᄏ': [[],[],[],[],[],[]],
-    'ᄐ': [[],[],[],[],[],[]],
-    'ᄑ': [[],[],[],[],[],[]],
-    'ᄒ': [[],[],[],[],[],[]],
+    "ᄀ": [[], [], [], [], [], []],
+    "ᄁ": [[], [], [], [], [], []],
+    "ᄂ": [[], [], [], [], [], []],
+    "ᄃ": [[], [], [], [], [], []],
+    "ᄄ": [[], [], [], [], [], []],
+    "ᄅ": [[], [], [], [], [], []],
+    "ᄆ": [[], [], [], [], [], []],
+    "ᄇ": [[], [], [], [], [], []],
+    "ᄈ": [[], [], [], [], [], []],
+    "ᄉ": [[], [], [], [], [], []],
+    "ᄊ": [[], [], [], [], [], []],
+    "ᄋ": [[], [], [], [], [], []],
+    "ᄌ": [[], [], [], [], [], []],
+    "ᄍ": [[], [], [], [], [], []],
+    "ᄎ": [[], [], [], [], [], []],
+    "ᄏ": [[], [], [], [], [], []],
+    "ᄐ": [[], [], [], [], [], []],
+    "ᄑ": [[], [], [], [], [], []],
+    "ᄒ": [[], [], [], [], [], []],
     # Jungseong (middle)
     # - verticals
-    'ᅵ': [[],None,None,[],None,None],
-    'ᅡ': [[],None,None,[],None,None],
-    'ᅢ': [[],None,None,[],None,None],
-    'ᅣ': [[],None,None,[],None,None],
-    'ᅤ': [[],None,None,[],None,None],
-    'ᅥ': [[],None,None,[],None,None],
-    'ᅦ': [[],None,None,[],None,None],
-    'ᅧ': [[],None,None,[],None,None],
-    'ᅨ': [[],None,None,[],None,None],
+    "ᅵ": [[], None, None, [], None, None],
+    "ᅡ": [[], None, None, [], None, None],
+    "ᅢ": [[], None, None, [], None, None],
+    "ᅣ": [[], None, None, [], None, None],
+    "ᅤ": [[], None, None, [], None, None],
+    "ᅥ": [[], None, None, [], None, None],
+    "ᅦ": [[], None, None, [], None, None],
+    "ᅧ": [[], None, None, [], None, None],
+    "ᅨ": [[], None, None, [], None, None],
     # - horizontals
-    'ᅩ': [None,[],None,None,[],None],
-    'ᅭ': [None,[],None,None,[],None],
-    'ᅮ': [None,[],None,None,[],None],
-    'ᅲ': [None,[],None,None,[],None],
-    'ᅳ': [None,[],None,None,[],None],
+    "ᅩ": [None, [], None, None, [], None],
+    "ᅭ": [None, [], None, None, [], None],
+    "ᅮ": [None, [], None, None, [], None],
+    "ᅲ": [None, [], None, None, [], None],
+    "ᅳ": [None, [], None, None, [], None],
     # - combinations
-    'ᅪ': [None,None,[],None,None,[]],
-    'ᅫ': [None,None,[],None,None,[]],
-    'ᅬ': [None,None,[],None,None,[]],
-    'ᅯ': [None,None,[],None,None,[]],
-    'ᅰ': [None,None,[],None,None,[]],
-    'ᅱ': [None,None,[],None,None,[]],
-    'ᅴ': [None,None,[],None,None,[]],
+    "ᅪ": [None, None, [], None, None, []],
+    "ᅫ": [None, None, [], None, None, []],
+    "ᅬ": [None, None, [], None, None, []],
+    "ᅯ": [None, None, [], None, None, []],
+    "ᅰ": [None, None, [], None, None, []],
+    "ᅱ": [None, None, [], None, None, []],
+    "ᅴ": [None, None, [], None, None, []],
     # Jongseong (final)
-    'ᆨ': [None,None,None,[],[],[]],
-    'ᆩ': [None,None,None,[],[],[]],
-    'ᆪ': [None,None,None,[],[],[]],
-    'ᆫ': [None,None,None,[],[],[]],
-    'ᆬ': [None,None,None,[],[],[]],
-    'ᆭ': [None,None,None,[],[],[]],
-    'ᆮ': [None,None,None,[],[],[]],
-    'ᆯ': [None,None,None,[],[],[]],
-    'ᆰ': [None,None,None,[],[],[]],
-    'ᆱ': [None,None,None,[],[],[]],
-    'ᆲ': [None,None,None,[],[],[]],
-    'ᆳ': [None,None,None,[],[],[]],
-    'ᆴ': [None,None,None,[],[],[]],
-    'ᆵ': [None,None,None,[],[],[]],
-    'ᆶ': [None,None,None,[],[],[]],
-    'ᆷ': [None,None,None,[],[],[]],
-    'ᆸ': [None,None,None,[],[],[]],
-    'ᆹ': [None,None,None,[],[],[]],
-    'ᆺ': [None,None,None,[],[],[]],
-    'ᆻ': [None,None,None,[],[],[]],
-    'ᆼ': [None,None,None,[],[],[]],
-    'ᆽ': [None,None,None,[],[],[]],
-    'ᆾ': [None,None,None,[],[],[]],
-    'ᆿ': [None,None,None,[],[],[]],
-    'ᇀ': [None,None,None,[],[],[]],
-    'ᇁ': [None,None,None,[],[],[]],
-    'ᇂ': [None,None,None,[],[],[]]
+    "ᆨ": [None, None, None, [], [], []],
+    "ᆩ": [None, None, None, [], [], []],
+    "ᆪ": [None, None, None, [], [], []],
+    "ᆫ": [None, None, None, [], [], []],
+    "ᆬ": [None, None, None, [], [], []],
+    "ᆭ": [None, None, None, [], [], []],
+    "ᆮ": [None, None, None, [], [], []],
+    "ᆯ": [None, None, None, [], [], []],
+    "ᆰ": [None, None, None, [], [], []],
+    "ᆱ": [None, None, None, [], [], []],
+    "ᆲ": [None, None, None, [], [], []],
+    "ᆳ": [None, None, None, [], [], []],
+    "ᆴ": [None, None, None, [], [], []],
+    "ᆵ": [None, None, None, [], [], []],
+    "ᆶ": [None, None, None, [], [], []],
+    "ᆷ": [None, None, None, [], [], []],
+    "ᆸ": [None, None, None, [], [], []],
+    "ᆹ": [None, None, None, [], [], []],
+    "ᆺ": [None, None, None, [], [], []],
+    "ᆻ": [None, None, None, [], [], []],
+    "ᆼ": [None, None, None, [], [], []],
+    "ᆽ": [None, None, None, [], [], []],
+    "ᆾ": [None, None, None, [], [], []],
+    "ᆿ": [None, None, None, [], [], []],
+    "ᇀ": [None, None, None, [], [], []],
+    "ᇁ": [None, None, None, [], [], []],
+    "ᇂ": [None, None, None, [], [], []],
 }
 # we will be reading byte strings from the game, these correspond to the font glyphs
 # we can deduce all of these
 jamo_glyph_mappings = {
-    '0x06': 'ᄀ',
-    '0x07': 'ᄁ',
-    '0x08': 'ᄂ',
-    '0x09': 'ᄃ',
-    '0x0a': 'ᄄ',
-    '0x0b': 'ᄅ',
-    '0x0c': 'ᄆ',
-    '0x0d': 'ᄇ',
-    '0x0e': 'ᄈ',
-    '0x0f': 'ᄋ',
-    '0x10': 'ᄌ',
-    '0x11': 'ᄍ',
-    '0x12': 'ᄏ',
-    '0x13': 'ᄐ',
-    '0x14': 'ᄑ',
-    '0x15': 'ᅡ',
-    '0x16': 'ᅣ',
-    '0x17': 'ᅵ',
-    '0x18': 'ᅥ',
-    '0x19': 'ᅧ',
-    '0x1a': 'ᅡ',
-    '0x1b': 'ᅣ',
-    '0x1c': 'ᅵ',
-    '0x1d': 'ᅥ',
-    '0x1e': 'ᅧ',
-    '0x1f': 'ᄂ',
-    '0x20': 'ᄉ',
-    '0x21': 'ᄊ',
-    '0x22': 'ᅥ',
-    '0x23': 'ᅧ',
-    '0x24': 'ᅥ',
-    '0x25': 'ᅧ',
-    '0x26': 'ᄃ',
-    '0x27': 'ᄄ',
-    '0x28': 'ᄅ',
-    '0x29': 'ᄐ',
-    '0x2a': 'ᄑ',
-    '0x2b': 'ᅧ',
-    '0x2c': 'ᅧ',
-    '0x2d': 'ᄎ',
-    '0x2e': 'ᄒ',
-    '0x2f': 'ᅥ',
-    '0x30': 'ᅧ',
-    '0x31': 'ᅥ',
-    '0x32': 'ᅧ',
-    '0x33': 'ᄀ',
-    '0x34': 'ᄁ',
-    '0x35': 'ᄂ',
-    '0x36': 'ᄃ',
-    '0x37': 'ᄄ',
-    '0x38': 'ᄅ',
-    '0x39': 'ᄆ',
-    '0x3a': 'ᄇ',
-    '0x3b': 'ᄈ',
-    '0x3c': 'ᄋ',
-    '0x3d': 'ᄌ',
-    '0x3e': 'ᄍ',
-    '0x3f': 'ᄏ',
-    '0x40': 'ᄐ',
-    '0x41': 'ᄑ',
-    '0x42': 'ᅢ',
-    '0x43': 'ᅤ',
-    '0x44': 'ᅦ',
-    '0x45': 'ᅨ',
-    '0x46': 'ᅢ',
-    '0x47': 'ᅤ',
-    '0x48': 'ᅦ',
-    '0x49': 'ᅨ',
-    '0x4a': 'ᄂ',
-    '0x4b': 'ᄉ',
-    '0x4c': 'ᄊ',
-    '0x4d': 'ᅦ',
-    '0x4e': 'ᅨ',
-    '0x4f': 'ᅦ',
-    '0x50': 'ᅨ',
-    '0x51': 'ᄃ',
-    '0x52': 'ᄄ',
-    '0x53': 'ᄅ',
-    '0x54': 'ᄐ',
-    '0x55': 'ᄑ',
-    '0x56': 'ᅨ',
-    '0x57': 'ᅨ',
-    '0x58': 'ᄎ',
-    '0x59': 'ᄒ',
-    '0x5a': 'ᅦ',
-    '0x5b': 'ᅨ',
-    '0x5c': 'ᅦ',
-    '0x5d': 'ᅨ',
-    '0x5e': 'ᄀ',
-    '0x5f': 'ᄏ',
-    '0x60': 'ᅩ',
-    '0x61': 'ᅭ',
-    '0x62': 'ᅩ',
-    '0x63': 'ᅭ',
-    '0x64': ['ᄁ', 'ᅫ'],
-    '0x65': ['ᄁ', 'ᅩ'],
-    '0x66': ['ᄁ', 'ᅩ'],
-    '0x67': ['ᄁ', 'ᅭ'],
-    '0x68': 'ᄁ',
-    '0x69': 'ᄂ',
-    '0x6a': 'ᅳ',
-    '0x6b': 'ᅮ',
-    '0x6c': 'ᅲ',
-    '0x6d': 'ᅳ',
-    '0x6e': 'ᅮ',
-    '0x6f': 'ᅲ',
-    '0x70': 'ᄃ',
-    '0x71': 'ᄄ',
-    '0x72': 'ᄅ',
-    '0x73': 'ᄆ',
-    '0x74': 'ᄇ',
-    '0x75': 'ᄈ',
-    '0x76': 'ᄉ',
-    '0x77': 'ᄊ',
-    '0x78': 'ᄋ',
-    '0x79': 'ᄌ',
-    '0x7a': 'ᄍ',
-    '0x7b': 'ᄎ',
-    '0x7c': 'ᄐ',
-    '0x7d': 'ᄑ',
-    '0x7e': 'ᄒ',
-    '0x7f': 'ᅩ',
-    '0x80': 'ᅭ',
-    '0x81': 'ᅳ',
-    '0x82': 'ᅩ',
-    '0x83': 'ᅭ',
-    '0x84': 'ᅳ',
-    '0x85': 'ᅮ',
-    '0x86': 'ᅲ',
-    '0x87': 'ᅮ',
-    '0x88': 'ᅲ',
-    '0x89': ['ᅮ', 'ᆫ'],
-    '0x8a': ['ᅲ', 'ᆫ'],
-    '0x8b': 'ᄀ',
-    '0x8c': 'ᄏ',
-    '0x8d': 'ᅩ',
-    '0x8e': 'ᅩ',
-    '0x8f': ['ᄁ', 'ᅩ'],
-    '0x90': ['ᄁ', 'ᅩ'],
-    '0x91': 'ᄁ',
-    '0x92': 'ᄂ',
-    '0x93': 'ᄃ',
-    '0x94': 'ᄄ',
-    '0x95': 'ᄅ',
-    '0x96': 'ᄆ',
-    '0x97': 'ᄇ',
-    '0x98': 'ᄈ',
-    '0x99': 'ᄉ',
-    '0x9a': 'ᄊ',
-    '0x9b': 'ᄋ',
-    '0x9c': 'ᄌ',
-    '0x9d': 'ᄍ',
-    '0x9e': 'ᄎ',
-    '0x9f': 'ᄐ',
-    '0xa0': 'ᄑ',
-    '0xa1': 'ᄒ',
-    '0xa2': 'ᅩ',
-    '0xa3': 'ᅳ',
-    '0xa4': 'ᅩ',
-    '0xa5': 'ᅳ',
-    '0xa6': 'ᅡ',
-    '0xa7': 'ᅵ',
-    '0xa8': 'ᅡ',
-    '0xa9': 'ᅵ',
-    '0xaa': 'ᅯ',
-    '0xab': 'ᅱ',
-    '0xac': 'ᅯ',
-    '0xad': 'ᅱ',
-    '0xae': 'ᄀ',
-    '0xaf': 'ᄏ',
-    '0xb0': 'ᅫ',
-    '0xb1': 'ᅫ',
-    '0xb2': 'ᄆ',
-    '0xb3': 'ᄁ',
-    '0xb4': 'ᄂ',
-    '0xb5': 'ᄃ',
-    '0xb6': 'ᄄ',
-    '0xb7': 'ᄅ',
-    '0xb8': 'ᄇ',
-    '0xb9': 'ᄉ',
-    '0xba': 'ᄊ',
-    '0xbb': 'ᄋ',
-    '0xbc': 'ᄌ',
-    '0xbd': 'ᄍ',
-    '0xbe': 'ᄎ',
-    '0xbf': 'ᄐ',
-    '0xc0': 'ᄒ',
-    '0xc1': 'ᅫ',
-    '0xc2': 'ᅫ',
-    '0xc3': 'ᅰ',
-    '0xc4': 'ᅰ',
-    '0xc5': 'ᆨ',
-    '0xc6': 'ᆩ',
-    '0xc7': 'ᆪ',
-    '0xc8': 'ᆫ',
-    '0xc9': 'ᆬ',
-    '0xca': 'ᆭ',
-    '0xcb': 'ᆮ',
-    '0xcc': 'ᆯ',
-    '0xcd': 'ᆰ',
-    '0xce': 'ᆱ',
-    '0xcf': 'ᆲ',
-    '0xd0': 'ᆴ',
-    '0xd1': 'ᆶ',
-    '0xd2': 'ᆷ',
-    '0xd3': 'ᆸ',
-    '0xd4': 'ᆹ',
-    '0xd5': 'ᆺ',
-    '0xd6': 'ᆻ',
-    '0xd7': 'ᆼ',
-    '0xd8': 'ᆽ',
-    '0xd9': 'ᆾ',
-    '0xda': 'ᆿ',
-    '0xdb': 'ᇀ',
-    '0xdc': 'ᇁ',
-    '0xdd': 'ᇂ',
-    '0xde': 'ᆨ',
-    '0xdf': 'ᆩ',
-    '0xe0': 'ᆪ',
-    '0xe1': 'ᆫ',
-    '0xe2': 'ᆭ',
-    '0xe3': 'ᆮ',
-    '0xe4': 'ᆯ',
-    '0xe5': 'ᆰ',
-    '0xe6': 'ᆱ',
-    '0xe7': 'ᆳ',
-    '0xe8': 'ᆴ',
-    '0xe9': 'ᆵ',
-    '0xea': 'ᆶ',
-    '0xeb': 'ᆷ',
-    '0xec': 'ᆸ',
-    '0xed': 'ᆺ',
-    '0xee': 'ᆼ',
-    '0xef': 'ᆽ',
-    '0xf0': 'ᆾ',
-    '0xf1': 'ᆿ',
-    '0xf2': 'ᇀ',
-    '0xf3': 'ᇁ',
-    '0xf4': 'ᇂ',
-    '0xf5': 'ᆨ',
-    '0xf6': 'ᆫ',
-    '0xf7': 'ᆯ',
-    '0xf8': 'ᆱ',
-    '0xf9': 'ᆷ',
-    '0xfa': 'ᆸ',
-    '0xfb': 'ᆺ',
-    '0xfc': 'ᆻ',
-    '0xfd': 'ᆼ',
-    '0xfe': 'ᆨ',
-    '0xff': 'ᆫ',
-    'extra_0x86': 'ᆯ',
-    'extra_0x87': 'ᆷ',
-    'extra_0x88': 'ᆸ',
-    'extra_0x89': 'ᆺ',
-    'extra_0x8a': 'ᆻ',
-    'extra_0x8b': 'ᆼ'
+    "0x06": "ᄀ",
+    "0x07": "ᄁ",
+    "0x08": "ᄂ",
+    "0x09": "ᄃ",
+    "0x0a": "ᄄ",
+    "0x0b": "ᄅ",
+    "0x0c": "ᄆ",
+    "0x0d": "ᄇ",
+    "0x0e": "ᄈ",
+    "0x0f": "ᄋ",
+    "0x10": "ᄌ",
+    "0x11": "ᄍ",
+    "0x12": "ᄏ",
+    "0x13": "ᄐ",
+    "0x14": "ᄑ",
+    "0x15": "ᅡ",
+    "0x16": "ᅣ",
+    "0x17": "ᅵ",
+    "0x18": "ᅥ",
+    "0x19": "ᅧ",
+    "0x1a": "ᅡ",
+    "0x1b": "ᅣ",
+    "0x1c": "ᅵ",
+    "0x1d": "ᅥ",
+    "0x1e": "ᅧ",
+    "0x1f": "ᄂ",
+    "0x20": "ᄉ",
+    "0x21": "ᄊ",
+    "0x22": "ᅥ",
+    "0x23": "ᅧ",
+    "0x24": "ᅥ",
+    "0x25": "ᅧ",
+    "0x26": "ᄃ",
+    "0x27": "ᄄ",
+    "0x28": "ᄅ",
+    "0x29": "ᄐ",
+    "0x2a": "ᄑ",
+    "0x2b": "ᅧ",
+    "0x2c": "ᅧ",
+    "0x2d": "ᄎ",
+    "0x2e": "ᄒ",
+    "0x2f": "ᅥ",
+    "0x30": "ᅧ",
+    "0x31": "ᅥ",
+    "0x32": "ᅧ",
+    "0x33": "ᄀ",
+    "0x34": "ᄁ",
+    "0x35": "ᄂ",
+    "0x36": "ᄃ",
+    "0x37": "ᄄ",
+    "0x38": "ᄅ",
+    "0x39": "ᄆ",
+    "0x3a": "ᄇ",
+    "0x3b": "ᄈ",
+    "0x3c": "ᄋ",
+    "0x3d": "ᄌ",
+    "0x3e": "ᄍ",
+    "0x3f": "ᄏ",
+    "0x40": "ᄐ",
+    "0x41": "ᄑ",
+    "0x42": "ᅢ",
+    "0x43": "ᅤ",
+    "0x44": "ᅦ",
+    "0x45": "ᅨ",
+    "0x46": "ᅢ",
+    "0x47": "ᅤ",
+    "0x48": "ᅦ",
+    "0x49": "ᅨ",
+    "0x4a": "ᄂ",
+    "0x4b": "ᄉ",
+    "0x4c": "ᄊ",
+    "0x4d": "ᅦ",
+    "0x4e": "ᅨ",
+    "0x4f": "ᅦ",
+    "0x50": "ᅨ",
+    "0x51": "ᄃ",
+    "0x52": "ᄄ",
+    "0x53": "ᄅ",
+    "0x54": "ᄐ",
+    "0x55": "ᄑ",
+    "0x56": "ᅨ",
+    "0x57": "ᅨ",
+    "0x58": "ᄎ",
+    "0x59": "ᄒ",
+    "0x5a": "ᅦ",
+    "0x5b": "ᅨ",
+    "0x5c": "ᅦ",
+    "0x5d": "ᅨ",
+    "0x5e": "ᄀ",
+    "0x5f": "ᄏ",
+    "0x60": "ᅩ",
+    "0x61": "ᅭ",
+    "0x62": "ᅩ",
+    "0x63": "ᅭ",
+    "0x64": ["ᄁ", "ᅫ"],
+    "0x65": ["ᄁ", "ᅩ"],
+    "0x66": ["ᄁ", "ᅩ"],
+    "0x67": ["ᄁ", "ᅭ"],
+    "0x68": "ᄁ",
+    "0x69": "ᄂ",
+    "0x6a": "ᅳ",
+    "0x6b": "ᅮ",
+    "0x6c": "ᅲ",
+    "0x6d": "ᅳ",
+    "0x6e": "ᅮ",
+    "0x6f": "ᅲ",
+    "0x70": "ᄃ",
+    "0x71": "ᄄ",
+    "0x72": "ᄅ",
+    "0x73": "ᄆ",
+    "0x74": "ᄇ",
+    "0x75": "ᄈ",
+    "0x76": "ᄉ",
+    "0x77": "ᄊ",
+    "0x78": "ᄋ",
+    "0x79": "ᄌ",
+    "0x7a": "ᄍ",
+    "0x7b": "ᄎ",
+    "0x7c": "ᄐ",
+    "0x7d": "ᄑ",
+    "0x7e": "ᄒ",
+    "0x7f": "ᅩ",
+    "0x80": "ᅭ",
+    "0x81": "ᅳ",
+    "0x82": "ᅩ",
+    "0x83": "ᅭ",
+    "0x84": "ᅳ",
+    "0x85": "ᅮ",
+    "0x86": "ᅲ",
+    "0x87": "ᅮ",
+    "0x88": "ᅲ",
+    "0x89": ["ᅮ", "ᆫ"],
+    "0x8a": ["ᅲ", "ᆫ"],
+    "0x8b": "ᄀ",
+    "0x8c": "ᄏ",
+    "0x8d": "ᅩ",
+    "0x8e": "ᅩ",
+    "0x8f": ["ᄁ", "ᅩ"],
+    "0x90": ["ᄁ", "ᅩ"],
+    "0x91": "ᄁ",
+    "0x92": "ᄂ",
+    "0x93": "ᄃ",
+    "0x94": "ᄄ",
+    "0x95": "ᄅ",
+    "0x96": "ᄆ",
+    "0x97": "ᄇ",
+    "0x98": "ᄈ",
+    "0x99": "ᄉ",
+    "0x9a": "ᄊ",
+    "0x9b": "ᄋ",
+    "0x9c": "ᄌ",
+    "0x9d": "ᄍ",
+    "0x9e": "ᄎ",
+    "0x9f": "ᄐ",
+    "0xa0": "ᄑ",
+    "0xa1": "ᄒ",
+    "0xa2": "ᅩ",
+    "0xa3": "ᅳ",
+    "0xa4": "ᅩ",
+    "0xa5": "ᅳ",
+    "0xa6": "ᅡ",
+    "0xa7": "ᅵ",
+    "0xa8": "ᅡ",
+    "0xa9": "ᅵ",
+    "0xaa": "ᅯ",
+    "0xab": "ᅱ",
+    "0xac": "ᅯ",
+    "0xad": "ᅱ",
+    "0xae": "ᄀ",
+    "0xaf": "ᄏ",
+    "0xb0": "ᅫ",
+    "0xb1": "ᅫ",
+    "0xb2": "ᄆ",
+    "0xb3": "ᄁ",
+    "0xb4": "ᄂ",
+    "0xb5": "ᄃ",
+    "0xb6": "ᄄ",
+    "0xb7": "ᄅ",
+    "0xb8": "ᄇ",
+    "0xb9": "ᄉ",
+    "0xba": "ᄊ",
+    "0xbb": "ᄋ",
+    "0xbc": "ᄌ",
+    "0xbd": "ᄍ",
+    "0xbe": "ᄎ",
+    "0xbf": "ᄐ",
+    "0xc0": "ᄒ",
+    "0xc1": "ᅫ",
+    "0xc2": "ᅫ",
+    "0xc3": "ᅰ",
+    "0xc4": "ᅰ",
+    "0xc5": "ᆨ",
+    "0xc6": "ᆩ",
+    "0xc7": "ᆪ",
+    "0xc8": "ᆫ",
+    "0xc9": "ᆬ",
+    "0xca": "ᆭ",
+    "0xcb": "ᆮ",
+    "0xcc": "ᆯ",
+    "0xcd": "ᆰ",
+    "0xce": "ᆱ",
+    "0xcf": "ᆲ",
+    "0xd0": "ᆴ",
+    "0xd1": "ᆶ",
+    "0xd2": "ᆷ",
+    "0xd3": "ᆸ",
+    "0xd4": "ᆹ",
+    "0xd5": "ᆺ",
+    "0xd6": "ᆻ",
+    "0xd7": "ᆼ",
+    "0xd8": "ᆽ",
+    "0xd9": "ᆾ",
+    "0xda": "ᆿ",
+    "0xdb": "ᇀ",
+    "0xdc": "ᇁ",
+    "0xdd": "ᇂ",
+    "0xde": "ᆨ",
+    "0xdf": "ᆩ",
+    "0xe0": "ᆪ",
+    "0xe1": "ᆫ",
+    "0xe2": "ᆭ",
+    "0xe3": "ᆮ",
+    "0xe4": "ᆯ",
+    "0xe5": "ᆰ",
+    "0xe6": "ᆱ",
+    "0xe7": "ᆳ",
+    "0xe8": "ᆴ",
+    "0xe9": "ᆵ",
+    "0xea": "ᆶ",
+    "0xeb": "ᆷ",
+    "0xec": "ᆸ",
+    "0xed": "ᆺ",
+    "0xee": "ᆼ",
+    "0xef": "ᆽ",
+    "0xf0": "ᆾ",
+    "0xf1": "ᆿ",
+    "0xf2": "ᇀ",
+    "0xf3": "ᇁ",
+    "0xf4": "ᇂ",
+    "0xf5": "ᆨ",
+    "0xf6": "ᆫ",
+    "0xf7": "ᆯ",
+    "0xf8": "ᆱ",
+    "0xf9": "ᆷ",
+    "0xfa": "ᆸ",
+    "0xfb": "ᆺ",
+    "0xfc": "ᆻ",
+    "0xfd": "ᆼ",
+    "0xfe": "ᆨ",
+    "0xff": "ᆫ",
+    "extra_0x86": "ᆯ",
+    "extra_0x87": "ᆷ",
+    "extra_0x88": "ᆸ",
+    "extra_0x89": "ᆺ",
+    "extra_0x8a": "ᆻ",
+    "extra_0x8b": "ᆼ",
 }
+jamo_groupings = {
+    "initial": [
+        "ᄀ",
+        "ᄁ",
+        "ᄂ",
+        "ᄃ",
+        "ᄄ",
+        "ᄅ",
+        "ᄆ",
+        "ᄇ",
+        "ᄈ",
+        "ᄉ",
+        "ᄊ",
+        "ᄋ",
+        "ᄌ",
+        "ᄍ",
+        "ᄎ",
+        "ᄏ",
+        "ᄐ",
+        "ᄑ",
+        "ᄒ",
+    ],
+    "median": [
+        "ᅡ",
+        "ᅢ",
+        "ᅣ",
+        "ᅤ",
+        "ᅥ",
+        "ᅦ",
+        "ᅧ",
+        "ᅨ",
+        "ᅩ",
+        "ᅪ",
+        "ᅫ",
+        "ᅬ",
+        "ᅭ",
+        "ᅮ",
+        "ᅯ",
+        "ᅰ",
+        "ᅱ",
+        "ᅲ",
+        "ᅳ",
+        "ᅴ",
+        "ᅵ",
+    ],
+    "final": [
+        "ᆨ",
+        "ᆩ",
+        "ᆪ",
+        "ᆫ",
+        "ᆬ",
+        "ᆭ",
+        "ᆮ",
+        "ᆯ",
+        "ᆰ",
+        "ᆱ",
+        "ᆲ",
+        "ᆳ",
+        "ᆴ",
+        "ᆵ",
+        "ᆶ",
+        "ᆷ",
+        "ᆸ",
+        "ᆹ",
+        "ᆺ",
+        "ᆻ",
+        "ᆼ",
+        "ᆽ",
+        "ᆾ",
+        "ᆿ",
+        "ᇀ",
+        "ᇁ",
+        "ᇂ",
+    ],
+}
+median_jamo_groupings = {
+    "right": ["ᅡ", "ᅢ", "ᅣ", "ᅤ", "ᅥ", "ᅦ", "ᅧ", "ᅨ", "ᅵ"],
+    "bottom": ["ᅩ", "ᅭ", "ᅮ", "ᅲ", "ᅳ"],
+    "combined": ["ᅪ", "ᅫ", "ᅬ", "ᅯ", "ᅰ", "ᅱ", "ᅴ"],
+}
+median_combos = {
+    "ᅪ": ["ᅩ", "ᅡ"],
+    "ᅫ": ["ᅩ", "ᅢ"],
+    "ᅬ": ["ᅩ", "ᅵ"],
+    "ᅯ": ["ᅮ", "ᅥ"],
+    "ᅰ": ["ᅮ", "ᅦ"],
+    "ᅱ": ["ᅮ", "ᅵ"],
+    "ᅴ": ["ᅳ", "ᅵ"],
+}
+
+
+def derive_syllable_block_info(glyph_list):
+    jamos = []
+    # iterate the glyphs, convert them into their mappings
+    for glyph in glyph_list:
+        if glyph not in jamo_glyph_mappings:
+            print(f"{glyph} not in mapping dictionary, fix it")
+            exit(1)
+        mapping = jamo_glyph_mappings[glyph]
+        # TODO - ugly for figuring out what glyphs by jamo!
+        if isinstance(mapping, list):
+            # there are a few select glyphs that are multiple jamos
+            for jamo in mapping:
+                jamos.append([jamo, glyph])
+        else:
+            jamos.append([mapping, glyph])
+    # Associate each jamo with it's initial/median/final grouping
+    jamo_info = []
+    found_medians = []
+    for jamo_and_glyph in jamos:
+        jamo = jamo_and_glyph[0]
+        glyph = jamo_and_glyph[1]
+        for [grouping, jamos_in_group] in jamo_groupings.items():
+            if jamo in jamos_in_group:
+                jamo_grouping = grouping
+                break
+        if jamo_grouping == "median":
+            found_medians.append([jamo, glyph])
+        jamo_info.append(
+            {
+                "jamo": jamo,
+                "grouping": jamo_grouping,
+                "glyph": glyph
+            }
+        )
+    if len(found_medians) > 2:
+        print(f"found more than 2 median vowels in {jamo_info}")
+        exit(1)
+    # Consolidate median vowels, as jak typically typically draws them as a combination of two
+    # glyphs
+    if len(found_medians) > 1:
+        combined_median = None
+        combined_glyphs = None
+        for [vowel, vowel_parts] in median_combos.items():
+            if found_medians[0][0] in vowel_parts and found_medians[1][0] in vowel_parts:
+                combined_median = vowel
+                combined_glyphs = [found_medians[0][1], found_medians[1][1]]
+                break
+        if combined_median == None:
+            print(f"unable to combine median in {jamo_info}")
+            exit(1)
+        new_jamo_info = []
+        skip_rest = False
+        for info in jamo_info:
+            if info["grouping"] != "median":
+                new_jamo_info.append(info)
+            elif not skip_rest:
+                new_jamo_info.append({"jamo": combined_median, "grouping": "median", "glyph": combined_glyphs})
+                skip_rest = True
+        jamo_info = new_jamo_info
+    # Now we can consolidate median vowels and determine the orientation
+    if len(jamo_info) == 2:
+        for [grouping, jamos_in_group] in median_jamo_groupings.items():
+            if jamo_info[1]["jamo"] in jamos_in_group:
+                median_group = grouping
+                break
+        if median_group == "right":
+            writing_orientation = 0
+        elif median_group == "bottom":
+            writing_orientation = 1
+        elif median_group == "combined":
+            writing_orientation = 2
+        else:
+            print(f"couldnt figure out median group for {jamo_info}")
+            exit(1)
+    elif len(jamo_info) == 3:
+        for [grouping, jamos_in_group] in median_jamo_groupings.items():
+            if jamo_info[1]["jamo"] in jamos_in_group:
+                median_group = grouping
+                break
+        if median_group == "right":
+            writing_orientation = 3
+        elif median_group == "bottom":
+            writing_orientation = 4
+        elif median_group == "combined":
+            writing_orientation = 5
+        else:
+            print(f"couldnt figure out median group for {jamo_info}")
+            exit(1)
+    else:
+        print(f"unhandled jamo configuration {jamo_info}")
+        exit(1)
+    return {"writingOrientation": writing_orientation, "jamos": jamo_info}
+
+# finally start going through the real text to figure out the mappings
+for [id, game_text_line] in korean_lines.items():
+    print()
+    print(game_text_line)
+    # split the bytes into characters, sound the alarm if we see a `0x05`
+    # NOTE - hopefully this is not a hack (seems like the font textures dont start until 0x6...how conveniant!)
+    game_text_line = game_text_line.replace("0x05,", "extra_")
+    text_bytes = game_text_line.split(",")
+    syllable_blocks = []
+    i = 0
+    while i < len(text_bytes):
+        curr_byte = text_bytes[i]
+        if curr_byte == "0x04":
+            expected_num_glyphs = int(text_bytes[i + 1], 16)
+            syllable_blocks.append(
+                {
+                    "numGlyphs": expected_num_glyphs,
+                    "rawGlyphs": text_bytes[i + 2 : i + 2 + expected_num_glyphs],
+                }
+            )
+            i = i + 2 + expected_num_glyphs
+            continue
+        i = i + 1
+    # now we will inspect the choice of glyphs (which are individual jamo or jamo combinations)
+    # to determine the jamo and the writing orientation
+    for block in syllable_blocks:
+        jamo_info = derive_syllable_block_info(block["rawGlyphs"])
+        block["jamos"] = jamo_info["jamos"]
+        block["writingOrientation"] = jamo_info["writingOrientation"]
+
+    pprint(syllable_blocks)
+    # if id == "01b8":
+    #     exit(1)
+
+    # The (almost) final step, store this information in our big jamo combination
+    # "database"
+    # 
+    # We now effectively have an encoding, and we can process that to further refine it and
+    # see what we have to do manually
+    for block in syllable_blocks:
+        writing_orientation = block['writingOrientation']
+        for jamo in block['jamos']:
+            jamo_entry = jamo_combinations[jamo['jamo']]
+            if jamo_entry[writing_orientation] == None:
+                print(f"something is very wrong with {block}")
+                exit(1)
+            new_entry = {
+                'glyph': jamo['glyph'],
+                'context': 'TODO'
+            }
+            if new_entry not in jamo_entry[writing_orientation]:
+                jamo_entry[writing_orientation].append(new_entry)
+
+# TODO - use the context to deduce when glyphs should be chosen for the same jamo
+# (find the patterns)
+
+# Print the results!
+pprint(jamo_combinations)
+
+# Print some stats
+empty_cells = 0
+glyph_list = set(jamo_glyph_mappings.keys())
+for [jamo, orientations] in jamo_combinations.items():
+    for orientation in orientations:
+        if orientation is not None:
+            if len(orientation) == 0:
+                empty_cells = empty_cells + 1
+            for entry in orientation:
+                if isinstance(entry['glyph'], list):
+                    for glyph in entry['glyph']:
+                        glyph_list.discard(glyph)
+                else:
+                    glyph_list.discard(entry['glyph'])
+
+print()
+print(f"{empty_cells} empty jamo cells\n")
+print(f"Did not see {len(glyph_list)} out of {len(jamo_glyph_mappings.keys())} glyphs:")
+print(glyph_list)
+
