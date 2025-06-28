@@ -21,7 +21,7 @@
 
 # read in the `game_text.txt` file and extract all the korean strings
 from pprint import pprint
-
+import json
 
 with open(
     "../decompiler_out/jak2/assets/game_text.txt", mode="r", encoding="utf-8"
@@ -36,6 +36,28 @@ while i < len(game_text_lines):
         id = curr_line.split("(#x")[1]
         korean_lines[id] = game_text_lines[i + 7].strip().replace("\\c", ",0x")[2:-1]
     i = i + 1
+
+# also parse subtitles
+with open(
+    "../decompiler_out/jak2/assets/subtitles.txt", mode="r", encoding="utf-8"
+) as f:
+    subtitle_text_lines = f.readlines()
+for line in subtitle_text_lines:
+    parts = line.split("::")
+    text = parts[2].replace("\"","").replace(" ",",")
+    # pad with 0s for single hex digits
+    for c in ["1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"]:
+        text = text.replace(f"0x{c},", f"0x0{c},")
+    key = f"{parts[0]}_{parts[1]}"
+    korean_lines[key] = text[:-1]
+
+# These are extra lines not found from the original game, beacuse the original game text
+# does not cover all possible korean permutations
+#
+# These are manually verified legible glyph combinations to fill in these voids
+manual_lines = [
+
+]
 
 print(f"Analyzing {len(korean_lines)} lines of korean text")
 
@@ -568,6 +590,7 @@ def derive_syllable_block_info(glyph_list):
     return {"writingOrientation": writing_orientation, "jamos": jamo_info}
 
 # finally start going through the real text to figure out the mappings
+total_syllable_blocks = 0
 for [id, game_text_line] in korean_lines.items():
     print()
     print(game_text_line)
@@ -580,6 +603,7 @@ for [id, game_text_line] in korean_lines.items():
     while i < len(text_bytes):
         curr_byte = text_bytes[i]
         if curr_byte == "0x04":
+            total_syllable_blocks = total_syllable_blocks + 1
             expected_num_glyphs = int(text_bytes[i + 1], 16)
             syllable_blocks.append(
                 {
@@ -598,8 +622,6 @@ for [id, game_text_line] in korean_lines.items():
         block["writingOrientation"] = jamo_info["writingOrientation"]
 
     pprint(syllable_blocks)
-    # if id == "01b8":
-    #     exit(1)
 
     # The (almost) final step, store this information in our big jamo combination
     # "database"
@@ -615,18 +637,12 @@ for [id, game_text_line] in korean_lines.items():
                 exit(1)
             new_entry = {
                 'glyph': jamo['glyph'],
-                'context': 'TODO'
+                'context': block['jamos'] 
             }
             if new_entry not in jamo_entry[writing_orientation]:
                 jamo_entry[writing_orientation].append(new_entry)
 
-# TODO - use the context to deduce when glyphs should be chosen for the same jamo
-# (find the patterns)
-
-# Print the results!
-pprint(jamo_combinations)
-
-# Print some stats
+# Print some stats before finalizing the result
 empty_cells = 0
 glyph_list = set(jamo_glyph_mappings.keys())
 for [jamo, orientations] in jamo_combinations.items():
@@ -642,7 +658,115 @@ for [jamo, orientations] in jamo_combinations.items():
                     glyph_list.discard(entry['glyph'])
 
 print()
+print(f"Analyzed {total_syllable_blocks} syllable blocks")
 print(f"{empty_cells} empty jamo cells\n")
 print(f"Did not see {len(glyph_list)} out of {len(jamo_glyph_mappings.keys())} glyphs:")
 print(glyph_list)
 
+with open('./jamo-db-before.json', mode="w", encoding="utf-8") as f:
+    f.write(json.dumps(jamo_combinations, indent=2))
+
+def format_alternative(curr_glyph, full_glyph_context):
+    # Make a string key that represents the unicode jamos with a <GLYPH> placeholder to represent
+    # the jamo we are dealing with
+    # And the value is the glyph itself that gets used to draw this combination of jamos
+    key_parts = []
+    for glyph in full_glyph_context:
+        if curr_glyph == glyph['glyph']:
+            key_parts.append("<GLYPH>")
+        else:
+            key_parts.append(glyph['jamo'])
+    return [",".join(key_parts), curr_glyph]
+
+# Enumerate through the db, and consolidate duplicates / find the most common
+# jamo for each position
+for [jamo, orientations] in jamo_combinations.items():
+    for [index, orientation] in enumerate(orientations):
+        if orientation is not None:
+            result = {
+                "defaultGlyph": "",
+                "alternatives": {}
+            }
+            glyph_frequencies = {}
+            alternatives = {}
+            if len(orientation) == 0:
+                empty_cells = empty_cells + 1
+                continue
+            for entry in orientation:
+                glyph_key = entry['glyph']
+                if isinstance(entry['glyph'], list):
+                    glyph_key = ",".join(entry['glyph'])
+                if glyph_key not in glyph_frequencies:
+                    glyph_frequencies[glyph_key] = 0
+                glyph_frequencies[glyph_key] = glyph_frequencies[glyph_key] + 1
+
+                if glyph_key not in alternatives:
+                    alternatives[glyph_key] = []
+                alternatives[glyph_key].append(format_alternative(entry['glyph'], entry['context']))
+            # Consolidate
+            most_common_glyph = ''
+            most_common_glyph_times = -1
+            for [glyph, freq] in glyph_frequencies.items():
+                if freq > most_common_glyph_times:
+                    most_common_glyph_times = freq
+                    most_common_glyph = glyph
+            result['defaultGlyph'] = most_common_glyph
+            # TODO - handle if this is multiple glyphs
+            del alternatives[most_common_glyph]
+            # Flatten alternatives
+            for [glyph, alternatives] in alternatives.items():
+                for alternative in alternatives:
+                    result['alternatives'][alternative[0]] = alternative[1]
+            # Overwrite the db value
+            jamo_combinations[jamo][index] = result
+
+# Print the results
+with open('./jamo-db.json', mode="w", encoding="utf-8") as f:
+    f.write(json.dumps(jamo_combinations, indent=2))
+
+pprint(jamo_combinations)
+
+# Export some CSV results so that we can fill in the rest of the encoding using excel (easier to keep track of 
+# what's missing)
+# This CSV table will only include the most common for each as:
+# - we already have the alternatives, we aren't going to check those
+# - we will add a new alternative, only if the common glyphs don't match (and we don't already have one, which i can manually check)
+# Use the lists so we have a consistent ordering
+csv_lines = []
+for jamo in jamo_groupings['initial']:
+    cells_in_line = []
+    for orientation in jamo_combinations[jamo]:
+        if orientation is None:
+            cells_in_line.append("N/A")
+        elif isinstance(orientation, list) and len(orientation) == 0:
+            cells_in_line.append("")
+        else:
+            cells_in_line.append(orientation['defaultGlyph'].replace(",", " "))
+    csv_lines.append(",".join(cells_in_line) + "\n")
+for jamo in jamo_groupings['median']:
+    cells_in_line = []
+    for orientation in jamo_combinations[jamo]:
+        if orientation is None:
+            cells_in_line.append("N/A")
+        elif isinstance(orientation, list) and len(orientation) == 0:
+            cells_in_line.append("")
+        else:
+            cells_in_line.append(orientation['defaultGlyph'].replace(",", " "))
+    csv_lines.append(",".join(cells_in_line) + "\n")
+for jamo in jamo_groupings['final']:
+    cells_in_line = []
+    for orientation in jamo_combinations[jamo]:
+        if orientation is None:
+            cells_in_line.append("N/A")
+        elif isinstance(orientation, list) and len(orientation) == 0:
+            cells_in_line.append("")
+        else:
+            cells_in_line.append(orientation['defaultGlyph'].replace(",", " "))
+    csv_lines.append(",".join(cells_in_line) + "\n")
+with open('./jamo-db.csv', mode="w", encoding="utf-8") as f:
+    f.writelines(csv_lines)
+
+# - fill in empty table cells
+# - mark unused glyphs in the image
+
+# - finally, write C++ code that converts from utf-8 to the korean encoding or vise versa using the finished json data table
