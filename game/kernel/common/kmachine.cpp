@@ -42,6 +42,8 @@ u8 pad_dma_buf[2 * SCE_PAD_DMA_BUFFER_SIZE];
 u32 vif1_interrupt_handler = 0;
 u32 vblank_interrupt_handler = 0;
 
+bool cd_S_INITIALIZE_CD_W = false; // New in Jak X
+
 Timer ee_clock_timer;
 
 void kmachine_init_globals_common() {
@@ -56,23 +58,54 @@ void kmachine_init_globals_common() {
 
 /*!
  * Initialize the CD Drive
- * DONE, EXACT
  */
 void InitCD() {
-  lg::info("Initializing CD drive. This may take a while...");
-  ee::sceCdInit(SCECdINIT);
-  ee::sceCdMmode(SCECdDVD);
-  while (ee::sceCdDiskReady(0) == SCECdNotReady) {
-    lg::debug("Drive not ready... insert a disk!");
+  if (cd_S_INITIALIZE_CD_W) {
+    s32 result;
+    while (true) {
+      strlen("dkernel: Initializing DVD drive...\n"); // FIXME: Why is there a strlen here?
+      printf("dkernel: Initializing DVD drive...\n");
+      result = ee::sceCdInit(SCECdINIT);
+      if (result != 0) {
+        break;
+      }
+      printf("dkernel: DVD drive initialization failed, retrying...\n");
+    }
+    printf("dkernel: DVD drive initialized; result=%d\n", result);
   }
-  lg::debug("Disk type {}\n", ee::sceCdGetDiskType());
 }
 
 /*!
  * Initialize the GS and display the splash screen.
- * Not yet implemented. TODO
  */
-void InitVideo() {}
+void InitVideo() {
+  // undefined auStack_b0 [96];
+  // sceGsResetGraph(0, 1, 3, 0);
+  // sceGsSetDefLoadImage(auStack_b0, 0x2c00, 8, 0, 0, 0, 0x200, 0xe0);
+  // FlushCache(0);
+  // sceGsExecLoadImage(auStack_b0, 0x1000000);
+  // sceGsSetDefLoadImage(auStack_b0, 0x2c00, 8, 0, 0, 0xe0, 0x200, 0xe0);
+  // FlushCache(0);
+  // sceGsExecLoadImage(auStack_b0, 0x1070000);
+
+  // DisplayEnv display_W;
+  // memset(&display_W, 0, 0x28);
+  // display_W.gs_pmode2 = display_W.gs_pmode2 & 0xfffffffffffffffd | 1;
+  // display_W.gs_pmode = display_W.gs_pmode & 0xfffffffffffffffd | 0x60;
+  // display_W.gs_display_fb = display_W.gs_display_fb & 0xffc00000fff00000 | 0x1160;
+  // display_W.gs_display = display_W.gs_display & 0xff800000e0000000 | 0x1bf9ff0204a28c;
+  // display_W.gs_bgcolor._0_1_ = 0;
+  // display_W.gs_bgcolor._1_1_ = 0;
+  // display_W.gs_bgcolor._2_1_ = 0;
+
+  // sceGsSyncV(0);
+  // sceGsPutDispEnv(&display_W);
+  // for (int i = 0; i < 4; i++) {
+  //   sceGsSyncV(0);
+  // }
+  // display_W.gs_pmode = display_W.gs_pmode | 2;
+  // sceGsPutDispEnv(&display_W);
+}
 
 /*!
  * Flush caches.  Does all the memory, regardless of what you specify
@@ -88,6 +121,8 @@ void CacheFlush(void* mem, int size) {
  * Open a new controller pad.
  * Set the new_pad flag to 1 and state to 0.
  * Prints an error if it fails to open.
+ * FIXME: Different in Jak X, missing CPad library v2 symbols.
+ * See decompiled function here: https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L126
  */
 u64 CPadOpen(u64 cpad_info, s32 pad_number) {
   auto cpad = Ptr<CPadInfo>(cpad_info).c();
@@ -106,6 +141,8 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number) {
 
 /*!
  * Not checked super carefully for jak 2, but looks the same
+ * FIXME: Different in Jak X, missing CPad library v2 symbols.
+ * See decompiled function here: https://github.com/yodaxtah/jakx-c-kernel-decompiled/blob/5ca699ecb970291b2263dca77ed5157c30f820a8/elf/kernel/common/kmachine.cpp#L143
  */
 u64 CPadGetData(u64 cpad_info) {
   using namespace ee;
@@ -238,6 +275,7 @@ void InstallHandler(u32 handler_idx, u32 handler_func) {
 // nothing used this in jak1, hopefully same for 2
 void InstallDebugHandler() {
   ASSERT(false);
+  // SetDebugHandler();
 }
 
 /*!
@@ -318,8 +356,20 @@ u64 kclose(u64 fs) {
 }
 
 // TODO dma_to_iop
-void dma_to_iop() {
-  ASSERT(false);
+bool dma_to_iop(void* src_G, int size_G, void* dest_G) {
+  // SifDmaTransfer_t transfer_W;
+  // transfer_W.attr = 0;
+  // transfer_W.src = src_G;
+  // transfer_W.dest = dest_G;
+  // transfer_W.size = size_G;
+  // u32 id = sceSifSetDma(&transfer_W, 1);
+  // if (id != 0) {
+  //   s32 sVar1;
+  //   do {
+  //     sVar1 = sceSifDmaStat(id);
+  //   } while (-1 < sVar1);
+  // }
+  // return id == 0;
 }
 
 u64 DecodeLanguage() {
@@ -349,9 +399,14 @@ u64 DecodeInactiveTimeout() {
 }
 
 void DecodeTime(u32 ptr) {
-  Ptr<ee::sceCdCLOCK> clock(ptr);
   // in jak2, if this fails, they do a sceScfGetLocalTimefromRTC
-  sceCdReadClock(clock.c());
+  // in jak3, they do a memset?
+  // in jakx, they reused jak2's function, but moved the clock to underlord?
+  // FIXME: Move underlordRpcCall1_W underlord.h
+  // FIXME: Move underlordRpcCall1_W underlord.h
+  // if (ptr != 0 && underlordRpcCall1_W() != 0) {
+  //   sceScfGetLocalTimefromRTC(ptr);
+  // }
 }
 
 void vif_interrupt_callback(int bucket_id) {
