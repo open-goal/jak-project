@@ -28,6 +28,8 @@ u32 FastLink;
 // but is enabled when loading the engine.
 Ptr<u32> EnableMethodSet;
 
+bool Crc32_Initialized_W;
+
 void kscheme_init_globals_common() {
   SymbolTable2.offset = 0;
   LastSymbol.offset = 0;
@@ -38,6 +40,7 @@ void kscheme_init_globals_common() {
   }
   EnableMethodSet.offset = 0;
   FastLink = 0;
+  Crc32_Initialized_W = false;
 }
 
 /*!
@@ -45,9 +48,9 @@ void kscheme_init_globals_common() {
  */
 void init_crc() {
   for (u32 i = 0; i < 0x100; i++) {
-    u32 n = i << 24;
+    u32 n = i;
     for (u32 j = 0; j < 8; j++) {
-      n = n & 0x80000000 ? (n << 1) ^ CRC_POLY : (n << 1);
+      n = (n & 1 != 0) ? (n >> 1) ^ REVERSED_CRC_POLY : (n >> 1);
     }
     crc_table[i] = n;
   }
@@ -57,9 +60,13 @@ void init_crc() {
  * Take the CRC32 hash of some data
  */
 u32 crc32(const u8* data, s32 size) {
-  uint32_t crc = 0;
-  for (int i = size; i != 0; i--, data++) {
-    crc = crc_table[crc >> 24] ^ ((crc << 8) | *data);
+  if (!Crc32_Initialized_W) {
+    init_crc();
+    Crc32_Initialized_W = true;
+  }
+  uint32_t crc = 0xffffffff;
+  for (int i = size; i > 0; i--, data++) {
+    crc = crc_table[crc & 0xff ^ (unsigned int)*data] ^ (crc >> 8);
   }
 
   ASSERT(~crc);
