@@ -12,6 +12,7 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/jakx/klink.h"
 #include "game/kernel/jakx/kscheme.h"
+#include "game/kernel/jakx/kboot.h"
 
 namespace jakx {
 
@@ -81,13 +82,15 @@ void ProcessListenerMessage(Ptr<char> msg) {
       printf("[ERROR] unsupported message kind LTT_MSG_PRINT_SYMBOLS (NYI)\n");
       break;
     case LTT_MSG_RESET:
+      KernelShutdown(1);
       MasterExit = RuntimeExitStatus::RESTART_RUNTIME;
       break;
-    case LTT_MSG_SHUTDOWN:
+    case LTT_MSG_SHUTDOWN: // not in Jak X
+      KernelShutdown(1);
       MasterExit = RuntimeExitStatus::EXIT;
       break;
     case LTT_MSG_CODE: {
-      auto buffer = kmalloc(kdebugheap, MessCount, 0, "listener-link-block");
+      auto buffer = kmalloc(kdebugheap, MessCount, 0, "listener-link-buf");
       memcpy(buffer.c(), msg.c(), MessCount);
       ListenerLinkBlock->value() = buffer.offset + 4;
       // note - this will stash the linked code in the top level and free it.
