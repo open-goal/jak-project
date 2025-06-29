@@ -67,10 +67,10 @@
       (+! (-> arg0 data 80 total) (logand -16 (+ v1-18 15)))))
   this)
 
-(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
-  "Look up text by ID.  Will return the string.
-   If the ID can't be found, and arg1 is #t, it will return #f,
-   otherwise the temp string UNKNOWN ID <id number>"
+;; og:preserve-this extracted implementation out so that callers of `lookup-text!` were uneffected
+;; this implementation is different from the original (has fallback text lookup)
+(define-extern lookup-text-impl! (function game-text-info text-id symbol symbol string))
+(defun lookup-text-impl! ((this game-text-info) (arg0 text-id) (arg1 symbol) (fallback-call? symbol))
   ;; binary search for it
   (let* ((a1-1 0) ;; min
          (a3-0 (+ (-> this length) 1)) ;; max
@@ -88,18 +88,34 @@
     (cond
       ((!= (-> this data v1-2 id) arg0) ;; didn't find it :(
        (cond
-         (arg1 (the-as string #f))
-         (else
-          ;; First, look up the id in the fallback
+         (arg1
+          ;; og:preserve-this Added fallback to english is string is not found.
           (#if PC_PORT
-            (if *fallback-text-lookup?*
-              (let ((fallback-result (lookup-text! *fallback-text* arg0 #t)))
-                (if (!= fallback-result #f) fallback-result (string-format "UNKNOWN ID ~D" arg0)))
+            (if (and *fallback-text-lookup?* (not fallback-call?))
+              (aif (lookup-text-impl! *fallback-text* arg0 #t #t)
+                  it
+                  (the-as string #f))
+              (the-as string #f))
+            (the-as string #f)))
+         (else
+          ;; og:preserve-this Added fallback to english is string is not found.
+          (#if PC_PORT
+            (if (and *fallback-text-lookup?* (not fallback-call?))
+              (aif (lookup-text-impl! *fallback-text* arg0 #t #t)
+                  it
+                  (string-format "UNKNOWN ID ~D" arg0))
               (string-format "UNKNOWN ID ~D" arg0))
             (string-format "UNKNOWN ID ~D" arg0)))))
       (else
        (-> this data v1-2 text) ;; found it!
        ))))
+
+(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
+  "Look up text by ID.  Will return the string.
+   If the ID can't be found, and arg1 is #t, it will return #f,
+   otherwise the temp string UNKNOWN ID <id number>"
+  ;; og:preserve-this call custom function
+  (lookup-text-impl! this arg0 arg1 #f))
 
 ;; Game text loading.
 ;; The implementation of loading is blocking.
