@@ -54,6 +54,10 @@
 #include "game/kernel/jak3/kdgo.h"
 #include "game/kernel/jak3/klisten.h"
 #include "game/kernel/jak3/kscheme.h"
+#include "game/kernel/jakx/kboot.h"
+#include "game/kernel/jakx/kdgo.h"
+#include "game/kernel/jakx/klisten.h"
+#include "game/kernel/jakx/kscheme.h"
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/sbank.h"
@@ -232,6 +236,8 @@ void ee_runner(SystemThreadInterface& iface) {
     case GameVersion::Jak3:
       jak3::goal_main(g_argc, g_argv);
       break;
+    case GameVersion::JakX:
+      jakx::goal_main(g_argc, g_argv);
     default:
       ASSERT_MSG(false, "Unsupported game version");
   }
@@ -271,7 +277,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   iop::LIBRARY_register(&iop);
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
-  if (version != GameVersion::Jak3) {
+  if (version != GameVersion::Jak3 && version != GameVersion::JakX) {
     jak1::dma_init_globals();
     jak2::dma_init_globals();
 
@@ -331,6 +337,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
         jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
         break;
       case GameVersion::Jak3:
+      case GameVersion::JakX:
         jak3::start_overlord_wrapper(&complete);
         break;
       default:

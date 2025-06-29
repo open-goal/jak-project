@@ -26,12 +26,14 @@ set(RUNTIME_SOURCE
         external/discord_jak1.cpp
         external/discord_jak2.cpp
         external/discord_jak3.cpp
+        external/discord_jakx.cpp
         external/discord.cpp
         graphics/display.cpp
         graphics/gfx_test.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp
         graphics/jak3_texture_remap.cpp
+        graphics/jakx_texture_remap.cpp
         graphics/screenshot.cpp
         graphics/opengl_renderer/background/background_common.cpp
         graphics/opengl_renderer/background/Hfrag.cpp
@@ -139,6 +141,20 @@ set(RUNTIME_SOURCE
         kernel/jak3/kscheme.cpp
         kernel/jak3/ksocket.cpp
         kernel/jak3/ksound.cpp
+        kernel/jakx/fileio.cpp
+        kernel/jakx/kboot.cpp
+        kernel/jakx/kdgo.cpp
+        kernel/jakx/kdsnetm.cpp
+        kernel/jakx/klink.cpp
+        kernel/jakx/klisten.cpp
+        kernel/jakx/kmachine.cpp
+        kernel/jakx/kmachine_extras.cpp
+        kernel/jakx/kmalloc.cpp
+        kernel/jakx/kmemcard.cpp
+        kernel/jakx/kprint.cpp
+        kernel/jakx/kscheme.cpp
+        kernel/jakx/ksocket.cpp
+        kernel/jakx/ksound.cpp
         mips2c/jak1_functions/bones.cpp
         mips2c/jak1_functions/collide_cache.cpp
         mips2c/jak1_functions/collide_edge_grab.cpp
@@ -278,6 +294,29 @@ set(RUNTIME_SOURCE
         overlord/jak3/sbank.cpp
         overlord/jak3/soundcommon.cpp
         overlord/jak3/streamlist.cpp
+        overlord/jakx/overlord.cpp
+        overlord/jakx/pagemanager.cpp
+        overlord/jakx/iso_cd.cpp
+        overlord/jakx/dma.cpp
+        overlord/jakx/iso.cpp
+        overlord/jakx/iso_queue.cpp
+        overlord/jakx/srpc.cpp
+        overlord/jakx/vag.cpp
+        overlord/jakx/ssound.cpp
+        overlord/jakx/iso_api.cpp
+        overlord/jakx/spustreams.cpp
+        overlord/jakx/list.cpp
+        overlord/jakx/vblank_handler.cpp
+        overlord/jakx/dvd_driver.cpp
+        overlord/jakx/basefile.cpp
+        overlord/jakx/basefilesystem.cpp
+        overlord/jakx/ramdisk.cpp
+        overlord/jakx/isocommon.cpp
+        overlord/jakx/init.cpp
+        overlord/jakx/stream.cpp
+        overlord/jakx/sbank.cpp
+        overlord/jakx/soundcommon.cpp
+        overlord/jakx/streamlist.cpp
         runtime.cpp
         sce/deci2.cpp
         sce/iop.cpp

@@ -236,6 +236,7 @@ struct Mips2C_Output {
               fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
           break;
         case GameVersion::Jak3:
+        case GameVersion::JakX:
           result += fmt::format("  cache.{} = intern_from_c(-1, 0, \"{}\").c();\n",
                                 goal_to_c_name(sym), sym);
           break;
