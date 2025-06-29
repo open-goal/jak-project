@@ -1667,14 +1667,9 @@
 (defbehavior lightning-tracker-init lightning-tracker ((arg0 lightning-spec) (arg1 time-frame) (arg2 symbol) (arg3 process-drawable) (arg4 vector) (arg5 vector))
   (stack-size-set! (-> self main-thread) 128)
   (set! (-> self target0) (process->handle arg3))
-  (let ((s1-1 (ppointer->process (-> self parent))))
-    (set! (-> self target1) (process->handle (the-as process (if (type? s1-1 process-drawable)
-                                                                 s1-1
-                                                                 )
-                                                     )
-                                             )
-          )
-    )
+  (set! (-> self target1)
+        (process->handle (the-as process (as-type (ppointer->process (-> self parent)) process-drawable)))
+        )
   ;; Note: there's some changes here to skip setting things if arg4 is #f.
   ;; the address of #f is misaligned, but on ps2 the lq instruction will silently mask.
   ;; Loading from #f doesn't really make sense, so this was likely just a mistake in the
@@ -3875,7 +3870,7 @@
 (deftype level-exit (process-drawable)
   ((minimap       connection-minimap)
    (task-counter  uint32)
-   (ent           basic)
+   (ent           entity-actor)
    )
   (:state-methods
     active

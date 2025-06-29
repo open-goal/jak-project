@@ -1,6 +1,6 @@
 /*
  Simple DirectMedia Layer
- Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+ Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
  This software is provided 'as-is', without any express or implied
  warranty.  In no event will the authors be held liable for any damages
@@ -26,20 +26,19 @@
  * backed view.
  */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #if defined(SDL_VIDEO_DRIVER_UIKIT) && (defined(SDL_VIDEO_VULKAN) || defined(SDL_VIDEO_METAL))
 
-#include "SDL_syswm.h"
 #include "../SDL_sysvideo.h"
+#include "../../events/SDL_windowevents_c.h"
 
 #import "SDL_uikitwindow.h"
 #import "SDL_uikitmetalview.h"
 
-
 @implementation SDL_uikitmetalview
 
-/* Returns a Metal-compatible layer. */
+// Returns a Metal-compatible layer.
 + (Class)layerClass
 {
     return [CAMetalLayer class];
@@ -57,7 +56,7 @@
     return self;
 }
 
-/* Set the size of the metal drawables when the view is resized. */
+// Set the size of the metal drawables when the view is resized.
 - (void)layoutSubviews
 {
     [super layoutSubviews];
@@ -69,72 +68,73 @@
     CGSize size = self.bounds.size;
     size.width *= self.layer.contentsScale;
     size.height *= self.layer.contentsScale;
-    ((CAMetalLayer *)self.layer).drawableSize = size;
+
+    CAMetalLayer *metallayer = ((CAMetalLayer *)self.layer);
+    if (metallayer.drawableSize.width != size.width ||
+        metallayer.drawableSize.height != size.height) {
+        metallayer.drawableSize = size;
+        SDL_SendWindowEvent([self getSDLWindow], SDL_EVENT_WINDOW_METAL_VIEW_RESIZED, 0, 0);
+    }
 }
 
 @end
 
-SDL_MetalView UIKit_Metal_CreateView(_THIS, SDL_Window * window)
-{ @autoreleasepool {
-    SDL_WindowData *data = (__bridge SDL_WindowData *)window->driverdata;
-    CGFloat scale = 1.0;
-    SDL_uikitmetalview *metalview;
-
-    if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI) {
-        /* Set the scale to the natural scale factor of the screen - then
-         * the backing dimensions of the Metal view will match the pixel
-         * dimensions of the screen rather than the dimensions in points
-         * yielding high resolution on retine displays.
-         */
-        scale = data.uiwindow.screen.nativeScale;
-    }
-
-    metalview = [[SDL_uikitmetalview alloc] initWithFrame:data.uiwindow.bounds
-                                                    scale:scale];
-    if (metalview == nil) {
-        SDL_OutOfMemory();
-        return NULL;
-    }
-
-    [metalview setSDLWindow:window];
-
-    return (void*)CFBridgingRetain(metalview);
-}}
-
-void UIKit_Metal_DestroyView(_THIS, SDL_MetalView view)
-{ @autoreleasepool {
-    SDL_uikitmetalview *metalview = CFBridgingRelease(view);
-
-    if ([metalview isKindOfClass:[SDL_uikitmetalview class]]) {
-        [metalview setSDLWindow:NULL];
-    }
-}}
-
-void *UIKit_Metal_GetLayer(_THIS, SDL_MetalView view)
-{ @autoreleasepool {
-    SDL_uikitview *uiview = (__bridge SDL_uikitview *)view;
-    return (__bridge void *)uiview.layer;
-}}
-
-void UIKit_Metal_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
+SDL_MetalView UIKit_Metal_CreateView(SDL_VideoDevice *_this, SDL_Window *window)
 {
     @autoreleasepool {
-        SDL_WindowData *data = (__bridge SDL_WindowData *)window->driverdata;
-        SDL_uikitview *view = (SDL_uikitview*)data.uiwindow.rootViewController.view;
-        SDL_uikitmetalview* metalview = [view viewWithTag:SDL_METALVIEW_TAG];
-        if (metalview) {
-            CAMetalLayer *layer = (CAMetalLayer*)metalview.layer;
-            assert(layer != NULL);
-            if (w) {
-                *w = layer.drawableSize.width;
-            }
-            if (h) {
-                *h = layer.drawableSize.height;
-            }
-        } else {
-            SDL_GetWindowSize(window, w, h);
+        SDL_UIKitWindowData *data = (__bridge SDL_UIKitWindowData *)window->internal;
+        CGFloat scale = 1.0;
+        SDL_uikitmetalview *metalview;
+
+        if (window->flags & SDL_WINDOW_HIGH_PIXEL_DENSITY) {
+            /* Set the scale to the natural scale factor of the screen - then
+             * the backing dimensions of the Metal view will match the pixel
+             * dimensions of the screen rather than the dimensions in points
+             * yielding high resolution on retine displays.
+             */
+#ifndef SDL_PLATFORM_VISIONOS
+            scale = data.uiwindow.screen.nativeScale;
+#else
+            // VisionOS doesn't use the concept of "nativeScale" like other iOS devices.
+            // We use a fixed scale factor of 2.0 to achieve better pixel density.
+            // This is because VisionOS presents a virtual 1280x720 "screen", but we need
+            // to render at a higher resolution for optimal visual quality.
+            // TODO: Consider making this configurable or determining it dynamically
+            // based on the specific visionOS device capabilities.
+            scale = 2.0;
+#endif
+        }
+
+        metalview = [[SDL_uikitmetalview alloc] initWithFrame:data.uiwindow.bounds
+                                                        scale:scale];
+        if (metalview == nil) {
+            SDL_OutOfMemory();
+            return NULL;
+        }
+
+        [metalview setSDLWindow:window];
+
+        return (void *)CFBridgingRetain(metalview);
+    }
+}
+
+void UIKit_Metal_DestroyView(SDL_VideoDevice *_this, SDL_MetalView view)
+{
+    @autoreleasepool {
+        SDL_uikitmetalview *metalview = CFBridgingRelease(view);
+
+        if ([metalview isKindOfClass:[SDL_uikitmetalview class]]) {
+            [metalview setSDLWindow:NULL];
         }
     }
 }
 
-#endif /* SDL_VIDEO_DRIVER_UIKIT && (SDL_VIDEO_VULKAN || SDL_VIDEO_METAL) */
+void *UIKit_Metal_GetLayer(SDL_VideoDevice *_this, SDL_MetalView view)
+{
+    @autoreleasepool {
+        SDL_uikitview *uiview = (__bridge SDL_uikitview *)view;
+        return (__bridge void *)uiview.layer;
+    }
+}
+
+#endif // SDL_VIDEO_DRIVER_UIKIT && (SDL_VIDEO_VULKAN || SDL_VIDEO_METAL)

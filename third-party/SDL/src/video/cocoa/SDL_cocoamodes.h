@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,29 +18,28 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_cocoamodes_h_
 #define SDL_cocoamodes_h_
 
-typedef struct
+struct SDL_DisplayData
 {
     CGDirectDisplayID display;
-} SDL_DisplayData;
+};
 
-typedef struct
+struct SDL_DisplayModeData
 {
     CFMutableArrayRef modes;
-} SDL_DisplayModeData;
+};
 
-extern void Cocoa_InitModes(_THIS);
-extern int Cocoa_GetDisplayBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect);
-extern int Cocoa_GetDisplayUsableBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect);
-extern void Cocoa_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
-extern int Cocoa_GetDisplayDPI(_THIS, SDL_VideoDisplay * display, float * ddpi, float * hpdi, float * vdpi);
-extern int Cocoa_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
-extern void Cocoa_QuitModes(_THIS);
+extern void Cocoa_InitModes(SDL_VideoDevice *_this);
+extern void Cocoa_UpdateDisplays(SDL_VideoDevice *_this);
+extern bool Cocoa_GetDisplayBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Rect *rect);
+extern bool Cocoa_GetDisplayUsableBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Rect *rect);
+extern bool Cocoa_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display);
+extern bool Cocoa_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
+extern void Cocoa_QuitModes(SDL_VideoDevice *_this);
+extern SDL_VideoDisplay *Cocoa_FindSDLDisplayByCGDirectDisplayID(SDL_VideoDevice *_this, CGDirectDisplayID displayid);
 
-#endif /* SDL_cocoamodes_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_cocoamodes_h_

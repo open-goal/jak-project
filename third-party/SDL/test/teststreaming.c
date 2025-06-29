@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -15,15 +15,16 @@
  *                                                                              *
  ********************************************************************************/
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test.h>
+#include "testutils.h"
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten/emscripten.h>
 #endif
 
-#include "SDL.h"
-#include "testutils.h"
+#include <stdlib.h>
 
 #define MOOSEPIC_W 64
 #define MOOSEPIC_H 88
@@ -32,7 +33,7 @@
 #define MOOSEFRAMES_COUNT 10
 
 /* *INDENT-OFF* */ /* clang-format off */
-SDL_Color MooseColors[84] = {
+static SDL_Color MooseColors[84] = {
     {49, 49, 49, 255}, {66, 24, 0, 255}, {66, 33, 0, 255}, {66, 66, 66, 255},
     {66, 115, 49, 255}, {74, 33, 0, 255}, {74, 41, 16, 255}, {82, 33, 8, 255},
     {82, 41, 8, 255}, {82, 49, 16, 255}, {82, 82, 82, 255}, {90, 41, 8, 255},
@@ -57,20 +58,25 @@ SDL_Color MooseColors[84] = {
 };
 /* *INDENT-ON* */ /* clang-format on */
 
-Uint8 MooseFrames[MOOSEFRAMES_COUNT][MOOSEFRAME_SIZE];
+static Uint8 MooseFrames[MOOSEFRAMES_COUNT][MOOSEFRAME_SIZE];
 
-SDL_Renderer *renderer;
-int frame;
-SDL_Texture *MooseTexture;
-SDL_bool done = SDL_FALSE;
+static SDL_Renderer *renderer;
+static int frame;
+static SDL_Texture *MooseTexture;
+static bool done = false;
+static SDLTest_CommonState *state;
 
-void quit(int rc)
+static void quit(int rc)
 {
     SDL_Quit();
-    exit(rc);
+    SDLTest_CommonDestroyState(state);
+    /* Let 'main()' return normally */
+    if (rc != 0) {
+        exit(rc);
+    }
 }
 
-void UpdateTexture(SDL_Texture *texture)
+static void UpdateTexture(SDL_Texture *texture)
 {
     SDL_Color *color;
     Uint8 *src;
@@ -79,8 +85,8 @@ void UpdateTexture(SDL_Texture *texture)
     void *pixels;
     int pitch;
 
-    if (SDL_LockTexture(texture, NULL, &pixels, &pitch) < 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s\n", SDL_GetError());
+    if (!SDL_LockTexture(texture, NULL, &pixels, &pitch)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't lock texture: %s", SDL_GetError());
         quit(5);
     }
     src = MooseFrames[frame];
@@ -94,19 +100,21 @@ void UpdateTexture(SDL_Texture *texture)
     SDL_UnlockTexture(texture);
 }
 
-void loop()
+static void loop(void)
 {
     SDL_Event event;
 
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
-        case SDL_KEYDOWN:
-            if (event.key.keysym.sym == SDLK_ESCAPE) {
-                done = SDL_TRUE;
+        case SDL_EVENT_KEY_DOWN:
+            if (event.key.key == SDLK_ESCAPE) {
+                done = true;
             }
             break;
-        case SDL_QUIT:
-            done = SDL_TRUE;
+        case SDL_EVENT_QUIT:
+            done = true;
+            break;
+        default:
             break;
         }
     }
@@ -115,10 +123,10 @@ void loop()
     UpdateTexture(MooseTexture);
 
     SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, MooseTexture, NULL, NULL);
+    SDL_RenderTexture(renderer, MooseTexture, NULL, NULL);
     SDL_RenderPresent(renderer);
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     if (done) {
         emscripten_cancel_main_loop();
     }
@@ -128,59 +136,64 @@ void loop()
 int main(int argc, char **argv)
 {
     SDL_Window *window;
-    SDL_RWops *handle;
+    SDL_IOStream *handle;
     char *filename = NULL;
 
-    /* Enable standard application logging */
-    SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
+    /* Initialize test framework */
+    state = SDLTest_CommonCreateState(argv, 0);
+    if (!state) {
+        return 1;
+    }
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
+    if (!SDLTest_CommonDefaultArgs(state, argc, argv)) {
+        SDL_Quit();
+        SDLTest_CommonDestroyState(state);
+        return 1;
+    }
+
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
         return 1;
     }
 
     /* load the moose images */
     filename = GetResourceFilename(NULL, "moose.dat");
     if (!filename) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory\n");
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory");
         return -1;
     }
-    handle = SDL_RWFromFile(filename, "rb");
+    handle = SDL_IOFromFile(filename, "rb");
     SDL_free(filename);
     if (!handle) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't find the file moose.dat !\n");
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't find the file moose.dat !");
         quit(2);
     }
-    SDL_RWread(handle, MooseFrames, MOOSEFRAME_SIZE, MOOSEFRAMES_COUNT);
-    SDL_RWclose(handle);
+    SDL_ReadIO(handle, MooseFrames, MOOSEFRAME_SIZE * MOOSEFRAMES_COUNT);
+    SDL_CloseIO(handle);
 
     /* Create the window and renderer */
-    window = SDL_CreateWindow("Happy Moose",
-                              SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED,
-                              MOOSEPIC_W * 4, MOOSEPIC_H * 4,
-                              SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Happy Moose", MOOSEPIC_W * 4, MOOSEPIC_H * 4, SDL_WINDOW_RESIZABLE);
     if (!window) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create window: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create window: %s", SDL_GetError());
         quit(3);
     }
 
-    renderer = SDL_CreateRenderer(window, -1, 0);
+    renderer = SDL_CreateRenderer(window, NULL);
     if (!renderer) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s", SDL_GetError());
         quit(4);
     }
 
     MooseTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, MOOSEPIC_W, MOOSEPIC_H);
     if (!MooseTexture) {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create texture: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create texture: %s", SDL_GetError());
         quit(5);
     }
 
     /* Loop, waiting for QUIT or the escape key */
     frame = 0;
 
-#ifdef __EMSCRIPTEN__
+#ifdef SDL_PLATFORM_EMSCRIPTEN
     emscripten_set_main_loop(loop, 0, 1);
 #else
     while (!done) {
@@ -193,5 +206,3 @@ int main(int argc, char **argv)
     quit(0);
     return 0;
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

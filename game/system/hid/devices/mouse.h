@@ -22,7 +22,7 @@ class MouseDevice : public InputDevice {
   };
 
   MouseDevice() {};
-  MouseDevice(std::shared_ptr<game_settings::InputSettings> settings);
+  MouseDevice(SDL_Window* window, std::shared_ptr<game_settings::InputSettings> settings);
   ~MouseDevice() {}
 
   void poll_state(std::shared_ptr<PadData> data);
@@ -46,6 +46,7 @@ class MouseDevice : public InputDevice {
   bool is_camera_being_controlled() { return m_control_camera; }
 
  private:
+  SDL_Window* m_window;
   std::vector<ActiveMouseAction> m_active_actions = {};
 
   // Track the state of mouse for Game reasons

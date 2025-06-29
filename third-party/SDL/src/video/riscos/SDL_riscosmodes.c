@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,7 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_VIDEO_DRIVER_RISCOS
 
@@ -45,13 +45,13 @@ enum
 
 static const struct
 {
-    SDL_PixelFormatEnum pixel_format;
+    SDL_PixelFormat pixel_format;
     int modeflags, ncolour, log2bpp;
 } mode_to_pixelformat[] = {
-    /* { SDL_PIXELFORMAT_INDEX1LSB, 0, 1, 0 }, */
-    /* { SDL_PIXELFORMAT_INDEX2LSB, 0, 3, 1 }, */
-    /* { SDL_PIXELFORMAT_INDEX4LSB, 0, 15, 2 }, */
-    /* { SDL_PIXELFORMAT_INDEX8,    MODE_FLAG_565, 255, 3 }, */
+    // { SDL_PIXELFORMAT_INDEX1LSB, 0, 1, 0 },
+    // { SDL_PIXELFORMAT_INDEX2LSB, 0, 3, 1 },
+    // { SDL_PIXELFORMAT_INDEX4LSB, 0, 15, 2 },
+    // { SDL_PIXELFORMAT_INDEX8,    MODE_FLAG_565, 255, 3 },
     { SDL_PIXELFORMAT_XBGR1555, MODE_FLAG_TBGR, 65535, 4 },
     { SDL_PIXELFORMAT_XRGB1555, MODE_FLAG_TRGB, 65535, 4 },
     { SDL_PIXELFORMAT_ABGR1555, MODE_FLAG_ABGR, 65535, 4 },
@@ -70,7 +70,7 @@ static const struct
     { SDL_PIXELFORMAT_ARGB8888, MODE_FLAG_ARGB, -1, 5 }
 };
 
-static SDL_PixelFormatEnum RISCOS_ModeToPixelFormat(int ncolour, int modeflags, int log2bpp)
+static SDL_PixelFormat RISCOS_ModeToPixelFormat(int ncolour, int modeflags, int log2bpp)
 {
     int i;
 
@@ -96,7 +96,7 @@ static size_t measure_mode_block(const int *block)
     return blockSize * 4;
 }
 
-static int read_mode_variable(int *block, int var)
+static bool read_mode_variable(int *block, int var)
 {
     _kernel_swi_regs regs;
     regs.r[0] = (int)block;
@@ -105,7 +105,7 @@ static int read_mode_variable(int *block, int var)
     return regs.r[2];
 }
 
-static SDL_bool read_mode_block(int *block, SDL_DisplayMode *mode, SDL_bool extended)
+static bool read_mode_block(int *block, SDL_DisplayMode *mode, bool extended)
 {
     int xres, yres, ncolour, modeflags, log2bpp, rate;
 
@@ -124,7 +124,7 @@ static SDL_bool read_mode_block(int *block, SDL_DisplayMode *mode, SDL_bool exte
         log2bpp = block[5];
         rate = block[6];
     } else {
-        return SDL_FALSE;
+        return false;
     }
 
     if (extended) {
@@ -135,12 +135,13 @@ static SDL_bool read_mode_block(int *block, SDL_DisplayMode *mode, SDL_bool exte
         modeflags = read_mode_variable(block, 0);
     }
 
+    SDL_zerop(mode);
     mode->w = xres;
     mode->h = yres;
     mode->format = RISCOS_ModeToPixelFormat(ncolour, modeflags, log2bpp);
-    mode->refresh_rate = rate;
+    mode->refresh_rate = (float)rate;
 
-    return SDL_TRUE;
+    return true;
 }
 
 static void *convert_mode_block(const int *block)
@@ -197,7 +198,7 @@ static void *copy_memory(const void *src, size_t size, size_t alloc)
     return dst;
 }
 
-int RISCOS_InitModes(_THIS)
+bool RISCOS_InitModes(SDL_VideoDevice *_this)
 {
     SDL_DisplayMode mode;
     int *current_mode;
@@ -212,20 +213,23 @@ int RISCOS_InitModes(_THIS)
     }
 
     current_mode = (int *)regs.r[1];
-    if (!read_mode_block(current_mode, &mode, SDL_TRUE)) {
+    if (!read_mode_block(current_mode, &mode, true)) {
         return SDL_SetError("Unsupported mode block format %d", current_mode[0]);
     }
 
     size = measure_mode_block(current_mode);
-    mode.driverdata = copy_memory(current_mode, size, size);
-    if (!mode.driverdata) {
-        return SDL_OutOfMemory();
+    mode.internal = copy_memory(current_mode, size, size);
+    if (!mode.internal) {
+        return false;
     }
 
-    return SDL_AddBasicVideoDisplay(&mode);
+    if (SDL_AddBasicVideoDisplay(&mode) == 0) {
+        return false;
+    }
+    return true;
 }
 
-void RISCOS_GetDisplayModes(_THIS, SDL_VideoDisplay *display)
+bool RISCOS_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display)
 {
     SDL_DisplayMode mode;
     _kernel_swi_regs regs;
@@ -238,14 +242,12 @@ void RISCOS_GetDisplayModes(_THIS, SDL_VideoDisplay *display)
     regs.r[7] = 0;
     error = _kernel_swi(OS_ScreenMode, &regs, &regs);
     if (error) {
-        SDL_SetError("Unable to enumerate screen modes: %s (%i)", error->errmess, error->errnum);
-        return;
+        return SDL_SetError("Unable to enumerate screen modes: %s (%i)", error->errmess, error->errnum);
     }
 
     block = SDL_malloc(-regs.r[7]);
     if (!block) {
-        SDL_OutOfMemory();
-        return;
+        return false;
     }
 
     regs.r[6] = (int)block;
@@ -253,12 +255,11 @@ void RISCOS_GetDisplayModes(_THIS, SDL_VideoDisplay *display)
     error = _kernel_swi(OS_ScreenMode, &regs, &regs);
     if (error) {
         SDL_free(block);
-        SDL_SetError("Unable to enumerate screen modes: %s (%i)", error->errmess, error->errnum);
-        return;
+        return SDL_SetError("Unable to enumerate screen modes: %s (%i)", error->errmess, error->errnum);
     }
 
     for (pos = block; pos < (void *)regs.r[6]; pos += *((int *)pos)) {
-        if (!read_mode_block(pos + 4, &mode, SDL_FALSE)) {
+        if (!read_mode_block(pos + 4, &mode, false)) {
             continue;
         }
 
@@ -266,21 +267,22 @@ void RISCOS_GetDisplayModes(_THIS, SDL_VideoDisplay *display)
             continue;
         }
 
-        mode.driverdata = convert_mode_block(pos + 4);
-        if (!mode.driverdata) {
-            SDL_OutOfMemory();
-            break;
+        mode.internal = convert_mode_block(pos + 4);
+        if (!mode.internal) {
+            SDL_free(block);
+            return false;
         }
 
-        if (!SDL_AddDisplayMode(display, &mode)) {
-            SDL_free(mode.driverdata);
+        if (!SDL_AddFullscreenDisplayMode(display, &mode)) {
+            SDL_free(mode.internal);
         }
     }
 
     SDL_free(block);
+    return true;
 }
 
-int RISCOS_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
+bool RISCOS_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
 {
     const char disable_cursor[] = { 23, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     _kernel_swi_regs regs;
@@ -288,23 +290,21 @@ int RISCOS_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mod
     int i;
 
     regs.r[0] = 0;
-    regs.r[1] = (int)mode->driverdata;
+    regs.r[1] = (int)mode->internal;
     error = _kernel_swi(OS_ScreenMode, &regs, &regs);
     if (error) {
         return SDL_SetError("Unable to set the current screen mode: %s (%i)", error->errmess, error->errnum);
     }
 
-    /* Turn the text cursor off */
+    // Turn the text cursor off
     for (i = 0; i < SDL_arraysize(disable_cursor); i++) {
         _kernel_oswrch(disable_cursor[i]);
     }
 
-    /* Update cursor visibility, since it may have been disabled by the mode change. */
+    // Update cursor visibility, since it may have been disabled by the mode change.
     SDL_SetCursor(NULL);
 
-    return 0;
+    return true;
 }
 
-#endif /* SDL_VIDEO_DRIVER_RISCOS */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_RISCOS

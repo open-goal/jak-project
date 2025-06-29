@@ -2,7 +2,7 @@
 
 #include "common/versions/versions.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace REPL {
 void to_json(json& j, const Config& obj) {

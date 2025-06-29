@@ -33,7 +33,7 @@
 
 #include "Listener.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 // clang-format on
 
 using namespace versions;

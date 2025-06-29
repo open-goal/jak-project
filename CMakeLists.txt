@@ -32,6 +32,12 @@ if (EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
         "${PROJECT_SOURCE_DIR}/build/compile_commands.json")
 endif()
 
+# NOTE - for SDL, i think SDL3 regressed this - https://github.com/libsdl-org/SDL/pull/6455
+# a more recent issue - https://github.com/libsdl-org/SDL/issues/12078
+if (APPLE)
+  enable_language(OBJC)
+endif()
+
 # Setup compiler flags
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Clang Detected - Setting Defaults")
@@ -197,6 +203,9 @@ include_directories(SYSTEM third-party/inja)
 # TODO - probably integrate with ZSTD since we have it already
 set(CURL_USE_LIBSSH2 OFF)
 set(CURL_ZLIB OFF)
+# suddenly became enabled on macOS atleast, only needed for unicode URLs
+# wasn't being properly statically linked
+set(USE_LIBIDN2 OFF)
 if(WIN32)
     set(CURL_USE_SCHANNEL ON) # native Windows SSL support
 elseif(APPLE)
@@ -254,9 +263,9 @@ build_third_party_lib(zstd libzstd_static)
 # build SDL
 include(SDLOptions)
 if(STATICALLY_LINK)
-    build_third_party_lib(SDL SDL2-static)
+    build_third_party_lib(SDL SDL3-static)
 else()
-    build_third_party_lib(SDL SDL2)
+    build_third_party_lib(SDL SDL3-shared)
 endif()
 
 # build imgui

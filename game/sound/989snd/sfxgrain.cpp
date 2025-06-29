@@ -180,7 +180,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_STOPCHILDSOUND(BlockSoundHandler& handler) {
     for (auto it = handler.m_children.begin(); it != handler.m_children.end();) {
       auto* sound = static_cast<BlockSoundHandler*>(it->get());
       // TODO VERIFY that this works
-      if (&sound->m_sfx == &block.Sounds[psp.sound_id]) {
+      if (sound->m_sfx == &block.Sounds[psp.sound_id]) {
         it = handler.m_children.erase(it);
       } else {
         ++it;
@@ -201,6 +201,46 @@ s32 Grain::snd_SFX_GRAIN_TYPE_PLUGIN_MESSAGE(BlockSoundHandler& handler) {
 }
 
 s32 Grain::snd_SFX_GRAIN_TYPE_BRANCH(BlockSoundHandler& handler) {
+  auto psp = std::get<PlaySoundParams>(data);
+  s32 index = psp.sound_id;
+  if (index <= -1) {
+    lg::error("Unsupported BRANCH sound not specified by ID");
+    // unsure exactly how this case worked
+    return 0;
+  }
+
+  // kill voices
+  for (auto& p : handler.m_voices) {
+    auto v = p.lock();
+    if (v == nullptr) {
+      continue;
+    }
+
+    v->KeyOff();
+    v->SetVolumeL(0);
+    v->SetVolumeR(0);
+  }
+
+  auto& block = static_cast<SFXBlock&>(handler.m_bank);
+  auto* new_sfx = &block.Sounds[index];
+  if (new_sfx->Flags.has_instlimit()) {
+    // TODO: not entirely straightforward.
+  }
+
+  handler.m_sfx = new_sfx;
+  handler.m_orig_volume = new_sfx->Vol;
+  handler.m_orig_pan = new_sfx->Pan;
+  handler.m_cur_volume = (handler.m_app_volume * new_sfx->Vol) >> 10;
+  handler.m_group = new_sfx->VolGroup;
+  handler.m_countdown = new_sfx->Grains[0].Delay;
+  handler.m_next_grain = -1;
+  handler.m_skip_grains = false;
+  handler.m_grains_to_play = 0;
+  handler.m_grains_to_skip = 0;
+  // the ID case only supports BRANCHing to sfx in the same block
+  // (this would need to be a pointer, not a reference)
+  // handler.m_bank = block;
+
   return 0;
 }
 
@@ -219,7 +259,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_START(BlockSoundHandler& handler) {
 s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_END(BlockSoundHandler& handler) {
   bool found = false;
   for (int i = handler.m_next_grain - 1; i >= 0 && !found; i--) {
-    if (handler.m_sfx.Grains[i].Type == GrainType::LOOP_START) {
+    if (handler.m_sfx->Grains[i].Type == GrainType::LOOP_START) {
       handler.m_next_grain = i - 1;
       found = true;
     }
@@ -234,8 +274,8 @@ s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_END(BlockSoundHandler& handler) {
 
 s32 Grain::snd_SFX_GRAIN_TYPE_LOOP_CONTINUE(BlockSoundHandler& handler) {
   bool found = false;
-  for (int i = handler.m_next_grain + 1; i < (int)handler.m_sfx.Grains.size() && !found; i++) {
-    if (handler.m_sfx.Grains[i].Type == GrainType::LOOP_END) {
+  for (int i = handler.m_next_grain + 1; i < (int)handler.m_sfx->Grains.size() && !found; i++) {
+    if (handler.m_sfx->Grains[i].Type == GrainType::LOOP_END) {
       handler.m_next_grain = i;
       found = true;
     }
@@ -416,9 +456,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_MARKER(BlockSoundHandler& handler) {
   auto target_mark = cp.param[0];
   bool found = false;
 
-  for (int i = 0; i < (int)handler.m_sfx.Grains.size() && !found; i++) {
-    if (handler.m_sfx.Grains.at(i).Type == GrainType::MARKER) {
-      auto mcp = std::get<ControlParams>(handler.m_sfx.Grains.at(i).data);
+  for (int i = 0; i < (int)handler.m_sfx->Grains.size() && !found; i++) {
+    if (handler.m_sfx->Grains.at(i).Type == GrainType::MARKER) {
+      auto mcp = std::get<ControlParams>(handler.m_sfx->Grains.at(i).data);
       auto mark = mcp.param[0];
 
       if (mark == target_mark) {
@@ -444,9 +484,9 @@ s32 Grain::snd_SFX_GRAIN_TYPE_GOTO_RANDOM_MARKER(BlockSoundHandler& handler) {
   s32 range = upper_bound - lower_bound + 1;
   s32 target_mark = (rand() % range) + lower_bound;
 
-  for (int i = 0; i < (int)handler.m_sfx.Grains.size() && !found; i++) {
-    if (handler.m_sfx.Grains.at(i).Type == GrainType::MARKER) {
-      auto mcp = std::get<ControlParams>(handler.m_sfx.Grains.at(i).data);
+  for (int i = 0; i < (int)handler.m_sfx->Grains.size() && !found; i++) {
+    if (handler.m_sfx->Grains.at(i).Type == GrainType::MARKER) {
+      auto mcp = std::get<ControlParams>(handler.m_sfx->Grains.at(i).data);
       auto mark = mcp.param[0];
 
       if (mark == target_mark) {
@@ -534,7 +574,7 @@ s32 Grain::snd_SFX_GRAIN_TYPE_KILL_VOICES(BlockSoundHandler& handler) {
 }
 
 s32 Grain::snd_SFX_GRAIN_TYPE_ON_STOP_MARKER(BlockSoundHandler& handler) {
-  handler.m_next_grain = handler.m_sfx.Grains.size() - 1;
+  handler.m_next_grain = handler.m_sfx->Grains.size() - 1;
   return 0;
 }
 
