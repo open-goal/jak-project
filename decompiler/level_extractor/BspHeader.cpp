@@ -1964,7 +1964,8 @@ void EntityAmbient::read_from_file(TypedRef ref,
                                    GameVersion /*version*/) {
   trans.read_from_file(get_field_ref(ref, "trans", dts));
   aid = read_plain_data_field<u32>(ref, "aid", dts);
-  //ambientData = read_plain_data_field<u128>(ref, "extra", dts); // to-do: get ambient-data, not sure if nessecary tho
+  // ambientData = read_plain_data_field<u128>(ref, "extra", dts); // to-do: get ambient-data, not
+  // sure if nessecary tho
 
   int res_length = read_plain_data_field<int32_t>(ref, "length", dts);
   // int res_allocated_length = read_plain_data_field<int32_t>(ref, "allocated-length", dts);
@@ -2039,15 +2040,15 @@ void EntityAmbient::read_from_file(TypedRef ref,
 
 void DrawableAmbient::read_from_file(TypedRef ref,
                                      const decompiler::DecompilerTypeSystem& dts,
-                                     GameVersion version){
+                                     GameVersion version) {
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
   ambient.read_from_file(get_and_check_ref_to_basic(ref, "ambient", "entity-ambient", dts), dts,
                          version);
 }
 
 void DrawableInlineArrayAmbient::read_from_file(TypedRef ref,
-                                              const decompiler::DecompilerTypeSystem& dts,
-                                              GameVersion version){
+                                                const decompiler::DecompilerTypeSystem& dts,
+                                                GameVersion version) {
   int numAmbients = read_plain_data_field<int16_t>(ref, "length", dts);
   auto data_ref = get_field_ref(ref, "data", dts);
   for (int i = 0; i < numAmbients; i++) {

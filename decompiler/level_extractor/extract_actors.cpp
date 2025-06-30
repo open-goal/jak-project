@@ -161,7 +161,9 @@ std::string extract_ambients_to_json(const level_tools::DrawableInlineArrayAmbie
     auto& json_lump = json_ambient["lump"];
 
     nlohmann::json effects;
-    int effectCount = 0, effectParamCount = 0; // just to keep track since names cound all be together and then params
+    int effectCount = 0,
+        effectParamCount =
+            0;  // just to keep track since names cound all be together and then params
 
     for (const auto& res : ambient.res_list) {
       if (res.elt_type == "string") {
@@ -197,7 +199,7 @@ std::string extract_ambients_to_json(const level_tools::DrawableInlineArrayAmbie
       } else if (res.elt_type == "pair") {
         json_lump[res.name] = pretty_print::to_string(res.script);
       } else if (res.elt_type == "float") {
-        if (res.name == "effect-param"){
+        if (res.name == "effect-param") {
           if (++effectParamCount > effectCount) {
             nlohmann::json effect;
             effect["params"] = value_json<float>(res.inlined_storage, res.count);
