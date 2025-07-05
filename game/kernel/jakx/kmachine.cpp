@@ -51,6 +51,7 @@ void InitParms(int argc, const char* const* argv) {
     DebugSegment = 0;
     MasterDebug = 0;
     DebugSymbols = true;
+    // USE_OVERLORD2_W = false;
   }
 
   for (int i = 1; i < argc; i++) {
@@ -64,6 +65,14 @@ void InitParms(int argc, const char* const* argv) {
       isodrv = iso_cd;  // use the actual DVD drive for data files
       modsrc = 1;       // use the DVD drive data for IOP modules
       reboot_iop = 1;   // Reboot the IOP (load new IOP runtime)
+    }
+
+    if (arg == "-cd-local-overlord") {
+      Msg(6, "dkernel: cd local-overlord mode\n");
+      // reboot_G_isodrv_G_overlord_S = 1;
+      // modsrc_S = 0;
+      // fs_S_FS_INITIALIZED_W = 0;
+      // isodrv_G_reboot_G = 0;
     }
 
     // the "cddata" uses the DVD drive for everything but IOP modules.
@@ -85,6 +94,12 @@ void InitParms(int argc, const char* const* argv) {
       kstrcpy(DebugBootMessage, "kiosk");
     }
 
+    // new for jak x
+    if (arg == "-beta") {
+      Msg(6, "dkernel: beta mode\n");
+      strcpy(DebugBootMessage, "beta");
+    }
+
     // new for jak 2
     if (arg == "-preview") {
       Msg(6, "dkernel: preview mode\n");
@@ -92,12 +107,14 @@ void InitParms(int argc, const char* const* argv) {
     }
 
     // the "deviso" mode is one of two modes for testing without the need for DVDs
+    // removed in jak x
     if (arg == "-deviso") {
       Msg(6, "dkernel: deviso mode\n");
       isodrv = deviso;  // IOP deviso mode
       modsrc = 2;       // now 2 for Jak 2
       reboot_iop = 0;
     }
+    
     // the "fakeiso" mode is the other of two modes for testing without the need for DVDs
     if (arg == "-fakeiso") {
       Msg(6, "dkernel: fakeiso mode\n");
@@ -136,7 +153,15 @@ void InitParms(int argc, const char* const* argv) {
       DebugSegment = 0;
     }
 
-    // TODO overlord 1 vs. 2 switch
+    if (arg == "-overlord") {
+      Msg(6, "dkernel: overlord 1 mode\n");
+      USE_OVERLORD2_W = false;
+    }
+
+    if (arg == "-overlord2") {
+      Msg(6, "dkernel: overlord 2 mode\n");
+      USE_OVERLORD2_W = true;
+    }
 
     if (arg == "-debug-symbols") {
       Msg(6, "dkernel: debug-symbols on\n");
@@ -145,21 +170,22 @@ void InitParms(int argc, const char* const* argv) {
 
     if (arg == "-no-debug-symbols") {
       Msg(6, "dkernel: debug-symbols off\n");
-      DebugSymbols = true;
+      DebugSymbols = false; // Was this intentional?
     }
 
     // the "-level [level-name]" mode is used to inform the game to boot a specific level
     // the default level is "#f".
-    if (arg == "-level") {
-      i++;
-      std::string levelName = argv[i];
-      Msg(6, "dkernel: level %s\n", levelName.c_str());
+    if (arg == "-level" && i + 1 < argc) {
+      std::string levelName = argv[++i];
+      std::string symbolId = argv[++i];
+      Msg(6, "dkernel: level %s %s\n", levelName.c_str(), symbolId.c_str());
       kstrcpy(DebugBootLevel, levelName.c_str());
       ASSERT_NOT_REACHED();  // symbol ID junk
+      // DebugBootLevelID = DecodeSymbolId(atoi(argv[2])) + 1;
     }
 
     // new for jak 2
-    if (arg == "-user") {
+    if (arg == "-user" && i + 1 < argc) {
       i++;
       std::string userName = argv[i];
       Msg(6, "dkernel: user %s\n", userName.c_str());
@@ -167,12 +193,14 @@ void InitParms(int argc, const char* const* argv) {
     }
 
     // new for jak 2
-    if (arg == "-art") {
+    if (arg == "-art" && i + 1 < argc) {
       i++;
       std::string artGroupName = argv[i];
       Msg(6, "dkernel: art-group %s\n", artGroupName.c_str());
-      kstrcpy(DebugBootArtGroup, artGroupName.c_str());
-      kstrcpy(DebugBootMessage, "art-group");
+      if (strlen(artGroupName.c_str()) != 0) { // argGroupName.length
+        strcpy(DebugBootArtGroup, artGroupName.c_str());
+        kstrcpy(DebugBootMessage, "art-group");
+      }
     }
 
     // an added mode to allow booting without a KERNEL.CGO for testing
@@ -470,6 +498,7 @@ void InitMachineScheme() {
   make_function_symbol_from_c("file-stream-seek", (void*)kseek);
   make_function_symbol_from_c("file-stream-read", (void*)kread);
   make_function_symbol_from_c("file-stream-write", (void*)kwrite);
+  make_function_symbol_from_c("file-stream-mkdir", (void*)kmkdir);
   make_function_symbol_from_c("scf-get-language", (void*)DecodeLanguage);
   make_function_symbol_from_c("scf-get-time", (void*)DecodeTime);
   make_function_symbol_from_c("scf-get-aspect", (void*)DecodeAspect);
@@ -479,7 +508,9 @@ void InitMachineScheme() {
   make_function_symbol_from_c("scf-get-inactive-timeout", (void*)DecodeInactiveTimeout);
   make_function_symbol_from_c("dma-to-iop", (void*)dma_to_iop);
   make_function_symbol_from_c("kernel-shutdown", (void*)KernelShutdown);
-  make_function_symbol_from_c("aybabtu", (void*)aybabtu);  // was nothing
+  make_function_symbol_from_c("rpc-call", (void*)RpcCall);
+  make_function_symbol_from_c("rpc-busy?", (void*)RpcBusy);
+  make_function_symbol_from_c("test-load-dgo-c", (void*)LoadDGOTest);
 
   InitMachine_PCPort();
 
@@ -513,7 +544,7 @@ void InitMachineScheme() {
                  make_string_from_c("engine"), kernel_packages->value());
     kernel_packages->value() =
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
-                 make_string_from_c("art"), kernel_packages->value());
+                 make_string_from_c("game"), kernel_packages->value());
     kernel_packages->value() =
         new_pair(s7.offset + FIX_SYM_GLOBAL_HEAP, *((s7 + FIX_SYM_PAIR_TYPE - 1).cast<u32>()),
                  make_string_from_c("common"), kernel_packages->value());
