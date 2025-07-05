@@ -47,6 +47,7 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number);
 u64 CPadGetData(u64 cpad_info);
 void InstallHandler(u32 handler_idx, u32 handler_func);
 void InstallDebugHandler();
+s32 kmkdir(u64 name);
 s32 klength(u64 fs);
 s32 kseek(u64 fs, s32 offset, s32 where);
 s32 kread(u64 fs, u64 buffer, s32 size);

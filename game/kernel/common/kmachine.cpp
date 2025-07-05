@@ -278,6 +278,17 @@ void InstallDebugHandler() {
   // SetDebugHandler();
 }
 
+s32 kmkdir(u64 name) {
+  char acStack_90[128];
+  if (Ptr<String>(name)->data()[4] == '/') { // start from the fourth character?
+    sprintf(acStack_90, "%s", Ptr<String>(name)->data() + 5);
+  }
+  else {
+    sprintf(acStack_90, "host:%s", Ptr<String>(name)->data() + 4);
+  }
+  return ee::sceMkDir(acStack_90, 0x1fd);
+}
+
 /*!
  * Get length of a file.
  */
