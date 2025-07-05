@@ -28,6 +28,9 @@ bool POWERING_OFF_W;
 // game configuration
 MasterConfig masterConfig;
 
+// Added in Jak X
+bool USE_OVERLORD2_W;
+
 void kboot_init_globals_common() {
   MasterExit = RuntimeExitStatus::RUNNING;
   DiskBoot = 0;

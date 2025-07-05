@@ -44,6 +44,9 @@ extern bool POWERING_OFF_W;
 // Added in PC port, option to run listener functions without the kernel for debugging
 extern u32 MasterUseKernel;
 
+// Added in Jak X
+extern bool USE_OVERLORD2_W;
+
 struct MasterConfig {
   u16 language;          //! GOAL language 0
   u16 aspect;            //! SCE_ASPECT    2
