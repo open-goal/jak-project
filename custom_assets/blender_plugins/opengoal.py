@@ -1,8 +1,8 @@
 bl_info = {
     "name": "OpenGOAL Mesh",
     "author": "water111",
-    "version": (0, 0, 3),
-    "blender": (2, 83, 0),
+    "version": (0, 0, 4),
+    "blender": (3, 4, 0),
     "location": "3D View",
     "description": "OpenGOAL Mesh tools",
     "category": "Development"
@@ -26,8 +26,13 @@ from bpy.types import (Panel,
                        PropertyGroup,
                        )
 
+def plugin_version_to_float(version_tuple):
+    major, minor, patch = version_tuple
+    d_minor = len(str(minor))
+    d_patch = len(str(patch))
+    return major + minor / (10 ** d_minor) + patch / (10 ** (d_minor + d_patch))
 
-import bpy
+plugin_version = plugin_version_to_float(bl_info["version"])
 
 pat_surfaces = [
   ("stone", "stone", "", 0),
@@ -66,6 +71,7 @@ pat_events = [
 ]
 
 pat_modes = [
+  ("auto", "auto", "", 4),
   ("ground", "ground", "", 0),
   ("wall", "wall", "", 1),
   ("obstacle", "obstacle", "", 2),
@@ -104,9 +110,33 @@ def draw_func_ob(self, context):
         layout.prop(ob, "nolineofsight")
         layout.prop(ob, "nocamera")
 
+def version_updater(self, context):
+    version_changes = {
+        0.04: {"collide_mode": {"old": (0, None), "new": 4}},
+    }
+    def update_item(item):
+        item_version = item.get("plugin_version")
+        if item_version is None:
+            item_version = 0.03
+            item["plugin_version"] = item_version
+        for version in sorted(version_changes.keys()):
+            if item_version < version <= plugin_version:
+                mapping = version_changes[version]
+                for prop, changes in mapping.items():
+                    if item.get(prop) in changes["old"]:
+                        item[prop] = changes["new"]
+                item_version = version
+        item["plugin_version"] = plugin_version
+    for obj in bpy.data.objects:
+        if obj.get("set_collision") == 1:
+            update_item(obj)
+    for mat in bpy.data.materials:
+        if mat.get("set_collision") == 1:
+            update_item(mat)
+
 def register():
     bpy.types.Material.set_invisible = bpy.props.BoolProperty(name="Invisible")
-    bpy.types.Material.set_collision = bpy.props.BoolProperty(name="Apply Collision Properties")
+    bpy.types.Material.set_collision = bpy.props.BoolProperty(name="Apply Collision Properties", update=version_updater)
     bpy.types.Material.ignore = bpy.props.BoolProperty(name="ignore")
     bpy.types.Material.noedge = bpy.props.BoolProperty(name="No-Edge")
     bpy.types.Material.noentity = bpy.props.BoolProperty(name="No-Entity")
@@ -115,10 +145,11 @@ def register():
     bpy.types.Material.collide_material = bpy.props.EnumProperty(items = pat_surfaces, name = "Material")
     bpy.types.Material.collide_event = bpy.props.EnumProperty(items = pat_events, name = "Event")
     bpy.types.Material.collide_mode = bpy.props.EnumProperty(items = pat_modes, name = "Mode")
+    bpy.types.Material.plugin_version = bpy.props.FloatProperty(name="OpenGOAL Plugin Version", default=plugin_version)
     bpy.types.MATERIAL_PT_custom_props.prepend(draw_func)
 
     bpy.types.Object.set_invisible = bpy.props.BoolProperty(name="Invisible")
-    bpy.types.Object.set_collision = bpy.props.BoolProperty(name="Apply Collision Properties")
+    bpy.types.Object.set_collision = bpy.props.BoolProperty(name="Apply Collision Properties", update=version_updater)
     bpy.types.Object.enable_custom_weights = bpy.props.BoolProperty(name="Use Custom Bone Weights")
     bpy.types.Object.copy_eye_draws = bpy.props.BoolProperty(name="Copy Eye Draws")
     bpy.types.Object.copy_mod_draws = bpy.props.BoolProperty(name="Copy Mod Draws")
@@ -130,10 +161,12 @@ def register():
     bpy.types.Object.collide_material = bpy.props.EnumProperty(items = pat_surfaces, name = "Material")
     bpy.types.Object.collide_event = bpy.props.EnumProperty(items = pat_events, name = "Event")
     bpy.types.Object.collide_mode = bpy.props.EnumProperty(items = pat_modes, name = "Mode")
+    bpy.types.Object.plugin_version = bpy.props.FloatProperty(name="OpenGOAL Plugin Version", default=plugin_version)
     bpy.types.OBJECT_PT_custom_props.prepend(draw_func_ob)
 
 def unregister():
     bpy.types.MATERIAL_PT_custom_props.remove(draw_func)
+    bpy.types.OBJECT_PT_custom_props.remove(draw_func_ob)
 
 if __name__ == "__main__":
     register()

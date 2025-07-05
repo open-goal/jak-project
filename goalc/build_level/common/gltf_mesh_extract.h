@@ -53,7 +53,7 @@ struct PatResult {
   jak1::PatSurface pat;
 };
 
-PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/);
+PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/, float plugin_version = 0.03f);
 void extract(const Input& in, Output& out);
 
 }  // namespace gltf_mesh_extract
