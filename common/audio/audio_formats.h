@@ -34,6 +34,8 @@ void write_wave_file(const std::vector<s16>& left_samples,
                      s32 sample_rate,
                      const fs::path& name);
 
-std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader, const bool mono);
+std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
+                                                           const bool mono,
+                                                           const u32 version);
 
 std::vector<u8> encode_adpcm(const std::vector<s16>& samples);

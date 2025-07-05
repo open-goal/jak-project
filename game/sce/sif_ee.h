@@ -68,6 +68,7 @@ s32 sceSifCheckStatRpc(sceSifRpcData* bd);
 s32 sceSifBindRpc(sceSifClientData* bd, u32 request, u32 mode);
 
 s32 sceOpen(const char* filename, s32 flag);
+s32 sceMkDir(const char* filename, s32 flag);
 s32 sceClose(s32 fd);
 s32 sceRead(s32 fd, void* buf, s32 nbyte);
 s32 sceWrite(s32 fd, const void* buf, s32 nbyte);
