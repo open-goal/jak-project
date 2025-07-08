@@ -741,7 +741,14 @@ for jamo in jamo_groupings['initial']:
         elif isinstance(orientation, list) and len(orientation) == 0:
             cells_in_line.append("")
         else:
-            cells_in_line.append(orientation['defaultGlyph'].replace(",", " "))
+            alternative_entries = []
+            for [context, alternative_glyph] in orientation['alternatives'].items():
+                alternative_entries.append(f"- {alternative_glyph} for {context.replace("<GLYPH>", "<G>")}")
+            alternatives = "\n".join(alternative_entries)
+            if len(alternatives) > 0:
+                cells_in_line.append(f"\"{orientation['defaultGlyph'].replace(",", " ")}\n{alternatives.replace(",", ";")}\"")
+            else:
+                cells_in_line.append(f"\"{orientation['defaultGlyph'].replace(",", " ")}\"")
     csv_lines.append(",".join(cells_in_line) + "\n")
 for jamo in jamo_groupings['median']:
     cells_in_line = []
@@ -751,7 +758,14 @@ for jamo in jamo_groupings['median']:
         elif isinstance(orientation, list) and len(orientation) == 0:
             cells_in_line.append("")
         else:
-            cells_in_line.append(orientation['defaultGlyph'].replace(",", " "))
+            alternative_entries = []
+            for [context, alternative_glyph] in orientation['alternatives'].items():
+                alternative_entries.append(f"- {alternative_glyph} for {context.replace("<GLYPH>", "<G>")}")
+            alternatives = "\n".join(alternative_entries)
+            if len(alternatives) > 0:
+                cells_in_line.append(f"\"{orientation['defaultGlyph'].replace(",", " ")}\n{alternatives.replace(",", ";")}\"")
+            else:
+                cells_in_line.append(f"\"{orientation['defaultGlyph'].replace(",", " ")}\"")
     csv_lines.append(",".join(cells_in_line) + "\n")
 for jamo in jamo_groupings['final']:
     cells_in_line = []
@@ -761,10 +775,19 @@ for jamo in jamo_groupings['final']:
         elif isinstance(orientation, list) and len(orientation) == 0:
             cells_in_line.append("")
         else:
-            cells_in_line.append(orientation['defaultGlyph'].replace(",", " "))
+            alternative_entries = []
+            for [context, alternative_glyph] in orientation['alternatives'].items():
+                alternative_entries.append(f"- {alternative_glyph} for {context.replace("<GLYPH>", "<G>")}")
+            alternatives = "\n".join(alternative_entries)
+            if len(alternatives) > 0:
+                cells_in_line.append(f"\"{orientation['defaultGlyph'].replace(",", " ")}\n{alternatives.replace(",", ";")}\"")
+            else:
+                cells_in_line.append(f"\"{orientation['defaultGlyph'].replace(",", " ")}\"")
     csv_lines.append(",".join(cells_in_line) + "\n")
 with open('./jamo-db.csv', mode="w", encoding="utf-8") as f:
     f.writelines(csv_lines)
+
+# TODO - there's a bug with the combined glyphs like x66, fix it!
 
 # - fill in empty table cells
 # - mark unused glyphs in the image
