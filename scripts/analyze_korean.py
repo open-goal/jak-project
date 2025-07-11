@@ -20,6 +20,7 @@
 # and then any glyphs left over we can do manually.
 
 # read in the `game_text.txt` file and extract all the korean strings
+from itertools import product
 from pprint import pprint
 import json
 
@@ -39,7 +40,7 @@ while i < len(game_text_lines):
 
 # also parse subtitles
 with open(
-    "../decompiler_out/jak2/assets/subtitles.txt", mode="r", encoding="utf-8"
+    "../decompiler_out/jak2/assets/subtitles_raw.txt", mode="r", encoding="utf-8"
 ) as f:
     subtitle_text_lines = f.readlines()
 for line in subtitle_text_lines:
@@ -66,12 +67,6 @@ for line in subtitle_text_lines:
         text = text.replace(f"0x{c},", f"0x0{c},")
     key = f"{parts[0]}_{parts[1]}"
     korean_lines[key] = text[:-1]
-
-# These are extra lines not found from the original game, beacuse the original game text
-# does not cover all possible korean permutations
-#
-# These are manually verified legible glyph combinations to fill in these voids
-manual_lines = []
 
 print(f"Analyzing {len(korean_lines)} lines of korean text")
 
@@ -610,8 +605,8 @@ def derive_syllable_block_info(glyph_list):
 # finally start going through the real text to figure out the mappings
 total_syllable_blocks = 0
 for [id, game_text_line] in korean_lines.items():
-    print()
-    print(game_text_line)
+    # print()
+    # print(game_text_line)
     # split the bytes into characters, sound the alarm if we see a `0x05`
     # NOTE - hopefully this is not a hack (seems like the font textures dont start until 0x6...how conveniant!)
     game_text_line = game_text_line.replace("0x05,", "extra_")
@@ -639,7 +634,7 @@ for [id, game_text_line] in korean_lines.items():
         block["jamos"] = jamo_info["jamos"]
         block["writingOrientation"] = jamo_info["writingOrientation"]
 
-    pprint(syllable_blocks)
+    # pprint(syllable_blocks)
 
     # The (almost) final step, store this information in our big jamo combination
     # "database"
@@ -676,23 +671,24 @@ print()
 print(f"Analyzed {total_syllable_blocks} syllable blocks")
 print(f"{empty_cells} empty jamo cells\n")
 print(f"Did not see {len(glyph_list)} out of {len(jamo_glyph_mappings.keys())} glyphs:")
-print(glyph_list)
 
-with open("./jamo-db-before.json", mode="w", encoding="utf-8") as f:
-    f.write(json.dumps(jamo_combinations, indent=2))
+# with open("./jamo-db-before.json", mode="w", encoding="utf-8") as f:
+#     f.write(json.dumps(jamo_combinations, indent=2))
 
-
-def format_alternative(curr_glyph, full_glyph_context):
+def format_alternative(curr_jamo, curr_glyph, full_glyph_context):
     # Make a string key that represents the unicode jamos with a <GLYPH> placeholder to represent
     # the jamo we are dealing with
     # And the value is the glyph itself that gets used to draw this combination of jamos
     key_parts = []
     for glyph in full_glyph_context:
-        if curr_glyph == glyph["glyph"]:
-            key_parts.append("<GLYPH>")
+        if curr_jamo == glyph["jamo"]:
+            key_parts.append("<G>")
         else:
             key_parts.append(glyph["jamo"])
-    return [",".join(key_parts), curr_glyph]
+    formatted_curr_glyph = curr_glyph
+    if isinstance(curr_glyph, list):
+        formatted_curr_glyph = ",".join(curr_glyph)
+    return [",".join(key_parts), formatted_curr_glyph]
 
 
 # Enumerate through the db, and consolidate duplicates / find the most common
@@ -717,7 +713,7 @@ for [jamo, orientations] in jamo_combinations.items():
                 if glyph_key not in alternatives:
                     alternatives[glyph_key] = []
                 alternatives[glyph_key].append(
-                    format_alternative(entry["glyph"], entry["context"])
+                    format_alternative(jamo, entry["glyph"], entry["context"])
                 )
             # Consolidate
             most_common_glyph = ""
@@ -736,26 +732,13 @@ for [jamo, orientations] in jamo_combinations.items():
             # Overwrite the db value
             jamo_combinations[jamo][index] = result
 
-# Fill in the rest of the encoding table with manually identified alternatives / additions
-# Most of these are additions, but some override the original encoding (because it looked terrible)
-#
-# These are provided in a specific formats:
-# - 0x01:<G>,ᅤ -- means use 0x01 glyph for drawing the jamo (in position shown, in this case, only before ᅤ
-# - 0x01:<G>,* -- means use 0x01 no matter what comes after
-# - 0x01:<G>,*[^ᄎ;ᄐ] -- means use 0x01 no matter what comes after (except ᄐ and ᄎ)
-# - 0x01,0x02:<G>,* -- sometimes a jamo requires multiple glyphs
-# - !0x01 -- means to override the default glyph, this is used very rarely
-# - 0x01 -- means to set the default -- some jamos never were used at all.  If a default is already set, this should throw an error
-#
-# Note that all of these changes will override any existing alternatives, so order matters even in these lists
-# - 0x01:<G>,* and
-# - 0x02:<G>,ᄎ
-# will replace the ᄎ involving entry that uses 0x01 because of ordering!
+# These are found MANUALLY by iterating through all combinations and finding alternatives
+# for jamo combinations to be legible
 manual_encoding_additions = {
     # Choseong (initial)
     "ᄀ": [
-        ["0x33:<G>,ᅤ"],
-        ["0x67:<G>,ᅭ"],
+        [],
+        [],
         ["0xb3:<G>,ᅫ"],
         ["0x33:<G>,ᅤ,*", "0x33:<G>,ᅦ,*", "0x33:<G>,ᅨ,*"],
         [],
@@ -763,30 +746,37 @@ manual_encoding_additions = {
     ],
     "ᄁ": [
         ["!0x34", "0x07:<G>,ᅵ"],
+        ["0x67:<G>,ᅭ"],
         [],
-        [],
-        ["0x34"],
-        ["0x68:<G>,ᅭ,*", "0x68:<G>,ᅮ,*", "0x68:<G>,ᅲ,*", "0x68:<G>,ᅳ,*"],
-        ["0xb3:<G>,ᅪ,*", "0xb3:<G>,ᅫ,*", "0xb3:<G>,ᅰ,*"],
+        ["!0x34"],
+        ["!0x65", "0x68:<G>,ᅭ,*", "0x68:<G>,ᅮ,*", "0x68:<G>,ᅲ,*", "0x68:<G>,ᅳ,*"],
+        [
+            "!0x91",
+            "0x8f:<G>,ᅪ,*",
+            "0x64:<G>,ᅫ,*",
+            "0xb3:<G>,ᅰ,*",
+            "0x8f:<G>,ᅬ,*",
+        ],
     ],
     "ᄂ": [
         ["0x1f:<G>,ᅡ", "0x1f:<G>,ᅣ", "0x4a:<G>,ᅨ", "0x35:<G>,ᅤ"],
         [],
-        ["0x92", "0xb4:<G>,ᅫ", "0xb4:<G>,ᅰ"],
+        ["0xb4:<G>,ᅫ", "0xb4:<G>,ᅰ"],
         [
             "0x35:<G>,ᅢ,*",
             "0x35:<G>,ᅤ,*",
             "0x35:<G>,ᅦ,*",
             "0x1f:<G>,ᅧ,*",
+            "0x1f:<G>,ᅥ,*",
             "0x4a:<G>,ᅨ,*",
         ],
         [],
-        ["0x92", "0xb4:<G>,ᅪ,*", "0xb4:<G>,ᅫ,*", "0xb4:<G>,ᅰ,*"],
+        ["0xb4:<G>,ᅪ,*", "0xb4:<G>,ᅫ,*", "0xb4:<G>,ᅰ,*"],
     ],
     "ᄃ": [
         ["0x26:<G>,ᅡ", "0x36:<G>,ᅤ", "0x26:<G>,ᅣ", "0x36:<G>,ᅧ", "0x51:<G>,ᅨ"],
         [],
-        ["0xb5:<G>,ᅪ", "0xb5:<G>,ᅫ", "0xb5:<G>,ᅰ"],
+        ["0xb5:<G>,ᅪ", "0xb5:<G>,ᅰ"],
         [
             "0x36:<G>,ᅢ,*",
             "0x36:<G>,ᅤ,*",
@@ -803,7 +793,6 @@ manual_encoding_additions = {
             "0x52:<G>,ᅢ",
             "0x52:<G>,ᅤ",
             "0x27:<G>,ᅣ",
-            "0x52:<G>,ᅦ",
             "0x27:<G>,ᅧ",
             "0x52:<G>,ᅨ",
             "0x27:<G>,ᅵ",
@@ -811,6 +800,7 @@ manual_encoding_additions = {
         [],
         ["0xb6:<G>,ᅪ", "0xb6:<G>,ᅫ", "0xb6:<G>,ᅰ"],
         [
+            "!0x0a",
             "0x52:<G>,ᅢ,*",
             "0x52:<G>,ᅣ,*",
             "0x52:<G>,ᅤ,*",
@@ -819,26 +809,27 @@ manual_encoding_additions = {
             "0x52:<G>,ᅨ,*",
         ],
         [],
-        ["0x94", "0xb6:<G>,ᅪ,*", "0xb6:<G>,ᅫ,*", "0xb6:<G>,ᅰ,*"],
+        ["0xb6:<G>,ᅪ,*", "0xb6:<G>,ᅫ,*", "0xb6:<G>,ᅰ,*"],
     ],
     "ᄅ": [
-        ["0x38:<G>,ᅤ", "0x53:<G>,ᅨ"],
+        ["0x0b:<G>,ᅣ", "0x38:<G>,ᅤ"],
         [],
-        ["0x95", "0xb7:<G>,ᅪ", "0xb7:<G>,ᅫ", "0xb7:<G>,ᅰ"],
+        ["0xb7:<G>,ᅪ", "0xb7:<G>,ᅫ", "0xb7:<G>,ᅰ"],
         [
+            "0x0b:<G>,ᅵ,*",
+            "0x0b:<G>,ᅡ,*",
             "0x38:<G>,ᅢ,*",
             "0x38:<G>,ᅤ,*",
             "0x53:<G>,ᅦ,*",
-            "0x28:<G>,ᅧ,*",
             "0x53:<G>,ᅨ,*",
         ],
         [],
         ["0x95", "0xb7:<G>,ᅪ,*", "0xb7:<G>,ᅫ,*", "0xb7:<G>,ᅰ,*"],
     ],
     "ᄆ": [
-        ["0x39:<G>,ᅢ", "0x39:<G>,ᅤ", "0x39:<G>,ᅨ"],
+        ["0x39:<G>,ᅤ", "0x39:<G>,ᅨ"],
         [],
-        ["0x96", "0xb2:<G>,ᅪ", "0xb2:<G>,ᅫ", "0xb2:<G>,ᅰ"],
+        ["0xb2:<G>,ᅪ", "0xb2:<G>,ᅫ", "0xb2:<G>,ᅰ"],
         ["0x39:<G>,ᅢ,*", "0x39:<G>,ᅤ,*", "0x39:<G>,ᅦ,*", "0x39:<G>,ᅨ,*"],
         [],
         ["0xb2:<G>,ᅪ,*", "0xb2:<G>,ᅫ,*", "0xb2:<G>,ᅰ,*"],
@@ -849,11 +840,11 @@ manual_encoding_additions = {
         ["0xb8:<G>,ᅪ", "0xb8:<G>,ᅫ", "0xb8:<G>,ᅰ"],
         ["0x3a:<G>,ᅢ,*", "0x3a:<G>,ᅤ,*", "0x3a:<G>,ᅦ,*", "0x3a:<G>,ᅨ,*"],
         [],
-        ["0x97", "0xb8:<G>,ᅪ,*", "0xb8:<G>,ᅫ,*", "0xb8:<G>,ᅰ,*"],
+        ["0xb8:<G>,ᅪ,*", "0xb8:<G>,ᅫ,*", "0xb8:<G>,ᅰ,*"],
     ],
     "ᄈ": [
-        ["0x0e:<G>,ᅥ", "0x0e:<G>,ᅵ"],
-        ["0x75"],
+        ["!0x3b", "0x0e:<G>,ᅥ", "0x0e:<G>,ᅵ"],
+        [],
         ["0x98"],
         [
             "0x3b:<G>,ᅢ,*",
@@ -869,22 +860,21 @@ manual_encoding_additions = {
     "ᄉ": [
         ["0x4b:<G>,ᅤ", "0x4b:<G>,ᅨ"],
         [],
-        ["0xb9:<G>,ᅪ", "0xb9:<G>,ᅫ", "0xb9:<G>,ᅰ"],
+        ["0xb9:<G>,ᅪ", "0xb9:<G>,ᅰ"],
         ["0x4b:<G>,ᅢ,*", "0x4b:<G>,ᅤ,*", "0x4b:<G>,ᅦ,*", "0x4b:<G>,ᅨ,*"],
         [],
-        ["0x99", "0xb9:<G>,ᅪ,*", "0xb9:<G>,ᅫ,*", "0xb9:<G>,ᅰ,*"],
+        ["0xb9:<G>,ᅪ,*", "0xb9:<G>,ᅫ,*", "0xb9:<G>,ᅰ,*"],
     ],
     "ᄊ": [
         [
             "0x4c:<G>,ᅢ",
             "0x4c:<G>,ᅤ",
             "0x4c:<G>,ᅥ",
-            "0x4c:<G>,ᅦ",
             "0x4c:<G>,ᅧ",
             "0x4c:<G>,ᅨ",
         ],
         [],
-        ["0x9a", "0xba:<G>,ᅪ", "0xba:<G>,ᅫ", "0xba:<G>,ᅰ"],
+        ["0xba:<G>,ᅪ", "0xba:<G>,ᅫ", "0xba:<G>,ᅰ"],
         [
             "0x4c:<G>,ᅢ,*",
             "0x4c:<G>,ᅣ,*",
@@ -897,25 +887,25 @@ manual_encoding_additions = {
         ["0x9a", "0xba:<G>,ᅪ,*", "0xba:<G>,ᅫ,*", "0xba:<G>,ᅰ,*"],
     ],
     "ᄋ": [
-        ["0x3c:<G>,ᅤ", "0x3c:<G>,ᅨ"],
         [],
-        ["0xbb:<G>,ᅪ", "0xbb:<G>,ᅰ"],
+        [],
+        ["0xbb:<G>,ᅪ"],
         ["0x3c:<G>,ᅢ,*", "0x3c:<G>,ᅤ,*", "0x3c:<G>,ᅦ,*", "0x3c:<G>,ᅨ,*"],
         [],
         ["0xbb:<G>,ᅪ,*", "0xbb:<G>,ᅫ,*", "0xbb:<G>,ᅰ,*"],
     ],
     "ᄌ": [
-        ["0x3d:<G>,ᅤ", "0x3d:<G>,ᅨ"],
+        ["0x3d:<G>,ᅨ"],
         [],
         ["0xbc:<G>,ᅪ", "0xbc:<G>,ᅫ", "0xbc:<G>,ᅰ"],
         ["0x3d:<G>,ᅢ,*", "0x3d:<G>,ᅤ,*", "0x3d:<G>,ᅦ,*", "0x3d:<G>,ᅨ,*"],
         [],
-        ["0x9c", "0xbc:<G>,ᅪ,*", "0xbc:<G>,ᅫ,*", "0xbc:<G>,ᅰ,*"],
+        ["0xbc:<G>,ᅪ,*", "0xbc:<G>,ᅫ,*", "0xbc:<G>,ᅰ,*"],
     ],
     "ᄍ": [
-        ["0x11:<G>,ᅵ"],
-        ["0x7a"],
-        ["0x9d", "0xbd:<G>,ᅪ", "0xbd:<G>,ᅫ", "0xbd:<G>,ᅰ"],
+        ["!0x3e", "0x11:<G>,ᅵ"],
+        [],
+        ["0xbd:<G>,ᅪ", "0xbd:<G>,ᅫ", "0xbd:<G>,ᅰ"],
         [
             "0x3e:<G>,ᅢ,*",
             "0x3e:<G>,ᅣ,*",
@@ -925,8 +915,8 @@ manual_encoding_additions = {
             "0x3e:<G>,ᅨ,*",
             "0x3e:<G>,ᅵ,*",
         ],
-        ["0x7a"],
-        ["0x9d", "0xbd:<G>,ᅪ,*", "0xbd:<G>,ᅫ,*", "0xbd:<G>,ᅰ,*"],
+        [],
+        ["0xbd:<G>,ᅪ,*", "0xbd:<G>,ᅫ,*", "0xbd:<G>,ᅰ,*"],
     ],
     "ᄎ": [
         ["0x58:<G>,ᅤ", "0x58:<G>,ᅨ"],
@@ -937,17 +927,17 @@ manual_encoding_additions = {
         ["0x9e", "0xbe:<G>,ᅪ,*", "0xbe:<G>,ᅫ,*", "0xbe:<G>,ᅰ,*"],
     ],
     "ᄏ": [
-        ["0x3f:<G>,ᅢ", "0x3f:<G>,ᅤ", "0x3f:<G>,ᅨ"],
+        ["0x3f:<G>,ᅤ", "0x3f:<G>,ᅨ"],
         [],
-        ["0x8c", "0xaf:<G>,ᅪ", "0xaf:<G>,ᅫ", "0xaf:<G>,ᅰ"],
+        ["0xaf:<G>,ᅪ", "0xaf:<G>,ᅫ", "0xaf:<G>,ᅰ"],
         ["0x3f:<G>,ᅢ,*", "0x3f:<G>,ᅤ,*", "0x3f:<G>,ᅦ,*", "0x3f:<G>,ᅨ,*"],
         [],
-        ["0x8c", "0xaf:<G>,ᅪ,*", "0xaf:<G>,ᅫ,*", "0xaf:<G>,ᅰ,*"],
+        ["0xaf:<G>,ᅪ,*", "0xaf:<G>,ᅫ,*", "0xaf:<G>,ᅰ,*"],
     ],
     "ᄐ": [
-        ["0x40:<G>,ᅤ", "0x29:<G>,ᅧ", "0x54:<G>,ᅨ"],
+        ["0x13:<G>,ᅣ", "0x40:<G>,ᅤ", "0x54:<G>,ᅨ"],
         [],
-        ["0x9f", "0xbf:<G>,ᅪ", "0xbf:<G>,ᅫ", "0xbf:<G>,ᅰ"],
+        ["0xbf:<G>,ᅪ", "0xbf:<G>,ᅫ", "0xbf:<G>,ᅰ"],
         [
             "0x40:<G>,ᅢ,*",
             "0x40:<G>,ᅤ,*",
@@ -963,9 +953,7 @@ manual_encoding_additions = {
             "0x2a:<G>,ᅡ",
             "0x41:<G>,ᅤ",
             "0x2a:<G>,ᅣ",
-            "0x2a:<G>,ᅥ",
             "0x2a:<G>,ᅧ",
-            "0x55:<G>,ᅨ",
         ],
         [],
         ["0xa0"],
@@ -982,7 +970,7 @@ manual_encoding_additions = {
         ["0xa0"],
     ],
     "ᄒ": [
-        ["0x59:<G>,ᅤ", "0x59:<G>,ᅨ"],
+        ["0x59:<G>,ᅤ"],
         [],
         ["0xc0:<G>,ᅪ", "0xc0:<G>,ᅫ", "0xc0:<G>,ᅰ"],
         [
@@ -994,7 +982,7 @@ manual_encoding_additions = {
             "0x59:<G>,ᅧ,*",
             "0x59:<G>,ᅨ,*",
         ],
-        ["0x7e"],
+        [],
         ["0xc0:<G>,ᅪ,*", "0xc0:<G>,ᅫ,*", "0xc0:<G>,ᅰ,*"],
     ],
     # Jungseong (middle)
@@ -1004,14 +992,11 @@ manual_encoding_additions = {
         [],
         None,
         None,
-        [
-            "0x43",
-            "0x47:*,<G>,ᆫ",
-        ],
+        [],
         None,
         None,
     ],
-    "ᅤ": [["0x47"], None, None, [], None, None],
+    "ᅤ": [[], None, None, ["0x43", "0x47:*,<G>,ᆫ"], None, None],
     "ᅥ": [
         [],
         None,
@@ -1056,7 +1041,7 @@ manual_encoding_additions = {
         ],
         None,
         None,
-        ["!0x82"],
+        ["!0x82", "0x82:*,<G>,*"],
         None,
     ],
     "ᅪ": [
@@ -1066,7 +1051,10 @@ manual_encoding_additions = {
         None,
         None,
         [
-            "0x8e,0xa6:ᄀ,<G>,*" "0x8e,0xa8:ᄀ,<G>,ᆫ",
+            "0x8e,0xa6:ᄀ,<G>,*",
+            "0x8e,0xa8:ᄀ,<G>,ᆫ",
+            "0x8f,0xa6:ᄁ,<G>,*",
+            "0x8f,0xa8:ᄁ,<G>,ᆫ",
         ],
     ],
     "ᅫ": [
@@ -1075,7 +1063,14 @@ manual_encoding_additions = {
         [],
         None,
         None,
-        ["0xc1", "0xc2:*,<G>,ᆫ", "0x8e,0x42:ᄀ,<G>,*", "0x8e,0x46:ᄀ,<G>,ᆫ"],
+        [
+            "!0xc1",
+            "0xc2:*,<G>,ᆫ",
+            "0x8e,0x42:ᄀ,<G>,*",
+            "0x8e,0x46:ᄀ,<G>,ᆫ",
+            "0x64:ᄁ,<G>,*",
+            "0x64:ᄁ,<G>,ᆫ",
+        ],
     ],
     "ᅬ": [
         None,
@@ -1083,7 +1078,13 @@ manual_encoding_additions = {
         ["0x8e,0xa9:ᄁ,<G>"],
         None,
         None,
-        ["0xa2,0xa9:*,<G>,ᆫ", "0x8e,0xa7:ᄀ,<G>,*", "0x8e,0xa9:ᄀ,<G>,ᆫ"],
+        [
+            "0xa2,0xa9:*,<G>,ᆫ",
+            "0x8e,0xa7:ᄀ,<G>,*",
+            "0x8e,0xa9:ᄀ,<G>,ᆫ",
+            "0x8f,0xa7:ᄁ,<G>,*",
+            "0x8f,0xa9:ᄁ,<G>,ᆫ",
+        ],
     ],
     "ᅭ": [
         None,
@@ -1106,9 +1107,9 @@ manual_encoding_additions = {
         ["!0x83"],
         None,
     ],
-    "ᅮ": [None, ["0x6e:ᄒ,<G>"], None, None, ["!0x85", "0x89:*,<G>,ᆫ"], None],
+    "ᅮ": [None, ["0x6e:ᄒ,<G>"], None, None, ["0x85:*,<G>,*", "0x89:*,<G>,ᆫ"], None],
     "ᅯ": [None, None, [], None, None, ["0xaa:*,<G>,*", "0xac:*,<G>,ᆫ"]],
-    "ᅰ": [None, None, [], None, None, ["0xc3", "0xc4:*,<G>,ᆫ"]],
+    "ᅰ": [None, None, [], None, None, ["0xc4:*,<G>,ᆫ"]],
     "ᅱ": [None, None, [], None, None, ["0xad:*,<G>,ᆫ"]],
     "ᅲ": [
         None,
@@ -1135,45 +1136,182 @@ manual_encoding_additions = {
         ["0x8a:*,<G>,ᆫ"],
         None,
     ],
-    "ᅳ": [None, ["0x6d:ᄐ,<G>", "0x6d:ᄒ,<G>"], None, None, ["!0x84"], None],
-    "ᅴ": [None, None, [], None, None, ["0xa3,0xa7", "0xa3,0xa9:*,<G>,ᆫ"]],
+    "ᅳ": [None, ["0x6d:ᄐ,<G>", "0x6d:ᄒ,<G>"], None, None, ["0x84:*,<G>,*"], None],
+    "ᅴ": [None, None, [], None, None, ["!0xa3,0xa7", "0xa3,0xa9:*,<G>,ᆫ"]],
     "ᅵ": [[], None, None, ["0x1c:*,<G>,ᆫ"], None, None],
     # Jongseong (final)
     "ᆨ": [None, None, None, [], [], ["!0xfe"]],
-    "ᆩ": [None, None, None, ["0xc6"], ["0xdf"], ["0xdf"]],
-    "ᆪ": [None, None, None, ["0xc7"], ["0xe0"], ["0xe0"]],
-    "ᆫ": [None, None, None, [], ["!0xe1"], ["!0xff"]],
+    "ᆩ": [None, None, None, [], [], ["0xdf"]],
+    "ᆪ": [None, None, None, ["0xc7"], [], ["0xe0"]],
+    "ᆫ": [None, None, None, [], ["0xe1:*,*,<G>"], ["!0xff"]],
     "ᆬ": [None, None, None, [], ["0xc9"], ["0xc9"]],
     "ᆭ": [None, None, None, [], ["0xe2"], ["0xe2"]],
-    "ᆮ": [None, None, None, [], ["0xe3"], ["0xe3"]],
-    "ᆯ": [None, None, None, [], [], ["!extra_0x86"]],
-    "ᆰ": [None, None, None, [], ["0xe5"], ["0xe5"]],
-    "ᆱ": [None, None, None, ["0xce"], ["0xe6"], ["0xf8"]],
-    "ᆲ": [None, None, None, ["0xcf"], ["0xcf"], ["0xcf"]],
+    "ᆮ": [None, None, None, [], [], ["0xe3"]],
+    "ᆯ": [None, None, None, [], [], ["!extra_0x86:*,*,<G>"]],
+    "ᆰ": [None, None, None, [], [], ["0xe5"]],
+    "ᆱ": [None, None, None, [], [], ["0xf8"]],
+    "ᆲ": [None, None, None, [], ["0xcf"], ["0xcf"]],
     "ᆳ": [None, None, None, ["0xe7"], ["0xe7"], ["0xe7"]],
     "ᆴ": [None, None, None, ["0xd0"], ["0xe8"], ["0xe8"]],
     "ᆵ": [None, None, None, ["0xe9"], ["0xe9"], ["0xe9"]],
-    "ᆶ": [None, None, None, [], ["0xea"], ["0xea"]],
-    "ᆷ": [None, None, None, [], [], ["!extra_0x87"]],
-    "ᆸ": [None, None, None, [], [], ["!extra_0x88"]],
+    "ᆶ": [None, None, None, [], [], ["0xea"]],
+    "ᆷ": [None, None, None, [], [], ["extra_0x87", "extra_0x87:*,*,<G>"]],
+    "ᆸ": [None, None, None, [], [], ["extra_0x88:*,*,<G>"]],
     "ᆹ": [None, None, None, [], ["0xd4"], ["0xd4"]],
-    "ᆺ": [None, None, None, [], [], ["!extra_0x89"]],
-    "ᆻ": [None, None, None, [], ["0xfc"], ["!extra_0x8a"]],
-    "ᆼ": [None, None, None, [], [], ["!extra_0x8b"]],
+    "ᆺ": [None, None, None, [], [], ["extra_0x89:*,*,<G>"]],
+    "ᆻ": [None, None, None, [], ["0xfc"], ["extra_0x8a:*,*,<G>"]],
+    "ᆼ": [None, None, None, [], [], ["extra_0x8b:*,*,<G>"]],
     "ᆽ": [None, None, None, [], [], ["0xef"]],
-    "ᆾ": [None, None, None, ["0xd9"], ["0xf0"], ["0xf0"]],
+    "ᆾ": [None, None, None, [], ["0xf0"], ["0xf0"]],
     "ᆿ": [None, None, None, ["0xda"], ["0xf1"], ["0xf1"]],
-    "ᇀ": [None, None, None, ["0xdb"], [], ["0xf2"]],
+    "ᇀ": [None, None, None, [], [], ["0xf2"]],
     "ᇁ": [None, None, None, [], [], ["0xf3"]],
     "ᇂ": [None, None, None, [], [], ["0xf4"]],
 }
-
 
 # Print the results
 with open("./jamo-db.json", mode="w", encoding="utf-8") as f:
     f.write(json.dumps(jamo_combinations, indent=2))
 
-pprint(jamo_combinations)
+# Fill in the rest of the encoding table with manually identified alternatives / additions
+# Most of these are additions, but some override the original encoding (because it looked terrible)
+#
+# These are provided in a specific formats:
+# - 0x01:<G>,ᅤ -- means use 0x01 glyph for drawing the jamo (in position shown, in this case, only before ᅤ
+# - 0x01:<G>,* -- means use 0x01 no matter what comes after
+# - 0x01:<G>,*[^ᄎ;ᄐ] -- means use 0x01 no matter what comes after (except ᄐ and ᄎ)
+# - 0x01,0x02:<G>,* -- sometimes a jamo requires multiple glyphs
+# - !0x01 -- means to override the default glyph, this is used very rarely
+# - 0x01 -- means to set the default -- some jamos never were used at all.  If a default is already set, this should throw an error
+#
+# Note that all of these changes will override any existing alternatives, so order matters even in these lists
+# - 0x01:<G>,* and
+# - 0x02:<G>,ᄎ
+# will replace the ᄎ involving entry that uses 0x01 because of ordering!
+jamo_replacements = {
+    0: jamo_groupings["initial"],
+    1: jamo_groupings["median"],
+    2: jamo_groupings["final"],
+}
+
+added_defaults = 0
+replaced_defaults = 0
+for [jamo, orientations] in jamo_combinations.items():
+    for [index, orientation] in enumerate(orientations):
+        if orientation is None:
+            continue
+        new_alternative_list = manual_encoding_additions[jamo][index]
+        if new_alternative_list is None or len(new_alternative_list) == 0:
+            continue
+        # enumerate new list and collect info / generate list of new alternatives
+        new_default = None
+        force_default = False
+        alternative_list = []
+        for item in new_alternative_list:
+            # - !0x01 -- means to override the default glyph, this is used very rarely
+            # - 0x01 -- means to set the default -- some jamos never were used at all.  If a default is already set, this should throw an error
+            if ":" not in item:
+                if item.startswith("!"):
+                    force_default = True
+                    new_default = item[1:]
+                else:
+                    new_default = item
+                continue
+            parts = item.split(":")
+            glyph = parts[0]
+            pattern = parts[1]
+            # order matters, so we have to append to a list for now
+            # 0x01:<G>,ᅤ
+            if "*" not in pattern:
+                alternative_list.append({"glyph": glyph, "jamo_combination": pattern})
+            # 0x01:<G>,*
+            else:
+                # 0x01:<G>,*[^ᄎ;ᄐ]
+                # exclusion lists
+                exclusion_list = set()
+                # we generate all alternatives in order from left-to-right
+                tokens = pattern.split(",")
+                # cleanup each item first
+                new_tokens = []
+                for token in tokens:
+                    if token.startswith("*[^"):
+                        for exclude_jamo in token[3:-1].split(","):
+                            exclusion_list.add(exclude_jamo)
+                        new_tokens.append("*")
+                    else:
+                        new_tokens.append(token)
+                wildcard_indices = [i for i, token in enumerate(tokens) if token == "*"]
+                filtered_replacements = {
+                    idx: [val for val in lst if val not in exclusion_list]
+                    for idx, lst in jamo_replacements.items()
+                }
+                replacement_lists = [filtered_replacements[i] for i in wildcard_indices]
+                for combo in product(*replacement_lists):
+                    generated = tokens.copy()
+                    for idx, val in zip(wildcard_indices, combo):
+                        generated[idx] = val
+                    alternative_list.append(
+                        {"glyph": glyph, "jamo_combination": ",".join(generated)}
+                    )
+        # Ok, now we have our big list of new alternatives
+        # we go through them one by one, adding them to the existing list
+        # since alternatives is a map we don't have to concern ourselves with worrying about duplicates
+        # the last one wins
+        #
+        # We also must set the new default if applicable
+        new_orientation = orientation
+        if new_default is not None:
+            if isinstance(new_orientation, list) and len(new_orientation) == 0:
+                new_orientation = {"defaultGlyph": new_default, "alternatives": {}}
+                added_defaults = added_defaults + 1
+            elif force_default:
+                new_orientation["defaultGlyph"] = new_default
+                replaced_defaults = replaced_defaults + 1
+            else:
+                print(
+                    f"Trying to replace the default {new_orientation["defaultGlyph"]} with {new_default} improperly"
+                )
+                exit(1)
+        # Alternatives
+        if len(alternative_list) > 0:
+            for new_alt in alternative_list:
+                new_orientation["alternatives"][new_alt["jamo_combination"]] = new_alt[
+                    "glyph"
+                ]
+        # Finally, update the DB
+        jamo_combinations[jamo][index] = new_orientation
+
+# Print some Stats again!
+empty_cells = 0
+new_glyph_list = set(jamo_glyph_mappings.keys())
+for [jamo, orientations] in jamo_combinations.items():
+    for orientation in orientations:
+        if isinstance(orientation, dict):
+            new_glyph_list.discard(orientation["defaultGlyph"])
+            for combo, glyph in orientation["alternatives"].items():
+                new_glyph_list.discard(glyph)
+        elif orientation is not None:
+            print(f"{jamo} - {orientation}")
+            empty_cells = empty_cells + 1
+
+print()
+print(f"Added {added_defaults} defaults")
+print(f"Replaced {replaced_defaults} defaults")
+print(f"{empty_cells} empty jamo cells\n")
+print(
+    f"Still did not see {len(new_glyph_list)} out of {len(jamo_glyph_mappings.keys())} glyphs:"
+)
+print(
+    f"Used an additional {len(new_glyph_list.difference(glyph_list))} glyphs, never seen in the original game!"
+)
+print("Never Used Glyphs:")
+print(new_glyph_list)
+
+# Print the results
+with open("./jamo-db.json", mode="w", encoding="utf-8") as f:
+    f.write(json.dumps(jamo_combinations, indent=None))
+
+# pprint(jamo_combinations)
 
 # Export some CSV results so that we can fill in the rest of the encoding using excel (easier to keep track of
 # what's missing)
@@ -1251,12 +1389,5 @@ for jamo in jamo_groupings["final"]:
                     f"\"{orientation['defaultGlyph'].replace(",", " ")}\""
                 )
     csv_lines.append(",".join(cells_in_line) + "\n")
-with open("./jamo-db.csv", mode="w", encoding="utf-8") as f:
-    f.writelines(csv_lines)
-
-# TODO - there's a bug with the combined glyphs like x66, fix it!
-
-# - fill in empty table cells
-# - mark unused glyphs in the image
-
-# - finally, write C++ code that converts from utf-8 to the korean encoding or vise versa using the finished json data table
+# with open("./jamo-db.csv", mode="w", encoding="utf-8") as f:
+#     f.writelines(csv_lines)
