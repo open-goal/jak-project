@@ -136,8 +136,8 @@ class OpenGLRenderer {
     Fbo* render_fbo = nullptr;  // the selected fbo from the three above to use for rendering
   } m_fbo_state;
 
-  GLuint screen_vao = 0; // vertex array object for a screen-space draw
-  GLuint screen_vbo = 0; // vertex buffer object for a screen-space draw
+  GLuint screen_vao = 0;  // vertex array object for a screen-space draw
+  GLuint screen_vbo = 0;  // vertex buffer object for a screen-space draw
 
   std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
   std::unique_ptr<BucketRenderer> m_jak3_eye_renderer;
