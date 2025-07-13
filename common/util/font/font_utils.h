@@ -1,22 +1,31 @@
 #pragma once
 
-/*!
- * @file FontUtils.h
- *
- * Code for handling text and strings in Jak 1's "large font" format.
- *
- * MAKE SURE THIS FILE IS ENCODED IN UTF-8!!! The various strings here depend on it.
- * Always verify the encoding if string detection suddenly goes awry.
- */
-
 #include <map>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
 #include "common/common_types.h"
+#include "common/util/json_util.h"
 #include "common/versions/versions.h"
+
+/*!
+ * What bytes a set of characters (UTF-8) correspond to. You can convert to and fro.
+ */
+struct EncodeInfo {
+  std::string chars;
+  std::vector<u8> bytes;
+};
+
+/*!
+ * Replace an unconventional string of characters with/from something more readable.
+ * For example, turns Ñ into N + ~ + a bunch of modifiers.
+ */
+struct ReplaceInfo {
+  std::string from;
+  std::string to;
+};
 
 // version of the game text file's text encoding. Not real, but we need to differentiate them
 // somehow, since the encoding changes.
@@ -28,26 +37,17 @@ enum class GameTextVersion {
   JAKX = 40      // jak x
 };
 
-extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
-
-const std::string& get_text_version_name(GameTextVersion version);
-GameTextVersion get_text_version_from_name(const std::string& name);
-
-/*!
- * What bytes a set of characters (UTF-8) correspond to. You can convert to and fro.
- */
-struct EncodeInfo {
-  std::string chars;
-  std::vector<u8> bytes;
+struct KoreanLookupEntry {
+  // glyph to use if no relevant alternative exists
+  std::string defaultGlyph;
+  // context=>glyph
+  // ie. "<G>,\u1166"
+  // when wanting to draw a specific jamo, it's spot is indicated by the <G>
+  std::unordered_map<std::string, std::string> alternatives;
 };
-/*!
- * Replace an unconventional string of characters with/from something more readable.
- * For example, turns Ñ into N + ~ + a bunch of modifiers.
- */
-struct ReplaceInfo {
-  std::string from;
-  std::string to;
-};
+void from_json(const json& j, KoreanLookupEntry& obj);
+
+typedef std::vector<KoreanLookupEntry> KoreanLookupOrientations;
 
 /*!
  * All the information to convert UTF-8 text into game text.
@@ -57,6 +57,8 @@ class GameTextFontBank {
   std::vector<EncodeInfo>* m_encode_info;
   std::vector<ReplaceInfo>* m_replace_info;
   std::unordered_set<char>* m_passthrus;
+  // jamo=>6 orientations with their drawing info
+  std::optional<std::unordered_map<std::string, KoreanLookupOrientations>> m_korean_db = std::nullopt;
 
   const EncodeInfo* find_encode_to_utf8(const char* in) const;
   const EncodeInfo* find_encode_to_game(const std::string& in, int off = 0) const;
@@ -85,13 +87,22 @@ class GameTextFontBank {
 
   std::string convert_utf8_to_game(std::string str, bool escape = false) const;
   std::string convert_game_to_utf8(const char* in) const;
+
+  std::string convert_utf8_to_game_korean(std::string str);
+  std::string convert_korean_game_to_utf8(const char* in) const;
 };
 
-extern GameTextFontBank g_font_bank_jak1_v1;
-extern GameTextFontBank g_font_bank_jak1_v2;
-extern GameTextFontBank g_font_bank_jak2;
-extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
+extern const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap;
+const std::string& get_text_version_name(GameTextVersion version);
+GameTextVersion get_text_version_from_name(const std::string& name);
 
+/*!
+ * ========================
+ * GAME TEXT FONT BANK LIST
+ * ========================
+ * The list of available font banks and a couple of helper functions.
+ */
+extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
 const GameTextFontBank* get_font_bank(GameTextVersion version);
 const GameTextFontBank* get_font_bank_from_game_version(GameVersion version);
 const GameTextFontBank* get_font_bank(const std::string& name);

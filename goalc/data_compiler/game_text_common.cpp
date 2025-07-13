@@ -21,27 +21,15 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 #include "common/util/json_util.h"
+#include "common/util/string_util.h"
 
 #include "game/runtime.h"
 
 #include "fmt/format.h"
 
 namespace {
-
-// TODO - replace with str_util::to_upper?
-std::string uppercase(const std::string& in) {
-  std::string result;
-  result.reserve(in.size());
-  for (auto c : in) {
-    if (c >= 'a' && c <= 'z') {
-      c -= ('a' - 'A');
-    }
-    result.push_back(c);
-  }
-  return result;
-}
 
 /*
 (deftype game-text (structure)
@@ -86,8 +74,8 @@ void compile_text(GameTextDB& db, const std::string& output_prefix) {
 
       file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
       file_util::write_binary_file(
-          file_util::get_file_path(
-              {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
+          file_util::get_file_path({"out", output_prefix, "iso",
+                                    fmt::format("{}{}.TXT", lang, str_util::to_upper(group_name))}),
           data.data(), data.size());
     }
   }
@@ -157,8 +145,8 @@ void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) 
 
     file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
     file_util::write_binary_file(
-        file_util::get_file_path(
-            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase("subtit"))}),
+        file_util::get_file_path({"out", output_prefix, "iso",
+                                  fmt::format("{}{}.TXT", lang, str_util::to_upper("subtit"))}),
         data.data(), data.size());
   }
 }
@@ -226,8 +214,8 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
     file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
     auto file_name = get_text_version_name(bank->m_text_version) == "jak3" ? "subti3" : "subti2";
     file_util::write_binary_file(
-        file_util::get_file_path(
-            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase(file_name))}),
+        file_util::get_file_path({"out", output_prefix, "iso",
+                                  fmt::format("{}{}.TXT", lang, str_util::to_upper(file_name))}),
         data.data(), data.size());
   }
 }

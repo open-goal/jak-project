@@ -13,7 +13,7 @@
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 
 #include "fmt/format.h"
 #include "fmt/ranges.h"

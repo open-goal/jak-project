@@ -1391,3 +1391,10 @@ for jamo in jamo_groupings["final"]:
     csv_lines.append(",".join(cells_in_line) + "\n")
 # with open("./jamo-db.csv", mode="w", encoding="utf-8") as f:
 #     f.writelines(csv_lines)
+
+# game -> UTF-8
+# - convert glyphs into individual jamo (and sometimes ascii) (lookup table)
+# - compose jamo into syllable blocks (python lib)
+# UTF-8 -> game
+# - decompose syllable blocks into jamo (python lib)
+# - convert jamo into glyphs using our lookup DB
