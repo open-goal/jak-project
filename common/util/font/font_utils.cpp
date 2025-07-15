@@ -329,24 +329,23 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
 }
 
 std::string GameTextFontBank::convert_utf8_to_game_korean(std::string str) {
-  // TODO - instead of asserting maybe we just let it pass through
-  ASSERT_MSG(m_version == GameTextVersion::JAK2,
-             "Korean is not supported for any game other than Jak 2 right now");
+  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
+             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
   if (!m_korean_db.has_value() && m_version == GameTextVersion::JAK2) {
-    const auto db_file_path = file_util::get_file_path({"game/assets/jak2/jak2_korean_db.json"});
+    const auto db_file_path =
+        file_util::get_file_path({"game/assets/fonts/jak2_jak3_korean_db.json"});
     if (file_util::file_exists(db_file_path)) {
       auto raw_data = file_util::read_text_file(db_file_path);
-      auto json_data = parse_commented_json(raw_data, "jak2_korean_db.json");
+      auto json_data = parse_commented_json(raw_data, "jak2_jak3_korean_db.json");
       json_data.get_to(m_korean_db.value());
     }
   }
-  // Actually do the thing
+  return font_util::encode_korean_containing_text_to_game(str, m_korean_db.value());
 }
 
 std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const {
-  // TODO - instead of asserting maybe we just let it pass through
-  ASSERT_MSG(m_version == GameTextVersion::JAK2,
-             "Korean is not supported for any game other than Jak 2 right now");
+  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
+             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
   // Korean strings are fully bitstrings, in other words, it's just a bunch of bytes
   // Some info on the layout:
   // - Every korean syllable block starts with a `4`
@@ -356,6 +355,8 @@ std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const 
   //   There are very few jamo that are and they are only applicable for the final consonant
   // - The korean strings can contain non-korean characters.  These are preceeded by a `3`
   //   - For example a space would be `3 20`
+  //   - It might be more accurate to say that a 3 signifies "consume characters as normal until
+  //   something else is encountered (ie. flags or more complex font encodings)"
   std::string result;
   std::string_view str(in);
 
@@ -407,14 +408,14 @@ std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const 
     }
     index++;
   }
-  return compose_korean_containing_text(result);
+  return font_util::compose_korean_containing_text(result);
 }
 
-const GameTextFontBank* get_font_bank(GameTextVersion version) {
+GameTextFontBank* get_font_bank(GameTextVersion version) {
   return g_font_banks.at(version);
 }
 
-const GameTextFontBank* get_font_bank_from_game_version(GameVersion version) {
+GameTextFontBank* get_font_bank_from_game_version(GameVersion version) {
   if (version == GameVersion::Jak1) {
     // Jak 1 has been patched to use V2
     return get_font_bank(GameTextVersion::JAK1_V2);
@@ -428,7 +429,7 @@ const GameTextFontBank* get_font_bank_from_game_version(GameVersion version) {
   }
 }
 
-const GameTextFontBank* get_font_bank(const std::string& name) {
+GameTextFontBank* get_font_bank(const std::string& name) {
   if (auto it = sTextVerEnumMap.find(name); it == sTextVerEnumMap.end()) {
     throw std::runtime_error(fmt::format("unknown text version {}", name));
   } else {

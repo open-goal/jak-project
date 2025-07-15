@@ -28,48 +28,26 @@
 
 #pragma once
 
-#include <deque>
-#include <iostream>
-#include <iterator>
-#include <memory>
-#include <optional>
-#include <tuple>
 #include <vector>
 
-// TODO - code not yet verified
-template <typename Iterator>
-class tee_iterator {
-  using value_type = typename std::iterator_traits<Iterator>::value_type;
-  Iterator source;
-  std::shared_ptr<std::deque<value_type>> buffer;
-  size_t index;
+#include "common/util/json_util.h"
 
- public:
-  tee_iterator(Iterator src, std::shared_ptr<std::deque<value_type>> buf, size_t idx)
-      : source(src), buffer(buf), index(idx) {}
-
-  std::optional<value_type> next() {
-    if (index < buffer->size()) {
-      return (*buffer)[index++];
-    } else {
-      if (source != Iterator{}) {
-        auto val = *source;
-        ++source;
-        buffer->push_back(val);
-        ++index;
-        return val;
-      } else {
-        return std::nullopt;
-      }
-    }
-  }
+struct KoreanLookupEntry {
+  // glyph to use if no relevant alternative exists
+  std::string defaultGlyph;
+  // context=>glyph
+  // ie. "<G>,\u1166"
+  // when wanting to draw a specific jamo, it's spot is indicated by the <G>
+  std::unordered_map<std::string, std::string> alternatives;
 };
+void from_json(const json& j, KoreanLookupEntry& obj);
 
-struct Syllable {
-  std::string leading_consonant;
-  std::string vowel;
-  std::optional<std::string> trailing_consonant;
-};
+typedef std::vector<KoreanLookupEntry> KoreanLookupOrientations;
 
+namespace font_util {
+bool is_language_id_korean(const int language_id);
 std::string compose_korean_containing_text(const std::string& text);
-std::string decompose_korean_containing_text(const std::string& text);
+std::string encode_korean_containing_text_to_game(
+    const std::string& text,
+    const std::unordered_map<std::string, KoreanLookupOrientations> db);
+};  // namespace font_util

@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <vector>
 #include "common/common_types.h"
+#include "common/util/font/font_utils_korean.h"
 #include "common/util/json_util.h"
 #include "common/versions/versions.h"
 
@@ -36,18 +37,6 @@ enum class GameTextVersion {
   JAK3 = 30,     // jak 3
   JAKX = 40      // jak x
 };
-
-struct KoreanLookupEntry {
-  // glyph to use if no relevant alternative exists
-  std::string defaultGlyph;
-  // context=>glyph
-  // ie. "<G>,\u1166"
-  // when wanting to draw a specific jamo, it's spot is indicated by the <G>
-  std::unordered_map<std::string, std::string> alternatives;
-};
-void from_json(const json& j, KoreanLookupEntry& obj);
-
-typedef std::vector<KoreanLookupEntry> KoreanLookupOrientations;
 
 /*!
  * All the information to convert UTF-8 text into game text.
@@ -103,7 +92,7 @@ GameTextVersion get_text_version_from_name(const std::string& name);
  * The list of available font banks and a couple of helper functions.
  */
 extern std::map<GameTextVersion, GameTextFontBank*> g_font_banks;
-const GameTextFontBank* get_font_bank(GameTextVersion version);
-const GameTextFontBank* get_font_bank_from_game_version(GameVersion version);
-const GameTextFontBank* get_font_bank(const std::string& name);
+GameTextFontBank* get_font_bank(GameTextVersion version);
+GameTextFontBank* get_font_bank_from_game_version(GameVersion version);
+GameTextFontBank* get_font_bank(const std::string& name);
 bool font_bank_exists(GameTextVersion version);

@@ -10,6 +10,7 @@
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
 #include "common/util/font/font_utils.h"
+#include "common/util/font/font_utils_korean.h"
 #include "common/util/print_float.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
@@ -113,7 +114,7 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     }
 
     // escape characters
-    if (language == 6) {
+    if (font_util::is_language_id_korean(language)) {
       // If we are doing korean, we process it differently
       result.text[text_id] = get_font_bank(version)->convert_korean_game_to_utf8(text.c_str());
     } else if (font_bank_exists(version)) {

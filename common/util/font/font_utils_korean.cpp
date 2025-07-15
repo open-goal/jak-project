@@ -32,7 +32,21 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "fmt/base.h"
+
+#include "common/util/Assert.h"
+
+#include "game/runtime.h"
+
+#include "fmt/format.h"
+
+bool font_util::is_language_id_korean(const int language_id) {
+  if (g_game_version == GameVersion::Jak2 && language_id == 6) {
+    return true;
+  } else if (g_game_version == GameVersion::Jak3 && language_id == 7) {
+    return true;
+  }
+  return false;
+}
 
 //
 // Reference: http://www.unicode.org/versions/Unicode8.0.0/ch03.pdf#G24646
@@ -189,7 +203,7 @@ char32_t compose_jamo(char32_t lead, char32_t vowel, std::optional<char32_t> tra
   return 0xAC00 + (l_index * 21 * 28) + (v_index * 28) + t_index;
 }
 
-std::string compose_korean_containing_text(const std::string& text) {
+std::string font_util::compose_korean_containing_text(const std::string& text) {
   std::string output;
   std::vector<char32_t> cps = utf8_to_codepoints(text);
 
@@ -243,27 +257,171 @@ char32_t next_utf8_char(const std::string& s, size_t& i) {
   return cp;
 }
 
-std::string decompose_korean_containing_text(const std::string& text) {
+// std::string font_util::decompose_korean_containing_text(const std::string& text) {
+//   std::string output;
+//   size_t i = 0;
+//   while (i < text.size()) {
+//     char32_t cp = next_utf8_char(text, i);
+
+//     if (is_syllable(cp)) {
+//       // Decompose Hangul syllable block into jamo
+//       char32_t SIndex = cp - 0xAC00;
+//       char32_t L = 0x1100 + SIndex / (21 * 28);
+//       char32_t V = 0x1161 + (SIndex % (21 * 28)) / 28;
+//       char32_t T = 0x11A7 + (SIndex % 28);
+
+//       output += codepoint_to_utf8(L);
+//       output += codepoint_to_utf8(V);
+//       if (T != 0x11A7) {  // has final consonant
+//         output += codepoint_to_utf8(T);
+//       }
+//     } else {
+//       // For other characters, re-encode as-is
+//       output += codepoint_to_utf8(cp);
+//     }
+//   }
+//   return output;
+// }
+
+bool is_median_vowel_vertical(char32_t vowel) {
+  if ((vowel >= 0x1161 && vowel <= 0x1168) || vowel == 0x1175) {
+    return true;
+  }
+  return false;
+}
+
+bool is_median_vowel_horizontal(char32_t vowel) {
+  if (vowel == 0x1169 || (vowel >= 0x116D && vowel <= 0x116E) ||
+      (vowel >= 0x1172 && vowel <= 0x1173)) {
+    return true;
+  }
+  return false;
+}
+
+bool is_median_vowel_combined(char32_t vowel) {
+  if (vowel >= 0x1161 && vowel <= 0x1175 && !is_median_vowel_vertical(vowel) &&
+      !is_median_vowel_horizontal(vowel)) {
+    return true;
+  }
+  return false;
+}
+
+std::string font_util::encode_korean_containing_text_to_game(
+    const std::string& text,
+    const std::unordered_map<std::string, KoreanLookupOrientations> db) {
+  // this may be a string, but we are constructing a game-encoded bitstring -- just bytes!
   std::string output;
   size_t i = 0;
+  bool writing_non_syllable_content = false;
   while (i < text.size()) {
     char32_t cp = next_utf8_char(text, i);
 
     if (is_syllable(cp)) {
+      writing_non_syllable_content = false;
       // Decompose Hangul syllable block into jamo
-      char32_t SIndex = cp - 0xAC00;
-      char32_t L = 0x1100 + SIndex / (21 * 28);
-      char32_t V = 0x1161 + (SIndex % (21 * 28)) / 28;
-      char32_t T = 0x11A7 + (SIndex % 28);
+      char32_t syllable_index = cp - BASE_OF_SYLLABLES;
+      char32_t initial = BASE_OF_LEADING_CONSONANTS + syllable_index / (21 * 28);
+      char32_t median = BASE_OF_VOWELS + (syllable_index % (21 * 28)) / 28;
+      char32_t final = BASE_OF_TRAILING_CONSONANTS + (syllable_index % 28);
 
-      output += codepoint_to_utf8(L) + " and ";
-      output += codepoint_to_utf8(V) + " and ";
-      if (T != 0x11A7) {  // has final consonant
-        output += codepoint_to_utf8(T) + " and ";
+      bool final_present = final != BASE_OF_TRAILING_CONSONANTS;
+      int orientation = -1;
+      // Figure out which orientation we are dealing with
+      if (!final_present) {
+        // orientations 0 - 2
+        if (is_median_vowel_vertical(median)) {
+          orientation = 0;
+        } else if (is_median_vowel_horizontal(median)) {
+          orientation = 1;
+        } else if (is_median_vowel_combined(median)) {
+          orientation = 2;
+        }
+      } else {
+        // orientations 3 - 5
+        if (is_median_vowel_vertical(median)) {
+          orientation = 3;
+        } else if (is_median_vowel_horizontal(median)) {
+          orientation = 4;
+        } else if (is_median_vowel_combined(median)) {
+          orientation = 5;
+        }
+      }
+      ASSERT_MSG(
+          orientation != -1,
+          fmt::format("Unable to deduce drawing orientation for korean syllable block in '{}'",
+                      text));
+
+      // now that we know the orientation, we can consult our lookup database to get the glyphs to
+      // use for all the involved jamo
+      //
+      // convert each jamo to utf-8 bytes since that is what our DB is encoded with.
+      // - first see if the jamo has an alternative drawing glyph, if not, use the default
+      //
+      // the order the glyphs are drawn in does not matter, as they all overlap anyway.
+      std::vector<int> glyphs_to_draw = {};
+      const auto initial_utf8 = codepoint_to_utf8(initial);
+      const auto median_utf8 = codepoint_to_utf8(median);
+      if (final == BASE_OF_TRAILING_CONSONANTS) {  // no final consonant
+        const auto initial_alt_lookup_key = fmt::format("<G>,{}", median_utf8);
+        const auto& initial_alts = db.at(initial_utf8).at(orientation).alternatives;
+        if (initial_alts.contains(initial_alt_lookup_key)) {
+          glyphs_to_draw.push_back(std::stoi(initial_alts.at(initial_alt_lookup_key), nullptr, 0));
+        } else {
+          glyphs_to_draw.push_back(std::stoi(db.at(initial_utf8).at(orientation).defaultGlyph, nullptr, 0));
+        }
+        const auto median_alt_lookup_key = fmt::format("{},<G>", initial_utf8);
+        const auto& median_alts = db.at(median_utf8).at(orientation).alternatives;
+        if (median_alts.contains(median_alt_lookup_key)) {
+          glyphs_to_draw.push_back(std::stoi(median_alts.at(median_alt_lookup_key), nullptr, 0));
+        } else {
+          glyphs_to_draw.push_back(std::stoi(db.at(median_utf8).at(orientation).defaultGlyph, nullptr, 0));
+        }
+      } else {
+        const auto final_utf8 = codepoint_to_utf8(final);
+        const auto initial_alt_lookup_key = fmt::format("<G>,{},{}", median_utf8, final_utf8);
+        const auto& initial_alts = db.at(initial_utf8).at(orientation).alternatives;
+        if (initial_alts.contains(initial_alt_lookup_key)) {
+          glyphs_to_draw.push_back(std::stoi(initial_alts.at(initial_alt_lookup_key), nullptr, 0));
+        } else {
+          glyphs_to_draw.push_back(std::stoi(db.at(initial_utf8).at(orientation).defaultGlyph, nullptr, 0));
+        }
+        const auto median_alt_lookup_key = fmt::format("{},<G>,{}", initial_utf8, final_utf8);
+        const auto& median_alts = db.at(median_utf8).at(orientation).alternatives;
+        if (median_alts.contains(median_alt_lookup_key)) {
+          glyphs_to_draw.push_back(std::stoi(median_alts.at(median_alt_lookup_key), nullptr, 0));
+        } else {
+          glyphs_to_draw.push_back(std::stoi(db.at(median_utf8).at(orientation).defaultGlyph, nullptr, 0));
+        }
+        const auto final_alt_lookup_key = fmt::format("{},{},<G>", initial_utf8, median_utf8);
+        const auto& final_alts = db.at(final_utf8).at(orientation).alternatives;
+        if (final_alts.contains(final_alt_lookup_key)) {
+          glyphs_to_draw.push_back(std::stoi(final_alts.at(final_alt_lookup_key), nullptr, 0));
+        } else {
+          glyphs_to_draw.push_back(std::stoi(db.at(final_utf8).at(orientation).defaultGlyph, nullptr, 0));
+        }
+      }
+
+      // Get rid of any duplicates in the glyphs
+      std::vector<int> final_glyphs_to_draw = {};
+      for (const auto& glyph : glyphs_to_draw) {
+        if (std::find(final_glyphs_to_draw.begin(), final_glyphs_to_draw.end(), glyph) ==
+            final_glyphs_to_draw.end()) {
+          final_glyphs_to_draw.push_back(glyph);
+        }
+      }
+
+      output += 4;
+      output += final_glyphs_to_draw.size();
+      for (const auto& glyph: final_glyphs_to_draw) {
+        output += glyph;
       }
     } else {
-      // For other characters, re-encode as-is
-      output += codepoint_to_utf8(cp);
+      if (!writing_non_syllable_content) {
+        output += 3;
+      }
+      writing_non_syllable_content = true;
+      // TODO - check if it's a valid char
+      output += ((char)(cp));
     }
   }
   return output;

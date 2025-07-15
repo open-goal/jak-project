@@ -2,6 +2,7 @@
 
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
+#include "common/util/font/font_utils_korean.h"
 
 int64_t get_int(const goos::Object& obj) {
   if (obj.is_int()) {
@@ -44,7 +45,7 @@ std::string get_string(const goos::Object& x) {
 void parse_text_goal(const goos::Object& data,
                      GameTextDB& db,
                      const GameTextDefinitionFile& /*file_info*/) {
-  const GameTextFontBank* font = nullptr;
+  GameTextFontBank* font = nullptr;
   std::vector<std::shared_ptr<GameTextBank>> banks;
   std::string possible_group_name;
 
@@ -122,11 +123,11 @@ void parse_text_goal(const goos::Object& data,
                 if (b_i >= int(banks.size())) {
                   throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
                 }
-                // TODO - hack, cleanup before merging
                 b_i++;
-                if (b_i == 6) {
-                  // dont change korean!
-                  banks[b_i]->set_line(id, entry.as_string()->data);
+                if (font_util::is_language_id_korean(b_i)) {
+                  // korean changes differently!
+                  auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
+                  banks[b_i]->set_line(id, line);
                 } else {
                   auto line = font->convert_utf8_to_game(entry.as_string()->data);
                   banks[b_i]->set_line(id, line);
@@ -171,10 +172,10 @@ void parse_text_goal(const goos::Object& data,
               throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
             }
 
-            // TODO - hack, cleanup before merging
-            if (i == 6) {
-              // dont change korean!
-              banks[i]->set_line(id, entry.as_string()->data);
+            if (font_util::is_language_id_korean(i)) {
+              // handle korean differently!
+              auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
+              banks[i]->set_line(id, line);
             } else {
               auto line = font->convert_utf8_to_game(entry.as_string()->data);
               banks[i]->set_line(id, line);
