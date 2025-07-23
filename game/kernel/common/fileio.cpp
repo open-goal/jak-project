@@ -327,16 +327,23 @@ Ptr<u8> FileLoad(char* name, Ptr<kheapinfo> heap, Ptr<u8> memory, u32 malloc_fla
 s32 FileSave(char* name, u8* data, s32 size) {
   s32 fd = sceOpen(name, SCE_WRONLY | SCE_TRUNC | SCE_CREAT);
   if (fd < 0) {
-    MsgErr("dkernel: file write !open '%s'\n", name);
+    MsgErr("dkernel: file write !open: '%s'\n", name);
     sceClose(fd);
     return 0xfffffffa;
   }
 
-  if (size != 0) {
+  int writeOffset = 0;
+  while (size != 0) {
     // in jak 3, this became a loop over smaller writes for some reason.
-    s32 written = sceWrite(fd, data, size);
-    if (written != size) {
-      MsgErr("dkernel: can't write full file '%s'\n", name);
+    s32 chunkSize = 0x1000000;
+    if (size < 0x1000000) {
+      chunkSize = size; // one or final write
+    }
+    s32 written = sceWrite(fd, data + writeOffset, chunkSize);
+    writeOffset += written;
+    size -= written;
+    if (written != chunkSize) {
+      MsgErr("dkernel: can't write full file: '%s'\n", name);
       sceClose(fd);
       return 0xfffffffa;
     }

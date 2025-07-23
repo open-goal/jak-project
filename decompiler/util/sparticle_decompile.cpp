@@ -159,6 +159,82 @@ enum class FieldId2 {
   SPT_END = 72,
 };
 
+// jakx version
+enum class FieldIdX {
+  MISC_FIELDS_START = 0,
+  SPT_TEXTURE = 1,
+  SPT_ANIM = 2,
+  SPT_ANIM_SPEED = 3,
+  SPT_BIRTH_FUNC = 4,
+  SPT_JOINT_REFPOINT = 5,
+  SPT_NUM = 6,
+  MISC_FIELDS_END = 7,
+  SPRITE_FIELDS_START = 8,
+  SPT_X = 9,
+  SPT_Y = 10,
+  SPT_Z = 11,
+  SPT_SCALE_X = 12,
+  SPT_ROT_X = 13,
+  SPT_ROT_Y = 14,
+  SPT_ROT_Z = 15,
+  SPT_SCALE_Y = 16,
+  SPT_R = 17,
+  SPT_G = 18,
+  SPT_B = 19,
+  SPT_A = 20,
+  SPRITE_FIELDS_END = 21,
+  CPU_FIELDS_START = 22,
+  SPT_OMEGA = 23,
+  SPT_VEL_X = 24,
+  SPT_VEL_Y = 25,
+  SPT_VEL_Z = 26,
+  SPT_SCALEVEL_X = 27,
+  SPT_ROTVEL_X = 28,
+  SPT_ROTVEL_Y = 29,
+  SPT_ROTVEL_Z = 30,
+  SPT_SCALEVEL_Y = 31,
+  SPT_FADE_R = 32,
+  SPT_FADE_G = 33,
+  SPT_FADE_B = 34,
+  SPT_FADE_A = 35,
+  SPT_ACCEL_X = 36,
+  SPT_ACCEL_Y = 37,
+  SPT_ACCEL_Z = 38,
+  SPT_DUMMY = 39,
+  SPT_QUAT_X = 40,
+  SPT_QUAT_Y = 41,
+  SPT_QUAT_Z = 42,
+  SPT_QUAD_W = 43,
+  SPT_FRICTION = 44,
+  SPT_TIMER = 45,
+  SPT_FLAGS = 46,
+  SPT_USERDATA = 47,
+  SPT_FUNC = 48,
+  SPT_NEXT_TIME = 49,
+  SPT_NEXT_LAUNCHER = 50,
+  CPU_FIELDS_END = 51,
+  LAUNCH_FIELDS_START = 52,
+  SPT_LAUNCHROT_X = 53,
+  SPT_LAUNCHROT_Y = 54,
+  SPT_LAUNCHROT_Z = 55,
+  SPT_LAUNCHROT_W = 56,
+  SPT_CONEROT_X = 57,
+  SPT_CONEROT_Y = 58,
+  SPT_CONEROT_Z = 59,
+  SPT_CONEROT_W = 60,
+  SPT_ROTATE_X = 61,
+  SPT_ROTATE_Y = 62,
+  SPT_ROTATE_Z = 63,
+  SPT_CONEROT_RADIUS = 64,
+  SPT_MAT_SCALE_X = 65,
+  SPT_MAT_SCALE_Y = 66,
+  SPT_MAT_SCALE_Z = 67,
+  LAUNCH_FIELDS_END = 68,
+  SPT_SCALE = 69,
+  SPT_SCALEVEL = 70,
+  SPT_END = 71,
+};
+
 // NOTE : "per second" here means it's in 1/60th instead of the usual 1/300ths
 constexpr bool allow_per_sec = false;
 
@@ -335,10 +411,86 @@ const SparticleFieldDecomp field_kind_jak2[73] = {
     {true, FieldKind::END_FLAG}          // SPT_END = 72
 };
 
+const SparticleFieldDecomp field_kind_jakx[72] = {
+    {false},                             // MISC_FIELDS_START = 0
+    {true, FieldKind::TEXTURE_ID},       // SPT_TEXTURE = 1
+    {false},                             // SPT_ANIM = 2
+    {false},                             // SPT_ANIM_SPEED = 3
+    {true, FieldKind::FUNCTION},         // SPT_BIRTH_FUNC = 4
+    {false},                             // SPT_JOINT/REFPOINT = 5
+    {true, FieldKind::FLOAT},            // SPT_NUM = 6
+    {false},                             // MISC_FIELDS_END = 7
+    {false},                             // SPRITE_FIELDS_START = 8
+    {true, FieldKind::METERS},           // SPT_X = 9
+    {true, FieldKind::METERS},           // SPT_Y = 10
+    {true, FieldKind::METERS},           // SPT_Z = 11
+    {true, FieldKind::METERS},           // SPT_SCALE_X = 12
+    {true, FieldKind::ROT_X},            // SPT_ROT_X = 13
+    {true, FieldKind::DEGREES},          // SPT_ROT_Y = 14
+    {true, FieldKind::DEGREES},          // SPT_ROT_Z = 15
+    {true, FieldKind::METERS},           // SPT_SCALE_Y = 16
+    {true, FieldKind::FLOAT},            // SPT_R = 17
+    {true, FieldKind::FLOAT},            // SPT_G = 18
+    {true, FieldKind::FLOAT},            // SPT_B = 19
+    {true, FieldKind::FLOAT},            // SPT_A = 20
+    {false},                             // SPRITE_FIELDS_END = 21
+    {false},                             // CPU_FIELDS_START = 22
+    {true, FieldKind::DEGREES},          // SPT_OMEGA = 23
+    {true, FieldKind::METERS_PER_SEC},   // SPT_VEL_X = 24  (likely m/s)
+    {true, FieldKind::METERS_PER_SEC},   // SPT_VEL_Y = 25
+    {true, FieldKind::METERS_PER_SEC},   // SPT_VEL_Z = 26
+    {true, FieldKind::METERS_PER_SEC},   // SPT_SCALEVEL_X = 27
+    {true, FieldKind::DEGREES_PER_SEC},  // SPT_ROTVEL_X = 28
+    {true, FieldKind::DEGREES_PER_SEC},  // SPT_ROTVEL_Y = 29
+    {true, FieldKind::DEGREES_PER_SEC},  // SPT_ROTVEL_Z = 30
+    {true, FieldKind::METERS_PER_SEC},   // SPT_SCALEVEL_Y = 31
+    {true, FieldKind::FLOAT_PER_SEC},    // SPT_FADE_R = 32
+    {true, FieldKind::FLOAT_PER_SEC},    // SPT_FADE_G = 33
+    {true, FieldKind::FLOAT_PER_SEC},    // SPT_FADE_B = 34
+    {true, FieldKind::FLOAT_PER_SEC},    // SPT_FADE_A = 35
+    {true, FieldKind::METERS_PER_SEC},   // SPT_ACCEL_X = 36
+    {true, FieldKind::METERS_PER_SEC},   // SPT_ACCEL_Y = 37
+    {true, FieldKind::METERS_PER_SEC},   // SPT_ACCEL_Z = 38
+    {false},                             // SPT_DUMMY = 39
+    {false},                             // SPT_QUAT_X = 40
+    {false},                             // SPT_QUAT_Y = 41
+    {false},                             // SPT_QUAT_Z = 42
+    {false},                             // SPT_QUAD_W = 43
+    {true, FieldKind::FLOAT},            // SPT_FRICTION = 44
+    {true, FieldKind::SECONDS},          // SPT_TIMER = 45
+    {true, FieldKind::CPUINFO_FLAGS},    // SPT_FLAGS = 46
+    {true, FieldKind::USERDATA},         // SPT_USERDATA = 47
+    {true, FieldKind::FUNCTION},         // SPT_FUNC = 48
+    {true, FieldKind::SECONDS},          // SPT_NEXT_TIME = 49
+    {true, FieldKind::LAUNCHER_BY_ID},   // SPT_NEXT_LAUNCHER = 50
+    {false},                             // CPU_FIELDS_END = 51
+    {false},                             // LAUNCH_FIELDS_START = 52
+    {true, FieldKind::DEGREES},          // SPT_LAUNCHROT_X = 53
+    {true, FieldKind::DEGREES},          // SPT_LAUNCHROT_Y = 54
+    {true, FieldKind::DEGREES},          // SPT_LAUNCHROT_Z = 55
+    {true, FieldKind::DEGREES},          // SPT_LAUNCHROT_W = 56
+    {true, FieldKind::DEGREES},          // SPT_CONEROT_X = 57
+    {true, FieldKind::DEGREES},          // SPT_CONEROT_Y = 58
+    {true, FieldKind::DEGREES},          // SPT_CONEROT_Z = 59
+    {false},                             // SPT_CONEROT_W = 60
+    {true, FieldKind::DEGREES},          // SPT_ROTATE_X = 61
+    {true, FieldKind::DEGREES},          // SPT_ROTATE_Y = 62
+    {true, FieldKind::DEGREES},          // SPT_ROTATE_Z = 63
+    {true, FieldKind::METERS},           // SPT_CONEROT_RADIUS = 64
+    {true, FieldKind::METERS},           // SPT_MAT_SCALE_X = 65
+    {true, FieldKind::METERS},           // SPT_MAT_SCALE_X = 66
+    {true, FieldKind::METERS},           // SPT_MAT_SCALE_X = 67
+    {false},                             // LAUNCH_FIELDS_END = 68
+    {false},                             // SPT_SCALE = 69
+    {false},                             // SPT_SCALEVEL = 70
+    {true, FieldKind::END_FLAG}          // SPT_END = 71
+};
+
 const std::unordered_map<GameVersion, const SparticleFieldDecomp*> field_kinds = {
     {GameVersion::Jak1, field_kind_jak1},
     {GameVersion::Jak2, field_kind_jak2},
-    {GameVersion::Jak3, field_kind_jak2}};
+    {GameVersion::Jak3, field_kind_jak2},
+    {GameVersion::JakX, field_kind_jakx}};
 
 float word_as_float(const LinkedWord& w) {
   ASSERT(w.kind() == LinkedWord::PLAIN_DATA);

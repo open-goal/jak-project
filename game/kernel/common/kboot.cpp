@@ -22,8 +22,14 @@ char DebugBootLevel[64];
 // Pass to GOAL kernel on boot
 char DebugBootMessage[64];
 
+// Added in Jak X, set to true in InitIOP
+bool POWERING_OFF_W;
+
 // game configuration
 MasterConfig masterConfig;
+
+// Added in Jak X
+bool USE_OVERLORD2_W;
 
 void kboot_init_globals_common() {
   MasterExit = RuntimeExitStatus::RUNNING;
