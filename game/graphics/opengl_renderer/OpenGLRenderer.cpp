@@ -1629,7 +1629,8 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
 
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_BLEND);
-  glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
+  glViewport(render_state->draw_offset_x, render_state->draw_offset_y, render_state->draw_region_w,
+             render_state->draw_region_h);
   glBindTexture(GL_TEXTURE_2D, *window_blit_src->tex_id);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
