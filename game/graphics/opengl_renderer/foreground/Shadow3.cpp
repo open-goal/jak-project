@@ -389,7 +389,8 @@ void Shadow3::render_jak1(DmaFollower& dma,
           continue;
         }
 
-        if (game_request.num_joints * 4 + m_next_free_bone_vector >= MAX_SHADER_BONE_VECTORS) {
+        if (game_request.num_joints * 4 + m_next_free_bone_vector + m_opengl.buffer_alignment >=
+            MAX_SHADER_BONE_VECTORS) {
           flush_requests(render_state, prof);
         }
 
@@ -429,6 +430,9 @@ void Shadow3::render_jak1(DmaFollower& dma,
         constexpr int in_stride = 8 * 4 * sizeof(float);
         constexpr int out_stride = 4 * 4 * sizeof(float);
         constexpr int in_offset = 3 * in_stride;
+        m_next_free_bone_vector += m_opengl.buffer_alignment - 1;
+        m_next_free_bone_vector /= m_opengl.buffer_alignment;
+        m_next_free_bone_vector *= m_opengl.buffer_alignment;
         request.bone_idx = m_next_free_bone_vector;
         for (int i = 0; i < game_request.num_joints; i++) {
           memcpy(&m_shader_bone_vector_buffer[m_next_free_bone_vector].x(),
