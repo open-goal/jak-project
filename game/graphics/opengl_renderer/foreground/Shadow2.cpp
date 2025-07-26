@@ -76,7 +76,6 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
     return;
   }
 
-
   m_using_shadow3 = dma.current_tag_vifcode0().kind == VifCode::Kind::PC_PORT;
   if (m_using_shadow3) {
     m_shadow3->render_jak1(dma, render_state, prof);
@@ -91,7 +90,6 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
   }
 
   reset_buffers();
-
 
   // shadow-vu1-constants
   ASSERT(maybe_constants.size_bytes >= sizeof(ShadowVu1Constants));

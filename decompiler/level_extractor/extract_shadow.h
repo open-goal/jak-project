@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/custom_data/Tfrag3Data.h"
+
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
 namespace decompiler {

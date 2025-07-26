@@ -19,12 +19,12 @@ class MercLoaderStage : public LoaderStage {
 };
 
 class ShadowLoaderStage : public LoaderStage {
-public:
+ public:
   ShadowLoaderStage();
   bool run(Timer& timer, LoaderInput& data) override;
   void reset() override;
 
-private:
+ private:
   bool m_done = false;
   bool m_opengl = false;
   u32 m_idx = 0;
