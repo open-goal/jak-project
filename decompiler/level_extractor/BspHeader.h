@@ -189,6 +189,31 @@ struct DrawableActor : public Drawable {
   std::string my_type() const override { return "drawable-actor"; }
 };
 
+struct EntityAmbient {
+  Vector trans;
+  u32 aid = 0;
+
+  u128 ambientData;
+
+  std::vector<Res> res_list;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      GameVersion version);
+};
+
+struct DrawableAmbient : public Drawable {
+  Vector bsphere;
+
+  EntityAmbient ambient;
+
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      GameVersion version) override;
+  std::string print(const PrintSettings& settings, int indent) const override;
+  std::string my_type() const override { return "drawable-ambient"; }
+};
+
 struct DrawableTreeActor : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -765,6 +790,13 @@ struct DrawableInlineArrayActor {
                       GameVersion version);
 };
 
+struct DrawableInlineArrayAmbient {
+  std::vector<DrawableAmbient> drawable_ambients;
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      GameVersion version);
+};
+
 struct CollideHash {
   Ref item_array;
   int num_items = 0;
@@ -912,6 +944,7 @@ struct BspHeader {
   //  (boxes box8s-array :offset-assert 148)
   //  (current-bsp-back-flags uint32 :offset-assert 152)
   //  (ambients drawable-inline-array-ambient :offset-assert 156)
+  DrawableInlineArrayAmbient ambients;
   //  (unk-data-4 float :offset-assert 160)
   //  (unk-data-5 float :offset-assert 164)
   //  (adgifs adgif-shader-array :offset-assert 168)
