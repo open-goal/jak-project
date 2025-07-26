@@ -21,6 +21,7 @@ class Loader {
   void update_blocking(TexturePool& tex_pool);
   const LevelData* get_tfrag3_level(const std::string& level_name);
   std::optional<MercRef> get_merc_model(const char* model_name);
+  std::optional<ShadowRef> get_shadow_model(const char* model_name);
   const tfrag3::Level& load_common(TexturePool& tex_pool, const std::string& name);
   void set_want_levels(const std::vector<std::string>& levels);
   void set_active_levels(const std::vector<std::string>& levels);
@@ -52,6 +53,7 @@ class Loader {
   std::unordered_map<std::string, std::unique_ptr<LevelData>> m_loaded_tfrag3_levels;
 
   std::unordered_map<std::string, std::vector<MercRef>> m_all_merc_models;
+  std::unordered_map<std::string, std::vector<ShadowRef>> m_all_shadow_models;
 
   std::vector<std::string> m_desired_levels;
   std::vector<std::string> m_active_levels;

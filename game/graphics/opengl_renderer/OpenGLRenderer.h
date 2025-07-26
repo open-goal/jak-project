@@ -13,6 +13,7 @@
 #include "game/graphics/opengl_renderer/TextureAnimator.h"
 #include "game/graphics/opengl_renderer/foreground/Generic2.h"
 #include "game/graphics/opengl_renderer/foreground/Merc2.h"
+#include "game/graphics/opengl_renderer/foreground/Shadow3.h"
 #include "game/graphics/opengl_renderer/opengl_utils.h"
 #include "game/tools/filter_menu/filter_menu.h"
 #include "game/tools/subtitle_editor/subtitle_editor.h"
@@ -112,6 +113,7 @@ class OpenGLRenderer {
 
   std::shared_ptr<Merc2> m_merc2;
   std::shared_ptr<Generic2> m_generic2;
+  std::shared_ptr<Shadow3> m_shadow3;
   std::shared_ptr<TextureAnimator> m_texture_animator;
   std::vector<std::unique_ptr<BucketRenderer>> m_bucket_renderers;
   std::vector<BucketCategory> m_bucket_categories;
