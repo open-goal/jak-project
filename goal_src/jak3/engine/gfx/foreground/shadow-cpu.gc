@@ -662,19 +662,19 @@
 ;; og:preserve-this
 (defun pc-shadow-execute-all ()
   "Send PC shadow queue to the PC shadow renderer."
-  
+
   ;; bail if disabled
   (if (not (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask rn32)))
       (return #f)
       )
-  
+
   (dotimes (i 3)
     (when (nonzero? (-> *pc-shadow-globals* bucket i first))
       ;; patch the color of each request.
       (let ((iter (the pc-shadow-request (-> *pc-shadow-globals* bucket i first)))
             (color (new-stack-vector0))
             )
-        
+
         (cond
           ((= i 0)
            (vector-float*! color (-> *time-of-day-context* current-shadow-color) 128.0)
@@ -687,16 +687,16 @@
               )
             )
           )
-        
+
         (set! (-> color w) (the float (-> *pc-shadow-globals* bucket i shadow-color a)))
-        
+
         (while (nonzero? iter)
           ;(vector-copy! (-> iter color) color)
           (set! (-> iter color quad) (-> color quad))
           (set! iter (-> iter next))
           )
         )
-      
+
       (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf))  (-> *pc-shadow-globals* bucket i bucket-id))
         (dma-buffer-add-ref-vif2
           dma-buf
