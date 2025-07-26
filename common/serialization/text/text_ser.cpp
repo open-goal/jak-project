@@ -124,7 +124,7 @@ void parse_text_goal(const goos::Object& data,
                   throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
                 }
                 b_i++;
-                if (font_util::is_language_id_korean(b_i)) {
+                if (font->is_language_id_korean(b_i)) {
                   // korean changes differently!
                   auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
                   banks[b_i]->set_line(id, line);
@@ -172,7 +172,7 @@ void parse_text_goal(const goos::Object& data,
               throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
             }
 
-            if (font_util::is_language_id_korean(i)) {
+            if (font->is_language_id_korean(i)) {
               // handle korean differently!
               auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
               banks[i]->set_line(id, line);

@@ -35,18 +35,7 @@
 
 #include "common/util/Assert.h"
 
-#include "game/runtime.h"
-
 #include "fmt/format.h"
-
-bool font_util::is_language_id_korean(const int language_id) {
-  if (g_game_version == GameVersion::Jak2 && language_id == 6) {
-    return true;
-  } else if (g_game_version == GameVersion::Jak3 && language_id == 7) {
-    return true;
-  }
-  return false;
-}
 
 //
 // Reference: http://www.unicode.org/versions/Unicode8.0.0/ch03.pdf#G24646

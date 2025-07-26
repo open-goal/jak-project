@@ -73,6 +73,7 @@ class GameTextFontBank {
   // TODO - methods would help make this code a lot better for different game versions
   // hacking it for now
   bool valid_char_range(const char in) const;
+  bool is_language_id_korean(const int language_id) const;
 
   std::string convert_utf8_to_game(std::string str, bool escape = false) const;
   std::string convert_game_to_utf8(const char* in) const;

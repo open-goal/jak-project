@@ -287,6 +287,15 @@ bool GameTextFontBank::valid_char_range(const char in) const {
   return false;
 }
 
+bool GameTextFontBank::is_language_id_korean(const int language_id) const {
+  if (m_version == GameTextVersion::JAK2 && language_id == 6) {
+    return true;
+  } else if (m_version == GameTextVersion::JAK3 && language_id == 7) {
+    return true;
+  }
+  return false;
+}
+
 /*!
  * Convert a string from the game-text font encoding to something normal.
  * Unprintable characters become escape sequences, including tab and newline.
@@ -340,6 +349,9 @@ std::string GameTextFontBank::convert_utf8_to_game_korean(std::string str) {
       json_data.get_to(m_korean_db.value());
     }
   }
+  // TODO - this replacement has to be slightly different so that it has each preceeded by a 0x03
+  // byte
+  replace_to_game(str);
   return font_util::encode_korean_containing_text_to_game(str, m_korean_db.value());
 }
 
@@ -363,6 +375,7 @@ std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const 
   u64 index = 0;
   u8 curr_byte = 0;
   bool in_syllable_block = false;
+  std::string temp_substring = "";
   int num_syllable_glyphs = 0;
   while (index < str.length()) {
     curr_byte = str.at(index);
@@ -374,6 +387,25 @@ std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const 
         index++;
       }
       index++;
+      // flush any non-korean characters
+      if (!temp_substring.empty()) {
+        // handle remap
+        std::string remapped_str;
+        auto temp_substring_ptr = temp_substring.c_str();
+        while (*temp_substring_ptr) {
+          auto remap = find_encode_to_utf8(temp_substring_ptr);
+          if (remap != nullptr) {
+            remapped_str.append(remap->chars);
+            temp_substring_ptr += remap->bytes.size() - 1;
+          } else {
+            remapped_str.push_back(*temp_substring_ptr);
+          }
+          temp_substring_ptr++;
+        }
+        replace_to_utf8(remapped_str);
+        result += remapped_str;
+        temp_substring = "";
+      }
       continue;
     }
     if (in_syllable_block) {
@@ -387,28 +419,45 @@ std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const 
       } else {
         glyph_key = fmt::format("0x{:02x}", hex_byte);
       }
-      num_syllable_glyphs--;
-      if (num_syllable_glyphs == 0) {
-        in_syllable_block = false;
-      }
       const auto jamo_list = jamo_glyph_mappings_jak2.find(glyph_key);
       ASSERT_MSG(jamo_list != jamo_glyph_mappings_jak2.end(),
                  fmt::format("{} not found in jamo glyph lookup table", glyph_key));
       for (const auto& jamo : jamo_list->second) {
-        result += jamo;
+        temp_substring += jamo;
       }
-    } else if (valid_char_range(curr_byte)) {
-      result.push_back(curr_byte);
+      num_syllable_glyphs--;
+      if (num_syllable_glyphs == 0) {
+        in_syllable_block = false;
+        result += font_util::compose_korean_containing_text(temp_substring);
+        temp_substring = "";
+      }
     } else {
-      // just consume the `3` bytes outside of syllable blocks, they are just signifiers (as far as
-      // i can tell)
-      if (curr_byte != 3) {
-        result += fmt::format("\\c{:02x}", curr_byte);
+      if (curr_byte != 0x3) {
+        temp_substring.push_back(curr_byte);
       }
     }
     index++;
   }
-  return font_util::compose_korean_containing_text(result);
+  // flush any non-korean characters
+  if (!temp_substring.empty()) {
+    // handle remap
+    std::string remapped_str;
+    auto temp_substring_ptr = temp_substring.c_str();
+    while (*temp_substring_ptr) {
+      auto remap = find_encode_to_utf8(temp_substring_ptr);
+      if (remap != nullptr) {
+        remapped_str.append(remap->chars);
+        temp_substring_ptr += remap->bytes.size() - 1;
+      } else {
+        remapped_str.push_back(*temp_substring_ptr);
+      }
+      temp_substring_ptr++;
+    }
+    replace_to_utf8(remapped_str);
+    result += remapped_str;
+    temp_substring = "";
+  }
+  return result;
 }
 
 GameTextFontBank* get_font_bank(GameTextVersion version) {

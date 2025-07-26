@@ -294,6 +294,10 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
      "+26H",
      "<FLAG_ICELAND>"},
 
+    // korean jamo -- only relevant for the language selection since
+    // non-korean languages don't run through the `convert-korean-text` function and hence the encoding is "normal"
+    {"~Y~Z\\c03.~Z\\c03\\c1a~Z\\c03\\cc8~Y~Z\\c03œ~Z\\c03k~Z\\c03\\cde~Y~Z\\c03\\c0f~Z\\c03ç", "<LANGUAGE_KOREAN>"},
+
     // weird stuff
     // - descenders
     {"~+7Vp~-7V", "p"},
@@ -370,8 +374,6 @@ std::vector<EncodeInfo> encode_info_jak2 = {
 
     {"œ", {0x5e}},  // ligature o+e
 
-    // TODO - there is a bug if original text has one of these hex values, it will get replaced with
-    // these ie. korean or japanese
     {"<FLAG_PART_HORZ_STRIPE_MIDDLE>", {0x7f}},
     {"<FLAG_PART_HORZ_STRIPE_BOTTOM>", {0x80}},
     {"<FLAG_PART_VERT_STRIPE_LARGE>", {0x81}},

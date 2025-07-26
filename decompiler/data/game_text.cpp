@@ -114,10 +114,13 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     }
 
     // escape characters
-    if (font_util::is_language_id_korean(language)) {
+    if (get_font_bank(version)->is_language_id_korean(language)) {
       // If we are doing korean, we process it differently
       result.text[text_id] = get_font_bank(version)->convert_korean_game_to_utf8(text.c_str());
     } else if (font_bank_exists(version)) {
+      if (text_id == 0x116) {
+        int x = 0;
+      }
       result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
     } else {
       result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!
