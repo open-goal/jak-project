@@ -44,9 +44,11 @@ void from_json(const json& j, KoreanLookupEntry& obj);
 
 typedef std::vector<KoreanLookupEntry> KoreanLookupOrientations;
 
-namespace font_util {
+namespace font_util_korean {
+bool is_korean_syllable(char32_t syllable);
 std::string compose_korean_containing_text(const std::string& text);
-std::string encode_korean_containing_text_to_game(
-    const std::string& text,
+std::string game_encode_korean_syllable(
+    const std::string& context,
+    const char32_t cp,
     const std::unordered_map<std::string, KoreanLookupOrientations> db);
 };  // namespace font_util

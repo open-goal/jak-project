@@ -254,4 +254,28 @@ std::string pad_right(const std::string& input, const int width, const char padd
     return input + std::string(padding_width, padding_char);
   }
 }
+
+char32_t next_utf8_char(const std::string& s, size_t& i) {
+  char32_t cp = 0;
+  unsigned char c = s[i];
+  if (c < 0x80) {  // 1-byte ASCII
+    cp = c;
+    ++i;
+  } else if ((c >> 5) == 0x6) {  // 2-byte
+    cp = ((c & 0x1F) << 6) | (s[i + 1] & 0x3F);
+    i += 2;
+  } else if ((c >> 4) == 0xE) {  // 3-byte
+    cp = ((c & 0x0F) << 12) | ((s[i + 1] & 0x3F) << 6) | (s[i + 2] & 0x3F);
+    i += 3;
+  } else if ((c >> 3) == 0x1E) {  // 4-byte
+    cp = ((c & 0x07) << 18) | ((s[i + 1] & 0x3F) << 12) | ((s[i + 2] & 0x3F) << 6) |
+         (s[i + 3] & 0x3F);
+    i += 4;
+  } else {
+    // invalid
+    ++i;
+  }
+  return cp;
+}
 }  // namespace str_util
+

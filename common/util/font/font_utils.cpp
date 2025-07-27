@@ -340,19 +340,49 @@ std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
 std::string GameTextFontBank::convert_utf8_to_game_korean(std::string str) {
   ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
              "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
-  if (!m_korean_db.has_value() && m_version == GameTextVersion::JAK2) {
+  if (!m_korean_db.has_value()) {
     const auto db_file_path =
         file_util::get_file_path({"game/assets/fonts/jak2_jak3_korean_db.json"});
     if (file_util::file_exists(db_file_path)) {
       auto raw_data = file_util::read_text_file(db_file_path);
       auto json_data = parse_commented_json(raw_data, "jak2_jak3_korean_db.json");
-      json_data.get_to(m_korean_db.value());
+      std::unordered_map<std::string, KoreanLookupOrientations> temp_db;
+      json_data.get_to(temp_db);
+      m_korean_db = temp_db;
     }
   }
-  // TODO - this replacement has to be slightly different so that it has each preceeded by a 0x03
-  // byte
-  replace_to_game(str);
-  return font_util::encode_korean_containing_text_to_game(str, m_korean_db.value());
+
+  std::string output;
+  std::string non_korean_buffer = "";
+  size_t i = 0;
+  while (i < str.size()) {
+    char32_t cp = str_util::next_utf8_char(str, i);
+    if (font_util_korean::is_korean_syllable(cp)) {
+      // flush any non-korean buffer
+      if (!non_korean_buffer.empty()) {
+        output += 0x3;
+        // encode / remap it
+        replace_to_game(non_korean_buffer);
+        encode_utf8_to_game(non_korean_buffer);
+        output += non_korean_buffer;
+        non_korean_buffer = "";
+      }
+      // write out the korean character
+      output += font_util_korean::game_encode_korean_syllable(str, cp, m_korean_db.value());
+    } else {
+      non_korean_buffer += ((char)(cp));
+    }
+  }
+  // flush any non-korean buffer
+  if (!non_korean_buffer.empty()) {
+    output += 0x3;
+    // encode / remap it
+    replace_to_game(non_korean_buffer);
+    encode_utf8_to_game(non_korean_buffer);
+    output += non_korean_buffer;
+    non_korean_buffer = "";
+  }
+  return output;
 }
 
 std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const {
@@ -428,7 +458,7 @@ std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const 
       num_syllable_glyphs--;
       if (num_syllable_glyphs == 0) {
         in_syllable_block = false;
-        result += font_util::compose_korean_containing_text(temp_substring);
+        result += font_util_korean::compose_korean_containing_text(temp_substring);
         temp_substring = "";
       }
     } else {

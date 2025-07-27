@@ -1147,7 +1147,7 @@ manual_encoding_additions = {
     "ᆬ": [None, None, None, [], ["0xc9"], ["0xc9"]],
     "ᆭ": [None, None, None, [], ["0xe2"], ["0xe2"]],
     "ᆮ": [None, None, None, [], [], ["0xe3"]],
-    "ᆯ": [None, None, None, [], [], ["!extra_0x86:*,*,<G>"]],
+    "ᆯ": [None, None, None, [], [], ["extra_0x86:*,*,<G>"]],
     "ᆰ": [None, None, None, [], [], ["0xe5"]],
     "ᆱ": [None, None, None, [], [], ["0xf8"]],
     "ᆲ": [None, None, None, [], ["0xcf"], ["0xcf"]],

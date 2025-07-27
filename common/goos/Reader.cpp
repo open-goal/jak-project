@@ -158,37 +158,50 @@ Reader::Reader() {
   }
 
   // table of characters that are valid in source code:
-  for (auto& x : m_valid_source_text_chars) {
-    x = false;
-  }
-  for (int i = ' '; i <= '~'; i++) {
-    m_valid_source_text_chars[i] = true;
-  }
-  m_valid_source_text_chars[(int)'\n'] = true;
-  m_valid_source_text_chars[(int)'\t'] = true;
-  m_valid_source_text_chars[(int)'\r'] = true;
+  // Disabled: see `Reader::is_valid_source_char`
+  // for (auto& x : m_valid_source_text_chars) {
+  //  x = false;
+  //}
+  // for (int i = ' '; i <= '~'; i++) {
+  //  m_valid_source_text_chars[i] = true;
+  //}
+  // m_valid_source_text_chars[(int)'\n'] = true;
+  // m_valid_source_text_chars[(int)'\t'] = true;
+  // m_valid_source_text_chars[(int)'\r'] = true;
 
-  // allow every character that gets transformed to something else
-  for (auto& [version, font] : g_font_banks) {
-    for (auto& remap : *font->encode_info()) {
-      for (auto rc : remap.chars) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-    }
-    for (auto& remap : *font->replace_info()) {
-      for (auto rc : remap.to) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-      for (auto rc : remap.from) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-    }
-  }
-  m_valid_source_text_chars[0] = false;
+  //// allow every character that gets transformed to something else
+  //// TODO - there is technically a bug here, since we allow games that some games support to all
+  //// in other words, if Jak 3 supports cyrillic, we allow it in jak 1 source files.
+  // for (auto& [version, font] : g_font_banks) {
+  //   for (auto& remap : *font->encode_info()) {
+  //     for (auto rc : remap.chars) {
+  //       m_valid_source_text_chars[(u8)rc] = true;
+  //     }
+  //   }
+  //   for (auto& remap : *font->replace_info()) {
+  //     for (auto rc : remap.to) {
+  //       m_valid_source_text_chars[(u8)rc] = true;
+  //     }
+  //     for (auto rc : remap.from) {
+  //       m_valid_source_text_chars[(u8)rc] = true;
+  //     }
+  //   }
+  // }
+  // m_valid_source_text_chars[0] = false;
 }
 
 bool Reader::is_valid_source_char(char c) const {
-  return m_valid_source_text_chars[(u8)c];
+  // Removed all the logic behind checking the source text, here's my rationale for why:
+  // - we were just assuming everything was a ascii char, 0-255
+  // - then we started allowing multi-byte utf-8 (ie. japanese).
+  //   - the way this was done was by just allowing their individual char bytes, but this is
+  //   meaningless -- it could be allowing ASCII characters like 0x0 or 0x1 because the individual
+  //   bytes are meaningless on their own
+  //
+  // So at this point it's questionable if we should even have this kind of validation if we are
+  // going to break it ourselves to make it still work.
+  return true;
+  // return m_valid_source_text_chars[(u8)c];
 }
 
 /*!

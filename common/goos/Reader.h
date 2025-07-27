@@ -101,6 +101,7 @@ class Reader {
   void add_reader_macro(const std::string& shortcut, std::string replacement);
 
   bool m_valid_symbols_chars[256];
+  // NOTE: unused / unset currently
   bool m_valid_source_text_chars[256];
 
   bool is_valid_source_char(char c) const;

@@ -125,6 +125,9 @@ void parse_text_goal(const goos::Object& data,
                 }
                 b_i++;
                 if (font->is_language_id_korean(b_i)) {
+                  if (id == 0x1291) {
+                    int x = 0;
+                  }
                   // korean changes differently!
                   auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
                   banks[b_i]->set_line(id, line);
@@ -244,15 +247,22 @@ void parse_text_json(const nlohmann::json& json,
   } else {
     bank = db.bank_by_id(file_info.group_name.value(), file_info.language_id);
   }
-  const GameTextFontBank* font = get_font_bank(file_info.text_version);
+  GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
   for (const auto& [text_id, text_value] : json.items()) {
     auto line_id = std::stoi(text_id, nullptr, 16);
     if (text_value.is_string()) {
       // single line replacement
-      auto line = font->convert_utf8_to_game(text_value);
-      // TODO - lint duplicate line definitions across text files
-      bank->set_line(line_id, line);
+      if (font->is_language_id_korean(file_info.language_id)) {
+        auto line = font->convert_utf8_to_game_korean(text_value);
+        // TODO - lint duplicate line definitions across text files
+        bank->set_line(line_id, line);
+      } else {
+        auto line = font->convert_utf8_to_game(text_value);
+        // TODO - lint duplicate line definitions across text files
+        bank->set_line(line_id, line);
+      }
+
     } else if (text_value.is_array()) {
       // multi-line replacement starting from line_id
       //  (e.g. for Jak 1 credits, start from x0b00)
@@ -261,8 +271,14 @@ void parse_text_json(const nlohmann::json& json,
           throw std::runtime_error(fmt::format(
               "Non string provided for line {} / text id #x{} of _credits", idx, line_id));
         }
-        auto line = font->convert_utf8_to_game(raw_line);
-        bank->set_line(line_id++, line);  // increment line_id
+
+        if (font->is_language_id_korean(file_info.language_id)) {
+          auto line = font->convert_utf8_to_game_korean(raw_line);
+          bank->set_line(line_id++, line);  // increment line_id
+        } else {
+          auto line = font->convert_utf8_to_game(raw_line);
+          bank->set_line(line_id++, line);  // increment line_id
+        }
       }
     } else {
       // Unexpected value type
