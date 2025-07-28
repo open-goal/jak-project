@@ -495,10 +495,13 @@ void DisplayManager::update_resolutions() {
     // Skip resolutions that aren't using the current refresh rate, they won't work.
     // For example if your monitor is currently set to `60hz` and the monitor _could_ support
     // resolution X but only at `30hz`...then there's no reason for us to consider it as an option.
-    if (std::abs(display_mode->refresh_rate - active_refresh_rate) < 1.0) {
+    const auto comparison = std::abs(display_mode->refresh_rate - active_refresh_rate);
+    if (comparison > 1.0) {
       lg::debug(
-          "[DISPLAY]: Skipping {}x{} as it requires {}hz but the monitor is currently set to {}hz",
-          display_mode->w, display_mode->h, display_mode->refresh_rate, active_refresh_rate);
+          "[DISPLAY]: Skipping {}x{} as it requires {:f}hz but the monitor is currently set to "
+          "{:f}hz. Difference: {:f}",
+          display_mode->w, display_mode->h, display_mode->refresh_rate, active_refresh_rate,
+          comparison);
       // Allow it for windowed mode though
       m_available_window_sizes.push_back(new_res);
       continue;
