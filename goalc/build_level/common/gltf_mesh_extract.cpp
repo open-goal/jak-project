@@ -634,8 +634,8 @@ void extract(const Input& in,
           wall_count++;
         }
       }
+      lg::info("automatic wall: {}/{} converted to walls", wall_count, out.faces.size());
     }
-    lg::info("automatic wall: {}/{} converted to walls", wall_count, out.faces.size());
   }
 
   lg::info("{} out of {} faces appeared to have wrong orientation and were flipped",
