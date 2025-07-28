@@ -439,7 +439,7 @@ PatResult custom_props_to_pat(const tinygltf::Value& val,
                               const std::string& /*debug_name*/,
                               float plugin_version) {
   PatResult result;
-  
+
   if (!val.IsObject() || !val.Has("set_collision") || !val.Get("set_collision").Get<int>()) {
     if (plugin_version >= 0.04f) {
       result.set = true;
