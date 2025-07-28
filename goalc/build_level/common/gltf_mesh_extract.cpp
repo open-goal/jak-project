@@ -504,9 +504,7 @@ void extract(const Input& in,
 
   for (const auto& n : all_nodes) {
     const auto& node = model.nodes[n.node_idx];
-    PatResult mesh_default_collide = custom_props_to_pat(node.extras,
-                                                         node.name,
-                                                         plugin_version);
+    PatResult mesh_default_collide = custom_props_to_pat(node.extras, node.name, plugin_version);
     if (node.mesh >= 0) {
       const auto& mesh = model.meshes[node.mesh];
       mesh_count++;
@@ -620,8 +618,8 @@ void extract(const Input& in,
         }
       }
     }
-    lg::info("automatic angle: {} auto faces converted to {} ground and {} wall",
-        auto_count, ground_count, wall_count);
+    lg::info("automatic angle: {} auto faces converted to {} ground and {} wall", auto_count,
+             ground_count, wall_count);
   }
   if (plugin_version < 0.04f) {
     if (in.auto_wall_enable) {
