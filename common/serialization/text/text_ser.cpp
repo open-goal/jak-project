@@ -125,9 +125,6 @@ void parse_text_goal(const goos::Object& data,
                 }
                 b_i++;
                 if (font->is_language_id_korean(b_i)) {
-                  if (id == 0x1291) {
-                    int x = 0;
-                  }
                   // korean changes differently!
                   auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
                   banks[b_i]->set_line(id, line);
