@@ -156,52 +156,6 @@ Reader::Reader() {
   for (const char* c = bonus; *c; c++) {
     m_valid_symbols_chars[(int)*c] = true;
   }
-
-  // table of characters that are valid in source code:
-  // Disabled: see `Reader::is_valid_source_char`
-  // for (auto& x : m_valid_source_text_chars) {
-  //  x = false;
-  //}
-  // for (int i = ' '; i <= '~'; i++) {
-  //  m_valid_source_text_chars[i] = true;
-  //}
-  // m_valid_source_text_chars[(int)'\n'] = true;
-  // m_valid_source_text_chars[(int)'\t'] = true;
-  // m_valid_source_text_chars[(int)'\r'] = true;
-
-  //// allow every character that gets transformed to something else
-  //// TODO - there is technically a bug here, since we allow games that some games support to all
-  //// in other words, if Jak 3 supports cyrillic, we allow it in jak 1 source files.
-  // for (auto& [version, font] : g_font_banks) {
-  //   for (auto& remap : *font->encode_info()) {
-  //     for (auto rc : remap.chars) {
-  //       m_valid_source_text_chars[(u8)rc] = true;
-  //     }
-  //   }
-  //   for (auto& remap : *font->replace_info()) {
-  //     for (auto rc : remap.to) {
-  //       m_valid_source_text_chars[(u8)rc] = true;
-  //     }
-  //     for (auto rc : remap.from) {
-  //       m_valid_source_text_chars[(u8)rc] = true;
-  //     }
-  //   }
-  // }
-  // m_valid_source_text_chars[0] = false;
-}
-
-bool Reader::is_valid_source_char(char c) const {
-  // Removed all the logic behind checking the source text, here's my rationale for why:
-  // - we were just assuming everything was a ascii char, 0-255
-  // - then we started allowing multi-byte utf-8 (ie. japanese).
-  //   - the way this was done was by just allowing their individual char bytes, but this is
-  //   meaningless -- it could be allowing ASCII characters like 0x0 or 0x1 because the individual
-  //   bytes are meaningless on their own
-  //
-  // So at this point it's questionable if we should even have this kind of validation if we are
-  // going to break it ourselves to make it still work.
-  return true;
-  // return m_valid_source_text_chars[(u8)c];
 }
 
 /*!
@@ -279,17 +233,6 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
         fmt::format("Text file {} has invalid encoding", text->get_description()));
   }
 
-  // validate the input
-  for (int offset = check_encoding ? 3 : 0; offset < text->get_size(); offset++) {
-    if (!is_valid_source_char(text->get_text()[offset])) {
-      // failed.
-      int line_number = text->get_line_idx(offset) + 1;
-      throw std::runtime_error(fmt::format("Invalid character found on line {} of {}: 0x{:x}",
-                                           line_number, text->get_description(),
-                                           (u8)text->get_text()[offset]));
-    }
-  }
-
   // first create stream
   TextStream ts(text);
 
@@ -312,15 +255,6 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
     lg::print("{}", e.what());
     throw;
   }
-}
-
-bool Reader::check_string_is_valid(const std::string& str) const {
-  for (auto c : str) {
-    if (!is_valid_source_char(c)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 /*!
