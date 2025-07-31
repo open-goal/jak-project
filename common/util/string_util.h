@@ -37,4 +37,5 @@ bool hex_char(char c);
 std::string titlize(const std::string& str);
 std::string pad_right(const std::string& input, const int width, const char padding_char);
 char32_t next_utf8_char(const std::string& s, size_t& i);
+std::string utf8_encode(char32_t cp);
 }  // namespace str_util

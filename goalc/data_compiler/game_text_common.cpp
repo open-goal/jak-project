@@ -190,7 +190,12 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
         if (line.metadata.merge) {
           gen.add_symbol_link("#f");
         } else {
-          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+          if (font->is_language_id_korean(lang)) {
+            gen.add_ref_to_string_in_pool(
+                font->convert_utf8_to_game_korean(line.text));  // line text
+          } else {
+            gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+          }
         }
         u16 speaker = bank->speaker_enum_value_from_name(line.metadata.speaker);
         u16 flags = 0;
@@ -206,7 +211,11 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
     for (auto& speaker_localized : localized_speakers) {
       // No need to check for invalid speakers here, they are checked at the scene line level above
       // and throw an error
-      gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
+      if (font->is_language_id_korean(lang)) {
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game_korean(speaker_localized));
+      } else {
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
+      }
     }
 
     auto data = gen.generate_v2();

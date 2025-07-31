@@ -138,9 +138,10 @@ const ReplaceInfo* GameTextFontBank::find_replace_to_utf8(const std::string& in,
  */
 const ReplaceInfo* GameTextFontBank::find_replace_to_game(const std::string& in, int off) const {
   const ReplaceInfo* best_info = nullptr;
-  for (auto& info : *m_replace_info) {
-    if (info.to.empty() || in.size() - off < info.to.size())
+  for (const auto& info : *m_replace_info) {
+    if (info.to.empty() || in.size() - off < info.to.size()) {
       continue;
+    }
 
     bool found = memcmp(in.data() + off, info.to.data(), info.to.size()) == 0;
     if (found && (!best_info || info.to.length() > best_info->to.length())) {
@@ -183,8 +184,15 @@ std::string GameTextFontBank::replace_to_game(std::string& str) const {
       newstr.push_back(str.at(i));
       i += 1;
     } else {
-      for (auto b : remap->from) {
-        newstr.push_back(b);
+      // do we have an alternate replacement?
+      if (!remap->utf8_replacement.empty()) {
+        for (auto b : remap->utf8_replacement) {
+          newstr.push_back(b);
+        }
+      } else {
+        for (auto b : remap->from) {
+          newstr.push_back(b);
+        }
       }
       i += remap->to.length();
     }
@@ -221,53 +229,8 @@ std::string GameTextFontBank::encode_utf8_to_game(std::string& str) const {
 // NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
 // time loading the text files)
 // TODO - improve that as a follow up sometime in the future
-std::string GameTextFontBank::convert_utf8_to_game(std::string str, bool escape) const {
-  std::string newstr;
-
-  if (escape) {
-    for (size_t i = 0; i < str.size(); ++i) {
-      auto c = str.at(i);
-      if (c == '"') {
-        newstr.push_back('"');
-        i += 1;
-      } else if (c == '\\') {
-        if (i + 1 >= str.size()) {
-          throw std::runtime_error("incomplete string escape code");
-        }
-        auto p = str.at(i + 1);
-        if (p == 'c') {
-          if (i + 3 >= str.size()) {
-            throw std::runtime_error("incomplete string escape code");
-          }
-          auto first = str.at(i + 2);
-          auto second = str.at(i + 3);
-          if (!str_util::hex_char(first) || !str_util::hex_char(second)) {
-            throw std::runtime_error("invalid character escape hex number");
-          }
-          char hex_num[3] = {first, second, '\0'};
-          std::size_t end = 0;
-          auto value = std::stoul(hex_num, &end, 16);
-          if (end != 2) {
-            throw std::runtime_error("invalid character escape");
-          }
-          ASSERT(value < 256);
-          newstr.push_back(char(value));
-          i += 3;
-        } else if (p == '"' || p == '\\') {
-          newstr.push_back(p);
-          i += 1;
-        } else {
-          throw std::runtime_error(
-              fmt::format("unknown string escape code '{}' (0x{:x})", p, u32(p)));
-        }
-      } else {
-        newstr.push_back(c);
-      }
-    }
-  } else {
-    newstr = str;
-  }
-
+std::string GameTextFontBank::convert_utf8_to_game(std::string str) const {
+  std::string newstr = str;
   replace_to_game(newstr);
   encode_utf8_to_game(newstr);
   return newstr;
@@ -370,7 +333,7 @@ std::string GameTextFontBank::convert_utf8_to_game_korean(std::string str) {
       // write out the korean character
       output += font_util_korean::game_encode_korean_syllable(str, cp, m_korean_db.value());
     } else {
-      non_korean_buffer += ((char)(cp));
+      non_korean_buffer += str_util::utf8_encode(cp);
     }
   }
   // flush any non-korean buffer

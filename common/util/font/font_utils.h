@@ -26,6 +26,10 @@ struct EncodeInfo {
 struct ReplaceInfo {
   std::string from;
   std::string to;
+  // for some replacements, we want to replace with something different when going from utf8 than when we originally matched it
+  // this is mostly applicable for when we have to max a string with hex chars that have been converted into `\c00` format
+  // but we want to insert the actual raw hex bytes back.
+  std::string utf8_replacement = "";
 };
 
 // version of the game text file's text encoding. Not real, but we need to differentiate them
@@ -75,7 +79,7 @@ class GameTextFontBank {
   bool valid_char_range(const char in) const;
   bool is_language_id_korean(const int language_id) const;
 
-  std::string convert_utf8_to_game(std::string str, bool escape = false) const;
+  std::string convert_utf8_to_game(std::string str) const;
   std::string convert_game_to_utf8(const char* in) const;
 
   std::string convert_utf8_to_game_korean(std::string str);

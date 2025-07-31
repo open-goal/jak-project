@@ -30,7 +30,7 @@
   (file-json
     :language-id 4
     :text-version "jak2"
-    :lines "game/assets/jak2/subtitle/subtitle_lines_it-IT.json"
+    :lines "game/assets/jak2/subtitle/subtitle_lines_it-IT.json" 
     :meta "game/assets/jak2/subtitle/subtitle_meta_it-IT.json"
     :lines-base "game/assets/jak2/subtitle/subtitle_lines_en-US.json"
     :meta-base "game/assets/jak2/subtitle/subtitle_meta_en-US.json")
