@@ -62,7 +62,7 @@ int fake_iso_FS_Init() {
       FakeIsoEntry* e = &fake_iso_entries[fake_iso_entry_count];
       std::string file_name = f.path().filename().string();
       ASSERT(file_name.length() < 16);  // should be 8.3.
-      ASSERT_MSG(f.exists(), // should only happen if the file is a symlink, afaik
+      ASSERT_MSG(f.exists(),            // should only happen if the file is a symlink, afaik
                  fmt::format("[FAKEISO] couldn't find {} -- broken symlink?", file_name));
       strcpy(e->iso_name, file_name.c_str());
       e->full_path = fmt::format("{}/out/{}/iso/{}", file_util::get_jak_project_dir().string(),
