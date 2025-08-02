@@ -3,6 +3,8 @@
 #include <set>
 #include <thread>
 
+#include "extract_shadow.h"
+
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/SimpleThreadGroup.h"
@@ -129,6 +131,7 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
         extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version(),
                      swapped_info);
         extract_joint_group(ag_file, db.dts, db.version(), art_group_data);
+        extract_shadow(ag_file, db.dts, level_data, false, db.version());
       }
     }
   }

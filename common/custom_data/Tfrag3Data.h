@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 43;
+constexpr int TFRAG3_VERSION = 44;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -65,6 +65,9 @@ enum MemoryUsageCategory {
   HFRAG_INDEX,
   HFRAG_TIME_OF_DAY,
   HFRAG_CORNERS,
+
+  SHADOW_VERTS,
+  SHADOW_INDEX,
 
   COLLISION,
 
@@ -614,7 +617,48 @@ struct MercModelGroup {
   void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
-//
+struct ShadowVertex {
+  float pos[3];
+  float weight;
+  u8 mats[2];
+  u8 flags;
+};
+static_assert(sizeof(ShadowVertex) == 20);
+
+struct ShadowTri {
+  u8 verts[3];
+};
+
+struct ShadowEdge {
+  u8 ind[2];
+  u8 tri[2];
+};
+
+struct ShadowModelFragment {
+  std::vector<ShadowTri> single_tris, double_tris;
+  std::vector<ShadowEdge> single_edges, double_edges;
+  u32 first_vertex;
+  u32 num_one_bone_vertices;
+  u32 num_two_bone_vertices;
+  void serialize(Serializer& ser);
+};
+
+struct ShadowModel {
+  static constexpr int kMaxVertices = 254;
+  static constexpr int kMaxTris = 254;
+  std::string name;
+  u32 max_bones;
+  std::vector<ShadowModelFragment> fragments;
+
+  void serialize(Serializer& ser);
+};
+
+struct ShadowModelGroup {
+  std::vector<ShadowVertex> vertices;
+  std::vector<ShadowModel> models;
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
+};
 
 constexpr int TFRAG_GEOS = 3;
 constexpr int TIE_GEOS = 4;
@@ -630,6 +674,7 @@ struct Level {
   Hfragment hfrag;
   CollisionMesh collision;
   MercModelGroup merc_data;
+  ShadowModelGroup shadow_data;
   u16 version2 = TFRAG3_VERSION;
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
