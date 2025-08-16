@@ -123,7 +123,6 @@ void parse_text_goal(const goos::Object& data,
                 if (b_i >= int(banks.size())) {
                   throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
                 }
-                b_i++;
                 if (font->is_language_id_korean(b_i)) {
                   // korean changes differently!
                   auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
@@ -132,6 +131,7 @@ void parse_text_goal(const goos::Object& data,
                   auto line = font->convert_utf8_to_game(entry.as_string()->data);
                   banks[b_i]->set_line(id, line);
                 }
+                b_i++;
               } else {
                 throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
               }
@@ -252,11 +252,9 @@ void parse_text_json(const nlohmann::json& json,
       // single line replacement
       if (font->is_language_id_korean(file_info.language_id)) {
         auto line = font->convert_utf8_to_game_korean(text_value);
-        // TODO - lint duplicate line definitions across text files
         bank->set_line(line_id, line);
       } else {
         auto line = font->convert_utf8_to_game(text_value);
-        // TODO - lint duplicate line definitions across text files
         bank->set_line(line_id, line);
       }
 
