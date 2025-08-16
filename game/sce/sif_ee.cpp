@@ -128,6 +128,10 @@ s32 sceOpen(const char* filename, s32 flag) {
   return fp_idx;
 }
 
+s32 sceMkDir(const char* filename, s32 flag) {
+  return -1;
+}
+
 s32 sceClose(s32 fd) {
   if (fd < 0) {
     // todo, what should we really return?

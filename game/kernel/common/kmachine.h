@@ -25,6 +25,8 @@ extern u32 reboot_iop;  // renamed to reboot_iop to avoid conflict
 extern const char* init_types[];
 extern u32 vblank_interrupt_handler;
 
+extern bool cd_S_INITIALIZE_CD_W; // new in Jak X
+
 void kmachine_init_globals_common();
 
 /*!
@@ -45,12 +47,13 @@ u64 CPadOpen(u64 cpad_info, s32 pad_number);
 u64 CPadGetData(u64 cpad_info);
 void InstallHandler(u32 handler_idx, u32 handler_func);
 void InstallDebugHandler();
+s32 kmkdir(u64 name);
 s32 klength(u64 fs);
 s32 kseek(u64 fs, s32 offset, s32 where);
 s32 kread(u64 fs, u64 buffer, s32 size);
 s32 kwrite(u64 fs, u64 buffer, s32 size);
 u64 kclose(u64 fs);
-void dma_to_iop();
+bool dma_to_iop(void* src_G, int size_G, void* dest_G);
 u64 DecodeLanguage();
 u64 DecodeAspect();
 u64 DecodeVolume();
