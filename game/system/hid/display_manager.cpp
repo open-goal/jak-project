@@ -1,5 +1,8 @@
 #include "display_manager.h"
 
+#include <cmath>
+#include <cstdlib>
+
 #include "sdl_util.h"
 
 #include "common/global_profiler/GlobalProfiler.h"
@@ -160,7 +163,7 @@ std::string DisplayManager::get_connected_display_name(int id) {
 int DisplayManager::get_active_display_refresh_rate() {
   const auto display_index = get_active_display_index();
   if (m_current_display_modes.size() > display_index) {
-    return m_current_display_modes.at(display_index).refresh_rate;
+    return round(m_current_display_modes.at(display_index).refresh_rate);
   }
   return 0;
 }
@@ -450,7 +453,7 @@ void DisplayManager::update_video_modes() {
     }
 
     DisplayMode new_mode = {display_id,   display_name_str, curr_mode->format,
-                            curr_mode->w, curr_mode->h,     (int)curr_mode->refresh_rate,
+                            curr_mode->w, curr_mode->h,     curr_mode->refresh_rate,
                             orient};
     m_current_display_modes.push_back(new_mode);
     lg::info(
@@ -492,10 +495,13 @@ void DisplayManager::update_resolutions() {
     // Skip resolutions that aren't using the current refresh rate, they won't work.
     // For example if your monitor is currently set to `60hz` and the monitor _could_ support
     // resolution X but only at `30hz`...then there's no reason for us to consider it as an option.
-    if (display_mode->refresh_rate != active_refresh_rate) {
+    const auto comparison = std::abs(display_mode->refresh_rate - active_refresh_rate);
+    if (comparison > 1.0) {
       lg::debug(
-          "[DISPLAY]: Skipping {}x{} as it requires {}hz but the monitor is currently set to {}hz",
-          display_mode->w, display_mode->h, display_mode->refresh_rate, active_refresh_rate);
+          "[DISPLAY]: Skipping {}x{} as it requires {:f}hz but the monitor is currently set to "
+          "{:f}hz. Difference: {:f}",
+          display_mode->w, display_mode->h, display_mode->refresh_rate, active_refresh_rate,
+          comparison);
       // Allow it for windowed mode though
       m_available_window_sizes.push_back(new_res);
       continue;
