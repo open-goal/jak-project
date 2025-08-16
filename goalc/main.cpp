@@ -6,11 +6,11 @@
 #include "common/repl/repl_wrapper.h"
 #include "common/util/FileUtil.h"
 #include "common/util/diff.h"
+#include "common/util/font/font_utils_korean.h"
 #include "common/util/string_util.h"
 #include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
-#include "common/util/font/font_utils_korean.h"
 
 #include "goalc/compiler/Compiler.h"
 

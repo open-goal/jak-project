@@ -6,8 +6,8 @@
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/FileUtil.h"
-#include "common/util/font/font_utils.h"
 #include "common/util/Timer.h"
+#include "common/util/font/font_utils.h"
 #include "common/util/string_util.h"
 
 #include "game/external/discord.h"

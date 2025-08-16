@@ -1,8 +1,7 @@
 #include "font_db_jak1.h"
 
-std::unordered_set<char> passthrus_jak1 = {'~', ' ', ',', '.', '-', '+', '(', ')',
-                                                    '!', ':', '?', '=', '%', '*', '/', '#',
-                                                    ';', '<', '>', '@', '[', '_'};
+std::unordered_set<char> passthrus_jak1 = {'~', ' ', ',', '.', '-', '+', '(', ')', '!', ':', '?',
+                                           '=', '%', '*', '/', '#', ';', '<', '>', '@', '[', '_'};
 
 std::vector<EncodeInfo> encode_info_jak1 = {
     // random
