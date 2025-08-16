@@ -9,8 +9,6 @@ parser.add_argument("--fix", action="store_true")
 parser.set_defaults(fix=False)
 args = parser.parse_args()
 
-# TODO - trim strings
-
 # fmt: off
 JAK1_ALLOWED_CHARACTERS = [
     "_", # NOTE - not an actual underscore, adds a long space!
@@ -52,7 +50,6 @@ JAK1_AUTO_REPLACEMENTS = {
     "？": "?"
 }
 
-# TODO - check for korean text
 JAK2_ALLOWED_CHARACTERS = [
     "_", # NOTE - not an actual underscore, adds a long space!
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
@@ -115,57 +112,57 @@ JAK2_AUTO_REPLACEMENTS = {
 }
 # fmt: on
 
-invalid_characters_found = False
+return_error = False
 
-# TODO - reduce duplication
+def is_korean_syllable(char):
+    return '\uAC00' <= char <= '\uD7A3'
 
+def is_char_allowed(game_name, char, allowed_characters):
+    if game_name == "jak1":
+        return char in allowed_characters
+    return char in allowed_characters or is_korean_syllable(char)
 
-def jak1_is_allowed_code(pos, text):
+def is_allowed_code(pos, text, allowed_codes):
     # Find any occurences of allowed codes in the string
     # if the position overlaps with these occurrences, it's allowed
-    for code in JAK1_ALLOWED_CODES:
+    for code in allowed_codes:
         for match in re.finditer(code, text):
             if pos >= match.start() and pos <= match.end():
                 return match.end()
     return -1
 
-
-def jak1_char_allowed(char):
-    return char in JAK1_ALLOWED_CHARACTERS
-
-
-def jak1_fix_character(char):
+def fix_character(game_name, char, allowed_characters, auto_replacements):
     # First let's try upper-casing it, if that's allowed, let's use that instead
     upper_case = char.upper()
-    if jak1_char_allowed(upper_case):
+    if is_char_allowed(game_name, upper_case, allowed_characters):
         return upper_case
-    if char in JAK1_AUTO_REPLACEMENTS:
-        return JAK1_AUTO_REPLACEMENTS[char]
+    if char in auto_replacements:
+        return auto_replacements[char]
     return char
 
 
-def jak1_replace_character(string, position, new_character):
+def replace_character(string, position, new_character):
     string_list = list(string)
     string_list[position] = new_character
     new_string = "".join(string_list)
     return new_string
 
 
-def lint_jak1_characters(text):
+def lint_characters(game_name, text, allowed_characters, allowed_codes, auto_replacements):
     invalid_characters_found = False
     pos = 0
     while pos < len(text):
         character = text[pos]
-        if not jak1_char_allowed(character):
+        if not is_char_allowed(game_name, character, allowed_characters):
             # Check to see if it's an allowed code
-            code_end_pos = jak1_is_allowed_code(pos, text)
+            code_end_pos = is_allowed_code(pos, text, allowed_codes)
             if code_end_pos == -1:
                 # If we are fixing instances, attempt to do so
                 char_fixed = False
                 if args.fix:
-                    new_char = jak1_fix_character(character)
+                    new_char = fix_character(game_name, character, allowed_characters, auto_replacements)
                     if new_char != character:
-                        text = jak1_replace_character(text, pos, new_char)
+                        text = replace_character(text, pos, new_char)
                         char_fixed = True
                 if not char_fixed:
                     print(
@@ -173,7 +170,7 @@ def lint_jak1_characters(text):
                             character, text, text
                         )
                     )
-                    # text = jak1_replace_character(text, pos, "?")
+                    # text = replace_character(text, pos, "?")
                     invalid_characters_found = True
                 pos = pos + 1
             else:
@@ -183,175 +180,75 @@ def lint_jak1_characters(text):
             pos = pos + 1
     return invalid_characters_found, text
 
+def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_replacements):
+    global return_error
+    print(f"Checking {game_name} translations")
+    # Iterate through the translations making sure there are no characters that are not allowed
+    text_files = glob.glob(f"./game/assets/{game_name}/text/*.json")
 
-# Iterate through the translations making sure there are no characters that are not allowed
-text_files = glob.glob("./game/assets/jak1/text/*.json")
-
-for text_file in text_files:
-    print("Checking {}".format(text_file))
-    with open(text_file, encoding="utf-8") as f:
-        file_data = json.load(f)
-    for id, text in file_data.items():
-        invalid_chars_exist, new_text = lint_jak1_characters(text)
+    for text_file in text_files:
+        print("Checking {}".format(text_file))
+        with open(text_file, encoding="utf-8") as f:
+            file_data = json.load(f)
+        for id, text in file_data.items():
+            invalid_chars_exist, new_text = lint_characters(game_name, text, allowed_characters, allowed_codes, auto_replacements)
+            if args.fix:
+                file_data[id] = new_text
+            if invalid_chars_exist:
+                return_error = True
         if args.fix:
-            file_data[id] = new_text
-        if invalid_chars_exist:
-            invalid_characters_found = True
-    if args.fix:
-        # save the modified file back out
-        with open(text_file, "w", encoding="utf-8") as f:
-            json.dump(file_data, f, indent=2, ensure_ascii=False)
-            f.write("\n")
+            # save the modified file back out
+            with open(text_file, "w", encoding="utf-8") as f:
+                json.dump(file_data, f, indent=2, ensure_ascii=False)
+                f.write("\n")
 
-subtitle_files = glob.glob("./game/assets/jak1/subtitle/*lines*.json")
+    subtitle_files = glob.glob(f"./game/assets/{game_name}/subtitle/*lines*.json")
 
-for subtitle_file in subtitle_files:
-    print("Checking {}...".format(subtitle_file))
-    with open(subtitle_file, encoding="utf-8") as f:
-        file_data = json.load(f)
-    # Check Speakers
-    for id, text in file_data["speakers"].items():
-        invalid_chars_exist, new_text = lint_jak1_characters(text)
-        if args.fix and new_text != text:
-            file_data["speakers"][id] = new_text
-        if invalid_chars_exist:
-            invalid_characters_found = True
-    # Check Lines
-    for id, lines in file_data["cutscenes"].items():
-        for i, line in enumerate(lines):
-            invalid_chars_exist, new_text = lint_jak1_characters(line)
-            if args.fix and new_text != line:
-                lines[i] = new_text
+    for subtitle_file in subtitle_files:
+        print("Checking {}...".format(subtitle_file))
+        with open(subtitle_file, encoding="utf-8") as f:
+            file_data = json.load(f)
+        # Check Speakers
+        for id, text in file_data["speakers"].items():
+            invalid_chars_exist, new_text = lint_characters(game_name, text, allowed_characters, allowed_codes, auto_replacements)
+            if args.fix and new_text != text:
+                file_data["speakers"][id] = new_text
             if invalid_chars_exist:
-                invalid_characters_found = True
-    for id, lines in file_data["hints"].items():
-        for i, line in enumerate(lines):
-            invalid_chars_exist, new_text = lint_jak1_characters(line)
-            if args.fix and new_text != line:
-                lines[i] = new_text
-            if invalid_chars_exist:
-                invalid_characters_found = True
-    if args.fix:
-        # save the modified file back out
-        with open(subtitle_file, "w", encoding="utf-8") as f:
-            json.dump(file_data, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-
-
-def jak2_is_allowed_code(pos, text):
-    # Find any occurences of allowed codes in the string
-    # if the position overlaps with these occurrences, it's allowed
-    for code in JAK2_ALLOWED_CODES:
-        for match in re.finditer(code, text):
-            if pos >= match.start() and pos <= match.end():
-                return match.end()
-    return -1
-
-
-def jak2_char_allowed(char):
-    return char in JAK2_ALLOWED_CHARACTERS
-
-
-def jak2_fix_character(char):
-    if char in JAK2_AUTO_REPLACEMENTS:
-        return JAK2_AUTO_REPLACEMENTS[char]
-    return char
-
-
-def jak2_replace_character(string, position, new_character):
-    string_list = list(string)
-    string_list[position] = new_character
-    new_string = "".join(string_list)
-    return new_string
-
-
-def lint_jak2_characters(text):
-    invalid_characters_found = False
-    pos = 0
-    while pos < len(text):
-        character = text[pos]
-        if not jak2_char_allowed(character):
-            # Check to see if it's an allowed code
-            code_end_pos = jak2_is_allowed_code(pos, text)
-            if code_end_pos == -1:
-                # If we are fixing instances, attempt to do so
-                char_fixed = False
-                if args.fix:
-                    new_char = jak2_fix_character(character)
-                    if new_char != character:
-                        text = jak2_replace_character(text, pos, new_char)
-                        char_fixed = True
-                if not char_fixed:
-                    print(
-                        "Character '{}' not allowed - Found in {} in string {}".format(
-                            character, text, text
-                        )
-                    )
-                    # text = jak2_replace_character(text, pos, "?")
-                    invalid_characters_found = True
-                pos = pos + 1
-            else:
-                # advance to the end of the code and continue checking
-                pos = code_end_pos
+                return_error = True
+        # Check Lines
+        for id, lines in file_data["cutscenes"].items():
+            for i, line in enumerate(lines):
+                invalid_chars_exist, new_text = lint_characters(game_name, line, allowed_characters, allowed_codes, auto_replacements)
+                if args.fix and new_text != line:
+                    lines[i] = new_text
+                if invalid_chars_exist:
+                    return_error = True
+        if game_name == "jak1":
+            for id, lines in file_data["hints"].items():
+                for i, line in enumerate(lines):
+                    invalid_chars_exist, new_text = lint_characters(game_name, line, allowed_characters, allowed_codes, auto_replacements)
+                    if args.fix and new_text != line:
+                        lines[i] = new_text
+                    if invalid_chars_exist:
+                        return_error = True
         else:
-            pos = pos + 1
-    return invalid_characters_found, text
-
-
-# Iterate through the translations making sure there are no characters that are not allowed
-text_files = glob.glob("./game/assets/jak2/text/*.json")
-
-for text_file in text_files:
-    print("Checking {}".format(text_file))
-    with open(text_file, encoding="utf-8") as f:
-        file_data = json.load(f)
-    for id, text in file_data.items():
-        invalid_chars_exist, new_text = lint_jak2_characters(text)
+            for id, lines in file_data["other"].items():
+                for i, line in enumerate(lines):
+                    invalid_chars_exist, new_text = lint_characters(game_name, line, allowed_characters, allowed_codes, auto_replacements)
+                    if args.fix and new_text != line:
+                        lines[i] = new_text
+                    if invalid_chars_exist:
+                        return_error = True
         if args.fix:
-            file_data[id] = new_text
-        if invalid_chars_exist:
-            invalid_characters_found = True
-    if args.fix:
-        # save the modified file back out
-        with open(text_file, "w", encoding="utf-8") as f:
-            json.dump(file_data, f, indent=2, ensure_ascii=False)
-            f.write("\n")
+            # save the modified file back out
+            with open(subtitle_file, "w", encoding="utf-8") as f:
+                json.dump(file_data, f, indent=2, ensure_ascii=False)
+                f.write("\n")
 
-subtitle_files = glob.glob("./game/assets/jak2/subtitle/*lines*.json")
+fix_games_translations("jak1", JAK1_ALLOWED_CHARACTERS, JAK1_ALLOWED_CODES, JAK1_AUTO_REPLACEMENTS)
+fix_games_translations("jak2", JAK2_ALLOWED_CHARACTERS, JAK2_ALLOWED_CODES, JAK2_AUTO_REPLACEMENTS)
 
-for subtitle_file in subtitle_files:
-    print("Checking {}...".format(subtitle_file))
-    with open(subtitle_file, encoding="utf-8") as f:
-        file_data = json.load(f)
-    # Check Speakers
-    for id, text in file_data["speakers"].items():
-        invalid_chars_exist, new_text = lint_jak2_characters(text)
-        if args.fix and new_text != text:
-            file_data["speakers"][id] = new_text
-        if invalid_chars_exist:
-            invalid_characters_found = True
-    # Check Lines
-    for id, lines in file_data["cutscenes"].items():
-        for i, line in enumerate(lines):
-            invalid_chars_exist, new_text = lint_jak2_characters(line)
-            if args.fix and new_text != line:
-                lines[i] = new_text
-            if invalid_chars_exist:
-                invalid_characters_found = True
-    for id, lines in file_data["other"].items():
-        for i, line in enumerate(lines):
-            invalid_chars_exist, new_text = lint_jak2_characters(line)
-            if args.fix and new_text != line:
-                lines[i] = new_text
-            if invalid_chars_exist:
-                invalid_characters_found = True
-    if args.fix:
-        # save the modified file back out
-        with open(subtitle_file, "w", encoding="utf-8") as f:
-            json.dump(file_data, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-
-if invalid_characters_found:
+if return_error:
     print("Invalid characters were found, see above")
     exit(1)
 else:
