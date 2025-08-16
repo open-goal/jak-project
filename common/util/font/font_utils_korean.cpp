@@ -296,7 +296,7 @@ std::string glyph_hex_string_to_int(const std::string& str) {
 std::string font_util_korean::game_encode_korean_syllable(
     const std::string& context,
     const char32_t cp,
-    const std::unordered_map<std::string, KoreanLookupOrientations> db) {
+    const std::unordered_map<std::string, KoreanLookupOrientations>& db) {
   std::string output;
   // Decompose Hangul syllable block into jamo
   char32_t syllable_index = cp - BASE_OF_SYLLABLES;

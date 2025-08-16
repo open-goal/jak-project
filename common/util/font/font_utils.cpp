@@ -58,196 +58,16 @@ GameTextFontBank::GameTextFontBank(GameTextVersion version,
                                    std::vector<EncodeInfo>* encode_info,
                                    std::vector<ReplaceInfo>* replace_info,
                                    std::unordered_set<char>* passthrus)
-    : m_version(version),
-      m_encode_info(encode_info),
-      m_replace_info(replace_info),
-      m_passthrus(passthrus) {
-  std::sort(
-      m_encode_info->begin(), m_encode_info->end(),
-      [](const EncodeInfo& a, const EncodeInfo& b) { return a.bytes.size() > b.bytes.size(); });
-  std::sort(
-      m_replace_info->begin(), m_replace_info->end(),
-      [](const ReplaceInfo& a, const ReplaceInfo& b) { return a.from.size() > b.from.size(); });
-}
-
-/*!
- * Finds a remap info that best matches the byte sequence (is the longest match).
- */
-const EncodeInfo* GameTextFontBank::find_encode_to_utf8(const char* in) const {
-  const EncodeInfo* best_info = nullptr;
-  for (auto& info : *m_encode_info) {
-    if (info.bytes.size() == 0)
-      continue;
-
-    bool found = true;
-    for (int i = 0; found && i < (int)info.bytes.size(); ++i) {
-      if (uint8_t(in[i]) != info.bytes.at(i)) {
-        found = false;
-      }
-    }
-
-    if (found && (!best_info || info.chars.length() > best_info->chars.length())) {
-      best_info = &info;
-    }
+    : m_version(version), m_passthrus(passthrus) {
+  // Insert the encode and replacement info into a Trie, much faster lookups that way
+  for (const auto& encoding : *encode_info) {
+    m_encode_to_utf8_trie.insert(encoding.game_bytes, encoding);
+    m_encode_to_game_trie.insert(encoding.utf8, encoding);
   }
-  return best_info;
-}
-
-/*!
- * Finds a remap info that best matches the character sequence (is the longest match).
- */
-const EncodeInfo* GameTextFontBank::find_encode_to_game(const std::string& in, int off) const {
-  const EncodeInfo* best_info = nullptr;
-  for (auto& info : *m_encode_info) {
-    if (info.chars.length() == 0)
-      continue;
-
-    bool found = true;
-    for (int i = 0; found && i < (int)info.chars.length() && i + off < (int)in.size(); ++i) {
-      if (in.at(i + off) != info.chars.at(i)) {
-        found = false;
-      }
-    }
-
-    if (found && (!best_info || info.chars.length() > best_info->chars.length())) {
-      best_info = &info;
-    }
+  for (const auto& replacement : *replace_info) {
+    m_replace_to_utf8_trie.insert(replacement.game_encoding, replacement);
+    m_replace_to_game_trie.insert(replacement.utf8_string, replacement);
   }
-  return best_info;
-}
-
-/*!
- * Finds a remap info that best matches the character sequence (is the longest match).
- */
-const ReplaceInfo* GameTextFontBank::find_replace_to_utf8(const std::string& in, int off) const {
-  const ReplaceInfo* best_info = nullptr;
-  for (auto& info : *m_replace_info) {
-    if (info.from.empty() || in.size() - off < info.from.size())
-      continue;
-
-    bool found = memcmp(in.data() + off, info.from.data(), info.from.size()) == 0;
-    if (found && (!best_info || info.from.length() > best_info->from.length())) {
-      best_info = &info;
-    }
-  }
-  return best_info;
-}
-
-/*!
- * Finds a remap info that best matches the character sequence (is the longest match).
- */
-const ReplaceInfo* GameTextFontBank::find_replace_to_game(const std::string& in, int off) const {
-  const ReplaceInfo* best_info = nullptr;
-  for (const auto& info : *m_replace_info) {
-    if (info.to.empty() || in.size() - off < info.to.size()) {
-      continue;
-    }
-
-    bool found = memcmp(in.data() + off, info.to.data(), info.to.size()) == 0;
-    if (found && (!best_info || info.to.length() > best_info->to.length())) {
-      best_info = &info;
-    }
-  }
-  return best_info;
-}
-
-/*!
- * Try to replace specific substrings with better variants.
- * These are for hiding confusing text transforms.
- */
-std::string GameTextFontBank::replace_to_utf8(std::string& str) const {
-  std::string newstr;
-
-  for (int i = 0; i < (int)str.length();) {
-    auto remap = find_replace_to_utf8(str, i);
-    if (!remap) {
-      newstr.push_back(str.at(i));
-      i += 1;
-    } else {
-      for (auto b : remap->to) {
-        newstr.push_back(b);
-      }
-      i += remap->from.length();
-    }
-  }
-
-  str = newstr;
-  return str;
-}
-
-std::string GameTextFontBank::replace_to_game(std::string& str) const {
-  std::string newstr;
-
-  for (int i = 0; i < (int)str.length();) {
-    auto remap = find_replace_to_game(str, i);
-    if (!remap) {
-      newstr.push_back(str.at(i));
-      i += 1;
-    } else {
-      // do we have an alternate replacement?
-      if (!remap->utf8_replacement.empty()) {
-        for (auto b : remap->utf8_replacement) {
-          newstr.push_back(b);
-        }
-      } else {
-        for (auto b : remap->from) {
-          newstr.push_back(b);
-        }
-      }
-      i += remap->to.length();
-    }
-  }
-
-  str = newstr;
-  return str;
-}
-
-std::string GameTextFontBank::encode_utf8_to_game(std::string& str) const {
-  std::string newstr;
-
-  for (int i = 0; i < (int)str.length();) {
-    auto remap = find_encode_to_game(str, i);
-    if (!remap) {
-      newstr.push_back(str.at(i));
-      i += 1;
-    } else {
-      for (auto b : remap->bytes) {
-        newstr.push_back(b);
-      }
-      i += remap->chars.length();
-    }
-  }
-
-  str = newstr;
-  return str;
-}
-
-/*!
- * Turn a normal readable string into a string readable in the in-game font encoding and converts
- * \cXX escape sequences
- */
-// NOTE - the convert_utf8_to_game function is really really slow (about 80-90% of the
-// time loading the text files)
-// TODO - improve that as a follow up sometime in the future
-std::string GameTextFontBank::convert_utf8_to_game(std::string str) const {
-  std::string newstr = str;
-  replace_to_game(newstr);
-  encode_utf8_to_game(newstr);
-  return newstr;
-}
-
-bool GameTextFontBank::valid_char_range(const char in) const {
-  if (m_version == GameTextVersion::JAK1_V1 || m_version == GameTextVersion::JAK1_V2) {
-    return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') ||
-            m_passthrus->find(in) != m_passthrus->end()) &&
-           in != '\\';
-  } else if (m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3 ||
-             m_version == GameTextVersion::JAKX) {
-    return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') || (in >= 'a' && in <= 'z') ||
-            m_passthrus->find(in) != m_passthrus->end()) &&
-           in != '\\';
-  }
-  return false;
 }
 
 bool GameTextFontBank::is_language_id_korean(const int language_id) const {
@@ -257,200 +77,6 @@ bool GameTextFontBank::is_language_id_korean(const int language_id) const {
     return true;
   }
   return false;
-}
-
-/*!
- * Convert a string from the game-text font encoding to something normal.
- * Unprintable characters become escape sequences, including tab and newline.
- */
-std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
-  std::string temp;
-  std::string result;
-  while (*in) {
-    auto remap = find_encode_to_utf8(in);
-    if (remap != nullptr) {
-      temp.append(remap->chars);
-      in += remap->bytes.size() - 1;
-    } else if (valid_char_range(*in) || *in == '\n' || *in == '\t' || *in == '\\' || *in == '\"') {
-      temp.push_back(*in);
-    } else {
-      temp += fmt::format("\\c{:02x}", uint8_t(*in));
-    }
-    in++;
-  }
-  replace_to_utf8(temp);
-  for (size_t i = 0; i < temp.length(); ++i) {
-    auto c = temp.at(i);
-    if (c == '\n') {
-      result += "\\n";
-    } else if (c == '\t') {
-      result += "\\t";
-    } else if (c == '\\') {
-      if (i < temp.length() - 1 && temp.at(i + 1) == 'c') {
-        result.push_back(c);
-      } else {
-        result += "\\\\";
-      }
-    } else if (c == '"') {
-      result += "\\\"";
-    } else {
-      result.push_back(c);
-    }
-  }
-  return replace_to_utf8(result);
-}
-
-std::string GameTextFontBank::convert_utf8_to_game_korean(std::string str) {
-  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
-             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
-  if (!m_korean_db.has_value()) {
-    const auto db_file_path =
-        file_util::get_file_path({"game/assets/fonts/jak2_jak3_korean_db.json"});
-    if (file_util::file_exists(db_file_path)) {
-      auto raw_data = file_util::read_text_file(db_file_path);
-      auto json_data = parse_commented_json(raw_data, "jak2_jak3_korean_db.json");
-      std::unordered_map<std::string, KoreanLookupOrientations> temp_db;
-      json_data.get_to(temp_db);
-      m_korean_db = temp_db;
-    }
-  }
-
-  std::string output;
-  std::string non_korean_buffer = "";
-  size_t i = 0;
-  while (i < str.size()) {
-    char32_t cp = str_util::next_utf8_char(str, i);
-    if (font_util_korean::is_korean_syllable(cp)) {
-      // flush any non-korean buffer
-      if (!non_korean_buffer.empty()) {
-        output += 0x3;
-        // encode / remap it
-        replace_to_game(non_korean_buffer);
-        encode_utf8_to_game(non_korean_buffer);
-        output += non_korean_buffer;
-        non_korean_buffer = "";
-      }
-      // write out the korean character
-      output += font_util_korean::game_encode_korean_syllable(str, cp, m_korean_db.value());
-    } else {
-      non_korean_buffer += str_util::utf8_encode(cp);
-    }
-  }
-  // flush any non-korean buffer
-  if (!non_korean_buffer.empty()) {
-    output += 0x3;
-    // encode / remap it
-    replace_to_game(non_korean_buffer);
-    encode_utf8_to_game(non_korean_buffer);
-    output += non_korean_buffer;
-    non_korean_buffer = "";
-  }
-  return output;
-}
-
-std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const {
-  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
-             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
-  // Korean strings are fully bitstrings, in other words, it's just a bunch of bytes
-  // Some info on the layout:
-  // - Every korean syllable block starts with a `4`
-  //   - The following byte indicates how many glyphs are drawn for that syllable block
-  // - Each jamo that makes up the syllable block follows as a single byte
-  //   - Unless the jamo is part of the "extra" texture page, in which case it's preceeded by a `5`.
-  //   There are very few jamo that are and they are only applicable for the final consonant
-  // - The korean strings can contain non-korean characters.  These are preceeded by a `3`
-  //   - For example a space would be `3 20`
-  //   - It might be more accurate to say that a 3 signifies "consume characters as normal until
-  //   something else is encountered (ie. flags or more complex font encodings)"
-  std::string result;
-  std::string_view str(in);
-
-  u64 index = 0;
-  u8 curr_byte = 0;
-  bool in_syllable_block = false;
-  std::string temp_substring = "";
-  int num_syllable_glyphs = 0;
-  while (index < str.length()) {
-    curr_byte = str.at(index);
-    // new syllable block
-    if (curr_byte == 4) {
-      in_syllable_block = true;
-      if (index + 1 < str.length()) {
-        num_syllable_glyphs = str.at(index + 1);
-        index++;
-      }
-      index++;
-      // flush any non-korean characters
-      if (!temp_substring.empty()) {
-        // handle remap
-        std::string remapped_str;
-        auto temp_substring_ptr = temp_substring.c_str();
-        while (*temp_substring_ptr) {
-          auto remap = find_encode_to_utf8(temp_substring_ptr);
-          if (remap != nullptr) {
-            remapped_str.append(remap->chars);
-            temp_substring_ptr += remap->bytes.size() - 1;
-          } else {
-            remapped_str.push_back(*temp_substring_ptr);
-          }
-          temp_substring_ptr++;
-        }
-        replace_to_utf8(remapped_str);
-        result += remapped_str;
-        temp_substring = "";
-      }
-      continue;
-    }
-    if (in_syllable_block) {
-      // extra page
-      std::string glyph_key;
-      u8 hex_byte = curr_byte;
-      if (curr_byte == 5 && index + 1 < str.length()) {
-        hex_byte = str.at(index + 1);
-        glyph_key = fmt::format("extra_0x{:02x}", hex_byte);
-        index++;
-      } else {
-        glyph_key = fmt::format("0x{:02x}", hex_byte);
-      }
-      const auto jamo_list = jamo_glyph_mappings_jak2.find(glyph_key);
-      ASSERT_MSG(jamo_list != jamo_glyph_mappings_jak2.end(),
-                 fmt::format("{} not found in jamo glyph lookup table", glyph_key));
-      for (const auto& jamo : jamo_list->second) {
-        temp_substring += jamo;
-      }
-      num_syllable_glyphs--;
-      if (num_syllable_glyphs == 0) {
-        in_syllable_block = false;
-        result += font_util_korean::compose_korean_containing_text(temp_substring);
-        temp_substring = "";
-      }
-    } else {
-      if (curr_byte != 0x3) {
-        temp_substring.push_back(curr_byte);
-      }
-    }
-    index++;
-  }
-  // flush any non-korean characters
-  if (!temp_substring.empty()) {
-    // handle remap
-    std::string remapped_str;
-    auto temp_substring_ptr = temp_substring.c_str();
-    while (*temp_substring_ptr) {
-      auto remap = find_encode_to_utf8(temp_substring_ptr);
-      if (remap != nullptr) {
-        remapped_str.append(remap->chars);
-        temp_substring_ptr += remap->bytes.size() - 1;
-      } else {
-        remapped_str.push_back(*temp_substring_ptr);
-      }
-      temp_substring_ptr++;
-    }
-    replace_to_utf8(remapped_str);
-    result += remapped_str;
-    temp_substring = "";
-  }
-  return result;
 }
 
 GameTextFontBank* get_font_bank(GameTextVersion version) {
@@ -481,4 +107,259 @@ GameTextFontBank* get_font_bank(const std::string& name) {
 
 bool font_bank_exists(GameTextVersion version) {
   return g_font_banks.find(version) != g_font_banks.cend();
+}
+
+std::string GameTextFontBank::replace_to_game(const std::string& str) const {
+  std::string newstr;
+  newstr.reserve(str.size());
+  for (int i = 0; i < str.length();) {
+    const ReplaceInfo* remap = m_replace_to_game_trie.find_longest_prefix(str, i);
+    if (!remap) {
+      newstr.push_back(str[i]);
+      i += 1;
+    } else {
+      if (!remap->utf8_alternative.empty()) {
+        newstr.append(remap->utf8_alternative);
+      } else {
+        newstr.append(remap->game_encoding);
+      }
+      i += remap->utf8_string.size();
+    }
+  }
+  return newstr;
+}
+
+std::string GameTextFontBank::encode_utf8_to_game(const std::string& str) const {
+  std::string newstr;
+  newstr.reserve(str.size());
+  for (int i = 0; i < str.length();) {
+    auto match = m_encode_to_game_trie.find_longest_prefix(str, i);
+    if (!match) {
+      newstr.push_back(str[i]);
+      i += 1;
+    } else {
+      for (auto b : match->game_bytes) {
+        newstr.push_back(b);
+      }
+      i += match->utf8.size();
+    }
+  }
+  return newstr;
+}
+
+/*!
+ * Turn a normal readable string into a string readable in the in-game font encoding and converts
+ * \cXX escape sequences
+ */
+std::string GameTextFontBank::convert_utf8_to_game(const std::string& str) const {
+  return encode_utf8_to_game(replace_to_game(str));
+}
+
+std::string GameTextFontBank::replace_to_utf8(const std::string& str) const {
+  std::string result;
+  result.reserve(str.size());
+  for (size_t i = 0; i < str.size();) {
+    const ReplaceInfo* remap = m_replace_to_utf8_trie.find_longest_prefix(str, i);
+    if (!remap) {
+      result.push_back(str[i]);
+      i += 1;
+    } else {
+      result.append(remap->utf8_string);
+      i += remap->game_encoding.size();
+    }
+  }
+  return result;
+}
+
+bool GameTextFontBank::valid_char_range(const char& in) const {
+  if (m_version == GameTextVersion::JAK1_V1 || m_version == GameTextVersion::JAK1_V2) {
+    return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') ||
+            m_passthrus->find(in) != m_passthrus->end()) &&
+           in != '\\';
+  } else if (m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3 ||
+             m_version == GameTextVersion::JAKX) {
+    return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') || (in >= 'a' && in <= 'z') ||
+            m_passthrus->find(in) != m_passthrus->end()) &&
+           in != '\\';
+  }
+  return false;
+}
+
+std::string GameTextFontBank::encode_game_to_utf8(const std::string& str) const {
+  std::string newstr;
+  newstr.reserve(str.size());
+  for (size_t i = 0; i < str.size();) {
+    auto encoding = m_encode_to_utf8_trie.find_longest_prefix(str, i);
+    if (!encoding) {
+      // No match: copy valid characters as-is, or escape unknown bytes
+      unsigned char c = static_cast<unsigned char>(str[i]);
+      if (valid_char_range(c) || c == '\n' || c == '\t' || c == '\\' || c == '"') {
+        newstr.push_back(c);
+      } else {
+        newstr += fmt::format("\\c{:02x}", c);
+      }
+      ++i;
+    } else {
+      // Found a match: append its UTF-8 sequence
+      newstr.append(encoding->utf8);
+      i += encoding->game_bytes.size();  // advance past matched game bytes
+    }
+  }
+  return newstr;
+}
+
+std::string GameTextFontBank::convert_game_to_utf8(const char* in) const {
+  // Encode and apply replacement ONCE
+  std::string decoded = replace_to_utf8(encode_game_to_utf8(in));
+
+  // Escape special characters while writing directly into result
+  std::string result;
+  result.reserve(decoded.size());
+  for (size_t i = 0; i < decoded.size(); ++i) {
+    char c = decoded[i];
+    if (c == '\n') {
+      result += "\\n";
+    } else if (c == '\t') {
+      result += "\\t";
+    } else if (c == '\\') {
+      if (i < decoded.size() - 1 && decoded[i + 1] == 'c') {
+        result.push_back(c);  // preserve \cXX
+      } else {
+        result += "\\\\";
+      }
+    } else if (c == '"') {
+      result += "\\\"";
+    } else {
+      result.push_back(c);
+    }
+  }
+
+  return result;
+}
+
+std::string GameTextFontBank::convert_utf8_to_game_korean(const std::string& str) {
+  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
+             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
+  if (!m_korean_db.has_value()) {
+    const auto db_file_path =
+        file_util::get_file_path({"game/assets/fonts/jak2_jak3_korean_db.json"});
+    if (file_util::file_exists(db_file_path)) {
+      auto raw_data = file_util::read_text_file(db_file_path);
+      auto json_data = parse_commented_json(raw_data, "jak2_jak3_korean_db.json");
+      std::unordered_map<std::string, KoreanLookupOrientations> temp_db;
+      json_data.get_to(temp_db);
+      m_korean_db = temp_db;
+    }
+  }
+
+  std::string output;
+  output.reserve(str.size());
+  std::string non_korean_buffer = "";
+  size_t i = 0;
+  while (i < str.size()) {
+    char32_t cp = str_util::next_utf8_char(str, i);
+    if (font_util_korean::is_korean_syllable(cp)) {
+      // flush any non-korean buffer
+      if (!non_korean_buffer.empty()) {
+        output += 0x3;
+        // encode / remap it
+        output += encode_utf8_to_game(replace_to_game(non_korean_buffer));
+        non_korean_buffer = "";
+      }
+      // write out the korean character
+      output += font_util_korean::game_encode_korean_syllable(str, cp, m_korean_db.value());
+    } else {
+      non_korean_buffer += str_util::utf8_encode(cp);
+    }
+  }
+  // flush any non-korean buffer
+  if (!non_korean_buffer.empty()) {
+    output += 0x3;
+    // encode / remap it
+    output += encode_utf8_to_game(replace_to_game(non_korean_buffer));
+    non_korean_buffer = "";
+  }
+  return output;
+}
+
+std::string GameTextFontBank::convert_korean_game_to_utf8(const char* in) const {
+  ASSERT_MSG(m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3,
+             "Korean is not supported for any game other than Jak 2 and Jak 3 right now");
+  // Korean strings are fully bitstrings, in other words, it's just a bunch of bytes
+  // Some info on the layout:
+  // - Every korean syllable block starts with a `4`
+  //   - The following byte indicates how many glyphs are drawn for that syllable block
+  // - Each jamo that makes up the syllable block follows as a single byte
+  //   - Unless the jamo is part of the "extra" texture page, in which case it's preceeded by a `5`.
+  //   There are very few jamo that are and they are only applicable for the final consonant
+  // - The korean strings can contain non-korean characters.  These are preceeded by a `3`
+  //   - For example a space would be `3 20`
+  //   - It might be more accurate to say that a 3 signifies "consume characters as normal until
+  //   something else is encountered (ie. flags or more complex font encodings)"
+  std::string result;
+  std::string_view str(in);
+
+  u64 index = 0;
+  u8 curr_byte = 0;
+  bool in_syllable_block = false;
+  std::string jamo_buffer = "";
+  std::string non_korean_buffer = "";
+  int num_syllable_glyphs = 0;
+  while (index < str.length()) {
+    curr_byte = str.at(index);
+    // new syllable block
+    if (curr_byte == 4) {
+      in_syllable_block = true;
+      if (index + 1 < str.length()) {
+        num_syllable_glyphs = str.at(index + 1);
+        index++;
+      }
+      index++;
+      // flush any non-korean characters
+      if (!non_korean_buffer.empty()) {
+        // handle remap
+        std::string remapped_str = replace_to_utf8(encode_game_to_utf8(non_korean_buffer));
+        result += remapped_str;
+        non_korean_buffer = "";
+      }
+      continue;
+    }
+    if (in_syllable_block) {
+      // extra page
+      std::string glyph_key;
+      u8 hex_byte = curr_byte;
+      if (curr_byte == 5 && index + 1 < str.length()) {
+        hex_byte = str.at(index + 1);
+        glyph_key = fmt::format("extra_0x{:02x}", hex_byte);
+        index++;
+      } else {
+        glyph_key = fmt::format("0x{:02x}", hex_byte);
+      }
+      const auto jamo_list = jamo_glyph_mappings_jak2.find(glyph_key);
+      ASSERT_MSG(jamo_list != jamo_glyph_mappings_jak2.end(),
+                 fmt::format("{} not found in jamo glyph lookup table", glyph_key));
+      for (const auto& jamo : jamo_list->second) {
+        jamo_buffer += jamo;
+      }
+      num_syllable_glyphs--;
+      if (num_syllable_glyphs == 0) {
+        in_syllable_block = false;
+        result += font_util_korean::compose_korean_containing_text(jamo_buffer);
+        jamo_buffer = "";
+      }
+    } else {
+      if (curr_byte != 0x3) {
+        non_korean_buffer.push_back(curr_byte);
+      }
+    }
+    index++;
+  }
+  // flush any non-korean characters
+  if (!non_korean_buffer.empty()) {
+    // handle remap
+    std::string remapped_str = replace_to_utf8(encode_game_to_utf8(non_korean_buffer));
+    result += remapped_str;
+    non_korean_buffer = "";
+  }
+  return result;
 }

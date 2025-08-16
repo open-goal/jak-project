@@ -50,5 +50,5 @@ std::string compose_korean_containing_text(const std::string& text);
 std::string game_encode_korean_syllable(
     const std::string& context,
     const char32_t cp,
-    const std::unordered_map<std::string, KoreanLookupOrientations> db);
+    const std::unordered_map<std::string, KoreanLookupOrientations>& db);
 };  // namespace font_util
