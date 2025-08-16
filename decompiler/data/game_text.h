@@ -2,7 +2,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 
 namespace decompiler {
 struct ObjectFileData;

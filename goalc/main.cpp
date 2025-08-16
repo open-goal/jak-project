@@ -10,6 +10,7 @@
 #include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
+#include "common/util/font/font_utils_korean.h"
 
 #include "goalc/compiler/Compiler.h"
 

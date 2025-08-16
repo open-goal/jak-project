@@ -2,7 +2,7 @@
 
 #include "common/serialization/subtitles/subtitles.h"
 #include "common/util/Assert.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 #include "common/util/json_util.h"
 
 struct SubtitleLineMetadata {

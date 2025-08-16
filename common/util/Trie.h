@@ -36,6 +36,9 @@ class Trie {
   // Get all objects starting with the given prefix.
   std::vector<T*> lookup_prefix(const std::string& str) const;
 
+  // Finds the longest prefix match starting at offset `off` in string `in`.
+  const T* find_longest_prefix(const std::string& in, int off) const;
+
   // Get all nodes in the tree.
   std::vector<T*> get_all_nodes() const;
   ~Trie();
@@ -143,6 +146,23 @@ class Trie {
         }
       }
     }
+
+    const T* find_longest_prefix(const std::string& in, int off) const {
+      const Node* node = this;
+      const T* best = nullptr;
+
+      for (int j = off; j < (int)in.size(); ++j) {
+        unsigned char c = static_cast<unsigned char>(in[j]);
+        node = node->children[c];
+        if (!node) {
+          break;
+        }
+        if (node->value) {
+          best = node->value;
+        }
+      }
+      return best;
+    }
   };
 
   Node m_root;
@@ -180,6 +200,11 @@ T* Trie<T>::operator[](const std::string& str) {
 template <typename T>
 std::vector<T*> Trie<T>::lookup_prefix(const std::string& str) const {
   return m_root.lookup_prefix(str.c_str());
+}
+
+template <typename T>
+const T* Trie<T>::find_longest_prefix(const std::string& in, int off) const {
+  return m_root.find_longest_prefix(in, off);
 }
 
 template <typename T>
