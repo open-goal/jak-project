@@ -289,7 +289,7 @@ std::string glyph_hex_string_to_int(const std::string& str) {
     return result;
   } catch (std::exception& e) {
     lg::error("Unable to convert hex_string_to_int: {}", str);
-    throw e;
+    throw;
   }
 }
 
