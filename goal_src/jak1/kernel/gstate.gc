@@ -399,7 +399,9 @@ It type checks the arguments for the entry function.
 (defun send-event-function ((proc process-tree) (msg event-message-block))
   "Function to send an event to a process. Please use the send-event macros when possible"
   (with-pp
-    (when (and proc (!= (-> proc type) process-tree) (-> (the process proc) event-hook))
+    ;; og:preserve-this check that we have a _valid_ process. originally this just checked
+    ;; that type != process-tree, but sometimes we might get stale process ref (qbert-plat-master)
+    (when (and proc (valid? proc process #f #f 0) (-> (the process proc) event-hook))
       (let ((pp-backup pp))
         (set! pp (the process proc))
         (let ((result ((-> (the process proc) event-hook) (-> msg from) (-> msg num-params) (-> msg message) msg)))
