@@ -385,7 +385,7 @@ static void WIN_UpdateFocus(SDL_Window *window, bool expect_focus, DWORD pos)
             }
         }
 
-        SDL_SetKeyboardFocus(data->keyboard_focus ? data->keyboard_focus : window);
+        SDL_SetKeyboardFocus(window->keyboard_focus ? window->keyboard_focus : window);
 
         // In relative mode we are guaranteed to have mouse focus if we have keyboard focus
         if (!SDL_GetMouse()->relative_mode) {
@@ -732,6 +732,10 @@ static void WIN_HandleRawMouseInput(Uint64 timestamp, SDL_VideoData *data, HANDL
             float fAmount = (float)amount / WHEEL_DELTA;
             SDL_SendMouseWheel(WIN_GetEventTimestamp(), window, mouseID, fAmount, 0.0f, SDL_MOUSEWHEEL_NORMAL);
         }
+
+        /* Invalidate the mouse button flags. If we don't do this then disabling raw input
+           will cause held down mouse buttons to persist when released. */
+        windowdata->mouse_button_flags = (WPARAM)-1;
     }
 }
 
