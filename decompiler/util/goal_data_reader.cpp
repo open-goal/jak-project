@@ -51,7 +51,8 @@ void read_plain_data_field(const TypedRef& object,
   }
 }
 
-void memcpy_from_plain_data(u8* dest, const Ref& source, int size_bytes) {
+void memcpy_from_plain_data(void* _dest, const Ref& source, int size_bytes) {
+  u8* dest = (u8*)_dest;
   const auto& words = source.data->words_by_seg.at(source.seg);
   for (int byte = 0; byte < size_bytes; byte++) {
     int byte_in_words = byte + source.byte_offset;
