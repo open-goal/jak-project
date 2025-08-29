@@ -327,18 +327,26 @@
         (set! (-> line text) (-> obj movie-line))
         (return (the string #f))))
 
-  (cond
-    ((= (pc-subtitle3-speaker none) (-> line speaker))
-     ;; there's no speaker so who cares.
-     (string-format "~S" (-> line text)))
-    ((or (= #t (-> *pc-settings* subtitle-speaker?))
-         (and (= 'auto (-> *pc-settings* subtitle-speaker?)) (subtitle3-flags? line offscreen)))
-     ;; there is a speaker and we do want it.
-     ;; we use color 42 which gets set at runtime to any color we want
-     (string-format "~42L~S:~0L ~S" (get-speaker *subtitle3-text* (-> line speaker)) (-> line text)))
-    (else
-     (string-format "~S" (-> line text)))
-    )
+  ;; if we are in korean language mode and printing hint subtitles (which were never in the original game)
+  ;; then the text did NOT come from `scene.gc` so we must convert it
+  ;;
+  ;; this code is somewhat of a mess, but modifying the line text itself was proving to be a problem
+  ;; clean it up if you wish!
+  (let ((convert-to-korean? (and (not (-> obj movie-mode?))
+                                 (= (-> *setting-control* user-default subtitle-language) (language-enum korean)))))
+    (cond
+      ((= (pc-subtitle3-speaker none) (-> line speaker))
+        ;; there's no speaker so who cares.
+        (string-format "~S" (if convert-to-korean? (convert-korean-text (-> line text)) (-> line text))))
+       ((or (= #t (-> *pc-settings* subtitle-speaker?))
+            (and (= 'auto (-> *pc-settings* subtitle-speaker?)) (subtitle3-flags? line offscreen)))
+        ;; there is a speaker and we do want it.
+        ;; we use color 33 which gets set at runtime to any color we want
+        (string-format "~33L~S:~0L ~S"
+          (if convert-to-korean? (convert-korean-text (get-speaker *subtitle3-text* (-> line speaker))) (get-speaker *subtitle3-text* (-> line speaker)))
+          (if convert-to-korean? (convert-korean-text (-> line text)) (-> line text))))
+       (else
+        (string-format "~S" (if convert-to-korean? (convert-korean-text (-> line text)) (-> line text))))))
   *temp-string*)
 
 (defbehavior current-subtitle3-pos subtitle3 ((id sound-id))
@@ -475,9 +483,9 @@
         (when (= (gui-status active) (get-status *gui-control* (-> self gui-id)))
             (true! subtitles-drawn?)
             (protect (*display-text-box*)
-            (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
-            (set-speaker-color (-> line-queue elts i line speaker))
-            (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
+              (set! *display-text-box* (or *display-text-box* PC_SUBTITLE_DEBUG))
+              (set-speaker-color (-> line-queue elts i line speaker))
+              (print-game-text *temp-string* (-> self font) #f 44 (bucket-id debug-no-zbuf2))))
         )
 
       ;; save this for later usage
@@ -846,7 +854,7 @@
   (set! (-> self have-subtitles?) #f)
 
   (set! (-> self movie-mode?) #f)
-  (set! (-> self movie-line) (new 'process 'string (+ 7 (* 15 16)) (the string #f)))
+  (set! (-> self movie-line) (new 'process 'string 1024 (the string #f)))
 
   (set! (-> self current-debug-scene) 0)
   (set! (-> self current-debug-line) 0)

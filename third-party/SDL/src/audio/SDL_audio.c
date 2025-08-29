@@ -1153,7 +1153,10 @@ bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
             // We should have updated this elsewhere if the format changed!
             SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &device->spec, NULL, NULL));
 
+            SDL_assert(stream->src_spec.format != SDL_AUDIO_UNKNOWN);
+
             const int br = SDL_GetAtomicInt(&logdev->paused) ? 0 : SDL_GetAudioStreamDataAdjustGain(stream, device_buffer, buffer_size, logdev->gain);
+
             if (br < 0) {  // Probably OOM. Kill the audio device; the whole thing is likely dying soon anyhow.
                 failed = true;
                 SDL_memset(device_buffer, device->silence_value, buffer_size);  // just supply silence to the device before we die.
@@ -1194,6 +1197,8 @@ bool SDL_PlaybackAudioThreadIterate(SDL_AudioDevice *device)
                 for (SDL_AudioStream *stream = logdev->bound_streams; stream; stream = stream->next_binding) {
                     // We should have updated this elsewhere if the format changed!
                     SDL_assert(SDL_AudioSpecsEqual(&stream->dst_spec, &outspec, NULL, NULL));
+
+                    SDL_assert(stream->src_spec.format != SDL_AUDIO_UNKNOWN);
 
                     /* this will hold a lock on `stream` while getting. We don't explicitly lock the streams
                        for iterating here because the binding linked list can only change while the device lock is held.
@@ -1330,6 +1335,7 @@ bool SDL_RecordingAudioThreadIterate(SDL_AudioDevice *device)
                     SDL_assert(stream->src_spec.format == ((logdev->postmix || (logdev->gain != 1.0f)) ? SDL_AUDIO_F32 : device->spec.format));
                     SDL_assert(stream->src_spec.channels == device->spec.channels);
                     SDL_assert(stream->src_spec.freq == device->spec.freq);
+                    SDL_assert(stream->dst_spec.format != SDL_AUDIO_UNKNOWN);
 
                     void *final_buf = output_buffer;
 
@@ -1391,6 +1397,7 @@ static int SDLCALL RecordingAudioThread(void *devicep)  // thread entry point
 typedef struct CountAudioDevicesData
 {
     int devs_seen;
+    int devs_skipped;
     const int num_devices;
     SDL_AudioDeviceID *result;
     const bool recording;
@@ -1406,7 +1413,13 @@ static bool SDLCALL CountAudioDevices(void *userdata, const SDL_HashTable *table
     const bool isphysical = !!(devid & (1<<1));
     if (isphysical && (devid_recording == data->recording)) {
         SDL_assert(data->devs_seen < data->num_devices);
-        data->result[data->devs_seen++] = devid;
+        SDL_AudioDevice *device = (SDL_AudioDevice *) value;  // this is normally risky, but we hold the device_hash_lock here.
+        const bool zombie = SDL_GetAtomicInt(&device->zombie) != 0;
+        if (zombie) {
+            data->devs_skipped++;
+        } else {
+            data->result[data->devs_seen++] = devid;
+        }
     }
     return true;  // keep iterating.
 }
@@ -1422,10 +1435,11 @@ static SDL_AudioDeviceID *GetAudioDevices(int *count, bool recording)
             num_devices = SDL_GetAtomicInt(recording ? &current_audio.recording_device_count : &current_audio.playback_device_count);
             result = (SDL_AudioDeviceID *) SDL_malloc((num_devices + 1) * sizeof (SDL_AudioDeviceID));
             if (result) {
-                CountAudioDevicesData data = { 0, num_devices, result, recording };
+                CountAudioDevicesData data = { 0, 0, num_devices, result, recording };
                 SDL_IterateHashTable(current_audio.device_hash, CountAudioDevices, &data);
-                SDL_assert(data.devs_seen == num_devices);
-                result[data.devs_seen] = 0;  // null-terminated.
+                SDL_assert((data.devs_seen + data.devs_skipped) == num_devices);
+                num_devices = data.devs_seen;  // might be less if we skipped any.
+                result[num_devices] = 0;  // null-terminated.
             }
         }
         SDL_UnlockRWLock(current_audio.device_hash_lock);
@@ -1567,7 +1581,9 @@ int *SDL_GetAudioDeviceChannelMap(SDL_AudioDeviceID devid, int *count)
     SDL_AudioDevice *device = ObtainPhysicalAudioDeviceDefaultAllowed(devid);
     if (device) {
         channels = device->spec.channels;
-        result = SDL_ChannelMapDup(device->chmap, channels);
+        if (channels > 0 && device->chmap) {
+            result = SDL_ChannelMapDup(device->chmap, channels);
+        }
     }
     ReleaseAudioDevice(device);
 
@@ -1965,10 +1981,6 @@ bool SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream * const *stre
     } else if (logdev->simplified) {
         result = SDL_SetError("Cannot change stream bindings on device opened with SDL_OpenAudioDeviceStream");
     } else {
-
-        // !!! FIXME: We'll set the device's side's format below, but maybe we should refuse to bind a stream if the app's side doesn't have a format set yet.
-        // !!! FIXME: Actually, why do we allow there to be an invalid format, again?
-
         // make sure start of list is sane.
         SDL_assert(!logdev->bound_streams || (logdev->bound_streams->prev_binding == NULL));
 
@@ -2003,9 +2015,17 @@ bool SDL_BindAudioStreams(SDL_AudioDeviceID devid, SDL_AudioStream * const *stre
 
     if (result) {
         // Now that everything is verified, chain everything together.
+        const bool recording = device->recording;
         for (int i = 0; i < num_streams; i++) {
             SDL_AudioStream *stream = streams[i];
             if (stream) {  // shouldn't be NULL, but just in case...
+                // if the stream never had its non-device-end format set, just set it to the device end's format.
+                if (recording && (stream->dst_spec.format == SDL_AUDIO_UNKNOWN)) {
+                    SDL_copyp(&stream->dst_spec, &device->spec);
+                } else if (!recording && (stream->src_spec.format == SDL_AUDIO_UNKNOWN)) {
+                    SDL_copyp(&stream->src_spec, &device->spec);
+                }
+
                 stream->bound_device = logdev;
                 stream->prev_binding = NULL;
                 stream->next_binding = logdev->bound_streams;

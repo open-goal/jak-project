@@ -619,19 +619,12 @@ std::vector<symbol_info::SymbolInfo*> Compiler::lookup_symbol_info_by_prefix(
 
 std::set<std::string> Compiler::lookup_symbol_names_starting_with(const std::string& prefix,
                                                                   int max_count) const {
-  if (m_goos.reader.check_string_is_valid(prefix)) {
-    return m_symbol_info.lookup_names_starting_with(prefix, max_count);
-  }
-  return {};
+  return m_symbol_info.lookup_names_starting_with(prefix, max_count);
 }
 
 std::vector<symbol_info::SymbolInfo*> Compiler::lookup_exact_name_info(
     const std::string& name) const {
-  if (m_goos.reader.check_string_is_valid(name)) {
-    return m_symbol_info.lookup_exact_name(name);
-  } else {
-    return {};
-  }
+  return m_symbol_info.lookup_exact_name(name);
 }
 
 std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name) {
