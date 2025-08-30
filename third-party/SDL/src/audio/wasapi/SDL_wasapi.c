@@ -337,7 +337,7 @@ typedef struct
 static bool mgmtthrtask_DetectDevices(void *userdata)
 {
     mgmtthrtask_DetectDevicesData *data = (mgmtthrtask_DetectDevicesData *)userdata;
-    SDL_IMMDevice_EnumerateEndpoints(data->default_playback, data->default_recording);
+    SDL_IMMDevice_EnumerateEndpoints(data->default_playback, data->default_recording, SDL_AUDIO_F32);
     return true;
 }
 
@@ -957,7 +957,7 @@ static bool WASAPI_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap WASAPI_bootstrap = {
-    "wasapi", "WASAPI", WASAPI_Init, false
+    "wasapi", "WASAPI", WASAPI_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_WASAPI

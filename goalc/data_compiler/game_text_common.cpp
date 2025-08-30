@@ -21,27 +21,15 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
 #include "common/util/FileUtil.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 #include "common/util/json_util.h"
+#include "common/util/string_util.h"
 
 #include "game/runtime.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace {
-
-// TODO - replace with str_util::to_upper?
-std::string uppercase(const std::string& in) {
-  std::string result;
-  result.reserve(in.size());
-  for (auto c : in) {
-    if (c >= 'a' && c <= 'z') {
-      c -= ('a' - 'A');
-    }
-    result.push_back(c);
-  }
-  return result;
-}
 
 /*
 (deftype game-text (structure)
@@ -86,8 +74,8 @@ void compile_text(GameTextDB& db, const std::string& output_prefix) {
 
       file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
       file_util::write_binary_file(
-          file_util::get_file_path(
-              {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase(group_name))}),
+          file_util::get_file_path({"out", output_prefix, "iso",
+                                    fmt::format("{}{}.TXT", lang, str_util::to_upper(group_name))}),
           data.data(), data.size());
     }
   }
@@ -157,8 +145,8 @@ void compile_subtitles_v1(GameSubtitleDB& db, const std::string& output_prefix) 
 
     file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
     file_util::write_binary_file(
-        file_util::get_file_path(
-            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase("subtit"))}),
+        file_util::get_file_path({"out", output_prefix, "iso",
+                                  fmt::format("{}{}.TXT", lang, str_util::to_upper("subtit"))}),
         data.data(), data.size());
   }
 }
@@ -202,7 +190,12 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
         if (line.metadata.merge) {
           gen.add_symbol_link("#f");
         } else {
-          gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+          if (font->is_language_id_korean(lang)) {
+            gen.add_ref_to_string_in_pool(
+                font->convert_utf8_to_game_korean(line.text));  // line text
+          } else {
+            gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(line.text));  // line text
+          }
         }
         u16 speaker = bank->speaker_enum_value_from_name(line.metadata.speaker);
         u16 flags = 0;
@@ -218,7 +211,11 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
     for (auto& speaker_localized : localized_speakers) {
       // No need to check for invalid speakers here, they are checked at the scene line level above
       // and throw an error
-      gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
+      if (font->is_language_id_korean(lang)) {
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game_korean(speaker_localized));
+      } else {
+        gen.add_ref_to_string_in_pool(font->convert_utf8_to_game(speaker_localized));
+      }
     }
 
     auto data = gen.generate_v2();
@@ -226,8 +223,8 @@ void compile_subtitles_v2(GameSubtitleDB& db, const std::string& output_prefix) 
     file_util::create_dir_if_needed(file_util::get_file_path({"out", output_prefix, "iso"}));
     auto file_name = get_text_version_name(bank->m_text_version) == "jak3" ? "subti3" : "subti2";
     file_util::write_binary_file(
-        file_util::get_file_path(
-            {"out", output_prefix, "iso", fmt::format("{}{}.TXT", lang, uppercase(file_name))}),
+        file_util::get_file_path({"out", output_prefix, "iso",
+                                  fmt::format("{}{}.TXT", lang, str_util::to_upper(file_name))}),
         data.data(), data.size());
   }
 }

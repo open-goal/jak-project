@@ -159,7 +159,10 @@
     )
   )
 
-(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
+;; og:preserve-this extracted implementation out so that callers of `lookup-text!` were uneffected
+;; this implementation is different from the original (has fallback text lookup)
+(define-extern lookup-text-impl! (function game-text-info text-id symbol symbol string))
+(defun lookup-text-impl! ((this game-text-info) (arg0 text-id) (arg1 symbol) (fallback-call? symbol))
   (cond
     ((= this #f)
      (cond
@@ -191,15 +194,23 @@
           ((!= (-> this data v1-2 id) arg0)
            (cond
              (arg1
-               (the-as string #f)
+               ;; og:preserve-this Added fallback to english is string is not found.
+               (#if PC_PORT
+                 (if (and *fallback-text-lookup?* (not fallback-call?))
+                   (aif (lookup-text-impl! *fallback-text* arg0 #t #t)
+                       it
+                       (the-as string #f))
+                   (the-as string #f))
+                 (the-as string #f))
                )
              (else
-              ;; og:preserve-this Added fallback to English if string is not found.
+              ;; og:preserve-this Added fallback to english is string is not found.
               (#if PC_PORT
-                (if *fallback-text-lookup?*
-                  (aif (lookup-text! *fallback-text* arg0 #t)
+                (if (and *fallback-text-lookup?* (not fallback-call?))
+                  (aif (lookup-text-impl! *fallback-text* arg0 #t #t)
                       it
-                      (string-format "UNKNOWN ID ~D" arg0)))
+                      (string-format "UNKNOWN ID ~D" arg0))
+                  (string-format "UNKNOWN ID ~D" arg0))
                 (string-format "UNKNOWN ID ~D" arg0))
                )
              )
@@ -213,13 +224,21 @@
           )
         )
       )
-    )
-  )
+    ))
+
+(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
+  "Look up text by ID.  Will return the string.
+   If the ID can't be found, and arg1 is #t, it will return #f,
+   otherwise the temp string UNKNOWN ID <id number>"
+  ;; og:preserve-this call custom function
+  (lookup-text-impl! this arg0 arg1 #f))
 
 (defmethod lookup-text ((this level) (arg0 text-id) (arg1 symbol))
   (let ((v1-0 *common-text*))
     (dotimes (a3-0 (-> this loaded-text-info-count))
-      (if (= (-> this loaded-text-info a3-0 language-id) (-> *setting-control* user-current language))
+      ;; og:preserve-this added
+      (if (= (-> this loaded-text-info a3-0 language-id) (#if PC_PORT (the language-enum (-> *pc-settings* text-language))
+                                                                      (-> *setting-control* user-current language)))
           (set! v1-0 (-> this loaded-text-info a3-0))
           )
       )
@@ -233,12 +252,18 @@
 (defun load-game-text-info ((arg0 string) (arg1 (pointer object)) (arg2 kheap))
   (local-vars (v0-4 int) (sv-16 object) (sv-20 int) (sv-24 int) (sv-32 int))
   (set! sv-16 (-> arg1 0))
-  (set! sv-20 (the-as int (-> *setting-control* user-current language)))
+  ;; og:preserve-this added
+  (set! sv-20 (#if PC_PORT (the int (-> *pc-settings* text-language))
+                           (-> *setting-control* user-current language)))
   (set! sv-24 0)
   (set! sv-32 (&- (-> arg2 top) (the-as uint (-> arg2 base))))
-  (if (and (= (scf-get-territory) 1) (= sv-20 (language-enum english)) (not (demo?)))
-      (set! sv-20 11)
-      )
+  ;; english -> UK english in PAL
+  ;; og:preserve-this no longer necessary.
+  (#unless PC_PORT
+    (if (and (= (scf-get-territory) GAME_TERRITORY_SCEE) (= sv-24 (the int (language-enum english))) (not (demo?)))
+        (set! sv-24 (the int (language-enum uk-english)))
+        )
+    )
   (when (and (or (= sv-16 #f)
                  (!= (-> (the-as game-text-info sv-16) language-id) sv-20)
                  (not (string= (-> (the-as game-text-info sv-16) group-name) arg0))
@@ -310,8 +335,8 @@
   (when (or *level-text-file-load-flag* (>= arg0 0))
     (load-game-text-info "common" (&-> '*common-text* value) *common-text-heap*)
     (#when PC_PORT
-      (protect ((-> *setting-control* user-current language))
-        (set! (-> *setting-control* user-current language) (language-enum english))
+      (protect ((-> *pc-settings* text-language))
+        (set! (-> *pc-settings* text-language) (pc-language english))
         (load-game-text-info "common" (&-> '*fallback-text* value) *fallback-text-heap*))))
   (none))
 
@@ -564,6 +589,10 @@
      (set! (-> arg1 origin y) sv-20)
      (set! (-> arg1 flags) sv-24)
      (set! (-> arg1 color) sv-28)
+     ;; og:preserve-this
+     (#when PC_PORT
+       (if (and *debug-segment* *display-text-box*)
+         (draw-debug-text-box arg1)))
      (if (> sv-64 0)
          (* sv-56 (the float sv-64))
          0.0

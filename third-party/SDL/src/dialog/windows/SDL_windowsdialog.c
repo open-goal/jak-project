@@ -261,7 +261,7 @@ void windows_ShowFileDialog(void *ptr)
 
             chosen_files_list[nfiles] = NULL;
 
-            if (WideCharToMultiByte(CP_UTF8, 0, file_ptr, -1, chosen_folder, MAX_PATH, NULL, NULL) >= MAX_PATH) {
+            if (WideCharToMultiByte(CP_UTF8, 0, file_ptr, -1, chosen_folder, MAX_PATH, NULL, NULL) == 0) {
                 SDL_SetError("Path too long or invalid character in path");
                 SDL_free(chosen_files_list);
                 callback(userdata, NULL, -1);
@@ -273,7 +273,7 @@ void windows_ShowFileDialog(void *ptr)
             SDL_strlcpy(chosen_file, chosen_folder, MAX_PATH);
             chosen_file[chosen_folder_size] = '\\';
 
-            file_ptr += SDL_strlen(chosen_folder) + 1;
+            file_ptr += SDL_wcslen(file_ptr) + 1;
 
             while (*file_ptr) {
                 nfiles++;
@@ -295,7 +295,7 @@ void windows_ShowFileDialog(void *ptr)
 
                 int diff = ((int) chosen_folder_size) + 1;
 
-                if (WideCharToMultiByte(CP_UTF8, 0, file_ptr, -1, chosen_file + diff, MAX_PATH - diff, NULL, NULL) >= MAX_PATH - diff) {
+                if (WideCharToMultiByte(CP_UTF8, 0, file_ptr, -1, chosen_file + diff, MAX_PATH - diff, NULL, NULL) == 0) {
                     SDL_SetError("Path too long or invalid character in path");
 
                     for (size_t i = 0; i < nfiles - 1; i++) {
@@ -308,7 +308,7 @@ void windows_ShowFileDialog(void *ptr)
                     return;
                 }
 
-                file_ptr += SDL_strlen(chosen_file) + 1 - diff;
+                file_ptr += SDL_wcslen(file_ptr) + 1;
 
                 chosen_files_list[nfiles - 1] = SDL_strdup(chosen_file);
 
@@ -516,6 +516,14 @@ static void ShowFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_
 
     filters_str = win_get_filters(filters, nfilters);
 
+    DWORD flags = 0;
+    if (allow_many) {
+        flags |= OFN_ALLOWMULTISELECT;
+    }
+    if (is_save) {
+        flags |= OFN_OVERWRITEPROMPT;
+    }
+
     if (!filters_str && filters) {
         callback(userdata, NULL, -1);
         SDL_free(args);
@@ -526,7 +534,7 @@ static void ShowFileDialog(SDL_DialogFileCallback callback, void *userdata, SDL_
     args->filters_str = filters_str;
     args->default_file = default_location ? SDL_strdup(default_location) : NULL;
     args->parent = window;
-    args->flags = allow_many ? OFN_ALLOWMULTISELECT : 0;
+    args->flags = flags;
     args->callback = callback;
     args->userdata = userdata;
     args->title = title ? SDL_strdup(title) : NULL;

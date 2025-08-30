@@ -426,10 +426,10 @@ typedef SDL_EGLint *(SDLCALL *SDL_EGLIntArrayCallback)(void *userdata, SDL_EGLDi
  */
 typedef enum SDL_GLAttr
 {
-    SDL_GL_RED_SIZE,                    /**< the minimum number of bits for the red channel of the color buffer; defaults to 3. */
-    SDL_GL_GREEN_SIZE,                  /**< the minimum number of bits for the green channel of the color buffer; defaults to 3. */
-    SDL_GL_BLUE_SIZE,                   /**< the minimum number of bits for the blue channel of the color buffer; defaults to 2. */
-    SDL_GL_ALPHA_SIZE,                  /**< the minimum number of bits for the alpha channel of the color buffer; defaults to 0. */
+    SDL_GL_RED_SIZE,                    /**< the minimum number of bits for the red channel of the color buffer; defaults to 8. */
+    SDL_GL_GREEN_SIZE,                  /**< the minimum number of bits for the green channel of the color buffer; defaults to 8. */
+    SDL_GL_BLUE_SIZE,                   /**< the minimum number of bits for the blue channel of the color buffer; defaults to 8. */
+    SDL_GL_ALPHA_SIZE,                  /**< the minimum number of bits for the alpha channel of the color buffer; defaults to 8. */
     SDL_GL_BUFFER_SIZE,                 /**< the minimum number of bits for frame buffer size; defaults to 0. */
     SDL_GL_DOUBLEBUFFER,                /**< whether the output is single or double buffered; defaults to double buffering on. */
     SDL_GL_DEPTH_SIZE,                  /**< the minimum number of bits in the depth buffer; defaults to 16. */
@@ -1041,6 +1041,10 @@ extern SDL_DECLSPEC SDL_Window ** SDLCALL SDL_GetWindows(int *count);
 /**
  * Create a window with the specified dimensions and flags.
  *
+ * The window size is a request and may be different than expected based on
+ * the desktop layout and window manager policies. Your application should be
+ * prepared to handle a window of any size.
+ *
  * `flags` may be any of the following OR'd together:
  *
  * - `SDL_WINDOW_FULLSCREEN`: fullscreen window at desktop resolution
@@ -1127,6 +1131,10 @@ extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_CreateWindow(const char *title, int
 /**
  * Create a child popup window of the specified parent window.
  *
+ * The window size is a request and may be different than expected based on
+ * the desktop layout and window manager policies. Your application should be
+ * prepared to handle a window of any size.
+ *
  * The flags parameter **must** contain at least one of the following:
  *
  * - `SDL_WINDOW_TOOLTIP`: The popup window is a tooltip and will not pass any
@@ -1159,6 +1167,15 @@ extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_CreateWindow(const char *title, int
  * Popup windows implicitly do not have a border/decorations and do not appear
  * on the taskbar/dock or in lists of windows such as alt-tab menus.
  *
+ * By default, popup window positions will automatically be constrained to keep
+ * the entire window within display bounds. This can be overridden with the
+ * `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN` property.
+ *
+ * By default, popup menus will automatically grab keyboard focus from the parent
+ * when shown. This behavior can be overridden by setting the `SDL_WINDOW_NOT_FOCUSABLE`
+ * flag, setting the `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN` property to false, or
+ * toggling it after creation via the `SDL_SetWindowFocusable()` function.
+ *
  * If a parent window is hidden or destroyed, any child popup windows will be
  * recursively hidden or destroyed as well. Child popup windows not explicitly
  * hidden will be restored when the parent is shown.
@@ -1189,12 +1206,19 @@ extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_CreatePopupWindow(SDL_Window *paren
 /**
  * Create a window with the specified properties.
  *
+ * The window size is a request and may be different than expected based on
+ * the desktop layout and window manager policies. Your application should be
+ * prepared to handle a window of any size.
+ *
  * These are the supported properties:
  *
  * - `SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN`: true if the window should
  *   be always on top
  * - `SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN`: true if the window has no
  *   window decoration
+ * - `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN`: true if the "tooltip" and
+ *   "menu" window types should be automatically constrained to be entirely within
+ *   display bounds (default), false if no constraints on the position are desired.
  * - `SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN`: true if the
  *   window will be used with an externally managed graphics context.
  * - `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN`: true if the window should
@@ -1309,6 +1333,7 @@ extern SDL_DECLSPEC SDL_Window * SDLCALL SDL_CreateWindowWithProperties(SDL_Prop
 
 #define SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN               "SDL.window.create.always_on_top"
 #define SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN                  "SDL.window.create.borderless"
+#define SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN             "SDL.window.create.constrain_popup"
 #define SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN                   "SDL.window.create.focusable"
 #define SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN   "SDL.window.create.external_graphics_context"
 #define SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER                        "SDL.window.create.flags"

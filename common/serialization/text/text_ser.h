@@ -11,7 +11,7 @@
 #include "common/goos/Object.h"
 #include "common/log/log.h"
 #include "common/util/Assert.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 #include "common/util/json_util.h"
 #include "common/versions/versions.h"
 

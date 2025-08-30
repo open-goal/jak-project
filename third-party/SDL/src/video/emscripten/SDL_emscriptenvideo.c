@@ -64,7 +64,7 @@ static SDL_SystemTheme Emscripten_GetSystemTheme(void)
     /* Technically, light theme can mean explicit light theme or no preference.
        https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-color-scheme#syntax */
 
-    int theme_code = EM_ASM_INT({
+    int theme_code = MAIN_THREAD_EM_ASM_INT({
         if (!window.matchMedia) {
             return -1;
         }
@@ -195,7 +195,8 @@ static SDL_VideoDevice *Emscripten_CreateDevice(void)
 VideoBootStrap Emscripten_bootstrap = {
     EMSCRIPTENVID_DRIVER_NAME, "SDL emscripten video driver",
     Emscripten_CreateDevice,
-    NULL // no ShowMessageBox implementation
+    NULL, // no ShowMessageBox implementation
+    false
 };
 
 bool Emscripten_VideoInit(SDL_VideoDevice *_this)

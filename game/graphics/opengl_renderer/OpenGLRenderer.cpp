@@ -81,7 +81,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
   // disable specific errors
-  const GLuint gl_error_ignores_api_other[1] = {0x20071};
+  const GLuint gl_error_ignores_api_other[1] = {0x20071};  // some annoying nvidia message
   glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 1,
                         &gl_error_ignores_api_other[0], GL_FALSE);
 #endif
@@ -91,6 +91,38 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   lg::info("OpenGL context vendor: {}", (const char*)glGetString(GL_VENDOR));
   lg::info("OpenGL context shading language version: {}",
            (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+  // set up screen draw
+
+  glGenVertexArrays(1, &screen_vao);
+  glGenBuffers(1, &screen_vbo);
+
+  struct Vertex {
+    float x, y;
+  };
+  constexpr std::array<Vertex, 4> vertices = {
+      Vertex{-1, -1},
+      Vertex{-1, 1},
+      Vertex{1, -1},
+      Vertex{1, 1},
+  };
+
+  glBindVertexArray(screen_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, screen_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4, vertices.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0,               // location 0 in the shader
+                        2,               // 2 floats per vert
+                        GL_FLOAT,        // floats
+                        GL_TRUE,         // normalized, ignored,
+                        sizeof(Vertex),  //
+                        nullptr          //
+  );
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+
+  // end set up screen draw
 
   const tfrag3::Level* common_level = nullptr;
   {
@@ -149,6 +181,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
 
     init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                          BucketId::OCEAN_MID_FAR);
+    // 7 (hack for progress menu box)
+    init_bucket_renderer<DirectRenderer>("progress-hack", BucketCategory::OTHER,
+                                         BucketId::PROGRESS_HACK, 0x8000);
 
     // 8 (in tfrag category for now, just for stat reporting.)
     init_bucket_renderer<Hfrag>("hfrag", BucketCategory::TFRAG, BucketId::HFRAG);
@@ -1592,30 +1627,33 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     window_blit_src = &m_fbo_state.resources.render_buffer;
   }
 
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-  glBlitFramebuffer(0,                                                          // srcX0
-                    0,                                                          // srcY0
-                    window_blit_src->width,                                     // srcX1
-                    window_blit_src->height,                                    // srcY1
-                    render_state->draw_offset_x,                                // dstX0
-                    render_state->draw_offset_y,                                // dstY0
-                    render_state->draw_offset_x + render_state->draw_region_w,  // dstX1
-                    render_state->draw_offset_y + render_state->draw_region_h,  // dstY1
-                    GL_COLOR_BUFFER_BIT,                                        // mask
-                    GL_LINEAR                                                   // filter
-  );
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+  glViewport(render_state->draw_offset_x, render_state->draw_offset_y, render_state->draw_region_w,
+             render_state->draw_region_h);
+  glBindTexture(GL_TEXTURE_2D, *window_blit_src->tex_id);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  glBindVertexArray(screen_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, screen_vbo);
+
+  auto& shader = render_state->shaders[ShaderId::PLAIN_TEXTURE];
+  shader.activate();
+  glUniform1i(glGetUniformLocation(shader.id(), "tex_T0"), 0);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glActiveTexture(GL_TEXTURE0);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+
+  glEnable(GL_BLEND);
   if (alp < 1) {
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     glBlendEquation(GL_FUNC_ADD);
-    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
 
     m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
-
-    glEnable(GL_DEPTH_TEST);
   }
+  glEnable(GL_DEPTH_TEST);
 }

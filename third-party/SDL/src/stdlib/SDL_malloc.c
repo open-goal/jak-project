@@ -1478,6 +1478,13 @@ DLMALLOC_EXPORT int mspace_mallopt(int, int);
 #endif /* NO_MALLOC_STATS */
 #ifndef LACKS_ERRNO_H
 #include <errno.h>       /* for MALLOC_FAILURE_ACTION */
+#else /* LACKS_ERRNO_H */
+#ifndef EINVAL
+#define EINVAL 22
+#endif
+#ifndef ENOMEM
+#define ENOMEM 12
+#endif
 #endif /* LACKS_ERRNO_H */
 #ifdef DEBUG
 #if ABORT_ON_ASSERT_FAILURE
@@ -6324,10 +6331,10 @@ History:
 #endif /* !HAVE_MALLOC */
 
 #ifdef HAVE_MALLOC
-static void* SDLCALL real_malloc(size_t s) { return malloc(s); }
-static void* SDLCALL real_calloc(size_t n, size_t s) { return calloc(n, s); }
-static void* SDLCALL real_realloc(void *p, size_t s) { return realloc(p,s); }
-static void  SDLCALL real_free(void *p) { free(p); }
+static void * SDLCALL real_malloc(size_t s) { return malloc(s); }
+static void * SDLCALL real_calloc(size_t n, size_t s) { return calloc(n, s); }
+static void * SDLCALL real_realloc(void *p, size_t s) { return realloc(p,s); }
+static void   SDLCALL real_free(void *p) { free(p); }
 #else
 #define real_malloc dlmalloc
 #define real_calloc dlcalloc

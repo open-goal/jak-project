@@ -44,7 +44,9 @@ enum PW_READY_FLAGS
 {
     PW_READY_FLAG_BUFFER_ADDED = 0x1,
     PW_READY_FLAG_STREAM_READY = 0x2,
-    PW_READY_FLAG_ALL_BITS = 0x3
+    PW_READY_FLAG_ALL_PREOPEN_BITS = 0x3,
+    PW_READY_FLAG_OPEN_COMPLETE = 0x4,
+    PW_READY_FLAG_ALL_BITS = 0x7
 };
 
 #define PW_ID_TO_HANDLE(x) (void *)((uintptr_t)x)
@@ -548,7 +550,7 @@ static void node_event_info(void *object, const struct pw_node_info *info)
 
         // Need to parse the parameters to get the sample rate
         for (i = 0; i < info->n_params; ++i) {
-            pw_node_enum_params(node->proxy, 0, info->params[i].id, 0, 0, NULL);
+            pw_node_enum_params((struct pw_node*)node->proxy, 0, info->params[i].id, 0, 0, NULL);
         }
 
         hotplug_core_sync(node);
@@ -1116,7 +1118,13 @@ static bool PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
 
     stream_name = SDL_GetHint(SDL_HINT_AUDIO_DEVICE_STREAM_NAME);
     if (!stream_name || *stream_name == '\0') {
-        stream_name = "Audio Stream";
+        if (app_name) {
+            stream_name = app_name;
+        } else if (app_id) {
+            stream_name = app_id;
+        } else {
+            stream_name = "SDL Audio Stream";
+        }
     }
 
     /*
@@ -1185,7 +1193,11 @@ static bool PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
     PIPEWIRE_pw_properties_setf(props, PW_KEY_NODE_LATENCY, "%u/%i", device->sample_frames, device->spec.freq);
     PIPEWIRE_pw_properties_setf(props, PW_KEY_NODE_RATE, "1/%u", device->spec.freq);
     PIPEWIRE_pw_properties_set(props, PW_KEY_NODE_ALWAYS_PROCESS, "true");
-    PIPEWIRE_pw_properties_set(props, PW_KEY_NODE_DONT_RECONNECT, "true");  // Requesting a specific device, don't migrate to new default hardware.
+
+    // UPDATE: This prevents users from moving the audio to a new sink (device) using standard tools. This is slightly in conflict
+    //  with how SDL wants to manage audio devices, but if people want to do it, we should let them, so this is commented out
+    //  for now. We might revisit later.
+    //PIPEWIRE_pw_properties_set(props, PW_KEY_NODE_DONT_RECONNECT, "true");  // Requesting a specific device, don't migrate to new default hardware.
 
     if (node_id != PW_ID_ANY) {
         PIPEWIRE_pw_thread_loop_lock(hotplug_loop);
@@ -1215,12 +1227,13 @@ static bool PIPEWIRE_OpenDevice(SDL_AudioDevice *device)
         return SDL_SetError("Pipewire: Failed to start stream loop");
     }
 
-    // Wait until all init flags are set or the stream has failed.
+    // Wait until all pre-open init flags are set or the stream has failed.
     PIPEWIRE_pw_thread_loop_lock(priv->loop);
-    while (priv->stream_init_status != PW_READY_FLAG_ALL_BITS &&
+    while (priv->stream_init_status != PW_READY_FLAG_ALL_PREOPEN_BITS &&
            PIPEWIRE_pw_stream_get_state(priv->stream, NULL) != PW_STREAM_STATE_ERROR) {
         PIPEWIRE_pw_thread_loop_wait(priv->loop);
     }
+    priv->stream_init_status |= PW_READY_FLAG_OPEN_COMPLETE;
     PIPEWIRE_pw_thread_loop_unlock(priv->loop);
 
     if (PIPEWIRE_pw_stream_get_state(priv->stream, &error) == PW_STREAM_STATE_ERROR) {
@@ -1337,10 +1350,10 @@ static bool PIPEWIRE_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap PIPEWIRE_PREFERRED_bootstrap = {
-    "pipewire", "Pipewire", PIPEWIRE_PREFERRED_Init, false
+    "pipewire", "Pipewire", PIPEWIRE_PREFERRED_Init, false, true
 };
 AudioBootStrap PIPEWIRE_bootstrap = {
-    "pipewire", "Pipewire", PIPEWIRE_Init, false
+    "pipewire", "Pipewire", PIPEWIRE_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_PIPEWIRE

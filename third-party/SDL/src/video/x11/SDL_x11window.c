@@ -86,6 +86,23 @@ static Bool X11_XIfEventTimeout(Display *display, XEvent *event_return, Bool (*p
 }
 */
 
+static bool X11_CheckCurrentDesktop(const char *name)
+{
+    SDL_Environment *env = SDL_GetEnvironment();
+    const char *desktopVar = SDL_GetEnvironmentVariable(env, "DESKTOP_SESSION");
+    if (desktopVar && SDL_strcasecmp(desktopVar, name) == 0) {
+        return true;
+    }
+
+    desktopVar = SDL_GetEnvironmentVariable(env, "XDG_CURRENT_DESKTOP");
+
+    if (desktopVar && SDL_strcasestr(desktopVar, name)) {
+        return true;
+    }
+
+    return false;
+}
+
 static bool X11_IsWindowMapped(SDL_VideoDevice *_this, SDL_Window *window)
 {
     SDL_WindowData *data = window->internal;
@@ -98,6 +115,14 @@ static bool X11_IsWindowMapped(SDL_VideoDevice *_this, SDL_Window *window)
     } else {
         return false;
     }
+}
+
+static bool X11_IsDisplayOk(Display *display)
+{
+    if (display->flags & XlibDisplayIOError) {
+        return false;
+    }
+    return true;
 }
 
 #if 0
@@ -207,28 +232,30 @@ static void X11_ConstrainPopup(SDL_Window *window, bool output_to_pending)
         int abs_y = window->last_position_pending ? window->pending.y : window->floating.y;
         int offset_x = 0, offset_y = 0;
 
-        // Calculate the total offset from the parents
-        for (w = window->parent; SDL_WINDOW_IS_POPUP(w); w = w->parent) {
+        if (window->constrain_popup) {
+            // Calculate the total offset from the parents
+            for (w = window->parent; SDL_WINDOW_IS_POPUP(w); w = w->parent) {
+                offset_x += w->x;
+                offset_y += w->y;
+            }
+
             offset_x += w->x;
             offset_y += w->y;
-        }
+            abs_x += offset_x;
+            abs_y += offset_y;
 
-        offset_x += w->x;
-        offset_y += w->y;
-        abs_x += offset_x;
-        abs_y += offset_y;
+            displayID = SDL_GetDisplayForWindow(w);
 
-        displayID = SDL_GetDisplayForWindow(w);
-
-        SDL_GetDisplayBounds(displayID, &rect);
-        if (abs_x + window->w > rect.x + rect.w) {
-            abs_x -= (abs_x + window->w) - (rect.x + rect.w);
+            SDL_GetDisplayBounds(displayID, &rect);
+            if (abs_x + window->w > rect.x + rect.w) {
+                abs_x -= (abs_x + window->w) - (rect.x + rect.w);
+            }
+            if (abs_y + window->h > rect.y + rect.h) {
+                abs_y -= (abs_y + window->h) - (rect.y + rect.h);
+            }
+            abs_x = SDL_max(abs_x, rect.x);
+            abs_y = SDL_max(abs_y, rect.y);
         }
-        if (abs_y + window->h > rect.y + rect.h) {
-            abs_y -= (abs_y + window->h) - (rect.y + rect.h);
-        }
-        abs_x = SDL_max(abs_x, rect.x);
-        abs_y = SDL_max(abs_y, rect.y);
 
         if (output_to_pending) {
             window->pending.x = abs_x - offset_x;
@@ -249,7 +276,7 @@ static void X11_SetKeyboardFocus(SDL_Window *window, bool set_active_focus)
         toplevel = toplevel->parent;
     }
 
-    toplevel->internal->keyboard_focus = window;
+    toplevel->keyboard_focus = window;
 
     if (set_active_focus && !window->is_hiding && !window->is_destroying) {
         SDL_SetKeyboardFocus(window);
@@ -387,11 +414,11 @@ static bool SetupWindowData(SDL_VideoDevice *_this, SDL_Window *window, Window w
 
         X11_XGetWindowAttributes(data->videodata->display, w, &attrib);
         if (!SDL_WINDOW_IS_POPUP(window)) {
-            window->x = data->expected.x = attrib.x;
-            window->y = data->expected.y = attrib.y - data->border_top;
+            window->x = window->windowed.x = window->floating.x = attrib.x;
+            window->y = window->windowed.y = window->floating.y = attrib.y - data->border_top;
         }
-        window->w = data->expected.w = attrib.width;
-        window->h = data->expected.h = attrib.height;
+        window->w = window->windowed.w = window->floating.w = attrib.width;
+        window->h = window->windowed.h = window->floating.h = attrib.height;
         if (attrib.map_state != IsUnmapped) {
             window->flags &= ~SDL_WINDOW_HIDDEN;
         } else {
@@ -513,7 +540,9 @@ bool X11_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properties
             return false;
         }
 
-        SetupWindowInput(_this, window);
+        if (SDL_GetHintBoolean(SDL_HINT_VIDEO_X11_EXTERNAL_WINDOW_INPUT, true)) {
+            SetupWindowInput(_this, window);
+        }
         return true;
     }
 
@@ -524,7 +553,7 @@ bool X11_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_Properties
     }
 
     const bool force_override_redirect = SDL_GetHintBoolean(SDL_HINT_X11_FORCE_OVERRIDE_REDIRECT, false);
-    const bool use_resize_sync = (window->flags & SDL_WINDOW_VULKAN); /* doesn't work well with Vulkan */
+    const bool use_resize_sync = !!(window->flags & SDL_WINDOW_OPENGL); // Doesn't work well with Vulkan
     SDL_WindowData *windowdata;
     Display *display = data->display;
     int screen = displaydata->screen;
@@ -924,6 +953,75 @@ static int X11_CatchAnyError(Display *d, XErrorEvent *e)
     return 0;
 }
 
+static void X11_ExternalResizeMoveSync(SDL_Window *window)
+{
+    SDL_WindowData *data = window->internal;
+    Display *display = data->videodata->display;
+    int (*prev_handler)(Display *, XErrorEvent *);
+    unsigned int childCount;
+    Window childReturn, root, parent;
+    Window *children;
+    XWindowAttributes attrs;
+    Uint64 timeout = 0;
+    int x, y;
+    const bool send_move = !!(data->pending_operation & X11_PENDING_OP_MOVE);
+    const bool send_resize = !!(data->pending_operation & X11_PENDING_OP_RESIZE);
+
+    X11_XSync(display, False);
+    X11_XQueryTree(display, data->xwindow, &root, &parent, &children, &childCount);
+    prev_handler = X11_XSetErrorHandler(X11_CatchAnyError);
+
+    /* Wait a brief time to see if the window manager decided to let the move or resize happen.
+     * If the window changes at all, even to an unexpected value, we break out.
+     */
+    timeout = SDL_GetTicksNS() + SDL_MS_TO_NS(100);
+    while (true) {
+        caught_x11_error = false;
+        X11_XSync(display, False);
+        X11_XGetWindowAttributes(display, data->xwindow, &attrs);
+        X11_XTranslateCoordinates(display, parent, DefaultRootWindow(display),
+                                  attrs.x, attrs.y, &x, &y, &childReturn);
+        SDL_GlobalToRelativeForWindow(window, x, y, &x, &y);
+
+        if (!caught_x11_error) {
+            if ((data->pending_operation & X11_PENDING_OP_MOVE) && (x == data->expected.x + data->border_left && y == data->expected.y + data->border_top)) {
+                data->pending_operation &= ~X11_PENDING_OP_MOVE;
+            }
+            if ((data->pending_operation & X11_PENDING_OP_RESIZE) && (attrs.width == data->expected.w && attrs.height == data->expected.h)) {
+                data->pending_operation &= ~X11_PENDING_OP_RESIZE;
+            }
+
+            if (data->pending_operation == X11_PENDING_OP_NONE) {
+                break;
+            }
+        }
+
+        if (SDL_GetTicksNS() >= timeout) {
+            // Timed out without the expected values. Update the requested data so future sync calls won't block.
+            data->pending_operation &= ~(X11_PENDING_OP_MOVE | X11_PENDING_OP_RESIZE);
+            data->expected.x = x;
+            data->expected.y = y;
+            data->expected.w = attrs.width;
+            data->expected.h = attrs.height;
+            break;
+        }
+
+        SDL_Delay(10);
+    }
+
+    if (!caught_x11_error) {
+        if (send_move) {
+            SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_MOVED, x, y);
+        }
+        if (send_resize) {
+            SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_RESIZED, attrs.width, attrs.height);
+        }
+    }
+
+    X11_XSetErrorHandler(prev_handler);
+    caught_x11_error = false;
+}
+
 /* Wait a brief time, or not, to see if the window manager decided to move/resize the window.
  * Send MOVED and RESIZED window events */
 static bool X11_SyncWindowTimeout(SDL_VideoDevice *_this, SDL_Window *window, Uint64 param_timeout)
@@ -1065,8 +1163,12 @@ void X11_UpdateWindowPosition(SDL_Window *window, bool use_current_position)
                                   &data->expected.x, &data->expected.y);
 
     // Attempt to move the window
-    data->pending_operation |= X11_PENDING_OP_MOVE;
-    X11_XMoveWindow(display, data->xwindow, data->expected.x, data->expected.y);
+    if (window->flags & SDL_WINDOW_HIDDEN) {
+        window->internal->pending_position = true;
+    } else {
+        data->pending_operation |= X11_PENDING_OP_MOVE;
+        X11_XMoveWindow(display, data->xwindow, data->expected.x, data->expected.y);
+    }
 }
 
 bool X11_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
@@ -1093,41 +1195,6 @@ bool X11_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
         SDL_UpdateFullscreenMode(window, SDL_FULLSCREEN_OP_UPDATE, true);
     }
     return true;
-}
-
-static void X11_SetWMNormalHints(SDL_VideoDevice *_this, SDL_Window *window, XSizeHints *sizehints)
-{
-    SDL_WindowData *data = window->internal;
-    Display *display = data->videodata->display;
-    int dest_x, dest_y;
-
-    X11_XSetWMNormalHints(display, data->xwindow, sizehints);
-
-    /* From Pierre-Loup:
-       WMs each have their little quirks with that.  When you change the
-       size hints, they get a ConfigureNotify event with the
-       WM_NORMAL_SIZE_HINTS Atom.  They all save the hints then, but they
-       don't all resize the window right away to enforce the new hints.
-
-       Some of them resize only after:
-        - A user-initiated move or resize
-        - A code-initiated move or resize
-        - Hiding & showing window (Unmap & map)
-
-       The following move & resize seems to help a lot of WMs that didn't
-       properly update after the hints were changed. We don't do a
-       hide/show, because there are supposedly subtle problems with doing so
-       and transitioning from windowed to fullscreen in Unity.
-     */
-    X11_XResizeWindow(display, data->xwindow, window->pending.w, window->pending.h);
-    const int x = window->last_position_pending ? window->pending.x : window->floating.x;
-    const int y = window->last_position_pending ? window->pending.y : window->floating.y;
-    SDL_RelativeToGlobalForWindow(window,
-                                  x - data->border_left,
-                                  y - data->border_top,
-                                  &dest_x, &dest_y);
-    X11_XMoveWindow(display, data->xwindow, dest_x, dest_y);
-    X11_XRaiseWindow(display, data->xwindow);
 }
 
 void X11_SetWindowMinMax(SDL_Window *window, bool use_current)
@@ -1231,14 +1298,42 @@ void X11_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
              */
             XSizeHints *sizehints = X11_XAllocSizeHints();
             long userhints;
+            int dest_x, dest_y;
 
             X11_XGetWMNormalHints(display, data->xwindow, sizehints, &userhints);
 
-            sizehints->min_width = sizehints->max_width = window->pending.w;
-            sizehints->min_height = sizehints->max_height = window->pending.h;
+            data->expected.w = sizehints->min_width = sizehints->max_width = window->pending.w;
+            data->expected.h = sizehints->min_height = sizehints->max_height = window->pending.h;
             sizehints->flags |= PMinSize | PMaxSize;
+            data->pending_operation |= X11_PENDING_OP_RESIZE;
 
-            X11_SetWMNormalHints(_this, window, sizehints);
+            X11_XSetWMNormalHints(display, data->xwindow, sizehints);
+
+            /* From Pierre-Loup:
+               WMs each have their little quirks with that.  When you change the
+               size hints, they get a ConfigureNotify event with the
+               WM_NORMAL_SIZE_HINTS Atom.  They all save the hints then, but they
+               don't all resize the window right away to enforce the new hints.
+
+               Some of them resize only after:
+                - A user-initiated move or resize
+                - A code-initiated move or resize
+                - Hiding & showing window (Unmap & map)
+
+               The following move & resize seems to help a lot of WMs that didn't
+               properly update after the hints were changed. We don't do a
+               hide/show, because there are supposedly subtle problems with doing so
+               and transitioning from windowed to fullscreen in Unity.
+             */
+            X11_XResizeWindow(display, data->xwindow, window->pending.w, window->pending.h);
+            const int x = window->last_position_pending ? window->pending.x : window->x;
+            const int y = window->last_position_pending ? window->pending.y : window->y;
+            SDL_RelativeToGlobalForWindow(window,
+                                          x - data->border_left,
+                                          y - data->border_top,
+                                          &dest_x, &dest_y);
+            X11_XMoveWindow(display, data->xwindow, dest_x, dest_y);
+            X11_XRaiseWindow(display, data->xwindow);
 
             X11_XFree(sizehints);
         }
@@ -1432,12 +1527,14 @@ void X11_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     SDL_WindowData *data = window->internal;
     Display *display = data->videodata->display;
     bool bActivate = SDL_GetHintBoolean(SDL_HINT_WINDOW_ACTIVATE_WHEN_SHOWN, true);
+    bool set_position = false;
     XEvent event;
 
     if (SDL_WINDOW_IS_POPUP(window)) {
         // Update the position in case the parent moved while we were hidden
         X11_ConstrainPopup(window, true);
-        X11_UpdateWindowPosition(window, false);
+        data->pending_position = true;
+        set_position = true;
     }
 
     /* Whether XMapRaised focuses the window is based on the window type and it is
@@ -1449,10 +1546,12 @@ void X11_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
         /* Blocking wait for "MapNotify" event.
          * We use X11_XIfEvent because pXWindowEvent takes a mask rather than a type,
          * and XCheckTypedWindowEvent doesn't block */
-        if (!(window->flags & SDL_WINDOW_EXTERNAL)) {
+        if (!(window->flags & SDL_WINDOW_EXTERNAL) && X11_IsDisplayOk(display)) {
             X11_XIfEvent(display, &event, &isMapNotify, (XPointer)&data->xwindow);
         }
         X11_XFlush(display);
+        set_position = data->pending_position ||
+                       (!(window->flags & SDL_WINDOW_BORDERLESS) && !window->undefined_x && !window->undefined_y);
     }
 
     if (!data->videodata->net_wm) {
@@ -1462,9 +1561,9 @@ void X11_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
         X11_XFlush(display);
     }
 
-    // Popup menus grab the keyboard
-    if (window->flags & SDL_WINDOW_POPUP_MENU) {
-        X11_SetKeyboardFocus(window, window->parent == SDL_GetKeyboardFocus());
+    // Grabbing popup menus get keyboard focus.
+    if ((window->flags & SDL_WINDOW_POPUP_MENU) && !(window->flags & SDL_WINDOW_NOT_FOCUSABLE)) {
+        X11_SetKeyboardFocus(window, true);
     }
 
     // Get some valid border values, if we haven't received them yet
@@ -1472,8 +1571,28 @@ void X11_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
         X11_GetBorderValues(data);
     }
 
-    // Apply the pending position, if any, after the window is mapped.
-    data->pending_position = window->last_position_pending;
+    if (set_position) {
+        // Apply the window position, accounting for offsets due to the borders appearing.
+        const int tx = data->pending_position ? window->pending.x : window->x;
+        const int ty = data->pending_position ? window->pending.y : window->y;
+        int x, y;
+
+        SDL_RelativeToGlobalForWindow(window,
+                                      tx - data->border_left, ty - data->border_top,
+                                      &x, &y);
+
+        data->pending_position = false;
+        X11_XMoveWindow(display, data->xwindow, x, y);
+    }
+
+    /* XMonad ignores size hints and shrinks the client area to overlay borders on fixed-size windows,
+     * even if no borders were requested, resulting in the window client area being smaller than
+     * requested. Calling XResizeWindow after mapping seems to fix it, even though resizing fixed-size
+     * windows in this manner doesn't work on any other window manager.
+     */
+    if (!(window->flags & SDL_WINDOW_RESIZABLE) && X11_CheckCurrentDesktop("xmonad")) {
+        X11_XResizeWindow(display, data->xwindow, window->w, window->h);
+    }
 
     /* Some window managers can send garbage coordinates while mapping the window, so don't emit size and position
      * events during the initial configure events.
@@ -1482,6 +1601,12 @@ void X11_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
     X11_XSync(display, False);
     X11_PumpEvents(_this);
     data->size_move_event_flags = 0;
+
+    /* A MapNotify or PropertyNotify may not have arrived, so ensure that the shown event is dispatched
+     * to apply pending state before clearing the flag.
+     */
+    SDL_SendWindowEvent(window, SDL_EVENT_WINDOW_SHOWN, 0, 0);
+    data->was_shown = true;
 
     // If a configure event was received (type is non-zero), send the final window size and coordinates.
     if (data->last_xconfigure.type) {
@@ -1503,27 +1628,16 @@ void X11_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
     if (X11_IsWindowMapped(_this, window)) {
         X11_XWithdrawWindow(display, data->xwindow, screen);
         // Blocking wait for "UnmapNotify" event
-        if (!(window->flags & SDL_WINDOW_EXTERNAL)) {
+        if (!(window->flags & SDL_WINDOW_EXTERNAL) && X11_IsDisplayOk(display)) {
             X11_XIfEvent(display, &event, &isUnmapNotify, (XPointer)&data->xwindow);
         }
         X11_XFlush(display);
     }
 
     // Transfer keyboard focus back to the parent
-    if (window->flags & SDL_WINDOW_POPUP_MENU) {
-        SDL_Window *new_focus = window->parent;
-        bool set_focus = window == SDL_GetKeyboardFocus();
-
-        // Find the highest level window, up to the toplevel parent, that isn't being hidden or destroyed.
-        while (SDL_WINDOW_IS_POPUP(new_focus) && (new_focus->is_hiding || new_focus->is_destroying)) {
-            new_focus = new_focus->parent;
-
-            // If some window in the chain currently had focus, set it to the new lowest-level window.
-            if (!set_focus) {
-                set_focus = new_focus == SDL_GetKeyboardFocus();
-            }
-        }
-
+    if ((window->flags & SDL_WINDOW_POPUP_MENU) && !(window->flags & SDL_WINDOW_NOT_FOCUSABLE)) {
+        SDL_Window *new_focus;
+        const bool set_focus = SDL_ShouldRelinquishPopupFocus(window, &new_focus);
         X11_SetKeyboardFocus(new_focus, set_focus);
     }
 
@@ -1674,6 +1788,11 @@ void X11_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
 void X11_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
+    // Don't restore the window the first time it is being shown.
+    if (!window->internal->was_shown) {
+        return;
+    }
+
     if (window->internal->pending_operation & (X11_PENDING_OP_FULLSCREEN | X11_PENDING_OP_MAXIMIZE | X11_PENDING_OP_MINIMIZE)) {
         SDL_SyncWindow(window);
     }
@@ -1707,6 +1826,10 @@ static SDL_FullscreenResult X11_SetWindowFullscreenViaWM(SDL_VideoDevice *_this,
     Display *display = data->videodata->display;
     Atom _NET_WM_STATE = data->videodata->atoms._NET_WM_STATE;
     Atom _NET_WM_STATE_FULLSCREEN = data->videodata->atoms._NET_WM_STATE_FULLSCREEN;
+
+    if (!data->was_shown && fullscreen == SDL_FULLSCREEN_OP_LEAVE) {
+        return SDL_FULLSCREEN_SUCCEEDED;
+    }
 
     if (X11_IsWindowMapped(_this, window)) {
         XEvent e;
@@ -1991,6 +2114,33 @@ bool X11_SetWindowKeyboardGrab(SDL_VideoDevice *_this, SDL_Window *window, bool 
             return true;
         }
 
+        /* GNOME needs the _XWAYLAND_MAY_GRAB_KEYBOARD message on XWayland:
+         *
+         * - message_type set to "_XWAYLAND_MAY_GRAB_KEYBOARD"
+         * - window set to the xid of the window on which the grab is to be issued
+         * - data.l[0] to a non-zero value
+         *
+         * The dconf setting `org/gnome/mutter/wayland/xwayland-allow-grabs` must be enabled as well.
+         *
+         * https://gitlab.gnome.org/GNOME/mutter/-/commit/5f132f39750f684c3732b4346dec810cd218d609
+         */
+        if (_this->internal->is_xwayland) {
+            Atom _XWAYLAND_MAY_GRAB_ATOM = X11_XInternAtom(display, "_XWAYLAND_MAY_GRAB_KEYBOARD", False);
+
+            if (_XWAYLAND_MAY_GRAB_ATOM != None) {
+                XClientMessageEvent client_message;
+                client_message.type = ClientMessage;
+                client_message.window = data->xwindow;
+                client_message.format = 32;
+                client_message.message_type = _XWAYLAND_MAY_GRAB_ATOM;
+                client_message.data.l[0] = 1;
+                client_message.data.l[1] = CurrentTime;
+
+                X11_XSendEvent(display, DefaultRootWindow(display), False, SubstructureNotifyMask | SubstructureRedirectMask, (XEvent *)&client_message);
+                X11_XFlush(display);
+            }
+        }
+
         X11_XGrabKeyboard(display, data->xwindow, True, GrabModeAsync,
                           GrabModeAsync, CurrentTime);
     } else {
@@ -2175,6 +2325,15 @@ void X11_ShowWindowSystemMenu(SDL_Window *window, int x, int y)
 
 bool X11_SyncWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
+    SDL_WindowData *data = window->internal;
+
+    // If the window is external and has only a pending resize or move event, use the special external sync path to avoid processing events.
+    if ((window->flags & SDL_WINDOW_EXTERNAL) &&
+        (data->pending_operation & ~(X11_PENDING_OP_RESIZE | X11_PENDING_OP_MOVE)) == X11_PENDING_OP_NONE) {
+            X11_ExternalResizeMoveSync(window);
+            return true;
+    }
+
     const Uint64 current_time = SDL_GetTicksNS();
     Uint64 timeout = 0;
 
@@ -2196,20 +2355,36 @@ bool X11_SyncWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
 bool X11_SetWindowFocusable(SDL_VideoDevice *_this, SDL_Window *window, bool focusable)
 {
-    SDL_WindowData *data = window->internal;
-    Display *display = data->videodata->display;
-    XWMHints *wmhints;
+    if (!SDL_WINDOW_IS_POPUP(window)) {
+        SDL_WindowData *data = window->internal;
+        Display *display = data->videodata->display;
+        XWMHints *wmhints;
 
-    wmhints = X11_XGetWMHints(display, data->xwindow);
-    if (!wmhints) {
-        return SDL_SetError("Couldn't get WM hints");
+        wmhints = X11_XGetWMHints(display, data->xwindow);
+        if (!wmhints) {
+            return SDL_SetError("Couldn't get WM hints");
+        }
+
+        wmhints->input = focusable ? True : False;
+        wmhints->flags |= InputHint;
+
+        X11_XSetWMHints(display, data->xwindow, wmhints);
+        X11_XFree(wmhints);
+    } else if (window->flags & SDL_WINDOW_POPUP_MENU) {
+        if (!(window->flags & SDL_WINDOW_HIDDEN)) {
+            if (!focusable && (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
+                SDL_Window *new_focus;
+                const bool set_focus = SDL_ShouldRelinquishPopupFocus(window, &new_focus);
+                X11_SetKeyboardFocus(new_focus, set_focus);
+            } else if (focusable) {
+                if (SDL_ShouldFocusPopup(window)) {
+                    X11_SetKeyboardFocus(window, true);
+                }
+            }
+        }
+
+        return true;
     }
-
-    wmhints->input = focusable ? True : False;
-    wmhints->flags |= InputHint;
-
-    X11_XSetWMHints(display, data->xwindow, wmhints);
-    X11_XFree(wmhints);
 
     return true;
 }

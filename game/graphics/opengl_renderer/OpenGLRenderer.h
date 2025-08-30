@@ -26,7 +26,7 @@ struct RenderOptions {
   bool draw_filters_window = false;
 
   // internal rendering settings - The OpenGLRenderer will internally use this resolution/format.
-  int msaa_samples = 2;
+  int msaa_samples = 1;
   int game_res_w = 640;
   int game_res_h = 480;
 
@@ -65,6 +65,7 @@ class OpenGLRenderer {
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                  std::shared_ptr<Loader> loader,
                  GameVersion version);
+  // TODO delete
 
   // rendering interface: takes the dma chain from the game, and some size/debug settings from
   // the graphics system.
@@ -134,6 +135,9 @@ class OpenGLRenderer {
 
     Fbo* render_fbo = nullptr;  // the selected fbo from the three above to use for rendering
   } m_fbo_state;
+
+  GLuint screen_vao = 0;  // vertex array object for a screen-space draw
+  GLuint screen_vbo = 0;  // vertex buffer object for a screen-space draw
 
   std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
   std::unique_ptr<BucketRenderer> m_jak3_eye_renderer;

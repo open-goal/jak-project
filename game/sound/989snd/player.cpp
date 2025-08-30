@@ -6,7 +6,7 @@
 
 #include "sfxblock.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -142,7 +142,7 @@ u32 Player::PlaySound(BankHandle bank_id, u32 sound_id, s32 vol, s32 pan, s32 pm
     return 0;
   }
 
-  auto handler_to_stop = handler.value()->CheckInstanceLimit(mHandlers, vol);
+  auto handler_to_stop = handler.value()->CheckInstanceLimit(mHandlers, vol, true);
   if (handler_to_stop) {
     handler_to_stop->Stop();
     if (handler_to_stop == handler.value().get()) {

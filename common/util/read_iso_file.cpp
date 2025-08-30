@@ -79,7 +79,7 @@ void add_from_dir(FILE* fp, u32 sector, u32 size, IsoFile::Entry* parent) {
       } else {
         entry.name.pop_back();
         entry.name.pop_back();
-        entry.offset_in_file = SECTOR_SIZE * extent;
+        entry.offset_in_file = (u64)SECTOR_SIZE * (u64)extent;
         entry.size = dir_or_file_size;
       }
     }
@@ -104,7 +104,8 @@ void unpack_entry(FILE* fp,
     }
   } else {
     if (print_progress) {
-      lg::info("Extracting {}...", patched_name);
+      lg::info("Extracting {}, size 0x{:x} offset 0x{:x}...", patched_name, entry.size,
+               entry.offset_in_file);
     }
     std::vector<u8> buffer(entry.size);
     if (fseek_64(fp, entry.offset_in_file, SEEK_SET)) {

@@ -118,6 +118,8 @@ static SDL_VideoDevice *PSP_Create(void)
 
     device->PumpEvents = PSP_PumpEvents;
 
+    device->device_caps = VIDEO_DEVICE_CAPS_FULLSCREEN_ONLY;
+
     return device;
 }
 
@@ -265,7 +267,8 @@ VideoBootStrap PSP_bootstrap = {
     "psp",
     "PSP Video Driver",
     PSP_Create,
-    PSP_ShowMessageBox
+    PSP_ShowMessageBox,
+    false
 };
 
 /*****************************************************************************/

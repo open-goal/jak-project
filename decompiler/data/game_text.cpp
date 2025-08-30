@@ -9,12 +9,13 @@
 
 #include "common/goos/Reader.h"
 #include "common/util/BitUtils.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
+#include "common/util/font/font_utils_korean.h"
 #include "common/util/print_float.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 namespace {
@@ -113,7 +114,10 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
     }
 
     // escape characters
-    if (font_bank_exists(version)) {
+    if (get_font_bank(version)->is_language_id_korean(language)) {
+      // If we are doing korean, we process it differently
+      result.text[text_id] = get_font_bank(version)->convert_korean_game_to_utf8(text.c_str());
+    } else if (font_bank_exists(version)) {
       result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
     } else {
       result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!

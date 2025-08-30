@@ -7,7 +7,7 @@
 
 #include "game/system/hid/sdl_util.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 GameController::GameController(int sdl_device_id,
                                std::shared_ptr<game_settings::InputSettings> settings)
@@ -128,7 +128,8 @@ void GameController::process_event(const SDL_Event& event,
         !data->analogs_being_simulated() &&
         binds.analog_axii.find(event.gaxis.axis) != binds.analog_axii.end()) {
       for (const auto& bind : binds.analog_axii.at(event.gaxis.axis)) {
-        data->analog_data.at(bind.pad_data_index) = normalize_axes_value(event.gaxis.value);
+        data->analog_data.at(bind.pad_data_index) =
+            normalize_axes_value(m_settings->axis_scale * event.gaxis.value);
       }
     } else if (event.gaxis.axis >= SDL_GAMEPAD_AXIS_LEFT_TRIGGER &&
                event.gaxis.axis <= SDL_GAMEPAD_AXIS_RIGHT_TRIGGER &&
@@ -166,7 +167,8 @@ void GameController::process_event(const SDL_Event& event,
             static_cast<PadData::ButtonIndex>(bind.pad_data_index));
         if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
           if (m_settings->enable_pressure_sensitivity && m_has_pressure_sensitive_buttons) {
-            data->pressure_data.at(pressure_index) = normalize_axes_value(event.gaxis.value);
+            data->pressure_data.at(pressure_index) =
+                normalize_axes_value(m_settings->pressure_scale * event.gaxis.value);
           } else {
             data->pressure_data.at(pressure_index) = event.gaxis.value > 0 ? 255 : 0;
           }
@@ -222,7 +224,13 @@ void GameController::process_event(const SDL_Event& event,
     if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN &&
         commands.controller_binds.find(event.gbutton.button) != commands.controller_binds.end()) {
       for (const auto& command : commands.controller_binds.at(event.gbutton.button)) {
-        command.command();
+        if (command.event_command) {
+          command.event_command(event);
+        } else if (command.command) {
+          command.command();
+        } else {
+          lg::warn("CommandBinding has no valid callback for controller bind");
+        }
       }
     }
   } else if (SDL_EVENT_JOYSTICK_AXIS_MOTION && m_has_pressure_sensitive_buttons) {
@@ -247,6 +255,7 @@ void GameController::close_device() {
   if (m_device_handle) {
     clear_trigger_effect(dualsense_effects::TriggerEffectOption::BOTH);
     SDL_CloseGamepad(m_device_handle);
+    m_device_handle = NULL;
   }
 }
 

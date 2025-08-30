@@ -6,6 +6,7 @@
 #include "common/repl/repl_wrapper.h"
 #include "common/util/FileUtil.h"
 #include "common/util/diff.h"
+#include "common/util/font/font_utils_korean.h"
 #include "common/util/string_util.h"
 #include "common/util/term_util.h"
 #include "common/util/unicode_util.h"
@@ -14,7 +15,7 @@
 #include "goalc/compiler/Compiler.h"
 
 #include "fmt/color.h"
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/CLI11.hpp"
 
 void setup_logging(const bool disable_ansi_colors) {

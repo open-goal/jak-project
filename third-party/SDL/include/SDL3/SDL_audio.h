@@ -942,7 +942,10 @@ extern SDL_DECLSPEC void SDLCALL SDL_CloseAudioDevice(SDL_AudioDeviceID devid);
  * Binding a stream to a device will set its output format for playback
  * devices, and its input format for recording devices, so they match the
  * device's settings. The caller is welcome to change the other end of the
- * stream's format at any time with SDL_SetAudioStreamFormat().
+ * stream's format at any time with SDL_SetAudioStreamFormat(). If the other
+ * end of the stream's format has never been set (the audio stream was created
+ * with a NULL audio spec), this function will set it to match the device
+ * end's format.
  *
  * \param devid an audio device to bind a stream to.
  * \param streams an array of audio streams to bind.
@@ -1021,7 +1024,7 @@ extern SDL_DECLSPEC void SDLCALL SDL_UnbindAudioStream(SDL_AudioStream *stream);
 /**
  * Query an audio stream for its currently-bound device.
  *
- * This reports the audio device that an audio stream is currently bound to.
+ * This reports the logical audio device that an audio stream is currently bound to.
  *
  * If not bound, or invalid, this returns zero, which is not a valid device
  * ID.
@@ -1717,7 +1720,7 @@ typedef void (SDLCALL *SDL_AudioStreamCallback)(void *userdata, SDL_AudioStream 
  * audio to the stream during this call; if needed, the request that triggered
  * this callback will obtain the new data immediately.
  *
- * The callback's `approx_request` argument is roughly how many bytes of
+ * The callback's `additional_amount` argument is roughly how many bytes of
  * _unconverted_ data (in the stream's input format) is needed by the caller,
  * although this may overestimate a little for safety. This takes into account
  * how much is already in the stream and only asks for any extra necessary to
@@ -1762,13 +1765,13 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetAudioStreamGetCallback(SDL_AudioStream *
  * The callback can (optionally) call SDL_GetAudioStreamData() to obtain audio
  * from the stream during this call.
  *
- * The callback's `approx_request` argument is how many bytes of _converted_
- * data (in the stream's output format) was provided by the caller, although
- * this may underestimate a little for safety. This value might be less than
- * what is currently available in the stream, if data was already there, and
- * might be less than the caller provided if the stream needs to keep a buffer
- * to aid in resampling. Which means the callback may be provided with zero
- * bytes, and a different amount on each call.
+ * The callback's `additional_amount` argument is how many bytes of
+ * _converted_ data (in the stream's output format) was provided by the
+ * caller, although this may underestimate a little for safety. This value
+ * might be less than what is currently available in the stream, if data was
+ * already there, and might be less than the caller provided if the stream
+ * needs to keep a buffer to aid in resampling. Which means the callback may
+ * be provided with zero bytes, and a different amount on each call.
  *
  * The callback may call SDL_GetAudioStreamAvailable to see the total amount
  * currently available to read from the stream, instead of the total provided

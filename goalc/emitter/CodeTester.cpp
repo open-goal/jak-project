@@ -18,7 +18,7 @@
 #include "CodeTester.h"
 #include "IGen.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace emitter {
 
@@ -119,7 +119,9 @@ void CodeTester::clear() {
  * Execute the buffered code with no arguments, return the value of RAX.
  */
 u64 CodeTester::execute() {
+  // clang-format off
   return ((u64(*)())code_buffer)();
+  // clang-format on
 }
 
 /*!
@@ -127,7 +129,9 @@ u64 CodeTester::execute() {
  * arguments will appear in (will handle windows/linux differences)
  */
 u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
+  // clang-format off
   return ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
+  // clang-format on
 }
 
 /*!

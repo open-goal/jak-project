@@ -9,7 +9,7 @@
 #include "common/util/FileUtil.h"
 #include "common/common_types.h"
 
-#include "fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/json.hpp"
 
 #ifdef OS_POSIX

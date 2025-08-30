@@ -114,7 +114,7 @@ static bool PSPAUDIO_PlayDevice(SDL_AudioDevice *device, const Uint8 *buffer, in
     } else {
         rc = sceAudioOutputPannedBlocking(device->hidden->channel, PSP_AUDIO_VOLUME_MAX, PSP_AUDIO_VOLUME_MAX, (void *) buffer);
     }
-    return (rc == 0);
+    return (rc >= 0);
 }
 
 static bool PSPAUDIO_WaitDevice(SDL_AudioDevice *device)
@@ -177,7 +177,7 @@ static bool PSPAUDIO_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap PSPAUDIO_bootstrap = {
-    "psp", "PSP audio driver", PSPAUDIO_Init, false
+    "psp", "PSP audio driver", PSPAUDIO_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_PSP
