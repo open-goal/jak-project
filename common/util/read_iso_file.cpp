@@ -94,6 +94,7 @@ void unpack_entry(FILE* fp,
                   bool print_progress) {
   std::string patched_name = entry.name;
   if (entry.name == "WATER_AN.CGO") {
+    lg::warn("Detected WATER_AN.CGO, renaming to the proper WATER-AN.CGO");
     patched_name = "WATER-AN.CGO";
   }
   fs::path path_to_entry = dest / patched_name;
