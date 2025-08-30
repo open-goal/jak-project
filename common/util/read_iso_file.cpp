@@ -92,7 +92,12 @@ void unpack_entry(FILE* fp,
                   const IsoFile::Entry& entry,
                   const fs::path& dest,
                   bool print_progress) {
-  fs::path path_to_entry = dest / entry.name;
+  std::string patched_name = entry.name;
+  if (entry.name == "WATER_AN.CGO") {
+    lg::warn("Detected WATER_AN.CGO, renaming to the proper WATER-AN.CGO");
+    patched_name = "WATER-AN.CGO";
+  }
+  fs::path path_to_entry = dest / patched_name;
   if (entry.is_dir) {
     fs::create_directory(path_to_entry);
     for (const auto& child : entry.children) {
@@ -100,7 +105,7 @@ void unpack_entry(FILE* fp,
     }
   } else {
     if (print_progress) {
-      lg::info("Extracting {}, size 0x{:x} offset 0x{:x}...", entry.name, entry.size,
+      lg::info("Extracting {}, size 0x{:x} offset 0x{:x}...", patched_name, entry.size,
                entry.offset_in_file);
     }
     std::vector<u8> buffer(entry.size);
