@@ -45,7 +45,7 @@ T read_plain_data_field(const TypedRef& object,
   return result;
 }
 
-void memcpy_from_plain_data(u8* dest, const Ref& source, int size_bytes);
+void memcpy_from_plain_data(void* dest, const Ref& source, int size_bytes);
 std::vector<u8> bytes_from_plain_data(const Ref& source, int size_bytes);
 
 decompiler::LinkedWord::Kind get_word_kind_for_field(const TypedRef& object,

@@ -55,6 +55,8 @@ struct SharedRenderState {
 
   // including transformation, rotation, perspective
   math::Vector4f camera_matrix[4];
+  math::Vector4f camera_rot[4];
+  math::Vector4f perspective[4];
   math::Vector4f camera_hvdf_off;
   math::Vector4f camera_fog;
   math::Vector4f camera_pos;

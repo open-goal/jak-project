@@ -144,6 +144,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   }
 
   m_merc2 = std::make_shared<Merc2>(m_render_state.shaders, anim_slot_array());
+  m_shadow3 = std::make_shared<Shadow3>(m_render_state.shaders);
   m_generic2 = std::make_shared<Generic2>(m_render_state.shaders);
 
   // initialize all renderers
@@ -283,7 +284,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
                                               BucketId::MERC_LCOM_SHRUB, m_merc2);
 
     // 350
-    init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW);
+    init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW, m_shadow3);
 
     // 351
     for (int i = 0; i < LEVEL_MAX; i++) {
@@ -390,8 +391,8 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
                                                  BucketId::GENERIC_SPRITE_3, m_generic2,
                                                  Generic2::Mode::LIGHTNING);
 
-    init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2);
-    init_bucket_renderer<Shadow2>("shadow3", BucketCategory::OTHER, BucketId::SHADOW3);
+    init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2, m_shadow3);
+    init_bucket_renderer<Shadow2>("shadow3", BucketCategory::OTHER, BucketId::SHADOW3, m_shadow3);
     // 575
     init_bucket_renderer<TextureUploadHandler>("tex-warp", BucketCategory::TEX, BucketId::TEX_WARP,
                                                m_texture_animator);
@@ -582,7 +583,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<Generic2BucketRenderer>("gmerc-lcom-tfrag", BucketCategory::GENERIC,
                                                BucketId::GMERC_LCOM_TFRAG, m_generic2,
                                                Generic2::Mode::NORMAL);
-  init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW);
+  init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW, m_shadow3);
   // 220
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_PRIS, m_texture_animator);
@@ -602,7 +603,7 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
   init_bucket_renderer<TextureUploadHandler>("tex-all-sprite", BucketCategory::TEX,
                                              BucketId::TEX_ALL_SPRITE, m_texture_animator);
   init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
-  init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2);
+  init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2, m_shadow3);
   init_bucket_renderer<Generic2BucketRenderer>("effects", BucketCategory::OTHER, BucketId::EFFECTS,
                                                m_generic2, Generic2::Mode::LIGHTNING);
   init_bucket_renderer<TextureUploadHandler>("tex-all-warp", BucketCategory::TEX,
@@ -789,8 +790,9 @@ void OpenGLRenderer::init_bucket_renderers_jak1() {
 
   init_bucket_renderer<Generic2BucketRenderer>("common-alpha-generic", BucketCategory::GENERIC,
                                                BucketId::GENERIC_ALPHA, m_generic2,
-                                               Generic2::Mode::NORMAL);                     // 46
-  init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW);  // 47
+                                               Generic2::Mode::NORMAL);  // 46
+  init_bucket_renderer<ShadowRenderer>("shadow", BucketCategory::OTHER, BucketId::SHADOW,
+                                       m_shadow3);  // 47
 
   //-----------------------
   // LEVEL 0 pris texture

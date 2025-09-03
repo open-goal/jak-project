@@ -62,6 +62,7 @@ add_library(
         level_extractor/extract_joint_group.cpp
         level_extractor/extract_level.cpp
         level_extractor/extract_merc.cpp
+        level_extractor/extract_shadow.cpp
         level_extractor/extract_tfrag.cpp
         level_extractor/extract_tie.cpp
         level_extractor/extract_shrub.cpp

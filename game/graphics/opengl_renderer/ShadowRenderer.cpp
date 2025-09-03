@@ -4,7 +4,8 @@
 
 #include "third-party/imgui/imgui.h"
 
-ShadowRenderer::ShadowRenderer(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
+ShadowRenderer::ShadowRenderer(const std::string& name, int my_id, std::shared_ptr<Shadow3> shadow3)
+    : BucketRenderer(name, my_id), m_shadow3(shadow3) {
   // create OpenGL objects
   glGenBuffers(1, &m_ogl.vertex_buffer);
 
@@ -35,9 +36,13 @@ ShadowRenderer::ShadowRenderer(const std::string& name, int my_id) : BucketRende
 }
 
 void ShadowRenderer::draw_debug_window() {
-  ImGui::Checkbox("Volume", &m_debug_draw_volume);
-  ImGui::Text("Vert: %d, Front: %d, Back: %d\n", m_next_vertex, m_next_front_index,
-              m_next_back_index);
+  if (m_using_shadow3) {
+    m_shadow3->draw_debug_window();
+  } else {
+    ImGui::Checkbox("Volume", &m_debug_draw_volume);
+    ImGui::Text("Vert: %d, Front: %d, Back: %d\n", m_next_vertex, m_next_front_index,
+                m_next_back_index);
+  }
 }
 
 ShadowRenderer::~ShadowRenderer() {
@@ -201,6 +206,12 @@ void ShadowRenderer::render(DmaFollower& dma,
     return;
   }
 
+  m_using_shadow3 = dma.current_tag_vifcode0().kind != VifCode::Kind::STCYCL;
+  if (m_using_shadow3) {
+    m_shadow3->render_jak1(dma, render_state, prof);
+    return;
+  }
+
   {
     // constants
     auto constants = dma.read_and_advance();
@@ -315,7 +326,7 @@ void ShadowRenderer::render(DmaFollower& dma,
       m_color.y() = g / 255.0f;
       m_color.z() = b / 255.0f;
       m_color.w() = a / 128.0f;
-      // fmt::print("rgba: {} {} {} {}\n", r, g, b, a);
+      // fmt::print("rgba: {}\n", m_color.to_string_aligned());
     } else {
       ASSERT_MSG(false, fmt::format("{} {}", next.vifcode0().print(), next.vifcode1().print()));
     }
