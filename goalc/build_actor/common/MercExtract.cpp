@@ -14,7 +14,7 @@ void extract(const std::string& name,
              u32 tex_offset) {
   ASSERT(out.new_vertices.empty());
 
-  std::map<int, tfrag3::MercDraw> draw_by_material;
+  std::map<std::pair<int, int>, tfrag3::MercDraw> draw_by_material;
   int mesh_count = 0;
   int prim_count = 0;
   int joints = 3;
@@ -77,7 +77,7 @@ void extract(const std::string& name,
         }
 
         // real draw details will be filled out in the next loop.
-        auto& draw = draw_by_material[prim.material];
+        auto& draw = draw_by_material[{prim.material, n.node_idx}];
         draw.mode = gltf_util::make_default_draw_mode();  // todo rm
         draw.tree_tex_id = 0;                             // todo rm
         draw.num_triangles += prim_indices.size() / 3;
@@ -96,8 +96,8 @@ void extract(const std::string& name,
   out.new_model.max_bones = joints;
   out.new_model.max_draws = 0;
 
-  for (const auto& [mat_idx, d_] : draw_by_material) {
-    const auto& mat = model.materials[mat_idx];
+  for (const auto& [key, d_] : draw_by_material) {
+    int mat_idx = key.first;
     if (mat_idx < 0 || !gltf_util::material_has_envmap(model.materials[mat_idx]) ||
         !gltf_util::envmap_is_valid(model.materials[mat_idx])) {
       gltf_util::process_normal_merc_draw(model, out, tex_offset, e, mat_idx, d_);
