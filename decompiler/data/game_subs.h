@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "common/util/FileUtil.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 
 namespace decompiler {
 struct ObjectFileData;

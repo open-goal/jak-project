@@ -5,13 +5,19 @@ if(NOT DEFINED CMAKE_BUILD_TYPE)
 endif()
 
 # See docs/release_checklist.md
-project(SDL3 LANGUAGES C VERSION "3.2.1")
+project(SDL3 LANGUAGES C VERSION "3.2.20")
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   set(SDL3_MAINPROJECT ON)
 else()
   set(SDL3_MAINPROJECT OFF)
 endif()
+
+# Add UTF-8 encoding support for MSVC compiler.
+# This ensures that the MSVC compiler interprets source files as UTF-8 encoded,
+# which is useful for projects containing non-ASCII characters in source files.
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 # By default, configure SDL3 in RelWithDebInfo configuration
 if(SDL3_MAINPROJECT)
@@ -182,9 +188,12 @@ if(MSVC)
     # Make sure /RTC1 is disabled, otherwise it will use functions from the CRT
     foreach(flag_var
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
       string(REGEX REPLACE "/RTC(su|[1su])" "" ${flag_var} "${${flag_var}}")
     endforeach(flag_var)
+    set(CMAKE_MSVC_RUNTIME_CHECKS "")
   endif()
 
   if(MSVC_CLANG)
@@ -236,6 +245,8 @@ if(SDL_SHARED_DEFAULT AND SDL_STATIC_DEFAULT AND SDL_SHARED_AVAILABLE)
     set(SDL_STATIC_DEFAULT OFF)
   endif()
 endif()
+
+dep_option(SDL_DEPS_SHARED "Load dependencies dynamically" ON SDL_SHARED_AVAILABLE OFF)
 
 set(SDL_SUBSYSTEMS )
 
@@ -328,19 +339,19 @@ set_option(SDL_PTHREADS            "Use POSIX threads for multi-threading" ${SDL
 dep_option(SDL_PTHREADS_SEM        "Use pthread semaphores" ON "SDL_PTHREADS" OFF)
 dep_option(SDL_OSS                 "Support the OSS audio API" ${SDL_OSS_DEFAULT} "UNIX_SYS OR RISCOS;SDL_AUDIO" OFF)
 dep_option(SDL_ALSA                "Support the ALSA audio API" ${UNIX_SYS} "SDL_AUDIO" OFF)
-dep_option(SDL_ALSA_SHARED         "Dynamically load ALSA audio support" ON "SDL_ALSA" OFF)
+dep_option(SDL_ALSA_SHARED         "Dynamically load ALSA audio support" ON "SDL_ALSA;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_JACK                "Support the JACK audio API" ${UNIX_SYS} "SDL_AUDIO" OFF)
-dep_option(SDL_JACK_SHARED         "Dynamically load JACK audio support" ON "SDL_JACK" OFF)
+dep_option(SDL_JACK_SHARED         "Dynamically load JACK audio support" ON "SDL_JACK;SDL_DEPS_SHARED" OFF)
 set_option(SDL_PIPEWIRE            "Use Pipewire audio" ${UNIX_SYS})
-dep_option(SDL_PIPEWIRE_SHARED     "Dynamically load Pipewire support" ON "SDL_PIPEWIRE" OFF)
+dep_option(SDL_PIPEWIRE_SHARED     "Dynamically load Pipewire support" ON "SDL_PIPEWIRE;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_PULSEAUDIO          "Use PulseAudio" ${UNIX_SYS} "SDL_AUDIO" OFF)
-dep_option(SDL_PULSEAUDIO_SHARED   "Dynamically load PulseAudio support" ON "SDL_PULSEAUDIO" OFF)
+dep_option(SDL_PULSEAUDIO_SHARED   "Dynamically load PulseAudio support" ON "SDL_PULSEAUDIO;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_SNDIO               "Support the sndio audio API" ${UNIX_SYS} "SDL_AUDIO" OFF)
-dep_option(SDL_SNDIO_SHARED        "Dynamically load the sndio audio API" ON "SDL_SNDIO" OFF)
+dep_option(SDL_SNDIO_SHARED        "Dynamically load the sndio audio API" ON "SDL_SNDIO;SDL_DEPS_SHARED" OFF)
 set_option(SDL_RPATH               "Use an rpath when linking SDL" ${SDL_RPATH_DEFAULT})
 set_option(SDL_CLOCK_GETTIME       "Use clock_gettime() instead of gettimeofday()" ${SDL_CLOCK_GETTIME_DEFAULT})
 dep_option(SDL_X11                 "Use X11 video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
-dep_option(SDL_X11_SHARED          "Dynamically load X11 support" ON "SDL_X11" OFF)
+dep_option(SDL_X11_SHARED          "Dynamically load X11 support" ON "SDL_X11;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_X11_XCURSOR         "Enable Xcursor support" ON SDL_X11 OFF)
 dep_option(SDL_X11_XDBE            "Enable Xdbe support" ON SDL_X11 OFF)
 dep_option(SDL_X11_XINPUT          "Enable XInput support" ON SDL_X11 OFF)
@@ -350,9 +361,9 @@ dep_option(SDL_X11_XSCRNSAVER      "Enable Xscrnsaver support" ON SDL_X11 OFF)
 dep_option(SDL_X11_XSHAPE          "Enable XShape support" ON SDL_X11 OFF)
 dep_option(SDL_X11_XSYNC           "Enable Xsync support" ON SDL_X11 OFF)
 dep_option(SDL_WAYLAND             "Use Wayland video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
-dep_option(SDL_WAYLAND_SHARED      "Dynamically load Wayland support" ON "SDL_WAYLAND" OFF)
+dep_option(SDL_WAYLAND_SHARED      "Dynamically load Wayland support" ON "SDL_WAYLAND;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_WAYLAND_LIBDECOR    "Use client-side window decorations on Wayland" ON "SDL_WAYLAND" OFF)
-dep_option(SDL_WAYLAND_LIBDECOR_SHARED     "Dynamically load libdecor support" ON "SDL_WAYLAND_LIBDECOR;SDL_WAYLAND_SHARED" OFF)
+dep_option(SDL_WAYLAND_LIBDECOR_SHARED     "Dynamically load libdecor support" ON "SDL_WAYLAND_LIBDECOR;SDL_WAYLAND_SHARED;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_RPI                 "Use Raspberry Pi video driver" ON "SDL_VIDEO;UNIX_SYS;SDL_CPU_ARM32 OR SDL_CPU_ARM64" OFF)
 dep_option(SDL_ROCKCHIP            "Use ROCKCHIP Hardware Acceleration video driver" ON "SDL_VIDEO;UNIX_SYS;SDL_CPU_ARM32 OR SDL_CPU_ARM64" OFF)
 dep_option(SDL_COCOA               "Use Cocoa video driver" ON "APPLE" OFF)
@@ -370,14 +381,14 @@ dep_option(SDL_RENDER_VULKAN       "Enable the Vulkan render driver" ON "SDL_REN
 dep_option(SDL_METAL               "Enable Metal support" ON "APPLE" OFF)
 set_option(SDL_OPENVR              "Use OpenVR video driver" OFF)
 dep_option(SDL_KMSDRM              "Use KMS DRM video driver" ${UNIX_SYS} "SDL_VIDEO" OFF)
-dep_option(SDL_KMSDRM_SHARED       "Dynamically load KMS DRM support" ON "SDL_KMSDRM" OFF)
+dep_option(SDL_KMSDRM_SHARED       "Dynamically load KMS DRM support" ON "SDL_KMSDRM;SDL_DEPS_SHARED" OFF)
 set_option(SDL_OFFSCREEN           "Use offscreen video driver" ON)
 dep_option(SDL_DUMMYCAMERA         "Support the dummy camera driver" ON SDL_CAMERA OFF)
 option_string(SDL_BACKGROUNDING_SIGNAL "number to use for magic backgrounding signal or 'OFF'" OFF)
 option_string(SDL_FOREGROUNDING_SIGNAL "number to use for magic foregrounding signal or 'OFF'" OFF)
 dep_option(SDL_HIDAPI              "Enable the HIDAPI subsystem" ON "NOT VISIONOS" OFF)
 dep_option(SDL_HIDAPI_LIBUSB       "Use libusb for low level joystick drivers" ON SDL_HIDAPI_LIBUSB_AVAILABLE OFF)
-dep_option(SDL_HIDAPI_LIBUSB_SHARED "Dynamically load libusb support" ON SDL_HIDAPI_LIBUSB OFF)
+dep_option(SDL_HIDAPI_LIBUSB_SHARED "Dynamically load libusb support" ON "SDL_HIDAPI_LIBUSB;SDL_DEPS_SHARED" OFF)
 dep_option(SDL_HIDAPI_JOYSTICK     "Use HIDAPI for low level joystick drivers" ON SDL_HIDAPI OFF)
 dep_option(SDL_VIRTUAL_JOYSTICK    "Enable the virtual-joystick driver" ON SDL_HIDAPI OFF)
 set_option(SDL_LIBUDEV             "Enable libudev support" ON)
@@ -626,6 +637,11 @@ if(MSVC)
     # Mark SDL3.dll as compatible with Control-flow Enforcement Technology (CET)
     sdl_shared_link_options("-CETCOMPAT")
   endif()
+
+  # for VS >= 17.14 targeting ARM64: inline the Interlocked funcs
+  if(MSVC_VERSION GREATER 1943 AND SDL_CPU_ARM64 AND NOT SDL_LIBC)
+    sdl_compile_options(PRIVATE "/forceInterlockedFunctions-")
+  endif()
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
@@ -745,7 +761,7 @@ if(SDL_ASSEMBLY)
   if(SDL_SSE4_2)
     cmake_push_check_state()
     if(USE_GCC OR USE_CLANG OR USE_INTELCC)
-      string(APPEND CMAKE_REQUIRED_FLAGS " -msse4.2")
+      string(APPEND CMAKE_REQUIRED_FLAGS " -msse4.2 -mcrc32")
     endif()
     check_c_source_compiles("
       #include <nmmintrin.h>
@@ -1283,8 +1299,8 @@ if(ANDROID)
   list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/android")
 
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/core/android/*.c")
-  sdl_sources("${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c")
-  set_property(SOURCE "${ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c" APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-declaration-after-statement")
+  sdl_sources("${CMAKE_ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c")
+  set_property(SOURCE "${CMAKE_ANDROID_NDK}/sources/android/cpufeatures/cpu-features.c" APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-declaration-after-statement")
 
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/misc/android/*.c")
   set(HAVE_SDL_MISC TRUE)
@@ -1328,9 +1344,7 @@ if(ANDROID)
     set(HAVE_SDL_HAPTIC TRUE)
   endif()
 
-  if(SDL_HIDAPI)
-    CheckHIDAPI()
-  endif()
+  CheckHIDAPI()
 
   if(SDL_JOYSTICK)
     set(SDL_JOYSTICK_ANDROID 1)
@@ -1472,6 +1486,11 @@ if(ANDROID)
       endif()
     endif()
   endif()
+
+if(TARGET SDL3-shared)
+  target_link_options(SDL3-shared PRIVATE "-Wl,-z,max-page-size=16384")
+  target_link_options(SDL3-shared PRIVATE "-Wl,-z,common-page-size=16384")
+endif()
 
 elseif(EMSCRIPTEN)
   # Hide noisy warnings that intend to aid mostly during initial stages of porting a new
@@ -2180,6 +2199,7 @@ elseif(APPLE)
       set(SDL_CAMERA_DRIVER_COREMEDIA 1)
       set(HAVE_CAMERA TRUE)
       sdl_glob_sources("${SDL3_SOURCE_DIR}/src/camera/coremedia/*.m")
+      set(SDL_FRAMEWORK_AVFOUNDATION 1)
     endif()
   endif()
 
@@ -2881,6 +2901,7 @@ elseif(N3DS)
   set(SDL_THREAD_N3DS 1)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/thread/n3ds/*.c")
   sdl_sources(
+    "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_syscond.c"
     "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c"
     "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c"
   )
@@ -3007,7 +3028,7 @@ if(SDL_GPU)
     set(SDL_GPU_D3D11 1)
     set(HAVE_SDL_GPU TRUE)
   endif()
-  if(SDL_RENDER_D3D12)
+  if(WINDOWS)
     sdl_glob_sources("${SDL3_SOURCE_DIR}/src/gpu/d3d12/*.c")
     set(SDL_GPU_D3D12 1)
     set(HAVE_SDL_GPU TRUE)
@@ -3278,7 +3299,7 @@ else()
 endif()
 
 if(ANDROID)
-  sdl_include_directories(PRIVATE SYSTEM "${ANDROID_NDK}/sources/android/cpufeatures")
+  sdl_include_directories(PRIVATE SYSTEM "${CMAKE_ANDROID_NDK}/sources/android/cpufeatures")
 endif()
 
 if(APPLE)

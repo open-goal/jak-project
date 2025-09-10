@@ -19,7 +19,8 @@ BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
                                      u32 sound_id,
                                      s32 start_tick)
     : m_group(sfx.VolGroup),
-      m_sfx(sfx),
+      m_sfx(&sfx),
+      m_orig_sfx(&sfx),
       m_vm(vm),
       m_bank(bank),
       m_sound_id(sound_id),
@@ -98,7 +99,7 @@ BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
   // }
 
   m_next_grain = 0;
-  m_countdown = m_sfx.Grains[0].Delay;
+  m_countdown = m_sfx->Grains[0].Delay;
   while (m_countdown <= 0 && !m_done) {
     DoGrain();
   }
@@ -209,7 +210,7 @@ void BlockSoundHandler::SetVolPan(s32 vol, s32 pan) {
   }
 
   if (pan == PAN_RESET) {
-    m_app_pan = m_sfx.Pan;
+    m_app_pan = m_sfx->Pan;
   } else if (pan != PAN_DONT_CHANGE) {
     m_app_pan = pan;
   }
@@ -283,7 +284,7 @@ void BlockSoundHandler::SetPBend(s32 bend) {
 }
 
 void BlockSoundHandler::DoGrain() {
-  auto& grain = m_sfx.Grains[m_next_grain];
+  auto& grain = m_sfx->Grains[m_next_grain];
 
   s32 ret = grain(*this);
 
@@ -296,22 +297,23 @@ void BlockSoundHandler::DoGrain() {
   }
 
   m_next_grain++;
-  if (m_next_grain >= m_sfx.Grains.size()) {
+  if (m_next_grain >= m_sfx->Grains.size()) {
     m_done = true;
     return;
   }
 
-  m_countdown = m_sfx.Grains[m_next_grain].Delay + ret;
+  m_countdown = m_sfx->Grains[m_next_grain].Delay + ret;
 }
 
 SoundHandler* BlockSoundHandler::CheckInstanceLimit(
     const std::map<u32, std::unique_ptr<SoundHandler>>& handlers,
-    s32 vol) {
-  if (!m_sfx.InstanceLimit) {
+    s32 vol,
+    bool parent) {
+  if (!m_sfx->InstanceLimit) {
     return nullptr;
   }
 
-  if (!m_sfx.Flags.has_instlimit()) {
+  if (!m_sfx->Flags.has_instlimit()) {
     return nullptr;
   }
 
@@ -326,22 +328,20 @@ SoundHandler* BlockSoundHandler::CheckInstanceLimit(
     }
 
     // See if this is playing the same sound
-    // 989snd checks both an orig_sound and a SH.Sound, but we never change the sound.
-    // We'd need to revisit this if we eventually support BRANCH grains.
-    if (&handler->m_sfx == &m_sfx) {
+    if ((parent && handler->m_orig_sfx == m_sfx) || handler->m_sfx == m_sfx) {
       inst++;
-      if (!weakest ||                                                                        //
-          (m_sfx.Flags.instlimit_vol() && handler->m_app_volume < weakest->m_app_volume) ||  //
-          (m_sfx.Flags.instlimit_tick() && handler->m_start_tick < weakest->m_start_tick)) {
+      if (!weakest ||                                                                         //
+          (m_sfx->Flags.instlimit_vol() && handler->m_app_volume < weakest->m_app_volume) ||  //
+          (m_sfx->Flags.instlimit_tick() && handler->m_start_tick < weakest->m_start_tick)) {
         weakest = handler;
       }
     }
   }
 
   // See if this handler would cause us to exceed the limit
-  if (m_sfx.InstanceLimit - 1 < inst) {
-    if (weakest && ((m_sfx.Flags.instlimit_vol() && weakest->m_app_volume < vol) ||
-                    m_sfx.Flags.instlimit_tick())) {
+  if (m_sfx->InstanceLimit - 1 < inst) {
+    if (weakest && ((m_sfx->Flags.instlimit_vol() && weakest->m_app_volume < vol) ||
+                    m_sfx->Flags.instlimit_tick())) {
       // existing weakest is worst
       return weakest;
     } else {

@@ -13,7 +13,7 @@
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 
 #include "fmt/format.h"
 #include "fmt/ranges.h"
@@ -156,39 +156,6 @@ Reader::Reader() {
   for (const char* c = bonus; *c; c++) {
     m_valid_symbols_chars[(int)*c] = true;
   }
-
-  // table of characters that are valid in source code:
-  for (auto& x : m_valid_source_text_chars) {
-    x = false;
-  }
-  for (int i = ' '; i <= '~'; i++) {
-    m_valid_source_text_chars[i] = true;
-  }
-  m_valid_source_text_chars[(int)'\n'] = true;
-  m_valid_source_text_chars[(int)'\t'] = true;
-  m_valid_source_text_chars[(int)'\r'] = true;
-
-  // allow every character that gets transformed to something else
-  for (auto& [version, font] : g_font_banks) {
-    for (auto& remap : *font->encode_info()) {
-      for (auto rc : remap.chars) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-    }
-    for (auto& remap : *font->replace_info()) {
-      for (auto rc : remap.to) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-      for (auto rc : remap.from) {
-        m_valid_source_text_chars[(u8)rc] = true;
-      }
-    }
-  }
-  m_valid_source_text_chars[0] = false;
-}
-
-bool Reader::is_valid_source_char(char c) const {
-  return m_valid_source_text_chars[(u8)c];
 }
 
 /*!
@@ -266,17 +233,6 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
         fmt::format("Text file {} has invalid encoding", text->get_description()));
   }
 
-  // validate the input
-  for (int offset = check_encoding ? 3 : 0; offset < text->get_size(); offset++) {
-    if (!is_valid_source_char(text->get_text()[offset])) {
-      // failed.
-      int line_number = text->get_line_idx(offset) + 1;
-      throw std::runtime_error(fmt::format("Invalid character found on line {} of {}: 0x{:x}",
-                                           line_number, text->get_description(),
-                                           (u8)text->get_text()[offset]));
-    }
-  }
-
   // first create stream
   TextStream ts(text);
 
@@ -299,15 +255,6 @@ Object Reader::internal_read(std::shared_ptr<SourceText> text,
     lg::print("{}", e.what());
     throw;
   }
-}
-
-bool Reader::check_string_is_valid(const std::string& str) const {
-  for (auto c : str) {
-    if (!is_valid_source_char(c)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 /*!
@@ -901,6 +848,15 @@ std::string get_readable_string(const char* in) {
     } else {
       result += fmt::format("\\c{:02x}", uint8_t(*in));
     }
+    in++;
+  }
+  return result;
+}
+
+std::string get_byte_string(const char* in) {
+  std::string result;
+  while (*in) {
+    result += fmt::format("\\c{:02x}", uint8_t(*in));
     in++;
   }
   return result;

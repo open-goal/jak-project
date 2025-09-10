@@ -63,9 +63,6 @@ static void X11_DeleteDevice(SDL_VideoDevice *device)
         X11_XCloseDisplay(data->request_display);
     }
     SDL_free(data->windowlist);
-    if (device->wakeup_lock) {
-        SDL_DestroyMutex(device->wakeup_lock);
-    }
     SDL_free(device->internal);
     SDL_free(device);
 
@@ -128,8 +125,6 @@ static SDL_VideoDevice *X11_CreateDevice(void)
         SDL_X11_UnloadSymbols();
         return NULL;
     }
-
-    device->wakeup_lock = SDL_CreateMutex();
 
 #ifdef X11_DEBUG
     X11_XSynchronize(data->display, True);
@@ -256,13 +251,13 @@ static SDL_VideoDevice *X11_CreateDevice(void)
         device->system_theme = SDL_SystemTheme_Get();
 #endif
 
-    device->device_caps = VIDEO_DEVICE_CAPS_HAS_POPUP_WINDOW_SUPPORT |
-                          VIDEO_DEVICE_CAPS_SENDS_FULLSCREEN_DIMENSIONS;
+    device->device_caps = VIDEO_DEVICE_CAPS_HAS_POPUP_WINDOW_SUPPORT;
 
     data->is_xwayland = X11_IsXWayland(x11_display);
     if (data->is_xwayland) {
         device->device_caps |= VIDEO_DEVICE_CAPS_MODE_SWITCHING_EMULATED |
-                               VIDEO_DEVICE_CAPS_DISABLE_MOUSE_WARP_ON_FULLSCREEN_TRANSITIONS;
+                               VIDEO_DEVICE_CAPS_DISABLE_MOUSE_WARP_ON_FULLSCREEN_TRANSITIONS |
+                               VIDEO_DEVICE_CAPS_SENDS_FULLSCREEN_DIMENSIONS;
     }
 
     return device;
@@ -271,7 +266,8 @@ static SDL_VideoDevice *X11_CreateDevice(void)
 VideoBootStrap X11_bootstrap = {
     "x11", "SDL X11 video driver",
     X11_CreateDevice,
-    X11_ShowMessageBox
+    X11_ShowMessageBox,
+    false
 };
 
 static int (*handler)(Display *, XErrorEvent *) = NULL;

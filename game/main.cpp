@@ -138,6 +138,9 @@ int main(int argc, char** argv) {
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
 
+  // Log the version the game is compiled against so we don't have to guess
+  lg::info("Compiled Version: {}", build_revision());
+
   // Override the user's config dir, potentially (either because it was explicitly provided
   // or because it's portable mode)
   if (enable_portable) {

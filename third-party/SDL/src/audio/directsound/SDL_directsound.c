@@ -206,7 +206,7 @@ static void DSOUND_DetectDevices(SDL_AudioDevice **default_playback, SDL_AudioDe
 {
 #ifdef HAVE_MMDEVICEAPI_H
     if (SupportsIMMDevice) {
-        SDL_IMMDevice_EnumerateEndpoints(default_playback, default_recording);
+        SDL_IMMDevice_EnumerateEndpoints(default_playback, default_recording, SDL_AUDIO_UNKNOWN);
     } else
 #endif
     {
@@ -674,7 +674,7 @@ static bool DSOUND_Init(SDL_AudioDriverImpl *impl)
 }
 
 AudioBootStrap DSOUND_bootstrap = {
-    "directsound", "DirectSound", DSOUND_Init, false
+    "directsound", "DirectSound", DSOUND_Init, false, false
 };
 
 #endif // SDL_AUDIO_DRIVER_DSOUND

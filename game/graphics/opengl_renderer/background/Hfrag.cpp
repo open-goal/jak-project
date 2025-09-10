@@ -415,7 +415,10 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
       continue;  // no need to bind texture.
     }
     glBindTexture(GL_TEXTURE_2D, lev->montage_texture[bucket_idx].fb.texture());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // HACK rm
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     const auto& bucket = lev->hfrag->buckets[bucket_idx];
     for (u32 corner_idx : bucket.corners) {

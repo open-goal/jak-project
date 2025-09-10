@@ -58,6 +58,13 @@ typedef enum
 static gulong (*g_signal_connect_data)(gpointer instance, const gchar *detailed_signal, GCallback c_handler, gpointer data, GClosureNotify destroy_data, GConnectFlags connect_flags);
 static void (*g_object_unref)(gpointer object);
 static gchar *(*g_mkdtemp)(gchar *template);
+static gpointer (*g_object_ref_sink)(gpointer object);
+static gpointer (*g_object_ref)(gpointer object);
+
+// glib_typeof requires compiler-specific code and includes that are too complex
+// to be worth copy-pasting here
+//#define g_object_ref(Obj) ((glib_typeof (Obj)) (g_object_ref) (Obj))
+//#define g_object_ref_sink(Obj) ((glib_typeof (Obj)) (g_object_ref_sink) (Obj))
 
 #define g_signal_connect(instance, detailed_signal, c_handler, data) \
     g_signal_connect_data ((instance), (detailed_signal), (c_handler), (data), NULL, (GConnectFlags) 0)
@@ -248,6 +255,8 @@ static bool init_gtk(void)
     g_mkdtemp = dlsym(libgdk, "g_mkdtemp");
     g_signal_connect_data = dlsym(libgdk, "g_signal_connect_data");
     g_object_unref = dlsym(libgdk, "g_object_unref");
+    g_object_ref_sink = dlsym(libgdk, "g_object_ref_sink");
+    g_object_ref = dlsym(libgdk, "g_object_ref");
 
     app_indicator_new = dlsym(libappindicator, "app_indicator_new");
     app_indicator_set_status = dlsym(libappindicator, "app_indicator_set_status");
@@ -268,6 +277,8 @@ static bool init_gtk(void)
         !gtk_menu_shell_insert ||
         !gtk_widget_destroy ||
         !g_mkdtemp ||
+        !g_object_ref_sink ||
+        !g_object_ref ||
         !g_signal_connect_data ||
         !g_object_unref ||
         !app_indicator_new ||
@@ -326,6 +337,8 @@ struct SDL_Tray {
     SDL_TrayMenu *menu;
     char icon_dir[sizeof(ICON_DIR_TEMPLATE)];
     char icon_path[256];
+
+    GtkMenuShell *menu_cached;
 };
 
 static void call_callback(GtkMenuItem *item, gpointer ptr)
@@ -384,6 +397,11 @@ static void DestroySDLMenu(SDL_TrayMenu *menu)
         }
         SDL_free(menu->entries[i]);
     }
+
+    if (menu->menu) {
+        g_object_unref(menu->menu);
+    }
+
     SDL_free(menu->entries);
     SDL_free(menu);
 }
@@ -421,17 +439,23 @@ SDL_Tray *SDL_CreateTray(SDL_Surface *icon, const char *tooltip)
         return NULL;
     }
 
-    if (!new_tmp_filename(tray)) {
-        SDL_free(tray);
-        return NULL;
-    }
+    if (icon) {
+        if (!new_tmp_filename(tray)) {
+            SDL_free(tray);
+            return NULL;
+        }
 
-    SDL_SaveBMP(icon, tray->icon_path);
+        SDL_SaveBMP(icon, tray->icon_path);
+    }
 
     tray->indicator = app_indicator_new(get_appindicator_id(), tray->icon_path,
                                         APP_INDICATOR_CATEGORY_APPLICATION_STATUS);
 
     app_indicator_set_status(tray->indicator, APP_INDICATOR_STATUS_ACTIVE);
+
+    // The tray icon isn't shown before a menu is created; create one early.
+    tray->menu_cached = (GtkMenuShell *) g_object_ref_sink(gtk_menu_new());
+    app_indicator_set_menu(tray->indicator, GTK_MENU(tray->menu_cached));
 
     SDL_RegisterTray(tray);
 
@@ -476,13 +500,11 @@ SDL_TrayMenu *SDL_CreateTrayMenu(SDL_Tray *tray)
         return NULL;
     }
 
-    tray->menu->menu = (GtkMenuShell *)gtk_menu_new();
+    tray->menu->menu = g_object_ref(tray->menu_cached);
     tray->menu->parent_tray = tray;
     tray->menu->parent_entry = NULL;
     tray->menu->nEntries = 0;
     tray->menu->entries = NULL;
-
-    app_indicator_set_menu(tray->indicator, GTK_MENU(tray->menu->menu));
 
     return tray->menu;
 }
@@ -519,7 +541,7 @@ SDL_TrayMenu *SDL_CreateTraySubmenu(SDL_TrayEntry *entry)
         return NULL;
     }
 
-    entry->submenu->menu = (GtkMenuShell *)gtk_menu_new();
+    entry->submenu->menu = g_object_ref_sink(gtk_menu_new());
     entry->submenu->parent_tray = NULL;
     entry->submenu->parent_entry = entry;
     entry->submenu->nEntries = 0;
@@ -540,15 +562,15 @@ SDL_TrayMenu *SDL_GetTraySubmenu(SDL_TrayEntry *entry)
     return entry->submenu;
 }
 
-const SDL_TrayEntry **SDL_GetTrayEntries(SDL_TrayMenu *menu, int *size)
+const SDL_TrayEntry **SDL_GetTrayEntries(SDL_TrayMenu *menu, int *count)
 {
     if (!menu) {
         SDL_InvalidParamError("menu");
         return NULL;
     }
 
-    if (size) {
-        *size = menu->nEntries;
+    if (count) {
+        *count = menu->nEntries;
     }
     return (const SDL_TrayEntry **)menu->entries;
 }
@@ -781,6 +803,10 @@ void SDL_DestroyTray(SDL_Tray *tray)
 
     if (*tray->icon_dir) {
         SDL_RemovePath(tray->icon_dir);
+    }
+
+    if (tray->menu_cached) {
+        g_object_unref(tray->menu_cached);
     }
 
     if (tray->indicator) {

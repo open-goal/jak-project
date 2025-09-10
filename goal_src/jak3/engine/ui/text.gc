@@ -159,7 +159,10 @@
     )
   )
 
-(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
+;; og:preserve-this extracted implementation out so that callers of `lookup-text!` were uneffected
+;; this implementation is different from the original (has fallback text lookup)
+(define-extern lookup-text-impl! (function game-text-info text-id symbol symbol string))
+(defun lookup-text-impl! ((this game-text-info) (arg0 text-id) (arg1 symbol) (fallback-call? symbol))
   (cond
     ((= this #f)
      (cond
@@ -191,15 +194,23 @@
           ((!= (-> this data v1-2 id) arg0)
            (cond
              (arg1
-               (the-as string #f)
+               ;; og:preserve-this Added fallback to english is string is not found.
+               (#if PC_PORT
+                 (if (and *fallback-text-lookup?* (not fallback-call?))
+                   (aif (lookup-text-impl! *fallback-text* arg0 #t #t)
+                       it
+                       (the-as string #f))
+                   (the-as string #f))
+                 (the-as string #f))
                )
              (else
-              ;; og:preserve-this Added fallback to English if string is not found.
+              ;; og:preserve-this Added fallback to english is string is not found.
               (#if PC_PORT
-                (if *fallback-text-lookup?*
-                  (aif (lookup-text! *fallback-text* arg0 #t)
+                (if (and *fallback-text-lookup?* (not fallback-call?))
+                  (aif (lookup-text-impl! *fallback-text* arg0 #t #t)
                       it
-                      (string-format "UNKNOWN ID ~D" arg0)))
+                      (string-format "UNKNOWN ID ~D" arg0))
+                  (string-format "UNKNOWN ID ~D" arg0))
                 (string-format "UNKNOWN ID ~D" arg0))
                )
              )
@@ -213,8 +224,14 @@
           )
         )
       )
-    )
-  )
+    ))
+
+(defmethod lookup-text! ((this game-text-info) (arg0 text-id) (arg1 symbol))
+  "Look up text by ID.  Will return the string.
+   If the ID can't be found, and arg1 is #t, it will return #f,
+   otherwise the temp string UNKNOWN ID <id number>"
+  ;; og:preserve-this call custom function
+  (lookup-text-impl! this arg0 arg1 #f))
 
 (defmethod lookup-text ((this level) (arg0 text-id) (arg1 symbol))
   (let ((v1-0 *common-text*))

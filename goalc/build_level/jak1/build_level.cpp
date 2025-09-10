@@ -48,6 +48,9 @@ bool run_build_level(const std::string& input_file,
   // unk zero
   // name
   file.name = level_json.at("long_name").get<std::string>();
+  ASSERT_MSG(file.name.size() <= 10,
+             fmt::format("long_name over 10 characters ({} characters): '{}'", file.name.size(),
+                         file.name));
   // nick
   file.nickname = level_json.at("nickname").get<std::string>();
   // vis infos
