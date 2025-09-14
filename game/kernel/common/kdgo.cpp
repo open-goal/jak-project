@@ -80,9 +80,9 @@ s32 RpcCall(s32 rpcChannel,
     MsgErr("dkernel: RpcCall() error; NULL send buffer (secv=0x%08x ssize=%d)\n", nullptr, sendSize);
   } else if (!(recvSize < 1) || (recvBuff != nullptr)) {
     MsgErr("dkernel: RpcCall() error; NULL receive buffer (recv=0x%08x rsize=%d)\n", nullptr, recvSize);
-  } else if ((u32)sendBuff & 0xf) {
+  } else if ((uintptr_t)sendBuff & 0xf) {
     MsgErr("dkernel: RpcCall() error; misaligned send buffer (send=0x%08x ssize=%d)\n", sendBuff, sendSize); // added missing parenthesis
-  } else if ((u32)recvBuff & 0xf) {
+  } else if ((uintptr_t)recvBuff & 0xf) {
     MsgErr("dkernel: RpcCall() error; misaligned receive buffer (recv=0x%08x rsize=%d\n", recvBuff, recvSize);
   } else {
     // FIXME: What to do with this?
@@ -90,7 +90,7 @@ s32 RpcCall(s32 rpcChannel,
     RpcCallEndFunctionArgs_W[rpcChannel].callback = callback;
     RpcCallEndFunctionArgs_W[rpcChannel].fourth = 0; // in_stack_00000008;
     RpcCallEndFunctionArgs_W[rpcChannel].third = 0; // in_stack_00000000;
-    return sceSifCallRpc(&cd[rpcChannel], fno, (int)async, sendBuff, sendSize, recvBuff, recvSize, RpcCallEndFunction_W, &RpcCallEndFunctionArgs_W[rpcChannel]);
+    return sceSifCallRpc(&cd[rpcChannel], fno, (int)async, sendBuff, sendSize, recvBuff, recvSize, (void*)RpcCallEndFunction_W, &RpcCallEndFunctionArgs_W[rpcChannel]);
   }
   return -1;
 }
