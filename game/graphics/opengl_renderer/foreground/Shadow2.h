@@ -3,12 +3,13 @@
 #include "common/math/Vector.h"
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/foreground/Shadow3.h"
 
 class Shadow2 : public BucketRenderer {
  public:
   static constexpr int kMaxVerts = 8192 * 3 * 2;
   static constexpr int kMaxInds = kMaxVerts;
-  Shadow2(const std::string& name, int my_id);
+  Shadow2(const std::string& name, int my_id, std::shared_ptr<Shadow3> shadow3);
   ~Shadow2();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
@@ -94,4 +95,6 @@ class Shadow2 : public BucketRenderer {
                     ScopedProfilerNode& prof,
                     const FrameConstants& constants);
   u8 m_color[4] = {0, 0, 0, 0};
+  std::shared_ptr<Shadow3> m_shadow3;
+  bool m_using_shadow3 = false;
 };

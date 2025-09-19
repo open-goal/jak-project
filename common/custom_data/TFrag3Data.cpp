@@ -587,6 +587,42 @@ void MercModelGroup::serialize(Serializer& ser) {
   ser.from_pod_vector(&vertices);
 }
 
+void ShadowModelFragment::serialize(Serializer& ser) {
+  ser.from_ptr(&first_vertex);
+  ser.from_ptr(&num_one_bone_vertices);
+  ser.from_ptr(&num_two_bone_vertices);
+  ser.from_pod_vector(&single_tris);
+  ser.from_pod_vector(&double_tris);
+  ser.from_pod_vector(&single_edges);
+  ser.from_pod_vector(&double_edges);
+}
+
+void ShadowModel::serialize(Serializer& ser) {
+  ser.from_str(&name);
+  ser.from_ptr(&max_bones);
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(fragments.size());
+  } else {
+    fragments.resize(ser.load<size_t>());
+  }
+  for (auto& frag : fragments) {
+    frag.serialize(ser);
+  }
+}
+
+void ShadowModelGroup::serialize(Serializer& ser) {
+  ser.from_pod_vector(&vertices);
+  if (ser.is_saving()) {
+    ser.save<size_t>(models.size());
+  } else {
+    models.resize(ser.load<size_t>());
+  }
+  for (auto& model : models) {
+    model.serialize(ser);
+  }
+}
+
 void Level::serialize(Serializer& ser) {
   ser.from_ptr(&version);
   if (ser.is_loading() && version != TFRAG3_VERSION) {
@@ -647,9 +683,9 @@ void Level::serialize(Serializer& ser) {
   }
 
   hfrag.serialize(ser);
-
   collision.serialize(ser);
   merc_data.serialize(ser);
+  shadow_data.serialize(ser);
 
   ser.from_ptr(&version2);
   if (ser.is_loading() && version2 != TFRAG3_VERSION) {
@@ -770,6 +806,10 @@ void Hfragment::memory_usage(tfrag3::MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::HFRAG_CORNERS, corners.size() * sizeof(HfragmentCorner));
 }
 
+void ShadowModelGroup::memory_usage(MemoryUsageTracker* tracker) const {
+  tracker->add(SHADOW_VERTS, vertices.size() * sizeof(ShadowVertex));
+}
+
 void Level::memory_usage(MemoryUsageTracker* tracker) const {
   for (const auto& texture : textures) {
     texture.memory_usage(tracker);
@@ -793,6 +833,7 @@ void Level::memory_usage(MemoryUsageTracker* tracker) const {
   hfrag.memory_usage(tracker);
   collision.memory_usage(tracker);
   merc_data.memory_usage(tracker);
+  shadow_data.memory_usage(tracker);
 }
 
 void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
@@ -837,8 +878,9 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"hfrag-verts", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_VERTS]},
       {"hfrag-index", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_INDEX]},
       {"hfrag-time-of-day", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_TIME_OF_DAY]},
-      {"hfrag-corners", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_CORNERS]}
-
+      {"hfrag-corners", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_CORNERS]},
+      {"shadow-vert", mem_use.data[SHADOW_VERTS]},
+      {"shadow-ind", mem_use.data[SHADOW_INDEX]},
   };
   for (auto& known : known_categories) {
     total_accounted += known.second;
