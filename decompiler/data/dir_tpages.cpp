@@ -45,7 +45,8 @@ DirTpageResult process_dir_tpages(ObjectFileData& data) {
     word_idx++;
   }
 
-  if (data.linked_data.version != GameVersion::Jak3) {
+  if (data.linked_data.version != GameVersion::Jak3 &&
+      data.linked_data.version != GameVersion::JakX) {
     word_idx = ((word_idx + 3) / 4) * 4;
   }
   ASSERT(word_idx == (int)words.size());
