@@ -17,3 +17,15 @@ class MercLoaderStage : public LoaderStage {
   bool m_vtx_uploaded = false;
   u32 m_idx = 0;
 };
+
+class ShadowLoaderStage : public LoaderStage {
+ public:
+  ShadowLoaderStage();
+  bool run(Timer& timer, LoaderInput& data) override;
+  void reset() override;
+
+ private:
+  bool m_done = false;
+  bool m_opengl = false;
+  u32 m_idx = 0;
+};

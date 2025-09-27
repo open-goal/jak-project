@@ -390,7 +390,38 @@
   0
   (none))
 
+;; og:preserve-this
+(defun pc-shadow-execute-all ()
+  "Send PC shadow queue to the PC shadow renderer."
+
+  ;; bail if disabled
+  (if (not (logtest? *vu1-enable-user* (vu1-renderer-mask shadow)))
+      (return #f)
+      )
+
+  ;; TODO: plus1 here?
+  (dotimes (run-idx (-> *pc-shadow-queue* cur-run))
+    (when (nonzero? (-> *pc-shadow-queue* run run-idx first))
+      (with-dma-buffer-add-bucket ((dma-buf (-> (current-frame) global-buf)) (bucket-id shadow))
+        (dma-buffer-add-ref-vif2
+          dma-buf
+          6
+          (-> *pc-shadow-queue* run run-idx first)
+          (new 'static 'vif-tag :cmd (vif-cmd pc-port))
+          (new 'static 'vif-tag :cmd (vif-cmd pc-port))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
 (defun shadow-execute-all ((arg0 dma-buffer) (arg1 shadow-queue))
+  ;; og:preserve-this
+  (when *use-pc-shadow*
+    (pc-shadow-execute-all)
+    (return #f)
+    )
   (if *debug-segment*
     (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
                'draw

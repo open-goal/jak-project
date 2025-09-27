@@ -13,6 +13,8 @@
   (eye 3)
   )
 
+;; when set, use the rewritten PC shadow render (faster)
+(define *use-pc-shadow* #t)
 
 (def-mips2c foreground-draw-hud (function draw-control dma-buffer float none))
 
@@ -563,8 +565,101 @@
                                     )
         )
 
+;; og:preserve-this
+(defun pc-draw-bones-shadow ((dc draw-control) (mtx pointer) (dma-ptr pointer))
+  "Add shadows for this draw-control to the *pc-shadow-queue* to be drawn in pc-shadow-execute-all.
+   This places a pc-shadow-request in the DMA buffer and adds it to the linked list of requests
+   for the currently selected run in *pc-shadow-queue*"
+
+   (when (-> dc shadow-ctrl)
+     ;; update the "center" position of the shadow control, I guess to let some other thing look at it?
+     (let ((center-pos (-> dc skeleton bones (-> dc shadow-joint-index) position))
+           (settings (-> dc shadow-ctrl settings))
+           )
+       (set! (-> settings center x) (-> center-pos x))
+       (set! (-> settings center y) (-> center-pos y))
+       (set! (-> settings center z) (-> center-pos z))
+       )
+     )
+  (let* ((pse      (the pc-shadow-request dma-ptr))
+         (sgeo     (-> dc shadow))
+         (settings (if (-> dc shadow-ctrl) (-> dc shadow-ctrl settings) *default-shadow-settings*))
+         (flags    (-> settings flags))
+         )
+
+    ;; if fade is enabled, and we're all the way faded out, disable draw
+    (when (not (logtest? flags (shadow-flags disable-fade)))
+      (let ((dist (-> (scratchpad-object foreground-work) distance w)))
+        (#when PC_PORT
+               (if (not (-> *pc-settings* ps2-shadow?))
+                   (set! dist 0.0)))
+        (if (< (-> settings fade-dist) dist)
+            (logior! flags (shadow-flags disable-draw))
+            )
+        )
+      )
+
+    ;; if disabled, early return
+    (if (logtest? flags (shadow-flags disable-draw))
+        (return dma-ptr)
+        )
+
+
+    ;; settings
+    (mem-copy! (the pointer (-> pse settings)) (the pointer settings) (size-of shadow-settings))
+
+    ;; update the "center" position.
+    (let ((center-pos (-> dc skeleton bones (-> dc shadow-joint-index) position)))
+      (set! (-> pse settings center x) (-> center-pos x))
+      (set! (-> pse settings center y) (-> center-pos y))
+      (set! (-> pse settings center z) (-> center-pos z))
+      )
+
+    ;; set the other properties
+    (set! (-> pse geo-name) (-> sgeo name))
+    (set! (-> pse mtx) mtx)
+    (set! (-> pse num-joints) (-> sgeo num-joints))
+    ;; TODO: this is probably the wrong color!!!
+    (vector-copy! (-> pse color) (-> *time-of-day-context* current-shadow-color))
+
+    ;; set up linked list.
+    (let* ((run (-> *pc-shadow-globals* bucket (-> settings shadow-type)))
+           (next (-> run next))
+           )
+
+      ;; if we're the first in the list, store in the run
+      (when (zero? (-> run first))
+        (set! (-> run first) (the pointer pse)))
+
+      ;; patch next pointer of previous
+      (if (nonzero? next) (set! (-> (the (pointer structure) next) 0) pse))
+
+      ;; remember where to patch for the next one
+      (set! (-> run next) (&-> pse next))
+
+      ;; clear our next pointer in case we're last
+      (set! (-> pse next) (the pc-shadow-request 0))
+
+      ;; set up next tag at the start, to skip over this data.
+      ;; this is a bit of a hack, this function gets called when building merc chains,
+      ;; and inserts a bit of shadow dma that will later be referenced by the shadow bucket.
+      ;; but the original game did the same thing!
+      (&+! dma-ptr (size-of pc-shadow-request))
+      (set! (-> pse dma-next dma) (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int dma-ptr)))
+      (set! (-> pse dma-next vif0) (new 'static 'vif-tag))
+      (set! (-> pse dma-next vif1) (new 'static 'vif-tag))
+      )
+
+    dma-ptr
+    )
+  )
+
 ;; ERROR: Unsupported inline assembly instruction kind - [lq ra, 32(v1)]
 (defun foreground-shadow ((draw-ctrl draw-control) (arg1 (inline-array pris-mtx)) (arg2 pointer))
+  ;; og:preserve-this
+  (when *use-pc-shadow*
+    (return (pc-draw-bones-shadow draw-ctrl (the pointer arg1) arg2))
+    )
   (local-vars (shadow-settings shadow-settings))
   (let ((shadow-geo (-> draw-ctrl shadow))
         (dist (-> (scratchpad-object foreground-work) distance w))

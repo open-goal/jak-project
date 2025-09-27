@@ -152,6 +152,7 @@ void Loader::draw_debug_window() {
                          lev.second->frames_since_last_used);
       ImGui::Text("  %d textures", (int)lev.second->textures.size());
       ImGui::Text("  %d merc", (int)lev.second->merc_model_lookup.size());
+      ImGui::Text("  %d shadow", (int)lev.second->shadow_model_lookup.size());
     }
     ImGui::NewLine();
     ImGui::Separator();
@@ -267,13 +268,19 @@ const tfrag3::Level& Loader::load_common(TexturePool& tex_pool, const std::strin
 
   Timer tim;
   MercLoaderStage mls;
+  ShadowLoaderStage sls;
   LoaderInput input;
   input.tex_pool = &tex_pool;
   input.mercs = &m_all_merc_models;
+  input.shadows = &m_all_shadow_models;
   input.lev_data = &m_common_level;
   bool done = false;
   while (!done) {
     done = mls.run(tim, input);
+  }
+  done = false;
+  while (!done) {
+    done = sls.run(tim, input);
   }
   return *m_common_level.level;
 }
@@ -416,6 +423,7 @@ void Loader::update(TexturePool& texture_pool) {
       LoaderInput loader_input;
       loader_input.lev_data = lev.get();
       loader_input.mercs = &m_all_merc_models;
+      loader_input.shadows = &m_all_shadow_models;
       loader_input.tex_pool = &texture_pool;
 
       for (auto& stage : m_loader_stages) {
@@ -496,6 +504,7 @@ void Loader::update(TexturePool& texture_pool) {
         m_garbage_buffers.push_back(lev->collide_vertices);
         m_garbage_buffers.push_back(lev->merc_vertices);
         m_garbage_buffers.push_back(lev->merc_indices);
+        m_garbage_buffers.push_back(lev->shadow_vertices);
 
         for (auto& model : lev->level->merc_data.models) {
           auto& mercs = m_all_merc_models.at(model.name);
@@ -503,6 +512,14 @@ void Loader::update(TexturePool& texture_pool) {
           auto it = std::find(mercs.begin(), mercs.end(), ref);
           ASSERT_MSG(it != mercs.end(), fmt::format("missing merc: {}\n", model.name));
           mercs.erase(it);
+        }
+
+        for (auto& model : lev->level->shadow_data.models) {
+          auto& shadows = m_all_shadow_models.at(model.name);
+          ShadowRef ref{&model, lev->load_id};
+          auto it = std::find(shadows.begin(), shadows.end(), ref);
+          ASSERT_MSG(it != shadows.end(), fmt::format("missing shadow: {}\n", model.name));
+          shadows.erase(it);
         }
 
         m_loaded_tfrag3_levels.erase(*to_unload);
@@ -538,6 +555,17 @@ std::optional<MercRef> Loader::get_merc_model(const char* model_name) {
   // don't think we need to lock here...
   const auto& it = m_all_merc_models.find(model_name);
   if (it != m_all_merc_models.end() && !it->second.empty()) {
+    // it->second.front().parent_level->frames_since_last_used = 0;
+    return it->second.front();
+  } else {
+    return std::nullopt;
+  }
+}
+
+std::optional<ShadowRef> Loader::get_shadow_model(const char* model_name) {
+  // don't think we need to lock here...
+  const auto& it = m_all_shadow_models.find(model_name);
+  if (it != m_all_shadow_models.end() && !it->second.empty()) {
     // it->second.front().parent_level->frames_since_last_used = 0;
     return it->second.front();
   } else {

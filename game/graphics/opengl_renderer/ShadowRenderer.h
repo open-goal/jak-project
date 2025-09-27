@@ -2,10 +2,15 @@
 
 #include "game/common/vu.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include "game/graphics/opengl_renderer/foreground/Shadow3.h"
 
+/*!
+ * Jak 1 shadow renderer. This uses mips2c'd VU1 code and isn't very efficient.
+ * If it detects PC shadow enabled, it will instead render with Shadow3.
+ */
 class ShadowRenderer : public BucketRenderer {
  public:
-  ShadowRenderer(const std::string& name, int my_id);
+  ShadowRenderer(const std::string& name, int my_id, std::shared_ptr<Shadow3> shadow3);
   ~ShadowRenderer();
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
@@ -127,4 +132,6 @@ class ShadowRenderer : public BucketRenderer {
   } m_ogl;
 
   bool m_debug_draw_volume = false;
+  std::shared_ptr<Shadow3> m_shadow3;
+  bool m_using_shadow3 = false;
 };
