@@ -330,6 +330,8 @@ void interp_time_of_day(const math::Vector<s32, 4> itimes[4],
                         const tfrag3::PackedTimeOfDay& packed_colors,
                         math::Vector<u8, 4>* out) {
 #ifdef __aarch64__
+// TODO - make this fast, or maybe it already is since we used intrinsics instead of
+// trying to do things manually here? Unless, does arm64 not have intrinsics
   interp_time_of_day_slow(itimes, packed_colors, out);
 #else
   math::Vector<u16, 4> weights[8];
