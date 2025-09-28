@@ -10,9 +10,11 @@
 namespace formatter_rules {
 namespace config {
 struct FormFormattingConfig {
-  // new
-  bool hang_forms = true;  // TODO - remove this eventually, it's only involved in setting the
-                           // indentation width, which we can do via the indentation_width function
+  bool config_set = false;
+  bool force_inline = false;
+  bool hang_forms =
+      true;  // TODO - remove this eventually, it's only involved in setting the
+             // indentation width, which we can do via the new indentation_width function
   int indentation_width =
       2;  // 2 for a flow // TODO - also remove this, prefer storing the first node's width in the
           // metadata on the first pass, that's basically all this does
@@ -30,6 +32,14 @@ struct FormFormattingConfig {
   int parent_mutable_extra_indent = 0;
   std::optional<std::shared_ptr<FormFormattingConfig>> default_index_config;
   std::unordered_map<int, std::shared_ptr<FormFormattingConfig>> index_configs = {};
+  // TODO / NOTe - not fully implemented, only doing `parent_mutable_extra_indent` right now
+  std::unordered_map<int, std::shared_ptr<FormFormattingConfig>> index_config_override = {};
+
+  bool determine_column_widths_for_list_elements = false;
+  int num_columns_to_compute_widths = 0;
+  std::vector<int> list_element_column_widths = {};
+
+  bool elide_top_level_newline = false;
 };
 
 extern const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config;

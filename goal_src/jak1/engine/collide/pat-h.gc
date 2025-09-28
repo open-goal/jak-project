@@ -1,10 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: pat-h.gc
-;; name in dgo: pat-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/math.gc")
 (defenum pat-material
   :type uint8
   (stone)
@@ -29,15 +26,13 @@
   (swamp)
   (stopproj)
   (rotate)
-  (neutral)
-  )
+  (neutral))
 
 (defenum pat-mode
   :type uint8
   (ground)
   (wall)
-  (obstacle)
-  )
+  (obstacle))
 
 (defenum pat-event
   :type uint8
@@ -47,8 +42,7 @@
   (burn)
   (deadlyup)
   (burnup)
-  (melt)
-  )
+  (melt))
 
 ;; DECOMP BEGINS
 
@@ -56,65 +50,67 @@
 ;; It packs all data into a 32-bit pat-surface type.
 
 (deftype pat-surface (uint32)
-  ((skip          uint8        :offset   0 :size   3)
-   (mode          pat-mode     :offset   3 :size   3)
-   (material      pat-material :offset   6 :size   6)
-   (camera        uint8        :offset  12 :size   2)
-   (event         pat-event    :offset  14 :size   6)
-   (noentity      uint8        :offset   0 :size   1)
-   (nocamera      uint8        :offset   1 :size   1)
-   (noedge        uint8        :offset   2 :size   1)
-   (nolineofsight uint8        :offset  12 :size   1)
-   (unknown-bit   uint8        :offset  15 :size   1)
-   )
-  )
+  ((skip          uint8 :offset 0 :size 3)
+   (mode          pat-mode :offset 3 :size 3)
+   (material      pat-material :offset 6 :size 6)
+   (camera        uint8 :offset 12 :size 2)
+   (event         pat-event :offset 14 :size 6)
+   (noentity      uint8 :offset 0 :size 1)
+   (nocamera      uint8 :offset 1 :size 1)
+   (noedge        uint8 :offset 2 :size 1)
+   (nolineofsight uint8 :offset 12 :size 1)
+   (unknown-bit   uint8 :offset 15 :size 1)))
 
 (defun-debug pat-material->string ((pat pat-surface))
-  (enum->string pat-material (-> pat material))
-  )
+  (enum->string pat-material (-> pat material)))
 
 (defun-debug pat-mode->string ((pat pat-surface))
-  (enum->string pat-mode (-> pat mode))
-  )
+  (enum->string pat-mode (-> pat mode)))
 
 (defun-debug pat-event->string ((pat pat-surface))
-  (enum->string pat-event (-> pat event))
-  )
+  (enum->string pat-event (-> pat event)))
 
 ;; for debug drawing pat's by mode.
 (deftype pat-mode-info (structure)
-  ((name          string)
-   (wall-angle    float)
-   (color         rgba)
-   (hilite-color  rgba)
-   )
-  )
+  ((name         string)
+   (wall-angle   float)
+   (color        rgba)
+   (hilite-color rgba)))
 
-
-(define *pat-mode-info* (new 'static 'inline-array pat-mode-info 4
-                          (new 'static 'pat-mode-info
-                            :name "ground"
-                            :wall-angle 0.2
-                            :color (new 'static 'rgba :r #x7f :a #x40)
-                            :hilite-color (new 'static 'rgba :r #xff :a #x80)
-                            )
-                          (new 'static 'pat-mode-info
-                            :name "wall"
-                            :wall-angle 2.0
-                            :color (new 'static 'rgba :b #x7f :a #x40)
-                            :hilite-color (new 'static 'rgba :b #xff :a #x80)
-                            )
-                          (new 'static 'pat-mode-info
-                            :name "obstacle"
-                            :wall-angle 0.82
-                            :color (new 'static 'rgba :r #x7f :b #x7f :a #x40)
-                            :hilite-color (new 'static 'rgba :r #xff :b #xff :a #x80)
-                            )
-                          (new 'static 'pat-mode-info
-                            :name "pole"
-                            :wall-angle 2.0
-                            :color (new 'static 'rgba :r #x7f :g #x7f :a #x40)
-                            :hilite-color (new 'static 'rgba :r #xff :g #xff :a #x80)
-                            )
-                          )
-        )
+(define *pat-mode-info*
+  (new 'static
+       'inline-array
+       pat-mode-info
+       4
+       (new 'static
+            'pat-mode-info
+            :name "ground"
+            :wall-angle 0.2
+            :color
+            (new 'static 'rgba :r #x7f :a #x40)
+            :hilite-color
+            (new 'static 'rgba :r #xff :a #x80))
+       (new 'static
+            'pat-mode-info
+            :name "wall"
+            :wall-angle 2.0
+            :color
+            (new 'static 'rgba :b #x7f :a #x40)
+            :hilite-color
+            (new 'static 'rgba :b #xff :a #x80))
+       (new 'static
+            'pat-mode-info
+            :name "obstacle"
+            :wall-angle 0.82
+            :color
+            (new 'static 'rgba :r #x7f :b #x7f :a #x40)
+            :hilite-color
+            (new 'static 'rgba :r #xff :b #xff :a #x80))
+       (new 'static
+            'pat-mode-info
+            :name "pole"
+            :wall-angle 2.0
+            :color
+            (new 'static 'rgba :r #x7f :g #x7f :a #x40)
+            :hilite-color
+            (new 'static 'rgba :r #xff :g #xff :a #x80))))

@@ -5,5 +5,160 @@
 ;; name in dgo: speech-h
 ;; dgos: GAME
 
+;; +++speech-type-flag
+(defenum speech-type-flag
+  :type uint8
+  :bitfield #t
+  (random-order 0)
+  (linked-next 1)
+  (skip-first-time 2)
+  (first-time 3)
+  )
+;; ---speech-type-flag
+
+
+;; +++speech-type
+(defenum speech-type
+  :type int8
+  (none 0)
+  (guard-generic-battle 1)
+  (guard-generic-battle-b 2)
+  (guard-battle-victory 3)
+  (guard-battle-victory-b 4)
+  (guard-change-targets 5)
+  (guard-change-targets-b 6)
+  (guard-go-hostile 7)
+  (guard-go-hostile-b 8)
+  (guard-hit 9)
+  (guard-hit-b 10)
+  (guard-witness-death 11)
+  (guard-witness-death-b 12)
+  (guard-chatter 13)
+  (guard-chatter-b 14)
+  (guard-chatter-jak 15)
+  (guard-chatter-jak-b 16)
+  (guard-bumped-by-jak 17)
+  (guard-bumped-by-jak-b 18)
+  (civ-m-ambient 19)
+  (civ-m-alert 20)
+  (civ-m-cower 21)
+  (civ-m-touched-by-player 22)
+  (civ-m-shot-by-player 23)
+  (civ-m-avoiding-player-vehicle 24)
+  (civ-m-hit-by-player-vehicle 25)
+  (civ-m-player-stealing-vehicle 26)
+  (civ-f-ambient 27)
+  (civ-f-alert 28)
+  (civ-f-cower 29)
+  (civ-f-touched-by-player 30)
+  (civ-f-shot-by-player 31)
+  (civ-f-avoiding-player-vehicle 32)
+  (civ-f-hit-by-player-vehicle 33)
+  (race-jak-start 34)
+  (race-jak-lap 35)
+  (race-jak-last-lap 36)
+  (race-jak-hit 37)
+  (race-jak-got-hit 38)
+  (race-jak-ambient 39)
+  (race-jak-pass 40)
+  (race-jak-jump 41)
+  (race-jak-win 42)
+  (race-daxter-start 43)
+  (race-daxter-lap 44)
+  (race-daxter-last-lap 45)
+  (race-daxter-hit 46)
+  (race-daxter-got-hit 47)
+  (race-daxter-ambient 48)
+  (race-daxter-pass 49)
+  (race-daxter-jump 50)
+  (race-daxter-win 51)
+  (race-errol-start 52)
+  (race-errol-last-lap 53)
+  (race-errrol-hit 54)
+  (race-errol-got-hit 55)
+  (race-errol-ambient 56)
+  (race-errol-pass 57)
+  (race-errol-got-passed 58)
+  (race-errol-win 59)
+  (race-errol-lose 60)
+  )
+;; ---speech-type
+
+
+;; +++speech-channel-flag
+(defenum speech-channel-flag
+  :type uint8
+  :bitfield #t
+  (disable 0)
+  )
+;; ---speech-channel-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype speech-type-info (structure)
+  ((channel          uint8)
+   (flags            speech-type-flag)
+   (priority         int8)
+   (delay-pre-time   uint16)
+   (request-timeout  uint16)
+   (min-delay        uint16)
+   (max-delay        uint16)
+   (delay            uint16)
+   (play-index       int16)
+   (list             (array string))
+   (time             uint64)
+   )
+  )
+
+
+(deftype speech-request (structure)
+  ((handle       handle)
+   (time         time-frame)
+   (priority     float)
+   (speech-type  speech-type)
+   )
+  :pack-me
+  )
+
+
+(deftype speech-channel (structure)
+  ((flags         speech-channel-flag)
+   (gui-channel   gui-channel)
+   (delay         uint16)
+   (id            sound-id)
+   (update-time   time-frame)
+   (start-time    time-frame)
+   (end-time      time-frame)
+   (request       speech-request  :inline)
+   (last-request  speech-request  :inline)
+   (target-pos    vector          :inline)
+   (speech-table  (pointer speech-type-info))
+   )
+  (:methods
+    (speech-channel-method-9 (_type_ process-drawable speech-type) int)
+    (speech-channel-method-10 (_type_ handle) none)
+    (speech-channel-method-11 (_type_) none)
+    (reset-channel! (_type_) none)
+    (init! (_type_) none)
+    (speech-channel-method-14 (_type_ speech-type float) none)
+    )
+  )
+
+
+(deftype speech-control (structure)
+  ((channel-array  speech-channel    2 :inline)
+   (speech-table   speech-type-info  61)
+   )
+  (:methods
+    (speech-table-reset! (_type_) none)
+    (speech-table-set! (_type_ speech-type speech-type-info) none)
+    (speech-control-method-11 (_type_) none)
+    (speech-control-method-12 (_type_ process-drawable speech-type) none)
+    (speech-control-method-13 (_type_ process-drawable speech-type int) none)
+    (speech-control-method-14 (_type_ handle) none)
+    (speech-control-method-15 (_type_) none)
+    (speech-control-method-16 (_type_) none)
+    (speech-control-method-17 (_type_ speech-type float) none)
+    )
+  )

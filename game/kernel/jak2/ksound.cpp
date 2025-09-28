@@ -9,7 +9,6 @@ namespace jak2 {
  * Set up some functions which are somewhat related to sound.
  */
 void InitSoundScheme() {
-  make_function_symbol_from_c("rpc-call", (void*)RpcCall_wrapper);
   make_function_symbol_from_c("rpc-busy?", (void*)RpcBusy);
   make_function_symbol_from_c("test-load-dgo-c", (void*)LoadDGOTest);
   make_stack_arg_function_symbol_from_c("rpc-call", (void*)RpcCall_wrapper);

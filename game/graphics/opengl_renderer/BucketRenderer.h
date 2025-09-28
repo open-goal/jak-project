@@ -26,8 +26,8 @@ class EyeRenderer;
 struct SharedRenderState {
   explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool,
                              std::shared_ptr<Loader> _loader,
-                             GameVersion version)
-      : shaders(version), texture_pool(_texture_pool), loader(_loader) {}
+                             GameVersion _version)
+      : shaders(_version), texture_pool(_texture_pool), loader(_loader), version(_version) {}
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
   std::shared_ptr<Loader> loader;
@@ -98,6 +98,7 @@ class BucketRenderer {
   virtual void render(DmaFollower& dma,
                       SharedRenderState* render_state,
                       ScopedProfilerNode& prof) = 0;
+  std::string name() const;
   std::string name_and_id() const;
   virtual ~BucketRenderer() = default;
   bool& enabled() { return m_enabled; }

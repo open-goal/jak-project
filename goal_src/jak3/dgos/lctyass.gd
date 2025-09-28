@@ -1,0 +1,11 @@
+("LCTYASS.DGO"
+ ("bombbot-h.o"
+  "bombbot-path.o"
+  "bombbot.o"
+  "tpage-3099.go"
+  "citizen-norm-ag.go"
+  "bombbot-ag.go"
+  "bombbot-bomb-ag.go"
+  "kg-debris-ag.go"
+  "lctyass.go"
+ ))

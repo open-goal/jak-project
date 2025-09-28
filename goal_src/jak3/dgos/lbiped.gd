@@ -1,0 +1,12 @@
+("LBIPED.DGO"
+ ("dp-bipedal-part.o"
+  "dp-bipedal-shot.o"
+  "dp-bipedal.o"
+  "battle.o"
+  "tpage-2901.go"
+  "dp-bipedal-ag.go"
+  "shield-sphere-explode-ag.go"
+  "shield-sphere-distort-ag.go"
+  "shield-sphere-ag.go"
+  "lbiped.go"
+ ))

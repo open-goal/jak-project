@@ -1,0 +1,1557 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 15 of type hud-neo-spawners
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-neo-spawners))
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 160)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -3 47)
+  (format (clear (-> this strings 1 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) -5 45)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-neo-spawners
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-neo-spawners))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-neo-spawners
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-neo-spawners))
+  (set! (-> this level) (level-get *level* 'foresta))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-center-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-neo-spawner foresta-minimap)))
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf2))
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (dotimes (s5-0 2)
+    (alloc-string-if-needed this s5-0)
+    (set! (-> this strings s5-0 scale) 1.0)
+    (set! (-> this strings s5-0 flags) (font-flags kerning middle large))
+    )
+  (set! (-> this strings 0 color) (font-color font-color-39))
+  (set! (-> this strings 1 color) (font-color white))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-forest-machine
+(deftype task-manager-forest-machine (task-manager)
+  ((manager-entity           entity)
+   (actor-group              (pointer actor-group))
+   (actor-group-count        int32)
+   (max-neo-spawned-enemies  int32)
+   )
+  (:methods
+    (init-actor-group! (_type_) none)
+    (get-closest-actor (_type_ vector) entity)
+    )
+  )
+
+;; definition for method 3 of type task-manager-forest-machine
+(defmethod inspect ((this task-manager-forest-machine))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmanager-entity: ~A~%" (-> this manager-entity))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tmax-neo-spawned-enemies: ~D~%" (-> this max-neo-spawned-enemies))
+  (label cfg-7)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-forest-machine)
+  :virtual #t
+  :code (behavior ()
+    (local-vars (a1-12 event-message-block) (gp-3 symbol))
+    (suspend-for (seconds 0.5)
+      )
+    (until (and (-> self manager-entity) (= (-> *game-info* counter) 0.0))
+      (suspend)
+      (if (not (-> self manager-entity))
+          (init-actor-group! self)
+          )
+      (let ((gp-1 0))
+        (when (> (-> self actor-group-count) 0)
+          (dotimes (v1-11 (-> self actor-group 0 length))
+            (let ((a1-1 (-> self actor-group 0 data v1-11 actor)))
+              (if (or (not a1-1) (not (logtest? (-> a1-1 extra perm status) (entity-perm-status subtask-complete))))
+                  (+! gp-1 1)
+                  )
+              )
+            )
+          )
+        (let ((s5-0 (cond
+                      ((< 8 gp-1)
+                       2
+                       )
+                      ((< 4 gp-1)
+                       4
+                       )
+                      ((< 2 gp-1)
+                       5
+                       )
+                      (else
+                        7
+                        )
+                      )
+                    )
+              )
+          (when (!= s5-0 (-> self max-neo-spawned-enemies))
+            (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-5 from) (process->ppointer self))
+              (set! (-> a1-5 num-params) 1)
+              (set! (-> a1-5 message) 'set-max-enemies)
+              (set! (-> a1-5 param 0) (the-as uint s5-0))
+              (let ((t9-1 send-event-function)
+                    (v1-22 (-> self manager-entity))
+                    )
+                (t9-1
+                  (if v1-22
+                      (-> v1-22 extra process)
+                      )
+                  a1-5
+                  )
+                )
+              )
+            (set! (-> self max-neo-spawned-enemies) s5-0)
+            )
+          )
+        (set! (-> *game-info* counter) (the float gp-1))
+        )
+      (if (and (not (-> self hud-counter)) (-> self manager-entity) (level-get *level* 'forestb))
+          (set! (-> self hud-counter)
+                (ppointer->handle (process-spawn hud-neo-spawners :init hud-init-by-other :name "hud-neo-spawners" :to self))
+                )
+          )
+      )
+    (set-setting! 'pilot #f 0.0 0)
+    (until (!= (send-event-function *target* a1-12) gp-3)
+      (send-event *target* 'end-mode 'turret)
+      (suspend)
+      (set! gp-3 'turret)
+      (set! a1-12 (new 'stack-no-clear 'event-message-block))
+      (let ((v1-49 (process->ppointer self)))
+        (set! (-> a1-12 from) v1-49)
+        )
+      (set! (-> a1-12 num-params) 1)
+      (set! (-> a1-12 message) 'query)
+      (set! (-> a1-12 param 0) (the-as uint 'mode))
+      )
+    (until (process-grab? *target* #f)
+      (suspend)
+      )
+    (suspend-for (seconds 0.1)
+      )
+    (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-14 from) (process->ppointer self))
+      (set! (-> a1-14 num-params) 0)
+      (set! (-> a1-14 message) 'die)
+      (let ((t9-10 send-event-function)
+            (v1-63 (-> self manager-entity))
+            )
+        (t9-10
+          (if v1-63
+              (-> v1-63 extra process)
+              )
+          a1-14
+          )
+        )
+      )
+    (while (not (process-release? *target*))
+      (suspend)
+      )
+    (send-event self 'complete)
+    (sleep-code)
+    )
+  )
+
+;; definition for method 32 of type task-manager-forest-machine
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod init-actor-group! ((this task-manager-forest-machine))
+  (local-vars (sv-16 res-tag))
+  (let ((a0-2 (entity-by-name "neo-spawner-manager-1")))
+    (when a0-2
+      (set! (-> this manager-entity) a0-2)
+      (set! sv-16 (new 'static 'res-tag))
+      (let ((v0-2 (res-lump-data a0-2 'actor-groups pointer :tag-ptr (& sv-16))))
+        (cond
+          ((and v0-2 (nonzero? (-> sv-16 elt-count)))
+           (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+           (set! (-> this actor-group) (the-as (pointer actor-group) v0-2))
+           )
+          (else
+            (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 30 of type task-manager-forest-machine
+(defmethod taskman-event-handler ((this task-manager-forest-machine) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('turret-activate)
+     (set-setting! 'airlock #f 0.0 0)
+     )
+    (('closest-turret)
+     (get-closest-actor this (the-as vector (-> arg3 param 0)))
+     )
+    (('gun-flash)
+     (set-forest-gun-flash! (the-as symbol (-> arg3 param 0)) (the-as int (-> arg3 param 1)))
+     )
+    (else
+      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 33 of type task-manager-forest-machine
+;; WARN: Return type mismatch entity-actor vs entity.
+(defmethod get-closest-actor ((this task-manager-forest-machine) (arg0 vector))
+  (the-as entity (when (>= (-> this actor-group-count) 2)
+                   (let ((s4-0 (the-as entity-actor #f)))
+                     (let ((f30-0 0.0))
+                       (dotimes (s3-0 (-> this actor-group 1 length))
+                         (let ((s2-0 (-> this actor-group 1 data s3-0 actor)))
+                           (when s2-0
+                             (let ((f0-0 (vector-vector-xz-distance arg0 (-> s2-0 extra trans))))
+                               (when (or (not s4-0) (< f0-0 f30-0))
+                                 (set! s4-0 s2-0)
+                                 (set! f30-0 f0-0)
+                                 )
+                               )
+                             )
+                           )
+                         )
+                       )
+                     s4-0
+                     )
+                   )
+          )
+  )
+
+;; definition for method 25 of type task-manager-forest-machine
+(defmethod task-manager-method-25 ((this task-manager-forest-machine))
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-forest-machine
+;; WARN: Return type mismatch object vs none.
+(defmethod set-time-limit ((this task-manager-forest-machine))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set-setting! 'extra-bank '((forest1 forest7) (forest2 forest8) (forest3 forest9)) 0.0 0)
+  (set-setting! 'music 'formach 0.0 0)
+  (set! (-> this manager-entity) #f)
+  (set! (-> this actor-group-count) 0)
+  (set! (-> this max-neo-spawned-enemies) -1)
+  (set-cloud-and-fog-interp! *mood-control* 0.8 0.2 0.0 0.0)
+  (set-time-for-random-weather! *mood-control* -99.0 -99.0)
+  (send-event (ppointer->process *time-of-day*) 'change 'hour 16)
+  (send-event (ppointer->process *time-of-day*) 'change 'ratio 2.0)
+  (none)
+  )
+
+;; definition of type task-manager-forest-machine-resolution
+(deftype task-manager-forest-machine-resolution (task-manager)
+  ((manager-entity     entity)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   )
+  )
+
+;; definition for method 3 of type task-manager-forest-machine-resolution
+(defmethod inspect ((this task-manager-forest-machine-resolution))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmanager-entity: ~A~%" (-> this manager-entity))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (label cfg-7)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-forest-machine-resolution)
+  :virtual #t
+  :code (behavior ()
+    (local-vars (sv-16 res-tag))
+    (set-setting! 'pilot #f 0.0 0)
+    (while *scene-player*
+      (suspend)
+      )
+    (until (-> self manager-entity)
+      (suspend)
+      (set! (-> self manager-entity) (entity-by-name "for-machine-manager-1"))
+      )
+    (suspend-for (seconds 1)
+      )
+    (let ((gp-1 (-> self entity extra perm)))
+      (logior! (-> gp-1 status) (entity-perm-status bit-5))
+      (when (zero? (-> gp-1 user-object 0))
+        (logior! (-> gp-1 status) (entity-perm-status bit-14))
+        (if (res-lump-struct (-> self manager-entity) 'camera-name structure)
+            (process-spawn
+              external-camera-controller
+              (-> self manager-entity)
+              1200
+              #f
+              :name "external-camera-controller"
+              :to *entity-pool*
+              )
+            )
+        )
+      (set! (-> gp-1 user-object 0) (+ (the-as int (-> gp-1 user-object 0)) 1))
+      )
+    (suspend-for (seconds 1)
+      )
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((v1-33 (res-lump-data (-> self manager-entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+      (cond
+        ((and v1-33 (nonzero? (-> sv-16 elt-count)))
+         (set! (-> self actor-group) (the-as (pointer actor-group) v1-33))
+         (set! (-> self actor-group-count) (the-as int (-> sv-16 elt-count)))
+         )
+        (else
+          (set! (-> self actor-group) (the-as (pointer actor-group) #f))
+          (set! (-> self actor-group-count) 0)
+          0
+          )
+        )
+      )
+    (when (> (-> self actor-group-count) 0)
+      (let ((gp-3 (-> self actor-group 0)))
+        (dotimes (s5-1 (-> gp-3 length))
+          (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-10 from) (process->ppointer self))
+            (set! (-> a1-10 num-params) 0)
+            (set! (-> a1-10 message) 'trigger)
+            (let ((t9-7 send-event-function)
+                  (v1-46 (-> gp-3 data s5-1 actor))
+                  )
+              (t9-7
+                (if v1-46
+                    (-> v1-46 extra process)
+                    )
+                a1-10
+                )
+              )
+            )
+          )
+        )
+      )
+    (let ((gp-4 (new 'stack-no-clear 'task-arrow-params)))
+      (vector-copy! (-> gp-4 pos) (new 'static 'vector :x -2937746.8 :y 249443.12 :z 4155934.0 :w 1.0))
+      (quaternion-identity! (-> gp-4 quat))
+      (set! (-> gp-4 flags) (task-arrow-flags))
+      (set! (-> gp-4 map-icon) (the-as uint 12))
+      (set! (-> self arrow) (process->handle (task-arrow-spawn gp-4 self)))
+      )
+    (remove-setting! 'pilot)
+    (when (< 1 (-> self actor-group-count))
+      (let ((gp-5 (-> self actor-group 1)))
+        (dotimes (s5-2 (-> gp-5 length))
+          (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-13 from) (process->ppointer self))
+            (set! (-> a1-13 num-params) 0)
+            (set! (-> a1-13 message) 'beaten)
+            (let ((t9-11 send-event-function)
+                  (v1-66 (-> gp-5 data s5-2 actor))
+                  )
+              (t9-11
+                (if v1-66
+                    (-> v1-66 extra process)
+                    )
+                a1-13
+                )
+              )
+            )
+          )
+        )
+      )
+    (until *scene-player*
+      (suspend)
+      )
+    (let ((a0-22 (handle->process (-> self arrow))))
+      (if a0-22
+          (deactivate a0-22)
+          )
+      )
+    (sleep-code)
+    )
+  )
+
+;; definition for method 25 of type task-manager-forest-machine-resolution
+(defmethod task-manager-method-25 ((this task-manager-forest-machine-resolution))
+  (set-time-for-random-weather! *mood-control* 0.0 0.0)
+  (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-forest-machine-resolution
+;; WARN: Return type mismatch connection vs none.
+(defmethod set-time-limit ((this task-manager-forest-machine-resolution))
+  ((method-of-type task-manager set-time-limit) this)
+  (set-setting! 'extra-bank '((forest1 forest7) (forest2 forest8) (forest3 forest9)) 0.0 0)
+  (set-setting! 'airlock #f 0.0 0)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-dm-ship dm-ship dm-ship-lod0-jg dm-ship-idle-ja
+              ((dm-ship-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              :origin-joint-index 3
+              :global-effects 32
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-precur-planet-forest precur-planet precur-planet-lod0-jg precur-planet-idle-ja
+              ((precur-planet-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-telescope-fma for-telescope-fma for-telescope-fma-lod0-jg for-telescope-fma-idle-ja
+              ((for-telescope-fma-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              :origin-joint-index 2
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-t-fma-fma for-t-fma for-t-fma-lod0-jg for-t-fma-idle-ja
+              ((for-t-fma-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              :origin-joint-index 2
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-warp-telescope warp-telescope warp-telescope-lod0-jg warp-telescope-idle-ja
+              ((warp-telescope-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-time-map time-map time-map-lod0-jg time-map-idle-ja
+              ((time-map-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-tower-fma for-tower-fma for-tower-fma-lod0-jg for-tower-fma-idle-ja
+              ((for-tower-fma-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 20)
+              )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "forest-tower"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-122"
+              :art-group "scenecamera"
+              :anim "forest-tower"
+              :parts 3
+              :command-list '((0
+                  (kill "for-pillar-6")
+                  (kill "for-pillar-7")
+                  (kill "for-pillar-8")
+                  (kill "for-pillar-9")
+                  (kill "for-pillar-10")
+                  (kill "for-tower-1")
+                  )
+                (10000 (task-close! "forest-turn-on-machine-spawners"))
+                )
+              :cut-list '()
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "for-tower-fma"
+                  :level 'foresta
+                  :art-group "skel-for-tower-fma"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "forest-post-turn-on-machine"
+              :end-point #f
+              :borrow '()
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :on-running '(sound-play-loop "forest-amb-mov")
+              :on-complete #f
+              )
+            )
+
+;; definition of type railx-states-fora
+(deftype railx-states-fora (structure)
+  ((pulses  pulse-state  4 :inline)
+   (blue    pulse-state  :inline :overlay-at (-> pulses 0))
+   (yellow  pulse-state  :inline :overlay-at (-> pulses 1))
+   (warp    pulse-state  :inline :overlay-at (-> pulses 2))
+   (spill   pulse-state  :inline :overlay-at (-> pulses 3))
+   )
+  )
+
+;; definition for method 3 of type railx-states-fora
+(defmethod inspect ((this railx-states-fora))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'railx-states-fora)
+  (format #t "~1Tpulses[4] @ #x~X~%" (-> this pulses))
+  (format #t "~1Tblue: #<pulse-state @ #x~X>~%" (-> this pulses))
+  (format #t "~1Tyellow: #<pulse-state @ #x~X>~%" (-> this yellow))
+  (format #t "~1Twarp: #<pulse-state @ #x~X>~%" (-> this warp))
+  (format #t "~1Tspill: #<pulse-state @ #x~X>~%" (-> this spill))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function set-railx-light-brightness-fora!
+;; WARN: Return type mismatch float vs none.
+(defun set-railx-light-brightness-fora! ((arg0 int) (arg1 float) (arg2 float))
+  (let ((v1-1 (level-get *level* 'railx)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as railx-states-fora v1-2) pulses arg0 target-brightness) arg1)
+        (set! (-> (the-as railx-states-fora v1-2) pulses arg0 speed) arg2)
+        )
+      )
+    )
+  (let ((v1-5 (level-get *level* 'railcst)))
+    (when v1-5
+      (let ((v1-6 (the-as object (-> v1-5 mood-context state))))
+        (set! (-> (the-as railx-states-fora v1-6) pulses arg0 target-brightness) arg1)
+        (set! (-> (the-as railx-states-fora v1-6) pulses arg0 speed) arg2)
+        )
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-day-star-fma-forest
+  :id 595
+  :flags (sp1)
+  :bounds (static-bspherem 0 0 0 70)
+  :parts ((sp-item 2305 :flags (sp6)) (sp-item 2306 :flags (sp6)))
+  )
+
+;; failed to figure out what this is:
+(defpart 2305
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 24))
+    (:rot-x (degrees 2.25))
+    (:rot-z (degrees -50.000004))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:omega (degrees 45011.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 12.0)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 2306
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 40))
+    (:rot-x (degrees 2.25))
+    (:rot-z (degrees -50.000004))
+    (:scale-y :copy scale-x)
+    (:r 32.0)
+    (:g 0.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:omega (degrees 45011.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 13.0)
+    )
+  )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "forest-ring-chase-res"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-122"
+              :art-group "scenecamera"
+              :anim "forest-ring-chase-res"
+              :parts 17
+              :command-list '((0
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (let ((gp-0 (level-get *level* 'ljakndax)))
+                              (when gp-0
+                                (clear-mood-context (-> gp-0 mood-context))
+                                (if #f
+                                    ((the-as (function mood-context symbol) #f) (-> gp-0 mood-context))
+                                    )
+                                (set! (-> gp-0 info mood-func) 'update-mood-default)
+                                (logior! (-> gp-0 info level-flags) (level-flags sky))
+                                )
+                              )
+                            (set! (-> *sky-work* disable-day-star) (the-as basic #t))
+                            (set-cloud-and-fog-interp! *mood-control* 0.2 0.5 0.0 0.0)
+                            (set-cloud-and-fog-interp! *mood-control* 0.2 0.5 1.0 1.0)
+                            (set-time-for-random-weather! *mood-control* 180.0 180.0)
+                            (none)
+                            )
+                         )
+                  (send-event
+                    "precur-planet-forest"
+                    'trans-hook
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-vector! (-> self draw color-emissive) 1.0 1.0 1.0 1.0)
+                       (set-vector! (-> self draw color-mult) 0.0 0.0 0.0 0.0)
+                       (none)
+                       )
+                    )
+                  (send-event "for-tower-1" 'kill-telescope)
+                  (want-load 'foresta 'railx)
+                  (setting-reset rain mode 'abs value (new 'static 'bfloat))
+                  )
+                (200
+                  (part-tracker
+                    "group-day-star-fma-forest"
+                    entity
+                    "particleman"
+                    joint
+                    "particleB"
+                    track
+                    #t
+                    duration
+                    (frame-range 200 234)
+                    )
+                  (apply
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-setting! 'sky-type 'star-field 0.0 0)
+                       (apply-settings *setting-control*)
+                       (none)
+                       )
+                    )
+                  )
+                (330
+                  (want-display 'foresta 'display)
+                  (apply
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-setting! 'sky-type #f 0.0 0)
+                       (apply-settings *setting-control*)
+                       (none)
+                       )
+                    )
+                  )
+                (425
+                  (apply
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-setting! 'sky-type 'star-field 0.0 0)
+                       (apply-settings *setting-control*)
+                       (none)
+                       )
+                    )
+                  )
+                (663
+                  (apply
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-setting! 'sky-type #f 0.0 0)
+                       (apply-settings *setting-control*)
+                       (none)
+                       )
+                    )
+                  (send-event "for-tower-1" 'kill-telescope)
+                  )
+                (819
+                  (part-tracker
+                    "group-day-star-fma-forest"
+                    entity
+                    "particleman"
+                    joint
+                    "particleB"
+                    track
+                    #t
+                    duration
+                    (frame-range 819 1130)
+                    )
+                  )
+                (1131
+                  (apply
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-setting! 'sky-type 'star-field 0.0 0)
+                       (apply-settings *setting-control*)
+                       (none)
+                       )
+                    )
+                  )
+                (1349
+                  (want-display 'railx 'display)
+                  (apply
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-setting! 'sky-type #f 0.0 0)
+                       (apply-settings *setting-control*)
+                       (set-railx-light-brightness-fora! 0 1.0 100000.0)
+                       (set-railx-light-brightness-fora! 1 1.0 100000.0)
+                       (set-railx-light-brightness-fora! 2 1.0 100000.0)
+                       (set-railx-light-brightness-fora! 3 0.0 100000.0)
+                       (none)
+                       )
+                    )
+                  )
+                (1471
+                  (apply
+                    ,(lambda :behavior scene-player
+                       ()
+                       (set-setting! 'sky-type 'star-field 0.0 0)
+                       (apply-settings *setting-control*)
+                       (none)
+                       )
+                    )
+                  (send-event self 'change-entity "scene-stage-194")
+                  (want-display 'foresta 'special)
+                  )
+                (1931
+                  (send-event self 'change-entity "scene-stage-122")
+                  (want-display 'foresta 'display)
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (set-setting! 'sky-type #f 0.0 0)
+                            (apply-settings *setting-control*)
+                            (none)
+                            )
+                         )
+                  )
+                (2025 (fadeout (frame-time-30 10)))
+                (10000
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (let ((gp-0 (level-get *level* 'ljakndax)))
+                              (when gp-0
+                                (clear-mood-context (-> gp-0 mood-context))
+                                (if #f
+                                    ((the-as (function mood-context symbol) #f) (-> gp-0 mood-context))
+                                    )
+                                (set! (-> gp-0 info mood-func) 'default)
+                                (logior! (-> gp-0 info level-flags) (level-flags sky))
+                                )
+                              )
+                            (set! (-> *sky-work* disable-day-star) #f)
+                            (none)
+                            )
+                         )
+                  (kill "for-tower-1")
+                  )
+                )
+              :cut-list '(61 123 200 330 425 663 820 1131 1349 1471 1931)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "warp-telescope"
+                  :level 'foresta
+                  :art-group "skel-warp-telescope"
+                  :prefix ""
+                  :draw-frames '((200 330) (425 663) (1131 1349) (1471 1931))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'ljakndax
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min 1471) (1931 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'ljakndax
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min 1471) (1931 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '(1931)
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "for-telescope-fma"
+                  :level 'foresta
+                  :art-group "skel-for-telescope-fma"
+                  :prefix ""
+                  :draw-frames '((min 1471) (1931 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "for-t-fma-fma"
+                  :level 'foresta
+                  :art-group "skel-for-t-fma-fma"
+                  :prefix ""
+                  :draw-frames '((min 1471) (1931 max))
+                  :scissor-frames '((min max))
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "dm-ship"
+                  :level 'foresta
+                  :art-group "skel-dm-ship"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "precur-planet-forest"
+                  :level 'foresta
+                  :art-group "skel-precur-planet-forest"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "rail-oracle-eyes-fma"
+                  :level 'railx
+                  :art-group "skel-rail-oracle-eyes-fma"
+                  :prefix ""
+                  :draw-frames '((1471 1931))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'foresta
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "foresta-pillar-center"
+              :end-point "foresta-pillar-center"
+              :borrow '((foresta 0 ljakndax special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :scene-task #xd0
+              :on-running '(sound-play-loop "forest-amb-mov2")
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(load-scene
+  (new 'static 'scene
+    :name "forest-turn-on-machine-res"
+    :extra #f
+    :info #f
+    :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+    :mask-to-clear (process-mask movie projectile)
+    :entity "scene-stage-122"
+    :art-group "scenecamera"
+    :anim "forest-turn-on-machine-res"
+    :parts 7
+    :command-list '((0
+        (send-event "for-tower-1" 'kill-telescope)
+        (apply ,(lambda :behavior scene-player
+                  ()
+                  (let ((gp-0 (level-get *level* 'ljakndax)))
+                    (when gp-0
+                      (clear-mood-context (-> gp-0 mood-context))
+                      (if #f
+                          ((the-as (function mood-context symbol) #f) (-> gp-0 mood-context))
+                          )
+                      (set! (-> gp-0 info mood-func) 'update-mood-default)
+                      (logior! (-> gp-0 info level-flags) (level-flags sky))
+                      )
+                    )
+                  (none)
+                  )
+               )
+        (setting-reset rain mode 'abs value (new 'static 'bfloat))
+        )
+      (2 (want-load 'foresta 'precura))
+      (330 (apply ,(lambda :behavior scene-player
+                     ()
+                     (set-setting! 'sky-type 'star-field 0.0 0)
+                     (apply-settings *setting-control*)
+                     (none)
+                     )
+                  )
+           )
+      (366
+        (apply
+          ,(lambda :behavior scene-player
+             ()
+             (set-setting! 'sky-type #f 0.0 0)
+             (apply-settings *setting-control*)
+             (none)
+             )
+          )
+        (apply
+          ,(lambda :behavior scene-player
+             ()
+             (when (not (-> self aborted?))
+               (disable *screen-filter*)
+               (setup
+                 *screen-filter*
+                 (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+                 (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                 (* 1.1111112 (seconds-per-frame))
+                 (bucket-id tex-hud-pris2)
+                 #x3fffff
+                 #x33001
+                 #t
+                 )
+               (set-setting! 'allow-blackout #f 0.0 0)
+               )
+             (none)
+             )
+          )
+        (part-tracker
+          "group-forest-telescope-eye-beam"
+          entity
+          "particleman"
+          joint
+          "particleA"
+          track
+          #t
+          duration
+          (frame-range 366 720)
+          )
+        )
+      (370 (apply ,(lambda :behavior scene-player
+                     ()
+                     (when (not (-> self aborted?))
+                       (remove-setting! 'allow-blackout)
+                       (setup
+                         *screen-filter*
+                         (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                         (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+                         (* 1.1111112 (seconds-per-frame))
+                         (bucket-id tex-hud-pris2)
+                         #x3fffff
+                         #x33001
+                         #t
+                         )
+                       (set-filter-color! 1.0 1.0 1.0)
+                       )
+                     (none)
+                     )
+                  )
+           )
+      (662 (apply ,(lambda :behavior scene-player
+                     ()
+                     (when (not (-> self aborted?))
+                       (set! (-> *display* force-sync) (the-as uint 196))
+                       (persist-with-delay *setting-control* 'blur-a (seconds 2.267) 'blur-a 'abs 0.8 0)
+                       (sound-play "trans3")
+                       )
+                     (none)
+                     )
+                  )
+           )
+      (10000
+        (apply ,(lambda :behavior scene-player
+                  ()
+                  (let ((gp-0 (level-get *level* 'ljakndax)))
+                    (when gp-0
+                      (clear-mood-context (-> gp-0 mood-context))
+                      (if #f
+                          ((the-as (function mood-context symbol) #f) (-> gp-0 mood-context))
+                          )
+                      (set! (-> gp-0 info mood-func) 'default)
+                      (logior! (-> gp-0 info level-flags) (level-flags sky))
+                      )
+                    )
+                  (none)
+                  )
+               )
+        (task-close! "forest-turn-on-machine-resolution")
+        (task-close! "precursor-tour-introduction")
+        )
+      )
+    :cut-list '(57 120 186 266 330 366 392 435 481 523 662)
+    :wait-ground-time (seconds 1)
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "particleman"
+        :level 'foresta
+        :art-group "skel-particleman"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'ljakndax
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jakc-highres"
+        :level 'ljakndax
+        :art-group "skel-jakc-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        :no-draw-seg #x80
+        )
+      (new 'static 'scene-actor
+        :name "talk-box"
+        :level #f
+        :art-group "skel-talk-box"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "for-telescope-fma"
+        :level 'foresta
+        :art-group "skel-for-telescope-fma"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "for-t-fma-fma"
+        :level 'foresta
+        :art-group "skel-for-t-fma-fma"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "time-map"
+        :level 'foresta
+        :art-group "skel-time-map"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "dm-ship"
+        :level 'foresta
+        :art-group "skel-dm-ship"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "warp-telescope"
+        :level 'foresta
+        :art-group "skel-warp-telescope"
+        :prefix ""
+        :draw-frames '((330 366))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point "forest-pillar-start"
+    :end-point "precura-mech"
+    :borrow '((foresta 0 ljakndax special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-delay 1500.0
+    :scene-task #xf6
+    :on-running '(sound-play-loop "forest-amb-mov")
+    :on-complete #f
+    )
+  )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "precursor-tour-res"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-122"
+              :art-group "scenecamera"
+              :anim "precursor-tour-res"
+              :parts 5
+              :command-list '((0
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (set-setting! 'sky-type #f 0.0 0)
+                            (apply-settings *setting-control*)
+                            (none)
+                            )
+                         )
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (when (not (-> self aborted?))
+                              (disable *screen-filter*)
+                              (setup
+                                *screen-filter*
+                                (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+                                (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                1.0
+                                (bucket-id tex-hud-pris2)
+                                #x3fffff
+                                #x33001
+                                #t
+                                )
+                              (set-setting! 'allow-blackout #f 0.0 0)
+                              )
+                            (none)
+                            )
+                         )
+                  (fadein (frame-time-30 5))
+                  )
+                (5 (send-event "for-tower-1" 'kill-telescope))
+                (95 (apply ,(lambda :behavior scene-player
+                              ()
+                              (remove-setting! 'allow-blackout)
+                              (setup
+                                *screen-filter*
+                                (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+                                (* 0.1 (seconds-per-frame))
+                                (bucket-id tex-hud-pris2)
+                                #x3fffff
+                                #x33001
+                                #t
+                                )
+                              (set-filter-color! 1.0 1.0 1.0)
+                              (none)
+                              )
+                           )
+                    )
+                (565 (fadeout (frame-time-30 5)))
+                (10000 (kill "for-tower-1") (task-close! "precursor-tour-resolution"))
+                )
+              :cut-list '(91 151 198 244 348 400 456 516)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'ljakndax
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'ljakndax
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "for-telescope-fma"
+                  :level 'foresta
+                  :art-group "skel-for-telescope-fma"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "for-t-fma-fma"
+                  :level 'foresta
+                  :art-group "skel-for-t-fma-fma"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "precura-foresta"
+              :end-point "foresta-pillar-center"
+              :borrow '((foresta 0 ljakndax special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :scene-task #xf9
+              :on-running '(sound-play-loop "forest-amb-mov")
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "forest-res-b"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-122"
+              :art-group "scenecamera"
+              :anim "forest-res-b"
+              :parts 2
+              :command-list '((0
+                  (fadein (frame-time-30 5))
+                  (send-event "for-tower-1" 'jump-to-above-water)
+                  (send-event
+                    "jakc-highres"
+                    'eval
+                    ,(lambda :behavior scene-player () (setup-masks (-> self draw) 256 0) (none))
+                    )
+                  )
+                (140 (fadeout (frame-time-30 10)))
+                (10000 (task-close! "forest-kill-plants-armor"))
+                )
+              :cut-list '(28 61 77 93)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'lforplnt
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'lforplnt
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '(28)
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                )
+              :load-point "foresta-pillar-bottom"
+              :end-point "foresta-pillar-bottom"
+              :borrow '((foresta 0 lforplnt special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :scene-task #x96
+              :on-running '(sound-play-loop "forest-amb-mov")
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(defpartgroup group-forest-telescope-eye-beam
+  :id 596
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 640)
+  :parts ((sp-item 2307 :flags (sp6 sp7)) (sp-item 2308 :flags (is-3d sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 2307
+  :init-specs ((:texture (colorflash level-default-sprite))
+    (:num 1.0)
+    (:x (meters 0))
+    (:y (meters 0))
+    (:z (meters 0))
+    (:scale-x (meters 0.4) (meters 0.1))
+    (:rot-x (degrees 4.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 255.0)
+    (:a 60.0 2.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 2048.0)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 2308
+  :init-specs ((:texture (vol-light level-default-sprite))
+    (:num 0.1 0.1)
+    (:x (meters 0))
+    (:y (meters 0))
+    (:z (meters 0.3))
+    (:scale-x (meters 0.4))
+    (:rot-x (degrees 0))
+    (:rot-y (degrees 0))
+    (:rot-z (degrees 90))
+    (:scale-y (meters 0.7))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 255.0)
+    (:a 0.0)
+    (:fade-a 2.56)
+    (:timer (seconds 0.335))
+    (:flags (sp-cpuinfo-flag-3 left-multiply-quat))
+    (:next-time (seconds 0.167))
+    (:next-launcher 2309)
+    (:rotate-x (degrees 0))
+    (:rotate-y (degrees 0))
+    (:rotate-z (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 2309
+  :init-specs ((:fade-a -2.56))
+  )

@@ -121,7 +121,7 @@
 
 (defmethod play-communicator-speech! ((this talker-speech-class))
   "Plays the provided [[talker-speech-class]]
-@TODO - understand the array from [[game-info]] better"
+   @TODO - understand the array from [[game-info]] better"
   (set! (-> *game-info* unknown-pad6 (+ (* (-> this speech) 2) 1)) (the-as uint #xffff))
   0
   (none)
@@ -258,6 +258,7 @@
   )
 
 (defmethod deactivate ((this talker))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (send-event (handle->process (-> this voicebox)) 'die)
   (call-parent-method this)
   (none)
@@ -346,11 +347,7 @@
 (defstate idle (talker)
   :virtual #t
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (the-as time-frame (-> self message delay)))
-        (suspend)
-        )
-      )
+    (suspend-for (the-as time-frame (-> self message delay)))
     (case (-> self message channel)
       (((gui-channel voicebox))
        (if *target*
@@ -477,7 +474,10 @@
                  (and (nonzero? (-> self message-id))
                       (= (get-status *gui-control* (-> self message-id)) (gui-status active))
                       (or (not (time-elapsed? (-> self state-time) (the-as time-frame (-> self message text-duration))))
-                          (and (logtest? (-> self message flags) 16) (-> self region) (region-method-9 (-> self region) (target-pos 0)))
+                          (and (logtest? (-> self message flags) 16)
+                               (-> self region)
+                               (point-in-region-debug! (-> self region) (target-pos 0))
+                               )
                           )
                       )
                  (not (time-elapsed? (-> self state-time) (seconds 0.05)))
@@ -512,11 +512,7 @@
         )
       )
     (when (and (logtest? (-> self message flags) 8) (not (-> self save?)))
-      (let ((gp-2 (current-time)))
-        (until (time-elapsed? gp-2 (seconds 1))
-          (suspend)
-          )
-        )
+      (suspend-for (seconds 1))
       (set! (-> self save?) #t)
       (auto-save-user)
       )

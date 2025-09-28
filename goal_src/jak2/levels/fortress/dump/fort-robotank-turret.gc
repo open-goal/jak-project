@@ -191,8 +191,8 @@
   :code (behavior ()
     (until #f
       (when (and (not (paused?)) (time-elapsed? (-> self state-time) (seconds 1)))
-        (seek! (-> self anim-frame) 0.0 (* 0.2 (-> self clock time-adjust-ratio)))
-        (seek! (-> self transition) 1.0 (* 0.01 (-> self clock time-adjust-ratio)))
+        (seek! (-> self anim-frame) 0.0 (/ (-> self clock time-adjust-ratio) 5))
+        (seek! (-> self transition) 1.0 (/ (-> self clock time-adjust-ratio) 100))
         )
       (set-roboscreen-alpha! (-> self transition))
       (ja :num-func num-func-identity :frame-num (-> self anim-frame))
@@ -218,7 +218,7 @@
   :code (behavior ()
     (until #f
       (when (not (paused?))
-        (seek! (-> self anim-frame) 15.0 (* 0.2 (-> self clock time-adjust-ratio)))
+        (seek! (-> self anim-frame) 15.0 (/ (-> self clock time-adjust-ratio) 5))
         (seek! (-> self transition) 0.0 (* 0.015 (-> self clock time-adjust-ratio)))
         )
       (set-roboscreen-alpha! (-> self transition))
@@ -240,12 +240,9 @@
 (defstate die (fort-roboscreen)
   :virtual #t
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (seek! (-> self transition) 0.0 (seconds-per-frame))
-        (set-roboscreen-alpha! (-> self transition))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
+      (seek! (-> self transition) 0.0 (seconds-per-frame))
+      (set-roboscreen-alpha! (-> self transition))
       )
     )
   )
@@ -277,9 +274,9 @@
           )
         (.lvf vf5 (&-> s5-0 quad))
         (.lvf vf4 (&-> gp-0 quad))
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> v1-10 quad) vf6)
         )
       )
@@ -316,6 +313,7 @@
   )
 
 (defmethod deactivate ((this fort-roboscreen))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (disable *screen-filter*)
   (set-roboscreen-alpha! 0.0)
   (call-parent-method this)
@@ -329,7 +327,7 @@
   )
 
 (defpart 2471
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.5 1.0)
     (:x (meters -3) (meters 5))
     (:y (meters -0.1) (meters 0.3))
@@ -434,7 +432,7 @@
        (let ((f0-0 (vector-length (vector-! (new 'stack-no-clear 'vector) (the-as vector gp-0) (the-as vector s5-0))))
              (gp-1 (-> self sight-scale))
              )
-         (set! (-> gp-1 z) (* 0.000024414063 f0-0))
+         (set! (-> gp-1 z) (/ f0-0 (meters 10)))
          (let ((f0-1 (lerp-scale 0.1 6.0 f0-0 61440.0 163840.0)))
            (set! (-> gp-1 x) f0-1)
            (set! (-> gp-1 y) f0-1)
@@ -537,19 +535,19 @@
   )
 
 ;; WARN: Return type mismatch process-drawable vs fort-robotank-reticle.
-(defmethod relocate ((this fort-robotank-reticle) (arg0 int))
+(defmethod relocate ((this fort-robotank-reticle) (offset int))
   (if (nonzero? (-> this shadow-jmod))
-      (&+! (-> this shadow-jmod) arg0)
+      (&+! (-> this shadow-jmod) offset)
       )
   (if (nonzero? (-> this sight-jmod))
-      (&+! (-> this sight-jmod) arg0)
+      (&+! (-> this sight-jmod) offset)
       )
   (dotimes (v1-8 3)
     (if (nonzero? (-> this ring-jmod v1-8))
-        (&+! (-> this ring-jmod v1-8) arg0)
+        (&+! (-> this ring-jmod v1-8) offset)
         )
     )
-  (the-as fort-robotank-reticle ((method-of-type process-drawable relocate) this arg0))
+  (the-as fort-robotank-reticle ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; WARN: Return type mismatch object vs none.
@@ -687,7 +685,7 @@
               )
 
 (defpart 2473
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 1.5) (meters 0.1))
     (:rot-x (degrees 1.125))
@@ -904,7 +902,7 @@
              (let* ((f0-29 (fmax -4551.1113 (fmin 4551.1113 (- 16384.0 (acos (- (vector-dot gp-2 *y-vector*)))))))
                     (f2-1 (- (-> self gun-elev-cam) f0-29))
                     (f1-12 (if (< f2-1 0.0)
-                               (fmin 3640.889 (* (fabs (* 0.1 f2-1)) (-> self clock frames-per-second)))
+                               (fmin 3640.889 (* (fabs (/ f2-1 10)) (-> self clock frames-per-second)))
                                910.2222
                                )
                            )
@@ -1185,10 +1183,7 @@
       (logior! (-> self flags) (robotank-turret-flags rotflags-3))
       (set! (-> self firing-sight-pos quad) (-> self sight-pos quad))
       (send-event (handle->process (-> self reticle)) 'lock)
-      (let ((gp-0 (current-time)))
-        (until (time-elapsed? gp-0 (seconds 0.5))
-          (suspend)
-          )
+      (suspend-for (seconds 0.5)
         )
       (let ((gp-2 (max 2 (min 3 (rand-vu-int-range 0 3)))))
         0
@@ -1215,11 +1210,8 @@
                   )
               )
             )
-          (let ((f30-0 (rand-vu-float-range 0.05 0.43))
-                (s4-2 (current-time))
-                )
-            (until (time-elapsed? s4-2 (the int (* 300.0 f30-0)))
-              (suspend)
+          (let ((f30-0 (rand-vu-float-range 0.05 0.43)))
+            (suspend-for (the int (* 300.0 f30-0))
               )
             )
           )
@@ -1238,10 +1230,8 @@
                      2.11
                      )
                    )
-            (gp-3 (current-time))
             )
-        (until (time-elapsed? gp-3 (the int (* 300.0 f30-1)))
-          (suspend)
+        (suspend-for (the int (* 300.0 f30-1))
           )
         )
       )
@@ -1255,10 +1245,7 @@
   :code (behavior ()
     (send-event (handle->process (-> self reticle)) 'die)
     (send-event (handle->process (-> self screen)) 'die)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (while (-> self child)
       (suspend)
@@ -1267,6 +1254,7 @@
   )
 
 (defmethod deactivate ((this fort-robotank-turret))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (logclear! (-> this flags) (robotank-turret-flags rotflags-6))
   (sound-stop (-> this turn-sound-id))
   (let ((a0-4 (handle->process (-> this screen))))
@@ -1279,11 +1267,11 @@
   )
 
 ;; WARN: Return type mismatch process-focusable vs fort-robotank-turret.
-(defmethod relocate ((this fort-robotank-turret) (arg0 int))
+(defmethod relocate ((this fort-robotank-turret) (offset int))
   (if (nonzero? (-> this gun-elev-jmod))
-      (&+! (-> this gun-elev-jmod) arg0)
+      (&+! (-> this gun-elev-jmod) offset)
       )
-  (the-as fort-robotank-turret ((method-of-type process-focusable relocate) this arg0))
+  (the-as fort-robotank-turret ((method-of-type process-focusable relocate) this offset))
   )
 
 ;; WARN: Return type mismatch object vs none.

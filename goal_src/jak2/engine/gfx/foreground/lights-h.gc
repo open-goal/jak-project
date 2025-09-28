@@ -10,10 +10,14 @@
 
 ;; NOTE - for editable
 (declare-type light-sphere structure)
+
 (declare-type light-hash basic)
+
 (define-extern lookup-light-sphere-by-name (function string light-hash light-sphere))
+
 ;; NOTE - for editable-player
 (define-extern update-light-hash (function light-hash none))
+
 (define-extern reset-light-hash (function light-hash none))
 
 ;; DECOMP BEGINS
@@ -23,93 +27,67 @@
 ;; Note that the data is transposed to be faster for use in the VU code.
 ;; the w components are unused for lighting information - you can put whatever you want in them...
 (deftype vu-lights (structure)
-  ((direction   vector  3 :inline)
-   (color       vector  3 :inline)
-   (ambient     vector  :inline)
-   (fade-int    uint32  :offset  44)
-   (fade-flags  uint32  :offset  28)
-   )
-  )
-
+  ((direction  vector 3       :inline)
+   (color      vector 3       :inline)
+   (ambient    vector :inline)
+   (fade-int   uint32 :offset 44)
+   (fade-flags uint32 :offset 28)))
 
 (deftype light (structure)
-  ((direction      vector  :inline)
-   (color          rgbaf   :inline)
-   (extra          vector  :inline)
-   (level          float     :overlay-at (-> extra data 0))
-   (luminance      float     :overlay-at (-> extra data 2))
-   (priority       float     :overlay-at (-> extra data 3))
-   (bytes          uint8   4 :overlay-at (-> extra data 1))
-   (mask           uint16    :overlay-at (-> extra data 1))
-   (palette-index  int8      :overlay-at (-> bytes 3))
-   )
-  )
+  ((direction     vector :inline)
+   (color         rgbaf  :inline)
+   (extra         vector :inline)
+   (level         float  :overlay-at (-> extra data 0))
+   (luminance     float  :overlay-at (-> extra data 2))
+   (priority      float  :overlay-at (-> extra data 3))
+   (bytes         uint8  4           :overlay-at    (-> extra data 1))
+   (mask          uint16 :overlay-at (-> extra data 1))
+   (palette-index int8   :overlay-at (-> bytes 3))))
 
 ;; new jak 2 light, is applied to stuff in the sphere.
 (deftype light-sphere (structure)
-  ((name                 string)
-   (bsphere              vector  :inline)
-   (direction            vector  :inline)
-   (color                vector  :inline)
-   (decay-start          float     :offset   4)
-   (ambient-point-ratio  float     :offset   8)
-   (brightness           float     :offset  12)
-   (bytes                uint8   4 :overlay-at (-> color data 3))
-   (mask                 uint16    :overlay-at (-> color data 3))
-   (palette-index        int8      :overlay-at (-> bytes 3))
-   )
-  )
+  ((name                string)
+   (bsphere             vector :inline)
+   (direction           vector :inline)
+   (color               vector :inline)
+   (decay-start         float  :offset     4)
+   (ambient-point-ratio float  :offset     8)
+   (brightness          float  :offset     12)
+   (bytes               uint8  4           :overlay-at    (-> color data 3))
+   (mask                uint16 :overlay-at (-> color data 3))
+   (palette-index       int8   :overlay-at (-> bytes 3))))
 
 ;; hash bucket for fast "which light am I in?" checks.
 (deftype light-hash-bucket (structure)
-  ((index  uint16)
-   (count  uint16)
-   )
-  :pack-me
-  )
-
+  ((index uint16)
+   (count uint16))
+  :pack-me)
 
 (deftype light-hash (basic)
-  ((num-lights          uint16)
-   (num-indices         uint16)
-   (num-buckets         uint16)
-   (bucket-step         uint8     2)
-   (base-trans          vector    :inline)
-   (axis-scale          vector    :inline)
-   (dimension-array     vector4w  :inline)
-   (bucket-array        (inline-array light-hash-bucket))
-   (index-array         pointer)
-   (light-sphere-array  (inline-array light-sphere))
-   )
-  )
-
+  ((num-lights         uint16)
+   (num-indices        uint16)
+   (num-buckets        uint16)
+   (bucket-step        uint8                           2)
+   (base-trans         vector                          :inline)
+   (axis-scale         vector                          :inline)
+   (dimension-array    vector4w                        :inline)
+   (bucket-array       (inline-array light-hash-bucket))
+   (index-array        pointer)
+   (light-sphere-array (inline-array light-sphere))))
 
 (deftype light-hash-work (structure)
-  ((ones  vector4w  :inline)
-   )
-  )
-
+  ((ones vector4w :inline)))
 
 (define *light-hash* (the-as light-hash #f))
 
 (defmethod print ((this light))
-  (format
-    #t
-    "#<light [~F] ~F ~F ~F  "
-    (-> this extra x)
-    (-> this direction x)
-    (-> this direction y)
-    (-> this direction z)
-    )
+  (format #t "#<light [~F] ~F ~F ~F  " (-> this extra x) (-> this direction x) (-> this direction y) (-> this direction z))
   (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
-  this
-  )
+  this)
 
 (deftype light-group (structure)
-  ((dir0    light  :inline)
-   (dir1    light  :inline)
-   (dir2    light  :inline)
-   (ambi    light  :inline)
-   (lights  light  4 :inline :overlay-at dir0)
-   )
-  )
+  ((dir0   light :inline)
+   (dir1   light :inline)
+   (dir2   light :inline)
+   (ambi   light :inline)
+   (lights light 4       :inline :overlay-at dir0)))

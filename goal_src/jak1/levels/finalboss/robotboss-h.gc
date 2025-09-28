@@ -1,131 +1,101 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: robotboss-h.gc
-;; name in dgo: robotboss-h
-;; dgos: FIN, L1
+(bundles "FIN.DGO")
+(require "engine/data/art-h.gc")
+(require "engine/gfx/sprite/sparticle/sparticle-launcher.gc")
 
 ;; DECOMP BEGINS
 
 (deftype robotboss-dda (structure)
-  ((blue-bomb-time        float)
-   (num-blobs             int32)
-   (green-bomb-time       float)
-   (red-shots-min         int32)
-   (red-shots-rnd         int32)
-   (red-shot-time-min     float)
-   (red-shot-time-rnd     float)
-   (red-bomb-time         float)
-   (yellow-shot-time-min  float)
-   (yellow-shot-time-rnd  float)
-   (yellow-gun-hits       int32)
-   (yellow-bomb-time      float)
-   )
-  )
-
+  ((blue-bomb-time       float)
+   (num-blobs            int32)
+   (green-bomb-time      float)
+   (red-shots-min        int32)
+   (red-shots-rnd        int32)
+   (red-shot-time-min    float)
+   (red-shot-time-rnd    float)
+   (red-bomb-time        float)
+   (yellow-shot-time-min float)
+   (yellow-shot-time-rnd float)
+   (yellow-gun-hits      int32)
+   (yellow-bomb-time     float)))
 
 (deftype robotboss (process-drawable)
-  ((root              collide-shape-moving     :override)
-   (alts              entity-actor              13)
-   (desired-loc       vector                    :inline)
-   (old-loc           vector                    :inline)
-   (loc-t             float)
-   (loc-t-start       time-frame)
-   (loc-t-duration    time-frame)
-   (hits-to-go        int32)
-   (took-hit          symbol)
-   (children-spawned  int32)
-   (vulnerable        int64)
-   (till-next-shot    int64)
-   (shot-attractor    handle)
-   (desired-pool-y    float)
-   (particle          sparticle-launch-control  7)
-   (blue-smoke        symbol)
-   (red-smoke         symbol)
-   (yellow-smoke      symbol)
-   (white-eco         handle)
-   (des-cam-entity    string)
-   (use-interesting   symbol)
-   (ignore-camera     symbol)
-   (ambient           ambient-control           :inline)
-   (yellow-gun        joint-mod)
-   (palette-val       float)
-   (looping-sound     ambient-sound             4)
-   (dda               robotboss-dda)
-   (valid-frames      int32)
-   (skip-cut          symbol)
-   (keep-charging     symbol)
-   )
+  ((root             collide-shape-moving :override)
+   (alts             entity-actor 13)
+   (desired-loc      vector :inline)
+   (old-loc          vector :inline)
+   (loc-t            float)
+   (loc-t-start      time-frame)
+   (loc-t-duration   time-frame)
+   (hits-to-go       int32)
+   (took-hit         symbol)
+   (children-spawned int32)
+   (vulnerable       int64)
+   (till-next-shot   int64)
+   (shot-attractor   handle)
+   (desired-pool-y   float)
+   (particle         sparticle-launch-control 7)
+   (blue-smoke       symbol)
+   (red-smoke        symbol)
+   (yellow-smoke     symbol)
+   (white-eco        handle)
+   (des-cam-entity   string)
+   (use-interesting  symbol)
+   (ignore-camera    symbol)
+   (ambient          ambient-control :inline)
+   (yellow-gun       joint-mod)
+   (palette-val      float)
+   (looping-sound    ambient-sound 4)
+   (dda              robotboss-dda)
+   (valid-frames     int32)
+   (skip-cut         symbol)
+   (keep-charging    symbol))
   (:methods
-    (ease-loc-t (_type_) float)
-    )
+   (ease-loc-t (_type_) float))
   (:states
-    robotboss-blue-dark-bomb
-    robotboss-blue-dark-bomb-wait
-    robotboss-blue-wait
-    robotboss-daxter-sacrifice-movie
-    robotboss-green
-    robotboss-green-dark-bomb
-    robotboss-green-dark-bomb-wait
-    robotboss-green-wait
-    robotboss-red
-    robotboss-red-dark-bomb
-    robotboss-red-dark-bomb-wait
-    robotboss-red-wait
-    robotboss-white-eco-movie
-    robotboss-yellow
-    robotboss-yellow-dark-bomb
-    robotboss-yellow-dark-bomb-wait
-    robotboss-yellow-wait
-    )
-  )
-
+   robotboss-blue-dark-bomb
+   robotboss-blue-dark-bomb-wait
+   robotboss-blue-wait
+   robotboss-daxter-sacrifice-movie
+   robotboss-green
+   robotboss-green-dark-bomb
+   robotboss-green-dark-bomb-wait
+   robotboss-green-wait
+   robotboss-red
+   robotboss-red-dark-bomb
+   robotboss-red-dark-bomb-wait
+   robotboss-red-wait
+   robotboss-white-eco-movie
+   robotboss-yellow
+   robotboss-yellow-dark-bomb
+   robotboss-yellow-dark-bomb-wait
+   robotboss-yellow-wait))
 
 (defmethod relocate ((this robotboss) (arg0 int))
   (dotimes (v1-0 7)
-    (if (nonzero? (-> this particle v1-0))
-        (&+! (-> this particle v1-0) arg0)
-        )
-    )
+    (if (nonzero? (-> this particle v1-0)) (&+! (-> this particle v1-0) arg0)))
   (dotimes (v1-3 4)
-    (if (nonzero? (-> this looping-sound v1-3))
-        (&+! (-> this looping-sound v1-3) arg0)
-        )
-    )
-  (if (nonzero? (-> this yellow-gun))
-      (&+! (-> this yellow-gun) arg0)
-      )
-  (the-as robotboss ((method-of-type process-drawable relocate) this arg0))
-  )
+    (if (nonzero? (-> this looping-sound v1-3)) (&+! (-> this looping-sound v1-3) arg0)))
+  (if (nonzero? (-> this yellow-gun)) (&+! (-> this yellow-gun) arg0))
+  (the-as robotboss ((method-of-type process-drawable relocate) this arg0)))
 
 (defmethod deactivate ((this robotboss))
   (dotimes (s5-0 7)
-    (let ((a0-1 (-> this particle s5-0)))
-      (if (nonzero? a0-1)
-          (kill-and-free-particles a0-1)
-          )
-      )
-    )
+    (let ((a0-1 (-> this particle s5-0))) (if (nonzero? a0-1) (kill-and-free-particles a0-1))))
   (dotimes (s5-1 4)
-    (let ((a0-2 (-> this looping-sound s5-1)))
-      (if (nonzero? a0-2)
-          (stop! a0-2)
-          )
-      )
-    )
+    (let ((a0-2 (-> this looping-sound s5-1))) (if (nonzero? a0-2) (stop! a0-2))))
   ((method-of-type process-drawable deactivate) this)
-  (none)
-  )
+  (none))
 
 (defbehavior target-has-all-the-cells? process ()
-  (the-as
-    symbol
-    (and *target* (>= (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 100))
-    )
-  )
+  (the-as symbol
+          (and *target* (>= (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 100))))
 
-(defskelgroup *robotboss-sg* robotboss robotboss-basic-lod0-jg robotboss-idle-ja
-              ((robotboss-basic-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 -10 0 80)
-              :longest-edge (meters 19.9)
-              )
+(defskelgroup *robotboss-sg*
+  robotboss
+  robotboss-basic-lod0-jg
+  robotboss-idle-ja
+  ((robotboss-basic-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 -10 0 80)
+  :longest-edge (meters 19.9))

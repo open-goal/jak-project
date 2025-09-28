@@ -262,7 +262,7 @@ typedef struct ZydisEncoderInstruction_
  *
  * @return  Equivalent `ZydisEncodableEncoding` value.
  */
-ZydisEncodableEncoding ZydisGetEncodableEncoding(ZydisInstructionEncoding encoding)
+static ZydisEncodableEncoding ZydisGetEncodableEncoding(ZydisInstructionEncoding encoding)
 {
     static const ZydisEncodableEncoding encoding_lookup[6] =
     {
@@ -284,7 +284,7 @@ ZydisEncodableEncoding ZydisGetEncodableEncoding(ZydisInstructionEncoding encodi
  *
  * @return  Stack width for requested machine mode.
  */
-ZyanU8 ZydisGetMachineModeWidth(ZydisMachineMode machine_mode)
+static ZyanU8 ZydisGetMachineModeWidth(ZydisMachineMode machine_mode)
 {
     switch (machine_mode)
     {
@@ -309,21 +309,11 @@ ZyanU8 ZydisGetMachineModeWidth(ZydisMachineMode machine_mode)
  *
  * @return  Address size in bits.
  */
-ZyanU8 ZydisGetAszFromHint(ZydisAddressSizeHint hint)
+static ZyanU8 ZydisGetAszFromHint(ZydisAddressSizeHint hint)
 {
-    switch (hint)
-    {
-    case ZYDIS_ADDRESS_SIZE_HINT_NONE:
-        return 0;
-    case ZYDIS_ADDRESS_SIZE_HINT_16:
-        return 16;
-    case ZYDIS_ADDRESS_SIZE_HINT_32:
-        return 32;
-    case ZYDIS_ADDRESS_SIZE_HINT_64:
-        return 64;
-    default:
-        ZYAN_UNREACHABLE;
-    }
+    ZYAN_ASSERT((ZyanUSize)hint <= ZYDIS_ADDRESS_SIZE_HINT_MAX_VALUE);
+    static const ZyanU8 lookup[ZYDIS_ADDRESS_SIZE_HINT_MAX_VALUE + 1] = { 0, 16, 32, 64 };
+    return lookup[hint];
 }
 
 /**
@@ -333,23 +323,11 @@ ZyanU8 ZydisGetAszFromHint(ZydisAddressSizeHint hint)
  *
  * @return  Operand size in bits.
  */
-ZyanU8 ZydisGetOszFromHint(ZydisOperandSizeHint hint)
+static ZyanU8 ZydisGetOszFromHint(ZydisOperandSizeHint hint)
 {
-    switch (hint)
-    {
-    case ZYDIS_OPERAND_SIZE_HINT_NONE:
-        return 0;
-    case ZYDIS_OPERAND_SIZE_HINT_8:
-        return 8;
-    case ZYDIS_OPERAND_SIZE_HINT_16:
-        return 16;
-    case ZYDIS_OPERAND_SIZE_HINT_32:
-        return 32;
-    case ZYDIS_OPERAND_SIZE_HINT_64:
-        return 64;
-    default:
-        ZYAN_UNREACHABLE;
-    }
+    ZYAN_ASSERT((ZyanUSize)hint <= ZYDIS_OPERAND_SIZE_HINT_MAX_VALUE);
+    static const ZyanU8 lookup[ZYDIS_OPERAND_SIZE_HINT_MAX_VALUE + 1] = { 0, 8, 16, 32, 64 };
+    return lookup[hint];
 }
 
 /**
@@ -363,13 +341,14 @@ ZyanU8 ZydisGetOszFromHint(ZydisOperandSizeHint hint)
  *
  * @return  Effective operand size in bits.
  */
-ZyanU8 ZydisGetOperandSizeFromElementSize(ZydisEncoderInstructionMatch *match,
+static ZyanU8 ZydisGetOperandSizeFromElementSize(ZydisEncoderInstructionMatch *match,
     const ZyanU16 *size_table, ZyanU16 desired_size, ZyanBool exact_match_mode)
 {
     if ((match->base_definition->operand_size_map == ZYDIS_OPSIZE_MAP_DEFAULT64) &&
         (match->request->machine_mode == ZYDIS_MACHINE_MODE_LONG_64))
     {
-        if (size_table[2] == desired_size)
+        if ((exact_match_mode && (size_table[2] == desired_size)) ||
+            (!exact_match_mode && (size_table[2] >= desired_size)))
         {
             return 64;
         }
@@ -423,7 +402,7 @@ ZyanU8 ZydisGetOperandSizeFromElementSize(ZydisEncoderInstructionMatch *match,
  *
  * @return  Effective operand size in bits.
  */
-ZyanU8 ZydisGetScaledImmSize(ZydisEncoderInstructionMatch *match, const ZyanU16 *size_table,
+static ZyanU8 ZydisGetScaledImmSize(ZydisEncoderInstructionMatch *match, const ZyanU16 *size_table,
     ZyanU8 min_imm_size)
 {
     if (match->eosz == 0)
@@ -444,7 +423,7 @@ ZyanU8 ZydisGetScaledImmSize(ZydisEncoderInstructionMatch *match, const ZyanU16 
  *
  * @return  Size of smallest integral type able to represent provided signed value.
  */
-ZyanU8 ZydisGetSignedImmSize(ZyanI64 imm)
+static ZyanU8 ZydisGetSignedImmSize(ZyanI64 imm)
 {
     if (imm >= ZYAN_INT8_MIN && imm <= ZYAN_INT8_MAX)
     {
@@ -469,7 +448,7 @@ ZyanU8 ZydisGetSignedImmSize(ZyanI64 imm)
  *
  * @return  Size of smallest integral type able to represent provided unsigned value.
  */
-ZyanU8 ZydisGetUnsignedImmSize(ZyanU64 imm)
+static ZyanU8 ZydisGetUnsignedImmSize(ZyanU64 imm)
 {
     if (imm <= ZYAN_UINT8_MAX)
     {
@@ -494,7 +473,7 @@ ZyanU8 ZydisGetUnsignedImmSize(ZyanU64 imm)
  *
  * @return  True for encodings that represent signed values, false otherwise.
  */
-ZyanBool ZydisIsImmSigned(ZydisOperandEncoding encoding)
+static ZyanBool ZydisIsImmSigned(ZydisOperandEncoding encoding)
 {
     switch (encoding)
     {
@@ -543,7 +522,7 @@ ZyanBool ZydisIsImmSigned(ZydisOperandEncoding encoding)
  *
  * @return  Effective operand size in bits (0 if function failed).
  */
-ZyanU8 ZydisGetEffectiveImmSize(ZydisEncoderInstructionMatch *match, ZyanI64 imm,
+static ZyanU8 ZydisGetEffectiveImmSize(ZydisEncoderInstructionMatch *match, ZyanI64 imm,
     const ZydisOperandDefinition *def_op)
 {
     ZyanU8 eisz = 0;
@@ -666,7 +645,7 @@ ZyanU8 ZydisGetEffectiveImmSize(ZydisEncoderInstructionMatch *match, ZyanI64 imm
  *
  * @return  True if width is compatible, false otherwise.
  */
-ZyanBool ZydisCheckOsz(ZydisEncoderInstructionMatch *match, ZydisRegisterWidth reg_width)
+static ZyanBool ZydisCheckOsz(ZydisEncoderInstructionMatch *match, ZydisRegisterWidth reg_width)
 {
     ZYAN_ASSERT(reg_width <= ZYAN_UINT8_MAX);
     if (match->eosz == 0)
@@ -690,7 +669,7 @@ ZyanBool ZydisCheckOsz(ZydisEncoderInstructionMatch *match, ZydisRegisterWidth r
  *
  * @return  True if width is compatible, false otherwise.
  */
-ZyanBool ZydisCheckAsz(ZydisEncoderInstructionMatch *match, ZydisRegisterWidth reg_width)
+static ZyanBool ZydisCheckAsz(ZydisEncoderInstructionMatch *match, ZydisRegisterWidth reg_width)
 {
     ZYAN_ASSERT(reg_width <= ZYAN_UINT8_MAX);
     if (match->easz == 0)
@@ -716,7 +695,7 @@ ZyanBool ZydisCheckAsz(ZydisEncoderInstructionMatch *match, ZydisRegisterWidth r
  *
  * @return  True if register value is allowed, false otherwise.
  */
-ZyanBool ZydisIsRegisterAllowed(ZydisEncoderInstructionMatch *match, ZydisRegister reg,
+static ZyanBool ZydisIsRegisterAllowed(ZydisEncoderInstructionMatch *match, ZydisRegister reg,
     ZydisRegisterClass reg_class)
 {
     const ZyanI8 reg_id = ZydisRegisterGetId(reg);
@@ -753,7 +732,7 @@ ZyanBool ZydisIsRegisterAllowed(ZydisEncoderInstructionMatch *match, ZydisRegist
  *
  * @return  True if value is valid, false otherwise.
  */
-ZyanBool ZydisIsScaleValid(ZyanU8 scale)
+static ZyanBool ZydisIsScaleValid(ZyanU8 scale)
 {
     switch (scale)
     {
@@ -778,7 +757,7 @@ ZyanBool ZydisIsScaleValid(ZyanU8 scale)
  *
  * @return  True if register usage is allowed, false otherwise.
  */
-ZyanBool ZydisValidateRexType(ZydisEncoderInstructionMatch *match, ZydisRegister reg,
+static ZyanBool ZydisValidateRexType(ZydisEncoderInstructionMatch *match, ZydisRegister reg,
     ZyanBool addressing_mode)
 {
     switch (reg)
@@ -850,7 +829,7 @@ ZyanBool ZydisValidateRexType(ZydisEncoderInstructionMatch *match, ZydisRegister
  *
  * @return  True if register value is allowed, false otherwise.
  */
-ZyanBool ZydisIsValidAddressingClass(ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisIsValidAddressingClass(ZydisEncoderInstructionMatch *match,
     ZydisRegisterClass reg_class, ZydisRegister reg)
 {
     ZyanBool result;
@@ -883,7 +862,7 @@ ZyanBool ZydisIsValidAddressingClass(ZydisEncoderInstructionMatch *match,
  *
  * @return  `ModR/M.RM` value (-1 if function failed).
  */
-ZyanI8 ZydisGetRm16(ZydisRegister base, ZydisRegister index)
+static ZyanI8 ZydisGetRm16(ZydisRegister base, ZydisRegister index)
 {
     static const ZydisRegister modrm16_lookup[8][2] =
     {
@@ -915,7 +894,7 @@ ZyanI8 ZydisGetRm16(ZydisRegister base, ZydisRegister index)
  *
  * @return  Corresponding `MVEX.sss` value.
  */
-ZyanU8 ZydisEncodeMvexBroadcastMode(ZydisBroadcastMode broadcast)
+static ZyanU8 ZydisEncodeMvexBroadcastMode(ZydisBroadcastMode broadcast)
 {
     switch (broadcast)
     {
@@ -939,7 +918,7 @@ ZyanU8 ZydisEncodeMvexBroadcastMode(ZydisBroadcastMode broadcast)
  *
  * @return  Corresponding `MVEX.sss` value.
  */
-ZyanU8 ZydisEncodeMvexConversionMode(ZydisConversionMode conversion)
+static ZyanU8 ZydisEncodeMvexConversionMode(ZydisConversionMode conversion)
 {
     switch (conversion)
     {
@@ -967,7 +946,7 @@ ZyanU8 ZydisEncodeMvexConversionMode(ZydisConversionMode conversion)
  *
  * @return  log2(scale factor)
  */
-ZyanU8 ZydisGetCompDispScaleEvex(const ZydisEncoderInstructionMatch *match)
+static ZyanU8 ZydisGetCompDispScaleEvex(const ZydisEncoderInstructionMatch *match)
 {
     const ZydisInstructionDefinitionEVEX *evex_def =
         (const ZydisInstructionDefinitionEVEX *)match->base_definition;
@@ -1104,7 +1083,7 @@ ZyanU8 ZydisGetCompDispScaleEvex(const ZydisEncoderInstructionMatch *match)
  *
  * @return  log2(scale factor)
  */
-ZyanU8 ZydisGetCompDispScaleMvex(const ZydisEncoderInstructionMatch *match)
+static ZyanU8 ZydisGetCompDispScaleMvex(const ZydisEncoderInstructionMatch *match)
 {
     const ZydisInstructionDefinitionMVEX *mvex_def =
         (const ZydisInstructionDefinitionMVEX *)match->base_definition;
@@ -1214,7 +1193,7 @@ ZyanU8 ZydisGetCompDispScaleMvex(const ZydisEncoderInstructionMatch *match)
  *
  * @return  log2(scale factor)
  */
-ZyanU8 ZydisGetCompDispScale(const ZydisEncoderInstructionMatch *match)
+static ZyanU8 ZydisGetCompDispScale(const ZydisEncoderInstructionMatch *match)
 {
     switch (match->definition->encoding)
     {
@@ -1241,7 +1220,7 @@ ZyanU8 ZydisGetCompDispScale(const ZydisEncoderInstructionMatch *match)
  *
  * @return  True if operands match, false otherwise.
  */
-ZyanBool ZydisIsRegisterOperandCompatible(ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisIsRegisterOperandCompatible(ZydisEncoderInstructionMatch *match,
     const ZydisEncoderOperand *user_op, const ZydisOperandDefinition *def_op)
 {
     const ZydisRegisterClass reg_class = ZydisRegisterGetClass(user_op->reg.value);
@@ -1573,7 +1552,7 @@ ZyanBool ZydisIsRegisterOperandCompatible(ZydisEncoderInstructionMatch *match,
  *
  * @return  True if operands match, false otherwise.
  */
-ZyanBool ZydisIsMemoryOperandCompatible(ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisIsMemoryOperandCompatible(ZydisEncoderInstructionMatch *match,
     const ZydisEncoderOperand *user_op, const ZydisOperandDefinition *def_op)
 {
     switch (def_op->type)
@@ -2095,7 +2074,7 @@ ZyanBool ZydisIsMemoryOperandCompatible(ZydisEncoderInstructionMatch *match,
  *
  * @return  True if operands match, false otherwise.
  */
-ZyanBool ZydisIsPointerOperandCompatible(ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisIsPointerOperandCompatible(ZydisEncoderInstructionMatch *match,
     const ZydisEncoderOperand *user_op)
 {
     ZYAN_ASSERT(match->eosz == 0);
@@ -2124,7 +2103,7 @@ ZyanBool ZydisIsPointerOperandCompatible(ZydisEncoderInstructionMatch *match,
  *
  * @return  True if operands match, false otherwise.
  */
-ZyanBool ZydisIsImmediateOperandCompabile(ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisIsImmediateOperandCompabile(ZydisEncoderInstructionMatch *match,
     const ZydisEncoderOperand *user_op, const ZydisOperandDefinition *def_op)
 {
     switch (def_op->type)
@@ -2179,7 +2158,7 @@ ZyanBool ZydisIsImmediateOperandCompabile(ZydisEncoderInstructionMatch *match,
  *
  * @return  True if broadcast mode is compatible, false otherwise.
  */
-ZyanBool ZydisIsBroadcastModeCompatible(const ZydisInstructionDefinitionEVEX *evex_def,
+static ZyanBool ZydisIsBroadcastModeCompatible(const ZydisInstructionDefinitionEVEX *evex_def,
     ZydisVectorLength vector_length, ZydisBroadcastMode broadcast)
 {
     if (broadcast == ZYDIS_BROADCAST_MODE_INVALID)
@@ -2272,7 +2251,7 @@ ZyanBool ZydisIsBroadcastModeCompatible(const ZydisInstructionDefinitionEVEX *ev
  *
  * @return  True if features are compatible, false otherwise.
  */
-ZyanBool ZydisAreEvexFeaturesCompatible(const ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisAreEvexFeaturesCompatible(const ZydisEncoderInstructionMatch *match,
     const ZydisEncoderRequest *request)
 {
     if (match->definition->encoding != ZYDIS_INSTRUCTION_ENCODING_EVEX)
@@ -2353,7 +2332,7 @@ ZyanBool ZydisAreEvexFeaturesCompatible(const ZydisEncoderInstructionMatch *matc
  *
  * @return  True if features are compatible, false otherwise.
  */
-ZyanBool ZydisAreMvexFeaturesCompatible(const ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisAreMvexFeaturesCompatible(const ZydisEncoderInstructionMatch *match,
     const ZydisEncoderRequest *request)
 {
     if (match->definition->encoding != ZYDIS_INSTRUCTION_ENCODING_MVEX)
@@ -2562,7 +2541,7 @@ ZyanBool ZydisAreMvexFeaturesCompatible(const ZydisEncoderInstructionMatch *matc
  *
  * @return  True if operands passed the checks, false otherwise.
  */
-ZyanBool ZydisCheckConstraints(const ZydisEncoderInstructionMatch *match)
+static ZyanBool ZydisCheckConstraints(const ZydisEncoderInstructionMatch *match)
 {
     const ZydisEncoderOperand *operands = match->request->operands;
     ZyanBool is_gather = ZYAN_FALSE;
@@ -2671,7 +2650,7 @@ ZyanBool ZydisCheckConstraints(const ZydisEncoderInstructionMatch *match)
  *
  * @return  True if definition is compatible, false otherwise.
  */
-ZyanBool ZydisIsDefinitionCompatible(ZydisEncoderInstructionMatch *match,
+static ZyanBool ZydisIsDefinitionCompatible(ZydisEncoderInstructionMatch *match,
     const ZydisEncoderRequest *request)
 {
     ZYAN_ASSERT(request->operand_count == match->base_definition->operand_count_visible);
@@ -2781,8 +2760,14 @@ ZyanBool ZydisIsDefinitionCompatible(ZydisEncoderInstructionMatch *match,
  *
  * @return  A zyan status code.
  */
-ZyanBool ZydisArePrefixesCompatible(const ZydisEncoderInstructionMatch *match)
+static ZyanBool ZydisArePrefixesCompatible(const ZydisEncoderInstructionMatch *match)
 {
+    // Early-exit optimization for when no prefixes are requested at all.
+    if (!(match->attributes & ZYDIS_ENCODABLE_PREFIXES))
+    {
+        return ZYAN_TRUE;
+    }
+
     if ((!match->base_definition->accepts_segment) &&
         (match->attributes & ZYDIS_ATTRIB_HAS_SEGMENT))
     {
@@ -2859,7 +2844,7 @@ ZyanBool ZydisArePrefixesCompatible(const ZydisEncoderInstructionMatch *match)
  *
  * @return  Operand mask.
  */
-ZyanU16 ZydisGetOperandMask(const ZydisEncoderRequest *request)
+static ZyanU16 ZydisGetOperandMask(const ZydisEncoderRequest *request)
 {
     ZyanU16 operand_mask = request->operand_count;
     ZyanU8 bit_offset = ZYAN_BITS_TO_REPRESENT(ZYDIS_ENCODER_MAX_OPERANDS);
@@ -2881,7 +2866,7 @@ ZyanU16 ZydisGetOperandMask(const ZydisEncoderRequest *request)
  *
  * @return  True if definition has been swapped, false otherwise.
  */
-ZyanBool ZydisHandleSwappableDefinition(ZydisEncoderInstructionMatch *match)
+static ZyanBool ZydisHandleSwappableDefinition(ZydisEncoderInstructionMatch *match)
 {
     if (!match->definition->swappable)
     {
@@ -2889,7 +2874,7 @@ ZyanBool ZydisHandleSwappableDefinition(ZydisEncoderInstructionMatch *match)
     }
 
     // Special case for ISA-wide unique conflict between two `mov` variants
-    // mov gpr16_32_64(encoding=opcode), imm(encoding=uimm16_32_64,scale_factor=osz)
+    // mov gpr16_32_64(encoding=opcode), imm(encoding=simm16_32_64,scale_factor=osz)
     // mov gpr16_32_64(encoding=modrm_rm), imm(encoding=simm16_32_32,scale_factor=osz)
     if (match->request->mnemonic == ZYDIS_MNEMONIC_MOV)
     {
@@ -2926,7 +2911,7 @@ ZyanBool ZydisHandleSwappableDefinition(ZydisEncoderInstructionMatch *match)
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisFindMatchingDefinition(const ZydisEncoderRequest *request,
+static ZyanStatus ZydisFindMatchingDefinition(const ZydisEncoderRequest *request,
     ZydisEncoderInstructionMatch *match)
 {
     ZYAN_MEMSET(match, 0, sizeof(ZydisEncoderInstructionMatch));
@@ -2937,7 +2922,8 @@ ZyanStatus ZydisFindMatchingDefinition(const ZydisEncoderRequest *request,
     const ZyanU8 definition_count = ZydisGetEncodableInstructions(request->mnemonic, &definition);
     ZYAN_ASSERT(definition && definition_count);
     const ZydisWidthFlag mode_width = ZydisGetMachineModeWidth(request->machine_mode) >> 4;
-    const ZyanBool is_compat = (request->machine_mode == ZYDIS_MACHINE_MODE_LONG_COMPAT_16) ||
+    const ZyanBool is_compat =
+        (request->machine_mode == ZYDIS_MACHINE_MODE_LONG_COMPAT_16) ||
         (request->machine_mode == ZYDIS_MACHINE_MODE_LONG_COMPAT_32);
     const ZyanU8 default_asz = ZydisGetAszFromHint(request->address_size_hint);
     const ZyanU8 default_osz = ZydisGetOszFromHint(request->operand_size_hint);
@@ -2979,7 +2965,7 @@ ZyanStatus ZydisFindMatchingDefinition(const ZydisEncoderRequest *request,
             }
         }
         else if ((request->machine_mode != ZYDIS_MACHINE_MODE_LONG_64) &&
-            (definition->encoding == ZYDIS_INSTRUCTION_ENCODING_MVEX))
+                 (definition->encoding == ZYDIS_INSTRUCTION_ENCODING_MVEX))
         {
             continue;
         }
@@ -3135,7 +3121,7 @@ ZyanStatus ZydisFindMatchingDefinition(const ZydisEncoderRequest *request,
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitUInt(ZyanU64 data, ZyanU8 size, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitUInt(ZyanU64 data, ZyanU8 size, ZydisEncoderBuffer *buffer)
 {
     ZYAN_ASSERT(size == 1 || size == 2 || size == 4 || size == 8);
 
@@ -3146,7 +3132,28 @@ ZyanStatus ZydisEmitUInt(ZyanU64 data, ZyanU8 size, ZydisEncoderBuffer *buffer)
     }
 
     // TODO: fix for big-endian systems
-    ZYAN_MEMCPY(buffer->buffer + buffer->offset, &data, size);
+    // The size variable is not passed on purpose to allow the compiler
+    // to generate better code with a known size at compile time.
+    if (size == 1)
+    {
+        ZYAN_MEMCPY(buffer->buffer + buffer->offset, &data, 1);
+    }
+    else if (size == 2)
+    {
+        ZYAN_MEMCPY(buffer->buffer + buffer->offset, &data, 2);
+    }
+    else if (size == 4)
+    {
+        ZYAN_MEMCPY(buffer->buffer + buffer->offset, &data, 4);
+    }
+    else if (size == 8)
+    {
+        ZYAN_MEMCPY(buffer->buffer + buffer->offset, &data, 8);
+    }
+    else
+    {
+        ZYAN_UNREACHABLE;
+    }
 
     buffer->offset = new_offset;
     return ZYAN_STATUS_SUCCESS;
@@ -3160,7 +3167,7 @@ ZyanStatus ZydisEmitUInt(ZyanU64 data, ZyanU8 size, ZydisEncoderBuffer *buffer)
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitByte(ZyanU8 byte, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitByte(ZyanU8 byte, ZydisEncoderBuffer *buffer)
 {
     return ZydisEmitUInt(byte, 1, buffer);
 }
@@ -3173,7 +3180,7 @@ ZyanStatus ZydisEmitByte(ZyanU8 byte, ZydisEncoderBuffer *buffer)
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitLegacyPrefixes(const ZydisEncoderInstruction *instruction,
+static ZyanStatus ZydisEmitLegacyPrefixes(const ZydisEncoderInstruction *instruction,
     ZydisEncoderBuffer *buffer)
 {
     ZyanBool compressed_prefixes = ZYAN_FALSE;
@@ -3269,7 +3276,7 @@ ZyanStatus ZydisEmitLegacyPrefixes(const ZydisEncoderInstruction *instruction,
  *
  * @return  A zyan status code.
  */
-ZyanU8 ZydisEncodeRexLowNibble(const ZydisEncoderInstruction *instruction, ZyanBool *high_r)
+static ZyanU8 ZydisEncodeRexLowNibble(const ZydisEncoderInstruction *instruction, ZyanBool *high_r)
 {
     if (high_r)
     {
@@ -3340,7 +3347,8 @@ ZyanU8 ZydisEncodeRexLowNibble(const ZydisEncoderInstruction *instruction, ZyanB
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitRex(const ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitRex(const ZydisEncoderInstruction *instruction,
+    ZydisEncoderBuffer *buffer)
 {
     const ZyanU8 rex = ZydisEncodeRexLowNibble(instruction, ZYAN_NULL);
     if (rex || (instruction->attributes & ZYDIS_ATTRIB_HAS_REX))
@@ -3362,7 +3370,7 @@ ZyanStatus ZydisEmitRex(const ZydisEncoderInstruction *instruction, ZydisEncoder
  * @param   high_r          A pointer to `ZyanBool` variable that will be set to true when the
  *                          highest `ModR/M.reg` bit cannot be encoded using `REX` prefix.
  */
-void ZydisEncodeVexCommons(ZydisEncoderInstruction *instruction, ZyanU8 *mmmmm, ZyanU8 *pp,
+static void ZydisEncodeVexCommons(ZydisEncoderInstruction *instruction, ZyanU8 *mmmmm, ZyanU8 *pp,
     ZyanU8 *vvvv, ZyanU8 *rex, ZyanBool *high_r)
 {
     switch (instruction->opcode_map)
@@ -3411,7 +3419,7 @@ void ZydisEncodeVexCommons(ZydisEncoderInstruction *instruction, ZyanU8 *mmmmm, 
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitXop(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitXop(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
 {
     ZyanU8 mmmmm, pp, vvvv, rex;
     ZydisEncodeVexCommons(instruction, &mmmmm, &pp, &vvvv, &rex, ZYAN_NULL);
@@ -3432,7 +3440,7 @@ ZyanStatus ZydisEmitXop(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitVex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitVex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
 {
     ZyanU8 mmmmm, pp, vvvv, rex;
     ZydisEncodeVexCommons(instruction, &mmmmm, &pp, &vvvv, &rex, ZYAN_NULL);
@@ -3469,7 +3477,7 @@ ZyanStatus ZydisEmitVex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer
  * @param   p1          A pointer to `ZyanU8` variable that will receive 3rd byte of `EVEX` prefix.
  * @param   vvvvv       A pointer to `ZyanU8` variable that will receive `EVEX.vvvvv`.
  */
-void ZydisEncodeEvexCommons(ZydisEncoderInstruction *instruction, ZyanU8 *p0, ZyanU8 *p1,
+static void ZydisEncodeEvexCommons(ZydisEncoderInstruction *instruction, ZyanU8 *p0, ZyanU8 *p1,
     ZyanU8 *vvvvv)
 {
     ZyanBool high_r;
@@ -3491,7 +3499,7 @@ void ZydisEncodeEvexCommons(ZydisEncoderInstruction *instruction, ZyanU8 *p0, Zy
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitEvex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitEvex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
 {
     ZyanU8 p0, p1, vvvvv;
     ZydisEncodeEvexCommons(instruction, &p0, &p1, &vvvvv);
@@ -3524,7 +3532,7 @@ ZyanStatus ZydisEmitEvex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffe
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitMvex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitMvex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
 {
     ZyanU8 p0, p1, vvvvv;
     ZydisEncodeEvexCommons(instruction, &p0, &p1, &vvvvv);
@@ -3553,7 +3561,8 @@ ZyanStatus ZydisEmitMvex(ZydisEncoderInstruction *instruction, ZydisEncoderBuffe
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEmitInstruction(ZydisEncoderInstruction *instruction, ZydisEncoderBuffer *buffer)
+static ZyanStatus ZydisEmitInstruction(ZydisEncoderInstruction *instruction,
+    ZydisEncoderBuffer *buffer)
 {
     ZYAN_CHECK(ZydisEmitLegacyPrefixes(instruction, buffer));
 
@@ -3643,7 +3652,7 @@ ZyanStatus ZydisEmitInstruction(ZydisEncoderInstruction *instruction, ZydisEncod
  * @param   def_op      Decoder's operand definition from instruction definition.
  * @param   instruction A pointer to `ZydisEncoderInstruction` struct.
  */
-void ZydisBuildRegisterOperand(const ZydisEncoderOperand *user_op,
+static void ZydisBuildRegisterOperand(const ZydisEncoderOperand *user_op,
     const ZydisOperandDefinition *def_op, ZydisEncoderInstruction *instruction)
 {
     if (def_op->type == ZYDIS_SEMANTIC_OPTYPE_IMPLICIT_REG)
@@ -3709,7 +3718,7 @@ void ZydisBuildRegisterOperand(const ZydisEncoderOperand *user_op,
  * @param   user_op     Decoder's operand definition from instruction definition.
  * @param   instruction A pointer to `ZydisEncoderInstruction` struct.
  */
-void ZydisBuildMemoryOperand(ZydisEncoderInstructionMatch *match,
+static void ZydisBuildMemoryOperand(ZydisEncoderInstructionMatch *match,
     const ZydisEncoderOperand *user_op, ZydisEncoderInstruction *instruction)
 {
     instruction->attributes |= ZYDIS_ATTRIB_HAS_MODRM;
@@ -3855,7 +3864,7 @@ void ZydisBuildMemoryOperand(ZydisEncoderInstructionMatch *match,
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisBuildInstruction(ZydisEncoderInstructionMatch *match,
+static ZyanStatus ZydisBuildInstruction(ZydisEncoderInstructionMatch *match,
     ZydisEncoderInstruction *instruction)
 {
     ZYAN_MEMSET(instruction, 0, sizeof(ZydisEncoderInstruction));
@@ -4106,15 +4115,15 @@ ZyanStatus ZydisBuildInstruction(ZydisEncoderInstructionMatch *match,
  *
  * @return  A zyan status code.
  */
-ZyanStatus ZydisEncoderCheckRequestSanity(const ZydisEncoderRequest *request)
+static ZyanStatus ZydisEncoderCheckRequestSanity(const ZydisEncoderRequest *request)
 {
     if (((ZyanUSize)request->machine_mode > ZYDIS_MACHINE_MODE_MAX_VALUE) ||
         ((ZyanUSize)request->allowed_encodings > ZYDIS_ENCODABLE_ENCODING_MAX_VALUE) ||
         ((ZyanUSize)request->mnemonic > ZYDIS_MNEMONIC_MAX_VALUE) ||
         ((ZyanUSize)request->branch_type > ZYDIS_BRANCH_TYPE_MAX_VALUE) ||
         ((ZyanUSize)request->branch_width > ZYDIS_BRANCH_WIDTH_MAX_VALUE) ||
-        ((ZyanUSize)request->address_size_hint > ZYDIS_ADDRESS_SIZE_MAX_VALUE) ||
-        ((ZyanUSize)request->operand_size_hint > ZYDIS_OPERAND_SIZE_MAX_VALUE) ||
+        ((ZyanUSize)request->address_size_hint > ZYDIS_ADDRESS_SIZE_HINT_MAX_VALUE) ||
+        ((ZyanUSize)request->operand_size_hint > ZYDIS_OPERAND_SIZE_HINT_MAX_VALUE) ||
         ((ZyanUSize)request->evex.broadcast > ZYDIS_BROADCAST_MODE_MAX_VALUE) ||
         ((ZyanUSize)request->evex.rounding > ZYDIS_ROUNDING_MODE_MAX_VALUE) ||
         ((ZyanUSize)request->mvex.broadcast > ZYDIS_BROADCAST_MODE_MAX_VALUE) ||
@@ -4266,6 +4275,33 @@ ZyanStatus ZydisEncoderCheckRequestSanity(const ZydisEncoderRequest *request)
     return ZYAN_STATUS_SUCCESS;
 }
 
+/**
+ * Encodes instruction with semantics specified in encoder request structure.
+ *
+ * @param   request     A pointer to the `ZydisEncoderRequest` struct. Must be validated before
+ *                      calling this function.
+ * @param   buffer      A pointer to the output buffer receiving encoded instruction.
+ * @param   length      A pointer to the variable containing length of the output buffer. Upon
+ *                      successful return this variable receives length of the encoded instruction.
+ * @param   instruction Internal state of the encoder.
+ *
+ * @return  A zyan status code.
+ */
+static ZyanStatus ZydisEncoderEncodeInstructionInternal(const ZydisEncoderRequest *request,
+    void *buffer, ZyanUSize *length, ZydisEncoderInstruction *instruction)
+{
+    ZydisEncoderInstructionMatch match;
+    ZYAN_CHECK(ZydisFindMatchingDefinition(request, &match));
+    ZydisEncoderBuffer output;
+    output.buffer = (ZyanU8 *)buffer;
+    output.size = *length;
+    output.offset = 0;
+    ZYAN_CHECK(ZydisBuildInstruction(&match, instruction));
+    ZYAN_CHECK(ZydisEmitInstruction(instruction, &output));
+    *length = output.offset;
+    return ZYAN_STATUS_SUCCESS;
+}
+
 /* ============================================================================================== */
 /* Exported functions                                                                             */
 /* ============================================================================================== */
@@ -4279,25 +4315,236 @@ ZYDIS_EXPORT ZyanStatus ZydisEncoderEncodeInstruction(const ZydisEncoderRequest 
     }
     ZYAN_CHECK(ZydisEncoderCheckRequestSanity(request));
 
-    ZydisEncoderInstructionMatch match;
-    ZYAN_CHECK(ZydisFindMatchingDefinition(request, &match));
-    ZydisEncoderBuffer output;
-    output.buffer = (ZyanU8 *)buffer;
-    output.size = *length;
-    output.offset = 0;
     ZydisEncoderInstruction instruction;
-    ZYAN_CHECK(ZydisBuildInstruction(&match, &instruction));
-    ZYAN_CHECK(ZydisEmitInstruction(&instruction, &output));
+    return ZydisEncoderEncodeInstructionInternal(request, buffer, length, &instruction);
+}
 
-    *length = output.offset;
+ZYDIS_EXPORT ZyanStatus ZydisEncoderEncodeInstructionAbsolute(ZydisEncoderRequest *request,
+    void *buffer, ZyanUSize *length, ZyanU64 runtime_address)
+{
+    if (!request || !buffer || !length)
+    {
+        return ZYAN_STATUS_INVALID_ARGUMENT;
+    }
+    ZYAN_CHECK(ZydisEncoderCheckRequestSanity(request));
+
+    const ZydisEncoderRelInfo *rel_info = ZydisGetRelInfo(request->mnemonic);
+    ZydisEncoderOperand *op_rip_rel = ZYAN_NULL;
+    ZyanBool adjusted_rel = ZYAN_FALSE;
+    ZyanU64 absolute_address = 0;
+    ZyanU8 mode_index = ZydisGetMachineModeWidth(request->machine_mode) >> 5;
+    for (ZyanU8 i = 0; i < request->operand_count; ++i)
+    {
+        ZydisEncoderOperand *op = &request->operands[i];
+        if ((op->type == ZYDIS_OPERAND_TYPE_IMMEDIATE) && rel_info)
+        {
+            if (adjusted_rel)
+            {
+                return ZYAN_STATUS_INVALID_ARGUMENT;
+            }
+
+            switch (rel_info->accepts_scaling_hints)
+            {
+            case ZYDIS_SIZE_HINT_NONE:
+            case ZYDIS_SIZE_HINT_OSZ:
+            {
+                static const ZyanI8 asz_priority[3][3] =
+                {
+                    { 0, 1, 2 },
+                    { 0, 2, 1 },
+                    { 0, 2, -1 },
+                };
+                static const ZyanI8 osz_priority[3][3] =
+                {
+                    { 0, 1, 2 },
+                    { 0, 2, 1 },
+                    { 0, 2, 1 },
+                };
+                ZyanI8 forced_priority_row[3] = { -1, -1, -1 };
+                ZyanI8 *priority_row = ZYAN_NULL;
+                ZyanU8 extra_length = 0;
+                ZyanU8 start_offset = 0;
+                if (rel_info->accepts_scaling_hints == ZYDIS_SIZE_HINT_NONE)
+                {
+                    if ((request->branch_type == ZYDIS_BRANCH_TYPE_FAR) ||
+                        (request->branch_width == ZYDIS_BRANCH_WIDTH_64))
+                    {
+                        return ZYAN_STATUS_INVALID_ARGUMENT;
+                    }
+                    if ((rel_info->accepts_branch_hints) &&
+                        (request->prefixes & (ZYDIS_ATTRIB_HAS_BRANCH_NOT_TAKEN |
+                                              ZYDIS_ATTRIB_HAS_BRANCH_TAKEN)))
+                    {
+                        extra_length += 1;
+                    }
+                    if ((rel_info->accepts_bound) && (request->prefixes & ZYDIS_ATTRIB_HAS_BND))
+                    {
+                        extra_length += 1;
+                        // `BND` prefix is not accepted for short `JMP` (Intel SDM Vol. 1)
+                        if ((request->mnemonic == ZYDIS_MNEMONIC_JMP) &&
+                            (request->branch_type == ZYDIS_BRANCH_TYPE_NONE) &&
+                            (request->branch_width == ZYDIS_BRANCH_WIDTH_NONE))
+                        {
+                            start_offset = 1;
+                        }
+                    }
+                    if (request->branch_width == ZYDIS_BRANCH_WIDTH_NONE)
+                    {
+                        if (request->branch_type == ZYDIS_BRANCH_TYPE_NEAR)
+                        {
+                            start_offset = 1;
+                        }
+                        priority_row = (ZyanI8 *)&asz_priority[mode_index];
+                    }
+                    else
+                    {
+                        forced_priority_row[0] = (ZyanI8)(request->branch_width - 1);
+                        priority_row = (ZyanI8 *)&forced_priority_row;
+                    }
+                }
+                else
+                {
+                    if (request->operand_size_hint == ZYDIS_OPERAND_SIZE_HINT_NONE)
+                    {
+                        priority_row = (ZyanI8 *)&osz_priority[mode_index];
+                    }
+                    else
+                    {
+                        if (request->operand_size_hint == ZYDIS_OPERAND_SIZE_HINT_64)
+                        {
+                            extra_length = 1;
+                            forced_priority_row[0] = 2;
+                        }
+                        else
+                        {
+                            forced_priority_row[0] = (ZyanI8)(request->operand_size_hint - 1);
+                        }
+                        priority_row = (ZyanI8 *)&forced_priority_row;
+                    }
+                }
+                ZYAN_ASSERT(ZYAN_ARRAY_LENGTH(asz_priority[0]) ==
+                            ZYAN_ARRAY_LENGTH(osz_priority[0]));
+                for (ZyanU8 j = start_offset; j < ZYAN_ARRAY_LENGTH(asz_priority[0]); ++j)
+                {
+                    ZyanI8 size_index = priority_row[j];
+                    if (size_index < 0)
+                    {
+                        break;
+                    }
+                    ZyanU8 base_size = rel_info->size[mode_index][size_index];
+                    if (base_size == 0)
+                    {
+                        continue;
+                    }
+                    ZyanU8 predicted_size = base_size + extra_length;
+                    if (runtime_address > ZYAN_UINT64_MAX - predicted_size + 1)
+                    {
+                        continue;
+                    }
+                    ZyanI64 rel = (ZyanI64)(op->imm.u - (runtime_address + predicted_size));
+                    ZyanU8 rel_size = ZydisGetSignedImmSize(rel);
+                    if (rel_size > (8 << size_index))
+                    {
+                        continue;
+                    }
+                    op->imm.s = rel;
+                    adjusted_rel = ZYAN_TRUE;
+                    break;
+                }
+                break;
+            }
+            case ZYDIS_SIZE_HINT_ASZ:
+            {
+                static const ZyanI8 asz_prefix_lookup[3][ZYDIS_ADDRESS_SIZE_HINT_MAX_VALUE + 1] =
+                {
+                    { 0, 0, 1, -1 },
+                    { 0, 1, 0, -1 },
+                    { 0, -1, 1, 0 },
+                };
+                ZyanI8 extra_length = asz_prefix_lookup[mode_index][request->address_size_hint];
+                if (extra_length < 0)
+                {
+                    return ZYAN_STATUS_INVALID_ARGUMENT;
+                }
+                ZyanU8 asz_index = (request->address_size_hint == ZYDIS_ADDRESS_SIZE_HINT_NONE)
+                    ? mode_index
+                    : ZydisGetAszFromHint(request->address_size_hint) >> 5;
+                ZYAN_ASSERT((rel_info->size[asz_index][0] != 0) &&
+                            (rel_info->size[asz_index][1] == 0) &&
+                            (rel_info->size[asz_index][2] == 0) &&
+                            !rel_info->accepts_branch_hints);
+                ZyanU8 predicted_size = rel_info->size[asz_index][0] + extra_length;
+                if (runtime_address > ZYAN_UINT64_MAX - predicted_size + 1)
+                {
+                    return ZYAN_STATUS_INVALID_ARGUMENT;
+                }
+                ZyanI64 rel = (ZyanI64)(op->imm.u - (runtime_address + predicted_size));
+                ZyanU8 rel_size = ZydisGetSignedImmSize(rel);
+                if (rel_size > 8)
+                {
+                    return ZYAN_STATUS_INVALID_ARGUMENT;
+                }
+                op->imm.s = rel;
+                adjusted_rel = ZYAN_TRUE;
+                break;
+            }
+            default:
+                ZYAN_UNREACHABLE;
+            }
+            if (!adjusted_rel)
+            {
+                return ZYAN_STATUS_INVALID_ARGUMENT;
+            }
+        }
+        else if ((op->type == ZYDIS_OPERAND_TYPE_MEMORY) &&
+                 ((op->mem.base == ZYDIS_REGISTER_EIP) ||
+                  (op->mem.base == ZYDIS_REGISTER_RIP)))
+        {
+            if (op_rip_rel)
+            {
+                return ZYAN_STATUS_INVALID_ARGUMENT;
+            }
+
+            absolute_address = op->mem.displacement;
+            op->mem.displacement = 0;
+            op_rip_rel = op;
+        }
+    }
+
+    ZydisEncoderInstruction instruction;
+    ZYAN_CHECK(ZydisEncoderEncodeInstructionInternal(request, buffer, length, &instruction));
+    if (op_rip_rel)
+    {
+        ZyanUSize instruction_size = *length;
+        if (runtime_address > ZYAN_UINT64_MAX - instruction_size + 1)
+        {
+            return ZYAN_STATUS_INVALID_ARGUMENT;
+        }
+        ZyanI64 rip_rel = (ZyanI64)(absolute_address - (runtime_address + instruction_size));
+        if (ZydisGetSignedImmSize(rip_rel) > 32)
+        {
+            return ZYAN_STATUS_INVALID_ARGUMENT;
+        }
+        ZYAN_ASSERT(instruction.disp_size != 0);
+        ZyanU8 disp_offset = (instruction.disp_size >> 3) + (instruction.imm_size >> 3);
+        if (instruction.encoding == ZYDIS_INSTRUCTION_ENCODING_3DNOW)
+        {
+            disp_offset += 1;
+        }
+        ZYAN_ASSERT(instruction_size > disp_offset);
+        ZYAN_MEMCPY((ZyanU8 *)buffer + instruction_size - disp_offset, &rip_rel, sizeof(ZyanI32));
+        op_rip_rel->mem.displacement = rip_rel;
+    }
+
     return ZYAN_STATUS_SUCCESS;
 }
 
 ZYDIS_EXPORT ZyanStatus ZydisEncoderDecodedInstructionToEncoderRequest(
-    const ZydisDecodedInstruction *instruction, const ZydisDecodedOperand* operands, 
-    ZyanU8 operand_count, ZydisEncoderRequest *request)
+        const ZydisDecodedInstruction *instruction, const ZydisDecodedOperand* operands,
+        ZyanU8 operand_count_visible, ZydisEncoderRequest *request)
 {
-    if (!instruction || !request || (operand_count && !operands))
+    if (!instruction || !request || (operand_count_visible && !operands) ||
+        operand_count_visible != instruction->operand_count_visible)
     {
         return ZYAN_STATUS_INVALID_ARGUMENT;
     }
@@ -4404,13 +4651,8 @@ ZYDIS_EXPORT ZyanStatus ZydisEncoderDecodedInstructionToEncoderRequest(
     }
     request->allowed_encodings = 1 << instruction->encoding;
 
-    if ((operand_count > ZYDIS_ENCODER_MAX_OPERANDS) || 
-        (operand_count > instruction->operand_count_visible))
-    {
-        return ZYAN_STATUS_INVALID_ARGUMENT;
-    }
-    request->operand_count = operand_count;
-    for (ZyanU8 i = 0; i < operand_count; ++i)
+    request->operand_count = operand_count_visible;
+    for (ZyanU8 i = 0; i < operand_count_visible; ++i)
     {
         const ZydisDecodedOperand *dec_op = &operands[i];
         ZydisEncoderOperand *enc_op = &request->operands[i];
@@ -4470,6 +4712,39 @@ ZYDIS_EXPORT ZyanStatus ZydisEncoderDecodedInstructionToEncoderRequest(
         default:
             return ZYAN_STATUS_INVALID_ARGUMENT;
         }
+    }
+
+    return ZYAN_STATUS_SUCCESS;
+}
+
+ZYDIS_EXPORT ZyanStatus ZydisEncoderNopFill(void *buffer, ZyanUSize length)
+{
+    if (!buffer)
+    {
+        return ZYAN_STATUS_INVALID_ARGUMENT;
+    }
+
+    // Intel SDM Vol. 2B "Recommended Multi-Byte Sequence of NOP Instruction"
+    static const ZyanU8 nops[9][9] =
+    {
+        { 0x90 },
+        { 0x66, 0x90 },
+        { 0x0F, 0x1F, 0x00 },
+        { 0x0F, 0x1F, 0x40, 0x00 },
+        { 0x0F, 0x1F, 0x44, 0x00, 0x00 },
+        { 0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00 },
+        { 0x0F, 0x1F, 0x80, 0x00, 0x00, 0x00, 0x00 },
+        { 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 },
+        { 0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 },
+    };
+
+    ZyanU8 *output = (ZyanU8 *)buffer;
+    while (length)
+    {
+        ZyanUSize nop_size = (length > 9) ? 9 : length;
+        ZYAN_MEMCPY(output, nops[nop_size - 1], nop_size);
+        output += nop_size;
+        length -= nop_size;
     }
 
     return ZYAN_STATUS_SUCCESS;

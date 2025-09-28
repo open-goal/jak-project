@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,17 +19,15 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifndef _SDL_vitatouch_h
-#define _SDL_vitatouch_h
+#ifndef SDL_vitatouch_h
+#define SDL_vitatouch_h
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-/* Touch functions */
+// Touch functions
 extern void VITA_InitTouch(void);
 extern void VITA_QuitTouch(void);
 extern void VITA_PollTouch(void);
 void VITA_ConvertTouchXYToSDLXY(float *sdl_x, float *sdl_y, int vita_x, int vita_y, int port);
 
-#endif /* _SDL_vitatouch_h */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_vitatouch_h

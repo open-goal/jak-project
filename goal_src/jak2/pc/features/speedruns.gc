@@ -1,7 +1,64 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+;; TODO later - customize menu open keybind
+
+(define-extern task-close! (function string symbol))
+
 (define *speedrun-info* (new 'static 'speedrun-info))
+(set! (-> *speedrun-info* active-custom-category) (new 'static 'speedrun-custom-category))
+(set! (-> *speedrun-info* dump-custom-category) (new 'static 'speedrun-custom-category))
+(set! (-> *speedrun-info* active-practice-objective) (new 'static 'speedrun-practice-objective))
+(set! (-> *speedrun-info* active-practice-objective starting-position) (new 'static 'vector))
+(set! (-> *speedrun-info* active-practice-objective starting-rotation) (new 'static 'vector))
+(set! (-> *speedrun-info* active-practice-objective starting-camera-position) (new 'static 'vector))
+(set! (-> *speedrun-info* active-practice-objective starting-camera-rotation) (new 'static 'matrix))
+(set! (-> *speedrun-info* active-practice-objective start-zone-init-params) (new 'static 'objective-zone-init-params))
+(set! (-> *speedrun-info* active-practice-objective end-zone-init-params) (new 'static 'objective-zone-init-params))
+
+(defmethod draw-timer ((this speedrun-timer))
+  (clear *temp-string*)
+  (clear *pc-encoded-temp-string*)
+  (cond
+   ((-> this started?)
+    (format *temp-string* "~,,2fs~%" (* (the float (- (current-time) (-> this start-time))) 0.0033333334)))
+   ((and (!= 0 (-> this end-time)))
+    (format *temp-string* "~,,2fs~%" (* (the float (- (-> this end-time) (-> this start-time))) 0.0033333334)))
+   (else
+    (format *temp-string* "0.0s~%")))
+  (when *target*
+    (format *temp-string* "~,,2M~%" (-> *target* control ctrl-xz-vel)))
+  (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+    ;; reset bucket settings prior to drawing - font won't do this for us, and
+    ;; draw-raw-image can sometimes mess them up. (intro sequence)
+    (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 256 350 0.0 (font-color default) (font-flags middle shadow kerning large))))
+      (set! (-> font-ctx scale) 0.325)
+      (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+  (none))
+
+(defmethod start! ((this speedrun-timer))
+  (set! (-> this started?) #t)
+  (set! (-> this stopped?) #f)
+  (set! (-> this start-time) (current-time))
+  (set! (-> this end-time) 0)
+  (none))
+
+(defmethod reset! ((this speedrun-timer))
+  (set! (-> this started?) #f)
+  (set! (-> this stopped?) #f)
+  (set! (-> this start-time) 0)
+  (set! (-> this end-time) 0)
+  (none))
+
+(defmethod stop! ((this speedrun-timer))
+  (when (not (-> this stopped?))
+    (set! (-> this started?) #f)
+    (set! (-> this stopped?) #t)
+    (set! (-> this end-time) (current-time))
+    (set! (-> this recorded-time) (* (the float (- (-> this end-time) (-> this start-time))) 0.0033333334)))
+  (-> this recorded-time))
 
 (defmethod set-category! ((this speedrun-info) (category speedrun-category))
   (set! (-> this category) category)
@@ -12,6 +69,7 @@
   (reset! *autosplit-info-jak2*)
   ;; turn on speedrun verification display
   (set! (-> this display-run-info?) #t)
+  (send-event (ppointer->process *speedrun-manager*) 'start-run)
   ;; ensure any required settings are enabled
   (enforce-settings! this)
   ;; finalize any category specific setup code
@@ -21,8 +79,20 @@
     (((speedrun-category newgame-heromode))
       (initialize! *game-info* 'game (the-as game-save #f) "game-start-hero"))
     (((speedrun-category all-cheats-allowed))
-      (initialize! *game-info* 'game (the-as game-save #f) "game-start")))
-
+      (initialize! *game-info* 'game (the-as game-save #f) "game-start"))
+    (((speedrun-category custom))
+      (set-master-mode 'game)
+      (send-event (ppointer->process (-> *speedrun-manager* 0 popup-menu)) 'close-menu)
+      (process-spawn-function process (lambda :behavior process ()
+        (clear *temp-string*)
+        (pc-sr-mode-get-custom-category-continue-point (-> *speedrun-info* active-custom-category index) *temp-string*)
+        (if (string= *temp-string* "")
+          (initialize! *game-info* 'game (the-as game-save #f) "game-start")
+          (initialize! *game-info* 'game (the-as game-save #f) *temp-string*))
+        (until (and *target* (= (-> *target* next-state name) 'target-stance))
+          (suspend))
+        (when (nonzero? (-> *speedrun-info* active-custom-category completed-task))
+          (task-resolution-close! (-> *speedrun-info* active-custom-category completed-task)))))))
   (if (!= -1 (-> *game-info* auto-save-which))
       (set! (-> *setting-control* user-default auto-save) #t))
 
@@ -35,159 +105,442 @@
   ;; - If you are playing a category that requires cheats (ie. a turbo jetboard one) you'd
   ;;   probably like the game to automatically set the appropriate ones for you
   ;; - If you are playing a category that forbids cheats, you wouldn't want your run invalidated because you forgot
-  ;;
-  ;; However, the pc-settings stores a backup of your cheats whenever you manually modify them (NYI - no menus yet)
-  ;; and when speedrunner mode is first enabled.  They are restored when speedrunner mode is disabled.
-  (when (!= (-> this category) (speedrun-category all-cheats-allowed))
-    ;; disable any active cheats
-    (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)))
+  (case (-> this category)
+    (((speedrun-category newgame-normal) (speedrun-category newgame-heromode))
+      ;; disable any active cheats
+      (set! (-> *pc-settings* cheats) (the-as pc-cheats #x0)))
+    (((speedrun-category custom))
+      (set! (-> *game-info* secrets) (-> *speedrun-info* active-custom-category secrets))
+      (logior! (-> *game-info* features) (-> *speedrun-info* active-custom-category features))
+      (logclear! (-> *game-info* features) (-> *speedrun-info* active-custom-category forbidden-features))
+      (set! (-> *pc-settings* cheats) (-> *speedrun-info* active-custom-category pc-cheats))))
   (none))
 
-(defmethod hide-run-info! ((this speedrun-info))
-  (set! (-> this display-run-info?) #f)
+(defmethod draw-zone ((this objective-zone))
+  (add-debug-box
+    #t
+    (bucket-id debug2)
+    (-> this v1)
+    (-> this v2)
+    (if (-> this start?)
+        (new 'static 'rgba :r #xff :g #xff :b #x00 :a #x80)
+        (new 'static 'rgba :r #xff :g #x00 :b #xff :a #x80)))
+  (none))
+
+(defstate waiting-for-player (objective-zone)
+  :virtual #t
+  :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
+    (the-as object 0))
+  :trans (behavior ()
+    ;; Check to see if we have entered the zone
+    (let ((min-point-x (fmin (-> self v1 x) (-> self v2 x)))
+          (min-point-y (fmin (-> self v1 y) (-> self v2 y)))
+          (min-point-z (fmin (-> self v1 z) (-> self v2 z)))
+          (max-point-x (fmax (-> self v1 x) (-> self v2 x)))
+          (max-point-y (fmax (-> self v1 y) (-> self v2 y)))
+          (max-point-z (fmax (-> self v1 z) (-> self v2 z)))
+          (pos (target-pos 0)))
+      (when (and (and (<= min-point-x (-> pos x))
+                      (<= (-> pos x) max-point-x))
+                 (and (<= min-point-y (-> pos y))
+                      (<= (-> pos y) max-point-y))
+                 (and (<= min-point-z (-> pos z))
+                      (<= (-> pos z) max-point-z)))
+        (when (nonzero? (-> self on-enter))
+          ((-> self on-enter)))
+        (go-virtual player-inside)))
+    (none))
+  :code (behavior ()
+    (until #f
+      (draw-zone self)
+      (suspend))
+    (none))
+  :post (behavior ()
+    (none)))
+
+(defstate player-inside (objective-zone)
+  :virtual #t
+  :trans (behavior ()
+    ;; Check to see if we have entered the zone
+    (let ((min-point-x (fmin (-> self v1 x) (-> self v2 x)))
+          (min-point-y (fmin (-> self v1 y) (-> self v2 y)))
+          (min-point-z (fmin (-> self v1 z) (-> self v2 z)))
+          (max-point-x (fmax (-> self v1 x) (-> self v2 x)))
+          (max-point-y (fmax (-> self v1 y) (-> self v2 y)))
+          (max-point-z (fmax (-> self v1 z) (-> self v2 z)))
+          (pos (target-pos 0)))
+      (when (not (and (and (<= min-point-x (-> pos x))
+                           (<= (-> pos x) max-point-x))
+                      (and (<= min-point-y (-> pos y))
+                           (<= (-> pos y) max-point-y))
+                      (and (<= min-point-z (-> pos z))
+                           (<= (-> pos z) max-point-z))))
+        (when (nonzero? (-> self on-exit))
+          ((-> self on-exit)))
+        (go-virtual waiting-for-player)))
+    (none))
+  :code (behavior ()
+    (until #f
+      (draw-zone self)
+      (suspend))
+    (none)))
+
+(defbehavior objective-zone-init objective-zone ((start? symbol) (params objective-zone-init-params))
+  (set! (-> self start?) start?)
+  (set! (-> self v1 quad) (-> params v1 quad))
+  (set! (-> self v2 quad) (-> params v2 quad))
+  (go-virtual waiting-for-player)
+  (none))
+
+(defmethod draw-info ((this speedrun-practice-objective))
+  (clear *temp-string*)
+  (clear *pc-encoded-temp-string*)
+  (pc-sr-mode-get-practice-entry-name (-> this index) *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>Practicing: <COLOR_GREEN>~S~%" *pc-encoded-temp-string*)
+  (if (> (pc-sr-mode-get-practice-entry-history-attempts (-> this index)) 0)
+    (format *temp-string* "<COLOR_WHITE>History: <COLOR_GREEN>~D<COLOR_WHITE>/~D (~,,2f%)~%"
+                          (pc-sr-mode-get-practice-entry-history-success (-> this index))
+                          (pc-sr-mode-get-practice-entry-history-attempts (-> this index))
+                          (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-history-success (-> this index)))
+                                      (the float (pc-sr-mode-get-practice-entry-history-attempts (-> this index))))))
+    (format *temp-string* "<COLOR_WHITE>History: --~%"))
+  (if (> (pc-sr-mode-get-practice-entry-session-attempts (-> this index)) 0)
+    (format *temp-string* "<COLOR_WHITE>Session: <COLOR_GREEN>~D<COLOR_WHITE>/~D (~,,2f%)~%"
+                          (pc-sr-mode-get-practice-entry-session-success (-> this index))
+                          (pc-sr-mode-get-practice-entry-session-attempts (-> this index))
+                          (* 100.0 (/ (the float (pc-sr-mode-get-practice-entry-session-success (-> this index)))
+                                      (the float (pc-sr-mode-get-practice-entry-session-attempts (-> this index))))))
+    (format *temp-string* "<COLOR_WHITE>Session: --~%"))
+  (pc-sr-mode-get-practice-entry-avg-time (-> this index) *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>Average Time: <COLOR_GREEN>~Ss~%" *pc-encoded-temp-string*)
+  (pc-sr-mode-get-practice-entry-fastest-time (-> this index) *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>Fastest Time: <COLOR_GREEN>~Ss~%" *pc-encoded-temp-string*)
+  (format *temp-string* "<COLOR_WHITE>\c91 L3: Reset~%")
+  (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf2))
+    ;; reset bucket settings prior to drawing - font won't do this for us, and
+    ;; draw-raw-image can sometimes mess them up. (intro sequence)
+    (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 20 0.0 (font-color default) (font-flags right shadow kerning large))))
+      (set! (-> font-ctx scale) 0.325)
+      (draw-string-adv *pc-encoded-temp-string* buf font-ctx)))
+  (none))
+
+(defmethod reset! ((this speedrun-practice-objective))
+  ;; record attempt if attempt was started
+  (when (-> *speedrun-info* waiting-to-record-practice-attempt?)
+    (pc-sr-mode-record-practice-entry-attempt! (-> this index) #f (&-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) recorded-time)))
+  ;; TODO - load checkpoint if not already in that checkpoint
+  ;; TODO - set features / cheats / completed-task / etc
+  ;; Update player position
+  (vector-copy! (-> *target* root trans) (-> this starting-position))
+  (vector-copy! (-> *target* root quat) (-> this starting-rotation))
+  ;; - get off jetboard and reset speed
+  (vector-copy! (-> *target* control transv) *zero-vector*)
+  (send-event *target* 'change-mode 'normal)
+  ;; Update camera position and rotation
+  (vector-copy! (-> *camera-combiner* trans) (-> this starting-camera-position))
+  (matrix-identity! (-> *camera-combiner* inv-camera-rot))
+  (matrix-copy! (-> *camera-combiner* inv-camera-rot) (-> this starting-camera-rotation))
+  (process-spawn-function process
+    (lambda :behavior process ()
+      (suspend)
+      (send-event *camera* 'teleport)
+      (deactivate self)))
+  (cam-master-activate-slave #f)
+  (none))
+
+(define *speedrun-popup-menu-entries*
+  (new 'static 'boxed-array :type popup-menu-entry
+      (new 'static 'popup-menu-button :label "Reset"
+        :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command reset))))
+      (new 'static 'popup-menu-submenu :label "Built-in category select"
+        :entries (new 'static 'boxed-array :type popup-menu-entry
+          (new 'static 'popup-menu-flag :label "Normal"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category newgame-normal)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-normal))))
+          (new 'static 'popup-menu-flag :label "Hero mode"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category newgame-heromode)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
+          (new 'static 'popup-menu-flag :label "All cheats allowed"
+            :on-confirm (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
+            :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
+      (new 'static 'popup-menu-dynamic-submenu :label "Custom category select"
+        :get-length (lambda () (pc-sr-mode-get-custom-category-amount))
+        :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-custom-category-name index str-dest))
+        :on-entry-confirm (lambda ((index int))
+          ;; hydrate from cpp
+          (pc-sr-mode-init-custom-category-info! index (-> *speedrun-info* active-custom-category))
+          (set-category! *speedrun-info* (speedrun-category custom)))
+        :entry-selected? (lambda ((index int))
+          (and (= (-> *speedrun-info* category) (speedrun-category custom))
+               (= index (-> *speedrun-info* active-custom-category index)))))
+      ;; TODO - disabled until finalized
+      ;; (new 'static 'popup-menu-dynamic-submenu :label "Practice select"
+      ;;   :entry-disabled? (lambda () (not (-> *speedrun-info* practicing?)))
+      ;;   :get-length (lambda () (pc-sr-mode-get-practice-entries-amount))
+      ;;   :get-entry-label (lambda ((index int) (str-dest string)) (pc-sr-mode-get-practice-entry-name index str-dest))
+      ;;   :on-entry-confirm (lambda ((index int))
+      ;;     ;; turn on timer
+      ;;     (set! (-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) draw?) #t)
+      ;;     ;; tear down old processes
+      ;;     (when (nonzero? (-> *speedrun-info* active-practice-objective start-zone))
+      ;;       (deactivate (-> *speedrun-info* active-practice-objective start-zone 0)))
+      ;;     (when (nonzero? (-> *speedrun-info* active-practice-objective end-zone))
+      ;;       (deactivate (-> *speedrun-info* active-practice-objective end-zone 0)))
+      ;;     ;; init from cpp
+      ;;     (pc-sr-mode-init-practice-info! index (-> *speedrun-info* active-practice-objective))
+      ;;     ;; startup new processes
+      ;;     (set! (-> *speedrun-info* active-practice-objective start-zone)
+      ;;       (the-as (pointer objective-zone) (process-spawn objective-zone :init objective-zone-init #t (-> *speedrun-info* active-practice-objective start-zone-init-params))))
+      ;;     (set! (-> *speedrun-info* active-practice-objective start-zone 0 on-exit)
+      ;;           (lambda ()
+      ;;             (start! (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))))
+      ;;             (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #t)
+      ;;             (none)))
+      ;;     (set! (-> *speedrun-info* active-practice-objective start-zone 0 on-enter)
+      ;;           (lambda ()
+      ;;             (when (and *target* (>= (-> *target* control ctrl-xz-vel) (meters 30.0)))
+      ;;               (vector-copy! (-> *target* control transv) *zero-vector*))
+      ;;             (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
+      ;;             (reset! (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))))
+      ;;             (none)))
+
+      ;;     (when (= 0 (-> *speedrun-info* active-practice-objective end-task))
+      ;;       (set! (-> *speedrun-info* active-practice-objective end-zone)
+      ;;         (the-as (pointer objective-zone) (process-spawn objective-zone :init objective-zone-init #f (-> *speedrun-info* active-practice-objective end-zone-init-params))))
+      ;;       (set! (-> *speedrun-info* active-practice-objective end-zone 0 on-enter)
+      ;;             (lambda ()
+      ;;               (when (-> *speedrun-info* waiting-to-record-practice-attempt?)
+      ;;                 (stop! (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))))
+      ;;                 (if (pc-sr-mode-record-practice-entry-attempt! (-> *speedrun-info* active-practice-objective index)
+      ;;                                                                  #t
+      ;;                                                                  (&-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) recorded-time))
+      ;;                   (sound-play "skill-pickup")
+      ;;                   (sound-play "menu-pick"))
+      ;;                 (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f))
+      ;;               (none))))
+      ;;     (set! (-> *speedrun-info* practicing?) #t)
+      ;;     (reset! (-> *speedrun-info* active-practice-objective))
+      ;;     (set-master-mode 'game)
+      ;;     (send-event (ppointer->process (-> *speedrun-manager* 0 popup-menu)) 'close-menu))
+      ;;   :entry-selected? (lambda ((index int)) (and (-> *speedrun-info* practicing?) (= index (-> *speedrun-info* active-practice-objective index)))))
+      ;; (new 'static 'popup-menu-button :label "Stop practicing"
+      ;;   :entry-disabled? (lambda () (not (-> *speedrun-info* practicing?)))
+      ;;   :on-confirm (lambda ()
+      ;;     (when (-> *speedrun-info* practicing?)
+      ;;       (when (nonzero? (-> *speedrun-info* active-practice-objective start-zone))
+      ;;         (deactivate (-> *speedrun-info* active-practice-objective start-zone 0)))
+      ;;       (when (nonzero? (-> *speedrun-info* active-practice-objective end-zone))
+      ;;         (deactivate (-> *speedrun-info* active-practice-objective end-zone 0))))
+      ;;       (set! (-> *speedrun-info* practicing?) #f)
+      ;;       (set! (-> (the-as speedrun-timer (ppointer->process (-> *speedrun-manager* 0 timer))) draw?) #f)))
+      (new 'static 'popup-menu-submenu :label "Tools"
+        :entries (new 'static 'boxed-array :type popup-menu-entry
+          (new 'static 'popup-menu-submenu :label "Create custom category"
+            :entries (new 'static 'boxed-array :type popup-menu-entry
+              (new 'static 'popup-menu-dynamic-submenu :label "Select secrets"
+                :get-length (lambda () 18)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-secrets index)))
+                :on-entry-confirm (lambda ((index int)) (logxor! (-> *speedrun-info* dump-custom-category secrets) (shl 1 index)))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category secrets) (shl 1 index)))
+                :on-reset (lambda () (set! (-> *speedrun-info* dump-custom-category secrets) (game-secrets))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Select features"
+                :get-length (lambda () 27)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-feature index)))
+                :on-entry-confirm (lambda ((index int)) (logxor! (-> *speedrun-info* dump-custom-category features) (shl 1 index)))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category features) (shl 1 index)))
+                :on-reset (lambda () (set! (-> *speedrun-info* dump-custom-category features) (game-feature))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Forbid features"
+                :get-length (lambda () 27)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string game-feature index)))
+                :on-entry-confirm (lambda ((index int)) (logxor! (-> *speedrun-info* dump-custom-category forbidden-features) (shl 1 index)))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category forbidden-features) (shl 1 index)))
+                :on-reset (lambda () (set! (-> *speedrun-info* dump-custom-category forbidden-features) (game-feature))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Select cheats"
+                :get-length (lambda () 20)
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (bitfield->string pc-cheats index)))
+                :on-entry-confirm (lambda ((index int)) (logxor! (-> *speedrun-info* dump-custom-category pc-cheats) (shl 1 index)))
+                :entry-selected? (lambda ((index int)) (logtest? (-> *speedrun-info* dump-custom-category pc-cheats) (shl 1 index)))
+                :on-reset (lambda () (set! (-> *speedrun-info* dump-custom-category pc-cheats) (pc-cheats))))
+              (new 'static 'popup-menu-dynamic-submenu :label "Select completed task"
+                :get-length (lambda () (dec (the int (game-task max))))
+                :get-entry-label (lambda ((index int) (str-dest string)) (copy-string<-string str-dest (enum->string game-task index)))
+                :on-entry-confirm (lambda ((index int)) (set! (-> *speedrun-info* dump-custom-category completed-task) (the game-task index)))
+                :entry-selected? (lambda ((index int)) (= (-> *speedrun-info* dump-custom-category completed-task) (the game-task index)))
+                :on-reset (lambda () (set! (-> *speedrun-info* dump-custom-category completed-task) (game-task none))))
+              (new 'static 'popup-menu-button :label "Save new category to file"
+                :on-confirm (lambda () (pc-sr-mode-dump-new-custom-category (-> *speedrun-info* dump-custom-category))))))))
+      (new 'static 'popup-menu-button :label "Exit"
+        :on-confirm (lambda () (send-event (ppointer->process *speedrun-manager*) 'invoke (speedrun-menu-command exit))))
+  ))
+
+(define *speedrun-manager* (the-as (pointer speedrun-manager) #f))
+
+(defbehavior speedrun-manager-init speedrun-manager ()
+  (set! *speedrun-manager* (the-as (pointer speedrun-manager) (process->ppointer self)))
+  (set! (-> *speedrun-manager* 0 popup-menu)
+        (the-as (pointer popup-menu) (process-spawn popup-menu :init popup-menu-init "Speedrun Menu" *speedrun-popup-menu-entries*)))
+  (set! (-> *speedrun-manager* 0 timer)
+        (the-as (pointer speedrun-timer) (process-spawn speedrun-timer :init speedrun-timer-init)))
+  (set! (-> *speedrun-manager* 0 ignore-menu-toggle?) #f)
+  (set! (-> *speedrun-manager* 0 opened-with-start?) #f)
+  (set! (-> *speedrun-info* practicing?) #f)
+  (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
+  (go-virtual idle)
   (none))
 
 (defmethod update! ((this speedrun-info))
   "A per frame update for speedrunning related stuff"
   ;; Ensure the speedrunner menu process is enabled or destroyed
   (when (and (-> *pc-settings* speedrunner-mode?)
-             (not *speedrun-menu*))
-    (process-spawn speedrun-menu :init speedrun-menu-init #f :to *entity-pool*))
+             (not *speedrun-manager*))
+    (process-spawn speedrun-manager :init speedrun-manager-init #f :to *entity-pool*))
   (when (and (not (-> *pc-settings* speedrunner-mode?))
-             *speedrun-menu*)
-    (deactivate (-> *speedrun-menu* 0)))
+             *speedrun-manager*)
+    (deactivate (-> *speedrun-manager* 0)))
   ;; do speedrunner mode things
   (when (-> *pc-settings* speedrunner-mode?)
     ;; Update auto-splitter struct
     (update! *autosplit-info-jak2*)
     ;; see if we should stop drawing the run info (when you escape the fortress!)
-    (when (task-complete? *game-info* (game-task fortress-escape))
+    (when (and (!= (-> this category) (speedrun-category custom))
+               (task-complete? *game-info* (game-task fortress-escape)))
       (set! (-> this display-run-info?) #f))
-    (when (-> this display-run-info?)
-       ;; Draw info to the screen
-       (draw-run-info! this))
+    ;; Draw info to the screen
+    (when (and (not (-> *speedrun-info* practicing?)) (-> this display-run-info?))
+      (draw-run-info this))
     ;; enforce settings even if they've changed them
-    (enforce-settings! this))
+    (enforce-settings! this)
+    ;; draw objective info if practicing
+    (when (-> *speedrun-info* practicing?)
+      (draw-info (-> this active-practice-objective))))
   (none))
 
-(defmethod draw-run-info! ((this speedrun-info))
+(defmethod draw-run-info ((this speedrun-info))
   "Draw speedrun related settings in the bottom left corner"
   (when (and (-> *pc-settings* speedrunner-mode?)
              (-> this display-run-info?))
     (clear *temp-string*)
     (clear *pc-encoded-temp-string*)
-    (format *temp-string* "<COLOR_WHITE>Category: <COLOR_GREEN>~S~%<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
-            (enum->string speedrun-category (-> this category))
-            (the-as int (-> *pc-settings* cheats))
-            (-> *pc-settings* target-fps)
-            (if (-> *pc-settings* ps2-actor-vis?) "true" "false")
-            *pc-settings-built-sha*)
+    (clear *pc-cpp-temp-string*)
+    (cond
+      ((= (-> this category) (speedrun-category custom))
+       (pc-sr-mode-get-custom-category-name (-> this active-custom-category index) *pc-cpp-temp-string*)
+       (format *temp-string*
+               "<COLOR_WHITE>Category: <COLOR_GREEN>~S~%<COLOR_WHITE>Secrets: <COLOR_GREEN>~D~%<COLOR_WHITE>Features: <COLOR_GREEN>~D~%<COLOR_WHITE>Forbidden Features: <COLOR_GREEN>~D~%<COLOR_WHITE>Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
+               *pc-cpp-temp-string*
+               (-> this active-custom-category secrets)
+               (-> this active-custom-category features)
+               (-> this active-custom-category forbidden-features)
+               (-> this active-custom-category pc-cheats)
+               *pc-settings-built-sha*))
+      (else
+        (format *temp-string*
+              "<COLOR_WHITE>Category: <COLOR_GREEN>~S~%<COLOR_WHITE>PC Cheats: <COLOR_GREEN>~D~%<COLOR_WHITE>Frame Rate: <COLOR_GREEN>~D~%<COLOR_WHITE>PS2 Actor Vis?: <COLOR_GREEN>~S~%<COLOR_WHITE>Version: <COLOR_GREEN>~S~%"
+              (enum->string speedrun-category (-> this category))
+              (the-as int (-> *pc-settings* cheats))
+              (-> *pc-settings* target-fps)
+              (if (-> *pc-settings* ps2-actor-vis?) "true" "false")
+              *pc-settings-built-sha*)))
     (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
-    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+    (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf2))
       ;; reset bucket settings prior to drawing - font won't do this for us, and
       ;; draw-raw-image can sometimes mess them up. (intro sequence)
       (dma-buffer-add-gs-set-flusha buf (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)) (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
-      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 365 0.0 (font-color default) (font-flags right shadow kerning large))))
+      (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 510 (if (= (-> this category) (speedrun-category custom)) 355 365) 0.0 (font-color default) (font-flags right shadow kerning large))))
         (set! (-> font-ctx scale) 0.325)
         (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
   (none))
 
 ;; Speedrun Menu
 
-(define *speedrun-popup-menu*
-  (new 'static 'popup-menu
-    :entries (new 'static 'boxed-array :type popup-menu-entry
-      (new 'static 'popup-menu-button :label "Reset" :on-press (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command reset))))
-      (new 'static 'popup-menu-label :label "Categories")
-      (new 'static 'popup-menu-flag :label "Normal"
-        :on-press (lambda () (set-category! *speedrun-info* (speedrun-category newgame-normal)))
-        :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-normal))))
-      (new 'static 'popup-menu-flag :label "Hero Mode"
-        :on-press (lambda () (set-category! *speedrun-info* (speedrun-category newgame-heromode)))
-        :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category newgame-heromode))))
-      (new 'static 'popup-menu-flag :label "All Cheats Allowed"
-        :on-press (lambda () (set-category! *speedrun-info* (speedrun-category all-cheats-allowed)))
-        :is-toggled? (lambda () (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))
-      (new 'static 'popup-menu-button :label "Exit" :on-press (lambda () (send-event (ppointer->process *speedrun-menu*) 'invoke (speedrun-menu-command exit))))
-      )
-    )
-  )
-
-(define *speedrun-menu* (the-as (pointer speedrun-menu) #f))
-
-(defbehavior speedrun-menu-init speedrun-menu ()
-  (set! *speedrun-menu* (the-as (pointer speedrun-menu) (process->ppointer self)))
-  (set! (-> *speedrun-menu* 0 popup-menu) *speedrun-popup-menu*)
-  (set! (-> *speedrun-menu* 0 draw-menu?) #f)
-  (set! (-> *speedrun-menu* 0 ignore-menu-toggle?) #f)
-  (set! (-> *speedrun-menu* 0 opened-with-start?) #f)
-  (go idle)
+(defmethod deactivate ((this speedrun-manager))
+  (set! *speedrun-manager* (the-as (pointer speedrun-manager) #f))
+  ((method-of-type process deactivate) this)
   (none))
 
-(defmethod deactivate ((this speedrun-menu))
-  (set! *speedrun-menu* (the-as (pointer speedrun-menu) #f))
-  ((method-of-type process-drawable deactivate) this)
-  (none))
-
-(defstate idle (speedrun-menu)
+(defstate idle (speedrun-manager)
+  :virtual #t
   :event (behavior ((proc process) (arg1 int) (event-type symbol) (event event-message-block))
     (case event-type
+      (('start-run)
+       (set-time! (-> *speedrun-info* run-started-at)))
       (('invoke)
        (case (-> event param 0)
         (((speedrun-menu-command reset))
          (start-run! *speedrun-info*))
         (((speedrun-menu-command exit))
          (set-master-mode 'game)
-         (set! (-> self draw-menu?) #f))
+         (send-event (ppointer->process (-> self popup-menu)) 'close-menu))
         (else
           (format 0 "nyi: invoke ~D~%" (-> event param 0))))))
     (the-as object 0))
   :trans (behavior ()
     (none))
   :code (behavior ()
-    (until #f (suspend) )
+    (until #f
+      (when (and (-> *speedrun-info* practicing?) (cpad-pressed? 0 l3))
+        (reset! (-> *speedrun-info* active-practice-objective)))
+      (when (and (-> *speedrun-info* display-run-info?)
+                 (= (-> *speedrun-info* category) (speedrun-category custom))
+                 (time-elapsed? (-> *speedrun-info* run-started-at) (seconds 15)))
+        (set! (-> *speedrun-info* display-run-info?) #f))
+      (suspend))
     (none))
   :post (behavior ()
     (none)))
 
-(defmethod draw! ((this speedrun-menu))
+(defmethod draw-menu ((this speedrun-manager))
+  ;; don't allow the menu to open during blackouts, apparently causes bugs
+  (when (>= (-> *game-info* blackout-time) (current-time))
+    (return 0))
   ;; handle opening and closing the menu
-  ;; allow the menu to be toggled again once one of the current buttons are released
-  (when (and (-> this ignore-menu-toggle?)
-             (or (not (cpad-hold? 0 l1)) (not (cpad-hold? 0 r1)))
-             (or (and (-> this opened-with-start?) (not (cpad-hold? 0 start)))
-                 (and (not (-> this opened-with-start?)) (not (cpad-hold? 0 select)))))
-    (set! (-> this ignore-menu-toggle?) #f))
-  (when (and (cpad-hold? 0 l1) (cpad-hold? 0 r1) (or (cpad-hold? 0 select) (cpad-hold? 0 start))
-             (not (-> this ignore-menu-toggle?)))
-    (cond
-      ((= *master-mode* 'game)
-       (set-master-mode 'menu)
-       (set! (-> this draw-menu?) #t))
-      ((= *master-mode* 'menu)
-       (set-master-mode 'game)
-       (set! (-> this draw-menu?) #f)))
-    (cpad-clear! 0 l1 r1)
-    ;; Track whether or not the menu was opened with start or select...
-    (cond
-      ((cpad-hold? 0 select)
-       (cpad-clear! 0 select)
-       (set! (-> this opened-with-start?) #f))
-      ((cpad-hold? 0 start)
-       (cpad-clear! 0 start)
-       (set! (-> this opened-with-start?) #t)))
-    (set! (-> this ignore-menu-toggle?) #t))
-  (when (-> this draw-menu?)
-    ;; handle any inputs for within the menu
-    (cond
-      ((cpad-pressed? 0 triangle select circle)
-       (set! (-> this draw-menu?) #f))
-      ((cpad-pressed? 0 up)
-       (move-up! (-> this popup-menu)))
-      ((cpad-pressed? 0 down)
-       (move-down! (-> this popup-menu)))
-      ((cpad-pressed? 0 x)
-       (press! (-> this popup-menu))))
-    ;; draw it
-    (draw! (-> this popup-menu)))
+  (cond
+    ((!= (-> *pc-settings* speedrunner-mode-custom-bind) 0)
+     ;; the user has let go of the keybind completely or partially, allow the bind to trigger again
+     (when (and (-> this ignore-menu-toggle?)
+                (!= (cpad-hold 0)
+                    (logior (cpad-hold 0) (-> *pc-settings* speedrunner-mode-custom-bind))))
+      (set! (-> this ignore-menu-toggle?) #f))
+     ;; bind handler
+     (when (and (not (-> this ignore-menu-toggle?))
+                (= (cpad-hold 0)
+                   (logior (cpad-hold 0) (-> *pc-settings* speedrunner-mode-custom-bind))))
+      (cond
+        ((= *master-mode* 'game)
+         (set-master-mode 'menu)
+         (send-event (ppointer->process (-> this popup-menu)) 'open-menu))
+        ((= *master-mode* 'menu)
+         (set-master-mode 'game)
+         (send-event (ppointer->process (-> this popup-menu)) 'close-menu)))
+      (logclear! (cpad-hold 0) (-> *pc-settings* speedrunner-mode-custom-bind))
+      (logclear! (cpad-pressed 0) (-> *pc-settings* speedrunner-mode-custom-bind))
+      (set! (-> this ignore-menu-toggle?) #t)))
+    (else
+     (when (and (-> this ignore-menu-toggle?)
+            (or (not (cpad-hold? 0 l1)) (not (cpad-hold? 0 r1)))
+            (or (and (-> this opened-with-start?) (not (cpad-hold? 0 start)))
+                (and (not (-> this opened-with-start?)) (not (cpad-hold? 0 select)))))
+       (set! (-> this ignore-menu-toggle?) #f))
+     (when (and (cpad-hold? 0 l1) (cpad-hold? 0 r1) (or (cpad-hold? 0 select) (cpad-hold? 0 start))
+               (not (-> this ignore-menu-toggle?)))
+       (cond
+         ((= *master-mode* 'game)
+          (set-master-mode 'menu)
+          (send-event (ppointer->process (-> this popup-menu)) 'open-menu))
+         ((= *master-mode* 'menu)
+          (set-master-mode 'game)
+          (send-event (ppointer->process (-> this popup-menu)) 'close-menu)))
+       (cpad-clear! 0 l1 r1)
+       (cond
+         ((cpad-hold? 0 select)
+          (cpad-clear! 0 select)
+          (set! (-> this opened-with-start?) #f))
+         ((cpad-hold? 0 start)
+          (cpad-clear! 0 start)
+          (set! (-> this opened-with-start?) #t)))
+       (set! (-> this ignore-menu-toggle?) #t))))
+  ;; render menu / handle inputs
+  (update-menu! (the-as popup-menu (ppointer->process (-> this popup-menu))))
   (none))

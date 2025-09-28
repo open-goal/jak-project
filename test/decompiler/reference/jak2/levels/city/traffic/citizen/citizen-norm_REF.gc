@@ -356,7 +356,7 @@
   )
 
 ;; definition for method 77 of type citizen-norm
-(defmethod enemy-method-77 ((this citizen-norm) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this citizen-norm) (arg0 enemy-knocked-info))
   (local-vars (v1-36 knocked-type))
   (cond
     ((logtest? (-> this flags) (citizen-flag knocked-out-car))
@@ -366,7 +366,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 33)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 33)) num-func-seek!)
        )
@@ -379,7 +379,7 @@
        (set! (-> a0-5 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 34)) frames num-frames) -1))
              )
-       (set! (-> a0-5 param 1) (-> arg0 0))
+       (set! (-> a0-5 param 1) (-> arg0 anim-speed))
        (set! (-> a0-5 frame-num) 0.0)
        (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 34)) num-func-seek!)
        )
@@ -388,7 +388,7 @@
     ((begin (set! v1-36 (-> this incoming knocked-type)) (= v1-36 (knocked-type knocked-type-4)))
      (ja-channel-push! 1 (seconds 0.1))
      (let* ((a2-2 (ash 1 (-> this info prev-yellow-hit)))
-            (v1-39 (enemy-method-120 this 1 a2-2))
+            (v1-39 (rnd-bit this 1 a2-2))
             (a1-11
               (-> this
                   draw
@@ -406,7 +406,7 @@
        (let ((a0-21 (-> this skel root-channel 0)))
          (set! (-> a0-21 frame-group) (the-as art-joint-anim a1-11))
          (set! (-> a0-21 param 0) (the float (+ (-> (the-as art-joint-anim a1-11) frames num-frames) -1)))
-         (set! (-> a0-21 param 1) (-> arg0 0))
+         (set! (-> a0-21 param 1) (-> arg0 anim-speed))
          (set! (-> a0-21 frame-num) 0.0)
          (joint-control-channel-group! a0-21 (the-as art-joint-anim a1-11) num-func-seek!)
          )
@@ -415,7 +415,7 @@
     ((= v1-36 (knocked-type knocked-type-6))
      (ja-channel-push! 1 (seconds 0.01))
      (let* ((a2-4 (ash 1 (-> this info prev-blue-hit)))
-            (v1-48 (enemy-method-120 this 3 a2-4))
+            (v1-48 (rnd-bit this 3 a2-4))
             (a1-18
               (-> this
                   draw
@@ -450,12 +450,12 @@
         (if (or (= (-> this incoming knocked-type) (knocked-type knocked-type-2))
                 (= (-> this incoming knocked-type) (knocked-type knocked-type-3))
                 )
-            (set! (-> arg0 0) (* 0.5 (-> arg0 0)))
+            (set! (-> arg0 anim-speed) (/ (-> arg0 anim-speed) 2))
             )
         (let ((a0-47 (-> this skel root-channel 0)))
           (set! (-> a0-47 frame-group) (the-as art-joint-anim s4-0))
           (set! (-> a0-47 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-          (set! (-> a0-47 param 1) (-> arg0 0))
+          (set! (-> a0-47 param 1) (-> arg0 anim-speed))
           (set! (-> a0-47 frame-num) 0.0)
           (joint-control-channel-group! a0-47 (the-as art-joint-anim s4-0) num-func-seek!)
           )
@@ -466,9 +466,9 @@
   )
 
 ;; definition for method 78 of type citizen-norm
-(defmethod enemy-method-78 ((this citizen-norm) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this citizen-norm) (arg0 enemy-knocked-info))
   (ja-channel-push! 1 (seconds 0.1))
-  (set! (-> arg0 0) 1.0)
+  (set! (-> arg0 anim-speed) 1.0)
   (let ((a0-2 (-> this skel root-channel 0)))
     (set! (-> a0-2 frame-group)
           (the-as art-joint-anim (-> this draw art-group data (-> this info knocked-land (-> this hit-face))))
@@ -483,7 +483,7 @@
                   )
                )
           )
-    (set! (-> a0-2 param 1) (-> arg0 0))
+    (set! (-> a0-2 param 1) (-> arg0 anim-speed))
     (set! (-> a0-2 frame-num) 0.0)
     (joint-control-channel-group!
       a0-2
@@ -792,7 +792,7 @@
   (-> this neck)
   (set! (-> this info) *citizen-norm-global-info*)
   (set! (-> this anim-shuffle) 11)
-  (let ((v1-18 (get-rand-int this 3)))
+  (let ((v1-18 (rnd-int-count this 3)))
     (cond
       ((zero? v1-18)
        (set! (-> this anim-walk) 12)
@@ -811,7 +811,7 @@
        )
       )
     )
-  (let ((v1-33 (get-rand-int this 3)))
+  (let ((v1-33 (rnd-int-count this 3)))
     (cond
       ((zero? v1-33)
        (set! (-> this anim-panic-run) 15)
@@ -825,7 +825,7 @@
       )
     )
   (set! (-> this dist-run-anim) 28672.0)
-  (let ((v1-40 (get-rand-int this 3)))
+  (let ((v1-40 (rnd-int-count this 3)))
     (cond
       ((zero? v1-40)
        (set! (-> this anim-run) 14)
@@ -843,12 +843,12 @@
   (set! (-> this anim-dive) 16)
   (set! (-> this anim-get-up-front) 22)
   (set! (-> this anim-get-up-back) 23)
-  (let ((f30-0 (get-rand-float-range this 1.0 1.25))
-        (f0-11 (get-rand-float-range this 1.0 1.25))
+  (let ((f30-0 (rnd-float-range this 1.0 1.25))
+        (f0-11 (rnd-float-range this 1.0 1.25))
         )
     (set-vector! (-> this root scale) f0-11 f30-0 f0-11 1.0)
     )
-  (let ((f0-13 (get-rand-float-range this 0.9 1.0)))
+  (let ((f0-13 (rnd-float-range this 0.9 1.0)))
     (set-vector! (-> this draw color-mult) f0-13 f0-13 f0-13 1.0)
     )
   (set! (-> this water-anim) 29)
@@ -867,7 +867,7 @@
   (logclear! (-> this mask) (process-mask enemy))
   (setup-masks (-> this draw) 0 -1)
   (setup-masks (-> this draw) 32 0)
-  (let ((v1-10 (get-rand-int this 4)))
+  (let ((v1-10 (rnd-int-count this 4)))
     (cond
       ((zero? v1-10)
        (setup-masks (-> this draw) 64 0)
@@ -883,7 +883,7 @@
        )
       )
     )
-  (let ((v1-21 (get-rand-int this 3)))
+  (let ((v1-21 (rnd-int-count this 3)))
     (cond
       ((zero? v1-21)
        (setup-masks (-> this draw) 2 0)
@@ -896,7 +896,7 @@
        )
       )
     )
-  (let ((v1-30 (get-rand-int this 4)))
+  (let ((v1-30 (rnd-int-count this 4)))
     (cond
       ((zero? v1-30)
        (setup-masks (-> this draw) 8 0)
@@ -912,7 +912,7 @@
        )
       )
     )
-  (let ((v1-41 (get-rand-int this 5)))
+  (let ((v1-41 (rnd-int-count this 5)))
     (cond
       ((zero? v1-41)
        (setup-masks (-> this draw) 4 0)
@@ -928,7 +928,7 @@
        )
       )
     )
-  (let ((v1-52 (get-rand-int this 4)))
+  (let ((v1-52 (rnd-int-count this 4)))
     (cond
       ((zero? v1-52)
        (setup-masks (-> this draw) 128 0)
@@ -945,7 +945,7 @@
       )
     )
   (setup-masks (-> this draw) 16 0)
-  (let ((v1-65 (get-rand-int this 4)))
+  (let ((v1-65 (rnd-int-count this 4)))
     (cond
       ((zero? v1-65)
        (setup-masks (-> this draw) 256 0)

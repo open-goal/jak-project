@@ -1,0 +1,724 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type tie-fragment
+(defmethod login ((this tie-fragment))
+  "Initialize the object after it is loaded."
+  (let ((s5-0 (the-as adgif-shader (-> this gif-ref)))
+        (s4-0 (/ (-> this tex-count) (the-as uint 5)))
+        )
+    (dotimes (s3-0 (the-as int s4-0))
+      (let ((v1-1 (adgif-shader-login-no-remap s5-0)))
+        (when v1-1
+          (dotimes (a0-4 3)
+            (dotimes (a1-0 3)
+              (set! (-> (the-as (pointer int32) (+ (+ (* a0-4 16) (* a1-0 4)) (the-as int *texture-masks*))))
+                    (logior (-> (the-as (pointer int32) (+ (* a1-0 4) (the-as int *texture-masks*) (* a0-4 16))) 0)
+                            (-> (the-as (pointer int32) (+ (* a1-0 4) (the-as int v1-1) (* a0-4 16))) 15)
+                            )
+                    )
+              )
+            (set! (-> *texture-masks* data a0-4 dist)
+                  (fmax (-> *texture-masks* data a0-4 dist) (-> v1-1 masks data a0-4 dist))
+                  )
+            )
+          )
+        )
+      (when (= (-> s5-0 reg-4) (gs-reg alpha-1))
+        (set! (-> s5-0 reg-4) (gs-reg hack))
+        (set! (-> s5-0 alpha) (new 'static 'gs-miptbp))
+        0
+        )
+      (&+! s5-0 80)
+      )
+    )
+  this
+  )
+
+;; definition for method 3 of type drawable-inline-array-instance-tie
+(defmethod inspect ((this drawable-inline-array-instance-tie))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
+  (dotimes (s5-0 (-> this length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
+    )
+  this
+  )
+
+;; definition for method 5 of type drawable-inline-array-instance-tie
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this drawable-inline-array-instance-tie))
+  (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64)))
+  )
+
+;; definition for method 9 of type drawable-tree-instance-tie
+;; INFO: this function exists in multiple non-identical object files
+(defmethod login ((this drawable-tree-instance-tie))
+  "Initialize the object after it is loaded."
+  this
+  )
+
+;; definition for method 9 of type drawable-tree-instance-tie
+;; INFO: this function exists in multiple non-identical object files
+(defmethod login ((this drawable-tree-instance-tie))
+  "Initialize the object after it is loaded."
+  (dotimes (s5-0 (-> this length))
+    (login (-> this data s5-0))
+    )
+  this
+  )
+
+;; definition for method 3 of type prototype-tie
+(defmethod inspect ((this prototype-tie))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
+  (dotimes (s5-0 (-> this length))
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
+    )
+  this
+  )
+
+;; definition for method 9 of type prototype-tie
+(defmethod login ((this prototype-tie))
+  "Initialize the object after it is loaded."
+  (dotimes (s5-0 (-> this length))
+    (login (-> this data s5-0))
+    )
+  this
+  )
+
+;; definition for method 8 of type drawable-tree-instance-tie
+(defmethod mem-usage ((this drawable-tree-instance-tie) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) "drawable-group")
+  (+! (-> usage data 0 count) 1)
+  (let ((v1-5 32))
+    (+! (-> usage data 0 used) v1-5)
+    (+! (-> usage data 0 total) (logand -16 (+ v1-5 15)))
+    )
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) usage flags)
+    )
+  (mem-usage (-> this prototypes prototype-array-tie) usage (logior flags 1))
+  this
+  )
+
+;; definition for method 8 of type tie-fragment
+(defmethod mem-usage ((this tie-fragment) (usage memory-usage-block) (flags int))
+  (when (logtest? flags 2)
+    (let ((v1-3 (* (-> this color-count) 4))
+          (a0-2 (cond
+                  ((logtest? flags 4)
+                   20
+                   )
+                  ((logtest? flags 8)
+                   21
+                   )
+                  (else
+                    22
+                    )
+                  )
+                )
+          )
+      (+! (-> usage data a0-2 count) 1)
+      (+! (-> usage data a0-2 used) v1-3)
+      (+! (-> usage data a0-2 total) (logand -4 (+ v1-3 3)))
+      )
+    (set! (-> usage length) (max 23 (-> usage length)))
+    (set! this this)
+    (goto cfg-13)
+    )
+  (set! (-> usage length) (max 18 (-> usage length)))
+  (set! (-> usage data 9 name) "tie-fragment")
+  (set! (-> usage data 10 name) "tie-gif")
+  (set! (-> usage data 11 name) "tie-points")
+  (set! (-> usage data 12 name) "tie-colors")
+  (set! (-> usage data 14 name) "tie-debug")
+  (set! (-> usage data 13 name) "tie-draw-points")
+  (set! (-> usage data 17 name) "tie-generic")
+  (+! (-> usage data 9 count) 1)
+  (let ((v1-21 (asize-of this)))
+    (+! (-> usage data 9 used) v1-21)
+    (+! (-> usage data 9 total) (logand -16 (+ v1-21 15)))
+    )
+  (let ((v1-26 (* (-> this gif-count) 16)))
+    (+! (-> usage data 10 count) (-> this tex-count))
+    (+! (-> usage data 10 used) v1-26)
+    (+! (-> usage data 10 total) (logand -16 (+ v1-26 15)))
+    )
+  (let ((v1-31 (* (-> this vertex-count) 16)))
+    (+! (-> usage data 11 count) (-> this vertex-count))
+    (+! (-> usage data 11 used) v1-31)
+    (+! (-> usage data 11 total) (logand -16 (+ v1-31 15)))
+    )
+  (let ((v1-36 (* (-> this dp-qwc) 16)))
+    (+! (-> usage data 13 count) (* (-> this dp-qwc) 16))
+    (+! (-> usage data 13 used) v1-36)
+    (+! (-> usage data 13 total) (logand -16 (+ v1-36 15)))
+    )
+  (let ((v1-41 (* (-> this generic-count) 16)))
+    (+! (-> usage data 17 count) 1)
+    (+! (-> usage data 17 used) v1-41)
+    (+! (-> usage data 17 total) (logand -16 (+ v1-41 15)))
+    )
+  (let ((s4-0 (-> this debug debug-lines)))
+    (when (nonzero? s4-0)
+      (dotimes (s3-0 (-> s4-0 length))
+        (+! (-> usage data 14 count) (-> s4-0 s3-0 length))
+        (let ((v1-52 (asize-of (-> s4-0 s3-0))))
+          (+! (-> usage data 12 used) v1-52)
+          (+! (-> usage data 12 total) (logand -16 (+ v1-52 15)))
+          )
+        )
+      )
+    )
+  (label cfg-13)
+  this
+  )
+
+;; definition for method 8 of type instance-tie
+(defmethod mem-usage ((this instance-tie) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 19 (-> usage length)))
+  (set! (-> usage data 18 name) "instance-tie")
+  (+! (-> usage data 18 count) 1)
+  (let ((v1-6 (asize-of this)))
+    (+! (-> usage data 18 used) v1-6)
+    (+! (-> usage data 18 total) (logand -16 (+ v1-6 15)))
+    )
+  (when (nonzero? (-> this color-indices))
+    (set! (-> usage length) (max 24 (-> usage length)))
+    (set! (-> usage data 23 name) "instance-tie-colors*")
+    (set! (-> usage data 19 name) "instance-tie-colors0")
+    (set! (-> usage data 20 name) "instance-tie-colors1")
+    (set! (-> usage data 21 name) "instance-tie-colors2")
+    (set! (-> usage data 22 name) "instance-tie-colors3")
+    (+! (-> usage data 23 count) 1)
+    (let ((s3-0 (-> this bucket-ptr)))
+      (+ (-> usage data 19 used) (-> usage data 20 used) (-> usage data 21 used) (-> usage data 22 used))
+      (dotimes (s2-0 4)
+        (let ((a0-10 (-> s3-0 tie-geom s2-0)))
+          (when (nonzero? a0-10)
+            (let ((t9-1 (method-of-object a0-10 mem-usage))
+                  (a1-2 usage)
+                  (v1-29 s2-0)
+                  )
+              (t9-1 a0-10 a1-2 (logior (logior (cond
+                                                 ((= v1-29 1)
+                                                  4
+                                                  )
+                                                 ((= v1-29 2)
+                                                  8
+                                                  )
+                                                 ((= v1-29 3)
+                                                  16
+                                                  )
+                                                 (else
+                                                   0
+                                                   )
+                                                 )
+                                               2
+                                               )
+                                       flags
+                                       )
+                    )
+              )
+            )
+          )
+        )
+      )
+    )
+  this
+  )
+
+;; definition for method 8 of type drawable-inline-array-instance-tie
+(defmethod mem-usage ((this drawable-inline-array-instance-tie) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) "drawable-group")
+  (+! (-> usage data 0 count) 1)
+  (let ((v1-5 32))
+    (+! (-> usage data 0 used) v1-5)
+    (+! (-> usage data 0 total) (logand -16 (+ v1-5 15)))
+    )
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) usage flags)
+    )
+  this
+  )
+
+;; definition for method 8 of type prototype-tie
+(defmethod mem-usage ((this prototype-tie) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) "drawable-group")
+  (+! (-> usage data 0 count) 1)
+  (let ((v1-5 32))
+    (+! (-> usage data 0 used) v1-5)
+    (+! (-> usage data 0 total) (logand -16 (+ v1-5 15)))
+    )
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) usage flags)
+    )
+  this
+  )
+
+;; definition for method 5 of type prototype-tie
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this prototype-tie))
+  (the-as int (+ (-> prototype-tie size) (* (+ (-> this length) -1) 64)))
+  )
+
+;; definition of type tie-consts
+(deftype tie-consts (structure)
+  ((data       uint32      40)
+   (vector     vector      10 :inline :overlay-at (-> data 0))
+   (quads      uint128     10         :overlay-at (-> data 0))
+   (adgif      gs-gif-tag  :inline    :overlay-at (-> data 0))
+   (strgif     gs-gif-tag  :inline    :overlay-at (-> data 4))
+   (extra      vector      :inline    :overlay-at (-> data 8))
+   (gifbufs    vector      :inline    :overlay-at (-> data 12))
+   (clrbufs    qword       :inline    :overlay-at (-> data 16))
+   (misc       qword       :inline    :overlay-at (-> data 20))
+   (atestgif   gs-gif-tag  :inline    :overlay-at (-> data 24))
+   (alpha      gs-adcmd    :inline    :overlay-at (-> data 28))
+   (atest      gs-adcmd    2 :inline  :overlay-at (-> data 32))
+   (atest-tra  gs-adcmd    :inline    :overlay-at (-> data 32))
+   (atest-def  gs-adcmd    :inline    :overlay-at (-> data 36))
+   )
+  )
+
+;; definition for method 3 of type tie-consts
+(defmethod inspect ((this tie-consts))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'tie-consts)
+  (format #t "~1Tdata[40] @ #x~X~%" (-> this data))
+  (format #t "~1Tvector[10] @ #x~X~%" (-> this data))
+  (format #t "~1Tquads[10] @ #x~X~%" (-> this data))
+  (format #t "~1Tadgif: #<qword @ #x~X>~%" (-> this data))
+  (format #t "~1Tstrgif: #<qword @ #x~X>~%" (-> this strgif))
+  (format #t "~1Textra: #<qword @ #x~X>~%" (-> this extra))
+  (format #t "~1Tgifbufs: #<qword @ #x~X>~%" (-> this gifbufs))
+  (format #t "~1Tclrbufs: #<qword @ #x~X>~%" (-> this clrbufs))
+  (format #t "~1Tmisc: #<qword @ #x~X>~%" (-> this misc))
+  (format #t "~1Tatestgif: #<qword @ #x~X>~%" (-> this atestgif))
+  (format #t "~1Talpha: #<qword @ #x~X>~%" (-> this alpha))
+  (format #t "~1Tatest[2] @ #x~X~%" (-> this atest-tra))
+  (format #t "~1Tatest-tra: #<gs-adcmd @ #x~X>~%" (-> this atest-tra))
+  (format #t "~1Tatest-def: #<gs-adcmd @ #x~X>~%" (-> this atest-def))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol tie-vu1-block, type vu-function
+(define tie-vu1-block (new 'static 'vu-function :length #x3e7 :qlength #x1f4))
+
+;; definition for function tie-init-consts
+;; WARN: Return type mismatch int vs none.
+(defun tie-init-consts ((arg0 tie-consts) (arg1 gs-alpha) (arg2 gs-test) (arg3 gs-test))
+  "Set up tie-consts for VU1"
+  (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+  (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (case *subdivide-draw-mode*
+    (((subdivide-setting textured))
+     (set! (-> arg0 strgif tag)
+           (new 'static 'gif-tag64
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+             :nreg #x3
+             )
+           )
+     )
+    (((subdivide-setting outline))
+     (set! (-> arg0 strgif tag)
+           (new 'static 'gif-tag64
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+             :nreg #x3
+             )
+           )
+     )
+    (((subdivide-setting gouraud))
+     (set! (-> arg0 strgif tag)
+           (new 'static 'gif-tag64
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe #x1)
+             :nreg #x3
+             )
+           )
+     )
+    (((subdivide-setting hack))
+     (set! (-> arg0 strgif tag)
+           (new 'static 'gif-tag64
+             :pre #x1
+             :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+             :nreg #x3
+             )
+           )
+     )
+    )
+  (set! (-> arg0 strgif regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+        )
+  (let ((f0-0 8388894.0)
+        (f1-0 8389078.0)
+        (f2-0 8389262.0)
+        )
+    (set! (-> arg0 gifbufs x) f2-0)
+    (set! (-> arg0 gifbufs y) f1-0)
+    (set! (-> arg0 gifbufs z) f2-0)
+    (set! (-> arg0 gifbufs w) f1-0)
+    (set! (-> arg0 extra x) (+ f0-0 f1-0 f2-0))
+    (set! (-> arg0 extra y) 0.0)
+    (set! (-> arg0 extra z) (+ f0-0 f1-0 f2-0))
+    )
+  (set! (-> arg0 clrbufs vector4w x) 198)
+  (set! (-> arg0 clrbufs vector4w y) 242)
+  (set! (-> arg0 clrbufs vector4w z) 198)
+  (set! (-> arg0 clrbufs vector4w w) 242)
+  (set! (-> arg0 atestgif tag) (new 'static 'gif-tag64 :nloop #x2 :eop #x1 :nreg #x1))
+  (set! (-> arg0 atestgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+  (set! (-> arg0 alpha data) (the-as uint arg1))
+  (set! (-> arg0 alpha cmds) (gs-reg64 alpha-1))
+  (set! (-> arg0 atest-tra cmds) (gs-reg64 test-1))
+  (set! (-> arg0 atest-tra data) (the-as uint arg2))
+  (set! (-> arg0 atest-def cmds) (gs-reg64 test-1))
+  (set! (-> arg0 atest-def data) (the-as uint arg3))
+  (set! (-> arg0 misc vector4w x) 0)
+  (set! (-> arg0 misc vector4w y) -1)
+  (none)
+  )
+
+;; definition for function tie-init-engine
+;; WARN: Return type mismatch int vs none.
+(defun tie-init-engine ((arg0 dma-buffer) (arg1 gs-alpha) (arg2 gs-test) (arg3 gs-test))
+  "Set up DMA to initialize TIE vu1."
+  (let ((v1-0 *display*)
+        (a0-6 (+ (* (+ (/ (-> tie-vu1-block qlength) 127) 1) 16) 240))
+        )
+    (+! (-> v1-0 mem-reserve-size) a0-6)
+    (when (not (-> v1-0 dma-buffer-overflow))
+      (let ((a2-1 (-> v1-0 frames (-> v1-0 on-screen) global-buf)))
+        (if (< (-> a2-1 real-buffer-end) (the-as int (&+ (-> a2-1 base) a0-6)))
+            (set! (-> v1-0 dma-buffer-overflow) #t)
+            )
+        )
+      (when (not (-> v1-0 dma-buffer-overflow))
+        (dma-buffer-add-vu-function arg0 tie-vu1-block 1)
+        (let ((s2-0 10))
+          (let* ((v1-2 arg0)
+                 (a0-11 (the-as dma-packet (-> v1-2 base)))
+                 )
+            (set! (-> a0-11 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s2-0))
+            (set! (-> a0-11 vif0) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+            (set! (-> a0-11 vif1) (new 'static 'vif-tag :imm #x3c6 :cmd (vif-cmd unpack-v4-32) :num s2-0))
+            (set! (-> v1-2 base) (the-as pointer (&+ a0-11 16)))
+            )
+          (tie-init-consts (the-as tie-consts (-> arg0 base)) arg1 arg2 arg3)
+          (&+! (-> arg0 base) (* s2-0 16))
+          )
+        (let* ((v1-5 arg0)
+               (a0-15 (the-as dma-packet (-> v1-5 base)))
+               )
+          (set! (-> a0-15 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+          (set! (-> a0-15 vif0) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1))
+          (set! (-> a0-15 vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+          (set! (-> v1-5 base) (the-as pointer (&+ a0-15 16)))
+          )
+        (let* ((v1-6 arg0)
+               (a0-17 (the-as dma-packet (-> v1-6 base)))
+               )
+          (set! (-> a0-17 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+          (set! (-> a0-17 vif0) (new 'static 'vif-tag))
+          (set! (-> a0-17 vif1) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+          (set! (-> v1-6 base) (the-as pointer (&+ a0-17 16)))
+          )
+        (let ((v1-7 (the-as object (-> arg0 base))))
+          (set! (-> (the-as vector v1-7) x) 8388608.0)
+          (set! (-> (the-as vector v1-7) y) 8388608.0)
+          (set! (-> (the-as vector v1-7) z) 8388608.0)
+          (set! (-> (the-as vector v1-7) w) 8388608.0)
+          (set! (-> (the-as (pointer vif-tag) v1-7) 4) (new 'static 'vif-tag :cmd (vif-cmd base)))
+          (set! (-> (the-as (pointer vif-tag) v1-7) 5) (new 'static 'vif-tag :imm #x2c :cmd (vif-cmd offset)))
+          (set! (-> (the-as (pointer vif-tag) v1-7) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+          (set! (-> (the-as (pointer vif-tag) v1-7) 7) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+          (set! (-> arg0 base) (&+ (the-as pointer v1-7) 32))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function tie-end-buffer
+;; WARN: Return type mismatch int vs none.
+(defun tie-end-buffer ((arg0 dma-buffer))
+  "Set up DMA to finish TIE."
+  (let ((v1-0 *display*)
+        (a1-0 96)
+        )
+    (+! (-> v1-0 mem-reserve-size) a1-0)
+    (when (not (-> v1-0 dma-buffer-overflow))
+      (let ((a3-0 (-> v1-0 frames (-> v1-0 on-screen) global-buf)))
+        (if (< (-> a3-0 real-buffer-end) (the-as int (&+ (-> a3-0 base) a1-0)))
+            (set! (-> v1-0 dma-buffer-overflow) #t)
+            )
+        )
+      (when (not (-> v1-0 dma-buffer-overflow))
+        (dma-buffer-add-gs-set arg0 (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))))
+        (let* ((v1-5 arg0)
+               (a1-10 (the-as dma-packet (-> v1-5 base)))
+               )
+          (set! (-> a1-10 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
+          (set! (-> a1-10 vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
+          (set! (-> a1-10 vif1) (new 'static 'vif-tag))
+          (set! (-> v1-5 base) (the-as pointer (&+ a1-10 16)))
+          )
+        (let* ((v1-6 arg0)
+               (a0-1 (-> v1-6 base))
+               )
+          (set! (-> (the-as (pointer vif-tag) a0-1) 0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
+          (set! (-> (the-as (pointer vif-tag) a0-1) 1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+          (set! (-> (the-as (pointer vif-tag) a0-1) 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+          (set! (-> (the-as (pointer vif-tag) a0-1) 3) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
+          (set! (-> (the-as (pointer vif-tag) a0-1) 4) (new 'static 'vif-tag))
+          (set! (-> (the-as (pointer vif-tag) a0-1) 5) (new 'static 'vif-tag))
+          (set! (-> (the-as (pointer vif-tag) a0-1) 6) (new 'static 'vif-tag))
+          (set! (-> (the-as (pointer vif-tag) a0-1) 7) (new 'static 'vif-tag))
+          (set! (-> v1-6 base) (&+ a0-1 32))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition (debug) for function tie-int-reg
+(defun-debug tie-int-reg ((arg0 int))
+  "Get the name of TIE VU1 program integer register."
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       "zero"
+       )
+      ((= v1-0 1)
+       "itemp"
+       )
+      ((= v1-0 2)
+       "point-ptr"
+       )
+      ((= v1-0 3)
+       "clr-ptr"
+       )
+      ((= v1-0 4)
+       "target-bp1-ptr"
+       )
+      ((= v1-0 5)
+       "skip-bp2"
+       )
+      ((= v1-0 6)
+       "target-bp2-ptr"
+       )
+      ((= v1-0 7)
+       "target-ip1-ptr"
+       )
+      ((= v1-0 8)
+       "target-ip2-ptr"
+       )
+      ((= v1-0 9)
+       "ind/ind0"
+       )
+      ((= v1-0 10)
+       "    ind1"
+       )
+      ((= v1-0 11)
+       "    ind2"
+       )
+      ((= v1-0 12)
+       "dest-ptr"
+       )
+      ((= v1-0 13)
+       "dest2-ptr"
+       )
+      ((= v1-0 14)
+       "skip-ips"
+       )
+      ((= v1-0 15)
+       "kick-addr"
+       )
+      )
+    )
+  )
+
+;; definition (debug) for function tie-float-reg
+(defun-debug tie-float-reg ((arg0 int))
+  "Get the name of TIE VU1 program float register."
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       "zero"
+       )
+      ((= v1-0 1)
+       "t-mtx0"
+       )
+      ((= v1-0 2)
+       "t-mtx1"
+       )
+      ((= v1-0 3)
+       "t-mtx2"
+       )
+      ((= v1-0 4)
+       "t-mtx3"
+       )
+      ((= v1-0 5)
+       "vtx-0"
+       )
+      ((= v1-0 6)
+       "vtx-1"
+       )
+      ((= v1-0 7)
+       "vtx-2"
+       )
+      ((= v1-0 8)
+       "vtx-3"
+       )
+      ((= v1-0 9)
+       "pos-0/2"
+       )
+      ((= v1-0 10)
+       "pos-1/3"
+       )
+      ((= v1-0 11)
+       "clr-0"
+       )
+      ((= v1-0 12)
+       "clr-1"
+       )
+      ((= v1-0 13)
+       "clr-2"
+       )
+      ((= v1-0 14)
+       "clr-3"
+       )
+      ((= v1-0 15)
+       "tex-0"
+       )
+      ((= v1-0 16)
+       "tex-1"
+       )
+      ((= v1-0 17)
+       "tex-2"
+       )
+      ((= v1-0 18)
+       "tex-3"
+       )
+      ((= v1-0 19)
+       "res-0/2"
+       )
+      ((= v1-0 20)
+       "res-1/3"
+       )
+      ((= v1-0 21)
+       "gifbuf"
+       )
+      ((= v1-0 22)
+       "clrbuf"
+       )
+      ((= v1-0 23)
+       "extra"
+       )
+      ((= v1-0 24)
+       "inds"
+       )
+      ((= v1-0 25)
+       "--"
+       )
+      ((= v1-0 26)
+       "--"
+       )
+      ((= v1-0 27)
+       "morph"
+       )
+      ((= v1-0 28)
+       "xyzofs"
+       )
+      ((= v1-0 29)
+       "clr1"
+       )
+      ((= v1-0 30)
+       "clr2"
+       )
+      ((= v1-0 31)
+       "--"
+       )
+      )
+    )
+  )
+
+;; definition (debug) for function tie-ints
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defun-debug tie-ints ()
+  "Dump TIE integer regs for debug."
+  (local-vars (sv-16 uint))
+  (let ((gp-0 (+ #x3da0 #x1100c000)))
+    (dotimes (s5-0 16)
+      (if (< s5-0 10)
+          (format 0 " ")
+          )
+      (let ((s4-0 format)
+            (s3-0 0)
+            (s2-0 "vi~d: ~6d #x~4,'0X ~s~%")
+            (s1-0 s5-0)
+            (s0-0 (-> (the-as (pointer uint32) (+ gp-0 (* (* s5-0 4) 4))) 0))
+            )
+        (set! sv-16 (-> (the-as (pointer uint32) (+ gp-0 (* (* s5-0 4) 4))) 0))
+        (let ((t1-0 (tie-int-reg s5-0)))
+          (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 t1-0)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition (debug) for function tie-floats
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defun-debug tie-floats ()
+  "Dump TIE float regs for debug."
+  (local-vars (sv-16 uint) (sv-32 uint))
+  (let ((gp-0 (the-as (pointer uint32) (+ #x3da0 #x1100c000))))
+    (dotimes (s5-0 32)
+      (if (< s5-0 10)
+          (format 0 " ")
+          )
+      (format
+        0
+        "vf~d: #x~8,'0X #x~8,'0X #x~8,'0X #x~8,'0X "
+        s5-0
+        (-> gp-0 (* s5-0 4))
+        (-> gp-0 (+ (* s5-0 4) 1))
+        (-> gp-0 (+ (* s5-0 4) 2))
+        (-> gp-0 (+ (* s5-0 4) 3))
+        )
+      (let ((s4-0 format)
+            (s3-0 0)
+            (s2-0 "~F ~F ~F ~F ~s~%")
+            (s1-0 (-> gp-0 (* s5-0 4)))
+            (s0-0 (-> gp-0 (+ (* s5-0 4) 1)))
+            )
+        (set! sv-16 (-> gp-0 (+ (* s5-0 4) 2)))
+        (set! sv-32 (-> gp-0 (+ (* s5-0 4) 3)))
+        (let ((t2-1 (tie-float-reg s5-0)))
+          (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 sv-32 t2-1)
+          )
+        )
+      )
+    )
+  (none)
+  )

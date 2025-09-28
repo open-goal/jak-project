@@ -1,0 +1,786 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  This file runs the game-specific version of the pckernel.
+  See pckernel-common.gc for the bulk of the pckernel.
+
+ |#
+
+(define-extern get-active-mission-description (function discord-info string))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; pc cheats list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(deftype pc-cheat-info (basic)
+  ((name    text-id)
+   (unlock  text-id)
+   (unlock-func   symbol) ;; function symbol
+   (skill   int) ;; skill points required. leave as 0 if you only want a custom unlock func
+   (flag    pc-cheats)
+   (can-toggle  symbol) ;; how it can be toggled
+
+   ;; only show after this point in the story
+   (avail-after       game-task-node)
+   (avail-after-hero  game-task-node)
+   )
+  )
+
+;;;;; pc cheat unlock functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun pc-cheat-vehicle-health-bars-unlock ()
+  "#t = cheat unlock requirements met. #f = locked"
+  #f)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;; pc cheat unlock functions end
+
+(defmacro static-pc-cheat-info (name flag can-toggle avail-after &key (skill 0) &key (unlock (null true-func)))
+  "helper for making a new static pc-cheat-info
+   unlock is a pair in format (unlock-text-id unlock-func) where unlock-func returns #t if the unlock requirement is met and #f otherwise
+   skill is the skill requirement. until the requirement is met (and avail-after is closed), it will show 'X required' in the menu
+   avail-after can be a single task-node or a pair of two, car is for normal game and cadr for hero mode"
+  `(new 'static 'pc-cheat-info  :name (text-id ,name)
+                                :unlock (text-id ,(car unlock))
+                                :unlock-func (quote ,(cadr unlock))
+                                :skill ,skill
+                                :flag (pc-cheats ,flag)
+                                :avail-after (game-task-node ,(if (pair? avail-after) (car avail-after) avail-after))
+                                :avail-after-hero (game-task-node ,(if (pair? avail-after) (cadr avail-after) avail-after))
+                                :can-toggle (quote ,can-toggle))
+  )
+
+(defmacro def-pc-cheat-list (name &rest items)
+  "helper for making a list of pc cheats. see static-pc-cheat-info for parameters"
+  `(define ,name (new 'static 'boxed-array :type pc-cheat-info ,@(apply (lambda (x) `(static-pc-cheat-info ,@x)) items)))
+  )
+
+;; the list of cheats
+(def-pc-cheat-list *pc-cheats-list*
+;;   name                                  cheat flag            can-toggle   avail-after
+    ;(progress-cheats-music-player          music-player          #f           fortress-escape-introduction)
+    )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; music player list
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defenum music-player-flava
+  :bitfield #t :type uint8
+  (default)
+  (gun)
+  (board)
+  (mech)
+  (darkjak)
+  (pilot)
+  )
+
+(deftype music-player-track-info (basic)
+  ((text    text-id)
+   (name    symbol)
+   (mode    int8)
+   (icon    int16)
+   (flava   music-player-flava)
+   (avail-after   game-task-node)
+   )
+  )
+
+(defmacro static-music-track-info (name &key text &key avail-after &key (mode 0) &key icon &key (flava ()))
+  `(new 'static 'music-player-track-info :text (text-id ,text) :name ,name :icon ,icon :avail-after (game-task-node ,avail-after) :mode ,mode :flava (music-player-flava ,@flava))
+  )
+
+(define *music-player-tracks* (new 'static 'boxed-array :type music-player-track-info
+    ))
+
+;; automatically add the default flava to all tracks that had flavas marked
+(dotimes (i (-> *music-player-tracks* length))
+  (if (nonzero? (-> *music-player-tracks* i flava))
+      (logior! (-> *music-player-tracks* i flava) (music-player-flava default)))
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; fancy controller LED fader mechanics
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(deftype led-fader-state (structure)
+  ((enable?     symbol)
+   (amount      float)
+   (cur-color   vector :inline)
+   (start-color vector :inline)
+   (end-color   vector :inline)
+   )
+  (:methods
+    (enable (_type_ vector) int)
+    (update (_type_ float float) vector)
+    (disable (_type_) int)
+    )
+  )
+
+(defmethod enable ((this led-fader-state) (start-from vector))
+  "begin transition."
+
+  (when (-> this enable?)
+    (disable this))
+
+  (vector-copy! (-> this start-color) start-from)
+  (set! (-> this amount) 0.0)
+  (true! (-> this enable?))
+  0)
+
+(defmethod disable ((this led-fader-state))
+  "disable transition."
+
+  (set! (-> this amount) 0.0)
+  (update this 0.0 0.1)
+  (false! (-> this enable?))
+  0)
+
+(defun vector3-lerp! ((dest vector) (a vector) (b vector) (alpha float))
+  "Linearly interpolate between two vectors. Alpha isn't clamped.
+   w will be set to what's in vector a."
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> a quad))
+    (.lvf vf2 (&-> b quad))
+    (.mov vf4 alpha)
+    (.add.x.vf.w vf3 vf1 vf0)
+    (.sub.vf vf2 vf2 vf1)
+    (.mul.x.vf vf2 vf2 vf4)
+    (.add.vf.xyz vf3 vf1 vf2)
+    (.svf (&-> dest quad) vf3)
+    dest
+    )
+  )
+
+(defun vector3-copy!! ((dest vector) (src vector))
+  "copy just the xyz fields of src into dest"
+  (rlet ((vf0 :class vf)
+         (dest-vf :class vf)
+         (src-vf :class vf))
+    (init-vf0-vector)
+    (.lvf dest-vf (&-> dest quad))
+    (.lvf src-vf (&-> src quad))
+    (.add.vf.xyz dest-vf vf0 src-vf)
+    (.svf (&-> dest quad) dest-vf)
+    dest
+    )
+  )
+
+(defmethod update ((this led-fader-state) (to float) (duration float))
+  "disable transition."
+
+  (when (-> this enable?)
+    (seek! (-> this amount) to (/ (-> *target* clock seconds-per-frame) duration))
+    (vector4-lerp! (-> this cur-color) (-> this start-color) (-> this end-color) (-> this amount))
+    (if (and (= to 0.0) (= 0.0 (-> this amount)))
+        (false! (-> this enable?)))
+    )
+  (-> this cur-color))
+
+
+;; global vars
+(define *led-fader-state* (new 'static 'led-fader-state :enable? #f))
+
+(define *led-darkjak-color*         (static-vector 0.5 0.0 0.5 1.0))
+(define *led-lightjak-color*        (static-vector 0.0 0.0 1.0 1.0))
+(define *led-wanted-flash-color*    (static-vector 1.0 0.0 0.0 1.0))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod initialize ((obj pc-settings-jak3))
+  "initial initialize method to be run after allocating"
+
+  (set! (-> obj music-unlocked) (new 'global 'bit-array (-> *music-player-tracks* length)))
+  ((method-of-type pc-settings initialize) obj)
+  (set! (-> *setting-control* user-default sfx-volume) (-> obj memcard-volume-sfx))
+  (set! (-> *setting-control* user-default music-volume) (-> obj memcard-volume-music))
+  (set! (-> *setting-control* user-default dialog-volume) (-> obj memcard-volume-dialog))
+  (set! (-> *setting-control* user-default vibration) (-> obj memcard-vibration?))
+  (set! (-> *setting-control* user-default subtitle) (-> obj memcard-subtitles?))
+  obj)
+
+(defmethod set-game-setting! ((obj pc-settings-jak3) (setting symbol) (value symbol))
+  (case setting
+    (('video-mode)
+      (set! (-> *setting-control* user-current video-mode) #f)
+      (set! (-> *setting-control* user-default video-mode) value)
+      )
+    (('aspect-ratio)
+      (set! (-> *setting-control* user-default aspect-ratio) value)
+      )
+    (else
+      (format #t "unknown setting  ~A (~A) to set-game-setting!" setting value))
+    )
+  )
+
+(defmethod get-game-setting ((obj pc-settings-jak3) (setting symbol))
+  (case setting
+    (('video-mode)
+      (-> *setting-control* user-default video-mode)
+      )
+    (('aspect-ratio)
+      (-> *setting-control* user-default aspect-ratio)
+      )
+    (else
+      (format #t "unknown setting  ~A to get-game-setting" setting)
+      #f)
+    )
+  )
+
+(defmethod set-game-language! ((obj pc-settings-jak3) (lang language-enum))
+  (set! (-> *setting-control* user-default language) lang)
+  )
+
+(defmethod get-game-language ((obj pc-settings-jak3))
+  ;; if the language is unintialized, return the default
+  (let ((lang (get-current-language)))
+    (if (= lang 255)
+        (scf-get-language)
+        lang
+        )
+    )
+  )
+
+
+(defmethod update ((obj pc-settings-jak3))
+  "Set the default misc settings"
+
+  ((method-of-type pc-settings update) obj)
+
+  (set! *hires-sky* (-> obj hires-clouds?))
+
+  (when (not (led-enabled? obj))
+    (disable *led-fader-state*)
+    )
+
+  (none))
+
+
+(defun real-movie? ()
+  "are we in an actual cutscene and should letterbox the view?"
+  (and (!= #f *scene-player*) (nonzero? movie?) (movie?)))
+
+(defmethod update-discord-rpc ((obj pc-settings-jak3))
+  "update discord rpc module"
+  (let ((info (new 'stack 'discord-info)))
+    (set! (-> info orb-count) (-> *game-info* skill-total))
+    (set! (-> info gem-count) (-> *game-info* gem-total))
+    (set! (-> info death-count) (-> *game-info* total-deaths))
+    (set! (-> info task) "unknown")
+    (set! (-> info status) (get-active-mission-description info))
+    ;; grab the name of the level we're in
+    (cond
+      ;; ((or (aif (level-get *level* 'title) (= (-> it status) 'active))
+      ;;      (and *progress-process*
+      ;;           (= 'title (-> *progress-process* 0 state-stack 0))))
+      ;;   ;; in title screen.
+      ;;   (set! (-> info level) (symbol->string 'title))
+      ;;   (set! (-> info status) "In title screen"))
+      (else
+        (set! (-> info level) (aif (-> *load-state* vis-nick) (symbol->string it) "unknown")))
+      )
+    (set! (-> info cutscene?) (real-movie?))
+    (set! (-> info time-of-day) (-> *time-of-day-context* time))
+    (set! (-> info percent-complete) (calculate-percentage *game-info*))
+    (set! (-> info focus-status) (if *target* (-> *target* focus-status) 0))
+    (set! (-> info current-vehicle) (the int (-> *game-info* current-vehicle)))
+    ;; TODO - update to new with-profiler syntax
+    (pc-discord-rpc-update info)
+    )
+  (none))
+
+(defmethod update-speedrun ((obj pc-settings-jak3))
+  "update speedrun module"
+  ;; TODO - update to new with-profiler syntax
+  ; (with-profiler "speedrun-update"
+    (update! *speedrun-info*)
+    ; )
+  (none))
+
+(defmethod update-video-hacks ((obj pc-settings-jak3))
+  "update the graphics hacks used for the progress menu. ugh."
+
+  (set! (-> (get-video-params) relative-x-scale) (-> obj aspect-ratio-reciprocal))
+  (set! (-> (get-video-params) relative-x-scale-reciprical) (-> obj aspect-ratio-scale))
+  )
+
+
+(defmethod eligible-for-fast-elevator? ((obj pc-settings-jak3) (proc process))
+  "is this a valid process for a fast elevator?"
+  (and (-> obj fast-elevator?) (not (or (string= (-> proc name) "drill-lift-1")
+                                        (string= (-> proc name) "drill-lift-2"))))
+  )
+
+(defmethod get-airlock-speed ((obj pc-settings-jak3))
+  "return the current speed modifier for airlocks"
+  (if (-> obj fast-airlock?)
+      (-> *pc-cheat-state* airlock-speed)
+      1.0))
+
+(defmethod get-airlock-close-speed ((obj pc-settings-jak3))
+  "return the current closing speed modifier for airlocks"
+  (if (-> obj fast-airlock?)
+      (-> *pc-cheat-state* airlock-close-speed)
+      1.0))
+
+
+(defmethod led-enabled? ((obj pc-settings-jak3))
+  "should the controller led be set?"
+  (or (-> obj controller-led-hp?)
+      (-> obj controller-led-status?)
+      ))
+
+(defmethod update-led ((obj pc-settings-jak3))
+  "set the controller led color by modifying the controller-led-color vector"
+
+  ;; default color is just blue.
+  (set-vector-xyz! (-> obj controller-led-color) 0.0 0.0 1.0)
+
+  (when *target*
+    (let ((disable-fader? #t))
+    (when (-> obj controller-led-hp?)
+      ;; flicker led according to hp. lower hp = faster and more intense flicker
+      (cond
+        ((= (-> *target* fact health) 0.0)
+          ;; dead. just set to minimum brightness.
+          (set! (-> obj controller-led-color a) (-> obj controller-led-min-brightness))
+          )
+        (else
+          (let ((flicker-speed (lerp-scale  2.0 0.0
+                                            (-> *target* fact health)
+                                            1.0 (-> *FACT-bank* health-max-default)))
+                (flicker-amp (lerp-scale  (- 1.0 (-> obj controller-led-min-brightness)) (- 1.0 (-> obj controller-led-max-brightness))
+                                          (-> *target* fact health)
+                                          1.0 (-> *FACT-bank* health-max-default)))
+                )
+            (set! (-> obj controller-led-color a) (- 1.0 (* flicker-amp (/ (+ 1.0 (sin (* flicker-speed (degrees (current-time))))) 2.0))))
+            )
+          )
+        )
+      )
+
+    (when (-> obj controller-led-status?)
+      (set-vector-xyz! (-> obj controller-led-color) 1.0 1.0 1.0)
+      (cond
+        ;; gun
+        ((and (nonzero? (-> *target* gun)) (focus-test? *target* gun))
+          (case (-> *target* gun gun-type)
+            (((pickup-type gun-yellow-1) (pickup-type gun-yellow-2) (pickup-type gun-yellow-3))
+              (set-vector-xyz! (-> obj controller-led-color) 1.0 0.75 0.125))
+            (((pickup-type gun-red-1) (pickup-type gun-red-2) (pickup-type gun-red-3))
+              (set-vector-xyz! (-> obj controller-led-color) 0.65 0.0 0.0))
+            (((pickup-type gun-blue-1) (pickup-type gun-blue-2) (pickup-type gun-blue-3))
+              (set-vector-xyz! (-> obj controller-led-color) 0.4375 0.8125 1.0))
+            (((pickup-type gun-dark-1) (pickup-type gun-dark-2) (pickup-type gun-dark-3))
+              (set-vector-xyz! (-> obj controller-led-color) 0.6875 0.6 0.78125))
+            )
+          )
+
+        ;; darkjak
+        ((and (nonzero? (-> *target* darkjak)) (focus-test? *target* dark))
+          (vector-copy! (-> *led-fader-state* end-color) *led-darkjak-color*)
+          (set! disable-fader? #f)
+          (if (not (-> *led-fader-state* enable?))
+              (enable *led-fader-state* (-> obj controller-led-color)))
+          (if (and (-> *target* next-state) (= (-> *target* next-state name) 'target-darkjak-get-off))
+              (update *led-fader-state* 0.0 0.75)
+              (update *led-fader-state* 1.0 0.3))
+          (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
+          )
+
+        ;; lightjak
+        ((and (nonzero? (-> *target* lightjak)) (focus-test? *target* light))
+          (vector-copy! (-> *led-fader-state* end-color) *led-lightjak-color*)
+          (set! disable-fader? #f)
+          (if (not (-> *led-fader-state* enable?))
+              (enable *led-fader-state* (-> obj controller-led-color)))
+          (if (and (-> *target* next-state) (= (-> *target* next-state name) 'target-lightjak-get-off))
+              (update *led-fader-state* 0.0 0.75)
+              (update *led-fader-state* 1.0 0.3))
+          (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
+          )
+
+        ;; indax
+        ((focus-test? *target* indax)
+          (set-vector-xyz! (-> obj controller-led-color) 1.0 0.5 0.0)
+          )
+
+        ;; mech
+        ((focus-test? *target* mech)
+          (set-vector-xyz! (-> obj controller-led-color) 1.0 1.0 0.0)
+          )
+
+        ;; board
+        ((focus-test? *target* board)
+          (set-vector-xyz! (-> obj controller-led-color) 0.0 1.0 1.0)
+          )
+        )
+
+      ;; wanted flash
+      (awhen (the hud-map (process-by-name "hud-map" *active-pool*))
+        (when (not (hidden? it))
+          (let ((flash-amount (/ (+ (sin (degrees (-> it values 1 current))) 1.0) 2)))
+            (vector3-lerp! (-> obj controller-led-color) (-> obj controller-led-color) *led-wanted-flash-color* flash-amount)
+            ))
+        )
+      )
+    (when disable-fader?
+      (disable *led-fader-state*))
+    ))
+  #t)
+
+(defmacro flava-unlocked? (flava)
+  "return #t if the specified flava is unlocked"
+  `(-> *pc-settings* flava-unlocked ,flava))
+
+
+(defmethod update-cheats ((obj pc-settings-jak3))
+  "run cheats."
+
+  ;; run cheats here.
+  ;;;;;;;;;;;;;;;;;;;
+
+  (when (pc-cheats? (-> obj cheats) real-time-of-day)
+      (let ((date (new 'stack-no-clear 'scf-time)))
+          (scf-get-time date)
+          (when (zero? (-> date stat))
+            (let* ((cur-time (-> *display* bg-clock frame-counter))
+                  (day-len (seconds 1440)) ;; a full in-game day
+                  (want-hour (bcd->dec (-> date hour)))
+                  (want-minute (bcd->dec (-> date minute)))
+                  (target-hour-frame (/ (the int (* (fsec 3600) want-hour)) 60))
+                  (target-minute-frame (/ (the int (* (fsec 60) want-minute)) 60))
+                  )
+              (set! (-> *display* bg-clock frame-counter) (+ (- cur-time (mod cur-time day-len)) day-len (+ target-hour-frame target-minute-frame)))
+              ))
+          ))
+
+  ;; turbo jet board cheat
+  (cond
+    ((and (pc-cheats? (-> obj cheats) turbo-board)
+          *target*
+          (focus-test? *target* board)
+          (= 'ctywide (-> *target* current-level info master-level)))
+      (set-setting! 'string-spline-max-move 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 2)) 0)
+      (set-setting! 'string-spline-accel 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.045)) 0)
+      (set-setting! 'string-spline-max-move-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 1.5)) 0)
+      (set-setting! 'string-spline-accel-player 'abs (* (-> *pc-cheat-state* turbo-board-speed) (meters 0.035)) 0)
+      (set-cheat-state-flag! turbo-board)
+      )
+    (else
+      (remove-setting! 'string-spline-max-move)
+      (remove-setting! 'string-spline-accel)
+      (remove-setting! 'string-spline-max-move-player)
+      (remove-setting! 'string-spline-accel-player)
+      (clear-cheat-state-flag! turbo-board)
+      )
+    )
+
+  (pc-set-gfx-hack (pc-gfx-hack no-tex) (pc-cheats? (-> obj cheats) no-textures))
+
+  ;; run cheats end!!!
+  ;;;;;;;;;;;;;;;;;;;;
+
+  ;; check unlocked cheats
+  ;;;;;;;;;;;;;;;;;;;;;;;;
+  (let ((old (-> *pc-settings* cheats))
+        (old-unlocked (-> *pc-settings* cheats-unlocked))
+        (old-purchased (-> *pc-settings* cheats-purchased))
+        (old-revealed (-> *pc-settings* cheats-revealed)))
+
+  (dotimes (i (-> *pc-cheats-list* length))
+
+    ;; reveals cheats if they have been purchased, purchases cheats if they have been unlocked, unlocks cheats if they have been enabled.
+    ;; the cheat process requires the steps to be filled in this order, see sequential checking below
+    (logior! (-> *pc-settings* cheats-revealed) (logior! (-> *pc-settings* cheats-purchased) (logior! (-> *pc-settings* cheats-unlocked) (-> *pc-settings* cheats))))
+
+    (let* ((cheat (-> *pc-cheats-list* i))
+          (cost (-> cheat skill))
+          (unlock-func (the (function symbol) (-> cheat unlock-func value))))
+
+        (when (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+                  (task-node-closed? (-> cheat avail-after-hero))
+                  (task-node-closed? (-> cheat avail-after)))
+            (logior! (-> obj cheats-revealed) (-> cheat flag))
+
+            (when (>= (-> *game-info* skill-total) cost)
+                (logior! (-> obj cheats-purchased) (-> cheat flag))
+
+                (when (or (zero? unlock-func)
+                          (not unlock-func)
+                          (unlock-func))
+                    (logior! (-> obj cheats-unlocked) (-> cheat flag)))))
+
+        (case (-> cheat can-toggle)
+          ((#f)
+            (when (logtest? (-> obj cheats-unlocked) (-> cheat flag))
+              (logior! (-> obj cheats) (-> cheat flag)))
+            )
+          )))
+
+  ;; when speedrunning...the cheats are manually modified to facilitate the chosen category
+  ;; don't persist these and don't spam the pc-settings saving routine every frame.
+  (when (and (not (-> *pc-settings* speedrunner-mode?))
+             (or (!= old (-> *pc-settings* cheats))
+                 (!= old-unlocked (-> *pc-settings* cheats-unlocked))
+                 (!= old-purchased (-> *pc-settings* cheats-purchased))
+                 (!= old-revealed (-> *pc-settings* cheats-revealed))))
+    ;; save pc-settings if we made new progress
+    (pc-settings-save)))
+
+  0)
+
+
+(defmethod update-music-log ((obj pc-settings-jak3))
+  "update the music log"
+
+  (dotimes (i (-> *music-player-tracks* length))
+    (when (or (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+              (task-node-closed? (-> *music-player-tracks* i avail-after)))
+      (set-bit (-> obj music-unlocked) i)
+      )
+    )
+
+  (true! (-> obj flava-unlocked 0)) ;; default always unlocked
+
+  0)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; file I/O
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun bit-array<-int64 ((arr bit-array) (start-offset int) (val int))
+  "starting from start-offset at arr, fill the next 64 bits of the array from an int64"
+  (let ((i start-offset)
+        (end-offset (min (+ start-offset 64) (-> arr length))))
+    (while (< i end-offset)
+      (if (nonzero? (logand val (ash 1 (- i start-offset))))
+          (set-bit arr i))
+      (1+! i)
+      )
+    val)
+  )
+
+(defun int64<-bit-array ((arr bit-array) (start-offset int))
+  "starting from start-offset at arr, pack the next 64 bits into a single value and return it"
+  (let ((val 0)
+        (i start-offset)
+        (end-offset (min (+ start-offset 64) (-> arr length))))
+    (while (< i end-offset)
+      (if (get-bit arr i)
+          (logior! val (ash 1 (- i start-offset))))
+      (1+! i)
+      )
+    val)
+  )
+
+(defmethod handle-input-settings ((obj pc-settings-jak3) (file file-stream))
+  "handle the text parsing input for the 'settings' group"
+
+  ((method-of-type pc-settings handle-input-settings) obj file)
+  (case-str *pc-temp-string*
+    (("fast-airlock?") (set! (-> obj fast-airlock?) (file-stream-read-symbol file)))
+    (("fast-elevator?") (set! (-> obj fast-elevator?) (file-stream-read-symbol file)))
+    (("fast-progress?") (set! (-> obj fast-progress?) (file-stream-read-symbol file)))
+    (("fix-projectile-focus") (set! (-> obj fix-projectile-focus) (file-stream-read-symbol file)))
+    (("smooth-minimap?") (set! (-> obj smooth-minimap?) (file-stream-read-symbol file)))
+    (("minimap-force-north") (set! (-> obj minimap-force-north) (file-stream-read-symbol file)))
+    (("hires-clouds?") (set! (-> obj hires-clouds?) (file-stream-read-symbol file)))
+    (("controller-led-status?") (set! (-> obj controller-led-status?) (file-stream-read-symbol file)))
+    (("speedrunner-mode-custom-bind") (set! (-> obj speedrunner-mode-custom-bind) (file-stream-read-int file)))
+    (("cheats") (set! (-> obj cheats) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-revealed") (set! (-> obj cheats-revealed) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-backup") (file-stream-read-int file)) ;; TODO - Don't remove this, parsing code can't handle unexpected keys
+    (("memcard-subtitles?") (set! (-> obj memcard-subtitles?) (file-stream-read-symbol file)))
+    (("music-unlocked")
+      (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
+        (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
+        )
+      )
+    (("flava-unlocked")
+      (dotimes (i 6)
+        (set! (-> obj flava-unlocked i) (file-stream-read-symbol file))
+        )
+      )
+    ;; (("stats")
+    ;;   (dosettings (file)
+    ;;     (case-str *pc-temp-string*
+    ;;       (("kill-stats")
+    ;;         (initialize (-> obj stats kill-stats))
+    ;;         (dosettings (file)
+    ;;           (let ((enemy-stats (alloc-slot (-> obj stats kill-stats) (string->symbol *pc-temp-string*))))
+    ;;             (dosettings (file)
+    ;;               (let ((source (string->kill-source *pc-temp-string*))
+    ;;                     (amount (file-stream-read-int file)))
+    ;;                 (when (!= source (kill-stats-source unknown))
+    ;;                   (set! (-> enemy-stats sources source) amount)
+    ;;                   )
+    ;;                 )
+    ;;               )
+    ;;             )
+    ;;           )
+    ;;         )
+    ;;       )
+    ;;     )
+    ;;   )
+    )
+  0)
+
+(defmethod handle-output-settings ((obj pc-settings-jak3) (file file-stream))
+  "handle the text writing output for the 'settings' group"
+
+  ((method-of-type pc-settings handle-output-settings) obj file)
+  (format file "  (fast-airlock? ~A)~%" (-> obj fast-airlock?))
+  (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
+  (format file "  (fast-progress? ~A)~%" (-> obj fast-progress?))
+  (format file "  (fix-projectile-focus ~A)~%" (-> obj fix-projectile-focus))
+  (format file "  (smooth-minimap? ~A)~%" (-> obj smooth-minimap?))
+  (format file "  (minimap-force-north ~A)~%" (-> obj minimap-force-north))
+  (format file "  (hires-clouds? ~A)~%" (-> obj hires-clouds?))
+  (format file "  (controller-led-status? ~A)~%" (-> obj controller-led-status?))
+  (format file "  (speedrunner-mode-custom-bind ~D)~%" (-> obj speedrunner-mode-custom-bind))
+  (format file "  (cheats #x~x)~%" (-> obj cheats))
+  (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
+  (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
+  (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
+  (format file "  (memcard-subtitles? ~A)~%" (-> obj memcard-subtitles?))
+
+  (format file "  (music-unlocked")
+  (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
+    (format file " #x~x" (int64<-bit-array (-> obj music-unlocked) (* i 64)))
+    )
+  (format file ")~%")
+
+  ;; (format file "  (stats~%")
+  ;; (format file "    (kill-stats~%")
+  ;; (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+  ;; (when (-> obj stats kill-stats enemies i name)
+  ;;   (format file "      (~A~%" (-> obj stats kill-stats enemies i name))
+  ;;   (dotimes (ii KILL_STATS_MAX_SOURCE)
+  ;;     (when (nonzero? (-> obj stats kill-stats enemies i sources ii))
+  ;;       (format file "        (~A ~D)~%" (string->symbol (kill-source->string (the kill-stats-source ii))) (-> obj stats kill-stats enemies i sources ii))
+  ;;       ))
+  ;;   (format file "        )~%")
+  ;;   ))
+  ;; (format file "      )~%")
+  ;; (format file "    )~%")
+  0)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; PC settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define-once *pc-settings* (new 'global 'pc-settings-jak3))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defun draw-build-revision ()
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
+                               (bucket-id debug-no-zbuf2))
+    ;; reset bucket settings prior to drawing - font won't do this for us, and
+    ;; draw-raw-image can sometimes mess them up.
+    (dma-buffer-add-gs-set-flusha buf
+                                  (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                                  (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+    (clear *pc-encoded-temp-string*)
+    (clear *temp-string*)
+    (format *temp-string* "<COLOR_WHITE>~S" *pc-settings-built-sha*)
+    (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 2 406 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.25)
+        (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
+
+
+
+(defun print-level-types ((lev level))
+  "print the level-type linked list for a level"
+  (format #t "print-level-types for ~A~%" (-> lev nickname))
+  (let ((cur-type (-> lev level-type)))
+    (while (and cur-type (nonzero? cur-type) (= type (-> cur-type type)))
+      (format #t "~A~%" cur-type)
+      (set! cur-type (the type (-> cur-type method-table 8))))
+    (format #t "~%"))
+  )
+
+
+(defun-debug pc-cheat->string ((cheat pc-cheats))
+  (doenum (name val pc-cheats)
+    (if (= cheat val)
+        (return name))
+    )
+  "*unknown*")
+
+(defun-debug print-cheat-status (out)
+  (dotimes (i (-> *pc-cheats-list* length))
+  (let ((flag (-> *pc-cheats-list* i flag)))
+    (cond
+      ((logtest? (-> *pc-settings* cheats) flag)            (format out "  ~20S(#x~6x): enabled~%" (pc-cheat->string flag) flag))
+      ((logtest? (-> *pc-settings* cheats-unlocked) flag)   (format out "  ~20S(#x~6x): unlocked~%" (pc-cheat->string flag) flag))
+      ((logtest? (-> *pc-settings* cheats-purchased) flag)  (format out "  ~20S(#x~6x): purchased~%" (pc-cheat->string flag) flag))
+      ((logtest? (-> *pc-settings* cheats-revealed) flag)   (format out "  ~20S(#x~6x): revealed~%" (pc-cheat->string flag) flag))
+      (else                                                 (format out "  ~20S(#x~6x): locked~%" (pc-cheat->string flag) flag))
+      )
+    ))
+  out)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; process pools
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; the actor pool for PC processes! it has space for 4 processes, with 16K of space.
+(define *pc-dead-pool* (new 'global 'dead-pool 4 (* 128 1024) "*pc-dead-pool*"))
+(set! (-> *pc-pool* clock) (-> *display* base-clock))
+(+! (-> *display* base-clock ref-count) 1)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; progress adjustments
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defconstant CENTER_X (/ 512 2))
+
+(defun adjust-game-x-centered ((origin int) (x float))
+  "given an x position ranging from [0, 512) adjust for aspect ratio towards the origin point specified
+   such that it does not get stretched away with the framebuffer"
+  (+ origin (* (- x origin) (-> *pc-settings* aspect-ratio-reciprocal))))
+
+(defmacro adjust-game-x (x)
+  `(adjust-game-x-centered CENTER_X ,x))
+
+(defmacro adjust-game-x-int (x-float)
+  `(the int (adjust-game-x-centered CENTER_X (the float ,x-float))))

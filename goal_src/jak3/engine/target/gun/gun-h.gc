@@ -5,5 +5,292 @@
 ;; name in dgo: gun-h
 ;; dgos: GAME
 
+;; +++gun-track-flags
+(defenum gun-track-flags
+  :bitfield #t
+  :type uint16
+  (gutflags-0)
+  (gutflags-1)
+  (gutflags-2)
+  (gutflags-3)
+  (gutflags-4)
+  )
+;; ---gun-track-flags
+
+
 ;; DECOMP BEGINS
 
+(deftype gun (process-drawable)
+  ((self           gun              :override)
+   (parent         (pointer target) :override)
+   (control        control-info      :overlay-at root)
+   (shadow-backup  shadow-geo        :offset 208)
+   (read-scale     symbol)
+   (gun-type       pickup-type)
+   (barrel         joint-mod         2)
+   (mag            joint-mod         4)
+   (mag-scale      float             4)
+   (extra          handle)
+   )
+  (:state-methods
+    idle
+    (use symbol)
+    hidden
+    die
+    )
+  )
+
+
+(deftype gun-info (basic)
+  ((process                 (pointer target))
+   (gun                     (pointer gun))
+   (gun-pos                 transformq     :inline)
+   (gun-trans               vector         :inline :overlay-at (-> gun-pos trans))
+   (gun-quat                quaternion     :inline :overlay-at (-> gun-pos rot data 0))
+   (gun-scale               vector         :inline :overlay-at (-> gun-pos scale))
+   (gun-type                pickup-type)
+   (using-gun-type          pickup-type)
+   (active?                 symbol)
+   (latch?                  symbol)
+   (put-away?               symbol)
+   (surpress-time           time-frame)
+   (fire-time               time-frame)
+   (gun-delay-fire          float)
+   (gun-time                time-frame)
+   (gun-get-on-time         time-frame)
+   (active-time             time-frame)
+   (fire-delay              uint32)
+   (gun-control             uint32)
+   (gun-target              (pointer process-focusable))
+   (gun-daxter              float)
+   (gun-select-time         time-frame     4)
+   (gun-roty-rel            degrees)
+   (gun-roty                degrees)
+   (gun-roty-targ           degrees)
+   (hips                    joint-mod)
+   (upper-body              joint-mod)
+   (chest                   joint-mod)
+   (strip                   prim-strip)
+   (uv-slide                float)
+   (fire-dir-rot            degrees)
+   (fire-dir                vector         :inline)
+   (unk-vec                 vector         :inline)
+   (fire-point              vector         :inline :offset 256)
+   (fire-dir-backup         vector         :inline)
+   (fire-dir-out            vector         :inline)
+   (fire-pending            int32)
+   (fire-pending-time       time-frame)
+   (fire-start-time         time-frame)
+   (fire-charge             float)
+   (fire-spin               degrees)
+   (fire-spinv              degrees)
+   (fire-chamber            int32)
+   (fire-range              meters)
+   (laser-active?           symbol)
+   (laser-point             vector         :inline)
+   (laser-dir               vector         :inline)
+   (unk-vec00               vector         :inline)
+   (laser-hit-point         vector         :inline :offset 400)
+   (track?                  gun-track-flags)
+   (track-tilt              degrees)
+   (track-turn              degrees)
+   (track-find-range        meters)
+   (track-turnv-range       meters)
+   (track-tilt-range        meters)
+   (track-turn-range        meters)
+   (track-tilt-max          degrees)
+   (track-turn-max          degrees)
+   (track-angle-mult        float)
+   (track-beam-size         float)
+   (track-auto-fire         symbol)
+   (track-require           uint32)
+   (track-target-hold-time  time-frame)
+   (track-start-time        time-frame)
+   (track-press-start-time  time-frame)
+   (track-target            focus          2 :inline)
+   (track-trans             vector         :inline)
+   (track-dir               vector         :inline)
+   (turn-fast-hold-time     time-frame)
+   (blue-whine-sound-id     sound-id)
+   (blue-whine-volume       float)
+   (mode-sound-bank         connection)
+   (top-anim-twist          vector         :inline)
+   (top-anim-twist-targ     vector         :inline)
+   (top-anim-look-at        vector         :inline)
+   (top-anim-twist-reset    uint64)
+   (top-anim-gun-height     meters)
+   (top-anim-blue-cycle     float)
+   (top-anim-low-high       float)
+   (top-anim-extra-twistv   degrees)
+   (top-anim-tilt-up        degrees)
+   (attack-combo            combo-tracker  :inline)
+   (combo-window-start      time-frame)
+   (combo-window-state      symbol)
+   (combo-fire-delay        uint32)
+   (charge-ammo             float)
+   (charge-start-time       time-frame)
+   (charge-inc-time         time-frame)
+   (charge-active?          handle)
+   (part                    sparticle-launch-control)
+   (ammo-required           float)
+   )
+  (:methods
+    (gun-info-method-9 (_type_) vector)
+    )
+  )
+
+
+(defun using-gun? ((arg0 target))
+  (nonzero? (-> arg0 gun gun-type))
+  )
+
+(defun enabled-gun? ((arg0 target))
+  (nonzero? (-> arg0 gun using-gun-type))
+  )
+
+;; WARN: Return type mismatch int vs pickup-type.
+(defun gun->ammo ((arg0 pickup-type))
+  (let ((v1-0 arg0))
+    (the-as pickup-type (cond
+                          ((or (= v1-0 (pickup-type eco-yellow))
+                               (= v1-0 (pickup-type gun-yellow-1))
+                               (= v1-0 (pickup-type gun-yellow-2))
+                               (= v1-0 (pickup-type gun-yellow-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-yellow))
+                           )
+                          ((or (= v1-0 (pickup-type eco-red))
+                               (= v1-0 (pickup-type gun-red-1))
+                               (= v1-0 (pickup-type gun-red-2))
+                               (= v1-0 (pickup-type gun-red-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-red))
+                           )
+                          ((or (= v1-0 (pickup-type eco-blue))
+                               (= v1-0 (pickup-type gun-blue-1))
+                               (= v1-0 (pickup-type gun-blue-2))
+                               (= v1-0 (pickup-type gun-blue-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-blue))
+                           )
+                          ((or (= v1-0 (pickup-type eco-dark))
+                               (= v1-0 (pickup-type gun-dark-1))
+                               (= v1-0 (pickup-type gun-dark-2))
+                               (= v1-0 (pickup-type gun-dark-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-dark))
+                           )
+                          (else
+                            (the-as pickup-type (pickup-type none))
+                            )
+                          )
+            )
+    )
+  )
+
+;; WARN: Return type mismatch int vs pickup-type.
+(defun gun->eco ((arg0 pickup-type))
+  (let ((v1-0 arg0))
+    (the-as pickup-type (cond
+                          ((or (= v1-0 (pickup-type eco-yellow))
+                               (= v1-0 (pickup-type gun-yellow-1))
+                               (= v1-0 (pickup-type gun-yellow-2))
+                               (= v1-0 (pickup-type gun-yellow-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-yellow))
+                           )
+                          ((or (= v1-0 (pickup-type eco-red))
+                               (= v1-0 (pickup-type gun-red-1))
+                               (= v1-0 (pickup-type gun-red-2))
+                               (= v1-0 (pickup-type gun-red-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-red))
+                           )
+                          ((or (= v1-0 (pickup-type eco-blue))
+                               (= v1-0 (pickup-type gun-blue-1))
+                               (= v1-0 (pickup-type gun-blue-2))
+                               (= v1-0 (pickup-type gun-blue-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-blue))
+                           )
+                          ((or (= v1-0 (pickup-type eco-dark))
+                               (= v1-0 (pickup-type gun-dark-1))
+                               (= v1-0 (pickup-type gun-dark-2))
+                               (= v1-0 (pickup-type gun-dark-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-dark))
+                           )
+                          (else
+                            (the-as pickup-type (pickup-type none))
+                            )
+                          )
+            )
+    )
+  )
+
+(defmethod get-gun-ammo ((this fact-info-target))
+  (let ((v1-2 (gun->ammo (-> this process gun gun-type))))
+    (if (= v1-2 (pickup-type none))
+        0.0
+        (-> this process game gun-ammo (+ v1-2 -15))
+        )
+    )
+  )
+
+(deftype beam-info (structure)
+  ((y-scale  float)
+   )
+  )
+
+
+(defskelgroup skel-gun gun gun-lod0-jg -1
+              ((gun-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              :shadow gun-shadow-mg
+              :sort 1
+              :origin-joint-index 3
+              )
+
+(define *gun-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :center (new 'static 'vector :w (the-as float #xa))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 81920.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w 2048.0)
+                                           )
+                               )
+  )
+
+(defskelgroup skel-ammo-yellow gun gun-ammo-yellow-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-yellow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 10
+              :sort 1
+              )
+
+(defskelgroup skel-ammo-red gun gun-ammo-red-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-red-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 10
+              :sort 1
+              )
+
+(defskelgroup skel-ammo-blue gun gun-ammo-blue-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-blue-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 10
+              :sort 1
+              )
+
+(defskelgroup skel-ammo-dark gun gun-ammo-dark-lod0-jg gun-ammo-idle-ja
+              ((gun-ammo-dark-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 10
+              :sort 1
+              )
+
+(defskelgroup skel-gun-red-cone gun gun-red-cone-lod0-jg gun-red-cone-idle-ja
+              ((gun-red-cone-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 10
+              )

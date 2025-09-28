@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: draw-node.gc
-;; name in dgo: draw-node
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/level/bsp.gc")
+(require "engine/draw/draw-node-h.gc")
 
 ;; DECOMP BEGINS
 
@@ -21,52 +20,38 @@
 
 (defmethod collide-with-box ((this draw-node) (arg0 int) (arg1 collide-list))
   "Find collisions with the box in the current collision query, add results to collide-list."
-  
   ;; loop over ourself and our brothers
   (dotimes (s3-0 arg0)
     (if (collide-cache-using-box-test (-> this bsphere)) ;; do we collide with the bounding sphere?
-        ;; if so, do the collision check with the geometry.
-        (collide-with-box (-> this child) (the-as int (-> this child-count)) arg1)
-        )
-    (&+! this 32)
-    )
+      ;; if so, do the collision check with the geometry.
+      (collide-with-box (-> this child) (the-as int (-> this child-count)) arg1))
+    (&+! this 32))
   0
-  (none)
-  )
+  (none))
 
 (defmethod collide-y-probe ((this draw-node) (arg0 int) (arg1 collide-list))
   (dotimes (s3-0 arg0)
     (if (collide-cache-using-y-probe-test (-> this bsphere))
-        (collide-y-probe (-> this child) (the-as int (-> this child-count)) arg1)
-        )
-    (&+! this 32)
-    )
+      (collide-y-probe (-> this child) (the-as int (-> this child-count)) arg1))
+    (&+! this 32))
   0
-  (none)
-  )
+  (none))
 
 (defmethod collide-ray ((this draw-node) (arg0 int) (arg1 collide-list))
   (dotimes (s3-0 arg0)
     (if (collide-cache-using-line-sphere-test (-> this bsphere))
-        (collide-ray (-> this child) (the-as int (-> this child-count)) arg1)
-        )
-    (&+! this 32)
-    )
+      (collide-ray (-> this child) (the-as int (-> this child-count)) arg1))
+    (&+! this 32))
   0
-  (none)
-  )
+  (none))
 
 (defmethod collect-ambients ((this draw-node) (arg0 sphere) (arg1 int) (arg2 ambient-list))
   (dotimes (s2-0 arg1)
     (if (spheres-overlap? arg0 (the-as sphere (-> this bsphere)))
-        (collect-ambients (-> this child) arg0 (the-as int (-> this child-count)) arg2)
-        )
-    (&+! this 32)
-    )
+      (collect-ambients (-> this child) arg0 (the-as int (-> this child-count)) arg2))
+    (&+! this 32))
   0
-  (none)
-  )
-
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Drawable Inline Array Node
@@ -75,58 +60,46 @@
 ;; This class is a convenient wrapper around an inline-array of draw-nodes.
 ;; It lets you treat this array like a normal drawable (at least for collisions).
 
-(defmethod inspect drawable-inline-array-node ((this drawable-inline-array-node))
+(defmethod inspect ((this drawable-inline-array-node))
   "Custom inspect for drawable-inline-array-node to print our nodes."
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
-    )
-  this
-  )
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  this)
 
 (defmethod mem-usage ((this drawable-inline-array-node) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a drawable-inline-array-node. Only counts the nodes, doesn't count the node children."
   (set! (-> arg0 length) (max 62 (-> arg0 length)))
   (set! (-> arg0 data 61 name) "draw-node")
   (+! (-> arg0 data 61 count) (-> this length))
-  (let ((v1-6 (asize-of this)))
-    (+! (-> arg0 data 61 used) v1-6)
-    (+! (-> arg0 data 61 total) (logand -16 (+ v1-6 15)))
-    )
-  this
-  )
+  (let ((v1-6 (asize-of this))) (+! (-> arg0 data 61 used) v1-6) (+! (-> arg0 data 61 total) (logand -16 (+ v1-6 15))))
+  this)
 
 (defmethod asize-of ((this drawable-inline-array-node))
-  (the-as int (+ (-> drawable-inline-array-node size) (* (+ (-> this length) -1) 32)))
-  )
+  (the-as int (+ (-> drawable-inline-array-node size) (* (+ (-> this length) -1) 32))))
 
 (defmethod collide-with-box ((this drawable-inline-array-node) (arg0 int) (arg1 collide-list))
   ;; call on the first in the array, then it will loop through all the brothers.
   (collide-with-box (the-as drawable (-> this data)) (-> this length) arg1)
   0
-  (none)
-  )
+  (none))
 
 (defmethod collide-y-probe ((this drawable-inline-array-node) (arg0 int) (arg1 collide-list))
   (collide-y-probe (the-as drawable (-> this data)) (-> this length) arg1)
   0
-  (none)
-  )
+  (none))
 
 (defmethod collide-ray ((this drawable-inline-array-node) (arg0 int) (arg1 collide-list))
   (collide-ray (the-as drawable (-> this data)) (-> this length) arg1)
   0
-  (none)
-  )
+  (none))
 
 (defmethod collect-ambients ((this drawable-inline-array-node) (arg0 sphere) (arg1 int) (arg2 ambient-list))
   (collect-ambients (the-as drawable (-> this data)) arg0 (-> this length) arg2)
   0
-  (none)
-  )
-
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DRAW NODE CULL

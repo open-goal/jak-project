@@ -1,96 +1,90 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: generic-effect.gc
-;; name in dgo: generic-effect
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/lights-h.gc")
+(require "engine/gfx/generic/generic-vu0.gc")
+(require "engine/gfx/texture/texture.gc")
+(require "engine/gfx/background/subdivide-h.gc")
+(require "engine/gfx/generic/generic-h.gc")
 (define-extern *generic-envmap-texture* texture)
 
 (define *target-lock* (the-as symbol 0))
 
 (define *generic-consts*
-  (new 'static 'generic-consts
-    :dma-header
-    (new 'static 'dma-packet
-      :dma
-      (new 'static 'dma-tag :id (dma-tag-id cnt))
-      :vif0
-      (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
-      :vif1
-      (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32))
-      )
-    :vif-header
-    (new 'static 'array uint32 4 #x1000404 #x1000404 #x1000404 #x6c000000)
-    :dma-ref-vtxs
-    (new 'static 'dma-packet :dma (new 'static 'dma-tag :id (dma-tag-id ref)))
-    :dma-cnt-call
-    (new 'static 'dma-packet :dma (new 'static 'dma-tag :id (dma-tag-id cnt)))
-    :matrix
-    (new 'static 'matrix
-      :vector
-      (new 'static 'inline-array vector 4
-        (new 'static 'vector :x 1.0)
-        (new 'static 'vector :y 1.0)
-        (new 'static 'vector :z 1.0)
-        (new 'static 'vector :w 1.0)
-        )
-      )
-    :base-strgif
-    (new 'static 'generic-gif-tag :data (new 'static 'array uint32 4 #x303ec000 #x303e4000 #x412 #x0))
-    :alpha-opaque
-    (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x0 #x0 #x42 #x0))
-    :alpha-translucent
-    (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x44 #x0 #x42 #x0))
-    :ztest-normal
-    (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x5026b #x0 #x47 #x0))
-    :ztest-opaque
-    (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x5000a #x0 #x47 #x0))
-    :adcmd-offsets
-    (new 'static 'array uint8 16 #x0 #x20 #x10 #x20 #x0 #x30 #x20 #x20 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)
-    :stcycle-tag #x1000103
-    :unpack-vtx-tag #x68000000
-    :unpack-clr-tag #x6e004000
-    :unpack-tex-tag #x65000000
-    :mscal-tag #x14000006
-    :reset-cycle-tag #x1000404
-    :dma-tag-cnt #x10000000
-    :envmap
-    (new 'static 'generic-envmap-consts
-      :consts
-      (new 'static 'vector :x 1.0 :z 0.5 :w 0.5)
-      :strgif
-      (new 'static 'generic-gif-tag :data (new 'static 'array uint32 4 #x302ec000 #x302e4000 #x412 #x0))
-      :colors
-      (new 'static 'vector4w :x -2139062144 :y -2139062144 :z -2139062144 :w -2139062144)
-      )
-    :light-consts
-    (new 'static 'vector :x 255.0 :y 8388608.0)
-    )
-  )
+  (new 'static
+       'generic-consts
+       :dma-header
+       (new 'static
+            'dma-packet
+            :dma
+            (new 'static 'dma-tag :id (dma-tag-id cnt))
+            :vif0
+            (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl))
+            :vif1
+            (new 'static 'vif-tag :cmd (vif-cmd unpack-v4-32)))
+       :vif-header
+       (new 'static 'array uint32 4 #x1000404 #x1000404 #x1000404 #x6c000000)
+       :dma-ref-vtxs
+       (new 'static 'dma-packet :dma (new 'static 'dma-tag :id (dma-tag-id ref)))
+       :dma-cnt-call
+       (new 'static 'dma-packet :dma (new 'static 'dma-tag :id (dma-tag-id cnt)))
+       :matrix
+       (new 'static
+            'matrix
+            :vector
+            (new 'static
+                 'inline-array
+                 vector
+                 4
+                 (new 'static 'vector :x 1.0)
+                 (new 'static 'vector :y 1.0)
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :w 1.0)))
+       :base-strgif
+       (new 'static 'generic-gif-tag :data (new 'static 'array uint32 4 #x303ec000 #x303e4000 #x412 #x0))
+       :alpha-opaque
+       (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x0 #x0 #x42 #x0))
+       :alpha-translucent
+       (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x44 #x0 #x42 #x0))
+       :ztest-normal
+       (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x5026b #x0 #x47 #x0))
+       :ztest-opaque
+       (new 'static 'ad-cmd :word (new 'static 'array uint32 4 #x5000a #x0 #x47 #x0))
+       :adcmd-offsets
+       (new 'static 'array uint8 16 #x0 #x20 #x10 #x20 #x0 #x30 #x20 #x20 #x0 #x0 #x0 #x0 #x0 #x0 #x0 #x0)
+       :stcycle-tag #x1000103
+       :unpack-vtx-tag #x68000000
+       :unpack-clr-tag #x6e004000
+       :unpack-tex-tag #x65000000
+       :mscal-tag #x14000006
+       :reset-cycle-tag #x1000404
+       :dma-tag-cnt #x10000000
+       :envmap
+       (new 'static
+            'generic-envmap-consts
+            :consts
+            (new 'static 'vector :x 1.0 :z 0.5 :w 0.5)
+            :strgif
+            (new 'static 'generic-gif-tag :data (new 'static 'array uint32 4 #x302ec000 #x302e4000 #x412 #x0))
+            :colors
+            (new 'static 'vector4w :x -2139062144 :y -2139062144 :z -2139062144 :w -2139062144))
+       :light-consts
+       (new 'static 'vector :x 255.0 :y 8388608.0)))
 
 (defun generic-work-init ((arg0 generic-dma-foreground-sink))
   "Initialize generic-work."
   ;; copy to scratchpad copy of the work
-  (quad-copy! (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts)) 
-              (the-as pointer *generic-consts*) 
+  (quad-copy! (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts))
+              (the-as pointer *generic-consts*)
               27)
   ;; set buffer addresses
-  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr)
-        (-> arg0 state gifbuf-adr)
-        )
-  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr)
-        (-> arg0 state inbuf-adr)
-        )
+  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr) (-> arg0 state gifbuf-adr))
+  (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr) (-> arg0 state inbuf-adr))
   (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves cur-outbuf)
-        (the-as uint (+ 8192 (scratchpad-object int)))
-        )
-
+        (the-as uint (+ 8192 (scratchpad-object int))))
   ;; initialize the environment map "shader". This isn't a real shader, but just texturing settings.
   (let ((gp-1 (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts envmap shader)))
-    (let ((a1-1 *generic-envmap-texture*))
-      (adgif-shader<-texture! gp-1 a1-1)
-      )
+    (let ((a1-1 *generic-envmap-texture*)) (adgif-shader<-texture! gp-1 a1-1))
     (set! (-> gp-1 tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
     (set! (-> gp-1 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
     (set! (-> gp-1 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
@@ -98,22 +92,18 @@
     (set! (-> gp-1 prims 3) (gs-reg64 tex1-1))
     (set! (-> gp-1 prims 5) (gs-reg64 miptbp1-1))
     (set! (-> gp-1 clamp-reg) (gs-reg64 clamp-1))
-    (set! (-> gp-1 prims 9) (gs-reg64 alpha-1))
-    )
-  (none)
-  )
+    (set! (-> gp-1 prims 9) (gs-reg64 alpha-1)))
+  (none))
 
 (defun upload-vu0-program ((func vu-function) (wait-ptr pointer))
   "Upload and block until done.
    Generating the DMA is highly optimized."
-  (none)
-  )
+  (none))
 
 (defun generic-upload-vu0 ()
   "Start upload, but don't sync yet.
    Generating the DMA chain is not as optimized."
-  (none)
-  )
+  (none))
 
 (defun generic-initialize-without-sink ((arg0 matrix) (arg1 vu-lights))
   "Prepare for Generic.
@@ -125,8 +115,7 @@
         (v1-1 (-> arg0 vector 0 quad))
         (a0-3 (-> arg0 vector 1 quad))
         (a1-2 (-> arg0 vector 2 quad))
-        (a3-0 (-> arg0 vector 3 quad))
-        )
+        (a3-0 (-> arg0 vector 3 quad)))
     ;;(set! (-> (the-as (pointer uint128) a2-0)) v1-1)
     (set! (-> a2-0 vector 0 quad) v1-1)
     ;;(s.q! (+ a2-0 16) a0-3)
@@ -134,16 +123,14 @@
     ;; (s.q! (+ a2-0 32) a1-2)
     (set! (-> a2-0 vector 2 quad) a1-2)
     ;;(s.q! (+ a2-0 48) a3-0)
-    (set! (-> a2-0 vector 3 quad) a3-0)
-    )
-  
+    (set! (-> a2-0 vector 3 quad) a3-0))
   (if arg1
-      ;;(quad-copy! (the-as pointer (+ #x3190 #x70000000)) (the-as pointer arg1) 7)
-      (quad-copy! (the pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work lights)) (the-as pointer arg1) 7)
-      )
+    ;;(quad-copy! (the-as pointer (+ #x3190 #x70000000)) (the-as pointer arg1) 7)
+    (quad-copy! (the pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work lights))
+                (the-as pointer arg1)
+                7))
   0
-  (none)
-  )
+  (none))
 
 (defun generic-initialize ((arg0 generic-dma-foreground-sink) (arg1 matrix) (arg2 vu-lights))
   (generic-work-init arg0)
@@ -153,27 +140,27 @@
         (v1-1 (-> arg1 vector 0 quad))
         (a0-2 (-> arg1 vector 1 quad))
         (a1-1 (-> arg1 vector 2 quad))
-        (a3-0 (-> arg1 vector 3 quad))
-        )
+        (a3-0 (-> arg1 vector 3 quad)))
     (set! (-> a2-1 vector 0 quad) v1-1)
     (set! (-> a2-1 vector 1 quad) a0-2)
     (set! (-> a2-1 vector 2 quad) a1-1)
-    (set! (-> a2-1 vector 3 quad) a3-0)
-    )
+    (set! (-> a2-1 vector 3 quad) a3-0))
   (if arg2
-      (quad-copy! (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work lights)) (the-as pointer arg2) 7)
-      )
+    (quad-copy! (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work lights))
+                (the-as pointer arg2)
+                7))
   0
-  (none)
-  )
+  (none))
 
 (defun generic-wrapup ((arg0 generic-dma-foreground-sink))
   (set! (-> arg0 state gifbuf-adr) (-> (scratchpad-object terrain-context) work foreground generic-work saves gifbuf-adr))
   (set! (-> arg0 state inbuf-adr) (-> (scratchpad-object terrain-context) work foreground generic-work saves inbuf-adr))
-  (none)
-  )
+  (none))
 
 (def-mips2c generic-prepare-dma-single function)
+
 (def-mips2c generic-prepare-dma-double function)
+
 (def-mips2c generic-light-proc function)
+
 (def-mips2c generic-envmap-proc function)

@@ -1,22 +1,19 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: geologist.gc
-;; name in dgo: geologist
-;; dgos: L1, VI2
+(bundles "VI2.DGO")
+(require "engine/common-obs/process-taskable.gc")
 
 ;; DECOMP BEGINS
 
-(deftype geologist (process-taskable)
-  ()
-  )
+(deftype geologist (process-taskable) ())
 
-
-(defskelgroup *geologist-sg* geologist geologist-lod0-jg geologist-idle-ja
-              ((geologist-lod0-mg (meters 20)) (geologist-lod1-mg (meters 40)) (geologist-lod2-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              :shadow geologist-shadow-mg
-              )
+(defskelgroup *geologist-sg*
+  geologist
+  geologist-lod0-jg
+  geologist-idle-ja
+  ((geologist-lod0-mg (meters 20)) (geologist-lod1-mg (meters 40)) (geologist-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :shadow geologist-shadow-mg)
 
 (defmethod play-anim! ((this geologist) (arg0 symbol))
   (set! (-> this talk-message) (text-id press-to-talk))
@@ -24,136 +21,83 @@
     (((task-status need-hint) (task-status need-introduction))
      (when arg0
        (close-status! (-> this tasks) (task-status need-introduction))
-       (close-specific-task! (game-task village2-geologist-money) (task-status need-introduction))
-       )
-     (new 'static 'spool-anim
-       :name "geologist-introduction"
-       :index 6
-       :parts 13
-       :command-list '((0 want-levels village2 rolling)
-         (199 joint "cameraB")
-         (325 joint "camera")
-         (520 alive "racer-2")
-         (544 joint "cameraB")
-         (546 dead "racer-2")
-         (809 joint "camera")
-         (1031 joint "cameraB")
-         (1229 joint "camera")
-         )
-       )
-     )
+       (close-specific-task! (game-task village2-geologist-money) (task-status need-introduction)))
+     (new 'static
+          'spool-anim
+          :name "geologist-introduction"
+          :index 6
+          :parts 13
+          :command-list
+          '((0 want-levels village2 rolling)
+           (199 joint "cameraB")
+           (325 joint "camera")
+           (520 alive "racer-2")
+           (544 joint "cameraB")
+           (546 dead "racer-2")
+           (809 joint "camera")
+           (1031 joint "cameraB")
+           (1229 joint "camera"))))
     (((task-status need-reminder))
      (set! (-> this skippable) #t)
      (cond
        ((closed? (-> this tasks) (game-task rolling-moles) (task-status need-reward-speech))
-        (new 'static 'spool-anim :name "geologist-reminder-money" :index 8 :parts 2 :command-list '())
-        )
+        (new 'static 'spool-anim :name "geologist-reminder-money" :index 8 :parts 2 :command-list '()))
        ((closed? (-> this tasks) (game-task village2-geologist-money) (task-status need-reward-speech))
-        (new 'static 'spool-anim :name "geologist-reminder-moles" :index 7 :parts 3 :command-list '())
-        )
+        (new 'static 'spool-anim :name "geologist-reminder-moles" :index 7 :parts 3 :command-list '()))
        ((zero? (get-reminder (-> this tasks) 0))
-        (if arg0
-            (save-reminder (-> this tasks) 1 0)
-            )
-        (new 'static 'spool-anim :name "geologist-reminder-moles" :index 7 :parts 3 :command-list '())
-        )
+        (if arg0 (save-reminder (-> this tasks) 1 0))
+        (new 'static 'spool-anim :name "geologist-reminder-moles" :index 7 :parts 3 :command-list '()))
        (else
-         (if arg0
-             (save-reminder (-> this tasks) 0 0)
-             )
-         (new 'static 'spool-anim :name "geologist-reminder-money" :index 8 :parts 2 :command-list '())
-         )
-       )
-     )
+        (if arg0 (save-reminder (-> this tasks) 0 0))
+        (new 'static 'spool-anim :name "geologist-reminder-money" :index 8 :parts 2 :command-list '()))))
     (((task-status need-reward-speech))
-     (if (not arg0)
-         (set! (-> this will-talk) #t)
-         )
+     (if (not arg0) (set! (-> this will-talk) #t))
      (case (current-task (-> this tasks))
        (((game-task rolling-moles))
         (when arg0
           (set! (-> this cell-for-task) (current-task (-> this tasks)))
-          (close-current! (-> this tasks))
-          )
-        (new 'static 'spool-anim :name "geologist-resolution-moles" :index 9 :parts 3 :command-list '())
-        )
+          (close-current! (-> this tasks)))
+        (new 'static 'spool-anim :name "geologist-resolution-moles" :index 9 :parts 3 :command-list '()))
        (else
-         (cond
-           (arg0
-             (set! (-> this cell-for-task) (current-task (-> this tasks)))
-             (close-current! (-> this tasks))
-             (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
-             )
-           (else
-             (set! (-> this talk-message) (text-id press-to-trade-money))
-             )
-           )
-         (new 'static 'spool-anim :name "geologist-resolution-money" :index 10 :parts 2 :command-list '())
-         )
-       )
-     )
+        (cond
+          (arg0
+           (set! (-> this cell-for-task) (current-task (-> this tasks)))
+           (close-current! (-> this tasks))
+           (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc))))
+          (else (set! (-> this talk-message) (text-id press-to-trade-money))))
+        (new 'static 'spool-anim :name "geologist-resolution-money" :index 10 :parts 2 :command-list '()))))
     (else
-      (if arg0
-          (format
-            0
-            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> this name)
-            (task-status->string (current-status (-> this tasks)))
-            )
-          )
-      (-> this draw art-group data 5)
-      )
-    )
-  )
+     (if arg0
+       (format 0
+               "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+               (-> this name)
+               (task-status->string (current-status (-> this tasks)))))
+     (-> this draw art-group data 5))))
 
 (defmethod get-art-elem ((this geologist))
-  (-> this draw art-group data 5)
-  )
+  (-> this draw art-group data 5))
 
 (defmethod process-taskable-method-43 ((this geologist))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
-        ((< 0.8888889 f0-2)
-         (play-ambient (-> this ambient) "GEO-AM01" #f (-> this root trans))
-         )
+        ((< 0.8888889 f0-2) (play-ambient (-> this ambient) "GEO-AM01" #f (-> this root trans)))
         ((< 0.7777778 f0-2)
          (if (not (closed? (-> this tasks) (game-task rolling-moles) (task-status need-reminder)))
-             (play-ambient (-> this ambient) "GEO-AM02" #f (-> this root trans))
-             )
-         )
-        ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "GEO-AM03" #f (-> this root trans))
-         )
+           (play-ambient (-> this ambient) "GEO-AM02" #f (-> this root trans))))
+        ((< 0.6666667 f0-2) (play-ambient (-> this ambient) "GEO-AM03" #f (-> this root trans)))
         ((< 0.5555556 f0-2)
          (if (closed? (-> this tasks) (game-task village2-geologist-money) (task-status need-introduction))
-             (play-ambient (-> this ambient) "GEO-AM04" #f (-> this root trans))
-             )
-         )
-        ((< 0.44444445 f0-2)
-         (play-ambient (-> this ambient) "GEO-AM05" #f (-> this root trans))
-         )
-        ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "GEO-AM06" #f (-> this root trans))
-         )
+           (play-ambient (-> this ambient) "GEO-AM04" #f (-> this root trans))))
+        ((< 0.44444445 f0-2) (play-ambient (-> this ambient) "GEO-AM05" #f (-> this root trans)))
+        ((< 0.33333334 f0-2) (play-ambient (-> this ambient) "GEO-AM06" #f (-> this root trans)))
         ((< 0.22222222 f0-2)
          (if (not (closed? (-> this tasks) (game-task rolling-moles) (task-status need-reminder)))
-             (play-ambient (-> this ambient) "GEO-AM07" #f (-> this root trans))
-             )
-         )
-        ((< 0.11111111 f0-2)
-         (play-ambient (-> this ambient) "GEO-LO02" #f (-> this root trans))
-         )
+           (play-ambient (-> this ambient) "GEO-AM07" #f (-> this root trans))))
+        ((< 0.11111111 f0-2) (play-ambient (-> this ambient) "GEO-LO02" #f (-> this root trans)))
         ((closed? (-> this tasks) (game-task village2-geologist-money) (task-status need-resolution))
-         (play-ambient (-> this ambient) "GEO-AM08" #f (-> this root trans))
-         )
-        (else
-          (play-ambient (-> this ambient) "GEO-LO01" #f (-> this root trans))
-          )
-        )
-      )
-    )
-  )
+         (play-ambient (-> this ambient) "GEO-AM08" #f (-> this root trans)))
+        (else (play-ambient (-> this ambient) "GEO-LO01" #f (-> this root trans)))))))
 
 (defmethod init-from-entity! ((this geologist) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *geologist-sg* 3 45 (new 'static 'vector :w 4096.0) 5)
@@ -161,5 +105,4 @@
   (set! (-> this sound-flava) (music-flava geologist))
   (set! (-> this draw light-index) (the-as uint 2))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))

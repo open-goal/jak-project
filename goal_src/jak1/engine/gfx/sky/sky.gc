@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: sky.gc
-;; name in dgo: sky
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/lights-h.gc")
+(require "engine/gfx/sky/sky-utils.gc")
 
 ;; DECOMP BEGINS
 
@@ -14,31 +13,18 @@
          (f0-1 (- arg2 (-> s4-0 high-noon)))
          (f30-0 (* 2730.6667 f0-1))
          (f28-0 (* (sin f30-0) (-> s4-0 dist)))
-         (f30-1 (cos f30-0))
-         )
+         (f30-1 (cos f30-0)))
     (let* ((f24-0 (* f30-1 (-> s4-0 dist)))
            (f26-0 (* f24-0 (cos-rad (-> s4-0 tilt))))
            (f24-1 (* f24-0 (sin-rad (-> s4-0 tilt))))
            (f22-0 (sin-rad (-> s4-0 rise)))
-           (f0-10 (cos-rad (-> s4-0 rise)))
-           )
+           (f0-10 (cos-rad (-> s4-0 rise))))
       (set! (-> s3-0 pos z) (- (+ (* f28-0 f0-10) (* f24-1 f22-0))))
       (set! (-> s3-0 pos y) f26-0)
-      (set! (-> s3-0 pos x) (- (* f24-1 f0-10) (* f28-0 f22-0)))
-      )
-    (let ((f0-14 (if (< f30-1 0.0)
-                     0.0
-                     f30-1
-                     )
-                 )
-          )
-      (set! (-> arg0 upload-data sun arg1 r-aurora)
-            (+ (* (-> s4-0 min-halo) (- 1.0 f0-14)) (* (-> s4-0 max-halo) f0-14))
-            )
-      )
-    )
-  (none)
-  )
+      (set! (-> s3-0 pos x) (- (* f24-1 f0-10) (* f28-0 f22-0))))
+    (let ((f0-14 (if (< f30-1 0.0) 0.0 f30-1)))
+      (set! (-> arg0 upload-data sun arg1 r-aurora) (+ (* (-> s4-0 min-halo) (- 1.0 f0-14)) (* (-> s4-0 max-halo) f0-14)))))
+  (none))
 
 (defun sky-make-moon-data ((arg0 sky-parms) (arg1 float))
   "Make moon data for moon at arg1 time"
@@ -51,20 +37,11 @@
          (f28-1 (* f26-0 (cos-rad (-> s5-0 tilt))))
          (f26-1 (* f26-0 (sin-rad (-> s5-0 tilt))))
          (f24-0 (sin-rad (-> s5-0 rise)))
-         (f0-10 (cos-rad (-> s5-0 rise)))
-         )
+         (f0-10 (cos-rad (-> s5-0 rise))))
     (set! (-> gp-0 pos z) (- (+ (* f30-0 f0-10) (* f26-1 f24-0))))
     (set! (-> gp-0 pos y) f28-1)
-    (set! (-> gp-0 pos x) (- (* f26-1 f0-10) (* f30-0 f24-0)))
-    )
-  (none)
-  )
-
-
-
-
-
-
+    (set! (-> gp-0 pos x) (- (* f26-1 f0-10) (* f30-0 f24-0))))
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Old Sky Renderer
@@ -72,15 +49,10 @@
 
 (defun sky-make-light ((arg0 sky-parms) (arg1 light) (arg2 int) (arg3 rgba))
   (let* ((v1-2 (-> arg0 orbit arg2))
-         (a0-1 (if (= arg2 2)
-                   (-> arg0 upload-data moon)
-                   (-> arg0 upload-data sun arg2)
-                   )
-               )
+         (a0-1 (if (= arg2 2) (-> arg0 upload-data moon) (-> arg0 upload-data sun arg2)))
          (f0-0 0.003921569)
          (f1-1 (/ 1.0 (-> v1-2 dist)))
-         (v1-3 arg1)
-         )
+         (v1-3 arg1))
     (set! (-> v1-3 direction x) (* (-> (the-as sky-sun-data a0-1) pos x) f1-1))
     (set! (-> v1-3 direction y) (* (-> (the-as sky-sun-data a0-1) pos y) f1-1))
     (set! (-> v1-3 direction z) (* (-> (the-as sky-sun-data a0-1) pos z) f1-1))
@@ -88,30 +60,25 @@
     (set! (-> v1-3 color y) (* (the float (-> arg3 g)) f0-0))
     (set! (-> v1-3 color z) (* (the float (-> arg3 b)) f0-0))
     (set! (-> v1-3 color w) 1.0)
-    (set! (-> v1-3 levels x) 1.0)
-    )
-  (none)
-  )
-
+    (set! (-> v1-3 levels x) 1.0))
+  (none))
 
 (deftype sky-frame-data (structure)
-  ((data               uint128  18)
-   (world-homo-matrix  matrix   :inline :overlay-at (-> data 0))
-   (hmge-scale         vector   :inline :overlay-at (-> data 4))
-   (hvdf-offset        vector   :inline :overlay-at (-> data 5))
-   (consts             vector   :inline :overlay-at (-> data 6))
-   (pfog0              float            :overlay-at (-> data 6))
-   (radius             float            :overlay-at (-> consts y))
-   (nokick             float            :overlay-at (-> consts w))
-   (strip-giftag       qword    :inline :overlay-at (-> data 7))
-   (col-adgif          qword    :inline :overlay-at (-> data 8))
-   (save               uint128  5       :overlay-at (-> data 9))
-   (sun-fan-giftag     qword    :inline :overlay-at (-> data 14))
-   (sun-strip-giftag   qword    :inline :overlay-at (-> data 15))
-   (sun-alpha          qword    :inline :overlay-at (-> data 16))
-   (sun-alpha-giftag   qword    :inline :overlay-at (-> data 17))
-   )
-  )
+  ((data              uint128 18)
+   (world-homo-matrix matrix :inline :overlay-at (-> data 0))
+   (hmge-scale        vector :inline :overlay-at (-> data 4))
+   (hvdf-offset       vector :inline :overlay-at (-> data 5))
+   (consts            vector :inline :overlay-at (-> data 6))
+   (pfog0             float :overlay-at (-> data 6))
+   (radius            float :overlay-at (-> consts y))
+   (nokick            float :overlay-at (-> consts w))
+   (strip-giftag      qword :inline :overlay-at (-> data 7))
+   (col-adgif         qword :inline :overlay-at (-> data 8))
+   (save              uint128 5 :overlay-at (-> data 9))
+   (sun-fan-giftag    qword :inline :overlay-at (-> data 14))
+   (sun-strip-giftag  qword :inline :overlay-at (-> data 15))
+   (sun-alpha         qword :inline :overlay-at (-> data 16))
+   (sun-alpha-giftag  qword :inline :overlay-at (-> data 17))))
 
 ;; skipping old sky stuff (for now)
 (define sky-vu1-block (new 'static 'vu-function))
@@ -122,20 +89,20 @@
 ;; sky-upload
 ;; sky-draw
 
-
 ;; set the suns
 (sky-set-sun-radii *sky-parms* 0 60.0 200.0 300.0)
+
 (sky-set-sun-radii *sky-parms* 1 15.0 20.0 300.0)
 
-
-(sky-set-sun-colors *sky-parms* 1
+(sky-set-sun-colors *sky-parms*
+                    1
                     (new 'static 'rgba :r #xc2 :g #xfe :b #x78 :a #x80)
                     (new 'static 'rgba :r #xc2 :g #xfe :b #x78 :a #x80)
                     (new 'static 'rgba :r #xc2 :g #xfe :b #x78 :a #x20)
-                    (new 'static 'rgba :r #xc2 :g #xfe :b #x78)
-                    )
-
+                    (new 'static 'rgba :r #xc2 :g #xfe :b #x78))
 
 (sky-set-orbit *sky-parms* 0 12.5 -15.0 0.0 9950.0 300.0 300.0)
+
 (sky-set-orbit *sky-parms* 1 4.0 0.0 60.0 9950.0 120.0 120.0)
+
 (sky-set-orbit *sky-parms* 2 0.0 0.0 -10.0 9950.0 0.0 0.0)

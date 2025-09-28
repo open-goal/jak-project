@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdlib>
 
 #include "common/common_types.h"

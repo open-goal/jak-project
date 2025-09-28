@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,14 +19,13 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #include "../linux/SDL_evdev_kbd.h"
-#include "SDL_hints.h"
 
 #ifdef SDL_INPUT_FBSDKBIO
 
-/* This logic is adapted from drivers/tty/vt/keyboard.c in the Linux kernel source, slightly modified to work with FreeBSD */
+// This logic is adapted from drivers/tty/vt/keyboard.c in the Linux kernel source, slightly modified to work with FreeBSD
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -39,7 +38,7 @@
 #include "../../events/SDL_events_c.h"
 #include "SDL_evdev_kbd_default_keyaccmap.h"
 
-typedef void (fn_handler_fn)(SDL_EVDEV_keyboard_state *kbd);
+typedef void(fn_handler_fn)(SDL_EVDEV_keyboard_state *kbd);
 
 /*
  * Keyboard State
@@ -51,14 +50,14 @@ struct SDL_EVDEV_keyboard_state
     int keyboard_fd;
     unsigned long old_kbd_mode;
     unsigned short **key_maps;
-    keymap_t* key_map;
-    keyboard_info_t* kbInfo;
-    unsigned char shift_down[4];        /* shift state counters.. */
-    SDL_bool dead_key_next;
-    int npadch;                    /* -1 or number assembled on pad */
+    keymap_t *key_map;
+    keyboard_info_t *kbInfo;
+    unsigned char shift_down[4]; // shift state counters..
+    bool dead_key_next;
+    int npadch; // -1 or number assembled on pad
     accentmap_t *accents;
     unsigned int diacr;
-    SDL_bool rep;                    /* flag telling character repeat */
+    bool rep; // flag telling character repeat
     unsigned char lockstate;
     unsigned char ledflagstate;
     char shift_state;
@@ -66,77 +65,77 @@ struct SDL_EVDEV_keyboard_state
     unsigned int text_len;
 };
 
-static int SDL_EVDEV_kbd_load_keymaps(SDL_EVDEV_keyboard_state *kbd)
+static bool SDL_EVDEV_kbd_load_keymaps(SDL_EVDEV_keyboard_state *kbd)
 {
-    return (ioctl(kbd->keyboard_fd, GIO_KEYMAP, kbd->key_map) >= 0);
+    return ioctl(kbd->keyboard_fd, GIO_KEYMAP, kbd->key_map) >= 0;
 }
 
-static SDL_EVDEV_keyboard_state * kbd_cleanup_state = NULL;
+static SDL_EVDEV_keyboard_state *kbd_cleanup_state = NULL;
 static int kbd_cleanup_sigactions_installed = 0;
 static int kbd_cleanup_atexit_installed = 0;
 
 static struct sigaction old_sigaction[NSIG];
 
-static int fatal_signals[] =
-{
-    /* Handlers for SIGTERM and SIGINT are installed in SDL_QuitInit. */
-    SIGHUP,  SIGQUIT, SIGILL,  SIGABRT,
-    SIGFPE,  SIGSEGV, SIGPIPE, SIGBUS,
+static int fatal_signals[] = {
+    // Handlers for SIGTERM and SIGINT are installed in SDL_InitQuit.
+    SIGHUP, SIGQUIT, SIGILL, SIGABRT,
+    SIGFPE, SIGSEGV, SIGPIPE, SIGBUS,
     SIGSYS
 };
 
 static void kbd_cleanup(void)
 {
     struct mouse_info mData;
-    SDL_EVDEV_keyboard_state* kbd = kbd_cleanup_state;
-    if (kbd == NULL) {
+    SDL_EVDEV_keyboard_state *kbd = kbd_cleanup_state;
+    if (!kbd) {
         return;
     }
     kbd_cleanup_state = NULL;
     SDL_zero(mData);
     mData.operation = MOUSE_SHOW;
     ioctl(kbd->keyboard_fd, KDSKBMODE, kbd->old_kbd_mode);
-    if (kbd->keyboard_fd != kbd->console_fd) close(kbd->keyboard_fd);
+    if (kbd->keyboard_fd != kbd->console_fd) {
+        close(kbd->keyboard_fd);
+    }
     ioctl(kbd->console_fd, CONS_SETKBD, (unsigned long)(kbd->kbInfo->kb_index));
     ioctl(kbd->console_fd, CONS_MOUSECTL, &mData);
 }
 
-void
-SDL_EVDEV_kbd_reraise_signal(int sig)
+void SDL_EVDEV_kbd_reraise_signal(int sig)
 {
     raise(sig);
 }
 
-siginfo_t* SDL_EVDEV_kdb_cleanup_siginfo = NULL;
-void*      SDL_EVDEV_kdb_cleanup_ucontext = NULL;
+siginfo_t *SDL_EVDEV_kdb_cleanup_siginfo = NULL;
+void *SDL_EVDEV_kdb_cleanup_ucontext = NULL;
 
-static void kbd_cleanup_signal_action(int signum, siginfo_t* info, void* ucontext)
+static void kbd_cleanup_signal_action(int signum, siginfo_t *info, void *ucontext)
 {
-    struct sigaction* old_action_p = &(old_sigaction[signum]);
+    struct sigaction *old_action_p = &(old_sigaction[signum]);
     sigset_t sigset;
 
-    /* Restore original signal handler before going any further. */
+    // Restore original signal handler before going any further.
     sigaction(signum, old_action_p, NULL);
 
-    /* Unmask current signal. */
+    // Unmask current signal.
     sigemptyset(&sigset);
     sigaddset(&sigset, signum);
     sigprocmask(SIG_UNBLOCK, &sigset, NULL);
 
-    /* Save original signal info and context for archeologists. */
+    // Save original signal info and context for archeologists.
     SDL_EVDEV_kdb_cleanup_siginfo = info;
     SDL_EVDEV_kdb_cleanup_ucontext = ucontext;
 
-    /* Restore keyboard. */
+    // Restore keyboard.
     kbd_cleanup();
 
-    /* Reraise signal. */
+    // Reraise signal.
     SDL_EVDEV_kbd_reraise_signal(signum);
 }
 
-static void kbd_unregister_emerg_cleanup()
+static void kbd_unregister_emerg_cleanup(void)
 {
-    int tabidx, signum;
+    int tabidx;
 
     kbd_cleanup_state = NULL;
 
@@ -146,39 +145,40 @@ static void kbd_unregister_emerg_cleanup()
     kbd_cleanup_sigactions_installed = 0;
 
     for (tabidx = 0; tabidx < sizeof(fatal_signals) / sizeof(fatal_signals[0]); ++tabidx) {
-        struct sigaction* old_action_p;
+        struct sigaction *old_action_p;
         struct sigaction cur_action;
-        signum = fatal_signals[tabidx];
+        int signum = fatal_signals[tabidx];
         old_action_p = &(old_sigaction[signum]);
 
-        /* Examine current signal action */
-        if (sigaction(signum, NULL, &cur_action))
+        // Examine current signal action
+        if (sigaction(signum, NULL, &cur_action)) {
             continue;
+        }
 
-        /* Check if action installed and not modifed */
-        if (!(cur_action.sa_flags & SA_SIGINFO)
-                || cur_action.sa_sigaction != &kbd_cleanup_signal_action)
+        // Check if action installed and not modified
+        if (!(cur_action.sa_flags & SA_SIGINFO) || cur_action.sa_sigaction != &kbd_cleanup_signal_action) {
             continue;
+        }
 
-        /* Restore original action */
+        // Restore original action
         sigaction(signum, old_action_p, NULL);
     }
 }
 
 static void kbd_cleanup_atexit(void)
 {
-    /* Restore keyboard. */
+    // Restore keyboard.
     kbd_cleanup();
 
-    /* Try to restore signal handlers in case shared library is being unloaded */
+    // Try to restore signal handlers in case shared library is being unloaded
     kbd_unregister_emerg_cleanup();
 }
 
-static void kbd_register_emerg_cleanup(SDL_EVDEV_keyboard_state * kbd)
+static void kbd_register_emerg_cleanup(SDL_EVDEV_keyboard_state *kbd)
 {
-    int tabidx, signum;
+    int tabidx;
 
-    if (kbd_cleanup_state != NULL) {
+    if (kbd_cleanup_state) {
         return;
     }
     kbd_cleanup_state = kbd;
@@ -198,20 +198,20 @@ static void kbd_register_emerg_cleanup(SDL_EVDEV_keyboard_state * kbd)
     kbd_cleanup_sigactions_installed = 1;
 
     for (tabidx = 0; tabidx < sizeof(fatal_signals) / sizeof(fatal_signals[0]); ++tabidx) {
-        struct sigaction* old_action_p;
+        struct sigaction *old_action_p;
         struct sigaction new_action;
-        signum = fatal_signals[tabidx];   
+        int signum = fatal_signals[tabidx];
         old_action_p = &(old_sigaction[signum]);
-        if (sigaction(signum, NULL, old_action_p))
+        if (sigaction(signum, NULL, old_action_p)) {
             continue;
+        }
 
         /* Skip SIGHUP and SIGPIPE if handler is already installed
          * - assume the handler will do the cleanup
          */
-        if ((signum == SIGHUP || signum == SIGPIPE)
-                && (old_action_p->sa_handler != SIG_DFL 
-                    || (void (*)(int))old_action_p->sa_sigaction != SIG_DFL))
+        if ((signum == SIGHUP || signum == SIGPIPE) && (old_action_p->sa_handler != SIG_DFL || (void (*)(int))old_action_p->sa_sigaction != SIG_DFL)) {
             continue;
+        }
 
         new_action = *old_action_p;
         new_action.sa_flags |= SA_SIGINFO;
@@ -220,13 +220,12 @@ static void kbd_register_emerg_cleanup(SDL_EVDEV_keyboard_state * kbd)
     }
 }
 
-SDL_EVDEV_keyboard_state *
-SDL_EVDEV_kbd_init(void)
+SDL_EVDEV_keyboard_state *SDL_EVDEV_kbd_init(void)
 {
     SDL_EVDEV_keyboard_state *kbd;
     struct mouse_info mData;
     char flag_state;
-    char* devicePath;
+    char *devicePath;
 
     SDL_zero(mData);
     mData.operation = MOUSE_HIDE;
@@ -237,46 +236,43 @@ SDL_EVDEV_kbd_init(void)
 
     kbd->npadch = -1;
 
-    /* This might fail if we're not connected to a tty (e.g. on the Steam Link) */
+    // This might fail if we're not connected to a tty (e.g. on the Steam Link)
     kbd->keyboard_fd = kbd->console_fd = open("/dev/tty", O_RDONLY | O_CLOEXEC);
 
     kbd->shift_state = 0;
 
-    kbd->accents = SDL_calloc(sizeof(accentmap_t), 1);
-    kbd->key_map = SDL_calloc(sizeof(keymap_t), 1);
-    kbd->kbInfo = SDL_calloc(sizeof(keyboard_info_t), 1);    
+    kbd->accents = SDL_calloc(1, sizeof(accentmap_t));
+    kbd->key_map = SDL_calloc(1, sizeof(keymap_t));
+    kbd->kbInfo = SDL_calloc(1, sizeof(keyboard_info_t));
 
     ioctl(kbd->console_fd, KDGKBINFO, kbd->kbInfo);
     ioctl(kbd->console_fd, CONS_MOUSECTL, &mData);
-    
+
     if (ioctl(kbd->console_fd, KDGKBSTATE, &flag_state) == 0) {
         kbd->ledflagstate = flag_state;
     }
-    
-    if (ioctl(kbd->console_fd, GIO_DEADKEYMAP, kbd->accents) < 0)
-    {
+
+    if (ioctl(kbd->console_fd, GIO_DEADKEYMAP, kbd->accents) < 0) {
         SDL_free(kbd->accents);
         kbd->accents = &accentmap_default_us_acc;
     }
 
     if (ioctl(kbd->console_fd, KDGKBMODE, &kbd->old_kbd_mode) == 0) {
-        /* Set the keyboard in XLATE mode and load the keymaps */
+        // Set the keyboard in XLATE mode and load the keymaps
         ioctl(kbd->console_fd, KDSKBMODE, (unsigned long)(K_XLATE));
-        if(!SDL_EVDEV_kbd_load_keymaps(kbd))
-        {
+        if (!SDL_EVDEV_kbd_load_keymaps(kbd)) {
             SDL_free(kbd->key_map);
             kbd->key_map = &keymap_default_us_acc;
         }
-        /* Allow inhibiting keyboard mute with env. variable for debugging etc. */
-        if (SDL_getenv("SDL_INPUT_FREEBSD_KEEP_KBD") == NULL) {
+
+        if (SDL_GetHintBoolean(SDL_HINT_MUTE_CONSOLE_KEYBOARD, true)) {
             /* Take keyboard from console and open the actual keyboard device.
              * Ensures that the keystrokes do not leak through to the console.
              */
             ioctl(kbd->console_fd, CONS_RELKBD, 1ul);
             SDL_asprintf(&devicePath, "/dev/kbd%d", kbd->kbInfo->kb_index);
             kbd->keyboard_fd = open(devicePath, O_WRONLY | O_CLOEXEC);
-            if (kbd->keyboard_fd == -1)
-            {
+            if (kbd->keyboard_fd == -1) {
                 // Give keyboard back.
                 ioctl(kbd->console_fd, CONS_SETKBD, (unsigned long)(kbd->kbInfo->kb_index));
                 kbd->keyboard_fd = kbd->console_fd;
@@ -285,19 +281,18 @@ SDL_EVDEV_kbd_init(void)
             /* Make sure to restore keyboard if application fails to call
              * SDL_Quit before exit or fatal signal is raised.
              */
-            if (!SDL_GetHintBoolean(SDL_HINT_NO_SIGNAL_HANDLERS, SDL_FALSE)) {
+            if (!SDL_GetHintBoolean(SDL_HINT_NO_SIGNAL_HANDLERS, false)) {
                 kbd_register_emerg_cleanup(kbd);
             }
             SDL_free(devicePath);
-        }
-        else kbd->keyboard_fd = kbd->console_fd;
+        } else
+            kbd->keyboard_fd = kbd->console_fd;
     }
 
     return kbd;
 }
 
-void
-SDL_EVDEV_kbd_quit(SDL_EVDEV_keyboard_state *kbd)
+void SDL_EVDEV_kbd_quit(SDL_EVDEV_keyboard_state *kbd)
 {
     struct mouse_info mData;
 
@@ -311,12 +306,11 @@ SDL_EVDEV_kbd_quit(SDL_EVDEV_keyboard_state *kbd)
     kbd_unregister_emerg_cleanup();
 
     if (kbd->keyboard_fd >= 0) {
-        /* Restore the original keyboard mode */
+        // Restore the original keyboard mode
         ioctl(kbd->keyboard_fd, KDSKBMODE, kbd->old_kbd_mode);
 
         close(kbd->keyboard_fd);
-        if (kbd->console_fd != kbd->keyboard_fd && kbd->console_fd >= 0)
-        {
+        if (kbd->console_fd != kbd->keyboard_fd && kbd->console_fd >= 0) {
             // Give back keyboard.
             ioctl(kbd->console_fd, CONS_SETKBD, (unsigned long)(kbd->kbInfo->kb_index));
         }
@@ -326,13 +320,25 @@ SDL_EVDEV_kbd_quit(SDL_EVDEV_keyboard_state *kbd)
     SDL_free(kbd);
 }
 
+void SDL_EVDEV_kbd_set_muted(SDL_EVDEV_keyboard_state *state, bool muted)
+{
+}
+
+void SDL_EVDEV_kbd_set_vt_switch_callbacks(SDL_EVDEV_keyboard_state *state, void (*release_callback)(void*), void *release_callback_data, void (*acquire_callback)(void*), void *acquire_callback_data)
+{
+}
+
+void SDL_EVDEV_kbd_update(SDL_EVDEV_keyboard_state *state)
+{
+}
+
 /*
  * Helper Functions.
  */
 static void put_queue(SDL_EVDEV_keyboard_state *kbd, uint c)
 {
-    /* c is already part of a UTF-8 sequence and safe to add as a character */
-    if (kbd->text_len < (sizeof(kbd->text)-1)) {
+    // c is already part of a UTF-8 sequence and safe to add as a character
+    if (kbd->text_len < (sizeof(kbd->text) - 1)) {
         kbd->text[kbd->text_len++] = (char)c;
     }
 }
@@ -347,10 +353,12 @@ static void put_utf8(SDL_EVDEV_keyboard_state *kbd, uint c)
         put_queue(kbd, 0xc0 | (c >> 6));
         put_queue(kbd, 0x80 | (c & 0x3f));
     } else if (c < 0x10000) {
-        if (c >= 0xD800 && c < 0xE000)
+        if (c >= 0xD800 && c < 0xE000) {
             return;
-        if (c == 0xFFFF)
+        }
+        if (c == 0xFFFF) {
             return;
+        }
         /* 1110**** 10****** 10****** */
         put_queue(kbd, 0xe0 | (c >> 12));
         put_queue(kbd, 0x80 | ((c >> 6) & 0x3f));
@@ -379,13 +387,14 @@ static unsigned int handle_diacr(SDL_EVDEV_keyboard_state *kbd, unsigned int ch)
     kbd->diacr = 0;
 
     for (i = 0; i < kbd->accents->n_accs; i++) {
-        if (kbd->accents->acc[i].accchar == d)
-        {
+        if (kbd->accents->acc[i].accchar == d) {
             for (j = 0; j < NUM_ACCENTCHARS; ++j) {
-                    if (kbd->accents->acc[i].map[j][0] == 0)        /* end of table */
-                            break;
-                    if (kbd->accents->acc[i].map[j][0] == ch)
-                            return kbd->accents->acc[i].map[j][1];
+                if (kbd->accents->acc[i].map[j][0] == 0) { // end of table
+                    break;
+                }
+                if (kbd->accents->acc[i].map[j][0] == ch) {
+                    return kbd->accents->acc[i].map[j][1];
+                }
             }
         }
     }
@@ -399,7 +408,7 @@ static unsigned int handle_diacr(SDL_EVDEV_keyboard_state *kbd, unsigned int ch)
     return ch;
 }
 
-static int vc_kbd_led(SDL_EVDEV_keyboard_state *kbd, int flag)
+static bool vc_kbd_led(SDL_EVDEV_keyboard_state *kbd, int flag)
 {
     return (kbd->ledflagstate & flag) != 0;
 }
@@ -416,14 +425,16 @@ static void chg_vc_kbd_led(SDL_EVDEV_keyboard_state *kbd, int flag)
 
 static void k_self(SDL_EVDEV_keyboard_state *kbd, unsigned int value, char up_flag)
 {
-    if (up_flag)
-        return;        /* no action, if this is a key release */
+    if (up_flag) {
+        return; // no action, if this is a key release
+    }
 
-    if (kbd->diacr)
+    if (kbd->diacr) {
         value = handle_diacr(kbd, value);
+    }
 
     if (kbd->dead_key_next) {
-        kbd->dead_key_next = SDL_FALSE;
+        kbd->dead_key_next = false;
         kbd->diacr = value;
         return;
     }
@@ -450,8 +461,9 @@ static void k_shift(SDL_EVDEV_keyboard_state *kbd, unsigned char value, char up_
          * handle the case that two shift or control
          * keys are depressed simultaneously
          */
-        if (kbd->shift_down[value])
+        if (kbd->shift_down[value]) {
             kbd->shift_down[value]--;
+        }
     } else
         kbd->shift_down[value]++;
 
@@ -460,38 +472,37 @@ static void k_shift(SDL_EVDEV_keyboard_state *kbd, unsigned char value, char up_
     else
         kbd->shift_state &= ~(1 << value);
 
-    /* kludge */
+    // kludge
     if (up_flag && kbd->shift_state != old_state && kbd->npadch != -1) {
         put_utf8(kbd, kbd->npadch);
         kbd->npadch = -1;
     }
 }
 
-void
-SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, int down)
+void SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, int down)
 {
     keymap_t key_map;
     struct keyent_t keysym;
     unsigned int final_key_state;
     unsigned int map_from_key_sym;
 
-    key_map = *kbd->key_map;
-
     if (!kbd) {
         return;
     }
+
+    key_map = *kbd->key_map;
 
     kbd->rep = (down == 2);
 
     if (keycode < NUM_KEYS) {
         if (keycode >= 89 && keycode <= 95) {
-            /* These constitute unprintable language-related keys, so ignore them. */
+            // These constitute unprintable language-related keys, so ignore them.
             return;
         }
-        if (keycode > 95)
+        if (keycode > 95) {
             keycode -= 7;
-        if (vc_kbd_led(kbd, ALKED) || (kbd->shift_state & 0x8))
-        {
+        }
+        if (vc_kbd_led(kbd, ALKED) || (kbd->shift_state & 0x8)) {
             keycode += ALTGR_OFFSET;
         }
         keysym = key_map.key[keycode];
@@ -500,61 +511,81 @@ SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, int d
     }
 
     final_key_state = kbd->shift_state & 0x7;
-    if ((keysym.flgs & FLAG_LOCK_C) && vc_kbd_led(kbd, LED_CAP))
+    if ((keysym.flgs & FLAG_LOCK_C) && vc_kbd_led(kbd, LED_CAP)) {
         final_key_state ^= 0x1;
-    if ((keysym.flgs & FLAG_LOCK_N) && vc_kbd_led(kbd, LED_NUM))
+    }
+    if ((keysym.flgs & FLAG_LOCK_N) && vc_kbd_led(kbd, LED_NUM)) {
         final_key_state ^= 0x1;
+    }
 
     map_from_key_sym = keysym.map[final_key_state];
     if ((keysym.spcl & (0x80 >> final_key_state)) || (map_from_key_sym & SPCLKEY)) {
-        /* Special function.*/
+        // Special function.
         if (map_from_key_sym == 0)
-            return; /* Nothing to do. */
-        if (map_from_key_sym & SPCLKEY)
+            return; // Nothing to do.
+        if (map_from_key_sym & SPCLKEY) {
             map_from_key_sym &= ~SPCLKEY;
+        }
         if (map_from_key_sym >= F_ACC && map_from_key_sym <= L_ACC) {
-            /* Accent function.*/
+            // Accent function.
             unsigned int accent_index = map_from_key_sym - F_ACC;
             if (kbd->accents->acc[accent_index].accchar != 0) {
                 k_deadunicode(kbd, kbd->accents->acc[accent_index].accchar, !down);
             }
         } else {
-            switch(map_from_key_sym) {
-            case ASH: /* alt/meta shift */
+            switch (map_from_key_sym) {
+            case ASH: // alt/meta shift
                 k_shift(kbd, 3, down == 0);
                 break;
-            case LSHA: /* left shift + alt lock */
-            case RSHA: /* right shift + alt lock */
-                if (down == 0) chg_vc_kbd_led(kbd, ALKED);
-            case LSH: /* left shift */
-            case RSH: /* right shift */
+            case LSHA: // left shift + alt lock
+            case RSHA: // right shift + alt lock
+                if (down == 0) {
+                    chg_vc_kbd_led(kbd, ALKED);
+                }
+                SDL_FALLTHROUGH;
+            case LSH: // left shift
+            case RSH: // right shift
                 k_shift(kbd, 0, down == 0);
                 break;
-            case LCTRA: /* left ctrl + alt lock */
-            case RCTRA: /* right ctrl + alt lock */
-                if (down == 0) chg_vc_kbd_led(kbd, ALKED);
-            case LCTR: /* left ctrl */
-            case RCTR: /* right ctrl */
+            case LCTRA: // left ctrl + alt lock
+            case RCTRA: // right ctrl + alt lock
+                if (down == 0) {
+                    chg_vc_kbd_led(kbd, ALKED);
+                }
+                SDL_FALLTHROUGH;
+            case LCTR: // left ctrl
+            case RCTR: // right ctrl
                 k_shift(kbd, 1, down == 0);
                 break;
-            case LALTA: /* left alt + alt lock */
-            case RALTA: /* right alt + alt lock */
-                if (down == 0) chg_vc_kbd_led(kbd, ALKED);
-            case LALT: /* left alt */
-            case RALT: /* right alt */
+            case LALTA: // left alt + alt lock
+            case RALTA: // right alt + alt lock
+                if (down == 0) {
+                    chg_vc_kbd_led(kbd, ALKED);
+                }
+                SDL_FALLTHROUGH;
+            case LALT: // left alt
+            case RALT: // right alt
                 k_shift(kbd, 2, down == 0);
                 break;
-            case ALK: /* alt lock */
-                if (down == 1) chg_vc_kbd_led(kbd, ALKED);
+            case ALK: // alt lock
+                if (down == 1) {
+                    chg_vc_kbd_led(kbd, ALKED);
+                }
                 break;
-            case CLK: /* caps lock*/
-                if (down == 1) chg_vc_kbd_led(kbd, CLKED);
+            case CLK: // caps lock
+                if (down == 1) {
+                    chg_vc_kbd_led(kbd, CLKED);
+                }
                 break;
-            case NLK: /* num lock */
-                if (down == 1) chg_vc_kbd_led(kbd, NLKED);
+            case NLK: // num lock
+                if (down == 1) {
+                    chg_vc_kbd_led(kbd, NLKED);
+                }
                 break;
-            case SLK: /* scroll lock */
-                if (down == 1) chg_vc_kbd_led(kbd, SLKED);
+            case SLK: // scroll lock
+                if (down == 1) {
+                    chg_vc_kbd_led(kbd, SLKED);
+                }
                 break;
             default:
                 return;
@@ -579,6 +610,4 @@ SDL_EVDEV_kbd_keycode(SDL_EVDEV_keyboard_state *kbd, unsigned int keycode, int d
     }
 }
 
-#endif /* SDL_INPUT_FBSDKBIO */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_INPUT_FBSDKBIO

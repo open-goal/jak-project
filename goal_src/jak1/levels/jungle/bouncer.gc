@@ -1,124 +1,91 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: bouncer.gc
-;; name in dgo: bouncer
-;; dgos: JUN, JUNGLE, L1
-
+(bundles "JUN.DGO")
+(require "engine/common-obs/generic-obs.gc")
+(require "engine/entity/entity.gc")
 (declare-type springbox process-drawable)
 
 ;; DECOMP BEGINS
 
 (deftype springbox (process-drawable)
-  ((spring-height  meters)
-   (smush          float)
-   )
+  ((spring-height meters)
+   (smush         float))
   (:states
-    bouncer-fire
-    bouncer-smush
-    bouncer-wait
-    )
-  )
-
+   bouncer-fire
+   bouncer-smush
+   bouncer-wait))
 
 (method-set! springbox 12 (method-of-type process run-logic?))
 
-(defskelgroup *bouncer-sg* bounceytarp bounceytarp-lod0-jg bounceytarp-idle-ja
-              ((bounceytarp-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              )
+(defskelgroup *bouncer-sg*
+  bounceytarp
+  bounceytarp-lod0-jg
+  bounceytarp-idle-ja
+  ((bounceytarp-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4))
 
 (defstate bouncer-wait (springbox)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk)
-       (when (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f)
-         (sound-play "trampoline")
-         (go bouncer-fire)
-         )
-       )
-      (('touch)
-       (if (not (or (= (-> self next-state name) 'bouncer-smush) (= (-> self next-state name) 'bouncer-fire)))
-           (go bouncer-smush)
-           )
-       )
-      (('attack)
-       (when (and (= (-> block param 1) 'flop) (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f))
-         (go bouncer-fire)
-         #f
-         )
-       )
-      )
-    )
-  :code (behavior ()
-    (ja :group! bounceytarp-idle-ja :num! min)
-    (transform-post)
-    (loop
-      (logior! (-> self mask) (process-mask sleep))
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk)
+         (when (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f)
+           (sound-play "trampoline")
+           (go bouncer-fire)))
+        (('touch)
+         (if (not (or (= (-> self next-state name) 'bouncer-smush) (= (-> self next-state name) 'bouncer-fire))) (go bouncer-smush)))
+        (('attack)
+         (when (and (= (-> block param 1) 'flop) (send-event proc 'jump (-> self spring-height) (-> self spring-height) #f))
+           (go bouncer-fire)
+           #f))))
+  :code
+    (behavior ()
+      (ja :group! bounceytarp-idle-ja :num! min)
+      (transform-post)
+      (loop
+        (logior! (-> self mask) (process-mask sleep))
+        (suspend))))
 
 (defstate bouncer-smush (springbox)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch)
-       (set-time! (-> self state-time))
-       #f
-       )
-      (else
-        ((-> bouncer-wait event) proc argc message block)
-        )
-      )
-    )
-  :code (behavior ()
-    (set-time! (-> self state-time))
-    (set! (-> self smush) 0.0)
-    (loop
-      (if (time-elapsed? (-> self state-time) (seconds 0.2))
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch) (set-time! (-> self state-time)) #f)
+        (else ((-> bouncer-wait event) proc argc message block))))
+  :code
+    (behavior ()
+      (set-time! (-> self state-time))
+      (set! (-> self smush) 0.0)
+      (loop
+        (if (time-elapsed? (-> self state-time) (seconds 0.2))
           (ja :num! (seek! 0.0 0.1))
-          (ja :num! (seek!
-                      (lerp-scale
-                        (ja-aframe 6.0 0)
-                        (ja-aframe 2.0 0)
-                        (vector-vector-xz-distance (target-pos 0) (-> self root trans))
-                        0.0
-                        4096.0
-                        )
-                      0.2
-                      )
-              )
-          )
-      (suspend)
-      (if (ja-min? 0)
-          (go bouncer-wait)
-          )
-      )
-    )
-  :post transform-post
-  )
+          (ja :num!
+              (seek! (lerp-scale (ja-aframe 6.0 0)
+                                 (ja-aframe 2.0 0)
+                                 (vector-vector-xz-distance (target-pos 0) (-> self root trans))
+                                 0.0
+                                 4096.0)
+                     0.2)))
+        (suspend)
+        (if (ja-min? 0) (go bouncer-wait))))
+  :post transform-post)
 
 (defstate bouncer-fire (springbox)
-  :code (behavior ()
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
-    (ja-no-eval :group! bounceytarp-idle-ja :num! (seek!) :frame-num (ja-aframe 6.0 0))
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (go bouncer-wait)
-    )
-  :post transform-post
-  )
+  :code
+    (behavior ()
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
+      (ja-no-eval :group! bounceytarp-idle-ja :num! (seek!) :frame-num (ja-aframe 6.0 0))
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!)))
+      (go bouncer-wait))
+  :post transform-post)
 
 (defmethod init-from-entity! ((this springbox) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind crate))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -126,16 +93,13 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 0)
       (set-vector! (-> s3-0 local-sphere) 0.0 3072.0 0.0 6963.2)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *bouncer-sg* '())
   (nav-mesh-connect this (-> this root) (the-as nav-control #f))
   (set! (-> this spring-height) (res-lump-float arg0 'spring-height :default 45056.0))
   (go bouncer-wait)
-  (none)
-  )
+  (none))

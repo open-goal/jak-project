@@ -1,0 +1,372 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *generate-actor-vis*, type symbol
+(define *generate-actor-vis* #f)
+
+;; definition for symbol *generate-actor-vis-start*, type symbol
+(define *generate-actor-vis-start* #f)
+
+;; definition for symbol *generate-actor-vis-output*, type symbol
+(define *generate-actor-vis-output* #f)
+
+;; definition of type entity-perm
+(deftype entity-perm (structure)
+  "Entity information that gets persisted in the save file."
+  ((user-object  object   2)
+   (user-uint64  uint64     :overlay-at (-> user-object 0))
+   (user-float   float    2 :overlay-at (-> user-object 0))
+   (user-int32   int32    2 :overlay-at (-> user-object 0))
+   (user-uint32  uint32   2 :overlay-at (-> user-object 0))
+   (user-int16   int16    4 :overlay-at (-> user-object 0))
+   (user-uint16  uint16   4 :overlay-at (-> user-object 0))
+   (user-int8    int8     8 :overlay-at (-> user-object 0))
+   (user-uint8   uint8    8 :overlay-at (-> user-object 0))
+   (status       entity-perm-status)
+   (dummy        uint8    1)
+   (task         game-task)
+   (aid          actor-id)
+   (quad         uint128    :overlay-at (-> user-object 0))
+   )
+  (:methods
+    (update (_type_ symbol entity-perm-status) _type_)
+    )
+  )
+
+;; definition for method 3 of type entity-perm
+;; INFO: Used lq/sq
+(defmethod inspect ((this entity-perm))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'entity-perm)
+  (format #t "~1Tuser-object[2] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tuser-uint64: ~D~%" (-> this user-uint64))
+  (format #t "~1Tuser-float[2] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tuser-int32[2] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tuser-uint32[2] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tuser-int16[4] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tuser-uint16[4] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tuser-int8[8] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tuser-uint8[8] @ #x~X~%" (-> this user-object))
+  (format #t "~1Tstatus: ~D~%" (-> this status))
+  (format #t "~1Tdummy[1] @ #x~X~%" (-> this dummy))
+  (format #t "~1Ttask: ~D~%" (-> this task))
+  (format #t "~1Taid: ~D~%" (-> this aid))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type entity-links
+(deftype entity-links (structure)
+  "A linked list of entities with some extra data about their current status."
+  ((prev-link  entity-links)
+   (next-link  entity-links)
+   (entity     entity)
+   (process    process)
+   (level      level)
+   (vis-id     int32)
+   (kill-mask  task-mask)
+   (vis-dist   meters)
+   (trans      vector              :inline)
+   (perm       entity-perm         :inline)
+   (status     entity-perm-status  :overlay-at (-> perm status))
+   (aid        uint32              :overlay-at (-> perm aid))
+   (task       game-task           :overlay-at (-> perm task))
+   )
+  (:methods
+    (birth? (_type_ vector) symbol)
+    )
+  )
+
+;; definition for method 3 of type entity-links
+(defmethod inspect ((this entity-links))
+  (when (not this)
+    (set! this this)
+    (goto cfg-42)
+    )
+  (format #t "[~8x] ~A~%" this 'entity-links)
+  (format #t "~1Tprev-link: #<entity-links @ #x~X>~%" (-> this prev-link))
+  (format #t "~1Tnext-link: #<entity-links @ #x~X>~%" (-> this next-link))
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tprocess: ~A~%" (-> this process))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tvis-id: ~D~%" (-> this vis-id))
+  (format #t "~1Tkill-mask: #x~X : (task-mask " (-> this kill-mask))
+  (let ((s5-0 (-> this kill-mask)))
+    (if (= (logand s5-0 (task-mask task0)) (task-mask task0))
+        (format #t "task0 ")
+        )
+    (if (= (logand s5-0 (task-mask task2)) (task-mask task2))
+        (format #t "task2 ")
+        )
+    (if (= (logand s5-0 (task-mask task4)) (task-mask task4))
+        (format #t "task4 ")
+        )
+    (if (= (logand s5-0 (task-mask task6)) (task-mask task6))
+        (format #t "task6 ")
+        )
+    (if (= (logand s5-0 (task-mask ctywide)) (task-mask ctywide))
+        (format #t "ctywide ")
+        )
+    (if (= (logand s5-0 (task-mask never)) (task-mask never))
+        (format #t "never ")
+        )
+    (if (= (logand (task-mask movie1) s5-0) (task-mask movie1))
+        (format #t "movie1 ")
+        )
+    (if (= (logand s5-0 (task-mask vehicle)) (task-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand s5-0 (task-mask dummy1)) (task-mask dummy1))
+        (format #t "dummy1 ")
+        )
+    (if (= (logand s5-0 (task-mask primary0)) (task-mask primary0))
+        (format #t "primary0 ")
+        )
+    (if (= (logand s5-0 (task-mask task1)) (task-mask task1))
+        (format #t "task1 ")
+        )
+    (if (= (logand s5-0 (task-mask task3)) (task-mask task3))
+        (format #t "task3 ")
+        )
+    (if (= (logand s5-0 (task-mask task5)) (task-mask task5))
+        (format #t "task5 ")
+        )
+    (if (= (logand s5-0 (task-mask task7)) (task-mask task7))
+        (format #t "task7 ")
+        )
+    (if (= (logand (task-mask movie2) s5-0) (task-mask movie2))
+        (format #t "movie2 ")
+        )
+    (if (= (logand s5-0 (task-mask done)) (task-mask done))
+        (format #t "done ")
+        )
+    (if (= (logand s5-0 (task-mask special)) (task-mask special))
+        (format #t "special ")
+        )
+    (if (= (logand (task-mask movie0) s5-0) (task-mask movie0))
+        (format #t "movie0 ")
+        )
+    (if (= (logand s5-0 (task-mask dummy0)) (task-mask dummy0))
+        (format #t "dummy0 ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tvis-dist: (meters ~m)~%" (-> this vis-dist))
+  (format #t "~1Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~1Tperm: ~`entity-perm`P~%" (-> this perm))
+  (format #t "~1Tstatus: ~D~%" (-> this perm status))
+  (format #t "~1Taid: ~D~%" (-> this perm aid))
+  (format #t "~1Ttask: ~D~%" (-> this perm task))
+  (label cfg-42)
+  this
+  )
+
+;; definition of type entity-perm-array
+(deftype entity-perm-array (inline-array-class)
+  ((data  entity-perm  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type entity-perm-array
+(defmethod inspect ((this entity-perm-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> entity-perm-array heap-base) (the-as uint 16))
+
+;; definition of type entity-links-array
+(deftype entity-links-array (inline-array-class)
+  "An array of [[entity-links]].
+Levels store a reference to this which holds all the entities in the level."
+  ((data  entity-links  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type entity-links-array
+(defmethod inspect ((this entity-links-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> entity-links-array heap-base) (the-as uint 64))
+
+;; definition of type entity
+(deftype entity (res-lump)
+  "Entities are mainly used to place objects in a level.
+
+As a child of [[res-lump]], they store various types of metadata
+in [[res-tag]]s (such as name, curve data, volume data, etc.)
+that gets accessed by the accompanying process."
+  ((trans  vector  :inline)
+   (aid    uint32)
+   )
+  (:methods
+    (birth! (_type_) _type_)
+    (kill! (_type_) _type_)
+    (add-to-level! (_type_ level-group level actor-id) none)
+    (remove-from-level! (_type_ level-group) _type_)
+    (get-level (_type_) level)
+    )
+  )
+
+;; definition of type entity-camera
+(deftype entity-camera (entity)
+  ((connect  connectable  :inline)
+   )
+  )
+
+;; definition of type entity-nav-mesh
+(deftype entity-nav-mesh (entity)
+  ((nav-mesh  nav-mesh)
+   )
+  (:methods
+    (initialize-nav-mesh! (_type_) none)
+    (debug-draw (_type_) none)
+    )
+  )
+
+;; definition of type entity-race-mesh
+(deftype entity-race-mesh (entity)
+  ((race-mesh  race-mesh)
+   )
+  (:methods
+    (entity-race-mesh-method-27 () none)
+    (entity-race-mesh-method-28 () none)
+    )
+  )
+
+;; definition of type entity-actor
+(deftype entity-actor (entity)
+  "Child class of [[entity]] used to spawn [[process-drawable]] actors."
+  ((etype      type        :offset  56)
+   (task       game-task)
+   (kill-mask  task-mask   :offset  52)
+   (vis-id     int16)
+   (quat       quaternion  :inline)
+   )
+  (:methods
+    (next-actor (_type_) entity-actor)
+    (prev-actor (_type_) entity-actor)
+    (debug-print (_type_ symbol type) none)
+    (toggle-status (_type_ entity-perm-status symbol) none)
+    (get-simple-travel-vector (_type_ vector vector vector object float) nav-mesh)
+    (project-point-to-nav-mesh (_type_ vector vector nav-poly float) nav-poly)
+    )
+  )
+
+;; definition of type actor-reference
+(deftype actor-reference (structure)
+  ((actor  entity-actor)
+   (id     uint32)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type actor-reference
+(defmethod inspect ((this actor-reference))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'actor-reference)
+  (format #t "~1Tactor: ~A~%" (-> this actor))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type actor-group
+(deftype actor-group (inline-array-class)
+  ((data  actor-reference  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type actor-group
+(defmethod inspect ((this actor-group))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> actor-group heap-base) (the-as uint 8))
+
+;; definition of type entity-info
+(deftype entity-info (basic)
+  ((ptype      object)
+   (pool       symbol)
+   (heap-size  int32)
+   )
+  )
+
+;; definition for method 3 of type entity-info
+(defmethod inspect ((this entity-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tptype: ~A~%" (-> this ptype))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Theap-size: ~D~%" (-> this heap-size))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type actor-bank
+(deftype actor-bank (basic)
+  ((pause-dist  float)
+   (birth-dist  float)
+   (birth-max   int32)
+   )
+  )
+
+;; definition for method 3 of type actor-bank
+(defmethod inspect ((this actor-bank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tpause-dist: ~f~%" (-> this pause-dist))
+  (format #t "~1Tbirth-dist: ~f~%" (-> this birth-dist))
+  (format #t "~1Tbirth-max: ~D~%" (-> this birth-max))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *ACTOR-bank*, type actor-bank
+(define *ACTOR-bank* (new 'static 'actor-bank :pause-dist 204800.0 :birth-dist 901120.0 :birth-max 10))
+
+;; failed to figure out what this is:
+0

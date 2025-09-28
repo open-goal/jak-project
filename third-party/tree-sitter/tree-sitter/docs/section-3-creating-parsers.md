@@ -5,7 +5,7 @@ permalink: creating-parsers
 
 # Creating parsers
 
-Developing Tree-sitter grammars can have a difficult learning curve, but once you get the hang of it, it can be fun and even zen-like. This document will help get you to get started and to develop a useful mental model.
+Developing Tree-sitter grammars can have a difficult learning curve, but once you get the hang of it, it can be fun and even zen-like. This document will help you to get started and to develop a useful mental model.
 
 ## Getting Started
 
@@ -20,7 +20,7 @@ In order to develop a Tree-sitter parser, there are two dependencies that you ne
 
 To create a Tree-sitter parser, you need to use [the `tree-sitter` CLI][tree-sitter-cli]. You can install the CLI in a few different ways:
 
-* Build the `tree-sitter-cli` [Rust crate][crate] from source using [`cargo`][cargo], the Rust package manager. This works on any platform. See [the contributing docs](/docs/section-5-contributing.md#developing-tree-sitter) for more information.
+* Build the `tree-sitter-cli` [Rust crate][crate] from source using [`cargo`][cargo], the Rust package manager. This works on any platform. See [the contributing docs](./contributing#developing-tree-sitter) for more information.
 * Install the `tree-sitter-cli` [Node.js module][node-module] using [`npm`][npm], the Node package manager. This approach is fast, but is only works on certain platforms, because it relies on pre-built binaries.
 * Download a binary for your platform from [the latest GitHub release][releases], and put it into a directory on your `PATH`.
 
@@ -46,7 +46,7 @@ npm install --save nan
 npm install --save-dev tree-sitter-cli
 ```
 
-The last command will install the CLI into the `node_modules` folder in your working directory. An executable program called `tree-sitter` will be created inside of `node_modules/.bin/`. You may want to follow the Node.js convention of adding that folder to your your `PATH` so that you can easily run this program when working in this directory.
+The last command will install the CLI into the `node_modules` folder in your working directory. An executable program called `tree-sitter` will be created inside of `node_modules/.bin/`. You may want to follow the Node.js convention of adding that folder to your `PATH` so that you can easily run this program when working in this directory.
 
 ```sh
 # In your shell profile script
@@ -80,7 +80,9 @@ You can test this parser by creating a source file with the contents "hello" and
 echo 'hello' > example-file
 tree-sitter parse example-file
 ```
+
 Alternatively, in Windows PowerShell:
+
 ```pwsh
 "hello" | Out-File example-file -Encoding utf8
 tree-sitter parse example-file
@@ -88,7 +90,7 @@ tree-sitter parse example-file
 
 This should print the following:
 
-```
+```text
 (source_file [0, 0] - [1, 0])
 ```
 
@@ -102,14 +104,47 @@ Let's go over all of the functionality of the `tree-sitter` command line tool.
 
 The most important command you'll use is `tree-sitter generate`. This command reads the `grammar.js` file in your current working directory and creates a file called `src/parser.c`, which implements the parser. After making changes to your grammar, just run `tree-sitter generate` again.
 
-The first time you run `tree-sitter generate`, it will also generate a few other files:
+The first time you run `tree-sitter generate`, it will also generate a few other files for bindings for the following languages:
+
+#### C/C++
+
+* `Makefile` - This file tells `make` how to compile your language.
+* `bindings/c/tree-sitter-language.h` - This file provides the C interface of your language.
+* `bindings/c/tree-sitter-language.pc` - This file provides pkg-config metadata about your language's C library.
+* `src/tree_sitter/parser.h` - This file provides some basic C definitions that are used in your generated `parser.c` file.
+* `src/tree_sitter/alloc.h` - This file provides some memory allocation macros that are to be used in your external scanner, if you have one.
+* `src/tree_sitter/array.h` - This file provides some array macros that are to be used in your external scanner, if you have one.
+
+#### Go
+
+* `bindings/go/binding.go` - This file wraps your language in a Go module.
+* `bindings/go/binding_test.go` - This file contains a test for the Go package.
+
+#### Node
 
 * `binding.gyp` - This file tells Node.js how to compile your language.
 * `bindings/node/index.js` - This is the file that Node.js initially loads when using your language.
-* `bindings/node/binding.cc` - This file wraps your language in a JavaScript object when used in Node.js.
+* `bindings/node/binding.cc` - This file wraps your language in a JavaScript module for Node.js.
+
+#### Python
+
+* `pyproject.toml` - This file is the manifest of the Python package.
+* `setup.py` - This file tells Python how to compile your language.
+* `bindings/python/binding.c` - This file wraps your language in a Python module.
+* `bindings/python/tree_sitter_language/__init__.py` - This file tells Python how to load your language.
+* `bindings/python/tree_sitter_language/__init__.pyi` - This file provides type hints for your parser when used in Python.
+* `bindings/python/tree_sitter_language/py.typed` - This file provides type hints for your parser when used in Python.
+
+#### Rust
+
+* `Cargo.toml` - This file is the manifest of the Rust package.
 * `bindings/rust/lib.rs` - This file wraps your language in a Rust crate when used in Rust.
 * `bindings/rust/build.rs` - This file wraps the building process for the Rust crate.
-* `src/tree_sitter/parser.h` - This file provides some basic C definitions that are used in your generated `parser.c` file.
+
+#### Swift
+
+* `Package.swift` - This file tells Swift how to compile your language.
+* `bindings/swift/TreeSitterLanguage/language.h` - This file wraps your language in a Swift module when used in Swift.
 
 If there is an ambiguity or *local ambiguity* in your grammar, Tree-sitter will detect it during parser generation, and it will exit with a `Unresolved conflict` error message. See below for more information on these errors.
 
@@ -117,11 +152,11 @@ If there is an ambiguity or *local ambiguity* in your grammar, Tree-sitter will 
 
 The `tree-sitter test` command allows you to easily test that your parser is working correctly.
 
-For each rule that you add to the grammar, you should first create a *test* that describes how the syntax trees should look when parsing that rule. These tests are written using specially-formatted text files in the `corpus/` or `test/corpus/` directories within your parser's root folder.
+For each rule that you add to the grammar, you should first create a *test* that describes how the syntax trees should look when parsing that rule. These tests are written using specially-formatted text files in the `test/corpus/` directory within your parser's root folder.
 
 For example, you might have a file called `test/corpus/statements.txt` that contains a series of entries like this:
 
-```
+```text
 ==================
 Return statements
 ==================
@@ -147,7 +182,7 @@ func x() int {
 
   The expected output section can also *optionally* show the [*field names*][field-names-section] associated with each child node. To include field names in your tests, you write a node's field name followed by a colon, before the node itself in the S-expression:
 
-```
+```text
 (source_file
   (function_definition
     name: (identifier)
@@ -159,7 +194,7 @@ func x() int {
 
 * If your language's syntax conflicts with the `===` and `---` test separators, you can optionally add an arbitrary identical suffix (in the below example, `|||`) to disambiguate them:
 
-```
+```text
 ==================|||
 Basic module
 ==================|||
@@ -179,13 +214,73 @@ increment(n) == n + 1
 
 These tests are important. They serve as the parser's API documentation, and they can be run every time you change the grammar to verify that everything still parses correctly.
 
-By default, the `tree-sitter test` command runs all of the tests in your `corpus` or `test/corpus/` folder. To run a particular test, you can use the `-f` flag:
+By default, the `tree-sitter test` command runs all of the tests in your `test/corpus/` folder. To run a particular test, you can use the `-f` flag:
 
 ```sh
 tree-sitter test -f 'Return statements'
 ```
 
-The recommendation is to be comprehensive in adding tests. If it's a visible node, add it to a test file in your `corpus` directory. It's typically a good idea to test all of the permutations of each language construct. This increases test coverage, but doubly acquaints readers with a way to examine expected outputs and understand the "edges" of a language.
+The recommendation is to be comprehensive in adding tests. If it's a visible node, add it to a test file in your `test/corpus` directory. It's typically a good idea to test all of the permutations of each language construct. This increases test coverage, but doubly acquaints readers with a way to examine expected outputs and understand the "edges" of a language.
+
+#### Attributes
+
+Tests can be annotated with a few `attributes`. Attributes must be put in the header, below the test name, and start with a `:`.
+A couple of attributes also take in a parameter, which require the use of parenthesis.
+
+**Note**: If you'd like to supply in multiple parameters, e.g. to run tests on multiple platforms or to test multiple languages, you can repeat the attribute on a new line.
+
+The following attributes are available:
+
+- `:skip` — This attribute will skip the test when running `tree-sitter test`.
+  This is useful when you want to temporarily disable running a test without deleting it.
+- `:error` — This attribute will assert that the parse tree contains an error. It's useful to just validate that a certain input is invalid without displaying the whole parse tree, as such you should omit the parse tree below the `---` line.
+- `:fail-fast` — This attribute will stop the testing additional tests if the test marked with this attribute fails.
+- `:language(LANG)` — This attribute will run the tests using the parser for the specified language. This is useful for multi-parser repos, such as XML and DTD, or Typescript and TSX. The default parser will be the first entry in the `tree-sitter` field in the root `package.json`, so having a way to pick a second or even third parser is useful.
+- `:platform(PLATFORM)` — This attribute specifies the platform on which the test should run. It is useful to test platform-specific behavior (e.g. Windows newlines are different from Unix). This attribute must match up with Rust's [`std::env::consts::OS`](https://doc.rust-lang.org/std/env/consts/constant.OS.html).
+
+Examples using attributes:
+
+```text
+=========================
+Test that will be skipped
+:skip
+=========================
+
+int main() {}
+
+-------------------------
+
+====================================
+Test that will run on Linux or macOS
+
+:platform(linux)
+:platform(macos)
+====================================
+
+int main() {}
+
+------------------------------------
+
+========================================================================
+Test that expects an error, and will fail fast if there's no parse error
+:fail-fast
+:error
+========================================================================
+
+int main ( {}
+
+------------------------------------------------------------------------
+
+=================================================
+Test that will parse with both Typescript and TSX
+:language(typescript)
+:language(tsx)
+=================================================
+
+console.log('Hello, world!');
+
+-------------------------------------------------
+```
 
 #### Automatic Compilation
 
@@ -199,7 +294,7 @@ The `tree-sitter test` command will *also* run any syntax highlighting tests in 
 
 You can run your parser on an arbitrary file using `tree-sitter parse`. This will print the resulting the syntax tree, including nodes' ranges and field names, like this:
 
-```
+```text
 (source_file [0, 0] - [3, 0]
   (function_declaration [0, 0] - [2, 1]
     name: (identifier [0, 5] - [0, 9])
@@ -227,6 +322,20 @@ The following is a complete list of built-in functions you can use in your `gram
 
 * **Symbols (the `$` object)** - Every grammar rule is written as a JavaScript function that takes a parameter conventionally called `$`. The syntax `$.identifier` is how you refer to another grammar symbol within a rule. Names starting with `$.MISSING` or `$.UNEXPECTED` should be avoided as they have special meaning for the `tree-sitter test` command.
 * **String and Regex literals** - The terminal symbols in a grammar are described using JavaScript strings and regular expressions. Of course during parsing, Tree-sitter does not actually use JavaScript's regex engine to evaluate these regexes; it generates its own regex-matching logic as part of each parser. Regex literals are just used as a convenient way of writing regular expressions in your grammar.
+* **Regex Limitations** - Currently, only a subset of the Regex engine is actually
+supported. This is due to certain features like lookahead and lookaround assertions
+not feasible to use in an LR(1) grammar, as well as certain flags being unnecessary
+for tree-sitter. However, plenty of features are supported by default:
+
+  * Character classes
+  * Character ranges
+  * Character sets
+  * Quantifiers
+  * Alternation
+  * Grouping
+  * Unicode character escapes
+  * Unicode property escapes
+
 * **Sequences : `seq(rule1, rule2, ...)`** - This function creates a rule that matches any number of other rules, one after another. It is analogous to simply writing multiple symbols next to each other in [EBNF notation][ebnf].
 * **Alternatives : `choice(rule1, rule2, ...)`** - This function creates a rule that matches *one* of a set of possible rules. The order of the arguments does not matter. This is analogous to the `|` (pipe) operator in EBNF notation.
 * **Repetitions : `repeat(rule)`** - This function creates a rule that matches *zero-or-more* occurrences of a given rule. It is analogous to the `{x}` (curly brace) syntax in EBNF notation.
@@ -236,7 +345,15 @@ The following is a complete list of built-in functions you can use in your `gram
 * **Left Associativity : `prec.left([number], rule)`** - This function marks the given rule as left-associative (and optionally applies a numerical precedence). When an LR(1) conflict arises in which all of the rules have the same numerical precedence, Tree-sitter will consult the rules' associativity. If there is a left-associative rule, Tree-sitter will prefer matching a rule that ends *earlier*. This works similarly to [associativity directives][yacc-prec] in Yacc grammars.
 * **Right Associativity : `prec.right([number], rule)`** - This function is like `prec.left`, but it instructs Tree-sitter to prefer matching a rule that ends *later*.
 * **Dynamic Precedence : `prec.dynamic(number, rule)`** - This function is similar to `prec`, but the given numerical precedence is applied at *runtime* instead of at parser generation time. This is only necessary when handling a conflict dynamically using the `conflicts` field in the grammar, and when there is a genuine *ambiguity*: multiple rules correctly match a given piece of code. In that event, Tree-sitter compares the total dynamic precedence associated with each rule, and selects the one with the highest total. This is similar to [dynamic precedence directives][bison-dprec] in Bison grammars.
-* **Tokens : `token(rule)`** - This function marks the given rule as producing only a single token. Tree-sitter's default is to treat each String or RegExp literal in the grammar as a separate token. Each token is matched separately by the lexer and returned as its own leaf node in the tree. The `token` function allows you to express a complex rule using the functions described above (rather than as a single regular expression) but still have Tree-sitter treat it as a single token.
+* **Tokens : `token(rule)`** - This function marks the given rule as producing only
+a single token. Tree-sitter's default is to treat each String or RegExp literal
+in the grammar as a separate token. Each token is matched separately by the lexer
+and returned as its own leaf node in the tree. The `token` function allows you to
+express a complex rule using the functions described above (rather than as a single
+regular expression) but still have Tree-sitter treat it as a single token.
+The token function will only accept terminal rules, so `token($.foo)` will not work.
+You can think of it as a shortcut for squashing complex rules of strings or regexes
+down to a single token.
 * **Immediate Tokens : `token.immediate(rule)`** - Usually, whitespace (and any other extras, such as comments) is optional before each token. This function means that the token will only match if there is no whitespace.
 * **Aliases : `alias(rule, name)`** - This function causes the given rule to *appear* with an alternative name in the syntax tree. If `name` is a *symbol*, as in `alias($.foo, $.bar)`, then the aliased rule will *appear* as a [named node][named-vs-anonymous-nodes-section] called `bar`. And if `name` is a *string literal*, as in `alias($.foo, 'bar')`, then the aliased rule will appear as an [anonymous node][named-vs-anonymous-nodes-section], as if the rule had been written as the simple string.
 * **Field Names : `field(name, rule)`** - This function assigns a *field name* to the child node(s) matched by the given rule. In the resulting syntax tree, you can then use that field name to access specific children.
@@ -250,7 +367,6 @@ In addition to the `name` and `rules` fields, grammars have a few other optional
 * **`precedences`** - an array of array of strings, where each array of strings defines named precedence levels in descending order. These names can be used in the `prec` functions to define precedence relative only to other names in the array, rather than globally. Can only be used with parse precedence, not lexical precedence.
 * **`word`** - the name of a token that will match keywords for the purpose of the [keyword extraction](#keyword-extraction) optimization.
 * **`supertypes`** an array of hidden rule names which should be considered to be 'supertypes' in the generated [*node types* file][static-node-types].
-
 
 ## Writing the Grammar
 
@@ -363,7 +479,7 @@ With this structure in place, you can now freely decide what part of the grammar
 
 After developing the *type* sublanguage a bit further, you might decide to switch to working on *statements* or *expressions* instead. It's often useful to check your progress by trying to parse some real code using `tree-sitter parse`.
 
-**And remember to add tests for each rule in your `corpus` folder!**
+**And remember to add tests for each rule in your `test/corpus` folder!**
 
 ### Structuring Rules Well
 
@@ -375,7 +491,7 @@ return x + y;
 
 According to the specification, this line is a `ReturnStatement`, the fragment `x + y` is an `AdditiveExpression`, and `x` and `y` are both `IdentifierReferences`. The relationship between these constructs is captured by a complex series of production rules:
 
-```
+```text
 ReturnStatement          ->  'return' Expression
 Expression               ->  AssignmentExpression
 AssignmentExpression     ->  ConditionalExpression
@@ -432,7 +548,7 @@ To produce a readable syntax tree, we'd like to model JavaScript expressions usi
 
 Of course, this flat structure is highly ambiguous. If we try to generate a parser, Tree-sitter gives us an error message:
 
-```
+```text
 Error: Unresolved conflict for symbol sequence:
 
   '-'  _expression  •  '*'  …
@@ -468,7 +584,7 @@ For an expression like `-a * b`, it's not clear whether the `-` operator applies
 
 Applying a higher precedence in `unary_expression` fixes that conflict, but there is still another conflict:
 
-```
+```text
 Error: Unresolved conflict for symbol sequence:
 
   _expression  '*'  _expression  •  '*'  …
@@ -526,29 +642,21 @@ Tree-sitter's parsing process is divided into two phases: parsing (which is desc
 
 Grammars often contain multiple tokens that can match the same characters. For example, a grammar might contain the tokens (`"if"` and `/[a-z]+/`). Tree-sitter differentiates between these conflicting tokens in a few ways.
 
-1. **External Scanning** - If your grammar has an external scanner and one or more tokens in your `externals` array are valid at the current location, your external scanner will always be called first to determine whether those tokens are present.
+1. **Context-aware Lexing** - Tree-sitter performs lexing on-demand, during the parsing process. At any given position in a source document, the lexer only tries to recognize tokens that are *valid* at that position in the document.
 
-1. **Context-Aware Lexing** - Tree-sitter performs lexing on-demand, during the parsing process. At any given position in a source document, the lexer only tries to recognize tokens that are *valid* at that position in the document.
+2. **Lexical Precedence** - When the precedence functions described [above](#the-grammar-dsl) are used *within* the `token` function, the given explicit precedence values serve as instructions to the lexer. If there are two valid tokens that match the characters at a given position in the document, Tree-sitter will select the one with the higher precedence.
 
-1. **Earliest Starting Position** - Tree-sitter will prefer tokens with an earlier starting position. This is most often seen with very permissive regular expressions similar to `/.*/`, which are greedy and will consume as much text as possible. In this example the regex would consume all text until hitting a newline - even if text on that line could be interpreted as a different token.
+3. **Match Length** - If multiple valid tokens with the same precedence match the characters at a given position in a document, Tree-sitter will select the token that matches the [longest sequence of characters][longest-match].
 
-1. **Explicit Lexical Precedence** - When the precedence functions described [above](#the-grammar-dsl) are used within the `token` function, the given precedence values serve as instructions to the lexer. If there are two valid tokens that match the characters at a given position in the document, Tree-sitter will select the one with the higher precedence.
+4. **Match Specificity** - If there are two valid tokens with the same precedence and which both match the same number of characters, Tree-sitter will prefer a token that is specified in the grammar as a `String` over a token specified as a `RegExp`.
 
-1. **Match Length** - If multiple valid tokens with the same precedence match the characters at a given position in a document, Tree-sitter will select the token that matches the [longest sequence of characters][longest-match].
+5. **Rule Order** - If none of the above criteria can be used to select one token over another, Tree-sitter will prefer the token that appears earlier in the grammar.
 
-1. **Match Specificity** - If there are two valid tokens with the same precedence and which both match the same number of characters, Tree-sitter will prefer a token that is specified in the grammar as a `String` over a token specified as a `RegExp`.
-
-1. **Rule Order** - If none of the above criteria can be used to select one token over another, Tree-sitter will prefer the token that appears earlier in the grammar.
+If there is an external scanner it may have [an additional impact](#other-external-scanner-details) over regular tokens defined in the grammar.
 
 ### Lexical Precedence vs. Parse Precedence
 
-One common mistake involves not distinguishing lexical precedence from parse precedence.
-Parse precedence determines which rule is chosen to interpret a given sequence of tokens.
-Lexical precedence determines which token is chosen to interpret a given section of text.
-It is a lower-level operation that is done first.
-The above list fully capture tree-sitter's lexical precedence rules, and you will probably refer back to this section of the documentation more often than any other.
-Most of the time when you really get stuck, you're dealing with a lexical precedence problem.
-Pay particular attention to the difference in meaning between using `prec` inside the `token` function versus outside of it.
+One common mistake involves not distinguishing *lexical precedence* from *parse precedence*. Parse precedence determines which rule is chosen to interpret a given sequence of tokens. *Lexical precedence* determines which token is chosen to interpret at a given position of text and it is a lower-level operation that is done first. The above list fully captures Tree-sitter's lexical precedence rules, and you will probably refer back to this section of the documentation more often than any other. Most of the time when you really get stuck, you're dealing with a lexical precedence problem. Pay particular attention to the difference in meaning between using `prec` inside of the `token` function versus outside of it. The *lexical precedence* syntax is `token(prec(N, ...))`.
 
 ### Keywords
 
@@ -587,7 +695,7 @@ grammar({
     ),
 
     binary_expression: $ => choice(
-      prec.left(1, seq($._expression, 'instanceof', $._expression)
+      prec.left(1, seq($._expression, 'instanceof', $._expression))
       // ...
     ),
 
@@ -608,6 +716,7 @@ Aside from improving error detection, keyword extraction also has performance be
 ### External Scanners
 
 Many languages have some tokens whose structure is impossible or inconvenient to describe with a regular expression. Some examples:
+
 * [Indent and dedent][indent-tokens] tokens in Python
 * [Heredocs][heredoc] in Bash and Ruby
 * [Percent strings][percent-string] in Ruby
@@ -632,10 +741,19 @@ grammar({
 
 Then, add another C or C++ source file to your project. Currently, its path must be `src/scanner.c` or `src/scanner.cc` for the CLI to recognize it. Be sure to add this file to the `sources` section of your `binding.gyp` file so that it will be included when your project is compiled by Node.js and uncomment the appropriate block in your `bindings/rust/build.rs` file so that it will be included in your Rust crate.
 
+> **Note**
+>
+> C++ scanners are now deprecated and will be removed in the near future.
+> While it is currently possible to write an external scanner in C++, it can be difficult
+> to get working cross-platform and introduces extra requirements; therefore it
+> is *greatly* preferred to use C.
+
 In this new source file, define an [`enum`][enum] type containing the names of all of your external tokens. The ordering of this enum must match the order in your grammar's `externals` array; the actual names do not matter.
 
 ```c
-#include <tree_sitter/parser.h>
+#include "tree_sitter/parser.h"
+#include "tree_sitter/alloc.h"
+#include "tree_sitter/array.h"
 
 enum TokenType {
   INDENT,
@@ -655,7 +773,6 @@ void * tree_sitter_my_language_external_scanner_create() {
 ```
 
 This function should create your scanner object. It will only be called once anytime your language is set on a parser. Often, you will want to allocate memory on the heap and return a pointer to it. If your external scanner doesn't need to maintain any state, it's ok to return `NULL`.
-
 
 #### Destroy
 
@@ -716,13 +833,13 @@ This function is responsible for recognizing external tokens. It should return `
 * **`void (*advance)(TSLexer *, bool skip)`** - A function for advancing to the next character. If you pass `true` for the second argument, the current character will be treated as whitespace; whitespace won't be included in the text range associated with tokens emitted by the external scanner.
 * **`void (*mark_end)(TSLexer *)`** - A function for marking the end of the recognized token. This allows matching tokens that require multiple characters of lookahead. By default (if you don't call `mark_end`), any character that you moved past using the `advance` function will be included in the size of the token. But once you call `mark_end`, then any later calls to `advance` will *not* increase the size of the returned token. You can call `mark_end` multiple times to increase the size of the token.
 * **`uint32_t (*get_column)(TSLexer *)`** - A function for querying the current column position of the lexer. It returns the number of codepoints since the start of the current line. The codepoint position is recalculated on every call to this function by reading from the start of the line.
-* **`bool (*is_at_included_range_start)(const TSLexer *)`** - A function for checking whether the parser has just skipped some characters in the document. When parsing an embedded document using the `ts_parser_set_included_ranges` function (described in the [multi-language document section][multi-language-section]), your scanner may want to apply some special behavior when moving to a disjoint part of the document. For example, in [EJS documents][ejs], the JavaScript parser uses this function to enable inserting automatic semicolon tokens in between the code directives, delimited by `<%` and `%>`.
+* **`bool (*is_at_included_range_start)(const TSLexer *)`** - A function for checking whether the parser has just skipped some characters in the document. When parsing an embedded document using the `ts_parser_set_included_ranges` function (described in the [multi-language document section][multi-language-section]), the scanner may want to apply some special behavior when moving to a disjoint part of the document. For example, in [EJS documents][ejs], the JavaScript parser uses this function to enable inserting automatic semicolon tokens in between the code directives, delimited by `<%` and `%>`.
 * **`bool (*eof)(const TSLexer *)`** - A function for determining whether the lexer is at the end of the file. The value of `lookahead` will be `0` at the end of a file, but this function should be used instead of checking for that value because the `0` or "NUL" value is also a valid character that could be present in the file being parsed.
 
-The third argument to the `scan` function is an array of booleans that indicates which of your external tokens are currently expected by the parser. You should only look for a given token if it is valid according to this array. At the same time, you cannot backtrack, so you may need to combine certain pieces of logic.
+The third argument to the `scan` function is an array of booleans that indicates which of external tokens are currently expected by the parser. You should only look for a given token if it is valid according to this array. At the same time, you cannot backtrack, so you may need to combine certain pieces of logic.
 
 ```c
-if (valid_symbols[INDENT] || valid_symbol[DEDENT]) {
+if (valid_symbols[INDENT] || valid_symbols[DEDENT]) {
 
   // ... logic that is common to both `INDENT` and `DEDENT`
 
@@ -736,23 +853,124 @@ if (valid_symbols[INDENT] || valid_symbol[DEDENT]) {
 }
 ```
 
+#### External Scanner Helpers
+
+##### Allocator
+
+Instead of using libc's `malloc`, `calloc`, `realloc`, and `free`, you should use the versions prefixed with `ts_` from `tree_sitter/alloc.h`.
+These macros can allow a potential consumer to override the default allocator with their own implementation, but by default will use the libc functions.
+
+As a consumer of the tree-sitter core library as well as any parser libraries that might use allocations, you can enable overriding the default allocator and have it use the same one as the library allocator, of which you can set with `ts_set_allocator`.
+To enable this overriding in scanners, you must compile them with the `TREE_SITTER_REUSE_ALLOCATOR` macro defined, and tree-sitter the library must be linked into your final app dynamically, since it needs to resolve the internal functions at runtime. If you are compiling
+an executable binary that uses the core library, but want to load parsers dynamically at runtime, then you will have to use a special linker flag on Unix. For non-Darwin systems, that would be `--dynamic-list` and for Darwin systems, that would be `-exported_symbols_list`.
+The CLI does exactly this, so you can use it as a reference (check out `cli/build.rs`).
+
+For example, assuming you wanted to allocate 100 bytes for your scanner, you'd do so like the following example:
+
+```c
+#include "tree_sitter/parser.h"
+#include "tree_sitter/alloc.h"
+
+// ...
+
+void* tree_sitter_my_language_external_scanner_create() {
+  return ts_calloc(100, 1); // or ts_malloc(100)
+}
+
+// ...
+
+```
+
+##### Arrays
+
+If you need to use array-like types in your scanner, such as tracking a stack of indentations or tags, you should use the array macros from `tree_sitter/array.h`.
+
+There are quite a few of them provided for you, but here's how you could get started tracking some . Check out the header itself for more detailed documentation.
+
+**NOTE**: Do not use any of the array functions or macros that are prefixed with an underscore and have comments saying that it is not what you are looking for.
+These are internal functions used as helpers by other macros that are public. They are not meant to be used directly, nor are they what you want.
+
+```c
+#include "tree_sitter/parser.h"
+#include "tree_sitter/array.h"
+
+enum TokenType {
+  INDENT,
+  DEDENT,
+  NEWLINE,
+  STRING,
+}
+
+// Create the array in your create function
+
+void* tree_sitter_my_language_external_scanner_create() {
+  return ts_calloc(1, sizeof(Array(int)));
+
+  // or if you want to zero out the memory yourself
+
+  Array(int) *stack = ts_malloc(sizeof(Array(int)));
+  array_init(&stack);
+  return stack;
+}
+
+bool tree_sitter_my_language_external_scanner_scan(
+  void *payload,
+  TSLexer *lexer,
+  const bool *valid_symbols
+) {
+  Array(int) *stack = payload;
+  if (valid_symbols[INDENT]) {
+    array_push(stack, lexer->get_column(lexer));
+    lexer->result_symbol = INDENT;
+    return true;
+  }
+  if (valid_symbols[DEDENT]) {
+    array_pop(stack); // this returns the popped element by value, but we don't need it
+    lexer->result_symbol = DEDENT;
+    return true;
+  }
+
+  // we can also use an array on the stack to keep track of a string
+
+  Array(char) next_string = array_new();
+
+  if (valid_symbols[STRING] && lexer->lookahead == '"') {
+    lexer->advance(lexer, false);
+    while (lexer->lookahead != '"' && lexer->lookahead != '\n' && !lexer->eof(lexer)) {
+      array_push(&next_string, lexer->lookahead);
+      lexer->advance(lexer, false);
+    }
+
+    // assume we have some arbitrary constraint of not having more than 100 characters in a string
+    if (lexer->lookahead == '"' && next_string.size <= 100) {
+      lexer->advance(lexer, false);
+      lexer->result_symbol = STRING;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+```
+
 #### Other External Scanner Details
 
-If a token in your `externals` array is valid at the current position in the parse, your external scanner will be called first before anything else is done.
-This means your external scanner functions as a powerful override of tree-sitter's lexing behavior, and can be used to solve problems that can't be cracked with ordinary lexical, parse, or dynamic precedence.
+If a token in the `externals` array is valid at a given position in the parse, the external scanner will be called first before anything else is done. This means the external scanner functions as a powerful override of Tree-sitter's lexing behavior, and can be used to solve problems that can't be cracked with ordinary lexical, parse, or dynamic precedence.
 
-If a syntax error is encountered during regular parsing, tree-sitter's first action during error recovery will be to call your external scanner's `scan` function with all tokens marked valid.
-Your scanner should detect this case and handle it appropriately.
-One simple method of detection is to add an unused token to the end of your `externals` array, for example `externals: $ => [$.token1, $.token2, $.error_sentinel]`, then check whether that token is marked valid to determine whether tree-sitter is in error correction mode.
+If a syntax error is encountered during regular parsing, Tree-sitter's first action during error recovery will be to call the external scanner's `scan` function with all tokens marked valid. The scanner should detect this case and handle it appropriately. One simple method of detection is to add an unused token to the end of the `externals` array, for example `externals: $ => [$.token1, $.token2, $.error_sentinel]`, then check whether that token is marked valid to determine whether Tree-sitter is in error correction mode.
 
-If you put terminal keywords in your `externals` array, for example `externals: $ => ['if', 'then', 'else']`, then any time those terminals are present in your grammar they will be tokenized by your external scanner.
-It is equivalent to writing `externals: [$.if_keyword, $.then_keyword, $.else_keyword]` then using `alias($.if_keyword, 'if')` in your grammar.
+If you put terminal keywords in the `externals` array, for example `externals: $ => ['if', 'then', 'else']`, then any time those terminals are present in the grammar they will be tokenized by the external scanner. It is similar to writing `externals: [$.if_keyword, $.then_keyword, $.else_keyword]` then using `alias($.if_keyword, 'if')` in the grammar.
+
+If in the `externals` array use literal keywords then lexing works in two steps, the external scanner will be called first and if it sets a resulting token and returns `true` then the token considered as recognized and Tree-sitter moves to a next token. But the external scanner may return `false` and in this case Tree-sitter fallbacks to the internal lexing mechanism.
+
+In case of some keywords defined in the `externals` array in a rule referencing form like `$.if_keyword` and there is no additional definition of that rule in the grammar rules, e.g., `if_keyword: $ => 'if'` then fallback to the internal lexer isn't possible because Tree-sitter doesn't know the actual keyword and it's fully the external scanner resposibilty to recognize such tokens.
 
 External scanners are a common cause of infinite loops.
 Be very careful when emitting zero-width tokens from your external scanner, and if you consume characters in a loop be sure use the `eof` function to check whether you are at the end of the file.
 
 [ambiguous-grammar]: https://en.wikipedia.org/wiki/Ambiguous_grammar
-[antlr]: http://www.antlr.org/
+[antlr]: https://www.antlr.org
 [bison-dprec]: https://www.gnu.org/software/bison/manual/html_node/Generalized-LR-Parsing.html
 [bison]: https://en.wikipedia.org/wiki/GNU_bison
 [c-linkage]: https://en.cppreference.com/w/cpp/language/language_linkage

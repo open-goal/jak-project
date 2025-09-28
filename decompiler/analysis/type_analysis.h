@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "common/type_system/TypeSpec.h"
+
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/config.h"
 #include "decompiler/util/DecompilerTypeSystem.h"

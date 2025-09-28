@@ -1,0 +1,808 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function set-tex-offset
+;; INFO: function output is handled by mips2c
+(def-mips2c set-tex-offset (function int int none))
+
+;; definition for function draw-large-polygon
+;; INFO: function output is handled by mips2c
+(def-mips2c draw-large-polygon function)
+
+;; definition for function clip-polygon-against-positive-hyperplane
+;; INFO: function output is handled by mips2c
+(def-mips2c clip-polygon-against-positive-hyperplane function)
+
+;; definition for function clip-polygon-against-negative-hyperplane
+;; INFO: function output is handled by mips2c
+(def-mips2c clip-polygon-against-negative-hyperplane function)
+
+;; definition for function render-sky-quad
+;; INFO: function output is handled by mips2c
+(def-mips2c render-sky-quad (function (inline-array sky-vertex) dma-buffer none))
+
+;; definition for function render-sky-tri
+;; INFO: function output is handled by mips2c
+(def-mips2c render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
+
+;; definition for function close-sky-buffer
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch pointer vs none.
+;; ERROR: Function may read a register that is not set: ra
+;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
+(defun close-sky-buffer ((arg0 dma-buffer))
+  "Close DMA buffer for large polygon drawing."
+  (local-vars (ra-0 none))
+  (nop!)
+  (let ((v1-0 #x8000)
+        (v0-0 (-> arg0 base))
+        )
+    (set! (-> (the-as (pointer int128) v0-0)) 0)
+    (nop!)
+    (set! (-> (the-as (pointer int32) v0-0)) v1-0)
+    (let ((v0-1 (&+ v0-0 16)))
+      (.jr ra-0)
+      (set! (-> arg0 base) v0-1)
+      )
+    )
+  (none)
+  )
+
+;; definition for method 15 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-camera-matrix ((this sky-work) (arg0 matrix))
+  "Set the camera matrix (no perspective) for sky drawing."
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (let ((v1-0 (-> this cam-mat)))
+      (matrix-copy! v1-0 arg0)
+      (.svf (&-> v1-0 trans quad) vf0)
+      (matrix*! v1-0 v1-0 (-> *math-camera* perspective))
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 16 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-template-colors ((this sky-work))
+  "Update work with sky/erase colors from time-of-day/level."
+  (let ((v1-1 (-> *time-of-day-context* current-fog erase-color))
+        (a0-2 (-> *level* level-default mood-context current-sky-color))
+        )
+    (dotimes (a1-1 12)
+      (vector-copy! (-> sky-base-polygons a1-1 col) v1-1)
+      (vector-copy! (-> sky-roof-polygons a1-1 col) a0-2)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type sky-work
+;; WARN: Return type mismatch int vs none.
+(defmethod update-time-and-speed ((this sky-work) (arg0 float) (arg1 float))
+  "Update cloud sroll and sun/moon position for the time."
+  (if (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) info taskname) 'nest))
+      (set! arg1 (* 10.0 arg1))
+      )
+  (sky-make-sun-data this 0 arg0)
+  (sky-make-sun-data this 1 arg0)
+  (sky-make-moon-data this arg0)
+  (+! (-> this off-s) (the int (* -8.0 arg1)))
+  (+! (-> this off-t) (the int (* 2.0 arg1)))
+  (set! (-> this time) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 17 sky-work)" 17 sky-work)
+
+;; definition for method 18 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 18 sky-work)" 18 sky-work)
+
+;; definition for method 11 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-colors-for-time ((this sky-work) (arg0 float))
+  0
+  0
+  0.0
+  (let ((s5-0 *no-cloud-mood-color-table*))
+    (let ((s3-0 (-> *level* level-default mood-context))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (let* ((v1-3 (the int arg0))
+             (f0-4 (- arg0 (the float v1-3)))
+             (f1-3 (- 1.0 f0-4))
+             (a0-4 (/ v1-3 24))
+             (a1-2 (-> *mood-interp-table* hour (- v1-3 (* 24 a0-4))))
+             (a0-7 (-> a1-2 snapshot1))
+             (v1-7 (-> a1-2 snapshot2))
+             (f0-6 (+ (* f1-3 (-> a1-2 morph-start)) (* f0-4 (-> a1-2 morph-end))))
+             )
+        (cond
+          ((= a0-7 v1-7)
+           (vector-copy! (-> this sun0-color) (-> s5-0 data a0-7 lgt-color))
+           )
+          (else
+            (let ((a1-5 (-> s5-0 data a0-7))
+                  (v1-11 (-> s5-0 data v1-7))
+                  )
+              (vector4-lerp! (-> this sun0-color) (-> a1-5 lgt-color) (-> v1-11 lgt-color) f0-6)
+              )
+            )
+          )
+        )
+      (vector-copy! (-> this sun0-color-lower) (-> s3-0 times 1))
+      (vector-copy! (-> this ambi-color-lower) (-> s3-0 times 0))
+      (set-vector! s4-0 1.9921875 1.9921875 1.9921875 1.0)
+      (vector4-lerp! (-> this ambi-color) (-> this ambi-color-lower) s4-0 (-> *mood-control* lightning-flash))
+      )
+    (vector-copy! (-> this sun0-color) (-> this sun0-color))
+    (vector-copy! (-> this sun1-color) (-> s5-0 data 7 lgt-color))
+    (vector-copy! (-> this moon-color) (-> s5-0 data 6 lgt-color))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 19 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod cloud-vtx-light-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 cloud-lights) (arg3 vector) (arg4 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector4)))
+    (let* ((f0-1 (vector-dot (-> arg2 sun0-normal) arg1))
+           (f1-1 (vector-dot (-> arg2 sun1-normal) arg1))
+           (f2-1 (vector-dot (-> arg2 moon-normal) arg1))
+           (f0-2 (fmax 0.0 f0-1))
+           (f30-0 (fmax 0.0 f1-1))
+           (f28-0 (fmax 0.0 f2-1))
+           )
+      (set! (-> s5-0 quad) (-> arg4 quad))
+      (vector4-madd! s5-0 s5-0 (the-as vector4 arg3) f0-2)
+      (vector4-madd! s5-0 s5-0 (the-as vector4 (-> arg2 sun1-color)) f30-0)
+      (vector4-madd! s5-0 s5-0 (the-as vector4 (-> arg2 moon-color)) f28-0)
+      )
+    (vector4-scale! s5-0 s5-0 128.0)
+    (set! (-> arg0 x) (fmax 0.0 (fmin 255.0 (-> s5-0 x))))
+    (set! (-> arg0 y) (fmax 0.0 (fmin 255.0 (-> s5-0 y))))
+    (set! (-> arg0 z) (fmax 0.0 (fmin 255.0 (-> s5-0 z))))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 20 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod cloud-vtx-tex-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 cloud-lights))
+  (let ((s5-0 (new 'stack-no-clear 'vector4))
+        (s2-0 (new 'stack-no-clear 'vector4))
+        (s4-0 (new 'stack-no-clear 'vector4))
+        (f28-0 0.00390625)
+        (f30-0 0.015625)
+        )
+    (vector-copy! arg0 arg1)
+    (vector--float*! (the-as vector s5-0) arg2 (-> arg3 sun0-normal) 9.0)
+    (vector--float*! (the-as vector s2-0) arg2 (-> arg3 sun1-normal) 9.0)
+    (vector--float*! (the-as vector s4-0) arg2 (-> arg3 moon-normal) 9.0)
+    (vector4-scale! s5-0 s5-0 (* (-> arg3 sun0-scale) f28-0))
+    (vector4-madd! s5-0 s5-0 s2-0 (* (/ f28-0 4) (-> arg3 sun1-scale)))
+    (vector4-madd! s5-0 s5-0 s4-0 (* (-> arg3 moon-scale) f28-0))
+    (+! (-> arg0 x) (fmax (fmin (-> s5-0 x) f30-0) (- f30-0)))
+    (+! (-> arg0 y) (fmax (fmin (-> s5-0 z) f30-0) (- f30-0)))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 21 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod adjust-cloud-lighting ((this sky-work))
+  (let ((s5-0 *cloud-vert-array*)
+        (s4-0 (-> this cloud-lights))
+        )
+    (set! (-> s4-0 sun0-normal quad) (-> this upload-data data 0))
+    (set! (-> s4-0 sun1-normal quad) (-> (&-> this upload-data data 4) 0))
+    (vector-copy! (-> s4-0 moon-normal) (-> this upload-data moon pos))
+    (vector-normalize! (-> s4-0 sun0-normal) 1.0)
+    (vector-normalize! (-> s4-0 sun1-normal) 1.0)
+    (vector-normalize! (-> s4-0 moon-normal) 1.0)
+    (set! (-> s4-0 sun0-scale) (fmax 0.0 (fmin 1.0 (* 8.0 (+ 0.125 (-> s4-0 sun0-normal y))))))
+    (set! (-> s4-0 sun1-scale) (fmax 0.0 (fmin 1.0 (* 8.0 (+ 0.125 (-> s4-0 sun1-normal y))))))
+    (set! (-> s4-0 moon-scale) (fmax 0.0 (fmin 1.0 (* 8.0 (+ 0.125 (-> s4-0 moon-normal y))))))
+    (let ((s1-0 (-> s4-0 ambi-color))
+          (s2-0 (-> s4-0 ambi-color-lower))
+          (s3-0 (-> this sun0-color-lower))
+          )
+      (let ((f30-0 (- 1.0 (fmax 0.0 (fmin 0.75 (* 4.0 (-> s4-0 moon-normal y))))))
+            (f28-0 (* 0.3333 (fmax 0.0 (fmin 1.0 (+ -1.0 (* 8.0 (-> s4-0 sun0-normal y)))))))
+            )
+        (vector4-scale! (the-as vector4 s2-0) (the-as vector4 (-> this ambi-color-lower)) f30-0)
+        (vector4-madd! (the-as vector4 s2-0) (the-as vector4 s2-0) (the-as vector4 s3-0) f28-0)
+        (vector4-scale! (the-as vector4 s1-0) (the-as vector4 (-> this ambi-color)) f30-0)
+        (vector4-madd! (the-as vector4 s1-0) (the-as vector4 s1-0) (the-as vector4 s3-0) f28-0)
+        )
+      (vector4-scale!
+        (the-as vector4 (-> s4-0 sun0-color))
+        (the-as vector4 (-> this sun0-color))
+        (-> s4-0 sun0-scale)
+        )
+      (vector4-scale!
+        (the-as vector4 (-> s4-0 sun1-color))
+        (the-as vector4 (-> this sun1-color))
+        (/ (-> s4-0 sun1-scale) 2)
+        )
+      (vector4-scale!
+        (the-as vector4 (-> s4-0 moon-color))
+        (the-as vector4 (-> this moon-color))
+        (-> s4-0 moon-scale)
+        )
+      (vector4-scale! (the-as vector4 (-> s4-0 sun0-color-lower)) (the-as vector4 s3-0) (-> s4-0 sun0-scale))
+      )
+    (dotimes (s3-1 100)
+      (let ((s2-1 (-> s5-0 data s3-1)))
+        (cloud-vtx-light-update this (-> s2-1 col) (-> s2-1 nrm) s4-0 (-> s4-0 sun0-color) (-> s4-0 ambi-color))
+        (cloud-vtx-light-update
+          this
+          (-> s2-1 col2)
+          (-> s2-1 nrm2)
+          s4-0
+          (-> s4-0 sun0-color-lower)
+          (-> s4-0 ambi-color-lower)
+          )
+        (cloud-vtx-tex-update this (-> s2-1 stq2) (-> s2-1 stq) (-> s2-1 pos) s4-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 22 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod cloud-vtx1-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
+  (set! (-> arg0 pos quad) (-> arg1 pos quad))
+  (set! (-> arg0 stq quad) (-> arg1 stq quad))
+  (set! (-> arg0 col quad) (-> arg1 col quad))
+  0
+  (none)
+  )
+
+;; definition for method 23 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod cloud-vtx2-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
+  (set! (-> arg0 pos quad) (-> arg1 pos quad))
+  (set! (-> arg0 stq quad) (-> arg1 stq2 quad))
+  (set! (-> arg0 col quad) (-> arg1 col2 quad))
+  0
+  (none)
+  )
+
+;; definition for method 24 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-clouds ((this sky-work) (arg0 dma-buffer))
+  (local-vars (v1-19 float) (sv-16 cloud-vert-array) (sv-20 (inline-array sky-vertex)) (sv-32 int))
+  (rlet ((vf23 :class vf)
+         (vf27 :class vf)
+         )
+    (dma-buffer-add-gs-set arg0
+                           (test-1 (new 'static 'gs-test
+                                     :ate #x1
+                                     :atst (gs-atest greater-equal)
+                                     :aref #x50
+                                     :afail #x1
+                                     :zte #x1
+                                     :ztst (gs-ztest greater-equal)
+                                     )
+                                   )
+                           (tex0-1 (new 'static 'gs-tex0
+                                     :tbp0 #x100
+                                     :tbw #x2
+                                     :psm #x1b
+                                     :tcc #x1
+                                     :cbp #x300
+                                     :cld #x1
+                                     :th (log2 128)
+                                     :tw (log2 128)
+                                     )
+                                   )
+                           (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                           (clamp-1 (new 'static 'gs-clamp))
+                           (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                           (texflush 0)
+                           )
+    (.lvf vf27 (&-> this giftag-roof quad))
+    (let ((v1-18 #x43c80000))
+      (.mov vf23 v1-18)
+      )
+    (.mov v1-19 vf23)
+    (set-tex-offset (the-as int (-> this off-s)) (the-as int (-> this off-t)))
+    (let ((s4-1 (-> arg0 base)))
+      (&+! (-> arg0 base) 16)
+      (set! sv-16 *cloud-vert-array*)
+      (set! sv-20 *cloud-poly*)
+      (dotimes (s3-1 9)
+        (dotimes (s2-2 9)
+          (let ((s1-0 (+ (* 10 s3-1) s2-2)))
+            (set! sv-32 (+ (* 9 s3-1) s2-2))
+            (let ((s0-0 (+ s2-2 81 (* 9 s3-1))))
+              (cloud-vtx1-to-sky this (-> sv-20 (* sv-32 4)) (-> sv-16 data s1-0))
+              (cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 1)) (-> sv-16 data (+ s1-0 1)))
+              (cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 2)) (-> sv-16 data (+ s1-0 11)))
+              (cloud-vtx1-to-sky this (-> sv-20 (+ (* sv-32 4) 3)) (-> sv-16 data (+ s1-0 10)))
+              (cloud-vtx2-to-sky this (-> sv-20 (* s0-0 4)) (-> sv-16 data s1-0))
+              (cloud-vtx2-to-sky this (-> sv-20 (+ (* s0-0 4) 1)) (-> sv-16 data (+ s1-0 1)))
+              (cloud-vtx2-to-sky this (-> sv-20 (+ (* s0-0 4) 2)) (-> sv-16 data (+ s1-0 11)))
+              (cloud-vtx2-to-sky this (-> sv-20 (+ (* s0-0 4) 3)) (-> sv-16 data (+ s1-0 10)))
+              )
+            )
+          )
+        )
+      (dotimes (s5-1 162)
+        (render-sky-quad (the-as (inline-array sky-vertex) (-> sv-20 (* s5-1 4))) arg0)
+        )
+      (close-sky-buffer arg0)
+      (let ((v1-81 (/ (the-as int (+ (- -16 (the-as int s4-1)) (the-as int (-> arg0 base)))) 16)))
+        (set! (-> (the-as (pointer uint64) s4-1)) (logior #x10000000 (shr (shl v1-81 48) 48)))
+        (set! (-> (the-as (pointer int32) s4-1) 2) 0)
+        (set! (-> (the-as (pointer int32) s4-1) 3) (the-as int (logior #x50000000 (shr (shl v1-81 48) 48))))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 25 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-haze-light ((this sky-work) (arg0 vector) (arg1 vector) (arg2 haze-lights) (arg3 float))
+  (let* ((s5-0 (new 'stack-no-clear 'vector4))
+         (f0-1 (vector-dot (-> arg2 sun0-normal) arg1))
+         (f1-1 (vector-dot (-> arg2 sun1-normal) arg1))
+         (f2-1 (vector-dot (-> arg2 moon-normal) arg1))
+         (s3-0 (* arg3 (fmax 0.0 (fmin 1.0 (- 1.0 f0-1)))))
+         )
+    (let ((f0-2 (fmax 0.0 f0-1))
+          (f30-0 (fmax 0.0 f1-1))
+          (f28-0 (fmax 0.0 f2-1))
+          )
+      (set! (-> s5-0 quad) (-> arg2 ambi-color quad))
+      (vector4-madd! s5-0 s5-0 (the-as vector4 (-> arg2 sun0-color)) f0-2)
+      (vector4-madd! s5-0 s5-0 (the-as vector4 (-> arg2 sun1-color)) f30-0)
+      (vector4-madd! s5-0 s5-0 (the-as vector4 (-> arg2 moon-color)) f28-0)
+      )
+    (vector4-scale! s5-0 s5-0 128.0)
+    (set! (-> arg0 x) (fmax (fmin 255.0 (-> s5-0 x)) s3-0))
+    (set! (-> arg0 y) (fmax (fmin 255.0 (-> s5-0 y)) s3-0))
+    (set! (-> arg0 z) (fmax (fmin 255.0 (-> s5-0 z)) s3-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 26 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod adjust-haze-lighting ((this sky-work))
+  (let ((s5-0 *haze-vert-array*)
+        (s4-0 (-> this haze-lights))
+        )
+    (set! (-> s4-0 sun0-normal quad) (-> this upload-data data 0))
+    (set! (-> s4-0 sun1-normal quad) (-> (&-> this upload-data data 4) 0))
+    (vector-copy! (-> s4-0 moon-normal) (-> this upload-data moon pos))
+    (vector-normalize! (-> s4-0 sun0-normal) 1.0)
+    (vector-normalize! (-> s4-0 sun1-normal) 1.0)
+    (vector-normalize! (-> s4-0 moon-normal) 1.0)
+    (set! (-> s4-0 sun0-scale) (fmax 0.0 (fmin 1.0 (* 4.0 (+ 0.25 (-> s4-0 sun0-normal y))))))
+    (set! (-> s4-0 sun1-scale) (fmax 0.0 (fmin 1.0 (* 8.0 (+ 0.125 (-> s4-0 sun1-normal y))))))
+    (set! (-> s4-0 moon-scale) (fmax 0.0 (fmin 1.0 (* 8.0 (+ 0.125 (-> s4-0 moon-normal y))))))
+    (let ((s3-0 (-> s4-0 ambi-color)))
+      (-> this sun0-color-lower)
+      (let ((f30-0 (- 1.0 (fmax 0.0 (fmin 0.75 (* 4.0 (-> s4-0 moon-normal y))))))
+            (f0-8 (fmax 0.0 (fmin 1.0 (* 5.0 (+ 0.125 (-> s4-0 sun0-normal y))))))
+            (s2-0 (new 'stack-no-clear 'vector4))
+            )
+        (set-vector! s2-0 1.15 0.0 0.5 1.0)
+        (vector4-lerp! (the-as vector s2-0) (the-as vector s2-0) (-> this sun0-color) f0-8)
+        (vector4-scale! (the-as vector4 s3-0) (the-as vector4 (-> this ambi-color)) f30-0)
+        (vector4-scale! (the-as vector4 (-> s4-0 sun0-color)) s2-0 (-> s4-0 sun0-scale))
+        )
+      )
+    (vector4-scale!
+      (the-as vector4 (-> s4-0 sun1-color))
+      (the-as vector4 (-> this sun1-color))
+      (/ (-> s4-0 sun1-scale) 2)
+      )
+    (vector4-scale!
+      (the-as vector4 (-> s4-0 moon-color))
+      (the-as vector4 (-> this moon-color))
+      (-> s4-0 moon-scale)
+      )
+    (let ((f30-1 (* 144.0 (fmax 0.0 (fmin 1.0 (* 16.0 (-> s4-0 sun0-normal y)))))))
+      (dotimes (s3-1 36)
+        (let ((v1-28 (-> s5-0 data s3-1)))
+          (apply-haze-light this (-> v1-28 col) (-> v1-28 nrm) s4-0 f30-1)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 27 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod haze-vtx-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 sky-vertex) (arg2 haze-vertex))
+  (set! (-> arg0 pos quad) (-> arg2 pos quad))
+  (set! (-> arg0 col quad) (-> arg2 col quad))
+  (set! (-> arg0 col w) 128.0)
+  (set! (-> arg1 pos quad) (-> arg2 pos quad))
+  (set! (-> arg1 col quad) (-> arg2 col quad))
+  (set! (-> arg1 pos y) 3.0)
+  (set! (-> arg1 col w) 0.0)
+  0
+  (none)
+  )
+
+;; definition for method 28 of type sky-work
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-haze ((this sky-work) (arg0 dma-buffer))
+  (local-vars (sv-16 haze-vert-array) (sv-20 (inline-array sky-vertex)))
+  (rlet ((vf27 :class vf))
+    (dma-buffer-add-gs-set arg0 (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)))
+    (init-regs-for-large-polygon-draw this)
+    (.lvf vf27 (&-> this giftag-haze quad))
+    (let ((s4-0 (-> arg0 base)))
+      (&+! (-> arg0 base) 16)
+      (set! sv-16 *haze-vert-array*)
+      (set! sv-20 *haze-poly*)
+      (dotimes (s3-0 35)
+        (haze-vtx-to-sky this (-> sv-20 (* s3-0 4)) (-> sv-20 (+ (* s3-0 4) 1)) (-> sv-16 data s3-0))
+        (haze-vtx-to-sky this (-> sv-20 (+ (* s3-0 4) 3)) (-> sv-20 (+ (* s3-0 4) 2)) (-> sv-16 data (+ s3-0 1)))
+        )
+      (haze-vtx-to-sky this (-> sv-20 140) (-> sv-20 141) (-> sv-16 data 35))
+      (haze-vtx-to-sky this (-> sv-20 143) (-> sv-20 142) (-> sv-16 data 0))
+      (dotimes (s5-1 36)
+        (render-sky-quad (the-as (inline-array sky-vertex) (-> sv-20 (* s5-1 4))) arg0)
+        )
+      (close-sky-buffer arg0)
+      (let ((v1-41 (/ (the-as int (+ (- -16 (the-as int s4-0)) (the-as int (-> arg0 base)))) 16)))
+        (set! (-> (the-as (pointer uint64) s4-0)) (logior #x10000000 (shr (shl v1-41 48) 48)))
+        (set! (-> (the-as (pointer int32) s4-0) 2) 0)
+        (set! (-> (the-as (pointer int32) s4-0) 3) (the-as int (logior #x50000000 (shr (shl v1-41 48) 48))))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 29 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 29 sky-work)" 29 sky-work)
+
+;; definition for method 30 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 30 sky-work)" 30 sky-work)
+
+;; definition for method 31 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 31 sky-work)" 31 sky-work)
+
+;; definition for method 33 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-stars ((this sky-work) (arg0 matrix) (arg1 sky-upload-data))
+  (set! (-> arg0 fvec quad) (-> arg1 data 0))
+  (vector-normalize! (-> arg0 fvec) 1.0)
+  (vector-cross! (-> arg0 rvec) *z-vector* (-> arg0 fvec))
+  (vector-normalize! (-> arg0 rvec) 1.0)
+  (vector-cross! (-> arg0 uvec) (-> arg0 fvec) (-> arg0 rvec))
+  (vector-normalize! (-> arg0 uvec) 1.0)
+  (let ((s4-1 (new 'stack-no-clear 'vector)))
+    (set! (-> s4-1 quad) (-> arg1 data 0))
+    (vector-normalize! s4-1 -1.0)
+    (let ((f0-1 (fmax 0.0 (fmin 1.0 (* 20.0 (+ 0.05 (-> s4-1 y)))))))
+      (if (= (-> *setting-control* user-current sky-type) 'star-field)
+          (set! f0-1 1.0)
+          )
+      (dotimes (v1-11 16)
+        (let ((f1-4 (* (- 128.0 (* 8.0 (the float v1-11))) f0-1)))
+          (set-vector! (-> this star-colors v1-11) (the int f1-4) (the int f1-4) (the int f1-4) 128)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 34 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 34 sky-work)" 34 sky-work)
+
+;; definition for method 35 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 35 sky-work)" 35 sky-work)
+
+;; definition for method 36 of type sky-work
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-roof ((this sky-work) (arg0 dma-buffer))
+  (rlet ((vf27 :class vf))
+    (dma-buffer-add-gs-set arg0
+                           (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+                           (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                           (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                           )
+    (init-regs-for-large-polygon-draw this)
+    (.lvf vf27 (&-> this giftag-base quad))
+    (let ((s5-1 (-> arg0 base)))
+      (&+! (-> arg0 base) 16)
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 0)) arg0)
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 3)) arg0)
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 6)) arg0)
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 9)) arg0)
+      (close-sky-buffer arg0)
+      (let ((v1-14 (/ (the-as int (+ (- -16 (the-as int s5-1)) (the-as int (-> arg0 base)))) 16)))
+        (set! (-> (the-as (pointer uint64) s5-1)) (logior #x10000000 (shr (shl v1-14 48) 48)))
+        (set! (-> (the-as (pointer int32) s5-1) 2) 0)
+        (set! (-> (the-as (pointer int32) s5-1) 3) (the-as int (logior #x50000000 (shr (shl v1-14 48) 48))))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 37 of type sky-work
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-base ((this sky-work) (arg0 dma-buffer))
+  (rlet ((vf27 :class vf))
+    (dma-buffer-add-gs-set arg0
+                           (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                           )
+    (let ((s5-0 (-> arg0 base)))
+      (&+! (-> arg0 base) 16)
+      (.lvf vf27 (&-> this giftag-base quad))
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 0)) arg0)
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 3)) arg0)
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 6)) arg0)
+      (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 9)) arg0)
+      (close-sky-buffer arg0)
+      (let ((v1-12 (/ (the-as int (+ (- -16 (the-as int s5-0)) (the-as int (-> arg0 base)))) 16)))
+        (set! (-> (the-as (pointer uint64) s5-0)) (logior #x10000000 (shr (shl v1-12 48) 48)))
+        (set! (-> (the-as (pointer int32) s5-0) 2) 0)
+        (set! (-> (the-as (pointer int32) s5-0) 3) (the-as int (logior #x50000000 (shr (shl v1-12 48) 48))))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 38 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-fog ((this sky-work) (arg0 dma-buffer))
+  (let ((s4-0 (-> *sky-texture-anim-array* array-data 8 tex)))
+    (if s4-0
+        (dma-buffer-add-gs-set arg0
+                               (tex0-1 (new 'static 'gs-tex0
+                                         :tcc #x1
+                                         :cld #x1
+                                         :psm (the-as int (-> s4-0 psm))
+                                         :cpsm (-> s4-0 clutpsm)
+                                         :cbp (-> s4-0 clutdest)
+                                         :th (log2 (-> s4-0 h))
+                                         :tw (log2 (-> s4-0 w))
+                                         :tbw (-> s4-0 width 0)
+                                         :tbp0 (-> s4-0 dest 0)
+                                         )
+                                       )
+                               (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                               (test-1 (new 'static 'gs-test
+                                         :ate #x1
+                                         :atst (gs-atest greater-equal)
+                                         :aref #x70
+                                         :afail #x3
+                                         :zte #x1
+                                         :ztst (gs-ztest greater-equal)
+                                         )
+                                       )
+                               (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                               (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                               )
+        )
+    )
+  (let* ((v1-26 (the-as (inline-array qword) (-> arg0 base)))
+         (a0-22 *fog-texture-work*)
+         (f0-0 (-> a0-22 min-corner y))
+         (f4-0 (- (-> a0-22 max-corner y) f0-0))
+         (f3-0 (/ (- (-> a0-22 corner 1 y) f0-0) f4-0))
+         (f2-0 (/ (- (-> a0-22 corner 0 y) f0-0) f4-0))
+         (f1-7 (/ (- (-> a0-22 corner 3 y) f0-0) f4-0))
+         (f0-2 (/ (- (-> a0-22 corner 2 y) f0-0) f4-0))
+         (a0-23 6400)
+         )
+    (set! (-> v1-26 0 quad) (-> this fog-tmpl dma-vif quad))
+    (set! (-> v1-26 1 quad) (-> this fog-tmpl quad 1))
+    (set-vector! (-> v1-26 2 vector4w) 128 128 128 128)
+    (set-vector! (-> v1-26 3 vector4w) (the-as int f3-0) (the-as int 0.0) (the-as int 1.0) (the-as int 0.0))
+    (set-vector! (-> v1-26 4 vector4w) #x7000 #x7300 a0-23 0)
+    (set-vector! (-> v1-26 5 vector4w) (the-as int f2-0) (the-as int 0.0) (the-as int 1.0) (the-as int 0.0))
+    (set-vector! (-> v1-26 6 vector4w) #x9000 #x7300 a0-23 0)
+    (set-vector! (-> v1-26 7 vector4w) (the-as int f1-7) (the-as int 0.0) (the-as int 1.0) (the-as int 0.0))
+    (set-vector! (-> v1-26 8 vector4w) #x7000 #x8d00 a0-23 0)
+    (set-vector! (-> v1-26 9 vector4w) (the-as int f0-2) (the-as int 0.0) (the-as int 1.0) (the-as int 0.0))
+    (let ((v1-27 (the-as (inline-array qword) (-> v1-26 10))))
+      (set! (-> v1-27 0 vector4w x) #x9000)
+      (set! (-> v1-27 0 vector4w y) #x8d00)
+      (set! (-> v1-27 0 vector4w z) a0-23)
+      (set! (-> v1-27 0 vector4w w) 0)
+      )
+    )
+  (&+! (-> arg0 base) 176)
+  0
+  (none)
+  )
+
+;; definition for method 32 of type sky-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 32 sky-work)" 32 sky-work)
+
+;; definition for method 13 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-erase ((this sky-work) (arg0 dma-buffer) (arg1 vector))
+  (dma-buffer-add-gs-set arg0
+                         (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+                         (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                         (rgbaq (new 'static 'gs-rgbaq
+                                  :q 1.0
+                                  :a (the int (-> arg1 w))
+                                  :b (the int (-> arg1 z))
+                                  :g (the int (-> arg1 y))
+                                  :r (the int (-> arg1 x))
+                                  )
+                                )
+                         )
+  (let ((v1-3 (-> arg0 base)))
+    (set! (-> (the-as (pointer uint128) v1-3)) (-> this sprite-tmpl dma-vif quad))
+    (set! (-> (the-as (pointer uint128) v1-3) 1) (-> this sprite-tmpl quad 1))
+    )
+  (&+! (-> arg0 base) 32)
+  (let ((v1-6 (-> arg0 base)))
+    (set-vector! (the-as vector4w (&+ v1-6 0)) #x7000 #x7300 0 0)
+    (set-vector! (the-as vector4w (&+ v1-6 16)) #x9000 #x8d00 0 0)
+    )
+  (&+! (-> arg0 base) 32)
+  0
+  (none)
+  )
+
+;; definition for method 14 of type sky-work
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this sky-work))
+  (let ((s4-0 *time-of-day-context*)
+        (v1-0 #f)
+        )
+    (dotimes (a0-1 (-> *level* length))
+      (let ((a1-3 (-> *level* level a0-1)))
+        (when (= (-> a1-3 status) 'active)
+          (if (and (= (-> a1-3 display?) 'display) (logtest? (-> a1-3 info level-flags) (level-flags sky)))
+              (set! v1-0 #t)
+              )
+          )
+        )
+      )
+    (cond
+      ((and v1-0
+            (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask sky))
+            (logtest? (-> *texture-pool* texture-enable-user) (texture-enable-mask sky))
+            )
+       (let ((gp-0 (-> *display* frames (-> *display* on-screen) global-buf base)))
+         (let ((a1-9 (if (-> s4-0 use-camera-other)
+                         (-> *math-camera* camera-rot-other)
+                         (-> *math-camera* camera-rot)
+                         )
+                     )
+               )
+           (update-camera-matrix this a1-9)
+           )
+         (update-template-colors this)
+         (adjust-haze-lighting this)
+         (adjust-cloud-lighting this)
+         (let ((s4-1 (the-as sky-work #x70000000)))
+           (mem-copy! (the-as pointer s4-1) (the-as pointer this) #x2814)
+           (setup-stars s4-1 (-> s4-1 star-mat) (-> this upload-data))
+           (if (nonzero? (-> s4-1 star-colors 0 x))
+               (stars-transform-asm s4-1)
+               )
+           (cond
+             ((= (-> *setting-control* user-current sky-type) 'star-field)
+              (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                           (bucket-id sky)
+                                           )
+                (draw-erase s4-1 s3-0 (new 'static 'vector :w 128.0))
+                (init-regs-for-sky-asm s4-1)
+                (stars-dma s4-1 s3-0)
+                (sun-dma s4-1 s3-0)
+                (green-sun-dma s4-1 s3-0)
+                (moon-dma s4-1 s3-0)
+                )
+              )
+             (else
+               (with-dma-buffer-add-bucket ((s2-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                            (bucket-id sky)
+                                            )
+                 (draw-roof s4-1 s2-0)
+                 (init-regs-for-sky-asm s4-1)
+                 (if (nonzero? (-> s4-1 star-colors 0 x))
+                     (stars-dma s4-1 s2-0)
+                     )
+                 (sun-dma s4-1 s2-0)
+                 (green-sun-dma s4-1 s2-0)
+                 (moon-dma s4-1 s2-0)
+                 (cond
+                   ((or (task-node-closed? (game-task-node precursor-destroy-ship-resolution)) (-> this disable-day-star))
+                    (set! (-> *time-of-day* 0 day-star-enable) #f)
+                    )
+                   (else
+                     (set! (-> *time-of-day* 0 day-star-enable) #t)
+                     (day-star-dma s4-1 s2-0)
+                     )
+                   )
+                 (draw-haze s4-1 s2-0)
+                 (draw-clouds s4-1 s2-0)
+                 (draw-base s4-1 s2-0)
+                 (draw-fog s4-1 s2-0)
+                 )
+               )
+             )
+           )
+         (let ((a0-45 *dma-mem-usage*))
+           (when (nonzero? a0-45)
+             (set! (-> a0-45 length) (max 90 (-> a0-45 length)))
+             (set! (-> a0-45 data 89 name) "sky")
+             (+! (-> a0-45 data 89 count) 1)
+             (+! (-> a0-45 data 89 used)
+                 (&- (-> *display* frames (-> *display* on-screen) global-buf base) (the-as uint gp-0))
+                 )
+             (set! (-> a0-45 data 89 total) (-> a0-45 data 89 used))
+             )
+           )
+         )
+       )
+      ((get-menu-mode *blit-displays-work*)
+       (with-dma-buffer-add-bucket ((s5-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                                    (bucket-id sky)
+                                    )
+         (draw-sky *blit-displays-work* s5-2)
+         )
+       )
+      (else
+        (with-dma-buffer-add-bucket ((s3-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id sky)
+                                     )
+          (draw-erase this s3-2 (-> s4-0 current-fog erase-color))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )

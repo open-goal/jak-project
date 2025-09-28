@@ -9,7 +9,7 @@
 
 #include "goalc/compiler/Compiler.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 
 /*!
  * Compile the fields of a static structure into the given StaticStructure*, applying an offset.
@@ -216,7 +216,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
           structure->add_pointer_record(field_offset, sr.reference(),
                                         sr.reference()->get_addr_offset());
         } else if (sr.is_type()) {
-          if (field_info.type != TypeSpec("type")) {
+          if (field_info.type != TypeSpec("type") && field_info.type != TypeSpec("object")) {
             throw_compiler_error(form, "Cannot put a type reference in a field with type {}",
                                  field_info.type.print());
           }
@@ -700,10 +700,10 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
     }
 
     // as a constant
-    auto kv = m_global_constants.find(form.as_symbol());
-    if (kv != m_global_constants.end()) {
+    auto kv = m_global_constants.lookup(form.as_symbol());
+    if (kv) {
       // expand constant and compile again.
-      return compile_static(kv->second, env);
+      return compile_static(*kv, env);
     } else {
       throw_compiler_error(form, "The symbol {} could not be evaluated at compile time",
                            form.print());
@@ -891,8 +891,8 @@ void Compiler::fill_static_array_inline(const goos::Object& form,
       typecheck(form, TypeSpec("integer"), sr.typespec());
     } else {
       if (sr.is_symbol() && sr.symbol_name() == "#f") {
-        // allow #f for any structure, or symbol (no longer a structure in jak 2)
-        if (content_type.base_type() != "symbol") {
+        // allow #f for any structure, symbol (no longer a structure in jak 2), or object.
+        if (content_type.base_type() != "symbol" && content_type.base_type() != "object") {
           typecheck(form, TypeSpec("structure"), content_type);
         }
       } else {

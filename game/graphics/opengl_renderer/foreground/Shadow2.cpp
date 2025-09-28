@@ -155,6 +155,13 @@ void Shadow2::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
       u16 addr = up.addr_qw;
 
       u32 offset = 4 * vif1.num;
+      if (transfer.size_bytes > 16 + 255 * 4) {
+        printf("shadow overflow detected, skipping all shadows for this frame!");
+        while (dma.current_tag_offset() == render_state->next_bucket) {
+          dma.read_and_advance();
+        }
+        return;
+      }
       ASSERT(offset + 16 == transfer.size_bytes);
 
       u32 after[4];
@@ -551,8 +558,8 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
 
   if (have_darken) {
     glColorMask(darken_channel[0], darken_channel[1], darken_channel[2], false);
-    glUniform4f(m_ogl.uniforms.color, (128 - m_color[0]) / 256.f, (128 - m_color[1]) / 256.f,
-                (128 - m_color[2]) / 256.f, 0);
+    glUniform4f(m_ogl.uniforms.color, (m_color[3] - m_color[0]) / 256.f,
+                (m_color[3] - m_color[1]) / 256.f, (m_color[3] - m_color[2]) / 256.f, 0);
     glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
     glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT,
                    (void*)(sizeof(u32) * (m_front_index_buffer_used - 6)));
@@ -560,8 +567,8 @@ void Shadow2::draw_buffers(SharedRenderState* render_state,
 
   if (have_lighten) {
     glColorMask(lighten_channel[0], lighten_channel[1], lighten_channel[2], false);
-    glUniform4f(m_ogl.uniforms.color, (m_color[0] - 128) / 256.f, (m_color[1] - 128) / 256.f,
-                (m_color[2] - 128) / 256.f, 0);
+    glUniform4f(m_ogl.uniforms.color, (m_color[0] - m_color[3]) / 256.f,
+                (m_color[1] - m_color[3]) / 256.f, (m_color[2] - m_color[3]) / 256.f, 0);
     glBlendEquation(GL_FUNC_ADD);
     glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT,
                    (void*)(sizeof(u32) * (m_front_index_buffer_used - 6)));

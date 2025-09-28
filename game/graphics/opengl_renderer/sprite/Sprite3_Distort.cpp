@@ -212,6 +212,7 @@ void Sprite3::distort_dma(GameVersion version, DmaFollower& dma, ScopedProfilerN
       expect_th = 8;
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       expect_zbp = 0x130;
       expect_th = 9;
       break;
@@ -424,6 +425,7 @@ void Sprite3::distort_setup_instanced(ScopedProfilerNode& /*prof*/) {
 
     for (int res = 3; res < 12; res++) {
       int entry_index = m_sprite_distorter_sine_tables.ientry[res - 3].x() - 352;
+      // ASSERT_MSG(entry_index >= 0, "weird sprite_distort startup crash happened again!");
 
       for (int i = 0; i < res; i++) {
         math::Vector3f vf06 = m_sprite_distorter_sine_tables.entry[entry_index++].xyz();

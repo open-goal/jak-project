@@ -1,20 +1,25 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: game-h.gc
-;; name in dgo: game-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 (declare-type target process-drawable)
+
 (declare-type voicebox process-drawable)
+
 (defun-extern voicebox-spawn process vector (pointer process))
 
 (declare-type nav-control basic)
+
 (declare-type path-control basic)
+
 (declare-type vol-control basic)
+
 (declare-type actor-link-info basic)
+
 (declare-type sparticle-launch-control basic)
+
 (declare-type water-control basic)
+
 (declare-type collide-shape basic)
 
 (defenum attack-mask
@@ -33,8 +38,7 @@
   (control)
   (angle)
   (rotate-to)
-  (atki13)
-  )
+  (atki13))
 
 ;; These flags are a bit of a hack and are mostly only meaningful on *target*
 ;; except for "fade-out-particles" which is meaninful for eco only.
@@ -42,190 +46,155 @@
   :bitfield #t
   :type uint32
   (fade-out-particles) ;; set so particle callbacks can fade out before death
-  (dangerous)          ;; set on jak if he is "dangerous" (currently attacking)
-  (sf02)               ;; never sent, blocks tripping
-  (being-attacked)     ;; set when attacked
-  (invulnerable)       ;; set from the debug menu
+  (dangerous) ;; set on jak if he is "dangerous" (currently attacking)
+  (sf02) ;; never sent, blocks tripping
+  (being-attacked) ;; set when attacked
+  (invulnerable) ;; set from the debug menu
   (timed-invulnerable) ;; after being attacked
-  (invuln-powerup)     ;; unused invulnerable mode from powerup
-  (do-not-notice)      ;; enemies etc shouldn't notice jak
-  (grabbed)            ;; something else has "grabbed" control of jak
-  (first-person-mode)  ;; triangle, billy game
-  (use-alt-cam-pos)    ;; target-cam-pos should use an alternate position (jumping in warp gate, on to flutflut...)
-  (prevent-jump)       ;; target cannot do any jumps
-  (prevent-attack)     ;; target cannot do attacks
-  (prevent-duck)       ;; can't duck or roll
-  (remove-prevents)    ;; when set, removes the previous 3 prevents on the next frame.
-  (dying)                ;; set during death anim
-  (sf16)                 ;; unused
-  (has-saved-position)       ;; is there a saved position?
-  (looking-at-enemy)         ;; neck mod active to look at enemy
+  (invuln-powerup) ;; unused invulnerable mode from powerup
+  (do-not-notice) ;; enemies etc shouldn't notice jak
+  (grabbed) ;; something else has "grabbed" control of jak
+  (first-person-mode) ;; triangle, billy game
+  (use-alt-cam-pos) ;; target-cam-pos should use an alternate position (jumping in warp gate, on to flutflut...)
+  (prevent-jump) ;; target cannot do any jumps
+  (prevent-attack) ;; target cannot do attacks
+  (prevent-duck) ;; can't duck or roll
+  (remove-prevents) ;; when set, removes the previous 3 prevents on the next frame.
+  (dying) ;; set during death anim
+  (sf16) ;; unused
+  (has-saved-position) ;; is there a saved position?
+  (looking-at-enemy) ;; neck mod active to look at enemy
   (falling-into-pool-of-bad) ;; falling into lava, dark eco, or melt
-  (flop-hit-ground)          ;; set when ground pound hit ground
+  (flop-hit-ground) ;; set when ground pound hit ground
   )
 
 (defmacro static-attack-info (&key (mask ()) args)
   (let ((mask-actual mask))
     (dolist (it args)
       (when (not (member (caar it) mask-actual))
-        (cons! mask-actual (caar it))
-        )
-      )
+        (cons! mask-actual (caar it))))
     `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
-        ,@(apply (lambda (x) (if (eq? (car x) 'vector)
-                                 `(vector-copy! (-> atk ,(car x)) ,(cadr x))
-                                 `(set! (-> atk ,(car x)) ,(cadr x))
-                                )) args)
-        atk)
-    )
-  )
+      ,@(apply (lambda (x)
+               (if (eq? (car x) 'vector) `(vector-copy! (-> atk ,(car x)) ,(cadr x)) `(set! (-> atk ,(car x)) ,(cadr x))))
+             args)
+      atk)))
 
 ;; DECOMP BEGINS
-
 
 ;; Process drawable is the parent type of most game objects.
 (deftype process-drawable (process)
   ;; The "root" is the location of the process-drawable.
   ;; It may be a more specific type, and often contains the collision geometry.
-  ((root         trsqv)
+  ((root trsqv)
    ;; The node-list is a list of all the joints and bones, and how
    ;; joints update bones.
-
-   (node-list    cspace-array)
-
+   (node-list cspace-array)
    ;; the draw-control contains references to all data required for drawing
-   (draw         draw-control)
-
+   (draw draw-control)
    ;; The skel is a joint-control which combines animations to control joints
-   (skel         joint-control)
-
+   (skel joint-control)
    ;; The nav-control allows enemies to navigate on a nav mesh.
-   (nav          nav-control)
-
+   (nav nav-control)
    ;; alignment of animation to our position
-   (align        align-control)
-
+   (align align-control)
    ;; our path (like if we are a platform or enemy that moves along a fixed path)
-   (path         path-control)
-
+   (path path-control)
    ;; associated volumes (for water)
-   (vol          vol-control)
-
+   (vol vol-control)
    ;; our settings
-   (fact         fact-info)
-
+   (fact fact-info)
    ;; reference to our entity
-   (link         actor-link-info)
-
+   (link actor-link-info)
    ;; our particles
-   (part         sparticle-launch-control)
-
+   (part sparticle-launch-control)
    ;; state related to entering and being in water
-   (water        water-control)
-
+   (water water-control)
    ;; any sound that we're playing
-   (sound        ambient-sound)
-
+   (sound ambient-sound)
    ;; seems to only be used in target?
-   (state-flags  state-flags)
-
+   (state-flags state-flags)
    ;; the time when we last did something. Used for different things in different objects
-   (state-time   time-frame)
-   )
+   (state-time time-frame))
   (:methods
-    (initialize-skeleton (_type_ skeleton-group pair) none)
-    (initialize-skeleton-by-name (_type_ string object) _type_)
-    (apply-alignment (_type_ align-opts transformq vector) collide-shape)
-    (do-joint-math! (_type_) none)
-    (cleanup-for-death (_type_) none)
-    (evaluate-joint-control (_type_) none)
-    )
-  (:states
-    (process-drawable-art-error string)
-    process-drawable-idle
-    )
-  )
+   (initialize-skeleton (_type_ skeleton-group pair) none)
+   (initialize-skeleton-by-name (_type_ string object) _type_)
+   (apply-alignment (_type_ align-opts transformq vector) collide-shape)
+   (do-joint-math! (_type_) none)
+   (cleanup-for-death (_type_) none)
+   (evaluate-joint-control (_type_) none))
+  (:states (process-drawable-art-error string) process-drawable-idle))
 
 ;; This is unused. Maybe it was useful in development, where it might be slow to add
 ;; methods to a type?
-(deftype process-drawable-reserved (process-drawable)
-  ()
+(deftype process-drawable-reserved (process-drawable) ()
   (:methods
-    (process-drawable-reserved-method-20 () none)
-    (process-drawable-reserved-method-21 () none)
-    (process-drawable-reserved-method-22 () none)
-    (process-drawable-reserved-method-23 () none)
-    (process-drawable-reserved-method-24 () none)
-    (process-drawable-reserved-method-25 () none)
-    (process-drawable-reserved-method-26 () none)
-    (process-drawable-reserved-method-27 () none)
-    (process-drawable-reserved-method-28 () none)
-    (process-drawable-reserved-method-29 () none)
-    (process-drawable-reserved-method-30 () none)
-    (process-drawable-reserved-method-31 () none)
-    (process-drawable-reserved-method-32 () none)
-    (process-drawable-reserved-method-33 () none)
-    (process-drawable-reserved-method-34 () none)
-    (process-drawable-reserved-method-35 () none)
-    (process-drawable-reserved-method-36 () none)
-    (process-drawable-reserved-method-37 () none)
-    (process-drawable-reserved-method-38 () none)
-    (process-drawable-reserved-method-39 () none)
-    (process-drawable-reserved-method-40 () none)
-    (process-drawable-reserved-method-41 () none)
-    (process-drawable-reserved-method-42 () none)
-    (process-drawable-reserved-method-43 () none)
-    (process-drawable-reserved-method-44 () none)
-    (process-drawable-reserved-method-45 () none)
-    (process-drawable-reserved-method-46 () none)
-    (process-drawable-reserved-method-47 () none)
-    (process-drawable-reserved-method-48 () none)
-    (process-drawable-reserved-method-49 () none)
-    (process-drawable-reserved-method-50 () none)
-    (process-drawable-reserved-method-51 () none)
-    (process-drawable-reserved-method-52 () none)
-    (process-drawable-reserved-method-53 () none)
-    (process-drawable-reserved-method-54 () none)
-    (process-drawable-reserved-method-55 () none)
-    (process-drawable-reserved-method-56 () none)
-    (process-drawable-reserved-method-57 () none)
-    (process-drawable-reserved-method-58 () none)
-    (process-drawable-reserved-method-59 () none)
-    (process-drawable-reserved-method-60 () none)
-    (process-drawable-reserved-method-61 () none)
-    (process-drawable-reserved-method-62 () none)
-    )
-  )
+   (process-drawable-reserved-method-20 () none)
+   (process-drawable-reserved-method-21 () none)
+   (process-drawable-reserved-method-22 () none)
+   (process-drawable-reserved-method-23 () none)
+   (process-drawable-reserved-method-24 () none)
+   (process-drawable-reserved-method-25 () none)
+   (process-drawable-reserved-method-26 () none)
+   (process-drawable-reserved-method-27 () none)
+   (process-drawable-reserved-method-28 () none)
+   (process-drawable-reserved-method-29 () none)
+   (process-drawable-reserved-method-30 () none)
+   (process-drawable-reserved-method-31 () none)
+   (process-drawable-reserved-method-32 () none)
+   (process-drawable-reserved-method-33 () none)
+   (process-drawable-reserved-method-34 () none)
+   (process-drawable-reserved-method-35 () none)
+   (process-drawable-reserved-method-36 () none)
+   (process-drawable-reserved-method-37 () none)
+   (process-drawable-reserved-method-38 () none)
+   (process-drawable-reserved-method-39 () none)
+   (process-drawable-reserved-method-40 () none)
+   (process-drawable-reserved-method-41 () none)
+   (process-drawable-reserved-method-42 () none)
+   (process-drawable-reserved-method-43 () none)
+   (process-drawable-reserved-method-44 () none)
+   (process-drawable-reserved-method-45 () none)
+   (process-drawable-reserved-method-46 () none)
+   (process-drawable-reserved-method-47 () none)
+   (process-drawable-reserved-method-48 () none)
+   (process-drawable-reserved-method-49 () none)
+   (process-drawable-reserved-method-50 () none)
+   (process-drawable-reserved-method-51 () none)
+   (process-drawable-reserved-method-52 () none)
+   (process-drawable-reserved-method-53 () none)
+   (process-drawable-reserved-method-54 () none)
+   (process-drawable-reserved-method-55 () none)
+   (process-drawable-reserved-method-56 () none)
+   (process-drawable-reserved-method-57 () none)
+   (process-drawable-reserved-method-58 () none)
+   (process-drawable-reserved-method-59 () none)
+   (process-drawable-reserved-method-60 () none)
+   (process-drawable-reserved-method-61 () none)
+   (process-drawable-reserved-method-62 () none)))
 
 ;; The attack-info is generated by attackers and sent to target.
 (deftype attack-info (structure)
-  ((trans         vector  :inline)
-   (vector        vector  :inline)
-   (intersection  vector  :inline)
-   (attacker      handle)
-   (invinc-time   time-frame)
-   (mask          attack-mask)
-   (mode          symbol)
-   (shove-back    meters)
-   (shove-up      meters)
-   (speed         meters)
-   (dist          meters)
-   (control       float)
-   (angle         symbol)
-   (rotate-to     degrees)
-   (prev-state    state)
-   )
+  ((trans        vector :inline)
+   (vector       vector :inline)
+   (intersection vector :inline)
+   (attacker     handle)
+   (invinc-time  time-frame)
+   (mask         attack-mask)
+   (mode         symbol)
+   (shove-back   meters)
+   (shove-up     meters)
+   (speed        meters)
+   (dist         meters)
+   (control      float)
+   (angle        symbol)
+   (rotate-to    degrees)
+   (prev-state   state))
   (:methods
-    (combine! (_type_ attack-info) none)
-    )
-  )
-
+   (combine! (_type_ attack-info) none)))
 
 (define *global-attack-id* 0)
 
 (deftype ground-tween-info (structure)
-  ((chan   uint8   3)
-   (blend  float   3)
-   (group  uint32  5)
-   )
-  )
+  ((chan  uint8 3)
+   (blend float 3)
+   (group uint32 5)))

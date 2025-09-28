@@ -1,89 +1,79 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: citb-plat.gc
-;; name in dgo: citb-plat
-;; dgos: CIT, L1
+(bundles "CIT.DGO")
+(require "engine/common-obs/rigid-body.gc")
+(require "engine/common-obs/plat-eco.gc")
+(require "engine/common-obs/plat-button.gc")
 
 ;; DECOMP BEGINS
 
-(defskelgroup *plat-citb-sg* plat-citb plat-citb-lod0-jg plat-citb-idle-ja
-              ((plat-citb-lod0-mg (meters 20)) (plat-citb-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 3)
-              )
+(defskelgroup *plat-citb-sg*
+  plat-citb
+  plat-citb-lod0-jg
+  plat-citb-idle-ja
+  ((plat-citb-lod0-mg (meters 20)) (plat-citb-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 3))
 
-(defskelgroup *plat-eco-citb-unlit-sg* plat-eco-citb plat-eco-citb-lod0-jg plat-eco-citb-idle-ja
-              ((plat-eco-citb-lod0-mg (meters 20))
-               (plat-eco-citb-lod1-mg (meters 40))
-               (plat-eco-citb-lod2-mg (meters 999999))
-               )
-              :bounds (static-spherem 0 0 0 3)
-              )
+(defskelgroup *plat-eco-citb-unlit-sg*
+  plat-eco-citb
+  plat-eco-citb-lod0-jg
+  plat-eco-citb-idle-ja
+  ((plat-eco-citb-lod0-mg (meters 20)) (plat-eco-citb-lod1-mg (meters 40)) (plat-eco-citb-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 3))
 
-(defskelgroup *plat-eco-citb-lit-sg* plat-eco-citb plat-eco-citb-lit-lod0-jg plat-eco-citb-idle-ja
-              ((plat-eco-citb-lit-lod0-mg (meters 20))
-               (plat-eco-citb-lit-lod1-mg (meters 40))
-               (plat-eco-citb-lit-lod2-mg (meters 999999))
-               )
-              :bounds (static-spherem 0 0 0 3)
-              )
+(defskelgroup *plat-eco-citb-lit-sg*
+  plat-eco-citb
+  plat-eco-citb-lit-lod0-jg
+  plat-eco-citb-idle-ja
+  ((plat-eco-citb-lit-lod0-mg (meters 20))
+   (plat-eco-citb-lit-lod1-mg (meters 40))
+   (plat-eco-citb-lit-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 3))
 
-(defskelgroup *citb-chain-plat-sg* citb-chain-plat citb-chain-plat-lod0-jg citb-chain-plat-idle-ja
-              ((citb-chain-plat-lod0-mg (meters 20)) (citb-chain-plat-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5)
-              )
+(defskelgroup *citb-chain-plat-sg*
+  citb-chain-plat
+  citb-chain-plat-lod0-jg
+  citb-chain-plat-idle-ja
+  ((citb-chain-plat-lod0-mg (meters 20)) (citb-chain-plat-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5))
 
 (deftype citb-base-plat (process-drawable)
-  ((root           collide-shape-moving :override)
-   (idle-distance  float)
-   )
+  ((root          collide-shape-moving :override)
+   (idle-distance float))
   (:state-methods
-    citb-base-plat-idle
-    )
+   citb-base-plat-idle)
   (:methods
-    (citb-base-plat-method-21 (_type_) none)
-    (citb-base-plat-method-22 (_type_) none)
-    (citb-base-plat-active () _type_ :state)
-    (citb-base-plat-method-24 (_type_) none)
-    )
-  )
+   (citb-base-plat-method-21 (_type_) none)
+   (citb-base-plat-method-22 (_type_) none)
+   (citb-base-plat-active () _type_ :state)
+   (citb-base-plat-method-24 (_type_) none)))
 
 
 (defstate citb-base-plat-idle (citb-base-plat)
   :virtual #t
-  :trans (behavior ()
-    (if (and *target*
-             (>= (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-             )
-        (go-virtual citb-base-plat-active)
-        )
-    )
+  :trans
+    (behavior ()
+      (if (and *target* (>= (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+        (go-virtual citb-base-plat-active)))
   :code anim-loop
-  :post ja-post
-  )
+  :post ja-post)
 
 (defstate citb-base-plat-active (citb-base-plat)
   :virtual #t
-  :trans (behavior ()
-    (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
-                              (vector-vector-distance (-> self root trans) (-> *target* control trans))
-                              )
-            )
-        (go-virtual citb-base-plat-idle)
-        )
-    (rider-trans)
-    )
+  :trans
+    (behavior ()
+      (if (or (not *target*)
+              (< (+ 8192.0 (-> self idle-distance)) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+        (go-virtual citb-base-plat-idle))
+      (rider-trans))
   :code anim-loop
-  :post rider-post
-  )
+  :post rider-post)
 
 (defmethod citb-base-plat-method-21 ((this citb-base-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -92,27 +82,22 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod citb-base-plat-method-22 ((this citb-base-plat))
   (initialize-skeleton this *plat-citb-sg* '())
   0
-  (none)
-  )
+  (none))
 
 (defmethod citb-base-plat-method-24 ((this citb-base-plat))
   (go (method-of-object this citb-base-plat-idle))
   0
-  (none)
-  )
+  (none))
 
 (defmethod init-from-entity! ((this citb-base-plat) (arg0 entity-actor))
   (citb-base-plat-method-21 this)
@@ -121,21 +106,16 @@
   (citb-base-plat-method-22 this)
   (logior! (-> this skel status) (janim-status inited))
   (citb-base-plat-method-24 this)
-  (none)
-  )
+  (none))
 
-(deftype citb-plat-eco (plat-eco)
-  ()
-  )
+(deftype citb-plat-eco (plat-eco) ())
 
 
 (defmethod baseplat-method-24 ((this citb-plat-eco))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -144,64 +124,50 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod baseplat-method-26 ((this citb-plat-eco))
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this notice-dist) 8192.0)
-  (none)
-  )
+  (none))
 
 (defmethod get-unlit-skel ((this citb-plat-eco))
-  *plat-eco-citb-unlit-sg*
-  )
+  *plat-eco-citb-unlit-sg*)
 
 (defmethod get-lit-skel ((this citb-plat-eco))
-  *plat-eco-citb-lit-sg*
-  )
+  *plat-eco-citb-lit-sg*)
 
 (deftype citb-plat (plat)
-  ((trans-offset  vector  :inline)
-   )
-  )
+  ((trans-offset vector :inline)))
 
 
 (defstate plat-path-active (citb-plat)
   :virtual #t
-  :trans (behavior ()
-    (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
-                                 (get-current-phase (-> self sync))
-                                 (get-current-phase-with-mirror (-> self sync))
-                                 )
-          )
-    (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (vector+! (-> self basetrans) (-> self basetrans) (-> self trans-offset))
-    (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
-        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
-        )
-    (plat-trans)
-    )
-  )
+  :trans
+    (behavior ()
+      (set! (-> self path-pos)
+            (if (logtest? (-> self fact options) (fact-options wrap-phase))
+              (get-current-phase (-> self sync))
+              (get-current-phase-with-mirror (-> self sync))))
+      (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+      (vector+! (-> self basetrans) (-> self basetrans) (-> self trans-offset))
+      (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans))))
+      (plat-trans)))
 
 (defmethod get-unlit-skel ((this citb-plat))
-  *plat-citb-sg*
-  )
+  *plat-citb-sg*)
 
 (defmethod baseplat-method-24 ((this citb-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -210,108 +176,84 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod baseplat-method-26 ((this citb-plat))
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this root scale quad) (-> (res-lump-struct (-> this entity) 'scale vector) quad))
   (let ((f0-0 (-> this root scale x)))
     (set! (-> this root root-prim local-sphere w) (* (-> this root root-prim local-sphere w) f0-0))
-    (set! (-> this draw bounds w) (* (-> this draw bounds w) f0-0))
-    )
-  (set! (-> this trans-offset quad) (-> (the-as vector ((method-of-type res-lump get-property-struct)
-                                                        (-> this entity)
-                                                        'trans-offset
-                                                        'interp
-                                                        -1000000000.0
-                                                        *null-vector*
-                                                        (the-as (pointer res-tag) #f)
-                                                        *res-static-buf*
-                                                        )
-                                                )
-                                        quad
-                                        )
-        )
+    (set! (-> this draw bounds w) (* (-> this draw bounds w) f0-0)))
+  (set! (-> this trans-offset quad)
+        (-> (the-as vector
+                    ((method-of-type res-lump get-property-struct)
+                     (-> this entity)
+                     'trans-offset
+                     'interp
+                     -1000000000.0
+                     *null-vector*
+                     (the-as (pointer res-tag) #f)
+                     *res-static-buf*))
+            quad))
   0
-  (none)
-  )
+  (none))
 
 (deftype citb-stair-plat (citb-base-plat)
-  ((idle-height  float)
-   (rise-height  float)
-   (delay        time-frame)
-   (rise         symbol)
-   )
-  )
+  ((idle-height float)
+   (rise-height float)
+   (delay       time-frame)
+   (rise        symbol)))
 
 
 (defstate citb-base-plat-idle (citb-stair-plat)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('trigger)
-       (logclear! (-> self mask) (process-mask actor-pause))
-       (let ((v0-0 #t))
-         (set! (-> self rise) v0-0)
-         v0-0
-         )
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('trigger) (logclear! (-> self mask) (process-mask actor-pause)) (let ((v0-0 #t)) (set! (-> self rise) v0-0) v0-0))))
   :trans #f
-  :code (behavior ()
-    (logior! (-> self draw status) (draw-status hidden))
-    (while (not (-> self rise))
-      (suspend)
-      )
-    (logclear! (-> self draw status) (draw-status hidden))
-    (set-vector! (-> self draw color-mult) 0.0 0.0 0.0 1.0)
-    (set-time! (-> self state-time))
-    (while (not (time-elapsed? (-> self state-time) (-> self delay)))
-      (ja-post)
-      (suspend)
-      )
-    (set-time! (-> self state-time))
-    (loop
-      (let ((f30-0 (- 1.0 (* 0.0011111111 (the float (- (current-time) (-> self state-time)))))))
-        (when (< f30-0 0.0)
-          (set! (-> self root trans y) (-> self rise-height))
-          (go-virtual citb-base-plat-active)
-          )
-        (set! (-> self root trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0)))
-        )
-      (let ((f0-12 (fmax 0.0 (fmin 1.0 (* 0.000012207031 (+ 409600.0 (-> self root trans y)))))))
-        (set! (-> self draw color-mult x) f0-12)
-        (set! (-> self draw color-mult y) f0-12)
-        (set! (-> self draw color-mult z) f0-12)
-        )
-      (transform-post)
-      (suspend)
-      )
-    )
-  :post #f
-  )
+  :code
+    (behavior ()
+      (logior! (-> self draw status) (draw-status hidden))
+      (while (not (-> self rise))
+        (suspend))
+      (logclear! (-> self draw status) (draw-status hidden))
+      (set-vector! (-> self draw color-mult) 0.0 0.0 0.0 1.0)
+      (set-time! (-> self state-time))
+      (while (not (time-elapsed? (-> self state-time) (-> self delay)))
+        (ja-post)
+        (suspend))
+      (set-time! (-> self state-time))
+      (loop
+        (let ((f30-0 (- 1.0 (* 0.0011111111 (the float (- (current-time) (-> self state-time)))))))
+          (when (< f30-0 0.0)
+            (set! (-> self root trans y) (-> self rise-height))
+            (go-virtual citb-base-plat-active))
+          (set! (-> self root trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0))))
+        (let ((f0-12 (fmax 0.0 (fmin 1.0 (* 0.000012207031 (+ 409600.0 (-> self root trans y)))))))
+          (set! (-> self draw color-mult x) f0-12)
+          (set! (-> self draw color-mult y) f0-12)
+          (set! (-> self draw color-mult z) f0-12))
+        (transform-post)
+        (suspend)))
+  :post #f)
 
 (defstate citb-base-plat-active (citb-stair-plat)
   :virtual #t
   :trans #f
-  :code (behavior ()
-    (set! (-> self root trans y) (-> self rise-height))
-    (suspend)
-    (update-transforms! (-> self root))
-    (logior! (-> self mask) (process-mask actor-pause))
-    (anim-loop)
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (set! (-> self root trans y) (-> self rise-height))
+      (suspend)
+      (update-transforms! (-> self root))
+      (logior! (-> self mask) (process-mask actor-pause))
+      (anim-loop))
+  :post ja-post)
 
 (defmethod citb-base-plat-method-22 ((this citb-stair-plat))
   (initialize-skeleton this *plat-citb-sg* '())
@@ -319,206 +261,160 @@
   (set! (-> this idle-height) (+ -409600.0 (-> this rise-height)))
   (set! (-> this root trans y) (-> this idle-height))
   (set! (-> this rise) #f)
-  (set! (-> this delay)
-        (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'delay :default 1.0))))
-        )
+  (set! (-> this delay) (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'delay :default 1.0)))))
   (let ((f0-7 1.5))
     (set-vector! (-> this root scale) f0-7 f0-7 f0-7 1.0)
     (set! (-> this root root-prim local-sphere w) (* (-> this root root-prim local-sphere w) f0-7))
-    (set! (-> this draw bounds w) (* (-> this draw bounds w) f0-7))
-    )
+    (set! (-> this draw bounds w) (* (-> this draw bounds w) f0-7)))
   0
-  (none)
-  )
+  (none))
 
 (defmethod citb-base-plat-method-24 ((this citb-stair-plat))
   (if (and (task-complete? *game-info* (game-task citadel-sage-blue))
            (task-complete? *game-info* (game-task citadel-sage-red))
-           (task-complete? *game-info* (game-task citadel-sage-yellow))
-           )
-      (go (method-of-object this citb-base-plat-active))
-      (go (method-of-object this citb-base-plat-idle))
-      )
+           (task-complete? *game-info* (game-task citadel-sage-yellow)))
+    (go (method-of-object this citb-base-plat-active))
+    (go (method-of-object this citb-base-plat-idle)))
   0
-  (none)
-  )
+  (none))
 
-(define *citb-chain-plat-constants* (new 'static 'rigid-body-platform-constants
-                                      :drag-factor 2.0
-                                      :buoyancy-factor 2.0
-                                      :max-buoyancy-depth (meters 3)
-                                      :gravity-factor 1.0
-                                      :gravity (meters 80)
-                                      :player-weight (meters 35)
-                                      :player-bonk-factor 1.0
-                                      :player-dive-factor 1.0
-                                      :player-force-distance (meters 1000)
-                                      :player-force-clamp (meters 1000000)
-                                      :player-force-timeout (seconds 0.1)
-                                      :explosion-force (meters 1000)
-                                      :linear-damping 1.0
-                                      :angular-damping 1.0
-                                      :control-point-count 5
-                                      :mass 2.0
-                                      :inertial-tensor-x (meters 10)
-                                      :inertial-tensor-y (meters 5)
-                                      :inertial-tensor-z (meters 10)
-                                      :idle-distance (meters 70)
-                                      :platform #t
-                                      :sound-name "blue-eco-on"
-                                      )
-        )
+(define *citb-chain-plat-constants*
+  (new 'static
+       'rigid-body-platform-constants
+       :drag-factor 2.0
+       :buoyancy-factor 2.0
+       :max-buoyancy-depth (meters 3)
+       :gravity-factor 1.0
+       :gravity (meters 80)
+       :player-weight (meters 35)
+       :player-bonk-factor 1.0
+       :player-dive-factor 1.0
+       :player-force-distance (meters 1000)
+       :player-force-clamp (meters 1000000)
+       :player-force-timeout (seconds 0.1)
+       :explosion-force (meters 1000)
+       :linear-damping 1.0
+       :angular-damping 1.0
+       :control-point-count 5
+       :mass 2.0
+       :inertial-tensor-x (meters 10)
+       :inertial-tensor-y (meters 5)
+       :inertial-tensor-z (meters 10)
+       :idle-distance (meters 70)
+       :platform #t
+       :sound-name "blue-eco-on"))
 
 (deftype citb-chain-plat (rigid-body-platform)
-  ((orig-trans    vector      :inline)
-   (orig-quat     quaternion  :inline)
-   (beam-end      vector      :inline)
-   (float-offset  float)
-   (idle-offset   float)
-   )
+  ((orig-trans   vector :inline)
+   (orig-quat    quaternion :inline)
+   (beam-end     vector :inline)
+   (float-offset float)
+   (idle-offset  float))
   (:states
-    citb-chain-plat-settle
-    )
-  )
+   citb-chain-plat-settle))
 
 
 (defmethod rigid-body-platform-method-22 ((this citb-chain-plat) (arg0 vector) (arg1 float))
   (+ 12288.0
      (* 2048.0
-        (fmax 0.0 (fmin 1.0 (* 0.000024414063 (-> this float-height-offset))))
-        (cos (* 109.22667 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z)))))
-        )
+        (fmax 0.0 (fmin 1.0 (/ (-> this float-height-offset) (meters 10))))
+        (cos (* 109.22667 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))
      (-> this float-height-offset)
-     (-> this orig-trans y)
-     )
-  )
+     (-> this orig-trans y)))
 
 (defmethod rigid-body-platform-method-27 ((this citb-chain-plat) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector-! gp-0 arg0 (-> this rbody position))
     (set! (-> gp-0 y) 0.0)
     (let* ((f0-1 (vector-length gp-0))
-           (f1-1 (* 4.0 (fmax 0.0 (fmin 4096.0 (+ -819.2 f0-1)))))
-           )
+           (f1-1 (* 4.0 (fmax 0.0 (fmin 4096.0 (+ -819.2 f0-1))))))
       (when (< 0.0 f1-1)
         (vector-float*! gp-0 gp-0 (/ f1-1 f0-1))
-        (rigid-body-method-15 (-> this rbody) gp-0)
-        )
-      )
-    )
+        (rigid-body-method-15 (-> this rbody) gp-0))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod rigid-body-platform-method-23 ((this citb-chain-plat) (arg0 float))
   (call-parent-method this arg0)
   (rigid-body-platform-method-27 this (-> this orig-trans))
   0
-  (none)
-  )
+  (none))
 
 (defstate rigid-body-platform-idle (citb-chain-plat)
   :virtual #t
-  :trans (behavior ()
-    (when (time-elapsed? (-> self state-time) (seconds 0.1))
-      (set-time! (-> self state-time))
-      (if (and (and *target* (>= (-> self info idle-distance)
-                                 (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
-                                 )
-                    )
-               (send-event *target* 'query 'powerup (pickup-type eco-blue))
-               )
-          (go-virtual rigid-body-platform-float)
-          )
-      )
-    )
-  :code (behavior ()
-    (anim-loop)
-    )
-  :post ja-post
-  )
+  :trans
+    (behavior ()
+      (when (time-elapsed? (-> self state-time) (seconds 0.1))
+        (set-time! (-> self state-time))
+        (if (and (and *target*
+                      (>= (-> self info idle-distance) (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))))
+                 (send-event *target* 'query 'powerup (pickup-type eco-blue)))
+          (go-virtual rigid-body-platform-float))))
+  :code
+    (behavior ()
+      (anim-loop))
+  :post ja-post)
 
 (defstate rigid-body-platform-float (citb-chain-plat)
   :virtual #t
   :event rigid-body-platform-event-handler
-  :enter (behavior ()
-    (set-time! (-> self state-time))
-    )
-  :exit (behavior ()
-    (stop! (-> self sound))
-    )
-  :trans (behavior ()
-    (cond
-      ((and (and *target* (>= (-> self info idle-distance)
-                              (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))
-                              )
-                 )
-            (send-event *target* 'query 'powerup (pickup-type eco-blue))
-            )
-       (when (not (time-elapsed? (-> self state-time) (seconds 1)))
-         (if (rand-vu-percent? 0.05)
-             (spawn-projectile-blue *target*)
-             )
-         )
-       (seek! (-> self float-height-offset) (-> self float-offset) (* 8192.0 (seconds-per-frame)))
-       (draw-eco-beam (-> self root-overlay trans) (-> self beam-end))
-       (update-trans! (-> self sound) (-> self root-overlay trans))
-       (update! (-> self sound))
-       )
-      (else
-        (seek! (-> self float-height-offset) (-> self idle-offset) (* 16384.0 (seconds-per-frame)))
-        (stop! (-> self sound))
-        (if (= (-> self float-height-offset) (-> self idle-offset))
-            (go citb-chain-plat-settle)
-            )
-        )
-      )
-    )
-  :code (behavior ()
-    (anim-loop)
-    )
-  :post rigid-body-platform-post
-  )
+  :enter
+    (behavior ()
+      (set-time! (-> self state-time)))
+  :exit
+    (behavior ()
+      (stop! (-> self sound)))
+  :trans
+    (behavior ()
+      (cond
+        ((and (and *target*
+                   (>= (-> self info idle-distance) (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))))
+              (send-event *target* 'query 'powerup (pickup-type eco-blue)))
+         (when (not (time-elapsed? (-> self state-time) (seconds 1)))
+           (if (rand-vu-percent? 0.05) (spawn-projectile-blue *target*)))
+         (seek! (-> self float-height-offset) (-> self float-offset) (* 8192.0 (seconds-per-frame)))
+         (draw-eco-beam (-> self root-overlay trans) (-> self beam-end))
+         (update-trans! (-> self sound) (-> self root-overlay trans))
+         (update! (-> self sound)))
+        (else
+         (seek! (-> self float-height-offset) (-> self idle-offset) (* 16384.0 (seconds-per-frame)))
+         (stop! (-> self sound))
+         (if (= (-> self float-height-offset) (-> self idle-offset)) (go citb-chain-plat-settle)))))
+  :code
+    (behavior ()
+      (anim-loop))
+  :post rigid-body-platform-post)
 
 (defstate citb-chain-plat-settle (citb-chain-plat)
   :trans rider-trans
-  :code (behavior ()
-    (let ((gp-0 (new 'stack-no-clear 'vector))
-          (s5-0 (new 'stack-no-clear 'quaternion))
-          )
-      (set! (-> gp-0 quad) (-> self root-overlay trans quad))
-      (quaternion-copy! s5-0 (-> self root-overlay quat))
-      (set-time! (-> self state-time))
-      (while (not (time-elapsed? (-> self state-time) (seconds 0.25)))
-        (let ((f30-0 (* 0.013333334 (the float (- (current-time) (-> self state-time))))))
-          (quaternion-slerp! (-> self root-overlay quat) s5-0 (-> self orig-quat) f30-0)
-          (vector-lerp! (-> self root-overlay trans) gp-0 (-> self orig-trans) f30-0)
-          )
-        (suspend)
-        )
-      )
-    (set! (-> self root-overlay trans quad) (-> self orig-trans quad))
-    (quaternion-copy! (-> self root-overlay quat) (-> self orig-quat))
-    (rigid-body-method-22
-      (-> self rbody)
-      (-> self root-overlay trans)
-      (-> self root-overlay quat)
-      (-> self info linear-damping)
-      (-> self info angular-damping)
-      )
-    (suspend)
-    (go-virtual rigid-body-platform-idle)
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (let ((gp-0 (new 'stack-no-clear 'vector))
+            (s5-0 (new 'stack-no-clear 'quaternion)))
+        (set! (-> gp-0 quad) (-> self root-overlay trans quad))
+        (quaternion-copy! s5-0 (-> self root-overlay quat))
+        (set-time! (-> self state-time))
+        (while (not (time-elapsed? (-> self state-time) (seconds 0.25)))
+          (let ((f30-0 (* 0.013333334 (the float (- (current-time) (-> self state-time))))))
+            (quaternion-slerp! (-> self root-overlay quat) s5-0 (-> self orig-quat) f30-0)
+            (vector-lerp! (-> self root-overlay trans) gp-0 (-> self orig-trans) f30-0))
+          (suspend)))
+      (set! (-> self root-overlay trans quad) (-> self orig-trans quad))
+      (quaternion-copy! (-> self root-overlay quat) (-> self orig-quat))
+      (rigid-body-method-22 (-> self rbody)
+                            (-> self root-overlay trans)
+                            (-> self root-overlay quat)
+                            (-> self info linear-damping)
+                            (-> self info angular-damping))
+      (suspend)
+      (go-virtual rigid-body-platform-idle))
+  :post rider-post)
 
 (defmethod rigid-body-platform-method-30 ((this citb-chain-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -527,15 +423,12 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 3)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 20480.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-overlay) s5-0)
-    )
+    (set! (-> this root-overlay) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod rigid-body-platform-method-31 ((this citb-chain-plat))
   (initialize-skeleton this *citb-chain-plat-sg* '())
@@ -548,61 +441,47 @@
   (set! (-> this float-offset) (res-lump-float (-> this entity) 'height-info :default 4096.0))
   (set! (-> this float-height-offset) (-> this idle-offset))
   (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "eco-plat-hover" :fo-max 50) (-> this root-overlay trans))
-        )
+        (new 'process 'ambient-sound (static-sound-spec "eco-plat-hover" :fo-max 50) (-> this root-overlay trans)))
   (let ((s5-0 (-> this info control-point-count)))
     (dotimes (s4-0 s5-0)
       (let ((s3-0 (-> this control-point-array data s4-0)))
         (let ((f30-0 (* 65536.0 (/ (the float s4-0) (the float s5-0)))))
           (set! (-> s3-0 local-pos x) (* 16384.0 (sin f30-0)))
           (set! (-> s3-0 local-pos y) 0.0)
-          (set! (-> s3-0 local-pos z) (* 16384.0 (cos f30-0)))
-          )
-        (set! (-> s3-0 local-pos w) 1.0)
-        )
-      )
-    )
+          (set! (-> s3-0 local-pos z) (* 16384.0 (cos f30-0))))
+        (set! (-> s3-0 local-pos w) 1.0))))
   0
-  (none)
-  )
+  (none))
 
-(defskelgroup *citb-rotatebox-sg* citb-rotatebox citb-rotatebox-lod0-jg citb-rotatebox-idle-ja
-              ((citb-rotatebox-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 -5 0 10)
-              )
+(defskelgroup *citb-rotatebox-sg*
+  citb-rotatebox
+  citb-rotatebox-lod0-jg
+  citb-rotatebox-idle-ja
+  ((citb-rotatebox-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 -5 0 10))
 
-(deftype citb-rotatebox (citb-base-plat)
-  ()
-  )
+(deftype citb-rotatebox (citb-base-plat) ())
 
 
 (defstate citb-base-plat-active (citb-rotatebox)
   :virtual #t
   :trans rider-trans
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!))
-        )
-      (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
-                                (vector-vector-distance (-> self root trans) (-> *target* control trans))
-                                )
-              )
-          (go-virtual citb-base-plat-idle)
-          )
-      )
-    )
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!)))
+        (if (or (not *target*)
+                (< (+ 8192.0 (-> self idle-distance)) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+          (go-virtual citb-base-plat-idle)))))
 
 (defmethod citb-base-plat-method-21 ((this citb-rotatebox))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -611,49 +490,42 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 3)
       (set-vector! (-> s4-0 local-sphere) 0.0 -20480.0 0.0 40960.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod citb-base-plat-method-22 ((this citb-rotatebox))
   (initialize-skeleton this *citb-rotatebox-sg* '())
   0
-  (none)
-  )
+  (none))
 
-(defskelgroup *citb-donut-sg* citb-donut citb-donut-lod0-jg citb-donut-idle-ja
-              ((citb-donut-lod0-mg (meters 20)) (citb-donut-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 10)
-              )
+(defskelgroup *citb-donut-sg*
+  citb-donut
+  citb-donut-lod0-jg
+  citb-donut-idle-ja
+  ((citb-donut-lod0-mg (meters 20)) (citb-donut-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 10))
 
 (deftype citb-donut (citb-base-plat)
-  ((sync  sync-info  :inline)
-   )
-  )
+  ((sync sync-info :inline)))
 
 
 (defstate citb-base-plat-active (citb-donut)
   :virtual #t
-  :post (behavior ()
-    (update! (-> self sound))
-    (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (* 65536.0 (get-current-phase (-> self sync))))
-    (rider-post)
-    )
-  )
+  :post
+    (behavior ()
+      (update! (-> self sound))
+      (quaternion-axis-angle! (-> self root quat) 0.0 1.0 0.0 (* 65536.0 (get-current-phase (-> self sync))))
+      (rider-post)))
 
 (defmethod citb-base-plat-method-21 ((this citb-donut))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -662,60 +534,49 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 40960.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod citb-base-plat-method-22 ((this citb-donut))
   (initialize-skeleton this *citb-donut-sg* '())
   (setup-params! (-> this sync) (the-as uint 9000) 0.0 0.15 0.15)
-  (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "rotate-plat" :fo-max 20) (-> this root trans))
-        )
+  (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "rotate-plat" :fo-max 20) (-> this root trans)))
   (logclear! (-> this mask) (process-mask actor-pause))
   0
-  (none)
-  )
+  (none))
 
-(defskelgroup *citb-stopbox-sg* citb-stopbox citb-stopbox-lod0-jg citb-stopbox-idle-ja
-              ((citb-stopbox-lod0-mg (meters 20)) (citb-stopbox-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 -2 0 5.5)
-              )
+(defskelgroup *citb-stopbox-sg*
+  citb-stopbox
+  citb-stopbox-lod0-jg
+  citb-stopbox-idle-ja
+  ((citb-stopbox-lod0-mg (meters 20)) (citb-stopbox-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 -2 0 5.5))
 
-(deftype citb-stopbox (plat)
-  ()
-  )
+(deftype citb-stopbox (plat) ())
 
 
 (defstate plat-path-active (citb-stopbox)
   :virtual #t
-  :trans (behavior ()
-    (set! (-> self path-pos) (get-current-phase (-> self sync)))
-    (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
-        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
-        )
-    (plat-trans)
-    )
-  )
+  :trans
+    (behavior ()
+      (set! (-> self path-pos) (get-current-phase (-> self sync)))
+      (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+      (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans))))
+      (plat-trans)))
 
 (defmethod get-unlit-skel ((this citb-stopbox))
-  *citb-stopbox-sg*
-  )
+  *citb-stopbox-sg*)
 
 (defmethod baseplat-method-24 ((this citb-stopbox))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -724,83 +585,64 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 -8192.0 0.0 22528.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod baseplat-method-26 ((this citb-stopbox))
   (logior! (-> this fact options) (fact-options wrap-phase))
   (logclear! (-> this mask) (process-mask actor-pause))
   0
-  (none)
-  )
+  (none))
 
 (deftype citb-firehose (process-drawable)
-  ((root           collide-shape :override)
-   (idle-distance  float)
-   (sync           sync-info      :inline)
-   (last-sync      float)
-   (blast-pos      vector         :inline)
-   )
+  ((root          collide-shape :override)
+   (idle-distance float)
+   (sync          sync-info :inline)
+   (last-sync     float)
+   (blast-pos     vector :inline))
   (:states
-    citb-firehose-active
-    citb-firehose-blast
-    citb-firehose-idle
-    )
-  )
+   citb-firehose-active
+   citb-firehose-blast
+   citb-firehose-idle))
 
 
-(defskelgroup *citb-firehose-sg* citb-firehose citb-firehose-lod0-jg citb-firehose-idle-ja
-              ((citb-firehose-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 3 0 15)
-              )
+(defskelgroup *citb-firehose-sg*
+  citb-firehose
+  citb-firehose-lod0-jg
+  citb-firehose-idle-ja
+  ((citb-firehose-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 3 0 15))
 
 (defstate citb-firehose-idle (citb-firehose)
-  :trans (behavior ()
-    (if (and *target*
-             (>= (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-             )
-        (go citb-firehose-active)
-        )
-    )
-  :code (behavior ()
-    (loop
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :trans
+    (behavior ()
+      (if (and *target* (>= (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+        (go citb-firehose-active)))
+  :code
+    (behavior ()
+      (loop
+        (suspend)))
+  :post ja-post)
 
 (defstate citb-firehose-active (citb-firehose)
-  :trans (behavior ()
-    (if (or (not *target*) (< (+ 8192.0 (-> self idle-distance))
-                              (vector-vector-distance (-> self root trans) (-> *target* control trans))
-                              )
-            )
-        (go citb-firehose-idle)
-        )
-    (let ((f0-2 (get-current-phase (-> self sync)))
-          (f1-1 (-> self last-sync))
-          )
-      (set! (-> self last-sync) f0-2)
-      (if (< f0-2 f1-1)
-          (go citb-firehose-blast)
-          )
-      )
-    )
-  :code (behavior ()
-    (loop
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :trans
+    (behavior ()
+      (if (or (not *target*)
+              (< (+ 8192.0 (-> self idle-distance)) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+        (go citb-firehose-idle))
+      (let ((f0-2 (get-current-phase (-> self sync)))
+            (f1-1 (-> self last-sync)))
+        (set! (-> self last-sync) f0-2)
+        (if (< f0-2 f1-1) (go citb-firehose-blast))))
+  :code
+    (behavior ()
+      (loop
+        (suspend)))
+  :post ja-post)
 
 (defbehavior citb-firehose-blast-particles citb-firehose ()
   (let ((gp-0 (new 'stack-no-clear 'quaternion)))
@@ -809,54 +651,42 @@
     (dotimes (s5-0 16)
       (quaternion-rotate-local-z! gp-0 gp-0 2048.0)
       (quaternion-copy! *particle-quat* gp-0)
-      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2541) (-> self blast-pos))
-      )
-    )
-  (spawn (-> self part) (-> self blast-pos))
-  )
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2541) (-> self blast-pos))))
+  (spawn (-> self part) (-> self blast-pos)))
 
 (defstate citb-firehose-blast (citb-firehose)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch)
-       (send-event
-         proc
-         'attack
-         (-> block param 0)
-         (static-attack-info ((mode 'damage) (shove-back (meters 6)) (shove-up (meters 3))))
-         )
-       )
-      )
-    )
-  :code (behavior ()
-    (ja-no-eval :group! citb-firehose-start-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (ja-channel-push! 1 (seconds 0.1))
-    (restore-collide-with-as (-> self root))
-    (sound-play "eco-torch" :position (the-as symbol (-> self blast-pos)))
-    (dotimes (gp-1 2)
-      (ja-no-eval :group! citb-firehose-loopflame-ja :num! (seek!) :frame-num 0.0)
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch)
+         (send-event proc
+                     'attack
+                     (-> block param 0)
+                     (static-attack-info ((mode 'damage) (shove-back (meters 6)) (shove-up (meters 3))))))))
+  :code
+    (behavior ()
+      (ja-no-eval :group! citb-firehose-start-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (set! (-> self blast-pos quad) (-> self node-list data 5 bone transform vector 3 quad))
-        (citb-firehose-blast-particles)
         (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    (clear-collide-with-as (-> self root))
-    (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! citb-firehose-end-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (go citb-firehose-active)
-    )
-  :post transform-post
-  )
+        (ja :num! (seek!)))
+      (ja-channel-push! 1 (seconds 0.1))
+      (restore-collide-with-as (-> self root))
+      (sound-play "eco-torch" :position (the-as symbol (-> self blast-pos)))
+      (dotimes (gp-1 2)
+        (ja-no-eval :group! citb-firehose-loopflame-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (set! (-> self blast-pos quad) (-> self node-list data 5 bone transform vector 3 quad))
+          (citb-firehose-blast-particles)
+          (suspend)
+          (ja :num! (seek!))))
+      (clear-collide-with-as (-> self root))
+      (ja-channel-push! 1 (seconds 0.1))
+      (ja-no-eval :group! citb-firehose-end-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!)))
+      (go citb-firehose-active))
+  :post transform-post)
 
 (defmethod init-from-entity! ((this citb-firehose) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
@@ -871,27 +701,22 @@
         (set! (-> s2-0 collide-with) (collide-kind target))
         (set! (-> s2-0 prim-core offense) (collide-offense normal-attack))
         (set-vector! (-> s2-0 local-sphere) 0.0 -49152.0 0.0 12288.0)
-        (append-prim s3-0 s2-0)
-        )
+        (append-prim s3-0 s2-0))
       (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-1 collide-with) (collide-kind target))
         (set! (-> s2-1 prim-core offense) (collide-offense normal-attack))
         (set-vector! (-> s2-1 local-sphere) 0.0 -61440.0 0.0 14336.0)
-        (append-prim s3-0 s2-1)
-        )
+        (append-prim s3-0 s2-1))
       (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-2 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-2 collide-with) (collide-kind target))
         (set! (-> s2-2 prim-core offense) (collide-offense normal-attack))
         (set-vector! (-> s2-2 local-sphere) 0.0 -73728.0 0.0 16384.0)
-        (append-prim s3-0 s2-2)
-        )
-      )
+        (append-prim s3-0 s2-2)))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *citb-firehose-sg* '())
   (load-params! (-> this sync) this (the-as uint 900) 0.0 0.15 0.15)
@@ -899,66 +724,55 @@
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 685) this))
   (clear-collide-with-as (-> this root))
   (go citb-firehose-idle)
-  (none)
-  )
+  (none))
 
-(defskelgroup *citb-exit-plat-sg* citb-exit-plat citb-exit-plat-lod0-jg citb-exit-plat-idle-ja
-              ((citb-exit-plat-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 30)
-              )
+(defskelgroup *citb-exit-plat-sg*
+  citb-exit-plat
+  citb-exit-plat-lod0-jg
+  citb-exit-plat-idle-ja
+  ((citb-exit-plat-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 30))
 
 (deftype citb-exit-plat (plat-button)
-  ((idle-height  float)
-   (rise-height  float)
-   (activated    symbol)
-   )
+  ((idle-height float)
+   (rise-height float)
+   (activated   symbol))
   (:states
-    citb-exit-plat-idle
-    citb-exit-plat-rise
-    )
-  )
+   citb-exit-plat-idle
+   citb-exit-plat-rise))
 
 
 (defstate citb-exit-plat-idle (citb-exit-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('trigger)
-       (let ((v1-3 (-> self entity extra perm)))
-         (logior! (-> v1-3 status) (entity-perm-status user-set-from-cstage))
-         (set! (-> v1-3 user-int8 0) 1)
-         )
-       (go citb-exit-plat-rise)
-       )
-      )
-    )
-  :code (behavior ()
-    (logior! (-> self draw status) (draw-status hidden))
-    (clear-collide-with-as (-> self root))
-    (loop
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('trigger)
+         (let ((v1-3 (-> self entity extra perm)))
+           (logior! (-> v1-3 status) (entity-perm-status user-set-from-cstage))
+           (set! (-> v1-3 user-int8 0) 1))
+         (go citb-exit-plat-rise))))
+  :code
+    (behavior ()
+      (logior! (-> self draw status) (draw-status hidden))
+      (clear-collide-with-as (-> self root))
+      (loop
+        (suspend))))
 
 (defstate citb-exit-plat-rise (citb-exit-plat)
   :trans rider-trans
-  :code (behavior ()
-    (logclear! (-> self draw status) (draw-status hidden))
-    (restore-collide-with-as (-> self root))
-    (set-time! (-> self state-time))
-    (loop
-      (let ((f30-0 (- 1.0 (* 0.0016666667 (the float (- (current-time) (-> self state-time)))))))
-        (when (< f30-0 0.0)
-          (set! (-> self root trans y) (-> self rise-height))
-          (go-virtual plat-button-idle)
-          )
-        (set! (-> self root trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0)))
-        )
-      (suspend)
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (logclear! (-> self draw status) (draw-status hidden))
+      (restore-collide-with-as (-> self root))
+      (set-time! (-> self state-time))
+      (loop
+        (let ((f30-0 (- 1.0 (* 0.0016666667 (the float (- (current-time) (-> self state-time)))))))
+          (when (< f30-0 0.0)
+            (set! (-> self root trans y) (-> self rise-height))
+            (go-virtual plat-button-idle))
+          (set! (-> self root trans y) (lerp (-> self rise-height) (-> self idle-height) (* f30-0 f30-0))))
+        (suspend)))
+  :post rider-post)
 
 (defbehavior citb-exit-plat-move-player citb-exit-plat ((arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -969,74 +783,49 @@
       (let ((f30-0 (vector-length s5-0)))
         (when (< 122880.0 f30-0)
           (vector-normalize! s5-0 1.0)
-          (vector+*! gp-0 gp-0 s5-0 (- 122880.0 f30-0))
-          )
-        )
-      )
-    (move-by-vector! (-> *target* control) gp-0)
-    )
+          (vector+*! gp-0 gp-0 s5-0 (- 122880.0 f30-0)))))
+    (move-by-vector! (-> *target* control) gp-0))
   (send-event *target* 'reset-height)
   0
-  (none)
-  )
+  (none))
 
 (defstate plat-button-move-downward (citb-exit-plat)
   :virtual #t
-  :trans (behavior ()
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
-      (let ((t9-1 (-> (the-as (state plat-button) (find-parent-state)) trans)))
-        (if t9-1
-            (t9-1)
-            )
-        )
-      (citb-exit-plat-move-player gp-0)
-      )
-    )
-  :post transform-post
-  )
+  :trans
+    (behavior ()
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (set! (-> gp-0 quad) (-> self root trans quad))
+        (let ((t9-1 (-> (the-as (state plat-button) (find-parent-state)) trans))) (if t9-1 (t9-1)))
+        (citb-exit-plat-move-player gp-0)))
+  :post transform-post)
 
 (defstate plat-button-move-upward (citb-exit-plat)
   :virtual #t
-  :trans (behavior ()
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (set! (-> gp-0 quad) (-> self root trans quad))
-      (let ((t9-1 (-> (the-as (state plat-button) (find-parent-state)) trans)))
-        (if t9-1
-            (t9-1)
-            )
-        )
-      (citb-exit-plat-move-player gp-0)
-      )
-    )
-  :post transform-post
-  )
+  :trans
+    (behavior ()
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (set! (-> gp-0 quad) (-> self root trans quad))
+        (let ((t9-1 (-> (the-as (state plat-button) (find-parent-state)) trans))) (if t9-1 (t9-1)))
+        (citb-exit-plat-move-player gp-0)))
+  :post transform-post)
 
 (defmethod can-activate? ((this citb-exit-plat))
-  (not (movie?))
-  )
+  (not (movie?)))
 
 (defmethod plat-button-method-31 ((this citb-exit-plat))
   (initialize-skeleton this *citb-exit-plat-sg* '())
-  (none)
-  )
+  (none))
 
 (defmethod plat-button-method-32 ((this citb-exit-plat))
-  (if (-> this activated)
-      (go (method-of-object this plat-button-idle))
-      (go citb-exit-plat-idle)
-      )
+  (if (-> this activated) (go (method-of-object this plat-button-idle)) (go citb-exit-plat-idle))
   0
-  (none)
-  )
+  (none))
 
 (defmethod plat-button-method-28 ((this citb-exit-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -1052,8 +841,7 @@
         (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s3-0 transform-index) 4)
         (set-vector! (-> s3-0 local-sphere) 0.0 -2867.2 0.0 7372.8)
-        (append-prim s4-0 s3-0)
-        )
+        (append-prim s4-0 s3-0))
       (let ((s3-1 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 2))))
         (set! (-> s3-1 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s3-1 collide-with) (collide-kind target))
@@ -1061,48 +849,35 @@
         (set! (-> s3-1 prim-core offense) (collide-offense indestructible))
         (set! (-> s3-1 transform-index) 3)
         (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 122880.0)
-        (append-prim s4-0 s3-1)
-        )
-      )
+        (append-prim s4-0 s3-1)))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
     (set! (-> this root) s5-0)
-    s5-0
-    )
-  )
+    s5-0))
 
 (defmethod can-target-move? ((this citb-exit-plat))
   (process-entity-status! this (entity-perm-status bit-7) #t)
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this draw light-index) (the-as uint 255))
   (let ((a0-5 (entity-actor-lookup (-> this entity) 'state-actor 0)))
-    (set! (-> this activated) (logtest? (-> a0-5 extra perm status) (entity-perm-status complete)))
-    )
+    (set! (-> this activated) (logtest? (-> a0-5 extra perm status) (entity-perm-status complete))))
   (cond
     ((= (-> *game-info* current-continue level) 'finalboss)
      (let ((v1-8 (-> this entity extra perm)))
        (logior! (-> v1-8 status) (entity-perm-status user-set-from-cstage))
-       (set! (-> v1-8 user-int8 0) 1)
-       )
+       (set! (-> v1-8 user-int8 0) 1))
      (set! (-> this activated) #t)
-     (set! (-> this path-pos) 0.0)
-     )
-    (else
-      (set! (-> this path-pos) 1.0)
-      )
-    )
+     (set! (-> this path-pos) 0.0))
+    (else (set! (-> this path-pos) 1.0)))
   (let ((s5-0 (-> this root trans)))
     (eval-path-curve! (-> this path) s5-0 (-> this path-pos) 'interp)
-    (vector+! s5-0 s5-0 (-> this trans-off))
-    )
+    (vector+! s5-0 s5-0 (-> this trans-off)))
   (set! (-> this rise-height) (-> this root trans y))
   (set! (-> this idle-height) (+ -286720.0 (-> this rise-height)))
   (if (-> this activated)
-      (set! (-> this root trans y) (-> this rise-height))
-      (set! (-> this root trans y) (-> this idle-height))
-      )
+    (set! (-> this root trans y) (-> this rise-height))
+    (set! (-> this root trans y) (-> this idle-height)))
   (set! (-> this allow-auto-kill) #f)
   (process-entity-status! this (entity-perm-status bit-3) #t)
   0
-  (none)
-  )
+  (none))

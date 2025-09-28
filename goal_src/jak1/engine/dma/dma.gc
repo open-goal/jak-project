@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: dma.gc
-;; name in dgo: dma
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/dma/dma-h.gc")
+(require "engine/ps2/vif-h.gc")
 
 ;; DMA send and sync functions:
 ;; These functions transfer existing DMA chains and buffers.
@@ -24,50 +23,26 @@
    the speed of the DMA transfer.
    This function is unused."
   (#cond
-    (INSTANT_DMA
-     0)
-    (#t
-     (while (nonzero? (-> bank chcr str))
-       (nop!)
-       )
-     )
-    )
-  (none)
-  )
+    (INSTANT_DMA 0)
+    (#t (while (nonzero? (-> bank chcr str)) (nop!))))
+  (none))
 
 (defun dma-sync-crash ((arg0 dma-bank))
   "Wait for DMA to finish for a while, then crash if we can't.
    This function is unused."
   (#cond
-    (INSTANT_DMA
-     (return 0)
-     )
-    )
-  (let ((v1-0 5000000))
-    (while (nonzero? (-> arg0 chcr str))
-      (if (zero? v1-0)
-          (crash!)
-          (+! v1-0 -1)
-          )
-      )
-    (none)
-    )
-  )
+    (INSTANT_DMA (return 0)))
+  (let ((v1-0 5000000)) (while (nonzero? (-> arg0 chcr str)) (if (zero? v1-0) (crash!) (+! v1-0 -1))) (none)))
 
 (defmacro make-madr-addr (addr)
   "Convert an address to one suitable for MADR.
    This works with Main RAM (all mappings) and for spad"
   `(let ((int-addr (the-as int ,addr)))
-     (logior (logand #xfffffff int-addr) ;; mask off spad/mapping bits
-             (if (= (logand #x70000000 int-addr) #x70000000)
-                 #x80000000 ;; if we're in spad, set high bit.
-                 0          ;; otherwise nothing.
-                 )
-             )
-     )
-  )
-
-
+    (logior (logand #xfffffff int-addr) ;; mask off spad/mapping bits
+            (if (= (logand #x70000000 int-addr) #x70000000)
+              #x80000000 ;; if we're in spad, set high bit.
+              0 ;; otherwise nothing.
+              ))))
 
 (defun dma-send ((arg0 dma-bank) (madr uint) (qwc uint))
   "Send DMA given an address and a quadword count.
@@ -84,8 +59,7 @@
   ;; begin DMA!
   (set! (-> arg0 chcr) (new 'static 'dma-chcr :str 1))
   (.sync.l)
-  (none)
-  )
+  (none))
 
 (defun dma-send-chain ((arg0 dma-bank-source) (tadr uint))
   "Send DMA! tadr should be a tag address, possibly in spad ram.
@@ -101,16 +75,18 @@
   (.sync.l)
   ;;(set! (-> arg0 chcr) 325)
   (set! (-> arg0 chcr)
-        (new 'static 'dma-chcr
-             :dir 1      ;; from memory
-             :mod 1      ;; source chain
-             :tte 1      ;; send tags
-             :str 1)     ;; go!
+        (new 'static
+             'dma-chcr
+             :dir 1
+             ;; from memory
+             :mod 1
+             ;; source chain
+             :tte 1
+             ;; send tags
+             :str 1) ;; go!
         )
   (.sync.l)
-  (none)
-  )
-
+  (none))
 
 (defun dma-send-chain-no-tte ((arg0 dma-bank-source) (arg1 uint))
   "Send DMA chain! TTE bit is not set, don't transfer tags.
@@ -122,15 +98,18 @@
   (set! (-> arg0 tadr) (make-madr-addr arg1))
   (.sync.l)
   (set! (-> arg0 chcr)
-        (new 'static 'dma-chcr
-             :dir 1  ;; from memory
-             :mod 1  ;; source chain
-             :tte 0  ;; no tags
+        (new 'static
+             'dma-chcr
+             :dir 1
+             ;; from memory
+             :mod 1
+             ;; source chain
+             :tte 0
+             ;; no tags
              :str 1) ;; go!
         )
   (.sync.l)
-  (none)
-  )
+  (none))
 
 (defun dma-send-chain-no-flush ((arg0 dma-bank-source) (arg1 uint))
   "Send DMA chain! But don't flush the cache, so be careful here. TTE enable."
@@ -141,25 +120,15 @@
   (set! (-> arg0 tadr) arg1)
   (.sync.l)
   ;;(set! (-> arg0 chcr) 325)
-  (set! (-> arg0 chcr)
-        (new 'static 'dma-chcr
-             :dir 1
-             :mod 1
-             :tte 1
-             :str 1)
-        )
+  (set! (-> arg0 chcr) (new 'static 'dma-chcr :dir 1 :mod 1 :tte 1 :str 1))
   (.sync.l)
-  (none)
-  )
+  (none))
 
 (defun dma-send-to-spr ((sadr uint) (madr uint) (qwc uint) (sync symbol))
   "Transfer data to spr"
   (local-vars (s5-0 dma-bank-spr))
-
   (#when PC_PORT
-    (return 0)
-    )
-
+    (return 0))
   (set! s5-0 SPR_TO_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
   (flush-cache 0)
@@ -170,18 +139,14 @@
   (.sync.l)
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
   (.sync.l)
-  (if sync
-      (dma-sync (the-as pointer s5-0) 0 0))
-  (none)
-  )
+  (if sync (dma-sync (the-as pointer s5-0) 0 0))
+  (none))
 
 (defun dma-send-to-spr-no-flush ((sadr uint) (madr uint) (qwc uint) (sync symbol))
   "Transfer to spr. Doesn't flush the cache first, so be careful."
   (local-vars (s5-0 dma-bank-spr))
   (#when PC_PORT
-    (return 0)
-    )
-
+    (return 0))
   (set! s5-0 SPR_TO_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
   (.sync.l)
@@ -192,16 +157,13 @@
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
   (.sync.l)
   (if sync (dma-sync (the-as pointer s5-0) 0 0))
-  (none)
-  )
+  (none))
 
 (defun dma-send-from-spr ((madr uint) (sadr uint) (qwc uint) (sync symbol))
   "Transfer from spr."
   (local-vars (s5-0 dma-bank-spr))
   (#when PC_PORT
-    (return 0)
-    )
-
+    (return 0))
   (set! s5-0 SPR_FROM_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
   (flush-cache 0)
@@ -213,16 +175,13 @@
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
   (.sync.l)
   (if sync (dma-sync (the-as pointer s5-0) 0 0))
-  (none)
-  )
+  (none))
 
 (defun dma-send-from-spr-no-flush ((madr uint) (sadr uint) (qwc uint) (sync symbol))
   "Transfer from spr, don't flush the cache."
   (local-vars (s5-0 dma-bank-spr))
   (#when PC_PORT
-    (return 0)
-    )
-
+    (return 0))
   (set! s5-0 SPR_FROM_BANK)
   (dma-sync (the-as pointer s5-0) 0 0)
   (.sync.l)
@@ -233,43 +192,28 @@
   (set! (-> s5-0 chcr) (new 'static 'dma-chcr :str 1))
   (.sync.l)
   (if sync (dma-sync (the-as pointer s5-0) 0 0))
-  (none)
-  )
+  (none))
 
 (defun dma-initialize ()
   "Due to a bug in the PS2 hardware, you must always disable the DMAtag mismatch
    error. This is done here."
-
   (#when PC_PORT
-    (return 0)
-    )
-
+    (return 0))
   (set! (-> (the-as vif-bank #x10003800) err me0) 1)
   (set! (-> (the-as vif-bank #x10003c00) err me0) 1)
-  (none)
-  )
+  (none))
 
 (defun clear-vu0-mem ()
   "Set the vu0 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory.
    Will crash on PC Port."
-  (let ((v1-0 VU0_DATA_MEM_MAP))
-   (dotimes (a0-0 1024)
-    (set! (-> v1-0 a0-0) #xabadbeef)
-    )
-   )
-  (none)
-  )
+  (let ((v1-0 VU0_DATA_MEM_MAP)) (dotimes (a0-0 1024) (set! (-> v1-0 a0-0) #xabadbeef)))
+  (none))
 
 (defun clear-vu1-mem ()
   "Set the vu1 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory.
    Will crash on PC Port."
-  (let ((v1-0 VU1_DATA_MEM_MAP))
-   (dotimes (a0-0 4096)
-    (set! (-> v1-0 a0-0) #xabadbeef)
-    )
-   )
-  (none)
-  )
+  (let ((v1-0 VU1_DATA_MEM_MAP)) (dotimes (a0-0 4096) (set! (-> v1-0 a0-0) #xabadbeef)))
+  (none))
 
 (defun dump-vu1-mem ()
   "Print VU1 memory to runtime stdout.
@@ -278,23 +222,21 @@
   (set! gp-0 (the (pointer uint32) #x1100c000))
   (set! s5-0 0)
   (while (< s5-0 1024) ;; 1k quadwords
-    (format 0 "~4,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
+    (format 0
+            "~4,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
             s5-0
             (-> gp-0 (shl s5-0 2))
             (-> gp-0 (+ (shl s5-0 2) 1))
             (-> gp-0 (+ (shl s5-0 2) 2))
-            (-> gp-0 (+ (shl s5-0 2) 3))
-            )
-    (format 0 "      ~F ~F ~F ~F ~%"
+            (-> gp-0 (+ (shl s5-0 2) 3)))
+    (format 0
+            "      ~F ~F ~F ~F ~%"
             (-> gp-0 (shl s5-0 2))
             (-> gp-0 (+ (shl s5-0 2) 1))
             (-> gp-0 (+ (shl s5-0 2) 2))
-            (-> gp-0 (+ (shl s5-0 2) 3))
-            )
-    (set! s5-0 (+ s5-0 1))
-    )
-  (none)
-  )
+            (-> gp-0 (+ (shl s5-0 2) 3)))
+    (set! s5-0 (+ s5-0 1)))
+  (none))
 
 (defun dump-vu1-range ((start uint) (total-count uint))
   "Print part of VU1 memory to runtime stdout.
@@ -303,24 +245,22 @@
   (set! s4-0 (the (pointer uint32) #x1100c000))
   (set! s3-0 0)
   (while (< s3-0 (the-as int total-count))
-   (set! s2-0 (+ s3-0 (the-as int start)))
-   (format 0 "~4,'0X: ~8x ~8x ~8x ~8x"
-    s2-0
-    (-> s4-0 (shl s2-0 2))
-    (-> s4-0 (+ (shl s2-0 2) 1))
-    (-> s4-0 (+ (shl s2-0 2) 2))
-    (-> s4-0 (+ (shl s2-0 2) 3))
-    )
-   (format 0 "      ~F ~F ~F ~F ~%"
-    (-> s4-0 (shl s2-0 2))
-    (-> s4-0 (+ (shl s2-0 2) 1))
-    (-> s4-0 (+ (shl s2-0 2) 2))
-    (-> s4-0 (+ (shl s2-0 2) 3))
-    )
-   (set! s3-0 (+ s3-0 1))
-   )
-  '#f
-  )
+    (set! s2-0 (+ s3-0 (the-as int start)))
+    (format 0
+            "~4,'0X: ~8x ~8x ~8x ~8x"
+            s2-0
+            (-> s4-0 (shl s2-0 2))
+            (-> s4-0 (+ (shl s2-0 2) 1))
+            (-> s4-0 (+ (shl s2-0 2) 2))
+            (-> s4-0 (+ (shl s2-0 2) 3)))
+    (format 0
+            "      ~F ~F ~F ~F ~%"
+            (-> s4-0 (shl s2-0 2))
+            (-> s4-0 (+ (shl s2-0 2) 1))
+            (-> s4-0 (+ (shl s2-0 2) 2))
+            (-> s4-0 (+ (shl s2-0 2) 3)))
+    (set! s3-0 (+ s3-0 1)))
+  '#f)
 
 ;; if we send junk DMA data due to an engine bug, the PS2 will eventually time out the transfer.
 ;; in this case, the main loop will attempt to reset everything to hopefully recover.
@@ -333,50 +273,40 @@
   ;; inspect the banks
   (#unless PC_PORT
     ((method-of-type dma-bank-vif inspect) VIF1_DMA_BANK)
-    ((method-of-type vif-bank inspect) VIF1_BANK)
-    )
+    ((method-of-type vif-bank inspect) VIF1_BANK))
   ;; sceGsResetPath
   (reset-path)
   ;; sceGsResetGraph
   (reset-graph 1 1 *video-reset-parm* 1)
   (format 0 "gkernel: vif1 path reset!~%")
-  (none)
-  )
+  (none))
 
 (defun ultimate-memcpy ((dst pointer) (src pointer) (size-bytes uint))
   "The Fastest Memory Copy, for larger transfers.
    Memory is copied in ascending order, in 4 kB blocks.
    The size should be a multiple of 16 bytes."
-
   (#cond
     (PC_PORT
      ;; og:preserve-this on PC Port, just call C mem-move, it's the fastest.
-     (__mem-move dst src size-bytes)
-     )
+     (__mem-move dst src size-bytes))
     (else
-
      ;; ultimate-memcpy works by DMAing to the scratchpad and back.
      ;; surprisingly this seems to be the fastest memcpy on larger
      ;; transfers.  This is a nice example of how DMA is used from GOAL.
      (let ((spr-to-bank (the-as dma-bank-spr #x1000d400))
            (spr-from-bank (the-as dma-bank-spr #x1000d000))
-           (qwc-remaining (shr size-bytes 4))
-           )
-
+           (qwc-remaining (shr size-bytes 4)))
        ;; Flush all data in the dcache to main memory. DMA bypasses the dcache.
        (flush-cache 0)
        ;; Complete all pending DMA transfers using the spad.
        ;; (this uses the Sony library DMA sync, which is bad)
        (dma-sync (the-as pointer spr-to-bank) 0 0)
        (dma-sync (the-as pointer spr-from-bank) 0 0)
-
        ;; transfer loop
        (while (> qwc-remaining 0)
          ;; copy up to 1024 quadwords - limited by the 4kB spad size.
          (let ((qwc-transferred-now (the-as int qwc-remaining)))
-           (if (< (the-as uint 1024) (the-as uint qwc-transferred-now))
-               (set! qwc-transferred-now 1024)
-               )
+           (if (< (the-as uint 1024) (the-as uint qwc-transferred-now)) (set! qwc-transferred-now 1024))
            (set! qwc-remaining (- qwc-remaining (the-as uint qwc-transferred-now)))
            ;; set up the "to spad" transfer
            (.sync.l)
@@ -398,33 +328,22 @@
            (set! (-> spr-from-bank chcr) (new 'static 'dma-chcr :str #x1))
            (.sync.l)
            (dma-sync (the-as pointer spr-from-bank) 0 0)
-           (&+! dst (shl qwc-transferred-now 4))
-           )
-         )
-       )
-     (let ((v0-4 0))
-       )
-     )
-    )
-  (none)
-  )
-
-
+           (&+! dst (shl qwc-transferred-now 4)))))
+     (let ((v0-4 0)))))
+  (none))
 
 (defun symlink2 ()
   "symlink2 is a handwritten assembly version of the v2 linking routine.
    it is not ported because the OpenGOAL linker has its own implementation already."
   (segfault)
-  (none)
-  )
+  (none))
 
 (defun symlink3 ()
   "symlink3 is a handwritten assembly version of the v3 linking routine.
    OpenGOAL uses a different format for v3, customized for x86-64, so this is not
    needed. The C++ implementation is plenty fast enough"
   (segfault)
-  (none)
-  )
+  (none))
 
 ;; configuration required to work around hardware bug on the PS2.
 ;; doesn't do anything important

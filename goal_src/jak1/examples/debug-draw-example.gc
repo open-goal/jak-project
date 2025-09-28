@@ -1,5 +1,6 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(require "engine/gfx/sprite/sparticle/sparticle-launcher.gc")
 
 ;; This file demonstrates how to use the debug draw.
 
@@ -19,59 +20,45 @@
 ;; you can turn on actor marks (full) or visibilty boxes in the debug menu.
 |#
 
-
 (defun test-function ((iter int))
   "This function draws the debug stuff. You can edit this, then reload this file to play with it."
-
   ;; val will increase from 0 to 1, then reset back to 0.
   (let* ((frame (the float (mod (* 4 iter) 3200)))
          (val (/ frame 1600.0)))
     (format *stdcon* "~0kval ~f~%" val)
-
     ;; orbit the camera around in a circle with radius 5 m.
     (let* ((rad (meters 5.0))
            (x (* rad (sin (* (degrees 360.0) val))))
            (z (* rad (cos (* (degrees 360.0) val))))
            (cam-pos (new 'stack 'vector))
-           (cam-inv-rot (new 'stack 'matrix))
-           )
+           (cam-inv-rot (new 'stack 'matrix)))
       ;; this matrix will look directly at the origin...
       (set! (-> cam-pos x) x)
       (set! (-> cam-pos z) z)
       (set! (-> cam-pos y) (meters 2.))
       (forward-down->inv-matrix cam-inv-rot cam-pos (new 'static 'vector :y 1.0))
-
       ;; if the camera is here.
       (set! (-> cam-pos x) (- 0. x))
       (set! (-> cam-pos z) (- 0. z))
       (set! (-> cam-pos y) (meters -2.))
       ;;(debug-set-camera-pos-rot! cam-pos cam-inv-rot)
       ;;(hack-update-camera cam-pos cam-inv-rot)
-      
-      
       ;; create some test points
       (let ((p0 (new 'static 'vector :x (meters .8) :y (meters .2) :z (meters 2.0)))
             (p1 (new 'static 'vector :x (meters .3) :y (meters .3) :z (meters 2.5)))
-            (p2 (new 'static 'vector :x (meters .5) :y (meters .7) :z (meters 1.5)))
-            )
-            
+            (p2 (new 'static 'vector :x (meters .5) :y (meters .7) :z (meters 1.5))))
         ;;(add-debug-point #t (bucket-id debug-draw0) (new 'static 'vector))
         (add-debug-x #t (bucket-id debug-draw0) (new 'static 'vector) (new 'static 'rgba :g #x80 :a #x80))
         (add-debug-box #t (bucket-id debug-draw0) p0 p2 (new 'static 'rgba :b #x80 :a #x80))
         (add-debug-flat-triangle #t (bucket-id debug-draw0) p0 p1 p2 (new 'static 'rgba :r #x80))
         (add-debug-text-3d #t (bucket-id debug-draw0) "triangle!" p0 (font-color menu-flag-on) (the vector2h #f))
-        (add-debug-sphere #t (bucket-id debug-draw0) p2 (meters 0.5) (new 'static 'rgba :r #x80))
-        )
-      )
-
+        (add-debug-sphere #t (bucket-id debug-draw0) p2 (meters 0.5) (new 'static 'rgba :r #x80))))
     (update-hack)
     ;; these also work
     ;;(draw-end-credits (the int frame))
     ;; (draw-title-credits val)
-
     )
-  (none)
-  )
+  (none))
 
 (defun update-hack ()
   (let ((a2-0 (new 'stack-no-clear 'vector)))
@@ -82,11 +69,9 @@
     (let ((gp-0 (vector+float*! (new 'stack-no-clear 'vector) (new 'static 'vector) a2-0 0.0)))
       (let* ((s5-0 (matrix-local->world #f #f))
              (f28-0 (lerp-scale 122.88 245.76 (fabs (-> s5-0 vector 2 y)) 0.0 0.7))
-             (f30-0 (lerp-scale 2048.0 245.76 (fabs (-> s5-0 vector 2 y)) 0.0 0.7))
-             )
+             (f30-0 (lerp-scale 2048.0 245.76 (fabs (-> s5-0 vector 2 y)) 0.0 0.7)))
         (let ((f26-0 (lerp-scale 0.0 0.1 (-> s5-0 vector 2 y) 0.3 0.7))
-              (f0-10 (lerp-scale 1.0 0.1 (-> s5-0 vector 2 y) 0.3 0.7))
-              )
+              (f0-10 (lerp-scale 1.0 0.1 (-> s5-0 vector 2 y) 0.3 0.7)))
           ; (if (< 0.0 f26-0)
           ;     (send-event *camera* 'part-water-drip f26-0 f0-10)
           ;     )
@@ -98,36 +83,19 @@
         (set! (-> *part-id-table* 37 init-specs 5 initial-valuef) f30-0)
         (set! (-> *part-id-table* 37 init-specs 5 random-rangef) f30-0)
         (set! (-> *part-id-table* 38 init-specs 5 initial-valuef) f30-0)
-        (set! (-> *part-id-table* 38 init-specs 5 random-rangef) f30-0)
-        )
-      
+        (set! (-> *part-id-table* 38 init-specs 5 random-rangef) f30-0))
       (dotimes (i 10)
         (launch-particles (-> *part-id-table* 37) gp-0)
-        (launch-particles (-> *part-id-table* 38) gp-0)
-        )
-      )
-    )
+        (launch-particles (-> *part-id-table* 38) gp-0))))
   0
-  (none)
-  )
+  (none))
 
 (defun launch-test-process ()
   "Call this to launch a process that draws the debug demo"
   (let ((proc (get-process *nk-dead-pool* process 1024)))
     (activate proc *active-pool* 'test *kernel-dram-stack*)
-    (run-next-time-in-process proc (lambda ()
-                                     (let ((iter 0))
-                                       (while #t
-                                         (test-function iter)
-                                         (suspend)
-                                         (+! iter 1)
-                                         )
-                                       )
-                                     )
-                              )
-    proc)
-
-  )
+    (run-next-time-in-process proc (lambda () (let ((iter 0)) (while #t (test-function iter) (suspend) (+! iter 1)))))
+    proc))
 
 #|
 (define *wasd-camera-transform* (new 'global 'transform))
@@ -150,10 +118,10 @@
               )
             )
           )
-    
+
     ;; no way to move camera relative y (up/down)
     (set! (-> local-trans y) 0.0)
-    
+
     ;; in and out movement
     (set! (-> local-trans z)
           (cond
@@ -169,11 +137,11 @@
             )
           )
     (set! (-> local-trans w) 1.0)
-    
+
     (when fast-mode
       (vector-float*! local-trans local-trans 10.)
       )
-    
+
     ;; rotate this into world frame
     (let ((inv-cam-rot (new-stack-vector0))
           (cam-rot-mat (new-stack-matrix0)))
@@ -184,14 +152,14 @@
       ;; and rotate the translation.
       (vector-matrix*! local-trans local-trans cam-rot-mat)
       )
-    
+
     ;; and update the transform
     (vector+! (-> trans trans) (-> trans trans) local-trans)
-    
-    
+
+
     ;; don't forget to fix w.
     (set! (-> trans trans w) 1.0)
-    
+
     ;; global translation
     (let ((diff (if fast-mode 10000.0 2000.0)))
       (if (cpad-hold? 0 l1)
@@ -202,7 +170,7 @@
           )
       )
 
-    
+
     ;; rotation (don't allow camera roll)
     (if (cpad-hold? 0 x)
         (set! (-> trans rot x) (+ 200. (-> trans rot x)))
@@ -216,7 +184,7 @@
     (if (cpad-hold? 0 right)
         (set! (-> trans rot y) (+ -300. (-> trans rot y)))
         )
-    
+
     (set! (-> trans scale x) 1.)
     (set! (-> trans scale y) 1.)
     (set! (-> trans scale z) 1.)
@@ -287,6 +255,7 @@
 |#
 
 (set! *display-profile* #t)
+
 ; (set! *display-split-boxes* #t)
 ; (set! *display-level-border* #t)
 ; (set! *display-split-box-info* #t)
@@ -295,16 +264,12 @@
 (defun text-randomizer ()
   (dotimes (i 10000)
     (let ((idx1 (rand-vu-int-count (-> *common-text* length))))
-      (dotimes (j 20) (rand-vu))
+      (dotimes (j 20)
+        (rand-vu))
       (let ((idx2 (rand-vu-int-count (-> *common-text* length))))
         (let ((temp (-> *common-text* data idx1 text)))
           (set! (-> *common-text* data idx1 text) (-> *common-text* data idx2 text))
-          (set! (-> *common-text* data idx2 text) temp)
-          )
-        )
-      )
-    )
-  )
+          (set! (-> *common-text* data idx2 text) temp))))))
 
 (defun update-subdivide-settings! ((settings subdivide-settings) (math-cam math-camera) (idx int))
   "Change the subdivide settings."
@@ -313,7 +278,6 @@
   (set! (-> settings meters 2) (meters 20.0))
   (set! (-> settings meters 3) (meters 20.0))
   (set! (-> settings meters 4) (meters 20.0))
-  
   ; (set! (-> settings meters 0) (-> settings far idx))
   ; (set! (-> settings meters 4) (-> settings close idx))
   ; (let ((f0-3 (* 0.14285715 (- (-> settings meters 0) (-> settings meters 4)))))
@@ -323,35 +287,26 @@
   ;   )
   (let ((f0-7 (/ (-> math-cam inv-hmge-scale w) (-> math-cam d))))
     (dotimes (v1-5 5)
-      (set! (-> settings dist v1-5) (* f0-7 (-> settings meters v1-5)))
-      )
-    )
+      (set! (-> settings dist v1-5) (* f0-7 (-> settings meters v1-5)))))
   (set! (-> *tfrag-work* frag-dists x) (- (-> settings meters 0)))
   (set! (-> *tfrag-work* frag-dists y) (- (-> settings meters 1)))
   (set! (-> *tfrag-work* frag-dists z) (- (-> settings meters 2)))
   (set! (-> *tfrag-work* frag-dists w) (- (-> settings meters 4)))
   0
-  (none)
-  )
+  (none))
 
 ;;(test-make-target)
 
-
 (define *debug-load-level* #f)
+
 (defun load-slot-1 ((lev symbol))
   (load-state-want-levels (-> *load-state* want 0 name) lev)
   (set! *debug-load-level* lev)
-  (process-new-function 
-    process
-    (lambda () 
-      (suspend)
-      (suspend)
-      
-      (while (!= (-> *level* data 1 status) 'loaded)
-        (format 0 "waiting...~%")
-        (suspend)
-        )
-      (load-state-want-display-level *debug-load-level* #t)
-      )
-     )
-  )
+  (process-new-function process
+                        (lambda ()
+                          (suspend)
+                          (suspend)
+                          (while (!= (-> *level* data 1 status) 'loaded)
+                            (format 0 "waiting...~%")
+                            (suspend))
+                          (load-state-want-display-level *debug-load-level* #t))))

@@ -17,7 +17,7 @@
 
 ;; failed to figure out what this is:
 (defpart 265
-  :init-specs ((:texture (new 'static 'texture-id :index #xcb :page #xc))
+  :init-specs ((:texture (peacemaker-plasma effects))
     (:birth-func 'birth-func-set-vel)
     (:num 0.0 0.3)
     (:y (meters 0.15))
@@ -162,9 +162,9 @@
             (.lvf vf5 (&-> a1-4 quad))
             )
           (.lvf vf4 (&-> v1-15 quad))
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> a0-8 quad) vf6)
           )
         (let ((v1-16 *particle-vel*)
@@ -260,12 +260,7 @@
     )
   :enter (behavior ()
     (set! (-> self start-time) (-> *display* game-clock frame-counter))
-    (let* ((gp-0 (ppointer->process (-> self parent 0 parent)))
-           (a1-1 (if (type? gp-0 process-focusable)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((a1-1 (the-as process-tree (as-type (ppointer->process (-> self parent 0 parent)) process-focusable))))
       (if a1-1
           (try-update-focus (-> self focus) (the-as process-focusable a1-1))
           )
@@ -280,12 +275,7 @@
       )
     )
   :code (behavior ()
-    (let* ((gp-0 (ppointer->process (-> self parent 0 parent)))
-           (a0-1 (if (type? gp-0 process-focusable)
-                     (the-as process-focusable gp-0)
-                     )
-                 )
-           )
+    (let ((a0-1 (as-type (ppointer->process (-> self parent 0 parent)) process-focusable)))
       (if (and a0-1 (focus-test? a0-1 pilot))
           (send-event
             (ppointer->process (-> self parent))
@@ -522,10 +512,7 @@
        )
       (('touch 'attack)
        (let ((s4-0 (process-spawn camera-remote :init cam-slave-init cam-remote #f :from *camera-dead-pool* :to proc))
-             (s5-2 (if (type? proc process-focusable)
-                       (the-as process-focusable proc)
-                       )
-                   )
+             (s5-2 (as-type proc process-focusable))
              )
          (when (and s4-0 (begin (send-event s5-2 'change-mode 'board #f) (focus-test? s5-2 board)))
            (change-parent self (ppointer->process s4-0))
@@ -608,11 +595,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this judge) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (setup-collision this)
   (init this)
   (process-drawable-from-entity! this arg0)

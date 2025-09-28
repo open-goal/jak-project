@@ -1,16 +1,16 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: hint-control-h.gc
-;; name in dgo: hint-control-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; The "hint" system is used to give the player hints if they appear to be stuck
 ;; Hints can belong to either a level or a task.  The hint-control types have
 ;; parameters about how often the hints should come, and what they are tied to.
 
 (define-extern reset-all-hint-controls (function none))
+
 (define-extern kill-current-level-hint (function pair pair symbol none))
+
 (define-extern level-hint-spawn (function text-id string entity process-tree game-task none))
 
 (defenum hint-command
@@ -27,33 +27,25 @@
   (close-need-reminder-a 10)
   (close-need-reward-speech 11)
   (close-need-resolution 12)
-  (if-at-most-need-reminder-a 13)
-  )
+  (if-at-most-need-reminder-a 13))
 
 ;; DECOMP BEGINS
 
 ;; information about an in-level hint. These aren't tied to a specific object or task.
 (deftype level-hint-control (structure)
-  ((delay-before-playing         time-frame)
-   (id                           text-id)
-   (num-attempts-before-playing  int8)
-   (num-success-before-killing   int8)
-   (num-attempts                 int8)
-   (num-success                  int8)
-   (start-time                   time-frame)
-   (last-time-called             time-frame)
-   )
-  )
+  ((delay-before-playing        time-frame)
+   (id                          text-id)
+   (num-attempts-before-playing int8)
+   (num-success-before-killing  int8)
+   (num-attempts                int8)
+   (num-success                 int8)
+   (start-time                  time-frame)
+   (last-time-called            time-frame)))
 
 ;; a "task hint" is explicitly tied to an in-game task.
 (deftype task-hint-control (structure)
-  ((task   game-task)
-   (delay  time-frame)
-   )
-  )
-
+  ((task  game-task)
+   (delay time-frame)))
 
 (deftype task-hint-control-group (structure)
-  ((tasks  (array task-hint-control))
-   )
-  )
+  ((tasks (array task-hint-control))))

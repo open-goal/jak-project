@@ -99,8 +99,8 @@
 
 (defmethod start-bouncing! ((this drill-plat-falling))
   "Sets `bouncing` to [[#t]] and sets up the clock to periodically bounce
-and translate the platform via the `smush`
-@see [[smush-control]]"
+   and translate the platform via the `smush`
+   @see [[smush-control]]"
   (activate! (-> this smush) -1.0 24 120 1.0 1.0 (-> self clock))
   (set-time! (-> this bounce-time))
   (set! (-> this bouncing) #t)
@@ -168,11 +168,11 @@ and translate the platform via the `smush`
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-plat-falling) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
@@ -342,11 +342,8 @@ This commonly includes things such as:
     (until #f
       (let ((f30-0 (- (-> self extent 1 y) (-> self extent 0 y))))
         (when (!= f30-0 (-> self length))
-          (let ((f0-3 (* 0.000010172526 f30-0))
-                (a0-0 (-> self skel root-channel 0))
-                )
-            (set! (-> a0-0 frame-num) f0-3)
-            (joint-control-channel-group-eval! a0-0 (the-as art-joint-anim #f) num-func-identity)
+          (let ((f0-3 (/ f30-0 (meters 24))))
+            (ja :num! (identity f0-3))
             )
           (transform-post)
           (set! (-> self length) f30-0)
@@ -431,10 +428,10 @@ This commonly includes things such as:
 
 (defmethod move-between-points ((this drill-elevator) (arg0 vector) (arg1 float) (arg2 float))
   "Move between two points on the elevator's path
-@param vec TODO not sure
-@param point-a The first point fetched from the elevator's path
-@param point-b The second point fetched from the path
-@see [[path-control]] and [[elevator]]"
+   @param vec TODO not sure
+   @param point-a The first point fetched from the elevator's path
+   @param point-b The second point fetched from the path
+   @see [[path-control]] and [[elevator]]"
   (let ((s4-0 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg1 'interp))
         (a0-3 (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) arg2 'interp))
         (v1-3 (-> this root trans))
@@ -449,6 +446,7 @@ This commonly includes things such as:
   )
 
 (defmethod deactivate ((this drill-elevator))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -473,7 +471,7 @@ This commonly includes things such as:
 
 (defmethod init-plat! ((this drill-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this shaft)
         (process-spawn drill-elevator-shaft (-> this entity extra trans) (-> this basetrans) :to this)
         )
@@ -559,8 +557,8 @@ For example for an elevator pre-compute the distance between the first and last 
 
 (defmethod move-to-next-point! ((this drill-mech-elevator))
   "If the [[*target*]] is in a valid state and there is a point to transition to in the elevator's path
-do so.
-@see [[elevator::47]]"
+   do so.
+   @see [[elevator::47]]"
   (local-vars (sv-16 float))
   (let ((a0-1 *target*))
     (when (and a0-1
@@ -586,6 +584,7 @@ do so.
   )
 
 (defmethod deactivate ((this drill-mech-elevator))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this running-sound-id))
       (sound-stop (-> this running-sound-id))
       )
@@ -595,7 +594,7 @@ do so.
 
 (defmethod init-plat! ((this drill-mech-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this running-sound-id) (new 'static 'sound-id))
   ((method-of-type drill-elevator init-plat!) this)
   (none)
@@ -738,16 +737,16 @@ For example for an elevator pre-compute the distance between the first and last 
                (set! (-> s0-0 random-rangef) f30-0)
                )
            (if s5-0
-               (set! (-> s5-0 random-rangef) (* 0.5 f28-0))
+               (set! (-> s5-0 random-rangef) (/ f28-0 2))
                )
            (if gp-0
-               (set! (-> gp-0 random-rangef) (* 0.5 f30-0))
+               (set! (-> gp-0 random-rangef) (/ f30-0 2))
                )
            (if s4-0
-               (set! (-> s5-0 random-rangef) (* 0.5 f28-0))
+               (set! (-> s5-0 random-rangef) (/ f28-0 2))
                )
            (if v1-22
-               (set! (-> gp-0 random-rangef) (* 0.5 f30-0))
+               (set! (-> gp-0 random-rangef) (/ f30-0 2))
                )
            )
          (spawn-with-matrix (-> self part) (-> self local-to-world))
@@ -770,10 +769,10 @@ For example for an elevator pre-compute the distance between the first and last 
                 (set! (-> s4-1 random-rangef) f30-0)
                 )
             (if gp-1
-                (set! (-> gp-1 random-rangef) (* 0.5 f28-0))
+                (set! (-> gp-1 random-rangef) (/ f28-0 2))
                 )
             (if v1-39
-                (set! (-> v1-39 random-rangef) (* 0.5 f30-0))
+                (set! (-> v1-39 random-rangef) (/ f30-0 2))
                 )
             )
           (spawn-with-matrix (-> self part-off) (-> self local-to-world))
@@ -793,14 +792,15 @@ For example for an elevator pre-compute the distance between the first and last 
   (none)
   )
 
-(defmethod relocate ((this fire-floor) (arg0 int))
+(defmethod relocate ((this fire-floor) (offset int))
   (if (nonzero? (-> this part-off))
-      (&+! (-> this part-off) arg0)
+      (&+! (-> this part-off) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod deactivate ((this fire-floor))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   (if (nonzero? (-> this part-off))
       (kill-and-free-particles (-> this part-off))
@@ -812,11 +812,11 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this fire-floor) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -883,9 +883,9 @@ This commonly includes things such as:
     (set! (-> this deadly-length) (vector-vector-distance (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
     (let ((v1-39 (-> this root root-prim)))
       (vector-reset! (-> v1-39 local-sphere))
-      (let* ((f0-14 (* 0.5 (-> this deadly-width)))
+      (let* ((f0-14 (/ (-> this deadly-width) 2))
              (f0-16 (* f0-14 f0-14))
-             (f1-7 (* 0.5 (-> this deadly-length)))
+             (f1-7 (/ (-> this deadly-length) 2))
              )
         (set! (-> v1-39 local-sphere w) (sqrtf (+ f0-16 (* f1-7 f1-7))))
         )
@@ -930,7 +930,7 @@ This commonly includes things such as:
   )
 
 (defpart 1991
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 2.5))
     (:rot-x (degrees 4.5))
@@ -955,7 +955,7 @@ This commonly includes things such as:
   )
 
 (defpart 1992
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 2.5))
     (:rot-x (degrees 4.5))
@@ -990,14 +990,15 @@ This commonly includes things such as:
               )
 
 ;; WARN: Return type mismatch basebutton vs drill-switch.
-(defmethod relocate ((this drill-switch) (arg0 int))
+(defmethod relocate ((this drill-switch) (offset int))
   (if (nonzero? (-> this green-part))
-      (&+! (-> this green-part) arg0)
+      (&+! (-> this green-part) offset)
       )
-  (the-as drill-switch ((method-of-type basebutton relocate) this arg0))
+  (the-as drill-switch ((method-of-type basebutton relocate) this offset))
   )
 
 (defmethod deactivate ((this drill-switch))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this green-part))
       (kill-and-free-particles (-> this green-part))
       )
@@ -1284,7 +1285,7 @@ This commonly includes things such as:
   )
 
 (defpart 1993
-  :init-specs ((:texture (new 'static 'texture-id :index #x83 :page #xc))
+  :init-specs ((:texture (pal-lightning effects))
     (:birth-func 'birth-func-set-quat)
     (:num 1.0)
     (:scale-x (meters 1))
@@ -1299,7 +1300,7 @@ This commonly includes things such as:
   )
 
 (defpart 1994
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 2))
     (:scale-y :copy scale-x)
@@ -1317,7 +1318,7 @@ This commonly includes things such as:
   )
 
 (defpart 1995
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 2))
     (:scale-y :copy scale-x)
@@ -1348,6 +1349,7 @@ This commonly includes things such as:
 
 
 (defmethod deactivate ((this drill-laser))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this hit-sound-id))
   ((method-of-type process-drawable deactivate) this)
   (none)
@@ -1455,11 +1457,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-laser) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (set! (-> this firing?) #f)
   (set! (-> this hit-sound-id) (new 'static 'sound-id))

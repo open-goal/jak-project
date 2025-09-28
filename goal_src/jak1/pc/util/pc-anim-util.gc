@@ -1,5 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(require "pc/pckernel-impl.gc")
+(require "engine/common-obs/process-drawable-h.gc")
+(require "engine/anim/mspace-h.gc")
+(require "engine/target/target-h.gc")
 
 #|
 A random assortment of functions used for manipulating various animations and skeletons in the pc port.
@@ -7,9 +11,10 @@ A random assortment of functions used for manipulating various animations and sk
 This is used for funny cheat codes and the like.
 |#
 
-
 (define *cheat-big-head-scale* (new 'static 'vector :x 1.5 :y 1.5 :z 1.5 :w 1.0))
+
 (define *cheat-huge-head-scale* (new 'static 'vector :x 2.5 :y 2.5 :z 2.5 :w 1.0))
+
 (define *cheat-small-head-scale* (new 'static 'vector :x 0.667 :y 0.667 :z 0.667 :w 1.0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -26,97 +31,76 @@ This is used for funny cheat codes and the like.
   (set! (-> out vector 1 data 1) value)
   (set! (-> out vector 2 data 2) value)
   (set! (-> out vector 3 data 3) value)
-  out
-  )
+  out)
 
 (defun matrix*!-bone-callback ((the-bone bone) (is-parent? symbol) (mtx matrix) a)
   "apply a transform matrix to a bone."
-  (matrix*! (-> the-bone transform) (-> the-bone transform) mtx)
-  )
+  (matrix*! (-> the-bone transform) (-> the-bone transform) mtx))
 
-(defun cspace-map-joints ((proc process-drawable) (cspace-idx int) (include-parent? symbol) (func (function bone symbol object object object)) p0 p1)
+(defun cspace-map-joints ((proc process-drawable)
+        (cspace-idx int)
+        (include-parent? symbol)
+        (func (function bone symbol object object object))
+        p0
+        p1)
   "run func on all joints' bones that are children of cspace-idx
    if include-parent? = #t then also apply to that joint."
   ;; iterate through all cspaces in the process
   (let ((parent-joint (-> proc node-list data cspace-idx joint)))
-      (dotimes (i (-> proc node-list length))
-        ;; see if it's a joint and keep that for later
-        (awhen (-> proc node-list data i joint)
-          (cond
-            ;; run func if we ARE the parent!
-            ((= it parent-joint)
-              ;;(format #t "running map on parent ~A~%" it)
-              (if include-parent?
-                  (func (-> proc node-list data i bone) #t p0 p1)))
-            ;; otherwise go up our parents until we hit what we want (yay!) or nothing (nay...)
-            (else
-              (let ((cur-parent it))
-                (until (or (not cur-parent) (= cur-parent parent-joint))
-                  (set! cur-parent (-> cur-parent parent))
-                  )
-                (when (= cur-parent parent-joint)
+    (dotimes (i (-> proc node-list length))
+      ;; see if it's a joint and keep that for later
+      (awhen (-> proc node-list data i joint)
+             (cond
+               ;; run func if we ARE the parent!
+               ((= it parent-joint)
+                ;;(format #t "running map on parent ~A~%" it)
+                (if include-parent? (func (-> proc node-list data i bone) #t p0 p1)))
+               ;; otherwise go up our parents until we hit what we want (yay!) or nothing (nay...)
+               (else
+                (let ((cur-parent it))
+                  (until (or (not cur-parent) (= cur-parent parent-joint))
+                    (set! cur-parent (-> cur-parent parent)))
+                  (when (= cur-parent parent-joint)
                     ;;(format #t "running map on child ~A~%" it)
-                    (func (-> proc node-list data i bone) #f p0 p1))
-                )
-              )
-            )
-          )
-        ))
-  )
+                    (func (-> proc node-list data i bone) #f p0 p1)))))))))
 
 (defun scale-joints ((obj process-drawable) (cspace-idx int) (scale-children? symbol) (scale vector))
   "scale a joint (cspace-idx) in an actor. if scale-children? = #t, also scales all child joints."
-  (if (= cspace-idx -1)
-      (return #f))
+  (if (= cspace-idx -1) (return #f))
   (let* ((parent-mtx (-> obj node-list data cspace-idx bone transform))
          (unscale-q (matrix-diagonal! (new-stack-matrix0) (/ 1.0 (-> parent-mtx data 15))))
          (scale-q (matrix-diagonal! (new-stack-matrix0) (-> parent-mtx data 15)))
-
          (scale-mat (matrix-scale! (new-stack-matrix0) scale))
          (parent-fixed (matrix*! (new-stack-matrix0) parent-mtx unscale-q))
-
          (inv-parent (matrix-4x4-inverse! (new-stack-matrix0) parent-fixed))
          ;;  bone * inverse(parent * unscale-q) * scale * parent * scale-q
-
          (matrix1 (matrix*! (new-stack-matrix0) inv-parent scale-mat))
          (matrix2 (matrix*! (new-stack-matrix0) matrix1 parent-mtx))
-         (matrix3 (matrix*! (new-stack-matrix0) matrix2 scale-q))
-         )
+         (matrix3 (matrix*! (new-stack-matrix0) matrix2 scale-q)))
     (if scale-children?
-        (cspace-map-joints obj cspace-idx #t matrix*!-bone-callback matrix3 scale)
-        (matrix*!-bone-callback (-> obj node-list data cspace-idx bone) #t matrix3 scale)
-        )
-    )
-  )
+      (cspace-map-joints obj cspace-idx #t matrix*!-bone-callback matrix3 scale)
+      (matrix*!-bone-callback (-> obj node-list data cspace-idx bone) #t matrix3 scale))))
 
 (defun target-joint-callback-pc ((obj target))
   "custom animation callback for *target*"
-  
   (let ((neckA-idx (cspace-index-by-name obj "neckA")))
-      (cond
-        ((pc-cheats? (-> *pc-settings* cheats) small-head) (scale-joints obj neckA-idx #t *cheat-small-head-scale*))
-        ((pc-cheats? (-> *pc-settings* cheats) huge-head) (scale-joints obj neckA-idx #t *cheat-huge-head-scale*))
-        ((pc-cheats? (-> *pc-settings* cheats) big-head) (scale-joints obj neckA-idx #t *cheat-big-head-scale*))
-        ))
+    (cond
+      ((pc-cheats? (-> *pc-settings* cheats) small-head) (scale-joints obj neckA-idx #t *cheat-small-head-scale*))
+      ((pc-cheats? (-> *pc-settings* cheats) huge-head) (scale-joints obj neckA-idx #t *cheat-huge-head-scale*))
+      ((pc-cheats? (-> *pc-settings* cheats) big-head) (scale-joints obj neckA-idx #t *cheat-big-head-scale*))))
   (when (and (pc-cheats? (-> *pc-settings* cheats) big-fist) (!= 'target-edge-grab (-> obj next-state name)))
-      (scale-joints obj (cspace-index-by-name obj "sk_lhand") #t *cheat-huge-head-scale*)
-      (scale-joints obj (cspace-index-by-name obj "sk_rhand") #t *cheat-huge-head-scale*)
-      )
-  0 (none)
-  )
+    (scale-joints obj (cspace-index-by-name obj "sk_lhand") #t *cheat-huge-head-scale*)
+    (scale-joints obj (cspace-index-by-name obj "sk_rhand") #t *cheat-huge-head-scale*))
+  0
+  (none))
 
 (defun process-drawable-joint-callback-pc ((obj process-drawable))
   "custom animation callback for any process drawable"
-  
   (when (pc-cheats? (-> *pc-settings* cheats) oh-my-goodness)
-      ;; don't ask.
-      (scale-joints obj (cspace-index-by-name obj "lbood") #t (new 'static 'vector :x 2.0 :y 2.0 :z 2.0 :w 1.0))
-      (scale-joints obj (cspace-index-by-name obj "rboob") #t (new 'static 'vector :x 2.0 :y 2.0 :z 2.0 :w 1.0))
-      )
+    ;; don't ask.
+    (scale-joints obj (cspace-index-by-name obj "lbood") #t (new 'static 'vector :x 2.0 :y 2.0 :z 2.0 :w 1.0))
+    (scale-joints obj (cspace-index-by-name obj "rboob") #t (new 'static 'vector :x 2.0 :y 2.0 :z 2.0 :w 1.0)))
   (when (pc-cheats? (-> *pc-settings* cheats) big-head-npc)
-      (scale-joints obj (cspace-index-by-name obj "head") #t *cheat-big-head-scale*)
-      )
-  0 (none)
-  )
-
-
+    (scale-joints obj (cspace-index-by-name obj "head") #t *cheat-big-head-scale*))
+  0
+  (none))

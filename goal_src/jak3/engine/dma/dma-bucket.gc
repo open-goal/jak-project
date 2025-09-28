@@ -7,3 +7,63 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch pointer vs (inline-array dma-bucket).
+(defun dma-buffer-add-buckets ((dma-buf dma-buffer) (bucket-count int))
+  "Initialize an array of dma-buckets in a DMA buffer."
+  (let ((v0-0 (-> dma-buf base)))
+    (let ((v1-0 (the-as object v0-0)))
+      (dotimes (a2-0 bucket-count)
+        (set! (-> (the-as dma-bucket v1-0) tag)
+              (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int (&+ (the-as pointer v1-0) 16)))
+              )
+        (set! (-> (the-as dma-bucket v1-0) last) (the-as (pointer dma-tag) v1-0))
+        (set! v1-0 (&+ (the-as pointer v1-0) 16))
+        )
+      (set! (-> dma-buf base) (the-as pointer v1-0))
+      )
+    (the-as (inline-array dma-bucket) v0-0)
+    )
+  )
+
+(defun dma-buffer-patch-buckets ((base dma-bucket) (count int))
+  "Patch together DMA buckets after they have been filled."
+  (when (nonzero? base)
+    (dotimes (v1-1 count)
+      (cond
+        ((= base (-> base last))
+         (set! (-> base tag) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+         (set! (-> base clear) (the-as uint 0))
+         0
+         )
+        (else
+          (set! (-> base last 0 addr) (the-as int (&+ base 16)))
+          (cond
+            ((and (or *display-profile* *stats-profile-bars*) (not *display-capture-mode*))
+             (set! (-> (the-as dma-packet base) vif0) (new 'static 'vif-tag :cmd (vif-cmd mark) :imm v1-1))
+             (set! (-> (the-as dma-packet base) vif1) (new 'static 'vif-tag :irq #x1))
+             )
+            (else
+              (set! (-> base clear) (the-as uint 0))
+              0
+              )
+            )
+          )
+        )
+      (&+! base 16)
+      )
+    )
+  base
+  )
+
+(defun dma-bucket-insert-tag ((buckets (inline-array dma-bucket))
+                     (bucket bucket-id)
+                     (start-tag pointer)
+                     (end-tag-to-patch (pointer dma-tag))
+                     )
+  "Add a dma chain to the bucket."
+  (let ((v1-1 (-> buckets bucket)))
+    (set! (-> (the-as dma-bucket (-> v1-1 last)) next) (the-as uint start-tag))
+    (set! (-> v1-1 last) end-tag-to-patch)
+    )
+  start-tag
+  )

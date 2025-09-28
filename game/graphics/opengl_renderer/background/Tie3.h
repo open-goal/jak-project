@@ -30,6 +30,7 @@ class Tie3 : public BucketRenderer {
   Tie3(const std::string& name,
        int my_id,
        int level_id,
+       const std::vector<GLuint>* anim_slot_array,
        tfrag3::TieCategory category = tfrag3::TieCategory::NORMAL);
   void render(DmaFollower& dma, SharedRenderState* render_state, ScopedProfilerNode& prof) override;
   void draw_debug_window() override;
@@ -115,10 +116,9 @@ class Tie3 : public BucketRenderer {
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::InstancedStripDraw>* wind_draws = nullptr;
     const std::vector<tfrag3::TieWindInstance>* instance_info = nullptr;
-    const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
+    const tfrag3::PackedTimeOfDay* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;
     const u32* index_data = nullptr;
-    SwizzledTimeOfDay tod_cache;
     std::vector<std::array<math::Vector4f, 4>> wind_matrix_cache;
     GLuint wind_vertex_index_buffer;
     std::vector<u32> wind_vertex_index_offsets;
@@ -131,6 +131,7 @@ class Tie3 : public BucketRenderer {
     std::vector<std::pair<int, int>> multidraw_offset_per_stripdraw;
     std::vector<GLsizei> multidraw_count_buffer;
     std::vector<void*> multidraw_index_offset_buffer;
+    u64 draw_mode = 0;  // strip or not, GL enum
   };
 
   void envmap_second_pass_draw(const Tree& tree,
@@ -149,7 +150,6 @@ class Tie3 : public BucketRenderer {
   static constexpr int TIME_OF_DAY_COLOR_COUNT = 8192;
 
   bool m_has_level = false;
-  bool m_use_fast_time_of_day = true;
   bool m_debug_all_visible = false;
   bool m_hide_wind = false;
   bool m_draw_envmap_second_draw = true;
@@ -169,7 +169,7 @@ class Tie3 : public BucketRenderer {
   } m_uniforms;
 
   EtieUniforms m_etie_uniforms, m_etie_base_uniforms;
-
+  const std::vector<GLuint>* m_anim_slot_array;
   static_assert(sizeof(WindWork) == 84 * 16);
 };
 

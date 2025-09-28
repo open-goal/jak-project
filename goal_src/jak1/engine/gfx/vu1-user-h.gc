@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: vu1-user-h.gc
-;; name in dgo: vu1-user-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; VU1 renderers are enabled/disabled with a bitmask.
 
@@ -28,38 +26,33 @@
   (shadow 17)
   (depth-cue 18)
   (nineteen 19)
-  (twenty 20)
-  )
+  (twenty 20))
 
 ;; DECOMP BEGINS
 
 (define *vu1-enable-user-menu*
-        (vu1-renderer-mask
-          sky
-          ocean
-          ocean-wave
-          tfrag
-          tie-near
-          tie
-          generic
-          merc
-          shrubbery
-          shrub-near
-          billboard
-          trans-shrubbery
-          trans-tfrag
-          sprite
-          shadow
-          depth-cue
-          nineteen
-          twenty
-          )
-        )
+  (vu1-renderer-mask sky
+                     ocean
+                     ocean-wave
+                     tfrag
+                     tie-near
+                     tie
+                     generic
+                     merc
+                     shrubbery
+                     shrub-near
+                     billboard
+                     trans-shrubbery
+                     trans-tfrag
+                     sprite
+                     shadow
+                     depth-cue
+                     nineteen
+                     twenty))
 
 ;; disable depth-cue by default for the PC port
 (#when PC_PORT
-  (logclear! *vu1-enable-user-menu* (vu1-renderer-mask depth-cue))
- )
+  (logclear! *vu1-enable-user-menu* (vu1-renderer-mask depth-cue)))
 
 ;; by default, all off.
 ;; the menu renderers get copied to this on each frame
@@ -67,33 +60,26 @@
 
 ;; a dma "sink" is somewhere where a renderer can put stuff.
 (deftype dma-foreground-sink (basic)
-  ((bucket                    bucket-id)
-   (foreground-texture-page   int8)
-   (foreground-texture-level  int8)
-   (foreground-output-bucket  int8)
-   )
-  )
+  ((bucket                   bucket-id)
+   (foreground-texture-page  int8)
+   (foreground-texture-level int8)
+   (foreground-output-bucket int8)))
 
 ;; additional info for the generic renderer
 (deftype generic-bucket-state (structure)
-  ((gifbuf-adr  uint32)
-   (inbuf-adr   uint32)
-   )
-  :pack-me
-  )
+  ((gifbuf-adr uint32)
+   (inbuf-adr  uint32))
+  :pack-me)
 
 ;; sink for the generic renderer, a normal sink + extra data.
 (deftype generic-dma-foreground-sink (dma-foreground-sink)
-  ((state  generic-bucket-state  :inline)
-   )
-  )
+  ((state generic-bucket-state :inline)))
 
 ;; group of sinks used for the foreground renderers.
 (declare-type level basic)
+
 (deftype dma-foreground-sink-group (basic)
-  ((sink          dma-foreground-sink          3)
-   (merc-sink     dma-foreground-sink          :overlay-at (-> sink 0))
-   (generic-sink  generic-dma-foreground-sink  :overlay-at (-> sink 1))
-   (level         level)
-   )
-  )
+  ((sink         dma-foreground-sink 3)
+   (merc-sink    dma-foreground-sink :overlay-at (-> sink 0))
+   (generic-sink generic-dma-foreground-sink :overlay-at (-> sink 1))
+   (level        level)))

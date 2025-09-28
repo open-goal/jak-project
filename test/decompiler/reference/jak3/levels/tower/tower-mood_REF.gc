@@ -1,0 +1,199 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type ltowerb-states
+(deftype ltowerb-states (structure)
+  ()
+  )
+
+;; definition for method 3 of type ltowerb-states
+(defmethod inspect ((this ltowerb-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'ltowerb-states)
+  (label cfg-4)
+  this
+  )
+
+;; definition for function update-mood-ltowerb
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-ltowerb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (mem-copy! (the-as pointer (-> arg0 light-group 1)) (the-as pointer (-> arg0 light-group)) 192)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (set! (-> arg0 times 5 w) 1.0)
+    (set! (-> arg0 times 6 w) 1.0)
+    (set! (-> arg0 times 7 w) 1.0)
+    )
+  0
+  (none)
+  )
+
+;; definition of type tower-states
+(deftype tower-states (structure)
+  ((pulse  pulse-state  :inline)
+   )
+  )
+
+;; definition for method 3 of type tower-states
+(defmethod inspect ((this tower-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'tower-states)
+  (format #t "~1Tpulse: #<pulse-state @ #x~X>~%" (-> this pulse))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function init-mood-tower
+(defun init-mood-tower ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 state)))
+    (set! (-> v1-0 2) (the-as uint 1.0))
+    (let ((f0-1 1.0))
+      (set! (-> v1-0 1) (the-as uint f0-1))
+      f0-1
+      )
+    )
+  )
+
+;; definition for function update-tower-lights
+;; WARN: Return type mismatch float vs none.
+(defun update-tower-lights ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group)))
+    (let ((a0-1 (-> v1-0 0)))
+      (set! (-> a0-1 dir0 direction x) 0.0)
+      (set! (-> a0-1 dir0 direction y) 1.0)
+      (set! (-> a0-1 dir0 direction z) 0.0)
+      (set! (-> a0-1 dir0 direction w) 0.0)
+      )
+    (set-vector! (-> v1-0 0 dir0 color) 0.72 0.667 0.667 1.0)
+    (set-vector! (-> v1-0 0 ambi color) 0.3 0.35 0.3 1.0)
+    (set! (-> v1-0 0 dir0 extra x) 1.0)
+    (set! (-> v1-0 0 dir1 extra x) 0.0)
+    (set! (-> v1-0 0 dir2 extra x) 0.0)
+    (set! (-> v1-0 0 ambi extra x) 1.0)
+    )
+  (none)
+  )
+
+;; definition for function update-mood-tower
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-tower time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (update-tower-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (set! (-> arg0 times 0 w) 1.0)
+      (set! (-> arg0 times 1 w) 1.0)
+      (set! (-> arg0 times 2 w) 1.0)
+      (update-mood-pulse arg0 3 0 1.0 0.25 (* 32768.0 (seconds-per-frame)) 0.0)
+      (set! (-> arg0 times 4 w) 1.0)
+      (set! (-> arg0 times 5 w) 1.0)
+      (set! (-> arg0 times 6 w) 1.0)
+      (set! (-> arg0 times 7 w) 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *towerb-water-texture-anim-array*, type (texture-anim-array texture-anim)
+(define *towerb-water-texture-anim-array*
+  (the-as (texture-anim-array texture-anim)
+    (new 'static 'texture-anim-array :type texture-anim
+      (new 'static 'texture-anim
+        :num-layers #x3
+        :func #f
+        :init-func-id 'texture-anim-overide-size-init
+        :tex #f
+        :tex-name "tow-energy-bridge-dest"
+        :extra (new 'static 'vector :x 128.0 :y 128.0 :z 1.0)
+        :color (new 'static 'rgba :a #x80)
+        :frame-delta 300.0
+        :frame-mod 2100.0
+        :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+        :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+        :data (new 'static 'array texture-anim-layer 6
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 2100.0
+            :tex-name "tow-energy-bridge"
+            :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.33 0.33))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-st-rot (degrees 180)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.33 1.33))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-st-rot (degrees 180)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 2100.0
+            :tex-name "tow-energy-bridge"
+            :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.67 0.67))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-st-rot (degrees 90)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.67 1.67))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-st-rot (degrees 90)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 2100.0
+            :tex-name "tow-energy-bridge"
+            :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.0))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 1.0))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          )
+        )
+      )
+    )
+  )

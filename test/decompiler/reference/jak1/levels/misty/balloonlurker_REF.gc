@@ -13,7 +13,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2015
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:y (meters 1))
     (:scale-x (meters 16))
@@ -61,7 +61,7 @@
 
 ;; failed to figure out what this is:
 (defpart 964
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 1.5)
     (:y (meters 0.5) (meters 0.5))
     (:scale-x (meters 2.5) (meters 1.5))
@@ -94,7 +94,7 @@
 
 ;; failed to figure out what this is:
 (defpart 965
-  :init-specs ((:texture (new 'static 'texture-id :index #x2 :page #x2))
+  :init-specs ((:texture (flare effects))
     (:num 6.0)
     (:y (meters 0.75))
     (:scale-x (meters 8) (meters 8))
@@ -124,7 +124,7 @@
 
 ;; failed to figure out what this is:
 (defpart 966
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:y (meters 1))
     (:scale-x (meters 24) (meters 16))
@@ -141,7 +141,7 @@
 
 ;; failed to figure out what this is:
 (defpart 967
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:y (meters 1))
     (:scale-x (meters 24) (meters 16))
@@ -158,7 +158,7 @@
 
 ;; failed to figure out what this is:
 (defpart 968
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((:texture (hotdot effects))
     (:num 5.0 10.0)
     (:x (meters -0.5) (meters 1))
     (:y (meters 0.25) (meters 1.5))
@@ -197,7 +197,7 @@
 
 ;; failed to figure out what this is:
 (defpart 963
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 2.0)
     (:x (meters -0.25) (meters 0.5))
     (:y (meters -0.25) (meters 0.5))
@@ -561,8 +561,7 @@
             (vector-float*!
               s5-0
               *y-vector*
-              (* 0.25
-                 (-> this buoyancy-factor)
+              (* (/ (-> this buoyancy-factor) 4)
                  (-> this info gravity-factor)
                  (fmax 0.3 (fmin 1.0 f0-6))
                  (-> this info gravity)
@@ -725,7 +724,7 @@
   (seek!
     (-> self engine-thrust)
     (* (-> self throttle-control) (-> *BALLOONLURKER-bank* max-engine-thrust))
-    (* 0.005 (-> *BALLOONLURKER-bank* max-engine-thrust))
+    (/ (-> *BALLOONLURKER-bank* max-engine-thrust) 200)
     )
   (let ((f0-31 60.0)
         (f1-14 1820.4445)
@@ -839,10 +838,7 @@
       (apply-all (-> self link) actor-link-dead-hook (& sv-16))
       (when (and sv-16 sv-24)
         (process-grab? *target*)
-        (let ((gp-0 (current-time)))
-          (until (time-elapsed? gp-0 (seconds 1))
-            (suspend)
-            )
+        (suspend-for (seconds 1)
           )
         (process-release? *target*)
         (while (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
@@ -883,20 +879,20 @@
   )
 
 ;; definition for method 7 of type balloonlurker
-(defmethod relocate ((this balloonlurker) (arg0 int))
+(defmethod relocate ((this balloonlurker) (offset int))
   (if (nonzero? (-> this propeller))
-      (&+! (-> this propeller) arg0)
+      (&+! (-> this propeller) offset)
       )
   (if (nonzero? (-> this rudder))
-      (&+! (-> this rudder) arg0)
+      (&+! (-> this rudder) offset)
       )
   (if (nonzero? (-> this mine 0))
-      (&+! (-> this mine 0) arg0)
+      (&+! (-> this mine 0) offset)
       )
   (if (nonzero? (-> this mine 1))
-      (&+! (-> this mine 1) arg0)
+      (&+! (-> this mine 1) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 ;; failed to figure out what this is:

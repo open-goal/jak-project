@@ -1,0 +1,80 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type waspala-states
+(deftype waspala-states (structure)
+  ((flame0  flames-state  :inline)
+   (flame1  flames-state  :inline)
+   )
+  )
+
+;; definition for method 3 of type waspala-states
+(defmethod inspect ((this waspala-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'waspala-states)
+  (format #t "~1Tflame0: #<flames-state @ #x~X>~%" (-> this flame0))
+  (format #t "~1Tflame1: #<flames-state @ #x~X>~%" (-> this flame1))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function calc-waspala-lights
+;; WARN: Return type mismatch symbol vs none.
+(defun calc-waspala-lights ((arg0 mood-context))
+  (let ((s5-0 (-> arg0 light-group))
+        (s4-0 (new 'static 'vector :x 8155136.0 :y 598016.0 :z -1884160.0 :w 389120.0))
+        )
+    (qmem-clear! (the-as pointer s5-0) 12)
+    (let ((v1-0 (-> s5-0 0)))
+      (set! (-> v1-0 dir0 direction x) 0.0)
+      (set! (-> v1-0 dir0 direction y) 1.0)
+      (set! (-> v1-0 dir0 direction z) 0.0)
+      (set! (-> v1-0 dir0 direction w) 0.0)
+      )
+    (set-vector! (-> s5-0 0 dir0 color) 0.667 0.667 0.667 1.0)
+    (set-vector! (-> s5-0 0 ambi color) 0.333 0.333 0.333 1.0)
+    (set! (-> s5-0 0 dir0 extra x) 1.0)
+    (set! (-> s5-0 0 dir1 extra x) 0.0)
+    (set! (-> s5-0 0 dir2 extra x) 0.0)
+    (set! (-> s5-0 0 ambi extra x) 1.0)
+    (let* ((f2-0 (vector-vector-distance s4-0 (target-pos 0)))
+           (f0-17 (fmax 0.0 (fmin 1.0 (* 0.000016276043 (+ -327680.0 f2-0)))))
+           )
+      (vector4-array-lerp!
+        (the-as (inline-array vector4) s5-0)
+        (the-as (inline-array vector4) (-> arg0 light-group 7))
+        (the-as (inline-array vector4) s5-0)
+        f0-17
+        12
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function update-mood-waspala
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-waspala time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (calc-waspala-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (set! (-> arg0 times 5 w) 1.0)
+      (update-mood-flames arg0 6 1 0 0.75 0.0009765625 2.0)
+      (update-mood-flames arg0 7 1 8 0.75 0.0009765625 3.0)
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+

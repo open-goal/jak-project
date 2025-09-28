@@ -1,0 +1,1383 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type light-trail
+;; WARN: Return type mismatch int vs none.
+(defmethod setup! ((this light-trail) (arg0 light-trail-composition) (arg1 int))
+  "Initialize, including allocation of crumbs and strips on the process heap."
+  (set! (-> this appearance) arg0)
+  (set! (-> this crumb-size) (the-as uint (max 16 (the-as int (-> this crumb-size)))))
+  (set! (-> this crumb-array) (new 'process 'boxed-array uint8 (* arg1 (the-as int (-> this crumb-size)))))
+  (set! (-> this max-crumb-count) arg1)
+  (set! (-> this crumb-count) 0)
+  (set! (-> this strip) (new 'process 'prim-strip (* arg1 2) (-> arg0 tex-id) (the-as string #f)))
+  (set! (-> this strip2) #f)
+  (if (= (-> this appearance lie-mode) (lie-mode use-two-strips))
+      (set! (-> this strip2) (new 'process 'prim-strip (* arg1 2) (-> arg0 tex-id) (the-as string #f)))
+      )
+  (reset! this)
+  0
+  (none)
+  )
+
+;; definition for method 10 of type light-trail
+;; WARN: Return type mismatch float vs none.
+(defmethod reset! ((this light-trail))
+  "Clear all tracked crumbs."
+  (set! (-> this crumb-count) 0)
+  (set! (-> this start-marker) (the-as uint (current-time)))
+  (set! (-> this end-marker) (the-as uint (current-time)))
+  (set! (-> this decision) (light-trail-decision reset))
+  (set! (-> this total-distance-traveled) 0.0)
+  (none)
+  )
+
+;; definition for method 11 of type light-trail
+;; INFO: Used lq/sq
+(defmethod add-crumb! ((this light-trail) (arg0 vector) (arg1 time-frame))
+  "Try adding a crumb, kicking out the oldest if there's not enough room. This may reject if it's too close to the previous."
+  (local-vars (s3-0 int))
+  (with-pp
+    (if (< (seconds 5000) arg1)
+        (set! arg1 (- (current-time) (-> pp clock old-frame-counter)))
+        )
+    (let ((v1-5 (-> this crumb-count)))
+      0.0
+      (when (> v1-5 0)
+        (let* ((v1-8 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ v1-5 -1))))
+               (f0-1 (vector-vector-distance (the-as vector (&+ v1-8 0)) arg0))
+               )
+          (cond
+            ((< f0-1 40.96)
+             (set! (-> this decision) (light-trail-decision not-added))
+             (set! s3-0 1)
+             (goto cfg-12)
+             )
+            (else
+              (+! (-> this total-distance-traveled) f0-1)
+              )
+            )
+          )
+        )
+      )
+    (set! s3-0 2)
+    (when (= (-> this crumb-count) (-> this max-crumb-count))
+      (let ((a0-11 (&+ (-> this crumb-array data) (* (-> this crumb-size) 0)))
+            (a1-4 (&+ (-> this crumb-array data) (-> this crumb-size)))
+            (v1-20 (* (+ (-> this crumb-count) -1) (the-as int (-> this crumb-size))))
+            )
+        (quad-copy! a0-11 a1-4 (/ v1-20 16))
+        )
+      (+! (-> this crumb-count) -1)
+      (set! s3-0 0)
+      )
+    (let ((a1-5 (new 'stack-no-clear 'light-trail-breadcrumb)))
+      (let ((f1-2 (the float (- (-> this start-marker) (-> this end-marker))))
+            (f2-0 (the float (-> this appearance max-age)))
+            (f0-5 0.0)
+            )
+        (if (-> this appearance use-tape-mode?)
+            (set! f0-5 (- f2-0 f1-2))
+            )
+        (vector-copy! (-> a1-5 pos) arg0)
+        (set! (-> a1-5 birth-time) (the-as uint (the int (- (the float (+ (-> this start-marker) arg1)) f0-5))))
+        )
+      (mem-copy!
+        (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (-> this crumb-count)))
+        (the-as pointer a1-5)
+        (the-as int (-> this crumb-size))
+        )
+      )
+    (+! (-> this crumb-count) 1)
+    (set! (-> this decision) (light-trail-decision added))
+    (label cfg-12)
+    s3-0
+    )
+  )
+
+;; definition for method 21 of type light-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod replace-last-crumb! ((this light-trail) (arg0 vector))
+  "Similar to add-crumb, but will modify the last crumb instead of advancing."
+  (with-pp
+    (let ((v1-0 (-> this crumb-count)))
+      0.0
+      (cond
+        ((zero? v1-0)
+         (add-crumb! this arg0 (seconds 10000))
+         )
+        (else
+          (set! (-> this decision) (light-trail-decision added))
+          (let ((gp-0 (the-as
+                        light-trail-breadcrumb
+                        (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ v1-0 -1)))
+                        )
+                      )
+                )
+            (let ((f0-1 (vector-vector-distance (-> gp-0 pos) arg0)))
+              (+! (-> this total-distance-traveled) f0-1)
+              (if (< f0-1 40.96)
+                  (set! (-> this decision) (light-trail-decision not-added))
+                  )
+              )
+            (let ((f1-3 (the float (- (-> this start-marker) (-> this end-marker))))
+                  (f2-0 (the float (-> this appearance max-age)))
+                  (f0-4 0.0)
+                  )
+              (if (-> this appearance use-tape-mode?)
+                  (set! f0-4 (- f2-0 f1-3))
+                  )
+              (vector-copy! (-> gp-0 pos) arg0)
+              (set! (-> gp-0 birth-time)
+                    (the-as
+                      uint
+                      (the int (- (the float (+ (-> this start-marker) (- (current-time) (-> pp clock old-frame-counter)))) f0-4))
+                      )
+                    )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 16 of type light-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod add-vert-to-prim-strip! ((this light-trail) (arg0 prim-strip) (arg1 vector) (arg2 rgba) (arg3 float) (arg4 float))
+  "Add a single vertex to the prim."
+  (let ((v1-3 (-> arg0 data (-> arg0 num-verts))))
+    (vector-copy! (-> v1-3 pos) arg1)
+    (set! (-> v1-3 col) arg2)
+    (set! (-> v1-3 stq x) arg3)
+    (set! (-> v1-3 stq y) arg4)
+    )
+  (+! (-> arg0 num-verts) 1)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type light-trail
+;; INFO: Used lq/sq
+(defmethod add-tri-pair-to-prim! ((this light-trail) (arg0 vector) (arg1 rgba) (arg2 float) (arg3 vector) (arg4 float))
+  "Add two vertices to the prim strip to add two triangles"
+  (if (< (+ (-> this strip allocated-num-verts) -2) (-> this strip num-verts))
+      (return #f)
+      )
+  (cond
+    ((= (-> this appearance lie-mode) (lie-mode use-two-strips))
+     (let ((s1-0 (new 'stack-no-clear 'vector)))
+       (vector-copy! s1-0 (-> this cache-vector 0))
+       (vector-normalize! s1-0 (/ arg2 2))
+       (add-vert-to-prim-strip!
+         this
+         (-> this strip)
+         (vector+! (new 'stack-no-clear 'vector) arg0 s1-0)
+         arg1
+         arg4
+         0.0
+         )
+       (add-vert-to-prim-strip!
+         this
+         (-> this strip)
+         (vector+float*! (new 'stack-no-clear 'vector) arg0 s1-0 -1.0)
+         arg1
+         arg4
+         1.0
+         )
+       )
+     (let ((s1-1 (new 'stack-no-clear 'vector)))
+       (vector-copy! s1-1 (-> this cache-vector 1))
+       (vector-normalize! s1-1 (/ arg2 2))
+       (add-vert-to-prim-strip!
+         this
+         (-> this strip2)
+         (vector+! (new 'stack-no-clear 'vector) arg0 s1-1)
+         arg1
+         arg4
+         0.0
+         )
+       (add-vert-to-prim-strip!
+         this
+         (-> this strip2)
+         (vector+float*! (new 'stack-no-clear 'vector) arg0 s1-1 -1.0)
+         arg1
+         arg4
+         1.0
+         )
+       )
+     )
+    (else
+      (let ((s1-2 (new 'stack-no-clear 'vector)))
+        (vector-copy! s1-2 arg3)
+        (vector-normalize! s1-2 (/ arg2 2))
+        (add-vert-to-prim-strip!
+          this
+          (-> this strip)
+          (vector+! (new 'stack-no-clear 'vector) arg0 s1-2)
+          arg1
+          arg4
+          0.0
+          )
+        (add-vert-to-prim-strip!
+          this
+          (-> this strip)
+          (vector+float*! (new 'stack-no-clear 'vector) arg0 s1-2 -1.0)
+          arg1
+          arg4
+          1.0
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function compute-trail-scaled-t
+(defun compute-trail-scaled-t ((arg0 uint) (arg1 float) (arg2 float) (arg3 float) (arg4 float) (arg5 float) (arg6 vector))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       arg1
+       )
+      ((= v1-0 5)
+       (let* ((v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+              (v1-3 (the-as number (logior #x3f800000 v1-2)))
+              )
+         (+ -1.0 (the-as float v1-3))
+         )
+       )
+      ((= v1-0 2)
+       (/ arg2 arg5)
+       )
+      ((= v1-0 1)
+       (/ arg3 arg5)
+       )
+      ((= v1-0 3)
+       (/ arg4 arg5)
+       )
+      ((= v1-0 4)
+       (/ (vector-vector-distance (camera-pos) arg6) arg5)
+       )
+      (else
+        1.0
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "light-trails")
+
+;; definition for symbol *dist-cache-array*, type (pointer float)
+(define *dist-cache-array* (the-as (pointer float) (malloc 'global 4000)))
+
+;; definition for symbol *total-length*, type float
+(define *total-length* 0.0)
+
+;; failed to figure out what this is:
+(kmemclose)
+
+;; definition for method 18 of type light-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defmethod calc-vertex-pos! ((this light-trail) (arg0 light-trail-breadcrumb) (arg1 int) (arg2 vector) (arg3 vector))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (cond
+      ((> (the-as uint arg1) 0)
+       (let ((t2-1 (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint (+ arg1 -1))))))
+         (vector-! v1-0 (-> arg0 pos) (the-as vector (&+ t2-1 0)))
+         )
+       )
+      (else
+        (let ((t1-6 (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint (+ arg1 1))))))
+          (vector-! v1-0 (the-as vector (&+ t1-6 0)) (-> arg0 pos))
+          )
+        )
+      )
+    (case (-> this appearance lie-mode)
+      (((lie-mode appearance1))
+       (vector-cross! arg3 v1-0 (-> this appearance lie-vector))
+       (set! (-> arg3 y) 0.0)
+       )
+      (((lie-mode appearance0))
+       (vector-cross! arg3 (vector-! (new 'stack-no-clear 'vector) (-> arg0 pos) arg2) v1-0)
+       )
+      (((lie-mode appearance2))
+       (vector-cross! arg3 v1-0 (-> this appearance lie-vector))
+       (set! (-> arg3 y) 0.0)
+       (vector-cross! arg3 v1-0 arg3)
+       )
+      (((lie-mode use-two-strips))
+       (vector-cross! arg3 v1-0 (-> this appearance lie-vector))
+       (set! (-> arg3 y) 0.0)
+       (set! (-> this cache-vector 0 quad) (-> arg3 quad))
+       (vector-cross! arg3 v1-0 (-> this appearance lie-vector))
+       (set! (-> arg3 y) 0.0)
+       (vector-cross! arg3 v1-0 arg3)
+       (vector-copy! (-> this cache-vector 1) arg3)
+       )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 12 of type light-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod build-prim-strip! ((this light-trail))
+  "Build the mesh for this light trail."
+  (local-vars
+    (sv-64 time-frame)
+    (sv-72 uint)
+    (sv-80 int)
+    (sv-88 float)
+    (sv-92 float)
+    (sv-96 float)
+    (sv-100 rgbaf)
+    (sv-104 vector)
+    (sv-128 vector)
+    (sv-132 vector)
+    (sv-136 float)
+    (sv-140 float)
+    (sv-144 float)
+    (sv-148 float)
+    (sv-152 float)
+    (sv-156 float)
+    (sv-192 float)
+    (sv-196 float)
+    (sv-200 vector)
+    (sv-204 vector)
+    )
+  (set! (-> *dist-cache-array* 0) 0.0)
+  (set! *total-length* 0.0)
+  (let ((s5-0 (new 'stack-no-clear 'array 'int32 4)))
+    (set! (-> s5-0 0) (-> this crumb-count))
+    (let ((s3-0 (+ (-> s5-0 0) -1))
+          (s4-0 1)
+          )
+      (while (>= s3-0 s4-0)
+        (let* ((v1-5 (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint (+ s4-0 -1)))))
+               (a1-3 (the-as object (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint s4-0)))))
+               (a0-6 (- (-> this start-marker) (-> (the-as light-trail-breadcrumb a1-3) birth-time)))
+               )
+          (when (and (>= (the-as int a0-6) 0) (< (the-as time-frame a0-6) (-> this appearance max-age)))
+            (set! *total-length*
+                  (+ *total-length*
+                     (vector-vector-distance (the-as vector (&+ v1-5 0)) (the-as vector (&+ (the-as (pointer uint8) a1-3) 0)))
+                     )
+                  )
+            (set! (-> *dist-cache-array* s4-0) *total-length*)
+            )
+          )
+        (+! s4-0 1)
+        )
+      )
+    (set! sv-64 (-> this appearance max-age))
+    (set! sv-72 (- (-> this start-marker) (-> this end-marker)))
+    (set! sv-80 0)
+    (set! sv-88 (the-as float 0.0))
+    (set! sv-92 (the-as float -100.0))
+    (set! sv-96 (the-as float 0.0))
+    (set! sv-100 (new 'stack-no-clear 'rgbaf))
+    (set! sv-104 (new 'stack-no-clear 'vector))
+    (if (= (-> this appearance uv-mode) 3)
+        (set! sv-92 (the-as float 100.0))
+        )
+    (set! sv-128 (math-camera-pos))
+    (set! sv-132 (new 'stack-no-clear 'vector))
+    (set! (-> this strip num-verts) (the-as uint 0))
+    (set! (-> this strip tex-id) (-> this appearance tex-id))
+    (cond
+      ((not (-> this appearance zbuffer?))
+       (set! (-> this strip adnops 0 cmds) (gs-reg64 test-1))
+       (set! (-> this strip data0) (new 'static 'gs-test
+                                     :ate #x1
+                                     :atst (gs-atest greater-equal)
+                                     :aref #x80
+                                     :afail #x1
+                                     :zte #x1
+                                     :ztst (gs-ztest greater-equal)
+                                     )
+             )
+       )
+      (else
+        (set! (-> this strip adnops 0 cmds) (gs-reg64 hack))
+        (set! (-> this strip data0) (new 'static 'gs-test))
+        0
+        )
+      )
+    (let ((v1-34 (-> this appearance blend-mode)))
+      (cond
+        ((= v1-34 1)
+         (set! (-> this strip alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
+         )
+        ((zero? v1-34)
+         (set! (-> this strip alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+         )
+        ((= v1-34 2)
+         (set! (-> this strip alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
+         )
+        )
+      )
+    (when (-> this strip2)
+      (set! (-> this strip2 num-verts) (the-as uint 0))
+      (set! (-> this strip2 tex-id) (-> this appearance tex-id))
+      (cond
+        ((not (-> this appearance zbuffer?))
+         (set! (-> this strip2 adnops 0 cmds) (gs-reg64 test-1))
+         (set! (-> this strip2 data0) (new 'static 'gs-test
+                                        :ate #x1
+                                        :atst (gs-atest greater-equal)
+                                        :aref #x80
+                                        :afail #x1
+                                        :zte #x1
+                                        :ztst (gs-ztest greater-equal)
+                                        )
+               )
+         )
+        (else
+          (set! (-> this strip2 adnops 0 cmds) (gs-reg64 hack))
+          (set! (-> this strip2 data0) (new 'static 'gs-test))
+          0
+          )
+        )
+      (let ((v1-52 (-> this appearance blend-mode)))
+        (cond
+          ((= v1-52 1)
+           (set! (-> this strip2 alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
+           )
+          ((zero? v1-52)
+           (set! (-> this strip2 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+           )
+          ((= v1-52 2)
+           (set! (-> this strip2 alpha) (new 'static 'gs-alpha :a #x2 :d #x1))
+           )
+          )
+        )
+      )
+    (countdown (s5-1 (-> s5-0 0))
+      (let* ((s3-1 s5-1)
+             (s4-1 (the-as object (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) s3-1))))
+             )
+        (set! sv-136
+              (/ (the float (+ (- (-> this start-marker) (-> (the-as light-trail-breadcrumb s4-1) birth-time)) sv-80))
+                 (the float sv-64)
+                 )
+              )
+        (when (or (< 1.0 sv-136) (< sv-136 0.0))
+          )
+        (when (and (>= 1.0 sv-136) (>= sv-136 0.0))
+          (let* ((f30-1 (-> *dist-cache-array* s5-1))
+                 (f28-0 (- *total-length* f30-1))
+                 (f26-0 (- (-> this total-distance-traveled) f28-0))
+                 )
+            (set! sv-140 (the-as float 1.0))
+            (set! sv-144 (the-as float 1.0))
+            (set! sv-148 (the-as float 1.0))
+            (set! sv-152 (the-as float 0.0))
+            (set! sv-156 (the-as float 0.0))
+            (when (-> this appearance alpha-curve-1)
+              (set! sv-140
+                    (compute-trail-scaled-t
+                      (-> this appearance alpha-1-mode)
+                      sv-136
+                      f30-1
+                      f28-0
+                      f26-0
+                      (-> this appearance alpha-repeat-dist)
+                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                      )
+                    )
+              (set! sv-140 (evaluate (-> this appearance alpha-curve-1) sv-140 (loop-behavior use-default)))
+              )
+            (when (-> this appearance alpha-curve-2)
+              (set! sv-144
+                    (compute-trail-scaled-t
+                      (-> this appearance alpha-2-mode)
+                      sv-136
+                      f30-1
+                      f28-0
+                      f26-0
+                      (-> this appearance alpha-repeat-dist)
+                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                      )
+                    )
+              (set! sv-144 (evaluate (-> this appearance alpha-curve-2) sv-144 (loop-behavior use-default)))
+              )
+            (when (-> this appearance width-curve)
+              (set! sv-148
+                    (compute-trail-scaled-t
+                      (-> this appearance width-mode)
+                      sv-136
+                      f30-1
+                      f28-0
+                      f26-0
+                      (-> this appearance width-repeat-dist)
+                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                      )
+                    )
+              (set! sv-148 (evaluate (-> this appearance width-curve) sv-148 (loop-behavior use-default)))
+              )
+            (set! sv-152
+                  (compute-trail-scaled-t
+                    (-> this appearance uv-mode)
+                    sv-136
+                    f30-1
+                    f28-0
+                    f26-0
+                    (-> this appearance uv-repeat-dist)
+                    (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                    )
+                  )
+            (when (or (< 1.0 sv-152) (< sv-152 0.0))
+              (let ((f0-43 sv-152))
+                (set! sv-152 (- f0-43 (the float (the int f0-43))))
+                )
+              )
+            (set! sv-192 (* sv-140 sv-144 (-> this appearance base-alpha)))
+            (set! sv-196 (* sv-148 (-> this appearance base-width)))
+            (set! sv-200 (new 'stack-no-clear 'vector))
+            (set! sv-204 (new 'stack-no-clear 'vector))
+            (when (-> this appearance color-curve)
+              (set! sv-156
+                    (compute-trail-scaled-t
+                      (-> this appearance color-mode)
+                      sv-136
+                      f30-1
+                      f28-0
+                      f26-0
+                      (-> this appearance color-repeat-dist)
+                      (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+                      )
+                    )
+              (evaluate (-> this appearance color-curve) sv-156 (the-as rgbaf sv-200) (loop-behavior use-default))
+              )
+            )
+          (set! (-> sv-200 w) (* (-> sv-200 w) sv-192))
+          (calc-vertex-pos! this (the-as light-trail-breadcrumb s4-1) s3-1 sv-128 sv-204)
+          (when (or (and (= (-> this appearance uv-mode) 3) (< sv-92 sv-152))
+                    (and (!= (-> this appearance uv-mode) 3) (< sv-152 sv-92))
+                    )
+            (let ((s2-0 (new 'stack-no-clear 'inline-array 'vector 5)))
+              (set! (-> s2-0 3 z) (- sv-152))
+              (set! (-> s2-0 3 w) (- sv-92 (-> s2-0 3 z)))
+              (set! (-> s2-0 4 x) (/ sv-92 (-> s2-0 3 w)))
+              (vector-lerp! (-> s2-0 0) sv-104 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)) (-> s2-0 4 x))
+              (rgbaf-lerp! (the-as rgbaf (-> s2-0 2)) sv-100 (the-as rgbaf sv-200) (-> s2-0 4 x))
+              (set! (-> s2-0 3 y) (lerp sv-96 sv-196 (-> s2-0 4 x)))
+              (vector-lerp! (-> s2-0 1) sv-132 sv-204 (-> s2-0 4 x))
+              (set! (-> s2-0 3 x) (the-as float (rgba<-rgbaf (the-as rgba (-> s2-0 3 x)) (the-as rgbaf (-> s2-0 2)))))
+              (add-tri-pair-to-prim! this (-> s2-0 0) (the-as rgba (-> s2-0 3 x)) (-> s2-0 3 y) (-> s2-0 1) 0.0)
+              (add-tri-pair-to-prim! this (-> s2-0 0) (the-as rgba (-> s2-0 3 x)) (-> s2-0 3 y) (-> s2-0 1) 1.0)
+              )
+            )
+          (add-tri-pair-to-prim!
+            this
+            (the-as vector (&+ (the-as (pointer uint8) s4-1) 0))
+            (rgba<-rgbaf (the-as rgba (new 'stack-no-clear 'rgbaf)) (the-as rgbaf sv-200))
+            sv-196
+            sv-204
+            sv-152
+            )
+          (when (> s3-1 0)
+            (let ((v1-149 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ s3-1 -1)))))
+              (set! sv-88
+                    (+ sv-88
+                       (vector-vector-distance (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)) (the-as vector (&+ v1-149 0)))
+                       )
+                    )
+              )
+            )
+          (set! sv-92 sv-152)
+          (vector-copy! sv-104 (the-as vector (&+ (the-as (pointer uint8) s4-1) 0)))
+          (set! sv-96 sv-196)
+          (set! (-> sv-100 quad) (-> sv-200 quad))
+          (vector-copy! sv-132 sv-204)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 19 of type light-trail
+;; WARN: Return type mismatch int vs none.
+(defmethod crumb-age-out-callback ((this light-trail) (arg0 float) (arg1 int))
+  "To be implemented by the user to smoothly interpolate out non-default entries in their crumb type."
+  0
+  (none)
+  )
+
+;; definition for method 14 of type light-trail
+;; WARN: Return type mismatch pointer vs none.
+(defmethod expire-old-points! ((this light-trail))
+  "Internal function to kill off points that are too old."
+  (let ((s4-0 (new 'stack-no-clear 'light-trail-breadcrumb))
+        (s5-0 -1)
+        )
+    (let ((s3-0 (-> this crumb-count)))
+      (dotimes (s2-0 s3-0)
+        (let ((a1-0
+                (the-as light-trail-breadcrumb (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint s2-0))))
+                )
+              )
+          (cond
+            ((< (-> a1-0 birth-time) (-> this end-marker))
+             (mem-copy! (the-as pointer s4-0) (the-as pointer a1-0) 16)
+             (set! s5-0 s2-0)
+             )
+            (else
+              (goto cfg-8)
+              )
+            )
+          )
+        )
+      )
+    (label cfg-8)
+    (when (>= s5-0 0)
+      (let ((s3-1 (the-as object (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint (+ s5-0 1))))))
+            (s2-1
+              (the-as light-trail-breadcrumb (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint s5-0))))
+              )
+            )
+        (let* ((f0-1 (the float (- (-> this start-marker) (-> (the-as light-trail-breadcrumb s3-1) birth-time))))
+               (f1-1 (the float (- (-> this start-marker) (the-as uint (-> s4-0 birth-time)))))
+               (f30-0 (/ (- (the float (-> this appearance max-age)) f0-1) (- f1-1 f0-1)))
+               )
+          (crumb-age-out-callback this f30-0 s5-0)
+          (vector-lerp! (-> s2-1 pos) (the-as vector (&+ (the-as (pointer uint8) s3-1) 0)) (-> s4-0 pos) f30-0)
+          )
+        (set! (-> s2-1 birth-time) (-> this end-marker))
+        )
+      (when (> s5-0 0)
+        (set! (-> this crumb-count) (- (-> this crumb-count) s5-0))
+        (mem-copy!
+          (&+ (-> this crumb-array data) (* (-> this crumb-size) 0))
+          (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint s5-0)))
+          (* (-> this crumb-count) (the-as int (-> this crumb-size)))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 13 of type light-trail
+(defmethod common-trans! ((this light-trail))
+  "Call this on each frame to handle max-age."
+  (with-pp
+    (if (<= (-> this crumb-count) 0)
+        (return 0)
+        )
+    (case (-> this decision)
+      (((light-trail-decision reset))
+       (return 0)
+       )
+      (((light-trail-decision added))
+       (+! (-> this start-marker) (- (current-time) (-> pp clock old-frame-counter)))
+       (let ((v1-8 (- (-> this start-marker) (the-as uint (-> this appearance max-age)))))
+         (when (< (the-as int (-> this end-marker)) (the-as int v1-8))
+           (set! (-> this end-marker) v1-8)
+           (expire-old-points! this)
+           )
+         )
+       )
+      (((light-trail-decision not-added))
+       (+! (-> this end-marker) (- (current-time) (-> pp clock old-frame-counter)))
+       (when (< (the-as int (-> this start-marker)) (the-as int (-> this end-marker)))
+         (reset-crumbs! this)
+         (set! (-> this end-marker) (-> this start-marker))
+         )
+       (+! (-> this end-marker) (- (current-time) (-> pp clock old-frame-counter)))
+       (+! (-> this start-marker) (- (current-time) (-> pp clock old-frame-counter)))
+       )
+      )
+    (set! (-> this decision) (light-trail-decision not-added))
+    0
+    )
+  )
+
+;; definition for method 20 of type light-trail
+;; WARN: Return type mismatch int vs none.
+(defmethod reset-crumbs! ((this light-trail))
+  (set! (-> this crumb-count) 0)
+  0
+  (none)
+  )
+
+;; definition for function light-trail-tracker-common-post
+(defbehavior light-trail-tracker-common-post light-trail-tracker ()
+  (cond
+    ((should-draw? self)
+     (build-prim-strip! (-> self trail))
+     )
+    (else
+      (set! (-> self trail strip num-verts) (the-as uint 0))
+      (when (-> self trail strip2)
+        (set! (-> self trail strip2 num-verts) (the-as uint 0))
+        0
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate tracking (light-trail-tracker)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notice)
+       (case (-> block param 0)
+         (('add-crumb)
+          (let ((a1-1 (handle->process (-> self tracked-object))))
+            (add-crumb! self (get-tracked-object-pos self (the-as process-focusable a1-1) (new 'stack-no-clear 'vector)))
+            )
+          )
+         (('add-crumb-elapsed)
+          (let ((a1-4 (handle->process (-> self tracked-object))))
+            (add-crumb!
+              (-> self trail)
+              (get-tracked-object-pos self (the-as process-focusable a1-4) (new 'stack-no-clear 'vector))
+              (the-as time-frame (the int (the-as float (-> block param 1))))
+              )
+            )
+          )
+         (('add-crumb-pos)
+          (add-crumb! self (the-as vector (-> block param 1)))
+          )
+         (('replace-last-crumb)
+          (replace-last-crumb! (-> self trail) (the-as vector (-> block param 1)))
+          )
+         (('die)
+          (go-virtual die)
+          )
+         )
+       )
+      )
+    #t
+    )
+  :trans (behavior ()
+    (let ((gp-0 (handle->process (-> self tracked-object))))
+      (cond
+        ((should-end? self (the-as process-focusable gp-0))
+         (go-virtual die)
+         )
+        (else
+          (if (should-track? self (the-as process-focusable gp-0))
+              (add-crumb! self (get-tracked-object-pos self (the-as process-focusable gp-0) (new 'stack-no-clear 'vector)))
+              )
+          (common-trans! (-> self trail))
+          0
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post light-trail-tracker-common-post
+  )
+
+;; failed to figure out what this is:
+(defstate die (light-trail-tracker)
+  :virtual #t
+  :enter (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (common-trans! (-> self trail))
+    )
+  :code (behavior ()
+    (until #f
+      (if (>= 1 (-> self trail crumb-count))
+          (return #f)
+          )
+      (suspend)
+      )
+    #f
+    )
+  :post light-trail-tracker-common-post
+  )
+
+;; definition for method 7 of type light-trail-tracker
+(defmethod relocate ((this light-trail-tracker) (offset int))
+  (if (nonzero? (-> this trail))
+      (&+! (-> this trail) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 7 of type light-trail
+(defmethod relocate ((this light-trail) (offset int))
+  (&+! (-> this crumb-array) offset)
+  (&+! (-> this strip) offset)
+  (if (-> this strip2)
+      (&+! (-> this strip2) offset)
+      )
+  this
+  )
+
+;; definition for method 16 of type light-trail-tracker
+;; INFO: Used lq/sq
+(defmethod get-tracked-object-pos ((this light-trail-tracker) (arg0 process-focusable) (arg1 vector))
+  (let ((a0-2 (as-type arg0 process-focusable)))
+    (if a0-2
+        (vector-copy! arg1 (get-trans a0-2 0))
+        )
+    )
+  arg1
+  )
+
+;; definition for method 17 of type light-trail-tracker
+(defmethod should-track? ((this light-trail-tracker) (arg0 process-focusable))
+  #t
+  )
+
+;; definition for method 16 of type light-trail-tracker-water
+;; INFO: Used lq/sq
+(defmethod get-tracked-object-pos ((this light-trail-tracker-water) (arg0 process-focusable) (arg1 vector))
+  (let ((a0-2 (as-type arg0 process-focusable)))
+    (when a0-2
+      (let ((s5-1 (-> a0-2 water)))
+        (when (and s5-1 a0-2 (nonzero? s5-1))
+          (vector-copy! arg1 (get-trans a0-2 0))
+          (set! (-> arg1 y) (+ 40.96 (-> s5-1 surface-height)))
+          )
+        )
+      )
+    )
+  arg1
+  )
+
+;; definition for method 17 of type light-trail-tracker-water
+;; WARN: Return type mismatch object vs symbol.
+(defmethod should-track? ((this light-trail-tracker-water) (arg0 process-focusable))
+  (the-as symbol (and *target* (or (logtest? (water-flag touch-water) (-> *target* water flags))
+                                   (logtest? (-> *target* control status) (collide-status on-water))
+                                   )
+                      )
+          )
+  )
+
+;; definition for method 18 of type light-trail-tracker
+(defmethod should-end? ((this light-trail-tracker) (arg0 process-focusable))
+  (not arg0)
+  )
+
+;; definition for method 18 of type light-trail-tracker-water
+(defmethod should-end? ((this light-trail-tracker-water) (arg0 process-focusable))
+  (let ((v1-0 (as-type arg0 process-focusable)))
+    (or (not v1-0)
+        (not (-> v1-0 water))
+        (not (logtest? (water-flag touch-water) (-> v1-0 water flags)))
+        (not (logtest? (water-flag break-surface) (-> v1-0 water flags)))
+        )
+    )
+  )
+
+;; definition for function estimate-light-trail-mem-usage
+;; WARN: Return type mismatch uint vs int.
+(defun estimate-light-trail-mem-usage ((arg0 uint) (arg1 uint))
+  (let* ((a2-0 (-> prim-vertex size))
+         (a3-0 (-> prim-strip size))
+         (v1-3 (-> light-trail size))
+         (a0-3 (+ a3-0 (* arg0 (-> light-trail-breadcrumb size)) (* (* arg0 a2-0) 2)))
+         )
+    (if arg1
+        (set! a0-3 (* a0-3 2))
+        )
+    (the-as int (shl (+ (sar (+ v1-3 a0-3) 10) 1) 10))
+    )
+  )
+
+;; definition for method 18 of type light-trail-tracker-projectile
+(defmethod should-end? ((this light-trail-tracker-projectile) (arg0 process-focusable))
+  (if (not arg0)
+      (set! (-> this tracked-object) (the-as handle #f))
+      )
+  #f
+  )
+
+;; definition for method 16 of type light-trail-tracker-projectile
+;; INFO: Used lq/sq
+(defmethod get-tracked-object-pos ((this light-trail-tracker-projectile) (arg0 process-focusable) (arg1 vector))
+  (let ((a0-1 arg0))
+    (if a0-1
+        (vector-copy! arg1 (-> a0-1 root trans))
+        )
+    )
+  arg1
+  )
+
+;; failed to figure out what this is:
+(defstate tracking (light-trail-tracker-projectile)
+  :virtual #t
+  :trans (behavior ()
+    (let ((gp-0 (handle->process (-> self tracked-object))))
+      (cond
+        ((not gp-0)
+         (go-virtual hang-on)
+         )
+        (else
+          (if (should-track? self (the-as process-focusable gp-0))
+              (add-crumb! self (get-tracked-object-pos self (the-as process-focusable gp-0) (new 'stack-no-clear 'vector)))
+              )
+          (common-trans! (-> self trail))
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post light-trail-tracker-common-post
+  )
+
+;; failed to figure out what this is:
+(defstate hang-on (light-trail-tracker-projectile)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (time-elapsed? (-> self state-time) (seconds 2))
+        (go-virtual die)
+        )
+    (common-trans! (-> self trail))
+    )
+  :code sleep-code
+  :post light-trail-tracker-common-post
+  )
+
+;; failed to figure out what this is:
+(defstate hang-on (weapon-trail-tracker)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (time-elapsed? (-> self state-time) (seconds 2))
+        (go-virtual die)
+        )
+    (common-trans! (-> self trail))
+    )
+  :code sleep-code
+  :post light-trail-tracker-common-post
+  )
+
+;; failed to figure out what this is:
+(defstate tracking (weapon-trail-tracker)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notice)
+       (case (-> block param 0)
+         (('die)
+          (go-virtual hang-on)
+          )
+         (('add-crumbs)
+          (let ((a1-1 (-> block param 1))
+                (a2-1 (-> block param 2))
+                )
+            (add-crumb-with-offset (-> self trail) (the-as vector a1-1) (the-as vector a2-1))
+            )
+          )
+         )
+       )
+      )
+    #t
+    )
+  :trans (behavior ()
+    (let ((gp-0 (handle->process (-> self tracked-object))))
+      (cond
+        ((should-end? self (the-as process-focusable gp-0))
+         (go-virtual hang-on)
+         )
+        (else
+          (when (and (>= (-> self joint0) 0) (>= (-> self joint1) 0))
+            (let ((s5-0 (vector<-cspace!
+                          (new 'stack-no-clear 'vector)
+                          (-> (the-as process-drawable gp-0) node-list data (-> self joint0))
+                          )
+                        )
+                  (a2-0 (vector<-cspace!
+                          (new 'stack-no-clear 'vector)
+                          (-> (the-as process-drawable gp-0) node-list data (-> self joint1))
+                          )
+                        )
+                  )
+              (add-crumb-with-offset (-> self trail) s5-0 a2-0)
+              )
+            )
+          (common-trans! (-> self trail))
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post light-trail-tracker-common-post
+  )
+
+;; failed to figure out what this is:
+(defstate tracking (tread-trail-tracker)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('reset)
+       (reset! (-> self trail))
+       )
+      (('notice)
+       (case (-> block param 0)
+         (('die)
+          (go-virtual die)
+          )
+         (('add-crumbs)
+          (let ((a1-1 (-> block param 0))
+                (a2-1 (-> block param 1))
+                )
+            (add-crumb-with-offset (-> self trail) (the-as vector a1-1) (the-as vector a2-1))
+            )
+          )
+         )
+       )
+      )
+    #t
+    )
+  :trans (behavior ()
+    (let ((gp-0 (handle->process (-> self tracked-object))))
+      (cond
+        ((should-end? self (the-as process-focusable gp-0))
+         (go-virtual die)
+         )
+        (else
+          (when (and gp-0 (nonzero? (-> (the-as process-drawable gp-0) draw)))
+            (let ((a1-2 (-> (the-as process-drawable gp-0) draw)))
+              (setup-dma-and-tex (-> self trail strip) a1-2)
+              )
+            )
+          (common-trans! (-> self trail))
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post light-trail-tracker-common-post
+  )
+
+;; definition for method 18 of type weapon-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defmethod calc-vertex-pos! ((this weapon-trail) (arg0 light-trail-breadcrumb) (arg1 int) (arg2 vector) (arg3 vector))
+  (vector-copy! arg3 (-> (&+ arg0 16) pos))
+  (none)
+  )
+
+;; definition for method 9 of type weapon-trail
+(defmethod setup! ((this weapon-trail) (arg0 light-trail-composition) (arg1 int))
+  "Initialize, including allocation of crumbs and strips on the process heap."
+  (set! (-> this crumb-size) (the-as uint 32))
+  (call-parent-method this arg0 arg1)
+  (none)
+  )
+
+;; definition for method 22 of type weapon-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch (pointer uint8) vs light-trail-breadcrumb.
+(defmethod add-crumb-with-offset ((this weapon-trail) (arg0 vector) (arg1 vector))
+  "Given two points, add the first and offset to a crumb."
+  (let ((gp-0 (new 'stack-no-clear 'vector))
+        (v1-0 (new 'stack-no-clear 'vector))
+        )
+    (vector-! gp-0 arg1 arg0)
+    (vector-float*! gp-0 gp-0 0.5)
+    (vector+! v1-0 arg0 gp-0)
+    (let ((v1-1 (add-crumb! this v1-0 (seconds 10000))))
+      (the-as
+        light-trail-breadcrumb
+        (when (!= v1-1 1)
+          (let ((v0-1
+                  (the-as
+                    object
+                    (&+ (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ (-> this crumb-count) -1))) 16)
+                    )
+                  )
+                )
+            (set! (-> (the-as light-trail-breadcrumb v0-1) pos quad) (-> gp-0 quad))
+            v0-1
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 23 of type weapon-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod weapon-trail-method-23 ((this weapon-trail) (arg0 vector) (arg1 vector))
+  (local-vars (gp-0 weapon-trail-crumb) (f0-2 float))
+  (with-pp
+    (let ((s4-0 (new 'stack-no-clear 'vector))
+          (s3-0 (new 'stack-no-clear 'vector))
+          (v1-0 (-> this crumb-count))
+          )
+      0.0
+      (cond
+        ((zero? v1-0)
+         (add-crumb-with-offset this arg0 arg1)
+         )
+        ((begin
+           (set! (-> this decision) (light-trail-decision added))
+           (set! gp-0
+                 (the-as weapon-trail-crumb (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ v1-0 -1))))
+                 )
+           (vector-! s4-0 arg1 arg0)
+           (vector-float*! s4-0 s4-0 0.5)
+           (vector+! s3-0 arg0 s4-0)
+           (set! f0-2 (vector-vector-distance (-> gp-0 pos) s3-0))
+           (< f0-2 40.96)
+           )
+         (set! (-> this decision) (light-trail-decision not-added))
+         )
+        (else
+          (+! (-> this total-distance-traveled) f0-2)
+          (let ((f1-2 (the float (- (-> this start-marker) (-> this end-marker))))
+                (f2-0 (the float (-> this appearance max-age)))
+                (f0-6 0.0)
+                )
+            (if (-> this appearance use-tape-mode?)
+                (set! f0-6 (- f2-0 f1-2))
+                )
+            (vector-copy! (-> gp-0 pos) s3-0)
+            (vector-copy! (-> gp-0 offset) s4-0)
+            (set! (-> gp-0 birth-time)
+                  (the-as
+                    uint
+                    (the int (- (the float (+ (-> this start-marker) (- (current-time) (-> pp clock old-frame-counter)))) f0-6))
+                    )
+                  )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 19 of type weapon-trail
+;; WARN: Return type mismatch vector vs none.
+(defmethod crumb-age-out-callback ((this weapon-trail) (arg0 float) (arg1 int))
+  "To be implemented by the user to smoothly interpolate out non-default entries in their crumb type."
+  (let ((v1-2 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) arg1)))
+        (a2-2 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ arg1 1))))
+        )
+    (vector-lerp! (the-as vector (&+ v1-2 16)) (the-as vector (&+ a2-2 16)) (the-as vector (&+ v1-2 16)) arg0)
+    )
+  (none)
+  )
+
+;; definition for method 17 of type weapon-trail
+;; INFO: Used lq/sq
+(defmethod add-tri-pair-to-prim! ((this weapon-trail) (arg0 vector) (arg1 rgba) (arg2 float) (arg3 vector) (arg4 float))
+  "Add two vertices to the prim strip to add two triangles"
+  (when (< (+ (-> this strip allocated-num-verts) -2) (-> this strip num-verts))
+    (format 0 "Out of stuff (~d)~%" (-> this strip allocated-num-verts))
+    (return #f)
+    )
+  (vector-float*! arg3 arg3 arg2)
+  (let ((s2-0 (new 'stack-no-clear 'vector)))
+    (vector-copy! s2-0 arg3)
+    (add-vert-to-prim-strip!
+      this
+      (-> this strip)
+      (vector+! (new 'stack-no-clear 'vector) arg0 s2-0)
+      arg1
+      arg4
+      0.0
+      )
+    (add-vert-to-prim-strip!
+      this
+      (-> this strip)
+      (vector+float*! (new 'stack-no-clear 'vector) arg0 s2-0 -1.0)
+      arg1
+      arg4
+      1.0
+      )
+    )
+  #f
+  )
+
+;; definition for method 18 of type tread-trail
+;; WARN: Return type mismatch vector vs none.
+(defmethod calc-vertex-pos! ((this tread-trail) (arg0 light-trail-breadcrumb) (arg1 int) (arg2 vector) (arg3 vector))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (cond
+      ((> (the-as uint arg1) 0)
+       (let ((a3-3 (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint (+ arg1 -1))))))
+         (vector-! v1-0 (-> arg0 pos) (the-as vector (&+ a3-3 0)))
+         )
+       )
+      (else
+        (let ((a2-5 (&+ (-> this crumb-array data) (* (-> this crumb-size) (the-as uint (+ arg1 1))))))
+          (vector-! v1-0 (the-as vector (&+ a2-5 0)) (-> arg0 pos))
+          )
+        )
+      )
+    (vector-cross! arg3 v1-0 (-> (&+ arg0 16) pos))
+    )
+  (none)
+  )
+
+;; definition for method 9 of type tread-trail
+(defmethod setup! ((this tread-trail) (arg0 light-trail-composition) (arg1 int))
+  "Initialize, including allocation of crumbs and strips on the process heap."
+  (set! (-> this crumb-size) (the-as uint 32))
+  (call-parent-method this arg0 arg1)
+  (none)
+  )
+
+;; definition for method 19 of type tread-trail
+;; WARN: Return type mismatch vector vs none.
+(defmethod crumb-age-out-callback ((this tread-trail) (arg0 float) (arg1 int))
+  "To be implemented by the user to smoothly interpolate out non-default entries in their crumb type."
+  (let ((v1-2 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) arg1)))
+        (a2-2 (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ arg1 1))))
+        )
+    (vector-lerp! (the-as vector (&+ v1-2 16)) (the-as vector (&+ a2-2 16)) (the-as vector (&+ v1-2 16)) arg0)
+    )
+  (none)
+  )
+
+;; definition for method 22 of type tread-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch (pointer uint8) vs none.
+(defmethod add-crumb-with-offset ((this tread-trail) (arg0 vector) (arg1 vector))
+  (let ((v1-1 (add-crumb! this arg0 (seconds 10000))))
+    (if (!= v1-1 1)
+        (set! (-> (the-as
+                    light-trail-breadcrumb
+                    (&+ (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ (-> this crumb-count) -1))) 16)
+                    )
+                  pos
+                  quad
+                  )
+              (-> arg1 quad)
+              )
+        )
+    )
+  (none)
+  )
+
+;; definition for method 23 of type tread-trail
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod tread-trail-method-23 ((this tread-trail) (arg0 vector) (arg1 vector))
+  (with-pp
+    (let ((v1-0 (-> this crumb-count)))
+      0.0
+      (cond
+        ((zero? v1-0)
+         (add-crumb-with-offset this arg0 arg1)
+         )
+        (else
+          (set! (-> this decision) (light-trail-decision added))
+          (let ((s5-0
+                  (the-as tread-trail-crumb (&+ (-> this crumb-array data) (* (the-as int (-> this crumb-size)) (+ v1-0 -1))))
+                  )
+                )
+            (let ((f0-1 (vector-vector-distance (-> s5-0 pos) arg0)))
+              (+! (-> this total-distance-traveled) f0-1)
+              (if (< f0-1 40.96)
+                  (set! (-> this decision) (light-trail-decision not-added))
+                  )
+              )
+            (let ((f1-3 (the float (- (-> this start-marker) (-> this end-marker))))
+                  (f2-0 (the float (-> this appearance max-age)))
+                  (f0-4 0.0)
+                  )
+              (if (-> this appearance use-tape-mode?)
+                  (set! f0-4 (- f2-0 f1-3))
+                  )
+              (vector-copy! (-> s5-0 pos) arg0)
+              (set! (-> s5-0 birth-time)
+                    (the-as
+                      uint
+                      (the int (- (the float (+ (-> this start-marker) (- (current-time) (-> pp clock old-frame-counter)))) f0-4))
+                      )
+                    )
+              )
+            (vector-copy! (-> s5-0 normal) arg1)
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 19 of type light-trail-tracker
+(defmethod should-draw? ((this light-trail-tracker))
+  (let ((a1-0 (handle->process (-> this tracked-object))))
+    #t
+    (let ((v1-4 #t))
+      (let ((a0-4 #f))
+        (if (and a1-0
+                 (nonzero? (-> (the-as process-drawable a1-0) draw))
+                 (logtest? (-> (the-as process-drawable a1-0) draw status)
+                           (draw-control-status no-draw no-draw-temp no-draw-bounds no-draw-bounds2)
+                           )
+                 )
+            (set! v1-4 #f)
+            )
+        (if (and a1-0
+                 (nonzero? (-> (the-as process-drawable a1-0) draw))
+                 (logtest? (-> (the-as process-drawable a1-0) draw status) (draw-control-status on-screen))
+                 )
+            (set! a0-4 #t)
+            )
+        (when v1-4
+          (if (and (-> this offscreen?) (not a0-4))
+              (set! v1-4 #f)
+              )
+          (when (< (-> this next-line-check-time) (current-time))
+            (let ((a0-11 (-> this trail crumb-count)))
+              (when (< 1 a0-11)
+                (let ((v1-8 (&+ (-> this trail crumb-array data) (* (-> this trail crumb-size) 0)))
+                      (a1-19 (&+ (-> this trail crumb-array data) (* (the-as int (-> this trail crumb-size)) (+ a0-11 -1))))
+                      )
+                  (set! v1-4 (line-in-view-frustum? (the-as vector (&+ v1-8 0)) (the-as vector (&+ a1-19 0))))
+                  )
+                )
+              )
+            (set-time! (-> this next-line-check-time))
+            )
+          )
+        )
+      (when (and (not v1-4) (not (-> this offscreen?)))
+        (set! (-> this offscreen?) #t)
+        (set-time! (-> this offscreen-start-time))
+        )
+      (if (and v1-4 (-> this offscreen?))
+          (set! (-> this offscreen?) #f)
+          )
+      )
+    )
+  (or (not (-> this offscreen?)) (not (time-elapsed?
+                                        (-> this offscreen-start-time)
+                                        (the int (* 0.5 (the float (-> this trail appearance max-age))))
+                                        )
+                                      )
+      )
+  )
+
+;; definition for method 20 of type light-trail-tracker
+;; WARN: Return type mismatch uint vs none.
+(defmethod add-crumb! ((this light-trail-tracker) (arg0 vector))
+  (if (zero? (mod (-> this last-add-frame-val) (-> this trail appearance frame-stagger)))
+      (add-crumb! (-> this trail) arg0 (seconds 10000))
+      (replace-last-crumb! (-> this trail) arg0)
+      )
+  (+! (-> this last-add-frame-val) 1)
+  (none)
+  )

@@ -1,0 +1,524 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mech
+(deftype mech (process-drawable)
+  ((root               collide-shape-moving :override)
+   (extra-trans        vector                :inline)
+   (condition          int32)
+   (shadow-backup      shadow-geo)
+   (rider              handle)
+   (shield-value       float)
+   (nav-sphere-handle  handle)
+   (probe-time         time-frame)
+   )
+  (:state-methods
+    wait-for-start
+    idle
+    (pickup (state mech))
+    wait-for-return
+    )
+  (:methods
+    (mech-method-24 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type mech
+(defmethod inspect ((this mech))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Textra-trans: ~`vector`P~%" (-> this extra-trans))
+  (format #t "~2Tcondition: ~D~%" (-> this condition))
+  (format #t "~2Tshadow-backup: ~A~%" (-> this shadow-backup))
+  (format #t "~2Trider: ~D~%" (-> this rider))
+  (format #t "~2Tshield-value: ~f~%" (-> this shield-value))
+  (format #t "~2Tnav-sphere-handle: ~D~%" (-> this nav-sphere-handle))
+  (format #t "~2Tprobe-time: ~D~%" (-> this probe-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 24 of type mech
+;; WARN: Return type mismatch int vs none.
+(defmethod mech-method-24 ((this mech))
+  (if (nonzero? (-> this part))
+      (spawn (-> this part) (-> this root trans))
+      )
+  (update! (-> this sound))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate wait-for-start (mech)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack 'bonk)
+       (send-event proc 'target-mech-get-off (seconds 0.3))
+       (send-event proc 'shove #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                      (damage 2.0)
+                                                                                      (vehicle-damage-factor 1.0)
+                                                                                      (vehicle-impulse-factor 1.0)
+                                                                                      (shove-back (meters 3))
+                                                                                      (shove-up (meters 1))
+                                                                                      )
+                                                      )
+                   )
+       (the-as structure #f)
+       )
+      (('touch)
+       (send-event proc 'target-mech-get-off (seconds 0.3))
+       (send-shoves (-> self root) proc (the-as touching-shapes-entry (-> block param 0)) 0.7 6144.0 16384.0)
+       (the-as structure #f)
+       )
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
+       )
+      (('shadow)
+       (cond
+         ((-> block param 0)
+          (let ((v0-2 (the-as structure (-> self shadow-backup))))
+            (set! (-> self draw shadow) (the-as shadow-geo v0-2))
+            v0-2
+            )
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           (the-as structure #f)
+           )
+         )
+       )
+      )
+    )
+  :exit (behavior ()
+    (set! (-> self root root-prim prim-core action) (collide-action))
+    (set! (-> self root penetrated-by) (the-as penetrate -1))
+    )
+  :code (behavior ()
+    (go-virtual idle)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (mech)
+  :virtual #t
+  :event (-> (method-of-type mech wait-for-start) event)
+  :enter (behavior ()
+    (set! (-> self nav-sphere-handle) (the-as handle #f))
+    (let ((s5-0 (find-nearest-nav-mesh (-> self root trans) 8192.0)))
+      (when s5-0
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (vector-z-quaternion! gp-0 (-> self root quat))
+          (vector-normalize! gp-0 5120.0)
+          (vector+! gp-0 gp-0 (-> self root trans))
+          (set! (-> self nav-sphere-handle)
+                (ppointer->handle
+                  (process-spawn simple-nav-sphere #x46266666 gp-0 s5-0 -1 :name "simple-nav-sphere" :to self)
+                  )
+                )
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    (send-event (handle->process (-> self nav-sphere-handle)) 'die-fast)
+    ((-> (method-of-type mech wait-for-start) exit))
+    )
+  :code (behavior ()
+    (change-parent self *entity-pool*)
+    (ja-channel-set! 1)
+    (ja :group! mech-mech-idle-ja)
+    (set! (-> self root root-prim prim-core action) (collide-action solid can-ride no-standon))
+    (set! (-> self root penetrated-by) (penetrate))
+    0.0
+    (let ((f30-0 20480.0))
+      (until #f
+        (when (and (logtest? (-> self draw status) (draw-control-status on-screen))
+                   (time-elapsed? (-> self probe-time) (seconds 1))
+                   )
+          (move-to-ground
+            (-> self root)
+            8192.0
+            40960.0
+            #t
+            (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list pusher)
+            )
+          (set-time! (-> self probe-time))
+          )
+        (when (and (and *target* (and (>= f30-0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                      (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                                      )
+                        )
+                   (not (focus-test? *target* in-head pole light board mech dark))
+                   (can-display-query? self "mech" -99.0)
+                   (-> *setting-control* user-current pilot)
+                   )
+          (let ((gp-0
+                  (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
+                  )
+                )
+            (set-width! gp-0 340)
+            (set-height! gp-0 80)
+            (let ((v1-33 gp-0)
+                  (a0-19 (-> *setting-control* user-default language))
+                  )
+              (set! (-> v1-33 scale) (if (or (= a0-19 (language-enum korean)) (= a0-19 (language-enum russian)))
+                                         0.9
+                                         0.7
+                                         )
+                    )
+              )
+            (set! (-> gp-0 flags) (font-flags shadow kerning large))
+            (print-game-text
+              (lookup-text! *common-text* (text-id text-0083) #f)
+              gp-0
+              #f
+              44
+              (bucket-id hud-draw-hud-alpha)
+              )
+            )
+          (if (and (cpad-pressed? 0 triangle) (send-event *target* 'change-mode 'mech self (-> self shield-value)))
+              (go-virtual pickup (method-of-object self wait-for-return))
+              )
+          )
+        (if *target*
+            (look-at!
+              (-> *target* neck)
+              (vector+!
+                (new 'stack-no-clear 'vector)
+                (-> self root root-prim prim-core world-sphere)
+                (new 'static 'vector :y 2048.0 :w 1.0)
+                )
+              'nothing-special
+              self
+              )
+            )
+        (mech-method-24 self)
+        (suspend)
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate pickup (mech)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('draw)
+       (ja-channel-set! 1)
+       (ja :group! mech-mech-idle-ja)
+       (set! (-> self root root-prim prim-core action) (collide-action solid can-ride no-standon))
+       (set! (-> self root penetrated-by) (penetrate))
+       (transform-post)
+       )
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
+       )
+      (('touch 'attack 'bonk)
+       #f
+       )
+      (('shadow)
+       (cond
+         ((-> block param 0)
+          (let ((v0-1 (the-as object (-> self shadow-backup))))
+            (set! (-> self draw shadow) (the-as shadow-geo v0-1))
+            v0-1
+            )
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           #f
+           )
+         )
+       )
+      )
+    )
+  :enter (behavior ((arg0 (state mech)))
+    (let ((t9-0 (-> arg0 enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    )
+  :code (behavior ((arg0 (state mech)))
+    (ja-channel-set! 0)
+    (ja-post)
+    (while (zero? (ja-group-size))
+      (if (or (not *target*) (or (< 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                 (focus-test? *target* teleporting)
+                                 )
+              )
+          (go arg0)
+          )
+      (mech-method-24 self)
+      (suspend)
+      )
+    (while (and *target* (focus-test? *target* mech))
+      (mech-method-24 self)
+      (suspend)
+      )
+    (suspend-for (seconds 1)
+      (mech-method-24 self)
+      )
+    (go arg0)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait-for-return (mech)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trans)
+       (vector+! (the-as vector (-> block param 0)) (-> self root trans) (-> self extra-trans))
+       )
+      (('shadow)
+       (cond
+         ((-> block param 0)
+          (let ((v0-1 (the-as structure (-> self shadow-backup))))
+            (set! (-> self draw shadow) (the-as shadow-geo v0-1))
+            v0-1
+            )
+          )
+         (else
+           (set! (-> self draw shadow) #f)
+           (the-as structure #f)
+           )
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-set! 0)
+    (ja-post)
+    (cleanup-for-death self)
+    )
+  )
+
+;; definition for function mech-init
+;; INFO: Used lq/sq
+(defbehavior mech-init mech ((arg0 entity-actor) (arg1 matrix3) (arg2 handle) (arg3 float))
+  (let ((s2-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s2-0 reaction) cshape-reaction-default)
+    (set! (-> s2-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid can-ride no-standon))
+      (set! (-> v1-6 transform-index) 0)
+      (set-vector! (-> v1-6 local-sphere) 0.0 6553.6 5324.8 6553.6)
+      (set! (-> s2-0 total-prims) (the-as uint 1))
+      (set! (-> s2-0 root-prim) v1-6)
+      )
+    (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s2-0 root-prim)))
+      (set! (-> s2-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s2-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> self root) s2-0)
+    )
+  (set! (-> self rider) arg2)
+  (when arg0
+    (process-entity-set! self arg0)
+    (process-drawable-from-entity! self arg0)
+    (set-yaw-angle-clear-roll-pitch! (-> self root) (res-lump-float arg0 'rotoffset))
+    )
+  (when arg1
+    (vector-copy! (-> self root trans) (-> arg1 vector 0))
+    (quaternion-copy! (-> self root quat) (the-as quaternion (-> arg1 vector 1)))
+    )
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-mech" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self shadow-backup) (-> self draw shadow))
+  (set! (-> self draw shadow-ctrl) *mech-shadow-control*)
+  (let ((v1-27 (-> self node-list data)))
+    (set! (-> v1-27 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
+    (set! (-> v1-27 0 param1) (the-as basic (-> self root trans)))
+    (set! (-> v1-27 0 param2) (the-as basic (-> self extra-trans)))
+    )
+  (set! (-> self condition) (res-lump-value arg0 'index int :time -1000000000.0))
+  (set! (-> self fact)
+        (new 'process 'fact-info self (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (set! (-> self shield-value) arg3)
+  (set! (-> self nav-sphere-handle) (the-as handle #f))
+  (if (-> self entity)
+      (move-to-ground
+        (-> self root)
+        8192.0
+        40960.0
+        #t
+        (collide-spec backgnd obstacle hit-by-player-list hit-by-others-list pusher)
+        )
+      )
+  (set! (-> self sound)
+        (new 'process 'ambient-sound (static-sound-spec "zoom-teleport" :group 0 :fo-max 30) (-> self root trans) 0.0)
+        )
+  (set! (-> self draw light-index) (the-as uint 30))
+  (if (handle->process arg2)
+      (go-virtual idle)
+      (go-virtual wait-for-start)
+      )
+  )
+
+;; definition for method 11 of type mech
+(defmethod init-from-entity! ((this mech) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (mech-init arg0 (the-as matrix3 #f) (the-as handle #f) 100.0)
+  )
+
+;; definition of type mech-target
+(deftype mech-target (process-drawable)
+  ((parent  (pointer target) :override)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  )
+
+;; definition for method 3 of type mech-target
+(defmethod inspect ((this mech-target))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-mech-target mech mech-target-lod0-jg mech-target-idle-ja
+              ((mech-target-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (mech-target)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('look-at-point)
+       (set-time! (-> self state-time))
+       (go-virtual active)
+       )
+      )
+    )
+  :trans (behavior ()
+    (if (and (and *target* (and (>= 98304.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                                )
+                  )
+             (focus-test? *target* mech)
+             )
+        (go-virtual active)
+        )
+    )
+  :code (behavior ()
+    (while (< 0.0 (-> self root scale x))
+      (seek! (-> self root scale x) 0.0 (* 8.0 (seconds-per-frame)))
+      (set! (-> self root scale y) (-> self root scale x))
+      (ja-post)
+      (suspend)
+      )
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (ja-post)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (mech-target)
+  :virtual #t
+  :event (-> (method-of-type mech-target idle) event)
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (and (or (or (not *target*) (or (< 106496.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                        (focus-test? *target* teleporting)
+                                        )
+                     )
+                 (not (logtest? (focus-status mech) (-> *target* focus-status)))
+                 )
+             (time-elapsed? (-> self state-time) (seconds 10))
+             )
+        (go-virtual idle)
+        )
+    )
+  :code (behavior ()
+    (sound-play "mech-target")
+    (let ((f30-0 0.0))
+      (logclear! (-> self draw status) (draw-control-status no-draw))
+      (while (< (-> self root scale x) 1.0)
+        (seek! (-> self root scale x) 1.0 (* 8.0 (seconds-per-frame)))
+        (set! (-> self root scale y) (-> self root scale x))
+        (set! f30-0 (seek f30-0 1.0 (* 2.0 (seconds-per-frame))))
+        (ja :num! (loop! f30-0))
+        (ja-post)
+        (suspend)
+        )
+      (until #f
+        (set! f30-0 (seek f30-0 1.0 (* 0.25 (seconds-per-frame))))
+        (ja :num! (loop! f30-0))
+        (ja-post)
+        (suspend)
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for function mech-target-init
+;; INFO: Used lq/sq
+(defbehavior mech-target-init mech ((arg0 vector) (arg1 quaternion) (arg2 entity-actor))
+  (process-entity-set! self arg2)
+  (when (not (and (-> self level) (logtest? (level-flags mech) (-> self level info level-flags))))
+    (dotimes (v1-4 (-> *level* length))
+      (let ((a0-7 (-> *level* level v1-4)))
+        (when (= (-> a0-7 status) 'active)
+          (when (logtest? (level-flags mech) (-> a0-7 info level-flags))
+            (set! (-> self level) a0-7)
+            (goto cfg-12)
+            )
+          )
+        )
+      )
+    )
+  (label cfg-12)
+  (set! (-> self root) (the-as collide-shape-moving (new 'process 'trsqv)))
+  (vector-copy! (-> self root trans) arg0)
+  (quaternion-copy! (-> self root quat) arg1)
+  (set! (-> self root scale x) 0.0)
+  (set! (-> self root scale y) 0.0)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-mech-target" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go-virtual wait-for-start)
+  )
+
+;; definition for function mech-target-spawn
+;; WARN: Return type mismatch (pointer process) vs (pointer mech-target).
+(defun mech-target-spawn ((arg0 vector) (arg1 process) (arg2 quaternion) (arg3 entity-actor))
+  (process-spawn mech-target :init mech-target-init arg0 arg2 arg3 :name "mech-target" :to arg1)
+  )

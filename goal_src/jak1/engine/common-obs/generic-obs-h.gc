@@ -1,29 +1,45 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: generic-obs-h.gc
-;; name in dgo: generic-obs-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/game/game-h.gc")
 (define-extern mistycam-spawn (function none))
+
 (define-extern beachcam-spawn (function none))
 
 (declare-type camera-tracker process)
+
 (define-extern process-grab? (function process symbol :behavior camera-tracker))
+
 (define-extern process-release? (function process symbol :behavior process))
 
 (define-extern fuel-cell type)
 
-(define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
+(define-extern birth-pickup-at-point
+  (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 
 (declare-type collide-shape trsqv)
+
 (declare-type collide-shape-moving collide-shape)
+
 (declare-type sparticle-launch-group basic)
+
 (declare-type part-tracker process)
+
 (declare-type collide-prim-core structure)
-(define-extern part-tracker-init (function sparticle-launch-group time-frame (function part-tracker none) (pointer process-drawable) process collide-prim-core none :behavior part-tracker))
+
+(define-extern part-tracker-init
+  (function sparticle-launch-group
+            time-frame
+            (function part-tracker none)
+            (pointer process-drawable)
+            process
+            collide-prim-core
+            none
+            :behavior
+            part-tracker))
 
 (declare-type touch-tracker process-drawable)
+
 (define-extern touch-tracker-init (function vector float time-frame none :behavior touch-tracker))
 
 (define-extern eco-blue-glow (function vector none))
@@ -37,163 +53,132 @@
 ;; A manipy is a way to draw and move something. More complicated objects that want to draw multiple
 ;; things may create a child manipy and then send it commands.
 (deftype manipy (process-drawable)
-  ((new-trans-hook        (function none))
-   (cur-trans-hook        (function none))
-   (cur-event-hook        (function none))
-   (new-joint-anim        art-joint-anim)
-   (new-joint-anim-blend  uint64)
-   (anim-mode             symbol)
-   (cur-grab-handle       handle)
-   (cur-target-handle     handle)
-   (old-grab-pos          vector     :inline)
-   (joint                 joint-mod  4)
-   (new-post-hook         (function none))
-   (cur-post-hook         (function none))
-   (clone-copy-trans      symbol)
-   (shadow-backup         basic)
-   (draw?                 symbol)
-   )
+  ((new-trans-hook       (function none))
+   (cur-trans-hook       (function none))
+   (cur-event-hook       (function none))
+   (new-joint-anim       art-joint-anim)
+   (new-joint-anim-blend uint64)
+   (anim-mode            symbol)
+   (cur-grab-handle      handle)
+   (cur-target-handle    handle)
+   (old-grab-pos         vector :inline)
+   (joint                joint-mod 4)
+   (new-post-hook        (function none))
+   (cur-post-hook        (function none))
+   (clone-copy-trans     symbol)
+   (shadow-backup        basic)
+   (draw?                symbol))
   (:states
-    manipy-idle
-    )
-  )
-
+   manipy-idle))
 
 (deftype part-spawner (process-drawable)
-  ((mode          (pointer sparticle-launch-group))
-   (enable        symbol)
-   (radius        meters)
-   (world-sphere  sphere  :inline)
-   )
+  ((mode         (pointer sparticle-launch-group))
+   (enable       symbol)
+   (radius       meters)
+   (world-sphere sphere :inline))
   (:methods
-    (is-visible? (_type_) symbol)
-    )
+   (is-visible? (_type_) symbol))
   (:states
-    part-spawner-active
-    )
-  )
+   part-spawner-active))
 
 ;; a part-tracker will spawn particles, then linger for a bit, and then finally die.
 ;; a more complicated object can use this to manage particles that do something interesting (like follow you)
 (deftype part-tracker (process)
-  ((root             trsqv)
-   (part             sparticle-launch-control)
-   (target           handle)
-   (callback         (function part-tracker vector))
-   (linger-callback  (function part-tracker vector))
-   (duration         time-frame)
-   (linger-duration  time-frame)
-   (start-time       time-frame)
-   (offset           vector      :inline)
-   (userdata         uint64)
-   (user-time        time-frame  2)
-   (user-vector      vector      2 :inline)
-   (user-handle      uint32      2)
-   )
+  ((root            trsqv)
+   (part            sparticle-launch-control)
+   (target          handle)
+   (callback        (function part-tracker vector))
+   (linger-callback (function part-tracker vector))
+   (duration        time-frame)
+   (linger-duration time-frame)
+   (start-time      time-frame)
+   (offset          vector :inline)
+   (userdata        uint64)
+   (user-time       time-frame 2)
+   (user-vector     vector 2 :inline)
+   (user-handle     uint32 2))
   (:states
-    part-tracker-process
-    )
-  )
+   part-tracker-process))
 
 ;; a camera-tracker can control the camera.
 (deftype camera-tracker (process)
-  ((grab-target      handle  :offset 120)
-   (grab-event       symbol)
-   (release-event    symbol)
-   (old-global-mask  process-mask)
-   (old-self-mask    process-mask)
-   (old-parent-mask  process-mask)
-   (look-at-target   handle)
-   (pov-target       handle)
-   (work-process     handle)
-   (anim-process     handle)
-   (start-time       time-frame)
-   (callback         basic)
-   (userdata         basic)
-   (message          basic)
-   (border-value     basic)
-   (mask-to-clear    process-mask)
-   (script           pair)
-   (script-line      pair)
-   (script-func      (function none))
-   )
+  ((grab-target     handle :offset 120)
+   (grab-event      symbol)
+   (release-event   symbol)
+   (old-global-mask process-mask)
+   (old-self-mask   process-mask)
+   (old-parent-mask process-mask)
+   (look-at-target  handle)
+   (pov-target      handle)
+   (work-process    handle)
+   (anim-process    handle)
+   (start-time      time-frame)
+   (callback        basic)
+   (userdata        basic)
+   (message         basic)
+   (border-value    basic)
+   (mask-to-clear   process-mask)
+   (script          pair)
+   (script-line     pair)
+   (script-func     (function none)))
   (:methods
-    (eval (_type_ pair) process)
-    )
+   (eval (_type_ pair) process))
   (:states
-    camera-tracker-process
-    )
-  )
+   camera-tracker-process))
 
 ;; a touch tracker waits to be touched, then calls some callback function.
 (deftype touch-tracker (process-drawable)
-  ((root          collide-shape-moving :override)
-   (duration      time-frame)
-   (target        handle)
-   (event         symbol)
-   (run-function  (function object))
-   (callback      (function touch-tracker none))
-   (event-mode    basic)
-   )
+  ((root         collide-shape-moving :override)
+   (duration     time-frame)
+   (target       handle)
+   (event        symbol)
+   (run-function (function object))
+   (callback     (function touch-tracker none))
+   (event-mode   basic))
   (:states
-    touch-tracker-idle
-    )
-  )
+   touch-tracker-idle))
 
 ;; the classic pole
 (deftype swingpole (process)
-  ((root         trsq)
-   (dir          vector  :inline)
-   (range        meters)
-   (edge-length  meters)
-   )
+  ((root        trsq)
+   (dir         vector :inline)
+   (range       meters)
+   (edge-length meters))
   (:states
-    swingpole-active
-    swingpole-stance
-    )
-  )
+   swingpole-active
+   swingpole-stance))
 
 ;; do you want to fish?
 (deftype gui-query (structure)
-  ((x-position         int32)
-   (y-position         int32)
-   (message            string)
-   (decision           symbol)
-   (only-allow-cancel  symbol)
-   (no-msg             string)
-   (message-space      int32)
-   )
+  ((x-position        int32)
+   (y-position        int32)
+   (message           string)
+   (decision          symbol)
+   (only-allow-cancel symbol)
+   (no-msg            string)
+   (message-space     int32))
   :pack-me
   (:methods
-    (init! (_type_ string int int int symbol string) none)
-    (get-response (_type_) symbol)
-    )
-  )
+   (init! (_type_ string int int int symbol string) none)
+   (get-response (_type_) symbol)))
 
 ;; control the camera from something else (an animation)
 (deftype othercam (process)
-  ((hand               handle)
-   (old-global-mask    process-mask)
-   (mask-to-clear      process-mask)
-   (cam-joint-index    int32)
-   (old-pos            vector  :inline)
-   (old-mat-z          vector  :inline)
-   (had-valid-frame    basic)
-   (border-value       basic)
-   (die?               symbol)
-   (survive-anim-end?  symbol)
-   (spooling?          symbol)
-   )
+  ((hand              handle)
+   (old-global-mask   process-mask)
+   (mask-to-clear     process-mask)
+   (cam-joint-index   int32)
+   (old-pos           vector :inline)
+   (old-mat-z         vector :inline)
+   (had-valid-frame   basic)
+   (border-value      basic)
+   (die?              symbol)
+   (survive-anim-end? symbol)
+   (spooling?         symbol))
   (:states
-    othercam-running
-    )
-  )
-
+   othercam-running))
 
 ;; don't draw it! I guess used to disable things during development.
-(deftype process-hidden (process)
-  ()
+(deftype process-hidden (process) ()
   (:state-methods
-    die
-    )
-  )
+   die))

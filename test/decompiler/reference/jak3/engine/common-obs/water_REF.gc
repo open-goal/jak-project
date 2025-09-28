@@ -1,0 +1,1218 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function check-water-level-drop
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun check-water-level-drop ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
+  (when (and (< (-> arg2 y) (-> arg1 user-float)) (< (-> arg1 vel-sxvel y) 0.0))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (sp-kill-particle arg0 arg1)
+      (set-vector! gp-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
+      (sound-play "water-drop" :position gp-0)
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 780) gp-0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function check-water-level-drop-and-die
+;; WARN: Return type mismatch symbol vs none.
+(defun check-water-level-drop-and-die ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
+  (if (and (< (-> arg2 y) (-> arg1 user-float)) (< (-> arg1 vel-sxvel y) 0.0))
+      (sp-kill-particle arg0 arg1)
+      )
+  (none)
+  )
+
+;; definition for function check-water-level-drop-and-die-motion
+(defun check-water-level-drop-and-die-motion ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
+  (if (and (< (-> arg2 y) (-> arg1 user-float)) (< (-> arg1 vel-sxvel y) 0.0))
+      (sp-kill-particle arg0 arg1)
+      )
+  (sparticle-motion-blur arg0 arg1 arg2)
+  (none)
+  )
+
+;; definition for function check-water-level-above-and-die
+;; WARN: Return type mismatch symbol vs none.
+(defun check-water-level-above-and-die ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
+  (if (or (>= (-> arg2 y) (-> arg1 user-float)) (and *target* (>= (-> arg2 y) (-> *target* water height))))
+      (sp-kill-particle arg0 arg1)
+      )
+  (none)
+  )
+
+;; definition for function check-water-level-drop-motion
+;; INFO: Used lq/sq
+(defun check-water-level-drop-motion ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 vector))
+  (when (and (< (-> arg2 y) (-> arg1 user-float)) (< (-> arg1 vel-sxvel y) 0.0))
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (sp-kill-particle arg0 arg1)
+      (set-vector! s3-0 (-> arg2 x) (-> arg1 user-float) (-> arg2 z) 1.0)
+      (sound-play "water-drop" :position s3-0)
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 780) s3-0)
+      (set! (-> *part-id-table* 781 init-specs 15 initial-valuef) (-> s3-0 y))
+      (launch-particles (-> *part-id-table* 781) s3-0)
+      )
+    )
+  (sparticle-motion-blur arg0 arg1 arg2)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(when (or (zero? *water-simple-alpha-curve-in*) (!= loading-level global))
+  (set! *water-simple-alpha-curve-in* (new 'loading-level 'curve2d-piecewise))
+  (allocate! *water-simple-alpha-curve-in* 2 'loading-level #f)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-in* pts data 0 first) 0.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-in* pts data 0 second) 0.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-in* pts data 1 first) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-in* pts data 1 second) 1.0)
+
+;; failed to figure out what this is:
+(when (or (zero? *growing-curve*) (!= loading-level global))
+  (set! *growing-curve* (new 'loading-level 'curve2d-piecewise))
+  (allocate! *growing-curve* 2 'loading-level #f)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *growing-curve* pts data 0 first) 0.0)
+
+;; failed to figure out what this is:
+(set! (-> *growing-curve* pts data 0 second) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *growing-curve* pts data 1 first) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *growing-curve* pts data 1 second) 10.0)
+
+;; failed to figure out what this is:
+(when (or (zero? *water-simple-alpha-curve-fade-out*) (!= loading-level global))
+  (set! *water-simple-alpha-curve-fade-out* (new 'loading-level 'curve2d-piecewise))
+  (allocate! *water-simple-alpha-curve-fade-out* 2 'loading-level #f)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-fade-out* pts data 0 first) 0.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-fade-out* pts data 0 second) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-fade-out* pts data 1 first) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-simple-alpha-curve-fade-out* pts data 1 second) 0.0)
+
+;; failed to figure out what this is:
+(when (or (zero? *color-curve-tan-brown*) (!= loading-level global))
+  (set! *color-curve-tan-brown* (new 'loading-level 'curve-color-piecewise))
+  (allocate! *color-curve-tan-brown* 2 'loading-level #f)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 0 first) 0.0)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 0 second x) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 0 second y) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 0 second z) 0.78125)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 0 second w) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 1 first) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 1 second x) 0.78125)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 1 second y) 0.78125)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 1 second z) 0.625)
+
+;; failed to figure out what this is:
+(set! (-> *color-curve-tan-brown* pts data 1 second w) 1.0)
+
+;; failed to figure out what this is:
+(if (or (zero? *water-wake-trail*) (!= loading-level global))
+    (set! *water-wake-trail* (new 'loading-level 'light-trail-composition))
+    )
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* color-mode) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* color-repeat-dist) 40960.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* alpha-1-mode) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* alpha-2-mode) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* base-alpha) 0.6)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* alpha-repeat-dist) 40960.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* width-mode) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* base-width) 4096.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* width-repeat-dist) 40960.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* uv-mode) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* uv-repeat-dist) 40960.0)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* lie-mode) (lie-mode appearance1))
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* max-age) (seconds 3))
+
+;; failed to figure out what this is:
+(if #f
+    (set! (-> *water-wake-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *water-wake-trail* tex-id) (new 'static 'texture-id :index #x8 :page #x5))
+    )
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* width-curve) *growing-curve*)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* color-curve) *color-curve-tan-brown*)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* alpha-curve-1) *water-simple-alpha-curve-in*)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* alpha-curve-2) *water-simple-alpha-curve-fade-out*)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* zbuffer?) #f)
+
+;; failed to figure out what this is:
+(vector-copy! (-> *water-wake-trail* lie-vector) *up-vector*)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* use-tape-mode?) #t)
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* blend-mode) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *water-wake-trail* frame-stagger) (the-as uint 1))
+
+;; definition for method 17 of type water-control
+;; WARN: Return type mismatch int vs none.
+(defmethod water-control-method-17 ((this water-control))
+  (when (and (not (handle->process (-> this ripple)))
+             (>= (+ (current-time) (seconds -0.1)) (-> this enter-water-time))
+             )
+    (let ((s5-0 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
+      (set! (-> s5-0 tracked-obj) (process->handle (-> this process)))
+      (set! (-> s5-0 appearance) *water-wake-trail*)
+      (set! (-> s5-0 max-num-crumbs) (the int (* 0.25 (the float (-> s5-0 appearance max-age)))))
+      (let* ((v1-18
+               (estimate-light-trail-mem-usage
+                 (the-as uint (-> s5-0 max-num-crumbs))
+                 (the-as uint (= (-> s5-0 appearance lie-mode) (lie-mode use-two-strips)))
+                 )
+               )
+             (s4-0 (get-process *default-dead-pool* light-trail-tracker-water (+ v1-18 8192) 1))
+             )
+        (set! (-> this ripple)
+              (ppointer->handle (when s4-0
+                                  (let ((t9-2 (method-of-type process activate)))
+                                    (t9-2 s4-0 (-> this process) "light-trail" (the-as pointer #x70004000))
+                                    )
+                                  (run-now-in-process s4-0 light-trail-tracker-init-by-other s5-0)
+                                  (-> s4-0 ppointer)
+                                  )
+                                )
+              )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type water-control
+;; WARN: Return type mismatch int vs none.
+(defmethod water-control-method-9 ((this water-control))
+  0
+  (none)
+  )
+
+;; definition for method 10 of type water-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod water-control-method-10 ((this water-control))
+  (local-vars (sv-336 (function vector vector vector vector)) (sv-352 vector))
+  (with-pp
+    (let ((s4-0 (-> this flags))
+          (s5-0 (new 'stack-no-clear 'water-info))
+          )
+      (when (logtest? (water-flag find-water) (-> this flags))
+        (water-info-init! (-> this process control) s5-0 (collide-action solid semi-solid))
+        (set! (-> this flags)
+              (logior (logclear
+                        (-> this flags)
+                        (water-flag active can-wade can-swim can-ground use-ocean tar mud use-water-anim swamp over-water)
+                        )
+                      (logclear (-> s5-0 flags) (water-flag touch-water))
+                      )
+              )
+        (set! (-> this base-height) (-> s5-0 base-height))
+        (vector-copy! (-> this normal) (-> s5-0 normal))
+        (set! (-> this base-ocean-offset) (- (-> s5-0 trans y) (-> s5-0 base-height)))
+        )
+      (cond
+        ((or (not (logtest? (-> this flags) (water-flag active)))
+             (logtest? (focus-status teleporting) (-> this process focus-status))
+             )
+         (logclear!
+           (-> this flags)
+           (water-flag under-water head-under-water bouncing wading swimming touch-water jump-out break-surface)
+           )
+         )
+        ((and (logtest? (-> this flags) (water-flag no-grab-sound))
+              (logtest? (-> this process focus-status) (focus-status grabbed))
+              )
+         (logior! (-> this flags) (water-flag jump-out))
+         (logclear! (-> this flags) (water-flag break-surface))
+         )
+        ((begin
+           (vector-copy! (-> this top 1) (-> this top 0))
+           (vector<-cspace! (-> this top 0) (-> this process node-list data (-> this joint-index)))
+           (+! (-> this top 0 y) (-> this top-y-offset))
+           (vector-copy! (-> this bottom 1) (-> this bottom 0))
+           (set! (-> this bottom 0 quad) (-> this process control trans quad))
+           (logclear! (-> this flags) (water-flag under-water head-under-water bouncing wading swimming break-surface))
+           (set! (-> this bob-offset) (update! (-> this bob)))
+           (cond
+             ((logtest? (-> this flags) (water-flag use-ocean use-water-anim))
+              (if (not (logtest? (water-flag touch-water) (-> this flags)))
+                  (set! (-> this ocean-offset) (-> this base-ocean-offset))
+                  (set! (-> this ocean-offset) (lerp (-> this ocean-offset) (-> this base-ocean-offset) 0.2))
+                  )
+              (set! (-> this base-ocean-offset) 0.0)
+              )
+             (else
+               (set! (-> this base-ocean-offset) 0.0)
+               (set! (-> this base-ocean-offset) 0.0)
+               (set! (-> this ocean-offset) 0.0)
+               )
+             )
+           (if (logtest? (focus-status board pilot) (-> this process focus-status))
+               (set! (-> this bob-offset) 0.0)
+               )
+           (set! (-> this height)
+                 (+ (-> this base-height) (-> this ocean-offset) (-> this bob-offset) (-> this align-offset))
+                 )
+           (set! (-> this surface-height) (+ (-> this base-height) (-> this base-ocean-offset)))
+           (cond
+             ((logtest? (focus-status board pilot) (-> this process focus-status))
+              (set! (-> this collide-height) (+ -819.2 (-> this base-ocean-offset) (-> this base-height)))
+              )
+             ((logtest? (-> this flags) (water-flag swim-ground))
+              (set! (-> this collide-height) (- (-> this height) (-> this swim-height)))
+              )
+             (else
+               (set! (-> this collide-height) (- (-> this height) (-> this bottom-height)))
+               )
+             )
+           (set! (-> this swim-depth)
+                 (fmax 0.0 (- (- (-> this surface-height) (-> this swim-height)) (-> this bottom 0 y)))
+                 )
+           (and (>= (-> this height) (-> this bottom 0 y)) (logtest? (water-flag touch-water) (-> s5-0 flags)))
+           )
+         (if (logtest? (-> this process control status) (collide-status on-water))
+             (set-time! (-> this on-water-time))
+             )
+         (when (not (logtest? (-> this flags) (water-flag dark-eco lava)))
+           (set! (-> this drip-wetness) 1.0)
+           (set! (-> this drip-height) (fmax (- (-> this surface-height) (-> this bottom 0 y)) (-> this drip-height)))
+           (set! (-> this drip-speed) 15.0)
+           )
+         (if (and (not (logtest? (water-flag touch-water) (-> this flags)))
+                  (not (logtest? (-> this process focus-status) (focus-status touch-water)))
+                  )
+             (enter-water this)
+             )
+         (logior! (-> this flags) (water-flag touch-water))
+         (cond
+           ((>= (-> this top 0 y) (-> this height))
+            (let ((s3-0 (new 'stack-no-clear 'vector)))
+              (vector-copy! s3-0 (-> this bottom 0))
+              (let ((v1-82 (-> this process control transv)))
+                (sqrtf (+ (* (-> v1-82 x) (-> v1-82 x)) (* (-> v1-82 z) (-> v1-82 z))))
+                )
+              (logior! (-> this flags) (water-flag break-surface))
+              (set! (-> s3-0 y) (+ 40.96 (-> this surface-height)))
+              (water-control-method-17 this)
+              (when (and (logtest? (-> this process draw status) (draw-control-status on-screen))
+                         (zero? (-> this process draw cur-lod))
+                         (logtest? (water-flag part-rings) (-> this flags))
+                         (logtest? (water-flag part-water) (-> this flags))
+                         )
+                0.0
+                (let* ((v1-102 (-> this process control transv))
+                       (f30-0 (sqrtf (+ (* (-> v1-102 x) (-> v1-102 x)) (* (-> v1-102 z) (-> v1-102 z)))))
+                       (s2-0 (new 'stack-no-clear 'matrix))
+                       )
+                  (let ((s1-0 forward-up->inv-matrix)
+                        (s0-0 s2-0)
+                        )
+                    (set! sv-336 vector-flatten!)
+                    (set! sv-352 (-> s2-0 fvec))
+                    (let ((a1-11 (vector-z-quaternion! (-> s2-0 fvec) (-> this process control quat)))
+                          (a2-2 (-> s5-0 normal))
+                          )
+                      (s1-0 s0-0 (sv-336 sv-352 a1-11 a2-2) (-> s5-0 normal))
+                      )
+                    )
+                  (vector-copy! (-> s2-0 trans) s3-0)
+                  (set! (-> *part-id-table* 762 init-specs 1 initial-valuef) (* 0.000004150391 f30-0))
+                  (set! (-> *part-id-table* 762 init-specs 16 initial-valuef) 0.0)
+                  (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 762) s2-0 :origin-is-matrix #t)
+                  (when (< f30-0 4096.0)
+                    (set! (-> *part-id-table* 758 init-specs 2 random-rangef) (-> this ripple-size))
+                    (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 758) s2-0 :origin-is-matrix #t)
+                    )
+                  )
+                )
+              (if (< (-> this top 1 y) (-> this height))
+                  (spawn-ripples this 0.2 s3-0 1 (-> this process control transv) #t)
+                  )
+              )
+            )
+           (else
+             (logior! (-> this flags) (water-flag head-under-water))
+             )
+           )
+         (when (and (logtest? (water-flag part-splash) (-> this flags)) (logtest? (water-flag part-water) (-> this flags)))
+           (cond
+             ((logtest? (-> this flags) (water-flag lava))
+              )
+             ((logtest? (-> this flags) (water-flag dark-eco))
+              )
+             ((logtest? (focus-status mech) (-> this process focus-status))
+              )
+             (else
+               (let* ((v0-12 (rand-vu-int-range 3 (+ (-> this process node-list length) -1)))
+                      (s3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data v0-12)))
+                      )
+                 (when (< (-> s3-1 y) (-> this surface-height))
+                   (set! (-> *part-id-table* 756 init-specs 16 initial-valuef) (-> this surface-height))
+                   (let ((f0-59 (lerp-scale 5.0 0.4 (the float (- (current-time) (-> this enter-water-time))) 0.0 600.0))
+                         (f1-26 0.00012207031)
+                         (v1-158 (-> this process control transv))
+                         )
+                     (set! (-> *part-id-table* 756 init-specs 1 initial-valuef)
+                           (+ f0-59 (* f1-26 (sqrtf (+ (* (-> v1-158 x) (-> v1-158 x)) (* (-> v1-158 z) (-> v1-158 z))))))
+                           )
+                     )
+                   (launch-particles (-> *part-id-table* 756) s3-1)
+                   )
+                 )
+               )
+             )
+           )
+         (let ((f30-1 (- (+ (-> this base-height) (-> this ocean-offset) (-> this bob-offset) (-> this align-offset))
+                         (-> this swim-height)
+                         )
+                      )
+               )
+           (let* ((v1-167 (as-type (-> this process control) control-info))
+                  (v1-168 (and v1-167 (not (time-elapsed? (-> v1-167 last-time-on-surface) (seconds 0.5)))))
+                  )
+             (if (and (logtest? (-> this flags) (water-flag swim-ground))
+                      (and v1-168 (not (logtest? (-> this process control status) (collide-status on-water))))
+                      )
+                 (set! (-> this bob amp) (* 0.8 (-> this bob amp)))
+                 )
+             (cond
+               ((and (logtest? (-> this flags) (water-flag can-swim))
+                     (or (logtest? (-> this process control status) (collide-status on-water))
+                         (>= f30-1 (-> this bottom 0 y))
+                         (and (logtest? (water-flag swimming) s4-0)
+                              (logtest? (-> this process control status) (collide-status touch-surface))
+                              (not (logtest? (-> this process control status) (collide-status on-surface)))
+                              (>= (+ 204.8 f30-1) (-> this bottom 0 y))
+                              )
+                         )
+                     (or (logtest? (water-flag swimming) s4-0)
+                         (let ((f0-70 12288.0)
+                               (a0-99 (-> this process control transv))
+                               )
+                           (< f0-70 (sqrtf (+ (* (-> a0-99 x) (-> a0-99 x)) (* (-> a0-99 z) (-> a0-99 z)))))
+                           )
+                         (< (+ (current-time) (seconds -0.2)) (-> this enter-water-time))
+                         (or (>= (+ (- 204.8 (fmin 6144.0 (+ (-> this ocean-offset) (-> this bob-offset) (-> this align-offset)))) f30-1)
+                                 (-> this bottom 0 y)
+                                 )
+                             (and (-> this process next-state) (= (-> this process next-state name) 'target-hit-ground))
+                             )
+                         )
+                     )
+                (set-time! (-> this swim-time))
+                (send-event (-> this process) 'swim)
+                (logior! (-> this flags) (water-flag swimming))
+                (if (not (logtest? (water-flag swimming) s4-0))
+                    (set-time! (-> this enter-swim-time))
+                    )
+                (cond
+                  ((and (logtest? (-> this flags) (water-flag swim-ground))
+                        (logtest? (-> this process control status) (collide-status touch-surface))
+                        (not (logtest? (water-flag jump-out) (-> this flags)))
+                        )
+                   (let ((v1-191 (new 'stack-no-clear 'vector)))
+                     (vector-copy! v1-191 (-> this bottom 0))
+                     (set! (-> v1-191 y) (- (-> this height) (-> this swim-height)))
+                     (let ((s3-3 (-> this process control)))
+                       (when (and (not (logtest? (-> s3-3 status) (collide-status touch-background)))
+                                  (logtest? (water-flag swimming) (-> this flags))
+                                  (not (logtest? (focus-status board pilot) (-> this process focus-status)))
+                                  )
+                         (let ((a1-37 (vector-! (new 'stack-no-clear 'vector) v1-191 (-> s3-3 trans))))
+                           (vector-float*! a1-37 a1-37 (-> pp clock frames-per-second))
+                           (integrate-and-collide! s3-3 a1-37)
+                           )
+                         (logior! (-> s3-3 status) (collide-status on-surface on-ground touch-surface on-water))
+                         )
+                       )
+                     )
+                   )
+                  ((and (< (-> this bottom 0 y) f30-1) (not (logtest? (water-flag jump-out) (-> this flags))))
+                   (logior! (-> this flags) (water-flag under-water))
+                   )
+                  )
+                )
+               ((begin
+                  (set! v1-168 (and (logtest? (-> this flags) (water-flag can-wade))
+                                    (or (not (!= (-> this bob amp) 0.0)) (time-elapsed? (-> this swim-time) (seconds 0.05)))
+                                    (and (>= (- (-> this height) (-> this wade-height)) (-> this bottom 0 y)) v1-168)
+                                    )
+                        )
+                  v1-168
+                  )
+                (set-time! (-> this wade-time))
+                (send-event (-> this process) 'wade)
+                (logior! (-> this flags) (water-flag wading))
+                )
+               ((and (< (-> this bottom 0 y) f30-1) (not (logtest? (water-flag jump-out) (-> this flags))))
+                (logior! (-> this flags) (water-flag under-water))
+                )
+               )
+             )
+           (when (and (logtest? (-> this flags) (water-flag can-swim))
+                      (< (-> this bottom 1 y) f30-1)
+                      (and (< f30-1 (-> this bottom 0 y)) (logtest? s4-0 (water-flag under-water)))
+                      )
+             (logior! (-> this flags) (water-flag swimming))
+             (let ((a1-42 (new 'stack-no-clear 'vector)))
+               (vector-copy! a1-42 (-> this bottom 0))
+               (let ((s4-1 (-> this process control)))
+                 (set! (-> a1-42 y) f30-1)
+                 (when (not (logtest? (focus-status board pilot) (-> this process focus-status)))
+                   (let ((f30-2 (-> s4-1 ground-impact-vel)))
+                     (move-to-ground-point s4-1 a1-42 (-> s4-1 transv) *up-vector*)
+                     (logior! (-> s4-1 status) (collide-status on-water))
+                     (set! (-> s4-1 ground-impact-vel) f30-2)
+                     )
+                   )
+                 )
+               )
+             )
+           )
+         (when (= (-> this process type) target)
+           (cond
+             ((logtest? (-> this flags) (water-flag tar))
+              (when (and (logtest? (-> this process control status) (collide-status on-surface on-water))
+                         (not (logtest? (focus-status board pilot) (-> this process focus-status)))
+                         )
+                (when (< (-> this process control trans y) (+ -1228.8 (-> this base-height)))
+                  (send-event (-> this process) 'no-look-around (seconds 1.5))
+                  (if (not (logtest? (-> this process focus-status) (focus-status flut)))
+                      (send-event
+                        (-> this process)
+                        'attack
+                        #f
+                        (static-attack-info :mask (vehicle-impulse-factor) ((id (-> this attack-id))
+                                                                            (damage 2.0)
+                                                                            (vehicle-damage-factor 1.0)
+                                                                            (vehicle-impulse-factor 1.0)
+                                                                            (shove-up (meters 0.5))
+                                                                            (shove-back (meters 0))
+                                                                            (mode 'tar)
+                                                                            )
+                                            )
+                        )
+                      )
+                  (let ((v1-261 (-> this process)))
+                    (set! (-> v1-261 control surf) *tar-surface*)
+                    (set! (-> v1-261 control ground-pat material) 4)
+                    )
+                  )
+                (set! (-> this swim-height) (lerp (-> this swim-height) 7372.8 0.05))
+                )
+              )
+             ((logtest? (-> this flags) (water-flag lava))
+              (when (logtest? (-> this process control status) (collide-status on-surface on-water))
+                (when (< (-> this process control trans y) (+ -204.8 (-> this base-height)))
+                  (send-event (-> this process) 'no-look-around (seconds 1.5))
+                  (send-event
+                    (-> this process)
+                    'attack
+                    #f
+                    (static-attack-info :mask (vehicle-impulse-factor) ((id (the-as uint 2))
+                                                                        (damage 2.0)
+                                                                        (vehicle-damage-factor 1.0)
+                                                                        (vehicle-impulse-factor 1.0)
+                                                                        (shove-up (meters 0.5))
+                                                                        (shove-back (meters 0))
+                                                                        (mode 'melt)
+                                                                        (intersection (-> s5-0 trans))
+                                                                        )
+                                        )
+                    )
+                  )
+                (set! (-> this swim-height) (lerp (-> this swim-height) 7372.8 0.05))
+                )
+              )
+             )
+           )
+         )
+        (else
+          (if (logtest? (water-flag touch-water) (-> this flags))
+              (water-control-method-16 this)
+              )
+          )
+        )
+      )
+    (when (not (or (not (logtest? (water-flag part-drip) (-> this flags)))
+                   (not (logtest? (water-flag part-water) (-> this flags)))
+                   (= (-> this drip-wetness) 0.0)
+                   )
+               )
+      (cond
+        ((logtest? (water-flag spawn-drip) (-> this flags))
+         (let ((v0-28
+                 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data (-> this drip-joint-index)))
+                 )
+               )
+           (set! (-> *part-id-table* 782 init-specs 18 initial-valuef) (-> this surface-height))
+           (set! (-> *part-id-table* 782 init-specs 10 initial-valuef)
+                 (* 0.05 (- (-> v0-28 x) (-> this drip-old-pos x)))
+                 )
+           (set! (-> *part-id-table* 782 init-specs 11 initial-valuef)
+                 (* 0.05 (- (-> v0-28 y) (-> this drip-old-pos y)))
+                 )
+           (set! (-> *part-id-table* 782 init-specs 12 initial-valuef)
+                 (* 0.05 (- (-> v0-28 z) (-> this drip-old-pos z)))
+                 )
+           (launch-particles (-> *part-id-table* 782) v0-28)
+           )
+         (set-time! (-> this drip-time))
+         (logclear! (-> this flags) (water-flag spawn-drip))
+         (seek! (-> this drip-wetness) 0.0 (/ (-> this drip-speed) 1000))
+         (set! (-> this drip-speed) (* 1.05 (-> this drip-speed)))
+         (if (= (-> this drip-wetness) 0.0)
+             (set! (-> this drip-height) 0.0)
+             )
+         )
+        ((time-elapsed?
+           (the-as time-frame (the int (/ (the float (-> this drip-time)) (-> this drip-mult))))
+           (the int (-> this drip-speed))
+           )
+         (let* ((s5-1 (rand-vu-int-range 3 (+ (-> this process node-list length) -1)))
+                (v0-32 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this process node-list data s5-1)))
+                )
+           (when (and (< (- (-> v0-32 y) (-> this process control trans y)) (-> this drip-height))
+                      (< (-> this height) (-> v0-32 y))
+                      )
+             (set! (-> this drip-joint-index) s5-1)
+             (vector-copy! (-> this drip-old-pos) v0-32)
+             (logior! (-> this flags) (water-flag spawn-drip))
+             )
+           )
+         )
+        )
+      )
+    (if (and (not (logtest? (water-flag break-surface) (-> this flags))) (handle->process (-> this ripple)))
+        (send-event (handle->process (-> this ripple)) 'die)
+        )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 11 of type water-control
+;; WARN: Return type mismatch int vs none.
+(defmethod start-bobbing! ((this water-control) (arg0 float) (arg1 int) (arg2 int))
+  (with-pp
+    (activate! (-> this bob) (- arg0) arg1 arg2 0.9 1.0 (-> pp clock))
+    0
+    (none)
+    )
+  )
+
+;; definition for function part-water-splash-callback
+;; WARN: Return type mismatch int vs none.
+(defun part-water-splash-callback ((arg0 part-tracker))
+  (let ((f1-0 (-> arg0 root trans y))
+        (f0-0 (the-as float (-> arg0 userdata)))
+        )
+    (set! (-> *part-id-table* 777 init-specs 16 initial-valuef) f1-0)
+    (set! (-> *part-id-table* 777 init-specs 1 initial-valuef) (* 12.0 f0-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type water-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod enter-water ((this water-control))
+  (with-pp
+    (logior! (-> this flags) (water-flag touch-water))
+    (logclear! (-> this flags) (water-flag jump-out))
+    (set-time! (-> this enter-water-time))
+    (set-vector! (-> this enter-water-pos) (-> this bottom 0 x) (-> this surface-height) (-> this bottom 0 z) 1.0)
+    (when (and (logtest? (water-flag part-splash) (-> this flags)) (logtest? (water-flag part-water) (-> this flags)))
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) (process->ppointer pp))
+        (set! (-> a1-1 num-params) 1)
+        (set! (-> a1-1 message) 'query)
+        (set! (-> a1-1 param 0) (the-as uint 'ground-height))
+        (let* ((f0-4 (the-as float (send-event-function (-> this process) a1-1)))
+               (f30-0 (lerp-scale 0.3 1.0 f0-4 2048.0 24576.0))
+               )
+          (when (not (logtest? (-> this flags) (water-flag dark-eco lava)))
+            (if (nonzero? (-> this process skel effect))
+                (sound-play-by-name (-> this enter-water-sound) (new-sound-id) 1024 0 0 (sound-group) #t)
+                )
+            (spawn-ripples this f30-0 (-> this enter-water-pos) 1 (-> this process control transv) #t)
+            )
+          )
+        )
+      )
+    (if (logtest? (-> this flags) (water-flag tar lava))
+        (set! (-> this swim-height) 2867.2)
+        )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 16 of type water-control
+;; WARN: Return type mismatch int vs none.
+(defmethod water-control-method-16 ((this water-control))
+  (logclear! (-> this flags) (water-flag touch-water))
+  (set-zero! (-> this bob))
+  (if (logtest? (-> this flags) (water-flag tar lava))
+      (set! (-> this swim-height) 2867.2)
+      )
+  0
+  (none)
+  )
+
+;; definition for function splash-spawn
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun splash-spawn ((arg0 float) (arg1 vector) (arg2 int))
+  (cond
+    ((logtest? (-> (if (zero? arg2)
+                       (-> *part-group-id-table* 193)
+                       (-> *part-group-id-table* 192)
+                       )
+                   flags
+                   )
+               (sp-group-flag sp13)
+               )
+     (vector-copy! (-> *launch-matrix* trans) arg1)
+     (part-tracker-spawn
+       part-tracker-subsampler
+       :to *entity-pool*
+       :group (if (zero? arg2)
+           (-> *part-group-id-table* 193)
+           (-> *part-group-id-table* 192)
+           )
+       :callback (the-as (function part-tracker vector) part-water-splash-callback)
+       :userdata (the-as uint arg0)
+       )
+     )
+    (else
+      (vector-copy! (-> *launch-matrix* trans) arg1)
+      (part-tracker-spawn
+        part-tracker
+        :to *entity-pool*
+        :group (if (zero? arg2)
+            (-> *part-group-id-table* 193)
+            (-> *part-group-id-table* 192)
+            )
+        :callback (the-as (function part-tracker vector) part-water-splash-callback)
+        :userdata (the-as uint arg0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function rings-water-spawn
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun rings-water-spawn ((arg0 float) (arg1 vector) (arg2 vector) (arg3 float) (arg4 float))
+  (let* ((v1-0 arg2)
+         (f30-0 (sqrtf (+ (* (-> v1-0 x) (-> v1-0 x)) (* (-> v1-0 z) (-> v1-0 z)))))
+         )
+    (set! (-> *part-id-table* 759 init-specs 4 initial-valuef) (+ 24576.0 arg0))
+    (set! (-> *part-id-table* 759 init-specs 19 initial-valuef) (+ 49152.0 arg0))
+    (set! (-> *part-id-table* 759 init-specs 1 initial-valuef) (* 0.0000036621095 f30-0))
+    (set! (-> *part-id-table* 759 init-specs 2 initial-valuef) (/ f30-0 10))
+    (set! (-> *part-id-table* 759 init-specs 13 initial-valuef) 0.7111111)
+    (set! (-> *part-id-table* 759 init-specs 3 initial-valuef) arg3)
+    (set! (-> *part-id-table* 759 init-specs 5 initial-valuef) arg3)
+    (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 759) arg1)
+    (set! (-> *part-id-table* 762 init-specs 1 initial-valuef) (* 0.000004150391 f30-0))
+    (set! (-> *part-id-table* 762 init-specs 16 initial-valuef) arg0)
+    (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 762) arg1)
+    (when (< f30-0 4096.0)
+      (set! (-> *part-id-table* 758 init-specs 2 random-rangef) arg4)
+      (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 758) arg1)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 13 of type water-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-ripples ((this water-control) (arg0 float) (arg1 vector) (arg2 int) (arg3 vector) (arg4 symbol))
+  (local-vars (sv-112 vector))
+  (when (and (logtest? (water-flag part-splash) (-> this flags))
+             (logtest? (water-flag part-water) (-> this flags))
+             (cond
+               ((< 150 (-> *sp-particle-system-3d* num-alloc 0))
+                (= (-> this process type) target)
+                )
+               ((< 100 (-> *sp-particle-system-3d* num-alloc 0))
+                (let ((s2-0 vector-vector-distance))
+                  (set! sv-112 arg1)
+                  (let ((a1-1 (camera-pos)))
+                    (< (s2-0 sv-112 a1-1) 81920.0)
+                    )
+                  )
+                )
+               (else
+                 #t
+                 )
+               )
+             )
+    (let ((s2-2 (vector+float*! (new 'stack-no-clear 'vector) arg1 arg3 0.05)))
+      (set! (-> s2-2 y) (+ 40.96 (-> this surface-height)))
+      (if (time-elapsed? (-> this distort-time) (seconds 0.1))
+          (splash-spawn arg0 s2-2 arg2)
+          )
+      (when (and arg4 (time-elapsed? (-> this distort-time) (seconds 0.3)))
+        (set-time! (-> this distort-time))
+        (let ((s4-1 (process-spawn
+                      manipy
+                      :init manipy-init
+                      s2-2
+                      (-> this process entity)
+                      (art-group-get-by-name *level* "skel-generic-ripples" (the-as (pointer level) #f))
+                      #f
+                      0
+                      :name "manipy"
+                      :to (-> this process)
+                      :stack-size #x20000
+                      )
+                    )
+              )
+          (when s4-1
+            (send-event (ppointer->process s4-1) 'anim-mode 'play1)
+            (send-event (ppointer->process s4-1) 'anim "idle")
+            (let ((f0-5 (fmax 0.6 (fmin 1.0 (* 2.0 arg0)))))
+              (set-vector! (-> (the-as process-drawable (-> s4-1 0)) root scale) f0-5 0.5 f0-5 1.0)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function water-info<-region
+;; INFO: Used lq/sq
+(defun water-info<-region ((arg0 water-info)
+                  (arg1 drawable-region-prim)
+                  (arg2 (inline-array water-sphere))
+                  (arg3 collide-action)
+                  (arg4 process-drawable)
+                  )
+  (local-vars (sv-256 process))
+  (when (and (-> arg0 prim) (= (-> arg0 prim region) (-> arg1 region)))
+    (set! arg0 arg0)
+    (goto cfg-96)
+    )
+  (set! (-> arg0 flags) (water-flag))
+  (set! (-> arg0 handle) (the-as handle #f))
+  (set! (-> arg0 depth) 0.0)
+  (let ((s1-0 (the-as object (-> arg1 region on-inside))))
+    (set! s1-0 (cond
+                 ((= (-> (the-as pair s1-0) car) 'water)
+                  (empty)
+                  s1-0
+                  )
+                 (else
+                   (script-eval (the-as pair s1-0))
+                   )
+                 )
+          )
+    (when s1-0
+      (vector-copy! (-> arg0 trans) (-> arg2 (+ arg3 -1) sphere))
+      (set-vector! (-> arg0 normal) 0.0 1.0 0.0 1.0)
+      (case (-> (the-as pair (-> (the-as pair s1-0) cdr)) car)
+        (('height)
+         (set! (-> arg0 flags) (water-flag active))
+         (set! (-> arg0 trans y)
+               (* 4096.0 (command-get-float (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car) 0.0))
+               )
+         (set! (-> arg0 base-height) (-> arg0 trans y))
+         )
+        (('ocean)
+         (set! (-> arg0 flags) (water-flag active use-ocean))
+         (set! (-> arg0 trans y) (get-height *ocean* (-> arg0 trans) #f))
+         (set! (-> arg0 base-height) (get-base-height *ocean-map*))
+         (when (= (-> arg0 trans y) 4095996000.0)
+           (set! (-> arg0 flags) (water-flag))
+           0
+           )
+         )
+        (('water-anim)
+         (set! sv-256 (command-get-process
+                        (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car)
+                        (the-as process #f)
+                        )
+               )
+         (let ((s0-0 (if (type? sv-256 process-drawable)
+                         sv-256
+                         )
+                     )
+               )
+           (cond
+             (s0-0
+               (set! (-> arg0 flags) (water-flag active use-water-anim))
+               (set! (-> arg0 trans y) (ripple-find-height (the-as process-drawable s0-0) 0 (-> arg0 trans)))
+               (set! (-> arg0 handle) (process->handle s0-0))
+               (set! (-> arg0 base-height) (-> (the-as process-drawable s0-0) root trans y))
+               )
+             (else
+               (set! (-> arg0 flags) (water-flag))
+               0
+               )
+             )
+           )
+         )
+        (('water-flow)
+         (let ((s0-1 (command-get-process
+                       (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) car)
+                       (the-as process #f)
+                       )
+                     )
+               )
+           (cond
+             (s0-1
+               (set! (-> arg0 flags) (water-flag active use-water-anim))
+               (cond
+                 ((send-event s0-1 'water-info arg0)
+                  (set! (-> arg0 handle) (process->handle s0-1))
+                  (set! (-> arg0 base-height) (-> arg0 trans y))
+                  )
+                 (else
+                   (set! (-> arg0 flags) (water-flag))
+                   0
+                   )
+                 )
+               )
+             (else
+               (set! (-> arg0 flags) (water-flag))
+               0
+               )
+             )
+           )
+         )
+        (('gspot)
+         (set! (-> arg0 flags) (water-flag))
+         0
+         )
+        (else
+          (set! (-> arg0 flags) (water-flag))
+          0
+          )
+        )
+      (when (logtest? (-> arg0 flags) (water-flag active))
+        (let* ((s1-1 (-> (the-as pair (-> (the-as pair (-> (the-as pair (-> (the-as pair s1-0) cdr)) cdr)) cdr)) car))
+               (v1-56 (-> (the-as pair s1-1) car))
+               )
+          (while (not (null? s1-1))
+            (cond
+              ((= v1-56 'swim)
+               (logior! (-> arg0 flags) (water-flag can-swim can-ground))
+               )
+              ((= v1-56 'wade)
+               (logior! (-> arg0 flags) (water-flag can-wade can-ground))
+               )
+              ((= v1-56 'event)
+               (logior! (-> arg0 flags) (water-flag event))
+               )
+              ((= v1-56 'tar)
+               (logior! (-> arg0 flags) (water-flag tar))
+               )
+              ((= v1-56 'darkeco)
+               (logior! (-> arg0 flags) (water-flag dark-eco))
+               )
+              ((= v1-56 'lava)
+               (logior! (-> arg0 flags) (water-flag lava))
+               )
+              ((= v1-56 'mud)
+               (logior! (-> arg0 flags) (water-flag mud))
+               )
+              ((= v1-56 'mech)
+               (let ((a0-50 (as-type arg4 process-focusable)))
+                 (when (and a0-50 (not (logtest? (focus-status mech) (-> (the-as process-focusable a0-50) focus-status))))
+                   (set! (-> arg0 flags) (water-flag))
+                   0
+                   )
+                 )
+               (logior! (-> arg0 extra-flags) 1)
+               )
+              )
+            (set! s1-1 (-> (the-as pair s1-1) cdr))
+            (set! v1-56 (-> (the-as pair s1-1) car))
+            )
+          )
+        (dotimes (s1-2 (the-as int (+ arg3 -1)))
+          (vector-copy! (-> (the-as region-prim-area #x70000000) pos) (-> arg2 s1-2 sphere))
+          (when (and (within-area? arg1 (the-as region-prim-area (+ #x70000000 0)))
+                     (begin
+                       (logior! (-> arg0 flags) (water-flag over-water))
+                       (>= (-> arg0 trans y) (- (-> arg2 s1-2 sphere y) (-> arg2 s1-2 sphere r)))
+                       )
+                     )
+            (set! (-> arg0 prim) arg1)
+            (logior! (-> arg0 flags) (water-flag touch-water))
+            (logior! (-> arg2 s1-2 flags) (water-flag touch-water))
+            )
+          )
+        (if (and (logtest? (water-flag event) (-> arg0 flags)) (logtest? (water-flag touch-water) (-> arg0 flags)))
+            (send-event (handle->process (-> arg0 handle)) 'water arg0 arg4)
+            )
+        )
+      )
+    )
+  (label cfg-96)
+  arg0
+  )
+
+;; definition for function find-water-1
+;; INFO: Used lq/sq
+(defun find-water-1 ((arg0 water-sphere) (arg1 water-info) (arg2 water-info))
+  (local-vars (v0-1 symbol))
+  (set! (-> arg2 flags) (water-flag))
+  (set! (-> arg2 handle) (the-as handle #f))
+  (set! (-> arg1 flags) (water-flag))
+  (set! (-> arg1 handle) (the-as handle #f))
+  (set! (-> arg2 extra-flags) (the-as uint 0))
+  (set! (-> (the-as region-prim-area #x70000000) region-prim-list num-items) 0)
+  (set! (-> (the-as region-prim-area #x70000000) region-inside-count) 0)
+  (vector-copy! (-> (the-as region-prim-area #x70000000) pos) (-> arg0 sphere))
+  (dotimes (gp-0 (-> *level* length))
+    (let ((v1-7 (-> *level* level gp-0)))
+      (when (= (-> v1-7 status) 'active)
+        (let ((s5-0 (-> v1-7 bsp region-trees)))
+          (when (nonzero? s5-0)
+            (let* ((s4-0 (-> s5-0 length))
+                   (s3-0 0)
+                   (a0-6 (-> s5-0 s3-0))
+                   )
+              (while (< s3-0 s4-0)
+                (if (= (-> a0-6 name) 'water)
+                    (collect-regions
+                      a0-6
+                      (the-as sphere (-> (the-as region-prim-area #x70000000) pos))
+                      0
+                      (the-as region-prim-list (+ #x70000000 0))
+                      )
+                    )
+                (+! s3-0 1)
+                (set! a0-6 (-> s5-0 s3-0))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (return (nonzero? (-> (the-as region-prim-area #x70000000) region-prim-list num-items)))
+  v0-1
+  )
+
+;; definition for function find-water-2
+(defun find-water-2 ((arg0 (inline-array water-sphere)) (arg1 int) (arg2 water-info) (arg3 water-info) (arg4 process-drawable))
+  (set! (-> arg2 prim) #f)
+  (set! (-> arg3 prim) #f)
+  (countdown (s1-0 (-> (the-as region-prim-area #x70000000) region-prim-list num-items))
+    (water-info<-region
+      arg3
+      (-> (the-as region-prim-area #x70000000) region-prim-list items s1-0)
+      arg0
+      (the-as collide-action arg1)
+      arg4
+      )
+    (when (and (logtest? (-> arg3 flags) (water-flag active))
+               (logtest? (water-flag touch-water) (-> arg3 flags))
+               (not (logtest? (-> arg3 extra-flags) 1))
+               )
+      (mem-copy! (the-as pointer arg2) (the-as pointer arg3) 60)
+      (send-event (handle->process (-> arg2 handle)) 'touch-water)
+      (return arg2)
+      )
+    (when (and (logtest? (-> arg3 flags) (water-flag active))
+               (logtest? (water-flag touch-water over-water) (-> arg3 flags))
+               )
+      (mem-copy! (the-as pointer arg2) (the-as pointer arg3) 60)
+      (if (logtest? (water-flag touch-water) (-> arg2 flags))
+          (send-event (handle->process (-> arg2 handle)) 'touch-water)
+          )
+      )
+    )
+  (the-as water-info #f)
+  )
+
+;; definition for method 52 of type collide-shape
+;; INFO: Used lq/sq
+;; ERROR: Unsupported inline assembly instruction kind - [movz v1, v1, a0]
+(defmethod water-info-init! ((this collide-shape) (arg0 water-info) (arg1 collide-action))
+  (local-vars (v1-4 int) (a0-3 int) (sv-80 int))
+  (let ((s4-0 (new 'stack-no-clear 'water-info)))
+    (when (find-water-1 (the-as water-sphere (-> this root-prim prim-core)) arg0 s4-0)
+      (let ((s3-0 (new 'static 'inline-array water-sphere 30
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    (new 'static 'water-sphere)
+                    )
+                  )
+            (s2-0 0)
+            )
+        (let ((s0-0 (-> this root-prim)))
+          (set! sv-80 30)
+          (let ((a0-2 sv-80)
+                (v1-3 (-> this total-prims))
+                )
+            (set-on-less-than a0-3 a0-2 v1-3)
+            (.movz v1-4 v1-3 a0-3 v1-3)
+            )
+          (set! sv-80 v1-4)
+          (if (and *debug-segment* (< (the-as uint 30) (-> this total-prims)))
+              (format *stdcon* "find-water exceeded FIND_WATER_MAX_PRIMS ~D/~D~%" (-> this total-prims) 30)
+              )
+          (while (nonzero? sv-80)
+            (set! sv-80 (+ sv-80 -1))
+            (when (and (nonzero? (-> s0-0 prim-core prim-type))
+                       (logtest? (-> s0-0 prim-core action) arg1)
+                       (nonzero? (-> s0-0 prim-core collide-with))
+                       )
+              (set! (-> s3-0 s2-0 sphere quad) (-> s0-0 prim-core world-sphere quad))
+              (set! (-> s3-0 s2-0 flags) (water-flag))
+              (+! s2-0 1)
+              )
+            (&+! s0-0 80)
+            )
+          )
+        (let ((v1-26 (-> this root-prim)))
+          (when (zero? (-> v1-26 prim-core prim-type))
+            (set! (-> s3-0 s2-0 sphere quad) (-> v1-26 prim-core world-sphere quad))
+            (set! (-> s3-0 s2-0 flags) (water-flag))
+            (+! s2-0 1)
+            )
+          )
+        (find-water-2 s3-0 s2-0 arg0 s4-0 (-> this process))
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for function find-water-with-spheres
+;; WARN: Return type mismatch int vs object.
+(defun find-water-with-spheres ((arg0 (inline-array water-sphere)) (arg1 int) (arg2 water-info))
+  (let ((s3-0 (new 'stack-no-clear 'water-info)))
+    (if (not arg2)
+        (set! arg2 (new 'static 'water-info))
+        )
+    (if (find-water-1 (-> arg0 (+ arg1 -1)) arg2 s3-0)
+        (find-water-2 arg0 arg1 arg2 s3-0 (the-as process-drawable #f))
+        )
+    )
+  0
+  )

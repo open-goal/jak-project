@@ -102,6 +102,22 @@ std::vector<std::string> split(const ::std::string& str, char delimiter) {
   return google_diff::split_string(str, delimiter);
 }
 
+std::vector<std::string> split_string(const std::string& str, const std::string& delimiter) {
+  std::vector<std::string> parsed;
+  std::string::size_type pos = 0;
+  while (true) {
+    const std::string::size_type found = str.find(delimiter, pos);
+    if (found == std::string::npos) {
+      parsed.push_back(str.substr(pos));
+      break;
+    } else {
+      parsed.push_back(str.substr(pos, found - pos));
+      pos = found + delimiter.length();
+    }
+  }
+  return parsed;
+}
+
 std::vector<std::string> regex_get_capture_groups(const std::string& str,
                                                   const std::string& regex) {
   std::vector<std::string> groups;
@@ -228,5 +244,57 @@ std::string titlize(const std::string& str) {
     }
   }
   return new_str;
+}
+
+std::string pad_right(const std::string& input, const int width, const char padding_char) {
+  if ((int)input.length() >= width) {
+    return input;  // No need to pad if input length is already greater or equal to width
+  } else {
+    int padding_width = width - input.length();
+    return input + std::string(padding_width, padding_char);
+  }
+}
+
+char32_t next_utf8_char(const std::string& s, size_t& i) {
+  char32_t cp = 0;
+  unsigned char c = s[i];
+  if (c < 0x80) {  // 1-byte ASCII
+    cp = c;
+    ++i;
+  } else if ((c >> 5) == 0x6) {  // 2-byte
+    cp = ((c & 0x1F) << 6) | (s[i + 1] & 0x3F);
+    i += 2;
+  } else if ((c >> 4) == 0xE) {  // 3-byte
+    cp = ((c & 0x0F) << 12) | ((s[i + 1] & 0x3F) << 6) | (s[i + 2] & 0x3F);
+    i += 3;
+  } else if ((c >> 3) == 0x1E) {  // 4-byte
+    cp = ((c & 0x07) << 18) | ((s[i + 1] & 0x3F) << 12) | ((s[i + 2] & 0x3F) << 6) |
+         (s[i + 3] & 0x3F);
+    i += 4;
+  } else {
+    // invalid
+    ++i;
+  }
+  return cp;
+}
+
+std::string utf8_encode(char32_t cp) {
+  std::string out;
+  if (cp <= 0x7F) {
+    out += static_cast<char>(cp);
+  } else if (cp <= 0x7FF) {
+    out += static_cast<char>(0xC0 | ((cp >> 6) & 0x1F));
+    out += static_cast<char>(0x80 | (cp & 0x3F));
+  } else if (cp <= 0xFFFF) {
+    out += static_cast<char>(0xE0 | ((cp >> 12) & 0x0F));
+    out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+    out += static_cast<char>(0x80 | (cp & 0x3F));
+  } else if (cp <= 0x10FFFF) {
+    out += static_cast<char>(0xF0 | ((cp >> 18) & 0x07));
+    out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+    out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+    out += static_cast<char>(0x80 | (cp & 0x3F));
+  }
+  return out;
 }
 }  // namespace str_util

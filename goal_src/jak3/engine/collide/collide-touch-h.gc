@@ -7,3 +7,148 @@
 
 ;; DECOMP BEGINS
 
+(deftype touching-prim (structure)
+  "A collide primitive that's touching another.
+Potentially also stores the triangle that is involved."
+  ((cprim     collide-shape-prim)
+   (has-tri?  symbol)
+   (tri       collide-tri-result  :inline)
+   )
+  )
+
+
+(deftype touching-prims-entry (structure)
+  "A record of two primitives touching."
+  ((next        touching-prims-entry)
+   (prev        touching-prims-entry)
+   (allocated?  symbol)
+   (u           float)
+   (prim1       touching-prim  :inline)
+   (prim2       touching-prim  :inline)
+   )
+  (:methods
+    (touching-prims-entry-method-9 (_type_ vector) vector)
+    (get-middle-of-bsphere-overlap (_type_ vector) vector)
+    (get-touched-prim (_type_ collide-shape touching-shapes-entry) collide-shape-prim)
+    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result)
+    )
+  )
+
+
+(deftype touching-prims-entry-pool (structure)
+  "A pool of up to 64 touching prim records."
+  ((head   touching-prims-entry)
+   (nodes  touching-prims-entry  64 :inline)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (alloc-node (_type_) touching-prims-entry)
+    (get-free-node-count (_type_) int)
+    (init-list! (_type_) none)
+    (free-node (_type_ touching-prims-entry) touching-prims-entry)
+    )
+  )
+
+
+(defmethod init-list! ((this touching-prims-entry-pool))
+  (let ((prev (the-as touching-prims-entry #f)))
+    (let ((current (the-as touching-prims-entry (-> this nodes))))
+      (set! (-> this head) current)
+      (countdown (a0-1 64)
+        (set! (-> current prev) prev)
+        (let ((next (&+ current 240)))
+          (set! (-> current next) (the-as touching-prims-entry next))
+          (set! (-> current allocated?) #f)
+          (set! prev current)
+          (set! current (the-as touching-prims-entry next))
+          )
+        )
+      )
+    (set! (-> prev next) #f)
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch structure vs touching-prims-entry-pool.
+(defmethod new touching-prims-entry-pool ((allocation symbol) (type-to-make type))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    (let ((gp-0 (t9-0 allocation v1-1)))
+      ((method-of-type touching-prims-entry-pool init-list!) (the-as touching-prims-entry-pool gp-0))
+      (the-as touching-prims-entry-pool gp-0)
+      )
+    )
+  )
+
+(deftype touching-shapes-entry (structure)
+  "A record of two collide shapes touching,
+storing a record of the primitives involved."
+  ((cshape1    collide-shape)
+   (cshape2    collide-shape)
+   (resolve-u  int8)
+   (head       touching-prims-entry)
+   (handle1    handle)
+   (handle2    handle)
+   )
+  :pack-me
+  (:methods
+    (get-head (_type_) touching-prims-entry)
+    (get-next (_type_ touching-shapes-entry) touching-prims-entry)
+    (get-touched-shape (_type_ collide-shape) collide-shape)
+    (prims-touching? (_type_ collide-shape uint) touching-prims-entry)
+    (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic)
+    (free-touching-prims-list (_type_) none)
+    )
+  )
+
+
+(deftype touching-list (structure)
+  "Contains a record of touching collide shape pairs."
+  ((num-touching-shapes  int32)
+   (resolve-u            int8)
+   (touching-shapes      touching-shapes-entry  32 :inline)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none)
+    (free-nodes (_type_) none)
+    (update-from-step-size (_type_ float) none)
+    (send-events-for-touching-shapes (_type_) none)
+    (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
+    )
+  )
+
+
+;; WARN: Return type mismatch structure vs touching-list.
+(defmethod new touching-list ((allocation symbol) (type-to-make type))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    (let ((v0-0 (t9-0 allocation v1-1)))
+      (set! (-> (the-as touching-list v0-0) num-touching-shapes) 0)
+      (set! (-> (the-as touching-list v0-0) resolve-u) 0)
+      (the-as touching-list v0-0)
+      )
+    )
+  )
+
+(defmethod get-head ((this touching-shapes-entry))
+  (-> this head)
+  )
+
+;; WARN: Return type mismatch collide-shape vs touching-prims-entry.
+(defmethod get-next ((this touching-shapes-entry) (arg0 touching-shapes-entry))
+  (the-as touching-prims-entry (-> arg0 cshape1))
+  )
+
+(kmemopen global "collide-touching-lists")
+
+(define-perm *touching-prims-entry-pool* touching-prims-entry-pool (new 'global 'touching-prims-entry-pool))
+
+(define-perm *touching-list* touching-list (new 'global 'touching-list))
+
+(kmemclose)

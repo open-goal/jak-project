@@ -12,11 +12,25 @@
 // global and debug kernel heaps
 Ptr<kheapinfo> kglobalheap;
 Ptr<kheapinfo> kdebugheap;
+// if we should count the number of strings and types allocated on the global heap.
+bool kheaplogging = false;
+enum MemItemsCategory {
+  STRING = 0,
+  TYPE = 1,
+  NUM_CATEGORIES = 2,
+};
+int MemItemsCount[NUM_CATEGORIES] = {0, 0};
+int MemItemsSize[NUM_CATEGORIES] = {0, 0};
 
 void kmalloc_init_globals_common() {
   // _globalheap and _debugheap
   kglobalheap.offset = GLOBAL_HEAP_INFO_ADDR;
   kdebugheap.offset = DEBUG_HEAP_INFO_ADDR;
+  kheaplogging = false;
+  for (auto& x : MemItemsCount)
+    x = 0;
+  for (auto& x : MemItemsSize)
+    x = 0;
 }
 
 /*!
@@ -73,6 +87,10 @@ Ptr<kheapinfo> kheapstatus(Ptr<kheapinfo> heap) {
 
   if (heap == kglobalheap) {
     Msg(6, "\t %d bytes before stack\n", GLOBAL_HEAP_END - heap->current.offset);
+  }
+
+  for (int i = 0; i < NUM_CATEGORIES; i++) {
+    printf("  %d: %d %d\n", i, MemItemsCount[i], MemItemsSize[i]);
   }
 
   // might not have returned heap in jak 1
@@ -171,6 +189,17 @@ Ptr<u8> kmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
 
     if (flags & KMALLOC_MEMSET)
       std::memset(Ptr<u8>(memstart).c(), 0, (size_t)size);
+
+    // this logging was added in Jak 3, but we port it back to all games:
+    if ((heap == kglobalheap) && (kheaplogging != 0)) {
+      if (strcmp(name, "string") == 0) {
+        MemItemsCount[STRING]++;
+        MemItemsSize[STRING] += size;
+      } else if (strcmp(name, "type") == 0) {
+        MemItemsCount[TYPE]++;
+        MemItemsSize[TYPE] += size;
+      }
+    }
     return Ptr<u8>(memstart);
   }
 }

@@ -1,0 +1,130 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  Code for the statistics tracker.
+
+ |#
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;  debug functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun-debug pu->string (out (pu penetrate))
+  (bit-enum->string penetrate pu out)
+  )
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;  functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmacro pu? (pu &rest flags)
+  `(logtest? ,pu (penetrate ,@flags))
+  )
+
+(defmacro pu-all? (pu &rest flags)
+  `(logtesta? ,pu (penetrate ,@flags))
+  )
+
+(define-extern bot type)
+(define-extern crimson-guard type)
+(define-extern turret type)
+(defun pu&attacker->kill-source ((pu penetrate) (attacker process))
+  "returns the appropriate kill source based on penetrate-using and attacker"
+
+  (cond
+    ((not attacker)
+      (format #t "got null attacker~%")
+      (kill-stats-source unknown))
+
+    ((type? attacker turret)
+      (kill-stats-source turret))
+
+    ((type? attacker target)
+      (case pu
+        (((penetrate spin touch)) (if (focus-test? (the target attacker) indax) (kill-stats-source indax-spin) (kill-stats-source spin)))
+        (((penetrate flop touch)) (kill-stats-source flop))
+        (((penetrate uppercut touch)) (kill-stats-source uppercut))
+        (((penetrate punch touch)) (if (focus-test? (the target attacker) indax) (kill-stats-source indax-punch) (kill-stats-source punch)))
+
+        (((penetrate mech-punch mech punch touch)) (kill-stats-source mech))
+        (((penetrate mech-bonk bonk touch)) (kill-stats-source mech-bonk))
+
+        (((penetrate board spin touch)) (kill-stats-source board-trick))
+        (((penetrate board touch)) (kill-stats-source board))
+
+        (((penetrate dark-skin spin touch) (penetrate dark-giant dark-skin spin touch)) (kill-stats-source darkjak-spin))
+        (((penetrate dark-skin flop touch) (penetrate dark-giant dark-skin flop touch)) (kill-stats-source darkjak-flop))
+        (((penetrate dark-skin uppercut touch) (penetrate dark-giant dark-skin uppercut touch)) (kill-stats-source darkjak-uppercut))
+        (((penetrate dark-punch dark-skin punch touch) (penetrate dark-giant dark-punch dark-skin punch touch)) (kill-stats-source darkjak-punch))
+        (((penetrate dark-bomb dark-skin touch) (penetrate dark-giant dark-bomb dark-skin touch))
+          (case (-> attacker state)
+              ((target-darkjak-bomb0) (kill-stats-source darkjak-bomb0))
+              ((target-darkjak-bomb1) (kill-stats-source darkjak-bomb1))
+              (else (kill-stats-source unknown))))
+        (((penetrate dark-skin touch) (penetrate dark-giant dark-skin touch)) (kill-stats-source unknown))
+
+        (((penetrate jak-yellow-shot generic-attack)) (kill-stats-source gun-yellow))
+        (((penetrate jak-red-shot generic-attack)) (kill-stats-source gun-red))
+        (((penetrate jak-blue-shot generic-attack)) (kill-stats-source gun-blue))
+        (((penetrate generic-attack)) (kill-stats-source gun-dark))
+
+        (else
+          (format #t "unhandled target penetrate-using #x~x for kill-source~%" pu)
+          (kill-stats-source unknown)))
+      )
+
+    ((is-metalhead? attacker) (kill-stats-source metalhead))
+
+    ((type? attacker sig) (kill-stats-source sig))
+    ((type? attacker ashelin) (kill-stats-source ashelin))
+    ((type? attacker mog) (kill-stats-source mog)) ;; note that mog and grim are subtypes of jinx
+    ((type? attacker grim) (kill-stats-source grim))
+    ((type? attacker jinx) (kill-stats-source jinx))
+    ((type? attacker bot) (kill-stats-source bot))
+    ((type? attacker crimson-guard) (kill-stats-source guard))
+    ((type? attacker enemy) (kill-stats-source enemy))
+
+    (else
+      (format #t "unknown attacker ~A~%" attacker)
+      (kill-stats-source unknown))
+    )
+  )
+
+
+
+(defun add-to-kill-stats ((enemy enemy) (attack enemy-attack-info))
+  "adds a kill to the statistics tracker"
+
+  ;; (format #t "enemy ~A killed (incoming ~e sec ago)~%" (-> enemy name) (- (-> PP clock old-frame-counter) (-> attack attack-time)))
+  ;; (format #t "~Tattacker: ~A~%" (handle->process (-> attack attacker-handle)))
+  ;; (format #t "~Tpu: ")
+  ;; (pu->string #t (-> attack penetrate-using))
+  ;; (format #t "~%")
+
+  (let ((enemy-name (remap-enemy-type-name (-> enemy type)))
+        (source (pu&attacker->kill-source (-> attack penetrate-using) (handle->process (-> attack attacker-handle)))))
+
+    (when *debug-segment*
+        (format #t "STATS : enemy ~S(~S) killed by ~S~%" enemy-name (-> enemy type symbol) (kill-source->string source)))
+
+    (if (or (!= source (kill-stats-source unknown)) (-> *statistics* kill-stats allow-unknown?))
+        (increment (-> *statistics* kill-stats) enemy-name source))
+    )
+  )
+
+
+
+(defun reset-kill-stats ()
+  (initialize (-> *statistics* kill-stats)))
+
+
+

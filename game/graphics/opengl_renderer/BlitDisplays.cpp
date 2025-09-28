@@ -13,6 +13,9 @@ void BlitDisplays::init_textures(TexturePool& texture_pool, GameVersion version)
     case GameVersion::Jak2:
       tbp = 0x3300;
       break;
+    case GameVersion::Jak3:
+      tbp = 0x3300;  // assuming this for now...
+      break;
     default:
       ASSERT_NOT_REACHED();
   }
@@ -101,5 +104,5 @@ void BlitDisplays::draw_debug_window() {
   int w, h;
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
-  ImGui::Image((void*)(u64)m_copier->texture(), ImVec2(w, h));
+  ImGui::Image((ImTextureID)(intptr_t)m_copier->texture(), ImVec2(w, h));
 }

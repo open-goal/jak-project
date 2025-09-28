@@ -1,0 +1,380 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  Header file for the statistics code.
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defconstant KILL_STATS_MAX_ENEMY_TYPES 127)
+(defconstant KILL_STATS_MAX_SOURCE 35)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defenum kill-stats-source
+  :type uint8
+  (unknown)
+
+  (gun-yellow)
+  (gun-red)
+  (gun-blue)
+  (gun-dark)
+  (board)
+  (board-trick)
+  (mech)
+  (mech-bonk)
+  (turret)
+  (punch)
+  (flop)
+  (uppercut)
+  (spin)
+  (roll)
+
+  (darkjak-punch)
+  (darkjak-flop)
+  (darkjak-uppercut)
+  (darkjak-spin)
+  (darkjak-roll)
+  (darkjak-bomb0)
+  (darkjak-bomb1)
+
+  (indax-punch)
+  (indax-spin)
+
+  (guard)
+  (sig)
+  (ashelin)
+  (jinx)
+  (grim)
+  (mog)
+  (metalhead)
+
+  (bot)
+  (enemy)
+
+  (max)
+  )
+
+
+(deftype kill-statistics-source-entry (structure)
+  ((name    symbol)
+   (amount  int32)
+   )
+  )
+
+(deftype kill-statistics-enemy-entry (structure)
+  ((name      symbol)
+   (sources   int16 KILL_STATS_MAX_SOURCE)
+   )
+  )
+
+
+(deftype kill-statistics (structure)
+  ((enemies    kill-statistics-enemy-entry KILL_STATS_MAX_ENEMY_TYPES   :inline)
+   (allow-unknown?  symbol)
+   )
+
+  (:methods
+    (initialize (_type_) int)
+    (alloc-slot (_type_ symbol) kill-statistics-enemy-entry)
+
+    (get-total-count (_type_) int)
+    (get-enemy-stats (_type_ symbol) kill-statistics-enemy-entry)
+    (get-count-for-enemy (_type_ symbol) int)
+    (get-count-for-source (_type_ kill-stats-source) int)
+    (get-count (_type_ symbol kill-stats-source) int)
+
+    (increment (_type_ symbol kill-stats-source) int)
+
+    (print-stats (_type_ object) object)
+    )
+  )
+
+
+(deftype statistics (basic)
+  ((kill-stats  kill-statistics :inline)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (print-stats (_type_ object) object))
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  serializing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defun kill-source->string ((ks kill-stats-source))
+  (enum->string kill-stats-source ks))
+
+
+(defun string->kill-source ((ks string))
+  "return kill-source based on name"
+  (string->enum kill-stats-source ks (kill-stats-source unknown)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmethod new statistics ((allocation symbol) (type-to-make type))
+  "make a new statistics"
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (initialize (-> obj kill-stats))
+    (false! (-> obj kill-stats allow-unknown?))
+    obj))
+
+
+(defmethod print-stats ((this statistics) out)
+  "print the stats as a table to out"
+
+  (print-stats (-> this kill-stats) out)
+  out)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;  kill stats methods
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defmethod initialize ((this kill-statistics))
+  "initialize a kill-statistics to the default values"
+
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (set! (-> this enemies i name) #f)
+    (dotimes (ii KILL_STATS_MAX_SOURCE)
+      (set! (-> this enemies i sources ii) 0)
+      )
+    )
+
+  0)
+
+
+(defmethod get-total-count ((this kill-statistics))
+  "return the total kill count for every thing tracked in the stats"
+
+  (let ((amount 0))
+    (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+      (when (-> this enemies i name)
+        (dotimes (ii KILL_STATS_MAX_SOURCE)
+          (+! amount (-> this enemies i sources ii))
+          )))
+    amount)
+  )
+
+
+(defmethod get-enemy-stats ((this kill-statistics) (name symbol))
+  "return the enemy entry with that name. #f = not found"
+
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (when (= (-> this enemies i name) name)
+        (return (-> this enemies i))))
+  (the kill-statistics-enemy-entry #f))
+
+(defmethod alloc-slot ((this kill-statistics) (name symbol))
+  "allocates an enemy stats entry for that name and returns it. #f = out of memory"
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (when (not (-> this enemies i name))
+        (set! (-> this enemies i name) name)
+        (dotimes (ii KILL_STATS_MAX_SOURCE)
+          (set! (-> this enemies i sources ii) 0))
+        (return (-> this enemies i)))
+    )
+  (the kill-statistics-enemy-entry #f))
+
+(defmethod increment ((this kill-statistics) (name symbol) (source kill-stats-source))
+  "adds one kill to the kill statistics"
+
+  (let ((kill-stats (get-enemy-stats this name)))
+    (if (not kill-stats)
+        (set! kill-stats (alloc-slot this name)))
+    (when (not kill-stats)
+        (format 0 "out of stats memory!~%")
+        (return 0))
+
+    (+! (-> kill-stats sources source) 1))
+  )
+
+
+
+(defmethod get-count ((this kill-statistics) (name symbol) (source kill-stats-source))
+  "return number of kills for that enemy with that cause of death"
+
+  (let ((kill-stats (get-enemy-stats this name)))
+    (if (not kill-stats)
+        (return 0))
+
+    (-> kill-stats sources source))
+  )
+
+(defmethod get-count-for-enemy ((this kill-statistics) (name symbol))
+  "return number of kills for that enemy"
+
+  (let ((kill-stats (get-enemy-stats this name))
+        (kills 0))
+    (if (not kill-stats)
+        (return 0))
+
+    (dotimes (i KILL_STATS_MAX_SOURCE)
+      (+! kills (-> kill-stats sources i)))
+    kills)
+  )
+
+(defmethod get-count-for-source ((this kill-statistics) (source kill-stats-source))
+  "return number of kills for that source"
+
+  (let ((kills 0))
+    (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+      (when (-> this enemies i name)
+        (+! kills (-> this enemies i sources source))
+        )
+      )
+    kills)
+  )
+
+
+(defmethod print-stats ((this kill-statistics) out)
+  "print the stats as a table to out"
+
+  (format out "----! kill stats (total: ~D) !----~%" (get-total-count this))
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+    (when (-> this enemies i name)
+      (format out "~S: ~D total~%" (-> this enemies i name) (get-count-for-enemy this (-> this enemies i name)))
+      (dotimes (ii KILL_STATS_MAX_SOURCE)
+        (if (nonzero? (-> this enemies i sources ii))
+            (format out "  ~3D ~S~%" (-> this enemies i sources ii) (kill-source->string (the kill-stats-source ii))))
+        )
+      )
+    )
+  out)
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; global variables
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(define *statistics* (new 'global 'statistics))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; helper functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defun get-kill-stats ()
+  (-> *statistics* kill-stats))
+
+
+
+(define-extern civilian type)
+(define-extern sig type)
+(define-extern ashelin type)
+(define-extern jinx type)
+(define-extern mog type)
+(define-extern grim type)
+(define-extern juicer type)
+(define-extern grunt type)
+(define-extern flitter type)
+(define-extern wasp type)
+(define-extern spyder type)
+(define-extern metalhead-predator type)
+(define-extern metalhead-grunt type)
+(define-extern metalhead-flitter type)
+(define-extern crimson-guard-hover type)
+(define-extern crimson-guard-level type)
+(define-extern roboguard-level type)
+(defun remap-enemy-type-name ((en-type type))
+  "returns the appropriate type name (symbol) for the stats tracker"
+
+  (cond
+    ((symbol-member? (-> en-type symbol) '(kid kid-escort)) 'kid)
+
+    ((= en-type metalhead-predator) 'predator)
+    ((= en-type metalhead-grunt) 'grunt)
+    ((= en-type metalhead-flitter) 'flitter)
+    ((= en-type crimson-guard-level) 'crimson-guard)
+    ((= en-type crimson-guard-hover) 'crimson-guard)
+    ((= en-type roboguard-level) 'roboguard)
+
+    ((type-type? en-type civilian) 'civilian)
+    ((type-type? en-type sig) 'sig)
+    ((type-type? en-type ashelin) 'ashelin)
+    ((type-type? en-type juicer) 'juicer)
+    ((type-type? en-type grunt) 'grunt)
+    ((type-type? en-type flitter) 'flitter)
+    ((type-type? en-type wasp) 'wasp)
+    ((type-type? en-type spyder) 'spyder)
+    (else (-> en-type symbol)))
+  )
+
+;; all types of metal head
+(define *metalhead-types*
+    '(flitter
+      grunt
+      metalmonk
+      juicer
+      centurion
+      hopper
+      hosehead
+      rhino
+      spyder
+      grenadier
+      rapid-gunner
+      predator
+      flamer
+      wasp
+      ginsu
+      pegasus
+      mantis
+      jellyfish
+      flying-spider
+      ))
+
+(defun is-metalhead? ((p process))
+  "is p a metal head enemy?"
+
+  (let ((p-type (remap-enemy-type-name (-> p type)))
+        (iter *metalhead-types*))
+    (while (not (null? iter))
+      (let ((cur (the symbol (car iter))))
+        (if (= p-type cur)
+            (return #t))
+        )
+      (set! iter (cdr iter))
+      )
+    )
+  #f)
+
+(defun killed-each-metalhead? ()
+  "#t = every metal head type has been killed once."
+
+  (let ((iter *metalhead-types*))
+    (while (not (null? iter))
+      (let ((cur (the symbol (car iter))))
+        (if (= (get-count-for-enemy (get-kill-stats) cur) 0)
+            (return #f))
+        )
+      (set! iter (cdr iter))
+      )
+    )
+  #t)
+

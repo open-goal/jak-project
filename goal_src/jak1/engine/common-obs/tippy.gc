@@ -1,26 +1,21 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: tippy.gc
-;; name in dgo: tippy
-;; dgos: GAME, COMMON, L1
+(bundles "GAME.CGO")
+(require "engine/math/quaternion.gc")
+(require "engine/game/game-h.gc")
 
 ;; DECOMP BEGINS
 
 (deftype tippy (structure)
-  ((axis        vector      :inline)
-   (angle       float)
-   (orig        quaternion  :inline)
-   (dist-ratio  float)
-   (damping     float)
-   (1-damping   float)
-   )
+  ((axis       vector :inline)
+   (angle      float)
+   (orig       quaternion :inline)
+   (dist-ratio float)
+   (damping    float)
+   (1-damping  float))
   (:methods
-    (reset! (_type_ process-drawable float float) none)
-    (tippy-method-10 (_type_ process-drawable vector) symbol)
-    )
-  )
-
+   (reset! (_type_ process-drawable float float) none)
+   (tippy-method-10 (_type_ process-drawable vector) symbol)))
 
 (defmethod reset! ((this tippy) (arg0 process-drawable) (arg1 float) (arg2 float))
   (set-vector! (-> this axis) 0.0 0.0 0.0 1.0)
@@ -30,40 +25,30 @@
   (set! (-> this damping) arg2)
   (set! (-> this 1-damping) (- 1.0 arg2))
   0
-  (none)
-  )
+  (none))
 
 (defmethod tippy-method-10 ((this tippy) (arg0 process-drawable) (arg1 vector))
   (let ((s4-0 #t))
     (cond
       (arg1
-        (let ((s3-0 (new 'stack-no-clear 'vector)))
-          0.0
-          (set! (-> s3-0 x) (- (-> arg1 z) (-> arg0 root trans z)))
-          (set! (-> s3-0 y) 0.0)
-          (set! (-> s3-0 z) (- (-> arg0 root trans x) (-> arg1 x)))
-          (let ((f0-6 (vector-length s3-0)))
-            (vector-float*! s3-0 s3-0 (/ 1.0 f0-6))
-            (let ((f30-0 (* f0-6 (-> this dist-ratio))))
-              (set! (-> this axis x) (+ (* (-> this 1-damping) (-> this axis x)) (* (-> this damping) (-> s3-0 x))))
-              (set! (-> this axis y) 0.0)
-              (set! (-> this axis z) (+ (* (-> this 1-damping) (-> this axis z)) (* (-> this damping) (-> s3-0 z))))
-              (vector-normalize! (-> this axis) 1.0)
-              (set! (-> this angle) (+ (* (-> this 1-damping) (-> this angle)) (* (-> this damping) f30-0)))
-              )
-            )
-          )
-        )
+       (let ((s3-0 (new 'stack-no-clear 'vector)))
+         0.0
+         (set! (-> s3-0 x) (- (-> arg1 z) (-> arg0 root trans z)))
+         (set! (-> s3-0 y) 0.0)
+         (set! (-> s3-0 z) (- (-> arg0 root trans x) (-> arg1 x)))
+         (let ((f0-6 (vector-length s3-0)))
+           (vector-float*! s3-0 s3-0 (/ 1.0 f0-6))
+           (let ((f30-0 (* f0-6 (-> this dist-ratio))))
+             (set! (-> this axis x) (+ (* (-> this 1-damping) (-> this axis x)) (* (-> this damping) (-> s3-0 x))))
+             (set! (-> this axis y) 0.0)
+             (set! (-> this axis z) (+ (* (-> this 1-damping) (-> this axis z)) (* (-> this damping) (-> s3-0 z))))
+             (vector-normalize! (-> this axis) 1.0)
+             (set! (-> this angle) (+ (* (-> this 1-damping) (-> this angle)) (* (-> this damping) f30-0)))))))
       (else
-        (set! (-> this angle) (* (-> this 1-damping) (-> this angle)))
-        (when (< (-> this angle) 182.04445)
-          (set! (-> this angle) 0.0)
-          (set! s4-0 #f)
-          )
-        )
-      )
+       (set! (-> this angle) (* (-> this 1-damping) (-> this angle)))
+       (when (< (-> this angle) 182.04445)
+         (set! (-> this angle) 0.0)
+         (set! s4-0 #f))))
     (quaternion-vector-angle! (-> arg0 root quat) (-> this axis) (-> this angle))
     (quaternion*! (-> arg0 root quat) (-> arg0 root quat) (-> this orig))
-    s4-0
-    )
-  )
+    s4-0))

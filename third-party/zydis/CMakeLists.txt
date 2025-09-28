@@ -1,9 +1,20 @@
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
-project(Zydis VERSION 4.0.0.0 LANGUAGES C CXX)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
+    # Enable runtime library selection via CMAKE_MSVC_RUNTIME_LIBRARY
+    cmake_policy(SET CMP0091 NEW)
+endif ()
+
+project(Zydis VERSION 4.0.0.0 LANGUAGES C)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+
+# Set ZYDIS_ROOT_PROJECT to ON if this is the top-level project otherwise OFF by default.
+set(ZYDIS_ROOT_PROJECT OFF)
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    set(ZYDIS_ROOT_PROJECT ON)
+endif()
 
 # =============================================================================================== #
 # Overridable options                                                                             #
@@ -28,6 +39,9 @@ option(ZYDIS_FEATURE_AVX512
 option(ZYDIS_FEATURE_KNC
     "Enable support for KNC instructions"
     ON)
+option(ZYDIS_FEATURE_SEGMENT
+    "Enable instruction segment API"
+    ON)
 
 # Build configuration
 option(ZYDIS_BUILD_SHARED_LIB
@@ -35,13 +49,19 @@ option(ZYDIS_BUILD_SHARED_LIB
     OFF)
 option(ZYDIS_BUILD_EXAMPLES
     "Build examples"
-    ON)
+    ${ZYDIS_ROOT_PROJECT})
 option(ZYDIS_BUILD_TOOLS
     "Build tools"
-    ON)
+    ${ZYDIS_ROOT_PROJECT})
 option(ZYDIS_BUILD_MAN
     "Build manpages for the tools (requires Ronn-NG)"
     OFF)
+option(ZYDIS_BUILD_DOXYGEN
+    "Build doxygen documentation (requires Doxygen)"
+    ${ZYDIS_ROOT_PROJECT})
+option(ZYDIS_BUILD_TESTS
+    "Build tests"
+    ${ZYDIS_ROOT_PROJECT})
 option(ZYDIS_FUZZ_AFL_FAST
     "Enables AFL persistent mode and reduces prints in ZydisFuzzIn"
     OFF)
@@ -51,7 +71,7 @@ option(ZYDIS_LIBFUZZER
 
 # Dependencies
 option(ZYAN_SYSTEM_ZYCORE
-    "Use system Zycore library"
+    "Force using system installed Zycore library"
     OFF)
 set(ZYAN_ZYCORE_PATH
     "${CMAKE_CURRENT_LIST_DIR}/dependencies/zycore"
@@ -63,41 +83,67 @@ set(ZYAN_ZYCORE_PATH
 # Dependencies                                                                                    #
 # =============================================================================================== #
 
-if (ZYAN_SYSTEM_ZYCORE)
-    find_package(Zycore)
-else ()
-    # Try to initialize the Zycore submodule using Git
-    if (NOT EXISTS "${ZYAN_ZYCORE_PATH}/CMakeLists.txt" AND 
-        "${ZYAN_ZYCORE_PATH}" STREQUAL "${CMAKE_CURRENT_LIST_DIR}/dependencies/zycore")
-        find_package(Git QUIET)
-        if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-            execute_process(
-                COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive 
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
-            )
-        endif()
+# Tries to make Zycore available.
+#
+# Priorities:
+#
+# - ZYAN_ZYCORE_PATH specified path always takes maximum precedence if it exists.
+#   - Default value is the sub-module path. So if the sub-module is present, we pick that.
+#     Allows hacking on Zydis/Zycore even if a Zydis OS package is installed.
+# - Look for a system-installed Zycore package (via find_package).
+# - If git is installed & this is a git repository, try cloning the sub-module.
+# - Give up.
+#
+# This is in a function so we can elegantly early-exit once the library is found.
+function (locate_zycore)
+    if (NOT ${ZYAN_SYSTEM_ZYCORE} AND EXISTS "${ZYAN_ZYCORE_PATH}/CMakeLists.txt")
+        message(VERBOSE "Using ZYAN_ZYCORE_PATH specified Zycore")
+        add_subdirectory(${ZYAN_ZYCORE_PATH} "zycore" EXCLUDE_FROM_ALL)
+        return ()
     endif ()
 
-    if (NOT EXISTS "${ZYAN_ZYCORE_PATH}/CMakeLists.txt")
-        message(
-            FATAL_ERROR
-            "Can't find zycore submodule. Please make sure to clone the repo recursively.\n"
-            "You can fix this by running\n"
-            "    git submodule update --init\n"
-            "or by cloning using\n"
-            "    git clone --recursive <url>\n"
-            "Alternatively, you can manually clone zycore to some path and set ZYDIS_ZYCORE_PATH."
+    if (NOT "${ZYAN_ZYCORE_PATH}" STREQUAL "${CMAKE_CURRENT_LIST_DIR}/dependencies/zycore")
+        message(FATAL_ERROR "No CMake project found at explicitly set ZYAN_ZYCORE_PATH")
+    endif ()
+
+    find_package(Zycore QUIET)
+    if (Zycore_FOUND)
+        message(VERBOSE "Using system Zycore")
+        return ()
+    endif ()
+
+    if (ZYAN_SYSTEM_ZYCORE)
+        message(FATAL_ERROR "ZYAN_SYSTEM_ZYCORE set but no system-installed Zycore found")
+    endif ()
+
+    find_package(Git QUIET)
+    if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+        message(VERBOSE "Pulling Zycore submodule with git.")
+        execute_process(
+                COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
-    endif ()
+        add_subdirectory(${ZYAN_ZYCORE_PATH} "zycore" EXCLUDE_FROM_ALL)
+        return ()
+    endif()
 
-    add_subdirectory(${ZYAN_ZYCORE_PATH} "zycore" EXCLUDE_FROM_ALL)
-endif ()
+    message(
+        FATAL_ERROR
+        "Can't find Zycore. Please make sure to clone the repo recursively.\n"
+        "You can fix this by running\n"
+        "    git submodule update --init\n"
+        "or by cloning using\n"
+        "    git clone --recursive <url>\n"
+        "Alternatively, you can manually clone zycore to some path and set ZYDIS_ZYCORE_PATH."
+    )
+endfunction ()
+
+locate_zycore()
 
 # =============================================================================================== #
 # Library configuration                                                                           #
 # =============================================================================================== #
 
-message(STATUS "zydis: dynamically link? ${ZYDIS_BUILD_SHARED_LIB}")
 if (ZYDIS_BUILD_SHARED_LIB)
     add_library("Zydis" SHARED)
 else ()
@@ -118,7 +164,7 @@ set_target_properties("Zydis" PROPERTIES
     SOVERSION "${Zydis_VERSION_MAJOR}.${Zydis_VERSION_MINOR}"
     DEFINE_SYMBOL "ZYDIS_SHOULD_EXPORT")
 zyan_set_common_flags("Zydis")
-zyan_maybe_enable_wpo_for_lib("Zydis")
+zyan_maybe_enable_wpo("Zydis")
 
 if (ZYDIS_FEATURE_FORMATTER AND NOT ZYDIS_FEATURE_DECODER)
     message(
@@ -156,6 +202,9 @@ endif ()
 if (NOT ZYDIS_FEATURE_KNC)
     target_compile_definitions("Zydis" PUBLIC "ZYDIS_DISABLE_KNC")
 endif ()
+if (NOT ZYDIS_FEATURE_SEGMENT)
+    target_compile_definitions("Zydis" PUBLIC "ZYDIS_DISABLE_SEGMENT")
+endif ()
 
 target_sources("Zydis"
     PRIVATE
@@ -163,6 +212,7 @@ target_sources("Zydis"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/MetaInfo.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Mnemonic.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Register.h"
+        "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Segment.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/SharedTypes.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/ShortString.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Status.h"
@@ -173,6 +223,7 @@ target_sources("Zydis"
         "src/MetaInfo.c"
         "src/Mnemonic.c"
         "src/Register.c"
+        "src/Segment.c"
         "src/SharedData.c"
         "src/String.c"
         "src/Utils.c"
@@ -197,16 +248,24 @@ if (ZYDIS_FEATURE_DECODER)
     if (ZYDIS_FEATURE_FORMATTER AND (NOT ZYDIS_MINIMAL_MODE))
         target_sources("Zydis"
             PRIVATE
+                "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Disassembler.h"
                 "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Formatter.h"
                 "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/FormatterBuffer.h"
                 "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Internal/FormatterATT.h"
                 "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Internal/FormatterBase.h"
                 "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Internal/FormatterIntel.h"
+                "src/Disassembler.c"
                 "src/Formatter.c"
                 "src/FormatterBuffer.c"
                 "src/FormatterATT.c"
                 "src/FormatterBase.c"
                 "src/FormatterIntel.c")
+    endif ()
+    if (ZYDIS_FEATURE_SEGMENT)
+        target_sources("Zydis"
+            PRIVATE
+                "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Segment.h"
+                "src/Segment.c")
     endif ()
 endif ()
 
@@ -252,43 +311,28 @@ function (_maybe_set_emscripten_cfg target)
     endif ()
 endfunction ()
 
+function(_add_example target source_file sub_folder)
+    add_executable("${target}" "examples/${source_file}")
+    target_link_libraries("${target}" "Zydis")
+    set_target_properties("${target}" PROPERTIES FOLDER "Examples/${sub_folder}")
+    target_compile_definitions("${target}" PRIVATE "_CRT_SECURE_NO_WARNINGS")
+    zyan_set_common_flags("${target}")
+    zyan_maybe_enable_wpo("${target}")
+    _maybe_set_emscripten_cfg("${target}")
+endfunction()
+
 # =============================================================================================== #
 # Examples                                                                                        #
 # =============================================================================================== #
 
 if (ZYDIS_BUILD_EXAMPLES AND NOT ZYAN_NO_LIBC)
     if (ZYDIS_FEATURE_DECODER AND ZYDIS_FEATURE_FORMATTER AND (NOT ZYDIS_MINIMAL_MODE))
-        add_executable("Formatter01" "examples/Formatter01.c")
-        target_link_libraries("Formatter01" "Zydis")
-        set_target_properties("Formatter01" PROPERTIES FOLDER "Examples/Formatter")
-        target_compile_definitions("Formatter01" PRIVATE "_CRT_SECURE_NO_WARNINGS")
-        zyan_set_common_flags("Formatter01")
-        zyan_maybe_enable_wpo("Formatter01")
-        _maybe_set_emscripten_cfg("Formatter01")
-
-        add_executable("Formatter02" "examples/Formatter02.c")
-        target_link_libraries("Formatter02" "Zydis")
-        set_target_properties("Formatter02" PROPERTIES FOLDER "Examples/Formatter")
-        target_compile_definitions("Formatter02" PRIVATE "_CRT_SECURE_NO_WARNINGS")
-        zyan_set_common_flags("Formatter02")
-        zyan_maybe_enable_wpo("Formatter02")
-        _maybe_set_emscripten_cfg("Formatter02")
-
-        add_executable("Formatter03" "examples/Formatter03.c")
-        target_link_libraries("Formatter03" "Zydis")
-        set_target_properties("Formatter03" PROPERTIES FOLDER "Examples/Formatter")
-        target_compile_definitions("Formatter03" PRIVATE "_CRT_SECURE_NO_WARNINGS")
-        zyan_set_common_flags("Formatter03")
-        zyan_maybe_enable_wpo("Formatter03")
-        _maybe_set_emscripten_cfg("Formatter03")
-
-        add_executable("ZydisPerfTest" "examples/ZydisPerfTest.c")
-        target_link_libraries("ZydisPerfTest" "Zydis")
-        set_target_properties("ZydisPerfTest" PROPERTIES FOLDER "Examples")
-        target_compile_definitions("ZydisPerfTest" PRIVATE "_CRT_SECURE_NO_WARNINGS")
-        zyan_set_common_flags("ZydisPerfTest")
-        zyan_maybe_enable_wpo("ZydisPerfTest")
-        _maybe_set_emscripten_cfg("ZydisPerfTest")
+        _add_example("DisassembleSimple" "DisassembleSimple.c" "Decoder")
+        _add_example("Disassemble" "Disassemble.c" "Decoder")
+        _add_example("Formatter01" "Formatter01.c" "Decoder")
+        _add_example("Formatter02" "Formatter02.c" "Decoder")
+        _add_example("Formatter03" "Formatter03.c" "Decoder")
+        _add_example("ZydisPerfTest" "ZydisPerfTest.c" "Decoder")
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux"
                 OR ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
             target_compile_definitions("ZydisPerfTest" PRIVATE "_GNU_SOURCE")
@@ -298,21 +342,9 @@ if (ZYDIS_BUILD_EXAMPLES AND NOT ZYAN_NO_LIBC)
     endif ()
 
     if (ZYDIS_FEATURE_ENCODER)
-        add_executable("EncodeFromScratch" "examples/EncodeFromScratch.c")
-        target_link_libraries("EncodeFromScratch" "Zydis")
-        set_target_properties("EncodeFromScratch" PROPERTIES FOLDER "Examples/Encoder")
-        target_compile_definitions("EncodeFromScratch" PRIVATE "_CRT_SECURE_NO_WARNINGS")
-        zyan_set_common_flags("EncodeFromScratch")
-        zyan_maybe_enable_wpo("EncodeFromScratch")
-        _maybe_set_emscripten_cfg("EncodeFromScratch")
-
-        add_executable("RewriteCode" "examples/RewriteCode.c")
-        target_link_libraries("RewriteCode" "Zydis")
-        set_target_properties("RewriteCode" PROPERTIES FOLDER "Examples/Encoder")
-        target_compile_definitions("RewriteCode" PRIVATE "_CRT_SECURE_NO_WARNINGS")
-        zyan_set_common_flags("RewriteCode")
-        zyan_maybe_enable_wpo("RewriteCode")
-        _maybe_set_emscripten_cfg("RewriteCode")
+        _add_example("EncodeMov" "EncodeMov.c" "Encoder")
+        _add_example("EncodeFromScratch" "EncodeFromScratch.c" "Encoder")
+        _add_example("RewriteCode" "RewriteCode.c" "Encoder")
     endif ()
 endif ()
 
@@ -322,7 +354,10 @@ endif ()
 
 if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
     if (ZYDIS_FEATURE_DECODER AND ZYDIS_FEATURE_FORMATTER AND (NOT ZYDIS_MINIMAL_MODE))
-        add_executable("ZydisDisasm" "tools/ZydisDisasm.c")
+        add_executable("ZydisDisasm"
+            "tools/ZydisDisasm.c"
+            "tools/ZydisToolsShared.c"
+            "tools/ZydisToolsShared.h")
         target_link_libraries("ZydisDisasm" "Zydis")
         set_target_properties ("ZydisDisasm" PROPERTIES FOLDER "Tools")
         target_compile_definitions("ZydisDisasm" PRIVATE "_CRT_SECURE_NO_WARNINGS")
@@ -338,6 +373,10 @@ if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
         target_link_libraries("ZydisFuzzDecoder" "Zydis")
         set_target_properties("ZydisFuzzDecoder" PROPERTIES FOLDER "Tools")
         target_compile_definitions("ZydisFuzzDecoder" PRIVATE "_CRT_SECURE_NO_WARNINGS")
+        if (NOT ZYDIS_FEATURE_ENCODER)
+            # For 'ZydisFuzzShared.c'
+            target_compile_definitions("ZydisFuzzDecoder" PUBLIC "ZYDIS_DISABLE_ENCODER")
+        endif ()
         zyan_set_common_flags("ZydisFuzzDecoder")
         zyan_maybe_enable_wpo("ZydisFuzzDecoder")
         _maybe_set_emscripten_cfg("ZydisFuzzDecoder")
@@ -382,16 +421,90 @@ if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
             if (ZYDIS_LIBFUZZER)
                 target_compile_definitions("ZydisFuzzReEncoding" PRIVATE "ZYDIS_LIBFUZZER")
             endif ()
+
+            if (NOT ZYDIS_BUILD_SHARED_LIB)
+                add_executable("ZydisTestEncoderAbsolute"
+                    "tools/ZydisTestEncoderAbsolute.c")
+                target_link_libraries("ZydisTestEncoderAbsolute" "Zydis")
+                set_target_properties("ZydisTestEncoderAbsolute" PROPERTIES FOLDER "Tools")
+                target_compile_definitions("ZydisTestEncoderAbsolute" PRIVATE "_CRT_SECURE_NO_WARNINGS")
+                zyan_set_common_flags("ZydisTestEncoderAbsolute")
+                zyan_maybe_enable_wpo("ZydisTestEncoderAbsolute")
+                _maybe_set_emscripten_cfg("ZydisTestEncoderAbsolute")
+            endif ()
         endif ()
 
-        add_executable("ZydisInfo" "tools/ZydisInfo.c")
+        add_executable("ZydisInfo"
+            "tools/ZydisInfo.c"
+            "tools/ZydisToolsShared.c"
+            "tools/ZydisToolsShared.h")
         target_link_libraries("ZydisInfo" "Zydis")
         set_target_properties ("ZydisInfo" PROPERTIES FOLDER "Tools")
         target_compile_definitions("ZydisInfo" PRIVATE "_CRT_SECURE_NO_WARNINGS")
+        if (NOT ZYDIS_FEATURE_ENCODER)
+            target_compile_definitions("ZydisInfo" PUBLIC "ZYDIS_DISABLE_ENCODER")
+        endif ()
         zyan_set_common_flags("ZydisInfo")
         zyan_maybe_enable_wpo("ZydisInfo")
         _maybe_set_emscripten_cfg("ZydisInfo")
         install(TARGETS "ZydisInfo" RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    endif ()
+endif ()
+
+# =============================================================================================== #
+# Doxygen documentation                                                                           #
+# =============================================================================================== #
+
+if (ZYDIS_BUILD_DOXYGEN)
+    find_package(Doxygen)
+    if (DOXYGEN_FOUND)
+        # Read Doxygen options from the Doxyfile and set them as CMake variables
+        # to accomodate doxygen_add_docs()
+        file(READ "Doxyfile" DOXYFILE)
+        # Remove comments
+        string(REGEX REPLACE "\n?#[^\n]*\n" "" DOXYFILE ${DOXYFILE})
+        # Remove empty lines
+        string(REGEX REPLACE "\n[ \t\r\n]" "\n" DOXYFILE "${DOXYFILE}")
+        # Strip leading and trailing spaces
+        string(STRIP "${DOXYFILE}" DOXYFILE)
+        # Tranform the file in a list of '='-separated options
+        string(REPLACE "\n" ";" DOXYFILE "${DOXYFILE}")
+
+        foreach(option IN LISTS DOXYFILE)
+            string(REPLACE "=" ";" option "${option}")
+            list(GET option 0 opt_name)
+            list(GET option 1 opt_value)
+            string(STRIP "${opt_name}" opt_name)
+            string(STRIP "${opt_value}" opt_value)
+
+            if (opt_name STREQUAL "INPUT")
+                # Save the INPUTs in a list to be used later
+                string(REGEX REPLACE "[ ]+" ";" DOC_PATHS "${opt_value}")
+                # Skip as the input files are not set by a DOXYGEN_INPUT variable
+                continue()
+            endif()
+
+            if (opt_name STREQUAL "OUTPUT_DIRECTORY")
+                # Skip as CMake writes the output files in the build directory
+                continue()
+            endif()
+
+            set("DOXYGEN_${opt_name}" ${opt_value})
+        endforeach()
+
+        set(DOXYGEN_QUIET YES)
+        set(DOXYGEN_WARNINGS NO)
+        set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
+
+        doxygen_add_docs(ZydisDoc ${DOC_PATHS} ALL)
+
+        install(
+            DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/html/"
+            DESTINATION "${CMAKE_INSTALL_DOCDIR}/api"
+            COMPONENT Documentation
+        )
+    else ()
+        message("Can't generate documentation, Doxygen not found.")
     endif ()
 endif ()
 
@@ -410,7 +523,41 @@ if (ZYDIS_BUILD_MAN)
                 "--output-dir=${CMAKE_CURRENT_BINARY_DIR}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/man/${MAN_NAME}.ronn"
         )
-        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${MAN_NAME}" TYPE MAN)
+        install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${MAN_NAME}" DESTINATION "${CMAKE_INSTALL_MANDIR}/man1")
     endforeach()
     add_custom_target(man ALL DEPENDS ${MAN_NAMES})
+endif ()
+
+# =============================================================================================== #
+# Tests                                                                                           #
+# =============================================================================================== #
+
+if (ZYDIS_BUILD_TESTS)
+    enable_testing()
+    find_package(Python 3 REQUIRED)
+
+    if (TARGET ZydisInfo)
+        add_test(
+            NAME "ZydisRegression"
+            COMMAND 
+                "${Python_EXECUTABLE}"
+                regression.py
+                test
+                $<TARGET_FILE:ZydisInfo>
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/tests"
+        )
+    endif ()
+
+    if (TARGET ZydisFuzzReEncoding AND TARGET ZydisFuzzEncoder AND TARGET ZydisTestEncoderAbsolute)
+        add_test(
+            NAME "ZydisRegressionEncoder"
+            COMMAND 
+                "${Python_EXECUTABLE}"
+                regression_encoder.py
+                $<TARGET_FILE:ZydisFuzzReEncoding>
+                $<TARGET_FILE:ZydisFuzzEncoder>
+                $<TARGET_FILE:ZydisTestEncoderAbsolute>
+            WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/tests"
+        )
+    endif ()
 endif ()

@@ -3,6 +3,8 @@
 
 ;; definition of type texture-id
 (deftype texture-id (uint32)
+  "Unique identifier for a texture
+as the tpage number and index of the texture within the tpage."
   ((index uint16 :offset   8 :size  12)
    (page  uint16 :offset  20 :size  12)
    )
@@ -23,6 +25,7 @@
 
 ;; definition of type texture-pool-segment
 (deftype texture-pool-segment (structure)
+  "A chunk of VRAM."
   ((dest  uint32)
    (size  uint32)
    )
@@ -45,6 +48,7 @@
 
 ;; definition of type texture-pool
 (deftype texture-pool (basic)
+  "The manager for the VRAM."
   ((top                       int32)
    (cur                       int32)
    (allocate-func             (function texture-pool texture-page kheap int texture-page))
@@ -109,6 +113,9 @@
 
 ;; definition of type texture-mask
 (deftype texture-mask (structure)
+  "Mask where each bit indicates if some part of a tpage is used, by a texture.
+Additionally, the w component holds a minimum distance. The texture is only needed
+if the distance to the object is smaller than this."
   ((mask  vector4w  :inline)
    (dist  float       :overlay-at (-> mask data 3))
    (long  uint64    2 :overlay-at (-> mask data 0))
@@ -134,6 +141,8 @@
 
 ;; definition of type texture-masks
 (deftype texture-masks (structure)
+  "Grouping of three masks, corresponding to the 3 segments of the texture.
+So mask 0 is needed if segment 0 of the texture is needed, etc..."
   ((data  texture-mask  3 :inline)
    )
   )
@@ -152,6 +161,7 @@
 
 ;; definition of type texture-masks-array
 (deftype texture-masks-array (inline-array-class)
+  "Group of all texture-masks for a given tpage."
   ((data  texture-masks  :inline :dynamic)
    )
   )
@@ -181,6 +191,7 @@
 
 ;; definition of type texture
 (deftype texture (basic)
+  "Metadata for a texture."
   ((w             int16)
    (h             int16)
    (num-mips      uint8)
@@ -227,6 +238,8 @@
 
 ;; definition of type texture-page-segment
 (deftype texture-page-segment (structure)
+  "Metadata for a 'segment' of a texture page.
+Each texture page has 3 segments - smaller number segments have higher detail mips."
   ((block-data  pointer)
    (size        uint32)
    (dest        uint32)
@@ -251,6 +264,9 @@
 
 ;; definition for function texture-mip->segment
 (defun texture-mip->segment ((arg0 int) (arg1 int))
+  "Figure out which segment of a tpage a given mip level of a texture will be in.
+   arg0 is the mip level, arg1 is the total number of mips.
+   Higher mip level is lower detail."
   (if (>= 2 arg1)
       (+ (- -1 arg0) arg1)
       (max 0 (- 2 arg0))
@@ -259,6 +275,11 @@
 
 ;; definition of type texture-page
 (deftype texture-page (basic)
+  "A collection of textures. There is a tpage per category per level.
+These tpages are loaded from the DVD.
+e.g.: prison tfrag is its own tpage.
+The tpage has multiple textures, and 3 segments.
+Lower number segments are larger and have hi-res versions of textures."
   ((info       file-info)
    (name       string)
    (id         uint32)
@@ -303,6 +324,8 @@
 
 ;; definition of type shader-ptr
 (deftype shader-ptr (uint32)
+  "A pointer to an adgif-shader, stored in bits 8-32. This allows them to fit into
+an adgif shader easily."
   ((first-8 uint8  :offset   0 :size   8)
    (shader  uint32 :offset   8 :size  24)
    )
@@ -310,6 +333,8 @@
 
 ;; definition of type texture-link
 (deftype texture-link (structure)
+  "An overlay structure containing a shader-ptr that points to the next adgif-shader
+in a linked list."
   ((next  shader-ptr  1)
    )
   )
@@ -328,6 +353,10 @@
 
 ;; definition of type texture-page-dir-entry
 (deftype texture-page-dir-entry (structure)
+  "An entry for a texture in the texture-page-dir.
+The texture-page-dir contains an entry for each tpage.
+Each entry contains a reference to the tpage, and a linked list of shaders
+using it."
   ((length  int16)
    (status  uint16)
    (page    texture-page)
@@ -354,6 +383,8 @@
 
 ;; definition of type texture-page-dir
 (deftype texture-page-dir (basic)
+  "The list of all texture pages.
+This is static data loaded from the DVD at boot."
   ((length   int32)
    (entries  texture-page-dir-entry  1 :inline)
    )
@@ -365,6 +396,8 @@
 
 ;; definition of type texture-relocate-later
 (deftype texture-relocate-later (basic)
+  "Unused in Jak 2, but metadata for postponing tpage copies until a second frame,
+to have a smaller impact on frame times when loading."
   ((memcpy  symbol)
    (dest    uint32)
    (source  uint32)
@@ -402,6 +435,10 @@
 
 ;; definition of type adgif-shader
 (deftype adgif-shader (structure)
+  "GS texturing/blending settings, called adgif-shader.
+These are used by many different renderers and partially managed by the texture system.
+For example, the texture system will automatically update tbp to point to the location
+of the texture."
   ((quad             qword            5 :inline)
    (prims            gs-reg64         10 :overlay-at quad)
    (reg-0            uint8               :overlay-at (-> quad 0 data 2))
@@ -475,6 +512,8 @@
 
 ;; definition of type texture-base
 (deftype texture-base (structure)
+  "Metadata about an area of VRAM set aside for fancy dynamic texture effects
+(sky, eye, etc)."
   ((vram-page   uint32)
    (vram-block  uint32)
    (vram-word   uint32)

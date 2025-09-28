@@ -1,0 +1,90 @@
+===
+Inlinable If
+===
+
+(if arg1
+  arg1
+  (symbol->string (-> arg0 type symbol))
+  )
+
+---
+
+(if arg1 arg1 (symbol->string (-> arg0 type symbol)))
+
+===
+Non-Inlinable If
+===
+
+(if arg1
+  (symbol->string (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol))
+  (symbol->string (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol))
+  )
+
+---
+
+(if arg1
+  (symbol->string (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol))
+  (symbol->string (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol) (-> arg0 type symbol)))
+
+===
+Multiline condition hang
+===
+
+(when (and (-> this ignore-menu-toggle?)
+        (or (not (cpad-hold? 0 l1)) (not (cpad-hold? 0 r1)))
+        (or (and (-> this opened-with-start?) (not (cpad-hold? 0 start)) (not (cpad-hold? 0 start))) (and (not (-> this opened-with-start?)) (not (cpad-hold? 0 select)))))
+  (set! (-> this ignore-menu-toggle?) #f))
+
+---
+
+(when (and (-> this ignore-menu-toggle?)
+           (or (not (cpad-hold? 0 l1)) (not (cpad-hold? 0 r1)))
+           (or (and (-> this opened-with-start?) (not (cpad-hold? 0 start)) (not (cpad-hold? 0 start)))
+               (and (not (-> this opened-with-start?)) (not (cpad-hold? 0 select)))))
+  (set! (-> this ignore-menu-toggle?) #f))
+
+===
+Consolidation of if
+===
+
+(if (and
+    (-> this data s2-0) ;; entry is populated
+    (= (-> this data s2-0 type) arg1) ;; type is right
+    (or (name= arg0 (-> this data s2-0 name)) (string-charp= arg0 (&-> (-> this data s2-0 name) data s3-0))) ;; name is right. also seek past ag name, and try again.
+    )
+  (return (the-as joint (-> this data s2-0))))
+
+---
+
+(if (and (-> this data s2-0) ;; entry is populated
+         (= (-> this data s2-0 type) arg1) ;; type is right
+         (or (name= arg0 (-> this data s2-0 name)) (string-charp= arg0 (&-> (-> this data s2-0 name) data s3-0))) ;; name is right. also seek past ag name, and try again.
+         )
+  (return (the-as joint (-> this data s2-0))))
+
+===
+Consolidation of if 2
+===
+
+(if (or (not s5-1) (= (-> s5-1 name) 'default))
+  (login this) ;; not part of level load, just normal login.
+  )
+
+---
+
+(if (or (not s5-1) (= (-> s5-1 name) 'default))
+  (login this) ;; not part of level load, just normal login.
+  )
+
+===
+Consolidation of if with comment
+===
+
+(if (= (-> obj prim-id) arg0) ;; it's us!
+  (return obj)
+  )
+
+---
+
+(if (= (-> obj prim-id) arg0) ;; it's us!
+  (return obj))

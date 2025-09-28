@@ -11,8 +11,8 @@ void save_pc_data(const std::string& nickname,
   print_memory_usage(data, ser.get_save_result().second);
   lg::print("compressed: {} -> {} ({:.2f}%)\n", ser.get_save_result().second, compressed.size(),
             100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(fr3_output_dir / fmt::format("{}.fr3", str_util::to_upper(nickname)),
-                               compressed.data(), compressed.size());
+  file_util::write_binary_file(fr3_output_dir / fmt::format("{}.fr3", nickname), compressed.data(),
+                               compressed.size());
 }
 
 std::vector<std::string> get_build_level_deps(const std::string& input_file) {
@@ -40,4 +40,25 @@ std::vector<decompiler::ObjectFileRecord> find_art_groups(
     }
   }
   return art_groups;
+}
+
+void add_model_to_level(GameVersion version, const std::string& name, tfrag3::Level& lvl) {
+  lg::info("custom level: adding custom model {}", name);
+  auto glb = name + ".glb";
+  auto merc_data = load_merc_model(
+      lvl.merc_data.indices.size(), lvl.merc_data.vertices.size(), lvl.textures.size(),
+      fs::path(file_util::get_jak_project_dir() / "custom_assets" / game_version_names[version] /
+               "models" / "custom_levels" / glb)
+          .string(),
+      name + "-lod0");
+  for (auto& idx : merc_data.new_indices) {
+    lvl.merc_data.indices.push_back(idx);
+  }
+  for (auto& vert : merc_data.new_vertices) {
+    lvl.merc_data.vertices.push_back(vert);
+  }
+
+  lvl.merc_data.models.push_back(merc_data.new_model);
+  lvl.textures.insert(lvl.textures.end(), merc_data.new_textures.begin(),
+                      merc_data.new_textures.end());
 }

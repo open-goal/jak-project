@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: cam-start.gc
-;; name in dgo: cam-start
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/camera/cam-combiner.gc")
 
 ;; DECOMP BEGINS
 
@@ -14,28 +12,21 @@
   (set! *camera* #f)
   (set! *camera-combiner* #f)
   (set! *camera-base-mode* cam-string)
-  (none)
-  )
+  (none))
 
 (defun cam-start ((arg0 symbol))
   (cam-stop)
   (process-spawn camera-combiner :init cam-combiner-init :from *camera-dead-pool* :to *camera-pool*)
   (set! *camera*
         (the-as camera-master
-          (ppointer->process
-            (process-spawn-function camera-master cam-master-init :from *camera-master-dead-pool* :to *camera-pool*)
-            )
-          )
-        )
-  (if arg0
-      (reset-cameras)
-      )
+                (ppointer->process (process-spawn-function camera-master
+                                     cam-master-init
+                                     :from
+                                     *camera-master-dead-pool*
+                                     :to
+                                     *camera-pool*))))
+  (if arg0 (reset-cameras))
   0
-  (none)
-  )
+  (none))
 
 (cam-start #f)
-
-
-
-

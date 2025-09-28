@@ -10,7 +10,7 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 /*!

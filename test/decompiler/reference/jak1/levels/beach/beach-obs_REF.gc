@@ -126,7 +126,7 @@
 
 ;; failed to figure out what this is:
 (defpart 539
-  :init-specs ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((:texture (rockbit effects))
     (:num 0.5)
     (:x (meters -9) (meters 18))
     (:y (meters -6))
@@ -150,7 +150,7 @@
 
 ;; failed to figure out what this is:
 (defpart 540
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 12.0)
     (:y (meters -7))
     (:scale-x (meters 3) (meters 4.5))
@@ -444,7 +444,7 @@
 
 ;; failed to figure out what this is:
 (defpart 547
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:scale-x (meters 15))
     (:scale-y :copy scale-x)
@@ -460,7 +460,7 @@
 
 ;; failed to figure out what this is:
 (defpart 543
-  :init-specs ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((:texture (rockbit effects))
     (:num 4.0 6.0)
     (:scale-x (meters 0.1) (meters 0.3))
     (:rot-z (degrees 0) (degrees 360))
@@ -484,7 +484,7 @@
 
 ;; failed to figure out what this is:
 (defpart 544
-  :init-specs ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((:texture (rockbit effects))
     (:num 4.0 6.0)
     (:scale-x (meters 0.1) (meters 0.3))
     (:rot-z (degrees 0) (degrees 360))
@@ -508,7 +508,7 @@
 
 ;; failed to figure out what this is:
 (defpart 545
-  :init-specs ((:texture (new 'static 'texture-id :index #x1d :page #x2))
+  :init-specs ((:texture (rockbit effects))
     (:num 4.0 6.0)
     (:scale-x (meters 0.1) (meters 0.3))
     (:rot-z (degrees 0) (degrees 360))
@@ -537,7 +537,7 @@
 
 ;; failed to figure out what this is:
 (defpart 548
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:y (meters 0.5) (meters 1))
     (:scale-x (meters 2.5) (meters 1.5))
@@ -653,7 +653,7 @@
         (set-vector! s4-0 (+ (-> s5-1 x) (-> s3-0 x)) (-> s5-1 y) (+ (-> s5-1 z) (-> s3-0 z)) 1.0)
         (vector-float*! s3-0 s3-0 10.0)
         (spawn-flying-rock s4-0 s3-0 1.0 (-> self entity))
-        (set-vector! s3-0 (+ (* -0.866 f26-0) (* 0.5 f28-0)) (* 0.5 f30-0) (+ (* 0.866 f28-0) (* 0.5 f26-0)) 1.0)
+        (set-vector! s3-0 (+ (* -0.866 f26-0) (/ f28-0 2)) (/ f30-0 2) (+ (* 0.866 f28-0) (/ f26-0 2)) 1.0)
         (set-vector! s4-0 (-> s5-1 x) (+ 3276.8 (-> s5-1 y)) (-> s5-1 z) 1.0)
         (vector-float*! s3-0 s3-0 10.0)
         (spawn-flying-rock s4-0 s3-0 1.0 (-> self entity))
@@ -663,10 +663,7 @@
       (set! sv-128 (the-as symbol #f))
       (apply-all (-> self link) actor-link-subtask-complete-hook (& sv-128))
       (when sv-128
-        (let ((s5-2 (current-time)))
-          (until (time-elapsed? s5-2 (seconds 0.5))
-            (suspend)
-            )
+        (suspend-for (seconds 0.5)
           )
         (let ((gp-1 (cond
                       (arg0
@@ -1026,11 +1023,11 @@
               )
 
 ;; definition for method 7 of type flutflutegg
-(defmethod relocate ((this flutflutegg) (arg0 int))
+(defmethod relocate ((this flutflutegg) (offset int))
   (if (nonzero? (-> this wobbler))
-      (&+! (-> this wobbler) arg0)
+      (&+! (-> this wobbler) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 ;; definition for method 20 of type flutflutegg
@@ -1224,10 +1221,7 @@
           )
         (camera-change-to "camera-135" 0 #f)
         (camera-look-at (the-as pair (ppointer->process (-> self parent))) (the-as uint 9))
-        (let ((gp-0 (current-time)))
-          (until (time-elapsed? gp-0 (seconds 4))
-            (suspend)
-            )
+        (suspend-for (seconds 4)
           )
         (while (not (process-release? (handle->process (-> self grab-target))))
           (suspend)

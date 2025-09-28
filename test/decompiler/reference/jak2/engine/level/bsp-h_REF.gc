@@ -3,6 +3,8 @@
 
 ;; definition of type bsp-node
 (deftype bsp-node (structure)
+  "A node in the 'BSP' tree. This is really a bounding volume tree, where each volume is an axis-aligned box, containing 2 child boxes.
+This is used for precomputed visibility, based on the camera position. This is not used for collision."
   ((front          int16)
    (back           int16)
    (front-box-min  vector4b  :inline)
@@ -32,6 +34,8 @@
 
 ;; definition of type bsp-header
 (deftype bsp-header (drawable)
+  "The bsp-header is really an entire level.
+This probably started as a very simple structure, but now it is extremely complicated."
   ((info                     file-info                  :overlay-at id)
    (all-visible-list         (pointer uint16))
    (visible-list-length      int16)
@@ -97,6 +101,7 @@
 
 ;; definition of type game-level
 (deftype game-level (basic)
+  "Unused in Jak 1, 2, and 3!"
   ((master-bsp  basic)
    )
   )
@@ -115,6 +120,9 @@
 
 ;; definition of type view-frustum
 (deftype view-frustum (structure)
+  "A view frustum, expressed as corners.
+This representation is not very useful, and is used in only one spot to generate camera planes
+in a very inefficient way."
   ((hither-top-left      vector  :inline)
    (hither-top-right     vector  :inline)
    (hither-bottom-left   vector  :inline)
@@ -160,6 +168,7 @@
 ;; definition (debug) for function inspect-bsp-tree
 ;; WARN: Return type mismatch bsp-header vs none.
 (defun-debug inspect-bsp-tree ((arg0 bsp-header) (arg1 bsp-node))
+  "Attempt to print a bsp-tree, but it is actually broken since the jak 2 bsp format change"
   (cond
     ((zero? arg1)
      )
@@ -186,6 +195,7 @@
 ;; definition for function map-bsp-tree
 ;; WARN: Return type mismatch bsp-header vs none.
 (defun map-bsp-tree ((arg0 (function bsp-node none)) (arg1 bsp-header) (arg2 bsp-node))
+  "Attempt to call a function on all bsp-tree nodes, but it is actually broken since the jak 2 bsp format"
   (cond
     ((zero? arg2)
      )
@@ -205,6 +215,8 @@
 
 ;; definition of type collide-stats
 (deftype collide-stats (structure)
+  "Very strange collide stats type. It has been somewhat broken in all versions of the game.
+The final stopwatch is cut off. For jak 3, I just fixed it."
   ((calls              uint32)
    (spheres            uint32)
    (nodes              uint32)

@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: drawable-tree.gc
-;; name in dgo: drawable-tree
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/level/bsp.gc")
+(require "engine/draw/draw-node-h.gc")
 
 ;; The "drawable tree" represents a BVH for a specific render.
 ;; Typically, levels will have ~10 drawable trees.  There will be a tree for
@@ -17,39 +16,26 @@
   "Draw a drawable tree array. If the current level is set to special or special-vis, the draw is skipped."
   (let ((v1-1 (-> (scratchpad-object terrain-context) bsp lev-index)))
     (case (-> *level* level v1-1 display?)
-      (('special 'special-vis #f)
-       )
-      (else
-        (dotimes (s3-0 (-> this length))
-          (draw (-> this trees s3-0) (-> arg0 trees s3-0) arg1)
-          )
-        )
-      )
-    )
+      (('special 'special-vis #f))
+      (else (dotimes (s3-0 (-> this length)) (draw (-> this trees s3-0) (-> arg0 trees s3-0) arg1)))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod collect-stats ((this drawable-tree-array))
   (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this trees s5-0))
-    )
+    (collect-stats (-> this trees s5-0)))
   0
-  (none)
-  )
+  (none))
 
 (defmethod debug-draw ((this drawable-tree-array) (arg0 drawable) (arg1 display-frame))
   (dotimes (s3-0 (-> this length))
-    (debug-draw (-> this trees s3-0) (-> (the-as drawable-tree-array arg0) trees s3-0) arg1)
-    )
+    (debug-draw (-> this trees s3-0) (-> (the-as drawable-tree-array arg0) trees s3-0) arg1))
   0
-  (none)
-  )
+  (none))
 
 (defmethod unpack-vis ((this drawable-tree) (arg0 (pointer int8)) (arg1 (pointer int8)))
   "Copy our visibility data from arg1 to arg0, unpacking it."
   (local-vars (t5-1 int))
-  
   ;; grab the first array
   (let* ((v1-0 (the-as drawable-inline-array-node (-> this data 0)))
          ;; first elt in top array
@@ -59,19 +45,15 @@
          ;; offset in destination
          (v1-1 (&+ arg0 a3-1))
          ;; number of bytes
-         (a3-3 (/ (+ t0-0 7) 8))
-         )
+         (a3-3 (/ (+ t0-0 7) 8)))
     ;; copy the data!
     ;;(mem-print (the (pointer uint32) arg1) 10)
     (dotimes (t0-1 a3-3)
       (let ((t1-0 (-> arg1 0)))
         ;;(format 0 "top-copy: #x~X~%" t1-0)
         (set! arg1 (&-> arg1 1))
-        (set! (-> v1-1 0) t1-0)
-        )
-      (set! v1-1 (&-> v1-1 1))
-      )
-    )
+        (set! (-> v1-1 0) t1-0))
+      (set! v1-1 (&-> v1-1 1))))
   ;; now, the remaining arrays, excluding the final which isn't a draw node array.
   (let ((v1-5 (+ (-> this length) -1)))
     (when (nonzero? v1-5)
@@ -89,8 +71,7 @@
                ;; output for prev level
                (t1-6 (&+ arg0 t1-5))
                ;; output for next level
-               (t2-3 (&+ arg0 t2-2))
-               )
+               (t2-3 (&+ arg0 t2-2)))
           (while #t
             ;; load the vis byte for the one in this array
             (let ((t3-0 (-> t1-6 0)))
@@ -109,16 +90,8 @@
                 ;; check if we've done all nodes
                 (b! (zero? t0-5) cfg-12 :delay (.sra t4-0 t4-0 1))
                 ;; check if we're done with this byte and inc output.
-                (b! (nonzero? t4-0) cfg-7 :delay (set! t2-3 (&-> t2-3 1)))
-                )
-              )
-            )
-          )
+                (b! (nonzero? t4-0) cfg-7 :delay (set! t2-3 (&-> t2-3 1)))))))
         (label cfg-12)
         (nop!)
-        0
-        )
-      )
-    )
-  arg1
-  )
+        0)))
+  arg1)

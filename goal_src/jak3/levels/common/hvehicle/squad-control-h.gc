@@ -5,5 +5,127 @@
 ;; name in dgo: squad-control-h
 ;; dgos: HGA, LPATK, RAILA, LFACCAR, CWI, WASALL, LFACTORY, COMBA
 
+;; +++squad-target-flag
+(defenum squad-target-flag
+  :type uint8
+  :bitfield #t
+  (visible-now)
+  (visible-recently)
+  (visible-ever)
+  (updated)
+  (force-visible)
+  )
+;; ---squad-target-flag
+
+
+;; +++squad-alert-flag
+(defenum squad-alert-flag
+  :type uint8
+  :bitfield #t
+  (alert-ending)
+  (alarm-on)
+  (guard-multi-focus)
+  (sticky-guard-settings)
+  (disable-pursuit-control)
+  (update-target-search)
+  (war)
+  )
+;; ---squad-alert-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype squad-unit-settings (structure)
+  ((target-count      int8)
+   (shot-count        int8)
+   (rand-shot-count   int8)
+   (inaccuracy        float)
+   (acquire-delay     uint16)
+   (shot-delay        uint16)
+   (burst-delay       uint16)
+   (rand-burst-delay  uint16)
+   (rand-shot-delay   uint16)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype squad-target-status (structure)
+  ((flags           squad-target-flag)
+   (handle          handle)
+   (last-seen-time  time-frame)
+   (position        vector  :inline)
+   (velocity        vector  :inline)
+   (threat-level    float)
+   )
+  )
+
+
+(deftype squad-alert-state (structure)
+  ((flags                      squad-alert-flag)
+   (level                      uint8)
+   (max-level                  uint8)
+   (guards-in-sight-of-target  int8)
+   (guard-aim-count            int8)
+   (guard-inaccuracy-factor    float)
+   (guard-target-level         float)
+   (duration                   uint32)
+   (start-time                 time-frame)
+   (notify-time                time-frame)
+   (alarm-sound-id             sound-id)
+   (target-status-array        squad-target-status  3 :inline)
+   (target-status              squad-target-status  :inline :overlay-at (-> target-status-array 0))
+   )
+  (:methods
+    (init! (_type_) none)
+    )
+  )
+
+
+(deftype primary-target-pos-vel (structure)
+  ((position  vector  :inline)
+   (velocity  vector  :inline)
+   (time      uint32  :overlay-at (-> velocity data 3))
+   )
+  )
+
+
+(deftype squad-control (basic)
+  ((sync-clock              uint8)
+   (sync-mask-8             uint8)
+   (sync-mask-16            uint16)
+   (sync-mask-32            uint32)
+   (alert-state             squad-alert-state       :inline)
+   (primary-target-history  primary-target-pos-vel  16 :inline)
+   )
+  (:methods
+    (initialize (_type_ process) none)
+    (squad-control-method-10 (_type_) none)
+    (stop-alarm-sound (_type_) none)
+    (init-alert (_type_) none)
+    (update (_type_) none)
+    (set-sync-mask (_type_) none)
+    (probe-backgnd-collision (_type_ vector vector) symbol)
+    (squad-control-method-16 (_type_ vector process-focusable squad-target-status) none)
+    (squad-control-method-17 (_type_ vector int squad-target-status) squad-target-status)
+    (squad-control-method-18 (_type_ int process) int)
+    (set-alert-level0 (_type_ int) int)
+    (start-alert (_type_ int) none)
+    (set-alert-level (_type_ int) none)
+    (get-alert-level (_type_) int)
+    (set-alert-duration (_type_ time-frame) none)
+    (squad-control-method-24 (_type_) int)
+    (squad-control-method-25 (_type_ primary-target-pos-vel time-frame) none)
+    (set-pos-vel (_type_ primary-target-pos-vel) primary-target-pos-vel)
+    (squad-control-method-27 (_type_ process float) none)
+    (get-idx-in-status-arr (_type_ handle) int)
+    (valid-target-handle? (_type_ handle) symbol)
+    (get-target-focus (_type_) process-focusable)
+    (squad-control-method-31 (_type_ vector process-focusable handle float float) none)
+    (get-handle-pos (_type_ handle vector) vector)
+    (get-focus-in-range (_type_ process-focusable) process-focusable)
+    )
+  )
+
+
+(define *waswide-squad-control* (the-as squad-control #f))

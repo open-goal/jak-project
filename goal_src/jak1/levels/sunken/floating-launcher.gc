@@ -1,94 +1,76 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: floating-launcher.gc
-;; name in dgo: floating-launcher
-;; dgos: L1, SUN, SUNKEN
+(bundles "SUN.DGO")
+(require "engine/geometry/path.gc")
+(require "engine/common-obs/baseplat.gc")
 
 ;; DECOMP BEGINS
 
 (deftype floating-launcher (baseplat)
-  ((trigger-height  float)
-   (launcher        (pointer launcher))
-   )
+  ((trigger-height float)
+   (launcher       (pointer launcher)))
   (:states
-    floating-launcher-idle
-    floating-launcher-lowering
-    floating-launcher-ready
-    )
-  )
+   floating-launcher-idle
+   floating-launcher-lowering
+   floating-launcher-ready))
 
-
-(defskelgroup *floating-launcher-sg* floating-launcher floating-launcher-lod0-jg floating-launcher-idle-ja
-              ((floating-launcher-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5)
-              )
+(defskelgroup *floating-launcher-sg*
+  floating-launcher
+  floating-launcher-lod0-jg
+  floating-launcher-idle-ja
+  ((floating-launcher-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5))
 
 (defstate floating-launcher-idle (floating-launcher)
   :event plat-event
-  :trans (behavior ()
-    (plat-trans)
-    (when (< (vector-xz-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))) 81920.0)
-      (if (and (>= (-> (target-pos 0) y) (-> self trigger-height))
-               (logtest? (-> *target* control status) (cshape-moving-flags onground))
-               )
-          (go floating-launcher-lowering)
-          )
-      )
-    )
-  :code (behavior ()
-    (transform-post)
-    (suspend)
-    (transform-post)
-    (suspend)
-    (loop
+  :trans
+    (behavior ()
+      (plat-trans)
+      (when (< (vector-xz-length (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))) 81920.0)
+        (if (and (>= (-> (target-pos 0) y) (-> self trigger-height))
+                 (logtest? (-> *target* control status) (cshape-moving-flags onground)))
+          (go floating-launcher-lowering))))
+  :code
+    (behavior ()
+      (transform-post)
       (suspend)
-      )
-    )
-  :post plat-post
-  )
+      (transform-post)
+      (suspend)
+      (loop
+        (suspend)))
+  :post plat-post)
 
 (defstate floating-launcher-lowering (floating-launcher)
   :event plat-event
   :trans plat-trans
-  :code (behavior ()
-    (let ((a0-1 (entity-actor-lookup (-> self entity) 'alt-actor 0)))
-      (if a0-1
-          (entity-birth-no-kill a0-1)
-          )
-      )
-    (let ((f30-0 1.0))
-      (while (!= f30-0 0.0)
-        (set! f30-0 (seek f30-0 0.0 (seconds-per-frame)))
-        (eval-path-curve-div! (-> self path) (-> self basetrans) f30-0 'interp)
-        (set! (-> self launcher 0 root trans quad) (-> self basetrans quad))
-        (update-transforms! (-> self launcher 0 root))
-        (suspend)
-        )
-      )
-    (eval-path-curve-div! (-> self path) (-> self basetrans) 0.0 'interp)
-    (set! (-> self launcher 0 root trans quad) (-> self basetrans quad))
-    (update-transforms! (-> self launcher 0 root))
-    (go floating-launcher-ready)
-    )
-  :post plat-post
-  )
+  :code
+    (behavior ()
+      (let ((a0-1 (entity-actor-lookup (-> self entity) 'alt-actor 0))) (if a0-1 (entity-birth-no-kill a0-1)))
+      (let ((f30-0 1.0))
+        (while (!= f30-0 0.0)
+          (set! f30-0 (seek f30-0 0.0 (seconds-per-frame)))
+          (eval-path-curve-div! (-> self path) (-> self basetrans) f30-0 'interp)
+          (set! (-> self launcher 0 root trans quad) (-> self basetrans quad))
+          (update-transforms! (-> self launcher 0 root))
+          (suspend)))
+      (eval-path-curve-div! (-> self path) (-> self basetrans) 0.0 'interp)
+      (set! (-> self launcher 0 root trans quad) (-> self basetrans quad))
+      (update-transforms! (-> self launcher 0 root))
+      (go floating-launcher-ready))
+  :post plat-post)
 
 (defstate floating-launcher-ready (floating-launcher)
   :event plat-event
   :trans plat-trans
   :code plat-code
-  :post plat-post
-  )
+  :post plat-post)
 
 (defmethod init-from-entity! ((this floating-launcher) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -97,24 +79,20 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 0)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 11468.8)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (set! (-> this path) (new 'process 'path-control this 'path 0.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (eval-path-curve-div! (-> this path) (-> this root trans) 1.0 'interp)
   (let ((f30-0 (res-lump-float arg0 'spring-height :default 163840.0)))
-    (set! (-> this launcher) (process-spawn launcher (-> this root trans) f30-0 0 81920.0 :to this))
-    )
+    (set! (-> this launcher) (process-spawn launcher (-> this root trans) f30-0 0 81920.0 :to this)))
   (initialize-skeleton this *floating-launcher-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (update-transforms! (-> this root))
   (baseplat-method-21 this)
   (set! (-> this trigger-height) (res-lump-float arg0 'trigger-height))
   (go floating-launcher-idle)
-  (none)
-  )
+  (none))

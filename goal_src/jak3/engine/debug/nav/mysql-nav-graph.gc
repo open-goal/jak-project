@@ -5,5 +5,217 @@
 ;; name in dgo: mysql-nav-graph
 ;; dgos: GAME
 
+;; +++nav-clock-type
+(defenum nav-clock-type
+  "This string value is stored in their SQL database"
+  :type uint32
+  :bitfield #f
+  (no-clock 0)
+  (clock2 1)
+  (clock3 2)
+  (clock4 3)
+  )
+;; ---nav-clock-type
+
+
+;; +++nav-clock-mask
+(defenum nav-clock-mask
+  "This string value is stored in their SQL database"
+  :type uint32
+  :bitfield #t
+  (phase-1 0)
+  (phase-1a 1)
+  (phase-2 2)
+  (phase-2a 3)
+  (phase-3 4)
+  (phase-3a 5)
+  (phase-4 6)
+  (phase-4a 7)
+  )
+;; ---nav-clock-mask
+
+
+;; +++nav-directionality
+(defenum nav-directionality
+  :type uint32
+  :bitfield #f
+  (default 0)
+  (directed 1)
+  (bi_directional 2)
+  )
+;; ---nav-directionality
+
+
+;; +++nav-node-flag
+(defenum nav-node-flag
+  "This string value is stored in their SQL database"
+  :type uint32
+  :bitfield #t
+  (visited 0)
+  (blocked 1)
+  (pedestrian 2)
+  (selected 3)
+  (hidden 4)
+  )
+;; ---nav-node-flag
+
+
+;; +++mysql-save-flag
+(defenum mysql-save-flag
+  :type uint32
+  :bitfield #t
+  (delete 1)
+  (update 2)
+  (insert 3)
+  )
+;; ---mysql-save-flag
+
+
+(declare-type mysql-nav-edge structure)
+
 ;; DECOMP BEGINS
 
+;; this file is debug only
+(declare-file (debug))
+
+(deftype mysql-nav-node (structure)
+  ((mysql-save-flag   mysql-save-flag)
+   (runtime-id        uint32)
+   (temp-edge-list    (inline-array mysql-nav-edge))
+   (level-node-index  int32)
+   (cam-dist          float)
+   (visible           symbol)
+   (nav_node_id       uint32)
+   (nav_graph_id      uint32)
+   (position          vector  :inline)
+   (level_name        symbol)
+   (angle             float)
+   (radius            float)
+   (nav_node_flag     nav-node-flag)
+   (nav_mesh_id       uint32)
+   (data_int_0        uint32)
+   (data_int_1        uint32)
+   )
+  (:methods
+    (exec-sql! (_type_) symbol)
+    (temp-edge-size (_type_) int)
+    )
+  )
+
+
+(deftype mysql-nav-node-array (inline-array-class)
+  ((data  mysql-nav-node  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> mysql-nav-node-array heap-base) (the-as uint 80))
+
+(deftype mysql-nav-edge (structure)
+  ((mysql-save-flag     mysql-save-flag)
+   (runtime-id          uint32)
+   (runtime-node-id-1   int32)
+   (runtime-node-id-2   int32)
+   (temp-next-edge      mysql-nav-edge)
+   (nav_edge_id         uint32)
+   (nav_graph_id        uint32)
+   (nav_node_id_1       uint32)
+   (nav_node_id_2       uint32)
+   (directionality      nav-directionality)
+   (speed_limit         float)
+   (density             float)
+   (traffic_edge_flag   int32)
+   (nav_clock_mask      nav-clock-mask)
+   (nav_clock_type      nav-clock-type)
+   (nav_territory_type  uint32)
+   (exclusive_data      uint32)
+   (width               float)
+   (minimap_edge_flag   int32)
+   )
+  :allow-misaligned
+  (:methods
+    (mysql-nav-edge-method-9 () none)
+    )
+  )
+
+
+(deftype mysql-nav-edge-array (inline-array-class)
+  ((data  mysql-nav-edge  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> mysql-nav-edge-array heap-base) (the-as uint 80))
+
+(deftype mysql-nav-visnode (structure)
+  ((mysql-save-flag  mysql-save-flag)
+   (runtime-node-id  int32)
+   (runtime-edge-id  int32)
+   (nav_visnode_id   uint32)
+   (nav_graph_id     uint32)
+   (nav_node_id      uint32)
+   (nav_edge_id      uint32)
+   )
+  (:methods
+    (mysql-nav-visnode-method-9 () none)
+    )
+  )
+
+
+(deftype mysql-nav-visnode-array (inline-array-class)
+  ((data  mysql-nav-visnode  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> mysql-nav-visnode-array heap-base) (the-as uint 32))
+
+(deftype mysql-nav-pov-conn (structure)
+  ((runtime-node-id-1  int32)
+   (runtime-node-id-2  int32)
+   )
+  )
+
+
+(deftype mysql-nav-graph-level-info (structure)
+  ((level          symbol)
+   (level-id       uint32)
+   (node-count     int32)
+   (branch-count   int32)
+   (to-link-count  int32)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype mysql-nav-graph (basic)
+  ((nav_graph_id             uint32)
+   (graph-type               basic)
+   (node-array               mysql-nav-node-array)
+   (edge-array               mysql-nav-edge-array)
+   (visnode-array            mysql-nav-visnode-array)
+   (pov-conn-array           uint32)
+   (pov-conn-array-length    int32)
+   (level-info-array-length  int32)
+   (level-info-last-lookup   int32)
+   (level-info-array         mysql-nav-graph-level-info  32 :inline)
+   )
+  (:methods
+    (new (symbol type string) _type_)
+    (init-from-sql! (_type_ string string) symbol)
+    (exec-sql! (_type_) symbol)
+    (indexof-nav-node (_type_ int) int)
+    (indexof-nav-edge (_type_ int) int)
+    (mysql-nav-graph-method-13 (_type_) none)
+    (mysql-nav-graph-method-14 (_type_) none)
+    (mysql-nav-graph-method-15 (_type_) none)
+    (mysql-nav-graph-method-16 (_type_) none)
+    (mysql-nav-graph-method-17 (_type_) none)
+    (lookup-level-info2 (_type_ mysql-nav-node symbol) mysql-nav-graph-level-info)
+    (mysql-nav-graph-method-19 (_type_) none)
+    (mysql-nav-graph-method-20 (_type_) none)
+    (mysql-nav-graph-method-21 (_type_) none)
+    (mysql-nav-graph-method-22 (_type_) none)
+    (mysql-nav-graph-method-23 (_type_) none)
+    )
+  )

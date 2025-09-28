@@ -91,6 +91,9 @@
     (remove-setting! 'string-spline-max-move-player)
     (remove-setting! 'string-spline-accel-player)
     (sound-stop (-> self darkjak tone))
+    ;; og:preserve-this trigger effects
+    (when (pc-get-trigger-effects-enabled?)
+      (pc-clear-trigger-effect! (pc-trigger-effect-option left)))
     )
   0
   (none)
@@ -287,6 +290,8 @@
         )
     )
   :code (behavior ((arg0 darkjak-stage))
+    (when (pc-get-trigger-effects-enabled?)
+      (pc-send-trigger-rumble! 32767 0 100))
     (send-event (handle->process (-> self notify)) 'notify 'attack 15)
     (if (and (focus-test? self dark) (nonzero? (-> self darkjak)))
         (go target-darkjak-giant)
@@ -599,7 +604,7 @@
     (set-setting! 'rapid-tracking #f 0.0 0)
     ((lambda :behavior target
        ()
-       (set! (-> self control bend-target) (* 0.5 (-> self control bend-target)))
+       (set! (-> self control bend-target) (/ (-> self control bend-target) 2))
        (if (logtest? (water-flags touch-water) (-> self water flags))
            (sound-play "swim-stroke")
            )
@@ -1494,10 +1499,10 @@
               (set! (-> sv-176 y) (rand-vu-float-range -8192.0 8192.0))
               (set! (-> sv-176 z) (rand-vu-float-range -40960.0 40960.0))
               (set! (-> sv-176 w) 1.0)
-              (.mov.vf vf6 vf0 :mask #b1000)
+              (.mov.vf.w vf6 vf0)
               (.lvf vf4 (&-> sv-160 quad))
               (.lvf vf5 (&-> sv-176 quad))
-              (.add.vf vf6 vf4 vf5 :mask #b111)
+              (.add.vf.xyz vf6 vf4 vf5)
               (.svf (&-> sv-192 quad) vf6)
               ((the-as (function object object object object object object object object none) s5-1)
                s4-1

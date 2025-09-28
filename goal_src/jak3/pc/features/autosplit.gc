@@ -1,0 +1,257 @@
+;;-*-Lisp-*-
+(in-package goal)
+(define *autosplit-info-jak3* (new 'static 'autosplit-info))
+
+(pc-init-autosplitter-struct)
+
+;; Setup Version
+(set! (-> *autosplit-info-jak3* version-major) 0)
+
+(set! (-> *autosplit-info-jak3* version-minor) 1)
+
+;; Setup markers
+(charp<-string (-> *autosplit-info-jak3* end-marker) "end")
+
+;; Setup Padding
+(charp<-string (-> *autosplit-info-jak3* padding-stats) "padding-stats!")
+
+(charp<-string (-> *autosplit-info-jak3* padding-controls) "padding-controls!")
+
+(defconstant MAX_ORBS 600)
+
+(defconstant AUTOSPLITTER_DEBUG #f)
+
+(defmacro autosplit-flag-task-complete! (field-name task-name)
+  "Given a field name in the autosplitter struct, and a [[game-task]] name to check, sets either a 0 or a 1"
+  `(begin
+    (if (!= (-> this ,field-name) (if (task-complete? *game-info* (game-task ,task-name)) 1 0))
+      (format 0 "AUTOSPLIT for ~A~%" (quote ,task-name)))
+    (set! (-> this ,field-name) (if (task-complete? *game-info* (game-task ,task-name)) 1 0))))
+
+(defmacro autosplit-flag-task-node-closed! (field-name task-node-name)
+  "Given a field name in the autosplitter struct, and a [[game-task-node]] name to check, sets either a 0 or a 1"
+  `(begin
+    (if (!= (-> this ,field-name) (if (task-node-closed? (game-task-node ,task-node-name)) 1 0))
+      (format 0 "AUTOSPLIT for ~A~%" (quote ,task-node-name)))
+    (set! (-> this ,field-name) (if (task-node-closed? (game-task-node ,task-node-name)) 1 0))))
+
+(defmethod update! ((this autosplit-info))
+  ;; general statistics
+  ;; when we are blacked out in loads the value of these are temporarily 0, and that messes with the auto splitter.
+  (let ((in-blackout? (>= (-> *game-info* blackout-time) (current-time))))
+    (when (not in-blackout?)
+      (set! (-> this num-orbs) (the int (-> *game-info* skill-total)))
+      (set! (-> this num-skullgems) (the int (-> *game-info* gem-total)))
+      ;; ending conditions
+      ;; all collectables
+      ;; - check for all features
+      ;; - check for all vehicles
+      ;; - check for all inventory items
+      ;; - check for all orbs
+      (set! (-> this all-collectables-acquired?)
+            (if (and (logtesta? (-> *game-info* features)
+                                (game-feature jakc
+                                              board
+                                              board-launch
+                                              board-zap
+                                              darkeco
+                                              darkjak
+                                              darkjak
+                                              darkjak-smack
+                                              darkjak-bomb0
+                                              darkjak-bomb1
+                                              lighteco
+                                              lightjak
+                                              lightjak-regen
+                                              lightjak-swoop
+                                              lightjak-freeze
+                                              lightjak-shield
+                                              gun
+                                              gun-red-1
+                                              gun-yellow-1
+                                              gun-blue-1
+                                              gun-dark-1
+                                              gun-red-2
+                                              gun-yellow-2
+                                              gun-blue-2
+                                              gun-dark-2
+                                              gun-red-3
+                                              gun-yellow-3
+                                              gun-blue-3
+                                              gun-dark-3))
+                     (logtesta? (-> *game-info* vehicles) (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride))
+                     (logtesta? (-> *game-info* items)
+                                (game-items amulet0
+                                            amulet1
+                                            amulet2
+                                            pass-front-gate
+                                            seal-of-mar
+                                            cypher-gliph
+                                            artifact-holocube
+                                            artifact-av-reflector
+                                            artifact-av-prism
+                                            artifact-av-generator
+                                            artifact-av-map
+                                            light-eco-crystal0
+                                            light-eco-crystal1
+                                            light-eco-crystal2
+                                            light-eco-crystal3
+                                            dark-eco-crystal0
+                                            dark-eco-crystal1
+                                            dark-eco-crystal2
+                                            dark-eco-crystal3))
+                     (>= (-> this num-orbs) MAX_ORBS))
+              1
+              0))))
+  ;; loading/cutscene related flags
+  (set! (-> this in-cutscene?) (if (movie?) 1 0))
+  ;; need resolution flags
+  (autosplit-flag-task-complete! res-arena-training-1 arena-training-1)
+  (autosplit-flag-task-complete! res-arena-fight-1 arena-fight-1)
+  (autosplit-flag-task-complete! res-wascity-chase wascity-chase)
+  (autosplit-flag-task-complete! res-wascity-pre-game wascity-pre-game)
+  (autosplit-flag-task-complete! res-desert-turtle-training desert-turtle-training)
+  (autosplit-flag-task-complete! res-desert-course-race desert-course-race)
+  (autosplit-flag-task-complete! res-desert-artifact-race-1 desert-artifact-race-1)
+  (autosplit-flag-task-complete! res-wascity-leaper-race wascity-leaper-race)
+  (autosplit-flag-task-complete! res-desert-hover desert-hover)
+  (autosplit-flag-task-complete! res-arena-fight-2 arena-fight-2)
+  (autosplit-flag-task-complete! res-desert-catch-lizards desert-catch-lizards)
+  (autosplit-flag-task-complete! res-desert-rescue desert-rescue)
+  (autosplit-flag-task-complete! res-wascity-gungame wascity-gungame)
+  (autosplit-flag-task-complete! res-arena-fight-3 arena-fight-3)
+  (autosplit-flag-task-complete! res-nest-eggs nest-eggs)
+  (autosplit-flag-task-complete! res-temple-climb temple-climb)
+  (autosplit-flag-task-complete! res-desert-glide desert-glide)
+  (autosplit-flag-task-complete! res-volcano-darkeco volcano-darkeco)
+  (autosplit-flag-task-complete! res-temple-oracle temple-oracle)
+  (autosplit-flag-task-complete! res-desert-oasis-defense desert-oasis-defense)
+  (autosplit-flag-task-complete! res-temple-tests temple-tests)
+  (autosplit-flag-task-complete! res-comb-travel comb-travel)
+  (autosplit-flag-task-complete! res-mine-explore mine-explore)
+  (autosplit-flag-task-complete! res-mine-blow mine-blow)
+  (autosplit-flag-task-complete! res-mine-boss mine-boss)
+  (autosplit-flag-task-complete! res-sewer-met-hum sewer-met-hum)
+  (autosplit-flag-task-complete! res-city-vehicle-training city-vehicle-training)
+  (autosplit-flag-task-complete! res-city-port-fight city-port-fight)
+  (autosplit-flag-task-complete! res-city-port-attack city-port-attack)
+  (autosplit-flag-task-complete! res-city-gun-course-1 city-gun-course-1)
+  (autosplit-flag-task-complete! res-city-sniper-fight city-sniper-fight)
+  (autosplit-flag-task-complete! res-sewer-kg-met sewer-kg-met)
+  (autosplit-flag-task-complete! res-city-destroy-darkeco city-destroy-darkeco)
+  (autosplit-flag-task-complete! res-forest-kill-plants forest-kill-plants)
+  (autosplit-flag-task-complete! res-city-destroy-grid city-destroy-grid)
+  (autosplit-flag-task-complete! res-city-hijack-vehicle city-hijack-vehicle)
+  (autosplit-flag-task-complete! res-city-port-assault city-port-assault)
+  (autosplit-flag-task-complete! res-city-gun-course-2 city-gun-course-2)
+  (autosplit-flag-task-complete! res-city-blow-barricade city-blow-barricade)
+  (autosplit-flag-task-complete! res-city-protect-hq city-protect-hq)
+  (autosplit-flag-task-complete! res-sewer-hum-kg sewer-hum-kg)
+  (autosplit-flag-task-complete! res-city-power-game city-power-game)
+  (autosplit-flag-task-complete! res-desert-artifact-race-2 desert-artifact-race-2)
+  (autosplit-flag-task-complete! res-nest-hunt nest-hunt)
+  (autosplit-flag-task-complete! res-desert-beast-battle desert-beast-battle)
+  (autosplit-flag-task-complete! res-desert-jump-mission desert-jump-mission)
+  (autosplit-flag-task-complete! res-desert-chase-marauders desert-chase-marauders)
+  (autosplit-flag-task-complete! res-forest-ring-chase forest-ring-chase)
+  (autosplit-flag-task-complete! res-factory-sky-battle factory-sky-battle)
+  (autosplit-flag-task-complete! res-factory-assault factory-assault)
+  (autosplit-flag-task-complete! res-factory-boss factory-boss)
+  (autosplit-flag-task-complete! res-temple-defend temple-defend)
+  (autosplit-flag-task-complete! res-wascity-defend wascity-defend)
+  (autosplit-flag-task-complete! res-forest-turn-on-machine forest-turn-on-machine)
+  (autosplit-flag-task-complete! res-precursor-tour precursor-tour)
+  (autosplit-flag-task-complete! res-city-blow-tower city-blow-tower)
+  (autosplit-flag-task-complete! res-tower-destroy tower-destroy)
+  (autosplit-flag-task-complete! res-palace-ruins-patrol palace-ruins-patrol)
+  (autosplit-flag-task-complete! res-palace-ruins-attack palace-ruins-attack)
+  (autosplit-flag-task-complete! res-comb-wild-ride comb-wild-ride)
+  (autosplit-flag-task-complete! res-precursor-destroy-ship precursor-destroy-ship)
+  (autosplit-flag-task-complete! res-desert-final-boss desert-final-boss)
+  (autosplit-flag-task-complete! res-city-win city-win)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-1 desert-bbush-get-to-1)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-2 desert-bbush-get-to-2)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-3 desert-bbush-get-to-3)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-4 desert-bbush-get-to-4)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-5 desert-bbush-get-to-5)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-6 desert-bbush-get-to-6)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-7 desert-bbush-get-to-7)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-8 desert-bbush-get-to-8)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-9 desert-bbush-get-to-9)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-11 desert-bbush-get-to-11)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-12 desert-bbush-get-to-12)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-14 desert-bbush-get-to-14)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-16 desert-bbush-get-to-16)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-17 desert-bbush-get-to-17)
+  (autosplit-flag-task-complete! res-wascity-bbush-get-to-18 wascity-bbush-get-to-18)
+  (autosplit-flag-task-complete! res-desert-bbush-get-to-19 desert-bbush-get-to-19)
+  (autosplit-flag-task-complete! res-wascity-bbush-get-to-20 wascity-bbush-get-to-20)
+  (autosplit-flag-task-complete! res-wascity-bbush-get-to-21 wascity-bbush-get-to-21)
+  (autosplit-flag-task-complete! res-wascity-bbush-get-to-22 wascity-bbush-get-to-22)
+  (autosplit-flag-task-complete! res-wascity-bbush-get-to-23 wascity-bbush-get-to-23)
+  (autosplit-flag-task-complete! res-wascity-bbush-get-to-24 wascity-bbush-get-to-24)
+  (autosplit-flag-task-complete! res-wascity-bbush-get-to-25 wascity-bbush-get-to-25)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-26 city-bbush-get-to-26)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-27 city-bbush-get-to-27)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-28 city-bbush-get-to-28)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-29 city-bbush-get-to-29)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-30 city-bbush-get-to-30)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-31 city-bbush-get-to-31)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-32 city-bbush-get-to-32)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-33 city-bbush-get-to-33)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-34 city-bbush-get-to-34)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-35 city-bbush-get-to-35)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-36 city-bbush-get-to-36)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-37 city-bbush-get-to-37)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-38 city-bbush-get-to-38)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-39 city-bbush-get-to-39)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-40 city-bbush-get-to-40)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-41 city-bbush-get-to-41)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-42 city-bbush-get-to-42)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-43 city-bbush-get-to-43)
+  (autosplit-flag-task-complete! res-city-bbush-get-to-44 city-bbush-get-to-44)
+  (autosplit-flag-task-complete! res-desert-bbush-ring-1 desert-bbush-ring-1)
+  (autosplit-flag-task-complete! res-desert-bbush-ring-2 desert-bbush-ring-2)
+  (autosplit-flag-task-complete! res-wascity-bbush-ring-3 wascity-bbush-ring-3)
+  (autosplit-flag-task-complete! res-wascity-bbush-ring-4 wascity-bbush-ring-4)
+  (autosplit-flag-task-complete! res-city-bbush-ring-5 city-bbush-ring-5)
+  (autosplit-flag-task-complete! res-city-bbush-ring-6 city-bbush-ring-6)
+  (autosplit-flag-task-complete! res-desert-bbush-egg-spider-1 desert-bbush-egg-spider-1)
+  (autosplit-flag-task-complete! res-desert-bbush-spirit-chase-1 desert-bbush-spirit-chase-1)
+  (autosplit-flag-task-complete! res-wascity-bbush-spirit-chase-2 wascity-bbush-spirit-chase-2)
+  (autosplit-flag-task-complete! res-city-bbush-spirit-chase-3 city-bbush-spirit-chase-3)
+  (autosplit-flag-task-complete! res-desert-bbush-timer-chase-1 desert-bbush-timer-chase-1)
+  (autosplit-flag-task-complete! res-wascity-bbush-timer-chase-2 wascity-bbush-timer-chase-2)
+  (autosplit-flag-task-complete! res-desert-bbush-air-time desert-bbush-air-time)
+  (autosplit-flag-task-complete! res-desert-bbush-total-air-time desert-bbush-total-air-time)
+  (autosplit-flag-task-complete! res-desert-bbush-jump-distance desert-bbush-jump-distance)
+  (autosplit-flag-task-complete! res-desert-bbush-total-jump-distance desert-bbush-total-jump-distance)
+  (autosplit-flag-task-complete! res-desert-bbush-roll-count desert-bbush-roll-count)
+  (autosplit-flag-task-complete! res-desert-bbush-time-trial-1 desert-bbush-time-trial-1)
+  (autosplit-flag-task-complete! res-desert-bbush-rally desert-bbush-rally)
+  (autosplit-flag-task-complete! res-city-bbush-port-attack city-bbush-port-attack)
+  (autosplit-flag-task-complete! res-desert-rescue-bbush desert-rescue-bbush)
+  (autosplit-flag-task-complete! res-city-gun-course-play-for-fun city-gun-course-play-for-fun)
+  (autosplit-flag-task-complete! res-city-jetboard-bbush city-jetboard-bbush)
+  (autosplit-flag-task-complete! res-desert-bbush-destroy-interceptors desert-bbush-destroy-interceptors)
+  ;; misc other tasks
+  (autosplit-flag-task-node-closed! arena-fight-1-throne arena-fight-1-throne) ;; after arena 1 cutscene
+  ;; debug only, draw stuff to the screen so i don't have to stare at a memory editor
+  (if AUTOSPLITTER_DEBUG (debug-draw this)))
+
+(defmethod reset! ((this autosplit-info))
+  (set! (-> this game-hash) (pc-get-unix-timestamp))
+  (set! (-> this errol-dead?) 0))
+
+(defmethod debug-draw ((this autosplit-info))
+  (format (clear *temp-string*) "errol-dead?: ~D~%" (-> this errol-dead?))
+  (format *temp-string* "all-collectables-acquired?: ~D~%" (-> this all-collectables-acquired?))
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf)) (bucket-id debug-no-zbuf1))
+    ;; reset bucket settings prior to drawing - font won't do this for us, and
+    ;; draw-raw-image can sometimes mess them up. (intro sequence)
+    (dma-buffer-add-gs-set-flusha buf
+                                  (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                                  (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1)))
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 10 50 0.0 (font-color default) (font-flags shadow kerning large))))
+      (set! (-> font-ctx scale) 0.325)
+      (draw-string-adv *temp-string* buf font-ctx))))

@@ -7,3 +7,256 @@
 
 ;; DECOMP BEGINS
 
+(deftype precura-states (structure)
+  ((pulse          pulse-state  :inline)
+   (generator      pulse-state  :inline)
+   (main           float)
+   (target-laser   float        2)
+   (current-laser  float        2)
+   (speed-laser    float)
+   (target-bomb    float)
+   (current-bomb   float)
+   (speed-bomb     float)
+   )
+  )
+
+
+(defun init-mood-precura ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 state)))
+    (set! (-> v1-0 1) (the-as uint 1.0))
+    (set! (-> v1-0 2) (the-as uint 1.0))
+    (set! (-> v1-0 3) (the-as uint 1.0))
+    (set! (-> v1-0 5) (the-as uint 1.0))
+    (set! (-> v1-0 6) (the-as uint 1.0))
+    (let ((f0-5 2.0))
+      (set! (-> v1-0 7) (the-as uint f0-5))
+      f0-5
+      )
+    )
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun update-precura-lights ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group)))
+    (let ((a0-1 (-> v1-0 0)))
+      (set! (-> a0-1 dir0 direction x) 0.0)
+      (set! (-> a0-1 dir0 direction y) 1.0)
+      (set! (-> a0-1 dir0 direction z) 0.0)
+      (set! (-> a0-1 dir0 direction w) 0.0)
+      )
+    (set-vector! (-> v1-0 0 dir0 color) 0.5 0.667 0.667 1.0)
+    (set-vector! (-> v1-0 0 ambi color) 0.25 0.333 0.333 1.0)
+    (set! (-> v1-0 0 dir0 extra x) 1.0)
+    (set! (-> v1-0 0 dir1 extra x) 0.0)
+    (set! (-> v1-0 0 dir2 extra x) 0.0)
+    (set! (-> v1-0 0 ambi extra x) 1.0)
+    )
+  (none)
+  )
+
+(defbehavior update-mood-precura time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (update-precura-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((gp-0 (the-as object (-> arg0 state))))
+        (set! (-> arg0 times 0 w) 1.0)
+        (update-mood-pulse arg0 1 0 1.0 0.25 (* 65536.0 (seconds-per-frame)) 0.0)
+        (update-mood-pulse arg0 4 16 1.0 0.125 (* 65536.0 (seconds-per-frame)) 0.0)
+        (set! (-> arg0 times 2 w) 1.0)
+        (let* ((v1-10 (-> *display* part-clock frame-counter))
+               (f0-7 (* 218.45334 (the float (mod v1-10 300))))
+               )
+          (set! (-> arg0 times 3 w) (+ 0.875 (* 0.175 (cos f0-7))))
+          )
+        (set! (-> arg0 times 5 w) (-> (the-as precura-states gp-0) current-bomb))
+        (set! (-> arg0 times 6 w) (-> (the-as precura-states gp-0) current-laser 0))
+        (set! (-> arg0 times 7 w) (-> (the-as precura-states gp-0) current-laser 1))
+        (when (not (paused?))
+          (seek!
+            (-> (the-as precura-states gp-0) current-bomb)
+            (-> (the-as precura-states gp-0) target-bomb)
+            (-> (the-as precura-states gp-0) speed-bomb)
+            )
+          (seek!
+            (-> (the-as precura-states gp-0) current-laser 0)
+            (-> (the-as precura-states gp-0) target-laser 0)
+            (-> (the-as precura-states gp-0) speed-laser)
+            )
+          (seek!
+            (-> (the-as precura-states gp-0) current-laser 1)
+            (-> (the-as precura-states gp-0) target-laser 1)
+            (-> (the-as precura-states gp-0) speed-laser)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-precura-generator-light! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'precura)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as precura-states v1-2) generator target-brightness) arg0)
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-precura-laser-light! ((arg0 float) (arg1 float) (arg2 int))
+  (let ((v1-1 (level-get *level* 'precura)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as precura-states v1-2) target-laser arg2) arg0)
+        (set! (-> (the-as precura-states v1-2) speed-laser) arg1)
+        (if (= arg1 0.0)
+            (set! (-> (the-as precura-states (+ (* arg2 4) (the-as int v1-2))) current-laser 0) arg0)
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-precura-bomb-light! ((arg0 float) (arg1 float))
+  (let ((v1-1 (level-get *level* 'precura)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as precura-states v1-2) target-bomb) arg0)
+        (set! (-> (the-as precura-states v1-2) speed-bomb) arg1)
+        )
+      )
+    )
+  (none)
+  )
+
+(deftype precurb-states (structure)
+  ((pulse  pulse-state  :inline)
+   (main   float)
+   )
+  )
+
+
+(defun init-mood-precurb ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 state)))
+    (set! (-> v1-0 1) (the-as uint 1.0))
+    (set! (-> v1-0 2) (the-as uint 1.0))
+    (let ((f0-2 1.0))
+      (set! (-> v1-0 3) (the-as uint f0-2))
+      f0-2
+      )
+    )
+  )
+
+(defbehavior update-mood-precurb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (update-precura-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (set! (-> arg0 times 0 w) 1.0)
+      (update-mood-pulse arg0 1 0 1.0 0.25 (* 65536.0 (seconds-per-frame)) 0.0)
+      (set! (-> arg0 times 2 w) 1.0)
+      (let* ((v1-9 (-> *display* part-clock frame-counter))
+             (f0-5 (* 218.45334 (the float (mod v1-9 300))))
+             )
+        (set! (-> arg0 times 3 w) (+ 0.875 (* 0.175 (cos f0-5))))
+        )
+      (set! (-> arg0 times 4 w) 1.0)
+      (set! (-> arg0 times 5 w) 1.0)
+      (set! (-> arg0 times 6 w) 1.0)
+      (set! (-> arg0 times 7 w) 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+(deftype lprecurc-loader (process)
+  ()
+  (:state-methods
+    idle
+    die
+    )
+  )
+
+
+(defstate idle (lprecurc-loader)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('deactivate)
+       (go-virtual die)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-setting! 'borrow '((precurc 0 lprecurc copy)) 0.0 0)
+    (apply-settings *setting-control*)
+    )
+  :exit (behavior ()
+    (remove-setting! 'borrow)
+    (apply-settings *setting-control*)
+    )
+  :code sleep-code
+  )
+
+(defstate die (lprecurc-loader)
+  :virtual #t
+  :code (behavior ()
+    '()
+    )
+  )
+
+(defbehavior lprecurc-loader-init-by-other lprecurc-loader ((arg0 level))
+  (set! (-> self level) arg0)
+  (go-virtual idle)
+  )
+
+(defun precura-login ((arg0 level))
+  (set! *nav-network* (new 'loading-level 'nav-network))
+  (alloc-nav-network-for-level! *nav-network* 64 10)
+  0
+  (none)
+  )
+
+(defun precura-activate ((arg0 level))
+  (persist-with-delay
+    *setting-control*
+    'precur-activate
+    (the-as time-frame (the-as uint #xb2d05e00))
+    'sky-type
+    'star-field
+    0.0
+    0
+    )
+  (process-spawn lprecurc-loader arg0 :name "lprecurc-loader" :to *entity-pool*)
+  (if (and (nonzero? *nav-network*) *nav-network*)
+      (init-by-other! *nav-network* arg0 *precura-adjacency*)
+      )
+  (none)
+  )
+
+(defun precura-deactivate ((arg0 level))
+  (persist-with-delay *setting-control* 'precur-activate 0 'sky-type #f 0.0 0)
+  (none)
+  )
+
+(defun precura-logout ((arg0 level))
+  (set! *nav-network* (the-as nav-network 0))
+  0
+  (none)
+  )

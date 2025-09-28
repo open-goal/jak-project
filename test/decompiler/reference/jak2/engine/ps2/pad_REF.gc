@@ -38,6 +38,8 @@
 
 ;; definition of type hw-cpad
 (deftype hw-cpad (basic)
+  "Data that comes directly from hardware.
+It's 32 bytes + type tag (ignored by C kernel)."
   ((valid    uint8)
    (status   uint8)
    (button0  uint16)
@@ -72,6 +74,7 @@
 
 ;; definition of type cpad-info
 (deftype cpad-info (hw-cpad)
+  "Data from hardware + additional info calculated here."
   ((number              int32)
    (cpad-file           int32)
    (button0-abs         pad-buttons  3)
@@ -145,6 +148,7 @@
 
 ;; definition for function cpad-invalid!
 (defun cpad-invalid! ((arg0 cpad-info))
+  "Reset all data in a [[cpad-info]]."
   (logior! (-> arg0 valid) 128)
   (set! (-> arg0 button0) (the-as uint 0))
   (set! (-> arg0 button0-abs 0) (pad-buttons))
@@ -182,6 +186,7 @@
 
 ;; definition for method 0 of type cpad-info
 (defmethod new cpad-info ((allocation symbol) (type-to-make type) (arg0 int))
+  "Allocate a new cpad-info and open the pad itself through the kernel."
   (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> s5-0 number) arg0)
     (set! (-> s5-0 buzz) #f)
@@ -192,6 +197,7 @@
 
 ;; definition of type cpad-list
 (deftype cpad-list (basic)
+  "List of controllers. It always has two controllers."
   ((num-cpads  int32)
    (cpads      cpad-info  2)
    )
@@ -215,6 +221,8 @@
 
 ;; definition for method 0 of type cpad-list
 (defmethod new cpad-list ((allocation symbol) (type-to-make type))
+  "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
+   aren't connected yet."
   (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> gp-0 num-cpads) 2)
     (set! (-> gp-0 cpads 0) (new 'global 'cpad-info 0))
@@ -225,6 +233,10 @@
 
 ;; definition for function analog-input
 (defun analog-input ((arg0 int) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Convert integer input from pad into a float between -out-range and +out-range.
+   The offset is applied directly to the input.
+   The center val is the expected value for 0, after applying offset.
+   The max val is the expected value with the stick pushed all the way."
   (let* ((f1-1 (- (the float arg0) arg1))
          (f0-3 (- (fabs f1-1) arg2))
          (v1-0 (- arg3 arg2))
@@ -249,6 +261,7 @@
 ;; definition for function cpad-set-buzz!
 ;; WARN: Return type mismatch int vs none.
 (defun cpad-set-buzz! ((arg0 cpad-info) (arg1 int) (arg2 int) (arg3 time-frame))
+  "Turn on vibration motor `buzz-idx` for duration, at magnitude `buzz-amount`."
   (cond
     ((zero? arg2)
      (set! (-> arg0 buzz-val arg1) (the-as uint 0))
@@ -274,6 +287,7 @@
 
 ;; definition for function service-cpads
 (defun service-cpads ()
+  "Read from cpads and update vibration."
   (let ((pads *cpad-list*))
     (dotimes (i (-> pads num-cpads))
       (let ((pad (-> *cpad-list* cpads i)))
@@ -515,6 +529,7 @@
 ;; definition for function buzz-stop!
 ;; WARN: Return type mismatch int vs none.
 (defun buzz-stop! ((arg0 int))
+  "Set the buzz to 0 on both vibration motors of the given cpad."
   (cpad-set-buzz! (-> *cpad-list* cpads arg0) 0 0 0)
   (cpad-set-buzz! (-> *cpad-list* cpads arg0) 1 0 0)
   0
@@ -600,43 +615,48 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch mouse-info vs none.
 (defun service-mouse ()
-  (let ((gp-0 *mouse*))
-    (mouse-get-data gp-0)
-    (set! (-> gp-0 pos 1 quad) (-> gp-0 pos 0 quad))
-    (set! (-> gp-0 button0-abs 2) (-> gp-0 button0-abs 1))
-    (set! (-> gp-0 button0-abs 1) (-> gp-0 button0-shadow-abs 0))
-    (set! (-> gp-0 button0-rel 2) (-> gp-0 button0-rel 1))
-    (set! (-> gp-0 button0-rel 1) (-> gp-0 button0-rel 0))
-    (set! (-> gp-0 button0-rel 0) (mouse-buttons))
-    (set! (-> gp-0 speedx) 0.0)
-    (set! (-> gp-0 speedy) 0.0)
+  "Update the mouse, and draw the cursor."
+  (let ((mouse *mouse*))
+    (mouse-get-data mouse)
+    (set! (-> mouse pos 1 quad) (-> mouse pos 0 quad))
+    (set! (-> mouse button0-abs 2) (-> mouse button0-abs 1))
+    (set! (-> mouse button0-abs 1) (-> mouse button0-shadow-abs 0))
+    (set! (-> mouse button0-rel 2) (-> mouse button0-rel 1))
+    (set! (-> mouse button0-rel 1) (-> mouse button0-rel 0))
+    (set! (-> mouse button0-rel 0) (mouse-buttons))
+    (set! (-> mouse speedx) 0.0)
+    (set! (-> mouse speedy) 0.0)
     (cond
-      ((or (not (-> gp-0 valid)) (not (-> gp-0 active)))
-       (set! (-> gp-0 valid) #f)
-       (set! (-> gp-0 status) (the-as uint 0))
-       (set! (-> gp-0 pos 0 quad) (the-as uint128 0))
-       (set! (-> gp-0 pos 1 quad) (the-as uint128 0))
+      ((or (not (-> mouse valid)) (not (-> mouse active)))
+       (set! (-> mouse valid) #f)
+       (set! (-> mouse status) (the-as uint 0))
+       (set! (-> mouse pos 0 quad) (the-as uint128 0))
+       (set! (-> mouse pos 1 quad) (the-as uint128 0))
        )
-      ((logtest? (-> gp-0 status) 1)
-       (set! (-> gp-0 change-time) (get-current-time))
-       (set! (-> gp-0 speedx) (* (sign (the float (-> gp-0 deltax))) (pow (fabs (the float (-> gp-0 deltax))) 1.3)))
-       (set! (-> gp-0 speedy) (* (sign (the float (-> gp-0 deltay))) (pow (fabs (the float (-> gp-0 deltay))) 1.3)))
-       (set! (-> gp-0 posx) (fmax -256.0 (fmin 256.0 (+ (-> gp-0 posx) (-> gp-0 speedx)))))
-       (set! (-> gp-0 posy) (fmax -208.0 (fmin 208.0 (+ (-> gp-0 posy) (-> gp-0 speedy)))))
-       (let ((v1-22 (-> gp-0 button0)))
-         (set! (-> gp-0 button0-shadow-abs 0) (the-as mouse-buttons v1-22))
-         (set! (-> gp-0 button0-abs 0) (the-as mouse-buttons v1-22))
+      ((logtest? (-> mouse status) 1)
+       (set! (-> mouse change-time) (get-current-time))
+       (set! (-> mouse speedx)
+             (* (sign (the float (-> mouse deltax))) (pow (fabs (the float (-> mouse deltax))) 1.3))
+             )
+       (set! (-> mouse speedy)
+             (* (sign (the float (-> mouse deltay))) (pow (fabs (the float (-> mouse deltay))) 1.3))
+             )
+       (set! (-> mouse posx) (fmax -256.0 (fmin 256.0 (+ (-> mouse posx) (-> mouse speedx)))))
+       (set! (-> mouse posy) (fmax -208.0 (fmin 208.0 (+ (-> mouse posy) (-> mouse speedy)))))
+       (let ((v1-22 (-> mouse button0)))
+         (set! (-> mouse button0-shadow-abs 0) (the-as mouse-buttons v1-22))
+         (set! (-> mouse button0-abs 0) (the-as mouse-buttons v1-22))
          )
-       (set! (-> gp-0 button0-rel 0) (logclear (-> gp-0 button0-abs 0) (-> gp-0 button0-abs 1)))
+       (set! (-> mouse button0-rel 0) (logclear (-> mouse button0-abs 0) (-> mouse button0-abs 1)))
        )
       )
-    (if (and (-> gp-0 active) (-> gp-0 valid) (-> gp-0 cursor))
+    (if (and (-> mouse active) (-> mouse valid) (-> mouse cursor))
         (add-debug-cursor
           #t
           (bucket-id debug-no-zbuf2)
-          (+ (the int (-> gp-0 posx)) 256)
-          (+ (the int (-> gp-0 posy)) 208)
-          (-> gp-0 button0-abs 0)
+          (+ (the int (-> mouse posx)) 256)
+          (+ (the int (-> mouse posy)) 208)
+          (-> mouse button0-abs 0)
           )
         )
     )

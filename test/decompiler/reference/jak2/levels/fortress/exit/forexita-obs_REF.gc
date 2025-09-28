@@ -214,7 +214,7 @@
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod init-plat! ((this fort-lift-plat))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (set! (-> this root pause-adjust-distance) 327680.0)
   (set! (-> this sound-id) (new-sound-id))
   (none)
@@ -222,6 +222,7 @@ For example for an elevator pre-compute the distance between the first and last 
 
 ;; definition for method 10 of type fort-lift-plat
 (defmethod deactivate ((this fort-lift-plat))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   ((method-of-type plat deactivate) this)
   (none)
@@ -230,9 +231,9 @@ For example for an elevator pre-compute the distance between the first and last 
 ;; definition for method 36 of type fort-lift-plat
 (defmethod plat-path-sync ((this fort-lift-plat))
   "If the `sync` period is greater than `0` then transition the state to [[plat::35]]
-otherwise, [[plat::34]]
-
-@see [[sync-eased]]"
+   otherwise, [[plat::34]]
+   
+   @see [[sync-eased]]"
   (cond
     ((logtest? (-> this path flags) (path-control-flag not-found))
      (go (method-of-object this plat-idle))
@@ -325,11 +326,11 @@ otherwise, [[plat::34]]
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this fort-claw) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -361,10 +362,7 @@ This commonly includes things such as:
     ()
     (until #f
       (sound-play "fortress-alarm")
-      (let ((gp-1 (current-time)))
-        (until (time-elapsed? gp-1 (seconds 1))
-          (suspend)
-          )
+      (suspend-for (seconds 1)
         )
       )
     #f

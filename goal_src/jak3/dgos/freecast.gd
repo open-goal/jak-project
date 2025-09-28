@@ -1,0 +1,13 @@
+("FREECAST.DGO"
+ ("tpage-1967.go"
+  "tpage-1969.go"
+  "tpage-1968.go"
+  "pecker-highres-ag.go"
+  "keira-highres-ag.go"
+  "veger-highres-ag.go"
+  "samos-highres-ag.go"
+  "ashelin-highres-ag.go"
+  "onin-highres-ag.go"
+  "purple-two-ag.go"
+  "freecast.go"
+ ))

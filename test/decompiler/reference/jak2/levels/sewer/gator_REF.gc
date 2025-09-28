@@ -160,7 +160,7 @@
 ;; definition for method 74 of type gator
 (defmethod general-event-handler ((this gator) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case event-type
     (('hit-knocked)
      (when (= (-> this incoming knocked-type) (knocked-type knocked-type-4))
@@ -181,7 +181,7 @@
 ;; definition for method 179 of type gator
 (defmethod adjust-depth! ((this gator))
   "Changes the height based on the ocean depth
-@see [[get-height]]"
+   @see [[get-height]]"
   (set! (-> this ocean-y) (get-height *ocean* (-> this root trans) #t))
   (set! (-> this root trans y) (+ -10240.0 (-> this ocean-y)))
   )
@@ -199,7 +199,7 @@
 ;; definition for method 181 of type gator
 (defmethod encircle-target! ((this gator) (arg0 float) (arg1 float) (arg2 symbol))
   "Core movement for the [[gator]], circles the target, charges at the target, etc
-@params TODO - not sure, they all dont seem to do very much and this method is a mess"
+   @params TODO - not sure, they all dont seem to do very much and this method is a mess"
   (local-vars (v1-17 object) (a0-5 object))
   (let ((f30-0 (vector-dot (-> this new-facing) (-> this old-facing)))
         (s5-0 75)
@@ -296,12 +296,12 @@
 ;; definition for method 55 of type gator
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod track-target! ((this gator))
+(defmethod common-post ((this gator))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
-  (let ((func (method-of-type nav-enemy track-target!)))
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
+  (let ((func (method-of-type nav-enemy common-post)))
     (func this)
     )
   (adjust-depth! this)
@@ -338,10 +338,10 @@
 ;; INFO: Used lq/sq
 (defmethod in-aggro-range? ((this gator) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
-- if `activate-distance` is `0.0`, always true
-- otherwise, check if the provided process is close enough
-@param proc The process used to distance check
-@returns true/false"
+   - if `activate-distance` is `0.0`, always true
+   - otherwise, check if the provided process is close enough
+   @param proc The process used to distance check
+   @returns true/false"
   (let ((target-pos (new 'stack-no-clear 'vector)))
     (when (and (= *target* arg0) (not arg1) (= (-> *target* control ground-pat material) (pat-material waterbottom)))
       (set! (-> target-pos quad) (-> (get-trans arg0 0) quad))
@@ -379,7 +379,7 @@
       )
     )
   :code (behavior ()
-    (let ((circle-for (get-rand-float-range self 0.9 1.1)))
+    (let ((circle-for (rnd-float-range self 0.9 1.1)))
       (until #f
         (encircle-target! self 2.0 0.5 #t)
         (suspend)
@@ -395,7 +395,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (let ((_self self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> _self enemy-flags)))
           (set! (-> _self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> _self enemy-flags))))
@@ -422,8 +422,8 @@
       )
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -438,7 +438,7 @@
     (cond
       ((-> self lock-nav-target)
        )
-      ((or (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      ((or (logtest? (-> self enemy-flags) (enemy-flag victory))
            (logtest? (-> self nav state flags) (nav-state-flag at-target))
            )
        (set! (-> self lock-nav-target) #t)
@@ -501,7 +501,7 @@
 (defstate pacing (gator)
   :virtual #t
   :code (behavior ()
-    (let ((circle-for? (get-rand-float-range self 0.9 1.1)))
+    (let ((circle-for? (rnd-float-range self 0.9 1.1)))
       (until #f
         (encircle-target! self 2.0 0.5 #f)
         (suspend)
@@ -529,7 +529,7 @@
         )
     )
   :code (behavior ()
-    (let ((circle-for? (get-rand-float-range self 0.9 1.1)))
+    (let ((circle-for? (rnd-float-range self 0.9 1.1)))
       (until #f
         (encircle-target! self 2.0 0.5 #f)
         (suspend)

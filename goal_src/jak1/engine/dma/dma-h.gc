@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: dma-h.gc
-;; name in dgo: dma-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gcommon.gc")
 
 ;; DECOMP BEGINS
 
@@ -35,11 +33,9 @@
    (tte uint8 :offset 6 :size 1) ;; transfer tag (sc only)
    (tie uint8 :offset 7 :size 1) ;; tag interrupt
    (str uint8 :offset 8 :size 1) ;; start!
-   (tag uint16 :offset 16)
-   )
-  )
+   (tag uint16 :offset 16)))
 
-(defmethod inspect dma-chcr ((obj dma-chcr))
+(defmethod inspect ((obj dma-chcr))
   (format #t "~Tdir: ~D~%" (-> obj dir))
   (format #t "~Tmod: ~D~%" (-> obj mod))
   (format #t "~Tasp: ~D~%" (-> obj asp))
@@ -47,91 +43,83 @@
   (format #t "~Ttie: ~D~%" (-> obj tie))
   (format #t "~Tstr: ~D~%" (-> obj str))
   (format #t "~Ttag: #x~X~%" (-> obj tag))
-  obj
-  )
+  obj)
 
 ;; Each DMA Channel has a bank of registers with the following layout.
 ;; Some channels have more advanced features, but all support at least these three.
 (deftype dma-bank (structure)
-  ((chcr dma-chcr  :offset 0) ;; control register
-   (madr uint32  :offset 16)  ;; memory address
-   (qwc  uint32  :offset 32)  ;; quadword count
-   )
-  )
+  ((chcr dma-chcr :offset 0) ;; control register
+   (madr uint32 :offset 16) ;; memory address
+   (qwc  uint32 :offset 32) ;; quadword count
+   ))
 
 ;; DMA register layout for channels supporting source-chain
 (deftype dma-bank-source (dma-bank)
-  ((tadr uint32  :offset 48) ;; tag address
-   )
-  )
+  ((tadr uint32 :offset 48) ;; tag address
+   ))
 
 ;; The DMA source chain supports a two-entry "call stack" of tags.
 ;; The tag addresses are stored here.
 (deftype dma-bank-vif (dma-bank-source)
-  ((as0  uint32  :offset 64) ;; pushed tag register
-   (as1  uint32  :offset 80) ;; pushed tag register
-   )
-  )
+  ((as0 uint32 :offset 64) ;; pushed tag register
+   (as1 uint32 :offset 80) ;; pushed tag register
+   ))
 
 ;; The toSPR and fromSPR DMA channels require a second address in the scratchpad.
 ;; This is an offset from the start of SPR.
 (deftype dma-bank-spr (dma-bank-source)
-  ((sadr uint32  :offset 128) ;; spad address.
-   )
-  )
+  ((sadr uint32 :offset 128) ;; spad address.
+   ))
 
 ;; These addresses are the location of DMA banks for each channel.
 ;; These do not exist in OpenGOAL.
 (defconstant VIF0_DMA_BANK (the dma-bank-vif (get-vm-ptr #x10008000)))
+
 (defconstant VIF1_DMA_BANK (the dma-bank-vif (get-vm-ptr #x10009000)))
+
 (defconstant GIF_DMA_BANK (the dma-bank (get-vm-ptr #x1000a000)))
+
 ;; ipuFrom, ipTop, sif0, sif1, sif2 believed unused.
 (defconstant SPR_FROM_BANK (the dma-bank-spr (get-vm-ptr #x1000d000)))
+
 (defconstant SPR_TO_BANK (the dma-bank-spr (get-vm-ptr #x1000d400)))
 
 (defconstant VU0_DATA_MEM_MAP (the (pointer uint32) #x11004000))
-(defconstant VU1_DATA_MEM_MAP (the (pointer uint32) #x1100c000))
 
+(defconstant VU1_DATA_MEM_MAP (the (pointer uint32) #x1100c000))
 
 ;; The DMA system also has some shared control registers that
 ;; apply to all channels.
 
 ;; D_CTRL, master DMA control register, shared for all channels.
 (deftype dma-ctrl (uint32)
-  ((dmae  uint8 :offset 0 :size 1)
-   (rele  uint8 :offset 1 :size 1)
-   (mfd   uint8 :offset 2 :size 2)
-   (sts   uint8 :offset 4 :size 2)
-   (std   uint8 :offset 6 :size 2)
-   (rcyc  uint8 :offset 8 :size 3)
-   )
-  )
+  ((dmae uint8 :offset 0 :size 1)
+   (rele uint8 :offset 1 :size 1)
+   (mfd  uint8 :offset 2 :size 2)
+   (sts  uint8 :offset 4 :size 2)
+   (std  uint8 :offset 6 :size 2)
+   (rcyc uint8 :offset 8 :size 3)))
 
 ;; D_ENABLEW, D_ENABLER?
 (deftype dma-enable (uint32)
-  ((cpnd  uint8 :offset 16 :size 1))
-  )
+  ((cpnd uint8 :offset 16 :size 1)))
 
 ;; D_SQWC
 (deftype dma-sqwc (uint32)
-  ((sqwc  uint8 :offset 0  :size 8)
-   (tqwc  uint8 :offset 16 :size 8)
-   )
-  )
+  ((sqwc uint8 :offset 0 :size 8)
+   (tqwc uint8 :offset 16 :size 8)))
 
 ;; Shared DMA control registers.
 (deftype dma-bank-control (structure)
-  ((ctrl    dma-ctrl  :offset 0)
-   (stat    uint32  :offset 16)
-   (pcr     uint32  :offset 32)
-   (sqwc    dma-sqwc  :offset 48)
-   (rbsr    uint32  :offset 64)
-   (rbor    uint32  :offset 80)
-   (stadr   uint32  :offset 96)
-   (enabler uint32  :offset 5408)
-   (enablew uint32  :offset 5520)
-   )
-  )
+  ((ctrl    dma-ctrl :offset 0)
+   (stat    uint32 :offset 16)
+   (pcr     uint32 :offset 32)
+   (sqwc    dma-sqwc :offset 48)
+   (rbsr    uint32 :offset 64)
+   (rbor    uint32 :offset 80)
+   (stadr   uint32 :offset 96)
+   (enabler uint32 :offset 5408)
+   (enablew uint32 :offset 5520)))
 
 (defconstant DMA_CONTROL_BANK (the dma-bank-control (get-vm-ptr #x1000e000)))
 
@@ -140,42 +128,35 @@
   ((name         basic)
    (code         uint32)
    (size         int32)
-   (dest-address uint32)
-   )
-  )
+   (dest-address uint32)))
 
 ;; ?? not sure what this is.
-(deftype vu-stat (uint64)
-  ()
-  )
-
+(deftype vu-stat (uint64) ())
 
 (defenum dma-tag-id
-    :bitfield #f
-    :type uint8
-    (refe 0) ;; addr=ADDR, ends after this transfer
-    (cnt 1)  ;; addr=after tag, next-tag=after data
-    (next 2) ;; addr=after tag, next-tag=ADDR
-    (ref 3)  ;; addr=ADDR, next-tag=after tag
-    (refs 4) ;; ref, but stall controled
-    (call 5) ;;
-    (ret 6)  ;;
-    (end 7)  ;; next, but ends.
-    )
+  :bitfield #f
+  :type uint8
+  (refe 0) ;; addr=ADDR, ends after this transfer
+  (cnt 1) ;; addr=after tag, next-tag=after data
+  (next 2) ;; addr=after tag, next-tag=ADDR
+  (ref 3) ;; addr=ADDR, next-tag=after tag
+  (refs 4) ;; ref, but stall controled
+  (call 5) ;;
+  (ret 6) ;;
+  (end 7) ;; next, but ends.
+  )
 
 ;; In source chain mode, the DMA controller reads "DMAtag"s to determine addresses
 ;; sizes, and the next thing to transfer.
 ;; A tag is 8 bytes.
 (deftype dma-tag (uint64)
-  ((qwc uint16    :offset 0)           ;; quadword count
-   (pce uint8     :offset 26 :size 2)  ;; priority (source mode)
-   (id dma-tag-id :offset 28 :size 3)  ;; ID (what the tag means)
-   (irq uint8     :offset 31 :size 1)  ;; interrupt at the end?
-   (addr uint32   :offset 32 :size 31) ;; address (31 bits)
-   (spr uint8     :offset 63 :size 1)  ;; spr or not flag.
-   )
-  )
-
+  ((qwc  uint16 :offset 0) ;; quadword count
+   (pce  uint8 :offset 26 :size 2) ;; priority (source mode)
+   (id   dma-tag-id :offset 28 :size 3) ;; ID (what the tag means)
+   (irq  uint8 :offset 31 :size 1) ;; interrupt at the end?
+   (addr uint32 :offset 32 :size 31) ;; address (31 bits)
+   (spr  uint8 :offset 63 :size 1) ;; spr or not flag.
+   ))
 
 ;; DMA data is divided into buckets.
 ;; At the end of a frame, the buckets are all connected together in order and sent.
@@ -184,118 +165,100 @@
 
 ;; there is typically a texture upload bucket followed by renderer-specific draw buckets.
 (defconstant BUCKET_COUNT (#if PC_PORT 70 69))
+
 (defenum bucket-id
-    :type int32
-    :bitfield #f
-
-    ;; 0
-    ;; 1
-    ;; 2
-    (sky-draw          3) ;; actual sky and cloud framebuffer draws
-    (ocean-mid-and-far 4) ;; actual ocean framebuffer draws for mid/transition/far
-
-    (tfrag-tex0         5) ;; tfrag texture upload, level 0
-    (tfrag-0            6) ;; tfrag draw, level 0
-    (tfrag-near-0       7) ;; tfrag near draw, level 0
-    (tie-near-0         8) ;; tie near draw, level 0
-    (tie-0              9) ;; tie draw, level 0
-    (merc-tfrag-tex0    10) ;; merc, with tfrag textures, level 0
-    (generic-tfrag-tex0 11) ;; generic merc, with tfrag textures, level 0
-
-    (tfrag-tex1         12) ;; tfrag texture upload, level 1
-    (tfrag-1            13) ;; tfrag draw, level 1
-    (tfrag-near-1       14) ;; tfrag near draw, level 1
-    (tie-near-1         15) ;; tie near draw, level 1
-    (tie-1              16) ;; tie draw, level 1
-    (merc-tfrag-tex1    17) ;; merc, with tfrag textures, level 1
-    (generic-tfrag-tex1 18) ;; generic merc, with tfrag textures, level 1
-
-    (shrub-tex0       19)
-    (shrub0           20)
-    ;; 21 (likely shrub near)
-    (shrub-billboard0 22)
-    (shrub-trans0     23)
-    (shrub-generic0   24) ;; note: all shrub seems to go in shrub-generic1
-
-    (shrub-tex1       25)
-    (shrub1           26)
-    ;; 27 (likely shrub near)
-    (shrub-billboard1 28)
-    (shrub-trans1     29)
-    (shrub-generic1   30)
-
-    (alpha-tex0         31)
-    (tfrag-trans-0      32) ;; also sky blend
-    (tfrag-trans-near-0 33)
-    (tfrag-dirt-0       34)
-    (tfrag-dirt-near-0  35)
-    (tfrag-ice-0        36)
-    (tfrag-ice-near-0   37)
-
-    (alpha-tex1         38)
-    (tfrag-trans-1      39) ;; also sky blend
-    (tfrag-trans-near-1 40)
-    (tfrag-dirt-1       41)
-    (tfrag-dirt-near-1  42)
-    (tfrag-ice-1        43)
-    (tfrag-ice-near-1   44)
-
-    (merc-alpha-tex    45)
-    (generic-alpha-tex 46)
-
-    (shadow 47)
-
-    (pris-tex0     48)
-    (merc-pris0    49)
-    (generic-pris0 50)
-
-    (pris-tex1     51)
-    (merc-pris1    52)
-    (generic-pris1 53)
-
-    (eyes 54)
-
-    (merc-pris-common    55)
-    (generic-pris-common 56)
-
-    (water-tex0 57)
-    (merc-water0 58)
-    (generic-water0 59)
-
-    (water-tex1 60)
-    (merc-water1 61)
-    (generic-water1 62)
-
-    (ocean-near 63) ; ocean
-    (depth-cue 64)
-    (common-page-tex 65)
-    (sprite 66)
-    (debug 67)
-    (debug-no-zbuf 68)
-
-    ;; extra buckets for pc port
-    (subtitle 69)
-    )
+  :type int32
+  :bitfield #f
+  ;; 0
+  ;; 1
+  ;; 2
+  (sky-draw 3) ;; actual sky and cloud framebuffer draws
+  (ocean-mid-and-far 4) ;; actual ocean framebuffer draws for mid/transition/far
+  (tfrag-tex0 5) ;; tfrag texture upload, level 0
+  (tfrag-0 6) ;; tfrag draw, level 0
+  (tfrag-near-0 7) ;; tfrag near draw, level 0
+  (tie-near-0 8) ;; tie near draw, level 0
+  (tie-0 9) ;; tie draw, level 0
+  (merc-tfrag-tex0 10) ;; merc, with tfrag textures, level 0
+  (generic-tfrag-tex0 11) ;; generic merc, with tfrag textures, level 0
+  (tfrag-tex1 12) ;; tfrag texture upload, level 1
+  (tfrag-1 13) ;; tfrag draw, level 1
+  (tfrag-near-1 14) ;; tfrag near draw, level 1
+  (tie-near-1 15) ;; tie near draw, level 1
+  (tie-1 16) ;; tie draw, level 1
+  (merc-tfrag-tex1 17) ;; merc, with tfrag textures, level 1
+  (generic-tfrag-tex1 18) ;; generic merc, with tfrag textures, level 1
+  (shrub-tex0 19)
+  (shrub0 20)
+  ;; 21 (likely shrub near)
+  (shrub-billboard0 22)
+  (shrub-trans0 23)
+  (shrub-generic0 24) ;; note: all shrub seems to go in shrub-generic1
+  (shrub-tex1 25)
+  (shrub1 26)
+  ;; 27 (likely shrub near)
+  (shrub-billboard1 28)
+  (shrub-trans1 29)
+  (shrub-generic1 30)
+  (alpha-tex0 31)
+  (tfrag-trans-0 32) ;; also sky blend
+  (tfrag-trans-near-0 33)
+  (tfrag-dirt-0 34)
+  (tfrag-dirt-near-0 35)
+  (tfrag-ice-0 36)
+  (tfrag-ice-near-0 37)
+  (alpha-tex1 38)
+  (tfrag-trans-1 39) ;; also sky blend
+  (tfrag-trans-near-1 40)
+  (tfrag-dirt-1 41)
+  (tfrag-dirt-near-1 42)
+  (tfrag-ice-1 43)
+  (tfrag-ice-near-1 44)
+  (merc-alpha-tex 45)
+  (generic-alpha-tex 46)
+  (shadow 47)
+  (pris-tex0 48)
+  (merc-pris0 49)
+  (generic-pris0 50)
+  (pris-tex1 51)
+  (merc-pris1 52)
+  (generic-pris1 53)
+  (eyes 54)
+  (merc-pris-common 55)
+  (generic-pris-common 56)
+  (water-tex0 57)
+  (merc-water0 58)
+  (generic-water0 59)
+  (water-tex1 60)
+  (merc-water1 61)
+  (generic-water1 62)
+  (ocean-near 63) ; ocean
+  (depth-cue 64)
+  (common-page-tex 65)
+  (sprite 66)
+  (debug 67)
+  (debug-no-zbuf 68)
+  ;; extra buckets for pc port
+  (subtitle 69))
 
 ;; A DMA bucket is a way of sorting data within a dma buffer.
 ;; The buckets themselves live inside in the dma buffer.
 ;; the addr field of their tag should point to the next bucket.
 ;; This is not a PS2 hardware thing
 (deftype dma-bucket (structure)
-  ((tag   dma-tag   :offset-assert 0) ;; the DMA tag to transfer the bucket's data
-   (last  (pointer dma-tag))  ;; the last tag of this bucket.
-   (dummy uint32)  ;; empty space.
-   (next  uint32    :offset 4)  ;; this overlaps with the addr bit-field of the dma-tag
-   )
-  )
+  ((tag   dma-tag :offset-assert 0) ;; the DMA tag to transfer the bucket's data
+   (last  (pointer dma-tag)) ;; the last tag of this bucket.
+   (dummy uint32) ;; empty space.
+   (next  uint32 :offset 4) ;; this overlaps with the addr bit-field of the dma-tag
+   ))
 
 ;; guess - VIF_MASK register?
 (deftype vif-mask (uint32)
-  ((m0  uint8 :offset 0  :size 2)
-   (m1  uint8 :offset 2  :size 2)
-   (m2  uint8 :offset 4  :size 2)
-   (m3  uint8 :offset 6  :size 2)
-   (m4  uint8 :offset 8  :size 2)
+  ((m0  uint8 :offset 0 :size 2)
+   (m1  uint8 :offset 2 :size 2)
+   (m2  uint8 :offset 4 :size 2)
+   (m3  uint8 :offset 6 :size 2)
+   (m4  uint8 :offset 8 :size 2)
    (m5  uint8 :offset 10 :size 2)
    (m6  uint8 :offset 12 :size 2)
    (m7  uint8 :offset 14 :size 2)
@@ -306,96 +269,85 @@
    (m12 uint8 :offset 24 :size 2)
    (m13 uint8 :offset 26 :size 2)
    (m14 uint8 :offset 28 :size 2)
-   (m15 uint8 :offset 30 :size 2)
-   )
-  )
+   (m15 uint8 :offset 30 :size 2)))
 
 ;; the IMM field of a VIF STCYCL instruction
 (deftype vif-stcycl-imm (uint16)
-  ((cl  uint8 :offset 0 :size 8)
-   (wl  uint8 :offset 8 :size 8)
-   )
-  )
+  ((cl uint8 :offset 0 :size 8)
+   (wl uint8 :offset 8 :size 8)))
 
 ;; the IMM field of a VIF UNPACK instruction
 (deftype vif-unpack-imm (uint16)
-  ((addr  uint16 :offset 0  :size 10)
-   (usn   uint8  :offset 14 :size 1)
-   (flg   uint8  :offset 15 :size 1)
-   )
-  )
-
+  ((addr uint16 :offset 0 :size 10)
+   (usn  uint8 :offset 14 :size 1)
+   (flg  uint8 :offset 15 :size 1)))
 
 ;; all these have mask (only applies to unpacks) and interrupt not set.
 (defenum vif-cmd
-    :bitfield #f
-    :type uint8
-    (nop          0)  ;; no-op, can still have irq set.
-    (stcycl       1)  ;; set write recycle register
-    (offset       2)  ;; set offset register
-    (base         3)  ;; set base register
-    (itop         4)  ;; set data pointer register (itops)
-    (stmod        5)  ;; set mode register
-    (mskpath3     6)  ;; set path 3 mask
-    (mark         7)  ;; set mark register
-    (pc-port      8)  ;; special tag for PC Port data.
-    (flushe       16) ;; wait for end of microprogram
-    (flush        17) ;; wait for end of microprogram and transfer (path1/path2)
-    (flusha       19) ;; wait for end of microprogram and transfer (path1/path2/path3)
-    (mscal        20) ;; activate microprogram (call)
-    (mscalf       21) ;; flushe and activate (call)
-    (mscnt        23) ;; activate microprogram (continue)
-    (stmask       32) ;; set MASK register.
-    (strow        48) ;; set filling data
-    (stcol        49) ;; set filling data
-    (mpg          74) ;; transfer microprogram
-    (direct       80) ;; straight to GIF.
-    (directhl     81)
-    (unpack-s-32  96)
-    (unpack-s-16  97)
-    (unpack-s-8   98)
-    ;; 99 is invllid
-    (unpack-v2-32 100)
-    (unpack-v2-16 101)
-    (unpack-v2-8  102)
-    ;; 103 is invalid
-    (unpack-v3-32 104)
-    (unpack-v3-16 105)
-    (unpack-v3-8  106)
-    ;; 107 is invalid
-    (unpack-v4-32 108)
-    (unpack-v4-16 109)
-    (unpack-v4-8  110)
-    (unpack-v4-5  111)
-    (cmd-mask     239) ;; not sure what this is.
-    )
+  :bitfield #f
+  :type uint8
+  (nop 0) ;; no-op, can still have irq set.
+  (stcycl 1) ;; set write recycle register
+  (offset 2) ;; set offset register
+  (base 3) ;; set base register
+  (itop 4) ;; set data pointer register (itops)
+  (stmod 5) ;; set mode register
+  (mskpath3 6) ;; set path 3 mask
+  (mark 7) ;; set mark register
+  (pc-port 8) ;; special tag for PC Port data.
+  (flushe 16) ;; wait for end of microprogram
+  (flush 17) ;; wait for end of microprogram and transfer (path1/path2)
+  (flusha 19) ;; wait for end of microprogram and transfer (path1/path2/path3)
+  (mscal 20) ;; activate microprogram (call)
+  (mscalf 21) ;; flushe and activate (call)
+  (mscnt 23) ;; activate microprogram (continue)
+  (stmask 32) ;; set MASK register.
+  (strow 48) ;; set filling data
+  (stcol 49) ;; set filling data
+  (mpg 74) ;; transfer microprogram
+  (direct 80) ;; straight to GIF.
+  (directhl 81)
+  (unpack-s-32 96)
+  (unpack-s-16 97)
+  (unpack-s-8 98)
+  ;; 99 is invllid
+  (unpack-v2-32 100)
+  (unpack-v2-16 101)
+  (unpack-v2-8 102)
+  ;; 103 is invalid
+  (unpack-v3-32 104)
+  (unpack-v3-16 105)
+  (unpack-v3-8 106)
+  ;; 107 is invalid
+  (unpack-v4-32 108)
+  (unpack-v4-16 109)
+  (unpack-v4-8 110)
+  (unpack-v4-5 111)
+  (cmd-mask 239) ;; not sure what this is.
+  )
 
 ;; this makes a copy of the above type, but uses a uint32.
 (defenum vif-cmd-32
-    :bitfield #f
-    :type uint32
-    :copy-entries vif-cmd
-    )
+  :bitfield #f
+  :type uint32
+  :copy-entries vif-cmd)
 
 ;; The VIF also has tags to control it.
 ;; Different VIF commands (called VIFcode) have different tag layouts.
 (deftype vif-tag (uint32)
-  ((imm uint16  :offset 0 :size 16)
-   (num uint8   :offset 16 :size 8)
+  ((imm uint16 :offset 0 :size 16)
+   (num uint8 :offset 16 :size 8)
    (cmd vif-cmd :offset 24 :size 7)
-   (irq uint8   :offset 31 :size 1)
-   (msk uint8   :offset 28 :size 1)
-   )
-  )
+   (irq uint8 :offset 31 :size 1)
+   (msk uint8 :offset 28 :size 1)))
 
-(defmethod inspect vif-tag ((obj vif-tag))
+(defmethod inspect ((obj vif-tag))
   (format #t "~Timm: #x~X~%" (-> obj imm))
   (format #t "~Tnum: ~D~%" (-> obj num))
   (format #t "~Tcmd: ~D~%" (-> obj cmd))
   (format #t "~Tirq: ~D~%" (-> obj irq))
   (format #t "~Tmsk: ~D~%" (-> obj msk))
-  obj
-  )
+  obj)
 
 ;; NOTE: these functions are never called
 ;;  so they are not really modified for x86-64
@@ -408,23 +360,16 @@
   (#cond
     (INSTANT_DMA
      ;; nothing to do.
-     0
-     )
+     0)
     (#t
      (while (nonzero? (-> bank chcr str))
        ;; they had a precise number of nops here.
        ;; it turns out that spamming the DMA registers is not a good idea
        ;; because it uses the main bus that the DMA is possibly also trying to use.
-       (nop!)
-       )
-     )
-    )
-  (none)
-  )
+       (nop!))))
+  (none))
 
-(defun dma-send-no-scratch ((bank dma-bank)
-                            (madr uint32)
-                            (qwc uint32))
+(defun dma-send-no-scratch ((bank dma-bank) (madr uint32) (qwc uint32))
   "Begin a DMA transfer, directly to the bank.
    Makes sure any ongoing transfer on the channel is done
    Flushes the cache. Sets dir to 0, so I don't expect
@@ -437,53 +382,26 @@
   (set! (-> bank madr) madr)
   (set! (-> bank qwc) qwc)
   (.sync.l)
-
   ;; this seems wrong, they set everything to 0,
   ;; including dir, which is the to-memory direction
-  (set! (-> bank chcr)
-        (new 'static 'dma-chcr :str 1)
-        )
-  (none)
-  )
+  (set! (-> bank chcr) (new 'static 'dma-chcr :str 1))
+  (none))
 
-(defun dma-sync-with-count ((bank dma-bank)
-                            (count (pointer int32)))
+(defun dma-sync-with-count ((bank dma-bank) (count (pointer int32)))
   "Wait for DMA to finish, incrementing count.
    This doesn't seem like a very accurate way
    to find out how long it takes...
    This function is unused."
   (#cond
-    (INSTANT_DMA
-     (set! (-> count) INSTANT_DMA_COUNT)
-     0
-     )
+    (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
     (#t
      (when (nonzero? (-> bank chcr str))
-       (let ((x (-> count)))
-         (while (nonzero? (-> bank chcr str))
-           (+! x 1)
-           (set! (-> count) x)
-           )
-         )
-       )
-     0
-     )
-    )
-  )
+       (let ((x (-> count))) (while (nonzero? (-> bank chcr str)) (+! x 1) (set! (-> count) x))))
+     0)))
 
-(defun dma-count-until-done ((bank dma-bank)
-                             (count (pointer int32)))
+(defun dma-count-until-done ((bank dma-bank) (count (pointer int32)))
   "Like the previous one, kinda.
    This function is unused."
   (#cond
-    (INSTANT_DMA
-     (set! (-> count) INSTANT_DMA_COUNT)
-     0
-     )
-    (#t
-     (while (nonzero? (-> bank chcr str))
-       (set! (-> count) (+ 1 (-> count)))
-       )
-     )
-    )
-  )
+    (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
+    (#t (while (nonzero? (-> bank chcr str)) (set! (-> count) (+ 1 (-> count)))))))

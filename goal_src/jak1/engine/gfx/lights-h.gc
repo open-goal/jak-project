@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: lights-h.gc
-;; name in dgo: lights-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gcommon.gc")
 
 ;; It seems like some of these are unused.
 ;; The commonly used lights are vu-lights and light-group.
@@ -15,77 +13,62 @@
 ;; Note that the data is transposed to be faster for use in the VU code.
 ;; the w components are unused for lighting information - you can put whatever you want in them...
 (deftype vu-lights (structure)
-  ((direction  vector  3 :inline)
-   (color      vector  3 :inline)
-   (ambient    vector  :inline)
-   )
-  )
+  ((direction vector 3 :inline)
+   (color     vector 3 :inline)
+   (ambient   vector :inline)))
 
 ;; a single directional light.
 (deftype light (structure)
-  ((direction   vector  :inline)
-   (color       rgbaf   :inline)
-   (levels      vector  :inline)
-   (level       float   :overlay-at (-> levels x))
-   (sort-level  float   :overlay-at (-> levels y))
-   )
-  )
+  ((direction  vector :inline)
+   (color      rgbaf :inline)
+   (levels     vector :inline)
+   (level      float :overlay-at (-> levels x))
+   (sort-level float :overlay-at (-> levels y))))
 
 ;; unused?
 (deftype light-ellipse (structure)
-  ((matrix               matrix  :inline)
-   (color                rgbaf   :inline)
-   (name                 basic   :overlay-at (-> matrix data 3))
-   (decay-start          float   :overlay-at (-> matrix data 7))
-   (ambient-point-ratio  float   :overlay-at (-> matrix data 11))
-   (level                float   :overlay-at (-> matrix data 15))
-   (func-symbol          basic   :overlay-at (-> color a))
-   (func                 basic   :overlay-at (-> color a))
-   )
-  )
+  ((matrix              matrix :inline)
+   (color               rgbaf :inline)
+   (name                basic :overlay-at (-> matrix data 3))
+   (decay-start         float :overlay-at (-> matrix data 7))
+   (ambient-point-ratio float :overlay-at (-> matrix data 11))
+   (level               float :overlay-at (-> matrix data 15))
+   (func-symbol         basic :overlay-at (-> color a))
+   (func                basic :overlay-at (-> color a))))
 
 ;; This likely doesn't work correctly in both GOAL and OpenGOAL
 ;; unused?
-(deftype light-array (array)
-  ()
-  )
+(deftype light-array (array) ())
 
 ;; unused?
 (deftype light-volume (basic)
-  ((light-array  light-array)
-   )
-  )
+  ((light-array light-array)))
 
 ;; unused?
 (deftype light-volume-sphere (light-volume)
-  ((bsphere  sphere  :inline)
-   )
-  )
+  ((bsphere sphere :inline)))
 
 ;; unused?
 (deftype light-volume-planes (light-volume)
-  ((planes  vertical-planes)
-   )
-  )
+  ((planes vertical-planes)))
 
 ;; unused?
-(deftype light-volume-array (array)
-  ()
-  )
-
+(deftype light-volume-array (array) ())
 
 (defmethod print ((this light))
-  (format #t "#<light [~F] ~F ~F ~F  " (-> this levels x) (-> this direction x) (-> this direction y) (-> this direction z))
-                         (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
-  this
-  )
+  (format #t
+          "#<light [~F] ~F ~F ~F  "
+          (-> this levels x)
+          (-> this direction x)
+          (-> this direction y)
+          (-> this direction z))
+  (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
+  this)
 
 ;; the primary light type, used before conversion to vu-lights.
 (deftype light-group (structure)
-  ((dir0    light  :inline)
-   (dir1    light  :inline)
-   (dir2    light  :inline)
-   (ambi    light  :inline)
-   (lights  light  4 :inline :overlay-at dir0)
-   )
-  )
+  ((dir0   light :inline)
+   (dir1   light :inline)
+   (dir2   light :inline)
+   (ambi   light :inline)
+   (lights light 4 :inline :overlay-at dir0)))

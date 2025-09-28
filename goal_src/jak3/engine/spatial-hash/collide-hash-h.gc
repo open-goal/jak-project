@@ -7,3 +7,112 @@
 
 ;; DECOMP BEGINS
 
+(define *collide-list-boxes* #f)
+
+(define *collide-hash-fragments* 0)
+
+(define *collide-hash-fragments-tfrag* 0)
+
+(define *collide-hash-fragments-instance* 0)
+
+(define *already-printed-exeeded-max-cache-tris* #f)
+
+(deftype collide-hash-scratch (structure)
+  "Scratchpad memory layout for collide-hash. Bitmask of things that have already been checked"
+  ((collidable-bits  uint128  128)
+   (poly-bits        uint64   2   :overlay-at (-> collidable-bits 0))
+   (id-bits          uint32   512 :overlay-at (-> collidable-bits 0))
+   (tris             uint32)
+   )
+  )
+
+
+(deftype collide-hash-bucket (structure)
+  "A bucket is a reference to a list of items that intersect a grid cell.
+For the broadphase, the items are collide-hash-item (wrapper of collide-hash-fragment).
+For the narrowphase, the items are entries in the index list, which contains poly indices."
+  ((index  int16)
+   (count  int16)
+   )
+  )
+
+
+(deftype collide-hash-item (structure)
+  "Items that are 'hashed' in the broadphase. Contains unique ID for checking against already-visited-bitmask
+and a pointer to the actual collide-hash-fragment, or possibly a TIE."
+  ((id          uint32)
+   (collidable  basic)
+   )
+  :pack-me
+  )
+
+
+(deftype collide-hash-poly (structure)
+  "A polygon in the narrow-phase data. This is just indices into the vertex and PAT tables."
+  ((data         uint8   4)
+   (vert-index0  uint8   :overlay-at (-> data 0))
+   (vert-index1  uint8   :overlay-at (-> data 1))
+   (vert-index2  uint8   :overlay-at (-> data 2))
+   (pat-index    uint8   :overlay-at (-> data 3))
+   (word         uint32  :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype collide-hash-fragment-stats (structure)
+  ((num-verts   uint16)
+   (num-polys   uint8)
+   (poly-count  uint8)
+   )
+  :pack-me
+  )
+
+
+(deftype collide-hash-fragment (drawable)
+  "A mesh fragment for the Jak2/Jak3 collision system. This is a 'hash' of triangles into a grid
+where the 'hash' function is just identity."
+  ((num-buckets      uint16                               :overlay-at id)
+   (num-indices      uint16                               :offset   6)
+   (pat-array        uint32                               :offset   8)
+   (bucket-array     uint32                               :offset  12)
+   (grid-step        vector                       :inline)
+   (bbox             bounding-box                 :inline)
+   (bbox4w           bounding-box4w               :inline)
+   (axis-scale       vector                       :inline :overlay-at (-> bbox max))
+   (avg-extents      vector                       :inline :overlay-at (-> bbox4w min data 0))
+   (dimension-array  uint32                       4       :overlay-at (-> grid-step data 3))
+   (stats            collide-hash-fragment-stats  :inline :overlay-at (-> bbox min data 3))
+   (num-verts        uint16                               :overlay-at (-> bbox min data 3))
+   (num-polys        uint8                                :offset  62)
+   (poly-count       uint8                                :offset  63)
+   (poly-array       uint32                               :overlay-at (-> bbox max data 3))
+   (vert-array       uint32                               :overlay-at (-> bbox4w min data 3))
+   (index-array      uint32                               :overlay-at (-> bbox4w max data 3))
+   )
+  )
+
+
+(deftype collide-hash-fragment-array (array)
+  "A collection of collide-hash-fragments. These are used by the instanced collision if a single instance
+needs more than 1 collide-hash-fragment worth of triangles."
+  ((fragments  collide-hash-fragment  :dynamic :offset  16)
+   )
+  )
+
+
+(deftype collide-hash (drawable)
+  ((num-ids          uint16                                    :overlay-at id)
+   (id-count         uint16                                    :offset   6)
+   (num-buckets      uint32                                    :offset   8)
+   (qwc-id-bits      uint32                                    :offset  12)
+   (grid-step        vector                            :inline :overlay-at bsphere)
+   (bbox             bounding-box                      :inline :offset  32)
+   (bbox4w           bounding-box4w                    :inline :offset  64)
+   (axis-scale       vector                            :inline :offset  48)
+   (avg-extents      vector                            :inline :offset  64)
+   (bucket-array     uint32                                    :offset  44)
+   (item-array       (inline-array collide-hash-item)          :overlay-at (-> axis-scale w))
+   (dimension-array  uint32                            3       :overlay-at (-> avg-extents w))
+   (num-items        uint32                                    :offset  92)
+   )
+  )

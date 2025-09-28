@@ -1,12 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: task-control-h.gc
-;; name in dgo: task-control-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/game/game-h.gc")
 
 ;; for process-taskable
 (declare-type process-taskable process-drawable)
+
 (define-extern othercam-init-by-other (function process-taskable symbol symbol symbol none :behavior othercam))
 
 ;; There are a fixed number of game tasks. Most are just getting a power cell,
@@ -33,8 +32,7 @@
   (need-reminder-a 4)
   (need-reminder 5)
   (need-reward-speech 6)
-  (need-resolution 7)
-  )
+  (need-resolution 7))
 
 ;; our names
 (defenum task-flags
@@ -42,135 +40,122 @@
   :bitfield #t
   (closed 0)
   (has-entity 1)
-  (closed-by-default 2)
-  )
+  (closed-by-default 2))
 
 (declare-type task-control basic)
 
 ;; DECOMP BEGINS
 
 (deftype task-cstage (structure)
-  ((game-task  game-task)
-   (status     task-status)
-   (flags      task-flags)
-   (condition  (function task-control symbol))
-   )
+  ((game-task game-task)
+   (status    task-status)
+   (flags     task-flags)
+   (condition (function task-control symbol)))
   (:methods
-    (get-task (_type_) game-task)
-    (get-status (_type_) task-status)
-    (task-available? (_type_ task-control) symbol)
-    (closed? (_type_) symbol)
-    (closed-by-default? (_type_) symbol)
-    (close-task! (_type_) int)
-    (open-task! (_type_) int)
-    )
-  )
-
+   (get-task (_type_) game-task)
+   (get-status (_type_) task-status)
+   (task-available? (_type_ task-control) symbol)
+   (closed? (_type_) symbol)
+   (closed-by-default? (_type_) symbol)
+   (close-task! (_type_) int)
+   (open-task! (_type_) int)))
 
 (deftype task-control (basic)
-  ((current-stage  int16)
-   (stage          (array task-cstage))
-   )
+  ((current-stage int16)
+   (stage         (array task-cstage)))
   (:methods
-    (current-task (_type_) game-task)
-    (current-status (_type_) task-status)
-    (close-current! (_type_) game-task)
-    (close-status! (_type_ task-status) game-task)
-    (first-any (_type_ symbol) game-task)
-    (reset! (_type_ symbol symbol) int)
-    (closed? (_type_ game-task task-status) symbol)
-    (get-reminder (_type_ int) int)
-    (save-reminder (_type_ int int) int)
-    (exists? (_type_ game-task task-status) symbol)
-    )
-  )
-
+   (current-task (_type_) game-task)
+   (current-status (_type_) task-status)
+   (close-current! (_type_) game-task)
+   (close-status! (_type_ task-status) game-task)
+   (first-any (_type_ symbol) game-task)
+   (reset! (_type_ symbol symbol) int)
+   (closed? (_type_ game-task task-status) symbol)
+   (get-reminder (_type_ int) int)
+   (save-reminder (_type_ int int) int)
+   (exists? (_type_ game-task task-status) symbol)))
 
 (deftype ambient-control (structure)
-  ((last-ambient-time  time-frame)
-   (last-ambient       string)
-   (last-ambient-id    sound-id)
-   )
+  ((last-ambient-time time-frame)
+   (last-ambient      string)
+   (last-ambient-id   sound-id))
   :pack-me
   (:methods
-    (ambient-control-method-9 (_type_) none)
-    (ambient-control-method-10 (_type_ vector time-frame float process-drawable) vector)
-    (play-ambient (_type_ string symbol vector) symbol)
-    )
-  )
-
+   (ambient-control-method-9 (_type_) none)
+   (ambient-control-method-10 (_type_ vector time-frame float process-drawable) vector)
+   (play-ambient (_type_ string symbol vector) symbol)))
 
 (deftype process-taskable (process-drawable)
-  ((root                  collide-shape   :override)
-   (tasks                 task-control)
-   (query                 gui-query        :inline)
-   (old-target-pos        transformq       :inline)
-   (cell-for-task         game-task)
-   (cell-x                handle)
-   (cam-joint-index       int32)
-   (skippable             symbol)
-   (blend-on-exit         art-joint-anim)
-   (camera                handle)
-   (will-talk             symbol)
-   (talk-message          text-id)
-   (last-talk             time-frame)
-   (bounce-away           symbol)
-   (ambient               ambient-control  :inline)
-   (center-joint-index    int32)
-   (draw-bounds-y-offset  float)
-   (neck-joint-index      int32)
-   (fuel-cell-anim        spool-anim)
-   (sound-flava           music-flava)
-   (have-flava            symbol)
-   (music                 symbol)
-   (have-music            symbol)
-   (been-kicked           symbol)
-   (cur-trans-hook        (function none))
-   (shadow-backup         shadow-geo)
-   )
+  ((root                 collide-shape :override)
+   (tasks                task-control)
+   (query                gui-query :inline)
+   (old-target-pos       transformq :inline)
+   (cell-for-task        game-task)
+   (cell-x               handle)
+   (cam-joint-index      int32)
+   (skippable            symbol)
+   (blend-on-exit        art-joint-anim)
+   (camera               handle)
+   (will-talk            symbol)
+   (talk-message         text-id)
+   (last-talk            time-frame)
+   (bounce-away          symbol)
+   (ambient              ambient-control :inline)
+   (center-joint-index   int32)
+   (draw-bounds-y-offset float)
+   (neck-joint-index     int32)
+   (fuel-cell-anim       spool-anim)
+   (sound-flava          music-flava)
+   (have-flava           symbol)
+   (music                symbol)
+   (have-music           symbol)
+   (been-kicked          symbol)
+   (cur-trans-hook       (function none))
+   (shadow-backup        shadow-geo))
   (:state-methods
-    release
-    give-cell
-    lose
-    enter-playing
-    play-accept
-    play-reject
-    query
-    play-anim
-    hidden
-    (be-clone handle)
-    idle
-    )
+   release
+   give-cell
+   lose
+   enter-playing
+   play-accept
+   play-reject
+   query
+   play-anim
+   hidden
+   (be-clone handle)
+   idle)
   (:methods
-    (get-art-elem (_type_) art-element)
-    (play-anim! (_type_ symbol) basic)
-    (process-taskable-method-33 (_type_) none)
-    (get-accept-anim (_type_ symbol) spool-anim)
-    (push-accept-anim (_type_) none)
-    (get-reject-anim (_type_ symbol) spool-anim)
-    (push-reject-anim (_type_) none)
-    (process-taskable-method-38 (_type_) none)
-    (should-display? (_type_) symbol)
-    (process-taskable-method-40 (_type_ object skeleton-group int int vector int) none)
-    (initialize-collision (_type_ int vector) none)
-    (process-taskable-method-42 (_type_) none)
-    (process-taskable-method-43 (_type_) symbol)
-    (play-reminder (_type_) symbol)
-    (process-taskable-method-45 (_type_) symbol)
-    (process-taskable-method-46 (_type_) none)
-    (target-above-threshold? (_type_) symbol)
-    (draw-npc-shadow (_type_) none)
-    (hidden-other () _type_ :state)
-    (process-taskable-method-50 (_type_) symbol)
-    (close-anim-file! (_type_) symbol)
-    (process-taskable-method-52 (_type_) none)
-    )
-  )
+   (get-art-elem (_type_) art-element)
+   (play-anim! (_type_ symbol) basic)
+   (process-taskable-method-33 (_type_) none)
+   (get-accept-anim (_type_ symbol) spool-anim)
+   (push-accept-anim (_type_) none)
+   (get-reject-anim (_type_ symbol) spool-anim)
+   (push-reject-anim (_type_) none)
+   (process-taskable-method-38 (_type_) none)
+   (should-display? (_type_) symbol)
+   (process-taskable-method-40 (_type_ object skeleton-group int int vector int) none)
+   (initialize-collision (_type_ int vector) none)
+   (process-taskable-method-42 (_type_) none)
+   (process-taskable-method-43 (_type_) symbol)
+   (play-reminder (_type_) symbol)
+   (process-taskable-method-45 (_type_) symbol)
+   (process-taskable-method-46 (_type_) none)
+   (target-above-threshold? (_type_) symbol)
+   (draw-npc-shadow (_type_) none)
+   (hidden-other () _type_ :state)
+   (process-taskable-method-50 (_type_) symbol)
+   (close-anim-file! (_type_) symbol)
+   (process-taskable-method-52 (_type_) none)))
 
 (defun-extern task-known? game-task symbol)
+
 (defun-extern task-control-reset symbol none)
 
 (define-extern task-closed? (function game-task task-status symbol))
+
 (define-extern get-task-status (function game-task task-status))
+
 (define-extern get-task-control (function game-task task-control))
+
 (define-extern close-specific-task! (function game-task task-status game-task))

@@ -1,0 +1,488 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition of type manipulator
+(deftype manipulator (structure)
+  ((action              manipulator-action)
+   (mode                manipulator-mode)
+   (dragging?           symbol)
+   (position            vector        :inline)
+   (speed               vector        :inline)
+   (drag-ref-position   vector        :inline)
+   (mouse-ref-position  vector        :inline)
+   (mat                 matrix        :inline)
+   (rotate-ref          int32)
+   (angles              euler-angles  :inline)
+   )
+  (:methods
+    (set-mode (_type_ manipulator-mode) none)
+    (manipulator-method-10 (_type_) none)
+    (manipulator-method-11 (_type_) none)
+    (manipulator-method-12 (_type_ vector) none)
+    (manipulator-method-13 (_type_ vector vector) none)
+    (manipulator-method-14 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type manipulator
+(defmethod inspect ((this manipulator))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'manipulator)
+  (format #t "~1Taction: ~D~%" (-> this action))
+  (format #t "~1Tmode: ~D~%" (-> this mode))
+  (format #t "~1Tdragging?: ~A~%" (-> this dragging?))
+  (format #t "~1Tposition: #<vector @ #x~X>~%" (-> this position))
+  (format #t "~1Tspeed: #<vector @ #x~X>~%" (-> this speed))
+  (format #t "~1Tdrag-ref-position: #<vector @ #x~X>~%" (-> this drag-ref-position))
+  (format #t "~1Tmouse-ref-position: #<vector @ #x~X>~%" (-> this mouse-ref-position))
+  (format #t "~1Tmat: #<matrix @ #x~X>~%" (-> this mat))
+  (format #t "~1Trotate-ref: ~D~%" (-> this rotate-ref))
+  (format #t "~1Tangles: #<euler-angles @ #x~X>~%" (-> this angles))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function draw-axis
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defun draw-axis ((arg0 vector) (arg1 vector) (arg2 float) (arg3 float) (arg4 rgba))
+  (local-vars
+    (sv-160 int)
+    (sv-176 (function symbol bucket-id vector vector vector rgba symbol))
+    (sv-192 symbol)
+    (sv-208 int)
+    (sv-224 vector)
+    (sv-240 vector)
+    (sv-256 vector)
+    (sv-272 vector)
+    (sv-288 vector)
+    )
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s1-0 (new 'stack-no-clear 'vector)))
+      (cond
+        ((< (fabs (vector-dot arg1 *x-vector*)) 0.5)
+         (vector-cross! s1-0 *x-vector* arg1)
+         )
+        ((< (fabs (vector-dot arg1 *y-vector*)) 0.5)
+         (vector-cross! s1-0 *y-vector* arg1)
+         )
+        (else
+          (vector-cross! s1-0 *z-vector* arg1)
+          )
+        )
+      (vector-cross! s1-0 s1-0 arg1)
+      (vector-normalize! s1-0 1.0)
+      (let ((s0-1 (vector+*! (new 'stack-no-clear 'vector) arg0 arg1 arg2)))
+        (set! sv-160 0)
+        (while (< sv-160 8)
+          (set! sv-176 add-debug-flat-triangle)
+          (set! sv-192 #t)
+          (set! sv-208 584)
+          (set! sv-224 (new 'stack-no-clear 'vector))
+          (let ((v1-16 s0-1))
+            (let ((a0-9 arg1))
+              (let ((a1-10 arg3))
+                (.mov vf7 a1-10)
+                )
+              (.lvf vf5 (&-> a0-9 quad))
+              )
+            (.lvf vf4 (&-> v1-16 quad))
+            )
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
+          (.svf (&-> sv-224 quad) vf6)
+          (set! sv-256 (new 'stack-no-clear 'vector))
+          (set! sv-240 s0-1)
+          (let* ((a2-3
+                   (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) arg1 (* 182.04445 (the float (* 45 sv-160))))
+                   )
+                 (v1-22 (vector-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 a2-3))
+                 )
+            (let ((a0-13 (/ arg3 4)))
+              (.mov vf7 a0-13)
+              )
+            (.lvf vf5 (&-> v1-22 quad))
+            )
+          (.lvf vf4 (&-> sv-240 quad))
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
+          (.svf (&-> sv-256 quad) vf6)
+          (set! sv-288 (new 'stack-no-clear 'vector))
+          (set! sv-272 s0-1)
+          (let* ((a2-7 (quaternion-vector-angle!
+                         (new 'stack-no-clear 'quaternion)
+                         arg1
+                         (* 182.04445 (the float (* 45 (+ sv-160 1))))
+                         )
+                       )
+                 (v1-29 (vector-orient-by-quat! (new 'stack-no-clear 'vector) s1-0 a2-7))
+                 )
+            (let ((a0-17 (/ arg3 4)))
+              (.mov vf7 a0-17)
+              )
+            (.lvf vf5 (&-> v1-29 quad))
+            )
+          (.lvf vf4 (&-> sv-272 quad))
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
+          (.svf (&-> sv-288 quad) vf6)
+          (let ((t1-0 arg4))
+            (sv-176 sv-192 (the-as bucket-id sv-208) sv-224 sv-256 sv-288 t1-0)
+            )
+          (set! sv-160 (+ sv-160 1))
+          )
+        )
+      )
+    (add-debug-vector #t (bucket-id debug-no-zbuf2) arg0 arg1 arg2 arg4)
+    (none)
+    )
+  )
+
+;; definition for method 9 of type manipulator
+;; WARN: Return type mismatch int vs none.
+(defmethod set-mode ((this manipulator) (arg0 manipulator-mode))
+  (set! (-> this mode) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 10 of type manipulator
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for method 11 of type manipulator
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod manipulator-method-11 ((this manipulator))
+  (local-vars (sv-240 rgba) (sv-256 vector) (sv-272 vector))
+  (format *stdcon* "~M ~M ~M~%" (-> this position x) (-> this position y) (-> this position z))
+  (let ((s5-0 (-> this position)))
+    0.0
+    (let* ((v0-1
+             (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> *math-camera* trans) (-> this position)) 1.0)
+             )
+           (s4-0 (< (fabs (vector-dot v0-1 (-> this mat rvec))) 0.9))
+           (s3-0 (< (fabs (vector-dot v0-1 (-> this mat uvec))) 0.9))
+           (s2-0 (< (fabs (vector-dot v0-1 (-> this mat fvec))) 0.9))
+           (f30-1 (* 0.15 (vector-vector-distance (-> *math-camera* trans) s5-0)))
+           )
+      (if s4-0
+          (draw-axis s5-0 (-> this mat rvec) f30-1 (/ f30-1 4) (if (= (-> this action) (manipulator-action ma1))
+                                                                   *color-yellow*
+                                                                   *color-red*
+                                                                   )
+                     )
+          )
+      (if s3-0
+          (draw-axis s5-0 (-> this mat uvec) f30-1 (/ f30-1 4) (if (= (-> this action) (manipulator-action ma2))
+                                                                   *color-yellow*
+                                                                   *color-green*
+                                                                   )
+                     )
+          )
+      (if s2-0
+          (draw-axis s5-0 (-> this mat fvec) f30-1 (/ f30-1 4) (if (= (-> this action) (manipulator-action ma3))
+                                                                   *color-yellow*
+                                                                   *color-blue*
+                                                                   )
+                     )
+          )
+      (let ((s1-0 (new 'stack-no-clear 'vector))
+            (s0-0 (new 'stack-no-clear 'vector))
+            )
+        (let ((f28-0 0.1))
+          (if (= (-> this action) (manipulator-action ma7))
+              (set! sv-240 *color-yellow*)
+              (set! sv-240 *color-light-blue*)
+              )
+          (vector+*!
+            s1-0
+            s5-0
+            (vector+!
+              (new 'stack-no-clear 'vector)
+              (-> *math-camera* inv-camera-rot rvec)
+              (-> *math-camera* inv-camera-rot uvec)
+              )
+            (* f30-1 f28-0)
+            )
+          (vector+*! s0-0 s1-0 (-> *math-camera* inv-camera-rot uvec) (* -2.0 f30-1 f28-0))
+          (add-debug-line #t (bucket-id debug-no-zbuf1) s1-0 s0-0 sv-240 #f (the-as rgba -1))
+          (vector-copy! s1-0 s0-0)
+          (vector+*! s0-0 s0-0 (-> *math-camera* inv-camera-rot rvec) (* -2.0 f30-1 f28-0))
+          (add-debug-line #t (bucket-id debug-no-zbuf1) s1-0 s0-0 sv-240 #f (the-as rgba -1))
+          (vector-copy! s1-0 s0-0)
+          (vector+*! s0-0 s0-0 (-> *math-camera* inv-camera-rot uvec) (* 2.0 f30-1 f28-0))
+          (add-debug-line #t (bucket-id debug-no-zbuf1) s1-0 s0-0 sv-240 #f (the-as rgba -1))
+          (vector-copy! s1-0 s0-0)
+          (vector+*! s0-0 s0-0 (-> *math-camera* inv-camera-rot rvec) (* 2.0 f30-1 f28-0))
+          )
+        (let ((t9-9 add-debug-line)
+              (a0-31 #t)
+              (a1-20 577)
+              (t1-3 #f)
+              (t2-3 -1)
+              )
+          (t9-9 a0-31 (the-as bucket-id a1-20) s1-0 s0-0 sv-240 t1-3 (the-as rgba t2-3))
+          )
+        )
+      (let ((s1-1 (new 'stack-no-clear 'vector)))
+        (when (and s3-0 s2-0)
+          (vector+*! s1-1 s5-0 (vector+! (new 'stack-no-clear 'vector) (-> this mat fvec) (-> this mat uvec)) f30-1)
+          (let ((s0-1 draw-axis))
+            (set! sv-256 s1-1)
+            (let ((a1-24 (vector-negate! (new 'stack-no-clear 'vector) (-> this mat uvec)))
+                  (a2-15 (* 0.15 f30-1))
+                  (a3-11 (* 0.15 f30-1))
+                  (t0-11 (if (= (-> this action) (manipulator-action ma6))
+                             *color-yellow*
+                             *color-green*
+                             )
+                         )
+                  )
+              (s0-1 sv-256 a1-24 a2-15 a3-11 t0-11)
+              )
+            )
+          (let ((s0-2 draw-axis))
+            (set! sv-272 s1-1)
+            (let ((a1-26 (vector-negate! (new 'stack-no-clear 'vector) (-> this mat fvec)))
+                  (a2-16 (* 0.15 f30-1))
+                  (a3-12 (* 0.15 f30-1))
+                  (t0-12 (if (= (-> this action) (manipulator-action ma6))
+                             *color-yellow*
+                             *color-blue*
+                             )
+                         )
+                  )
+              (s0-2 sv-272 a1-26 a2-16 a3-12 t0-12)
+              )
+            )
+          )
+        (set! s2-0 (and s4-0 s2-0))
+        (when s2-0
+          (vector+*! s1-1 s5-0 (vector+! (new 'stack-no-clear 'vector) (-> this mat rvec) (-> this mat fvec)) f30-1)
+          (draw-axis
+            s1-1
+            (vector-negate! (new 'stack-no-clear 'vector) (-> this mat rvec))
+            (* 0.15 f30-1)
+            (* 0.15 f30-1)
+            (if (= (-> this action) (manipulator-action ma5))
+                *color-yellow*
+                *color-red*
+                )
+            )
+          (draw-axis
+            s1-1
+            (vector-negate! (new 'stack-no-clear 'vector) (-> this mat fvec))
+            (* 0.15 f30-1)
+            (* 0.15 f30-1)
+            (if (= (-> this action) (manipulator-action ma5))
+                *color-yellow*
+                *color-blue*
+                )
+            )
+          )
+        (set! s3-0 (and s4-0 s3-0))
+        (when s3-0
+          (vector+*! s1-1 s5-0 (vector+! (new 'stack-no-clear 'vector) (-> this mat rvec) (-> this mat uvec)) f30-1)
+          (draw-axis
+            s1-1
+            (vector-negate! (new 'stack-no-clear 'vector) (-> this mat rvec))
+            (* 0.15 f30-1)
+            (* 0.15 f30-1)
+            (if (= (-> this action) (manipulator-action ma4))
+                *color-yellow*
+                *color-red*
+                )
+            )
+          (draw-axis
+            s1-1
+            (vector-negate! (new 'stack-no-clear 'vector) (-> this mat uvec))
+            (* 0.15 f30-1)
+            (* 0.15 f30-1)
+            (if (= (-> this action) (manipulator-action ma4))
+                *color-yellow*
+                *color-green*
+                )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type manipulator
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod manipulator-method-12 ((this manipulator) (arg0 vector))
+  (set! (-> this rotate-ref) (the int (-> *mouse* posx)))
+  (vector-copy! (-> this mouse-ref-position) arg0)
+  (vector-copy! (-> this drag-ref-position) (-> this position))
+  (set! (-> this dragging?) #t)
+  (set! (-> this speed quad) (the-as uint128 0))
+  0
+  (none)
+  )
+
+;; definition for method 13 of type manipulator
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod manipulator-method-13 ((this manipulator) (arg0 vector) (arg1 vector))
+  (cond
+    ((= (-> this mode) (manipulator-mode mm0))
+     (vector-copy! (-> this speed) (-> this position))
+     (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) arg1 arg0))
+           (s4-1 (vector-! (new 'stack-no-clear 'vector) (-> this mouse-ref-position) arg0))
+           )
+       0.0
+       0.0
+       (let ((s2-0 (new 'stack-no-clear 'vector))
+             (s1-0 (new 'stack-no-clear 'vector))
+             )
+         (cond
+           ((or (= (-> this action) (manipulator-action ma1))
+                (= (-> this action) (manipulator-action ma2))
+                (= (-> this action) (manipulator-action ma3))
+                )
+            (cond
+              ((= (-> this action) (manipulator-action ma1))
+               (cond
+                 ((< (fabs (vector-dot s5-1 (-> this mat uvec))) (fabs (vector-dot s5-1 (-> this mat fvec))))
+                  (vector-copy! s2-0 (-> this mat fvec))
+                  (vector-copy! s1-0 (-> this mat uvec))
+                  )
+                 (else
+                   (vector-copy! s2-0 (-> this mat uvec))
+                   (vector-copy! s1-0 (-> this mat fvec))
+                   )
+                 )
+               )
+              ((= (-> this action) (manipulator-action ma2))
+               (cond
+                 ((< (fabs (vector-dot s5-1 (-> this mat rvec))) (fabs (vector-dot s5-1 (-> this mat fvec))))
+                  (vector-copy! s2-0 (-> this mat fvec))
+                  (vector-copy! s1-0 (-> this mat rvec))
+                  )
+                 (else
+                   (vector-copy! s2-0 (-> this mat rvec))
+                   (vector-copy! s1-0 (-> this mat fvec))
+                   )
+                 )
+               )
+              ((= (-> this action) (manipulator-action ma3))
+               (cond
+                 ((< (fabs (vector-dot s5-1 (-> this mat uvec))) (fabs (vector-dot s5-1 (-> this mat rvec))))
+                  (vector-copy! s2-0 (-> this mat rvec))
+                  (vector-copy! s1-0 (-> this mat uvec))
+                  )
+                 (else
+                   (vector-copy! s2-0 (-> this mat uvec))
+                   (vector-copy! s1-0 (-> this mat rvec))
+                   )
+                 )
+               )
+              )
+            (let ((f30-0 (intersect-ray-plane arg0 s5-1 (-> this position) s2-0))
+                  (f0-11 (intersect-ray-plane arg0 s4-1 (-> this position) s2-0))
+                  )
+              (vector+*! s5-1 arg0 s5-1 f30-0)
+              (vector+*! s4-1 arg0 s4-1 f0-11)
+              )
+            (vector-flatten! s5-1 (vector-! (new 'stack-no-clear 'vector) s5-1 (-> this position)) s1-0)
+            (vector-flatten! s4-1 (vector-! (new 'stack-no-clear 'vector) s4-1 (-> this position)) s1-0)
+            (let ((v1-46 (vector-! (new 'stack-no-clear 'vector) s5-1 s4-1)))
+              (vector+! (-> this position) (-> this drag-ref-position) v1-46)
+              (format *stdcon* "delta ~M ~M ~M~%" (-> v1-46 x) (-> v1-46 y) (-> v1-46 z))
+              )
+            )
+           ((or (= (-> this action) (manipulator-action ma4))
+                (= (-> this action) (manipulator-action ma5))
+                (= (-> this action) (manipulator-action ma6))
+                (= (-> this action) (manipulator-action ma7))
+                )
+            (cond
+              ((= (-> this action) (manipulator-action ma4))
+               (vector-copy! s2-0 *z-vector*)
+               )
+              ((= (-> this action) (manipulator-action ma5))
+               (vector-copy! s2-0 *y-vector*)
+               )
+              ((= (-> this action) (manipulator-action ma6))
+               (vector-copy! s2-0 *x-vector*)
+               )
+              ((= (-> this action) (manipulator-action ma7))
+               (vector-copy! s2-0 (-> *math-camera* inv-camera-rot fvec))
+               )
+              )
+            (vector-normalize! s2-0 1.0)
+            (let ((f30-1 (intersect-ray-plane arg0 s5-1 (-> this position) s2-0))
+                  (f0-15 (intersect-ray-plane arg0 s4-1 (-> this position) s2-0))
+                  )
+              (vector+*! s5-1 arg0 s5-1 f30-1)
+              (vector+*! s4-1 arg0 s4-1 f0-15)
+              )
+            (vector+! (-> this position) (-> this drag-ref-position) (vector-! (new 'stack-no-clear 'vector) s5-1 s4-1))
+            )
+           )
+         )
+       )
+     (vector-! (-> this speed) (-> this position) (-> this speed))
+     )
+    ((= (-> this mode) (manipulator-mode mm1))
+     (let ((s4-2 (- (-> this rotate-ref) (the int (-> *mouse* posx))))
+           (s5-2 (new 'stack-no-clear 'matrix))
+           )
+       (new 'stack 'euler-angles)
+       (matrix-identity! s5-2)
+       (cond
+         ((= (-> this action) (manipulator-action ma1))
+          (matrix-axis-angle! s5-2 (-> this mat rvec) (* 182.04445 (the float s4-2)))
+          )
+         ((= (-> this action) (manipulator-action ma2))
+          (matrix-axis-angle! s5-2 (-> this mat uvec) (* 182.04445 (the float s4-2)))
+          )
+         ((= (-> this action) (manipulator-action ma3))
+          (matrix-axis-angle! s5-2 (-> this mat fvec) (* 182.04445 (the float s4-2)))
+          )
+         )
+       (matrix*! (-> this mat) (-> this mat) s5-2)
+       )
+     (vector-normalize! (-> this mat rvec) 1.0)
+     (vector-normalize! (-> this mat uvec) 1.0)
+     (vector-normalize! (-> this mat fvec) 1.0)
+     (matrix->eul (-> this angles) (-> this mat) 21)
+     (format *stdcon* "X = ~R~%Y = ~R~%Z = ~R~%" (-> this angles x) (-> this angles y) (-> this angles z))
+     (set! (-> this rotate-ref) (the int (-> *mouse* posx)))
+     )
+    (else
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type manipulator
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod manipulator-method-14 ((this manipulator))
+  (set! (-> this speed quad) (the-as uint128 0))
+  (set! (-> this dragging?) #f)
+  0
+  (none)
+  )

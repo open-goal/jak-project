@@ -1,0 +1,12 @@
+("DESD.DGO"
+ ("des-cactus.o"
+  "desertd-obs.o"
+  "desertd-texture.o"
+  "tpage-1382.go"
+  "tpage-1383.go"
+  "tpage-1381.go"
+  "tpage-3384.go"
+  "des-cactus-b-ag.go"
+  "des-cactus-a-ag.go"
+  "desertd-vis.go"
+ ))

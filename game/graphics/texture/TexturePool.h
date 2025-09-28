@@ -202,7 +202,7 @@ struct TextureInput {
 
   GLuint gpu_texture = -1;
   bool common = false;
-  const u8* src_data;
+  const u8* src_data = nullptr;
   u16 w, h;
 };
 
@@ -348,6 +348,7 @@ class TexturePool {
   PcTextureId allocate_pc_port_texture(GameVersion version);
 
   std::string get_debug_texture_name(PcTextureId id);
+  std::string get_debug_texture_name_from_tbp(u32 tbp);
 
  private:
   void refresh_links(GpuTexture& texture);

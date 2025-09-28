@@ -19,8 +19,12 @@
 using namespace iop;
 
 namespace jak2 {
+constexpr int kStrBufSize = sizeof(RPC_Str_Cmd_Jak2);
 static RPC_Str_Cmd_Jak2 sSTRBuf;
-static RPC_Play_Cmd_Jak2 sPLAYBuf[2];  // called sRPCBuf2
+// the size has been increased to 4 to fit jak3. This is a total hack, since the structures
+// are probably just completely different.
+constexpr int kPlayBufSize = 4 * sizeof(RPC_Play_Cmd_Jak2);
+static RPC_Play_Cmd_Jak2 sPLAYBuf[4];  // called sRPCBuf2
 
 struct CacheEntry {
   FileRecord* fr = nullptr;
@@ -337,7 +341,8 @@ u32 STRThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR, &sSTRBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR, &sSTRBuf, kStrBufSize, nullptr,
+                    nullptr, &dq);
 
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
@@ -351,7 +356,8 @@ u32 PLAYThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY, sPLAYBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY, sPLAYBuf, kPlayBufSize, nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

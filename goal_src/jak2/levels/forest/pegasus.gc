@@ -187,8 +187,8 @@
 ;; WARN: Return type mismatch int vs enemy-aware.
 (defmethod update-target-awareness! ((this pegasus) (proc process-focusable) (focus enemy-best-focus))
   "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
-For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targetted for more than 5 [[seconds]]
-@returns the value from [[enemy::57]], otherwise [[enemy-aware::4]]"
+   For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targetted for more than 5 [[seconds]]
+   @returns the value from [[enemy::57]], otherwise [[enemy-aware::4]]"
   (the-as enemy-aware (if (time-elapsed? (-> this targetted-timer) (seconds 5))
                           (the-as int ((method-of-type enemy update-target-awareness!) this proc focus))
                           4
@@ -198,7 +198,7 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
 
 (defmethod general-event-handler ((this pegasus) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case event-type
     (('track)
      #f
@@ -208,15 +208,15 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
        ((zero? (-> this hit-points))
         (logclear! (-> this mask) (process-mask actor-pause))
         (logclear! (-> this focus-status) (focus-status dangerous))
-        (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-        (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+        (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+        (logior! (-> this enemy-flags) (enemy-flag alert))
         (logior! (-> this focus-status) (focus-status hit))
         (if (zero? (-> this hit-points))
             (logior! (-> this focus-status) (focus-status dead))
             )
-        (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+        (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
         (enemy-method-62 this)
-        (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+        (logior! (-> this enemy-flags) (enemy-flag lock-focus))
         (process-contact-action proc)
         (send-event proc 'get-attack-count 1)
         (kill-prefer-falling this)
@@ -237,9 +237,9 @@ For pegasus, it will call [[enemy::57]] only if the [[pegasus]] has been targett
 
 (defmethod damage-amount-from-attack ((this pegasus) (arg0 process) (arg1 event-message-block))
   "Only attacks from the jetboard will deal max damage (6), but by default it will return `1`.
-This is why the scouts are technically killable by other means
-@returns the amount of damage taken from an attack.  Also updates the `targetted-timer`.
-@see [[*pegasus-enemy-info*]]"
+   This is why the scouts are technically killable by other means
+   @returns the amount of damage taken from an attack.  Also updates the `targetted-timer`.
+   @see [[*pegasus-enemy-info*]]"
   (let ((hitpoints 1))
     (let ((attack-info (the-as attack-info (-> arg1 param 1))))
       (case (-> arg1 message)
@@ -258,10 +258,10 @@ This is why the scouts are technically killable by other means
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior pegasus-draw-section pegasus ((path-percent-a float) (path-percent-b float) (color rgba))
   "Draws the [[pegasus]] curve section between the two provided points.
-@param path-percent-a Percentage along the path for the first point
-@param path-percent-b Percentage along the path for the second point
-param color The color to draw the curve with
-@see [[curve-control]]"
+   @param path-percent-a Percentage along the path for the first point
+   @param path-percent-b Percentage along the path for the second point
+   param color The color to draw the curve with
+   @see [[curve-control]]"
   (let ((point-a (new 'stack-no-clear 'vector))
         (point-b (new 'stack-no-clear 'vector))
         )
@@ -284,9 +284,9 @@ param color The color to draw the curve with
 
 (defbehavior pegasus-show-runs pegasus ()
   "When [[*display-path-marks*]] is enabled, allow the user to cycle through the displayed path
-- Pressing [[up]] on the D-Pad will increment the path index
-- Pressing [[down]] on the D-Pad will decrement the path index
-Additional debug text will be displayed as well.  This is useful as many paths overlap other paths"
+   - Pressing [[up]] on the D-Pad will increment the path index
+   - Pressing [[down]] on the D-Pad will decrement the path index
+   Additional debug text will be displayed as well.  This is useful as many paths overlap other paths"
   (when *display-path-marks*
     (when (cpad-pressed? 0 up)
       (+! (-> self display-path) 1)
@@ -335,10 +335,10 @@ Additional debug text will be displayed as well.  This is useful as many paths o
 ;; WARN: Return type mismatch vector vs none.
 (defbehavior pegasus-rotate pegasus ((influenced-by-target? symbol) (angle float))
   "Rotates the [[pegasus]] along the path, factoring in the current speed and the target's position
-@param influenced-by-target? Whether or not to care about [[target]]'s position
-@param angle The hopeful angle to use when constructing the rotation matrix, ultimately limited to `0.25` (radians?) though
-@see [[target-pos]] and [[matrix-from-two-vectors-max-angle-partial!]]
-@TODO - `float` should be `degrees` -- The usual amount passed in is `(degrees 100.0835)`"
+   @param influenced-by-target? Whether or not to care about [[target]]'s position
+   @param angle The hopeful angle to use when constructing the rotation matrix, ultimately limited to `0.25` (radians?) though
+   @see [[target-pos]] and [[matrix-from-two-vectors-max-angle-partial!]]
+   @TODO - `float` should be `degrees` -- The usual amount passed in is `(degrees 100.0835)`"
   (let ((rotation-matrix (new 'stack-no-clear 'matrix))
         (flee-direction-vec (new 'stack-no-clear 'vector))
         )
@@ -380,14 +380,14 @@ Additional debug text will be displayed as well.  This is useful as many paths o
 ;; WARN: Return type mismatch float vs none.
 (defbehavior pegasus-loop-on-same-path pegasus ()
   "Creates an endless loop on the same path as the name suggests
-- If we are beyond the end of the path, start again near the beginning (1%)
-- If we are far before the beginning, start at the beginning (0%)
-- If we are atleast 1% into the path, step back 1%
-- If we are less than 0% somehow, slowly add 1%
-Ultimately this appears to be some sort of safe-guard to get things back into a somewhat working state
-if there are unexpected path conditions -- but the results of this are not great!
-Another potential explaination is to make it easy during development to identify and debug a bad path
-In practice, this is never called"
+   - If we are beyond the end of the path, start again near the beginning (1%)
+   - If we are far before the beginning, start at the beginning (0%)
+   - If we are atleast 1% into the path, step back 1%
+   - If we are less than 0% somehow, slowly add 1%
+   Ultimately this appears to be some sort of safe-guard to get things back into a somewhat working state
+   if there are unexpected path conditions -- but the results of this are not great!
+   Another potential explaination is to make it easy during development to identify and debug a bad path
+   In practice, this is never called"
   (cond
     ((< 100.0 (-> self curve-position))
      (set! (-> self curve-position) 1.0)
@@ -407,9 +407,9 @@ In practice, this is never called"
 
 (defbehavior pegasus-choose-path pegasus ()
   "Determines the next path the pegasus should take if we have completed the current path it's on
-There are many fail-safes here if something goes wrong to try to keep the pegasus behaving
-@see [[pegasus-look-on-same-path]]
-@TODO - understand the path selection better"
+   There are many fail-safes here if something goes wrong to try to keep the pegasus behaving
+   @see [[pegasus-look-on-same-path]]
+   @TODO - understand the path selection better"
   (local-vars (f0-15 float) (f30-0 float))
   (while (begin (label cfg-61) (or (< 1.0 (-> self curve-position)) (< (-> self curve-position) 0.0)))
     (let ((curr-pegasus-path (-> self path-info (-> self current-path)))
@@ -523,8 +523,8 @@ There are many fail-safes here if something goes wrong to try to keep the pegasu
 
 (defbehavior pegasus-move pegasus ((explicit-y-vel float) (adjust-y-offset? symbol))
   "Moves the pegasus along the path by smoothly interpolating along it
-@param explicit-y-vel Normally `0.0` but this value is used when the pegasus needs to switch direction
-@param adjust-y-offset? Normally [[#f]] which forces the movement to reflect the result of the collison query - the [[pegasus]] will stay close to the ground.  [[#t]] ignores this"
+   @param explicit-y-vel Normally `0.0` but this value is used when the pegasus needs to switch direction
+   @param adjust-y-offset? Normally [[#f]] which forces the movement to reflect the result of the collison query - the [[pegasus]] will stay close to the ground.  [[#t]] ignores this"
   (+! (-> self curve-position)
       (/ (the float (* (- (current-time) (-> self clock old-frame-counter)) (the int (-> self speed))))
          (total-distance (-> self path-info (-> self current-path) path-data))
@@ -612,13 +612,13 @@ There are many fail-safes here if something goes wrong to try to keep the pegasu
 
 (defbehavior pegasus-calc-speed pegasus ((min-dist float) (max-dist float) (max-speed float) (min-speed float))
   "Calculates the pegasus' speed based on a number of factors:
-- Speed up as the target gets closer (up to a max) and slow down as the target is further away (up to a min)
-This function also is what causes the pegasus to flip around
-@param min-dist TODO
-@param max-dist TODO
-@param max-speed The maximum speed the pegasus can go
-@param min-speed The minimum speed the pegasus can go
-@returns If there should be a reaction to the target via [[enemy::72]]"
+   - Speed up as the target gets closer (up to a max) and slow down as the target is further away (up to a min)
+   This function also is what causes the pegasus to flip around
+   @param min-dist TODO
+   @param max-dist TODO
+   @param max-speed The maximum speed the pegasus can go
+   @param min-speed The minimum speed the pegasus can go
+   @returns If there should be a reaction to the target via [[enemy::72]]"
   (let ((dir-to-target (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (target-pos 0)))
         (react-to-target? #f)
         )
@@ -630,7 +630,7 @@ This function also is what causes the pegasus to flip around
       (if (not (time-elapsed? (-> self targetted-timer) (seconds 5)))
           (set! interpolated-speed (fmax 163840.0 interpolated-speed))
           )
-      (let ((movement-speed (* 0.0033333334 interpolated-speed)))
+      (let ((movement-speed (/ interpolated-speed 300)))
         (cond
           ((< (vector-dot dir-to-target (-> self tangent)) 0.0)
            (if (< 0.0 (-> self speed))
@@ -676,9 +676,9 @@ This function also is what causes the pegasus to flip around
 
 (defbehavior pegasus-calc-anim-speed pegasus ()
   "Based on `speed`, adjust how fast the pegasus should animate.
-The faster it's moving the fast it flaps it's wings, etc
-@TODO understand the magic values here better
-@returns The anim speed, it can be no lower than `1.5`"
+   The faster it's moving the fast it flaps it's wings, etc
+   @TODO understand the magic values here better
+   @returns The anim speed, it can be no lower than `1.5`"
   (let* ((speed-abs (fabs (-> self speed)))
          (f0-2 (* 0.07324219 speed-abs))
          (f0-3 (+ -15.0 f0-2))
@@ -688,14 +688,14 @@ The faster it's moving the fast it flaps it's wings, etc
     )
   )
 
-(defmethod track-target! ((this pegasus))
+(defmethod common-post ((this pegasus))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (track-how-long-aimed-at! this)
   (pegasus-show-runs)
-  ((method-of-type enemy track-target!) this)
+  ((method-of-type enemy common-post) this)
   (none)
   )
 
@@ -827,7 +827,7 @@ The faster it's moving the fast it flaps it's wings, etc
 
 (defbehavior pegasus-fly-code pegasus ((arg0 int))
   "Handles the flying animations and sounds
-@TODO - cleanup a bit more"
+   @TODO - cleanup a bit more"
   (let ((anim-speed (pegasus-calc-anim-speed)))
     (let ((gp-0 (and (-> self can-run) (< (the-as time-frame (-> self ambient-possible)) (current-time)))))
       (let* ((min-dist (lerp-scale 61440.0 32768.0 (the float arg0) 0.0 3000.0))
@@ -1145,7 +1145,7 @@ The faster it's moving the fast it flaps it's wings, etc
     (if (pegasus-calc-speed 61440.0 122880.0 204800.0 49152.0)
         (react-to-focus self)
         )
-    (let ((anim-length (get-rand-float-range self 0.8 1.2)))
+    (let ((anim-length (rnd-float-range self 0.8 1.2)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
                   :num! (seek! max anim-length)
@@ -1248,18 +1248,18 @@ The faster it's moving the fast it flaps it's wings, etc
   #f
   )
 
-(defmethod enemy-method-108 ((this pegasus) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this pegasus) (arg0 process-drawable) (arg1 event-message-block))
   0
   )
 
 ;; WARN: Return type mismatch enemy vs pegasus.
-(defmethod relocate ((this pegasus) (arg0 int))
+(defmethod relocate ((this pegasus) (offset int))
   (countdown (v1-0 20)
     (if (-> this path-info v1-0 path-data)
-        (&+! (-> this path-info v1-0 path-data) arg0)
+        (&+! (-> this path-info v1-0 path-data) offset)
         )
     )
-  (the-as pegasus ((method-of-type enemy relocate) this arg0))
+  (the-as pegasus ((method-of-type enemy relocate) this offset))
   )
 
 (defmethod init-enemy! ((this pegasus))

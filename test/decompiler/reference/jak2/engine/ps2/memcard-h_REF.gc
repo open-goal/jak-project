@@ -8,6 +8,7 @@
 
 ;; definition of type mc-file-info
 (deftype mc-file-info (structure)
+  "Data stored in a save file."
   ((present                int32)
    (blind-data             float   16 :offset   4)
    (blind-data-int8        int8    64 :overlay-at (-> blind-data 0))
@@ -59,6 +60,7 @@
 
 ;; definition of type mc-slot-info
 (deftype mc-slot-info (structure)
+  "Data about a memory card slot."
   ((handle        int32)
    (known         int32)
    (formatted     int32)
@@ -92,6 +94,7 @@
 
 ;; definition for function mc-sync
 (defun mc-sync ()
+  "Synchronize the memory card state."
   (let ((v0-0 0))
     (while (zero? v0-0)
       (mc-run)
@@ -103,49 +106,50 @@
 
 ;; definition for function show-mc-info
 ;; WARN: Return type mismatch int vs none.
-(defun show-mc-info ((arg0 dma-buffer))
-  (let ((s5-0 (new 'stack-no-clear 'mc-slot-info)))
-    (dotimes (s4-0 2)
-      (mc-get-slot-info s4-0 s5-0)
+(defun show-mc-info ((buf dma-buffer))
+  "Display the memory card debug text."
+  (let ((slot (new 'stack-no-clear 'mc-slot-info)))
+    (dotimes (slot-idx 2)
+      (mc-get-slot-info slot-idx slot)
       (cond
-        ((zero? (-> s5-0 known))
-         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" s4-0)
+        ((zero? (-> slot known))
+         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" slot-idx)
          *temp-string*
          )
-        ((zero? (-> s5-0 handle))
-         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" s4-0)
+        ((zero? (-> slot handle))
+         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" slot-idx)
          *temp-string*
          )
-        ((zero? (-> s5-0 formatted))
-         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" s4-0 (-> s5-0 handle))
+        ((zero? (-> slot formatted))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" slot-idx (-> slot handle))
          *temp-string*
          )
-        ((zero? (-> s5-0 inited))
+        ((zero? (-> slot inited))
          (format
            (clear *temp-string*)
            "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
-           s4-0
-           (-> s5-0 handle)
-           (-> s5-0 mem-required)
-           (-> s5-0 mem-actual)
+           slot-idx
+           (-> slot handle)
+           (-> slot mem-required)
+           (-> slot mem-actual)
            )
          *temp-string*
          )
         (else
-          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " s4-0 (-> s5-0 handle))
+          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot-idx (-> slot handle))
           *temp-string*
           (format
             *temp-string*
             "SAVES ~D ~D ~D ~D : LAST ~D~%"
-            (-> s5-0 file 0 present)
-            (-> s5-0 file 1 present)
-            (-> s5-0 file 2 present)
-            (-> s5-0 file 3 present)
-            (-> s5-0 last-file)
+            (-> slot file 0 present)
+            (-> slot file 1 present)
+            (-> slot file 2 present)
+            (-> slot file 3 present)
+            (-> slot last-file)
             )
           )
         )
-      (draw-string-xy *temp-string* arg0 32 (+ (* 12 s4-0) 8) (font-color red) (font-flags shadow))
+      (draw-string-xy *temp-string* buf 32 (+ (* 12 slot-idx) 8) (font-color red) (font-flags shadow))
       )
     )
   0

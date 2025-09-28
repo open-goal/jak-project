@@ -1,41 +1,32 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: wedge-plats.gc
-;; name in dgo: wedge-plats
-;; dgos: L1, SUN, SUNKEN
-
+(bundles "SUN.DGO")
+(require "engine/common-obs/baseplat.gc")
 (declare-type wedge-plat-outer process)
+
 (declare-type wedge-plat-master process)
+
 (declare-type wedge-plat process)
 
 ;; DECOMP BEGINS
 
 (deftype wedge-plat-master (process)
-  ((center        vector  :inline)
-   (rotspeed      float)
-   (rotate-inner  float)
-   (rotate-outer  float)
-   )
+  ((center       vector :inline)
+   (rotspeed     float)
+   (rotate-inner float)
+   (rotate-outer float))
   (:states
-    wedge-plat-master-idle
-    )
-  )
-
+   wedge-plat-master-idle))
 
 (defstate wedge-plat-master-idle (wedge-plat-master)
-  :code (behavior ()
-    (loop
-      (set! (-> self rotate-inner)
-            (the float (sar (shl (the int (+ (-> self rotate-inner) (* (-> self rotspeed) (seconds-per-frame)))) 48) 48))
-            )
-      (set! (-> self rotate-outer)
-            (the float (sar (shl (the int (- (-> self rotate-outer) (* (-> self rotspeed) (seconds-per-frame)))) 48) 48))
-            )
-      (suspend)
-      )
-    )
-  )
+  :code
+    (behavior ()
+      (loop
+        (set! (-> self rotate-inner)
+              (the float (sar (shl (the int (+ (-> self rotate-inner) (* (-> self rotspeed) (seconds-per-frame)))) 48) 48)))
+        (set! (-> self rotate-outer)
+              (the float (sar (shl (the int (- (-> self rotate-outer) (* (-> self rotspeed) (seconds-per-frame)))) 48) 48)))
+        (suspend))))
 
 (defmethod init-from-entity! ((this wedge-plat-master) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
@@ -46,135 +37,92 @@
   (set! (-> this rotate-outer) 0.0)
   (logclear! (-> this mask) (process-mask actor-pause))
   (go wedge-plat-master-idle)
-  (none)
-  )
+  (none))
 
 (deftype wedge-plat (baseplat)
-  ((master    wedge-plat-master)
-   (distance  float)
-   (offset    float)
-   )
+  ((master   wedge-plat-master)
+   (distance float)
+   (offset   float))
   (:methods
-    (wedge-plat-method-27 (_type_) symbol)
-    )
+   (wedge-plat-method-27 (_type_) symbol))
   (:states
-    wedge-plat-idle
-    wedge-plat-tip
-    )
-  )
+   wedge-plat-idle
+   wedge-plat-tip))
 
-
-(defskelgroup *wedge-plat-sg* wedge-plat wedge-plat-lod0-jg wedge-plat-idle-ja
-              ((wedge-plat-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 6)
-              )
+(defskelgroup *wedge-plat-sg*
+  wedge-plat
+  wedge-plat-lod0-jg
+  wedge-plat-idle-ja
+  ((wedge-plat-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 6))
 
 (defmethod wedge-plat-method-27 ((this wedge-plat))
   (let* ((a0-1 (-> this master))
-         (v1-0 (if a0-1
-                   (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
-                   )
-               )
-         )
+         (v1-0 (if a0-1 (-> (the-as process-drawable (-> a0-1 ppointer)) brother))))
     (when v1-0
       (let ((s4-0 (&-> v1-0 27))
             (f30-0 (-> this distance))
             (f28-0 (the float (sar (shl (the int (+ (the-as float (-> v1-0 32)) (-> this offset))) 48) 48)))
-            (s5-0 #f)
-            )
-        (quaternion-axis-angle!
-          (-> this root quat)
-          0.0
-          1.0
-          0.0
-          (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48))
-          )
+            (s5-0 #f))
+        (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48)))
         (set! (-> this basetrans x) (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0))))
         (set! (-> this basetrans y) (the-as float (-> s4-0 1)))
         (set! (-> this basetrans z) (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0))))
-        (let ((f0-16 (cos f28-0)))
-          (if (or (< 0.95 f0-16) (< f0-16 -0.95))
-              (set! s5-0 #t)
-              )
-          )
-        s5-0
-        )
-      )
-    )
-  )
+        (let ((f0-16 (cos f28-0))) (if (or (< 0.95 f0-16) (< f0-16 -0.95)) (set! s5-0 #t)))
+        s5-0))))
 
 (defstate wedge-plat-idle (wedge-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk)
-       (baseplat-method-22 self)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk) (baseplat-method-22 self))))
   :trans plat-trans
-  :code (behavior ()
-    (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
-    (loop
-      (if (wedge-plat-method-27 self)
-          (go wedge-plat-tip)
-          )
-      (suspend)
-      )
-    )
-  :post plat-post
-  )
+  :code
+    (behavior ()
+      (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
+      (loop
+        (if (wedge-plat-method-27 self) (go wedge-plat-tip))
+        (suspend)))
+  :post plat-post)
 
 (defstate wedge-plat-tip (wedge-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk)
-       (baseplat-method-22 self)
-       )
-      (('touch)
-       (send-event proc 'no-look-around (seconds 1.5))
-       #f
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk) (baseplat-method-22 self))
+        (('touch) (send-event proc 'no-look-around (seconds 1.5)) #f)))
   :trans plat-trans
-  :code (behavior ()
-    (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 0.0 0))
-    (until (ja-done? 0)
-      (wedge-plat-method-27 self)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 60.0 0)))
-      )
-    (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 100.0 0)) :frame-num (ja-aframe 60.0 0))
-    (until (ja-done? 0)
-      (wedge-plat-method-27 self)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 100.0 0)))
-      )
-    (set-time! (-> self state-time))
-    (until (time-elapsed? (-> self state-time) (seconds 1))
-      (ja :num-func num-func-identity :frame-num (ja-aframe 100.0 0))
-      (wedge-plat-method-27 self)
-      (suspend)
-      )
-    (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 153.0 0)) :frame-num (ja-aframe 100.0 0))
-    (until (ja-done? 0)
-      (wedge-plat-method-27 self)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 153.0 0)))
-      )
-    (go wedge-plat-idle)
-    )
-  :post plat-post
-  )
+  :code
+    (behavior ()
+      (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 0.0 0))
+      (until (ja-done? 0)
+        (wedge-plat-method-27 self)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 60.0 0))))
+      (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 100.0 0)) :frame-num (ja-aframe 60.0 0))
+      (until (ja-done? 0)
+        (wedge-plat-method-27 self)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 100.0 0))))
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 1))
+        (ja :num-func num-func-identity :frame-num (ja-aframe 100.0 0))
+        (wedge-plat-method-27 self)
+        (suspend))
+      (ja-no-eval :group! wedge-plat-tip-ja :num! (seek! (ja-aframe 153.0 0)) :frame-num (ja-aframe 100.0 0))
+      (until (ja-done? 0)
+        (wedge-plat-method-27 self)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 153.0 0))))
+      (go wedge-plat-idle))
+  :post plat-post)
 
 (defmethod init-from-entity! ((this wedge-plat) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -183,12 +131,10 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *wedge-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
@@ -199,128 +145,87 @@
   (set! (-> this distance) (res-lump-float arg0 'distance :default 36864.0))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go wedge-plat-idle)
-  (none)
-  )
+  (none))
 
-(deftype wedge-plat-outer (wedge-plat)
-  ()
+(deftype wedge-plat-outer (wedge-plat) ()
   (:states
-    wedge-plat-outer-idle
-    wedge-plat-outer-tip
-    )
-  )
+   wedge-plat-outer-idle
+   wedge-plat-outer-tip))
 
-
-(defskelgroup *wedge-plat-outer-sg* wedge-plat-outer wedge-plat-outer-lod0-jg wedge-plat-outer-idle-ja
-              ((wedge-plat-outer-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 8)
-              )
+(defskelgroup *wedge-plat-outer-sg*
+  wedge-plat-outer
+  wedge-plat-outer-lod0-jg
+  wedge-plat-outer-idle-ja
+  ((wedge-plat-outer-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 8))
 
 (defmethod wedge-plat-method-27 ((this wedge-plat-outer))
   (let* ((a0-1 (-> this master))
-         (v1-0 (if a0-1
-                   (-> (the-as process-drawable (-> a0-1 ppointer)) brother)
-                   )
-               )
-         )
+         (v1-0 (if a0-1 (-> (the-as process-drawable (-> a0-1 ppointer)) brother))))
     (when v1-0
       (let ((s4-0 (&-> v1-0 27))
             (f30-0 (-> this distance))
             (f28-0 (the float (sar (shl (the int (+ (the-as float (-> v1-0 33)) (-> this offset))) 48) 48)))
-            (s5-0 #f)
-            )
-        (quaternion-axis-angle!
-          (-> this root quat)
-          0.0
-          1.0
-          0.0
-          (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48))
-          )
+            (s5-0 #f))
+        (quaternion-axis-angle! (-> this root quat) 0.0 1.0 0.0 (the float (sar (shl (the int (- 49152.0 f28-0)) 48) 48)))
         (set! (-> this basetrans x) (+ (the-as float (-> s4-0 0)) (* f30-0 (cos f28-0))))
         (set! (-> this basetrans y) (the-as float (-> s4-0 1)))
         (set! (-> this basetrans z) (+ (the-as float (-> s4-0 2)) (* f30-0 (sin f28-0))))
-        (let ((f0-16 (sin f28-0)))
-          (if (or (< 0.95 f0-16) (< f0-16 -0.95))
-              (set! s5-0 #t)
-              )
-          )
-        s5-0
-        )
-      )
-    )
-  )
+        (let ((f0-16 (sin f28-0))) (if (or (< 0.95 f0-16) (< f0-16 -0.95)) (set! s5-0 #t)))
+        s5-0))))
 
 (defstate wedge-plat-outer-idle (wedge-plat-outer)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk)
-       (baseplat-method-22 self)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk) (baseplat-method-22 self))))
   :trans plat-trans
-  :code (behavior ()
-    (loop
-      (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
-      (if (wedge-plat-method-27 self)
-          (go wedge-plat-outer-tip)
-          )
-      (suspend)
-      )
-    )
-  :post plat-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
+        (if (wedge-plat-method-27 self) (go wedge-plat-outer-tip))
+        (suspend)))
+  :post plat-post)
 
 (defstate wedge-plat-outer-tip (wedge-plat-outer)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk)
-       (baseplat-method-22 self)
-       )
-      (('touch)
-       (send-event proc 'no-look-around (seconds 1.5))
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk) (baseplat-method-22 self))
+        (('touch) (send-event proc 'no-look-around (seconds 1.5)))))
   :trans plat-trans
-  :code (behavior ()
-    (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 0.0 0))
-    (until (ja-done? 0)
-      (wedge-plat-method-27 self)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 60.0 0)))
-      )
-    (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 100.0 0)) :frame-num (ja-aframe 60.0 0))
-    (until (ja-done? 0)
-      (wedge-plat-method-27 self)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 100.0 0)))
-      )
-    (set-time! (-> self state-time))
-    (until (time-elapsed? (-> self state-time) (seconds 1))
-      (ja :num-func num-func-identity :frame-num (ja-aframe 100.0 0))
-      (wedge-plat-method-27 self)
-      (suspend)
-      )
-    (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 153.0 0)) :frame-num (ja-aframe 100.0 0))
-    (until (ja-done? 0)
-      (wedge-plat-method-27 self)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 153.0 0)))
-      )
-    (go wedge-plat-outer-idle)
-    )
-  :post plat-post
-  )
+  :code
+    (behavior ()
+      (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num (ja-aframe 0.0 0))
+      (until (ja-done? 0)
+        (wedge-plat-method-27 self)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 60.0 0))))
+      (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 100.0 0)) :frame-num (ja-aframe 60.0 0))
+      (until (ja-done? 0)
+        (wedge-plat-method-27 self)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 100.0 0))))
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 1))
+        (ja :num-func num-func-identity :frame-num (ja-aframe 100.0 0))
+        (wedge-plat-method-27 self)
+        (suspend))
+      (ja-no-eval :group! wedge-plat-outer-tip-ja :num! (seek! (ja-aframe 153.0 0)) :frame-num (ja-aframe 100.0 0))
+      (until (ja-done? 0)
+        (wedge-plat-method-27 self)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 153.0 0))))
+      (go wedge-plat-outer-idle))
+  :post plat-post)
 
 (defmethod init-from-entity! ((this wedge-plat-outer) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -329,12 +234,10 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 32768.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *wedge-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
@@ -345,5 +248,4 @@
   (set! (-> this distance) (res-lump-float arg0 'distance :default 69632.0))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go wedge-plat-outer-idle)
-  (none)
-  )
+  (none))

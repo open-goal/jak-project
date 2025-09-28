@@ -1,0 +1,58 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+
+  this file has code for setting up the screen shot system for the PC port (replaces PS2 version)
+  These settings can also be configured through the imgui toolbar.
+
+|#
+
+;; this file is debug only
+(declare-file (debug))
+
+
+(deftype screen-shot-settings (structure)
+  ((width   int32)
+   (height  int32)
+   (msaa    int32)
+   (name    uint8  244)
+   )
+  (:methods
+    (new (symbol type int int int) _type_)
+    )
+  )
+
+(defmethod new screen-shot-settings ((allocation symbol) (type-to-make type) (width int) (height int) (msaa int))
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (copyn-charp<-string (-> obj name) "screenshot" 244)
+    (set! (-> obj width) width)
+    (set! (-> obj height) height)
+    (set! (-> obj msaa) msaa)
+    (pc-register-screen-shot-settings obj)
+    obj
+    )
+  )
+
+
+(define *screen-shot-settings* (new 'debug 'screen-shot-settings 1920 1080 16))
+
+(defun-debug screen-shot ()
+  (screen-shot-scale 1 "image")
+  (true! *disable-mouse*)
+  (clear *temp-string*)
+  (format *temp-string* "screenshot")
+  (let ((date (new 'stack-no-clear 'scf-time)))
+      (scf-get-time date)
+      (format *temp-string* "-~4,'0d-~2,'0d-~2,'0d_~2,'0d~2,'0d~2,'0d" (+ 2000 (bcd->dec (-> date year))) (bcd->dec (-> date month)) (bcd->dec (-> date day)) (bcd->dec (-> date hour)) (bcd->dec (-> date minute)) (bcd->dec (-> date second)))
+      )
+  (format *temp-string* "_~D" (-> *display* real-frame-clock frame-counter))
+  (copyn-charp<-string (-> *screen-shot-settings* name) *temp-string* 244)
+
+  (none))
+
+(defun store-image ((arg0 screen-shot-work))
+  (pc-screen-shot) ;; send a screen shot command, this will make the graphics engine save a screenshot at the end of the frame. USE IMGUI BAR FOR SETTINGS!!!!
+  0)
+
+

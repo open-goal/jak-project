@@ -1,127 +1,106 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: mother-spider-h.gc
-;; name in dgo: mother-spider-h
-;; dgos: L1, MAI, MAINCAVE
+(bundles "MAI.DGO")
+(require "engine/game/game-h.gc")
+(require "kernel/gcommon.gc")
 
 ;; DECOMP BEGINS
 
 (deftype mother-spider-leg (process-drawable)
-  ((gravity      float)
-   (transv       vector  :inline)
-   (facing-rot   vector  :inline)
-   (facing-rotv  vector  :inline)
-   )
+  ((gravity     float)
+   (transv      vector :inline)
+   (facing-rot  vector :inline)
+   (facing-rotv vector :inline))
   (:states
-    mother-spider-leg-flying
-    )
-  )
-
+   mother-spider-leg-flying))
 
 (deftype mother-spider-thread (structure)
-  ((joint-index  int32)
-   (trans-u      float)
-   (swing-arc-u  float)
-   )
-  :pack-me
-  )
-
+  ((joint-index int32)
+   (trans-u     float)
+   (swing-arc-u float))
+  :pack-me)
 
 (deftype mother-spider-leg-info (structure)
-  ((joint-index0  int32)
-   (joint-index1  int32)
-   (cprim-index   int32)
-   )
-  )
-
+  ((joint-index0 int32)
+   (joint-index1 int32)
+   (cprim-index  int32)))
 
 (deftype mother-spider-history (structure)
-  ((trans  vector  :inline)
-   )
-  )
-
+  ((trans vector :inline)))
 
 (deftype mother-spider-history-array (inline-array-class)
-  ((data  mother-spider-history  :dynamic)
-   )
-  )
-
+  ((data mother-spider-history :dynamic)))
 
 (set! (-> mother-spider-history-array heap-base) (the-as uint 16))
 
 (deftype mother-spider (process-drawable)
-  ((root                            collide-shape :override)
-   (mode                            uint64)
-   (damage                          int32)
-   (baby-count                      int32)
-   (max-baby-count                  int32)
-   (birthing-counter                int32)
-   (spit-counter                    int32)
-   (leg-socket-part-mask            int32)
-   (dist-from-anchor                float)
-   (targ-dist-from-anchor           float)
-   (idle-dist-from-anchor           float)
-   (player-sticky-dist-from-anchor  float)
-   (max-dist-from-anchor            float)
-   (activate-xz-dist                float)
-   (deactivate-xz-dist              float)
-   (max-spit-xz-dist                float)
-   (max-swing-radius                float)
-   (spin-vel                        float)
-   (thread-speed                    float)
-   (thread-vel                      float)
-   (history                         mother-spider-history-array)
-   (history-len                     int32)
-   (history-next-index              int32)
-   (hit?                            symbol)
-   (going-up?                       symbol)
-   (check-z-thresh?                 symbol)
-   (activate-z-thresh               float)
-   (deactivate-z-thresh             float)
-   (spawned-time                    time-frame)
-   (last-update-time                time-frame)
-   (spin-time                       time-frame)
-   (last-spit-time                  time-frame)
-   (last-player-in-air-time         time-frame)
-   (started-birthing-time           time-frame)
-   (neck                            joint-mod)
-   (player-attack-id                uint64)
-   (leg-socket-part-time            time-frame     6)
-   (orient-rot                      vector         :inline)
-   (anchor-trans                    vector         :inline)
-   (thread-min-trans                vector         :inline)
-   (swing-pos                       vector         :inline)
-   (swing-base-pos                  vector         :inline)
-   (swing-vel                       vector         :inline)
-   )
+  ((root                           collide-shape :override)
+   (mode                           uint64)
+   (damage                         int32)
+   (baby-count                     int32)
+   (max-baby-count                 int32)
+   (birthing-counter               int32)
+   (spit-counter                   int32)
+   (leg-socket-part-mask           int32)
+   (dist-from-anchor               float)
+   (targ-dist-from-anchor          float)
+   (idle-dist-from-anchor          float)
+   (player-sticky-dist-from-anchor float)
+   (max-dist-from-anchor           float)
+   (activate-xz-dist               float)
+   (deactivate-xz-dist             float)
+   (max-spit-xz-dist               float)
+   (max-swing-radius               float)
+   (spin-vel                       float)
+   (thread-speed                   float)
+   (thread-vel                     float)
+   (history                        mother-spider-history-array)
+   (history-len                    int32)
+   (history-next-index             int32)
+   (hit?                           symbol)
+   (going-up?                      symbol)
+   (check-z-thresh?                symbol)
+   (activate-z-thresh              float)
+   (deactivate-z-thresh            float)
+   (spawned-time                   time-frame)
+   (last-update-time               time-frame)
+   (spin-time                      time-frame)
+   (last-spit-time                 time-frame)
+   (last-player-in-air-time        time-frame)
+   (started-birthing-time          time-frame)
+   (neck                           joint-mod)
+   (player-attack-id               uint64)
+   (leg-socket-part-time           time-frame 6)
+   (orient-rot                     vector :inline)
+   (anchor-trans                   vector :inline)
+   (thread-min-trans               vector :inline)
+   (swing-pos                      vector :inline)
+   (swing-base-pos                 vector :inline)
+   (swing-vel                      vector :inline))
   (:methods
-    (mother-spider-method-20 (_type_ vector vector) symbol)
-    (mother-spider-method-21 (_type_ vector float symbol) symbol)
-    (mother-spider-method-22 (_type_ matrix vector) float)
-    (mother-spider-method-23 (_type_) none)
-    (shadow-handler (_type_) number)
-    (letgo-player? (_type_) symbol)
-    (grab-player? (_type_) symbol)
-    (mother-spider-method-27 (_type_) none)
-    (mother-spider-method-28 (_type_) none)
-    (mother-spider-method-29 (_type_ symbol symbol) none)
-    (spawn-child (_type_ vector vector symbol) int)
-    (is-player-stuck? (_type_) symbol)
-    )
+   (mother-spider-method-20 (_type_ vector vector) symbol)
+   (mother-spider-method-21 (_type_ vector float symbol) symbol)
+   (mother-spider-method-22 (_type_ matrix vector) float)
+   (mother-spider-method-23 (_type_) none)
+   (shadow-handler (_type_) number)
+   (letgo-player? (_type_) symbol)
+   (grab-player? (_type_) symbol)
+   (mother-spider-method-27 (_type_) none)
+   (mother-spider-method-28 (_type_) none)
+   (mother-spider-method-29 (_type_ symbol symbol) none)
+   (spawn-child (_type_ vector vector symbol) int)
+   (is-player-stuck? (_type_) symbol))
   (:states
-    mother-spider-birth-baby
-    mother-spider-birthing
-    mother-spider-die
-    mother-spider-die-from-uppercut
-    mother-spider-die-wait-for-children
-    mother-spider-hit-while-birthing
-    mother-spider-hit-while-tracking
-    mother-spider-idle
-    mother-spider-spit
-    mother-spider-stop-traveling
-    mother-spider-tracking
-    (mother-spider-traveling uint)
-    wait-for-children
-    )
-  )
+   mother-spider-birth-baby
+   mother-spider-birthing
+   mother-spider-die
+   mother-spider-die-from-uppercut
+   mother-spider-die-wait-for-children
+   mother-spider-hit-while-birthing
+   mother-spider-hit-while-tracking
+   mother-spider-idle
+   mother-spider-spit
+   mother-spider-stop-traveling
+   mother-spider-tracking
+   (mother-spider-traveling uint)
+   wait-for-children))

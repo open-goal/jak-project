@@ -1,18 +1,24 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: entity-h.gc
-;; name in dgo: entity-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/entity/res-h.gc")
+(require "kernel/gcommon.gc")
+(require "engine/util/types-h.gc")
 (defun-extern entity-by-name string entity)
+
 (defun-extern entity-by-type type entity-actor)
+
 (defun-extern entity-by-aid uint entity)
+
 (define-extern reset-actors (function symbol none))
+
 (define-extern *spawn-actors* symbol)
+
 ;; TODO - for cam-start
 (define-extern reset-cameras (function none))
+
 (define-extern process-by-ename (function string process))
+
 (define-extern entity-birth-no-kill (function entity none))
 
 ;; DECOMP BEGINS
@@ -24,152 +30,115 @@
 (define *generate-actor-vis-output* #f)
 
 (deftype entity-perm (structure)
-  ((user-object  object   2)
-   (user-uint64  uint64     :overlay-at (-> user-object 0))
-   (user-float   float    2 :overlay-at (-> user-object 0))
-   (user-int32   int32    2 :overlay-at (-> user-object 0))
-   (user-uint32  uint32   2 :overlay-at (-> user-object 0))
-   (user-int16   int16    4 :overlay-at (-> user-object 0))
-   (user-uint16  uint16   4 :overlay-at (-> user-object 0))
-   (user-int8    int8     8 :overlay-at (-> user-object 0))
-   (user-uint8   uint8    8 :overlay-at (-> user-object 0))
-   (status       entity-perm-status)
-   (dummy        uint8    1)
-   (task         game-task)
-   (aid          actor-id)
-   (quad         uint128    :overlay-at (-> user-object 0))
-   )
+  ((user-object object 2)
+   (user-uint64 uint64 :overlay-at (-> user-object 0))
+   (user-float  float 2 :overlay-at (-> user-object 0))
+   (user-int32  int32 2 :overlay-at (-> user-object 0))
+   (user-uint32 uint32 2 :overlay-at (-> user-object 0))
+   (user-int16  int16 4 :overlay-at (-> user-object 0))
+   (user-uint16 uint16 4 :overlay-at (-> user-object 0))
+   (user-int8   int8 8 :overlay-at (-> user-object 0))
+   (user-uint8  uint8 8 :overlay-at (-> user-object 0))
+   (status      entity-perm-status)
+   (dummy       uint8 1)
+   (task        game-task)
+   (aid         actor-id)
+   (quad        uint128 :overlay-at (-> user-object 0)))
   :pack-me
   (:methods
-    (update-perm! (_type_ symbol entity-perm-status) _type_)
-    )
-  )
-
+   (update-perm! (_type_ symbol entity-perm-status) _type_)))
 
 (deftype entity-links (structure)
-  ((prev-link  entity-links)
-   (next-link  entity-links)
-   (entity     entity)
-   (process    process)
-   (level      level)
-   (vis-id     int32)
-   (trans      vector       :inline)
-   (perm       entity-perm  :inline)
-   (status     uint16       :overlay-at (-> perm status))
-   (aid        actor-id     :overlay-at (-> perm aid))
-   (task       game-task    :overlay-at (-> perm task))
-   )
+  ((prev-link entity-links)
+   (next-link entity-links)
+   (entity    entity)
+   (process   process)
+   (level     level)
+   (vis-id    int32)
+   (trans     vector :inline)
+   (perm      entity-perm :inline)
+   (status    uint16 :overlay-at (-> perm status))
+   (aid       actor-id :overlay-at (-> perm aid))
+   (task      game-task :overlay-at (-> perm task)))
   (:methods
-    (birth? (_type_ vector) symbol)
-    )
-  )
-
+   (birth? (_type_ vector) symbol)))
 
 (deftype entity-perm-array (inline-array-class)
-  ((data  entity-perm  :inline :dynamic)
-   )
-  )
-
+  ((data entity-perm :inline :dynamic)))
 
 (set! (-> entity-perm-array heap-base) (the-as uint 16))
 
 (deftype entity-links-array (inline-array-class)
-  ((data  entity-links  :inline :dynamic)
-   )
-  )
-
+  ((data entity-links :inline :dynamic)))
 
 (set! (-> entity-links-array heap-base) (the-as uint 64))
 
 (deftype entity (res-lump)
-  ((trans  vector  :inline)
-   (aid    uint32)
-   )
+  ((trans vector :inline)
+   (aid   uint32))
   (:methods
-    (birth! (_type_) _type_)
-    (kill! (_type_) _type_)
-    (add-to-level! (_type_ level-group level actor-id) none)
-    (remove-from-level! (_type_ level-group) _type_)
-    (get-level (_type_) level)
-    )
-  )
+   (birth! (_type_) _type_)
+   (kill! (_type_) _type_)
+   (add-to-level! (_type_ level-group level actor-id) none)
+   (remove-from-level! (_type_ level-group) _type_)
+   (get-level (_type_) level)))
 
 (deftype entity-camera (entity)
-  ((connect  connectable  :inline)
-   )
-  )
+  ((connect connectable :inline)))
 
 (deftype entity-ambient-data (structure)
-  ((user-object  object   3)
-   (function     (function drawable-ambient vector none))
-   (quad         uint128     :overlay-at (-> user-object 0))
-   (user-uint64  uint64   1  :overlay-at (-> user-object 0))
-   (user-float   float    3  :overlay-at (-> user-object 0))
-   (user-int32   int32    3  :overlay-at (-> user-object 0))
-   (user-uint32  uint32   3  :overlay-at (-> user-object 0))
-   (user-int16   int16    6  :overlay-at (-> user-object 0))
-   (user-uint16  uint16   6  :overlay-at (-> user-object 0))
-   (user-int8    int8     12 :overlay-at (-> user-object 0))
-   (user-uint8   uint8    12 :overlay-at (-> user-object 0))
-   )
-  )
-
+  ((user-object object 3)
+   (function    (function drawable-ambient vector none))
+   (quad        uint128 :overlay-at (-> user-object 0))
+   (user-uint64 uint64 1 :overlay-at (-> user-object 0))
+   (user-float  float 3 :overlay-at (-> user-object 0))
+   (user-int32  int32 3 :overlay-at (-> user-object 0))
+   (user-uint32 uint32 3 :overlay-at (-> user-object 0))
+   (user-int16  int16 6 :overlay-at (-> user-object 0))
+   (user-uint16 uint16 6 :overlay-at (-> user-object 0))
+   (user-int8   int8 12 :overlay-at (-> user-object 0))
+   (user-uint8  uint8 12 :overlay-at (-> user-object 0))))
 
 (deftype entity-ambient-data-array (inline-array-class)
-  ((data  entity-ambient-data  :inline :dynamic)
-   )
-  )
-
+  ((data entity-ambient-data :inline :dynamic)))
 
 (set! (-> entity-ambient-data-array heap-base) (the-as uint 16))
 
 (deftype entity-ambient (entity)
-  ((ambient-data  entity-ambient-data  :overlay-at extra)
-   )
+  ((ambient-data entity-ambient-data :overlay-at extra))
   (:methods
-    (draw-debug (_type_) none)
-    (birth-ambient! (_type_) none)
-    )
-  )
+   (draw-debug (_type_) none)
+   (birth-ambient! (_type_) none)))
 
 (deftype entity-actor (entity)
-  ((nav-mesh       nav-mesh)
-   (etype          type)
-   (task           game-task)
-   (vis-id         uint16)
-   (vis-id-signed  int16       :overlay-at vis-id)
-   (quat           quaternion  :inline)
-   )
+  ((nav-mesh      nav-mesh)
+   (etype         type)
+   (task          game-task)
+   (vis-id        uint16)
+   (vis-id-signed int16 :overlay-at vis-id)
+   (quat          quaternion :inline))
   (:methods
-    (next-actor (_type_) entity-actor)
-    (prev-actor (_type_) entity-actor)
-    (debug-print (_type_ symbol type) none)
-    (set-or-clear-status! (_type_ entity-perm-status symbol) none)
-    )
-  )
+   (next-actor (_type_) entity-actor)
+   (prev-actor (_type_) entity-actor)
+   (debug-print (_type_ symbol type) none)
+   (set-or-clear-status! (_type_ entity-perm-status symbol) none)))
 
 (deftype entity-info (basic)
-  ((ptype      type)
-   (package    basic)
-   (art-group  pair)
-   (pool       basic)
-   (heap-size  int32)
-   )
-  )
+  ((ptype     type)
+   (package   basic)
+   (art-group pair)
+   (pool      basic)
+   (heap-size int32)))
 
 ;; NOTE - this is a strange pattern...this symbol isn't defined until a later file 'navigate'
 ;; But this seems to be setting the symbol to nothing if it's not found, but of course, our compiler freaks out
 (define-extern entity-nav-login (function entity-actor none))
-(if (zero? entity-nav-login)
-    (set! entity-nav-login (the-as (function entity-actor none) nothing))
-    )
+
+(if (zero? entity-nav-login) (set! entity-nav-login (the-as (function entity-actor none) nothing)))
 
 (deftype actor-bank (basic)
-  ((pause-dist  float)
-   (birth-dist  float)
-   (birth-max   int32)
-   )
-  )
-
+  ((pause-dist float)
+   (birth-dist float)
+   (birth-max  int32)))
 
 (define *ACTOR-bank* (new 'static 'actor-bank :pause-dist (meters 50) :birth-dist (meters 220) :birth-max 10))

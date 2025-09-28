@@ -34,7 +34,8 @@ u32 gMemSize;          // Total memory of RAMDISK
 u32 gMemFreeAtStart;   // Memory free after allocation of RAMDISK
 uint8_t* gMem;         // Allocation for RAMDISK
 uint8_t* gRamdiskRAM;  // Also allocation for RAMDISK
-uint8_t gRPCBuf[40];   // Buffer for RAMDISK RPC handler
+constexpr int kRamdiskBufferSize = 40;
+uint8_t gRPCBuf[kRamdiskBufferSize];  // Buffer for RAMDISK RPC handler
 
 // Each file stored in the ramdisk has a file record:
 struct RamdiskFileRecord {
@@ -100,8 +101,8 @@ u32 Thread_Server() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, RAMDISK_RPC_ID[g_game_version], RPC_Ramdisk, gRPCBuf, nullptr, nullptr,
-                    &dq);
+  sceSifRegisterRpc(&serve, RAMDISK_RPC_ID[g_game_version], RPC_Ramdisk, gRPCBuf,
+                    kRamdiskBufferSize, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

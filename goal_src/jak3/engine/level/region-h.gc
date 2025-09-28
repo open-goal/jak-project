@@ -5,5 +5,112 @@
 ;; name in dgo: region-h
 ;; dgos: GAME
 
+(declare-type region-prim-area structure)
+(define-extern region-execute (function none))
+
 ;; DECOMP BEGINS
 
+(deftype region (structure)
+  "A region is a closed volume that you can, enter, exit, and be inside.
+This stores a unique, and script functions for a single region.
+These are stored separately from the actual geometry to allow the geometry to be smaller
+and fit in scratchpad/cache better."
+  ((id         uint32)
+   (on-enter   pair)
+   (on-inside  pair)
+   (on-exit    pair)
+   )
+  (:methods
+    (point-in-region-debug! (_type_ vector) symbol)
+    )
+  )
+
+
+(deftype region-array (inline-array-class)
+  "Array of region."
+  ((data  region  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> region-array heap-base) (the-as uint 16))
+
+(deftype drawable-region-prim (drawable)
+  "Base class for a region + geometry.
+Note that all child classes of this must be 32-bytes."
+  ((region  region  :offset   8)
+   )
+  (:methods
+    (debug-draw-region (_type_ int) none)
+    (track-region (_type_ region-prim-area) symbol)
+    (within-area? (_type_ region-prim-area) symbol)
+    )
+  )
+
+
+(deftype drawable-tree-region-prim (drawable-tree)
+  "Top-level container for all regions of a level."
+  ((name   symbol                          :offset   8)
+   (data2  drawable-inline-array  :dynamic :offset  32)
+   )
+  (:methods
+    (drawable-tree-region-prim-method-17 (_type_ vector) symbol)
+    (debug-print (_type_ vector object) none)
+    )
+  )
+
+
+(deftype drawable-inline-array-region-prim (drawable-inline-array)
+  "Inline array of drawable-region-prim. This actually stores child classes, but they are
+exactly the same size as the parent, so it's okay."
+  ((data  drawable-region-prim  1 :inline)
+   (pad   uint8                 4)
+   )
+  )
+
+(deftype drawable-region-sphere (drawable-region-prim)
+  "Region where the bsphere of the drawable is the volume."
+  ()
+  )
+
+
+(deftype region-face-data (structure)
+  "Data to store a single planar face, as a normal and list of vertices."
+  ((normal         vector  :inline)
+   (normal-offset  float   :overlay-at (-> normal data 3))
+   (num-points     uint32)
+   (points         vector  :inline :dynamic)
+   )
+  )
+
+
+(deftype drawable-region-face (drawable-region-prim)
+  "A drawable-region which is just a face. Unclear if `on-inside` is used."
+  ((data  region-face-data  :offset  12)
+   )
+  )
+
+
+(deftype region-face-array (inline-array-class)
+  "An array of faces that hopefully make a closed volume."
+  ((data  drawable-region-face  :inline :dynamic :offset  16)
+   (pad   uint32)
+   )
+  )
+
+
+(set! (-> region-face-array heap-base) (the-as uint 32))
+
+(deftype drawable-region-volume (drawable-region-prim)
+  "A drawable-region which is a bunch of faces that represent a closed volume."
+  ((faces  region-face-array  :offset  12)
+   )
+  )
+
+
+(deftype region-prim-list (structure)
+  "A list of drawable-region-prim. This is the return type of queries like `which regions contain this point?`"
+  ((num-items  int32)
+   (items      drawable-region-prim  320)
+   )
+  )

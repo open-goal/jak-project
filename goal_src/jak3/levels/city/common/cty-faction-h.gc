@@ -5,5 +5,174 @@
 ;; name in dgo: cty-faction-h
 ;; dgos: DESRESC, HGA, WWD, CWI, LFACTORY
 
+;; +++cty-faction-update-flag
+(defenum cty-faction-update-flag
+  :type uint8
+  :bitfield #t
+  (cfu0 0)
+  )
+;; ---cty-faction-update-flag
+
+
+;; +++faction-spawn-flag
+(defenum faction-spawn-flag
+  :type uint8
+  :bitfield #t
+  (fs0 0)
+  (fs1 1)
+  (fs2 2)
+  (fs3 3)
+  )
+;; ---faction-spawn-flag
+
+
+;; +++cty-faction-level
+(defenum cty-faction-level
+  (pesc 0)
+  (pesb 1)
+  (pesa 2)
+  (pepa 3)
+  (car 4)
+  (pepc 5)
+  (pepb 6)
+  )
+;; ---cty-faction-level
+
+
+;; +++nav-territory-type
+(defenum nav-territory-type
+  :type uint8
+  (port-ff-deep 0)
+  (port-ff-near-kg 1)
+  (port-ff-kg-border 2)
+  (inda-kg-ff-border 3)
+  (inda-kg 4)
+  (inda-kg-deep 5)
+  (indb-kg-deep 6)
+  (indb-kg 7)
+  (indb-kg-ff-border 8)
+  (sluma-ff-kg-border 9)
+  (sluma-ff 10)
+  (sluma-ff-deep 11)
+  (slumb-ff-deep 12)
+  (slumc-ff-deep 13)
+  (genc-border 14)
+  (genc 15)
+  (port-ff-near-mh 16)
+  (port-ff-mh-border 17)
+  (mhcity-mh-ff-border 18)
+  (mhcity-mh 19)
+  (mhcity-mh-deep 20)
+  (special0 21)
+  (special1 22)
+  (special2 23)
+  (special3 24)
+  (special4 25)
+  (special5 26)
+  (special6 27)
+  (special7 28)
+  (special8 29)
+  (invalid 128)
+  )
+;; ---nav-territory-type
+
+
 ;; DECOMP BEGINS
 
+(deftype cty-faction-info (structure)
+  ((data      int8  6)
+   (ff-guard  int8  :overlay-at (-> data 0))
+   (ff-ped    int8  :overlay-at (-> data 1))
+   (kg-guard  int8  :overlay-at (-> data 2))
+   (kg-ped    int8  :overlay-at (-> data 3))
+   (mh-guard  int8  :overlay-at (-> data 4))
+   (mh-ped    int8  :overlay-at (-> data 5))
+   )
+  :allow-misaligned
+  )
+
+
+(deftype cty-faction-strength (structure)
+  ((data         int8  3)
+   (ff-strength  int8  :overlay-at (-> data 0))
+   (kg-strength  int8  :overlay-at (-> data 1))
+   (mh-strength  int8  :overlay-at (-> data 2))
+   )
+  :allow-misaligned
+  )
+
+
+(deftype territory-faction-mode (structure)
+  ((data     int8   3)
+   (ff-mode  uint8  :overlay-at (-> data 0))
+   (kg-mode  uint8  :overlay-at (-> data 1))
+   (mh-mode  uint8  :overlay-at (-> data 2))
+   )
+  :allow-misaligned
+  )
+
+
+(deftype territory-faction-flag (structure)
+  ((data     uint8  3)
+   (ff-mode  uint8  :overlay-at (-> data 0))
+   (kg-mode  uint8  :overlay-at (-> data 1))
+   (mh-mode  uint8  :overlay-at (-> data 2))
+   )
+  :pack-me
+  )
+
+
+(deftype faction-spawn-info (structure)
+  ((faction-type     uint8)
+   (current-level    uint8)
+   (requested-level  uint8)
+   (flags            faction-spawn-flag)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype cty-faction-manager (basic)
+  ((faction-array                   cty-faction-info        30)
+   (faction-mod-array               cty-faction-info        30 :inline)
+   (global-faction-strength-mod     cty-faction-strength    :inline)
+   (territory-faction-strength-mod  cty-faction-strength    4 :inline)
+   (permission-cache                uint8                   30 :offset 671)
+   (last-requested-level            symbol)
+   (territory-faction-modes         territory-faction-mode  30 :inline)
+   (territory-flags                 uint8                   30)
+   (last-active-territories         uint32)
+   (update-flags                    cty-faction-update-flag)
+   (target-exclusive-branch-index   uint8)
+   (territory-faction-flags         territory-faction-flag  :inline)
+   (faction-spawn                   faction-spawn-info      7 :inline)
+   (last-change-music-time          time-frame                 :offset 1344)
+   (start-fight-music-time          time-frame)
+   )
+  (:methods
+    (cty-faction-manager-method-9 (_type_ int symbol) int)
+    (cty-faction-manager-method-10 (_type_ int symbol) int)
+    (cty-faction-manager-method-11 (_type_ int) uint)
+    (cty-faction-manager-method-12 (_type_ int int) int)
+    (cty-faction-manager-method-13 (_type_) symbol)
+    (cty-faction-manager-method-14 (_type_ nav-territory-type int int) int)
+    (restore-defaults (_type_) cty-faction-update-flag)
+    (cty-faction-manager-method-16 (_type_ nav-territory-type) int)
+    (cty-faction-manager-method-17 (_type_ symbol) int)
+    (cty-faction-manager-method-18 (_type_ symbol) int)
+    (cty-faction-manager-method-19 (_type_) symbol)
+    (cty-faction-manager-method-20 (_type_ uint) int)
+    (cty-faction-manager-method-21 (_type_ int) symbol)
+    (cty-faction-manager-method-22 (_type_) cty-faction-update-flag)
+    (cty-faction-manager-method-23 (_type_ uint) symbol)
+    (cty-faction-manager-method-24 (_type_) symbol)
+    (faction-spawn (_type_ int int symbol symbol) faction-spawn-flag)
+    )
+  )
+
+
+(defmethod cty-faction-manager-method-12 ((this cty-faction-manager) (arg0 int) (arg1 int))
+  (-> this territory-faction-modes 0 data (+ arg1 (* arg0 16)))
+  )
+
+(define *cty-faction-manager* (the-as cty-faction-manager #f))

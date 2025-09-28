@@ -1,10 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: aligner-h.gc
-;; name in dgo: aligner-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/draw/drawable-h.gc")
+(require "kernel/gstate.gc")
 (defenum align-flags
   :bitfield #t
   :type uint32
@@ -14,53 +12,46 @@
 (defenum align-opts
   :bitfield #t
   :type uint32
-  (adjust-x-vel)  ;; adjust x
-  (adjust-y-vel)  ;; adjust y
+  (adjust-x-vel) ;; adjust x
+  (adjust-y-vel) ;; adjust y
   (adjust-xz-vel) ;; adjust both x and z. (don't set this with adjust-x)
   (keep-other-velocities) ;; if set, keep xz plane velocities if their alignment isn't requested
-  (adjust-quat)   ;; adjust the orientation
+  (adjust-quat) ;; adjust the orientation
   (alop0)
   (alop1)
   (alop2)
   (alop3)
   (alop4)
   (alop5)
-  (no-gravity)       ;; do not apply any gravity
+  (no-gravity) ;; do not apply any gravity
   (ignore-y-if-zero) ;; if set and the alignment velocity is 0 in y, don't apply it.
   )
 
 ;; DECOMP BEGINS
 
 (deftype align-control (basic)
-  ((flags        align-flags)
-   (process      process-drawable)
-   (frame-group  art-joint-anim)
-   (frame-num    float)
-   (matrix       matrix      2 :inline)
-   (transform    transform   2 :inline)
-   (delta        transformq  :inline)
-   (last-speed   meters)
-   (align        transformq  :inline :overlay-at (-> transform 0 trans x))
-   )
+  ((flags       align-flags)
+   (process     process-drawable)
+   (frame-group art-joint-anim)
+   (frame-num   float)
+   (matrix      matrix 2 :inline)
+   (transform   transform 2 :inline)
+   (delta       transformq :inline)
+   (last-speed  meters)
+   (align       transformq :inline :overlay-at (-> transform 0 trans x)))
   (:methods
-    (new (symbol type process-drawable) _type_)
-    (compute-alignment! (_type_) transformq)
-    (align! (_type_ align-opts float float float) trsqv)
-    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv)
-    (first-transform (_type_) transform)
-    (snd-transform (_type_) transform)
-    )
-  )
-
+   (new (symbol type process-drawable) _type_)
+   (compute-alignment! (_type_) transformq)
+   (align! (_type_ align-opts float float float) trsqv)
+   (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv)
+   (first-transform (_type_) transform)
+   (snd-transform (_type_) transform)))
 
 (defmethod new align-control ((allocation symbol) (type-to-make type) (proc process-drawable))
   "Create a new align-control."
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (when (zero? this)
       (go process-drawable-art-error "memory")
-      (return (the align-control 0))
-      )
+      (return (the align-control 0)))
     (set! (-> this process) proc)
-    this
-    )
-  )
+    this))

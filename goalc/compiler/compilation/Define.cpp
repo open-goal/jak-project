@@ -11,10 +11,10 @@
  */
 Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  SymbolInfo::Metadata sym_meta;
+  std::string docstring;
   // Grab the docstring (if it's there) and then rip it out so we can do the normal validation
   if (args.unnamed.size() == 3 && args.unnamed.at(1).is_string()) {
-    sym_meta.docstring = args.unnamed.at(1).as_string()->data;
+    docstring = args.unnamed.at(1).as_string()->data;
     args.unnamed.erase(args.unnamed.begin() + 1);
   }
 
@@ -24,17 +24,18 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   auto& val = args.unnamed.at(1);
 
   // check we aren't duplicated a name as both a symbol and global constant
-  auto global_constant = m_global_constants.find(sym.as_symbol());
-  if (global_constant != m_global_constants.end()) {
+  auto global_constant = m_global_constants.lookup(sym.as_symbol());
+  if (global_constant) {
     throw_compiler_error(
         form, "Cannot define a symbol named {}, it already exists as a global constant (value {}).",
-        sym.print(), global_constant->second.print());
+        sym.print(), global_constant->print());
   }
 
   auto fe = env->function_env();
   auto sym_val = fe->alloc_val<SymbolVal>(symbol_string(sym), m_ts.make_typespec("symbol"));
   auto compiled_val = compile_error_guard(val, env);
   auto as_lambda = dynamic_cast<LambdaVal*>(compiled_val);
+  auto in_gpr = compiled_val->to_gpr(form, fe);
   if (as_lambda) {
     // there are two cases in which we save a function body that is passed to a define:
     // 1. It generated code [so went through the compiler] and the allow_inline flag is set.
@@ -48,13 +49,16 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
       f.lambda = as_lambda->lambda;
       f.type = as_lambda->type();
     }
-    // Most defines come via macro invokations, we want the TRUE defining form location
+    // Most defines come via macro invocations, we want the TRUE defining form location
     // if we can get it
+    // TODO - test the return value changes
     if (env->macro_expand_env()) {
-      m_symbol_info.add_function(symbol_string(sym), as_lambda->lambda.params,
-                                 env->macro_expand_env()->root_form(), sym_meta);
+      m_symbol_info.add_function(symbol_string(sym), in_gpr->type().last_arg().base_type(),
+                                 as_lambda->lambda.params, env->macro_expand_env()->root_form(),
+                                 docstring);
     } else {
-      m_symbol_info.add_function(symbol_string(sym), as_lambda->lambda.params, form, sym_meta);
+      m_symbol_info.add_function(symbol_string(sym), in_gpr->type().last_arg().base_type(),
+                                 as_lambda->lambda.params, form, docstring);
     }
   }
 
@@ -62,24 +66,30 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
   }
 
-  auto in_gpr = compiled_val->to_gpr(form, fe);
-  auto existing_type = m_symbol_types.find(sym.as_symbol());
-  if (existing_type == m_symbol_types.end()) {
-    m_symbol_types[sym.as_symbol()] = in_gpr->type();
+  auto explicit_no_typecheck = false;
+  if (args.has_named("no-typecheck")) {
+    explicit_no_typecheck = get_true_or_false(form, args.named.at("no-typecheck"));
+  }
+  auto existing_type = m_symbol_types.lookup(sym.as_symbol());
+  if (!existing_type) {
+    m_symbol_types.set(sym.as_symbol(), in_gpr->type());
   } else {
-    bool do_typecheck = true;
-    if (args.has_named("no-typecheck")) {
-      do_typecheck = !get_true_or_false(form, args.named.at("no-typecheck"));
-    }
-    if (do_typecheck) {
-      typecheck(form, existing_type->second, in_gpr->type(),
+    if (!explicit_no_typecheck && m_repl && m_repl->repl_config.permissive_redefinitions) {
+      // Permissive redefinitions are allowed
+      if (in_gpr->type() != *existing_type) {
+        lg::warn("Redefining {}", sym.as_symbol().name_ptr);
+      }
+      m_symbol_types.set(sym.as_symbol(), in_gpr->type());
+    } else if (!explicit_no_typecheck) {
+      // Type check is required
+      typecheck(form, *existing_type, in_gpr->type(),
                 fmt::format("define on existing symbol {}", sym.as_symbol().name_ptr));
     }
   }
 
   if (!as_lambda) {
     // Don't double-add functions as globals
-    m_symbol_info.add_global(symbol_string(sym), form, sym_meta);
+    m_symbol_info.add_global(symbol_string(sym), in_gpr->type().base_type(), form, docstring);
   }
 
   env->emit(form, std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));
@@ -104,27 +114,26 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
 
   auto new_type = parse_typespec(typespec, env);
 
-  auto existing_type = m_symbol_types.find(sym.as_symbol());
+  auto existing_type = m_symbol_types.lookup(sym.as_symbol());
   // symbol already declared, and doesn't match existing definition. do more checks...
-  if (existing_type != m_symbol_types.end() && existing_type->second != new_type) {
+  if (existing_type && *existing_type != new_type) {
     if (m_allow_inconsistent_definition_symbols.find(symbol_string(sym)) ==
         m_allow_inconsistent_definition_symbols.end()) {
       // throw if we have throws enabled, and new definition is NOT just more generic
       // (that case is fine in goal)
-      if (!m_ts.tc(new_type, existing_type->second) && m_throw_on_define_extern_redefinition) {
+      if (!m_ts.tc(new_type, *existing_type) && m_throw_on_define_extern_redefinition) {
         throw_compiler_error(form,
                              "define-extern would redefine the type of symbol {} from {} to {}.",
-                             symbol_string(sym), existing_type->second.print(), new_type.print());
+                             symbol_string(sym), existing_type->print(), new_type.print());
       } else {
         print_compiler_warning(
             "define-extern has redefined the type of symbol {}\npreviously: {}\nnow: {}\n",
-            symbol_string(sym).c_str(), existing_type->second.print().c_str(),
-            new_type.print().c_str());
+            symbol_string(sym).c_str(), existing_type->print().c_str(), new_type.print().c_str());
       }
     }
   }
 
-  m_symbol_types[sym.as_symbol()] = new_type;
+  m_symbol_types.set(sym.as_symbol(), new_type);
   m_symbol_info.add_fwd_dec(symbol_string(sym), form);
   return get_none();
 }

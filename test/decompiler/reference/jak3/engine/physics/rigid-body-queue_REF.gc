@@ -1,0 +1,344 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *rigid-body-queue-manager*, type rigid-body-queue-manager
+(define *rigid-body-queue-manager* (the-as rigid-body-queue-manager #f))
+
+;; definition for method 9 of type rigid-body-queue
+;; WARN: Return type mismatch int vs none.
+(defmethod init-queue! ((this rigid-body-queue) (arg0 process))
+  (set! (-> this count) 0)
+  (set! (-> this manager) (process->handle arg0))
+  (dotimes (v1-3 128)
+    (set! (-> this array v1-3) (the-as handle #f))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type rigid-body-queue
+;; WARN: Return type mismatch symbol vs none.
+(defmethod rigid-body-queue-method-16 ((this rigid-body-queue))
+  (let ((gp-0 0))
+    (dotimes (v1-0 (-> this count))
+      (let ((a1-2 (-> this array v1-0))
+            (a2-0 (+ v1-0 1))
+            )
+        (while (< a2-0 (-> this count))
+          (if (= a1-2 (-> this array a2-0))
+              (+! gp-0 1)
+              )
+          (+! a2-0 1)
+          )
+        )
+      )
+    (if (> gp-0 0)
+        (format 0 "rigid-body-queue::validate: duplicate count ~d~%" gp-0)
+        )
+    (zero? gp-0)
+    )
+  (none)
+  )
+
+;; definition for method 10 of type rigid-body-queue
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-queue-method-10 ((this rigid-body-queue))
+  (with-pp
+    (let ((f0-0 (seconds-per-frame)))
+      (countdown (v1-1 (-> this count))
+        (let ((a0-4 (handle->process (-> this array v1-1))))
+          (cond
+            (a0-4
+              (let ((a0-6 (-> (the-as process-focusable a0-4) rbody)))
+                (set! (-> a0-6 time-remaining) f0-0)
+                (set! (-> a0-6 blocked-by) #f)
+                (set! (-> a0-6 step-count) 0)
+                (logclear! (-> a0-6 flags) (rigid-body-flag blocker))
+                )
+              )
+            (else
+              )
+            )
+          )
+        )
+      )
+    (let ((s5-0 0))
+      (let ((s4-0 (-> *kernel-context* prevent-from-run)))
+        (b! #t cfg-37 :delay (nop!))
+        (label cfg-11)
+        (let ((s3-0 (handle->process (-> this array s5-0))))
+          (when s3-0
+            (let ((s2-0 (-> (the-as process-focusable s3-0) rbody)))
+              (when (and (logtest? (-> s2-0 flags) (rigid-body-flag enable-physics))
+                         (not (logtest? s4-0 (-> s3-0 mask)))
+                         (and (< 0.001 (-> s2-0 time-remaining)) (< (-> s2-0 step-count) 4))
+                         )
+                (let ((s1-0 pp))
+                  (set! pp s3-0)
+                  (rigid-body-object-method-54 (the-as rigid-body-object s3-0))
+                  (set! pp s1-0)
+                  )
+                (+! (-> s2-0 step-count) 1)
+                (let ((a2-2 (-> s2-0 blocked-by)))
+                  (when a2-2
+                    (when #t
+                      (logior! (-> a2-2 rbody flags) (rigid-body-flag blocker))
+                      (rigid-body-queue-method-13 this s5-0 a2-2)
+                      (let ((v1-34 (process->handle s3-0)))
+                        (b! (!= (-> this array s5-0) v1-34) cfg-11 :delay (nop!))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (+! s5-0 1)
+      (label cfg-37)
+      (b! (< s5-0 (-> this count)) cfg-11)
+      )
+    (let ((s5-1 (-> *kernel-context* prevent-from-run)))
+      (dotimes (s4-1 (-> this count))
+        (let ((a0-20 (handle->process (-> this array s4-1))))
+          (when (and a0-20
+                     (logtest? (-> (the-as process-focusable a0-20) rbody flags) (rigid-body-flag enable-physics))
+                     (not (logtest? s5-1 (-> a0-20 mask)))
+                     )
+            (let ((s3-1 pp))
+              (set! pp a0-20)
+              (clear-impulse-force-flag! (the-as rigid-body-object a0-20))
+              (set! pp s3-1)
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 11 of type rigid-body-queue
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-queue-method-11 ((this rigid-body-queue) (arg0 process))
+  (let ((v1-0 -1))
+    (let ((a2-0 0))
+      (b! #t cfg-9 :delay (nop!))
+      (label cfg-1)
+      (b! (handle->process (-> this array a2-0)) cfg-8 :delay (empty-form))
+      (set! v1-0 a2-0)
+      (b! #t cfg-11 :delay (nop!))
+      (label cfg-8)
+      (+! a2-0 1)
+      (label cfg-9)
+      (b! (< a2-0 (-> this count)) cfg-1)
+      )
+    (label cfg-11)
+    (cond
+      ((!= v1-0 -1)
+       (set! (-> this array v1-0) (process->handle arg0))
+       )
+      (else
+        (when (< (-> this count) 128)
+          (set! (-> this array (-> this count)) (process->handle arg0))
+          (+! (-> this count) 1)
+          )
+        )
+      )
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for method 12 of type rigid-body-queue
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-queue-method-12 ((this rigid-body-queue) (arg0 int) (arg1 int))
+  (when (< arg0 arg1)
+    (let ((v1-1 arg1)
+          (a3-0 (+ arg1 -1))
+          (a2-3 (-> this array arg1))
+          )
+      (while (>= a3-0 arg0)
+        (set! (-> this array v1-1) (-> this array a3-0))
+        (+! a3-0 -1)
+        (+! v1-1 -1)
+        )
+      (set! (-> this array arg0) a2-3)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 13 of type rigid-body-queue
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-queue-method-13 ((this rigid-body-queue) (arg0 int) (arg1 process))
+  (let ((v1-2 (process->handle arg1))
+        (a2-4 (+ arg0 1))
+        )
+    (b! #t cfg-9 :delay (nop!))
+    (label cfg-6)
+    (b! (!= (-> this array a2-4) v1-2) cfg-8 :delay (empty-form))
+    (rigid-body-queue-method-12 this arg0 a2-4)
+    (b! #t cfg-11 :delay (nop!))
+    (label cfg-8)
+    (+! a2-4 1)
+    (label cfg-9)
+    (b! (< a2-4 (-> this count)) cfg-6)
+    )
+  (label cfg-11)
+  0
+  0
+  (none)
+  )
+
+;; definition for method 14 of type rigid-body-queue
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-queue-method-14 ((this rigid-body-queue) (arg0 int))
+  (let ((v1-0 arg0)
+        (a1-1 (+ arg0 1))
+        )
+    (while (< a1-1 (-> this count))
+      (set! (-> this array v1-0) (-> this array a1-1))
+      (+! a1-1 1)
+      (+! v1-0 1)
+      )
+    )
+  (+! (-> this count) -1)
+  0
+  (none)
+  )
+
+;; definition for method 15 of type rigid-body-queue
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-queue-method-15 ((this rigid-body-queue) (arg0 process))
+  (let ((v1-2 (process->handle arg0))
+        (a1-4 0)
+        )
+    (b! #t cfg-9 :delay (nop!))
+    (label cfg-6)
+    (b! (!= (-> this array a1-4) v1-2) cfg-8 :delay (empty-form))
+    (rigid-body-queue-method-14 this a1-4)
+    (b! #t cfg-11 :delay (nop!))
+    (label cfg-8)
+    (+! a1-4 1)
+    (label cfg-9)
+    (b! (< a1-4 (-> this count)) cfg-6)
+    )
+  (label cfg-11)
+  0
+  0
+  (none)
+  )
+
+;; definition of type rigid-body-queue-manager
+(deftype rigid-body-queue-manager (process)
+  ((queue  rigid-body-queue)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type rigid-body-queue-manager
+(defmethod inspect ((this rigid-body-queue-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tqueue: #<rigid-body-queue @ #x~X>~%" (-> this queue))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 10 of type rigid-body-queue-manager
+(defmethod deactivate ((this rigid-body-queue-manager))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *rigid-body-queue-manager* #f)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type rigid-body-queue-manager
+;; WARN: Return type mismatch process vs rigid-body-queue-manager.
+(defmethod relocate ((this rigid-body-queue-manager) (offset int))
+  (set! *rigid-body-queue-manager* this)
+  (if *rigid-body-queue-manager*
+      (set! *rigid-body-queue-manager* (&+ *rigid-body-queue-manager* offset))
+      )
+  (the-as rigid-body-queue-manager ((method-of-type process relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defstate idle (rigid-body-queue-manager)
+  :virtual #t
+  :exit (behavior ()
+    (set! (-> self queue count) 0)
+    0
+    )
+  :code sleep-code
+  :post (behavior ()
+    (local-vars (a0-3 int) (a0-5 int))
+    (let* ((v1-1 (-> *perf-stats* data 17))
+           (a0-0 (-> v1-1 ctrl))
+           )
+      (+! (-> v1-1 count) 1)
+      (b! (zero? a0-0) cfg-2 :delay (nop!))
+      (.mtc0 Perf 0)
+      (.sync.l)
+      (.sync.p)
+      (.mtpc pcr0 0)
+      (.mtpc pcr1 0)
+      (.sync.l)
+      (.sync.p)
+      (.mtc0 Perf a0-0)
+      )
+    (.sync.l)
+    (.sync.p)
+    (label cfg-2)
+    0
+    (rigid-body-queue-method-10 (-> self queue))
+    (let ((v1-6 (-> *perf-stats* data 17)))
+      (b! (zero? (-> v1-6 ctrl)) cfg-4 :delay (nop!))
+      (.mtc0 Perf 0)
+      (.sync.l)
+      (.sync.p)
+      (.mfpc a0-3 pcr0)
+      (+! (-> v1-6 accum0) a0-3)
+      (.mfpc a0-5 pcr1)
+      (+! (-> v1-6 accum1) a0-5)
+      )
+    (label cfg-4)
+    0
+    )
+  )
+
+;; definition for function rigid-body-queue-manager-init-by-other
+(defbehavior rigid-body-queue-manager-init-by-other rigid-body-queue-manager ((arg0 rigid-body-queue))
+  (stack-size-set! (-> self main-thread) 128)
+  (set! (-> self queue) arg0)
+  (init-queue! (-> self queue) self)
+  (go-virtual idle)
+  )
+
+;; definition for function rigid-body-queue-manager-spawn
+(defun rigid-body-queue-manager-spawn ((arg0 rigid-body-queue) (arg1 process-tree))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn rigid-body-queue-manager arg0 :name "rigid-body-queue-manager" :to arg1)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    gp-0
+    )
+  )
+
+
+
+

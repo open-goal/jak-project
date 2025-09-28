@@ -1,116 +1,99 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: final-door.gc
-;; name in dgo: final-door
-;; dgos: FIN, L1
-
+(bundles "FIN.DGO")
+(require "engine/game/main.gc")
+(require "engine/physics/trajectory.gc")
+(require "engine/game/task/task-control.gc")
+(require "engine/target/logic-target.gc")
 (define-extern power-left type)
 
 ;; DECOMP BEGINS
 
-(deftype fin-door (process-hidden)
-  ()
-  )
+(deftype fin-door (process-hidden) ())
 
 
-(deftype final-door (process-drawable)
-  ()
+(deftype final-door (process-drawable) ()
   (:state-methods
-    idle
-    )
+   idle)
   (:methods
-    (final-door-method-21 (_type_) none)
-    (open (symbol) _type_ :state)
-    )
-  )
+   (final-door-method-21 (_type_) none)
+   (open (symbol) _type_ :state)))
 
 
-(defskelgroup *power-left-sg* power-left power-left-lod0-jg power-left-idle-ja
-              ((power-left-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 11 0 12)
-              )
+(defskelgroup *power-left-sg*
+  power-left
+  power-left-lod0-jg
+  power-left-idle-ja
+  ((power-left-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 11 0 12))
 
-(defskelgroup *power-right-sg* power-right power-right-lod0-jg power-right-idle-ja
-              ((power-right-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 11 0 12)
-              )
+(defskelgroup *power-right-sg*
+  power-right
+  power-right-lod0-jg
+  power-right-idle-ja
+  ((power-right-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 11 0 12))
 
-(defskelgroup *powercellalt-sg* powercellalt powercellalt-lod0-jg powercellalt-idle-ja
-              ((powercellalt-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 2)
-              )
+(defskelgroup *powercellalt-sg*
+  powercellalt
+  powercellalt-lod0-jg
+  powercellalt-idle-ja
+  ((powercellalt-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 2))
 
 (defstate idle (final-door)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('open)
-       (go-virtual open #f)
-       )
-      )
-    )
-  :code (behavior ()
-    (transform-post)
-    (logior! (-> self mask) (process-mask sleep))
-    (suspend)
-    0
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('open) (go-virtual open #f))))
+  :code
+    (behavior ()
+      (transform-post)
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      0))
 
 (defstate open (final-door)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('brightness)
-       (let ((f0-0 (the-as float (-> block param 0)))
-             (f1-0 (the-as float (-> block param 1)))
-             )
-         (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
-         (let ((v0-0 (-> self draw color-emissive)))
-           (set! (-> v0-0 x) f1-0)
-           (set! (-> v0-0 y) f1-0)
-           (set! (-> v0-0 z) f1-0)
-           (set! (-> v0-0 w) f1-0)
-           v0-0
-           )
-         )
-       )
-      )
-    )
-  :code (behavior ((arg0 symbol))
-    (case (-> self type)
-      ((power-left)
-       (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.353) :frame-num 0.0)
-       (until (ja-done? 0)
-         (transform-post)
-         (suspend)
-         (ja :num! (seek! max 0.353))
-         )
-       )
-      (else
-        (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.353) :frame-num 0.0)
-        (until (ja-done? 0)
-          (transform-post)
-          (suspend)
-          (ja :num! (seek! max 0.353))
-          )
-        )
-      )
-    (transform-post)
-    (logior! (-> self mask) (process-mask sleep))
-    (suspend)
-    0
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('brightness)
+         (let ((f0-0 (the-as float (-> block param 0)))
+               (f1-0 (the-as float (-> block param 1))))
+           (set-vector! (-> self draw color-mult) f0-0 f0-0 f0-0 f0-0)
+           (let ((v0-0 (-> self draw color-emissive)))
+             (set! (-> v0-0 x) f1-0)
+             (set! (-> v0-0 y) f1-0)
+             (set! (-> v0-0 z) f1-0)
+             (set! (-> v0-0 w) f1-0)
+             v0-0)))))
+  :code
+    (behavior ((arg0 symbol))
+      (case (-> self type)
+        ((power-left)
+         (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.353) :frame-num 0.0)
+         (until (ja-done? 0)
+           (transform-post)
+           (suspend)
+           (ja :num! (seek! max 0.353))))
+        (else
+         (ja-no-eval :group! (-> self draw art-group data 2) :num! (seek! max 0.353) :frame-num 0.0)
+         (until (ja-done? 0)
+           (transform-post)
+           (suspend)
+           (ja :num! (seek! max 0.353)))))
+      (transform-post)
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      0))
 
 (defmethod init-from-entity! ((this final-door) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -118,152 +101,116 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 45056.0 0.0 49152.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (final-door-method-21 this)
   (go (method-of-object this idle))
-  (none)
-  )
+  (none))
 
-(deftype power-left (final-door)
-  ()
-  )
+(deftype power-left (final-door) ())
 
 
-(deftype power-right (final-door)
-  ()
-  )
+(deftype power-right (final-door) ())
 
 
 (defstate idle (power-left)
   :virtual #t
-  :code (behavior ()
-    (ja-post)
-    (loop
-      (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-               (and (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
-                    (and (>= (-> *game-info* fuel) 100.0)
-                         (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-                         (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
-                         (send-event
-                           *target*
-                           'change-mode
-                           'final-door
-                           (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-right)))
-                           (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-left)))
-                           )
-                         )
-                    )
-               )
-          (process-entity-status! self (entity-perm-status complete) #t)
-          )
-      (suspend)
-      )
-    )
-  )
+  :code
+    (behavior ()
+      (ja-post)
+      (loop
+        (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                 (and (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
+                      (and (>= (-> *game-info* fuel) 100.0)
+                           (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+                           (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
+                           (send-event *target*
+                                       'change-mode
+                                       'final-door
+                                       (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-right)))
+                                       (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-left)))))))
+          (process-entity-status! self (entity-perm-status complete) #t))
+        (suspend))))
 
 (defmethod final-door-method-21 ((this power-left))
   (initialize-skeleton this *power-left-sg* '())
   0
-  (none)
-  )
+  (none))
 
 (defmethod final-door-method-21 ((this power-right))
   (initialize-skeleton this *power-right-sg* '())
   0
-  (none)
-  )
+  (none))
 
 (deftype powercellalt (process-drawable)
-  ((root      collide-shape-moving :override)
-   (jump-pos  vector                :inline)
-   (base      vector                :inline)
-   (index     int32)
-   )
+  ((root     collide-shape-moving :override)
+   (jump-pos vector :inline)
+   (base     vector :inline)
+   (index    int32))
   (:methods
-    (powercellalt-method-20 () none)
-    (jump () _type_ :state)
-    (idle () _type_ :state)
-    )
-  )
+   (powercellalt-method-20 () none)
+   (jump () _type_ :state)
+   (idle () _type_ :state)))
 
 
 (defstate jump (powercellalt)
   :virtual #t
-  :code (behavior ()
-    (sound-play "cell-prize")
-    (let ((gp-1 (new 'stack 'trajectory)))
-      (set! (-> self base y) (-> self jump-pos y))
-      (setup-from-to-duration! gp-1 (-> self root trans) (-> self jump-pos) 300.0 -2.2755556)
-      (set-time! (-> self state-time))
-      (until (time-elapsed? (-> self state-time) (seconds 1))
-        (let ((f0-2 (the float (- (current-time) (-> self state-time)))))
-          (eval-position! gp-1 f0-2 (-> self root trans))
-          )
-        (transform-post)
-        (spawn (-> self part) (the-as vector (-> self root root-prim prim-core)))
-        (suspend)
-        (if (nonzero? (-> self skel))
-            (ja :num! (loop! 0.5))
-            )
-        )
-      )
-    (set! (-> self root trans quad) (-> self jump-pos quad))
-    (set! (-> self base quad) (-> self root trans quad))
-    (transform-post)
-    (sound-play "land-pcmetal" :pitch 2)
-    (process-spawn
-      part-tracker
-      :init part-tracker-init
-      (-> *part-group-id-table* 4)
-      -1
-      #f
-      #f
-      #f
-      (-> self root root-prim prim-core)
-      :to *entity-pool*
-      )
-    (go-virtual idle)
-    )
-  )
+  :code
+    (behavior ()
+      (sound-play "cell-prize")
+      (let ((gp-1 (new 'stack 'trajectory)))
+        (set! (-> self base y) (-> self jump-pos y))
+        (setup-from-to-duration! gp-1 (-> self root trans) (-> self jump-pos) 300.0 -2.2755556)
+        (set-time! (-> self state-time))
+        (until (time-elapsed? (-> self state-time) (seconds 1))
+          (let ((f0-2 (the float (- (current-time) (-> self state-time))))) (eval-position! gp-1 f0-2 (-> self root trans)))
+          (transform-post)
+          (spawn (-> self part) (the-as vector (-> self root root-prim prim-core)))
+          (suspend)
+          (if (nonzero? (-> self skel)) (ja :num! (loop! 0.5)))))
+      (set! (-> self root trans quad) (-> self jump-pos quad))
+      (set! (-> self base quad) (-> self root trans quad))
+      (transform-post)
+      (sound-play "land-pcmetal" :pitch 2)
+      (process-spawn part-tracker
+                     :init
+                     part-tracker-init
+                     (-> *part-group-id-table* 4)
+                     -1
+                     #f
+                     #f
+                     #f
+                     (-> self root root-prim prim-core)
+                     :to
+                     *entity-pool*)
+      (go-virtual idle)))
 
 (defstate idle (powercellalt)
   :virtual #t
-  :code (behavior ()
-    (loop
-      (vector<-cspace!
-        (-> self root trans)
-        (-> (the-as process-drawable (-> self parent 0)) node-list data (-> self index))
-        )
-      (transform-post)
-      (suspend)
-      )
-    )
-  )
+  :code
+    (behavior ()
+      (loop
+        (vector<-cspace! (-> self root trans) (-> (the-as process-drawable (-> self parent 0)) node-list data (-> self index)))
+        (transform-post)
+        (suspend))))
 
 (defbehavior powercellalt-init-by-other powercellalt ((arg0 entity-actor) (arg1 vector) (arg2 vector) (arg3 int))
   (set! (-> self entity) arg0)
   (let ((s3-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
     (set! (-> s3-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s3-0 reaction) default-collision-reaction)
-    (set! (-> s3-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s3-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s2-0 (new 'process 'collide-shape-prim-sphere s3-0 (the-as uint 0))))
       (set! (-> s2-0 prim-core collide-as) (collide-kind powerup))
       (set! (-> s2-0 collide-with) (collide-kind target))
       (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 4915.2)
-      (set-root-prim! s3-0 s2-0)
-      )
+      (set-root-prim! s3-0 s2-0))
     (set! (-> s3-0 nav-radius) (* 0.75 (-> s3-0 root-prim local-sphere w)))
     (backup-collide-with-as s3-0)
-    (set! (-> self root) s3-0)
-    )
+    (set! (-> self root) s3-0))
   (set! (-> self root trans quad) (-> arg1 quad))
   (set! (-> self jump-pos quad) (-> arg2 quad))
   (set-vector! (-> self root scale) 0.5 0.5 0.5 1.0)
@@ -274,114 +221,71 @@
   (-> self root trans)
   (-> self jump-pos)
   (go-virtual jump)
-  (none)
-  )
+  (none))
 
 (defstate target-final-door (target)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    ((-> target-grab event) proc argc message block)
-    )
-  :enter (behavior ((arg0 basic) (arg1 handle))
-    (send-event *camera* 'change-to-entity-by-name "camera-403")
-    (set! (-> self control unknown-surface00) *empty-mods*)
-    (logior! (-> self state-flags) (state-flags invulnerable grabbed))
-    (set-setting! 'allow-progress #f 0.0 0)
-    )
-  :exit (behavior ()
-    (send-event *camera* 'change-state *camera-base-mode* (seconds 0.2))
-    (logclear! (-> self state-flags) (state-flags invulnerable grabbed))
-    (target-exit)
-    (remove-setting! 'allow-progress)
-    )
-  :trans (behavior ()
-    (set-letterbox-frames (seconds 0.017))
-    )
-  :code (behavior ((arg0 basic) (arg1 handle))
-    (local-vars (sv-144 process) (sv-160 vector) (sv-176 process) (sv-192 vector))
-    (let ((a0-2 (get-task-control (game-task finalboss-movies))))
-      (save-reminder a0-2 (logior (get-reminder a0-2 0) 2) 0)
-      )
-    (move-to-point! (-> self control) (new 'static 'vector :x 11368946.0 :y 2215900.2 :z -19405602.0 :w 1.0))
-    (set-quaternion! (-> self control) (the-as quaternion (new 'static 'vector :y -0.8472 :w 0.5312)))
-    (rot->dir-targ! (-> self control))
-    (transform-post)
-    (ja-channel-push! 1 (seconds 0.2))
-    (ja-no-eval :group! eichar-shocked-ja :num! (seek! (ja-aframe 18.0 0)) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 18.0 0)))
-      )
-    (let ((s4-3 (-> (handle->process (the-as handle arg0)) entity))
-          (s3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg neckB)))
-          )
-      (dotimes (s2-0 50)
-        (when (handle->process (the-as handle arg0))
-          (let ((s1-0 (handle->process (the-as handle arg0)))
-                (s0-0 (+ s2-0 4))
-                )
-            (set! sv-160
-                  (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as process-drawable s1-0) node-list data s0-0))
-                  )
-            (set! sv-144 (get-process *default-dead-pool* powercellalt #x4000))
-            (when sv-144
-              (let ((t9-16 (method-of-type powercellalt activate)))
-                (t9-16 (the-as powercellalt sv-144) s1-0 'powercellalt (the-as pointer #x70004000))
-                )
-              (run-now-in-process sv-144 powercellalt-init-by-other s4-3 s3-1 sv-160 s0-0)
-              (-> sv-144 ppointer)
-              )
-            )
-          )
-        (let ((s1-1 (current-time)))
-          (until (time-elapsed? s1-1 (seconds 0.1))
-            (suspend)
-            )
-          )
-        (when (handle->process arg1)
-          (let ((s1-2 (handle->process arg1))
-                (s0-1 (+ s2-0 4))
-                )
-            (set! sv-192
-                  (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as process-drawable s1-2) node-list data s0-1))
-                  )
-            (set! sv-176 (get-process *default-dead-pool* powercellalt #x4000))
-            (when sv-176
-              (let ((t9-20 (method-of-type powercellalt activate)))
-                (t9-20 (the-as powercellalt sv-176) s1-2 'powercellalt (the-as pointer #x70004000))
-                )
-              (run-now-in-process sv-176 powercellalt-init-by-other s4-3 s3-1 sv-192 s0-1)
-              (-> sv-176 ppointer)
-              )
-            )
-          )
-        (let ((s1-3 (current-time)))
-          (until (time-elapsed? s1-3 (seconds 0.1))
-            (suspend)
-            )
-          )
-        )
-      )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 2))
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      ((-> target-grab event) proc argc message block))
+  :enter
+    (behavior ((arg0 basic) (arg1 handle))
+      (send-event *camera* 'change-to-entity-by-name "camera-403")
+      (set! (-> self control unknown-surface00) *empty-mods*)
+      (logior! (-> self state-flags) (state-flags invulnerable grabbed))
+      (set-setting! 'allow-progress #f 0.0 0))
+  :exit
+    (behavior ()
+      (send-event *camera* 'change-state *camera-base-mode* (seconds 0.2))
+      (logclear! (-> self state-flags) (state-flags invulnerable grabbed))
+      (target-exit)
+      (remove-setting! 'allow-progress))
+  :trans
+    (behavior ()
+      (set-letterbox-frames (seconds 0.017)))
+  :code
+    (behavior ((arg0 basic) (arg1 handle))
+      (local-vars (sv-144 process) (sv-160 vector) (sv-176 process) (sv-192 vector))
+      (let ((a0-2 (get-task-control (game-task finalboss-movies)))) (save-reminder a0-2 (logior (get-reminder a0-2 0) 2) 0))
+      (move-to-point! (-> self control) (new 'static 'vector :x 11368946.0 :y 2215900.2 :z -19405602.0 :w 1.0))
+      (set-quaternion! (-> self control) (the-as quaternion (new 'static 'vector :y -0.8472 :w 0.5312)))
+      (rot->dir-targ! (-> self control))
+      (transform-post)
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja-no-eval :group! eichar-shocked-ja :num! (seek! (ja-aframe 18.0 0)) :frame-num 0.0)
+      (until (ja-done? 0)
         (suspend)
-        )
-      )
-    (let ((v0-22 (entity-by-name "sage-finalboss-1"))
-          (a1-26 (new 'stack-no-clear 'event-message-block))
-          )
-      (set! (-> a1-26 from) self)
-      (set! (-> a1-26 num-params) 0)
-      (set! (-> a1-26 message) 'play-anim)
-      (let ((v1-70 v0-22))
-        (send-event-function
-          (if v1-70
-              (-> v1-70 extra process)
-              )
-          a1-26
-          )
-        )
-      )
-    (go target-stance)
-    )
-  :post target-no-stick-post
-  )
+        (ja :num! (seek! (ja-aframe 18.0 0))))
+      (let ((s4-3 (-> (handle->process (the-as handle arg0)) entity))
+            (s3-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node eichar-lod0-jg neckB))))
+        (dotimes (s2-0 50)
+          (when (handle->process (the-as handle arg0))
+            (let ((s1-0 (handle->process (the-as handle arg0)))
+                  (s0-0 (+ s2-0 4)))
+              (set! sv-160 (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as process-drawable s1-0) node-list data s0-0)))
+              (set! sv-144 (get-process *default-dead-pool* powercellalt #x4000))
+              (when sv-144
+                (let ((t9-16 (method-of-type powercellalt activate)))
+                  (t9-16 (the-as powercellalt sv-144) s1-0 'powercellalt (the-as pointer #x70004000)))
+                (run-now-in-process sv-144 powercellalt-init-by-other s4-3 s3-1 sv-160 s0-0)
+                (-> sv-144 ppointer))))
+          (suspend-for (seconds 0.1))
+          (when (handle->process arg1)
+            (let ((s1-2 (handle->process arg1))
+                  (s0-1 (+ s2-0 4)))
+              (set! sv-192 (vector<-cspace! (new 'stack-no-clear 'vector) (-> (the-as process-drawable s1-2) node-list data s0-1)))
+              (set! sv-176 (get-process *default-dead-pool* powercellalt #x4000))
+              (when sv-176
+                (let ((t9-20 (method-of-type powercellalt activate)))
+                  (t9-20 (the-as powercellalt sv-176) s1-2 'powercellalt (the-as pointer #x70004000)))
+                (run-now-in-process sv-176 powercellalt-init-by-other s4-3 s3-1 sv-192 s0-1)
+                (-> sv-176 ppointer))))
+          (suspend-for (seconds 0.1))))
+      (suspend-for (seconds 2))
+      (let ((v0-22 (entity-by-name "sage-finalboss-1"))
+            (a1-26 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-26 from) self)
+        (set! (-> a1-26 num-params) 0)
+        (set! (-> a1-26 message) 'play-anim)
+        (let ((v1-70 v0-22)) (send-event-function (if v1-70 (-> v1-70 extra process)) a1-26)))
+      (go target-stance))
+  :post target-no-stick-post)

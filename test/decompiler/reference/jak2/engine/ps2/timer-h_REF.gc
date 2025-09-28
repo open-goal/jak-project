@@ -3,6 +3,8 @@
 
 ;; definition of type timer-mode
 (deftype timer-mode (uint32)
+  "This matches the Tn_MODE register structure of the ps2 EE timers.
+Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero."
   ((clks timer-clock-selection :offset   0 :size   2)
    (gate uint8                 :offset   2 :size   1)
    (gats uint8                 :offset   3 :size   1)
@@ -18,6 +20,9 @@
 
 ;; definition of type timer-bank
 (deftype timer-bank (structure)
+  "This matches an EE timer (without a HOLD register, timers 2 and 3).
+Each register is 128-bits wide, but only the lower 32-bits are usable, and the upper
+16-bits of that are hardwired to zero."
   ((count  uint32)
    (mode   timer-mode  :offset  16)
    (comp   uint32      :offset  32)
@@ -40,6 +45,7 @@
 
 ;; definition of type timer-hold-bank
 (deftype timer-hold-bank (timer-bank)
+  "This matches an EE timer (with a HOLD register, timers 0 and 1)."
   ((hold  uint32  :offset  48)
    )
   )
@@ -61,6 +67,9 @@
 
 ;; definition of type stopwatch
 (deftype stopwatch (basic)
+  "Stopwatches are used to measure CPU clock cycles.
+They don't use the timer above, but instead the Count COP0 register,
+which counts CPU clock cycles directly."
   ((prev-time-elapsed  time-frame)
    (start-time         time-frame)
    (begin-level        int32)
@@ -86,6 +95,7 @@
 
 ;; definition for function timer-init
 (defun timer-init ((arg0 timer-bank) (arg1 timer-mode))
+  "Initiate a timer, start counting at a rate of 1 every 256 bus clocks (BUSCLK: ~147.456MHz)."
   (set! (-> arg0 mode) arg1)
   (set! (-> arg0 count) (the-as uint 0))
   0

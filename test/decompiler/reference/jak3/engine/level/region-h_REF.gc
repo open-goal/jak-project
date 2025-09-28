@@ -1,0 +1,262 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type region
+(deftype region (structure)
+  "A region is a closed volume that you can, enter, exit, and be inside.
+This stores a unique, and script functions for a single region.
+These are stored separately from the actual geometry to allow the geometry to be smaller
+and fit in scratchpad/cache better."
+  ((id         uint32)
+   (on-enter   pair)
+   (on-inside  pair)
+   (on-exit    pair)
+   )
+  (:methods
+    (point-in-region-debug! (_type_ vector) symbol)
+    )
+  )
+
+;; definition for method 3 of type region
+(defmethod inspect ((this region))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'region)
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Ton-enter: ~A~%" (-> this on-enter))
+  (format #t "~1Ton-inside: ~A~%" (-> this on-inside))
+  (format #t "~1Ton-exit: ~A~%" (-> this on-exit))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type region-array
+(deftype region-array (inline-array-class)
+  "Array of region."
+  ((data  region  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type region-array
+(defmethod inspect ((this region-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> region-array heap-base) (the-as uint 16))
+
+;; definition of type drawable-region-prim
+(deftype drawable-region-prim (drawable)
+  "Base class for a region + geometry.
+Note that all child classes of this must be 32-bytes."
+  ((region  region  :offset   8)
+   )
+  (:methods
+    (debug-draw-region (_type_ int) none)
+    (track-region (_type_ region-prim-area) symbol)
+    (within-area? (_type_ region-prim-area) symbol)
+    )
+  )
+
+;; definition for method 3 of type drawable-region-prim
+(defmethod inspect ((this drawable-region-prim))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> this bsphere))
+  (format #t "~1Tregion: #<region @ #x~X>~%" (-> this region))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type drawable-tree-region-prim
+(deftype drawable-tree-region-prim (drawable-tree)
+  "Top-level container for all regions of a level."
+  ((name   symbol                          :offset   8)
+   (data2  drawable-inline-array  :dynamic :offset  32)
+   )
+  (:methods
+    (drawable-tree-region-prim-method-17 (_type_ vector) symbol)
+    (debug-print (_type_ vector object) none)
+    )
+  )
+
+;; definition for method 3 of type drawable-tree-region-prim
+(defmethod inspect ((this drawable-tree-region-prim))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> this bsphere))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data2))
+  (dotimes (s5-0 (-> this length))
+    (format #t "~T  [~D]~1Tdata: ~A~%" s5-0 (-> this data2 s5-0))
+    )
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (label cfg-7)
+  this
+  )
+
+;; definition of type drawable-inline-array-region-prim
+(deftype drawable-inline-array-region-prim (drawable-inline-array)
+  "Inline array of drawable-region-prim. This actually stores child classes, but they are
+exactly the same size as the parent, so it's okay."
+  ((data  drawable-region-prim  1 :inline)
+   (pad   uint8                 4)
+   )
+  )
+
+;; definition of type drawable-region-sphere
+(deftype drawable-region-sphere (drawable-region-prim)
+  "Region where the bsphere of the drawable is the volume."
+  ()
+  )
+
+;; definition for method 3 of type drawable-region-sphere
+(defmethod inspect ((this drawable-region-sphere))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> this bsphere))
+  (format #t "~1Tregion: #<region @ #x~X>~%" (-> this region))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type region-face-data
+(deftype region-face-data (structure)
+  "Data to store a single planar face, as a normal and list of vertices."
+  ((normal         vector  :inline)
+   (normal-offset  float   :overlay-at (-> normal data 3))
+   (num-points     uint32)
+   (points         vector  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type region-face-data
+(defmethod inspect ((this region-face-data))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'region-face-data)
+  (format #t "~1Tnormal: #<vector @ #x~X>~%" (-> this normal))
+  (format #t "~1Tnormal-offset: ~f~%" (-> this normal w))
+  (format #t "~1Tnum-points: ~D~%" (-> this num-points))
+  (format #t "~1Tpoints[0] @ #x~X~%" (-> this points))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type drawable-region-face
+(deftype drawable-region-face (drawable-region-prim)
+  "A drawable-region which is just a face. Unclear if `on-inside` is used."
+  ((data  region-face-data  :offset  12)
+   )
+  )
+
+;; definition for method 3 of type drawable-region-face
+(defmethod inspect ((this drawable-region-face))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> this bsphere))
+  (format #t "~1Tregion: #<region @ #x~X>~%" (-> this region))
+  (format #t "~1Tdata: #<region-face-data @ #x~X>~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type region-face-array
+(deftype region-face-array (inline-array-class)
+  "An array of faces that hopefully make a closed volume."
+  ((data  drawable-region-face  :inline :dynamic :offset  16)
+   (pad   uint32)
+   )
+  )
+
+;; definition for method 3 of type region-face-array
+(defmethod inspect ((this region-face-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> region-face-array heap-base) (the-as uint 32))
+
+;; definition of type drawable-region-volume
+(deftype drawable-region-volume (drawable-region-prim)
+  "A drawable-region which is a bunch of faces that represent a closed volume."
+  ((faces  region-face-array  :offset  12)
+   )
+  )
+
+;; definition for method 3 of type drawable-region-volume
+(defmethod inspect ((this drawable-region-volume))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> this bsphere))
+  (format #t "~1Tregion: #<region @ #x~X>~%" (-> this region))
+  (format #t "~1Tfaces: ~A~%" (-> this faces))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type region-prim-list
+(deftype region-prim-list (structure)
+  "A list of drawable-region-prim. This is the return type of queries like `which regions contain this point?`"
+  ((num-items  int32)
+   (items      drawable-region-prim  320)
+   )
+  )
+
+;; definition for method 3 of type region-prim-list
+(defmethod inspect ((this region-prim-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'region-prim-list)
+  (format #t "~1Tnum-items: ~D~%" (-> this num-items))
+  (format #t "~1Titems[320] @ #x~X~%" (-> this items))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0

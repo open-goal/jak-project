@@ -1,112 +1,85 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: robotboss-misc.gc
-;; name in dgo: robotboss-misc
-;; dgos: FIN, L1
-
+(bundles "FIN.DGO")
+(require "levels/finalboss/robotboss-h.gc")
+(require "levels/citadel/citadel-sages.gc")
 (declare-type ecoclaw process-drawable)
-(define-extern *ecoclaw* (pointer ecoclaw))
 
+(define-extern *ecoclaw* (pointer ecoclaw))
 
 ;; DECOMP BEGINS
 
-(defskelgroup *med-res-snow1-sg* medres-snowback 0 2
-              ((1 (meters 999999)))
-              :bounds (static-spherem -360 100 100 380)
-              :longest-edge (meters 0.01)
-              )
+(defskelgroup *med-res-snow1-sg*
+  medres-snowback
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem -360 100 100 380)
+  :longest-edge (meters 0.01))
 
 (defstate cam-robotboss (camera-slave)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('set-pivot)
-       (let ((v0-0 (the-as object (-> self pivot-pt))))
-         (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> block param 0)) quad))
-         v0-0
-         )
-       )
-      (('teleport)
-       #f
-       )
-      (else
-        (cam-standard-event-handler proc argc message block)
-        )
-      )
-    )
-  :enter (behavior ()
-    (cond
-      ((-> self enter-has-run)
-       )
-      (else
-        (set! *camera-base-mode* cam-robotboss)
-        (set! (-> self circular-follow quad) (-> *camera* tpos-curr-adj quad))
-        (set! (-> self pivot-rad) 73728.0)
-        (set! (-> self blend-from-type) (the-as uint 2))
-        (set! (-> self blend-to-type) (the-as uint 2))
-        )
-      )
-    )
-  :trans (behavior ()
-    (when (not (logtest? (-> *camera* master-options) 2))
-      (set! *camera-base-mode* cam-string)
-      (cam-slave-go cam-free-floating)
-      )
-    )
-  :code (behavior ()
-    (loop
-      (when #t
-        (let ((a2-0 (new-stack-vector0)))
-          (vector-! a2-0 (-> *camera* tpos-curr-adj) (-> self pivot-pt))
-          (vector-! (-> self circular-follow) (-> self circular-follow) (-> self pivot-pt))
-          (v-slrp3!
-            (-> self circular-follow)
-            (-> self circular-follow)
-            a2-0
-            (-> *camera* local-down)
-            (* 182.04445 (-> *display* time-adjust-ratio))
-            )
-          )
-        (vector+! (-> self circular-follow) (-> self circular-follow) (-> self pivot-pt))
-        (let ((gp-0 (new 'stack-no-clear 'vector)))
-          (vector-! gp-0 (-> self circular-follow) (-> self pivot-pt))
-          (vector-flatten! gp-0 gp-0 (-> *camera* local-down))
-          (let ((f0-3 (- (vector-length gp-0) (-> self pivot-rad))))
-            (if (>= 0.0 f0-3)
-                (vector-reset! gp-0)
-                (vector-normalize! gp-0 f0-3)
-                )
-            )
-          (vector+! (-> self trans) gp-0 (-> self pivot-pt))
-          )
-        )
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('set-pivot)
+         (let ((v0-0 (the-as object (-> self pivot-pt))))
+           (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> block param 0)) quad))
+           v0-0))
+        (('teleport) #f)
+        (else (cam-standard-event-handler proc argc message block))))
+  :enter
+    (behavior ()
+      (cond
+        ((-> self enter-has-run))
+        (else
+         (set! *camera-base-mode* cam-robotboss)
+         (set! (-> self circular-follow quad) (-> *camera* tpos-curr-adj quad))
+         (set! (-> self pivot-rad) 73728.0)
+         (set! (-> self blend-from-type) (the-as uint 2))
+         (set! (-> self blend-to-type) (the-as uint 2)))))
+  :trans
+    (behavior ()
+      (when (not (logtest? (-> *camera* master-options) 2))
+        (set! *camera-base-mode* cam-string)
+        (cam-slave-go cam-free-floating)))
+  :code
+    (behavior ()
+      (loop
+        (when #t
+          (let ((a2-0 (new-stack-vector0)))
+            (vector-! a2-0 (-> *camera* tpos-curr-adj) (-> self pivot-pt))
+            (vector-! (-> self circular-follow) (-> self circular-follow) (-> self pivot-pt))
+            (v-slrp3! (-> self circular-follow)
+                      (-> self circular-follow)
+                      a2-0
+                      (-> *camera* local-down)
+                      (* 182.04445 (-> *display* time-adjust-ratio))))
+          (vector+! (-> self circular-follow) (-> self circular-follow) (-> self pivot-pt))
+          (let ((gp-0 (new 'stack-no-clear 'vector)))
+            (vector-! gp-0 (-> self circular-follow) (-> self pivot-pt))
+            (vector-flatten! gp-0 gp-0 (-> *camera* local-down))
+            (let ((f0-3 (- (vector-length gp-0) (-> self pivot-rad))))
+              (if (>= 0.0 f0-3) (vector-reset! gp-0) (vector-normalize! gp-0 f0-3)))
+            (vector+! (-> self trans) gp-0 (-> self pivot-pt))))
+        (suspend))))
 
 (deftype ecoclaw-part-info (structure)
-  ((tracker  handle)
-   (kind     basic)
-   (trans    vector  :inline)
-   )
-  )
-
+  ((tracker handle)
+   (kind    basic)
+   (trans   vector :inline)))
 
 (deftype ecoclaw (process-drawable)
-  ((particles  ecoclaw-part-info  3 :inline)
-   )
+  ((particles ecoclaw-part-info 3 :inline))
   (:states
-    ecoclaw-activate
-    ecoclaw-idle
-    )
-  )
+   ecoclaw-activate
+   ecoclaw-idle))
 
-
-(defskelgroup *ecoclaw-sg* ecoclaw ecoclaw-lod0-jg ecoclaw-idle-ja
-              ((ecoclaw-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 2 0 9)
-              )
+(defskelgroup *ecoclaw-sg*
+  ecoclaw
+  ecoclaw-lod0-jg
+  ecoclaw-idle-ja
+  ((ecoclaw-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 2 0 9))
 
 (defun ecoclaw-beam-particle-callback ((arg0 part-tracker))
   (let* ((a0-1 (the-as (pointer projectile) (-> arg0 userdata)))
@@ -114,8 +87,7 @@
          (a0-3 (-> a0-1 0 base-vector))
          (gp-1 (vector-! (new 'stack-no-clear 'vector) a0-3 v1-1))
          (f30-0 (vector-y-angle gp-1))
-         (f0-1 (- 16384.0 (vector-x-angle gp-1)))
-         )
+         (f0-1 (- 16384.0 (vector-x-angle gp-1))))
     (set! (-> *part-id-table* 2727 init-specs 14 initial-valuef) f30-0)
     (set! (-> *part-id-table* 2727 init-specs 13 initial-valuef) f0-1)
     (set! (-> *part-id-table* 2729 init-specs 14 initial-valuef) f30-0)
@@ -139,11 +111,9 @@
     (set! (-> *part-id-table* 2743 init-specs 14 initial-valuef) f30-0)
     (set! (-> *part-id-table* 2743 init-specs 13 initial-valuef) f0-1)
     (set! (-> *part-id-table* 2740 init-specs 14 initial-valuef) f30-0)
-    (set! (-> *part-id-table* 2740 init-specs 13 initial-valuef) f0-1)
-    )
+    (set! (-> *part-id-table* 2740 init-specs 13 initial-valuef) f0-1))
   0
-  (none)
-  )
+  (none))
 
 ;; ERROR: Failed load: (set! a0-3 (l.wu (+ gp-1 -4))) at op 13
 (defbehavior ecoclaw-handler ecoclaw ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -151,108 +121,66 @@
     (('open)
      (let ((gp-1 (-> arg3 param 0)))
        (set! (-> self particles 0 kind)
-             (the-as basic (if (and (nonzero? gp-1) (type-type? (rtype-of gp-1) sparticle-launch-group))
-                               gp-1
-                               )
-                     )
-             )
-       )
+             (the-as basic (if (and (nonzero? gp-1) (type-type? (rtype-of gp-1) sparticle-launch-group)) gp-1))))
      (set! (-> self particles 0 trans quad) (-> self root trans quad))
-     (set! (-> self particles 0 trans y) (+ 12288.0 (-> self particles 0 trans y)))
-     )
+     (set! (-> self particles 0 trans y) (+ 12288.0 (-> self particles 0 trans y))))
     (('beam-on)
      (let ((s5-0 (-> arg3 param 0)))
        (set! (-> self particles 1 kind)
-             (the-as basic (if (and (nonzero? s5-0) (type-type? (rtype-of s5-0) sparticle-launch-group))
-                               s5-0
-                               )
-                     )
-             )
-       )
+             (the-as basic (if (and (nonzero? s5-0) (type-type? (rtype-of s5-0) sparticle-launch-group)) s5-0))))
      (set! (-> self particles 1 trans quad) (-> self root trans quad))
      (+! (-> self particles 1 trans y) 24576.0)
      (let ((s5-1 (-> arg3 param 1)))
        (set! (-> self particles 2 kind)
-             (the-as basic (if (and (nonzero? s5-1) (type-type? (rtype-of s5-1) sparticle-launch-group))
-                               s5-1
-                               )
-                     )
-             )
-       )
+             (the-as basic (if (and (nonzero? s5-1) (type-type? (rtype-of s5-1) sparticle-launch-group)) s5-1))))
      (set! (-> self particles 2 trans quad) (-> (the-as vector (-> arg3 param 2)) quad))
-     (set! (-> self particles 2 trans y) (+ 81920.0 (-> self particles 2 trans y)))
-     )
+     (set! (-> self particles 2 trans y) (+ 81920.0 (-> self particles 2 trans y))))
     (('beam-off)
      (set! (-> self particles 1 kind) #f)
      (set! (-> self particles 2 kind) #f)
-     (let ((a0-10 (handle->process (-> self particles 1 tracker))))
-       (if a0-10
-           (deactivate a0-10)
-           )
-       )
-     (let ((a0-14 (handle->process (-> self particles 2 tracker))))
-       (if a0-14
-           (deactivate a0-14)
-           )
-       )
-     )
-    )
-  )
+     (let ((a0-10 (handle->process (-> self particles 1 tracker)))) (if a0-10 (deactivate a0-10)))
+     (let ((a0-14 (handle->process (-> self particles 2 tracker)))) (if a0-14 (deactivate a0-14))))))
 
 (defstate ecoclaw-activate (ecoclaw)
   :event ecoclaw-handler
-  :trans (behavior ()
-    (if (-> self particles 1 kind)
-        (draw-eco-beam (the-as vector (&-> self stack 112)) (the-as vector (&-> self stack 144)))
-        )
-    (dotimes (gp-0 2)
-      (cond
-        ((handle->process (-> self particles gp-0 tracker))
-         (set-time! (-> (the-as part-tracker (-> self particles gp-0 tracker process 0)) start-time))
-         )
-        ((-> self particles gp-0 kind)
-         (set! (-> self particles gp-0 tracker) (ppointer->handle (process-spawn
-                                                                    part-tracker
-                                                                    :init part-tracker-init
-                                                                    (-> self particles gp-0 kind)
-                                                                    -1
-                                                                    ecoclaw-beam-particle-callback
-                                                                    (-> self ppointer)
-                                                                    #f
-                                                                    (&+ (&-> self stack 80) (* gp-0 32))
-                                                                    :to self
-                                                                    )
-                                                                  )
-               )
-         )
-        )
-      )
-    )
-  :code (behavior ()
-    (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (loop
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :trans
+    (behavior ()
+      (if (-> self particles 1 kind) (draw-eco-beam (the-as vector (&-> self stack 112)) (the-as vector (&-> self stack 144))))
+      (dotimes (gp-0 2)
+        (cond
+          ((handle->process (-> self particles gp-0 tracker))
+           (set-time! (-> (the-as part-tracker (-> self particles gp-0 tracker process 0)) start-time)))
+          ((-> self particles gp-0 kind)
+           (set! (-> self particles gp-0 tracker)
+                 (ppointer->handle (process-spawn part-tracker
+                                                  :init
+                                                  part-tracker-init
+                                                  (-> self particles gp-0 kind)
+                                                  -1
+                                                  ecoclaw-beam-particle-callback
+                                                  (-> self ppointer)
+                                                  #f
+                                                  (&+ (&-> self stack 80) (* gp-0 32))
+                                                  :to
+                                                  self)))))))
+  :code
+    (behavior ()
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!)))
+      (loop
+        (suspend)))
+  :post ja-post)
 
 (defstate ecoclaw-idle (ecoclaw)
   :event ecoclaw-handler
-  :code (behavior ()
-    (loop
-      (if (-> self particles 0 kind)
-          (go ecoclaw-activate)
-          )
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (if (-> self particles 0 kind) (go ecoclaw-activate))
+        (suspend)))
+  :post ja-post)
 
 (defmethod init-from-entity! ((this ecoclaw) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
@@ -260,92 +188,67 @@
   (initialize-skeleton this *ecoclaw-sg* '())
   (dotimes (v1-3 3)
     (set! (-> this particles v1-3 kind) #f)
-    (set! (-> this particles v1-3 tracker) (the-as handle #f))
-    )
+    (set! (-> this particles v1-3 tracker) (the-as handle #f)))
   (set! *ecoclaw* (the-as (pointer ecoclaw) (process->ppointer this)))
   (go ecoclaw-idle)
-  (none)
-  )
+  (none))
 
 (deftype silodoor (process-drawable)
-  ((part-opened  float)
-   )
+  ((part-opened float))
   (:state-methods
-    idle
-    hidden
-    )
-  )
+   idle
+   hidden))
 
-
-(defskelgroup *silodoor-sg* silodoor silodoor-lod0-jg silodoor-idle-ja
-              ((silodoor-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 25)
-              )
+(defskelgroup *silodoor-sg*
+  silodoor
+  silodoor-lod0-jg
+  silodoor-idle-ja
+  ((silodoor-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 25))
 
 (defstate idle (silodoor)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('open)
-       (set! (-> self part-opened) (the-as float (-> block param 0)))
-       )
-      (('hide)
-       (go-virtual hidden)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('open) (set! (-> self part-opened) (the-as float (-> block param 0))))
+        (('hide) (go-virtual hidden))))
   :trans rider-trans
-  :code (behavior ()
-    (loop
-      (when (not (movie?))
-        (ja :num! (seek! (* (-> self part-opened) (the float (ja-num-frames 0))) 0.01))
-        (cond
-          ((< 0.01 (fabs (- (* (-> self part-opened) (the float (ja-num-frames 0))) (ja-aframe-num 0))))
-           (if (nonzero? (-> self sound))
-               (update! (-> self sound))
-               )
-           )
-          ((nonzero? (-> self sound))
-           (stop! (-> self sound))
-           )
-          )
-        )
-      (suspend)
-      )
-    )
-  :post (behavior ()
-    (if (and (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 57344.0) (not (ja-min? 0)))
+  :code
+    (behavior ()
+      (loop
+        (when (not (movie?))
+          (ja :num! (seek! (* (-> self part-opened) (the float (ja-num-frames 0))) 0.01))
+          (cond
+            ((< 0.01 (fabs (- (* (-> self part-opened) (the float (ja-num-frames 0))) (ja-aframe-num 0))))
+             (if (nonzero? (-> self sound)) (update! (-> self sound))))
+            ((nonzero? (-> self sound)) (stop! (-> self sound)))))
+        (suspend)))
+  :post
+    (behavior ()
+      (if (and (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 57344.0) (not (ja-min? 0)))
         (rider-post)
-        (transform-post)
-        )
-    )
-  )
+        (transform-post))))
 
 (defstate hidden (silodoor)
   :virtual #t
-  :code (behavior ()
-    (if (nonzero? (-> self sound))
-        (stop! (-> self sound))
-        )
-    (logior! (-> self draw status) (draw-status hidden))
-    (ja-post)
-    (while (not (task-closed? (game-task finalboss-movies) (task-status need-reminder-a)))
-      (suspend)
-      )
-    (logclear! (-> self draw status) (draw-status hidden))
-    (ja :num-func num-func-identity :frame-num 0.0)
-    (set! (-> self part-opened) 0.0)
-    (go-virtual idle)
-    )
-  )
+  :code
+    (behavior ()
+      (if (nonzero? (-> self sound)) (stop! (-> self sound)))
+      (logior! (-> self draw status) (draw-status hidden))
+      (ja-post)
+      (while (not (task-closed? (game-task finalboss-movies) (task-status need-reminder-a)))
+        (suspend))
+      (logclear! (-> self draw status) (draw-status hidden))
+      (ja :num-func num-func-identity :frame-num 0.0)
+      (set! (-> self part-opened) 0.0)
+      (go-virtual idle)))
 
 (defmethod init-from-entity! ((this silodoor) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 4) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -361,8 +264,7 @@
         (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-0 transform-index) 5)
         (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 102400.0)
-        (append-prim s3-0 s2-0)
-        )
+        (append-prim s3-0 s2-0))
       (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-1 collide-with) (collide-kind target))
@@ -370,8 +272,7 @@
         (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-1 transform-index) 4)
         (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 102400.0)
-        (append-prim s3-0 s2-1)
-        )
+        (append-prim s3-0 s2-1))
       (let ((s2-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
         (set! (-> s2-2 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-2 collide-with) (collide-kind target))
@@ -379,8 +280,7 @@
         (set! (-> s2-2 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-2 transform-index) 7)
         (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 102400.0)
-        (append-prim s3-0 s2-2)
-        )
+        (append-prim s3-0 s2-2))
       (let ((s2-3 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 0))))
         (set! (-> s2-3 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-3 collide-with) (collide-kind target))
@@ -388,92 +288,65 @@
         (set! (-> s2-3 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-3 transform-index) 6)
         (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 102400.0)
-        (append-prim s3-0 s2-3)
-        )
-      )
+        (append-prim s3-0 s2-3)))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *silodoor-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (set! (-> this root pause-adjust-distance) 1228800.0)
-  (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "silo-moves" :fo-max 80) (-> this root trans))
-        )
+  (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "silo-moves" :fo-max 80) (-> this root trans)))
   (logclear! (-> this mask) (process-mask actor-pause crate enemy attackable))
   (set! (-> this part-opened) 0.0)
   (go (method-of-object this idle))
-  (none)
-  )
+  (none))
 
 (deftype finalbosscam (process-taskable)
-  ((robotboss  handle)
-   )
-  )
+  ((robotboss handle)))
 
-
-(defskelgroup *finalbosscam-sg* finalbosscam finalbosscam-lod0-jg finalbosscam-idle-ja
-              ((finalbosscam-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              )
+(defskelgroup *finalbosscam-sg*
+  finalbosscam
+  finalbosscam-lod0-jg
+  finalbosscam-idle-ja
+  ((finalbosscam-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4))
 
 (defbehavior robotboss-manipy-trans-hook robotboss ()
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (vector<-cspace! gp-0 (joint-node robotboss-basic-lod0-jg blue_eco_piece))
-    (spawn (-> self part) gp-0)
-    )
+    (spawn (-> self part) gp-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod play-anim! ((this finalbosscam) (arg0 symbol))
   (when arg0
     (set! (-> this robotboss)
-          (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *robotboss-sg* #f :to this))
-          )
+          (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *robotboss-sg* #f :to this)))
     (send-event (handle->process (-> this robotboss)) 'anim-mode 'clone-anim)
     (send-event (handle->process (-> this robotboss)) 'center-joint 3)
     (send-event (handle->process (-> this robotboss)) 'origin-joint-index 3)
     (send-event (handle->process (-> this robotboss)) 'trans-hook robotboss-manipy-trans-hook)
-    (send-event
-      (handle->process (-> this robotboss))
-      'eval
-      (lambda :behavior finalbosscam () (let ((v0-0 (create-launch-control (-> *part-group-id-table* 645) self)))
-                                          (set! (-> self part) v0-0)
-                                          v0-0
-                                          )
-                                     )
-      )
+    (send-event (handle->process (-> this robotboss))
+                'eval
+                (lambda :behavior finalbosscam ()
+                  (let ((v0-0 (create-launch-control (-> *part-group-id-table* 645) self))) (set! (-> self part) v0-0) v0-0)))
     (let ((v1-43 (handle->process (-> this robotboss))))
-      (if v1-43
-          (set! (-> (the-as robotboss v1-43) draw bounds w) 327680.0)
-          )
-      )
-    )
-  (the-as basic (new 'static 'spool-anim :name "finalbosscam-white-eco" :index 3 :parts 3 :command-list '()))
-  )
+      (if v1-43 (set! (-> (the-as robotboss v1-43) draw bounds w) 327680.0))))
+  (the-as basic (new 'static 'spool-anim :name "finalbosscam-white-eco" :index 3 :parts 3 :command-list '())))
 
 (defmethod get-art-elem ((this finalbosscam))
-  (-> this draw art-group data 2)
-  )
+  (-> this draw art-group data 2))
 
 (defmethod should-display? ((this finalbosscam))
-  #f
-  )
+  #f)
 
 (defstate play-anim (finalbosscam)
   :virtual #t
-  :exit (behavior ()
-    (let ((a0-1 (handle->process (-> self robotboss))))
-      (if a0-1
-          (deactivate a0-1)
-          )
-      )
-    ((-> (method-of-type process-taskable play-anim) exit))
-    )
-  )
+  :exit
+    (behavior ()
+      (let ((a0-1 (handle->process (-> self robotboss)))) (if a0-1 (deactivate a0-1)))
+      ((-> (method-of-type process-taskable play-anim) exit))))
 
 (defbehavior finalbosscam-init-by-other finalbosscam ((arg0 entity-actor))
   (set! (-> self entity) arg0)
@@ -481,5 +354,4 @@
   (set! (-> self tasks) (get-task-control (game-task finalboss-movies)))
   (set! (-> self robotboss) (the-as handle #f))
   (go-virtual hidden)
-  (none)
-  )
+  (none))

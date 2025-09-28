@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,39 +18,50 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_uikitmodes_h_
 #define SDL_uikitmodes_h_
 
 #include "SDL_uikitvideo.h"
 
-@interface SDL_DisplayData : NSObject
+@interface SDL_UIKitDisplayData : NSObject
 
-- (instancetype)initWithScreen:(UIScreen*)screen;
-
-@property (nonatomic, strong) UIScreen *uiscreen;
-@property (nonatomic) float screenDPI;
-
-@end
-
-@interface SDL_DisplayModeData : NSObject
-
-@property (nonatomic, strong) UIScreenMode *uiscreenmode;
+#ifndef SDL_PLATFORM_VISIONOS
+- (instancetype)initWithScreen:(UIScreen *)screen;
+@property(nonatomic, strong) UIScreen *uiscreen;
+#endif
 
 @end
 
-extern SDL_bool UIKit_IsDisplayLandscape(UIScreen *uiscreen);
+@interface SDL_UIKitDisplayModeData : NSObject
+#ifndef SDL_PLATFORM_VISIONOS
+@property(nonatomic, strong) UIScreenMode *uiscreenmode;
+#endif
 
-extern int UIKit_InitModes(_THIS);
-extern int UIKit_AddDisplay(UIScreen *uiscreen, SDL_bool send_event);
-extern void UIKit_DelDisplay(UIScreen *uiscreen);
-extern void UIKit_GetDisplayModes(_THIS, SDL_VideoDisplay * display);
-extern int UIKit_GetDisplayDPI(_THIS, SDL_VideoDisplay * display, float * ddpi, float * hdpi, float * vdpi);
-extern int UIKit_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
-extern void UIKit_QuitModes(_THIS);
-extern int UIKit_GetDisplayUsableBounds(_THIS, SDL_VideoDisplay * display, SDL_Rect * rect);
+@end
 
-#endif /* SDL_uikitmodes_h_ */
+#ifndef SDL_PLATFORM_VISIONOS
+extern bool UIKit_IsDisplayLandscape(UIScreen *uiscreen);
+#endif
 
-/* vi: set ts=4 sw=4 expandtab: */
+extern bool UIKit_InitModes(SDL_VideoDevice *_this);
+#ifndef SDL_PLATFORM_VISIONOS
+extern bool UIKit_AddDisplay(UIScreen *uiscreen, bool send_event);
+extern void UIKit_DelDisplay(UIScreen *uiscreen, bool send_event);
+#endif
+extern bool UIKit_GetDisplayModes(SDL_VideoDevice *_this, SDL_VideoDisplay *display);
+extern bool UIKit_SetDisplayMode(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
+extern void UIKit_QuitModes(SDL_VideoDevice *_this);
+extern bool UIKit_GetDisplayUsableBounds(SDL_VideoDevice *_this, SDL_VideoDisplay *display, SDL_Rect *rect);
+
+// because visionOS does not have a screen
+// we create a fake display to maintain compatibility.
+// By default, a window measures 1280x720 pt.
+// https://developer.apple.com/design/human-interface-guidelines/windows#visionOS
+#ifdef SDL_PLATFORM_VISIONOS
+#define SDL_XR_SCREENWIDTH 1280
+#define SDL_XR_SCREENHEIGHT 720
+#endif
+
+#endif // SDL_uikitmodes_h_

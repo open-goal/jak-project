@@ -5,5 +5,191 @@
 ;; name in dgo: prototype-h
 ;; dgos: GAME
 
+;; +++prototype-flags
+(defenum prototype-flags
+  :bitfield #t
+  :type uint16
+  (disable     0) ;; set from debug menu, for debugging
+  (tpage-alpha 2)
+  (vanish      3)
+  (visible     5) ;; set by prototypes-game-visible-set! to hide things on purpose
+  (no-collide  6)
+  (tpage-water 7)
+  )
+;; ---prototype-flags
+
+
+;; +++instance-flags
+(defenum instance-flags
+  :type uint16
+  :bitfield #t
+  (no-collide 0)
+  )
+;; ---instance-flags
+
+
+(declare-type prototype-tie drawable)
+(declare-type collide-hash-fragment-array basic)
+
 ;; DECOMP BEGINS
 
+(deftype prototype-bucket (basic)
+  ((name                 string)
+   (flags                prototype-flags)
+   (texture-masks-index  uint16)
+   (in-level             uint16)
+   (utextures            uint16)
+   (geometry             drawable  4)
+   (dists                vector    :inline)
+   (rdists               vector    :inline)
+   (near-plane           meters    :overlay-at (-> dists data 0))
+   (near-stiff           meters    :overlay-at (-> dists data 1))
+   (mid-plane            meters    :overlay-at (-> dists data 2))
+   (far-plane            meters    :overlay-at (-> dists data 3))
+   (rlength-near         float     :overlay-at (-> rdists data 0))
+   (rlength-stiff        float     :overlay-at (-> rdists data 1))
+   (rlength-mid          float     :overlay-at (-> rdists data 2))
+   (stiffness            float     :overlay-at (-> rdists data 3))
+   )
+  )
+
+
+(deftype prototype-bucket-shrub (prototype-bucket)
+  ((next         uint32      4)
+   (count        uint16      4)
+   (count-quad   uint128       :overlay-at (-> count 0))
+   (mod-count    uint16      4 :offset  88)
+   (last         dma-packet  4)
+   (next-clear   uint128       :overlay-at (-> next 0))
+   (count-clear  uint64        :overlay-at (-> count 0))
+   (last-clear   uint128       :overlay-at (-> last 0))
+   )
+  )
+
+
+(deftype prototype-inline-array-shrub (drawable)
+  ((length  int16                             :offset   6)
+   (data    prototype-bucket-shrub  1 :inline :offset  32)
+   (pad     uint32)
+   )
+  )
+
+
+(deftype prototype-array-shrub-info (basic)
+  ((prototype-inline-array-shrub  prototype-inline-array-shrub)
+   (wind-vectors                  uint32)
+   (wind-count                    int32)
+   )
+  )
+
+
+(deftype prototype-bucket-tie (prototype-bucket)
+  ((next                         uint32         12)
+   (count                        uint16         12)
+   (frag-count                   uint8          4)
+   (index-start                  uint8          4)
+   (base-qw                      uint16         4)
+   (tie-rvanish                  float)
+   (tie-vanish-far               float)
+   (envmap-rfade                 float)
+   (envmap-fade-far              float)
+   (envmap-shader                adgif-shader)
+   (tint-color                   uint32)
+   (collide-hash-fragment-array  collide-hash-fragment-array)
+   (tie-colors                   time-of-day-palette)
+   (data                         uint32         :dynamic)
+   (color-index-qwc              uint32         :dynamic)
+   (scissor-frag-count           uint8            :overlay-at (-> frag-count 0))
+   (near-frag-count              uint8            :overlay-at (-> frag-count 1))
+   (mid-frag-count               uint8            :overlay-at (-> frag-count 2))
+   (far-frag-count               uint8            :overlay-at (-> frag-count 3))
+   (scissor-index-start          uint8            :overlay-at (-> index-start 0))
+   (near-index-start             uint8            :overlay-at (-> index-start 1))
+   (mid-index-start              uint8            :overlay-at (-> index-start 2))
+   (far-index-start              uint8            :overlay-at (-> index-start 3))
+   (scissor-base-qw              uint16           :overlay-at (-> base-qw 0))
+   (near-base-qw                 uint16           :overlay-at (-> base-qw 1))
+   (mid-base-qw                  uint16           :overlay-at (-> base-qw 2))
+   (far-base-qw                  uint16           :overlay-at (-> base-qw 3))
+   (tie-next                     uint32         4 :overlay-at (-> next 0))
+   (tie-scissor-next             uint32           :overlay-at (-> next 0))
+   (tie-near-next                uint32           :overlay-at (-> next 1))
+   (tie-mid-next                 uint32           :overlay-at (-> next 2))
+   (tie-far-next                 uint32           :overlay-at (-> next 3))
+   (trans-next                   uint32         4 :overlay-at (-> next 0))
+   (trans-scissor-next           uint32         4 :overlay-at (-> next 0))
+   (trans-near-next              uint32           :overlay-at (-> next 1))
+   (trans-mid-next               uint32           :overlay-at (-> next 2))
+   (trans-far-next               uint32           :overlay-at (-> next 3))
+   (water-next                   uint32         4 :overlay-at (-> next 0))
+   (water-scissor-next           uint32         4 :overlay-at (-> next 0))
+   (water-near-next              uint32           :overlay-at (-> next 1))
+   (water-mid-next               uint32           :overlay-at (-> next 2))
+   (water-far-next               uint32           :overlay-at (-> next 3))
+   (envmap-next                  uint32         4 :overlay-at (-> next 4))
+   (envmap-scissor-next          uint32         4 :overlay-at (-> next 4))
+   (envmap-near-next             uint32           :overlay-at (-> next 5))
+   (envmap-mid-next              uint32           :overlay-at (-> next 6))
+   (envmap-far-next              uint32           :overlay-at (-> next 7))
+   (generic-next                 uint32         3 :overlay-at (-> next 8))
+   (generic-near-next            uint32           :overlay-at (-> next 8))
+   (generic-mid-next             uint32           :overlay-at (-> next 9))
+   (generic-far-next             uint32           :overlay-at (-> next 10))
+   (vanish-next                  uint32           :overlay-at (-> next 11))
+   (tie-count                    uint16         4 :overlay-at (-> count 0))
+   (tie-scissor-count            uint16           :overlay-at (-> count 0))
+   (tie-near-count               uint16           :overlay-at (-> count 1))
+   (tie-mid-count                uint16           :overlay-at (-> count 2))
+   (tie-far-count                uint16           :overlay-at (-> count 3))
+   (trans-count                  uint16         4 :overlay-at (-> count 0))
+   (trans-scissor-count          uint16           :overlay-at (-> count 0))
+   (trans-near-count             uint16           :overlay-at (-> count 1))
+   (trans-mid-count              uint16           :overlay-at (-> count 2))
+   (trans-far-count              uint16           :overlay-at (-> count 3))
+   (water-count                  uint16         4 :overlay-at (-> count 0))
+   (water-scissor-count          uint16           :overlay-at (-> count 0))
+   (water-near-count             uint16           :overlay-at (-> count 1))
+   (water-mid-count              uint16           :overlay-at (-> count 2))
+   (water-far-count              uint16           :overlay-at (-> count 3))
+   (envmap-count                 uint16         4 :overlay-at (-> count 4))
+   (envmap-scissor-count         uint16           :overlay-at (-> count 4))
+   (envmap-near-count            uint16           :overlay-at (-> count 5))
+   (envmap-mid-count             uint16           :overlay-at (-> count 6))
+   (envmap-far-count             uint16           :overlay-at (-> count 7))
+   (generic-count                uint16         3 :overlay-at (-> count 8))
+   (generic-near-count           uint16           :overlay-at (-> count 8))
+   (generic-mid-count            uint16           :overlay-at (-> count 9))
+   (generic-far-count            uint16           :overlay-at (-> count 10))
+   (vanish-count                 uint16           :overlay-at (-> count 11))
+   (next-clear                   uint128        3 :overlay-at (-> next 0))
+   (count-clear                  uint64         3 :overlay-at (-> count 0))
+   (tie-geom                     prototype-tie  4 :overlay-at (-> geometry 0))
+   )
+  )
+
+
+(deftype prototype-array-tie (array)
+  ((array-data  prototype-bucket-tie  :dynamic :offset  16)
+   )
+  (:methods
+    (prototype-array-tie-method-9 () none)
+    )
+  )
+
+
+(deftype proxy-prototype-array-tie (basic)
+  ((prototype-array-tie  prototype-array-tie)
+   (wind-vectors         uint32)
+   (wind-count           uint16)
+   (prototype-max-qwc    uint16)
+   )
+  )
+
+
+(deftype instance (drawable)
+  ((bucket-index  uint16          :offset   6)
+   (origin        matrix4h        :inline)
+   (flags         instance-flags  :overlay-at (-> origin data 7))
+   (wind-index    uint16          :overlay-at (-> origin data 15))
+   )
+  )

@@ -20,7 +20,7 @@ enum class VuInstrK {
   //  ADDAq,
   ADDAbc,
   SUB,
-  //  SUBi,  // 10
+  SUBi,  // 10
   //  SUBq,
   SUBbc,
   //  SUBA,

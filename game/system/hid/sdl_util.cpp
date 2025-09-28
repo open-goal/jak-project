@@ -2,18 +2,21 @@
 
 #include "common/log/log.h"
 
-#include "third-party/SDL/include/SDL.h"
+#include "fmt/ranges.h"
+#include "third-party/SDL/include/SDL3/SDL.h"
 
 namespace sdl_util {
 void log_error(const std::string& msg) {
   std::string sdl_cause = SDL_GetError();
   lg::error("SDL Error: {} - Cause: {}", msg, sdl_cause.empty() ? "n/a" : sdl_cause);
 }
+
 std::string log_and_return_error(const std::string& msg) {
   std::string sdl_cause = SDL_GetError();
   lg::error("SDL Error: {} - Cause: {}", msg, sdl_cause.empty() ? "n/a" : sdl_cause);
   return sdl_cause;
 }
+
 bool is_any_event_type(uint32_t event_type, const std::vector<uint32_t>& allowed_types) {
   for (const auto& allowed_type : allowed_types) {
     if (allowed_type == event_type) {
@@ -22,12 +25,7 @@ bool is_any_event_type(uint32_t event_type, const std::vector<uint32_t>& allowed
   }
   return false;
 }
-SDL_bool sdl_bool(const bool val) {
-  return val ? SDL_TRUE : SDL_FALSE;
-}
-bool from_sdl_bool(const SDL_bool val) {
-  return val == SDL_TRUE ? true : false;
-}
+
 bool is_SDL_GUID_zero(SDL_GUID guid) {
   for (int i = 0; i < 16; i++) {
     if (guid.data[i] != 0) {
@@ -83,7 +81,7 @@ std::string get_mouse_button_name(const int sdl_mouse_button_id, InputModifiers 
 }
 
 std::string get_keyboard_button_name(const int sdl_key_code, InputModifiers modifiers) {
-  const auto result = SDL_GetKeyName((SDL_KeyCode)sdl_key_code);
+  const auto result = SDL_GetKeyName((SDL_Keycode)sdl_key_code);
   if (!result) {
     return "Unknown";
   }
@@ -92,14 +90,14 @@ std::string get_keyboard_button_name(const int sdl_key_code, InputModifiers modi
   return fmt::to_string(fmt::join(tokens, " + "));
 }
 std::string get_controller_button_name(const int sdl_button_id) {
-  const auto result = SDL_GameControllerGetStringForButton((SDL_GameControllerButton)sdl_button_id);
+  const auto result = SDL_GetGamepadStringForButton((SDL_GamepadButton)sdl_button_id);
   if (!result) {
     return "Unknown";
   }
   return result;
 }
 std::string get_controller_axis_name(const int sdl_axis_id) {
-  const auto result = SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)sdl_axis_id);
+  const auto result = SDL_GetGamepadStringForAxis((SDL_GamepadAxis)sdl_axis_id);
   if (!result) {
     return "Unknown";
   }

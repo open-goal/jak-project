@@ -7,3 +7,52 @@
 
 ;; DECOMP BEGINS
 
+(deftype dynamics (basic)
+  ((name            symbol)
+   (gravity-max     meters)
+   (gravity-length  meters)
+   (gravity         vector  :inline)
+   (gravity-normal  vector  :inline)
+   (walk-distance   meters)
+   (run-distance    meters)
+   )
+  (:methods
+    (set-gravity-length (_type_ float) none)
+    )
+  )
+
+
+(defmethod set-gravity-length ((this dynamics) (arg0 float))
+  (set! (-> this gravity-length) arg0)
+  (vector-float*! (-> this gravity) (-> this gravity-normal) arg0)
+  0
+  (none)
+  )
+
+(defun time-to-apex ((arg0 float) (arg1 float))
+  (the int (/ arg0 (- (/ arg1 300))))
+  )
+
+(defun time-to-ground ((arg0 float) (arg1 float) (arg2 float))
+  (let ((f0-0 0.0)
+        (v0-0 0)
+        )
+    (while (< (- arg2) f0-0)
+      (set! arg0 (- arg0 (/ arg1 300)))
+      (+! f0-0 (/ arg0 300))
+      (+! v0-0 1)
+      )
+    v0-0
+    )
+  )
+
+(define *standard-dynamics* (new 'static 'dynamics
+                              :name 'standard
+                              :gravity-max (meters 40)
+                              :gravity-length (meters 60)
+                              :gravity (new 'static 'vector :y 245760.0 :w 1.0)
+                              :gravity-normal (new 'static 'vector :y 1.0 :w 1.0)
+                              :walk-distance (meters 2)
+                              :run-distance (meters 5)
+                              )
+        )

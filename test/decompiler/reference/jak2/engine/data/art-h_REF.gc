@@ -3,6 +3,7 @@
 
 ;; definition of type joint-anim
 (deftype joint-anim (basic)
+  "Base class for all joint animations. These are animations that store joint transforms."
   ((name    string)
    (number  int16)
    (length  int16)
@@ -25,12 +26,14 @@
 
 ;; definition of type joint-anim-matrix
 (deftype joint-anim-matrix (joint-anim)
+  "Joint animation which stores matrices directly. Not used."
   ((data  matrix  :inline :dynamic :offset  16)
    )
   )
 
 ;; definition of type joint-anim-transformq
 (deftype joint-anim-transformq (joint-anim)
+  "Joint animation which stores transformq's directly. Not used."
   ((data  transformq  :inline :dynamic :offset  16)
    )
   )
@@ -55,6 +58,7 @@
 
 ;; definition of type joint-anim-drawable
 (deftype joint-anim-drawable (joint-anim)
+  "Mysterious unused joint animation type."
   ((data  drawable  :dynamic)
    )
   )
@@ -76,6 +80,10 @@
 
 ;; definition of type joint-anim-frame
 (deftype joint-anim-frame (structure)
+  "Frame containing all joint transforms. Note that there are two special frames: align and prejoint.
+The 'align' frame is used for the complicated animation alignment system, which allows the animation to move
+a character, among other things. The prejoint is just the root of the skeleton.
+The remaining transformq's are the joint transforms you'd expect."
   ((matrices  matrix      2 :inline)
    (data      transformq  :inline :dynamic)
    )
@@ -110,6 +118,7 @@
 
 ;; definition of type joint-anim-compressed-hdr
 (deftype joint-anim-compressed-hdr (structure)
+  "Header for the compressed joint animation format."
   ((control-bits  uint32  14)
    (num-joints    uint32)
    (matrix-bits   uint32)
@@ -214,6 +223,8 @@
 
 ;; definition of type art
 (deftype art (basic)
+  "Base class for anything considered `art`. This is typically foreground model data.
+This can be either an art container containing more arts, or an actual art thing (art-element)."
   ((name    string  :offset   8)
    (length  int32)
    (extra   res-lump)
@@ -242,6 +253,7 @@
 
 ;; definition of type art-element
 (deftype art-element (art)
+  "Base class Art which is not a container of more art."
   ((pad  uint8  12)
    )
   )
@@ -262,12 +274,14 @@
 
 ;; definition of type art-mesh-anim
 (deftype art-mesh-anim (art-element)
+  "An unused mesh animation."
   ((data  basic  :dynamic)
    )
   )
 
 ;; definition of type art-joint-anim
 (deftype art-joint-anim (art-element)
+  "Art for a joint animation. Also contains the eye animation."
   ((speed                   float                :overlay-at (-> pad 0))
    (artist-base             float                :overlay-at (-> pad 4))
    (artist-step             float                :overlay-at (-> pad 8))
@@ -315,18 +329,22 @@
 
 ;; definition of type art-mesh-geo
 (deftype art-mesh-geo (art-element)
+  "Unused art format for a mesh. This might have been for the renderer that came before merc."
   ((data  basic  :dynamic)
    )
   )
 
 ;; definition of type art-joint-geo
 (deftype art-joint-geo (art-element)
+  "Collection of joints for an actor."
   ((data  joint  :dynamic)
    )
   )
 
 ;; definition of type art-joint-anim-manager-slot
 (deftype art-joint-anim-manager-slot (structure)
+  "Record for an animation which is additionally compressed with LZO compression over the entire animation.
+This is used for short, commonly used animations that always remain in RAM."
   ((anim        art-joint-anim)
    (comp-data   uint32)
    (time-stamp  uint64)
@@ -349,6 +367,7 @@
 
 ;; definition of type art-joint-anim-manager
 (deftype art-joint-anim-manager (basic)
+  "Cache for LZO decompression of animations."
   ((kheap       kheap                        :inline)
    (free-index  int32)
    (slot        art-joint-anim-manager-slot  64 :inline)
@@ -399,6 +418,8 @@
 
 ;; definition of type skeleton-group
 (deftype skeleton-group (art-group)
+  "Unlike other art types, the skeleton-groups are defined in GOAL code.
+This stores settings like the name of the art-group, shadow/level-of-detail settings, etc."
   ((art-group-name      string)
    (jgeo                int32)
    (janim               int32)
@@ -456,6 +477,7 @@
 
 ;; definition of type lod-group
 (deftype lod-group (structure)
+  "A single level of detail mesh."
   ((geo   merc-ctrl)
    (dist  meters)
    )
@@ -477,6 +499,7 @@
 
 ;; definition of type lod-set
 (deftype lod-set (structure)
+  "All the different level-of-detail meshes for an actor."
   ((lod      lod-group  6 :inline)
    (max-lod  int8)
    )
@@ -500,6 +523,8 @@
 
 ;; definition of type draw-control
 (deftype draw-control (basic)
+  "The draw-control is a collection of all the stuff that the foreground rendering system needs to draw something.
+Each process-drawable has a draw-control."
   ((process               process-drawable)
    (status                draw-control-status)
    (data-format           draw-control-data-format)

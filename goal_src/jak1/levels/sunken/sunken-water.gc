@@ -1,183 +1,132 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: sunken-water.gc
-;; name in dgo: sunken-water
-;; dgos: L1, SUN, SUNKEN
+(bundles "SUN.DGO")
+(require "engine/common-obs/water-anim.gc")
+(require "engine/util/sync-info.gc")
+(require "engine/gfx/mood/time-of-day.gc")
 
 ;; DECOMP BEGINS
 
 (deftype sunken-water (water-anim)
-  ((use-sync?              symbol)
-   (playing-deadly-sound?  symbol)
-   (deadly-time            float)
-   (deadly-fade            float)
-   (sync                   sync-info  :inline)
-   (safe-color-mult        vector     :inline)
-   (safe-color-emissive    vector     :inline)
-   (deadly-color-mult      vector     :inline)
-   (deadly-color-emissive  vector     :inline)
-   )
+  ((use-sync?             symbol)
+   (playing-deadly-sound? symbol)
+   (deadly-time           float)
+   (deadly-fade           float)
+   (sync                  sync-info :inline)
+   (safe-color-mult       vector :inline)
+   (safe-color-emissive   vector :inline)
+   (deadly-color-mult     vector :inline)
+   (deadly-color-emissive vector :inline))
   (:methods
-    (draw-ripple (_type_) symbol)
-    )
-  )
+   (draw-ripple (_type_) symbol)))
 
 
-(define ripple-for-sunken-water (new 'static 'ripple-wave-set
-                                  :count 3
-                                  :converted #f
-                                  :normal-scale 1.0
-                                  :wave (new 'static 'inline-array ripple-wave 4
-                                    (new 'static 'ripple-wave :scale 40.0 :xdiv 1 :speed 1.5)
-                                    (new 'static 'ripple-wave :scale 40.0 :xdiv -1 :zdiv 1 :speed 1.5)
-                                    (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
-                                    (new 'static 'ripple-wave)
-                                    )
-                                  )
-        )
+(define ripple-for-sunken-water
+  (new 'static
+       'ripple-wave-set
+       :count 3
+       :converted #f
+       :normal-scale 1.0
+       :wave
+       (new 'static
+            'inline-array
+            ripple-wave
+            4
+            (new 'static 'ripple-wave :scale 40.0 :xdiv 1 :speed 1.5)
+            (new 'static 'ripple-wave :scale 40.0 :xdiv -1 :zdiv 1 :speed 1.5)
+            (new 'static 'ripple-wave :scale 20.0 :xdiv 5 :zdiv 3 :speed 0.75)
+            (new 'static 'ripple-wave))))
 
 (defpartgroup group-sunken-water-deadly-water
   :id 446
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts ((sp-item 1736 :fade-after (meters 50)))
-  )
+  :parts ((sp-item 1736 :fade-after (meters 50))))
 
 (defpart 1736
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
-    (:num 1.0)
-    (:y (meters 0))
-    (:scale-x (meters 1) (meters 4))
-    (:scale-y (meters 0.25))
-    (:r 255.0)
-    (:g 255.0)
-    (:b 255.0)
-    (:a 96.0 32.0)
-    (:scalevel-x (meters 0.1875))
-    (:scalevel-y (meters -0.001875))
-    (:fade-a -3.2)
-    (:timer (seconds 0.27))
-    (:flags (bit2 bit3 bit14))
-    (:next-time (seconds 0.05))
-    (:next-launcher 2022)
-    )
-  )
+  :init-specs
+  ((:texture (hotdot effects))
+   (:num 1.0)
+   (:y (meters 0))
+   (:scale-x (meters 1) (meters 4))
+   (:scale-y (meters 0.25))
+   (:r 255.0)
+   (:g 255.0)
+   (:b 255.0)
+   (:a 96.0 32.0)
+   (:scalevel-x (meters 0.1875))
+   (:scalevel-y (meters -0.001875))
+   (:fade-a -3.2)
+   (:timer (seconds 0.27))
+   (:flags (bit2 bit3 bit14))
+   (:next-time (seconds 0.05))
+   (:next-launcher 2022)))
 
 (defpart 2022
-  :init-specs ((:r 255.0) (:g 128.0 128.0) (:b 0.0) (:fade-a -1.28))
-  )
+  :init-specs ((:r 255.0) (:g 128.0 128.0) (:b 0.0) (:fade-a -1.28)))
 
 (defmethod draw-ripple ((this sunken-water))
   (set! (-> this draw ripple send-query) #t)
   (let ((gp-0 (-> this draw ripple query)))
-    (let ((a0-1 (current-time)))
-      (set! (-> gp-0 start-vertex) (logand (* 13 (logand a0-1 127)) 127))
-      )
+    (let ((a0-1 (current-time))) (set! (-> gp-0 start-vertex) (logand (* 13 (logand a0-1 127)) 127)))
     (set! (-> gp-0 vertex-skip) 128)
     (dotimes (s5-0 (-> gp-0 vertex-count))
-      (launch-particles (-> *part-id-table* 1736) (-> gp-0 data s5-0))
-      )
-    )
-  #f
-  )
+      (launch-particles (-> *part-id-table* 1736) (-> gp-0 data s5-0))))
+  #f)
 
 (defstate water-vol-idle (sunken-water)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('notify)
-       (if (= (-> block param 0) 'attack)
-           (sound-play "get-shocked")
-           )
-       )
-      (else
-        ((-> (method-of-type water-anim water-vol-idle) event) proc argc message block)
-        )
-      )
-    )
-  :trans (behavior ()
-    (let ((t9-0 (-> (method-of-type water-anim water-vol-idle) trans)))
-      (if t9-0
-          (t9-0)
-          )
-      )
-    (cond
-      ((-> self use-sync?)
-       (cond
-         ((< (get-current-phase (-> self sync)) (-> self deadly-time))
-          (when (!= (-> self deadly-fade) 1.0)
-            (seek! (-> self deadly-fade) 1.0 (* 8.0 (seconds-per-frame)))
-            (let ((f30-0 (-> self deadly-fade)))
-              (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-0)
-              (vector-lerp!
-                (-> self draw color-emissive)
-                (-> self safe-color-emissive)
-                (-> self deadly-color-emissive)
-                f30-0
-                )
-              (set! (-> self draw color-mult w) 0.5)
-              (if (= f30-0 1.0)
-                  (logior! (-> self flags) (water-flags wt19))
-                  )
-              )
-            )
-          (draw-ripple self)
-          (when (not (-> self playing-deadly-sound?))
-            (set! (-> self playing-deadly-sound?) #t)
-            (sound-play "water-on")
-            )
-          (update! (-> self sound))
-          )
-         (else
-           (logclear! (-> self flags) (water-flags wt19))
-           (when (!= (-> self deadly-fade) 0.0)
-             (seek! (-> self deadly-fade) 0.0 (* 8.0 (seconds-per-frame)))
-             (let ((f30-1 (-> self deadly-fade)))
-               (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-1)
-               (vector-lerp!
-                 (-> self draw color-emissive)
-                 (-> self safe-color-emissive)
-                 (-> self deadly-color-emissive)
-                 f30-1
-                 )
-               (set! (-> self draw color-mult w) 0.5)
-               (if (= f30-1 0.0)
-                   (logclear! (-> self flags) (water-flags wt19))
-                   )
-               )
-             )
-           (when (-> self playing-deadly-sound?)
-             (set! (-> self playing-deadly-sound?) #f)
-             (stop! (-> self sound))
-             (sound-play "water-off")
-             )
-           )
-         )
-       (set-fade!
-         *palette-fade-controls*
-         3
-         (-> self deadly-fade)
-         (vector-vector-distance (-> self root trans) (camera-pos))
-         (the-as vector #f)
-         )
-       )
-      (else
-        (when (logtest? (water-flags wt19) (-> self flags))
-          (draw-ripple self)
-          (update! (-> self sound))
-          (set! (-> self playing-deadly-sound?) #t)
-          )
-        )
-      )
-    )
-  :post ja-post
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('notify) (if (= (-> block param 0) 'attack) (sound-play "get-shocked")))
+        (else ((-> (method-of-type water-anim water-vol-idle) event) proc argc message block))))
+  :trans
+    (behavior ()
+      (let ((t9-0 (-> (method-of-type water-anim water-vol-idle) trans))) (if t9-0 (t9-0)))
+      (cond
+        ((-> self use-sync?)
+         (cond
+           ((< (get-current-phase (-> self sync)) (-> self deadly-time))
+            (when (!= (-> self deadly-fade) 1.0)
+              (seek! (-> self deadly-fade) 1.0 (* 8.0 (seconds-per-frame)))
+              (let ((f30-0 (-> self deadly-fade)))
+                (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-0)
+                (vector-lerp! (-> self draw color-emissive) (-> self safe-color-emissive) (-> self deadly-color-emissive) f30-0)
+                (set! (-> self draw color-mult w) 0.5)
+                (if (= f30-0 1.0) (logior! (-> self flags) (water-flags wt19)))))
+            (draw-ripple self)
+            (when (not (-> self playing-deadly-sound?))
+              (set! (-> self playing-deadly-sound?) #t)
+              (sound-play "water-on"))
+            (update! (-> self sound)))
+           (else
+            (logclear! (-> self flags) (water-flags wt19))
+            (when (!= (-> self deadly-fade) 0.0)
+              (seek! (-> self deadly-fade) 0.0 (* 8.0 (seconds-per-frame)))
+              (let ((f30-1 (-> self deadly-fade)))
+                (vector-lerp! (-> self draw color-mult) (-> self safe-color-mult) (-> self deadly-color-mult) f30-1)
+                (vector-lerp! (-> self draw color-emissive) (-> self safe-color-emissive) (-> self deadly-color-emissive) f30-1)
+                (set! (-> self draw color-mult w) 0.5)
+                (if (= f30-1 0.0) (logclear! (-> self flags) (water-flags wt19)))))
+            (when (-> self playing-deadly-sound?)
+              (set! (-> self playing-deadly-sound?) #f)
+              (stop! (-> self sound))
+              (sound-play "water-off"))))
+         (set-fade! *palette-fade-controls*
+                    3
+                    (-> self deadly-fade)
+                    (vector-vector-distance (-> self root trans) (camera-pos))
+                    (the-as vector #f)))
+        (else
+         (when (logtest? (water-flags wt19) (-> self flags))
+           (draw-ripple self)
+           (update! (-> self sound))
+           (set! (-> self playing-deadly-sound?) #t)))))
+  :post ja-post)
 
 (defmethod water-vol-method-25 ((this sunken-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-25)))
-    (t9-0 this)
-    )
+  (let ((t9-0 (method-of-type water-anim water-vol-method-25))) (t9-0 this))
   (set! (-> this playing-deadly-sound?) #f)
   (set-vector! (-> this safe-color-mult) 0.125 0.225 0.22 0.5)
   (set-vector! (-> this safe-color-emissive) 0.0 0.0 0.0 1.0)
@@ -186,63 +135,39 @@
   (let ((s5-0 (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)))
     (let ((f0-16 (res-lump-float (-> this entity) 'percent :default -1.0)))
       (if (or (< f0-16 0.0) (< 1.0 f0-16))
-          (set! f0-16 (cond
-                        (s5-0
-                          0.5
-                          )
-                        ((logtest? (water-flags wt19) (-> this flags))
-                         1.0
-                         )
-                        (else
-                          0.0
-                          )
-                        )
-                )
-          )
+        (set! f0-16
+              (cond
+                (s5-0 0.5)
+                ((logtest? (water-flags wt19) (-> this flags)) 1.0)
+                (else 0.0))))
       (when (and s5-0 (or (= f0-16 0.0) (= f0-16 1.0)))
         (set! s5-0 #f)
-        (if (= f0-16 0.0)
-            (logior! (-> this flags) (water-flags wt19))
-            (logclear! (-> this flags) (water-flags wt19))
-            )
-        )
+        (if (= f0-16 0.0) (logior! (-> this flags) (water-flags wt19)) (logclear! (-> this flags) (water-flags wt19))))
       (set! (-> this use-sync?) s5-0)
-      (set! (-> this deadly-time) f0-16)
-      )
+      (set! (-> this deadly-time) f0-16))
     (when s5-0
       (if (< (get-current-phase (-> this sync)) (-> this deadly-time))
-          (set! (-> this flags) (the-as water-flags (logior (water-flags wt19) (-> this flags))))
-          (set! (-> this flags) (the-as water-flags (logclear (-> this flags) (water-flags wt19))))
-          )
-      )
-    )
-  (none)
-  )
+        (set! (-> this flags) (the-as water-flags (logior (water-flags wt19) (-> this flags))))
+        (set! (-> this flags) (the-as water-flags (logclear (-> this flags) (water-flags wt19)))))))
+  (none))
 
 (defmethod water-vol-method-22 ((this sunken-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 this)
-    )
+  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
   (set! (-> this play-ambient-sound?) #f)
   (cond
     ((logtest? (water-flags wt19) (-> this flags))
      (set! (-> this draw color-mult quad) (-> this deadly-color-mult quad))
      (set! (-> this draw color-emissive quad) (-> this deadly-color-emissive quad))
-     (set! (-> this deadly-fade) 1.0)
-     )
+     (set! (-> this deadly-fade) 1.0))
     (else
-      (set! (-> this draw color-mult quad) (-> this safe-color-mult quad))
-      (set! (-> this draw color-emissive quad) (-> this safe-color-emissive quad))
-      (set! (-> this deadly-fade) 0.0)
-      )
-    )
+     (set! (-> this draw color-mult quad) (-> this safe-color-mult quad))
+     (set! (-> this draw color-emissive quad) (-> this safe-color-emissive quad))
+     (set! (-> this deadly-fade) 0.0)))
   (let ((s5-0 (new 'process 'ripple-control)))
     (set! (-> this draw ripple) s5-0)
     (set! (-> s5-0 global-scale) 3072.0)
     (set! (-> s5-0 close-fade-dist) 163840.0)
     (set! (-> s5-0 far-fade-dist) 245760.0)
     (set! (-> s5-0 waveform) ripple-for-sunken-water)
-    (set! (-> s5-0 query) (new 'process 'ripple-merc-query 100))
-    )
-  (none)
-  )
+    (set! (-> s5-0 query) (new 'process 'ripple-merc-query 100)))
+  (none))

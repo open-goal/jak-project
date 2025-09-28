@@ -1,28 +1,37 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: camera-h.gc
-;; name in dgo: camera-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
+(require "engine/gfx/hw/display-h.gc")
 
 ;; TODO - for cam-layout
 (define-extern v-slrp2! (function vector vector vector float vector float vector))
+
 (define-extern v-slrp3! (function vector vector vector vector float vector))
+
 (declare-type camera-slave process)
+
 (declare-type camera-master process)
+
 (declare-type tracking-point structure)
+
 (declare-type cam-rotation-tracker structure)
+
 (declare-type camera-combiner process)
+
 ;; TODO - for cam-master
 ;; TODO - for camera
 (define-extern camera-line-rel-len (function vector vector float vector4w none))
+
 (define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
+
 (define-extern slave-set-rotation! (function cam-rotation-tracker vector float float symbol none))
+
 ;; TODO - for cam-combiner
 (define-extern paused? (function symbol))
+
 ;; TODO - for cam-start
 (define-extern cam-master-init (function none :behavior camera-master))
-
 
 (defenum cam-slave-options
   :bitfield #t
@@ -43,135 +52,111 @@
   (BIKE_MODE)
   (NO_ROTATE)
   (STICKY_ANGLE)
-  (AIR_EXIT)
-  )
+  (AIR_EXIT))
 
 (defenum cam-index-options
   :type uint32
   :bitfield #t
   (RADIAL)
-  (SPHERICAL)
-  )
+  (SPHERICAL))
 
 (defenum slave-los-state
   :type uint32
   (none 0)
   (cw 1)
   (ccw 2)
-  (between 3)
-  )
+  (between 3))
 
 ;; DECOMP BEGINS
 
 (deftype camera-bank (basic)
-  ((collide-move-rad         float)
-   (joypad                   uint32)
-   (min-detectable-velocity  float)
-   (attack-timeout           time-frame)
-   (default-string-max-y     meters)
-   (default-string-min-y     meters)
-   (default-string-max-z     meters)
-   (default-string-min-z     meters)
-   (default-string-push-z    meters)
-   (default-tilt-adjust      degrees)
-   )
-  )
+  ((collide-move-rad        float)
+   (joypad                  uint32)
+   (min-detectable-velocity float)
+   (attack-timeout          time-frame)
+   (default-string-max-y    meters)
+   (default-string-min-y    meters)
+   (default-string-max-z    meters)
+   (default-string-min-z    meters)
+   (default-string-push-z   meters)
+   (default-tilt-adjust     degrees)))
 
-
-(define *CAMERA-bank* (new 'static 'camera-bank
-                        :collide-move-rad 1638.4
-                        :min-detectable-velocity 40.96
-                        :attack-timeout (seconds 0.25)
-                        :default-string-max-y (meters 3)
-                        :default-string-min-y (meters 1)
-                        :default-string-max-z (meters 12.5)
-                        :default-string-min-z (meters 5)
-                        :default-string-push-z (meters 10)
-                        :default-tilt-adjust (degrees -6.5000005)
-                        )
-        )
+(define *CAMERA-bank*
+  (new 'static
+       'camera-bank
+       :collide-move-rad 1638.4
+       :min-detectable-velocity 40.96
+       :attack-timeout (seconds 0.25)
+       :default-string-max-y (meters 3)
+       :default-string-min-y (meters 1)
+       :default-string-max-z (meters 12.5)
+       :default-string-min-z (meters 5)
+       :default-string-push-z (meters 10)
+       :default-tilt-adjust (degrees -6.5000005)))
 
 (deftype cam-index (structure)
-  ((flags  cam-index-options)
-   (vec    vector  2 :inline :offset  16)
-   )
+  ((flags cam-index-options)
+   (vec   vector 2 :inline :offset 16))
   (:methods
-    (cam-index-method-9 (_type_ symbol entity vector curve) symbol)
-    (cam-index-method-10 (_type_ vector) float)
-    )
-  )
-
+   (cam-index-method-9 (_type_ symbol entity vector curve) symbol)
+   (cam-index-method-10 (_type_ vector) float)))
 
 (deftype tracking-point (structure)
-  ((position     vector  :inline)
-   (direction    vector  :inline)
-   (tp-length    float)
-   (next         int32)
-   (incarnation  int32)
-   )
-  )
-
+  ((position    vector :inline)
+   (direction   vector :inline)
+   (tp-length   float)
+   (next        int32)
+   (incarnation int32)))
 
 (deftype tracking-spline-sampler (structure)
-  ((cur-pt      int32)
-   (partial-pt  float)
-   )
-  )
-
+  ((cur-pt     int32)
+   (partial-pt float)))
 
 (deftype tracking-spline (structure)
-  ((point               tracking-point  32 :inline)
-   (summed-len          float)
-   (free-point          int32)
-   (used-point          int32)
-   (partial-point       float)
-   (end-point           int32)
-   (next-to-last-point  int32)
-   (max-move            float)
-   (sample-len          float)
-   (used-count          int32)
-   (old-position        vector          :inline)
-   (debug-old-position  vector          :inline)
-   (debug-out-position  vector          :inline)
-   (debug-last-point    int32)
-   )
+  ((point              tracking-point 32 :inline)
+   (summed-len         float)
+   (free-point         int32)
+   (used-point         int32)
+   (partial-point      float)
+   (end-point          int32)
+   (next-to-last-point int32)
+   (max-move           float)
+   (sample-len         float)
+   (used-count         int32)
+   (old-position       vector :inline)
+   (debug-old-position vector :inline)
+   (debug-out-position vector :inline)
+   (debug-last-point   int32))
   (:methods
-    (tracking-spline-method-9 (_type_) none)
-    (tracking-spline-method-10 (_type_ vector) none)
-    (print-nth-point (_type_ int) none)
-    (tracking-spline-method-12 (_type_) none)
-    (tracking-spline-method-13 (_type_ int) none)
-    (tracking-spline-method-14 (_type_ tracking-spline-sampler) none)
-    (tracking-spline-method-15 (_type_) none)
-    (tracking-spline-method-16 (_type_ float) none)
-    (tracking-spline-method-17 (_type_ vector float float symbol) int)
-    (tracking-spline-method-18 (_type_ float vector tracking-spline-sampler) vector)
-    (tracking-spline-method-19 (_type_ float vector tracking-spline-sampler) vector)
-    (tracking-spline-method-20 (_type_ vector int) none)
-    (tracking-spline-method-21 (_type_ vector float float) vector)
-    (tracking-spline-method-22 (_type_ float) none)
-    (tracking-spline-method-23 (_type_) none)
-    )
-  )
-
+   (tracking-spline-method-9 (_type_) none)
+   (tracking-spline-method-10 (_type_ vector) none)
+   (print-nth-point (_type_ int) none)
+   (tracking-spline-method-12 (_type_) none)
+   (tracking-spline-method-13 (_type_ int) none)
+   (tracking-spline-method-14 (_type_ tracking-spline-sampler) none)
+   (tracking-spline-method-15 (_type_) none)
+   (tracking-spline-method-16 (_type_ float) none)
+   (tracking-spline-method-17 (_type_ vector float float symbol) int)
+   (tracking-spline-method-18 (_type_ float vector tracking-spline-sampler) vector)
+   (tracking-spline-method-19 (_type_ float vector tracking-spline-sampler) vector)
+   (tracking-spline-method-20 (_type_ vector int) none)
+   (tracking-spline-method-21 (_type_ vector float float) vector)
+   (tracking-spline-method-22 (_type_ float) none)
+   (tracking-spline-method-23 (_type_) none)))
 
 (deftype cam-float-seeker (structure)
-  ((target       float)
-   (value        float)
-   (vel          float)
-   (accel        float)
-   (max-vel      float)
-   (max-partial  float)
-   )
+  ((target      float)
+   (value       float)
+   (vel         float)
+   (accel       float)
+   (max-vel     float)
+   (max-partial float))
   :pack-me
   (:methods
-    (init-cam-float-seeker (_type_ float float float float) none)
-    (copy-cam-float-seeker (_type_ _type_) none)
-    (update! (_type_ float) none)
-    (jump-to-target! (_type_ float) float)
-    )
-  )
-
+   (init-cam-float-seeker (_type_ float float float float) none)
+   (copy-cam-float-seeker (_type_ _type_) none)
+   (update! (_type_ float) none)
+   (jump-to-target! (_type_ float) float)))
 
 (defmethod init-cam-float-seeker ((this cam-float-seeker) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (set! (-> this target) arg0)
@@ -181,8 +166,7 @@
   (set! (-> this max-vel) arg2)
   (set! (-> this max-partial) arg3)
   0
-  (none)
-  )
+  (none))
 
 (defmethod copy-cam-float-seeker ((this cam-float-seeker) (arg0 cam-float-seeker))
   (set! (-> this target) (-> arg0 target))
@@ -192,278 +176,226 @@
   (set! (-> this max-vel) (-> arg0 max-vel))
   (set! (-> this max-partial) (-> arg0 max-partial))
   0
-  (none)
-  )
+  (none))
 
 (defmethod update! ((this cam-float-seeker) (offset float))
   0.0
   0.0
   (let* ((pos-error (- (+ (-> this target) offset) (-> this value)))
-         (partial-velocity-limit (* (-> this max-partial) (fabs pos-error)))
-         )
-    (let ((daccel (* pos-error (* (-> this accel) (-> *display* time-adjust-ratio)))))
-      (+! (-> this vel) daccel)
-      )
+         (partial-velocity-limit (* (-> this max-partial) (fabs pos-error))))
+    (let ((daccel (* pos-error (* (-> this accel) (-> *display* time-adjust-ratio))))) (+! (-> this vel) daccel))
     (let ((abs-vel (fabs (-> this vel)))
-          (abs-vel-limit (fmin partial-velocity-limit (-> this max-vel)))
-          )
-      (if (< abs-vel-limit abs-vel)
-          (set! (-> this vel) (* (-> this vel) (/ abs-vel-limit abs-vel)))
-          )
-      )
-    )
-  (let ((dpos (* (-> this vel) (-> *display* time-adjust-ratio))))
-    (+! (-> this value) dpos)
-    )
+          (abs-vel-limit (fmin partial-velocity-limit (-> this max-vel))))
+      (if (< abs-vel-limit abs-vel) (set! (-> this vel) (* (-> this vel) (/ abs-vel-limit abs-vel))))))
+  (let ((dpos (* (-> this vel) (-> *display* time-adjust-ratio)))) (+! (-> this value) dpos))
   0
-  (none)
-  )
+  (none))
 
 (defmethod jump-to-target! ((this cam-float-seeker) (arg0 float))
   (set! (-> this value) (+ (-> this target) arg0))
-  (set! (-> this vel) 0.0)
-  )
+  (set! (-> this vel) 0.0))
 
 (deftype cam-vector-seeker (structure)
-  ((target       vector  :inline)
-   (value        vector  :inline)
-   (vel          vector  :inline)
-   (accel        float)
-   (max-vel      float)
-   (max-partial  float)
-   )
+  ((target      vector :inline)
+   (value       vector :inline)
+   (vel         vector :inline)
+   (accel       float)
+   (max-vel     float)
+   (max-partial float))
   (:methods
-    (init! (_type_ vector float float float) none)
-    (update! (_type_ vector) none)
-    )
-  )
-
+   (init! (_type_ vector float float float) none)
+   (update! (_type_ vector) none)))
 
 (defmethod init! ((this cam-vector-seeker) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
   (cond
-    (arg0
-      (set! (-> this target quad) (-> arg0 quad))
-      (set! (-> this value quad) (-> arg0 quad))
-      )
-    (else
-      (vector-reset! (-> this target))
-      (vector-reset! (-> this value))
-      )
-    )
+    (arg0 (set! (-> this target quad) (-> arg0 quad)) (set! (-> this value quad) (-> arg0 quad)))
+    (else (vector-reset! (-> this target)) (vector-reset! (-> this value))))
   (vector-reset! (-> this vel))
   (set! (-> this accel) arg1)
   (set! (-> this max-vel) arg2)
   (set! (-> this max-partial) arg3)
   0
-  (none)
-  )
+  (none))
 
 (defmethod update! ((this cam-vector-seeker) (arg0 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     0.0
     (cond
-      (arg0
-        (vector+! gp-0 (-> this target) arg0)
-        (vector-! gp-0 gp-0 (-> this value))
-        )
-      (else
-        (vector-! gp-0 (-> this target) (-> this value))
-        )
-      )
+      (arg0 (vector+! gp-0 (-> this target) arg0) (vector-! gp-0 gp-0 (-> this value)))
+      (else (vector-! gp-0 (-> this target) (-> this value))))
     (let ((f30-1 (* (-> this max-partial) (vector-length gp-0))))
       (vector-float*! gp-0 gp-0 (* (-> this accel) (-> *display* time-adjust-ratio)))
       (vector+! (-> this vel) (-> this vel) gp-0)
       (let ((f0-4 (vector-length (-> this vel)))
-            (f1-2 (fmin f30-1 (-> this max-vel)))
-            )
-        (if (< f1-2 f0-4)
-            (vector-float*! (-> this vel) (-> this vel) (/ f1-2 f0-4))
-            )
-        )
-      )
+            (f1-2 (fmin f30-1 (-> this max-vel))))
+        (if (< f1-2 f0-4) (vector-float*! (-> this vel) (-> this vel) (/ f1-2 f0-4)))))
     (vector-float*! gp-0 (-> this vel) (-> *display* time-adjust-ratio))
-    (vector+! (-> this value) (-> this value) gp-0)
-    )
+    (vector+! (-> this value) (-> this value) gp-0))
   0
-  (none)
-  )
+  (none))
 
 (deftype cam-rotation-tracker (structure)
-  ((inv-mat                  matrix            :inline)
-   (no-follow                basic)
-   (follow-pt                vector            :inline)
-   (follow-off               vector            :inline)
-   (follow-blend             float)
-   (tilt-adjust              cam-float-seeker  :inline)
-   (use-point-of-interest    basic)
-   (point-of-interest        vector            :inline)
-   (point-of-interest-blend  cam-float-seeker  :inline)
-   (underwater-blend         cam-float-seeker  :inline)
-   )
-  )
-
+  ((inv-mat                 matrix :inline)
+   (no-follow               basic)
+   (follow-pt               vector :inline)
+   (follow-off              vector :inline)
+   (follow-blend            float)
+   (tilt-adjust             cam-float-seeker :inline)
+   (use-point-of-interest   basic)
+   (point-of-interest       vector :inline)
+   (point-of-interest-blend cam-float-seeker :inline)
+   (underwater-blend        cam-float-seeker :inline)))
 
 (deftype camera-combiner (process)
-  ((trans              vector                :inline)
-   (inv-camera-rot     matrix                :inline)
-   (fov                float)
-   (interp-val         float)
-   (interp-step        float)
-   (dist-from-src      float)
-   (dist-from-dest     float)
-   (flip-control-axis  vector                :inline)
-   (velocity           vector                :inline)
-   (tracking-status    uint64)
-   (tracking-options   int32)
-   (tracking           cam-rotation-tracker  :inline)
-   )
+  ((trans             vector :inline)
+   (inv-camera-rot    matrix :inline)
+   (fov               float)
+   (interp-val        float)
+   (interp-step       float)
+   (dist-from-src     float)
+   (dist-from-dest    float)
+   (flip-control-axis vector :inline)
+   (velocity          vector :inline)
+   (tracking-status   uint64)
+   (tracking-options  int32)
+   (tracking          cam-rotation-tracker :inline))
   (:states
-    cam-combiner-active
-    )
-  )
-
+   cam-combiner-active))
 
 (deftype camera-slave (process)
-  ((trans                          vector                :inline)
-   (fov                            float)
-   (fov0                           float)
-   (fov1                           float)
-   (fov-index                      cam-index             :inline)
-   (tracking                       cam-rotation-tracker  :inline)
-   (view-off-param                 float)
-   (unknown-symbol                 symbol                :offset 412)
-   (view-off                       vector                :inline)
-   (min-z-override                 float)
-   (view-flat                      vector                :inline)
-   (string-vel-dir                 uint32)
-   (string-trans                   vector                :inline)
-   (position-spline                tracking-spline       :inline)
-   (pivot-pt                       vector                :inline)
-   (pivot-rad                      float)
-   (circular-follow                vector                :inline)
-   (max-angle-offset               float)
-   (max-angle-curr                 float)
-   (options                        uint32)
-   (cam-entity                     entity)
-   (velocity                       vector                :inline)
-   (desired-pos                    vector                :inline)
-   (time-dist-too-far              uint32)
-   (los-state                      slave-los-state)
-   (good-point                     vector                :inline)
-   (los-tgt-spline-pt              int32)
-   (los-tgt-spline-pt-incarnation  int32)
-   (los-last-pos                   vector                :inline)
-   (intro-curve                    curve                 :inline)
-   (intro-offset                   vector                :inline)
-   (intro-t                        float)
-   (intro-t-step                   float)
-   (outro-exit-value               float)
-   (spline-exists                  basic)
-   (spline-curve                   curve                 :inline)
-   (spline-offset                  vector                :inline)
-   (index                          cam-index             :inline)
-   (saved-pt                       vector                :inline)
-   (spline-tt                      float)
-   (spline-follow-dist             float)
-   (change-event-from              (pointer process-drawable))
-   (enter-has-run                  symbol)
-   (blend-from-type                uint64)
-   (blend-to-type                  uint64)
-   (have-phony-joystick            basic)
-   (phony-joystick-x               float)
-   (phony-joystick-y               float)
-   (string-min-val                 vector                :inline)
-   (string-max-val                 vector                :inline)
-   (string-val-locked              basic)
-   )
+  ((trans                         vector :inline)
+   (fov                           float)
+   (fov0                          float)
+   (fov1                          float)
+   (fov-index                     cam-index :inline)
+   (tracking                      cam-rotation-tracker :inline)
+   (view-off-param                float)
+   (unknown-symbol                symbol :offset 412)
+   (view-off                      vector :inline)
+   (min-z-override                float)
+   (view-flat                     vector :inline)
+   (string-vel-dir                uint32)
+   (string-trans                  vector :inline)
+   (position-spline               tracking-spline :inline)
+   (pivot-pt                      vector :inline)
+   (pivot-rad                     float)
+   (circular-follow               vector :inline)
+   (max-angle-offset              float)
+   (max-angle-curr                float)
+   (options                       uint32)
+   (cam-entity                    entity)
+   (velocity                      vector :inline)
+   (desired-pos                   vector :inline)
+   (time-dist-too-far             uint32)
+   (los-state                     slave-los-state)
+   (good-point                    vector :inline)
+   (los-tgt-spline-pt             int32)
+   (los-tgt-spline-pt-incarnation int32)
+   (los-last-pos                  vector :inline)
+   (intro-curve                   curve :inline)
+   (intro-offset                  vector :inline)
+   (intro-t                       float)
+   (intro-t-step                  float)
+   (outro-exit-value              float)
+   (spline-exists                 basic)
+   (spline-curve                  curve :inline)
+   (spline-offset                 vector :inline)
+   (index                         cam-index :inline)
+   (saved-pt                      vector :inline)
+   (spline-tt                     float)
+   (spline-follow-dist            float)
+   (change-event-from             (pointer process-drawable))
+   (enter-has-run                 symbol)
+   (blend-from-type               uint64)
+   (blend-to-type                 uint64)
+   (have-phony-joystick           basic)
+   (phony-joystick-x              float)
+   (phony-joystick-y              float)
+   (string-min-val                vector :inline)
+   (string-max-val                vector :inline)
+   (string-val-locked             basic))
   (:states
-    *camera-base-mode*
-    cam-bike
-    cam-billy
-    cam-circular
-    cam-decel
-    cam-endlessfall
-    cam-eye
-    cam-fixed
-    cam-fixed-read-entity
-    cam-free-floating
-    cam-launcher-longfall
-    cam-launcher-shortfall
-    cam-lookat
-    cam-mistycannon
-    cam-orbit
-    cam-periscope
-    cam-point-watch
-    cam-pov
-    cam-pov-track
-    cam-pov180
-    cam-robotboss
-    cam-spline
-    cam-standoff
-    cam-standoff-read-entity
-    cam-stick
-    cam-string
-    )
-  )
-
+   *camera-base-mode*
+   cam-bike
+   cam-billy
+   cam-circular
+   cam-decel
+   cam-endlessfall
+   cam-eye
+   cam-fixed
+   cam-fixed-read-entity
+   cam-free-floating
+   cam-launcher-longfall
+   cam-launcher-shortfall
+   cam-lookat
+   cam-mistycannon
+   cam-orbit
+   cam-periscope
+   cam-point-watch
+   cam-pov
+   cam-pov-track
+   cam-pov180
+   cam-robotboss
+   cam-spline
+   cam-standoff
+   cam-standoff-read-entity
+   cam-stick
+   cam-string))
 
 (deftype camera-master (process)
-  ((master-options       uint32)
-   (num-slaves           int32)
-   (slave                (pointer camera-slave)  2)
-   (slave-options        uint32)
-   (view-off-param-save  float)
-   (changer              uint32)
-   (cam-entity           entity)
-   (stringMinLength      float)
-   (stringMaxLength      float)
-   (stringMinHeight      float)
-   (stringMaxHeight      float)
-   (string-min           cam-vector-seeker       :inline)
-   (string-max           cam-vector-seeker       :inline)
-   (string-push-z        float)
-   (stringCliffHeight    float)
-   (no-intro             uint32)
-   (force-blend          uint32)
-   (force-blend-time     uint32)
-   (local-down           vector                  :inline)
-   (drawable-target      handle)
-   (which-bone           int32)
-   (pov-handle           handle)
-   (pov-bone             int32)
-   (being-attacked       symbol)
-   (attack-start         time-frame)
-   (on-ground            symbol)
-   (under-water          int32)
-   (on-pole              symbol)
-   (tgt-rot-mat          matrix                  :inline)
-   (tgt-face-mat         matrix                  :inline)
-   (tpos-old             vector                  :inline)
-   (tpos-curr            vector                  :inline)
-   (target-height        float)
-   (tpos-old-adj         vector                  :inline)
-   (tpos-curr-adj        vector                  :inline)
-   (tpos-tgt             vector                  :inline)
-   (upspeed              float)
-   (pitch-off            vector                  :inline)
-   (foot-offset          float)
-   (head-offset          float)
-   (target-spline        tracking-spline         :inline)
-   (ease-from            vector                  :inline)
-   (ease-t               float)
-   (ease-step            float)
-   (ease-to              vector                  :inline)
-   (outro-curve          curve                   :inline)
-   (outro-t              float)
-   (outro-t-step         float)
-   (outro-exit-value     float)
-   (water-drip-time      time-frame)
-   (water-drip           sparticle-launch-control)
-   (water-drip-mult      float)
-   (water-drip-speed     float)
-   )
+  ((master-options      uint32)
+   (num-slaves          int32)
+   (slave               (pointer camera-slave) 2)
+   (slave-options       uint32)
+   (view-off-param-save float)
+   (changer             uint32)
+   (cam-entity          entity)
+   (stringMinLength     float)
+   (stringMaxLength     float)
+   (stringMinHeight     float)
+   (stringMaxHeight     float)
+   (string-min          cam-vector-seeker :inline)
+   (string-max          cam-vector-seeker :inline)
+   (string-push-z       float)
+   (stringCliffHeight   float)
+   (no-intro            uint32)
+   (force-blend         uint32)
+   (force-blend-time    uint32)
+   (local-down          vector :inline)
+   (drawable-target     handle)
+   (which-bone          int32)
+   (pov-handle          handle)
+   (pov-bone            int32)
+   (being-attacked      symbol)
+   (attack-start        time-frame)
+   (on-ground           symbol)
+   (under-water         int32)
+   (on-pole             symbol)
+   (tgt-rot-mat         matrix :inline)
+   (tgt-face-mat        matrix :inline)
+   (tpos-old            vector :inline)
+   (tpos-curr           vector :inline)
+   (target-height       float)
+   (tpos-old-adj        vector :inline)
+   (tpos-curr-adj       vector :inline)
+   (tpos-tgt            vector :inline)
+   (upspeed             float)
+   (pitch-off           vector :inline)
+   (foot-offset         float)
+   (head-offset         float)
+   (target-spline       tracking-spline :inline)
+   (ease-from           vector :inline)
+   (ease-t              float)
+   (ease-step           float)
+   (ease-to             vector :inline)
+   (outro-curve         curve :inline)
+   (outro-t             float)
+   (outro-t-step        float)
+   (outro-exit-value    float)
+   (water-drip-time     time-frame)
+   (water-drip          sparticle-launch-control)
+   (water-drip-mult     float)
+   (water-drip-speed    float))
   (:states
-    cam-master-active
-    list-keeper-active
-    )
-  )
+   cam-master-active
+   list-keeper-active))

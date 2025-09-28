@@ -19,3 +19,6 @@ QuantizedColors quantize_colors_dumb(const std::vector<math::Vector<u8, 4>>& in)
 
 QuantizedColors quantize_colors_octree(const std::vector<math::Vector<u8, 4>>& in,
                                        u32 target_count);
+
+QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 4>>& in,
+                                        u32 target_depth);

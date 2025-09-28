@@ -1,9 +1,12 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: collide-probe.gc
-;; name in dgo: collide-probe
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/level/level-h.gc")
+(require "kernel/gkernel.gc")
+(require "engine/collide/collide-cache-h.gc")
+(require "engine/gfx/tie/tie-h.gc")
+(require "engine/collide/collide-frag-h.gc")
+(require "engine/draw/draw-node-h.gc")
 
 ;; DECOMP BEGINS
 
@@ -20,16 +23,11 @@
 (defun creates-new-method? ((arg0 type) (arg1 int))
   "Is the method with the given ID in the given type a new method for this type?"
   ;; does our parent have it?
-  (let ((v1-1 (-> arg0 parent allocated-length)))
-    (-> arg0 allocated-length)
-    (>= arg1 (the-as int v1-1))
-    )
-  )
+  (let ((v1-1 (-> arg0 parent allocated-length))) (-> arg0 allocated-length) (>= arg1 (the-as int v1-1))))
 
 (defun overrides-parent-method? ((arg0 type) (arg1 int))
   "Does the method with the given ID in the given type override a method of its parent?"
-  (!= (-> arg0 method-table arg1) (-> arg0 parent method-table arg1))
-  )
+  (!= (-> arg0 method-table arg1) (-> arg0 parent method-table arg1)))
 
 (defun describe-methods ((arg0 type))
   "Print information about the methods of a type."
@@ -39,25 +37,12 @@
         (format #t "~3d:~%" s4-0)
         (while (!= s3-0 basic)
           (cond
-            ((creates-new-method? s3-0 s4-0)
-             (format #t "   created by ~s.~%" (symbol->string (-> s3-0 symbol)))
-             (set! s3-0 basic)
-             )
+            ((creates-new-method? s3-0 s4-0) (format #t "   created by ~s.~%" (symbol->string (-> s3-0 symbol))) (set! s3-0 basic))
             ((overrides-parent-method? s3-0 s4-0)
              (format #t "   overridden by ~s.~%" (symbol->string (-> s3-0 symbol)))
-             (set! s3-0 (-> s3-0 parent))
-             )
-            (else
-              (set! s3-0 (-> s3-0 parent))
-              )
-            )
-          )
-        )
-      )
-    )
-  #f
-  )
-
+             (set! s3-0 (-> s3-0 parent)))
+            (else (set! s3-0 (-> s3-0 parent))))))))
+  #f)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Collide Fragment Debug
@@ -67,36 +52,29 @@
 (defun indent-to ((arg0 int))
   "Print out arg0 spaces"
   (dotimes (s5-0 arg0)
-    (format #t " ")
-    )
-  (none)
-  )
+    (format #t " "))
+  (none))
 
 (defun-recursive probe-traverse-draw-node none ((arg0 draw-node) (arg1 int))
   "Print out info for a draw node, and recursively its children. They forgot to finish this one."
   (indent-to arg1)
-  (format #t "[~08x] child-count: ~d, flags: ~d, dist: ~f, child: ~a~%"
-    arg0
-    (-> arg0 child-count)
-    (-> arg0 flags)
-    (-> arg0 distance)
-    (-> arg0 child)
-    )
+  (format #t
+          "[~08x] child-count: ~d, flags: ~d, dist: ~f, child: ~a~%"
+          arg0
+          (-> arg0 child-count)
+          (-> arg0 flags)
+          (-> arg0 distance)
+          (-> arg0 child))
   (cond
     ((nonzero? (-> arg0 flags))
      (let ((s4-0 (-> arg0 child)))
        (dotimes (s3-0 (the-as int (-> arg0 child-count)))
-         (probe-traverse-draw-node (the-as draw-node (+ (the-as uint s4-0) (* s3-0 32))) (+ arg1 1))
-         )
-       )
-     )
+         (probe-traverse-draw-node (the-as draw-node (+ (the-as uint s4-0) (* s3-0 32))) (+ arg1 1)))))
     (else
-      ;; we hit the leaves.
-      )
-    )
+     ;; we hit the leaves.
+     ))
   0
-  (none)
-  )
+  (none))
 
 (defun probe-traverse-inline-array-node ((arg0 drawable-inline-array-node) (arg1 int))
   "Print out a drawable-inline-array-node, and recursively all children"
@@ -106,13 +84,8 @@
     (dotimes (s3-0 s4-0)
       (indent-to arg1)
       (format #t "(~3d) ~a~%" s3-0 (-> arg0 data s3-0))
-      (if (= (-> arg0 data s3-0 type) draw-node)
-          (probe-traverse-draw-node (-> arg0 data s3-0) (+ arg1 1))
-          )
-      )
-    )
-  (none)
-  )
+      (if (= (-> arg0 data s3-0 type) draw-node) (probe-traverse-draw-node (-> arg0 data s3-0) (+ arg1 1)))))
+  (none))
 
 (defun probe-traverse-collide-fragment ((arg0 drawable-tree-collide-fragment) (arg1 int))
   "Print out all levels of a drawabl-tree-collide-fragment."
@@ -122,30 +95,20 @@
     (dotimes (s3-0 (+ s4-0 -1))
       (indent-to arg1)
       (if (= (-> arg0 data s3-0 type) drawable-inline-array-node)
-          (probe-traverse-inline-array-node (the-as drawable-inline-array-node (-> arg0 data s3-0)) (+ arg1 1))
-          (format #t "unknown: ~a~%" (-> arg0 data s3-0))
-          )
-      )
-    )
-  (none)
-  )
-
+        (probe-traverse-inline-array-node (the-as drawable-inline-array-node (-> arg0 data s3-0)) (+ arg1 1))
+        (format #t "unknown: ~a~%" (-> arg0 data s3-0)))))
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Collide Probe Implementation
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype collide-probe-stack-elem (structure)
-  ((child  uint32)
-   (count  uint32)
-   )
-  )
-
+  ((child uint32)
+   (count uint32)))
 
 (deftype collide-probe-stack (structure)
-  ((data  collide-probe-stack-elem  1024 :inline)
-   )
-  )
+  ((data collide-probe-stack-elem 1024 :inline)))
 
 ;;(define *collide-probe-stack* (the-as pointer (+ 4192 #x70000000)))
 (define *collide-probe-stack* (scratchpad-object collide-probe-stack :offset 4192))
@@ -155,18 +118,14 @@
 (def-mips2c collide-probe-node (function (inline-array draw-node) int collide-list int))
 
 (defun print-out ((arg0 int))
-  (format *stdcon* "~d~%" arg0)
-  )
+  (format *stdcon* "~d~%" arg0))
 
 (defun collide-probe-instance-tie-collide-frags ()
   0
-  (none)
-  )
+  (none))
 
 ;; collide-probe-instance-tie
 (def-mips2c collide-probe-instance-tie (function object int collide-list int int))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Collide Probe Setup/Wrappers
@@ -178,16 +137,12 @@
   (cond
     ((< 1 (-> arg0 length))
      (let ((v1-1 (-> arg0 data-override)))
-       (collide-probe-node (-> (the-as drawable-inline-array-node v1-1) data) (-> v1-1 length) arg1)
-       )
-     )
+       (collide-probe-node (-> (the-as drawable-inline-array-node v1-1) data) (-> v1-1 length) arg1)))
     (else
-      ;; only 1 level in the tree. this is unsupported.
-      )
-    )
+     ;; only 1 level in the tree. this is unsupported.
+     ))
   0
-  (none)
-  )
+  (none))
 
 (defun collide-probe-instance-tie-tree-make-list ((arg0 drawable-tree-instance-tie) (arg1 collide-list))
   "Given a TIE instance tree, make a list.
@@ -195,58 +150,40 @@
   (cond
     ((< 1 (-> arg0 length))
      (let ((v1-2 (-> arg0 data 0)))
-       (collide-probe-instance-tie
-         (-> (the-as drawable-inline-array-node v1-2) data)
-         (-> (the-as drawable-inline-array-node v1-2) length)
-         arg1
-         1
-         )
-       )
-     )
+       (collide-probe-instance-tie (-> (the-as drawable-inline-array-node v1-2) data)
+                                   (-> (the-as drawable-inline-array-node v1-2) length)
+                                   arg1
+                                   1)))
     ((= (-> arg0 length) 1)
      ;; between 1 and 8. Set flag 0 to indicate that we are using instance ties.
      (let ((v1-7 (-> arg0 data 0)))
-       (collide-probe-instance-tie
-         (-> (the-as drawable-inline-array-instance-tie v1-7) data)
-         (-> (the-as drawable-inline-array-instance-tie v1-7) length)
-         arg1
-         0
-         )
-       )
-     )
-    )
-  0
-  )
+       (collide-probe-instance-tie (-> (the-as drawable-inline-array-instance-tie v1-7) data)
+                                   (-> (the-as drawable-inline-array-instance-tie v1-7) length)
+                                   arg1
+                                   0))))
+  0)
 
 (defun collide-upload-vu0 ()
   "Upload the probe program to VU0."
   (#unless PC_PORT
-           (let ((gp-0 *vu0-dma-list*))
-             ;; reset the buffer
-             (let ((v1-0 gp-0))
-               (set! (-> v1-0 base) (-> v1-0 data))
-               (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length)))
-               )
-             ;; upload the function dma
-             (dma-buffer-add-vu-function gp-0 collide-vu0-block 0)
-             
-             ;; end dma chain
-             (let* ((v1-1 gp-0)
-                    (a0-5 (the-as object (-> v1-1 base)))
-                    )
-               (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
-               (set! (-> (the-as (pointer uint64) a0-5) 1) (the-as uint 0))
-               (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16))
-               )
-             
-             ;; go!
-             (.sync.l)
-             (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
-             )
-           )
+    (let ((gp-0 *vu0-dma-list*))
+      ;; reset the buffer
+      (let ((v1-0 gp-0))
+        (set! (-> v1-0 base) (-> v1-0 data))
+        (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length))))
+      ;; upload the function dma
+      (dma-buffer-add-vu-function gp-0 collide-vu0-block 0)
+      ;; end dma chain
+      (let* ((v1-1 gp-0)
+             (a0-5 (the-as object (-> v1-1 base))))
+        (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+        (set! (-> (the-as (pointer uint64) a0-5) 1) (the-as uint 0))
+        (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16)))
+      ;; go!
+      (.sync.l)
+      (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)))
   0
-  (none)
-  )
+  (none))
 
 ;; main collide probe function:
 
@@ -256,7 +193,6 @@
     0
     ;; load vu0 program
     (collide-upload-vu0)
-    
     ;; iterate over trees
     (let ((s5-1 (-> s5-0 drawable-trees)))
       (dotimes (s4-0 (-> s5-1 length))
@@ -268,56 +204,30 @@
                (cond
                  ((< 1 (-> v1-3 length))
                   (let ((v1-4 (-> v1-3 data 0)))
-                    (collide-probe-instance-tie
-                      (-> (the-as drawable-inline-array-node v1-4) data)
-                      (-> (the-as drawable-inline-array-node v1-4) length)
-                      a2-0
-                      1
-                      )
-                    )
-                  )
+                    (collide-probe-instance-tie (-> (the-as drawable-inline-array-node v1-4) data)
+                                                (-> (the-as drawable-inline-array-node v1-4) length)
+                                                a2-0
+                                                1)))
                  ((= (-> v1-3 length) 1)
                   (let ((v1-6 (-> v1-3 data 0)))
-                    (collide-probe-instance-tie
-                      (-> (the-as drawable-inline-array-instance-tie v1-6) data)
-                      (-> (the-as drawable-inline-array-instance-tie v1-6) length)
-                      a2-0
-                      0
-                      )
-                    )
-                  )
-                 )
-               )
-             0
-             )
+                    (collide-probe-instance-tie (-> (the-as drawable-inline-array-instance-tie v1-6) data)
+                                                (-> (the-as drawable-inline-array-instance-tie v1-6) length)
+                                                a2-0
+                                                0)))))
+             0)
             ((= (-> v1-3 type) drawable-tree-collide-fragment)
              ;; collide with tfrags
              (let ((a2-1 arg1))
                (cond
                  ((< 1 (-> v1-3 length))
                   (let ((v1-9 (-> v1-3 data 0)))
-                    (collide-probe-node
-                      (-> (the-as drawable-inline-array-node v1-9) data)
-                      (-> (the-as drawable-inline-array-node v1-9) length)
-                      a2-1
-                      )
-                    )
-                  )
-                 (else
-                   )
-                 )
-               )
-             0
-             )
-            (else
-              )
-            )
-          )
-        )
-      )
-    )
-  (none)
-  )
+                    (collide-probe-node (-> (the-as drawable-inline-array-node v1-9) data)
+                                        (-> (the-as drawable-inline-array-node v1-9) length)
+                                        a2-1)))
+                 (else)))
+             0)
+            (else))))))
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;
 ;; Hacks
@@ -328,65 +238,32 @@
 (defun distc ((arg0 vector) (arg1 vector))
   (let* ((f0-1 (- (-> arg0 x) (-> arg1 x)))
          (f0-3 (* f0-1 f0-1))
-         (f1-2 (- (-> arg0 z) (-> arg1 z)))
-         )
-    (sqrtf (+ f0-3 (* f1-2 f1-2)))
-    )
-  )
+         (f1-2 (- (-> arg0 z) (-> arg1 z))))
+    (sqrtf (+ f0-3 (* f1-2 f1-2)))))
 
 (defun interpolate ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
   (let ((f0-1 (- arg3 arg1))
         (f1-2 (- arg4 arg2))
-        (f3-1 (- arg0 arg1))
-        )
-    (+ arg2 (/ (* f3-1 f1-2) f0-1))
-    )
-  )
+        (f3-1 (- arg0 arg1)))
+    (+ arg2 (/ (* f3-1 f1-2) f0-1))))
 
 (defun misty-ambush-height ((arg0 vector))
   (let* ((a1-0 (new 'static 'vector :x -808960.0 :y 111656.96 :z 3924992.0))
-         (f0-0 (distc arg0 a1-0))
-         )
+         (f0-0 (distc arg0 a1-0)))
     (cond
-      ((< f0-0 52019.2)
-       111656.96
-       )
-      ((>= 58982.4 f0-0)
-       (interpolate f0-0 52019.2 111656.96 58982.4 116776.96)
-       )
-      ((>= 124436.48 f0-0)
-       (interpolate f0-0 58982.4 116776.96 124436.48 114688.0)
-       )
-      ((>= 219217.92 f0-0)
-       (interpolate f0-0 124436.48 114688.0 219217.92 113254.4)
-       )
-      (else
-        113254.4
-        )
-      )
-    )
-  )
+      ((< f0-0 52019.2) 111656.96)
+      ((>= 58982.4 f0-0) (interpolate f0-0 52019.2 111656.96 58982.4 116776.96))
+      ((>= 124436.48 f0-0) (interpolate f0-0 58982.4 116776.96 124436.48 114688.0))
+      ((>= 219217.92 f0-0) (interpolate f0-0 124436.48 114688.0 219217.92 113254.4))
+      (else 113254.4))))
 
 (defun misty-ambush-height-probe ((arg0 vector) (arg1 float))
   "Hack to manually compute the ground height in misty ambush."
   (let ((f0-0 (misty-ambush-height arg0)))
     (cond
-      ((< f0-0 (-> arg0 y))
-       (/ (- (-> arg0 y) f0-0) arg1)
-       )
-      (else
-        (format 0 "WARNING: ~%height = ~f, pos.y = ~f" (* 0.00024414062 f0-0) (* 0.00024414062 (-> arg0 y)))
-        -1.0
-        )
-      )
-    )
-  )
+      ((< f0-0 (-> arg0 y)) (/ (- (-> arg0 y) f0-0) arg1))
+      (else (format 0 "WARNING: ~%height = ~f, pos.y = ~f" (/ f0-0 METER_LENGTH) (/ (-> arg0 y) METER_LENGTH)) -1.0))))
 
 (defun pke-collide-test ()
   0
-  (none)
-  )
-
-
-
-
+  (none))

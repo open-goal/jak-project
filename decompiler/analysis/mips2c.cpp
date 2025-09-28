@@ -1,10 +1,11 @@
-#include <set>
-
 #include "mips2c.h"
+
+#include <set>
 
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/print_float.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -228,7 +229,17 @@ struct Mips2C_Output {
     result += "void link() {\n";
     // lookup all symbols
     for (auto& sym : symbol_cache) {
-      result += fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
+      switch (version) {
+        case GameVersion::Jak1:
+        case GameVersion::Jak2:
+          result +=
+              fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
+          break;
+        case GameVersion::Jak3:
+          result += fmt::format("  cache.{} = intern_from_c(-1, 0, \"{}\").c();\n",
+                                goal_to_c_name(sym), sym);
+          break;
+      }
     }
     // this adds us to a table for lookup later, and also allocates our trampoline.
     result += fmt::format("  gLinkedFunctionTable.reg(\"{}\", execute, PUT_STACK_SIZE_HERE);\n",
@@ -703,6 +714,20 @@ Mips2C_Line handle_generic_op2(const Instruction& i0,
   return {fmt::format("c->{}({}, {});", op_name, reg_to_name(i0.get_dst(0)),
                       reg_to_name(i0.get_src(0))),
           instr_str};
+}
+
+Mips2C_Line handle_div_divu(const Instruction& i0,
+                            const std::string& instr_str,
+                            const std::string& op_name) {
+  return {fmt::format("c->{}({}, {});", op_name, reg_to_name(i0.get_src(0)),
+                      reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
+Mips2C_Line handle_generic_op1(const Instruction& i0,
+                               const std::string& instr_str,
+                               const std::string& op_name) {
+  return {fmt::format("c->{}({});", op_name, reg_to_name(i0.get_dst(0))), instr_str};
 }
 
 Mips2C_Line handle_plain_op(const Instruction& /*i0*/,
@@ -1205,6 +1230,14 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_vopmsub(i0, instr_str);
     case InstructionKind::PMFHL_LH:
       return handle_pmfhl_lh(i0, instr_str);
+    case InstructionKind::DIV:
+      return handle_div_divu(i0, instr_str, "div");
+    case InstructionKind::DIVU:
+      return handle_div_divu(i0, instr_str, "divu");
+    case InstructionKind::MFHI:
+      return handle_generic_op1(i0, instr_str, "mfhi");
+    case InstructionKind::MFLO:
+      return handle_generic_op1(i0, instr_str, "mflo");
     default:
       unknown_count++;
       return handle_unknown(instr_str);

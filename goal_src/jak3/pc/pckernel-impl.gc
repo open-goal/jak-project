@@ -1,0 +1,347 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  This file has the game-specific implementation of the pckernel (see pckernel-h.gc and pckernel.gc).
+ |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; constants
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+                                            ;; version: 0.3.0.0
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 3 0 0))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; types and enums
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;; cheats
+(defenum pc-cheats
+  :bitfield #t
+  :type uint64
+  (turbo-board)
+  (health-bars)
+  (vehicle-health-bars)
+  (vehicle-invuln)
+  (statistics)
+  (suck-in-all)
+  (music-player)
+  (no-textures)
+  (fast-speed)
+  (slow-speed)
+  (fast-travel)
+  (orb-tracker)
+  (real-time-of-day)
+  (city-peace)
+  (board-tricks)
+  (weather-bad)
+  (weather-good)
+  )
+
+(defun pc-cheats->string ((cheats pc-cheats) (buf object))
+  (bit-enum->string pc-cheats cheats buf)
+  buf)
+
+;; pc enum for languages. this is the game's languages + custom ones.
+(defenum pc-language
+  :type uint16
+  (english 0)
+  (french 1)
+  (german 2)
+  (spanish 3)
+  (italian 4)
+  (commentary 5)
+  (japanese 6)
+  (korean 7)
+  (russian 8)
+  (portuguese 9)
+  (dutch 10)
+  (uk-english 11)
+  ;; custom
+  (finnish 12)
+  (swedish 13)
+  (danish 14)
+  (norwegian 15)
+  (br-portuguese 16)
+  (hungarian 17)
+  (catalan 18)
+  (icelandic 19)
+  (polish 20)
+  (lithuanian 21)
+
+  (custom 999) ;; temp
+  )
+
+;; The Jak 3 version of the pc-settings object.
+(deftype pc-settings-jak3 (pc-settings)
+  (;; cheats
+   (cheats            pc-cheats)
+   (cheats-revealed   pc-cheats)
+   (cheats-purchased  pc-cheats)
+   (cheats-unlocked   pc-cheats)
+   (cheats-mask       pc-cheats)
+   ;; music
+   (music-unlocked  bit-array)
+   (flava-unlocked  symbol 6)
+
+   ;; misc
+   (fast-airlock?  symbol)
+   (fast-elevator? symbol)
+   (fast-progress? symbol)
+   (minimap-force-north   symbol)
+
+   (fix-projectile-focus  symbol)
+
+   ;(stats   statistics)
+
+   ;; gfx
+   (smooth-minimap?   symbol)
+   (hires-clouds?     symbol)
+
+   ;; other
+   (controller-led-status?    symbol)
+   (controller-swap-r1-r2?    symbol)
+   (speedrunner-mode-custom-bind uint32)
+
+   (memcard-subtitles? symbol)
+
+   (text-language pc-language) ;; language for game text
+   (subtitle-language pc-language)
+	 )
+
+  (:methods
+    (eligible-for-fast-elevator? (_type_ process) symbol)
+    (get-airlock-speed (_type_) float)
+    (get-airlock-close-speed (_type_) float)
+    )
+  )
+
+(define *pc-settings* (the pc-settings-jak3 #f))
+(define *matrix-minimap-north* (quaternion->matrix (new 'static 'matrix) (quaternion-vector-angle! (new 'static 'quaternion) *y-vector* (degrees 180))))
+
+
+;; jak 3 discord rpc structure
+(deftype discord-info (structure)
+  ((orb-count float)
+   (gem-count float)
+   (death-count int32)
+   (status string)
+   (level string)
+   (cutscene? symbol)
+   (time-of-day float)
+   (percent-complete float)
+   (focus-status uint64)
+   (current-vehicle int32)
+   (task string) ;; currenly active game-task used for mission specific images
+   )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; resets
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmethod reset-misc ((obj pc-settings-jak3) (call-handlers symbol))
+  "Set the default misc settings"
+
+  ((method-of-type pc-settings reset-misc) obj call-handlers)
+
+  (true! (-> obj fast-airlock?))
+  (true! (-> obj fast-elevator?))
+  (false! (-> obj fast-progress?))
+  (true! (-> obj fix-projectile-focus))
+  (true! (-> obj smooth-minimap?))
+  (false! (-> obj minimap-force-north))
+  (false! (-> obj hires-clouds?))
+  (set! (-> obj speedrunner-mode-custom-bind) 0)
+
+  (set! (-> obj memcard-volume-sfx) 0.5)
+  (set! (-> obj memcard-volume-music) 0.4)
+  (set! (-> obj memcard-volume-dialog) 0.75)
+  (set! (-> obj memcard-vibration?) #t)
+  (set! (-> obj memcard-subtitles?) #f)
+  (set! (-> obj hinttitles?) #t)
+  0)
+
+(defmethod reset-extra ((obj pc-settings-jak3) (call-handlers symbol))
+  "Set the default goodies settings"
+
+  ((method-of-type pc-settings reset-extra) obj call-handlers)
+
+  (set! (-> obj cheats) (pc-cheats))
+  (set! (-> obj cheats-revealed) (pc-cheats))
+  (set! (-> obj cheats-purchased) (pc-cheats))
+  (set! (-> obj cheats-unlocked) (pc-cheats))
+  (set! (-> obj cheats-mask) (pc-cheats))
+
+  (clear-all! (-> obj music-unlocked))
+  (dotimes (i 6)
+    (set! (-> obj flava-unlocked i) #f))
+
+  ;(set! (-> obj stats) *statistics*)
+  0)
+
+(defmethod reset-input ((obj pc-settings-jak3) (device symbol) (call-handlers symbol))
+  "Set the default input settings"
+
+  ((method-of-type pc-settings reset-input) obj device call-handlers)
+
+  (when (or (= device 'all) (= device 'controller))
+    (set! (-> obj controller-led-status?) #t)
+    )
+  0)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; region debugging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(define *debug-region-tree-name* #f)
+(define *debug-region-show-bsphere* #f)
+(define *debug-region-hide-water* #t)
+(define *debug-region-hide-empty* #t)
+
+(deftype debug-region-color (structure)
+  ((enter   rgba)
+   (exit    rgba))
+  )
+
+(define *debug-region-color-table* (new 'static 'inline-array debug-region-color 3
+    (new 'static 'debug-region-color :enter (static-rgba #xff #xff #x00 #x80) :exit (static-rgba #xff #x00 #x00 #x80))
+    (new 'static 'debug-region-color :enter (static-rgba #x00 #xff #x00 #x80) :exit (static-rgba #xff #x00 #xff #x80))
+    (new 'static 'debug-region-color :enter (static-rgba #x00 #xff #xff #x80) :exit (static-rgba #x00 #x00 #xff #x80))
+    ))
+
+
+(defmacro rgba-with-a (color a)
+  "return a color but with alpha set to a"
+  `(begin
+    (let ((newcol ,color))
+      (set! (-> newcol a) ,a)
+      newcol)))
+
+(defun-debug get-region-enter-color ((name symbol) (alpha int))
+  (rgba-with-a (case name
+                  (('target) (-> *debug-region-color-table* 0 enter))
+                  (('camera) (-> *debug-region-color-table* 1 enter))
+                  (('water) (-> *debug-region-color-table* 2 enter))
+                  (else (-> *debug-region-color-table* 0 enter)))
+              alpha))
+
+(defun-debug get-region-exit-color ((name symbol) (alpha int))
+  (rgba-with-a (case name
+                  (('target) (-> *debug-region-color-table* 0 exit))
+                  (('camera) (-> *debug-region-color-table* 1 exit))
+                  (('water) (-> *debug-region-color-table* 2 exit))
+                  (else (-> *debug-region-color-table* 0 exit)))
+              alpha))
+
+(defmacro region-enter-color (alpha)
+  "return color for the enter side of this region"
+ `(get-region-enter-color *debug-region-tree-name* ,alpha))
+(defmacro region-exit-color (alpha)
+  "return color for the exit side of this region"
+ `(get-region-exit-color *debug-region-tree-name* ,alpha))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; other
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(define *hires-sky* #t)
+(define *fallback-text-lookup?* #t)
+
+
+(defun pc-settings-save ()
+  (commit-to-file *pc-settings*)
+  )
+
+(defun get-video-params () *video-params*)
+
+
+
+;; for debugging
+(defenum pc-pat-skip-hack
+  :bitfield #t
+  (noentity 0)
+  (nocamera 1)
+  (noedge   2)
+  (nogrind  3)
+  (nojak    4)
+  (noboard  5)
+  (nopilot  6)
+  (nolineofsight 16)
+  (unknowncamera 17)
+  (probe    24)
+  (nomech   25)
+  (noproj   26)
+  (noendlessfall  27)
+  (noprobe  28)
+  )
+
+
+
+;; cheat stuff
+
+(defenum pc-cheat-state-flag
+  :bitfield #t
+  :type uint8
+  (turbo-board) ;; should turbo board be used
+  (clear-time-mod)
+  )
+
+(deftype pc-cheat-state (structure)
+  ((progress-speed        float)
+   (airlock-speed         float)
+   (airlock-close-speed   float)
+   (turbo-board-speed     float)
+   (hijack-speech-chance  float)
+   (flags   pc-cheat-state-flag)
+   )
+  )
+
+(define *pc-cheat-state* (new 'static 'pc-cheat-state
+                              :progress-speed 1.5
+                              :airlock-speed 1.75
+                              :airlock-close-speed 1.75
+                              :turbo-board-speed 1.5
+                              :hijack-speech-chance 0.45
+                              ))
+
+(defmacro cheat-state-flag? (&rest flags)
+  "are the specified flags enabled?"
+  `(logtest? (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+
+(defmacro set-cheat-state-flag! (&rest flags)
+  "set the specified flags"
+  `(logior! (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+(defmacro clear-cheat-state-flag! (&rest flags)
+  "clear the specified flags"
+  `(logclear! (-> *pc-cheat-state* flags) (pc-cheat-state-flag ,@flags)))
+
+
+(defmacro give-cheat! (&rest cheats)
+  `(begin
+    (logior! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
+    )
+  )
+
+(defmacro lock-cheat! (&rest cheats)
+  `(begin
+    (logclear! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-purchased) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-unlocked) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
+    )
+  )
+
+

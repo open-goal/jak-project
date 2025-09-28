@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: merc-h.gc
-;; name in dgo: merc-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/data/art-h.gc")
+(require "engine/util/types-h.gc")
 
 ;; The "merc" renderer is the main foreground renderer.
 ;; All foreground objects are stored in merc format.
@@ -14,13 +13,12 @@
 ;; The "ripple" system can apply a ripple effect (for waves or similar) to merc data.
 ;; This defines which vertices should be rippled.
 (deftype ripple-merc-query (inline-array-class)
-  ((start-vertex  int32)
-   (vertex-skip   int32)
-   (vertex-count  int32)
-   (current-loc   int32)
-   (data          vector  :inline :dynamic)
-   )
-  )
+  ((start-vertex int32)
+   (vertex-skip  int32)
+   (vertex-count int32)
+   (current-loc  int32)
+   (data         vector :inline :dynamic)))
+
 (set! (-> ripple-merc-query heap-base) 16)
 
 ;; header to fragments uploaded to VU.
@@ -30,309 +28,257 @@
 ;; fragment in the same merc "effect".
 (deftype merc-byte-header (structure)
   ;; these offsets are after unpacking/upload to VU.
-  ((srcdest-off         uint8) ;; location of srcdst table for vertex copying
-   (rgba-off            uint8) ;; location of rgba data
-   (lump-off            uint8) ;; location of "lump" packed vertex data
-   (fp-off              uint8) ;; location of "fp" data (adgif shader, some floats)
-   (mat1-cnt            uint8) ;; number of vertices influenced by one bone
-   (mat2-cnt            uint8) ;; two bone
-   (mat3-cnt            uint8) ;; three bone
-   (samecopy-cnt        uint8) ;; number of vertices to copy from this fragment
-   (crosscopy-cnt       uint8) ;; copy vertices from previous fragment count
-   (strip-len           uint8) ;; how long is the initial strip before a shader (may be 0, if starts with shader)
-   (mm-quadword-fp-off  uint8) ;; main memory offset of fp data
-   (mm-quadword-size    uint8) ;; main memory size of whole fragment
-   (perc-off            uint8) ;; bone weight table offset
-   (mat-slot            uint8  10) ;; which matrices to upload where for this fragment
-   )
-  )
+  ((srcdest-off uint8) ;; location of srcdst table for vertex copying
+   (rgba-off uint8) ;; location of rgba data
+   (lump-off uint8) ;; location of "lump" packed vertex data
+   (fp-off uint8) ;; location of "fp" data (adgif shader, some floats)
+   (mat1-cnt uint8) ;; number of vertices influenced by one bone
+   (mat2-cnt uint8) ;; two bone
+   (mat3-cnt uint8) ;; three bone
+   (samecopy-cnt uint8) ;; number of vertices to copy from this fragment
+   (crosscopy-cnt uint8) ;; copy vertices from previous fragment count
+   (strip-len uint8) ;; how long is the initial strip before a shader (may be 0, if starts with shader)
+   (mm-quadword-fp-off uint8) ;; main memory offset of fp data
+   (mm-quadword-size uint8) ;; main memory size of whole fragment
+   (perc-off uint8) ;; bone weight table offset
+   (mat-slot uint8 10) ;; which matrices to upload where for this fragment
+   ))
 
 ;; merc VU fragment: contains the header and data.
 (deftype merc-fragment (structure)
-  ((header  merc-byte-header  :inline)
-   (rest    uint8             1)
-   )
+  ((header merc-byte-header :inline)
+   (rest   uint8 1))
   (:methods
-    (login-adgifs (_type_) none)
-    )
-  )
+   (login-adgifs (_type_) none)))
 
 ;; packed merc vertex, before unpack by VIF
 ;; the meaning of flags is situation dependent in the renderer, see extract_merc.cpp
 ;; for the details.
 (deftype merc-vtx (structure)
-  ((mat-0  uint8) ;; matrix number for first bone (and flags)
-   (mat-1  uint8) ;; matrix number for second bone (and flags)
-   (nrm-x  uint8) ;; x component of normal
-   (pos-x  uint8) ;; x component of position
-   (dst-0  uint8) ;; location to place vertex (and flags)
-   (dst-1  uint8) ;; location to place vertex 2 (and flags)
-   (nrm-y  uint8) ;; normal
-   (pos-y  uint8) ;; pos
-   (tex-s  uint8) ;; texture coordinate
-   (tex-t  uint8)
-   (nrm-z  uint8)
-   (pos-z  uint8)
-   )
-  )
+  ((mat-0 uint8) ;; matrix number for first bone (and flags)
+   (mat-1 uint8) ;; matrix number for second bone (and flags)
+   (nrm-x uint8) ;; x component of normal
+   (pos-x uint8) ;; x component of position
+   (dst-0 uint8) ;; location to place vertex (and flags)
+   (dst-1 uint8) ;; location to place vertex 2 (and flags)
+   (nrm-y uint8) ;; normal
+   (pos-y uint8) ;; pos
+   (tex-s uint8) ;; texture coordinate
+   (tex-t uint8)
+   (nrm-z uint8)
+   (pos-z uint8)))
 
 ;; header for fp data within a fragment. Is included in fp data.
 ;; adgifs come right after the header
 (deftype merc-fp-header (structure)
-  ((x-add             float)
-   (y-add             float)
-   (z-add             float)
-   (shader-cnt        uint8)
-   (kick-info-offset  uint8)
-   (kick-info-step    uint8)
-   (hword-cnt         uint8)
-   )
-  )
-
+  ((x-add            float)
+   (y-add            float)
+   (z-add            float)
+   (shader-cnt       uint8)
+   (kick-info-offset uint8)
+   (kick-info-step   uint8)
+   (hword-cnt        uint8)))
 
 (defun merc-fragment-fp-data ((arg0 merc-fragment))
   "Get the floating-point data of a merc-fragment"
-  (the merc-fp-header (&+ arg0 (the-as uint (shl (-> arg0 header mm-quadword-fp-off) 4))))
-  )
+  (the merc-fp-header (&+ arg0 (the-as uint (shl (-> arg0 header mm-quadword-fp-off) 4)))))
 
 ;; a description of a matrix upload to merc
 (deftype merc-mat-dest (structure)
-  ((matrix-number  uint8) ;; the matrix in the skeleton
-   (matrix-dest    uint8) ;; the slot in the shader (only a small number available)
+  ((matrix-number uint8) ;; the matrix in the skeleton
+   (matrix-dest   uint8) ;; the slot in the shader (only a small number available)
    )
-  :pack-me
-  )
+  :pack-me)
 
 ;; some info about a merc fragment that will stay on the EE.
 ;; the merc-effect contains a ref to one of these
 ;; this is all the information needed to generate merc upload dma (counts/sizes)
 (deftype merc-fragment-control (structure)
-  ((unsigned-four-count  uint8)
-   (lump-four-count      uint8)
-   (fp-qwc               uint8)
-   (mat-xfer-count       uint8)
-   (mat-dest-data        merc-mat-dest  :inline :dynamic)
-   )
-  )
+  ((unsigned-four-count uint8)
+   (lump-four-count     uint8)
+   (fp-qwc              uint8)
+   (mat-xfer-count      uint8)
+   (mat-dest-data       merc-mat-dest :inline :dynamic)))
 
 ;; packed blend shape data
 (deftype merc-blend-data (structure)
-  ((int8-data  int8  :dynamic)
-   )
-  )
+  ((int8-data int8 :dynamic)))
 
 ;; info needed to set up blend shapes
 (deftype merc-blend-ctrl (structure)
-  ((blend-vtx-count      uint8)
-   (nonzero-index-count  uint8)
-   (bt-index             uint8  :dynamic)
-   )
-  )
+  ((blend-vtx-count     uint8)
+   (nonzero-index-count uint8)
+   (bt-index            uint8 :dynamic)))
 
 ;; info for environment map "extra"
 (deftype mei-envmap-tint (structure)
-  ((fade0  float)
-   (fade1  float)
-   (tint   uint32)
-   (dummy  int32)
-   )
-  )
+  ((fade0 float)
+   (fade1 float)
+   (tint  uint32)
+   (dummy int32)))
 
 ;; info for texture scrolling "extra"
 (deftype mei-texture-scroll (structure)
-  ((max-dist      float)
-   (st-int-scale  uint8)
-   (time-factor   uint8)
-   (scroll-dir    uint8)
-   (cached-time   uint8)
-   (time-delta    uint8)
-   (dummy         uint8  7)
-   )
-  )
+  ((max-dist     float)
+   (st-int-scale uint8)
+   (time-factor  uint8)
+   (scroll-dir   uint8)
+   (cached-time  uint8)
+   (time-delta   uint8)
+   (dummy        uint8 7)))
 
 ;; info for ripple effect "extra"
 (deftype mei-ripple (structure)
-  ((x-base     float)
-   (z-base     float)
-   (grid-size  float)
-   (angle      float)
-   )
-  )
+  ((x-base    float)
+   (z-base    float)
+   (grid-size float)
+   (angle     float)))
 
 ;; locations of the "extra"s.
 (deftype merc-extra-info (structure)
-  ((envmap-tint-offset     uint8)
-   (shader-offset          uint8)
-   (texture-scroll-offset  uint8)
-   (ripple-offset          uint8)
-   (dummy                  uint8  12)
-   )
-  )
+  ((envmap-tint-offset    uint8)
+   (shader-offset         uint8)
+   (texture-scroll-offset uint8)
+   (ripple-offset         uint8)
+   (dummy                 uint8 12)))
 
 ;; a collection of fragments that must be sent all together.
 ;; and their extra effects.
 (deftype merc-effect (structure)
-  ((frag-geo          merc-fragment)
-   (frag-ctrl         merc-fragment-control)
-   (blend-data        merc-blend-data)
-   (blend-ctrl        merc-blend-ctrl)
-   (dummy0            uint8)
-   (effect-bits       uint8)
-   (frag-count        uint16)
-   (blend-frag-count  uint16)
-   (tri-count         uint16)
-   (dvert-count       uint16)
-   (dummy1            uint8)
-   (envmap-usage      uint8)
-   (extra-info        merc-extra-info)
-   (data              uint64  4 :overlay-at frag-geo)
-   )
+  ((frag-geo         merc-fragment)
+   (frag-ctrl        merc-fragment-control)
+   (blend-data       merc-blend-data)
+   (blend-ctrl       merc-blend-ctrl)
+   (dummy0           uint8)
+   (effect-bits      uint8)
+   (frag-count       uint16)
+   (blend-frag-count uint16)
+   (tri-count        uint16)
+   (dvert-count      uint16)
+   (dummy1           uint8)
+   (envmap-usage     uint8)
+   (extra-info       merc-extra-info)
+   (data             uint64 4 :overlay-at frag-geo))
   (:methods
-    (login-adgifs (_type_) none)
-    )
-  )
+   (login-adgifs (_type_) none)))
 
 ;; eye info (for a single eye)
 ;; there's a pupil, iris, and lid. The pupil and iris can move around (together),
 ;; The pupil/iris can be scaled (independtenly)
 ;; the eyelid goes up and down
 (deftype merc-eye-ctrl (structure)
-  ((eye-slot       int8)
-   (shader-offset  int8)
-   (shader-count   int8)
-   (shader         adgif-shader  3 :inline)
-   (iris-shader    adgif-shader  :inline :overlay-at (-> shader 0))
-   (pupil-shader   adgif-shader  :inline :overlay-at (-> shader 1))
-   (lid-shader     adgif-shader  :inline :overlay-at (-> shader 2))
-   )
-  )
+  ((eye-slot      int8)
+   (shader-offset int8)
+   (shader-count  int8)
+   (shader        adgif-shader 3 :inline)
+   (iris-shader   adgif-shader :inline :overlay-at (-> shader 0))
+   (pupil-shader  adgif-shader :inline :overlay-at (-> shader 1))
+   (lid-shader    adgif-shader :inline :overlay-at (-> shader 2))))
 
 ;; single frame for eye animation
 (deftype merc-eye-anim-frame (structure)
-  ((pupil-trans-x  int8)
-   (pupil-trans-y  int8)
-   (blink          int8)
-   (iris-scale     int8    :offset   4)
-   (pupil-scale    int8)
-   (lid-scale      int8)
-   (dword          uint64  :overlay-at pupil-trans-x)
-   )
-  :pack-me
-  )
+  ((pupil-trans-x int8)
+   (pupil-trans-y int8)
+   (blink         int8)
+   (iris-scale    int8 :offset 4)
+   (pupil-scale   int8)
+   (lid-scale     int8)
+   (dword         uint64 :overlay-at pupil-trans-x))
+  :pack-me)
 
 ;; just an array of eye anim frames.
 (deftype merc-eye-anim-block (structure)
-  ((max-frame  int16)
-   (data       merc-eye-anim-frame  :inline :dynamic :offset   8)
-   )
-  )
-
+  ((max-frame int16)
+   (data      merc-eye-anim-frame :inline :dynamic :offset 8)))
 
 ;; metadata for merc art for a single model
 ;; mostly just stats and parameters used in dma/rendering.
 (deftype merc-ctrl-header (structure)
-  ((xyz-scale               float)
-   (st-magic                uint32)
-   (st-out-a                uint32)
-   (st-out-b                uint32)
-   (st-vif-add              uint32)
-   (st-int-off              uint16)
-   (st-int-scale            uint16)
-   (effect-count            uint32)
-   (blend-target-count      uint32)
-   (fragment-count          uint16)
-   (tri-count               uint16)
-   (matrix-count            uint8)
-   (shader-count            uint8)
-   (transform-vertex-count  uint16)
-   (dvert-count             uint16)
-   (one-mat-count           uint16)
-   (two-mat-count           uint16)
-   (two-mat-reuse-count     uint16)
-   (three-mat-count         uint16)
-   (three-mat-reuse-count   uint16)
-   (shader-upload-count     uint8)
-   (matrix-upload-count     uint8)
-   (same-copy-count         uint16)
-   (cross-copy-count        uint16)
-   (num-verts               uint16)
-   (longest-edge            float)
-   (eye-ctrl                merc-eye-ctrl)
-   (masks                   uint32  3)
-   (dummy-bytes             uint8   48 :overlay-at fragment-count)
-   (envmap-tint             uint32     :overlay-at fragment-count)
-   (query                   basic      :overlay-at matrix-count)
-   (needs-clip              uint8      :overlay-at dvert-count)
-   (use-isometric           uint8      :overlay-at (-> dummy-bytes 9))
-   (use-attached-shader     uint8      :overlay-at one-mat-count)
-   (display-triangles       uint8      :overlay-at (-> dummy-bytes 11))
-   (death-vertex-skip       uint16     :overlay-at two-mat-count)
-   (death-start-vertex      uint16     :overlay-at two-mat-reuse-count)
-   (death-effect            uint32     :overlay-at three-mat-count)
-   (use-translucent         uint8      :overlay-at shader-upload-count)
-   (display-this-fragment   uint8      :overlay-at matrix-upload-count)
-   )
-  )
+  ((xyz-scale              float)
+   (st-magic               uint32)
+   (st-out-a               uint32)
+   (st-out-b               uint32)
+   (st-vif-add             uint32)
+   (st-int-off             uint16)
+   (st-int-scale           uint16)
+   (effect-count           uint32)
+   (blend-target-count     uint32)
+   (fragment-count         uint16)
+   (tri-count              uint16)
+   (matrix-count           uint8)
+   (shader-count           uint8)
+   (transform-vertex-count uint16)
+   (dvert-count            uint16)
+   (one-mat-count          uint16)
+   (two-mat-count          uint16)
+   (two-mat-reuse-count    uint16)
+   (three-mat-count        uint16)
+   (three-mat-reuse-count  uint16)
+   (shader-upload-count    uint8)
+   (matrix-upload-count    uint8)
+   (same-copy-count        uint16)
+   (cross-copy-count       uint16)
+   (num-verts              uint16)
+   (longest-edge           float)
+   (eye-ctrl               merc-eye-ctrl)
+   (masks                  uint32 3)
+   (dummy-bytes            uint8 48 :overlay-at fragment-count)
+   (envmap-tint            uint32 :overlay-at fragment-count)
+   (query                  basic :overlay-at matrix-count)
+   (needs-clip             uint8 :overlay-at dvert-count)
+   (use-isometric          uint8 :overlay-at (-> dummy-bytes 9))
+   (use-attached-shader    uint8 :overlay-at one-mat-count)
+   (display-triangles      uint8 :overlay-at (-> dummy-bytes 11))
+   (death-vertex-skip      uint16 :overlay-at two-mat-count)
+   (death-start-vertex     uint16 :overlay-at two-mat-reuse-count)
+   (death-effect           uint32 :overlay-at three-mat-count)
+   (use-translucent        uint8 :overlay-at shader-upload-count)
+   (display-this-fragment  uint8 :overlay-at matrix-upload-count)))
 
 ;; the actual merc art object: a header and list of effects
 (deftype merc-ctrl (art-element)
-  ((num-joints  int32             :overlay-at (-> pad 0))
-   (header      merc-ctrl-header  :inline)
-   (effect      merc-effect       :inline :dynamic)
-   )
-  )
+  ((num-joints int32 :overlay-at (-> pad 0))
+   (header     merc-ctrl-header :inline)
+   (effect     merc-effect :inline :dynamic)))
 
 ;; low memory upload to vu1 for merc (which merc later writes over)
 (deftype merc-vu1-low-mem (structure)
-  ((tri-strip-gif  gs-gif-tag  :inline)
-   (ad-gif         gs-gif-tag  :inline)
-   (hvdf-offset    vector      :inline)
-   (perspective    uint128     4)
-   (fog            vector      :inline)
-   )
-  )
-
+  ((tri-strip-gif gs-gif-tag :inline)
+   (ad-gif        gs-gif-tag :inline)
+   (hvdf-offset   vector :inline)
+   (perspective   uint128 4)
+   (fog           vector :inline)))
 
 (deftype ripple-wave (structure)
-  ((scale  float)
-   (offs   float)
-   (xdiv   int16)
-   (zdiv   int16)
-   (speed  float)
-   (xmul   float)
-   (zmul   float)
-   (delta  float)
-   )
-  :pack-me
-  )
-
+  ((scale float)
+   (offs  float)
+   (xdiv  int16)
+   (zdiv  int16)
+   (speed float)
+   (xmul  float)
+   (zmul  float)
+   (delta float))
+  :pack-me)
 
 (deftype ripple-wave-set (basic)
-  ((count         int32)
-   (converted     basic)
-   (frame-save    uint32)
-   (normal-scale  float)
-   (wave          ripple-wave  4 :inline)
-   )
-  )
-
+  ((count        int32)
+   (converted    basic)
+   (frame-save   uint32)
+   (normal-scale float)
+   (wave         ripple-wave 4 :inline)))
 
 (deftype ripple-control (basic)
-  ((global-scale             float)
-   (last-frame-scale         float)
-   (close-fade-dist          float)
-   (far-fade-dist            float)
-   (faded-scale              float)
-   (individual-normal-scale  float)
-   (waveform                 ripple-wave-set)
-   (send-query               symbol)
-   (query                    ripple-merc-query)
-   )
+  ((global-scale            float)
+   (last-frame-scale        float)
+   (close-fade-dist         float)
+   (far-fade-dist           float)
+   (faded-scale             float)
+   (individual-normal-scale float)
+   (waveform                ripple-wave-set)
+   (send-query              symbol)
+   (query                   ripple-merc-query))
   (:methods
-    (new (symbol type) _type_)
-    )
-  )
-
+   (new (symbol type) _type_)))
 
 (defmethod new ripple-control ((allocation symbol) (type-to-make type))
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
@@ -345,6 +291,4 @@
     (set! (-> this individual-normal-scale) 1.0)
     (set! (-> this send-query) #f)
     (set! (-> this query) #f)
-    this
-    )
-  )
+    this))

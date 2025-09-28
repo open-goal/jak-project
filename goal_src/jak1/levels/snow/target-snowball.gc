@@ -1,23 +1,14 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: target-snowball.gc
-;; name in dgo: target-snowball
-;; dgos: L1, SNO
-
+(bundles "SNO.DGO")
+(require "engine/target/logic-target.gc")
 
 ;; DECOMP BEGINS
 
 (deftype snowball-info (basic)
-  ((entity  basic)
-   )
-  )
+  ((entity basic)))
 
-
-(deftype snowball-bank (basic)
-  ()
-  )
-
+(deftype snowball-bank (basic) ())
 
 (define *SNOWBALL-bank* (new 'static 'snowball-bank))
 
@@ -29,92 +20,68 @@
       (flag-setup)
       (build-conversions (-> self control transv))
       (reverse-conversions (-> self control transv))
-      (post-flag-setup)
-      )
-    (set-time-ratios *display* (the float gp-0))
-    )
+      (post-flag-setup))
+    (set-time-ratios *display* (the float gp-0)))
   (rot->dir-targ! (-> self control))
   (ja-post)
   (joint-points)
   (do-target-shadow)
   (target-powerup-process)
   0
-  (none)
-  )
+  (none))
 
 (defstate target-snowball-start (target)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (cond
-      ((and (= message 'query) (= (-> block param 0) 'mode))
-       'snowball
-       )
-      ((let ((v1-3 message))
-         (= v1-3 'end-mode)
-         )
-       (go
-         target-jump
-         (-> *TARGET-bank* duck-jump-height-min)
-         (-> *TARGET-bank* duck-jump-height-max)
-         (the-as surface #f)
-         )
-       )
-      (else
-        (target-generic-event-handler proc argc message block)
-        )
-      )
-    )
-  :exit (behavior ()
-    (when (!= (-> self next-state name) 'target-snowball)
-      (let ((v1-1 (-> self manipy)))
-        (when v1-1
-          (deactivate (-> v1-1 0))
-          (set! (-> self manipy) (the-as (pointer manipy) #f))
-          )
-        )
-      (logclear! (-> self control root-prim prim-core action) (collide-action snowball))
-      (set! (-> self control unknown-surface00) *walk-mods*)
-      (set! (-> self control dynam gravity-max) (-> self control unknown-dynamics00 gravity-max))
-      (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
-      (target-collide-set! 'normal 0.0)
-      (set! (-> self control reaction) target-collision-reaction)
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (cond
+        ((and (= message 'query) (= (-> block param 0) 'mode)) 'snowball)
+        ((let ((v1-3 message)) (= v1-3 'end-mode))
+         (go target-jump (-> *TARGET-bank* duck-jump-height-min) (-> *TARGET-bank* duck-jump-height-max) (the-as surface #f)))
+        (else (target-generic-event-handler proc argc message block))))
+  :exit
+    (behavior ()
+      (when (!= (-> self next-state name) 'target-snowball)
+        (let ((v1-1 (-> self manipy)))
+          (when v1-1
+            (deactivate (-> v1-1 0))
+            (set! (-> self manipy) (the-as (pointer manipy) #f))))
+        (logclear! (-> self control root-prim prim-core action) (collide-action snowball))
+        (set! (-> self control unknown-surface00) *walk-mods*)
+        (set! (-> self control dynam gravity-max) (-> self control unknown-dynamics00 gravity-max))
+        (set! (-> self control dynam gravity-length) (-> self control unknown-dynamics00 gravity-length))
+        (target-collide-set! 'normal 0.0)
+        (set! (-> self control reaction) target-collision-reaction)
+        (target-exit)))
+  :code
+    (behavior ((arg0 handle))
       (target-exit)
-      )
-    )
-  :code (behavior ((arg0 handle))
-    (target-exit)
-    (set! *display-profile* #f)
-    (set! *display-entity-errors* #f)
-    (if (zero? (-> self snowball))
-        (set! (-> self snowball) (new 'process 'snowball-info))
-        )
-    (set! (-> self snowball entity) #f)
-    (let ((a0-2 (handle->process arg0)))
-      (if a0-2
-          (set! (-> self snowball entity) (-> a0-2 entity))
-          )
-      )
-    (reset-target-state #t)
-    (set! (-> self control transv quad) (the-as uint128 0))
-    (set! (-> self control unknown-float01) 0.0)
-    (move-by-vector! (-> self control) (new 'static 'vector :y 4096.0 :w 1.0))
-    (logior! (-> self control root-prim prim-core action) (collide-action snowball))
-    (ja-channel-set! 1)
-    (ja :group! eichar-stance-loop-ja :num! min)
-    (remove-exit)
-    (go target-snowball)
-    )
-  :post target-post
-  )
+      (set! *display-profile* #f)
+      (set! *display-entity-errors* #f)
+      (if (zero? (-> self snowball)) (set! (-> self snowball) (new 'process 'snowball-info)))
+      (set! (-> self snowball entity) #f)
+      (let ((a0-2 (handle->process arg0))) (if a0-2 (set! (-> self snowball entity) (-> a0-2 entity))))
+      (reset-target-state #t)
+      (set! (-> self control transv quad) (the-as uint128 0))
+      (set! (-> self control unknown-float01) 0.0)
+      (move-by-vector! (-> self control) (new 'static 'vector :y 4096.0 :w 1.0))
+      (logior! (-> self control root-prim prim-core action) (collide-action snowball))
+      (ja-channel-set! 1)
+      (ja :group! eichar-stance-loop-ja :num! min)
+      (remove-exit)
+      (go target-snowball))
+  :post target-post)
 
 (defstate target-snowball (target)
-  :event (-> target-snowball-start event)
-  :exit (-> target-snowball-start exit)
-  :code (behavior ()
-    (loop
-      (suspend)
-      )
-    )
-  :post (behavior ()
-    (target-snowball-post)
-    )
-  )
+  :event
+    (-> target-snowball-start
+        event)
+  :exit
+    (-> target-snowball-start
+        exit)
+  :code
+    (behavior ()
+      (loop
+        (suspend)))
+  :post
+    (behavior ()
+      (target-snowball-post)))

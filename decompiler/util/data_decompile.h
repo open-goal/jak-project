@@ -107,7 +107,10 @@ T extract_bitfield(T input, int start_bit, int size) {
 std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
                                                              const TypeSystem& ts,
                                                              u64 value);
-
+std::optional<std::vector<std::string>> try_decompile_bitfield_enum_from_int(const TypeSpec& type,
+                                                                             const TypeSystem& ts,
+                                                                             u64 value,
+                                                                             bool require_success);
 std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
     const TypeSpec& type,
     const TypeSystem& ts,
@@ -132,7 +135,7 @@ struct ArrayFieldDecompMeta {
   ArrayFieldDecompMeta(TypeSpec _element_type,
                        int _bytes_per_element,
                        Kind _kind = Kind::REF_TO_INLINE_ARR)
-      : element_type(_element_type), bytes_per_element(_bytes_per_element), kind(_kind){};
+      : element_type(_element_type), bytes_per_element(_bytes_per_element), kind(_kind) {};
 };
 
 extern const std::unordered_map<

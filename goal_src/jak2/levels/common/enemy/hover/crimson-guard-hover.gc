@@ -44,7 +44,7 @@
   )
 
 (defpart 745
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 2))
     (:rot-x (degrees 11.25))
@@ -78,7 +78,7 @@
   )
 
 (defpart 750
-  :init-specs ((:texture (new 'static 'texture-id :index #x34 :page #xc))
+  :init-specs ((:texture (explosion-wave effects))
     (:num 2.0 0.2)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0) (degrees 3600) :store)
@@ -104,7 +104,7 @@
   )
 
 (defpart 749
-  :init-specs ((:texture (new 'static 'texture-id :index #x33 :page #xc))
+  :init-specs ((:texture (explosion-nebula effects))
     (:birth-func 'birth-func-texture-group)
     (:num 3.0)
     (:scale-x (meters 1) (meters 1))
@@ -165,7 +165,7 @@
   )
 
 (defpart 744
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 5))
     (:rot-x (degrees 11.25))
@@ -199,7 +199,7 @@
   )
 
 (defpart 748
-  :init-specs ((:texture (new 'static 'texture-id :index #x32 :page #xc))
+  :init-specs ((:texture (specs effects))
     (:num 8.0 2.0)
     (:x (meters 0.25))
     (:scale-x (meters 1) (meters 0.25))
@@ -243,7 +243,7 @@
   )
 
 (defpart 746
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 8.0 1.0)
     (:x (meters 0) (meters 0.6))
     (:scale-x (meters 2.5) (meters 2))
@@ -294,7 +294,7 @@
   )
 
 (defpart 747
-  :init-specs ((:texture (new 'static 'texture-id :index #x31 :page #xc))
+  :init-specs ((:texture (flamingstick effects))
     (:num 4.0 2.0)
     (:scale-x (meters 0.2) (meters 0.5))
     (:rot-x 4)
@@ -314,7 +314,7 @@
   )
 
 (defpart 761
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:y (meters 0.5) (meters 1))
     (:scale-x (meters 1.5) (meters 1.5))
@@ -341,7 +341,7 @@
   )
 
 (defpart 763
-  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+  :init-specs ((:texture (motion-blur-part effects))
     (:num 4.0)
     (:y (meters 0.75))
     (:scale-x (meters 6))
@@ -369,7 +369,7 @@
   )
 
 (defpart 765
-  :init-specs ((:texture (new 'static 'texture-id :index #x29 :page #xc))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:y (meters 1))
     (:scale-x (meters 8))
@@ -385,7 +385,7 @@
   )
 
 (defpart 766
-  :init-specs ((:texture (new 'static 'texture-id :index #xb :page #xc))
+  :init-specs ((:texture (crate-metalbolt-splinter effects))
     (:num 4.5)
     (:x (meters -0.5) (meters 1))
     (:y (meters 0.25) (meters 1.5))
@@ -585,7 +585,7 @@
 
 ;; WARN: Return type mismatch int vs sound-id.
 (defmethod enemy-method-135 ((this crimson-guard-hover) (arg0 int))
-  (if (and (zero? arg0) (logtest? #x4000000 (-> this incoming penetrate-using)))
+  (if (and (zero? arg0) (logtest? (penetrate enemy-yellow-shot) (-> this incoming penetrate-using)))
       (sound-play "hover-take-hit")
       (call-parent-method this arg0)
       )
@@ -600,7 +600,7 @@
           (t9-0)
           )
       )
-    (set! (-> self last-fire-time) (+ (current-time) (the int (* 300.0 (get-rand-float-range self 2.0 3.0)))))
+    (set! (-> self last-fire-time) (+ (current-time) (the int (* 300.0 (rnd-float-range self 2.0 3.0)))))
     (go-virtual ambush-fly)
     )
   :exit (behavior ()
@@ -907,11 +907,7 @@
 (defstate knocked (crimson-guard-hover)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     )
   )
 
@@ -926,29 +922,29 @@
       (ja :num! (seek!))
       )
     (set! (-> self restart-fly-anims) #t)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
     (let ((v1-34 (-> self enemy-flags)))
-      (if (logtest? v1-34 (enemy-flag checking-water))
-          (set! v1-35 (logior v1-34 (enemy-flag enable-on-active)))
-          (set! v1-35 (logclear v1-34 (enemy-flag enable-on-active)))
+      (if (logtest? v1-34 (enemy-flag vulnerable-backup))
+          (set! v1-35 (logior v1-34 (enemy-flag vulnerable)))
+          (set! v1-35 (logclear v1-34 (enemy-flag vulnerable)))
           )
       )
     (set! (-> self enemy-flags) v1-35)
-    (if (logtest? (-> self enemy-flags) (enemy-flag look-at-move-dest))
+    (if (logtest? (-> self enemy-flags) (enemy-flag attackable-backup))
         (logior! (-> self mask) (process-mask collectable))
         (logclear! (-> self mask) (process-mask collectable))
         )
     (let ((v1-42 (-> self enemy-flags)))
-      (if (logtest? (enemy-flag no-initial-move-to-ground) v1-42)
-          (set! v1-43 (logior (enemy-flag check-water-backup) v1-42))
-          (set! v1-43 (logclear v1-42 (enemy-flag check-water-backup)))
+      (if (logtest? (enemy-flag trackable-backup) v1-42)
+          (set! v1-43 (logior (enemy-flag trackable) v1-42))
+          (set! v1-43 (logclear v1-42 (enemy-flag trackable)))
           )
       )
     (set! (-> self enemy-flags) v1-43)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (logclear! (-> self focus-status) (focus-status hit))
     (hover-nav-control-method-21 (-> self hover))
     (go-hostile self)
@@ -959,7 +955,7 @@
   :virtual #t
   :event enemy-event-handler
   :code (behavior ()
-    (dispose! self)
+    (dying self)
     (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (collide-spec))
       (set! (-> v1-3 prim-core collide-with) (collide-spec))
@@ -967,10 +963,7 @@
     0
     (set! (-> self hit-points) 0)
     (do-effect (-> self skel effect) 'death-default 0.0 -1)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (send-event self 'death-end)
     (cleanup-for-death self)
@@ -981,11 +974,7 @@
 (defstate flying-death (crimson-guard-hover)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
       (when gp-0
         (let ((t9-3 (method-of-type part-tracker activate)))
@@ -1042,11 +1031,7 @@
 (defstate flying-death-explode (crimson-guard-hover)
   :virtual #t
   :enter (behavior ()
-    (let ((t9-1 (-> (find-parent-state) enter)))
-      (if t9-1
-          (t9-1)
-          )
-      )
+    (call-parent-state-handler enter)
     (sound-play "hover-explode")
     (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
       (when gp-1
@@ -1094,7 +1079,7 @@
 
 (defmethod general-event-handler ((this crimson-guard-hover) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v1-15 enemy-flag))
   (case arg2
     (('attack-invinc)
@@ -1113,9 +1098,9 @@
        (hover-nav-control-method-20 (-> this hover))
        (hover-enemy-method-140 this #t)
        (let ((v1-14 (-> this enemy-flags)))
-         (if (logtest? v1-14 (enemy-flag checking-water))
-             (set! v1-15 (logior v1-14 (enemy-flag enable-on-active)))
-             (set! v1-15 (logclear v1-14 (enemy-flag enable-on-active)))
+         (if (logtest? v1-14 (enemy-flag vulnerable-backup))
+             (set! v1-15 (logior v1-14 (enemy-flag vulnerable)))
+             (set! v1-15 (logclear v1-14 (enemy-flag vulnerable)))
              )
          )
        (set! (-> this enemy-flags) v1-15)
@@ -1247,7 +1232,7 @@
                 )
              (vector-negate! gp-1 gp-1)
              )
-         (let ((f30-1 (get-rand-float-range this 0.0 1.0))
+         (let ((f30-1 (rnd-float-range this 0.0 1.0))
                (s5-1 (-> this enemy-info))
                )
            (vector-float*! gp-1 gp-1 (lerp (-> s5-1 knocked-hard-vxz-lo) (-> s5-1 knocked-hard-vxz-hi) f30-1))
@@ -1263,7 +1248,7 @@
   (none)
   )
 
-(defmethod enemy-method-77 ((this crimson-guard-hover) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this crimson-guard-hover) (arg0 enemy-knocked-info))
   (ja-channel-push! 1 0)
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-5))
@@ -1272,7 +1257,7 @@
        (set! (-> a0-3 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 12)) frames num-frames) -1))
              )
-       (set! (-> a0-3 param 1) (-> arg0 0))
+       (set! (-> a0-3 param 1) (-> arg0 anim-speed))
        (set! (-> a0-3 frame-num) 0.0)
        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 12)) num-func-seek!)
        )
@@ -1284,7 +1269,7 @@
         (set! (-> a0-4 param 0)
               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 10)) frames num-frames) -1))
               )
-        (set! (-> a0-4 param 1) (-> arg0 0))
+        (set! (-> a0-4 param 1) (-> arg0 anim-speed))
         (set! (-> a0-4 frame-num) 0.0)
         (joint-control-channel-group! a0-4 (the-as art-joint-anim (-> this draw art-group data 10)) num-func-seek!)
         )
@@ -1294,7 +1279,7 @@
   #t
   )
 
-(defmethod enemy-method-78 ((this crimson-guard-hover) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this crimson-guard-hover) (arg0 enemy-knocked-info))
   (cond
     ((zero? (-> this hit-points))
      (ja-channel-push! 1 (seconds 0.4))
@@ -1303,7 +1288,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 19)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 19)) num-func-seek!)
        )
@@ -1315,11 +1300,11 @@
     )
   )
 
-(defmethod track-target! ((this crimson-guard-hover))
+(defmethod common-post ((this crimson-guard-hover))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (seek! (-> this gun-x-angle) (-> this gun-x-angle-final) (* 21845.334 (seconds-per-frame)))
   (let* ((s5-0 (hover-nav-control-method-16 (-> this hover) (new 'stack-no-clear 'vector)))
          (s4-0
@@ -1346,7 +1331,7 @@
       (* 2.0 (seconds-per-frame))
       )
     )
-  (let ((t9-6 (method-of-type hover-enemy track-target!)))
+  (let ((t9-6 (method-of-type hover-enemy common-post)))
     (t9-6 this)
     )
   (los-control-method-9 (-> this los) (the-as process-focusable #f) (the-as vector #f) 2048.0)
@@ -1387,10 +1372,10 @@
                              (-> arg0 thrust s3-0)
                              (+ (* 0.4 (fmax 0.0 (* (-> v0-6 x) s0-0)))
                                 (fmax 0.0 (-> v0-6 y))
-                                (fabs (* 0.2 (-> v0-6 z)))
+                                (fabs (/ (-> v0-6 z) 5))
                                 (fmax 0.0 (-> s1-1 y))
                                 )
-                             (* 0.2 f30-0)
+                             (/ f30-0 5)
                              )
                            )
                          )
@@ -1412,7 +1397,7 @@
                         (set! (-> *part-id-table* 721 init-specs 0 initial-valuef) (* f24-0 f0-14))
                         (set! (-> arg0 thrust s3-0) f28-0)
                         (let ((f0-15 (* f26-0 f0-14)))
-                          (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (* -0.5 f0-15))
+                          (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (/ f0-15 -2))
                           )
                         )
                       )
@@ -1488,7 +1473,7 @@
           )
         (set! (-> *part-id-table* 721 init-specs 0 initial-valuef) f1-0)
         )
-      (let ((v1-29 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (* -0.5 f0-0))))
+      (let ((v1-29 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 vector 1) (/ f0-0 -2))))
         (vector+! (-> s5-0 trans) s4-0 v1-29)
         )
       )
@@ -1693,23 +1678,24 @@
   )
 
 ;; WARN: Return type mismatch hover-enemy vs crimson-guard-hover.
-(defmethod relocate ((this crimson-guard-hover) (arg0 int))
+(defmethod relocate ((this crimson-guard-hover) (offset int))
   (if (nonzero? (-> this gun-jmod))
-      (&+! (-> this gun-jmod) arg0)
+      (&+! (-> this gun-jmod) offset)
       )
   (if (nonzero? (-> this hips-jmod))
-      (&+! (-> this hips-jmod) arg0)
+      (&+! (-> this hips-jmod) offset)
       )
   (if (nonzero? (-> this smoke-part))
-      (&+! (-> this smoke-part) arg0)
+      (&+! (-> this smoke-part) offset)
       )
   (if (nonzero? (-> this engine-part))
-      (&+! (-> this engine-part) arg0)
+      (&+! (-> this engine-part) offset)
       )
-  (the-as crimson-guard-hover ((method-of-type hover-enemy relocate) this arg0))
+  (the-as crimson-guard-hover ((method-of-type hover-enemy relocate) this offset))
   )
 
 (defmethod deactivate ((this crimson-guard-hover))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this smoke-part))
       (kill-and-free-particles (-> this smoke-part))
       )
@@ -1743,7 +1729,7 @@
   (set! (-> this gun-x-angle-final) 0.0)
   (set! (-> this hips-jmod) (the-as joint-mod (new 'process 'joint-mod-rotate-local this 18 #t)))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-30 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (if (and v1-30 (= (-> sv-16 elt-count) 1))

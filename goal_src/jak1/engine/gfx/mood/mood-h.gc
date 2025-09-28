@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: mood-h.gc
-;; name in dgo: mood-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
 
 ;; the "mood" system sets the fog, lights, and sun to smoothly blend between two levels.
 ;; each level has 8 "moods" corresponding to the 8 times of day.
@@ -13,77 +11,61 @@
 
 ;; set of fog parameters
 (deftype mood-fog (structure)
-  ((fog-color    vector  :inline)
-   (fog-dists    vector  :inline)
-   (fog-start    meters  :overlay-at (-> fog-dists x))
-   (fog-end      meters  :overlay-at (-> fog-dists y))
-   (fog-max      float   :overlay-at (-> fog-dists z))
-   (fog-min      float   :overlay-at (-> fog-dists w))
-   (erase-color  vector  :inline)
-   )
-  )
+  ((fog-color   vector :inline)
+   (fog-dists   vector :inline)
+   (fog-start   meters :overlay-at (-> fog-dists x))
+   (fog-end     meters :overlay-at (-> fog-dists y))
+   (fog-max     float :overlay-at (-> fog-dists z))
+   (fog-min     float :overlay-at (-> fog-dists w))
+   (erase-color vector :inline)))
 
 ;; a fog pattern for each of the 8 moods
 (deftype mood-fog-table (structure)
-  ((data  mood-fog  8 :inline)
-   )
-  )
+  ((data mood-fog 8 :inline)))
 
 ;; a set of light parameters
 (deftype mood-lights (structure)
-  ((direction  vector  :inline)
-   (lgt-color  vector  :inline)
-   (prt-color  vector  :inline)
-   (amb-color  vector  :inline)
-   (shadow     vector  :inline)
-   )
-  )
+  ((direction vector :inline)
+   (lgt-color vector :inline)
+   (prt-color vector :inline)
+   (amb-color vector :inline)
+   (shadow    vector :inline)))
 
 ;; a light parameter for each of the 8 moods
 (deftype mood-lights-table (structure)
-  ((data  mood-lights  8 :inline)
-   )
-  )
+  ((data mood-lights 8 :inline)))
 
 ;; settings for the sun
 (deftype mood-sun (structure)
-  ((sun-color  vector  :inline)
-   (env-color  vector  :inline)
-   )
-  )
+  ((sun-color vector :inline)
+   (env-color vector :inline)))
 
 ;; sun settings for each of the 8 moods
 (deftype mood-sun-table (structure)
-  ((data  mood-sun  8 :inline)
-   )
-  )
+  ((data mood-sun 8 :inline)))
 
 ;; all the current mood settings
 (deftype mood-context (basic)
-  ((mood-fog-table        mood-fog-table)
-   (mood-lights-table     mood-lights-table)
-   (mood-sun-table        mood-sun-table)
-   (fog-interp            sky-color-day)
-   (palette-interp        sky-color-day)
-   (sky-texture-interp    sky-color-day)
-   (current-fog           mood-fog     :inline)
-   (current-sun           mood-sun     :inline)
-   (current-prt-color     vector       :inline)
-   (current-shadow        vector       :inline)
-   (current-shadow-color  vector       :inline)
-   (light-group           light-group  8 :inline)
-   (times                 vector       8 :inline)
-   (sky-times             float        8)
-   (itimes                vector4w     4 :inline)
-   (state                 uint8        16)
-   (num-stars             float)
-   (some-byte             uint8        :offset 1939)
-   )
+  ((mood-fog-table       mood-fog-table)
+   (mood-lights-table    mood-lights-table)
+   (mood-sun-table       mood-sun-table)
+   (fog-interp           sky-color-day)
+   (palette-interp       sky-color-day)
+   (sky-texture-interp   sky-color-day)
+   (current-fog          mood-fog :inline)
+   (current-sun          mood-sun :inline)
+   (current-prt-color    vector :inline)
+   (current-shadow       vector :inline)
+   (current-shadow-color vector :inline)
+   (light-group          light-group 8 :inline)
+   (times                vector 8 :inline)
+   (sky-times            float 8)
+   (itimes               vector4w 4 :inline)
+   (state                uint8 16)
+   (num-stars            float)
+   (some-byte            uint8 :offset 1939))
   (:methods
-    (new (symbol type) _type_)
-    )
-  )
-
+   (new (symbol type) _type_)))
 
 (defmethod new mood-context ((allocation symbol) (type-to-make type))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
@@ -95,6 +77,4 @@
     (set-vector! (-> v0-0 times 5) 1.0 1.0 1.0 0.0)
     (set-vector! (-> v0-0 times 6) 1.0 1.0 1.0 0.0)
     (set-vector! (-> v0-0 times 7) 1.0 1.0 1.0 0.0)
-    v0-0
-    )
-  )
+    v0-0))

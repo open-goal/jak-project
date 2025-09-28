@@ -5,5 +5,201 @@
 ;; name in dgo: trail-h
 ;; dgos: GAME
 
+;; +++trail-node-flag
+(defenum trail-node-flag
+  :type uint8
+  :bitfield #t
+  (tnf0 0) ;; unused??
+  (tnf1 1)
+  (tnf2 2)
+  )
+;; ---trail-node-flag
+
+
+;; +++conn-flag
+(defenum conn-flag
+  :type uint8
+  :bitfield #t
+  (cf0 0)
+  (cf1 1)
+  (cf2 2)
+  (cf3 3)
+  (cf4 4)
+  (cf5 5)
+  (cf6 6)
+  )
+;; ---conn-flag
+
+
+(declare-type trail-graph basic)
+
 ;; DECOMP BEGINS
 
+(deftype trail-node (structure)
+  ((next-id          int16)
+   (prev-id          int16)
+   (parent-id        int16)
+   (x                int16)
+   (y                int16)
+   (z                int16)
+   (first-conn       uint16)
+   (cost-from-start  uint16)
+   (cost-to-goal     uint16)
+   (flags            trail-node-flag)
+   (conn-count       uint8)
+   )
+  :pack-me
+  (:methods
+    (get-dist-score (_type_ vector) uint)
+    (debug-draw (_type_ int) symbol)
+    (get-position (_type_ vector) vector)
+    )
+  )
+
+
+(deftype trail-visgroup (structure)
+  ((first-node  uint16)
+   (node-count  uint8)
+   (pad         uint8)
+   )
+  )
+
+
+(deftype trail-blocker (structure)
+  ((plane           plane   :inline)
+   (center          vector  :inline)
+   (radius-squared  float   :overlay-at (-> center data 3))
+   )
+  )
+
+
+(deftype trail-conn (structure)
+  ((head-id      uint16)
+   (tail-id      uint16)
+   (flags        conn-flag)
+   (visgroup-id  uint8)
+   (cost         uint16)
+   )
+  :pack-me
+  (:methods
+    (debug-draw (_type_ trail-graph int) none)
+    )
+  )
+
+
+(deftype trail-conn-hash-cell (structure)
+  ((first-conn  uint16)
+   (conn-count  uint8)
+   (pov-count   uint8)
+   (first-pov   uint16)
+   )
+  :pack-me
+  )
+
+
+(deftype trail-conn-search (structure)
+  ((best-conn-id          int32)
+   (best-dist             float)
+   (src-pos               vector)
+   (conn-pos              vector)
+   (debug-cells-searched  int32)
+   (debug-conns-searched  int32)
+   (bounds                bounding-box4w  :inline)
+   (cell-quads            qword           2 :inline)
+   (conn-quads            qword           7 :inline)
+   (cell-bits             vector16ub      2 :inline :overlay-at cell-quads)
+   (conn-bits             vector16ub      2 :inline :overlay-at conn-quads)
+   )
+  )
+
+
+(deftype trail-conn-hash (basic)
+  ((cell-width  meters)
+   (origin      vector  :inline)
+   (cell        (inline-array trail-conn-hash-cell))
+   (conn-ids    (pointer uint16))
+   )
+  )
+
+
+(deftype trail-cached-search-info (structure)
+  ((goal-conn-id   int16)
+   (orig-goal-pos  vector  :inline)
+   (conn-goal-pos  vector  :inline)
+   )
+  )
+
+
+(deftype trail-cached-start-pov (structure)
+  ((last-updated       time-frame)
+   (pov-can-see-start  uint64)
+   (next-node-id       int32)
+   (start-pos          vector  :inline)
+   )
+  )
+
+
+(deftype trail-graph (basic)
+  ((mode                       uint8)
+   (search-id                  uint32)
+   (open-head-id               int16)
+   (goal-conn-id               int16)
+   (goal-node-id               int16)
+   (over-under-thresh          float)
+   (over-under-above-too-low   float)
+   (over-under-below-too-high  float)
+   (pov-node-count             uint16)
+   (node-count                 uint16)
+   (conn-count                 uint16)
+   (blocker-count              uint16)
+   (conn-mask                  uint8)
+   (node                       (inline-array trail-node))
+   (conn                       (inline-array trail-conn))
+   (blocker                    (inline-array trail-blocker))
+   (conn-ids                   (pointer uint16))
+   (visgroup                   (inline-array trail-conn-hash-cell))
+   (visnode-ids                (pointer uint16))
+   (conn-hash                  trail-conn-hash)
+   (cell-pov-bit-arrays        (pointer uint64))
+   (pov-can-see-goal           uint64)
+   (cached-start-pov           trail-cached-start-pov  :inline)
+   (orig-start-pos             vector                  :inline)
+   (orig-goal-pos              vector                  :inline)
+   (conn-start-pos             vector                  :inline)
+   (conn-goal-pos              vector                  :inline)
+   (open-quads                 qword                   6 :inline)
+   (closed-quads               qword                   6 :inline)
+   (open-bits                  vector16ub              2 :inline :overlay-at open-quads)
+   (closed-bits                vector16ub              2 :inline :overlay-at closed-quads)
+   )
+  (:methods
+    (trail-graph-method-9 (_type_ int) int)
+    (trail-graph-method-10 (_type_ int) symbol)
+    (trail-graph-method-11 (_type_ int int) trail-node)
+    (trail-graph-method-12 (_type_ trail-node vector) symbol)
+    (trail-graph-method-13 (_type_ vector vector) symbol)
+    (debug-draw (_type_) symbol)
+    (trail-graph-method-15 (_type_ int) symbol)
+    (trail-graph-method-16 (_type_ int (pointer uint16) vector vector rgba float) symbol)
+    (trail-graph-method-17 (_type_ vector vector) int)
+    (trail-graph-method-18 (_type_ vector) int)
+    (trail-graph-method-19 (_type_) none)
+    (trail-graph-method-20 (_type_ uint vector) vector)
+    (trail-graph-method-21 (_type_ (pointer uint16) int (pointer int32) (pointer float)) int)
+    (trail-graph-method-22 (_type_ int int) symbol)
+    (trail-graph-method-23 (_type_) symbol)
+    (trail-graph-method-24 (_type_ uint vector int int) symbol)
+    (trail-graph-method-25 (_type_ int) int)
+    (trail-graph-method-26 (_type_) int)
+    (trail-graph-method-27 (_type_) int)
+    (trail-graph-method-28 (_type_ trail-conn-search int int) symbol)
+    (trail-graph-method-29 (_type_ vector vector trail-cached-search-info) int)
+    (trail-graph-method-30 (_type_) int)
+    (trail-graph-method-31 (_type_ int) none)
+    (trail-graph-method-32 (_type_) uint)
+    (trail-graph-method-33 (_type_ int) symbol)
+    )
+  )
+
+
+(define *trail-graph* (the-as trail-graph #f))

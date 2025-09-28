@@ -1,3 +1,5 @@
+#include "insert_lets.h"
+
 #include <algorithm>
 #include <array>
 #include <limits>
@@ -7,10 +9,10 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
+
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "insert_lets.h"
 
 namespace decompiler {
 
@@ -347,6 +349,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
           Matcher::any_reg(1));
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       // in jak 2, the event message block holds a ppointer instead.
       set_from_matcher = Matcher::set(
           Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
@@ -366,6 +369,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
             Matcher::any(1));
         break;
       case GameVersion::Jak2:
+      case GameVersion::Jak3:
         set_from_form_matcher = Matcher::set(
             Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
             Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::any(1)}));
@@ -1235,15 +1239,18 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
   auto channel_form = mr_chan.int_or_form_to_form(pool, 0);
 
-  // now we checks for set!'s. the actual contents of the macro are not very complicated to match.
+  // now we check for set!'s. the actual contents of the macro are not very complicated to match.
   // there is just a LOT to match. and then to write!
   bool bad = false;
   int idx = 0;
   auto set_fi = match_ja_set(env, chan, "frame-interp", -1, in->body(), &idx, &bad);
+  auto set_fi1 = match_ja_set(env, chan, "frame-interp", 1, in->body(), &idx, &bad);
+  auto set_fi0 = match_ja_set(env, chan, "frame-interp", 0, in->body(), &idx, &bad);
   auto set_dist = match_ja_set(env, chan, "dist", -1, in->body(), &idx, &bad);
   auto set_fg = match_ja_set(env, chan, "frame-group", -1, in->body(), &idx, &bad);
   auto set_p0 = match_ja_set(env, chan, "param", 0, in->body(), &idx, &bad);
   auto set_p1 = match_ja_set(env, chan, "param", 1, in->body(), &idx, &bad);
+  auto set_p2 = match_ja_set(env, chan, "param", 2, in->body(), &idx, &bad);
   auto set_nf = match_ja_set(env, chan, "num-func", -1, in->body(), &idx, &bad);
   auto set_fn = match_ja_set(env, chan, "frame-num", -1, in->body(), &idx, &bad);
 
@@ -1363,14 +1370,15 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     Form* num_form = nullptr;
     // check the num! arg
     if (prelim_num == "identity") {
-      if (env.version == GameVersion::Jak2 && set_fn && !set_fn2) {
+      if (env.version >= GameVersion::Jak2 && set_fn && !set_fn2) {
         // jak 2-specific made-up thing!
         // this has only appeared once so far.
         if (set_fn->to_form(env).is_float(0.0)) {
           num_form = pool.form<ConstantTokenElement>("zero");
           set_fn = nullptr;
         } else {
-          return nullptr;
+          num_form = pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)), set_fn);
         }
       } else if (set_fn2) {
         auto obj_fn2 = set_fn2->to_form(env);
@@ -1475,12 +1483,17 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
 
   // other generic args
   ja_push_form_to_args(pool, args, set_fi, "frame-interp");
+  ja_push_form_to_args(pool, args, set_fi0, "frame-interp0");
+  ja_push_form_to_args(pool, args, set_fi1, "frame-interp1");
   ja_push_form_to_args(pool, args, set_dist, "dist");
   // ja_push_form_to_args(pool, args, form_fg, "frame-group");
   ja_push_form_to_args(pool, args, set_p0, "param0");
   ja_push_form_to_args(pool, args, set_p1, "param1");
+  ja_push_form_to_args(pool, args, set_p2, "param2");
   ja_push_form_to_args(pool, args, set_nf, "num-func");
-  ja_push_form_to_args(pool, args, set_fn, "frame-num");
+  if (arg_num_func != "num-func-identity") {
+    ja_push_form_to_args(pool, args, set_fn, "frame-num");
+  }
 
   // TODO
   if (set_fn2) {
@@ -1502,6 +1515,257 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       args);
 }
 
+FormElement* rewrite_part_tracker_new(const std::string& type,
+                                      LetElement* in,
+                                      const Env& env,
+                                      FormPool& pool) {
+  // (let ((s4-11 (get-process *default-dead-pool* part-tracker #x4000 0)))
+  //   (when s4-11
+  //     (let ((t9-26 (method-of-type part-tracker activate)))
+  //       (t9-26 (the-as part-tracker s4-11) s5-1 "part-tracker" (the-as pointer #x70004000))
+  //       )
+  //     (let ((t9-27 run-function-in-process)
+  //           (a0-84 s4-11)
+  //           (a1-36 part-tracker-init)
+  //           )
+  //       (set! (-> *part-tracker-params-default* group) (-> this collect-effect))
+  //       (set! (-> *part-tracker-params-default* duration) 0)
+  //       (set! (-> *part-tracker-params-default* callback) part-tracker-track-target)
+  //       (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  //       (set! (-> *part-tracker-params-default* target) #f)
+  //       (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+  //       ((the-as (function object object object none) t9-27) a0-84 a1-36
+  //       *part-tracker-params-default*)
+  //       )
+  //     (-> s4-11 ppointer)
+  //     )
+  //   )
+  auto cond = dynamic_cast<CondNoElseElement*>(in->body()->at(0));
+  if (!cond) {
+    return nullptr;
+  }
+  auto when_body = cond->entries.at(0).body;
+  auto activate_let = dynamic_cast<LetElement*>(when_body->at(0));
+  if (!activate_let) {
+    return nullptr;
+  }
+  auto activate_matcher = Matcher::let(
+      false,
+      {LetEntryMatcher::any(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_TYPE),
+                                        {Matcher::any(), Matcher::constant_token("activate")}),
+                            0)},
+      {Matcher::func(Matcher::reg(Register(Reg::GPR, Reg::T9)),
+                     {Matcher::any(), Matcher::any(1), Matcher::any(2), Matcher::any()})});
+  auto activate_mr = match(activate_matcher, when_body->at(0));
+  if (!activate_mr.matched) {
+    return nullptr;
+  }
+  auto name = activate_mr.maps.forms.find(2);
+  auto to = activate_mr.maps.forms.find(1);
+  auto params_let = dynamic_cast<LetElement*>(when_body->at(1));
+  if (!params_let) {
+    return nullptr;
+  }
+  auto part_tracker_subsampler_params_body_matcher = {
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("group")}),
+                   Matcher::any(0)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("duration")}),
+                   Matcher::any(1)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("callback")}),
+                   Matcher::any(2)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("userdata")}),
+                   Matcher::any(3)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("target")}),
+                   Matcher::any(4)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("mat-joint")}),
+                   Matcher::any(5)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("subsample-num")}),
+                   Matcher::any(6)),
+      Matcher::any()};
+  auto part_tracker_params_body_matcher = {
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("group")}),
+                   Matcher::any(0)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("duration")}),
+                   Matcher::any(1)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("callback")}),
+                   Matcher::any(2)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("userdata")}),
+                   Matcher::any(3)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("target")}),
+                   Matcher::any(4)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("mat-joint")}),
+                   Matcher::any(5)),
+      Matcher::any()};
+  auto params_body_matcher = type == "part-tracker-subsampler"
+                                 ? part_tracker_subsampler_params_body_matcher
+                                 : part_tracker_params_body_matcher;
+  auto params_matcher = Matcher::unmerged_let(
+      {LetEntryMatcher::any(Matcher::symbol("run-function-in-process")),
+       LetEntryMatcher::any(Matcher::any()), LetEntryMatcher::any(Matcher::any())},
+      params_body_matcher);
+  auto params_mr = match(params_matcher, when_body->at(1));
+  if (!params_mr.matched) {
+    return nullptr;
+  }
+
+  std::vector<Form*> macro_args;
+  macro_args.push_back(pool.form<ConstantTokenElement>(type));
+  macro_args.push_back(pool.form<ConstantTokenElement>(":to"));
+  macro_args.push_back(to->second);
+  auto name_str = dynamic_cast<StringConstantElement*>(name->second->try_as_single_element());
+  if (name_str && name_str->value() != type) {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":name"));
+    macro_args.push_back(name->second);
+  }
+  auto group = params_mr.maps.forms.find(0);
+  macro_args.push_back(pool.form<ConstantTokenElement>(":group"));
+  macro_args.push_back(group->second);
+  auto duration = params_mr.maps.forms.find(1);
+  if (duration->second->to_string(env) != "0") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":duration"));
+    macro_args.push_back(duration->second);
+  }
+  auto callback = params_mr.maps.forms.find(2);
+  if (callback->second->to_string(env) != "#f") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":callback"));
+    macro_args.push_back(callback->second);
+  }
+  auto userdata = params_mr.maps.forms.find(3);
+  if (userdata->second->to_string(env) != "(the-as uint #f)") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":userdata"));
+    macro_args.push_back(userdata->second);
+  }
+  auto target = params_mr.maps.forms.find(4);
+  if (target->second->to_string(env) != "#f") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":target"));
+    macro_args.push_back(target->second);
+  }
+  auto mat_joint = params_mr.maps.forms.find(5);
+  if (mat_joint->second->to_string(env) != "*launch-matrix*") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":mat-joint"));
+    macro_args.push_back(mat_joint->second);
+  }
+  if (type == "part-tracker-subsampler") {
+    auto subsample_num = params_mr.maps.forms.find(6);
+    if (subsample_num->second->to_string(env) != "1.0") {
+      macro_args.push_back(pool.form<ConstantTokenElement>(":subsample-num"));
+      macro_args.push_back(subsample_num->second);
+    }
+  }
+
+  return pool
+      .form<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("part-tracker-spawn")),
+          macro_args)
+      ->try_as_single_element();
+}
+
+FormElement* rewrite_call_parent_state_handler(LetElement* in, const Env& env, FormPool& pool) {
+  // (let ((t9-3 (-> (find-parent-state) code)))
+  //   (if t9-3
+  //       ((the-as (function none) t9-3))
+  //       )
+  //   )
+  auto mr =
+      Matcher::let(false,
+                   {LetEntryMatcher::any(Matcher::deref(Matcher::func("find-parent-state", {}),
+                                                        false, {DerefTokenMatcher::any_string(1)}),
+                                         0)},
+                   {Matcher::if_no_else(Matcher::any(), Matcher::any(2))});
+  auto let_mr = match(mr, in);
+  if (!let_mr.matched) {
+    return nullptr;
+  }
+  auto handler = let_mr.maps.strings.at(1);
+  auto valid_handlers = {"enter", "trans", "code", "post"};
+  if (std::find(valid_handlers.begin(), valid_handlers.end(), handler) != valid_handlers.end()) {
+    std::vector<Form*> macro_args;
+    macro_args.push_back(pool.form<ConstantTokenElement>(handler));
+    // there are no examples of this being used with args, so that is not handled for now...
+    // auto func = let_mr.maps.forms.at(2);
+    return pool
+        .form<GenericElement>(GenericOperator::make_function(
+                                  pool.form<ConstantTokenElement>("call-parent-state-handler")),
+                              macro_args)
+        ->try_as_single_element();
+  }
+  return nullptr;
+}
+
+FormElement* rewrite_suspend_for(LetElement* in, const Env& env, FormPool& pool) {
+  // (let ((gp-1 (current-time)))
+  //   (until (time-elapsed? gp-1 (seconds 0.5))
+  //     (suspend)
+  //     )
+  //   )
+  // ->
+  // (suspend-for (seconds 0.5))
+  auto until = dynamic_cast<UntilElement*>(in->body()->at(0));
+  if (!until) {
+    return nullptr;
+  }
+  auto mr = Matcher::let(
+      false, {LetEntryMatcher::any(Matcher::func("current-time", {}), 0)},
+      {Matcher::until_loop(Matcher::func("time-elapsed?", {Matcher::any_reg(1), Matcher::any(2)}),
+                           Matcher::any(3))});
+  auto let_mr = match(mr, in);
+  if (!let_mr.matched) {
+    return nullptr;
+  }
+  auto var = let_mr.maps.regs.at(1);
+  auto time = let_mr.maps.forms.at(2);
+  auto body = let_mr.maps.forms.at(3);
+  std::vector<Form*> macro_args;
+  std::vector<FormElement*> macro_elts;
+  macro_args.push_back(time);
+  for (auto& elt : body->elts()) {
+    auto op = dynamic_cast<AtomicOpElement*>(elt);
+    auto suspend = op && op->op() && dynamic_cast<SpecialOp*>(op->op()) &&
+                   dynamic_cast<SpecialOp*>(op->op())->kind() == SpecialOp::Kind::SUSPEND;
+    if (!suspend || elt != body->elts().back()) {
+      elt->apply_form([&](Form* form) {
+        for (auto& e : form->elts()) {
+          auto as_expr = dynamic_cast<SimpleExpressionElement*>(e);
+          if (as_expr) {
+            RegAccessSet regs;
+            as_expr->collect_vars(regs, false);
+            for (auto reg : regs) {
+              if (reg.to_string(env, RegisterAccess::Print::AS_VARIABLE) ==
+                  var.value().to_string(env, RegisterAccess::Print::AS_VARIABLE)) {
+                e = pool.alloc_element<ConstantTokenElement>("time");
+              }
+            }
+          }
+        }
+      });
+      macro_elts.push_back(elt);
+    }
+  }
+  if (!macro_elts.empty()) {
+    for (auto elt : macro_elts) {
+      macro_args.push_back(pool.alloc_single_form(nullptr, elt));
+    }
+  }
+  return pool
+      .form<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("suspend-for")),
+          macro_args)
+      ->try_as_single_element();
+}
+
 FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   // this function checks for the process-spawn macros.
   // it uses recursive form scanning to wrap the macro inside a potential "shell"
@@ -1514,14 +1778,25 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
   // look for setting a var to (get-process *default-dead-pool* logo-slave #x4000)
   auto ra = in->entries().at(0).dest;
-  auto mr_get_proc = match(
-      Matcher::func("get-process", {Matcher::any(0), Matcher::any_symbol(1), Matcher::any(2)}),
-      in->entries().at(0).src);
+  std::vector<Matcher> get_process_args = {Matcher::any(0), Matcher::any_symbol(1),
+                                           Matcher::any(2)};
+  if (env.version >= GameVersion::Jak3) {
+    // this flag appears unused...
+    get_process_args.push_back(Matcher::any_integer(3));
+  }
+  auto mr_get_proc = match(Matcher::func("get-process", get_process_args), in->entries().at(0).src);
   if (!mr_get_proc.matched) {
     return nullptr;
   }
 
   const auto& proc_type = mr_get_proc.maps.strings.at(1);
+
+  // part-tracker-spawn macro for jak 3
+  if (env.version >= GameVersion::Jak3 &&
+      (proc_type == "part-tracker" || proc_type == "part-tracker-subsampler")) {
+    return rewrite_part_tracker_new(proc_type, in, env, pool);
+  }
+
   auto macro_form =
       is_full_let ? in->body()->at(0) : in->entries().at(1).src->try_as_single_element();
 
@@ -1625,6 +1900,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
             expected_name = fmt::format("'{}", proc_type);
             break;
           case GameVersion::Jak2:
+          case GameVersion::Jak3:
             expected_name = fmt::format("(symbol->string (-> {} symbol))", proc_type);
             break;
           default:
@@ -1652,6 +1928,14 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         }
         if (!mr_get_proc.maps.forms.at(2)->to_form(env).is_int(0x4000)) {
           ja_push_form_to_args(pool, args, mr_get_proc.maps.forms.at(2), "stack-size");
+        }
+        if (env.version >= GameVersion::Jak3) {
+          if (mr_get_proc.maps.ints.at(3) != 1) {
+            // TODO better name
+            args.push_back(pool.form<ConstantTokenElement>(":unk"));
+            args.push_back(
+                pool.form<ConstantTokenElement>(fmt::format("{}", mr_get_proc.maps.ints.at(3))));
+          }
         }
 
         return pool.form<GenericElement>(
@@ -1704,7 +1988,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   const auto& words = env.file->words_by_seg.at(label.target_segment);
   // offset of `mask` field in `attack-info`
   int mask_field_offset = 64;
-  if (env.version == GameVersion::Jak2) {
+  if (env.version >= GameVersion::Jak2) {
     mask_field_offset = 88;
   }
   u32 mask = words.at((label.offset + mask_field_offset) / 4).data;
@@ -1740,9 +2024,36 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
       {"knock", {21, DEFAULT}},
       {"test", {22, DEFAULT}},
   };
+  const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak3 = {
+      {"vector", {1, VECTOR}},
+      {"intersection", {2, VECTOR}},
+      {"attacker", {3, DEFAULT}},
+      {"invinc-time", {5, DEFAULT}},
+      {"mode", {6, DEFAULT}},
+      {"shove-back", {7, DEFAULT}},
+      {"shove-up", {8, DEFAULT}},
+      {"speed", {9, DEFAULT}},
+      {"control", {11, DEFAULT}},
+      {"angle", {12, DEFAULT}},
+      {"id", {15, DEFAULT}},
+      {"count", {16, DEFAULT}},
+      {"penetrate-using", {17, DEFAULT}},
+      {"attacker-velocity", {18, VECTOR}},
+      {"damage", {19, DEFAULT}},
+      {"shield-damage", {20, DEFAULT}},
+      {"vehicle-damage-factor", {21, DEFAULT}},
+      {"vehicle-impulse-factor", {21, DEFAULT}},
+      {"knock", {23, DEFAULT}},
+      {"test", {24, DEFAULT}},
+  };
 
-  const auto& possible_args =
-      env.version == GameVersion::Jak1 ? possible_args_jak1 : possible_args_jak2;
+  auto possible_args = possible_args_jak1;
+  if (env.version == GameVersion::Jak2) {
+    possible_args = possible_args_jak2;
+  }
+  if (env.version == GameVersion::Jak3) {
+    possible_args = possible_args_jak3;
+  }
 
   std::vector<std::pair<std::string, Form*>> args_in_info;
   for (int i = 0; i < in->body()->size() - 1; ++i) {
@@ -1901,6 +2212,50 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   return elt;
 }
 
+FormElement* rewrite_set_font_single(LetElement* in,
+                                     const Env& env,
+                                     FormPool& pool,
+                                     const char* deref_name,
+                                     const char* op_name,
+                                     bool cast_to_float) {
+  /*
+  (let ((v1-10 gp-0))
+     (set! (-> v1-10 scale) 0.6)
+     )
+  */
+
+  if (in->entries().size() != 1) {
+    return nullptr;
+  }
+  if (in->body()->elts().size() != 1) {
+    return nullptr;
+  }
+
+  Form* font_obj_expr = in->entries().at(0).src;
+  RegisterAccess font_obj_reg = in->entries().at(0).dest;
+
+  if (env.get_variable_type(font_obj_reg, true) != TypeSpec("font-context")) {
+    return nullptr;
+  }
+
+  auto src_matcher =
+      cast_to_float ? Matcher::numeric_cast("float", Matcher::any(0)) : Matcher::any(0);
+  Matcher set_matcher = Matcher::set(Matcher::deref(Matcher::reg(font_obj_reg.reg()), false,
+                                                    {DerefTokenMatcher::string(deref_name)}),
+                                     src_matcher);
+  auto set_mr = match(set_matcher, in->body()->at(0));
+
+  if (!set_mr.matched) {
+    return nullptr;
+  }
+
+  auto elt = pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>(op_name)),
+      std::vector<Form*>{font_obj_expr, set_mr.maps.forms.at(0)});
+  elt->parent_form = in->parent_form;
+  return elt;
+}
+
 /*!
  * Attempt to rewrite a let as another form.  If it cannot be rewritten, this will return nullptr.
  */
@@ -1967,6 +2322,12 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
     return as_set_vector3;
   }
 
+  auto suspend_for = rewrite_suspend_for(in, env, pool);
+  if (suspend_for) {
+    stats.suspend_for++;
+    return suspend_for;
+  }
+
   auto as_abs_2 = fix_up_abs_2(in, env, pool);
   if (as_abs_2) {
     stats.abs2++;
@@ -1995,6 +2356,30 @@ FormElement* rewrite_let(LetElement* in, const Env& env, FormPool& pool, LetRewr
   if (as_attack_info) {
     stats.attack_info++;
     return as_attack_info;
+  }
+
+  auto as_call_parent_state = rewrite_call_parent_state_handler(in, env, pool);
+  if (as_call_parent_state) {
+    stats.call_parent_state_handler++;
+    return as_call_parent_state;
+  }
+
+  auto as_font_scale = rewrite_set_font_single(in, env, pool, "scale", "set-scale!", false);
+  if (as_font_scale) {
+    stats.font_method++;
+    return as_font_scale;
+  }
+
+  auto as_font_width = rewrite_set_font_single(in, env, pool, "width", "set-width!", true);
+  if (as_font_width) {
+    stats.font_method++;
+    return as_font_width;
+  }
+
+  auto as_font_height = rewrite_set_font_single(in, env, pool, "height", "set-height!", true);
+  if (as_font_height) {
+    stats.font_method++;
+    return as_font_height;
   }
 
   // nothing matched.
@@ -2192,6 +2577,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   if (!mr_buf_base.matched) {
     return nullptr;
   }
+
   if (!var_equal(env, buf_dst, mr_buf_base.maps.regs.at(0))) {
     lg::print("dma buf bad name\n");
     return nullptr;
@@ -2207,16 +2593,59 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
 
   last_part = dynamic_cast<LetElement*>(in->body()->at(in->body()->size() - 1));
   if (!last_part) {
-    // lg::error("NO LAST PART AHH wtf!!");
     return nullptr;
   }
 
-  if (last_part->entries().size() != 1 || last_part->body()->size() != 2) {
+  // New for Jak 3: they check to see if nothing was added, and skip adding an empty DMA transfer
+  // if so. This means the usual 2 ending let body forms are now wrapped in a `when`.
+  const int expected_last_let_body_size = env.version == GameVersion::Jak3 ? 1 : 2;
+  if (last_part->entries().size() != 1 ||
+      last_part->body()->size() != expected_last_let_body_size) {
     return nullptr;
   }
   auto buf_end_dst = last_part->entries().at(0).dest;
 
-  auto dmatag_let = dynamic_cast<LetElement*>(last_part->body()->at(0));
+  LetElement* dmatag_let;
+  FormElement* insert_tag_call;
+
+  if (env.version == GameVersion::Jak3) {
+    // check for the when:
+    auto outer_when = dynamic_cast<CondNoElseElement*>(last_part->body()->at(0));
+    if (!outer_when) {
+      // lg::error(" P no cond-no-else:\n{}\n", last_part->body()->at(0)->to_string(env));
+      return nullptr;
+    }
+    if (outer_when->entries.size() != 1) {
+      // lg::error(" P cond-no-else bad entry count");
+      return nullptr;
+    }
+    auto& entry = outer_when->entries.at(0);
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::NEQ),
+                               {Matcher::any_reg(0), Matcher::any_reg(1)});
+    auto mr = match(matcher, entry.condition);
+    if (!mr.matched) {
+      // lg::error(" P no match: {}\n", entry.condition->to_string(env));
+      return nullptr;
+    }
+
+    if (!var_equal(env, bucket_dst, mr.maps.regs.at(0)) ||
+        !var_equal(env, buf_end_dst, mr.maps.regs.at(1))) {
+      // lg::error(" P bad vars");
+      return nullptr;
+    }
+
+    auto body = entry.body;
+    if (body->size() != 2) {
+      // lg::error(" P bad inner body size");
+      return nullptr;
+    }
+
+    dmatag_let = dynamic_cast<LetElement*>(body->at(0));
+    insert_tag_call = body->at(1);
+  } else {
+    dmatag_let = dynamic_cast<LetElement*>(last_part->body()->at(0));
+    insert_tag_call = last_part->body()->at(1);
+  }
 
   if (!dmatag_let || dmatag_let->entries().size() != 1 || dmatag_let->body()->size() != 4) {
     return nullptr;
@@ -2290,7 +2719,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
                            DerefTokenMatcher::string("bucket-group")}),
            Matcher::any(1), Matcher::any_reg(2),
            Matcher::cast("(pointer dma-tag)", Matcher::any_reg(3))}),
-      last_part->body()->at(1));
+      insert_tag_call);
   if (!mr_bucket_add_tag_func.matched ||
       !var_equal(env, bucket_dst, mr_bucket_add_tag_func.maps.regs.at(2)) ||
       !var_equal(env, buf_end_dst, mr_bucket_add_tag_func.maps.regs.at(3))) {
@@ -2316,6 +2745,59 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   auto elt = pool.alloc_element<WithDmaBufferAddBucketElement>(
       buf_dst, buf_src, mr_bucket_add_tag_func.maps.forms.at(1),
       pool.alloc_sequence_form(nullptr, body));
+  elt->parent_form = in->parent_form;
+  return elt;
+}
+
+FormElement* rewrite_set_font_origin(LetElement* in, const Env& env, FormPool& pool) {
+  /*
+           (let ((v1-9 gp-0)
+                  (a1-1 36)
+                  (a0-4 140)
+                  )
+              (set! (-> v1-9 origin x) (the float a1-1))
+              (set! (-> v1-9 origin y) (the float a0-4))
+              )
+    */
+  if (in->entries().size() != 3) {
+    return nullptr;
+  }
+  if (in->body()->elts().size() != 2) {
+    return nullptr;
+  }
+
+  Form* font_obj_expr = in->entries().at(0).src;
+  RegisterAccess font_obj_reg = in->entries().at(0).dest;
+
+  if (env.get_variable_type(font_obj_reg, true) != TypeSpec("font-context")) {
+    return nullptr;
+  }
+
+  Form* x_val = in->entries().at(1).src;
+  Form* y_val = in->entries().at(2).src;
+
+  Matcher x_matcher = Matcher::set(
+      Matcher::deref(Matcher::reg(font_obj_reg.reg()), false,
+                     {DerefTokenMatcher::string("origin"), DerefTokenMatcher::string("x")}),
+      Matcher::numeric_cast("float", Matcher::reg(in->entries().at(1).dest.reg())));
+  auto x_mr = match(x_matcher, in->body()->at(0));
+
+  Matcher y_matcher = Matcher::set(
+      Matcher::deref(Matcher::reg(font_obj_reg.reg()), false,
+                     {DerefTokenMatcher::string("origin"), DerefTokenMatcher::string("y")}),
+      Matcher::numeric_cast("float", Matcher::reg(in->entries().at(2).dest.reg())));
+  auto y_mr = match(y_matcher, in->body()->at(1));
+
+  if (!x_mr.matched) {
+    return nullptr;
+  }
+  if (!y_mr.matched) {
+    return nullptr;
+  }
+
+  auto elt = pool.alloc_element<GenericElement>(
+      GenericOperator::make_function(pool.form<ConstantTokenElement>("set-origin!")),
+      std::vector<Form*>{font_obj_expr, x_val, y_val});
   elt->parent_form = in->parent_form;
   return elt;
 }
@@ -2349,8 +2831,12 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
   }
 
   auto set_elt = dynamic_cast<SetFormFormElement*>(in->body()->at(0));
+  GenericElement* vector_copy_elt = nullptr;
   if (!set_elt) {
-    return nullptr;
+    vector_copy_elt = dynamic_cast<GenericElement*>(in->body()->at(0));
+    if (!vector_copy_elt || vector_copy_elt->op().to_form(env).print() != "vector-copy!") {
+      return nullptr;
+    }
   }
 
   auto func_elt = dynamic_cast<GenericElement*>(in->body()->at(1));
@@ -2380,19 +2866,24 @@ FormElement* rewrite_launch_particles(LetElement* in, const Env& env, FormPool& 
     return nullptr;
   }
 
-  auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
-  if (!origin) {
-    return nullptr;
-  }
-  auto tokens = origin->tokens().size();
-  Form* origin_form;
-  // remove only the quad if there are multiple derefs
-  if (tokens > 1) {
-    origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
-    auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
-    orig->tokens().pop_back();
+  Form* origin_form = nullptr;
+  if (set_elt) {
+    auto origin = dynamic_cast<DerefElement*>(set_elt->src()->elts().at(0));
+    auto tokens = origin->tokens().size();
+    // remove only the quad if there are multiple derefs
+    if (tokens > 1) {
+      origin_form = pool.form<DerefElement>(origin->base(), false, origin->tokens());
+      auto orig = dynamic_cast<DerefElement*>(origin_form->elts().at(0));
+      orig->tokens().pop_back();
+    } else {
+      origin_form = origin->base();
+    }
   } else {
-    origin_form = origin->base();
+    // the vector copy rewrite already did the logic above.
+    origin_form = vector_copy_elt->elts().at(1);
+  }
+  if (!origin_form) {
+    return nullptr;
   }
 
   auto launch_state = func_elt->elts().at(func_elt->elts().size() - 3);
@@ -2468,6 +2959,12 @@ FormElement* rewrite_multi_let(LetElement* in,
       stats.vector_dot++;
       return as_vector_dot;
     }
+  }
+
+  auto as_font_set_origin = rewrite_set_font_origin(in, env, pool);
+  if (as_font_set_origin) {
+    stats.font_method++;
+    return as_font_set_origin;
   }
 
   return in;

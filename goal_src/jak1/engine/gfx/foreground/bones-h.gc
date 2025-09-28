@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: bones-h.gc
-;; name in dgo: bones-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/shadow/shadow-cpu-h.gc")
 
 ;; The "bone" system computes bone matrices from joint animations.
 ;; It looks like it also expanded to do most of the DMA generation
@@ -12,103 +10,75 @@
 ;; DECOMP BEGINS
 
 (deftype bone-buffer (structure)
-  ((joint  joint-anim-compressed-hdr  16 :inline)
-   (bone   bone                       16 :inline)
-   (_pad   uint8                      2048)
-   )
-  )
-
+  ((joint joint-anim-compressed-hdr 16 :inline)
+   (bone  bone 16 :inline)
+   (_pad  uint8 2048)))
 
 (deftype bone-layout (structure)
-  ((joint   joint   2)
-   (bone    bone    2)
-   (data    uint16  8 :overlay-at (-> joint 0))
-   (output  uint32  2)
-   (cache   uint32  2)
-   )
-  )
-
+  ((joint  joint 2)
+   (bone   bone 2)
+   (data   uint16 8 :overlay-at (-> joint 0))
+   (output uint32 2)
+   (cache  uint32 2)))
 
 (deftype bone-regs (structure)
-  ((joint-ptr  (inline-array joint))
-   (bone-ptr   (inline-array bone))
-   (num-bones  uint32)
-   )
-  )
-
+  ((joint-ptr (inline-array joint))
+   (bone-ptr  (inline-array bone))
+   (num-bones uint32)))
 
 (deftype bone-work (structure)
-  ((layout      bone-layout  :inline)
-   (bounds      sphere       :inline)
-   (lights      vu-lights    :inline)
-   (distance    vector       :inline)
-   (next-tag    dma-packet   :inline)
-   (dma-buf     dma-buffer)
-   (sink-group  dma-foreground-sink-group)
-   (next-pris   dma-packet)
-   (next-merc   dma-packet)
-   (wait-count  uint32)
-   (in-count    uint32)
-   (sp-size     uint32)
-   (sp-bufnum   uint32)
-   (regs        bone-regs    :inline)
-   )
-  )
-
+  ((layout     bone-layout :inline)
+   (bounds     sphere :inline)
+   (lights     vu-lights :inline)
+   (distance   vector :inline)
+   (next-tag   dma-packet :inline)
+   (dma-buf    dma-buffer)
+   (sink-group dma-foreground-sink-group)
+   (next-pris  dma-packet)
+   (next-merc  dma-packet)
+   (wait-count uint32)
+   (in-count   uint32)
+   (sp-size    uint32)
+   (sp-bufnum  uint32)
+   (regs       bone-regs :inline)))
 
 (deftype bone-debug (structure)
-  ((time-ctr  uint32)
-   (timing    uint32  360)
-   )
-  )
-
+  ((time-ctr uint32)
+   (timing   uint32 360)))
 
 (deftype bone-memory (structure)
-  ((work      bone-work    :inline)
-   (buffer    bone-buffer  2 :inline)
-   (dma-list  dma-packet   :inline :overlay-at (-> buffer 0 joint 0 control-bits 0))
-   )
-  )
+  ((work     bone-work :inline)
+   (buffer   bone-buffer 2 :inline)
+   (dma-list dma-packet :inline :overlay-at (-> buffer 0 joint 0 control-bits 0))))
 
 (defun invalidate-cache-line ((arg0 pointer))
   "Invalidate a single cache line. Won't be used in PC"
-
   (#unless PC_PORT
     (.sync.l)
     (.cache dxwbin arg0 0)
     (.sync.l)
     (.cache dxwbin arg0 1)
-    (.sync.l)
-    )
-  0
-  )
+    (.sync.l))
+  0)
 
 (deftype merc-globals (structure)
-  ((first  uint32)
-   (next   (pointer uint32))
-   (sink   generic-dma-foreground-sink)
-   )
-  :allow-misaligned
-  )
-
+  ((first uint32)
+   (next  (pointer uint32))
+   (sink  generic-dma-foreground-sink))
+  :allow-misaligned)
 
 (deftype merc-global-array (structure)
-  ((count    uint32)
-   (globals  merc-globals  8 :inline)
-   )
-  )
-
+  ((count   uint32)
+   (globals merc-globals 8 :inline)))
 
 (define *merc-globals* (the-as merc-globals #f))
 
 (deftype shadow-dma-packet (structure)
-  ((tag       generic-merc-tag  :inline)
-   (settings  shadow-settings   :inline)
-   (geo-ref   dma-packet        :inline)
-   (mtx-ref   dma-packet        :inline)
-   (end-tag   dma-packet        :inline)
-   )
-  )
+  ((tag      generic-merc-tag :inline)
+   (settings shadow-settings :inline)
+   (geo-ref  dma-packet :inline)
+   (mtx-ref  dma-packet :inline)
+   (end-tag  dma-packet :inline)))
 
 (define-extern vu-lights<-light-group! (function vu-lights light-group none))
 

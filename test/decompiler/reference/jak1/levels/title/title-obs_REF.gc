@@ -42,11 +42,11 @@
 
 ;; definition for method 7 of type logo
 ;; INFO: Return type mismatch process-drawable vs logo.
-(defmethod relocate ((this logo) (arg0 int))
+(defmethod relocate ((this logo) (offset int))
   (if (nonzero? (-> this main-joint))
-      (&+! (-> this main-joint) arg0)
+      (&+! (-> this main-joint) offset)
       )
-  (the-as logo ((method-of-type process-drawable relocate) this arg0))
+  (the-as logo ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition of type logo-slave
@@ -70,11 +70,11 @@
 
 ;; definition for method 7 of type logo-slave
 ;; INFO: Return type mismatch process-drawable vs logo-slave.
-(defmethod relocate ((this logo-slave) (arg0 int))
+(defmethod relocate ((this logo-slave) (offset int))
   (if (nonzero? (-> this main-joint))
-      (&+! (-> this main-joint) arg0)
+      (&+! (-> this main-joint) offset)
       )
-  (the-as logo-slave ((method-of-type process-drawable relocate) this arg0))
+  (the-as logo-slave ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; failed to figure out what this is:
@@ -448,11 +448,8 @@
       )
     (loop
       (when (and (none-reserved? *art-control*) (not (paused?)))
-        (let ((gp-1 (current-time)))
-          (until (time-elapsed? gp-1 (seconds 0.1))
-            (set! *camera-look-through-other* 2)
-            (suspend)
-            )
+        (suspend-for (seconds 0.1)
+          (set! *camera-look-through-other* 2)
           )
         (go-virtual idle)
         )
@@ -703,11 +700,8 @@
             (set-blackout-frames (seconds 0.05))
             (suspend)
             )
-          (let ((s5-1 (current-time)))
-            (until (time-elapsed? s5-1 (seconds 0.25))
-              (set-blackout-frames (seconds 0.05))
-              (suspend)
-              )
+          (suspend-for (seconds 0.25)
+            (set-blackout-frames (seconds 0.05))
             )
           )
         )
@@ -744,10 +738,7 @@
           (while *progress-process*
             (suspend)
             )
-          (let ((gp-2 (current-time)))
-            (until (time-elapsed? gp-2 (seconds 0.01))
-              (suspend)
-              )
+          (suspend-for (seconds 0.01)
             )
           (goto cfg-41)
           )
@@ -841,12 +832,8 @@
               (new 'stack 'font-context *font-default-matrix* 80 170 0.0 (font-color default) (font-flags shadow kerning))
               )
             )
-        (let ((v1-12 gp-0))
-          (set! (-> v1-12 width) (the float 352))
-          )
-        (let ((v1-13 gp-0))
-          (set! (-> v1-13 height) (the float 40))
-          )
+        (set-width! gp-0 352)
+        (set-height! gp-0 40)
         (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
         (print-game-text (lookup-text! *common-text* (text-id press-start) #f) gp-0 #f 128 22)
         )

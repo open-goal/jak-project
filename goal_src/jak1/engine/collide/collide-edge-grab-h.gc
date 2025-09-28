@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: collide-edge-grab-h.gc
-;; name in dgo: collide-edge-grab-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
+(require "engine/geometry/bounding-box-h.gc")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Edge Grab
@@ -16,143 +15,138 @@
 ;; DECOMP BEGINS
 
 (deftype edge-grab-info (structure)
-  ((world-vertex              vector  6 :inline)
-   (local-vertex              vector  6 :inline)
-   (actor-cshape-prim-offset  int32)
-   (actor-handle              handle)
-   (hanging-matrix            matrix  :inline)
-   (edge-vertex               vector  2 :inline :overlay-at (-> world-vertex 0))
-   (center-hold               vector  :inline   :overlay-at (-> world-vertex 2))
-   (tri-vertex                vector  3 :inline :overlay-at (-> world-vertex 3))
-   (left-hand-hold            vector  :inline)
-   (right-hand-hold           vector  :inline)
-   (center-hold-old           vector  :inline)
-   (edge-tri-pat              uint32)
-   )
+  ((world-vertex             vector 6 :inline)
+   (local-vertex             vector 6 :inline)
+   (actor-cshape-prim-offset int32)
+   (actor-handle             handle)
+   (hanging-matrix           matrix :inline)
+   (edge-vertex              vector 2 :inline :overlay-at (-> world-vertex 0))
+   (center-hold              vector :inline :overlay-at (-> world-vertex 2))
+   (tri-vertex               vector 3 :inline :overlay-at (-> world-vertex 3))
+   (left-hand-hold           vector :inline)
+   (right-hand-hold          vector :inline)
+   (center-hold-old          vector :inline)
+   (edge-tri-pat             uint32))
   (:methods
-    (edge-grab-info-method-9 (_type_) symbol)
-    (debug-draw (_type_) symbol)
-    )
-  )
+   (edge-grab-info-method-9 (_type_) symbol)
+   (debug-draw (_type_) symbol)))
 
 ;; og:preserve-this
 (declare-type collide-cache-tri structure)
-(deftype collide-edge-tri (structure)
-  ((ctri    collide-cache-tri)
-   (normal  vector  :inline)
-   )
-  )
 
+(deftype collide-edge-tri (structure)
+  ((ctri   collide-cache-tri)
+   (normal vector :inline)))
 
 (deftype collide-edge-edge (structure)
-  ((ignore         basic)
-   (etri           collide-edge-tri)
-   (vertex-ptr     (inline-array vector)  2)
-   (outward        vector                 :inline)
-   (edge-vec-norm  vector                 :inline)
-   )
-  )
-
+  ((ignore        basic)
+   (etri          collide-edge-tri)
+   (vertex-ptr    (inline-array vector) 2)
+   (outward       vector :inline)
+   (edge-vec-norm vector :inline)))
 
 (deftype collide-edge-hold-item (structure)
-  ((next        collide-edge-hold-item)
-   (rating      float)
-   (split       int8)
-   (edge        collide-edge-edge)
-   (center-pt   vector  :inline)
-   (outward-pt  vector  :inline)
-   )
-  )
-
+  ((next       collide-edge-hold-item)
+   (rating     float)
+   (split      int8)
+   (edge       collide-edge-edge)
+   (center-pt  vector :inline)
+   (outward-pt vector :inline)))
 
 (deftype collide-edge-hold-list (structure)
-  ((num-allocs    uint32)
-   (num-attempts  uint32)
-   (head          collide-edge-hold-item)
-   (items         collide-edge-hold-item  32 :inline)
-   (attempts      qword                   32 :inline)
-   )
+  ((num-allocs   uint32)
+   (num-attempts uint32)
+   (head         collide-edge-hold-item)
+   (items        collide-edge-hold-item 32 :inline)
+   (attempts     qword 32 :inline))
   (:methods
-    (debug-draw (_type_) object)
-    (add-to-list! (_type_ collide-edge-hold-item) none)
-    )
-  )
+   (debug-draw (_type_) object)
+   (add-to-list! (_type_ collide-edge-hold-item) none)))
 
 ;; og:preserve-this
 (declare-type collide-cache basic)
+
 (declare-type collide-shape basic)
+
 (deftype collide-edge-work (structure)
-  ((ccache                        collide-cache)
-   (cshape                        collide-shape)
-   (num-verts                     uint32)
-   (num-edges                     uint32)
-   (num-tris                      uint32)
-   (cache-fill-box                bounding-box            :inline)
-   (within-reach-box              bounding-box            :inline)
-   (within-reach-box4w            bounding-box4w          :inline)
-   (search-pt                     vector                  :inline)
-   (search-dir-vec                vector                  :inline)
-   (max-dist-sqrd-to-outward-pt   float)
-   (max-dir-cosa-delta            float)
-   (split-dists                   float                   2)
-   (outward-offset                vector                  :inline)
-   (local-cache-fill-box          bounding-box            :inline)
-   (local-within-reach-box        bounding-box            :inline)
-   (local-player-spheres          sphere                  12 :inline)
-   (world-player-spheres          sphere                  12 :inline)
-   (local-player-hanging-spheres  sphere                  6 :inline :overlay-at (-> local-player-spheres 0))
-   (world-player-hanging-spheres  sphere                  6 :inline :overlay-at (-> world-player-spheres 0))
-   (local-player-leap-up-spheres  sphere                  6 :inline :overlay-at (-> local-player-spheres 6))
-   (world-player-leap-up-spheres  sphere                  6 :inline :overlay-at (-> world-player-spheres 6))
-   (verts                         vector                  64 :inline)
-   (edges                         collide-edge-edge       96 :inline)
-   (tris                          collide-edge-tri        48 :inline)
-   (hold-list                     collide-edge-hold-list  :inline)
-   )
+  ((ccache                       collide-cache)
+   (cshape                       collide-shape)
+   (num-verts                    uint32)
+   (num-edges                    uint32)
+   (num-tris                     uint32)
+   (cache-fill-box               bounding-box :inline)
+   (within-reach-box             bounding-box :inline)
+   (within-reach-box4w           bounding-box4w :inline)
+   (search-pt                    vector :inline)
+   (search-dir-vec               vector :inline)
+   (max-dist-sqrd-to-outward-pt  float)
+   (max-dir-cosa-delta           float)
+   (split-dists                  float 2)
+   (outward-offset               vector :inline)
+   (local-cache-fill-box         bounding-box :inline)
+   (local-within-reach-box       bounding-box :inline)
+   (local-player-spheres         sphere 12 :inline)
+   (world-player-spheres         sphere 12 :inline)
+   (local-player-hanging-spheres sphere 6 :inline :overlay-at (-> local-player-spheres 0))
+   (world-player-hanging-spheres sphere 6 :inline :overlay-at (-> world-player-spheres 0))
+   (local-player-leap-up-spheres sphere 6 :inline :overlay-at (-> local-player-spheres 6))
+   (world-player-leap-up-spheres sphere 6 :inline :overlay-at (-> world-player-spheres 6))
+   (verts                        vector 64 :inline)
+   (edges                        collide-edge-edge 96 :inline)
+   (tris                         collide-edge-tri 48 :inline)
+   (hold-list                    collide-edge-hold-list :inline))
   (:methods
-    (search-for-edges (_type_ collide-edge-hold-list) symbol)
-    (debug-draw-edges (_type_) object)
-    (debug-draw-tris (_type_) none)
-    (debug-draw-sphere (_type_) symbol)
-    (compute-center-point! (_type_ collide-edge-edge vector) float)
-    (collide-edge-work-method-14 (_type_ vector vector int) float)
-    (find-grabbable-edges! (_type_) none)
-    (find-grabbable-tris! (_type_) none)
-    (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol)
-    (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol)
-    (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol)
-    )
-  )
+   (search-for-edges (_type_ collide-edge-hold-list) symbol)
+   (debug-draw-edges (_type_) object)
+   (debug-draw-tris (_type_) none)
+   (debug-draw-sphere (_type_) symbol)
+   (compute-center-point! (_type_ collide-edge-edge vector) float)
+   (collide-edge-work-method-14 (_type_ vector vector int) float)
+   (find-grabbable-edges! (_type_) none)
+   (find-grabbable-tris! (_type_) none)
+   (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol)
+   (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol)
+   (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol)))
 
-
-(define *collide-edge-work* (new 'static 'collide-edge-work
-                              :max-dist-sqrd-to-outward-pt 37748736.0
-                              :max-dir-cosa-delta 0.6
-                              :split-dists (new 'static 'array float 2 1024.0 1433.6)
-                              :outward-offset (new 'static 'vector :x 708.608 :y 13312.0 :w 1.0)
-                              :local-cache-fill-box (new 'static 'bounding-box
-                                :min (new 'static 'vector :x -8192.0 :y -11059.2 :z -8192.0 :w 1.0)
-                                :max (new 'static 'vector :x 8192.0 :y 24576.0 :z 8192.0 :w 1.0)
-                                )
-                              :local-within-reach-box (new 'static 'bounding-box
-                                :min (new 'static 'vector :x -6144.0 :y 5324.8 :z -6144.0 :w 1.0)
-                                :max (new 'static 'vector :x 6144.0 :y 11059.2 :z 6144.0 :w 1.0)
-                                )
-                              :local-player-spheres (new 'static 'inline-array sphere 12
-                                (new 'static 'sphere :x 1720.32 :y -819.2 :w 1433.6)
-                                (new 'static 'sphere :x 2293.76 :y -3276.8 :w 1884.16)
-                                (new 'static 'sphere :x 1966.08 :y -6144.0 :w 1556.48)
-                                (new 'static 'sphere :x 1966.08 :y -8601.6 :w 1556.48)
-                                (new 'static 'sphere :x 1761.28 :y -11059.2 :w 1351.68)
-                                (new 'static 'sphere :x 1679.36 :y -13312.0 :w 1269.76)
-                                (new 'static 'sphere :x -737.28 :y 4096.0 :w 3072.0)
-                                (new 'static 'sphere :x -737.28 :y 6553.6 :w 3072.0)
-                                (new 'static 'sphere :x -737.28 :y 9420.8 :w 3072.0)
-                                (new 'static 'sphere :x 1720.32 :y 3686.4 :w 2949.12)
-                                (new 'static 'sphere :x 1720.32 :y 5734.4 :w 2949.12)
-                                (new 'static 'sphere :x 1720.32 :y 8601.6 :w 2949.12)
-                                )
-                              )
-        )
+(define *collide-edge-work*
+  (new 'static
+       'collide-edge-work
+       :max-dist-sqrd-to-outward-pt 37748736.0
+       :max-dir-cosa-delta 0.6
+       :split-dists
+       (new 'static 'array float 2 1024.0 1433.6)
+       :outward-offset
+       (new 'static 'vector :x 708.608 :y 13312.0 :w 1.0)
+       :local-cache-fill-box
+       (new 'static
+            'bounding-box
+            :min
+            (new 'static 'vector :x -8192.0 :y -11059.2 :z -8192.0 :w 1.0)
+            :max
+            (new 'static 'vector :x 8192.0 :y 24576.0 :z 8192.0 :w 1.0))
+       :local-within-reach-box
+       (new 'static
+            'bounding-box
+            :min
+            (new 'static 'vector :x -6144.0 :y 5324.8 :z -6144.0 :w 1.0)
+            :max
+            (new 'static 'vector :x 6144.0 :y 11059.2 :z 6144.0 :w 1.0))
+       :local-player-spheres
+       (new 'static
+            'inline-array
+            sphere
+            12
+            (new 'static 'sphere :x 1720.32 :y -819.2 :w 1433.6)
+            (new 'static 'sphere :x 2293.76 :y -3276.8 :w 1884.16)
+            (new 'static 'sphere :x 1966.08 :y -6144.0 :w 1556.48)
+            (new 'static 'sphere :x 1966.08 :y -8601.6 :w 1556.48)
+            (new 'static 'sphere :x 1761.28 :y -11059.2 :w 1351.68)
+            (new 'static 'sphere :x 1679.36 :y -13312.0 :w 1269.76)
+            (new 'static 'sphere :x -737.28 :y 4096.0 :w 3072.0)
+            (new 'static 'sphere :x -737.28 :y 6553.6 :w 3072.0)
+            (new 'static 'sphere :x -737.28 :y 9420.8 :w 3072.0)
+            (new 'static 'sphere :x 1720.32 :y 3686.4 :w 2949.12)
+            (new 'static 'sphere :x 1720.32 :y 5734.4 :w 2949.12)
+            (new 'static 'sphere :x 1720.32 :y 8601.6 :w 2949.12))))
 
 (define-perm *edge-grab-info* edge-grab-info (new 'global 'edge-grab-info))

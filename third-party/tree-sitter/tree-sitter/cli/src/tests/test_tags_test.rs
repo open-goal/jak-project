@@ -16,28 +16,21 @@ fn test_tags_test_with_basic_test() {
         "    #    ^ reference.call",
         "    return d(e)",
         "    #      ^ reference.call",
+        "    #        ^ !variable.parameter",
         "",
     ]
     .join("\n");
 
     let assertions =
-        parse_position_comments(&mut Parser::new(), language, source.as_bytes()).unwrap();
+        parse_position_comments(&mut Parser::new(), &language, source.as_bytes()).unwrap();
 
     assert_eq!(
         assertions,
         &[
-            Assertion {
-                position: Point::new(1, 4),
-                expected_capture_name: "definition.function".to_string(),
-            },
-            Assertion {
-                position: Point::new(3, 9),
-                expected_capture_name: "reference.call".to_string(),
-            },
-            Assertion {
-                position: Point::new(5, 11),
-                expected_capture_name: "reference.call".to_string(),
-            },
+            Assertion::new(1, 4, false, String::from("definition.function")),
+            Assertion::new(3, 9, false, String::from("reference.call")),
+            Assertion::new(5, 11, false, String::from("reference.call")),
+            Assertion::new(5, 13, true, String::from("variable.parameter")),
         ]
     );
 
@@ -62,5 +55,5 @@ fn test_tags_test_with_basic_test() {
                 "reference.call".to_string()
             ),
         ]
-    )
+    );
 }

@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: level-h.gc
-;; name in dgo: level-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/vu1-user-h.gc")
+(require "engine/dma/dma-h.gc")
 
 ;; The level system is responsible for loading and managning the two levels,
 ;; including the visible data.
@@ -14,11 +13,17 @@
 (defconstant LEVEL_COUNT 2) ;; there are two levels in memory!
 
 (declare-type bsp-header basic)
+
 (declare-type drawable basic)
+
 (declare-type engine basic)
+
 (declare-type entity-links-array basic)
+
 (declare-type entity-ambient-data-array basic)
+
 (declare-type mood-context basic)
+
 (declare-type entity-links structure)
 
 ;; DECOMP BEGINS
@@ -46,9 +51,9 @@
 (defenum vis-info-flag
   :bitfield #t
   :type uint32
-  (from-vis-file 29)                 ;; is .VIS file vis?
-  (waiting-for-iop-to-ee 30)         ;; not here yet
-  (using-this-as-only-vis 31)        ;; using this as the only visibility data
+  (from-vis-file 29) ;; is .VIS file vis?
+  (waiting-for-iop-to-ee 30) ;; not here yet
+  (using-this-as-only-vis 31) ;; using this as the only visibility data
   )
 
 ;; Information related to visibility data for a level.
@@ -66,187 +71,171 @@
 ;; levels.  This means that visibility for "beach" near the border of "village1" is stored in
 ;; both BEA.VIS and VI1.VIS.
 (deftype level-vis-info (basic)
-  ((level               symbol)
-   (from-level          symbol)
-   (from-bsp            bsp-header)
-   (flags               uint32)
-   (length              uint32)
-   (allocated-length    uint32)
-   (dictionary-length   uint32)
-   (dictionary          uint32)
-   (string-block        uint32)
-   (ramdisk             uint32)
-   (vis-bits            pointer)
-   (current-vis-string  uint32)
-   (vis-string          uint32  :dynamic)
-   )
-  )
-
+  ((level              symbol)
+   (from-level         symbol)
+   (from-bsp           bsp-header)
+   (flags              uint32)
+   (length             uint32)
+   (allocated-length   uint32)
+   (dictionary-length  uint32)
+   (dictionary         uint32)
+   (string-block       uint32)
+   (ramdisk            uint32)
+   (vis-bits           pointer)
+   (current-vis-string uint32)
+   (vis-string         uint32 :dynamic)))
 
 (defmethod asize-of ((this level-vis-info))
   "Get the size of a level-vis-info in memory"
-  (the-as int (+ (-> level-vis-info size) (-> this dictionary-length)))
-  )
+  (the-as int (+ (-> level-vis-info size) (-> this dictionary-length))))
 
 ;; Per level information related to how to load the level.
 ;; These are stored in level-info.gc which is always loaded, so this should have all the information required
 ;; to do a level load.
 (deftype level-load-info (basic)
-  ((name-list          symbol  3)
-   (index              int32) ;; the level number (starting with 1?)
-   (name               symbol  :overlay-at (-> name-list 0))
-   (visname            symbol  :overlay-at (-> name-list 1))
-   (nickname           symbol  :overlay-at (-> name-list 2))
-   (packages           pair)
-   (sound-banks        pair)
-   (music-bank         symbol)
-   (ambient-sounds     pair)
-   (mood               symbol)
-   (mood-func          symbol)
-   (ocean              symbol)
-   (sky                symbol)
-   (sun-fade           float)
-   (continues          pair)
-   (tasks              pair)
-   (priority           int32)
-   (load-commands      pair)
-   (alt-load-commands  pair)
-   (bsp-mask           uint64)
-   (bsphere            sphere)
-   (buzzer             int32)
-   (bottom-height      meters)
-   (run-packages       pair)
-   (prev-level         basic)
-   (next-level         basic)
-   (wait-for-load      symbol)
-   )
-  )
+  ((name-list         symbol 3)
+   (index             int32) ;; the level number (starting with 1?)
+   (name              symbol :overlay-at (-> name-list 0))
+   (visname           symbol :overlay-at (-> name-list 1))
+   (nickname          symbol :overlay-at (-> name-list 2))
+   (packages          pair)
+   (sound-banks       pair)
+   (music-bank        symbol)
+   (ambient-sounds    pair)
+   (mood              symbol)
+   (mood-func         symbol)
+   (ocean             symbol)
+   (sky               symbol)
+   (sun-fade          float)
+   (continues         pair)
+   (tasks             pair)
+   (priority          int32)
+   (load-commands     pair)
+   (alt-load-commands pair)
+   (bsp-mask          uint64)
+   (bsphere           sphere)
+   (buzzer            int32)
+   (bottom-height     meters)
+   (run-packages      pair)
+   (prev-level        basic)
+   (next-level        basic)
+   (wait-for-load     symbol)))
 
 ;; The levels are initialized (called "login") over multiple frames.
 ;; The state of this process is stored in a login-state.
 (deftype login-state (basic)
-  ((state  int32)
-   (pos    uint32)
-   (elts   uint32)
-   (elt    drawable  16)
-   )
-  )
+  ((state int32)
+   (pos   uint32)
+   (elts  uint32)
+   (elt   drawable 16)))
 
 ;; The actual "level". This manages loading and running a game level.
 ;; These are allocated by the engine and aren't in static level data.
 
 (deftype level (basic)
-  ((name                             symbol)
-   (load-name                        symbol)
-   (nickname                         symbol)
-   (index                            int32)
-   (status                           symbol)
-   (other                            level)
-   (heap                             kheap                      :inline)
-   (bsp                              bsp-header)
-   (art-group                        load-dir-art-group)
-   (info                             level-load-info)
-   (texture-page                     texture-page               9)
-   (loaded-texture-page              texture-page               16)
-   (loaded-texture-page-count        int32)
-   (tfrag-tex-foreground-sink-group  dma-foreground-sink-group  :inline)
-   (pris-tex-foreground-sink-group   dma-foreground-sink-group  :inline)
-   (water-tex-foreground-sink-group  dma-foreground-sink-group  :inline)
-   (foreground-sink-group            dma-foreground-sink-group  3 :inline :overlay-at tfrag-tex-foreground-sink-group)
-   (foreground-draw-engine           engine                     3)
-   (entity                           entity-links-array)
-   (ambient                          entity-ambient-data-array)
-   (closest-object                   float                      9)
-   (upload-size                      int32                      9)
-   (level-distance                   meters)
-   (inside-sphere?                   symbol)
-   (inside-boxes?                    symbol)
-   (display?                         symbol)
-   (meta-inside?                     symbol)
-   (mood                             mood-context)
-   (mood-func                        (function mood-context float int none))
-   (vis-bits                         pointer)
-   (all-visible?                     symbol)
-   (force-all-visible?               symbol)
-   (linking                          basic)
-   (vis-info                         level-vis-info             8)
-   (vis-self-index                   int32)
-   (vis-adj-index                    int32)
-   (vis-buffer                       uint8                      2048)
-   (mem-usage-block                  memory-usage-block)
-   (mem-usage                        int32)
-   (code-memory-start                pointer)
-   (code-memory-end                  pointer)
-   (texture-mask                     uint32                     9)
-   (force-inside?                    symbol)
-   (pad                              uint8                      56)
-   )
+  ((name                            symbol)
+   (load-name                       symbol)
+   (nickname                        symbol)
+   (index                           int32)
+   (status                          symbol)
+   (other                           level)
+   (heap                            kheap :inline)
+   (bsp                             bsp-header)
+   (art-group                       load-dir-art-group)
+   (info                            level-load-info)
+   (texture-page                    texture-page 9)
+   (loaded-texture-page             texture-page 16)
+   (loaded-texture-page-count       int32)
+   (tfrag-tex-foreground-sink-group dma-foreground-sink-group :inline)
+   (pris-tex-foreground-sink-group  dma-foreground-sink-group :inline)
+   (water-tex-foreground-sink-group dma-foreground-sink-group :inline)
+   (foreground-sink-group           dma-foreground-sink-group 3 :inline :overlay-at tfrag-tex-foreground-sink-group)
+   (foreground-draw-engine          engine 3)
+   (entity                          entity-links-array)
+   (ambient                         entity-ambient-data-array)
+   (closest-object                  float 9)
+   (upload-size                     int32 9)
+   (level-distance                  meters)
+   (inside-sphere?                  symbol)
+   (inside-boxes?                   symbol)
+   (display?                        symbol)
+   (meta-inside?                    symbol)
+   (mood                            mood-context)
+   (mood-func                       (function mood-context float int none))
+   (vis-bits                        pointer)
+   (all-visible?                    symbol)
+   (force-all-visible?              symbol)
+   (linking                         basic)
+   (vis-info                        level-vis-info 8)
+   (vis-self-index                  int32)
+   (vis-adj-index                   int32)
+   (vis-buffer                      uint8 2048)
+   (mem-usage-block                 memory-usage-block)
+   (mem-usage                       int32)
+   (code-memory-start               pointer)
+   (code-memory-end                 pointer)
+   (texture-mask                    uint32 9)
+   (force-inside?                   symbol)
+   (pad                             uint8 56))
   (:methods
-    (deactivate (_type_) _type_)
-    (is-object-visible? (_type_ int) symbol)
-    (add-irq-to-tex-buckets! (_type_) none)
-    (unload! (_type_) _type_)
-    (bsp-name (_type_) symbol)
-    (compute-memory-usage (_type_ object) memory-usage-block)
-    (point-in-boxes? (_type_ vector) symbol)
-    (update-vis! (_type_ level-vis-info uint uint) symbol)
-    (load-continue (_type_) _type_)
-    (load-begin (_type_) _type_)
-    (login-begin (_type_) _type_)
-    (vis-load (_type_) uint)
-    (unused-21 (_type_) none)
-    (birth (_type_) _type_)
-    (level-status-set! (_type_ symbol) _type_)
-    (load-required-packages (_type_) _type_)
-    (init-vis (_type_) int)
-    (vis-clear (_type_) int)
-    (debug-print-splitbox (_type_ vector string) none)
-    (art-group-get-by-name (_type_ string) art-group)
-    )
-  )
-
+   (deactivate (_type_) _type_)
+   (is-object-visible? (_type_ int) symbol)
+   (add-irq-to-tex-buckets! (_type_) none)
+   (unload! (_type_) _type_)
+   (bsp-name (_type_) symbol)
+   (compute-memory-usage (_type_ object) memory-usage-block)
+   (point-in-boxes? (_type_ vector) symbol)
+   (update-vis! (_type_ level-vis-info uint uint) symbol)
+   (load-continue (_type_) _type_)
+   (load-begin (_type_) _type_)
+   (login-begin (_type_) _type_)
+   (vis-load (_type_) uint)
+   (unused-21 (_type_) none)
+   (birth (_type_) _type_)
+   (level-status-set! (_type_ symbol) _type_)
+   (load-required-packages (_type_) _type_)
+   (init-vis (_type_) int)
+   (vis-clear (_type_) int)
+   (debug-print-splitbox (_type_ vector string) none)
+   (art-group-get-by-name (_type_ string) art-group)))
 
 (deftype level-group (basic)
-  ((length            int32)
-   (log-in-level-bsp  bsp-header)
-   (loading-level     level)
-   (entity-link       entity-links)
-   (border?           basic)
-   (vis?              basic)
-   (want-level        basic)
-   (receiving-level   basic)
-   (load-commands     pair)
-   (play?             symbol)
-   (_hack-pad         uint8            :offset  90)
-   (level0            level  :inline)
-   (level1            level  :inline)
-   (level-default     level  :inline)
-   (level             level  3 :inline :overlay-at level0)
-   (data              level  3 :inline :overlay-at level0)
-   (pad               uint32)
-   )
+  ((length           int32)
+   (log-in-level-bsp bsp-header)
+   (loading-level    level)
+   (entity-link      entity-links)
+   (border?          basic)
+   (vis?             basic)
+   (want-level       basic)
+   (receiving-level  basic)
+   (load-commands    pair)
+   (play?            symbol)
+   (_hack-pad        uint8 :offset 90)
+   (level0           level :inline)
+   (level1           level :inline)
+   (level-default    level :inline)
+   (level            level 3 :inline :overlay-at level0)
+   (data             level 3 :inline :overlay-at level0)
+   (pad              uint32))
   (:methods
-    (level-get (_type_ symbol) level)
-    (level-get-with-status (_type_ symbol) level)
-    (level-get-for-use (_type_ symbol symbol) level)
-    (activate-levels! (_type_) int)
-    (debug-print-entities (_type_ symbol type) none)
-    (debug-draw-actors (_type_ symbol) none)
-    (actors-update (_type_) object)
-    (level-update (_type_) int)
-    (level-get-target-inside (_type_) level)
-    (alloc-levels! (_type_ symbol) int)
-    (load-commands-set! (_type_ pair) pair)
-    (art-group-get-by-name (_type_ string) art-group)
-    (load-command-get-index (_type_ symbol int) pair)
-    (update-vis-volumes (_type_) none)
-    (update-vis-volumes-from-nav-mesh (_type_) none)
-    (print-volume-sizes (_type_) none)
-    (level-status (_type_ symbol) symbol)
-    (level-get-most-disposable (_type_) level)
-    )
-  )
-
+   (level-get (_type_ symbol) level)
+   (level-get-with-status (_type_ symbol) level)
+   (level-get-for-use (_type_ symbol symbol) level)
+   (activate-levels! (_type_) int)
+   (debug-print-entities (_type_ symbol type) none)
+   (debug-draw-actors (_type_ symbol) none)
+   (actors-update (_type_) object)
+   (level-update (_type_) int)
+   (level-get-target-inside (_type_) level)
+   (alloc-levels! (_type_ symbol) int)
+   (load-commands-set! (_type_ pair) pair)
+   (art-group-get-by-name (_type_ string) art-group)
+   (load-command-get-index (_type_ symbol int) pair)
+   (update-vis-volumes (_type_) none)
+   (update-vis-volumes-from-nav-mesh (_type_) none)
+   (print-volume-sizes (_type_) none)
+   (level-status (_type_ symbol) symbol)
+   (level-get-most-disposable (_type_) level)))
 
 (defun-extern level-update-after-load level login-state level)
 
@@ -254,148 +243,177 @@
 ;; there are 3 foreground sinks per texture bucket: merc, generic, and an unused one.
 ;; TODO: figure out exactly which buckets are used for what.
 (define-extern *level* level-group)
+
 (if (zero? *level*)
-    (set! *level*
-          (new 'static 'level-group
-            :length 2
-            :log-in-level-bsp #f
-            :loading-level #f
-            :entity-link #f
-            :border? #f
-            :want-level #f
-            :load-commands '()
-            :play? #f
-            :level0 (new 'static 'level
-              :name #f
-              :status 'inactive
-              :tfrag-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group
-                :sink (new 'static 'array dma-foreground-sink 3
-                  (new 'static 'dma-foreground-sink :bucket (bucket-id merc-tfrag-tex0))
-                  (new 'static 'generic-dma-foreground-sink :bucket (bucket-id generic-tfrag-tex0) :foreground-output-bucket 1)
-                  )
-                )
-              :pris-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group
-                :sink (new 'static 'array dma-foreground-sink 3
-                  (new 'static 'dma-foreground-sink :bucket (bucket-id merc-pris0) :foreground-texture-page 1)
-                  (new 'static 'generic-dma-foreground-sink
-                    :bucket (bucket-id generic-pris0)
-                    :foreground-texture-page 1
-                    :foreground-output-bucket 1
-                    )
-                  )
-                )
-              :water-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group
-                :sink (new 'static 'array dma-foreground-sink 3
-                  (new 'static 'dma-foreground-sink :bucket (bucket-id merc-water0) :foreground-texture-page 2)
-                  (new 'static 'generic-dma-foreground-sink
-                    :bucket (bucket-id generic-water0)
-                    :foreground-texture-page 2
-                    :foreground-output-bucket 1
-                    )
-                  )
-                )
-              :inside-sphere? #f
-              :inside-boxes? #f
-              :force-inside? #f
-              )
-            :level1 (new 'static 'level
-              :name #f
-              :index 1
-              :status 'inactive
-              :tfrag-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group
-                :sink (new 'static 'array dma-foreground-sink 3
-                  (new 'static 'dma-foreground-sink :bucket (bucket-id merc-tfrag-tex1) :foreground-texture-level 1)
-                  (new 'static 'generic-dma-foreground-sink
-                    :bucket (bucket-id generic-tfrag-tex1)
-                    :foreground-texture-level 1
-                    :foreground-output-bucket 1
-                    )
-                  )
-                )
-              :pris-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
-                                                              (new 'static 'dma-foreground-sink
-                                                                :bucket (bucket-id merc-pris1)
-                                                                :foreground-texture-page 1
-                                                                :foreground-texture-level 1
-                                                                )
-                                                              (new 'static 'generic-dma-foreground-sink
-                                                                :bucket (bucket-id generic-pris1)
-                                                                :foreground-texture-page 1
-                                                                :foreground-texture-level 1
-                                                                :foreground-output-bucket 1
-                                                                )
-                                                              )
-                                                      )
-              :water-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
-                                                              (new 'static 'dma-foreground-sink
-                                                                :bucket (bucket-id merc-water1)
-                                                                :foreground-texture-page 2
-                                                                :foreground-texture-level 1
-                                                                )
-                                                              (new 'static 'generic-dma-foreground-sink
-                                                                :bucket (bucket-id generic-water1)
-                                                                :foreground-texture-page 2
-                                                                :foreground-texture-level 1
-                                                                :foreground-output-bucket 1
-                                                                )
-                                                              )
-                                                      )
-              :inside-sphere? #f
-              :inside-boxes? #f
-              :force-inside? #f
-              )
-            :level-default (new 'static 'level
-              :name 'default
-              :index 2
-              :status 'reserved
-              :tfrag-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group
-                :sink (new 'static 'array dma-foreground-sink 3
-                  (new 'static 'dma-foreground-sink :bucket (bucket-id merc-alpha-tex) :foreground-texture-level 2)
-                  (new 'static 'generic-dma-foreground-sink
-                    :bucket (bucket-id generic-alpha-tex)
-                    :foreground-texture-level 2
-                    :foreground-output-bucket 1
-                    )
-                  )
-                )
-              :pris-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
-                                                              (new 'static 'dma-foreground-sink
-                                                                :bucket (bucket-id merc-pris-common)
-                                                                :foreground-texture-page 1
-                                                                :foreground-texture-level 2
-                                                                )
-                                                              (new 'static 'generic-dma-foreground-sink
-                                                                :bucket (bucket-id generic-pris-common)
-                                                                :foreground-texture-page 1
-                                                                :foreground-texture-level 2
-                                                                :foreground-output-bucket 1
-                                                                )
-                                                              )
-                                                      )
-              :water-tex-foreground-sink-group (new 'static 'dma-foreground-sink-group :sink (new 'static 'array dma-foreground-sink 3
-                                                              (new 'static 'dma-foreground-sink
-                                                                :bucket (bucket-id merc-water0)
-                                                                :foreground-texture-page 2
-                                                                :foreground-texture-level 2
-                                                                )
-                                                              (new 'static 'generic-dma-foreground-sink
-                                                                :bucket (bucket-id generic-water0)
-                                                                :foreground-texture-page 2
-                                                                :foreground-texture-level 2
-                                                                :foreground-output-bucket 1
-                                                                )
-                                                              )
-                                                      )
-              :inside-sphere? #f
-              :inside-boxes? #f
-              :force-inside? #f
-              )
-            )
-          )
-    )
-
-
-
+  (set! *level*
+        (new 'static
+             'level-group
+             :length 2
+             :log-in-level-bsp #f
+             :loading-level #f
+             :entity-link #f
+             :border? #f
+             :want-level #f
+             :load-commands
+             '()
+             :play? #f
+             :level0
+             (new 'static
+                  'level
+                  :name #f
+                  :status 'inactive
+                  :tfrag-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-tfrag-tex0))
+                            (new 'static 'generic-dma-foreground-sink :bucket (bucket-id generic-tfrag-tex0) :foreground-output-bucket 1)))
+                  :pris-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-pris0) :foreground-texture-page 1)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-pris0)
+                                 :foreground-texture-page 1
+                                 :foreground-output-bucket 1)))
+                  :water-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-water0) :foreground-texture-page 2)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-water0)
+                                 :foreground-texture-page 2
+                                 :foreground-output-bucket 1)))
+                  :inside-sphere? #f
+                  :inside-boxes? #f
+                  :force-inside? #f)
+             :level1
+             (new 'static
+                  'level
+                  :name #f
+                  :index 1
+                  :status 'inactive
+                  :tfrag-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-tfrag-tex1) :foreground-texture-level 1)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-tfrag-tex1)
+                                 :foreground-texture-level 1
+                                 :foreground-output-bucket 1)))
+                  :pris-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-pris1) :foreground-texture-page 1 :foreground-texture-level 1)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-pris1)
+                                 :foreground-texture-page 1
+                                 :foreground-texture-level 1
+                                 :foreground-output-bucket 1)))
+                  :water-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-water1) :foreground-texture-page 2 :foreground-texture-level 1)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-water1)
+                                 :foreground-texture-page 2
+                                 :foreground-texture-level 1
+                                 :foreground-output-bucket 1)))
+                  :inside-sphere? #f
+                  :inside-boxes? #f
+                  :force-inside? #f)
+             :level-default
+             (new 'static
+                  'level
+                  :name 'default
+                  :index 2
+                  :status 'reserved
+                  :tfrag-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-alpha-tex) :foreground-texture-level 2)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-alpha-tex)
+                                 :foreground-texture-level 2
+                                 :foreground-output-bucket 1)))
+                  :pris-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static
+                                 'dma-foreground-sink
+                                 :bucket (bucket-id merc-pris-common)
+                                 :foreground-texture-page 1
+                                 :foreground-texture-level 2)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-pris-common)
+                                 :foreground-texture-page 1
+                                 :foreground-texture-level 2
+                                 :foreground-output-bucket 1)))
+                  :water-tex-foreground-sink-group
+                  (new 'static
+                       'dma-foreground-sink-group
+                       :sink
+                       (new 'static
+                            'array
+                            dma-foreground-sink
+                            3
+                            (new 'static 'dma-foreground-sink :bucket (bucket-id merc-water0) :foreground-texture-page 2 :foreground-texture-level 2)
+                            (new 'static
+                                 'generic-dma-foreground-sink
+                                 :bucket (bucket-id generic-water0)
+                                 :foreground-texture-page 2
+                                 :foreground-texture-level 2
+                                 :foreground-output-bucket 1)))
+                  :inside-sphere? #f
+                  :inside-boxes? #f
+                  :force-inside? #f))))
 
 (define-extern *level-load-list* pair)
+
 (define-extern lookup-level-info (function symbol level-load-info))

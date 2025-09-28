@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: display-h.gc
-;; name in dgo: display-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/hw/gs.gc")
+(require "engine/ps2/timer-h.gc")
 
 ;; The display system takes care of managing the contexts for settings framebuffers/display settings
 ;; It also handles drawing the profile bars, game engine timing, and managing the two DMA buffers for
@@ -18,71 +17,57 @@
 ;; put-display-env, which is implemented in the kernel and is a wrapper
 ;; around a Sony function.
 (deftype display-env (structure)
-  ((pmode    gs-pmode)
-   (smode2   gs-smode2)
-   (dspfb    gs-display-fb)
-   (display  gs-display)
-   (bgcolor  gs-bgcolor)
-   )
-  :pack-me
-  )
+  ((pmode   gs-pmode)
+   (smode2  gs-smode2)
+   (dspfb   gs-display-fb)
+   (display gs-display)
+   (bgcolor gs-bgcolor))
+  :pack-me)
 
 ;; draw-env stores the GS settings for drawing to somewhere in VRAM.
 ;; the "addr" fields represent GS register addresses
 ;; this is identical to the Sony sceGsDrawEnv1/2 structs
 ;; Internally, this is register + address GIF data.
 (deftype draw-env (structure)
-  ((frame1          gs-frame)
-   (frame1addr      gs-reg64)
-   (zbuf1           gs-zbuf)
-   (zbuf1addr       gs-reg64)
-   (xyoffset1       gs-xy-offset)
-   (xyoffset1addr   gs-reg64)
-   (scissor1        gs-scissor)
-   (scissor1addr    gs-reg64)
-   (prmodecont      gs-prmode-cont)
-   (prmodecontaddr  gs-reg64)
-   (colclamp        gs-color-clamp)
-   (colclampaddr    gs-reg64)
-   (dthe            gs-dthe)
-   (dtheaddr        gs-reg64)
-   (test1           gs-test)
-   (test1addr       gs-reg64)
-   )
-  )
+  ((frame1         gs-frame)
+   (frame1addr     gs-reg64)
+   (zbuf1          gs-zbuf)
+   (zbuf1addr      gs-reg64)
+   (xyoffset1      gs-xy-offset)
+   (xyoffset1addr  gs-reg64)
+   (scissor1       gs-scissor)
+   (scissor1addr   gs-reg64)
+   (prmodecont     gs-prmode-cont)
+   (prmodecontaddr gs-reg64)
+   (colclamp       gs-color-clamp)
+   (colclampaddr   gs-reg64)
+   (dthe           gs-dthe)
+   (dtheaddr       gs-reg64)
+   (test1          gs-test)
+   (test1addr      gs-reg64)))
 
 (defun put-draw-env ((packet (pointer gif-tag)))
   "Begin DMA transfer to the GIF/GS to send a draw env packet.
    The length of the transfer is taken from the nloop field of the tag."
   ;; this is a workaround for OpenGOAL not supporting 128-bitfield access yet.
   (#when PC_PORT
-    (return #f)
-    )
+    (return #f))
   (let ((packet64 (the-as (pointer gif-tag64) packet)))
-    (dma-send GIF_DMA_BANK
-              (the-as uint packet)
-              (the-as uint (+ (the-as uint (-> packet64 0 nloop)) (the-as uint 1)))
-              )
-    )
-  (none)
-  )
+    (dma-send GIF_DMA_BANK (the-as uint packet) (the-as uint (+ (the-as uint (-> packet64 0 nloop)) (the-as uint 1)))))
+  (none))
 
 ;; Per frame data that is used by the renderers.
 (deftype display-frame (basic)
-  ((calc-buf      dma-buffer                    :offset   8)
-   (vu1-buf       dma-buffer                    :overlay-at calc-buf)
-   (debug-buf     dma-buffer                    :offset  36)
-   (global-buf    dma-buffer                    :offset  40)
-   (bucket-group  (inline-array dma-bucket)     :offset  44)
-   (buffer        dma-buffer                 11 :offset   4)
-   (profile-bar   profile-bar                2  :offset  48)
-   (run-time      int64                         :offset  56)
-   )
+  ((calc-buf     dma-buffer :offset 8)
+   (vu1-buf      dma-buffer :overlay-at calc-buf)
+   (debug-buf    dma-buffer :offset 36)
+   (global-buf   dma-buffer :offset 40)
+   (bucket-group (inline-array dma-bucket) :offset 44)
+   (buffer       dma-buffer 11 :offset 4)
+   (profile-bar  profile-bar 2 :offset 48)
+   (run-time     int64 :offset 56))
   (:methods
-    (new (symbol type) _type_)
-    )
-  )
-
+   (new (symbol type) _type_)))
 
 (defmethod new display-frame ((allocation symbol) (type-to-make type))
   "Allocate a new display frame"
@@ -93,81 +78,71 @@
     ;; allocate profile-bars in the debug heap, if we're debugging.
     (when *debug-segment*
       (set! (-> this profile-bar 0) (new 'debug 'profile-bar))
-      (set! (-> this profile-bar 1) (new 'debug 'profile-bar))
-      )
-    this
-    )
-  )
+      (set! (-> this profile-bar 1) (new 'debug 'profile-bar)))
+    this))
 
 ;; unused?
 (deftype virtual-frame (structure)
-  ((display       display-env)
-   (display-last  display-env)
-   (gif           pointer)
-   (draw          draw-env)
-   (frame         display-frame)
-   )
-  :allow-misaligned
-  )
-
+  ((display      display-env)
+   (display-last display-env)
+   (gif          pointer)
+   (draw         draw-env)
+   (frame        display-frame))
+  :allow-misaligned)
 
 ;; This tracks all of the display stuff in a single global
 (deftype display (basic)
   ;; first, 3x environments. Not sure why we need 3.
-  ((display-env0                     display-env    :inline)
-   (display-env1                     display-env    :inline)
-   (display-env2                     display-env    :inline)
+  ((display-env0 display-env :inline)
+   (display-env1 display-env :inline)
+   (display-env2 display-env :inline)
    ;; the gif-tag + draw is a gif-packet to setting the draw-env.
    ;; the draw-env is actually just a+d data.
-   (gif-tag0                         gs-gif-tag     :inline)
-   (draw0                            draw-env       :inline)
-   (gif-tag1                         gs-gif-tag     :inline)
-   (draw1                            draw-env       :inline)
-   (gif-tag2                         gs-gif-tag     :inline)
-   (draw2                            draw-env       :inline)
-
+   (gif-tag0 gs-gif-tag :inline)
+   (draw0 draw-env :inline)
+   (gif-tag1 gs-gif-tag :inline)
+   (draw1 draw-env :inline)
+   (gif-tag2 gs-gif-tag :inline)
+   (draw2 draw-env :inline)
    ;; frame indices
-   (on-screen                        int32)
-   (last-screen                      int32)
+   (on-screen int32)
+   (last-screen int32)
    ;; not sure why we have 6, it seems like only the first 2 actually
    ;; have valid display-frames in them.
-   (frames                           virtual-frame  6 :inline)
-   (bg-clear-color                   rgba           4)
+   (frames virtual-frame 6 :inline)
+   (bg-clear-color rgba 4)
    ;; counters
-   (real-frame-counter               time-frame)
-   (base-frame-counter               time-frame)
-   (game-frame-counter               time-frame)
-   (integral-frame-counter           time-frame)
-   (real-integral-frame-counter      time-frame)
-   (actual-frame-counter             time-frame)
-   (real-actual-frame-counter        time-frame)
-   (part-frame-counter               time-frame)
-
+   (real-frame-counter time-frame)
+   (base-frame-counter time-frame)
+   (game-frame-counter time-frame)
+   (integral-frame-counter time-frame)
+   (real-integral-frame-counter time-frame)
+   (actual-frame-counter time-frame)
+   (real-actual-frame-counter time-frame)
+   (part-frame-counter time-frame)
    ;; the "old" counters are the values from the previous tick.
    ;; the counters above may jump during a load.
-   (old-real-frame-counter           time-frame)
-   (old-base-frame-counter           time-frame)
-   (old-game-frame-counter           time-frame)
-   (old-integral-frame-counter       time-frame)
-   (old-real-integral-frame-counter  time-frame)
-   (old-actual-frame-counter         time-frame)
-   (old-real-actual-frame-counter    time-frame)
-   (old-part-frame-counter           time-frame)
-
+   (old-real-frame-counter time-frame)
+   (old-base-frame-counter time-frame)
+   (old-game-frame-counter time-frame)
+   (old-integral-frame-counter time-frame)
+   (old-real-integral-frame-counter time-frame)
+   (old-actual-frame-counter time-frame)
+   (old-real-actual-frame-counter time-frame)
+   (old-part-frame-counter time-frame)
    ;; timing stats for how fast the engine is currently running.
-   (time-ratio                       float) ;; engine speed, 1.0 = full speed 
-   (seconds-per-frame                float) ;; 1/fps
-   (frames-per-second                float) ;; fps
-   (time-factor                      float) ;; 6 on PAL, 5 on NTSC, "ticks" / frame
-   (time-adjust-ratio                float) ;; 1 on NTSC full speed, 1.2 PAL full speed.
+   (time-ratio float) ;; engine speed, 1.0 = full speed
+   (seconds-per-frame float) ;; 1/fps
+   (frames-per-second float) ;; fps
+   (time-factor float) ;; 6 on PAL, 5 on NTSC, "ticks" / frame
+   (time-adjust-ratio float) ;; 1 on NTSC full speed, 1.2 PAL full speed.
    )
   (:methods
-    (new (symbol type int int int int int) _type_)
-    (set-time-ratios (_type_ float) float)
-    )
-  )
+   (new (symbol type int int int int int) _type_)
+   (set-time-ratios (_type_ float) float)))
 
 (define-extern *display* display)
+
 (define-extern set-display (function display int int int int int display))
 
 (defmethod new display ((allocation symbol) (type-to-make type) (psm int) (w int) (h int) (ztest int) (zpsm int))
@@ -213,41 +188,32 @@
     (set! (-> this bg-clear-color 1) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
     (set! (-> this bg-clear-color 2) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
     (set! (-> this bg-clear-color 3) (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
-    this
-    )
-  )
+    this))
 
 (define *pre-draw-hook* (the (function object none) nothing))
+
 (define *post-draw-hook* (the-as (function dma-buffer none) nothing))
 
-
 (defmacro current-frame ()
-  `(-> *display* frames (-> *display* on-screen) frame)
-  )
+  `(-> *display* frames (-> *display* on-screen) frame))
 
 (defmacro current-time ()
-  `(-> *display* base-frame-counter)
-  )
+  `(-> *display* base-frame-counter))
 
 (defmacro integral-current-time ()
-  `(-> *display* integral-frame-counter)
-  )
+  `(-> *display* integral-frame-counter))
 
 (defmacro real-current-time ()
-  `(-> *display* real-frame-counter)
-  )
+  `(-> *display* real-frame-counter))
 
 (defmacro seconds-per-frame ()
-  `(-> *display* seconds-per-frame)
-  )
+  `(-> *display* seconds-per-frame))
 
 (defmacro set-time! (time)
-  `(set! ,time (current-time))
-  )
+  `(set! ,time (current-time)))
 
 (defmacro time-elapsed? (time duration)
-  `(>= (- (current-time) ,time) ,duration)
-  )
+  `(>= (- (current-time) ,time) ,duration))
 
 ;; debug stuff really
 (defmacro get-screen-x (frac)

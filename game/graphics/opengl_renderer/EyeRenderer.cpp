@@ -24,7 +24,12 @@ void EyeRenderer::init_textures(TexturePool& texture_pool, GameVersion version) 
           break;
         case GameVersion::Jak2:
           // NOTE: using jak 1's address because jak 2's breaks some ocean stuff.
+          // this is a little suspicious, I think we're possibly just getting lucky here.
           tbp += EYE_BASE_BLOCK_JAK1;
+          break;
+        case GameVersion::Jak3:
+          // for jak 3, go back to using the right TBP.
+          tbp += EYE_BASE_BLOCK_JAK3;
           break;
         default:
           ASSERT_NOT_REACHED();
@@ -181,7 +186,7 @@ EyeRenderer::SpriteInfo decode_sprite(const DmaTransfer& dma) {
   memcpy(&result.a, dma.data + 16 + 12, 1);  // a
 
   // uv0
-  memcpy(&result.uv0[0], &dma.data[32], 8);
+  memcpy(&result.uv0, &dma.data[32], 8);
 
   // xyz0
   memcpy(&result.xyz0[0], &dma.data[48], 12);
@@ -231,8 +236,11 @@ std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma
     bool using_64 = false;
     {
       auto draw0 = read_eye_draw(dma);
-      ASSERT(draw0.sprite.uv0[0] == 0);
-      ASSERT(draw0.sprite.uv0[1] == 0);
+      // ASSERT(draw0.sprite.uv0[0] == 0);
+      // ASSERT(draw0.sprite.uv0[1] == 0);
+      // printf("hashed name is 0x%x 0x%x\n", draw0.sprite.uv0[0], draw0.sprite.uv0[1]);
+      l_draw.fnv_name_hash = draw0.sprite.uv0;
+      r_draw.fnv_name_hash = draw0.sprite.uv0;
       ASSERT(draw0.sprite.uv1[0] == 0);
       ASSERT(draw0.sprite.uv1[1] == 0);
       if (draw0.scissor.y1 - draw0.scissor.y0 == 63) {
@@ -248,16 +256,6 @@ std::vector<EyeRenderer::SingleEyeDraws> EyeRenderer::get_draws(DmaFollower& dma
       pair_idx = y0 / SINGLE_EYE_SIZE;
       l_draw.pair = pair_idx;
       r_draw.pair = pair_idx;
-      if (tex0 && tex0->get_data_ptr()) {
-        u32 tex_val;
-        memcpy(&tex_val, tex0->get_data_ptr(), 4);
-        l_draw.clear_color = tex_val;
-        r_draw.clear_color = tex_val;
-      } else {
-        fmt::print("clear lookup failed\n");
-        l_draw.clear_color = 0;
-        r_draw.clear_color = 0;
-      }
     }
 
     // up next is the pupil background
@@ -454,6 +452,33 @@ int add_draw_to_buffer_64(int idx,
   return idx;
 }
 
+int add_clear_draw_to_buffer(int idx, float* data) {
+  // the entire eye texture is cleared using the 0,0 value from the iris texture
+  const float center = 768;
+  const float upper = center + 256;
+  const float lower = center - 256;
+  data[idx++] = lower;
+  data[idx++] = lower;
+  data[idx++] = 0;
+  data[idx++] = 0;
+
+  data[idx++] = upper;
+  data[idx++] = lower;
+  data[idx++] = 0;
+  data[idx++] = 0;
+
+  data[idx++] = lower;
+  data[idx++] = upper;
+  data[idx++] = 0;
+  data[idx++] = 0;
+
+  data[idx++] = upper;
+  data[idx++] = upper;
+  data[idx++] = 0;
+  data[idx++] = 0;
+  return idx;
+}
+
 void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
                           SharedRenderState* render_state) {
   if (draws.empty()) {
@@ -466,6 +491,7 @@ void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
   // the first thing we'll do is prepare the vertices
   int buffer_idx = 0;
   for (const auto& draw : draws) {
+    buffer_idx = add_clear_draw_to_buffer(buffer_idx, m_gpu_vertex_buffer);
     if (draw.using_64) {
       buffer_idx =
           add_draw_to_buffer_64(buffer_idx, draw.iris, m_gpu_vertex_buffer, draw.pair, draw.lr);
@@ -504,14 +530,21 @@ void EyeRenderer::run_gpu(const std::vector<SingleEyeDraws>& draws,
   buffer_idx = 0;
   for (size_t draw_idx = 0; draw_idx < draws.size(); draw_idx++) {
     const auto& draw = draws[draw_idx];
-    const auto& out_tex = m_gpu_eye_textures[draw.tex_slot()];
+    auto& out_tex = m_gpu_eye_textures[draw.tex_slot()];
+    out_tex.fnv_name_hash = draw.fnv_name_hash;
+    out_tex.lr = draw.lr;
 
-    // first, the clear
-    float clear[4] = {0, 0, 0, 0};
-    for (int i = 0; i < 4; i++) {
-      clear[i] = ((draw.clear_color >> (8 * i)) & 0xff) / 255.f;
-    }
+    // clear: not really needed, but we do it to help debugging in case all the textures are missing
+    float clear[4] = {1.0, 0, 0, 0};
     glClearBufferfv(GL_COLOR, 0, clear);
+
+    // background
+    if (draw.iris_tex) {
+      glDisable(GL_BLEND);
+      glBindTexture(GL_TEXTURE_2D, draw.iris_gl_tex);
+      glDrawArrays(GL_TRIANGLE_STRIP, buffer_idx / 4, 4);
+    }
+    buffer_idx += 4 * 4;
 
     // iris
     if (draw.iris_tex) {
@@ -569,15 +602,30 @@ std::optional<u64> EyeRenderer::lookup_eye_texture(u8 eye_id) {
   }
 }
 
+std::optional<u64> EyeRenderer::lookup_eye_texture_hash(u64 hash, bool lr) {
+  for (auto& slot : m_gpu_eye_textures) {
+    if (slot.fnv_name_hash == hash && slot.lr == lr) {
+      auto* gpu_tex = slot.gpu_tex;
+      if (gpu_tex) {
+        return gpu_tex->gpu_textures.at(0).gl;
+      } else {
+        fmt::print("lookup eye failed for {} (1)\n", hash);
+        return {};
+      }
+    }
+  }
+  fmt::print("lookup eye failed for {} (2)\n", hash);
+  return {};
+}
+
 //////////////////////
 // DMA Decode
 //////////////////////
 
 std::string EyeRenderer::SpriteInfo::print() const {
   std::string result;
-  result +=
-      fmt::format("a: {:x} uv: ({}, {}), ({}, {}) xyz: ({}, {}, {}), ({}, {}, {})", a, uv0[0],
-                  uv0[1], uv1[0], uv1[1], xyz0[0], xyz0[1], xyz0[2], xyz1[0], xyz1[1], xyz1[2]);
+  result += fmt::format("a: {:x} uv: ({}), ({}, {}) xyz: ({}, {}, {}), ({}, {}, {})", a, uv0,
+                        uv1[0], uv1[1], xyz0[0], xyz0[1], xyz0[2], xyz1[0], xyz1[1], xyz1[2]);
   return result;
 }
 

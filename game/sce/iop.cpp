@@ -133,12 +133,14 @@ void sceSifRegisterRpc(sceSifServeData* serve,
                        unsigned int request,
                        sceSifRpcFunc func,
                        void* buff,
+                       int buff_size,
                        sceSifRpcFunc cfunc,
                        void* cbuff,
                        sceSifQueueData* qd) {
   serve->command = request;
   serve->func = func;
   serve->buff = buff;
+  serve->buff_size = buff_size;
   (void)cfunc;
   (void)cbuff;
   ASSERT(!cfunc);
@@ -172,6 +174,10 @@ void DelayThread(u32 usec) {
   iop->kernel.DelayThread(usec);
 }
 
+void YieldThread() {
+  iop->kernel.YieldThread();
+}
+
 int sceCdBreak() {
   return 1;
 }
@@ -197,16 +203,20 @@ s32 PollMbx(MsgPacket** recvmsg, int mbxid) {
   return iop->kernel.PollMbx((void**)recvmsg, mbxid);
 }
 
+s32 ReceiveMbx(MsgPacket** recvmsg, int mbxid) {
+  return iop->kernel.ReceiveMbx((void**)recvmsg, mbxid);
+}
+
 s32 PeekMbx(s32 mbx) {
   return iop->kernel.PeekMbx(mbx);
 }
 
-static int now = 0;
+s32 MbxSize(s32 mbx) {
+  return iop->kernel.MbxSize(mbx);
+}
 
-void GetSystemTime(SysClock* time) {
-  time->lo = 0;
-  time->hi = now;
-  now += 10;
+u32 GetSystemTimeLow() {
+  return iop->kernel.GetSystemTimeLow();
 }
 
 void SleepThread() {
@@ -214,7 +224,7 @@ void SleepThread() {
 }
 
 s32 CreateSema(SemaParam* param) {
-  return iop->kernel.CreateSema(param->attr, param->option, param->max_count, param->init_count);
+  return iop->kernel.CreateSema(param->attr, param->option, param->init_count, param->max_count);
 }
 
 s32 WaitSema(s32 sema) {
@@ -227,6 +237,22 @@ s32 SignalSema(s32 sema) {
 
 s32 PollSema(s32 sema) {
   return iop->kernel.PollSema(sema);
+}
+
+s32 CreateEventFlag(const EventFlagParam* param) {
+  return iop->kernel.CreateEventFlag(param->attr, param->option, param->init_pattern);
+}
+
+s32 ClearEventFlag(s32 flag, u32 pattern) {
+  return iop->kernel.ClearEventFlag(flag, pattern);
+}
+
+s32 WaitEventFlag(s32 flag, u32 pattern, u32 mode) {
+  return iop->kernel.WaitEventFlag(flag, pattern, mode);
+}
+
+s32 SetEventFlag(s32 flag, u32 pattern) {
+  return iop->kernel.SetEventFlag(flag, pattern);
 }
 
 s32 WakeupThread(s32 thid) {

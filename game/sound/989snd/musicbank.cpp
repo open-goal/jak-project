@@ -7,12 +7,8 @@
 
 namespace snd {
 
-std::optional<std::unique_ptr<SoundHandler>> MusicBank::MakeHandler(VoiceManager& vm,
-                                                                    u32 sound_id,
-                                                                    s32 vol,
-                                                                    s32 pan,
-                                                                    s32 pm,
-                                                                    s32 pb) {
+std::optional<std::unique_ptr<SoundHandler>>
+MusicBank::MakeHandler(VoiceManager& vm, u32 sound_id, s32 vol, s32 pan, s32 pm, s32 pb, s32 tick) {
   auto& sound = Sounds[sound_id];
 
   // FIXME: global midi list
@@ -42,7 +38,8 @@ std::optional<std::unique_ptr<SoundHandler>> MusicBank::MakeHandler(VoiceManager
                                                                     u32 sound_id,
                                                                     s32 vol,
                                                                     s32 pan,
-                                                                    SndPlayParams& params) {
+                                                                    SndPlayParams& params,
+                                                                    s32 tick) {
   return std::nullopt;
 }
 

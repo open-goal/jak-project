@@ -15,11 +15,12 @@ extern char ConvertTable[16];  // todo rm
 extern Ptr<u8> MessBufArea;
 extern Ptr<u8> OutputBufArea;
 extern Ptr<u8> PrintBufArea;
+extern size_t PrintBufSize;  // added
 
 constexpr u32 DEBUG_MESSAGE_BUFFER_SIZE = 0x80000;
 constexpr u32 DEBUG_OUTPUT_BUFFER_SIZE = 0x80000;
 constexpr u32 DEBUG_PRINT_BUFFER_SIZE = 0x200000;
-constexpr u32 PRINT_BUFFER_SIZE = 0x8000;  // upped from 0x2000 on PS2 because we ran out of memory
+constexpr u32 PRINT_BUFFER_SIZE = 0x10000;  // upped from 0x2000 on PS2 because we ran out of memory
 
 struct format_struct {
   char data[0x40];
@@ -142,3 +143,8 @@ char* kitoa(char* buffer, s64 value, u64 base, s32 length, char pad, u32 flag);
  * getting a 128-bit integer in PS2 gcc's varargs doesn't work.
  */
 void kqtoa();
+
+/*!
+ * Make sure we have at least 1024 bytes left in the print buffer.
+ */
+void assert_print_buffer_has_room(const u8* ptr);

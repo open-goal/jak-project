@@ -1,0 +1,70 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type res-tag
+(deftype res-tag (uint128)
+  "Metadata about a property in a [[res-lump]], such as name, element type and element count."
+  ((name        symbol :offset   0 :size  32)
+   (key-frame   float  :offset  32 :size  32)
+   (elt-type    type   :offset  64 :size  32)
+   (data-offset uint16 :offset  96 :size  16)
+   (elt-count   uint32 :offset 112 :size  15)
+   (inlined?    uint8  :offset 127 :size   1)
+   )
+  )
+
+;; definition of type res-lump
+(deftype res-lump (basic)
+  "A collection of [[res-tag]]s and their data."
+  ((length            int32)
+   (allocated-length  int16)
+   (flags             res-lump-flags)
+   (data-base         pointer)
+   (data-top          pointer)
+   (data-size         int32)
+   (extra             entity-links)
+   (tag               (pointer res-tag))
+   )
+  (:methods
+    (new (symbol type int int) _type_)
+    (get-property-data (_type_ symbol symbol float pointer (pointer res-tag) pointer) pointer :no-virtual)
+    (get-property-struct (_type_ symbol symbol float structure (pointer res-tag) pointer) structure :no-virtual)
+    (get-property-value (_type_ symbol symbol float uint128 (pointer res-tag) pointer) uint128 :no-virtual)
+    (get-property-value-float (_type_ symbol symbol float float (pointer res-tag) pointer) float)
+    (get-tag-index-data (_type_ int) pointer)
+    (get-tag-data (_type_ res-tag) pointer)
+    (allocate-data-memory-for-tag! (_type_ res-tag) res-tag)
+    (sort! (_type_) _type_)
+    (add-data! (_type_ res-tag pointer) res-lump)
+    (add-32bit-data! (_type_ res-tag object) res-lump)
+    (lookup-tag-idx (_type_ symbol symbol float) res-tag-pair :no-virtual)
+    (make-property-data (_type_ float res-tag-pair pointer) pointer)
+    (get-curve-data! (_type_ curve symbol symbol float) symbol)
+    )
+  )
+
+;; definition for method 3 of type res-lump
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect ((this res-lump))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tdata-base: #x~X~%" (-> this data-base))
+  (format #t "~1Tdata-top: #x~X~%" (-> this data-top))
+  (format #t "~1Tdata-size: ~D~%" (-> this data-size))
+  (format #t "~1Textra: ~A~%" (-> this extra))
+  (format #t "~1Ttag: #x~X~%" (-> this tag))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *res-key-string*, type string
+(define *res-key-string* (new 'global 'string 64 (the-as string #f)))
+
+;; failed to figure out what this is:
+0

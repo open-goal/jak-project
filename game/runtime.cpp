@@ -43,11 +43,17 @@
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/jak1/kboot.h"
+#include "game/kernel/jak1/kdgo.h"
 #include "game/kernel/jak1/klisten.h"
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak2/kboot.h"
+#include "game/kernel/jak2/kdgo.h"
 #include "game/kernel/jak2/klisten.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "game/kernel/jak3/kboot.h"
+#include "game/kernel/jak3/kdgo.h"
+#include "game/kernel/jak3/klisten.h"
+#include "game/kernel/jak3/kscheme.h"
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/sbank.h"
@@ -72,10 +78,10 @@
 #include "game/overlord/jak2/stream.h"
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
+#include "game/overlord/jak3/init.h"
+#include "game/overlord/jak3/overlord.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
-#include "game/system/vm/dmac.h"
-#include "game/system/vm/vm.h"
 #include "sce/deci2.h"
 #include "sce/iop.h"
 #include "sce/libcdvd_ee.h"
@@ -190,21 +196,28 @@ void ee_runner(SystemThreadInterface& iface) {
   fileio_init_globals();
   jak1::kboot_init_globals();
   jak2::kboot_init_globals();
+  jak3::kboot_init_globals();
 
   kboot_init_globals_common();
   kdgo_init_globals();
+  jak1::kdgo_init_globals();
+  jak2::kdgo_init_globals();
+  jak3::kdgo_init_globals();
+
   kdsnetm_init_globals_common();
   klink_init_globals();
 
   kmachine_init_globals_common();
   jak1::kscheme_init_globals();
   jak2::kscheme_init_globals();
+  jak3::kscheme_init_globals();
   kscheme_init_globals_common();
   kmalloc_init_globals_common();
 
   klisten_init_globals();
   jak1::klisten_init_globals();
   jak2::klisten_init_globals();
+  jak3::klisten_init_globals();
 
   jak2::vag_init_globals();
 
@@ -222,6 +235,9 @@ void ee_runner(SystemThreadInterface& iface) {
       break;
     case GameVersion::Jak2:
       jak2::goal_main(g_argc, g_argv);
+      break;
+    case GameVersion::Jak3:
+      jak3::goal_main(g_argc, g_argv);
       break;
     default:
       ASSERT_MSG(false, "Unsupported game version");
@@ -262,33 +278,36 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   iop::LIBRARY_register(&iop);
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
-  jak1::dma_init_globals();
-  jak2::dma_init_globals();
+  if (version != GameVersion::Jak3) {
+    jak1::dma_init_globals();
+    jak2::dma_init_globals();
 
-  iso_init_globals();
-  jak1::iso_init_globals();
-  jak2::iso_init_globals();
+    iso_init_globals();
+    jak1::iso_init_globals();
+    jak2::iso_init_globals();
 
-  fake_iso_init_globals();
-  jak1::fake_iso_init_globals();
-  jak2::iso_cd_init_globals();
+    fake_iso_init_globals();
+    jak1::fake_iso_init_globals();
+    jak2::iso_cd_init_globals();
 
-  jak1::iso_queue_init_globals();
-  jak2::iso_queue_init_globals();
+    jak1::iso_queue_init_globals();
+    jak2::iso_queue_init_globals();
 
-  jak2::spusstreams_init_globals();
-  jak1::ramdisk_init_globals();
-  sbank_init_globals();
+    jak2::spusstreams_init_globals();
+    jak1::ramdisk_init_globals();
+    sbank_init_globals();
 
-  // soundcommon
-  jak1::srpc_init_globals();
-  jak2::srpc_init_globals();
-  srpc_init_globals();
-  ssound_init_globals();
-  jak2::ssound_init_globals();
+    // soundcommon
+    jak1::srpc_init_globals();
+    jak2::srpc_init_globals();
+    srpc_init_globals();
+    ssound_init_globals();
+    jak2::ssound_init_globals();
 
-  jak1::stream_init_globals();
-  jak2::stream_init_globals();
+    jak1::stream_init_globals();
+    jak2::stream_init_globals();
+  }
+
   prof().end_event();
   iface.initialization_complete();
 
@@ -318,6 +337,9 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
       case GameVersion::Jak2:
         jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
         break;
+      case GameVersion::Jak3:
+        jak3::start_overlord_wrapper(&complete);
+        break;
       default:
         ASSERT_NOT_REACHED();
     }
@@ -326,7 +348,6 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   {
     auto p = scoped_prof("overlord-wait-for-init");
     while (complete == false) {
-      prof().root_event();
       iop.kernel.dispatch();
     }
   }
@@ -336,7 +357,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
 
   // IOP Kernel loop
   while (!iface.get_want_exit() && !iop.want_exit) {
-    prof().root_event();
+    // prof().root_event();
     // The IOP scheduler informs us of how many microseconds are left until it has something to do.
     // So we can wait for that long or until something else needs it to wake up.
     auto wait_duration = iop.kernel.dispatch();
@@ -357,32 +378,6 @@ void null_runner(SystemThreadInterface& iface) {
 }
 
 /*!
- * SystemThread function for running the PS2 DMA controller.
- * This does not actually emulate the DMAC, it only fakes its existence enough that we can debug
- * the DMA packets the original game sends. The port will replace all DMAC code.
- */
-void dmac_runner(SystemThreadInterface& iface) {
-  VM::subscribe_component();
-
-  VM::dmac_init_globals();
-
-  iface.initialization_complete();
-
-  while (!iface.get_want_exit() && !VM::vm_want_exit()) {
-    //    for (int i = 0; i < 10; ++i) {
-    //      if (VM::dmac_ch[i]->chcr.str) {
-    //        // lg::info("DMA detected on channel {}, clearing", i);
-    //        VM::dmac_ch[i]->chcr.str = 0;
-    //      }
-    //    }
-    // avoid running the DMAC on full blast (this does not sync to its clockrate)
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
-  }
-
-  VM::unsubscribe_component();
-}
-
-/*!
  * Main function to launch the runtime.
  * GOAL kernel arguments are currently ignored.
  */
@@ -393,7 +388,6 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   g_main_thread_id = std::this_thread::get_id();
 
   bool enable_display = !game_options.disable_display;
-  VM::use = !game_options.disable_debug_vm;
   g_game_version = game_options.game_version;
   g_server_port = game_options.server_port;
 
@@ -424,7 +418,6 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
 
   // step 2: system prep
   prof().begin_event("startup::exec_runtime::system_prep");
-  VM::vm_prepare();  // our fake ps2 VM needs to be prepared
   SystemThreadManager tm;
   auto& deci_thread = tm.create_thread("DMP");
   auto& iop_thread = tm.create_thread("IOP");
@@ -432,7 +425,6 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   // a general worker thread to perform background operations from the EE thread (to not block the
   // game)
   auto& ee_worker_thread = tm.create_thread("EE-Worker");
-  auto& vm_dmac_thread = tm.create_thread("VM-DMAC");
   prof().end_event();
 
   // step 3: start the EE!
@@ -451,10 +443,6 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   {
     auto p = scoped_prof("startup::exec_runtime::ee-start");
     ee_thread.start(ee_runner);
-  }
-  if (VM::use) {
-    auto p = scoped_prof("startup::exec_runtime::dmac-start");
-    vm_dmac_thread.start(dmac_runner);
   }
 
   // step 4: wait for EE to signal a shutdown. meanwhile, run video loop on main thread.

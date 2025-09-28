@@ -54,15 +54,16 @@
 
 ;; definition for method 7 of type drill-control-panel
 ;; WARN: Return type mismatch process-drawable vs drill-control-panel.
-(defmethod relocate ((this drill-control-panel) (arg0 int))
+(defmethod relocate ((this drill-control-panel) (offset int))
   (if (nonzero? (-> this debris-part))
-      (&+! (-> this debris-part) arg0)
+      (&+! (-> this debris-part) offset)
       )
-  (the-as drill-control-panel ((method-of-type process-drawable relocate) this arg0))
+  (the-as drill-control-panel ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition for method 10 of type drill-control-panel
 (defmethod deactivate ((this drill-control-panel))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this idle-sound-id))
   (if (nonzero? (-> this debris-part))
       (kill-and-free-particles (-> this debris-part))
@@ -689,7 +690,7 @@
     )
   :code sleep-code
   :post (behavior ()
-    (spawn-with-cspace (-> self part) (the-as cspace (-> self node-list data)))
+    (spawn-with-cspace (-> self part) (-> self node-list data 0))
     (sound-play "small-panel" :id (-> self idle-sound-id))
     )
   )
@@ -739,11 +740,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-control-panel) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -793,11 +794,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-control-panel-a) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

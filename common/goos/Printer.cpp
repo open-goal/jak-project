@@ -6,7 +6,7 @@
 #include "common/goos/Object.h"
 #include "common/util/print_float.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 
 namespace pretty_print {
 namespace {

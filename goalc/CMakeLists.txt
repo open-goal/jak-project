@@ -6,24 +6,32 @@ add_library(compiler
         emitter/Register.cpp
         debugger/disassemble.cpp
         build_level/common/build_level.cpp
+        build_actor/common/animation_processing.cpp
+        build_actor/common/MercExtract.cpp
         build_level/jak1/build_level.cpp
         build_level/jak2/build_level.cpp
+        build_level/jak3/build_level.cpp
         build_level/collide/jak1/collide_bvh.cpp
         build_level/collide/jak1/collide_drawable.cpp
         build_level/collide/jak1/collide_pack.cpp
         build_level/collide/jak2/collide.cpp
+        build_level/collide/jak3/collide.cpp
         build_level/common/color_quantization.cpp
         build_level/common/Entity.cpp
         build_level/jak1/Entity.cpp
         build_level/jak2/Entity.cpp
+        build_level/jak3/Entity.cpp
         build_level/common/FileInfo.cpp
         build_level/jak1/FileInfo.cpp
         build_level/jak2/FileInfo.cpp
+        build_level/jak3/FileInfo.cpp
         build_level/common/gltf_mesh_extract.cpp
         build_level/jak1/LevelFile.cpp
         build_level/jak2/LevelFile.cpp
+        build_level/jak3/LevelFile.cpp
         build_level/common/ResLump.cpp
         build_level/common/Tfrag.cpp
+        build_level/common/Tie.cpp
         build_level/jak1/ambient.cpp
         compiler/Compiler.cpp
         compiler/Env.cpp
@@ -32,6 +40,7 @@ add_library(compiler
         compiler/CompilerSettings.cpp
         compiler/CodeGenerator.cpp
         compiler/StaticObject.cpp
+        compiler/symbol_info.cpp
         compiler/compilation/Asm.cpp
         compiler/compilation/Atoms.cpp
         compiler/compilation/CompilerControl.cpp
@@ -51,6 +60,10 @@ add_library(compiler
         data_compiler/dir_tpages.cpp
         data_compiler/game_count.cpp
         data_compiler/DataObjectGenerator.cpp
+        build_actor/common/build_actor.cpp
+        build_actor/jak1/build_actor.cpp
+        build_actor/jak2/build_actor.cpp
+        build_actor/jak3/build_actor.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         emitter/IGenX86.cpp
@@ -76,8 +89,9 @@ add_executable(goalc main.cpp)
 add_executable(goalc-simple simple_main.cpp)
 
 add_executable(build_level build_level/main.cpp)
+add_executable(build_actor build_actor/main.cpp)
 
 target_link_libraries(goalc common Zydis compiler)
 target_link_libraries(goalc-simple common Zydis compiler)
 target_link_libraries(build_level common Zydis compiler)
-
+target_link_libraries(build_actor common Zydis compiler)

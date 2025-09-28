@@ -1,0 +1,224 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type vu-lights
+(deftype vu-lights (structure)
+  ((direction   vector  3 :inline)
+   (color       vector  3 :inline)
+   (ambient     vector  :inline)
+   (fade-int    uint32  :offset  44)
+   (fade-flags  uint32  :offset  28)
+   )
+  )
+
+;; definition for method 3 of type vu-lights
+(defmethod inspect ((this vu-lights))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vu-lights)
+  (format #t "~1Tdirection[3] @ #x~X~%" (-> this direction))
+  (format #t "~1Tcolor[3] @ #x~X~%" (-> this color))
+  (format #t "~1Tambient: ~`vector`P~%" (-> this ambient))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light
+(deftype light (structure)
+  "extra: {?, shadow, ?, ?}"
+  ((direction      vector  :inline)
+   (color          rgbaf   :inline)
+   (extra          vector  :inline)
+   (level          float     :overlay-at (-> extra data 0))
+   (luminance      float     :overlay-at (-> extra data 2))
+   (priority       float     :overlay-at (-> extra data 3))
+   (bytes          uint8   4 :overlay-at (-> extra data 1))
+   (mask           uint16    :overlay-at (-> extra data 1))
+   (palette-index  int8      :overlay-at (-> bytes 3))
+   )
+  )
+
+;; definition for method 3 of type light
+(defmethod inspect ((this light))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light)
+  (format #t "~1Tdirection: #<vector @ #x~X>~%" (-> this direction))
+  (format #t "~1Tcolor: #<rgbaf @ #x~X>~%" (-> this color))
+  (format #t "~1Textra: #<vector @ #x~X>~%" (-> this extra))
+  (format #t "~1Tlevel: ~f~%" (-> this extra x))
+  (format #t "~1Tluminance: ~f~%" (-> this extra z))
+  (format #t "~1Tpriority: ~f~%" (-> this extra w))
+  (format #t "~1Tbytes[4] @ #x~X~%" (&-> this extra y))
+  (format #t "~1Tmask: ~D~%" (-> this mask))
+  (format #t "~1Tpalette-index: ~D~%" (-> this palette-index))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-shadow-mask
+(deftype light-shadow-mask (uint32)
+  ()
+  )
+
+;; definition of type light-sphere
+(deftype light-sphere (structure)
+  ((name                 string)
+   (bsphere              vector  :inline)
+   (direction            vector  :inline)
+   (color                vector  :inline)
+   (decay-start          float     :offset   4)
+   (ambient-point-ratio  float     :offset   8)
+   (brightness           float     :offset  12)
+   (bytes                uint8   4 :overlay-at (-> color data 3))
+   (mask                 uint16    :overlay-at (-> color data 3))
+   (palette-index        int8      :overlay-at (-> bytes 3))
+   (shadow               uint32    :overlay-at (-> direction data 0))
+   )
+  )
+
+;; definition for method 3 of type light-sphere
+(defmethod inspect ((this light-sphere))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light-sphere)
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tbsphere: ~`vector`P~%" (-> this bsphere))
+  (format #t "~1Tdirection: ~`vector`P~%" (&-> this shadow))
+  (format #t "~1Tcolor: ~`vector`P~%" (-> this color))
+  (format #t "~1Tdecay-start: ~f~%" (-> this decay-start))
+  (format #t "~1Tambient-point-ratio: ~f~%" (-> this ambient-point-ratio))
+  (format #t "~1Tbrightness: ~f~%" (-> this brightness))
+  (format #t "~1Tbytes[4] @ #x~X~%" (&-> this color w))
+  (format #t "~1Tmask: ~D~%" (-> this mask))
+  (format #t "~1Tpalette-index: ~D~%" (-> this palette-index))
+  (format #t "~1Tshadow: #x~X~%" (-> this shadow))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-hash-bucket
+(deftype light-hash-bucket (structure)
+  ((index  uint16)
+   (count  uint16)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type light-hash-bucket
+(defmethod inspect ((this light-hash-bucket))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light-hash-bucket)
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-hash
+(deftype light-hash (basic)
+  ((num-lights          uint16)
+   (num-indices         uint16)
+   (num-buckets         uint16)
+   (bucket-step         uint8     2)
+   (base-trans          vector    :inline)
+   (axis-scale          vector    :inline)
+   (dimension-array     vector4w  :inline)
+   (bucket-array        (inline-array light-hash-bucket))
+   (index-array         pointer)
+   (light-sphere-array  (inline-array light-sphere))
+   )
+  )
+
+;; definition for method 3 of type light-hash
+(defmethod inspect ((this light-hash))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnum-lights: ~D~%" (-> this num-lights))
+  (format #t "~1Tnum-indices: ~D~%" (-> this num-indices))
+  (format #t "~1Tnum-buckets: ~D~%" (-> this num-buckets))
+  (format #t "~1Tbucket-step[2] @ #x~X~%" (-> this bucket-step))
+  (format #t "~1Tbase-trans: #<vector @ #x~X>~%" (-> this base-trans))
+  (format #t "~1Taxis-scale: #<vector @ #x~X>~%" (-> this axis-scale))
+  (format #t "~1Tdimension-array: #<vector4w @ #x~X>~%" (-> this dimension-array))
+  (format #t "~1Tbucket-array: #x~X~%" (-> this bucket-array))
+  (format #t "~1Tindex-array: #x~X~%" (-> this index-array))
+  (format #t "~1Tlight-sphere-array: #x~X~%" (-> this light-sphere-array))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-hash-work
+(deftype light-hash-work (structure)
+  ((ones  vector4w  :inline)
+   )
+  )
+
+;; definition for method 3 of type light-hash-work
+(defmethod inspect ((this light-hash-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light-hash-work)
+  (format #t "~1Tones: #<vector4w @ #x~X>~%" (-> this ones))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *light-hash*, type light-hash
+(define *light-hash* (the-as light-hash #f))
+
+;; definition for method 2 of type light
+(defmethod print ((this light))
+  (format
+    #t
+    "#<light [~F] ~F ~F ~F  "
+    (-> this extra x)
+    (-> this direction x)
+    (-> this direction y)
+    (-> this direction z)
+    )
+  (format #t "~F ~F ~F @ #x~X>" (-> this color x) (-> this color y) (-> this color z) this)
+  this
+  )
+
+;; definition of type light-group
+(deftype light-group (structure)
+  ((dir0    light  :inline)
+   (dir1    light  :inline)
+   (dir2    light  :inline)
+   (ambi    light  :inline)
+   (lights  light  4 :inline :overlay-at dir0)
+   )
+  )
+
+;; definition for method 3 of type light-group
+(defmethod inspect ((this light-group))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light-group)
+  (format #t "~1Tdir0: ~`light`P~%" (-> this dir0))
+  (format #t "~1Tdir1: ~`light`P~%" (-> this dir1))
+  (format #t "~1Tdir2: ~`light`P~%" (-> this dir2))
+  (format #t "~1Tambi: ~`light`P~%" (-> this ambi))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0

@@ -1,0 +1,242 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type display-frame
+(deftype display-frame (basic)
+  ((buffer         dma-buffer                 11)
+   (calc-buf       dma-buffer                         :overlay-at (-> buffer 1))
+   (vu1-buf        dma-buffer                         :overlay-at (-> buffer 1))
+   (debug-buf      dma-buffer                         :overlay-at (-> buffer 8))
+   (global-buf     dma-buffer                         :overlay-at (-> buffer 9))
+   (bucket-group   (inline-array dma-bucket)          :overlay-at (-> buffer 10))
+   (profile-array  profile-array              :inline :offset  48)
+   (start-time     uint64                             :offset  56)
+   (run-time       uint64                             :offset  64)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )
+
+;; definition for method 3 of type display-frame
+(defmethod inspect ((this display-frame))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tbuffer[11] @ #x~X~%" (-> this buffer))
+  (format #t "~1Tcalc-buf: ~A~%" (-> this calc-buf))
+  (format #t "~1Tvu1-buf: ~A~%" (-> this calc-buf))
+  (format #t "~1Tdebug-buf: ~A~%" (-> this debug-buf))
+  (format #t "~1Tglobal-buf: ~A~%" (-> this global-buf))
+  (format #t "~1Tbucket-group: #<dma-bucket @ #x~X>~%" (-> this bucket-group))
+  (format #t "~1Tprofile-array: #<profile-array @ #x~X>~%" (-> this profile-array))
+  (format #t "~1Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~1Trun-time: ~D~%" (-> this run-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type display-frame
+(defmethod new display-frame ((allocation symbol) (type-to-make type))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 calc-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 global-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 debug-buf) (the-as dma-buffer 0))
+    (when *debug-segment*
+      (set! (-> gp-0 profile-array data 0) (new 'debug 'profile-segment-array))
+      (set! (-> gp-0 profile-array data 1) (new 'debug 'profile-segment-array))
+      )
+    gp-0
+    )
+  )
+
+;; definition of type display
+(deftype display (basic)
+  ((on-screen             int32)
+   (last-screen           int32)
+   (frames                display-frame  2)
+   (bgcolor               gs-bgcolor)
+   (pmode                 gs-pmode)
+   (clock                 clock          22)
+   (session-clock         clock          :overlay-at (-> clock 0))
+   (game-clock            clock          :overlay-at (-> clock 1))
+   (base-clock            clock          :overlay-at (-> clock 2))
+   (real-clock            clock          :overlay-at (-> clock 3))
+   (frame-clock           clock          :overlay-at (-> clock 4))
+   (real-frame-clock      clock          :overlay-at (-> clock 5))
+   (target-clock          clock          :overlay-at (-> clock 6))
+   (entity-clock          clock          :overlay-at (-> clock 7))
+   (part-clock            clock          :overlay-at (-> clock 8))
+   (bg-clock              clock          :overlay-at (-> clock 9))
+   (camera-clock          clock          :overlay-at (-> clock 10))
+   (total-game-clock      clock          :overlay-at (-> clock 11))
+   (user0-clock           clock          :overlay-at (-> clock 12))
+   (user1-clock           clock          :overlay-at (-> clock 13))
+   (user2-clock           clock          :overlay-at (-> clock 14))
+   (user3-clock           clock          :overlay-at (-> clock 15))
+   (user4-clock           clock          :overlay-at (-> clock 16))
+   (user5-clock           clock          :overlay-at (-> clock 17))
+   (user6-clock           clock          :overlay-at (-> clock 18))
+   (user7-clock           clock          :overlay-at (-> clock 19))
+   (user8-clock           clock          :overlay-at (-> clock 20))
+   (user9-clock           clock          :overlay-at (-> clock 21))
+   (time-factor           float)
+   (dog-ratio             float)
+   (vblank-start-time     int64          2)
+   (total-run-time        uint64)
+   (run-half-speed        symbol)
+   (vu1-enable-user       vu1-renderer-mask)
+   (vu1-enable-user-menu  vu1-renderer-mask)
+   (force-sync            uint32)
+   (mem-reserve-size      uint32)
+   (dma-buffer-overflow   symbol)
+   )
+  (:methods
+    (new (symbol type int int int int int) _type_)
+    (set-time-ratios (_type_ float) float)
+    )
+  )
+
+;; definition for method 3 of type display
+(defmethod inspect ((this display))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Ton-screen: ~D~%" (-> this on-screen))
+  (format #t "~1Tlast-screen: ~D~%" (-> this last-screen))
+  (format #t "~1Tframes[2] @ #x~X~%" (-> this frames))
+  (format #t "~1Tbgcolor: #x~X~%" (-> this bgcolor))
+  (format #t "~1Tpmode: ~D~%" (-> this pmode))
+  (format #t "~1Tclock[22] @ #x~X~%" (-> this clock))
+  (format #t "~1Tsession-clock: ~A~%" (-> this session-clock))
+  (format #t "~1Tgame-clock: ~A~%" (-> this game-clock))
+  (format #t "~1Tbase-clock: ~A~%" (-> this base-clock))
+  (format #t "~1Treal-clock: ~A~%" (-> this real-clock))
+  (format #t "~1Tframe-clock: ~A~%" (-> this frame-clock))
+  (format #t "~1Treal-frame-clock: ~A~%" (-> this real-frame-clock))
+  (format #t "~1Ttarget-clock: ~A~%" (-> this target-clock))
+  (format #t "~1Tentity-clock: ~A~%" (-> this entity-clock))
+  (format #t "~1Tpart-clock: ~A~%" (-> this part-clock))
+  (format #t "~1Tbg-clock: ~A~%" (-> this bg-clock))
+  (format #t "~1Tcamera-clock: ~A~%" (-> this camera-clock))
+  (format #t "~1Ttotal-game-clock: ~A~%" (-> this total-game-clock))
+  (format #t "~1Tuser0-clock: ~A~%" (-> this user0-clock))
+  (format #t "~1Tuser1-clock: ~A~%" (-> this user1-clock))
+  (format #t "~1Tuser2-clock: ~A~%" (-> this user2-clock))
+  (format #t "~1Tuser3-clock: ~A~%" (-> this user3-clock))
+  (format #t "~1Tuser4-clock: ~A~%" (-> this user4-clock))
+  (format #t "~1Tuser5-clock: ~A~%" (-> this user5-clock))
+  (format #t "~1Tuser6-clock: ~A~%" (-> this user6-clock))
+  (format #t "~1Tuser7-clock: ~A~%" (-> this user7-clock))
+  (format #t "~1Tuser8-clock: ~A~%" (-> this user8-clock))
+  (format #t "~1Tuser9-clock: ~A~%" (-> this user9-clock))
+  (format #t "~1Ttime-factor: ~f~%" (-> this time-factor))
+  (format #t "~1Tdog-ratio: ~f~%" (-> this dog-ratio))
+  (format #t "~1Tvblank-start-time[2] @ #x~X~%" (-> this vblank-start-time))
+  (format #t "~1Ttotal-run-time: ~D~%" (-> this total-run-time))
+  (format #t "~1Trun-half-speed: ~A~%" (-> this run-half-speed))
+  (format #t "~1Tvu1-enable-user: ~D~%" (-> this vu1-enable-user))
+  (format #t "~1Tvu1-enable-user-menu: ~D~%" (-> this vu1-enable-user-menu))
+  (format #t "~1Tforce-sync: ~D~%" (-> this force-sync))
+  (format #t "~1Tmem-reserve-size: ~D~%" (-> this mem-reserve-size))
+  (format #t "~1Tdma-buffer-overflow: ~A~%" (-> this dma-buffer-overflow))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type display
+(defmethod new display ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set-display gp-0)
+    (set! (-> gp-0 frames 0) (new 'global 'display-frame))
+    (set! (-> gp-0 frames 1) (new 'global 'display-frame))
+    (set! (-> gp-0 pmode) (new 'static 'gs-pmode :en1 #x1 :crtmd #x1 :mmod #x1 :slbg #x1))
+    (set! (-> gp-0 run-half-speed) #f)
+    (set! (-> gp-0 vu1-enable-user-menu) (vu1-renderer-mask
+                                           sky
+                                           rn4
+                                           rn5
+                                           hfrag
+                                           hfrag-scissor
+                                           tfrag
+                                           tie-scissor
+                                           tie
+                                           etie
+                                           etie-scissor
+                                           tie-vanish
+                                           generic
+                                           merc
+                                           emerc
+                                           shrubbery
+                                           shrub-near
+                                           billboard
+                                           shrub-vanish
+                                           tfrag-trans
+                                           tie-scissor-trans
+                                           tie-trans
+                                           etie-trans
+                                           etie-scissor-trans
+                                           tfrag-water
+                                           tie-scissor-water
+                                           tie-water
+                                           etie-water
+                                           etie-scissor-water
+                                           sprite
+                                           rn32
+                                           rn33
+                                           rn34
+                                           rn36
+                                           )
+          )
+    (set! (-> gp-0 vu1-enable-user) (vu1-renderer-mask
+                                      sky
+                                      rn4
+                                      rn5
+                                      hfrag
+                                      hfrag-scissor
+                                      tfrag
+                                      tie-scissor
+                                      tie
+                                      etie
+                                      etie-scissor
+                                      tie-vanish
+                                      generic
+                                      merc
+                                      emerc
+                                      shrubbery
+                                      shrub-near
+                                      billboard
+                                      shrub-vanish
+                                      tfrag-trans
+                                      tie-scissor-trans
+                                      tie-trans
+                                      etie-trans
+                                      etie-scissor-trans
+                                      tfrag-water
+                                      tie-scissor-water
+                                      tie-water
+                                      etie-water
+                                      etie-scissor-water
+                                      sprite
+                                      rn32
+                                      rn33
+                                      rn34
+                                      rn36
+                                      )
+          )
+    gp-0
+    )
+  )
+
+;; definition for symbol *pre-draw-hook*, type (function object none)
+(define *pre-draw-hook* (the-as (function object none) nothing))
+
+;; definition for symbol *post-draw-hook*, type (function dma-buffer none)
+(define *post-draw-hook* (the-as (function dma-buffer none) nothing))
+
+;; failed to figure out what this is:
+0

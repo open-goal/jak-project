@@ -1,6 +1,8 @@
 #include "expression_build.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
+
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"
@@ -30,10 +32,19 @@ bool convert_to_expressions(
   } else if (f.guessed_name.kind == FunctionName::FunctionKind::METHOD) {
     auto method_type =
         dts.ts.lookup_method(f.guessed_name.type_name, f.guessed_name.method_id).type;
-    if (f.guessed_name.method_id == GOAL_NEW_METHOD) {
-      f.ir2.env.set_remap_for_new_method(method_type);
-    } else {
-      f.ir2.env.set_remap_for_method(method_type);
+    switch (f.guessed_name.method_id) {
+      case GOAL_NEW_METHOD:
+        f.ir2.env.set_remap_for_new_method(method_type);
+        break;
+      case GOAL_RELOC_METHOD:
+        f.ir2.env.set_remap_for_relocate_method(method_type);
+        break;
+      case GOAL_MEMUSAGE_METHOD:
+        f.ir2.env.set_remap_for_memusage_method(method_type);
+        break;
+      default:
+        f.ir2.env.set_remap_for_method(method_type);
+        break;
     }
   }
 
@@ -172,7 +183,7 @@ bool convert_to_expressions(
             "statement.",
             f.name());
         f.warnings.warning(warn);
-        lg::warn(warn);
+        lg::warn("{}", warn);
       }
     }
 

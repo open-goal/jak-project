@@ -9,6 +9,11 @@ void LSPSpec::from_json(const json& j, Position& obj) {
   j.at("character").get_to(obj.m_character);
 }
 
+LSPSpec::Range::Range(Position start, Position end) : m_start(start), m_end(end) {}
+
+LSPSpec::Range::Range(uint32_t line, uint32_t character)
+    : m_start({line, character}), m_end({line, character}) {}
+
 void LSPSpec::to_json(json& j, const Range& obj) {
   // TODO - not sure if this works yet, but nice if it does!
   j = json{{"start", obj.m_start}, {"end", obj.m_end}};

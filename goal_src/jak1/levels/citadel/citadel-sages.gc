@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: citadel-sages.gc
-;; name in dgo: citadel-sages
-;; dgos: CIT, L1
+(bundles "CIT.DGO")
+(require "levels/village2/sage-bluehut.gc")
 
 ;; TODO
 (define-extern *robotboss-sg* skeleton-group)
@@ -12,143 +10,93 @@
 
 ;; DECOMP BEGINS
 
-(defskelgroup *citb-sagecage-sg* citb-sagecage citb-sagecage-lod0-jg citb-sagecage-redsage-idle-ja
-              ((citb-sagecage-lod0-mg (meters 20)) (citb-sagecage-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 -6 0 7)
-              )
+(defskelgroup *citb-sagecage-sg*
+  citb-sagecage
+  citb-sagecage-lod0-jg
+  citb-sagecage-redsage-idle-ja
+  ((citb-sagecage-lod0-mg (meters 20)) (citb-sagecage-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 -6 0 7))
 
 (deftype citb-sagecage (process-drawable)
-  ((root             collide-shape-moving :override)
-   (parent-override  (pointer citb-sage)   :overlay-at parent)
-   (bar-array        vector                12 :inline)
-   (angle-offset     float)
-   (bars-on          symbol)
-   (cloning          symbol)
-   )
+  ((root            collide-shape-moving :override)
+   (parent-override (pointer citb-sage) :overlay-at parent)
+   (bar-array       vector 12 :inline)
+   (angle-offset    float)
+   (bars-on         symbol)
+   (cloning         symbol))
   (:methods
-    (citb-sagecage-method-20 (_type_) none)
-    (citb-sagecage-method-21 (_type_) none)
-    )
+   (citb-sagecage-method-20 (_type_) none)
+   (citb-sagecage-method-21 (_type_) none))
   (:states
-    citb-sagecage-idle
-    )
-  )
-
+   citb-sagecage-idle))
 
 (defbehavior citb-sagecage-draw-bars citb-sagecage ()
   (when (logtest? (-> self draw status) (draw-status was-drawn))
     (let ((gp-0 (-> self node-list data 3 bone transform))
-          (s5-0 (new 'stack-no-clear 'vector))
-          )
+          (s5-0 (new 'stack-no-clear 'vector)))
       (let ((s4-0 (new 'stack-no-clear 'quaternion)))
         (let ((s3-0 (new 'stack-no-clear 'vector)))
           (matrix->quaternion s4-0 gp-0)
           (vector-! s3-0 (camera-pos) (-> self root trans))
-          (let ((v1-7 (-> gp-0 vector 2)))
-            (set! (-> self angle-offset) (- (atan (-> v1-7 x) (-> v1-7 z))))
-            )
+          (let ((v1-7 (-> gp-0 vector 2))) (set! (-> self angle-offset) (- (atan (-> v1-7 x) (-> v1-7 z)))))
           (quaternion-rotate-local-x! s4-0 s4-0 16384.0)
-          (let ((f0-7 (+ (-> self angle-offset) (atan (-> s3-0 x) (-> s3-0 z)))))
-            (quaternion-rotate-local-z! s4-0 s4-0 f0-7)
-            )
-          )
-        (quaternion-copy! *particle-quat* s4-0)
-        )
+          (let ((f0-7 (+ (-> self angle-offset) (atan (-> s3-0 x) (-> s3-0 z))))) (quaternion-rotate-local-z! s4-0 s4-0 f0-7)))
+        (quaternion-copy! *particle-quat* s4-0))
       (let ((s4-1 (-> *part-id-table* 2473))
-            (s3-1 *sp-particle-system-3d*)
-            )
+            (s3-1 *sp-particle-system-3d*))
         (dotimes (s2-2 12)
           (vector-matrix*! s5-0 (-> self bar-array s2-2) gp-0)
-          (launch-particles :system s3-1 s4-1 s5-0)
-          )
-        )
-      )
-    )
+          (launch-particles :system s3-1 s4-1 s5-0)))))
   0
-  (none)
-  )
+  (none))
 
 (defbehavior citb-sagecage-update-collision citb-sagecage ()
-  (change-mesh (the-as collide-shape-prim-mesh (-> self root root-prim)) (if (-> self bars-on)
-                                                                             0
-                                                                             1
-                                                                             )
-               )
+  (change-mesh (the-as collide-shape-prim-mesh (-> self root root-prim)) (if (-> self bars-on) 0 1))
   0
-  (none)
-  )
+  (none))
 
 (defstate citb-sagecage-idle (citb-sagecage)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (local-vars (v0-3 object))
-    (case message
-      (('disable-bars)
-       (stop! (-> self sound))
-       (sound-play "sagecage-off")
-       (set! (-> self bars-on) #f)
-       (citb-sagecage-update-collision)
-       )
-      (('enable-bars)
-       (set! (-> self bars-on) #t)
-       (citb-sagecage-update-collision)
-       )
-      (('start-cloning)
-       (set! v0-3 #t)
-       (set! (-> self cloning) (the-as symbol v0-3))
-       v0-3
-       )
-      (('stop-cloning)
-       (set! (-> self cloning) #f)
-       (let ((v1-7 (-> self skel root-channel 0)))
-         (set! v0-3 citb-sagecage-idle-ja)
-         (set! (-> v1-7 frame-group) (the-as art-joint-anim v0-3))
-         )
-       v0-3
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (local-vars (v0-3 object))
+      (case message
+        (('disable-bars)
+         (stop! (-> self sound))
+         (sound-play "sagecage-off")
+         (set! (-> self bars-on) #f)
+         (citb-sagecage-update-collision))
+        (('enable-bars) (set! (-> self bars-on) #t) (citb-sagecage-update-collision))
+        (('start-cloning) (set! v0-3 #t) (set! (-> self cloning) (the-as symbol v0-3)) v0-3)
+        (('stop-cloning)
+         (set! (-> self cloning) #f)
+         (let ((v1-7 (-> self skel root-channel 0)))
+           (set! v0-3 citb-sagecage-idle-ja)
+           (set! (-> v1-7 frame-group) (the-as art-joint-anim v0-3)))
+         v0-3)))
   :trans rider-trans
-  :code (behavior ()
-    (loop
-      (cond
-        ((-> self cloning)
-         (let ((gp-0 (ppointer->process (-> self parent-override))))
-           (when gp-0
-             (joint-control-copy! (-> self skel) (-> (the-as citb-sage gp-0) skel))
-             (joint-control-remap!
-               (-> self skel)
-               (-> self draw art-group)
-               (-> (the-as citb-sage gp-0) draw art-group)
-               '()
-               0
-               ""
-               )
-             )
-           )
-         )
-        (else
-          (ja :num! (loop!))
-          )
-        )
-      (suspend)
-      )
-    )
-  :post (behavior ()
-    (rider-post)
-    (when (-> self bars-on)
-      (update! (-> self sound))
-      (citb-sagecage-draw-bars)
-      )
-    )
-  )
+  :code
+    (behavior ()
+      (loop
+        (cond
+          ((-> self cloning)
+           (let ((gp-0 (ppointer->process (-> self parent-override))))
+             (when gp-0
+               (joint-control-copy! (-> self skel) (-> (the-as citb-sage gp-0) skel))
+               (joint-control-remap! (-> self skel) (-> self draw art-group) (-> (the-as citb-sage gp-0) draw art-group) '() 0 ""))))
+          (else (ja :num! (loop!))))
+        (suspend)))
+  :post
+    (behavior ()
+      (rider-post)
+      (when (-> self bars-on)
+        (update! (-> self sound))
+        (citb-sagecage-draw-bars))))
 
 (defmethod citb-sagecage-method-20 ((this citb-sagecage))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -157,15 +105,12 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 3)
       (set-vector! (-> s4-0 local-sphere) 0.0 20480.0 0.0 28672.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod citb-sagecage-method-21 ((this citb-sagecage))
   (initialize-skeleton this *citb-sagecage-sg* '())
@@ -174,8 +119,7 @@
   (let ((f0-1 20766.72)
         (f4-0 14745.6)
         (f1-0 -14745.6)
-        (f2-0 7372.8)
-        )
+        (f2-0 7372.8))
     (let ((f3-0 -7372.8))
       (set-vector! (-> this bar-array 0) f4-0 f0-1 f3-0 1.0)
       (set-vector! (-> this bar-array 1) f4-0 f0-1 0.0 1.0)
@@ -186,21 +130,16 @@
       (set-vector! (-> this bar-array 6) f3-0 f0-1 f4-0 1.0)
       (set-vector! (-> this bar-array 7) 0.0 f0-1 f4-0 1.0)
       (set-vector! (-> this bar-array 8) f2-0 f0-1 f4-0 1.0)
-      (set-vector! (-> this bar-array 9) f3-0 f0-1 f1-0 1.0)
-      )
+      (set-vector! (-> this bar-array 9) f3-0 f0-1 f1-0 1.0))
     (set-vector! (-> this bar-array 10) 0.0 f0-1 f1-0 1.0)
-    (set-vector! (-> this bar-array 11) f2-0 f0-1 f1-0 1.0)
-    )
-  (set! (-> this sound)
-        (new 'process 'ambient-sound (static-sound-spec "sagecage-gen" :fo-max 20) (-> this root trans))
-        )
+    (set-vector! (-> this bar-array 11) f2-0 f0-1 f1-0 1.0))
+  (set! (-> this sound) (new 'process 'ambient-sound (static-sound-spec "sagecage-gen" :fo-max 20) (-> this root trans)))
   (set! (-> this bars-on) (not (task-complete? *game-info* (-> this entity extra perm task))))
   (citb-sagecage-update-collision)
   (set! (-> this cloning) #t)
   (set! (-> this event-hook) (-> citb-sagecage-idle event))
   0
-  (none)
-  )
+  (none))
 
 (defbehavior citb-sagecage-init-by-other citb-sagecage ((arg0 citb-sage))
   (citb-sagecage-method-20 self)
@@ -209,97 +148,94 @@
   (mem-copy! (the-as pointer (-> self root scale)) (the-as pointer (-> arg0 root scale)) 16)
   (citb-sagecage-method-21 self)
   (go citb-sagecage-idle)
-  (none)
-  )
+  (none))
 
-(defskelgroup *redsage-sg* redsage redsage-lod0-jg redsage-redsage-idle-ja
-              ((redsage-lod0-mg (meters 20)) (redsage-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 3)
-              :shadow redsage-shadow-mg
-              )
+(defskelgroup *redsage-sg*
+  redsage
+  redsage-lod0-jg
+  redsage-redsage-idle-ja
+  ((redsage-lod0-mg (meters 20)) (redsage-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 3)
+  :shadow redsage-shadow-mg)
 
-(defskelgroup *bluesage-sg* bluesage bluesage-lod0-jg bluesage-bluesage-idle-ja
-              ((bluesage-lod0-mg (meters 20)) (bluesage-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              :shadow bluesage-shadow-mg
-              )
+(defskelgroup *bluesage-sg*
+  bluesage
+  bluesage-lod0-jg
+  bluesage-bluesage-idle-ja
+  ((bluesage-lod0-mg (meters 20)) (bluesage-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :shadow bluesage-shadow-mg)
 
-(defskelgroup *yellowsage-sg* yellowsage yellowsage-lod0-jg yellowsage-yellowsage-idle-ja
-              ((yellowsage-lod0-mg (meters 20)) (yellowsage-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 3)
-              :shadow yellowsage-shadow-mg
-              )
+(defskelgroup *yellowsage-sg*
+  yellowsage
+  yellowsage-lod0-jg
+  yellowsage-yellowsage-idle-ja
+  ((yellowsage-lod0-mg (meters 20)) (yellowsage-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 3)
+  :shadow yellowsage-shadow-mg)
 
-(defskelgroup *green-sagecage-sg* green-sagecage green-sagecage-lod0-jg green-sagecage-green-sagecage-idle-ja
-              ((green-sagecage-lod0-mg (meters 20)) (green-sagecage-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 2.5)
-              :shadow green-sagecage-shadow-mg
-              )
+(defskelgroup *green-sagecage-sg*
+  green-sagecage
+  green-sagecage-lod0-jg
+  green-sagecage-green-sagecage-idle-ja
+  ((green-sagecage-lod0-mg (meters 20)) (green-sagecage-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 2.5)
+  :shadow green-sagecage-shadow-mg)
 
-(defskelgroup *evilbro-citadel-sg* evilbro-citadel evilbro-citadel-lod0-jg evilbro-citadel-idle-ja
-              ((evilbro-citadel-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 1)
-              :shadow evilbro-citadel-shadow-mg
-              )
+(defskelgroup *evilbro-citadel-sg*
+  evilbro-citadel
+  evilbro-citadel-lod0-jg
+  evilbro-citadel-idle-ja
+  ((evilbro-citadel-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 1)
+  :shadow evilbro-citadel-shadow-mg)
 
-(defskelgroup *evilsis-citadel-sg* evilsis-citadel evilsis-citadel-lod0-jg evilsis-citadel-idle-ja
-              ((evilsis-citadel-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 1)
-              :shadow evilsis-citadel-shadow-mg
-              )
+(defskelgroup *evilsis-citadel-sg*
+  evilsis-citadel
+  evilsis-citadel-lod0-jg
+  evilsis-citadel-idle-ja
+  ((evilsis-citadel-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 1)
+  :shadow evilsis-citadel-shadow-mg)
 
 (deftype citb-sage (process-taskable)
-  ((spawn-pos          vector  :inline)
-   (target-pos         vector  :inline)
-   (dir                vector  :inline)
-   (rot-y              float)
-   (rot-x              float)
-   (idle-anim          int32)
-   (attack-start-anim  int32)
-   (attack-anim        int32)
-   (beam-joint         int32)
-   (cage               handle)
-   (part-impact        sparticle-launch-control)
-   (beam-on            symbol)
-   (resolution-anim    spool-anim)
-   (sound-name         string)
-   (sound-id           sound-id)
-   (alt-actor          entity-actor)
-   )
-  )
-
+  ((spawn-pos         vector :inline)
+   (target-pos        vector :inline)
+   (dir               vector :inline)
+   (rot-y             float)
+   (rot-x             float)
+   (idle-anim         int32)
+   (attack-start-anim int32)
+   (attack-anim       int32)
+   (beam-joint        int32)
+   (cage              handle)
+   (part-impact       sparticle-launch-control)
+   (beam-on           symbol)
+   (resolution-anim   spool-anim)
+   (sound-name        string)
+   (sound-id          sound-id)
+   (alt-actor         entity-actor)))
 
 (defmethod relocate ((this citb-sage) (arg0 int))
-  (if (nonzero? (-> this part-impact))
-      (&+! (-> this part-impact) arg0)
-      )
-  (the-as citb-sage ((method-of-type process-taskable relocate) this arg0))
-  )
+  (if (nonzero? (-> this part-impact)) (&+! (-> this part-impact) arg0))
+  (the-as citb-sage ((method-of-type process-taskable relocate) this arg0)))
 
 (defmethod deactivate ((this citb-sage))
-  (if (nonzero? (-> this part-impact))
-      (kill-and-free-particles (-> this part-impact))
-      )
+  (if (nonzero? (-> this part-impact)) (kill-and-free-particles (-> this part-impact)))
   (sound-stop (-> this sound-id))
   ((method-of-type process-taskable deactivate) this)
-  (none)
-  )
+  (none))
 
 (defmethod play-reminder ((this citb-sage))
   (set! (-> this root pause-adjust-distance) 409600.0)
   (set! (-> this cage) (ppointer->handle (process-spawn citb-sagecage this :to this)))
   (set! (-> this beam-on) #f)
   (set! (-> this sound-id) (new-sound-id))
-  (if (zero? (-> this sound-name))
-      (set! (-> this sound-name) "")
-      )
+  (if (zero? (-> this sound-name)) (set! (-> this sound-name) ""))
   (let ((v1-9 (the-as entity (entity-actor-lookup (-> this entity) 'alt-actor 0)))
-        (s5-1 (new 'stack-no-clear 'vector))
-        )
+        (s5-1 (new 'stack-no-clear 'vector)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (if (not (the-as entity-actor v1-9))
-          (set! v1-9 (entity-by-name "citb-robotboss-1"))
-          )
+      (if (not (the-as entity-actor v1-9)) (set! v1-9 (entity-by-name "citb-robotboss-1")))
       (set! (-> this alt-actor) (the-as entity-actor v1-9))
       (set! (-> this spawn-pos quad) (-> this root trans quad))
       (set! (-> s5-1 quad) (-> v1-9 extra trans quad))
@@ -307,171 +243,108 @@
       (vector-! s4-0 (-> this spawn-pos) s5-1)
       (set! (-> s4-0 y) 0.0)
       (vector-normalize! s4-0 1.0)
-      (vector+*! (-> this target-pos) s5-1 s4-0 116940.8)
-      )
+      (vector+*! (-> this target-pos) s5-1 s4-0 116940.8))
     (when (nonzero? (-> this part))
       (vector-! s5-1 (-> this target-pos) (-> this spawn-pos))
       (vector-float*! (the-as vector (-> this part group bounds)) s5-1 0.5)
-      (set! (-> this part group bounds w) (* 0.6 (vector-vector-distance (-> this spawn-pos) (-> this target-pos))))
-      )
-    )
-  (the-as symbol 0)
-  )
+      (set! (-> this part group bounds w) (* 0.6 (vector-vector-distance (-> this spawn-pos) (-> this target-pos))))))
+  (the-as symbol 0))
 
 (defmethod process-taskable-method-45 ((this citb-sage))
   (set! (-> this spawn-pos quad) (-> this root trans quad))
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod process-taskable-method-42 ((this citb-sage))
-  (if (not (should-display? this))
-      (go (method-of-object this hidden))
-      (go (method-of-object this idle))
-      )
-  (none)
-  )
+  (if (not (should-display? this)) (go (method-of-object this hidden)) (go (method-of-object this idle)))
+  (none))
 
 (defmethod play-anim! ((this citb-sage) (arg0 symbol))
-  (the-as basic (-> this resolution-anim))
-  )
+  (the-as basic (-> this resolution-anim)))
 
 (defmethod get-art-elem ((this citb-sage))
   (cond
     ((= (current-status (-> this tasks)) (task-status invalid))
      (set! (-> this beam-on) #t)
-     (-> this draw art-group data (-> this attack-anim))
-     )
-    (else
-      (-> this draw art-group data (-> this idle-anim))
-      )
-    )
-  )
+     (-> this draw art-group data (-> this attack-anim)))
+    (else (-> this draw art-group data (-> this idle-anim)))))
 
 (defmethod should-display? ((this citb-sage))
-  (!= (get-task-status (game-task citadel-sage-green)) (task-status invalid))
-  )
+  (!= (get-task-status (game-task citadel-sage-green)) (task-status invalid)))
 
 (defstate hidden (citb-sage)
   :virtual #t
-  :enter (behavior ()
-    (send-event (handle->process (-> self cage)) 'disable-bars)
-    (send-event (handle->process (-> self cage)) 'stop-cloning)
-    ((-> (method-of-type process-taskable hidden) enter))
-    )
-  )
+  :enter
+    (behavior ()
+      (send-event (handle->process (-> self cage)) 'disable-bars)
+      (send-event (handle->process (-> self cage)) 'stop-cloning)
+      ((-> (method-of-type process-taskable hidden) enter))))
 
 (defbehavior citb-sage-draw-beam citb-sage ()
   (if (< (vector-vector-distance (ear-trans) (-> self spawn-pos)) 409600.0)
-      (sound-play-by-name
-        (string->sound-name (-> self sound-name))
-        (-> self sound-id)
-        1024
-        0
-        0
-        (sound-group sfx)
-        (the-as symbol (-> self spawn-pos))
-        )
-      )
+    (sound-play-by-name (string->sound-name (-> self sound-name))
+                        (-> self sound-id)
+                        1024
+                        0
+                        0
+                        (sound-group sfx)
+                        (the-as symbol (-> self spawn-pos))))
   (set! (-> self spawn-pos quad) (-> self node-list data (-> self beam-joint) bone transform vector 3 quad))
   (vector-! (-> self dir) (-> self target-pos) (-> self spawn-pos))
   (set! (-> self rot-y) (vector-y-angle (-> self dir)))
   (set! (-> self rot-x) (- 16384.0 (vector-x-angle (-> self dir))))
   (process-taskable-method-45 self)
   (spawn (-> self part) (-> self spawn-pos))
-  (spawn (-> self part-impact) (-> self target-pos))
-  )
+  (spawn (-> self part-impact) (-> self target-pos)))
 
 (defstate play-anim (citb-sage)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('disable-bars)
-       (send-event (handle->process (-> self cage)) 'disable-bars)
-       )
-      (else
-        ((-> (method-of-type process-taskable play-anim) event) proc argc message block)
-        )
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('disable-bars) (send-event (handle->process (-> self cage)) 'disable-bars))
+        (else ((-> (method-of-type process-taskable play-anim) event) proc argc message block)))))
 
 (defstate idle (citb-sage)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('open)
-       (send-event (handle->process (-> self cage)) 'disable-bars)
-       )
-      (else
-        ((-> (method-of-type process-taskable idle) event) proc argc message block)
-        )
-      )
-    )
-  :trans (behavior ()
-    ;; og:preserve-this fix infinite state recursion
-    (#if PC_PORT
-        (if (and (not (-> self been-kicked)) (not (should-display? self)))
-            (go-virtual hidden)
-            )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('open) (send-event (handle->process (-> self cage)) 'disable-bars))
+        (else ((-> (method-of-type process-taskable idle) event) proc argc message block))))
+  :trans
+    (behavior ()
+      ;; og:preserve-this fix infinite state recursion
+      (#if PC_PORT
+        (if (and (not (-> self been-kicked)) (not (should-display? self))) (go-virtual hidden))
         ;; no fix
-        (if (not (should-display? self))
-            (go-virtual hidden)
-            )
-        )
-    ((-> (method-of-type process-taskable idle) trans))
-    )
-  :post (behavior ()
-    ((the-as (function none :behavior citb-sage) (-> (method-of-type process-taskable idle) post)))
-    (if (-> self beam-on)
-        (citb-sage-draw-beam)
-        )
-    )
-  )
+        (if (not (should-display? self)) (go-virtual hidden)))
+      ((-> (method-of-type process-taskable idle) trans)))
+  :post
+    (behavior ()
+      ((the-as (function none :behavior citb-sage) (-> (method-of-type process-taskable idle) post)))
+      (if (-> self beam-on) (citb-sage-draw-beam))))
 
-(deftype red-sagecage (citb-sage)
-  ()
-  )
-
+(deftype red-sagecage (citb-sage) ())
 
 (defmethod process-taskable-method-52 ((this red-sagecage))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((a0-1 v1-1))
-        (set! (-> a0-1 settings bot-plane w) (- -8192.0))
-        )
+      (let ((a0-1 v1-1)) (set! (-> a0-1 settings bot-plane w) (- -8192.0)))
       0
-      (let ((a0-3 v1-1))
-        (set! (-> a0-3 settings top-plane w) (- 4096.0))
-        )
+      (let ((a0-3 v1-1)) (set! (-> a0-3 settings top-plane w) (- 4096.0)))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))
-      )
-    )
-  (none)
-  )
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))))
+  (none))
 
 (defmethod draw-npc-shadow ((this red-sagecage))
   (-> this draw shadow-ctrl)
   (cond
-    ((and (-> this draw shadow)
-          (zero? (-> this draw cur-lod))
-          (logtest? (-> this draw status) (draw-status was-drawn))
-          )
-     (let ((v1-9 (-> this draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
-       )
+    ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
+     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
      0
-     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
-     )
-    (else
-      (let ((v1-14 (-> this draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
-        )
-      0
-      )
-    )
-  (none)
-  )
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
+    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+  (none))
 
 (defmethod process-taskable-method-45 ((this red-sagecage))
   (set! (-> *part-id-table* 2455 init-specs 14 initial-valuef) (-> this rot-y))
@@ -480,8 +353,7 @@
   (set! (-> *part-id-table* 2457 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2454 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2454 init-specs 13 initial-valuef) (-> this rot-x))
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod play-reminder ((this red-sagecage))
   (set! (-> this idle-anim) 4)
@@ -490,43 +362,26 @@
   (set! (-> this beam-joint) 20)
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 604) this))
   (set! (-> this part-impact) (create-launch-control (-> *part-group-id-table* 608) this))
-  (set! (-> this resolution-anim) (new 'static 'spool-anim
-                                    :name "redsage-resolution"
-                                    :index 7
-                                    :parts 9
-                                    :command-list '((15 send-event self disable-bars)
-                                      (45 joint "cameraB")
-                                      (216 joint "camera")
-                                      (435 joint "cameraB")
-                                      (685 joint "camera")
-                                      )
-                                    )
-        )
+  (set! (-> this resolution-anim)
+        (new 'static
+             'spool-anim
+             :name "redsage-resolution"
+             :index 7
+             :parts 9
+             :command-list
+             '((15 send-event self disable-bars) (45 joint "cameraB") (216 joint "camera") (435 joint "cameraB") (685 joint "camera"))))
   (set! (-> this sound-name) "redsage-fires")
   (call-parent-method this)
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod process-taskable-method-43 ((this red-sagecage))
-  (if (-> this beam-on)
-      (return #f)
-      )
+  (if (-> this beam-on) (return #f))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
-        ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "RED-AM01" #f (-> this root trans))
-         )
-        ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "RED-AM02" #f (-> this root trans))
-         )
-        (else
-          (play-ambient (-> this ambient) "RED-AM03" #f (-> this root trans))
-          )
-        )
-      )
-    )
-  )
+        ((< 0.6666667 f0-2) (play-ambient (-> this ambient) "RED-AM01" #f (-> this root trans)))
+        ((< 0.33333334 f0-2) (play-ambient (-> this ambient) "RED-AM02" #f (-> this root trans)))
+        (else (play-ambient (-> this ambient) "RED-AM03" #f (-> this root trans)))))))
 
 (defmethod init-from-entity! ((this red-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *redsage-sg* 3 33 (new 'static 'vector :w 8192.0) 5)
@@ -534,53 +389,29 @@
   (play-reminder this)
   (set! (-> this sound-flava) (music-flava sage-red))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))
 
-(deftype blue-sagecage (citb-sage)
-  ()
-  )
-
+(deftype blue-sagecage (citb-sage) ())
 
 (defmethod process-taskable-method-52 ((this blue-sagecage))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((a0-1 v1-1))
-        (set! (-> a0-1 settings bot-plane w) (- -10035.2))
-        )
+      (let ((a0-1 v1-1)) (set! (-> a0-1 settings bot-plane w) (- -10035.2)))
       0
-      (let ((a0-3 v1-1))
-        (set! (-> a0-3 settings top-plane w) (- 4096.0))
-        )
+      (let ((a0-3 v1-1)) (set! (-> a0-3 settings top-plane w) (- 4096.0)))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))
-      )
-    )
-  (none)
-  )
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))))
+  (none))
 
 (defmethod draw-npc-shadow ((this blue-sagecage))
   (-> this draw shadow-ctrl)
   (cond
-    ((and (-> this draw shadow)
-          (zero? (-> this draw cur-lod))
-          (logtest? (-> this draw status) (draw-status was-drawn))
-          )
-     (let ((v1-9 (-> this draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
-       )
+    ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
+     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
      0
-     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
-     )
-    (else
-      (let ((v1-14 (-> this draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
-        )
-      0
-      )
-    )
-  (none)
-  )
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
+    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+  (none))
 
 (defmethod process-taskable-method-45 ((this blue-sagecage))
   (set! (-> *part-id-table* 2448 init-specs 14 initial-valuef) (-> this rot-y))
@@ -589,8 +420,7 @@
   (set! (-> *part-id-table* 2450 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2447 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2447 init-specs 13 initial-valuef) (-> this rot-x))
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod play-reminder ((this blue-sagecage))
   (set! (-> this idle-anim) 4)
@@ -599,48 +429,35 @@
   (set! (-> this beam-joint) 53)
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 603) this))
   (set! (-> this part-impact) (create-launch-control (-> *part-group-id-table* 607) this))
-  (set! (-> this resolution-anim) (new 'static 'spool-anim
-                                    :name "bluesage-resolution"
-                                    :index 7
-                                    :parts 9
-                                    :command-list '((15 send-event self disable-bars)
-                                      (45 joint "cameraB")
-                                      (74 shadow self #f)
-                                      (185 joint "camera")
-                                      (256 joint "cameraB")
-                                      (505 joint "camera")
-                                      (590 joint "cameraB")
-                                      (670 joint "camera")
-                                      (875 shadow self #t)
-                                      (876 joint "cameraB")
-                                      )
-                                    )
-        )
+  (set! (-> this resolution-anim)
+        (new 'static
+             'spool-anim
+             :name "bluesage-resolution"
+             :index 7
+             :parts 9
+             :command-list
+             '((15 send-event self disable-bars)
+              (45 joint "cameraB")
+              (74 shadow self #f)
+              (185 joint "camera")
+              (256 joint "cameraB")
+              (505 joint "camera")
+              (590 joint "cameraB")
+              (670 joint "camera")
+              (875 shadow self #t)
+              (876 joint "cameraB"))))
   (set! (-> this sound-name) "bluesage-fires")
   (call-parent-method this)
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod process-taskable-method-43 ((this blue-sagecage))
-  (if (-> this beam-on)
-      (return #f)
-      )
+  (if (-> this beam-on) (return #f))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
-        ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "BLU-AM01" #f (-> this root trans))
-         )
-        ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "BLU-AM02" #f (-> this root trans))
-         )
-        (else
-          (play-ambient (-> this ambient) "BLU-AM03" #f (-> this root trans))
-          )
-        )
-      )
-    )
-  )
+        ((< 0.6666667 f0-2) (play-ambient (-> this ambient) "BLU-AM01" #f (-> this root trans)))
+        ((< 0.33333334 f0-2) (play-ambient (-> this ambient) "BLU-AM02" #f (-> this root trans)))
+        (else (play-ambient (-> this ambient) "BLU-AM03" #f (-> this root trans)))))))
 
 (defmethod init-from-entity! ((this blue-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *bluesage-sg* 3 54 (new 'static 'vector :w 8192.0) 5)
@@ -648,53 +465,29 @@
   (play-reminder this)
   (set! (-> this sound-flava) (music-flava sage-blue))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))
 
-(deftype yellow-sagecage (citb-sage)
-  ()
-  )
-
+(deftype yellow-sagecage (citb-sage) ())
 
 (defmethod process-taskable-method-52 ((this yellow-sagecage))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
-      (let ((a0-1 v1-1))
-        (set! (-> a0-1 settings bot-plane w) (- -6144.0))
-        )
+      (let ((a0-1 v1-1)) (set! (-> a0-1 settings bot-plane w) (- -6144.0)))
       0
-      (let ((a0-3 v1-1))
-        (set! (-> a0-3 settings top-plane w) (- 4096.0))
-        )
+      (let ((a0-3 v1-1)) (set! (-> a0-3 settings top-plane w) (- 4096.0)))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))
-      )
-    )
-  (none)
-  )
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf02 shdf03))))
+  (none))
 
 (defmethod draw-npc-shadow ((this yellow-sagecage))
   (-> this draw shadow-ctrl)
   (cond
-    ((and (-> this draw shadow)
-          (zero? (-> this draw cur-lod))
-          (logtest? (-> this draw status) (draw-status was-drawn))
-          )
-     (let ((v1-9 (-> this draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
-       )
+    ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
+     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
      0
-     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
-     )
-    (else
-      (let ((v1-14 (-> this draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
-        )
-      0
-      )
-    )
-  (none)
-  )
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
+    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+  (none))
 
 (defmethod process-taskable-method-45 ((this yellow-sagecage))
   (set! (-> *part-id-table* 2462 init-specs 14 initial-valuef) (-> this rot-y))
@@ -703,8 +496,7 @@
   (set! (-> *part-id-table* 2464 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2461 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2461 init-specs 13 initial-valuef) (-> this rot-x))
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod play-reminder ((this yellow-sagecage))
   (set! (-> this idle-anim) 4)
@@ -713,43 +505,26 @@
   (set! (-> this beam-joint) 74)
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 605) this))
   (set! (-> this part-impact) (create-launch-control (-> *part-group-id-table* 609) this))
-  (set! (-> this resolution-anim) (new 'static 'spool-anim
-                                    :name "yellowsage-resolution"
-                                    :index 7
-                                    :parts 6
-                                    :command-list '((15 send-event self disable-bars)
-                                      (45 joint "cameraB")
-                                      (256 joint "camera")
-                                      (314 joint "cameraB")
-                                      (600 joint "camera")
-                                      )
-                                    )
-        )
+  (set! (-> this resolution-anim)
+        (new 'static
+             'spool-anim
+             :name "yellowsage-resolution"
+             :index 7
+             :parts 6
+             :command-list
+             '((15 send-event self disable-bars) (45 joint "cameraB") (256 joint "camera") (314 joint "cameraB") (600 joint "camera"))))
   (set! (-> this sound-name) "yellsage-fire")
   (call-parent-method this)
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod process-taskable-method-43 ((this yellow-sagecage))
-  (if (-> this beam-on)
-      (return #f)
-      )
+  (if (-> this beam-on) (return #f))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
-        ((< 0.6666667 f0-2)
-         (play-ambient (-> this ambient) "YEL-AM01" #f (-> this root trans))
-         )
-        ((< 0.33333334 f0-2)
-         (play-ambient (-> this ambient) "YEL-AM02" #f (-> this root trans))
-         )
-        (else
-          (play-ambient (-> this ambient) "YEL-AM03" #f (-> this root trans))
-          )
-        )
-      )
-    )
-  )
+        ((< 0.6666667 f0-2) (play-ambient (-> this ambient) "YEL-AM01" #f (-> this root trans)))
+        ((< 0.33333334 f0-2) (play-ambient (-> this ambient) "YEL-AM02" #f (-> this root trans)))
+        (else (play-ambient (-> this ambient) "YEL-AM03" #f (-> this root trans)))))))
 
 (defmethod init-from-entity! ((this yellow-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *yellowsage-sg* 3 50 (new 'static 'vector :w 8192.0) 5)
@@ -757,18 +532,14 @@
   (play-reminder this)
   (set! (-> this sound-flava) (music-flava sage-yellow))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))
 
 (deftype green-sagecage (citb-sage)
-  ((which-movie  int32)
-   (evilbro      handle)
-   (evilsis      handle)
-   (robotboss    handle)
-   (exitplat     handle)
-   )
-  )
-
+  ((which-movie int32)
+   (evilbro     handle)
+   (evilsis     handle)
+   (robotboss   handle)
+   (exitplat    handle)))
 
 (defmethod process-taskable-method-45 ((this green-sagecage))
   (set! (-> *part-id-table* 2469 init-specs 14 initial-valuef) (-> this rot-y))
@@ -777,8 +548,7 @@
   (set! (-> *part-id-table* 2471 init-specs 13 initial-valuef) (-> this rot-x))
   (set! (-> *part-id-table* 2468 init-specs 14 initial-valuef) (-> this rot-y))
   (set! (-> *part-id-table* 2468 init-specs 13 initial-valuef) (-> this rot-x))
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod play-reminder ((this green-sagecage))
   (set! (-> this idle-anim) 4)
@@ -787,24 +557,23 @@
   (set! (-> this beam-joint) 22)
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 606) this))
   (set! (-> this part-impact) (create-launch-control (-> *part-group-id-table* 610) this))
-  (set! (-> this resolution-anim) (new 'static 'spool-anim
-                                    :name "green-sagecage-resolution"
-                                    :index 6
-                                    :parts 12
-                                    :command-list '((33 joint "cameraB")
-                                      (156 joint "camera")
-                                      (405 joint "cameraB")
-                                      (576 joint "camera")
-                                      (823 joint "cameraB")
-                                      (1156 joint "camera")
-                                      (1199 joint "cameraB")
-                                      )
-                                    )
-        )
+  (set! (-> this resolution-anim)
+        (new 'static
+             'spool-anim
+             :name "green-sagecage-resolution"
+             :index 6
+             :parts 12
+             :command-list
+             '((33 joint "cameraB")
+              (156 joint "camera")
+              (405 joint "cameraB")
+              (576 joint "camera")
+              (823 joint "cameraB")
+              (1156 joint "camera")
+              (1199 joint "cameraB"))))
   (set! (-> this sound-name) "greensage-fires")
   (call-parent-method this)
-  (the-as symbol 0)
-  )
+  (the-as symbol 0))
 
 (defmethod play-anim! ((this green-sagecage) (arg0 symbol))
   (local-vars (v1-7 int))
@@ -816,285 +585,209 @@
          (close-specific-task! (game-task citadel-sage-blue) (task-status need-hint))
          (close-specific-task! (game-task citadel-sage-red) (task-status need-hint))
          (close-specific-task! (game-task citadel-sage-yellow) (task-status need-hint))
-         (set-continue! *game-info* "citadel-elevator")
-         )
-       (new 'static 'spool-anim
-         :name "green-sagecage-introduction"
-         :index 5
-         :parts 12
-         :command-list '((71 joint "cameraB")
-           (207 joint "camera")
-           (343 joint "cameraB")
-           (574 joint "camera")
-           (1060 joint "cameraB")
-           (1061 send-event camera teleport)
-           )
-         )
-       )
-      ((begin (set! v1-7 (-> this which-movie)) (zero? v1-7))
+         (set-continue! *game-info* "citadel-elevator"))
+       (new 'static
+            'spool-anim
+            :name "green-sagecage-introduction"
+            :index 5
+            :parts 12
+            :command-list
+            '((71 joint "cameraB")
+             (207 joint "camera")
+             (343 joint "cameraB")
+             (574 joint "camera")
+             (1060 joint "cameraB")
+             (1061 send-event camera teleport))))
+      ((begin
+         (set! v1-7 (-> this which-movie))
+         (zero? v1-7))
        (when arg0
          (send-event (handle->process (-> this cage)) 'disable-bars)
          (+! (-> this which-movie) 1)
-         (set! (-> this draw bounds w) 40960.0)
-         )
-       (-> this resolution-anim)
-       )
+         (set! (-> this draw bounds w) 40960.0))
+       (-> this resolution-anim))
       ((= v1-7 1)
        (when arg0
          (+! (-> this which-movie) 1)
          (set! (-> this draw bounds w) 40960.0)
          (set! (-> this evilbro)
-               (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *evilbro-citadel-sg* #f :to this))
-               )
+               (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *evilbro-citadel-sg* #f :to this)))
          (send-event (handle->process (-> this evilbro)) 'anim-mode 'clone-anim)
          (send-event (handle->process (-> this evilbro)) 'blend-shape #t)
          (send-event (handle->process (-> this evilbro)) 'center-joint 3)
          (set! (-> this evilsis)
-               (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *evilsis-citadel-sg* #f :to this))
-               )
+               (ppointer->handle (manipy-spawn (-> this root trans) (-> this entity) *evilsis-citadel-sg* #f :to this)))
          (send-event (handle->process (-> this evilsis)) 'anim-mode 'clone-anim)
          (send-event (handle->process (-> this evilsis)) 'blend-shape #t)
          (send-event (handle->process (-> this evilsis)) 'center-joint 3)
-         (if (handle->process (-> this exitplat))
-             (format 0 "exitplat activated~%")
-             )
-         )
-       (new 'static 'spool-anim
-         :name "green-sagecage-outro-preboss"
-         :index 7
-         :parts 22
-         :command-list '((0 blackout 0)
-           (0 want-levels citadel finalboss)
-           (0 display-level finalboss special)
-           (0 send-event "citb-robotboss-1" 'die)
-           (335 joint "cameraB")
-           (581 joint "camera")
-           (696 joint "cameraB")
-           (828 joint "camera")
-           (1180 joint "cameraB")
-           (1380 send-event self 'spawn-robot)
-           (1382 joint "camera")
-           (1382 kill "citb-disc-d-2")
-           (1382 kill "citb-disc-c-4")
-           (1382 kill "citb-disc-c-5")
-           (1382 kill "citb-disc-c-6")
-           (1382 kill "citb-disc-b-12")
-           (1382 kill "citb-disc-b-13")
-           (1382 kill "citb-disc-b-14")
-           (1382 kill "citb-disc-a-11")
-           (1382 kill "citb-disc-a-12")
-           (1382 kill "citb-disc-a-13")
-           (1382 kill "citb-disc-a-14")
-           (1382 kill "citb-disc-a-15")
-           (1382 kill "citb-disc-a-16")
-           (1382 kill "citb-disc-b-21")
-           (1382 kill "citb-button-28")
-           (1382 kill "citb-button-32")
-           (1382 kill "citb-generator-1")
-           (1382 kill "citb-generator-2")
-           (1382 kill "citb-generator-3")
-           (1382 kill "citb-generator-4")
-           (1382 kill "citb-iris-door-15")
-           (1382 kill "citb-iris-door-16")
-           (1382 kill "crate-2996")
-           (1382 kill "crate-2997")
-           (1382 kill "crate-2998")
-           (1382 kill "crate-3000")
-           (1382 kill "citb-plat-eco-1")
-           (1382 kill "citb-plat-eco-2")
-           (1382 kill "citb-plat-eco-3")
-           (1382 kill "citb-stair-plat-1")
-           (1382 kill "citb-stair-plat-2")
-           (1382 kill "citb-stair-plat-3")
-           (1382 kill "citb-stair-plat-4")
-           (1382 kill "citb-stair-plat-5")
-           (1382 kill "citb-stair-plat-6")
-           (1382 kill "red-sagecage-1")
-           (1382 kill "blue-sagecage-1")
-           (1382 kill "yellow-sagecage-1")
-           (1382 kill "babak-391")
-           (1382 kill "citb-disc-c-10")
-           (1382 kill "citb-iris-door-32")
-           (1382 kill "citb-disc-b-18")
-           (1382 kill "citb-disc-b-19")
-           (1382 kill "citb-disc-b-20")
-           (1382 kill "citb-iris-door-14")
-           (1382 kill "orb-cache-top-32")
-           (1382 kill "citb-disc-b-17")
-           (1382 kill "citb-iris-door-13")
-           (1382 kill "citb-button-39")
-           (1382 kill "citb-button-40")
-           (1382 kill "babak-392")
-           (1382 kill "babak-393")
-           (1382 kill "citb-button-33")
-           (1382 kill "citb-button-34")
-           (1382 kill "citb-drop-plat-365")
-           (1382 kill "citb-drop-plat-366")
-           (1382 kill "citb-drop-plat-367")
-           (1382 kill "citb-iris-door-21")
-           (1382 kill "assistant-lavatube-end-3")
-           (1382 kill "babak-394")
-           (1382 kill "babak-396")
-           (1382 kill "citb-drop-plat-376")
-           (1605 joint "cameraB")
-           (1733 kill "citb-iris-door-2")
-           (1736 joint "camera")
-           )
-         )
-       )
+         (if (handle->process (-> this exitplat)) (format 0 "exitplat activated~%")))
+       (new 'static
+            'spool-anim
+            :name "green-sagecage-outro-preboss"
+            :index 7
+            :parts 22
+            :command-list
+            '((0 blackout 0)
+             (0 want-levels citadel finalboss)
+             (0 display-level finalboss special)
+             (0 send-event "citb-robotboss-1" 'die)
+             (335 joint "cameraB")
+             (581 joint "camera")
+             (696 joint "cameraB")
+             (828 joint "camera")
+             (1180 joint "cameraB")
+             (1380 send-event self 'spawn-robot)
+             (1382 joint "camera")
+             (1382 kill "citb-disc-d-2")
+             (1382 kill "citb-disc-c-4")
+             (1382 kill "citb-disc-c-5")
+             (1382 kill "citb-disc-c-6")
+             (1382 kill "citb-disc-b-12")
+             (1382 kill "citb-disc-b-13")
+             (1382 kill "citb-disc-b-14")
+             (1382 kill "citb-disc-a-11")
+             (1382 kill "citb-disc-a-12")
+             (1382 kill "citb-disc-a-13")
+             (1382 kill "citb-disc-a-14")
+             (1382 kill "citb-disc-a-15")
+             (1382 kill "citb-disc-a-16")
+             (1382 kill "citb-disc-b-21")
+             (1382 kill "citb-button-28")
+             (1382 kill "citb-button-32")
+             (1382 kill "citb-generator-1")
+             (1382 kill "citb-generator-2")
+             (1382 kill "citb-generator-3")
+             (1382 kill "citb-generator-4")
+             (1382 kill "citb-iris-door-15")
+             (1382 kill "citb-iris-door-16")
+             (1382 kill "crate-2996")
+             (1382 kill "crate-2997")
+             (1382 kill "crate-2998")
+             (1382 kill "crate-3000")
+             (1382 kill "citb-plat-eco-1")
+             (1382 kill "citb-plat-eco-2")
+             (1382 kill "citb-plat-eco-3")
+             (1382 kill "citb-stair-plat-1")
+             (1382 kill "citb-stair-plat-2")
+             (1382 kill "citb-stair-plat-3")
+             (1382 kill "citb-stair-plat-4")
+             (1382 kill "citb-stair-plat-5")
+             (1382 kill "citb-stair-plat-6")
+             (1382 kill "red-sagecage-1")
+             (1382 kill "blue-sagecage-1")
+             (1382 kill "yellow-sagecage-1")
+             (1382 kill "babak-391")
+             (1382 kill "citb-disc-c-10")
+             (1382 kill "citb-iris-door-32")
+             (1382 kill "citb-disc-b-18")
+             (1382 kill "citb-disc-b-19")
+             (1382 kill "citb-disc-b-20")
+             (1382 kill "citb-iris-door-14")
+             (1382 kill "orb-cache-top-32")
+             (1382 kill "citb-disc-b-17")
+             (1382 kill "citb-iris-door-13")
+             (1382 kill "citb-button-39")
+             (1382 kill "citb-button-40")
+             (1382 kill "babak-392")
+             (1382 kill "babak-393")
+             (1382 kill "citb-button-33")
+             (1382 kill "citb-button-34")
+             (1382 kill "citb-drop-plat-365")
+             (1382 kill "citb-drop-plat-366")
+             (1382 kill "citb-drop-plat-367")
+             (1382 kill "citb-iris-door-21")
+             (1382 kill "assistant-lavatube-end-3")
+             (1382 kill "babak-394")
+             (1382 kill "babak-396")
+             (1382 kill "citb-drop-plat-376")
+             (1605 joint "cameraB")
+             (1733 kill "citb-iris-door-2")
+             (1736 joint "camera"))))
       (else
-        (if arg0
-            (format
-              0
-              "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-              (-> this name)
-              (task-status->string (current-status (-> this tasks)))
-              )
-            )
-        (-> this draw art-group data 4)
-        )
-      )
-    )
-  )
+       (if arg0
+         (format 0
+                 "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+                 (-> this name)
+                 (task-status->string (current-status (-> this tasks)))))
+       (-> this draw art-group data 4)))))
 
 (defstate play-anim (green-sagecage)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('spawn-robot)
-       (let ((gp-0 (entity-by-name "robotboss-3")))
-         (format 0 "robotboss ent ~A~%" gp-0)
-         (when gp-0
-           (set! (-> self robotboss)
-                 (ppointer->handle (manipy-spawn (-> self root trans) gp-0 *robotboss-sg* #f :to self))
-                 )
-           (send-event (handle->process (-> self robotboss)) 'anim-mode 'clone-anim)
-           (send-event (handle->process (-> self robotboss)) 'center-joint 3)
-           (send-event (handle->process (-> self robotboss)) 'origin-joint-index 3)
-           (let ((s5-1 (handle->process (-> self robotboss))))
-             (when s5-1
-               (format 0 "robotboss activated ent ~A~%" gp-0)
-               (set! (-> (the-as process-drawable s5-1) draw bounds w) 327680.0)
-               )
-             )
-           )
-         )
-       )
-      (else
-        ((-> (method-of-type citb-sage play-anim) event) proc argc message block)
-        )
-      )
-    )
-  :exit (behavior ()
-    (let ((a0-1 (handle->process (-> self evilbro))))
-      (if a0-1
-          (deactivate a0-1)
-          )
-      )
-    (let ((a0-5 (handle->process (-> self evilsis))))
-      (if a0-5
-          (deactivate a0-5)
-          )
-      )
-    (let ((a0-9 (handle->process (-> self robotboss))))
-      (if a0-9
-          (deactivate a0-9)
-          )
-      )
-    (let ((a0-13 (handle->process (-> self exitplat))))
-      (if a0-13
-          (deactivate a0-13)
-          )
-      )
-    (when (= (current-status (-> self tasks)) (task-status invalid))
-      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
-        (set! (-> a1-4 from) self)
-        (set! (-> a1-4 num-params) 0)
-        (set! (-> a1-4 message) 'shield-off)
-        (let ((t9-5 send-event-function)
-              (v1-28 (-> self alt-actor))
-              )
-          (t9-5
-            (if v1-28
-                (-> v1-28 extra process)
-                )
-            a1-4
-            )
-          )
-        )
-      )
-    ;; og:preserve-this
-    (#when PC_PORT
-      (when (and (= (get-response (-> self query)) 'no) (or (not (= *cheat-mode* 'debug)) (not (cpad-hold? 0 r1))) (= (-> self which-movie) 1))
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('spawn-robot)
+         (let ((gp-0 (entity-by-name "robotboss-3")))
+           (format 0 "robotboss ent ~A~%" gp-0)
+           (when gp-0
+             (set! (-> self robotboss) (ppointer->handle (manipy-spawn (-> self root trans) gp-0 *robotboss-sg* #f :to self)))
+             (send-event (handle->process (-> self robotboss)) 'anim-mode 'clone-anim)
+             (send-event (handle->process (-> self robotboss)) 'center-joint 3)
+             (send-event (handle->process (-> self robotboss)) 'origin-joint-index 3)
+             (let ((s5-1 (handle->process (-> self robotboss))))
+               (when s5-1
+                 (format 0 "robotboss activated ent ~A~%" gp-0)
+                 (set! (-> (the-as process-drawable s5-1) draw bounds w) 327680.0))))))
+        (else ((-> (method-of-type citb-sage play-anim) event) proc argc message block))))
+  :exit
+    (behavior ()
+      (let ((a0-1 (handle->process (-> self evilbro)))) (if a0-1 (deactivate a0-1)))
+      (let ((a0-5 (handle->process (-> self evilsis)))) (if a0-5 (deactivate a0-5)))
+      (let ((a0-9 (handle->process (-> self robotboss)))) (if a0-9 (deactivate a0-9)))
+      (let ((a0-13 (handle->process (-> self exitplat)))) (if a0-13 (deactivate a0-13)))
+      (when (= (current-status (-> self tasks)) (task-status invalid))
+        (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> a1-4 from) self)
+          (set! (-> a1-4 num-params) 0)
+          (set! (-> a1-4 message) 'shield-off)
+          (let ((t9-5 send-event-function)
+                (v1-28 (-> self alt-actor)))
+            (t9-5 (if v1-28 (-> v1-28 extra process)) a1-4))))
+      ;; og:preserve-this
+      (#when PC_PORT
+        (when (and (= (get-response (-> self query)) 'no)
+                   (or (not (= *cheat-mode* 'debug)) (not (cpad-hold? 0 r1)))
+                   (= (-> self which-movie) 1))
           (format #t "skipped green-sagecage~%")
           (start 'play (get-continue-by-name *game-info* "citadel-elevator"))
           (send-event (process-by-name "citb-exit-plat-4" *active-pool*) 'trigger)
           (set! (-> self draw bounds w) 10240.0)
           ((-> (method-of-type process-taskable play-anim) exit))
           (set! (-> self which-movie) 2)
-          (return #f)
-          ))
-    (cond
-      ((= (-> self which-movie) 1)
-       (set-blackout-frames (seconds 100))
-       )
-      ((= (-> self which-movie) 2)
-       (start 'play (get-continue-by-name *game-info* "citadel-elevator"))
-       )
-      )
-    (set! (-> self draw bounds w) 10240.0)
-    ((-> (method-of-type process-taskable play-anim) exit))
-    )
-  :trans (behavior ()
-    (case (-> self which-movie)
-      ((1)
-       (spool-push *art-control* "green-sagecage-outro-preboss" 0 self -1.0)
-       (if (< 1200.0 (ja-aframe-num 0))
-           (citb-sage-draw-beam)
-           )
-       (when (< 1310.0 (ja-aframe-num 0))
-         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-           (set! (-> a1-1 from) self)
-           (set! (-> a1-1 num-params) 0)
-           (set! (-> a1-1 message) 'shield-off)
-           (let ((t9-4 send-event-function)
-                 (v1-8 (-> self alt-actor))
-                 )
-             (t9-4
-               (if v1-8
-                   (-> v1-8 extra process)
-                   )
-               a1-1
-               )
-             )
-           )
-         )
-       )
-      )
-    ((-> (method-of-type process-taskable play-anim) trans))
-    )
-  )
+          (return #f)))
+      (cond
+        ((= (-> self which-movie) 1) (set-blackout-frames (seconds 100)))
+        ((= (-> self which-movie) 2) (start 'play (get-continue-by-name *game-info* "citadel-elevator"))))
+      (set! (-> self draw bounds w) 10240.0)
+      ((-> (method-of-type process-taskable play-anim) exit)))
+  :trans
+    (behavior ()
+      (case (-> self which-movie)
+        ((1)
+         (spool-push *art-control* "green-sagecage-outro-preboss" 0 self -1.0)
+         (if (< 1200.0 (ja-aframe-num 0)) (citb-sage-draw-beam))
+         (when (< 1310.0 (ja-aframe-num 0))
+           (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-1 from) self)
+             (set! (-> a1-1 num-params) 0)
+             (set! (-> a1-1 message) 'shield-off)
+             (let ((t9-4 send-event-function)
+                   (v1-8 (-> self alt-actor)))
+               (t9-4 (if v1-8 (-> v1-8 extra process)) a1-1))))))
+      ((-> (method-of-type process-taskable play-anim) trans))))
 
 (defmethod should-display? ((this green-sagecage))
-  (< (-> this which-movie) 2)
-  )
+  (< (-> this which-movie) 2))
 
 (defstate idle (green-sagecage)
   :virtual #t
-  :trans (behavior ()
-    (cond
-      ((and *target*
-            (and (< (-> (target-pos 0) z) -18821530.0) (= (current-status (-> self tasks)) (task-status need-hint)))
-            )
-       (send-event self 'play-anim)
-       )
-      ((= (-> self which-movie) 1)
-       (send-event self 'play-anim)
-       )
-      )
-    ((-> (method-of-type citb-sage idle) trans))
-    )
-  )
+  :trans
+    (behavior ()
+      (cond
+        ((and *target* (and (< (-> (target-pos 0) z) -18821530.0) (= (current-status (-> self tasks)) (task-status need-hint))))
+         (send-event self 'play-anim))
+        ((= (-> self which-movie) 1) (send-event self 'play-anim)))
+      ((-> (method-of-type citb-sage idle) trans))))
 
 (defmethod init-from-entity! ((this green-sagecage) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *green-sagecage-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
@@ -1105,15 +798,8 @@
   (set! (-> this robotboss) (the-as handle #f))
   (set! (-> this exitplat) (the-as handle #f))
   (cond
-    ((= (current-status (-> this tasks)) (task-status invalid))
-     (set! (-> this which-movie) 2)
-     )
-    (else
-      (set! (-> this which-movie) 0)
-      0
-      )
-    )
+    ((= (current-status (-> this tasks)) (task-status invalid)) (set! (-> this which-movie) 2))
+    (else (set! (-> this which-movie) 0) 0))
   (set! (-> this sound-flava) (music-flava sage))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))

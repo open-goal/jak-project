@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: prototype-h.gc
-;; name in dgo: prototype-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/draw/drawable-h.gc")
 
 ;; The "prototype" system is used for instanced background rendering (shrub and tie).
 
@@ -15,33 +13,30 @@
 ;; a geom, based on distance from the camera (or other settings) and will add itself to the list
 ;; for that geom.
 (deftype prototype-bucket (basic)
-  ((name           string)
-   (flags          uint32)
-   (in-level       uint16)
-   (utextures      uint16)
-   (geometry       drawable  4) ;; the 4 levels of detail
-   (dists          vector    :inline) ;; lod settings
-   (rdists         vector    :inline) ;; lod settings
-   (next           uint32    4) ;; linked list of instances of each geom.
-   (count          uint16    4) ;; number of each instance with each geom.
-
+  ((name          string)
+   (flags         uint32)
+   (in-level      uint16)
+   (utextures     uint16)
+   (geometry      drawable 4) ;; the 4 levels of detail
+   (dists         vector :inline) ;; lod settings
+   (rdists        vector :inline) ;; lod settings
+   (next          uint32 4) ;; linked list of instances of each geom.
+   (count         uint16 4) ;; number of each instance with each geom.
    ;; overlays
-   (near-plane     meters    :overlay-at (-> dists x))
-   (near-stiff     meters    :overlay-at (-> dists y))
-   (mid-plane      meters    :overlay-at (-> dists z))
-   (far-plane      meters    :overlay-at (-> dists w))
-   (rlength-near   float     :overlay-at (-> rdists x))
-   (rlength-stiff  float     :overlay-at (-> rdists y))
-   (rlength-mid    float     :overlay-at (-> rdists z))
-   (stiffness      float     :overlay-at (-> rdists w))
-   (next-clear     uint128   :overlay-at (-> next 0))
-   (next-clear-1   int32     :overlay-at (-> next 0))
-   (next-clear-2   int32     :overlay-at (-> next 1))
-   (next-clear-3   int32     :overlay-at (-> next 2))
-   (next-clear-4   int32     :overlay-at (-> next 3))
-   (count-clear    uint64    :overlay-at (-> count 0))
-   )
-  )
+   (near-plane    meters :overlay-at (-> dists x))
+   (near-stiff    meters :overlay-at (-> dists y))
+   (mid-plane     meters :overlay-at (-> dists z))
+   (far-plane     meters :overlay-at (-> dists w))
+   (rlength-near  float :overlay-at (-> rdists x))
+   (rlength-stiff float :overlay-at (-> rdists y))
+   (rlength-mid   float :overlay-at (-> rdists z))
+   (stiffness     float :overlay-at (-> rdists w))
+   (next-clear    uint128 :overlay-at (-> next 0))
+   (next-clear-1  int32 :overlay-at (-> next 0))
+   (next-clear-2  int32 :overlay-at (-> next 1))
+   (next-clear-3  int32 :overlay-at (-> next 2))
+   (next-clear-4  int32 :overlay-at (-> next 3))
+   (count-clear   uint64 :overlay-at (-> count 0))))
 
 ;;;;;;;;;;;;;;;
 ;; shrub
@@ -49,27 +44,21 @@
 
 ;; specialization for shrub.  We keep the end of the linked list too.
 (deftype prototype-bucket-shrub (prototype-bucket)
-  ((mod-count          uint16      4)
-   (last               dma-packet  4)
-   (count-clear-qword  uint128     :overlay-at (-> count 0))
-   (last-clear         uint128     :overlay-at (-> last 0))
-   )
-  )
+  ((mod-count         uint16 4)
+   (last              dma-packet 4)
+   (count-clear-qword uint128 :overlay-at (-> count 0))
+   (last-clear        uint128 :overlay-at (-> last 0))))
 
 ;; array of all the prototypes in a shrub tree.
 (deftype prototype-inline-array-shrub (drawable)
-  ((length  int16                             :offset   6)
-   (data    prototype-bucket-shrub  1 :inline :offset  32)
-   (_pad    uint32)
-   )
-  )
+  ((length int16 :offset 6)
+   (data   prototype-bucket-shrub 1 :inline :offset 32)
+   (_pad   uint32)))
 
 ;; shrub prototypes, plus a pointer to the level's wind data.
 (deftype prototype-array-shrub-info (basic)
-  ((prototype-inline-array-shrub  prototype-inline-array-shrub)
-   (wind-vectors                  uint32)
-   )
-  )
+  ((prototype-inline-array-shrub prototype-inline-array-shrub)
+   (wind-vectors                 uint32)))
 
 ;;;;;;;;;;;;;;;
 ;; tie
@@ -81,43 +70,38 @@
 ;; - instanced collision
 
 (declare-type drawable-inline-array-collide-fragment drawable-inline-array)
+
 (declare-type prototype-tie drawable)
+
 ;; prototype for a TIE
 (deftype prototype-bucket-tie (prototype-bucket)
-  ((generic-count        uint16         4)
-   (generic-next         uint32         4)
-   (frag-count           uint8          4)
-   (index-start          uint8          4)
-   (base-qw              uint16         4)
-   (envmap-rfade         float)
-   (envmap-fade-far      float)
-   (envmap-shader        adgif-shader)
-   (collide-frag         drawable-inline-array-collide-fragment)
-   (tie-colors           time-of-day-palette)
-   (data                 uint32         :dynamic)
-   (color-index-qwc      uint32         :dynamic)
-   (generic-next-clear   uint128          :overlay-at (-> generic-next 0))
-   (generic-count-clear  uint128          :overlay-at (-> count 0))
-   (geometry-override    prototype-tie  4 :overlay-at (-> geometry 0))
-   )
-  )
+  ((generic-count       uint16 4)
+   (generic-next        uint32 4)
+   (frag-count          uint8 4)
+   (index-start         uint8 4)
+   (base-qw             uint16 4)
+   (envmap-rfade        float)
+   (envmap-fade-far     float)
+   (envmap-shader       adgif-shader)
+   (collide-frag        drawable-inline-array-collide-fragment)
+   (tie-colors          time-of-day-palette)
+   (data                uint32 :dynamic)
+   (color-index-qwc     uint32 :dynamic)
+   (generic-next-clear  uint128 :overlay-at (-> generic-next 0))
+   (generic-count-clear uint128 :overlay-at (-> count 0))
+   (geometry-override   prototype-tie 4 :overlay-at (-> geometry 0))))
 
 ;; all tie prototypes in a tie tree. (note, not inline like shrub)
 (deftype prototype-array-tie (array)
-  ((array-data  prototype-bucket-tie  :dynamic :offset  16)
-   )
+  ((array-data prototype-bucket-tie :dynamic :offset 16))
   (:methods
-    (login (_type_) none)
-    )
-  )
+   (login (_type_) none)))
 
 ;; all tie prototypes and pointer to level's wind data.
 ;; in practice, they are shared with all tie/shrub trees in the level
 (deftype proxy-prototype-array-tie (basic)
-  ((prototype-array-tie  prototype-array-tie)
-   (wind-vectors         uint32)
-   )
-  )
+  ((prototype-array-tie prototype-array-tie)
+   (wind-vectors        uint32)))
 
 ;;;;;;;;;;;;
 ;; instance
@@ -126,10 +110,8 @@
 ;; note: more specific instances are available in tie/shrub files.
 
 (deftype instance (drawable)
-  ((bucket-index    uint16                            :offset   6)
-   (error           (pointer drawable-error)          :offset   8)
-   (origin          matrix4h                  :inline)
-   (unknown-vector  vector                    :inline :overlay-at (-> origin data 0))
-   (wind-index      uint16                            :overlay-at (-> origin data 15))
-   )
-  )
+  ((bucket-index   uint16 :offset 6)
+   (error          (pointer drawable-error) :offset 8)
+   (origin         matrix4h :inline)
+   (unknown-vector vector :inline :overlay-at (-> origin data 0))
+   (wind-index     uint16 :overlay-at (-> origin data 15))))

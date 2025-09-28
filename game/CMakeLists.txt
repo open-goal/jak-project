@@ -1,6 +1,3 @@
-# We define our own compilation flags here.
-set(CMAKE_CXX_STANDARD 17)
-
 # Set a more convenient ARM flag
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     set(ARM64_ARCH TRUE)
@@ -28,12 +25,16 @@ endif()
 set(RUNTIME_SOURCE
         external/discord_jak1.cpp
         external/discord_jak2.cpp
+        external/discord_jak3.cpp
         external/discord.cpp
         graphics/display.cpp
         graphics/gfx_test.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp
+        graphics/jak3_texture_remap.cpp
+        graphics/screenshot.cpp
         graphics/opengl_renderer/background/background_common.cpp
+        graphics/opengl_renderer/background/Hfrag.cpp
         graphics/opengl_renderer/background/Shrub.cpp
         graphics/opengl_renderer/background/TFragment.cpp
         graphics/opengl_renderer/background/Tie3.cpp
@@ -79,6 +80,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/TextureAnimator.cpp
+        graphics/opengl_renderer/TextureAnimatorDefs.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
         graphics/opengl_renderer/Warp.cpp
@@ -86,6 +88,7 @@ set(RUNTIME_SOURCE
         graphics/sceGraphicsInterface.cpp
         graphics/texture/jak1_tpage_dir.cpp
         graphics/texture/jak2_tpage_dir.cpp
+        graphics/texture/jak3_tpage_dir.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         ${OG_ASM_FUNCS_FILE}
@@ -117,10 +120,25 @@ set(RUNTIME_SOURCE
         kernel/jak2/klink.cpp
         kernel/jak2/klisten.cpp
         kernel/jak2/kmachine.cpp
+        kernel/jak2/kmachine_extras.cpp
         kernel/jak2/kmalloc.cpp
         kernel/jak2/kprint.cpp
         kernel/jak2/kscheme.cpp
         kernel/jak2/ksound.cpp
+        kernel/jak3/fileio.cpp
+        kernel/jak3/kboot.cpp
+        kernel/jak3/kdgo.cpp
+        kernel/jak3/kdsnetm.cpp
+        kernel/jak3/klink.cpp
+        kernel/jak3/klisten.cpp
+        kernel/jak3/kmachine.cpp
+        kernel/jak3/kmachine_extras.cpp
+        kernel/jak3/kmalloc.cpp
+        kernel/jak3/kmemcard.cpp
+        kernel/jak3/kprint.cpp
+        kernel/jak3/kscheme.cpp
+        kernel/jak3/ksocket.cpp
+        kernel/jak3/ksound.cpp
         mips2c/jak1_functions/bones.cpp
         mips2c/jak1_functions/collide_cache.cpp
         mips2c/jak1_functions/collide_edge_grab.cpp
@@ -173,6 +191,33 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/squid.cpp
         mips2c/jak2_functions/texture.cpp
         mips2c/jak2_functions/vortex.cpp
+        mips2c/jak3_functions/collide_func.cpp
+        mips2c/jak3_functions/debug.cpp
+        mips2c/jak3_functions/font.cpp
+        mips2c/jak3_functions/foreground.cpp
+        mips2c/jak3_functions/generic_effect.cpp
+        mips2c/jak3_functions/joint.cpp
+        mips2c/jak3_functions/lights.cpp
+        mips2c/jak3_functions/sky.cpp
+        mips2c/jak3_functions/texture.cpp
+        mips2c/jak3_functions/particle_curves.cpp
+        mips2c/jak3_functions/cloth.cpp
+        mips2c/jak3_functions/collide_cache.cpp
+        mips2c/jak3_functions/collide_hash.cpp
+        mips2c/jak3_functions/collide_edge_grab.cpp
+        mips2c/jak3_functions/collide_mesh.cpp
+        mips2c/jak3_functions/spatial_hash.cpp
+        mips2c/jak3_functions/sparticle.cpp
+        mips2c/jak3_functions/sparticle_launcher.cpp
+        mips2c/jak3_functions/nav_control.cpp
+        mips2c/jak3_functions/nav_engine.cpp
+        mips2c/jak3_functions/merc_blend_shape.cpp
+        mips2c/jak3_functions/wvehicle_part.cpp
+        mips2c/jak3_functions/ripple.cpp
+        mips2c/jak3_functions/shadow.cpp
+        mips2c/jak3_functions/ocean.cpp
+        mips2c/jak3_functions/ocean_vu0.cpp
+        mips2c/jak3_functions/generic_merc.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp
@@ -210,6 +255,29 @@ set(RUNTIME_SOURCE
         overlord/jak2/streamlfo.cpp
         overlord/jak2/streamlist.cpp
         overlord/jak2/vag.cpp
+        overlord/jak3/overlord.cpp
+        overlord/jak3/pagemanager.cpp
+        overlord/jak3/iso_cd.cpp
+        overlord/jak3/dma.cpp
+        overlord/jak3/iso.cpp
+        overlord/jak3/iso_queue.cpp
+        overlord/jak3/srpc.cpp
+        overlord/jak3/vag.cpp
+        overlord/jak3/ssound.cpp
+        overlord/jak3/iso_api.cpp
+        overlord/jak3/spustreams.cpp
+        overlord/jak3/list.cpp
+        overlord/jak3/vblank_handler.cpp
+        overlord/jak3/dvd_driver.cpp
+        overlord/jak3/basefile.cpp
+        overlord/jak3/basefilesystem.cpp
+        overlord/jak3/ramdisk.cpp
+        overlord/jak3/isocommon.cpp
+        overlord/jak3/init.cpp
+        overlord/jak3/stream.cpp
+        overlord/jak3/sbank.cpp
+        overlord/jak3/soundcommon.cpp
+        overlord/jak3/streamlist.cpp
         runtime.cpp
         sce/deci2.cpp
         sce/iop.cpp
@@ -224,6 +292,7 @@ set(RUNTIME_SOURCE
         settings/settings.cpp
         system/background_worker.cpp
         system/Deci2Server.cpp
+        system/hid/devices/dualsense_effects.cpp
         system/hid/devices/game_controller.cpp
         system/hid/devices/keyboard.cpp
         system/hid/devices/mouse.cpp
@@ -234,8 +303,6 @@ set(RUNTIME_SOURCE
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
         system/SystemThread.cpp
-        system/vm/dmac.cpp
-        system/vm/vm.cpp
         tools/filter_menu/filter_menu.cpp
         tools/subtitle_editor/subtitle_editor_db.cpp
         tools/subtitle_editor/subtitle_editor_repl_client.cpp
@@ -247,7 +314,7 @@ add_subdirectory(sound)
 # we build the runtime as a static library.
 add_library(runtime STATIC ${RUNTIME_SOURCE} "../third-party/glad/src/glad.c")
 
-target_link_libraries(runtime common fmt SDL2::SDL2 imgui discord-rpc sound stb_image libco libcurl)
+target_link_libraries(runtime common fmt SDL3::SDL3 imgui discord-rpc sound stb_image libco libcurl)
 if(WIN32)
     target_link_libraries(runtime mman)
 else()
@@ -256,3 +323,6 @@ endif()
 
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
+if(WIN32)
+    set_target_properties(gk PROPERTIES VS_DPI_AWARE "PerMonitor")
+endif()

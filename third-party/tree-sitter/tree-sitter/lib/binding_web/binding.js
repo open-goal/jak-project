@@ -1,6 +1,7 @@
 const C = Module;
 const INTERNAL = {};
 const SIZE_OF_INT = 4;
+const SIZE_OF_CURSOR = 3 * SIZE_OF_INT;
 const SIZE_OF_NODE = 5 * SIZE_OF_INT;
 const SIZE_OF_POINT = 2 * SIZE_OF_INT;
 const SIZE_OF_RANGE = 2 * SIZE_OF_INT + 2 * SIZE_OF_POINT;
@@ -12,12 +13,14 @@ const PREDICATE_STEP_TYPE_STRING = 2;
 
 const LANGUAGE_FUNCTION_REGEX = /^_?tree_sitter_\w+/;
 
-var VERSION;
-var MIN_COMPATIBLE_VERSION;
-var TRANSFER_BUFFER;
-var currentParseCallback;
-var currentLogCallback;
+let VERSION;
+let MIN_COMPATIBLE_VERSION;
+let TRANSFER_BUFFER;
+let currentParseCallback;
+// eslint-disable-next-line no-unused-vars
+let currentLogCallback;
 
+// eslint-disable-next-line no-unused-vars
 class ParserImpl {
   static init() {
     TRANSFER_BUFFER = C._ts_init();
@@ -49,7 +52,7 @@ class ParserImpl {
       if (version < MIN_COMPATIBLE_VERSION || VERSION < version) {
         throw new Error(
           `Incompatible language version ${version}. ` +
-          `Compatibility range ${MIN_COMPATIBLE_VERSION} through ${VERSION}.`
+          `Compatibility range ${MIN_COMPATIBLE_VERSION} through ${VERSION}.`,
         );
       }
     } else {
@@ -61,16 +64,16 @@ class ParserImpl {
   }
 
   getLanguage() {
-    return this.language
+    return this.language;
   }
 
   parse(callback, oldTree, options) {
     if (typeof callback === 'string') {
-      currentParseCallback = (index, _, endIndex) => callback.slice(index, endIndex);
+      currentParseCallback = (index, _) => callback.slice(index);
     } else if (typeof callback === 'function') {
       currentParseCallback = callback;
     } else {
-      throw new Error("Argument must be a string or a function");
+      throw new Error('Argument must be a string or a function');
     }
 
     if (this.logCallback) {
@@ -98,7 +101,7 @@ class ParserImpl {
       this[1],
       oldTree ? oldTree[0] : 0,
       rangeAddress,
-      rangeCount
+      rangeCount,
     );
 
     if (!treeAddress) {
@@ -117,19 +120,33 @@ class ParserImpl {
     C._ts_parser_reset(this[0]);
   }
 
-  setTimeoutMicros(timeout) {
-    C._ts_parser_set_timeout_micros(this[0], timeout);
+  getIncludedRanges() {
+    const count = C._malloc(SIZE_OF_INT);
+    const rangeAddress = C._ts_parser_included_ranges(this[0], count);
+    count = getValue(count, 'i32');
+    const result = new Array(count);
+    if (count > 0) {
+      let address = rangeAddress;
+      for (let i = 0; i < count; i++) {
+        result[i] = unmarshalRange(address);
+        address += SIZE_OF_RANGE;
+      }
+    }
   }
 
   getTimeoutMicros() {
     return C._ts_parser_timeout_micros(this[0]);
   }
 
+  setTimeoutMicros(timeout) {
+    C._ts_parser_set_timeout_micros(this[0], timeout);
+  }
+
   setLogger(callback) {
     if (!callback) {
       callback = null;
-    } else if (typeof callback !== "function") {
-      throw new Error("Logger callback must be a function");
+    } else if (typeof callback !== 'function') {
+      throw new Error('Logger callback must be a function');
     }
     this.logCallback = callback;
     return this;
@@ -168,6 +185,14 @@ class Tree {
     return unmarshalNode(this);
   }
 
+  rootNodeWithOffset(offsetBytes, offsetExtent) {
+    const address = TRANSFER_BUFFER + SIZE_OF_NODE;
+    setValue(address, offsetBytes, 'i32');
+    marshalPoint(address + SIZE_OF_INT, offsetExtent);
+    C._ts_tree_root_node_with_offset_wasm(this[0]);
+    return unmarshalNode(this);
+  }
+
   getLanguage() {
     return this.language;
   }
@@ -195,6 +220,22 @@ class Tree {
     }
     return result;
   }
+
+  getIncludedRanges() {
+    C._ts_tree_included_ranges_wasm(this[0]);
+    const count = getValue(TRANSFER_BUFFER, 'i32');
+    const buffer = getValue(TRANSFER_BUFFER + SIZE_OF_INT, 'i32');
+    const result = new Array(count);
+    if (count > 0) {
+      let address = buffer;
+      for (let i = 0; i < count; i++) {
+        result[i] = unmarshalRange(address);
+        address += SIZE_OF_RANGE;
+      }
+      C._free(buffer);
+    }
+    return result;
+  }
 }
 
 class Node {
@@ -208,8 +249,17 @@ class Node {
     return C._ts_node_symbol_wasm(this.tree[0]);
   }
 
+  get grammarId() {
+    marshalNode(this);
+    return C._ts_node_grammar_symbol_wasm(this.tree[0]);
+  }
+
   get type() {
     return this.tree.language.types[this.typeId] || 'ERROR';
+  }
+
+  get grammarType() {
+    return this.tree.language.types[this.grammarId] || 'ERROR';
   }
 
   get endPosition() {
@@ -227,24 +277,44 @@ class Node {
     return getText(this.tree, this.startIndex, this.endIndex);
   }
 
-  isNamed() {
+  get parseState() {
+    marshalNode(this);
+    return C._ts_node_parse_state_wasm(this.tree[0]);
+  }
+
+  get nextParseState() {
+    marshalNode(this);
+    return C._ts_node_next_parse_state_wasm(this.tree[0]);
+  }
+
+  get isNamed() {
     marshalNode(this);
     return C._ts_node_is_named_wasm(this.tree[0]) === 1;
   }
 
-  hasError() {
+  get hasError() {
     marshalNode(this);
     return C._ts_node_has_error_wasm(this.tree[0]) === 1;
   }
 
-  hasChanges() {
+  get hasChanges() {
     marshalNode(this);
     return C._ts_node_has_changes_wasm(this.tree[0]) === 1;
   }
 
-  isMissing() {
+  get isError() {
+    marshalNode(this);
+    return C._ts_node_is_error_wasm(this.tree[0]) === 1;
+  }
+
+  get isMissing() {
     marshalNode(this);
     return C._ts_node_is_missing_wasm(this.tree[0]) === 1;
+  }
+
+  get isExtra() {
+    marshalNode(this);
+    return C._ts_node_is_extra_wasm(this.tree[0]) === 1;
   }
 
   equals(other) {
@@ -272,6 +342,55 @@ class Node {
   childForFieldName(fieldName) {
     const fieldId = this.tree.language.fields.indexOf(fieldName);
     if (fieldId !== -1) return this.childForFieldId(fieldId);
+  }
+
+  fieldNameForChild(index) {
+    marshalNode(this);
+    const address = C._ts_node_field_name_for_child_wasm(this.tree[0], index);
+    if (!address) {
+      return null;
+    }
+    const result = AsciiToString(address);
+    // must not free, the string memory is owned by the language
+    return result;
+  }
+
+  childrenForFieldName(fieldName) {
+    const fieldId = this.tree.language.fields.indexOf(fieldName);
+    if (fieldId !== -1 && fieldId !== 0) return this.childrenForFieldId(fieldId);
+  }
+
+  childrenForFieldId(fieldId) {
+    marshalNode(this);
+    C._ts_node_children_by_field_id_wasm(this.tree[0], fieldId);
+    const count = getValue(TRANSFER_BUFFER, 'i32');
+    const buffer = getValue(TRANSFER_BUFFER + SIZE_OF_INT, 'i32');
+    const result = new Array(count);
+    if (count > 0) {
+      let address = buffer;
+      for (let i = 0; i < count; i++) {
+        result[i] = unmarshalNode(this.tree, address);
+        address += SIZE_OF_NODE;
+      }
+      C._free(buffer);
+    }
+    return result;
+  }
+
+  firstChildForIndex(index) {
+    marshalNode(this);
+    const address = TRANSFER_BUFFER + SIZE_OF_NODE;
+    setValue(address, index, 'i32');
+    C._ts_node_first_child_for_byte_wasm(this.tree[0]);
+    return unmarshalNode(this.tree);
+  }
+
+  firstNamedChildForIndex(index) {
+    marshalNode(this);
+    const address = TRANSFER_BUFFER + SIZE_OF_NODE;
+    setValue(address, index, 'i32');
+    C._ts_node_first_named_child_for_byte_wasm(this.tree[0]);
+    return unmarshalNode(this.tree);
   }
 
   get childCount() {
@@ -367,7 +486,7 @@ class Node {
       startPosition.row,
       startPosition.column,
       endPosition.row,
-      endPosition.column
+      endPosition.column,
     );
 
     // Instantiate the nodes based on the data returned.
@@ -412,6 +531,11 @@ class Node {
     return unmarshalNode(this.tree);
   }
 
+  get descendantCount() {
+    marshalNode(this);
+    return C._ts_node_descendant_count_wasm(this.tree[0]);
+  }
+
   get parent() {
     marshalNode(this);
     C._ts_node_parent_wasm(this.tree[0]);
@@ -424,7 +548,7 @@ class Node {
     }
 
     marshalNode(this);
-    let address = TRANSFER_BUFFER + SIZE_OF_NODE;
+    const address = TRANSFER_BUFFER + SIZE_OF_NODE;
     setValue(address, start, 'i32');
     setValue(address + SIZE_OF_INT, end, 'i32');
     C._ts_node_descendant_for_index_wasm(this.tree[0]);
@@ -437,7 +561,7 @@ class Node {
     }
 
     marshalNode(this);
-    let address = TRANSFER_BUFFER + SIZE_OF_NODE;
+    const address = TRANSFER_BUFFER + SIZE_OF_NODE;
     setValue(address, start, 'i32');
     setValue(address + SIZE_OF_INT, end, 'i32');
     C._ts_node_named_descendant_for_index_wasm(this.tree[0]);
@@ -450,7 +574,7 @@ class Node {
     }
 
     marshalNode(this);
-    let address = TRANSFER_BUFFER + SIZE_OF_NODE;
+    const address = TRANSFER_BUFFER + SIZE_OF_NODE;
     marshalPoint(address, start);
     marshalPoint(address + SIZE_OF_POINT, end);
     C._ts_node_descendant_for_position_wasm(this.tree[0]);
@@ -463,7 +587,7 @@ class Node {
     }
 
     marshalNode(this);
-    let address = TRANSFER_BUFFER + SIZE_OF_NODE;
+    const address = TRANSFER_BUFFER + SIZE_OF_NODE;
     marshalPoint(address, start);
     marshalPoint(address + SIZE_OF_POINT, end);
     C._ts_node_named_descendant_for_position_wasm(this.tree[0]);
@@ -505,6 +629,13 @@ class TreeCursor {
     unmarshalTreeCursor(this);
   }
 
+  resetTo(cursor) {
+    marshalTreeCursor(this, TRANSFER_BUFFER);
+    marshalTreeCursor(cursor, TRANSFER_BUFFER + SIZE_OF_CURSOR);
+    C._ts_tree_cursor_reset_to_wasm(this.tree[0], cursor.tree[0]);
+    unmarshalTreeCursor(this);
+  }
+
   get nodeType() {
     return this.tree.language.types[this.nodeTypeId] || 'ERROR';
   }
@@ -512,6 +643,11 @@ class TreeCursor {
   get nodeTypeId() {
     marshalTreeCursor(this);
     return C._ts_tree_cursor_current_node_type_id_wasm(this.tree[0]);
+  }
+
+  get nodeStateId() {
+    marshalTreeCursor(this);
+    return C._ts_tree_cursor_current_node_state_id_wasm(this.tree[0]);
   }
 
   get nodeId() {
@@ -558,19 +694,29 @@ class TreeCursor {
     return C._ts_tree_cursor_end_index_wasm(this.tree[0]);
   }
 
-  currentNode() {
+  get currentNode() {
     marshalTreeCursor(this);
     C._ts_tree_cursor_current_node_wasm(this.tree[0]);
     return unmarshalNode(this.tree);
   }
 
-  currentFieldId() {
+  get currentFieldId() {
     marshalTreeCursor(this);
     return C._ts_tree_cursor_current_field_id_wasm(this.tree[0]);
   }
 
-  currentFieldName() {
-    return this.tree.language.fields[this.currentFieldId()];
+  get currentFieldName() {
+    return this.tree.language.fields[this.currentFieldId];
+  }
+
+  get currentDepth() {
+    marshalTreeCursor(this);
+    return C._ts_tree_cursor_current_depth_wasm(this.tree[0]);
+  }
+
+  get currentDescendantIndex() {
+    marshalTreeCursor(this);
+    return C._ts_tree_cursor_current_descendant_index_wasm(this.tree[0]);
   }
 
   gotoFirstChild() {
@@ -580,11 +726,47 @@ class TreeCursor {
     return result === 1;
   }
 
+  gotoLastChild() {
+    marshalTreeCursor(this);
+    const result = C._ts_tree_cursor_goto_last_child_wasm(this.tree[0]);
+    unmarshalTreeCursor(this);
+    return result === 1;
+  }
+
+  gotoFirstChildForIndex(goalIndex) {
+    marshalTreeCursor(this);
+    setValue(TRANSFER_BUFFER + SIZE_OF_CURSOR, goalIndex, 'i32');
+    const result = C._ts_tree_cursor_goto_first_child_for_index_wasm(this.tree[0]);
+    unmarshalTreeCursor(this);
+    return result === 1;
+  }
+
+  gotoFirstChildForPosition(goalPosition) {
+    marshalTreeCursor(this);
+    marshalPoint(TRANSFER_BUFFER + SIZE_OF_CURSOR, goalPosition);
+    const result = C._ts_tree_cursor_goto_first_child_for_position_wasm(this.tree[0]);
+    unmarshalTreeCursor(this);
+    return result === 1;
+  }
+
   gotoNextSibling() {
     marshalTreeCursor(this);
     const result = C._ts_tree_cursor_goto_next_sibling_wasm(this.tree[0]);
     unmarshalTreeCursor(this);
     return result === 1;
+  }
+
+  gotoPreviousSibling() {
+    marshalTreeCursor(this);
+    const result = C._ts_tree_cursor_goto_previous_sibling_wasm(this.tree[0]);
+    unmarshalTreeCursor(this);
+    return result === 1;
+  }
+
+  gotoDescendant(goalDescendantindex) {
+    marshalTreeCursor(this);
+    C._ts_tree_cursor_goto_descendant_wasm(this.tree[0], goalDescendantindex);
+    unmarshalTreeCursor(this);
   }
 
   gotoParent() {
@@ -622,6 +804,10 @@ class Language {
 
   get fieldCount() {
     return this.fields.length - 1;
+  }
+
+  get stateCount() {
+    return C._ts_language_state_count(this[0]);
   }
 
   fieldIdForName(fieldName) {
@@ -663,6 +849,15 @@ class Language {
     return C._ts_language_type_is_visible_wasm(this[0], typeId) ? true : false;
   }
 
+  nextState(stateId, typeId) {
+    return C._ts_language_next_state(this[0], stateId, typeId);
+  }
+
+  lookaheadIterator(stateId) {
+    const address = C._ts_lookahead_iterator_new(this[0], stateId);
+    if (address) return new LookaheadIterable(INTERNAL, address, this);
+  }
+
   query(source) {
     const sourceLength = lengthBytesUTF8(source);
     const sourceAddress = C._malloc(sourceLength + 1);
@@ -672,7 +867,7 @@ class Language {
       sourceAddress,
       sourceLength,
       TRANSFER_BUFFER,
-      TRANSFER_BUFFER + SIZE_OF_INT
+      TRANSFER_BUFFER + SIZE_OF_INT,
     );
 
     if (!address) {
@@ -694,11 +889,11 @@ class Language {
           break;
         case 5:
           error = new TypeError(`Bad pattern structure at offset ${errorIndex}: '${suffix}'...`);
-          word = "";
+          word = '';
           break;
         default:
           error = new SyntaxError(`Bad syntax at offset ${errorIndex}: '${suffix}'...`);
-          word = "";
+          word = '';
           break;
       }
       error.index = errorIndex;
@@ -717,7 +912,7 @@ class Language {
       const nameAddress = C._ts_query_capture_name_for_id(
         address,
         i,
-        TRANSFER_BUFFER
+        TRANSFER_BUFFER,
       );
       const nameLength = getValue(TRANSFER_BUFFER, 'i32');
       captureNames[i] = UTF8ToString(nameAddress, nameLength);
@@ -727,7 +922,7 @@ class Language {
       const valueAddress = C._ts_query_string_value_for_id(
         address,
         i,
-        TRANSFER_BUFFER
+        TRANSFER_BUFFER,
       );
       const nameLength = getValue(TRANSFER_BUFFER, 'i32');
       stringValues[i] = UTF8ToString(valueAddress, nameLength);
@@ -738,11 +933,12 @@ class Language {
     const refutedProperties = new Array(patternCount);
     const predicates = new Array(patternCount);
     const textPredicates = new Array(patternCount);
+
     for (let i = 0; i < patternCount; i++) {
       const predicatesAddress = C._ts_query_predicates_for_pattern(
         address,
         i,
-        TRANSFER_BUFFER
+        TRANSFER_BUFFER,
       );
       const stepCount = getValue(TRANSFER_BUFFER, 'i32');
 
@@ -766,86 +962,164 @@ class Language {
           }
           const operator = steps[0].value;
           let isPositive = true;
+          let matchAll = true;
+          let captureName;
           switch (operator) {
+            case 'any-not-eq?':
             case 'not-eq?':
               isPositive = false;
+            case 'any-eq?':
             case 'eq?':
-              if (steps.length !== 3) throw new Error(
-                `Wrong number of arguments to \`#eq?\` predicate. Expected 2, got ${steps.length - 1}`
-              );
-              if (steps[1].type !== 'capture') throw new Error(
-                `First argument of \`#eq?\` predicate must be a capture. Got "${steps[1].value}"`
-              );
+              if (steps.length !== 3) {
+                throw new Error(
+                  `Wrong number of arguments to \`#${operator}\` predicate. Expected 2, got ${steps.length - 1}`,
+                );
+              }
+              if (steps[1].type !== 'capture') {
+                throw new Error(
+                  `First argument of \`#${operator}\` predicate must be a capture. Got "${steps[1].value}"`,
+                );
+              }
+              matchAll = !operator.startsWith('any-');
               if (steps[2].type === 'capture') {
                 const captureName1 = steps[1].name;
                 const captureName2 = steps[2].name;
                 textPredicates[i].push(function(captures) {
-                  let node1, node2
+                  const nodes1 = [];
+                  const nodes2 = [];
                   for (const c of captures) {
-                    if (c.name === captureName1) node1 = c.node;
-                    if (c.name === captureName2) node2 = c.node;
+                    if (c.name === captureName1) nodes1.push(c.node);
+                    if (c.name === captureName2) nodes2.push(c.node);
                   }
-                  if(node1 === undefined || node2 === undefined) return true;
-                  return (node1.text === node2.text) === isPositive;
+                  const compare = (n1, n2, positive) => {
+                    return positive ?
+                      n1.text === n2.text :
+                      n1.text !== n2.text;
+                  };
+                  return matchAll ?
+                    nodes1.every((n1) => nodes2.some((n2) => compare(n1, n2, isPositive))) :
+                    nodes1.some((n1) => nodes2.some((n2) => compare(n1, n2, isPositive)));
                 });
               } else {
-                const captureName = steps[1].name;
+                captureName = steps[1].name;
                 const stringValue = steps[2].value;
+                const matches = (n) => n.text === stringValue;
+                const doesNotMatch = (n) => n.text !== stringValue;
                 textPredicates[i].push(function(captures) {
+                  const nodes = [];
                   for (const c of captures) {
-                    if (c.name === captureName) {
-                      return (c.node.text === stringValue) === isPositive;
-                    };
+                    if (c.name === captureName) nodes.push(c.node);
                   }
-                  return true;
+                  const test = isPositive ? matches : doesNotMatch;
+                  return matchAll ?
+                    nodes.every(test) :
+                    nodes.some(test);
                 });
               }
               break;
 
+            case 'any-not-match?':
             case 'not-match?':
               isPositive = false;
+            case 'any-match?':
             case 'match?':
-              if (steps.length !== 3) throw new Error(
-                `Wrong number of arguments to \`#match?\` predicate. Expected 2, got ${steps.length - 1}.`
-              );
-              if (steps[1].type !== 'capture') throw new Error(
-                `First argument of \`#match?\` predicate must be a capture. Got "${steps[1].value}".`
-              );
-              if (steps[2].type !== 'string') throw new Error(
-                `Second argument of \`#match?\` predicate must be a string. Got @${steps[2].value}.`
-              );
-              const captureName = steps[1].name;
+              if (steps.length !== 3) {
+                throw new Error(
+                  `Wrong number of arguments to \`#${operator}\` predicate. Expected 2, got ${steps.length - 1}.`,
+                );
+              }
+              if (steps[1].type !== 'capture') {
+                throw new Error(
+                  `First argument of \`#${operator}\` predicate must be a capture. Got "${steps[1].value}".`,
+                );
+              }
+              if (steps[2].type !== 'string') {
+                throw new Error(
+                  `Second argument of \`#${operator}\` predicate must be a string. Got @${steps[2].value}.`,
+                );
+              }
+              captureName = steps[1].name;
               const regex = new RegExp(steps[2].value);
+              matchAll = !operator.startsWith('any-');
               textPredicates[i].push(function(captures) {
+                const nodes = [];
                 for (const c of captures) {
-                  if (c.name === captureName) return regex.test(c.node.text) === isPositive;
+                  if (c.name === captureName) nodes.push(c.node.text);
                 }
-                return true;
+                const test = (text, positive) => {
+                  return positive ?
+                    regex.test(text) :
+                    !regex.test(text);
+                };
+                if (nodes.length === 0) return !isPositive;
+                return matchAll ?
+                  nodes.every((text) => test(text, isPositive)) :
+                  nodes.some((text) => test(text, isPositive));
               });
               break;
 
             case 'set!':
-              if (steps.length < 2 || steps.length > 3) throw new Error(
-                `Wrong number of arguments to \`#set!\` predicate. Expected 1 or 2. Got ${steps.length - 1}.`
-              );
-              if (steps.some(s => s.type !== 'string')) throw new Error(
-                `Arguments to \`#set!\` predicate must be a strings.".`
-              );
+              if (steps.length < 2 || steps.length > 3) {
+                throw new Error(
+                  `Wrong number of arguments to \`#set!\` predicate. Expected 1 or 2. Got ${steps.length - 1}.`,
+                );
+              }
+              if (steps.some((s) => s.type !== 'string')) {
+                throw new Error(
+                  `Arguments to \`#set!\` predicate must be a strings.".`,
+                );
+              }
               if (!setProperties[i]) setProperties[i] = {};
               setProperties[i][steps[1].value] = steps[2] ? steps[2].value : null;
               break;
 
             case 'is?':
             case 'is-not?':
-              if (steps.length < 2 || steps.length > 3) throw new Error(
-                `Wrong number of arguments to \`#${operator}\` predicate. Expected 1 or 2. Got ${steps.length - 1}.`
-              );
-              if (steps.some(s => s.type !== 'string')) throw new Error(
-                `Arguments to \`#${operator}\` predicate must be a strings.".`
-              );
+              if (steps.length < 2 || steps.length > 3) {
+                throw new Error(
+                  `Wrong number of arguments to \`#${operator}\` predicate. Expected 1 or 2. Got ${steps.length - 1}.`,
+                );
+              }
+              if (steps.some((s) => s.type !== 'string')) {
+                throw new Error(
+                  `Arguments to \`#${operator}\` predicate must be a strings.".`,
+                );
+              }
               const properties = operator === 'is?' ? assertedProperties : refutedProperties;
               if (!properties[i]) properties[i] = {};
               properties[i][steps[1].value] = steps[2] ? steps[2].value : null;
+              break;
+
+            case 'not-any-of?':
+              isPositive = false;
+            case 'any-of?':
+              if (steps.length < 2) {
+                throw new Error(
+                  `Wrong number of arguments to \`#${operator}\` predicate. Expected at least 1. Got ${steps.length - 1}.`,
+                );
+              }
+              if (steps[1].type !== 'capture') {
+                throw new Error(
+                  `First argument of \`#${operator}\` predicate must be a capture. Got "${steps[1].value}".`,
+                );
+              }
+              for (let i = 2; i < steps.length; i++) {
+                if (steps[i].type !== 'string') {
+                  throw new Error(
+                    `Arguments to \`#${operator}\` predicate must be a strings.".`,
+                  );
+                }
+              }
+              captureName = steps[1].name;
+              const values = steps.slice(2).map((s) => s.value);
+              textPredicates[i].push(function(captures) {
+                const nodes = [];
+                for (const c of captures) {
+                  if (c.name === captureName) nodes.push(c.node.text);
+                }
+                if (nodes.length === 0) return !isPositive;
+                return nodes.every((text) => values.includes(text)) === isPositive;
+              });
               break;
 
             default:
@@ -870,7 +1144,7 @@ class Language {
       predicates,
       Object.freeze(setProperties),
       Object.freeze(assertedProperties),
-      Object.freeze(refutedProperties)
+      Object.freeze(refutedProperties),
     );
   }
 
@@ -889,34 +1163,28 @@ class Language {
         bytes = Promise.resolve(fs.readFileSync(url));
       } else {
         bytes = fetch(url)
-          .then(response => response.arrayBuffer()
-            .then(buffer => {
+          .then((response) => response.arrayBuffer()
+            .then((buffer) => {
               if (response.ok) {
                 return new Uint8Array(buffer);
               } else {
                 const body = new TextDecoder('utf-8').decode(buffer);
-                throw new Error(`Language.load failed with status ${response.status}.\n\n${body}`)
+                throw new Error(`Language.load failed with status ${response.status}.\n\n${body}`);
               }
             }));
       }
     }
 
-    // emscripten-core/emscripten#12969
-    const loadModule =
-      typeof loadSideModule === 'function'
-      ? loadSideModule
-      : loadWebAssemblyModule;
-
     return bytes
-      .then(bytes => loadModule(bytes, {loadAsync: true}))
-      .then(mod => {
-        const symbolNames = Object.keys(mod)
-        const functionName = symbolNames.find(key =>
+      .then((bytes) => loadWebAssemblyModule(bytes, {loadAsync: true}))
+      .then((mod) => {
+        const symbolNames = Object.keys(mod);
+        const functionName = symbolNames.find((key) =>
           LANGUAGE_FUNCTION_REGEX.test(key) &&
-          !key.includes("external_scanner_")
+          !key.includes('external_scanner_'),
         );
         if (!functionName) {
-          console.log(`Couldn't find language function in WASM file. Symbols:\n${JSON.stringify(symbolNames, null, 2)}`)
+          console.log(`Couldn't find language function in WASM file. Symbols:\n${JSON.stringify(symbolNames, null, 2)}`);
         }
         const languageAddress = mod[functionName]();
         return new Language(INTERNAL, languageAddress);
@@ -924,10 +1192,57 @@ class Language {
   }
 }
 
+class LookaheadIterable {
+  constructor(internal, address, language) {
+    assertInternal(internal);
+    this[0] = address;
+    this.language = language;
+  }
+
+  get currentTypeId() {
+    return C._ts_lookahead_iterator_current_symbol(this[0]);
+  }
+
+  get currentType() {
+    return this.language.types[this.currentTypeId] || 'ERROR';
+  }
+
+  delete() {
+    C._ts_lookahead_iterator_delete(this[0]);
+    this[0] = 0;
+  }
+
+  resetState(stateId) {
+    return C._ts_lookahead_iterator_reset_state(this[0], stateId);
+  }
+
+  reset(language, stateId) {
+    if (C._ts_lookahead_iterator_reset(this[0], language[0], stateId)) {
+      this.language = language;
+      return true;
+    }
+
+    return false;
+  }
+
+  [Symbol.iterator]() {
+    const self = this;
+    return {
+      next() {
+        if (C._ts_lookahead_iterator_next(self[0])) {
+          return {done: false, value: self.currentType};
+        }
+
+        return {done: true, value: ''};
+      },
+    };
+  }
+}
+
 class Query {
   constructor(
     internal, address, captureNames, textPredicates, predicates,
-    setProperties, assertedProperties, refutedProperties
+    setProperties, assertedProperties, refutedProperties,
   ) {
     assertInternal(internal);
     this[0] = address;
@@ -945,15 +1260,18 @@ class Query {
     this[0] = 0;
   }
 
-  matches(node, startPosition, endPosition, options) {
-    if (!startPosition) startPosition = ZERO_POINT;
-    if (!endPosition) endPosition = ZERO_POINT;
-    if (!options) options = {};
-
-    let matchLimit = options.matchLimit;
-    if (typeof matchLimit === 'undefined') {
-      matchLimit = 0;
-    } else if (typeof matchLimit !== 'number') {
+  matches(
+    node,
+    {
+      startPosition = ZERO_POINT,
+      endPosition = ZERO_POINT,
+      startIndex = 0,
+      endIndex = 0,
+      matchLimit = 0xFFFFFFFF,
+      maxStartDepth = 0xFFFFFFFF,
+    } = {},
+  ) {
+    if (typeof matchLimit !== 'number') {
       throw new Error('Arguments must be numbers');
     }
 
@@ -966,7 +1284,10 @@ class Query {
       startPosition.column,
       endPosition.row,
       endPosition.column,
-      matchLimit
+      startIndex,
+      endIndex,
+      matchLimit,
+      maxStartDepth,
     );
 
     const rawCount = getValue(TRANSFER_BUFFER, 'i32');
@@ -985,14 +1306,15 @@ class Query {
 
       const captures = new Array(captureCount);
       address = unmarshalCaptures(this, node.tree, address, captures);
-      if (this.textPredicates[pattern].every(p => p(captures))) {
-        result[filteredCount++] = {pattern, captures};
+      if (this.textPredicates[pattern].every((p) => p(captures))) {
+        result[filteredCount] = {pattern, captures};
         const setProperties = this.setProperties[pattern];
-        if (setProperties) result[i].setProperties = setProperties;
+        if (setProperties) result[filteredCount].setProperties = setProperties;
         const assertedProperties = this.assertedProperties[pattern];
-        if (assertedProperties) result[i].assertedProperties = assertedProperties;
+        if (assertedProperties) result[filteredCount].assertedProperties = assertedProperties;
         const refutedProperties = this.refutedProperties[pattern];
-        if (refutedProperties) result[i].refutedProperties = refutedProperties;
+        if (refutedProperties) result[filteredCount].refutedProperties = refutedProperties;
+        filteredCount++;
       }
     }
     result.length = filteredCount;
@@ -1001,15 +1323,18 @@ class Query {
     return result;
   }
 
-  captures(node, startPosition, endPosition, options) {
-    if (!startPosition) startPosition = ZERO_POINT;
-    if (!endPosition) endPosition = ZERO_POINT;
-    if (!options) options = {};
-
-    let matchLimit = options.matchLimit;
-    if (typeof matchLimit === 'undefined') {
-      matchLimit = 0;
-    } else if (typeof matchLimit !== 'number') {
+  captures(
+    node,
+    {
+      startPosition = ZERO_POINT,
+      endPosition = ZERO_POINT,
+      startIndex = 0,
+      endIndex = 0,
+      matchLimit = 0xFFFFFFFF,
+      maxStartDepth = 0xFFFFFFFF,
+    } = {},
+  ) {
+    if (typeof matchLimit !== 'number') {
       throw new Error('Arguments must be numbers');
     }
 
@@ -1022,7 +1347,10 @@ class Query {
       startPosition.column,
       endPosition.row,
       endPosition.column,
-      matchLimit
+      startIndex,
+      endIndex,
+      matchLimit,
+      maxStartDepth,
     );
 
     const count = getValue(TRANSFER_BUFFER, 'i32');
@@ -1041,10 +1369,10 @@ class Query {
       const captureIndex = getValue(address, 'i32');
       address += SIZE_OF_INT;
 
-      captures.length = captureCount
+      captures.length = captureCount;
       address = unmarshalCaptures(this, node.tree, address, captures);
 
-      if (this.textPredicates[pattern].every(p => p(captures))) {
+      if (this.textPredicates[pattern].every((p) => p(captures))) {
         const capture = captures[captureIndex];
         const setProperties = this.setProperties[pattern];
         if (setProperties) capture.setProperties = setProperties;
@@ -1061,7 +1389,15 @@ class Query {
   }
 
   predicatesForPattern(patternIndex) {
-    return this.predicates[patternIndex]
+    return this.predicates[patternIndex];
+  }
+
+  disableCapture(captureName) {
+    const captureNameLength = lengthBytesUTF8(captureName);
+    const captureNameAddress = C._malloc(captureNameLength + 1);
+    stringToUTF8(captureName, captureNameAddress, captureNameLength + 1);
+    C._ts_query_disable_capture(this[0], captureNameAddress, captureNameLength);
+    C._free(captureNameAddress);
   }
 
   didExceedMatchLimit() {
@@ -1100,7 +1436,7 @@ function unmarshalCaptures(query, tree, address, result) {
 }
 
 function assertInternal(x) {
-  if (x !== INTERNAL) throw new Error('Illegal constructor')
+  if (x !== INTERNAL) throw new Error('Illegal constructor');
 }
 
 function isPoint(point) {
@@ -1149,25 +1485,25 @@ function unmarshalNode(tree, address = TRANSFER_BUFFER) {
 function marshalTreeCursor(cursor, address = TRANSFER_BUFFER) {
   setValue(address + 0 * SIZE_OF_INT, cursor[0], 'i32'),
   setValue(address + 1 * SIZE_OF_INT, cursor[1], 'i32'),
-  setValue(address + 2 * SIZE_OF_INT, cursor[2], 'i32')
+  setValue(address + 2 * SIZE_OF_INT, cursor[2], 'i32');
 }
 
 function unmarshalTreeCursor(cursor) {
   cursor[0] = getValue(TRANSFER_BUFFER + 0 * SIZE_OF_INT, 'i32'),
   cursor[1] = getValue(TRANSFER_BUFFER + 1 * SIZE_OF_INT, 'i32'),
-  cursor[2] = getValue(TRANSFER_BUFFER + 2 * SIZE_OF_INT, 'i32')
+  cursor[2] = getValue(TRANSFER_BUFFER + 2 * SIZE_OF_INT, 'i32');
 }
 
 function marshalPoint(address, point) {
-  setValue(address, point.row, 'i32')
-  setValue(address + SIZE_OF_INT, point.column, 'i32')
+  setValue(address, point.row, 'i32');
+  setValue(address + SIZE_OF_INT, point.column, 'i32');
 }
 
 function unmarshalPoint(address) {
   return {
     row: getValue(address, 'i32'),
-    column: getValue(address + SIZE_OF_INT, 'i32')
-  }
+    column: getValue(address + SIZE_OF_INT, 'i32'),
+  };
 }
 
 function marshalRange(address, range) {

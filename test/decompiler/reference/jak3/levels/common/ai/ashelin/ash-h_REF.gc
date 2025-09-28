@@ -1,0 +1,157 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type ashelin-course
+(deftype ashelin-course (bot-course)
+  ((ouch-speeches     bot-speech-list-shuffle)
+   (victory-speeches  bot-speech-list-shuffle)
+   )
+  )
+
+;; definition for method 3 of type ashelin-course
+(defmethod inspect ((this ashelin-course))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcourse-id: ~D~%" (-> this course-id))
+  (format #t "~1Tspeech-count: ~D~%" (-> this speech-count))
+  (format #t "~1Tspot-count: ~D~%" (-> this spot-count))
+  (format #t "~1Tretry-cookie: ~D~%" (-> this retry-cookie))
+  (format #t "~1Ttoo-far-warn-speeches: ~A~%" (-> this too-far-warn-speeches))
+  (format #t "~1Ttoo-far-fail-speeches: ~A~%" (-> this too-far-fail-speeches))
+  (format #t "~1Tattack-player-speeches: ~A~%" (-> this attack-player-speeches))
+  (format #t "~1Tdefault-check-too-far: ~A~%" (-> this default-check-too-far))
+  (format #t "~1Twaypoints: ~A~%" (-> this waypoints))
+  (format #t "~1Tspeeches: #x~X~%" (-> this speeches))
+  (format #t "~1Tspeech-tunings: #x~X~%" (-> this speech-tunings))
+  (format #t "~1Tdirs: #x~X~%" (-> this dirs))
+  (format #t "~1Tspots: #x~X~%" (-> this spots))
+  (format #t "~1Touch-speeches: ~A~%" (-> this ouch-speeches))
+  (format #t "~1Tvictory-speeches: ~A~%" (-> this victory-speeches))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type ashelin
+(deftype ashelin (bot)
+  ((self                 ashelin        :override)
+   (course               ashelin-course :override)
+   (knocked-anim         art-joint-anim)
+   (travel-anim-interp   float)
+   (fired-gun-count      uint32)
+   (last-fire-time       time-frame)
+   (victory-speech-time  time-frame)
+   (frontline            plane           :inline)
+   )
+  (:state-methods
+    back-spring
+    cartwheel-left
+    tumble-right
+    chase
+    traveling
+    traveling-blocked
+    waiting-idle
+    standing-idle
+    standing-turn
+    standing-blast
+    )
+  (:methods
+    (ashelin-method-247 (_type_ symbol) symbol)
+    (ashelin-method-248 (_type_ vector float float float float) symbol)
+    (fire-shot (_type_ vector) (pointer process))
+    (ashelin-method-250 (_type_ symbol symbol) symbol)
+    (go-dodge-state (_type_ int) object)
+    (ashelin-method-252 (_type_) int)
+    (ashelin-method-253 (_type_) int)
+    (ashelin-method-254 (_type_ float) none)
+    (ashelin-method-255 (_type_) none)
+    (ashelin-method-256 (_type_) none)
+    (ashelin-method-257 (_type_) int)
+    (ashelin-method-258 (_type_) symbol)
+    (ashelin-method-259 (_type_) none)
+    (ashelin-method-260 (_type_) int)
+    (ashelin-method-261 (_type_ symbol) penetrate)
+    )
+  )
+
+;; definition for method 3 of type ashelin
+(defmethod inspect ((this ashelin))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type bot inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tknocked-anim: ~A~%" (-> this knocked-anim))
+  (format #t "~2Ttravel-anim-interp: ~f~%" (-> this travel-anim-interp))
+  (format #t "~2Tfired-gun-count: ~D~%" (-> this fired-gun-count))
+  (format #t "~2Tlast-fire-time: ~D~%" (-> this last-fire-time))
+  (format #t "~2Tvictory-speech-time: ~D~%" (-> this victory-speech-time))
+  (format #t "~2Tfrontline: #<plane @ #x~X>~%" (-> this frontline))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-ashelin ashelin ashelin-lod0-jg ashelin-idle0-ja
+              ((ashelin-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.7)
+              :shadow ashelin-shadow-mg
+              :origin-joint-index 13
+              )
+
+;; definition of type asht-wait-spot
+(deftype asht-wait-spot (ai-task)
+  ((check-done    (function asht-wait-spot ashelin symbol)    :overlay-at (-> bytes 0))
+   (which-spot    int8                                        :overlay-at (-> bytes 4))
+   (num-spots     uint8                                       :overlay-at (-> bytes 5))
+   (spot-indexes  uint8                                     6 :overlay-at (-> bytes 6))
+   )
+  )
+
+;; definition for method 3 of type asht-wait-spot
+(defmethod inspect ((this asht-wait-spot))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
+  (format #t "~1Tcheck-done: ~A~%" (-> this check-done))
+  (format #t "~1Twhich-spot: ~D~%" (-> this which-spot))
+  (format #t "~1Tnum-spots: ~D~%" (-> this num-spots))
+  (format #t "~1Tspot-indexes[6] @ #x~X~%" (-> this spot-indexes))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type asht-fight-focus
+(deftype asht-fight-focus (ai-task)
+  ()
+  )
+
+;; definition for method 3 of type asht-fight-focus
+(defmethod inspect ((this asht-fight-focus))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tunique-id: ~D~%" (-> this unique-id))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this bytes))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0

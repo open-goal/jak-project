@@ -5,5 +5,105 @@
 ;; name in dgo: rope-system-h
 ;; dgos: DESRESC
 
+;; +++rope-system-flag
+(defenum rope-system-flag
+  :type uint64
+  :bitfield #t
+  (rs0 0)
+  (rs1 1)
+  (rs2 2)
+  (rs3 3)
+  (rs4 4)
+  (rs5 5)
+  (rs6 6)
+  )
+;; ---rope-system-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype rope-knot (structure)
+  ((pos       vector  :inline)
+   (prev-pos  vector  :inline)
+   (force     vector  :inline)
+   (mass      float)
+   )
+  )
+
+
+(deftype rope-knot-constraint (structure)
+  ((dir                     vector  :inline)
+   (length                  float)
+   (max-angle               float)
+   (rest-seek-rate          float)
+   (constrained-angle-time  time-frame)
+   )
+  )
+
+
+(deftype rope-knot-constraint-array (inline-array-class)
+  ((data  rope-knot-constraint  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> rope-knot-constraint-array heap-base) (the-as uint 48))
+
+(deftype rope-knot-array (inline-array-class)
+  ((data  rope-knot  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> rope-knot-array heap-base) (the-as uint 64))
+
+(deftype rope-system (basic)
+  ((knots                   rope-knot-array)
+   (knot-constraints        rope-knot-constraint-array)
+   (accum-force             vector  :inline)
+   (gravity                 float)
+   (gravity-dir             vector  :inline)
+   (drag                    float)
+   (flags                   rope-system-flag)
+   (angular-mass-seek-rate  float)
+   )
+  (:methods
+    (init! (_type_ int) object)
+    (rope-system-method-10 (_type_) vector)
+    (rope-system-method-11 (_type_) vector)
+    (rope-system-method-12 (_type_ float) none)
+    (rope-system-method-13 (_type_) symbol)
+    (rope-system-method-14 (_type_) symbol)
+    (rope-system-method-15 (_type_) symbol)
+    (rope-system-method-16 (_type_ vector vector int) vector)
+    (rope-system-method-17 (_type_) symbol)
+    (rope-system-method-18 (_type_) object)
+    (rope-system-method-19 (_type_) symbol)
+    (rope-system-method-20 (_type_) symbol)
+    (rope-system-method-21 (_type_) rope-system-flag)
+    (rope-system-method-22 (_type_) rope-system-flag)
+    (rope-system-method-23 (_type_) symbol)
+    )
+  )
+
+
+(deftype rope-joint-info (structure)
+  ((joint-index  int16)
+   )
+  :pack-me
+  )
+
+
+(deftype rope-joint-system-info (structure)
+  ((joint-info-array  (array rope-joint-info))
+   )
+  )
+
+
+(deftype joint-mod-world-array (inline-array-class)
+  ((data  joint-mod-set-world  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> joint-mod-world-array heap-base) (the-as uint 64))

@@ -6,7 +6,7 @@
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/pipelines/opengl.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/imgui/imgui.h"
 
 TextureUploadHandler::TextureUploadHandler(const std::string& name,
@@ -118,4 +118,8 @@ void TextureUploadHandler::draw_debug_window() {
   if (m_direct) {
     m_direct->draw_debug_window();
   }
+}
+
+bool TextureUploadHandler::empty() const {
+  return m_upload_count == 0;
 }

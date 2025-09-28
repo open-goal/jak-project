@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,12 +22,10 @@
 #ifndef SDL_vitamessagebox_h_
 #define SDL_vitamessagebox_h_
 
-#if SDL_VIDEO_DRIVER_VITA
+#ifdef SDL_VIDEO_DRIVER_VITA
 
-extern int VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid);
+extern bool VITA_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonID);
 
-#endif /* SDL_VIDEO_DRIVER_VITA */
+#endif // SDL_VIDEO_DRIVER_VITA
 
-#endif /* SDL_vitamessagebox_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_vitamessagebox_h_

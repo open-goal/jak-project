@@ -28,6 +28,7 @@ int main(int argc, char* argv[]) {
   printf("commands:\n");
   printf(" play [id]\n");
   printf(" stop\n");
+  printf(" dump-info\n");
 
   while (true) {
     printf("> ");
@@ -76,6 +77,10 @@ int main(int argc, char* argv[]) {
     if (parts[0] == "stop") {
       printf("stopping all sounds\n");
       player.StopAllSounds();
+    }
+
+    if (parts[0] == "dump-info") {
+      player.DebugPrintAllSoundsInBank(bankid);
     }
   }
 

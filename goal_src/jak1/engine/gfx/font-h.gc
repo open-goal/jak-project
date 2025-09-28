@@ -1,9 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: font-h.gc
-;; name in dgo: font-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
+(require "engine/math/matrix-h.gc")
+(require "engine/gfx/texture/texture-h.gc")
+(require "engine/gfx/math-camera-h.gc")
+(require "engine/gfx/hw/gs.gc")
 
 ;; The font system draws all of the strings.
 ;; The font textures live in the upper 8 bits of the 24-bit texture format depth buffer.
@@ -46,8 +48,7 @@
   (progress-percent 31)
   (credits 32)
   (red-reverse 33)
-  (red-obverse 34)
-  )
+  (red-obverse 34))
 
 (defenum font-flags
   :type uint32
@@ -62,727 +63,784 @@
   )
 
 (deftype char-verts (structure)
-  ((pos     vector  4 :inline)
-   (color   vector  4 :inline)
-   (tex-st  vector  4 :inline)
-   )
-  )
-
+  ((pos    vector 4 :inline)
+   (color  vector 4 :inline)
+   (tex-st vector 4 :inline)))
 
 (deftype char-color (structure)
-  ((color  rgba  4)
-   )
-  )
+  ((color rgba 4)))
 
-
-(define *font-default-matrix* (new 'static 'matrix :vector (new 'static 'inline-array vector 4
-                                                             (new 'static 'vector :x 1.0)
-                                                             (new 'static 'vector :y 1.0)
-                                                             (new 'static 'vector :z 1.0)
-                                                             (new 'static 'vector :x -256.0 :w 1.0)
-                                                             )
-                                                   )
-        )
+(define *font-default-matrix*
+  (new 'static
+       'matrix
+       :vector
+       (new 'static
+            'inline-array
+            vector
+            4
+            (new 'static 'vector :x 1.0)
+            (new 'static 'vector :y 1.0)
+            (new 'static 'vector :z 1.0)
+            (new 'static 'vector :x -256.0 :w 1.0))))
 
 ;; font settings that can be passed to draw-string
 (deftype font-context (basic)
-  ((origin        vector  :inline)
-   (strip-gif     vector  :inline)
-   (width         float)
-   (height        float)
-   (projection    float)
-   (context-vec   vector  :inline :overlay-at width)
-   (color         font-color)
-   (color-s32     int32           :overlay-at color)
-   (flags         font-flags)
-   (flags-signed  int32           :overlay-at flags)
-   (mat           matrix)
-   (start-line    uint32)
-   (scale         float)
-   )
+  ((origin       vector :inline)
+   (strip-gif    vector :inline)
+   (width        float)
+   (height       float)
+   (projection   float)
+   (context-vec  vector :inline :overlay-at width)
+   (color        font-color)
+   (color-s32    int32 :overlay-at color)
+   (flags        font-flags)
+   (flags-signed int32 :overlay-at flags)
+   (mat          matrix)
+   (start-line   uint32)
+   (scale        float))
   (:methods
-    (new (symbol type matrix int int float font-color font-flags) _type_)
-    (set-mat! (font-context matrix) font-context)
-    (set-origin! (font-context int int) font-context)
-    (set-depth! (font-context int) font-context)
-    (set-w! (font-context float) font-context)
-    (set-width! (font-context int) font-context)
-    (set-height! (font-context int) font-context)
-    (set-projection! (font-context float) font-context)
-    (set-color! (font-context font-color) font-context)
-    (set-flags! (font-context font-flags) font-context)
-    (set-start-line! (font-context uint) font-context)
-    (set-scale! (font-context float) font-context)
-    )
-  )
+   (new (symbol type matrix int int float font-color font-flags) _type_)
+   (set-mat! (font-context matrix) font-context)
+   (set-origin! (font-context int int) font-context)
+   (set-depth! (font-context int) font-context)
+   (set-w! (font-context float) font-context)
+   (set-width! (font-context int) font-context)
+   (set-height! (font-context int) font-context)
+   (set-projection! (font-context float) font-context)
+   (set-color! (font-context font-color) font-context)
+   (set-flags! (font-context font-flags) font-context)
+   (set-start-line! (font-context uint) font-context)
+   (set-scale! (font-context float) font-context)))
 
 ;; I don't believe these methods are called, so they might be inlined
 
 (defmethod set-mat! ((this font-context) (mat matrix))
+  ;; TODO - perhaps a keyword arg on `defmethod` would be better?
   (declare (inline))
-
   (set! (-> this mat) mat)
-  this
-  )
+  this)
 
 (defmethod set-origin! ((this font-context) (x int) (y int))
   (declare (inline))
-
   (set! (-> this origin x) (the float x))
   (set! (-> this origin y) (the float y))
-  this
-  )
+  this)
 
 (defmethod set-depth! ((this font-context) (z int))
   (declare (inline))
-
   (set! (-> this origin z) (the float z))
-  this
-  )
+  this)
 
 (defmethod set-w! ((this font-context) (w float))
   (declare (inline))
-
   (set! (-> this origin w) w)
-  this
-  )
+  this)
 
 (defmethod set-width! ((this font-context) (width int))
   (declare (inline))
-
   (set! (-> this width) (the float width))
-  this
-  )
+  this)
 
 (defmethod set-height! ((this font-context) (height int))
   (declare (inline))
-
   (set! (-> this height) (the float height))
-  this
-  )
+  this)
 
 (defmethod set-projection! ((this font-context) (proj float))
   (declare (inline))
-
   (set! (-> this projection) proj)
-  this
-  )
+  this)
 
 (defmethod set-color! ((this font-context) (color font-color))
   (declare (inline))
-
   (set! (-> this color) color)
-  this
-  )
+  this)
 
 (defmethod set-flags! ((this font-context) (flags font-flags))
   (declare (inline))
-
   (set! (-> this flags) flags)
-  this
-  )
+  this)
 
 (defmethod set-start-line! ((this font-context) (start-line uint))
   (declare (inline))
-
   (set! (-> this start-line) start-line)
-  this
-  )
+  this)
 
 (defmethod set-scale! ((this font-context) (scale float))
   (declare (inline))
-
   (set! (-> this scale) scale)
-  this
-  )
+  this)
 
-(defmethod new font-context ((allocation symbol)
-                           (type-to-make type)
-                           (mat matrix)
-                           (x int)
-                           (y int)
-                           (z float)
-                           (color font-color)
-                           (flags font-flags)
-                           )
+(defmethod new font-context ((allocation symbol) (type-to-make type) (mat matrix) (x int) (y int) (z float) (color font-color) (flags font-flags))
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this mat) mat)
-    (let ((v1-3 this))
-      (set! (-> v1-3 origin x) (the float x))
-      (set! (-> v1-3 origin y) (the float y))
-      )
+    (let ((v1-3 this)) (set! (-> v1-3 origin x) (the float x)) (set! (-> v1-3 origin y) (the float y)))
     (cond
-      ((= z 0.0)
-       (let ((v1-4 this))
-         (set! (-> v1-4 origin z) (-> *math-camera* isometric vector 3 z))
-         )
-       )
-      (else
-        (let ((v1-5 this))
-          (set! (-> v1-5 origin z) z)
-          )
-        )
-      )
-    (let ((v1-6 this))
-      (set! (-> v1-6 origin w) 1.0)
-      )
-    (let ((v1-7 this))
-      (set! (-> v1-7 width) (the float 512))
-      )
-    (let ((v1-8 this))
-      (set! (-> v1-8 height) (the float 256))
-      )
-    (let ((v1-9 this))
-      (set! (-> v1-9 projection) 1.0)
-      )
+      ((= z 0.0) (let ((v1-4 this)) (set! (-> v1-4 origin z) (-> *math-camera* isometric vector 3 z))))
+      (else (let ((v1-5 this)) (set! (-> v1-5 origin z) z))))
+    (let ((v1-6 this)) (set! (-> v1-6 origin w) 1.0))
+    (let ((v1-7 this)) (set! (-> v1-7 width) (the float 512)))
+    (let ((v1-8 this)) (set! (-> v1-8 height) (the float 256)))
+    (let ((v1-9 this)) (set! (-> v1-9 projection) 1.0))
     (set! (-> this color) color)
     (set! (-> this flags) flags)
-    (let ((a0-4 this))
-      (set! (-> a0-4 start-line) (the-as uint 0))
-      )
-    (let ((v1-13 this))
-      (set! (-> v1-13 scale) 1.0)
-      )
-    this
-    )
-  )
+    (let ((a0-4 this)) (set! (-> a0-4 start-line) (the-as uint 0)))
+    (let ((v1-13 this)) (set! (-> v1-13 scale) 1.0))
+    this))
 
 ;; Data used by the font-renderer.
 (deftype font-work (structure)
-  ((font-tmpl              dma-gif-packet   :inline)
-   (char-tmpl              dma-gif-packet   :inline)
-   (tex1-tmpl              uint64           2)
-   (small-font-lo-tmpl     uint64           2)
-   (small-font-lo-tmpl-qw  uint128          :overlay-at (-> small-font-lo-tmpl 0))
-   (small-font-hi-tmpl     uint64           2)
-   (small-font-hi-tmpl-qw  uint128          :overlay-at (-> small-font-hi-tmpl 0))
-   (large-font-lo-tmpl     uint64           2)
-   (large-font-lo-tmpl-qw  uint128          :overlay-at (-> large-font-lo-tmpl 0))
-   (large-font-hi-tmpl     uint64           2)
-   (large-font-hi-tmpl-qw  uint128          :overlay-at (-> large-font-hi-tmpl 0))
-   (size1-small            vector           :inline)
-   (size2-small            vector           :inline)
-   (size3-small            vector           :inline)
-   (size1-large            vector           :inline)
-   (size2-large            vector           :inline)
-   (size3-large            vector           :inline)
-   (size-st1               vector           :inline)
-   (size-st2               vector           :inline)
-   (size-st3               vector           :inline)
-   (save                   vector           :inline)
-   (save-color             vector           4 :inline)
-   (current-verts          char-verts       :inline)
-   (src-verts              char-verts       :inline)
-   (dest-verts             char-verts       :inline)
-   (justify                vector           64 :inline)
-   (color-shadow           vector4w         :inline)
-   (color-table            char-color       64 :inline)
-   (last-color             font-color)
-   (last-color-32          int32            :overlay-at last-color)
-   (save-last-color        font-color)
-   (save-last-color-32     int32            :overlay-at save-last-color)
-   (buf                    basic)
-   (str-ptr                uint32)
-   (str-ptr-signed         (pointer uint8)  :overlay-at str-ptr)
-   (flags                  font-flags)
-   (flags-signed           int32            :overlay-at flags)
-   (reg-save               uint32           5)
-   )
-  )
+  ((font-tmpl             dma-gif-packet :inline)
+   (char-tmpl             dma-gif-packet :inline)
+   (tex1-tmpl             uint64 2)
+   (small-font-lo-tmpl    uint64 2)
+   (small-font-lo-tmpl-qw uint128 :overlay-at (-> small-font-lo-tmpl 0))
+   (small-font-hi-tmpl    uint64 2)
+   (small-font-hi-tmpl-qw uint128 :overlay-at (-> small-font-hi-tmpl 0))
+   (large-font-lo-tmpl    uint64 2)
+   (large-font-lo-tmpl-qw uint128 :overlay-at (-> large-font-lo-tmpl 0))
+   (large-font-hi-tmpl    uint64 2)
+   (large-font-hi-tmpl-qw uint128 :overlay-at (-> large-font-hi-tmpl 0))
+   (size1-small           vector :inline)
+   (size2-small           vector :inline)
+   (size3-small           vector :inline)
+   (size1-large           vector :inline)
+   (size2-large           vector :inline)
+   (size3-large           vector :inline)
+   (size-st1              vector :inline)
+   (size-st2              vector :inline)
+   (size-st3              vector :inline)
+   (save                  vector :inline)
+   (save-color            vector 4 :inline)
+   (current-verts         char-verts :inline)
+   (src-verts             char-verts :inline)
+   (dest-verts            char-verts :inline)
+   (justify               vector 64 :inline)
+   (color-shadow          vector4w :inline)
+   (color-table           char-color 64 :inline)
+   (last-color            font-color)
+   (last-color-32         int32 :overlay-at last-color)
+   (save-last-color       font-color)
+   (save-last-color-32    int32 :overlay-at save-last-color)
+   (buf                   basic)
+   (str-ptr               uint32)
+   (str-ptr-signed        (pointer uint8) :overlay-at str-ptr)
+   (flags                 font-flags)
+   (flags-signed          int32 :overlay-at flags)
+   (reg-save              uint32 5)))
 
-
-(define *font-work* (new 'static 'font-work
-   :font-tmpl (new 'static 'dma-gif-packet
-    :dma-vif (new 'static 'dma-packet
-     :dma (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt))
-     :vif1 (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1)
-     )
-    :gif (gif-tag->static-array
-      (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :pre #x1 :prim #x5c :nreg #x1) ;; (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip 1 :tme 1 :abe 1)
-      (new 'static 'gif-tag-regs
-        :regs0 (gif-reg-id a+d)
-        ))
-    )
-   :char-tmpl (new 'static 'dma-gif-packet
-    :dma-vif (new 'static 'dma-packet
-     :dma (new 'static 'dma-tag :qwc #xe :id (dma-tag-id cnt))
-     :vif1 (new 'static 'vif-tag :imm #xe :cmd (vif-cmd direct) :msk #x1)
-     )
-    :gif (gif-tag->static-array
-      (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :pre #x1 :prim #x5c :nreg #xd) ;; (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip 1 :tme 1 :abe 1)
-      (new 'static 'gif-tag-regs
-        :regs0 (gif-reg-id a+d)
-        :regs1 (gif-reg-id st)
-        :regs2 (gif-reg-id rgbaq)
-        :regs3 (gif-reg-id xyzf2)
-        :regs4 (gif-reg-id st)
-        :regs5 (gif-reg-id rgbaq)
-        :regs6 (gif-reg-id xyzf2)
-        :regs7 (gif-reg-id st)
-        :regs8 (gif-reg-id rgbaq)
-        :regs9 (gif-reg-id xyzf2)
-        :regs10 (gif-reg-id st)
-        :regs11 (gif-reg-id rgbaq)
-        :regs12 (gif-reg-id xyzf2)
-        ))
-    )
-   :tex1-tmpl (new 'static 'array uint64 2 #x60 #x14)
-   :small-font-lo-tmpl (new 'static 'array uint64 2 #x0 #x6)
-   :small-font-hi-tmpl (new 'static 'array uint64 2 #x0 #x6)
-   :large-font-lo-tmpl (new 'static 'array uint64 2 #x0 #x6)
-   :large-font-hi-tmpl (new 'static 'array uint64 2 #x0 #x6)
-   :size1-small (new 'static 'vector :x 12.0 :y 0.0 :w 0.5)
-   :size2-small (new 'static 'vector :x 0.0  :y 8.0 :w 8.0)
-   :size3-small (new 'static 'vector :x 12.0 :y 8.0 :w 8.0)
-   :size1-large (new 'static 'vector :x 24.0 :y 0.0 :w 1.0)
-   :size2-large (new 'static 'vector :x 0.0  :y 16.0 :w 16.0)
-   :size3-large (new 'static 'vector :x 24.0 :y 16.0 :w 16.0)
-   :size-st1 (new 'static 'vector :x 0.08985 :y 0.0 :w 0.5)
-   :size-st2 (new 'static 'vector :x 0.0     :y 0.06153846 :w 0.5)
-   :size-st3 (new 'static 'vector :x 0.08985 :y 0.06153846 :w 0.5)
-   :current-verts (new 'static 'char-verts
-    :pos (new 'static 'inline-array vector 4
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     )
-    :tex-st (new 'static 'inline-array vector 4
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     )
-    )
-   :src-verts (new 'static 'char-verts
-    :pos (new 'static 'inline-array vector 4
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     )
-    :tex-st (new 'static 'inline-array vector 4
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     )
-    )
-   :dest-verts (new 'static 'char-verts
-    :pos (new 'static 'inline-array vector 4
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     (new 'static 'vector :w 1.0)
-     )
-    :tex-st (new 'static 'inline-array vector 4
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     (new 'static 'vector :z 1.0)
-     )
-    )
-   :color-shadow (new 'static 'vector4w :x #x00 :y #x00 :z #x00 :w #x80)
-   ;; TODO - make enum for this
-   :color-table (new 'static 'inline-array char-color 64
-    ;; 00 - default (menu and HUD)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x70 #x78 #x70 #x80)
-      (static-rgba #x70 #x78 #x70 #x80)
-      (static-rgba #x30 #x38 #x30 #x80)
-      (static-rgba #x30 #x38 #x30 #x80)
-      )
-     )
-    ;; 01 - white (debug, camera settings, actor marks)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x80 #x80 #x80)
-      (static-rgba #x80 #x80 #x80 #x80)
-      (static-rgba #x60 #x60 #x60 #x80)
-      (static-rgba #x60 #x60 #x60 #x80)
-      )
-     )
-    ;; 02 - transparent
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x80 #x80 #x40)
-      (static-rgba #x80 #x80 #x80 #x40)
-      (static-rgba #x60 #x60 #x60 #x40)
-      (static-rgba #x60 #x60 #x60 #x40)
-      )
-     )
-    ;; 03 - red (debug values, subtitles - character names)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x60 #x20 #x80)
-      (static-rgba #x80 #x60 #x20 #x80)
-      (static-rgba #x60 #x00 #x00 #x80)
-      (static-rgba #x60 #x00 #x00 #x80)
-      )
-     )
-    ;; 04 - orange (debug, path marks numbers)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x64 #x00 #x80)
-      (static-rgba #x80 #x64 #x00 #x80)
-      (static-rgba #x80 #x00 #x00 #x80)
-      (static-rgba #x80 #x00 #x00 #x80)
-      )
-     )
-    ;; 05 - yellow (HUD, other numbers)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x80 #x00 #x80)
-      (static-rgba #x80 #x80 #x00 #x80)
-      (static-rgba #x28 #x28 #x00 #x80)
-      (static-rgba #x28 #x28 #x00 #x80)
-      )
-     )
-    ;; 06 - green (HUD, health numbers)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x20 #x80 #x20 #x80)
-      (static-rgba #x20 #x80 #x20 #x80)
-      (static-rgba #x00 #x30 #x00 #x80)
-      (static-rgba #x00 #x30 #x00 #x80)
-      )
-     )
-    ;; 07 - blue
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x40 #x40 #x80 #x80)
-      (static-rgba #x40 #x40 #x80 #x80)
-      (static-rgba #x00 #x00 #x60 #x80)
-      (static-rgba #x00 #x00 #x60 #x80)
-      )
-     )
-    ;; 08 - cyan
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x00 #x80 #x80 #x80)
-      (static-rgba #x00 #x80 #x80 #x80)
-      (static-rgba #x00 #x20 #x50 #x80)
-      (static-rgba #x00 #x20 #x50 #x80)
-      )
-     )
-    ;; 09 - pink
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x40 #x80 #x80)
-      (static-rgba #x80 #x40 #x80 #x80)
-      (static-rgba #x30 #x00 #x30 #x80)
-      (static-rgba #x30 #x00 #x30 #x80)
-      )
-     )
-    ;; 10 - menu-selected (debug, selected using joypad)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x60 #x80 #x80 #x80)
-      (static-rgba #x60 #x80 #x80 #x80)
-      (static-rgba #x00 #x40 #x60 #x80)
-      (static-rgba #x00 #x40 #x60 #x80)
-      )
-     )
-    ;; 11 - menu-selected-parent (debug, parent of active menu)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x40 #x60 #x60 #x80)
-      (static-rgba #x40 #x60 #x60 #x80)
-      (static-rgba #x00 #x20 #x40 #x80)
-      (static-rgba #x00 #x20 #x40 #x80)
-      )
-     )
-    ;; 12 - menu (debug, active menu, regular)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x80 #x80 #x80)
-      (static-rgba #x80 #x80 #x80 #x80)
-      (static-rgba #x50 #x50 #x50 #x80)
-      (static-rgba #x50 #x50 #x50 #x80)
-      )
-     )
-    ;; 13 - menu-parent (debug, parent menu, regular)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x50 #x50 #x50 #x80)
-      (static-rgba #x50 #x50 #x50 #x80)
-      (static-rgba #x28 #x28 #x28 #x80)
-      (static-rgba #x28 #x28 #x28 #x80)
-      )
-     )
-    ;; 14 - menu-func-bad (debug, anim-tester)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x54 #x00 #x80)
-      (static-rgba #x80 #x54 #x00 #x80)
-      (static-rgba #x60 #x00 #x00 #x80)
-      (static-rgba #x60 #x00 #x00 #x80)
-      )
-     )
-    ;; 15 - menu-flag-on (debug, active menu, enabled)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x70 #x80 #x30 #x80)
-      (static-rgba #x70 #x80 #x30 #x80)
-      (static-rgba #x00 #x60 #x00 #x80)
-      (static-rgba #x00 #x60 #x00 #x80)
-      )
-     )
-    ;; 16 - menu-flag-on-parent (debug, parent menu, enabled)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x48 #x58 #x8 #x80)
-      (static-rgba #x48 #x58 #x10 #x80)
-      (static-rgba #x00 #x38 #x00 #x80)
-      (static-rgba #x00 #x38 #x00 #x80)
-      )
-     )
-    ;; 17 - menu-flag-off (debug, active menu, disabled)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x58 #x60 #x58 #x80)
-      (static-rgba #x58 #x60 #x58 #x80)
-      (static-rgba #x30 #x40 #x30 #x80)
-      (static-rgba #x30 #x40 #x30 #x80)
-      )
-     )
-    ;; 18 - menu-flag-off-parent (debug, parent menu, disabled)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x40 #x48 #x40 #x80)
-      (static-rgba #x40 #x48 #x40 #x80)
-      (static-rgba #x18 #x28 #x18 #x80)
-      (static-rgba #x18 #x28 #x18 #x80)
-      )
-     )
-    ;; 19 - menu-invalid (menu and debug, grayed out option)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x30 #x20 #x30 #x80)
-      (static-rgba #x30 #x20 #x30 #x80)
-      (static-rgba #x30 #x20 #x30 #x80)
-      (static-rgba #x30 #x20 #x30 #x80)
-      )
-     )
-    ;; 20 - flat-yellow (debug, rev.)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x79 #x48 #x80)
-      (static-rgba #x80 #x79 #x48 #x80)
-      (static-rgba #x80 #x79 #x48 #x80)
-      (static-rgba #x80 #x79 #x48 #x80)
-      )
-     )
-    ;; 21 - progress-memcard (menu, under percentage, save slot stats)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x20 #x5e #x78 #x80)
-      (static-rgba #x20 #x5e #x78 #x80)
-      (static-rgba #x80 #x7d #x4f #x80)
-      (static-rgba #x80 #x7d #x4f #x80)
-      )
-     )
-    ;; 22 - pad-back
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x1d #x1d #x1d #x80)
-      (static-rgba #x1d #x1d #x1d #x80)
-      (static-rgba #x1d #x1d #x1d #x80)
-      (static-rgba #x1d #x1d #x1d #x80)
-      )
-     )
-    ;; 23 - pad-shine
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x40 #x40 #x40 #x80)
-      (static-rgba #x40 #x40 #x40 #x80)
-      (static-rgba #x40 #x40 #x40 #x80)
-      (static-rgba #x40 #x40 #x40 #x80)
-      )
-     )
-    ;; 24 - pad-square
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x7a #x4d #x65 #x80)
-      (static-rgba #x7a #x4d #x65 #x80)
-      (static-rgba #x7a #x4d #x65 #x80)
-      (static-rgba #x7a #x4d #x65 #x80)
-      )
-     )
-    ;; 25 - pad-circle
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x7a #x34 #x34 #x80)
-      (static-rgba #x7a #x34 #x34 #x80)
-      (static-rgba #x7a #x34 #x34 #x80)
-      (static-rgba #x7a #x34 #x34 #x80)
-      )
-     )
-    ;; 26 - pad-triangle
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x10 #x65 #x4c #x80)
-      (static-rgba #x10 #x65 #x4c #x80)
-      (static-rgba #x10 #x65 #x4c #x80)
-      (static-rgba #x10 #x65 #x4c #x80)
-      )
-     )
-    ;; 27 - pad-x
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x46 #x4a #x78 #x80)
-      (static-rgba #x46 #x4a #x78 #x80)
-      (static-rgba #x46 #x4a #x78 #x80)
-      (static-rgba #x46 #x4a #x78 #x80)
-      )
-     )
-    ;; 28 - progress-blue (menu, location name, task status)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x57 #x7e #x80 #x80)
-      (static-rgba #x57 #x7e #x80 #x80)
-      (static-rgba #x29 #x63 #x79 #x80)
-      (static-rgba #x29 #x63 #x70 #x80)
-      )
-     )
-    ;; 29 - progress-yellow (menu, power cell description)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x7f #x7b #x33 #x80)
-      (static-rgba #x7f #x7b #x33 #x80)
-      (static-rgba #x76 #x40 #x14 #x80)
-      (static-rgba #x76 #x40 #x14 #x80)
-      )
-     )
-    ;; 30 - progress-selected (menu, selected)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x79 #x79 #x2 #x80)
-      (static-rgba #x79 #x79 #x2 #x80)
-      (static-rgba #x1b #x51 #x20 #x80)
-      (static-rgba #x1b #x51 #x20 #x80)
-      )
-     )
-    ;; 31 - progress-percent (menu, completion percentage)
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x47 #x68 #x7a #x80)
-      (static-rgba #x47 #x68 #x7a #x80)
-      (static-rgba #x00 #x3c #x4f #x80)
-      (static-rgba #x00 #x3c #x4f #x80)
-      )
-     )
-    ;; 32 - credits
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x70 #x78 #x70 #x80)
-      (static-rgba #x70 #x78 #x70 #x80)
-      (static-rgba #x30 #x38 #x30 #x80)
-      (static-rgba #x30 #x38 #x30 #x80)
-      )
-     )
-    ;; 33 - red-reverse
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x60 #x00 #x00 #x80)
-      (static-rgba #x60 #x00 #x00 #x80)
-      (static-rgba #x80 #x60 #x20 #x80)
-      (static-rgba #x80 #x60 #x20 #x80)
-      )
-     )
-    ;; 34 - red-obverse
-    (new 'static 'char-color
-     :color
-     (new 'static 'array rgba 4
-      (static-rgba #x80 #x60 #x20 #x80)
-      (static-rgba #x80 #x60 #x20 #x80)
-      (static-rgba #x60 #x00 #x00 #x80)
-      (static-rgba #x60 #x00 #x00 #x80)
-      )
-     )
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    (new 'static 'char-color)
-    )
-   )
-  )
+(define *font-work*
+  (new 'static
+       'font-work
+       :font-tmpl
+       (new 'static
+            'dma-gif-packet
+            :dma-vif
+            (new 'static
+                 'dma-packet
+                 :dma
+                 (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt))
+                 :vif1
+                 (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
+            :gif
+            (gif-tag->static-array (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :pre #x1 :prim #x5c :nreg #x1) ;; (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip 1 :tme 1 :abe 1)
+                                   (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))))
+       :char-tmpl
+       (new 'static
+            'dma-gif-packet
+            :dma-vif
+            (new 'static
+                 'dma-packet
+                 :dma
+                 (new 'static 'dma-tag :qwc #xe :id (dma-tag-id cnt))
+                 :vif1
+                 (new 'static 'vif-tag :imm #xe :cmd (vif-cmd direct) :msk #x1))
+            :gif
+            (gif-tag->static-array (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :pre #x1 :prim #x5c :nreg #xd) ;; (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip 1 :tme 1 :abe 1)
+                                   (new 'static
+                                        'gif-tag-regs
+                                        :regs0 (gif-reg-id a+d)
+                                        :regs1 (gif-reg-id st)
+                                        :regs2 (gif-reg-id rgbaq)
+                                        :regs3 (gif-reg-id xyzf2)
+                                        :regs4 (gif-reg-id st)
+                                        :regs5 (gif-reg-id rgbaq)
+                                        :regs6 (gif-reg-id xyzf2)
+                                        :regs7 (gif-reg-id st)
+                                        :regs8 (gif-reg-id rgbaq)
+                                        :regs9 (gif-reg-id xyzf2)
+                                        :regs10 (gif-reg-id st)
+                                        :regs11 (gif-reg-id rgbaq)
+                                        :regs12 (gif-reg-id xyzf2))))
+       :tex1-tmpl
+       (new 'static 'array uint64 2 #x60 #x14)
+       :small-font-lo-tmpl
+       (new 'static 'array uint64 2 #x0 #x6)
+       :small-font-hi-tmpl
+       (new 'static 'array uint64 2 #x0 #x6)
+       :large-font-lo-tmpl
+       (new 'static 'array uint64 2 #x0 #x6)
+       :large-font-hi-tmpl
+       (new 'static 'array uint64 2 #x0 #x6)
+       :size1-small
+       (new 'static 'vector :x 12.0 :y 0.0 :w 0.5)
+       :size2-small
+       (new 'static 'vector :x 0.0 :y 8.0 :w 8.0)
+       :size3-small
+       (new 'static 'vector :x 12.0 :y 8.0 :w 8.0)
+       :size1-large
+       (new 'static 'vector :x 24.0 :y 0.0 :w 1.0)
+       :size2-large
+       (new 'static 'vector :x 0.0 :y 16.0 :w 16.0)
+       :size3-large
+       (new 'static 'vector :x 24.0 :y 16.0 :w 16.0)
+       :size-st1
+       (new 'static 'vector :x 0.08985 :y 0.0 :w 0.5)
+       :size-st2
+       (new 'static 'vector :x 0.0 :y 0.06153846 :w 0.5)
+       :size-st3
+       (new 'static 'vector :x 0.08985 :y 0.06153846 :w 0.5)
+       :current-verts
+       (new 'static
+            'char-verts
+            :pos
+            (new 'static
+                 'inline-array
+                 vector
+                 4
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0))
+            :tex-st
+            (new 'static
+                 'inline-array
+                 vector
+                 4
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)))
+       :src-verts
+       (new 'static
+            'char-verts
+            :pos
+            (new 'static
+                 'inline-array
+                 vector
+                 4
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0))
+            :tex-st
+            (new 'static
+                 'inline-array
+                 vector
+                 4
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)))
+       :dest-verts
+       (new 'static
+            'char-verts
+            :pos
+            (new 'static
+                 'inline-array
+                 vector
+                 4
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0)
+                 (new 'static 'vector :w 1.0))
+            :tex-st
+            (new 'static
+                 'inline-array
+                 vector
+                 4
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)
+                 (new 'static 'vector :z 1.0)))
+       :color-shadow
+       (new 'static 'vector4w :x #x00 :y #x00 :z #x00 :w #x80)
+       ;; TODO - make enum for this
+       :color-table
+       (new 'static
+            'inline-array
+            char-color
+            64
+            ;; 00 - default (menu and HUD)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x70 #x78 #x70 #x80)
+                      (static-rgba #x70 #x78 #x70 #x80)
+                      (static-rgba #x30 #x38 #x30 #x80)
+                      (static-rgba #x30 #x38 #x30 #x80)))
+            ;; 01 - white (debug, camera settings, actor marks)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x80 #x80 #x80)
+                      (static-rgba #x80 #x80 #x80 #x80)
+                      (static-rgba #x60 #x60 #x60 #x80)
+                      (static-rgba #x60 #x60 #x60 #x80)))
+            ;; 02 - transparent
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x80 #x80 #x40)
+                      (static-rgba #x80 #x80 #x80 #x40)
+                      (static-rgba #x60 #x60 #x60 #x40)
+                      (static-rgba #x60 #x60 #x60 #x40)))
+            ;; 03 - red (debug values, subtitles - character names)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x60 #x20 #x80)
+                      (static-rgba #x80 #x60 #x20 #x80)
+                      (static-rgba #x60 #x00 #x00 #x80)
+                      (static-rgba #x60 #x00 #x00 #x80)))
+            ;; 04 - orange (debug, path marks numbers)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x64 #x00 #x80)
+                      (static-rgba #x80 #x64 #x00 #x80)
+                      (static-rgba #x80 #x00 #x00 #x80)
+                      (static-rgba #x80 #x00 #x00 #x80)))
+            ;; 05 - yellow (HUD, other numbers)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x80 #x00 #x80)
+                      (static-rgba #x80 #x80 #x00 #x80)
+                      (static-rgba #x28 #x28 #x00 #x80)
+                      (static-rgba #x28 #x28 #x00 #x80)))
+            ;; 06 - green (HUD, health numbers)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x20 #x80 #x20 #x80)
+                      (static-rgba #x20 #x80 #x20 #x80)
+                      (static-rgba #x00 #x30 #x00 #x80)
+                      (static-rgba #x00 #x30 #x00 #x80)))
+            ;; 07 - blue
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x40 #x40 #x80 #x80)
+                      (static-rgba #x40 #x40 #x80 #x80)
+                      (static-rgba #x00 #x00 #x60 #x80)
+                      (static-rgba #x00 #x00 #x60 #x80)))
+            ;; 08 - cyan
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x00 #x80 #x80 #x80)
+                      (static-rgba #x00 #x80 #x80 #x80)
+                      (static-rgba #x00 #x20 #x50 #x80)
+                      (static-rgba #x00 #x20 #x50 #x80)))
+            ;; 09 - pink
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x40 #x80 #x80)
+                      (static-rgba #x80 #x40 #x80 #x80)
+                      (static-rgba #x30 #x00 #x30 #x80)
+                      (static-rgba #x30 #x00 #x30 #x80)))
+            ;; 10 - menu-selected (debug, selected using joypad)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x60 #x80 #x80 #x80)
+                      (static-rgba #x60 #x80 #x80 #x80)
+                      (static-rgba #x00 #x40 #x60 #x80)
+                      (static-rgba #x00 #x40 #x60 #x80)))
+            ;; 11 - menu-selected-parent (debug, parent of active menu)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x40 #x60 #x60 #x80)
+                      (static-rgba #x40 #x60 #x60 #x80)
+                      (static-rgba #x00 #x20 #x40 #x80)
+                      (static-rgba #x00 #x20 #x40 #x80)))
+            ;; 12 - menu (debug, active menu, regular)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x80 #x80 #x80)
+                      (static-rgba #x80 #x80 #x80 #x80)
+                      (static-rgba #x50 #x50 #x50 #x80)
+                      (static-rgba #x50 #x50 #x50 #x80)))
+            ;; 13 - menu-parent (debug, parent menu, regular)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x50 #x50 #x50 #x80)
+                      (static-rgba #x50 #x50 #x50 #x80)
+                      (static-rgba #x28 #x28 #x28 #x80)
+                      (static-rgba #x28 #x28 #x28 #x80)))
+            ;; 14 - menu-func-bad (debug, anim-tester)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x54 #x00 #x80)
+                      (static-rgba #x80 #x54 #x00 #x80)
+                      (static-rgba #x60 #x00 #x00 #x80)
+                      (static-rgba #x60 #x00 #x00 #x80)))
+            ;; 15 - menu-flag-on (debug, active menu, enabled)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x70 #x80 #x30 #x80)
+                      (static-rgba #x70 #x80 #x30 #x80)
+                      (static-rgba #x00 #x60 #x00 #x80)
+                      (static-rgba #x00 #x60 #x00 #x80)))
+            ;; 16 - menu-flag-on-parent (debug, parent menu, enabled)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x48 #x58 #x8 #x80)
+                      (static-rgba #x48 #x58 #x10 #x80)
+                      (static-rgba #x00 #x38 #x00 #x80)
+                      (static-rgba #x00 #x38 #x00 #x80)))
+            ;; 17 - menu-flag-off (debug, active menu, disabled)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x58 #x60 #x58 #x80)
+                      (static-rgba #x58 #x60 #x58 #x80)
+                      (static-rgba #x30 #x40 #x30 #x80)
+                      (static-rgba #x30 #x40 #x30 #x80)))
+            ;; 18 - menu-flag-off-parent (debug, parent menu, disabled)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x40 #x48 #x40 #x80)
+                      (static-rgba #x40 #x48 #x40 #x80)
+                      (static-rgba #x18 #x28 #x18 #x80)
+                      (static-rgba #x18 #x28 #x18 #x80)))
+            ;; 19 - menu-invalid (menu and debug, grayed out option)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x30 #x20 #x30 #x80)
+                      (static-rgba #x30 #x20 #x30 #x80)
+                      (static-rgba #x30 #x20 #x30 #x80)
+                      (static-rgba #x30 #x20 #x30 #x80)))
+            ;; 20 - flat-yellow (debug, rev.)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x79 #x48 #x80)
+                      (static-rgba #x80 #x79 #x48 #x80)
+                      (static-rgba #x80 #x79 #x48 #x80)
+                      (static-rgba #x80 #x79 #x48 #x80)))
+            ;; 21 - progress-memcard (menu, under percentage, save slot stats)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x20 #x5e #x78 #x80)
+                      (static-rgba #x20 #x5e #x78 #x80)
+                      (static-rgba #x80 #x7d #x4f #x80)
+                      (static-rgba #x80 #x7d #x4f #x80)))
+            ;; 22 - pad-back
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x1d #x1d #x1d #x80)
+                      (static-rgba #x1d #x1d #x1d #x80)
+                      (static-rgba #x1d #x1d #x1d #x80)
+                      (static-rgba #x1d #x1d #x1d #x80)))
+            ;; 23 - pad-shine
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x40 #x40 #x40 #x80)
+                      (static-rgba #x40 #x40 #x40 #x80)
+                      (static-rgba #x40 #x40 #x40 #x80)
+                      (static-rgba #x40 #x40 #x40 #x80)))
+            ;; 24 - pad-square
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x7a #x4d #x65 #x80)
+                      (static-rgba #x7a #x4d #x65 #x80)
+                      (static-rgba #x7a #x4d #x65 #x80)
+                      (static-rgba #x7a #x4d #x65 #x80)))
+            ;; 25 - pad-circle
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x7a #x34 #x34 #x80)
+                      (static-rgba #x7a #x34 #x34 #x80)
+                      (static-rgba #x7a #x34 #x34 #x80)
+                      (static-rgba #x7a #x34 #x34 #x80)))
+            ;; 26 - pad-triangle
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x10 #x65 #x4c #x80)
+                      (static-rgba #x10 #x65 #x4c #x80)
+                      (static-rgba #x10 #x65 #x4c #x80)
+                      (static-rgba #x10 #x65 #x4c #x80)))
+            ;; 27 - pad-x
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x46 #x4a #x78 #x80)
+                      (static-rgba #x46 #x4a #x78 #x80)
+                      (static-rgba #x46 #x4a #x78 #x80)
+                      (static-rgba #x46 #x4a #x78 #x80)))
+            ;; 28 - progress-blue (menu, location name, task status)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x57 #x7e #x80 #x80)
+                      (static-rgba #x57 #x7e #x80 #x80)
+                      (static-rgba #x29 #x63 #x79 #x80)
+                      (static-rgba #x29 #x63 #x70 #x80)))
+            ;; 29 - progress-yellow (menu, power cell description)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x7f #x7b #x33 #x80)
+                      (static-rgba #x7f #x7b #x33 #x80)
+                      (static-rgba #x76 #x40 #x14 #x80)
+                      (static-rgba #x76 #x40 #x14 #x80)))
+            ;; 30 - progress-selected (menu, selected)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x79 #x79 #x2 #x80)
+                      (static-rgba #x79 #x79 #x2 #x80)
+                      (static-rgba #x1b #x51 #x20 #x80)
+                      (static-rgba #x1b #x51 #x20 #x80)))
+            ;; 31 - progress-percent (menu, completion percentage)
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x47 #x68 #x7a #x80)
+                      (static-rgba #x47 #x68 #x7a #x80)
+                      (static-rgba #x00 #x3c #x4f #x80)
+                      (static-rgba #x00 #x3c #x4f #x80)))
+            ;; 32 - credits
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x70 #x78 #x70 #x80)
+                      (static-rgba #x70 #x78 #x70 #x80)
+                      (static-rgba #x30 #x38 #x30 #x80)
+                      (static-rgba #x30 #x38 #x30 #x80)))
+            ;; 33 - red-reverse
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x60 #x00 #x00 #x80)
+                      (static-rgba #x60 #x00 #x00 #x80)
+                      (static-rgba #x80 #x60 #x20 #x80)
+                      (static-rgba #x80 #x60 #x20 #x80)))
+            ;; 34 - red-obverse
+            (new 'static
+                 'char-color
+                 :color
+                 (new 'static
+                      'array
+                      rgba
+                      4
+                      (static-rgba #x80 #x60 #x20 #x80)
+                      (static-rgba #x80 #x60 #x20 #x80)
+                      (static-rgba #x60 #x00 #x00 #x80)
+                      (static-rgba #x60 #x00 #x00 #x80)))
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color)
+            (new 'static 'char-color))))
 
 (defun font-set-tex0 ((ptr-tex0 (pointer gs-tex0)) (tex texture) (tex-addr uint) (psm uint) (clut-addr uint))
-  (set! (-> ptr-tex0 0) (new 'static 'gs-tex0
-                          :tcc #x1
-                          :cld #x1
-                          :cbp clut-addr
-                          :th (log2 (-> tex h))
-                          :tw (log2 (-> tex w))
-                          :tbw (-> tex width 0)
-                          :tbp0 (/ (the-as int tex-addr) 64)
-                          :psm psm
-                          )
-        )
-  (none)
-  )
-
+  (set! (-> ptr-tex0 0)
+        (new 'static
+             'gs-tex0
+             :tcc #x1
+             :cld #x1
+             :cbp
+             clut-addr
+             :th
+             (log2 (-> tex h))
+             :tw
+             (log2 (-> tex w))
+             :tbw
+             (-> tex width 0)
+             :tbp0
+             (/ (the-as int tex-addr) 64)
+             :psm
+             psm))
+  (none))
 
 (define-extern draw-string (function string dma-buffer font-context float))
+
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags float))

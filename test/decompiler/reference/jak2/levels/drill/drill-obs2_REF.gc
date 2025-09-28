@@ -210,11 +210,11 @@
 ;; definition for method 11 of type drill-flip-step
 (defmethod init-from-entity! ((this drill-flip-step) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-plat-collision! this)
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
@@ -276,9 +276,7 @@ This commonly includes things such as:
            (the-as attack-info (mem-copy! (the-as pointer (new 'stack-no-clear 'attack-info)) (the-as pointer s4-0) 160))
            (the-as uint s4-0)
            self
-           (if (type? arg0 process-drawable)
-               arg0
-               )
+           (the-as process (as-type arg0 process-drawable))
            (the-as touching-shapes-entry (-> arg3 param 0))
            )
           (+! (-> self next-hit-state) 1)
@@ -385,11 +383,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-falling-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -474,12 +472,7 @@ This commonly includes things such as:
 (defstate idle (drill-sliding-door)
   :virtual #t
   :trans (behavior ()
-    (let* ((gp-0 *target*)
-           (a0-1 (if (type? gp-0 process-focusable)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((a0-1 (the-as target (as-type *target* process-focusable))))
       (if (and a0-1 (< (vector-vector-distance (-> self root trans) (get-trans a0-1 0)) 40960.0))
           (go-virtual open)
           )
@@ -506,11 +499,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-sliding-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 3))
@@ -697,11 +690,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-breakable-barrel) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
@@ -770,14 +763,10 @@ This commonly includes things such as:
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack)
-       (let* ((s5-0 (-> block param 0))
-              (gp-0 (the-as object (-> block param 1)))
-              (s4-0 proc)
-              (v1-1 (if (type? s4-0 process-drawable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((s5-0 (-> block param 0))
+             (gp-0 (the-as object (-> block param 1)))
+             (v1-1 (the-as process (as-type proc process-drawable)))
+             )
          (when (and s5-0
                     v1-1
                     (or (= (-> (the-as attack-info gp-0) mode) 'turret) (= (-> (the-as attack-info gp-0) mode) 'explode))
@@ -898,10 +887,7 @@ This commonly includes things such as:
           )
         )
       )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (seconds 0.5))
-        (suspend)
-        )
+    (suspend-for (seconds 0.5)
       )
     (cleanup-for-death self)
     )
@@ -931,11 +917,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-metalhead-eggs) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (init-collision! this)
   (process-drawable-from-entity! this arg0)
@@ -1219,14 +1205,10 @@ This commonly includes things such as:
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack)
-       (let* ((gp-0 (-> block param 0))
-              (s5-0 (the-as object (-> block param 1)))
-              (s4-0 proc)
-              (v1-1 (if (type? s4-0 process-drawable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (-> block param 0))
+             (s5-0 (the-as object (-> block param 1)))
+             (v1-1 (the-as process (as-type proc process-drawable)))
+             )
          (if (and gp-0 v1-1 (case (-> (the-as attack-info s5-0) mode)
                               (('turret 'explode 'wasp-shot)
                                #t
@@ -1331,11 +1313,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-bridge-shot) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
@@ -1435,11 +1417,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this drill-drill) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton

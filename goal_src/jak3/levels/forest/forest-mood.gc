@@ -7,3 +7,105 @@
 
 ;; DECOMP BEGINS
 
+(deftype forest-states (structure)
+  ((light       light-state  :inline)
+   (gun-values  float        3)
+   (fog-interp  float)
+   )
+  )
+
+
+;; WARN: Return type mismatch float vs none.
+(defun update-forest-lights ((arg0 mood-context) (arg1 float))
+  (let ((v1-0 (-> arg0 light-group 1)))
+    (let ((a0-1 (-> v1-0 dir0)))
+      (set! (-> a0-1 direction x) -0.707)
+      (set! (-> a0-1 direction y) 0.0)
+      (set! (-> a0-1 direction z) 0.707)
+      (set! (-> a0-1 direction w) 0.0)
+      )
+    (set-vector! (-> v1-0 dir0 color) 0.8 0.8 0.8 1.0)
+    (set-vector! (-> v1-0 ambi color) 0.2 0.2 0.2 1.0)
+    (set! (-> v1-0 dir0 extra x) 1.0)
+    (set! (-> v1-0 dir1 extra x) 0.0)
+    (set! (-> v1-0 dir2 extra x) 0.0)
+    (set! (-> v1-0 ambi extra x) 1.0)
+    )
+  (none)
+  )
+
+(defbehavior update-mood-forest time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (update-forest-lights arg0 arg1)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as object (-> arg0 state))))
+      (let ((a2-1 (new 'static 'inline-array vector4 3
+                    (new 'static 'vector4 :x 151.0 :y 20.0 :z 230.0 :w 128.0)
+                    (new 'static 'vector4 :x 49152.0 :y 573440.0 :z 180.0 :w 113.0)
+                    (new 'static 'vector4)
+                    )
+                  )
+            (f0-0 (-> (the-as forest-states gp-1) fog-interp))
+            )
+        (if (and (!= f0-0 0.0) (not (-> *time-of-day-context* overide-enable)))
+            (vector4-array-lerp!
+              (the-as (inline-array vector4) (-> arg0 current-fog))
+              (the-as (inline-array vector4) (-> arg0 current-fog))
+              a2-1
+              f0-0
+              3
+              )
+            )
+        )
+      (set! (-> arg0 times 5 w) (-> (the-as forest-states gp-1) gun-values 0))
+      (set! (-> arg0 times 6 w) (-> (the-as forest-states gp-1) gun-values 1))
+      (set! (-> arg0 times 7 w) (-> (the-as forest-states gp-1) gun-values 2))
+      (when (not (paused?))
+        (set! (-> (the-as forest-states gp-1) gun-values 0)
+              (fmax 0.0 (+ -0.2 (-> (the-as forest-states gp-1) gun-values 0)))
+              )
+        (set! (-> (the-as forest-states gp-1) gun-values 1)
+              (fmax 0.0 (+ -0.2 (-> (the-as forest-states gp-1) gun-values 1)))
+              )
+        (set! (-> (the-as forest-states gp-1) gun-values 2)
+              (fmax 0.0 (+ -0.2 (-> (the-as forest-states gp-1) gun-values 2)))
+              )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-forest-gun-flash! ((arg0 symbol) (arg1 int))
+  (let ((v1-1 (level-get *level* arg0)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as forest-states v1-2) gun-values arg1) 1.0)
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-forest-fog-interp! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'foresta)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as forest-states v1-2) fog-interp) arg0)
+        )
+      )
+    )
+  (let ((v1-4 (level-get *level* 'forestb)))
+    (when v1-4
+      (let ((v1-5 (the-as object (-> v1-4 mood-context state))))
+        (set! (-> (the-as forest-states v1-5) fog-interp) arg0)
+        )
+      )
+    )
+  (none)
+  )

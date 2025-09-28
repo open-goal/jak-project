@@ -3,6 +3,15 @@
 
 ;; definition of type draw-node
 (deftype draw-node (drawable)
+  "Node in a bounding volume heirarchy. This is a base class, and there are no children.
+The child is a pointer to the start of inline array of drawables (note: not a drawable-inline-array, literally a bunch of plain drawables)
+The size of this array is child-count. The type is either more draw-nodes, or, some other drawable like tfragment, depending on the flags.
+Different renderers have different restrictions on the tree structure, like max child count, or if all children have the same depth.
+Generally, tfrag/collide use a very rigid equal depth, max 8 children rule, but with shrub, anything goes.
+This is a very awkward data structure to traverse, but it is designed for fast view frustum culling.
+Note that there can be multiple ways to reach drawables in here in some cases - for example you can follow
+this tree, or check one of the depth arrays found in tfrag.
+"
   ((child-count  uint8     :offset   6)
    (flags        uint8     :offset   7)
    (child        drawable  :offset   8)
@@ -36,6 +45,8 @@
 
 ;; definition of type draw-node-dma
 (deftype draw-node-dma (structure)
+  "DMA buffer layout for draw node culling routine, which copies draw-nodes directly to scratchpad in bulk.
+This would not work with the memory layout of shrub."
   ((banka  draw-node  32 :inline)
    (bankb  draw-node  32 :inline)
    )

@@ -5,5 +5,157 @@
 ;; name in dgo: joint-h
 ;; dgos: GAME
 
+(declare-type joint-control basic)
+
+(define-extern cspace<-transformq! (function cspace transformq matrix))
+(define-extern cspace<-parented-transformq-joint! (function cspace transformq none))
+
+(defenum joint-control-command
+  :type uint64
+  (push 1)
+  (blend 2)
+  (four 4)
+  (eight 8)
+  (push1 19)
+  (jcc32 32)
+  (stack 36)
+  (float 42)
+  (stack1 52)
+  )
+
+(defenum joint-control-status
+  :type uint16
+  :bitfield #t
+
+  (sync-math               0) ;; 1
+  (spooling                1) ;; 2
+  (spooling-not-last-block 2) ;; 4
+  (blend-shape             3) ;; 8
+  (math-when-off-screen    4) ;; 16
+  (valid-spooled-frame     5) ;; 32
+  (blend-shape-valid       6) ;; 64
+  (eye-anim-valid          7) ;; 128
+  (eye-anim                8) ;; 256
+  (force-math 9)
+  (no-joint-callbacks 10)
+  )
+
+(declare-type effect-control basic)
+
 ;; DECOMP BEGINS
 
+(deftype joint-control-channel (structure)
+  "A single animation channel that controls a number of joints.
+Multiple channels are used to blend animations together."
+  ((parent            joint-control)
+   (frame-group       art-joint-anim)
+   (frame-num         float)
+   (dist              meters)
+   (num-func          (function joint-control-channel float float float float))
+   (param             float  3)
+   (frame-interp      float  2)
+   (inspector-amount  uint8)
+   (command           joint-control-command)
+   (group-sub-index   int8)
+   (group-size        int8)
+   (eval-time         uint32)
+   )
+  )
+
+
+(deftype top-anim-joint-control (basic)
+  ((process              (pointer process-drawable))
+   (interp-select        uint64  2)
+   (base-anim            basic)
+   (base-anim-speed      float)
+   (base-anim-blend      float)
+   (interp               float)
+   (frame-group          art-joint-anim)
+   (frame-group-push     art-joint-anim)
+   (frame-num            float)
+   (frame-targ           art-joint-anim)
+   (frame-speed          float)
+   (frame-blend          float)
+   (frame-cur-blend      float)
+   (frame-start          float)
+   (frame-post-blend     float)
+   (frame-post-end       float)
+   (frame-push-time      time-frame)
+   (frame-post-put-away  basic)
+   (update-time          time-frame)
+   )
+  (:methods
+    (new (symbol type process-drawable) _type_)
+    (reset (_type_) none)
+    (update (_type_) none)
+    (get-channel (_type_ int) joint-control-channel)
+    (push-anim-to-targ (_type_ art-joint-anim float int int float float symbol) none)
+    )
+  )
+
+
+(deftype joint-control (basic)
+  "Every [[process-drawable]] has a [[joint-control]] that handles all the animation channels."
+  ((status                   joint-control-status)
+   (allocated-length         uint8)
+   (active-channels          uint8)
+   (root-channel             (inline-array joint-control-channel)  :offset  16)
+   (blend-index              uint8)
+   (active-frame-interp      uint8)
+   (float-channels           uint8)
+   (generate-frame-function  (function joint-anim-frame int joint-control int))
+   (prebind-function         (function joint-anim-frame int joint-control int))
+   (postbind-function        (function draw-control cspace-array joint-control none))
+   (effect                   effect-control)
+   (interp-select            int64                                 2)
+   (top-anim                 top-anim-joint-control)
+   (override                 (array float))
+   (channel                  joint-control-channel                 :inline :dynamic)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (current-cycle-distance (_type_) float)
+    (update-anim-data (_type_) none)
+    (debug-print-channels (_type_ symbol) int)
+    (joint-control-method-12 (_type_ int) joint-control-channel)
+    )
+  )
+
+
+(deftype matrix-stack (structure)
+  ((top   matrix)
+   (data  matrix  24 :inline)
+   )
+  )
+
+
+(deftype channel-upload-info (structure)
+  "Information about an upload of animation data to a single joint channel."
+  ((fixed      joint-anim-compressed-fixed)
+   (fixed-qwc  int32)
+   (frame      joint-anim-compressed-frame)
+   (frame-qwc  int32)
+   (amount     float)
+   (interp     float)
+   )
+  :pack-me
+  )
+
+
+(deftype joint-work (structure)
+  ((temp-mtx        matrix                       :inline)
+   (joint-stack     matrix-stack                 :inline)
+   (fix-jmp-table   (function none)              16)
+   (frm-jmp-table   (function none)              16)
+   (pair-jmp-table  (function none)              16)
+   (uploads         channel-upload-info          24 :inline)
+   (num-uploads     int32)
+   (mtx-acc         matrix                       2 :inline)
+   (tq-acc          transformq                   100 :inline)
+   (jacp-hdr        joint-anim-compressed-hdr    :inline)
+   (fixed-data      joint-anim-compressed-fixed  :inline)
+   (frame-data      joint-anim-compressed-frame  2 :inline)
+   (flatten-array   float                        576        :overlay-at mtx-acc)
+   (flattened       vector                       24 :inline :overlay-at mtx-acc)
+   )
+  )

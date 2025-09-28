@@ -1,5 +1,7 @@
 #pragma once
 
+#include "extract_level.h"
+
 #include "common/custom_data/Tfrag3Data.h"
 
 #include "decompiler/ObjectFile/ObjectFileDB.h"
@@ -14,5 +16,6 @@ void extract_merc(const ObjectFileData& ag_data,
                   const std::vector<level_tools::TextureRemap>& map,
                   tfrag3::Level& out,
                   bool dump_level,
-                  GameVersion version);
+                  GameVersion version,
+                  MercSwapInfo& swapped_info);
 }  // namespace decompiler

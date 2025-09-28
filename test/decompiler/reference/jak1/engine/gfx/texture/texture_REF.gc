@@ -27,18 +27,18 @@
   )
 
 ;; definition for method 8 of type texture-page
-(defmethod mem-usage ((this texture-page) (arg0 memory-usage-block) (arg1 int))
-  (set! (-> arg0 length) (max 80 (-> arg0 length)))
-  (set! (-> arg0 data 79 name) "texture")
-  (+! (-> arg0 data 79 count) (-> this length))
+(defmethod mem-usage ((this texture-page) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 80 (-> usage length)))
+  (set! (-> usage data 79 name) "texture")
+  (+! (-> usage data 79 count) (-> this length))
   (let ((v1-7 (- (asize-of this) (the-as int (* (-> this size) 4)))))
     (dotimes (a0-6 (-> this length))
       (if (-> this data a0-6)
           (+! v1-7 64)
           )
       )
-    (+! (-> arg0 data 79 used) v1-7)
-    (+! (-> arg0 data 79 total) (logand -16 (+ v1-7 15)))
+    (+! (-> usage data 79 used) v1-7)
+    (+! (-> usage data 79 total) (logand -16 (+ v1-7 15)))
     )
   this
   )
@@ -723,7 +723,7 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod allocate-defaults! ((this texture-pool))
   (allocate-segment! this (-> this segment-common) #x1c000)
-  (allocate-segment! this (the-as texture-pool-segment (-> this segment)) #x62000)
+  (allocate-segment! this (-> this segment 0) #x62000)
   (set! *sky-base-vram-word* (allocate-vram-words! this #x7000))
   (set! *sky-base-block* (/ *sky-base-vram-word* 64))
   (set! *sky-base-page* (sar *sky-base-vram-word* 11))
@@ -1116,7 +1116,7 @@
       )
     )
   (upload-now! page 2)
-  (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
+  (update-vram-pages pool (-> pool segment 0) page 2)
   (let ((page-seg-2-size (logand -4096 (+ (-> page segment 2 size) 4095))))
     (cond
       ((< (the-as uint #x24000) page-seg-2-size)
@@ -1156,7 +1156,7 @@
         )
       )
     (upload-now! page 2)
-    (update-vram-pages pool (the-as texture-pool-segment (-> pool segment)) page 2)
+    (update-vram-pages pool (-> pool segment 0) page 2)
     (cond
       ((< (the-as uint #x24000) seg2-size)
        (set! (-> page segment 2 size) (+ -147456 seg2-size))
@@ -1390,13 +1390,8 @@
       (when tfrag-page
         (set! (-> level upload-size 0) 0)
         (if (< distance 81920.0)
-            (+! (-> level upload-size 0) (upload-vram-pages
-                                           this
-                                           (the-as texture-pool-segment (-> this segment))
-                                           tfrag-page
-                                           2
-                                           (the-as bucket-id tfrag-bucket)
-                                           )
+            (+! (-> level upload-size 0)
+                (upload-vram-pages this (-> this segment 0) tfrag-page 2 (the-as bucket-id tfrag-bucket))
                 )
             )
         (cond
@@ -2029,7 +2024,7 @@
   (let ((font-clut (-> this font-palette)))
     (set! heap-before-font-tex (-> this cur))
     (set! clut-dest-addr (/ font-clut 64))
-    (set! *font-texture* (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #x4fe)))
+    (set! *font-texture* (get-texture ascii.12lo gamefontnew))
     (let ((main-font-tx
             (texture-page-login (new 'static 'texture-id :index #x1 :page #x4fe) texture-page-default-allocate global)
             )
@@ -2055,7 +2050,7 @@
             (the-as uint clut-dest-addr)
             )
           )
-        (let ((font-tx-0 (lookup-texture-by-id (new 'static 'texture-id :page #x4fe)))
+        (let ((font-tx-0 (get-texture ascii.12hi gamefontnew))
               (font-tx-0-dest #xe0000)
               (font-tx-0-fmt 44)
               )
@@ -2068,7 +2063,7 @@
             (the-as uint clut-dest-addr)
             )
           )
-        (let ((font-tx-3 (lookup-texture-by-id (new 'static 'texture-id :index #x3 :page #x4fe)))
+        (let ((font-tx-3 (get-texture ascii.24lo gamefontnew))
               (font-tx-3-dest #xe6000)
               (font-tx-3-fmt 36)
               )
@@ -2081,7 +2076,7 @@
             (the-as uint clut-dest-addr)
             )
           )
-        (let ((font-tx-2 (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #x4fe)))
+        (let ((font-tx-2 (get-texture ascii.24hi gamefontnew))
               (font-tx-2-dest #xe6000)
               (font-tx-2-fmt 44)
               )
@@ -2152,7 +2147,7 @@
 
 ;; definition for method 7 of type texture-page-dir
 ;; INFO: Return type mismatch texture-page-dir vs none.
-(defmethod relocate ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page-dir) (heap kheap) (name (pointer uint8)))
   (set! *texture-page-dir* this)
   (none)
   )
@@ -2196,7 +2191,7 @@
 
 ;; definition for method 7 of type texture-page
 ;; INFO: Return type mismatch texture-page vs none.
-(defmethod relocate ((this texture-page) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page) (heap kheap) (name (pointer uint8)))
   (local-vars (s4-0 texture-page-dir-entry))
   (cond
     ((or (not this) (not (file-info-correct-version? (-> this info) (file-kind tpage) 0)))
@@ -2214,7 +2209,7 @@
        (let ((a3-0 (-> this id)))
          (set! s4-0 (-> *texture-page-dir* entries a3-0))
          (set! (-> *texture-relocate-later* memcpy) #f)
-         ((-> *texture-pool* allocate-func) *texture-pool* this arg0 (the-as int a3-0))
+         ((-> *texture-pool* allocate-func) *texture-pool* this heap (the-as int a3-0))
          )
        (not (-> *texture-relocate-later* memcpy))
        )

@@ -7,3 +7,98 @@
 
 ;; DECOMP BEGINS
 
+(defmethod new drawable-group ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* arg0 4))))))
+    (set! (-> v0-0 length) arg0)
+    v0-0
+    )
+  )
+
+(defmethod print ((this drawable-group))
+  (format #t "#<~A @ #x~X [~D]" (-> this type) this (-> this length))
+  (dotimes (s5-0 (-> this length))
+    (format #t " ~A" (-> this data s5-0))
+    )
+  (format #t ">")
+  this
+  )
+
+(defmethod length ((this drawable-group))
+  (-> this length)
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this drawable-group))
+  (the-as int (+ (-> drawable-group size) (* (-> this length) 4)))
+  )
+
+(defmethod mem-usage ((this drawable-group) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) "drawable-group")
+  (+! (-> usage data 0 count) 1)
+  (let ((v1-6 (asize-of this)))
+    (+! (-> usage data 0 used) v1-6)
+    (+! (-> usage data 0 total) (logand -16 (+ v1-6 15)))
+    )
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) usage flags)
+    )
+  this
+  )
+
+(defmethod login ((this drawable-group))
+  "Initialize the object after it is loaded."
+  (dotimes (s5-0 (-> this length))
+    (login (-> this data s5-0))
+    )
+  this
+  )
+
+(defmethod draw ((this drawable-group))
+  "Draw the drawable, and typically its children.
+   This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
+  (when (vis-cull (-> this id))
+    (when (sphere-cull (-> this bsphere))
+      (dotimes (s5-0 (-> this length))
+        (draw (-> this data s5-0))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod collect-stats ((this drawable-group))
+  "Collect triangle/perf statistics for rendering.
+   This is only called when viewing stats.
+   The vis-bits and culling registers are loaded during this time."
+  (when (vis-cull (-> this id))
+    (when (sphere-cull (-> this bsphere))
+      (dotimes (s5-0 (-> this length))
+        (collect-stats (-> this data s5-0))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod debug-draw ((this drawable-group))
+  "Debug-draw a drawable and its children. Typically uses the debug-draw functions."
+  (when (vis-cull (-> this id))
+    (when (sphere-cull (-> this bsphere))
+      (dotimes (s5-0 (-> this length))
+        (debug-draw (-> this data s5-0))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod unpack-vis ((this drawable-group) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  (dotimes (s4-0 (-> this length))
+    (set! arg1 (unpack-vis (-> this data s4-0) arg0 arg1))
+    )
+  arg1
+  )

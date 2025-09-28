@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include "common/global_profiler/GlobalProfiler.h"
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 
@@ -26,11 +28,26 @@ void IopThread::functionWrapper() {
   }
 }
 
+IOP_Kernel::IOP_Kernel() {
+  // this ugly hack
+  threads.reserve(16);
+  CreateThread("null-thread", nullptr, 0);
+  CreateMbx();
+  CreateSema(0, 0, 0, 0);
+  kernel_thread = co_active();
+  m_start_time = time_point_cast<microseconds>(steady_clock::now());
+}
+
 /*
 ** -----------------------------------------------------------------------------
 ** Functions callable by threads
 ** -----------------------------------------------------------------------------
 */
+
+u32 IOP_Kernel::GetSystemTimeLow() {
+  auto delta_time = time_point_cast<microseconds>(steady_clock::now()) - m_start_time;
+  return delta_time.count() * 36.864;
+}
 
 /*!
  * Create a new thread.  Will not run the thread.
@@ -88,6 +105,12 @@ void IOP_Kernel::SleepThread() {
   leaveThread();
 }
 
+void IOP_Kernel::YieldThread() {
+  ASSERT(_currentThread);
+  _currentThread->state = IopThread::State::Ready;
+  leaveThread();
+}
+
 /*!
  * Wake up a thread. Doesn't run it immediately though.
  */
@@ -115,6 +138,105 @@ s32 IOP_Kernel::WaitSema(s32 id) {
   leaveThread();
 
   return KE_OK;
+}
+
+s32 IOP_Kernel::ClearEventFlag(s32 id, u32 pattern) {
+  auto& ef = event_flags.at(id);
+  // yes, this seems backward, but the manual says this is how it works.
+  ef.value &= pattern;
+  return 0;
+}
+
+namespace {
+bool event_flag_check(u32 pattern, u32 check_pattern, u32 mode) {
+  if (mode & 1) {
+    // or
+    return (pattern & check_pattern);
+  } else {
+    // and
+    return (pattern & check_pattern) == check_pattern;
+  }
+}
+}  // namespace
+
+s32 IOP_Kernel::WaitEventFlag(s32 flag, u32 pattern, u32 mode) {
+  auto& ef = event_flags.at(flag);
+  // check to see if we already match
+  if (event_flag_check(ef.value, pattern, mode)) {
+    if (mode & 0x10) {
+      ef.value = 0;
+    }
+    return KE_OK;
+  } else {
+    if (!ef.multiple_waiters_allowed && !ef.wait_list.empty()) {
+      lg::die("Multiple thread trying to wait on an event flag, but this option was not enabled.");
+    }
+
+    auto& wait_entry = ef.wait_list.emplace_back();
+    wait_entry.pattern = pattern;
+    wait_entry.mode = mode;
+    wait_entry.thread = _currentThread;
+
+    _currentThread->state = IopThread::State::Wait;
+    _currentThread->waitType = IopThread::Wait::EventFlag;
+    leaveThread();
+
+    return KE_OK;
+  }
+}
+
+s32 IOP_Kernel::SetEventFlag(s32 flag, u32 pattern) {
+  auto& ef = event_flags.at(flag);
+  ef.value |= pattern;
+
+  for (auto it = ef.wait_list.begin(); it != ef.wait_list.end();) {
+    if (event_flag_check(ef.value, it->pattern, it->mode)) {
+      if (it->mode & 0x10) {
+        ef.value = 0;
+      }
+      it->thread->waitType = IopThread::Wait::None;
+      it->thread->state = IopThread::State::Ready;
+      it = ef.wait_list.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  return KE_OK;
+}
+
+s32 IOP_Kernel::ReceiveMbx(void** msg, s32 id) {
+  auto& box = mbxs.at(id);
+  if (!box.messages.empty()) {
+    auto ret = PollMbx(msg, id);
+    ASSERT(ret == KE_OK);
+    return KE_OK;
+  }
+
+  ASSERT(!box.wait_thread);  // don't know how to deal with this, hopefully doesn't come up.
+
+  box.wait_thread = _currentThread;
+  _currentThread->state = IopThread::State::Wait;
+  _currentThread->waitType = IopThread::Wait::Messagebox;
+  leaveThread();
+
+  auto ret = PollMbx(msg, id);
+  ASSERT(ret == KE_OK);
+  return KE_OK;
+}
+
+s32 IOP_Kernel::SendMbx(s32 mbx, void* value) {
+  ASSERT(mbx < (s32)mbxs.size());
+  auto& box = mbxs[mbx];
+  box.messages.push(value);
+  auto* to_run = box.wait_thread;
+
+  if (to_run) {
+    box.wait_thread = nullptr;
+    to_run->waitType = IopThread::Wait::None;
+    to_run->state = IopThread::State::Ready;
+  }
+  return 0;
 }
 
 s32 IOP_Kernel::SignalSema(s32 id) {
@@ -264,6 +386,9 @@ std::optional<time_stamp> IOP_Kernel::dispatch() {
 
   // Run until all threads are idle
   IopThread* next = schedNext();
+  if (next) {
+    prof().root_event();
+  }
   while (next != nullptr) {
     // Check vblank interrupt
     if (vblank_handler != nullptr && vblank_recieved) {
@@ -271,6 +396,7 @@ std::optional<time_stamp> IOP_Kernel::dispatch() {
       vblank_recieved = false;
     }
     // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+    auto p = scoped_prof(next->name.c_str());
     runThread(next);
     updateDelay();
     processWakeups();
@@ -337,6 +463,11 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   ASSERT(rec->cmd.finished && rec->cmd.started);
 
   // step 3 - memcpy!
+  if (rec->qd->serve_data->buff_size < sendSize) {
+    lg::die(
+        "Buffer overflow in EE -> IOP RPC. channel {}, fno {}, requested size {}, buffer size {}\n",
+        rpcChannel, fno, sendSize, rec->qd->serve_data->buff_size);
+  }
   memcpy(rec->qd->serve_data->buff, sendBuff, sendSize);
 
   // step 4 - setup command

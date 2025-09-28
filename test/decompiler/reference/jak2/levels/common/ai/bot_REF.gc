@@ -3,6 +3,7 @@
 
 ;; definition for method 12 of type bot
 (defmethod run-logic? ((this bot))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
@@ -29,10 +30,10 @@
       (let* ((v1-5 (-> (the-as (pointer uint8) (&+ arg1 s0-0))))
              (a1-2 (-> this course spots v1-5))
              )
-        (bot-debug-draw-sphere this (the-as vector a1-2) (if (= v1-5 arg2)
-                                                             (the-as rgba s2-0)
-                                                             (the-as rgba s1-0)
-                                                             )
+        (bot-debug-draw-sphere this (-> a1-2 center) (if (= v1-5 arg2)
+                                                         (the-as rgba s2-0)
+                                                         (the-as rgba s1-0)
+                                                         )
                                )
         )
       )
@@ -46,7 +47,7 @@
   (let ((course (-> this course)))
     (countdown (i (-> course spot-count))
       (let ((spot (-> course spots i)))
-        (bot-debug-draw-sphere this (the-as vector spot) (the-as rgba (-> this spot-color)))
+        (bot-debug-draw-sphere this (-> spot center) (the-as rgba (-> this spot-color)))
         (format (clear *temp-string*) "~d" i)
         (let ((spot-id *temp-string*))
           (add-debug-text-3d
@@ -113,7 +114,7 @@
   )
 
 ;; definition for method 108 of type bot
-(defmethod enemy-method-108 ((this bot) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this bot) (arg0 process-drawable) (arg1 event-message-block))
   0
   )
 
@@ -121,12 +122,7 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod reset-attacker! ((this bot))
   (logclear! (-> this bot-flags) (bot-flags attacked))
-  (let* ((s5-0 (handle->process (-> this attacker-handle)))
-         (v1-5 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((v1-5 (the-as process (as-type (handle->process (-> this attacker-handle)) process-focusable))))
     (if (and v1-5 (= (-> v1-5 type) target))
         (set! (-> this attacker-handle) (the-as handle #f))
         )
@@ -139,7 +135,7 @@
   (let ((gp-0 #f))
     (let ((v1-0 (-> this incoming penetrate-using)))
       (cond
-        ((logtest? #x800000 v1-0)
+        ((logtest? (penetrate jak-red-shot) v1-0)
          (when *target*
            (let ((s5-0 (new 'stack-no-clear 'vector))
                  (s3-0 (-> *target* gun fire-dir-out))
@@ -157,7 +153,7 @@
              )
            )
          )
-        ((and (logtest? #x10000 v1-0) (not (logtest? #x20000 v1-0)))
+        ((and (logtest? (penetrate dark-skin) v1-0) (not (logtest? (penetrate dark-punch) v1-0)))
          (set! gp-0 #t)
          )
         )
@@ -208,8 +204,8 @@
                          )
                        (.sub.vf vf1 vf3 vf2)
                        (.mul.vf vf1 vf1 vf1)
-                       (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                       (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                       (.add.y.vf.x vf1 vf1 vf1)
+                       (.add.z.vf.x vf1 vf1 vf1)
                        (.mov a2-5 vf1)
                        (let ((f0-3 a2-5)
                              (f1-2 (+ (-> a1-2 world-sphere w) (the-as float (-> s5-0 param 3))))
@@ -249,8 +245,8 @@
                          )
                        (.sub.vf vf1 vf3 vf2)
                        (.mul.vf vf1 vf1 vf1)
-                       (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                       (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                       (.add.y.vf.x vf1 vf1 vf1)
+                       (.add.z.vf.x vf1 vf1 vf1)
                        (.mov a2-12 vf1)
                        (let ((f0-4 a2-12)
                              (f1-6 (+ (-> a1-14 world-sphere w) (the-as float (-> s5-0 param 3))))
@@ -275,12 +271,7 @@
          (dotimes (s3-0 *actor-list-length*)
            (let ((v1-26 (-> *actor-list* s3-0)))
              (when (logtest? (the-as collide-spec s4-0) (-> v1-26 root-prim prim-core collide-as))
-               (let* ((s2-0 (-> v1-26 process))
-                      (a1-26 (if (type? s2-0 process-focusable)
-                                 s2-0
-                                 )
-                             )
-                      )
+               (let ((a1-26 (the-as process-drawable (as-type (-> v1-26 process) process-focusable))))
                  (when a1-26
                    (set-next-focus! this (the-as enemy a1-26) (the-as enemy-best-focus (&-> s5-0 next)))
                    (if (-> s5-0 next)
@@ -303,17 +294,12 @@
 
 ;; definition for method 106 of type bot
 ;; WARN: Return type mismatch int vs none.
-(defmethod enemy-method-106 ((this bot) (arg0 process) (arg1 object) (arg2 int) (arg3 attack-info))
-  (let ((t9-0 (method-of-type nav-enemy enemy-method-106)))
+(defmethod set-incoming-attack-info ((this bot) (arg0 process) (arg1 object) (arg2 penetrate) (arg3 attack-info))
+  (let ((t9-0 (method-of-type nav-enemy set-incoming-attack-info)))
     (t9-0 this arg0 arg1 arg2 arg3)
     )
   (logclear! (-> this bot-flags) (bot-flags bf03 bf04))
-  (let* ((s3-0 (handle->process (-> this incoming attacker-handle)))
-         (s5-0 (if (type? s3-0 process-focusable)
-                   s3-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process (as-type (handle->process (-> this incoming attacker-handle)) process-focusable))))
     (when s5-0
       (cond
         ((= (-> s5-0 type) target)
@@ -397,23 +383,12 @@
 ;; definition for method 180 of type bot
 (defmethod clear-poi-and-focus! ((this bot))
   "Clear our point of interest and focus handles."
-  (let* ((s4-0 (handle->process (-> this poi-handle)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable))))
     (when s5-0
       (set! (-> this poi-handle) (the-as handle #f))
-      (let ((s4-1 (handle->process (-> this focus handle))))
-        (if (= (if (type? s4-1 process-focusable)
-                   s4-1
-                   )
-               s5-0
-               )
-            (clear-focused (-> this focus))
-            )
-        )
+      (if (= (the-as process (as-type (handle->process (-> this focus handle)) process-focusable)) s5-0)
+          (clear-focused (-> this focus))
+          )
       )
     )
   (none)
@@ -437,8 +412,8 @@
 ;; WARN: Return type mismatch int vs enemy-aware.
 (defmethod update-target-awareness! ((this bot) (arg0 process-focusable) (arg1 enemy-best-focus))
   "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
-@TODO - flesh out docs
-@returns the value that sets `aware`"
+   @TODO - flesh out docs
+   @returns the value that sets `aware`"
   (the-as enemy-aware 3)
   )
 
@@ -453,7 +428,7 @@
   (local-vars (s5-1 process))
   (let ((s5-0 (-> this focus)))
     (cond
-      ((logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags))
+      ((logtest? (enemy-flag lock-focus) (-> this enemy-flags))
        (set! s5-1 (handle->process (-> s5-0 handle)))
        )
       (else
@@ -481,12 +456,7 @@
 
 ;; definition for method 97 of type bot
 (defmethod enemy-method-97 ((this bot))
-  (let* ((s5-0 (handle->process (-> this attacker-handle)))
-         (v1-3 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((v1-3 (the-as process (as-type (handle->process (-> this attacker-handle)) process-focusable))))
     (when v1-3
       (cond
         ((= (-> v1-3 type) target)
@@ -521,12 +491,7 @@
             (empty)
             )
            (else
-             (let ((s4-0 (handle->process (-> this poi-handle))))
-               (set! s5-1 (if (type? s4-0 process-focusable)
-                              s4-0
-                              )
-                     )
-               )
+             (set! s5-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (if s5-1
                  (empty)
                  (set! s5-1 *target*)
@@ -540,12 +505,7 @@
              (set! s5-1 v1-3)
              )
            (else
-             (let ((s4-1 (handle->process (-> this poi-handle))))
-               (set! s5-1 (if (type? s4-1 process-focusable)
-                              s4-1
-                              )
-                     )
-               )
+             (set! s5-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (cond
                (s5-1
                  (empty)
@@ -623,8 +583,8 @@
                           )
                         (.sub.vf vf1 vf3 vf2)
                         (.mul.vf vf1 vf1 vf1)
-                        (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                        (.add.y.vf.x vf1 vf1 vf1)
+                        (.add.z.vf.x vf1 vf1 vf1)
                         (.mov a2-5 vf1)
                         (let ((f0-2 a2-5)
                               (f1-3 (+ (-> ccore world-sphere w) (-> sphere r)))
@@ -664,8 +624,8 @@
                           )
                         (.sub.vf vf1 vf3 vf2)
                         (.mul.vf vf1 vf1 vf1)
-                        (.add.y.vf vf1 vf1 vf1 :mask #b1)
-                        (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                        (.add.y.vf.x vf1 vf1 vf1)
+                        (.add.z.vf.x vf1 vf1 vf1)
                         (.mov a2-12 vf1)
                         (let ((f0-3 a2-12)
                               (f1-7 (+ (-> a1-14 world-sphere w) (-> sphere r)))
@@ -690,12 +650,7 @@
           (dotimes (i *actor-list-length*)
             (let ((actor (-> *actor-list* i)))
               (when (logtest? (the-as int coll-spec) (-> actor root-prim prim-core collide-as))
-                (let* ((proc (-> actor process))
-                       (enemy (if (type? proc process-focusable)
-                                  proc
-                                  )
-                              )
-                       )
+                (let ((enemy (the-as process-drawable (as-type (-> actor process) process-focusable))))
                   (if (and enemy
                            enemy
                            (not (logtest? (-> (the-as process-focusable enemy) focus-status) (focus-status disable dead)))
@@ -741,7 +696,7 @@
 ;; WARN: disable def twice: 280. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod general-event-handler ((this bot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-0 object))
   (case arg2
     (('track)
@@ -782,13 +737,13 @@
        (('too-far-fail)
         (when (not (logtest? (-> this bot-flags) (bot-flags too-far-fail bf09)))
           (logior! (-> this bot-flags) (bot-flags bf09))
-          (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+          (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
           (logclear! (-> this focus-status) (focus-status dangerous))
-          (logclear! (-> this enemy-flags) (enemy-flag check-water))
+          (logclear! (-> this enemy-flags) (enemy-flag dangerous-backup))
           (logclear! (-> this mask) (process-mask collectable))
-          (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+          (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
           (logclear! (-> this mask) (process-mask actor-pause))
-          (logclear! (-> this enemy-flags) (enemy-flag notice))
+          (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
           (go (method-of-object this failed))
           )
         )
@@ -856,13 +811,9 @@
     (('notify)
      (case (-> arg3 param 0)
        (('attack)
-        (let ((s5-2 (-> arg3 param 1)))
-          (when (if (type? s5-2 process-focusable)
-                    s5-2
-                    )
-            (logior! (-> this enemy-flags) (enemy-flag look-at-focus))
-            (set-time! (-> this hit-focus-time))
-            )
+        (when (the-as uint (as-type (-> arg3 param 1) process-focusable))
+          (logior! (-> this enemy-flags) (enemy-flag victory))
+          (set-time! (-> this hit-focus-time))
           )
         #t
         )
@@ -985,13 +936,9 @@
        )
       (else
         (when (!= (-> arg0 type) target)
-          (let* ((touch-entry (-> arg1 param 0))
-                 (s2-0 arg0)
-                 (v1-6 (if (type? s2-0 process-focusable)
-                           s2-0
-                           )
-                       )
-                 )
+          (let ((touch-entry (-> arg1 param 0))
+                (v1-6 (the-as process (as-type arg0 process-focusable)))
+                )
             (cond
               ((and (focus-test? this dangerous)
                     (logtest? (process-mask enemy) (-> arg0 mask))
@@ -1049,7 +996,7 @@
 
 ;; definition for method 204 of type bot
 (defmethod play-too-far-warn-speech ((this bot))
-  (when (not (channel-active? this (the-as uint 0)))
+  (when (not (channel-active? this (gui-channel none)))
     (let ((idx (bot-speech-list-method-9
                  (-> this course too-far-warn-speeches)
                  this
@@ -1077,7 +1024,7 @@
 ;; WARN: Using new Jak 2 rtype-of
 (defmethod bot-check-too-far ((this bot))
   "Call the current [[bot-waypoint]]'s `check-too-far` function if available, otherwise use the default `course` one.
-If the player is too far, play a warning speech."
+   If the player is too far, play a warning speech."
   (let ((result 0))
     (let ((too-far-check (-> this delay-too-far-check)))
       (cond
@@ -1114,7 +1061,7 @@ If the player is too far, play a warning speech."
             (if (and (>= (current-time) (-> this next-too-far-warn-time)) (play-too-far-warn-speech this))
                 (set! (-> this next-too-far-warn-time)
                       (+ (current-time)
-                         (get-rand-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
+                         (rnd-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
                          )
                       )
                 )
@@ -1137,18 +1084,18 @@ If the player is too far, play a warning speech."
   (set! (-> this started-warning-time) 0)
   (set! (-> this next-too-far-warn-time)
         (+ (current-time)
-           (get-rand-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
+           (rnd-int-range this (the-as int (-> this warn-min-delay)) (the-as int (-> this warn-max-delay)))
            )
         )
   (none)
   )
 
 ;; definition for method 55 of type bot
-(defmethod track-target! ((this bot))
+(defmethod common-post ((this bot))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (set! (-> this travel-prev-ry) (-> this travel-prev-ry1))
   (set! (-> this travel-prev-ry1) (quaternion-y-angle (-> this root quat)))
   (let ((f0-4 (/ (the float (-> this hit-points)) (the float (-> this enemy-info default-hit-points)))))
@@ -1177,7 +1124,7 @@ If the player is too far, play a warning speech."
         )
       )
     )
-  (let ((t9-4 (method-of-type nav-enemy track-target!)))
+  (let ((t9-4 (method-of-type nav-enemy common-post)))
     (t9-4 this)
     )
   (when (not (logtest? (-> this bot-flags) (bot-flags bf09)))
@@ -1251,7 +1198,7 @@ If the player is too far, play a warning speech."
              (add-process
                *gui-control*
                this
-               (the-as gui-channel (-> this channel))
+               (-> this channel)
                (gui-action play)
                (-> speech name)
                -99.0
@@ -1277,15 +1224,7 @@ If the player is too far, play a warning speech."
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod play-death-sound ((this bot) (sound string))
   "Play one of our death sounds."
-  (add-process
-    *gui-control*
-    this
-    (the-as gui-channel (-> this channel))
-    (gui-action play)
-    sound
-    -99.0
-    (seconds 0.3)
-    )
+  (add-process *gui-control* this (-> this channel) (gui-action play) sound -99.0 (seconds 0.3))
   (none)
   )
 
@@ -1311,14 +1250,14 @@ If the player is too far, play a warning speech."
   )
 
 ;; definition for method 209 of type bot
-(defmethod channel-active? ((this bot) (channel uint))
+(defmethod channel-active? ((this bot) (channel gui-channel))
   "Is the given [[gui-channel]] active?"
-  (if (zero? channel)
+  (if (= channel (gui-channel none))
       (set! channel (-> this channel))
       )
   (nonzero? (get-status
               *gui-control*
-              (lookup-gui-connection-id *gui-control* (the-as string #f) (the-as gui-channel channel) (gui-action none))
+              (lookup-gui-connection-id *gui-control* (the-as string #f) channel (gui-action none))
               )
             )
   )
@@ -1327,7 +1266,7 @@ If the player is too far, play a warning speech."
 ;; WARN: Return type mismatch int vs none.
 (defmethod stop-speech ((this bot) (channel uint) (arg1 symbol))
   (if (zero? channel)
-      (set! channel (-> this channel))
+      (set! channel (the-as uint (-> this channel)))
       )
   (if arg1
       (set-action!
@@ -1410,7 +1349,6 @@ If the player is too far, play a warning speech."
   )
 
 ;; definition for method 215 of type bot
-;; WARN: Return type mismatch object vs none.
 (defmethod skip-waypoint ((this bot))
   (let ((skip-id (-> this waypoint skip-to)))
     (when (>= skip-id 0)
@@ -1419,26 +1357,26 @@ If the player is too far, play a warning speech."
       (go-to-waypoint! this skip-id #t)
       )
     )
-  (none)
   )
 
 ;; definition for method 7 of type bot
 ;; WARN: Return type mismatch nav-enemy vs bot.
-(defmethod relocate ((this bot) (arg0 int))
+(defmethod relocate ((this bot) (offset int))
   (if (nonzero? (-> this ai-ctrl))
-      (&+! (-> this ai-ctrl) arg0)
+      (&+! (-> this ai-ctrl) offset)
       )
   (if (nonzero? (-> this task))
-      (&+! (-> this task) arg0)
+      (&+! (-> this task) offset)
       )
   (if (nonzero? (-> this swivel-joint-mod))
-      (&+! (-> this swivel-joint-mod) arg0)
+      (&+! (-> this swivel-joint-mod) offset)
       )
-  (the-as bot ((method-of-type nav-enemy relocate) this arg0))
+  (the-as bot ((method-of-type nav-enemy relocate) this offset))
   )
 
 ;; definition for method 10 of type bot
 (defmethod deactivate ((this bot))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (send-event (handle->process (-> this health-handle)) 'hide-and-die)
   (if (nonzero? (-> this ai-ctrl))
       (ai-task-control-method-9 (-> this ai-ctrl))
@@ -1483,9 +1421,9 @@ If the player is too far, play a warning speech."
   (set! (-> this ai-ctrl) (new 'process 'ai-task-control *bot-task-pool*))
   (logclear! (-> this mask) (process-mask enemy))
   (logior! (-> this mask) (process-mask bot))
-  (logior! (-> this enemy-flags) (enemy-flag use-notice-distance multi-focus))
+  (logior! (-> this enemy-flags) (enemy-flag cam-attack-mode dislike-combo))
   (logclear! (-> this mask) (process-mask collectable))
-  (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+  (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
   (logior! (-> this focus-status) (focus-status disable))
   (let ((v1-13 (-> this nav)))
     (set! (-> v1-13 sphere-mask) (the-as uint 78))
@@ -1652,9 +1590,9 @@ If the player is too far, play a warning speech."
           (.lvf vf5 (&-> proc-vel quad))
           (.lvf vf4 (&-> targ-pos quad))
           )
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> a1-6 quad) vf6)
         )
       (set! (-> turn-info predicted-targ-ry) (atan
@@ -1762,7 +1700,7 @@ If the player is too far, play a warning speech."
 
 ;; definition for method 203 of type bot
 (defmethod play-attacked-speech ((this bot))
-  (when (not (channel-active? this (the-as uint 0)))
+  (when (not (channel-active? this (gui-channel none)))
     (let ((idx (bot-speech-list-method-9
                  (-> this course attack-player-speeches)
                  this
@@ -1789,11 +1727,11 @@ If the player is too far, play a warning speech."
 ;; definition for method 197 of type bot
 ;; WARN: Return type mismatch bot-flags vs none.
 (defmethod fail-mission! ((this bot))
-  (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
   (logclear! (-> this mask) (process-mask collectable))
-  (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+  (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (logior! (-> this bot-flags) (bot-flags bf09))
   (let ((mission-failed? #t))
     (let ((master-handle (handle->process (-> this master-handle))))
@@ -1883,7 +1821,7 @@ If the player is too far, play a warning speech."
 (defmethod bot-method-191 ((this bot))
   (logior! (-> this bot-flags) (bot-flags bf02))
   (set-time! (-> this hit-invuln-starting-time))
-  (logclear! (-> this enemy-flags) (enemy-flag enable-on-active))
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable))
   (if (nonzero? (-> this hit-invuln-ignore-me-delay))
       (logior! (-> this focus-status) (focus-status ignore))
       )
@@ -1900,13 +1838,13 @@ If the player is too far, play a warning speech."
   (let ((a1-0 (-> this hit-invuln-starting-time))
         (v1-0 #t)
         )
-    (if (not (logtest? (-> this enemy-flags) (enemy-flag enable-on-active)))
+    (if (not (logtest? (-> this enemy-flags) (enemy-flag vulnerable)))
         (set! v1-0 (cond
                      ((time-elapsed? a1-0 (seconds 0.6))
                       (let ((a2-6 (-> this enemy-flags)))
-                        (if (logtest? a2-6 (enemy-flag checking-water))
-                            (set! a2-7 (logior a2-6 (enemy-flag enable-on-active)))
-                            (set! a2-7 (logclear a2-6 (enemy-flag enable-on-active)))
+                        (if (logtest? a2-6 (enemy-flag vulnerable-backup))
+                            (set! a2-7 (logior a2-6 (enemy-flag vulnerable)))
+                            (set! a2-7 (logclear a2-6 (enemy-flag vulnerable)))
                             )
                         )
                       (set! (-> this enemy-flags) a2-7)
@@ -1991,9 +1929,9 @@ If the player is too far, play a warning speech."
               )
             (.lvf vf4 (&-> v1-10 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> t2-1 quad) vf6)
           )
         (let ((a2-2 arg0))
@@ -2006,9 +1944,9 @@ If the player is too far, play a warning speech."
               )
             (.lvf vf4 (&-> v1-11 quad))
             )
-          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-          (.mul.x.vf acc vf5 vf7 :mask #b111)
-          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.add.x.vf.w vf6 vf0 vf0)
+          (.mul.x.vf.xyz acc vf5 vf7)
+          (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
           (.svf (&-> a2-2 quad) vf6)
           )
         )
@@ -2022,9 +1960,9 @@ If the player is too far, play a warning speech."
             )
           (.lvf vf4 (&-> a0-6 quad))
           )
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> v1-12 quad) vf6)
         )
       )

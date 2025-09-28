@@ -1,0 +1,11 @@
+("TEMC.DGO"
+ ("tpage-2620.go"
+  "tpage-2706.go"
+  "tpage-2626.go"
+  "tpage-2627.go"
+  "tpage-2692.go"
+  "tpage-3041.go"
+  "tpl-symbol-ag.go"
+  "tpl-banner-b-ag.go"
+  "templec-vis.go"
+ ))

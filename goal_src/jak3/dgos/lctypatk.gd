@@ -1,0 +1,13 @@
+("LCTYPATK.DGO"
+ ("h-torpedo.o"
+  "ctyport-attack.o"
+  "ctyport-attack-bbush.o"
+  "jak-pidax+0-ag.go"
+  "tpage-1523.go"
+  "tpage-1899.go"
+  "krimson-wall-break-ag.go"
+  "cty-port-mine-ag.go"
+  "ctyport-mine-ag.go"
+  "cty-dax-missile-ag.go"
+  "lctypatk.go"
+ ))

@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: dma-bucket.gc
-;; name in dgo: dma-bucket
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/dma/dma-buffer.gc")
 
 ;; A dma-bucket is used to organize dma data.
 ;; When an object is drawn, it may add data to multiple buckets.
@@ -34,29 +32,21 @@
   "Add count buckets. Each bucket is initialized as empty and won't transfer anything."
   (let* ((initial-bucket (the-as dma-bucket (-> dma-buf base)))
          (current-bucket initial-bucket))
-
-  ;;(let ((current-bucket (the-as dma-bucket (-> dma-buf base))))
+    ;;(let ((current-bucket (the-as dma-bucket (-> dma-buf base))))
     (dotimes (i count)
       ;; set the DMA tag to next, with a qwc of zero.
       ;; the address is set to the next bucket.
       ;; By default, this will do no transfer and just move on in the dma-buf.
       ;; Data will be added to the bucket later.
       (set! (-> current-bucket tag)
-            (new 'static 'dma-tag
-                 :id (dma-tag-id next)
-                 :addr (the-as int (&+ (the-as pointer current-bucket) 16))
-                 )
-            )
+            (new 'static 'dma-tag :id (dma-tag-id next) :addr (the-as int (&+ (the-as pointer current-bucket) 16))))
       ;; Set the last pointer to point to this tag (this lives in the 8 byte gap)
       (set! (-> current-bucket last) (the-as (pointer dma-tag) current-bucket))
       ;; Advance to next bucket.
-      (&+! current-bucket 16)
-      )
+      (&+! current-bucket 16))
     ;; update base ptr of dma-buffer to point after the buckets.
     (set! (-> dma-buf base) (the-as pointer current-bucket))
-    (the (inline-array dma-bucket) initial-bucket)
-    )
-  )
+    (the (inline-array dma-bucket) initial-bucket)))
 
 (defun dma-buffer-patch-buckets ((bucket (inline-array dma-bucket)) (count int))
   "After adding all data to buckets, call this to stitch together the chains for
@@ -68,11 +58,8 @@
       ;; clear last pointer.
       (set! (-> bucket 0 last) (the-as (pointer dma-tag) 0))
       ;; next bucket
-      (set! bucket (the-as (inline-array dma-bucket) (-> bucket 1)))
-      )
-    )
-  bucket
-  )
+      (set! bucket (the-as (inline-array dma-bucket) (-> bucket 1)))))
+  bucket)
 
 (defun dma-bucket-insert-tag ((base (inline-array dma-bucket)) (idx bucket-id) (tag-start pointer) (tag-end (pointer dma-tag)))
   "Add a DMA chain to the bucket"
@@ -82,8 +69,5 @@
     ;; this is abusing the dma-bucket type to set the "addr" field of the dma-tag.
     (set! (-> (the-as dma-bucket (-> bucket last)) next) (the-as uint tag-start))
     ;; remember this as the last tag in the bucket.
-    (set! (-> bucket last) tag-end)
-    )
-  tag-start
-  )
-
+    (set! (-> bucket last) tag-end))
+  tag-start)

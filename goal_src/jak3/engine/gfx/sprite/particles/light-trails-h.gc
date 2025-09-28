@@ -5,5 +5,245 @@
 ;; name in dgo: light-trails-h
 ;; dgos: GAME
 
+(defenum lie-mode
+  :type uint64
+  (appearance0)
+  (appearance1)
+  (appearance2)
+  (use-two-strips 3)
+  )
+
+(defenum light-trail-decision
+  :type uint64
+  (added 0)
+  (not-added 1)
+  (reset 2)
+  )
+
 ;; DECOMP BEGINS
 
+(deftype color-array (inline-array-class)
+  ((data  rgbaf  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> color-array heap-base) (the-as uint 16))
+
+(deftype light-trail-composition (structure)
+  ((color-mode         uint64)
+   (color-curve        curve-color-piecewise)
+   (color-repeat-dist  float)
+   (alpha-1-mode       uint64)
+   (alpha-2-mode       uint64)
+   (base-alpha         float)
+   (alpha-curve-1      curve2d-piecewise)
+   (alpha-curve-2      curve2d-piecewise)
+   (alpha-repeat-dist  float)
+   (width-mode         uint64)
+   (base-width         float)
+   (width-curve        curve2d-piecewise)
+   (width-repeat-dist  float)
+   (uv-mode            uint64)
+   (uv-repeat-dist     float)
+   (max-age            time-frame)
+   (tex-id             texture-id)
+   (lie-mode           lie-mode)
+   (lie-vector         vector  :inline)
+   (zbuffer?           symbol)
+   (use-tape-mode?     symbol)
+   (blend-mode         uint64)
+   (frame-stagger      uint8)
+   )
+  )
+
+
+(deftype light-trail-breadcrumb (structure)
+  ((pos         vector  :inline)
+   (birth-time  uint32  :overlay-at (-> pos data 3))
+   )
+  )
+
+
+(deftype breadcrumb-array (inline-array-class)
+  ((data  light-trail-breadcrumb  :dynamic)
+   )
+  )
+
+
+(set! (-> breadcrumb-array heap-base) (the-as uint 16))
+
+(deftype light-trail (basic)
+  ((crumb-array              (array uint8))
+   (crumb-size               uint8)
+   (crumb-count              int16)
+   (max-crumb-count          int16)
+   (appearance               light-trail-composition)
+   (start-marker             uint64)
+   (end-marker               uint64)
+   (decision                 light-trail-decision)
+   (total-distance-traveled  float)
+   (strip                    prim-strip)
+   (strip2                   prim-strip)
+   (cache-vector             vector  4 :inline)
+   )
+  (:methods
+    (setup! (_type_ light-trail-composition int) none)
+    (reset! (_type_) none)
+    (add-crumb! (_type_ vector time-frame) int)
+    (build-prim-strip! (_type_) none)
+    (common-trans! (_type_) int)
+    (expire-old-points! (_type_) none)
+    (light-trail-method-15 (_type_) none)
+    (add-vert-to-prim-strip! (_type_ prim-strip vector rgba float float) none)
+    (add-tri-pair-to-prim! (_type_ vector rgba float vector float) symbol)
+    (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none)
+    (crumb-age-out-callback (_type_ float int) none)
+    (reset-crumbs! (_type_) none)
+    (replace-last-crumb! (_type_ vector) none)
+    )
+  )
+
+
+(deftype weapon-trail-crumb (light-trail-breadcrumb)
+  ((offset  vector  :inline)
+   )
+  )
+
+
+(deftype weapon-trail (light-trail)
+  ()
+  (:methods
+    (add-crumb-with-offset (_type_ vector vector) light-trail-breadcrumb)
+    (weapon-trail-method-23 (_type_ vector vector) none)
+    )
+  )
+
+
+(deftype tread-trail-crumb (light-trail-breadcrumb)
+  ((normal  vector  :inline)
+   )
+  )
+
+
+(deftype tread-trail (light-trail)
+  ()
+  (:methods
+    (add-crumb-with-offset (_type_ vector vector) none)
+    (tread-trail-method-23 (_type_ vector vector) none)
+    )
+  )
+
+
+(deftype light-trail-tracker-spawn-params (structure)
+  ((appearance          light-trail-composition)
+   (max-num-crumbs      int32)
+   (tracked-obj         handle)
+   (track-immediately?  symbol)
+   )
+  )
+
+
+(deftype weapon-trail-tracker-spawn-params (light-trail-tracker-spawn-params)
+  ((joint0  int16)
+   (joint1  int16)
+   )
+  )
+
+
+(deftype light-trail-tracker (process)
+  ((trail                 light-trail)
+   (tracked-object        handle)
+   (offscreen?            symbol)
+   (offscreen-start-time  time-frame)
+   (next-line-check-time  time-frame)
+   (last-add-frame-val    uint32)
+   )
+  (:state-methods
+    tracking
+    die
+    )
+  (:methods
+    (get-tracked-object-pos (_type_ process-focusable vector) vector)
+    (should-track? (_type_ process-focusable) symbol)
+    (should-end? (_type_ process-focusable) symbol)
+    (should-draw? (_type_) symbol)
+    (add-crumb! (_type_ vector) none)
+    )
+  )
+
+
+(deftype weapon-trail-tracker (light-trail-tracker)
+  ((trail       weapon-trail :override)
+   (joint0      int16)
+   (joint1      int16)
+   (state-time  time-frame)
+   )
+  (:state-methods
+    hang-on
+    )
+  )
+
+
+(deftype tread-trail-tracker (light-trail-tracker)
+  ((trail  tread-trail :override)
+   )
+  )
+
+
+(defbehavior light-trail-tracker-init-by-other light-trail-tracker ((arg0 light-trail-tracker-spawn-params))
+  (stack-size-set! (-> self main-thread) 32)
+  (set! (-> self tracked-object) (-> arg0 tracked-obj))
+  (set! (-> self trail) (new 'process 'light-trail))
+  (set! (-> self next-line-check-time) 0)
+  (set! (-> self last-add-frame-val) (the-as uint 0))
+  (set! (-> self offscreen?) #f)
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (when (-> arg0 track-immediately?)
+    (let ((gp-1 (handle->process (-> self tracked-object))))
+      (if (should-track? self (the-as process-focusable gp-1))
+          (add-crumb!
+            (-> self trail)
+            (get-tracked-object-pos self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
+            (seconds 10000)
+            )
+          )
+      )
+    )
+  (go-virtual tracking)
+  )
+
+(defbehavior weapon-trail-tracker-init-by-other weapon-trail-tracker ((arg0 weapon-trail-tracker-spawn-params))
+  (set! (-> self tracked-object) (-> arg0 tracked-obj))
+  (set! (-> self trail) (new 'process 'weapon-trail))
+  (set! (-> self next-line-check-time) 0)
+  (set! (-> self last-add-frame-val) (the-as uint 0))
+  (set! (-> self joint0) (-> arg0 joint0))
+  (set! (-> self joint1) (-> arg0 joint1))
+  (set! (-> self offscreen?) #f)
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (go-virtual tracking)
+  )
+
+(defbehavior tread-trail-tracker-init-by-other tread-trail-tracker ((arg0 light-trail-tracker-spawn-params))
+  (set! (-> self tracked-object) (-> arg0 tracked-obj))
+  (set! (-> self trail) (new 'process 'tread-trail))
+  (set! (-> self offscreen?) #f)
+  (set! (-> self next-line-check-time) 0)
+  (set! (-> self last-add-frame-val) (the-as uint 0))
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (go-virtual tracking)
+  )
+
+(deftype light-trail-tracker-water (light-trail-tracker)
+  ()
+  )
+
+
+(deftype light-trail-tracker-projectile (light-trail-tracker)
+  ((state-time  time-frame)
+   )
+  (:state-methods
+    hang-on
+    )
+  )

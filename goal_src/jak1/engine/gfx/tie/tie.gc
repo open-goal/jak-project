@@ -1,10 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: tie.gc
-;; name in dgo: tie
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/game/main-h.gc")
+(require "engine/gfx/tie/tie-h.gc")
+(require "engine/anim/joint.gc")
 
 ;; TIE
 ;;  tesselating fragment instance engine
@@ -13,7 +12,6 @@
 ;; TIE has the following features:
 ;; - instanced rendering (you can draw the same thing multiple times!)
 ;; - time of day lighting (believed to be slightly different in implementation than tfrag)
-
 
 ;; Background elements that use the GENERIC render will store their data in tie-fragments.
 ;; The exact procedure for GENERIC through TIE is unknown.
@@ -29,38 +27,30 @@
 
 (defmethod login ((this tie-fragment))
   "Initialize the shaders for a tie-fragment"
-  
   ;; the gif data is just adgif shaders, each are 5 qw's
   (let ((s5-0 (-> this gif-ref))
-        (s4-0 (/ (-> this tex-count) (the-as uint 5)))
-        )
+        (s4-0 (/ (-> this tex-count) (the-as uint 5))))
     (dotimes (s3-0 (the-as int s4-0))
       ;; will modify the adgif-shaders in place to have the appropriate tbp.
-      (adgif-shader-login-no-remap (-> s5-0 s3-0))
-      )
-    )
-  this
-  )
+      (adgif-shader-login-no-remap (-> s5-0 s3-0))))
+  this)
 
-(defmethod inspect drawable-inline-array-instance-tie ((this drawable-inline-array-instance-tie))
+(defmethod inspect ((this drawable-inline-array-instance-tie))
   "Inspect an array of instances"
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
-    )
-  this
-  )
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  this)
 
 (defmethod asize-of ((this drawable-inline-array-instance-tie))
   "Compute the size in memory of an array of instances."
-  (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64)))
-  )
+  (the-as int (+ (-> drawable-inline-array-instance-tie size) (* (+ (-> this length) -1) 64))))
 
 #|
 ;; for some reason, this showed up twice.
-(defmethod login drawable-tree-instance-tie ((this drawable-tree-instance-tie))
+(defmethod login ((this drawable-tree-instance-tie))
 this
 )
 |#
@@ -69,50 +59,37 @@ this
   "Login method for the tie instance tree."
   ;; just log in all of the drawables.
   (dotimes (s5-0 (-> this length))
-    (login (-> this data s5-0))
-    )
-  (the-as drawable-tree-instance-tie #f)
-  )
+    (login (-> this data s5-0)))
+  (the-as drawable-tree-instance-tie #f))
 
-(defmethod inspect prototype-tie ((this prototype-tie))
+(defmethod inspect ((this prototype-tie))
   "Inspect the inline-array of tie"
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   ;; print each fragment
   (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
-    )
-  this
-  )
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  this)
 
 (defmethod login ((this prototype-tie))
   "Login each tie-fragment."
   (dotimes (s5-0 (-> this length))
-    (login (-> this data s5-0))
-    )
-  this
-  )
+    (login (-> this data s5-0)))
+  this)
 
 (defmethod mem-usage ((this drawable-tree-instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute memory usage for a drawable tree of TIE instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
-  (let ((v1-7 32))
-    (+! (-> arg0 data 0 used) v1-7)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
-    )
-  
+  (let ((v1-7 32)) (+! (-> arg0 data 0 used) v1-7) (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15))))
   ;; do our drawables
   (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1)
-    )
-  
+    (mem-usage (-> this data s3-0) arg0 arg1))
   ;; do our prototypes, but with a flag set!
   (mem-usage (-> this prototypes prototype-array-tie) arg0 (logior arg1 1))
-  this
-  )
+  this)
 
 (defmethod mem-usage ((this tie-fragment) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a TIE prototype."
@@ -121,27 +98,15 @@ this
     (let ((v1-3 (* (-> this color-count) 4))
           ;; pick one of the instance color categories.
           (a0-2 (cond
-                  ((logtest? arg1 4)
-                   20
-                   )
-                  ((logtest? arg1 8)
-                   21
-                   )
-                  (else
-                    22
-                    )
-                  )
-                )
-          )
+                  ((logtest? arg1 4) 20)
+                  ((logtest? arg1 8) 21)
+                  (else 22))))
       (+! (-> arg0 data a0-2 count) 1)
       (+! (-> arg0 data a0-2 used) v1-3)
-      (+! (-> arg0 data a0-2 total) (logand -4 (+ v1-3 3)))
-      )
+      (+! (-> arg0 data a0-2 total) (logand -4 (+ v1-3 3))))
     (set! (-> arg0 length) (max 23 (-> arg0 length)))
     (set! this this)
-    (goto cfg-13)
-    )
-  
+    (goto cfg-13))
   ;; not an instance, count the memory of the prototype.
   (set! (-> arg0 length) (max 18 (-> arg0 length)))
   (set! (-> arg0 data 9 name) "tie-fragment")
@@ -152,52 +117,38 @@ this
   (set! (-> arg0 data 13 name) "tie-draw-points")
   (set! (-> arg0 data 17 name) "tie-generic")
   (+! (-> arg0 data 9 count) 1)
-  (let ((v1-21 (asize-of this)))
-    (+! (-> arg0 data 9 used) v1-21)
-    (+! (-> arg0 data 9 total) (logand -16 (+ v1-21 15)))
-    )
+  (let ((v1-21 (asize-of this))) (+! (-> arg0 data 9 used) v1-21) (+! (-> arg0 data 9 total) (logand -16 (+ v1-21 15))))
   (let ((v1-26 (* (-> this gif-count) 16)))
     (+! (-> arg0 data 10 count) (-> this tex-count))
     (+! (-> arg0 data 10 used) v1-26)
-    (+! (-> arg0 data 10 total) (logand -16 (+ v1-26 15)))
-    )
+    (+! (-> arg0 data 10 total) (logand -16 (+ v1-26 15))))
   (let ((v1-31 (* (-> this vertex-count) 16)))
     (+! (-> arg0 data 11 count) (-> this vertex-count))
     (+! (-> arg0 data 11 used) v1-31)
-    (+! (-> arg0 data 11 total) (logand -16 (+ v1-31 15)))
-    )
+    (+! (-> arg0 data 11 total) (logand -16 (+ v1-31 15))))
   (let ((v1-36 (* (-> this dp-qwc) 16)))
     (+! (-> arg0 data 13 count) (* (-> this dp-qwc) 16))
     (+! (-> arg0 data 13 used) v1-36)
-    (+! (-> arg0 data 13 total) (logand -16 (+ v1-36 15)))
-    )
+    (+! (-> arg0 data 13 total) (logand -16 (+ v1-36 15))))
   (let ((v1-41 (* (-> this generic-count) 16)))
     (+! (-> arg0 data 17 count) 1)
     (+! (-> arg0 data 17 used) v1-41)
-    (+! (-> arg0 data 17 total) (logand -16 (+ v1-41 15)))
-    )
+    (+! (-> arg0 data 17 total) (logand -16 (+ v1-41 15))))
   (when (nonzero? (-> this debug-lines))
     (dotimes (s4-0 (-> this debug-lines length))
       (+! (-> arg0 data 14 count) (-> (the-as (pointer int32) (-> this debug-lines s4-0)) 0))
       (let ((v1-52 (asize-of (the-as basic (-> this debug-lines s4-0)))))
         (+! (-> arg0 data 12 used) v1-52)
-        (+! (-> arg0 data 12 total) (logand -16 (+ v1-52 15)))
-        )
-      )
-    )
+        (+! (-> arg0 data 12 total) (logand -16 (+ v1-52 15))))))
   (label cfg-13)
-  this
-  )
+  this)
 
 (defmethod mem-usage ((this instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of TIE instance."
   (set! (-> arg0 length) (max 19 (-> arg0 length)))
   (set! (-> arg0 data 18 name) "instance-tie")
   (+! (-> arg0 data 18 count) 1)
-  (let ((v1-6 (asize-of this)))
-    (+! (-> arg0 data 18 used) v1-6)
-    (+! (-> arg0 data 18 total) (logand -16 (+ v1-6 15)))
-    )
+  (let ((v1-6 (asize-of this))) (+! (-> arg0 data 18 used) v1-6) (+! (-> arg0 data 18 total) (logand -16 (+ v1-6 15))))
   (when (nonzero? (-> this error))
     (set! (-> arg0 length) (max 24 (-> arg0 length)))
     (set! (-> arg0 data 23 name) "instance-tie-colors*")
@@ -209,68 +160,48 @@ this
     (let ((s3-0 (-> this bucket-ptr)))
       ;; unused
       (+ (-> arg0 data 19 used) (-> arg0 data 20 used) (-> arg0 data 21 used) (-> arg0 data 22 used))
-      
       ;; loop over all 4 possible geometries
       (dotimes (s2-0 4)
         (let ((a0-10 (-> s3-0 geometry-override s2-0)))
           (when (nonzero? a0-10) ;; only if we actually have it.
-            (mem-usage a0-10 arg0 
+            (mem-usage a0-10
+                       arg0
                        (logior (logior (cond ;; based on which geom we are, pick the right color bucket.
                                          ((= s2-0 1) 4)
                                          ((= s2-0 2) 8)
                                          ((= s2-0 3) 16)
-                                         (else 0)
-                                         )
+                                         (else 0))
                                        2 ;; set so we count it as an instance of a prototype.
                                        )
-                               arg1
-                               )
-                       )
-            )
-          )
-        )
-      )
-    )
-  this
-  )
+                               arg1)))))))
+  this)
 
 (defmethod mem-usage ((this drawable-inline-array-instance-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of an entire array of instances"
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
-  (let ((v1-7 32))
-    (+! (-> arg0 data 0 used) v1-7)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
-    )
+  (let ((v1-7 32)) (+! (-> arg0 data 0 used) v1-7) (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15))))
   ;; just call mem-usage on every element.
   (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1)
-    )
-  this
-  )
+    (mem-usage (-> this data s3-0) arg0 arg1))
+  this)
 
 (defmethod mem-usage ((this prototype-tie) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of an entire array of prototypes."
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
-  (let ((v1-7 32))
-    (+! (-> arg0 data 0 used) v1-7)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
-    )
+  (let ((v1-7 32)) (+! (-> arg0 data 0 used) v1-7) (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15))))
   ;; just call mem-usage on each.
   (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1)
-    )
-  this
-  )
+    (mem-usage (-> this data s3-0) arg0 arg1))
+  this)
 
 (defmethod asize-of ((this prototype-tie))
   "Compute the size in memory of a prototype array"
   ;; 64 bytes/fragment, minus 1 in the type.
-  (the-as int (+ (-> prototype-tie size) (* (+ (-> this length) -1) 64)))
-  )
+  (the-as int (+ (-> prototype-tie size) (* (+ (-> this length) -1) 64))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TIE Renderer
@@ -278,21 +209,20 @@ this
 
 ;; these constants are uploaded to the VU once per frame.
 (deftype tie-consts (structure)
-  ((data       uint32      24)
-   (vector     vector      6 :inline :overlay-at (-> data 0))
-   (quads      uint128     6         :overlay-at (-> data 0))
-   (adgif      gs-gif-tag  :inline   :overlay-at (-> data 0))
-   (strgif     gs-gif-tag  :inline   :overlay-at (-> data 4))
-   (extra      vector      :inline   :overlay-at (-> data 8))
-   (gifbufs    vector      :inline   :overlay-at (-> data 12))
-   (clrbufs    qword       :inline   :overlay-at (-> data 16))
-   (misc       qword       :inline   :overlay-at (-> data 20))
-   (atestgif   gs-gif-tag  :inline   :offset  96)
-   (atest      ad-cmd      2 :inline :offset 112)
-   (atest-tra  ad-cmd      :inline   :overlay-at (-> atest 0))
-   (atest-def  ad-cmd      :inline   :overlay-at (-> atest 1))
-   )
-  )
+  ((data      uint32 24)
+   (vector    vector 6 :inline :overlay-at (-> data 0))
+   (quads     uint128 6 :overlay-at (-> data 0))
+   (adgif     gs-gif-tag :inline :overlay-at (-> data 0))
+   (strgif    gs-gif-tag :inline :overlay-at (-> data 4))
+   (extra     vector :inline :overlay-at (-> data 8))
+   (gifbufs   vector :inline :overlay-at (-> data 12))
+   (clrbufs   qword :inline :overlay-at (-> data 16))
+   (misc      qword :inline :overlay-at (-> data 20))
+   (atestgif  gs-gif-tag :inline :offset 96)
+   (atest     ad-cmd 2 :inline :offset 112)
+   (atest-tra ad-cmd :inline :overlay-at (-> atest 0))
+   (atest-def ad-cmd :inline :overlay-at (-> atest 1))))
+
 ;; definition for symbol tie-vu1-block, type vu-function
 (define tie-vu1-block (new 'static 'vu-function :length 0 :qlength 0)) ;; was 0x3e1, 0x1f1
 
@@ -300,166 +230,123 @@ this
 ;; INFO: Return type mismatch int vs none.
 (defun tie-init-consts ((arg0 tie-consts) (arg1 int))
   "Initialize TIE constants. arg1 enables alpha blending"
-  
   ;; set the adgif shader tag (just 5x a+d's)
   (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
   (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  
   ;; based on the menu drawing mode, create the template tag for geometry.
   (cond
     ((zero? *subdivide-draw-mode*) ;; normal textured
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
-             :pre #x1
-             :nreg #x3
-             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-             )
-           )
-     )
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :nreg #x3
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
     ((= *subdivide-draw-mode* 3) ;; "hack". same as normal.
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
-             :pre #x1
-             :nreg #x3
-             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-             )
-           )
-     )
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :nreg #x3
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
     ((= *subdivide-draw-mode* 1) ;; outline (wireframe). just switch to line-strip
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
-             :pre #x1
-             :nreg #x3
-             :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe arg1)
-             )
-           )
-     )
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :nreg #x3
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe arg1))))
     ((= *subdivide-draw-mode* 2) ;; gouraud - turn off tme.
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
-             :pre #x1
-             :nreg #x3
-             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)
-             )
-           )
-     )
-    )
-  
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :nreg #x3
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)))))
   ;; the main drawing tag: st, rgbaq, xyzf per vertex (same in all draws modes)
   (set! (-> arg0 strgif regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-        )
-  
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
   ;; some magic constants
   (let ((f1-0 8388894.0)
         (f2-0 8389078.0)
-        (f0-0 8389262.0)
-        )
+        (f0-0 8389262.0))
     (set! (-> arg0 gifbufs x) f0-0)
     (set! (-> arg0 gifbufs y) f2-0)
     (set! (-> arg0 gifbufs z) f0-0)
     (set! (-> arg0 gifbufs w) f2-0)
     (set! (-> arg0 extra x) (+ f1-0 f2-0 f0-0))
     (set! (-> arg0 extra y) 0.0)
-    (set! (-> arg0 extra z) (+ f1-0 f2-0 f0-0))
-    )
+    (set! (-> arg0 extra z) (+ f1-0 f2-0 f0-0)))
   (set! (-> arg0 clrbufs vector4w x) 198)
   (set! (-> arg0 clrbufs vector4w y) 242)
   (set! (-> arg0 clrbufs vector4w z) 198)
   (set! (-> arg0 clrbufs vector4w w) 242)
-  
   ;; looks like tie can toggle on and off alpha testing during the draw
   ;; tra = transparent, def = default?
   (set! (-> arg0 atestgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
   (set! (-> arg0 atestgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   (set! (-> arg0 atest-tra cmd) (gs-reg test-1))
   (set! (-> arg0 atest-tra data)
-        (the uint 
-             (new 'static 'gs-test
-                  :ate #x1
-                  :atst (gs-atest greater-equal)
-                  :aref #x26
-                  :zte #x1
-                  :ztst (gs-ztest greater-equal)
-                  )
-             )
-        )
+        (the uint
+             (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))))
   (set! (-> arg0 atest-def cmd) (gs-reg test-1))
   (set! (-> arg0 atest-def data)
-        (the uint (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal)))
-        )
-  
+        (the uint (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal))))
   ;; more magic constants
   (set! (-> arg0 misc vector4w x) 0)
   (set! (-> arg0 misc vector4w y) -1)
-  (none)
-  )
+  (none))
 
 (defun tie-init-engine ((arg0 dma-buffer) (arg1 gs-test) (arg2 int))
   "Set up tie initialization DMA in the given buffer. arg2 picks abe."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
     ;; add the tie code
     (dma-buffer-add-vu-function arg0 tie-vu1-block 1)
-    
     ;; set up the given gs-test register
     (let* ((v1-3 arg0)
-           (a0-2 (the-as object (-> v1-3 base)))
-           )
+           (a0-2 (the-as object (-> v1-3 base))))
       (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
       (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag))
       (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (&+ (the-as pointer a0-2) 16))
-      )
+      (set! (-> v1-3 base) (&+ (the-as pointer a0-2) 16)))
     (let* ((v1-4 arg0)
-           (a0-4 (the-as object (-> v1-4 base)))
-           )
+           (a0-4 (the-as object (-> v1-4 base))))
       (set! (-> (the-as gs-gif-tag a0-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
       (set! (-> (the-as gs-gif-tag a0-4) regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-4 base) (the-as pointer (&+ (the-as gs-gif-tag a0-4) 16)))
-      )
+      (set! (-> v1-4 base) (the-as pointer (&+ (the-as gs-gif-tag a0-4) 16))))
     (let* ((v1-5 arg0)
-           (a0-6 (-> v1-5 base))
-           )
+           (a0-6 (-> v1-5 base)))
       (set! (-> (the-as (pointer gs-test) a0-6) 0) arg1)
       (set! (-> (the-as (pointer gs-reg64) a0-6) 1) (gs-reg64 test-1))
-      (set! (-> v1-5 base) (&+ a0-6 16))
-      )
-
+      (set! (-> v1-5 base) (&+ a0-6 16)))
     ;; set up the tie constants
     (let ((s4-1 9))
       (let* ((v1-6 arg0)
-             (a0-8 (the-as object (-> v1-6 base)))
-             )
+             (a0-8 (the-as object (-> v1-6 base))))
         (set! (-> (the-as dma-packet a0-8) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc s4-1))
         (set! (-> (the-as dma-packet a0-8) vif0) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-        (set! (-> (the-as dma-packet a0-8) vif1)
-              (new 'static 'vif-tag :imm #x3c6 :cmd (vif-cmd unpack-v4-32) :num s4-1)
-              )
-        (set! (-> v1-6 base) (&+ (the-as pointer a0-8) 16))
-        )
+        (set! (-> (the-as dma-packet a0-8) vif1) (new 'static 'vif-tag :imm #x3c6 :cmd (vif-cmd unpack-v4-32) :num s4-1))
+        (set! (-> v1-6 base) (&+ (the-as pointer a0-8) 16)))
       (tie-init-consts (the-as tie-consts (-> arg0 base)) arg2)
-      (&+! (-> arg0 base) (* s4-1 16))
-      )
-
+      (&+! (-> arg0 base) (* s4-1 16)))
     ;; initialize the microprogram
     (let* ((v1-9 arg0)
-           (a0-12 (the-as object (-> v1-9 base)))
-           )
+           (a0-12 (the-as object (-> v1-9 base))))
       (set! (-> (the-as dma-packet a0-12) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
       (set! (-> (the-as dma-packet a0-12) vif0) (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1))
       (set! (-> (the-as dma-packet a0-12) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-      (set! (-> v1-9 base) (&+ (the-as pointer a0-12) 16))
-      )
-    
+      (set! (-> v1-9 base) (&+ (the-as pointer a0-12) 16)))
     ;; initialize the VIF's ROW register
     (let* ((v1-10 arg0)
-           (a0-14 (the-as object (-> v1-10 base)))
-           )
+           (a0-14 (the-as object (-> v1-10 base))))
       (set! (-> (the-as dma-packet a0-14) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
       (set! (-> (the-as dma-packet a0-14) vif0) (new 'static 'vif-tag))
       (set! (-> (the-as dma-packet a0-14) vif1) (new 'static 'vif-tag :cmd (vif-cmd strow) :msk #x1))
-      (set! (-> v1-10 base) (&+ (the-as pointer a0-14) 16))
-      )
+      (set! (-> v1-10 base) (&+ (the-as pointer a0-14) 16)))
     (let ((v1-11 (the-as object (-> arg0 base))))
       ;; row contants
       (set! (-> (the-as (inline-array vector4w) v1-11) 0 x) #x4b000000)
@@ -471,57 +358,42 @@ this
       (set! (-> (the-as (pointer vif-tag) v1-11) 5) (new 'static 'vif-tag :imm #x2c :cmd (vif-cmd offset)))
       (set! (-> (the-as (pointer vif-tag) v1-11) 6) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
       (set! (-> (the-as (pointer vif-tag) v1-11) 7) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> arg0 base) (&+ (the-as pointer v1-11) 32))
-      )
-    0
-    )
+      (set! (-> arg0 base) (&+ (the-as pointer v1-11) 32)))
+    0)
   0
-  (none)
-  )
+  (none))
 
 (defun tie-end-buffer ((arg0 dma-buffer))
   "Add to dma buffer after drawing. This resets things to the usual state."
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
     (let* ((v1-3 arg0)
-           (a1-0 (the-as object (-> v1-3 base)))
-           )
+           (a1-0 (the-as object (-> v1-3 base))))
       (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
       (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag))
       (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (&+ (the-as pointer a1-0) 16))
-      )
+      (set! (-> v1-3 base) (&+ (the-as pointer a1-0) 16)))
     ;; restore the test register
     (let* ((v1-4 arg0)
-           (a1-2 (the-as object (-> v1-4 base)))
-           )
+           (a1-2 (the-as object (-> v1-4 base))))
       (set! (-> (the-as gs-gif-tag a1-2) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
       (set! (-> (the-as gs-gif-tag a1-2) regs) GIF_REGS_ALL_AD)
-      (set! (-> v1-4 base) (&+ (the-as pointer a1-2) 16))
-      )
+      (set! (-> v1-4 base) (&+ (the-as pointer a1-2) 16)))
     (let* ((v1-5 arg0)
-           (a1-4 (-> v1-5 base))
-           )
+           (a1-4 (-> v1-5 base)))
       (set! (-> (the-as (pointer gs-test) a1-4) 0)
-            (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal))
-            )
+            (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal)))
       (set! (-> (the-as (pointer gs-reg64) a1-4) 1) (gs-reg64 test-1))
-      (set! (-> v1-5 base) (&+ a1-4 16))
-      )
-    
+      (set! (-> v1-5 base) (&+ a1-4 16)))
     ;; restore the stmask register
     (let* ((v1-6 arg0)
-           (a1-6 (the-as object (-> v1-6 base)))
-           )
+           (a1-6 (the-as object (-> v1-6 base))))
       (set! (-> (the-as dma-packet a1-6) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
       (set! (-> (the-as dma-packet a1-6) vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
       (set! (-> (the-as dma-packet a1-6) vif1) (new 'static 'vif-tag))
-      (set! (-> v1-6 base) (&+ (the-as pointer a1-6) 16))
-      )
-    
+      (set! (-> v1-6 base) (&+ (the-as pointer a1-6) 16)))
     ;; this calls a TIE program that... does nothing?
     (let* ((v1-7 arg0)
-           (a0-1 (-> v1-7 base))
-           )
+           (a0-1 (-> v1-7 base)))
       ;; run the nothing program
       (set! (-> (the-as (pointer vif-tag) a0-1) 0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
       ;; reset VIF stuff we changed
@@ -533,13 +405,10 @@ this
       (set! (-> (the-as (pointer vif-tag) a0-1) 5) (new 'static 'vif-tag))
       (set! (-> (the-as (pointer vif-tag) a0-1) 6) (new 'static 'vif-tag))
       (set! (-> (the-as (pointer vif-tag) a0-1) 7) (new 'static 'vif-tag))
-      (set! (-> v1-7 base) (&+ a0-1 32))
-      )
-    0
-    )
+      (set! (-> v1-7 base) (&+ a0-1 32)))
+    0)
   0
-  (none)
-  )
+  (none))
 
 ;;;;;;;;;;;;;;;;
 ;; debug print
@@ -549,162 +418,59 @@ this
   "Convert a VU1 int register ID to the name given to it in the TIE VU1 program"
   (let ((v1-0 arg0))
     (cond
-      ((zero? v1-0)
-       "zero"
-       )
-      ((= v1-0 1)
-       "itemp"
-       )
-      ((= v1-0 2)
-       "point-ptr"
-       )
-      ((= v1-0 3)
-       "clr-ptr"
-       )
-      ((= v1-0 4)
-       "target-bp1-ptr"
-       )
-      ((= v1-0 5)
-       "skip-bp2"
-       )
-      ((= v1-0 6)
-       "target-bp2-ptr"
-       )
-      ((= v1-0 7)
-       "target-ip1-ptr"
-       )
-      ((= v1-0 8)
-       "target-ip2-ptr"
-       )
-      ((= v1-0 9)
-       "ind/ind0"
-       )
-      ((= v1-0 10)
-       "    ind1"
-       )
-      ((= v1-0 11)
-       "    ind2"
-       )
-      ((= v1-0 12)
-       "dest-ptr"
-       )
-      ((= v1-0 13)
-       "dest2-ptr"
-       )
-      ((= v1-0 14)
-       "skip-ips"
-       )
-      ((= v1-0 15)
-       "kick-addr"
-       )
-      )
-    )
-  )
+      ((zero? v1-0) "zero")
+      ((= v1-0 1) "itemp")
+      ((= v1-0 2) "point-ptr")
+      ((= v1-0 3) "clr-ptr")
+      ((= v1-0 4) "target-bp1-ptr")
+      ((= v1-0 5) "skip-bp2")
+      ((= v1-0 6) "target-bp2-ptr")
+      ((= v1-0 7) "target-ip1-ptr")
+      ((= v1-0 8) "target-ip2-ptr")
+      ((= v1-0 9) "ind/ind0")
+      ((= v1-0 10) "    ind1")
+      ((= v1-0 11) "    ind2")
+      ((= v1-0 12) "dest-ptr")
+      ((= v1-0 13) "dest2-ptr")
+      ((= v1-0 14) "skip-ips")
+      ((= v1-0 15) "kick-addr"))))
 
 (defun-debug tie-float-reg ((arg0 int))
   "Convert a VU1 float register ID to the name given to it in the TIE VU1 program"
   (let ((v1-0 arg0))
     (cond
-      ((zero? v1-0)
-       "zero"
-       )
-      ((= v1-0 1)
-       "t-mtx0"
-       )
-      ((= v1-0 2)
-       "t-mtx1"
-       )
-      ((= v1-0 3)
-       "t-mtx2"
-       )
-      ((= v1-0 4)
-       "t-mtx3"
-       )
-      ((= v1-0 5)
-       "vtx-0"
-       )
-      ((= v1-0 6)
-       "vtx-1"
-       )
-      ((= v1-0 7)
-       "vtx-2"
-       )
-      ((= v1-0 8)
-       "vtx-3"
-       )
-      ((= v1-0 9)
-       "pos-0/2"
-       )
-      ((= v1-0 10)
-       "pos-1/3"
-       )
-      ((= v1-0 11)
-       "clr-0"
-       )
-      ((= v1-0 12)
-       "clr-1"
-       )
-      ((= v1-0 13)
-       "clr-2"
-       )
-      ((= v1-0 14)
-       "clr-3"
-       )
-      ((= v1-0 15)
-       "tex-0"
-       )
-      ((= v1-0 16)
-       "tex-1"
-       )
-      ((= v1-0 17)
-       "tex-2"
-       )
-      ((= v1-0 18)
-       "tex-3"
-       )
-      ((= v1-0 19)
-       "res-0/2"
-       )
-      ((= v1-0 20)
-       "res-1/3"
-       )
-      ((= v1-0 21)
-       "gifbuf"
-       )
-      ((= v1-0 22)
-       "clrbuf"
-       )
-      ((= v1-0 23)
-       "extra"
-       )
-      ((= v1-0 24)
-       "inds"
-       )
-      ((= v1-0 25)
-       "--"
-       )
-      ((= v1-0 26)
-       "--"
-       )
-      ((= v1-0 27)
-       "morph"
-       )
-      ((= v1-0 28)
-       "xyzofs"
-       )
-      ((= v1-0 29)
-       "clr1"
-       )
-      ((= v1-0 30)
-       "clr2"
-       )
-      ((= v1-0 31)
-       "--"
-       )
-      )
-    )
-  )
-
+      ((zero? v1-0) "zero")
+      ((= v1-0 1) "t-mtx0")
+      ((= v1-0 2) "t-mtx1")
+      ((= v1-0 3) "t-mtx2")
+      ((= v1-0 4) "t-mtx3")
+      ((= v1-0 5) "vtx-0")
+      ((= v1-0 6) "vtx-1")
+      ((= v1-0 7) "vtx-2")
+      ((= v1-0 8) "vtx-3")
+      ((= v1-0 9) "pos-0/2")
+      ((= v1-0 10) "pos-1/3")
+      ((= v1-0 11) "clr-0")
+      ((= v1-0 12) "clr-1")
+      ((= v1-0 13) "clr-2")
+      ((= v1-0 14) "clr-3")
+      ((= v1-0 15) "tex-0")
+      ((= v1-0 16) "tex-1")
+      ((= v1-0 17) "tex-2")
+      ((= v1-0 18) "tex-3")
+      ((= v1-0 19) "res-0/2")
+      ((= v1-0 20) "res-1/3")
+      ((= v1-0 21) "gifbuf")
+      ((= v1-0 22) "clrbuf")
+      ((= v1-0 23) "extra")
+      ((= v1-0 24) "inds")
+      ((= v1-0 25) "--")
+      ((= v1-0 26) "--")
+      ((= v1-0 27) "morph")
+      ((= v1-0 28) "xyzofs")
+      ((= v1-0 29) "clr1")
+      ((= v1-0 30) "clr2")
+      ((= v1-0 31) "--"))))
 
 ;; NOTE: these dump programs rely on a not-present function that stashes the register values
 ;; at the top of the VU memory.
@@ -714,55 +480,35 @@ this
   (local-vars (sv-16 uint))
   (let ((gp-0 (the-as (pointer uint32) (+ #x3fa0 #x1100c000))))
     (dotimes (s5-0 16)
-      (if (< s5-0 10)
-          (format 0 " ")
-          )
+      (if (< s5-0 10) (format 0 " "))
       (let ((s4-0 format)
             (s3-0 0)
             (s2-0 "vi~d: ~6d #x~4,'0X ~s~%")
             (s1-0 s5-0)
-            (s0-0 (-> gp-0 (* s5-0 4)))
-            )
+            (s0-0 (-> gp-0 (* s5-0 4))))
         (set! sv-16 (-> gp-0 (* s5-0 4)))
-        (let ((t1-0 (tie-int-reg s5-0)))
-          (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 t1-0)
-          )
-        )
-      )
-    )
-  (none)
-  )
+        (let ((t1-0 (tie-int-reg s5-0))) (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 t1-0)))))
+  (none))
 
 (defun-debug tie-floats ()
   "Dump the VU1 float registers to stdout."
   (local-vars (sv-16 uint) (sv-32 uint))
   (let ((gp-0 (the-as (pointer uint32) (+ #x3da0 #x1100c000))))
     (dotimes (s5-0 32)
-      (if (< s5-0 10)
-          (format 0 " ")
-          )
-      (format
-        0
-        "vf~d: #x~8,'0X #x~8,'0X #x~8,'0X #x~8,'0X "
-        s5-0
-        (-> gp-0 (* s5-0 4))
-        (-> gp-0 (+ (* s5-0 4) 1))
-        (-> gp-0 (+ (* s5-0 4) 2))
-        (-> gp-0 (+ (* s5-0 4) 3))
-        )
+      (if (< s5-0 10) (format 0 " "))
+      (format 0
+              "vf~d: #x~8,'0X #x~8,'0X #x~8,'0X #x~8,'0X "
+              s5-0
+              (-> gp-0 (* s5-0 4))
+              (-> gp-0 (+ (* s5-0 4) 1))
+              (-> gp-0 (+ (* s5-0 4) 2))
+              (-> gp-0 (+ (* s5-0 4) 3)))
       (let ((s4-0 format)
             (s3-0 0)
             (s2-0 "~F ~F ~F ~F ~s~%")
             (s1-0 (-> gp-0 (* s5-0 4)))
-            (s0-0 (-> gp-0 (+ (* s5-0 4) 1)))
-            )
+            (s0-0 (-> gp-0 (+ (* s5-0 4) 1))))
         (set! sv-16 (-> gp-0 (+ (* s5-0 4) 2)))
         (set! sv-32 (-> gp-0 (+ (* s5-0 4) 3)))
-        (let ((t2-1 (tie-float-reg s5-0)))
-          (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 sv-32 t2-1)
-          )
-        )
-      )
-    )
-  (none)
-  )
+        (let ((t2-1 (tie-float-reg s5-0))) (s4-0 s3-0 s2-0 s1-0 s0-0 sv-16 sv-32 t2-1)))))
+  (none))

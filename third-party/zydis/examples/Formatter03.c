@@ -71,16 +71,15 @@ static void DisassembleBuffer(ZydisDecoder* decoder, ZyanU8* data, ZyanUSize len
     ZyanU64 runtime_address = 0x007FFFFFFF400000;
 
     ZydisDecodedInstruction instruction;
-    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
     char buffer[256];
 
-    while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(decoder, data, length, &instruction, operands,
-        ZYDIS_MAX_OPERAND_COUNT_VISIBLE, ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY)))
+    while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(decoder, data, length, &instruction, operands)))
     {
         const ZydisFormatterToken* token;
         if (ZYAN_SUCCESS(ZydisFormatterTokenizeInstruction(&formatter, &instruction, operands,
             instruction.operand_count_visible , &buffer[0], sizeof(buffer), runtime_address,
-            &token)))
+            &token, ZYAN_NULL)))
         {
             ZydisTokenType token_type;
             ZyanConstCharPointer token_value = ZYAN_NULL;

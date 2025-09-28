@@ -5,5 +5,46 @@
 ;; name in dgo: pov-camera-h
 ;; dgos: GAME
 
+;; +++pov-camera-flag
+(defenum pov-camera-flag
+  :bitfield #t
+  :type int32
+  (notify-of-abort 0)
+  (allow-abort 1)
+  (inherit-orientation 2)
+  (pcf3 3)
+  )
+;; ---pov-camera-flag
+
+(declare-type pov-camera process-drawable)
+(declare-type othercam process)
+(define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera))
+(define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam))
+
 ;; DECOMP BEGINS
 
+(deftype pov-camera (process-drawable)
+  ((flags                pov-camera-flag)
+   (debounce-start-time  time-frame)
+   (notify-handle        handle)
+   (anim-name            string)
+   (command-list         pair)
+   (mask-to-clear        process-mask)
+   (music-volume-movie   float)
+   (sfx-volume-movie     float)
+   )
+  (:state-methods
+    pov-camera-abort
+    pov-camera-done-playing
+    pov-camera-playing
+    pov-camera-start-playing
+    pov-camera-startup
+    )
+  (:methods
+    (abort? (_type_) symbol)
+    (target-grabbed? (_type_) symbol)
+    (set-stack-size! (_type_) none)
+    (pov-camera-method-28 (_type_) none)
+    (target-released? (_type_) symbol)
+    )
+  )

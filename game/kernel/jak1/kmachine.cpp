@@ -43,7 +43,6 @@
 #include "game/sce/libgraph.h"
 #include "game/sce/sif_ee.h"
 #include "game/sce/stubs.h"
-#include "game/system/vm/vm.h"
 
 using namespace ee;
 
@@ -378,11 +377,6 @@ int ShutdownMachine() {
   ShutdownSound();
   ShutdownGoalProto();
 
-  // OpenGOAL only - kill ps2 VM
-  if (VM::use) {
-    VM::vm_kill();
-  }
-
   Msg(6, "kernel: machine shutdown\n");
   return 0;
 }
@@ -396,15 +390,13 @@ u64 kopen(u64 fs, u64 name, u64 mode) {
   file_stream->mode = mode;
   file_stream->name = name;
   file_stream->flags = 0;
-  printf("****** CALL TO kopen() ******\n");
-  char buffer[128];
+  lg::print("****** CALL TO kopen() ******\n");
   // sprintf(buffer, "host:%s", Ptr<String>(name)->data());
-  sprintf(buffer, "%s", Ptr<String>(name)->data());
   if (!strcmp(info(Ptr<Symbol>(mode))->str->data(), "read")) {
-    file_stream->file = sceOpen(buffer, SCE_RDONLY);
+    file_stream->file = sceOpen(Ptr<String>(name)->data(), SCE_RDONLY);
   } else {
     // 0x602
-    file_stream->file = sceOpen(buffer, SCE_TRUNC | SCE_CREAT | SCE_WRONLY);
+    file_stream->file = sceOpen(Ptr<String>(name)->data(), SCE_TRUNC | SCE_CREAT | SCE_WRONLY);
   }
 
   return fs;

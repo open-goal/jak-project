@@ -1,166 +1,153 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: square-platform.gc
-;; name in dgo: square-platform
-;; dgos: L1, SUN, SUNKEN
-
+(bundles "SUN.DGO")
+(require "engine/common-obs/basebutton.gc")
+(require "engine/common-obs/ticky.gc")
+(require "engine/common-obs/water-anim.gc")
+(require "levels/sunken/sunken-obs.gc")
+(require "engine/common-obs/baseplat.gc")
 (declare-type square-platform baseplat)
+
 (declare-type square-platform-master process-drawable)
 
 ;; DECOMP BEGINS
 
 (deftype square-platform (baseplat)
-  ((plat-id            int32)
-   (pos-u              float)
-   (water-entity       entity-actor)
-   (splash-counter     int32)
-   (start-splash-time  time-frame)
-   (part2              sparticle-launch-control)
-   (part3              sparticle-launch-control)
-   (part4              sparticle-launch-control)
-   (up-pos             vector  :inline)
-   (down-pos           vector  :inline)
-   )
+  ((plat-id           int32)
+   (pos-u             float)
+   (water-entity      entity-actor)
+   (splash-counter    int32)
+   (start-splash-time time-frame)
+   (part2             sparticle-launch-control)
+   (part3             sparticle-launch-control)
+   (part4             sparticle-launch-control)
+   (up-pos            vector :inline)
+   (down-pos          vector :inline))
   (:methods
-    (square-platform-method-27 (_type_ symbol) none)
-    )
+   (square-platform-method-27 (_type_ symbol) none))
   (:states
-    square-platform-lowered
-    square-platform-lowering
-    square-platform-raised
-    square-platform-rising
-    )
-  )
+   square-platform-lowered
+   square-platform-lowering
+   square-platform-raised
+   square-platform-rising))
 
 
-(defskelgroup *square-platform-sg* square-platform square-platform-lod0-jg square-platform-idle-ja
-              ((square-platform-lod0-mg (meters 20)) (square-platform-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 -11 0 8)
-              )
+(defskelgroup *square-platform-sg*
+  square-platform
+  square-platform-lod0-jg
+  square-platform-idle-ja
+  ((square-platform-lod0-mg (meters 20)) (square-platform-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 -11 0 8))
 
-(deftype square-platform-button (basebutton)
-  ()
-  )
+(deftype square-platform-button (basebutton) ())
 
 
 (deftype square-platform-master (process-drawable)
-  ((button-id                 int32)
-   (plat-id                   int32)
-   (plat-mask                 uint32)
-   (plat-id-dir               int32)
-   (wiggled?                  symbol)
-   (timeout                   time-frame)
-   (last-plat-activated-time  time-frame)
-   (delay-til-wiggle          time-frame)
-   (ticker                    ticky  :inline)
-   )
+  ((button-id                int32)
+   (plat-id                  int32)
+   (plat-mask                uint32)
+   (plat-id-dir              int32)
+   (wiggled?                 symbol)
+   (timeout                  time-frame)
+   (last-plat-activated-time time-frame)
+   (delay-til-wiggle         time-frame)
+   (ticker                   ticky :inline))
   (:states
-    square-platform-master-activate
-    square-platform-master-idle
-    )
-  )
+   square-platform-master-activate
+   square-platform-master-idle))
 
 
 (defpartgroup group-square-platform-breach-splash
   :id 437
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d)))
-  )
+  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d))))
 
 (defpart 2222
-  :init-specs ((:texture (new 'static 'texture-id :index #x1e :page #x2))
-    (:num 8.0)
-    (:x (meters 0) (meters 3))
-    (:scale-x (meters 3.5) (meters 3.5))
-    (:rot-y (degrees 0) (degrees 360))
-    (:scale-y :copy scale-x)
-    (:r 128.0 64.0)
-    (:g 128.0 64.0)
-    (:b 128.0 64.0)
-    (:a 0.0)
-    (:scalevel-x (meters 0.013333334) (meters 0.013333334))
-    (:scalevel-y :copy scalevel-x)
-    (:fade-a 3.2)
-    (:timer (seconds 2))
-    (:flags (bit2))
-    (:next-time (seconds 0.035) (seconds 0.097))
-    (:next-launcher 2316)
-    (:conerot-x (degrees 70) (degrees 20))
-    (:conerot-y (degrees 0) (degrees 360))
-    (:rotate-y (degrees 0) (degrees 360))
-    )
-  )
+  :init-specs
+  ((:texture (water-ring effects))
+   (:num 8.0)
+   (:x (meters 0) (meters 3))
+   (:scale-x (meters 3.5) (meters 3.5))
+   (:rot-y (degrees 0) (degrees 360))
+   (:scale-y :copy scale-x)
+   (:r 128.0 64.0)
+   (:g 128.0 64.0)
+   (:b 128.0 64.0)
+   (:a 0.0)
+   (:scalevel-x (meters 0.013333334) (meters 0.013333334))
+   (:scalevel-y :copy scalevel-x)
+   (:fade-a 3.2)
+   (:timer (seconds 2))
+   (:flags (bit2))
+   (:next-time (seconds 0.035) (seconds 0.097))
+   (:next-launcher 2316)
+   (:conerot-x (degrees 70) (degrees 20))
+   (:conerot-y (degrees 0) (degrees 360))
+   (:rotate-y (degrees 0) (degrees 360))))
 
 (defpart 2316
-  :init-specs ((:fade-a -0.17066666))
-  )
+  :init-specs ((:fade-a -0.17066666)))
 
 (defpart 2315
-  :init-specs ((:texture (new 'static 'texture-id :index #x1e :page #x2))
-    (:num 8.0)
-    (:x (meters 3) (meters 1.5))
-    (:scale-x (meters 0.5) (meters 1.5))
-    (:rot-y (degrees 0) (degrees 360))
-    (:scale-y :copy scale-x)
-    (:r 128.0 64.0)
-    (:g 128.0 64.0)
-    (:b 128.0 64.0)
-    (:a 0.0)
-    (:scalevel-x (meters 0.013333334) (meters 0.013333334))
-    (:scalevel-y :copy scalevel-x)
-    (:fade-a 3.2)
-    (:timer (seconds 2))
-    (:flags (bit2))
-    (:next-time (seconds 0.035) (seconds 0.097))
-    (:next-launcher 2316)
-    (:conerot-x (degrees 70) (degrees 20))
-    (:conerot-y (degrees 0) (degrees 360))
-    (:rotate-y (degrees 0) (degrees 360))
-    )
-  )
+  :init-specs
+  ((:texture (water-ring effects))
+   (:num 8.0)
+   (:x (meters 3) (meters 1.5))
+   (:scale-x (meters 0.5) (meters 1.5))
+   (:rot-y (degrees 0) (degrees 360))
+   (:scale-y :copy scale-x)
+   (:r 128.0 64.0)
+   (:g 128.0 64.0)
+   (:b 128.0 64.0)
+   (:a 0.0)
+   (:scalevel-x (meters 0.013333334) (meters 0.013333334))
+   (:scalevel-y :copy scalevel-x)
+   (:fade-a 3.2)
+   (:timer (seconds 2))
+   (:flags (bit2))
+   (:next-time (seconds 0.035) (seconds 0.097))
+   (:next-launcher 2316)
+   (:conerot-x (degrees 70) (degrees 20))
+   (:conerot-y (degrees 0) (degrees 360))
+   (:rotate-y (degrees 0) (degrees 360))))
 
 (defpartgroup group-square-platform-submerge-bubbles
   :id 438
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts ((sp-item 2223))
-  )
+  :parts ((sp-item 2223)))
 
 (defpart 2223
-  :init-specs ((:texture (new 'static 'texture-id :index #x9 :page #x2))
-    (:num 2.0)
-    (:x (meters -4) (meters 8))
-    (:z (meters -4) (meters 8))
-    (:scale-x (meters 0.15) (meters 0.05))
-    (:scale-y (meters 0.125) (meters 0.025))
-    (:r 255.0)
-    (:g 255.0)
-    (:b 255.0)
-    (:a 0.0)
-    (:vel-y (meters 0.013333334) (meters 0.006666667))
-    (:fade-a 0.8)
-    (:timer (seconds 3))
-    (:flags (bit2 bit3 bit14))
-    (:userdata -663298.44)
-    (:func 'check-water-level-above-and-die)
-    (:next-time (seconds 0.1) (seconds 0.097))
-    (:next-launcher 2317)
-    (:rotate-y (degrees 0))
-    )
-  )
+  :init-specs
+  ((:texture (lakedrop effects))
+   (:num 2.0)
+   (:x (meters -4) (meters 8))
+   (:z (meters -4) (meters 8))
+   (:scale-x (meters 0.15) (meters 0.05))
+   (:scale-y (meters 0.125) (meters 0.025))
+   (:r 255.0)
+   (:g 255.0)
+   (:b 255.0)
+   (:a 0.0)
+   (:vel-y (meters 0.013333334) (meters 0.006666667))
+   (:fade-a 0.8)
+   (:timer (seconds 3))
+   (:flags (bit2 bit3 bit14))
+   (:userdata -663298.44)
+   (:func 'check-water-level-above-and-die)
+   (:next-time (seconds 0.1) (seconds 0.097))
+   (:next-launcher 2317)
+   (:rotate-y (degrees 0))))
 
 (defpart 2317
-  :init-specs ((:fade-a 0.0))
-  )
+  :init-specs ((:fade-a 0.0)))
 
 (defpartgroup group-square-platform-submerge-splash
   :id 439
   :flags (use-local-clock)
   :bounds (static-bspherem 0 0 0 8)
-  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d)))
-  )
+  :parts ((sp-item 2222 :flags (is-3d)) (sp-item 2315 :flags (is-3d))))
 
 (defmethod square-platform-method-27 ((this square-platform) (arg0 symbol))
   (local-vars (v0-3 sound-id) (sv-48 int))
@@ -168,232 +155,142 @@
     (set! (-> s4-0 quad) (-> this root trans quad))
     (+! (-> s4-0 y) -20480.0)
     (let* ((v1-1 (-> this water-entity))
-           (a0-4 (if v1-1
-                     (-> v1-1 extra process)
-                     )
-                 )
-           )
+           (a0-4 (if v1-1 (-> v1-1 extra process))))
       (when (not a0-4)
         (set! (-> this water-entity) (entity-actor-lookup (-> this entity) 'alt-actor 0))
-        (let ((v1-4 (-> this water-entity)))
-          (set! a0-4 (if v1-4
-                         (-> v1-4 extra process)
-                         )
-                )
-          )
-        )
+        (let ((v1-4 (-> this water-entity))) (set! a0-4 (if v1-4 (-> v1-4 extra process)))))
       (when (the-as water-vol a0-4)
         (let ((f0-2 (get-ripple-height (the-as water-vol a0-4) s4-0))
-              (s3-0 (new 'stack-no-clear 'vector))
-              )
+              (s3-0 (new 'stack-no-clear 'vector)))
           (set! (-> s3-0 quad) (-> s4-0 quad))
           (set! (-> s3-0 y) f0-2)
           (if (zero? (-> this start-splash-time))
-              (set! v0-3 (cond
-                           (arg0
-                             (if (>= (-> s4-0 y) f0-2)
-                                 (set-time! (-> this start-splash-time))
-                                 )
-                             v0-3
-                             )
-                           (else
-                             (when (>= f0-2 (-> s4-0 y))
-                               (set-time! (-> this start-splash-time))
-                               (let ((s2-0 sound-play-by-name)
-                                     (s1-0 (make-u128 #x6873616c (the-as uint #x70732d656772616c)))
-                                     (s0-0 (new-sound-id))
-                                     )
-                                 (set! sv-48 1024)
-                                 (let ((a3-0 (the int (* 1524.0 (rand-vu-float-range -0.8 0.8))))
-                                       (t0-0 0)
-                                       (t1-0 1)
-                                       (t2-0 #t)
-                                       )
-                                   (s2-0 (the-as sound-name s1-0) s0-0 sv-48 a3-0 t0-0 (the-as sound-group t1-0) t2-0)
-                                   )
-                                 )
-                               )
-                             )
-                           )
-                    )
-              )
+            (set! v0-3
+                  (cond
+                    (arg0 (if (>= (-> s4-0 y) f0-2) (set-time! (-> this start-splash-time))) v0-3)
+                    (else
+                     (when (>= f0-2 (-> s4-0 y))
+                       (set-time! (-> this start-splash-time))
+                       (let ((s2-0 sound-play-by-name)
+                             (s1-0 (make-u128 #x6873616c (the-as uint #x70732d656772616c)))
+                             (s0-0 (new-sound-id)))
+                         (set! sv-48 1024)
+                         (let ((a3-0 (the int (* 1524.0 (rand-vu-float-range -0.8 0.8))))
+                               (t0-0 0)
+                               (t1-0 1)
+                               (t2-0 #t))
+                           (s2-0 (the-as sound-name s1-0) s0-0 sv-48 a3-0 t0-0 (the-as sound-group t1-0) t2-0))))))))
           (when (nonzero? (-> this start-splash-time))
             (cond
               (arg0
-                (let ((v1-21 (-> this splash-counter)))
-                  (when (< v1-21 2)
-                    (set! (-> this splash-counter) (+ v1-21 1))
-                    (spawn (-> this part2) s3-0)
-                    )
-                  )
-                )
-              (else
-                (spawn (-> this part3) s4-0)
-                )
-              )
-            )
+               (let ((v1-21 (-> this splash-counter)))
+                 (when (< v1-21 2)
+                   (set! (-> this splash-counter) (+ v1-21 1))
+                   (spawn (-> this part2) s3-0))))
+              (else (spawn (-> this part3) s4-0))))
           (when (not arg0)
             (let ((v1-25 (-> this splash-counter)))
               (when (< v1-25 2)
                 (set! (-> this splash-counter) (+ v1-25 1))
-                (spawn (-> this part4) s3-0)
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-  (none)
-  )
+                (spawn (-> this part4) s3-0))))))))
+  (none))
 
 (defstate square-platform-lowered (square-platform)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('trigger)
-       (if (and (= (-> proc type) square-platform-master)
-                (= (-> (the-as square-platform-master proc) plat-id) (-> self plat-id))
-                )
-           (go square-platform-rising)
-           )
-       )
-      )
-    )
-  :code (behavior ()
-    (set! (-> self pos-u) 0.0)
-    (loop
-      (logior! (-> self mask) (process-mask sleep-code))
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('trigger)
+         (if (and (= (-> proc type) square-platform-master) (= (-> (the-as square-platform-master proc) plat-id) (-> self plat-id)))
+           (go square-platform-rising)))))
+  :code
+    (behavior ()
+      (set! (-> self pos-u) 0.0)
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend))))
 
 (defstate square-platform-rising (square-platform)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk 'bounce)
-       (baseplat-method-22 self)
-       )
-      (('untrigger)
-       (go square-platform-lowering)
-       )
-      )
-    )
-  :enter (behavior ()
-    (set! (-> self start-splash-time) 0)
-    (set! (-> self splash-counter) 0)
-    0
-    )
-  :trans (behavior ()
-    (set! (-> self pos-u)
-          (seek-with-smooth (-> self pos-u) 1.0 (/ 1.0 (* 0.75 (-> *display* frames-per-second))) 0.8 0.01)
-          )
-    (vector-lerp! (-> self basetrans) (-> self down-pos) (-> self up-pos) (-> self pos-u))
-    (plat-trans)
-    (when (= (-> self pos-u) 1.0)
-      (plat-post)
-      (go square-platform-raised)
-      )
-    (square-platform-method-27 self #t)
-    )
-  :code (behavior ()
-    (loop
-      (logior! (-> self mask) (process-mask sleep-code))
-      (suspend)
-      )
-    )
-  :post plat-post
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk 'bounce) (baseplat-method-22 self))
+        (('untrigger) (go square-platform-lowering))))
+  :enter
+    (behavior ()
+      (set! (-> self start-splash-time) 0)
+      (set! (-> self splash-counter) 0)
+      0)
+  :trans
+    (behavior ()
+      (set! (-> self pos-u) (seek-with-smooth (-> self pos-u) 1.0 (/ 1.0 (* 0.75 (-> *display* frames-per-second))) 0.8 0.01))
+      (vector-lerp! (-> self basetrans) (-> self down-pos) (-> self up-pos) (-> self pos-u))
+      (plat-trans)
+      (when (= (-> self pos-u) 1.0)
+        (plat-post)
+        (go square-platform-raised))
+      (square-platform-method-27 self #t))
+  :code
+    (behavior ()
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend)))
+  :post plat-post)
 
 (defstate square-platform-raised (square-platform)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk 'bounce)
-       (baseplat-method-22 self)
-       )
-      (('untrigger)
-       (go square-platform-lowering)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk 'bounce) (baseplat-method-22 self))
+        (('untrigger) (go square-platform-lowering))))
   :trans plat-trans
-  :code (behavior ()
-    (set! (-> self pos-u) 1.0)
-    (loop
-      (logior! (-> self mask) (process-mask sleep-code))
-      (suspend)
-      )
-    )
-  :post plat-post
-  )
+  :code
+    (behavior ()
+      (set! (-> self pos-u) 1.0)
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend)))
+  :post plat-post)
 
 (defstate square-platform-lowering (square-platform)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk 'bounce)
-       (baseplat-method-22 self)
-       )
-      (('trigger)
-       (go square-platform-rising)
-       )
-      (('touch)
-       (send-event proc 'no-look-around (seconds 1.5))
-       #f
-       )
-      )
-    )
-  :enter (behavior ()
-    (set! (-> self start-splash-time) 0)
-    (set! (-> self splash-counter) 0)
-    0
-    )
-  :trans (behavior ()
-    (set! (-> self pos-u)
-          (seek-with-smooth (-> self pos-u) 0.0 (/ 1.0 (* 0.75 (-> *display* frames-per-second))) 0.8 0.01)
-          )
-    (vector-lerp! (-> self basetrans) (-> self down-pos) (-> self up-pos) (-> self pos-u))
-    (plat-trans)
-    (when (= (-> self pos-u) 0.0)
-      (plat-post)
-      (go square-platform-lowered)
-      )
-    (square-platform-method-27 self #f)
-    )
-  :code (behavior ()
-    (loop
-      (logior! (-> self mask) (process-mask sleep-code))
-      (suspend)
-      )
-    )
-  :post plat-post
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk 'bounce) (baseplat-method-22 self))
+        (('trigger) (go square-platform-rising))
+        (('touch) (send-event proc 'no-look-around (seconds 1.5)) #f)))
+  :enter
+    (behavior ()
+      (set! (-> self start-splash-time) 0)
+      (set! (-> self splash-counter) 0)
+      0)
+  :trans
+    (behavior ()
+      (set! (-> self pos-u) (seek-with-smooth (-> self pos-u) 0.0 (/ 1.0 (* 0.75 (-> *display* frames-per-second))) 0.8 0.01))
+      (vector-lerp! (-> self basetrans) (-> self down-pos) (-> self up-pos) (-> self pos-u))
+      (plat-trans)
+      (when (= (-> self pos-u) 0.0)
+        (plat-post)
+        (go square-platform-lowered))
+      (square-platform-method-27 self #f))
+  :code
+    (behavior ()
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend)))
+  :post plat-post)
 
 (defmethod deactivate ((this square-platform))
-  (if (nonzero? (-> this part2))
-      (kill-and-free-particles (-> this part2))
-      )
-  (if (nonzero? (-> this part3))
-      (kill-and-free-particles (-> this part3))
-      )
-  (if (nonzero? (-> this part4))
-      (kill-and-free-particles (-> this part4))
-      )
+  (if (nonzero? (-> this part2)) (kill-and-free-particles (-> this part2)))
+  (if (nonzero? (-> this part3)) (kill-and-free-particles (-> this part3)))
+  (if (nonzero? (-> this part4)) (kill-and-free-particles (-> this part4)))
   ((method-of-type process-drawable deactivate) this)
-  (none)
-  )
+  (none))
 
-(defmethod relocate ((this square-platform) (arg0 int))
-  (if (nonzero? (-> this part2))
-      (&+! (-> this part2) arg0)
-      )
-  (if (nonzero? (-> this part3))
-      (&+! (-> this part3) arg0)
-      )
-  (if (nonzero? (-> this part4))
-      (&+! (-> this part4) arg0)
-      )
-  (call-parent-method this arg0)
-  )
+(defmethod relocate ((this square-platform) (offset int))
+  (if (nonzero? (-> this part2)) (&+! (-> this part2) offset))
+  (if (nonzero? (-> this part3)) (&+! (-> this part3) offset))
+  (if (nonzero? (-> this part4)) (&+! (-> this part4) offset))
+  (call-parent-method this offset))
 
 (defmethod init-from-entity! ((this square-platform) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
@@ -401,9 +298,7 @@
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -412,12 +307,10 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 0.0 -24576.0 0.0 32768.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this plat-id) (actor-count-before (-> this link)))
@@ -425,35 +318,18 @@
   (baseplat-method-21 this)
   (ja-channel-set! 1)
   (let ((s4-1 (-> this skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      s4-1
-      (the-as art-joint-anim (-> this draw art-group data 3))
-      num-func-identity
-      )
-    (set! (-> s4-1 frame-num) 0.0)
-    )
+    (joint-control-channel-group-eval! s4-1 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
+    (set! (-> s4-1 frame-num) 0.0))
   (set! sv-16 (new 'static 'res-tag))
   (let* ((v1-32 (res-lump-data (-> this entity) 'distance pointer :tag-ptr (& sv-16)))
-         (f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0))
-                    (-> (the-as (pointer float) v1-32))
-                    -8192.0
-                    )
-                )
-         )
+         (f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0)) (-> (the-as (pointer float) v1-32)) -8192.0)))
     (set! sv-32 (new 'static 'res-tag))
     (let* ((v1-35 (res-lump-data (-> this entity) 'distance pointer :tag-ptr (& sv-32)))
-           (f0-10 (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count))))
-                      (-> (the-as (pointer float) v1-35) 1)
-                      16384.0
-                      )
-                  )
-           )
+           (f0-10 (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count)))) (-> (the-as (pointer float) v1-35) 1) 16384.0)))
       (set! (-> this down-pos quad) (-> this root trans quad))
       (+! (-> this down-pos y) f30-0)
       (set! (-> this up-pos quad) (-> this root trans quad))
-      (+! (-> this up-pos y) f0-10)
-      )
-    )
+      (+! (-> this up-pos y) f0-10)))
   (set! (-> this basetrans quad) (-> this down-pos quad))
   (set! (-> this root trans quad) (-> this basetrans quad))
   (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 437) this))
@@ -463,180 +339,134 @@
   (ja-post)
   (update-transforms! (-> this root))
   (go square-platform-lowered)
-  (none)
-  )
+  (none))
 
 (defstate square-platform-master-idle (square-platform-master)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('trigger)
-       (when (= (-> proc type) square-platform-button)
-         (set! (-> self button-id) (-> (the-as square-platform-button proc) button-id))
-         (logclear! (-> self mask) (process-mask actor-pause))
-         (process-entity-status! self (entity-perm-status bit-3) #t)
-         (go square-platform-master-activate)
-         )
-       )
-      )
-    )
-  :code (behavior ()
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
-    0
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('trigger)
+         (when (= (-> proc type) square-platform-button)
+           (set! (-> self button-id) (-> (the-as square-platform-button proc) button-id))
+           (logclear! (-> self mask) (process-mask actor-pause))
+           (process-entity-status! self (entity-perm-status bit-3) #t)
+           (go square-platform-master-activate)))))
+  :code
+    (behavior ()
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      0))
 
 (defstate square-platform-master-activate (square-platform-master)
-  :enter (behavior ()
-    (set-time! (-> self state-time))
-    (set! (-> self wiggled?) #f)
-    (sleep (-> self ticker) (-> self timeout))
-    (set! (-> self plat-id) -1)
-    (send-to-all (-> self link) 'trigger)
-    (set! (-> self plat-id) 0)
-    (let ((gp-0 1))
-      (let ((v1-7 (-> self button-id)))
-        (cond
-          ((zero? v1-7)
-           (let ((a0-4 (process-spawn
-                         sunkencam
-                         :init pov-camera-init-by-other
-                         (-> self root trans)
-                         *sunkencam-sg*
-                         "qbert-show-door-open"
-                         0
-                         #f
-                         '()
-                         :to self
-                         )
-                       )
-                 )
-             (set! (-> (the-as sunkencam (-> a0-4 0)) seq) (the-as uint 3))
-             )
-           )
-          ((= v1-7 1)
-           (let ((v1-13 (process-spawn
-                          sunkencam
-                          :init pov-camera-init-by-other
-                          (-> self root trans)
-                          *sunkencam-sg*
-                          "qbert-show-door-open"
-                          0
-                          #f
-                          '()
-                          :to self
-                          )
-                        )
-                 )
-             (set! (-> (the-as sunkencam (-> v1-13 0)) seq) (the-as uint 4))
-             )
-           (set! gp-0 -1)
-           )
-          ((= v1-7 2)
-           (let ((a0-17 (process-spawn
-                          sunkencam
-                          :init pov-camera-init-by-other
-                          (-> self root trans)
-                          *sunkencam-sg*
-                          "qbert-show-door-open"
-                          0
-                          #f
-                          '()
-                          :to self
-                          )
-                        )
-                 )
-             (set! (-> (the-as sunkencam (-> a0-17 0)) seq) (the-as uint 5))
-             )
-           )
-          ((= v1-7 3)
-           (let ((v1-24 (process-spawn
-                          sunkencam
-                          :init pov-camera-init-by-other
-                          (-> self root trans)
-                          *sunkencam-sg*
-                          "qbert-show-door-open"
-                          0
-                          #f
-                          '()
-                          :to self
-                          )
-                        )
-                 )
-             (set! (-> (the-as sunkencam (-> v1-24 0)) seq) (the-as uint 6))
-             )
-           (set! gp-0 -1)
-           )
-          )
-        )
-      (if (< gp-0 0)
-          (set! (-> self plat-id) 32)
-          )
-      (set! (-> self plat-id-dir) gp-0)
-      )
-    )
-  :exit (behavior ()
-    (logior! (-> self mask) (process-mask actor-pause))
-    (process-entity-status! self (entity-perm-status bit-3) #f)
-    )
-  :trans (behavior ()
-    (when (completed? (-> self ticker))
-      (send-to-all (-> self link) 'untrigger)
-      (go square-platform-master-idle)
-      )
-    (when (reached-delay? (-> self ticker) (-> self delay-til-wiggle))
-      (when (not (-> self wiggled?))
-        (set! (-> self wiggled?) #t)
-        (send-to-all (-> self link) 'bounce)
-        )
-      )
-    (when (time-elapsed? (-> self last-plat-activated-time) (seconds 0.3))
-      (set-time! (-> self last-plat-activated-time))
-      (let ((v1-20 (-> self plat-id))
-            (a0-5 (-> self plat-id-dir))
-            (a1-3 (-> self plat-mask))
-            )
-        (loop
-          (+! v1-20 a0-5)
+  :enter
+    (behavior ()
+      (set-time! (-> self state-time))
+      (set! (-> self wiggled?) #f)
+      (sleep (-> self ticker) (-> self timeout))
+      (set! (-> self plat-id) -1)
+      (send-to-all (-> self link) 'trigger)
+      (set! (-> self plat-id) 0)
+      (let ((gp-0 1))
+        (let ((v1-7 (-> self button-id)))
           (cond
-            ((<= v1-20 0)
-             (set! (-> self plat-id) 0)
-             (return #f)
-             )
-            ((>= v1-20 32)
-             (set! (-> self plat-id) 32)
-             (return #f)
-             )
-            (else
-              (when (logtest? a1-3 (ash 1 v1-20))
-                (set! (-> self plat-id) v1-20)
-                (send-to-all (-> self link) 'trigger)
-                (return #f)
-                )
-              )
-            )
-          )
-        )
-      )
-    )
-  :code (behavior ()
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
-    0
-    )
-  )
+            ((zero? v1-7)
+             (let ((a0-4 (process-spawn sunkencam
+                                        :init
+                                        pov-camera-init-by-other
+                                        (-> self root trans)
+                                        *sunkencam-sg*
+                                        "qbert-show-door-open"
+                                        0
+                                        #f
+                                        '()
+                                        :to
+                                        self)))
+               (set! (-> (the-as sunkencam (-> a0-4 0)) seq) (the-as uint 3))))
+            ((= v1-7 1)
+             (let ((v1-13 (process-spawn sunkencam
+                                         :init
+                                         pov-camera-init-by-other
+                                         (-> self root trans)
+                                         *sunkencam-sg*
+                                         "qbert-show-door-open"
+                                         0
+                                         #f
+                                         '()
+                                         :to
+                                         self)))
+               (set! (-> (the-as sunkencam (-> v1-13 0)) seq) (the-as uint 4)))
+             (set! gp-0 -1))
+            ((= v1-7 2)
+             (let ((a0-17 (process-spawn sunkencam
+                                         :init
+                                         pov-camera-init-by-other
+                                         (-> self root trans)
+                                         *sunkencam-sg*
+                                         "qbert-show-door-open"
+                                         0
+                                         #f
+                                         '()
+                                         :to
+                                         self)))
+               (set! (-> (the-as sunkencam (-> a0-17 0)) seq) (the-as uint 5))))
+            ((= v1-7 3)
+             (let ((v1-24 (process-spawn sunkencam
+                                         :init
+                                         pov-camera-init-by-other
+                                         (-> self root trans)
+                                         *sunkencam-sg*
+                                         "qbert-show-door-open"
+                                         0
+                                         #f
+                                         '()
+                                         :to
+                                         self)))
+               (set! (-> (the-as sunkencam (-> v1-24 0)) seq) (the-as uint 6)))
+             (set! gp-0 -1))))
+        (if (< gp-0 0) (set! (-> self plat-id) 32))
+        (set! (-> self plat-id-dir) gp-0)))
+  :exit
+    (behavior ()
+      (logior! (-> self mask) (process-mask actor-pause))
+      (process-entity-status! self (entity-perm-status bit-3) #f))
+  :trans
+    (behavior ()
+      (when (completed? (-> self ticker))
+        (send-to-all (-> self link) 'untrigger)
+        (go square-platform-master-idle))
+      (when (reached-delay? (-> self ticker) (-> self delay-til-wiggle))
+        (when (not (-> self wiggled?))
+          (set! (-> self wiggled?) #t)
+          (send-to-all (-> self link) 'bounce)))
+      (when (time-elapsed? (-> self last-plat-activated-time) (seconds 0.3))
+        (set-time! (-> self last-plat-activated-time))
+        (let ((v1-20 (-> self plat-id))
+              (a0-5 (-> self plat-id-dir))
+              (a1-3 (-> self plat-mask)))
+          (loop
+            (+! v1-20 a0-5)
+            (cond
+              ((<= v1-20 0) (set! (-> self plat-id) 0) (return #f))
+              ((>= v1-20 32) (set! (-> self plat-id) 32) (return #f))
+              (else
+               (when (logtest? a1-3 (ash 1 v1-20))
+                 (set! (-> self plat-id) v1-20)
+                 (send-to-all (-> self link) 'trigger)
+                 (return #f))))))))
+  :code
+    (behavior ()
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      0))
 
 (defmethod init-from-entity! ((this square-platform-master) (arg0 entity-actor))
   (set! (-> this button-id) -1)
   (set! (-> this plat-id) -1)
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
-  (set! (-> this timeout)
-        (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'timeout :default 10.0))))
-        )
+  (set! (-> this timeout) (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'timeout :default 10.0)))))
   (set! (-> this delay-til-wiggle) (+ (-> this timeout) (seconds -0.4)))
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this plat-mask) (the-as uint (get-matching-actor-type-mask (-> this link) square-platform)))
   (go square-platform-master-idle)
-  (none)
-  )
+  (none))

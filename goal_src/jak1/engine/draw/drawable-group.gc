@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: drawable-group.gc
-;; name in dgo: drawable-group
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/draw/drawable.gc")
 
 ;; DECOMP BEGINS
 
@@ -11,98 +9,69 @@
   "Allocate a drawable-group with enough room for arg0 drawables"
   (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* (+ arg0 -1) 4))))))
     (set! (-> v0-0 length) arg0)
-    v0-0
-    )
-  )
+    v0-0))
 
-(defmethod inspect drawable-group ((this drawable-group))
+(defmethod inspect ((this drawable-group))
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tid: ~D~%" (-> this id))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
-    )
-  this
-  )
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  this)
 
 (defmethod print ((this drawable-group))
   (format #t "#<~A @ #x~X [~D]" (-> this type) this (-> this length))
   (dotimes (s5-0 (-> this length))
-    (format #t " ~A" (-> this data s5-0))
-    )
+    (format #t " ~A" (-> this data s5-0)))
   (format #t ">")
-  this
-  )
+  this)
 
 (defmethod length ((this drawable-group))
-  (-> this length)
-  )
+  (-> this length))
 
 (defmethod asize-of ((this drawable-group))
-  (the-as int (+ (-> drawable-group size) (* (+ (-> this length) -1) 4)))
-  )
+  (the-as int (+ (-> drawable-group size) (* (+ (-> this length) -1) 4))))
 
 (defmethod mem-usage ((this drawable-group) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) "drawable-group")
   (+! (-> arg0 data 0 count) 1)
-  (let ((v1-6 (asize-of this)))
-    (+! (-> arg0 data 0 used) v1-6)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-6 15)))
-    )
+  (let ((v1-6 (asize-of this))) (+! (-> arg0 data 0 used) v1-6) (+! (-> arg0 data 0 total) (logand -16 (+ v1-6 15))))
   (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1)
-    )
-  this
-  )
+    (mem-usage (-> this data s3-0) arg0 arg1))
+  this)
 
 (defmethod login ((this drawable-group))
   (dotimes (s5-0 (-> this length))
-    (login (-> this data s5-0))
-    )
-  this
-  )
+    (login (-> this data s5-0)))
+  this)
 
 (defmethod draw ((this drawable-group) (arg0 drawable-group) (arg1 display-frame))
   (when (vis-cull (-> this id))
     (when (sphere-cull (-> this bsphere))
       (dotimes (s3-0 (-> this length))
-        (draw (-> this data s3-0) (-> arg0 data s3-0) arg1)
-        )
-      )
-    )
+        (draw (-> this data s3-0) (-> arg0 data s3-0) arg1))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod collect-stats ((this drawable-group))
   (when (vis-cull (-> this id))
     (when (sphere-cull (-> this bsphere))
       (dotimes (s5-0 (-> this length))
-        (collect-stats (-> this data s5-0))
-        )
-      )
-    )
+        (collect-stats (-> this data s5-0)))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod debug-draw ((this drawable-group) (arg0 drawable) (arg1 display-frame))
   (when (vis-cull (-> this id))
     (when (sphere-cull (-> this bsphere))
       (dotimes (s3-0 (-> this length))
-        (debug-draw (-> this data s3-0) (-> (the-as drawable-group arg0) data s3-0) arg1)
-        )
-      )
-    )
+        (debug-draw (-> this data s3-0) (-> (the-as drawable-group arg0) data s3-0) arg1))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod unpack-vis ((this drawable-group) (arg0 (pointer int8)) (arg1 (pointer int8)))
   (dotimes (s4-0 (-> this length))
-    (set! arg1 (unpack-vis (-> this data s4-0) arg0 arg1))
-    )
-  arg1
-  )
+    (set! arg1 (unpack-vis (-> this data s4-0) arg0 arg1)))
+  arg1)

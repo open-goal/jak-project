@@ -1,4 +1,5 @@
 #include "reg_usage.h"
+
 #include "decompiler/Function/Function.h"
 
 namespace decompiler {

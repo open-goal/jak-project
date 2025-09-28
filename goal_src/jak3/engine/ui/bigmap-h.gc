@@ -5,5 +5,118 @@
 ;; name in dgo: bigmap-h
 ;; dgos: GAME
 
+;; +++bigmap-flag
+(defenum bigmap-flag
+  :type uint32
+  :bitfield #t
+  (bf00 0)
+  (bf01 1)
+  (bf02 2)
+  (bf03 3)
+  (bf04 4)
+  (bf05 5)
+  (bf06 6)
+  (bf07 7)
+  (bf08 8)
+  (bf09 9)
+  (bf10 10)
+  (bf11 11)
+  (bf12 12)
+  (bf13 13)
+  (bf14 14)
+  (bf15 15)
+  (bf16 16)
+  (bf17 17)
+  (ctywide 18)
+  (waswide 19)
+  (wasall 20)
+  (desert 21)
+  (bf22 22)
+  (bf23 23)
+  (bf24 24)
+  (bf25 25)
+  (bf26 26)
+  (bf27 27)
+  (bf28 28)
+  (bf29 29)
+  (bf30 30)
+  (bf31 31)
+  )
+;; ---bigmap-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype bigmap-image (structure)
+  ((clut-offset   uint32)
+   (image-offset  uint32)
+   (width         uint32)
+   (height        uint32)
+   (data          uint8  1)
+   )
+  )
+
+
+(deftype bigmap-info (vector)
+  ((scale      float  :overlay-at (-> data 2))
+   (inv-scale  float  :overlay-at (-> data 3))
+   )
+  )
+
+
+(deftype bigmap-info-array (structure)
+  ((data  bigmap-info  24 :inline)
+   )
+  )
+
+
+(deftype bigmap (basic)
+  ((drawing-flag         symbol)
+   (loading-flag         symbol)
+   (bigmap-index         bigmap-id)
+   (bigmap-image         external-art-buffer)
+   (tpage                external-art-buffer)
+   (tpage2               external-art-buffer)
+   (progress-minimap     texture-page)
+   (progress-minimap2    texture-page)
+   (load-index           bigmap-id)
+   (x0                   int32)
+   (y0                   int32)
+   (x1                   int32)
+   (y1                   int32)
+   (goal-time            float)
+   (sprite-tmpl          dma-gif-packet  :inline)
+   (draw-tmpl            dma-gif-packet  :inline)
+   (adgif-tmpl           dma-gif-packet  :inline)
+   (offset               vector          :inline)
+   (size                 float           :overlay-at (-> offset data 2))
+   (scale                float           :overlay-at (-> offset data 3))
+   (scroll               vector          :inline)
+   (pos                  vector4w        :inline)
+   (color                vector4w        :inline)
+   (corner               vector          4 :inline)
+   (auto-save-icon-flag  symbol)
+   (global-flags         bigmap-flag)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (initialize (_type_) none)
+    (update (_type_) none)
+    (loaded? (_type_) symbol)
+    (draw! (_type_ int int int int) none)
+    (handle-cpad-input (_type_) none)
+    (enable-drawing (_type_) none)
+    (disable-drawing (_type_) int)
+    (set-map-indices! (_type_) none)
+    (set-pos! (_type_ vector) none)
+    (bigmap-method-18 (_type_ (pointer int32)) none)
+    (texture-upload-dma (_type_ dma-buffer (pointer uint32) int int int gs-psm) none)
+    (bigmap-method-20 (_type_ dma-buffer) symbol)
+    (sprite-dma (_type_ dma-buffer int int int int int int) object)
+    (draw-from-minimap (_type_ dma-buffer connection-minimap) none)
+    )
+  )
+
+;; DECOMP ENDS
+
+(define-extern *bigmap* bigmap)

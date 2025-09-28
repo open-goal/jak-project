@@ -1,0 +1,11 @@
+("CIB.DGO"
+ ("ctyindb-part.o"
+  "ctyindb-obs.o"
+  "tpage-188.go"
+  "tpage-186.go"
+  "tpage-187.go"
+  "tpage-184.go"
+  "tpage-181.go"
+  "krimson-wall-ag.go"
+  "ctyindb-vis.go"
+ ))

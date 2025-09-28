@@ -161,7 +161,7 @@ char* MakeFileName(int type, const char* name, int new_string) {
     // game CGO file (unused, all DGO/CGOs loaded through IOP)
     sprintf(buf, "game/dgo%d/%s.cgo", DGO_FILE_VERSION, name);
   } else if (type == CNT_FILE_TYPE) {
-    // game cnt file (continue point?)
+    // game cnt file. leftover from jak 1.
     sprintf(buf, "%sfinal/res%d/game-cnt.go", prefix, 1);
   } else if (type == RES_FILE_TYPE) {
     // RES go file?

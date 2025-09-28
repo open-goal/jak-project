@@ -5,5 +5,90 @@
 ;; name in dgo: sprite-h
 ;; dgos: GAME
 
+(define-extern sprite-init-distorter (function dma-buffer none))
+(define-extern sprite-draw-distorters (function dma-buffer none))
+(define-extern sprite-glow-init-engine (function dma-buffer none))
+(define-extern sprite-glow-draw (function dma-buffer none))
+
+(#when PC_BIG_MEMORY (defconstant SPRITE_MAX_AMOUNT_MULT 12))
+
 ;; DECOMP BEGINS
 
+(deftype sprite-vec-data-2d (structure)
+  "Per-particle data needed for rendering. This is sent to VU1."
+  ((x-y-z-sx     vector    :inline)
+   (flag-rot-sy  vector    :inline)
+   (r-g-b-a      vector    :inline)
+   (x            float             :overlay-at (-> x-y-z-sx data 0))
+   (y            float             :overlay-at (-> x-y-z-sx data 1))
+   (z            float             :overlay-at (-> x-y-z-sx data 2))
+   (sx           float             :overlay-at (-> x-y-z-sx data 3))
+   (sy           float             :overlay-at (-> flag-rot-sy data 3))
+   (rot          float             :overlay-at (-> flag-rot-sy data 2))
+   (flag         int32             :overlay-at (-> flag-rot-sy data 0))
+   (matrix       int32             :overlay-at (-> flag-rot-sy data 1))
+   (warp-turns   int32             :overlay-at (-> flag-rot-sy data 0))
+   (r            float             :overlay-at (-> r-g-b-a data 0))
+   (g            float             :overlay-at (-> r-g-b-a data 1))
+   (b            float             :overlay-at (-> r-g-b-a data 2))
+   (a            float             :overlay-at (-> r-g-b-a data 3))
+   (trans        vector3s  :inline :overlay-at (-> x-y-z-sx data 0))
+   (color        rgbaf     :inline :overlay-at (-> r-g-b-a data 0))
+   (data         uint128   1       :overlay-at (-> x-y-z-sx data 0))
+   (data64       uint64    6       :overlay-at (-> x-y-z-sx data 0))
+   )
+  )
+
+
+(deftype sprite-array-2d (basic)
+  "Array of sprite data for all 2D sprites. There are two groups: normal and HUD."
+  ((num-sprites  int32    2)
+   (num-valid    int32    2)
+   (vec-data     pointer)
+   (adgif-data   (inline-array adgif-shader))
+   (pad          uint128  4)
+   (data         uint128  1)
+   )
+  (:methods
+    (new (symbol type int int) _type_)
+    )
+  )
+
+
+(deftype sprite-vec-data-3d (structure)
+  "Per-particle data needed for rendering. This is sent to VU1."
+  ((x-y-z-sx     vector    :inline)
+   (qx-qy-qz-sy  vector    :inline)
+   (r-g-b-a      vector    :inline)
+   (x            float             :overlay-at (-> x-y-z-sx data 0))
+   (y            float             :overlay-at (-> x-y-z-sx data 1))
+   (z            float             :overlay-at (-> x-y-z-sx data 2))
+   (sx           float             :overlay-at (-> x-y-z-sx data 3))
+   (sy           float             :overlay-at (-> qx-qy-qz-sy data 3))
+   (qx           float             :overlay-at (-> qx-qy-qz-sy data 0))
+   (qy           float             :overlay-at (-> qx-qy-qz-sy data 1))
+   (qz           float             :overlay-at (-> qx-qy-qz-sy data 2))
+   (r            float             :overlay-at (-> r-g-b-a data 0))
+   (g            float             :overlay-at (-> r-g-b-a data 1))
+   (b            float             :overlay-at (-> r-g-b-a data 2))
+   (a            float             :overlay-at (-> r-g-b-a data 3))
+   (trans        vector3s  :inline :overlay-at (-> x-y-z-sx data 0))
+   (rot          vector3s  :inline :overlay-at (-> qx-qy-qz-sy data 0))
+   (color        rgbaf     :inline :overlay-at (-> r-g-b-a data 0))
+   (data         uint128   1       :overlay-at (-> x-y-z-sx data 0))
+   )
+  )
+
+
+(deftype sprite-array-3d (basic)
+  "Array of sprite data for all 3D sprites. There are two groups, but only the first is used."
+  ((num-sprites  int32    2)
+   (num-valid    int32    2)
+   (vec-data     pointer)
+   (adgif-data   (inline-array adgif-shader))
+   (data         uint128  1)
+   )
+  (:methods
+    (new (symbol type int int) _type_)
+    )
+  )

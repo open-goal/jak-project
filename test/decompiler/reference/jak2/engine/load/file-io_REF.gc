@@ -29,9 +29,9 @@
   )
 
 ;; definition for method 0 of type file-stream
-(defmethod new file-stream ((allocation symbol) (type-to-make type) (arg0 string) (arg1 symbol))
-  (let ((a0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (file-stream-open a0-1 arg0 arg1)
+(defmethod new file-stream ((obj symbol) (arg1 type) (file-name string) (mode symbol))
+  (let ((a0-1 (object-new obj arg1 (the-as int (-> arg1 size)))))
+    (file-stream-open a0-1 file-name mode)
     )
   )
 
@@ -39,10 +39,12 @@
 (set! (-> file-stream method-table 4) file-stream-length)
 
 ;; definition for function file-stream-read-string
-(defun file-stream-read-string ((arg0 file-stream) (arg1 string))
-  (clear arg1)
-  (file-stream-read arg0 (-> arg1 data) (length arg0))
-  arg1
+(defun file-stream-read-string ((fs file-stream) (str string))
+  "Fill a string with data from a file stream.
+   Note: this function does not work."
+  (clear str)
+  (file-stream-read fs (-> str data) (length fs))
+  str
   )
 
 ;; definition of type file-info
@@ -94,6 +96,14 @@
 
 ;; definition for function make-file-name
 (defun make-file-name ((arg0 file-kind) (arg1 string) (arg2 int) (arg3 symbol))
+  "Get a file name to open a file with the given kind and name.
+   The art-group-version argument can be used to override the version
+   of the art-group. Set it to 0 or less to use the default version.
+   Similar to MakeFileName in C.
+   Note: file type enum is different between C and GOAL.
+   File versions should match those in versions.h.
+   Uses a single *file-temp-string* buffer, shared with make-vfile-name.
+   arg3 is unused."
   (clear *file-temp-string*)
   (cond
     ((= arg0 (file-kind dir-tpage))
@@ -138,14 +148,16 @@
   )
 
 ;; definition for function make-vfile-name
-(defun make-vfile-name ((arg0 file-kind) (arg1 string))
+(defun make-vfile-name ((kind file-kind) (name string))
+  "Make virtual? file name. This makes a name that the kernel knows how to
+   handle in a specific way. This function is not used."
   (clear *file-temp-string*)
   (cond
-    ((= arg0 (file-kind level-bt))
-     (format *file-temp-string* "$LEVEL/~S" arg1)
+    ((= kind (file-kind level-bt))
+     (format *file-temp-string* "$LEVEL/~S" name)
      )
-    ((= arg0 (file-kind art-group))
-     (format *file-temp-string* "$ART_GROUP/~S" arg1)
+    ((= kind (file-kind art-group))
+     (format *file-temp-string* "$ART_GROUP/~S" name)
      )
     )
   *file-temp-string*
@@ -153,6 +165,8 @@
 
 ;; definition for function file-info-correct-version?
 (defun file-info-correct-version? ((arg0 file-info) (arg1 file-kind) (arg2 int))
+  "Check if the version and kind in the info is valid. The `version-override` can specify a
+   non-default version, or set to 0 for the default version."
   (let* ((s5-0 (cond
                  ((zero? arg2)
                   (case arg1

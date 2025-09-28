@@ -217,7 +217,7 @@
 ;; definition for method 74 of type centipede
 (defmethod general-event-handler ((this centipede) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('under-break-floor)
      (go (method-of-object this thru-grating))
@@ -230,18 +230,19 @@
 
 ;; definition for method 7 of type centipede
 ;; WARN: Return type mismatch nav-enemy vs centipede.
-(defmethod relocate ((this centipede) (arg0 int))
+(defmethod relocate ((this centipede) (offset int))
   (if (nonzero? (-> this bobbing))
-      (&+! (-> this bobbing) arg0)
+      (&+! (-> this bobbing) offset)
       )
   (if (nonzero? (-> this legs-sound))
-      (&+! (-> this legs-sound) arg0)
+      (&+! (-> this legs-sound) offset)
       )
-  (the-as centipede ((method-of-type nav-enemy relocate) this arg0))
+  (the-as centipede ((method-of-type nav-enemy relocate) this offset))
   )
 
 ;; definition for method 10 of type centipede
 (defmethod deactivate ((this centipede))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (when (-> this set-camera-mode?)
     (set! (-> this set-camera-mode?) #f)
     (remove-setting-by-arg0 *setting-control* 'mode-name)
@@ -369,7 +370,7 @@
       ((and janim (= janim (-> this draw art-group data 4)))
        (when (ja-done? 1)
          (-> this draw art-group data 7)
-         (let ((v1-10 (get-rand-int this 100))
+         (let ((v1-10 (rnd-int-count this 100))
                (a0-9 (if (> (-> this skel active-channels) 0)
                          (-> this skel root-channel 1 frame-group)
                          )
@@ -382,7 +383,7 @@
               )
              ((= a0-9 (-> this draw art-group data 11))
               (set! s5-0 (-> this draw art-group data 12))
-              (set! (-> this anim-ctr) (get-rand-int-range this 0 3))
+              (set! (-> this anim-ctr) (rnd-int-range this 0 3))
               )
              ((= a0-9 (-> this draw art-group data 12))
               (let ((v1-20 (-> this anim-ctr)))
@@ -399,7 +400,7 @@
               )
              ((= a0-9 (-> this draw art-group data 13))
               (set! s5-0 (-> this draw art-group data 14))
-              (set! (-> this anim-ctr) (get-rand-int-range this 0 3))
+              (set! (-> this anim-ctr) (rnd-int-range this 0 3))
               )
              ((and (= a0-9 (-> this draw art-group data 14)) (> (-> this anim-ctr) 0))
               (+! (-> this anim-ctr) -1)
@@ -419,7 +420,7 @@
               )
              (else
                (set! s5-0 (-> this draw art-group data 7))
-               (set! (-> this anim-ctr) (get-rand-int-range this 2 6))
+               (set! (-> this anim-ctr) (rnd-int-range this 2 6))
                )
              )
            )
@@ -462,7 +463,7 @@
           (set! (-> a0-22 param 1) 1.0)
           (joint-control-channel-group! a0-22 (the-as art-joint-anim (-> this draw art-group data 7)) num-func-seek!)
           )
-        (set! (-> this anim-ctr) (get-rand-int-range this 2 6))
+        (set! (-> this anim-ctr) (rnd-int-range this 2 6))
         (when (not (-> this using-chan1-effects?))
           (set! (-> this using-chan1-effects?) #t)
           (let ((v1-106 (-> this skel effect)))
@@ -565,10 +566,10 @@
 ;; definition for method 98 of type centipede
 (defmethod in-aggro-range? ((this centipede) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
-- if `activate-distance` is `0.0`, always true
-- otherwise, check if the provided process is close enough
-@param proc The process used to distance check
-@returns true/false"
+   - if `activate-distance` is `0.0`, always true
+   - otherwise, check if the provided process is close enough
+   @param proc The process used to distance check
+   @returns true/false"
   (when arg0
     (if (not arg1)
         (set! arg1 (get-trans arg0 0))
@@ -672,12 +673,12 @@
 
 ;; definition for method 55 of type centipede
 ;; INFO: Used lq/sq
-(defmethod track-target! ((this centipede))
+(defmethod common-post ((this centipede))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (let ((a0-3 (handle->process (-> this focus handle))))
@@ -766,7 +767,7 @@
         )
        ((task-node-closed? (game-task-node under-sig-centipede1-start))
         (logclear! (-> this mask) (process-mask actor-pause))
-        (logclear! (-> this enemy-flags) (enemy-flag notice))
+        (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
         (process-entity-status! this (entity-perm-status no-kill) #t)
         (go (method-of-object this grab-cam))
         )
@@ -786,7 +787,7 @@
         )
        ((task-node-closed? (game-task-node under-sig-centipede2-start))
         (logclear! (-> this mask) (process-mask actor-pause))
-        (logclear! (-> this enemy-flags) (enemy-flag notice))
+        (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
         (process-entity-status! this (entity-perm-status no-kill) #t)
         (go (method-of-object this grab-cam))
         )
@@ -834,7 +835,7 @@
     (set-chan1-effects self)
     )
   :code (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logior! (-> self enemy-flags) (enemy-flag alert))
     (set! (-> self desired-talking-volume) 0.0)
     (centipede-method-187 self)
     (set-setting! 'interp-time 'abs 0.0 0)
@@ -847,8 +848,8 @@
     (until #f
       (let ((v1-13 *camera*))
         (when (and v1-13 (-> v1-13 slave))
-          (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice alert victory called-dying))
-          (logior! (-> self enemy-flags) (enemy-flag dangerous-backup))
+          (logclear! (-> self enemy-flags) (enemy-flag use-notice-distance directed directed-ready use-trigger))
+          (logior! (-> self enemy-flags) (enemy-flag chase-startup))
           (logclear! (-> self mask) (process-mask actor-pause))
           (go-hostile self)
           )
@@ -870,8 +871,8 @@
           )
       )
     (stop-looking-at-target! self)
-    (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
-    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logclear! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (logior! (-> self enemy-flags) (enemy-flag alert))
     (vector-reset! (-> self root transv))
     (set! (-> self desired-talking-volume) 1.0)
     )
@@ -914,8 +915,8 @@
           )
       )
     (stop-looking-at-target! self)
-    (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
-    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logclear! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (logior! (-> self enemy-flags) (enemy-flag alert))
     (vector-reset! (-> self root transv))
     (set! (-> self desired-talking-volume) 1.0)
     )
@@ -941,8 +942,8 @@
           )
       )
     (stop-looking-at-target! self)
-    (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
-    (logior! (-> self enemy-flags) (enemy-flag chase-startup))
+    (logclear! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (logior! (-> self enemy-flags) (enemy-flag alert))
     (vector-reset! (-> self root transv))
     (set! (-> self desired-talking-volume) 1.0)
     )
@@ -1105,7 +1106,7 @@
       )
     0
     (nav-enemy-method-167 self)
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self grabbed-focus?) #f)
     (vector-reset! (-> self root transv))
     (set! (-> self desired-talking-volume) 0.0)
@@ -1119,7 +1120,7 @@
     (quaternion-copy! (-> self dest-quat) (-> self src-quat))
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (when (-> self grabbed-focus?)
@@ -1383,7 +1384,7 @@
     )
   0
   (set-gravity-length (-> this root dynam) 573440.0)
-  (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
   (set! (-> this bobbing) (the-as trsqv (new 'process 'joint-mod-set-world this 3 #t)))
   (set! (-> this sound)
         (new 'process 'ambient-sound (static-sound-spec "cent-talk" :fo-max 90) (-> this root trans))

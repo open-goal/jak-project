@@ -142,6 +142,7 @@
 (define *pilot-edge-grab-info* (new 'static 'pilot-edge-grab-info))
 
 (defmethod deactivate ((this vehicle))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (vehicle-method-110 this)
   (call-parent-method this)
   (none)
@@ -150,11 +151,11 @@
 ;; WARN: Return type mismatch entity-perm-status vs none.
 (defmethod init-from-entity! ((this vehicle) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
@@ -418,7 +419,7 @@ This commonly includes things such as:
   (let* ((v1-1 (-> this rbody state lin-velocity))
          (f0-4 (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))))
          (f0-6 (/ (- arg0 f0-4) arg0))
-         (f1-6 (* 0.005 f0-6))
+         (f1-6 (/ f0-6 200))
          )
     (set! (-> this controls throttle) (fmax 0.0 (fmin 1.0 (+ (-> this controls throttle) f1-6))))
     )
@@ -749,13 +750,13 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-78 ((this vehicle) (arg0 int))
+(defmethod prepare-zone-transition ((this vehicle) (arg0 int))
   (set! (-> this flight-level-index-prev) (-> this flight-level-index))
   (set! (-> this flight-level-index) arg0)
   (logior! (-> this flags) (rigid-body-object-flag flight-level-transition camera-rapid-track-mode))
   (logclear! (-> this flags) (rigid-body-object-flag flight-level-transition-ending))
   (set-time! (-> this transition-time))
-  (vehicle-method-91 this)
+  (enable-rapid-camera-tracking this)
   0
   (none)
   )
@@ -904,8 +905,8 @@ This commonly includes things such as:
     (set-setting! 'head-offset 'abs (-> this info camera-head-offset) 0)
     (set-setting! 'foot-offset 'abs (-> this info camera-foot-offset) 0)
     (set-setting! 'target-height 'abs (meters 0) 0)
-    (vehicle-method-92 this)
-    (vehicle-method-89 this)
+    (disable-rapid-camera-tracking this)
+    (enable-bike-mode this)
     (persist-with-delay *setting-control* 'mode-name (seconds 0.2) 'mode-name 'cam-fixed 0.0 0)
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
     (let ((v1-27 (process->ppointer this)))
@@ -926,8 +927,8 @@ This commonly includes things such as:
 
 (defmethod vehicle-method-88 ((this vehicle))
   (when (logtest? (rigid-body-object-flag camera) (-> this flags))
-    (vehicle-method-92 this)
-    (vehicle-method-90 this)
+    (disable-rapid-camera-tracking this)
+    (disable-bike-mode this)
     (remove-setting! 'rapid-tracking)
     (remove-setting! 'fov)
     (remove-setting! 'string-camera-ceiling)
@@ -959,7 +960,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-89 ((this vehicle))
+(defmethod enable-bike-mode ((this vehicle))
   (when (not (logtest? (rigid-body-object-flag camera-bike-mode) (-> this flags)))
     (logior! (-> this flags) (rigid-body-object-flag camera-bike-mode))
     (set-setting! 'bike-mode #f 0.0 0)
@@ -968,7 +969,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-90 ((this vehicle))
+(defmethod disable-bike-mode ((this vehicle))
   (when (logtest? (rigid-body-object-flag camera-bike-mode) (-> this flags))
     (logclear! (-> this flags) (rigid-body-object-flag camera-bike-mode))
     (remove-setting! 'bike-mode)
@@ -977,7 +978,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-91 ((this vehicle))
+(defmethod enable-rapid-camera-tracking ((this vehicle))
   (when (logtest? (-> this flags) (rigid-body-object-flag player-driving))
     (logior! (-> this flags) (rigid-body-object-flag camera-rapid-track-mode))
     (set-setting! 'rapid-tracking #f 0.0 0)
@@ -986,7 +987,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-92 ((this vehicle))
+(defmethod disable-rapid-camera-tracking ((this vehicle))
   (when (logtest? (-> this flags) (rigid-body-object-flag player-driving))
     (logclear! (-> this flags) (rigid-body-object-flag camera-rapid-track-mode))
     (remove-setting! 'rapid-tracking)
@@ -1071,13 +1072,13 @@ This commonly includes things such as:
   0
   )
 
-(defmethod vehicle-method-80 ((this vehicle))
+(defmethod switch-zone-high! ((this vehicle))
   (when (and (logtest? (-> this info flags) 64) (< (-> this flight-level-index) 1))
     1
     (cond
       ((< (+ 8192.0 (-> this rbody state position y)) (-> this flight-level))
        (sound-play "bike-up")
-       (vehicle-method-78 this 1)
+       (prepare-zone-transition this 1)
        )
       (else
         (set! (-> this flight-level-index) 1)
@@ -1088,10 +1089,10 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-81 ((this vehicle))
+(defmethod switch-zone-low! ((this vehicle))
   (when (and (logtest? (-> this info flags) 64) (> (-> this flight-level-index) 0))
     (sound-play "bike-down")
-    (vehicle-method-78 this 0)
+    (prepare-zone-transition this 0)
     )
   0
   (none)
@@ -1099,7 +1100,7 @@ This commonly includes things such as:
 
 (defmethod vehicle-method-83 ((this vehicle))
   (logclear! (-> this flags) (rigid-body-object-flag flight-level-transition))
-  (vehicle-method-92 this)
+  (disable-rapid-camera-tracking this)
   (set! (-> this flight-level-index) 0)
   0
   (none)
@@ -1294,11 +1295,11 @@ This commonly includes things such as:
                     (>= (-> this rbody state matrix vector 1 y) (cos 910.2222))
                     )
            (.lvf vf1 (&-> (-> this rbody state ang-velocity) quad))
-           (.add.w.vf vf2 vf0 vf0 :mask #b1)
+           (.add.w.vf.x vf2 vf0 vf0)
            (.mul.vf vf1 vf1 vf1)
-           (.mul.x.vf acc vf2 vf1 :mask #b1)
-           (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-           (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+           (.mul.x.vf.x acc vf2 vf1)
+           (.add.mul.y.vf.x acc vf2 vf1 acc)
+           (.add.mul.z.vf.x vf1 vf2 vf1 acc)
            (.mov v1-13 vf1)
            (let ((f0-1 v1-13)
                  (f1-0 0.5)
@@ -1316,19 +1317,19 @@ This commonly includes things such as:
                    (f0-4 (* f0-3 (* f1-3 f1-3)))
                    )
               (.lvf vf1 (&-> (-> this rbody state ang-velocity) quad))
-              (.add.w.vf vf2 vf0 vf0 :mask #b1)
+              (.add.w.vf.x vf2 vf0 vf0)
               (.mul.vf vf1 vf1 vf1)
-              (.mul.x.vf acc vf2 vf1 :mask #b1)
-              (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-              (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+              (.mul.x.vf.x acc vf2 vf1)
+              (.add.mul.y.vf.x acc vf2 vf1 acc)
+              (.add.mul.z.vf.x vf1 vf2 vf1 acc)
               (.mov v1-25 vf1)
               (when (and (< v1-25 f0-4) (begin
                                           (.lvf vf1 (&-> (-> this rbody state lin-velocity) quad))
-                                          (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                          (.add.w.vf.x vf2 vf0 vf0)
                                           (.mul.vf vf1 vf1 vf1)
-                                          (.mul.x.vf acc vf2 vf1 :mask #b1)
-                                          (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
-                                          (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                          (.mul.x.vf.x acc vf2 vf1)
+                                          (.add.mul.y.vf.x acc vf2 vf1 acc)
+                                          (.add.mul.z.vf.x vf1 vf2 vf1 acc)
                                           (.mov v1-30 vf1)
                                           (let ((f1-7 v1-30)
                                                 (f2-0 614.4)

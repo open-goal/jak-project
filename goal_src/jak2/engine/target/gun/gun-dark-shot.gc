@@ -51,7 +51,7 @@
       )
 
 (defpart 429
-  :init-specs ((:texture (new 'static 'texture-id :index #xbb :page #xc))
+  :init-specs ((:texture (glow effects))
     (:num 1.0)
     (:scale-x (meters 0.3) (meters 0.2))
     (:rot-x (degrees 11.25))
@@ -68,7 +68,7 @@
   )
 
 (defpart 430
-  :init-specs ((:texture (new 'static 'texture-id :index #xbc :page #xc))
+  :init-specs ((:texture (glow-hotdot effects))
     (:num 1.0)
     (:scale-x (meters 1) (meters 4))
     (:rot-x (degrees 11.25))
@@ -391,8 +391,8 @@
           (.mov at-0 f0-12)
           )
         (.mov vf2 at-0)
-        (.mov.vf vf1 vf0 :mask #b1000)
-        (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+        (.mov.vf.w vf1 vf0)
+        (.mul.x.vf.xyz vf1 vf1 vf2)
         (.svf (&-> v1-31 quad) vf1)
         )
       (projectile-move-fill-line-sphere self)
@@ -400,6 +400,9 @@
           (go-virtual impact)
           )
       (sound-play "pmkr-fire" :id (-> self fire-sound) :position (-> self root trans))
+      ;; og:preserve-this trigger effects
+      (when (and (pc-get-trigger-effects-enabled?) (-> *pc-settings* controller-swap-r1-r2?))
+         (pc-send-trigger-rumble! 0 32767 50))
       (sound-play "pmkr-trail" :id (-> self trail-sound) :position (-> self root trans))
       )
     )
@@ -642,15 +645,19 @@
       (set! (-> gp-1 penetrate-using) (penetrate explode))
       (explosion-spawn (the-as process-drawable *default-pool*) explosion gp-1)
       )
-    ;; og:preserve-this stack array -> pointer
-    (let (;(s3-0 (the-as (array collide-shape) (new 'stack 'array collide-shape 16)))
-          (s3-0 (the-as (pointer collide-shape) (new 'stack-no-clear 'array 'collide-shape 16)))
+    (let ((s3-0 (the-as (array collide-shape) ((method-of-type array new)
+                                               (the-as symbol (new 'stack-no-clear 'array 'collide-shape 16))
+                                               array
+                                               collide-shape
+                                               16
+                                               )
+                        )
+                )
           (a1-8 (new 'stack-no-clear 'sphere))
           )
       (set! (-> a1-8 quad) (-> self root trans quad))
       (set! (-> a1-8 r) (-> self blast-radius))
-      ;; og:preserve-this stack array -> pointer
-      (let ((gp-2 (fill-actor-list-for-sphere *actor-hash* a1-8 s3-0 16)))
+      (let ((gp-2 (fill-actor-list-for-sphere *actor-hash* a1-8 (-> s3-0 data) (-> s3-0 allocated-length))))
         (let ((s1-0 (the-as process-drawable #f))
               (f30-0 4096000.0)
               (s4-0 0)
@@ -816,10 +823,7 @@
                 (-> self result-array (+ gp-2 -1))
                 :to s4-1
                 )
-              (let ((s4-2 (current-time)))
-                (until (time-elapsed? s4-2 (seconds 0.1))
-                  (suspend)
-                  )
+              (suspend-for (seconds 0.1)
                 )
               )
             )

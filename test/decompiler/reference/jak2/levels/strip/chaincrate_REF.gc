@@ -10,7 +10,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1127
-  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+  :init-specs ((:texture (motion-blur-part effects))
     (:num 5.0 5.0)
     (:scale-x (meters 2.5))
     (:rot-x 4)
@@ -43,7 +43,7 @@
 
 ;; failed to figure out what this is:
 (defpart 1128
-  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+  :init-specs ((:texture (motion-blur-part effects))
     (:num 2.0 2 3.0)
     (:scale-x (meters 2.5))
     (:rot-x 4)
@@ -267,6 +267,7 @@
 
 ;; definition for method 10 of type strip-chain-crate-slave
 (defmethod deactivate ((this strip-chain-crate-slave))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this part2))
       (kill-and-free-particles (-> this part2))
       )
@@ -276,11 +277,11 @@
 
 ;; definition for method 7 of type strip-chain-crate-slave
 ;; WARN: Return type mismatch process-drawable vs strip-chain-crate-slave.
-(defmethod relocate ((this strip-chain-crate-slave) (arg0 int))
+(defmethod relocate ((this strip-chain-crate-slave) (offset int))
   (if (nonzero? (-> this part2))
-      (&+! (-> this part2) arg0)
+      (&+! (-> this part2) offset)
       )
-  (the-as strip-chain-crate-slave ((method-of-type process-drawable relocate) this arg0))
+  (the-as strip-chain-crate-slave ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition of type strip-chain-crate
@@ -363,11 +364,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this strip-chain-crate) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 int))
   (set! (-> this root) (new 'process 'trsqv))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))

@@ -5,5 +5,119 @@
 ;; name in dgo: video
 ;; dgos: GAME
 
+(define-extern *video-mode* int)
+
 ;; DECOMP BEGINS
 
+(defun set-video-mode ((arg0 symbol))
+  (case arg0
+    (('ntsc)
+     (set! (-> *setting-control* user-default screenx) 0)
+     (set! (-> *setting-control* user-default screeny) 8)
+     (set! (-> *video-params* display-fbp) 164)
+     (set! (-> *video-params* display-sy) 224)
+     (set! *video-mode* 0)
+     (sound-set-fps 60)
+     )
+    (('pal)
+     (set! (-> *setting-control* user-default screenx) 0)
+     (set! (-> *setting-control* user-default screeny) 24)
+     (set! (-> *video-params* display-fbp) 144)
+     (set! (-> *video-params* display-sy) 256)
+     (set! *video-mode* 1)
+     (sound-set-fps 50)
+     )
+    )
+  (set-time-ratios *display* (-> *display* dog-ratio))
+  (set! (-> *video-params* reset-video-mode) #t)
+  (set! (-> *math-camera* isometric uvec y) 0.5)
+  (set! (-> *math-camera* y-clip) 416.0)
+  (set! (-> *math-camera* y-pix) (/ (-> *math-camera* y-clip) 2))
+  (set! *profile-y* 1848)
+  (set! (-> *video-params* set-video-mode) #t)
+  0
+  (none)
+  )
+
+(defun get-video-mode ()
+  (-> *setting-control* user-current video-mode)
+  )
+
+(defun set-aspect-ratio ((arg0 symbol))
+  (case arg0
+    (('aspect4x3)
+     (set! (-> *video-params* relative-x-scale) 1.0)
+     (set! (-> *video-params* relative-x-scale-reciprical) 1.0)
+     )
+    (('aspect16x9)
+     (set! (-> *video-params* relative-x-scale) 0.75)
+     (set! (-> *video-params* relative-x-scale-reciprical) 1.3333334)
+     )
+    )
+  0
+  (none)
+  )
+
+(defun get-aspect-ratio ()
+  (-> *setting-control* user-current aspect-ratio)
+  )
+
+(defun set-progressive-scan ((arg0 symbol))
+  (set! (-> *setting-control* user-default set-video-mode) arg0)
+  0
+  (none)
+  )
+
+(defun get-progressive-scan ()
+  (-> *setting-control* user-current set-video-mode)
+  )
+
+(defun set-graphics-mode ()
+  (let ((v1-0 *setting-control*)
+        (gp-0 (the-as gs-bank #x12000000))
+        (s5-0 *video-params*)
+        )
+    (let ((s4-0 *display*))
+      (cond
+        ((-> v1-0 user-current set-video-mode)
+         (when (nonzero? (-> s5-0 smode2))
+           (reset-graph 0 0 80 0)
+           (set! (-> s5-0 smode2) (the-as uint 0))
+           0
+           )
+         (set! (-> gp-0 display1) (new 'static 'gs-display
+                                    :magh #x1
+                                    :dw #x4ff
+                                    :dy (+ (-> s5-0 display-dy) 50)
+                                    :dx (+ (* (-> s5-0 display-dx) 2) 326)
+                                    :dh (+ (* (-> s5-0 display-sy) 2) -1)
+                                    )
+               )
+         )
+        (else
+          (when (or (!= (-> s5-0 smode2) 1) (-> *video-params* set-video-mode))
+            (if (= (-> *setting-control* user-current video-mode) 'ntsc)
+                (reset-graph 0 1 2 0)
+                (reset-graph 0 1 3 0)
+                )
+            (set! (-> s5-0 smode2) (the-as uint 1))
+            (set! (-> s5-0 set-video-mode) #f)
+            )
+          (set! (-> gp-0 display1) (new 'static 'gs-display
+                                     :magh #x3
+                                     :dw #x9ff
+                                     :dy (+ (-> s5-0 display-dy) 50)
+                                     :dx (+ (* (-> s5-0 display-dx) 4) 652)
+                                     :dh (+ (* (-> s5-0 display-sy) 2) -1)
+                                     )
+                )
+          )
+        )
+      (set! (-> gp-0 pmode) (-> s4-0 pmode))
+      (set! (-> gp-0 bgcolor) (-> s4-0 bgcolor))
+      )
+    (set! (-> gp-0 dspfb1) (new 'static 'gs-display-fb :fbw #xa :fbp (-> s5-0 display-fbp)))
+    )
+  0
+  (none)
+  )

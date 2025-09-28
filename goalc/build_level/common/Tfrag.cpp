@@ -5,24 +5,33 @@
 #include "gltf_mesh_extract.h"
 
 #include "common/custom_data/pack_helpers.h"
+#include "common/util/gltf_util.h"
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
-void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
-                     DrawableTreeTfrag& /*out*/,
-                     tfrag3::TfragTree& out_pc) {
-  out_pc.kind = tfrag3::TFragmentTreeKind::NORMAL;  // todo more types?
-  out_pc.draws = std::move(mesh_extract_out.strip_draws);
-  pack_tfrag_vertices(&out_pc.packed_vertices, mesh_extract_out.vertices);
+void add_tree(std::vector<tfrag3::TfragTree>& out_pc,
+              const gltf_mesh_extract::TfragOutput& mesh_extract_out,
+              const std::vector<tfrag3::StripDraw>& draws,
+              tfrag3::TFragmentTreeKind kind) {
+  auto& normal = out_pc.emplace_back();
+  normal.kind = kind;
+  normal.draws = draws;
+  pack_tfrag_vertices(&normal.packed_vertices, mesh_extract_out.tfrag_vertices);
+  normal.colors = gltf_util::pack_time_of_day(mesh_extract_out.color_palette);
+  normal.use_strips = false;
+}
 
-  for (auto& col : mesh_extract_out.color_palette) {
-    tfrag3::TimeOfDayColor todc;
-    for (auto& rgba : todc.rgba) {
-      rgba = col;
-    }
-    out_pc.colors.push_back(todc);
+void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
+                     std::vector<tfrag3::TfragTree>& out_pc) {
+  if (!mesh_extract_out.normal_strip_draws.empty()) {
+    add_tree(out_pc, mesh_extract_out, mesh_extract_out.normal_strip_draws,
+             tfrag3::TFragmentTreeKind::NORMAL);
   }
-  out_pc.use_strips = false;
+
+  if (!mesh_extract_out.trans_strip_draws.empty()) {
+    add_tree(out_pc, mesh_extract_out, mesh_extract_out.trans_strip_draws,
+             tfrag3::TFragmentTreeKind::TRANS);
+  }
 }
 
 /*
@@ -86,7 +95,7 @@ size_t add_empty_dia(const std::string& name, DataObjectGenerator& gen, int tota
 
 size_t DrawableTreeTfrag::add_to_object_file(DataObjectGenerator& gen) const {
   gen.align_to_basic();
-  gen.add_type_tag("drawable-tree-tfrag");
+  gen.add_type_tag(m_type);
   size_t result = gen.current_offset_bytes();
   gen.add_word(1 << 16);
   for (int i = 0; i < 6; i++) {
@@ -94,7 +103,7 @@ size_t DrawableTreeTfrag::add_to_object_file(DataObjectGenerator& gen) const {
   }
   size_t slot = gen.add_word(0);
   ASSERT(slot * 4 - result == 28);
-  gen.link_word_to_byte(slot, add_empty_dia("drawable-inline-array-tfrag", gen, 0x64));
+  gen.link_word_to_byte(slot, add_empty_dia(m_array_type, gen, 0x64));
 
   return result;
 }

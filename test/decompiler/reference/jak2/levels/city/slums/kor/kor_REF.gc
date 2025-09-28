@@ -197,15 +197,10 @@
 ;; definition for method 74 of type kor
 (defmethod general-event-handler ((this kor) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('arrest)
-     (let* ((s4-0 (handle->process (-> this arrestor-handle)))
-            (v1-4 (if (type? s4-0 process-focusable)
-                      s4-0
-                      )
-                  )
-            )
+     (let ((v1-4 (the-as process (as-type (handle->process (-> this arrestor-handle)) process-focusable))))
        (when (or (not v1-4) (= v1-4 arg0) (and (!= v1-4 arg0) (time-elapsed? (-> this arrest-attempt-time) (seconds 0.1))))
          (set! (-> this arrestor-handle) (process->handle arg0))
          (set-time! (-> this arrest-attempt-time))
@@ -225,11 +220,11 @@
          (forward-up->quaternion (-> this root quat) a1-8 *up-vector*)
          )
        )
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+     (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
      (logclear! (-> this mask) (process-mask collectable))
-     (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+     (logclear! (-> this enemy-flags) (enemy-flag attackable-backup))
      (logclear! (-> this mask) (process-mask actor-pause))
-     (logclear! (-> this enemy-flags) (enemy-flag notice))
+     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
      (go (method-of-object this arrested))
      )
     (else
@@ -240,17 +235,9 @@
 
 ;; definition for method 97 of type kor
 (defmethod enemy-method-97 ((this kor))
-  (let* ((s4-0 (handle->process (-> this attacker-handle)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         (s3-0 (handle->process (-> this arrestor-handle)))
-         (s4-1 (if (type? s3-0 process-focusable)
-                   s3-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process (as-type (handle->process (-> this attacker-handle)) process-focusable)))
+        (s4-1 (the-as process (as-type (handle->process (-> this arrestor-handle)) process-focusable)))
+        )
     (when s5-0
       (cond
         ((= (-> s5-0 type) target)
@@ -296,12 +283,7 @@
             (empty)
             )
            (else
-             (let ((s5-1 (handle->process (-> this poi-handle))))
-               (set! s3-1 (if (type? s5-1 process-focusable)
-                              s5-1
-                              )
-                     )
-               )
+             (set! s3-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (if s3-1
                  (empty)
                  (set! s3-1 *target*)
@@ -318,12 +300,7 @@
              (set! s3-1 s5-0)
              )
            (else
-             (let ((s5-2 (handle->process (-> this poi-handle))))
-               (set! s3-1 (if (type? s5-2 process-focusable)
-                              s5-2
-                              )
-                     )
-               )
+             (set! s3-1 (the-as process (as-type (handle->process (-> this poi-handle)) process-focusable)))
              (cond
                (s3-1
                  (empty)
@@ -454,7 +431,7 @@
     )
   (set! (-> this min-speed) 6144.0)
   (set! (-> this max-speed) 20889.6)
-  (set! (-> this channel) (the-as uint 27))
+  (set! (-> this channel) (gui-channel kor))
   (set! (-> this notice-enemy-dist) 122880.0)
   (set! (-> this travel-anim-interp) 0.0)
   (set! (-> this focus-info max-los-dist) 0.0)
@@ -519,19 +496,15 @@
 ;; definition for method 232 of type kor
 ;; WARN: Return type mismatch object vs none.
 (defmethod kor-method-232 ((this kor))
-  (let ((s5-0 (handle->process (-> this arrestor-handle))))
-    (cond
-      ((if (type? s5-0 process-focusable)
-           s5-0
-           )
-       (go (method-of-object this arrested))
-       )
-      ((logtest? (bot-flags bf19) (-> this bot-flags))
-       (go (method-of-object this scared-idle))
-       )
-      (else
-        (go (method-of-object this waiting-idle))
-        )
+  (cond
+    ((the-as process (as-type (handle->process (-> this arrestor-handle)) process-focusable))
+     (go (method-of-object this arrested))
+     )
+    ((logtest? (bot-flags bf19) (-> this bot-flags))
+     (go (method-of-object this scared-idle))
+     )
+    (else
+      (go (method-of-object this waiting-idle))
       )
     )
   (none)
@@ -608,14 +581,14 @@
   )
 
 ;; definition for method 78 of type kor
-(defmethod enemy-method-78 ((this kor) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this kor) (arg0 enemy-knocked-info))
   (ja-channel-push! 1 (seconds 0.1))
   (let ((a1-2 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
         (a0-4 (-> this skel root-channel 0))
         )
     (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
     (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
-    (set! (-> a0-4 param 1) (-> arg0 0))
+    (set! (-> a0-4 param 1) (-> arg0 anim-speed))
     (set! (-> a0-4 frame-num) 0.0)
     (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-2) num-func-seek!)
     )

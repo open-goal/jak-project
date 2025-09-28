@@ -10,7 +10,7 @@
 #include "common/serialization/subtitles/subtitles_v2.h"
 #include "common/serialization/text/text_ser.h"
 #include "common/util/Assert.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 
 void compile_game_text(const std::vector<GameTextDefinitionFile>& filenames,
                        GameTextDB& db,

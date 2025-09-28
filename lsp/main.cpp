@@ -55,6 +55,29 @@ void setup_logging(bool verbose, std::string log_file, bool disable_ansi_colors)
   lg::initialize();
 }
 
+std::string temp_url_encode(const std::string& value) {
+  std::ostringstream escaped;
+  escaped.fill('0');
+  escaped << std::hex;
+
+  for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
+    std::string::value_type c = (*i);
+
+    // Keep alphanumeric and other accepted characters intact
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~' || c == '/') {
+      escaped << c;
+      continue;
+    }
+
+    // Any other characters are percent-encoded
+    escaped << std::uppercase;
+    escaped << '%' << std::setw(2) << int((unsigned char)c);
+    escaped << std::nouppercase;
+  }
+
+  return escaped.str();
+}
+
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
@@ -72,6 +95,7 @@ int main(int argc, char** argv) {
   CLI11_PARSE(app, argc, argv);
 
   AppState appstate;
+
   LSPRouter lsp_router;
   appstate.verbose = verbose;
   try {
@@ -88,6 +112,11 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdout), _O_BINARY);
   _setmode(_fileno(stdin), _O_BINARY);
 #endif
+
+  // TODO - make the server check for the process id of the extension host and exit itself if that
+  // process goes away (the process id comes on the command line as an argument and in the
+  // initialize request). This is what we do in all our servers since the extension host could die
+  // unexpected as well.
 
   try {
     char c;

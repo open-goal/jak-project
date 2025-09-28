@@ -5,5 +5,242 @@
 ;; name in dgo: dma-h
 ;; dgos: GAME
 
+(defenum dma-tag-id
+    :bitfield #f
+    :type uint8
+    (refe 0) ;; addr=ADDR, ends after this transfer
+    (cnt 1)  ;; addr=after tag, next-tag=after data
+    (next 2) ;; addr=after tag, next-tag=ADDR
+    (ref 3)  ;; addr=ADDR, next-tag=after tag
+    (refs 4) ;; ref, but stall controled
+    (call 5) ;;
+    (ret 6)  ;;
+    (end 7)  ;; next, but ends.
+    )
+
+;; all these have mask (only applies to unpacks) and interrupt not set.
+(defenum vif-cmd
+    :bitfield #f
+    :type uint8
+    (nop          0)  ;; no-op, can still have irq set.
+    (stcycl       1)  ;; set write recycle register
+    (offset       2)  ;; set offset register
+    (base         3)  ;; set base register
+    (itop         4)  ;; set data pointer register (itops)
+    (stmod        5)  ;; set mode register
+    (mskpath3     6)  ;; set path 3 mask
+    (mark         7)  ;; set mark register
+    (pc-port      8)  ;; special tag for PC Port data.
+    (flushe       16) ;; wait for end of microprogram
+    (flush        17) ;; wait for end of microprogram and transfer (path1/path2)
+    (flusha       19) ;; wait for end of microprogram and transfer (path1/path2/path3)
+    (mscal        20) ;; activate microprogram (call)
+    (mscalf       21) ;; flushe and activate (call)
+    (mscnt        23) ;; activate microprogram (continue)
+    (stmask       32) ;; set MASK register.
+    (strow        48) ;; set filling data
+    (stcol        49) ;; set filling data
+    (mpg          74) ;; transfer microprogram
+    (direct       80) ;; straight to GIF.
+    (directhl     81)
+    (unpack-s-32  96)
+    (unpack-s-16  97)
+    (unpack-s-8   98)
+    ;; 99 is invllid
+    (unpack-v2-32 100)
+    (unpack-v2-16 101)
+    (unpack-v2-8  102)
+    ;; 103 is invalid
+    (unpack-v3-32 104)
+    (unpack-v3-16 105)
+    (unpack-v3-8  106)
+    ;; 107 is invalid
+    (unpack-v4-32 108)
+    (unpack-v4-16 109)
+    (unpack-v4-8  110)
+    (unpack-v4-5  111)
+    (cmd-mask     239) ;; not sure what this is.
+    )
+
+;; this makes a copy of the above type, but uses a uint32.
+(defenum vif-cmd-32
+    :bitfield #f
+    :type uint32
+    :copy-entries vif-cmd
+    )
+
 ;; DECOMP BEGINS
 
+(deftype dma-chcr (uint32)
+  "Memory mapped DMA channel control register. Typically used to start and check on DMA transfer."
+  ((dir uint8  :offset   0 :size   1)
+   (mod uint8  :offset   2 :size   2)
+   (asp uint8  :offset   4 :size   2)
+   (tte uint8  :offset   6 :size   1)
+   (tie uint8  :offset   7 :size   1)
+   (str uint8  :offset   8 :size   1)
+   (tag uint16 :offset  16 :size  16)
+   )
+  )
+
+
+(deftype dma-bank (structure)
+  "Bank of memory mapped DMA registers for a single channel. Used to control DMA."
+  ((chcr  dma-chcr  :offset   0)
+   (madr  uint32    :offset  16)
+   (qwc   uint32    :offset  32)
+   )
+  )
+
+
+(deftype dma-bank-source (dma-bank)
+  "DMA channel registers for a DMA channel supporting source-chain."
+  ((tadr  uint32  :offset  48)
+   )
+  )
+
+
+(deftype dma-bank-vif (dma-bank-source)
+  "DMA channel registers for a DMA channel with call/ret stack."
+  ((as0  uint32  :offset  64)
+   (as1  uint32  :offset  80)
+   )
+  )
+
+
+(deftype dma-bank-spr (dma-bank-source)
+  "DMA channel registers for a DMA channel supporting scratchpad transfer."
+  ((sadr  uint32  :offset 128)
+   )
+  )
+
+
+(deftype dma-ctrl (uint32)
+  "Main DMA control register, shared for all channels."
+  ((dmae uint8 :offset   0 :size   1)
+   (rele uint8 :offset   1 :size   1)
+   (mfd  uint8 :offset   2 :size   2)
+   (sts  uint8 :offset   4 :size   2)
+   (std  uint8 :offset   6 :size   2)
+   (rcyc uint8 :offset   8 :size   3)
+   )
+  )
+
+(deftype dma-enable (uint32)
+  ((cpnd uint8 :offset  16 :size   1)
+   )
+  )
+
+(deftype dma-sqwc (uint32)
+  ((sqwc uint8 :offset   0 :size   8)
+   (tqwc uint8 :offset  16 :size   8)
+   )
+  )
+
+(deftype dma-bank-control (structure)
+  "Memory mapping for shared DMA registers."
+  ((ctrl     dma-ctrl  :offset   0)
+   (stat     uint32    :offset  16)
+   (pcr      uint32    :offset  32)
+   (sqwc     dma-sqwc  :offset  48)
+   (rbsr     uint32    :offset  64)
+   (rbor     uint32    :offset  80)
+   (stadr    uint32    :offset  96)
+   (enabler  uint32    :offset 5408)
+   (enablew  uint32    :offset 5520)
+   )
+  )
+
+
+(deftype vu-code-block (basic)
+  "Unused type for some VU code. vu-function is used instead."
+  ((name          basic)
+   (code          uint32)
+   (size          int32)
+   (dest-address  uint32)
+   )
+  )
+
+
+(deftype vu-stat (uint64)
+  ()
+  )
+
+(deftype dma-tag (uint64)
+  "The 64-bit tag used by the DMA system."
+  ((qwc  uint16     :offset   0 :size  16)
+   (pce  uint8      :offset  26 :size   2)
+   (id   dma-tag-id :offset  28 :size   3)
+   (irq  uint8      :offset  31 :size   1)
+   (addr uint32     :offset  32 :size  31)
+   (spr  uint8      :offset  63 :size   1)
+   )
+  )
+
+
+(deftype dma-bucket (structure)
+  "A linked list of DMA data, typically all in the same category. Used to organize the full DMA chain."
+  ((tag    dma-tag)
+   (last   (pointer dma-tag))
+   (dummy  uint32)
+   (next   uint32  :offset   4)
+   (clear  uint64  :overlay-at last)
+   (vif0   uint32  :overlay-at last)
+   (vif1   uint32  :overlay-at dummy)
+   )
+  )
+
+
+(deftype vif-mask (uint32)
+  ((m0  uint8 :offset   0 :size   2)
+   (m1  uint8 :offset   2 :size   2)
+   (m2  uint8 :offset   4 :size   2)
+   (m3  uint8 :offset   6 :size   2)
+   (m4  uint8 :offset   8 :size   2)
+   (m5  uint8 :offset  10 :size   2)
+   (m6  uint8 :offset  12 :size   2)
+   (m7  uint8 :offset  14 :size   2)
+   (m8  uint8 :offset  16 :size   2)
+   (m9  uint8 :offset  18 :size   2)
+   (m10 uint8 :offset  20 :size   2)
+   (m11 uint8 :offset  22 :size   2)
+   (m12 uint8 :offset  24 :size   2)
+   (m13 uint8 :offset  26 :size   2)
+   (m14 uint8 :offset  28 :size   2)
+   (m15 uint8 :offset  30 :size   2)
+   )
+  )
+
+(deftype vif-stcycl-imm (uint16)
+  "The imm field of a VIF code using STCYCL, which adjusts the pattern for storing data."
+  ((cl uint8 :offset   0 :size   8)
+   (wl uint8 :offset   8 :size   8)
+   )
+  )
+
+(deftype vif-unpack-imm (uint16)
+  "The imm field of a VIF code using UNPACK, which transfers data to VU memory."
+  ((addr uint16 :offset   0 :size  10)
+   (usn  uint8  :offset  14 :size   1)
+   (flg  uint8  :offset  15 :size   1)
+   )
+  )
+
+(deftype vif-tag (uint32)
+  "A tag consumed by the VIF, which accepts DMA data."
+  ((imm uint16  :offset   0 :size  16)
+   (num uint8   :offset  16 :size   8)
+   (cmd vif-cmd :offset  24 :size   7)
+   (irq uint8   :offset  31 :size   1)
+   (msk uint8   :offset  28 :size   1)
+   )
+  )
+
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; ERROR: function was not converted to expressions. Cannot decompile.

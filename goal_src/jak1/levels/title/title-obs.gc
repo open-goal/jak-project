@@ -1,148 +1,135 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: title-obs.gc
-;; name in dgo: title-obs
-;; dgos: TIT
+(bundles "TIT.DGO")
+(require "pc/progress-pc.gc")
+(require "engine/target/logic-target.gc")
+(require "levels/demo/static-screen.gc")
 
 ;; DECOMP BEGINS
 
 (deftype logo (process-drawable)
-  ((camera       handle)
-   (camera-anim  handle)
-   (volumes      handle)
-   (black        handle)
-   (target       handle)
-   (sidekick     handle)
-   (main-joint   joint-mod)
-   (anim         spool-anim)
-   (next-anim    spool-anim)
-   (done?        symbol)
-   )
+  ((camera      handle)
+   (camera-anim handle)
+   (volumes     handle)
+   (black       handle)
+   (target      handle)
+   (sidekick    handle)
+   (main-joint  joint-mod)
+   (anim        spool-anim)
+   (next-anim   spool-anim)
+   (done?       symbol))
   (:state-methods
-    idle
-    startup
-    hidden
-    ndi
-    )
-  )
+   idle
+   startup
+   hidden
+   ndi))
 
 
-(defmethod relocate ((this logo) (arg0 int))
-  (if (nonzero? (-> this main-joint))
-      (&+! (-> this main-joint) arg0)
-      )
-  (the-as logo ((method-of-type process-drawable relocate) this arg0))
-  )
+(defmethod relocate ((this logo) (offset int))
+  (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) offset))
+  (the-as logo ((method-of-type process-drawable relocate) this offset)))
 
 (deftype logo-slave (process-drawable)
-  ((parent-process  (pointer logo)  :overlay-at parent)
-   (main-joint      joint-mod)
-   )
+  ((parent-process (pointer logo) :overlay-at parent)
+   (main-joint     joint-mod))
   (:state-methods
-    idle
-    )
-  )
+   idle))
 
 
-(defmethod relocate ((this logo-slave) (arg0 int))
-  (if (nonzero? (-> this main-joint))
-      (&+! (-> this main-joint) arg0)
-      )
-  (the-as logo-slave ((method-of-type process-drawable relocate) this arg0))
-  )
+(defmethod relocate ((this logo-slave) (offset int))
+  (if (nonzero? (-> this main-joint)) (&+! (-> this main-joint) offset))
+  (the-as logo-slave ((method-of-type process-drawable relocate) this offset)))
 
-(defskelgroup *logo-sg* logo logo-english-lod0-jg logo-idle-ja
-              ((logo-english-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 10)
-              )
+(defskelgroup *logo-sg*
+  logo
+  logo-english-lod0-jg
+  logo-idle-ja
+  ((logo-english-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 10))
 
-(defskelgroup *logo-japan-sg* logo logo-japan-lod0-jg logo-idle-ja
-              ((logo-japan-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5)
-              )
+(defskelgroup *logo-japan-sg*
+  logo
+  logo-japan-lod0-jg
+  logo-idle-ja
+  ((logo-japan-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5))
 
-(defskelgroup *logo-volumes-sg* logo-volumes logo-volumes-english-lod0-jg logo-volumes-idle-ja
-              ((logo-volumes-english-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5.5)
-              )
+(defskelgroup *logo-volumes-sg*
+  logo-volumes
+  logo-volumes-english-lod0-jg
+  logo-volumes-idle-ja
+  ((logo-volumes-english-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5.5))
 
-(defskelgroup *logo-volumes-japan-sg* logo-volumes logo-volumes-japan-lod0-jg logo-volumes-idle-ja
-              ((logo-volumes-japan-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5.5)
-              )
+(defskelgroup *logo-volumes-japan-sg*
+  logo-volumes
+  logo-volumes-japan-lod0-jg
+  logo-volumes-idle-ja
+  ((logo-volumes-japan-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5.5))
 
-(defskelgroup *logo-black-sg* logo-black logo-black-lod0-jg logo-black-idle-ja
-              ((logo-black-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5.5)
-              )
+(defskelgroup *logo-black-sg*
+  logo-black
+  logo-black-lod0-jg
+  logo-black-idle-ja
+  ((logo-black-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5.5))
 
-(defskelgroup *logo-cam-sg* logo-cam logo-cam-lod0-jg logo-cam-idle-ja
-              ((logo-cam-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5.5)
-              )
+(defskelgroup *logo-cam-sg*
+  logo-cam
+  logo-cam-lod0-jg
+  logo-cam-idle-ja
+  ((logo-cam-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5.5))
 
-(defskelgroup *ndi-sg* ndi ndi-lod0-jg ndi-idle-ja
-              ((ndi-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 10 0 30)
-              )
+(defskelgroup *ndi-sg*
+  ndi
+  ndi-lod0-jg
+  ndi-idle-ja
+  ((ndi-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 10 0 30))
 
-(defskelgroup *ndi-volumes-sg* ndi-volumes ndi-volumes-lod0-jg ndi-volumes-idle-ja
-              ((ndi-volumes-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5.5)
-              )
+(defskelgroup *ndi-volumes-sg*
+  ndi-volumes
+  ndi-volumes-lod0-jg
+  ndi-volumes-idle-ja
+  ((ndi-volumes-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5.5))
 
-(defskelgroup *ndi-cam-sg* ndi-cam ndi-cam-lod0-jg ndi-cam-idle-ja
-              ((ndi-cam-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 5.5)
-              )
+(defskelgroup *ndi-cam-sg*
+  ndi-cam
+  ndi-cam-lod0-jg
+  ndi-cam-idle-ja
+  ((ndi-cam-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 5.5))
 
 (defstate idle (logo-slave)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (local-vars (v0-0 uint))
-    (case message
-      (('blend-shape)
-       (cond
-         ((-> block param 0)
-          (set! v0-0 (the-as uint (logior (-> self skel status) (janim-status blerc eye))))
-          (set! (-> self skel status) (the-as janim-status v0-0))
-          )
-         (else
-           (set! v0-0 (the-as uint (logclear (-> self skel status) (janim-status blerc eye))))
-           (set! (-> self skel status) (the-as janim-status v0-0))
-           )
-         )
-       v0-0
-       )
-      (('origin-joint-index)
-       (set! v0-0 (-> block param 0))
-       (set! (-> self draw origin-joint-index) v0-0)
-       v0-0
-       )
-      )
-    )
-  :code (behavior ()
-    (ja-post)
-    (loop
-      (clone-anim-once
-        (ppointer->handle (-> self parent-process))
-        (the-as int (-> self draw origin-joint-index))
-        #t
-        ""
-        )
-      (if (nonzero? (-> self main-joint))
-          (set-trs!
-            (-> self main-joint)
-            (-> self parent-process 0 main-joint trans)
-            (the-as quaternion #f)
-            (-> self parent-process 0 main-joint scale)
-            )
-          )
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (local-vars (v0-0 uint))
+      (case message
+        (('blend-shape)
+         (cond
+           ((-> block param 0)
+            (set! v0-0 (the-as uint (logior (-> self skel status) (janim-status blerc eye))))
+            (set! (-> self skel status) (the-as janim-status v0-0)))
+           (else
+            (set! v0-0 (the-as uint (logclear (-> self skel status) (janim-status blerc eye))))
+            (set! (-> self skel status) (the-as janim-status v0-0))))
+         v0-0)
+        (('origin-joint-index) (set! v0-0 (-> block param 0)) (set! (-> self draw origin-joint-index) v0-0) v0-0)))
+  :code
+    (behavior ()
+      (ja-post)
+      (loop
+        (clone-anim-once (ppointer->handle (-> self parent-process)) (the-as int (-> self draw origin-joint-index)) #t "")
+        (if (nonzero? (-> self main-joint))
+          (set-trs! (-> self main-joint)
+                    (-> self parent-process 0 main-joint trans)
+                    (the-as quaternion #f)
+                    (-> self parent-process 0 main-joint scale)))
+        (suspend))))
 
 (defbehavior logo-slave-init-by-other logo-slave ((arg0 entity-actor) (arg1 skeleton-group))
   (set! (-> self entity) arg0)
@@ -154,408 +141,278 @@
   (set! (-> self draw global-effect) (draw-effect title))
   (when (or (string= (-> self draw art-group name) "logo-volumes")
             (string= (-> self draw art-group name) "logo-volumes-japan")
-            (string= (-> self draw art-group name) "logo-black")
-            )
+            (string= (-> self draw art-group name) "logo-black"))
     (set! (-> self main-joint) (new 'process 'joint-mod (joint-mod-handler-mode joint-set*) self 3))
-    (set! (-> self main-joint max-dist) (the-as meters #t))
-    )
+    (set! (-> self main-joint max-dist) (the-as meters #t)))
   (set! (-> self event-hook) (-> (method-of-object self idle) event))
   (go-virtual idle)
-  (none)
-  )
+  (none))
 
 (defstate startup (logo)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('update)
-       (remove-setting! 'process-mask)
-       )
-      )
-    )
-  :exit (behavior ()
-    (let ((a0-0 (-> self anim)))
-      (when (nonzero? a0-0)
-        (ja-abort-spooled-anim a0-0 (the-as art-joint-anim #f) -1)
-        (ja-channel-set! 0)
-        (ja-post)
-        (let ((a0-3 (handle->process (-> self camera))))
-          (if a0-3
-              (deactivate a0-3)
-              )
-          )
-        )
-      )
-    )
-  :trans (behavior ()
-    (if (not (none-reserved? *art-control*))
-        (go-virtual hidden)
-        )
-    (if (nonzero? (-> self next-anim))
-        (spool-push *art-control* (-> self next-anim name) 0 self -1.0)
-        )
-    )
-  :code (behavior ()
-    (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
-      (set-blackout-frames (seconds 0.05))
-      (suspend)
-      )
-    (set! (-> *setting-control* current bg-a) 1.0)
-    (set-setting! 'bg-a 'abs 0.0 0)
-    (set! (-> self camera-anim)
-          (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-cam-sg* :to self))
-          )
-    (set! (-> self camera)
-          (ppointer->handle
-            (process-spawn
-              othercam
-              (handle->process (-> self camera-anim))
-              4
-              #t
-              'logo
-              :to (handle->process (-> self camera-anim))
-              )
-            )
-          )
-    (send-event (handle->process (-> self camera)) 'mask 0)
-    ;; og:preserve-this check language instead of territory here
-    (#if PC_PORT
-      (if (= (-> *setting-control* default language) (language-enum japanese))
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('update) (remove-setting! 'process-mask))))
+  :exit
+    (behavior ()
+      (let ((a0-0 (-> self anim)))
+        (when (nonzero? a0-0)
+          (ja-abort-spooled-anim a0-0 (the-as art-joint-anim #f) -1)
+          (ja-channel-set! 0)
+          (ja-post)
+          (let ((a0-3 (handle->process (-> self camera)))) (if a0-3 (deactivate a0-3))))))
+  :trans
+    (behavior ()
+      (if (not (none-reserved? *art-control*)) (go-virtual hidden))
+      (if (nonzero? (-> self next-anim)) (spool-push *art-control* (-> self next-anim name) 0 self -1.0)))
+  :code
+    (behavior ()
+      (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
+        (set-blackout-frames (seconds 0.05))
+        (suspend))
+      (set! (-> *setting-control* current bg-a) 1.0)
+      (set-setting! 'bg-a 'abs 0.0 0)
+      (set! (-> self camera-anim) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-cam-sg* :to self)))
+      (set! (-> self camera)
+            (ppointer->handle (process-spawn othercam (handle->process (-> self camera-anim)) 4 #t 'logo :to (handle->process (-> self camera-anim)))))
+      (send-event (handle->process (-> self camera)) 'mask 0)
+      ;; og:preserve-this check language instead of territory here
+      (#if PC_PORT
+        (if (= (-> *setting-control* default language) (language-enum japanese))
           (set! (-> self volumes) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-japan-sg* :to self)))
-          (set! (-> self volumes) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-sg* :to self)))
-          )
-      (case (scf-get-territory)
-        ((GAME_TERRITORY_SCEI)
-        (set! (-> self volumes)
-              (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-japan-sg* :to self))
-              )
-        )
-        (else
-          (set! (-> self volumes)
-                (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-sg* :to self))
-                )
-          )
-        )
-      )
-    (send-event (handle->process (-> self volumes)) 'origin-joint-index 3)
-    (set! (-> self black) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-black-sg* :to self)))
-    (send-event (handle->process (-> self black)) 'origin-joint-index 3)
-    (set! (-> self anim) (-> self next-anim))
-    (set! (-> self next-anim)
-          (new 'static 'spool-anim
-            :name "logo-intro-2"
-            :index 7
-            :parts 15
-            :command-list '((260 want-force-inside village1 #t)
-              (261 kill "sage-23")
-              (261 kill "assistant-11")
-              (261 kill "explorer-4")
-              ((new 'static 'bfloat :data 261.5) kill "farmer-3")
-              ((new 'static 'bfloat :data 261.5) kill "oracle-1")
-              ((new 'static 'bfloat :data 261.5) kill "warp-gate-switch-3")
-              (262 kill "sharkey-12")
-              (262 kill "fishermans-boat-2")
-              (262 kill "evilplant-2")
-              ((new 'static 'bfloat :data 262.5) kill "revcycle-8")
-              ((new 'static 'bfloat :data 262.5) kill "revcycleprop-2")
-              ((new 'static 'bfloat :data 262.5) kill "water-vol-8")
-              (263 kill "water-vol-9")
-              (263 kill "water-vol-10")
-              (263 kill "reflector-middle-2")
-              (400 want-force-inside village1 #f)
-              (400 display-level village1 display)
-              (400 save)
-              (500 set! *spawn-actors* #t)
-              )
-            )
-          )
-    (ja-play-spooled-anim
-      (-> self anim)
-      (the-as art-joint-anim #f)
-      (the-as art-joint-anim #f)
-      (the-as (function process-drawable symbol) false-func)
-      )
-    (set! *spawn-actors* #f)
-    (add-setting! 'process-mask 'set 0.0 (process-mask progress))
-    (apply-settings *setting-control*)
-    (deactivate (handle->process (-> self black)))
-    (deactivate (handle->process (-> self volumes)))
-    (send-event (ppointer->process (-> self parent)) 'wait)
-    (send-event self 'update)
-    (ja-channel-set! 1)
-    ;; og:preserve-this PAL patch here
-    (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (logior! (-> self skel status) (janim-status spool))
-      (suspend)
-      (if (not (paused?))
-          (ja :num! (seek!))
-          )
-      )
-    (set! (-> self anim) (-> self next-anim))
-    (set! (-> self next-anim)
-          (new 'static 'spool-anim
-            :name "logo-loop"
-            :index 9
-            :parts 17
-            :command-list '((61 kill "sage-23")
-              (61 kill "assistant-11")
-              (61 kill "explorer-4")
-              ((new 'static 'bfloat :data 61.5) kill "farmer-3")
-              ((new 'static 'bfloat :data 61.5) kill "oracle-1")
-              ((new 'static 'bfloat :data 61.5) kill "warp-gate-switch-3")
-              (62 kill "sharkey-12")
-              (62 kill "fishermans-boat-2")
-              (62 kill "evilplant-2")
-              ((new 'static 'bfloat :data 62.5) kill "revcycle-8")
-              ((new 'static 'bfloat :data 62.5) kill "revcycleprop-2")
-              ((new 'static 'bfloat :data 62.5) kill "water-vol-8")
-              (63 kill "water-vol-9")
-              (63 kill "water-vol-10")
-              (63 kill "reflector-middle-2")
-              )
-            )
-          )
-    (ja-play-spooled-anim
-      (-> self anim)
-      (the-as art-joint-anim #f)
-      (the-as art-joint-anim #f)
-      (the-as (function process-drawable symbol) false-func)
-      )
-    (remove-exit)
-    (go-virtual idle)
-    )
-  :post (behavior ()
-    (if *progress-process*
-        (logior! (-> self draw status) (draw-status skip-bones))
-        (logclear! (-> self draw status) (draw-status skip-bones))
-        )
-    (let ((a3-0 (new-stack-vector0))
-          (a1-0 (new-stack-vector0))
-          )
-      (let ((f0-0 (if (= (-> *setting-control* current aspect-ratio) 'aspect16x9)
-                      0.87
-                      1.0
-                      )
-                  )
-            )
-        (set-vector! a3-0 f0-0 f0-0 1.0 1.0)
-        )
-      (set-vector!
-        a1-0
-        (if (= (-> *setting-control* current aspect-ratio) 'aspect16x9)
-            2048.0
-            0.0
-            )
-        (if (= (-> *setting-control* current aspect-ratio) 'aspect16x9)
-            -1228.8
-            0.0
-            )
-        0.0
-        1.0
-        )
-      (set-trs! (-> self main-joint) a1-0 (the-as quaternion #f) a3-0)
-      )
-    (ja-post)
-    )
-  )
-
-(defstate idle (logo)
-  :virtual #t
-  :exit (-> (method-of-type logo startup) exit)
-  :trans (-> (method-of-type logo startup) trans)
-  :code (behavior ()
-    (loop
+          (set! (-> self volumes) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-sg* :to self))))
+        (case (scf-get-territory)
+          ((GAME_TERRITORY_SCEI)
+           (set! (-> self volumes) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-japan-sg* :to self))))
+          (else
+           (set! (-> self volumes) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-volumes-sg* :to self))))))
+      (send-event (handle->process (-> self volumes)) 'origin-joint-index 3)
+      (set! (-> self black) (ppointer->handle (process-spawn logo-slave (-> self entity) *logo-black-sg* :to self)))
+      (send-event (handle->process (-> self black)) 'origin-joint-index 3)
       (set! (-> self anim) (-> self next-anim))
-      (if (not (handle->process (-> self camera)))
-          (set! (-> self camera)
-                (ppointer->handle
-                  (process-spawn
-                    othercam
-                    (handle->process (-> self camera-anim))
-                    4
-                    #t
-                    'logo
-                    :to (handle->process (-> self camera-anim))
-                    )
-                  )
-                )
-          )
+      (set! (-> self next-anim)
+            (new 'static
+                 'spool-anim
+                 :name "logo-intro-2"
+                 :index 7
+                 :parts 15
+                 :command-list
+                 '((260 want-force-inside village1 #t)
+                  (261 kill "sage-23")
+                  (261 kill "assistant-11")
+                  (261 kill "explorer-4")
+                  ((new 'static 'bfloat :data 261.5) kill "farmer-3")
+                  ((new 'static 'bfloat :data 261.5) kill "oracle-1")
+                  ((new 'static 'bfloat :data 261.5) kill "warp-gate-switch-3")
+                  (262 kill "sharkey-12")
+                  (262 kill "fishermans-boat-2")
+                  (262 kill "evilplant-2")
+                  ((new 'static 'bfloat :data 262.5) kill "revcycle-8")
+                  ((new 'static 'bfloat :data 262.5) kill "revcycleprop-2")
+                  ((new 'static 'bfloat :data 262.5) kill "water-vol-8")
+                  (263 kill "water-vol-9")
+                  (263 kill "water-vol-10")
+                  (263 kill "reflector-middle-2")
+                  (400 want-force-inside village1 #f)
+                  (400 display-level village1 display)
+                  (400 save)
+                  (500 set! *spawn-actors* #t))))
+      (ja-play-spooled-anim (-> self anim)
+                            (the-as art-joint-anim #f)
+                            (the-as art-joint-anim #f)
+                            (the-as (function process-drawable symbol) false-func))
       (set! *spawn-actors* #f)
+      (add-setting! 'process-mask 'set 0.0 (process-mask progress))
+      (apply-settings *setting-control*)
+      (deactivate (handle->process (-> self black)))
+      (deactivate (handle->process (-> self volumes)))
+      (send-event (ppointer->process (-> self parent)) 'wait)
+      (send-event self 'update)
       (ja-channel-set! 1)
       ;; og:preserve-this PAL patch here
-      (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+      (ja-no-eval :group! (-> self draw art-group data 6) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (logior! (-> self skel status) (janim-status spool))
         (suspend)
-        (if (not (paused?))
-            (ja :num! (seek!))
-            )
-        )
-      (set! *spawn-actors* #t)
-      (ja-play-spooled-anim
-        (-> self anim)
-        (the-as art-joint-anim #f)
-        (the-as art-joint-anim #f)
-        (the-as (function process-drawable symbol) false-func)
-        )
-      )
-    )
-  :post (-> (method-of-type logo startup) post)
-  )
+        (if (not (paused?)) (ja :num! (seek!))))
+      (set! (-> self anim) (-> self next-anim))
+      (set! (-> self next-anim)
+            (new 'static
+                 'spool-anim
+                 :name "logo-loop"
+                 :index 9
+                 :parts 17
+                 :command-list
+                 '((61 kill "sage-23")
+                  (61 kill "assistant-11")
+                  (61 kill "explorer-4")
+                  ((new 'static 'bfloat :data 61.5) kill "farmer-3")
+                  ((new 'static 'bfloat :data 61.5) kill "oracle-1")
+                  ((new 'static 'bfloat :data 61.5) kill "warp-gate-switch-3")
+                  (62 kill "sharkey-12")
+                  (62 kill "fishermans-boat-2")
+                  (62 kill "evilplant-2")
+                  ((new 'static 'bfloat :data 62.5) kill "revcycle-8")
+                  ((new 'static 'bfloat :data 62.5) kill "revcycleprop-2")
+                  ((new 'static 'bfloat :data 62.5) kill "water-vol-8")
+                  (63 kill "water-vol-9")
+                  (63 kill "water-vol-10")
+                  (63 kill "reflector-middle-2"))))
+      (ja-play-spooled-anim (-> self anim)
+                            (the-as art-joint-anim #f)
+                            (the-as art-joint-anim #f)
+                            (the-as (function process-drawable symbol) false-func))
+      (remove-exit)
+      (go-virtual idle))
+  :post
+    (behavior ()
+      (if *progress-process*
+        (logior! (-> self draw status) (draw-status skip-bones))
+        (logclear! (-> self draw status) (draw-status skip-bones)))
+      (let ((a3-0 (new-stack-vector0))
+            (a1-0 (new-stack-vector0)))
+        (let ((f0-0 (if (= (-> *setting-control* current aspect-ratio) 'aspect16x9) 0.87 1.0)))
+          (set-vector! a3-0 f0-0 f0-0 1.0 1.0))
+        (set-vector! a1-0
+                     (if (= (-> *setting-control* current aspect-ratio) 'aspect16x9) 2048.0 0.0)
+                     (if (= (-> *setting-control* current aspect-ratio) 'aspect16x9) -1228.8 0.0)
+                     0.0
+                     1.0)
+        (set-trs! (-> self main-joint) a1-0 (the-as quaternion #f) a3-0))
+      (ja-post)))
+
+(defstate idle (logo)
+  :virtual #t
+  :exit
+    (-> (method-of-type logo startup)
+        exit)
+  :trans
+    (-> (method-of-type logo startup)
+        trans)
+  :code
+    (behavior ()
+      (loop
+        (set! (-> self anim) (-> self next-anim))
+        (if (not (handle->process (-> self camera)))
+          (set! (-> self camera)
+                (ppointer->handle (process-spawn othercam (handle->process (-> self camera-anim)) 4 #t 'logo :to (handle->process (-> self camera-anim))))))
+        (set! *spawn-actors* #f)
+        (ja-channel-set! 1)
+        ;; og:preserve-this PAL patch here
+        (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (logior! (-> self skel status) (janim-status spool))
+          (suspend)
+          (if (not (paused?)) (ja :num! (seek!))))
+        (set! *spawn-actors* #t)
+        (ja-play-spooled-anim (-> self anim)
+                              (the-as art-joint-anim #f)
+                              (the-as art-joint-anim #f)
+                              (the-as (function process-drawable symbol) false-func))))
+  :post
+    (-> (method-of-type logo startup)
+        post))
 
 (defstate hidden (logo)
   :virtual #t
-  :trans (behavior ()
-    (if (nonzero? (-> self next-anim))
-        (spool-push *art-control* (-> self next-anim name) 0 self -1.0)
-        )
-    )
-  :code (behavior ()
-    (ja-channel-set! 0)
-    (ja-post)
-    (let ((gp-0 *master-mode*))
-      (set! *master-mode* 'game)
-      (clear-rec *art-control*)
-      (set! *master-mode* gp-0)
-      )
-    (loop
-      (when (and (none-reserved? *art-control*) (not (paused?)))
-        (let ((gp-1 (current-time)))
-          (until (time-elapsed? gp-1 (seconds 0.1))
-            (set! *camera-look-through-other* 2)
-            (suspend)
-            )
-          )
-        (go-virtual idle)
-        )
-      (set! *camera-look-through-other* 2)
-      (suspend)
-      )
-    )
-  )
+  :trans
+    (behavior ()
+      (if (nonzero? (-> self next-anim)) (spool-push *art-control* (-> self next-anim name) 0 self -1.0)))
+  :code
+    (behavior ()
+      (ja-channel-set! 0)
+      (ja-post)
+      (let ((gp-0 *master-mode*)) (set! *master-mode* 'game) (clear-rec *art-control*) (set! *master-mode* gp-0))
+      (loop
+        (when (and (none-reserved? *art-control*) (not (paused?)))
+          (suspend-for (seconds 0.1) (set! *camera-look-through-other* 2))
+          (go-virtual idle))
+        (set! *camera-look-through-other* 2)
+        (suspend))))
 
 (defstate ndi (logo)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('blackout)
-       (set-setting! 'bg-a 'abs 1.0 0)
-       )
-      )
-    )
-  :enter (behavior ()
-    (set-setting! 'bg-a 'abs 0.0 0)
-    (apply-settings *setting-control*)
-    (set-time! (-> self state-time))
-    (if *time-of-day-proc*
-        (set! (-> *time-of-day-proc* 0 hour) 12)
-        )
-    (set! (-> self done?) #f)
-    )
-  :exit (behavior ()
-    ((-> (method-of-type logo startup) exit))
-    (set-blackout-frames (seconds 0.035))
-    )
-  :trans (behavior ()
-    ((-> (method-of-type logo startup) trans))
-    ;; og:preserve-this
-    (if (and (or *debug-segment* PC_PORT)
-              (cpad-pressed? 0 start circle x)
-              (member (level-status *level* 'village1) '(loaded active))
-              )
-        (set-setting! 'bg-a 'abs 1.0 0)
-        )
-    (when (and (= (-> *setting-control* current bg-a) 1.0)
-               (and (member (level-status *level* 'village1) '(active loaded))
-                    ;; og:preserve-this i think we can forgo the time check here...
-                    (#if PC_PORT #t (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3)))
-                    (let ((gp-2 (level-get *level* 'village1)))
-                      (when gp-2
-                        (load-state-want-levels 'title 'village1)
-                        (load-state-want-display-level 'village1 'display-self)
-                        (load-state-want-vis 'vi1)
-                        (set-force-inside! *load-state* 'village1 #t)
-                        (!= (-> gp-2 all-visible?) 'loading)
-                        )
-                      )
-                    )
-               )
-      (load-state-want-display-level 'village1 'special)
-      (if (not (-> self done?))
-          (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1)
-          )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('blackout) (set-setting! 'bg-a 'abs 1.0 0))))
+  :enter
+    (behavior ()
+      (set-setting! 'bg-a 'abs 0.0 0)
+      (apply-settings *setting-control*)
+      (set-time! (-> self state-time))
+      (if *time-of-day-proc* (set! (-> *time-of-day-proc* 0 hour) 12))
+      (set! (-> self done?) #f))
+  :exit
+    (behavior ()
+      ((-> (method-of-type logo startup) exit))
+      (set-blackout-frames (seconds 0.035)))
+  :trans
+    (behavior ()
+      ((-> (method-of-type logo startup) trans))
+      ;; og:preserve-this
+      (if (and (or *debug-segment* PC_PORT)
+               (cpad-pressed? 0 start circle x)
+               (member (level-status *level* 'village1) '(loaded active)))
+        (set-setting! 'bg-a 'abs 1.0 0))
+      (when (and (= (-> *setting-control* current bg-a) 1.0)
+                 (and (member (level-status *level* 'village1) '(active loaded))
+                      ;; og:preserve-this i think we can forgo the time check here...
+                      (#if PC_PORT #t (>= (- (-> *display* base-frame-counter) (-> self state-time)) (seconds 3)))
+                      (let ((gp-2 (level-get *level* 'village1)))
+                        (when gp-2
+                          (load-state-want-levels 'title 'village1)
+                          (load-state-want-display-level 'village1 'display-self)
+                          (load-state-want-vis 'vi1)
+                          (set-force-inside! *load-state* 'village1 #t)
+                          (!= (-> gp-2 all-visible?) 'loading)))))
+        (load-state-want-display-level 'village1 'special)
+        (if (not (-> self done?)) (ja-abort-spooled-anim (-> self anim) (the-as art-joint-anim #f) -1))
+        (set! (-> self done?) #t)
+        (deactivate self))
+      (if *time-of-day-proc* (set! (-> *time-of-day-proc* 0 hour) 12)))
+  :code
+    (behavior ()
+      (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
+        (set-blackout-frames (seconds 0.05))
+        (suspend))
+      (set! (-> *setting-control* current bg-a) 1.0)
+      (set! (-> self camera-anim) (ppointer->handle (process-spawn logo-slave (-> self entity) *ndi-cam-sg* :to self)))
+      (set! (-> self camera)
+            (ppointer->handle (process-spawn othercam (handle->process (-> self camera-anim)) 3 #t 'logo :to (handle->process (-> self camera-anim)))))
+      (send-event (handle->process (-> self camera)) 'mask 0)
+      (set! (-> self volumes) (ppointer->handle (process-spawn logo-slave (-> self entity) *ndi-volumes-sg* :to self)))
+      (send-event (handle->process (-> self volumes)) 'origin-joint-index 3)
+      (set! (-> self target) (ppointer->handle (process-spawn logo-slave #f *jchar-sg* :to self)))
+      (send-event (handle->process (-> self target)) 'blend-shape #t)
+      (send-event (handle->process (-> self target)) 'origin-joint-index 33)
+      (set! (-> self sidekick) (ppointer->handle (process-spawn logo-slave #f *sidekick-sg* :to self)))
+      (send-event (handle->process (-> self sidekick)) 'blend-shape #t)
+      (send-event (handle->process (-> self sidekick)) 'origin-joint-index 6)
+      (set! (-> self anim) (-> self next-anim))
+      (set! (-> self next-anim) (new 'static 'spool-anim :name "logo-intro" :index 5 :parts 3 :command-list '()))
+      ;; og:preserve-this
+      (#cond
+        (PC_PORT
+         (cond
+           (*quit-to-title* (set! *quit-to-title* #f))
+           (else
+            (ja-play-spooled-anim (-> self anim)
+                                  (the-as art-joint-anim #f)
+                                  (the-as art-joint-anim #f)
+                                  (the-as (function process-drawable symbol) false-func)))))
+        (#t
+         (ja-play-spooled-anim (-> self anim)
+                               (the-as art-joint-anim #f)
+                               (the-as art-joint-anim #f)
+                               (the-as (function process-drawable symbol) false-func))))
       (set! (-> self done?) #t)
-      (deactivate self)
-      )
-    (if *time-of-day-proc*
-        (set! (-> *time-of-day-proc* 0 hour) 12)
-        )
-    )
-  :code (behavior ()
-    (while (!= (file-status *art-control* (-> self next-anim name) 0) 'active)
-      (set-blackout-frames (seconds 0.05))
-      (suspend)
-      )
-    (set! (-> *setting-control* current bg-a) 1.0)
-    (set! (-> self camera-anim)
-          (ppointer->handle (process-spawn logo-slave (-> self entity) *ndi-cam-sg* :to self))
-          )
-    (set! (-> self camera)
-          (ppointer->handle
-            (process-spawn
-              othercam
-              (handle->process (-> self camera-anim))
-              3
-              #t
-              'logo
-              :to (handle->process (-> self camera-anim))
-              )
-            )
-          )
-    (send-event (handle->process (-> self camera)) 'mask 0)
-    (set! (-> self volumes)
-          (ppointer->handle (process-spawn logo-slave (-> self entity) *ndi-volumes-sg* :to self))
-          )
-    (send-event (handle->process (-> self volumes)) 'origin-joint-index 3)
-    (set! (-> self target) (ppointer->handle (process-spawn logo-slave #f *jchar-sg* :to self)))
-    (send-event (handle->process (-> self target)) 'blend-shape #t)
-    (send-event (handle->process (-> self target)) 'origin-joint-index 33)
-    (set! (-> self sidekick) (ppointer->handle (process-spawn logo-slave #f *sidekick-sg* :to self)))
-    (send-event (handle->process (-> self sidekick)) 'blend-shape #t)
-    (send-event (handle->process (-> self sidekick)) 'origin-joint-index 6)
-    (set! (-> self anim) (-> self next-anim))
-    (set! (-> self next-anim) (new 'static 'spool-anim :name "logo-intro" :index 5 :parts 3 :command-list '()))
-    ;; og:preserve-this
-    (#cond
-      (PC_PORT
-        (cond
-          (*quit-to-title*
-            (set! *quit-to-title* #f))
-          (else
-            (ja-play-spooled-anim
-              (-> self anim)
-              (the-as art-joint-anim #f)
-              (the-as art-joint-anim #f)
-              (the-as (function process-drawable symbol) false-func)
-              ))
-          ))
-      (#t
-    (ja-play-spooled-anim
-      (-> self anim)
-      (the-as art-joint-anim #f)
-      (the-as art-joint-anim #f)
-      (the-as (function process-drawable symbol) false-func)
-      )
-        ))
-    (set! (-> self done?) #t)
-    (set-setting! 'bg-a 'abs 1.0 0)
-    (anim-loop)
-    )
-  :post (behavior ()
-    (ja-post)
-    )
-  )
+      (set-setting! 'bg-a 'abs 1.0 0)
+      (anim-loop))
+  :post
+  (behavior ()
+    (ja-post)))
 
 (defbehavior logo-init-by-other logo ((arg0 entity-actor) (arg1 vector) (arg2 symbol))
   (stack-size-set! (-> self main-thread) 512)
@@ -570,66 +427,59 @@
      ;; og:preserve-this check language instead of territory here
      (#if PC_PORT
        (if (= (-> *setting-control* default language) (language-enum japanese))
-           (initialize-skeleton self *logo-japan-sg* '())
-           (initialize-skeleton self *logo-sg* '())
-           )
+         (initialize-skeleton self *logo-japan-sg* '())
+         (initialize-skeleton self *logo-sg* '()))
        (case (scf-get-territory)
-         ((GAME_TERRITORY_SCEI)
-           (initialize-skeleton self *logo-japan-sg* '())
-           )
-         (else
-           (initialize-skeleton self *logo-sg* '())
-           )
-         )
-       )
+         ((GAME_TERRITORY_SCEI) (initialize-skeleton self *logo-japan-sg* '()))
+         (else (initialize-skeleton self *logo-sg* '()))))
      (set! (-> self main-joint) (new 'process 'joint-mod (joint-mod-handler-mode joint-set*) self 3))
      (set! (-> self main-joint max-dist) (the-as meters #t))
-     (set! (-> self next-anim) (new 'static 'spool-anim
-                                 :name "logo-intro"
-                                 :index 5
-                                 :parts 3
-                                 :command-list '((0 want-levels title village1)
-                                   (5 display-level village1 special)
-                                   (5 want-vis vi1)
-                                   (5 want-force-inside village1 #t)
-                                   (115 display-level village1 display-self)
-                                   (115 save)
-                                   (115 kill "sage-23")
-                                   (115 kill "assistant-11")
-                                   (115 kill "explorer-4")
-                                   (115 kill "farmer-3")
-                                   (115 kill "oracle-1")
-                                   (115 kill "warp-gate-switch-3")
-                                   (115 kill "sharkey-12")
-                                   (115 kill "fishermans-boat-2")
-                                   (115 kill "evilplant-2")
-                                   (115 kill "revcycle-8")
-                                   (115 kill "revcycleprop-2")
-                                   (115 kill "water-vol-8")
-                                   (115 kill "water-vol-9")
-                                   (115 kill "water-vol-10")
-                                   (115 kill "reflector-middle-2")
-                                   )
-                                 )
-           )
-     (set! (-> self draw origin-joint-index) (the-as uint 3))
-     )
+     (set! (-> self next-anim)
+           (new 'static
+                'spool-anim
+                :name "logo-intro"
+                :index 5
+                :parts 3
+                :command-list
+                '((0 want-levels title village1)
+                 (5 display-level village1 special)
+                 (5 want-vis vi1)
+                 (5 want-force-inside village1 #t)
+                 (115 display-level village1 display-self)
+                 (115 save)
+                 (115 kill "sage-23")
+                 (115 kill "assistant-11")
+                 (115 kill "explorer-4")
+                 (115 kill "farmer-3")
+                 (115 kill "oracle-1")
+                 (115 kill "warp-gate-switch-3")
+                 (115 kill "sharkey-12")
+                 (115 kill "fishermans-boat-2")
+                 (115 kill "evilplant-2")
+                 (115 kill "revcycle-8")
+                 (115 kill "revcycleprop-2")
+                 (115 kill "water-vol-8")
+                 (115 kill "water-vol-9")
+                 (115 kill "water-vol-10")
+                 (115 kill "reflector-middle-2"))))
+     (set! (-> self draw origin-joint-index) (the-as uint 3)))
     (('ndi)
      (set! (-> *time-of-day-context* title-light-group dir1 levels x) 1.0)
      (set! (-> *time-of-day-context* title-light-group ambi levels x) 1.0)
      (initialize-skeleton self *ndi-sg* '())
      (set! (-> self draw origin-joint-index) (the-as uint 3))
      (set! (-> self next-anim)
-           (new 'static 'spool-anim :name "ndi-intro" :index 3 :parts 4 :command-list '((0 want-levels title village1)
-                                                                                        (5 want-vis vi1)
-                                                                                        (5 want-force-inside village1 #t)
-                                                                                        (6 save)
-                                                                                        (453 send-event self blackout)
-                                                                                        )
-                                    )
-           )
-     )
-    )
+           (new 'static
+                'spool-anim
+                :name "ndi-intro"
+                :index 3
+                :parts 4
+                :command-list
+                '((0 want-levels title village1)
+                 (5 want-vis vi1)
+                 (5 want-force-inside village1 #t)
+                 (6 save)
+                 (453 send-event self blackout))))))
   (logior! (-> self skel status) (janim-status inited))
   (set! (-> self draw global-effect) (draw-effect title))
   (set! (-> self draw shadow-mask) (the-as uint 255))
@@ -637,224 +487,151 @@
   (set! (-> self volumes) (the-as handle #f))
   (set! (-> self black) (the-as handle #f))
   (cond
-    ((= arg2 'logo)
-     (go-virtual startup)
-     )
-    ((= arg2 'ndi)
-     (go-virtual ndi)
-     )
-    )
-  (none)
-  )
+    ((= arg2 'logo) (go-virtual startup))
+    ((= arg2 'ndi) (go-virtual ndi)))
+  (none))
 
 (defstate target-title (target)
   :event target-generic-event-handler
-  :enter (behavior ()
-    (set-setting! 'music-volume 'abs 0.0 0)
-    (set-setting! 'sfx-volume 'abs 0.0 0)
-    (set-setting! 'ambient-volume 'abs 0.0 0)
-    (set-setting! 'allow-pause #f 0.0 0)
-    (set-setting! 'allow-progress #f 0.0 0)
-    (set-setting! 'border-mode #f 0.0 0)
-    (apply-settings *setting-control*)
-    (set-time! (-> self state-time))
-    (set! (-> self manipy) (the-as (pointer manipy) #f))
-    (ja-channel-set! 0)
-    (ja-post)
-    (send-event *camera* 'change-state cam-fixed 0)
-    )
-  :exit (behavior ()
-    (when (not (or (= (-> self next-state name) 'target-title-play) (= (-> self next-state name) 'target-title-wait)))
-      (if (-> self manipy)
-          (deactivate (-> self manipy 0))
-          )
-      )
-    )
-  :trans (behavior ()
-    (hide-hud-quick)
-    (spool-push *art-control* "ndi-intro" 0 self -1.0)
-    ;; og:preserve-this PAL patch here
-    (if *sound-player-enable*
-      (sound-group-pause (sound-group music))
-      )
-    )
-  :code (behavior ()
-    (let ((gp-0 (the-as handle #f)))
+  :enter
+    (behavior ()
+      (set-setting! 'music-volume 'abs 0.0 0)
+      (set-setting! 'sfx-volume 'abs 0.0 0)
+      (set-setting! 'ambient-volume 'abs 0.0 0)
+      (set-setting! 'allow-pause #f 0.0 0)
+      (set-setting! 'allow-progress #f 0.0 0)
+      (set-setting! 'border-mode #f 0.0 0)
+      (apply-settings *setting-control*)
+      (set-time! (-> self state-time))
+      (set! (-> self manipy) (the-as (pointer manipy) #f))
+      (ja-channel-set! 0)
+      (ja-post)
+      (send-event *camera* 'change-state cam-fixed 0))
+  :exit
+    (behavior ()
+      (when (not (or (= (-> self next-state name) 'target-title-play) (= (-> self next-state name) 'target-title-wait)))
+        (if (-> self manipy) (deactivate (-> self manipy 0)))))
+  :trans
+    (behavior ()
+      (hide-hud-quick)
+      (spool-push *art-control* "ndi-intro" 0 self -1.0)
       ;; og:preserve-this PAL patch here
-      (cond
-        ((and (= (scf-get-territory) GAME_TERRITORY_SCEI) *first-boot*)
-         (set! *first-boot* #f)
-         (set! gp-0 (ppointer->handle (static-screen-spawn
-                                        5
-                                        (new 'static 'texture-id :page #x649)
-                                        (new 'static 'texture-id :index #x1 :page #x649)
-                                        (new 'static 'texture-id :index #x2 :page #x649)
-                                        (seconds 3)
-                                        #f
-                                        self
-                                        )
-                                      )
-               )
-         )
-        (else
-          (while (!= (file-status *art-control* "ndi-intro" 0) 'active)
-            (set-blackout-frames (seconds 0.05))
+      (if *sound-player-enable* (sound-group-pause (sound-group music))))
+  :code
+    (behavior ()
+      (let ((gp-0 (the-as handle #f)))
+        ;; og:preserve-this PAL patch here
+        (cond
+          ((and (= (scf-get-territory) GAME_TERRITORY_SCEI) *first-boot*)
+           (set! *first-boot* #f)
+           (set! gp-0
+                 (ppointer->handle (static-screen-spawn 5
+                                                        (new 'static 'texture-id :page #x649)
+                                                        (new 'static 'texture-id :index #x1 :page #x649)
+                                                        (new 'static 'texture-id :index #x2 :page #x649)
+                                                        (seconds 3)
+                                                        #f
+                                                        self))))
+          (else
+           (while (!= (file-status *art-control* "ndi-intro" 0) 'active)
+             (set-blackout-frames (seconds 0.05))
+             (suspend))
+           (suspend-for (seconds 0.25) (set-blackout-frames (seconds 0.05)))))
+        (label cfg-8)
+        (let ((s5-2 (new 'stack-no-clear 'mc-slot-info)))
+          (mc-get-slot-info 0 s5-2)
+          (when (or (zero? (-> s5-2 known)) (handle->process (the-as int gp-0)))
+            (if (not (handle->process (the-as int gp-0))) (set-blackout-frames (seconds 0.05)))
             (suspend)
-            )
-          (let ((s5-1 (current-time)))
-            (until (time-elapsed? s5-1 (seconds 0.25))
-              (set-blackout-frames (seconds 0.05))
-              (suspend)
-              )
-            )
-          )
-        )
-      (label cfg-8)
-      (let ((s5-2 (new 'stack-no-clear 'mc-slot-info)))
-        (mc-get-slot-info 0 s5-2)
-        (when (or (zero? (-> s5-2 known)) (handle->process (the-as int gp-0)))
-          (if (not (handle->process (the-as int gp-0)))
-              (set-blackout-frames (seconds 0.05))
-              )
-          (suspend)
-          (goto cfg-8)
-          )
-        (set! (-> *setting-control* default bg-a) 0.0)
-        (when (or (zero? (-> s5-2 handle))
-                  (and (nonzero? (-> s5-2 formatted)) (zero? (-> s5-2 inited)) (< (-> s5-2 mem-actual) (-> s5-2 mem-required)))
-                  )
-          (mem-copy! (the-as pointer *auto-save-info*) (the-as pointer s5-2) 300)
-          (set-blackout-frames 0)
-          (let ((gp-1 7))
-            (if (zero? (-> s5-2 handle))
-                (set! gp-1 8)
-                )
-            (set-setting! 'allow-progress #t 0.0 0)
+            (goto cfg-8))
+          (set! (-> *setting-control* default bg-a) 0.0)
+          (when (or (zero? (-> s5-2 handle))
+                    (and (nonzero? (-> s5-2 formatted)) (zero? (-> s5-2 inited)) (< (-> s5-2 mem-actual) (-> s5-2 mem-required))))
+            (mem-copy! (the-as pointer *auto-save-info*) (the-as pointer s5-2) 300)
             (set-blackout-frames 0)
-            (set! (-> *setting-control* default bg-a-force) 0.0)
+            (let ((gp-1 7))
+              (if (zero? (-> s5-2 handle)) (set! gp-1 8))
+              (set-setting! 'allow-progress #t 0.0 0)
+              (set-blackout-frames 0)
+              (set! (-> *setting-control* default bg-a-force) 0.0)
+              (apply-settings *setting-control*)
+              (set! (-> *setting-control* current bg-a) 0.0)
+              (set! (-> *setting-control* current bg-a-force) 0.0)
+              (activate-progress *dproc* (the-as progress-screen gp-1)))
+            (set-setting! 'allow-progress #f 0.0 0)
             (apply-settings *setting-control*)
-            (set! (-> *setting-control* current bg-a) 0.0)
-            (set! (-> *setting-control* current bg-a-force) 0.0)
-            (activate-progress *dproc* (the-as progress-screen gp-1))
-            )
-          (set-setting! 'allow-progress #f 0.0 0)
-          (apply-settings *setting-control*)
-          (while *progress-process*
-            (suspend)
-            )
-          (let ((gp-2 (current-time)))
-            (until (time-elapsed? gp-2 (seconds 0.01))
-              (suspend)
-              )
-            )
-          (goto cfg-41)
-          )
-        )
-      )
-    (label cfg-41)
-    (let ((gp-3 (entity-by-name "logo-1")))
-      (let ((v1-53 (process-spawn logo gp-3 (-> gp-3 extra trans) 'ndi :to self)))
-        (set! (-> self manipy) (the-as (pointer manipy) v1-53))
-        (let ((s5-4 (ppointer->handle v1-53)))
-          (while (handle->process (the-as handle s5-4))
-            (suspend)
-            )
-          )
-        )
-      (set! (-> self manipy)
-            (the-as (pointer manipy) (process-spawn logo gp-3 (-> gp-3 extra trans) 'logo :to self))
-            )
-      )
-    (go target-title-play)
-    )
-  :post target-no-move-post
-  )
+            (while *progress-process*
+              (suspend))
+            (suspend-for (seconds 0.01))
+            (goto cfg-41))))
+      (label cfg-41)
+      (let ((gp-3 (entity-by-name "logo-1")))
+        (let ((v1-53 (process-spawn logo gp-3 (-> gp-3 extra trans) 'ndi :to self)))
+          (set! (-> self manipy) (the-as (pointer manipy) v1-53))
+          (let ((s5-4 (ppointer->handle v1-53))) (while (handle->process (the-as handle s5-4)) (suspend))))
+        (set! (-> self manipy) (the-as (pointer manipy) (process-spawn logo gp-3 (-> gp-3 extra trans) 'logo :to self))))
+      (go target-title-play))
+  :post target-no-move-post)
 
 (defstate target-title-play (target)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('wait)
-       (go target-title-wait)
-       )
-      (('reset)
-       (deactivate (-> self manipy 0))
-       )
-      (else
-        (target-generic-event-handler proc argc message block)
-        )
-      )
-    )
-  :enter (behavior ()
-    (set-setting! 'allow-pause #f 0.0 0)
-    (set-setting! 'allow-progress #f 0.0 0)
-    )
-  :exit (-> target-title exit)
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('wait) (go target-title-wait))
+        (('reset) (deactivate (-> self manipy 0)))
+        (else (target-generic-event-handler proc argc message block))))
+  :enter
+    (behavior ()
+      (set-setting! 'allow-pause #f 0.0 0)
+      (set-setting! 'allow-progress #f 0.0 0))
+  :exit
+    (-> target-title
+        exit)
   :trans hide-hud-quick
   :code anim-loop
-  :post target-no-move-post
-  )
+  :post target-no-move-post)
 
 (defstate target-title-wait (target)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('play)
-       (go target-title-play)
-       )
-      (('reset)
-       (deactivate (-> self manipy 0))
-       )
-      (else
-        (target-generic-event-handler proc argc message block)
-        )
-      )
-    )
-  :enter (behavior ()
-    (remove-setting! 'ambient-volume)
-    (remove-setting! 'sfx-volume)
-    (remove-setting! 'music-volume)
-    ;; og:preserve-this PAL patch here (code removal)
-    (sound-group-continue (sound-group music))
-    (when *time-of-day-proc*
-      (set! (-> *time-of-day-proc* 0 time-ratio) 18000.0)
-      (set! *time-of-day-fast* #t)
-      )
-    )
-  :exit (behavior ()
-    (when *time-of-day-proc*
-      (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)
-      (set! *time-of-day-fast* #f)
-      )
-    ;; og:preserve-this PAL patch here
-    (remove-setting! 'allow-pause)
-    (remove-setting! 'allow-progress)
-    ((-> target-title exit))
-    )
-  :trans (behavior ()
-    (hide-hud-quick)
-    ;; og:preserve-this PAL patch here
-    (when (cpad-pressed? 0 start)
-      (set-setting! 'allow-progress #t 0.0 0)
-      (apply-settings *setting-control*)
-      (activate-progress *dproc* (progress-screen title))
-      (set-setting! 'allow-progress #f 0.0 0)
-      (apply-settings *setting-control*)
-      )
-    (when (and (< (mod (-> *display* real-frame-counter) 300) 270) (not *progress-process*))
-      (let ((gp-0
-              (new 'stack 'font-context *font-default-matrix* 80 170 0.0 (font-color default) (font-flags shadow kerning))
-              )
-            )
-        (let ((v1-12 gp-0))
-          (set! (-> v1-12 width) (the float 352))
-          )
-        (let ((v1-13 gp-0))
-          (set! (-> v1-13 height) (the float 40))
-          )
-        (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
-        (print-game-text (lookup-text! *common-text* (text-id press-start) #f) gp-0 #f 128 22)
-        )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('play) (go target-title-play))
+        (('reset) (deactivate (-> self manipy 0)))
+        (else (target-generic-event-handler proc argc message block))))
+  :enter
+    (behavior ()
+      (remove-setting! 'ambient-volume)
+      (remove-setting! 'sfx-volume)
+      (remove-setting! 'music-volume)
+      ;; og:preserve-this PAL patch here (code removal)
+      (sound-group-continue (sound-group music))
+      (when *time-of-day-proc*
+        (set! (-> *time-of-day-proc* 0 time-ratio) 18000.0)
+        (set! *time-of-day-fast* #t)))
+  :exit
+    (behavior ()
+      (when *time-of-day-proc*
+        (set! (-> *time-of-day-proc* 0 time-ratio) 300.0)
+        (set! *time-of-day-fast* #f))
+      ;; og:preserve-this PAL patch here
+      (remove-setting! 'allow-pause)
+      (remove-setting! 'allow-progress)
+      ((-> target-title exit)))
+  :trans
+    (behavior ()
+      (hide-hud-quick)
+      ;; og:preserve-this PAL patch here
+      (when (cpad-pressed? 0 start)
+        (set-setting! 'allow-progress #t 0.0 0)
+        (apply-settings *setting-control*)
+        (activate-progress *dproc* (progress-screen title))
+        (set-setting! 'allow-progress #f 0.0 0)
+        (apply-settings *setting-control*))
+      (when (and (< (mod (-> *display* real-frame-counter) 300) 270) (not *progress-process*))
+        (let ((gp-0 (new 'stack 'font-context *font-default-matrix* 80 170 0.0 (font-color default) (font-flags shadow kerning))))
+          (let ((v1-12 gp-0)) (set! (-> v1-12 width) (the float 352)))
+          (let ((v1-13 gp-0)) (set! (-> v1-13 height) (the float 40)))
+          (set! (-> gp-0 flags) (font-flags shadow kerning middle middle-vert large))
+          (print-game-text (lookup-text! *common-text* (text-id press-start) #f) gp-0 #f 128 22))))
   :code anim-loop
-  :post target-no-move-post
-  )
+  :post target-no-move-post)

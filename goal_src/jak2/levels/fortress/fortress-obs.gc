@@ -127,11 +127,7 @@
      )
     (suspend)
     (ja-channel-set! 0)
-    (let ((frame-counter (current-time)))
-      (until (time-elapsed? frame-counter (seconds 1))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 1))
     (send-event self 'death-end)
     (while (-> self child)
       (suspend)
@@ -144,11 +140,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this fort-trap-door) (entity entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((cshape (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((prim-mesh (new 'process 'collide-shape-prim-mesh cshape (the-as uint 0) (the-as uint 0))))
       (set! (-> prim-mesh prim-core collide-as) (collide-spec obstacle))

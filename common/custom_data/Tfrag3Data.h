@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 39;
+constexpr int TFRAG3_VERSION = 43;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -60,6 +60,11 @@ enum MemoryUsageCategory {
   MERC_MOD_IND,
   MERC_MOD_TABLE,
   BLERC,
+
+  HFRAG_VERTS,
+  HFRAG_INDEX,
+  HFRAG_TIME_OF_DAY,
+  HFRAG_CORNERS,
 
   COLLISION,
 
@@ -111,6 +116,16 @@ struct PackedTieVertices {
     float s, t;
     s8 nx, ny, nz;
     u8 r, g, b, a;
+
+    struct hash {
+      std::size_t operator()(const Vertex& x) const;
+    };
+
+    bool operator==(const Vertex& other) const {
+      return x == other.x && y == other.y && z == other.z && s == other.s && t == other.t &&
+             nx == other.nx && ny == other.ny && nz == other.nz && r == other.r && g == other.g &&
+             b == other.b && a == other.a;
+    }
   };
 
   struct MatrixGroup {
@@ -226,7 +241,7 @@ struct ShrubDraw {
 
 struct InstancedStripDraw {
   DrawMode mode;        // the OpenGL draw settings.
-  u32 tree_tex_id = 0;  // the texture that should be bound for the draw
+  s32 tree_tex_id = 0;  // the texture that should be bound for the draw
 
   // the list of vertices in the draw. This includes the restart code of UINT32_MAX that OpenGL
   // will use to start a new strip.
@@ -269,18 +284,23 @@ struct BVH {
   void serialize(Serializer& ser);
 };
 
-// A time-of-day color. Each stores 8 colors. At a given "time of day", they are interpolated
-// to find a single color which goes into a color palette.
-struct TimeOfDayColor {
-  math::Vector<u8, 4> rgba[8];
+// This is split into groups of 4 colors.
+// The data in these groups is stored first by palette, then color, then channel.
+struct PackedTimeOfDay {
+  std::vector<u8> data;
+  u32 color_count = 0;
+  void serialize(Serializer& ser);
 
-  bool operator==(const TimeOfDayColor& other) const {
-    for (size_t i = 0; i < 8; i++) {
-      if (rgba[i] != other.rgba[i]) {
-        return false;
-      }
-    }
-    return true;
+  u8 read(int color, int palette, int channel) const {
+    const int color_quad = color / 4;
+    const int color_in_quad = color % 4;
+    return data[color_quad * 4 * 4 * 8 + palette * 4 * 4 + color_in_quad * 4 + channel];
+  }
+
+  u8& read(int color, int palette, int channel) {
+    const int color_quad = color / 4;
+    const int color_in_quad = color % 4;
+    return data[color_quad * 4 * 4 * 8 + palette * 4 * 4 + color_in_quad * 4 + channel];
   }
 };
 
@@ -319,8 +339,8 @@ struct TfragTree {
   TFragmentTreeKind kind;        // our tfrag kind
   std::vector<StripDraw> draws;  // the actual topology and settings
   PackedTfragVertices packed_vertices;
-  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
-  BVH bvh;                             // the bvh for frustum culling
+  PackedTimeOfDay colors;  // vertex colors (pre-interpolation)
+  BVH bvh;                 // the bvh for frustum culling
   bool use_strips = true;
 
   struct {
@@ -401,7 +421,7 @@ struct TieTree {
   std::array<u32, kNumTieCategories + 1> category_draw_indices;
 
   PackedTieVertices packed_vertices;
-  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
+  PackedTimeOfDay colors;  // vertex colors (pre-interpolation)
 
   std::vector<InstancedStripDraw> instanced_wind_draws;
   std::vector<TieWindInstance> wind_instance_info;
@@ -409,6 +429,8 @@ struct TieTree {
   // jak 2 and later can toggle on and off visibility per proto by name
   bool has_per_proto_visibility_toggle = false;
   std::vector<std::string> proto_names;
+
+  bool use_strips = true;
 
   struct {
     std::vector<PreloadedVertex> vertices;  // mesh vertices
@@ -422,7 +444,7 @@ struct TieTree {
 
 struct ShrubTree {
   // todo some visibility structure
-  std::vector<TimeOfDayColor> time_of_day_colors;  // multiplier colors
+  PackedTimeOfDay time_of_day_colors;  // multiplier colors
 
   PackedShrubVertices packed_vertices;
   std::vector<ShrubDraw> static_draws;  // the actual topology and settings
@@ -439,6 +461,43 @@ struct ShrubTree {
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;
   void unpack();
+};
+
+struct HfragmentVertex {
+  float height = 0;
+  u32 vi = 0;
+  u16 color_index = 0;
+  u8 u = 0, v = 0;
+  u32 pad = 0;
+};
+
+struct HfragmentCorner {
+  math::Vector<float, 4> bsphere;
+  u32 vis_id = 0;
+  u32 index_start = 0;
+  u32 index_length = 0;
+  u32 num_tris = 0;
+};
+
+struct HfragmentBucket {
+  std::vector<u32> corners;
+  std::array<u16, 16> montage_table;
+  void serialize(Serializer& ser);
+};
+
+struct Hfragment {
+  std::vector<HfragmentVertex> vertices;
+  std::vector<u32> indices;
+  std::vector<HfragmentCorner> corners;
+  std::vector<HfragmentBucket> buckets;
+  PackedTimeOfDay time_of_day_colors;
+
+  std::array<s32, 4> wang_tree_tex_id;
+  DrawMode draw_mode;
+  u32 occlusion_offset;
+
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
 };
 
 struct CollisionMesh {
@@ -483,6 +542,8 @@ struct MercDraw {
   u32 first_index;
   u32 index_count;
   u32 num_triangles;
+  // no strip hack for custom models
+  bool no_strip = false;
   void serialize(Serializer& ser);
 };
 
@@ -566,6 +627,7 @@ struct Level {
   std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
   std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   std::vector<ShrubTree> shrub_trees;
+  Hfragment hfrag;
   CollisionMesh collision;
   MercModelGroup merc_data;
   u16 version2 = TFRAG3_VERSION;

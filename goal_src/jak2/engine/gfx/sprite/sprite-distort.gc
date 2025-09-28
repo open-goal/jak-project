@@ -38,7 +38,7 @@ across the screen. The resolution of the circle is defined by the number of "tur
 
 (kmemclose)
 
-;; Called from update-math-camera. 
+;; Called from update-math-camera.
 ;; Whenever the camera's aspect ratio changes, recalculates the *sprite-distorter-sine-tables*.
 ;;
 ;; Every two vectors in 'entry' contain the position and texture coordinates for a vertex.
@@ -66,7 +66,8 @@ across the screen. The resolution of the circle is defined by the number of "tur
           (cam-aspx (- (-> *math-camera* perspective vector 0 x)))
           (cam-aspy (- (-> *math-camera* perspective vector 1 y)))
           )
-      (when (or (!= cam-aspx (-> tbls aspx)) (!= cam-aspy (-> tbls aspy)))
+      ;; og:preserve-this Fix intermittent crash on start up due to a race with the DMA
+      (when #t
         (set! (-> tbls aspx) cam-aspx)
         (set! (-> tbls aspy) cam-aspy)
         (while (< turns 12)
@@ -76,13 +77,7 @@ across the screen. The resolution of the circle is defined by the number of "tur
             (let ((rot (* 65536.0 (/ (the float turn) (the float turns)))))
               (set-vector! (-> tbls entry entry-idx) (* (sin rot) cam-aspx) (* (cos rot) cam-aspy) 0.0 0.0)
               (let ((s3-1 (+ entry-idx 1)))
-                (set-vector!
-                  (-> tbls entry s3-1)
-                  (* 0.001953125 cam-aspx (sin rot))
-                  (* 0.001953125 cam-aspy (cos rot))
-                  0.0
-                  0.0
-                  )
+                (set-vector! (-> tbls entry s3-1) (* (/ cam-aspx 512) (sin rot)) (* (/ cam-aspy 512) (cos rot)) 0.0 0.0)
                 (set! entry-idx (+ s3-1 1))
                 )
               )
@@ -91,7 +86,7 @@ across the screen. The resolution of the circle is defined by the number of "tur
           )
         (set-vector! (-> tbls entry entry-idx) 0.0 cam-aspy 0.0 0.0)
         (let ((v1-20 (+ entry-idx 1)))
-          (set-vector! (-> tbls entry v1-20) 0.0 (* 0.001953125 cam-aspy) 0.0 0.0)
+          (set-vector! (-> tbls entry v1-20) 0.0 (/ cam-aspy 512) 0.0 0.0)
           (+ v1-20 1)
           )
         )
@@ -158,8 +153,8 @@ across the screen. The resolution of the circle is defined by the number of "tur
       (&+! (-> dma-buff base) 16)
       )
     (let ((aspect-vec (the-as vector (-> dma-buff base))))
-      (set-vector! aspect-vec 
-                   (-> *sprite-distorter-sine-tables* aspx) 
+      (set-vector! aspect-vec
+                   (-> *sprite-distorter-sine-tables* aspx)
                    (-> *sprite-distorter-sine-tables* aspy)
                    0.0
                    0.0
@@ -267,12 +262,12 @@ across the screen. The resolution of the circle is defined by the number of "tur
                 ;;(TODO.VCLIP vf10 vf10)
                 (b! (zero? (-> sprite flag-rot-sy x)) cfg-22 :delay (nop!))
                 (.wait.vf)
-                (.mul.vf vf1 vf1 Q :mask #b111)
-                (.mul.vf vf2 vf2 Q :mask #b111)
+                (.mul.vf.xyz vf1 vf1 Q)
+                (.mul.vf.xyz vf2 vf2 Q)
                 ;;(.cfc2.i clip-result Clipping)
                 (set! clip-result (vu-clip vf10 0)) ;; safe to just drop the higher bits.
                 (b! (logtest? clip-result 63) cfg-22 :delay (.add.vf vf1 vf1 vf9))
-                (.max.x.vf vf1 vf1 vf0 :mask #b1000)
+                (.max.x.vf.w vf1 vf1 vf0)
                 (.svf (&-> (the-as vector dma-position) quad) vf1)
                 (.svf (&-> (the-as vector dma-color) quad) vf2)
                 (set! (-> (the-as vector dma-position) w) 255.0)
@@ -431,3 +426,6 @@ across the screen. The resolution of the circle is defined by the number of "tur
     (none)
     )
   )
+
+;; og:preserve-this Fix intermittent crash on start up due to a race with the DMA
+(sprite-distorter-generate-tables)

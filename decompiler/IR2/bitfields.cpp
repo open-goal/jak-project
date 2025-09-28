@@ -974,18 +974,29 @@ Form* cast_to_bitfield_enum(const EnumType* type_info,
   if (in == -1) {
     return nullptr;
   }
-  auto elts = decompile_bitfield_enum_from_int(TypeSpec(type_info->get_name()), env.dts->ts, in);
+  TypeSpec ts(type_info->get_name());
+  auto elts = try_decompile_bitfield_enum_from_int(ts, env.dts->ts, in, no_head);
   if (no_head) {
-    ASSERT(elts.size() >= 1);
+    ASSERT(elts->size() >= 1);
   }
+
+  if (!elts) {
+    if (in == 0xffff'ffff || in == INT64_MIN) {
+      return pool.form<CastElement>(
+          ts, pool.form<SimpleAtomElement>(SimpleAtom::make_int_constant(in)));
+    }
+    // backup failed, run again to get the nice error print.
+    try_decompile_bitfield_enum_from_int(ts, env.dts->ts, in, true);
+  }
+
   auto oper = GenericOperator::make_function(
-      pool.form<ConstantTokenElement>(no_head ? elts.at(0) : type_info->get_name()));
+      pool.form<ConstantTokenElement>(no_head ? elts->at(0) : type_info->get_name()));
   if (no_head) {
-    elts.erase(elts.begin());
+    elts->erase(elts->begin());
   }
 
   std::vector<Form*> form_elts;
-  for (auto& x : elts) {
+  for (auto& x : *elts) {
     form_elts.push_back(pool.form<ConstantTokenElement>(x));
   }
   return pool.form<GenericElement>(oper, form_elts);

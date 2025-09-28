@@ -682,13 +682,8 @@
     )
   :exit (-> target-tube-start exit)
   :trans (behavior ()
-    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
-                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
-                                       )
-                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
-                               )
-                       (pad-buttons x)
-                       )
+    ;; og:preserve-this - High FPS Fix - https://github.com/open-goal/jak-project/pull/3178
+    (if (and (recently-pressed? x)
              (can-jump? #f)
              )
         (go target-tube-jump (-> *TARGET-bank* tube-jump-height-min) (-> *TARGET-bank* tube-jump-height-max))
@@ -818,7 +813,7 @@
                  (f2-0 f1-2)
                  )
             (if (< f0-2 0.0)
-                (set! f0-2 (* 0.5 f0-2))
+                (set! f0-2 (/ f0-2 2))
                 )
             (vector+!
               (-> arg1 vector)
@@ -1092,11 +1087,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this slide-control) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))

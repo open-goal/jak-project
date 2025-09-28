@@ -30,10 +30,10 @@
     (.add.mul.z.vf vf5 vf3 vf5 acc)
     (.div.vf Q vf9 vf5 :fsf #b0 :ftf #b11)
     (.wait.vf)
-    (.mul.vf vf5 vf5 Q :mask #b111)
+    (.mul.vf.xyz vf5 vf5 Q)
     (.add.vf vf5 vf5 vf8)
-    (.max.x.vf vf5 vf5 vf0 :mask #b1000)
-    (.min.x.vf vf5 vf5 vf6 :mask #b1000)
+    (.max.x.vf.w vf5 vf5 vf0)
+    (.min.x.vf.w vf5 vf5 vf6)
     (vftoi4.xyzw vf5 vf5)
     (.svf (&-> out quad) vf5)
     out
@@ -51,7 +51,7 @@
         )
     (set! (-> pt-copy quad) (-> pt quad))
     (set! (-> pt-copy w) 1.0)
-    (when (transform-point-qword! (the-as vector4w (-> s5-0 vector)) pt-copy)
+    (when (transform-point-qword! (-> s5-0 vector 0) pt-copy)
       (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) debug-buf))
                                    bucket
                                    )
@@ -189,9 +189,7 @@
       (when (debug-line-clip? sv-128 sv-144 start var-end)
         (set! (-> sv-128 w) 1.0)
         (set! (-> sv-144 w) 1.0)
-        (when (and (transform-point-qword! (the-as vector4w (-> s4-0 vector)) sv-128)
-                   (transform-point-qword! (-> s4-0 vector 1) sv-144)
-                   )
+        (when (and (transform-point-qword! (-> s4-0 vector 0) sv-128) (transform-point-qword! (-> s4-0 vector 1) sv-144))
           (with-dma-buffer-add-bucket ((buf2 (-> *display* frames (-> *display* on-screen) debug-buf))
                                        bucket
                                        )
@@ -368,7 +366,7 @@
       (set! (-> a1-3 w) 1.0)
       (set! (-> s2-0 w) 1.0)
       (set! (-> s1-0 w) 1.0)
-      (when (and (transform-point-qword! (the-as vector4w (-> s5-0 vector)) a1-3)
+      (when (and (transform-point-qword! (-> s5-0 vector 0) a1-3)
                  (transform-point-qword! (-> s5-0 vector 1) s2-0)
                  (transform-point-qword! (-> s5-0 vector 2) s1-0)
                  )
@@ -1174,7 +1172,7 @@
     enable
     bucket
     (-> mat trans)
-    (the-as vector (-> mat vector))
+    (-> mat vector 0)
     line-length
     (new 'static 'rgba :r #xff :a #x80)
     )
@@ -1199,14 +1197,7 @@
 
 ;; definition (debug) for function add-debug-rot-matrix
 (defun-debug add-debug-rot-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (position vector))
-  (add-debug-vector
-    enable
-    bucket
-    position
-    (the-as vector (-> mat vector))
-    (meters 2)
-    (new 'static 'rgba :r #xff :a #x80)
-    )
+  (add-debug-vector enable bucket position (-> mat vector 0) (meters 2) (new 'static 'rgba :r #xff :a #x80))
   (add-debug-vector enable bucket position (-> mat vector 1) (meters 2) (new 'static 'rgba :g #xff :a #x80))
   (add-debug-vector enable bucket position (-> mat vector 2) (meters 2) (new 'static 'rgba :b #xff :a #x80))
   mat
@@ -1540,9 +1531,9 @@
           (.lvf vf5 (&-> v1-3 quad))
           )
         (.lvf vf4 (&-> position quad))
-        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-        (.mul.x.vf acc vf5 vf7 :mask #b111)
-        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.add.x.vf.w vf6 vf0 vf0)
+        (.mul.x.vf.xyz acc vf5 vf7)
+        (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
         (.svf (&-> sphere-pos quad) vf6)
         (let ((color-rgba (logior (logior (logior (shr (shl (the int (* 128.0 (-> light color w))) 56) 32)
                                                   (shr (shl (the int (* 128.0 (-> light color z))) 56) 40)

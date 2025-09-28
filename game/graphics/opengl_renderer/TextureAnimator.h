@@ -59,7 +59,7 @@ struct ShaderContext {
 };
 
 struct OpenGLTexturePool {
-  OpenGLTexturePool();
+  OpenGLTexturePool(GameVersion version);
   ~OpenGLTexturePool();
   GLuint allocate(u64 w, u64 h);
   void free(GLuint texture, u64 w, u64 h);
@@ -76,6 +76,10 @@ class ClutBlender {
   GLuint run(const float* weights);
   GLuint texture() const { return m_texture; }
   bool at_default() const { return m_current_weights[0] == 1.f && m_current_weights[1] == 0.f; }
+
+  int w() const { return m_dest->w; }
+  int h() const { return m_dest->h; }
+  GpuTexture* pool_gpu_tex = nullptr;
 
  private:
   const tfrag3::IndexTexture* m_dest;
@@ -145,8 +149,21 @@ struct FixedLayerDef {
   bool clamp_v = false;
   bool blend_enable = true;
   bool channel_masks[4] = {true, true, true, true};
+  bool disable = false;
   GsAlpha::BlendMode blend_modes[4];  // abcd
   u8 blend_fix = 0;
+
+  void set_blend(GsAlpha::BlendMode a,
+                 GsAlpha::BlendMode b,
+                 GsAlpha::BlendMode c,
+                 GsAlpha::BlendMode d,
+                 u8 fix) {
+    blend_modes[0] = a;
+    blend_modes[1] = b;
+    blend_modes[2] = c;
+    blend_modes[3] = d;
+    blend_fix = fix;
+  }
 
   void set_blend_b2_d1() {
     blend_modes[0] = GsAlpha::BlendMode::SOURCE;
@@ -181,20 +198,32 @@ struct FixedAnimDef {
   // alpha blend off, so alpha doesn't matter i think.
   std::vector<FixedLayerDef> layers;
   bool move_to_pool = false;
+  bool set_alpha = false;
+  void set_times(std::vector<std::pair<float, float>> times) {
+    ASSERT(layers.size() >= times.size());
+    for (size_t i = 0; i < layers.size(); i++) {
+      auto& layer = layers.at(i);
+      layer.start_time = times.at(i).first;
+      layer.end_time = times.at(i).second;
+    }
+  }
 };
 
 struct DynamicLayerData {
   LayerVals start_vals, end_vals;
 };
 
+struct FixedAnimSource {
+  u64 idx = 0;
+  bool is_anim_slot = false;
+};
+
 struct FixedAnim {
   FixedAnimDef def;
   std::vector<DynamicLayerData> dynamic_data;
-  // GLint dest_texture;
   std::optional<FramebufferTexturePair> fbt;
   int dest_slot;
-  std::vector<GLint> src_textures;
-
+  std::vector<FixedAnimSource> src_textures;
   GpuTexture* pool_gpu_tex = nullptr;
 };
 
@@ -246,7 +275,7 @@ class TexturePool;
 
 class TextureAnimator {
  public:
-  TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level);
+  TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level, GameVersion version);
   ~TextureAnimator();
   void handle_texture_anim_data(DmaFollower& dma,
                                 const u8* ee_mem,
@@ -259,7 +288,10 @@ class TextureAnimator {
 
  private:
   void copy_private_to_public();
-  void setup_texture_anims();
+  void setup_texture_anims_common();
+  void setup_texture_anims_jak2();
+  void setup_texture_anims_jak3();
+
   void setup_sky();
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
@@ -340,6 +372,7 @@ class TextureAnimator {
     GLuint tcc;
     GLuint alpha_multiply;
     GLuint minimum, maximum;
+    GLuint set_alpha;
   } m_uniforms;
 
   struct {
@@ -367,6 +400,7 @@ class TextureAnimator {
     std::vector<ClutBlender> blenders;
     std::vector<int> outputs;
     u64 last_updated_frame = 0;
+    bool move_to_pool = false;
   };
   std::vector<ClutBlenderGroup> m_clut_blender_groups;
 
@@ -379,13 +413,14 @@ class TextureAnimator {
   int create_clut_blender_group(const std::vector<std::string>& textures,
                                 const std::string& suffix0,
                                 const std::string& suffix1,
-                                const std::optional<std::string>& dgo);
+                                const std::optional<std::string>& dgo,
+                                bool send_to_pool = false);
   void add_to_clut_blender_group(int idx,
                                  const std::vector<std::string>& textures,
                                  const std::string& suffix0,
                                  const std::string& suffix1,
                                  const std::optional<std::string>& dgo);
-  void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx);
+  void run_clut_blender_group(DmaTransfer& tf, int idx, u64 frame_idx, TexturePool* texture_pool);
   GLint run_clouds(const SkyInput& input, bool hires);
   void run_slime(const SlimeInput& input);
 
@@ -393,6 +428,8 @@ class TextureAnimator {
       m_psm32_to_psm8_64_64;
   ClutReader m_clut_table;
 
+ public:
+  // jak 2
   int m_skull_gem_fixed_anim_array_idx = -1;
   int m_bomb_fixed_anim_array_idx = -1;
   int m_cas_conveyor_anim_array_idx = -1;
@@ -408,9 +445,59 @@ class TextureAnimator {
   int m_shield_anim_array_idx = -1;
   int m_krew_holo_anim_array_idx = -1;
 
+  // jak 3
+  int m_default_water_anim_array_idx = -1;
+  int m_default_warp_anim_array_idx = -1;
+  int m_templea_water_anim_array_idx = -1;
+  int m_templea_warp_anim_array_idx = -1;
+  int m_templeb_warp_anim_array_idx = -1;
+  int m_templec_water_anim_array_idx = -1;
+  int m_sewc_water_anim_array_idx = -1;
+  int m_sewd_water_anim_array_idx = -1;
+  int m_sewe_water_anim_array_idx = -1;
+  int m_sewg_water_anim_array_idx = -1;
+  int m_sewh_water_anim_array_idx = -1;
+  int m_sewi_water_anim_array_idx = -1;
+  int m_sewj_water_anim_array_idx = -1;
+  int m_sewl_water_anim_array_idx = -1;
+  int m_sewm_water_anim_array_idx = -1;
+  int m_sewn_water_anim_array_idx = -1;
+  int m_desresc_warp_anim_array_idx = -1;
+  int m_ctyslumb_water_anim_array_idx = -1;
+  int m_nstb_quicksand_anim_array_idx = -1;
+  int m_ctyslumc_water_anim_array_idx = -1;
+  int m_factoryc_alpha_anim_array_idx = -1;
+  int m_hfrag_anim_array_idx = -1;
+  int m_hanga_sprite_anim_array_idx = -1;
+  int m_hanga_water_anim_array_idx = -1;
+  int m_desertd_water_anim_array_idx = -1;
+  int m_lmhcityb_tfrag_anim_array_idx = -1;
+  int m_towerb_water_anim_array_idx = -1;
+  int m_comb_field_anim_array_idx = -1;
+  int m_wasstada_alpha_anim_array_idx = -1;
+  int m_factoryb_water_anim_array_idx = -1;
+  int m_lmhcitya_tfrag_anim_array_idx = -1;
+  int m_mhcitya_pris_anim_array_idx = -1;
+  int m_rubblea_water_anim_array_idx = -1;
+  int m_rubblea2_water_anim_array_idx = -1;
+  int m_rubbleb_water_anim_array_idx = -1;
+  int m_rubblec_water_anim_array_idx = -1;
+  int m_foresta_water_anim_array_idx = -1;
+  int m_forestb_water_anim_array_idx = -1;
+  int m_lforplnt_pris_anim_array_idx = -1;
+  int m_ltnfxhip_anim_array_idx = -1;
+  int m_lgunnorm_water_anim_array_idx = -1;
+  int m_ljkdxvin_anim_array_idx = -1;
+  int m_waspal_water_anim_array_idx = -1;
+  int m_mined_tfrag_anim_array_idx = -1;
+  int m_volcanox_warp_anim_array_idx = -1;
+  int m_templex_water_anim_array_idx = -1;
+  int m_volcanoa_anim_array_idx = -1;
+  int m_deshover_anim_array_idx = -1;
+  int m_darkjak_highres_clut_blender_idx = -1;
+
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 
- public:
   // note: for now these can't be easily changed because each layer has its own hand-tuned
   // parameters from the original game. If you want to change it, you'll need to make up parameters
   // for those new layers.
@@ -429,6 +516,7 @@ class TextureAnimator {
   static constexpr int kNumSlimeNoiseLayers = 4;
 
  private:
+  GameVersion m_version;
   Vector16ub m_random_table[kRandomTableSize];
   int m_random_index = 0;
 
@@ -450,4 +538,12 @@ class TextureAnimator {
   GpuTexture* m_slime_scroll_pool_gpu_tex = nullptr;
   int m_slime_output_slot = -1;
   int m_slime_scroll_output_slot = -1;
+  ShaderLibrary* m_shaders = nullptr;
 };
+
+int output_slot_by_idx(GameVersion version, const std::string& name);
+int update_opengl_noise_texture(GLuint texture,
+                                u8* temp,
+                                Vector16ub* random_table,
+                                int dim,
+                                int random_index_in);

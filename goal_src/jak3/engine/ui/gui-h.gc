@@ -5,5 +5,165 @@
 ;; name in dgo: gui-h
 ;; dgos: GAME
 
+;; +++gui-connection-flags
+(defenum gui-connection-flags
+  :type uint8
+  :bitfield #t
+  (gcf0 0)
+  (gcf1 1)
+  (fo-curve 2)
+  (fo-min 3)
+  (fo-max 4)
+  (volume 5)
+  )
+;; ---gui-connection-flags
+
+
+;; +++gui-channel
+(defenum gui-channel
+  :type uint8
+  :bitfield #f
+  (none 0)
+  (art-load 16)
+  (art-load-next 17)
+  (background 18)
+  (jak 19)
+  (daxter 20)
+  (sig 21)
+  (ashelin 22)
+  (beast 23)
+  (jak-effect-1 24)
+  (pecker 25)
+  (jak-effect-2 26)
+  (gun 27)
+  (hal 28)
+  (voicebox 29)
+  (guard 30)
+  (jak-mode 31)
+  (alert 32)
+  (citizen 33)
+  (bbush 34)
+  (rider 35)
+  (task 36)
+  (voice 47)
+  (movie 64)
+  (blackout 65)
+  (query 66)
+  (message 67)
+  (notice 68)
+  (subtitle 69)
+  (supertitle 70)
+  (notice-low 71)
+  (resetter 72)
+  (progress 73)
+  (freeze 74)
+  (subtitle-pc 78) ;; custom
+  (screen 79)
+  (hud-upper-right 80)
+  (hud-upper-left 81)
+  (hud-lower-right 82)
+  (hud-lower-left 83)
+  (hud-lower-left-1 84)
+  (hud-lower-left-2 85)
+  (hud-center-right 86)
+  (hud-center-left 87)
+  (hud-middle-right 88)
+  (hud-middle-left 89)
+  (hud-upper-center 90)
+  (hud-upper-center-2 91)
+  (hud-lower-center 92)
+  (hud-auto-save 93)
+  (hud-auto-save-message 94)
+  (hud 95)
+  (max 96)
+  )
+;; ---gui-channel
+
+
+;; +++gui-status
+(defenum gui-status
+  :type uint8 ;; not sure
+  :bitfield #f
+  (unknown 0)
+  (pending 1)
+  (ready 2)
+  (active 3)
+  (hide 4)
+  (stop 5)
+  )
+;; ---gui-status
+
+
+;; +++gui-action
+(defenum gui-action
+  :type uint8
+  :bitfield #f
+  (none 0)
+  (queue 1)
+  (play 2)
+  (playing 3)
+  (stop 4)
+  (stopping 5)
+  (abort 6)
+  (hide 7)
+  (hidden 8)
+  (fade 9)
+  )
+;; ---gui-action
+
+
 ;; DECOMP BEGINS
 
+(deftype gui-connection (connection)
+  ((priority    float                 :overlay-at param0)
+   (action      gui-action            :overlay-at param1)
+   (channel     gui-channel           :offset  21)
+   (anim-part   uint8                 :offset  22)
+   (flags       gui-connection-flags  :offset  23)
+   (name        string                :overlay-at param2)
+   (id          sound-id              :overlay-at param3)
+   (handle      handle                :overlay-at next0)
+   (time-stamp  time-frame            :overlay-at next1)
+   (hold-time   time-frame)
+   (fo-min      int16)
+   (fo-max      int16)
+   (fo-curve    int8)
+   (fade        uint8)
+   (volume      int16)
+   )
+  )
+
+
+(deftype gui-control (basic)
+  ((engine             engine)
+   (update-time        time-frame)
+   (connections        gui-connection  32 :inline)
+   (spool-connections  gui-connection  4 :inline)
+   (ids                sound-id        96)
+   (times              time-frame      96)
+   (cmd                pair            96)
+   (group              sound-group     96)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (add-process (_type_ process gui-channel gui-action string float time-frame) sound-id)
+    (remove-process (_type_ process gui-channel) int)
+    (stop-str (_type_ gui-connection) int)
+    (gui-control-method-12 (_type_ process gui-channel gui-action string int float sound-id) sound-id)
+    (update (_type_ symbol) int)
+    (lookup-gui-connection-id (_type_ string gui-channel gui-action) sound-id)
+    (lookup-gui-connection (_type_ process gui-channel string sound-id) gui-connection)
+    (set-action! (_type_ gui-action sound-id gui-channel gui-action string (function gui-connection symbol) process) int)
+    (get-status (_type_ sound-id) gui-status)
+    (gui-control-method-18 (_type_ gui-channel) symbol)
+    (handle-command-list (_type_ gui-channel gui-connection) symbol)
+    (sound-params-set! (_type_ sound-id symbol int int int float) gui-connection)
+    (gui-control-method-21 (_type_ gui-connection) int)
+    (gui-control-method-22 (_type_ gui-connection vector) int)
+    (update-connection (_type_ gui-connection process symbol) none)
+    (handle-command (_type_ gui-channel gui-channel symbol gui-connection) symbol)
+    (channel-id-set! (_type_ gui-connection sound-id) int)
+    )
+  )
+
+(define-extern *gui-control* gui-control)

@@ -5,5 +5,636 @@
 ;; name in dgo: display
 ;; dgos: GAME
 
+(defconstant DMA_BUFFER_GLOBAL_SIZE (* 1280 1024)) ;; 1280K
+;; (defconstant DMA_BUFFER_GLOBAL_SIZE (* 1280 1024 PROCESS_HEAP_MULT)) ;; expand based on actor heap expansion
+(defconstant DMA_BUFFER_DEBUG_SIZE (* 8 1024 1024)) ;; 8M
+;; (defconstant DMA_BUFFER_DEBUG_SIZE (* 12 1024 1024)) ;; expand to 12M because we can
+
+(defconstant DISPLAY_FPS_RATIO (/ (-> *display* time-factor) 5.0))
+
 ;; DECOMP BEGINS
 
+(defun get-current-time ()
+  "Get the base-clock time."
+  (-> *display* base-clock frame-counter)
+  )
+
+(defun get-integral-current-time ()
+  "Get the number of frames that have happened."
+  (-> *display* base-clock integral-frame-counter)
+  )
+
+(defun get-real-current-time ()
+  (-> *display* real-clock frame-counter)
+  )
+
+(defmethod set-time-ratios ((this display) (arg0 float))
+  (set! (-> this dog-ratio) (fmin 4.0 arg0))
+  (case (get-video-mode)
+    (('pal)
+     (set! (-> this time-factor) 6.0)
+     )
+    ;; og:preserve-this custom mode for high fps
+    (('custom)
+     (set! (-> this time-factor) (/ 300.0 (-> *pc-settings* target-fps)))
+     )
+    (else
+      (set! (-> this time-factor) 5.0)
+      )
+    )
+  (-> this dog-ratio)
+  )
+
+(defun set-display ((arg0 display))
+  "Allocate and initialize clocks for the display."
+  (dotimes (s5-0 22)
+    (set! (-> arg0 clock s5-0) (new 'global 'clock s5-0))
+    )
+  (set! (-> arg0 base-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 game-clock mask) (process-mask freeze pause menu progress movie))
+  (set! (-> arg0 total-game-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 frame-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 target-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 camera-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 entity-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 part-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 bg-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user0-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user1-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user2-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user3-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user4-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user5-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user6-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user7-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user8-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> arg0 user9-clock mask) (process-mask freeze pause menu progress))
+  (set! (-> *listener-process* clock) (-> arg0 real-clock))
+  (set! (-> *active-pool* clock) (-> arg0 real-clock))
+  (set! (-> *display-pool* clock) (-> arg0 real-clock))
+  (set! (-> *mid-pool* clock) (-> arg0 real-clock))
+  (+! (-> arg0 real-clock ref-count) 4)
+  (set! (-> *camera-pool* clock) (-> arg0 camera-clock))
+  (+! (-> arg0 camera-clock ref-count) 1)
+  (set! (-> *target-pool* clock) (-> arg0 target-clock))
+  (+! (-> arg0 target-clock ref-count) 1)
+  (set! (-> *pusher-pool* clock) (-> arg0 entity-clock))
+  (set! (-> *entity-pool* clock) (-> arg0 entity-clock))
+  (+! (-> arg0 entity-clock ref-count) 2)
+  (set! (-> *bg-pool* clock) (-> arg0 bg-clock))
+  (+! (-> arg0 bg-clock ref-count) 1)
+  (set! (-> *default-pool* clock) (-> arg0 base-clock))
+  (+! (-> arg0 base-clock ref-count) 1)
+  (+! (-> *kernel-clock* ref-count) -10)
+  arg0
+  )
+
+(defun allocate-dma-buffers ((arg0 display))
+  "Allocate the main, debug, and calc dma buffers."
+  (when (zero? (-> arg0 frames 0 calc-buf))
+    (set! (-> arg0 frames 0 calc-buf) (new 'global 'dma-buffer 10000))
+    (set! (-> arg0 frames 1 calc-buf) (new 'global 'dma-buffer 10000))
+    (set! (-> arg0 frames 0 global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
+    (set! (-> arg0 frames 1 global-buf) (new 'global 'dma-buffer DMA_BUFFER_GLOBAL_SIZE))
+    (when *debug-segment*
+      (set! (-> arg0 frames 0 debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
+      (set! (-> arg0 frames 1 debug-buf) (new 'debug 'dma-buffer DMA_BUFFER_DEBUG_SIZE))
+      )
+    (set! (-> arg0 dma-buffer-overflow) #f)
+    (set! (-> arg0 mem-reserve-size) (the-as uint 0))
+    0
+    )
+  arg0
+  )
+
+(define *font-context*
+  (new 'global 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defun draw-sprite2d-xy ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba) (arg6 int))
+  "Draw a sprite primitive with the given color and dimensions."
+  (let* ((t2-2 (new 'stack 'draw-context arg1 arg2 arg3 arg4 arg5))
+         (a0-3 (max 1792 (min 2304 (+ (-> t2-2 orgx) 1792))))
+         (a3-3 (max 1840 (min 2256 (+ (-> t2-2 orgy) 1840))))
+         (a1-6 (-> t2-2 width))
+         (t1-2 (-> t2-2 height))
+         (v1-6 (-> arg0 base))
+         )
+    (let* ((a2-2 arg0)
+           (t0-2 (the-as object (-> a2-2 base)))
+           )
+      (set! (-> (the-as dma-packet t0-2) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t0-2) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t0-2) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> a2-2 base) (&+ (the-as pointer t0-2) 16))
+      )
+    (let* ((a2-3 arg0)
+           (t0-4 (the-as object (-> a2-3 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t0-4) tag)
+            (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x4)
+            )
+      (set! (-> (the-as gs-gif-tag t0-4) regs)
+            (new 'static 'gif-tag-regs :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2) :regs3 (gif-reg-id xyzf2))
+            )
+      (set! (-> a2-3 base) (&+ (the-as pointer t0-4) 16))
+      )
+    (let* ((a2-4 arg0)
+           (t0-6 (-> a2-4 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) t0-6) 0) (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1))
+      (set! (-> (the-as (pointer gs-rgbaq) t0-6) 1) (the-as gs-rgbaq (-> t2-2 color 0)))
+      (set! (-> (the-as (pointer gs-xyzf) t0-6) 2) (new 'static 'gs-xyzf :x (* a0-3 16) :y (* a3-3 16) :z arg6))
+      (set! (-> (the-as (pointer gs-xyzf) t0-6) 3) (new 'static 'gs-xyzf
+                                                     :x (* (max 1792 (min 2304 (+ a0-3 a1-6))) 16)
+                                                     :y (* (max 1840 (min 2256 (+ a3-3 t1-2))) 16)
+                                                     :z arg6
+                                                     )
+            )
+      (set! (-> a2-4 base) (&+ t0-6 32))
+      )
+    (let ((a0-12 (/ (the-as int (+ (- -16 (the-as int v1-6)) (the-as int (-> arg0 base)))) 16)))
+      (cond
+        ((nonzero? a0-12)
+         (logior! (-> (the-as (pointer uint64) v1-6) 0) (shr (shl a0-12 48) 48))
+         (logior! (-> (the-as (pointer uint64) v1-6) 1) (shl (shr (shl a0-12 48) 48) 32))
+         )
+        (else
+          (set! (-> arg0 base) v1-6)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defun draw-sprite2d-xy-absolute ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 rgba) (arg6 int))
+  "Draw a sprite primitive, setting the gs-xzyf register to exactly the values specified (no offset/clamp)."
+  (let ((a1-1 (+ arg1 1792))
+        (a2-1 (+ arg2 1840))
+        (v1-0 (-> arg0 base))
+        )
+    (let* ((t3-0 arg0)
+           (t4-0 (the-as object (-> t3-0 base)))
+           )
+      (set! (-> (the-as dma-packet t4-0) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t4-0) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t4-0) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> t3-0 base) (&+ (the-as pointer t4-0) 16))
+      )
+    (let* ((t3-1 arg0)
+           (t4-2 (the-as object (-> t3-1 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t4-2) tag)
+            (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x4)
+            )
+      (set! (-> (the-as gs-gif-tag t4-2) regs)
+            (new 'static 'gif-tag-regs :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2) :regs3 (gif-reg-id xyzf2))
+            )
+      (set! (-> t3-1 base) (&+ (the-as pointer t4-2) 16))
+      )
+    (let* ((t3-2 arg0)
+           (t4-4 (-> t3-2 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) t4-4) 0) (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1))
+      (set! (-> (the-as (pointer gs-rgbaq) t4-4) 1) (the-as gs-rgbaq arg5))
+      (set! (-> (the-as (pointer gs-xyzf) t4-4) 2) (new 'static 'gs-xyzf :x (* a1-1 16) :y (* a2-1 16) :z arg6))
+      (set! (-> (the-as (pointer gs-xyzf) t4-4) 3)
+            (new 'static 'gs-xyzf :x (* (+ a1-1 arg3) 16) :y (* (+ a2-1 arg4) 16) :z arg6)
+            )
+      (set! (-> t3-2 base) (&+ t4-4 32))
+      )
+    (let ((a1-10 (/ (the-as int (+ (- -16 (the-as int v1-0)) (the-as int (-> arg0 base)))) 16)))
+      (cond
+        ((nonzero? a1-10)
+         (set! (-> (the-as (pointer uint64) v1-0) 0)
+               (logior (-> (the-as (pointer uint64) v1-0)) (shr (shl a1-10 48) 48))
+               )
+         (logior! (-> (the-as (pointer uint64) v1-0) 1) (shl (shr (shl a1-10 48) 48) 32))
+         )
+        (else
+          (set! (-> arg0 base) v1-0)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch pointer vs none.
+(defun draw-quad2d ((arg0 dma-buffer) (arg1 draw-context))
+  "Draw a quad that fills the entire context."
+  (let ((a3-1 (max 1792 (min 2304 (+ (-> arg1 orgx) 1792))))
+        (a2-3 (max 1840 (min 2256 (+ (-> arg1 orgy) 1840))))
+        (t3-0 (-> arg1 width))
+        (t0-2 (-> arg1 height))
+        (v1-4 (-> arg0 base))
+        )
+    (let* ((t1-0 arg0)
+           (t2-0 (the-as object (-> t1-0 base)))
+           )
+      (set! (-> (the-as dma-packet t2-0) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> (the-as dma-packet t2-0) vif0) (new 'static 'vif-tag))
+      (set! (-> (the-as dma-packet t2-0) vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1))
+      (set! (-> t1-0 base) (&+ (the-as pointer t2-0) 16))
+      )
+    (let* ((t1-1 arg0)
+           (t2-2 (the-as object (-> t1-1 base)))
+           )
+      (set! (-> (the-as gs-gif-tag t2-2) tag)
+            (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :flg (gif-flag reg-list) :nreg #x9)
+            )
+      (set! (-> (the-as gs-gif-tag t2-2) regs) (new 'static 'gif-tag-regs
+                                                 :regs1 (gif-reg-id rgbaq)
+                                                 :regs2 (gif-reg-id xyzf2)
+                                                 :regs3 (gif-reg-id rgbaq)
+                                                 :regs4 (gif-reg-id xyzf2)
+                                                 :regs5 (gif-reg-id rgbaq)
+                                                 :regs6 (gif-reg-id xyzf2)
+                                                 :regs7 (gif-reg-id rgbaq)
+                                                 :regs8 (gif-reg-id xyzf2)
+                                                 )
+            )
+      (set! (-> t1-1 base) (&+ (the-as pointer t2-2) 16))
+      )
+    (let* ((t1-2 arg0)
+           (t2-4 (-> t1-2 base))
+           )
+      (set! (-> (the-as (pointer gs-prim) t2-4) 0)
+            (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 1) (the-as gs-rgbaq (-> arg1 color 0)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 2) (new 'static 'gs-xyzf :y (* a2-3 16) :x (* a3-1 16)))
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 3) (the-as gs-rgbaq (-> arg1 color 1)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 4)
+            (new 'static 'gs-xyzf :y (* a2-3 16) :x (* (max 1792 (min 2304 (+ a3-1 t3-0))) 16))
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 5) (the-as gs-rgbaq (-> arg1 color 2)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 6)
+            (new 'static 'gs-xyzf :y (* (max 1840 (min 2256 (+ a2-3 t0-2))) 16) :x (* a3-1 16))
+            )
+      (set! (-> (the-as (pointer gs-rgbaq) t2-4) 7) (the-as gs-rgbaq (-> arg1 color 3)))
+      (set! (-> (the-as (pointer gs-xyzf) t2-4) 8) (new 'static 'gs-xyzf
+                                                     :y (* (max 1840 (min 2256 (+ a2-3 t0-2))) 16)
+                                                     :x (* (max 1792 (min 2304 (+ a3-1 t3-0))) 16)
+                                                     )
+            )
+      (set! (-> (the-as (pointer uint64) t2-4) 9) (the-as uint 0))
+      (set! (-> t1-2 base) (&+ t2-4 80))
+      )
+    (let ((a1-11 (/ (the-as int (+ (- -16 (the-as int v1-4)) (the-as int (-> arg0 base)))) 16)))
+      (cond
+        ((nonzero? a1-11)
+         (set! (-> (the-as (pointer uint64) v1-4) 0)
+               (logior (-> (the-as (pointer uint64) v1-4)) (shr (shl a1-11 48) 48))
+               )
+         (logior! (-> (the-as (pointer uint64) v1-4) 1) (shl (shr (shl a1-11 48) 48) 32))
+         )
+        (else
+          (set! (-> arg0 base) v1-4)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defun screen-gradient ((arg0 dma-buffer) (arg1 rgba) (arg2 rgba) (arg3 rgba) (arg4 rgba))
+  "Fill the screen with a sprite with the given colors."
+  (let ((a1-2 (new 'stack 'draw-context 0 0 512 416 (new 'static 'rgba))))
+    (set! (-> a1-2 color 0) arg1)
+    (set! (-> a1-2 color 1) arg2)
+    (set! (-> a1-2 color 2) arg3)
+    (set! (-> a1-2 color 3) arg4)
+    (draw-quad2d arg0 a1-2)
+    )
+  (none)
+  )
+
+(defun vif1-handler-debug ((mark-in int))
+  "Handle the VIF1 interrupt.
+  The mark register of VIF will be set to the bucket that is now starting."
+
+  ; B0:
+  ; L42:
+  ;     daddiu sp, sp, -32
+  ;     sd ra, 0(sp)
+  ;     sd s7, 16(sp)
+  ;     bgezal r0, L43
+  ;     sll r0, r0, 0
+
+  ; B1:
+  ; L43:
+  ;     daddiu fp, ra, -20
+  ;     lw s7, L41(fp)
+  ;     lw s7, 0(s7)
+  ;     daddiu s7, s7, -8
+  ;     lw v1, *profile-interrupt-segment*(s7)
+  (let* ((prof *profile-interrupt-segment*) ;; v1
+         ;     lui a0, 4096
+         ;     ori a0, a0, 15360
+         ;     lwu a0, 48(a0)
+         (mark mark-in) ;; (-> VIF1_BANK mark) (TODO actually set mark somehow)
+         ;     lw a1, *profile-work*(s7)
+         ;     lw a2, 64(a1)
+         (last-index (-> *profile-work* last-index))
+
+         ;     lh a3, 4(v1)
+         (base-time (-> prof base-time))
+         ;     lui a1, 4096
+         ;     ori a1, a1, 2048
+         ;     lwu a1, 0(a1)
+         ;     sync.l
+         (current-time (timer-count TIMER1_BANK))
+         (delta-time (the uint 0))
+         )
+
+
+    (cond
+      ;     sltu t0, a0, a2  t0 = (mark < last-index)
+      ;     beq t0, r0, L46
+      ;     sll r0, r0, 0
+      ((< mark last-index)
+       ;; the mark jumped backward, we must be starting a new frame
+       ;; clear all profile info.
+
+
+       ; B2:
+       ;     addiu a2, r0, 0
+       ;     beq r0, r0, L45
+       ;     sll r0, r0, 0
+       (dotimes (i (enum-length bucket-id))
+         ; B3:
+         ; L44:
+         ;     dsll a3, a2, 4
+         ;     daddu a3, v1, a3
+         ;     sh r0, 48(a3)
+         (set! (-> prof data i start-time) 0)
+         ;     dsll a3, a2, 4
+         ;     daddu a3, v1, a3
+         ;     sh r0, 50(a3)
+         (set! (-> prof data i end-time) 0)
+         ;     dsll a3, a2, 4
+         ;     daddu a3, v1, a3
+         ;     sb r0, 53(a3)
+         (set! (-> prof data i count) 0)
+         ;     daddiu a2, a2, 1
+         ; B4:
+         ; L45:
+         ;     slti a3, a2, 327
+         ;     bne a3, r0, L44
+         ;     sll r0, r0, 0
+         )
+
+       ; B5:
+       ;     or a2, s7, r0
+       ;     or a2, s7, r0
+       ;     sh a1, 4(v1)
+       (set! (-> prof base-time) (the int current-time))
+       ;     addiu a1, r0, 0
+       ;     sh r0, 48(v1)
+       (set! (-> prof data 0 start-time) 0) ;; why do it again...
+       ;     addiu a2, r0, 327
+       ;     sh a2, 0(v1)
+       (set! (-> prof count) (enum-length bucket-id))
+       ;     beq r0, r0, L47
+       ;     sll r0, r0, 0
+       ) ;; end (>= mark last-index)
+      (else
+
+        ; B6:
+        ; L46:
+        ;     dsubu a1, a1, a3
+        ;(let ((delta-time (- current-time base-time)))
+          (set! delta-time (- current-time base-time))
+
+          ;     dsll a2, a2, 4
+          ;     daddu a2, v1, a2
+          ;     sh a1, 50(a2)
+          (set! (-> prof data last-index end-time) (the int delta-time))
+          ; (format 0 "mark: ~D last ~D elapsed ~D~%" mark last-index
+          ;         (- (-> prof data last-index end-time)
+          ;            (-> prof data last-index start-time)))
+
+          ;     sh a1, 50(v1)
+          (set! (-> prof data 0 end-time) (the int delta-time))
+          ;     or a2, a1, r0
+          ;)
+        ) ;; end else
+      ) ;; end cond
+    ; B7:
+    ; L47:
+    ;     dsll a2, a0, 4
+    ;     daddu a2, v1, a2
+    ;     sb a0, 53(a2)
+    (set! (-> prof data mark count) mark)
+    ;     dsll a2, a0, 4
+    ;     daddu v1, v1, a2
+    ;     sh a1, 48(v1)
+    (set! (-> prof data mark start-time) (the int delta-time))
+    ;     lw v1, *profile-work*(s7)
+    ;     sw a0, 64(v1)
+    (set! (-> *profile-work* last-index) mark)
+    ;     lui v1, 4096
+    ;     ori v1, v1, 15360
+    ;     sw r0, 48(v1)
+    ;;   CLEAR mark
+    ;     addiu v1, r0, 8
+    ;     lui a0, 4096
+    ;     ori a0, a0, 15360
+    ;     sw v1, 16(a0)
+    ;; write STC to VIF FBRST (reset various things)
+    ;     addiu v0, r0, 0
+    ;     ld ra, 0(sp)
+    ;     ld s7, 16(sp)
+    ;     sync.l
+    ;     ei
+    ;     jr ra
+    ;     daddiu sp, sp, 32
+    )
+
+  (none)
+  ;; .endfunction
+  )
+
+(defun vif1-handler ()
+  ;   B0:
+  ; L8:
+  ;     daddiu sp, sp, -32
+  ;     sd ra, 0(sp)
+  ;     sd s7, 16(sp)
+  ;     bgezal r0, L9
+  ;     sll r0, r0, 0
+
+  ; B1:
+  ; L9:
+  ;     daddiu fp, ra, -20
+  ;     lw s7, L7(fp)
+  ;     lw s7, 0(s7)
+  ;     daddiu s7, s7, -8
+
+  ;     lui v1, 4096
+  ;     ori v1, v1, 15360
+  ;     sw r0, 48(v1)
+  ;; clear mark
+
+  ;     addiu v1, r0, 8
+  ;     lui a0, 4096
+  ;     ori a0, a0, 15360
+  ;     sw v1, 16(a0)
+  ;; write STC to VIF FBRST (reset various things)
+
+  ;     addiu v0, r0, 0
+  ;     ld ra, 0(sp)
+  ;     ld s7, 16(sp)
+  ;     sync.l
+  ;     ei
+  ;     jr ra
+  ;     daddiu sp, sp, 32
+
+  ;     sll r0, r0, 0
+  ;     sll r0, r0, 0
+  )
+
+(install-handler 5 (if *debug-segment*
+                       vif1-handler-debug
+                       vif1-handler
+                       )
+                 )
+
+(defun vblank-handler ()
+  "Record the time of the last two vblanks."
+  ;   L5:
+  ;     daddiu sp, sp, -32
+  ;     sd ra, 0(sp)
+  ;     sd s7, 16(sp)
+  ;     bgezal r0, L6
+  ;     sll r0, r0, 0
+
+  ; B1:
+  ; L6:
+  ;     daddiu fp, ra, -20
+  ;     lw s7, L4(fp)
+  ;     lw s7, 0(s7)
+  ;     daddiu s7, s7, -8
+  ;     lw v1, *display*(s7)
+  ;     ld v1, 108(v1)
+  ;     lw a0, *display*(s7)
+  ;     sd v1, 100(a0)
+  (set! (-> *display* vblank-start-time 0) (-> *display* vblank-start-time 1))
+  ;     lw t9, timer-count(s7)
+  ;     lui v1, 4096
+  ;     ori a0, v1, 2048
+  ;     jalr ra, t9
+  ;     sll v0, ra, 0
+
+  ;     lw v1, *display*(s7)
+  ;     sd v0, 108(v1)
+  (set! (-> *display* vblank-start-time 1) (the-as int (timer-count TIMER1_BANK))) ;; not really a time-frame.
+  ;     addiu v0, r0, 0
+  0
+  ;     ld ra, 0(sp)
+  ;     ld s7, 16(sp)
+  ;     sync.l
+  ;     ei
+  ;     jr ra
+  ;     daddiu sp, sp, 32
+
+  ;     sll r0, r0, 0
+  ;     sll r0, r0, 0
+  )
+
+(defun set-display-gs-state ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int))
+  (let ((v1-1 (/ (+ arg2 63) 64))
+        (t2-0 *display*)
+        (t3-0 144)
+        )
+    (+! (-> t2-0 mem-reserve-size) t3-0)
+    (when (not (-> t2-0 dma-buffer-overflow))
+      (let ((t5-0 (-> t2-0 frames (-> t2-0 on-screen) global-buf)))
+        (if (< (-> t5-0 real-buffer-end) (the-as int (&+ (-> t5-0 base) t3-0)))
+            (set! (-> t2-0 dma-buffer-overflow) #t)
+            )
+        )
+      (if (not (-> t2-0 dma-buffer-overflow))
+          (dma-buffer-add-gs-set-flusha arg0
+                                        (scissor-1 (new 'static 'gs-scissor :scax1 (+ arg2 -1) :scay1 (+ arg3 -1)))
+                                        (xyoffset-1 (new 'static 'gs-xy-offset))
+                                        (frame-1 (new 'static 'gs-frame :fbp arg1 :fbw v1-1 :psm arg5 :fbmsk arg4))
+                                        (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+                                        (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+                                        (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
+                                        (texflush 0)
+                                        )
+          )
+      )
+    )
+  arg0
+  )
+
+(defun set-display-gs-state-offset ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 int) (arg6 int) (arg7 int))
+  (let ((v1-1 (/ (+ arg2 63) 64))
+        (t4-0 *display*)
+        (t5-0 144)
+        )
+    (+! (-> t4-0 mem-reserve-size) t5-0)
+    (when (not (-> t4-0 dma-buffer-overflow))
+      (let ((t7-0 (-> t4-0 frames (-> t4-0 on-screen) global-buf)))
+        (if (< (-> t7-0 real-buffer-end) (the-as int (&+ (-> t7-0 base) t5-0)))
+            (set! (-> t4-0 dma-buffer-overflow) #t)
+            )
+        )
+      (if (not (-> t4-0 dma-buffer-overflow))
+          (dma-buffer-add-gs-set-flusha arg0
+                                        (scissor-1 (new 'static 'gs-scissor :scax1 (+ arg2 -1) :scay1 (+ arg3 -1)))
+                                        (xyoffset-1 (new 'static 'gs-xy-offset :ofx (* arg6 16) :ofy (* arg7 16)))
+                                        (frame-1 (new 'static 'gs-frame :fbp arg1 :fbw v1-1 :psm arg5 :fbmsk arg4))
+                                        (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+                                        (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+                                        (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
+                                        (texflush 0)
+                                        )
+          )
+      )
+    )
+  arg0
+  )
+
+(defun reset-display-gs-state ((arg0 display) (arg1 dma-buffer))
+  (let ((v1-0 *display*)
+        (a2-0 144)
+        )
+    (+! (-> v1-0 mem-reserve-size) a2-0)
+    (when (not (-> v1-0 dma-buffer-overflow))
+      (let ((t0-0 (-> v1-0 frames (-> v1-0 on-screen) global-buf)))
+        (if (< (-> t0-0 real-buffer-end) (the-as int (&+ (-> t0-0 base) a2-0)))
+            (set! (-> v1-0 dma-buffer-overflow) #t)
+            )
+        )
+      (if (not (-> v1-0 dma-buffer-overflow))
+          (dma-buffer-add-gs-set-flusha arg1
+                                        (scissor-1 (new 'static 'gs-scissor :scax1 #x1ff :scay1 #x19f))
+                                        (xyoffset-1 (new 'static 'gs-xy-offset :ofx #x7000 :ofy #x7300))
+                                        (frame-1 (new 'static 'gs-frame :fbp #x198 :fbw #x8))
+                                        (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal)))
+                                        (texa (new 'static 'gs-texa :ta1 #x80))
+                                        (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
+                                        (texflush 0)
+                                        )
+          )
+      )
+    )
+  arg0
+  )
+
+(kmemopen global "dma-buffers")
+
+(define *vu0-dma-list* (new 'global 'dma-buffer 4096))
+
+(define *display* (new 'global 'display 0 512 416 2 49))
+
+(allocate-dma-buffers *display*)
+
+(kmemclose)

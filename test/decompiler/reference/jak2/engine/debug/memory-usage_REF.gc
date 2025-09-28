@@ -34,7 +34,7 @@
   )
 
 ;; definition for method 8 of type object
-(defmethod mem-usage ((this object) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this object) (usage memory-usage-block) (flags int))
   this
   )
 
@@ -64,9 +64,9 @@
 ;; definition for function mem-size
 (defun mem-size ((data basic) (inspect-usage? symbol) (arg2 int))
   "@param data The [[basic]] to call `mem-usage` on
-@param inspect-usage? Set to [[#t]] if `inspect` should be called on the resulting [[memory-usage-block]]
-@param arg2 TODO - unsure, some sort of bitfield
-@returns The total memory footprint of the provided [[basic]]"
+   @param inspect-usage? Set to [[#t]] if `inspect` should be called on the resulting [[memory-usage-block]]
+   @param arg2 TODO - unsure, some sort of bitfield
+   @returns The total memory footprint of the provided [[basic]]"
   (let ((block (new 'stack 'memory-usage-block)))
     (mem-usage data block arg2)
     (if inspect-usage?
@@ -79,11 +79,11 @@
 ;; definition for method 14 of type level
 (defmethod compute-memory-usage! ((this level) (force? symbol))
   "Calculates the memory usage of the level, returns and stores the [[memory-usage-block]]
-in `mem-usage-block` as well as the total size in `mem-usage`
-
-@param force? - Will re-compute the usage if set to [[#t]], even if `mem-usage` has been set to a non-zero value
-@returns The [[memory-usage-block]] representing the footprint of the level
-@see [[memory-usage-block::10]]"
+   in `mem-usage-block` as well as the total size in `mem-usage`
+   
+   @param force? - Will re-compute the usage if set to [[#t]], even if `mem-usage` has been set to a non-zero value
+   @returns The [[memory-usage-block]] representing the footprint of the level
+   @see [[memory-usage-block::10]]"
   (if (zero? (-> this mem-usage-block))
       (set! (-> this mem-usage-block) (new 'debug 'memory-usage-block))
       )
@@ -97,23 +97,23 @@ in `mem-usage-block` as well as the total size in `mem-usage`
   )
 
 ;; definition for method 8 of type process-tree
-(defmethod mem-usage ((this process-tree) (arg0 memory-usage-block) (arg1 int))
+(defmethod mem-usage ((this process-tree) (usage memory-usage-block) (flags int))
   (let ((v1-0 90))
     (let* ((a0-1 *dead-pool-list*)
            (a3-0 (car a0-1))
            )
       (while (not (null? a0-1))
-        (set! (-> arg0 data v1-0 name) (symbol->string (the-as symbol a3-0)))
+        (set! (-> usage data v1-0 name) (symbol->string (the-as symbol a3-0)))
         (+! v1-0 1)
         (set! a0-1 (cdr a0-1))
         (set! a3-0 (car a0-1))
         )
       )
-    (set! (-> arg0 length) (max (-> arg0 length) v1-0))
+    (set! (-> usage length) (max (-> usage length) v1-0))
     )
-  (set! (-> arg0 data 96 name) "*debug-dead-pool*")
-  (set! *temp-mem-usage* arg0)
-  (when (logtest? arg1 32)
+  (set! (-> usage data 96 name) "*debug-dead-pool*")
+  (set! *temp-mem-usage* usage)
+  (when (logtest? flags 32)
     (let* ((s5-0 90)
            (s4-0 *dead-pool-list*)
            (v1-4 (car s4-0))

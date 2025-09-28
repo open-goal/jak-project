@@ -5,7 +5,7 @@
 #include "game/graphics/opengl_renderer/background/background_common.h"
 #include "game/graphics/opengl_renderer/dma_helpers.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/imgui/imgui.h"
 
 namespace {
@@ -170,7 +170,8 @@ void Sprite3::handle_sprite_frame_setup(DmaFollower& dma,
       memcpy(&jak1_data, frame_data.data, sizeof(SpriteFrameDataJak1));
       m_frame_data.from_jak1(jak1_data);
     } break;
-    case GameVersion::Jak2: {
+    case GameVersion::Jak2:
+    case GameVersion::Jak3: {
       render_state->shaders[ShaderId::SPRITE3].activate();
       auto frame_data = dma.read_and_advance();
       ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
@@ -377,6 +378,9 @@ void Sprite3::render_2d_group1(DmaFollower& dma,
       case GameVersion::Jak2:
         ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud_Jak2);
         break;
+      case GameVersion::Jak3:
+        ASSERT_EQ_IMM(run.vifcode1().immediate, (int)SpriteProgMem::Sprites2dHud_Jak3);
+        break;
       default:
         ASSERT_NOT_REACHED();
     }
@@ -392,6 +396,7 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
       render_jak1(dma, render_state, prof);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       render_jak2(dma, render_state, prof);
       break;
     default:
@@ -830,9 +835,25 @@ void Sprite3::do_block_common(SpriteMode mode,
 
     auto& vert1 = m_vertices_3d.at(start_vtx_id + 0);
 
+    if (render_state->version == GameVersion::Jak3) {
+      auto flag = m_vec_data_2d[sprite_idx].flag();
+
+      if ((flag & 0x10) || (flag & 0x20)) {
+        // these flags mean we need to swap vertex order around - not yet implemented since it's too
+        // hard to get right without this code running.
+        // ASSERT_NOT_REACHED();
+      }
+    }
+
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
     vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
-    vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
+    // ftoi'd in the original game, and I believe the VIF would discard the upper bits on pack
+    vert1.rgba = m_vec_data_2d[sprite_idx].rgba;
+    vert1.rgba.x() = (int)vert1.rgba.x() & 0xff;
+    vert1.rgba.y() = (int)vert1.rgba.y() & 0xff;
+    vert1.rgba.z() = (int)vert1.rgba.z() & 0xff;
+    vert1.rgba.w() = (int)vert1.rgba.w() & 0xff;
+    vert1.rgba /= 255;
     vert1.flags_matrix[0] = m_vec_data_2d[sprite_idx].flag();
     vert1.flags_matrix[1] = m_vec_data_2d[sprite_idx].matrix();
     vert1.info[0] = 0;  // hack
@@ -847,6 +868,34 @@ void Sprite3::do_block_common(SpriteMode mode,
     m_vertices_3d.at(start_vtx_id + 1).info[2] = 1;
     m_vertices_3d.at(start_vtx_id + 2).info[2] = 3;
     m_vertices_3d.at(start_vtx_id + 3).info[2] = 2;
+
+    // note that PC swaps the last two vertices
+    if (render_state->version == GameVersion::Jak3) {
+      auto flag = m_vec_data_2d[sprite_idx].flag();
+      switch (flag & 0x30) {
+        case 0x10:
+          // FLAG 16: 1, 0, 3, 2
+          m_vertices_3d.at(start_vtx_id + 0).info[2] = 0;
+          m_vertices_3d.at(start_vtx_id + 1).info[2] = 1;
+          m_vertices_3d.at(start_vtx_id + 2).info[2] = 3;
+          m_vertices_3d.at(start_vtx_id + 3).info[2] = 2;
+          break;
+        case 0x20:
+          // FLAG 32: 3, 2, 1, 0
+          m_vertices_3d.at(start_vtx_id + 0).info[2] = 3;
+          m_vertices_3d.at(start_vtx_id + 1).info[2] = 2;
+          m_vertices_3d.at(start_vtx_id + 2).info[2] = 0;
+          m_vertices_3d.at(start_vtx_id + 3).info[2] = 1;
+          break;
+        case 0x30:
+          // 2, 3, 0, 1
+          m_vertices_3d.at(start_vtx_id + 0).info[2] = 2;
+          m_vertices_3d.at(start_vtx_id + 1).info[2] = 3;
+          m_vertices_3d.at(start_vtx_id + 2).info[2] = 1;
+          m_vertices_3d.at(start_vtx_id + 3).info[2] = 0;
+          break;
+      }
+    }
 
     ++m_sprite_idx;
   }

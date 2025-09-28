@@ -41,7 +41,7 @@ class SourceText {
   // want
   virtual bool terminate_compiler_error() { return true; }
 
-  virtual ~SourceText(){};
+  virtual ~SourceText() {};
 
  protected:
   void build_offsets();
@@ -80,13 +80,13 @@ class ProgramString : public SourceText {
  */
 class FileText : public SourceText {
  public:
-  FileText(const std::string& filename, const std::string& description_name);
+  FileText(const std::string& file_path, const std::string& description_name);
 
   std::string get_description() { return m_desc_name; }
   ~FileText() = default;
 
  private:
-  std::string m_filename;
+  std::string m_filepath;
   std::string m_desc_name;
 };
 

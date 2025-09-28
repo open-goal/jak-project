@@ -123,14 +123,15 @@ void to_json(json& j, const MacroDocumentation& obj) {
   }
 }
 
-std::vector<ArgumentDocumentation> get_args_from_docstring(std::vector<GoalArg> args,
-                                                           std::string docstring) {
+std::vector<ArgumentDocumentation> get_args_from_docstring(
+    std::vector<symbol_info::ArgumentInfo> args,
+    std::string docstring) {
   std::vector<ArgumentDocumentation> arg_docs;
   for (const auto& arg : args) {
     ArgumentDocumentation arg_doc;
     arg_doc.name = arg.name;
     // TODO - is this type reliable?
-    arg_doc.type = arg.type.base_type();
+    arg_doc.type = arg.type;
     arg_docs.push_back(arg_doc);
   }
   if (docstring.empty()) {

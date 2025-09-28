@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: texture-upload.gc
-;; name in dgo: texture-upload
-;; dgos: GAME, ART
+(bundles "GAME.CGO")
+(require "engine/gfx/generic/generic-effect.gc")
 
 ;; This will happen part way through the list of tpages
 
@@ -17,20 +15,14 @@
    ;; not sure what's going on here, this isn't a valid texture ID. It ends up ignoring the 0x14 in the lower
    ;; bits, and just gets you the 0th texture in the environment-generic texture page.
    (define *generic-envmap-texture* (lookup-texture-by-id (the-as texture-id #x10000014)))
-   (define *ocean-texture* (lookup-texture-by-id (new 'static 'texture-id :page #x370)))
-   )
+   (define *ocean-texture* (lookup-texture-by-id (new 'static 'texture-id :page #x370))))
   (else
    (format 0 "NOTE: skipped texture setup in texture-upload.gc, textures were not loaded.~%")
    (set! *shadow-middot-texture* #f)
    (set! *generic-envmap-texture* #f)
-   (set! *ocean-texture* #f)
-   )
-  )
-
-
+   (set! *ocean-texture* #f)))
 
 ;; the next texture we're going to load is the HUD for the start menu, which shouldn't
 ;; be allocated with the default allocator. So for now we can set it to common-boot, which
 ;; will place this in common, then disable itself once it encounters another normal texture
 (set! (-> *texture-pool* allocate-func) texture-page-common-boot-allocate)
-

@@ -171,7 +171,69 @@ DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, Sh
   return draw_settings;
 }
 
-void first_tfrag_draw_setup(const TfragRenderSettings& settings,
+std::array<math::Vector4f, 4> make_new_cam_mat(const math::Vector4f cam_T_w[4],
+                                               const math::Vector4f persp[4],
+                                               float fog_constant,
+                                               float hvdf_z) {
+  // renderers may eventually have tricks to do things in local coordinates - so use the convention
+  // that the shader has already subtracted off the camera translation from the vertex position.
+  // (I think this could help with accuracy too, since you aren't rotating and subtracting two large
+  // vectors that are very close to each other)
+
+  // this is the perspective x-scaling. This is used to map to a 256-pixel buffer.
+  const float game_pxx = persp[0][0];
+  // on PC, OpenGL uses normalized coordinates for drawing, so divide by the pixel width.
+  // in the game, the perspective divide includes a multiplication by the fog constant, for PC,
+  // just include this multiply here so we can let OpenGL do the perspective multiply.
+  const float pc_pxx = fog_constant * game_pxx / 256.f;
+
+  // this is the perspective y-scaling.
+  const float game_pyy = persp[1][1];
+  // same logic as y - there's a later SCISSOR scaling in the shader that expects this ratio.
+  const float pc_pyy = -fog_constant * game_pyy / 128.f;
+
+  // the depth is considered twice. Once, as the value to write into the depth buffer, which is
+  // scaled for PC here:
+  const float depth_scale = fog_constant * persp[2][2] / 8388608;
+
+  // and once as the value used for perspective divide
+  const float game_pzw = persp[2][3];
+  const float game_depth_offset = persp[3][2];
+
+  // set up PC scaling values
+  math::Vector3f persp_scale(pc_pxx, pc_pyy, depth_scale);
+
+  // it turns out that shifting the depth buffer to line up with OpenGL is equivalent to adding
+  // transformed.w * (hvdf_z / 8388608.f - 1.f) to the depth value. We know that w is just depth *
+  // pzw, so we can include the effect here:
+  const float pc_z_offset = (hvdf_z / 8388608.f - 1.f);
+  persp_scale.z() += pc_z_offset * game_pzw;
+
+  std::array<math::Vector4f, 4> result;
+  for (auto& x : result) {
+    x.set_zero();
+  }
+
+  // fill out the upper 3x3 - simply scale the rotation matrix by the perspective scale.
+  for (int row = 0; row < 3; row++) {
+    for (int col = 0; col < 3; col++) {
+      result[row][col] = cam_T_w[row][col] * persp_scale[col];
+    }
+  }
+
+  // fill out the right most column. This converts world-space points to depth for divide, scaled by
+  // pzw. for now, copy the game.
+  for (int row = 0; row < 3; row++) {
+    result[row][3] = cam_T_w[row][2] * game_pzw;
+  }
+
+  // depth buffer offset - now needs to be scaled by the PC depth buffer scaling too
+  result[3][2] = fog_constant * game_depth_offset / 8388608;
+
+  return result;
+}
+
+void first_tfrag_draw_setup(const GoalBackgroundCameraData& settings,
                             SharedRenderState* render_state,
                             ShaderId shader) {
   const auto& sh = render_state->shaders[shader];
@@ -180,27 +242,49 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
   glUniform1i(glGetUniformLocation(id, "decal"), false);
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
-  glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE,
-                     settings.camera.camera[0].data());
-  glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.camera.hvdf_off[0],
-              settings.camera.hvdf_off[1], settings.camera.hvdf_off[2],
-              settings.camera.hvdf_off[3]);
-  glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.camera.fog.x());
-  glUniform1f(glGetUniformLocation(id, "fog_min"), settings.camera.fog.y());
-  glUniform1f(glGetUniformLocation(id, "fog_max"), settings.camera.fog.z());
+  glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.camera[0].data());
+
+  auto newcam =
+      make_new_cam_mat(settings.rot, settings.perspective, settings.fog.x(), settings.hvdf_off.z());
+
+  /*
+  fmt::print("camera:\n{}\n{}\n{}\n{}\n", settings.camera[0].to_string_aligned(),
+             settings.camera[1].to_string_aligned(), settings.camera[2].to_string_aligned(),
+             settings.camera[3].to_string_aligned());
+
+  fmt::print("camera2:\n{}\n{}\n{}\n{}\n", newcam[0].to_string_aligned(),
+             newcam[1].to_string_aligned(), newcam[2].to_string_aligned(),
+             newcam[3].to_string_aligned());
+
+  fmt::print("persp:\n{}\n{}\n{}\n{}\n", settings.perspective[0].to_string_aligned(),
+             settings.perspective[1].to_string_aligned(),
+             settings.perspective[2].to_string_aligned(),
+             settings.perspective[3].to_string_aligned());
+  fmt::print("rot:\n{}\n{}\n{}\n{}\n", settings.rot[0].to_string_aligned(),
+             settings.rot[1].to_string_aligned(), settings.rot[2].to_string_aligned(),
+             settings.rot[3].to_string_aligned());
+  fmt::print("ctrans: {}\n", settings.trans.to_string_aligned());
+  fmt::print("hvdf: {}\n", settings.hvdf_off.to_string_aligned());
+  */
+
+  glUniformMatrix4fv(glGetUniformLocation(id, "pc_camera"), 1, GL_FALSE, newcam[0].data());
+
+  glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.hvdf_off[0], settings.hvdf_off[1],
+              settings.hvdf_off[2], settings.hvdf_off[3]);
+  glUniform4f(glGetUniformLocation(id, "cam_trans"), settings.trans[0], settings.trans[1],
+              settings.trans[2], settings.trans[3]);
+  glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.fog.x());
+  glUniform1f(glGetUniformLocation(id, "fog_min"), settings.fog.y());
+  glUniform1f(glGetUniformLocation(id, "fog_max"), settings.fog.z());
   glUniform4f(glGetUniformLocation(id, "fog_color"), render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);
-
-  glUniform1f(glGetUniformLocation(id, "fog_hack_threshold"),
-              render_state->version == GameVersion::Jak1 ? 0.005f : 0);
 }
 
 void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],
-                             const std::vector<tfrag3::TimeOfDayColor>& in,
+                             const tfrag3::PackedTimeOfDay& in,
                              math::Vector<u8, 4>* out) {
-  // Timer interp_timer;
-  math::Vector4f weights[8];
+  math::Vector<u16, 4> weights[8];
   for (int component = 0; component < 8; component++) {
     int quad_idx = component / 2;
     int word_off = (component % 2 * 2);
@@ -211,78 +295,43 @@ void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],
       u32 word_val = itimes[quad_idx][word];
       u32 hw_val = hw_off ? (word_val >> 16) : word_val;
       hw_val = hw_val & 0xff;
-      weights[component][channel] = hw_val / 64.f;
+      weights[component][channel] = hw_val;
     }
   }
 
-  for (size_t color = 0; color < in.size(); color++) {
-    math::Vector4f result = math::Vector4f::zero();
-    for (int component = 0; component < 8; component++) {
-      for (int channel = 0; channel < 4; channel++) {
-        result[channel] += in[color].rgba[component][channel] * weights[component][channel];
-      }
-      // result += in[color].rgba[component].cast<float>() * weights[component];
+  math::Vector<u16, 4> temp[4];
+
+  for (u32 color_quad = 0; color_quad < (in.color_count + 3) / 4; color_quad++) {
+    for (auto& x : temp) {
+      x.set_zero();
     }
 
-    result[0] = std::min(result[0], 255.f);
-    result[1] = std::min(result[1], 255.f);
-    result[2] = std::min(result[2], 255.f);
-    result[3] = std::min(result[3], 128.f);  // note: different for alpha!
-    out[color] = result.cast<u8>();
-  }
-}
-
-// we want to absolutely minimize the number of time we have to "cross lanes" in AVX (meaning X
-// component of one vector interacts with Y component of another).  We can make this a lot better by
-// taking groups of 4 time of day colors (each containing 8x RGBAs) and rearranging them with this
-// pattern.  We want to compute:
-// [rgba][0][0] * weights[0] + [rgba][0][1] * weights[1] + [rgba][0][2]... + rgba[0][7] * weights[7]
-// RGBA is already a vector of 4 components, but with AVX we have vectors with 32 bytes which fit
-// 16 colors in them.
-
-// This makes each vector have:
-// colors0 = [rgba][0][0], [rgba][1][0], [rgba][2][0], [rgba][3][0]
-// colors1 = [rgba][0][1], [rgba][1][1], [rgba][2][1], [rgba][3][1]
-// ...
-// so we can basically add up the columns (multiplying by weights in between)
-// and we'll end up with [final0, final1, final2, final3, final4]
-
-// the swizzle function below rearranges to get this pattern.
-// it's not the most efficient way to do it, but it just runs during loading and not on every frame.
-
-SwizzledTimeOfDay swizzle_time_of_day(const std::vector<tfrag3::TimeOfDayColor>& in) {
-  SwizzledTimeOfDay out;
-  out.data.resize((in.size() + 3) * 8 * 4);
-
-  // we're rearranging per 4 colors (groups of 32 * 4 = 128)
-  // color (lots of these)
-  // component (8 of these)
-  // channel (4 of these, rgba)
-
-  for (u32 color_quad = 0; color_quad < (in.size() + 3) / 4; color_quad++) {
-    u8* quad_out = out.data.data() + color_quad * 128;
+    const u8* input_ptr = in.data.data() + color_quad * 128;
     for (u32 component = 0; component < 8; component++) {
       for (u32 color = 0; color < 4; color++) {
         for (u32 channel = 0; channel < 4; channel++) {
-          size_t in_idx = color_quad * 4 + color;
-          if (in_idx < in.size()) {
-            *quad_out = in.at(color_quad * 4 + color).rgba[component][channel];
-          } else {
-            *quad_out = 0;
-          }
-          quad_out++;
+          temp[color][channel] += weights[component][channel] * (*input_ptr);
+          input_ptr++;
         }
       }
     }
+
+    for (u32 color = 0; color < 4; color++) {
+      auto& o = out[color_quad * 4 + color];
+      for (u32 channel = 0; channel < 3; channel++) {
+        o[channel] = std::min(255, temp[color][channel] >> 6);
+      }
+      o[3] = std::min(128, temp[color][3] >> 6);
+    }
   }
-  out.color_count = (in.size() + 3) & (~3);
-  return out;
 }
 
-#ifndef __aarch64__
-void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
-                             const SwizzledTimeOfDay& swizzled_colors,
-                             math::Vector<u8, 4>* out) {
+void interp_time_of_day(const math::Vector<s32, 4> itimes[4],
+                        const tfrag3::PackedTimeOfDay& packed_colors,
+                        math::Vector<u8, 4>* out) {
+#ifdef __aarch64__
+  interp_time_of_day_slow(itimes, packed_colors, out);
+#else
   math::Vector<u16, 4> weights[8];
   for (int component = 0; component < 8; component++) {
     int quad_idx = component / 2;
@@ -321,11 +370,11 @@ void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
   // change the shader to deal with this.
   __m128i sat = _mm_set_epi16(128, 255, 255, 255, 128, 255, 255, 255);
 
-  for (u32 color_quad = 0; color_quad < swizzled_colors.color_count / 4; color_quad++) {
+  for (u32 color_quad = 0; color_quad < packed_colors.color_count / 4; color_quad++) {
     // first, load colors. We put 16 bytes / register and don't touch the upper half because we
     // convert u8s to u16s.
     {
-      const u8* base = swizzled_colors.data.data() + color_quad * 128;
+      const u8* base = packed_colors.data.data() + color_quad * 128;
       __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
       __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
       __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));
@@ -380,7 +429,7 @@ void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
     }
 
     {
-      const u8* base = swizzled_colors.data.data() + color_quad * 128 + 8;
+      const u8* base = packed_colors.data.data() + color_quad * 128 + 8;
       __m128i color0_p = _mm_loadu_si64((const __m128i*)(base + 0));
       __m128i color1_p = _mm_loadu_si64((const __m128i*)(base + 16));
       __m128i color2_p = _mm_loadu_si64((const __m128i*)(base + 32));
@@ -434,8 +483,8 @@ void interp_time_of_day_fast(const math::Vector<s32, 4> itimes[4],
       _mm_storel_epi64((__m128i*)(&out[color_quad * 4 + 2]), result);
     }
   }
-}
 #endif
+}
 
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {
   math::Vector4f acc =

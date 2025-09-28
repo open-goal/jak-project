@@ -18,7 +18,7 @@
   )
 
 
-(defmethod track-target! ((this citizen-enemy))
+(defmethod common-post ((this citizen-enemy))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -31,7 +31,7 @@
     )
   (when (and (not (focus-test? this disable dead ignore inactive))
              (< (-> this next-update-target) (current-time))
-             (not (logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags)))
+             (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
              (-> this next-state)
              (= (-> this next-state name) 'active)
              )
@@ -39,7 +39,7 @@
     (set! (-> this next-update-target) (+ (current-time) (seconds 0.2)))
     (traffic-danger-init! this)
     )
-  ((method-of-type citizen track-target!) this)
+  ((method-of-type citizen common-post) this)
   (none)
   )
 
@@ -220,7 +220,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                     :num! (seek! max f30-0)
@@ -273,13 +273,13 @@
   (set! (-> this dist-run-anim) (-> this enemy-info run-travel-speed))
   (set! (-> this speed-run) (-> this enemy-info walk-travel-speed))
   (set! (-> this fated-time) 0)
-  (logior! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logior! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
   (logior! (-> this focus-status) (focus-status dangerous))
-  (logior! (-> this enemy-flags) (enemy-flag check-water))
-  (logior! (-> this enemy-flags) (enemy-flag check-water-backup no-initial-move-to-ground))
+  (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+  (logior! (-> this enemy-flags) (enemy-flag trackable trackable-backup))
   (logclear! (-> this focus-status) (focus-status dead))
   (logior! (-> this mask) (process-mask collectable))
-  (logior! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+  (logior! (-> this enemy-flags) (enemy-flag attackable-backup))
   (if (not (-> this minimap))
       (set! (-> this minimap) (add-icon! *minimap* this (the-as uint 70) (the-as int #f) (the-as vector #t) 0))
       )

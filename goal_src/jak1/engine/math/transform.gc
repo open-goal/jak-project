@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: transform.gc
-;; name in dgo: transform
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/matrix.gc")
+(require "engine/math/transform-h.gc")
 
 ;; note: transformq and trsq is mostly used instead of transform.
 
@@ -14,8 +13,7 @@
   (format #t "~T~Ttrans:~F ~F ~F ~F ~%" (-> this trans x) (-> this trans y) (-> this trans z) (-> this trans w))
   (format #t "~T~Trot:  ~F ~F ~F ~F ~%" (-> this rot x) (-> this rot y) (-> this rot z) (-> this rot w))
   (format #t "~T~Tscale:~F ~F ~F ~F>" (-> this scale x) (-> this scale y) (-> this scale z) (-> this scale w))
-  this
-  )
+  this)
 
 (defmethod new trs ((allocation symbol) (type-to-make type))
   "Create a new trs and set it equal to identity."
@@ -23,15 +21,12 @@
     (set! (-> this trans w) 1.0)
     (set! (-> this rot w) 1.0)
     (vector-identity! (-> this scale))
-    this
-    )
-  )
+    this))
 
 (defun transform-matrix-calc! ((tf transform) (dst-mat matrix))
   "Convert a transform to a matrix. This is not particularly efficient."
   (let ((s4-0 (new-stack-matrix0))
-        (s3-0 (new-stack-matrix0))
-        )
+        (s3-0 (new-stack-matrix0)))
     ;; start with identity
     (matrix-identity! dst-mat)
     ;; set translation (which also sets identity...)
@@ -47,15 +42,12 @@
     (matrix*! s3-0 s4-0 dst-mat)
     ;; apply scale
     (matrix-scale! s4-0 (-> tf scale))
-    (matrix*! dst-mat s4-0 s3-0)
-    )
-  )
+    (matrix*! dst-mat s4-0 s3-0)))
 
 (defun transform-matrix-parent-calc! ((tf transform) (dst-mat matrix) (inv-scale vector))
   "Convert a transform to a matrix, applying an inverse scaling."
   (let ((s4-0 (new-stack-matrix0))
-        (s3-0 (new-stack-matrix0))
-        )
+        (s3-0 (new-stack-matrix0)))
     (matrix-identity! s3-0)
     (matrix-translate! s3-0 (-> tf trans))
     (matrix-inv-scale! s4-0 inv-scale)
@@ -67,12 +59,9 @@
     (matrix-rotate-z! s4-0 (-> tf rot z))
     (matrix*! s3-0 s4-0 dst-mat)
     (matrix-scale! s4-0 (-> tf scale))
-    (matrix*! dst-mat s4-0 s3-0)
-    )
-  )
+    (matrix*! dst-mat s4-0 s3-0)))
 
 (defun trs-matrix-calc! ((tf trs) (dst-mat matrix))
   "Convert a trs to a matrix"
   ;; this relies on the fact that trs and transform both have the same memory layout.
-  (transform-matrix-calc! (the-as transform (-> tf trans)) dst-mat)
-  )
+  (transform-matrix-calc! (the-as transform (-> tf trans)) dst-mat))

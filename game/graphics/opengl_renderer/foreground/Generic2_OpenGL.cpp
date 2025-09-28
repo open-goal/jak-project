@@ -74,6 +74,8 @@ void Generic2::opengl_setup(ShaderLibrary& shaders) {
   m_ogl.hvdf_offset = glGetUniformLocation(id, "hvdf_offset");
   m_ogl.gfx_hack_no_tex = glGetUniformLocation(id, "gfx_hack_no_tex");
   m_ogl.warp_sample_mode = glGetUniformLocation(id, "warp_sample_mode");
+  m_ogl.use_full_matrix = glGetUniformLocation(id, "use_full_matrix");
+  m_ogl.full_matrix = glGetUniformLocation(id, "full_matrix");
 }
 
 void Generic2::opengl_cleanup() {
@@ -250,7 +252,7 @@ void Generic2::setup_opengl_tex(u16 unit,
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   }
 
-  if (render_state->version == GameVersion::Jak2 && tbp_to_lookup == 1216) {
+  if (render_state->version >= GameVersion::Jak2 && tbp_to_lookup == 1216) {
     glUniform1ui(m_ogl.warp_sample_mode, 1);
     // warp shader uses region clamp, which isn't supported by DrawMode.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -307,6 +309,12 @@ void Generic2::do_draws(SharedRenderState* render_state, ScopedProfilerNode& pro
   glPrimitiveRestartIndex(UINT32_MAX);
 
   opengl_bind_and_setup_proj(render_state);
+  if (m_drawing_config.uses_full_matrix) {
+    glUniform1i(m_ogl.use_full_matrix, 1);
+    glUniformMatrix4fv(m_ogl.full_matrix, 1, GL_FALSE, m_drawing_config.full_matrix[0].data());
+  } else {
+    glUniform1i(m_ogl.use_full_matrix, 0);
+  }
   constexpr DrawMode::AlphaBlend alpha_order[ALPHA_MODE_COUNT] = {
       DrawMode::AlphaBlend::SRC_0_FIX_DST,    DrawMode::AlphaBlend::SRC_SRC_SRC_SRC,
       DrawMode::AlphaBlend::SRC_DST_SRC_DST,  DrawMode::AlphaBlend::SRC_0_SRC_DST,

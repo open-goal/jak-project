@@ -93,36 +93,33 @@ void unstrip_tie_wind(std::vector<u32>& unstripped,
 }
 
 /*!
- * Convert merc strips. Doesn't assume anything about strips. Output is [model][effect][draw] format
+ * Convert merc strips. Doesn't assume anything about strips. Output is [effect][draw] format (done
+ * for each model)
  */
 void unstrip_merc_draws(const std::vector<u32>& stripped_indices,
-                        const std::vector<tfrag3::MercModel>& models,
+                        const tfrag3::MercModel& model,
                         std::vector<u32>& unstripped,
-                        std::vector<std::vector<std::vector<u32>>>& draw_to_start,
-                        std::vector<std::vector<std::vector<u32>>>& draw_to_count) {
-  for (auto& model : models) {
-    auto& model_dts = draw_to_start.emplace_back();
-    auto& model_dtc = draw_to_count.emplace_back();
-    for (auto& effect : model.effects) {
-      auto& effect_dts = model_dts.emplace_back();
-      auto& effect_dtc = model_dtc.emplace_back();
-      for (auto& draw : effect.all_draws) {
-        effect_dts.push_back(unstripped.size());
+                        std::vector<std::vector<u32>>& draw_to_start,
+                        std::vector<std::vector<u32>>& draw_to_count) {
+  for (auto& effect : model.effects) {
+    auto& effect_dts = draw_to_start.emplace_back();
+    auto& effect_dtc = draw_to_count.emplace_back();
+    for (auto& draw : effect.all_draws) {
+      effect_dts.push_back(unstripped.size());
 
-        for (size_t i = 2; i < draw.index_count; i++) {
-          int idx = i + draw.first_index;
-          u32 a = stripped_indices[idx];
-          u32 b = stripped_indices[idx - 1];
-          u32 c = stripped_indices[idx - 2];
-          if (a == UINT32_MAX || b == UINT32_MAX || c == UINT32_MAX) {
-            continue;
-          }
-          unstripped.push_back(a);
-          unstripped.push_back(b);
-          unstripped.push_back(c);
+      for (size_t i = 2; i < draw.index_count; i++) {
+        int idx = i + draw.first_index;
+        u32 a = stripped_indices[idx];
+        u32 b = stripped_indices[idx - 1];
+        u32 c = stripped_indices[idx - 2];
+        if (a == UINT32_MAX || b == UINT32_MAX || c == UINT32_MAX) {
+          continue;
         }
-        effect_dtc.push_back(unstripped.size() - effect_dts.back());
+        unstripped.push_back(a);
+        unstripped.push_back(b);
+        unstripped.push_back(c);
       }
+      effect_dtc.push_back(unstripped.size() - effect_dts.back());
     }
   }
 }
@@ -246,9 +243,9 @@ int make_color_buffer_accessor(const std::vector<tfrag3::PreloadedVertex>& verti
   std::vector<float> floats;
 
   for (size_t i = 0; i < vertices.size(); i++) {
-    auto& color = tfrag_tree.colors.at(vertices[i].color_index);
     for (int j = 0; j < 3; j++) {
-      floats.push_back(((float)color.rgba[time_of_day][j]) / 255.f);
+      floats.push_back(((float)tfrag_tree.colors.read(vertices[i].color_index, time_of_day, j)) /
+                       255.f);
     }
     floats.push_back(1.f);
   }
@@ -289,9 +286,9 @@ int make_color_buffer_accessor(const std::vector<tfrag3::PreloadedVertex>& verti
   std::vector<float> floats;
 
   for (size_t i = 0; i < vertices.size(); i++) {
-    auto& color = tie_tree.colors.at(vertices[i].color_index);
     for (int j = 0; j < 3; j++) {
-      floats.push_back(((float)color.rgba[time_of_day][j]) / 255.f);
+      floats.push_back(((float)tie_tree.colors.read(vertices[i].color_index, time_of_day, j)) /
+                       255.f);
     }
     floats.push_back(1.f);
   }
@@ -368,9 +365,10 @@ int make_color_buffer_accessor(const std::vector<tfrag3::ShrubGpuVertex>& vertic
   std::vector<float> floats;
 
   for (size_t i = 0; i < vertices.size(); i++) {
-    auto& color = shrub_tree.time_of_day_colors.at(vertices[i].color_index);
     for (int j = 0; j < 3; j++) {
-      floats.push_back(((float)color.rgba[time_of_day][j]) / 255.f);
+      floats.push_back(
+          ((float)shrub_tree.time_of_day_colors.read(vertices[i].color_index, time_of_day, j)) /
+          255.f);
     }
     floats.push_back(1.f);
   }
@@ -484,12 +482,12 @@ int make_shrub_index_buffer_view(const std::vector<u32>& indices,
 }
 
 int make_merc_index_buffer_view(const std::vector<u32>& indices,
-                                const std::vector<tfrag3::MercModel>& models,
+                                const tfrag3::MercModel& mmodel,
                                 tinygltf::Model& model,
-                                std::vector<std::vector<std::vector<u32>>>& draw_to_start,
-                                std::vector<std::vector<std::vector<u32>>>& draw_to_count) {
+                                std::vector<std::vector<u32>>& draw_to_start,
+                                std::vector<std::vector<u32>>& draw_to_count) {
   std::vector<u32> unstripped;
-  unstrip_merc_draws(indices, models, unstripped, draw_to_start, draw_to_count);
+  unstrip_merc_draws(indices, mmodel, unstripped, draw_to_start, draw_to_count);
 
   // first create a buffer:
   int buffer_idx = (int)model.buffers.size();
@@ -883,6 +881,7 @@ int make_inv_matrix_bind_poses(const std::vector<level_tools::Joint>& joints,
 
 void add_merc(const tfrag3::Level& level,
               const std::map<std::string, level_tools::ArtData>& art_data,
+              const tfrag3::MercModel& mmodel,
               tinygltf::Model& model,
               std::unordered_map<int, int>& tex_image_map) {
   const auto& mverts = level.merc_data.vertices;
@@ -891,91 +890,88 @@ void add_merc(const tfrag3::Level& level,
   int position_buffer_accessor = make_position_buffer_accessor(mverts, model);
   int texture_buffer_accessor = make_tex_buffer_accessor(mverts, model, 1.f);
 
-  std::vector<std::vector<std::vector<u32>>> draw_to_start, draw_to_count;
-  int index_buffer_view = make_merc_index_buffer_view(
-      level.merc_data.indices, level.merc_data.models, model, draw_to_start, draw_to_count);
+  std::vector<std::vector<u32>> draw_to_start, draw_to_count;
+  int index_buffer_view = make_merc_index_buffer_view(level.merc_data.indices, mmodel, model,
+                                                      draw_to_start, draw_to_count);
   int colors = make_color_buffer_accessor(mverts, model);
 
   auto joints_accessor = make_bones_accessor(mverts, model);
   auto weights_accessor = make_weights_accessor(mverts, model);
 
-  for (size_t model_idx = 0; model_idx < level.merc_data.models.size(); model_idx++) {
-    const auto& mmodel = level.merc_data.models[model_idx];
-    const auto& art = art_data.find(mmodel.name);
-    int node_idx = (int)model.nodes.size();
-    auto& node = model.nodes.emplace_back();
-    model.scenes.at(0).nodes.push_back(node_idx);
-    node.name = mmodel.name;
-    int mesh_idx = (int)model.meshes.size();
-    auto& mesh = model.meshes.emplace_back();
-    mesh.name = node.name;
-    node.mesh = mesh_idx;
+  const auto& art = art_data.find(mmodel.name);
+  int node_idx = (int)model.nodes.size();
+  auto& node = model.nodes.emplace_back();
+  model.scenes.at(0).nodes.push_back(node_idx);
+  node.name = mmodel.name;
+  int mesh_idx = (int)model.meshes.size();
+  auto& mesh = model.meshes.emplace_back();
+  mesh.name = node.name;
+  node.mesh = mesh_idx;
 
-    if (art != art_data.end() && !art->second.joint_group.empty()) {
-      node.skin = model.skins.size();
-      auto& skin = model.skins.emplace_back();
-      const auto& game_bones = art->second.joint_group;
-      int n_bones = game_bones.size();
-      std::vector<std::vector<int>> children(n_bones);
-      for (size_t i = 0; i < game_bones.size(); i++) {
-        if (game_bones[i].parent_idx >= 0) {
-          children.at(game_bones[i].parent_idx).push_back(i);
-        }
+  if (art != art_data.end() && !art->second.joint_group.empty()) {
+    node.skin = model.skins.size();
+    auto& skin = model.skins.emplace_back();
+    const auto& game_bones = art->second.joint_group;
+    int n_bones = game_bones.size();
+    std::vector<std::vector<int>> children(n_bones);
+    for (size_t i = 0; i < game_bones.size(); i++) {
+      if (game_bones[i].parent_idx >= 0) {
+        children.at(game_bones[i].parent_idx).push_back(i);
       }
-      skin.skeleton = model.nodes.size();
-      for (int i = 0; i < n_bones; i++) {
-        const auto& gbone = game_bones[i];
-        skin.joints.push_back(skin.skeleton + i);
-        auto& snode = model.nodes.emplace_back();
-        snode.name = gbone.name;
+    }
+    skin.skeleton = model.nodes.size();
+    for (int i = 0; i < n_bones; i++) {
+      const auto& gbone = game_bones[i];
+      skin.joints.push_back(skin.skeleton + i);
+      auto& snode = model.nodes.emplace_back();
+      snode.name = gbone.name;
 
-        // bind pose is bind_T_w
-        // for glb we want bind_parent_T_bind_child
-        // so bindp_T_w * inverse(bindc_T_w)
-        math::Matrix4f matrix;
-        if (gbone.parent_idx >= 0) {
-          matrix = unscale_translation(game_bones.at(gbone.parent_idx).bind_pose_T_w) *
-                   inverse(unscale_translation(gbone.bind_pose_T_w));
+      // bind pose is bind_T_w
+      // for glb we want bind_parent_T_bind_child
+      // so bindp_T_w * inverse(bindc_T_w)
+      math::Matrix4f matrix;
+      if (gbone.parent_idx >= 0) {
+        matrix = unscale_translation(game_bones.at(gbone.parent_idx).bind_pose_T_w) *
+                 inverse(unscale_translation(gbone.bind_pose_T_w));
 
-        } else {
-          // I think this value is ignored anyway.
-          for (int r = 0; r < 4; r++) {
-            for (int c = 0; c < 4; c++) {
-              matrix(r, c) = (r == c) ? 1 : 0;
-            }
-          }
-        }
-
+      } else {
+        // I think this value is ignored anyway.
         for (int r = 0; r < 4; r++) {
           for (int c = 0; c < 4; c++) {
-            snode.matrix.push_back(matrix(c, r));
+            matrix(r, c) = (r == c) ? 1 : 0;
           }
         }
-        for (auto child : children.at(i)) {
-          snode.children.push_back(skin.skeleton + child);
+      }
+
+      for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 4; c++) {
+          snode.matrix.push_back(matrix(c, r));
         }
       }
-      ASSERT(skin.skeleton + n_bones == (int)model.nodes.size());
-      skin.inverseBindMatrices = make_inv_matrix_bind_poses(game_bones, model);
-    }
-
-    for (size_t effect_idx = 0; effect_idx < mmodel.effects.size(); effect_idx++) {
-      const auto& effect = mmodel.effects[effect_idx];
-      for (size_t draw_idx = 0; draw_idx < effect.all_draws.size(); draw_idx++) {
-        const auto& draw = effect.all_draws[draw_idx];
-        auto& prim = mesh.primitives.emplace_back();
-        prim.material =
-            add_material_for_tex(level, model, draw.tree_tex_id, tex_image_map, draw.mode);
-        prim.indices = make_index_buffer_accessor(
-            model, draw_to_start[model_idx][effect_idx][draw_idx],
-            draw_to_count[model_idx][effect_idx][draw_idx], index_buffer_view);
-        prim.attributes["POSITION"] = position_buffer_accessor;
-        prim.attributes["TEXCOORD_0"] = texture_buffer_accessor;
-        prim.attributes["COLOR_0"] = colors;
-        prim.attributes["JOINTS_0"] = joints_accessor;
-        prim.attributes["WEIGHTS_0"] = weights_accessor;
-        prim.mode = TINYGLTF_MODE_TRIANGLES;
+      for (auto child : children.at(i)) {
+        snode.children.push_back(skin.skeleton + child);
       }
+    }
+    ASSERT(skin.skeleton + n_bones == (int)model.nodes.size());
+    skin.inverseBindMatrices = make_inv_matrix_bind_poses(game_bones, model);
+  }
+
+  for (size_t effect_idx = 0; effect_idx < mmodel.effects.size(); effect_idx++) {
+    const auto& effect = mmodel.effects[effect_idx];
+    for (size_t draw_idx = 0; draw_idx < effect.all_draws.size(); draw_idx++) {
+      const auto& draw = effect.all_draws[draw_idx];
+      auto& prim = mesh.primitives.emplace_back();
+      prim.material =
+          add_material_for_tex(level, model, draw.tree_tex_id, tex_image_map, draw.mode);
+      prim.indices =
+          make_index_buffer_accessor(model, draw_to_start[effect_idx][draw_idx],
+                                     draw_to_count[effect_idx][draw_idx], index_buffer_view);
+      prim.attributes["POSITION"] = position_buffer_accessor;
+      prim.attributes["TEXCOORD_0"] = texture_buffer_accessor;
+      prim.attributes["COLOR_0"] = colors;
+      prim.attributes["JOINTS_0"] = joints_accessor;
+      prim.attributes["WEIGHTS_0"] = weights_accessor;
+      prim.mode = TINYGLTF_MODE_TRIANGLES;
     }
   }
 }
@@ -1025,30 +1021,38 @@ void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& g
 
 void save_level_foreground_as_gltf(const tfrag3::Level& level,
                                    const std::map<std::string, level_tools::ArtData>& art_data,
-                                   const fs::path& glb_file) {
-  // the top level container for everything is the model.
-  tinygltf::Model model;
+                                   const fs::path& glb_path) {
+  for (size_t model_idx = 0; model_idx < level.merc_data.models.size(); model_idx++) {
+    const auto& mmodel = level.merc_data.models[model_idx];
 
-  // a "scene" is a traditional scene graph, made up of Nodes.
-  // sadly, attempting to nest stuff makes the blender importer unhappy, so we just dump
-  // everything into the top level.
-  model.scenes.emplace_back();
+    // the top level container for everything is the model.
+    tinygltf::Model model;
 
-  // hack, add a default material.
-  tinygltf::Material mat;
-  mat.pbrMetallicRoughness.baseColorFactor = {1.0f, 0.9f, 0.9f, 1.0f};
-  mat.doubleSided = true;
-  model.materials.push_back(mat);
+    // a "scene" is a traditional scene graph, made up of Nodes.
+    // sadly, attempting to nest stuff makes the blender importer unhappy, so we just dump
+    // everything into the top level.
+    model.scenes.emplace_back();
 
-  std::unordered_map<int, int> tex_image_map;
+    // hack, add a default material.
+    tinygltf::Material mat;
+    mat.pbrMetallicRoughness.baseColorFactor = {1.0f, 0.9f, 0.9f, 1.0f};
+    mat.doubleSided = true;
+    model.materials.push_back(mat);
 
-  add_merc(level, art_data, model, tex_image_map);
+    std::unordered_map<int, int> tex_image_map;
 
-  model.asset.generator = "opengoal";
-  tinygltf::TinyGLTF gltf;
-  gltf.WriteGltfSceneToFile(&model, glb_file.string(),
-                            true,   // embedImages
-                            true,   // embedBuffers
-                            true,   // pretty print
-                            true);  // write binary
+    add_merc(level, art_data, mmodel, model, tex_image_map);
+
+    model.asset.generator = "opengoal";
+
+    auto glb_file = glb_path / fmt::format("{}.glb", mmodel.name);
+    file_util::create_dir_if_needed_for_file(glb_file);
+
+    tinygltf::TinyGLTF gltf;
+    gltf.WriteGltfSceneToFile(&model, glb_file.string(),
+                              true,   // embedImages
+                              true,   // embedBuffers
+                              true,   // pretty print
+                              true);  // write binary
+  }
 }

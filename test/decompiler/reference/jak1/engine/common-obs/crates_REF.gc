@@ -124,7 +124,7 @@
 
 ;; failed to figure out what this is:
 (defpart 281
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:y (meters 0.5) (meters 1))
     (:scale-x (meters 1.5) (meters 1.5))
@@ -153,7 +153,7 @@
 
 ;; failed to figure out what this is:
 (defpart 283
-  :init-specs ((:texture (new 'static 'texture-id :index #x2 :page #x2))
+  :init-specs ((:texture (flare effects))
     (:num 4.0)
     (:y (meters 0.75))
     (:scale-x (meters 6))
@@ -183,7 +183,7 @@
 
 ;; failed to figure out what this is:
 (defpart 285
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:y (meters 1))
     (:scale-x (meters 8))
@@ -200,7 +200,7 @@
 
 ;; failed to figure out what this is:
 (defpart 286
-  :init-specs ((:texture (new 'static 'texture-id :index #x6 :page #x2))
+  :init-specs ((:texture (crate-wood-01-splinter effects))
     (:num 5.0)
     (:x (meters -0.5) (meters 1))
     (:y (meters 0.25) (meters 1.5))
@@ -234,7 +234,7 @@
 
 ;; failed to figure out what this is:
 (defpart 288
-  :init-specs ((:texture (new 'static 'texture-id :index #x5 :page #x2))
+  :init-specs ((:texture (crate-metalbolt-splinter effects))
     (:num 4.5)
     (:x (meters -0.5) (meters 1))
     (:y (meters 0.25) (meters 1.5))
@@ -328,7 +328,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2096
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((:texture (hotdot effects))
     (:num 6.0)
     (:scale-x (meters 0.2) (meters 0.4))
     (:scale-y :copy scale-x)
@@ -358,7 +358,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2098
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((:texture (hotdot effects))
     (:num 3.0)
     (:scale-x (meters 0.2))
     (:rot-z (degrees 0) (degrees 180))
@@ -376,7 +376,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2095
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 1.0)
     (:scale-x (meters 16))
     (:scale-y :copy scale-x)
@@ -392,7 +392,7 @@
 
 ;; failed to figure out what this is:
 (defpart 2097
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 4.0)
     (:scale-x (meters 2.5) (meters 1.5))
     (:rot-z (degrees 0) (degrees 360))
@@ -417,7 +417,7 @@
 
 ;; failed to figure out what this is:
 (defpart 295
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
+  :init-specs ((:texture (starflash effects))
     (:num 16.0)
     (:y (meters 1))
     (:scale-x (meters 0.1))
@@ -435,7 +435,7 @@
 
 ;; failed to figure out what this is:
 (defpart 296
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((:texture (hotdot effects))
     (:num 1.0)
     (:y (meters 0) (meters 16))
     (:z (meters 0.3) (meters 0.3))
@@ -460,7 +460,7 @@
 
 ;; failed to figure out what this is:
 (defpart 297
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
+  :init-specs ((:texture (hotdot effects))
     (:num 1.0)
     (:scale-x (meters 0.3) (meters 0.1))
     (:scale-y :copy scale-x)
@@ -481,7 +481,7 @@
 
 ;; failed to figure out what this is:
 (defpart 292
-  :init-specs ((:texture (new 'static 'texture-id :index #x5 :page #x2))
+  :init-specs ((:texture (crate-metalbolt-splinter effects))
     (:num 8.0 16.0)
     (:x (meters -0.5) (meters 1))
     (:y (meters 0.25) (meters 1.5))
@@ -759,7 +759,7 @@
             (when v1-6
               (let* ((gp-2 (-> self root root-prim prim-core))
                      (a1-3 (-> (the-as collide-shape v1-6) root-prim prim-core))
-                     (f30-0 (vector-vector-distance (the-as vector gp-2) (the-as vector a1-3)))
+                     (f30-0 (vector-vector-distance (-> gp-2 world-sphere) (-> a1-3 world-sphere)))
                      )
                 (when (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (!= (-> self defense) 'steel))
                   (logior! (-> self fact options) (fact-options can-collect))
@@ -855,10 +855,7 @@
         (logior! (-> self fact options) (fact-options instant-collect))
         )
     (when (not arg0)
-      (let ((s5-1 (current-time)))
-        (until (time-elapsed? s5-1 (seconds 0.04))
-          (suspend)
-          )
+      (suspend-for (seconds 0.04)
         )
       (logior! (-> self draw status) (draw-status hidden))
       (case (-> self look)
@@ -946,10 +943,7 @@
     (drop-pickup (-> self fact) #t *entity-pool* (the-as fact-info #f) arg1)
     (process-entity-status! self (entity-perm-status dead) #t)
     (process-entity-status! self (entity-perm-status complete) #t)
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 5))
-        (suspend)
-        )
+    (suspend-for (seconds 5)
       )
     )
   )
@@ -1201,9 +1195,9 @@
 ;; INFO: Return type mismatch int vs none.
 (defmethod smush-update! ((this crate))
   (let ((f0-0 (update! (-> this smush))))
-    (set! (-> this root scale x) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> this root scale x) (+ 1.0 (/ f0-0 -2)))
     (set! (-> this root scale y) (+ 1.0 f0-0))
-    (set! (-> this root scale z) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> this root scale z) (+ 1.0 (/ f0-0 -2)))
     )
   0
   (none)
@@ -1266,7 +1260,7 @@
 
 ;; failed to figure out what this is:
 (defpart 302
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
+  :init-specs ((:texture (bigpuff effects))
     (:num 1.0)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0) (degrees 360))
@@ -1351,7 +1345,7 @@
           (+! (-> self root trans y) (* f30-0 (seconds-per-frame)))
           (when (< (-> self root trans y) (-> self base y))
             (set! (-> self root trans y) (-> self base y))
-            (set! f30-0 (* -0.5 f30-0))
+            (set! f30-0 (/ f30-0 -2))
             (if (< (fabs f30-0) 16384.0)
                 (set! f30-0 0.0)
                 )

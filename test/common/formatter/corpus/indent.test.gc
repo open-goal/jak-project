@@ -70,13 +70,99 @@ Single Item Form
 (println)
 
 ===
-defun - No Docstring
+begin
 ===
 
-(defun test-function ((arg0 string))
-  (println arg0))
+(begin
+"hello" (println "world"))
 
 ---
 
-(defun test-function ((arg0 string))
-  (println arg0))
+(begin
+  "hello"
+  (println "world"))
+
+===
+Inlining flowed form
+===
+
+(or something (begin (+ 1 2) (= 2 2)))
+
+---
+
+(or something (begin (+ 1 2) (= 2 2)))
+
+===
+Long array creation
+===
+
+(let ((arr (new
+                  'static
+                  'array
+                  uint32
+                  16
+                  #x7b2191b ;; = 6 ^ 129112349
+                  #x7b21914 ;; = 9 ^ 129112349
+                  #x7b21916 ;; = 11 ^ 129112349
+                  #x7b21913 ;; = 14 ^ 129112349
+                  #x7b21909 ;; = 20 ^ 129112349
+                  #x7b21908 ;; = 21 ^ 129112349
+                  #x7b2190a ;; = 23 ^ 129112349
+                  #x7b21907 ;; = 26 ^ 129112349
+                  #x7b2191b ;; = 6 ^ 129112349
+                  #x7b21917 ;; = 10 ^ 129112349
+                  #x7b21916 ;; = 11 ^ 129112349
+                  #x7b2190c ;; = 17 ^ 129112349
+                  #x7b21909 ;; = 20 ^ 129112349
+                  #x7b2190b ;; = 22 ^ 129112349
+                  #x7b2190a ;; = 23 ^ 129112349
+                  #x7b21900 ;; = 29 ^ 129112349
+                  )))
+    (dotimes (i 16)
+      (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table i)
+            (the-as (function none) (-> arr i)))))
+
+---
+
+(let ((arr (new 'static
+                'array
+                uint32
+                16
+                #x7b2191b ;; = 6 ^ 129112349
+                #x7b21914 ;; = 9 ^ 129112349
+                #x7b21916 ;; = 11 ^ 129112349
+                #x7b21913 ;; = 14 ^ 129112349
+                #x7b21909 ;; = 20 ^ 129112349
+                #x7b21908 ;; = 21 ^ 129112349
+                #x7b2190a ;; = 23 ^ 129112349
+                #x7b21907 ;; = 26 ^ 129112349
+                #x7b2191b ;; = 6 ^ 129112349
+                #x7b21917 ;; = 10 ^ 129112349
+                #x7b21916 ;; = 11 ^ 129112349
+                #x7b2190c ;; = 17 ^ 129112349
+                #x7b21909 ;; = 20 ^ 129112349
+                #x7b2190b ;; = 22 ^ 129112349
+                #x7b2190a ;; = 23 ^ 129112349
+                #x7b21900 ;; = 29 ^ 129112349
+                )))
+  (dotimes (i 16)
+    (set! (-> (scratchpad-object terrain-context) work foreground joint-work frm-jmp-table i)
+          (the-as (function none) (-> arr i)))))
+
+===
+Nested function call
+===
+
+(set! (-> this attack-event)
+      (the-as symbol
+              ((the-as (function res-lump symbol symbol float structure (pointer res-tag) pointer object) (method-of-type res-lump get-property-struct))
+                       (-> this entity)
+                       'attack-event)))
+---
+
+(set! (-> this attack-event)
+      (the-as symbol
+              ((the-as (function res-lump symbol symbol float structure (pointer res-tag) pointer object)
+                       (method-of-type res-lump get-property-struct))
+               (-> this entity)
+               'attack-event)))

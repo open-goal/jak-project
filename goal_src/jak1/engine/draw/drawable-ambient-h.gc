@@ -1,11 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: drawable-ambient-h.gc
-;; name in dgo: drawable-ambient-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/hw/display-h.gc")
+(require "engine/draw/drawable-tree-h.gc")
+(require "engine/draw/drawable-inline-array-h.gc")
 (declare-type entity-ambient basic)
+
 (define-extern vector-for-ambient (function process-drawable vector vector))
 
 ;; DECOMP BEGINS
@@ -15,71 +15,53 @@
 ;; each ambient also has a simple drawable that just contains a reference to the entity.
 ;; this is basically only used to collect the currently active ambients.
 (deftype drawable-ambient (drawable)
-  ((ambient  entity-ambient  :offset   8)
-   )
+  ((ambient entity-ambient :offset 8))
   (:methods
-    (execute-ambient (_type_ vector) none)
-    )
-  )
+   (execute-ambient (_type_ vector) none)))
 
 ;; a drawable-tree of all the ambients in a level.
-(deftype drawable-tree-ambient (drawable-tree)
-  ()
-  )
+(deftype drawable-tree-ambient (drawable-tree) ())
 
 (deftype drawable-inline-array-ambient (drawable-inline-array)
-  ((data  drawable-ambient  1 :inline)
-   (pad   uint32)
-   )
-  )
+  ((data drawable-ambient 1 :inline)
+   (pad  uint32)))
 
 (defmethod draw ((this drawable-tree-ambient) (arg0 drawable-tree-ambient) (arg1 display-frame))
   "Do nothing - ambients are not drawn."
   0
-  (none)
-  )
+  (none))
 
 (defmethod unpack-vis ((this drawable-tree-ambient) (arg0 (pointer int8)) (arg1 (pointer int8)))
   "Do nothing - ambients do not use vis."
-  arg1
-  )
-
+  arg1)
 
 ;; one of the more common ambients is a "level hint". This can be a few things:
 ;; - on screen text (level names)
 ;; - daxter audio (sidekick)
 ;; - voicebox audio (also called sidekick in some places...)
 (deftype level-hint (process)
-  ((text-id-to-display  text-id)
-   (sound-to-play       string)
-   (trans               vector)
-   (sound-id            sound-id)
-   (mode                symbol)
-   (total-time          time-frame)
-   (total-off-time      time-frame)
-   (last-time           time-frame)
-   (voicebox            handle)
-   )
+  ((text-id-to-display text-id)
+   (sound-to-play      string)
+   (trans              vector)
+   (sound-id           sound-id)
+   (mode               symbol)
+   (total-time         time-frame)
+   (total-off-time     time-frame)
+   (last-time          time-frame)
+   (voicebox           handle))
   (:methods
-    (print-text (_type_) none)
-    (appeared-for-long-enough? (_type_) symbol)
-    )
-  (:states
-    (level-hint-ambient-sound string)
-    (level-hint-error string string)
-    level-hint-exit
-    level-hint-normal
-    (level-hint-sidekick string)
-    )
-  )
+   (print-text (_type_) none)
+   (appeared-for-long-enough? (_type_) symbol))
+  (:states (level-hint-ambient-sound string)
+   (level-hint-error string string)
+   level-hint-exit
+   level-hint-normal
+   (level-hint-sidekick string)))
 
 ;; a list of ambients that are currently active.
 (deftype ambient-list (structure)
-  ((num-items  int32)
-   (items      drawable-ambient  2048)
-   )
-  )
-
+  ((num-items int32)
+   (items     drawable-ambient 2048)))
 
 (define-extern *hint-semaphore* (pointer level-hint))
 

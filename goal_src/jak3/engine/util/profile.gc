@@ -5,5 +5,1048 @@
 ;; name in dgo: profile
 ;; dgos: GAME
 
+(define-extern *dproc* process)
+
+(defmacro end-profiler ()
+  `(when *debug-segment*
+     (let ((prof (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+       (when (and *dproc* *debug-segment*)
+         (let* ((after-depth (+ (-> prof depth) -1))
+                (segment (-> prof segment after-depth))
+                (base-time (-> prof base-time))
+                )
+           (when (>= after-depth 0)
+             (set! (-> segment end-time) (the-as int (- (timer-count TIMER1_BANK) base-time)))
+             (+! (-> prof depth) -1)
+             )
+           )
+         )
+       )
+     )
+  )
+
+(defmacro with-profiler (category profile-color &rest body)
+  `(begin
+     (when *debug-segment*
+       (let ((prof (-> *display* frames (-> *display* on-screen) profile-array data 0))
+             (name ,category)
+             (color ,profile-color)
+             )
+         (when (and *dproc* *debug-segment*)
+           (let ((segment (-> prof data (-> prof count))))
+             (let ((base-time (-> prof base-time)))
+               (set! (-> segment name) name)
+               (set! (-> segment start-time) (the-as int (- (timer-count TIMER1_BANK) base-time)))
+               )
+             (set! (-> segment depth) (-> prof depth))
+             (set! (-> segment color) color)
+             (set! (-> prof segment (-> prof depth)) segment)
+             )
+           ;; (+! (-> prof count) 1)
+           ;; changed for jak3: count can only go up 1023.
+           (set! (-> prof count) (min 1023 (+ (-> prof count) 1)))
+           (+! (-> prof depth) 1)
+           (set! (-> prof max-depth) (max (-> prof max-depth) (-> prof depth)))
+           )
+         )
+       )
+     ,@body
+     (end-profiler)
+     )
+  )
+
 ;; DECOMP BEGINS
 
+(define *profile-spec-array*
+  (new 'static 'inline-array profile-spec 14
+    (new 'static 'profile-spec :name 'dummy :color (new 'static 'rgba :r #x20 :g #x20 :b #x20 :a #x80))
+    (new 'static 'profile-spec :name 'blit-displays :color (new 'static 'rgba :r #x20 :g #x20 :b #x80 :a #x80))
+    (new 'static 'profile-spec :name 'sky :color (new 'static 'rgba :r #x20 :g #x80 :b #x20 :a #x80))
+    (new 'static 'profile-spec :name 'ocean :color (new 'static 'rgba :r #x20 :g #x80 :b #x80 :a #x80))
+    (new 'static 'profile-spec :name 'hfrag :color (new 'static 'rgba :r #x80 :g #x20 :b #x20 :a #x80))
+    (new 'static 'profile-spec :name 'tfrag :color (new 'static 'rgba :r #x80 :g #x20 :b #x80 :a #x80))
+    (new 'static 'profile-spec :name 'texture :color (new 'static 'rgba :r #x80 :g #x80 :b #x20 :a #x80))
+    (new 'static 'profile-spec :name 'tie :color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+    (new 'static 'profile-spec :name 'generic :color (new 'static 'rgba :r #xc0 :g #xc0 :a #x80))
+    (new 'static 'profile-spec :name 'merc :color (new 'static 'rgba :r #xc0 :b #xc0 :a #x80))
+    (new 'static 'profile-spec :name 'shrubbery :color (new 'static 'rgba :r #xc0 :a #x80))
+    (new 'static 'profile-spec :name 'particle :color (new 'static 'rgba :g #xc0 :b #xc0 :a #x80))
+    (new 'static 'profile-spec :name 'debug :color (new 'static 'rgba :g #xc0 :a #x80))
+    (new 'static 'profile-spec :name 'other :color (new 'static 'rgba :r #xc0 :g #xc0 :b #xc0 :a #x80))
+    )
+  )
+
+;; the size of this is not quite right...
+(define *profile-translate-array* (new 'static 'array uint64 587
+                                    #x0
+                                    #x0
+                                    #x0
+                                    #x1
+                                    #x6
+                                    #x2
+                                    #x3
+                                    #x6
+                                    #x4
+                                    #x4
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #xa
+                                    #x8
+                                    #xa
+                                    #xa
+                                    #x8
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #xd
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x6
+                                    #x3
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x5
+                                    #x7
+                                    #x7
+                                    #x7
+                                    #x5
+                                    #x7
+                                    #x8
+                                    #x6
+                                    #x9
+                                    #x8
+                                    #x8
+                                    #x1
+                                    #x6
+                                    #x8
+                                    #xb
+                                    #xd
+                                    #xd
+                                    #x6
+                                    #x9
+                                    #xc
+                                    #x6
+                                    #xd
+                                    #xd
+                                    #xd
+                                    #xd
+                                    #xc
+                                    #xc
+                                    #xc
+                                    0 ;; hack...
+                                    0 ;; another hack
+                                    )
+        )
+
+(deftype profile-work (structure)
+  "DMA templates for profile drawing."
+  ((sprite-tmpl  dma-gif-packet  :inline)
+   (line-tmpl    dma-gif-packet  :inline)
+   (last-index   int32)
+   )
+  )
+
+
+(define *profile-work* (new 'static 'profile-work
+                         :sprite-tmpl (new 'static 'dma-gif-packet
+                           :dma-vif (new 'static 'dma-packet
+                             :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
+                             :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
+                             )
+                           :gif (new 'static 'array uint64 2 #x3023400000008001 #x551)
+                           )
+                         :line-tmpl (new 'static 'dma-gif-packet
+                           :dma-vif (new 'static 'dma-packet
+                             :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
+                             :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
+                             )
+                           :gif (new 'static 'array uint64 2 #x3020c00000008001 #x551)
+                           )
+                         )
+        )
+
+(define *profile-x* 1808)
+
+(define *profile-y* 1848)
+
+(define *profile-w* 416)
+
+(define *profile-h* 8)
+
+(define *profile-ticks* #f)
+
+(defmethod start-frame! ((this profile-segment-array))
+  "Restart the profiler for the start of a frame."
+  (set! (-> this count) 0)
+  (set! (-> this depth) 0)
+  (set! (-> this max-depth) 0)
+  (set! (-> this base-time) (the-as int (timer-count (the-as timer-bank #x10000800))))
+  (start-segment! this 'all *profile-all-color*)
+  0
+  (none)
+  )
+
+(defmethod start-segment! ((this profile-segment-array) (arg0 symbol) (arg1 rgba))
+  "Start an event."
+  (when (and *dproc* *debug-segment*)
+    (let ((s4-0 (-> this data (-> this count))))
+      (let ((s3-0 (-> this base-time)))
+        (set! (-> s4-0 name) arg0)
+        (set! (-> s4-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
+        )
+      (set! (-> s4-0 depth) (the-as uint (-> this depth)))
+      (set! (-> s4-0 color) arg1)
+      (set! (-> this segment (-> this depth)) s4-0)
+      )
+    (set! (-> this count) (min 1023 (+ (-> this count) 1)))
+    (+! (-> this depth) 1)
+    (set! (-> this max-depth) (max (-> this max-depth) (-> this depth)))
+    )
+  0
+  (none)
+  )
+
+(defmethod end-segment! ((this profile-segment-array))
+  "Stop the most recently started event."
+  (when (and *dproc* *debug-segment*)
+    (let* ((v1-4 (+ (-> this depth) -1))
+           (s5-0 (-> this segment v1-4))
+           (s4-0 (-> this base-time))
+           )
+      (when (>= v1-4 0)
+        (set! (-> s5-0 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-0))))
+        (+! (-> this depth) -1)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod postprocess-data! ((this profile-array))
+  "Create the collapsed summary of the collected data."
+  (dotimes (s5-0 2)
+    (let ((s3-0 (-> *profile-array* data s5-0))
+          (s4-0 *profile-collapse*)
+          )
+      (mem-copy! (&-> s3-0 type) (&-> (-> this data s5-0) type) #x4030)
+      (cond
+        ((zero? s5-0)
+         ((lambda ((arg0 profile-segment-array) (arg1 profile-collapse))
+            (let ((v0-0 0))
+              (dotimes (v1-0 48)
+                (set! (-> arg1 data v1-0 name) #f)
+                (set! (-> arg1 data v1-0 count) (the-as uint 0))
+                (set! (-> arg1 data v1-0 vu-count) (the-as uint 0))
+                (set! (-> arg1 data v1-0 depth) (the-as uint 0))
+                (set! (-> arg1 data v1-0 start-time) 0)
+                (set! (-> arg1 data v1-0 end-time) 0)
+                )
+              (dotimes (v1-3 (-> arg0 count))
+                (let ((a2-15 (- (-> arg0 data v1-3 end-time) (-> arg0 data v1-3 start-time))))
+                  (let ((t0-0 (-> arg0 data v1-3 name)))
+                    (dotimes (a3-5 v0-0)
+                      (when (= (-> arg1 data a3-5 name) t0-0)
+                        (+! (-> arg1 data a3-5 count) 1)
+                        (set! (-> arg1 data a3-5 start-time) (the-as int (+ (-> arg1 data a3-5 code-time) a2-15)))
+                        (goto cfg-11)
+                        )
+                      )
+                    (set! (-> arg1 data v0-0 name) t0-0)
+                    )
+                  (set! (-> arg1 data v0-0 count) (the-as uint 1))
+                  (set! (-> arg1 data v0-0 depth) (-> arg0 data v1-3 depth))
+                  (set! (-> arg1 data v0-0 start-time) a2-15)
+                  )
+                (set! (-> arg1 data v0-0 color) (-> arg0 data v1-3 color))
+                (set! v0-0 (min 47 (+ v0-0 1)))
+                (label cfg-11)
+                )
+              (set! (-> arg1 count) v0-0)
+              )
+            (none)
+            )
+          s3-0
+          s4-0
+          )
+         )
+        (else
+          (let ((v1-6 3)
+                (a0-5 (+ (-> s3-0 count) -1))
+                )
+            (while (>= a0-5 v1-6)
+              (let ((a1-4 (-> s3-0 data v1-6)))
+                (set! (-> a1-4 name) (-> *profile-spec-array* (-> *profile-translate-array* v1-6) name))
+                (set! (-> a1-4 color) (-> *profile-spec-array* (-> *profile-translate-array* v1-6) color))
+                (let ((a2-14 (- (-> a1-4 end-time) (-> a1-4 start-time)))
+                      (a3-5 (-> a1-4 name))
+                      )
+                  (dotimes (a1-5 (-> s4-0 count))
+                    (when (= (-> s4-0 data a1-5 name) a3-5)
+                      (+! (-> s4-0 data a1-5 vu-count) 1)
+                      (set! (-> s4-0 data a1-5 end-time) (the-as int (+ (-> s4-0 data a1-5 vu-time) a2-14)))
+                      (goto cfg-11)
+                      )
+                    )
+                  )
+                )
+              (label cfg-11)
+              (+! v1-6 1)
+              )
+            )
+          (countdown (v1-9 (-> s3-0 count))
+            (when (nonzero? (-> s3-0 data v1-9 end-time))
+              (set! (-> s4-0 data 0 vu-count) (the-as uint 1))
+              (set! (-> s4-0 data 0 end-time) (- (-> s3-0 data v1-9 end-time) (-> s3-0 data 0 start-time)))
+              (goto cfg-19)
+              )
+            )
+          )
+        )
+      )
+    (label cfg-19)
+    )
+  0
+  (none)
+  )
+
+(defmethod draw-bars! ((this profile-array) (arg0 dma-buffer) (arg1 int))
+  "Generate DMA data for drawing the profile bars."
+  (local-vars (sv-16 (function _varargs_ object)) (sv-32 (function _varargs_ object)))
+  (dma-buffer-add-gs-set arg0
+                         (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                         (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24) :zmsk #x1))
+                         (test-1 (new 'static 'gs-test :zte #x1 :ztst (gs-ztest always)))
+                         (pabe 0)
+                         (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                         (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                         (texa (new 'static 'gs-texa :ta1 #x80))
+                         (texclut (new 'static 'gs-texclut :cbw #x4))
+                         (fogcol *fog-color*)
+                         )
+  (let ((v1-5 (* (+ *profile-x* (/ *profile-w* 2)) 16))
+        (a0-9 (-> arg0 base))
+        )
+    (set! (-> (the-as (pointer uint128) a0-9) 0) (-> *profile-work* line-tmpl dma-vif quad))
+    (set! (-> (the-as (pointer uint128) a0-9) 1) (-> *profile-work* line-tmpl quad 1))
+    (set-vector! (the-as vector4w (&+ a0-9 32)) 64 64 64 64)
+    (set-vector! (the-as vector4w (&+ a0-9 48)) v1-5 #x7340 #xffffff 0)
+    (set-vector! (the-as vector4w (&+ a0-9 64)) v1-5 #x7580 #xffffff 0)
+    )
+  (&+! (-> arg0 base) 80)
+  (dotimes (s3-0 2)
+    (let* ((v1-12 (-> this data s3-0))
+           (a0-11 (-> v1-12 max-depth))
+           (s2-1 (max 14 (* a0-11 2)))
+           )
+      (set! *profile-y* (+ arg1 1840))
+      (let ((a1-32 (-> arg0 base)))
+        (set! (-> (the-as (pointer uint128) a1-32) 0) (-> *profile-work* sprite-tmpl dma-vif quad))
+        (set! (-> (the-as (pointer uint128) a1-32) 1) (-> *profile-work* sprite-tmpl quad 1))
+        (set-vector! (the-as vector4w (&+ a1-32 32)) 64 64 64 64)
+        (set-vector! (the-as vector4w (&+ a1-32 48)) (* *profile-x* 16) (* *profile-y* 16) #xffffff 0)
+        (set-vector!
+          (the-as vector4w (&+ a1-32 64))
+          (* (+ *profile-x* *profile-w*) 16)
+          (* (+ *profile-y* s2-1) 16)
+          #xffffff
+          0
+          )
+        )
+      (&+! (-> arg0 base) 80)
+      (let ((a0-12 (/ s2-1 a0-11)))
+        (dotimes (a1-36 (-> v1-12 count))
+          (let ((a2-22 (-> v1-12 data a1-36)))
+            (when (< (-> a2-22 start-time) (-> a2-22 end-time))
+              (let* ((t0-1 (* *ticks-per-frame* 2))
+                     (a3-15 (* (+ *profile-x* (/ (* (-> a2-22 start-time) *profile-w*) t0-1)) 16))
+                     (t0-4 (* (+ *profile-x* (/ (* (-> a2-22 end-time) *profile-w*) t0-1)) 16))
+                     (t3-1 (* (+ arg1 1840 (* (-> a2-22 depth) (the-as uint a0-12))) 16))
+                     (t1-7 (+ t3-1 (* a0-12 16)))
+                     (t2-5 (-> arg0 base))
+                     )
+                (set! (-> (the-as (pointer int128) t2-5) 0) (the-as int128 (-> *profile-work* sprite-tmpl dma-vif quad)))
+                (set! (-> (the-as (pointer int128) t2-5) 1) (the-as int128 (-> *profile-work* sprite-tmpl quad 1)))
+                (set-vector!
+                  (the-as vector4w (&+ t2-5 32))
+                  (the int (* 1.9921875 (the float (-> a2-22 color r))))
+                  (the int (* 1.9921875 (the float (-> a2-22 color g))))
+                  (the int (* 1.9921875 (the float (-> a2-22 color b))))
+                  (the-as int (-> a2-22 color a))
+                  )
+                (set-vector! (the-as vector4w (&+ t2-5 48)) a3-15 t3-1 #xffffff 0)
+                (set-vector! (the-as vector4w (&+ t2-5 64)) t0-4 t1-7 #xffffff 0)
+                )
+              (&+! (-> arg0 base) 80)
+              )
+            )
+          )
+        )
+      (cond
+        ((zero? s3-0)
+         (let* ((s1-0 (-> v1-12 data 0 end-time))
+                (f30-0 (* 100.0 (/ (the float s1-0) (the float *ticks-per-frame*))))
+                )
+           (cond
+             (*profile-ticks*
+               (let ((s0-0 draw-string-xy))
+                 (set! sv-16 format)
+                 (let ((a0-16 (clear *temp-string*))
+                       (a1-37 "~5D")
+                       )
+                   (sv-16 a0-16 a1-37 s1-0)
+                   )
+                 (s0-0
+                   *temp-string*
+                   arg0
+                   488
+                   arg1
+                   (if (>= f30-0 100.0)
+                       (font-color red)
+                       (font-color default)
+                       )
+                   (font-flags shadow right)
+                   )
+                 )
+               )
+             (else
+               (let ((s1-1 draw-string-xy))
+                 (format (clear *temp-string*) "~5,,2f" f30-0)
+                 (s1-1
+                   *temp-string*
+                   arg0
+                   488
+                   arg1
+                   (if (>= f30-0 100.0)
+                       (font-color red)
+                       (font-color default)
+                       )
+                   (font-flags shadow right)
+                   )
+                 )
+               )
+             )
+           )
+         )
+        (else
+          (let ((s1-2 0))
+            (countdown (a0-21 (-> v1-12 count))
+              (when (nonzero? (-> v1-12 data a0-21 end-time))
+                (set! s1-2 (- (-> v1-12 data a0-21 end-time) (-> v1-12 data 0 start-time)))
+                (goto cfg-23)
+                )
+              )
+            (label cfg-23)
+            (let ((f30-1 (* 100.0 (/ (the float s1-2) (the float *ticks-per-frame*)))))
+              (cond
+                (*profile-ticks*
+                  (let ((s0-2 draw-string-xy))
+                    (set! sv-32 format)
+                    (let ((a0-26 (clear *temp-string*))
+                          (a1-45 "~5D")
+                          )
+                      (sv-32 a0-26 a1-45 s1-2)
+                      )
+                    (s0-2
+                      *temp-string*
+                      arg0
+                      488
+                      arg1
+                      (if (>= f30-1 100.0)
+                          (font-color red)
+                          (font-color default)
+                          )
+                      (font-flags shadow right)
+                      )
+                    )
+                  )
+                (else
+                  (let ((s1-3 draw-string-xy))
+                    (format (clear *temp-string*) "~5,,2f" f30-1)
+                    (s1-3
+                      *temp-string*
+                      arg0
+                      488
+                      arg1
+                      (if (>= f30-1 100.0)
+                          (font-color red)
+                          (font-color default)
+                          )
+                      (font-flags shadow right)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (set! arg1 (+ s2-1 2 arg1))
+      )
+    )
+  (none)
+  )
+
+(defmethod draw-text! ((this profile-array))
+  "Generate DMA data for drawing the profile information screen."
+  (let ((gp-0 *profile-collapse*))
+    (dotimes (s5-0 (-> gp-0 count))
+      (when (or (nonzero? (-> gp-0 data s5-0 count)) (nonzero? (-> gp-0 data s5-0 vu-count)))
+        (dotimes (s4-0 (the-as int (-> gp-0 data s5-0 depth)))
+          (format *stdcon* "  ")
+          )
+        (format *stdcon* "~o~s~0k" (-> gp-0 data s5-0 color) (symbol->string (-> gp-0 data s5-0 name)))
+        (if (nonzero? (-> gp-0 data s5-0 count))
+            (format
+              *stdcon*
+              "~170h~5d~220h~5d~280h~5,,2f"
+              (-> gp-0 data s5-0 count)
+              (-> gp-0 data s5-0 code-time)
+              (* 100.0 (/ (the float (-> gp-0 data s5-0 code-time)) (the float *ticks-per-frame*)))
+              )
+            )
+        (if (nonzero? (-> gp-0 data s5-0 vu-count))
+            (format
+              *stdcon*
+              "~338h~5d~388h~5d~448h~5,,2f"
+              (-> gp-0 data s5-0 vu-count)
+              (-> gp-0 data s5-0 vu-time)
+              (* 100.0 (/ (the float (-> gp-0 data s5-0 vu-time)) (the float *ticks-per-frame*)))
+              )
+            )
+        (format *stdcon* "~1k~%")
+        )
+      )
+    )
+  0
+  (none)
+  )

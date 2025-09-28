@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: file-io.gc
-;; name in dgo: file-io
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gstring.gc")
 
 ;; GOAL File I/O
 ;;  This is mostly not used in the retail game and was more for loading stuff during development.
@@ -22,34 +20,29 @@
 ;; DECOMP BEGINS
 
 (deftype file-stream (basic)
-  ((flags  uint32)
-   (mode   symbol)
-   (name   string)
-   (file   uint32)
-   )
+  ((flags uint32)
+   (mode  symbol)
+   (name  string)
+   (file  uint32))
   (:methods
-    (new (symbol type string symbol) _type_)
-    )
-  )
+   (new (symbol type string symbol) _type_)))
 
 (defconstant SCE_SEEK_SET 0)
+
 (defconstant SCE_SEEK_CUR 1)
+
 (defconstant SCE_SEEK_END 2)
 
 (defmacro file-stream-valid? (fs)
-  `(>= (the-as int (-> ,fs file)) 0)
-  )
+  `(>= (the-as int (-> ,fs file)) 0))
 
 (defmacro file-stream-tell (fs)
-  `(file-stream-seek ,fs 0 SCE_SEEK_CUR)
-  )
+  `(file-stream-seek ,fs 0 SCE_SEEK_CUR))
 
 (defmethod new file-stream ((allocation symbol) (type-to-make type) (name string) (mode symbol))
   "Allocate a file-stream and open it."
   (let ((a0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (file-stream-open a0-1 name mode)
-    )
-  )
+    (file-stream-open a0-1 name mode)))
 
 ;; we already have a length method for a file-stream defined in C.
 ;; just store that in the method table.
@@ -62,49 +55,50 @@
   (clear str)
   ;; so this will read nothing.
   (file-stream-read stream (-> str data) (length str))
-  str
-  )
-
+  str)
 
 ;; A common file header found in GOAL files.
 (deftype file-info (basic)
-  ((file-type       symbol)
-   (file-name       basic)
-   (major-version   uint32)
-   (minor-version   uint32)
-   (maya-file-name  basic)
-   (tool-debug      basic)
-   (mdb-file-name   basic)
-   )
-  )
+  ((file-type      symbol)
+   (file-name      basic)
+   (major-version  uint32)
+   (minor-version  uint32)
+   (maya-file-name basic)
+   (tool-debug     basic)
+   (mdb-file-name  basic)))
 
-(defmethod print file-info ((this file-info))
+(defmethod print ((this file-info))
   "Print information about a file"
-  (format #t "#<~A ~A :version ~D.~D @ #x~X>"
-          (-> this type) (-> this file-name) (-> this major-version) (-> this minor-version) this)
-  this
-  )
+  (format #t
+          "#<~A ~A :version ~D.~D @ #x~X>"
+          (-> this type)
+          (-> this file-name)
+          (-> this major-version)
+          (-> this minor-version)
+          this)
+  this)
 
 ;; allocate a temporary string
 (define *file-temp-string* (new 'global 'string 128 (the string #f)))
 
-
 (defenum file-kind
-    :bitfield #f
-    (level-bt 0) ;; aka bsp-header.
-    (art-group 1)
-    (tpage 2)
-    (dir-tpage 3)
-    (level-vs 4)
-    (tx 5)
-    (vis 6)
-    )
-
+  :bitfield #f
+  (level-bt 0) ;; aka bsp-header.
+  (art-group 1)
+  (tpage 2)
+  (dir-tpage 3)
+  (level-vs 4)
+  (tx 5)
+  (vis 6))
 
 (defconstant LEVEL_BT_FILE_VERSION 30)
+
 (defconstant ART_GROUP_FILE_VERSION 6)
+
 (defconstant TPAGE_FILE_VERSION 7) ;; also used for dir
+
 (defconstant LEVEL_VS_FILE_VERSION 30)
+
 (defconstant TX_FILE_VERSION 1)
 
 (defun make-file-name ((kind file-kind) (name string) (art-group-version int) (arg3 symbol))
@@ -118,118 +112,60 @@
    arg3 is unused."
   (clear *file-temp-string*)
   (cond
-    ((= kind (file-kind dir-tpage))
-     (format *file-temp-string* "texture-page~D/dir-tpages" TPAGE_FILE_VERSION)
-     )
+    ((= kind (file-kind dir-tpage)) (format *file-temp-string* "texture-page~D/dir-tpages" TPAGE_FILE_VERSION))
     ((= kind (file-kind tpage))
      (#if PC_PORT
-        (format *file-temp-string* "tpage-~S" name)
-        (format *file-temp-string* "texture-page~D/tpage-~S" TPAGE_FILE_VERSION name)
-        )
-     )
-    ((= kind (file-kind level-bt))
-     (format *file-temp-string* "level~D/~S-bt" LEVEL_VS_FILE_VERSION name)
-     )
-    ((= kind (file-kind tx))
-     (format *file-temp-string* "res~D/~S-tx" TX_FILE_VERSION name)
-     )
-    ((= kind (file-kind level-vs))
-     (format *file-temp-string* "level~D/~S-vs" LEVEL_BT_FILE_VERSION name)
-     )
-    ((= kind (file-kind vis))
-     (format *file-temp-string* "~S.VIS" name)
-     )
+       (format *file-temp-string* "tpage-~S" name)
+       (format *file-temp-string* "texture-page~D/tpage-~S" TPAGE_FILE_VERSION name)))
+    ((= kind (file-kind level-bt)) (format *file-temp-string* "level~D/~S-bt" LEVEL_VS_FILE_VERSION name))
+    ((= kind (file-kind tx)) (format *file-temp-string* "res~D/~S-tx" TX_FILE_VERSION name))
+    ((= kind (file-kind level-vs)) (format *file-temp-string* "level~D/~S-vs" LEVEL_BT_FILE_VERSION name))
+    ((= kind (file-kind vis)) (format *file-temp-string* "~S.VIS" name))
     ((= kind (file-kind art-group))
      (#if PC_PORT
-         (format *file-temp-string* "~S-ag" name)
-         (format *file-temp-string* "art-group~D/~S-ag"
-                 (if (> art-group-version 0)
-                     art-group-version
-                     ART_GROUP_FILE_VERSION
-                     )
-                 name
-                 )
-         )
-     )
-    )
-  *file-temp-string*
-  )
+       (format *file-temp-string* "~S-ag" name)
+       (format *file-temp-string*
+               "art-group~D/~S-ag"
+               (if (> art-group-version 0) art-group-version ART_GROUP_FILE_VERSION)
+               name))))
+  *file-temp-string*)
 
 (defun make-vfile-name ((kind file-kind) (name string))
   "Make virtual? file name. This makes a name that the kernel knows how to
    handle in a specific way. This function is not used."
   (clear *file-temp-string*)
   (cond
-    ((= kind (file-kind level-bt))
-     (format *file-temp-string* "$LEVEL/~S" name)
-     )
-    ((= kind (file-kind art-group))
-     (format *file-temp-string* "$ART_GROUP/~S" name)
-     )
-    )
-  *file-temp-string*
-  )
+    ((= kind (file-kind level-bt)) (format *file-temp-string* "$LEVEL/~S" name))
+    ((= kind (file-kind art-group)) (format *file-temp-string* "$ART_GROUP/~S" name)))
+  *file-temp-string*)
 
 (defun file-info-correct-version? ((info file-info) (kind file-kind) (version-override int))
   "Check if the version and kind in the info is valid.  The version-override can specify a
    non-default version, or set to 0 for the default version"
-  (let* ((expected-version
-          (cond
-            ((zero? version-override)
-             (case kind
-               (((file-kind tpage) (file-kind dir-tpage))
-                7
-                )
-               (((file-kind level-bt))
-                30
-                )
-               (((file-kind art-group))
-                6
-                )
-               )
-             )
-            (else
-             version-override
-             )
-            )
-           )
+  (let* ((expected-version (cond
+                             ((zero? version-override)
+                              (case kind
+                                (((file-kind tpage) (file-kind dir-tpage)) 7)
+                                (((file-kind level-bt)) 30)
+                                (((file-kind art-group)) 6)))
+                             (else version-override)))
          (v1-1 kind)
          (kind-name (cond
-                      ((= v1-1 (file-kind tpage))
-                       "texture-page"
-                       )
-                      ((= v1-1 (file-kind level-bt))
-                       "bsp-header"
-                       )
-                      ((= v1-1 (file-kind art-group))
-                       "art-group"
-                       )
-                      )
-           )
-         )
+                      ((= v1-1 (file-kind tpage)) "texture-page")
+                      ((= v1-1 (file-kind level-bt)) "bsp-header")
+                      ((= v1-1 (file-kind art-group)) "art-group"))))
     (cond
       ((not (name= (the-as basic (-> info file-type value)) kind-name))
-       (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%"
-               (-> info file-name)
-               (-> info file-type)
-               kind-name
-               )
-       #f
-       )
+       (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%" (-> info file-name) (-> info file-type) kind-name)
+       #f)
       ((!= expected-version (-> info major-version))
-       (format 0 "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
+       (format 0
+               "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
                (-> info file-name)
                (-> info major-version)
                (-> info minor-version)
-               expected-version
-               )
-       #f
-       )
+               expected-version)
+       #f)
       (else
        ;; all checks passed!
-       #t
-       )
-      )
-    )
-  )
-
+       #t))))

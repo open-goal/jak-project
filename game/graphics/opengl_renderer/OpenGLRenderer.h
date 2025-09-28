@@ -26,7 +26,7 @@ struct RenderOptions {
   bool draw_filters_window = false;
 
   // internal rendering settings - The OpenGLRenderer will internally use this resolution/format.
-  int msaa_samples = 2;
+  int msaa_samples = 1;
   int game_res_w = 640;
   int game_res_h = 480;
 
@@ -46,7 +46,7 @@ struct RenderOptions {
   bool internal_res_screenshot = false;
   std::string screenshot_path;
 
-  float pmode_alp_register = 0.f;
+  float pmode_alp_register = 1.f;
 
   // when enabled, does a `glFinish()` after each major rendering pass. This blocks until the GPU
   // is done working, making it easier to profile GPU utilization.
@@ -65,6 +65,7 @@ class OpenGLRenderer {
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                  std::shared_ptr<Loader> loader,
                  GameVersion version);
+  // TODO delete
 
   // rendering interface: takes the dma chain from the game, and some size/debug settings from
   // the graphics system.
@@ -75,11 +76,13 @@ class OpenGLRenderer {
   void dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
   void dispatch_buckets_jak1(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
   void dispatch_buckets_jak2(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
+  void dispatch_buckets_jak3(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
 
   void do_pcrtc_effects(float alp, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void blit_display();
   void init_bucket_renderers_jak1();
   void init_bucket_renderers_jak2();
+  void init_bucket_renderers_jak3();
   void draw_renderer_selection_window();
   void finish_screenshot(const std::string& output_name,
                          int px,
@@ -121,6 +124,7 @@ class OpenGLRenderer {
 
   float m_last_pmode_alp = 1.;
   bool m_enable_fast_blackout_loads = true;
+  std::string m_renderer_filter = "";
 
   struct FboState {
     struct {
@@ -132,6 +136,10 @@ class OpenGLRenderer {
     Fbo* render_fbo = nullptr;  // the selected fbo from the three above to use for rendering
   } m_fbo_state;
 
+  GLuint screen_vao = 0;  // vertex array object for a screen-space draw
+  GLuint screen_vbo = 0;  // vertex buffer object for a screen-space draw
+
   std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
+  std::unique_ptr<BucketRenderer> m_jak3_eye_renderer;
   GameVersion m_version;
 };

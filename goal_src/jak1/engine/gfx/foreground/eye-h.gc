@@ -1,54 +1,41 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: eye-h.gc
-;; name in dgo: eye-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gkernel-h.gc")
 (define-extern get-eye-block (function int int int))
+
 (define-extern merc-eye-anim (function process-drawable none))
+
 (define-extern update-eyes (function none))
 
 ;; DECOMP BEGINS
 
 (deftype eye (structure)
-  ((data         vector  2 :inline)
-   (x            float   :overlay-at (-> data 0 x))
-   (y            float   :overlay-at (-> data 0 y))
-   (lid          float   :overlay-at (-> data 0 z))
-   (iris-scale   float   :offset  16)
-   (pupil-scale  float   :offset  20)
-   (lid-scale    float   :offset  24)
-   )
-  )
-
+  ((data        vector 2 :inline)
+   (x           float :overlay-at (-> data 0 x))
+   (y           float :overlay-at (-> data 0 y))
+   (lid         float :overlay-at (-> data 0 z))
+   (iris-scale  float :offset 16)
+   (pupil-scale float :offset 20)
+   (lid-scale   float :offset 24)))
 
 (deftype eye-control (structure)
-  ((process      handle)
-   (random-time  uint16)
-   (level        uint16)
-   (blink        float)
-   (shaders      (inline-array adgif-shader))
-   (left         eye  :inline)
-   (right        eye  :inline)
-   )
-  )
-
+  ((process     handle)
+   (random-time uint16)
+   (level       uint16)
+   (blink       float)
+   (shaders     (inline-array adgif-shader))
+   (left        eye :inline)
+   (right       eye :inline)))
 
 (deftype eye-control-array (basic)
-  ((data  eye-control  11 :inline)
-   )
-  )
-
+  ((data eye-control 11 :inline)))
 
 (deftype eye-work (structure)
-  ((sprite-tmpl   dma-gif-packet  :inline)
-   (sprite-tmpl2  dma-gif-packet  :inline)
-   (adgif-tmpl    dma-gif-packet  :inline)
-   (blink-table   float           10)
-   )
-  )
-
+  ((sprite-tmpl  dma-gif-packet :inline)
+   (sprite-tmpl2 dma-gif-packet :inline)
+   (adgif-tmpl   dma-gif-packet :inline)
+   (blink-table  float 10)))
 
 (define *eye-control-array* (new 'static 'eye-control-array))
 
@@ -56,5 +43,4 @@
   (set! (-> *eye-control-array* data v1-5 process) (the-as handle #f))
   (set! (-> *eye-control-array* data v1-5 shaders) (the-as (inline-array adgif-shader) #f))
   (set! (-> *eye-control-array* data v1-5 random-time) (the-as uint 60))
-  (set! (-> *eye-control-array* data v1-5 blink) 0.0)
-  )
+  (set! (-> *eye-control-array* data v1-5 blink) 0.0))

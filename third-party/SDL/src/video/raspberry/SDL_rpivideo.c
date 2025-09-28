@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,9 +19,9 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_RPI
+#ifdef SDL_VIDEO_DRIVER_RPI
 
 /* References
  * http://elinux.org/RPi_VideoCore_APIs
@@ -30,88 +30,82 @@
  * http://cgit.freedesktop.org/wayland/weston/tree/src/compositor-rpi.c
  */
 
-/* SDL internals */
+// SDL internals
 #include "../SDL_sysvideo.h"
-#include "SDL_version.h"
-#include "SDL_syswm.h"
-#include "SDL_loadso.h"
-#include "SDL_events.h"
 #include "../../events/SDL_mouse_c.h"
 #include "../../events/SDL_keyboard_c.h"
-#include "SDL_hints.h"
 
 #ifdef SDL_INPUT_LINUXEV
 #include "../../core/linux/SDL_evdev.h"
 #endif
 
-/* RPI declarations */
+// RPI declarations
 #include "SDL_rpivideo.h"
 #include "SDL_rpievents_c.h"
 #include "SDL_rpiopengles.h"
 #include "SDL_rpimouse.h"
 
-static void
-RPI_Destroy(SDL_VideoDevice * device)
+static void RPI_Destroy(SDL_VideoDevice *device)
 {
-    SDL_free(device->driverdata);
+    SDL_free(device->internal);
     SDL_free(device);
 }
 
-static int 
-RPI_GetRefreshRate()
+static void RPI_GetRefreshRate(int *numerator, int *denominator)
 {
     TV_DISPLAY_STATE_T tvstate;
-    if (vc_tv_get_display_state( &tvstate ) == 0) {
-        //The width/height parameters are in the same position in the union
-        //for HDMI and SDTV
+    if (vc_tv_get_display_state(&tvstate) == 0) {
+        // The width/height parameters are in the same position in the union
+        // for HDMI and SDTV
         HDMI_PROPERTY_PARAM_T property;
         property.property = HDMI_PROPERTY_PIXEL_CLOCK_TYPE;
         vc_tv_hdmi_get_property(&property);
-        return property.param1 == HDMI_PIXEL_CLOCK_TYPE_NTSC ? 
-            tvstate.display.hdmi.frame_rate * (1000.0f/1001.0f) : 
-            tvstate.display.hdmi.frame_rate;
-    } 
-    return 60;  /* Failed to get display state, default to 60 */
+        if (property.param1 == HDMI_PIXEL_CLOCK_TYPE_NTSC) {
+            *numerator = tvstate.display.hdmi.frame_rate * 1000;
+            *denominator = 1001;
+        } else {
+            *numerator = tvstate.display.hdmi.frame_rate;
+            *denominator = 1;
+        }
+        return;
+    }
+
+    // Failed to get display state, default to 60
+    *numerator = 60;
+    *denominator = 1;
 }
 
-static SDL_VideoDevice *
-RPI_Create()
+static SDL_VideoDevice *RPI_Create(void)
 {
     SDL_VideoDevice *device;
     SDL_VideoData *phdata;
 
-    /* Initialize SDL_VideoDevice structure */
-    device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
-    if (device == NULL) {
-        SDL_OutOfMemory();
+    // Initialize SDL_VideoDevice structure
+    device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
+    if (!device) {
         return NULL;
     }
 
-    /* Initialize internal data */
-    phdata = (SDL_VideoData *) SDL_calloc(1, sizeof(SDL_VideoData));
-    if (phdata == NULL) {
-        SDL_OutOfMemory();
+    // Initialize internal data
+    phdata = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
+    if (!phdata) {
         SDL_free(device);
         return NULL;
     }
 
-    device->driverdata = phdata;
+    device->internal = phdata;
 
-    /* Setup amount of available displays */
+    // Setup amount of available displays
     device->num_displays = 0;
 
-    /* Set device free function */
+    // Set device free function
     device->free = RPI_Destroy;
 
-    /* Setup all functions which we can handle */
+    // Setup all functions which we can handle
     device->VideoInit = RPI_VideoInit;
     device->VideoQuit = RPI_VideoQuit;
-    device->GetDisplayModes = RPI_GetDisplayModes;
-    device->SetDisplayMode = RPI_SetDisplayMode;
     device->CreateSDLWindow = RPI_CreateWindow;
-    device->CreateSDLWindowFrom = RPI_CreateWindowFrom;
     device->SetWindowTitle = RPI_SetWindowTitle;
-    device->SetWindowIcon = RPI_SetWindowIcon;
     device->SetWindowPosition = RPI_SetWindowPosition;
     device->SetWindowSize = RPI_SetWindowSize;
     device->ShowWindow = RPI_ShowWindow;
@@ -121,9 +115,6 @@ RPI_Create()
     device->MinimizeWindow = RPI_MinimizeWindow;
     device->RestoreWindow = RPI_RestoreWindow;
     device->DestroyWindow = RPI_DestroyWindow;
-#if 0
-    device->GetWindowWMInfo = RPI_GetWindowWMInfo;
-#endif
     device->GL_LoadLibrary = RPI_GLES_LoadLibrary;
     device->GL_GetProcAddress = RPI_GLES_GetProcAddress;
     device->GL_UnloadLibrary = RPI_GLES_UnloadLibrary;
@@ -132,7 +123,7 @@ RPI_Create()
     device->GL_SetSwapInterval = RPI_GLES_SetSwapInterval;
     device->GL_GetSwapInterval = RPI_GLES_GetSwapInterval;
     device->GL_SwapWindow = RPI_GLES_SwapWindow;
-    device->GL_DeleteContext = RPI_GLES_DeleteContext;
+    device->GL_DestroyContext = RPI_GLES_DestroyContext;
     device->GL_DefaultProfileConfig = RPI_GLES_DefaultProfileConfig;
 
     device->PumpEvents = RPI_PumpEvents;
@@ -141,28 +132,28 @@ RPI_Create()
 }
 
 VideoBootStrap RPI_bootstrap = {
-    "RPI",
+    "rpi",
     "RPI Video Driver",
-    RPI_Create
+    RPI_Create,
+    NULL, // no ShowMessageBox implementation
+    false
 };
 
-
 /*****************************************************************************/
-/* SDL Video and Display initialization/handling functions                   */
+// SDL Video and Display initialization/handling functions
 /*****************************************************************************/
 
-static void
-AddDispManXDisplay(const int display_id)
+static void AddDispManXDisplay(const int display_id)
 {
     DISPMANX_MODEINFO_T modeinfo;
     DISPMANX_DISPLAY_HANDLE_T handle;
     SDL_VideoDisplay display;
-    SDL_DisplayMode current_mode;
+    SDL_DisplayMode mode;
     SDL_DisplayData *data;
 
     handle = vc_dispmanx_display_open(display_id);
     if (!handle) {
-        return;  /* this display isn't available */
+        return; // this display isn't available
     }
 
     if (vc_dispmanx_display_get_info(handle, &modeinfo) < 0) {
@@ -170,119 +161,100 @@ AddDispManXDisplay(const int display_id)
         return;
     }
 
-    /* RPI_GetRefreshRate() doesn't distinguish between displays. I'm not sure the hardware distinguishes either */
-    SDL_zero(current_mode);
-    current_mode.w = modeinfo.width;
-    current_mode.h = modeinfo.height;
-    current_mode.refresh_rate = RPI_GetRefreshRate();
-    /* 32 bpp for default */
-    current_mode.format = SDL_PIXELFORMAT_ABGR8888;
+    // RPI_GetRefreshRate() doesn't distinguish between displays. I'm not sure the hardware distinguishes either
+    SDL_zero(mode);
+    mode.w = modeinfo.width;
+    mode.h = modeinfo.height;
+    RPI_GetRefreshRate(&mode.refresh_rate_numerator, &mode.refresh_rate_denominator);
 
-    current_mode.driverdata = NULL;
+    // 32 bpp for default
+    mode.format = SDL_PIXELFORMAT_ABGR8888;
 
     SDL_zero(display);
-    display.desktop_mode = current_mode;
-    display.current_mode = current_mode;
+    display.desktop_mode = mode;
 
-    /* Allocate display internal data */
-    data = (SDL_DisplayData *) SDL_calloc(1, sizeof(SDL_DisplayData));
-    if (data == NULL) {
+    // Allocate display internal data
+    data = (SDL_DisplayData *)SDL_calloc(1, sizeof(SDL_DisplayData));
+    if (!data) {
         vc_dispmanx_display_close(handle);
-        return;  /* oh well */
+        return; // oh well
     }
 
     data->dispman_display = handle;
 
-    display.driverdata = data;
+    display.internal = data;
 
-    SDL_AddVideoDisplay(&display, SDL_FALSE);
+    SDL_AddVideoDisplay(&display, false);
 }
 
-int
-RPI_VideoInit(_THIS)
+bool RPI_VideoInit(SDL_VideoDevice *_this)
 {
-    /* Initialize BCM Host */
+    // Initialize BCM Host
     bcm_host_init();
 
-    AddDispManXDisplay(DISPMANX_ID_MAIN_LCD);  /* your default display */
-    AddDispManXDisplay(DISPMANX_ID_FORCE_OTHER);  /* an "other" display...maybe DSI-connected screen while HDMI is your main */
+    AddDispManXDisplay(DISPMANX_ID_MAIN_LCD);    // your default display
+    AddDispManXDisplay(DISPMANX_ID_FORCE_OTHER); // an "other" display...maybe DSI-connected screen while HDMI is your main
 
-#ifdef SDL_INPUT_LINUXEV    
-    if (SDL_EVDEV_Init() < 0) {
-        return -1;
+#ifdef SDL_INPUT_LINUXEV
+    if (!SDL_EVDEV_Init()) {
+        return false;
     }
-#endif    
-    
+#endif
+
     RPI_InitMouse(_this);
 
-    return 1;
+    return true;
 }
 
-void
-RPI_VideoQuit(_THIS)
+void RPI_VideoQuit(SDL_VideoDevice *_this)
 {
-#ifdef SDL_INPUT_LINUXEV    
+#ifdef SDL_INPUT_LINUXEV
     SDL_EVDEV_Quit();
-#endif    
+#endif
 }
 
-void
-RPI_GetDisplayModes(_THIS, SDL_VideoDisplay * display)
+static void RPI_vsync_callback(DISPMANX_UPDATE_HANDLE_T u, void *data)
 {
-    /* Only one display mode available, the current one */
-    SDL_AddDisplayMode(display, &display->current_mode);
+    SDL_WindowData *wdata = (SDL_WindowData *)data;
+
+    SDL_LockMutex(wdata->vsync_cond_mutex);
+    SDL_SignalCondition(wdata->vsync_cond);
+    SDL_UnlockMutex(wdata->vsync_cond_mutex);
 }
 
-int
-RPI_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
-{
-    return 0;
-}
-
-static void
-RPI_vsync_callback(DISPMANX_UPDATE_HANDLE_T u, void *data)
-{
-   SDL_WindowData *wdata = ((SDL_WindowData *) data);
-
-   SDL_LockMutex(wdata->vsync_cond_mutex);
-   SDL_CondSignal(wdata->vsync_cond);
-   SDL_UnlockMutex(wdata->vsync_cond_mutex);
-}
-
-int
-RPI_CreateWindow(_THIS, SDL_Window * window)
+bool RPI_CreateWindow(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID create_props)
 {
     SDL_WindowData *wdata;
     SDL_VideoDisplay *display;
     SDL_DisplayData *displaydata;
     VC_RECT_T dst_rect;
     VC_RECT_T src_rect;
-    VC_DISPMANX_ALPHA_T         dispman_alpha;
+    VC_DISPMANX_ALPHA_T dispman_alpha;
     DISPMANX_UPDATE_HANDLE_T dispman_update;
     uint32_t layer = SDL_RPI_VIDEOLAYER;
     const char *env;
 
-    /* Disable alpha, otherwise the app looks composed with whatever dispman is showing (X11, console,etc) */
-    dispman_alpha.flags = DISPMANX_FLAGS_ALPHA_FIXED_ALL_PIXELS; 
-    dispman_alpha.opacity = 0xFF; 
+    // Disable alpha, otherwise the app looks composed with whatever dispman is showing (X11, console,etc)
+    dispman_alpha.flags = DISPMANX_FLAGS_ALPHA_FIXED_ALL_PIXELS;
+    dispman_alpha.opacity = 0xFF;
     dispman_alpha.mask = 0;
 
-    /* Allocate window internal data */
-    wdata = (SDL_WindowData *) SDL_calloc(1, sizeof(SDL_WindowData));
-    if (wdata == NULL) {
-        return SDL_OutOfMemory();
+    // Allocate window internal data
+    wdata = (SDL_WindowData *)SDL_calloc(1, sizeof(SDL_WindowData));
+    if (!wdata) {
+        return false;
     }
-    display = SDL_GetDisplayForWindow(window);
-    displaydata = (SDL_DisplayData *) display->driverdata;
+    display = SDL_GetVideoDisplayForWindow(window);
+    displaydata = display->internal;
 
-    /* Windows have one size for now */
+    // Windows have one size for now
     window->w = display->desktop_mode.w;
     window->h = display->desktop_mode.h;
 
-    /* OpenGL ES is the law here, buddy */
+    // OpenGL ES is the law here, buddy
     window->flags |= SDL_WINDOW_OPENGL;
 
-    /* Create a dispman element and associate a window to it */
+    // Create a dispman element and associate a window to it
     dst_rect.x = 0;
     dst_rect.y = 0;
     dst_rect.width = window->w;
@@ -298,149 +270,107 @@ RPI_CreateWindow(_THIS, SDL_Window * window)
         layer = SDL_atoi(env);
     }
 
-    dispman_update = vc_dispmanx_update_start( 0 );
-    wdata->dispman_window.element = vc_dispmanx_element_add (dispman_update,
-                                                             displaydata->dispman_display,
-                                                             layer /* layer */,
-                                                             &dst_rect,
-                                                             0 /*src*/,
-                                                             &src_rect,
-                                                             DISPMANX_PROTECTION_NONE,
-                                                             &dispman_alpha /*alpha*/,
-                                                             0 /*clamp*/,
-                                                             0 /*transform*/);
+    dispman_update = vc_dispmanx_update_start(0);
+    wdata->dispman_window.element = vc_dispmanx_element_add(dispman_update,
+                                                            displaydata->dispman_display,
+                                                            layer /* layer */,
+                                                            &dst_rect,
+                                                            0 /*src*/,
+                                                            &src_rect,
+                                                            DISPMANX_PROTECTION_NONE,
+                                                            &dispman_alpha /*alpha*/,
+                                                            0 /*clamp*/,
+                                                            0 /*transform*/);
     wdata->dispman_window.width = window->w;
     wdata->dispman_window.height = window->h;
     vc_dispmanx_update_submit_sync(dispman_update);
-    
+
     if (!_this->egl_data) {
-        if (SDL_GL_LoadLibrary(NULL) < 0) {
-            return -1;
+        if (!SDL_GL_LoadLibrary(NULL)) {
+            return false;
         }
     }
-    wdata->egl_surface = SDL_EGL_CreateSurface(_this, (NativeWindowType) &wdata->dispman_window);
+    wdata->egl_surface = SDL_EGL_CreateSurface(_this, window, (NativeWindowType)&wdata->dispman_window);
 
     if (wdata->egl_surface == EGL_NO_SURFACE) {
         return SDL_SetError("Could not create GLES window surface");
     }
 
-    /* Start generating vsync callbacks if necesary */
-    wdata->double_buffer = SDL_FALSE;
-    if (SDL_GetHintBoolean(SDL_HINT_VIDEO_DOUBLE_BUFFER, SDL_FALSE)) {
-        wdata->vsync_cond = SDL_CreateCond();
+    // Start generating vsync callbacks if necessary
+    wdata->double_buffer = false;
+    if (SDL_GetHintBoolean(SDL_HINT_VIDEO_DOUBLE_BUFFER, false)) {
+        wdata->vsync_cond = SDL_CreateCondition();
         wdata->vsync_cond_mutex = SDL_CreateMutex();
-        wdata->double_buffer = SDL_TRUE;
-        vc_dispmanx_vsync_callback(displaydata->dispman_display, RPI_vsync_callback, (void*)wdata);
+        wdata->double_buffer = true;
+        vc_dispmanx_vsync_callback(displaydata->dispman_display, RPI_vsync_callback, (void *)wdata);
     }
 
-    /* Setup driver data for this window */
-    window->driverdata = wdata;
+    // Setup driver data for this window
+    window->internal = wdata;
 
-    /* One window, it always has focus */
+    // One window, it always has focus
     SDL_SetMouseFocus(window);
     SDL_SetKeyboardFocus(window);
 
-    /* Window has been successfully created */
-    return 0;
+    // Window has been successfully created
+    return true;
 }
 
-void
-RPI_DestroyWindow(_THIS, SDL_Window * window)
+void RPI_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
-    SDL_VideoDisplay *display = SDL_GetDisplayForWindow(window);
-    SDL_DisplayData *displaydata = (SDL_DisplayData *) display->driverdata;
+    SDL_WindowData *data = window->internal;
+    SDL_DisplayData *displaydata = SDL_GetDisplayDriverDataForWindow(window);
 
-    if(data) {
+    if (data) {
         if (data->double_buffer) {
-            /* Wait for vsync, and then stop vsync callbacks and destroy related stuff, if needed */
+            // Wait for vsync, and then stop vsync callbacks and destroy related stuff, if needed
             SDL_LockMutex(data->vsync_cond_mutex);
-            SDL_CondWait(data->vsync_cond, data->vsync_cond_mutex);
+            SDL_WaitCondition(data->vsync_cond, data->vsync_cond_mutex);
             SDL_UnlockMutex(data->vsync_cond_mutex);
 
             vc_dispmanx_vsync_callback(displaydata->dispman_display, NULL, NULL);
 
-            SDL_DestroyCond(data->vsync_cond);
+            SDL_DestroyCondition(data->vsync_cond);
             SDL_DestroyMutex(data->vsync_cond_mutex);
         }
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
         if (data->egl_surface != EGL_NO_SURFACE) {
             SDL_EGL_DestroySurface(_this, data->egl_surface);
         }
 #endif
         SDL_free(data);
-        window->driverdata = NULL;
+        window->internal = NULL;
     }
 }
 
-int
-RPI_CreateWindowFrom(_THIS, SDL_Window * window, const void *data)
-{
-    return -1;
-}
-
-void
-RPI_SetWindowTitle(_THIS, SDL_Window * window)
+void RPI_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void
-RPI_SetWindowIcon(_THIS, SDL_Window * window, SDL_Surface * icon)
+bool RPI_SetWindowPosition(SDL_VideoDevice *_this, SDL_Window *window)
+{
+    return SDL_Unsupported();
+}
+void RPI_SetWindowSize(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void
-RPI_SetWindowPosition(_THIS, SDL_Window * window)
+void RPI_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void
-RPI_SetWindowSize(_THIS, SDL_Window * window)
+void RPI_HideWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void
-RPI_ShowWindow(_THIS, SDL_Window * window)
+void RPI_RaiseWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void
-RPI_HideWindow(_THIS, SDL_Window * window)
+void RPI_MaximizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void
-RPI_RaiseWindow(_THIS, SDL_Window * window)
+void RPI_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
-void
-RPI_MaximizeWindow(_THIS, SDL_Window * window)
-{
-}
-void
-RPI_MinimizeWindow(_THIS, SDL_Window * window)
-{
-}
-void
-RPI_RestoreWindow(_THIS, SDL_Window * window)
+void RPI_RestoreWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
 }
 
-/*****************************************************************************/
-/* SDL Window Manager function                                               */
-/*****************************************************************************/
-#if 0
-SDL_bool
-RPI_GetWindowWMInfo(_THIS, SDL_Window * window, struct SDL_SysWMinfo *info)
-{
-    if (info->version.major <= SDL_MAJOR_VERSION) {
-        return SDL_TRUE;
-    } else {
-        SDL_SetError("application not compiled with SDL %d",
-                     SDL_MAJOR_VERSION);
-        return SDL_FALSE;
-    }
-
-    /* Failed to get window manager information */
-    return SDL_FALSE;
-}
-#endif
-
-#endif /* SDL_VIDEO_DRIVER_RPI */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_VIDEO_DRIVER_RPI

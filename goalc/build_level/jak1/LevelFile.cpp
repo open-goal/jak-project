@@ -26,6 +26,7 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   num_trees += tfrags.size();
   num_trees += collides.size();
   num_trees += ambients.size();
+  num_trees += ties.size();
   gen.add_word(num_trees << 16);
   gen.add_word(0);
   gen.add_word(0);
@@ -34,8 +35,6 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
   gen.add_word(0);
   gen.add_word(0);
   gen.add_word(0);
-
-  // todo add trees...
 
   if (num_trees == 0) {
     gen.add_word(0);  // the one at the end.
@@ -54,6 +53,10 @@ size_t DrawableTreeArray::add_to_object_file(DataObjectGenerator& gen) const {
       gen.link_word_to_byte(tree_word++, collide.add_to_object_file(gen));
     }
 
+    for (auto& tie : ties) {
+      gen.link_word_to_byte(tree_word++, tie.add_to_object_file(gen));
+    }
+
     for (auto& ambient : ambients) {
       gen.link_word_to_byte(tree_word++, ambient.add_to_object_file(gen, ambient_arr_slot));
     }
@@ -67,6 +70,44 @@ size_t generate_u32_array(const std::vector<u32>& array, DataObjectGenerator& ge
   size_t result = gen.current_offset_bytes();
   for (auto& entry : array) {
     gen.add_word(entry);
+  }
+  return result;
+}
+
+size_t generate_adgif_shader_array(const std::vector<u32>& data, DataObjectGenerator& gen) {
+  gen.align_to_basic();
+  gen.add_type_tag("adgif-shader-array");
+  size_t result = gen.current_offset_bytes();
+  for (auto& word : data) {
+    gen.add_word(word);
+  }
+  return result;
+}
+
+size_t generate_adgif_shader_array(const AdgifShaderArray& adgifs, DataObjectGenerator& gen) {
+  gen.align_to_basic();
+  gen.add_type_tag("adgif-shader-array");
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(adgifs.adgifs.size());
+  gen.add_word(adgifs.adgifs.size());
+  gen.add_word(0);
+  for (auto& adgif : adgifs.adgifs) {
+    for (size_t i = 0; i < sizeof(AdGifData) / sizeof(u32); i++) {
+      u32 data;
+      memcpy(&data, (u32*)&adgif + i, sizeof(u32));
+      gen.add_word(data);
+    }
+  }
+  return result;
+}
+
+size_t generate_tex_remap_table(const std::vector<TexRemap>& remap_table,
+                                DataObjectGenerator& gen) {
+  gen.align(4);
+  size_t result = gen.current_offset_bytes();
+  for (auto& entry : remap_table) {
+    gen.add_word(entry.orig_texid);
+    gen.add_word(entry.new_texid);
   }
   return result;
 }
@@ -94,9 +135,15 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(pat                    pointer                          :offset-assert  44)
   //(pat-length             int32                            :offset-assert  48)
   //(texture-remap-table    (pointer uint64)                 :offset-assert  52)
+  if (!texture_remap_table.empty())
+    gen.link_word_to_byte(52 / 4, generate_tex_remap_table(texture_remap_table, gen));
   //(texture-remap-table-len int32                           :offset-assert  56)
+  gen.set_word(56 / 4, texture_remap_table.size());
   //(texture-ids            (pointer texture-id)             :offset-assert  60)
+  if (!texture_ids.empty())
+    gen.link_word_to_byte(60 / 4, generate_u32_array(texture_ids, gen));
   //(texture-page-count     int32                            :offset-assert  64)
+  gen.set_word(64 / 4, texture_ids.size());
   //(unk-zero-0             basic                            :offset-assert  68)
   //(name                   symbol                           :offset-assert  72)
   gen.link_word_to_symbol(name, 72 / 4);
@@ -117,6 +164,8 @@ std::vector<u8> LevelFile::save_object_file() const {
   //(unk-data-4             float                            :offset-assert 160)
   //(unk-data-5             float                            :offset-assert 164)
   //(adgifs                 adgif-shader-array               :offset-assert 168)
+  if (!adgifs.adgifs.empty())
+    gen.link_word_to_byte(168 / 4, generate_adgif_shader_array(adgifs, gen));
   //(actor-birth-order      (pointer uint32)                 :offset-assert 172)
   gen.link_word_to_byte(172 / 4, generate_u32_array(actor_birth_order, gen));
   //(split-box-indices      (pointer uint16)                 :offset-assert 176)

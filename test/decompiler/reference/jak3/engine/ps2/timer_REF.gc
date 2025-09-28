@@ -1,0 +1,255 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function timer-count
+(defun timer-count ((arg0 timer-bank))
+  "Return a timer's counter value."
+  (.sync.l)
+  (let ((v0-0 (-> arg0 count)))
+    (.sync.l)
+    v0-0
+    )
+  )
+
+;; definition for function disable-irq
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v0, Status]
+(defun disable-irq ()
+  "Disable all interrupts. Has no effect on PC Port."
+  (local-vars (v0-0 int))
+  (let ((v1-0 (the-as uint #xfffffffe)))
+    (.mfc0 v0-0 Status)
+    (let ((v0-1 (logand v0-0 v1-0)))
+      (.mtc0 Status v0-1)
+      )
+    )
+  (.sync.p)
+  0
+  (none)
+  )
+
+;; definition for function enable-irq
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v0, Status]
+(defun enable-irq ()
+  "Enable all interrupts. Has no effect on PC Port."
+  (local-vars (v0-0 int))
+  (.mfc0 v0-0 Status)
+  (let ((v0-1 (logior v0-0 1)))
+    (.mtc0 Status v0-1)
+    )
+  (.sync.p)
+  0
+  (none)
+  )
+
+;; definition for function stopwatch-init
+(defun stopwatch-init ((arg0 stopwatch))
+  "Init a stopwatch."
+  (set! (-> arg0 begin-level) 0)
+  (set! (-> arg0 prev-time-elapsed) 0)
+  0
+  )
+
+;; definition for function stopwatch-reset
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-reset ((arg0 stopwatch))
+  "Restart a stopwatch's times."
+  (local-vars (v1-3 int))
+  (set! (-> arg0 prev-time-elapsed) 0)
+  (when (> (-> arg0 begin-level) 0)
+    0
+    (.mfc0 v1-3 Count)
+    (set! (-> arg0 start-time) (the-as time-frame v1-3))
+    )
+  0
+  )
+
+;; definition for function stopwatch-start
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-start ((arg0 stopwatch))
+  "Start a stopwatch from scratch."
+  (local-vars (v1-4 int))
+  (when (zero? (-> arg0 begin-level))
+    (set! (-> arg0 begin-level) 1)
+    0
+    (.mfc0 v1-4 Count)
+    (set! (-> arg0 start-time) (the-as time-frame v1-4))
+    )
+  0
+  )
+
+;; definition for function stopwatch-stop
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
+(defun stopwatch-stop ((arg0 stopwatch))
+  "Fully stop a stopwatch and save its elapsed time."
+  (local-vars (a1-0 int))
+  (when (> (-> arg0 begin-level) 0)
+    (set! (-> arg0 begin-level) 0)
+    0
+    (.mfc0 a1-0 Count)
+    (+! (-> arg0 prev-time-elapsed) (- (the-as time-frame a1-0) (-> arg0 start-time)))
+    )
+  0
+  (none)
+  )
+
+;; definition for function stopwatch-begin
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-begin ((arg0 stopwatch))
+  "Begin a stopwatch level, and starts it if it hasn't yet."
+  (local-vars (v1-3 int))
+  (when (zero? (-> arg0 begin-level))
+    0
+    (.mfc0 v1-3 Count)
+    (set! (-> arg0 start-time) (the-as time-frame v1-3))
+    )
+  (+! (-> arg0 begin-level) 1)
+  0
+  )
+
+;; definition for function stopwatch-end
+;; WARN: Return type mismatch int vs none.
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 a1, Count]
+(defun stopwatch-end ((arg0 stopwatch))
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+   There is no guard against ending a stopwatch too many times, and a negative level
+   will cause errors!"
+  (local-vars (a1-0 int))
+  (+! (-> arg0 begin-level) -1)
+  (when (zero? (-> arg0 begin-level))
+    0
+    (.mfc0 a1-0 Count)
+    (+! (-> arg0 prev-time-elapsed) (- (the-as time-frame a1-0) (-> arg0 start-time)))
+    )
+  0
+  (none)
+  )
+
+;; definition for function stopwatch-elapsed-ticks
+;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
+(defun stopwatch-elapsed-ticks ((arg0 stopwatch))
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch."
+  (local-vars (v1-3 int))
+  (let ((v0-0 (-> arg0 prev-time-elapsed)))
+    (when (> (-> arg0 begin-level) 0)
+      0
+      (.mfc0 v1-3 Count)
+      (+! v0-0 (- (the-as time-frame v1-3) (-> arg0 start-time)))
+      )
+    v0-0
+    )
+  )
+
+;; definition for function stopwatch-elapsed-seconds
+(defun stopwatch-elapsed-seconds ((arg0 stopwatch))
+  "Returns the elapsed time so far (in seconds) of a stopwatch."
+  (let ((v1-0 (stopwatch-elapsed-ticks arg0)))
+    (* 0.0000000033333334 (the float v1-0))
+    )
+  )
+
+;; definition for method 9 of type clock
+(defmethod update-rates! ((this clock) (rate float))
+  "Recompute all clock values for the given clock ratio (arg0)."
+  (set! (-> this clock-ratio) rate)
+  (let ((f0-6 (if (nonzero? *display*)
+                  (* (-> *display* time-factor) (-> *display* dog-ratio) rate)
+                  (* 5.0 rate)
+                  )
+              )
+        )
+    (set! (-> this time-adjust-ratio) (/ f0-6 5))
+    )
+  (set! (-> this seconds-per-frame) (/ (-> this time-adjust-ratio) 60))
+  (set! (-> this frames-per-second) (if (= (-> this time-adjust-ratio) 0.0)
+                                        0.0
+                                        (* 60.0 (/ 1.0 (-> this time-adjust-ratio)))
+                                        )
+        )
+  (let* ((v1-12 (the-as number (- (-> this frame-counter) (-> this old-frame-counter))))
+         (f0-14 (the-as float v1-12))
+         (f1-9 (* 0.2 (the float v1-12)))
+         )
+    (set-vector! (-> this sparticle-data) f0-14 (* 5.0 f1-9) f1-9 f1-9)
+    )
+  rate
+  )
+
+;; definition for method 10 of type clock
+(defmethod advance-by! ((this clock) (arg0 float))
+  "Advance the clock by arg0 timeframes (as a float).
+   Both counters keep a separate fractional and integer counter."
+  (the int (+ arg0 (-> this accum)))
+  (+! (-> this integral-accum) arg0)
+  (set! (-> this old-integral-frame-counter) (-> this integral-frame-counter))
+  (while (>= (-> this integral-accum) (-> *display* time-factor))
+    (+! (-> this integral-frame-counter) 1)
+    (set! (-> this integral-accum) (- (-> this integral-accum) (-> *display* time-factor)))
+    )
+  (let ((v1-7 (the int (+ arg0 (-> this accum)))))
+    (set! (-> this accum) (- (+ arg0 (-> this accum)) (the float v1-7)))
+    (set! (-> this old-frame-counter) (-> this frame-counter))
+    (+! (-> this frame-counter) v1-7)
+    )
+  (update-rates! this (-> this clock-ratio))
+  this
+  )
+
+;; definition for method 11 of type clock
+(defmethod tick! ((this clock))
+  "Per-game-frame clock tick forward."
+  (if (not (logtest? (-> this mask) (-> *kernel-context* prevent-from-run)))
+      (advance-by! this (* (-> *display* time-factor) (-> *display* dog-ratio) (-> this clock-ratio)))
+      (set! (-> this sparticle-data x) 0.0)
+      )
+  this
+  )
+
+;; definition for method 15 of type clock
+;; WARN: Return type mismatch int vs none.
+(defmethod reset! ((this clock))
+  "Reset a clock to 1000s, rate of 1."
+  (set! (-> this frame-counter) (seconds 1000))
+  (set! (-> this integral-frame-counter) (seconds 1000))
+  (set! (-> this accum) 0.0)
+  (set! (-> this old-frame-counter) (+ (-> this frame-counter) -1))
+  (set! (-> this old-integral-frame-counter) (+ (-> this integral-frame-counter) -1))
+  (update-rates! this 1.0)
+  0
+  (none)
+  )
+
+;; definition for method 12 of type clock
+(defmethod save! ((this clock) (arg0 (pointer uint64)))
+  "Save a clock's state to a buffer, return bytes used."
+  (set! (-> arg0 0) (the-as uint (-> this frame-counter)))
+  (set! (-> arg0 1) (the-as uint (-> this integral-frame-counter)))
+  16
+  )
+
+;; definition for method 13 of type clock
+(defmethod load! ((this clock) (arg0 (pointer uint64)))
+  "Load a clock's state from a buffer, return bytes used."
+  (set! (-> this frame-counter) (the-as time-frame (-> arg0 0)))
+  (set! (-> this integral-frame-counter) (the-as time-frame (-> arg0 1)))
+  (set! (-> this accum) 0.0)
+  (set! (-> this integral-accum) 0.0)
+  (set! (-> this old-frame-counter) (-> this frame-counter))
+  (set! (-> this old-integral-frame-counter) (-> this integral-frame-counter))
+  16
+  )
+
+;; definition for method 14 of type clock
+(defmethod copy! ((this clock) (arg0 clock))
+  "Copy the frame counters and ratio from arg0."
+  (set! (-> this frame-counter) (-> arg0 frame-counter))
+  (set! (-> this integral-frame-counter) (-> arg0 integral-frame-counter))
+  (set! (-> this accum) (-> arg0 accum))
+  (set! (-> this integral-accum) (-> arg0 integral-accum))
+  (set! (-> this old-frame-counter) (-> arg0 old-frame-counter))
+  (set! (-> this old-integral-frame-counter) (-> arg0 old-integral-frame-counter))
+  (set! (-> this clock-ratio) (-> arg0 clock-ratio))
+  this
+  )

@@ -13,4 +13,4 @@
 void save_level_background_as_gltf(const tfrag3::Level& level, const fs::path& glb_file);
 void save_level_foreground_as_gltf(const tfrag3::Level& level,
                                    const std::map<std::string, level_tools::ArtData>& art_data,
-                                   const fs::path& glb_file);
+                                   const fs::path& glb_path);

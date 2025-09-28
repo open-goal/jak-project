@@ -1,9 +1,11 @@
 
 
 #include "find_defstates.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
 #include "common/type_system/state.h"
+
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -227,7 +229,7 @@ FormElement* rewrite_nonvirtual_defstate(
       get_defstate_entries(elt->body(), body_index, env, info.first, elt->entries().at(0).dest,
                            info.second, pool, {}, skip_states);
 
-  return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first,
+  return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first, "",
                                              entries, false, false);
 }
 
@@ -353,6 +355,21 @@ FormElement* rewrite_virtual_defstate(
     inherit_info = {{mot_mr.maps.strings.at(0), mot_mr.maps.strings.at(1)}};
   }
 
+  // jak 3: some virtual states set their parent here and inherit from their own type's states...
+  std::string maybe_parent_state;
+  std::string maybe_state_type;
+  auto maybe_parent = elt->body()->at(body_idx);
+  auto maybe_parent_matcher =
+      Matcher::set(Matcher::deref(Matcher::any_reg(), false, {DerefTokenMatcher::string("parent")}),
+                   Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_TYPE),
+                               {Matcher::any_symbol(0), Matcher::any_constant_token(1)}));
+  auto maybe_parent_mr = match(maybe_parent_matcher, maybe_parent);
+  if (maybe_parent_mr.matched) {
+    maybe_state_type = maybe_parent_mr.maps.strings.at(0);
+    maybe_parent_state = maybe_parent_mr.maps.strings.at(1);
+    body_idx++;
+  }
+
   // checks to check: method type is a state
   // if inherit matches expected.
 
@@ -389,10 +406,10 @@ FormElement* rewrite_virtual_defstate(
   if (method_info.type.base_type() != "state" ||
       method_info.type.last_arg().base_type() != "_type_") {
     env.func->warnings.error_and_throw(
-        "Virtual defstate is defining a virtual state in method {} of {}, but the type "
+        "Virtual defstate is defining a virtual state \"{}\" in method {} of {}, but the type "
         "of this method is {}, which is not a valid virtual state type (must be "
         "\"(state ... _type_)\")",
-        method_info.name, type_name, method_info.type.print());
+        expected_state_name, method_info.name, type_name, method_info.type.print());
   }
 
   bool state_override = false;
@@ -409,7 +426,14 @@ FormElement* rewrite_virtual_defstate(
         //     expected_state_name, type_name);
       }
     } else {
-      if (inherit_info) {
+      // if we set our parent state, check that that state's type and this type are the same
+      if (inherit_info && maybe_parent_mr.matched && maybe_state_type == type_name) {
+        env.func->warnings.warning(
+            "Virtual defstate {} is inheriting from state {} which is one of its own type's "
+            "states.",
+            expected_state_name, maybe_parent_state);
+      }
+      if (inherit_info && !maybe_parent_mr.matched) {
         env.func->warnings.error_and_throw(
             "Virtual defstate for state {} in type {}: the state wasn't defined in the "
             "parent but was inherited.",
@@ -419,7 +443,7 @@ FormElement* rewrite_virtual_defstate(
   }
 
   // checks: parent_type_name is the parent
-  if (inherit_info) {
+  if (inherit_info && !maybe_parent_mr.matched) {
     auto child_type_info = env.dts->ts.lookup_type(type_name);
     if (child_type_info->get_parent() != inherit_info->parent_type_name) {
       env.func->warnings.error_and_throw(
@@ -449,12 +473,219 @@ FormElement* rewrite_virtual_defstate(
       elt->body(), body_idx + 1, env, expected_state_name, elt->entries().at(0).dest,
       method_info.type.substitute_for_method_call(type_name), pool, type_name, skip_states);
 
-  return pool.alloc_element<DefstateElement>(type_name, expected_state_name, entries, true,
-                                             state_override);
+  std::string parent_str;
+  if (!maybe_parent_state.empty()) {
+    parent_str = fmt::format("({} {})", type_name, maybe_parent_state);
+  }
+
+  return pool.alloc_element<DefstateElement>(type_name, expected_state_name, parent_str, entries,
+                                             true, state_override);
+}
+
+FormElement* rewrite_virtual_defstate_with_nonvirtual_inherit(
+    LetElement* elt,
+    const Env& env,
+    const std::string& expected_state_name,
+    FormPool& pool,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
+  // (let ((gp-6 (new 'static 'state
+  //             :name 'spinning
+  //             :next #f
+  //             :exit #f
+  //             :parent #f
+  //             :code #f
+  //             :trans #f
+  //             :post #f
+  //             :enter #f
+  //             :event #f
+  //             )
+  //           )
+  //     )
+  // (inherit-state gp-6 gun-yellow-3-saucer-base-state)
+  // (set! (-> gp-6 parent) gun-yellow-3-saucer-base-state)
+  // (method-set! gun-yellow-3-saucer 46 gp-6)
+  // (set! (-> gp-6 enter) L255)
+  // (set! (-> gp-6 exit) (the-as (function object) L251))
+  // (set! (-> gp-6 trans) (the-as (function object) L253))
+  // )
+  env.func->warnings.warning("Encountered virtual defstate {} with non-virtual inherit.",
+                             expected_state_name);
+  // variable at the top of let, contains the static state with name exptected_state_name
+  auto state_var_from_let_def = elt->entries().at(0).dest;
+  // our index into the let body
+  int body_idx = 0;
+
+  // the setup
+  auto first_in_body = elt->body()->at(body_idx);
+  auto inherit = dynamic_cast<GenericElement*>(first_in_body);
+  std::string parent_state;
+  if (inherit) {
+    parent_state = inherit->elts().at(1)->to_string(env);
+  }
+  body_idx += 2;
+
+  // checks to check: method type is a state
+  // if inherit matches expected.
+
+  // next, find (method-set! sunken-elevator 22 (the-as function gp-0))
+  auto method_set_form = elt->body()->at(body_idx);
+  Form temp = Form();
+  temp.elts().push_back(method_set_form);
+  auto mset_matcher =
+      Matcher::op(GenericOpMatcher::func(Matcher::symbol("method-set!")),
+                  {Matcher::any_symbol(0), Matcher::any_integer(1), Matcher::any(2)});
+  auto mset_mr = match(mset_matcher, &temp);
+  if (!mset_mr.matched) {
+    env.func->warnings.error_and_throw(
+        "Failed to recognize virtual defstate. Got a {} as the third thing, but was "
+        "expecting method-set! call",
+        temp.to_string(env));
+  }
+
+  // the actual type that gets this as a state
+  auto type_name = mset_mr.maps.strings.at(0);
+  auto method_id = mset_mr.maps.ints.at(1);
+
+  // should be the state again.
+  auto val = strip_cast(mset_mr.maps.forms.at(2)->try_as_single_element());
+  if (val->to_string(env) != env.get_variable_name(state_var_from_let_def)) {
+    env.func->warnings.error_and_throw(
+        "Variable name disagreement in virtual defstate: began with {}, but did method "
+        "set using {}",
+        val->to_string(env), env.get_variable_name(state_var_from_let_def));
+  }
+
+  // we should double check that the type in the defstate is correct
+  auto method_info = env.dts->ts.lookup_method(type_name, method_id);
+  if (method_info.type.base_type() != "state" ||
+      method_info.type.last_arg().base_type() != "_type_") {
+    env.func->warnings.error_and_throw(
+        "Virtual defstate is defining a virtual state \"{}\" in method {} of {}, but the type "
+        "of this method is {}, which is not a valid virtual state type (must be "
+        "\"(state ... _type_)\")",
+        expected_state_name, method_info.name, type_name, method_info.type.print());
+  }
+
+  bool state_override = false;
+
+  // name matches
+  if (expected_state_name != method_info.name) {
+    env.func->warnings.error_and_throw(
+        "Disagreement between state name and type system name. The state is named {}, "
+        "but the slot is named {}, defined in type {}",
+        expected_state_name, method_info.name, method_info.defined_in_type);
+  }
+
+  auto entries = get_defstate_entries(
+      elt->body(), body_idx + 1, env, expected_state_name, elt->entries().at(0).dest,
+      method_info.type.substitute_for_method_call(type_name), pool, type_name, skip_states);
+
+  return pool.alloc_element<DefstateElement>(type_name, expected_state_name, parent_state, entries,
+                                             true, state_override);
+}
+
+FormElement* rewrite_nonvirtual_defstate_with_inherit(
+    LetElement* elt,
+    const Env& env,
+    const std::string& expected_state_name,
+    FormPool& pool,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
+  // (let ((gp-1 (new 'static 'state
+  //             :name 'target-swim-walk
+  //             :next #f
+  //             :exit #f
+  //             :parent #f
+  //             :code #f
+  //             :trans #f
+  //             :post #f
+  //             :enter #f
+  //             :event #f
+  //             )
+  //           )
+  //     )
+  //   (inherit-state gp-1 target-swim)
+  //   (set! (-> gp-1 parent) target-swim)
+  //   (set! target-swim-walk (the-as (state target) gp-1))
+  //   (set! (-> gp-1 enter) L120)
+  //   (set! (-> gp-1 exit) (-> target-swim-stance exit))
+  //   (set! (-> gp-1 trans) (the-as (function object) L107))
+  //   (set! (-> gp-1 code) L95)
+  //   )
+  env.func->warnings.warning("Encountered non-virtual defstate {} with non-virtual inherit.",
+                             expected_state_name);
+  ASSERT(elt->body()->size() > 0);
+  int body_index = 0;
+
+  // the setup
+  auto first_in_body = elt->body()->at(body_index);
+  auto inherit = dynamic_cast<GenericElement*>(first_in_body);
+  std::string parent_state;
+  if (inherit) {
+    parent_state = inherit->elts().at(1)->to_string(env);
+  }
+  // advance to state set
+  body_index += 2;
+  auto info = get_state_info(elt->body()->at(body_index), env);
+  if (info.first != expected_state_name) {
+    env.func->warnings.error_and_throw(
+        "Inconsistent defstate name. code has {}, static state has {}", info.first,
+        expected_state_name);
+  }
+  if (debug_defstates) {
+    lg::debug("State: {} Type: {}", info.first, info.second.print());
+  }
+  body_index++;
+
+  auto entries =
+      get_defstate_entries(elt->body(), body_index, env, info.first, elt->entries().at(0).dest,
+                           info.second, pool, {}, skip_states);
+
+  return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first,
+                                             parent_state, entries, false, false);
 }
 
 bool is_nonvirtual_state(LetElement* elt) {
   return dynamic_cast<SetFormFormElement*>(elt->body()->at(0));
+}
+
+bool is_nonvirtual_state_with_inherit(LetElement* elt) {
+  auto inherit = dynamic_cast<GenericElement*>(elt->body()->at(0));
+  if (inherit) {
+    auto inherit_matcher = Matcher::op(GenericOpMatcher::func(Matcher::symbol("inherit-state")),
+                                       {Matcher::any_reg(0), Matcher::any_symbol(1)});
+    auto mr = match(inherit_matcher, inherit);
+    if (mr.matched) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool is_virtual_state_with_nonvirtual_inherit(LetElement* elt) {
+  if (elt->body()->size() >= 3) {
+    auto inherit = dynamic_cast<GenericElement*>(elt->body()->at(0));
+    auto parent = dynamic_cast<SetFormFormElement*>(elt->body()->at(1));
+    auto method_set = dynamic_cast<GenericElement*>(elt->body()->at(2));
+    if (!inherit || !parent || !method_set) {
+      return false;
+    }
+    std::vector<FormElement*> forms = {inherit, parent, method_set};
+    std::vector matchers = {
+        Matcher::op(GenericOpMatcher::func(Matcher::symbol("inherit-state")),
+                    {Matcher::any_reg(0), Matcher::any_symbol(1)}),
+        Matcher::set(Matcher::deref(Matcher::any(), false, {DerefTokenMatcher::string("parent")}),
+                     Matcher::any_symbol()),
+        Matcher::op(GenericOpMatcher::func(Matcher::symbol("method-set!")),
+                    {Matcher::any_symbol(0), Matcher::any_integer(1), Matcher::any(2)})};
+    for (size_t i = 0; i < matchers.size(); i++) {
+      auto mr = match(matchers.at(i), forms.at(i));
+      if (!mr.matched) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 }  // namespace
@@ -492,6 +723,18 @@ void run_defstate(
           if (is_nonvirtual_state(as_let)) {
             auto rewritten =
                 rewrite_nonvirtual_defstate(as_let, env, expected_state_name, pool, skip_states);
+            if (rewritten) {
+              fe = rewritten;
+            }
+          } else if (is_virtual_state_with_nonvirtual_inherit(as_let)) {
+            auto rewritten = rewrite_virtual_defstate_with_nonvirtual_inherit(
+                as_let, env, expected_state_name, pool, skip_states);
+            if (rewritten) {
+              fe = rewritten;
+            }
+          } else if (is_nonvirtual_state_with_inherit(as_let)) {
+            auto rewritten = rewrite_nonvirtual_defstate_with_inherit(
+                as_let, env, expected_state_name, pool, skip_states);
             if (rewritten) {
               fe = rewritten;
             }

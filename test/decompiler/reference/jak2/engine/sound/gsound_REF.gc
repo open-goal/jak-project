@@ -28,6 +28,7 @@
 ;; definition for method 10 of type engine-sound-pers
 ;; WARN: Return type mismatch int vs none.
 (defmethod kill-callback ((this engine-sound-pers) (arg0 connection-pers))
+  "Called when a connection is removed."
   (let ((v1-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-param))
     (set! (-> v1-0 id) (the-as sound-id (-> arg0 param-int64 0)))
@@ -63,8 +64,9 @@
 (kmemclose)
 
 ;; definition for function sound-name=
-(defun sound-name= ((arg0 sound-name) (arg1 sound-name))
-  (and (= (the-as uint arg0) (the-as uint arg1)) (= (-> arg0 hi) (-> arg1 hi)))
+(defun sound-name= ((a sound-name) (b sound-name))
+  "Are two sound names the same?"
+  (and (= (the-as uint a) (the-as uint b)) (= (-> a hi) (-> b hi)))
   )
 
 ;; definition of type sound-iop-info
@@ -145,6 +147,7 @@
 
 ;; definition for function str-is-playing?
 (defun str-is-playing? ()
+  "Is any streaming audio playing?"
   (countdown (v1-0 4)
     (if (and (>= (the-as uint (-> *sound-iop-info* stream-id v1-0)) 0)
              (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status ststatus-four))
@@ -157,6 +160,7 @@
 
 ;; definition for function str-id-is-playing?
 (defun str-id-is-playing? ((arg0 int))
+  "Is any streaming audio with the given ID playing?"
   (countdown (v1-0 4)
     (if (and (= arg0 (-> *sound-iop-info* stream-id v1-0))
              (logtest? (-> *sound-iop-info* stream-status v1-0) (stream-status ststatus-one ststatus-six))
@@ -168,12 +172,13 @@
   )
 
 ;; definition for function current-str-pos
-(defun current-str-pos ((arg0 sound-id))
+(defun current-str-pos ((id sound-id))
+  "Get the current stream position of the given sound ID, or -1 if it is not playing."
   (if (>= (-> *setting-control* user-current movie-skip-frame) 0.0)
       (return (the int (* 34.133335 (-> *setting-control* user-current movie-skip-frame))))
       )
   (dotimes (v1-5 4)
-    (if (= arg0 (-> *sound-iop-info* stream-id v1-5))
+    (if (= id (-> *sound-iop-info* stream-id v1-5))
         (return (the-as int (-> *sound-iop-info* stream-position v1-5)))
         )
     )
@@ -181,9 +186,10 @@
   )
 
 ;; definition for function is-ramdisk-loaded?
-(defun is-ramdisk-loaded? ((arg0 symbol))
+(defun is-ramdisk-loaded? ((name symbol))
+  "Check if the ramdisk-name is set to this (unused)."
   (let ((gp-0 (-> *sound-iop-info* ramdisk-name))
-        (s5-0 (symbol->string arg0))
+        (s5-0 (symbol->string name))
         )
     (and (charp-prefix= (-> s5-0 data) gp-0) (= (-> gp-0 (length s5-0)) 46))
     )
@@ -191,11 +197,13 @@
 
 ;; definition for function is-cd-in?
 (defun is-cd-in? ()
+  "Is the CD/DVD in the ps2?"
   (zero? (-> *sound-iop-info* nocd))
   )
 
 ;; definition for function new-sound-id
 (defun new-sound-id ()
+  "Allocate a new sound ID, used to identify a unique playback of a sound."
   (set! *current-sound-id* (+ *current-sound-id* 1))
   (if (< (the-as int *current-sound-id*) #x10000)
       (set! *current-sound-id* (the-as sound-id #x10000))
@@ -205,6 +213,7 @@
 
 ;; definition for function check-irx-version
 (defun check-irx-version ()
+  "Confirm OVERLORD version is correct and set up the sound-iop-info address so the OVERLORD can report back to the EE."
   (let ((gp-0 (the-as sound-rpc-get-irx-version (add-element *sound-loader-rpc*))))
     (set! (-> gp-0 command) (sound-command get-irx-version))
     (set! (-> gp-0 ee-addr) (&-> *sound-iop-info* frame))
@@ -223,11 +232,12 @@
 
 ;; definition for function sound-bank-iop-store
 ;; INFO: Used lq/sq
-(defun sound-bank-iop-store ((arg0 sound-name))
+(defun sound-bank-iop-store ((name sound-name))
+  "Send a iop-store RPC to loader with the given name"
   (let ((gp-0 (new-sound-id)))
     (let ((v1-1 (the-as sound-rpc-bank-cmd (add-element *sound-loader-rpc*))))
       (set! (-> v1-1 command) (sound-command iop-store))
-      (set! (-> v1-1 bank-name) arg0)
+      (set! (-> v1-1 bank-name) name)
       )
     (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
     gp-0
@@ -236,11 +246,12 @@
 
 ;; definition for function sound-bank-iop-free
 ;; INFO: Used lq/sq
-(defun sound-bank-iop-free ((arg0 sound-name))
+(defun sound-bank-iop-free ((name sound-name))
+  "Send a iop-free RPC to loader with the given name"
   (let ((gp-0 (new-sound-id)))
     (let ((v1-1 (the-as sound-rpc-bank-cmd (add-element *sound-loader-rpc*))))
       (set! (-> v1-1 command) (sound-command iop-free))
-      (set! (-> v1-1 bank-name) arg0)
+      (set! (-> v1-1 bank-name) name)
       )
     (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
     gp-0
@@ -250,6 +261,7 @@
 ;; definition for function sound-bank-load
 ;; INFO: Used lq/sq
 (defun sound-bank-load ((arg0 sound-name))
+  "Send RPC to load a sound bank."
   (let ((gp-0 (new-sound-id)))
     (let ((v1-1 (the-as sound-rpc-load-bank (add-element *sound-loader-rpc*))))
       (set! (-> v1-1 command) (sound-command load-bank))
@@ -262,11 +274,12 @@
 
 ;; definition for function sound-bank-load-from-iop
 ;; INFO: Used lq/sq
-(defun sound-bank-load-from-iop ((arg0 sound-name))
+(defun sound-bank-load-from-iop ((name sound-name))
+  "Send load-bank-from-iop rpc to loader"
   (let ((gp-0 (new-sound-id)))
     (let ((v1-1 (the-as sound-rpc-load-bank (add-element *sound-loader-rpc*))))
       (set! (-> v1-1 command) (sound-command load-bank-from-iop))
-      (set! (-> v1-1 bank-name) arg0)
+      (set! (-> v1-1 bank-name) name)
       )
     (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
     gp-0
@@ -275,12 +288,13 @@
 
 ;; definition for function sound-bank-load-from-ee
 ;; INFO: Used lq/sq
-(defun sound-bank-load-from-ee ((arg0 sound-name) (arg1 pointer))
+(defun sound-bank-load-from-ee ((name sound-name) (addr pointer))
+  "Send load-bank-from-ee rpc to loader"
   (let ((gp-0 (new-sound-id)))
     (let ((v1-1 (the-as sound-rpc-load-bank (add-element *sound-loader-rpc*))))
       (set! (-> v1-1 command) (sound-command load-bank-from-ee))
-      (set! (-> v1-1 bank-name) arg0)
-      (set! (-> v1-1 ee-addr) arg1)
+      (set! (-> v1-1 bank-name) name)
+      (set! (-> v1-1 ee-addr) addr)
       )
     (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
     gp-0
@@ -289,10 +303,11 @@
 
 ;; definition for function sound-bank-unload
 ;; INFO: Used lq/sq
-(defun sound-bank-unload ((arg0 sound-name))
+(defun sound-bank-unload ((name sound-name))
+  "Send unload-bank rpc to loader"
   (let ((v1-1 (the-as sound-rpc-unload-bank (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command unload-bank))
-    (set! (-> v1-1 bank-name) arg0)
+    (set! (-> v1-1 bank-name) name)
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   0
@@ -300,10 +315,11 @@
 
 ;; definition for function sound-music-load
 ;; INFO: Used lq/sq
-(defun sound-music-load ((arg0 sound-name))
+(defun sound-music-load ((name sound-name))
+  "Send load-music rpc to loader"
   (let ((v1-1 (the-as sound-rpc-load-music (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command load-music))
-    (set! (-> v1-1 bank-name) arg0)
+    (set! (-> v1-1 bank-name) name)
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   0
@@ -311,6 +327,7 @@
 
 ;; definition for function sound-music-unload
 (defun sound-music-unload ()
+  "Send unload-music rpc to loader."
   (let ((v1-1 (the-as sound-rpc-unload-music (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command unload-music))
     )
@@ -320,6 +337,7 @@
 
 ;; definition for function set-language
 (defun set-language ((arg0 language-enum))
+  "Send set-language rpc to loader. Note this is only for sound, no game text is changed."
   (kset-language arg0)
   (let ((v1-1 (the-as sound-rpc-set-language (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command set-language))
@@ -332,6 +350,7 @@
 ;; definition for function sound-set-stereo-mode
 ;; WARN: Return type mismatch int vs none.
 (defun sound-set-stereo-mode ((arg0 stereo-mode))
+  "Send set-stereo-mode rpc to loader."
   (let ((v1-1 (the-as sound-rpc-set-stereo-mode (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command set-stereo-mode))
     (set! (-> v1-1 mode) (the-as int arg0))
@@ -344,6 +363,7 @@
 ;; definition for function list-sounds
 ;; WARN: Return type mismatch int vs none.
 (defun list-sounds ()
+  "Send list-sounds rpc to loader."
   (let ((v1-1 (the-as sound-rpc-list-sounds (add-element *sound-loader-rpc*))))
     (set! (-> v1-1 command) (sound-command list-sounds))
     )
@@ -354,8 +374,9 @@
   )
 
 ;; definition for function sound-command->string
-(defun sound-command->string ((arg0 sound-command))
-  (case arg0
+(defun sound-command->string ((cmd sound-command))
+  "Convert sound-command enum to string."
+  (case cmd
     (((sound-command num-sectors))
      "num-sectors"
      )
@@ -517,6 +538,7 @@
 
 ;; definition for function sound-buffer-dump
 (defun sound-buffer-dump ()
+  "Print out all sound-commands in the buffer."
   (let ((gp-0 (-> *sound-player-rpc* current elt-used))
         (s5-0 (-> *sound-player-rpc* current elt-size))
         )
@@ -543,6 +565,7 @@
 
 ;; definition for function swap-sound-buffers
 (defun swap-sound-buffers ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  "Per-frame update of sound system - update loop-engine, update ear trans, send player RPC, check for missing/dirty CD."
   (run-pending-updates! *sound-loop-engine* (-> *display* base-clock frame-counter))
   (cond
     ((check-busy *sound-player-rpc*)
@@ -577,12 +600,14 @@
 
 ;; definition for function get-sound-buffer-entry
 (defun get-sound-buffer-entry ()
+  "Allocate a new entry in the player RPC queue, to be flushed on the next frame."
   (add-element *sound-player-rpc*)
   )
 
 ;; definition for function free-last-sound-buffer-entry
 ;; WARN: Return type mismatch int vs none.
 (defun free-last-sound-buffer-entry ()
+  "Remove the last thing added with get-sound-buffer-entry."
   (decrement-elt-used *sound-player-rpc*)
   0
   (none)
@@ -591,6 +616,7 @@
 ;; definition for function sound-basic-cb
 ;; WARN: Return type mismatch int vs none.
 (defun sound-basic-cb ((arg0 int) (arg1 (pointer int32)))
+  "Unknown and unused callback."
   (set! (-> arg1 0) arg0)
   0
   (none)
@@ -598,22 +624,24 @@
 
 ;; definition for function sound-trans-convert
 (defun sound-trans-convert ((arg0 vector3w) (arg1 vector))
+  "Convert a GOAL translation (meters) to integer format for the IOP"
   (let ((v1-0 (if arg1
                   arg1
                   (ear-trans 0)
                   )
               )
         )
-    (set! (-> arg0 x) (the int (* 0.0625 (-> v1-0 x))))
-    (set! (-> arg0 y) (the int (* 0.0625 (-> v1-0 y))))
-    (set! (-> arg0 z) (the int (* 0.0625 (-> v1-0 z))))
+    (set! (-> arg0 x) (the int (/ (-> v1-0 x) 16)))
+    (set! (-> arg0 y) (the int (/ (-> v1-0 y) 16)))
+    (set! (-> arg0 z) (the int (/ (-> v1-0 z) 16)))
     )
   0
   )
 
 ;; definition for function sound-angle-convert
-(defun sound-angle-convert ((arg0 float))
-  (let* ((f0-3 (the float (sar (shl (the int arg0) 48) 48)))
+(defun sound-angle-convert ((float-angle float))
+  "Convert a GOAL angle to integer format for the iop"
+  (let* ((f0-3 (the float (sar (shl (the int float-angle) 48) 48)))
          (v0-0 (the int (* 0.005493164 f0-3)))
          )
     (if (< v0-0 0)
@@ -630,6 +658,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch uint128 vs sound-name.
 (defun string->sound-name ((arg0 string))
+  "Create a sound-name from a string"
   (let ((v1-0 (new 'stack-no-clear 'qword)))
     (set! (-> v1-0 quad) (the-as uint128 0))
     (let ((a1-0 (the-as (pointer uint8) v1-0))
@@ -647,6 +676,7 @@
 
 ;; definition for function sound-set-volume
 (defun sound-set-volume ((arg0 sound-group) (arg1 float))
+  "Send set-master-volume rpc."
   (let ((v1-0 (the-as sound-rpc-set-master-volume (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-master-volume))
     (set! (-> v1-0 group) arg0)
@@ -656,19 +686,21 @@
   )
 
 ;; definition for function sound-set-reverb
-(defun sound-set-reverb ((arg0 int) (arg1 float) (arg2 float) (arg3 uint))
+(defun sound-set-reverb ((reverb int) (left float) (right float) (core uint))
+  "Send set-reverb rpc"
   (let ((v1-0 (the-as sound-rpc-set-reverb (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-reverb))
-    (set! (-> v1-0 core) arg3)
-    (set! (-> v1-0 reverb) arg0)
-    (set! (-> v1-0 left) (the-as uint (the int (* 32767.0 arg1))))
-    (set! (-> v1-0 right) (the-as uint (the int (* 32767.0 arg2))))
+    (set! (-> v1-0 core) core)
+    (set! (-> v1-0 reverb) reverb)
+    (set! (-> v1-0 left) (the-as uint (the int (* 32767.0 left))))
+    (set! (-> v1-0 right) (the-as uint (the int (* 32767.0 right))))
     )
   0
   )
 
 ;; definition for function sound-set-ear-trans
 (defun sound-set-ear-trans ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))
+  "Send set-ear-trans rpc"
   (let ((gp-0 (the-as sound-rpc-set-ear-trans (get-sound-buffer-entry))))
     (set! (-> gp-0 command) (sound-command set-ear-trans))
     (sound-trans-convert (the-as vector3w (-> gp-0 ear-trans0)) arg0)
@@ -682,8 +714,9 @@
 ;; definition for function sound-play-by-name
 ;; INFO: Used lq/sq
 (defbehavior sound-play-by-name process-drawable ((arg0 sound-name) (arg1 sound-id) (arg2 int) (arg3 int) (arg4 int) (arg5 sound-group) (arg6 object))
-  "Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
-otherwise, an explicit [[vector]] can be provided"
+  "Send play rpc to play a sound!
+   Last arg can by a symbol with value [[#t]], in which case it will pull `trans` [[vector]] off the current [[process-drawable]]
+   otherwise, an explicit [[vector]] can be provided"
   (local-vars (sv-16 sound-group))
   (set! sv-16 arg5)
   (let ((s4-0 arg6))
@@ -715,6 +748,7 @@ otherwise, an explicit [[vector]] can be provided"
 ;; definition for function sound-play-by-spec
 ;; INFO: Used lq/sq
 (defbehavior sound-play-by-spec process-drawable ((arg0 sound-spec) (arg1 sound-id) (arg2 vector))
+  "Send play rpc to play a sound!"
   (when *sound-player-enable*
     (let ((s5-0 (the-as sound-rpc-play (get-sound-buffer-entry))))
       (set! (-> s5-0 command) (sound-command play))
@@ -744,33 +778,36 @@ otherwise, an explicit [[vector]] can be provided"
   )
 
 ;; definition for function sound-pause
-(defun sound-pause ((arg0 sound-id))
-  (when (nonzero? arg0)
+(defun sound-pause ((id sound-id))
+  "Send pause-sound rpc to pause by id"
+  (when (nonzero? id)
     (let ((v1-1 (the-as sound-rpc-pause-sound (get-sound-buffer-entry))))
       (set! (-> v1-1 command) (sound-command pause-sound))
-      (set! (-> v1-1 id) arg0)
+      (set! (-> v1-1 id) id)
       )
     )
   0
   )
 
 ;; definition for function sound-stop
-(defun sound-stop ((arg0 sound-id))
-  (when (nonzero? arg0)
+(defun sound-stop ((id sound-id))
+  "Send stop-sound rpc to stop by id"
+  (when (nonzero? id)
     (let ((v1-1 (the-as sound-rpc-stop-sound (get-sound-buffer-entry))))
       (set! (-> v1-1 command) (sound-command stop-sound))
-      (set! (-> v1-1 id) arg0)
+      (set! (-> v1-1 id) id)
       )
     )
   0
   )
 
 ;; definition for function sound-continue
-(defun sound-continue ((arg0 sound-id))
-  (when (nonzero? arg0)
+(defun sound-continue ((id sound-id))
+  "Send continue-sound rpc to continue by id"
+  (when (nonzero? id)
     (let ((v1-1 (the-as sound-rpc-continue-sound (get-sound-buffer-entry))))
       (set! (-> v1-1 command) (sound-command continue-sound))
-      (set! (-> v1-1 id) arg0)
+      (set! (-> v1-1 id) id)
       )
     )
   0
@@ -778,6 +815,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for function sound-group-pause
 (defun sound-group-pause ((arg0 sound-group))
+  "Send pause-group rpc"
   (let ((v1-0 (the-as sound-rpc-pause-group (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command pause-group))
     (set! (-> v1-0 group) arg0)
@@ -787,6 +825,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for function sound-group-stop
 (defun sound-group-stop ((arg0 sound-group))
+  "Send stop-group rpc"
   (let ((v1-0 (the-as sound-rpc-stop-group (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command stop-group))
     (set! (-> v1-0 group) arg0)
@@ -796,6 +835,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for function sound-group-continue
 (defun sound-group-continue ((arg0 sound-group))
+  "Send continue-group rpc"
   (let ((v1-0 (the-as sound-rpc-continue-group (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command continue-group))
     (set! (-> v1-0 group) arg0)
@@ -804,36 +844,40 @@ otherwise, an explicit [[vector]] can be provided"
   )
 
 ;; definition for function sound-set-flava
-(defun sound-set-flava ((arg0 uint) (arg1 uint))
+(defun sound-set-flava ((flava uint) (excitement uint))
+  "Send set-flava rpc"
   (let ((v1-0 (the-as sound-rpc-set-flava (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-flava))
-    (set! (-> v1-0 flava) arg0)
-    (set! (-> v1-0 excitement) arg1)
+    (set! (-> v1-0 flava) flava)
+    (set! (-> v1-0 excitement) excitement)
     )
   0
   )
 
 ;; definition for function sound-set-midi-reg
-(defun sound-set-midi-reg ((arg0 int) (arg1 int))
+(defun sound-set-midi-reg ((reg int) (val int))
+  "Send set-midi-reg rpc"
   (let ((v1-0 (the-as sound-rpc-set-midi-reg (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-midi-reg))
-    (set! (-> v1-0 reg) arg0)
-    (set! (-> v1-0 value) arg1)
+    (set! (-> v1-0 reg) reg)
+    (set! (-> v1-0 value) val)
     )
   0
   )
 
 ;; definition for function sound-set-fps
-(defun sound-set-fps ((arg0 int))
+(defun sound-set-fps ((fps int))
+  "Send set-fps rpc"
   (let ((v1-0 (the-as sound-rpc-set-fps (get-sound-buffer-entry))))
     (set! (-> v1-0 command) (sound-command set-fps))
-    (set! (-> v1-0 fps) (the-as uint arg0))
+    (set! (-> v1-0 fps) (the-as uint fps))
     )
   0
   )
 
 ;; definition for function sound-volume-off
 (defun sound-volume-off ()
+  "Adjust settings to turn all sound volume off"
   (set-setting! 'music-volume 'abs 0.0 0)
   (set-setting! 'sfx-volume 'abs 0.0 0)
   (set-setting! 'ambient-volume 'abs 0.0 0)
@@ -847,6 +891,7 @@ otherwise, an explicit [[vector]] can be provided"
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs ambient-sound.
 (defmethod new ambient-sound ((allocation symbol) (type-to-make type) (arg0 basic) (arg1 vector))
+  "Set up ambient-sound. Can use an entity-actor (grabs from lump), sound-spec, or name as a string."
   (local-vars
     (sv-16 sound-spec)
     (sv-32 sound-name)
@@ -954,6 +999,7 @@ otherwise, an explicit [[vector]] can be provided"
 ;; definition for method 9 of type ambient-sound
 ;; INFO: Used lq/sq
 (defmethod update! ((this ambient-sound))
+  "Per-frame update of ambient sound."
   (with-pp
     (if (not *ambient-sound-class*)
         (return (the-as int #f))
@@ -1050,6 +1096,7 @@ otherwise, an explicit [[vector]] can be provided"
 ;; definition for method 11 of type ambient-sound
 ;; INFO: Used lq/sq
 (defmethod update-trans! ((this ambient-sound) (arg0 vector))
+  "Change the trans of the sound."
   (with-pp
     (set! (-> this trans quad) (-> arg0 quad))
     (when (nonzero? (-> this playing-id))
@@ -1077,6 +1124,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for method 12 of type ambient-sound
 (defmethod update-vol! ((this ambient-sound) (arg0 float))
+  "Change the volume of the sound."
   (when (nonzero? (-> this playing-id))
     (when *sound-player-enable*
       (let ((v1-4 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
@@ -1114,24 +1162,26 @@ otherwise, an explicit [[vector]] can be provided"
 ;; definition for method 14 of type ambient-sound
 ;; WARN: Return type mismatch int vs none.
 (defmethod set-falloff-far! ((this ambient-sound) (arg0 float))
-  (set! (-> this falloff-far) (the int (* 0.00024414062 arg0)))
+  (set! (-> this falloff-far) (the int (/ arg0 METER_LENGTH)))
   0
   (none)
   )
 
 ;; definition for method 10 of type ambient-sound
 ;; INFO: Used lq/sq
-(defmethod change-sound! ((this ambient-sound) (arg0 sound-name))
-  (when (not (and (= (the-as uint (-> this name)) (the-as uint arg0)) (= (-> arg0 hi) (-> this name hi))))
+(defmethod change-sound! ((this ambient-sound) (new-sound sound-name))
+  "Change the sound being played."
+  (when (not (and (= (the-as uint (-> this name)) (the-as uint new-sound)) (= (-> new-sound hi) (-> this name hi))))
     (stop! this)
     (set! (-> this playing-id) (new-sound-id))
-    (set! (-> this name) arg0)
+    (set! (-> this name) new-sound)
     )
   0
   )
 
 ;; definition for function show-iop-info
 (defun show-iop-info ((arg0 dma-buffer))
+  "Display iop info on screen."
   (dotimes (s5-0 24)
     (draw-string-xy
       (if (zero? (-> *sound-iop-info* chinfo s5-0))
@@ -1185,7 +1235,8 @@ otherwise, an explicit [[vector]] can be provided"
   )
 
 ;; definition for function show-iop-memory
-(defun show-iop-memory ((arg0 dma-buffer))
+(defun show-iop-memory ((dma dma-buffer))
+  "Display iop memory stats on screen"
   (let ((s5-0 draw-string-xy))
     (format
       (clear *temp-string*)
@@ -1193,7 +1244,7 @@ otherwise, an explicit [[vector]] can be provided"
       (-> *sound-iop-info* freemem)
       (shr (-> *sound-iop-info* freemem) 10)
       )
-    (s5-0 *temp-string* arg0 32 96 (font-color default) (font-flags shadow))
+    (s5-0 *temp-string* dma 32 96 (font-color default) (font-flags shadow))
     )
   (let ((s5-1 draw-string-xy))
     (format
@@ -1202,13 +1253,14 @@ otherwise, an explicit [[vector]] can be provided"
       (-> *sound-iop-info* freemem2)
       (shr (-> *sound-iop-info* freemem2) 10)
       )
-    (s5-1 *temp-string* arg0 32 64 (font-color default) (font-flags shadow))
+    (s5-1 *temp-string* dma 32 64 (font-color default) (font-flags shadow))
     )
   0
   )
 
 ;; definition for function ear-trans
 (defun ear-trans ((arg0 int))
+  "Get the current location of the ear. Use 1 for the settings ear-handle, or 0 for the camera."
   (cond
     ((or (movie?) *external-cam-mode*)
      (math-camera-pos)
@@ -1224,6 +1276,7 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition (debug) for function make-sqrt-table
 (defun-debug make-sqrt-table ()
+  "Generate integer square-root table used in the IOP."
   (format #t "static int sqrt_table[256] =~%{~%")
   (dotimes (gp-0 256)
     (let* ((f0-2 (sqrtf (* 16777216.0 (the float gp-0))))
@@ -1262,11 +1315,12 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for function loader-test-command
 ;; WARN: Return type mismatch int vs none.
-(defun loader-test-command ((arg0 sound-command) (arg1 uint))
+(defun loader-test-command ((cmd sound-command) (param uint))
+  "Send a command to loader by ID."
   (let ((v1-1 (the-as sound-rpc-test-cmd (add-element *sound-loader-rpc*))))
-    (set! (-> v1-1 command) arg0)
+    (set! (-> v1-1 command) cmd)
     (set! (-> v1-1 ee-addr) (the-as pointer 0))
-    (set! (-> v1-1 param0) arg1)
+    (set! (-> v1-1 param0) param)
     )
   (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
   (sync *sound-loader-rpc* #f)
@@ -1276,12 +1330,13 @@ otherwise, an explicit [[vector]] can be provided"
 
 ;; definition for function doppler-pitch-shift
 ;; INFO: Used lq/sq
-(defun doppler-pitch-shift ((arg0 vector) (arg1 vector))
+(defun doppler-pitch-shift ((sound-pos vector) (sound-vel vector))
+  "Compute pitch shift for the doppler effect. This is done assuming the listener is *target* and has *target*'s velocity."
   (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 2)))
-    (vector-! (-> gp-0 0) (target-pos 0) arg0)
+    (vector-! (-> gp-0 0) (target-pos 0) sound-pos)
     (if *target*
-        (vector-! (-> gp-0 1) arg1 (-> *target* control transv))
-        (set! (-> gp-0 1 quad) (-> arg1 quad))
+        (vector-! (-> gp-0 1) sound-vel (-> *target* control transv))
+        (set! (-> gp-0 1 quad) (-> sound-vel quad))
         )
     (vector-normalize! (-> gp-0 0) 1.0)
     (let ((f0-1 (/ 1228800.0 (fmax 0.1 (- 1228800.0 (vector-dot (-> gp-0 0) (-> gp-0 1)))))))
@@ -1293,6 +1348,7 @@ otherwise, an explicit [[vector]] can be provided"
 ;; definition for function sound-bank-reload
 ;; WARN: Return type mismatch int vs none.
 (defun sound-bank-reload ()
+  "Start a background process to unload all sound banks, then load them again."
   (process-spawn-function
     process
     (lambda ()
@@ -1306,10 +1362,7 @@ otherwise, an explicit [[vector]] can be provided"
           (set! (-> a1-3 0) 'empty0)
           (want-sound-banks *load-state* a1-3)
           )
-        (let ((s5-0 (current-time)))
-          (until (time-elapsed? s5-0 (seconds 1))
-            (suspend)
-            )
+        (suspend-for (seconds 1)
           )
         (let ((a1-4 (new 'stack-no-clear 'array 'symbol 4)))
           (set! (-> a1-4 2) (-> gp-0 2))

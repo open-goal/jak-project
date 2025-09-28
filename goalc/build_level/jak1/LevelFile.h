@@ -15,13 +15,12 @@
 #include "goalc/build_level/collide/jak1/collide_drawable.h"
 #include "goalc/build_level/collide/jak1/collide_pack.h"
 #include "goalc/build_level/common/Tfrag.h"
+#include "goalc/build_level/common/Tie.h"
 
 namespace jak1 {
 struct VisibilityString {
   std::vector<u8> bytes;
 };
-
-struct DrawableTreeInstanceTie {};
 
 struct DrawableTreeActor {};
 
@@ -37,7 +36,10 @@ struct DrawableTreeArray {
   size_t add_to_object_file(DataObjectGenerator& gen) const;
 };
 
-struct TextureRemap {};
+struct TexRemap {
+  u32 orig_texid;
+  u32 new_texid;
+};
 
 struct TextureId {};
 
@@ -53,7 +55,9 @@ struct DrawableInlineArrayAmbient {
   std::vector<EntityAmbient> ambients;
 };
 
-struct AdgifShaderArray {};
+struct AdgifShaderArray {
+  std::vector<AdGifData> adgifs;
+};
 
 // This is a place to collect all the data that should go into the bsp-header file.
 struct LevelFile {
@@ -73,11 +77,11 @@ struct LevelFile {
 
   //  (texture-remap-table    (pointer uint64)                 :offset-assert  52)
   //  (texture-remap-table-len int32                           :offset-assert  56)
-  std::vector<TextureRemap> texture_remap_table;
+  std::vector<TexRemap> texture_remap_table;
 
   //  (texture-ids            (pointer texture-id)             :offset-assert  60)
   //  (texture-page-count     int32                            :offset-assert  64)
-  std::vector<TextureId> texture_ids;
+  std::vector<u32> texture_ids;
 
   //  (unk-zero-0             basic                            :offset-assert  68)
   //  "misc", seems like it can be zero and is unused.

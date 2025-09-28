@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: vu1-macros.gc
-;; name in dgo: vu1-macros
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; this file has no code, just macros for vector-unit stuff.
 
@@ -16,38 +14,25 @@
    If this ends up used a lot, it's probably worth rewriting.
    "
   `(let ((vec (new 'stack 'vector))
-         (flag ,cf)
-         )
-     (.svf vec ,vfr)
-     (let* ((w-plus (fabs (-> vec w)))
-            (w-minus (- 0.0 w-plus))
-            )
-       ;; CF = CF << 6
-       (set! flag (logand #xffffff (shl flag 6)))
-
-       (when (> (-> vec x) w-plus)
-         (logior! flag 1)
-         )
-       (when (< (-> vec x) w-minus)
-         (logior! flag 2)
-         )
-       (when (> (-> vec y) w-plus)
-         (logior! flag 4)
-         )
-       (when (< (-> vec y) w-minus)
-         (logior! flag 8)
-         )
-       (when (> (-> vec z) w-plus)
-         (logior! flag 16)
-         )
-       (when (< (-> vec z) w-minus)
-         (logior! flag 32)
-         )
-       )
-     flag
-     )
-  )
-
+        (flag ,cf))
+    (.svf vec ,vfr)
+    (let* ((w-plus (fabs (-> vec w)))
+           (w-minus (- 0.0 w-plus)))
+      ;; CF = CF << 6
+      (set! flag (logand #xffffff (shl flag 6)))
+      (when (> (-> vec x) w-plus)
+        (logior! flag 1))
+      (when (< (-> vec x) w-minus)
+        (logior! flag 2))
+      (when (> (-> vec y) w-plus)
+        (logior! flag 4))
+      (when (< (-> vec y) w-minus)
+        (logior! flag 8))
+      (when (> (-> vec z) w-plus)
+        (logior! flag 16))
+      (when (< (-> vec z) w-minus)
+        (logior! flag 32)))
+    flag))
 
 (defmacro vftoi4.xyzw (dst src)
   "convert to 28.4 integer. This does the multiply while the number is still
@@ -55,15 +40,8 @@
    is how PCSX2 does it as well, so maybe it's right?
    NOTE: this is the only version of the instruction used in Jak 1, so we
    don't need to worry about masks."
-
   `(begin
-    (rlet ((temp :class vf))
-      (set! temp 16.0)
-      (.mul.x.vf temp ,src temp)
-      (.ftoi.vf ,dst temp)
-      )
-    )
-  )
+    (rlet ((temp :class vf)) (set! temp 16.0) (.mul.x.vf temp ,src temp) (.ftoi.vf ,dst temp))))
 
 (defmacro vftoi12.xyzw (dst src)
   "convert to 20.12 integer. This does the multiply while the number is still
@@ -71,15 +49,8 @@
    is how PCSX2 does it as well, so maybe it's right?
    NOTE: this is the only version of the instruction used in Jak 1, so we
    don't need to worry about masks."
-
   `(begin
-    (rlet ((temp :class vf))
-      (set! temp 4096.0)
-      (.mul.x.vf temp ,src temp)
-      (.ftoi.vf ,dst temp)
-      )
-    )
-  )
+    (rlet ((temp :class vf)) (set! temp 4096.0) (.mul.x.vf temp ,src temp) (.ftoi.vf ,dst temp))))
 
 (defmacro vftoi15.xyzw (dst src)
   "convert to 17.15 integer. This does the multiply while the number is still
@@ -87,15 +58,8 @@
    is how PCSX2 does it as well, so maybe it's right?
    NOTE: this is the only version of the instruction used in Jak 1, so we
    don't need to worry about masks."
-
   `(begin
-    (rlet ((temp :class vf))
-      (set! temp 32768.0)
-      (.mul.x.vf temp ,src temp)
-      (.ftoi.vf ,dst temp)
-      )
-    )
-  )
+    (rlet ((temp :class vf)) (set! temp 32768.0) (.mul.x.vf temp ,src temp) (.ftoi.vf ,dst temp))))
 
 (defmacro vitof4.xyzw (dst src)
   "convert from a 28.4 integer. This does the multiply while the number is still
@@ -103,15 +67,8 @@
    is how PCSX2 does it as well, so maybe it's right?
    NOTE: this is the only version of the instruction used in Jak 1, so we
    don't need to worry about masks."
-
   `(begin
-    (rlet ((temp :class vf))
-      (.itof.vf ,dst ,src)
-      (set! temp 0.0625)
-      (.mul.x.vf ,dst ,dst temp)
-      )
-    )
-  )
+    (rlet ((temp :class vf)) (.itof.vf ,dst ,src) (set! temp 0.0625) (.mul.x.vf ,dst ,dst temp))))
 
 (defmacro vitof12.xyzw (dst src)
   "convert from a 20.12 integer. This does the multiply while the number is still
@@ -119,15 +76,8 @@
    is how PCSX2 does it as well, so maybe it's right?
    NOTE: this is the only version of the instruction used in Jak 1, so we
    don't need to worry about masks."
-
-`(begin
-   (rlet ((temp :class vf))
-         (.itof.vf ,dst ,src)
-         (set! temp 0.000244140625)
-         (.mul.x.vf ,dst ,dst temp)
-         )
-   )
-)
+  `(begin
+    (rlet ((temp :class vf)) (.itof.vf ,dst ,src) (set! temp 0.000244140625) (.mul.x.vf ,dst ,dst temp))))
 
 (defmacro vitof15.xyzw (dst src)
   "convert from a 17.15 integer. This does the multiply while the number is still
@@ -135,15 +85,8 @@
    is how PCSX2 does it as well, so maybe it's right?
    NOTE: this is the only version of the instruction used in Jak 1, so we
    don't need to worry about masks."
-
-`(begin
-   (rlet ((temp :class vf))
-         (.itof.vf ,dst ,src)
-         (set! temp 0.000030517578125)
-         (.mul.x.vf ,dst ,dst temp)
-         )
-   )
-)
+  `(begin
+    (rlet ((temp :class vf)) (.itof.vf ,dst ,src) (set! temp 0.000030517578125) (.mul.x.vf ,dst ,dst temp))))
 
 ;; In the original game, init-for-transform stashed a bunch of stuff in registers, to be used by other functions.
 ;; In OpenGOAL, this seems risky so we're going to back up this manually.
@@ -182,31 +125,21 @@
    (vf28 uint128)
    (vf29 uint128)
    (vf30 uint128)
-   (vf31 uint128)
-   )
-  )
+   (vf31 uint128)))
 
 (define *transform-regs* (new 'static 'transform-regs))
 
-
 (defmacro with-vf0 (&rest body)
   "Macro for using the ps2-style vf0 register."
-
-  `(rlet ((vf0 :class vf))
-      (init-vf0-vector)
-      ,@body
-      )
-  )
+  `(rlet ((vf0 :class vf)) (init-vf0-vector) ,@body))
 
 (defmacro load-vf (reg)
   "Load a vf from the preserved vf registers"
-  `(.lvf ,reg (&-> *transform-regs* ,reg))
-  )
+  `(.lvf ,reg (&-> *transform-regs* ,reg)))
 
 (defmacro save-vf (reg)
   "Save a vf to the preserved vf registers"
-  `(.svf (&-> *transform-regs* ,reg) ,reg)
-  )
+  `(.svf (&-> *transform-regs* ,reg) ,reg))
 
 (defmacro with-vf (regs &key (rw 'read) &rest body)
   "Macro for using the specified ps2-style vf registers. These are preserved in *transform-regs*
@@ -216,27 +149,8 @@
      'write means the registers will be written to the preserved registers at the end
      'readwrite (or 'rw) means both
      #f means neither, turning this into a fancy macro around rlet."
-
   `(rlet (,@(apply (lambda (x) `(,x :class vf)) regs))
-
-      ,@(if (or (eq? rw ''read) (eq? rw ''readwrite) (eq? rw ''rw))
-        (apply (lambda (y)
-          `(load-vf ,y)
-          ) regs)
-        '()
-        )
-
-      ,@body
-
-      ;; this will mess up the return value!
-      ,@(if (or (eq? rw ''write) (eq? rw ''readwrite) (eq? rw ''rw))
-        (apply (lambda (y)
-          `(save-vf ,y)
-          ) regs)
-        '()
-        )
-
-      )
-  )
-
-
+    ,@(if (or (eq? rw ''read) (eq? rw ''readwrite) (eq? rw ''rw)) (apply (lambda (y) `(load-vf ,y)) regs) '())
+    ,@body
+    ;; this will mess up the return value!
+    ,@(if (or (eq? rw ''write) (eq? rw ''readwrite) (eq? rw ''rw)) (apply (lambda (y) `(save-vf ,y)) regs) '())))

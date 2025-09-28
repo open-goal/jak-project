@@ -1,185 +1,140 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: voicebox.gc
-;; name in dgo: voicebox
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/camera/camera.gc")
+(require "engine/common-obs/process-drawable.gc")
+(require "engine/game/settings.gc")
 
 ;; DECOMP BEGINS
 
-(deftype camera-voicebox (camera-slave)
-  ()
+(deftype camera-voicebox (camera-slave) ()
   (:states
-    cam-voicebox
-    )
-  )
-
+   cam-voicebox))
 
 (deftype voicebox (process-drawable)
-  ((parent-override  (pointer camera-voicebox)  :overlay-at parent)
-   (base-trans       vector                     :inline)
-   (seeker           cam-float-seeker           :inline)
-   (blend            float)
-   (twist            float)
-   (hint             handle)
-   )
+  ((parent-override (pointer camera-voicebox) :overlay-at parent)
+   (base-trans      vector :inline)
+   (seeker          cam-float-seeker :inline)
+   (blend           float)
+   (twist           float)
+   (hint            handle))
   (:state-methods
-    enter
-    idle
-    exit
-    )
-  )
-
+   enter
+   idle
+   exit))
 
 (defstate empty-state (process)
-  :code nothing
-  )
+  :code nothing)
 
-(defskelgroup *voicebox-sg* speaker speaker-lod0-jg speaker-idle-ja
-              ((speaker-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              )
+(defskelgroup *voicebox-sg*
+  speaker
+  speaker-lod0-jg
+  speaker-idle-ja
+  ((speaker-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4))
 
 (defbehavior voicebox-track voicebox ()
   (let ((gp-0 (new 'stack-no-clear 'vector))
-        (s5-0 (new 'stack-no-clear 'vector))
-        )
+        (s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> gp-0 quad) (-> self parent-override 0 trans quad))
     (set! (-> s5-0 quad) (-> (target-pos 68) quad))
     (when *target*
       (let ((a2-0 (vector-z-quaternion! (new-stack-vector0) (-> *target* control unknown-quaternion00))))
-        (vector+float*! s5-0 s5-0 a2-0 (* -16384.0 (- 1.0 (-> self blend))))
-        )
-      )
-    (vector-lerp! (-> self root trans) gp-0 s5-0 (-> self blend))
-    )
+        (vector+float*! s5-0 s5-0 a2-0 (* -16384.0 (- 1.0 (-> self blend))))))
+    (vector-lerp! (-> self root trans) gp-0 s5-0 (-> self blend)))
   (+! (-> self root trans y) (* 1638.4 (sin (* 54.613335 (the float (mod (current-time) 1200))))))
   (let ((gp-1 (new 'stack-no-clear 'quaternion)))
-    (forward-up->quaternion
-      gp-1
-      (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 37) (-> self root trans)) 1.0)
-      (new 'static 'vector :y 1.0 :w 1.0)
-      )
-    (rotate-toward-orientation! (-> self root) gp-1 65536.0 5461.3335)
-    )
+    (forward-up->quaternion gp-1
+                            (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 37) (-> self root trans)) 1.0)
+                            (new 'static 'vector :y 1.0 :w 1.0))
+    (rotate-toward-orientation! (-> self root) gp-1 65536.0 5461.3335))
   (when *target*
     (let* ((gp-2 (-> *target* control))
            (s4-2 (-> self root trans))
-           (f0-8
-             (deg-diff (y-angle gp-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-2 (-> gp-2 trans))))
-             )
-           )
+           (f0-8 (deg-diff (y-angle gp-2) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) s4-2 (-> gp-2 trans))))))
       (if (< 0.0 f0-8)
-          (seek! (-> self twist) -0.4 (* 0.3 (seconds-per-frame)))
-          (seek! (-> self twist) 0.4 (* 0.3 (seconds-per-frame)))
-          )
-      )
+        (seek! (-> self twist) -0.4 (* 0.3 (seconds-per-frame)))
+        (seek! (-> self twist) 0.4 (* 0.3 (seconds-per-frame)))))
     (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
       (set! (-> a1-9 from) self)
       (set! (-> a1-9 num-params) 0)
       (set! (-> a1-9 message) 'blocked-side?)
       (case (send-event-function (ppointer->process (-> self parent-override)) a1-9)
-        ((1)
-         (set! (-> self twist) 0.5)
-         )
-        ((2)
-         (set! (-> self twist) -0.5)
-         )
-        ((3)
-         (set! (-> self twist) 0.0)
-         )
-        )
-      )
-    (send-event (ppointer->process (-> self parent-override)) 'joystick (-> self twist) -1.0)
-    )
+        ((1) (set! (-> self twist) 0.5))
+        ((2) (set! (-> self twist) -0.5))
+        ((3) (set! (-> self twist) 0.0))))
+    (send-event (ppointer->process (-> self parent-override)) 'joystick (-> self twist) -1.0))
   (set! (-> self root scale x) (lerp-scale 1.0 0.0 (-> self blend) 0.8 1.0))
   (set! (-> self root scale y) (-> self root scale x))
   (set! (-> self root scale z) (-> self root scale x))
   0
-  (none)
-  )
+  (none))
 
 (defstate enter (voicebox)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('die)
-       (go-virtual exit)
-       )
-      )
-    )
-  :trans (behavior ()
-    (voicebox-track)
-    (if (< 0.1 (-> self blend))
-        (point-toward-point-clear-roll-pitch! (-> self root) (target-pos 0))
-        )
-    )
-  :code (behavior ()
-    (set-setting! 'sound-flava #f 20.0 (music-flava assistant))
-    (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
-        (send-event
-          (ppointer->process (-> self parent-override))
-          'set-dist
-          (new 'static 'vector :z 8192.0 :w 1.0)
-          (new 'static 'vector :y 20480.0 :z 12288.0 :w 1.0)
-          )
-        (send-event
-          (ppointer->process (-> self parent-override))
-          'set-dist
-          (new 'static 'vector :z 16384.0 :w 1.0)
-          (new 'static 'vector :y 20480.0 :z 40960.0 :w 1.0)
-          )
-        )
-    (init-cam-float-seeker (-> self seeker) 1.0 0.01 0.022222223 0.1)
-    (set! (-> self seeker target) 0.0)
-    (while (< 0.0001 (-> self blend))
-      (update! (-> self seeker) 0.0)
-      (set! (-> self blend) (-> self seeker value))
-      (suspend)
-      )
-    (set! (-> self blend) 0.0)
-    (go-virtual idle)
-    )
-  :post ja-post
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('die) (go-virtual exit))))
+  :trans
+    (behavior ()
+      (voicebox-track)
+      (if (< 0.1 (-> self blend)) (point-toward-point-clear-roll-pitch! (-> self root) (target-pos 0))))
+  :code
+    (behavior ()
+      (set-setting! 'sound-flava #f 20.0 (music-flava assistant))
+      (if (and *target* (logtest? (-> *target* control root-prim prim-core action) (collide-action racer)))
+        (send-event (ppointer->process (-> self parent-override))
+                    'set-dist
+                    (new 'static 'vector :z 8192.0 :w 1.0)
+                    (new 'static 'vector :y 20480.0 :z 12288.0 :w 1.0))
+        (send-event (ppointer->process (-> self parent-override))
+                    'set-dist
+                    (new 'static 'vector :z 16384.0 :w 1.0)
+                    (new 'static 'vector :y 20480.0 :z 40960.0 :w 1.0)))
+      (init-cam-float-seeker (-> self seeker) 1.0 0.01 0.022222223 0.1)
+      (set! (-> self seeker target) 0.0)
+      (while (< 0.0001 (-> self blend))
+        (update! (-> self seeker) 0.0)
+        (set! (-> self blend) (-> self seeker value))
+        (suspend))
+      (set! (-> self blend) 0.0)
+      (go-virtual idle))
+  :post ja-post)
 
 (defstate idle (voicebox)
   :virtual #t
-  :event (-> (method-of-type voicebox enter) event)
+  :event
+    (-> (method-of-type voicebox enter)
+        event)
   :trans voicebox-track
-  :code (behavior ()
-    (loop
-      (suspend)
-      (ja :num! (loop!))
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (suspend)
+        (ja :num! (loop!))))
+  :post ja-post)
 
 (defstate exit (voicebox)
   :virtual #t
   :trans voicebox-track
-  :code (behavior ()
-    (remove-setting! 'sound-flava)
-    (set-time! (-> self state-time))
-    (set! (-> self seeker target) 1.0)
-    (while (and (< (-> self blend) 0.9999) (not (and (not (handle->process (-> self hint)))
-                                                     (time-elapsed? (-> self state-time) (seconds 0.05))
-                                                     (-> *setting-control* current hint)
-                                                     )
-                                                )
-                )
-      (update! (-> self seeker) 0.0)
-      (set! (-> self blend) (-> self seeker value))
+  :code
+    (behavior ()
+      (remove-setting! 'sound-flava)
+      (set-time! (-> self state-time))
+      (set! (-> self seeker target) 1.0)
+      (while (and (< (-> self blend) 0.9999)
+                  (not (and (not (handle->process (-> self hint)))
+                            (time-elapsed? (-> self state-time) (seconds 0.05))
+                            (-> *setting-control* current hint))))
+        (update! (-> self seeker) 0.0)
+        (set! (-> self blend) (-> self seeker value))
+        (suspend))
+      (set! (-> self blend) 1.0)
+      (send-event (ppointer->process (-> self parent-override)) 'go empty-state)
       (suspend)
-      )
-    (set! (-> self blend) 1.0)
-    (send-event (ppointer->process (-> self parent-override)) 'go empty-state)
-    (suspend)
-    0
-    )
-  :post ja-post
-  )
+      0)
+  :post ja-post)
 
 (defbehavior voicebox-init-by-other voicebox ((arg0 vector) (arg1 handle))
   (set! (-> self root) (new 'process 'trsqv))
@@ -189,27 +144,23 @@
   (initialize-skeleton self *voicebox-sg* '())
   (set! (-> self blend) 1.0)
   (go-virtual enter)
-  (none)
-  )
+  (none))
 
 (defstate cam-voicebox (camera-voicebox)
-  :event (-> cam-string event)
-  :enter (-> cam-string enter)
-  :trans (behavior ()
-    (if (not (logtest? (-> *camera* master-options) 2))
-        (deactivate self)
-        )
-    )
-  :code (-> cam-string code)
-  )
+  :event
+    (-> cam-string
+        event)
+  :enter
+    (-> cam-string
+        enter)
+  :trans
+    (behavior ()
+      (if (not (logtest? (-> *camera* master-options) 2)) (deactivate self)))
+  :code
+    (-> cam-string
+        code))
 
 (defun voicebox-spawn ((arg0 process) (arg1 vector))
   (with-pp
-    (let ((s4-0 (process-spawn camera-voicebox :init cam-slave-init cam-voicebox #f :from *camera-dead-pool* :to arg0))
-          )
-      (if s4-0
-          (process-spawn voicebox arg1 (process->handle pp) :to (ppointer->process s4-0))
-          )
-      )
-    )
-  )
+    (let ((s4-0 (process-spawn camera-voicebox :init cam-slave-init cam-voicebox #f :from *camera-dead-pool* :to arg0)))
+      (if s4-0 (process-spawn voicebox arg1 (process->handle pp) :to (ppointer->process s4-0))))))

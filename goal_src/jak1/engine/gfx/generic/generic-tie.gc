@@ -1,18 +1,22 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: generic-tie.gc
-;; name in dgo: generic-tie
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/background/subdivide.gc")
+(require "engine/gfx/mood/time-of-day-h.gc")
+(require "engine/gfx/lights.gc")
+(require "engine/gfx/generic/generic-effect.gc")
+(require "engine/collide/collide-shape-h.gc")
 (define *generic-tie* #t)
 
 (def-mips2c generic-tie-dma-to-spad-sync (function object object none))
-(def-mips2c generic-envmap-dproc function)
-(def-mips2c generic-interp-dproc function)
-(def-mips2c generic-no-light-dproc function)
-(def-mips2c generic-tie-convert (function none))
 
+(def-mips2c generic-envmap-dproc function)
+
+(def-mips2c generic-interp-dproc function)
+
+(def-mips2c generic-no-light-dproc function)
+
+(def-mips2c generic-tie-convert (function none))
 
 (defun generic-tie-execute ((arg0 generic-dma-foreground-sink) (arg1 dma-buffer) (arg2 basic))
   ;; (local-vars (v1-28 uint128) (v1-29 uint128) (v1-30 uint128) (a0-33 int) (a0-35 int))
@@ -20,21 +24,17 @@
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
     (when *generic-tie*
       (if *debug-segment*
-          (add-frame
-            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-            'draw
-            (new 'static 'rgba :r #x40 :b #x40 :a #x80)
-            )
-          )
+        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+                   'draw
+                   (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
       (reset! (-> *perf-stats* data 2))
-      
       (when (nonzero? arg2)
         (let ((s4-0 (-> arg1 base)))
           (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves basep) (the-as uint (-> arg1 base)))
           (generic-initialize arg0 (-> *math-camera* perspective) *default-lights*)
-          (generic-tie-dma-to-spad-sync arg2 (-> (scratchpad-object terrain-context) work foreground generic-work in-buf tie input-a))
+          (generic-tie-dma-to-spad-sync arg2
+                                        (-> (scratchpad-object terrain-context) work foreground generic-work in-buf tie input-a))
           ; (let ((v1-24 (+ 716 (the-as int #x70000000))))
-          
           ;; set up tie memory layout.
           (let ((v1-24 (-> (scratchpad-object terrain-context) work foreground generic-work in-buf tie shadow)))
             (set! (-> v1-24 end-of-chain) (the-as uint 0))
@@ -43,8 +43,7 @@
             (set! (-> v1-24 ptr-buf) (the-as uint (+ 768 (scratchpad-object int))))
             (set! (-> v1-24 ptr-inst) (the-as uint (+ 3648 (scratchpad-object int))))
             (set! (-> v1-24 inst-xor) 4640)
-            (set! (-> v1-24 write-limit) (the-as uint (&+ (-> arg1 end) -65536)))
-            )
+            (set! (-> v1-24 write-limit) (the-as uint (&+ (-> arg1 end) -65536))))
           ;;(let ((v1-26 (+ 748 (the-as int #x70000000))))
           (let ((v1-26 (-> (scratchpad-object terrain-context) work foreground generic-work in-buf tie shadow calls)))
             (set! (-> v1-26 generic-prepare-dma-double) generic-prepare-dma-double)
@@ -52,16 +51,14 @@
             (set! (-> v1-26 generic-interp-dproc) generic-interp-dproc) ;; todo
             (set! (-> v1-26 generic-no-light-dproc) generic-no-light-dproc) ;; todo
             )
-          
-          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color r) 
+          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color r)
                 (the int (-> *time-of-day-context* current-sun env-color x)))
-          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color g) 
+          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color g)
                 (the int (-> *time-of-day-context* current-sun env-color y)))
-          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color b) 
+          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color b)
                 (the int (-> *time-of-day-context* current-sun env-color z)))
-          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color a) 
+          (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves time-of-day-color a)
                 (the int (-> *time-of-day-context* current-sun env-color w)))
-          
           ;     (let ((v1-27 *time-of-day-context*))
           ;       (let ((a0-26 (+ 16 (the-as int #x70000000))))
           ;         (.lvf vf1 (&-> v1-27 current-sun env-color quad))
@@ -73,17 +70,11 @@
           ;         )
           ;       )
           (generic-tie-convert)
-          (set! (-> arg1 base)
-                (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work saves basep))
-                )
+          (set! (-> arg1 base) (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work saves basep)))
           (generic-wrapup arg0)
           (set! (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts mscal-tag)
-                (logior (logand (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts mscal-tag)
-                                -65536
-                                )
-                        6
-                        )
-                )
+                (logior (logand (-> (scratchpad-object terrain-context) work foreground generic-work fx-buf work consts mscal-tag) -65536)
+                        6))
           ;     (dma-sync (the-as pointer #x1000d000) 0 0)
           (let ((v1-37 *dma-mem-usage*))
             (when (nonzero? v1-37)
@@ -91,22 +82,13 @@
               (set! (-> v1-37 data 17 name) "tie-generic")
               (+! (-> v1-37 data 17 count) 1)
               (+! (-> v1-37 data 17 used) (&- (-> arg1 base) (the-as uint s4-0)))
-              (set! (-> v1-37 data 17 total) (-> v1-37 data 17 used))
-              )
-            )
-          )
-        )
+              (set! (-> v1-37 data 17 total) (-> v1-37 data 17 used))))))
       (read! (-> *perf-stats* data 2))
       (if *debug-segment*
-          (add-frame
-            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-            'draw
-            (new 'static 'rgba :r #xd2 :g #xd2 :b #x50 :a #x80)
-            )
-          )
-      )
-    0
-    )
+        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+                   'draw
+                   (new 'static 'rgba :r #xd2 :g #xd2 :b #x50 :a #x80))))
+    0)
   0
   (none)
   ;)

@@ -5,5 +5,239 @@
 ;; name in dgo: file-io
 ;; dgos: GAME
 
+#|@file
+GOAL File I/O
+This is mostly not used in the retail game and was more for loading stuff during development.
+The file-stream is an inefficient way to load data, but is flexible and can load
+from the CD, or over the network in development.
+The file-info type is used in actual game data for checking versions.
+
+Represents a file that can be read/written, similar to FILE* in C.
+
+NOTE: this is a special type in three ways:
+  1). It is used in the C runtime. This must be kept in sync with kmachine.h's FileStream.
+  2). This type is built-in to the compiler (see TypeSystem.cpp, add_builtin_types).
+      It must be kept up to date with that definition as well.
+  3). The C runtime constructs this type before anything is loaded. The sizes
+      must be kept up to date there as well.
+|#
+
+;; +++file-kind
+(defenum file-kind
+  :bitfield #f
+  (level-bt 0) ;; aka bsp-header.
+  (art-group 1)
+  (tpage 2)
+  (dir-tpage 3)
+  (level-vs 4)
+  (tx 5)
+  (vis 6)
+  (map 7)
+  )
+;; ---file-kind
+
+(defconstant SCE_SEEK_SET 0)
+(defconstant SCE_SEEK_CUR 1)
+(defconstant SCE_SEEK_END 2)
+
+(defconstant LEVEL_BT_FILE_VERSION 36)
+(defglobalconstant ART_GROUP_FILE_VERSION 8)
+(defconstant TPAGE_FILE_VERSION 8) ;; also used for dir
+(defconstant LEVEL_VS_FILE_VERSION 30)
+(defconstant TX_FILE_VERSION 1)
+(defconstant MAP_FILE_VERSION 1)
+
+(defmacro file-stream-valid? (fs)
+  `(>= (the-as int (-> ,fs file)) 0)
+  )
+
+(defmacro file-stream-tell (fs)
+  `(file-stream-seek ,fs 0 SCE_SEEK_CUR)
+  )
+
 ;; DECOMP BEGINS
 
+(deftype file-stream (basic)
+  ((flags  uint32)
+   (mode   symbol)
+   (name   string)
+   (file   uint32)
+   )
+  (:methods
+    (new (symbol type string symbol) _type_)
+    )
+  )
+
+
+(defmethod new file-stream ((obj symbol) (arg1 type) (file-name string) (mode symbol))
+  (let ((a0-1 (object-new obj arg1 (the-as int (-> arg1 size)))))
+    (file-stream-open a0-1 file-name mode)
+    )
+  )
+
+(set! (-> file-stream method-table 4) file-stream-length)
+
+(defun file-stream-read-string ((fs file-stream) (str string))
+  "Fill a string with data from a file stream.
+   Note: this function does not work."
+  (clear str)
+  (file-stream-read fs (-> str data) (length fs))
+  str
+  )
+
+(deftype file-info (basic)
+  ((file-type       (pointer string))
+   (file-name       string)
+   (major-version   uint32)
+   (minor-version   uint32)
+   (maya-file-name  string)
+   (tool-debug      string)
+   (mdb-file-name   string)
+   )
+  )
+
+
+(defmethod print ((this file-info))
+  (format
+    #t
+    "#<~A ~A :version ~D.~D @ #x~X>"
+    (-> this type)
+    (-> this file-name)
+    (-> this major-version)
+    (-> this minor-version)
+    this
+    )
+  this
+  )
+
+(define *file-temp-string* (new 'global 'string 128 (the-as string #f)))
+
+(defun make-file-name ((kind file-kind) (name string) (ag-version-override int) (arg3 symbol))
+  "Get a file name to open a file with the given kind and name.
+   The art-group-version argument can be used to override the version
+   of the art-group. Set it to 0 or less to use the default version.
+   Similar to MakeFileName in C.
+   Note: file type enum is different between C and GOAL.
+   File versions should match those in versions.h.
+   Uses a single *file-temp-string* buffer, shared with make-vfile-name.
+   arg3 is unused."
+  (clear *file-temp-string*)
+  (cond
+    ((= kind (file-kind dir-tpage))
+     (format *file-temp-string* "texture-page~D/dir-tpages" TPAGE_FILE_VERSION)
+     )
+    ((= kind (file-kind tpage))
+     ;; og:preserve-this removed texture-page8 prefix
+     ; (format *file-temp-string* "texture-page~D/tpage-~S" TPAGE_FILE_VERSION name)
+     (format *file-temp-string* "tpage-~S" name)
+     )
+    ((= kind (file-kind level-bt))
+     (format *file-temp-string* "level~D/~S-bt" LEVEL_BT_FILE_VERSION name)
+     )
+    ((= kind (file-kind tx))
+     (format *file-temp-string* "res~D/~S-tx" TX_FILE_VERSION name)
+     )
+    ((= kind (file-kind level-vs))
+     (format *file-temp-string* "level~D/~S-vs" LEVEL_BT_FILE_VERSION name)
+     )
+    ((= kind (file-kind vis))
+     (format *file-temp-string* "~S.VIS" name)
+     )
+    ((= kind (file-kind map))
+     (format *file-temp-string* "map~D/~S-mp" MAP_FILE_VERSION name)
+     )
+    ((= kind (file-kind art-group))
+     ;; og:preserve-this removed art group prefix
+     ; (format
+     ;   *file-temp-string*
+     ;   "art-group~D/~S-ag"
+     ;   (cond
+     ;     ((> ag-version-override 0)
+     ;      (empty)
+     ;      ag-version-override
+     ;      )
+     ;     (else
+     ;       ART_GROUP_FILE_VERSION
+     ;       )
+     ;     )
+     ;   name
+     ;   )
+     (format *file-temp-string* "~S-ag" name)
+     )
+    )
+  *file-temp-string*
+  )
+
+(defun make-vfile-name ((kind file-kind) (name string))
+  "Make virtual? file name. This makes a name that the kernel knows how to
+   handle in a specific way. This function is not used."
+  (clear *file-temp-string*)
+  (cond
+    ((= kind (file-kind level-bt))
+     (format *file-temp-string* "$LEVEL/~S" name)
+     )
+    ((= kind (file-kind art-group))
+     (format *file-temp-string* "$ART_GROUP/~S" name)
+     )
+    )
+  *file-temp-string*
+  )
+
+(defun file-info-correct-version? ((file file-info) (kind file-kind) (version-override int))
+  "Check if the version and kind in the info is valid. The `version-override` can specify a
+   non-default version, or set to 0 for the default version."
+  (let* ((major (cond
+                  ((zero? version-override)
+                   (case kind
+                     (((file-kind tpage) (file-kind dir-tpage))
+                      8
+                      )
+                     (((file-kind level-bt))
+                      36
+                      )
+                     (((file-kind art-group))
+                      8
+                      )
+                     )
+                   )
+                  (else
+                    version-override
+                    )
+                  )
+                )
+         (file-kind kind)
+         (type (cond
+                 ((= file-kind (file-kind tpage))
+                  "texture-page"
+                  )
+                 ((= file-kind (file-kind level-bt))
+                  "bsp-header"
+                  )
+                 ((= file-kind (file-kind art-group))
+                  "art-group"
+                  )
+                 )
+               )
+         )
+    (cond
+      ((not (name= (-> file file-type 0) type))
+       (format 0 "ERROR: file ~A is of type ~S but needs to be ~S.~%" (-> file file-name) (-> file file-type) type)
+       #f
+       )
+      ((!= major (-> file major-version))
+       (format
+         0
+         "ERROR: file ~A is version ~D.~D, but needs to be ~D.x~%"
+         (-> file file-name)
+         (-> file major-version)
+         (-> file minor-version)
+         major
+         )
+       #f
+       )
+      (else
+        #t
+        )
+      )
+    )
+  )

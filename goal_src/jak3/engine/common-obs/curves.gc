@@ -5,5 +5,546 @@
 ;; name in dgo: curves
 ;; dgos: GAME
 
+(declare-type curve2d basic)
+(declare-type curve-color basic)
+(declare-type curve-color-fast curve-color)
+(declare-type curve2d-piecewise curve2d)
+(declare-type curve2d-fast basic)
+
+(define-extern *curve-unity* curve2d-fast)
+(define-extern *curve-linear-up* curve2d-fast)
+(define-extern *curve-linear-down* curve2d-fast)
+(define-extern *curve-linear-up-hold* curve2d-piecewise)
+(define-extern *curve-linear-up-down* curve2d-fast)
+(define-extern *trail-color-curve-white* curve-color-fast)
+(define-extern particle-color-curve-white* curve-color-fast)
+(define-extern *trail-color-curve-red* curve-color-fast)
+
+(defenum loop-behavior
+  :type uint64
+  :bitfield #f
+  (wrap)
+  (clamp)
+  (b2)
+  (use-default)
+  )
+
 ;; DECOMP BEGINS
 
+(deftype float-pair (structure)
+  "Two floats. Specifies one point on a piecewise linear curve."
+  ((first   float)
+   (second  float)
+   (x       float  :overlay-at first)
+   (y       float  :overlay-at second)
+   )
+  )
+
+
+(deftype float-pair-array (inline-array-class)
+  "Array of points used to make a piecewise linear curve."
+  ((data  float-pair  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> float-pair-array heap-base) (the-as uint 16))
+
+(deftype curve2d (basic)
+  "Interface for evaluating a 2d curve.
+The input is a float (x-position) and the output is a float (y-position).
+The curve is over (0, 1). Values outside of the range are either clamped
+or wrapped depending on the loop-behavior flag."
+  ()
+  (:methods
+    (evaluate (_type_ float loop-behavior) float)
+    )
+  )
+
+
+(deftype curve-color (basic)
+  "Interface for evaluating a color curve. The input is a float, representing
+progress through the curve, and the result is a floating point rgba color."
+  ()
+  (:methods
+    (evaluate (_type_ float rgbaf loop-behavior) rgbaf)
+    )
+  )
+
+
+(deftype curve2d-piecewise (curve2d)
+  "Implementation of 2d-curve for a piecewise linear curve.
+Not particularly efficient - each evaluation needs to check each point."
+  ((pts                    float-pair-array)
+   (default-loop-behavior  loop-behavior)
+   )
+  (:methods
+    (allocate! (_type_ int symbol symbol) none)
+    (curve2d-piecewise-method-11 (_type_) none)
+    )
+  )
+
+
+(deftype curve2d-fast (curve2d)
+  "Implementation of 2d piecewise linear curve which tries to be faster.
+While it is faster, it places the huge restriction that you can only have 4 points.
+Note that the xs should be negative here."
+  ((xs                 vector  :inline)
+   (ys                 vector  :inline)
+   (one-over-x-deltas  vector  :inline)
+   )
+  )
+
+
+(defun rgbaf-lerp! ((arg0 rgbaf) (arg1 rgbaf) (arg2 rgbaf) (arg3 float))
+  "Lerp all four components of rgba."
+  (vector-lerp! arg0 arg1 arg2 arg3)
+  (set! (-> arg0 w) (lerp (-> arg1 w) (-> arg2 w) arg3))
+  arg0
+  )
+
+(deftype curve-color-fast (curve-color)
+  "Implementation of color curve which tries to be faster.
+While it is faster, it again has the restriction that you only
+get 4 piecewise sections."
+  ((xs                 vector  :inline)
+   (ys                 vector  4 :inline)
+   (one-over-x-deltas  vector  :inline)
+   )
+  )
+
+
+(deftype color-pair (structure)
+  "Single section of a piecewise linear color curve.
+Unlike the fast version, this stores x values exactly like you'd expect."
+  ((first   float)
+   (second  rgbaf  :inline)
+   (x       float          :overlay-at first)
+   (y       rgbaf  :inline :overlay-at second)
+   )
+  )
+
+
+(deftype color-pair-array (inline-array-class)
+  "Array of points for piecewise linear color curve."
+  ((data  color-pair  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> color-pair-array heap-base) (the-as uint 32))
+
+(deftype curve-color-piecewise (curve-color)
+  "Implementation of curve-color."
+  ((pts                    color-pair-array)
+   (default-loop-behavior  loop-behavior)
+   )
+  (:methods
+    (allocate! (_type_ int symbol symbol) none)
+    )
+  )
+
+
+(defmethod allocate! ((this curve2d-piecewise) (arg0 int) (arg1 symbol) (arg2 symbol))
+  "Allocate memory for points."
+  (set! (-> this pts) ((method-of-type float-pair-array new) arg1 float-pair-array arg0))
+  (set! (-> this default-loop-behavior) (if arg2
+                                            (loop-behavior wrap)
+                                            (loop-behavior clamp)
+                                            )
+        )
+  0
+  (none)
+  )
+
+(defmethod allocate! ((this curve-color-piecewise) (arg0 int) (arg1 symbol) (arg2 symbol))
+  "Allocate memory for points."
+  (set! (-> this pts) ((method-of-type color-pair-array new) arg1 color-pair-array arg0))
+  (set! (-> this default-loop-behavior) (if arg2
+                                            (loop-behavior wrap)
+                                            (loop-behavior clamp)
+                                            )
+        )
+  0
+  (none)
+  )
+
+(defmethod evaluate ((this curve-color-piecewise) (arg0 float) (arg1 rgbaf) (arg2 loop-behavior))
+  "Compute value of curve at the given position."
+  (when (or (< 1.0 arg0) (< arg0 0.0))
+    (if (= arg2 (loop-behavior use-default))
+        (set! arg2 (-> this default-loop-behavior))
+        )
+    (case arg2
+      (((loop-behavior wrap))
+       (set! arg0 (- arg0 (* (the float (the int (/ arg0 1.0))) 1.0)))
+       )
+      (((loop-behavior clamp))
+       (set! arg0 (fmax 0.0 (fmin 1.0 arg0)))
+       )
+      )
+    )
+  (when (= arg0 0.0)
+    (set! (-> arg1 quad) (-> this pts data 0 second quad))
+    (return arg1)
+    )
+  (dotimes (s4-0 (-> this pts length))
+    (when (>= (-> this pts data s4-0 first) arg0)
+      (let ((a3-4 (lerp-scale 0.0 1.0 arg0 (-> this pts data (+ s4-0 -1) first) (-> this pts data s4-0 first))))
+        (return (rgbaf-lerp!
+                  arg1
+                  (the-as rgbaf (+ (the-as uint (-> this pts data 0 second)) (* (+ s4-0 -1) 32)))
+                  (the-as rgbaf (+ (the-as uint (-> this pts data 0 second)) (* s4-0 32)))
+                  a3-4
+                  )
+                )
+        )
+      )
+    )
+  (the-as rgbaf #f)
+  )
+
+(defmethod evaluate ((this curve2d-piecewise) (arg0 float) (arg1 loop-behavior))
+  "Compute value of curve at the given position."
+  (when (or (< 1.0 arg0) (< arg0 0.0))
+    (if (= arg1 (loop-behavior use-default))
+        (set! arg1 (-> this default-loop-behavior))
+        )
+    (case arg1
+      (((loop-behavior wrap))
+       (set! arg0 (- arg0 (* (the float (the int (/ arg0 1.0))) 1.0)))
+       )
+      (((loop-behavior clamp))
+       (set! arg0 (fmax 0.0 (fmin 1.0 arg0)))
+       )
+      )
+    )
+  (if (= arg0 0.0)
+      (return (-> this pts data 0 second))
+      )
+  (dotimes (v1-18 (-> this pts length))
+    (if (>= (-> this pts data v1-18 first) arg0)
+        (return (lerp-scale
+                  (-> this pts data (+ v1-18 -1) second)
+                  (-> this pts data v1-18 second)
+                  arg0
+                  (-> this pts data (+ v1-18 -1) first)
+                  (-> this pts data v1-18 first)
+                  )
+                )
+        )
+    )
+  0.0
+  )
+
+;; WARN: Return type mismatch number vs float.
+(defun evaluate-curve-fast ((arg0 curve2d-fast) (arg1 float))
+  "Evaluate a curve2d-fast at the given value."
+  (local-vars (v0-0 number))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((a2-0 (new 'stack-no-clear 'vector))
+          (v1-0 (new 'stack-no-clear 'vector))
+          )
+      (.mov vf27 arg1)
+      (.lvf vf24 (&-> arg0 xs quad))
+      (.lvf vf25 (&-> arg0 ys quad))
+      (.lvf vf26 (&-> arg0 one-over-x-deltas quad))
+      (.min.w.vf vf27 vf27 vf0)
+      (.max.x.vf vf27 vf27 vf0)
+      (.add.x.vf vf28 vf24 vf27)
+      (.mul.w.vf acc vf25 vf0)
+      (.add.mul.vf vf29 vf28 vf26 acc)
+      (.svf (&-> a2-0 quad) vf28)
+      (.svf (&-> v1-0 quad) vf29)
+      (let ((a0-1 (-> a2-0 z))
+            (a1-1 (-> a2-0 y))
+            )
+        (nop!)
+        (b! (>= (the-as int a0-1) 0) cfg-3 :delay (set! v0-0 (-> v1-0 z)))
+        (b! (>= (the-as int a1-1) 0) cfg-3 :delay (set! v0-0 (-> v1-0 y)))
+        )
+      (set! v0-0 (-> v1-0 x))
+      )
+    (label cfg-3)
+    (the-as float v0-0)
+    )
+  )
+
+;; WARN: Return type mismatch number vs float.
+(defmethod evaluate ((this curve2d-fast) (arg0 float) (arg1 loop-behavior))
+  "Compute value of curve at the given position."
+  (local-vars (v0-0 number))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((a1-1 (new 'stack-no-clear 'vector))
+          (v1-0 (new 'stack-no-clear 'vector))
+          )
+      (let ((a2-1 arg0))
+        (.mov vf27 a2-1)
+        )
+      (.lvf vf24 (&-> this xs quad))
+      (.lvf vf25 (&-> this ys quad))
+      (.lvf vf26 (&-> this one-over-x-deltas quad))
+      (.min.w.vf vf27 vf27 vf0)
+      (.max.x.vf vf27 vf27 vf0)
+      (.add.x.vf vf28 vf24 vf27)
+      (.mul.w.vf acc vf25 vf0)
+      (.add.mul.vf vf29 vf28 vf26 acc)
+      (.svf (&-> a1-1 quad) vf28)
+      (.svf (&-> v1-0 quad) vf29)
+      (let ((a0-1 (-> a1-1 z))
+            (a1-2 (-> a1-1 y))
+            )
+        (nop!)
+        (b! (>= (the-as int a0-1) 0) cfg-3 :delay (set! v0-0 (-> v1-0 z)))
+        (b! (>= (the-as int a1-2) 0) cfg-3 :delay (set! v0-0 (-> v1-0 y)))
+        )
+      (set! v0-0 (-> v1-0 x))
+      )
+    (label cfg-3)
+    (the-as float v0-0)
+    )
+  )
+
+(defun evaluate-color-curve-fast ((arg0 curve-color-fast) (arg1 float) (arg2 rgbaf))
+  "Evaluate a color-curve-fast at the given value."
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf23 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf28 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 (new 'stack-no-clear 'vector)))
+      (.mov vf26 arg1)
+      (.lvf vf23 (&-> arg0 xs quad))
+      (.lvf vf25 (&-> arg0 one-over-x-deltas quad))
+      (.max.w.vf vf3 vf0 vf0)
+      (.mul.vf acc vf25 vf23)
+      (.add.mul.x.vf vf28 vf25 vf26 acc)
+      (.svf (&-> v1-0 quad) vf28)
+      (let ((a1-1 (-> v1-0 z))
+            (v1-1 (-> v1-0 y))
+            )
+        (b! (>= (the-as int a1-1) 0) cfg-4 :delay (nop!))
+        (b! (>= (the-as int v1-1) 0) cfg-3 :delay (nop!))
+        )
+      )
+    (.lvf vf1 (&-> arg0 ys 0 quad))
+    (.lvf vf2 (&-> arg0 ys 1 quad))
+    (.sub.x.vf vf4 vf3 vf28)
+    (.mul.x.vf acc vf2 vf28)
+    (.add.mul.x.vf vf5 vf1 vf4 acc)
+    (b! #t cfg-5 :delay (.svf (&-> arg2 quad) vf5))
+    (label cfg-3)
+    (.lvf vf1 (&-> arg0 ys 1 quad))
+    (.lvf vf2 (&-> arg0 ys 2 quad))
+    (.sub.y.vf vf4 vf3 vf28)
+    (.mul.y.vf acc vf2 vf28)
+    (.add.mul.y.vf vf5 vf1 vf4 acc)
+    (b! #t cfg-5 :delay (.svf (&-> arg2 quad) vf5))
+    (label cfg-4)
+    (.lvf vf1 (&-> arg0 ys 2 quad))
+    (.lvf vf2 (&-> arg0 ys 3 quad))
+    (.sub.z.vf vf4 vf3 vf28)
+    (.mul.z.vf acc vf2 vf28)
+    (.add.mul.z.vf vf5 vf1 vf4 acc)
+    (.svf (&-> arg2 quad) vf5)
+    (label cfg-5)
+    arg2
+    )
+  )
+
+(defmethod evaluate ((this curve-color-fast) (arg0 float) (arg1 rgbaf) (arg2 loop-behavior))
+  "Compute value of curve at the given position."
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf23 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf28 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 this)
+          (f0-0 arg0)
+          (a0-1 arg1)
+          )
+      (let ((a1-1 (new 'stack-no-clear 'rgbaf)))
+        (let ((a3-1 f0-0))
+          (.mov vf26 a3-1)
+          )
+        (.lvf vf23 (&-> v1-0 xs quad))
+        (.lvf vf25 (&-> v1-0 one-over-x-deltas quad))
+        (.max.w.vf vf3 vf0 vf0)
+        (.mul.vf acc vf25 vf23)
+        (.add.mul.x.vf vf28 vf25 vf26 acc)
+        (.svf (&-> a1-1 quad) vf28)
+        (let ((a3-2 (-> a1-1 z))
+              (a1-2 (-> a1-1 y))
+              )
+          (b! (>= (the-as int a3-2) 0) cfg-4 :delay (nop!))
+          (b! (>= (the-as int a1-2) 0) cfg-3 :delay (nop!))
+          )
+        )
+      (.lvf vf1 (&-> v1-0 ys 0 quad))
+      (.lvf vf2 (&-> v1-0 ys 1 quad))
+      (.sub.x.vf vf4 vf3 vf28)
+      (.mul.x.vf acc vf2 vf28)
+      (.add.mul.x.vf vf5 vf1 vf4 acc)
+      (b! #t cfg-5 :delay (.svf (&-> a0-1 quad) vf5))
+      (label cfg-3)
+      (.lvf vf1 (&-> v1-0 ys 1 quad))
+      (.lvf vf2 (&-> v1-0 ys 2 quad))
+      (.sub.y.vf vf4 vf3 vf28)
+      (.mul.y.vf acc vf2 vf28)
+      (.add.mul.y.vf vf5 vf1 vf4 acc)
+      (b! #t cfg-5 :delay (.svf (&-> a0-1 quad) vf5))
+      (label cfg-4)
+      (.lvf vf1 (&-> v1-0 ys 2 quad))
+      (.lvf vf2 (&-> v1-0 ys 3 quad))
+      (.sub.z.vf vf4 vf3 vf28)
+      (.mul.z.vf acc vf2 vf28)
+      (.add.mul.z.vf vf5 vf1 vf4 acc)
+      (.svf (&-> a0-1 quad) vf5)
+      )
+    (label cfg-5)
+    (set! (-> arg1 w) 1.0)
+    arg1
+    )
+  )
+
+(defun rgba<-rgbaf ((arg0 rgba) (arg1 rgbaf))
+  "Convert rgbaf to rgba. Seems like the input rgba's value is not used in any way."
+  (copy-and-set-field
+    (copy-and-set-field
+      (copy-and-set-field
+        (copy-and-set-field arg0 r (the int (* 128.0 (-> arg1 x))))
+        g
+        (the int (* 128.0 (-> arg1 y)))
+        )
+      b
+      (the int (* 128.0 (-> arg1 z)))
+      )
+    a
+    (the int (* 128.0 (-> arg1 w)))
+    )
+  )
+
+(if #t
+    (set! *curve-unity* (new 'static 'curve2d-fast
+                          :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                          :ys (new 'static 'vector :x 1.0 :y 1.0 :z 2.0 :w 3.0)
+                          :one-over-x-deltas (new 'static 'vector :y 1.0 :z 1.0 :w 1.0)
+                          )
+          )
+    )
+
+(if #t
+    (set! *curve-linear-up* (new 'static 'curve2d-fast
+                              :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                              :ys (new 'static 'vector :y 1.0 :z 2.0 :w 3.0)
+                              :one-over-x-deltas (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                              )
+          )
+    )
+
+(if #t
+    (set! *curve-linear-down* (new 'static 'curve2d-fast
+                                :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                :ys (new 'static 'vector :x 1.0 :z 1.0 :w 2.0)
+                                :one-over-x-deltas (new 'static 'vector :x -1.0 :y 1.0 :z 1.0 :w 1.0)
+                                )
+          )
+    )
+
+(when (or (zero? *curve-linear-up-hold*) (!= loading-level global))
+  (set! *curve-linear-up-hold* (new 'loading-level 'curve2d-piecewise))
+  (allocate! *curve-linear-up-hold* 2 'loading-level #f)
+  )
+
+(set! (-> *curve-linear-up-hold* pts data 0 first) 0.0)
+
+(set! (-> *curve-linear-up-hold* pts data 0 second) 0.0)
+
+(set! (-> *curve-linear-up-hold* pts data 1 first) 1.0)
+
+(set! (-> *curve-linear-up-hold* pts data 1 second) 1.0)
+
+(if #t
+    (set! *curve-linear-up-down* (new 'static 'curve2d-fast
+                                   :xs (new 'static 'vector :y -0.5 :z -1.0 :w -2.0)
+                                   :ys (new 'static 'vector :y 1.0 :w 1.0)
+                                   :one-over-x-deltas (new 'static 'vector :x 2.0 :y -2.0 :z 1.0 :w 1.0)
+                                   )
+          )
+    )
+
+(if #t
+    (set! *trail-color-curve-white* (new 'static 'curve-color-fast
+                                      :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                      :ys (new 'static 'inline-array vector 4
+                                        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 128.0)
+                                        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 128.0)
+                                        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 128.0)
+                                        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 128.0)
+                                        )
+                                      :one-over-x-deltas (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                                      )
+          )
+    )
+
+(if #t
+    (set! particle-color-curve-white* (new 'static 'curve-color-fast
+                                        :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                        :ys (new 'static 'inline-array vector 4
+                                          (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                                          (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                                          (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                                          (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                                          )
+                                        :one-over-x-deltas (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                                        )
+          )
+    )
+
+(if #t
+    (set! *trail-color-curve-red* (new 'static 'curve-color-fast
+                                    :xs (new 'static 'vector :y -0.2 :z -1.0 :w -2.0)
+                                    :ys (new 'static 'inline-array vector 4
+                                      (new 'static 'vector :x 1.0 :y 0.3 :w 128.0)
+                                      (new 'static 'vector :x 1.0 :w 128.0)
+                                      (new 'static 'vector :x 1.0 :w 128.0)
+                                      (new 'static 'vector :x 1.0 :w 128.0)
+                                      )
+                                    :one-over-x-deltas (new 'static 'vector :x 5.0 :y 1.25 :z 1.0 :w 1.0)
+                                    )
+          )
+    )

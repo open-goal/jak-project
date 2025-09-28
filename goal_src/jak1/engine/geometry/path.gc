@@ -1,9 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: path.gc
-;; name in dgo: path
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/geometry/path-h.gc")
+(require "engine/debug/debug.gc")
+(require "engine/debug/assert.gc")
 
 ;; DECOMP BEGINS
 
@@ -13,96 +13,53 @@
      (when (and (type-type? (-> this process type) process-drawable) *display-entity-errors*)
        (let ((s5-0 add-debug-text-3d)
              (s4-0 #t)
-             (s3-0 68)
-             )
+             (s3-0 68))
          (format (clear *temp-string*) "path data error in ~S" (-> this process name))
-         (s5-0
-           s4-0
-           (the-as bucket-id s3-0)
-           *temp-string*
-           (-> this process root trans)
-           (font-color red)
-           (the-as vector2h #f)
-           )
-         )
-       )
-     )
-    ((let ((a0-5 this))
-       (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display)))
-       )
+         (s5-0 s4-0 (the-as bucket-id s3-0) *temp-string* (-> this process root trans) (font-color red) (the-as vector2h #f)))))
+    ((let ((a0-5 this)) (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display))))
      (dotimes (s5-1 (-> this curve num-cverts))
        (let ((s4-1 (-> this cverts s5-1)))
          (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (< s5-1 (+ (-> this curve num-cverts) -1)))
-             (add-debug-line
-               #t
-               (bucket-id debug-no-zbuf)
-               s4-1
-               (-> this cverts (+ s5-1 1))
-               (new 'static 'rgba :r #xff :g #x80 :a #x80)
-               #f
-               (the-as rgba -1)
-               )
-             )
+           (add-debug-line #t
+                           (bucket-id debug-no-zbuf)
+                           s4-1
+                           (-> this cverts (+ s5-1 1))
+                           (new 'static 'rgba :r #xff :g #x80 :a #x80)
+                           #f
+                           (the-as rgba -1)))
          (if (logtest? (-> this flags) (path-control-flag draw-point))
-             (add-debug-x #t (bucket-id debug-no-zbuf) s4-1 (new 'static 'rgba :r #xff :a #x80))
-             )
+           (add-debug-x #t (bucket-id debug-no-zbuf) s4-1 (new 'static 'rgba :r #xff :a #x80)))
          (when (logtest? (-> this flags) (path-control-flag draw-text))
            (let ((s3-1 add-debug-text-3d)
                  (s2-1 #t)
-                 (s1-0 68)
-                 )
+                 (s1-0 68))
              (format (clear *temp-string*) "~D" s5-1)
-             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))
-             )
-           )
-         )
-       )
-     )
-    )
+             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))))))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod path-distance ((this path-control))
   (let ((f30-0 0.0))
     (dotimes (s5-0 (+ (-> this curve num-cverts) -1))
-      (+! f30-0 (vector-vector-distance (-> this cverts s5-0) (-> this cverts (+ s5-0 1))))
-      )
-    f30-0
-    )
-  )
+      (+! f30-0 (vector-vector-distance (-> this cverts s5-0) (-> this cverts (+ s5-0 1)))))
+    f30-0))
 
 (defmethod path-distance ((this curve-control))
   (let ((f0-0 (-> this curve length)))
     (when (= f0-0 0.0)
       (set! f0-0 (curve-length (the-as curve (&-> this cverts))))
-      (set! (-> this curve length) f0-0)
-      )
-    f0-0
-    )
-  )
+      (set! (-> this curve length) f0-0))
+    f0-0))
 
 (defmethod eval-path-curve-div! ((this path-control) (arg0 vector) (arg1 float) (arg2 symbol))
   (let ((a1-1 (-> this curve num-cverts))
-        (f0-3 (the float (the int arg1)))
-        )
+        (f0-3 (the float (the int arg1))))
     (cond
-      ((< arg1 0.0)
-       (set! (-> arg0 quad) (-> this cverts 0 quad))
-       )
-      ((>= f0-3 (the float (+ a1-1 -1)))
-       (set! (-> arg0 quad) (-> this cverts (+ a1-1 -1) quad))
-       )
-      ((or (= arg2 'exact) (= f0-3 arg1))
-       (set! (-> arg0 quad) (-> this cverts (the int f0-3) quad))
-       )
-      (else
-        (vector-lerp! arg0 (-> this cverts (the int f0-3)) (-> this cverts (the int (+ 1.0 f0-3))) (- arg1 f0-3))
-        )
-      )
-    )
-  arg0
-  )
+      ((< arg1 0.0) (set! (-> arg0 quad) (-> this cverts 0 quad)))
+      ((>= f0-3 (the float (+ a1-1 -1))) (set! (-> arg0 quad) (-> this cverts (+ a1-1 -1) quad)))
+      ((or (= arg2 'exact) (= f0-3 arg1)) (set! (-> arg0 quad) (-> this cverts (the int f0-3) quad)))
+      (else (vector-lerp! arg0 (-> this cverts (the int f0-3)) (-> this cverts (the int (+ 1.0 f0-3))) (- arg1 f0-3)))))
+  arg0)
 
 (defmethod get-random-point ((this path-control) (arg0 vector))
   (with-pp
@@ -111,134 +68,81 @@
        (let ((s4-0 (rand-vu-int-count (-> this curve num-cverts))))
          (when *run-time-assert-enable*
            (set-pos *__private-assert-info* "path" (the-as uint 83) (the-as uint 6))
-           (__assert-zero-lim-range-int s4-0 (-> this curve num-cverts) "rand-index" "(-> obj num-cverts)")
-           )
-         (set! (-> arg0 quad) (-> this cverts s4-0 quad))
-         )
-       )
+           (__assert-zero-lim-range-int s4-0 (-> this curve num-cverts) "rand-index" "(-> obj num-cverts)"))
+         (set! (-> arg0 quad) (-> this cverts s4-0 quad))))
       (else
-        (format #t "WARNING: method get-random-point called on a path-control object with no vertices.~%")
-        (if pp
-            (format #t "current process is ~A~%" (-> pp name))
-            )
-        (set! (-> arg0 quad) (-> *null-vector* quad))
-        )
-      )
-    arg0
-    )
-  )
+       (format #t "WARNING: method get-random-point called on a path-control object with no vertices.~%")
+       (if pp (format #t "current process is ~A~%" (-> pp name)))
+       (set! (-> arg0 quad) (-> *null-vector* quad))))
+    arg0))
 
 (defmethod eval-path-curve! ((this path-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (eval-path-curve-div! this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1))) arg2)
-  )
+  (eval-path-curve-div! this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1))) arg2))
 
 (defmethod eval-path-curve! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (the-as vector (if (logtest? (-> this flags) (path-control-flag not-found))
-                     0.0
-                     (curve-evaluate!
-                       arg0
-                       arg1
-                       (-> this cverts)
-                       (-> this curve num-cverts)
-                       (-> this curve knots)
-                       (-> this curve num-knots)
-                       )
-                     )
-          )
-  )
+  (the-as vector
+          (if (logtest? (-> this flags) (path-control-flag not-found))
+            0.0
+            (curve-evaluate! arg0 arg1 (-> this cverts) (-> this curve num-cverts) (-> this curve knots) (-> this curve num-knots)))))
 
 (defmethod eval-path-curve-div! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
-  (the-as vector (if (logtest? (-> this flags) (path-control-flag not-found))
-                     0.0
-                     (curve-evaluate!
-                       arg0
-                       (/ arg1 (the float (+ (-> this curve num-cverts) -1)))
-                       (-> this cverts)
-                       (-> this curve num-cverts)
-                       (-> this curve knots)
-                       (-> this curve num-knots)
-                       )
-                     )
-          )
-  )
+  (the-as vector
+          (if (logtest? (-> this flags) (path-control-flag not-found))
+            0.0
+            (curve-evaluate! arg0
+                             (/ arg1 (the float (+ (-> this curve num-cverts) -1)))
+                             (-> this cverts)
+                             (-> this curve num-cverts)
+                             (-> this curve knots)
+                             (-> this curve num-knots)))))
 
 (defmethod path-control-method-12 ((this path-control) (arg0 vector) (arg1 float))
   (when (not (logtest? (-> this flags) (path-control-flag not-found)))
     (let ((v1-3 (-> this curve num-cverts))
-          (f0-3 (the float (the int arg1)))
-          )
+          (f0-3 (the float (the int arg1))))
       (cond
-        ((< v1-3 2)
-         )
-        ((< arg1 0.0)
-         (vector-! arg0 (-> this cverts 1) (-> this cverts 0))
-         )
+        ((< v1-3 2))
+        ((< arg1 0.0) (vector-! arg0 (-> this cverts 1) (-> this cverts 0)))
         (else
-          (let ((f0-4 (fmin f0-3 (the float (+ v1-3 -2)))))
-            (vector-! arg0 (-> this cverts (the int (+ 1.0 f0-4))) (-> this cverts (the int f0-4)))
-            )
-          )
-        )
-      )
-    )
-  (vector-normalize! arg0 1.0)
-  )
+         (let ((f0-4 (fmin f0-3 (the float (+ v1-3 -2)))))
+           (vector-! arg0 (-> this cverts (the int (+ 1.0 f0-4))) (-> this cverts (the int f0-4))))))))
+  (vector-normalize! arg0 1.0))
 
 (defmethod path-control-method-14 ((this path-control) (arg0 vector) (arg1 float))
-  (path-control-method-12 this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1))))
-  )
+  (path-control-method-12 this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1)))))
 
 (defmethod path-control-method-14 ((this curve-control) (arg0 vector) (arg1 float))
   (when (not (logtest? (-> this flags) (path-control-flag not-found)))
     (let ((s4-0 (new 'stack-no-clear 'vector)))
-      (curve-evaluate!
-        arg0
-        arg1
-        (-> this cverts)
-        (-> this curve num-cverts)
-        (-> this curve knots)
-        (-> this curve num-knots)
-        )
+      (curve-evaluate! arg0 arg1 (-> this cverts) (-> this curve num-cverts) (-> this curve knots) (-> this curve num-knots))
       (cond
         ((< arg1 0.99)
-         (curve-evaluate!
-           s4-0
-           (+ 0.01 arg1)
-           (-> this cverts)
-           (-> this curve num-cverts)
-           (-> this curve knots)
-           (-> this curve num-knots)
-           )
-         (vector-! arg0 s4-0 arg0)
-         )
+         (curve-evaluate! s4-0
+                          (+ 0.01 arg1)
+                          (-> this cverts)
+                          (-> this curve num-cverts)
+                          (-> this curve knots)
+                          (-> this curve num-knots))
+         (vector-! arg0 s4-0 arg0))
         (else
-          (curve-evaluate!
-            s4-0
-            (+ -0.01 arg1)
-            (-> this cverts)
-            (-> this curve num-cverts)
-            (-> this curve knots)
-            (-> this curve num-knots)
-            )
-          (vector-! arg0 arg0 s4-0)
-          )
-        )
-      )
-    )
-  (vector-normalize! arg0 1.0)
-  )
+         (curve-evaluate! s4-0
+                          (+ -0.01 arg1)
+                          (-> this cverts)
+                          (-> this curve num-cverts)
+                          (-> this curve knots)
+                          (-> this curve num-knots))
+         (vector-! arg0 arg0 s4-0)))))
+  (vector-normalize! arg0 1.0))
 
 (defmethod path-control-method-12 ((this curve-control) (arg0 vector) (arg1 float))
-  (path-control-method-14 this arg0 (/ arg1 (the float (+ (-> this curve num-cverts) -1))))
-  )
+  (path-control-method-14 this arg0 (/ arg1 (the float (+ (-> this curve num-cverts) -1)))))
 
 (defmethod path-control-method-19 ((this path-control))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'vector))
         (f30-0 4096000000.0)
-        (f28-0 0.0)
-        )
+        (f28-0 0.0))
     (let ((s2-0 (new 'stack-no-clear 'vector)))
       (set! (-> s3-0 quad) (-> (target-pos 0) quad))
       (set! (-> s3-0 y) 0.0)
@@ -251,20 +155,11 @@
         (let ((f0-5 (vector-segment-distance-point! s3-0 s5-0 s4-0 s2-0)))
           (when (< f0-5 f30-0)
             (set! f30-0 f0-5)
-            (set! f28-0
-                  (+ (/ (vector-vector-xz-distance s2-0 s5-0) (vector-vector-xz-distance s4-0 s5-0)) (the float s1-1))
-                  )
-            )
-          )
-        )
-      )
-    f28-0
-    )
-  )
+            (set! f28-0 (+ (/ (vector-vector-xz-distance s2-0 s5-0) (vector-vector-xz-distance s4-0 s5-0)) (the float s1-1)))))))
+    f28-0))
 
 (defmethod path-control-method-20 ((this path-control))
-  (/ (path-control-method-19 this) (the float (+ (-> this curve num-cverts) -1)))
-  )
+  (/ (path-control-method-19 this) (the float (+ (-> this curve num-cverts) -1))))
 
 (defmethod debug-draw ((this curve-control))
   (cond
@@ -272,50 +167,25 @@
      (when (and (type-type? (-> this process type) process-drawable) *display-entity-errors*)
        (let ((s5-0 add-debug-text-3d)
              (s4-0 #t)
-             (s3-0 68)
-             )
+             (s3-0 68))
          (format (clear *temp-string*) "curve data error in ~S" (-> this process name))
-         (s5-0
-           s4-0
-           (the-as bucket-id s3-0)
-           *temp-string*
-           (-> this process root trans)
-           (font-color red)
-           (the-as vector2h #f)
-           )
-         )
-       )
-     )
-    ((let ((a0-5 this))
-       (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display)))
-       )
+         (s5-0 s4-0 (the-as bucket-id s3-0) *temp-string* (-> this process root trans) (font-color red) (the-as vector2h #f)))))
+    ((let ((a0-5 this)) (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display))))
      (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (> (-> this curve num-cverts) 0))
-         (add-debug-curve2
-           #t
-           (bucket-id debug-no-zbuf)
-           (the-as curve (&-> this cverts))
-           (new 'static 'rgba :r #xff :g #x80 :a #x80)
-           #f
-           )
-         )
+       (add-debug-curve2 #t
+                         (bucket-id debug-no-zbuf)
+                         (the-as curve (&-> this cverts))
+                         (new 'static 'rgba :r #xff :g #x80 :a #x80)
+                         #f))
      (dotimes (s5-1 (-> this curve num-cverts))
        (let ((s4-1 (-> this cverts s5-1)))
          (if (logtest? (-> this flags) (path-control-flag draw-point))
-             (add-debug-x #t (bucket-id debug-no-zbuf) s4-1 (new 'static 'rgba :r #xff :a #x80))
-             )
+           (add-debug-x #t (bucket-id debug-no-zbuf) s4-1 (new 'static 'rgba :r #xff :a #x80)))
          (when (logtest? (-> this flags) (path-control-flag draw-text))
            (let ((s3-1 add-debug-text-3d)
                  (s2-1 #t)
-                 (s1-0 68)
-                 )
+                 (s1-0 68))
              (format (clear *temp-string*) "~D" s5-1)
-             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))
-             )
-           )
-         )
-       )
-     )
-    )
+             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))))))))
   0
-  (none)
-  )
+  (none))

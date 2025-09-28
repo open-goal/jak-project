@@ -1,0 +1,126 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type factory-states
+(deftype factory-states (structure)
+  ((light   light-state  :inline)
+   (blink0  float)
+   (blink1  float)
+   )
+  )
+
+;; definition for method 3 of type factory-states
+(defmethod inspect ((this factory-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'factory-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> this light))
+  (format #t "~1Tblink0: ~f~%" (-> this blink0))
+  (format #t "~1Tblink1: ~f~%" (-> this blink1))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function update-mood-factory
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-factory time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as object (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (set! (-> arg0 times 6 w) (-> (the-as factory-states gp-1) blink0))
+      (set! (-> arg0 times 7 w) (-> (the-as factory-states gp-1) blink1))
+      (when (not (paused?))
+        (let ((v1-10 (-> *display* part-clock frame-counter)))
+          (cond
+            ((< (* 0.2 (the float (mod v1-10 600))) 60.0)
+             (seek! (-> (the-as factory-states gp-1) blink0) 0.0 (* 0.5 (seconds-per-frame)))
+             (if (= (-> (the-as factory-states gp-1) blink1) 0.2)
+                 (set! (-> (the-as factory-states gp-1) blink1) 1.0)
+                 )
+             (seek! (-> (the-as factory-states gp-1) blink1) 0.2 (* 2.0 (seconds-per-frame)))
+             )
+            (else
+              (seek! (-> (the-as factory-states gp-1) blink0) 1.0 (* 0.5 (seconds-per-frame)))
+              (set! (-> (the-as factory-states gp-1) blink1) 0.2)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type factoryd-states
+(deftype factoryd-states (structure)
+  ((electricity  electricity-state  :inline)
+   )
+  )
+
+;; definition for method 3 of type factoryd-states
+(defmethod inspect ((this factoryd-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'factoryd-states)
+  (format #t "~1Telectricity: #<electricity-state @ #x~X>~%" (-> this electricity))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function update-mood-factoryd
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-factoryd time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (let* ((a0-5 (-> *display* part-clock frame-counter))
+             (v1-6 (mod a0-5 300))
+             (s5-0 (mod a0-5 900))
+             )
+        (set! (-> arg0 times 0 w) 1.0)
+        (set! (-> arg0 times 2 w) (+ 0.85 (* 0.35 (sin (* 218.45334 (the float v1-6))))))
+        (set! (-> arg0 times 3 w) (if (< 450 s5-0)
+                                      1.0
+                                      0.5
+                                      )
+              )
+        )
+      (update-mood-electricity arg0 4 0 0.8 1.0)
+      (set! (-> arg0 times 1 w) 1.0)
+      (set! (-> arg0 times 5 w) 1.0)
+      (set! (-> arg0 times 6 w) 1.0)
+      (set! (-> arg0 times 7 w) 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-factoryd-light!
+;; WARN: Return type mismatch float vs none.
+(defun set-factoryd-light! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'factoryd)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as factoryd-states v1-2) electricity scale) arg0)
+        )
+      )
+    )
+  (none)
+  )
+
+
+
+

@@ -5,5 +5,287 @@
 ;; name in dgo: race-h
 ;; dgos: WASLEAPR, DESRALLY, DESTRACK
 
+;; +++racer-info-flag
+(defenum racer-info-flag
+  :type uint8
+  :bitfield #t
+  (rif0 0)
+  (rif1 1)
+  (rif2 2)
+  (rif3 3)
+  (rif4 4)
+  (rif5 5)
+  (rif6 6)
+  (rif7 7)
+  )
+;; ---racer-info-flag
+
+
+;; +++race-info-flag
+(defenum race-info-flag
+  :type uint8
+  :bitfield #t
+  )
+;; ---race-info-flag
+
+
+;; +++racer-state-flags
+(defenum racer-state-flags
+  :type uint8
+  :bitfield #t
+  (rsf0 0)
+  (rsf1 1)
+  (rsf2 2)
+  (rsf3 3)
+  (rsf4 4)
+  (rsf5 5)
+  (rsf6 6)
+  (rsf7 7)
+  )
+;; ---racer-state-flags
+
+
+;; +++race-state-enum
+(defenum race-state-enum
+  :type uint8
+  (rs0)
+  (rs1)
+  (rs2)
+  (rs3)
+  (rs4)
+  (rs5)
+  (rs6)
+  (rs7)
+  (rs8)
+  )
+;; ---race-state-enum
+
+
+;; +++race-flag
+(defenum race-flag
+  :type uint8
+  (rf0 0)
+  (rf1 1)
+  (rf2 2)
+  (rf3 3)
+  (rf4 4)
+  (rf5 5)
+  (rf6 6)
+  (rf7 7)
+  (rf8 8)
+  (rf9 9)
+  (rf10 10)
+  (rf11 11)
+  (rf12 12)
+  (rf13 13)
+  (rf14 14)
+  (rf15 15)
+  (rf16 16)
+  )
+;; ---race-flag
+
+
+;; +++race-mesh-flag
+(defenum race-mesh-flag
+  :type uint8
+  :bitfield #t
+  (rmf0 0)
+  (rmf1 1)
+  )
+;; ---race-mesh-flag
+
+
+(declare-type race-state structure)
+
 ;; DECOMP BEGINS
 
+(deftype race-turbo-pad (structure)
+  ((position  vector  :inline)
+   (handle    handle)
+   )
+  )
+
+
+(deftype race-decision-point (structure)
+  ((pos            float)
+   (decision-type  uint8)
+   (shortcuts      uint8)
+   (safe-paths     uint8)
+   )
+  )
+
+
+(deftype race-racer-info (structure)
+  ((rider        uint8)
+   (vehicle      uint8)
+   (flags        racer-info-flag)
+   (seek-offset  int8)
+   )
+  )
+
+
+(deftype race-info (basic)
+  ((race-mesh-name            string)
+   (path-group-name           string)
+   (task-node                 game-task-node)
+   (mesh                      race-mesh)
+   (ai-min-speed-factor       float)
+   (ai-max-speed-factor       float)
+   (ai-spread-factor          float)
+   (start-sphere              sphere  :inline)
+   (start-dir                 vector  :inline)
+   (finish-sphere             sphere  :inline)
+   (finish-dir                vector  :inline)
+   (player-intro-pos          vector  :inline)
+   (flags                     racer-info-flag)
+   (score                     uint8)
+   (lap-count                 int8)
+   (racer-count               int8)
+   (turbo-pad-count           int8)
+   (map-index                 int8)
+   (decision-point-count      int8)
+   (safe-paths                uint8)
+   (turbo-pad-array           (inline-array race-turbo-pad))
+   (racer-array               (inline-array race-racer-info))
+   (decision-point-array      (inline-array race-decision-point))
+   (level                     symbol)
+   (borrow-level              symbol)
+   (borrow                    pair)
+   (manager                   handle)
+   (manager-handle-init-hack  symbol  :overlay-at manager)
+   (hatch-actor-name          string)
+   (countdown-scene           string)
+   (complete-continue         string)
+   (start-camera              string)
+   (go-speech                 uint16)
+   )
+  (:methods
+    (init-by-mesh! (_type_) none)
+    )
+  )
+
+
+(deftype racer-state (structure)
+  ((position           vector  :inline)
+   (racer              handle)
+   (flags              racer-state-flags)
+   (rank               int8)
+   (finish-count       int8)
+   (lap-count          int8)
+   (lap-quadrant       int8)
+   (rider              uint8)
+   (lap-distance       float)
+   (lap-distance-prev  float)
+   (pos                float)
+   (target-pos-offset  float)
+   (speed-factor       float)
+   (finish-time        uint32)
+   (lap-start          uint32)
+   (best-lap-time      uint32)
+   (lap-time-array     float   5)
+   (start-position     vector  :inline)
+   )
+  (:methods
+    (update-lap-distance (_type_ race-state) none)
+    (begin-lap (_type_ race-state) none)
+    (end-lap (_type_ race-state) none)
+    (print-laps (_type_ race-state string) none)
+    (init-racer! (_type_ process-drawable) none)
+    )
+  )
+
+
+(deftype race-state (structure)
+  ((info                  race-info)
+   (flags                 race-flag)
+   (state                 race-state-enum)
+   (racer-count           int8)
+   (finished-count        int8)
+   (i-player              int8)
+   (i-countdown           int8)
+   (manager               handle)
+   (scene-player          handle)
+   (race-signal           handle)
+   (arrow                 handle)
+   (hud-timer             handle)
+   (hud-lap-counter       handle)
+   (hud-turbo-counter     handle)
+   (hud-position          handle)
+   (current-time          uint32)
+   (countdown-start-time  uint32)
+   (race-start-time       uint32)
+   (rankings              int8         10)
+   (target-pos            float)
+   (suck-factor           float)
+   (player-win?           symbol)
+   (new-score?            symbol)
+   (racer-array           racer-state  10 :inline)
+   (player-intro-curve    cubic-curve  :inline)
+   )
+  (:methods
+    (init-racers! (_type_ process-drawable int) none)
+    (begin-race (_type_) none)
+    (update (_type_) none)
+    (update-rankings (_type_) none)
+    (debug-print-rankings (_type_) none)
+    (update-racers (_type_) none)
+    (race-state-method-15 (_type_) none)
+    (deactivate-race (_type_) none)
+    (initialize (_type_ process race-info) none)
+    (race-state-method-18 () none)
+    (setup-race (_type_) none)
+    (get-racer-count (_type_) int)
+    )
+  )
+
+
+(deftype race-manager (process)
+  ((race-state            race-state)
+   (state-time            time-frame)
+   (player-on-track-time  time-frame)
+   (message-id            sound-id)
+   (finish-sound-id       sound-id)
+   (show-stats?           symbol)
+   )
+  (:state-methods
+    idle
+    active
+    fail
+    win
+    lose
+    die
+    )
+  (:methods
+    (update (_type_) int)
+    (initialize-state (_type_) none)
+    (race-manager-method-22 (_type_) none)
+    (initialize-race-state (_type_) none)
+    (draw-message-continue (_type_) none)
+    (draw-message-retry (_type_) none)
+    (save-score (_type_ int) symbol)
+    (stop-speech (_type_) none)
+    )
+  )
+
+
+(deftype hud-race-timer (hud)
+  ()
+  )
+
+
+(deftype hud-race-lap-counter (hud)
+  ()
+  )
+
+
+(deftype hud-race-turbo-counter (hud)
+  ()
+  )
+
+
+(deftype hud-race-position (hud)
+  ()
+  )
+
+
+(define *race-manager* (the-as (pointer race-manager) #f))

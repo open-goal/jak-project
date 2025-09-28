@@ -1,9 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: transformq-h.gc
-;; name in dgo: transformq-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/quaternion-h.gc")
+(require "engine/math/vector-h.gc")
+(require "engine/math/transform-h.gc")
 
 ;; DECOMP BEGINS
 
@@ -11,16 +11,12 @@
 ;; it is much more commonly used than transform.
 (deftype transformq (transform)
   ;; this overlays the rot field of transform.
-  ((quat  quaternion  :inline :overlay-at (-> rot x))
-   )
-  )
+  ((quat quaternion :inline :overlay-at (-> rot x))))
 
 ;; trsq is the quaternion version of trs (trs is like a transform, but is basic.)
 (deftype trsq (trs)
   ;; this overlays the rot field of trs.
-  ((quat  quaternion  :inline :overlay-at (-> rot x))
-   )
-  )
+  ((quat quaternion :inline :overlay-at (-> rot x))))
 
 ;; Representing a translate/rotate/scale with a quaternion and a velocity.
 ;; This is often used as the base type for the position of a game object that can move around
@@ -30,48 +26,42 @@
 ;; note: Jak's control uses this as a base class.
 
 (deftype trsqv (trsq)
-  ((pause-adjust-distance  meters      :offset   4) ;; hack: adjusts the distance where actor logic is paused, if this is an actor
-   (nav-radius             meters      :offset   8) ;; hack: the radius of the bounding sphere used by the navigate system.
-   (transv                 vector      :inline) ;; velocity (meters/second)
-   (rotv                   vector      :inline) ;; angular velocity (deg/second)
-   (scalev                 vector      :inline) ;; scale velocity (unused?)
-
+  ((pause-adjust-distance meters :offset 4) ;; hack: adjusts the distance where actor logic is paused, if this is an actor
+   (nav-radius            meters :offset 8) ;; hack: the radius of the bounding sphere used by the navigate system.
+   (transv                vector :inline) ;; velocity (meters/second)
+   (rotv                  vector :inline) ;; angular velocity (deg/second)
+   (scalev                vector :inline) ;; scale velocity (unused?)
    ;; there's a hacky ~first-order orientation yaw control with hysteresis
    ;; it makes the yaw change smoothly and attempts to cancel out oscillations from the collision system
-   (dir-targ               quaternion  :inline) ;; direction target
-   (angle-change-time      time-frame) ;; the time when we change rotation directions
-   (old-y-angle-diff       float) ;; the amount we moved last time
+   (dir-targ              quaternion :inline) ;; direction target
+   (angle-change-time     time-frame) ;; the time when we change rotation directions
+   (old-y-angle-diff      float) ;; the amount we moved last time
    )
   (:methods
-    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
-    (set-heading-vec! (_type_ vector) quaternion)
-    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
-    (point-toward-point! (_type_ vector) quaternion)
-    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
-    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
-    (set-roll-to-grav! (_type_ float) quaternion)
-    (set-roll-to-grav-2! (_type_ float) quaternion)
-    (rotate-toward-orientation! (_type_ quaternion float float) quaternion)
-    (set-quaternion! (_type_ quaternion) quaternion)
-    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
-    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
-    (rot->dir-targ! (_type_) quaternion)
-    (y-angle (_type_) float)
-    (global-y-angle-to-point (_type_ vector) float)
-    (relative-y-angle-to-point (_type_ vector) float)
-    (roll-relative-to-gravity (_type_) float)
-    (set-and-limit-velocity (_type_ int vector float) trsqv)
-    (get-quaternion (_type_) quaternion)
-    )
-  )
-
+   (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
+   (set-heading-vec! (_type_ vector) quaternion)
+   (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
+   (point-toward-point! (_type_ vector) quaternion)
+   (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
+   (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
+   (set-roll-to-grav! (_type_ float) quaternion)
+   (set-roll-to-grav-2! (_type_ float) quaternion)
+   (rotate-toward-orientation! (_type_ quaternion float float) quaternion)
+   (set-quaternion! (_type_ quaternion) quaternion)
+   (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
+   (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
+   (rot->dir-targ! (_type_) quaternion)
+   (y-angle (_type_) float)
+   (global-y-angle-to-point (_type_ vector) float)
+   (relative-y-angle-to-point (_type_ vector) float)
+   (roll-relative-to-gravity (_type_) float)
+   (set-and-limit-velocity (_type_ int vector float) trsqv)
+   (get-quaternion (_type_) quaternion)))
 
 (defmethod global-y-angle-to-point ((this trsqv) (arg0 vector))
   "Get the angle in the xz plane from the position of this trsqv to the point arg0."
-  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)))
-  )
+  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
 
 (defmethod relative-y-angle-to-point ((this trsqv) (arg0 vector))
   "Get the y angle between the current orientation and arg0."
-  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
-  )
+  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)))))

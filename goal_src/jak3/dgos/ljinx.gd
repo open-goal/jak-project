@@ -1,0 +1,9 @@
+("LJINX.DGO"
+ ("cty-destroy-grid.o"
+  "tpage-1826.go"
+  "tpage-2552.go"
+  "jinx-ag.go"
+  "krimson-wall-break-ag.go"
+  "com-power-box-ag.go"
+  "ljinx.go"
+ ))

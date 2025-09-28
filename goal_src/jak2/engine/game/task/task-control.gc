@@ -1481,6 +1481,7 @@
 
 
 (defmethod run-logic? ((this fail-mission))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
@@ -1676,6 +1677,7 @@
   )
 
 (defmethod deactivate ((this fail-mission))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (set-filter-color! 1.0 1.0 1.0)
   (sound-group-continue (sound-group sfx music dialog sog3 ambient dialog2 sog6 sog7))
   (update-rates! (-> *display* bg-clock) 1.0)
@@ -1713,27 +1715,25 @@
     )
   :code (behavior ()
     (local-vars (a1-10 string))
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (let ((f30-0 (lerp-scale 1.0 0.0 (the float (- (current-time) gp-0)) 0.0 270.0)))
-          (when *sound-player-enable*
-            (let ((v1-6 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
-              (set! (-> v1-6 command) (sound-command set-param))
-              (set! (-> v1-6 id) (-> self stinger))
-              (set! (-> v1-6 params volume) (the int (* 1024.0 f30-0)))
-              (set! (-> v1-6 params mask) (the-as uint 1))
-              (-> v1-6 id)
-              )
+    (suspend-for
+      (seconds 1)
+      (let ((f30-0 (lerp-scale 1.0 0.0 (the float (- (current-time) time)) 0.0 270.0)))
+        (when *sound-player-enable*
+          (let ((v1-6 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+            (set! (-> v1-6 command) (sound-command set-param))
+            (set! (-> v1-6 id) (-> self stinger))
+            (set! (-> v1-6 params volume) (the int (* 1024.0 f30-0)))
+            (set! (-> v1-6 params mask) (the-as uint 1))
+            (-> v1-6 id)
             )
           )
-        (let ((f30-1 (lerp-scale 1.0 0.0 (the float (- (current-time) gp-0)) 0.0 300.0)))
-          (set-filter-color!
-            (lerp-scale 1.0 1.25 f30-1 0.0 1.0)
-            (lerp-scale 1.0 0.875 f30-1 0.0 1.0)
-            (lerp-scale 1.0 0.25 f30-1 0.0 1.0)
-            )
+        )
+      (let ((f30-1 (lerp-scale 1.0 0.0 (the float (- (current-time) time)) 0.0 300.0)))
+        (set-filter-color!
+          (lerp-scale 1.0 1.25 f30-1 0.0 1.0)
+          (lerp-scale 1.0 0.875 f30-1 0.0 1.0)
+          (lerp-scale 1.0 0.25 f30-1 0.0 1.0)
           )
-        (suspend)
         )
       )
     (case (-> self message)
@@ -1866,15 +1866,16 @@
   )
 
 ;; WARN: Return type mismatch process vs task-manager.
-(defmethod relocate ((this task-manager) (arg0 int))
+(defmethod relocate ((this task-manager) (offset int))
   (if (nonzero? (-> this link))
-      (+! (-> this link) arg0)
+      (+! (-> this link) offset)
       )
-  (the-as task-manager ((method-of-type process relocate) this arg0))
+  (the-as task-manager ((method-of-type process relocate) this offset))
   )
 
 (defbehavior task-manager-init-by-other task-manager ((arg0 game-task-node-info) (arg1 symbol))
-  (stack-size-set! (-> self main-thread) 3072) ;; increased from 1024
+  ;; og:preserve-this increased from 1024
+  (stack-size-set! (-> self main-thread) 3072)
   (add-connection *task-manager-engine* self nothing self arg0 #f)
   (set! (-> self node-info) arg0)
   (set! (-> self lev-name) arg1)
@@ -1951,6 +1952,7 @@
   )
 
 (defmethod deactivate ((this task-manager))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (with-pp
     (let ((s5-0 pp))
       (set! pp this)

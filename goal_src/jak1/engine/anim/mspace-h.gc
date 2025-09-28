@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: mspace-h.gc
-;; name in dgo: mspace-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gcommon.gc")
 
 ;; DECOMP BEGINS
 
@@ -17,42 +15,32 @@
 ;; - The skeleton: This is an inline array of bones. (called skeleton)
 ;; - The joint-control (not in this file): this has the logic for running joint animations. (called skel)
 
-
 ;; First, the joint. This type just describes how the skeleton is connected and the bind pose.
 (deftype joint (basic)
-  ((name       string)
-   (number     int32)
-   (parent     joint)
-   (bind-pose  matrix  :inline)
-   )
-  )
+  ((name      string)
+   (number    int32)
+   (parent    joint)
+   (bind-pose matrix :inline)))
 
 ;; I believe this stores offsets, in bytes, of where there are stored
 ;; (possibly in the scratchpad)
 (deftype bone-cache (structure)
-  ((bone-matrix    uint32)
-   (parent-matrix  uint32)
-   (dummy          uint32)
-   (frame          uint32)
-   )
-  )
+  ((bone-matrix   uint32)
+   (parent-matrix uint32)
+   (dummy         uint32)
+   (frame         uint32)))
 
 ;; The "bone" stores the final positions of the bodies.
 ;; This is a world space transform.
 (deftype bone (structure)
-  ((transform  matrix      :inline)
-   (position   vector      :inline :overlay-at (-> transform vector 3))
-   (scale      vector      :inline)
-   (cache      bone-cache  :inline)
-   )
-  )
+  ((transform matrix :inline)
+   (position  vector :inline :overlay-at (-> transform vector 3))
+   (scale     vector :inline)
+   (cache     bone-cache :inline)))
 
 ;; Like a real skeleton, this is a collection of bones for a single character.
 (deftype skeleton (inline-array-class)
-  ((bones  bone  :inline :dynamic)
-   )
-  )
-
+  ((bones bone :inline :dynamic)))
 
 (set! (-> skeleton heap-base) (the-as uint 96))
 
@@ -69,39 +57,23 @@
 ;;                node 4 is the first real joint (for jak, it's upper body).
 
 (deftype cspace (structure)
-  ((parent     cspace)
-   (joint      joint)
-   (joint-num  int16)
-   (geo        basic)
-   (bone       bone)
-   (param0     function)
-   (param1     basic)
-   (param2     basic)
-   )
+  ((parent    cspace)
+   (joint     joint)
+   (joint-num int16)
+   (geo       basic)
+   (bone      bone)
+   (param0    function)
+   (param1    basic)
+   (param2    basic))
   (:methods
-    (new (symbol type basic) _type_)
-    (reset-and-assign-geo! (_type_ basic) _type_)
-    )
-  )
-
+   (new (symbol type basic) _type_)
+   (reset-and-assign-geo! (_type_ basic) _type_)))
 
 (deftype cspace-array (inline-array-class)
-  ((data  cspace  :inline :dynamic)
-   )
-  )
-
+  ((data cspace :inline :dynamic)))
 
 (set! (-> cspace-array heap-base) (the-as uint 32))
 
 (defmethod print ((this cspace))
-  (format
-    #t
-    "#<cspace ~S @ #x~X>"
-    (if (-> this joint)
-        (-> this joint name)
-        "nojoint"
-        )
-    this
-    )
-  this
-  )
+  (format #t "#<cspace ~S @ #x~X>" (if (-> this joint) (-> this joint name) "nojoint") this)
+  this)

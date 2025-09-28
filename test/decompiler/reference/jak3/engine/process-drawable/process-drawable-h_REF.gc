@@ -1,0 +1,189 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function cspace-by-name-no-fail
+;; WARN: Return type mismatch object vs cspace.
+(defun cspace-by-name-no-fail ((proc process-drawable) (name string))
+  "Like [[cspace-by-name]], but prints an error if the [[cspace]] was not found and returns the `node-list`."
+  (let ((v0-0 (the-as object (cspace-by-name proc name))))
+    (the-as cspace (cond
+                     ((the-as cspace v0-0)
+                      (empty)
+                      v0-0
+                      )
+                     (else
+                       (format 0 "no cspace (~A)~%" name)
+                       (-> proc node-list data)
+                       )
+                     )
+            )
+    )
+  )
+
+;; definition for function cspace-index-by-name-no-fail
+(defun cspace-index-by-name-no-fail ((proc process-drawable) (name string))
+  "Like [[cspace-index-by-name]], but prints an error if the [[cspace]] was not found and returns 0."
+  (let ((idx (cspace-index-by-name proc name)))
+    (cond
+      ((< idx 0)
+       (format 0 "no cspace[ndx] (~A)~%" name)
+       0
+       )
+      (else
+        (empty)
+        idx
+        )
+      )
+    )
+  )
+
+;; definition for function num-func-none
+(defbehavior num-func-none process ((chan joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (-> chan frame-num)
+  )
+
+;; definition for function num-func-+!
+(defbehavior num-func-+! process ((chan joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (set! (-> chan frame-num)
+        (+ (-> chan frame-num) (* arg1 (* (-> chan frame-group speed) (-> self clock time-adjust-ratio))))
+        )
+  )
+
+;; definition for function num-func--!
+(defbehavior num-func--! process ((chan joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (set! (-> chan frame-num)
+        (- (-> chan frame-num) (* arg1 (* (-> chan frame-group speed) (-> self clock time-adjust-ratio))))
+        )
+  )
+
+;; definition for function num-func-loop!
+(defbehavior num-func-loop! process ((chan joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (let* ((f0-1 (the float (+ (-> chan frame-group frames num-frames) -1)))
+         (f1-2 (+ (-> chan frame-num) f0-1 (* arg1 (* (-> chan frame-group speed) (-> self clock time-adjust-ratio)))))
+         )
+    (set! (-> chan frame-num) (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)))
+    )
+  )
+
+;; definition for function num-func-loop-speedless!
+(defbehavior num-func-loop-speedless! process ((arg0 joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (let* ((f0-1 (the float (+ (-> arg0 frame-group frames num-frames) -1)))
+         (f1-2 (+ (-> arg0 frame-num) f0-1 arg1))
+         )
+    (set! (-> arg0 frame-num) (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)))
+    )
+  )
+
+;; definition for function num-func-loop-set!
+(defbehavior num-func-loop-set! process ((chan joint-control-channel) (frame float) (arg2 float) (arg3 float))
+  (set! (-> chan frame-num) frame)
+  frame
+  )
+
+;; definition for function num-func-seek!
+(defbehavior num-func-seek! process ((chan joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (set! (-> chan frame-num)
+        (seek (-> chan frame-num) arg1 (* arg2 (* (-> chan frame-group speed) (-> self clock time-adjust-ratio))))
+        )
+  )
+
+;; definition for function num-func-blend-in!
+(defbehavior num-func-blend-in! process ((arg0 joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (let ((f30-0 (seek (-> arg0 frame-interp 0) 1.0 (* arg1 (-> self clock time-adjust-ratio)))))
+    (set! (-> arg0 frame-interp 0) f30-0)
+    (set! (-> arg0 frame-interp 1) f30-0)
+    (if (= f30-0 1.0)
+        (joint-control-reset! (-> arg0 parent) arg0)
+        )
+    f30-0
+    )
+  )
+
+;; definition for function joint-channel-float-delete!
+;; WARN: Return type mismatch int vs none.
+(defun joint-channel-float-delete! ((chan joint-control-channel))
+  (let ((v1-0 (-> chan parent)))
+    (+! (-> v1-0 float-channels) -1)
+    (when (nonzero? (-> v1-0 float-channels))
+      (let ((a1-5 (/ (&- (the-as pointer chan) (the-as uint (the-as pointer (-> v1-0 channel)))) 64)))
+        (if (< a1-5 (the-as int (+ (-> v1-0 active-channels) (-> v1-0 float-channels))))
+            (qmem-copy<-!
+              (the-as pointer (-> v1-0 channel a1-5))
+              (the-as pointer (-> v1-0 channel (+ a1-5 1)))
+              (the-as int (* (-> v1-0 float-channels) 64))
+              )
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function num-func-interp-play!
+(defbehavior num-func-interp-play! process ((arg0 joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (let ((f30-0 (the float (+ (-> arg0 frame-group frames num-frames) -1)))
+        (f28-0 (* arg3 (-> arg0 frame-group speed)))
+        )
+    (seek! (-> arg0 frame-num) f30-0 (* arg1 (* (-> arg0 frame-group speed) (-> self clock time-adjust-ratio))))
+    (cond
+      ((< (-> arg0 frame-num) f28-0)
+       (set! (-> arg0 frame-interp 0) (/ (* (-> arg0 frame-num) arg2) f28-0))
+       )
+      ((< (- f30-0 f28-0) (-> arg0 frame-num))
+       (set! (-> arg0 frame-interp 0) (/ (* (- f30-0 (-> arg0 frame-num)) arg2) f28-0))
+       (when (and (= (-> arg0 frame-num) f30-0) (logtest? (-> arg0 command) (joint-control-command eight)))
+         (joint-channel-float-delete! arg0)
+         (return 0.0)
+         )
+       )
+      (else
+        (set! (-> arg0 frame-interp 0) arg2)
+        )
+      )
+    )
+  (set! (-> arg0 frame-interp 1) (-> arg0 frame-interp 0))
+  (-> arg0 frame-num)
+  )
+
+;; definition for function num-func-interp1-play!
+(defbehavior num-func-interp1-play! process ((arg0 joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (let ((f30-0 (the float (+ (-> arg0 frame-group frames num-frames) -1)))
+        (f28-0 (* arg3 (-> arg0 frame-group speed)))
+        )
+    (seek! (-> arg0 frame-num) f30-0 (* arg1 (* (-> arg0 frame-group speed) (-> self clock time-adjust-ratio))))
+    (cond
+      ((< (-> arg0 frame-num) f28-0)
+       (set! (-> arg0 frame-interp 1) (/ (* (-> arg0 frame-num) arg2) f28-0))
+       )
+      ((< (- f30-0 f28-0) (-> arg0 frame-num))
+       (set! (-> arg0 frame-interp 1) (/ (* (- f30-0 (-> arg0 frame-num)) arg2) f28-0))
+       (when (and (= (-> arg0 frame-num) f30-0) (logtest? (-> arg0 command) (joint-control-command eight)))
+         (joint-channel-float-delete! arg0)
+         (return 0.0)
+         )
+       )
+      (else
+        (set! (-> arg0 frame-interp 1) arg2)
+        )
+      )
+    )
+  (-> arg0 frame-num)
+  )
+
+;; definition for function num-func-chan
+(defbehavior num-func-chan process ((arg0 joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (set! (-> arg0 frame-num)
+        (-> (the-as joint-control-channel (+ (the-as uint arg0) (* (- (the int arg1) (-> arg0 group-sub-index)) 64)))
+            frame-num
+            )
+        )
+  )
+
+;; definition for function num-func-identity
+(defbehavior num-func-identity process ((chan joint-control-channel) (arg1 float) (arg2 float) (arg3 float))
+  (-> chan frame-num)
+  )
+
+;; failed to figure out what this is:
+0

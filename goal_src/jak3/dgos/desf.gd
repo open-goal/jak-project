@@ -1,0 +1,10 @@
+("DESF.DGO"
+ ("desertf-obs.o"
+  "tpage-1384.go"
+  "tpage-2844.go"
+  "tpage-2871.go"
+  "des-draw-bridge-ag.go"
+  "des-jump-bridge-ag.go"
+  "des-garage-door-ag.go"
+  "desertf-vis.go"
+ ))

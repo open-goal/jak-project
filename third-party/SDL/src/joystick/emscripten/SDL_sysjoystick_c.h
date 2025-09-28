@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,34 +19,31 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifdef SDL_JOYSTICK_EMSCRIPTEN
 #include "../SDL_sysjoystick.h"
 
-
 #include <emscripten/html5.h>
 
-/* A linked list of available joysticks */
+// A linked list of available joysticks
 typedef struct SDL_joylist_item
 {
-  int index;
-  char *name;
-  char *mapping;
-  SDL_JoystickID device_instance;
-  SDL_Joystick *joystick;
-  int nbuttons;
-  int naxes;
-  double timestamp;
-  double axis[64];
-  double analogButton[64];
-  EM_BOOL digitalButton[64];
+    int index;
+    char *name;
+    char *mapping;
+    SDL_JoystickID device_instance;
+    SDL_Joystick *joystick;
+    int nbuttons;
+    int naxes;
+    double timestamp;
+    double axis[64];
+    double analogButton[64];
+    EM_BOOL digitalButton[64];
 
-  struct SDL_joylist_item *next;
+    struct SDL_joylist_item *next;
 } SDL_joylist_item;
 
 typedef SDL_joylist_item joystick_hwdata;
 
-#endif /* SDL_JOYSTICK_EMSCRIPTEN */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_JOYSTICK_EMSCRIPTEN

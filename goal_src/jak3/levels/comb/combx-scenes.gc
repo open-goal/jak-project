@@ -7,3 +7,106 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-tpl-elevator-movie tpl-elevator tpl-elevator-lod0-jg tpl-elevator-idle-ja
+              ((tpl-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 11)
+              :origin-joint-index 3
+              )
+
+(load-scene
+  (new 'static 'scene
+    :name "comb-entrance-temple"
+    :extra #f
+    :info #f
+    :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+    :mask-to-clear (process-mask movie projectile)
+    :entity "scene-stage-206"
+    :art-group "scenecamera"
+    :anim "comb-entrance-temple"
+    :parts 5
+    :command-list '((0
+        (fadein (frame-time-30 10))
+        (kill "tpl-mardoor-5")
+        (kill "tpl-elevator-2")
+        (kill "combx-elevator-1")
+        (send-event "tpl-elevator-movie" 'segment 1 2)
+        )
+      (65 (send-event "tpl-elevator-movie" 'segment 3))
+      (91 (want-load 'comba 'combx 'combb))
+      (450 (want-display 'comba 'display))
+      (532 (send-event "tpl-elevator-movie" 'segment 1 2))
+      (555 (fadeout (frame-time-30 15)))
+      (10000 (restore "tpl-elevator-2") (restore "combx-elevator-1") (task-close! "temple-tests-resolution") (save))
+      )
+    :cut-list '(91 211 391)
+    :wait-ground-time (seconds 1)
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jakc-highres"
+        :level 'combx
+        :art-group "skel-jakc-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '(((90 500) set-flags local-space))
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        :no-draw-seg #x80
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'combx
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "tpl-elevator-movie"
+        :level 'combx
+        :art-group "skel-tpl-elevator-movie"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :light-index #x1
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point "temple-comb-entrance"
+    :end-point "comba-elevator"
+    :borrow '()
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-delay 1500.0
+    :on-running '(begin (sound-play-loop "tunnel-amb-mov") (sound-play-loop "launch-amb-mov"))
+    :on-complete #f
+    )
+  )

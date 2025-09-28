@@ -1,21 +1,13 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: sparticle-h.gc
-;; name in dgo: sparticle-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
 
 ;; DECOMP BEGINS
 
 (define *sp-frame-time* (new 'global 'vector))
 
-(set-vector!
-  *sp-frame-time*
-  0.00000000000000000000000000000000000001175495
-  5.0
-  1.0
-  1.0
-  )
+(set-vector! *sp-frame-time* 0.00000000000000000000000000000000000001175495 5.0 1.0 1.0)
 
 (define *sp-60-hz* #t)
 
@@ -24,95 +16,87 @@
   :type uint32
   (bit0 0)
   (bit1 1) ;; village1-part
-  (bit2 2)     ;; cleared after an aux has its func set to add-to-sprite-aux-lst
+  (bit2 2) ;; cleared after an aux has its func set to add-to-sprite-aux-lst
   (bit3 3)
   (bit4 4) ;; see - swamp-blimp
   (ready-to-launch 6) ;; maybe just just death?
   (bit7 7)
-  (aux-list 8)     ;; prevents relaunch, adds to aux
+  (aux-list 8) ;; prevents relaunch, adds to aux
   (bit9 9)
   (level0 10)
   (level1 11)
-  (bit12 12)   ;; required to relaunch
+  (bit12 12) ;; required to relaunch
   (bit13 13)
   (bit14 14)
   (use-global-acc 16)
   (launch-along-z 17)
   (left-multiply-quat 18)
   (right-multiply-quat 19)
-  (set-conerot 20)
-  )
+  (set-conerot 20))
 
 (deftype sparticle-cpuinfo (structure)
-  ((sprite         sprite-vec-data-2d)
-   (adgif          adgif-shader)
-   (radius         float)
-   (omega          float)
-   (vel-sxvel      vector              :inline)
-   (rot-syvel      vector              :inline)
-   (fade           rgbaf               :inline)
-   (acc            vector              :inline)
-   (rotvel3d       quaternion          :inline)
-   (vel            vector3s            :inline :overlay-at (-> vel-sxvel x))
-   (accel          vector3s            :inline :overlay-at (-> acc x))
-   (scalevelx      float                       :overlay-at (-> vel-sxvel w))
-   (scalevely      float                       :overlay-at (-> rot-syvel w))
-   (friction       float)
-   (timer          int32)
-   (flags          sp-cpuinfo-flag)
-   (user-int32     int32)
-   (user-uint32    uint32                      :overlay-at user-int32)
-   (user-float     float                       :overlay-at user-int32)
-   (user-pntr      uint32                      :overlay-at user-int32)
-   (user-sprite    sprite-vec-data-2d          :overlay-at user-int32)
-   (func           basic)
-   (next-time      uint32)
-   (next-launcher  basic)
-   (cache-alpha    float)
-   (valid          symbol)
-   (key            sparticle-launch-control)
-   (binding        sparticle-launch-state)
-   (data           uint32              1       :overlay-at omega)
-   (dataf          float               1       :overlay-at omega)
-   (datac          uint8               1       :overlay-at omega)
-   )
-  )
-
+  ((sprite        sprite-vec-data-2d)
+   (adgif         adgif-shader)
+   (radius        float)
+   (omega         float)
+   (vel-sxvel     vector :inline)
+   (rot-syvel     vector :inline)
+   (fade          rgbaf :inline)
+   (acc           vector :inline)
+   (rotvel3d      quaternion :inline)
+   (vel           vector3s :inline :overlay-at (-> vel-sxvel x))
+   (accel         vector3s :inline :overlay-at (-> acc x))
+   (scalevelx     float :overlay-at (-> vel-sxvel w))
+   (scalevely     float :overlay-at (-> rot-syvel w))
+   (friction      float)
+   (timer         int32)
+   (flags         sp-cpuinfo-flag)
+   (user-int32    int32)
+   (user-uint32   uint32 :overlay-at user-int32)
+   (user-float    float :overlay-at user-int32)
+   (user-pntr     uint32 :overlay-at user-int32)
+   (user-sprite   sprite-vec-data-2d :overlay-at user-int32)
+   (func          basic)
+   (next-time     uint32)
+   (next-launcher basic)
+   (cache-alpha   float)
+   (valid         symbol)
+   (key           sparticle-launch-control)
+   (binding       sparticle-launch-state)
+   (data          uint32 1 :overlay-at omega)
+   (dataf         float 1 :overlay-at omega)
+   (datac         uint8 1 :overlay-at omega)))
 
 (deftype sparticle-launchinfo (structure)
-  ((launchrot   vector  :inline)
-   (conerot     vector  :inline)
-   (coneradius  float)
-   (rotate-y    float)
-   (data        uint8   1 :overlay-at (-> launchrot x))
-   )
-  )
-
+  ((launchrot  vector :inline)
+   (conerot    vector :inline)
+   (coneradius float)
+   (rotate-y   float)
+   (data       uint8 1 :overlay-at (-> launchrot x))))
 
 (deftype sparticle-system (basic)
-  ((blocks           int32  2)
-   (length           int32  2)
-   (num-alloc        int32  2)
-   (is-3d            basic)
-   (flags            uint32)
-   (alloc-table      (pointer uint64))
-   (cpuinfo-table    (inline-array sparticle-cpuinfo))
-   (vecdata-table    pointer)
-   (adgifdata-table  (inline-array adgif-shader))
-   )
+  ((blocks          int32 2)
+   (length          int32 2)
+   (num-alloc       int32 2)
+   (is-3d           basic)
+   (flags           uint32)
+   (alloc-table     (pointer uint64))
+   (cpuinfo-table   (inline-array sparticle-cpuinfo))
+   (vecdata-table   pointer)
+   (adgifdata-table (inline-array adgif-shader)))
   (:methods
-    (new (symbol type int int symbol pointer (inline-array adgif-shader)) _type_)
-    )
-  )
+   (new (symbol type int int symbol pointer (inline-array adgif-shader)) _type_)))
 
 (define-extern part-group-pointer? (function pointer symbol))
 
 ;; TODO - for shadow
 (define-extern *part-id-table* (array sparticle-launcher))
+
 (define-extern *part-group-id-table* (array sparticle-launch-group))
 
 ;; TODO - for basically everything particle related
 (define-extern *sp-particle-system-2d* sparticle-system)
+
 (define-extern *sp-particle-system-3d* sparticle-system)
 
 (defun-extern kill-all-particles-with-key sparticle-launch-control none)

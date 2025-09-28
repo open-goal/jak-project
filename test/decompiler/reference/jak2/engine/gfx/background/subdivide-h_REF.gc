@@ -3,6 +3,8 @@
 
 ;; definition of type subdivide-settings
 (deftype subdivide-settings (basic)
+  "Input settings for distances for switching mesh level of details.
+These are set by the level code and read by rendering code."
   ((dist    float  5)
    (meters  float  5)
    (close   float  8)
@@ -41,6 +43,7 @@
 
 ;; definition of type subdivide-dists
 (deftype subdivide-dists (structure)
+  "Unused subdivide distances. Internally, tfrag/tie figure these out instead."
   ((data    uint32   32)
    (vector  vector   8 :inline :overlay-at (-> data 0))
    (k0s     uint128  4         :overlay-at (-> data 0))
@@ -65,6 +68,7 @@
 
 ;; definition of type terrain-stats
 (deftype terrain-stats (structure)
+  "Desptie the name `terrain-stats`, these are more general triangle stats for all renderers."
   ((pris                      tr-stat  :inline)
    (tie-generic               tr-stat  :inline)
    (tie-vanish                tr-stat  :inline)
@@ -175,6 +179,9 @@
 
 ;; definition of type background-area
 (deftype background-area (structure)
+  "Scratchpad memory layout for most background rendering
+This uses the full scratchpad so it should only be used when the stack isn't on the scratchpad (rendering code).
+Interestingly, dma-area went from a union of all the -dma types to a plain array of bytes in jak 3."
   ((dma-area  dma-area  :inline)
    (vis-list  uint8     2048)
    )
@@ -195,6 +202,7 @@
 
 ;; definition of type foreground-area
 (deftype foreground-area (structure)
+  "Scratchpad memory layout for most foreground rendering."
   ((generic-work     generic-work     :inline)
    (foreground-work  foreground-work  :inline :overlay-at (-> generic-work saves ptr-dma))
    (joint-work       joint-work       :inline :overlay-at (-> generic-work saves ptr-dma))
@@ -221,6 +229,7 @@
 
 ;; definition of type region-prim-area
 (deftype region-prim-area (structure)
+  "Scratchpad memory layout for regions."
   ((region-prim-list         region-prim-list        :inline)
    (pos                      vector                  :inline)
    (unknown-vector-uiyb1     vector                  :inline)
@@ -275,6 +284,7 @@
 
 ;; definition of type sprite-area
 (deftype sprite-area (structure)
+  "Scratchpad memory layout for sprites."
   ((clock-data  vector  13 :inline)
    (buffer      uint8   :dynamic)
    )
@@ -295,6 +305,7 @@
 
 ;; definition of type work-area
 (deftype work-area (structure)
+  "All scratchpad memory layouts."
   ((background   background-area   :inline)
    (foreground   foreground-area   :inline :overlay-at (-> background dma-area ocean-vertex 0))
    (region-prim  region-prim-area  :inline :overlay-at (-> background dma-area ocean-vertex 0))
@@ -319,6 +330,7 @@
 
 ;; definition of type terrain-context
 (deftype terrain-context (structure)
+  "Useless wrapper around work-area. (this added some stuff in jak 1)"
   ((work  work-area  :inline)
    )
   )

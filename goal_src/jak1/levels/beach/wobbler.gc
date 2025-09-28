@@ -1,29 +1,24 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: wobbler.gc
-;; name in dgo: wobbler
-;; dgos: BEA, L1
+(bundles "BEA.DGO")
+(require "engine/gfx/hw/display-h.gc")
+(require "engine/math/quaternion.gc")
 
 ;; DECOMP BEGINS
 
 (deftype wobbler (basic)
-  ((posx     float)
-   (posy     float)
-   (velx     float)
-   (vely     float)
-   (spring   float)
-   (damping  float)
-   (height   float)
-   )
+  ((posx    float)
+   (posy    float)
+   (velx    float)
+   (vely    float)
+   (spring  float)
+   (damping float)
+   (height  float))
   (:methods
-    (reset! (_type_ float float float) none)
-    (inc-xy-vel! (_type_ float float) none)
-    (move! (_type_) none)
-    (wobbler-method-12 (_type_ quaternion) none)
-    )
-  )
-
+   (reset! (_type_ float float float) none)
+   (inc-xy-vel! (_type_ float float) none)
+   (move! (_type_) none)
+   (wobbler-method-12 (_type_ quaternion) none)))
 
 (defmethod reset! ((this wobbler) (arg0 float) (arg1 float) (arg2 float))
   (set! (-> this posx) 0.0)
@@ -34,15 +29,13 @@
   (set! (-> this damping) arg1)
   (set! (-> this height) arg2)
   0
-  (none)
-  )
+  (none))
 
 (defmethod inc-xy-vel! ((this wobbler) (arg0 float) (arg1 float))
   (+! (-> this velx) arg0)
   (+! (-> this vely) arg1)
   0
-  (none)
-  )
+  (none))
 
 (defmethod move! ((this wobbler))
   (+! (-> this posx) (* (-> this velx) (seconds-per-frame)))
@@ -52,8 +45,7 @@
   (+! (-> this velx) (* -1.0 (-> this posx) (-> this spring)))
   (+! (-> this vely) (* -1.0 (-> this posy) (-> this spring)))
   0
-  (none)
-  )
+  (none))
 
 (defmethod wobbler-method-12 ((this wobbler) (arg0 quaternion))
   (let ((s5-0 (new 'stack-no-clear 'vector)))
@@ -62,11 +54,7 @@
     (set! (-> s5-0 z) (- (-> this posx)))
     (vector-normalize! s5-0 1.0)
     (let* ((f0-8 (/ (sqrtf (+ (* (-> this posx) (-> this posx)) (* (-> this posy) (-> this posy)))) (-> this height)))
-           (f0-9 (atan f0-8 1.0))
-           )
-      (quaternion-vector-angle! arg0 s5-0 f0-9)
-      )
-    )
+           (f0-9 (atan f0-8 1.0)))
+      (quaternion-vector-angle! arg0 s5-0 f0-9)))
   0
-  (none)
-  )
+  (none))

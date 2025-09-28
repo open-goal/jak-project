@@ -1,77 +1,57 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: cam-interface.gc
-;; name in dgo: cam-interface
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/camera/cam-interface-h.gc")
+(require "engine/math/quaternion.gc")
+(require "kernel/gstate.gc")
+(require "engine/gfx/math-camera-h.gc")
+(require "engine/entity/entity-h.gc")
+(require "engine/math/transformq-h.gc")
 
 ;; definition for function position-in-front-of-camera!
 (defun position-in-front-of-camera! ((arg0 vector) (arg1 float) (arg2 float))
   (vector-float*! arg0 (-> *math-camera* inv-camera-rot vector 2) arg1)
   (vector+float*! arg0 arg0 (-> *math-camera* inv-camera-rot vector 1) arg2)
   (vector+! arg0 arg0 (-> *math-camera* trans))
-  arg0
-  )
+  arg0)
 
 ;; definition for function matrix-local->world
 (defun matrix-local->world ((arg0 symbol) (arg1 symbol))
-  (if arg0
-   (-> *math-camera* inv-camera-rot-smooth)
-   (-> *math-camera* inv-camera-rot)
-   )
-  )
+  (if arg0 (-> *math-camera* inv-camera-rot-smooth) (-> *math-camera* inv-camera-rot)))
 
 ;; definition for function matrix-world->local
 (defun matrix-world->local ()
-  (-> *math-camera* camera-rot)
-  )
+  (-> *math-camera* camera-rot))
 
 (define-perm *camera-dummy-vector* vector (vector-reset! (new 'global 'vector)))
 
 ;; definition for function camera-pos
 ;; INFO: Return type mismatch object vs vector.
 (defun camera-pos ()
-  (the-as vector (cond
-                  (*camera-combiner*
-                   (-> *camera-combiner* stack)
-                   )
-                  (*math-camera*
-                   (-> *math-camera* trans)
-                   )
-                  (else
-                   *camera-dummy-vector*
-                   )
-                  )
-   )
-  )
+  (the-as vector
+          (cond
+            (*camera-combiner* (-> *camera-combiner* stack))
+            (*math-camera* (-> *math-camera* trans))
+            (else *camera-dummy-vector*))))
 
 ;; definition for function math-camera-pos
 (defun math-camera-pos ()
-  (-> *math-camera* trans)
-  )
+  (-> *math-camera* trans))
 
 ;; definition for function camera-angle
 (defun camera-angle ()
   (let ((f0-0 (-> *math-camera* camera-rot data 0))
-        (f1-0 (-> *math-camera* camera-rot data 2))
-        )
-   (atan f1-0 f0-0)
-   )
-  )
+        (f1-0 (-> *math-camera* camera-rot data 2)))
+    (atan f1-0 f0-0)))
 
 ;; definition for function camera-teleport-to-entity
 ;; INFO: Return type mismatch int vs none.
 ;; Used lq/sq
 (defbehavior camera-teleport-to-entity process ((arg0 entity-actor))
   (let ((gp-0 (new 'stack 'transformq)))
-    (set! (-> gp-0 trans quad)
-          (-> (the-as transform (-> arg0 extra)) scale quad)
-          )
+    (set! (-> gp-0 trans quad) (-> (the-as transform (-> arg0 extra)) scale quad))
     (quaternion-copy! (-> gp-0 quat) (-> arg0 quat))
     (vector-identity! (-> gp-0 scale))
-    (send-event *camera* 'teleport-to-transformq gp-0)
-    )
+    (send-event *camera* 'teleport-to-transformq gp-0))
   0
-  (none)
-  )
+  (none))

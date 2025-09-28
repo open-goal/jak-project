@@ -1,0 +1,1501 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 24 of type hud
+(defmethod check-ready-and-maybe-show ((this hud) (arg0 symbol))
+  "Is this element ready to be shown? If arg0 is set, show it now."
+  (case (get-status *gui-control* (-> this gui-id))
+    (((gui-status ready) (gui-status active))
+     (if arg0
+         (set-action!
+           *gui-control*
+           (gui-action play)
+           (-> this gui-id)
+           (gui-channel none)
+           (gui-action none)
+           (the-as string #f)
+           (the-as (function gui-connection symbol) #f)
+           (the-as process #f)
+           )
+         )
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+;; definition of type hud-sprite-work
+(deftype hud-sprite-work (structure)
+  ((adgif-tmpl   dma-gif-packet  :inline)
+   (sprite-tmpl  dma-gif-packet  :inline)
+   (draw-tmpl    dma-gif-packet  :inline)
+   (box-tmpl     dma-gif-packet  :inline)
+   (box2-tmpl    dma-gif-packet  :inline)
+   (mask-tmpl    dma-gif-packet  :inline)
+   (line-tmpl    dma-gif-packet  :inline)
+   (scan-tmpl    dma-gif-packet  :inline)
+   (line-color   gs-rgbaq)
+   (scan-colors  vector4w        32 :inline :offset 272)
+   (scanline     uint32                     :offset 784)
+   )
+  )
+
+;; definition for method 3 of type hud-sprite-work
+(defmethod inspect ((this hud-sprite-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'hud-sprite-work)
+  (format #t "~1Tadgif-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this adgif-tmpl))
+  (format #t "~1Tsprite-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this sprite-tmpl))
+  (format #t "~1Tdraw-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this draw-tmpl))
+  (format #t "~1Tbox-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this box-tmpl))
+  (format #t "~1Tbox2-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this box2-tmpl))
+  (format #t "~1Tmask-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this mask-tmpl))
+  (format #t "~1Tline-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this line-tmpl))
+  (format #t "~1Tscan-tmpl: #<dma-gif-packet @ #x~X>~%" (-> this scan-tmpl))
+  (format #t "~1Tline-color: ~D~%" (-> this line-color))
+  (format #t "~1Tscan-colors[32] @ #x~X~%" (-> this scan-colors))
+  (format #t "~1Tscanline: ~D~%" (-> this scanline))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *hud-sprite-work*, type hud-sprite-work
+(define *hud-sprite-work* (new 'static 'hud-sprite-work
+                            :adgif-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+                              :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+                              )
+                            :sprite-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64
+                                :nloop #x1
+                                :eop #x1
+                                :pre #x1
+                                :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1)
+                                :nreg #x5
+                                )
+                              :gif1 (new 'static 'gif-tag-regs
+                                :regs0 (gif-reg-id rgbaq)
+                                :regs1 (gif-reg-id st)
+                                :regs2 (gif-reg-id xyz2)
+                                :regs3 (gif-reg-id st)
+                                :regs4 (gif-reg-id xyz2)
+                                )
+                              )
+                            :draw-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #xd :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #xd :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64
+                                :nloop #x1
+                                :eop #x1
+                                :pre #x1
+                                :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :tme #x1 :abe #x1)
+                                :nreg #xc
+                                )
+                              :gif1 (new 'static 'gif-tag-regs
+                                :regs0 (gif-reg-id rgbaq)
+                                :regs1 (gif-reg-id st)
+                                :regs2 (gif-reg-id xyz2)
+                                :regs3 (gif-reg-id rgbaq)
+                                :regs4 (gif-reg-id st)
+                                :regs5 (gif-reg-id xyz2)
+                                :regs6 (gif-reg-id rgbaq)
+                                :regs7 (gif-reg-id st)
+                                :regs8 (gif-reg-id xyz2)
+                                :regs9 (gif-reg-id rgbaq)
+                                :regs10 (gif-reg-id st)
+                                :regs11 (gif-reg-id xyz2)
+                                )
+                              )
+                            :box-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x7 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x7 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64
+                                :nloop #x1
+                                :eop #x1
+                                :pre #x1
+                                :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :abe #x1)
+                                :nreg #x6
+                                )
+                              :gif1 (new 'static 'gif-tag-regs
+                                :regs0 (gif-reg-id rgbaq)
+                                :regs1 (gif-reg-id xyz2)
+                                :regs2 (gif-reg-id xyz2)
+                                :regs3 (gif-reg-id xyz2)
+                                :regs4 (gif-reg-id xyz2)
+                                :regs5 (gif-reg-id xyz2)
+                                )
+                              )
+                            :box2-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64
+                                :nloop #x1
+                                :eop #x1
+                                :pre #x1
+                                :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :abe #x1)
+                                :nreg #x5
+                                )
+                              :gif1 (new 'static 'gif-tag-regs
+                                :regs0 (gif-reg-id rgbaq)
+                                :regs1 (gif-reg-id xyz2)
+                                :regs2 (gif-reg-id xyz2)
+                                :regs3 (gif-reg-id xyz2)
+                                :regs4 (gif-reg-id xyz2)
+                                )
+                              )
+                            :mask-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64
+                                :nloop #x1
+                                :eop #x1
+                                :pre #x1
+                                :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :abe #x1)
+                                :nreg #x5
+                                )
+                              :gif1 (new 'static 'gif-tag-regs
+                                :regs0 (gif-reg-id rgbaq)
+                                :regs1 (gif-reg-id xyz2)
+                                :regs2 (gif-reg-id xyz2)
+                                :regs3 (gif-reg-id xyz2)
+                                :regs4 (gif-reg-id xyz2)
+                                )
+                              )
+                            :line-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #x5 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64
+                                :nloop #x2
+                                :eop #x1
+                                :pre #x1
+                                :prim (new 'static 'gs-prim :prim (gs-prim-type line) :abe #x1)
+                                :nreg #x2
+                                )
+                              :gif1 (new 'static 'gif-tag-regs
+                                :regs0 (gif-reg-id xyz2)
+                                :regs1 (gif-reg-id xyz2)
+                                :regs2 (gif-reg-id xyz2)
+                                :regs3 (gif-reg-id xyz2)
+                                )
+                              )
+                            :scan-tmpl (new 'static 'dma-gif-packet
+                              :dma-vif (new 'static 'dma-packet
+                                :dma (new 'static 'dma-tag :qwc #xa1 :id (dma-tag-id cnt))
+                                :vif1 (new 'static 'vif-tag :imm #xa1 :cmd (vif-cmd direct) :msk #x1)
+                                )
+                              :gif0 (new 'static 'gif-tag64
+                                :nloop #x20
+                                :eop #x1
+                                :pre #x1
+                                :prim (new 'static 'gs-prim :prim (gs-prim-type line) :abe #x1)
+                                :nreg #x5
+                                )
+                              :gif1 (new 'static 'gif-tag-regs
+                                :regs0 (gif-reg-id rgbaq)
+                                :regs1 (gif-reg-id xyz2)
+                                :regs2 (gif-reg-id xyz2)
+                                :regs3 (gif-reg-id xyz2)
+                                :regs4 (gif-reg-id xyz2)
+                                )
+                              )
+                            :line-color (new 'static 'gs-rgbaq :r #x80 :g #x80 :b #x80 :a #x80 :q 1.0)
+                            :scan-colors (new 'static 'inline-array vector4w 32
+                              (new 'static 'vector4w :y 1 :z 1)
+                              (new 'static 'vector4w :x 1 :y 2 :z 1)
+                              (new 'static 'vector4w :x 1 :y 3 :z 2)
+                              (new 'static 'vector4w :x 2 :y 6 :z 4)
+                              (new 'static 'vector4w :x 2 :y 8 :z 6)
+                              (new 'static 'vector4w :x 4 :y 12 :z 10)
+                              (new 'static 'vector4w :x 4 :y 12 :z 10)
+                              (new 'static 'vector4w :x 4 :y 12 :z 10)
+                              (new 'static 'vector4w :x 6 :y 16 :z 14)
+                              (new 'static 'vector4w :x 6 :y 16 :z 14)
+                              (new 'static 'vector4w :x 6 :y 16 :z 14)
+                              (new 'static 'vector4w :x 6 :y 16 :z 14)
+                              (new 'static 'vector4w :x 10 :y 22 :z 20)
+                              (new 'static 'vector4w :x 10 :y 22 :z 20)
+                              (new 'static 'vector4w :x 10 :y 22 :z 20)
+                              (new 'static 'vector4w :x 10 :y 22 :z 20)
+                              (new 'static 'vector4w :x 12 :y 28 :z 26)
+                              (new 'static 'vector4w :x 12 :y 28 :z 26)
+                              (new 'static 'vector4w :x 12 :y 28 :z 26)
+                              (new 'static 'vector4w :x 12 :y 28 :z 26)
+                              (new 'static 'vector4w :x 18 :y 40 :z 34)
+                              (new 'static 'vector4w :x 18 :y 40 :z 34)
+                              (new 'static 'vector4w :x 18 :y 40 :z 34)
+                              (new 'static 'vector4w :x 18 :y 40 :z 34)
+                              (new 'static 'vector4w :x 26 :y 54 :z 42)
+                              (new 'static 'vector4w :x 26 :y 54 :z 42)
+                              (new 'static 'vector4w :x 26 :y 54 :z 42)
+                              (new 'static 'vector4w :x 26 :y 54 :z 42)
+                              (new 'static 'vector4w :x 34 :y 72 :z 48)
+                              (new 'static 'vector4w :x 34 :y 72 :z 48)
+                              (new 'static 'vector4w :x 44 :y 90 :z 56)
+                              (new 'static 'vector4w :x 64 :y #x7e :z 64)
+                              )
+                            :scanline #x60
+                            )
+        )
+
+;; definition for method 13 of type hud-box
+;; INFO: Used lq/sq
+(defmethod draw-scan-and-line ((this hud-box) (arg0 dma-buffer) (arg1 float))
+  (let ((v1-0 *hud-sprite-work*)
+        (f0-0 (-> *video-params* relative-x-scale))
+        )
+    (set! (-> v1-0 line-color a) (the int (* 24.0 arg1)))
+    (let ((a2-1 (the int (* 255.0 arg1))))
+      (dotimes (a3-5 15)
+        (set! (-> v1-0 scan-colors a3-5 w) a2-1)
+        )
+      )
+    (let* ((a2-8 (* (+ (the int (* (+ -256.0 (-> this min x)) f0-0)) 256 1792) 16))
+           (a3-10 (* (+ (the int (* (+ -256.0 (-> this max x)) f0-0)) 256 1792) 16))
+           (t0-9 (* (+ (the int (-> this min y)) 1840) 16))
+           (t2-0 (the int (- (-> this max y) (-> this min y))))
+           (t1-0 (/ t2-0 4))
+           )
+      (dma-buffer-add-gs-set arg0
+                             (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                             (alpha-1 (new 'static 'gs-alpha :b #x2 :d #x1))
+                             )
+      (set! (-> v1-0 scanline) (mod (+ (-> v1-0 scanline) 6) (the-as uint t2-0)))
+      (let ((t3-6 (the-as (pointer uint128) (-> arg0 base))))
+        (set! (-> t3-6 0) (-> v1-0 scan-tmpl dma-vif quad))
+        (set! (-> t3-6 1) (-> v1-0 scan-tmpl quad 1))
+        )
+      (&+! (-> arg0 base) 32)
+      (let ((a0-2 (+ (the int (-> this min y)) 1840)))
+        (dotimes (t3-9 32)
+          (let ((t4-8 (the-as (inline-array vector4w) (-> arg0 base)))
+                (t5-13 (* (+ a0-2 (mod (+ (-> v1-0 scanline) (* t3-9 2)) (the-as uint t2-0))) 16))
+                (t6-6 (* (+ a0-2 (mod (the-as uint (+ (* t3-9 2) 1 (-> v1-0 scanline))) (the-as uint t2-0))) 16))
+                )
+            (set! (-> t4-8 0 quad) (-> v1-0 scan-colors t3-9 quad))
+            (set-vector! (-> t4-8 1) a2-8 t5-13 0 0)
+            (set-vector! (-> t4-8 2) a3-10 t5-13 0 0)
+            (set-vector! (-> t4-8 3) a2-8 t6-6 0 0)
+            (set-vector! (-> t4-8 4) a3-10 t6-6 0 0)
+            )
+          (&+! (-> arg0 base) 80)
+          )
+        )
+      (dma-buffer-add-gs-set arg0 (alpha-1 (new 'static 'gs-alpha :a #x2 :d #x1)) (rgbaq (-> v1-0 line-color)))
+      (dotimes (a0-8 t1-0)
+        (let ((t2-7 (the-as (inline-array vector4w) (-> arg0 base))))
+          (set! (-> t2-7 0 quad) (-> v1-0 line-tmpl dma-vif quad))
+          (set! (-> t2-7 1 quad) (-> v1-0 line-tmpl quad 1))
+          (set-vector! (-> t2-7 2) a2-8 t0-9 #xffffff 0)
+          (set-vector! (-> t2-7 3) a3-10 t0-9 #xffffff 0)
+          (set-vector! (-> t2-7 4) a2-8 (+ t0-9 16) #xffffff 0)
+          (set-vector! (-> t2-7 5) a3-10 (+ t0-9 16) #xffffff 0)
+          )
+        (&+! (-> arg0 base) 96)
+        (+! t0-9 64)
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 9 of type hud-sprite
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-sprite) (arg0 dma-buffer) (arg1 level))
+  (local-vars
+    (v1-5 uint128)
+    (a1-14 int)
+    (a2-3 int)
+    (a3-0 int)
+    (t0-2 int)
+    (t1-0 int)
+    (t3-0 int)
+    (t5-0 int)
+    (t6-0 int)
+    )
+  (let ((s4-0 *hud-sprite-work*)
+        (s3-0 (-> this tex))
+        (f28-0 0.0)
+        (f30-0 1.0)
+        )
+    (when (!= (-> this angle) 0.0)
+      (set! f28-0 (sin (-> this angle)))
+      (set! f30-0 (cos (-> this angle)))
+      )
+    (when s3-0
+      (let ((v1-4 (-> arg1 texture-mask 8 mask quad))
+            (a0-3 (-> s3-0 masks data 0 mask quad))
+            )
+        (.por v1-5 v1-4 a0-3)
+        )
+      (set! (-> arg1 texture-mask 8 mask quad) v1-5)
+      (let ((v1-6 (the-as (pointer uint128) (-> arg0 base))))
+        (set! (-> v1-6 0) (-> s4-0 adgif-tmpl dma-vif quad))
+        (set! (-> v1-6 1) (-> s4-0 adgif-tmpl quad 1))
+        (adgif-shader<-texture-simple! (the-as adgif-shader (&-> v1-6 2)) s3-0)
+        )
+      (&+! (-> arg0 base) 112)
+      (let ((v1-9 (the-as (inline-array structure) (-> arg0 base)))
+            (t0-0 (the int (* f30-0 (the float (-> s3-0 w)) (-> this scale-x) (-> *video-params* relative-x-scale))))
+            (a2-1 (the int (* -1.0 (-> this scale-x) (the float (-> s3-0 w)) f28-0)))
+            (t4-0 (the int (* f28-0 (the float (-> s3-0 h)) (-> this scale-y) (-> *video-params* relative-x-scale))))
+            (t2-0 (the int (* f30-0 (the float (-> s3-0 h)) (-> this scale-y))))
+            (a0-15 (if (nonzero? (-> this pos z))
+                       (-> this pos z)
+                       #xffffff
+                       )
+                   )
+            )
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        0
+        (cond
+          ((logtest? (-> this flags) 4)
+           (set! t1-0 (+ (-> this pos x) 1792))
+           (set! t3-0 (+ (-> this pos y) 1840))
+           (set! a1-14 (- t1-0 t0-0))
+           (set! a3-0 (- t3-0 a2-1))
+           (set! t5-0 (+ (- t1-0 t0-0) t4-0))
+           (set! t6-0 (+ (- t3-0 a2-1) t2-0))
+           (set! t0-2 (+ t1-0 t4-0))
+           (set! a2-3 (+ t3-0 t2-0))
+           )
+          ((logtest? (-> this flags) 8)
+           (set! a1-14 (+ (- 1792 (the int (* 0.5 (the float (+ t0-0 t4-0))))) (-> this pos x)))
+           (set! a3-0 (+ (- 1840 (the int (* 0.5 (the float (+ a2-1 t2-0))))) (-> this pos y)))
+           (set! t1-0 (+ (the int (* 0.5 (the float (+ t0-0 t4-0)))) 1792 (-> this pos x)))
+           (set! t3-0 (+ (- 1840 (the int (* 0.5 (the float (+ a2-1 t2-0))))) (-> this pos y)))
+           (set! t5-0 (+ (- 1792 (the int (* 0.5 (the float (+ t0-0 t4-0))))) (-> this pos x)))
+           (set! t6-0 (+ (the int (* 0.5 (the float (+ a2-1 t2-0)))) 1840 (-> this pos y)))
+           (set! t0-2 (+ (the int (* 0.5 (the float (+ t0-0 t4-0)))) 1792 (-> this pos x)))
+           (set! a2-3 (+ (the int (* 0.5 (the float (+ a2-1 t2-0)))) 1840 (-> this pos y)))
+           )
+          (else
+            (set! a1-14 (+ (-> this pos x) 1792))
+            (set! a3-0 (+ (-> this pos y) 1840))
+            (set! t1-0 (+ a1-14 t0-0))
+            (set! t3-0 (+ a3-0 a2-1))
+            (set! t5-0 (+ a1-14 t4-0))
+            (set! t6-0 (+ a3-0 t2-0))
+            (set! t0-2 (+ a1-14 t0-0 t4-0))
+            (set! a2-3 (+ a3-0 a2-1 t2-0))
+            )
+          )
+        (set! (-> (the-as (inline-array vector) v1-9) 0 quad) (-> s4-0 draw-tmpl dma-vif quad))
+        (set! (-> (the-as (inline-array vector) v1-9) 1 quad) (-> s4-0 draw-tmpl quad 1))
+        (set! (-> (the-as (inline-array vector) v1-9) 2 quad) (-> this color quad))
+        (set! (-> (the-as (inline-array vector) v1-9) 5 quad) (-> this color quad))
+        (set! (-> (the-as (inline-array vector) v1-9) 8 quad) (-> this color quad))
+        (set! (-> (the-as (inline-array vector) v1-9) 11 quad) (-> this color quad))
+        (let ((f0-49 (if (logtest? (-> this flags) 1)
+                         1.0
+                         0.0
+                         )
+                     )
+              (f1-25 (if (logtest? (-> this flags) 2)
+                         1.0
+                         0.0
+                         )
+                     )
+              )
+          (set-vector! (-> (the-as (inline-array vector) v1-9) 3) f0-49 f1-25 1.0 0.0)
+          (set-vector! (-> (the-as (inline-array vector) v1-9) 6) (- 1.0 f0-49) f1-25 1.0 0.0)
+          (set-vector! (-> (the-as (inline-array vector) v1-9) 9) f0-49 (- 1.0 f1-25) 1.0 0.0)
+          (set-vector! (-> (the-as (inline-array vector) v1-9) 12) (- 1.0 f0-49) (- 1.0 f1-25) 1.0 0.0)
+          )
+        (set-vector! (-> (the-as (inline-array vector4w) v1-9) 4) (* a1-14 16) (* a3-0 16) a0-15 #x10000)
+        (set-vector! (-> (the-as (inline-array vector4w) v1-9) 7) (* t1-0 16) (* t3-0 16) a0-15 #x10000)
+        (set-vector! (-> (the-as (inline-array vector4w) v1-9) 10) (* t5-0 16) (* t6-0 16) a0-15 #x10000)
+        (set-vector! (-> (the-as (inline-array vector4w) v1-9) 13) (* t0-2 16) (* a2-3 16) a0-15 #x10000)
+        )
+      (&+! (-> arg0 base) 224)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type hud-sprite
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+;; ERROR: Failed store: (s.q! (+ v1-8 16) a0-8) at op 40
+;; ERROR: Failed store: (s.q! (+ v1-11 16) t4-8) at op 231
+;; ERROR: Failed store: (s.q! (+ v1-11 32) t4-9) at op 233
+;; ERROR: Failed store: (s.q! (+ v1-11 80) t4-10) at op 235
+;; ERROR: Failed store: (s.q! (+ v1-11 128) t4-11) at op 237
+;; ERROR: Failed store: (s.q! (+ v1-11 176) t4-12) at op 239
+;; ERROR: Failed store: (s.f! (+ t4-22 4) f3-2) at op 275
+;; ERROR: Failed store: (s.f! (+ t4-22 8) f4-1) at op 278
+;; ERROR: Failed store: (s.f! (+ t4-22 12) f4-2) at op 280
+;; ERROR: Failed store: (s.f! (+ t4-23 4) f3-2) at op 283
+;; ERROR: Failed store: (s.f! (+ t4-23 8) f3-3) at op 286
+;; ERROR: Failed store: (s.f! (+ t4-23 12) f3-4) at op 288
+;; ERROR: Failed store: (s.f! (+ t4-24 4) f2-3) at op 291
+;; ERROR: Failed store: (s.f! (+ t4-24 8) f0-56) at op 294
+;; ERROR: Failed store: (s.f! (+ t4-24 12) f0-57) at op 296
+;; ERROR: Failed store: (s.f! (+ t4-25 4) f2-3) at op 299
+;; ERROR: Failed store: (s.f! (+ t4-25 8) f0-58) at op 302
+;; ERROR: Failed store: (s.f! (+ t4-25 12) f0-59) at op 304
+;; ERROR: Failed store: (s.w! (+ t4-26 4) a1-21) at op 309
+;; ERROR: Failed store: (s.w! (+ t4-26 8) a0-14) at op 310
+;; ERROR: Failed store: (s.w! (+ t4-26 12) a1-22) at op 312
+;; ERROR: Failed store: (s.w! (+ a1-23 4) a2-10) at op 317
+;; ERROR: Failed store: (s.w! (+ a1-23 8) a0-14) at op 318
+;; ERROR: Failed store: (s.w! (+ a1-23 12) a2-11) at op 320
+;; ERROR: Failed store: (s.w! (+ a1-24 4) a2-13) at op 325
+;; ERROR: Failed store: (s.w! (+ a1-24 8) a0-14) at op 326
+;; ERROR: Failed store: (s.w! (+ a1-24 12) a2-14) at op 328
+;; ERROR: Failed store: (s.w! (+ v1-12 4) a1-26) at op 333
+;; ERROR: Failed store: (s.w! (+ v1-12 8) a0-14) at op 334
+;; ERROR: Failed store: (s.w! (+ v1-12 12) a0-15) at op 336
+(defmethod hud-sprite-method-10 ((this hud-sprite) (arg0 dma-buffer) (arg1 level) (arg2 int) (arg3 int) (arg4 int) (arg5 int))
+  (local-vars
+    (v1-7 uint128)
+    (a1-14 int)
+    (a2-1 int)
+    (a3-1 int)
+    (t0-3 int)
+    (t1-3 int)
+    (t2-1 int)
+    (t3-0 int)
+    (t6-0 int)
+    (sv-16 level)
+    (sv-32 hud-sprite-work)
+    )
+  (set! sv-16 arg1)
+  (let ((s1-0 arg2)
+        (s2-0 arg3)
+        (s3-0 arg4)
+        (s4-0 arg5)
+        )
+    (set! sv-32 *hud-sprite-work*)
+    (let ((s0-0 (-> this tex))
+          (f28-0 0.0)
+          (f30-0 1.0)
+          )
+      (when (!= (-> this angle) 0.0)
+        (set! f28-0 (sin (-> this angle)))
+        (set! f30-0 (cos (-> this angle)))
+        )
+      (when s0-0
+        (let ((v1-6 (-> sv-16 texture-mask 8 mask quad))
+              (a0-3 (-> s0-0 masks data 0 mask quad))
+              )
+          (.por v1-7 v1-6 a0-3)
+          )
+        (set! (-> sv-16 texture-mask 8 mask quad) v1-7)
+        (let ((v1-8 (-> arg0 base)))
+          (set! (-> (the-as (pointer uint128) v1-8)) (-> sv-32 adgif-tmpl dma-vif quad))
+          (let ((a0-8 (-> sv-32 adgif-tmpl quad 1)))
+            (s.q! (+ v1-8 16) a0-8)
+            )
+          (adgif-shader<-texture-simple! (the-as adgif-shader (&+ v1-8 32)) s0-0)
+          )
+        (&+! (-> arg0 base) 112)
+        (let ((v1-11 (-> arg0 base))
+              (t1-1 (the int (* f30-0 (the float s1-0) (-> this scale-x) (-> *video-params* relative-x-scale))))
+              (t0-1 (the int (* -1.0 (-> this scale-x) (the float s1-0) f28-0)))
+              (t5-0 (the int (* f28-0 (the float s2-0) (-> this scale-y) (-> *video-params* relative-x-scale))))
+              (t4-0 (the int (* f30-0 (the float s2-0) (-> this scale-y))))
+              (a0-14 (if (nonzero? (-> this pos z))
+                         (-> this pos z)
+                         #xffffff
+                         )
+                     )
+              )
+          0
+          0
+          0
+          0
+          0
+          0
+          0
+          0
+          (cond
+            ((logtest? (-> this flags) 4)
+             (set! a3-1 (+ (-> this pos x) 1792))
+             (set! t2-1 (+ (-> this pos y) 1840))
+             (set! a1-14 (- a3-1 t1-1))
+             (set! a2-1 (- t2-1 t0-1))
+             (set! t3-0 (+ (- a3-1 t1-1) t5-0))
+             (set! t6-0 (+ (- t2-1 t0-1) t4-0))
+             (set! t1-3 (+ a3-1 t5-0))
+             (set! t0-3 (+ t2-1 t4-0))
+             )
+            ((logtest? (-> this flags) 8)
+             (set! a1-14 (+ (- 1792 (the int (* 0.5 (the float (+ t1-1 t5-0))))) (-> this pos x)))
+             (set! a2-1 (+ (- 1840 (the int (* 0.5 (the float (+ t0-1 t4-0))))) (-> this pos y)))
+             (set! a3-1 (+ (the int (* 0.5 (the float (+ t1-1 t5-0)))) 1792 (-> this pos x)))
+             (set! t2-1 (+ (- 1840 (the int (* 0.5 (the float (+ t0-1 t4-0))))) (-> this pos y)))
+             (set! t3-0 (+ (- 1792 (the int (* 0.5 (the float (+ t1-1 t5-0))))) (-> this pos x)))
+             (set! t6-0 (+ (the int (* 0.5 (the float (+ t0-1 t4-0)))) 1840 (-> this pos y)))
+             (set! t1-3 (+ (the int (* 0.5 (the float (+ t1-1 t5-0)))) 1792 (-> this pos x)))
+             (set! t0-3 (+ (the int (* 0.5 (the float (+ t0-1 t4-0)))) 1840 (-> this pos y)))
+             )
+            (else
+              (set! a1-14 (+ (-> this pos x) 1792))
+              (set! a2-1 (+ (-> this pos y) 1840))
+              (set! a3-1 (+ a1-14 t1-1))
+              (set! t2-1 (+ a2-1 t0-1))
+              (set! t3-0 (+ a1-14 t5-0))
+              (set! t6-0 (+ a2-1 t4-0))
+              (set! t1-3 (+ a1-14 t1-1 t5-0))
+              (set! t0-3 (+ a2-1 t0-1 t4-0))
+              )
+            )
+          (set! (-> (the-as (pointer uint128) v1-11)) (-> sv-32 draw-tmpl dma-vif quad))
+          (let ((t4-8 (-> sv-32 draw-tmpl quad 1)))
+            (s.q! (+ v1-11 16) t4-8)
+            )
+          (let ((t4-9 (-> this color quad)))
+            (s.q! (+ v1-11 32) t4-9)
+            )
+          (let ((t4-10 (-> this color quad)))
+            (s.q! (+ v1-11 80) t4-10)
+            )
+          (let ((t4-11 (-> this color quad)))
+            (s.q! (+ v1-11 128) t4-11)
+            )
+          (let ((t4-12 (-> this color quad)))
+            (s.q! (+ v1-11 176) t4-12)
+            )
+          (let* ((t5-3 (-> s0-0 w))
+                 (t4-13 (-> s0-0 h))
+                 (f1-27 (/ (the float s1-0) (the float t5-3)))
+                 (f2-2 (/ (the float s2-0) (the float t4-13)))
+                 (f0-55 (* (the float s3-0) f1-27))
+                 (f3-2 (the-as number (* (the float s4-0) f2-2)))
+                 (f1-28 (+ f0-55 f1-27))
+                 (f2-3 (+ (the-as float f3-2) f2-2))
+                 )
+            (when (logtest? (-> this flags) 1)
+              (let ((f4-0 f0-55))
+                (set! f0-55 f1-28)
+                (set! f1-28 f4-0)
+                )
+              )
+            (when (logtest? (-> this flags) 2)
+              (set! f2-3 (the-as float f3-2))
+              (set! f3-2 (gpr->fpr t5-3))
+              )
+            (let ((t4-22 (&+ v1-11 48)))
+              (set! (-> (the-as (pointer float) t4-22)) f0-55)
+              (s.f! (+ t4-22 4) f3-2)
+              (let ((f4-1 1.0))
+                (s.f! (+ t4-22 8) f4-1)
+                )
+              (let ((f4-2 0.0))
+                (s.f! (+ t4-22 12) f4-2)
+                )
+              )
+            (let ((t4-23 (&+ v1-11 96)))
+              (set! (-> (the-as (pointer float) t4-23)) f1-28)
+              (s.f! (+ t4-23 4) f3-2)
+              (let ((f3-3 1.0))
+                (s.f! (+ t4-23 8) f3-3)
+                )
+              (let ((f3-4 0.0))
+                (s.f! (+ t4-23 12) f3-4)
+                )
+              )
+            (let ((t4-24 (&+ v1-11 144)))
+              (set! (-> (the-as (pointer float) t4-24)) f0-55)
+              (s.f! (+ t4-24 4) f2-3)
+              (let ((f0-56 1.0))
+                (s.f! (+ t4-24 8) f0-56)
+                )
+              (let ((f0-57 0.0))
+                (s.f! (+ t4-24 12) f0-57)
+                )
+              )
+            (let ((t4-25 (&+ v1-11 192)))
+              (set! (-> (the-as (pointer float) t4-25)) f1-28)
+              (s.f! (+ t4-25 4) f2-3)
+              (let ((f0-58 1.0))
+                (s.f! (+ t4-25 8) f0-58)
+                )
+              (let ((f0-59 0.0))
+                (s.f! (+ t4-25 12) f0-59)
+                )
+              )
+            )
+          (let ((t4-26 (&+ v1-11 64)))
+            (set! (-> (the-as (pointer int32) t4-26)) (* a1-14 16))
+            (let ((a1-21 (* a2-1 16)))
+              (s.w! (+ t4-26 4) a1-21)
+              )
+            (s.w! (+ t4-26 8) a0-14)
+            (let ((a1-22 #x10000))
+              (s.w! (+ t4-26 12) a1-22)
+              )
+            )
+          (let ((a1-23 (&+ v1-11 112)))
+            (set! (-> (the-as (pointer int32) a1-23)) (* a3-1 16))
+            (let ((a2-10 (* t2-1 16)))
+              (s.w! (+ a1-23 4) a2-10)
+              )
+            (s.w! (+ a1-23 8) a0-14)
+            (let ((a2-11 #x10000))
+              (s.w! (+ a1-23 12) a2-11)
+              )
+            )
+          (let ((a1-24 (&+ v1-11 160)))
+            (set! (-> (the-as (pointer int32) a1-24)) (* t3-0 16))
+            (let ((a2-13 (* t6-0 16)))
+              (s.w! (+ a1-24 4) a2-13)
+              )
+            (s.w! (+ a1-24 8) a0-14)
+            (let ((a2-14 #x10000))
+              (s.w! (+ a1-24 12) a2-14)
+              )
+            )
+          (let ((v1-12 (&+ v1-11 208)))
+            (set! (-> (the-as (pointer int32) v1-12)) (* t1-3 16))
+            (let ((a1-26 (* t0-3 16)))
+              (s.w! (+ v1-12 4) a1-26)
+              )
+            (s.w! (+ v1-12 8) a0-14)
+            (let ((a0-15 #x10000))
+              (s.w! (+ v1-12 12) a0-15)
+              )
+            )
+          )
+        (&+! (-> arg0 base) 224)
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 9 of type hud-box
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-box-prim-only ((this hud-box) (arg0 dma-buffer))
+  (let ((t1-0 *hud-sprite-work*)
+        (v1-0 (the-as (inline-array vector4w) (-> arg0 base)))
+        (a2-2 (* (+ (the int (-> this min x)) 1792) 16))
+        (t0-0 (* (+ (the int (-> this max x)) 1792) 16))
+        (a3-4 (* (+ (the int (-> this min y)) 1840) 16))
+        )
+    (let ((t2-2 (* (+ (the int (-> this max y)) 1840) 16)))
+      (set! (-> v1-0 0 quad) (-> t1-0 box-tmpl dma-vif quad))
+      (set! (-> v1-0 1 quad) (-> t1-0 box-tmpl quad 1))
+      (set! (-> v1-0 2 quad) (-> this color quad))
+      (set-vector! (-> v1-0 3) a2-2 a3-4 #xffffff 0)
+      (set-vector! (-> v1-0 4) t0-0 a3-4 #xffffff 0)
+      (set-vector! (-> v1-0 5) t0-0 t2-2 #xffffff 0)
+      (set-vector! (-> v1-0 6) a2-2 t2-2 #xffffff 0)
+      )
+    (set-vector! (-> v1-0 7) a2-2 a3-4 #xffffff 0)
+    )
+  (&+! (-> arg0 base) 128)
+  0
+  (none)
+  )
+
+;; definition for method 10 of type hud-box
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-box-alpha-1 ((this hud-box) (arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0
+                         (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                         (alpha-1 (new 'static 'gs-alpha :a #x1 :d #x2))
+                         )
+  (let ((t0-0 *hud-sprite-work*)
+        (v1-3 (the-as (inline-array vector4w) (-> arg0 base)))
+        (a2-8 (* (+ (the int (-> this min x)) 1792) 16))
+        (a3-11 (* (+ (the int (-> this max x)) 1792) 16))
+        (t2-0 (* (+ (the int (-> this min y)) 1840) 16))
+        (t1-4 (* (+ (the int (-> this max y)) 1840) 16))
+        )
+    (set! (-> v1-3 0 quad) (-> t0-0 box2-tmpl dma-vif quad))
+    (set! (-> v1-3 1 quad) (-> t0-0 box2-tmpl quad 1))
+    (set! (-> v1-3 2 quad) (-> this color quad))
+    (set-vector! (-> v1-3 3) a2-8 t2-0 #xffffff 0)
+    (set-vector! (-> v1-3 4) a3-11 t2-0 #xffffff 0)
+    (set-vector! (-> v1-3 5) a2-8 t1-4 #xffffff 0)
+    (set-vector! (-> v1-3 6) a3-11 t1-4 #xffffff 0)
+    )
+  (&+! (-> arg0 base) 112)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type hud-box
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-box-alpha-2 ((this hud-box) (arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0
+                         (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                         (alpha-1 (new 'static 'gs-alpha :b #x2 :d #x1))
+                         )
+  (let ((t0-0 *hud-sprite-work*)
+        (v1-3 (the-as (inline-array vector4w) (-> arg0 base)))
+        (a2-8 (* (+ (the int (-> this min x)) 1792) 16))
+        (a3-11 (* (+ (the int (-> this max x)) 1792) 16))
+        (t2-0 (* (+ (the int (-> this min y)) 1840) 16))
+        (t1-4 (* (+ (the int (-> this max y)) 1840) 16))
+        )
+    (set! (-> v1-3 0 quad) (-> t0-0 box2-tmpl dma-vif quad))
+    (set! (-> v1-3 1 quad) (-> t0-0 box2-tmpl quad 1))
+    (set! (-> v1-3 2 quad) (-> this color quad))
+    (set-vector! (-> v1-3 3) a2-8 t2-0 #xffffff 0)
+    (set-vector! (-> v1-3 4) a3-11 t2-0 #xffffff 0)
+    (set-vector! (-> v1-3 5) a2-8 t1-4 #xffffff 0)
+    (set-vector! (-> v1-3 6) a3-11 t1-4 #xffffff 0)
+    )
+  (&+! (-> arg0 base) 112)
+  0
+  (none)
+  )
+
+;; definition for method 12 of type hud-box
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-box-alpha-3 ((this hud-box) (arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0
+                         (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                         (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                         )
+  (let ((t0-0 *hud-sprite-work*)
+        (v1-3 (the-as (inline-array vector4w) (-> arg0 base)))
+        (a2-8 (* (+ (the int (-> this min x)) 1792) 16))
+        (a3-11 (* (+ (the int (-> this max x)) 1792) 16))
+        (t2-0 (* (+ (the int (-> this min y)) 1840) 16))
+        (t1-4 (* (+ (the int (-> this max y)) 1840) 16))
+        )
+    (set! (-> v1-3 0 quad) (-> t0-0 box2-tmpl dma-vif quad))
+    (set! (-> v1-3 1 quad) (-> t0-0 box2-tmpl quad 1))
+    (set! (-> v1-3 2 quad) (-> this color quad))
+    (set-vector! (-> v1-3 3) a2-8 t2-0 #xffffff 0)
+    (set-vector! (-> v1-3 4) a3-11 t2-0 #xffffff 0)
+    (set-vector! (-> v1-3 5) a2-8 t1-4 #xffffff 0)
+    (set-vector! (-> v1-3 6) a3-11 t1-4 #xffffff 0)
+    )
+  (&+! (-> arg0 base) 112)
+  0
+  (none)
+  )
+
+;; definition for method 14 of type hud-box
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-scissor ((this hud-box) (arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0 (scissor-1 (new 'static 'gs-scissor
+                                           :scax0 (the int (-> this min x))
+                                           :scay0 (the int (-> this min y))
+                                           :scax1 (the int (-> this max x))
+                                           :scay1 (the int (-> this max y))
+                                           )
+                                         )
+                         )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-box
+;; WARN: Return type mismatch int vs none.
+(defmethod restore-scissor ((this hud-box) (arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0 (scissor-1 (new 'static 'gs-scissor :scax1 #x1ff :scay1 #x19f)))
+  0
+  (none)
+  )
+
+;; definition for method 7 of type hud
+;; WARN: Return type mismatch process vs hud.
+(defmethod relocate ((this hud) (offset int))
+  (dotimes (v1-0 14)
+    (if (-> this strings v1-0 text)
+        (&+! (-> this strings v1-0 text) offset)
+        )
+    )
+  (the-as hud ((method-of-type process relocate) this offset))
+  )
+
+;; definition for method 15 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud))
+  (when (not (hidden? this))
+    (let* ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+           (s5-0 (-> s4-0 base))
+           )
+      (dotimes (s3-0 30)
+        (if (and (-> this sprites s3-0 tex) (!= (-> this sprites s3-0 scale-x) 0.0))
+            (draw (-> this sprites s3-0) s4-0 (-> this level))
+            )
+        )
+      (let ((s3-1
+              (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
+              )
+            )
+        (dotimes (s2-0 14)
+          (when (and (-> this strings s2-0 text) (nonzero? (-> this strings s2-0 pos 0)))
+            (set-vector!
+              (-> s3-1 origin)
+              (the float (-> this strings s2-0 pos 0))
+              (the float (-> this strings s2-0 pos 1))
+              (the float (-> this strings s2-0 pos 2))
+              1.0
+              )
+            (set! (-> s3-1 scale) (-> this strings s2-0 scale))
+            (set! (-> s3-1 flags) (-> this strings s2-0 flags))
+            (set! (-> s3-1 color) (-> this strings s2-0 color))
+            (draw-string (-> this strings s2-0 text) s4-0 s3-1)
+            )
+          )
+        )
+      (let ((a3-1 (-> s4-0 base)))
+        (let ((v1-47 (the-as object (-> s4-0 base))))
+          (set! (-> (the-as dma-packet v1-47) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+          (set! (-> (the-as dma-packet v1-47) vif0) (new 'static 'vif-tag))
+          (set! (-> (the-as dma-packet v1-47) vif1) (new 'static 'vif-tag))
+          (set! (-> s4-0 base) (&+ (the-as pointer v1-47) 16))
+          )
+        (dma-bucket-insert-tag
+          (-> *display* frames (-> *display* on-screen) bucket-group)
+          (bucket-id progress)
+          s5-0
+          (the-as (pointer dma-tag) a3-1)
+          )
+        )
+      )
+    (dotimes (v1-55 2)
+      (when (-> this icons v1-55 icon)
+        (set-vector!
+          (-> this icons v1-55 icon 0 root scale)
+          (* (-> this icons v1-55 scale-x) (-> *video-params* relative-x-scale))
+          (-> this icons v1-55 scale-y)
+          (* (-> this icons v1-55 scale-x) (-> *video-params* relative-x-scale))
+          1.0
+          )
+        (if (-> *blit-displays-work* horizontal-flip-flag)
+            (set! (-> this icons v1-55 icon 0 root trans x) (the float (- 256 (-> this icons v1-55 pos 0))))
+            (set! (-> this icons v1-55 icon 0 root trans x) (the float (+ (-> this icons v1-55 pos 0) -256)))
+            )
+        (set! (-> this icons v1-55 icon 0 root trans y) (the float (* (+ (-> this icons v1-55 pos 1) -208) 2)))
+        (set! (-> this icons v1-55 icon 0 root trans z) (the float (-> this icons v1-55 pos 2)))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 25 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod update-value-callback ((this hud) (arg0 int) (arg1 int))
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values ((this hud))
+  (with-pp
+    (let ((s5-0 #f))
+      (let ((v1-0 #f))
+        (dotimes (a0-1 8)
+          (when (!= (-> this values a0-1 current) (-> this values a0-1 target))
+            (if (= (-> this values a0-1 current) -1)
+                (set! v1-0 #t)
+                (set! s5-0 #t)
+                )
+            )
+          )
+        (set! v1-0 (or s5-0 v1-0))
+        (when v1-0
+          (dotimes (s4-0 8)
+            (cond
+              ((and (logtest? (-> this values s4-0 flags) 1) (!= (-> this values s4-0 current) -1))
+               (set! (-> this values s4-0 counter)
+                     (the-as uint (seekl
+                                    (the-as int (-> this values s4-0 counter))
+                                    0
+                                    (the-as int (- (current-time) (-> pp clock old-frame-counter)))
+                                    )
+                             )
+                     )
+               (when (and (zero? (-> this values s4-0 counter)) (!= (-> this values s4-0 current) (-> this values s4-0 target)))
+                 (let ((v1-27 (abs (- (-> this values s4-0 current) (-> this values s4-0 target))))
+                       (s3-0 1)
+                       )
+                   (cond
+                     ((>= v1-27 100)
+                      (set! s3-0 100)
+                      )
+                     ((>= v1-27 10)
+                      (set! s3-0 10)
+                      )
+                     )
+                   (update-value-callback this s4-0 (if (< (-> this values s4-0 current) (-> this values s4-0 target))
+                                                        s3-0
+                                                        (- s3-0)
+                                                        )
+                                          )
+                   (seekl! (-> this values s4-0 current) (-> this values s4-0 target) s3-0)
+                   )
+                 (set! (-> this values s4-0 counter) (the-as uint 30))
+                 )
+               )
+              (else
+                (set! (-> this values s4-0 current) (-> this values s4-0 target))
+                )
+              )
+            )
+          )
+        )
+      (if (and (not *progress-process*)
+               (time-elapsed? (-> this last-hide-time) (seconds 0.05))
+               (>= (- (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time)) (seconds 0.1))
+               (>= (- (-> *display* base-clock frame-counter) (-> *game-info* blackout-time)) (seconds 0.1))
+               (or (not *target*) (not (focus-test? *target* grabbed)) (logtest? (-> this flags) (hud-flags show)))
+               (not (logtest? (-> this flags) (hud-flags disable)))
+               (not (or (= *master-mode* 'progress) (= *master-mode* 'menu)))
+               (or s5-0
+                   (cond
+                     (*debug-segment*
+                       (let ((a0-32 (-> *cpad-list* cpads 0)))
+                         (logtest? (logclear (pad-buttons l3) (-> a0-32 button0-abs 0))
+                                   (logior (-> a0-32 button0-abs 2) (-> a0-32 button0-abs 1))
+                                   )
+                         )
+                       )
+                     (else
+                       (cpad-hold? 0 l3)
+                       )
+                     )
+                   (logtest? (-> this flags) (hud-flags show))
+                   )
+               (check-ready-and-maybe-show this #t)
+               )
+          (go hud-arriving)
+          )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 17 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud))
+  0
+  (none)
+  )
+
+;; definition for method 18 of type hud
+(defmethod event-callback ((this hud) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  #f
+  )
+
+;; definition for method 19 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod hud-method-19 ((this hud))
+  0
+  (none)
+  )
+
+;; definition for method 20 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod hud-method-20 ((this hud))
+  0
+  (none)
+  )
+
+;; definition for method 21 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod hud-method-21 ((this hud))
+  0
+  (none)
+  )
+
+;; definition for method 22 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod hud-method-22 ((this hud))
+  0
+  (none)
+  )
+
+;; definition for method 14 of type hud
+;; WARN: Return type mismatch object vs symbol.
+(defmethod hidden? ((this hud))
+  (the-as symbol (and (-> this next-state) (= (-> this next-state name) 'hud-hidden)))
+  )
+
+;; definition for function hud-create-icon
+;; WARN: Return type mismatch (pointer process) vs (pointer manipy).
+(defun hud-create-icon ((arg0 hud) (arg1 int) (arg2 int))
+  (let ((s4-0 (process-spawn manipy :init manipy-init (new 'static 'vector :w 1.0) #f arg2 #f 0 :to arg0)))
+    (the-as
+      (pointer manipy)
+      (when s4-0
+        (set! (-> (the-as process-drawable (-> s4-0 0)) draw dma-add-func)
+              (the-as (function process-drawable draw-control symbol object none) dma-add-process-drawable-hud)
+              )
+        (logior! (-> s4-0 0 mask) (process-mask freeze pause))
+        (logclear! (-> s4-0 0 mask) (process-mask menu progress))
+        (send-event (ppointer->process s4-0) 'draw #f)
+        (set! (-> arg0 icons arg1 icon) (the-as (pointer manipy) s4-0))
+        s4-0
+        )
+      )
+    )
+  )
+
+;; definition for method 26 of type hud
+;; WARN: Return type mismatch int vs none.
+(defmethod alloc-string-if-needed ((this hud) (arg0 int))
+  (if (not (-> this strings arg0 text))
+      (set! (-> this strings arg0 text) (new 'process 'string 32 (the-as string #f)))
+      )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate hud-hidden (hud)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-1 object))
+    (case message
+      (('show)
+       (if (and (not *progress-process*)
+                (!= (-> self last-hide-time) (current-time))
+                (check-ready-and-maybe-show self #t)
+                )
+           (go hud-arriving)
+           )
+       )
+      (('hide)
+       (set! v0-1 (current-time))
+       (set! (-> self last-hide-time) (the-as time-frame v0-1))
+       v0-1
+       )
+      (('force-hide)
+       (set-time! (-> self last-hide-time))
+       (set! v0-1 (logclear (-> self flags) (hud-flags show)))
+       (set! (-> self flags) (the-as hud-flags v0-1))
+       v0-1
+       )
+      (('force-show)
+       (logior! (-> self flags) (hud-flags show))
+       (if (and (not *progress-process*)
+                (!= (-> self last-hide-time) (current-time))
+                (check-ready-and-maybe-show self #t)
+                )
+           (go hud-arriving)
+           )
+       )
+      (('hide-quick)
+       (set! v0-1 (current-time))
+       (set! (-> self last-hide-time) (the-as time-frame v0-1))
+       v0-1
+       )
+      (('hide-and-die)
+       (set-time! (-> self last-hide-time))
+       (logior! (-> self flags) (hud-flags should-die))
+       (set! v0-1 (logclear (-> self flags) (hud-flags show)))
+       (set! (-> self flags) (the-as hud-flags v0-1))
+       v0-1
+       )
+      (('sync)
+       (dotimes (v1-23 8)
+         (set! (-> self values v1-23 current) -1)
+         )
+       #f
+       )
+      (('disable)
+       (set! v0-1 (logior (-> self flags) (hud-flags disable)))
+       (set! (-> self flags) (the-as hud-flags v0-1))
+       v0-1
+       )
+      (('enable)
+       (set! v0-1 (logclear (-> self flags) (hud-flags disable)))
+       (set! (-> self flags) (the-as hud-flags v0-1))
+       v0-1
+       )
+      (else
+        (event-callback self proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-action!
+      *gui-control*
+      (gui-action hidden)
+      (-> self gui-id)
+      (gui-channel none)
+      (gui-action none)
+      (the-as string #f)
+      (the-as (function gui-connection symbol) #f)
+      (the-as process #f)
+      )
+    (set! (-> self offset) 1.0)
+    (let ((gp-0 (-> self child)))
+      (while gp-0
+        (send-event (ppointer->process gp-0) 'draw #f)
+        (set! gp-0 (-> gp-0 0 brother))
+        )
+      )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (if (logtest? (-> self flags) (hud-flags should-die))
+        (deactivate self)
+        )
+    (update-values self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hud-arriving (hud)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-1 object))
+    (case message
+      (('hide-quick)
+       (set-time! (-> self last-hide-time))
+       (set! (-> self offset) 1.0)
+       (update-values self)
+       (go hud-hidden)
+       )
+      (('force-hide)
+       (set-time! (-> self last-hide-time))
+       (logclear! (-> self flags) (hud-flags show))
+       (go hud-leaving 0.1)
+       )
+      (('force-show)
+       (logior! (-> self flags) (hud-flags show))
+       (if (and (not *progress-process*)
+                (!= (-> self last-hide-time) (current-time))
+                (check-ready-and-maybe-show self #t)
+                )
+           (go hud-arriving)
+           )
+       )
+      (('hide)
+       (set-time! (-> self last-hide-time))
+       (go hud-leaving 0.1)
+       )
+      (('hide-and-die)
+       (set-time! (-> self last-hide-time))
+       (logior! (-> self flags) (hud-flags should-die))
+       (logclear! (-> self flags) (hud-flags show))
+       (go hud-leaving 0.1)
+       )
+      (('show)
+       (if (and (not *progress-process*)
+                (!= (-> self last-hide-time) (current-time))
+                (check-ready-and-maybe-show self #t)
+                )
+           (go hud-arriving)
+           )
+       )
+      (('sync)
+       (dotimes (v1-34 8)
+         (set! (-> self values v1-34 current) -1)
+         )
+       #f
+       )
+      (('disable)
+       (set! v0-1 (logior (-> self flags) (hud-flags disable)))
+       (set! (-> self flags) (the-as hud-flags v0-1))
+       v0-1
+       )
+      (('enable)
+       (set! v0-1 (logclear (-> self flags) (hud-flags disable)))
+       (set! (-> self flags) (the-as hud-flags v0-1))
+       v0-1
+       )
+      (else
+        (event-callback self proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self trigger-time))
+    (let ((gp-0 (-> self child)))
+      (while gp-0
+        (send-event (ppointer->process gp-0) 'draw #t)
+        (set! gp-0 (-> gp-0 0 brother))
+        )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (if (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask pause)))
+          (seek! (-> self offset) 0.0 (/ (-> self clock time-adjust-ratio) 10))
+          )
+      (if (>= 0.0 (-> self offset))
+          (go hud-in)
+          )
+      (when (= (get-status *gui-control* (-> self gui-id)) (gui-status pending))
+        (set! (-> self event-hook) #f)
+        (set-time! (-> self last-hide-time))
+        (set! (-> self offset) 1.0)
+        (update-values self)
+        (go hud-hidden)
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (update-values self)
+    (if (not (and (nonzero? *screen-shot-work*)
+                  (!= (-> *screen-shot-work* count) -1)
+                  (not (-> *screen-shot-work* hud-enable))
+                  )
+             )
+        (draw self)
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hud-in (hud)
+  :event (-> hud-arriving event)
+  :code (behavior ()
+    (set-time! (-> self trigger-time))
+    (while (and (not (time-elapsed? (-> self trigger-time) (seconds 2))) (check-ready-and-maybe-show self #f))
+      (set! (-> self offset) 0.0)
+      (suspend)
+      )
+    (when (= (get-status *gui-control* (-> self gui-id)) (gui-status pending))
+      (set! (-> self event-hook) #f)
+      (set-time! (-> self last-hide-time))
+      (set! (-> self offset) 1.0)
+      (update-values self)
+      (go hud-hidden)
+      )
+    (go hud-leaving 0.05)
+    )
+  :post (-> hud-arriving post)
+  )
+
+;; failed to figure out what this is:
+(defstate hud-leaving (hud)
+  :event (-> hud-arriving event)
+  :code (behavior ((arg0 float))
+    (until #f
+      (if (not (logtest? (-> *kernel-context* prevent-from-run) (process-mask pause)))
+          (seek! (-> self offset) 1.0 (* arg0 (-> self clock time-adjust-ratio)))
+          )
+      (when (= (get-status *gui-control* (-> self gui-id)) (gui-status pending))
+        (set! (-> self event-hook) #f)
+        (set-time! (-> self last-hide-time))
+        (set! (-> self offset) 1.0)
+        (update-values self)
+        (go hud-hidden)
+        )
+      (if (>= (-> self offset) 1.0)
+          (go hud-hidden)
+          )
+      (suspend)
+      )
+    #f
+    )
+  :post (-> hud-arriving post)
+  )
+
+;; definition for function hud-init-by-other
+(defbehavior hud-init-by-other hud ()
+  (add-connection *hud-engine* self #f self (-> self type symbol) #f)
+  (set! (-> self mask) (process-mask menu))
+  (set! (-> self clock) (-> *display* real-clock))
+  (set! (-> self flags) (hud-flags))
+  (set-time! (-> self last-hide-time))
+  (set! (-> self offset) 1.0)
+  (dotimes (v1-9 14)
+    (set! (-> self strings v1-9 text) #f)
+    (set! (-> self strings v1-9 scale) 1.0)
+    (set! (-> self strings v1-9 color) (font-color white))
+    (set! (-> self strings v1-9 flags) (font-flags shadow kerning large))
+    (set! (-> self strings v1-9 pos 0) 0)
+    (set! (-> self strings v1-9 pos 2) #xfffffff)
+    (set! (-> self strings v1-9 pos 3) 0)
+    )
+  (dotimes (v1-12 30)
+    (let ((a0-18 (&+ (-> self sprites 0 color2) (* v1-12 64))))
+      (set! (-> a0-18 0) 128)
+      (set! (-> a0-18 1) 128)
+      (set! (-> a0-18 2) 128)
+      (set! (-> a0-18 3) 128)
+      )
+    (set! (-> self sprites v1-12 pos z) #xffffff)
+    (set! (-> self sprites v1-12 pos w) 0)
+    (set! (-> self sprites v1-12 scale-x) 1.0)
+    (set! (-> self sprites v1-12 scale-y) 1.0)
+    (set! (-> self sprites v1-12 angle) 0.0)
+    (set! (-> self sprites v1-12 flags) (the-as uint 0))
+    (set! (-> self sprites v1-12 tex) #f)
+    )
+  (dotimes (v1-15 2)
+    (set! (-> self icons v1-15 icon) (the-as (pointer manipy) #f))
+    (set! (-> self icons v1-15 pos 2) 1024)
+    (set! (-> self icons v1-15 scale-x) 1.0)
+    (set! (-> self icons v1-15 scale-y) 1.0)
+    )
+  (dotimes (v1-18 8)
+    (set! (-> self values v1-18 current) -1)
+    (set! (-> self values v1-18 target) 0)
+    )
+  (init-callback self)
+  (go hud-hidden)
+  )
+
+;; definition for function hide-hud
+;; WARN: Return type mismatch int vs none.
+(defun hide-hud ((arg0 symbol))
+  (when *target*
+    (let ((v1-3 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((s5-0 (-> v1-3 next0)))
+        (while (!= v1-3 (-> *hud-engine* alive-list-end))
+          (if (or (not arg0) (= arg0 (-> (the-as connection v1-3) param2)))
+              (send-event (the-as process-tree (-> (the-as connection v1-3) param1)) 'hide)
+              )
+          (set! v1-3 s5-0)
+          *hud-engine*
+          (set! s5-0 (-> s5-0 next0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function enable-hud
+;; WARN: Return type mismatch int vs none.
+(defun enable-hud ()
+  (when *target*
+    (let ((v1-3 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((gp-0 (-> v1-3 next0)))
+        (while (!= v1-3 (-> *hud-engine* alive-list-end))
+          (send-event (the-as process-tree (-> (the-as connection v1-3) param1)) 'enable)
+          (set! v1-3 gp-0)
+          *hud-engine*
+          (set! gp-0 (-> gp-0 next0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function hide-hud-quick
+;; WARN: Return type mismatch int vs none.
+(defun hide-hud-quick ((arg0 symbol))
+  (when *target*
+    (let ((v1-3 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((s5-0 (-> v1-3 next0)))
+        (while (!= v1-3 (-> *hud-engine* alive-list-end))
+          (if (or (not arg0) (= arg0 (-> (the-as connection v1-3) param2)))
+              (send-event (the-as process-tree (-> (the-as connection v1-3) param1)) 'hide-quick)
+              )
+          (set! v1-3 s5-0)
+          *hud-engine*
+          (set! s5-0 (-> s5-0 next0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function show-hud
+;; WARN: Return type mismatch int vs none.
+(defun show-hud ((arg0 object))
+  (when (and *target* (or (not *progress-process*) (gone? (-> *progress-process* 0))))
+    (let ((v1-7 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((s5-0 (-> v1-7 next0)))
+        (while (!= v1-7 (-> *hud-engine* alive-list-end))
+          (if (or (not arg0) (= arg0 (-> (the-as connection v1-7) param2)))
+              (send-event (the-as process-tree (-> (the-as connection v1-7) param1)) 'show)
+              )
+          (set! v1-7 s5-0)
+          *hud-engine*
+          (set! s5-0 (-> s5-0 next0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function hud-hidden?
+(defun hud-hidden? ()
+  (local-vars (gp-0 symbol))
+  (cond
+    (*target*
+      (set! gp-0 #t)
+      (let ((v1-2 (-> *hud-engine* alive-list next0)))
+        *hud-engine*
+        (let ((s5-0 (-> v1-2 next0)))
+          (while (!= v1-2 (-> *hud-engine* alive-list-end))
+            (if (not (hidden? (the-as hud (-> (the-as connection v1-2) param1))))
+                (set! gp-0 #f)
+                )
+            (set! v1-2 s5-0)
+            *hud-engine*
+            (set! s5-0 (-> s5-0 next0))
+            )
+          )
+        )
+      )
+    (else
+      (set! gp-0 #t)
+      )
+    )
+  gp-0
+  )
+
+;; definition for function set-hud-piece-position!
+;; WARN: Return type mismatch int vs none.
+(defun set-hud-piece-position! ((arg0 hud-sprite) (arg1 int) (arg2 int))
+  (set! (-> arg0 pos x) arg1)
+  (set! (-> arg0 pos y) arg2)
+  0
+  (none)
+  )
+
+;; definition for function set-as-offset-from!
+;; WARN: Return type mismatch int vs none.
+(defun set-as-offset-from! ((arg0 hud-sprite) (arg1 vector4w) (arg2 int) (arg3 int))
+  (set! (-> arg0 pos x) (+ (-> arg1 x) (the int (* (the float arg2) (-> *video-params* relative-x-scale)))))
+  (set! (-> arg0 pos y) (+ (-> arg1 y) arg3))
+  0
+  (none)
+  )

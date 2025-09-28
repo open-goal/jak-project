@@ -1,64 +1,45 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: robotboss-weapon.gc
-;; name in dgo: robotboss-weapon
-;; dgos: FIN, L1
+(bundles "FIN.DGO")
+(require "engine/common-obs/process-drawable.gc")
 
 ;; DECOMP BEGINS
 
 (deftype torus (structure)
-  ((origin            vector  :inline)
-   (axis              vector  :inline)
-   (radius-primary    float)
-   (radius-secondary  float)
-   )
+  ((origin           vector :inline)
+   (axis             vector :inline)
+   (radius-primary   float)
+   (radius-secondary float))
   (:methods
-    (torus-method-9 (_type_ vector) none)
-    (torus-method-10 (_type_ collide-prim-core vector) symbol)
-    (torus-method-11 (_type_ vector) symbol)
-    (torus-method-12 (_type_ vector) vector)
-    )
-  )
+   (torus-method-9 (_type_ vector) none)
+   (torus-method-10 (_type_ collide-prim-core vector) symbol)
+   (torus-method-11 (_type_ vector) symbol)
+   (torus-method-12 (_type_ vector) vector)))
 
 
 (defmethod torus-method-10 ((this torus) (arg0 collide-prim-core) (arg1 vector))
   (let ((gp-0 (new 'stack-no-clear 'vector))
         (s5-0 (new 'stack-no-clear 'vector))
-        (f30-0 (+ (-> this radius-secondary) (-> arg0 world-sphere w)))
-        )
+        (f30-0 (+ (-> this radius-secondary) (-> arg0 world-sphere w))))
     (vector-! gp-0 (the-as vector arg0) (-> this origin))
     (vector-flatten! s5-0 gp-0 (-> this axis))
     (vector-normalize! s5-0 (-> this radius-primary))
     (vector-! arg1 gp-0 s5-0)
-    (< (vector-length-squared arg1) (* f30-0 f30-0))
-    )
-  )
+    (< (vector-length-squared arg1) (* f30-0 f30-0))))
 
 (defmethod torus-method-11 ((this torus) (arg0 vector))
   (let ((s4-0 (the-as collide-shape-prim-group (-> *target* control root-prim))))
-    (when (and (logtest? (-> s4-0 prim-core collide-as) (collide-kind target))
-               (torus-method-10 this (-> s4-0 prim-core) arg0)
-               )
+    (when (and (logtest? (-> s4-0 prim-core collide-as) (collide-kind target)) (torus-method-10 this (-> s4-0 prim-core) arg0))
       (countdown (s3-0 (-> s4-0 num-prims))
         (let ((v1-9 (-> s4-0 prims s3-0)))
           (if (and (logtest? (-> v1-9 prim-core action) (collide-action solid))
                    (logtest? (-> v1-9 prim-core collide-as) (collide-kind target))
-                   (torus-method-10 this (-> v1-9 prim-core) arg0)
-                   )
-              (return #t)
-              )
-          )
-        )
-      )
-    )
-  #f
-  )
+                   (torus-method-10 this (-> v1-9 prim-core) arg0))
+            (return #t))))))
+  #f)
 
 (deftype torus-verts (structure)
-  ((vert  vector  8 :inline)
-   )
-  )
+  ((vert vector 8 :inline)))
 
 
 (defmethod torus-method-9 ((this torus) (arg0 vector))
@@ -67,25 +48,20 @@
         (s4-0 (new 'stack-no-clear 'vector))
         (s3-0 (new 'stack-no-clear 'vector))
         (s2-0 (new 'stack-no-clear 'matrix))
-        (s1-0 (new 'stack-no-clear 'inline-array 'vector 8))
-        )
+        (s1-0 (new 'stack-no-clear 'inline-array 'vector 8)))
     (set-vector! s0-0 0.0 0.0 1.0 1.0)
     (vector-flatten! s0-0 s0-0 (-> this axis))
-    (if (= (vector-normalize-ret-len! s0-0 1.0) 0.0)
-        (set-vector! s0-0 0.0 1.0 0.0 1.0)
-        )
+    (if (= (vector-normalize-ret-len! s0-0 1.0) 0.0) (set-vector! s0-0 0.0 1.0 0.0 1.0))
     (vector-cross! s4-0 s0-0 (-> this axis))
     (matrix-axis-angle! s2-0 s4-0 8192.0)
     (vector-float*! (-> s1-0 0) s0-0 (-> this radius-secondary))
     (set! sv-256 0)
     (while (< sv-256 7)
       (vector-matrix*! (-> s1-0 (+ sv-256 1)) (-> s1-0 sv-256) s2-0)
-      (set! sv-256 (+ sv-256 1))
-      )
+      (set! sv-256 (+ sv-256 1)))
     (vector-float*! s0-0 s0-0 (-> this radius-primary))
     (dotimes (v1-21 8)
-      (vector+! (-> s1-0 v1-21) (-> s1-0 v1-21) s0-0)
-      )
+      (vector+! (-> s1-0 v1-21) (-> s1-0 v1-21) s0-0))
     (matrix-axis-angle! s2-0 (-> this axis) 4096.0)
     (dotimes (s0-1 16)
       (set! sv-272 0)
@@ -93,8 +69,7 @@
         (vector+! s4-0 (-> s1-0 sv-272) (-> this origin))
         (vector+! s3-0 (-> s1-0 (+ sv-272 1)) (-> this origin))
         (camera-line s4-0 s3-0 (the-as vector4w arg0))
-        (set! sv-272 (+ sv-272 1))
-        )
+        (set! sv-272 (+ sv-272 1)))
       (vector+! s4-0 (-> s1-0 0) (-> this origin))
       (camera-line s4-0 s3-0 (the-as vector4w arg0))
       (set! sv-288 0)
@@ -103,24 +78,18 @@
         (vector-matrix*! (-> s1-0 sv-288) (-> s1-0 sv-288) s2-0)
         (vector+! s3-0 (-> s1-0 sv-288) (-> this origin))
         (camera-line s4-0 s3-0 (the-as vector4w arg0))
-        (set! sv-288 (+ sv-288 1))
-        )
-      )
-    )
+        (set! sv-288 (+ sv-288 1)))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod torus-method-12 ((this torus) (arg0 vector))
   (let* ((f30-0 65536.0)
          (v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
          (v1-2 (the-as number (logior #x3f800000 v1-1)))
-         (f30-1 (* f30-0 (+ -1.0 (the-as float v1-2))))
-         )
+         (f30-1 (* f30-0 (+ -1.0 (the-as float v1-2)))))
     (set! (-> arg0 x) 0.0)
     (set! (-> arg0 y) (* (-> this radius-secondary) (sin f30-1)))
-    (set! (-> arg0 z) (* (-> this radius-secondary) (cos f30-1)))
-    )
+    (set! (-> arg0 z) (* (-> this radius-secondary) (cos f30-1))))
   (+! (-> arg0 z) (-> this radius-primary))
   (set! (-> arg0 w) 0.0)
   (let ((s2-0 (new 'stack-no-clear 'matrix)))
@@ -128,298 +97,227 @@
            (s3-0 s2-0)
            (f30-2 65536.0)
            (v1-6 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-           (v1-7 (the-as number (logior #x3f800000 v1-6)))
-           )
-      (s4-0 s3-0 (* f30-2 (+ -1.0 (the-as float v1-7))))
-      )
+           (v1-7 (the-as number (logior #x3f800000 v1-6))))
+      (s4-0 s3-0 (* f30-2 (+ -1.0 (the-as float v1-7)))))
     (vector-matrix*! arg0 arg0 s2-0)
     (matrix-from-two-vectors! s2-0 (new 'static 'vector :y 1.0 :w 1.0) (-> this axis))
-    (vector-matrix*! arg0 arg0 s2-0)
-    )
+    (vector-matrix*! arg0 arg0 s2-0))
   (vector+! arg0 arg0 (-> this origin))
-  arg0
-  )
+  arg0)
 
 (deftype arcing-shot (process-drawable)
-  ((root   collide-shape-moving :override)
-   (y-vel  float)
-   (grav   float)
-   (from   vector                :inline)
-   (to     vector                :inline)
-   )
+  ((root  collide-shape-moving :override)
+   (y-vel float)
+   (grav  float)
+   (from  vector :inline)
+   (to    vector :inline))
   (:states
-    arcing-shot-debug-trajectory
-    )
-  )
+   arcing-shot-debug-trajectory))
 
 
 (defbehavior arcing-shot-setup arcing-shot ((arg0 vector) (arg1 vector) (arg2 float))
   (set! (-> self from quad) (-> arg0 quad))
   (set! (-> self to quad) (-> arg1 quad))
   (let ((v1-2 (fmax 1.0 arg2)))
-    (if (< (-> arg0 y) (-> arg1 y))
-        (set! v1-2 (+ v1-2 (- (-> arg1 y) (-> arg0 y))))
-        )
+    (if (< (-> arg0 y) (-> arg1 y)) (set! v1-2 (+ v1-2 (- (-> arg1 y) (-> arg0 y)))))
     (let ((f0-6 (* -4.0 v1-2))
-          (f3-1 (* 4.0 v1-2 (- (-> arg1 y) (-> arg0 y))))
-          )
-      (set! (-> self y-vel) (* 0.5 (- (sqrtf (- (* f0-6 f0-6) (* 4.0 f3-1))) f0-6)))
-      )
-    (set! (-> self grav) (/ (- (* (-> self y-vel) (-> self y-vel))) (* 2.0 v1-2)))
-    )
-  )
+          (f3-1 (* 4.0 v1-2 (- (-> arg1 y) (-> arg0 y)))))
+      (set! (-> self y-vel) (* 0.5 (- (sqrtf (- (* f0-6 f0-6) (* 4.0 f3-1))) f0-6))))
+    (set! (-> self grav) (/ (- (* (-> self y-vel) (-> self y-vel))) (* 2.0 v1-2)))))
 
 (defbehavior arcing-shot-calculate arcing-shot ((arg0 vector) (arg1 float))
   (let ((s5-0 (fmin 1.0 (fmax 0.0 arg1))))
     (vector-lerp! arg0 (-> self from) (-> self to) s5-0)
     (set! (-> arg0 y) (-> self from y))
     (+! (-> arg0 y) (* (-> self y-vel) s5-0))
-    (set! (-> arg0 y) (+ (-> arg0 y) (* 0.5 s5-0 s5-0 (-> self grav))))
-    )
-  )
+    (set! (-> arg0 y) (+ (-> arg0 y) (* (/ s5-0 2) s5-0 (-> self grav))))))
 
 (defbehavior arcing-shot-draw arcing-shot ()
   (let ((gp-0 (new 'stack-no-clear 'vector))
-        (s5-0 (new 'stack-no-clear 'vector))
-        )
+        (s5-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 quad) (-> self from quad))
     (dotimes (s4-0 30)
       (arcing-shot-calculate gp-0 (* 0.033333335 (the float (+ s4-0 1))))
       (camera-line gp-0 s5-0 (new 'static 'vector4w :x #xff :y #xff :w #x80))
-      (set! (-> s5-0 quad) (-> gp-0 quad))
-      )
-    )
-  #f
-  )
+      (set! (-> s5-0 quad) (-> gp-0 quad))))
+  #f)
 
 (defstate arcing-shot-debug-trajectory (arcing-shot)
-  :trans (behavior ()
-    (arcing-shot-setup (camera-pos) (-> self entity extra trans) 40960.0)
-    (arcing-shot-draw)
-    )
-  :code (behavior ()
-    (loop
-      (format *stdcon* "debug trajectory~%")
-      (suspend)
-      )
-    )
-  )
+  :trans
+    (behavior ()
+      (arcing-shot-setup (camera-pos) (-> self entity extra trans) 40960.0)
+      (arcing-shot-draw))
+  :code
+    (behavior ()
+      (loop
+        (format *stdcon* "debug trajectory~%")
+        (suspend))))
 
 (deftype darkecobomb (arcing-shot)
-  ((flight-time     time-frame)
-   (countdown-time  float)
-   (anim-speed      float)
-   (next-tick       float)
-   )
+  ((flight-time    time-frame)
+   (countdown-time float)
+   (anim-speed     float)
+   (next-tick      float))
   (:states
-    darkecobomb-countdown
-    (darkecobomb-explode symbol)
-    darkecobomb-idle
-    darkecobomb-land
-    )
-  )
+   darkecobomb-countdown
+   (darkecobomb-explode symbol)
+   darkecobomb-idle
+   darkecobomb-land))
 
 
-(defskelgroup *darkecobomb-sg* darkecobomb darkecobomb-lod0-jg darkecobomb-idle-ja
-              ((darkecobomb-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 3.5 0 6)
-              )
+(defskelgroup *darkecobomb-sg*
+  darkecobomb
+  darkecobomb-lod0-jg
+  darkecobomb-idle-ja
+  ((darkecobomb-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 3.5 0 6))
 
 (defstate darkecobomb-explode (darkecobomb)
-  :code (behavior ((arg0 symbol))
-    (send-event *target* 'reset-pickup 'eco)
-    (sound-play "explod-bomb" :position #f)
-    (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
-    (send-event (ppointer->process (-> self parent)) 'flash 255.0)
-    (process-spawn
-      part-tracker
-      :init part-tracker-init
-      (-> *part-group-id-table* 619)
-      900
-      #f
-      #f
-      #f
-      (-> self root trans)
-      :to *entity-pool*
-      )
-    (logior! (-> self draw status) (draw-status hidden))
-    (cond
-      ((or arg0 (and *target* (< (-> (target-pos 0) y) (+ 40960.0 (-> self entity extra trans y)))))
-       (if *target*
-           (logior! (-> *target* mask) (process-mask sleep))
-           )
-       (send-event (ppointer->process (-> self parent)) 'bomb-going)
-       (send-event *camera* 'change-to-entity-by-name "camera-402")
-       (set-time! (-> self state-time))
-       (until (time-elapsed? (-> self state-time) (seconds 2))
-         (suspend)
-         )
-       (send-event *camera* 'force-blend 0)
-       (send-event *camera* 'change-state *camera-base-mode*)
-       (send-event *camera* 'clear-entity)
-       (if *target*
-           (logclear! (-> *target* mask) (process-mask sleep))
-           )
-       (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'instant-death))))
-       )
-      (else
-        (send-event (ppointer->process (-> self parent)) 'bomb-done)
-        )
-      )
-    (deactivate self)
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ((arg0 symbol))
+      (send-event *target* 'reset-pickup 'eco)
+      (sound-play "explod-bomb" :position #f)
+      (activate! *camera-smush-control* 819.2 37 600 1.0 0.995)
+      (send-event (ppointer->process (-> self parent)) 'flash 255.0)
+      (process-spawn part-tracker
+                     :init
+                     part-tracker-init
+                     (-> *part-group-id-table* 619)
+                     900
+                     #f
+                     #f
+                     #f
+                     (-> self root trans)
+                     :to
+                     *entity-pool*)
+      (logior! (-> self draw status) (draw-status hidden))
+      (cond
+        ((or arg0 (and *target* (< (-> (target-pos 0) y) (+ 40960.0 (-> self entity extra trans y)))))
+         (if *target* (logior! (-> *target* mask) (process-mask sleep)))
+         (send-event (ppointer->process (-> self parent)) 'bomb-going)
+         (send-event *camera* 'change-to-entity-by-name "camera-402")
+         (set-time! (-> self state-time))
+         (until (time-elapsed? (-> self state-time) (seconds 2))
+           (suspend))
+         (send-event *camera* 'force-blend 0)
+         (send-event *camera* 'change-state *camera-base-mode*)
+         (send-event *camera* 'clear-entity)
+         (if *target* (logclear! (-> *target* mask) (process-mask sleep)))
+         (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'instant-death)))))
+        (else (send-event (ppointer->process (-> self parent)) 'bomb-done)))
+      (deactivate self))
+  :post ja-post)
 
 (defbehavior darkecobomb-handler darkecobomb ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
-    (('touch 'attack)
-     (go darkecobomb-explode #t)
-     )
-    )
-  )
+    (('touch 'attack) (go darkecobomb-explode #t))))
 
 (defbehavior darkecobomb-explode-if-player-high-enough darkecobomb ()
   (if (and (not (movie?)) *target* (< (+ 409600.0 (-> self entity extra trans y)) (-> (target-pos 0) y)))
-      (go darkecobomb-explode #f)
-      )
-  (none)
-  )
+    (go darkecobomb-explode #f))
+  (none))
 
 (defstate darkecobomb-countdown (darkecobomb)
   :event darkecobomb-handler
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    (set! (-> self next-tick) 0.9)
-    )
-  :exit (behavior ()
-    (stop! (-> self sound))
-    )
-  :trans (behavior ()
-    (darkecobomb-explode-if-player-high-enough)
-    (let ((f0-1
-            (fmax
-              0.0
-              (/ (- (-> self countdown-time) (the float (- (-> *display* game-frame-counter) (-> self state-time))))
-                 (-> self countdown-time)
-                 )
-              )
-            )
-          )
-      (let ((f1-5 (* (- 1.0 f0-1) (- 1.0 f0-1))))
-        (set! (-> self anim-speed) (+ 1.0 f1-5))
-        )
-      (when (< (cos (* 16384.0 (- 1.0 f0-1))) (-> self next-tick))
-        (process-spawn
-          part-tracker
-          :init part-tracker-init
-          (-> *part-group-id-table* 663)
-          150
-          #f
-          #f
-          #f
-          (-> self root trans)
-          :to *entity-pool*
-          )
-        (+! (-> self next-tick) -0.06)
-        (sound-play "robo-warning")
-        )
-      )
-    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (the int (-> self countdown-time)))
-        (go darkecobomb-explode #f)
-        )
-    (when (ja-group? darkecobomb-spin-cycle-ja)
-      (let ((gp-2 (new 'stack-no-clear 'vector)))
-        (vector<-cspace! gp-2 (joint-node darkecobomb-lod0-jg particles))
-        (spawn (-> self part) gp-2)
-        )
-      )
-    )
-  :code (behavior ()
-    (sound-play "bomb-open")
-    (ja-no-eval :group! darkecobomb-open-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (loop
-      (ja-no-eval :group! darkecobomb-spin-cycle-ja :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter))
+      (set! (-> self next-tick) 0.9))
+  :exit
+    (behavior ()
+      (stop! (-> self sound)))
+  :trans
+    (behavior ()
+      (darkecobomb-explode-if-player-high-enough)
+      (let ((f0-1 (fmax 0.0
+                        (/ (- (-> self countdown-time) (the float (- (-> *display* game-frame-counter) (-> self state-time))))
+                           (-> self countdown-time)))))
+        (let ((f1-5 (* (- 1.0 f0-1) (- 1.0 f0-1)))) (set! (-> self anim-speed) (+ 1.0 f1-5)))
+        (when (< (cos (* 16384.0 (- 1.0 f0-1))) (-> self next-tick))
+          (process-spawn part-tracker
+                         :init
+                         part-tracker-init
+                         (-> *part-group-id-table* 663)
+                         150
+                         #f
+                         #f
+                         #f
+                         (-> self root trans)
+                         :to
+                         *entity-pool*)
+          (+! (-> self next-tick) -0.06)
+          (sound-play "robo-warning")))
+      (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (the int (-> self countdown-time)))
+        (go darkecobomb-explode #f))
+      (when (ja-group? darkecobomb-spin-cycle-ja)
+        (let ((gp-2 (new 'stack-no-clear 'vector)))
+          (vector<-cspace! gp-2 (joint-node darkecobomb-lod0-jg particles))
+          (spawn (-> self part) gp-2))))
+  :code
+    (behavior ()
+      (sound-play "bomb-open")
+      (ja-no-eval :group! darkecobomb-open-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
-        (update! (-> self sound))
         (suspend)
-        (ja :num! (seek! max (-> self anim-speed)))
-        )
-      )
-    )
-  :post transform-post
-  )
+        (ja :num! (seek!)))
+      (loop
+        (ja-no-eval :group! darkecobomb-spin-cycle-ja :num! (seek! max (-> self anim-speed)) :frame-num 0.0)
+        (until (ja-done? 0)
+          (update! (-> self sound))
+          (suspend)
+          (ja :num! (seek! max (-> self anim-speed))))))
+  :post transform-post)
 
 (defstate darkecobomb-land (darkecobomb)
   :event darkecobomb-handler
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    0
-    )
-  :trans (behavior ()
-    (darkecobomb-explode-if-player-high-enough)
-    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 0.5))
-        (go darkecobomb-countdown)
-        )
-    )
-  :code (behavior ()
-    (ja-no-eval :num! (seek!))
-    (while (not (ja-done? 0))
-      (suspend)
-      (ja-eval)
-      )
-    (loop
-      (ja-no-eval :group! darkecobomb-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter))
+      0)
+  :trans
+    (behavior ()
+      (darkecobomb-explode-if-player-high-enough)
+      (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 0.5)) (go darkecobomb-countdown)))
+  :code
+    (behavior ()
+      (ja-no-eval :num! (seek!))
+      (while (not (ja-done? 0))
         (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    )
-  :post transform-post
-  )
+        (ja-eval))
+      (loop
+        (ja-no-eval :group! darkecobomb-idle-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!)))))
+  :post transform-post)
 
 (defstate darkecobomb-idle (darkecobomb)
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    )
-  :trans (behavior ()
-    (arcing-shot-calculate
-      (-> self root trans)
-      (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
-      )
-    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
-        (go darkecobomb-land)
-        )
-    )
-  :code (behavior ()
-    (ja-no-eval :group! darkecobomb-blast-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (loop
-      (ja-no-eval :group! darkecobomb-idle-ja :num! (seek!) :frame-num 0.0)
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter)))
+  :trans
+    (behavior ()
+      (arcing-shot-calculate (-> self root trans)
+                             (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time))))
+      (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time)) (go darkecobomb-land)))
+  :code
+    (behavior ()
+      (ja-no-eval :group! darkecobomb-blast-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    )
-  :post transform-post
-  )
+        (ja :num! (seek!)))
+      (loop
+        (ja-no-eval :group! darkecobomb-idle-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!)))))
+  :post transform-post)
 
 (defbehavior darkecobomb-init-by-other darkecobomb ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame) (arg4 float))
   (let ((s1-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s1-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s1-0 reaction) default-collision-reaction)
-    (set! (-> s1-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s1-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s0-0 (new 'process 'collide-shape-prim-sphere s1-0 (the-as uint 0))))
       (set! (-> s0-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s0-0 collide-with) (collide-kind target))
@@ -427,12 +325,10 @@
       (set! (-> s0-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s0-0 transform-index) 3)
       (set-vector! (-> s0-0 local-sphere) 0.0 0.0 0.0 16384.0)
-      (set-root-prim! s1-0 s0-0)
-      )
+      (set-root-prim! s1-0 s0-0))
     (set! (-> s1-0 nav-radius) (* 0.75 (-> s1-0 root-prim local-sphere w)))
     (backup-collide-with-as s1-0)
-    (set! (-> self root) s1-0)
-    )
+    (set! (-> self root) s1-0))
   (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *darkecobomb-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -442,67 +338,54 @@
   (set! (-> self flight-time) arg3)
   (set! (-> self sound) (new 'process 'ambient-sound (static-sound-spec "bomb-spin" :fo-max 80) (-> self to)))
   (go darkecobomb-idle)
-  (none)
-  )
+  (none))
 
 (deftype greenshot (arcing-shot)
-  ((flight-time  time-frame)
-   )
+  ((flight-time time-frame))
   (:states
-    greenshot-idle
-    )
-  )
+   greenshot-idle))
 
 
-(defskelgroup *greenshot-sg* greenshot greenshot-lod0-jg greenshot-idle-ja
-              ((greenshot-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              )
+(defskelgroup *greenshot-sg*
+  greenshot
+  greenshot-lod0-jg
+  greenshot-idle-ja
+  ((greenshot-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4))
 
 (defstate greenshot-idle (greenshot)
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    )
-  :trans (behavior ()
-    (arcing-shot-calculate
-      (-> self root trans)
-      (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
-      )
-    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
-        (deactivate self)
-        )
-    (spawn (-> self part) (-> self root trans))
-    )
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    )
-  :post transform-post
-  )
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter)))
+  :trans
+    (behavior ()
+      (arcing-shot-calculate (-> self root trans)
+                             (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time))))
+      (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time)) (deactivate self))
+      (spawn (-> self part) (-> self root trans)))
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!)))))
+  :post transform-post)
 
 (defbehavior greenshot-init-by-other greenshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame))
   (let ((s2-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s2-0 reaction) default-collision-reaction)
-    (set! (-> s2-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s2-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s1-0 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
       (set! (-> s1-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s1-0 collide-with) (collide-kind target))
       (set! (-> s1-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s1-0 local-sphere) 0.0 8192.0 0.0 8192.0)
-      (set-root-prim! s2-0 s1-0)
-      )
+      (set-root-prim! s2-0 s1-0))
     (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
     (backup-collide-with-as s2-0)
-    (set! (-> self root) s2-0)
-    )
+    (set! (-> self root) s2-0))
   (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *greenshot-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -511,202 +394,146 @@
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 664) self))
   (logior! (-> self draw status) (draw-status hidden))
   (go greenshot-idle)
-  (none)
-  )
+  (none))
 
 (deftype redshot (arcing-shot)
-  ((flight-time      time-frame)
-   (stall-time       time-frame)
-   (ring             torus  :inline)
-   (rotation-offset  int64)
-   (part-track       handle)
-   (shot-particle    sparticle-launch-control)
-   (test-particle    sparticle-launch-control)
-   )
+  ((flight-time     time-frame)
+   (stall-time      time-frame)
+   (ring            torus :inline)
+   (rotation-offset int64)
+   (part-track      handle)
+   (shot-particle   sparticle-launch-control)
+   (test-particle   sparticle-launch-control))
   (:states
-    redshot-explode
-    redshot-idle
-    redshot-wait
-    )
-  )
+   redshot-explode
+   redshot-idle
+   redshot-wait))
 
 
-(defmethod relocate ((this redshot) (arg0 int))
-  (if (nonzero? (-> this shot-particle))
-      (&+! (-> this shot-particle) arg0)
-      )
-  (if (nonzero? (-> this test-particle))
-      (&+! (-> this test-particle) arg0)
-      )
-  (the-as redshot ((method-of-type arcing-shot relocate) this arg0))
-  )
+(defmethod relocate ((this redshot) (offset int))
+  (if (nonzero? (-> this shot-particle)) (&+! (-> this shot-particle) offset))
+  (if (nonzero? (-> this test-particle)) (&+! (-> this test-particle) offset))
+  (the-as redshot ((method-of-type arcing-shot relocate) this offset)))
 
 (defmethod deactivate ((this redshot))
-  (if (nonzero? (-> this shot-particle))
-      (kill-and-free-particles (-> this shot-particle))
-      )
-  (if (nonzero? (-> this test-particle))
-      (kill-and-free-particles (-> this test-particle))
-      )
+  (if (nonzero? (-> this shot-particle)) (kill-and-free-particles (-> this shot-particle)))
+  (if (nonzero? (-> this test-particle)) (kill-and-free-particles (-> this test-particle)))
   ((method-of-type arcing-shot deactivate) this)
-  (none)
-  )
+  (none))
 
 (defun redshot-particle-callback ((arg0 part-tracker))
   (let ((v1-0 (the-as object (-> arg0 userdata))))
     (set! (-> *part-id-table* 2626 init-specs 2 initial-valuef)
-          (* 2.25 (-> (the-as (pointer redshot) v1-0) 0 ring radius-primary))
-          )
-    )
+          (* 2.25 (-> (the-as (pointer redshot) v1-0) 0 ring radius-primary))))
   0
-  (none)
-  )
+  (none))
 
-(defskelgroup *redring-sg* redring redring-lod0-jg redring-idle-ja
-              ((redring-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 40)
-              )
+(defskelgroup *redring-sg*
+  redring
+  redring-lod0-jg
+  redring-idle-ja
+  ((redring-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 40))
 
 (defbehavior redshot-trans redshot ((arg0 time-frame))
   (let ((s5-0 (new 'stack-no-clear 'matrix)))
     0.0
-    (matrix-rotate-yx!
-      s5-0
-      (* 436.90668 (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter))))
-      (* 291.27112 (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter))))
-      )
-    (matrix->quaternion (-> self root quat) s5-0)
-    )
-  (if (< (* 0.006666667 (the float (min 150 arg0))) 1.0)
-      (spawn (-> self part) (-> self root trans))
-      )
-  (none)
-  )
+    (matrix-rotate-yx! s5-0
+                       (* 436.90668 (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter))))
+                       (* 291.27112 (the float (+ (-> self rotation-offset) (-> *display* game-frame-counter)))))
+    (matrix->quaternion (-> self root quat) s5-0))
+  (if (< (* 0.006666667 (the float (min 150 arg0))) 1.0) (spawn (-> self part) (-> self root trans)))
+  (none))
 
 (defstate redshot-explode (redshot)
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    (sound-play "red-explode")
-    (logclear! (-> self draw status) (draw-status hidden))
-    (quaternion-identity! (-> self root quat))
-    (set! (-> self ring radius-secondary) 3072.0)
-    (set! (-> self ring origin quad) (-> self root trans quad))
-    (+! (-> self ring origin y) (-> self ring radius-secondary))
-    (set-vector! (-> self ring axis) 0.0 1.0 0.0 1.0)
-    (set! (-> self part-track) (ppointer->handle (process-spawn
-                                                   part-tracker
-                                                   :init part-tracker-init
-                                                   (-> *part-group-id-table* 648)
-                                                   -1
-                                                   redshot-particle-callback
-                                                   (-> self ppointer)
-                                                   #f
-                                                   (-> self root trans)
-                                                   :to self
-                                                   )
-                                                 )
-          )
-    )
-  :trans (behavior ()
-    (set! (-> self ring radius-primary)
-          (* 204.8 (the float (- (-> *display* game-frame-counter) (-> self state-time))))
-          )
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (when (torus-method-11 (-> self ring) gp-0)
-        (vector-normalize! gp-0 16384.0)
-        (send-event *target* 'attack #f (static-attack-info ((vector gp-0))))
-        (send-event (ppointer->process (-> self parent)) 'hit-jak)
-        )
-      )
-    (dotimes (gp-1 5)
-      (let ((s5-0 (new 'stack-no-clear 'vector)))
-        (torus-method-12 (-> self ring) s5-0)
-        (spawn (-> self test-particle) s5-0)
-        )
-      )
-    (let ((f0-3
-            (fmin
-              1.0
-              (* 0.006666667 (the float (- (seconds 2) (- (-> *display* game-frame-counter) (-> self state-time)))))
-              )
-            )
-          )
-      (set-vector! (-> self draw color-mult) f0-3 f0-3 f0-3 0.75)
-      )
-    (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 2))
-      (send-event (ppointer->process (-> self parent)) 'missed-jak)
-      (deactivate self)
-      )
-    )
-  :code (behavior ()
-    (loop
-      (ja :num-func num-func-identity :frame-num (* 0.000016276043 (-> self ring radius-primary)))
-      (suspend)
-      )
-    )
-  :post transform-post
-  )
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter))
+      (sound-play "red-explode")
+      (logclear! (-> self draw status) (draw-status hidden))
+      (quaternion-identity! (-> self root quat))
+      (set! (-> self ring radius-secondary) 3072.0)
+      (set! (-> self ring origin quad) (-> self root trans quad))
+      (+! (-> self ring origin y) (-> self ring radius-secondary))
+      (set-vector! (-> self ring axis) 0.0 1.0 0.0 1.0)
+      (set! (-> self part-track)
+            (ppointer->handle (process-spawn part-tracker
+                                             :init
+                                             part-tracker-init
+                                             (-> *part-group-id-table* 648)
+                                             -1
+                                             redshot-particle-callback
+                                             (-> self ppointer)
+                                             #f
+                                             (-> self root trans)
+                                             :to
+                                             self))))
+  :trans
+    (behavior ()
+      (set! (-> self ring radius-primary) (* 204.8 (the float (- (-> *display* game-frame-counter) (-> self state-time)))))
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (when (torus-method-11 (-> self ring) gp-0)
+          (vector-normalize! gp-0 16384.0)
+          (send-event *target* 'attack #f (static-attack-info ((vector gp-0))))
+          (send-event (ppointer->process (-> self parent)) 'hit-jak)))
+      (dotimes (gp-1 5)
+        (let ((s5-0 (new 'stack-no-clear 'vector))) (torus-method-12 (-> self ring) s5-0) (spawn (-> self test-particle) s5-0)))
+      (let ((f0-3 (fmin 1.0 (* 0.006666667 (the float (- (seconds 2) (- (-> *display* game-frame-counter) (-> self state-time))))))))
+        (set-vector! (-> self draw color-mult) f0-3 f0-3 f0-3 0.75))
+      (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) (seconds 2))
+        (send-event (ppointer->process (-> self parent)) 'missed-jak)
+        (deactivate self)))
+  :code
+    (behavior ()
+      (loop
+        (ja :num-func num-func-identity :frame-num (/ (-> self ring radius-primary) (meters 15)))
+        (suspend)))
+  :post transform-post)
 
 (defbehavior redshot-handler redshot ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
-    (('attack 'touch)
-     (go redshot-explode)
-     )
-    )
-  )
+    (('attack 'touch) (go redshot-explode))))
 
 (defstate redshot-wait (redshot)
   :event redshot-handler
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    )
-  :trans (behavior ()
-    (redshot-trans (- (-> self stall-time) (- (-> *display* game-frame-counter) (-> self state-time))))
-    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self stall-time))
-        (go redshot-explode)
-        )
-    (spawn (-> self shot-particle) (-> self root trans))
-    )
-  :code (behavior ()
-    (loop
-      (suspend)
-      )
-    )
-  :post transform-post
-  )
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter)))
+  :trans
+    (behavior ()
+      (redshot-trans (- (-> self stall-time) (- (-> *display* game-frame-counter) (-> self state-time))))
+      (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self stall-time)) (go redshot-explode))
+      (spawn (-> self shot-particle) (-> self root trans)))
+  :code
+    (behavior ()
+      (loop
+        (suspend)))
+  :post transform-post)
 
 (defstate redshot-idle (redshot)
   :event redshot-handler
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    )
-  :trans (behavior ()
-    (redshot-trans (seconds 5))
-    (arcing-shot-calculate
-      (-> self root trans)
-      (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
-      )
-    (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
-        (go redshot-wait)
-        )
-    (spawn (-> self shot-particle) (-> self root trans))
-    )
-  :code (behavior ()
-    (loop
-      (suspend)
-      )
-    )
-  :post transform-post
-  )
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter)))
+  :trans
+    (behavior ()
+      (redshot-trans (seconds 5))
+      (arcing-shot-calculate (-> self root trans)
+                             (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time))))
+      (if (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time)) (go redshot-wait))
+      (spawn (-> self shot-particle) (-> self root trans)))
+  :code
+    (behavior ()
+      (loop
+        (suspend)))
+  :post transform-post)
 
 (defbehavior redshot-init-by-other redshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame) (arg4 time-frame) (arg5 int))
   (local-vars (sv-16 collide-shape-prim-sphere))
   (let ((s0-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s0-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s0-0 reaction) default-collision-reaction)
-    (set! (-> s0-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s0-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (set! sv-16 (new 'process 'collide-shape-prim-sphere s0-0 (the-as uint 0)))
     (set! (-> sv-16 prim-core collide-as) (collide-kind wall-object))
     (set! (-> sv-16 collide-with) (collide-kind target))
@@ -717,8 +544,7 @@
     (set-root-prim! s0-0 sv-16)
     (set! (-> s0-0 nav-radius) (* 0.75 (-> s0-0 root-prim local-sphere w)))
     (backup-collide-with-as s0-0)
-    (set! (-> self root) s0-0)
-    )
+    (set! (-> self root) s0-0))
   (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *redring-sg* '())
   (logclear! (-> self mask) (process-mask actor-pause))
@@ -730,74 +556,56 @@
   (set! (-> self shot-particle) (create-launch-control (-> *part-group-id-table* 665) self))
   (set! (-> self test-particle) (create-launch-control (-> *part-group-id-table* 679) self))
   (logior! (-> self draw status) (draw-status hidden))
-  (set! (-> self sound)
-        (new 'process 'ambient-sound (static-sound-spec "red-fireball" :fo-max 80) (-> self root trans))
-        )
+  (set! (-> self sound) (new 'process 'ambient-sound (static-sound-spec "red-fireball" :fo-max 80) (-> self root trans)))
   (go redshot-idle)
-  (none)
-  )
+  (none))
 
 (deftype yellowshot (arcing-shot)
-  ((flight-time  time-frame)
-   )
+  ((flight-time time-frame))
   (:states
-    yellowshot-idle
-    )
-  )
+   yellowshot-idle))
 
 
 (defstate yellowshot-idle (yellowshot)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch 'attack)
-       (when (= (-> proc type) target)
-         (send-event *target* 'attack (-> block param 0) (static-attack-info ((mode 'generic))))
-         (send-event (ppointer->process (-> self parent)) 'hit-jak)
-         )
-       )
-      )
-    )
-  :enter (behavior ()
-    (set! (-> self state-time) (-> *display* game-frame-counter))
-    )
-  :trans (behavior ()
-    (arcing-shot-calculate
-      (-> self root trans)
-      (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time)))
-      )
-    (spawn (-> self part) (-> self root trans))
-    (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
-      (send-event (ppointer->process (-> self parent)) 'missed-jak)
-      (deactivate self)
-      )
-    )
-  :code (behavior ()
-    (loop
-      (suspend)
-      )
-    )
-  :post transform-post
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch 'attack)
+         (when (= (-> proc type) target)
+           (send-event *target* 'attack (-> block param 0) (static-attack-info ((mode 'generic))))
+           (send-event (ppointer->process (-> self parent)) 'hit-jak)))))
+  :enter
+    (behavior ()
+      (set! (-> self state-time) (-> *display* game-frame-counter)))
+  :trans
+    (behavior ()
+      (arcing-shot-calculate (-> self root trans)
+                             (/ (the float (- (-> *display* game-frame-counter) (-> self state-time))) (the float (-> self flight-time))))
+      (spawn (-> self part) (-> self root trans))
+      (when (>= (- (-> *display* game-frame-counter) (-> self state-time)) (-> self flight-time))
+        (send-event (ppointer->process (-> self parent)) 'missed-jak)
+        (deactivate self)))
+  :code
+    (behavior ()
+      (loop
+        (suspend)))
+  :post transform-post)
 
 (defbehavior yellowshot-init-by-other yellowshot ((arg0 vector) (arg1 vector) (arg2 float) (arg3 time-frame))
   (let ((s2-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s2-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s2-0 reaction) default-collision-reaction)
-    (set! (-> s2-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s2-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s1-0 (new 'process 'collide-shape-prim-sphere s2-0 (the-as uint 0))))
       (set! (-> s1-0 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s1-0 collide-with) (collide-kind target))
       (set! (-> s1-0 prim-core action) (collide-action solid))
       (set! (-> s1-0 prim-core offense) (collide-offense indestructible))
       (set-vector! (-> s1-0 local-sphere) 0.0 0.0 0.0 12288.0)
-      (set-root-prim! s2-0 s1-0)
-      )
+      (set-root-prim! s2-0 s1-0))
     (set! (-> s2-0 nav-radius) (* 0.75 (-> s2-0 root-prim local-sphere w)))
     (backup-collide-with-as s2-0)
-    (set! (-> self root) s2-0)
-    )
+    (set! (-> self root) s2-0))
   (set! (-> self root trans quad) (-> arg0 quad))
   (initialize-skeleton self *redring-sg* '())
   (logior! (-> self draw status) (draw-status hidden))
@@ -805,5 +613,4 @@
   (set! (-> self flight-time) arg3)
   (set! (-> self part) (create-launch-control (-> *part-group-id-table* 652) self))
   (go yellowshot-idle)
-  (none)
-  )
+  (none))

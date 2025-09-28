@@ -1,20 +1,14 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: types-h.gc
-;; name in dgo: types-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; these types may have bitfields in them.
 ;; these have runtime types. But nothing appears to use them?
 
-(deftype time-frame (int64)
-  ()
-  )
+(deftype time-frame (int64) ())
 
-(deftype part-id (uint32)
-  ()
-  )
+(deftype part-id (uint32) ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Common Units
@@ -33,20 +27,11 @@
    If the input is a constant float or integer, the result will be a
    compile time constant float. Otherwise, it will not be constant.
    Returns float."
-
   ;; we don't have enough constant propagation for the compiler to figure this out.
   (cond
-    ((float? x)
-     (* METER_LENGTH x)
-     )
-    ((integer? x)
-     (* METER_LENGTH x)
-     )
-    (#t
-     `(* METER_LENGTH ,x)
-     )
-    )
-  )
+    ((float? x) (* METER_LENGTH x))
+    ((integer? x) (* METER_LENGTH x))
+    (#t `(* METER_LENGTH ,x))))
 
 ;; rotations are stored in 65,536ths of a full rotation.
 ;; like with meters, you get a reasonable accuracy as an integer.
@@ -59,16 +44,8 @@
   "Convert number to degrees unit.
    Will keep a constant float/int constant."
   (cond
-    ((or (float? x) (integer? x))
-     (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0))
-     )
-    (#t
-     `(* (/ (the float ,x) 360.0)
-         DEGREES_PER_ROT
-         )
-     )
-    )
-  )
+    ((or (float? x) (integer? x)) (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0)))
+    (#t `(* (/ (the float ,x) 360.0) DEGREES_PER_ROT))))
 
 ;; times are stored in 300ths of a second.
 ;; this divides evenly into frames at both 50 and 60 fps.
@@ -81,36 +58,21 @@
   "Convert number to seconds unit.
    Returns uint."
   (cond
-    ((integer? x)
-     (* TICKS_PER_SECOND x)
-     )
-    ((float? x)
-     (* 1 (* 1.0 x TICKS_PER_SECOND))
-     )
-    (#t
-     `(the uint (* TICKS_PER_SECOND ,x))
-     )
-    )
-  )
+    ((integer? x) (* TICKS_PER_SECOND x))
+    ((float? x) (* 1 (* 1.0 x TICKS_PER_SECOND)))
+    (#t `(the uint (* TICKS_PER_SECOND ,x)))))
 
 (defmacro fsec (x)
   "Convert number to seconds unit.
    Returns float."
   (cond
-    ((or (integer? x) (float? x))
-     (* 1.0 TICKS_PER_SECOND x)
-     )
-    (#t
-     `(* 1.0 TICKS_PER_SECOND ,x)
-     )
-    )
-  )
+    ((or (integer? x) (float? x)) (* 1.0 TICKS_PER_SECOND x))
+    (#t `(* 1.0 TICKS_PER_SECOND ,x))))
 
 ;; maybe rename to "velocity"?
 (defmacro vel-tick (vel)
   "turn a velocity value into a per-tick value"
-  `(* (/ 1.0 ,TICKS_PER_SECOND) ,vel)
-  )
+  `(* (/ 1.0 ,TICKS_PER_SECOND) ,vel))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Debugging Stuff
@@ -118,18 +80,11 @@
 
 ;; set to #t to get lots of prints during loading
 (defglobalconstant DEBUG_LOAD #f)
+
 (defglobalconstant DEBUG_TEX #f)
 
 (defmacro load-dbg (fmt-str &rest args)
-  (if DEBUG_LOAD
-      `(format 0 ,(string-append "[LOAD] " fmt-str) ,@args)
-      '(empty)
-      )
-  )
+  (if DEBUG_LOAD `(format 0 ,(string-append "[LOAD] " fmt-str) ,@args) '(empty)))
 
 (defmacro tex-dbg (fmt-str &rest args)
-  (if DEBUG_TEX
-      `(format 0 ,(string-append "[TEX] " fmt-str) ,@args)
-      '(empty)
-      )
-  )
+  (if DEBUG_TEX `(format 0 ,(string-append "[TEX] " fmt-str) ,@args) '(empty)))

@@ -1,86 +1,60 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: generic-work-h.gc
-;; name in dgo: generic-work-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; common types for internal generic work.
 
 ;; DECOMP BEGINS
 
 (deftype generic-input-buffer (structure)
-  ((merc  generic-merc-work  :inline :offset   0)
-   (tie   generic-tie-work   :inline :offset   0)
-   (data  uint128            472     :offset   0)
-   )
-  )
-
+  ((merc generic-merc-work :inline :offset 0)
+   (tie  generic-tie-work :inline :offset 0)
+   (data uint128 472 :offset 0)))
 
 (deftype generic-debug (structure)
-  ((locks       uint32  4)
-   (timer       uint32  32)
-   (count       uint32  32)
-   (vps         uint32  32)
-   (buffer      int32)
-   (start-addr  int32)
-   (lock        int32)
-   )
-  )
-
+  ((locks      uint32 4)
+   (timer      uint32 32)
+   (count      uint32 32)
+   (vps        uint32 32)
+   (buffer     int32)
+   (start-addr int32)
+   (lock       int32)))
 
 (deftype generic-vu1-header (structure)
-  ((matrix   matrix           :inline)
-   (strgif   generic-gif-tag  :inline)
-   (adnop1   ad-cmd           :inline)
-   (adnop2   ad-cmd           :inline)
-   (adcmds   ad-cmd           2 :inline :overlay-at adnop1)
-   (dps      uint16                     :overlay-at (-> adnop1 word 3))
-   (kickoff  uint16                     :overlay-at (-> adnop2 word 3))
-   (strips   uint16                     :overlay-at (-> strgif data 3))
-   )
-  )
-
+  ((matrix  matrix :inline)
+   (strgif  generic-gif-tag :inline)
+   (adnop1  ad-cmd :inline)
+   (adnop2  ad-cmd :inline)
+   (adcmds  ad-cmd 2 :inline :overlay-at adnop1)
+   (dps     uint16 :overlay-at (-> adnop1 word 3))
+   (kickoff uint16 :overlay-at (-> adnop2 word 3))
+   (strips  uint16 :overlay-at (-> strgif data 3))))
 
 (deftype generic-vu1-texbuf (structure)
-  ((header  generic-vu1-header  :inline)
-   (shader  uint32              :dynamic)
-   )
-  )
-
+  ((header generic-vu1-header :inline)
+   (shader uint32 :dynamic)))
 
 (deftype generic-texbuf (structure)
-  ((tag     dma-packet          :inline)
-   (header  generic-vu1-header  :inline)
-   (shader  uint32              :dynamic)
-   )
-  )
-
+  ((tag    dma-packet :inline)
+   (header generic-vu1-header :inline)
+   (shader uint32 :dynamic)))
 
 (deftype generic-effect-work (structure)
-  ((consts    generic-consts   :inline)
-   (storage   generic-storage  :inline)
-   (storage2  generic-storage  :inline)
-   (lights    vu-lights        :inline)
-   )
-  )
-
+  ((consts   generic-consts :inline)
+   (storage  generic-storage :inline)
+   (storage2 generic-storage :inline)
+   (lights   vu-lights :inline)))
 
 (deftype generic-effect-buffer (structure)
-  ((outbuf-0  uint8                3552)
-   (work      generic-effect-work  :inline)
-   (outbuf-1  uint8                3552)
-   )
-  )
-
+  ((outbuf-0 uint8 3552)
+   (work     generic-effect-work :inline)
+   (outbuf-1 uint8 3552)))
 
 (deftype generic-work (structure)
-  ((saves    generic-saves          :inline)
-   (storage  generic-storage        :inline)
-   (in-buf   generic-input-buffer   :inline)
-   (fx-buf   generic-effect-buffer  :inline)
-   )
-  )
-
+  ((saves   generic-saves :inline)
+   (storage generic-storage :inline)
+   (in-buf  generic-input-buffer :inline)
+   (fx-buf  generic-effect-buffer :inline)))
 
 (define *generic-debug* (new 'global 'generic-debug))

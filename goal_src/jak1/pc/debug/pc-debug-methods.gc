@@ -1,59 +1,61 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(require "engine/gfx/hw/display.gc")
+(require "pc/debug/pc-debug-common.gc")
+(require "engine/math/quaternion-h.gc")
+(require "engine/game/game-info-h.gc")
 
-#|
-  Various debugging displays made for the pc port. This file includes overrides or game-specific implementations.
- |#
+#| Various debugging displays made for the pc port. This file includes overrides or game-specific implementations. |#
 
 ;; debug-only file!
 (declare-file (debug))
 
-
-(defmethod print-debug-misc pc-settings-jak1 ((obj pc-settings-jak1))
-	"prints various miscellaneous debug text to the game console, according to what's enabled in this object."
-
+(defmethod print-debug-misc ((obj pc-settings-jak1))
+  "prints various miscellaneous debug text to the game console, according to what's enabled in this object."
   (when *display-bug-report*
     (format *stdcon* "~0kbug-report ~A~%" *user*)
-		(format *stdcon* "nick ~A continue ~S~%" (-> *load-state* vis-nick) (-> *game-info* current-continue name))
-		(dotimes (i (-> *level* length))
-			(format *stdcon* "level ~D ~12A ~A~%" i (-> *level* level i name) (-> *level* level i display?))
-			)
-		(format *stdcon* "music ~A (f: ~D/~S)~%" (-> *setting-control* current music) (-> *setting-control* current sound-flava) (music-flava->string (the-as music-flava (-> *setting-control* default sound-flava))))
-		(format *stdcon* "sound ~A ~A~%" *sound-bank-1* *sound-bank-2*)
-		(let ((pos (target-pos 0)))
-				(format *stdcon* "target ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z))
-				)
-		(let ((pos (camera-pos)))
-				(format *stdcon* "cam-trans ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z))
-				)
-		(let ((rot (new 'stack 'quaternion)))
-				(matrix->quaternion rot (-> *math-camera* camera-rot))
-				(format *stdcon* "cam-rot ~f ~f ~f ~f~%" (-> rot x) (-> rot y) (-> rot z) (-> rot w))
-				)
-		(format *stdcon* "~1k")
-		)
-	)
-
+    (format *stdcon* "nick ~A continue ~S~%" (-> *load-state* vis-nick) (-> *game-info* current-continue name))
+    (dotimes (i (-> *level* length))
+      (format *stdcon* "level ~D ~12A ~A~%" i (-> *level* level i name) (-> *level* level i display?)))
+    (format *stdcon*
+            "music ~A (f: ~D/~S)~%"
+            (-> *setting-control* current music)
+            (-> *setting-control* current sound-flava)
+            (music-flava->string (the-as music-flava (-> *setting-control* default sound-flava))))
+    (format *stdcon* "sound ~A ~A~%" *sound-bank-1* *sound-bank-2*)
+    (let ((pos (target-pos 0))) (format *stdcon* "target ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z)))
+    (let ((pos (camera-pos))) (format *stdcon* "cam-trans ~m ~m ~m~%" (-> pos x) (-> pos y) (-> pos z)))
+    (let ((rot (new 'stack 'quaternion)))
+      (matrix->quaternion rot (-> *math-camera* camera-rot))
+      (format *stdcon* "cam-rot ~f ~f ~f ~f~%" (-> rot x) (-> rot y) (-> rot z) (-> rot w)))
+    (format *stdcon* "~1k")))
 
 (defconstant MEM_BAR_NUM 7) ;; amount of memory usage bars (override later if wanted)
-(defmethod draw-memory pc-settings ((obj pc-settings) (buf dma-buffer))
-	"draw the memory heap status in the bottom right corner"
 
-	(when *display-heap-status*
-		(draw-memory-bar-kheap buf global :idx 0 :color (static-rgba 32 32 255 64))
-		(draw-memory-bar-kheap buf debug :idx 1 :color (static-rgba 255 32 32 64))
-		(draw-memory-bar-kheap buf (-> *level* level 0 heap) :name "l0" :idx 2 :color (static-rgba 32 255 255 64))
-		(draw-memory-bar-kheap buf (-> *level* level 1 heap) :name "l1" :idx 3 :color (static-rgba 255 32 255 64))
-		(draw-memory-bar-dead-pool-heap buf *nk-dead-pool* :name "actor" :idx 4 :color (static-rgba 32 255 32 64))
-		(draw-memory-bar-generic buf
-						:remain (* 16 (dma-buffer-free (-> (current-frame) global-buf)))
-						:total  (length (-> (current-frame) global-buf))
-						:name "dma-global" :idx 5 :color (static-rgba 32 32 255 64))
-		(draw-memory-bar-generic buf
-						:remain (* 16 (dma-buffer-free (-> (current-frame) debug-buf)))
-						:total  (length (-> (current-frame) debug-buf))
-						:name "dma-debug" :idx 6 :color (static-rgba 255 32 32 64))
-		#t)
-	)
-
-
+(defmethod draw-memory ((obj pc-settings) (buf dma-buffer))
+  "draw the memory heap status in the bottom right corner"
+  (when *display-heap-status*
+    (draw-memory-bar-kheap buf global :idx 0 :color (static-rgba 32 32 255 64))
+    (draw-memory-bar-kheap buf debug :idx 1 :color (static-rgba 255 32 32 64))
+    (draw-memory-bar-kheap buf (-> *level* level 0 heap) :name "l0" :idx 2 :color (static-rgba 32 255 255 64))
+    (draw-memory-bar-kheap buf (-> *level* level 1 heap) :name "l1" :idx 3 :color (static-rgba 255 32 255 64))
+    (draw-memory-bar-dead-pool-heap buf *nk-dead-pool* :name "actor" :idx 4 :color (static-rgba 32 255 32 64))
+    (draw-memory-bar-generic buf
+                             :remain
+                             (* 16 (dma-buffer-free (-> (current-frame) global-buf)))
+                             :total
+                             (length (-> (current-frame) global-buf))
+                             :name "dma-global"
+                             :idx 5
+                             :color
+                             (static-rgba 32 32 255 64))
+    (draw-memory-bar-generic buf
+                             :remain
+                             (* 16 (dma-buffer-free (-> (current-frame) debug-buf)))
+                             :total
+                             (length (-> (current-frame) debug-buf))
+                             :name "dma-debug"
+                             :idx 6
+                             :color
+                             (static-rgba 255 32 32 64))
+    #t))

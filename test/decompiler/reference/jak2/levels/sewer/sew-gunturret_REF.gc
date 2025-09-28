@@ -19,7 +19,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4870
-  :init-specs ((:texture (new 'static 'texture-id :index #x34 :page #xc))
+  :init-specs ((:texture (explosion-wave effects))
     (:num 1.0 1.0)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0) (degrees 360) :store)
@@ -47,7 +47,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4872
-  :init-specs ((:texture (new 'static 'texture-id :index #x33 :page #xc))
+  :init-specs ((:texture (explosion-nebula effects))
     (:num 1.0 1.0)
     (:scale-x (meters 1) (meters 1))
     (:rot-z (degrees 0))
@@ -110,7 +110,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4871
-  :init-specs ((:texture (new 'static 'texture-id :index #x47 :page #xc))
+  :init-specs ((:texture (bigstarflash effects))
     (:num 1.0)
     (:scale-x (meters 5))
     (:scale-y :copy scale-x)
@@ -145,7 +145,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4869
-  :init-specs ((:texture (new 'static 'texture-id :index #x32 :page #xc))
+  :init-specs ((:texture (specs effects))
     (:num 5.0 3.0)
     (:x (meters 0.25))
     (:scale-x (meters 1) (meters 0.25))
@@ -191,7 +191,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4867
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 3.0 1.0)
     (:x (meters 0) (meters 0.6))
     (:scale-x (meters 2) (meters 1.5))
@@ -245,7 +245,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4868
-  :init-specs ((:texture (new 'static 'texture-id :index #x31 :page #xc))
+  :init-specs ((:texture (flamingstick effects))
     (:num 4.0 2.0)
     (:scale-x (meters 0.1) (meters 0.25))
     (:rot-x 4)
@@ -275,7 +275,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4882
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 0.5)
     (:scale-x (meters 0.5) (meters 0.25))
     (:rot-z (degrees 0) (degrees 360))
@@ -311,7 +311,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4884
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 3.0)
     (:scale-x (meters 0.5) (meters 0.25))
     (:rot-z (degrees 0) (degrees 360))
@@ -346,7 +346,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4883
-  :init-specs ((:texture (new 'static 'texture-id :index #x92 :page #xc))
+  :init-specs ((:texture (motion-blur-part effects))
     (:num 1.0)
     (:z (meters -0.4))
     (:scale-x (meters 2.5))
@@ -593,7 +593,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod aim-turret! ((this sew-gunturret) (aim-at-target? symbol))
   "Calculates the angle and tilt for the turret to either aim at the target, or it's default direction
-@param aim-at-target? Whether or not the turret should aim at the target, will ignore the target if #f"
+   @param aim-at-target? Whether or not the turret should aim at the target, will ignore the target if #f"
   (cond
     ((and aim-at-target? (-> this los-clear))
      (let ((target-proc (handle->process (-> this focus handle))))
@@ -722,7 +722,7 @@
 ;; INFO: Used lq/sq
 (defmethod fire-turret! ((this sew-gunturret) (fire-sound? symbol))
   "Actually fires the turret, sets `flash-state` to [[#t]]
-@param fire-sound? Whether to play the fire sound effect or not"
+   @param fire-sound? Whether to play the fire sound effect or not"
   (let ((v1-4 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data (-> this params gun-joint))))
         (proj-params (new 'stack-no-clear 'projectile-init-by-other-params))
         )
@@ -784,7 +784,7 @@
     (set! (-> self flash-state) #f)
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (when (time-elapsed? (-> self state-time) (-> self reaction-time))
@@ -803,51 +803,42 @@
         )
       (update-collision! self)
       (sound-play "sew-gun-lock")
-      (let ((frame-counter (current-time)))
-        (until (time-elapsed? frame-counter (seconds 0.75))
-          (aim-turret! self #t)
-          (suspend)
-          )
+      (suspend-for (seconds 0.75)
+        (aim-turret! self #t)
         )
       (ja :group! (-> self draw art-group data (-> self params shoot-anim)))
       (let ((frames 0)
             (fire-sound? #t)
             )
         (sound-play "gturret")
-        (let ((s4-1 (current-time)))
-          (until (time-elapsed? s4-1 (seconds 0.125))
-            (cond
-              ((not (-> self can-shoot))
-               )
-              ((time-elapsed? (the-as time-frame frames) (seconds 0.05))
-               (fire-turret! self fire-sound?)
-               (set! frames (the-as int (current-time)))
-               (set! fire-sound? (not fire-sound?))
-               )
-              (else
-                (set! (-> self flash-state) #f)
-                )
+        (suspend-for (seconds 0.125)
+          (cond
+            ((not (-> self can-shoot))
+             )
+            ((time-elapsed? (the-as time-frame frames) (seconds 0.05))
+             (fire-turret! self fire-sound?)
+             (set! frames (the-as int (current-time)))
+             (set! fire-sound? (not fire-sound?))
+             )
+            (else
+              (set! (-> self flash-state) #f)
               )
-            (ja :num! (loop!))
-            (suspend)
             )
+          (ja :num! (loop!))
           )
         )
       (set! (-> self flash-state) #f)
       (ja-channel-push! 1 (seconds 0.2))
       (ja :group! (-> self draw art-group data (-> self params idle-anim)))
-      (let ((_frame-counter (current-time)))
-        (until (time-elapsed? _frame-counter (seconds 0.5))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 0)))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 1)))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 2)))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 3)))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 4)))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 5)))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 6)))
-          (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 7)))
-          (suspend)
-          )
+      (suspend-for (seconds 0.5)
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 0)))
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 1)))
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 2)))
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 3)))
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 4)))
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 5)))
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 6)))
+        (spawn-with-cspace (-> self smoke-part) (-> self node-list data (-> self params hole-joints 7)))
         )
       )
     #f
@@ -872,7 +863,7 @@
 ;; definition for method 74 of type sew-gunturret
 (defmethod general-event-handler ((this sew-gunturret) (proc process) (arg2 int) (event-type symbol) (event event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (if (and (= event-type 'notify) (< 1 arg2) (= (-> event param 0) 'attack) (= (-> event param 1) *target*))
       (set-time! (-> this last-hit-time))
       )
@@ -910,7 +901,7 @@
 (defstate die (sew-gunturret)
   :virtual #t
   :enter (behavior ()
-    (dispose! self)
+    (dying self)
     (let ((root-prim (-> self root root-prim)))
       (set! (-> root-prim prim-core collide-as) (collide-spec))
       (set! (-> root-prim prim-core collide-with) (collide-spec))
@@ -938,17 +929,11 @@
     (let ((vec (new 'stack-no-clear 'vector)))
       (set! (-> vec quad) (-> self root trans quad))
       (+! (-> vec y) 10240.0)
-      (let ((frame-counter (current-time)))
-        (until (time-elapsed? frame-counter (seconds 2))
-          (spawn (-> self part) vec)
-          (suspend)
-          )
+      (suspend-for (seconds 2)
+        (spawn (-> self part) vec)
         )
       )
-    (let ((_frame-counter (current-time)))
-      (until (time-elapsed? _frame-counter (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (send-event self 'death-end)
     (while (-> self child)
@@ -956,7 +941,7 @@
       )
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1025,10 +1010,10 @@
 ;; definition for method 98 of type sew-gunturret
 (defmethod in-aggro-range? ((this sew-gunturret) (proc process-focusable) (arg1 vector))
   "Should the enemy activate.
-- if `activate-distance` is `0.0`, always true
-- otherwise, check if the provided process is close enough
-@param proc The process used to distance check
-@returns true/false"
+   - if `activate-distance` is `0.0`, always true
+   - otherwise, check if the provided process is close enough
+   @param proc The process used to distance check
+   @returns true/false"
   (cond
     ((= (-> this activate-distance) 0.0)
      (return #t)
@@ -1049,6 +1034,7 @@
 
 ;; definition for method 10 of type sew-gunturret
 (defmethod deactivate ((this sew-gunturret))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this smoke-part))
       (kill-and-free-particles (-> this smoke-part))
       )
@@ -1067,17 +1053,17 @@
 
 ;; definition for method 7 of type sew-gunturret
 ;; WARN: Return type mismatch enemy vs sew-gunturret.
-(defmethod relocate ((this sew-gunturret) (arg0 int))
+(defmethod relocate ((this sew-gunturret) (offset int))
   (if (nonzero? (-> this gun-tilt-jm))
-      (&+! (-> this gun-tilt-jm) arg0)
+      (&+! (-> this gun-tilt-jm) offset)
       )
   (if (nonzero? (-> this smoke-part))
-      (&+! (-> this smoke-part) arg0)
+      (&+! (-> this smoke-part) offset)
       )
   (if (nonzero? (-> this casing-part))
-      (&+! (-> this casing-part) arg0)
+      (&+! (-> this casing-part) offset)
       )
-  (the-as sew-gunturret ((method-of-type enemy relocate) this arg0))
+  (the-as sew-gunturret ((method-of-type enemy relocate) this offset))
   )
 
 ;; definition for method 141 of type sew-gunturret
@@ -1118,7 +1104,7 @@
   (initialize-skeleton this (-> this params normal-sg) (the-as pair 0))
   (init-enemy-behaviour-and-stats! this (-> this params enemy-info))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1126) this))
   (set! (-> this smoke-part) (create-launch-control (-> *part-group-id-table* 1127) this))
   (set! (-> this casing-part) (create-launch-control (-> *part-group-id-table* 1128) this))

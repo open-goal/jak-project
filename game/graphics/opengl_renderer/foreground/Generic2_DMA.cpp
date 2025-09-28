@@ -550,6 +550,83 @@ void unpack_vertex(Generic2::Vertex* out, const u8* in, int count) {
   }
 }
 
+void Generic2::process_dma_prim(DmaFollower& dma, u32 next_bucket) {
+  reset_buffers();
+  auto first_data = dma.read_and_advance();
+
+  // handle the stuff at the beginning.
+  // if the engine didn't run the generic renderer setup function, this bucket will end here.
+  if (is_nop_zero(first_data) && next_bucket == dma.current_tag_offset()) {
+    return;
+  }
+
+  // MARK NOP (for profiling)
+  auto v0k = first_data.vifcode0().kind;
+  ASSERT((v0k == VifCode::Kind::MARK || v0k == VifCode::Kind::NOP) &&
+         first_data.vifcode1().kind == VifCode::Kind::NOP);
+
+  // NOP DIRECT (set up GS, from generic setup)
+  auto direct_setup = dma.read_and_advance();
+  ASSERT(direct_setup.size_bytes == 32 && direct_setup.vifcode0().kind == VifCode::Kind::NOP &&
+         direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
+  m_drawing_config.zmsk = false;
+  m_drawing_config.uses_full_matrix = true;
+
+  // STYCYCL to set up generic VU1 constants
+  auto constants = dma.read_and_advance();
+  ASSERT(constants.size_bytes == 128);
+  ASSERT(constants.vifcode0().kind == VifCode::Kind::STCYCL);
+  ASSERT(constants.vifcode1().kind == VifCode::Kind::UNPACK_V4_32);
+  memcpy(&m_drawing_config.pfog0, constants.data + 0, 4);
+  memcpy(&m_drawing_config.fog_min, constants.data + 4, 4);
+  memcpy(&m_drawing_config.fog_max, constants.data + 8, 4);
+  memcpy(m_drawing_config.hvdf_offset.data(), constants.data + 32, 16);
+
+  //  32: MSCALF 0x0 STMOD 0b0 init generic VU1
+  auto mscalf = dma.read_and_advance();
+  ASSERT(mscalf.vifcode0().kind == VifCode::Kind::MSCALF &&
+         mscalf.vifcode1().kind == VifCode::Kind::STMOD);
+
+  //  0: NOP NOP
+  //  auto another_nop = dma.read_and_advance();
+  //  ASSERT(is_nop_zero(another_nop));
+
+  while (dma.current_tag_offset() != next_bucket) {
+    auto up1 = dma.read_and_advance();
+    while (up1.vifcode0().kind == VifCode::Kind::NOP && up1.vifcode1().kind == VifCode::Kind::NOP) {
+      up1 = dma.read_and_advance();
+    }
+    if (up1.vifcode0().kind == VifCode::Kind::FLUSHA) {
+      while (dma.current_tag_offset() != next_bucket) {
+        [[maybe_unused]] auto it = dma.read_and_advance();
+      }
+      break;
+    }
+    auto up2 = dma.read_and_advance();
+    [[maybe_unused]] auto call = dma.read_and_advance();
+
+    // up1 is a 12 qw upload for control:
+    // up2 is vertex upload.
+
+    auto* frag = &next_frag();
+    ASSERT(up1.size_bytes == Generic2::FRAG_HEADER_SIZE + 5 * 16);  // header + adgif
+    memcpy(frag->header, up1.data, Generic2::FRAG_HEADER_SIZE);
+    frag->adgif_idx = m_next_free_adgif;
+    frag->adgif_count = 1;
+    frag->mscal_addr = 6;
+    frag->uses_hud = false;
+    auto* adgif = &next_adgif();
+    memcpy(&adgif->data, up1.data + Generic2::FRAG_HEADER_SIZE, sizeof(AdGifData));
+    // (new 'static 'gif-tag-regs-32 :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2
+    // (gif-reg-id xyzf2))
+    int num_vtx = up2.size_bytes / (16 * 3);
+    frag->vtx_count = num_vtx;
+    frag->vtx_idx = m_next_free_vert;
+    alloc_vtx(num_vtx);
+    unpack_vertex(&m_verts[frag->vtx_idx], up2.data, num_vtx);
+  }
+}
+
 void Generic2::process_dma_lightning(DmaFollower& dma, u32 next_bucket) {
   reset_buffers();
   auto first_data = dma.read_and_advance();

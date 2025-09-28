@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: sync-info-h.gc
-;; name in dgo: sync-info-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; The sync-info system is used to synchronize the motion of objects.
 ;; For example, platforms use this to have consistent relative positions.
@@ -15,122 +13,101 @@
 ;; Simplest synchronization. Simply counts up, then resets once it reaches period.
 ;; For example, this is used to synchronize the "pies" in citadel.
 (deftype sync-info (structure)
-  ((offset  float) ;; offset, stored as a time, not a phase.
-   (period  uint32);; period, stored in seconds units
+  ((offset float) ;; offset, stored as a time, not a phase.
+   (period uint32) ;; period, stored in seconds units
    )
   :pack-me
   (:methods
-    (get-current-value (_type_ float) float)
-    (get-current-phase-no-mod (_type_) float)
-    (get-current-phase (_type_) float)
-    (get-current-value-with-mirror (_type_ float) float)
-    (get-current-phase-with-mirror (_type_) float)
-    (setup-params! (_type_ uint float float float) none)
-    (load-params! (_type_ process uint float float float) symbol)
-    (sync-now! (_type_ float) float)
-    (get-phase-offset (_type_) float)
-    )
-  )
+   (get-current-value (_type_ float) float)
+   (get-current-phase-no-mod (_type_) float)
+   (get-current-phase (_type_) float)
+   (get-current-value-with-mirror (_type_ float) float)
+   (get-current-phase-with-mirror (_type_) float)
+   (setup-params! (_type_ uint float float float) none)
+   (load-params! (_type_ process uint float float float) symbol)
+   (sync-now! (_type_ float) float)
+   (get-phase-offset (_type_) float)))
 
 ;; Syncronized, but also includes some smoothing at the beginning.
 ;; This is used for motion of platforms.
 (deftype sync-info-eased (sync-info)
-  ((tlo   float)
-   (thi   float)
-   (ylo   float)
-   (m2    float)
-   (yend  float)
-   )
-  :allow-misaligned
-  )
+  ((tlo  float)
+   (thi  float)
+   (ylo  float)
+   (m2   float)
+   (yend float))
+  :allow-misaligned)
 
 ;; Syncronized, but includes a pause.
 ;; This is used for whirlpools in lpc and the pushers in the yellow-eco room in snowy
 (deftype sync-info-paused (sync-info)
-  ((pause-after-out  float)
-   (pause-after-in   float)
-   )
-  :pack-me
-  )
+  ((pause-after-out float)
+   (pause-after-in  float))
+  :pack-me)
 
 ;; This is a strange one. After a random amount of time, it changes to a random value.
 (deftype delayed-rand-float (structure)
-  ((min-time    int32)
-   (max-time    int32)
-   (max-val     float)
-   (timer       int32)
-   (start-time  time-frame)
-   (value       float)
-   )
+  ((min-time   int32)
+   (max-time   int32)
+   (max-val    float)
+   (timer      int32)
+   (start-time time-frame)
+   (value      float))
   :pack-me
   (:methods
-    (set-params! (_type_ int int float) float)
-    (update! (_type_) float)
-    )
-  )
+   (set-params! (_type_ int int float) float)
+   (update! (_type_) float)))
 
 ;; second order oscillating float.
 (deftype oscillating-float (structure)
-  ((value    float)
-   (target   float)
-   (vel      float)
-   (max-vel  float)
-   (damping  float)
-   (accel    float)
-   )
+  ((value   float)
+   (target  float)
+   (vel     float)
+   (max-vel float)
+   (damping float)
+   (accel   float))
   :pack-me
   (:methods
-    (set-params! (_type_ float float float float) float)
-    (update! (_type_ float) float)
-    )
-  )
+   (set-params! (_type_ float float float float) float)
+   (update! (_type_ float) float)))
 
 ;; float that "bounces".
 (deftype bouncing-float (structure)
-  ((osc         oscillating-float  :inline)
-   (max-value   float)
-   (min-value   float)
-   (elasticity  float)
-   (state       int32)
-   )
+  ((osc        oscillating-float :inline)
+   (max-value  float)
+   (min-value  float)
+   (elasticity float)
+   (state      int32))
   :pack-me
   (:methods
-    (set-params! (_type_ float float float float float float float) float)
-    (update! (_type_ float) float)
-    (at-min? (_type_) symbol)
-    (at-max? (_type_) symbol)
-    )
-  )
+   (set-params! (_type_ float float float float float float float) float)
+   (update! (_type_ float) float)
+   (at-min? (_type_) symbol)
+   (at-max? (_type_) symbol)))
 
 ;; like delayed-rand-float, but does 4 at a time.
 (deftype delayed-rand-vector (structure)
-  ((min-time    int32)
-   (max-time    int32)
-   (xz-max      float)
-   (y-max       float)
-   (timer       int32)
-   (start-time  time-frame)
-   (value       vector  :inline)
-   )
+  ((min-time   int32)
+   (max-time   int32)
+   (xz-max     float)
+   (y-max      float)
+   (timer      int32)
+   (start-time time-frame)
+   (value      vector :inline))
   (:methods
-    (set-params! (_type_ int int float float) vector)
-    (update-now! (_type_) vector)
-    (update-with-delay! (_type_) vector)
-    (update-with-delay-or-reset! (_type_) vector)
-    )
-  )
+   (set-params! (_type_ int int float float) vector)
+   (update-now! (_type_) vector)
+   (update-with-delay! (_type_) vector)
+   (update-with-delay-or-reset! (_type_) vector)))
 
 ;; like oscillating-float, but does 4 at a time.
 (deftype oscillating-vector (structure)
-  ((value    vector  :inline)
-   (target   vector  :inline)
-   (vel      vector  :inline)
-   (max-vel  float)
-   (damping  float)
-   (accel    float)
-   )
+  ((value   vector :inline)
+   (target  vector :inline)
+   (vel     vector :inline)
+   (max-vel float)
+   (damping float)
+   (accel   float))
   (:methods
-    (set-params! (_type_ vector float float float) vector)
-    (update! (_type_ vector) vector)
-    )
-  )
+   (set-params! (_type_ vector float float float) vector)
+   (update! (_type_ vector) vector)))

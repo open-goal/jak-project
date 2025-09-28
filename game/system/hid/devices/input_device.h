@@ -4,8 +4,7 @@
 
 #include "game/settings/settings.h"
 #include "game/system/hid/input_bindings.h"
-
-#include "third-party/SDL/include/SDL.h"
+#include "game/system/hid/sdl_util.h"
 
 // A distinct input device.  Only those devices that are "active" should be read
 class InputDevice {
@@ -14,7 +13,7 @@ class InputDevice {
   std::shared_ptr<game_settings::InputSettings> m_settings;
 
  public:
-  virtual ~InputDevice(){};
+  virtual ~InputDevice() {};
 
   virtual void process_event(const SDL_Event& event,
                              const CommandBindingGroups& commands,

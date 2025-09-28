@@ -30,6 +30,10 @@
 #define SA_THFIFO 0
 #define SA_THPRI 1
 
+#define EW_AND 0
+#define EW_OR 1
+#define EW_CLEAR 0x10
+
 class IOP;
 
 namespace iop {
@@ -39,6 +43,8 @@ struct sceSifServeData {
   unsigned int command;  // the RPC ID
   sceSifRpcFunc func;
   void* buff;
+  // added
+  int buff_size = 0;
 };
 
 struct sceSifQueueData {
@@ -54,7 +60,7 @@ struct sceCdRMode {
 };
 
 struct sceSifDmaData {
-  void* data;
+  const void* data;
   void* addr;
   unsigned int size;
   unsigned int mode;
@@ -83,7 +89,7 @@ struct ThreadParam {
   int initPriority;
 
   // added!
-  char name[64];
+  char name[64] = "";
 };
 
 struct SemaParam {
@@ -91,6 +97,12 @@ struct SemaParam {
   uint32_t option;
   int32_t init_count;
   int32_t max_count;
+};
+
+struct EventFlagParam {
+  u32 attr;
+  u32 option;
+  u32 init_pattern;
 };
 
 // void PS2_RegisterIOP(IOP *iop);
@@ -103,6 +115,7 @@ void CpuDisableIntr();
 void CpuEnableIntr();
 void SleepThread();
 void DelayThread(u32 usec);
+void YieldThread();
 s32 CreateThread(ThreadParam* param);
 s32 ExitThread();
 s32 StartThread(s32 thid, u32 arg);
@@ -116,6 +129,7 @@ void sceSifRegisterRpc(sceSifServeData* serve,
                        unsigned int request,
                        sceSifRpcFunc func,
                        void* buff,
+                       int buff_size,
                        sceSifRpcFunc cfunc,
                        void* cbuff,
                        sceSifQueueData* qd);
@@ -132,15 +146,22 @@ u32 sceSifSetDma(sceSifDmaData* sdd, int len);
 
 s32 SendMbx(int mbxid, void* sendmsg);
 s32 PollMbx(MsgPacket** recvmsg, int mbxid);
+s32 ReceiveMbx(MsgPacket** recvmsg, int mbxid);
 s32 PeekMbx(s32 mbx);
+s32 MbxSize(s32 mbx);
 s32 CreateMbx(MbxParam* param);
 
-void GetSystemTime(SysClock* time);
+u32 GetSystemTimeLow();
 
 s32 CreateSema(SemaParam* param);
 s32 WaitSema(s32 sema);
 s32 SignalSema(s32 sema);
 s32 PollSema(s32 sema);
+
+s32 CreateEventFlag(const EventFlagParam* param);
+s32 ClearEventFlag(s32 flag, u32 pattern);
+s32 SetEventFlag(s32 flag, u32 pattern);
+s32 WaitEventFlag(s32 flag, u32 pattern, u32 mode);
 
 s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* userdata);
 

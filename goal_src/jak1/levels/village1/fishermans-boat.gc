@@ -1,280 +1,235 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: fishermans-boat.gc
-;; name in dgo: fishermans-boat
-;; dgos: L1, VI1
-
+(bundles "VI1.DGO")
+(require "engine/entity/ambient.gc")
+(require "engine/anim/joint-mod-h.gc")
+(require "engine/geometry/bounding-box.gc")
+(require "engine/common-obs/rigid-body.gc")
+(require "engine/geometry/path-h.gc")
 (declare-type fishermans-boat rigid-body-platform)
 
 ;; DECOMP BEGINS
 
-(define *fishermans-boat-constants* (new 'static 'rigid-body-platform-constants
-                                      :drag-factor 2.0
-                                      :buoyancy-factor 1.5
-                                      :max-buoyancy-depth (meters 1)
-                                      :gravity-factor 1.0
-                                      :gravity (meters 80)
-                                      :player-weight (meters 40)
-                                      :player-bonk-factor 1.0
-                                      :player-dive-factor 1.0
-                                      :player-force-distance (meters 10)
-                                      :player-force-clamp (meters 1000000)
-                                      :player-force-timeout (seconds 0.1)
-                                      :explosion-force (meters 1000)
-                                      :linear-damping 1.0
-                                      :angular-damping 1.0
-                                      :control-point-count 6
-                                      :mass 2.0
-                                      :inertial-tensor-x (meters 4)
-                                      :inertial-tensor-y (meters 10)
-                                      :inertial-tensor-z (meters 15)
-                                      :cm-joint-y (meters 3)
-                                      :cm-joint-z (meters 1)
-                                      :idle-distance (meters 50)
-                                      :platform #t
-                                      :sound-name #f
-                                      )
-        )
+(define *fishermans-boat-constants*
+  (new 'static
+       'rigid-body-platform-constants
+       :drag-factor 2.0
+       :buoyancy-factor 1.5
+       :max-buoyancy-depth (meters 1)
+       :gravity-factor 1.0
+       :gravity (meters 80)
+       :player-weight (meters 40)
+       :player-bonk-factor 1.0
+       :player-dive-factor 1.0
+       :player-force-distance (meters 10)
+       :player-force-clamp (meters 1000000)
+       :player-force-timeout (seconds 0.1)
+       :explosion-force (meters 1000)
+       :linear-damping 1.0
+       :angular-damping 1.0
+       :control-point-count 6
+       :mass 2.0
+       :inertial-tensor-x (meters 4)
+       :inertial-tensor-y (meters 10)
+       :inertial-tensor-z (meters 15)
+       :cm-joint-y (meters 3)
+       :cm-joint-z (meters 1)
+       :idle-distance (meters 50)
+       :platform #t
+       :sound-name #f))
 
 (deftype boat-stabilizer (structure)
-  ((local-pos  vector  :inline)
-   (normal     vector  :inline)
-   )
-  )
+  ((local-pos vector :inline)
+   (normal    vector :inline)))
 
 
 (deftype vehicle-path (structure)
-  ((point-array  vector  10 :inline)
-   (point-count  int32)
-   )
+  ((point-array vector 10 :inline)
+   (point-count int32))
   (:methods
-    (get-point-count (_type_) int)
-    (nth-point (_type_ int vector) vector)
-    (distance-to-next-point (_type_ int vector) vector)
-    (add-point! (_type_ float float float float) none)
-    (debug-draw (_type_) symbol)
-    )
-  )
+   (get-point-count (_type_) int)
+   (nth-point (_type_ int vector) vector)
+   (distance-to-next-point (_type_ int vector) vector)
+   (add-point! (_type_ float float float float) none)
+   (debug-draw (_type_) symbol)))
 
 
 (defmethod get-point-count ((this vehicle-path))
-  (-> this point-count)
-  )
+  (-> this point-count))
 
 (defmethod nth-point ((this vehicle-path) (arg0 int) (arg1 vector))
   (set! (-> arg1 quad) (-> this point-array arg0 quad))
-  arg1
-  )
+  arg1)
 
 (defmethod distance-to-next-point ((this vehicle-path) (arg0 int) (arg1 vector))
   (let ((a2-1 (+ arg0 1)))
-    (if (>= a2-1 (-> this point-count))
-        (set! a2-1 0)
-        )
-    (vector-! arg1 (-> this point-array a2-1) (-> this point-array arg0))
-    )
+    (if (>= a2-1 (-> this point-count)) (set! a2-1 0))
+    (vector-! arg1 (-> this point-array a2-1) (-> this point-array arg0)))
   (set! (-> arg1 y) 0.0)
   (vector-normalize! arg1 1.0)
-  arg1
-  )
+  arg1)
 
 (defmethod add-point! ((this vehicle-path) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
   (let ((v1-0 (-> this point-count)))
     (when (< v1-0 10)
       (set-vector! (-> this point-array v1-0) arg0 arg1 arg2 arg3)
-      (+! (-> this point-count) 1)
-      )
-    )
+      (+! (-> this point-count) 1)))
   0
-  (none)
-  )
+  (none))
 
 (defmethod debug-draw ((this vehicle-path))
   (local-vars (sv-64 int) (sv-80 (function _varargs_ object)))
   (let ((s5-0 (new 'stack-no-clear 'vector))
         (s4-0 (new 'stack-no-clear 'vector))
-        (s3-0 (new 'stack-no-clear 'vector))
-        )
+        (s3-0 (new 'stack-no-clear 'vector)))
     (set! (-> s5-0 y) 0.0)
     (set! (-> s5-0 w) 1.0)
     (dotimes (s2-0 (-> this point-count))
       (let ((v1-1 (mod (+ s2-0 1) (-> this point-count))))
         (set! (-> s4-0 quad) (-> this point-array s2-0 quad))
-        (set! (-> s3-0 quad) (-> this point-array v1-1 quad))
-        )
+        (set! (-> s3-0 quad) (-> this point-array v1-1 quad)))
       (let ((f30-0 (-> s4-0 y))
-            (f28-0 (-> s4-0 w))
-            )
+            (f28-0 (-> s4-0 w)))
         (set! (-> s5-0 x) (* f30-0 (cos f28-0)))
-        (set! (-> s5-0 z) (* f30-0 (sin f28-0)))
-        )
+        (set! (-> s5-0 z) (* f30-0 (sin f28-0))))
       (set! (-> s4-0 y) 0.0)
       (set! (-> s4-0 w) 1.0)
       (set! (-> s3-0 y) 0.0)
       (set! (-> s3-0 w) 1.0)
-      (add-debug-line
-        #t
-        (bucket-id debug-no-zbuf)
-        s4-0
-        s3-0
-        (new 'static 'rgba :r #xff :g #xff :a #x80)
-        #f
-        (the-as rgba -1)
-        )
-      (add-debug-vector
-        #t
-        (bucket-id debug-no-zbuf)
-        s4-0
-        s5-0
-        (meters 0.00024414062)
-        (new 'static 'rgba :r #xff :a #x80)
-        )
+      (add-debug-line #t (bucket-id debug-no-zbuf) s4-0 s3-0 (new 'static 'rgba :r #xff :g #xff :a #x80) #f (the-as rgba -1))
+      (add-debug-vector #t (bucket-id debug-no-zbuf) s4-0 s5-0 (meters 0.00024414062) (new 'static 'rgba :r #xff :a #x80))
       (let ((s1-0 add-debug-text-3d)
-            (s0-0 #t)
-            )
+            (s0-0 #t))
         (set! sv-64 68)
         (set! sv-80 format)
         (let ((a0-9 (clear *temp-string*))
               (a1-6 "~D")
-              (a2-2 s2-0)
-              )
-          (sv-80 a0-9 a1-6 a2-2)
-          )
+              (a2-2 s2-0))
+          (sv-80 a0-9 a1-6 a2-2))
         (let ((a2-3 *temp-string*)
               (a3-2 s4-0)
               (t0-2 4)
-              (t1-2 #f)
-              )
-          (s1-0 s0-0 (the-as bucket-id sv-64) a2-3 a3-2 (the-as font-color t0-2) (the-as vector2h t1-2))
-          )
-        )
-      )
-    )
-  #f
-  )
+              (t1-2 #f))
+          (s1-0 s0-0 (the-as bucket-id sv-64) a2-3 a3-2 (the-as font-color t0-2) (the-as vector2h t1-2))))))
+  #f)
 
-(define *boat-turning-radius-table* (new 'static 'array float 32
-                                      409600.0
-                                      90931.2
-                                      94699.52
-                                      95600.64
-                                      100802.56
-                                      97566.72
-                                      99246.08
-                                      98713.6
-                                      95846.4
-                                      100474.88
-                                      88842.24
-                                      105472.0
-                                      95436.8
-                                      97525.76
-                                      102481.92
-                                      96501.76
-                                      97198.08
-                                      93102.08
-                                      98631.68
-                                      100270.08
-                                      96788.48
-                                      100884.48
-                                      97402.88
-                                      98590.72
-                                      97280.0
-                                      100065.28
-                                      104079.36
-                                      92610.56
-                                      97034.24
-                                      88309.76
-                                      0.0
-                                      0.0
-                                      )
-        )
+(define *boat-turning-radius-table*
+  (new 'static
+       'array
+       float
+       32
+       409600.0
+       90931.2
+       94699.52
+       95600.64
+       100802.56
+       97566.72
+       99246.08
+       98713.6
+       95846.4
+       100474.88
+       88842.24
+       105472.0
+       95436.8
+       97525.76
+       102481.92
+       96501.76
+       97198.08
+       93102.08
+       98631.68
+       100270.08
+       96788.48
+       100884.48
+       97402.88
+       98590.72
+       97280.0
+       100065.28
+       104079.36
+       92610.56
+       97034.24
+       88309.76
+       0.0
+       0.0))
 
-(define *boat-throttle-control-table* (new 'static 'array float 32
-                                        0.0
-                                        0.031
-                                        0.0646
-                                        0.0952
-                                        0.1237
-                                        0.1508
-                                        0.1753
-                                        0.2018
-                                        0.2231
-                                        0.2473
-                                        0.2695
-                                        0.2904
-                                        0.3119
-                                        0.3312
-                                        0.3514
-                                        0.3701
-                                        0.3906
-                                        0.4148
-                                        0.4272
-                                        0.4483
-                                        0.4686
-                                        0.4856
-                                        0.5096
-                                        0.5203
-                                        0.5507
-                                        0.5697
-                                        0.5856
-                                        0.6184
-                                        0.6366
-                                        0.6694
-                                        0.0
-                                        0.0
-                                        )
-        )
+(define *boat-throttle-control-table*
+  (new 'static
+       'array
+       float
+       32
+       0.0
+       0.031
+       0.0646
+       0.0952
+       0.1237
+       0.1508
+       0.1753
+       0.2018
+       0.2231
+       0.2473
+       0.2695
+       0.2904
+       0.3119
+       0.3312
+       0.3514
+       0.3701
+       0.3906
+       0.4148
+       0.4272
+       0.4483
+       0.4686
+       0.4856
+       0.5096
+       0.5203
+       0.5507
+       0.5697
+       0.5856
+       0.6184
+       0.6366
+       0.6694
+       0.0
+       0.0))
 
 (deftype vehicle-controller (structure)
-  ((path                    vehicle-path)
-   (turning-radius-table    (pointer float))
-   (throttle-control-table  (pointer float))
-   (table-step              float)
-   (table-length            int32)
-   (circle-radius           float)
-   (throttle                float)
-   (steering                float)
-   (path-dest-index         int8)
-   (left-circle             int8)
-   (path-dest-point         vector  :inline)
-   (path-dest-velocity      vector  :inline)
-   (dest-circle             vector  :inline)
-   (target-point            vector  :inline)
-   (sample-dir              vector  :inline)
-   (sample-time             time-frame)
-   (sample-index            int32)
-   )
+  ((path                   vehicle-path)
+   (turning-radius-table   (pointer float))
+   (throttle-control-table (pointer float))
+   (table-step             float)
+   (table-length           int32)
+   (circle-radius          float)
+   (throttle               float)
+   (steering               float)
+   (path-dest-index        int8)
+   (left-circle            int8)
+   (path-dest-point        vector :inline)
+   (path-dest-velocity     vector :inline)
+   (dest-circle            vector :inline)
+   (target-point           vector :inline)
+   (sample-dir             vector :inline)
+   (sample-time            time-frame)
+   (sample-index           int32))
   (:methods
-    (init! (_type_ vehicle-path (pointer float) (pointer float) int float) none)
-    (vehicle-controller-method-10 (_type_ vector float int) none)
-    (vehicle-controller-method-11 (_type_) none)
-    (vehicle-controller-method-12 (_type_ int vector) none)
-    (move-to-next-point (_type_ vector) none)
-    (vehicle-controller-method-14 (_type_ vector vector) none)
-    (vehicle-controller-method-15 (_type_ collide-shape-moving) none)
-    (vehicle-controller-method-16 (_type_) none)
-    )
-  )
+   (init! (_type_ vehicle-path (pointer float) (pointer float) int float) none)
+   (vehicle-controller-method-10 (_type_ vector float int) none)
+   (vehicle-controller-method-11 (_type_) none)
+   (vehicle-controller-method-12 (_type_ int vector) none)
+   (move-to-next-point (_type_ vector) none)
+   (vehicle-controller-method-14 (_type_ vector vector) none)
+   (vehicle-controller-method-15 (_type_ collide-shape-moving) none)
+   (vehicle-controller-method-16 (_type_) none)))
 
 
-(defmethod relocate ((this vehicle-controller) (arg0 int))
-  (if (nonzero? (-> this path))
-      (&+! (-> this path) arg0)
-      )
-  (the-as vehicle-controller 0)
-  )
+(defmethod relocate ((this vehicle-controller) (offset int))
+  (if (nonzero? (-> this path)) (&+! (-> this path) offset))
+  (the-as vehicle-controller 0))
 
 (defmethod vehicle-controller-method-12 ((this vehicle-controller) (arg0 int) (arg1 vector))
   (when (< arg0 (get-point-count (-> this path)))
     (set! (-> this path-dest-index) arg0)
     (nth-point (-> this path) arg0 (-> this path-dest-point))
     (let ((f30-0 (-> this path-dest-point y))
-          (f28-0 (-> this path-dest-point w))
-          )
+          (f28-0 (-> this path-dest-point w)))
       (set! (-> this path-dest-velocity x) (* f30-0 (cos f28-0)))
-      (set! (-> this path-dest-velocity z) (* f30-0 (sin f28-0)))
-      )
+      (set! (-> this path-dest-velocity z) (* f30-0 (sin f28-0))))
     (set! (-> this path-dest-velocity y) 0.0)
     (set! (-> this path-dest-velocity w) 1.0)
     (set! (-> this path-dest-point y) 0.0)
@@ -289,119 +244,79 @@
         (set! (-> this left-circle) 1)
         (when (< 0.0 (vector-dot s3-0 s5-1))
           (set! (-> this left-circle) 0)
-          (vector-float*! s5-1 s5-1 -1.0)
-          )
-        )
-      (vector+*! (-> this dest-circle) (-> this path-dest-point) s5-1 (-> this circle-radius))
-      )
-    (set! (-> this dest-circle w) (-> this circle-radius))
-    )
+          (vector-float*! s5-1 s5-1 -1.0)))
+      (vector+*! (-> this dest-circle) (-> this path-dest-point) s5-1 (-> this circle-radius)))
+    (set! (-> this dest-circle w) (-> this circle-radius)))
   0
-  (none)
-  )
+  (none))
 
 (defmethod move-to-next-point ((this vehicle-controller) (arg0 vector))
   (let ((s4-0 (+ (-> this path-dest-index) 1)))
-    (if (>= s4-0 (get-point-count (-> this path)))
-        (set! s4-0 0)
-        )
-    (vehicle-controller-method-12 this s4-0 arg0)
-    )
+    (if (>= s4-0 (get-point-count (-> this path))) (set! s4-0 0))
+    (vehicle-controller-method-12 this s4-0 arg0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod vehicle-controller-method-14 ((this vehicle-controller) (arg0 vector) (arg1 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector))
-        (s3-0 (new 'stack-no-clear 'vector))
-        )
+        (s3-0 (new 'stack-no-clear 'vector)))
     (vector-! s5-0 (-> this dest-circle) arg0)
     (let ((f30-0 (vector-xz-length s5-0))
-          (f28-0 (-> this dest-circle w))
-          )
-      (if (< f30-0 f28-0)
-          (set! f28-0 (* 0.9 f30-0))
-          )
+          (f28-0 (-> this dest-circle w)))
+      (if (< f30-0 f28-0) (set! f28-0 (* 0.9 f30-0)))
       (vector-normalize! s5-0 1.0)
       (set! (-> s3-0 x) (-> s5-0 z))
       (set! (-> s3-0 z) (- (-> s5-0 x)))
-      (if (= (-> this left-circle) 1)
-          (vector-float*! s3-0 s3-0 -1.0)
-          )
+      (if (= (-> this left-circle) 1) (vector-float*! s3-0 s3-0 -1.0))
       (let* ((f0-5 f30-0)
              (f0-7 (* f0-5 f0-5))
              (f1-0 f28-0)
              (f0-9 (sqrtf (- f0-7 (* f1-0 f1-0))))
-             (f28-1 (/ (* f28-0 f0-9) f30-0))
-             )
+             (f28-1 (/ (* f28-0 f0-9) f30-0)))
         (let ((f0-12 (/ (* f0-9 f0-9) f30-0)))
           (set! (-> arg1 quad) (-> arg0 quad))
-          (vector+*! arg1 (-> this target-point) s5-0 f0-12)
-          )
-        (vector+*! arg1 (-> this target-point) s3-0 f28-1)
-        )
-      )
-    )
+          (vector+*! arg1 (-> this target-point) s5-0 f0-12))
+        (vector+*! arg1 (-> this target-point) s3-0 f28-1))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod vehicle-controller-method-15 ((this vehicle-controller) (arg0 collide-shape-moving))
   (vehicle-controller-method-14 this (-> arg0 trans) (-> this target-point))
   (let ((s3-0 (new 'stack-no-clear 'vector))
-        (s4-0 (new 'stack-no-clear 'vector))
-        )
+        (s4-0 (new 'stack-no-clear 'vector)))
     (set! (-> s3-0 quad) (-> this path-dest-velocity quad))
     (vector-xz-normalize! s3-0 1.0)
     (vector-! s4-0 (-> this path-dest-point) (-> arg0 trans))
     (let ((f30-0 (vector-dot s3-0 s4-0)))
-      (if (and (< (vector-xz-length s4-0) (-> this circle-radius)) (< f30-0 0.0))
-          (move-to-next-point this (-> arg0 trans))
-          )
-      )
-    )
-  (let ((s4-2 (max 0 (min
-                       (the int (/ (vector-xz-length (-> this path-dest-velocity)) (-> this table-step)))
-                       (+ (-> this table-length) -1)
-                       )
-                   )
-              )
-        )
-    (set! (-> this throttle) (-> this throttle-control-table s4-2))
-    )
+      (if (and (< (vector-xz-length s4-0) (-> this circle-radius)) (< f30-0 0.0)) (move-to-next-point this (-> arg0 trans)))))
+  (let ((s4-2 (max 0
+                   (min (the int (/ (vector-xz-length (-> this path-dest-velocity)) (-> this table-step))) (+ (-> this table-length) -1)))))
+    (set! (-> this throttle) (-> this throttle-control-table s4-2)))
   (let ((s3-1 (new 'stack-no-clear 'vector))
-        (s4-3 (new 'stack-no-clear 'vector))
-        )
+        (s4-3 (new 'stack-no-clear 'vector)))
     (vector-z-quaternion! s3-1 (-> arg0 quat))
     (vector-x-quaternion! s4-3 (-> arg0 quat))
     (let* ((v1-16 (-> arg0 trans))
            (f0-9 (- (vector-dot s3-1 (-> this target-point)) (vector-dot s3-1 v1-16)))
-           (f3-0 (- (vector-dot s4-3 (-> this target-point)) (vector-dot s4-3 v1-16)))
-           )
-      (set! (-> this steering) (fmax -1.0 (fmin 1.0 (/ (* 4.0 f3-0) (fmax 4096.0 f0-9)))))
-      )
-    )
+           (f3-0 (- (vector-dot s4-3 (-> this target-point)) (vector-dot s4-3 v1-16))))
+      (set! (-> this steering) (fmax -1.0 (fmin 1.0 (/ (* 4.0 f3-0) (fmax 4096.0 f0-9)))))))
   0
   0
-  (none)
-  )
+  (none))
 
 (defmethod vehicle-controller-method-11 ((this vehicle-controller))
   (format #t "(define *turning-radius-table* (new 'static 'inline-array 'float 0~%")
   (dotimes (s5-0 (-> this table-length))
-    (format #t "					     (meters ~4,,2M)~%" (-> this turning-radius-table s5-0))
-    )
+    (format #t "					     (meters ~4,,2M)~%" (-> this turning-radius-table s5-0)))
   (format #t "					     )~%")
   (format #t "  )~%")
   (format #t "(define *throttle-control-table* (new 'static 'inline-array 'float 0~%")
   (dotimes (s5-1 (-> this table-length))
-    (format #t "				       ~f~%" (-> this throttle-control-table s5-1))
-    )
+    (format #t "				       ~f~%" (-> this throttle-control-table s5-1)))
   (format #t "				       )~%")
   (format #t "  )~%")
   0
-  (none)
-  )
+  (none))
 
 (defmethod vehicle-controller-method-10 ((this vehicle-controller) (arg0 vector) (arg1 float) (arg2 int))
   (let ((s3-0 (new 'stack-no-clear 'vector)))
@@ -413,53 +328,31 @@
        (let* ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> this sample-time)))))
               (f28-0 (* (-> this table-step) (the float arg2)))
               (f0-4 (acos-rad (vector-dot s3-0 (-> this sample-dir))))
-              (f26-0 (/ (* f28-0 f30-0) f0-4))
-              )
+              (f26-0 (/ (* f28-0 f30-0) f0-4)))
          (when (and (>= arg2 0) (< arg2 (-> this table-length)))
            (set! (-> this turning-radius-table arg2) f26-0)
            (set! (-> this throttle-control-table arg2) arg1)
            (format #t "sample ~d (~M m/s) angle ~f deg, time ~f sec~%" arg2 f28-0 (* 57.29747 f0-4) f30-0)
-           (format #t "sample ~d (~M m/s) radius ~M throttle ~f~%" arg2 f28-0 f26-0 arg1)
-           )
-         )
-       )
+           (format #t "sample ~d (~M m/s) radius ~M throttle ~f~%" arg2 f28-0 f26-0 arg1))))
       (else
-        (set! (-> this sample-index) arg2)
-        (set-time! (-> this sample-time))
-        (set! (-> this sample-dir quad) (-> s3-0 quad))
-        )
-      )
-    )
+       (set! (-> this sample-index) arg2)
+       (set-time! (-> this sample-time))
+       (set! (-> this sample-dir quad) (-> s3-0 quad)))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod vehicle-controller-method-16 ((this vehicle-controller))
   (debug-draw (-> this path))
-  (add-debug-sphere
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> this dest-circle)
-    (-> this dest-circle w)
-    (new 'static 'rgba :g #xff :a #x80)
-    )
-  (add-debug-x
-    #t
-    (bucket-id debug-no-zbuf)
-    (-> this target-point)
-    (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-    )
+  (add-debug-sphere #t
+                    (bucket-id debug-no-zbuf)
+                    (-> this dest-circle)
+                    (-> this dest-circle w)
+                    (new 'static 'rgba :g #xff :a #x80))
+  (add-debug-x #t (bucket-id debug-no-zbuf) (-> this target-point) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
   0
-  (none)
-  )
+  (none))
 
-(defmethod init! ((this vehicle-controller)
-                 (arg0 vehicle-path)
-                 (arg1 (pointer float))
-                 (arg2 (pointer float))
-                 (arg3 int)
-                 (arg4 float)
-                 )
+(defmethod init! ((this vehicle-controller) (arg0 vehicle-path) (arg1 (pointer float)) (arg2 (pointer float)) (arg3 int) (arg4 float))
   (set! (-> this path) arg0)
   (set! (-> this turning-radius-table) arg1)
   (set! (-> this throttle-control-table) arg2)
@@ -467,67 +360,69 @@
   (set! (-> this table-step) arg4)
   (set! (-> this circle-radius) 102400.0)
   0
-  (none)
-  )
+  (none))
 
 (deftype fishermans-boat (rigid-body-platform)
-  ((stabilizer-array         boat-stabilizer     2 :inline)
-   (engine-thrust-local-pos  vector              :inline)
-   (ignition                 symbol)
-   (engine-thrust            float)
-   (propeller                joint-mod-spinner)
-   (dock-point               vector              :inline)
-   (dest-dir                 vector              :inline)
-   (dock-point-index         int8)
-   (auto-pilot               symbol)
-   (anchored                 symbol)
-   (waiting-for-player       symbol)
-   (player-riding            symbol)
-   (boat-path                vehicle-path        :inline)
-   (cam-tracker              handle)
-   (kill-player              symbol                      :offset 1076)
-   (engine-sound-id          sound-id                    :offset 1080)
-   (engine-sound-envelope    float                       :offset 1084)
-   (debug-draw               basic                       :offset 1088)
-   (debug-path-record        basic                       :offset 1092)
-   (debug-path-playback      basic                       :offset 1096)
-   (measure-parameters       basic                       :offset 1100)
-   (controller               vehicle-controller  :inline :offset 1104)
-   (anim                     spool-anim                  :offset 1244)
-   (old-target-pos           transformq          :inline :offset 1248)
-   (evilbro                  handle                      :offset 1296)
-   (evilsis                  handle                      :offset 1304)
-   )
+  ((stabilizer-array        boat-stabilizer 2 :inline)
+   (engine-thrust-local-pos vector :inline)
+   (ignition                symbol)
+   (engine-thrust           float)
+   (propeller               joint-mod-spinner)
+   (dock-point              vector :inline)
+   (dest-dir                vector :inline)
+   (dock-point-index        int8)
+   (auto-pilot              symbol)
+   (anchored                symbol)
+   (waiting-for-player      symbol)
+   (player-riding           symbol)
+   (boat-path               vehicle-path :inline)
+   (cam-tracker             handle)
+   (kill-player             symbol :offset 1076)
+   (engine-sound-id         sound-id :offset 1080)
+   (engine-sound-envelope   float :offset 1084)
+   (debug-draw              basic :offset 1088)
+   (debug-path-record       basic :offset 1092)
+   (debug-path-playback     basic :offset 1096)
+   (measure-parameters      basic :offset 1100)
+   (controller              vehicle-controller :inline :offset 1104)
+   (anim                    spool-anim :offset 1244)
+   (old-target-pos          transformq :inline :offset 1248)
+   (evilbro                 handle :offset 1296)
+   (evilsis                 handle :offset 1304))
   (:states
-    fishermans-boat-docked-misty
-    fishermans-boat-docked-village
-    fishermans-boat-entering-misty
-    fishermans-boat-entering-village
-    fishermans-boat-leaving-misty
-    fishermans-boat-leaving-village
-    fishermans-boat-measurements
-    fishermans-boat-player-control
-    fishermans-boat-ride-to-misty
-    fishermans-boat-ride-to-village1
-    )
-  )
+   fishermans-boat-docked-misty
+   fishermans-boat-docked-village
+   fishermans-boat-entering-misty
+   fishermans-boat-entering-village
+   fishermans-boat-leaving-misty
+   fishermans-boat-leaving-village
+   fishermans-boat-measurements
+   fishermans-boat-player-control
+   fishermans-boat-ride-to-misty
+   fishermans-boat-ride-to-village1))
 
 
-(defskelgroup *fishermans-boat-sg* fishermans-boat fishermans-boat-lod0-jg fishermans-boat-idle-ja
-              ((fishermans-boat-lod0-mg (meters 20)) (fishermans-boat-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 3 0 15)
-              :longest-edge (meters 7.3)
-              )
+(defskelgroup *fishermans-boat-sg*
+  fishermans-boat
+  fishermans-boat-lod0-jg
+  fishermans-boat-idle-ja
+  ((fishermans-boat-lod0-mg (meters 20)) (fishermans-boat-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 3 0 15)
+  :longest-edge (meters 7.3))
 
-(defskelgroup *fb-evilbro-sg* evilbro evilbro-lod0-jg evilbro-idle-ja
-              ((evilbro-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 1)
-              )
+(defskelgroup *fb-evilbro-sg*
+  evilbro
+  evilbro-lod0-jg
+  evilbro-idle-ja
+  ((evilbro-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 1))
 
-(defskelgroup *fb-evilsis-sg* evilsis evilsis-lod0-jg evilsis-idle-ja
-              ((evilsis-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 1)
-              )
+(defskelgroup *fb-evilsis-sg*
+  evilsis
+  evilsis-lod0-jg
+  evilsis-idle-ja
+  ((evilsis-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 1))
 
 (defmethod rigid-body-platform-method-23 ((this fishermans-boat) (arg0 float))
   (local-vars (sv-128 int) (sv-144 rigid-body-control-point) (sv-160 int) (sv-176 vector))
@@ -536,8 +431,7 @@
         (s5-0 (new 'stack-no-clear 'vector))
         (s0-0 (new 'stack-no-clear 'vector))
         (s2-0 (new 'stack-no-clear 'vector))
-        (s3-0 (-> this rbody matrix))
-        )
+        (s3-0 (-> this rbody matrix)))
     (set! (-> s2-0 quad) (-> s3-0 vector 2 quad))
     (set! sv-128 0)
     (while (< sv-128 6)
@@ -548,8 +442,7 @@
       (set! (-> sv-144 velocity quad) (-> s1-0 quad))
       (set! (-> sv-144 world-pos w) (ocean-get-height s5-0))
       (let* ((f0-2 (- (-> sv-144 world-pos w) (-> s5-0 y)))
-             (f30-0 (fmin 1.0 (/ f0-2 (-> this info max-buoyancy-depth))))
-             )
+             (f30-0 (fmin 1.0 (/ f0-2 (-> this info max-buoyancy-depth)))))
         (when (< 0.0 f0-2)
           (vector-float*! s4-0 *y-vector* (* 20.0 f0-2 (-> this rbody mass)))
           (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
@@ -557,17 +450,10 @@
           (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
           (vector-float*! s4-0 s1-0 (* -1.0 (-> this info drag-factor) f30-0))
           (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
-          (vector-float*!
-            s4-0
-            (the-as vector (-> s3-0 vector))
-            (* -0.5 (vector-dot (the-as vector (-> s3-0 vector)) s1-0))
-            )
-          (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
-          )
-        )
+          (vector-float*! s4-0 (the-as vector (-> s3-0 vector)) (* -0.5 (vector-dot (the-as vector (-> s3-0 vector)) s1-0)))
+          (rigid-body-method-13 (-> this rbody) s5-0 s4-0)))
       0
-      (set! sv-128 (+ sv-128 1))
-      )
+      (set! sv-128 (+ sv-128 1)))
     (set! sv-160 0)
     (while (< sv-160 2)
       (set! sv-176 (-> this stabilizer-array sv-160 local-pos))
@@ -577,8 +463,7 @@
       (vector-float*! s4-0 s0-0 (* -1.0 (vector-dot s0-0 s1-0)))
       (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
       0
-      (set! sv-160 (+ sv-160 1))
-      )
+      (set! sv-160 (+ sv-160 1)))
     (when (-> this anchored)
       (let ((s1-1 (new 'stack-no-clear 'vector)))
         (vector+*! s5-0 (-> s3-0 vector 3) s2-0 24576.0)
@@ -586,82 +471,68 @@
         (vector-! s4-0 s1-1 s5-0)
         (set! (-> s4-0 y) 0.0)
         (vector-float*! s4-0 s4-0 10.0)
-        (if (< 81920.0 (vector-length s4-0))
-            (vector-normalize! s4-0 81920.0)
-            )
+        (if (< 81920.0 (vector-length s4-0)) (vector-normalize! s4-0 81920.0))
         (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
         (vector+*! s5-0 (-> s3-0 vector 3) s2-0 -24576.0)
         (vector+*! s1-1 (-> this dock-point) (-> this dest-dir) -24576.0)
-        (vector-! s4-0 s1-1 s5-0)
-        )
+        (vector-! s4-0 s1-1 s5-0))
       (set! (-> s4-0 y) 0.0)
       (vector-float*! s4-0 s4-0 10.0)
-      (if (< 81920.0 (vector-length s4-0))
-          (vector-normalize! s4-0 81920.0)
-          )
-      (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
-      )
+      (if (< 81920.0 (vector-length s4-0)) (vector-normalize! s4-0 81920.0))
+      (rigid-body-method-13 (-> this rbody) s5-0 s4-0))
     (when (-> this ignition)
       (let ((s2-1 (new 'stack-no-clear 'vector)))
         (vector-matrix*! s5-0 (-> this engine-thrust-local-pos) s3-0)
         (set-vector! s2-1 (- (-> this controller steering)) 0.0 2.0 1.0)
         (vector-rotate*! s2-1 s2-1 s3-0)
         (vector-normalize! s2-1 1.0)
-        (vector-float*! s4-0 s2-1 (-> this engine-thrust))
-        )
-      (rigid-body-method-13 (-> this rbody) s5-0 s4-0)
-      )
-    )
+        (vector-float*! s4-0 s2-1 (-> this engine-thrust)))
+      (rigid-body-method-13 (-> this rbody) s5-0 s4-0)))
   (rigid-body-platform-method-26 this)
   (rigid-body-platform-method-25 this)
   0
-  (none)
-  )
+  (none))
 
 (defbehavior fishermans-boat-set-dock-point fishermans-boat ((arg0 int))
   (set! (-> self dock-point-index) arg0)
   (nth-point (-> self boat-path) arg0 (-> self dock-point))
   0
-  (none)
-  )
+  (none))
 
 (defbehavior fishermans-boat-set-path-point fishermans-boat ((arg0 int))
   (vehicle-controller-method-12 (-> self controller) arg0 (-> self root-overlay trans))
   (vector-normalize-copy! (-> self dest-dir) (-> self controller path-dest-velocity) 1.0)
   0
-  (none)
-  )
+  (none))
 
 (defbehavior fishermans-boat-next-path-point fishermans-boat ()
   (move-to-next-point (-> self controller) (-> self root-overlay trans))
   (vector-normalize-copy! (-> self dest-dir) (-> self controller path-dest-velocity) 1.0)
   0
-  (none)
-  )
+  (none))
 
 (defpart 2896
-  :init-specs ((:texture (new 'static 'texture-id :index #xa :page #x2))
-    (:num 0.06)
-    (:x (meters 10))
-    (:scale-x (meters 1.5) (meters 3))
-    (:rot-y (degrees 0))
-    (:scale-y (meters 1.5) (meters 3))
-    (:r 128.0)
-    (:g 128.0)
-    (:b 128.0)
-    (:a 0.0)
-    (:vel-x (meters 0.01) (meters 0.006666667))
-    (:scalevel-x (meters 0.006666667) (meters 0.008666666))
-    (:scalevel-y (meters 0.006666667) (meters 0.008666666))
-    (:fade-a 0.7111111)
-    (:friction 0.94)
-    (:timer (seconds 2))
-    (:flags (bit2 bit3 left-multiply-quat))
-    (:next-time (seconds 0.3))
-    (:next-launcher 119)
-    (:rotate-y (degrees 0))
-    )
-  )
+  :init-specs
+  ((:texture (water-wave effects))
+   (:num 0.06)
+   (:x (meters 10))
+   (:scale-x (meters 1.5) (meters 3))
+   (:rot-y (degrees 0))
+   (:scale-y (meters 1.5) (meters 3))
+   (:r 128.0)
+   (:g 128.0)
+   (:b 128.0)
+   (:a 0.0)
+   (:vel-x (meters 0.01) (meters 0.006666667))
+   (:scalevel-x (meters 0.006666667) (meters 0.008666666))
+   (:scalevel-y (meters 0.006666667) (meters 0.008666666))
+   (:fade-a 0.7111111)
+   (:friction 0.94)
+   (:timer (seconds 2))
+   (:flags (bit2 bit3 left-multiply-quat))
+   (:next-time (seconds 0.3))
+   (:next-launcher 119)
+   (:rotate-y (degrees 0))))
 
 (defbehavior fishermans-boat-wave fishermans-boat ((arg0 vector) (arg1 float) (arg2 float))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -670,147 +541,97 @@
     (set! (-> *part-id-table* 2896 init-specs 4 initial-valuef) (+ 24576.0 arg1))
     (set! (-> *part-id-table* 2896 init-specs 19 initial-valuef) (+ 49152.0 arg1))
     (set! (-> *part-id-table* 2896 init-specs 1 initial-valuef) (* 0.0000036621095 arg2))
-    (set! (-> *part-id-table* 2896 init-specs 2 initial-valuef) (* 0.1 arg2))
-    (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2896) gp-0)
-    )
+    (set! (-> *part-id-table* 2896 init-specs 2 initial-valuef) (/ arg2 10))
+    (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2896) gp-0))
   0
-  (none)
-  )
+  (none))
 
 (defbehavior fishermans-boat-spawn-particles fishermans-boat ((arg0 float))
   (let* ((s5-0 (-> self node-list data 3 bone transform))
          (s4-0 (new 'stack-no-clear 'vector))
-         (f30-0 (vector-y-angle (-> s5-0 vector 2)))
-         )
+         (f30-0 (vector-y-angle (-> s5-0 vector 2))))
     (vector-matrix*! s4-0 (new 'static 'vector :z 40960.0 :w 1.0) s5-0)
     (fishermans-boat-wave s4-0 f30-0 arg0)
     (vector-matrix*! s4-0 (new 'static 'vector :x 20480.0 :z -8192.0 :w 1.0) s5-0)
     (fishermans-boat-wave s4-0 f30-0 arg0)
     (vector-matrix*! s4-0 (new 'static 'vector :x -20480.0 :z -8192.0 :w 1.0) s5-0)
-    (fishermans-boat-wave s4-0 f30-0 arg0)
-    )
+    (fishermans-boat-wave s4-0 f30-0 arg0))
   0
-  (none)
-  )
+  (none))
 
 (defbehavior fishermans-boat-play-sounds fishermans-boat ()
   (if (-> self ignition)
-      (seek! (-> self engine-sound-envelope) 1.0 (* 2.0 (seconds-per-frame)))
-      (seek! (-> self engine-sound-envelope) 0.0 (seconds-per-frame))
-      )
+    (seek! (-> self engine-sound-envelope) 1.0 (* 2.0 (seconds-per-frame)))
+    (seek! (-> self engine-sound-envelope) 0.0 (seconds-per-frame)))
   (cond
     ((< 0.0 (-> self engine-sound-envelope))
-     (if (zero? (-> self engine-sound-id))
-         (set! (-> self engine-sound-id) (new-sound-id))
-         )
-     (* 0.0000008138021 (-> self engine-thrust))
+     (if (zero? (-> self engine-sound-id)) (set! (-> self engine-sound-id) (new-sound-id)))
+     (/ (-> self engine-thrust) (meters 300))
      (let ((f30-0 (* 100.0 (-> self engine-sound-envelope)))
            (f28-0 (+ -1.0 (* 2.0 (-> self engine-sound-envelope))))
-           (gp-0 (new 'stack-no-clear 'vector))
-           )
+           (gp-0 (new 'stack-no-clear 'vector)))
        (vector<-cspace! gp-0 (joint-node fishermans-boat-lod0-jg prop))
-       (sound-play
-         "boat-engine"
-         :id (-> self engine-sound-id)
-         :vol f30-0
-         :pitch f28-0
-         :position (the-as symbol gp-0)
-         )
-       )
-     )
+       (sound-play "boat-engine" :id (-> self engine-sound-id) :vol f30-0 :pitch f28-0 :position (the-as symbol gp-0))))
     (else
-      (when (nonzero? (-> self engine-sound-id))
-        (sound-stop (-> self engine-sound-id))
-        (set! (-> self engine-sound-id) (new 'static 'sound-id))
-        0
-        )
-      )
-    )
-  (none)
-  )
+     (when (nonzero? (-> self engine-sound-id))
+       (sound-stop (-> self engine-sound-id))
+       (set! (-> self engine-sound-id) (new 'static 'sound-id))
+       0)))
+  (none))
 
 (defbehavior fishermans-boat-post fishermans-boat ()
   (when (and *target* (-> self kill-player))
     (set! (-> self kill-player) #f)
-    (when (send-event *target* 'attack #f (static-attack-info ((mode 'endlessfall))))
-      )
-    )
+    (when (send-event *target* 'attack #f (static-attack-info ((mode 'endlessfall))))))
   (when (and *target* (-> self ignition))
     (cond
       ((-> self auto-pilot)
        (vehicle-controller-method-15 (-> self controller) (-> self root-overlay))
-       (vector-normalize-copy! (-> self dest-dir) (-> self controller path-dest-velocity) 1.0)
-       )
+       (vector-normalize-copy! (-> self dest-dir) (-> self controller path-dest-velocity) 1.0))
       (else
-        (when (not (-> self measure-parameters))
-          (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0)))
-            (seek! (-> self controller steering) (fmax -1.0 (fmin 1.0 f0-0)) (seconds-per-frame))
-            )
-          (if (cpad-hold? 0 x)
-              (seek! (-> self controller throttle) 0.8 (seconds-per-frame))
-              (seek! (-> self controller throttle) 0.0 (* 0.25 (seconds-per-frame)))
-              )
-          0
-          )
-        )
-      )
+       (when (not (-> self measure-parameters))
+         (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0)))
+           (seek! (-> self controller steering) (fmax -1.0 (fmin 1.0 f0-0)) (seconds-per-frame)))
+         (if (cpad-hold? 0 x)
+           (seek! (-> self controller throttle) 0.8 (seconds-per-frame))
+           (seek! (-> self controller throttle) 0.0 (* 0.25 (seconds-per-frame))))
+         0)))
     (when (and (-> self player-riding)
                (and (zero? (-> self root-overlay riders num-riders))
-                    (or (not *target*)
-                        (< 32768.0 (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans)))
-                        )
-                    )
-               )
-      (if (process-release? *target*)
-          (set! (-> self kill-player) #t)
-          )
+                    (or (not *target*) (< 32768.0 (vector-vector-distance (-> self root-overlay trans) (-> *target* control trans))))))
+      (if (process-release? *target*) (set! (-> self kill-player) #t))
       (set! (-> self controller throttle) 0.0)
-      (set! (-> self controller steering) 0.0)
-      )
-    )
+      (set! (-> self controller steering) 0.0)))
   (if (-> self ignition)
-      (seek! (-> self engine-thrust) (* 1228800.0 (-> self controller throttle)) 6144.0)
-      (set! (-> self engine-thrust) 0.0)
-      )
+    (seek! (-> self engine-thrust) (* 1228800.0 (-> self controller throttle)) 6144.0)
+    (set! (-> self engine-thrust) 0.0))
   (cond
     ((-> self ignition)
      (let ((f0-20 60.0)
            (f1-4 1820.4445)
            (f2-1 6735.6445)
-           (f3-0 1228800.0)
-           )
-       (set! (-> self propeller spin-rate) (* f0-20 (+ f1-4 (* f2-1 (/ 1.0 f3-0) (-> self engine-thrust)))))
-       )
-     )
-    (else
-      (seek! (-> self propeller spin-rate) 0.0 218.45334)
-      )
-    )
+           (f3-0 1228800.0))
+       (set! (-> self propeller spin-rate) (* f0-20 (+ f1-4 (* f2-1 (/ 1.0 f3-0) (-> self engine-thrust)))))))
+    (else (seek! (-> self propeller spin-rate) 0.0 218.45334)))
   (rigid-body-platform-method-28 self)
   (quaternion-copy! (-> self root-overlay quat) (-> self rbody rotation))
   (rigid-body-method-18 (-> self rbody) (-> self root-overlay trans))
   (when (-> self debug-draw)
     (vehicle-controller-method-16 (-> self controller))
-    (add-debug-sphere
-      #t
-      (bucket-id debug-no-zbuf)
-      (the-as vector (-> self boat-path))
-      614400.0
-      (new 'static 'rgba :b #xff :a #x80)
-      )
-    (add-debug-sphere
-      #t
-      (bucket-id debug-no-zbuf)
-      (the-as vector (&-> self stack 848))
-      409600.0
-      (new 'static 'rgba :b #xff :a #x80)
-      )
-    )
+    (add-debug-sphere #t
+                      (bucket-id debug-no-zbuf)
+                      (the-as vector (-> self boat-path))
+                      614400.0
+                      (new 'static 'rgba :b #xff :a #x80))
+    (add-debug-sphere #t
+                      (bucket-id debug-no-zbuf)
+                      (the-as vector (&-> self stack 848))
+                      409600.0
+                      (new 'static 'rgba :b #xff :a #x80)))
   (fishermans-boat-spawn-particles 8192.0)
   (fishermans-boat-play-sounds)
   (rider-post)
-  (none)
-  )
+  (none))
 
 (defbehavior fishermans-boat-leave-dock? fishermans-boat ()
   (let ((gp-0 #f))
@@ -818,403 +639,314 @@
                (or (task-complete? *game-info* (game-task jungle-fishgame)) (and *cheat-mode* (cpad-hold? 0 l3)))
                (not (level-hint-displayed?))
                (time-elapsed? (-> self state-time) (seconds 3))
-               (file-status *art-control* (-> self anim name) 0)
-               )
+               (file-status *art-control* (-> self anim name) 0))
       (hide-hud)
       (level-hint-surpress!)
       (kill-current-level-hint '() '(sidekick voicebox) 'exit)
       (when (and (hud-hidden?) (can-grab-display? self) (= *kernel-boot-message* 'play))
-        (let ((s5-1
-                (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))
-                )
-              )
-          (let ((v1-17 s5-1))
-            (set! (-> v1-17 width) (the float 440))
-            )
-          (let ((v1-18 s5-1))
-            (set! (-> v1-18 height) (the float 80))
-            )
+        (let ((s5-1 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
+          (let ((v1-17 s5-1)) (set! (-> v1-17 width) (the float 440)))
+          (let ((v1-18 s5-1)) (set! (-> v1-18 height) (the float 80)))
           (set! (-> s5-1 flags) (font-flags shadow kerning large))
-          (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) s5-1 #f 128 22)
-          )
+          (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) s5-1 #f 128 22))
         (when (and (cpad-pressed? 0 circle) (process-grab? *target*))
           (set! (-> self waiting-for-player) #f)
           (set! (-> self player-riding) #t)
           (set! (-> self auto-pilot) #t)
           (set! (-> self ignition) #t)
           (set! (-> self anchored) #f)
-          (set! gp-0 #t)
-          )
-        )
-      )
-    gp-0
-    )
-  )
+          (set! gp-0 #t))))
+    gp-0))
 
 (defbehavior fishermans-boat-enter-dock? fishermans-boat ()
   (when (and (-> self player-riding) (= (-> self controller path-dest-index) (-> self dock-point-index)))
-    (if (process-release? *target*)
-        (set! (-> self player-riding) #f)
-        )
-    )
+    (if (process-release? *target*) (set! (-> self player-riding) #f)))
   (let ((f0-0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point))))
-    (when (and (= (-> self controller path-dest-index) (-> self dock-point-index))
-               (not (-> self anchored))
-               (< f0-0 81920.0)
-               )
+    (when (and (= (-> self controller path-dest-index) (-> self dock-point-index)) (not (-> self anchored)) (< f0-0 81920.0))
       (set! (-> self ignition) #f)
-      (set! (-> self anchored) #t)
-      )
-    (< f0-0 28672.0)
-    )
-  )
+      (set! (-> self anchored) #t))
+    (< f0-0 28672.0)))
 
 (defstate fishermans-boat-docked-village (fishermans-boat)
   :event rigid-body-platform-event-handler
-  :enter (behavior ()
-    (set-time! (-> self state-time))
-    )
-  :trans (behavior ()
-    (if (fishermans-boat-leave-dock?)
-        (go fishermans-boat-ride-to-misty)
-        )
-    (rider-trans)
-    (if (nonzero? (-> self anim))
-        (spool-push *art-control* (-> self anim name) 0 self -99.0)
-        )
-    )
-  :code (behavior ()
-    (set! (-> self anim) (new 'static 'spool-anim
-                           :name "fishermans-boat-ride-to-misty"
-                           :index 15
-                           :parts 3
-                           :command-list '((0 want-levels village1 misty)
-                             (0 shadow target #f)
-                             (0 shadow sidekick #f)
-                             (250 display-level misty display)
-                             (250 display-level village1 special)
-                             (250 want-vis mis)
-                             (250 want-force-vis misty #t)
-                             (459 want-force-vis misty #f)
-                             (459 save)
-                             (459 blackout 20)
-                             (459 shadow target #t)
-                             )
-                           )
-          )
-    (fishermans-boat-set-dock-point 0)
-    (fishermans-boat-set-path-point 0)
-    (anim-loop)
-    )
-  :post fishermans-boat-post
-  )
+  :enter
+    (behavior ()
+      (set-time! (-> self state-time)))
+  :trans
+    (behavior ()
+      (if (fishermans-boat-leave-dock?) (go fishermans-boat-ride-to-misty))
+      (rider-trans)
+      (if (nonzero? (-> self anim)) (spool-push *art-control* (-> self anim name) 0 self -99.0)))
+  :code
+    (behavior ()
+      (set! (-> self anim)
+            (new 'static
+                 'spool-anim
+                 :name "fishermans-boat-ride-to-misty"
+                 :index 15
+                 :parts 3
+                 :command-list
+                 '((0 want-levels village1 misty)
+                  (0 shadow target #f)
+                  (0 shadow sidekick #f)
+                  (250 display-level misty display)
+                  (250 display-level village1 special)
+                  (250 want-vis mis)
+                  (250 want-force-vis misty #t)
+                  (459 want-force-vis misty #f)
+                  (459 save)
+                  (459 blackout 20)
+                  (459 shadow target #t))))
+      (fishermans-boat-set-dock-point 0)
+      (fishermans-boat-set-path-point 0)
+      (anim-loop))
+  :post fishermans-boat-post)
 
 (defstate fishermans-boat-leaving-village (fishermans-boat)
-  :trans (behavior ()
-    (when (< 614400.0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point)))
-      (load-state-want-display-level 'village1 'special)
-      (load-state-want-display-level 'misty 'display)
-      (load-state-want-vis 'mis)
-      (load-state-want-force-vis 'misty #t)
-      (go fishermans-boat-player-control)
-      )
-    (rider-trans)
-    )
-  :code (behavior ()
-    (load-state-want-levels 'village1 'misty)
-    (set! (-> self cam-tracker)
-          (ppointer->handle (process-spawn
-                              camera-tracker
-                              :init camera-tracker-init
-                              (lambda :behavior fishermans-boat
-                                ()
-                                (camera-change-to "camera-282" 0 #f)
-                                (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
-                                  (suspend)
-                                  )
-                                (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
-                                (camera-change-to (the-as string 'base) 0 #f)
-                                (none)
-                                )
-                              :to self
-                              )
-                            )
-          )
-    (send-event (handle->process (-> self cam-tracker)) 'border #t)
-    (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
-    (fishermans-boat-set-path-point 0)
-    (fishermans-boat-next-path-point)
-    (loop
-      (suspend)
-      )
-    )
-  :post fishermans-boat-post
-  )
+  :trans
+    (behavior ()
+      (when (< 614400.0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point)))
+        (load-state-want-display-level 'village1 'special)
+        (load-state-want-display-level 'misty 'display)
+        (load-state-want-vis 'mis)
+        (load-state-want-force-vis 'misty #t)
+        (go fishermans-boat-player-control))
+      (rider-trans))
+  :code
+    (behavior ()
+      (load-state-want-levels 'village1 'misty)
+      (set! (-> self cam-tracker)
+            (ppointer->handle (process-spawn camera-tracker
+                                             :init
+                                             camera-tracker-init
+                                             (lambda :behavior fishermans-boat ()
+                                               (camera-change-to "camera-282" 0 #f)
+                                               (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
+                                                 (suspend))
+                                               (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
+                                               (camera-change-to (the-as string 'base) 0 #f)
+                                               (none))
+                                             :to
+                                             self)))
+      (send-event (handle->process (-> self cam-tracker)) 'border #t)
+      (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
+      (fishermans-boat-set-path-point 0)
+      (fishermans-boat-next-path-point)
+      (loop
+        (suspend)))
+  :post fishermans-boat-post)
 
 (defstate fishermans-boat-entering-village (fishermans-boat)
-  :trans (behavior ()
-    (when (fishermans-boat-enter-dock?)
-      (set! (-> self waiting-for-player) #f)
-      (when #t
-        (set! (-> *camera* cam-entity) (the-as entity #t))
-        (send-event *camera* 'clear-entity)
-        (load-commands-set! *level* '())
-        (load-state-want-display-level 'village1 'display)
-        (load-state-want-force-vis 'village1 #f)
-        (go fishermans-boat-docked-village)
-        )
-      )
-    (rider-trans)
-    )
-  :code (behavior ()
-    (load-state-want-levels 'village1 'beach)
-    (load-state-want-vis 'vi1)
-    (fishermans-boat-set-dock-point 0)
-    (fishermans-boat-set-path-point 5)
-    (anim-loop)
-    )
-  :post fishermans-boat-post
-  )
+  :trans
+    (behavior ()
+      (when (fishermans-boat-enter-dock?)
+        (set! (-> self waiting-for-player) #f)
+        (when #t
+          (set! (-> *camera* cam-entity) (the-as entity #t))
+          (send-event *camera* 'clear-entity)
+          (load-commands-set! *level* '())
+          (load-state-want-display-level 'village1 'display)
+          (load-state-want-force-vis 'village1 #f)
+          (go fishermans-boat-docked-village)))
+      (rider-trans))
+  :code
+    (behavior ()
+      (load-state-want-levels 'village1 'beach)
+      (load-state-want-vis 'vi1)
+      (fishermans-boat-set-dock-point 0)
+      (fishermans-boat-set-path-point 5)
+      (anim-loop))
+  :post fishermans-boat-post)
 
 (defstate fishermans-boat-docked-misty (fishermans-boat)
   :event rigid-body-platform-event-handler
-  :enter (behavior ()
-    (set-time! (-> self state-time))
-    )
-  :trans (behavior ()
-    (if (fishermans-boat-leave-dock?)
-        (go fishermans-boat-ride-to-village1)
-        )
-    (rider-trans)
-    (if (nonzero? (-> self anim))
-        (spool-push *art-control* (-> self anim name) 0 self -99.0)
-        )
-    )
-  :code (behavior ()
-    (if #t
-        (set! (-> self anim) (new 'static 'spool-anim
-                               :name "fishermans-boat-ride-to-village1"
-                               :index 16
-                               :parts 3
-                               :command-list '((0 want-levels village1 misty)
-                                 (0 shadow target #f)
-                                 (0 shadow sidekick #f)
-                                 (250 display-level village1 display)
-                                 (250 display-level misty #f)
-                                 (250 want-vis vi1)
-                                 (250 want-force-vis village1 #t)
-                                 (459 want-force-vis village1 #f)
-                                 (459 save)
-                                 (459 blackout 20)
-                                 (459 shadow target #t)
-                                 )
-                               )
-              )
-        (set! (-> self anim) (new 'static 'spool-anim
-                               :name "fishermans-boat-ride-to-village1-alt"
-                               :index 17
-                               :parts 12
-                               :command-list '((0 want-levels village1 misty)
-                                 (105 want-levels village1 intro)
-                                 (150 display-level intro display)
-                                 (150 want-vis int)
-                                 (150 kill "med-res-level-3")
-                                 (150 want-force-vis intro #t)
-                                 (151 send-event self evilbro)
-                                 (1199 send-event self evilsis)
-                                 (1200 want-force-vis intro #f)
-                                 (1200 want-levels village1 beach)
-                                 (1200 display-level village1 display)
-                                 (1200 want-vis vi1)
-                                 (1200 want-force-vis village1 #t)
-                                 (1349 want-force-vis village1 #f)
-                                 (1349 save)
-                                 (1349 blackout 20)
-                                 )
-                               )
-              )
-        )
-    (load-state-want-force-vis 'misty #f)
-    (fishermans-boat-set-dock-point 4)
-    (fishermans-boat-set-path-point 4)
-    (anim-loop)
-    )
-  :post fishermans-boat-post
-  )
+  :enter
+    (behavior ()
+      (set-time! (-> self state-time)))
+  :trans
+    (behavior ()
+      (if (fishermans-boat-leave-dock?) (go fishermans-boat-ride-to-village1))
+      (rider-trans)
+      (if (nonzero? (-> self anim)) (spool-push *art-control* (-> self anim name) 0 self -99.0)))
+  :code
+    (behavior ()
+      (if #t
+        (set! (-> self anim)
+              (new 'static
+                   'spool-anim
+                   :name "fishermans-boat-ride-to-village1"
+                   :index 16
+                   :parts 3
+                   :command-list
+                   '((0 want-levels village1 misty)
+                    (0 shadow target #f)
+                    (0 shadow sidekick #f)
+                    (250 display-level village1 display)
+                    (250 display-level misty #f)
+                    (250 want-vis vi1)
+                    (250 want-force-vis village1 #t)
+                    (459 want-force-vis village1 #f)
+                    (459 save)
+                    (459 blackout 20)
+                    (459 shadow target #t))))
+        (set! (-> self anim)
+              (new 'static
+                   'spool-anim
+                   :name "fishermans-boat-ride-to-village1-alt"
+                   :index 17
+                   :parts 12
+                   :command-list
+                   '((0 want-levels village1 misty)
+                    (105 want-levels village1 intro)
+                    (150 display-level intro display)
+                    (150 want-vis int)
+                    (150 kill "med-res-level-3")
+                    (150 want-force-vis intro #t)
+                    (151 send-event self evilbro)
+                    (1199 send-event self evilsis)
+                    (1200 want-force-vis intro #f)
+                    (1200 want-levels village1 beach)
+                    (1200 display-level village1 display)
+                    (1200 want-vis vi1)
+                    (1200 want-force-vis village1 #t)
+                    (1349 want-force-vis village1 #f)
+                    (1349 save)
+                    (1349 blackout 20)))))
+      (load-state-want-force-vis 'misty #f)
+      (fishermans-boat-set-dock-point 4)
+      (fishermans-boat-set-path-point 4)
+      (anim-loop))
+  :post fishermans-boat-post)
 
 (defstate fishermans-boat-leaving-misty (fishermans-boat)
-  :trans (behavior ()
-    (when (< 409600.0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point)))
-      (load-state-want-force-vis 'village1 #t)
-      (load-state-want-display-level 'village1 'display)
-      (set-continue! *game-info* "village1-hut")
-      (load-commands-set! *level* (load-command-get-index *level* 'village1 2))
-      (go fishermans-boat-player-control)
-      )
-    (rider-trans)
-    )
-  :code (behavior ()
-    (set! (-> self cam-tracker)
-          (ppointer->handle (process-spawn
-                              camera-tracker
-                              :init camera-tracker-init
-                              (lambda :behavior fishermans-boat
-                                ()
-                                (camera-change-to "camera-287" 0 #f)
-                                (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
-                                  (suspend)
-                                  )
-                                (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
-                                (camera-change-to (the-as string 'base) 0 #f)
-                                (none)
-                                )
-                              :to self
-                              )
-                            )
-          )
-    (send-event (handle->process (-> self cam-tracker)) 'border #t)
-    (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
-    (fishermans-boat-set-path-point 4)
-    (fishermans-boat-next-path-point)
-    (loop
-      (suspend)
-      )
-    )
-  :post fishermans-boat-post
-  )
+  :trans
+    (behavior ()
+      (when (< 409600.0 (vector-vector-xz-distance (-> self root-overlay trans) (-> self dock-point)))
+        (load-state-want-force-vis 'village1 #t)
+        (load-state-want-display-level 'village1 'display)
+        (set-continue! *game-info* "village1-hut")
+        (load-commands-set! *level* (load-command-get-index *level* 'village1 2))
+        (go fishermans-boat-player-control))
+      (rider-trans))
+  :code
+    (behavior ()
+      (set! (-> self cam-tracker)
+            (ppointer->handle (process-spawn camera-tracker
+                                             :init
+                                             camera-tracker-init
+                                             (lambda :behavior fishermans-boat ()
+                                               (camera-change-to "camera-287" 0 #f)
+                                               (while (!= (-> self rbody lin-momentum-damping-factor) 'release)
+                                                 (suspend))
+                                               (set! (-> self rbody lin-momentum-damping-factor) (the-as float #f))
+                                               (camera-change-to (the-as string 'base) 0 #f)
+                                               (none))
+                                             :to
+                                             self)))
+      (send-event (handle->process (-> self cam-tracker)) 'border #t)
+      (send-event (handle->process (-> self cam-tracker)) 'mask #x20800)
+      (fishermans-boat-set-path-point 4)
+      (fishermans-boat-next-path-point)
+      (loop
+        (suspend)))
+  :post fishermans-boat-post)
 
 (defstate fishermans-boat-entering-misty (fishermans-boat)
-  :trans (behavior ()
-    (when (fishermans-boat-enter-dock?)
-      (set! (-> self waiting-for-player) #f)
-      (level-hint-spawn (text-id sidekick-misty) "sksp0060" (the-as entity #f) *entity-pool* (game-task none))
-      (when #t
-        (set! (-> *camera* cam-entity) (the-as entity #t))
-        (send-event *camera* 'clear-entity)
-        (go fishermans-boat-docked-misty)
-        )
-      )
-    (rider-trans)
-    )
-  :code (behavior ()
-    (set-continue! *game-info* "misty-start")
-    (fishermans-boat-set-dock-point 4)
-    (fishermans-boat-set-path-point 2)
-    (loop
-      (suspend)
-      )
-    )
-  :post fishermans-boat-post
-  )
+  :trans
+    (behavior ()
+      (when (fishermans-boat-enter-dock?)
+        (set! (-> self waiting-for-player) #f)
+        (level-hint-spawn (text-id sidekick-misty) "sksp0060" (the-as entity #f) *entity-pool* (game-task none))
+        (when #t
+          (set! (-> *camera* cam-entity) (the-as entity #t))
+          (send-event *camera* 'clear-entity)
+          (go fishermans-boat-docked-misty)))
+      (rider-trans))
+  :code
+    (behavior ()
+      (set-continue! *game-info* "misty-start")
+      (fishermans-boat-set-dock-point 4)
+      (fishermans-boat-set-path-point 2)
+      (loop
+        (suspend)))
+  :post fishermans-boat-post)
 
 (defstate fishermans-boat-player-control (fishermans-boat)
-  :exit (behavior ()
-    (send-event *camera* 'change-state *camera-base-mode* 0)
-    (set! (-> self auto-pilot) #t)
-    )
-  :trans (behavior ()
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (nth-point (-> self boat-path) 0 gp-0)
-      (if (< (vector-vector-xz-distance (-> self root-overlay trans) gp-0) 614400.0)
-          (go fishermans-boat-entering-village)
-          )
-      (nth-point (-> self boat-path) 4 gp-0)
-      (if (< (vector-vector-xz-distance (-> self root-overlay trans) gp-0) 409600.0)
-          (go fishermans-boat-entering-misty)
-          )
-      )
-    0
-    )
-  :code (behavior ()
-    (send-event (handle->process (-> self cam-tracker)) 'message 'release)
-    (suspend)
-    (send-event *camera* 'change-state cam-stick 0)
-    (loop
-      (if (and (= *cheat-mode* 'debug) (cpad-pressed? 0 triangle))
-          (set! (-> self auto-pilot) #f)
-          )
+  :exit
+    (behavior ()
+      (send-event *camera* 'change-state *camera-base-mode* 0)
+      (set! (-> self auto-pilot) #t))
+  :trans
+    (behavior ()
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (nth-point (-> self boat-path) 0 gp-0)
+        (if (< (vector-vector-xz-distance (-> self root-overlay trans) gp-0) 614400.0) (go fishermans-boat-entering-village))
+        (nth-point (-> self boat-path) 4 gp-0)
+        (if (< (vector-vector-xz-distance (-> self root-overlay trans) gp-0) 409600.0) (go fishermans-boat-entering-misty)))
+      0)
+  :code
+    (behavior ()
+      (send-event (handle->process (-> self cam-tracker)) 'message 'release)
       (suspend)
-      )
-    )
-  :post fishermans-boat-post
-  )
+      (send-event *camera* 'change-state cam-stick 0)
+      (loop
+        (if (and (= *cheat-mode* 'debug) (cpad-pressed? 0 triangle)) (set! (-> self auto-pilot) #f))
+        (suspend)))
+  :post fishermans-boat-post)
 
 (defbehavior fishermans-boat-set-throttle-by-speed fishermans-boat ((arg0 float))
   (let* ((f0-0 (vector-xz-length (-> self rbody lin-velocity)))
          (f1-2 (/ (- arg0 f0-0) arg0))
-         (f30-0 (* 0.005 f1-2))
-         )
+         (f30-0 (/ f1-2 200)))
     (format *stdcon* "current ~M target ~M throttle ~f~%" f0-0 arg0 (-> self controller throttle))
-    (set! (-> self controller throttle) (fmax 0.0 (fmin 1.0 (+ (-> self controller throttle) f30-0))))
-    )
+    (set! (-> self controller throttle) (fmax 0.0 (fmin 1.0 (+ (-> self controller throttle) f30-0)))))
   0
-  (none)
-  )
+  (none))
 
 (defstate fishermans-boat-measurements (fishermans-boat)
-  :exit (behavior ()
-    (set! (-> self measure-parameters) #f)
-    )
-  :trans (behavior ()
-    (if (cpad-pressed? 1 square)
-        (go fishermans-boat-player-control)
-        )
-    )
-  :code (behavior ()
-    (set! (-> self auto-pilot) #f)
-    (let ((gp-0 (new 'stack-no-clear 'vector))
-          (s5-0 1)
-          (s4-0 (+ (-> self controller table-length) -1))
-          )
-      (while (>= s4-0 s5-0)
-        (let ((f30-0 (* (the float s5-0) (-> self controller table-step))))
-          (set! (-> self measure-parameters) #t)
-          (set! (-> self controller steering) 1.0)
-          (set-time! (-> self state-time))
-          (until (time-elapsed? (-> self state-time) (seconds 1))
-            (let ((f0-6 (/ (fabs (- f30-0 (vector-xz-length (-> self rbody lin-velocity)))) f30-0)))
-              (if (< 0.05 f0-6)
-                  (set-time! (-> self state-time))
-                  )
-              )
-            (fishermans-boat-set-throttle-by-speed f30-0)
-            (suspend)
-            )
+  :exit
+    (behavior ()
+      (set! (-> self measure-parameters) #f))
+  :trans
+    (behavior ()
+      (if (cpad-pressed? 1 square) (go fishermans-boat-player-control)))
+  :code
+    (behavior ()
+      (set! (-> self auto-pilot) #f)
+      (let ((gp-0 (new 'stack-no-clear 'vector))
+            (s5-0 1)
+            (s4-0 (+ (-> self controller table-length) -1)))
+        (while (>= s4-0 s5-0)
+          (let ((f30-0 (* (the float s5-0) (-> self controller table-step))))
+            (set! (-> self measure-parameters) #t)
+            (set! (-> self controller steering) 1.0)
+            (set-time! (-> self state-time))
+            (until (time-elapsed? (-> self state-time) (seconds 1))
+              (let ((f0-6 (/ (fabs (- f30-0 (vector-xz-length (-> self rbody lin-velocity)))) f30-0)))
+                (if (< 0.05 f0-6) (set-time! (-> self state-time))))
+              (fishermans-boat-set-throttle-by-speed f30-0)
+              (suspend))
+            (vector-z-quaternion! gp-0 (-> self root-overlay quat))
+            (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
+            (suspend-for (seconds 1)
+              (fishermans-boat-set-throttle-by-speed f30-0)
+              (suspend)))
           (vector-z-quaternion! gp-0 (-> self root-overlay quat))
           (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
-          (let ((s3-0 (current-time)))
-            (until (time-elapsed? s3-0 (seconds 1))
-              (fishermans-boat-set-throttle-by-speed f30-0)
-              (suspend)
-              (suspend)
-              )
-            )
-          )
-        (vector-z-quaternion! gp-0 (-> self root-overlay quat))
-        (vehicle-controller-method-10 (-> self controller) gp-0 (-> self controller throttle) s5-0)
-        (+! s5-0 1)
-        )
-      )
-    (go fishermans-boat-player-control)
-    )
-  :post fishermans-boat-post
-  )
+          (+! s5-0 1)))
+      (go fishermans-boat-player-control))
+  :post fishermans-boat-post)
 
-(defmethod relocate ((this fishermans-boat) (arg0 int))
-  (relocate (-> this controller) arg0)
-  (if (nonzero? (-> this propeller))
-      (&+! (-> this propeller) arg0)
-      )
-  (call-parent-method this arg0)
-  )
+(defmethod relocate ((this fishermans-boat) (offset int))
+  (relocate (-> this controller) offset)
+  (if (nonzero? (-> this propeller)) (&+! (-> this propeller) offset))
+  (call-parent-method this offset))
 
 (defmethod rigid-body-platform-method-30 ((this fishermans-boat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -1230,16 +962,12 @@
         (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s3-0 transform-index) 3)
         (set-vector! (-> s3-0 local-sphere) 0.0 8192.0 0.0 61440.0)
-        (append-prim s4-0 s3-0)
-        )
-      )
+        (append-prim s4-0 s3-0)))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-overlay) s5-0)
-    )
+    (set! (-> this root-overlay) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod rigid-body-platform-method-31 ((this fishermans-boat))
   (initialize-skeleton this *fishermans-boat-sg* '())
@@ -1257,14 +985,7 @@
   (add-point! (-> this boat-path) 49971.2 28672.0 2924544.0 -16384.0)
   (add-point! (-> this boat-path) 175718.4 122880.0 626688.0 -18204.445)
   (add-point! (-> this boat-path) 50790.4 40960.0 197427.2 32768.0)
-  (init!
-    (-> this controller)
-    (-> this boat-path)
-    *boat-turning-radius-table*
-    *boat-throttle-control-table*
-    30
-    4096.0
-    )
+  (init! (-> this controller) (-> this boat-path) *boat-turning-radius-table* *boat-throttle-control-table* 30 4096.0)
   (set! (-> this propeller) (new 'process 'joint-mod-spinner this 4 (new 'static 'vector :z -1.0 :w 1.0) 0.0))
   (set! (-> this ignition) #f)
   (set! (-> this anchored) #t)
@@ -1273,10 +994,7 @@
   (set! (-> this debug-draw) #f)
   (set! (-> this cam-tracker) (the-as handle #f))
   (set! (-> this auto-pilot) #f)
-  (if (= (-> *game-info* current-continue level) 'misty)
-      (fishermans-boat-set-dock-point 4)
-      (fishermans-boat-set-dock-point 0)
-      )
+  (if (= (-> *game-info* current-continue level) 'misty) (fishermans-boat-set-dock-point 4) (fishermans-boat-set-dock-point 0))
   (fishermans-boat-set-path-point (-> this dock-point-index))
   (fishermans-boat-next-path-point)
   (set! (-> this root-overlay trans quad) (-> this dock-point quad))
@@ -1287,44 +1005,37 @@
     (set! (-> v1-39 0 local-pos x) 0.0)
     (set! (-> v1-39 0 local-pos y) 0.0)
     (set! (-> v1-39 0 local-pos z) 24576.0)
-    (set! (-> v1-39 0 local-pos w) 1.0)
-    )
+    (set! (-> v1-39 0 local-pos w) 1.0))
   (let ((v1-41 (-> this control-point-array data 1)))
     (set! (-> v1-41 local-pos x) 22528.0)
     (set! (-> v1-41 local-pos y) 0.0)
     (set! (-> v1-41 local-pos z) -20480.0)
-    (set! (-> v1-41 local-pos w) 1.0)
-    )
+    (set! (-> v1-41 local-pos w) 1.0))
   (let ((v1-43 (-> this control-point-array data 2)))
     (set! (-> v1-43 local-pos x) -22528.0)
     (set! (-> v1-43 local-pos y) 0.0)
     (set! (-> v1-43 local-pos z) -20480.0)
-    (set! (-> v1-43 local-pos w) 1.0)
-    )
+    (set! (-> v1-43 local-pos w) 1.0))
   (let ((v1-45 (-> this control-point-array data 3)))
     (set! (-> v1-45 local-pos x) 0.0)
     (set! (-> v1-45 local-pos y) 0.0)
     (set! (-> v1-45 local-pos z) 49152.0)
-    (set! (-> v1-45 local-pos w) 1.0)
-    )
+    (set! (-> v1-45 local-pos w) 1.0))
   (let ((v1-47 (-> this control-point-array data 4)))
     (set! (-> v1-47 local-pos x) 22528.0)
     (set! (-> v1-47 local-pos y) 0.0)
     (set! (-> v1-47 local-pos z) 12288.0)
-    (set! (-> v1-47 local-pos w) 1.0)
-    )
+    (set! (-> v1-47 local-pos w) 1.0))
   (let ((v1-49 (-> this control-point-array data 5)))
     (set! (-> v1-49 local-pos x) -22528.0)
     (set! (-> v1-49 local-pos y) 0.0)
     (set! (-> v1-49 local-pos z) 12288.0)
-    (set! (-> v1-49 local-pos w) 1.0)
-    )
+    (set! (-> v1-49 local-pos w) 1.0))
   (let ((v1-50 (-> this stabilizer-array)))
     (set! (-> v1-50 0 local-pos x) 16384.0)
     (set! (-> v1-50 0 local-pos y) 20480.0)
     (set! (-> v1-50 0 local-pos z) -32768.0)
-    (set! (-> v1-50 0 local-pos w) 1.0)
-    )
+    (set! (-> v1-50 0 local-pos w) 1.0))
   (set-vector! (-> this stabilizer-array 1 local-pos) -16384.0 20480.0 -32768.0 1.0)
   (set-vector! (-> this stabilizer-array 0 normal) 0.0 0.75 0.2 1.0)
   (set-vector! (-> this stabilizer-array 1 normal) 0.0 0.75 0.2 1.0)
@@ -1338,17 +1049,9 @@
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (let ((a0-29 (-> this entity)))
     (if (when a0-29
-          (let ((a0-30 (-> a0-29 extra perm task)))
-            (if a0-30
-                (= a0-30 (game-task none))
-                )
-            )
-          )
-        (set! (-> this entity extra perm task) (game-task complete))
-        )
-    )
-  (none)
-  )
+          (let ((a0-30 (-> a0-29 extra perm task))) (if a0-30 (= a0-30 (game-task none)))))
+      (set! (-> this entity extra perm task) (game-task complete))))
+  (none))
 
 (defmethod init-from-entity! ((this fishermans-boat) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
@@ -1356,197 +1059,145 @@
   (rigid-body-platform-method-30 this)
   (process-drawable-from-entity! this arg0)
   (rigid-body-platform-method-31 this)
-  (if (= (-> *game-info* current-continue level) 'misty)
-      (go fishermans-boat-docked-misty)
-      (go fishermans-boat-docked-village)
-      )
-  (none)
-  )
+  (if (= (-> *game-info* current-continue level) 'misty) (go fishermans-boat-docked-misty) (go fishermans-boat-docked-village))
+  (none))
 
 (defbehavior fishermans-boat-reset-physics fishermans-boat ()
-  (rigid-body-method-22
-    (-> self rbody)
-    (-> self root-overlay trans)
-    (-> self root-overlay quat)
-    (-> self info linear-damping)
-    (-> self info angular-damping)
-    )
+  (rigid-body-method-22 (-> self rbody)
+                        (-> self root-overlay trans)
+                        (-> self root-overlay quat)
+                        (-> self info linear-damping)
+                        (-> self info angular-damping))
   (vector-reset! (-> self player-force))
   (set! (-> self player-impulse) #f)
   (set! (-> self player-contact) #f)
   0
-  (none)
-  )
+  (none))
 
 (defstate fishermans-boat-ride-to-misty (fishermans-boat)
-  :code (behavior ()
-    (set! (-> self propeller enable) #f)
-    (quaternion-identity! (-> self root-overlay quat))
-    (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
-    (set! (-> self player-riding) #f)
-    (set! (-> self auto-pilot) #f)
-    (when (send-event *target* 'clone-anim self)
-      (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
-      (send-event *target* 'blend-shape #t)
-      (let ((v1-20 (process-spawn othercam self 5 #f #t :to self)))
-        (send-event (ppointer->process v1-20) 'mask 2048)
-        )
-      (set! (-> self draw force-lod) 0)
-      (ja-play-spooled-anim
-        (-> self anim)
-        (the-as art-joint-anim fishermans-boat-idle-ja)
-        (the-as art-joint-anim #f)
-        (the-as (function process-drawable symbol) false-func)
-        )
-      (set! (-> self draw force-lod) -1)
-      (send-event *target* 'blend-shape #f)
-      (ja-channel-set! 1)
-      (ja :group! fishermans-boat-idle-ja)
-      (vector<-cspace! (-> self root-overlay trans) (joint-node fishermans-boat-lod0-jg main))
-      (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
-      (fishermans-boat-reset-physics)
-      (transform-post)
-      (when *target*
-        (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
-        (send-event *target* 'trans 'restore (-> self old-target-pos))
-        (send-event *target* 'end-mode)
-        (update-transforms! (-> self root-overlay))
-        (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-        (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
-        (suspend)
-        (send-event *camera* 'teleport-to-other-start-string)
-        )
-      (set-continue! *game-info* "misty-start")
-      )
-    (set! (-> self waiting-for-player) #t)
-    (set! (-> self ignition) #f)
-    (set! (-> self anchored) #t)
-    (set! (-> self propeller enable) #t)
-    (fishermans-boat-play-sounds)
-    (apply-settings *setting-control*)
-    (process-spawn-function
-      process
-      (lambda :behavior fishermans-boat
-        ()
-        (let ((gp-0 (current-time)))
-          (until (time-elapsed? gp-0 (seconds 1))
-            (suspend)
-            )
-          )
-        (while (or (-> *setting-control* current ambient)
-                   (-> *setting-control* current hint)
-                   (-> *setting-control* current movie)
-                   )
+  :code
+    (behavior ()
+      (set! (-> self propeller enable) #f)
+      (quaternion-identity! (-> self root-overlay quat))
+      (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
+      (set! (-> self player-riding) #f)
+      (set! (-> self auto-pilot) #f)
+      (when (send-event *target* 'clone-anim self)
+        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+        (send-event *target* 'blend-shape #t)
+        (let ((v1-20 (process-spawn othercam self 5 #f #t :to self))) (send-event (ppointer->process v1-20) 'mask 2048))
+        (set! (-> self draw force-lod) 0)
+        (ja-play-spooled-anim (-> self anim)
+                              (the-as art-joint-anim fishermans-boat-idle-ja)
+                              (the-as art-joint-anim #f)
+                              (the-as (function process-drawable symbol) false-func))
+        (set! (-> self draw force-lod) -1)
+        (send-event *target* 'blend-shape #f)
+        (ja-channel-set! 1)
+        (ja :group! fishermans-boat-idle-ja)
+        (vector<-cspace! (-> self root-overlay trans) (joint-node fishermans-boat-lod0-jg main))
+        (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
+        (fishermans-boat-reset-physics)
+        (transform-post)
+        (when *target*
+          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+          (send-event *target* 'trans 'restore (-> self old-target-pos))
+          (send-event *target* 'end-mode)
+          (update-transforms! (-> self root-overlay))
+          (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
+          (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
           (suspend)
-          )
-        (suspend)
-        (level-hint-spawn (text-id sidekick-misty) "sksp0060" (the-as entity #f) *entity-pool* (game-task none))
-        (none)
-        )
-      :to self
-      )
-    (go fishermans-boat-docked-misty)
-    )
-  :post (behavior ()
-    (ja-post)
-    (fishermans-boat-spawn-particles 81920.0)
-    (fishermans-boat-play-sounds)
-    )
-  )
+          (send-event *camera* 'teleport-to-other-start-string))
+        (set-continue! *game-info* "misty-start"))
+      (set! (-> self waiting-for-player) #t)
+      (set! (-> self ignition) #f)
+      (set! (-> self anchored) #t)
+      (set! (-> self propeller enable) #t)
+      (fishermans-boat-play-sounds)
+      (apply-settings *setting-control*)
+      (process-spawn-function process
+        (lambda :behavior fishermans-boat ()
+          (suspend-for (seconds 1))
+          (while (or (-> *setting-control* current ambient) (-> *setting-control* current hint) (-> *setting-control* current movie))
+            (suspend))
+          (suspend)
+          (level-hint-spawn (text-id sidekick-misty) "sksp0060" (the-as entity #f) *entity-pool* (game-task none))
+          (none))
+        :to
+        self)
+      (go fishermans-boat-docked-misty))
+  :post
+    (behavior ()
+      (ja-post)
+      (fishermans-boat-spawn-particles 81920.0)
+      (fishermans-boat-play-sounds)))
 
 (defstate fishermans-boat-ride-to-village1 (fishermans-boat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('evilbro)
-       (when (= (level-status *level* 'intro) 'active)
-         (let ((gp-1 (entity-by-name "evilbro-2")))
-           (when gp-1
-             (set! (-> self evilbro)
-                   (ppointer->handle (manipy-spawn (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f :to self))
-                   )
-             (send-event (handle->process (-> self evilbro)) 'anim-mode 'clone-anim)
-             (send-event (handle->process (-> self evilbro)) 'blend-shape #t)
-             (send-event (handle->process (-> self evilbro)) 'center-joint 3)
-             )
-           )
-         (let ((gp-2 (entity-by-name "evilsis-2")))
-           (when gp-2
-             (set! (-> self evilsis)
-                   (ppointer->handle (manipy-spawn (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f :to self))
-                   )
-             (send-event (handle->process (-> self evilsis)) 'anim-mode 'clone-anim)
-             (send-event (handle->process (-> self evilsis)) 'blend-shape #t)
-             (send-event (handle->process (-> self evilsis)) 'center-joint 3)
-             )
-           )
-         )
-       )
-      (('evilsis)
-       (let ((a0-44 (handle->process (-> self evilbro))))
-         (if a0-44
-             (deactivate a0-44)
-             )
-         )
-       (let ((a0-48 (handle->process (-> self evilsis))))
-         (if a0-48
-             (deactivate a0-48)
-             )
-         )
-       )
-      )
-    )
-  :code (behavior ()
-    (set! (-> self propeller enable) #f)
-    (set! (-> self evilbro) (the-as handle #f))
-    (set! (-> self evilsis) (the-as handle #f))
-    (quaternion-identity! (-> self root-overlay quat))
-    (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
-    (set! (-> self player-riding) #f)
-    (set! (-> self auto-pilot) #f)
-    (when (send-event *target* 'clone-anim self)
-      (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
-      (send-event *target* 'blend-shape #t)
-      (let ((v1-20 (process-spawn othercam self 5 #f #t :to self)))
-        (send-event (ppointer->process v1-20) 'mask 2048)
-        )
-      (set! (-> self draw force-lod) 0)
-      (ja-play-spooled-anim
-        (-> self anim)
-        (the-as art-joint-anim fishermans-boat-idle-ja)
-        (the-as art-joint-anim #f)
-        (the-as (function process-drawable symbol) false-func)
-        )
-      (set! (-> self draw force-lod) -1)
-      (send-event *target* 'blend-shape #f)
-      (ja-channel-set! 1)
-      (ja :group! fishermans-boat-idle-ja)
-      (vector<-cspace! (-> self root-overlay trans) (joint-node fishermans-boat-lod0-jg main))
-      (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
-      (fishermans-boat-reset-physics)
-      (transform-post)
-      (when *target*
-        (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
-        (send-event *target* 'trans 'restore (-> self old-target-pos))
-        (send-event *target* 'end-mode)
-        (update-transforms! (-> self root-overlay))
-        (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
-        (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
-        (suspend)
-        (send-event *camera* 'teleport-to-other-start-string)
-        )
-      (set-continue! *game-info* "village1-hut")
-      )
-    (set! (-> self waiting-for-player) #t)
-    (set! (-> self ignition) #f)
-    (set! (-> self anchored) #t)
-    (set! (-> self propeller enable) #t)
-    (fishermans-boat-play-sounds)
-    (process-entity-status! self (entity-perm-status complete) #t)
-    (go fishermans-boat-docked-village)
-    )
-  :post (behavior ()
-    (ja-post)
-    (fishermans-boat-spawn-particles 81920.0)
-    (fishermans-boat-play-sounds)
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('evilbro)
+         (when (= (level-status *level* 'intro) 'active)
+           (let ((gp-1 (entity-by-name "evilbro-2")))
+             (when gp-1
+               (set! (-> self evilbro) (ppointer->handle (manipy-spawn (-> self root-overlay trans) gp-1 *fb-evilbro-sg* #f :to self)))
+               (send-event (handle->process (-> self evilbro)) 'anim-mode 'clone-anim)
+               (send-event (handle->process (-> self evilbro)) 'blend-shape #t)
+               (send-event (handle->process (-> self evilbro)) 'center-joint 3)))
+           (let ((gp-2 (entity-by-name "evilsis-2")))
+             (when gp-2
+               (set! (-> self evilsis) (ppointer->handle (manipy-spawn (-> self root-overlay trans) gp-2 *fb-evilsis-sg* #f :to self)))
+               (send-event (handle->process (-> self evilsis)) 'anim-mode 'clone-anim)
+               (send-event (handle->process (-> self evilsis)) 'blend-shape #t)
+               (send-event (handle->process (-> self evilsis)) 'center-joint 3)))))
+        (('evilsis)
+         (let ((a0-44 (handle->process (-> self evilbro)))) (if a0-44 (deactivate a0-44)))
+         (let ((a0-48 (handle->process (-> self evilsis)))) (if a0-48 (deactivate a0-48))))))
+  :code
+    (behavior ()
+      (set! (-> self propeller enable) #f)
+      (set! (-> self evilbro) (the-as handle #f))
+      (set! (-> self evilsis) (the-as handle #f))
+      (quaternion-identity! (-> self root-overlay quat))
+      (set! (-> self root-overlay trans quad) (-> self entity extra trans quad))
+      (set! (-> self player-riding) #f)
+      (set! (-> self auto-pilot) #f)
+      (when (send-event *target* 'clone-anim self)
+        (send-event (ppointer->process (-> *target* sidekick)) 'matrix 'play-anim)
+        (send-event *target* 'blend-shape #t)
+        (let ((v1-20 (process-spawn othercam self 5 #f #t :to self))) (send-event (ppointer->process v1-20) 'mask 2048))
+        (set! (-> self draw force-lod) 0)
+        (ja-play-spooled-anim (-> self anim)
+                              (the-as art-joint-anim fishermans-boat-idle-ja)
+                              (the-as art-joint-anim #f)
+                              (the-as (function process-drawable symbol) false-func))
+        (set! (-> self draw force-lod) -1)
+        (send-event *target* 'blend-shape #f)
+        (ja-channel-set! 1)
+        (ja :group! fishermans-boat-idle-ja)
+        (vector<-cspace! (-> self root-overlay trans) (joint-node fishermans-boat-lod0-jg main))
+        (matrix->quaternion (-> self root-overlay quat) (-> self node-list data 3 bone transform))
+        (fishermans-boat-reset-physics)
+        (transform-post)
+        (when *target*
+          (vector<-cspace! (the-as vector (-> self old-target-pos)) (-> *target* node-list data 3))
+          (send-event *target* 'trans 'restore (-> self old-target-pos))
+          (send-event *target* 'end-mode)
+          (update-transforms! (-> self root-overlay))
+          (move-to-ground (-> *target* control) 4096.0 40960.0 #t (-> *target* control root-prim collide-with))
+          (logior! (-> *target* control status) (cshape-moving-flags onsurf onground tsurf))
+          (suspend)
+          (send-event *camera* 'teleport-to-other-start-string))
+        (set-continue! *game-info* "village1-hut"))
+      (set! (-> self waiting-for-player) #t)
+      (set! (-> self ignition) #f)
+      (set! (-> self anchored) #t)
+      (set! (-> self propeller enable) #t)
+      (fishermans-boat-play-sounds)
+      (process-entity-status! self (entity-perm-status complete) #t)
+      (go fishermans-boat-docked-village))
+  :post
+    (behavior ()
+      (ja-post)
+      (fishermans-boat-spawn-particles 81920.0)
+      (fishermans-boat-play-sounds)))

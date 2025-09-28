@@ -1,43 +1,36 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/ocean/ocean-transition.gc")
 
-;; name: ocean-near.gc
-;; name in dgo: ocean-near
-;; dgos: GAME, ENGINE
+;; DECOMP BEGINS
 
-(define ocean-near-block (new 'static 'vu-function #|:length #x3dc :qlength #x1ee|#))
+(define ocean-near-block (new 'static 'vu-function)) ;; :length #x3dc :qlength #x1ee
 
 (defun ocean-near-add-call ((arg0 dma-buffer) (arg1 int))
   (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm arg1))
     (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
-  (none)
-  )
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+  (none))
 
 (defun ocean-near-add-call-flush ((arg0 dma-buffer) (arg1 int))
   (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1 :imm arg1))
     (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
-  (none)
-  )
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+  (none))
 
 (defun ocean-near-setup-constants ((arg0 ocean-near-constants))
   (let ((v1-0 *math-camera*))
     (set! (-> arg0 hmge-scale quad) (-> v1-0 hmge-scale quad))
     (set! (-> arg0 inv-hmge-scale quad) (-> v1-0 inv-hmge-scale quad))
     (set! (-> arg0 hvdf-offset quad) (-> v1-0 hvdf-off quad))
-    (set-vector! (-> arg0 fog) (-> v1-0 pfog0) (-> v1-0 fog-min) (-> v1-0 fog-max) 3072.0)
-    )
+    (set-vector! (-> arg0 fog) (-> v1-0 pfog0) (-> v1-0 fog-min) (-> v1-0 fog-max) 3072.0))
   (set-vector! (-> arg0 constants) 0.5 0.5 0.0 0.000010172526)
   (set-vector! (-> arg0 constants2) 0.5 0.5 1.0 128.0)
   (set-vector! (-> arg0 constants3) 12288.0 0.125 2.0 0.03125)
@@ -46,122 +39,104 @@
     (cond
       ((zero? v1-5)
        (set! (-> arg0 drw-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                  :nreg #x3)))
       ((= v1-5 1)
        (set! (-> arg0 drw-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                  :nreg #x3)))
       ((= v1-5 2)
        (set! (-> arg0 drw-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
-      )
-    )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe #x1)
+                  :nreg #x3)))))
   (set! (-> arg0 drw-fan regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-        )
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
   (let ((v1-14 *ocean-subdivide-draw-mode*))
     (cond
       ((zero? v1-14)
        (set! (-> arg0 drw2-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
+                  :nreg #x3)))
       ((= v1-14 1)
        (set! (-> arg0 drw2-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
+                  :nreg #x3)))
       ((= v1-14 2)
        (set! (-> arg0 drw2-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
-      )
-    )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
+                  :nreg #x3)))))
   (set! (-> arg0 drw2-fan regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-        )
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
   (let ((v1-23 *ocean-subdivide-draw-mode*))
     (cond
       ((zero? v1-23)
        (set! (-> arg0 env-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1)
+                  :nreg #x3)))
       ((= v1-23 1)
        (set! (-> arg0 env-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
+                  :nreg #x3)))
       ((= v1-23 2)
        (set! (-> arg0 env-fan tag)
-             (new 'static 'gif-tag64
-               :nloop #x4
-               :eop #x1
-               :pre #x1
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :abe #x1)
-               :nreg #x3
-               )
-             )
-       )
-      )
-    )
+             (new 'static
+                  'gif-tag64
+                  :nloop #x4
+                  :eop #x1
+                  :pre #x1
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :abe #x1)
+                  :nreg #x3)))))
   (set! (-> arg0 env-fan regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-        )
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
   (set! (-> arg0 drw-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
   (set! (-> arg0 drw-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   (let* ((v1-34 *ocean-base-page*)
@@ -169,15 +144,13 @@
          (s2-0 (* (+ v1-34 8) 32))
          (s3-0 (* (+ v1-34 10) 32))
          (a0-18 (-> *display* on-screen))
-         (s5-0 (-> *display* frames a0-18 draw frame1 fbp))
-         )
+         (s5-0 (-> *display* frames a0-18 draw frame1 fbp)))
     (set! (-> arg0 drw-texture tex0) (new 'static 'gs-tex0 :tbw #x2 :th (log2 128) :tw (log2 128) :tbp0 s4-0))
     (set! (-> arg0 drw-texture prims 1) (gs-reg64 tex0-1))
     (set! (-> arg0 drw-texture tex1) (new 'static 'gs-tex1 :mxl #x1 :mmag #x1 :mmin #x5 :l #x1 :k #xeed))
     (set! (-> arg0 drw-texture prims 3) (gs-reg64 tex1-1))
     (set! (-> arg0 drw-texture miptbp1)
-          (new 'static 'gs-miptbp :tbw1 #x1 :tbw2 #x1 :tbw3 #x1 :tbp3 (+ s3-0 16) :tbp2 s3-0 :tbp1 s2-0)
-          )
+          (new 'static 'gs-miptbp :tbw1 #x1 :tbw2 #x1 :tbw3 #x1 :tbp3 (+ s3-0 16) :tbp2 s3-0 :tbp1 s2-0))
     (set! (-> arg0 drw-texture prims 5) (gs-reg64 miptbp1-1))
     (set! (-> arg0 drw-texture clamp) (new 'static 'gs-clamp))
     (set! (-> arg0 drw-texture clamp-reg) (gs-reg64 clamp-1))
@@ -187,96 +160,81 @@
       (cond
         ((zero? v1-60)
          (set! (-> arg0 drw-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                    :nreg #x3)))
         ((= v1-60 1)
          (set! (-> arg0 drw-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+                    :nreg #x3)))
         ((= v1-60 2)
          (set! (-> arg0 drw-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
-        )
-      )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe #x1)
+                    :nreg #x3)))))
     (set! (-> arg0 drw-strip regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-          )
+          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
     (set! (-> arg0 env-adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
     (set! (-> arg0 env-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
     (let ((s3-1 (-> arg0 env-texture)))
-      (adgif-shader<-texture-simple! s3-1 (lookup-texture-by-id (new 'static 'texture-id :index #x3 :page #x100)))
-      (set! (-> s3-1 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
-      )
+      (adgif-shader<-texture-simple! s3-1 (get-texture environment-ocean environment-generic))
+      (set! (-> s3-1 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1)))
     (let ((v1-72 *ocean-subdivide-draw-mode*))
       (cond
         ((zero? v1-72)
          (set! (-> arg0 env-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+                    :nreg #x3)))
         ((= v1-72 1)
          (set! (-> arg0 env-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
+                    :nreg #x3)))
         ((= v1-72 2)
          (set! (-> arg0 env-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1)
-                 :nreg #x3
-                 )
-               )
-         )
-        )
-      )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1)
+                    :nreg #x3)))))
     (set! (-> arg0 env-strip regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-          )
+          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
     (set! (-> arg0 env-color quad) (-> *time-of-day-context* current-sun env-color quad))
     (set! (-> arg0 drw2-adgif tag) (new 'static 'gif-tag64 :nloop #x2 :eop #x1 :nreg #x1))
     (set! (-> arg0 drw2-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
     (set! (-> arg0 drw2-tex0 dword 0)
           (logior (logior (logior (the-as uint #x400008000) (shr (shl s4-0 50) 50)) (shr (shl (log2 128) 60) 34))
-                  (shr (shl (log2 128) 60) 30)
-                  )
-          )
+                  (shr (shl (log2 128) 60) 30)))
     (set! (-> arg0 drw2-tex0 dword 1) (the-as uint 6))
     (set! (-> arg0 drw2-frame dword 0) (logior (the-as uint #xffffff00080000) (shr (shl s5-0 55) 55)))
     (set! (-> arg0 drw2-frame dword 1) (the-as uint 76))
@@ -284,142 +242,105 @@
       (cond
         ((zero? v1-94)
          (set! (-> arg0 drw2-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :abe #x1)
+                    :nreg #x3)))
         ((= v1-94 1)
          (set! (-> arg0 drw2-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :abe #x1)
+                    :nreg #x3)))
         ((= v1-94 2)
          (set! (-> arg0 drw2-strip tag)
-               (new 'static 'gif-tag64
-                 :nloop #x12
-                 :eop #x1
-                 :pre #x1
-                 :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
-                 :nreg #x3
-                 )
-               )
-         )
-        )
-      )
+               (new 'static
+                    'gif-tag64
+                    :nloop #x12
+                    :eop #x1
+                    :pre #x1
+                    :prim
+                    (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :abe #x1)
+                    :nreg #x3)))))
     (set! (-> arg0 drw2-strip regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-          )
+          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
     (set! (-> arg0 drw3-adgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
     (set! (-> arg0 drw3-adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-    (set! (-> arg0 drw3-frame dword 0) (logior #x80000 (shr (shl s5-0 55) 55)))
-    )
+    (set! (-> arg0 drw3-frame dword 0) (logior #x80000 (shr (shl s5-0 55) 55))))
   (set! (-> arg0 drw3-frame dword 1) (the-as uint 76))
   (set-vector! (-> arg0 index-table 0) 81 189 0 0)
   (set-vector! (-> arg0 index-table 1) 54 162 0 0)
   (set-vector! (-> arg0 index-table 2) 27 135 0 0)
   (set-vector! (-> arg0 index-table 3) 0 108 0 0)
-  (none)
-  )
+  (none))
 
 (defun ocean-near-add-constants ((arg0 dma-buffer))
   (let* ((a1-0 36)
          (v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-0))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1)
-          (new 'static 'vif-tag :imm #x3b7 :cmd (vif-cmd unpack-v4-32) :num a1-0)
-          )
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
+    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x3b7 :cmd (vif-cmd unpack-v4-32) :num a1-0))
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
   (ocean-near-setup-constants (the-as ocean-near-constants (-> arg0 base)))
   (&+! (-> arg0 base) 576)
-  (none)
-  )
+  (none))
 
 (defun ocean-near-add-heights ((arg0 dma-buffer))
   (let ((v1-0 128)
-        (a1-0 (the-as object *ocean-heights*))
-        )
+        (a1-0 (the-as object *ocean-heights*)))
     (let* ((a2-0 arg0)
-           (a3-0 (the-as object (-> a2-0 base)))
-           )
-      (set! (-> (the-as dma-packet a3-0) dma)
-            (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int a1-0) :qwc v1-0)
-            )
+           (a3-0 (the-as object (-> a2-0 base))))
+      (set! (-> (the-as dma-packet a3-0) dma) (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int a1-0) :qwc v1-0))
       (set! (-> (the-as dma-packet a3-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a3-0) vif1)
-            (new 'static 'vif-tag :imm #x20 :cmd (vif-cmd unpack-v4-32) :num v1-0)
-            )
-      (set! (-> a2-0 base) (&+ (the-as pointer a3-0) 16))
-      )
+      (set! (-> (the-as dma-packet a3-0) vif1) (new 'static 'vif-tag :imm #x20 :cmd (vif-cmd unpack-v4-32) :num v1-0))
+      (set! (-> a2-0 base) (&+ (the-as pointer a3-0) 16)))
     (let ((a2-1 (the-as object (-> arg0 base))))
       (set! (-> (the-as dma-packet a2-1) dma)
-            (new 'static 'dma-tag :id (dma-tag-id ref) :addr (+ (the-as int a1-0) 2048) :qwc v1-0)
-            )
+            (new 'static 'dma-tag :id (dma-tag-id ref) :addr (+ (the-as int a1-0) 2048) :qwc v1-0))
       (set! (-> (the-as dma-packet a2-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a2-1) vif1)
-            (new 'static 'vif-tag :imm #xa0 :cmd (vif-cmd unpack-v4-32) :num v1-0)
-            )
-      (set! (-> arg0 base) (&+ (the-as pointer a2-1) 16))
-      )
-    )
-  (none)
-  )
+      (set! (-> (the-as dma-packet a2-1) vif1) (new 'static 'vif-tag :imm #xa0 :cmd (vif-cmd unpack-v4-32) :num v1-0))
+      (set! (-> arg0 base) (&+ (the-as pointer a2-1) 16))))
+  (none))
 
 (defun ocean-near-add-matrices ((arg0 dma-buffer) (arg1 vector))
   (let ((s5-0 (new-stack-vector0)))
     (-> *math-camera* camera-rot)
     (let* ((a2-0 8)
            (v1-2 arg0)
-           (a0-1 (the-as object (-> v1-2 base)))
-           )
+           (a0-1 (the-as object (-> v1-2 base))))
       (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
       (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-      (set! (-> (the-as dma-packet a0-1) vif1)
-            (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd unpack-v4-32) :num a2-0)
-            )
-      (set! (-> v1-2 base) (the-as pointer (&+ (the-as vector a0-1) 16)))
-      )
+      (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd unpack-v4-32) :num a2-0))
+      (set! (-> v1-2 base) (the-as pointer (&+ (the-as vector a0-1) 16))))
     (let ((s4-0 (the-as object (-> arg0 base))))
       (let* ((v1-3 (the-as matrix s4-0))
              (t0-2 (-> *math-camera* camera-rot))
              (a0-4 (-> t0-2 vector 0 quad))
              (a2-4 (-> t0-2 vector 1 quad))
              (a3-4 (-> t0-2 vector 2 quad))
-             (t0-3 (-> t0-2 vector 3 quad))
-             )
+             (t0-3 (-> t0-2 vector 3 quad)))
         (set! (-> v1-3 vector 0 quad) a0-4)
         (set! (-> v1-3 vector 1 quad) a2-4)
         (set! (-> v1-3 vector 2 quad) a3-4)
-        (set! (-> v1-3 vector 3 quad) t0-3)
-        )
+        (set! (-> v1-3 vector 3 quad) t0-3))
       (let ((s3-0 (the-as object (&+ (the-as pointer s4-0) 48))))
         (vector-matrix*! s5-0 arg1 (-> *math-camera* camera-rot))
         (set! (-> (the-as vector s3-0) x) (-> s5-0 x))
         (set! (-> (the-as vector s3-0) y) (-> s5-0 y))
-        (set! (-> (the-as vector s3-0) z) (-> s5-0 z))
-        )
+        (set! (-> (the-as vector s3-0) z) (-> s5-0 z)))
       (let ((a0-6 (&+ (-> arg0 base) 64)))
-        (ocean-matrix*! (the-as matrix a0-6) (the-as matrix s4-0) (-> *math-camera* perspective))
-        )
-      )
-    )
+        (ocean-matrix*! (the-as matrix a0-6) (the-as matrix s4-0) (-> *math-camera* perspective)))))
   (&+! (-> arg0 base) 128)
-  (none)
-  )
+  (none))
 
 (defun ocean-near-add-upload ((arg0 dma-buffer) (arg1 uint) (arg2 uint))
   (local-vars
@@ -438,8 +359,7 @@
     (a2-30 uint128)
     (a2-31 uint128)
     (a3-27 uint128)
-    (f31-0 none)
-    )
+    (f31-0 none))
   (rlet ((acc :class vf)
          (vf1 :class vf)
          (vf10 :class vf)
@@ -452,31 +372,23 @@
          (vf6 :class vf)
          (vf7 :class vf)
          (vf8 :class vf)
-         (vf9 :class vf)
-         )
+         (vf9 :class vf))
     (let ((s2-0 (-> *ocean-work* mid-minx))
-          (s3-0 (-> *ocean-work* mid-minz))
-          )
+          (s3-0 (-> *ocean-work* mid-minz)))
       (let ((a1-1 (new-stack-vector0)))
         (let ((v1-3 (-> *ocean-map* start-corner)))
           (set! (-> a1-1 x) (+ (-> v1-3 x) (* 98304.0 (the float arg2))))
           (set! (-> a1-1 y) (-> v1-3 y))
-          (set! (-> a1-1 z) (+ (-> v1-3 z) (* 98304.0 (the float arg1))))
-          )
+          (set! (-> a1-1 z) (+ (-> v1-3 z) (* 98304.0 (the float arg1)))))
         (set! (-> a1-1 w) 1.0)
-        (ocean-near-add-matrices arg0 a1-1)
-        )
+        (ocean-near-add-matrices arg0 a1-1))
       (let* ((a1-2 8)
              (v1-5 arg0)
-             (a0-2 (the-as object (-> v1-5 base)))
-             )
+             (a0-2 (the-as object (-> v1-5 base))))
         (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-2))
         (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-        (set! (-> (the-as dma-packet a0-2) vif1)
-              (new 'static 'vif-tag :imm #x8008 :cmd (vif-cmd unpack-v4-32) :num a1-2)
-              )
-        (set! (-> v1-5 base) (&+ (the-as pointer a0-2) 16))
-        )
+        (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag :imm #x8008 :cmd (vif-cmd unpack-v4-32) :num a1-2))
+        (set! (-> v1-5 base) (&+ (the-as pointer a0-2) 16)))
       (let* ((v1-6 (-> arg0 base))
              (a0-5 (- arg2 (* s2-0 4)))
              (a1-7 (- arg1 (* s3-0 4)))
@@ -486,78 +398,51 @@
              (a1-8 (logand a1-7 3))
              (a2-9 (-> (the-as (pointer int16) (+ (* (+ (* a3-2 4) a2-5) 2) (the-as uint *ocean-work*))) 1550))
              (a3-8 (-> *ocean-map* ocean-near-indices data a2-9))
-             (a0-12
-               (-> *ocean-map*
-                   ocean-mid-masks
-                   data
-                   (-> (the-as (pointer int16) (+ (* (+ (* a1-8 4) a0-6) 2) (the-as uint a3-8))))
-                   )
-               )
-             )
-        (set-vector!
-          (the-as vector4w (&+ v1-6 0))
-          (the-as int (-> a0-12 mask 0))
-          (the-as int (-> a0-12 mask 1))
-          (the-as int (-> a0-12 mask 2))
-          (the-as int (-> a0-12 mask 3))
-          )
-        (set-vector!
-          (the-as vector4w (&+ v1-6 16))
-          (the-as int (-> a0-12 mask 4))
-          (the-as int (-> a0-12 mask 5))
-          (the-as int (-> a0-12 mask 6))
-          (the-as int (-> a0-12 mask 7))
-          )
-        )
-      )
+             (a0-12 (-> *ocean-map* ocean-mid-masks data (-> (the-as (pointer int16) (+ (* (+ (* a1-8 4) a0-6) 2) (the-as uint a3-8)))))))
+        (set-vector! (the-as vector4w (&+ v1-6 0))
+                     (the-as int (-> a0-12 mask 0))
+                     (the-as int (-> a0-12 mask 1))
+                     (the-as int (-> a0-12 mask 2))
+                     (the-as int (-> a0-12 mask 3)))
+        (set-vector! (the-as vector4w (&+ v1-6 16))
+                     (the-as int (-> a0-12 mask 4))
+                     (the-as int (-> a0-12 mask 5))
+                     (the-as int (-> a0-12 mask 6))
+                     (the-as int (-> a0-12 mask 7)))))
     (&+! (-> arg0 base) 32)
     (let ((a0-14 (/ (the-as int arg2) 4))
           (v1-10 (/ (the-as int arg1) 4))
           (a2-18 (logand arg2 3))
-          (a3-9 (logand arg1 3))
-          )
+          (a3-9 (logand arg1 3)))
       (let ((t0-0 (-> arg0 base))
             (a1-15 (logand (+ arg2 1) 3))
-            (t1-1 (logand (+ arg1 1) 3))
-            )
-        (set-vector!
-          (the-as vector4w (&+ t0-0 0))
-          (the-as int (+ (* a3-9 64) (* a2-18 2)))
-          (the-as int (+ (* a3-9 64) (* a1-15 2)))
-          (the-as int (+ (* t1-1 64) (* a2-18 2)))
-          (the-as int (+ (* t1-1 64) (* a1-15 2)))
-          )
-        )
+            (t1-1 (logand (+ arg1 1) 3)))
+        (set-vector! (the-as vector4w (&+ t0-0 0))
+                     (the-as int (+ (* a3-9 64) (* a2-18 2)))
+                     (the-as int (+ (* a3-9 64) (* a1-15 2)))
+                     (the-as int (+ (* t1-1 64) (* a2-18 2)))
+                     (the-as int (+ (* t1-1 64) (* a1-15 2)))))
       (&+! (-> arg0 base) 16)
-      (set-vector!
-        (the-as vector (&+ (-> arg0 base) 0))
-        (* 0.25 (the float a2-18))
-        (* 0.25 (the float a3-9))
-        1.0
-        0.0
-        )
+      (set-vector! (the-as vector (&+ (-> arg0 base) 0)) (* 0.25 (the float a2-18)) (* 0.25 (the float a3-9)) 1.0 0.0)
       (&+! (-> arg0 base) 16)
       (let ((a1-24 (the-as object (-> arg0 base))))
         (let ((a2-19 (+ (* 5 (the-as int a3-9)) a2-18)))
           (.lvf vf5 (&-> (&-> *ocean-trans-corner-table* 0 quad a2-19) 0))
           (.lvf vf6 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ a2-19 1)) 0))
           (.lvf vf7 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ a2-19 5)) 0))
-          (.lvf vf8 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ a2-19 6)) 0))
-          )
+          (.lvf vf8 (&-> (&-> *ocean-trans-corner-table* 0 quad (+ a2-19 6)) 0)))
         (.mov a2-23 vf8)
         (let ((a2-29 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* 52 v1-10) a0-14))))
               (a3-26 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ a0-14 1 (* 52 v1-10)))))
               (t0-15 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ (* 52 (+ v1-10 1)) a0-14))))
-              (v1-16 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ a0-14 1 (* 52 (+ v1-10 1))))))
-              )
+              (v1-16 (the-as uint128 (-> *ocean-map* ocean-colors colors (+ a0-14 1 (* 52 (+ v1-10 1)))))))
           (.pextlb a0-18 0 a2-29)
           (.mov r0-0 f31-0)
           (.pextlb a2-30 0 a3-26)
           (.mov r0-1 f31-0)
           (.pextlb a3-27 0 t0-15)
           (.mov r0-2 f31-0)
-          (.pextlb v1-17 0 v1-16)
-          )
+          (.pextlb v1-17 0 v1-16))
         (.mov r0-3 f31-0)
         (.pextlh a0-19 0 a0-18)
         (.mov r0-4 f31-0)
@@ -610,110 +495,78 @@
         (.add.mul.w.vf vf12 vf4 vf8 acc)
         (.svf (&-> (the-as (inline-array vector) a1-24) 2 quad) vf11)
         (nop!)
-        (.svf (&-> (the-as (inline-array vector) a1-24) 3 quad) vf12)
-        )
-      )
+        (.svf (&-> (the-as (inline-array vector) a1-24) 3 quad) vf12)))
     (.mov v1-19 vf12)
     (&+! (-> arg0 base) 64)
-    (none)
-    )
-  )
+    (none)))
 
 (defun draw-ocean-near ((arg0 dma-buffer))
   (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag))
     (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> v1-0 base) (the-as pointer (&+ (the-as dma-packet a0-1) 16)))
-    )
+    (set! (-> v1-0 base) (the-as pointer (&+ (the-as dma-packet a0-1) 16))))
   (let* ((v1-1 arg0)
-         (a0-3 (the-as object (-> v1-1 base)))
-         )
+         (a0-3 (the-as object (-> v1-1 base))))
     (set! (-> (the-as gs-gif-tag a0-3) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
     (set! (-> (the-as gs-gif-tag a0-3) regs)
-          (new 'static 'gif-tag-regs
-            :regs0 (gif-reg-id a+d)
-            :regs1 (gif-reg-id a+d)
-            :regs2 (gif-reg-id a+d)
-            :regs3 (gif-reg-id a+d)
-            :regs4 (gif-reg-id a+d)
-            :regs5 (gif-reg-id a+d)
-            :regs6 (gif-reg-id a+d)
-            :regs7 (gif-reg-id a+d)
-            :regs8 (gif-reg-id a+d)
-            :regs9 (gif-reg-id a+d)
-            :regs10 (gif-reg-id a+d)
-            :regs11 (gif-reg-id a+d)
-            :regs12 (gif-reg-id a+d)
-            :regs13 (gif-reg-id a+d)
-            :regs14 (gif-reg-id a+d)
-            :regs15 (gif-reg-id a+d)
-            )
-          )
-    (set! (-> v1-1 base) (the-as pointer (the-as dma-packet (&+ (the-as pointer a0-3) 16))))
-    )
+          (new 'static
+               'gif-tag-regs
+               :regs0 (gif-reg-id a+d)
+               :regs1 (gif-reg-id a+d)
+               :regs2 (gif-reg-id a+d)
+               :regs3 (gif-reg-id a+d)
+               :regs4 (gif-reg-id a+d)
+               :regs5 (gif-reg-id a+d)
+               :regs6 (gif-reg-id a+d)
+               :regs7 (gif-reg-id a+d)
+               :regs8 (gif-reg-id a+d)
+               :regs9 (gif-reg-id a+d)
+               :regs10 (gif-reg-id a+d)
+               :regs11 (gif-reg-id a+d)
+               :regs12 (gif-reg-id a+d)
+               :regs13 (gif-reg-id a+d)
+               :regs14 (gif-reg-id a+d)
+               :regs15 (gif-reg-id a+d)))
+    (set! (-> v1-1 base) (the-as pointer (the-as dma-packet (&+ (the-as pointer a0-3) 16)))))
   (let* ((v1-2 arg0)
-         (a0-5 (the-as object (-> v1-2 base)))
-         )
+         (a0-5 (the-as object (-> v1-2 base))))
     (set! (-> (the-as (pointer gs-test) a0-5) 0)
-          (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
-          )
+          (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)))
     (set! (-> (the-as (pointer gs-reg64) a0-5) 1) (gs-reg64 test-1))
-    (set! (-> v1-2 base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet a0-5) 16))))
-    )
+    (set! (-> v1-2 base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet a0-5) 16)))))
   (dma-buffer-add-vu-function arg0 ocean-near-block 1)
   (let* ((v1-3 arg0)
-         (a0-8 (the-as object (-> v1-3 base)))
-         )
+         (a0-8 (the-as object (-> v1-3 base))))
     (set! (-> (the-as dma-packet a0-8) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-8) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
     (set! (-> (the-as dma-packet a0-8) vif1) (new 'static 'vif-tag :imm #x10 :cmd (vif-cmd offset)))
-    (set! (-> v1-3 base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet a0-8) 16))))
-    )
+    (set! (-> v1-3 base) (the-as pointer (the-as dma-packet (&+ (the-as dma-packet a0-8) 16)))))
   (ocean-near-add-constants arg0)
   (ocean-near-add-heights arg0)
   (ocean-near-add-call arg0 0)
   (let ((s5-0 (-> *ocean-work* near-minx))
         (s4-0 (-> *ocean-work* near-maxx))
         (s3-0 (-> *ocean-work* near-minz))
-        (s2-0 (-> *ocean-work* near-maxz))
-        )
+        (s2-0 (-> *ocean-work* near-maxz)))
     (when (and (< s5-0 s4-0) (< s3-0 s2-0))
       (while (>= s2-0 s3-0)
         (let ((s1-0 s5-0)
-              (s0-0 s4-0)
-              )
+              (s0-0 s4-0))
           (while (>= s0-0 s1-0)
             (when (ocean-trans-camera-masks-bit? s3-0 s1-0)
               (let* ((a1-13 (- (shr s1-0 2) (-> *ocean-work* mid-minx)))
                      (a2-1 (- (shr s3-0 2) (-> *ocean-work* mid-minz)))
                      (v1-13 (logand s1-0 3))
                      (a0-19 (logand s3-0 3))
-                     (a1-17 (-> (the-as (pointer int16) (+ (* (+ (* a2-1 4) a1-13) 2) (the-as uint *ocean-work*))) 1550))
-                     )
+                     (a1-17 (-> (the-as (pointer int16) (+ (* (+ (* a2-1 4) a1-13) 2) (the-as uint *ocean-work*))) 1550)))
                 (when (>= a1-17 0)
                   (let ((a1-19 (-> *ocean-map* ocean-near-indices data a1-17)))
                     (when (>= (-> (the-as (pointer int16) (+ (* (+ (* a0-19 4) v1-13) 2) (the-as uint a1-19)))) 0)
                       (ocean-near-add-upload arg0 s3-0 s1-0)
-                      (ocean-near-add-call arg0 39)
-                      )
-                    )
-                  )
-                )
-              )
-            (+! s1-0 1)
-            )
-          )
-        (+! s3-0 1)
-        )
-      )
-    )
+                      (ocean-near-add-call arg0 39))))))
+            (+! s1-0 1)))
+        (+! s3-0 1))))
   0
-  (none)
-  )
-
-
-
-
+  (none))

@@ -1,9 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: collide-frag-h.gc
-;; name in dgo: collide-frag-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
+(require "engine/draw/drawable-tree-h.gc")
+(require "engine/draw/drawable-inline-array-h.gc")
 
 ;; DECOMP BEGINS
 
@@ -20,39 +20,25 @@
 ; TODO - defined in drawable, but needed in collide-frag
 (define-extern sphere-cull (function vector symbol))
 
-(deftype collide-frag-vertex (vector)
-  ()
-  )
-
+(deftype collide-frag-vertex (vector) ())
 
 (deftype collide-frag-mesh (basic)
-  ((packed-data      uint32)
-   (pat-array        uint32)
-   (strip-data-len   uint16)
-   (poly-count       uint16)
-   (base-trans       vector  :inline)
-   (vertex-count     uint8   :overlay-at (-> base-trans w))
-   (vertex-data-qwc  uint8   :offset  29)
-   (total-qwc        uint8   :offset  30)
-   (unused           uint8   :offset  31)
-   )
-  )
-
+  ((packed-data     uint32)
+   (pat-array       uint32)
+   (strip-data-len  uint16)
+   (poly-count      uint16)
+   (base-trans      vector :inline)
+   (vertex-count    uint8 :overlay-at (-> base-trans w))
+   (vertex-data-qwc uint8 :offset 29)
+   (total-qwc       uint8 :offset 30)
+   (unused          uint8 :offset 31)))
 
 (deftype collide-fragment (drawable)
-  ((mesh  collide-frag-mesh  :offset   8)
-   )
-  )
-
+  ((mesh collide-frag-mesh :offset 8)))
 
 (deftype drawable-inline-array-collide-fragment (drawable-inline-array)
-  ((data  collide-fragment  1 :inline)
-   (pad   uint32)
-   )
-  )
-
+  ((data collide-fragment 1 :inline)
+   (pad  uint32)))
 
 (deftype drawable-tree-collide-fragment (drawable-tree)
-  ((data-override  drawable-inline-array  :overlay-at (-> data 0))
-   )
-  )
+  ((data-override drawable-inline-array :overlay-at (-> data 0))))

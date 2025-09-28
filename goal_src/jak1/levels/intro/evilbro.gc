@@ -1,138 +1,105 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: evilbro.gc
-;; name in dgo: evilbro
-;; dgos: INT, L1
+(bundles "INT.DGO")
+(require "engine/common-obs/process-taskable.gc")
 
 ;; DECOMP BEGINS
 
 (deftype evilbro (process-taskable)
-  ((evilsis  entity-actor)
-   )
-  )
+  ((evilsis entity-actor)))
 
-
-(defskelgroup *evilbro-intro-sg* evilbro evilbro-lod0-jg evilbro-idle-ja
-              ((evilbro-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              :shadow evilbro-shadow-mg
-              )
+(defskelgroup *evilbro-intro-sg*
+  evilbro
+  evilbro-lod0-jg
+  evilbro-idle-ja
+  ((evilbro-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :shadow evilbro-shadow-mg)
 
 (defmethod play-anim! ((this evilbro) (arg0 symbol))
   (cond
     (arg0
-      (close-specific-task! (game-task leaving-misty) (task-status need-introduction))
-      (send-event (-> this evilsis extra process) 'clone (process->handle this))
-      )
-    (else
-      (set! (-> this will-talk) #t)
-      )
-    )
-  (the-as basic (new 'static 'spool-anim :name "evilbro-misty-end" :index 5 :parts 9 :command-list '()))
-  )
+     (close-specific-task! (game-task leaving-misty) (task-status need-introduction))
+     (send-event (-> this evilsis extra process) 'clone (process->handle this)))
+    (else (set! (-> this will-talk) #t)))
+  (the-as basic (new 'static 'spool-anim :name "evilbro-misty-end" :index 5 :parts 9 :command-list '())))
 
 (defmethod get-art-elem ((this evilbro))
-  (-> this draw art-group data 3)
-  )
+  (-> this draw art-group data 3))
 
 (defstate play-anim (evilbro)
   :virtual #t
-  :exit (behavior ()
-    (send-event (-> self evilsis extra process) 'end-mode)
-    ((-> (method-of-type process-taskable play-anim) exit))
-    )
-  )
+  :exit
+    (behavior ()
+      (send-event (-> self evilsis extra process) 'end-mode)
+      ((-> (method-of-type process-taskable play-anim) exit))))
 
 (defstate idle (evilbro)
   :virtual #t
-  :code (behavior ()
-    (if (!= (ja-group) (get-art-elem self))
-        (ja-channel-push! 1 (seconds 0.05))
-        )
-    (loop
-      (ja-no-eval :group! evilbro-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!))
-        )
-      (let ((gp-0 (current-time)))
-        (while (let ((s5-0 (current-time))
-                     (f30-0 300.0)
-                     (f28-0 0.16)
-                     (f26-0 0.17000002)
-                     )
-                 (< (- s5-0 (the-as time-frame (the int (* f30-0 (+ f28-0 (* f26-0 (rand-float-gen))))))) gp-0)
-                 )
+  :code
+    (behavior ()
+      (if (!= (ja-group) (get-art-elem self)) (ja-channel-push! 1 (seconds 0.05)))
+      (loop
+        (ja-no-eval :group! evilbro-idle-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
           (suspend)
-          )
-        )
-      (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 0.0 0)) :frame-num (ja-aframe 16.0 0))
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! (ja-aframe 0.0 0)))
-        )
-      (let ((gp-3 (current-time)))
-        (while (let ((s5-1 (current-time))
-                     (f30-1 300.0)
-                     (f28-1 0.16)
-                     (f26-1 0.17000002)
-                     )
-                 (< (- s5-1 (the-as time-frame (the int (* f30-1 (+ f28-1 (* f26-1 (rand-float-gen))))))) gp-3)
-                 )
+          (ja :num! (seek!)))
+        (let ((gp-0 (current-time)))
+          (while (let ((s5-0 (current-time))
+                       (f30-0 300.0)
+                       (f28-0 0.16)
+                       (f26-0 0.17000002))
+                   (< (- s5-0 (the-as time-frame (the int (* f30-0 (+ f28-0 (* f26-0 (rand-float-gen))))))) gp-0))
+            (suspend)))
+        (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 0.0 0)) :frame-num (ja-aframe 16.0 0))
+        (until (ja-done? 0)
           (suspend)
-          )
-        )
-      )
-    )
-  )
+          (ja :num! (seek! (ja-aframe 0.0 0))))
+        (let ((gp-3 (current-time)))
+          (while (let ((s5-1 (current-time))
+                       (f30-1 300.0)
+                       (f28-1 0.16)
+                       (f26-1 0.17000002))
+                   (< (- s5-1 (the-as time-frame (the int (* f30-1 (+ f28-1 (* f26-1 (rand-float-gen))))))) gp-3))
+            (suspend))))))
 
 (defmethod init-from-entity! ((this evilbro) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *evilbro-intro-sg* 3 40 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task leaving-misty)))
   (set! (-> this evilsis) (entity-actor-lookup arg0 'alt-actor 0))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))
 
-(deftype evilsis (process-taskable)
-  ()
-  )
+(deftype evilsis (process-taskable) ())
 
-
-(defskelgroup *evilsis-intro-sg* evilsis evilsis-lod0-jg evilsis-idle-ja
-              ((evilsis-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              :shadow evilsis-shadow-mg
-              )
+(defskelgroup *evilsis-intro-sg*
+  evilsis
+  evilsis-lod0-jg
+  evilsis-idle-ja
+  ((evilsis-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :shadow evilsis-shadow-mg)
 
 (defmethod play-anim! ((this evilsis) (arg0 symbol))
   (if arg0
-      (format
-        0
-        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-        (-> this name)
-        (task-status->string (current-status (-> this tasks)))
-        )
-      )
-  (the-as basic (get-art-elem this))
-  )
+    (format 0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))))
+  (the-as basic (get-art-elem this)))
 
 (defmethod get-art-elem ((this evilsis))
-  (-> this draw art-group data 3)
-  )
+  (-> this draw art-group data 3))
 
 (defstate idle (evilsis)
   :virtual #t
-  :trans (behavior ()
-    (set! (-> self will-talk) #f)
-    ((-> (method-of-type process-taskable idle) trans))
-    )
-  )
+  :trans
+    (behavior ()
+      (set! (-> self will-talk) #f)
+      ((-> (method-of-type process-taskable idle) trans))))
 
 (defmethod init-from-entity! ((this evilsis) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *evilsis-intro-sg* 3 0 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task leaving-misty)))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))

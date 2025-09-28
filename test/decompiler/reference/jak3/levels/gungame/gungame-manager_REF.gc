@@ -1,0 +1,1980 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type gun-course-info
+(deftype gun-course-info (structure)
+  ((course         handle)
+   (start-door     int8)
+   (end-door       int8)
+   (text           text-id)
+   (etype          type)
+   (task-bronze    game-task-node)
+   (task-silver    game-task-node  :offset  22)
+   (task-gold      game-task-node  :offset  24)
+   (game-score     uint8           :offset  26)
+   (pass-speech    uint16)
+   (training-goal  float)
+   (allowed-guns   game-feature)
+   (start-gun      int32)
+   (ammo-type      int32)
+   (training-task  uint16)
+   (play-text      text-id)
+   (play-button    handle)
+   (give-eggs?     symbol)
+   )
+  )
+
+;; definition for method 3 of type gun-course-info
+(defmethod inspect ((this gun-course-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gun-course-info)
+  (format #t "~1Tcourse: ~D~%" (-> this course))
+  (format #t "~1Tstart-door: ~D~%" (-> this start-door))
+  (format #t "~1Tend-door: ~D~%" (-> this end-door))
+  (format #t "~1Ttext: ~D~%" (-> this text))
+  (format #t "~1Tetype: ~A~%" (-> this etype))
+  (format #t "~1Ttask-bronze: ~D~%" (-> this task-bronze))
+  (format #t "~1Ttask-silver: ~D~%" (-> this task-silver))
+  (format #t "~1Ttask-gold: ~D~%" (-> this task-gold))
+  (format #t "~1Tgame-score: ~D~%" (-> this game-score))
+  (format #t "~1Tpass-speech: ~D~%" (-> this pass-speech))
+  (format #t "~1Ttraining-goal: ~f~%" (-> this training-goal))
+  (format #t "~1Tallowed-guns: ~D~%" (-> this allowed-guns))
+  (format #t "~1Tstart-gun: ~D~%" (-> this start-gun))
+  (format #t "~1Tammo-type: ~D~%" (-> this ammo-type))
+  (format #t "~1Ttraining-task: ~D~%" (-> this training-task))
+  (format #t "~1Tplay-text: ~D~%" (-> this play-text))
+  (format #t "~1Tplay-button: ~D~%" (-> this play-button))
+  (format #t "~1Tgive-eggs?: ~A~%" (-> this give-eggs?))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gungame-task-manager
+(deftype gungame-task-manager (task-manager)
+  ((actor-group          (pointer actor-group))
+   (actor-group-count    int32)
+   (course-list          (array int32))
+   (activated-course     gun-course-info)
+   (activated-course-id  uint64)
+   )
+  (:state-methods
+    active-door-opening
+    waiting
+    )
+  (:methods
+    (gungame-task-manager-method-34 (_type_) int)
+    (init-actor-group (_type_ entity) object)
+    )
+  )
+
+;; definition for method 3 of type gungame-task-manager
+(defmethod inspect ((this gungame-task-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tcourse-list: ~A~%" (-> this course-list))
+  (format #t "~2Tactivated-course: #<gun-course-info @ #x~X>~%" (-> this activated-course))
+  (format #t "~2Tactivated-course-id: ~D~%" (-> this activated-course-id))
+  (label cfg-7)
+  this
+  )
+
+;; definition of type gungame-manager
+(deftype gungame-manager (process)
+  ((actor-group             (pointer actor-group))
+   (actor-group-count       int32)
+   (score                   int32)
+   (course                  (array tpath-info))
+   (course-crates           handle                  32)
+   (course-type             uint64)
+   (hud-score               handle)
+   (hud-goal                handle)
+   (task-gold               game-task-node)
+   (task-silver             game-task-node          :offset 426)
+   (task-bronze             game-task-node          :offset 428)
+   (end-door                uint8                   :offset 430)
+   (start-door              uint8)
+   (game-score              uint8)
+   (training-goal           float)
+   (training?               symbol)
+   (state-time              time-frame)
+   (start-time              time-frame)
+   (parent-taskmgr          handle)
+   (goal-amount             int8)
+   (egg-amount              int8)
+   (pass-speech             uint16)
+   (primary-target-history  primary-target-pos-vel  16 :inline)
+   (score-gold              int32                   :offset 992)
+   (score-silver            int32)
+   (score-bronze            int32)
+   (score-high              int32)
+   )
+  (:state-methods
+    wait-start
+    course
+    end-course
+    end-course-open-door
+    )
+  (:methods
+    (init-tpath (_type_ (array tpath-info)) symbol)
+    (gungame-manager-method-19 (_type_) none)
+    (init (_type_ handle int) object)
+    (init-actor-group (_type_ entity) object)
+    (spawn-dummy (_type_ tpath-info) none)
+    (update-hud-text (_type_) none)
+    (get-training-path-entity (_type_ int) entity-actor)
+    (gg-event-handler (_type_ process event-message-block event-message-block) object)
+    (spawn-gg-cates (_type_) symbol)
+    (gungame-manager-method-27 (_type_) none)
+    (gungame-manager-method-28 (_type_ vector) vector)
+    (update-target-history (_type_) none)
+    (get-player-pos-vel (_type_ primary-target-pos-vel time-frame) primary-target-pos-vel)
+    (gungame-manager-method-31 (_type_ primary-target-pos-vel) primary-target-pos-vel)
+    )
+  (:states
+    exit-course
+    )
+  )
+
+;; definition for method 3 of type gungame-manager
+(defmethod inspect ((this gungame-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tscore: ~D~%" (-> this score))
+  (format #t "~2Tcourse: ~A~%" (-> this course))
+  (format #t "~2Tcourse-crates[32] @ #x~X~%" (-> this course-crates))
+  (format #t "~2Tcourse-type: ~D~%" (-> this course-type))
+  (format #t "~2Thud-score: ~D~%" (-> this hud-score))
+  (format #t "~2Thud-goal: ~D~%" (-> this hud-goal))
+  (format #t "~2Ttask-gold: ~D~%" (-> this task-gold))
+  (format #t "~2Ttask-silver: ~D~%" (-> this task-silver))
+  (format #t "~2Ttask-bronze: ~D~%" (-> this task-bronze))
+  (format #t "~2Tend-door: ~D~%" (-> this end-door))
+  (format #t "~2Tstart-door: ~D~%" (-> this start-door))
+  (format #t "~2Tgame-score: ~D~%" (-> this game-score))
+  (format #t "~2Ttraining-goal: ~f~%" (-> this training-goal))
+  (format #t "~2Ttraining?: ~A~%" (-> this training?))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~2Tparent-taskmgr: ~D~%" (-> this parent-taskmgr))
+  (format #t "~2Tgoal-amount: ~D~%" (-> this goal-amount))
+  (format #t "~2Tegg-amount: ~D~%" (-> this egg-amount))
+  (format #t "~2Tpass-speech: ~D~%" (-> this pass-speech))
+  (format #t "~2Tprimary-target-history[16] @ #x~X~%" (-> this primary-target-history))
+  (format #t "~2Tscore-gold: ~D~%" (-> this score-gold))
+  (format #t "~2Tscore-silver: ~D~%" (-> this score-silver))
+  (format #t "~2Tscore-bronze: ~D~%" (-> this score-bronze))
+  (format #t "~2Tscore-high: ~D~%" (-> this score-high))
+  (label cfg-7)
+  this
+  )
+
+;; definition for function gungame-manager-init-by-other
+(defbehavior gungame-manager-init-by-other gungame-manager ((arg0 handle) (arg1 int))
+  (init self arg0 arg1)
+  )
+
+;; definition for method 31 of type gungame-manager
+(defmethod gungame-manager-method-31 ((this gungame-manager) (arg0 primary-target-pos-vel))
+  (get-player-pos-vel this arg0 (seconds 0.45))
+  arg0
+  )
+
+;; definition for method 30 of type gungame-manager
+(defmethod get-player-pos-vel ((this gungame-manager) (arg0 primary-target-pos-vel) (arg1 time-frame))
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'primary-target-pos-vel 2)))
+    (set! (-> s5-0 0 time) (the-as uint (- (current-time) arg1)))
+    (let ((v1-3 0))
+      (let ((a1-1 0))
+        (b! #t cfg-7 :delay (nop!))
+        (label cfg-1)
+        (b!
+          (not (and (>= (-> this primary-target-history a1-1 time) (-> s5-0 0 time))
+                    (>= (-> s5-0 0 time) (-> this primary-target-history (+ a1-1 1) time))
+                    )
+               )
+          cfg-6
+          :delay (empty-form)
+          )
+        (set! v1-3 a1-1)
+        (b! #t cfg-9 :delay (nop!))
+        (label cfg-6)
+        (+! a1-1 1)
+        (label cfg-7)
+        (b! (< a1-1 14) cfg-1)
+        )
+      (set! (-> s5-0 0 time) (-> this primary-target-history 0 time))
+      (label cfg-9)
+      (let ((s4-0 (-> this primary-target-history v1-3))
+            (s3-0 (-> this primary-target-history (+ v1-3 1)))
+            )
+        (set! (-> s5-0 1 position x)
+              (/ (the float (- (-> s5-0 0 time) (-> s4-0 time))) (the float (- (-> s3-0 time) (-> s4-0 time))))
+              )
+        (vector-lerp! (-> arg0 position) (-> s4-0 position) (-> s3-0 position) (-> s5-0 1 position x))
+        (vector-lerp! (-> arg0 velocity) (-> s4-0 velocity) (-> s3-0 velocity) (-> s5-0 1 position x))
+        )
+      )
+    (set! (-> arg0 time) (-> s5-0 0 time))
+    )
+  arg0
+  )
+
+;; definition for method 29 of type gungame-manager
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-target-history ((this gungame-manager))
+  (let ((s4-0 (the-as target (as-type *target* process-focusable))))
+    (when s4-0
+      (let ((s5-1 (new 'stack-no-clear 'primary-target-pos-vel)))
+        (vector-copy! (-> s5-1 position) (get-trans s4-0 3))
+        (vector-copy! (-> s5-1 velocity) (get-transv s4-0))
+        (set! (-> s5-1 time) (the-as uint (current-time)))
+        (if (>= (- (-> s5-1 time) (-> this primary-target-history 1 time)) (the-as uint 30))
+            (qmem-copy->!
+              (the-as pointer (-> this primary-target-history 1))
+              (the-as pointer (-> this primary-target-history))
+              480
+              )
+            )
+        (mem-copy! (the-as pointer (-> this primary-target-history)) (the-as pointer (-> s5-1 position)) 32)
+        )
+      0
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 18 of type gungame-manager
+(defmethod init-tpath ((this gungame-manager) (arg0 (array tpath-info)))
+  (dotimes (s5-0 (length arg0))
+    (let ((v1-2 (-> arg0 s5-0)))
+      0
+      (logior! (-> v1-2 flags) (tpath-flag t0))
+      (logclear! (-> v1-2 flags) (tpath-flag t1))
+      (let ((a0-6 (-> v1-2 ref-time-num)))
+        (set! (-> v1-2 ref-time-num) -1)
+        (dotimes (a1-3 s5-0)
+          (let ((a2-5 (-> arg0 (+ (- -1 a1-3) s5-0))))
+            (if (= a0-6 (-> a2-5 num))
+                (+! (-> v1-2 s-time) (-> a2-5 s-time))
+                )
+            )
+          )
+        )
+      (set! (-> v1-2 num-anims) (the-as uint 0))
+      (dotimes (a0-9 3)
+        (when (nonzero? (-> v1-2 anims a0-9))
+          (let ((a1-10 (-> v1-2 anims a0-9)))
+            (set! (-> v1-2 anims a0-9) (the-as (inline-array tpath-control-frame) 0))
+            (set! (-> v1-2 anims (-> v1-2 num-anims)) a1-10)
+            )
+          (+! (-> v1-2 num-anims) 1)
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 21 of type gungame-manager
+;; INFO: Used lq/sq
+(defmethod init-actor-group ((this gungame-manager) (arg0 entity))
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-1 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
+       (let ((v0-1 (the-as object (-> sv-16 elt-count))))
+         (set! (-> this actor-group-count) (the-as int v0-1))
+         v0-1
+         )
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        (go process-drawable-art-error "actor-group gungame-manager")
+        )
+      )
+    )
+  )
+
+;; definition for method 35 of type gungame-task-manager
+;; INFO: Used lq/sq
+(defmethod init-actor-group ((this gungame-task-manager) (arg0 entity))
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-1 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
+       (let ((v0-1 (the-as object (-> sv-16 elt-count))))
+         (set! (-> this actor-group-count) (the-as int v0-1))
+         v0-1
+         )
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        (go process-drawable-art-error "actor-group gungame-manager")
+        )
+      )
+    )
+  )
+
+;; definition for method 20 of type gungame-task-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod init! ((this gungame-task-manager))
+  (call-parent-method this)
+  (set-setting! 'city-sound '(gungame1) 0.0 2)
+  (let ((a1-2 (entity-by-name "training-manager-2")))
+    (init-actor-group this a1-2)
+    )
+  (set! (-> this course-list) (new 'process 'boxed-array int32 4))
+  (set! (-> this course-list length) 0)
+  0
+  (none)
+  )
+
+;; definition for method 7 of type gungame-task-manager
+(defmethod relocate ((this gungame-task-manager) (offset int))
+  (if (nonzero? (-> this course-list))
+      (&+! (-> this course-list) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 20 of type gungame-manager
+;; WARN: Return type mismatch int vs object.
+(defmethod init ((this gungame-manager) (arg0 handle) (arg1 int))
+  (set-setting! 'airlock #f 0.0 0)
+  (set! (-> this parent-taskmgr) arg0)
+  (set! (-> this course-type) (the-as uint arg1))
+  (dotimes (v1-2 32)
+    (set! (-> this course-crates v1-2) (the-as handle #f))
+    )
+  (let ((a1-2 (entity-by-name "training-manager-2")))
+    (init-actor-group this a1-2)
+    )
+  (let ((v1-10 (-> *gun-course-info* (-> this course-type))))
+    (set! (-> this end-door) (the-as uint (-> v1-10 end-door)))
+    (set! (-> this start-door) (the-as uint (-> v1-10 start-door)))
+    (set! (-> this task-gold) (-> v1-10 task-gold))
+    (set! (-> this task-silver) (-> v1-10 task-silver))
+    (set! (-> this task-bronze) (-> v1-10 task-bronze))
+    (set! (-> this game-score) (-> v1-10 game-score))
+    (set! (-> this pass-speech) (-> v1-10 pass-speech))
+    (set! (-> this training-goal) (-> v1-10 training-goal))
+    )
+  (gungame-manager-method-27 this)
+  (set! (-> this score) 0)
+  0
+  )
+
+;; definition for method 22 of type gungame-manager
+;; WARN: Return type mismatch tpath-flag vs none.
+(defmethod spawn-dummy ((this gungame-manager) (arg0 tpath-info))
+  (cond
+    ((logtest? (-> arg0 flags) (tpath-flag t2))
+     (let ((v1-2 (rand-vu-int-count 4)))
+       (cond
+         ((zero? v1-2)
+          (process-spawn gun-dummy-cit-a :init gun-dummy-base-init-by-other this arg0 :name "gun-dummy-cit-a" :to this)
+          )
+         ((= v1-2 1)
+          (process-spawn gun-dummy-cit-b :init gun-dummy-base-init-by-other this arg0 :name "gun-dummy-cit-b" :to this)
+          )
+         ((= v1-2 2)
+          (process-spawn gun-dummy-cit-c :init gun-dummy-base-init-by-other this arg0 :name "gun-dummy-cit-c" :to this)
+          )
+         ((= v1-2 3)
+          (process-spawn gun-dummy-cit-d :init gun-dummy-base-init-by-other this arg0 :name "gun-dummy-cit-d" :to this)
+          )
+         )
+       )
+     )
+    ((logtest? (-> arg0 flags) (tpath-flag t5))
+     (process-spawn
+       gun-dummy-kg-big
+       :init gun-dummy-base-init-by-other
+       this
+       arg0
+       :name "gun-dummy-kg-big"
+       :to this
+       )
+     )
+    ((logtest? (-> arg0 flags) (tpath-flag t7))
+     (process-spawn gun-dummy-explode this arg0 :name "gun-dummy-explode" :to this)
+     )
+    ((logtest? (-> arg0 flags) (tpath-flag t8))
+     (process-spawn gun-dummy-gun this arg0 :name "gun-dummy-gun" :to this)
+     )
+    ((logtest? (-> arg0 flags) (tpath-flag t3))
+     (process-spawn
+       gun-dummy-kg-bonus
+       :init gun-dummy-base-init-by-other
+       this
+       arg0
+       :name "gun-dummy-kg-bonus"
+       :to this
+       )
+     )
+    (else
+      (let ((v1-44 (logand (rand-uint31-gen *random-generator*) 1)))
+        (cond
+          ((zero? v1-44)
+           (process-spawn gun-dummy-kg-b :init gun-dummy-base-init-by-other this arg0 :name "gun-dummy-kg-b" :to this)
+           )
+          ((= v1-44 1)
+           (process-spawn gun-dummy-kg-c :init gun-dummy-base-init-by-other this arg0 :name "gun-dummy-kg-c" :to this)
+           )
+          )
+        )
+      )
+    )
+  (logclear! (-> arg0 flags) (tpath-flag t0))
+  (none)
+  )
+
+;; definition for method 23 of type gungame-manager
+;; WARN: Return type mismatch object vs none.
+(defmethod update-hud-text ((this gungame-manager))
+  (get-game-score-ref *game-info* (the-as int (-> this game-score)))
+  (let ((gp-0 (the-as hud (handle->process (-> this hud-goal)))))
+    (cond
+      ((not (task-node-closed? (-> this task-bronze)))
+       (cond
+         ((>= (-> *game-info* score) (the float (-> this score-gold)))
+          (set! (-> *game-info* goal) (-> *game-info* score))
+          (let ((s5-1 format)
+                (gp-1 (the-as hud (clear (-> gp-0 strings 1 text))))
+                (s4-0 "~S")
+                )
+            (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0136) #f))
+            (s5-1 gp-1 s4-0 *temp-string*)
+            )
+          )
+         ((>= (-> *game-info* score) (the float (-> this score-silver)))
+          (set! (-> *game-info* goal) (the float (-> this score-gold)))
+          (let ((s5-2 format)
+                (gp-2 (the-as hud (clear (-> gp-0 strings 1 text))))
+                (s4-1 "~S")
+                )
+            (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0137) #f))
+            (s5-2 gp-2 s4-1 *temp-string*)
+            )
+          )
+         ((>= (-> *game-info* score) (the float (-> this score-bronze)))
+          (set! (-> *game-info* goal) (the float (-> this score-silver)))
+          (let ((s5-3 format)
+                (gp-3 (the-as hud (clear (-> gp-0 strings 1 text))))
+                (s4-2 "~S")
+                )
+            (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0138) #f))
+            (s5-3 gp-3 s4-2 *temp-string*)
+            )
+          )
+         ((>= (-> *game-info* score) (-> this training-goal))
+          (set! (-> *game-info* goal) (the float (-> this score-bronze)))
+          (let ((s5-4 format)
+                (gp-4 (the-as hud (clear (-> gp-0 strings 1 text))))
+                (s4-3 "~S")
+                )
+            (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0139) #f))
+            (s5-4 gp-4 s4-3 *temp-string*)
+            )
+          )
+         (else
+           (set! (-> *game-info* goal) (-> this training-goal))
+           (let ((s5-5 format)
+                 (gp-5 (the-as hud (clear (-> gp-0 strings 1 text))))
+                 (s4-4 "~S")
+                 )
+             (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0136) #f))
+             (s5-5 gp-5 s4-4 *temp-string*)
+             )
+           )
+         )
+       )
+      ((not (task-node-closed? (-> this task-silver)))
+       (cond
+         ((>= (-> *game-info* score) (the float (-> this score-gold)))
+          (set! (-> *game-info* goal) (-> *game-info* score))
+          (let ((s5-6 format)
+                (gp-6 (the-as hud (clear (-> gp-0 strings 1 text))))
+                (s4-5 "~S")
+                )
+            (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0136) #f))
+            (s5-6 gp-6 s4-5 *temp-string*)
+            )
+          )
+         ((>= (-> *game-info* score) (the float (-> this score-silver)))
+          (set! (-> *game-info* goal) (the float (-> this score-gold)))
+          (let ((s5-7 format)
+                (gp-7 (the-as hud (clear (-> gp-0 strings 1 text))))
+                (s4-6 "~S")
+                )
+            (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0137) #f))
+            (s5-7 gp-7 s4-6 *temp-string*)
+            )
+          )
+         (else
+           (set! (-> *game-info* goal) (the float (-> this score-silver)))
+           (let ((s5-8 format)
+                 (gp-8 (the-as hud (clear (-> gp-0 strings 1 text))))
+                 (s4-7 "~S")
+                 )
+             (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0138) #f))
+             (s5-8 gp-8 s4-7 *temp-string*)
+             )
+           )
+         )
+       )
+      ((not (task-node-closed? (-> this task-gold)))
+       (cond
+         ((>= (-> *game-info* score) (the float (-> this score-gold)))
+          (set! (-> *game-info* goal) (-> *game-info* score))
+          (let ((s5-9 format)
+                (gp-9 (the-as hud (clear (-> gp-0 strings 1 text))))
+                (s4-8 "~S")
+                )
+            (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0136) #f))
+            (s5-9 gp-9 s4-8 *temp-string*)
+            )
+          )
+         (else
+           (set! (-> *game-info* goal) (the float (-> this score-gold)))
+           (let ((s5-10 format)
+                 (gp-10 (the-as hud (clear (-> gp-0 strings 1 text))))
+                 (s4-9 "~S")
+                 )
+             (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0137) #f))
+             (s5-10 gp-10 s4-9 *temp-string*)
+             )
+           )
+         )
+       )
+      (else
+        (set! (-> *game-info* goal) (fmax (-> *game-info* score) (the float (-> this score-high))))
+        (let ((s5-11 format)
+              (gp-11 (clear (-> gp-0 strings 1 text)))
+              (s4-10 "~S")
+              )
+          (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0136) #f))
+          (s5-11 gp-11 s4-10 *temp-string*)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate exit-course (gungame-manager)
+  :enter (behavior ()
+    '()
+    )
+  :exit (behavior ()
+    (remove-setting! 'features)
+    (send-event (handle->process (-> self hud-score)) 'hide-and-die)
+    (send-event (handle->process (-> self hud-goal)) 'hide-and-die)
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate course (gungame-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('get-player-pos-vel)
+       (let ((a1-2 (-> block param 0)))
+         (get-player-pos-vel self (the-as primary-target-pos-vel a1-2) (seconds 0.5))
+         )
+       )
+      (('score)
+       (let* ((v1-2 (-> block param 0))
+              (v0-0 (the-as object (+ (-> self score) v1-2)))
+              )
+         (set! (-> self score) (the-as int v0-0))
+         v0-0
+         )
+       )
+      (('can-close-door?)
+       #t
+       )
+      (else
+        (gg-event-handler self proc block block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-setting! 'music 'gncourse 0.0 0)
+    (set! (-> self hud-score)
+          (ppointer->handle (process-spawn hud-big-score :init hud-init-by-other :name "hud-big-score" :to self))
+          )
+    (set! (-> self score-gold) (the int (game-info-method-31 *game-info* (the-as int (-> self game-score)) 3)))
+    (set! (-> self score-silver) (the int (game-info-method-31 *game-info* (the-as int (-> self game-score)) 2)))
+    (set! (-> self score-bronze) (the int (game-info-method-31 *game-info* (the-as int (-> self game-score)) 1)))
+    (set! (-> self score-high) (the int (game-info-method-31 *game-info* (the-as int (-> self game-score)) 0)))
+    (set! (-> self hud-goal)
+          (ppointer->handle (process-spawn hud-goal :init hud-init-by-other :name "hud-goal" :to self))
+          )
+    (set-time! (-> self start-time))
+    (set! (-> self score) 0)
+    (dotimes (gp-2 (length (-> self course)))
+      (let ((v1-24 (-> self course gp-2)))
+        0
+        (logior! (-> v1-24 flags) (tpath-flag t0))
+        (logclear! (-> v1-24 flags) (tpath-flag t1))
+        )
+      )
+    )
+  :exit (behavior ()
+    (remove-setting! 'music)
+    )
+  :trans (behavior ()
+    (update-target-history self)
+    (set! (-> *game-info* score) (the float (-> self score)))
+    (update-hud-text self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (send-event (handle->process (-> self hud-score)) 'force-show)
+    (send-event (handle->process (-> self hud-goal)) 'force-show)
+    (let ((f30-0 (* 0.0033333334 (the float (- (current-time) (-> self start-time))))))
+      (dotimes (gp-0 (length (-> self course)))
+        (let ((s5-0 (-> self course gp-0)))
+          (when (and (logtest? (-> s5-0 flags) (tpath-flag t0)) (>= f30-0 (-> s5-0 s-time)))
+            (cond
+              ((logtest? (-> s5-0 flags) (tpath-flag t3 t9))
+               (let ((s4-0 #t))
+                 (dotimes (s3-0 (length (-> self course)))
+                   (let ((s2-0 (-> self course s3-0)))
+                     (when (not (logtest? (-> s2-0 flags) (tpath-flag t1)))
+                       (dotimes (s1-0 (length (-> s5-0 list)))
+                         (if (= (-> s5-0 list s1-0) (-> s2-0 num))
+                             (set! s4-0 #f)
+                             )
+                         )
+                       )
+                     )
+                   )
+                 (when s4-0
+                   (spawn-dummy self s5-0)
+                   (logclear! (-> s5-0 flags) (tpath-flag t0))
+                   )
+                 )
+               (if (>= f30-0 (+ (-> s5-0 bonus-time) (-> s5-0 s-time)))
+                   (logclear! (-> s5-0 flags) (tpath-flag t0))
+                   )
+               )
+              (else
+                (spawn-dummy self s5-0)
+                )
+              )
+            )
+          )
+        )
+      )
+    (let ((gp-1 (-> self course (+ (length (-> self course)) -1)))
+          (a1-5 (new 'stack-no-clear 'event-message-block))
+          )
+      (set! (-> a1-5 from) (process->ppointer self))
+      (set! (-> a1-5 num-params) 1)
+      (set! (-> a1-5 message) 'player-near-door?)
+      (set! (-> a1-5 param 0) (the-as uint #t))
+      (let ((t9-8 send-event-function)
+            (v1-67 (-> self actor-group 1 data (-> self end-door) actor))
+            )
+        (when (or (t9-8
+                    (if v1-67
+                        (-> v1-67 extra process)
+                        )
+                    a1-5
+                    )
+                  (logtest? (-> gp-1 flags) (tpath-flag t1))
+                  )
+          (set! (-> self goal-amount) -1)
+          (game-info-method-27 *game-info* (the-as game-score (-> self game-score)) (the float (-> self score)))
+          (cond
+            ((and (-> self training?) (< (-> self score) (the int (-> self training-goal))))
+             (go-virtual end-course-open-door)
+             )
+            (else
+              (set! (-> self goal-amount) 0)
+              (cond
+                ((>= (-> self score) (-> self score-gold))
+                 (set! (-> self goal-amount) 3)
+                 )
+                ((>= (-> self score) (-> self score-silver))
+                 (set! (-> self goal-amount) 2)
+                 )
+                ((>= (-> self score) (-> self score-bronze))
+                 (set! (-> self goal-amount) 1)
+                 )
+                )
+              (go-virtual end-course-open-door)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate end-course-open-door (gungame-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('can-close-door?)
+       #t
+       )
+      (else
+        (gg-event-handler self proc block block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'open)
+      (let ((t9-0 send-event-function)
+            (v1-6 (-> self actor-group 1 data (-> self end-door) actor))
+            )
+        (t9-0
+          (if v1-6
+              (-> v1-6 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (or (time-elapsed? (-> self state-time) (seconds 1))
+            (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-0 from) (process->ppointer self))
+              (set! (-> a1-0 num-params) 1)
+              (set! (-> a1-0 message) 'player-near-door?)
+              (set! (-> a1-0 param 0) (the-as uint #f))
+              (let ((t9-0 send-event-function)
+                    (v1-11 (-> self actor-group 1 data (-> self end-door) actor))
+                    )
+                (t9-0
+                  (if v1-11
+                      (-> v1-11 extra process)
+                      )
+                  a1-0
+                  )
+                )
+              )
+            )
+        (go-virtual end-course)
+        )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate end-course (gungame-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('can-close-door?)
+       #t
+       )
+      (else
+        (gg-event-handler self proc block block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self egg-amount) 0)
+    (cond
+      ((< (-> self goal-amount) 0)
+       (let ((a0-1 (handle->process (-> self parent-taskmgr))))
+         (send-event a0-1 'fail)
+         )
+       )
+      (else
+        (if (-> self training?)
+            (send-event (handle->process (-> self parent-taskmgr)) 'success)
+            )
+        (when (and (>= (-> self goal-amount) 1) (not (task-node-closed? (-> self task-bronze))))
+          (task-node-close! (-> self task-bronze) 'event)
+          (+! (-> self egg-amount) 1)
+          )
+        (when (and (>= (-> self goal-amount) 2) (not (task-node-closed? (-> self task-silver))))
+          (task-node-close! (-> self task-silver) 'event)
+          (+! (-> self egg-amount) 1)
+          )
+        (when (and (>= (-> self goal-amount) 3) (not (task-node-closed? (-> self task-gold))))
+          (task-node-close! (-> self task-gold) 'event)
+          (+! (-> self egg-amount) 1)
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    (send-event (handle->process (-> self hud-score)) 'hide-and-die)
+    (send-event (handle->process (-> self hud-goal)) 'hide-and-die)
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (when (and (> (-> self egg-amount) 0) (-> *gun-course-info* (-> self course-type) give-eggs?))
+      (let ((gp-0 (new 'static 'fact-info)))
+        (set! (-> gp-0 options) (actor-option))
+        (logior! (-> gp-0 options) (actor-option suck-in))
+        (let ((v1-9 (entity-by-name "training-manager-2")))
+          (birth-pickup-at-point
+            (-> v1-9 extra trans)
+            (pickup-type skill)
+            (* (the float (-> self egg-amount)) (-> *FACT-bank* super-skill-inc))
+            #t
+            *entity-pool*
+            gp-0
+            )
+          )
+        )
+      (set! (-> self egg-amount) 0)
+      0
+      (auto-save-user)
+      )
+    (send-event (handle->process (-> self hud-score)) 'hide-and-die)
+    (send-event (handle->process (-> self hud-goal)) 'hide-and-die)
+    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-3 from) (process->ppointer self))
+      (set! (-> a1-3 num-params) 1)
+      (set! (-> a1-3 message) 'close)
+      (set! (-> a1-3 param 0) (the-as uint #f))
+      (let ((t9-5 send-event-function)
+            (v1-35 (-> self actor-group 1 data (-> self end-door) actor))
+            )
+        (t9-5
+          (if v1-35
+              (-> v1-35 extra process)
+              )
+          a1-3
+          )
+        )
+      )
+    (send-event (handle->process (-> self parent-taskmgr)) 'course-complete)
+    (until #f
+      (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-5 from) (process->ppointer self))
+        (set! (-> a1-5 num-params) 0)
+        (set! (-> a1-5 message) 'closed?)
+        (let ((t9-7 send-event-function)
+              (v1-50 (-> self actor-group 1 data (-> self end-door) actor))
+              )
+          (when (t9-7
+                  (if v1-50
+                      (-> v1-50 extra process)
+                      )
+                  a1-5
+                  )
+            0
+            (goto cfg-39)
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    (label cfg-39)
+    (let ((gp-1 (-> self child)))
+      (while gp-1
+        (send-event (ppointer->process gp-1) 'die-fast)
+        (suspend)
+        (set! gp-1 (-> gp-1 0 brother))
+        )
+      )
+    (while (-> self child)
+      (suspend)
+      )
+    (deactivate self)
+    )
+  )
+
+;; definition of type training-path
+(deftype training-path (process-drawable)
+  ((num  uint32)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type training-path
+(defmethod inspect ((this training-path))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tnum: ~D~%" (-> this num))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (training-path)
+  :virtual #t
+  :code sleep-code
+  :post (behavior ()
+    (when *display-path-marks*
+      (let ((gp-0 add-debug-text-3d)
+            (s5-0 #t)
+            (s4-0 583)
+            )
+        (format (clear *temp-string*) "path-~D" (-> self num))
+        (gp-0
+          s5-0
+          (the-as bucket-id s4-0)
+          *temp-string*
+          (get-point-in-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp)
+          (font-color green)
+          (the-as vector2h #f)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 11 of type training-path
+(defmethod init-from-entity! ((this training-path) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (let ((s5-0 (length "training-path-"))
+        (a0-3 (length (-> this name)))
+        (v1-2 0)
+        )
+    (cond
+      ((= a0-3 (+ s5-0 1))
+       (set! v1-2 (the-as int (+ (-> this name data 14) -48 v1-2)))
+       )
+      ((= a0-3 (+ s5-0 2))
+       (let ((v1-3 (+ v1-2 (* (the-as uint 10) (+ (-> this name data 14) -48)))))
+         (set! v1-2 (the-as int (+ (-> this name data 15) -48 v1-3)))
+         )
+       )
+      ((= a0-3 (+ s5-0 3))
+       (let ((v1-5 (+ v1-2
+                      (* (the-as uint 100) (+ (-> this name data 14) -48))
+                      (* (the-as uint 10) (+ (-> this name data 15) -48))
+                      )
+                   )
+             )
+         (set! v1-2 (the-as int (+ (-> this name data 16) -48 v1-5)))
+         )
+       )
+      )
+    (set! (-> this num) (the-as uint (+ v1-2 -76)))
+    )
+  (let ((v1-8 (new 'process 'path-control this 'path 0.0 (the-as entity #f) #t)))
+    (when (nonzero? v1-8)
+      (set! (-> this path) v1-8)
+      (logior! (-> v1-8 flags) (path-control-flag display draw-line draw-point draw-text))
+      )
+    )
+  (go (method-of-object this idle))
+  )
+
+;; definition for method 24 of type gungame-manager
+(defmethod get-training-path-entity ((this gungame-manager) (arg0 int))
+  (let ((s4-0 0)
+        (v1-3 (+ (length (-> this actor-group 0)) -1))
+        )
+    0
+    (while (>= v1-3 s4-0)
+      (let* ((a0-4 (/ (+ s4-0 v1-3) 2))
+             (a2-2 (-> this actor-group 0 data a0-4 actor))
+             (a1-4 (if a2-2
+                       (the-as training-path (-> a2-2 extra process))
+                       )
+                   )
+             )
+        (cond
+          ((= arg0 (-> a1-4 num))
+           (return (-> this actor-group 0 data a0-4 actor))
+           )
+          ((< (-> a1-4 num) (the-as uint arg0))
+           (set! s4-0 (+ a0-4 1))
+           )
+          (else
+            (set! v1-3 (+ a0-4 -1))
+            )
+          )
+        )
+      )
+    )
+  (the-as entity-actor #f)
+  )
+
+;; definition for method 25 of type gungame-manager
+;; WARN: Return type mismatch path-control vs object.
+(defmethod gg-event-handler ((this gungame-manager) (arg0 process) (arg1 event-message-block) (arg2 event-message-block))
+  (case (-> arg1 message)
+    (('path)
+     (let ((v1-2 (get-training-path-entity this (the-as int (-> arg1 param 0)))))
+       (if v1-2
+           (-> (the-as training-path (if v1-2
+                                         (the-as training-path (-> v1-2 extra process))
+                                         )
+                       )
+               path
+               )
+           (the-as path-control #f)
+           )
+       )
+     )
+    (else
+      (the-as path-control #f)
+      )
+    )
+  )
+
+;; definition for symbol *jak3-training-path-info*, type (array tpath-info)
+(define *jak3-training-path-info*
+  (new 'static 'boxed-array :type tpath-info
+    (new 'static 'tpath-info
+      :ref-time-num -1
+      :flags (tpath-flag t7)
+      :anim1 (new 'static 'inline-array tpath-control-frame 5
+        (new 'static 'tpath-control-frame :path-num #x23)
+        (new 'static 'tpath-control-frame :time 0.3 :command (tpath-cmd cmd1))
+        (new 'static 'tpath-control-frame :time 2.0 :command (tpath-cmd cmd6))
+        (new 'static 'tpath-control-frame :time -1.0 :command (tpath-cmd cmd3))
+        (new 'static 'tpath-control-frame :command (tpath-cmd cmd8))
+        )
+      )
+    (new 'static 'tpath-info
+      :ref-time-num -1
+      :flags (tpath-flag t8)
+      :anim1 (new 'static 'inline-array tpath-control-frame 7
+        (new 'static 'tpath-control-frame :path-num #x23)
+        (new 'static 'tpath-control-frame :time 0.3 :path-pos #x7f :command (tpath-cmd cmd1))
+        (new 'static 'tpath-control-frame :time 4.0 :command (tpath-cmd cmd7))
+        (new 'static 'tpath-control-frame :time 5.0 :command (tpath-cmd cmd3))
+        (new 'static 'tpath-control-frame :time 1.3 :command (tpath-cmd cmd4))
+        (new 'static 'tpath-control-frame :time 0.5 :command (tpath-cmd cmd5))
+        (new 'static 'tpath-control-frame :command (tpath-cmd cmd8))
+        )
+      )
+    )
+  )
+
+;; definition for method 27 of type gungame-manager
+;; WARN: Return type mismatch symbol vs none.
+(defmethod gungame-manager-method-27 ((this gungame-manager))
+  (dotimes (s5-0 32)
+    (when (handle->process (-> this course-crates s5-0))
+      (deactivate (-> this course-crates s5-0 process 0))
+      (set! (-> this course-crates s5-0) (the-as handle #f))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 26 of type gungame-manager
+;; INFO: Used lq/sq
+(defmethod spawn-gg-cates ((this gungame-manager))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'static 'fact-info))
+        )
+    (dotimes (s3-0 (-> this actor-group 2 length))
+      (when (not (handle->process (-> this course-crates s3-0)))
+        (vector-copy! s5-0 (-> this actor-group 2 data s3-0 actor trans))
+        (set! (-> s5-0 w) 1.0)
+        (gungame-manager-method-28 this s5-0)
+        (format 0 "Name is ~s~%" (-> this actor-group 2 data s3-0 actor))
+        (set! (-> s4-0 pickup-type) (the-as pickup-type (-> *gun-course-info* (-> this course-type) ammo-type)))
+        (set! (-> s4-0 pickup-spawn-amount) 30.0)
+        (set! (-> this course-crates s3-0)
+              (process->handle
+                (as-type
+                  (ppointer->process
+                    (process-spawn crate (-> this actor-group 2 data s3-0 actor) s5-0 'wood s4-0 :name "crate" :to *entity-pool*)
+                    )
+                  process-focusable
+                  )
+                )
+              )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 28 of type gungame-manager
+;; INFO: Used lq/sq
+(defmethod gungame-manager-method-28 ((this gungame-manager) (arg0 vector))
+  (let ((s5-0 (new 'stack-no-clear 'collide-query)))
+    (vector-copy! (-> s5-0 start-pos) arg0)
+    (set-vector! (-> s5-0 move-dist) 0.0 -8192.0 0.0 1.0)
+    (let ((v1-2 s5-0))
+      (set! (-> v1-2 radius) 40.96)
+      (set! (-> v1-2 collide-with) (collide-spec backgnd))
+      (set! (-> v1-2 ignore-process0) #f)
+      (set! (-> v1-2 ignore-process1) #f)
+      (set! (-> v1-2 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-2 action-mask) (collide-action solid))
+      )
+    (let ((f0-5 (fill-and-probe-using-line-sphere *collide-cache* s5-0)))
+      (if (< 0.0 f0-5)
+          (vector+*! arg0 arg0 (-> s5-0 move-dist) f0-5)
+          )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait-start (gungame-manager)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((v1-5 (-> *gun-course-info* (-> self course-type))))
+      (if (!= (-> v1-5 start-gun) (-> *game-info* gun-type))
+          (send-event *target* 'change-mode 'gun #f (-> v1-5 start-gun))
+          )
+      )
+    )
+  :trans (behavior ()
+    (dotimes (gp-0 2)
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 1)
+        (set! (-> a1-0 message) 'set-train)
+        (let ((v1-8 (-> self actor-group 1 data (logand (+ gp-0 1) 1) actor)))
+          (set! (-> a1-0 param 0) (the-as uint (process->handle (if v1-8
+                                                                    (-> v1-8 extra process)
+                                                                    )
+                                                                )
+                                          )
+                )
+          )
+        (let ((t9-0 send-event-function)
+              (v1-16 (-> self actor-group 1 data gp-0 actor))
+              )
+          (t9-0
+            (if v1-16
+                (-> v1-16 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      )
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer self))
+      (set! (-> a1-1 num-params) 0)
+      (set! (-> a1-1 message) 'open)
+      (let ((t9-1 send-event-function)
+            (v1-27 (-> self actor-group 1 data (-> self start-door) actor))
+            )
+        (t9-1
+          (if v1-27
+              (-> v1-27 extra process)
+              )
+          a1-1
+          )
+        )
+      )
+    (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-2 from) (process->ppointer self))
+      (set! (-> a1-2 num-params) 0)
+      (set! (-> a1-2 message) 'open?)
+      (let ((t9-2 send-event-function)
+            (v1-36 (-> self actor-group 1 data (-> self start-door) actor))
+            )
+        (when (t9-2
+                (if v1-36
+                    (-> v1-36 extra process)
+                    )
+                a1-2
+                )
+          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-3 from) (process->ppointer self))
+            (set! (-> a1-3 num-params) 1)
+            (set! (-> a1-3 message) 'close)
+            (set! (-> a1-3 param 0) (the-as uint #t))
+            (let ((t9-3 send-event-function)
+                  (v1-47 (-> self actor-group 1 data (-> self start-door) actor))
+                  )
+              (t9-3
+                (if v1-47
+                    (-> v1-47 extra process)
+                    )
+                a1-3
+                )
+              )
+            )
+          (go-virtual course)
+          )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition of type gungame-mgr-1
+(deftype gungame-mgr-1 (gungame-manager)
+  ()
+  (:state-methods
+    wait-load
+    )
+  )
+
+;; definition for method 3 of type gungame-mgr-1
+(defmethod inspect ((this gungame-mgr-1))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gungame-manager inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gungame-mgr-2
+(deftype gungame-mgr-2 (gungame-manager)
+  ()
+  (:state-methods
+    wait-load
+    )
+  )
+
+;; definition for method 3 of type gungame-mgr-2
+(defmethod inspect ((this gungame-mgr-2))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gungame-manager inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gungame-mgr-rnc
+(deftype gungame-mgr-rnc (gungame-manager)
+  ()
+  (:state-methods
+    wait-load
+    )
+  )
+
+;; definition for method 3 of type gungame-mgr-rnc
+(defmethod inspect ((this gungame-mgr-rnc))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gungame-manager inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 22 of type gungame-mgr-rnc
+;; WARN: Return type mismatch tpath-flag vs none.
+(defmethod spawn-dummy ((this gungame-mgr-rnc) (arg0 tpath-info))
+  (cond
+    ((logtest? (-> arg0 flags) (tpath-flag t2))
+     (let ((v1-2 (rand-vu-int-count 2)))
+       (cond
+         ((zero? v1-2)
+          (process-spawn
+            gun-dummy-cit-clank
+            :init gun-dummy-base-init-by-other
+            this
+            arg0
+            :name "gun-dummy-cit-clank"
+            :to this
+            )
+          )
+         ((= v1-2 1)
+          (process-spawn
+            gun-dummy-cit-ratchet
+            :init gun-dummy-base-init-by-other
+            this
+            arg0
+            :name "gun-dummy-cit-ratchet"
+            :to this
+            )
+          )
+         )
+       )
+     )
+    ((logtest? (-> arg0 flags) (tpath-flag t5))
+     (process-spawn
+       gun-dummy-rc-four-eyes
+       :init gun-dummy-base-init-by-other
+       this
+       arg0
+       :name "gun-dummy-rc-four-eyes"
+       :to this
+       )
+     )
+    ((logtest? (-> arg0 flags) (tpath-flag t3))
+     (process-spawn
+       gun-dummy-rc-three-eyes-bonus
+       :init gun-dummy-base-init-by-other
+       this
+       arg0
+       :name "gun-dummy-rc-three-eyes-bonus"
+       :to this
+       )
+     )
+    (else
+      (let ((v1-25 (mod (the-as int (rand-uint31-gen *random-generator*)) 3)))
+        (cond
+          ((zero? v1-25)
+           (process-spawn
+             gun-dummy-rc-two-eyes
+             :init gun-dummy-base-init-by-other
+             this
+             arg0
+             :name "gun-dummy-rc-two-eyes"
+             :to this
+             )
+           )
+          ((= v1-25 1)
+           (process-spawn
+             gun-dummy-rc-three-eyes
+             :init gun-dummy-base-init-by-other
+             this
+             arg0
+             :name "gun-dummy-rc-three-eyes"
+             :to this
+             )
+           )
+          ((= v1-25 2)
+           (process-spawn
+             gun-dummy-rc-one-eye
+             :init gun-dummy-base-init-by-other
+             this
+             arg0
+             :name "gun-dummy-rc-one-eye"
+             :to this
+             )
+           )
+          )
+        )
+      )
+    )
+  (logclear! (-> arg0 flags) (tpath-flag t0))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate wait-load (gungame-mgr-rnc)
+  :virtual #t
+  :code (behavior ()
+    (until (= (level-status? *level* 'lgunrnc #f) 'active)
+      (suspend)
+      )
+    (go-virtual wait-start)
+    )
+  )
+
+;; definition of type gungame-mgr-3
+(deftype gungame-mgr-3 (gungame-mgr-rnc)
+  ()
+  )
+
+;; definition for method 3 of type gungame-mgr-3
+(defmethod inspect ((this gungame-mgr-3))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gungame-mgr-rnc inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gungame-mgr-4
+(deftype gungame-mgr-4 (gungame-mgr-rnc)
+  ()
+  )
+
+;; definition for method 3 of type gungame-mgr-4
+(defmethod inspect ((this gungame-mgr-4))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gungame-mgr-rnc inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *gun-course-info*, type (array gun-course-info)
+(define *gun-course-info*
+  (new 'static 'boxed-array :type gun-course-info
+    (new 'static 'gun-course-info
+      :end-door 1
+      :text (text-id text-0087)
+      :etype (type-ref gungame-mgr-1 :method-count 33)
+      :task-bronze (game-task-node city-gun-course-1-bronze)
+      :task-silver (game-task-node city-gun-course-1-silver)
+      :task-gold (game-task-node city-gun-course-1-gold)
+      :game-score #xb
+      :training-goal 10000.0
+      :allowed-guns (game-feature gun-yellow-1 gun-yellow-2)
+      :start-gun 30
+      :ammo-type 15
+      :training-task #x84
+      :play-text (text-id press-to-play-beam-reflexor-training)
+      :play-button (new 'static 'handle :process #x4000 :u64 #x4000)
+      :give-eggs? #t
+      )
+    (new 'static 'gun-course-info
+      :course (new 'static 'handle :process #x1 :u64 #x1)
+      :start-door 1
+      :text (text-id text-0087)
+      :etype (type-ref gungame-mgr-2 :method-count 33)
+      :task-bronze (game-task-node city-gun-course-2-bronze)
+      :task-silver (game-task-node city-gun-course-2-silver)
+      :task-gold (game-task-node city-gun-course-2-gold)
+      :game-score #xc
+      :training-goal 11000.0
+      :allowed-guns (game-feature gun-red-1 gun-red-2)
+      :start-gun 27
+      :ammo-type 16
+      :training-task #xa2
+      :play-text (text-id press-to-play-wave-concussor-training)
+      :play-button (new 'static 'handle :process #x4000 :u64 #x4000)
+      :give-eggs? #t
+      )
+    (new 'static 'gun-course-info
+      :course (new 'static 'handle :process #x2 :u64 #x2)
+      :start-door 1
+      :text (text-id text-0087)
+      :etype (type-ref gungame-mgr-3 :method-count 33)
+      :task-bronze (game-task-node city-gun-course-play-for-fun-bronze-rnc-1)
+      :task-silver (game-task-node city-gun-course-play-for-fun-silver-rnc-1)
+      :task-gold (game-task-node city-gun-course-play-for-fun-gold-rnc-1)
+      :game-score #xd
+      :training-goal -1.0
+      :allowed-guns (game-feature gun-red-1 gun-red-2 gun-red-3 gun-yellow-1 gun-yellow-2 gun-yellow-3 gun-blue-1 gun-blue-2)
+      :start-gun 30
+      :ammo-type 15
+      :training-task #xa2
+      :play-text (text-id wave-concussor-training-ratchet-gun-course)
+      :play-button (new 'static 'handle :process #x8000 :u64 #x8000)
+      :give-eggs? #f
+      )
+    (new 'static 'gun-course-info
+      :course (new 'static 'handle :process #x3 :u64 #x3)
+      :end-door 1
+      :text (text-id text-0087)
+      :etype (type-ref gungame-mgr-4 :method-count 33)
+      :task-bronze (game-task-node city-gun-course-play-for-fun-bronze-rnc-2)
+      :task-silver (game-task-node city-gun-course-play-for-fun-silver-rnc-2)
+      :task-gold (game-task-node city-gun-course-play-for-fun-gold-rnc-2)
+      :game-score #xe
+      :training-goal -1.0
+      :allowed-guns (game-feature gun-red-1 gun-red-2 gun-red-3 gun-yellow-1 gun-yellow-2 gun-yellow-3 gun-blue-1 gun-blue-2)
+      :start-gun 27
+      :ammo-type 16
+      :training-task #xa2
+      :play-text (text-id beam-reflexor-training-clank-gun-course)
+      :play-button (new 'static 'handle :process #x8000 :u64 #x8000)
+      :give-eggs? #f
+      )
+    )
+  )
+
+;; definition for symbol *gungame-test-crates-pos*, type (array gungame-crate)
+(define *gungame-test-crates-pos* (new 'static 'boxed-array :type gungame-crate
+                                    (new 'static 'gungame-crate
+                                      :pos (new 'static 'vector :x 2048000.0 :y 40960.0 :z 4288512.0 :w -16384.0)
+                                      :ammo (pickup-type ammo-red)
+                                      :num #x14
+                                      )
+                                    )
+        )
+
+;; definition for method 20 of type gungame-mgr-1
+(defmethod init ((this gungame-mgr-1) (arg0 handle) (arg1 int))
+  (call-parent-method this arg0 arg1)
+  (set! (-> this training?)
+        (not (task-node-closed? (the-as game-task-node (-> *gun-course-info* arg1 training-task))))
+        )
+  (set! *gungame-level* 'lgunnorm)
+  (set! (-> this course) *course1-path-global-info*)
+  (init-tpath this (-> this course))
+  (spawn-gg-cates this)
+  (go (method-of-object this wait-load))
+  )
+
+;; definition for method 20 of type gungame-mgr-2
+(defmethod init ((this gungame-mgr-2) (arg0 handle) (arg1 int))
+  (call-parent-method this arg0 arg1)
+  (set! (-> this training?)
+        (not (task-node-closed? (the-as game-task-node (-> *gun-course-info* arg1 training-task))))
+        )
+  (set! *gungame-level* 'lgunnorm)
+  (set! (-> this course) *course2-path-global-info*)
+  (init-tpath this (-> this course))
+  (spawn-gg-cates this)
+  (go (method-of-object this wait-load))
+  )
+
+;; failed to figure out what this is:
+(defstate wait-load (gungame-mgr-1)
+  :virtual #t
+  :code (behavior ()
+    (until (= (level-status? *level* 'lgunnorm #f) 'active)
+      (suspend)
+      )
+    (go-virtual wait-start)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait-load (gungame-mgr-2)
+  :virtual #t
+  :code (behavior ()
+    (until (= (level-status? *level* 'lgunnorm #f) 'active)
+      (suspend)
+      )
+    (go-virtual wait-start)
+    )
+  )
+
+;; definition for method 20 of type gungame-mgr-3
+(defmethod init ((this gungame-mgr-3) (arg0 handle) (arg1 int))
+  (call-parent-method this arg0 arg1)
+  (set-setting! 'borrow '((gungame 1 lgunrnc special)) 0.0 0)
+  (set! (-> this training?) #f)
+  (set! *gungame-level* 'lgunrnc)
+  (set! (-> this course) *course3-path-global-info*)
+  (init-tpath this (-> this course))
+  (spawn-gg-cates this)
+  (go (method-of-object this wait-load))
+  )
+
+;; definition for method 20 of type gungame-mgr-4
+(defmethod init ((this gungame-mgr-4) (arg0 handle) (arg1 int))
+  (call-parent-method this arg0 arg1)
+  (set-setting! 'borrow '((gungame 1 lgunrnc special)) 0.0 0)
+  (set! (-> this training?) #f)
+  (set! *gungame-level* 'lgunrnc)
+  (set! (-> this course) *course4-path-global-info*)
+  (init-tpath this (-> this course))
+  (spawn-gg-cates this)
+  (go (method-of-object this wait-load))
+  )
+
+;; failed to figure out what this is:
+(defstate wait-load (gungame-mgr-4)
+  :virtual #t
+  :code (behavior ()
+    (until (= (level-status? *level* 'lgunrnc #f) 'active)
+      (suspend)
+      )
+    (go-virtual wait-start)
+    )
+  )
+
+;; definition of type training-manager
+(deftype training-manager (process-hidden)
+  ()
+  )
+
+;; definition for method 3 of type training-manager
+(defmethod inspect ((this training-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-68)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> this mask))
+  (let ((s5-0 (-> this mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask metalhead) s5-0) (shl #x8000 16))
+        (format #t "metalhead ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask civilian) s5-0) (process-mask civilian))
+        (format #t "civilian ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand (process-mask guard) s5-0) (process-mask guard))
+        (format #t "guard ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask kg-robot) s5-0) (process-mask kg-robot))
+        (format #t "kg-robot ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> this clock))
+  (format #t "~1Tparent: #x~X~%" (-> this parent))
+  (format #t "~1Tbrother: #x~X~%" (-> this brother))
+  (format #t "~1Tchild: #x~X~%" (-> this child))
+  (format #t "~1Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~1Tself: ~A~%" (-> this self))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tstatus: ~A~%" (-> this status))
+  (format #t "~1Tpid: ~D~%" (-> this pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tstate: ~A~%" (-> this state))
+  (format #t "~1Tprev-state: ~A~%" (-> this prev-state))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~1Tstate-stack: ~A~%" (-> this state-stack))
+  (format #t "~1Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> this connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> this stack))
+  (label cfg-68)
+  this
+  )
+
+;; definition for method 34 of type gungame-task-manager
+(defmethod gungame-task-manager-method-34 ((this gungame-task-manager))
+  (let ((gp-0 0))
+    (if (task-node-closed? (game-task-node city-gun-course-1-introduction))
+        (set! gp-0 (logior gp-0 1))
+        )
+    (if (task-node-closed? (game-task-node city-gun-course-2-introduction))
+        (set! gp-0 (logior gp-0 2))
+        )
+    (if (logtest? (game-secrets gungame-ratchet) (-> *game-info* secrets))
+        (set! gp-0 (logior gp-0 4))
+        )
+    (if (logtest? (game-secrets gungame-ratchet) (-> *game-info* secrets))
+        (set! gp-0 (logior gp-0 8))
+        )
+    (logand gp-0 (-> this info index))
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (gungame-task-manager)
+  :virtual #t
+  :enter (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (call-parent-state-handler trans)
+    (if (search-process-tree *active-pool* (lambda ((arg0 process)) (type? arg0 gungame-manager)))
+        (return 0)
+        )
+    0
+    (let ((gp-0 0)
+          (v1-6 (gungame-task-manager-method-34 self))
+          )
+      (dotimes (a0-3 4)
+        (if (logtest? v1-6 (ash 1 a0-3))
+            (+! gp-0 1)
+            )
+        )
+      (set! (-> self course-list length) 0)
+      (dotimes (a0-7 4)
+        (when (logtest? v1-6 (ash 1 a0-7))
+          (set! (-> self course-list (-> self course-list length)) a0-7)
+          (+! (-> self course-list length) 1)
+          )
+        )
+      )
+    (cond
+      ((!= (-> self info index) -1)
+       (set! (-> self activated-course) (-> *gun-course-info* (-> self course-list 0)))
+       (set! (-> self activated-course-id) (the-as uint (-> self course-list 0)))
+       (go-virtual active-door-opening)
+       )
+      (else
+        (let ((gp-1 (new 'static 'boxed-array :type int32 :length 0 :allocated-length 4)))
+          (set! (-> gp-1 length) 0)
+          (let ((v1-20 (level-get-target-inside *level*)))
+            (when (and v1-20
+                       (= (-> v1-20 name) 'gungame)
+                       *target*
+                       (not (logtest? (focus-status in-head pole flut light board dark) (-> *target* focus-status)))
+                       )
+              (dotimes (s5-0 (-> self course-list length))
+                (let ((v1-31 (-> *gun-course-info* (-> self course-list s5-0)))
+                      (a1-20 (new 'stack-no-clear 'event-message-block))
+                      )
+                  (set! (-> a1-20 from) (process->ppointer self))
+                  (set! (-> a1-20 num-params) 1)
+                  (set! (-> a1-20 message) 'player-near-door?)
+                  (set! (-> a1-20 param 0) (the-as uint #f))
+                  (let ((t9-6 send-event-function)
+                        (v1-36 (-> self actor-group 1 data (-> v1-31 start-door) actor))
+                        )
+                    (when (t9-6
+                            (if v1-36
+                                (-> v1-36 extra process)
+                                )
+                            a1-20
+                            )
+                      (set! (-> gp-1 (-> gp-1 length)) s5-0)
+                      (+! (-> gp-1 length) 1)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          (when (and (> (-> gp-1 length) 0) (can-display-query? self (the-as string #f) -99.0))
+            (let* ((t0-0 (- 380 (* 45 (-> gp-1 length))))
+                   (s5-1
+                     (new 'stack 'font-context *font-default-matrix* 32 t0-0 0.0 (font-color default) (font-flags shadow kerning))
+                     )
+                   )
+              (set-width! s5-1 440)
+              (set-height! s5-1 80)
+              (set-scale! s5-1 0.7)
+              (set! (-> s5-1 flags) (font-flags shadow kerning large))
+              (dotimes (s4-0 (-> gp-1 length))
+                (let ((s3-0 (-> *gun-course-info* (-> self course-list (-> gp-1 s4-0)))))
+                  (if (= s4-0 (+ (-> gp-1 length) -1))
+                      (print-game-text
+                        (lookup-text! *common-text* (-> s3-0 play-text) #f)
+                        s5-1
+                        #f
+                        44
+                        (bucket-id hud-draw-hud-alpha)
+                        )
+                      )
+                  (when (> (the-as int (logand (the-as handle (-> *cpad-list* cpads 0 button0-rel 0)) (-> s3-0 play-button))) 0)
+                    (set! (-> self activated-course) s3-0)
+                    (set! (-> self activated-course-id) (the-as uint (-> self course-list (-> gp-1 s4-0))))
+                    (go-virtual active-door-opening)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active-door-opening (gungame-task-manager)
+  :virtual #t
+  :code (behavior ()
+    (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons circle x confirm))
+    (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons circle x confirm))
+    (set! (-> self state-time) 0)
+    (adjust-player-ammo 500.0 (the-as pickup-type (-> self activated-course ammo-type)))
+    (let ((t1-0 (logclear
+                  (game-feature
+                    gun-red-1
+                    gun-red-2
+                    gun-red-3
+                    gun-yellow-1
+                    gun-yellow-2
+                    gun-yellow-3
+                    gun-blue-1
+                    gun-blue-2
+                    gun-blue-3
+                    gun-dark-1
+                    gun-dark-2
+                    gun-dark-3
+                    board
+                    darkjak
+                    lightjak
+                    )
+                  (-> self activated-course allowed-guns)
+                  )
+                )
+          )
+      (set-setting! 'features 'clear (shr t1-0 32) t1-0)
+      )
+    (if (>= 1 (-> self course-list length))
+        (suspend-for (seconds 1)
+          )
+        (suspend-for (seconds 0.5)
+          )
+        )
+    (let ((gp-2 (get-process *default-dead-pool* (-> self activated-course etype) #x4000 1)))
+      (when gp-2
+        (let ((t9-3 (method-of-type process activate)))
+          (t9-3 gp-2 *entity-pool* "gungame-manager" (the-as pointer #x70004000))
+          )
+        (run-now-in-process gp-2 gungame-manager-init-by-other (process->handle self) (-> self activated-course-id))
+        (-> gp-2 ppointer)
+        )
+      )
+    (go-virtual waiting)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate waiting (gungame-task-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('course-complete)
+       (if (!= (-> self info index) -1)
+           (send-event self 'complete)
+           (go-virtual active)
+           )
+       )
+      (('course-fail)
+       (if (!= (-> self info index) -1)
+           (send-event self 'fail)
+           (go-virtual active)
+           )
+       )
+      (else
+        (task-manager-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    )
+  :trans (behavior ()
+    ((-> (method-of-type task-manager active) trans))
+    )
+  :code sleep-code
+  )
+
+;; definition for method 25 of type gungame-task-manager
+(defmethod task-manager-method-25 ((this gungame-task-manager))
+  (call-parent-method this)
+  (none)
+  )

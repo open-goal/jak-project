@@ -20,7 +20,7 @@ struct ActiveKeyboardAction {
 
 class KeyboardDevice : public InputDevice {
  public:
-  KeyboardDevice(){};
+  KeyboardDevice() {};
   KeyboardDevice(std::shared_ptr<game_settings::InputSettings> settings);
   ~KeyboardDevice() {}
 
@@ -31,9 +31,11 @@ class KeyboardDevice : public InputDevice {
                      const CommandBindingGroups& commands,
                      std::shared_ptr<PadData> data,
                      std::optional<InputBindAssignmentMeta>& bind_assignment) override;
-  void close_device() override{
-      // there is nothing to close
+  // clang-format off
+  void close_device() override {
+    // there is nothing to close
   };
+  // clang-format on
 
  private:
   std::vector<ActiveKeyboardAction> m_active_actions = {};

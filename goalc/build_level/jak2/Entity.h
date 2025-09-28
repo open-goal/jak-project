@@ -32,7 +32,6 @@ size_t generate_inline_array_actors(DataObjectGenerator& gen,
 
 void add_actors_from_json(const nlohmann::json& json,
                           std::vector<EntityActor>& actor_list,
-                          u32 base_aid);
-
-struct Region {};
+                          u32 base_aid,
+                          decompiler::DecompilerTypeSystem& dts);
 }  // namespace jak2

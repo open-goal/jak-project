@@ -10,7 +10,9 @@
 (deftype mechblock (process-drawable)
   ((root            collide-shape-moving :override)
    (origin          vector                :inline)
-   (drop-point      vector                :inline :offset 256)
+   (unknown-quat    quaternion            :inline)
+   (unknown-vector  vector                :inline)
+   (drop-point      vector                :inline)
    (allow-drag?     symbol)
    (reset-on-land?  symbol)
    (hit-something?  symbol)
@@ -81,7 +83,7 @@
         (-> self root)
         (vector+! (new 'stack-no-clear 'vector) (-> self origin) (new 'static 'vector :y 81920.0 :w 1.0))
         )
-      (quaternion-copy! (-> self root quat) (the-as quaternion (&-> self stack 96)))
+      (quaternion-copy! (-> self root quat) (-> self unknown-quat))
       (set-vector! (-> self root transv) 0.0 -4096.0 0.0 1.0)
       (set! (-> self drop-point quad) (-> self origin quad))
       (go-virtual fall)
@@ -159,8 +161,8 @@
                (.mov at-0 f0-0)
                )
              (.mov vf2 at-0)
-             (.mov.vf vf1 vf0 :mask #b1000)
-             (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+             (.mov.vf.w vf1 vf0)
+             (.mul.x.vf.xyz vf1 vf1 vf2)
              (.svf (&-> s3-0 quad) vf1)
              (set! (-> s3-0 y) 0.0)
              (vector-float*! s3-0 s3-0 10.0)
@@ -191,7 +193,7 @@
                    )
                  )
                )
-             (vector-float*! (-> s4-0 transv) s3-0 (* 0.1 (-> self clock frames-per-second)))
+             (vector-float*! (-> s4-0 transv) s3-0 (/ (-> self clock frames-per-second) 10))
              )
            (let ((v1-35 (-> s4-0 root-prim)))
              (set! (-> v1-35 prim-core collide-as) (-> s4-0 backup-collide-as))
@@ -434,11 +436,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this throwblock) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -509,11 +511,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this pushblock) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)

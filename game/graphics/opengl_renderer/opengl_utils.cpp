@@ -35,30 +35,31 @@ FramebufferTexturePair::FramebufferTexturePair(int w, int h, u64 texture_format,
     glDrawBuffers(1, draw_buffers);
     auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
+      lg::error("Failed to setup framebuffer texture pair: {} {} ", w, h);
       switch (status) {
         case GL_FRAMEBUFFER_UNDEFINED:
-          printf("GL_FRAMEBUFFER_UNDEFINED\n");
+          lg::error("GL_FRAMEBUFFER_UNDEFINED\n");
           break;
         case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-          printf("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+          lg::error("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
           break;
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-          printf("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+          lg::error("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
           break;
         case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-          printf("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
+          lg::error("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
           break;
         case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-          printf("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
+          lg::error("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
           break;
         case GL_FRAMEBUFFER_UNSUPPORTED:
-          printf("GL_FRAMEBUFFER_UNSUPPORTED\n");
+          lg::error("GL_FRAMEBUFFER_UNSUPPORTED\n");
           break;
         case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-          printf("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
+          lg::error("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
           break;
         case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
-          printf("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
+          lg::error("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
           break;
       }
 

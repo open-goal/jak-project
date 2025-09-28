@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,19 +19,15 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_poll_h_
 #define SDL_poll_h_
 
-#include "SDL_stdinc.h"
+#define SDL_IOR_READ     0x1
+#define SDL_IOR_WRITE    0x2
+#define SDL_IOR_NO_RETRY 0x4
 
-#define SDL_IOR_READ           0x1
-#define SDL_IOR_WRITE          0x2
-#define SDL_IOR_NO_RETRY       0x4
+extern int SDL_IOReady(int fd, int flags, Sint64 timeoutNS);
 
-extern int SDL_IOReady(int fd, int flags, int timeoutMS);
-
-#endif /* SDL_poll_h_ */
-
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // SDL_poll_h_

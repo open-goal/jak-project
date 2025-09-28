@@ -5,5 +5,70 @@
 ;; name in dgo: lightjak-h
 ;; dgos: GAME
 
+(declare-type lightjak-shield process-drawable)
+
+(define-extern *lightjak-trans-mods* surface)
+(define-extern *heal-mods* surface)
+(define-extern want-to-darkjak? (function symbol :behavior target))
+(define-extern want-to-lightjak? (function symbol :behavior target))
+(define-extern lightjak-shield-init (function none :behavior lightjak-shield))
+
 ;; DECOMP BEGINS
 
+(deftype wings (process-drawable)
+  ((self           wings                    :override)
+   (parent         (pointer target)         :override)
+   (shadow-backup  shadow-geo                :offset 208)
+   (ragdoll-proc   handle)
+   (lock?          symbol)
+   (wing-part      sparticle-launch-control  2)
+   )
+  (:state-methods
+    (idle symbol)
+    use
+    hidden
+    close
+    )
+  )
+
+
+(deftype lightjak-shield (process-drawable)
+  ((parent  (pointer target) :override)
+   (fade    float)
+   (tone    rgba)
+   )
+  (:state-methods
+    open
+    close
+    hit
+    )
+  )
+
+
+(deftype lightjak-info (basic)
+  ((process                   (pointer target))
+   (wings                     (pointer wings))
+   (get-off-lock              symbol)
+   (latch-out-time            time-frame)
+   (start-time                time-frame)
+   (attack-id                 uint32)
+   (lightjak-before-powerjak  symbol)
+   (attack-time               time-frame)
+   (attack-count              time-frame)
+   (stage                     lightjak-stage)
+   (want-stage                lightjak-stage)
+   (get-on-latch              uint32)
+   (tone                      uint32)
+   (on-off                    uint32)
+   (mode-sound-bank           connection)
+   (swoop-count               int32)
+   (freeze-control            handle)
+   (freeze-screen             handle)
+   (freeze-sound              sound-id)
+   (shield                    (pointer lightjak-shield))
+   (shield-start-time         time-frame)
+   (shield-count-time         time-frame)
+   (regen-start-time          time-frame)
+   (regen-time                time-frame)
+   )
+  )

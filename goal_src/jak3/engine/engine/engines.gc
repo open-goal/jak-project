@@ -5,5 +5,64 @@
 ;; name in dgo: engines
 ;; dgos: GAME
 
+;; +++part-local-space-flags
+(defenum part-local-space-flags
+  :type uint32
+  :bitfield #t
+  (pls0 0)
+  (pls1 1)
+  (pls2 2)
+  )
+;; ---part-local-space-flags
+
+
 ;; DECOMP BEGINS
 
+(kmemopen global "engines")
+
+(define *background-draw-engine* (new 'global 'engine 'draw 10 connection))
+
+(define *matrix-engine* (new 'global 'boxed-array handle 384))
+
+(set! (-> *matrix-engine* length) 0)
+
+(define *cloth-engine* (new 'global 'boxed-array handle 32))
+
+(set! (-> *cloth-engine* length) 0)
+
+(define *part-engine* (new 'global 'engine 'sparticle-launcher 256 connection))
+
+(deftype particle-local-space-info (connection)
+  ((params    basic   3 :overlay-at param1)
+   (mat-prev  matrix  :inline)
+   (mat-new   matrix  :inline)
+   (hand      handle)
+   (flags     part-local-space-flags)
+   (pad       uint32  1)
+   )
+  )
+
+
+(define *cam-post-hook-engine* (new 'global 'engine 'cam-post-hook-engine 4 connection))
+
+(define *part-local-space-engine*
+  (new 'global 'engine 'particle-local-space-info 15 particle-local-space-info)
+  )
+
+(define *camera-engine* (new 'global 'engine 'camera-eng 128 connection))
+
+(when *debug-segment*
+(define *debug-engine* (new 'debug 'engine 'debug 64 connection))
+
+)
+(define *pad-engine* (new 'global 'engine 'pad 4 connection))
+
+(define *lightning-engine* (new 'global 'engine 'lightning-control 64 connection))
+
+(define *hud-engine* (new 'global 'engine 'hud 16 connection))
+
+(define *prim-engine* (new 'global 'engine 'prim-strip 128 connection))
+
+(define *task-manager-engine* (new 'global 'engine 'task-manager 16 connection))
+
+(kmemclose)

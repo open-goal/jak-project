@@ -1,0 +1,657 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 2 of type level-buffer-state
+(defmethod print ((this level-buffer-state))
+  (format
+    #t
+    "#<level-buffer-state ~A ~A ~A ~A @ #x~X>"
+    (-> this name)
+    (-> this display?)
+    (-> this force-vis?)
+    (-> this force-inside?)
+    this
+    )
+  this
+  )
+
+;; definition for method 2 of type level-buffer-state-small
+(defmethod print ((this level-buffer-state-small))
+  (format #t "#<level-buffer-state ~A ~A @ #x~X>" (-> this name) (-> this display?) this)
+  this
+  )
+
+;; definition for method 2 of type sound-bank-state
+(defmethod print ((this sound-bank-state))
+  (let ((t9-0 format)
+        (a0-1 #t)
+        (a1-0 "#<sound-bank-state ~A ~S @ #x~X>")
+        (a2-0 (-> this name))
+        (v1-0 (-> this mode))
+        )
+    (t9-0
+      a0-1
+      a1-0
+      a2-0
+      (cond
+        ((= v1-0 (sound-bank-mode halfa))
+         "halfa"
+         )
+        ((= v1-0 (sound-bank-mode halfc))
+         "halfc"
+         )
+        ((= v1-0 (sound-bank-mode half))
+         "half"
+         )
+        ((= v1-0 (sound-bank-mode full))
+         "full"
+         )
+        ((= v1-0 (sound-bank-mode mode))
+         "mode"
+         )
+        ((= v1-0 (sound-bank-mode unknown))
+         "unknown"
+         )
+        ((= v1-0 (sound-bank-mode common))
+         "common"
+         )
+        ((= v1-0 (sound-bank-mode halfb))
+         "halfb"
+         )
+        ((= v1-0 (sound-bank-mode none))
+         "none"
+         )
+        ((= v1-0 (sound-bank-mode virtual))
+         "virtual"
+         )
+        (else
+          "*unknown*"
+          )
+        )
+      this
+      )
+    )
+  this
+  )
+
+;; definition for method 9 of type load-state
+(defmethod reset! ((this load-state))
+  (dotimes (v1-0 10)
+    (set! (-> this want v1-0 name) #f)
+    (set! (-> this want v1-0 display?) #f)
+    (set! (-> this want v1-0 force-vis?) #f)
+    (set! (-> this want v1-0 force-inside?) #f)
+    )
+  (dotimes (v1-3 3)
+    (set! (-> this want-sound v1-3 name) #f)
+    (set! (-> this want-sound v1-3 mode) (sound-bank-mode none))
+    )
+  (set! (-> this command-list) '())
+  (dotimes (v1-7 256)
+    (set! (-> this object-name v1-7) #f)
+    (set! (-> this object-status v1-7) (the-as basic 0))
+    )
+  this
+  )
+
+;; definition for function level-base-level-name
+(defun level-base-level-name ((arg0 symbol))
+  (when arg0
+    (let ((v1-0 (lookup-level-info arg0)))
+      (if (and v1-0 (-> v1-0 borrow) (-> v1-0 borrow alias))
+          (car (-> v1-0 borrow alias))
+          )
+      )
+    )
+  )
+
+;; definition for method 11 of type load-state
+(defmethod want-levels ((this load-state) (arg0 (pointer symbol)))
+  (dotimes (v1-0 10)
+    (dotimes (a0-1 10)
+      (when (= (-> this want v1-0 name) (-> arg0 a0-1))
+        (set! (-> arg0 a0-1) #f)
+        (goto cfg-8)
+        )
+      )
+    (set! (-> this want v1-0 name) #f)
+    (label cfg-8)
+    )
+  (dotimes (s4-0 10)
+    (when (-> arg0 s4-0)
+      (dotimes (s3-0 10)
+        (when (not (-> this want s3-0 name))
+          (set! (-> this want s3-0 name) (-> arg0 s4-0))
+          (set! (-> this want s3-0 display?) #f)
+          (set! (-> this want s3-0 force-vis?) #f)
+          (set! (-> this want s3-0 force-inside?) #f)
+          (let ((a0-13 (level-base-level-name (-> this want s3-0 name))))
+            (dotimes (v1-22 10)
+              (when (= (-> this want-exp v1-22 name) a0-13)
+                (set! (-> this want s3-0 display?) (-> this want-exp v1-22 display?))
+                (set! (-> this want s3-0 force-vis?) (-> this want-exp v1-22 force-vis?))
+                (set! (-> this want s3-0 force-inside?) (-> this want-exp v1-22 force-inside?))
+                (goto cfg-21)
+                )
+              )
+            )
+          (label cfg-21)
+          (goto cfg-26)
+          )
+        )
+      )
+    (label cfg-26)
+    )
+  (dotimes (v1-35 10)
+    (when (not (-> this want v1-35 name))
+      (set! (-> this want v1-35 display?) #f)
+      (set! (-> this want v1-35 force-vis?) #f)
+      (set! (-> this want v1-35 force-inside?) #f)
+      )
+    )
+  (add-borrow-levels this)
+  0
+  )
+
+;; definition for symbol *borrow-city-expansion-list*, type pair
+(define *borrow-city-expansion-list* '(#f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f))
+
+;; definition for symbol *borrow-city-status-list*, type pair
+(define *borrow-city-status-list* '(#f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f #f))
+
+;; definition for function borrow-city-expansion
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Stack slot offset 24 signed mismatch
+;; WARN: Return type mismatch pair vs object.
+(defun borrow-city-expansion ((arg0 pair))
+  (local-vars (v1-12 type) (s2-2 int) (sv-16 pair) (sv-20 symbol) (sv-24 object))
+  (let ((gp-0 *borrow-city-expansion-list*))
+    0
+    (let ((s4-0 0))
+      (b! #t cfg-2 :delay (nop!))
+      (label cfg-1)
+      (set! (car (ref& gp-0 s4-0)) #f)
+      (set! (car (ref& *borrow-city-status-list* s4-0)) #f)
+      (+! s4-0 1)
+      (label cfg-2)
+      (let ((a0-3 (the-as object gp-0)))
+        (b! (< s4-0 ((method-of-type (rtype-of (the-as pair a0-3)) length) (the-as pair a0-3))) cfg-1)
+        )
+      )
+    (let* ((v1-7 gp-0)
+           (a0-4 arg0)
+           (a1-4 (car a0-4))
+           )
+      (while (not (null? a0-4))
+        (set! (car v1-7) a1-4)
+        (set! v1-7 (cdr v1-7))
+        (set! a0-4 (cdr a0-4))
+        (set! a1-4 (car a0-4))
+        )
+      )
+    (let ((v1-11 (shr (shl (the-as int arg0) 61) 61)))
+      (b! (zero? v1-11) cfg-20 :likely-delay (set! v1-12 binteger))
+      (b! (= v1-11 4) cfg-20 :likely-delay (set! v1-12 (-> (the-as basic arg0) type)))
+      (b! (= v1-11 2) cfg-20 :likely-delay (set! v1-12 pair))
+      )
+    (set! v1-12 symbol)
+    (label cfg-20)
+    (let ((s5-1 ((method-of-type v1-12 length) arg0)))
+      (if (and (nonzero? *city-borrow-manager*) *city-borrow-manager*)
+          (mark-permanent-holds gp-0)
+          )
+      (dotimes (s4-1 (the-as int (-> *setting-control* user-current borrow-city-count)))
+        (set! sv-16 (-> *setting-control* user-current borrow-city s4-1))
+        (let* ((s3-0 sv-16)
+               (v1-20 (car s3-0))
+               )
+          (while (not (null? s3-0))
+            (set! sv-20 (the-as symbol #f))
+            (set! sv-24 v1-20)
+            (when sv-24
+              (dotimes (s2-0 (/ s5-1 2))
+                (when (= sv-24 (ref gp-0 (* s2-0 2)))
+                  (set! sv-20 #t)
+                  (if (= (ref gp-0 (+ (* s2-0 2) 1)) 'auto)
+                      (set! (car (ref& gp-0 (+ (* s2-0 2) 1))) 'faction)
+                      )
+                  0
+                  (goto cfg-37)
+                  )
+                )
+              (label cfg-37)
+              (when (not sv-20)
+                (dotimes (s2-1 (/ s5-1 2))
+                  (when (= (ref gp-0 (+ (* s2-1 2) 1)) 'auto)
+                    (set! s2-2 s2-1)
+                    (goto cfg-45)
+                    )
+                  )
+                (set! s2-2 -1)
+                (label cfg-45)
+                (when (> s2-2 0)
+                  (set! (car (ref& gp-0 (* s2-2 2))) sv-24)
+                  (set! (car (ref& gp-0 (+ (* s2-2 2) 1))) 'faction)
+                  )
+                )
+              )
+            (set! s3-0 (cdr s3-0))
+            (set! v1-20 (car s3-0))
+            )
+          )
+        )
+      (let ((s4-2 0))
+        (dotimes (s3-1 (/ s5-1 2))
+          (let ((v1-48 (ref gp-0 (+ (* s3-1 2) 1))))
+            (when (not (or (= v1-48 'auto) (= v1-48 'faction)))
+              (set! (car (ref& *borrow-city-status-list* (* s4-2 2))) (ref gp-0 (* s3-1 2)))
+              (set! (car (ref& *borrow-city-status-list* (+ (* s4-2 2) 1))) (ref gp-0 (+ (* s3-1 2) 1)))
+              (+! s4-2 1)
+              )
+            )
+          )
+        )
+      (dotimes (s4-3 (/ s5-1 2))
+        (case (ref gp-0 (+ (* s4-3 2) 1))
+          (('auto 'faction)
+           (set! (car (ref& gp-0 (+ (* s4-3 2) 1))) 'special)
+           )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for function add-want-level
+;; WARN: Return type mismatch int vs object.
+(defun add-want-level ((arg0 (inline-array level-buffer-state))
+              (arg1 (pointer int64))
+              (arg2 symbol)
+              (arg3 symbol)
+              (arg4 symbol)
+              (arg5 symbol)
+              )
+  (when arg2
+    (let ((s1-0 (lookup-level-info arg2)))
+      (cond
+        ((>= (-> arg1 0) 10)
+         )
+        ((and (-> s1-0 borrow) (-> s1-0 borrow alias))
+         (let* ((s0-1 (borrow-city-expansion (the-as pair (-> s1-0 borrow alias))))
+                (a0-3 (-> s1-0 borrow alias))
+                (s1-1 ((method-of-type (rtype-of a0-3) length) a0-3))
+                )
+           (while (and (> s1-1 0) (car s0-1))
+             (when (!= (car s0-1) 'dummy)
+               (let ((t9-3 add-want-level)
+                     (a0-5 arg0)
+                     (a1-3 arg1)
+                     (a2-1 (car s0-1))
+                     (a3-1 (car (cdr s0-1)))
+                     )
+                 (set! a3-1 (cond
+                              ((or (not arg3) (= a3-1 'copy))
+                               arg3
+                               )
+                              (else
+                                (empty)
+                                a3-1
+                                )
+                              )
+                       )
+                 (t9-3 a0-5 a1-3 (the-as symbol a2-1) (the-as symbol a3-1) arg4 arg5)
+                 )
+               )
+             (set! s0-1 (cdr (cdr s0-1)))
+             (+! s1-1 -2)
+             )
+           )
+         )
+        (else
+          (set! (-> arg0 (-> arg1 0) name) arg2)
+          (set! (-> arg0 (-> arg1 0) display?) arg3)
+          (set! (-> arg0 (-> arg1 0) force-vis?) arg4)
+          (set! (-> arg0 (-> arg1 0) force-inside?) arg5)
+          (+! (-> arg1 0) 1)
+          (when (-> s1-0 borrow)
+            (dotimes (s0-2 5)
+              (let ((v1-38 (-> s1-0 borrow borrow-info s0-2)))
+                (when v1-38
+                  (let ((t9-4 add-want-level)
+                        (a0-9 arg0)
+                        (a1-4 arg1)
+                        (a2-2 (car v1-38))
+                        (a3-2 (car (cdr v1-38)))
+                        )
+                    (set! a3-2 (cond
+                                 ((or (not arg3) (= a3-2 'copy))
+                                  arg3
+                                  )
+                                 (else
+                                   (empty)
+                                   a3-2
+                                   )
+                                 )
+                          )
+                    (t9-4 a0-9 a1-4 (the-as symbol a2-2) (the-as symbol a3-2) arg4 arg5)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 21 of type load-state
+;; WARN: Return type mismatch int vs none.
+(defmethod add-borrow-levels ((this load-state))
+  (local-vars (sv-16 int))
+  (dotimes (s5-0 10)
+    (let ((a0-1 (-> this want s5-0 name)))
+      (when a0-1
+        (let ((a0-2 (lookup-level-info a0-1)))
+          (when (= (-> a0-2 memory-mode) (level-memory-mode borrow))
+            (set! (-> this want s5-0 name) #f)
+            (set! (-> this want s5-0 display?) #f)
+            (set! (-> this want s5-0 force-vis?) #f)
+            (set! (-> this want s5-0 force-inside?) #f)
+            )
+          )
+        )
+      )
+    )
+  (set! sv-16 0)
+  (dotimes (s5-1 10)
+    (if (-> this want s5-1 name)
+        (add-want-level
+          (-> this want-exp)
+          (the-as (pointer int64) (& sv-16))
+          (-> this want s5-1 name)
+          (-> this want s5-1 display?)
+          (-> this want s5-1 force-vis?)
+          (-> this want s5-1 force-inside?)
+          )
+        )
+    )
+  (while (< sv-16 10)
+    (set! (-> this want-exp sv-16 name) #f)
+    (set! (-> this want-exp sv-16 display?) #f)
+    (set! (-> this want-exp sv-16 force-vis?) #f)
+    (set! (-> this want-exp sv-16 force-inside?) #f)
+    (set! sv-16 (+ sv-16 1))
+    )
+  (cond
+    ((-> this update-callback)
+     ((-> this update-callback) this)
+     )
+    (else
+      (dotimes (v1-49 10)
+        (set! (-> this target v1-49 name) (-> this want-exp v1-49 name))
+        (set! (-> this target v1-49 display?) (-> this want-exp v1-49 display?))
+        (set! (-> this target v1-49 force-vis?) (-> this want-exp v1-49 force-vis?))
+        (set! (-> this target v1-49 force-inside?) (-> this want-exp v1-49 force-inside?))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type load-state
+;; WARN: Return type mismatch int vs none.
+(defmethod want-sound-banks ((this load-state) (arg0 (pointer symbol)))
+  (dotimes (v1-0 3)
+    (dotimes (a2-0 3)
+      (when (= (-> this want-sound v1-0 name) (-> arg0 a2-0))
+        (set! (-> arg0 a2-0) #f)
+        (goto cfg-8)
+        )
+      )
+    (set! (-> this want-sound v1-0 name) #f)
+    (set! (-> this want-sound v1-0 mode) (sound-bank-mode none))
+    0
+    (label cfg-8)
+    )
+  (dotimes (v1-3 3)
+    (when (-> arg0 v1-3)
+      (dotimes (a2-15 3)
+        (when (not (-> this want-sound a2-15 name))
+          (set! (-> this want-sound a2-15 name) (-> arg0 v1-3))
+          (set! (-> this want-sound a2-15 mode) (sound-bank-mode unknown))
+          (goto cfg-19)
+          )
+        )
+      )
+    (label cfg-19)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 13 of type load-state
+(defmethod want-display-level ((this load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 10)
+    (when (= (-> this want v1-0 name) arg0)
+      (set! (-> this want v1-0 display?) arg1)
+      (add-borrow-levels this)
+      (return 0)
+      )
+    )
+  (if arg1
+      (format 0 "ERROR: can't display ~A because it isn't loaded~%" arg0)
+      )
+  0
+  )
+
+;; definition for method 14 of type load-state
+;; WARN: Return type mismatch int vs none.
+(defmethod want-vis-level ((this load-state) (arg0 symbol))
+  (let ((v1-0 (lookup-level-info arg0)))
+    (if v1-0
+        (set! arg0 (-> v1-0 name))
+        )
+    )
+  (set! (-> this vis-nick) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 15 of type load-state
+(defmethod want-force-vis ((this load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 10)
+    (when (= (-> this want v1-0 name) arg0)
+      (set! (-> this want v1-0 force-vis?) arg1)
+      (add-borrow-levels this)
+      (return 0)
+      )
+    )
+  (format 0 "ERROR: can't force vis on ~A because it isn't loaded~%" arg0)
+  0
+  )
+
+;; definition for method 16 of type load-state
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 16 load-state) has a return type of none, but the expression builder found a return statement.
+(defmethod want-force-inside ((this load-state) (arg0 symbol) (arg1 symbol))
+  (dotimes (v1-0 10)
+    (when (= (-> this want v1-0 name) arg0)
+      (set! (-> this want v1-0 force-inside?) arg1)
+      (add-borrow-levels this)
+      (return 0)
+      )
+    )
+  (format 0 "ERROR: can't force inside on ~A because it isn't loaded~%" arg0)
+  0
+  (none)
+  )
+
+;; definition for symbol *display-load-commands*, type symbol
+(define *display-load-commands* #f)
+
+;; definition for method 18 of type load-state
+(defmethod backup-load-state-and-set-cmds ((this load-state) (arg0 pair))
+  (dotimes (s4-0 256)
+    (when (-> this object-name s4-0)
+      (format 0 "WARNING: load state somehow aquired object command ~A~%" (-> this object-name s4-0))
+      (set! (-> this object-name s4-0) #f)
+      )
+    )
+  (mem-copy! (&-> *backup-load-state* type) (&-> this type) 2664)
+  (set! (-> *backup-load-state* command-list) '())
+  (set! (-> this command-list) arg0)
+  0
+  )
+
+;; definition for method 19 of type load-state
+(defmethod restore-load-state-and-cleanup ((this load-state))
+  (with-pp
+    (execute-commands-up-to this 100000.0)
+    (dotimes (gp-0 256)
+      (when (-> this object-name gp-0)
+        (let ((a0-3 (entity-by-name (-> this object-name gp-0))))
+          (when a0-3
+            (set! (-> a0-3 extra perm status) (the-as entity-perm-status (-> this object-status gp-0)))
+            (if (-> a0-3 extra process)
+                (kill! a0-3)
+                )
+            )
+          )
+        (set! (-> this object-name gp-0) #f)
+        )
+      )
+    (let ((s5-0 (new 'stack 'load-state))
+          (gp-1 (-> *load-state* update-callback))
+          )
+      (mem-copy! (&-> s5-0 type) (&-> *load-state* type) 2664)
+      (mem-copy! (&-> this type) (&-> *backup-load-state* type) 2664)
+      (when (!= (-> pp type) scene-player)
+        (dotimes (s4-1 10)
+          (mem-copy! (the-as pointer (-> *load-state* want s4-1)) (the-as pointer (-> s5-0 want s4-1)) 16)
+          )
+        (dotimes (v1-34 3)
+          (set! (-> *load-state* want-sound v1-34 name) (-> s5-0 want-sound v1-34 name))
+          (set! (-> *load-state* want-sound v1-34 mode) (-> s5-0 want-sound v1-34 mode))
+          )
+        )
+      (dotimes (s4-2 10)
+        (mem-copy! (the-as pointer (-> *load-state* want-exp s4-2)) (the-as pointer (-> s5-0 want-exp s4-2)) 16)
+        (mem-copy! (the-as pointer (-> *load-state* target s4-2)) (the-as pointer (-> s5-0 target s4-2)) 16)
+        )
+      (dotimes (v1-47 6)
+        (set! (-> *load-state* want-exp-sound v1-47 name) (-> s5-0 want-exp-sound v1-47 name))
+        (set! (-> *load-state* want-exp-sound v1-47 mode) (-> s5-0 want-exp-sound v1-47 mode))
+        (set! (-> *load-state* target-sound v1-47 name) (-> s5-0 target-sound v1-47 name))
+        (set! (-> *load-state* target-sound v1-47 mode) (-> s5-0 target-sound v1-47 mode))
+        )
+      (set! (-> *load-state* update-callback) gp-1)
+      )
+    (add-borrow-levels *load-state*)
+    0
+    )
+  )
+
+;; definition for method 20 of type load-state
+(defmethod restore-load-state ((this load-state))
+  (dotimes (v1-0 256)
+    (if (-> this object-name v1-0)
+        (set! (-> this object-name v1-0) #f)
+        )
+    )
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'level-buffer-state 10)))
+    (dotimes (s4-0 10)
+      ((method-of-type level-buffer-state new) (the-as symbol (-> s5-0 s4-0)) level-buffer-state)
+      )
+    (let ((s4-1 (new 'stack-no-clear 'inline-array 'level-buffer-state 10)))
+      (dotimes (s3-0 10)
+        ((method-of-type level-buffer-state new) (the-as symbol (-> s4-1 s3-0)) level-buffer-state)
+        )
+      (let ((s3-1 (-> *load-state* update-callback)))
+        (dotimes (s2-0 10)
+          (mem-copy! (the-as pointer (-> s5-0 s2-0)) (the-as pointer (-> *load-state* want-exp s2-0)) 16)
+          (mem-copy! (the-as pointer (-> s4-1 s2-0)) (the-as pointer (-> *load-state* target s2-0)) 16)
+          )
+        (mem-copy! (&-> this type) (&-> *backup-load-state* type) 2664)
+        (dotimes (gp-1 10)
+          (mem-copy! (the-as pointer (-> *load-state* want-exp gp-1)) (the-as pointer (-> s5-0 gp-1)) 16)
+          (mem-copy! (the-as pointer (-> *load-state* target gp-1)) (the-as pointer (-> s4-1 gp-1)) 16)
+          )
+        (set! (-> *load-state* update-callback) s3-1)
+        )
+      )
+    )
+  (add-borrow-levels *load-state*)
+  0
+  )
+
+;; definition for method 17 of type load-state
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 17 load-state) has a return type of none, but the expression builder found a return statement.
+(defmethod execute-commands-up-to ((this load-state) (arg0 float))
+  (with-pp
+    (let ((s4-0 (new 'stack 'script-context (process->ppointer pp) pp (the-as vector #f))))
+      (set! (-> s4-0 load-state) this)
+      (while (not (null? (-> this command-list)))
+        (let ((f0-0 (command-get-float (car (car (-> this command-list))) 0.0))
+              (s3-0 (cdr (car (-> this command-list))))
+              )
+          (if (< arg0 f0-0)
+              (return #f)
+              )
+          (if *display-load-commands*
+              (format 0 "NOTICE: ~D: ~f: execute command ~A~%" (current-time) f0-0 s3-0)
+              )
+          (cond
+            ((pair? (car s3-0))
+             (let ((a1-4 (car s3-0)))
+               (while (not (null? s3-0))
+                 (eval! s4-0 (the-as pair a1-4))
+                 (set! s3-0 (cdr s3-0))
+                 (set! a1-4 (car s3-0))
+                 )
+               )
+             )
+            (else
+              (eval! s4-0 s3-0)
+              )
+            )
+          )
+        (set! (-> this command-list) (cdr (-> this command-list)))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "load-state-struct")
+
+;; definition for symbol *backup-load-state*, type load-state
+(define *backup-load-state* (new 'global 'load-state))
+
+;; definition (perm) for symbol *load-state*, type load-state
+(define-perm *load-state* load-state (new 'global 'load-state))
+
+;; failed to figure out what this is:
+(kmemclose)
+
+
+
+

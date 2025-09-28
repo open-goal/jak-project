@@ -15,12 +15,12 @@ pub(super) fn extract_tokens(
         extracted_usage_counts: Vec::new(),
     };
 
-    for mut variable in grammar.variables.iter_mut() {
-        extractor.extract_tokens_in_variable(&mut variable);
+    for variable in &mut grammar.variables {
+        extractor.extract_tokens_in_variable(variable);
     }
 
-    for mut variable in grammar.external_tokens.iter_mut() {
-        extractor.extract_tokens_in_variable(&mut variable);
+    for variable in &mut grammar.external_tokens {
+        extractor.extract_tokens_in_variable(variable);
     }
 
     let mut lexical_variables = Vec::with_capacity(extractor.extracted_variables.len());
@@ -49,7 +49,7 @@ pub(super) fn extract_tokens(
         }) = variable.rule
         {
             if i > 0 && extractor.extracted_usage_counts[index] == 1 {
-                let mut lexical_variable = &mut lexical_variables[index];
+                let lexical_variable = &mut lexical_variables[index];
                 lexical_variable.kind = variable.kind;
                 lexical_variable.name = variable.name;
                 symbol_replacer.replacements.insert(i, index);
@@ -59,7 +59,7 @@ pub(super) fn extract_tokens(
         variables.push(variable);
     }
 
-    for variable in variables.iter_mut() {
+    for variable in &mut variables {
         variable.rule = symbol_replacer.replace_symbols_in_rule(&variable.rule);
     }
 
@@ -67,10 +67,10 @@ pub(super) fn extract_tokens(
         .expected_conflicts
         .into_iter()
         .map(|conflict| {
-            let mut result: Vec<_> = conflict
+            let mut result = conflict
                 .iter()
                 .map(|symbol| symbol_replacer.replace_symbol(*symbol))
-                .collect();
+                .collect::<Vec<_>>();
             result.sort_unstable();
             result.dedup();
             result
@@ -94,12 +94,10 @@ pub(super) fn extract_tokens(
     for rule in grammar.extra_symbols {
         if let Rule::Symbol(symbol) = rule {
             extra_symbols.push(symbol_replacer.replace_symbol(symbol));
+        } else if let Some(index) = lexical_variables.iter().position(|v| v.rule == rule) {
+            extra_symbols.push(Symbol::terminal(index));
         } else {
-            if let Some(index) = lexical_variables.iter().position(|v| v.rule == rule) {
-                extra_symbols.push(Symbol::terminal(index));
-            } else {
-                separators.push(rule);
-            }
+            separators.push(rule);
         }
     }
 
@@ -119,13 +117,13 @@ pub(super) fn extract_tokens(
                     name: external_token.name,
                     kind: external_token.kind,
                     corresponding_internal_token: None,
-                })
+                });
             } else {
                 external_tokens.push(ExternalToken {
                     name: lexical_variables[symbol.index].name.clone(),
                     kind: external_token.kind,
                     corresponding_internal_token: Some(symbol),
-                })
+                });
             }
         } else {
             return Err(anyhow!(
@@ -209,7 +207,7 @@ impl TokenExtractor {
                 } else {
                     Rule::Metadata {
                         params: params.clone(),
-                        rule: Box::new(self.extract_tokens_in_rule((&rule).clone())),
+                        rule: Box::new(self.extract_tokens_in_rule(rule)),
                     }
                 }
             }
@@ -298,20 +296,19 @@ impl SymbolReplacer {
         }
 
         let mut adjusted_index = symbol.index;
-        for (replaced_index, _) in self.replacements.iter() {
+        for replaced_index in self.replacements.keys() {
             if *replaced_index < symbol.index {
                 adjusted_index -= 1;
             }
         }
 
-        return Symbol::non_terminal(adjusted_index);
+        Symbol::non_terminal(adjusted_index)
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::generate::grammars::VariableType;
 
     #[test]
     fn test_extraction() {
@@ -320,7 +317,7 @@ mod test {
                 "rule_0",
                 Rule::repeat(Rule::seq(vec![
                     Rule::string("a"),
-                    Rule::pattern("b"),
+                    Rule::pattern("b", ""),
                     Rule::choice(vec![
                         Rule::non_terminal(1),
                         Rule::non_terminal(2),
@@ -331,8 +328,8 @@ mod test {
                     ]),
                 ])),
             ),
-            Variable::named("rule_1", Rule::pattern("e")),
-            Variable::named("rule_2", Rule::pattern("b")),
+            Variable::named("rule_1", Rule::pattern("e", "")),
+            Variable::named("rule_2", Rule::pattern("b", "")),
             Variable::named(
                 "rule_3",
                 Rule::seq(vec![Rule::non_terminal(2), Rule::Blank]),
@@ -378,12 +375,12 @@ mod test {
             lexical_grammar.variables,
             vec![
                 Variable::anonymous("a", Rule::string("a")),
-                Variable::auxiliary("rule_0_token1", Rule::pattern("b")),
+                Variable::auxiliary("rule_0_token1", Rule::pattern("b", "")),
                 Variable::auxiliary(
                     "rule_0_token2",
                     Rule::repeat(Rule::choice(vec![Rule::string("c"), Rule::string("d"),]))
                 ),
-                Variable::named("rule_1", Rule::pattern("e")),
+                Variable::named("rule_1", Rule::pattern("e", "")),
             ]
         );
     }
@@ -404,14 +401,14 @@ mod test {
         assert_eq!(
             lexical_grammar.variables,
             vec![Variable::anonymous("hello", Rule::string("hello")),]
-        )
+        );
     }
 
     #[test]
     fn test_extracting_extra_symbols() {
         let mut grammar = build_grammar(vec![
             Variable::named("rule_0", Rule::string("x")),
-            Variable::named("comment", Rule::pattern("//.*")),
+            Variable::named("comment", Rule::pattern("//.*", "")),
         ]);
         grammar.extra_symbols = vec![Rule::string(" "), Rule::non_terminal(1)];
 

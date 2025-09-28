@@ -1,28 +1,26 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: generic-vu1.gc
-;; name in dgo: generic-vu1
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
+(require "engine/gfx/generic/generic-vu1-h.gc")
+(require "engine/gfx/vu1-user-h.gc")
+(require "engine/gfx/math-camera-h.gc")
+(require "engine/gfx/hw/gs.gc")
 (define generic-vu1-block (new 'static 'vu-function :length #x0 :qlength #x0))
 
 (defun generic-setup-constants ((arg0 generic-constants) (arg1 int))
-  (let ((a2-0 *math-camera*))
-    (set-vector! (-> arg0 fog) (-> a2-0 pfog0) (-> a2-0 fog-min) (-> a2-0 fog-max) 3071.0)
-    )
+  (let ((a2-0 *math-camera*)) (set-vector! (-> arg0 fog) (-> a2-0 pfog0) (-> a2-0 fog-min) (-> a2-0 fog-max) 3071.0))
   (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x7 :nreg #x1))
   (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   (set! (-> arg0 giftag tag)
-        (new 'static 'gif-tag64
-          :pre #x1
-          :nreg #x3
-          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-          )
-        )
+        (new 'static
+             'gif-tag64
+             :pre #x1
+             :nreg #x3
+             :prim
+             (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)))
   (set! (-> arg0 giftag regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-        )
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
   (set! (-> arg0 hvdf-offset quad) (-> *math-camera* hvdf-off quad))
   (set! (-> arg0 hmge-scale quad) (-> *math-camera* hmge-scale quad))
   (set! (-> arg0 invh-scale quad) (-> *math-camera* inv-hmge-scale quad))
@@ -31,88 +29,74 @@
   (set! (-> arg0 adnop dword 1) (the-as uint 71))
   (set! (-> arg0 flush dword 0) (the-as uint #x3f80000080808080))
   (set! (-> arg0 flush dword 1) (the-as uint 1))
-  (none)
-  )
+  (none))
 
 (defun generic-add-constants ((arg0 dma-buffer) (arg1 int))
   (let* ((a2-0 10)
          (v1-0 arg0)
-         (a0-1 (the-as dma-packet (-> v1-0 base)))
-         )
+         (a0-1 (the-as dma-packet (-> v1-0 base))))
     (set! (-> a0-1 dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
     (set! (-> a0-1 vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
     (set! (-> a0-1 vif1) (new 'static 'vif-tag :imm #x381 :cmd (vif-cmd unpack-v4-32) :num a2-0))
-    (set! (-> v1-0 base) (the-as pointer (&+ a0-1 16)))
-    )
+    (set! (-> v1-0 base) (the-as pointer (&+ a0-1 16))))
   (generic-setup-constants (the-as generic-constants (-> arg0 base)) arg1)
   (&+! (-> arg0 base) 160)
-  (none)
-  )
+  (none))
 
 (defun generic-init-buf ((arg0 dma-buffer) (arg1 int) (arg2 gs-zbuf))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask generic))
     (dma-buffer-add-vu-function arg0 generic-vu1-block 1)
     (let* ((v1-3 arg0)
-           (a0-2 (the-as dma-packet (-> v1-3 base)))
-           )
+           (a0-2 (the-as dma-packet (-> v1-3 base))))
       (set! (-> a0-2 dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
       (set! (-> a0-2 vif0) (new 'static 'vif-tag))
       (set! (-> a0-2 vif1) (new 'static 'vif-tag :imm #x3 :cmd (vif-cmd direct) :msk #x1))
-      (set! (-> v1-3 base) (the-as pointer (&+ a0-2 16)))
-      )
+      (set! (-> v1-3 base) (the-as pointer (&+ a0-2 16))))
     (let* ((v1-4 arg0)
-           (a0-4 (the-as gs-gif-tag (-> v1-4 base)))
-           )
+           (a0-4 (the-as gs-gif-tag (-> v1-4 base))))
       (set! (-> a0-4 tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x2))
       (set! (-> a0-4 regs)
-            (new 'static 'gif-tag-regs
-              :regs0 (gif-reg-id a+d)
-              :regs1 (gif-reg-id a+d)
-              :regs2 (gif-reg-id a+d)
-              :regs3 (gif-reg-id a+d)
-              :regs4 (gif-reg-id a+d)
-              :regs5 (gif-reg-id a+d)
-              :regs6 (gif-reg-id a+d)
-              :regs7 (gif-reg-id a+d)
-              :regs8 (gif-reg-id a+d)
-              :regs9 (gif-reg-id a+d)
-              :regs10 (gif-reg-id a+d)
-              :regs11 (gif-reg-id a+d)
-              :regs12 (gif-reg-id a+d)
-              :regs13 (gif-reg-id a+d)
-              :regs14 (gif-reg-id a+d)
-              :regs15 (gif-reg-id a+d)
-              )
-            )
-      (set! (-> v1-4 base) (the-as pointer (&+ a0-4 16)))
-      )
+            (new 'static
+                 'gif-tag-regs
+                 :regs0 (gif-reg-id a+d)
+                 :regs1 (gif-reg-id a+d)
+                 :regs2 (gif-reg-id a+d)
+                 :regs3 (gif-reg-id a+d)
+                 :regs4 (gif-reg-id a+d)
+                 :regs5 (gif-reg-id a+d)
+                 :regs6 (gif-reg-id a+d)
+                 :regs7 (gif-reg-id a+d)
+                 :regs8 (gif-reg-id a+d)
+                 :regs9 (gif-reg-id a+d)
+                 :regs10 (gif-reg-id a+d)
+                 :regs11 (gif-reg-id a+d)
+                 :regs12 (gif-reg-id a+d)
+                 :regs13 (gif-reg-id a+d)
+                 :regs14 (gif-reg-id a+d)
+                 :regs15 (gif-reg-id a+d)))
+      (set! (-> v1-4 base) (the-as pointer (&+ a0-4 16))))
     (let* ((v1-5 arg0)
-           (a0-6 (-> v1-5 base))
-           )
+           (a0-6 (-> v1-5 base)))
       (set! (-> (the-as (pointer gs-test) a0-6) 0)
-            (new 'static 'gs-test
-              :ate #x1
-              :atst (gs-atest greater-equal)
-              :aref #x26
-              :afail #x1
-              :zte #x1
-              :ztst (gs-ztest greater-equal)
-              )
-            )
+            (new 'static
+                 'gs-test
+                 :ate #x1
+                 :atst (gs-atest greater-equal)
+                 :aref #x26
+                 :afail #x1
+                 :zte #x1
+                 :ztst (gs-ztest greater-equal)))
       (set! (-> (the-as (pointer uint64) a0-6) 1) (the-as uint (gs-reg test-1)))
       (set! (-> (the-as (pointer gs-zbuf) a0-6) 2) arg2)
       (set! (-> (the-as (pointer uint64) a0-6) 3) (the-as uint (gs-reg zbuf-1)))
-      (set! (-> v1-5 base) (&+ a0-6 32))
-      )
+      (set! (-> v1-5 base) (&+ a0-6 32)))
     (generic-add-constants arg0 arg1)
     (let* ((v1-6 arg0)
-           (a0-9 (the-as dma-packet (-> v1-6 base)))
-           )
+           (a0-9 (the-as dma-packet (-> v1-6 base))))
       (set! (-> a0-9 dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
       (set! (-> a0-9 vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
       (set! (-> a0-9 vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-      (set! (-> v1-6 base) (the-as pointer (&+ a0-9 16)))
-      )
+      (set! (-> v1-6 base) (the-as pointer (&+ a0-9 16))))
     (let ((v1-7 (the-as (pointer int32) (-> arg0 base))))
       (set! (-> (the-as (pointer vif-tag) v1-7) 0) (new 'static 'vif-tag :cmd (vif-cmd base)))
       (set! (-> (the-as (pointer vif-tag) v1-7) 1) (new 'static 'vif-tag :cmd (vif-cmd offset)))
@@ -122,12 +106,9 @@
       (set! (-> v1-7 5) 0)
       (set! (-> v1-7 6) 0)
       (set! (-> v1-7 7) 0)
-      (set! (-> arg0 base) (&+ (the-as pointer v1-7) 32))
-      )
-    )
+      (set! (-> arg0 base) (&+ (the-as pointer v1-7) 32))))
   0
-  (none)
-  )
+  (none))
 
 ;; unused
 ;; (defun generic-reset-buffers ((arg0 dma-buffer) (arg1 int) (arg2 int))
@@ -167,7 +148,3 @@
 ;;   0
 ;;   (none)
 ;;   )
-
-
-
-

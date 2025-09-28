@@ -1,10 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: miners.gc
-;; name in dgo: miners
-;; dgos: L1, VI3
-
+(bundles "VI3.DGO")
+(require "engine/common-obs/process-taskable.gc")
 (declare-type minershort process-taskable)
 
 ;; DECOMP BEGINS
@@ -13,332 +10,255 @@
 (defbehavior miners-anim-loop process-taskable ()
   (when (!= (ja-group) (get-art-elem self))
     (ja-channel-push! 1 (seconds 0.2))
-    (ja :group! (get-art-elem self))
-    )
+    (ja :group! (get-art-elem self)))
   (loop
     (suspend)
     (ja :num! (loop! 2.0))
-    (if (= (-> self next-state name) 'idle)
-        (process-taskable-method-43 self)
-        )
-    )
-  0
-  )
+    (if (= (-> self next-state name) 'idle) (process-taskable-method-43 self)))
+  0)
 
-(deftype minertall (process-taskable)
-  ()
-  )
+(deftype minertall (process-taskable) ())
 
 
-(defskelgroup *minertall-sg* minertall minertall-lod0-jg minertall-idle-ja
-              ((minertall-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 2.5)
-              :shadow minertall-shadow-mg
-              )
+(defskelgroup *minertall-sg*
+  minertall
+  minertall-lod0-jg
+  minertall-idle-ja
+  ((minertall-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 2.5)
+  :shadow minertall-shadow-mg)
 
 (defmethod process-taskable-method-52 ((this minertall))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((f0-0 (-> this root trans y)))
-        (let ((a0-2 v1-1))
-          (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0)))
-          )
+        (let ((a0-2 v1-1)) (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0))))
         0
-        (let ((a0-4 v1-1))
-          (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))
-          )
-        )
+        (let ((a0-4 v1-1)) (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))
-      )
-    )
-  (none)
-  )
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))))
+  (none))
 
 (defmethod draw-npc-shadow ((this minertall))
   (-> this draw shadow-ctrl)
   (cond
-    ((and (-> this draw shadow)
-          (zero? (-> this draw cur-lod))
-          (logtest? (-> this draw status) (draw-status was-drawn))
-          )
-     (let ((v1-9 (-> this draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
-       )
+    ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
+     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
      0
-     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
-     )
-    (else
-      (let ((v1-14 (-> this draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
-        )
-      0
-      )
-    )
-  (none)
-  )
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
+    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+  (none))
 
 (defmethod play-anim! ((this minertall) (arg0 symbol))
   (set! (-> this talk-message) (text-id press-to-talk))
   (current-status (-> this tasks))
   (if arg0
-      (format
-        0
-        "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-        (-> this name)
-        (task-status->string (current-status (-> this tasks)))
-        )
-      )
-  (the-as basic (-> this draw art-group data 3))
-  )
+    (format 0
+            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+            (-> this name)
+            (task-status->string (current-status (-> this tasks)))))
+  (the-as basic (-> this draw art-group data 3)))
 
 (defmethod get-art-elem ((this minertall))
-  (-> this draw art-group data 3)
-  )
+  (-> this draw art-group data 3))
 
 (defstate idle (minertall)
   :virtual #t
-  :trans (behavior ()
-    (set! (-> self will-talk) #f)
-    ((-> (method-of-type process-taskable idle) trans))
-    )
-  :code miners-anim-loop
-  )
+  :trans
+    (behavior ()
+      (set! (-> self will-talk) #f)
+      ((-> (method-of-type process-taskable idle) trans)))
+  :code miners-anim-loop)
 
 (defmethod init-from-entity! ((this minertall) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *minertall-sg* 32 47 (new 'static 'vector :w 4096.0) 5)
   (set! (-> this tasks) (get-task-control (game-task village3-miner-money1)))
   (set! (-> this draw light-index) (the-as uint 1))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))
 
 (deftype minershort (process-taskable)
-  ((other-miner  minertall)
-   )
-  )
+  ((other-miner minertall)))
 
 
-(defskelgroup *minershort-sg* minershort minershort-lod0-jg minershort-idle-ja
-              ((minershort-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 2.5)
-              :shadow minershort-shadow-mg
-              )
+(defskelgroup *minershort-sg*
+  minershort
+  minershort-lod0-jg
+  minershort-idle-ja
+  ((minershort-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 2.5)
+  :shadow minershort-shadow-mg)
 
 (defpartgroup group-minershort-candle
   :id 566
   :bounds (static-bspherem 0 0 0 15)
-  :parts ((sp-item 2364 :fade-after (meters 60) :falloff-to (meters 60))
-    (sp-item 2365 :fade-after (meters 60) :falloff-to (meters 60))
-    (sp-item 2366 :fade-after (meters 60) :falloff-to (meters 60))
-    )
-  )
+  :parts
+  ((sp-item 2364 :fade-after (meters 60) :falloff-to (meters 60))
+   (sp-item 2365 :fade-after (meters 60) :falloff-to (meters 60))
+   (sp-item 2366 :fade-after (meters 60) :falloff-to (meters 60))))
 
 (defpart 2366
-  :init-specs ((:texture (new 'static 'texture-id :page #x2))
-    (:num 1.0 2.0)
-    (:y (meters 0))
-    (:scale-x (meters 0.075) (meters 0.075))
-    (:rot-z (degrees 0) (degrees 360))
-    (:scale-y :copy scale-x)
-    (:r 128.0 64.0)
-    (:g 128.0 32.0)
-    (:b 128.0 16.0)
-    (:a 32.0 32.0)
-    (:vel-y (meters 0) (meters 0.00033333333))
-    (:scalevel-x (meters 0.0005) (meters 0.001))
-    (:rotvel-z (degrees -0.2) (degrees 0.4))
-    (:scalevel-y :copy scalevel-x)
-    (:fade-r -0.32820514)
-    (:fade-g -0.32820514)
-    (:fade-b -0.32820514)
-    (:fade-a -0.16410257)
-    (:accel-y (meters 0.000033333334) (meters 0.00006666667))
-    (:timer (seconds 1.3))
-    (:flags (bit2 bit12 bit14))
-    (:conerot-x (degrees 0) (degrees 360))
-    (:conerot-y (degrees 0) (degrees 360))
-    (:conerot-radius (meters 0) (meters 0.05))
-    )
-  )
+  :init-specs
+  ((:texture (bigpuff effects))
+   (:num 1.0 2.0)
+   (:y (meters 0))
+   (:scale-x (meters 0.075) (meters 0.075))
+   (:rot-z (degrees 0) (degrees 360))
+   (:scale-y :copy scale-x)
+   (:r 128.0 64.0)
+   (:g 128.0 32.0)
+   (:b 128.0 16.0)
+   (:a 32.0 32.0)
+   (:vel-y (meters 0) (meters 0.00033333333))
+   (:scalevel-x (meters 0.0005) (meters 0.001))
+   (:rotvel-z (degrees -0.2) (degrees 0.4))
+   (:scalevel-y :copy scalevel-x)
+   (:fade-r -0.32820514)
+   (:fade-g -0.32820514)
+   (:fade-b -0.32820514)
+   (:fade-a -0.16410257)
+   (:accel-y (meters 0.000033333334) (meters 0.00006666667))
+   (:timer (seconds 1.3))
+   (:flags (bit2 bit12 bit14))
+   (:conerot-x (degrees 0) (degrees 360))
+   (:conerot-y (degrees 0) (degrees 360))
+   (:conerot-radius (meters 0) (meters 0.05))))
 
 (defpart 2364
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
-    (:num 3.0)
-    (:y (meters -0.08) (meters 0.02))
-    (:scale-x (meters 0.2) (meters 0.2))
-    (:scale-y :copy scale-x)
-    (:r 128.0 64.0)
-    (:g 64.0 64.0)
-    (:b 0.0 32.0)
-    (:a 32.0 32.0)
-    (:vel-x (meters 0) (meters 0.00016666666))
-    (:vel-z (meters 0) (meters 0.00016666666))
-    (:scalevel-x (meters -0.0016666667))
-    (:scalevel-y :copy scalevel-x)
-    (:fade-g -0.7111111)
-    (:accel-y (meters 0.00026666667) (meters 0.00006666667))
-    (:timer (seconds 0.2) (seconds 0.097))
-    (:flags (bit3))
-    )
-  )
+  :init-specs
+  ((:texture (hotdot effects))
+   (:num 3.0)
+   (:y (meters -0.08) (meters 0.02))
+   (:scale-x (meters 0.2) (meters 0.2))
+   (:scale-y :copy scale-x)
+   (:r 128.0 64.0)
+   (:g 64.0 64.0)
+   (:b 0.0 32.0)
+   (:a 32.0 32.0)
+   (:vel-x (meters 0) (meters 0.00016666666))
+   (:vel-z (meters 0) (meters 0.00016666666))
+   (:scalevel-x (meters -0.0016666667))
+   (:scalevel-y :copy scalevel-x)
+   (:fade-g -0.7111111)
+   (:accel-y (meters 0.00026666667) (meters 0.00006666667))
+   (:timer (seconds 0.2) (seconds 0.097))
+   (:flags (bit3))))
 
 (defpart 2365
-  :init-specs ((:texture (new 'static 'texture-id :index #x12 :page #x2))
-    (:num 1.0)
-    (:y (meters -0.02))
-    (:scale-x (meters 0.5) (meters 0.75))
-    (:rot-z (degrees 0) (degrees 360))
-    (:scale-y :copy scale-x)
-    (:r 128.0 64.0)
-    (:g 64.0 64.0)
-    (:b 0.0 32.0)
-    (:a 16.0 32.0)
-    (:vel-x (meters 0) (meters 0.00016666666))
-    (:vel-z (meters 0) (meters 0.00016666666))
-    (:scalevel-x (meters -0.0016666667))
-    (:scalevel-y :copy scalevel-x)
-    (:fade-g -0.7111111)
-    (:fade-a -1.92)
-    (:accel-y (meters 0.00026666667) (meters 0.00006666667))
-    (:timer (seconds 0.067))
-    (:flags (bit2 bit3))
-    )
-  )
+  :init-specs
+  ((:texture (starflash effects))
+   (:num 1.0)
+   (:y (meters -0.02))
+   (:scale-x (meters 0.5) (meters 0.75))
+   (:rot-z (degrees 0) (degrees 360))
+   (:scale-y :copy scale-x)
+   (:r 128.0 64.0)
+   (:g 64.0 64.0)
+   (:b 0.0 32.0)
+   (:a 16.0 32.0)
+   (:vel-x (meters 0) (meters 0.00016666666))
+   (:vel-z (meters 0) (meters 0.00016666666))
+   (:scalevel-x (meters -0.0016666667))
+   (:scalevel-y :copy scalevel-x)
+   (:fade-g -0.7111111)
+   (:fade-a -1.92)
+   (:accel-y (meters 0.00026666667) (meters 0.00006666667))
+   (:timer (seconds 0.067))
+   (:flags (bit2 bit3))))
 
 (defmethod process-taskable-method-52 ((this minershort))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((f0-0 (-> this root trans y)))
-        (let ((a0-2 v1-1))
-          (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0)))
-          )
+        (let ((a0-2 v1-1)) (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0))))
         0
-        (let ((a0-4 v1-1))
-          (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))
-          )
-        )
+        (let ((a0-4 v1-1)) (set! (-> a0-4 settings top-plane w) (- (+ 4096.0 f0-0)))))
       0
-      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))
-      )
-    )
-  (none)
-  )
+      (logclear! (-> v1-1 settings flags) (shadow-flags shdf03))))
+  (none))
 
 (defmethod draw-npc-shadow ((this minershort))
   (-> this draw shadow-ctrl)
   (cond
-    ((and (-> this draw shadow)
-          (zero? (-> this draw cur-lod))
-          (logtest? (-> this draw status) (draw-status was-drawn))
-          )
-     (let ((v1-9 (-> this draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
-       )
+    ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
+     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
      0
-     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
-     )
-    (else
-      (let ((v1-14 (-> this draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
-        )
-      0
-      )
-    )
-  (none)
-  )
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
+    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+  (none))
 
 (defbehavior minershort-trans-hook minershort ()
-  (spawn
-    (-> self part)
-    (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node minershort-lod0-jg candle))
-    )
-  (none)
-  )
+  (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node minershort-lod0-jg candle)))
+  (none))
 
 (defmethod play-anim! ((this minershort) (arg0 symbol))
   (set! (-> this talk-message) (text-id press-to-talk))
   (case (current-status (-> this tasks))
     (((task-status need-hint) (task-status need-introduction))
-     (if (not arg0)
-         (set! (-> this will-talk) #t)
-         )
+     (if (not arg0) (set! (-> this will-talk) #t))
      (case (current-task (-> this tasks))
        (((game-task village3-miner-money1))
         (when arg0
           (let* ((s5-1 (-> this tasks))
-                 (s4-0 (method-of-object s5-1 save-reminder))
-                 )
-            (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1)
-            )
+                 (s4-0 (method-of-object s5-1 save-reminder)))
+            (s4-0 s5-1 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1))
           (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
           (close-specific-task! (game-task village3-miner-money1) (task-status need-introduction))
           (close-specific-task! (game-task village3-miner-money2) (task-status need-introduction))
           (close-specific-task! (game-task village3-miner-money3) (task-status need-introduction))
-          (close-specific-task! (game-task village3-miner-money4) (task-status need-introduction))
-          )
-        (new 'static 'spool-anim
-          :name "minershort-introduction-orbs"
-          :index 4
-          :parts 16
-          :command-list '((171 joint "cameraB")
-            (206 joint "camera")
-            (423 joint "cameraB")
-            (591 joint "camera")
-            (692 joint "cameraB")
-            (918 joint "camera")
-            (1122 joint "cameraB")
-            (1122 shadow self #f)
-            (1241 joint "camera")
-            (1241 shadow self #t)
-            )
-          )
-        )
+          (close-specific-task! (game-task village3-miner-money4) (task-status need-introduction)))
+        (new 'static
+             'spool-anim
+             :name "minershort-introduction-orbs"
+             :index 4
+             :parts 16
+             :command-list
+             '((171 joint "cameraB")
+              (206 joint "camera")
+              (423 joint "cameraB")
+              (591 joint "camera")
+              (692 joint "cameraB")
+              (918 joint "camera")
+              (1122 joint "cameraB")
+              (1122 shadow self #f)
+              (1241 joint "camera")
+              (1241 shadow self #t))))
        (((game-task cave-gnawers))
         (when arg0
           (let* ((s5-2 (-> this tasks))
-                 (s4-1 (method-of-object s5-2 save-reminder))
-                 )
-            (s4-1 s5-2 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1)
-            )
+                 (s4-1 (method-of-object s5-2 save-reminder)))
+            (s4-1 s5-2 (the int (the-as float (send-event *target* 'query 'pickup (pickup-type fuel-cell)))) 1))
           (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
-          (close-status! (-> this tasks) (task-status need-introduction))
-          )
-        (new 'static 'spool-anim
-          :name "minershort-introduction-gnawers"
-          :index 9
-          :parts 8
-          :command-list '((0 want-levels village3 maincave)
-            (149 joint "cameraB")
-            (158 display-level maincave movie)
-            (158 want-force-vis maincave #t)
-            (435 display-level maincave #f)
-            (435 joint "camera")
-            (680 joint "cameraB")
-            (719 joint "camera")
-            )
-          )
-        )
+          (close-status! (-> this tasks) (task-status need-introduction)))
+        (new 'static
+             'spool-anim
+             :name "minershort-introduction-gnawers"
+             :index 9
+             :parts 8
+             :command-list
+             '((0 want-levels village3 maincave)
+              (149 joint "cameraB")
+              (158 display-level maincave movie)
+              (158 want-force-vis maincave #t)
+              (435 display-level maincave #f)
+              (435 joint "camera")
+              (680 joint "cameraB")
+              (719 joint "camera"))))
        (else
-         (when arg0
-           (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
-           (close-status! (-> this tasks) (task-status need-introduction))
-           )
-         (new 'static 'spool-anim
-           :name "minershort-introduction-switch"
-           :index 11
-           :parts 7
-           :command-list '((2 shadow "minertall-1" #f) (835 shadow "minertall-1" #t))
-           )
-         )
-       )
-     )
+        (when arg0
+          (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
+          (close-status! (-> this tasks) (task-status need-introduction)))
+        (new 'static
+             'spool-anim
+             :name "minershort-introduction-switch"
+             :index 11
+             :parts 7
+             :command-list
+             '((2 shadow "minertall-1" #f) (835 shadow "minertall-1" #t))))))
     (((task-status need-reminder))
      (set! (-> this skippable) #t)
      (let ((s4-2 (+ (get-reminder (-> this tasks) 0) 1)))
-       (if (< (the-as uint 3) (the-as uint s4-2))
-           (set! s4-2 0)
-           )
+       (if (< (the-as uint 3) (the-as uint s4-2)) (set! s4-2 0))
        (countdown (s3-0 4)
          (let ((v1-59 s4-2))
            (cond
@@ -346,220 +266,108 @@
               (if (not (or (= (get-task-status (game-task village3-miner-money1)) (task-status need-reminder))
                            (= (get-task-status (game-task village3-miner-money2)) (task-status need-reminder))
                            (= (get-task-status (game-task village3-miner-money3)) (task-status need-reminder))
-                           (= (get-task-status (game-task village3-miner-money4)) (task-status need-reminder))
-                           )
-                       )
-                  (set! s4-2 1)
-                  )
-              )
-             ((= v1-59 1)
-              (if (!= (get-task-status (game-task cave-gnawers)) (task-status need-reminder))
-                  (set! s4-2 2)
-                  )
-              )
+                           (= (get-task-status (game-task village3-miner-money4)) (task-status need-reminder))))
+                (set! s4-2 1)))
+             ((= v1-59 1) (if (!= (get-task-status (game-task cave-gnawers)) (task-status need-reminder)) (set! s4-2 2)))
              ((= v1-59 2)
               (if (not (or (= (get-task-status (game-task village3-miner-money1)) (task-status need-reminder))
                            (= (get-task-status (game-task village3-miner-money2)) (task-status need-reminder))
                            (= (get-task-status (game-task village3-miner-money3)) (task-status need-reminder))
-                           (= (get-task-status (game-task village3-miner-money4)) (task-status need-reminder))
-                           )
-                       )
-                  (set! s4-2 3)
-                  )
-              )
-             (else
-               (if (!= (get-task-status (game-task snow-eggtop)) (task-status need-reminder))
-                   (set! s4-2 0)
-                   )
-               )
-             )
-           )
-         )
-       (if arg0
-           (save-reminder (-> this tasks) s4-2 0)
-           )
+                           (= (get-task-status (game-task village3-miner-money4)) (task-status need-reminder))))
+                (set! s4-2 3)))
+             (else (if (!= (get-task-status (game-task snow-eggtop)) (task-status need-reminder)) (set! s4-2 0))))))
+       (if arg0 (save-reminder (-> this tasks) s4-2 0))
        (cond
-         ((zero? s4-2)
-          (new 'static 'spool-anim :name "minershort-reminder-1-orbs" :index 5 :parts 3 :command-list '())
-          )
+         ((zero? s4-2) (new 'static 'spool-anim :name "minershort-reminder-1-orbs" :index 5 :parts 3 :command-list '()))
          ((= s4-2 1)
-          (if arg0
-              (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
-              )
-          (new 'static 'spool-anim :name "minershort-reminder-1-gnawers" :index 10 :parts 3 :command-list '())
-          )
+          (if arg0 (send-event (-> this other-miner ppointer 3) 'clone (process->handle this)))
+          (new 'static 'spool-anim :name "minershort-reminder-1-gnawers" :index 10 :parts 3 :command-list '()))
          ((= s4-2 2)
-          (if arg0
-              (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
-              )
-          (new 'static 'spool-anim :name "minershort-reminder-2-orbs" :index 6 :parts 2 :command-list '())
-          )
+          (if arg0 (send-event (-> this other-miner ppointer 3) 'clone (process->handle this)))
+          (new 'static 'spool-anim :name "minershort-reminder-2-orbs" :index 6 :parts 2 :command-list '()))
          (else
-           (if arg0
-               (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
-               )
-           (new 'static 'spool-anim
-             :name "minershort-reminder-1-switch"
-             :index 12
-             :parts 5
-             :command-list '((2 shadow "minertall-1" #f) (500 shadow "minertall-1" #t))
-             )
-           )
-         )
-       )
-     )
+          (if arg0 (send-event (-> this other-miner ppointer 3) 'clone (process->handle this)))
+          (new 'static
+               'spool-anim
+               :name "minershort-reminder-1-switch"
+               :index 12
+               :parts 5
+               :command-list
+               '((2 shadow "minertall-1" #f) (500 shadow "minertall-1" #t)))))))
     (((task-status need-reward-speech))
      (let ((s4-3 (get-reminder (-> this tasks) 2)))
        (cond
          (arg0
-           (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
-           (set! (-> this cell-for-task) (current-task (-> this tasks)))
-           (close-current! (-> this tasks))
-           (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
-           (save-reminder (-> this tasks) (+ s4-3 1) 2)
-           )
-         (else
-           (set! (-> this will-talk) #t)
-           (set! (-> this talk-message) (text-id press-to-trade-money))
-           )
-         )
+          (send-event (-> this other-miner ppointer 3) 'clone (process->handle this))
+          (set! (-> this cell-for-task) (current-task (-> this tasks)))
+          (close-current! (-> this tasks))
+          (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
+          (save-reminder (-> this tasks) (+ s4-3 1) 2))
+         (else (set! (-> this will-talk) #t) (set! (-> this talk-message) (text-id press-to-trade-money))))
        (if (< (the-as uint s4-3) (the-as uint 3))
-           (new 'static 'spool-anim :name "minershort-resolution-1-orbs" :index 7 :parts 2 :command-list '())
-           (new 'static 'spool-anim
-             :name "minershort-resolution-2-orbs"
-             :index 8
-             :parts 6
-             :command-list '((154 joint "cameraB") (461 joint "camera"))
-             )
-           )
-       )
-     )
+         (new 'static 'spool-anim :name "minershort-resolution-1-orbs" :index 7 :parts 2 :command-list '())
+         (new 'static
+              'spool-anim
+              :name "minershort-resolution-2-orbs"
+              :index 8
+              :parts 6
+              :command-list
+              '((154 joint "cameraB") (461 joint "camera"))))))
     (else
-      (if arg0
-          (format
-            0
-            "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-            (-> this name)
-            (task-status->string (current-status (-> this tasks)))
-            )
-          )
-      (-> this draw art-group data 3)
-      )
-    )
-  )
+     (if arg0
+       (format 0
+               "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+               (-> this name)
+               (task-status->string (current-status (-> this tasks)))))
+     (-> this draw art-group data 3))))
 
 (defstate play-anim (minershort)
   :virtual #t
-  :exit (behavior ()
-    (send-event (-> self other-miner ppointer 3) 'end-mode)
-    ((-> (method-of-type process-taskable play-anim) exit))
-    )
-  )
+  :exit
+    (behavior ()
+      (send-event (-> self other-miner ppointer 3) 'end-mode)
+      ((-> (method-of-type process-taskable play-anim) exit))))
 
 (defmethod get-art-elem ((this minershort))
-  (-> this draw art-group data 3)
-  )
+  (-> this draw art-group data 3))
 
 (defmethod process-taskable-method-43 ((this minershort))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 30) 122880.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
-        ((< 0.9655172 f0-2)
-         (play-ambient (-> this ambient) "MIN-LO01" #f (-> this root trans))
-         )
-        ((< 0.9310345 f0-2)
-         (play-ambient (-> this ambient) "MIN-LO03" #f (-> this root trans))
-         )
-        ((< 0.8965517 f0-2)
-         (play-ambient (-> this ambient) "MIN-LO04" #f (-> this root trans))
-         )
-        ((< 0.86206895 f0-2)
-         (play-ambient (-> this ambient) "MIN-LO05" #f (-> this root trans))
-         )
-        ((< 0.82758623 f0-2)
-         (play-ambient (-> this ambient) "MIN-LO06" #f (-> this root trans))
-         )
-        ((< 0.79310346 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM01" #f (-> this root trans))
-         )
-        ((< 0.7586207 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM02" #f (-> this root trans))
-         )
-        ((< 0.7241379 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM03" #f (-> this root trans))
-         )
-        ((< 0.6896552 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM04" #f (-> this root trans))
-         )
-        ((< 0.6551724 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM05" #f (-> this root trans))
-         )
-        ((< 0.62068963 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM06" #f (-> this root trans))
-         )
-        ((< 0.5862069 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM07" #f (-> this root trans))
-         )
-        ((< 0.55172414 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM08" #f (-> this root trans))
-         )
-        ((< 0.51724136 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM09" #f (-> this root trans))
-         )
-        ((< 0.4827586 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM10" #f (-> this root trans))
-         )
-        ((< 0.44827586 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM11" #f (-> this root trans))
-         )
-        ((< 0.41379312 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM12" #f (-> this root trans))
-         )
-        ((< 0.37931034 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM1A" #f (-> this root trans))
-         )
-        ((< 0.3448276 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM2A" #f (-> this root trans))
-         )
-        ((< 0.31034482 f0-2)
-         (play-ambient (-> this ambient) "MSH-AM3A" #f (-> this root trans))
-         )
-        ((< 0.27586207 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM01" #f (-> this root trans))
-         )
-        ((< 0.2413793 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM02" #f (-> this root trans))
-         )
-        ((< 0.20689656 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM03" #f (-> this root trans))
-         )
-        ((< 0.1724138 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM04" #f (-> this root trans))
-         )
-        ((< 0.13793103 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM05" #f (-> this root trans))
-         )
-        ((< 0.10344828 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM06" #f (-> this root trans))
-         )
-        ((< 0.06896552 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM07" #f (-> this root trans))
-         )
-        ((< 0.03448276 f0-2)
-         (play-ambient (-> this ambient) "MTA-AM08" #f (-> this root trans))
-         )
-        (else
-          (play-ambient (-> this ambient) "MTA-AM09" #f (-> this root trans))
-          )
-        )
-      )
-    )
-  )
+        ((< 0.9655172 f0-2) (play-ambient (-> this ambient) "MIN-LO01" #f (-> this root trans)))
+        ((< 0.9310345 f0-2) (play-ambient (-> this ambient) "MIN-LO03" #f (-> this root trans)))
+        ((< 0.8965517 f0-2) (play-ambient (-> this ambient) "MIN-LO04" #f (-> this root trans)))
+        ((< 0.86206895 f0-2) (play-ambient (-> this ambient) "MIN-LO05" #f (-> this root trans)))
+        ((< 0.82758623 f0-2) (play-ambient (-> this ambient) "MIN-LO06" #f (-> this root trans)))
+        ((< 0.79310346 f0-2) (play-ambient (-> this ambient) "MSH-AM01" #f (-> this root trans)))
+        ((< 0.7586207 f0-2) (play-ambient (-> this ambient) "MSH-AM02" #f (-> this root trans)))
+        ((< 0.7241379 f0-2) (play-ambient (-> this ambient) "MSH-AM03" #f (-> this root trans)))
+        ((< 0.6896552 f0-2) (play-ambient (-> this ambient) "MSH-AM04" #f (-> this root trans)))
+        ((< 0.6551724 f0-2) (play-ambient (-> this ambient) "MSH-AM05" #f (-> this root trans)))
+        ((< 0.62068963 f0-2) (play-ambient (-> this ambient) "MSH-AM06" #f (-> this root trans)))
+        ((< 0.5862069 f0-2) (play-ambient (-> this ambient) "MSH-AM07" #f (-> this root trans)))
+        ((< 0.55172414 f0-2) (play-ambient (-> this ambient) "MSH-AM08" #f (-> this root trans)))
+        ((< 0.51724136 f0-2) (play-ambient (-> this ambient) "MSH-AM09" #f (-> this root trans)))
+        ((< 0.4827586 f0-2) (play-ambient (-> this ambient) "MSH-AM10" #f (-> this root trans)))
+        ((< 0.44827586 f0-2) (play-ambient (-> this ambient) "MSH-AM11" #f (-> this root trans)))
+        ((< 0.41379312 f0-2) (play-ambient (-> this ambient) "MSH-AM12" #f (-> this root trans)))
+        ((< 0.37931034 f0-2) (play-ambient (-> this ambient) "MSH-AM1A" #f (-> this root trans)))
+        ((< 0.3448276 f0-2) (play-ambient (-> this ambient) "MSH-AM2A" #f (-> this root trans)))
+        ((< 0.31034482 f0-2) (play-ambient (-> this ambient) "MSH-AM3A" #f (-> this root trans)))
+        ((< 0.27586207 f0-2) (play-ambient (-> this ambient) "MTA-AM01" #f (-> this root trans)))
+        ((< 0.2413793 f0-2) (play-ambient (-> this ambient) "MTA-AM02" #f (-> this root trans)))
+        ((< 0.20689656 f0-2) (play-ambient (-> this ambient) "MTA-AM03" #f (-> this root trans)))
+        ((< 0.1724138 f0-2) (play-ambient (-> this ambient) "MTA-AM04" #f (-> this root trans)))
+        ((< 0.13793103 f0-2) (play-ambient (-> this ambient) "MTA-AM05" #f (-> this root trans)))
+        ((< 0.10344828 f0-2) (play-ambient (-> this ambient) "MTA-AM06" #f (-> this root trans)))
+        ((< 0.06896552 f0-2) (play-ambient (-> this ambient) "MTA-AM07" #f (-> this root trans)))
+        ((< 0.03448276 f0-2) (play-ambient (-> this ambient) "MTA-AM08" #f (-> this root trans)))
+        (else (play-ambient (-> this ambient) "MTA-AM09" #f (-> this root trans)))))))
 
 (defstate idle (minershort)
   :virtual #t
-  :code miners-anim-loop
-  )
+  :code miners-anim-loop)
 
 (defmethod init-from-entity! ((this minershort) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *minershort-sg* 34 46 (new 'static 'vector :w 4096.0) 5)
@@ -570,40 +378,34 @@
   (set! (-> this sound-flava) (music-flava miners))
   (set! (-> this draw light-index) (the-as uint 1))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))
 
-(deftype cavegem (process-drawable)
-  ()
+(deftype cavegem (process-drawable) ()
   (:state-methods
-    idle
-    )
-  )
+   idle))
 
 
-(defskelgroup *cavegem-sg* cavegem cavegem-lod0-jg cavegem-idle-ja
-              ((cavegem-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 9)
-              )
+(defskelgroup *cavegem-sg*
+  cavegem
+  cavegem-lod0-jg
+  cavegem-idle-ja
+  ((cavegem-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 9))
 
 (defstate idle (cavegem)
   :virtual #t
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!)))))
+  :post ja-post)
 
 (defmethod init-from-entity! ((this cavegem) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *cavegem-sg* '())
   (go (method-of-object this idle))
-  (none)
-  )
+  (none))

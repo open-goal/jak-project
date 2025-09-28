@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,22 +20,19 @@
 */
 #include "SDL_internal.h"
 
-
-#include "SDL_guid.h"
-
-/* convert the guid to a printable string */
+// convert the guid to a printable string
 void SDL_GUIDToString(SDL_GUID guid, char *pszGUID, int cbGUID)
 {
     static const char k_rgchHexToASCII[] = "0123456789abcdef";
     int i;
 
-    if ((pszGUID == NULL) || (cbGUID <= 0)) {
+    if ((!pszGUID) || (cbGUID <= 0)) {
         return;
     }
 
-    for (i = 0; i < sizeof(guid.data) && i < (cbGUID-1)/2; i++) {
-        /* each input byte writes 2 ascii chars, and might write a null byte. */
-        /* If we don't have room for next input byte, stop */
+    for (i = 0; i < sizeof(guid.data) && i < (cbGUID - 1) / 2; i++) {
+        // each input byte writes 2 ascii chars, and might write a null byte.
+        // If we don't have room for next input byte, stop
         unsigned char c = guid.data[i];
 
         *pszGUID++ = k_rgchHexToASCII[c >> 4];
@@ -52,39 +49,39 @@ void SDL_GUIDToString(SDL_GUID guid, char *pszGUID, int cbGUID)
 static unsigned char nibble(unsigned char c)
 {
     if ((c >= '0') && (c <= '9')) {
-        return (c - '0');
+        return c - '0';
     }
 
     if ((c >= 'A') && (c <= 'F')) {
-        return (c - 'A' + 0x0a);
+        return c - 'A' + 0x0a;
     }
 
     if ((c >= 'a') && (c <= 'f')) {
-        return (c - 'a' + 0x0a);
+        return c - 'a' + 0x0a;
     }
 
-    /* received an invalid character, and no real way to return an error */
-    /* AssertMsg1(false, "Q_nibble invalid hex character '%c' ", c); */
+    // received an invalid character, and no real way to return an error
+    // AssertMsg1(false, "Q_nibble invalid hex character '%c' ", c);
     return 0;
 }
 
-/* convert the string version of a guid to the struct */
-SDL_GUID SDL_GUIDFromString(const char *pchGUID)
+// convert the string version of a guid to the struct
+SDL_GUID SDL_StringToGUID(const char *pchGUID)
 {
     SDL_GUID guid;
-    int maxoutputbytes= sizeof(guid);
+    int maxoutputbytes = sizeof(guid);
     size_t len = SDL_strlen(pchGUID);
     Uint8 *p;
     size_t i;
 
-    /* Make sure it's even */
+    // Make sure it's even
     len = (len) & ~0x1;
 
     SDL_memset(&guid, 0x00, sizeof(guid));
 
     p = (Uint8 *)&guid;
-    for (i = 0; (i < len) && ((p - (Uint8 *)&guid) < maxoutputbytes); i+=2, p++) {
-        *p = (nibble((unsigned char)pchGUID[i]) << 4) | nibble((unsigned char)pchGUID[i+1]);
+    for (i = 0; (i < len) && ((p - (Uint8 *)&guid) < maxoutputbytes); i += 2, p++) {
+        *p = (nibble((unsigned char)pchGUID[i]) << 4) | nibble((unsigned char)pchGUID[i + 1]);
     }
 
     return guid;

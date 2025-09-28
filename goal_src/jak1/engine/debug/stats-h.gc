@@ -1,60 +1,46 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: stats-h.gc
-;; name in dgo: stats-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gcommon.gc")
 
 ;; DECOMP BEGINS
 
 (deftype tr-stat (structure)
-  ((groups     uint16)
-   (fragments  uint16)
-   (tris       uint32)
-   (dverts     uint32)
-   (instances  uint16)
-   (pad        uint16)
-   )
-  )
-
+  ((groups    uint16)
+   (fragments uint16)
+   (tris      uint32)
+   (dverts    uint32)
+   (instances uint16)
+   (pad       uint16)))
 
 (deftype merc-global-stats (structure)
-  ((merc       tr-stat  :inline)
-   (mercneric  tr-stat  :inline)
-   )
-  )
-
+  ((merc      tr-stat :inline)
+   (mercneric tr-stat :inline)))
 
 (deftype perf-stat (structure)
-  ((frame-number    uint32)
-   (count           uint32)
-   (cycles          uint32)
-   (instructions    uint32)
-   (icache          uint32)
-   (dcache          uint32)
-   (select          uint32)
-   (ctrl            uint32)
-   (accum0          uint32)
-   (accum1          uint32)
-   (to-vu0-waits    uint32)
-   (to-spr-waits    uint32)
-   (from-spr-waits  uint32)
-   )
+  ((frame-number   uint32)
+   (count          uint32)
+   (cycles         uint32)
+   (instructions   uint32)
+   (icache         uint32)
+   (dcache         uint32)
+   (select         uint32)
+   (ctrl           uint32)
+   (accum0         uint32)
+   (accum1         uint32)
+   (to-vu0-waits   uint32)
+   (to-spr-waits   uint32)
+   (from-spr-waits uint32))
   :pack-me
   (:methods
-    (perf-stat-method-9 (_type_) none)
-    (print-to-stream (_type_ string basic) none)
-    (reset! (_type_) none)
-    (read! (_type_) none)
-    (update-wait-stats (_type_ uint uint uint) none)
-    )
-  )
-
+   (perf-stat-method-9 (_type_) none)
+   (print-to-stream (_type_ string basic) none)
+   (reset! (_type_) none)
+   (read! (_type_) none)
+   (update-wait-stats (_type_ uint uint uint) none)))
 
 (deftype perf-stat-array (inline-array-class)
-  ((data  perf-stat  :inline :dynamic)
-   )
-  )
+  ((data perf-stat :inline :dynamic)))
 
 (set! (-> perf-stat-array heap-base) (the-as uint 52))
 
@@ -64,8 +50,7 @@
   "Perfomance counters are partially implemented, they just count cycles."
   (+! (-> this count) 1)
   (when (nonzero? (-> this ctrl))
-    (set! *pc-perf-stat-counter* (get-cpu-clock))
-    )
+    (set! *pc-perf-stat-counter* (get-cpu-clock)))
   #|
   (let ((v1-0 (-> this ctrl)))
     (+! (-> this count) 1)
@@ -84,16 +69,13 @@
   (label cfg-2)
   |#
   0
-  (none)
-  )
+  (none))
 
 (defmethod read! ((this perf-stat))
   "Perfomance counters are partially implemented, they just count cycles."
   (when (nonzero? (-> this ctrl))
     (+! (-> this accum0) (- (get-cpu-clock) *pc-perf-stat-counter*))
-    (set! (-> this accum1) 0)
-    )
-
+    (set! (-> this accum1) 0))
   #|
   (local-vars (v1-1 int) (v1-3 int))
   (b! (zero? (-> this ctrl)) cfg-2 :delay (nop!))
@@ -107,21 +89,17 @@
   (label cfg-2)
   |#
   0
-  (none)
-  )
+  (none))
 
 (defmethod update-wait-stats ((this perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
   (when (nonzero? (-> this ctrl))
     (+! (-> this to-vu0-waits) arg0)
     (+! (-> this to-spr-waits) arg1)
-    (+! (-> this from-spr-waits) arg2)
-    )
+    (+! (-> this from-spr-waits) arg2))
   0
-  (none)
-  )
+  (none))
 
 (when (not *debug-segment*)
   (set! (-> perf-stat method-table 11) nothing)
   (set! (-> perf-stat method-table 12) nothing)
-  (set! (-> perf-stat method-table 13) nothing)
-  )
+  (set! (-> perf-stat method-table 13) nothing))

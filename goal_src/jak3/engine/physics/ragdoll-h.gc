@@ -5,5 +5,225 @@
 ;; name in dgo: ragdoll-h
 ;; dgos: GAME
 
+(declare-type ragdoll basic)
+(declare-type ragdoll-joint structure)
+(declare-type ragdoll-proc process)
+(declare-type wings process-drawable)
+
+;; +++ragdoll-joint-flag
+(defenum ragdoll-joint-flag
+  :type uint32
+  :bitfield #t
+  (rjf0 0)
+  (rjf1 1)
+  (rjf2 2)
+  (rjf3 3)
+  (rjf4 4)
+  (rjf5 5)
+  (rjf6 6)
+  (rjf7 7)
+  (rjf8 8)
+  (rjf9 9)
+  (rjf10 10)
+  (rjf11 11)
+  (rjf12 12)
+  (rjf13 13)
+  (rjf14 14)
+  (rjf15 15)
+  )
+;; ---ragdoll-joint-flag
+
+
+;; +++ragdoll-flag
+(defenum ragdoll-flag
+  :type uint32
+  :bitfield #t
+  (rf0 0)
+  (rf1 1)
+  (rf2 2)
+  (rf3 3)
+  (rf4 4)
+  (rf5 5)
+  (rf6 6)
+  (rf7 7)
+  (mirror 8)
+  (rf9 9)
+  (rf10 10)
+  (rf11 11)
+  (rf12 12)
+  (rf13 13)
+  (rf14 14)
+  (rf15 15)
+  )
+;; ---ragdoll-flag
+
+(define-extern ragdoll-other-joint-callback (function cspace transformq none :behavior ragdoll-proc))
+
 ;; DECOMP BEGINS
 
+(deftype ragdoll-edit-info (structure)
+  ((editing          symbol)
+   (current-func     uint64)
+   (analog-func      uint64)
+   (affect           uint64)
+   (single-step      uint64)
+   (collision        symbol)
+   (gravity          symbol)
+   (skel-visible     uint64)
+   (current-joint    int8)
+   (auto-setup-now   basic)
+   (child-stack      ragdoll-joint  60)
+   (child-stack-num  int8)
+   (last-frame       time-frame)
+   (last-frame-dur   time-frame)
+   )
+  (:methods
+    (has-joint? (_type_ ragdoll-joint) symbol)
+    (ragdoll-edit-info-method-10 (_type_ object ragdoll-joint) symbol)
+    (fill-child-stack! (_type_ ragdoll) none)
+    (ragdoll-edit-info-method-12 (_type_) none)
+    (cycle-joints! (_type_ ragdoll) none)
+    (ragdoll-edit-info-method-14 (_type_ matrix vector (inline-array ragdoll-joint) ragdoll process-drawable) vector)
+    (ragdoll-edit-info-method-15 (_type_) none)
+    (ragdoll-edit-info-method-16 (_type_ ragdoll process-drawable) none)
+    (ragdoll-edit-info-method-17 (_type_ ragdoll process-drawable) none)
+    )
+  )
+
+
+(define *ragdoll-edit-info* (the-as ragdoll-edit-info 0))
+
+(define *ragdoll-edit-info* (new 'static 'ragdoll-edit-info
+                              :editing #t
+                              :current-func #x9
+                              :single-step #x2
+                              :collision #t
+                              :gravity #t
+                              :skel-visible #x1
+                              )
+        )
+
+(deftype ragdoll-joint-setup (structure)
+  ((joint-index   int32)
+   (parent-joint  int32)
+   (joint-type    uint64)
+   (pre-tform     vector  :inline)
+   (geo-tform     vector  :inline)
+   (axial-slop    float)
+   (max-angle     float)
+   (coll-rad      float)
+   (hit-sound     sound-name)
+   )
+  )
+
+
+(deftype ragdoll-setup (structure)
+  ((orient-tform     vector  :inline)
+   (scale            vector  :inline)
+   (bg-collide-with  collide-spec)
+   (joint-setup      (array ragdoll-joint-setup))
+   )
+  )
+
+
+(deftype ragdoll-joint (structure)
+  ((quat                 quaternion  :inline)
+   (position             vector      :inline)
+   (velocity             vector      :inline)
+   (bounce               vector      :inline)
+   (old-x                vector      :inline)
+   (pre-tform            vector      :inline)
+   (geo-tform            vector      :inline)
+   (axial-slop           float)
+   (max-angle            degrees)
+   (joint-length         float)
+   (coll-rad             float)
+   (ragdoll-joint-flags  ragdoll-joint-flag)
+   (joint-type           uint64)
+   (joint-index          int8)
+   (parent-joint         int8)
+   (parent-index         int8)
+   (num-children         int8)
+   (old-param0           basic)
+   (hit-sound            sound-name)
+   (ground-pat           pat-surface)
+   (user0                int32)
+   (original-speed       float)
+   )
+  )
+
+
+(deftype ragdoll (basic)
+  ((ragdoll-joints         ragdoll-joint  60 :inline)
+   (num-joints             uint8)
+   (mirror                 matrix         :inline)
+   (gravity                vector         :inline)
+   (gravity-target         vector         :inline)
+   (orient-tform           vector         :inline)
+   (scale                  vector         :inline)
+   (stretch-vel            float)
+   (stretch-vel-parallel   float)
+   (compress-vel           float)
+   (compress-vel-parallel  float)
+   (momentum               float)
+   (maximum-stretch        float)
+   (turn-off-start         time-frame)
+   (turn-off-duration      time-frame)
+   (copy-velocity-start    time-frame)
+   (root-offset            vector         :inline)
+   (rotate-vel             quaternion     :inline)
+   (rotate-adj             quaternion     :inline)
+   (rotate-adj-count       int8)
+   (ragdoll-flags          ragdoll-flag)
+   (flex-blend             float)
+   (stable-joints          int8)
+   (ragdoll-joint-remap    uint8          100)
+   (allow-destabilize      uint64)
+   (bg-collide-with        uint32)
+   (water-info             water-info     :inline)
+   )
+  (:methods
+    (ragdoll-method-9 (_type_ matrix process-drawable) none)
+    (ragdoll-method-10 (_type_ process-drawable symbol vector symbol) none)
+    (turn-off-for-duration! (_type_ time-frame) none)
+    (get-parent-joint (_type_ (inline-array ragdoll-joint)) ragdoll-joint)
+    (ragdoll-method-13 (_type_ ragdoll-edit-info ragdoll-joint matrix matrix) none)
+    (ragdoll-method-14 (_type_ process-drawable ragdoll-joint object matrix) none)
+    (ragdoll-method-15 (_type_ process-drawable ragdoll-edit-info) none)
+    (ragdoll-setup! (_type_ process-drawable ragdoll-setup) none)
+    (ragdoll-method-17 (_type_ process-drawable) none)
+    (ragdoll-method-18 (_type_) none)
+    (ragdoll-method-19 (_type_ vector int object matrix) none)
+    (reset-vec! (_type_ vector) none)
+    (ragdoll-method-21 (_type_ vector vector float) vector)
+    (get-max-angle-for-joint-idx (_type_ int) degrees)
+    (ragdoll-method-23 (_type_ vector vector float symbol) none)
+    (ragdoll-method-24 (_type_ vector int) none)
+    (enable-ragdoll! (_type_ process-drawable) none)
+    )
+  )
+
+
+(deftype ragdoll-proc (process)
+  ((self            ragdoll-proc               :override)
+   (parent          (pointer process-drawable) :override)
+   (ragdoll         ragdoll)
+   (last-attack-id  uint32)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (ragdoll-proc-method-15 (_type_ symbol vector symbol) none)
+    (disable-for-duration (_type_ time-frame) none)
+    (ragdoll-proc-method-17 (_type_ ragdoll-edit-info) none)
+    (ragdoll-proc-method-18 (_type_ ragdoll-edit-info) none)
+    (ragdoll-proc-method-19 (_type_) symbol)
+    )
+  )
+
+
+(deftype wings-ragdoll-proc (ragdoll-proc)
+  ((parent  (pointer wings) :override)
+   )
+  )

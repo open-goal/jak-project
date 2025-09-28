@@ -1,0 +1,1546 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function identity
+(defun identity ((obj object))
+  "The identity function."
+  obj
+  )
+
+;; definition for function 1/
+(defun 1/ ((x float))
+  "Floating point reciprocal."
+  (/ 1.0 x)
+  )
+
+;; definition for function +
+(defun + ((a int) (b int))
+  "64-bit integer addition."
+  (+ a b)
+  )
+
+;; definition for function -
+(defun - ((a int) (b int))
+  "64-bit integer subraction."
+  (- a b)
+  )
+
+;; definition for function *
+(defun * ((a int) (b int))
+  "32-bit signed integer multiplication."
+  (* a b)
+  )
+
+;; definition for function /
+(defun / ((a int) (b int))
+  "32-bit signed integer division."
+  (/ a b)
+  )
+
+;; definition for function ash
+(defun ash ((x int) (shift-amount int))
+  "64-bit arithmetic shift. (sign-extends)"
+  (ash x shift-amount)
+  )
+
+;; definition for function mod
+(defun mod ((a int) (b int))
+  "32-bit mod."
+  (mod a b)
+  )
+
+;; definition for function rem
+(defun rem ((a int) (b int))
+  "32-bit mod (same as mod)."
+  (mod a b)
+  )
+
+;; definition for function abs
+(defun abs ((x int))
+  "64-bit integer absolute value."
+  (abs x)
+  )
+
+;; definition for function min
+(defun min ((a int) (b int))
+  "64-bit integer minimum."
+  (min a b)
+  )
+
+;; definition for function max
+(defun max ((a int) (b int))
+  "64-bit integer maximum."
+  (max a b)
+  )
+
+;; definition for function logior
+(defun logior ((a int) (b int))
+  "64-bit bitwise or."
+  (logior a b)
+  )
+
+;; definition for function logand
+(defun logand ((a int) (b int))
+  "64-bit bitwise and."
+  (logand a b)
+  )
+
+;; definition for function lognor
+(defun lognor ((a int) (b int))
+  "64-bit bitwise not-or."
+  (lognor a b)
+  )
+
+;; definition for function logxor
+(defun logxor ((a int) (b int))
+  "64-bit bitwise exclusive or."
+  (logxor a b)
+  )
+
+;; definition for function lognot
+(defun lognot ((x int))
+  "64-bit bitwise not."
+  (lognot x)
+  )
+
+;; definition for function false-func
+(defun false-func ()
+  "Returns false."
+  #f
+  )
+
+;; definition for function true-func
+(defun true-func ()
+  "Returns true."
+  #t
+  )
+
+;; definition for symbol format, type (function _varargs_ object)
+(define format _format)
+
+;; definition of type vec4s
+(deftype vec4s (uint128)
+  "Vector of four floats, packed into a 128-bit integer as bitfields.
+This behaves like a value type.
+This is not the main vector type."
+  ((x float :offset   0 :size  32)
+   (y float :offset  32 :size  32)
+   (z float :offset  64 :size  32)
+   (w float :offset  96 :size  32)
+   )
+  )
+
+;; definition for method 3 of type vec4s
+(defmethod inspect ((this vec4s))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vec4s)
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 2 of type vec4s
+(defmethod print ((this vec4s))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
+  this
+  )
+
+;; definition of type vector
+(deftype vector (structure)
+  "Vector of four floats, stored in a structure.
+This behaves like a reference type.
+This is the main vector type."
+  ((data  float    4)
+   (x     float    :overlay-at (-> data 0))
+   (y     float    :overlay-at (-> data 1))
+   (z     float    :overlay-at (-> data 2))
+   (w     float    :overlay-at (-> data 3))
+   (quad  uint128  :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector
+;; INFO: Used lq/sq
+(defmethod inspect ((this vector))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type bfloat
+(deftype bfloat (basic)
+  "Boxed (or basic?) float. Just a basic that wraps a single float."
+  ((data  float)
+   )
+  )
+
+;; definition for method 3 of type bfloat
+(defmethod inspect ((this bfloat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tdata: ~f~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 2 of type bfloat
+(defmethod print ((this bfloat))
+  (format #t "~f" (-> this data))
+  this
+  )
+
+;; definition for method 5 of type type
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this type))
+  (the-as int (logand (the-as uint #xfffffff0) (+ (* (-> this allocated-length) 4) 43)))
+  )
+
+;; definition for function basic-type?
+(defun basic-type? ((obj basic) (typ type))
+  "Return if the given basic is a given type. A child of the given type is also acceptable."
+  (let ((v1-0 (-> obj type))
+        (a0-1 object)
+        )
+    (until (= v1-0 a0-1)
+      (if (= v1-0 typ)
+          (return #t)
+          )
+      (set! v1-0 (-> v1-0 parent))
+      )
+    )
+  #f
+  )
+
+;; definition for function type-type?
+(defun type-type? ((check-type type) (parent-type type))
+  "Return if the first type is the second type, or a child of it."
+  (let ((v1-0 object))
+    (if (= parent-type v1-0)
+        (return #t)
+        )
+    (until (or (= check-type v1-0) (zero? check-type))
+      (if (= check-type parent-type)
+          (return #t)
+          )
+      (set! check-type (-> check-type parent))
+      )
+    )
+  #f
+  )
+
+;; definition for function type?
+(defun type? ((obj object) (desired-type type))
+  "Return if the given object is an instance of the given type.
+   Works on basics, bintegers, or symbols."
+  (let ((v1-0 object)
+        (a0-1 (rtype-of obj))
+        )
+    (if (= desired-type v1-0)
+        (return #t)
+        )
+    (until (or (= a0-1 v1-0) (zero? a0-1))
+      (if (= a0-1 desired-type)
+          (return #t)
+          )
+      (set! a0-1 (-> a0-1 parent))
+      )
+    )
+  #f
+  )
+
+;; definition for function find-parent-method
+(defun find-parent-method ((typ type) (method-id int))
+  "Find the closest parent type that has a different implementation of the given method and return that method.
+   If it does not exist, return `nothing` function.
+   This is used to implement call-parent-method."
+  (local-vars (v0-0 function))
+  (let ((v1-2 (-> typ method-table method-id)))
+    (until (!= v0-0 v1-2)
+      (if (= typ object)
+          (return nothing)
+          )
+      (set! typ (-> typ parent))
+      (set! v0-0 (-> typ method-table method-id))
+      (if (zero? v0-0)
+          (return nothing)
+          )
+      )
+    )
+  v0-0
+  )
+
+;; definition for function ref&
+(defun ref& ((list object) (idx int))
+  "Return the n-th pair in a linked list of pairs. No bounds checking.
+   If it is the null pair, return #f."
+  (dotimes (v1-0 idx)
+    (nop!)
+    (nop!)
+    (set! list (cdr list))
+    )
+  (if (null? list)
+      #f
+      list
+      )
+  )
+
+;; definition for function ref
+(defun ref ((list object) (idx int))
+  "Return the n-th item in a proper list. No bounds checking."
+  (dotimes (v1-0 idx)
+    (nop!)
+    (nop!)
+    (set! list (cdr list))
+    )
+  (car list)
+  )
+
+;; definition for method 4 of type pair
+(defmethod length ((this pair))
+  (local-vars (v0-0 int))
+  (cond
+    ((null? this)
+     (set! v0-0 0)
+     )
+    (else
+      (let ((v1-1 (cdr this)))
+        (set! v0-0 1)
+        (while (and (not (null? v1-1)) (pair? v1-1))
+          (+! v0-0 1)
+          (set! v1-1 (cdr v1-1))
+          )
+        )
+      )
+    )
+  v0-0
+  )
+
+;; definition for method 5 of type pair
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this pair))
+  (the-as int (-> pair size))
+  )
+
+;; definition for function last
+(defun last ((list object))
+  "Return the last object in a proper list."
+  (let ((v0-0 list))
+    (while (not (null? (cdr v0-0)))
+      (nop!)
+      (nop!)
+      (set! v0-0 (cdr v0-0))
+      )
+    v0-0
+    )
+  )
+
+;; definition for function member
+(defun member ((obj-to-find object) (list object))
+  "See if the first argument is in the proper list of the second argument.
+   Checked with simple equality.
+   If so, return the list starting at the at point (a truthy value).
+   Otherwise, return #f.
+   (member 'b '(a b c)) -> (b c d).
+   (member 'w '(a b c)) -> #f"
+  (let ((v1-0 list))
+    (while (not (or (null? v1-0) (= (car v1-0) obj-to-find)))
+      (set! v1-0 (cdr v1-0))
+      )
+    (if (not (null? v1-0))
+        v1-0
+        )
+    )
+  )
+
+;; definition for function nmember
+(defun nmember ((obj-to-find basic) (list object))
+  "Like member, but membership is checked with the name= function to handle symbols or strings."
+  (while (not (or (null? list) (name= (car list) obj-to-find)))
+    (set! list (cdr list))
+    )
+  (if (not (null? list))
+      list
+      )
+  )
+
+;; definition for function assoc
+(defun assoc ((key object) (assoc-list object))
+  "Search an association list for given object. Return #f if not found, otherwise the element with matching car.
+   (assoc 'a '((a . 1) (b . 2) (c . 3))) -> (a . 1)
+   (assoc 'x '((a . 1) (b . 2) (c . 3))) -> #f"
+  (let ((v1-0 assoc-list))
+    (while (not (or (null? v1-0) (= (car (car v1-0)) key)))
+      (set! v1-0 (cdr v1-0))
+      )
+    (if (not (null? v1-0))
+        (car v1-0)
+        )
+    )
+  )
+
+;; definition for function assoce
+(defun assoce ((key object) (assoc-list object))
+  "Like assoc, but supports a special `else` key which is always considered a match."
+  (let ((v1-0 assoc-list))
+    (while (not (or (null? v1-0) (= (car (car v1-0)) key) (= (car (car v1-0)) 'else)))
+      (set! v1-0 (cdr v1-0))
+      )
+    (if (not (null? v1-0))
+        (car v1-0)
+        )
+    )
+  )
+
+;; definition for function nassoc
+(defun nassoc ((key string) (assoc-list object))
+  "Like assoc, but uses name= instead of = to check equality."
+  (while (not (or (null? assoc-list) (let ((a1-1 (car (car assoc-list))))
+                                       (if (pair? a1-1)
+                                           (nmember key a1-1)
+                                           (name= a1-1 key)
+                                           )
+                                       )
+                  )
+              )
+    (set! assoc-list (cdr assoc-list))
+    )
+  (if (not (null? assoc-list))
+      (car assoc-list)
+      )
+  )
+
+;; definition for function nassoce
+(defun nassoce ((key string) (assoc-list object))
+  "Like assoce, but uses name= instead of = to check equality."
+  (while (not (or (null? assoc-list) (let ((s4-0 (car (car assoc-list))))
+                                       (if (pair? s4-0)
+                                           (nmember key s4-0)
+                                           (or (name= s4-0 key) (= s4-0 'else))
+                                           )
+                                       )
+                  )
+              )
+    (set! assoc-list (cdr assoc-list))
+    )
+  (if (not (null? assoc-list))
+      (car assoc-list)
+      )
+  )
+
+;; definition for function append!
+(defun append! ((list object) (new-obj object))
+  "Append the second argument to the end of the list (or empty pair) in the first argument."
+  (cond
+    ((null? list)
+     new-obj
+     )
+    (else
+      (let ((v1-1 list))
+        (while (not (null? (cdr v1-1)))
+          (nop!)
+          (nop!)
+          (set! v1-1 (cdr v1-1))
+          )
+        (if (not (null? v1-1))
+            (set! (cdr v1-1) new-obj)
+            )
+        )
+      list
+      )
+    )
+  )
+
+;; definition for function delete!
+;; WARN: Return type mismatch object vs pair.
+(defun delete! ((obj object) (list object))
+  "Remove an element from the given list, return the list."
+  (the-as pair (cond
+                 ((= obj (car list))
+                  (cdr list)
+                  )
+                 (else
+                   (let ((v1-1 list)
+                         (a2-0 (cdr list))
+                         )
+                     (while (not (or (null? a2-0) (= (car a2-0) obj)))
+                       (set! v1-1 a2-0)
+                       (set! a2-0 (cdr a2-0))
+                       )
+                     (if (not (null? a2-0))
+                         (set! (cdr v1-1) (cdr a2-0))
+                         )
+                     )
+                   list
+                   )
+                 )
+          )
+  )
+
+;; definition for function delete-car!
+(defun delete-car! ((car-to-match object) (list object))
+  "Remove an element from the given list with a matching car. Return the list."
+  (cond
+    ((= car-to-match (car (car list)))
+     (cdr list)
+     )
+    (else
+      (let ((v1-2 list)
+            (a2-0 (cdr list))
+            )
+        (while (not (or (null? a2-0) (= (car (car a2-0)) car-to-match)))
+          (set! v1-2 a2-0)
+          (set! a2-0 (cdr a2-0))
+          )
+        (if (not (null? a2-0))
+            (set! (cdr v1-2) (cdr a2-0))
+            )
+        )
+      list
+      )
+    )
+  )
+
+;; definition for function insert-cons!
+(defun insert-cons! ((new-obj object) (list object))
+  "Update an association list to have the given (key . value) pair.
+   If a previous value exists, it is deleted first.
+   This function always allocates a pair through `cons` on the global heap, which can never be freed,
+   so it should almost never be used at runtime."
+  (let ((a3-0 (delete-car! (car new-obj) list)))
+    (cons new-obj a3-0)
+    )
+  )
+
+;; definition for function sort
+(defun sort ((list pair) (compare-func (function object object object)))
+  "Sort a list using the given comparision function.
+   The function can return a #t/#f value, or a positive/negative value.
+   For example, you could use either `-` or `<` as functions to sort integers."
+  (let ((s4-0 -1))
+    (while (nonzero? s4-0)
+      (set! s4-0 0)
+      (let ((s3-0 list))
+        (while (not (or (null? (cdr s3-0)) (not (pair? (cdr s3-0)))))
+          (let* ((s2-0 (car s3-0))
+                 (s1-0 (car (cdr s3-0)))
+                 (v1-1 (compare-func s2-0 s1-0))
+                 )
+            (when (and (or (not v1-1) (> (the-as int v1-1) 0)) (!= v1-1 #t))
+              (+! s4-0 1)
+              (set! (car s3-0) s1-0)
+              (set! (car (cdr s3-0)) s2-0)
+              )
+            )
+          (set! s3-0 (cdr s3-0))
+          )
+        )
+      )
+    )
+  list
+  )
+
+;; definition for function string->symbol-debug
+(defun string->symbol-debug ((str string))
+  "Convert a string to a symbol. The symbol must be known, and this cannot
+   create a new symbol. (in the PC port, it will still work.)
+   This is inteded to be used in debug only, and will not trigger a warning.
+   In debug, this will work for all symbols."
+  (let ((gp-0 *kernel-symbol-warnings*))
+    (set! *kernel-symbol-warnings* #f)
+    (let ((v0-0 (string->symbol str)))
+      (set! *kernel-symbol-warnings* gp-0)
+      v0-0
+      )
+    )
+  )
+
+;; definition for function symbol->string-debug
+(defun symbol->string-debug ((sym symbol))
+  "Get the name of a symbol. This is intended to be used in debug only.
+   In debug, this will work for all symbols. (In PC port, this works always)"
+  (let ((gp-0 *kernel-symbol-warnings*))
+    (set! *kernel-symbol-warnings* #f)
+    (let ((v0-0 (symbol->string sym)))
+      (set! *kernel-symbol-warnings* gp-0)
+      v0-0
+      )
+    )
+  )
+
+;; definition for function symbol->hash
+;; WARN: Return type mismatch symbol vs int.
+(defun symbol->hash ((sym symbol))
+  "Convert a symbol to a unique integer value, which is just the symbol's address."
+  (the-as int sym)
+  )
+
+;; definition for method 0 of type array
+(defmethod new array ((allocation symbol) (type-to-make type) (arg0 type) (arg1 int))
+  (let ((v0-1 (object-new
+                allocation
+                type-to-make
+                (the-as int (+ (-> type-to-make size) (* arg1 (if (type-type? arg0 number)
+                                                                  (the-as int (-> arg0 size))
+                                                                  4
+                                                                  )
+                                                         )
+                               )
+                        )
+                )
+              )
+        )
+    (set! (-> v0-1 allocated-length) arg1)
+    (set! (-> v0-1 length) arg1)
+    (set! (-> v0-1 content-type) arg0)
+    v0-1
+    )
+  )
+
+;; definition for method 2 of type array
+;; INFO: Used lq/sq
+(defmethod print ((this array))
+  (format #t "#(")
+  (cond
+    ((type-type? (-> this content-type) integer)
+     (case (-> this content-type symbol)
+       (('int32)
+        (dotimes (s5-0 (-> this length))
+          (format
+            #t
+            (if (zero? s5-0)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int32) this) s5-0)
+            )
+          )
+        )
+       (('uint32)
+        (dotimes (s5-1 (-> this length))
+          (format
+            #t
+            (if (zero? s5-1)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint32) this) s5-1)
+            )
+          )
+        )
+       (('int64)
+        (dotimes (s5-2 (-> this length))
+          (format
+            #t
+            (if (zero? s5-2)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int64) this) s5-2)
+            )
+          )
+        )
+       (('uint64)
+        (dotimes (s5-3 (-> this length))
+          (format
+            #t
+            (if (zero? s5-3)
+                "#x~X"
+                " #x~X"
+                )
+            (-> (the-as (array uint64) this) s5-3)
+            )
+          )
+        )
+       (('int8)
+        (dotimes (s5-4 (-> this length))
+          (format
+            #t
+            (if (zero? s5-4)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int8) this) s5-4)
+            )
+          )
+        )
+       (('uint8)
+        (dotimes (s5-5 (-> this length))
+          (format
+            #t
+            (if (zero? s5-5)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint8) this) s5-5)
+            )
+          )
+        )
+       (('int16)
+        (dotimes (s5-6 (-> this length))
+          (format
+            #t
+            (if (zero? s5-6)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array int16) this) s5-6)
+            )
+          )
+        )
+       (('uint16)
+        (dotimes (s5-7 (-> this length))
+          (format
+            #t
+            (if (zero? s5-7)
+                "~D"
+                " ~D"
+                )
+            (-> (the-as (array uint16) this) s5-7)
+            )
+          )
+        )
+       (('uint128 'int128)
+        (dotimes (s5-8 (-> this length))
+          (format
+            #t
+            (if (zero? s5-8)
+                "#x~X"
+                " #x~X"
+                )
+            (-> (the-as (array uint128) this) s5-8)
+            )
+          )
+        )
+       (else
+         (dotimes (s5-9 (-> this length))
+           (format
+             #t
+             (if (zero? s5-9)
+                 "~D"
+                 " ~D"
+                 )
+             (-> (the-as (array int32) this) s5-9)
+             )
+           )
+         )
+       )
+     )
+    ((= (-> this content-type) float)
+     (dotimes (s5-10 (-> this length))
+       (if (zero? s5-10)
+           (format #t "~f" (-> (the-as (array float) this) s5-10))
+           (format #t " ~f" (-> (the-as (array float) this) s5-10))
+           )
+       )
+     )
+    (else
+      (dotimes (s5-11 (-> this length))
+        (if (zero? s5-11)
+            (format #t "~A" (-> (the-as (array basic) this) s5-11))
+            (format #t " ~A" (-> (the-as (array basic) this) s5-11))
+            )
+        )
+      )
+    )
+  (format #t ")")
+  this
+  )
+
+;; definition for method 3 of type array
+;; INFO: Used lq/sq
+(defmethod inspect ((this array))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tcontent-type: ~A~%" (-> this content-type))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this allocated-length) (-> this data))
+  (cond
+    ((and (= (logand (the-as int (-> this content-type)) 7) 4) (type-type? (-> this content-type) integer))
+     (case (-> this content-type symbol)
+       (('int32)
+        (dotimes (s5-0 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-0 (-> (the-as (array int32) this) s5-0))
+          )
+        )
+       (('uint32)
+        (dotimes (s5-1 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-1 (-> (the-as (array uint32) this) s5-1))
+          )
+        )
+       (('int64)
+        (dotimes (s5-2 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-2 (-> (the-as (array int64) this) s5-2))
+          )
+        )
+       (('uint64)
+        (dotimes (s5-3 (-> this length))
+          (format #t "~T  [~D] #x~X~%" s5-3 (-> (the-as (array uint64) this) s5-3))
+          )
+        )
+       (('int8)
+        (dotimes (s5-4 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-4 (-> (the-as (array int8) this) s5-4))
+          )
+        )
+       (('uint8)
+        (dotimes (s5-5 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-5 (-> (the-as (array int8) this) s5-5))
+          )
+        )
+       (('int16)
+        (dotimes (s5-6 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-6 (-> (the-as (array int16) this) s5-6))
+          )
+        )
+       (('uint16)
+        (dotimes (s5-7 (-> this length))
+          (format #t "~T  [~D] ~D~%" s5-7 (-> (the-as (array uint16) this) s5-7))
+          )
+        )
+       (('int128 'uint128)
+        (dotimes (s5-8 (-> this length))
+          (format #t "~T  [~D] #x~X~%" s5-8 (-> (the-as (array uint128) this) s5-8))
+          )
+        )
+       (else
+         (dotimes (s5-9 (-> this length))
+           (format #t "~T  [~D] ~D~%" s5-9 (-> (the-as (array int32) this) s5-9))
+           )
+         )
+       )
+     )
+    ((= (-> this content-type) float)
+     (dotimes (s5-10 (-> this length))
+       (format #t "~T  [~D] ~f~%" s5-10 (-> (the-as (array float) this) s5-10))
+       )
+     )
+    (else
+      (dotimes (s5-11 (-> this length))
+        (format #t "~T  [~D] ~A~%" s5-11 (-> (the-as (array basic) this) s5-11))
+        )
+      )
+    )
+  this
+  )
+
+;; definition for method 4 of type array
+(defmethod length ((this array))
+  (-> this length)
+  )
+
+;; definition for method 5 of type array
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this array))
+  (the-as
+    int
+    (+ (-> this type size) (* (-> this allocated-length) (if (type-type? (-> this content-type) number)
+                                                             (the-as int (-> this content-type size))
+                                                             4
+                                                             )
+                              )
+       )
+    )
+  )
+
+;; definition for function mem-copy!
+(defun mem-copy! ((dst pointer) (src pointer) (bytes int))
+  "Basic memory copy. This is not an optimized implementation."
+  (let ((v0-0 dst))
+    (dotimes (v1-0 bytes)
+      (set! (-> (the-as (pointer uint8) dst)) (-> (the-as (pointer uint8) src)))
+      (&+! dst 1)
+      (&+! src 1)
+      )
+    v0-0
+    )
+  )
+
+;; definition for function qmem-copy<-!
+;; INFO: Used lq/sq
+(defun qmem-copy<-! ((dst pointer) (src pointer) (qwc int))
+  "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Increasing address copy. Not an optimized version."
+  (let ((v0-0 dst))
+    (countdown (v1-1 (/ (+ qwc 15) 16))
+      (set! (-> (the-as (pointer uint128) dst)) (-> (the-as (pointer uint128) src)))
+      (&+! dst 16)
+      (&+! src 16)
+      )
+    v0-0
+    )
+  )
+
+;; definition for function qmem-copy->!
+;; INFO: Used lq/sq
+(defun qmem-copy->! ((dst pointer) (src pointer) (qwc int))
+  "Copy memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Decreasing address copy. Not an optimized version."
+  (let ((v0-0 dst))
+    (let* ((v1-1 (/ (+ qwc 15) 16))
+           (a0-1 (&+ dst (* v1-1 16)))
+           (a1-1 (&+ src (* v1-1 16)))
+           )
+      (while (nonzero? v1-1)
+        (+! v1-1 -1)
+        (&+! a0-1 -16)
+        (&+! a1-1 -16)
+        (set! (-> (the-as (pointer uint128) a0-1)) (-> (the-as (pointer uint128) a1-1)))
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for function qmem-clear!
+;; INFO: Used lq/sq
+(defun qmem-clear! ((dst pointer) (qwc int))
+  "Clear memory by quadword (16-bytes). Must by 16-byte aligned, size in 16-byte units. Not an optimized version."
+  (let ((v0-0 dst))
+    (dotimes (v1-0 qwc)
+      (set! (-> (the-as (pointer int128) dst)) 0)
+      (&+! dst 16)
+      )
+    v0-0
+    )
+  )
+
+;; definition for function mem-set32!
+(defun mem-set32! ((dst pointer) (word-count int) (value int))
+  "Set memory to the given 32-bit value, repeated n times. (like C memset, but setting int32_t instead of char).
+   Not an optimized implementation. Must be 4-byte aligned."
+  (let ((v0-0 dst))
+    (dotimes (v1-0 word-count)
+      (set! (-> (the-as (pointer int32) dst)) value)
+      (&+! dst 4)
+      (nop!)
+      )
+    v0-0
+    )
+  )
+
+;; definition for function mem-or!
+(defun mem-or! ((dst pointer) (src pointer) (bytes int))
+  "Set the destiation to `dest = dest | src`. Size in bytes. Not an optimized version."
+  (let ((v0-0 dst))
+    (dotimes (v1-0 bytes)
+      (logior! (-> (the-as (pointer uint8) dst)) (-> (the-as (pointer uint8) src)))
+      (&+! dst 1)
+      (&+! src 1)
+      )
+    v0-0
+    )
+  )
+
+;; definition for function quad-copy!
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition of type inline-array-class
+(deftype inline-array-class (basic)
+  "Base class for basic inline arrays.
+The stride is stored in the heap-base of the inline-array-class child class."
+  ((length            int32)
+   (allocated-length  int32)
+   (_data             uint8  :dynamic :offset  16)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (push-back (_type_ object) int)
+    (inline-array-class-method-10 () none)
+    (clear-1 (_type_) symbol)
+    (clear-2 (_type_) none)
+    (pop-front (_type_ int) pointer)
+    )
+  )
+
+;; definition for method 3 of type inline-array-class
+(defmethod inspect ((idx-to-remove inline-array-class))
+  (when (not idx-to-remove)
+    (set! idx-to-remove idx-to-remove)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" idx-to-remove (-> idx-to-remove type))
+  (format #t "~1Tlength: ~D~%" (-> idx-to-remove length))
+  (format #t "~1Tallocated-length: ~D~%" (-> idx-to-remove allocated-length))
+  (label cfg-4)
+  idx-to-remove
+  )
+
+;; definition of type inline-array-class-uint64
+(deftype inline-array-class-uint64 (inline-array-class)
+  "Specialization of inline-array-class for uint64. It's unclear why
+this would be preferred over a normal (array uint64), since both store data the same way."
+  ((data  uint64  :dynamic :offset  16)
+   )
+  )
+
+;; definition for method 3 of type inline-array-class-uint64
+(defmethod inspect ((this inline-array-class-uint64))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type inline-array-class-uint32
+(deftype inline-array-class-uint32 (inline-array-class)
+  "Specialization of inline-array-class for uint32. It's unclear why this would be preferred
+over a normal (array uint32), since both store data the same way."
+  ((data  uint32  :dynamic :offset  16)
+   )
+  )
+
+;; definition for method 3 of type inline-array-class-uint32
+(defmethod inspect ((this inline-array-class-uint32))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type inline-array-class
+(defmethod new inline-array-class ((allocation symbol) (type-to-make type) (count int))
+  (let ((v0-0 (object-new
+                allocation
+                type-to-make
+                (the-as int (+ (-> type-to-make size) (* (the-as uint count) (-> type-to-make heap-base))))
+                )
+              )
+        )
+    (when (nonzero? v0-0)
+      (set! (-> v0-0 length) count)
+      (set! (-> v0-0 allocated-length) count)
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 4 of type inline-array-class
+(defmethod length ((this inline-array-class))
+  (-> this length)
+  )
+
+;; definition for method 5 of type inline-array-class
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this inline-array-class))
+  (the-as int (+ (-> this type size) (* (-> this allocated-length) (the-as int (-> this type heap-base)))))
+  )
+
+;; definition for method 9 of type inline-array-class
+(defmethod push-back ((object-to-insert inline-array-class) (arg0 object))
+  "Copy object to the end, then increment length. No bounds check."
+  (let ((s5-0 (-> object-to-insert length)))
+    (let ((a2-0 (-> object-to-insert type heap-base)))
+      (mem-copy!
+        (the-as
+          pointer
+          (+ (+ (* s5-0 (the-as int (-> object-to-insert type heap-base))) -4 (-> object-to-insert type size))
+             (the-as int object-to-insert)
+             )
+          )
+        (the-as pointer arg0)
+        (the-as int a2-0)
+        )
+      )
+    (+! (-> object-to-insert length) 1)
+    s5-0
+    )
+  )
+
+;; definition for method 9 of type inline-array-class-uint32
+(defmethod push-back ((this inline-array-class-uint32) (arg0 object))
+  "Copy object to the end, then increment length. No bounds check."
+  (let ((v0-0 (-> this length)))
+    (-> this type heap-base)
+    (set! (-> (the-as
+                (pointer int32)
+                (+ (+ (* v0-0 (the-as int (-> this type heap-base))) -4 (-> this type size)) (the-as int this))
+                )
+              )
+          arg0
+          )
+    (+! (-> this length) 1)
+    v0-0
+    )
+  )
+
+;; definition for method 9 of type inline-array-class-uint64
+(defmethod push-back ((this inline-array-class-uint64) (arg0 object))
+  "Copy object to the end, then increment length. No bounds check."
+  (let ((v0-0 (-> this length)))
+    (-> this type heap-base)
+    (set! (-> (the-as
+                (pointer int64)
+                (+ (+ (* v0-0 (the-as int (-> this type heap-base))) -4 (-> this type size)) (the-as int this))
+                )
+              )
+          arg0
+          )
+    (+! (-> this length) 1)
+    v0-0
+    )
+  )
+
+;; definition for method 13 of type inline-array-class
+(defmethod pop-front ((this inline-array-class) (arg0 int))
+  "Remove first object by copying last object to the front, then decrement length."
+  (+! (-> this length) -1)
+  (+ (-> this length) -1)
+  (let ((a2-0 (-> this type heap-base))
+        (t9-0 mem-copy!)
+        (v1-10 (+ (+ (* (the-as uint arg0) (-> this type heap-base)) -4 (-> this type size)) (the-as uint this)))
+        (a1-4 (-> this type heap-base))
+        )
+    (t9-0
+      (the-as pointer v1-10)
+      (the-as pointer (+ (+ (* (-> this length) (the-as int a1-4)) -4 (-> this type size)) (the-as int this)))
+      (the-as int a2-0)
+      )
+    )
+  )
+
+;; definition for method 13 of type inline-array-class-uint64
+;; WARN: Return type mismatch uint vs pointer.
+(defmethod pop-front ((this inline-array-class-uint64) (arg0 int))
+  "Remove first object by copying last object to the front, then decrement length."
+  (+! (-> this length) -1)
+  (+ (-> this length) -1)
+  (-> this type heap-base)
+  (let* ((v1-7 (-> this type heap-base))
+         (v0-0 (-> (the-as
+                     (pointer uint64)
+                     (+ (+ (* (-> this length) (the-as int v1-7)) -4 (-> this type size)) (the-as int this))
+                     )
+                   )
+               )
+         )
+    (set! (-> (the-as
+                (pointer uint64)
+                (+ (+ (* (the-as uint arg0) (-> this type heap-base)) -4 (-> this type size)) (the-as uint this))
+                )
+              )
+          v0-0
+          )
+    (the-as pointer v0-0)
+    )
+  )
+
+;; definition for method 13 of type inline-array-class-uint32
+;; WARN: Return type mismatch uint vs pointer.
+(defmethod pop-front ((this inline-array-class-uint32) (arg0 int))
+  "Remove first object by copying last object to the front, then decrement length."
+  (+! (-> this length) -1)
+  (+ (-> this length) -1)
+  (-> this type heap-base)
+  (let* ((v1-7 (-> this type heap-base))
+         (v0-0 (-> (the-as
+                     (pointer uint32)
+                     (+ (+ (* (-> this length) (the-as int v1-7)) -4 (-> this type size)) (the-as int this))
+                     )
+                   )
+               )
+         )
+    (set! (-> (the-as
+                (pointer uint32)
+                (+ (+ (* (the-as uint arg0) (-> this type heap-base)) -4 (-> this type size)) (the-as uint this))
+                )
+              )
+          v0-0
+          )
+    (the-as pointer v0-0)
+    )
+  )
+
+;; definition for method 12 of type inline-array-class
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-2 ((this inline-array-class))
+  "Set length to 0"
+  (set! (-> this length) 0)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type inline-array-class
+(defmethod clear-1 ((this inline-array-class))
+  "Set length to 0, return #t."
+  (set! (-> this length) 0)
+  #t
+  )
+
+;; definition for function fact
+(defun fact ((x int))
+  "Factorial."
+  (if (= x 1)
+      1
+      (* x (fact (+ x -1)))
+      )
+  )
+
+;; definition for symbol *print-column*, type binteger
+(define *print-column* (the-as binteger 0))
+
+;; definition for function print
+(defun print ((obj object))
+  "Print any boxed object (symbol, pair, basic, binteger) to #t (the REPL). No newline."
+  ((method-of-type (rtype-of obj) print) obj)
+  )
+
+;; definition for function printl
+(defun printl ((obj object))
+  "Print any boxed object (symbol, pair, basic, binteger) to #t (the REPL), followed by a newline."
+  (let ((a0-1 obj))
+    ((method-of-type (rtype-of a0-1) print) a0-1)
+    )
+  (format #t "~%")
+  obj
+  )
+
+;; definition for function inspect
+(defun inspect ((obj object))
+  "Inspect any boxed object (symbol, pair, basic, binteger) to #t (the REPL)."
+  ((method-of-type (rtype-of obj) inspect) obj)
+  )
+
+;; definition (debug) for function mem-print
+(defun-debug mem-print ((ptr (pointer uint32)) (word-count int))
+  "Print out data in memory in hex."
+  (dotimes (s4-0 (/ word-count 4))
+    (format
+      0
+      "~X: ~X ~X ~X ~X~%"
+      (&-> ptr (* s4-0 4))
+      (-> ptr (* s4-0 4))
+      (-> ptr (+ (* s4-0 4) 1))
+      (-> ptr (+ (* s4-0 4) 2))
+      (-> ptr (+ (* s4-0 4) 3))
+      )
+    )
+  #f
+  )
+
+;; definition for symbol *trace-list*, type pair
+(define *trace-list* '())
+
+;; definition for function print-tree-bitmask
+(defun print-tree-bitmask ((mask int) (count int))
+  "Print out ASCII-art tree structure, from a bitmask of nesting levels."
+  (dotimes (s4-0 count)
+    (if (not (logtest? mask 1))
+        (format #t "    ")
+        (format #t "|   ")
+        )
+    (set! mask (shr mask 1))
+    )
+  #f
+  )
+
+;; definition for function breakpoint-range-set!
+;; ERROR: Unsupported inline assembly instruction kind - [mtdab a1]
+;; ERROR: Unsupported inline assembly instruction kind - [mtdabm a2]
+(defun breakpoint-range-set! ((arg0 uint) (arg1 uint) (arg2 uint))
+  "Unsupported function to set a CPU breakpoint."
+  (.mtc0 Debug arg0)
+  (.mtdab arg1)
+  (.mtdabm arg2)
+  0
+  )
+
+;; definition for function valid?
+;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
+;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
+;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
+;; ERROR: Unsupported inline assembly instruction kind - [daddu v1, v1, s7]
+(defun valid? ((obj object) (expected-type type) (err-msg-str string) (allow-false symbol) (err-msg-dest object))
+  (local-vars (v1-11 int) (v1-26 int) (v1-56 int) (v1-60 int) (s7-0 none))
+  (let ((v1-1
+          (and (>= (the-as uint obj) (the-as uint __START-OF-TABLE__)) (< (the-as uint obj) (the-as uint #x8000000)))
+          )
+        )
+    (cond
+      ((not expected-type)
+       (cond
+         ((logtest? (the-as int obj) 3)
+          (if err-msg-str
+              (format err-msg-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" obj err-msg-str)
+              )
+          #f
+          )
+         ((not v1-1)
+          (if err-msg-str
+              (format err-msg-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" obj err-msg-str)
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((and allow-false (not obj))
+       #t
+       )
+      ((= expected-type structure)
+       (cond
+         ((logtest? (the-as int obj) 15)
+          (if err-msg-str
+              (format
+                err-msg-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+                obj
+                err-msg-str
+                expected-type
+                )
+              )
+          #f
+          )
+         ((or (not v1-1) (begin
+                           (let ((v1-10 #x8000))
+                             (.daddu v1-11 v1-10 s7-0)
+                             )
+                           (< (the-as uint obj) (the-as uint v1-11))
+                           )
+              )
+          (if err-msg-str
+              (format
+                err-msg-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+                obj
+                err-msg-str
+                expected-type
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((= expected-type pair)
+       (cond
+         ((not (pair? obj))
+          (if err-msg-str
+              (format
+                err-msg-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+                obj
+                err-msg-str
+                expected-type
+                )
+              )
+          #f
+          )
+         ((not v1-1)
+          (if err-msg-str
+              (format
+                err-msg-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+                obj
+                err-msg-str
+                expected-type
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((= expected-type binteger)
+       (cond
+         ((not (logtest? (the-as int obj) 7))
+          #t
+          )
+         (else
+           (if err-msg-str
+               (format
+                 err-msg-dest
+                 "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+                 obj
+                 err-msg-str
+                 expected-type
+                 )
+               )
+           #f
+           )
+         )
+       )
+      ((or (= expected-type symbol) (= expected-type boolean))
+       (cond
+         ((not (logtest? (the-as int obj) 1))
+          (if err-msg-str
+              (format
+                err-msg-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+                obj
+                err-msg-str
+                expected-type
+                )
+              )
+          #f
+          )
+         ((or (not v1-1) (< (the-as int obj) (the-as int __START-OF-TABLE__)) (begin
+                                                                                (let ((v1-25 #x8000))
+                                                                                  (.daddu v1-26 v1-25 s7-0)
+                                                                                  )
+                                                                                (>= (the-as int obj) v1-26)
+                                                                                )
+              )
+          (if err-msg-str
+              (format
+                err-msg-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+                obj
+                err-msg-str
+                expected-type
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((!= (logand (the-as int obj) 7) 4)
+       (if err-msg-str
+           (format
+             err-msg-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%"
+             obj
+             err-msg-str
+             expected-type
+             )
+           )
+       #f
+       )
+      ((not v1-1)
+       (if err-msg-str
+           (format
+             err-msg-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%"
+             obj
+             err-msg-str
+             expected-type
+             )
+           )
+       #f
+       )
+      ((and (= expected-type type) (!= (rtype-of obj) type))
+       (if err-msg-str
+           (format
+             err-msg-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+             obj
+             err-msg-str
+             expected-type
+             (rtype-of obj)
+             )
+           )
+       #f
+       )
+      ((and (!= expected-type type) (not (valid? (rtype-of obj) type (the-as string #f) #t 0)))
+       (if err-msg-str
+           (format
+             err-msg-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (invalid type #x~X)~%"
+             obj
+             err-msg-str
+             expected-type
+             (rtype-of obj)
+             )
+           )
+       #f
+       )
+      ((not (type? obj expected-type))
+       (if err-msg-str
+           (format
+             err-msg-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (is type '~A' instead)~%"
+             obj
+             err-msg-str
+             expected-type
+             (rtype-of obj)
+             )
+           )
+       #f
+       )
+      ((= expected-type symbol)
+       (let ((v1-55 #x8000))
+         (.daddu v1-56 v1-55 s7-0)
+         )
+       (cond
+         ((>= (the-as uint obj) (the-as uint v1-56))
+          (if err-msg-str
+              (format
+                err-msg-dest
+                "ERROR: object #x~X ~S is not a valid object of type '~A' (not in symbol table)~%"
+                obj
+                err-msg-str
+                expected-type
+                )
+              )
+          #f
+          )
+         (else
+           #t
+           )
+         )
+       )
+      ((begin
+         (let ((v1-59 #x8000))
+           (.daddu v1-60 v1-59 s7-0)
+           )
+         (< (the-as uint obj) (the-as uint v1-60))
+         )
+       (if err-msg-str
+           (format
+             err-msg-dest
+             "ERROR: object #x~X ~S is not a valid object of type '~A' (inside symbol table)~%"
+             obj
+             err-msg-str
+             expected-type
+             )
+           )
+       #f
+       )
+      (else
+        #t
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

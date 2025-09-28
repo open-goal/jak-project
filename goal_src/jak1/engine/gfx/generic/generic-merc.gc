@@ -1,34 +1,33 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: generic-merc.gc
-;; name in dgo: generic-merc
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/lights.gc")
+(require "engine/gfx/generic/generic-effect.gc")
+(require "engine/gfx/foreground/bones.gc")
 
 ;; DECOMP BEGINS
 
 (define mercneric-vu0-block (new 'static 'vu-function :length #x0 :origin #x0 :qlength #x0))
 
 (deftype invinitdata (structure)
-  ((count      uint8)
-   (init-data  uint8)
-   (init-addr  uint16)
-   )
-  :pack-me
-  )
+  ((count     uint8)
+   (init-data uint8)
+   (init-addr uint16))
+  :pack-me)
 
-
-(define *inv-init-table* (new 'static 'inline-array invinitdata 8
-                           (new 'static 'invinitdata :count #x48 :init-addr #x1)
-                           (new 'static 'invinitdata :count #x43 :init-data #xc :init-addr #x11)
-                           (new 'static 'invinitdata :count #x3d :init-data #x18 :init-addr #x21)
-                           (new 'static 'invinitdata :count #x38 :init-data #x22 :init-addr #xe0)
-                           (new 'static 'invinitdata :count #x38 :init-data #x24 :init-addr #xe1)
-                           (new 'static 'invinitdata :count #x33 :init-data #x30 :init-addr #xf1)
-                           (new 'static 'invinitdata :count #x2e :init-data #x3a :init-addr #x190)
-                           (new 'static 'invinitdata :count #x2d :init-data #x3c :init-addr #x191)
-                           )
-        )
+(define *inv-init-table*
+  (new 'static
+       'inline-array
+       invinitdata
+       8
+       (new 'static 'invinitdata :count #x48 :init-addr #x1)
+       (new 'static 'invinitdata :count #x43 :init-data #xc :init-addr #x11)
+       (new 'static 'invinitdata :count #x3d :init-data #x18 :init-addr #x21)
+       (new 'static 'invinitdata :count #x38 :init-data #x22 :init-addr #xe0)
+       (new 'static 'invinitdata :count #x38 :init-data #x24 :init-addr #xe1)
+       (new 'static 'invinitdata :count #x33 :init-data #x30 :init-addr #xf1)
+       (new 'static 'invinitdata :count #x2e :init-data #x3a :init-addr #x190)
+       (new 'static 'invinitdata :count #x2d :init-data #x3c :init-addr #x191)))
 
 (def-mips2c generic-merc-init-asm (function none))
 
@@ -42,14 +41,14 @@
 
 ;; (def-mips2c high-speed-reject function) ;; TODO mips2c
 (def-mips2c high-speed-reject (function none))
+
 (def-mips2c generic-merc-execute-asm (function none)) ;; TODO mips2c
 
 (defun generic-merc-add-to-cue ((arg0 generic-dma-foreground-sink))
   (set! (-> *merc-globals* sink) arg0)
   (+! (-> *merc-global-array* count) 1)
   (set! *merc-globals* (-> *merc-global-array* globals (-> *merc-global-array* count)))
-  (none)
-  )
+  (none))
 
 (defun generic-merc-execute-all ((arg0 dma-buffer))
   "Run the EE part of the generic renderer for all generic merc stuff.
@@ -57,31 +56,18 @@
   (local-vars (a0-26 int) (a0-28 int))
   (when (nonzero? (-> *merc-global-array* count))
     (let ((gp-0 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
-
       ;; set up performance stats
       (if *debug-segment*
-          (add-frame
-            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-            'draw
-            (new 'static 'rgba :r #x40 :b #x40 :a #x80)
-            )
-          )
-      
+        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+                   'draw
+                   (new 'static 'rgba :r #x40 :b #x40 :a #x80)))
       (reset! (-> *perf-stats* data 1))
-      (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves to-vu0-waits)
-            (the-as uint 0)
-            )
-      (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves to-spr-waits)
-            (the-as uint 0)
-            )
-      (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves from-spr-waits)
-            (the-as uint 0)
-            )
+      (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves to-vu0-waits) (the-as uint 0))
+      (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves to-spr-waits) (the-as uint 0))
+      (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves from-spr-waits) (the-as uint 0))
       (flush-cache 0)
-
       ;; first, initialize the generic renderer.
       (generic-initialize-without-sink (-> *math-camera* perspective) *default-lights*)
-      
       ;; next, initialize the merc-specific stuff.
       ;; this give us function pointers to
       ;;  - mercneric-convert
@@ -92,27 +78,19 @@
       ;;  - high-speed-reject
       ;; and also loads the mercneric-vu0-block block with an offset of 280.
       (generic-merc-init-asm)
-      
       ;; set a limit, so we don't write off the end of the dma buffer.
       (set! (-> (scratchpad-object terrain-context) work foreground generic-work in-buf merc shadow write-limit)
-            (&+ (-> arg0 end) -65536)
-            )
-
+            (&+ (-> arg0 end) -65536))
       (dotimes (s4-0 (the-as int (-> *merc-global-array* count)))
         (set! *merc-globals* (-> *merc-global-array* globals s4-0))
         (let ((s3-0 (-> *merc-globals* sink)))
           (when (nonzero? (-> *merc-globals* first))
             (let* ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                   (s2-0 (-> s1-0 base))
-                   )
+                   (s2-0 (-> s1-0 base)))
               (generic-work-init s3-0)
-              (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves basep)
-                    (the-as uint (-> s1-0 base))
-                    )
+              (set! (-> (scratchpad-object terrain-context) work foreground generic-work saves basep) (the-as uint (-> s1-0 base)))
               (generic-merc-execute-asm)
-              (set! (-> s1-0 base)
-                    (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work saves basep))
-                    )
+              (set! (-> s1-0 base) (the-as pointer (-> (scratchpad-object terrain-context) work foreground generic-work saves basep)))
               ;; todo: this part might be important...
               ; (let ((v1-36 (the-as object #x1000d000))
               ;       (a0-19 (the-as object #x7000006c))
@@ -137,17 +115,11 @@
                   (set! (-> (the-as dma-packet v1-38) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
                   (set! (-> (the-as dma-packet v1-38) vif0) (new 'static 'vif-tag))
                   (set! (-> (the-as dma-packet v1-38) vif1) (new 'static 'vif-tag))
-                  (set! (-> s1-0 base) (&+ (the-as pointer v1-38) 16))
-                  )
-                (dma-bucket-insert-tag
-                  (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                  (-> s3-0 bucket)
-                  s2-0
-                  (the-as (pointer dma-tag) a3-0)
-                  )
-                )
-              )
-            
+                  (set! (-> s1-0 base) (&+ (the-as pointer v1-38) 16)))
+                (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                                       (-> s3-0 bucket)
+                                       s2-0
+                                       (the-as (pointer dma-tag) a3-0))))
             ; (let ((v1-44 (-> arg0 base)))
             ;   (.sync.l)
             ;   (.cache dxwbin v1-44 0)
@@ -155,37 +127,23 @@
             ;   (.cache dxwbin v1-44 1)
             ;   )
             ; (.sync.l)
-            0
-            )
-          )
-        )
+            0)))
       (read! (-> *perf-stats* data 1))
       0
-      (update-wait-stats
-        (-> *perf-stats* data 1)
-        (-> (scratchpad-object terrain-context) work foreground generic-work saves to-vu0-waits)
-        (-> (scratchpad-object terrain-context) work foreground generic-work saves to-spr-waits)
-        (-> (scratchpad-object terrain-context) work foreground generic-work saves from-spr-waits)
-        )
+      (update-wait-stats (-> *perf-stats* data 1)
+                         (-> (scratchpad-object terrain-context) work foreground generic-work saves to-vu0-waits)
+                         (-> (scratchpad-object terrain-context) work foreground generic-work saves to-spr-waits)
+                         (-> (scratchpad-object terrain-context) work foreground generic-work saves from-spr-waits))
       (if *debug-segment*
-          (add-frame
-            (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
-            'draw
-            (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-            )
-          )
+        (add-frame (-> *display* frames (-> *display* on-screen) frame profile-bar 0)
+                   'draw
+                   (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)))
       (let ((v1-64 *dma-mem-usage*))
         (when (nonzero? v1-64)
           (set! (-> v1-64 length) (max 87 (-> v1-64 length)))
           (set! (-> v1-64 data 86 name) "pris-generic")
           (+! (-> v1-64 data 86 count) 1)
           (+! (-> v1-64 data 86 used)
-              (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint gp-0))
-              )
-          (set! (-> v1-64 data 86 total) (-> v1-64 data 86 used))
-          )
-        )
-      )
-    )
-  (none)
-  )
+              (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint gp-0)))
+          (set! (-> v1-64 data 86 total) (-> v1-64 data 86 used))))))
+  (none))

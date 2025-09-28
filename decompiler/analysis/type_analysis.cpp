@@ -1,4 +1,5 @@
 #include "type_analysis.h"
+
 #include "common/log/log.h"
 
 namespace decompiler {

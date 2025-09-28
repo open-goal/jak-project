@@ -1,9 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: tfrag-methods.gc
-;; name in dgo: tfrag-methods
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/debug/debug-h.gc")
+(require "engine/level/bsp.gc")
+(require "engine/gfx/tfrag/tfrag.gc")
+(require "engine/gfx/background/background.gc")
+(require "engine/collide/collide-shape-h.gc")
 
 ;; DECOMP BEGINS
 
@@ -16,23 +18,14 @@
       (when (logtest? *display-strip-lines* (ash 1 s5-0))
         (let ((s4-0 (-> arg0 s5-0)))
           (dotimes (s3-0 (/ (-> s4-0 length) 2))
-            (add-debug-line
-              #t
-              (bucket-id debug-no-zbuf)
-              (-> s4-0 data (* s3-0 2))
-              (-> s4-0 data (+ (* s3-0 2) 1))
-              (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-              #f
-              (the-as rgba -1)
-              )
-            )
-          )
-        )
-      )
-    )
-  (none)
-  )
-
+            (add-debug-line #t
+                            (bucket-id debug-no-zbuf)
+                            (-> s4-0 data (* s3-0 2))
+                            (-> s4-0 data (+ (* s3-0 2) 1))
+                            (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                            #f
+                            (the-as rgba -1)))))))
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tree Draw Functions
@@ -43,26 +36,19 @@
 ;; the background list.  After draw is complete, the finish-background function will draw the trees with these
 ;; functions.
 
-
 (defun draw-drawable-tree-tfrag ((arg0 drawable-tree-tfrag) (lev level))
   "Draw the normal tfrag tree! Added the lev argument for time-of-day integer times"
   (local-vars (r0-0 none) (a0-20 int) (a0-22 int) (a0-38 int) (a0-40 int) (sv-16 (pointer uint8)))
-  
-  
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    
     ;; first, do draw node culling.
     ;; the culling is done in batches, doing all nodes at one depth before going to the enxt.
     ;; only arrays of draw nodes can be culled - tfragments themselves can't (they are the wrong size)
-    
-    
     (let ((s5-0 (+ (-> arg0 length) -1))) ;; get the number of trees with draw-nodes (see doc, the last one is always tfragments)
-      
       ;; TODO
       #|
       (when (nonzero? s5-0) ;; only if we have draw-nodes (levels like INT have only like 2 tfrags)
         (dotimes (s4-0 s5-0) ;; loop over tree depths
-          
+
           ;; not sure of the details yet, but we take two levels as inputs
           (let* ((v1-7 (-> arg0 arrays s4-0))
                  (a0-4 (-> arg0 arrays (+ s4-0 1)))
@@ -80,70 +66,51 @@
             )
           )
         )
-        |#
-      
+      |#
       ;; draw, using the full list of all tfrags (not tree format)
       (let* ((v1-13 (the-as drawable-inline-array-tfrag (-> arg0 arrays s5-0)))
              (s4-1 (-> v1-13 data))
-             (s3-0 (-> v1-13 length))
-             )
-        
+             (s3-0 (-> v1-13 length)))
         ;; pointer to vis data for the first tfrag
         (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s4-1 0 id) 8)))
-        
         ;; all DMA
         (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
           ;; (format *stdcon* " #x~X~%" s5-1)
           ;; DMA for TFRAG
           (let* ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-                 (s2-0 (-> s1-0 base))
-                 )
-            
+                 (s2-0 (-> s1-0 base)))
             ;; clear stats
             (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
             (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            
             ;; initialize dma buffer
-            (tfrag-init-buffer 
-              s1-0
-              (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
-              0
-              lev
-              )
-            
+            (tfrag-init-buffer s1-0
+                               (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
+                               0
+                               lev)
             ;; do the draw!
             (reset! (-> *perf-stats* data 5))
             ;;(format 0 "DRAW: ~D~%" s3-0)
             ;; (draw-inline-array-tfrag sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-0)
             (read! (-> *perf-stats* data 5))
-            
             ;; update stats for the draw
-            (update-wait-stats (-> *perf-stats* data 5) (the-as uint 0) (-> *tfrag-work* wait-to-spr) (-> *tfrag-work* wait-from-spr))
-            
+            (update-wait-stats (-> *perf-stats* data 5)
+                               (the-as uint 0)
+                               (-> *tfrag-work* wait-to-spr)
+                               (-> *tfrag-work* wait-from-spr))
             ;; finish dma buffer
             (tfrag-end-buffer s1-0)
-            
             ;; close dma packet
             (let ((a3-3 (-> s1-0 base)))
               (let ((v1-38 (the-as object (-> s1-0 base))))
                 (set! (-> (the-as dma-packet v1-38) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
                 (set! (-> (the-as dma-packet v1-38) vif0) (new 'static 'vif-tag))
                 (set! (-> (the-as dma-packet v1-38) vif1) (new 'static 'vif-tag))
-                (set! (-> s1-0 base) (&+ (the-as pointer v1-38) 16))
-                )
+                (set! (-> s1-0 base) (&+ (the-as pointer v1-38) 16)))
               (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                     (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                                           (bucket-id tfrag-0)
-                                                           (bucket-id tfrag-1)
-                                                           )
-                                             )
+                                     (the-as bucket-id
+                                             (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-0) (bucket-id tfrag-1)))
                                      s2-0
-                                     (the-as (pointer dma-tag) a3-3)
-                                     )
-              )
-            )
-          
-          
+                                     (the-as (pointer dma-tag) a3-3))))
           ;; (format *stdcon* " #x~X~%" (-> *display* frames (-> *display* on-screen) frame global-buf base))
           ;; DMA for TFRAG NEAR
           ; (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
@@ -180,7 +147,6 @@
           ;       )
           ;     )
           ;   )
-          
           ;; DMA memory stats
           (let ((v1-69 *dma-mem-usage*))
             (when (nonzero? v1-69)
@@ -188,29 +154,15 @@
               (set! (-> v1-69 data 1 name) "tfragment")
               (+! (-> v1-69 data 1 count) 1)
               (+! (-> v1-69 data 1 used) (&- (-> *display* frames (-> *display* on-screen) frame global-buf base) (the-as uint s5-1)))
-              (set! (-> v1-69 data 1 total) (-> v1-69 data 1 used))
-              )
-            )
-          )
-        )
-      )
-    )
-  (none)
-  )
-
+              (set! (-> v1-69 data 1 total) (-> v1-69 data 1 used))))))))
+  (none))
 
 (defun draw-drawable-tree-trans-tfrag ((arg0 drawable-tree-trans-tfrag) (lev level))
-  (local-vars
-   (r0-0 none)
-   (a0-18 int)
-   (a0-20 int)
-   (a0-35 int)
-   (a0-37 int)
-   (sv-16 (pointer uint8))
-   )
+  (local-vars (r0-0 none) (a0-18 int) (a0-20 int) (a0-35 int) (a0-37 int) (sv-16 (pointer uint8)))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (let ((s5-0 (+ (-> arg0 length) -1)))
-     #| TODO
+    (let ((s5-0 (+ (-> arg0 length) -1)))
+      #|
+ TODO
     (when (nonzero? s5-0)
      (dotimes (s4-0 s5-0)
       (let* ((v1-7 (-> arg0 arrays s4-0))
@@ -228,58 +180,48 @@
         )
        )
       )
-     ) |#
-    (let* ((v1-13 (-> arg0 arrays s5-0))
-           (s5-1 (&+ v1-13 32))
-           (s4-1 (-> v1-13 length))
-           )
-     (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-     (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-       (s3-0 (-> s2-0 base))
-       )
-      (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-      (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-      (tfrag-init-buffer
-       s2-0
-       (new 'static 'gs-test
-        :ate #x1
-        :atst (gs-atest greater-equal)
-        :aref #x7e
-        :afail #x1
-        :zte #x1
-        :ztst (gs-ztest greater-equal)
-        )
-       1
-       lev
-       )
-      (reset! (-> *perf-stats* data 5))
-      ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-      (update-wait-stats (-> *perf-stats* data 5) (the-as uint 0) (-> *tfrag-work* wait-to-spr) (-> *tfrag-work* wait-from-spr))
-      (read! (-> *perf-stats* data 5))
-      (tfrag-end-buffer s2-0)
-      (let ((a3-3 (-> s2-0 base)))
-       (let ((v1-34 (the-as object (-> s2-0 base))))
-        (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-        (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
-        (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16))
-        )
-       
-       (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (the-as
-         bucket-id
-         (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-          (bucket-id tfrag-trans-0)
-          (bucket-id tfrag-trans-1)
-          )
-         )
-        s3-0
-        (the-as (pointer dma-tag) a3-3)
-        )
-       )
-      )
-     #| TODO
+     )
+      |#
+      (let* ((v1-13 (-> arg0 arrays s5-0))
+             (s5-1 (&+ v1-13 32))
+             (s4-1 (-> v1-13 length)))
+        (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
+        (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+               (s3-0 (-> s2-0 base)))
+          (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
+          (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
+          (tfrag-init-buffer s2-0
+                             (new 'static
+                                  'gs-test
+                                  :ate #x1
+                                  :atst (gs-atest greater-equal)
+                                  :aref #x7e
+                                  :afail #x1
+                                  :zte #x1
+                                  :ztst (gs-ztest greater-equal))
+                             1
+                             lev)
+          (reset! (-> *perf-stats* data 5))
+          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
+          (update-wait-stats (-> *perf-stats* data 5)
+                             (the-as uint 0)
+                             (-> *tfrag-work* wait-to-spr)
+                             (-> *tfrag-work* wait-from-spr))
+          (read! (-> *perf-stats* data 5))
+          (tfrag-end-buffer s2-0)
+          (let ((a3-3 (-> s2-0 base)))
+            (let ((v1-34 (the-as object (-> s2-0 base))))
+              (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+              (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
+              (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16)))
+            (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                                   (the-as bucket-id
+                                           (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-trans-0) (bucket-id tfrag-trans-1)))
+                                   s3-0
+                                   (the-as (pointer dma-tag) a3-3))))
+        #|
+ TODO
      (let*
       ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
        (s3-1 (-> s2-1 base))
@@ -359,26 +301,17 @@
         (the-as (pointer dma-tag) a3-6)
         )
        )
-      ) |#
-     )
-    )
-   )
-  (none)
-  )
-
+      )
+        |#
+        )))
+  (none))
 
 (defun draw-drawable-tree-dirt-tfrag ((arg0 drawable-tree-dirt-tfrag) (lev level))
-  (local-vars
-   (r0-0 none)
-   (a0-18 int)
-   (a0-20 int)
-   (a0-35 int)
-   (a0-37 int)
-   (sv-16 (pointer uint8))
-   )
+  (local-vars (r0-0 none) (a0-18 int) (a0-20 int) (a0-35 int) (a0-37 int) (sv-16 (pointer uint8)))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (let ((s5-0 (+ (-> arg0 length) -1)))
-    #| TODO 
+    (let ((s5-0 (+ (-> arg0 length) -1)))
+      #|
+ TODO
     (when (nonzero? s5-0)
      (dotimes (s4-0 s5-0)
       (let* ((v1-7 (-> arg0 arrays s4-0))
@@ -412,52 +345,36 @@
         )
        )
       )
-     )|#
-    
-    (let* ((v1-13 (-> arg0 arrays s5-0))
-           (s5-1 (&+ v1-13 32))
-           (s4-1 (-> v1-13 length))
-           )
-      (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
-      (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-             (s3-0 (-> s2-0 base))
-             )
-        (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-        (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-        (tfrag-init-buffer s2-0 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1 lev)
-        (reset! (-> *perf-stats* data 5))
-        
-        ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-        (update-wait-stats
-          (-> *perf-stats* data 5)
-          (the-as uint 0)
-          (-> *tfrag-work* wait-to-spr)
-          (-> *tfrag-work* wait-from-spr)
-          )
-        (read! (-> *perf-stats* data 5))
-        (tfrag-end-buffer s2-0)
-        (let ((a3-3 (-> s2-0 base)))
-          (let ((v1-34 (the-as object (-> s2-0 base))))
-            (set!
-              (-> (the-as dma-packet v1-34) dma)
-              (new 'static 'dma-tag :id (dma-tag-id next))
-              )
-            (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
-            (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
-            (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16))
-            )
-          (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
-                                 (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-                                     (bucket-id tfrag-dirt-0)
-                                     (bucket-id tfrag-dirt-1)
-                                     )
-                                 s3-0
-                                 (the-as (pointer dma-tag) a3-3)
-                                 )
-          )
-        )
-      
-      #|
+     )
+      |#
+      (let* ((v1-13 (-> arg0 arrays s5-0))
+             (s5-1 (&+ v1-13 32))
+             (s4-1 (-> v1-13 length)))
+        (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
+        (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+               (s3-0 (-> s2-0 base)))
+          (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
+          (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
+          (tfrag-init-buffer s2-0 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1 lev)
+          (reset! (-> *perf-stats* data 5))
+          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
+          (update-wait-stats (-> *perf-stats* data 5)
+                             (the-as uint 0)
+                             (-> *tfrag-work* wait-to-spr)
+                             (-> *tfrag-work* wait-from-spr))
+          (read! (-> *perf-stats* data 5))
+          (tfrag-end-buffer s2-0)
+          (let ((a3-3 (-> s2-0 base)))
+            (let ((v1-34 (the-as object (-> s2-0 base))))
+              (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+              (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
+              (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16)))
+            (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                                   (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) (bucket-id tfrag-dirt-0) (bucket-id tfrag-dirt-1))
+                                   s3-0
+                                   (the-as (pointer dma-tag) a3-3))))
+        #|
      (let*
       ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
        (s3-1 (-> s2-1 base))
@@ -535,25 +452,17 @@
         (the-as (pointer dma-tag) a3-6)
         )
        )
-      ) |#
-     )
-    )
-   )
-  (none)
-  )
+      )
+        |#
+        )))
+  (none))
 
 (defun draw-drawable-tree-ice-tfrag ((arg0 drawable-tree-ice-tfrag) (lev level))
-  (local-vars
-   (r0-0 none)
-   (a0-18 int)
-   (a0-20 int)
-   (a0-35 int)
-   (a0-37 int)
-   (sv-16 (pointer uint8))
-   )
+  (local-vars (r0-0 none) (a0-18 int) (a0-20 int) (a0-35 int) (a0-37 int) (sv-16 (pointer uint8)))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (let ((s5-0 (+ (-> arg0 length) -1)))
-     #| TODO
+    (let ((s5-0 (+ (-> arg0 length) -1)))
+      #|
+ TODO
     (when (nonzero? s5-0)
      (dotimes (s4-0 s5-0)
       (let* ((v1-7 (-> arg0 arrays s4-0))
@@ -571,66 +480,39 @@
         )
        )
       )
-     )|#
-    (let* ((v1-13 (-> arg0 arrays s5-0))
-           (s5-1 (&+ v1-13 32))
-           (s4-1 (-> v1-13 length))
-           )
-     (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8))
-      )
-     (let*
-      ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
-       (s3-0 (-> s2-0 base))
-       )
-      (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
-      (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-      (tfrag-init-buffer
-       s2-0
-       (new 'static 'gs-test
-        :ate #x1
-        :atst (gs-atest always)
-        :afail #x1
-        :zte #x1
-        :ztst (gs-ztest greater-equal)
-        )
-       1
-       lev
-       )
-      (reset! (-> *perf-stats* data 5))
-      ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
-      (update-wait-stats
-       (-> *perf-stats* data 5)
-       (the-as uint 0)
-       (-> *tfrag-work* wait-to-spr)
-       (-> *tfrag-work* wait-from-spr)
-       )
-      (read! (-> *perf-stats* data 5))
-      (tfrag-end-buffer s2-0)
-      (let ((a3-3 (-> s2-0 base)))
-       (let ((v1-34 (the-as object (-> s2-0 base))))
-        (set!
-         (-> (the-as dma-packet v1-34) dma)
-         (new 'static 'dma-tag :id (dma-tag-id next))
-         )
-        (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
-        (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
-        (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16))
-        )
-       (dma-bucket-insert-tag
-        (-> *display* frames (-> *display* on-screen) frame bucket-group)
-        (the-as
-         bucket-id
-         (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index))
-          36
-          43
-          )
-         )
-        s3-0
-        (the-as (pointer dma-tag) a3-3)
-        )
-       )
-      )
-     #|
+     )
+      |#
+      (let* ((v1-13 (-> arg0 arrays s5-0))
+             (s5-1 (&+ v1-13 32))
+             (s4-1 (-> v1-13 length)))
+        (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s5-1 id) 8)))
+        (let* ((s2-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
+               (s3-0 (-> s2-0 base)))
+          (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
+          (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
+          (tfrag-init-buffer s2-0
+                             (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+                             1
+                             lev)
+          (reset! (-> *perf-stats* data 5))
+          ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
+          (update-wait-stats (-> *perf-stats* data 5)
+                             (the-as uint 0)
+                             (-> *tfrag-work* wait-to-spr)
+                             (-> *tfrag-work* wait-from-spr))
+          (read! (-> *perf-stats* data 5))
+          (tfrag-end-buffer s2-0)
+          (let ((a3-3 (-> s2-0 base)))
+            (let ((v1-34 (the-as object (-> s2-0 base))))
+              (set! (-> (the-as dma-packet v1-34) dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+              (set! (-> (the-as dma-packet v1-34) vif0) (new 'static 'vif-tag))
+              (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
+              (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16)))
+            (dma-bucket-insert-tag (-> *display* frames (-> *display* on-screen) frame bucket-group)
+                                   (the-as bucket-id (if (zero? (-> (scratchpad-object terrain-context) bsp lev-index)) 36 43))
+                                   s3-0
+                                   (the-as (pointer dma-tag) a3-3))))
+        #|
      (let*
       ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
        (s3-1 (-> s2-1 base))
@@ -709,298 +591,215 @@
         (the-as (pointer dma-tag) a3-6)
         )
        )
-      ) |#
-     )
-    )
-   )
-  (none)
-  )
+      )
+        |#
+        )))
+  (none))
 
-  ;; definition for method 10 of type drawable-tree-tfrag
+;; definition for method 10 of type drawable-tree-tfrag
 ;; INFO: Return type mismatch drawable-tree-tfrag vs none.
 (defmethod draw ((this drawable-tree-tfrag) (arg0 drawable-tree-tfrag) (arg1 display-frame))
   (let* ((v1-1 (-> *background-work* tfrag-tree-count))
          (a1-2 (-> (scratchpad-object terrain-context) bsp lev-index))
-         (a1-5 (-> *level* level a1-2))
-         )
-   (set! (-> *background-work* tfrag-trees v1-1) this)
-   (set! (-> *background-work* tfrag-levels v1-1) a1-5)
-   )
+         (a1-5 (-> *level* level a1-2)))
+    (set! (-> *background-work* tfrag-trees v1-1) this)
+    (set! (-> *background-work* tfrag-levels v1-1) a1-5))
   (+! (-> *background-work* tfrag-tree-count) 1)
-  (none)
-  )
+  (none))
 
 ;; definition for method 10 of type drawable-tree-trans-tfrag
 ;; INFO: Return type mismatch drawable-tree-trans-tfrag vs none.
 (defmethod draw ((this drawable-tree-trans-tfrag) (arg0 drawable-tree-trans-tfrag) (arg1 display-frame))
   (let* ((v1-1 (-> *background-work* trans-tfrag-tree-count))
          (a1-2 (-> (scratchpad-object terrain-context) bsp lev-index))
-         (a1-5 (-> *level* level a1-2))
-         )
-   (set! (-> *background-work* trans-tfrag-trees v1-1) this)
-   (set! (-> *background-work* trans-tfrag-levels v1-1) a1-5)
-   )
+         (a1-5 (-> *level* level a1-2)))
+    (set! (-> *background-work* trans-tfrag-trees v1-1) this)
+    (set! (-> *background-work* trans-tfrag-levels v1-1) a1-5))
   (+! (-> *background-work* trans-tfrag-tree-count) 1)
-  (none)
-  )
+  (none))
 
 ;; definition for method 10 of type drawable-tree-dirt-tfrag
 ;; INFO: Return type mismatch drawable-tree-dirt-tfrag vs none.
 (defmethod draw ((this drawable-tree-dirt-tfrag) (arg0 drawable-tree-dirt-tfrag) (arg1 display-frame))
   (let* ((v1-1 (-> *background-work* dirt-tfrag-tree-count))
          (a1-2 (-> (scratchpad-object terrain-context) bsp lev-index))
-         (a1-5 (-> *level* level a1-2))
-         )
-   (set! (-> *background-work* dirt-tfrag-trees v1-1) this)
-   (set! (-> *background-work* dirt-tfrag-levels v1-1) a1-5)
-   )
+         (a1-5 (-> *level* level a1-2)))
+    (set! (-> *background-work* dirt-tfrag-trees v1-1) this)
+    (set! (-> *background-work* dirt-tfrag-levels v1-1) a1-5))
   (+! (-> *background-work* dirt-tfrag-tree-count) 1)
-  (none)
-  )
+  (none))
 
 ;; definition for method 10 of type drawable-tree-ice-tfrag
 ;; INFO: Return type mismatch drawable-tree-ice-tfrag vs none.
 (defmethod draw ((this drawable-tree-ice-tfrag) (arg0 drawable-tree-ice-tfrag) (arg1 display-frame))
   (let* ((v1-1 (-> *background-work* ice-tfrag-tree-count))
          (a1-2 (-> (scratchpad-object terrain-context) bsp lev-index))
-         (a1-5 (-> *level* level a1-2))
-         )
-   (set! (-> *background-work* ice-tfrag-trees v1-1) this)
-   (set! (-> *background-work* ice-tfrag-levels v1-1) a1-5)
-   )
+         (a1-5 (-> *level* level a1-2)))
+    (set! (-> *background-work* ice-tfrag-trees v1-1) this)
+    (set! (-> *background-work* ice-tfrag-levels v1-1) a1-5))
   (+! (-> *background-work* ice-tfrag-tree-count) 1)
-  (none)
-  )
+  (none))
 
 ;; definition for method 10 of type drawable-tree-lowres-tfrag
 ;; INFO: Return type mismatch drawable-tree-lowres-tfrag vs none.
 (defmethod draw ((this drawable-tree-lowres-tfrag) (arg0 drawable-tree-lowres-tfrag) (arg1 display-frame))
   (let* ((v1-1 (-> *background-work* lowres-tfrag-tree-count))
          (a1-2 (-> (scratchpad-object terrain-context) bsp lev-index))
-         (a1-5 (-> *level* level a1-2))
-         )
-   (set! (-> *background-work* lowres-tfrag-trees v1-1) this)
-   (set! (-> *background-work* lowres-tfrag-levels v1-1) a1-5)
-   )
+         (a1-5 (-> *level* level a1-2)))
+    (set! (-> *background-work* lowres-tfrag-trees v1-1) this)
+    (set! (-> *background-work* lowres-tfrag-levels v1-1) a1-5))
   (+! (-> *background-work* lowres-tfrag-tree-count) 1)
-  (none)
-  )
+  (none))
 
 ;; definition for method 10 of type drawable-tree-lowres-trans-tfrag
 ;; INFO: Return type mismatch drawable-tree-lowres-trans-tfrag vs none.
-(defmethod
-  draw
-  drawable-tree-lowres-trans-tfrag
+(defmethod draw drawable-tree-lowres-trans-tfrag
   ((this drawable-tree-lowres-trans-tfrag) (arg0 drawable-tree-lowres-trans-tfrag) (arg1 display-frame))
   (let* ((v1-1 (-> *background-work* lowres-trans-tfrag-tree-count))
          (a1-2 (-> (scratchpad-object terrain-context) bsp lev-index))
-         (a1-5 (-> *level* level a1-2))
-         )
-   (set! (-> *background-work* lowres-trans-tfrag-trees v1-1) this)
-   (set! (-> *background-work* lowres-trans-tfrag-levels v1-1) a1-5)
-   )
+         (a1-5 (-> *level* level a1-2)))
+    (set! (-> *background-work* lowres-trans-tfrag-trees v1-1) this)
+    (set! (-> *background-work* lowres-trans-tfrag-levels v1-1) a1-5))
   (+! (-> *background-work* lowres-trans-tfrag-tree-count) 1)
-  (none)
-  )
+  (none))
 
 ;; definition for method 14 of type tfragment
 (defmethod collect-stats ((this tfragment))
   (stats-tfrag-asm this)
-  (none)
-  )
+  (none))
 
 ;; definition for method 14 of type drawable-tree-tfrag
 ;; INFO: Return type mismatch drawable-tree-tfrag vs none.
 ;; Used lq/sq
 (defmethod collect-stats ((this drawable-tree-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-   (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-   (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-   (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* tfrag))
-   (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* tfrag-near))
-   (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
-    (set! (-> *tfrag-work* frag-dists quad) v1-12)
-    )
-   (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this arrays s5-0))
-    )
-   )
-  (none)
-  )
+    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
+    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
+    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* tfrag))
+    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* tfrag-near))
+    (let ((v1-12 (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) v1-12))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))))
+  (none))
 
 ;; definition for method 14 of type drawable-tree-lowres-tfrag
 ;; INFO: Return type mismatch drawable-tree-lowres-tfrag vs none.
 ;; Used lq/sq
 (defmethod collect-stats ((this drawable-tree-lowres-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-   (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-   (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
-   (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* tfrag))
-   (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* tfrag-near))
-   (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
-    (set! (-> *tfrag-work* frag-dists quad) v1-12)
-    )
-   (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this arrays s5-0))
-    )
-   )
-  (none)
-  )
+    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
+    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask tfrag))))
+    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* tfrag))
+    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* tfrag-near))
+    (let ((v1-12 (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) v1-12))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))))
+  (none))
 
 ;; definition for method 14 of type drawable-tree-trans-tfrag
 ;; INFO: Return type mismatch drawable-tree-trans-tfrag vs none.
 ;; Used lq/sq
 (defmethod collect-stats ((this drawable-tree-trans-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-   (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-   (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
-    (set! (-> *tfrag-work* frag-dists quad) v1-12)
-    )
-   (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this arrays s5-0))
-    )
-   )
-  (none)
-  )
+    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
+    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
+    (let ((v1-12 (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) v1-12))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))))
+  (none))
 
 ;; definition for method 14 of type drawable-tree-lowres-trans-tfrag
 ;; INFO: Return type mismatch drawable-tree-lowres-trans-tfrag vs none.
 ;; Used lq/sq
 (defmethod collect-stats ((this drawable-tree-lowres-trans-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-   (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-   (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
-    (set! (-> *tfrag-work* frag-dists quad) v1-12)
-    )
-   (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this arrays s5-0))
-    )
-   )
-  (none)
-  )
+    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
+    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
+    (let ((v1-12 (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) v1-12))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))))
+  (none))
 
 ;; definition for method 14 of type drawable-tree-dirt-tfrag
 ;; INFO: Return type mismatch drawable-tree-dirt-tfrag vs none.
 ;; Used lq/sq
 (defmethod collect-stats ((this drawable-tree-dirt-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-   (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-   (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
-    (set! (-> *tfrag-work* frag-dists quad) v1-12)
-    )
-   (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this arrays s5-0))
-    )
-   )
-  (none)
-  )
+    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
+    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
+    (let ((v1-12 (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) v1-12))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))))
+  (none))
 
 ;; definition for method 14 of type drawable-tree-ice-tfrag
 ;; INFO: Return type mismatch drawable-tree-ice-tfrag vs none.
 ;; Used lq/sq
 (defmethod collect-stats ((this drawable-tree-ice-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
-   (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
-   (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
-   (let ((v1-12 (-> *tfrag-work* frag-dists quad)))
-    (set! (-> *tfrag-work* frag-dists quad) v1-12)
-    )
-   (dotimes (s5-0 (-> this length))
-    (collect-stats (-> this arrays s5-0))
-    )
-   )
-  (none)
-  )
+    (set! (-> *tfrag-work* vu1-enable-tfrag) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* vu1-enable-tfrag-near) (the-as int (logand *vu1-enable-user* (vu1-renderer-mask trans-tfrag))))
+    (set! (-> *tfrag-work* tr-stat-tfrag) (-> *terrain-stats* trans-tfrag))
+    (set! (-> *tfrag-work* tr-stat-tfrag-near) (-> *terrain-stats* trans-tfrag-near))
+    (let ((v1-12 (-> *tfrag-work* frag-dists quad))) (set! (-> *tfrag-work* frag-dists quad) v1-12))
+    (dotimes (s5-0 (-> this length))
+      (collect-stats (-> this arrays s5-0))))
+  (none))
 
 ;; definition for method 14 of type drawable-inline-array-tfrag
 ;; INFO: Return type mismatch drawable-inline-array-tfrag vs none.
 (defmethod collect-stats ((this drawable-inline-array-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-   (dotimes (s5-0 (-> this length))
-    (let ((s4-0 (-> this data s5-0)))
-     (if (vis-cull (-> s4-0 id))
-      (collect-stats s4-0)
-      )
-     )
-    )
-   )
-  (none)
-  )
+    (dotimes (s5-0 (-> this length))
+      (let ((s4-0 (-> this data s5-0))) (if (vis-cull (-> s4-0 id)) (collect-stats s4-0)))))
+  (none))
 
 ;; definition for method 14 of type drawable-inline-array-trans-tfrag
 ;; INFO: Return type mismatch drawable-inline-array-trans-tfrag vs none.
 (defmethod collect-stats ((this drawable-inline-array-trans-tfrag))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
-   (dotimes (s5-0 (-> this length))
-    (let ((s4-0 (-> this data s5-0)))
-     (if (vis-cull (-> s4-0 id))
-      (collect-stats s4-0)
-      )
-     )
-    )
-   )
-  (none)
-  )
+    (dotimes (s5-0 (-> this length))
+      (let ((s4-0 (-> this data s5-0))) (if (vis-cull (-> s4-0 id)) (collect-stats s4-0)))))
+  (none))
 
 ;; definition for method 15 of type drawable-tree-tfrag
 ;; INFO: Return type mismatch drawable-tree-tfrag vs none.
 (defmethod debug-draw ((this drawable-tree-tfrag) (arg0 drawable) (arg1 display-frame))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-   (dotimes (s4-0 (-> this length))
-    (let ((a1-1 (-> this arrays s4-0)))
-     (debug-draw a1-1 a1-1 arg1)
-     )
-    )
-   )
-  (none)
-  )
+    (dotimes (s4-0 (-> this length))
+      (let ((a1-1 (-> this arrays s4-0))) (debug-draw a1-1 a1-1 arg1))))
+  (none))
 
 ;; definition for method 15 of type drawable-tree-trans-tfrag
 ;; INFO: Return type mismatch drawable-tree-trans-tfrag vs none.
 (defmethod debug-draw ((this drawable-tree-trans-tfrag) (arg0 drawable) (arg1 display-frame))
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-   (dotimes (s4-0 (-> this length))
-    (let ((a1-1 (-> this arrays s4-0)))
-     (debug-draw a1-1 a1-1 arg1)
-     )
-    )
-   )
-  (none)
-  )
+    (dotimes (s4-0 (-> this length))
+      (let ((a1-1 (-> this arrays s4-0))) (debug-draw a1-1 a1-1 arg1))))
+  (none))
 
 ;; definition for method 15 of type drawable-inline-array-tfrag
 ;; INFO: Return type mismatch drawable-inline-array-tfrag vs none.
-(defmethod
-  debug-draw
-  drawable-inline-array-tfrag
+(defmethod debug-draw drawable-inline-array-tfrag
   ((this drawable-inline-array-tfrag) (arg0 drawable) (arg1 display-frame))
   (dotimes (s4-0 (-> this length))
-   (let ((s3-0 (-> this data s4-0)))
-    (if (vis-cull (-> s3-0 id))
-     (debug-draw s3-0 s3-0 arg1)
-     )
-    )
-   )
-  (none)
-  )
+    (let ((s3-0 (-> this data s4-0))) (if (vis-cull (-> s3-0 id)) (debug-draw s3-0 s3-0 arg1))))
+  (none))
 
 ;; definition for method 15 of type tfragment
 (defmethod debug-draw ((this tfragment) (arg0 drawable) (arg1 display-frame))
   (-> arg1 global-buf)
   (edge-debug-lines (-> this debug-data debug-lines))
-  
-  (add-debug-sphere #t (bucket-id debug) (-> this bsphere) (-> this bsphere w) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
+  (add-debug-sphere #t
+                    (bucket-id debug)
+                    (-> this bsphere)
+                    (-> this bsphere w)
+                    (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
   ;;(add-debug-x #t (bucket-id debug) (-> this bsphere) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
-  (none)
-  )
+  (none))

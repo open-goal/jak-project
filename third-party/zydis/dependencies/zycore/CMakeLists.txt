@@ -2,9 +2,14 @@ if (TARGET Zycore)
     return()
 endif ()
 
-cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
-project(Zycore VERSION 1.1.0.0 LANGUAGES C CXX)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
+    # Enable runtime library selection via CMAKE_MSVC_RUNTIME_LIBRARY
+    cmake_policy(SET CMP0091 NEW)
+endif ()
+
+project(Zycore VERSION 1.4.0.0 LANGUAGES C)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -127,7 +132,7 @@ target_include_directories("Zycore"
     PRIVATE "src")
 target_compile_definitions("Zycore" PRIVATE "_CRT_SECURE_NO_WARNINGS")
 zyan_set_common_flags("Zycore")
-zyan_maybe_enable_wpo_for_lib("Zycore")
+zyan_maybe_enable_wpo("Zycore")
 
 if (ZYAN_NO_LIBC)
     target_compile_definitions("Zycore" PUBLIC "ZYAN_NO_LIBC")
@@ -147,6 +152,7 @@ target_sources("Zycore"
         # Common
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Allocator.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/ArgParse.h"
+        "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Atomic.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Bitset.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Comparison.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Defines.h"
@@ -159,6 +165,8 @@ target_sources("Zycore"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Types.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Vector.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Zycore.h"
+        "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Internal/AtomicGNU.h"
+        "${CMAKE_CURRENT_LIST_DIR}/include/Zycore/Internal/AtomicMSVC.h"
         # API
         "src/API/Memory.c"
         "src/API/Process.c"
@@ -203,11 +211,36 @@ install(FILES
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/zycore"
 )
 
-install(TARGETS "Zycore" EXPORT "zycore-targets")
+install(TARGETS "Zycore" EXPORT "zycore-targets"
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
 install(EXPORT "zycore-targets"
     NAMESPACE "Zycore::"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/zycore")
 install(DIRECTORY "include/" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# =============================================================================================== #
+# Doxygen documentation                                                                           #
+# =============================================================================================== #
+
+find_package(Doxygen)
+if (DOXYGEN_FOUND)
+    set(DOXYGEN_GENERATE_MAN YES)
+    doxygen_add_docs(ZycoreDoc "include/Zycore/" ALL)
+    install(
+        DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/html/"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/api"
+        COMPONENT Documentation
+    )
+    install(
+        DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/man/man3/"
+        DESTINATION "${CMAKE_INSTALL_MANDIR}/man3"
+        COMPONENT Documentation
+    )
+endif()
 
 # =============================================================================================== #
 # Developer mode                                                                                  #
@@ -257,6 +290,7 @@ function (zyan_add_test test)
 endfunction ()
 
 if (ZYCORE_BUILD_TESTS)
+    enable_language(CXX)
     enable_testing()
     zyan_add_test("String")
     zyan_add_test("Vector")

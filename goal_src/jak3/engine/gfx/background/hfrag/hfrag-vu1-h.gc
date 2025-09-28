@@ -5,5 +5,111 @@
 ;; name in dgo: hfrag-vu1-h
 ;; dgos: HGA, WIN, DST
 
+(declare-type hfrag-vu1-constants-base structure)
+(define-extern *hfrag-vu1-constants-base* hfrag-vu1-constants-base)
+
 ;; DECOMP BEGINS
 
+(deftype hfrag-vu1-poly4-packet (structure)
+  ((height-tag  dma-packet  :inline)
+   (base        vector      :inline)
+   (heights     uint32      4)
+   (color-tag   dma-packet  :inline)
+   (colors      rgba        4)
+   (next        dma-packet  :inline)
+   )
+  )
+
+
+(deftype hfrag-vu1-poly9-packet (structure)
+  ((height-tag  dma-packet  :inline)
+   (base        vector3     :inline)
+   (heights     uint32      9)
+   (color-tag   dma-packet  :inline)
+   (colors      rgba        12)
+   (next        dma-packet  :inline)
+   (jump-index  int32       :overlay-at (-> base data 1))
+   )
+  )
+
+
+(deftype hfrag-vu1-poly25-packet (structure)
+  ((height-tag  dma-packet  :inline)
+   (base        vector3     :inline)
+   (heights     uint32      25)
+   (color-tag   dma-packet  :inline)
+   (colors      rgba        28)
+   (next        dma-packet  :inline)
+   )
+  )
+
+
+(deftype hfrag-vu1-vertex (structure)
+  ((tex  vector  :inline)
+   (clr  vector  :inline)
+   (pos  vector  :inline)
+   )
+  )
+
+
+(deftype hfrag-vu1-poly4 (structure)
+  ((giftag  vector            :inline)
+   (verts   hfrag-vu1-vertex  4 :inline)
+   )
+  )
+
+
+(deftype hfrag-vu1-poly9 (structure)
+  ((giftag0  vector            :inline)
+   (verts0   hfrag-vu1-vertex  6 :inline)
+   (giftag1  vector            :inline)
+   (verts1   hfrag-vu1-vertex  6 :inline)
+   )
+  )
+
+
+(deftype hfrag-vu1-poly25 (structure)
+  ((giftag0  vector            :inline)
+   (verts0   hfrag-vu1-vertex  10 :inline)
+   (giftag1  vector            :inline)
+   (verts1   hfrag-vu1-vertex  10 :inline)
+   (giftag2  vector            :inline)
+   (verts2   hfrag-vu1-vertex  10 :inline)
+   (giftag3  vector            :inline)
+   (verts3   hfrag-vu1-vertex  10 :inline)
+   )
+  )
+
+
+(deftype hfrag-vu1-constants-base (structure)
+  ((far-verts    vector  25 :inline)
+   (mid-verts9   vector  9 :inline)
+   (mid-verts25  vector  25 :inline)
+   (near-verts4  vector  4 :inline)
+   (near-verts9  vector  9 :inline)
+   (sts          vector  9 :inline)
+   (data         vector  81 :inline :overlay-at (-> far-verts 0))
+   )
+  )
+
+
+(deftype hfrag-vu1-constants (structure)
+  ((base           hfrag-vu1-constants-base  :inline)
+   (far-verts      vector                    25 :inline :overlay-at (-> base far-verts 0))
+   (mid-verts9     vector                    9 :inline  :overlay-at (-> base mid-verts9 0))
+   (mid-verts25    vector                    25 :inline :overlay-at (-> base mid-verts25 0))
+   (near-verts4    vector                    4 :inline  :overlay-at (-> base near-verts4 0))
+   (near-verts9    vector                    9 :inline  :overlay-at (-> base near-verts9 0))
+   (sts            vector                    9 :inline  :overlay-at (-> base sts 0))
+   (drw-strip4     gs-gif-tag                :inline)
+   (drw-strip9-0   gs-gif-tag                :inline)
+   (drw-strip9-1   gs-gif-tag                :inline)
+   (drw-strip25-0  gs-gif-tag                :inline)
+   (drw-strip25-1  gs-gif-tag                :inline)
+   (matrix         matrix                    :inline)
+   (hvdf-offset    vector                    :inline)
+   (hmge-scale     vector                    :inline)
+   (fog            vector                    :inline)
+   (stores         qword                     :inline)
+   )
+  )

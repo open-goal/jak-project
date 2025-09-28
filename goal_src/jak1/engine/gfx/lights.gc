@@ -1,66 +1,42 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: lights.gc
-;; name in dgo: lights
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/lights-h.gc")
+(require "engine/gfx/foreground/bones-h.gc")
+(require "engine/geometry/geometry.gc")
+(require "engine/math/vector.gc")
 (defun light-slerp ((out light) (a light) (b light) (alpha float))
   "Linearly interpolate between two light's vectors. Alpha is clamped between 0 - 1."
-
   (let ((clamped-alpha (fmax 0.0 (fmin 1.0 alpha))))
-   (vector-lerp! (-> out color) (-> a color) (-> b color) clamped-alpha)
-   (vector-deg-slerp
-    (-> out direction)
-    (-> a direction)
-    (-> b direction)
-    clamped-alpha
-    )
-   (let ((f0-2 (-> a levels x))
-         (f1-2 (-> b levels x))
-         )
-    (set! (-> out levels x) (+ f0-2 (* clamped-alpha (- f1-2 f0-2))))
-    )
-   )
-  out
-  )
+    (vector-lerp! (-> out color) (-> a color) (-> b color) clamped-alpha)
+    (vector-deg-slerp (-> out direction) (-> a direction) (-> b direction) clamped-alpha)
+    (let ((f0-2 (-> a levels x))
+          (f1-2 (-> b levels x)))
+      (set! (-> out levels x) (+ f0-2 (* clamped-alpha (- f1-2 f0-2))))))
+  out)
 
 (defun light-group-slerp ((out light-group) (a light-group) (b light-group) (alpha float))
   "Linearly interpolate between each of the 4 vectors of two light-groups.
    Alpha is clamped between 0 - 1."
-
   (dotimes (vec-index 4)
-   (light-slerp
-    (-> out lights vec-index)
-    (-> a lights vec-index)
-    (-> b lights vec-index)
-    alpha
-    )
-   )
-  out
-  )
+    (light-slerp (-> out lights vec-index) (-> a lights vec-index) (-> b lights vec-index) alpha))
+  out)
 
 (defun light-group-process! ((arg0 vu-lights) (arg1 light-group) (arg2 vector) (arg3 vector))
   "unused."
   (rotate-y<-vector+vector arg3 arg2)
   (vu-lights<-light-group! arg0 arg1)
-  (none)
-  )
+  (none))
 
 (define *default-lights* (new 'global 'vu-lights))
 
 (defun vu-lights-default! ((lights vu-lights))
   "Initialize a lights object with default values"
-
   (set-vector! (-> lights ambient) 0.3 0.3 0.3 1.0)
-
   (set-vector! (-> lights color 0) 1.0 1.0 1.0 1.0)
   (set-vector! (-> lights color 1) 0.2 0.2 0.2 1.0)
   (set-vector! (-> lights color 2) 0.0 0.0 0.0 1.0)
-
   (set-vector! (-> lights direction 0) 1.0 0.0 0.0 1.0)
   (set-vector! (-> lights direction 1) 0.0 1.0 0.0 1.0)
   (set-vector! (-> lights direction 2) 0.0 0.0 1.0 1.0)
-
-  lights
-  )
+  lights)

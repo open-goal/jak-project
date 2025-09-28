@@ -7,3 +7,51 @@
 
 ;; DECOMP BEGINS
 
+(deftype factoryc-states (structure)
+  ((electricity  electricity-state  2 :inline)
+   (flame        flames-state       :inline :offset  32)
+   )
+  )
+
+
+(defbehavior update-mood-factoryc time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior-ambient arg0 #t 0.0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (set! (-> arg0 times 1 w) 1.0)
+      (let* ((a0-5 (-> *display* part-clock frame-counter))
+             (v1-7 (mod a0-5 300))
+             (s5-0 (mod a0-5 900))
+             )
+        (set! (-> arg0 times 2 w) (+ 0.85 (* 0.35 (sin (* 218.45334 (the float v1-7))))))
+        (set! (-> arg0 times 3 w) (if (< 450 s5-0)
+                                      1.0
+                                      0.5
+                                      )
+              )
+        )
+      (update-mood-electricity arg0 4 0 0.8 1.0)
+      (update-mood-electricity arg0 6 16 0.8 1.0)
+      (update-mood-flames arg0 5 1 32 0.85 0.00068359374 2.0)
+      (set! (-> arg0 times 7 w) 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-factoryc-light! ((arg0 float) (arg1 int))
+  (let ((v1-1 (level-get *level* 'factoryc)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as factoryc-states (+ (the-as uint v1-2) (* arg1 16))) electricity 0 scale) arg0)
+        )
+      )
+    )
+  (none)
+  )

@@ -17,8 +17,14 @@ void Merc2BucketRenderer::render(DmaFollower& dma,
   }
 
   m_renderer->render(dma, render_state, prof, &m_debug_stats);
+
+  m_empty = m_debug_stats.num_predicted_draws == 0;
 }
 
 void Merc2BucketRenderer::draw_debug_window() {
   m_renderer->draw_debug_window(&m_debug_stats);
+}
+
+bool Merc2BucketRenderer::empty() const {
+  return m_empty;
 }

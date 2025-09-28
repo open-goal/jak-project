@@ -15,6 +15,13 @@ function(write_revision_h)
                 OUTPUT_VARIABLE GIT_TAG
                 OUTPUT_STRIP_TRAILING_WHITESPACE
                 ERROR_QUIET)
+        # To support being on a commit with mutiple tags
+        if(${GIT_TAG} MATCHES "\n")
+          string(REPLACE "\n" ";" GIT_TAG_LIST "${GIT_TAG}")
+          list(LENGTH GIT_TAG_LIST GIT_TAG_LIST_LENGTH)
+          math(EXPR GIT_TAG_LAST_INDEX "${GIT_TAG_LIST_LENGTH} - 1")
+          list(GET GIT_TAG_LIST ${GIT_TAG_LAST_INDEX} GIT_TAG)
+        endif()
     endif()
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/versions/revision.h "#define BUILT_TAG \"${GIT_TAG}\"\n#define BUILT_SHA \"${GIT_SHORT_SHA}\"\n")
 endfunction()
@@ -51,7 +58,7 @@ add_library(common
         repl/config.cpp
         repl/nrepl/ReplClient.cpp
         repl/nrepl/ReplServer.cpp
-        repl/util.cpp
+        repl/repl_wrapper.cpp
         serialization/subtitles/subtitles_v1.cpp
         serialization/subtitles/subtitles_v2.cpp
         serialization/subtitles/subtitles.cpp
@@ -66,6 +73,7 @@ add_library(common
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
         util/Assert.cpp
+        util/ast_util.cpp
         util/BitUtils.cpp
         util/compress.cpp
         util/crc32.cpp
@@ -75,7 +83,11 @@ add_library(common
         util/dialogs.cpp
         util/diff.cpp
         util/FileUtil.cpp
-        util/FontUtils.cpp
+        util/font/dbs/font_db_jak1.cpp
+        util/font/dbs/font_db_jak2.cpp
+        util/font/dbs/font_db_jak3.cpp
+        util/font/font_utils_korean.cpp
+        util/font/font_utils.cpp
         util/FrameLimiter.cpp
         util/json_util.cpp
         util/os.cpp
@@ -86,10 +98,12 @@ add_library(common
         util/term_util.cpp
         util/Timer.cpp
         util/unicode_util.cpp
+        util/gltf_util.cpp
+        util/image_resize.cpp
         versions/versions.cpp
         )
 
-target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
+target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs tiny_gltf)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)

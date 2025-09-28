@@ -1,0 +1,981 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type hud-wasbbv-goal
+(deftype hud-wasbbv-goal (hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-wasbbv-goal
+(defmethod inspect ((this hud-wasbbv-goal))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hud-wasbbv-score
+(deftype hud-wasbbv-score (hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-wasbbv-score
+(defmethod inspect ((this hud-wasbbv-score))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hud-wasbbv-counter
+(deftype hud-wasbbv-counter (hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-wasbbv-counter
+(defmethod inspect ((this hud-wasbbv-counter))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type wasbbv-hud-info
+(deftype wasbbv-hud-info (structure)
+  ((goal                 float)
+   (score                float)
+   (current              float)
+   (goal-cup             uint8)
+   (goal-text            text-id)
+   (score-text           text-id)
+   (decimal-place-count  int8)
+   )
+  )
+
+;; definition for method 3 of type wasbbv-hud-info
+(defmethod inspect ((this wasbbv-hud-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'wasbbv-hud-info)
+  (format #t "~1Tgoal: ~f~%" (-> this goal))
+  (format #t "~1Tscore: ~f~%" (-> this score))
+  (format #t "~1Tcurrent: ~f~%" (-> this current))
+  (format #t "~1Tgoal-cup: ~D~%" (-> this goal-cup))
+  (format #t "~1Tgoal-text: ~D~%" (-> this goal-text))
+  (format #t "~1Tscore-text: ~D~%" (-> this score-text))
+  (format #t "~1Tdecimal-place-count: ~D~%" (-> this decimal-place-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *wasbbv-hud-info*, type wasbbv-hud-info
+(define *wasbbv-hud-info* (new 'static 'wasbbv-hud-info))
+
+;; definition for method 15 of type hud-wasbbv-goal
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-wasbbv-goal))
+  (local-vars (v1-7 int) (s5-0 int))
+  (set-hud-piece-position!
+    (-> this sprites 0)
+    (the int (+ (* -130.0 (-> this offset)) (* 65.0 (-> *video-params* relative-x-scale))))
+    70
+    )
+  0
+  1
+  (case (-> *wasbbv-hud-info* goal-cup)
+    ((1)
+     (set! s5-0 313)
+     (set! v1-7 3)
+     )
+    ((2)
+     (set! s5-0 312)
+     (set! v1-7 8)
+     )
+    ((3)
+     (set! s5-0 311)
+     (set! v1-7 5)
+     )
+    (else
+      (set! s5-0 310)
+      (set! v1-7 1)
+      )
+    )
+  (set! (-> this strings 0 color) (the-as font-color v1-7))
+  (set! (-> this strings 1 color) (the-as font-color v1-7))
+  (let ((s4-0 format)
+        (s3-0 (clear (-> this strings 1 text)))
+        (s2-0 "~S")
+        )
+    (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id s5-0) #f))
+    (s4-0 s3-0 s2-0 *temp-string*)
+    )
+  (let ((s4-1 (-> this strings))
+        (s5-1 *wasbbv-hud-info*)
+        )
+    (clear (-> s4-1 0 text))
+    (let ((t9-7 format)
+          (a0-15 (-> s4-1 0 text))
+          (v1-10 (-> s5-1 decimal-place-count))
+          )
+      (t9-7
+        a0-15
+        (cond
+          ((zero? v1-10)
+           "~,,0f"
+           )
+          ((= v1-10 1)
+           "~,,1f"
+           )
+          (else
+            "~,,2f"
+            )
+          )
+        (+ 0.001 (-> s5-1 goal))
+        )
+      )
+    )
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) -40 -40)
+  (set! (-> this strings 1 scale) 0.65)
+  (case (-> *setting-control* user-default language)
+    (((language-enum korean))
+     (set! (-> this strings 1 scale) 0.9)
+     (+! (-> this strings 1 pos y) -5)
+     )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-wasbbv-goal
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-wasbbv-goal))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-scoreboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 1.5)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 color) (font-color red))
+  (alloc-string-if-needed this 1)
+  (set! (-> this strings 1 flags) (font-flags shadow kerning large))
+  (set! (-> this strings 1 color) (font-color red))
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-wasbbv-score
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-wasbbv-score))
+  (set-hud-piece-position!
+    (-> this sprites 0)
+    (the int (+ (- 512.0 (* 72.0 (-> *video-params* relative-x-scale))) (* 130.0 (-> this offset))))
+    70
+    )
+  (let ((s4-0 (-> this strings))
+        (s5-0 *wasbbv-hud-info*)
+        )
+    (clear (-> s4-0 0 text))
+    (let ((t9-2 format)
+          (a0-3 (-> s4-0 0 text))
+          (v1-4 (-> s5-0 decimal-place-count))
+          )
+      (t9-2
+        a0-3
+        (cond
+          ((zero? v1-4)
+           "~,,0f"
+           )
+          ((= v1-4 1)
+           "~,,1f"
+           )
+          (else
+            "~,,2f"
+            )
+          )
+        (-> s5-0 score)
+        )
+      )
+    )
+  (let ((s5-1 format)
+        (s4-1 (clear (-> this strings 1 text)))
+        (s3-0 "~S")
+        )
+    (format (clear *temp-string*) (lookup-text! *common-text* (-> *wasbbv-hud-info* score-text) #f))
+    (s5-1 s4-1 s3-0 *temp-string*)
+    )
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) 32 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this sprites 0 pos) 40 -40)
+  (let ((v1-9 (-> *setting-control* user-default language)))
+    (set! (-> this strings 1 scale)
+          (cond
+            ((or (= v1-9 (language-enum french)) (or (= v1-9 (language-enum german))
+                                                     (= v1-9 (language-enum spanish))
+                                                     (= v1-9 (language-enum italian))
+                                                     (= v1-9 (language-enum portuguese))
+                                                     )
+                 )
+             0.5
+             )
+            ((= v1-9 (language-enum korean))
+             (+! (-> this strings 1 pos x) -25)
+             (+! (-> this strings 1 pos y) -5)
+             0.9
+             )
+            (else
+              0.5
+              )
+            )
+          )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-wasbbv-score
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-wasbbv-score))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-scoreboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 1.5)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this strings 0 flags) (font-flags kerning right large))
+  (set! (-> this strings 0 color) (font-color default))
+  (alloc-string-if-needed this 1)
+  (set! (-> this strings 1 scale) 0.55)
+  (set! (-> this strings 1 flags) (font-flags shadow kerning right large))
+  (set! (-> this strings 1 color) (font-color default))
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-wasbbv-counter
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-wasbbv-counter))
+  (set-hud-piece-position!
+    (-> this sprites 0)
+    (the int (+ (- 512.0 (* 72.0 (-> *video-params* relative-x-scale))) (* 130.0 (-> this offset))))
+    95
+    )
+  (let ((s5-0 (-> this strings)))
+    (let ((s4-0 *wasbbv-hud-info*))
+      (clear (-> s5-0 0 text))
+      (let ((t9-2 format)
+            (a0-3 (-> s5-0 0 text))
+            (v1-4 (-> s4-0 decimal-place-count))
+            )
+        (t9-2
+          a0-3
+          (cond
+            ((zero? v1-4)
+             "~,,0f"
+             )
+            ((= v1-4 1)
+             "~,,1f"
+             )
+            (else
+              "~,,2f"
+              )
+            )
+          (-> s4-0 current)
+          )
+        )
+      )
+    (set-as-offset-from! (the-as hud-sprite (-> s5-0 0 pos)) (-> this sprites 0 pos) 32 -8)
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-wasbbv-counter
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-wasbbv-counter))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-center-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-scoreboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 1.5)
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 flags) (font-flags kerning right large))
+  (set! (-> this strings 0 color) (font-color red))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-vehicle-bbush
+(deftype task-manager-vehicle-bbush (task-manager)
+  ((ground-pos         vector  :inline)
+   (ground-time        time-frame)
+   (pre-start-time     time-frame)
+   (display-units      float)
+   (max-distance       float)
+   (distance           float)
+   (total-distance     float)
+   (max-air-time       float)
+   (air-time           float)
+   (total-air-time     float)
+   (goal               float)
+   (score              float)
+   (current            float)
+   (hud-score          handle)
+   (hud-goal           handle)
+   (squad-manager      handle  :offset 336)
+   (game-score         uint8)
+   (last-cup           uint8)
+   (goal-cup           uint8)
+   (new-high-score     symbol)
+   (want-current-hud?  symbol)
+   )
+  (:state-methods
+    report
+    )
+  (:methods
+    (award-skill (_type_ float) none)
+    (task-manager-vehicle-bbush-method-34 (_type_) none)
+    (task-manager-vehicle-bbush-method-35 (_type_) none)
+    (task-manager-vehicle-bbush-method-36 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type task-manager-vehicle-bbush
+(defmethod inspect ((this task-manager-vehicle-bbush))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tground-pos: #<vector @ #x~X>~%" (-> this ground-pos))
+  (format #t "~2Tground-time: ~D~%" (-> this ground-time))
+  (format #t "~2Tpre-start-time: ~D~%" (-> this pre-start-time))
+  (format #t "~2Tdisplay-units: ~f~%" (-> this display-units))
+  (format #t "~2Tmax-distance: ~f~%" (-> this max-distance))
+  (format #t "~2Tdistance: ~f~%" (-> this distance))
+  (format #t "~2Ttotal-distance: ~f~%" (-> this total-distance))
+  (format #t "~2Tmax-air-time: ~f~%" (-> this max-air-time))
+  (format #t "~2Tair-time: ~f~%" (-> this air-time))
+  (format #t "~2Ttotal-air-time: ~f~%" (-> this total-air-time))
+  (format #t "~2Tgoal: ~f~%" (-> this goal))
+  (format #t "~2Tscore: ~f~%" (-> this score))
+  (format #t "~2Tcurrent: ~f~%" (-> this current))
+  (format #t "~2Thud-score: ~D~%" (-> this hud-score))
+  (format #t "~2Thud-goal: ~D~%" (-> this hud-goal))
+  (format #t "~2Thud-counter: ~D~%" (-> this hud-counter))
+  (format #t "~2Tsquad-manager: ~D~%" (-> this squad-manager))
+  (format #t "~2Tgame-score: ~D~%" (-> this game-score))
+  (format #t "~2Tlast-cup: ~D~%" (-> this last-cup))
+  (format #t "~2Tgoal-cup: ~D~%" (-> this goal-cup))
+  (format #t "~2Tnew-high-score: ~A~%" (-> this new-high-score))
+  (format #t "~2Twant-current-hud?: ~A~%" (-> this want-current-hud?))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 34 of type task-manager-vehicle-bbush
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-vehicle-bbush-method-34 ((this task-manager-vehicle-bbush))
+  (let ((gp-0 *wasbbv-hud-info*))
+    (let ((v1-0 (-> this goal-cup)))
+      (set! (-> gp-0 goal-text) (cond
+                                  ((= v1-0 1)
+                                   (text-id text-0139)
+                                   )
+                                  ((= v1-0 2)
+                                   (text-id text-0138)
+                                   )
+                                  ((= v1-0 3)
+                                   (text-id text-0137)
+                                   )
+                                  (else
+                                    (text-id text-0136)
+                                    )
+                                  )
+            )
+      )
+    (set! (-> this goal)
+          (game-info-method-31 *game-info* (the-as int (-> this game-score)) (the-as int (-> this goal-cup)))
+          )
+    (set! (-> gp-0 goal) (* (-> this display-units) (-> this goal)))
+    (set! (-> gp-0 goal-cup) (-> this goal-cup))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-vehicle-bbush
+;; INFO: Used lq/sq
+(defmethod task-manager-method-26 ((this task-manager-vehicle-bbush))
+  (when (= (-> this player-vehicle) #f)
+    (when (and *target* (focus-test? *target* pilot-riding))
+      (let ((v1-10 (as-type (handle->process (-> *target* pilot vehicle)) process-focusable)))
+        (when v1-10
+          (set! (-> this player-vehicle) (-> *target* pilot vehicle))
+          (vector-copy! (-> this ground-pos) (-> (the-as process-focusable v1-10) root trans))
+          (set-time! (-> this ground-time))
+          (dotimes (s5-1 3)
+            (send-event (handle->process (-> this player-vehicle)) 'turbo-pickup)
+            )
+          )
+        )
+      )
+    )
+  (when (!= (-> this player-vehicle) #f)
+    (let ((v1-26 (the-as vehicle (handle->process (-> this player-vehicle)))))
+      (when v1-26
+        (cond
+          ((and (logtest? (-> v1-26 v-flags) (vehicle-flag in-air))
+                (not (logtest? (-> v1-26 v-flags) (vehicle-flag impact)))
+                )
+           (set! (-> this air-time) (the float (- (current-time) (-> this ground-time))))
+           (set! (-> this distance)
+                 (vector-vector-xz-distance (-> this ground-pos) (the-as vector (&-> (the-as vehicle (-> v1-26 root)) parent)))
+                 )
+           )
+          (else
+            (when (< 360.0 (-> this air-time))
+              (+! (-> this total-distance) (-> this distance))
+              (+! (-> this total-air-time) (-> this air-time))
+              )
+            (set! (-> this max-distance) (fmax (-> this max-distance) (-> this distance)))
+            (set! (-> this max-air-time) (fmax (-> this max-air-time) (-> this air-time)))
+            (vector-copy! (-> this ground-pos) (-> v1-26 root trans))
+            (set-time! (-> this ground-time))
+            (set! (-> this distance) 0.0)
+            (set! (-> this air-time) 0.0)
+            )
+          )
+        (task-manager-vehicle-bbush-method-34 this)
+        (when (>= (-> this score) (-> this goal))
+          (set! (-> this new-high-score) #t)
+          (when (>= (the-as uint 3) (-> this goal-cup))
+            (sound-play "special-pickup")
+            (+! (-> this goal-cup) 1)
+            )
+          )
+        )
+      )
+    )
+  (let ((v1-42 *wasbbv-hud-info*))
+    (set! (-> v1-42 score) (* (-> this display-units) (-> this score)))
+    (set! (-> v1-42 current) (* (-> this display-units) (-> this current)))
+    )
+  (hud-timer-handler this)
+  ((method-of-type task-manager task-manager-method-26) this)
+  (none)
+  )
+
+;; definition for method 25 of type task-manager-vehicle-bbush
+(defmethod task-manager-method-25 ((this task-manager-vehicle-bbush))
+  (set! (-> *was-squad-control* target-count) 0)
+  0
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 29 of type task-manager-vehicle-bbush
+;; WARN: Return type mismatch int vs object.
+(defmethod go-fail ((this task-manager-vehicle-bbush))
+  (go (method-of-object this report))
+  0
+  )
+
+;; definition for method 35 of type task-manager-vehicle-bbush
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-vehicle-bbush-method-35 ((this task-manager-vehicle-bbush))
+  (let ((v1-0 *was-squad-control*))
+    (set! (-> v1-0 target-count) 2)
+    (set! (-> v1-0 reserve-count) 4000)
+    )
+  (set-setting! 'music 'descarbb 0.0 0)
+  0
+  (none)
+  )
+
+;; definition for method 36 of type task-manager-vehicle-bbush
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-vehicle-bbush-method-36 ((this task-manager-vehicle-bbush))
+  (let ((a0-1 (-> this node-info parent-node 0)))
+    (task-node-open! a0-1 'event)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-vehicle-bbush
+;; WARN: Return type mismatch connection vs none.
+(defmethod set-time-limit ((this task-manager-vehicle-bbush))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this squad-manager) (ppointer->handle (was-squad-manager-start this)))
+  (set! (-> this time-limit) (seconds 120))
+  (set! (-> this air-time) 0.0)
+  (set! (-> this max-air-time) 0.0)
+  (set! (-> this total-air-time) 0.0)
+  (set! (-> this distance) 0.0)
+  (set! (-> this max-distance) 0.0)
+  (set! (-> this total-distance) 0.0)
+  (set! (-> this display-units) 1.0)
+  (set! (-> this new-high-score) #f)
+  (set! (-> this want-current-hud?) #t)
+  (set! (-> *wasbbv-hud-info* score-text) (text-id text-0573))
+  (set! (-> *wasbbv-hud-info* decimal-place-count) 2)
+  (set-setting! 'airlock #f 0.0 0)
+  (none)
+  )
+
+;; definition for method 33 of type task-manager-vehicle-bbush
+;; WARN: Return type mismatch int vs none.
+(defmethod award-skill ((this task-manager-vehicle-bbush) (arg0 float))
+  (let* ((s5-0 (-> this game-score))
+         (s3-0 (game-info-method-29 *game-info* (the-as int s5-0)))
+         (v1-2 (get-highscore-rank *game-info* (the-as int s5-0) arg0))
+         (gp-1 (max 0 (- v1-2 s3-0)))
+         )
+    (game-info-method-27 *game-info* (the-as game-score s5-0) arg0)
+    (give *game-info* 'skill (* (the float gp-1) (-> *FACT-bank* super-skill-inc)) (the-as handle #f))
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-vehicle-bbush)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (if (and *target* (not (logtest? (-> *target* focus-status) (focus-status grabbed))))
+          (goto cfg-7)
+          )
+      (suspend)
+      )
+    #f
+    (label cfg-7)
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (set! (-> self last-cup) (the-as uint (game-info-method-29 *game-info* (the-as int (-> self game-score)))))
+    (set! (-> self goal-cup) (+ (-> self last-cup) 1))
+    (task-manager-vehicle-bbush-method-34 self)
+    (set! (-> self new-high-score) #f)
+    (set! (-> self hud-goal)
+          (ppointer->handle (process-spawn hud-wasbbv-goal :init hud-init-by-other :name "hud-wasbbv-goal" :to self))
+          )
+    (set! (-> self hud-score)
+          (ppointer->handle (process-spawn hud-wasbbv-score :init hud-init-by-other :name "hud-wasbbv-score" :to self))
+          )
+    (if (-> self want-current-hud?)
+        (set! (-> self hud-counter)
+              (ppointer->handle
+                (process-spawn hud-wasbbv-counter :init hud-init-by-other :name "hud-wasbbv-counter" :to self)
+                )
+              )
+        )
+    (set-time! (-> self pre-start-time))
+    (while (and (not (time-elapsed? (-> self pre-start-time) (seconds 10)))
+                (not (handle->process (-> self player-vehicle)))
+                )
+      (when (and *target* (focus-test? *target* pilot-riding))
+        (if (as-type (handle->process (-> *target* pilot vehicle)) process-focusable)
+            (set! (-> self player-vehicle) (-> *target* pilot vehicle))
+            )
+        )
+      (suspend)
+      )
+    (task-manager-vehicle-bbush-method-35 self)
+    (set-time! (-> self start-time))
+    (sleep-code)
+    )
+  )
+
+;; definition for symbol *bbv-fail-time-expired*, type resetter-params
+(define *bbv-fail-time-expired*
+  (new 'static 'resetter-params
+    :message (resetter-message mission-fail-or-retry)
+    :flags (resetter-flag auto-reset text-message no-audio-first)
+    :fail (new 'static 'resetter-spec :continue #f :reset-mode 'life :execute #f)
+    :retry (new 'static 'resetter-spec :continue "desert-bbush-desc-4" :reset-mode 'try :execute #f)
+    :reset-delay (seconds 6.5)
+    :text-message (text-id out-of-time)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate report (task-manager-vehicle-bbush)
+  :virtual #t
+  :code (behavior ()
+    (award-skill self (-> self score))
+    (cond
+      ((-> self new-high-score)
+       (format #t "task-manager-vehicle-bbush::report: got new high score~%")
+       (let ((gp-0 (-> self info on-complete)))
+         (if gp-0
+             (script-eval gp-0)
+             )
+         )
+       (suspend-for (seconds 2)
+         )
+       (while (not (-> *setting-control* user-current speech-control))
+         (suspend)
+         )
+       (task-manager-vehicle-bbush-method-36 self)
+       (until #f
+         (suspend)
+         )
+       #f
+       )
+      (else
+        (format #t "task-manager-vehicle-bbush::report: no new high score~%")
+        (let ((gp-2 (-> self info on-fail)))
+          (if gp-2
+              (script-eval gp-2)
+              )
+          )
+        (while (not (-> *setting-control* user-current speech-control))
+          (suspend)
+          )
+        (task-manager-method-28 self)
+        (let ((gp-3 (on-fail self 'fail)))
+          (when gp-3
+            (mem-copy! (the-as pointer *bbv-fail-time-expired*) (the-as pointer gp-3) 48)
+            (set! (-> gp-3 text-message) (text-id out-of-time))
+            )
+          )
+        (go-virtual fail *bbv-fail-time-expired*)
+        )
+      )
+    )
+  )
+
+;; definition of type task-manager-bbush-air-time
+(deftype task-manager-bbush-air-time (task-manager-vehicle-bbush)
+  ()
+  )
+
+;; definition for method 3 of type task-manager-bbush-air-time
+(defmethod inspect ((this task-manager-bbush-air-time))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 21 of type task-manager-bbush-air-time
+;; WARN: Return type mismatch int vs none.
+(defmethod set-time-limit ((this task-manager-bbush-air-time))
+  (call-parent-method this)
+  (set! (-> this display-units) 0.0033333334)
+  (set! (-> this time-limit) (seconds 30))
+  (set! (-> this game-score) (the-as uint 4))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id text-0573))
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-bbush-air-time
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-bbush-air-time))
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush task-manager-method-26)))
+    (t9-0 this)
+    )
+  (set! (-> this score) (-> this max-air-time))
+  (set! (-> this current) (-> this air-time))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-bbush-total-air-time
+(deftype task-manager-bbush-total-air-time (task-manager-vehicle-bbush)
+  ()
+  )
+
+;; definition for method 3 of type task-manager-bbush-total-air-time
+(defmethod inspect ((this task-manager-bbush-total-air-time))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 21 of type task-manager-bbush-total-air-time
+;; WARN: Return type mismatch int vs none.
+(defmethod set-time-limit ((this task-manager-bbush-total-air-time))
+  (call-parent-method this)
+  (set! (-> this display-units) 0.0033333334)
+  (set! (-> this time-limit) (seconds 60))
+  (set! (-> this game-score) (the-as uint 5))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id text-0078))
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-bbush-total-air-time
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-bbush-total-air-time))
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush task-manager-method-26)))
+    (t9-0 this)
+    )
+  (set! (-> this score) (-> this total-air-time))
+  (set! (-> this current) (-> this air-time))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-bbush-jump-distance
+(deftype task-manager-bbush-jump-distance (task-manager-vehicle-bbush)
+  ((pad  uint8  36)
+   )
+  )
+
+;; definition for method 3 of type task-manager-bbush-jump-distance
+(defmethod inspect ((this task-manager-bbush-jump-distance))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tground-pos: #<vector @ #x~X>~%" (-> this ground-pos))
+  (format #t "~2Tmax-distance: ~f~%" (-> this max-distance))
+  (format #t "~2Tdistance: ~f~%" (-> this distance))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 21 of type task-manager-bbush-jump-distance
+;; WARN: Return type mismatch int vs none.
+(defmethod set-time-limit ((this task-manager-bbush-jump-distance))
+  (call-parent-method this)
+  (set! (-> this display-units) 0.00024414062)
+  (set! (-> this time-limit) (seconds 30))
+  (set! (-> this game-score) (the-as uint 6))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id your-distance))
+  (set! (-> *wasbbv-hud-info* decimal-place-count) 1)
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-bbush-jump-distance
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-bbush-jump-distance))
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush task-manager-method-26)))
+    (t9-0 this)
+    )
+  (set! (-> this score) (-> this max-distance))
+  (set! (-> this current) (-> this distance))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-bbush-total-jump-distance
+(deftype task-manager-bbush-total-jump-distance (task-manager-vehicle-bbush)
+  ()
+  )
+
+;; definition for method 3 of type task-manager-bbush-total-jump-distance
+(defmethod inspect ((this task-manager-bbush-total-jump-distance))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 21 of type task-manager-bbush-total-jump-distance
+;; WARN: Return type mismatch int vs none.
+(defmethod set-time-limit ((this task-manager-bbush-total-jump-distance))
+  (call-parent-method this)
+  (set! (-> this display-units) 0.00024414062)
+  (set! (-> this time-limit) (seconds 60))
+  (set! (-> this game-score) (the-as uint 7))
+  (set! (-> *wasbbv-hud-info* score-text) (text-id total-distance))
+  (set! (-> *wasbbv-hud-info* decimal-place-count) 1)
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-bbush-total-jump-distance
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-bbush-total-jump-distance))
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush task-manager-method-26)))
+    (t9-0 this)
+    )
+  (set! (-> this score) (-> this total-distance))
+  (set! (-> this current) (-> this distance))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-bbush-roll-count
+(deftype task-manager-bbush-roll-count (task-manager-vehicle-bbush)
+  ((roll-count  float)
+   (y-proj      float)
+   )
+  )
+
+;; definition for method 3 of type task-manager-bbush-roll-count
+(defmethod inspect ((this task-manager-bbush-roll-count))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Troll-count: ~f~%" (-> this roll-count))
+  (format #t "~2Ty-proj: ~f~%" (-> this y-proj))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 21 of type task-manager-bbush-roll-count
+;; WARN: Return type mismatch int vs none.
+(defmethod set-time-limit ((this task-manager-bbush-roll-count))
+  (call-parent-method this)
+  (set! (-> this display-units) 1.0)
+  (set! (-> this time-limit) (seconds 60))
+  (set! (-> this game-score) (the-as uint 8))
+  (set! (-> this want-current-hud?) #f)
+  (set! (-> *wasbbv-hud-info* score-text) (text-id total-rolls))
+  (set! (-> *wasbbv-hud-info* decimal-place-count) 0)
+  0
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-bbush-roll-count
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-bbush-roll-count))
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush task-manager-method-26)))
+    (t9-0 this)
+    )
+  (let ((v1-2 (handle->process (-> this player-vehicle))))
+    (when v1-2
+      (let ((f0-0 (-> (the-as vehicle v1-2) node-list data 0 bone transform uvec y)))
+        (when (< 0.1 (fabs f0-0))
+          (if (< (* f0-0 (-> this y-proj)) 0.0)
+              (+! (-> this roll-count) 0.5)
+              )
+          (set! (-> this y-proj) f0-0)
+          )
+        )
+      )
+    )
+  (set! (-> this score) (-> this roll-count))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-bbush-destroy-interceptors
+(deftype task-manager-bbush-destroy-interceptors (task-manager-vehicle-bbush)
+  ((max-reserve-count  int32)
+   )
+  )
+
+;; definition for method 3 of type task-manager-bbush-destroy-interceptors
+(defmethod inspect ((this task-manager-bbush-destroy-interceptors))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmax-reserve-count: ~D~%" (-> this max-reserve-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 21 of type task-manager-bbush-destroy-interceptors
+;; WARN: Return type mismatch int vs none.
+(defmethod set-time-limit ((this task-manager-bbush-destroy-interceptors))
+  (call-parent-method this)
+  (set! (-> this display-units) 1.0)
+  (set! (-> this time-limit) (seconds 120))
+  (set! (-> this game-score) (the-as uint 16))
+  (set! (-> this want-current-hud?) #f)
+  (set! (-> this max-reserve-count) 1000)
+  (set! (-> *wasbbv-hud-info* score-text) (text-id kills))
+  (set! (-> *wasbbv-hud-info* decimal-place-count) 0)
+  (set! (-> *was-squad-control* target-count) 0)
+  0
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-bbush-destroy-interceptors
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-bbush-destroy-interceptors))
+  (let ((t9-0 (method-of-type task-manager-vehicle-bbush task-manager-method-26)))
+    (t9-0 this)
+    )
+  (when (nonzero? (-> this start-time))
+    (let ((v1-3 *was-squad-control*))
+      (set! (-> this score)
+            (the float (- (- (-> this max-reserve-count) (-> v1-3 reserve-count)) (-> v1-3 active-count)))
+            )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 35 of type task-manager-bbush-destroy-interceptors
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-vehicle-bbush-method-35 ((this task-manager-bbush-destroy-interceptors))
+  (set-setting! 'music 'desdstry 0.0 0)
+  (set-setting! 'extra-bank '((desert2 bbush1)) 0.0 0)
+  (let ((v1-4 *was-squad-control*))
+    (set! (-> v1-4 target-count) 4)
+    (set! (-> v1-4 reserve-count) (- (-> this max-reserve-count) (-> v1-4 active-count)))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 28 of type task-manager-bbush-destroy-interceptors
+;; WARN: Return type mismatch sound-id vs none.
+(defmethod task-manager-method-28 ((this task-manager-bbush-destroy-interceptors))
+  (talker-spawn-func (-> *talker-speech* 317) *entity-pool* (target-pos 0) (the-as region #f))
+  (none)
+  )

@@ -50,7 +50,7 @@ class OpenGlDebugGui {
   bool should_draw_subtitle_editor() const { return master_enable && m_subtitle_editor; }
   bool should_draw_filters_menu() const { return master_enable && m_filters_menu; }
   bool should_draw_loader_menu() const { return master_enable && m_draw_loader; }
-  const char* screenshot_name() const { return m_screenshot_save_name; }
+  bool should_draw_overlord_debug() const { return master_enable && m_draw_overlord; }
 
   bool should_advance_frame() { return m_frame_timer.should_advance_frame(); }
   bool should_gl_finish() const { return m_frame_timer.do_gl_finish; }
@@ -65,25 +65,23 @@ class OpenGlDebugGui {
 
   bool small_profiler = false;
   bool record_events = false;
-  bool dump_events = false;
+  int max_event_buffer_size = 65536;
   bool want_reboot_in_debug = false;
 
-  int screenshot_width = 1920;
-  int screenshot_height = 1080;
-  int screenshot_samples = 16;
   bool screenshot_hotkey_enabled = true;
 
   bool master_enable = false;
 
  private:
+  void draw_overlord_debug_menu();
   FrameTimeRecorder m_frame_timer;
   bool m_draw_frame_time = false;
   bool m_draw_profiler = false;
   bool m_draw_debug = false;
   bool m_draw_loader = false;
+  bool m_draw_overlord = false;
   bool m_subtitle_editor = false;
   bool m_filters_menu = false;
   bool m_want_screenshot = false;
-  char m_screenshot_save_name[256] = "screenshot.png";
   float target_fps_input = 60.f;
 };

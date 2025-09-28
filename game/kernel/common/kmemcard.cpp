@@ -19,7 +19,7 @@
 #include "game/sce/sif_ee.h"
 #include "game/sce/sif_ee_memcard.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 
 static constexpr bool memcard_debug = false;
 
@@ -60,9 +60,9 @@ void mc_print(const std::string& str, Args&&... args) {
   if (memcard_debug) {
     fmt::print("[MC] ");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      fmt::print(fmt::runtime(str), std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      fmt::print(fmt::runtime(str + '\n'), std::forward<Args>(args)...);
     }
   }
 }
@@ -83,6 +83,14 @@ const char* filename_jak2[12] = {
     "BASCUS-97265AYBABTU!/bank4.bin", "BASCUS-97265AYBABTU!/bank5.bin",
     "BASCUS-97265AYBABTU!/bank6.bin", "BASCUS-97265AYBABTU!/bank7.bin"};
 
+const char* filename_jak3[12] = {
+    "BASCUS-97330AYBABTU!",           "BASCUS-97330AYBABTU!/icon.sys",
+    "BASCUS-97330AYBABTU!/icon.ico",  "BASCUS-97330AYBABTU!/BASCUS-97330AYBABTU!",
+    "BASCUS-97330AYBABTU!/bank0.bin", "BASCUS-97330AYBABTU!/bank1.bin",
+    "BASCUS-97330AYBABTU!/bank2.bin", "BASCUS-97330AYBABTU!/bank3.bin",
+    "BASCUS-97330AYBABTU!/bank4.bin", "BASCUS-97330AYBABTU!/bank5.bin",
+    "BASCUS-97330AYBABTU!/bank6.bin", "BASCUS-97330AYBABTU!/bank7.bin"};
+
 const char* mc_get_filename_no_dir(GameVersion version, int ndx) {
   const char** filenames = nullptr;
   switch (version) {
@@ -91,6 +99,9 @@ const char* mc_get_filename_no_dir(GameVersion version, int ndx) {
       break;
     case GameVersion::Jak2:
       filenames = filename_jak2;
+      break;
+    case GameVersion::Jak3:
+      filenames = filename_jak3;
       break;
   }
   return filenames[ndx];

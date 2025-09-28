@@ -1,10 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: load-dgo.gc
-;; name in dgo: load-dgo
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/hw/display-h.gc")
+(require "kernel/gstring.gc")
+(require "engine/ps2/rpc-h.gc")
+(require "engine/sound/gsound-h.gc")
+(require "engine/util/types-h.gc")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; OVERLORD messages
@@ -14,11 +15,11 @@
 (defenum load-msg-result
   :type uint16
   :bitfield #f
-  (done 0)       ;; dgo fully loaded!
-  (error 1)      ;; loading failed (file not found, etc)
-  (more 2)       ;; more files exist!
-  (aborted 3)    ;; status returned after a request to cancel.
-  (invalid 666)  ;; invalid status indicating a communication error.
+  (done 0) ;; dgo fully loaded!
+  (error 1) ;; loading failed (file not found, etc)
+  (more 2) ;; more files exist!
+  (aborted 3) ;; status returned after a request to cancel.
+  (invalid 666) ;; invalid status indicating a communication error.
   )
 
 ;; DECOMP BEGINS
@@ -26,16 +27,14 @@
 ;; load command sent to the IOP to load a DGO.
 ;; The OVERLORD responds with the same message.
 (deftype load-dgo-msg (structure)
-  ((rsvd        uint16)
-   (result      load-msg-result)
-   (b1          pointer)
-   (b2          pointer)
-   (bt          pointer)
-   (name        uint128)
-   (name-chars  uint8   16 :overlay-at name)
-   (address     uint32     :overlay-at b1)
-   )
-  )
+  ((rsvd       uint16)
+   (result     load-msg-result)
+   (b1         pointer)
+   (b2         pointer)
+   (bt         pointer)
+   (name       uint128)
+   (name-chars uint8 16 :overlay-at name)
+   (address    uint32 :overlay-at b1)))
 
 #|
 struct RPC_Dgo_Cmd {
@@ -51,15 +50,13 @@ struct RPC_Dgo_Cmd {
 ;; load commmand/response for loading a chunk of a file.
 ;; It can either be an entire file, or a section of a STR file.
 (deftype load-chunk-msg (structure)
-  ((rsvd      uint16)
-   (result    load-msg-result)
-   (address   pointer)
-   (section   uint32)
-   (maxlen    uint32)
-   (id        uint32  :overlay-at address)
-   (basename  uint8   48)
-   )
-  )
+  ((rsvd     uint16)
+   (result   load-msg-result)
+   (address  pointer)
+   (section  uint32)
+   (maxlen   uint32)
+   (id       uint32 :overlay-at address)
+   (basename uint8 48)))
 
 #|
 struct RPC_Str_Cmd {
@@ -75,11 +72,9 @@ struct RPC_Str_Cmd {
 
 ;; The header of a DGO file
 (deftype dgo-header (structure)
-  ((length    uint32)
-   (rootname  uint8  60)
-   (data      uint8  :dynamic)
-   )
-  )
+  ((length   uint32)
+   (rootname uint8 60)
+   (data     uint8 :dynamic)))
 
 #|
 struct DgoHeader {
@@ -88,24 +83,21 @@ struct DgoHeader {
 };
 |#
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; RPC Buffer init
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *load-dgo-rpc* rpc-buffer-pair)
+
 (when (= 0 (the int *load-dgo-rpc*))
-    ;; we need to allocate the rpc buffers
-    (set! *load-dgo-rpc* (new 'global 'rpc-buffer-pair (the uint 32) (the uint 1) RPC-DGO))
-    (define *load-str-rpc* (new 'global 'rpc-buffer-pair (the uint 64) (the uint 1) RPC-LOAD-STR))
-    (define *play-str-rpc* (new 'global 'rpc-buffer-pair (the uint 64) (the uint 2) RPC-PLAY-STR))
-
-    ;; we have separate locks for queuing and loading.
-    (define *load-str-lock* '#f)
-    (define *que-str-lock* '#f)
-    (define *dgo-name* (new 'global 'string 64 (the string '#f)))
-    )
-
+  ;; we need to allocate the rpc buffers
+  (set! *load-dgo-rpc* (new 'global 'rpc-buffer-pair (the uint 32) (the uint 1) RPC-DGO))
+  (define *load-str-rpc* (new 'global 'rpc-buffer-pair (the uint 64) (the uint 1) RPC-LOAD-STR))
+  (define *play-str-rpc* (new 'global 'rpc-buffer-pair (the uint 64) (the uint 2) RPC-PLAY-STR))
+  ;; we have separate locks for queuing and loading.
+  (define *load-str-lock* '#f)
+  (define *que-str-lock* '#f)
+  (define *dgo-name* (new 'global 'string 64 (the string '#f))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; STR LOAD
@@ -117,11 +109,9 @@ struct DgoHeader {
   "Begin a streaming load if possible!
    We must be able to grab the lock, and no streaming load in progress.
    Return if we actually start the load."
-
   ;; check if safe to begin load.
   (when (or (check-busy *load-str-rpc*) *load-str-lock*)
-    (return #f)
-    )
+    (return #f))
   ;; ok, we are good to start a load. begin by adding an element to the RPC buffer
   (let ((cmd (the load-chunk-msg (add-element *load-str-rpc*))))
     (set! (-> cmd result) (load-msg-result invalid))
@@ -133,43 +123,32 @@ struct DgoHeader {
     (call *load-str-rpc* (the uint 0) (the pointer cmd) (the uint 32))
     (set! *load-str-lock* #t)
     (set! *que-str-lock* #t)
-    #t
-    )
-  )
+    #t))
 
 (defun str-load-status ((length-out (pointer int32)))
   "Check the status of the str load.
    The 'busy status indicates it is still going
    The 'error status indicates the load failed.
    The 'complete status means the load is finished, and length-out contains the loaded length."
-   
   ;; still going..
-  (if (check-busy *load-str-rpc*)
-      (return 'busy)
-      )
-   
+  (if (check-busy *load-str-rpc*) (return 'busy))
   ;; not busy, we can free the lock
   (set! *load-str-lock* #f)
   ;; also lock the queue. Not sure why?
   (set! *que-str-lock* #t)
   ;; grab the response
   (let ((response (the load-chunk-msg (pop-last-received *load-str-rpc*))))
-    (if (= (-> response result) (load-msg-result error))
-        (return 'error)
-        )
+    (if (= (-> response result) (load-msg-result error)) (return 'error))
     ;; no error!
     (set! (-> length-out) (the int (-> response maxlen)))
-    'complete
-    )
-  )
+    'complete))
 
 (defun str-load-cancel ()
   "Cancel a str load. This doesn't actually tell the OVERLORD to stop, it just frees the lock."
   (set! *load-str-lock* #f)
   ;; and locks the queue?
   (set! *que-str-lock* #t)
-  (none)
-  )
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; STR PLAY
@@ -185,10 +164,8 @@ struct DgoHeader {
     (charp<-string (-> cmd basename) name)
     (set! (-> cmd address) (the-as pointer id))
     ;; probably using a different enum here
-    (set! (-> cmd result) (load-msg-result done))
-    )
-  (none)
-  )
+    (set! (-> cmd result) (load-msg-result done)))
+  (none))
 
 (defun str-play-stop ((name string))
   "Queue command to stop playing."
@@ -197,25 +174,17 @@ struct DgoHeader {
     ;; not sure why we need a name to stop?
     (charp<-string (-> cmd basename) name)
     ;; might be wrong enum here
-    (set! (-> cmd result) (load-msg-result error))
-    )
-  (none)
-  )
+    (set! (-> cmd result) (load-msg-result error)))
+  (none))
 
 (defun str-play-queue ((name string))
   "Queue a command to do something"
-  (when (and (not (check-busy *play-str-rpc*))
-             (not *load-str-lock*)
-             (not *que-str-lock*)
-             )
+  (when (and (not (check-busy *play-str-rpc*)) (not *load-str-lock*) (not *que-str-lock*))
     (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
       (charp<-string (-> cmd basename) name)
-      (set! (-> cmd result) (load-msg-result more))
-      )
-    )
+      (set! (-> cmd result) (load-msg-result more))))
   (set! *que-str-lock* #f)
-  (none)
-  )
+  (none))
 
 (defun str-ambient-play ((name string))
   "Queue a command to do something"
@@ -223,35 +192,24 @@ struct DgoHeader {
   (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
     (set! (-> cmd basename 0) (the-as uint 36)) ;; a '$' char
     (charp<-string (&-> cmd basename 1) name)
-    (set! (-> cmd result) (load-msg-result done))
-    )
-  (none)
-  )
+    (set! (-> cmd result) (load-msg-result done)))
+  (none))
 
 (defun str-ambient-stop ((name string))
   (set! *que-str-lock* #t)
   (let ((cmd (the-as load-chunk-msg (add-element *play-str-rpc*))))
     (set! (-> cmd basename 0) (the-as uint 36)) ;; a '$' char
     (charp<-string (&-> cmd basename 1) name)
-    (set! (-> cmd result) (load-msg-result error))
-    )
-  (none)
-  )
+    (set! (-> cmd result) (load-msg-result error)))
+  (none))
 
 (defun str-play-kick ()
   "Call str RPC if we aren't busy"
   ;; is written with an empty body for the first case.
   (cond
-   ((check-busy *play-str-rpc*)
-    )
-   (else
-    (call *play-str-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
-    )
-   )
-  (none)
-  )
-
-
+    ((check-busy *play-str-rpc*))
+    (else (call *play-str-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))))
+  (none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DGO LOAD and LINK
@@ -261,14 +219,11 @@ struct DgoHeader {
 
 (defun dgo-load-begin ((name string) (buffer1 pointer) (buffer2 pointer) (buffer-top pointer))
   "Send a DGO load RPC!"
-
   ;; remember when we started
   (set! *dgo-time* (-> *display* real-integral-frame-counter))
   (format 0 "Starting level load clock~%")
-
   ;; flush pending RPC
   (sync *load-dgo-rpc* #t)
-
   ;; grab a new command from the RCP buffer
   (let ((cmd (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
     ;; set parameters
@@ -280,15 +235,12 @@ struct DgoHeader {
     (set! (-> cmd name) (string->sound-name name))
     ;; call now!
     (call *load-dgo-rpc* (the-as uint 0) (the-as pointer cmd) (the-as uint 32))
-    cmd
-    )
-  )
+    cmd))
 
 (defun dgo-load-get-next ((last-object (pointer symbol)))
   "Check if the currently loading object is done.
    Will set the last-object flag depending on if there is more.
    Returns #f if it hasn't loaded yet and the address otherwise"
-
   (set! (-> last-object 0) #t)
   (let ((load-location (the-as pointer #f)))
     ;; see if RPC is done
@@ -296,33 +248,21 @@ struct DgoHeader {
       ;; it is, try to get a response, if there is a new one.
       (let ((response (the-as load-dgo-msg (pop-last-received *load-dgo-rpc*))))
         (when response
-
           ;; get load location
           (if (or (= (-> response result) (load-msg-result done)) (= (-> response result) (load-msg-result more)))
-              ;; success! set load location to the location the IOP loaded to.
-              (set! load-location (the-as pointer (-> response b1)))
-              )
-
+            ;; success! set load location to the location the IOP loaded to.
+            (set! load-location (the-as pointer (-> response b1))))
           ;; set more flag
-          (if (= (-> response result) (load-msg-result more))
-              (set! (-> last-object 0) #f)
-              )
-
+          (if (= (-> response result) (load-msg-result more)) (set! (-> last-object 0) #f))
           ;; if we're done loading, print the load time.
           ;; note that this does not include linking/setup of the
           ;; final object in the level which may take a significant amount of time
           (if (= (-> response result) (load-msg-result done))
-              ;; this assumes it was stable at the target fps!
-              (format 0 "Elapsed time for level = ~Fs~%"
-                      (* (-> *display* seconds-per-frame) (the float (- (-> *display* real-integral-frame-counter) *dgo-time*)))
-                      )
-              )
-          )
-        )
-      )
-    load-location
-    )
-  )
+            ;; this assumes it was stable at the target fps!
+            (format 0
+                    "Elapsed time for level = ~Fs~%"
+                    (* (-> *display* seconds-per-frame) (the float (- (-> *display* real-integral-frame-counter) *dgo-time*))))))))
+    load-location))
 
 (defun dgo-load-continue ((buffer-top pointer))
   "Send a command to to the IOP to continue loading a DGO"
@@ -333,9 +273,7 @@ struct DgoHeader {
     (set! (-> cmd bt) buffer-top)
     (set! (-> cmd name) (the-as uint128 0))
     (call *load-dgo-rpc* (the-as uint 1) (the-as pointer cmd) (the-as uint 32))
-    (the-as int cmd)
-    )
-  )
+    (the-as int cmd)))
 
 (defun dgo-load-cancel ()
   "Send a command to the IOP to cancel loading a DGO.
@@ -344,45 +282,30 @@ struct DgoHeader {
    I believe this is only good to call if you do it after
    dgo-load-get-next and before dgo-load-continue"
   (sync *load-dgo-rpc* #t)
-  (let ((cmd (add-element *load-dgo-rpc*)))
-    (call *load-dgo-rpc* (the-as uint 2) cmd (the-as uint 32))
-    )
-  (none)
-  )
+  (let ((cmd (add-element *load-dgo-rpc*))) (call *load-dgo-rpc* (the-as uint 2) cmd (the-as uint 32)))
+  (none))
 
 (defun find-temp-buffer ((size int))
   "A terrible function to find some temporary space in the DMA system.
    It is unused, thankfully"
-
   ;; it checks the same thing twice.
   (let ((qwc (+ (/ size 16) 2)))
     (the-as pointer
             (cond
-              ((< (the-as uint qwc)
-                  (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) frame global-buf)))
-                  )
-               (logand -16 (the-as int (&+ (-> *display* frames (-> *display* on-screen) frame global-buf base) 15)))
-               )
-              ((< (the-as uint qwc)
-                  (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) frame global-buf)))
-                  )
-               (logand -16 (the-as int (&+ (-> *display* frames (-> *display* on-screen) frame global-buf base) 15)))
-               )
-              )
-            )
-    )
-  )
+              ((< (the-as uint qwc) (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) frame global-buf))))
+               (logand -16 (the-as int (&+ (-> *display* frames (-> *display* on-screen) frame global-buf base) 15))))
+              ((< (the-as uint qwc) (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) frame global-buf))))
+               (logand -16 (the-as int (&+ (-> *display* frames (-> *display* on-screen) frame global-buf base) 15))))))))
 
 (defenum link-flag
-    :bitfield #t
-    :type int32
-    (output-load-msg 0)
-    (output-load-true-msg 1)
-    (execute-login 2)
-    (print-login 3)
-    (force-debug 4)
-    (fast-link 5)
-    )
+  :bitfield #t
+  :type int32
+  (output-load-msg 0)
+  (output-load-true-msg 1)
+  (execute-login 2)
+  (print-login 3)
+  (force-debug 4)
+  (fast-link 5))
 
 ; (link-flag output-load-msg
 ; output-load-true-msg
@@ -396,43 +319,34 @@ struct DgoHeader {
     ;; first, check to see if we ran off the end of the heap.
     ;; ideally you'd check this _before_ loading the file
     (if (>= (the-as int (&+ obj-data (-> obj-file length))) (the-as int (-> heap top-base)))
-        ;; just print an error, and continue...
-        (format 0 "ERROR: -----> dgo file header #x~X has overrun heap #x~X by ~D bytes.  This is very bad!~%"
-                obj-file
-                heap
-                (&- (&+ obj-data (-> obj-file length)) (the-as uint (-> heap top-base)))
-                )
-        )
-
+      ;; just print an error, and continue...
+      (format 0
+              "ERROR: -----> dgo file header #x~X has overrun heap #x~X by ~D bytes.  This is very bad!~%"
+              obj-file
+              heap
+              (&- (&+ obj-data (-> obj-file length)) (the-as uint (-> heap top-base)))))
     ;; last object should be loaded on top of the heap.
     ;; until this link completes, the heap is in a very strange state.
     (if last-object
-        (format 0 "NOTICE: loaded ~g, ~D bytes (~f K) at top ~D~%"
-                (-> obj-file rootname)
-                (-> obj-file length)
-                (* 0.0009765625 (the float (-> obj-file length)))
-                (&- (&+ obj-data (-> obj-file length)) (the-as uint (-> heap base)))
-                )
-        )
-
+      (format 0
+              "NOTICE: loaded ~g, ~D bytes (~f K) at top ~D~%"
+              (-> obj-file rootname)
+              (-> obj-file length)
+              (* 0.0009765625 (the float (-> obj-file length)))
+              (&- (&+ obj-data (-> obj-file length)) (the-as uint (-> heap base)))))
     ;; store the dgo name
     (string<-charp (clear *dgo-name*) (-> obj-file rootname))
-    (nonzero?
-     (link-begin obj-data (-> *dgo-name* data) (the-as int (-> obj-file length)) heap
-                 (if print-login
-                     (link-flag output-load-msg output-load-true-msg execute-login fast-link print-login)
-                     (link-flag output-load-msg output-load-true-msg execute-login fast-link)
-                     )
-                 )
-     )
-    )
-  )
+    (nonzero? (link-begin obj-data
+                          (-> *dgo-name* data)
+                          (the-as int (-> obj-file length))
+                          heap
+                          (if print-login
+                            (link-flag output-load-msg output-load-true-msg execute-login fast-link print-login)
+                            (link-flag output-load-msg output-load-true-msg execute-login fast-link))))))
 
 (defun destroy-mem ((arg0 (pointer uint32)) (arg1 (pointer uint32)))
   "Overwrite memory from arg0 to arg1"
   (while (< (the-as int arg0) (the-as int arg1))
     (set! (-> arg0 0) #xffffffff)
-    (set! arg0 (&-> arg0 1))
-    )
-  (none)
-  )
+    (set! arg0 (&-> arg0 1)))
+  (none))

@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: quaternion-h.gc
-;; name in dgo: quaternion-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; DECOMP BEGINS
 
@@ -11,27 +9,22 @@
 ;; avoids singularities of euler angles, and reasonably efficient to transform.
 ;; the w component is stored last.
 (deftype quaternion (structure)
-  ((x     float)
-   (y     float)
-   (z     float)
-   (w     float)
-   (data  float    4       :overlay-at x)
-   (vec   vector   :inline :overlay-at x)
-   (quad  uint128          :overlay-at x)
-   )
-  )
+  ((x    float)
+   (y    float)
+   (z    float)
+   (w    float)
+   (data float 4 :overlay-at x)
+   (vec  vector :inline :overlay-at x)
+   (quad uint128 :overlay-at x)))
 
 (define *unity-quaternion* (new 'static 'quaternion :x 0.0 :y 0.0 :z 0.0 :w 1.0))
 
 (define-extern matrix->quaternion (function quaternion matrix quaternion))
+
 (define-extern vector-y-angle (function vector float))
 
 (defmacro new-stack-quaternion0 ()
   "Get a stack quaternion that's set to 0.
    This is more efficient than (new 'stack 'quaternion) because
    this doesn't call the constructor."
-  `(let ((q (new 'stack-no-clear 'quaternion)))
-     (set! (-> q quad) (the-as uint128 0))
-     q
-     )
-  )
+  `(let ((q (new 'stack-no-clear 'quaternion))) (set! (-> q quad) (the-as uint128 0)) q))

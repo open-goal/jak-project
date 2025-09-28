@@ -1,516 +1,607 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: water-anim.gc
-;; name in dgo: water-anim
-;; dgos: GAME, COMMON, L1, WATER-AN
+(bundles "GAME.CGO")
+(require "engine/common-obs/process-drawable.gc")
+(require "engine/gfx/foreground/ripple.gc")
+(require "engine/common-obs/water-h.gc")
 
 ;; DECOMP BEGINS
 
 (deftype water-anim (water-vol)
-  ((ppointer-water-anim  (pointer water-anim)  :overlay-at ppointer)
-   (look                 int32)
-   (play-ambient-sound?  symbol)
-   )
-  )
+  ((ppointer-water-anim (pointer water-anim) :overlay-at ppointer)
+   (look                int32)
+   (play-ambient-sound? symbol)))
 
+(defskelgroup *water-anim-sunken-dark-eco-qbert-sg*
+  water-anim-sunken-dark-eco
+  water-anim-sunken-dark-eco-qbert-lod0-jg
+  -1
+  ((water-anim-sunken-dark-eco-qbert-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 40))
 
-(defskelgroup *water-anim-sunken-dark-eco-qbert-sg* water-anim-sunken-dark-eco water-anim-sunken-dark-eco-qbert-lod0-jg -1
-              ((water-anim-sunken-dark-eco-qbert-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 40)
-              )
+(defskelgroup *water-anim-sunken-dark-eco-platform-room-sg*
+  water-anim-sunken-dark-eco
+  water-anim-sunken-dark-eco-platform-room-lod0-jg
+  -1
+  ((water-anim-sunken-dark-eco-platform-room-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 22))
 
-(defskelgroup *water-anim-sunken-dark-eco-platform-room-sg* water-anim-sunken-dark-eco water-anim-sunken-dark-eco-platform-room-lod0-jg -1
-              ((water-anim-sunken-dark-eco-platform-room-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 22)
-              )
+(defskelgroup *water-anim-sunken-dark-eco-helix-room-sg*
+  water-anim-sunken-dark-eco
+  water-anim-sunken-dark-eco-helix-room-lod0-jg
+  -1
+  ((water-anim-sunken-dark-eco-helix-room-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 21))
 
-(defskelgroup *water-anim-sunken-dark-eco-helix-room-sg* water-anim-sunken-dark-eco water-anim-sunken-dark-eco-helix-room-lod0-jg -1
-              ((water-anim-sunken-dark-eco-helix-room-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 21)
-              )
+(defskelgroup *water-anim-sunken-big-room-sg*
+  water-anim-sunken
+  water-anim-sunken-big-room-lod0-jg
+  -1
+  ((water-anim-sunken-big-room-lod0-mg (meters 999999)))
+  :bounds (static-spherem 15 0 -36 70))
 
-(defskelgroup *water-anim-sunken-big-room-sg* water-anim-sunken water-anim-sunken-big-room-lod0-jg -1
-              ((water-anim-sunken-big-room-lod0-mg (meters 999999)))
-              :bounds (static-spherem 15 0 -36 70)
-              )
+(defskelgroup *water-anim-sunken-first-room-from-entrance-sg*
+  water-anim-sunken
+  water-anim-sunken-first-room-from-entrance-lod0-jg
+  -1
+  ((water-anim-sunken-first-room-from-entrance-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 50))
 
-(defskelgroup *water-anim-sunken-first-room-from-entrance-sg* water-anim-sunken water-anim-sunken-first-room-from-entrance-lod0-jg -1
-              ((water-anim-sunken-first-room-from-entrance-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 50)
-              )
+(defskelgroup *water-anim-sunken-qbert-room-sg*
+  water-anim-sunken
+  water-anim-sunken-qbert-room-lod0-jg
+  -1
+  ((water-anim-sunken-qbert-room-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 48))
 
-(defskelgroup *water-anim-sunken-qbert-room-sg* water-anim-sunken water-anim-sunken-qbert-room-lod0-jg -1
-              ((water-anim-sunken-qbert-room-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 48)
-              )
+(defskelgroup *water-anim-sunken-first-right-branch-sg*
+  water-anim-sunken
+  water-anim-sunken-first-right-branch-lod0-jg
+  -1
+  ((water-anim-sunken-first-right-branch-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 30))
 
-(defskelgroup *water-anim-sunken-first-right-branch-sg* water-anim-sunken water-anim-sunken-first-right-branch-lod0-jg -1
-              ((water-anim-sunken-first-right-branch-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 30)
-              )
+(defskelgroup *water-anim-sunken-circular-with-bullys-sg*
+  water-anim-sunken
+  water-anim-sunken-circular-with-bullys-lod0-jg
+  -1
+  ((water-anim-sunken-circular-with-bullys-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 15))
 
-(defskelgroup *water-anim-sunken-circular-with-bullys-sg* water-anim-sunken water-anim-sunken-circular-with-bullys-lod0-jg -1
-              ((water-anim-sunken-circular-with-bullys-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 15)
-              )
+(defskelgroup *water-anim-sunken-hall-with-one-whirlpool-sg*
+  water-anim-sunken
+  water-anim-sunken-hall-with-one-whirlpool-lod0-jg
+  -1
+  ((water-anim-sunken-hall-with-one-whirlpool-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 27))
 
-(defskelgroup *water-anim-sunken-hall-with-one-whirlpool-sg* water-anim-sunken water-anim-sunken-hall-with-one-whirlpool-lod0-jg -1
-              ((water-anim-sunken-hall-with-one-whirlpool-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 27)
-              )
+(defskelgroup *water-anim-sunken-hall-with-three-whirlpools-sg*
+  water-anim-sunken
+  water-anim-sunken-hall-with-three-whirlpools-lod0-jg
+  -1
+  ((water-anim-sunken-hall-with-three-whirlpools-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 26))
 
-(defskelgroup *water-anim-sunken-hall-with-three-whirlpools-sg* water-anim-sunken water-anim-sunken-hall-with-three-whirlpools-lod0-jg -1
-              ((water-anim-sunken-hall-with-three-whirlpools-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 26)
-              )
+(defskelgroup *water-anim-sunken-start-of-helix-slide-sg*
+  water-anim-sunken
+  water-anim-sunken-start-of-helix-slide-lod0-jg
+  -1
+  ((water-anim-sunken-start-of-helix-slide-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 25))
 
-(defskelgroup *water-anim-sunken-start-of-helix-slide-sg* water-anim-sunken water-anim-sunken-start-of-helix-slide-lod0-jg -1
-              ((water-anim-sunken-start-of-helix-slide-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 25)
-              )
+(defskelgroup *water-anim-sunken-room-above-exit-chamber-sg*
+  water-anim-sunken
+  water-anim-sunken-room-above-exit-chamber-lod0-jg
+  -1
+  ((water-anim-sunken-room-above-exit-chamber-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 45))
 
-(defskelgroup *water-anim-sunken-room-above-exit-chamber-sg* water-anim-sunken water-anim-sunken-room-above-exit-chamber-lod0-jg -1
-              ((water-anim-sunken-room-above-exit-chamber-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 45)
-              )
+(defskelgroup *water-anim-sunken-hall-before-big-room-sg*
+  water-anim-sunken
+  water-anim-sunken-hall-before-big-room-lod0-jg
+  -1
+  ((water-anim-sunken-hall-before-big-room-lod0-mg (meters 999999)))
+  :bounds (static-spherem 5 0 -3 24))
 
-(defskelgroup *water-anim-sunken-hall-before-big-room-sg* water-anim-sunken water-anim-sunken-hall-before-big-room-lod0-jg -1
-              ((water-anim-sunken-hall-before-big-room-lod0-mg (meters 999999)))
-              :bounds (static-spherem 5 0 -3 24)
-              )
+(defskelgroup *water-anim-sunken-short-piece-sg*
+  water-anim-sunken
+  water-anim-sunken-short-piece-lod0-jg
+  -1
+  ((water-anim-sunken-short-piece-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 20))
 
-(defskelgroup *water-anim-sunken-short-piece-sg* water-anim-sunken water-anim-sunken-short-piece-lod0-jg -1
-              ((water-anim-sunken-short-piece-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 20)
-              )
+(defskelgroup *water-anim-sunken-big-room-upper-water-sg*
+  water-anim-sunken
+  water-anim-sunken-big-room-upper-water-lod0-jg
+  -1
+  ((water-anim-sunken-big-room-upper-water-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 27))
 
-(defskelgroup *water-anim-sunken-big-room-upper-water-sg* water-anim-sunken water-anim-sunken-big-room-upper-water-lod0-jg -1
-              ((water-anim-sunken-big-room-upper-water-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 27)
-              )
+(defskelgroup *water-anim-maincave-center-pool-sg*
+  water-anim-maincave
+  water-anim-maincave-center-pool-lod0-jg
+  -1
+  ((water-anim-maincave-center-pool-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 70))
 
-(defskelgroup *water-anim-maincave-center-pool-sg* water-anim-maincave water-anim-maincave-center-pool-lod0-jg -1
-              ((water-anim-maincave-center-pool-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 70)
-              )
+(defskelgroup *water-anim-maincave-lower-right-pool-sg*
+  water-anim-maincave
+  water-anim-maincave-lower-right-pool-lod0-jg
+  -1
+  ((water-anim-maincave-lower-right-pool-lod0-mg (meters 999999)))
+  :bounds (static-spherem 6 0 5 61))
 
-(defskelgroup *water-anim-maincave-lower-right-pool-sg* water-anim-maincave water-anim-maincave-lower-right-pool-lod0-jg -1
-              ((water-anim-maincave-lower-right-pool-lod0-mg (meters 999999)))
-              :bounds (static-spherem 6 0 5 61)
-              )
+(defskelgroup *water-anim-maincave-mid-right-pool-sg*
+  water-anim-maincave
+  water-anim-maincave-mid-right-pool-lod0-jg
+  -1
+  ((water-anim-maincave-mid-right-pool-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 37))
 
-(defskelgroup *water-anim-maincave-mid-right-pool-sg* water-anim-maincave water-anim-maincave-mid-right-pool-lod0-jg -1
-              ((water-anim-maincave-mid-right-pool-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 37)
-              )
+(defskelgroup *water-anim-maincave-lower-left-pool-sg*
+  water-anim-maincave
+  water-anim-maincave-lower-left-pool-lod0-jg
+  -1
+  ((water-anim-maincave-lower-left-pool-lod0-mg (meters 999999)))
+  :bounds (static-spherem -1 0 0 20))
 
-(defskelgroup *water-anim-maincave-lower-left-pool-sg* water-anim-maincave water-anim-maincave-lower-left-pool-lod0-jg -1
-              ((water-anim-maincave-lower-left-pool-lod0-mg (meters 999999)))
-              :bounds (static-spherem -1 0 0 20)
-              )
+(defskelgroup *water-anim-maincave-mid-left-pool-sg*
+  water-anim-maincave
+  water-anim-maincave-mid-left-pool-lod0-jg
+  -1
+  ((water-anim-maincave-mid-left-pool-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 51))
 
-(defskelgroup *water-anim-maincave-mid-left-pool-sg* water-anim-maincave water-anim-maincave-mid-left-pool-lod0-jg -1
-              ((water-anim-maincave-mid-left-pool-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 51)
-              )
+(defskelgroup *water-anim-maincave-water-with-crystal-sg*
+  water-anim-maincave-water
+  water-anim-maincave-water-with-crystal-lod0-jg
+  -1
+  ((water-anim-maincave-water-with-crystal-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 -3 22))
 
-(defskelgroup *water-anim-maincave-water-with-crystal-sg* water-anim-maincave-water water-anim-maincave-water-with-crystal-lod0-jg -1
-              ((water-anim-maincave-water-with-crystal-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 -3 22)
-              )
+(defskelgroup *water-anim-robocave-main-pool-sg*
+  water-anim-robocave
+  water-anim-robocave-main-pool-lod0-jg
+  -1
+  ((water-anim-robocave-main-pool-lod0-mg (meters 20)) (water-anim-robocave-main-pool-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 54))
 
-(defskelgroup *water-anim-robocave-main-pool-sg* water-anim-robocave water-anim-robocave-main-pool-lod0-jg -1
-              ((water-anim-robocave-main-pool-lod0-mg (meters 20)) (water-anim-robocave-main-pool-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 54)
-              )
+(defskelgroup *water-anim-misty-mud-by-arena-sg*
+  water-anim-misty
+  water-anim-misty-mud-by-arena-lod0-jg
+  -1
+  ((water-anim-misty-mud-by-arena-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 -2.5 19))
 
-(defskelgroup *water-anim-misty-mud-by-arena-sg* water-anim-misty water-anim-misty-mud-by-arena-lod0-jg -1
-              ((water-anim-misty-mud-by-arena-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 -2.5 19)
-              )
+(defskelgroup *water-anim-misty-mud-above-skeleton-sg*
+  water-anim-misty
+  water-anim-misty-mud-above-skeleton-lod0-jg
+  -1
+  ((water-anim-misty-mud-above-skeleton-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 14))
 
-(defskelgroup *water-anim-misty-mud-above-skeleton-sg* water-anim-misty water-anim-misty-mud-above-skeleton-lod0-jg -1
-              ((water-anim-misty-mud-above-skeleton-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 14)
-              )
+(defskelgroup *water-anim-misty-mud-behind-skeleton-sg*
+  water-anim-misty
+  water-anim-misty-mud-behind-skeleton-lod0-jg
+  -1
+  ((water-anim-misty-mud-behind-skeleton-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 4 25))
 
-(defskelgroup *water-anim-misty-mud-behind-skeleton-sg* water-anim-misty water-anim-misty-mud-behind-skeleton-lod0-jg -1
-              ((water-anim-misty-mud-behind-skeleton-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 4 25)
-              )
+(defskelgroup *water-anim-misty-mud-above-skull-back-sg*
+  water-anim-misty
+  water-anim-misty-mud-above-skull-back-lod0-jg
+  -1
+  ((water-anim-misty-mud-above-skull-back-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 14))
 
-(defskelgroup *water-anim-misty-mud-above-skull-back-sg* water-anim-misty water-anim-misty-mud-above-skull-back-lod0-jg -1
-              ((water-anim-misty-mud-above-skull-back-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 14)
-              )
+(defskelgroup *water-anim-misty-mud-above-skull-front-sg*
+  water-anim-misty
+  water-anim-misty-mud-above-skull-front-lod0-jg
+  -1
+  ((water-anim-misty-mud-above-skull-front-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 16))
 
-(defskelgroup *water-anim-misty-mud-above-skull-front-sg* water-anim-misty water-anim-misty-mud-above-skull-front-lod0-jg -1
-              ((water-anim-misty-mud-above-skull-front-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 16)
-              )
+(defskelgroup *water-anim-misty-mud-other-near-skull-sg*
+  water-anim-misty
+  water-anim-misty-mud-other-near-skull-lod0-jg
+  -1
+  ((water-anim-misty-mud-other-near-skull-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 13))
 
-(defskelgroup *water-anim-misty-mud-other-near-skull-sg* water-anim-misty water-anim-misty-mud-other-near-skull-lod0-jg -1
-              ((water-anim-misty-mud-other-near-skull-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 13)
-              )
+(defskelgroup *water-anim-misty-mud-near-skull-sg*
+  water-anim-misty
+  water-anim-misty-mud-near-skull-lod0-jg
+  -1
+  ((water-anim-misty-mud-near-skull-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 15))
 
-(defskelgroup *water-anim-misty-mud-near-skull-sg* water-anim-misty water-anim-misty-mud-near-skull-lod0-jg -1
-              ((water-anim-misty-mud-near-skull-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 15)
-              )
+(defskelgroup *water-anim-misty-mud-under-spine-sg*
+  water-anim-misty
+  water-anim-misty-mud-under-spine-lod0-jg
+  -1
+  ((water-anim-misty-mud-under-spine-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 16))
 
-(defskelgroup *water-anim-misty-mud-under-spine-sg* water-anim-misty water-anim-misty-mud-under-spine-lod0-jg -1
-              ((water-anim-misty-mud-under-spine-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 16)
-              )
+(defskelgroup *water-anim-misty-mud-by-dock-sg*
+  water-anim-misty
+  water-anim-misty-mud-by-dock-lod0-jg
+  -1
+  ((water-anim-misty-mud-by-dock-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 21))
 
-(defskelgroup *water-anim-misty-mud-by-dock-sg* water-anim-misty water-anim-misty-mud-by-dock-lod0-jg -1
-              ((water-anim-misty-mud-by-dock-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 21)
-              )
+(defskelgroup *water-anim-misty-mud-island-near-dock-sg*
+  water-anim-misty
+  water-anim-misty-mud-island-near-dock-lod0-jg
+  -1
+  ((water-anim-misty-mud-island-near-dock-lod0-mg (meters 999999)))
+  :bounds (static-spherem -1 0 -1 15))
 
-(defskelgroup *water-anim-misty-mud-island-near-dock-sg* water-anim-misty water-anim-misty-mud-island-near-dock-lod0-jg -1
-              ((water-anim-misty-mud-island-near-dock-lod0-mg (meters 999999)))
-              :bounds (static-spherem -1 0 -1 15)
-              )
+(defskelgroup *water-anim-misty-mud-lonely-island-sg*
+  water-anim-misty
+  water-anim-misty-mud-lonely-island-lod0-jg
+  -1
+  ((water-anim-misty-mud-lonely-island-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 10))
 
-(defskelgroup *water-anim-misty-mud-lonely-island-sg* water-anim-misty water-anim-misty-mud-lonely-island-lod0-jg -1
-              ((water-anim-misty-mud-lonely-island-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 10)
-              )
+(defskelgroup *water-anim-misty-dark-eco-pool-sg*
+  water-anim-misty
+  water-anim-misty-dark-eco-pool-lod0-jg
+  -1
+  ((water-anim-misty-dark-eco-pool-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 17))
 
-(defskelgroup *water-anim-misty-dark-eco-pool-sg* water-anim-misty water-anim-misty-dark-eco-pool-lod0-jg -1
-              ((water-anim-misty-dark-eco-pool-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 17)
-              )
+(defskelgroup *water-anim-ogre-lava-sg*
+  water-anim-ogre
+  water-anim-ogre-lava-lod0-jg
+  -1
+  ((water-anim-ogre-lava-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 112))
 
-(defskelgroup *water-anim-ogre-lava-sg* water-anim-ogre water-anim-ogre-lava-lod0-jg -1
-              ((water-anim-ogre-lava-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 112)
-              )
+(defskelgroup *water-anim-jungle-river-sg*
+  water-anim-jungle
+  water-anim-jungle-river-lod0-jg
+  -1
+  ((water-anim-jungle-river-lod0-mg (meters 20)) (water-anim-jungle-river-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 91))
 
-(defskelgroup *water-anim-jungle-river-sg* water-anim-jungle water-anim-jungle-river-lod0-jg -1
-              ((water-anim-jungle-river-lod0-mg (meters 20)) (water-anim-jungle-river-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 91)
-              )
+(defskelgroup *water-anim-village3-lava-sg*
+  water-anim-village3
+  water-anim-village3-lava-lod0-jg
+  -1
+  ((water-anim-village3-lava-lod0-mg (meters 20)) (water-anim-village3-lava-lod1-mg (meters 999999)))
+  :bounds (static-spherem 15 0 10 163))
 
-(defskelgroup *water-anim-village3-lava-sg* water-anim-village3 water-anim-village3-lava-lod0-jg -1
-              ((water-anim-village3-lava-lod0-mg (meters 20)) (water-anim-village3-lava-lod1-mg (meters 999999)))
-              :bounds (static-spherem 15 0 10 163)
-              )
+(defskelgroup *water-anim-training-lake-sg*
+  water-anim-training
+  water-anim-training-lake-lod0-jg
+  -1
+  ((water-anim-training-lake-lod0-mg (meters 999999)))
+  :bounds (static-spherem -18 0 0 52))
 
-(defskelgroup *water-anim-training-lake-sg* water-anim-training water-anim-training-lake-lod0-jg -1
-              ((water-anim-training-lake-lod0-mg (meters 999999)))
-              :bounds (static-spherem -18 0 0 52)
-              )
+(defskelgroup *water-anim-darkcave-water-with-crystal-sg*
+  water-anim-darkcave
+  water-anim-darkcave-water-with-crystal-lod0-jg
+  -1
+  ((water-anim-darkcave-water-with-crystal-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 19))
 
-(defskelgroup *water-anim-darkcave-water-with-crystal-sg* water-anim-darkcave water-anim-darkcave-water-with-crystal-lod0-jg -1
-              ((water-anim-darkcave-water-with-crystal-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 19)
-              )
+(defskelgroup *water-anim-rolling-water-back-sg*
+  water-anim-rolling
+  water-anim-rolling-water-back-lod0-jg
+  -1
+  ((water-anim-rolling-water-back-lod0-mg (meters 999999)))
+  :bounds (static-spherem -10 0 0 70))
 
-(defskelgroup *water-anim-rolling-water-back-sg* water-anim-rolling water-anim-rolling-water-back-lod0-jg -1
-              ((water-anim-rolling-water-back-lod0-mg (meters 999999)))
-              :bounds (static-spherem -10 0 0 70)
-              )
+(defskelgroup *water-anim-rolling-water-front-sg*
+  water-anim-rolling
+  water-anim-rolling-water-front-lod0-jg
+  -1
+  ((water-anim-rolling-water-front-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 70))
 
-(defskelgroup *water-anim-rolling-water-front-sg* water-anim-rolling water-anim-rolling-water-front-lod0-jg -1
-              ((water-anim-rolling-water-front-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 70)
-              )
+(defskelgroup *water-anim-finalboss-dark-eco-pool-sg*
+  water-anim-finalboss
+  water-anim-finalboss-dark-eco-pool-lod0-jg
+  -1
+  ((water-anim-finalboss-dark-eco-pool-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 19))
 
-(defskelgroup *water-anim-finalboss-dark-eco-pool-sg* water-anim-finalboss water-anim-finalboss-dark-eco-pool-lod0-jg -1
-              ((water-anim-finalboss-dark-eco-pool-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 19)
-              )
+(defskelgroup *water-anim-lavatube-energy-lava-sg*
+  water-anim-lavatube
+  water-anim-lavatube-energy-lava-lod0-jg
+  -1
+  ((water-anim-lavatube-energy-lava-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 -7 0 25))
 
-(defskelgroup *water-anim-lavatube-energy-lava-sg* water-anim-lavatube water-anim-lavatube-energy-lava-lod0-jg -1
-              ((water-anim-lavatube-energy-lava-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 -7 0 25)
-              )
+(defskelgroup *water-anim-village1-rice-paddy-sg*
+  water-anim-village1
+  water-anim-village1-rice-paddy-lod0-jg
+  -1
+  ((water-anim-village1-rice-paddy-lod0-mg (meters 999999)))
+  :bounds (static-spherem -15 0 0 27))
 
-(defskelgroup *water-anim-village1-rice-paddy-sg* water-anim-village1 water-anim-village1-rice-paddy-lod0-jg -1
-              ((water-anim-village1-rice-paddy-lod0-mg (meters 999999)))
-              :bounds (static-spherem -15 0 0 27)
-              )
+(defskelgroup *water-anim-village1-fountain-sg*
+  water-anim-village1
+  water-anim-village1-fountain-lod0-jg
+  -1
+  ((water-anim-village1-fountain-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4.5))
 
-(defskelgroup *water-anim-village1-fountain-sg* water-anim-village1 water-anim-village1-fountain-lod0-jg -1
-              ((water-anim-village1-fountain-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4.5)
-              )
+(defskelgroup *water-anim-village1-rice-paddy-mid-sg*
+  water-anim-village1
+  water-anim-village1-rice-paddy-mid-lod0-jg
+  -1
+  ((water-anim-village1-rice-paddy-mid-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 35))
 
-(defskelgroup *water-anim-village1-rice-paddy-mid-sg* water-anim-village1 water-anim-village1-rice-paddy-mid-lod0-jg -1
-              ((water-anim-village1-rice-paddy-mid-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 35)
-              )
+(defskelgroup *water-anim-village1-rice-paddy-top-sg*
+  water-anim-village1
+  water-anim-village1-rice-paddy-top-lod0-jg
+  -1
+  ((water-anim-village1-rice-paddy-top-lod0-mg (meters 999999)))
+  :bounds (static-spherem 6 0 -17 20))
 
-(defskelgroup *water-anim-village1-rice-paddy-top-sg* water-anim-village1 water-anim-village1-rice-paddy-top-lod0-jg -1
-              ((water-anim-village1-rice-paddy-top-lod0-mg (meters 999999)))
-              :bounds (static-spherem 6 0 -17 20)
-              )
-
-(defskelgroup *water-anim-village2-bucket-sg* water-anim-village2 water-anim-village2-bucket-lod0-jg -1
-              ((water-anim-village2-bucket-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 0.7)
-              )
+(defskelgroup *water-anim-village2-bucket-sg*
+  water-anim-village2
+  water-anim-village2-bucket-lod0-jg
+  -1
+  ((water-anim-village2-bucket-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 0.7))
 
 (deftype water-anim-look (structure)
-  ((skel-group          symbol)
-   (anim                int32)
-   (ambient-sound-spec  sound-spec)
-   )
-  )
+  ((skel-group         symbol)
+   (anim               int32)
+   (ambient-sound-spec sound-spec)))
 
+;; og:preserve-this added
+(defenum water-look
+  (water-anim-sunken-big-room 0)
+  (water-anim-sunken-first-room-from-entrance 1)
+  (water-anim-sunken-qbert-room 2)
+  (water-anim-sunken-first-right-branch 3)
+  (water-anim-sunken-circular-with-bullys 4)
+  (water-anim-sunken-hall-with-one-whirlpool 5)
+  (water-anim-sunken-hall-with-three-whirlpools 6)
+  (water-anim-sunken-start-of-helix-slide 7)
+  (water-anim-sunken-room-above-exit-chamber 8)
+  (water-anim-sunken-hall-before-big-room 9)
+  (water-anim-sunken-dark-eco-qbert 10)
+  (water-anim-sunken-short-piece 11)
+  (water-anim-sunken-big-room-upper-water 12)
+  (water-anim-sunken-dark-eco-platform-room 13)
+  (water-anim-maincave-water-with-crystal 14)
+  (water-anim-maincave-center-pool 15)
+  (water-anim-maincave-lower-right-pool 16)
+  (water-anim-maincave-mid-right-pool 17)
+  (water-anim-maincave-lower-left-pool 18)
+  (water-anim-maincave-mid-left-pool 19)
+  (water-anim-robocave-main-pool 20)
+  (water-anim-misty-mud-by-arena 21)
+  (water-anim-misty-mud-above-skeleton 22)
+  (water-anim-misty-mud-behind-skeleton 23)
+  (water-anim-misty-mud-above-skull-back 24)
+  (water-anim-misty-mud-above-skull-front 25)
+  (water-anim-misty-mud-other-near-skull 26)
+  (water-anim-misty-mud-near-skull 27)
+  (water-anim-misty-mud-under-spine 28)
+  (water-anim-misty-mud-by-dock 29)
+  (water-anim-misty-mud-island-near-dock 30)
+  (water-anim-misty-mud-lonely-island 31)
+  (water-anim-misty-dark-eco-pool 32)
+  (water-anim-ogre-lava 33)
+  (water-anim-jungle-river 34)
+  (water-anim-village3-lava 35)
+  (water-anim-training-lake 36)
+  (water-anim-darkcave-water-with-crystal 37)
+  (water-anim-rolling-water-back 38)
+  (water-anim-rolling-water-front 39)
+  (water-anim-sunken-dark-eco-helix-room 40)
+  (water-anim-finalboss-dark-eco-pool 41)
+  (water-anim-lavatube-energy-lava 42)
+  (water-anim-village1-rice-paddy 43)
+  (water-anim-village1-fountain 44)
+  (water-anim-village1-rice-paddy-mid 45)
+  (water-anim-village1-rice-paddy-top 46)
+  (water-anim-village2-bucket 47))
 
 (define *water-anim-look*
-  (new 'static 'boxed-array :type water-anim-look
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-big-room-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 70 :fo-max 80)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-first-room-from-entrance-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 50 :fo-max 60)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-qbert-room-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 48 :fo-max 58)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-first-right-branch-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 30 :fo-max 40)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-circular-with-bullys-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 15 :fo-max 25)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-hall-with-one-whirlpool-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 27 :fo-max 37)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-hall-with-three-whirlpools-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 26 :fo-max 36)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-start-of-helix-slide-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 25 :fo-max 35)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-room-above-exit-chamber-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 45 :fo-max 55)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-hall-before-big-room-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 20 :fo-max 30)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-dark-eco-qbert-sg*
-      :anim 6
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 40 :fo-max 50)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-short-piece-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 20 :fo-max 30)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-big-room-upper-water-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "water-loop" :fo-min 27 :fo-max 37)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-dark-eco-platform-room-sg*
-      :anim 6
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 22 :fo-max 32)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-maincave-water-with-crystal-sg*
-      :anim 2
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-maincave-center-pool-sg*
-      :anim 10
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 70 :fo-max 80)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-maincave-lower-right-pool-sg*
-      :anim 10
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 40 :fo-max 50)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-maincave-mid-right-pool-sg*
-      :anim 10
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 37 :fo-max 47)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-maincave-lower-left-pool-sg*
-      :anim 10
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 20 :fo-max 30)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-maincave-mid-left-pool-sg*
-      :anim 10
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 51 :fo-max 61)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-robocave-main-pool-sg*
-      :anim 3
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 54 :fo-max 64)
-      )
-    (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-by-arena-sg* :anim 24 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-above-skeleton-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-behind-skeleton-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-above-skull-back-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-above-skull-front-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-other-near-skull-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-near-skull-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-under-spine-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-by-dock-sg* :anim 24 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-island-near-dock-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-mud-lonely-island-sg*
-      :anim 24
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-misty-dark-eco-pool-sg*
-      :anim 24
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 17 :fo-max 27)
-      )
-    (new 'static 'water-anim-look :skel-group '*water-anim-ogre-lava-sg* :anim 2 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look :skel-group '*water-anim-jungle-river-sg* :anim 3 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look :skel-group '*water-anim-village3-lava-sg* :anim 3 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look :skel-group '*water-anim-training-lake-sg* :anim 2 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-darkcave-water-with-crystal-sg*
-      :anim 2
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look :skel-group '*water-anim-rolling-water-back-sg* :anim 4 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look :skel-group '*water-anim-rolling-water-front-sg* :anim 4 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-sunken-dark-eco-helix-room-sg*
-      :anim 6
-      :ambient-sound-spec (static-sound-spec "helix-dark-eco" :fo-min 120 :fo-max 130)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-finalboss-dark-eco-pool-sg*
-      :anim 2
-      :ambient-sound-spec (static-sound-spec "darkeco-pool" :fo-min 19 :fo-max 29)
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-lavatube-energy-lava-sg*
-      :anim 2
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look :skel-group '*water-anim-village1-rice-paddy-sg* :anim 8 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look :skel-group '*water-anim-village1-fountain-sg* :anim 8 :ambient-sound-spec #f)
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-village1-rice-paddy-mid-sg*
-      :anim 8
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look
-      :skel-group '*water-anim-village1-rice-paddy-top-sg*
-      :anim 8
-      :ambient-sound-spec #f
-      )
-    (new 'static 'water-anim-look :skel-group '*water-anim-village2-bucket-sg* :anim 2 :ambient-sound-spec #f)
-    )
-  )
+  (new 'static
+       'boxed-array
+       :type
+       water-anim-look
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-big-room-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 70 :fo-max 80))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-first-room-from-entrance-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 50 :fo-max 60))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-qbert-room-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 48 :fo-max 58))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-first-right-branch-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 30 :fo-max 40))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-circular-with-bullys-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 15 :fo-max 25))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-hall-with-one-whirlpool-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 27 :fo-max 37))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-hall-with-three-whirlpools-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 26 :fo-max 36))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-start-of-helix-slide-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 25 :fo-max 35))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-room-above-exit-chamber-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 45 :fo-max 55))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-hall-before-big-room-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 20 :fo-max 30))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-dark-eco-qbert-sg*
+            :anim 6
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 40 :fo-max 50))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-short-piece-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 20 :fo-max 30))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-big-room-upper-water-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "water-loop" :fo-min 27 :fo-max 37))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-dark-eco-platform-room-sg*
+            :anim 6
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 22 :fo-max 32))
+       (new 'static 'water-anim-look :skel-group '*water-anim-maincave-water-with-crystal-sg* :anim 2 :ambient-sound-spec #f)
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-maincave-center-pool-sg*
+            :anim 10
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 70 :fo-max 80))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-maincave-lower-right-pool-sg*
+            :anim 10
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 40 :fo-max 50))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-maincave-mid-right-pool-sg*
+            :anim 10
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 37 :fo-max 47))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-maincave-lower-left-pool-sg*
+            :anim 10
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 20 :fo-max 30))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-maincave-mid-left-pool-sg*
+            :anim 10
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 51 :fo-max 61))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-robocave-main-pool-sg*
+            :anim 3
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 54 :fo-max 64))
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-by-arena-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-above-skeleton-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-behind-skeleton-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-above-skull-back-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-above-skull-front-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-other-near-skull-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-near-skull-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-under-spine-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-by-dock-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-island-near-dock-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-misty-mud-lonely-island-sg* :anim 24 :ambient-sound-spec #f)
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-misty-dark-eco-pool-sg*
+            :anim 24
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 17 :fo-max 27))
+       (new 'static 'water-anim-look :skel-group '*water-anim-ogre-lava-sg* :anim 2 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-jungle-river-sg* :anim 3 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-village3-lava-sg* :anim 3 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-training-lake-sg* :anim 2 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-darkcave-water-with-crystal-sg* :anim 2 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-rolling-water-back-sg* :anim 4 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-rolling-water-front-sg* :anim 4 :ambient-sound-spec #f)
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-sunken-dark-eco-helix-room-sg*
+            :anim 6
+            :ambient-sound-spec
+            (static-sound-spec "helix-dark-eco" :fo-min 120 :fo-max 130))
+       (new 'static
+            'water-anim-look
+            :skel-group '*water-anim-finalboss-dark-eco-pool-sg*
+            :anim 2
+            :ambient-sound-spec
+            (static-sound-spec "darkeco-pool" :fo-min 19 :fo-max 29))
+       (new 'static 'water-anim-look :skel-group '*water-anim-lavatube-energy-lava-sg* :anim 2 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-village1-rice-paddy-sg* :anim 8 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-village1-fountain-sg* :anim 8 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-village1-rice-paddy-mid-sg* :anim 8 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-village1-rice-paddy-top-sg* :anim 8 :ambient-sound-spec #f)
+       (new 'static 'water-anim-look :skel-group '*water-anim-village2-bucket-sg* :anim 2 :ambient-sound-spec #f)))
 
 (defstate water-vol-idle (water-anim)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('move-to)
-       (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
-       (set! (-> self water-height) (-> self root trans y))
-       (if (nonzero? (-> self sound))
-           (update-trans! (-> self sound) (-> self root trans))
-           )
-       (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code))))
-         (set! (-> self mask) v0-0)
-         v0-0
-         )
-       )
-      )
-    )
-  :trans (behavior ()
-    (let ((t9-0 (-> (method-of-type water-vol water-vol-idle) trans)))
-      (if t9-0
-          (t9-0)
-          )
-      )
-    (if (< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('move-to)
+         (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+         (set! (-> self water-height) (-> self root trans y))
+         (if (nonzero? (-> self sound)) (update-trans! (-> self sound) (-> self root trans)))
+         (let ((v0-0 (logclear (-> self mask) (process-mask sleep-code)))) (set! (-> self mask) v0-0) v0-0))))
+  :trans
+    (behavior ()
+      (let ((t9-0 (-> (method-of-type water-vol water-vol-idle) trans))) (if t9-0 (t9-0)))
+      (if (< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
         (logior! (-> self draw status) (draw-status hidden))
-        (logclear! (-> self draw status) (draw-status hidden))
-        )
-    (if (and (-> self play-ambient-sound?) (nonzero? (-> self sound)))
-        (update! (-> self sound))
-        )
-    )
-  :code (behavior ()
-    (loop
-      (ja-post)
-      (logior! (-> self mask) (process-mask sleep-code))
-      (suspend)
-      )
-    )
-  )
+        (logclear! (-> self draw status) (draw-status hidden)))
+      (if (and (-> self play-ambient-sound?) (nonzero? (-> self sound))) (update! (-> self sound))))
+  :code
+    (behavior ()
+      (loop
+        (ja-post)
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend))))
 
 (defmethod get-ripple-height ((this water-anim) (arg0 vector))
-  (ripple-find-height this 0 arg0)
-  )
+  (ripple-find-height this 0 arg0))
 
 (defmethod set-stack-size! ((this water-anim))
-  (none)
-  )
+  (none))
 
 (defmethod water-vol-method-25 ((this water-anim))
   (local-vars (sv-16 res-tag))
@@ -521,53 +612,30 @@
     (when v1-3
       (+! (-> this root trans x) (-> v1-3 0))
       (+! (-> this root trans y) (-> v1-3 1))
-      (+! (-> this root trans z) (-> v1-3 2))
-      )
-    )
+      (+! (-> this root trans z) (-> v1-3 2))))
   (let ((f0-6 (res-lump-float (-> this entity) 'rotoffset)))
-    (if (!= f0-6 0.0)
-        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-6)
-        )
-    )
-  (none)
-  )
+    (if (!= f0-6 0.0) (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-6)))
+  (none))
 
 (defmethod water-vol-method-22 ((this water-anim))
   (let ((s5-0 (-> this look)))
-    (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length)))
-        (go process-drawable-art-error "skel group")
-        )
+    (if (or (< s5-0 0) (>= s5-0 (-> *water-anim-look* length))) (go process-drawable-art-error "skel group"))
     (let ((s5-1 (-> *water-anim-look* s5-0)))
       (let ((s4-0 (-> s5-1 skel-group value)))
         (let ((s3-0 s4-0))
-          (if (not (if (and (nonzero? s3-0) (type-type? (-> (the-as basic s3-0) type) skeleton-group))
-                       s3-0
-                       )
-                   )
-              (go process-drawable-art-error "skel group")
-              )
-          )
-        (initialize-skeleton this (the-as skeleton-group s4-0) '())
-        )
+          (if (not (if (and (nonzero? s3-0) (type-type? (-> (the-as basic s3-0) type) skeleton-group)) s3-0))
+            (go process-drawable-art-error "skel group")))
+        (initialize-skeleton this (the-as skeleton-group s4-0) '()))
       (ja-channel-set! 1)
       (let ((s4-1 (-> this skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          s4-1
-          (the-as art-joint-anim (-> this draw art-group data (-> s5-1 anim)))
-          num-func-identity
-          )
-        (set! (-> s4-1 frame-num) 0.0)
-        )
+        (joint-control-channel-group-eval! s4-1
+                                           (the-as art-joint-anim (-> this draw art-group data (-> s5-1 anim)))
+                                           num-func-identity)
+        (set! (-> s4-1 frame-num) 0.0))
       (let ((a2-2 (-> s5-1 ambient-sound-spec)))
         (when a2-2
           (let ((a3-0 (new 'stack-no-clear 'vector)))
             (vector+! a3-0 (-> this root trans) (-> this draw bounds))
-            (set! (-> this sound) (new 'process 'ambient-sound a2-2 a3-0))
-            )
-          )
-        )
-      )
-    )
+            (set! (-> this sound) (new 'process 'ambient-sound a2-2 a3-0)))))))
   (ja-post)
-  (none)
-  )
+  (none))

@@ -1,73 +1,57 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: minecart.gc
-;; name in dgo: minecart
-;; dgos: L1, VI3
+(bundles "VI3.DGO")
+(require "engine/common-obs/generic-obs.gc")
+(require "engine/util/sync-info.gc")
 
 ;; DECOMP BEGINS
 
-(defskelgroup *minecartsteel-sg* minecartsteel minecartsteel-lod0-jg minecartsteel-idle-ja
-              ((minecartsteel-lod0-mg (meters 20))
-               (minecartsteel-lod1-mg (meters 40))
-               (minecartsteel-lod2-mg (meters 999999))
-               )
-              :bounds (static-spherem 0 0 0 4)
-              )
+(defskelgroup *minecartsteel-sg*
+  minecartsteel
+  minecartsteel-lod0-jg
+  minecartsteel-idle-ja
+  ((minecartsteel-lod0-mg (meters 20)) (minecartsteel-lod1-mg (meters 40)) (minecartsteel-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4))
 
 (deftype minecartsteel (process-drawable)
-  ((root   collide-shape-moving :override)
-   (index  int32)
-   (anim   spool-anim)
-   (sync   sync-info             :inline)
-   )
+  ((root  collide-shape-moving :override)
+   (index int32)
+   (anim  spool-anim)
+   (sync  sync-info :inline))
   (:state-methods
-    idle
-    )
-  )
-
+   idle))
 
 (defstate idle (minecartsteel)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch 'attack)
-       (when (= (-> proc type) target)
-         (let ((a2-1 (new 'stack 'collide-overlap-result)))
-           (if (not (on-platform (-> self root) (-> *target* control) a2-1))
-               (send-event proc 'no-look-around (seconds 1.5))
-               )
-           )
-         )
-       #f
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch 'attack)
+         (when (= (-> proc type) target)
+           (let ((a2-1 (new 'stack 'collide-overlap-result)))
+             (if (not (on-platform (-> self root) (-> *target* control) a2-1)) (send-event proc 'no-look-around (seconds 1.5)))))
+         #f)))
   :trans rider-trans
-  :code (behavior ()
-    (ja-channel-set! 1)
-    (ja :group! (-> self anim))
-    (loop
-      (ja :num-func num-func-identity
-          :frame-num (* (get-current-phase (-> self sync)) (the float (+ (-> (ja-group) data 0 length) -1)))
-          )
-      (let ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node minecartsteel-lod0-jg cart))))
-        (update-trans! (-> self sound) a1-1)
-        )
-      (update! (-> self sound))
-      (suspend)
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (ja-channel-set! 1)
+      (ja :group! (-> self anim))
+      (loop
+        (ja :num-func
+            num-func-identity
+            :frame-num
+            (* (get-current-phase (-> self sync)) (the float (+ (-> (ja-group) data 0 length) -1))))
+        (let ((a1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node minecartsteel-lod0-jg cart))))
+          (update-trans! (-> self sound) a1-1))
+        (update! (-> self sound))
+        (suspend)))
+  :post rider-post)
 
 (defbehavior minecartsteel-initialize-by-other minecartsteel ((arg0 entity-actor) (arg1 float))
   (let ((s4-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -76,12 +60,10 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 4)
       (set-vector! (-> s3-0 local-sphere) 0.0 4915.2 0.0 13107.2)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> self root) s4-0)
-    )
+    (set! (-> self root) s4-0))
   (process-drawable-from-entity! self arg0)
   (logclear! (-> self mask) (process-mask actor-pause))
   (quaternion-identity! (-> self root quat))
@@ -89,55 +71,31 @@
   (set! (-> self draw origin-joint-index) (the-as uint 3))
   (logior! (-> self skel status) (janim-status inited))
   (load-params! (-> self sync) self (the-as uint 9000) arg1 0.15 0.15)
-  (set! (-> self sound)
-        (new 'process 'ambient-sound (static-sound-spec "v3-cartride" :fo-max 30) (-> self root trans))
-        )
+  (set! (-> self sound) (new 'process 'ambient-sound (static-sound-spec "v3-cartride" :fo-max 30) (-> self root trans)))
   (set! (-> self index) (res-lump-value arg0 'index int))
   (let ((v1-33 (-> self index)))
     (set! (-> self anim)
-          (the-as
-            spool-anim
-            (cond
-              ((zero? v1-33)
-               minecartsteel-rail0-ja
-               )
-              ((= v1-33 1)
-               (let ((a0-17 (-> self sync))
-                     (t9-12 (method-of-type sync-info setup-params!))
-                     (a1-11 9000)
-                     (f0-7 (+ 0.8 arg1))
-                     )
-                 (t9-12 a0-17 (the-as uint a1-11) (- f0-7 (* (the float (the int (/ f0-7 1.0))) 1.0)) 0.15 0.15)
-                 )
-               minecartsteel-rail1-ja
-               )
-              (else
-                (let ((a0-18 (-> self sync))
-                      (t9-13 (method-of-type sync-info setup-params!))
-                      (a1-12 9000)
-                      (f0-10 (+ 0.13 arg1))
-                      )
-                  (t9-13 a0-18 (the-as uint a1-12) (- f0-10 (* (the float (the int (/ f0-10 1.0))) 1.0)) 0.15 0.15)
-                  )
-                minecartsteel-rail2-ja
-                )
-              )
-            )
-          )
-    )
-  (go-virtual idle)
-  )
+          (the-as spool-anim
+                  (cond
+                    ((zero? v1-33) minecartsteel-rail0-ja)
+                    ((= v1-33 1)
+                     (let ((a0-17 (-> self sync))
+                           (t9-12 (method-of-type sync-info setup-params!))
+                           (a1-11 9000)
+                           (f0-7 (+ 0.8 arg1)))
+                       (t9-12 a0-17 (the-as uint a1-11) (- f0-7 (* (the float (the int (/ f0-7 1.0))) 1.0)) 0.15 0.15))
+                     minecartsteel-rail1-ja)
+                    (else
+                     (let ((a0-18 (-> self sync))
+                           (t9-13 (method-of-type sync-info setup-params!))
+                           (a1-12 9000)
+                           (f0-10 (+ 0.13 arg1)))
+                       (t9-13 a0-18 (the-as uint a1-12) (- f0-10 (* (the float (the int (/ f0-10 1.0))) 1.0)) 0.15 0.15))
+                     minecartsteel-rail2-ja)))))
+  (go-virtual idle))
 
 (defmethod init-from-entity! ((this minecartsteel) (arg0 entity-actor))
   (dotimes (s4-0 4)
-    (process-spawn
-      minecartsteel
-      :init minecartsteel-initialize-by-other
-      arg0
-      (* 0.2 (the float (+ s4-0 1)))
-      :to this
-      )
-    )
+    (process-spawn minecartsteel :init minecartsteel-initialize-by-other arg0 (* 0.2 (the float (+ s4-0 1))) :to this))
   (minecartsteel-initialize-by-other arg0 0.0)
-  (none)
-  )
+  (none))

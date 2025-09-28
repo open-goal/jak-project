@@ -498,6 +498,25 @@
   (-> arg0 level task-mask)
   )
 
+(defmethod inspect ((this entity))
+  (call-parent-method this)
+  (format #t "~Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~Taid:   ~A~%" (-> this aid))
+  this
+  )
+
+(defmethod inspect ((this entity-actor))
+  (call-parent-method this)
+  (format #t "~Tetype:    ~A~%" (-> this etype))
+  (format #t "~Ttask:     ~d~%" (-> this task))
+  (format #t "~Tkill-mask: #x~X : (" (-> this kill-mask))
+  (bit-enum->string task-mask (-> this kill-mask) #t)
+  (format #t ")~%")
+  (format #t "~Tvis-id:   ~d~%" (-> this vis-id))
+  (format #t "~Tquat:     ~`vector`P~%" (-> this quat))
+  this
+  )
+
 (defmethod print ((this process))
   (cond
     ((and (-> this top-thread) (!= (-> this status) 'dead))
@@ -2251,14 +2270,14 @@
                             (not (logtest? (-> sv-48 perm status) (entity-perm-status bit-9 bit-10)))
                             (not (logtest? (-> sv-48 kill-mask) sv-32))
                             (or (-> s4-1 vis-info 0) (< (vector-vector-distance (-> sv-48 trans) sv-16) (-> sv-48 vis-dist)))
-                              ;; og:preserve-this PC port note: added this extra check to fix level types being used after deloaded because of bad entity placement
-                              (#if PC_PORT
-                                  (or (not (type-type? (-> sv-48 entity type) entity-actor)) (and (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype) type "entity-type-check etype" #f *stdcon*)
-                                                                                                  (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol) symbol "entity-type-check symbol" #f *stdcon*)
-                                                                                                  (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value) type "entity-type-check value" #f *stdcon*)
-                                                                                                  (= (-> (the-as entity-actor (-> sv-48 entity)) etype) (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value))
-                                                                                                  ))
-                                  #f)
+                            ;; og:preserve-this PC port note: added this extra check to fix level types being used after deloaded because of bad entity placement
+                            (#if PC_PORT
+                                (or (not (type-type? (-> sv-48 entity type) entity-actor)) (and (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype) type "entity-type-check etype" #f *stdcon*)
+                                                                                                (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol) symbol "entity-type-check symbol" #f *stdcon*)
+                                                                                                (valid? (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value) type "entity-type-check value" #f *stdcon*)
+                                                                                                (= (-> (the-as entity-actor (-> sv-48 entity)) etype) (-> (the-as entity-actor (-> sv-48 entity)) etype symbol value))
+                                                                                                ))
+                                #f)
                             )
                        (when (not (or (-> sv-48 process) (logtest? (-> sv-48 perm status) (entity-perm-status bit-0 dead)) s0-0))
                          (birth! (-> sv-48 entity))

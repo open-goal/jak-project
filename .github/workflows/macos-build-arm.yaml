@@ -9,37 +9,38 @@ on:
       cachePrefix:
         required: true
         type: string
+      uploadArtifacts:
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
     name: ARM
-    runs-on: macos-12
+    runs-on: macos-15
     timeout-minutes: 120
-
-    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
-      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
-      BUILDCACHE_COMPRESS_FORMAT: ZSTD
-      BUILDCACHE_COMPRESS_LEVEL: 19
-      BUILDCACHE_DIRECT_MODE: true
-      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      # TODO - not relevant on an intel runner
-      # - name: Set up ARM64 environment
-      #   run: sudo softwareupdate --install-rosetta --agree-to-license
+        uses: actions/checkout@v5
 
       - name: Install Package Dependencies
-        # TODO - arch -arm64 
-        run: brew install cmake ninja
+        env:
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+          HOMEBREW_NO_ANALYTICS: 1
+        run: |
+          if ! brew install ninja nasm; then
+            brew update
+            brew install ninja nasm
+          fi
 
-      - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v2.1.0
+      - name: Setup sccache
+        uses: hendrikmuhs/ccache-action@v1.2.18
         with:
-          cache_key: macos-12-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
-          buildcache_tag: v0.28.1
+          variant: sccache
+          key: macos-15-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
+          restore-keys: macos-15-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          max-size: 1000M
 
       - name: CMake Generation
         env:
@@ -47,20 +48,31 @@ jobs:
           CXX: clang++
         run: |
           cmake -B build --preset=${{ inputs.cmakePreset }} \
-            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build Project
         run: cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
 
-      # TODO - soon TM
-      # - name: Run Tests
-      #   run: ./test.sh
+      - name: List libraries of gk
+        run: otool -L ./build/game/gk
+
+      - name: Run Tests
+        run: ./test.sh
+
+      - name: Prepare artifacts
+        if: ${{ inputs.uploadArtifacts }}
+        run: |
+          strip ./build/goalc/goalc
+          strip ./build/decompiler/extractor
+          strip ./build/game/gk
+          strip ./build/lsp/lsp
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
+        if: ${{ inputs.uploadArtifacts }}
         with:
-          name: opengoal-macos-${{ inputs.cachePrefix }}
+          name: opengoal-macos-arm-${{ inputs.cachePrefix }}
           if-no-files-found: error
           path: |
             ./build/goalc/goalc

@@ -1,0 +1,510 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type shadow-settings
+(deftype shadow-settings (structure)
+  "Settings used to draw a shadow."
+  ((center         vector        :inline)
+   (flags          shadow-flags          :overlay-at (-> center data 3))
+   (shadow-dir     vector        :inline)
+   (dist-to-locus  float                 :overlay-at (-> shadow-dir data 3))
+   (bot-plane      plane         :inline)
+   (top-plane      plane         :inline)
+   (fade-vec       vector        :inline :offset  64)
+   (fade-dist      float                 :overlay-at (-> fade-vec x))
+   (fade-start     float                 :overlay-at (-> fade-vec y))
+   (dummy-2        int32                 :overlay-at (-> fade-vec z))
+   (shadow-type    int32                 :overlay-at (-> fade-vec w))
+   )
+  )
+
+;; definition for method 3 of type shadow-settings
+(defmethod inspect ((this shadow-settings))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-settings)
+  (format #t "~1Tcenter: #<vector @ #x~X>~%" (-> this center))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tshadow-dir: #<vector @ #x~X>~%" (-> this shadow-dir))
+  (format #t "~1Tdist-to-locus: ~f~%" (-> this shadow-dir w))
+  (format #t "~1Tbot-plane: #<plane @ #x~X>~%" (-> this bot-plane))
+  (format #t "~1Ttop-plane: #<plane @ #x~X>~%" (-> this top-plane))
+  (format #t "~1Tfade-dist: ~f~%" (-> this fade-dist))
+  (format #t "~1Tfade-start: ~f~%" (-> this fade-start))
+  (format #t "~1Tdummy-2: ~D~%" (-> this dummy-2))
+  (format #t "~1Tshadow-type: ~D~%" (-> this shadow-type))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-control
+(deftype shadow-control (basic)
+  ((settings  shadow-settings  :inline)
+   )
+  (:methods
+    (new (symbol type float float float vector shadow-flags float) _type_)
+    (enable-draw (shadow-control) int)
+    (disable-draw (shadow-control) int)
+    (set-top-plane-offset (shadow-control float) int)
+    (set-bottom-plane-offset (shadow-control float) int)
+    (probe-line-for-shadow (_type_ vector float float float) none)
+    (shadow-control-method-14 (_type_ vector vector float float float) none)
+    )
+  )
+
+;; definition for method 3 of type shadow-control
+(defmethod inspect ((this shadow-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tsettings: #<shadow-settings @ #x~X>~%" (-> this settings))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type shadow-control
+(defmethod enable-draw ((this shadow-control))
+  (logclear! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+;; definition for method 10 of type shadow-control
+(defmethod disable-draw ((this shadow-control))
+  (logior! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+;; definition for method 12 of type shadow-control
+(defmethod set-bottom-plane-offset ((this shadow-control) (arg0 float))
+  (set! (-> this settings bot-plane w) (- arg0))
+  0
+  )
+
+;; definition for method 11 of type shadow-control
+(defmethod set-top-plane-offset ((this shadow-control) (arg0 float))
+  (set! (-> this settings top-plane w) (- arg0))
+  0
+  )
+
+;; definition of type shadow-data
+(deftype shadow-data (structure)
+  "DMA data for the shadow renderer."
+  ((dma-unpack-template  dma-packet  :inline)
+   (dma-cnt              dma-tag)
+   (vif-nop              vif-tag)
+   (vif-unpack-v4-8      vif-tag)
+   (pdc                  basic)
+   (dist                 float)
+   (waits                uint32)
+   (inside-volume?       uint32)
+   )
+  )
+
+;; definition for method 3 of type shadow-data
+(defmethod inspect ((this shadow-data))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-data)
+  (format #t "~1Tdma-unpack-template: #<dma-packet @ #x~X>~%" (-> this dma-unpack-template))
+  (format #t "~1Tdma-cnt: ~D~%" (-> this dma-cnt))
+  (format #t "~1Tvif-nop: ~D~%" (-> this vif-nop))
+  (format #t "~1Tvif-unpack-v4-8: ~D~%" (-> this vif-unpack-v4-8))
+  (format #t "~1Tpdc: ~A~%" (-> this pdc))
+  (format #t "~1Tdist: ~f~%" (-> this dist))
+  (format #t "~1Twaits: ~D~%" (-> this waits))
+  (format #t "~1Tinside-volume?: ~D~%" (-> this inside-volume?))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-work
+(deftype shadow-work (structure)
+  ((shadow-data  shadow-data  :inline)
+   (inbuf        uint128      600)
+   )
+  )
+
+;; definition for method 3 of type shadow-work
+(defmethod inspect ((this shadow-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-work)
+  (format #t "~1Tshadow-data: #<shadow-data @ #x~X>~%" (-> this shadow-data))
+  (format #t "~1Tinbuf[600] @ #x~X~%" (-> this inbuf))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-bucket
+(deftype shadow-bucket (structure)
+  ((first         pointer)
+   (next          pointer)
+   (bucket-id     bucket-id)
+   (shadow-color  rgba)
+   (constants     shadow-vu1-constants)
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type shadow-bucket
+(defmethod inspect ((this shadow-bucket))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-bucket)
+  (format #t "~1Tfirst: #x~X~%" (-> this first))
+  (format #t "~1Tnext: #x~X~%" (-> this next))
+  (format #t "~1Tbucket-id: ~D~%" (-> this bucket-id))
+  (format #t "~1Tshadow-color: ~D~%" (-> this shadow-color))
+  (format #t "~1Tconstants: ~A~%" (-> this constants))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-globals
+(deftype shadow-globals (structure)
+  ((num-buckets  uint32)
+   (cur-bucket   uint32)
+   (bucket       shadow-bucket  3 :inline)
+   )
+  )
+
+;; definition for method 3 of type shadow-globals
+(defmethod inspect ((this shadow-globals))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-globals)
+  (format #t "~1Tnum-buckets: ~D~%" (-> this num-buckets))
+  (format #t "~1Tcur-bucket: ~D~%" (-> this cur-bucket))
+  (format #t "~1Tbucket[3] @ #x~X~%" (-> this bucket))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *shadow-globals*, type shadow-globals
+(define *shadow-globals* (new 'global 'shadow-globals))
+
+;; failed to figure out what this is:
+(set! (-> *shadow-globals* bucket 0 bucket-id) (bucket-id shadow))
+
+;; failed to figure out what this is:
+(set! (-> *shadow-globals* bucket 1 bucket-id) (bucket-id shadow2))
+
+;; failed to figure out what this is:
+(set! (-> *shadow-globals* bucket 2 bucket-id) (bucket-id shadow3))
+
+;; definition of type shadow-vertex
+(deftype shadow-vertex (structure)
+  ((x       float)
+   (y       float)
+   (z       float)
+   (weight  float)
+   )
+  )
+
+;; definition for method 3 of type shadow-vertex
+(defmethod inspect ((this shadow-vertex))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-vertex)
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tweight: ~f~%" (-> this weight))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-matrix-ref
+(deftype shadow-matrix-ref (structure)
+  ((joint-0  uint8)
+   (joint-1  uint8)
+   )
+  )
+
+;; definition for method 3 of type shadow-matrix-ref
+(defmethod inspect ((this shadow-matrix-ref))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-matrix-ref)
+  (format #t "~1Tjoint-0: ~D~%" (-> this joint-0))
+  (format #t "~1Tjoint-1: ~D~%" (-> this joint-1))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-edge
+(deftype shadow-edge (structure)
+  ((ind-0  uint8)
+   (ind-1  uint8)
+   (tri-0  uint8)
+   (tri-1  uint8)
+   )
+  )
+
+;; definition for method 3 of type shadow-edge
+;; INFO: this function exists in multiple non-identical object files
+;; ERROR: failed type prop at 14: Could not figure out load: (set! a2 (l.hu gp))
+(defmethod inspect ((a0-0 shadow-edge))
+  (local-vars
+    (v0-0 object)
+    (v0-1 none)
+    (v0-2 none)
+    (v0-3 none)
+    (v0-4 none)
+    (v0-5 shadow-edge)
+    (a0-1 symbol)
+    (a0-2 symbol)
+    (a0-3 none)
+    (a0-4 none)
+    (a0-5 none)
+    (a1-0 string)
+    (a1-1 string)
+    (a1-2 none)
+    (a1-3 none)
+    (a1-4 none)
+    (a2-0 shadow-edge)
+    (a2-1 none)
+    (a2-2 none)
+    (a2-3 none)
+    (a2-4 none)
+    (a3-0 symbol)
+    (t9-0 (function _varargs_ object))
+    (t9-1 (function _varargs_ object))
+    (t9-2 none)
+    (t9-3 none)
+    (t9-4 none)
+    )
+  (if (begin (not a0-0))
+      (begin (set! a0-0 a0-0) (goto cfg-4))
+      )
+  (set! t9-0 format)
+  (set! a0-1 #t)
+  (set! a1-0 L118)
+  (set! a2-0 a0-0)
+  (set! a3-0 'shadow-edge)
+  (call! a0-1 a1-0 a2-0 a3-0)
+  (set! t9-1 format)
+  (set! a0-2 #t)
+  (set! a1-1 L82)
+  (set! a2-1 (the-as none (l.hu a0-0)))
+  (call!)
+  (set! t9-2 (the-as none format))
+  (set! a0-3 (the-as none #t))
+  (set! a1-2 (the-as none L81))
+  (set! a2-2 (the-as none (l.hu (+ a0-0 2))))
+  (call!)
+  (set! t9-3 (the-as none format))
+  (set! a0-4 (the-as none #t))
+  (set! a1-3 (the-as none L80))
+  (set! a2-3 (the-as none (l.hu (+ a0-0 4))))
+  (call!)
+  (set! t9-4 (the-as none format))
+  (set! a0-5 (the-as none #t))
+  (set! a1-4 (the-as none L79))
+  (set! a2-4 (the-as none (l.hu (+ a0-0 6))))
+  (call!)
+  (label cfg-4)
+  (set! v0-5 a0-0)
+  (ret-value v0-5)
+  )
+
+;; definition of type shadow-tri
+(deftype shadow-tri (structure)
+  ((ind-0  uint8)
+   (ind-1  uint8)
+   (ind-2  uint8)
+   (faces  uint8)
+   )
+  )
+
+;; definition for method 3 of type shadow-tri
+(defmethod inspect ((this shadow-tri))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-tri)
+  (format #t "~1Tind-0: ~D~%" (-> this ind-0))
+  (format #t "~1Tind-1: ~D~%" (-> this ind-1))
+  (format #t "~1Tind-2: ~D~%" (-> this ind-2))
+  (format #t "~1Tfaces: ~D~%" (-> this faces))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-edge
+(deftype shadow-edge (structure)
+  ((ind-0  uint8)
+   (ind-1  uint8)
+   (tri-0  uint8)
+   (tri-1  uint8)
+   )
+  )
+
+;; definition for method 3 of type shadow-edge
+;; INFO: this function exists in multiple non-identical object files
+(defmethod inspect ((this shadow-edge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-edge)
+  (format #t "~1Tind-0: ~D~%" (-> this ind-0))
+  (format #t "~1Tind-1: ~D~%" (-> this ind-1))
+  (format #t "~1Ttri-0: ~D~%" (-> this tri-0))
+  (format #t "~1Ttri-1: ~D~%" (-> this tri-1))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-frag-header
+(deftype shadow-frag-header (structure)
+  ((qwc-data          uint32)
+   (num-joints        uint32)
+   (num-verts         uint16)
+   (num-twos          uint16)
+   (num-single-tris   uint16)
+   (num-single-edges  uint16)
+   (num-double-tris   uint16)
+   (num-double-edges  uint16)
+   (ofs-verts         uint32)
+   (ofs-refs          uint32)
+   (ofs-single-tris   uint32)
+   (ofs-single-edges  uint32)
+   (ofs-double-tris   uint32)
+   (ofs-double-edges  uint32)
+   )
+  )
+
+;; definition for method 3 of type shadow-frag-header
+(defmethod inspect ((this shadow-frag-header))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-frag-header)
+  (format #t "~1Tqwc-data: ~D~%" (-> this qwc-data))
+  (format #t "~1Tnum-joints: ~D~%" (-> this num-joints))
+  (format #t "~1Tnum-verts: ~D~%" (-> this num-verts))
+  (format #t "~1Tnum-twos: ~D~%" (-> this num-twos))
+  (format #t "~1Tnum-single-tris: ~D~%" (-> this num-single-tris))
+  (format #t "~1Tnum-single-edges: ~D~%" (-> this num-single-edges))
+  (format #t "~1Tnum-double-tris: ~D~%" (-> this num-double-tris))
+  (format #t "~1Tnum-double-edges: ~D~%" (-> this num-double-edges))
+  (format #t "~1Tofs-verts: ~D~%" (-> this ofs-verts))
+  (format #t "~1Tofs-refs: ~D~%" (-> this ofs-refs))
+  (format #t "~1Tofs-single-tris: ~D~%" (-> this ofs-single-tris))
+  (format #t "~1Tofs-single-edges: ~D~%" (-> this ofs-single-edges))
+  (format #t "~1Tofs-double-tris: ~D~%" (-> this ofs-double-tris))
+  (format #t "~1Tofs-double-edges: ~D~%" (-> this ofs-double-edges))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-frag-ref
+(deftype shadow-frag-ref (structure)
+  ((header  shadow-frag-header)
+   (qwc     uint32)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type shadow-frag-ref
+(defmethod inspect ((this shadow-frag-ref))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-frag-ref)
+  (format #t "~1Theader: #<shadow-frag-header @ #x~X>~%" (-> this header))
+  (format #t "~1Tqwc: ~D~%" (-> this qwc))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-geo
+(deftype shadow-geo (art-element)
+  "The low poly model used for drawing the shadow."
+  ((version        uint32           :overlay-at (-> pad 0))
+   (total-size     uint32           :overlay-at (-> pad 4))
+   (total-qwc      uint32)
+   (num-joints     uint32)
+   (num-fragments  uint32)
+   (frags          shadow-frag-ref  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type shadow-geo
+(defmethod inspect ((this shadow-geo))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Textra: ~A~%" (-> this extra))
+  (format #t "~1Tmaster-art-group-name: ~A~%" (-> this master-art-group-name))
+  (format #t "~1Tmaster-art-group-index: ~D~%" (-> this master-art-group-index))
+  (format #t "~1Tversion: ~D~%" (-> this version))
+  (format #t "~1Ttotal-size: ~D~%" (-> this total-size))
+  (format #t "~1Ttotal-qwc: ~D~%" (-> this total-qwc))
+  (format #t "~1Tnum-joints: ~D~%" (-> this num-joints))
+  (format #t "~1Tnum-fragments: ~D~%" (-> this num-fragments))
+  (format #t "~1Tfrags[0] @ #x~X~%" (-> this frags))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type shadow-control
+;; INFO: Used lq/sq
+(defmethod new shadow-control ((allocation symbol)
+                             (type-to-make type)
+                             (arg0 float)
+                             (arg1 float)
+                             (arg2 float)
+                             (arg3 vector)
+                             (arg4 shadow-flags)
+                             (arg5 float)
+                             )
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (if arg3
+        (set! (-> v0-0 settings center quad) (-> arg3 quad))
+        )
+    (set! (-> v0-0 settings flags) arg4)
+    (set-vector! (-> v0-0 settings shadow-dir) 0.0 -1.0 0.0 arg2)
+    (set-vector! (-> v0-0 settings bot-plane) 0.0 1.0 0.0 (- arg0))
+    (set-vector! (-> v0-0 settings top-plane) 0.0 1.0 0.0 (- arg1))
+    (set! (-> v0-0 settings fade-dist) arg5)
+    (set! (-> v0-0 settings shadow-type) 0)
+    v0-0
+    )
+  )
+
+;; definition for symbol *shadow*, type symbol
+(define *shadow* #f)
+
+;; definition for symbol *shadow-object*, type symbol
+(define *shadow-object* #f)
+
+;; definition for symbol *shadow-debug*, type symbol
+(define *shadow-debug* #f)
+
+;; definition for symbol *shadow-dma-buf*, type dma-buffer
+(define *shadow-dma-buf* (new 'global 'dma-buffer 512))

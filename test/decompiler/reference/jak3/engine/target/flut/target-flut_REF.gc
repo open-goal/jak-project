@@ -1,0 +1,3556 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type flut-bank
+(deftype flut-bank (basic)
+  ((jump-height-min         meters)
+   (jump-height-max         meters)
+   (double-jump-height-min  meters)
+   (double-jump-height-max  meters)
+   (air-attack-speed        meters)
+   (ground-timeout          uint64)
+   )
+  )
+
+;; definition for method 3 of type flut-bank
+(defmethod inspect ((this flut-bank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tjump-height-min: (meters ~m)~%" (-> this jump-height-min))
+  (format #t "~1Tjump-height-max: (meters ~m)~%" (-> this jump-height-max))
+  (format #t "~1Tdouble-jump-height-min: (meters ~m)~%" (-> this double-jump-height-min))
+  (format #t "~1Tdouble-jump-height-max: (meters ~m)~%" (-> this double-jump-height-max))
+  (format #t "~1Tair-attack-speed: (meters ~m)~%" (-> this air-attack-speed))
+  (format #t "~1Tground-timeout: ~D~%" (-> this ground-timeout))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *FLUT-bank*, type flut-bank
+(define *FLUT-bank* (new 'static 'flut-bank
+                      :jump-height-min (meters 5)
+                      :jump-height-max (meters 7)
+                      :double-jump-height-min (meters 1)
+                      :double-jump-height-max (meters 2)
+                      :air-attack-speed (meters 20)
+                      :ground-timeout #x96
+                      )
+        )
+
+;; definition for symbol *flut-walk-mods*, type surface
+(define *flut-walk-mods* (new 'static 'surface
+                           :name 'run
+                           :turnv 54613.332
+                           :turnvf 30.0
+                           :turnvv 524288.0
+                           :turnvvf 30.0
+                           :tiltv 65536.0
+                           :tiltvf 150.0
+                           :tiltvv 262144.0
+                           :tiltvvf 15.0
+                           :transv-max 102400.0
+                           :target-speed 102400.0
+                           :seek0 1.5
+                           :seek90 3.0
+                           :seek180 2.0
+                           :fric 1.0
+                           :nonlin-fric-dist 0.1
+                           :slip-factor 1.0
+                           :slide-factor 1.0
+                           :slope-up-factor 1.0
+                           :slope-down-factor 1.0
+                           :slope-slip-angle 1.0
+                           :impact-fric 1.0
+                           :bend-factor 1.0
+                           :bend-speed 1.0
+                           :alignv 1.0
+                           :slope-up-traction 1.0
+                           :align-speed 1.0
+                           :flags (surface-flag no-turn-around gun-off)
+                           )
+        )
+
+;; definition for symbol *flut-run-racer-mods*, type surface
+(define *flut-run-racer-mods* (new 'static 'surface
+                                :name 'run
+                                :turnv 54613.332
+                                :turnvf 30.0
+                                :turnvv 524288.0
+                                :turnvvf 30.0
+                                :tiltv 65536.0
+                                :tiltvf 150.0
+                                :tiltvv 262144.0
+                                :tiltvvf 15.0
+                                :transv-max 122880.0
+                                :target-speed 122880.0
+                                :seek0 1.5
+                                :seek90 3.0
+                                :seek180 2.0
+                                :fric 1.0
+                                :nonlin-fric-dist 0.1
+                                :slip-factor 1.0
+                                :slide-factor 1.0
+                                :slope-up-factor 1.0
+                                :slope-down-factor 1.0
+                                :slope-slip-angle 1.0
+                                :impact-fric 1.0
+                                :bend-factor 1.0
+                                :bend-speed 1.0
+                                :alignv 1.0
+                                :slope-up-traction 1.0
+                                :align-speed 1.0
+                                :flags (surface-flag no-turn-around gun-off)
+                                )
+        )
+
+;; definition for symbol *flut-run-wild-mods*, type surface
+(define *flut-run-wild-mods* (new 'static 'surface
+                               :name 'run
+                               :turnv 54613.332
+                               :turnvf 30.0
+                               :turnvv 32768.0
+                               :turnvvf 30.0
+                               :tiltv 65536.0
+                               :tiltvf 150.0
+                               :tiltvv 262144.0
+                               :tiltvvf 15.0
+                               :transv-max 204800.0
+                               :target-speed 204800.0
+                               :seek0 1.5
+                               :seek90 3.0
+                               :seek180 1.0
+                               :nonlin-fric-dist 0.1
+                               :slip-factor 1.0
+                               :slide-factor 1.0
+                               :slope-up-factor 1.0
+                               :slope-down-factor 1.0
+                               :slope-slip-angle 1.0
+                               :impact-fric 1.0
+                               :bend-factor 1.0
+                               :bend-speed 1.0
+                               :alignv 1.0
+                               :slope-up-traction 1.0
+                               :align-speed 1.0
+                               :flags (surface-flag no-turn-around gun-off)
+                               )
+        )
+
+;; definition for symbol *flut-jump-wild-mods*, type surface
+(define *flut-jump-wild-mods* (new 'static 'surface
+                                :name 'jump
+                                :turnv 131072.0
+                                :turnvf 30.0
+                                :turnvv 16384.0
+                                :turnvvf 30.0
+                                :tiltv 65536.0
+                                :tiltvf 150.0
+                                :tiltvv 262144.0
+                                :tiltvvf 15.0
+                                :transv-max 204800.0
+                                :target-speed 204800.0
+                                :nonlin-fric-dist 1.0
+                                :slip-factor 1.0
+                                :slide-factor 1.0
+                                :slope-up-factor 1.0
+                                :slope-down-factor 1.0
+                                :slope-slip-angle 1.0
+                                :impact-fric 1.0
+                                :bend-factor 1.0
+                                :bend-speed 1.0
+                                :alignv 1.0
+                                :slope-up-traction 1.0
+                                :align-speed 1.0
+                                :mode 'air
+                                :flags (surface-flag air gun-off)
+                                )
+        )
+
+;; definition for symbol *flut-jump-mods*, type surface
+(define *flut-jump-mods* (new 'static 'surface
+                           :name 'jump
+                           :turnv 131072.0
+                           :turnvf 30.0
+                           :turnvv 54613.332
+                           :turnvvf 30.0
+                           :tiltv 65536.0
+                           :tiltvf 150.0
+                           :tiltvv 262144.0
+                           :tiltvvf 15.0
+                           :transv-max 102400.0
+                           :target-speed 102400.0
+                           :seek0 0.9
+                           :seek90 1.5
+                           :seek180 1.5
+                           :fric 0.2
+                           :nonlin-fric-dist 1.0
+                           :slip-factor 1.0
+                           :slide-factor 1.0
+                           :slope-up-factor 1.0
+                           :slope-down-factor 1.0
+                           :slope-slip-angle 1.0
+                           :impact-fric 1.0
+                           :bend-factor 1.0
+                           :bend-speed 1.0
+                           :alignv 1.0
+                           :slope-up-traction 1.0
+                           :align-speed 1.0
+                           :mode 'air
+                           :flags (surface-flag air gun-off)
+                           )
+        )
+
+;; definition for symbol *flut-jump-racer-mods*, type surface
+(define *flut-jump-racer-mods* (new 'static 'surface
+                                 :name 'jump
+                                 :turnv 131072.0
+                                 :turnvf 30.0
+                                 :turnvv 54613.332
+                                 :turnvvf 30.0
+                                 :tiltv 65536.0
+                                 :tiltvf 150.0
+                                 :tiltvv 262144.0
+                                 :tiltvvf 15.0
+                                 :transv-max 122880.0
+                                 :target-speed 122880.0
+                                 :seek0 0.9
+                                 :seek90 1.5
+                                 :seek180 1.5
+                                 :fric 0.2
+                                 :nonlin-fric-dist 1.0
+                                 :slip-factor 1.0
+                                 :slide-factor 1.0
+                                 :slope-up-factor 1.0
+                                 :slope-down-factor 1.0
+                                 :slope-slip-angle 1.0
+                                 :impact-fric 1.0
+                                 :bend-factor 1.0
+                                 :bend-speed 1.0
+                                 :alignv 1.0
+                                 :slope-up-traction 1.0
+                                 :align-speed 1.0
+                                 :mode 'air
+                                 :flags (surface-flag air gun-off)
+                                 )
+        )
+
+;; definition for symbol *flut-double-jump-mods*, type surface
+(define *flut-double-jump-mods* (new 'static 'surface
+                                  :name 'jump-double
+                                  :turnv 131072.0
+                                  :turnvf 30.0
+                                  :turnvv 54613.332
+                                  :turnvvf 30.0
+                                  :tiltv 65536.0
+                                  :tiltvf 150.0
+                                  :tiltvv 262144.0
+                                  :tiltvvf 15.0
+                                  :transv-max 102400.0
+                                  :target-speed 102400.0
+                                  :seek0 0.9
+                                  :seek90 1.5
+                                  :seek180 1.5
+                                  :fric 0.1
+                                  :nonlin-fric-dist 10.0
+                                  :slip-factor 1.0
+                                  :slide-factor 1.0
+                                  :slope-up-factor 1.0
+                                  :slope-down-factor 1.0
+                                  :slope-slip-angle 1.0
+                                  :impact-fric 1.0
+                                  :bend-factor 1.0
+                                  :bend-speed 1.0
+                                  :alignv 1.0
+                                  :slope-up-traction 1.0
+                                  :align-speed 1.0
+                                  :mode 'air
+                                  :flags (surface-flag air gun-off)
+                                  )
+        )
+
+;; definition for symbol *flut-double-jump-racer-mods*, type surface
+(define *flut-double-jump-racer-mods* (new 'static 'surface
+                                        :name 'jump-double
+                                        :turnv 131072.0
+                                        :turnvf 30.0
+                                        :turnvv 54613.332
+                                        :turnvvf 30.0
+                                        :tiltv 65536.0
+                                        :tiltvf 150.0
+                                        :tiltvv 262144.0
+                                        :tiltvvf 15.0
+                                        :transv-max 122880.0
+                                        :target-speed 122880.0
+                                        :seek0 0.9
+                                        :seek90 1.5
+                                        :seek180 1.5
+                                        :fric 0.1
+                                        :nonlin-fric-dist 10.0
+                                        :slip-factor 1.0
+                                        :slide-factor 1.0
+                                        :slope-up-factor 1.0
+                                        :slope-down-factor 1.0
+                                        :slope-slip-angle 1.0
+                                        :impact-fric 1.0
+                                        :bend-factor 1.0
+                                        :bend-speed 1.0
+                                        :alignv 1.0
+                                        :slope-up-traction 1.0
+                                        :align-speed 1.0
+                                        :mode 'air
+                                        :flags (surface-flag air gun-off)
+                                        )
+        )
+
+;; definition for symbol *flut-run-attack-mods*, type surface
+(define *flut-run-attack-mods* (new 'static 'surface
+                                 :name 'wheel-flip
+                                 :tiltv 65536.0
+                                 :tiltvf 150.0
+                                 :tiltvv 262144.0
+                                 :tiltvvf 15.0
+                                 :transv-max 122880.0
+                                 :target-speed 143360.0
+                                 :seek90 0.5
+                                 :seek180 0.15
+                                 :slip-factor 1.0
+                                 :slide-factor 1.0
+                                 :slope-up-factor 0.25
+                                 :slope-down-factor 1.0
+                                 :slope-slip-angle 1.0
+                                 :impact-fric 1.0
+                                 :bend-factor 1.0
+                                 :bend-speed 1.0
+                                 :alignv 1.0
+                                 :slope-up-traction 1.0
+                                 :align-speed 1.0
+                                 :mode 'attack
+                                 :flags (surface-flag no-turn-around turn-to-pad attack gun-off)
+                                 )
+        )
+
+;; definition for symbol *flut-air-attack-mods*, type surface
+(define *flut-air-attack-mods* (new 'static 'surface
+                                 :name 'flop
+                                 :tiltv 65536.0
+                                 :tiltvf 150.0
+                                 :tiltvv 262144.0
+                                 :tiltvvf 15.0
+                                 :transv-max 122880.0
+                                 :target-speed 122880.0
+                                 :seek0 1.0
+                                 :seek90 0.3
+                                 :seek180 1.5
+                                 :slip-factor 1.0
+                                 :slide-factor 1.0
+                                 :slope-up-factor 0.25
+                                 :slope-down-factor 1.0
+                                 :slope-slip-angle 1.0
+                                 :impact-fric 1.0
+                                 :bend-factor 1.0
+                                 :bend-speed 1.0
+                                 :alignv 1.0
+                                 :slope-up-traction 1.0
+                                 :align-speed 1.0
+                                 :mode 'attack
+                                 :flags (surface-flag air attack gun-off)
+                                 )
+        )
+
+;; definition for function flut-leg-ik-callback
+;; INFO: Used lq/sq
+(defun flut-leg-ik-callback ((arg0 joint-mod-ik) (arg1 object) (arg2 object) (arg3 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (vector-copy! s5-0 arg3)
+    (let ((f0-1 (- (-> arg3 y) (-> (target-pos 0) y))))
+      (if (< 6144.0 f0-1)
+          (set! f0-1 6144.0)
+          )
+      (if (< f0-1 -6144.0)
+          (set! f0-1 -6144.0)
+          )
+      (+! (-> arg0 user-position y) f0-1)
+      )
+    (let ((f0-4 (- (-> arg3 y) (-> arg0 user-position y))))
+      (seek! (-> arg0 user-float) f0-4 (* 40960.0 (seconds-per-frame)))
+      )
+    (let* ((f28-0 (-> arg0 user-float))
+           (f30-1 (lerp-scale 1.0 0.0 f28-0 0.0 12288.0))
+           (s3-1 (vector+*! (new 'stack-no-clear 'vector) s5-0 *up-vector* 8192.0))
+           )
+      (vector-float*! (new 'stack-no-clear 'vector) *up-vector* -16384.0)
+      (let ((s2-0 (new 'stack-no-clear 'vector)))
+        0.0
+        (let ((f0-11 (intersect-ray-plane s3-1 *up-vector* (-> arg0 user-position) *up-vector*)))
+          (vector+*! s2-0 s3-1 *up-vector* f0-11)
+          )
+        (vector+*! s2-0 arg3 *up-vector* (- f28-0))
+        (vector+*!
+          s5-0
+          s5-0
+          (vector-! (new 'stack-no-clear 'vector) s2-0 s5-0)
+          (fmin 1.0 (* (-> arg0 user-blend) f30-1))
+          )
+        )
+      )
+    (set-ik-target! arg0 s5-0)
+    )
+  (none)
+  )
+
+;; definition for function flut-update-ik
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+(defbehavior flut-update-ik target ()
+  (local-vars (sv-720 vector))
+  (let ((gp-0 (new 'stack-no-clear 'collide-query))
+        (s5-0 (-> (the-as process-drawable (-> self parent 0)) root))
+        )
+    (let ((a1-0 (-> gp-0 bbox))
+          (v1-2 (-> s5-0 trans))
+          (a0-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> a0-0 x) 10240.0)
+      (set! (-> a0-0 y) 10240.0)
+      (set! (-> a0-0 z) 10240.0)
+      (set! (-> a0-0 w) 1.0)
+      (vector-! (-> a1-0 min) v1-2 a0-0)
+      )
+    (let ((a1-2 (-> gp-0 bbox max))
+          (v1-3 (-> s5-0 trans))
+          (a0-1 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> a0-1 x) 10240.0)
+      (set! (-> a0-1 y) 10240.0)
+      (set! (-> a0-1 z) 10240.0)
+      (set! (-> a0-1 w) 1.0)
+      (vector+! a1-2 v1-3 a0-1)
+      )
+    (set! (-> gp-0 collide-with) (-> (the-as collide-shape s5-0) root-prim prim-core collide-with))
+    (set! (-> gp-0 ignore-process0) #f)
+    (set! (-> gp-0 ignore-process1) #f)
+    (set! (-> gp-0 ignore-pat) (-> (the-as collide-shape s5-0) pat-ignore-mask))
+    (fill-using-bounding-box *collide-cache* gp-0)
+    (dotimes (s4-0 2)
+      (let ((s3-0 (-> self mech-ik s4-0)))
+        #t
+        (set! (-> s3-0 callback) (the-as (function joint-mod-ik matrix matrix vector object) flut-leg-ik-callback))
+        (let ((a1-6 (not (logtest? (target-flags lleg-no-ik rleg-no-ik) (-> *target* target-flags)))))
+          (enable-set! s3-0 a1-6)
+          )
+        (-> s3-0 shoulder-matrix-no-ik)
+        (let ((v1-17 (-> s3-0 elbow-matrix-no-ik))
+              (s0-0 (new 'stack-no-clear 'vector))
+              )
+          (set! sv-720 (new 'stack-no-clear 'vector))
+          (let ((a0-8 (-> *y-vector* quad)))
+            (set! (-> sv-720 quad) a0-8)
+            )
+          (let ((s2-0 (new 'stack-no-clear 'vector)))
+            (new 'stack-no-clear 'vector)
+            (new 'stack-no-clear 'vector)
+            (let ((s1-0 (new 'stack-no-clear 'vector)))
+              (vector+*! s0-0 (-> v1-17 trans) (-> v1-17 uvec) (-> s3-0 hand-dist))
+              (let ((f0-11
+                      (lerp-scale 1.0 0.0 (- (-> s0-0 y) (-> (the-as collide-shape-moving s5-0) gspot-pos y)) 2048.0 12288.0)
+                      )
+                    )
+                (seek! (-> s3-0 user-blend) f0-11 (* 4.0 (seconds-per-frame)))
+                )
+              (vector+*! (-> gp-0 start-pos) s0-0 sv-720 6144.0)
+              (let ((v1-23 (-> gp-0 move-dist))
+                    (f0-16 -20480.0)
+                    )
+                (vector-float*! v1-23 sv-720 f0-16)
+                )
+              (let ((v1-25 gp-0))
+                (set! (-> v1-25 radius) 4.096)
+                (set! (-> v1-25 collide-with) (-> gp-0 collide-with))
+                (set! (-> v1-25 ignore-process0) #f)
+                (set! (-> v1-25 ignore-process1) #f)
+                (set! (-> v1-25 ignore-pat)
+                      (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                      )
+                (set! (-> v1-25 action-mask) (collide-action solid))
+                )
+              (let ((f30-0 (probe-using-line-sphere *collide-cache* gp-0)))
+                (cond
+                  ((>= f30-0 0.0)
+                   (vector-copy! s1-0 (-> gp-0 best-other-tri normal))
+                   (when (< 8192.0 (vector-vector-angle-safe *y-vector* s1-0))
+                     (let* ((a1-18 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) *y-vector* s1-0) 1.0))
+                            (a2-12 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) a1-18 8192.0))
+                            )
+                       (vector-orient-by-quat! s1-0 *y-vector* a2-12)
+                       )
+                     )
+                   (vector+*! s2-0 (-> gp-0 start-pos) (-> gp-0 move-dist) f30-0)
+                   (vector-copy! (-> s3-0 user-position) s2-0)
+                   (vector-copy! (-> s3-0 user-normal) s1-0)
+                   )
+                  (else
+                    (set! (-> s0-0 y) (-> (target-pos 0) y))
+                    (vector-copy! (-> s3-0 user-position) s0-0)
+                    (vector-copy! (-> s3-0 user-normal) *y-vector*)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for function target-flut-get-off?
+(defbehavior target-flut-get-off? target ()
+  (and (not (and (logtest? (-> self control mod-surface flags) (surface-flag air))
+                 (not (logtest? (-> self control status) (collide-status on-surface)))
+                 )
+            )
+       (and (time-elapsed? (-> self control rider-time) (seconds 1)) (-> *setting-control* user-current pilot-exit))
+       )
+  )
+
+;; definition for function target-flut-post-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-flut-post-post target ()
+  (vector+! (-> self flut flut-trans) (-> self control trans) (-> self control cspace-offset))
+  (quaternion-copy! (the-as quaternion (-> self flut flut-quat)) (-> self control quat))
+  (vector-copy! (-> self flut flut-scale) (-> self control scale))
+  (let ((v1-8 (-> *target-shadow-control* settings shadow-dir quad)))
+    (set! (-> *flut-shadow-control* settings shadow-dir quad) v1-8)
+    )
+  0
+  (none)
+  )
+
+;; definition for function target-flut-wild-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-flut-wild-post target ()
+  (let ((f30-0 (-> self clock clock-ratio)))
+    (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
+      (update-rates! (-> self clock) (/ f30-0 (the float gp-1)))
+      (while (nonzero? gp-1)
+        (+! gp-1 -1)
+        (set! (-> self control remaining-ctrl-iterations) gp-1)
+        (flag-setup)
+        (if (< (-> self control force-turn-to-strength) 0.0)
+            (set! (-> self control force-turn-to-strength) (- 1.0 (-> self control cpad stick0-speed)))
+            )
+        (build-conversions (-> self control transv))
+        (do-rotations1)
+        (let ((s5-0 (new-stack-vector0)))
+          (read-pad s5-0)
+          (let ((f28-0
+                  (debounce-speed
+                    (-> self control pad-magnitude)
+                    (-> self control last-pad-magnitude)
+                    (-> self control pad-xz-dir)
+                    (-> self control last-pad-xz-dir)
+                    )
+                  )
+                )
+            (when (!= (-> self control force-turn-to-strength) 0.0)
+              (let ((f0-12 (fmin 1.0 (-> self control force-turn-to-strength))))
+                (set! (-> self control force-turn-to-strength) f0-12)
+                (let ((a1-3 (vector-float*!
+                              (new 'stack-no-clear 'vector)
+                              (if (= f28-0 0.0)
+                                  *zero-vector*
+                                  s5-0
+                                  )
+                              f28-0
+                              )
+                            )
+                      (a2-2
+                        (vector-float*!
+                          (new 'stack-no-clear 'vector)
+                          (-> self control force-turn-to-direction)
+                          (-> self control force-turn-to-speed)
+                          )
+                        )
+                      )
+                  (vector-lerp! s5-0 a1-3 a2-2 f0-12)
+                  )
+                )
+              (set! f28-0 (vector-length s5-0))
+              (vector-normalize! s5-0 1.0)
+              )
+            (turn-to-vector s5-0 f28-0)
+            )
+          )
+        (set-vector!
+          (-> self control transv-ctrl)
+          0.0
+          (-> self control transv-ctrl y)
+          (-> self control current-surface target-speed)
+          1.0
+          )
+        (add-gravity)
+        (do-rotations2)
+        (reverse-conversions (-> self control transv))
+        (pre-collide-setup)
+        (let ((a2-3 (new 'stack-no-clear 'collide-query)))
+          (let ((v1-33 (-> self control)))
+            (set! (-> a2-3 collide-with) (-> v1-33 root-prim prim-core collide-with))
+            (set! (-> a2-3 ignore-process0) self)
+            (set! (-> a2-3 ignore-process1) #f)
+            (set! (-> a2-3 ignore-pat) (-> v1-33 pat-ignore-mask))
+            )
+          (set! (-> a2-3 action-mask) (collide-action solid))
+          (fill-cache-integrate-and-collide (-> self control) (-> self control transv) a2-3 (meters 1))
+          )
+        (bend-gravity)
+        (post-flag-setup)
+        )
+      )
+    (update-rates! (-> self clock) f30-0)
+    )
+  (ja-post)
+  (joint-points)
+  (do-target-gspot)
+  (target-powerup-process)
+  (target-flut-post-post)
+  0
+  (none)
+  )
+
+;; definition for function target-flut-post
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-flut-post target ()
+  (cond
+    ((and (= (-> self flut mode) 'wild) (not (logtest? (-> self focus-status) (focus-status dead hit))))
+     (target-flut-wild-post)
+     )
+    (else
+      (target-post)
+      (target-flut-post-post)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function target-flut-falling-anim-trans
+;; WARN: Return type mismatch int vs object.
+(defbehavior target-flut-falling-anim-trans target ()
+  (cond
+    ((not (-> self flut as-daxter?))
+     (let ((v1-4 (ja-group)))
+       (b!
+         (and v1-4 (or (= v1-4 jakb-flut-jump-loop-ja) (= v1-4 jakb-flut-jump-land-ja)))
+         cfg-10
+         :delay (empty-form)
+         )
+       )
+     (ja-channel-push! 1 (seconds 0.33))
+     (ja :group! jakb-flut-jump-loop-ja)
+     (b! #t cfg-35 :delay (nop!))
+     (label cfg-10)
+     (cond
+       ((and (logtest? (-> self control status) (collide-status on-surface))
+             (let ((v1-17 (ja-group)))
+               (not (and v1-17 (= v1-17 jakb-flut-jump-land-ja)))
+               )
+             )
+        (ja-channel-push! 1 (seconds 0.02))
+        (ja :group! jakb-flut-jump-land-ja)
+        )
+       ((let ((v1-26 (ja-group)))
+          (and v1-26 (= v1-26 jakb-flut-jump-loop-ja))
+          )
+        (ja :num! (loop!))
+        )
+       ((let ((v1-35 (ja-group)))
+          (and v1-35 (= v1-35 jakb-flut-jump-land-ja))
+          )
+        (ja :num! (seek!))
+        )
+       )
+     (label cfg-35)
+     )
+    (else
+      (let ((v1-47 (ja-group)))
+        (cond
+          ((not (and v1-47 (= v1-47 jakb-mech-death-a-ja)))
+           (ja-channel-push! 1 (seconds 0.33))
+           (ja :group! jakb-mech-death-a-ja)
+           )
+          ((let ((v1-56 (ja-group)))
+             (and v1-56 (= v1-56 jakb-mech-death-a-ja))
+             )
+           (ja :num! (loop!))
+           )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for function target-flut-hit-ground-anim
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior target-flut-hit-ground-anim target ((arg0 symbol))
+  (let ((v1-2 (ja-group)))
+    (cond
+      ((and v1-2 (= v1-2 jakb-flut-jump-loop-ja))
+       (if (!= (-> self skel root-channel 0) (-> self skel channel))
+           (ja-channel-push! 2 (seconds 0.05))
+           (ja-channel-set! 2)
+           )
+       (ja :group! jakb-flut-jump-land-ja :num! min)
+       (ja :chan 1 :group! jakb-flut-jump-forward-land-ja :num! min)
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek!))
+         (ja :chan 1 :num! (chan 0))
+         )
+       #f
+       )
+      ((let ((v1-33 (ja-group)))
+         (and v1-33 (or (= v1-33 jakb-flut-jump-ja) (= v1-33 jakb-flut-jump-land-ja)))
+         )
+       #f
+       )
+      ((let ((v1-39 (ja-group)))
+         (and v1-39 (= v1-39 jakb-flut-double-jump-ja))
+         )
+       (ja-channel-set! 1)
+       (ja-no-eval :group! jakb-flut-jump-land-ja :num! (seek!) :frame-num 0.0)
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek!))
+         )
+       #f
+       )
+      ((let ((v1-68 (ja-group)))
+         (and v1-68 (or (= v1-68 jakb-flut-air-attack-ja) (= v1-68 jakb-flut-air-attack-loop-ja)))
+         )
+       (ja-channel-set! 1)
+       (ja-no-eval :group! jakb-flut-air-attack-land-ja :num! (seek!) :frame-num 0.0)
+       (until (ja-done? 0)
+         (compute-delta-align! (-> self align))
+         (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 1.0)
+         (suspend)
+         (ja :num! (seek!))
+         )
+       #f
+       )
+      )
+    )
+  )
+
+;; definition for function target-flut-standard-event-handler
+(defbehavior target-flut-standard-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (cond
+    ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+     'flut
+     )
+    (else
+      (case arg2
+        (('event-step)
+         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.07))
+         )
+        (('end-mode)
+         (case (-> arg3 param 0)
+           (('flut)
+            (-> self flut mode)
+            (go target-flut-get-off (process->handle arg0))
+            )
+           )
+         )
+        (('touched)
+         (cond
+           ((= (-> self flut mode) 'racer)
+            (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-2 from) (process->ppointer self))
+              (set! (-> a1-2 num-params) 2)
+              (set! (-> a1-2 message) 'attack)
+              (set! (-> a1-2 param 0) (-> arg3 param 0))
+              (set! (-> a1-2 param 1)
+                    (the-as
+                      uint
+                      (static-attack-info :mask (vehicle-impulse-factor) ((id (-> self flut attack-id))
+                                                                          (damage 2.0)
+                                                                          (vehicle-damage-factor 1.0)
+                                                                          (vehicle-impulse-factor 1.0)
+                                                                          (mode 'flut)
+                                                                          (penetrate-using (-> self control penetrate-using))
+                                                                          )
+                                          )
+                      )
+                    )
+              (let ((s5-0 (send-event-function arg0 a1-2)))
+                (when s5-0
+                  (play-effect-sound
+                    (-> self skel effect)
+                    (the-as symbol "sound")
+                    -1.0
+                    28
+                    (the-as basic #f)
+                    (static-sound-name "flut-punch-hit")
+                    )
+                  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.2))
+                  (let* ((v1-24 (-> self game))
+                         (a0-27 (+ (-> v1-24 attack-id) 1))
+                         )
+                    (set! (-> v1-24 attack-id) a0-27)
+                    (set! (-> self flut attack-id) a0-27)
+                    )
+                  )
+                s5-0
+                )
+              )
+            )
+           (else
+             (target-generic-event-handler arg0 arg1 arg2 arg3)
+             )
+           )
+         )
+        (('attack 'attack-or-shove 'attack-invinc)
+         (target-attacked
+           arg2
+           (the-as attack-info (-> arg3 param 1))
+           arg0
+           (the-as touching-shapes-entry (-> arg3 param 0))
+           target-flut-hit
+           )
+         )
+        (('shove)
+         (when (not (and (-> self next-state) (= (-> self next-state name) 'target-hit)))
+           (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 168)
+           (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
+             (set! (-> self attack-info-rec attacker) (process->handle arg0))
+             (logior! (-> self attack-info-rec mask) (attack-mask attacker))
+             )
+           (go target-flut-hit 'shove (-> self attack-info-rec))
+           )
+         )
+        (('falling)
+         (if (not (and (-> self next-state) (= (-> self next-state name) 'target-flut-death)))
+             (go target-flut-falling #f)
+             )
+         )
+        (('swim)
+         (send-event
+           self
+           'attack
+           #f
+           (static-attack-info
+             :mask (vehicle-impulse-factor)
+             ((id (new-attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'drown))
+             )
+           )
+         )
+        (('change-mode)
+         (case (-> arg3 param 0)
+           (('grab)
+            (when (not (focus-test? self dead))
+              (if (not (-> arg3 param 1))
+                  #t
+                  (go target-flut-grab)
+                  )
+              )
+            )
+           (('kanga)
+            (go target-flut-kanga-catch (process->handle arg0) 'kanga)
+            )
+           (('normal)
+            (go target-flut-get-off (process->handle arg0))
+            )
+           )
+         )
+        (('eject)
+         (go target-flut-eject #f)
+         )
+        (('clone-anim)
+         (go target-flut-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+         )
+        (('mode-time)
+         (- (current-time) (-> self flut flut-start-time))
+         )
+        (else
+          (target-generic-event-handler arg0 arg1 arg2 arg3)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function target-flut-dangerous-event-handler
+(defbehavior target-flut-dangerous-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('touched)
+     (if ((method-of-type touching-shapes-entry prims-touching?)
+          (the-as touching-shapes-entry (-> arg3 param 0))
+          (-> self control)
+          (the-as uint 1920)
+          )
+         (target-send-attack
+           arg0
+           (-> self control danger-mode)
+           (the-as touching-shapes-entry (-> arg3 param 0))
+           (the-as int (-> self control target-attack-id))
+           (the-as int (-> self control attack-count))
+           (-> self control penetrate-using)
+           )
+         (target-flut-standard-event-handler arg0 arg1 arg2 arg3)
+         )
+     )
+    (('attack 'attack-or-shove 'attack-invinc)
+     (target-attacked
+       arg2
+       (the-as attack-info (-> arg3 param 1))
+       arg0
+       (the-as touching-shapes-entry (-> arg3 param 0))
+       target-flut-hit
+       )
+     )
+    (else
+      (target-flut-standard-event-handler arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for function target-fldax-enter
+(defbehavior target-fldax-enter target ()
+  (ja-channel-set! 0)
+  (set! (-> self flut art-group-backup) (-> self draw art-group))
+  (set! (-> self draw art-group) (-> self sidekick 0 draw art-group))
+  (logior! (-> self draw status) (draw-control-status no-draw-bounds2))
+  (send-event (ppointer->process (-> self sidekick)) 'matrix 'indax)
+  )
+
+;; definition for function target-fldax-exit
+(defbehavior target-fldax-exit target ()
+  (ja-channel-set! 0)
+  (set! (-> self draw art-group) (-> self flut art-group-backup))
+  (logclear! (-> self draw status) (draw-control-status no-draw-bounds2))
+  (send-event (ppointer->process (-> self sidekick)) 'matrix #f)
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-start (target)
+  :event target-flut-standard-event-handler
+  :exit (behavior ()
+    (when (not (and (-> self next-state)
+                    (let ((v1-3 (-> self next-state name)))
+                      (or (= v1-3 'target-flut-stance)
+                          (= v1-3 'target-flut-walk)
+                          (= v1-3 'target-flut-run-wild)
+                          (= v1-3 'target-flut-jump)
+                          (= v1-3 'target-flut-double-jump)
+                          (= v1-3 'target-flut-hit-ground)
+                          (= v1-3 'target-flut-falling)
+                          (= v1-3 'target-flut-running-attack)
+                          (= v1-3 'target-flut-air-attack)
+                          (= v1-3 'target-flut-air-attack-hit-ground)
+                          (= v1-3 'target-flut-hit)
+                          (= v1-3 'target-flut-death)
+                          (= v1-3 'target-flut-get-on)
+                          (= v1-3 'target-flut-get-off)
+                          (= v1-3 'target-flut-get-off-jump)
+                          (= v1-3 'target-flut-eject)
+                          (= v1-3 'target-flut-grab)
+                          (= v1-3 'target-flut-clone-anim)
+                          (= v1-3 'target-flut-kanga-catch)
+                          )
+                      )
+                    )
+               )
+      (+! (-> *game-info* flut-count) -1)
+      (let ((v1-7 (-> self manipy)))
+        (when v1-7
+          (deactivate (-> v1-7 0))
+          (set! (-> self manipy) (the-as (pointer manipy) #f))
+          )
+        )
+      (if (-> self flut as-daxter?)
+          (target-fldax-exit)
+          )
+      (logclear! (-> self focus-status) (focus-status flut))
+      (set! (-> self control mod-surface) *walk-mods*)
+      (logclear! (-> self target-flags) (target-flags tf6))
+      (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
+      (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
+      (target-collide-set! 'normal 0.0)
+      (set! (-> self control reaction) target-collision-reaction)
+      (set! (-> self control cspace-offset quad) (the-as uint128 0))
+      (remove-setting! 'sound-flava)
+      (setting-control-method-14 *setting-control* (-> self flut mode-sound-bank))
+      (set! (-> self flut mode-sound-bank) #f)
+      (set! (-> self control pat-ignore-mask)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :board #x1)
+            )
+      (remove-setting! 'string-spline-accel)
+      (remove-setting! 'string-spline-max-move)
+      (remove-setting! 'string-spline-accel-player)
+      (remove-setting! 'string-spline-max-move-player)
+      (remove-setting! 'fov)
+      (remove-setting! 'string-min-length)
+      (remove-setting! 'string-max-length)
+      (remove-setting! 'string-min-height)
+      (remove-setting! 'string-max-height)
+      (target-exit)
+      )
+    )
+  :code (behavior ((arg0 handle) (arg1 symbol) (arg2 int))
+    (local-vars
+      (sv-96 process)
+      (sv-112 (function vector entity-actor skeleton-group vector manipy-options none :behavior manipy))
+      (sv-128 vector)
+      (sv-144 entity-actor)
+      )
+    (target-exit)
+    (+! (-> *game-info* flut-count) 1)
+    (set-setting! 'string-spline-accel 'abs (meters 1) 0)
+    (set-setting! 'string-spline-max-move 'abs (meters 10) 0)
+    (set-setting! 'string-spline-accel-player 'abs (meters 1) 0)
+    (set-setting! 'string-spline-max-move-player 'abs (meters 10) 0)
+    (case arg1
+      (('wild)
+       (set-setting! 'string-min-length 'abs (meters 5) 0)
+       (set-setting! 'string-max-length 'abs (meters 5) 0)
+       (set-setting! 'string-min-height 'abs (meters 3) 0)
+       (set-setting! 'string-max-height 'abs (meters 3) 0)
+       (set-setting! 'fov 'abs (degrees 95.0) 0)
+       )
+      )
+    (when (zero? (-> self flut))
+      (set! (-> self flut) (new 'process 'flut-info))
+      (set! (-> self flut mode-sound-bank) #f)
+      )
+    (set! (-> self flut stick-lock) #f)
+    (set! arg2 (cond
+                 ((>= arg2 0)
+                  (empty)
+                  arg2
+                  )
+                 (else
+                   (flut-random-color-index)
+                   )
+                 )
+          )
+    (set! (-> self flut color-index) arg2)
+    (case arg1
+      ((#t)
+       (set! (-> self flut mode) 'normal)
+       (set! (-> self flut as-daxter?) #f)
+       )
+      (('racer)
+       (set! (-> self flut mode) arg1)
+       (set! (-> self flut as-daxter?) #f)
+       )
+      (('wild)
+       (set! (-> self flut mode) arg1)
+       (set! (-> self flut as-daxter?) #t)
+       )
+      (else
+        (set! (-> self flut mode) arg1)
+        (set! (-> self flut as-daxter?) #f)
+        )
+      )
+    (if (-> self flut as-daxter?)
+        (target-fldax-enter)
+        )
+    (let* ((v1-34 (-> self game))
+           (a0-22 (+ (-> v1-34 attack-id) 1))
+           )
+      (set! (-> v1-34 attack-id) a0-22)
+      (set! (-> self flut attack-id) a0-22)
+      )
+    (set! (-> self flut flap-sound-id) (the-as uint (new-sound-id)))
+    (set! (-> self flut mode-sound-bank) (add-setting! 'mode-sound-bank 'modeflut 0.0 0))
+    (set! (-> self flut entity) #f)
+    (let ((v1-41 (handle->process arg0)))
+      (if v1-41
+          (set! (-> self flut entity) (-> v1-41 entity))
+          )
+      )
+    (when (not (and (-> self flut entity) (logtest? (-> self flut entity extra level info level-flags) (level-flags flut)))
+               )
+      (dotimes (v1-49 (-> *level* length))
+        (let ((a0-40 (-> *level* level v1-49)))
+          (when (= (-> a0-40 status) 'active)
+            (when (logtest? (-> a0-40 info level-flags) (level-flags flut))
+              (let ((a0-42 (-> a0-40 entity data 0 entity)))
+                (when a0-42
+                  (set! (-> self flut entity) (the-as entity-actor a0-42))
+                  (goto cfg-36)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (label cfg-36)
+    (target-collide-set! 'flut 0.0)
+    (set! (-> self control transv quad) (the-as uint128 0))
+    (set! (-> self control ctrl-xz-vel) 0.0)
+    (logior! (-> self focus-status) (focus-status flut))
+    (set-time! (-> self flut flut-start-time))
+    (set! (-> self control pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :nomech #x1))
+    (let ((s4-1 (current-time)))
+      (label cfg-37)
+      (let ((s3-0 (-> self entity))
+            (s2-0 (-> self level))
+            )
+        (process-entity-set! self (-> self flut entity))
+        (let ((s1-0 (get-process *8k-dead-pool* manipy #x20000 1)))
+          (set! (-> self manipy)
+                (the-as
+                  (pointer manipy)
+                  (when s1-0
+                    (let ((t9-18 (method-of-type manipy activate)))
+                      (t9-18 (the-as manipy s1-0) self "manipy" (the-as pointer #x70004000))
+                      )
+                    (let ((s0-0 run-function-in-process))
+                      (set! sv-96 s1-0)
+                      (set! sv-112 manipy-init)
+                      (set! sv-128 (-> self control trans))
+                      (set! sv-144 (-> self entity))
+                      (let ((t0-10 (art-group-get-by-name *level* "skel-flut" (the-as (pointer level) #f)))
+                            (t1-10 'collide-shape-moving)
+                            (t2-0 0)
+                            )
+                        ((the-as (function object object object object object object object none) s0-0)
+                         sv-96
+                         sv-112
+                         sv-128
+                         sv-144
+                         t0-10
+                         t1-10
+                         t2-0
+                         )
+                        )
+                      )
+                    (-> s1-0 ppointer)
+                    )
+                  )
+                )
+          )
+        (set! (-> self entity) s3-0)
+        (set! (-> self level) s2-0)
+        )
+      (when (not (or (-> self manipy) (time-elapsed? s4-1 (seconds 3))))
+        (suspend)
+        (goto cfg-37)
+        )
+      )
+    (when (-> self manipy)
+      (send-event
+        (ppointer->process (-> self manipy))
+        'trans-hook
+        (lambda :behavior target
+          ()
+          (let* ((v1-0 (-> self parent))
+                 (gp-0 (if v1-0
+                           (the-as target (-> v1-0 0 self))
+                           )
+                       )
+                 )
+            (vector-copy! (-> self control trans) (-> gp-0 flut flut-trans))
+            (let ((v1-5 (-> gp-0 flut flut-quat quad)))
+              (set! (-> self control quat quad) v1-5)
+              )
+            (vector-copy! (-> self control scale) (-> gp-0 flut flut-scale))
+            (set! (-> self control ground-pat material) (the-as int (-> gp-0 control ground-pat material)))
+            (set! (-> self draw light-index) (-> gp-0 draw light-index))
+            (let ((t9-0 flut-color-from-index)
+                  (v1-14 (-> self parent))
+                  )
+              (t9-0 (-> (the-as target (if v1-14
+                                           (the-as target (-> v1-14 0 self))
+                                           )
+                                )
+                        flut
+                        color-index
+                        )
+                    )
+              )
+            (vector*!
+              (the-as vector (-> self draw color-mult))
+              (the-as vector (-> self draw color-mult))
+              (the-as vector (-> gp-0 draw color-mult))
+              )
+            (let ((v0-1 (-> gp-0 draw color-emissive quad)))
+              (set! (-> self draw color-emissive quad) v0-1)
+              v0-1
+              )
+            )
+          )
+        )
+      (send-event (ppointer->process (-> self manipy)) 'anim-mode 'loop)
+      (send-event (ppointer->process (-> self manipy)) 'art-joint-anim "flut-get-on" 0)
+      (send-event (ppointer->process (-> self manipy)) 'blend-shape #t)
+      (send-event
+        (ppointer->process (-> self manipy))
+        'eval
+        (lambda :behavior target
+          ()
+          (set! (-> self state-hook) #f)
+          (let ((v1-1 (-> *target-shadow-control* settings shadow-dir quad)))
+            (set! (-> *flut-shadow-control* settings shadow-dir quad) v1-1)
+            )
+          (set! (-> self draw shadow-ctrl) *flut-shadow-control*)
+          (set! (-> self mech-ik 0) (new 'process 'joint-mod-ik self 7 3104.768))
+          (set! (-> self mech-ik 1) (new 'process 'joint-mod-ik self 15 3104.768))
+          (dotimes (v1-5 2)
+            (let ((a0-6 (-> self mech-ik v1-5)))
+              (set! (-> a0-6 elbow-pole-vector-axis) (the-as uint 2))
+              (set! (-> a0-6 elbow-rotation-axis) (the-as uint 0))
+              (set! (-> a0-6 callback) (the-as (function joint-mod-ik matrix matrix vector object) flut-leg-ik-callback))
+              (logior! (-> a0-6 flags) (joint-mod-ik-flags elbow-trans-neg))
+              )
+            )
+          #f
+          )
+        )
+      (send-event (ppointer->process (-> self manipy)) 'post-hook (lambda () (flut-update-ik)))
+      (case (-> self flut mode)
+        (('wild)
+         (send-event (ppointer->process (-> self manipy)) 'segment 0 16)
+         (set! (-> self flut wild-turn-time) (+ (current-time) (rand-vu-int-range (seconds 1) (seconds 2))))
+         (set! (-> self flut wild-turn-rate) (rand-vu-float-range -32768.0 32768.0))
+         )
+        )
+      )
+    (remove-exit)
+    (cond
+      ((or (= arg1 #t) (= arg1 'racer))
+       (send-event (ppointer->process (-> self manipy)) 'anim-mode 'clone-anim)
+       (go target-flut-stance)
+       )
+      (else
+        (go target-flut-get-on arg0)
+        )
+      )
+    )
+  :post target-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-stance (target)
+  :event target-flut-standard-event-handler
+  :enter (behavior ()
+    (set! (-> self control mod-surface) *flut-walk-mods*)
+    )
+  :exit (-> target-flut-start exit)
+  :trans (behavior ()
+    (if (= (-> self flut mode) 'wild)
+        (go target-flut-run-wild)
+        )
+    (if (move-legs?)
+        (go target-flut-walk)
+        )
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (can-jump? 'flut)
+             )
+        (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max))
+        )
+    (if (and (cpad-pressed? (-> self control cpad number) square) (can-hands? #t))
+        (go target-flut-running-attack)
+        )
+    (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
+             (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *FLUT-bank* ground-timeout)))
+             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+             (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
+             )
+        (go target-flut-falling #f)
+        )
+    (if (and (or (cpad-pressed? (-> self control cpad number) triangle) (not (-> *setting-control* user-current pilot)))
+             (target-flut-get-off?)
+             )
+        (go target-flut-get-off (the-as handle #f))
+        )
+    )
+  :code (behavior ()
+    (let ((gp-0 22))
+      (let ((v1-2 (ja-group)))
+        (cond
+          ((and v1-2 (or (= v1-2 jakb-flut-walk-ja) (= v1-2 jakb-flut-run-squash-ja)))
+           (set! gp-0 60)
+           )
+          ((let ((v1-9 (ja-group)))
+             (and v1-9 (= v1-9 jakb-flut-get-on-ja))
+             )
+           (ja-no-eval :num! (seek!))
+           (while (not (ja-done? 0))
+             (suspend)
+             (ja-eval)
+             )
+           )
+          ((let ((v1-24 (ja-group)))
+             (and v1-24 (= v1-24 jakb-flut-smack-surface-ja))
+             )
+           (ja-no-eval :group! jakb-flut-smack-surface-end-ja :num! (seek!) :frame-num 0.0)
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          ((let ((v1-54 (ja-group)))
+             (and v1-54 (= v1-54 jakb-flut-hit-back-ja))
+             )
+           (ja-no-eval :group! jakb-flut-hit-back-end-ja :num! (seek!) :frame-num 0.0)
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          ((let ((v1-84 (ja-group)))
+             (and v1-84 (= v1-84 jakb-flut-running-attack-ja))
+             )
+           (ja-no-eval :group! jakb-flut-running-attack-end-ja :num! (seek!) :frame-num 0.0)
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek!))
+             )
+           )
+          )
+        )
+      (cond
+        ((-> self flut as-daxter?)
+         (let ((v1-116 (ja-group)))
+           (if (not (and v1-116 (= v1-116 jakb-mech-pull-ja)))
+               (ja-channel-push! 1 (the-as time-frame gp-0))
+               )
+           )
+         (ja :group! jakb-mech-pull-ja)
+         )
+        (else
+          (let ((v1-126 (ja-group)))
+            (if (not (and v1-126 (= v1-126 jakb-flut-idle-ja)))
+                (ja-channel-push! 1 (the-as time-frame gp-0))
+                )
+            )
+          (ja :group! jakb-flut-idle-ja)
+          )
+        )
+      )
+    (until #f
+      (can-play-stance-amibent?)
+      (suspend)
+      (ja :num! (loop!))
+      )
+    #f
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-walk (target)
+  :event target-flut-standard-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (case (-> self flut mode)
+      (('racer)
+       (set! (-> self control mod-surface) *flut-run-racer-mods*)
+       )
+      (else
+        (set! (-> self control mod-surface) *flut-walk-mods*)
+        )
+      )
+    (set! (-> self control unknown-word04) (the-as uint (-> self control mod-surface turnv)))
+    (set! (-> self control did-move-to-pole-or-max-jump-height) (-> self control mod-surface target-speed))
+    )
+  :exit (behavior ()
+    (set! (-> self control mod-surface turnv) (the-as float (-> self control unknown-word04)))
+    (set! (-> self control mod-surface target-speed) (-> self control did-move-to-pole-or-max-jump-height))
+    (logclear! (-> self target-flags) (target-flags lleg-no-ik rleg-no-ik))
+    (let ((v1-9 (-> self skel effect)))
+      (set! (-> v1-9 channel-offset) 0)
+      )
+    0
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    (if (= (-> self flut mode) 'wild)
+        (go target-flut-run-wild)
+        )
+    (if (not (move-legs?))
+        (go target-flut-stance)
+        )
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (can-jump? 'flut)
+             )
+        (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max))
+        )
+    (if (and (cpad-pressed? (-> self control cpad number) square) (can-hands? #t))
+        (go target-flut-running-attack)
+        )
+    (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
+             (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *FLUT-bank* ground-timeout)))
+             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+             (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
+             )
+        (go target-flut-falling #f)
+        )
+    (let ((f30-0 (fabs (deg-diff (quaternion-y-angle (-> self control dir-targ)) (y-angle (-> self control))))))
+      (set! (-> self control mod-surface turnv) (lerp-scale
+                                                  (the-as float (-> self control unknown-word04))
+                                                  (* 4.0 (the-as float (-> self control unknown-word04)))
+                                                  f30-0
+                                                  8192.0
+                                                  21845.334
+                                                  )
+            )
+      (if (and (= (-> self control surf name) '*tar-surface*) (< 8192.0 f30-0))
+          (seek! (-> self control mod-surface target-speed) 4096.0 (* 245760.0 (seconds-per-frame)))
+          (seek!
+            (-> self control mod-surface target-speed)
+            (-> self control did-move-to-pole-or-max-jump-height)
+            (* 81920.0 (seconds-per-frame))
+            )
+          )
+      )
+    (if (and (or (cpad-pressed? (-> self control cpad number) triangle) (not (-> *setting-control* user-current pilot)))
+             (target-flut-get-off?)
+             )
+        (go target-flut-get-off (the-as handle #f))
+        )
+    )
+  :code (behavior ()
+    (let ((f26-0 0.0)
+          (f30-0 0.0)
+          (f28-0 0.0)
+          )
+      (let ((gp-0 22))
+        (let ((v1-2 (ja-group)))
+          (cond
+            ((and v1-2 (= v1-2 jakb-flut-idle-ja))
+             (set! gp-0 60)
+             )
+            ((let ((v1-9 (ja-group)))
+               (and v1-9
+                    (or (= v1-9 jakb-flut-jump-ja)
+                        (= v1-9 jakb-flut-jump-loop-ja)
+                        (= v1-9 jakb-flut-air-attack-ja)
+                        (= v1-9 jakb-flut-air-attack-land-ja)
+                        )
+                    )
+               )
+             (ja-channel-push! 1 (seconds 0.08))
+             (ja-no-eval :group! jakb-flut-run-squash-ja :num! (seek!) :frame-num 0.0)
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek!))
+               )
+             )
+            )
+          )
+        (let ((v1-39 (ja-group)))
+          (set! f28-0
+                (cond
+                  ((and v1-39 (= v1-39 jakb-flut-run-squash-ja))
+                   (ja-channel-set! 3)
+                   (set! f30-0 1.0)
+                   1.0
+                   )
+                  (else
+                    (let ((v1-47 (ja-group)))
+                      (cond
+                        ((and v1-47 (= v1-47 jakb-flut-walk-ja))
+                         (set! f26-0 (ja-frame-num 0))
+                         (set! f30-0 (-> self skel root-channel 1 frame-interp (-> self skel active-frame-interp)))
+                         (-> self skel root-channel 2 frame-interp (-> self skel active-frame-interp))
+                         )
+                        (else
+                          (ja-channel-push! 3 (the-as time-frame gp-0))
+                          f28-0
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+          )
+        )
+      (ja-no-eval :group! jakb-flut-walk-ja :num! (loop!) :dist 20480.0 :frame-num f26-0)
+      (ja-no-eval :chan 1
+                  :group! jakb-flut-jog-ja
+                  :num! (identity f26-0)
+                  :frame-interp0 f30-0
+                  :frame-interp1 f30-0
+                  :dist 47104.0
+                  )
+      (ja-no-eval :chan 2
+                  :group! jakb-flut-run-ja
+                  :num! (identity f26-0)
+                  :frame-interp0 f28-0
+                  :frame-interp1 f28-0
+                  :dist 53248.0
+                  )
+      (until #f
+        (suspend)
+        (let ((f24-0 (lerp-scale 0.0 1.0 (-> self control ctrl-xz-vel) 36864.0 40960.0))
+              (f26-1 (lerp-scale 0.0 1.0 (-> self control ctrl-xz-vel) 49152.0 77824.0))
+              )
+          (set! f30-0 (seek f30-0 f24-0 (* 4.0 (seconds-per-frame))))
+          (set! f28-0 (seek f28-0 f26-1 (seconds-per-frame)))
+          )
+        (ja :chan 1 :frame-interp0 f30-0 :frame-interp1 f30-0)
+        (ja :chan 2 :frame-interp0 f28-0 :frame-interp1 f28-0)
+        (cond
+          ((< 0.5 f28-0)
+           (let ((v1-97 (-> self skel effect)))
+             (set! (-> v1-97 channel-offset) 2)
+             )
+           0
+           (logclear! (-> self target-flags) (target-flags lleg-no-ik rleg-no-ik))
+           )
+          ((< 0.9 f30-0)
+           (let ((v1-103 (-> self skel effect)))
+             (set! (-> v1-103 channel-offset) 1)
+             )
+           0
+           (logclear! (-> self target-flags) (target-flags lleg-no-ik rleg-no-ik))
+           )
+          (else
+            (let ((v1-108 (-> self skel effect)))
+              (set! (-> v1-108 channel-offset) 0)
+              )
+            0
+            (logior! (-> self target-flags) (target-flags lleg-no-ik rleg-no-ik))
+            )
+          )
+        (let* ((f0-19 (* (current-cycle-distance (-> self skel)) (-> self control scale x)))
+               (f0-21 (/ (* 58.0 (-> self control ctrl-xz-vel)) (* 60.0 f0-19)))
+               )
+          (ja :num! (loop! f0-21))
+          )
+        (ja :chan 1 :num! (chan 0))
+        (ja :chan 2 :num! (chan 0))
+        )
+      )
+    #f
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-run-wild (target)
+  :parent target-flut-walk
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self control mod-surface) *flut-run-wild-mods*)
+    )
+  :exit (behavior ()
+    (logclear! (-> self target-flags) (target-flags lleg-no-ik rleg-no-ik))
+    (let ((v1-3 (-> self skel effect)))
+      (set! (-> v1-3 channel-offset) 0)
+      )
+    0
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (can-jump? 'flut)
+             )
+        (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max))
+        )
+    (when (and (logtest? (-> self control status) (collide-status touch-wall))
+               (< 40960.0 (-> self control ctrl-xz-vel))
+               (< 0.7 (-> self control touch-angle))
+               (< (vector-dot (-> self control wall-contact-normal) (-> self control dynam gravity-normal)) 0.3)
+               )
+      (if (logtest? (-> self control status) (collide-status touch-actor))
+          (send-event self 'shove #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                         (damage 2.0)
+                                                                                         (vehicle-damage-factor 1.0)
+                                                                                         (vehicle-impulse-factor 1.0)
+                                                                                         (shove-back (meters 10))
+                                                                                         (shove-up (meters 0.5))
+                                                                                         (angle 'shove)
+                                                                                         )
+                                                         )
+                      )
+          (send-event self 'attack #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                          (damage 2.0)
+                                                                                          (vehicle-damage-factor 1.0)
+                                                                                          (vehicle-impulse-factor 1.0)
+                                                                                          (shove-back (meters 10))
+                                                                                          (shove-up (meters 2))
+                                                                                          (angle 'shove)
+                                                                                          (mode 'death)
+                                                                                          )
+                                                          )
+                      )
+          )
+      )
+    (when (time-elapsed? (-> self flut flut-start-time) (seconds 5))
+      (if (and (< (target-move-dist (seconds 1)) 409.6)
+               (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
+               )
+          (send-event
+            self
+            'attack
+            #f
+            (static-attack-info
+              :mask (vehicle-impulse-factor)
+              ((id (new-attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'death))
+              )
+            )
+          )
+      )
+    (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
+             (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *FLUT-bank* ground-timeout)))
+             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+             (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
+             )
+        (go target-flut-falling #f)
+        )
+    )
+  :code (behavior ()
+    (local-vars (f0-17 float) (f1-2 float))
+    (let ((f28-0 0.0)
+          (f30-0 0.0)
+          )
+      (let ((f24-0 0.0)
+            (f26-0 0.0)
+            )
+        22
+        (let ((gp-0 60)
+              (v1-3 (ja-group))
+              )
+          (cond
+            ((and v1-3 (= v1-3 jakb-mech-pull-ja))
+             (set! f28-0 (ja-frame-num 0))
+             (set! f24-0 (-> self skel root-channel 1 frame-interp (-> self skel active-frame-interp)))
+             (set! f26-0 (-> self skel root-channel 2 frame-interp (-> self skel active-frame-interp)))
+             )
+            ((let ((v1-17 (ja-group)))
+               (and v1-17 (or (= v1-17 jakb-mech-get-on-ja) (= v1-17 jakb-mech-death-a-ja)))
+               )
+             (ja-channel-push! 1 (seconds 0.08))
+             (ja-no-eval :group! jakb-mech-dummy7-ja :num! (seek!) :frame-num 0.0)
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek!))
+               )
+             (ja-channel-push! 3 (the-as time-frame gp-0))
+             )
+            (else
+              (ja-channel-push! 3 (the-as time-frame gp-0))
+              )
+            )
+          )
+        (ja-no-eval :group! jakb-mech-pull-ja :num! (loop!) :dist 131072.0 :frame-num f28-0)
+        (ja-no-eval :chan 1
+                    :group! jakb-mech-dummy4-ja
+                    :num! (identity f28-0)
+                    :frame-interp0 f24-0
+                    :frame-interp1 f24-0
+                    :dist 131072.0
+                    )
+        (ja-no-eval :chan 2
+                    :group! jakb-mech-dummy5-ja
+                    :num! (identity f28-0)
+                    :frame-interp0 f26-0
+                    :frame-interp1 f26-0
+                    :dist 131072.0
+                    )
+        )
+      (quaternion-copy! (-> self flut prev-quat) (-> self control quat))
+      (until #f
+        (suspend)
+        (let* ((f0-12 (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
+                          0.0
+                          (deg-diff (y-angle (-> self control)) (vector-y-angle (-> self control to-target-pt-xz)))
+                          )
+                      )
+               (f0-13 (lerp-scale 1.0 -1.0 f0-12 -21845.334 21845.334))
+               )
+          (set! f30-0 (seek f30-0 f0-13 (* 2.0 (seconds-per-frame))))
+          )
+        (cond
+          ((>= f30-0 0.0)
+           (set! f0-17 f30-0)
+           (set! f1-2 0.0)
+           )
+          (else
+            (set! f1-2 (- f30-0))
+            (set! f0-17 0.0)
+            )
+          )
+        (ja :chan 1 :frame-interp0 f1-2 :frame-interp1 f1-2)
+        (ja :chan 2 :frame-interp0 f0-17 :frame-interp1 f0-17)
+        (quaternion-copy! (-> self flut prev-quat) (-> self control quat))
+        (let ((v1-94 (-> self skel effect)))
+          (set! (-> v1-94 channel-offset) 0)
+          )
+        0
+        (logior! (-> self target-flags) (target-flags lleg-no-ik rleg-no-ik))
+        (let* ((f0-19 (* (current-cycle-distance (-> self skel)) (-> self control scale x)))
+               (f0-21 (/ (* 58.0 (-> self control ctrl-xz-vel)) (* 60.0 f0-19)))
+               )
+          (ja :num! (loop! f0-21))
+          )
+        (ja :chan 1 :num! (chan 0))
+        (ja :chan 2 :num! (chan 0))
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-falling (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (and (= message 'touched)
+               ((method-of-type touching-shapes-entry prims-touching?)
+                (the-as touching-shapes-entry (-> block param 0))
+                (-> self control)
+                (the-as uint 6)
+                )
+               (< 0.0 (vector-dot
+                        (-> self control dynam gravity-normal)
+                        (vector-! (new 'stack-no-clear 'vector) (-> self control trans-old) (-> self control trans))
+                        )
+                  )
+               )
+      (send-event proc 'bonk (-> block param 0) (-> self control ground-impact-vel))
+      (when (target-send-attack
+              proc
+              'flut-bonk
+              (the-as touching-shapes-entry (-> block param 0))
+              (the-as int (-> self control target-attack-id))
+              (the-as int (-> self control attack-count))
+              (-> self control penetrate-using)
+              )
+        )
+      )
+    (case message
+      (('jump)
+       (go target-flut-jump (the-as float (-> block param 0)) (the-as float (-> block param 0)))
+       )
+      (else
+        (target-flut-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ((arg0 object))
+    (set! (-> self control mod-surface) *flut-jump-mods*)
+    (set-time! (-> self state-time))
+    )
+  :exit (-> target-flut-start exit)
+  :trans (behavior ()
+    (when (or (logtest? (-> self control status) (collide-status on-surface))
+              (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
+                       (and (time-elapsed? (-> self state-time) (the-as time-frame (/ (the-as int (-> *TARGET-bank* stuck-time)) 2)))
+                            (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
+                            )
+                       )
+                  #t
+                  )
+              )
+      (logior! (-> self control status) (collide-status on-surface))
+      (go target-flut-hit-ground)
+      )
+    (seek!
+      (-> self control unknown-float35)
+      (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
+      (seconds-per-frame)
+      )
+    )
+  :code (behavior ((arg0 object))
+    (cond
+      ((not (-> self flut as-daxter?))
+       (let ((v1-4 (ja-group)))
+         (cond
+           ((and v1-4 (= v1-4 jakb-flut-jump-loop-ja))
+            )
+           (else
+             (let ((v1-10 (ja-group)))
+               (if (and v1-10 (= v1-10 jakb-flut-double-jump-ja))
+                   (ja-channel-push! 2 (seconds 0.2))
+                   (ja-channel-push! 2 (seconds 0.5))
+                   )
+               )
+             )
+           )
+         )
+       (ja-no-eval :group! jakb-flut-jump-loop-ja :num! (loop!) :frame-num 0.0)
+       (let ((gp-0 (-> self skel root-channel 1)))
+         (let ((f0-2 (-> self control unknown-float35)))
+           (set! (-> gp-0 frame-interp 1) f0-2)
+           (set! (-> gp-0 frame-interp 0) f0-2)
+           )
+         (joint-control-channel-group-eval!
+           gp-0
+           (the-as art-joint-anim jakb-flut-jump-forward-loop-ja)
+           num-func-identity
+           )
+         (set! (-> gp-0 frame-num) 0.0)
+         )
+       )
+      (else
+        (let ((v1-32 (ja-group)))
+          (cond
+            ((and v1-32 (= v1-32 jakb-mech-death-a-ja))
+             )
+            (else
+              (ja-channel-push! 1 (seconds 0.5))
+              )
+            )
+          )
+        (ja-no-eval :group! jakb-mech-death-a-ja :num! (loop!) :frame-num 0.0)
+        )
+      )
+    (until #f
+      (suspend)
+      (ja :num! (loop! max))
+      (when (>= (ja-group-size) 2)
+        (let ((a0-20 (-> self skel root-channel 1)))
+          (let ((f0-8 (-> self control unknown-float35)))
+            (set! (-> a0-20 frame-interp 1) f0-8)
+            (set! (-> a0-20 frame-interp 0) f0-8)
+            )
+          (set! (-> a0-20 param 0) 0.0)
+          (joint-control-channel-group-eval! a0-20 (the-as art-joint-anim #f) num-func-chan)
+          )
+        )
+      )
+    #f
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-jump (target)
+  :event (-> target-flut-falling event)
+  :enter (behavior ((arg0 float) (arg1 float))
+    (set-time! (-> self state-time))
+    (init-var-jump arg0 arg1 #t #t (-> self control transv) 2.0)
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
+    (case (-> self flut mode)
+      (('wild)
+       (set! (-> self control mod-surface) *flut-jump-wild-mods*)
+       )
+      (('racer)
+       (set! (-> self control mod-surface) *flut-jump-racer-mods*)
+       )
+      (else
+        (set! (-> self control mod-surface) *flut-jump-mods*)
+        )
+      )
+    (set! (-> self control unknown-float36)
+          (fmax 0.0 (fmin 1.0 (* 0.00004359654 (+ -11468.8 (-> self control ctrl-xz-vel)))))
+          )
+    (set! (-> self control unknown-float35)
+          (fmax 0.0 (fmin 1.0 (* 0.000048828126 (+ -10240.0 (-> self control ctrl-xz-vel)))))
+          )
+    )
+  :exit (behavior ()
+    (target-exit)
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    (set! (-> self control unknown-float36)
+          (fmax
+            (-> self control unknown-float36)
+            (* 0.003921569 (the float (-> *cpad-list* cpads (-> self control cpad number) abutton 6)))
+            )
+          )
+    ((-> target-flut-falling trans))
+    (case (-> self flut mode)
+      (('wild)
+       (when (and (logtest? (-> self control status) (collide-status touch-wall))
+                  (< 40960.0 (-> self control ctrl-xz-vel))
+                  (< 0.7 (-> self control touch-angle))
+                  (< (vector-dot (-> self control wall-contact-normal) (-> self control dynam gravity-normal)) 0.3)
+                  )
+         (if (logtest? (-> self control status) (collide-status touch-actor))
+             (send-event self 'shove #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                            (damage 2.0)
+                                                                                            (vehicle-damage-factor 1.0)
+                                                                                            (vehicle-impulse-factor 1.0)
+                                                                                            (shove-back (meters 10))
+                                                                                            (shove-up (meters 0.5))
+                                                                                            (angle 'shove)
+                                                                                            )
+                                                            )
+                         )
+             (send-event self 'attack #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                             (damage 2.0)
+                                                                                             (vehicle-damage-factor 1.0)
+                                                                                             (vehicle-impulse-factor 1.0)
+                                                                                             (shove-back (meters 10))
+                                                                                             (shove-up (meters 2))
+                                                                                             (angle 'shove)
+                                                                                             (mode 'death)
+                                                                                             )
+                                                             )
+                         )
+             )
+         )
+       )
+      (else
+        (if (and (cpad-pressed? (-> self control cpad number) x)
+                 (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 40960.0)
+                 (not (logtest? (water-flag touch-water) (-> self water flags)))
+                 (not (logtest? (target-flags prevent-jump prevent-double-jump) (-> self target-flags)))
+                 (< 4096.0 (target-height-above-ground))
+                 )
+            (go target-flut-double-jump (-> *FLUT-bank* double-jump-height-min) (-> *FLUT-bank* double-jump-height-max))
+            )
+        (if (and (cpad-pressed? (-> self control cpad number) square)
+                 (< (vector-dot (-> self control dynam gravity-normal) (-> self control transv)) 61440.0)
+                 (and (< -61440.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                      (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
+                      (not (logtest? (-> self target-flags) (target-flags prevent-attack)))
+                      (not (logtest? (-> self control current-surface flags) (surface-flag no-attack no-hands)))
+                      )
+                 )
+            (go target-flut-air-attack (-> *FLUT-bank* air-attack-speed))
+            )
+        )
+      )
+    (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
+                   (and (time-elapsed? (-> self state-time) (seconds 0.1))
+                        (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
+                        )
+                   )
+              #t
+              )
+      (logior! (-> self control status) (collide-status on-surface))
+      enter-state
+      'stuck
+      (go target-flut-hit-ground)
+      )
+    (mod-var-jump #t #t (cpad-hold? (-> self control cpad number) x) (-> self control transv))
+    )
+  :code (behavior ((arg0 float) (arg1 float))
+    (cond
+      ((not (-> self flut as-daxter?))
+       (ja-channel-push! 2 (seconds 0.12))
+       (ja :group! jakb-flut-jump-ja :num! min)
+       (let ((a0-3 (-> self skel root-channel 1)))
+         (let ((f0-1 (-> self control unknown-float35)))
+           (set! (-> a0-3 frame-interp 1) f0-1)
+           (set! (-> a0-3 frame-interp 0) f0-1)
+           )
+         (set! (-> a0-3 frame-group) (the-as art-joint-anim jakb-flut-jump-forward-ja))
+         (set! (-> a0-3 param 0) 0.0)
+         (joint-control-channel-group-eval! a0-3 (the-as art-joint-anim jakb-flut-jump-forward-ja) num-func-chan)
+         )
+       (suspend)
+       (ja :group! jakb-flut-jump-ja :num! (+!))
+       (let ((a0-5 (-> self skel root-channel 1)))
+         (let ((f0-4 (-> self control unknown-float35)))
+           (set! (-> a0-5 frame-interp 1) f0-4)
+           (set! (-> a0-5 frame-interp 0) f0-4)
+           )
+         (set! (-> a0-5 frame-group) (the-as art-joint-anim jakb-flut-jump-forward-ja))
+         (set! (-> a0-5 param 0) 0.0)
+         (joint-control-channel-group-eval! a0-5 (the-as art-joint-anim jakb-flut-jump-forward-ja) num-func-chan)
+         )
+       (suspend)
+       0
+       )
+      (else
+        (ja-channel-push! 1 (seconds 0.12))
+        (ja :group! jakb-mech-get-on-ja :num! min)
+        (suspend)
+        (ja :group! jakb-mech-get-on-ja :num! (+!))
+        (suspend)
+        0
+        )
+      )
+    (until (ja-done? 0)
+      (let ((f30-0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+            (f0-12 (/ (- 10.0 (ja-aframe-num 0)) (* (ja-step 0) (ja-speed 0))))
+            )
+        (ja :num! (seek! max (if (and (< 0.0 f30-0) (< 0.0 f0-12))
+                                (fmin (fmin 3.0 f0-12) (/ (* 5.0 f0-12) (the float (time-to-apex f30-0 -245760.0))))
+                                1.0
+                                )
+                        )
+            )
+        )
+      (when (>= (ja-group-size) 2)
+        (let ((a0-15 (-> self skel root-channel 1)))
+          (let ((f0-18 (-> self control unknown-float35)))
+            (set! (-> a0-15 frame-interp 1) f0-18)
+            (set! (-> a0-15 frame-interp 0) f0-18)
+            )
+          (set! (-> a0-15 param 0) 0.0)
+          (joint-control-channel-group-eval! a0-15 (the-as art-joint-anim #f) num-func-chan)
+          )
+        )
+      (suspend)
+      )
+    (cond
+      ((not (-> self flut as-daxter?))
+       (ja-no-eval :group! jakb-flut-jump-loop-ja :num! (loop!) :frame-num 0.0)
+       (let ((a0-18 (-> self skel root-channel 1)))
+         (let ((f0-22 (-> self control unknown-float35)))
+           (set! (-> a0-18 frame-interp 1) f0-22)
+           (set! (-> a0-18 frame-interp 0) f0-22)
+           )
+         (set! (-> a0-18 frame-group) (the-as art-joint-anim jakb-flut-jump-forward-loop-ja))
+         (set! (-> a0-18 param 0) 0.0)
+         (joint-control-channel-group-eval! a0-18 (the-as art-joint-anim jakb-flut-jump-forward-loop-ja) num-func-chan)
+         )
+       (until #f
+         (suspend)
+         (ja :group! jakb-flut-jump-loop-ja :num! (loop!))
+         (let ((a0-20 (-> self skel root-channel 1)))
+           (let ((f0-25 (-> self control unknown-float35)))
+             (set! (-> a0-20 frame-interp 1) f0-25)
+             (set! (-> a0-20 frame-interp 0) f0-25)
+             )
+           (set! (-> a0-20 frame-group) (the-as art-joint-anim jakb-flut-jump-forward-loop-ja))
+           (set! (-> a0-20 param 0) 0.0)
+           (joint-control-channel-group-eval! a0-20 (the-as art-joint-anim jakb-flut-jump-forward-loop-ja) num-func-chan)
+           )
+         )
+       #f
+       )
+      (else
+        (ja-no-eval :group! jakb-mech-death-a-ja :num! (loop!) :frame-num 0.0)
+        (until #f
+          (suspend)
+          (ja :group! jakb-mech-death-a-ja :num! (loop!))
+          )
+        #f
+        )
+      )
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-double-jump (target)
+  :event (-> target-flut-falling event)
+  :enter (behavior ((arg0 float) (arg1 float))
+    (set-time! (-> self state-time))
+    (init-var-jump arg0 arg1 #t #t (-> self control transv) 2.0)
+    (set! (-> self control dynam gravity-max) 40960.0)
+    (set! (-> self control dynam gravity-length) 245760.0)
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
+    (case (-> self flut mode)
+      (('racer)
+       (set! (-> self control mod-surface) *flut-double-jump-racer-mods*)
+       )
+      (else
+        (set! (-> self control mod-surface) *flut-double-jump-mods*)
+        )
+      )
+    )
+  :exit (behavior ()
+    (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
+    (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
+    (target-exit)
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    ((-> target-flut-falling trans))
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons square)
+                       )
+             (not (logtest? (-> self target-flags) (target-flags prevent-attack)))
+             (not (logtest? (-> self control current-surface flags) (surface-flag no-attack no-hands)))
+             (time-elapsed? (-> self control last-time-of-stuck) (the-as time-frame (-> *TARGET-bank* stuck-timeout)))
+             (< 4096.0 (target-height-above-ground))
+             )
+        (go target-flut-air-attack (-> *FLUT-bank* air-attack-speed))
+        )
+    (if (!= (-> self state-time) (current-time))
+        (mod-var-jump #t #t (cpad-hold? (-> self control cpad number) x) (-> self control transv))
+        )
+    (let ((v1-41 (ja-group)))
+      (if (and v1-41 (= v1-41 jakb-flut-double-jump-ja))
+          (sound-play "flut-flap" :id (the-as sound-id (-> self flut flap-sound-id)))
+          )
+      )
+    )
+  :code (behavior ((arg0 float) (arg1 float))
+    (ja-channel-push! 1 (seconds 0.05))
+    (ja-no-eval :group! jakb-flut-double-jump-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 (seconds 0.1))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (set! (-> self control mod-surface) *flut-jump-mods*)
+    (current-time)
+    (ja-channel-push! 2 (seconds 0.2))
+    (ja-no-eval :group! jakb-flut-jump-loop-ja :num! (loop!) :frame-num 0.0)
+    (let ((gp-0 (-> self skel root-channel 1)))
+      (let ((f0-9 (-> self control unknown-float35)))
+        (set! (-> gp-0 frame-interp 1) f0-9)
+        (set! (-> gp-0 frame-interp 0) f0-9)
+        )
+      (joint-control-channel-group-eval!
+        gp-0
+        (the-as art-joint-anim jakb-flut-jump-forward-loop-ja)
+        num-func-identity
+        )
+      (set! (-> gp-0 frame-num) 0.0)
+      )
+    (until #f
+      (suspend)
+      (seek!
+        (-> self control dynam gravity-max)
+        (-> self control standard-dynamics gravity-max)
+        (* 163840.0 (seconds-per-frame))
+        )
+      (seek!
+        (-> self control dynam gravity-length)
+        (-> self control standard-dynamics gravity-length)
+        (* 163840.0 (seconds-per-frame))
+        )
+      (ja :num! (loop! max))
+      (let ((a0-13 (-> self skel root-channel 1)))
+        (let ((f0-23 (-> self control unknown-float35)))
+          (set! (-> a0-13 frame-interp 1) f0-23)
+          (set! (-> a0-13 frame-interp 0) f0-23)
+          )
+        (set! (-> a0-13 param 0) 0.0)
+        (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-chan)
+        )
+      )
+    #f
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-hit-ground (target)
+  :event target-flut-standard-event-handler
+  :enter (behavior ()
+    (target-land-effect)
+    (when (< 40960.0 (-> self control ground-impact-vel))
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 255 (seconds 0.1))
+      (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.2))
+      )
+    (set! (-> self control last-running-attack-end-time) 0)
+    (set! (-> self control last-attack-end-time) 0)
+    (set! (-> self control mod-surface) *flut-walk-mods*)
+    )
+  :exit (behavior ()
+    (logclear! (-> self target-flags) (target-flags lleg-still rleg-still))
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (can-jump? 'flut)
+             )
+        (go target-flut-jump (-> *FLUT-bank* jump-height-min) (-> *FLUT-bank* jump-height-max))
+        )
+    (if (or (move-legs?) (= (-> self flut mode) 'wild))
+        (go target-flut-walk)
+        )
+    (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
+             (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *FLUT-bank* ground-timeout)))
+             (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+             (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
+             )
+        (go target-flut-falling #f)
+        )
+    )
+  :code (behavior ()
+    (target-flut-hit-ground-anim #f)
+    (go target-flut-stance)
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-running-attack (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (cond
+         (((method-of-type touching-shapes-entry prims-touching?)
+           (the-as touching-shapes-entry (-> block param 0))
+           (-> self control)
+           (the-as uint 1920)
+           )
+          (let ((gp-1 (target-send-attack
+                        proc
+                        (-> self control danger-mode)
+                        (the-as touching-shapes-entry (-> block param 0))
+                        (the-as int (-> self control target-attack-id))
+                        (the-as int (-> self control attack-count))
+                        (-> self control penetrate-using)
+                        )
+                      )
+                )
+            (when gp-1
+              (set! (-> self control unknown-word04) (the-as uint (current-time)))
+              (let ((v1-9 (as-type proc process-drawable)))
+                (when v1-9
+                  (let ((v1-10 (as-type (-> (the-as process-drawable v1-9) root) collide-shape)))
+                    (if (and v1-10 (or (logtest? (-> v1-10 root-prim prim-core collide-as) (collide-spec enemy))
+                                       (logtest? (-> v1-10 root-prim prim-core action) (collide-action no-smack))
+                                       )
+                             )
+                        (set! (-> self control unknown-symbol03) (the-as float #x1))
+                        )
+                    )
+                  )
+                )
+              (when (or (= gp-1 'die) (= gp-1 'push))
+                (let ((v0-2 (the-as object (current-time))))
+                  (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as float v0-2))
+                  v0-2
+                  )
+                )
+              )
+            )
+          )
+         (else
+           (target-flut-dangerous-event-handler proc argc message block)
+           )
+         )
+       )
+      (else
+        (target-flut-dangerous-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self control unknown-word04) (the-as uint 0))
+    (set! (-> self control did-move-to-pole-or-max-jump-height) 0.0)
+    (set! (-> self control unknown-symbol03) 0.0)
+    (set! (-> self control mod-surface) *flut-run-attack-mods*)
+    (set! (-> *run-attack-mods* turnv) 655360.0)
+    (set! (-> *run-attack-mods* turnvv) 655360.0)
+    (target-start-attack)
+    (target-danger-set! 'flut-attack #f)
+    )
+  :exit (behavior ()
+    (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
+    (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
+    (set! (-> *run-attack-mods* turnv) 0.0)
+    (set! (-> *run-attack-mods* turnvv) 0.0)
+    (set-time! (-> self control last-running-attack-end-time))
+    (target-exit)
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    (when (!= (-> self state-time) (current-time))
+      (if (and (or (smack-surface? #t)
+                   (and (>= (-> self control surface-slope-z) 0.7)
+                        (not (logtest? (-> self control status) (collide-status touch-actor)))
+                        )
+                   )
+               (begin
+                 (set! (-> self control did-move-to-pole-or-max-jump-height) (the-as float (current-time)))
+                 (set! (-> self control bend-target) 0.0)
+                 (let ((v1-11 (new-stack-vector0))
+                       (f0-3 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                       )
+                   0.0
+                   (vector-! v1-11 (-> self control transv) (vector-float*! v1-11 (-> self control dynam gravity-normal) f0-3))
+                   (let* ((f1-3 (vector-length v1-11))
+                          (f2-0 f1-3)
+                          (f0-4 (fmin 0.0 f0-3))
+                          )
+                     (vector+!
+                       (-> self control transv)
+                       (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f0-4)
+                       (vector-float*! v1-11 v1-11 (/ f1-3 f2-0))
+                       )
+                     )
+                   )
+                 #t
+                 )
+               (or (zero? (-> self control unknown-word04))
+                   (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-word04)))) (the-as uint 12))
+                   )
+               (!= (the-as int (-> self control unknown-symbol03)) 1)
+               )
+          (target-shoved (meters 2) (-> *TARGET-bank* smack-surface-height) (the-as process #f) target-flut-hit)
+          )
+      (if (and (logtest? (water-flag touch-water) (-> self water flags))
+               (zero? (mod (- (current-time) (-> self state-time)) 21))
+               )
+          (spawn-ripples
+            (-> self water)
+            0.6
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg neckB))
+            0
+            (-> self control transv)
+            #f
+            )
+          )
+      )
+    )
+  :code (behavior ()
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 127 (seconds 0.2))
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 0 3 (seconds 0.4))
+    (ja-channel-push! 1 (seconds 0.02))
+    (ja :group! jakb-flut-running-attack-ja :num! min)
+    (set! (-> self control dynam gravity-max) 368640.0)
+    (set! (-> self control dynam gravity-length) 368640.0)
+    (let ((f28-0 0.0)
+          (f30-0 (if (= (-> self control yellow-eco-last-use-time) (current-time))
+                     0.2
+                     0.8
+                     )
+                 )
+          )
+      (until (or (ja-done? 0) (< f30-0 0.05))
+        (compute-delta-align! (-> self align))
+        (when (not (ja-min? 0))
+          (cond
+            ((and (>= (ja-aframe-num 0) 20.0)
+                  (and (and (not (logtest? (-> self control status) (collide-status on-surface)))
+                            (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *FLUT-bank* ground-timeout)))
+                            (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+                            (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
+                            )
+                       (>= (the-as uint (- (current-time) (the-as int (-> self control unknown-word04)))) (the-as uint 12))
+                       )
+                  )
+             (go target-flut-falling #f)
+             )
+            ((and (nonzero? (-> self control did-move-to-pole-or-max-jump-height))
+                  (>= (the-as
+                        uint
+                        (- (current-time) (the-as int (the-as uint (-> self control did-move-to-pole-or-max-jump-height))))
+                        )
+                      (the-as uint 12)
+                      )
+                  )
+             (set-forward-vel 0.0)
+             (set! f30-0 0.0)
+             )
+            ((ja-done? 0)
+             (set-forward-vel f28-0)
+             )
+            (else
+              (set! f28-0
+                    (* f30-0 (target-align-vel-z-adjust (-> self align delta trans z)) (-> self clock frames-per-second))
+                    )
+              (set-forward-vel f28-0)
+              )
+            )
+          )
+        (let ((gp-1 (new-stack-vector0)))
+          (vector-matrix*! gp-1 (-> self control transv) (-> self control w-R-c))
+          (set! (-> gp-1 y) 0.0)
+          (vector-matrix*! (-> self control align-xz-vel) gp-1 (-> self control c-R-w))
+          )
+        (suspend)
+        (ja :num! (seek! max (-> self control current-surface align-speed)))
+        (if (time-elapsed? (-> self state-time) (seconds 0.1))
+            (set! (-> *flut-run-attack-mods* turnvv) 0.0)
+            )
+        (if (time-elapsed? (-> self state-time) (seconds 0.1))
+            (set! f30-0 (* f30-0 (fmin 1.0 (-> self control zx-vel-frac))))
+            )
+        )
+      (if (and (not (logtest? (-> self control status) (collide-status on-surface)))
+               (time-elapsed? (-> self control last-time-on-surface) (the-as time-frame (-> *FLUT-bank* ground-timeout)))
+               (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+               (>= (target-height-above-ground) (-> *TARGET-bank* fall-height))
+               )
+          (go target-flut-falling #f)
+          )
+      (when (!= f30-0 0.0)
+        (set! (-> self trans-hook) (-> target-flut-hit-ground trans))
+        (if (not (ja-done? 0))
+            (ja-channel-push! 1 (seconds 0.05))
+            )
+        (ja-no-eval :group! jakb-flut-running-attack-end-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (compute-delta-align! (-> self align))
+          (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 f30-0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (go target-flut-stance)
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-air-attack (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'touched)
+             ((method-of-type touching-shapes-entry prims-touching?)
+              (the-as touching-shapes-entry (-> block param 0))
+              (-> self control)
+              (the-as uint 6)
+              )
+             (< 0.0 (vector-dot
+                      (-> self control dynam gravity-normal)
+                      (vector-! (new 'stack-no-clear 'vector) (-> self control trans-old) (-> self control trans))
+                      )
+                )
+             )
+        (send-event proc 'bonk (-> block param 0) (-> self control ground-impact-vel))
+        )
+    (case message
+      (('jump)
+       (go target-flut-jump (the-as float (-> block param 0)) (the-as float (-> block param 0)))
+       )
+      (else
+        (target-flut-dangerous-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ((arg0 float))
+    (set-forward-vel arg0)
+    (set-time! (-> self state-time))
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
+    (set! (-> self control mod-surface) *flut-air-attack-mods*)
+    (target-start-attack)
+    (target-danger-set! 'flut-attack #f)
+    (let ((v1-5 (new-stack-vector0)))
+      (let ((f0-1 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+        0.0
+        (vector-! v1-5 (-> self control transv) (vector-float*! v1-5 (-> self control dynam gravity-normal) f0-1))
+        )
+      (let* ((f0-2 (vector-length v1-5))
+             (f1-1 f0-2)
+             (f2-0 0.0)
+             )
+        (vector+!
+          (-> self control transv)
+          (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-0)
+          (vector-float*! v1-5 v1-5 (/ f0-2 f1-1))
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    (target-danger-set! 'harmless #f)
+    (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
+    (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
+    (vector-copy! (-> self control dynam gravity) (-> self control standard-dynamics gravity))
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    (let ((gp-0 (new-stack-vector0)))
+      (vector-z-quaternion! gp-0 (-> self control quat-for-control))
+      (let ((v1-1 (new-stack-vector0))
+            (f0-1 (vector-dot gp-0 (-> self control transv)))
+            )
+        0.0
+        (vector-! v1-1 (-> self control transv) (vector-float*! v1-1 gp-0 f0-1))
+        (let* ((f1-2 (vector-length v1-1))
+               (f2-0 f1-2)
+               )
+          (if (< f0-1 0.0)
+              (set! f0-1 0.0)
+              )
+          (vector+!
+            (-> self control transv)
+            (vector-float*! (-> self control transv) gp-0 f0-1)
+            (vector-float*! v1-1 v1-1 (/ f1-2 f2-0))
+            )
+          )
+        )
+      )
+    (when (logtest? (-> self control status) (collide-status on-surface))
+      (logior! (-> self control status) (collide-status on-surface))
+      (remove-exit)
+      (go target-flut-air-attack-hit-ground)
+      )
+    (when (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) 4096.0)
+                   (and (time-elapsed? (-> self state-time) (seconds 0.5))
+                        (not (and *cheat-mode* (cpad-hold? (-> self control cpad number) r2)))
+                        )
+                   )
+              #t
+              )
+      (logior! (-> self control status) (collide-status on-surface))
+      (go target-flut-hit-ground)
+      )
+    )
+  :code (behavior ((arg0 float))
+    (ja-channel-push! 1 (seconds 0.05))
+    (ja-no-eval :group! jakb-flut-air-attack-ja :num! (seek! (ja-aframe 8.0 0)) :frame-num 0.0)
+    (until (ja-done? 0)
+      (compute-delta-align! (-> self align))
+      (align! (-> self align) (align-opts adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 8.0 0)))
+      )
+    (ja-no-eval :group! jakb-flut-air-attack-ja :num! (seek!) :frame-num (ja-aframe 8.0 0))
+    (until (ja-done? 0)
+      (compute-delta-align! (-> self align))
+      (align! (-> self align) (align-opts adjust-y-vel adjust-xz-vel) 1.0 1.0 1.0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja :group! jakb-flut-air-attack-loop-ja :num! min)
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-air-attack-hit-ground (target)
+  :event target-flut-standard-event-handler
+  :enter (behavior ()
+    (target-land-effect)
+    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.4))
+    (set! (-> self control last-running-attack-end-time) 0)
+    (set! (-> self control last-attack-end-time) 0)
+    (set! (-> self control mod-surface) *flut-air-attack-mods*)
+    (sound-play "flop-land" :pitch -0.4)
+    (do-effect (-> self skel effect) "group-flut-attack-strike-ground" (ja-frame-num 0) 0)
+    (let ((gp-2
+            (process-spawn
+              touch-tracker
+              :init touch-tracker-init
+              (-> self control trans)
+              #x45800000
+              30
+              :name "touch-tracker"
+              :to self
+              )
+            )
+          )
+      (send-event
+        (ppointer->process gp-2)
+        'attack
+        #f
+        (static-attack-info
+          :mask (vehicle-impulse-factor)
+          ((id (-> self control target-attack-id))
+           (damage 2.0)
+           (vehicle-damage-factor 1.0)
+           (vehicle-impulse-factor 1.0)
+           (mode 'flut-attack)
+           (count (-> self control target-attack-id))
+           (penetrate-using (-> self control penetrate-using))
+           )
+          )
+        )
+      (send-event
+        (ppointer->process gp-2)
+        'function
+        (lambda ((arg0 process-focusable))
+          (seek! (-> arg0 root root-prim local-sphere w) 28672.0 (* 286720.0 (seconds-per-frame)))
+          (update-transforms (-> arg0 root))
+          )
+        )
+      )
+    )
+  :exit (-> target-flut-air-attack exit)
+  :trans (-> target-flut-hit-ground trans)
+  :code (behavior ()
+    (ja-channel-set! 1)
+    (ja-no-eval :group! jakb-flut-air-attack-land-ja :num! (seek! (ja-aframe 22.0 0)) :frame-num 0.0)
+    (until (ja-done? 0)
+      (compute-delta-align! (-> self align))
+      (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 1.0)
+      (suspend)
+      (ja :num! (seek! (ja-aframe 22.0 0)))
+      )
+    (target-danger-set! 'harmless #f)
+    (ja-no-eval :group! jakb-flut-air-attack-land-ja :num! (seek!) :frame-num (ja-aframe 22.0 0))
+    (until (ja-done? 0)
+      (compute-delta-align! (-> self align))
+      (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 1.0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go target-flut-stance)
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-kanga-catch (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('end-mode)
+       (case (-> block param 0)
+         (('kanga)
+          (go target-jump 16384.0 16384.0 (the-as surface #f))
+          )
+         )
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ((arg0 handle) (arg1 symbol))
+    (set-time! (-> self state-time))
+    (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
+    (set-setting! 'ignore-target #t 0.0 0)
+    )
+  :exit (behavior ()
+    (remove-setting! 'ignore-target)
+    ((-> target-flut-start exit))
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-hit (target)
+  :event target-flut-standard-event-handler
+  :exit (behavior ()
+    (if (not (and (-> self next-state) (= (-> self next-state name) 'target-flut-death)))
+        (logclear! (-> self focus-status) (focus-status dead hit))
+        )
+    (target-exit)
+    ((-> target-flut-start exit))
+    )
+  :trans (behavior ()
+    (when (= *cheat-mode* 'debug)
+      (when (and (not *pause-lock*) (cpad-hold? (-> self control cpad number) r2))
+        (pickup-collectable! (-> self fact) (pickup-type health) 100.0 (the-as handle #f))
+        (go target-flut-stance)
+        )
+      )
+    )
+  :code (behavior ((arg0 symbol) (arg1 attack-info))
+    (set-time! (-> self state-time))
+    (let ((s5-0 (-> self attack-info)))
+      (let ((s4-0 (new 'stack-no-clear 'vector)))
+        (let ((v1-2 s5-0))
+          (set! (-> v1-2 attacker) (the-as handle #f))
+          (set! (-> v1-2 mode) 'generic)
+          (set! (-> v1-2 shove-back) 10240.0)
+          (set! (-> v1-2 shove-up) 9011.2)
+          (set! (-> v1-2 angle) #f)
+          (set! (-> v1-2 trans quad) (-> self control trans quad))
+          (set! (-> v1-2 control) 0.0)
+          (set! (-> v1-2 invinc-time) (-> *TARGET-bank* hit-invulnerable-timeout))
+          (set! (-> v1-2 damage) (-> *FACT-bank* health-default-inc))
+          )
+        (case arg0
+          (('shove)
+           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.2))
+           (let ((v1-6 s5-0))
+             (set! (-> v1-6 shove-back) (-> *TARGET-bank* smack-surface-dist))
+             (set! (-> v1-6 shove-up) (-> *TARGET-bank* smack-surface-height))
+             (set! (-> v1-6 angle) 'shove)
+             )
+           )
+          )
+        (combine! s5-0 arg1 self)
+        (when (not (logtest? (-> s5-0 mask) (attack-mask vector)))
+          (vector-z-quaternion! (-> s5-0 vector) (-> self control quat-for-control))
+          (vector-xz-normalize! (-> s5-0 vector) (- (fabs (-> s5-0 shove-back))))
+          (set! (-> s5-0 vector y) (-> s5-0 shove-up))
+          )
+        (vector-copy! s4-0 (-> s5-0 vector))
+        (let ((f0-11 (vector-dot
+                       (vector-normalize-copy! (new 'stack-no-clear 'vector) s4-0 1.0)
+                       (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self control quat-for-control))
+                       )
+                     )
+              )
+          (if (not (-> self attack-info angle))
+              (set! (-> self attack-info angle) (if (>= 0.0 f0-11)
+                                                    'front
+                                                    'back
+                                                    )
+                    )
+              )
+          )
+        (case arg0
+          (('attack)
+           (logior! (-> self focus-status) (focus-status hit))
+           (set-time! (-> self game hit-time))
+           (case (-> s5-0 mode)
+             (('endlessfall)
+              (cond
+                ((= (-> self game mode) 'debug)
+                 (let ((s3-2 (new-stack-vector0)))
+                   (vector-copy! s3-2 (-> self control last-trans-on-ground))
+                   (ja-channel-set! 0)
+                   (suspend-for (seconds 1)
+                     )
+                   (move-to-point! (-> self control) s3-2)
+                   )
+                 (vector-copy! (-> self control camera-pos) (-> self control trans))
+                 (send-event *camera* 'teleport)
+                 (go target-flut-stance)
+                 )
+                (else
+                  (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
+                  (go target-flut-death (-> s5-0 mode))
+                  )
+                )
+              )
+             (('water-vol 'sharkey 'bot 'drown-death 'instant-death 'crush 'tentacle)
+              (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
+              (if (= (-> self game mode) 'play)
+                  (go target-flut-death (-> s5-0 mode))
+                  )
+              )
+             (('lava 'melt 'fry 'slime)
+              (sound-play "death-melt")
+              (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
+              (cond
+                ((logtest? (-> *part-group-id-table* 64 flags) (sp-group-flag sp13))
+                 (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 64))
+                 )
+                (else
+                  (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+                  (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 64))
+                  )
+                )
+              (set! (-> s5-0 angle) 'lava)
+              (set! (-> s5-0 shove-up) 20480.0)
+              )
+             (('death)
+              (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
+              )
+             (('cactus)
+              (cond
+                ((= (-> self flut mode) 'normal)
+                 )
+                (else
+                  (go target-flut-death (-> s5-0 mode))
+                  )
+                )
+              )
+             (('drown)
+              (if (= (-> self flut mode) 'normal)
+                  (go target-flut-eject (-> s5-0 mode))
+                  (pickup-collectable! (-> self fact) (pickup-type health) (- (-> s5-0 damage)) (the-as handle #f))
+                  )
+              )
+             (else
+               (if (!= (-> self flut mode) 'normal)
+                   (pickup-collectable! (-> self fact) (pickup-type health) (- (-> s5-0 damage)) (the-as handle #f))
+                   )
+               )
+             )
+           (target-hit-effect s5-0)
+           (sound-play "flut-hit" :pitch -1)
+           )
+          )
+        (set! (-> self control mod-surface) *smack-mods*)
+        (let ((f30-0 1.0))
+          (let ((v1-114 (-> s5-0 angle)))
+            (cond
+              ((= v1-114 'shove)
+               (cond
+                 ((not (-> self flut as-daxter?))
+                  (let ((v1-119 (ja-group)))
+                    (when (not (and v1-119 (= v1-119 jakb-flut-smack-surface-ja)))
+                      (ja-channel-set! 1)
+                      (ja :group! jakb-flut-smack-surface-ja :num! min)
+                      )
+                    )
+                  )
+                 (else
+                   (let ((v1-130 (ja-group)))
+                     (when (not (and v1-130 (= v1-130 jakb-mech-drag-pickup-ja)))
+                       (ja-channel-set! 1)
+                       (ja :group! jakb-mech-drag-pickup-ja :num! min)
+                       )
+                     )
+                   )
+                 )
+               (sound-play "smack-surface")
+               (sound-play "flut-hit" :pitch 1)
+               )
+              ((not (-> self flut as-daxter?))
+               (let ((v1-148 (ja-group)))
+                 (when (not (and v1-148 (= v1-148 jakb-flut-hit-back-ja)))
+                   (ja-channel-push! 1 (seconds 0.075))
+                   (ja :group! jakb-flut-hit-back-ja :num! min)
+                   )
+                 )
+               )
+              (else
+                (let ((v1-159 (ja-group)))
+                  (when (not (and v1-159 (= v1-159 jakb-mech-drag-pickup-ja)))
+                    (ja-channel-set! 1)
+                    (ja :group! jakb-mech-drag-pickup-ja :num! min)
+                    )
+                  )
+                )
+              )
+            )
+          (target-hit-move
+            s5-0
+            (target-hit-orient s5-0 s4-0)
+            (the-as (function none :behavior target) target-flut-falling-anim-trans)
+            f30-0
+            )
+          )
+        )
+      (cond
+        ((and (= (-> self game mode) 'play) (>= 0.0 (-> self fact health)))
+         (go target-flut-death (-> s5-0 mode))
+         )
+        ((and (= (-> self flut mode) 'normal) (= arg0 'attack))
+         (go target-flut-eject (-> s5-0 mode))
+         )
+        (else
+          (go target-flut-hit-ground)
+          )
+        )
+      )
+    )
+  :post target-flut-post
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-death (target)
+  :event (-> target-death event)
+  :exit (behavior ()
+    ((-> target-flut-start exit))
+    ((-> target-death exit))
+    )
+  :trans (-> target-hit trans)
+  :code (behavior ((arg0 symbol))
+    (set! (-> self control unknown-word04) (the-as uint #f))
+    (logior! (-> self focus-status) (focus-status dead))
+    (set! (-> self neck flex-blend) 0.0)
+    (target-timed-invulnerable-off self 0)
+    (add-setting! 'process-mask 'set 0.0 (process-mask enemy platform projectile death))
+    (apply-settings *setting-control*)
+    (set! (-> self control transv quad) (the-as uint128 0))
+    (set! (-> self death-resetter continue) #f)
+    (set! (-> self death-resetter node) (game-task-node none))
+    (set! (-> self death-resetter reset-mode) 'life)
+    (set! (-> self death-resetter execute) #f)
+    (let ((s5-0 (-> self child)))
+      (while s5-0
+        (send-event (ppointer->process s5-0) 'notice 'die)
+        (set! s5-0 (-> s5-0 0 brother))
+        )
+      )
+    (case arg0
+      (('none 'water-vol 'sharkey)
+       )
+      (('endlessfall)
+       (sound-play "death-fall")
+       (sound-play "flut-hit" :vol 70 :pitch -1.4)
+       (set-setting! 'mode-name 'cam-endlessfall 0.0 0)
+       (logior! (-> self control pat-ignore-mask) (new 'static 'pat-surface :noendlessfall #x1))
+       (logclear! (-> self water flags) (water-flag swim-ground))
+       (let ((f0-2 (fmin -4096.0 (- (-> self control ground-impact-vel)))))
+         (set! (-> self control unknown-word04) (the-as uint f0-2))
+         (let ((v1-35 (new-stack-vector0)))
+           (let ((f1-3 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+             0.0
+             (vector-! v1-35 (-> self control transv) (vector-float*! v1-35 (-> self control dynam gravity-normal) f1-3))
+             )
+           (let* ((f1-4 (vector-length v1-35))
+                  (f2-1 f1-4)
+                  )
+             (vector+!
+               (-> self control transv)
+               (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f0-2)
+               (vector-float*! v1-35 v1-35 (/ f1-4 f2-1))
+               )
+             )
+           )
+         )
+       (suspend-for (seconds 1)
+         (target-flut-falling-anim-trans)
+         (vector-seek! (-> self draw color-mult) *zero-vector* (seconds-per-frame))
+         (let ((v1-39 (new-stack-vector0))
+               (f0-6 (the-as number (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+               )
+           0.0
+           (vector-!
+             v1-39
+             (-> self control transv)
+             (vector-float*! v1-39 (-> self control dynam gravity-normal) (the-as float f0-6))
+             )
+           (let* ((f1-7 (vector-length v1-39))
+                  (f2-2 f1-7)
+                  )
+             (if (< (the-as float (-> self control unknown-word04)) (the-as float f0-6))
+                 (set! f0-6 (-> self control unknown-word04))
+                 )
+             (vector+!
+               (-> self control transv)
+               (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) (the-as float f0-6))
+               (vector-float*! v1-39 v1-39 (/ f1-7 f2-2))
+               )
+             )
+           )
+         )
+       (remove-setting! 'mode-name)
+       )
+      (('lava 'fry 'slime 'dark-eco-pool 'melt 'big-explosion)
+       (when (as-type (handle->process (-> self attack-info attacker)) water-vol)
+         (logior! (-> self target-flags) (target-flags tf14))
+         (set! (-> self alt-cam-pos y) (+ 4096.0 (-> self water height)))
+         )
+       (set! (-> self control mod-surface) *neutral-mods*)
+       (case arg0
+         (('dark-eco-pool)
+          (sound-play "death-darkeco")
+          (cond
+            ((logtest? (-> *part-group-id-table* 62 flags) (sp-group-flag sp13))
+             (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+             (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 62))
+             )
+            (else
+              (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+              (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 62))
+              )
+            )
+          (let ((v1-93 (-> self control root-prim)))
+            (set! (-> v1-93 prim-core collide-as) (collide-spec))
+            (set! (-> v1-93 prim-core collide-with) (collide-spec))
+            )
+          0
+          (set! (-> self post-hook) target-no-ja-move-post)
+          (ja-channel-set! 0)
+          (ja-post)
+          (suspend-for (seconds 2)
+            )
+          )
+         (('lava 'melt 'fry 'slime)
+          (sound-play "death-melt")
+          (cond
+            ((logtest? (-> *part-group-id-table* 64 flags) (sp-group-flag sp13))
+             (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+             (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 64))
+             )
+            (else
+              (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
+              (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 64))
+              )
+            )
+          (let ((v1-137 (-> self control root-prim)))
+            (set! (-> v1-137 prim-core collide-as) (collide-spec))
+            (set! (-> v1-137 prim-core collide-with) (collide-spec))
+            )
+          0
+          (set! (-> self post-hook) target-no-ja-move-post)
+          (ja-channel-set! 0)
+          (ja-post)
+          (suspend-for (seconds 2)
+            )
+          )
+         )
+       )
+      (('drown 'drown-death)
+       ((lambda :behavior target
+          ()
+          (logior! (-> self target-flags) (target-flags tf14))
+          (set! (-> self alt-cam-pos y) (+ -8192.0 (-> self water height)))
+          (sound-play "death-drown")
+          (logclear! (-> self water flags) (water-flag swim-ground))
+          (set! (-> self control mod-surface) *dive-mods*)
+          (set! (-> self control dynam gravity-max) 6144.0)
+          (set! (-> self control dynam gravity-length) 6144.0)
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja-no-eval :group! jakb-flut-deatha-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (if (< (+ -10240.0 (-> self water height)) (-> self control trans y))
+                (seek! (-> self control trans y) (+ -10240.0 (-> self water height)) (* 81920.0 (seconds-per-frame)))
+                )
+            (suspend)
+            (ja :num! (seek!))
+            )
+          #f
+          )
+        )
+       )
+      (('cactus)
+       (set! (-> self control mod-surface) *neutral-mods*)
+       (ja-channel-push! 1 (seconds 0.1))
+       (let ((a1-48 jakb-turret-get-off-ja))
+         (ja-no-eval :group! a1-48 :num! (seek!) :frame-num 0.0)
+         )
+       (until (ja-done? 0)
+         (compute-delta-align! (-> self align))
+         (let ((s5-13 (new 'stack-no-clear 'vector)))
+           (when (not (logtest? (-> self align flags) (align-flags disabled)))
+             (vector-matrix*! s5-13 (-> self align delta trans) (-> self control c-R-w))
+             (vector-float*! (-> self control transv) s5-13 (-> self clock frames-per-second))
+             )
+           )
+         (suspend)
+         (ja :num! (seek!))
+         )
+       )
+      (('bot)
+       ((lambda :behavior target
+          ()
+          (local-vars (v0-1 uint))
+          (set! (-> self trans-hook) #f)
+          (b! (-> self flut as-daxter?) cfg-40 :delay (nop!))
+          (let ((gp-0 0))
+            (while (not (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance)) (< 30 gp-0))
+                            #t
+                            )
+                        )
+              (let ((v1-4 (ja-group)))
+                (if (not (and v1-4 (= v1-4 jakb-flut-jump-loop-ja)))
+                    (ja-no-eval :group! jakb-flut-jump-loop-ja :num! (loop!) :frame-num 0.0)
+                    )
+                )
+              (+! gp-0 (- (current-time) (-> self clock old-frame-counter)))
+              (when (-> self control unknown-spool-anim00)
+                (set! v0-1 (the-as uint #f))
+                (goto cfg-39)
+                )
+              (suspend)
+              (ja :num! (loop!))
+              )
+            (if (or (> gp-0 0) (let ((v1-38 (ja-group)))
+                                 (and v1-38 (or (= v1-38 jakb-flut-jump-ja) (= v1-38 jakb-flut-jump-loop-ja)))
+                                 )
+                    )
+                (target-flut-hit-ground-anim #f)
+                )
+            )
+          (ja-channel-push! 1 (seconds 0.075))
+          (label cfg-33)
+          (ja-no-eval :group! jakb-flut-idle-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (when (-> self control unknown-spool-anim00)
+              (set! v0-1 (the-as uint #f))
+              (goto cfg-39)
+              )
+            (suspend)
+            (ja :num! (seek!))
+            )
+          (b! (not #f) cfg-33 :delay (set! v0-1 (the-as uint #f)))
+          (label cfg-39)
+          (b! #t cfg-78 :delay (nop!))
+          (label cfg-40)
+          (let ((gp-1 0))
+            (while (not (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance)) (< 30 gp-1))
+                            #t
+                            )
+                        )
+              (let ((v1-73 (ja-group)))
+                (if (not (and v1-73 (= v1-73 jakb-mech-death-a-ja)))
+                    (ja-no-eval :group! jakb-mech-death-a-ja :num! (loop!) :frame-num 0.0)
+                    )
+                )
+              (+! gp-1 (- (current-time) (-> self clock old-frame-counter)))
+              (if (-> self control unknown-spool-anim00)
+                  (return (the-as object #f))
+                  )
+              (suspend)
+              (ja :num! (loop!))
+              )
+            (if (or (> gp-1 0) (let ((v1-107 (ja-group)))
+                                 (and v1-107 (or (= v1-107 jakb-mech-get-on-ja) (= v1-107 jakb-mech-death-a-ja)))
+                                 )
+                    )
+                (target-flut-hit-ground-anim #f)
+                )
+            )
+          (ja-channel-push! 1 (seconds 0.075))
+          (until #f
+            (ja-no-eval :group! jakb-mech-punch-u-ja :num! (seek!) :frame-num 0.0)
+            (until (ja-done? 0)
+              (if (-> self control unknown-spool-anim00)
+                  (return (the-as object #f))
+                  )
+              (suspend)
+              (ja :num! (seek!))
+              )
+            )
+          (set! v0-1 (the-as uint #f))
+          (label cfg-78)
+          v0-1
+          )
+        )
+       )
+      (else
+        (set! (-> self control mod-surface) *neutral-mods*)
+        (ja-channel-push! 1 (seconds 0.1))
+        (let ((a1-52 (if (-> self flut as-daxter?)
+                         jakb-mech-get-off-ja
+                         jakb-flut-deatha-ja
+                         )
+                     )
+              )
+          (ja-no-eval :group! a1-52 :num! (seek!) :frame-num 0.0)
+          )
+        (until (ja-done? 0)
+          (compute-delta-align! (-> self align))
+          (let ((s5-14 (new 'stack-no-clear 'vector)))
+            (when (not (logtest? (-> self align flags) (align-flags disabled)))
+              (vector-matrix*! s5-14 (-> self align delta trans) (-> self control c-R-w))
+              (vector-float*! (-> self control transv) s5-14 (-> self clock frames-per-second))
+              )
+            )
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (target-death-reset arg0 #f)
+    )
+  :post (behavior ()
+    (target-flut-post-post)
+    (target-no-stick-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-get-on (target)
+  :event target-generic-event-handler
+  :exit (behavior ()
+    (logclear! (-> self target-flags) (target-flags tf5))
+    ((-> target-flut-start exit))
+    )
+  :code (behavior ((arg0 handle))
+    (set! (-> self control mod-surface) *flut-walk-mods*)
+    (set! (-> self control transv quad) (the-as uint128 0))
+    (vector-copy! (-> self alt-cam-pos) (-> self control camera-pos))
+    (logior! (-> self target-flags) (target-flags tf5 tf6))
+    (set-time! (-> self state-time))
+    (when (handle->process arg0)
+      (let ((s4-0 (new 'stack-no-clear 'vector)))
+        (vector-copy! s4-0 (-> self control trans))
+        (let ((s5-0 (new 'stack-no-clear 'vector)))
+          (vector-copy! s5-0 (-> self control trans))
+          (quaternion-copy! (-> self control unknown-quat39) (-> self control quat))
+          (quaternion-copy! (-> self control unknown-quat40) (-> self control quat-for-control))
+          (set! (-> self control unknown-word04) (the-as uint (-> self control draw-offset y)))
+          (let ((s3-0 (as-type (handle->process arg0) process-drawable)))
+            (when s3-0
+              (vector-copy! s5-0 (-> s3-0 root trans))
+              (quaternion-copy! (-> self control unknown-quat40) (-> s3-0 root quat))
+              (send-event s3-0 'trans (-> self flut flut-trans))
+              (quaternion-copy! (the-as quaternion (-> self flut flut-quat)) (-> s3-0 root quat))
+              (vector-copy! (-> self flut flut-scale) (-> s3-0 root scale))
+              (set! (-> self control did-move-to-pole-or-max-jump-height) (-> self flut flut-trans y))
+              )
+            )
+          (vector-copy! (-> self control unknown-vector37) s4-0)
+          (vector-copy! (-> self control unknown-vector38) s5-0)
+          (let ((s4-1 #f))
+            (sound-play "uppercut")
+            (ja-channel-push! 1 (seconds 0.05))
+            (let ((s3-2 (if (-> self flut as-daxter?)
+                            jakb-gun-yellow-fire-twirl-ja
+                            jakb-flut-get-on-ja
+                            )
+                        )
+                  (f30-0 (if (-> self flut as-daxter?)
+                             20.0
+                             24.0
+                             )
+                         )
+                  )
+              (ja-no-eval :group! s3-2 :num! (seek! (ja-aframe f30-0 0)) :frame-num 0.0)
+              (until (ja-done? 0)
+                (let ((v1-66 (as-type (handle->process arg0) process-drawable)))
+                  (when v1-66
+                    (vector-copy! s5-0 (-> v1-66 root trans))
+                    (vector-copy! (-> self control unknown-vector38) s5-0)
+                    (quaternion-copy! (-> self control unknown-quat40) (-> v1-66 root quat))
+                    )
+                  )
+                (when (and (not s4-1) (= (-> self skel root-channel 0) (-> self skel channel)))
+                  (send-event (ppointer->process (-> self manipy)) 'anim-mode 'clone-anim)
+                  (set! s4-1 #t)
+                  )
+                (set! (-> self control transv quad) (the-as uint128 0))
+                (suspend)
+                (ja :num! (seek! (ja-aframe f30-0 0)))
+                )
+              )
+            )
+          )
+        )
+      (sound-play "flut-coo")
+      )
+    (send-event (ppointer->process (-> self manipy)) 'anim-mode 'clone-anim)
+    (logclear! (-> self target-flags) (target-flags tf6))
+    (set! (-> self control transv quad) (the-as uint128 0))
+    (quaternion-copy! (-> self control quat) (-> self control quat-for-control))
+    (rot->dir-targ! (-> self control))
+    (send-event (handle->process arg0) 'die)
+    (case (-> self flut mode)
+      (('wild)
+       (set-forward-vel 204800.0)
+       (set! (-> self control ctrl-xz-vel) 204800.0)
+       (ja-channel-set! 0)
+       )
+      )
+    (go target-flut-stance)
+    )
+  :post (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'vector))
+          (f30-0 (fmin 1.0 (* 0.0044444446 (the float (- (current-time) (-> self state-time))))))
+          )
+      (case (-> self flut mode)
+        (('wild)
+         (set! f30-0 (lerp-scale 0.0 1.0 (ja-frame-num 0) 0.0 (the float (+ (-> (ja-group) frames num-frames) -1))))
+         )
+        )
+      (vector-lerp! gp-0 (-> self control unknown-vector37) (-> self control unknown-vector38) f30-0)
+      (set! (-> gp-0 y)
+            (lerp
+              (-> self control unknown-vector37 y)
+              (-> self control unknown-vector38 y)
+              (fmax 0.0 (fmin 1.0 (* 0.006666667 (the float (+ (- (the-as int (-> self state-time))) (current-time))))))
+              )
+            )
+      (move-to-point! (-> self control) gp-0)
+      (quaternion-slerp!
+        (-> self control quat-for-control)
+        (-> self control unknown-quat39)
+        (-> self control unknown-quat40)
+        f30-0
+        )
+      )
+    (target-no-move-post)
+    (let ((f30-1 (-> self alt-cam-pos y)))
+      (if (-> self flut as-daxter?)
+          (vector<-cspace! (-> self alt-cam-pos) (-> self sidekick 0 node-list data 3))
+          (vector<-cspace! (-> self alt-cam-pos) (joint-node jakb-lod0-jg Rankle))
+          )
+      (set! (-> self alt-cam-pos y) f30-1)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(let ((v1-45 (copy *forward-jump-mods* 'loading-level)))
+  (set! (-> v1-45 fric) 0.0)
+  (set! (-> v1-45 nonlin-fric-dist) 0.0)
+  (set! (-> v1-45 turnv) 0.0)
+  (set! (-> v1-45 turnvv) 0.0)
+  (set! (-> v1-45 tiltv) 131072.0)
+  (set! (-> v1-45 tiltvf) 30.0)
+  (set! (-> v1-45 mult-hook)
+        (the-as
+          (function surface surface surface int none)
+          (lambda :behavior target
+            ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
+            (case arg3
+              ((1)
+               (persist-with-delay *setting-control* 'string-spline-accel (seconds 0.05) 'string-spline-accel 'abs 4096.0 0)
+               (persist-with-delay
+                 *setting-control*
+                 'string-spline-max-move
+                 (seconds 0.05)
+                 'string-spline-max-move
+                 'abs
+                 40960.0
+                 0
+                 )
+               (persist-with-delay
+                 *setting-control*
+                 'string-spline-accel-player
+                 (seconds 0.05)
+                 'string-spline-accel-player
+                 'abs
+                 4096.0
+                 0
+                 )
+               (persist-with-delay
+                 *setting-control*
+                 'string-spline-max-move-player
+                 (seconds 0.05)
+                 'string-spline-max-move-player
+                 'abs
+                 40960.0
+                 0
+                 )
+               )
+              )
+            )
+          )
+        )
+  (set! *flut-get-off-mods* v1-45)
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-get-off (target)
+  :event target-generic-event-handler
+  :exit (-> target-flut-get-on exit)
+  :code (behavior ((arg0 handle))
+    (logior! (-> self target-flags) (target-flags tf5))
+    (set-forward-vel 0.0)
+    (let ((s5-0 0))
+      (while (and (not (logtest? (-> self control status) (collide-status on-surface)))
+                  (not (if (and (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance)) (< 30 s5-0))
+                           #t
+                           )
+                       )
+                  )
+        (target-flut-falling-anim-trans)
+        (+! s5-0 (- (current-time) (-> self clock old-frame-counter)))
+        (suspend)
+        )
+      )
+    (go target-flut-get-off-jump)
+    )
+  :post (behavior ()
+    (target-no-stick-post)
+    (target-flut-post-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-get-off-jump (target)
+  :event target-generic-event-handler
+  :exit (-> target-flut-start exit)
+  :code (behavior ()
+    (let ((gp-1 (mem-copy! (the-as pointer (new 'stack 'transformq)) (the-as pointer (-> self control trans)) 48)))
+      (logior! (-> self target-flags) (target-flags tf5))
+      (set! (-> self control mod-surface) *empty-mods*)
+      (rot->dir-targ! (-> self control))
+      (set! (-> self neck flex-blend) 0.0)
+      (logior! (-> self target-flags) (target-flags tf6))
+      (vector-copy! (-> self alt-cam-pos) (-> self control camera-pos))
+      (ja-channel-push! 1 (seconds 0.1))
+      (let ((s5-0 (if (-> self flut as-daxter?)
+                      jakb-mech-dummy3-ja
+                      jakb-flut-get-off-ja
+                      )
+                  )
+            )
+        (ja-no-eval :group! s5-0 :num! (seek! (ja-aframe 18.0 0)) :frame-num 0.0)
+        )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 18.0 0)))
+        )
+      (rot->dir-targ! (-> self control))
+      (ja-post)
+      (let ((s5-2 (new 'stack-no-clear 'vector)))
+        (vector<-cspace! s5-2 (joint-node jakb-lod0-jg main))
+        (move-to-point! (-> self control) s5-2)
+        )
+      (send-event *camera* 'ease-in)
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
+      (set-forward-vel 32768.0)
+      (process-spawn
+        flut
+        :init flut-init
+        (-> self flut entity)
+        gp-1
+        (process->handle self)
+        (+ (if (= (-> self flut mode) 'wild)
+               0
+               1
+               )
+           (shl (-> self flut color-index) 32)
+           )
+        (-> self flut mode)
+        :name "flut"
+        :to self
+        )
+      )
+    (go target-jump 10240.0 10240.0 *flut-get-off-mods*)
+    )
+  :post (behavior ()
+    (let ((f30-0 (-> self alt-cam-pos y)))
+      (vector<-cspace! (-> self alt-cam-pos) (joint-node jakb-lod0-jg Rankle))
+      (set! (-> self alt-cam-pos y) f30-0)
+      )
+    (target-no-move-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-eject (target)
+  :event target-generic-event-handler
+  :exit (-> target-flut-start exit)
+  :code (behavior ((arg0 symbol))
+    (let ((s5-1 (mem-copy! (the-as pointer (new 'stack 'transformq)) (the-as pointer (-> self control trans)) 48)))
+      (logior! (-> self target-flags) (target-flags tf5))
+      (set! (-> self control mod-surface) *empty-mods*)
+      (rot->dir-targ! (-> self control))
+      (set! (-> self neck flex-blend) 0.0)
+      (logior! (-> self target-flags) (target-flags tf6))
+      (vector-copy! (-> self alt-cam-pos) (-> self control camera-pos))
+      (ja-channel-push! 1 (seconds 0.1))
+      (case arg0
+        (('drown)
+         (ja-no-eval :group! jakb-flut-death-drown-ja :num! (seek! (ja-aframe 60.0 0)) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek! (ja-aframe 60.0 0)))
+           )
+         )
+        (else
+          (ja-no-eval :group! jakb-flut-deathb-ja :num! (seek! (ja-aframe 25.0 0)) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek! (ja-aframe 25.0 0)))
+            )
+          )
+        )
+      (rot->dir-targ! (-> self control))
+      (ja-post)
+      (let ((s4-4 (new 'stack-no-clear 'vector)))
+        (vector<-cspace! s4-4 (joint-node jakb-lod0-jg main))
+        (+! (-> s4-4 y) -9011.2)
+        (let ((v1-45 (-> self water flags)))
+          (if (and (logtest? (water-flag touch-water) v1-45)
+                   (logtest? (water-flag under-water swimming) v1-45)
+                   (not (logtest? (focus-status mech) (-> self focus-status)))
+                   )
+              (set! (-> s4-4 y) (-> self water collide-height))
+              )
+          )
+        (move-to-point! (-> self control) s4-4)
+        )
+      (send-event *camera* 'ease-in)
+      (ja-channel-set! 0)
+      (logclear! (-> self control status) (collide-status on-surface on-ground touch-surface))
+      (let ((s4-5 (if (= (-> self flut mode) 'wild)
+                      4
+                      5
+                      )
+                  )
+            )
+        (case arg0
+          (('drown)
+           (set! s4-5 (logior s4-5 10))
+           )
+          )
+        (process-spawn
+          flut
+          :init flut-init
+          (-> self flut entity)
+          s5-1
+          (process->handle self)
+          (+ s4-5 (shl (-> self flut color-index) 32))
+          (-> self flut mode)
+          :name "flut"
+          :to self
+          )
+        )
+      )
+    (cond
+      ((= arg0 'drown)
+       (logior! (-> self water flags) (water-flag jump-out))
+       (go target-swim-jump 20480.0 20480.0)
+       )
+      (else
+        (go target-jump 14336.0 14336.0 *flut-get-off-mods*)
+        )
+      )
+    )
+  :post (behavior ()
+    (let ((f30-0 (-> self alt-cam-pos y)))
+      (vector<-cspace! (-> self alt-cam-pos) (joint-node jakb-lod0-jg Rankle))
+      (set! (-> self alt-cam-pos y) f30-0)
+      )
+    (target-no-move-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-grab (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (cond
+      ((and (= message 'query) (= (-> block param 0) 'mode))
+       (-> self state name)
+       )
+      (else
+        (case message
+          (('end-mode)
+           (case (-> block param 0)
+             (('grab)
+              (go target-flut-stance)
+              )
+             (('flut)
+              (go target-grab 'stance)
+              )
+             )
+           )
+          (('clone-anim)
+           (go target-flut-clone-anim (process->handle (the-as process (-> block param 0))))
+           )
+          (else
+            (target-generic-event-handler proc argc message block)
+            )
+          )
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self control mod-surface) *grab-mods*)
+    (set! (-> self neck flex-blend) 0.0)
+    (logior! (-> self target-flags) (target-flags tf2))
+    (logior! (-> self focus-status) (focus-status grabbed))
+    )
+  :exit (behavior ()
+    (logclear! (-> self target-flags) (target-flags tf2))
+    (logclear! (-> self focus-status) (focus-status grabbed))
+    (logclear! (-> self water flags) (water-flag jump-out))
+    (target-exit)
+    ((-> target-flut-start exit))
+    )
+  :code (-> target-flut-stance code)
+  :post (behavior ()
+    (target-no-stick-post)
+    (target-flut-post-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-flut-clone-anim (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'trans) (= (-> block param 0) 'restore))
+        (set! (-> self control unknown-word04) (the-as uint #f))
+        )
+    ((-> target-flut-grab event) proc argc message block)
+    )
+  :enter (-> target-clone-anim enter)
+  :exit (behavior ()
+    (send-event (ppointer->process (-> self sidekick)) 'matrix #f)
+    ((-> target-clone-anim exit))
+    ((-> target-flut-start exit))
+    )
+  :code (behavior ((arg0 handle))
+    (send-event (ppointer->process (-> self sidekick)) 'matrix 'play-anim)
+    (clone-anim arg0 #t "")
+    (go target-flut-stance)
+    )
+  :post (behavior ()
+    (target-no-ja-move-post)
+    (target-flut-post-post)
+    )
+  )

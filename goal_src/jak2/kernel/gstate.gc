@@ -159,11 +159,15 @@ It type checks the arguments for the entry function.
                                &key (exit *no-state*)
                                &key (code *no-state*)
                                &key (post *no-state*)
+                               &rest body
                                )
   "Define a new state!"
 
   (with-gensyms (new-state)
-    (let ((defstate-type (first parents)))
+    (let ((defstate-type (first parents))
+          (docstring ""))
+      (when (and (> (length body) 1) (string? (first body)))
+        (set! docstring (first body)))
       (when (not (null? *defstate-type-stack*))
         (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
                  *defstate-type-stack*)
@@ -226,8 +230,8 @@ It type checks the arguments for the entry function.
          ;; This way it can check the individual function types, make sure they make sense, and create
          ;; a state with the appropriate type.
          ,(if virtual
-              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
-              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,docstring ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state ,docstring :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
 
          )
@@ -248,6 +252,12 @@ It type checks the arguments for the entry function.
     )
   )
 
+(defmacro call-parent-state-handler (handler &key (type (function none)) &rest args)
+  "Call the parent handler for this state."
+  `(let ((handler (-> (find-parent-state) ,handler)))
+     (if handler ((the ,type handler) ,@args))
+     )
+  )
 
 (defmacro behavior (bindings &rest body)
   "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
@@ -491,7 +501,11 @@ It type checks the arguments for the entry function.
 (defun send-event-function ((arg0 process-tree) (arg1 event-message-block))
   "Send an event block to a process."
   (with-pp
-    (when (and arg0 (!= (-> arg0 type) process-tree) (-> (the-as process arg0) event-hook) (-> arg1 from))
+    ;; og:preserve-this check that we have a _valid_ process. originally this just checked
+    ;; that type != process-tree, but sometimes we might get stale process ref (jak1 qbert-plat-master)
+    (when (and (valid? arg0 process (the-as string #f) #f 0)
+               (nonzero? (-> (the-as process arg0) pid))
+               (-> (the-as process arg0) event-hook) (-> arg1 from))
       (let ((gp-0 pp))
         (set! pp (the-as process arg0))
         (let ((v0-0 ((-> (the-as process arg0) event-hook) (-> arg1 from 0) (-> arg1 num-params) (-> arg1 message) arg1)))

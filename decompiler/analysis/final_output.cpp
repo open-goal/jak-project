@@ -1,5 +1,7 @@
 #include "final_output.h"
+
 #include "common/goos/PrettyPrinter.h"
+
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -23,10 +25,27 @@ goos::Object get_arg_list_for_function(const Function& func, const Env& env) {
 }
 
 namespace {
+
+std::string fix_docstring_indent(const std::string& input) {
+  std::string result;
+  for (auto c : input) {
+    if (c == '\n') {
+      result += '\n';
+      for (int i = 0; i < 3; i++) {
+        result += ' ';
+      }
+    } else {
+      result += c;
+    }
+  }
+  return result;
+}
+
 void append_body_to_function_definition(goos::Object* top_form,
                                         const std::vector<goos::Object>& inline_body,
                                         const FunctionVariableDefinitions& var_dec,
-                                        const TypeSpec& ts) {
+                                        const TypeSpec& ts,
+                                        GameVersion version) {
   // Some forms like docstrings and local-vars we _always_ want to be at the top level and first (in
   // the order added)
   std::vector<goos::Object> initial_top_level_forms;
@@ -35,7 +54,8 @@ void append_body_to_function_definition(goos::Object* top_form,
   body_elements.insert(body_elements.end(), inline_body.begin(), inline_body.end());
   // If the first element in the body is a docstring, add it first
   if (body_elements.size() > 0 && body_elements.at(0).is_string()) {
-    initial_top_level_forms.push_back(inline_body.at(0));
+    initial_top_level_forms.push_back(
+        goos::StringObject::make_new(fix_docstring_indent(inline_body.at(0).as_string()->data)));
     body_elements.erase(body_elements.begin());
   }
 
@@ -65,7 +85,7 @@ void append_body_to_function_definition(goos::Object* top_form,
 }
 }  // namespace
 
-goos::Object final_output_lambda(const Function& func) {
+goos::Object final_output_lambda(const Function& func, GameVersion version) {
   std::vector<goos::Object> inline_body;
   func.ir2.top_form->inline_forms(inline_body, func.ir2.env);
   auto var_dec = func.ir2.env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
@@ -74,11 +94,11 @@ goos::Object final_output_lambda(const Function& func) {
   if (behavior) {
     auto result = pretty_print::build_list(fmt::format("lambda :behavior {}", *behavior),
                                            get_arg_list_for_function(func, func.ir2.env));
-    append_body_to_function_definition(&result, inline_body, var_dec, func.type);
+    append_body_to_function_definition(&result, inline_body, var_dec, func.type, version);
     return result;
   } else {
     auto result = pretty_print::build_list("lambda", get_arg_list_for_function(func, func.ir2.env));
-    append_body_to_function_definition(&result, inline_body, var_dec, func.type);
+    append_body_to_function_definition(&result, inline_body, var_dec, func.type, version);
     return result;
   }
 }
@@ -115,7 +135,7 @@ goos::Object final_output_defstate_anonymous_behavior(const Function& func,
   auto var_dec = func.ir2.env.local_var_type_list(func.ir2.top_form, func.type.arg_count() - 1);
 
   auto result = pretty_print::build_list("behavior", get_arg_list_for_function(func, func.ir2.env));
-  append_body_to_function_definition(&result, inline_body, var_dec, func.type);
+  append_body_to_function_definition(&result, inline_body, var_dec, func.type, dts.version());
   return result;
 }
 
@@ -167,7 +187,7 @@ std::string final_defun_out(const Function& func,
       }
     }
 
-    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
+    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type, dts.version());
     return pretty_print::to_string(top_form);
   }
 
@@ -188,7 +208,8 @@ std::string final_defun_out(const Function& func,
       inline_body.insert(inline_body.begin(),
                          pretty_print::new_string(method_info.docstring.value()));
     }
-    append_body_to_function_definition(&top_form, inline_body, var_dec, method_info.type);
+    append_body_to_function_definition(&top_form, inline_body, var_dec, method_info.type,
+                                       dts.version());
     return pretty_print::to_string(top_form);
   }
 
@@ -199,7 +220,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
+    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type, dts.version());
     return pretty_print::to_string(top_form);
   }
 
@@ -212,7 +233,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
+    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type, dts.version());
     return pretty_print::to_string(top_form);
   }
 
@@ -226,7 +247,7 @@ std::string final_defun_out(const Function& func,
     top.push_back(arguments);
     auto top_form = pretty_print::build_list(top);
 
-    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type);
+    append_body_to_function_definition(&top_form, inline_body, var_dec, func.type, dts.version());
     return pretty_print::to_string(top_form);
   }
 

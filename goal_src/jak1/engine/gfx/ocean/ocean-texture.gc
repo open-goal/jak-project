@@ -1,87 +1,99 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/ocean/ocean-h.gc")
+(require "engine/gfx/hw/display.gc")
 
-;; name: ocean-texture.gc
-;; name in dgo: ocean-texture
-;; dgos: GAME, ENGINE
+;; DECOMP BEGINS
 
+(define *ocean-texture-work*
+  (new 'static
+       'ocean-texture-work
+       :sprite-tmpl
+       (new 'static
+            'dma-gif-packet
+            :dma-vif
+            (new 'static
+                 'dma-packet
+                 :dma
+                 (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                 :vif1
+                 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+            :gif0
+            (new 'static
+                 'gif-tag64
+                 :nloop #x1
+                 :eop #x1
+                 :pre #x1
+                 :prim
+                 (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
+                 :nreg #x5)
+            :gif1
+            (new 'static
+                 'gif-tag-regs
+                 :regs0 (gif-reg-id rgbaq)
+                 :regs1 (gif-reg-id uv)
+                 :regs2 (gif-reg-id xyz2)
+                 :regs3 (gif-reg-id uv)
+                 :regs4 (gif-reg-id xyz2)))
+       :sprite-tmpl2
+       (new 'static
+            'dma-gif-packet
+            :dma-vif
+            (new 'static
+                 'dma-packet
+                 :dma
+                 (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
+                 :vif1
+                 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1))
+            :gif0
+            (new 'static
+                 'gif-tag64
+                 :nloop #x1
+                 :eop #x1
+                 :pre #x1
+                 :prim
+                 (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
+                 :nreg #x3)
+            :gif1
+            (new 'static 'gif-tag-regs :regs0 (gif-reg-id rgbaq) :regs1 (gif-reg-id xyz2) :regs2 (gif-reg-id xyz2)))
+       :adgif-tmpl
+       (new 'static
+            'dma-gif-packet
+            :dma-vif
+            (new 'static
+                 'dma-packet
+                 :dma
+                 (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+                 :vif1
+                 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+            :gif0
+            (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+            :gif1
+            (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))))
 
-;; definition for symbol *ocean-texture-work*, type ocean-texture-work
-(define *ocean-texture-work* 
-        (new 'static 'ocean-texture-work
-             :sprite-tmpl
-             (new 'static 'dma-gif-packet
-                  :dma-vif
-                  (new 'static 'dma-packet
-                       :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                       :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                       )
-                  :gif0 (new 'static 'gif-tag64
-                             :nloop #x1
-                             :eop #x1
-                             :pre #x1
-                             :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
-                             :nreg #x5
-                             )
-                  :gif1 (new 'static 'gif-tag-regs
-                             :regs0 (gif-reg-id rgbaq)
-                             :regs1 (gif-reg-id uv)
-                             :regs2 (gif-reg-id xyz2)
-                             :regs3 (gif-reg-id uv)
-                             :regs4 (gif-reg-id xyz2)
-                             )
-                  )
-             :sprite-tmpl2
-             (new 'static 'dma-gif-packet
-                  :dma-vif
-                  (new 'static 'dma-packet
-                       :dma (new 'static 'dma-tag :qwc #x4 :id (dma-tag-id cnt))
-                       :vif1 (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd direct) :msk #x1)
-                       )
-                  :gif0 (new 'static 'gif-tag64
-                             :nloop #x1
-                             :eop #x1
-                             :pre #x1
-                             :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :abe #x1)
-                             :nreg #x3
-                             )
-                  :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id rgbaq) :regs1 (gif-reg-id xyz2) :regs2 (gif-reg-id xyz2))
-                  )
-             :adgif-tmpl
-             (new 'static 'dma-gif-packet
-                  :dma-vif
-                  (new 'static 'dma-packet
-                       :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                       :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                       )
-                  :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
-                  :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
-                  )
-             )
-        )
-
-;; definition for symbol ocean-texture-vu1-block, type vu-function
-(define ocean-texture-vu1-block (new 'static 'vu-function #|:length #x92 :qlength 73|#))
+(define ocean-texture-vu1-block
+  (new 'static
+       'vu-function
+       #| :length #x92 :qlength 73 |#
+       ))
 
 (defun ocean-texture-setup-constants ((arg0 ocean-texture-constants))
   "Set the constant values used in Ocean Texture VU1 program."
   (set! (-> arg0 giftag tag)
-        (new 'static 'gif-tag64
-          :nloop #x42
-          :eop #x1
-          :pre #x1
-          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1)
-          :nreg #x3
-          )
-        )
+        (new 'static
+             'gif-tag64
+             :nloop #x42
+             :eop #x1
+             :pre #x1
+             :prim
+             (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1)
+             :nreg #x3))
   (set! (-> arg0 giftag regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyz2))
-        )
-  
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyz2)))
   ;; these are VU1 data addresses
   (set-vector! (-> arg0 buffers) 384 583 384 583)
   (set-vector! (-> arg0 dests) 782 881 782 881)
-
   (set-vector! (-> arg0 start) 0.0 0.0 1048575.94 0.0)
   (set-vector! (-> arg0 offsets) 4.0 8.0 12.0 16.0)
   (set-vector! (-> arg0 constants) 0.5 0.5 0.0 0.0)
@@ -90,31 +102,20 @@
   (set! (-> arg0 cam-nrm z) (- (-> *math-camera* inv-camera-rot vector 2 z)))
   (set! (-> arg0 cam-nrm w) 0.0)
   0
-  (none)
-  )
+  (none))
 
 (defun ocean-texture-add-constants ((arg0 dma-buffer))
   "Add DMA packet to upload ocean constants. The constants are stored in the DMA buffer."
   (let* ((a1-0 7)
          (v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-0))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1)
-          (new 'static 'vif-tag :imm #x3d9 :cmd (vif-cmd unpack-v4-32) :num a1-0)
-          )
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
+    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x3d9 :cmd (vif-cmd unpack-v4-32) :num a1-0))
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
   (ocean-texture-setup-constants (the-as ocean-texture-constants (-> arg0 base)))
-  (let ((v0-1 (&+ (-> arg0 base) 112)))
-    (set! (-> arg0 base) v0-1)
-    v0-1
-    )
-  )
+  (let ((v0-1 (&+ (-> arg0 base) 112))) (set! (-> arg0 base) v0-1) v0-1))
 
-;; definition for function ocean-texture-add-envmap
-;; Used lq/sq
 (defun ocean-texture-add-envmap ((arg0 dma-buffer))
   "Add DMA packet to set up the GS with the env map texture's ADGIF shader."
   (let ((v1-0 (-> arg0 base)))
@@ -123,113 +124,58 @@
     (set! (-> (the-as (pointer uint128) v1-0) 1) (-> *ocean-texture-work* adgif-tmpl quad 1))
     (let ((s4-0 (&+ v1-0 32)))
       ;; this just stores the adgif directly in the DMA buffer
-      (adgif-shader<-texture-simple!
-        (the-as adgif-shader s4-0)
-        (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #x100))
-        )
-      )
-    )
-  (let ((v0-2 (&+ (-> arg0 base) 112)))
-    (set! (-> arg0 base) v0-2)
-    v0-2
-    )
-  )
+      (adgif-shader<-texture-simple! (the-as adgif-shader s4-0) (get-texture environment-ocean-alphamod environment-generic))))
+  (let ((v0-2 (&+ (-> arg0 base) 112))) (set! (-> arg0 base) v0-2) v0-2))
 
-;; definition for function ocean-texture-add-verts
 (defun ocean-texture-add-verts ((arg0 dma-buffer) (arg1 (inline-array vector)))
   (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
-    (set! (-> (the-as dma-packet a0-1) dma)
-          (new 'static 'dma-tag :qwc #xc0 :id (dma-tag-id ref) :addr (the-as int arg1))
-          )
+         (a0-1 (the-as object (-> v1-0 base))))
+    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :qwc #xc0 :id (dma-tag-id ref) :addr (the-as int arg1)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1)
-          (new 'static 'vif-tag :imm #x8000 :num #xc0 :cmd (vif-cmd unpack-v4-32))
-          )
-    (let ((v0-0 (&+ (the-as pointer a0-1) 16)))
-      (set! (-> v1-0 base) v0-0)
-      v0-0
-      )
-    )
-  )
+    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x8000 :num #xc0 :cmd (vif-cmd unpack-v4-32)))
+    (let ((v0-0 (&+ (the-as pointer a0-1) 16))) (set! (-> v1-0 base) v0-0) v0-0)))
 
-;; definition for function ocean-texture-add-verts-last
 (defun ocean-texture-add-verts-last ((arg0 dma-buffer) (arg1 (inline-array vector)) (arg2 (inline-array vector)))
   (let* ((v1-0 arg0)
-         (a3-0 (the-as object (-> v1-0 base)))
-         )
-    (set! (-> (the-as dma-packet a3-0) dma)
-          (new 'static 'dma-tag :qwc #x80 :id (dma-tag-id ref) :addr (the-as int arg1))
-          )
+         (a3-0 (the-as object (-> v1-0 base))))
+    (set! (-> (the-as dma-packet a3-0) dma) (new 'static 'dma-tag :qwc #x80 :id (dma-tag-id ref) :addr (the-as int arg1)))
     (set! (-> (the-as dma-packet a3-0) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a3-0) vif1)
-          (new 'static 'vif-tag :imm #x8000 :num #x80 :cmd (vif-cmd unpack-v4-32))
-          )
-    (set! (-> v1-0 base) (&+ (the-as pointer a3-0) 16))
-    )
+    (set! (-> (the-as dma-packet a3-0) vif1) (new 'static 'vif-tag :imm #x8000 :num #x80 :cmd (vif-cmd unpack-v4-32)))
+    (set! (-> v1-0 base) (&+ (the-as pointer a3-0) 16)))
   (let* ((v1-1 arg0)
-         (a0-1 (the-as object (-> v1-1 base)))
-         )
-    (set! (-> (the-as dma-packet a0-1) dma)
-          (new 'static 'dma-tag :qwc #x40 :id (dma-tag-id ref) :addr (the-as int arg2))
-          )
+         (a0-1 (the-as object (-> v1-1 base))))
+    (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :qwc #x40 :id (dma-tag-id ref) :addr (the-as int arg2)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1)
-          (new 'static 'vif-tag :imm #x8080 :num #x40 :cmd (vif-cmd unpack-v4-32))
-          )
-    (let ((v0-0 (&+ (the-as pointer a0-1) 16)))
-      (set! (-> v1-1 base) v0-0)
-      v0-0
-      )
-    )
-  )
+    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x8080 :num #x40 :cmd (vif-cmd unpack-v4-32)))
+    (let ((v0-0 (&+ (the-as pointer a0-1) 16))) (set! (-> v1-1 base) v0-0) v0-0)))
 
-;; definition for function ocean-texture-add-call-start
-;; INFO: Return type mismatch pointer vs none.
 (defun ocean-texture-add-call-start ((arg0 dma-buffer))
   (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :cmd (vif-cmd mscalf) :msk #x1))
     (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
-  (none)
-  )
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+  (none))
 
-;; definition for function ocean-texture-add-call-rest
-;; INFO: Return type mismatch pointer vs none.
 (defun ocean-texture-add-call-rest ((arg0 dma-buffer))
   (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd mscalf) :msk #x1))
     (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
-  (none)
-  )
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+  (none))
 
-;; definition for function ocean-texture-add-call-done
-;; INFO: Return type mismatch pointer vs none.
 (defun ocean-texture-add-call-done ((arg0 dma-buffer))
   (let* ((v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x4 :cmd (vif-cmd mscalf) :msk #x1))
     (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
-  (none)
-  )
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+  (none))
 
-;; definition for function draw-ocean-texture
-;; INFO: Return type mismatch int vs none.
-;; Used lq/sq
 (defun draw-ocean-texture ((arg0 dma-buffer) (arg1 (inline-array vector)) (arg2 symbol))
   (local-vars (sv-16 (inline-array vector)) (sv-32 int) (sv-48 vector) (sv-64 (inline-array vector)))
   (set! sv-64 arg1)
@@ -239,18 +185,15 @@
          (ocean-tex-page-1 (+ ocean-tex-page-0 8))
          (ocean-tex-block-1 (* ocean-tex-page-1 32))
          (ocean-tex-page-2 (+ ocean-tex-page-0 10))
-         (ocean-tex-block-2 (* ocean-tex-page-2 32))
-         )
+         (ocean-tex-block-2 (* ocean-tex-page-2 32)))
     (set-display-gs-state arg0 ocean-tex-page-0 128 128 0 0)
     (dma-buffer-add-vu-function arg0 ocean-texture-vu1-block 1)
     (let* ((v1-0 arg0)
-           (a0-3 (the-as object (-> v1-0 base)))
-           )
+           (a0-3 (the-as object (-> v1-0 base))))
       (set! (-> (the-as dma-packet a0-3) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
       (set! (-> (the-as dma-packet a0-3) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
       (set! (-> (the-as dma-packet a0-3) vif1) (new 'static 'vif-tag :imm #xc0 :cmd (vif-cmd offset)))
-      (set! (-> v1-0 base) (&+ (the-as pointer a0-3) 16))
-      )
+      (set! (-> v1-0 base) (&+ (the-as pointer a0-3) 16)))
     (ocean-texture-add-constants arg0)
     (ocean-texture-add-envmap arg0)
     (set! sv-16 sv-64)
@@ -262,8 +205,7 @@
       (ocean-texture-add-verts arg0 (the-as (inline-array vector) sv-48))
       (set! sv-48 (-> (the-as (inline-array vector) sv-48) 192))
       (ocean-texture-add-call-rest arg0)
-      (set! sv-32 (+ sv-32 1))
-      )
+      (set! sv-32 (+ sv-32 1)))
     (ocean-texture-add-verts-last arg0 (the-as (inline-array vector) sv-48) sv-64)
     (ocean-texture-add-call-rest arg0)
     (ocean-texture-add-call-done arg0)
@@ -622,5 +564,4 @@
     )
   ; (reset-display-gs-state *display* arg0 *oddeven*)
   0
-  (none)
-  )
+  (none))

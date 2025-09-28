@@ -7,6 +7,7 @@ use serde_json::{Map, Value};
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 enum RuleJSON {
     ALIAS {
         content: Box<RuleJSON>,
@@ -19,6 +20,7 @@ enum RuleJSON {
     },
     PATTERN {
         value: String,
+        flags: Option<String>,
     },
     SYMBOL {
         name: String,
@@ -90,15 +92,15 @@ pub(crate) struct GrammarJSON {
 }
 
 pub(crate) fn parse_grammar(input: &str) -> Result<InputGrammar> {
-    let grammar_json: GrammarJSON = serde_json::from_str(&input)?;
+    let grammar_json: GrammarJSON = serde_json::from_str(input)?;
 
     let mut variables = Vec::with_capacity(grammar_json.rules.len());
     for (name, value) in grammar_json.rules {
         variables.push(Variable {
-            name: name.to_owned(),
+            name: name.clone(),
             kind: VariableType::Named,
             rule: parse_rule(serde_json::from_value(value)?),
-        })
+        });
     }
 
     let mut precedence_orderings = Vec::with_capacity(grammar_json.precedences.len());
@@ -113,12 +115,27 @@ pub(crate) fn parse_grammar(input: &str) -> Result<InputGrammar> {
                         "Invalid rule in precedences array. Only strings and symbols are allowed"
                     ))
                 }
-            })
+            });
         }
         precedence_orderings.push(ordering);
     }
 
-    let extra_symbols = grammar_json.extras.into_iter().map(parse_rule).collect();
+    let extra_symbols = grammar_json
+        .extras
+        .into_iter()
+        .try_fold(Vec::new(), |mut acc, item| {
+            let rule = parse_rule(item);
+            if let Rule::String(ref value) = rule {
+                if value.is_empty() {
+                    return Err(anyhow!(
+                        "Rules in the `extras` array must not contain empty strings"
+                    ));
+                }
+            }
+            acc.push(rule);
+            Ok(acc)
+        })?;
+
     let external_tokens = grammar_json.externals.into_iter().map(parse_rule).collect();
 
     Ok(InputGrammar {
@@ -143,7 +160,24 @@ fn parse_rule(json: RuleJSON) -> Rule {
         } => Rule::alias(parse_rule(*content), value, named),
         RuleJSON::BLANK => Rule::Blank,
         RuleJSON::STRING { value } => Rule::String(value),
-        RuleJSON::PATTERN { value } => Rule::Pattern(value),
+        RuleJSON::PATTERN { value, flags } => Rule::Pattern(
+            value,
+            flags.map_or(String::new(), |f| {
+                f.chars()
+                    .filter(|c| {
+                        if *c == 'i' {
+                            true
+                        } else {
+                            // silently ignore unicode flags
+                            if *c != 'u' && *c != 'v' {
+                                eprintln!("Warning: unsupported flag {c}");
+                            }
+                            false
+                        }
+                    })
+                    .collect()
+            }),
+        ),
         RuleJSON::SYMBOL { name } => Rule::NamedSymbol(name),
         RuleJSON::CHOICE { members } => Rule::choice(members.into_iter().map(parse_rule).collect()),
         RuleJSON::FIELD { content, name } => Rule::field(name, parse_rule(*content)),
@@ -167,11 +201,11 @@ fn parse_rule(json: RuleJSON) -> Rule {
     }
 }
 
-impl Into<Precedence> for PrecedenceValueJSON {
-    fn into(self) -> Precedence {
-        match self {
-            PrecedenceValueJSON::Integer(i) => Precedence::Integer(i),
-            PrecedenceValueJSON::Name(i) => Precedence::Name(i),
+impl From<PrecedenceValueJSON> for Precedence {
+    fn from(val: PrecedenceValueJSON) -> Self {
+        match val {
+            PrecedenceValueJSON::Integer(i) => Self::Integer(i),
+            PrecedenceValueJSON::Name(i) => Self::Name(i),
         }
     }
 }

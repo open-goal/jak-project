@@ -7,3 +7,200 @@
 
 ;; DECOMP BEGINS
 
+(deftype stick-constraint (structure)
+  ((constraint-length-half                float)
+   (one-over-two-times-constraint-length  float)
+   (constraint-length-sqd                 float)
+   (particle0                             uint16)
+   (particle1                             uint16)
+   (vec                                   vector  :inline :overlay-at constraint-length-half)
+   )
+  )
+
+
+(deftype verlet-particle (structure)
+  ((pos         vector  :inline)
+   (prev-pos    vector  :inline)
+   (mass-scale  float)
+   )
+  )
+
+
+(deftype disc-constraint (structure)
+  ((normal                vector  :inline)
+   (origin                vector  :inline)
+   (radius                float)
+   (start-particle-index  int16)
+   (end-particle-index    int16)
+   )
+  )
+
+
+(deftype cylinder-constraint (structure)
+  ((c0      vector  :inline)
+   (norm    vector  :inline)
+   (length  float)
+   (radius  float)
+   )
+  )
+
+
+(deftype particle-anchor-point (structure)
+  ((anchor-pos      vector  :inline)
+   (particle-index  uint16)
+   )
+  )
+
+
+(deftype particle-array (inline-array-class)
+  ((data  verlet-particle  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> particle-array heap-base) (the-as uint 48))
+
+(deftype float-array (inline-array-class)
+  ((data  float  :dynamic)
+   )
+  )
+
+
+(set! (-> float-array heap-base) (the-as uint 4))
+
+(deftype stick-constraint-array (inline-array-class)
+  ((data  stick-constraint  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> stick-constraint-array heap-base) (the-as uint 16))
+
+(deftype collision-sphere-array (inline-array-class)
+  ((data  sphere  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> collision-sphere-array heap-base) (the-as uint 16))
+
+(deftype collision-disc-array (inline-array-class)
+  ((data  disc-constraint  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> collision-disc-array heap-base) (the-as uint 48))
+
+(deftype collision-cylinder-array (inline-array-class)
+  ((data  cylinder-constraint  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> collision-cylinder-array heap-base) (the-as uint 48))
+
+(deftype anchor-point-array (inline-array-class)
+  ((data  particle-anchor-point  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> anchor-point-array heap-base) (the-as uint 32))
+
+(deftype verlet-particle-system (cloth-base)
+  ((particles                particle-array)
+   (drag                     float)
+   (accum-force              vector  :inline)
+   (timestep-frequency       int8)
+   (last-simulate-remaining  int8)
+   (momentum                 vector  :inline)
+   )
+  (:methods
+    (accumulate-external-forces! (_type_) none)
+    (compute-verlet-step (_type_ float) none)
+    (run-one-iteration (_type_) none)
+    (reset! (_type_) none)
+    (debug-draw (_type_) none)
+    )
+  )
+
+
+(deftype current-position-info (structure)
+  ((current-vert-index       uint16)
+   (last-2-x-index           uint16)
+   (last-2-y-index           uint16)
+   (last-x-index             uint16)
+   (last-y-index             uint16)
+   (lights                   vu-lights  :inline)
+   (scale                    vector     :inline)
+   (clamp-col                vector     :inline)
+   (last-normal              vector     :inline)
+   (face-normal-needs-flip?  symbol)
+   (cross-index0             int8)
+   (cross-index1             int8)
+   (backside-normal          vector     :inline)
+   )
+  )
+
+
+(deftype cloth-system (verlet-particle-system)
+  ((ground-constraint           float)
+   (disc-collision-constraints  collision-disc-array)
+   (collision-constraints       collision-sphere-array)
+   (stick-constraints           stick-constraint-array)
+   (anchor-points               anchor-point-array)
+   (constraint-strengths        int32  3)
+   (num-xy-constraints          int16)
+   (num-diagonal-constraints    int16)
+   (cloth-width                 int32)
+   (cloth-height                int32)
+   (strip                       prim-strip)
+   (strip2                      prim-strip)
+   (strip3                      prim-strip)
+   (mesh                        art-cloth-geo)
+   (gravity-constant            float)
+   (wind-constant               float)
+   (flags                       cloth-flag)
+   (thickness-scalar            float)
+   (ball-collision-radius       float)
+   (face-normal-scalar          float)
+   (reset-count                 int8)
+   (num-iterations              int8)
+   (secret-disable              game-secrets)
+   (params                      cloth-params)
+   )
+  (:methods
+    (initialize-cloth-system! (_type_ cloth-params) none)
+    (debug-draw-spheres (_type_) none)
+    (post-physics-update (_type_) int)
+    (enforce-constraints-1 (_type_) none)
+    (enforce-constraints-2 (_type_) none)
+    (cloth-system-method-21 (_type_) none)
+    (cloth-system-method-22 (_type_) none)
+    (cloth-system-method-23 (_type_) none)
+    (cloth-system-method-24 (_type_) int)
+    (cloth-system-method-25 (_type_) int)
+    (cloth-system-method-26 (_type_) none)
+    (cloth-system-method-27 (_type_ vector int int current-position-info) vector)
+    (cloth-system-method-28 (_type_ int int current-position-info) none)
+    (cloth-system-method-29 (_type_ int int current-position-info int) uint)
+    (cloth-system-method-30 (_type_ int int current-position-info int) none)
+    (cloth-system-method-31 (_type_ current-position-info) none)
+    (cloth-system-method-32 (_type_ vector int int current-position-info) none)
+    (cloth-system-method-33 (_type_ vu-lights) none)
+    (hide! (_type_) none)
+    (reset-locations (_type_) none)
+    (pre-physics-update (_type_) none)
+    (cloth-system-cmd-handler (_type_ pair) none)
+    )
+  )
+
+
+(deftype cloth-on-skeleton (cloth-system)
+  ((base-transform-index  int16)
+   (owner                 handle)
+   (last-owner-pos        vector  :inline)
+   (last-owner-mat        matrix  :inline)
+   )
+  )

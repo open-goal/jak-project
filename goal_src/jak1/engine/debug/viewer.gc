@@ -1,52 +1,42 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: viewer.gc
-;; name in dgo: viewer
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/common-obs/generic-obs.gc")
+(require "engine/anim/aligner.gc")
+(require "engine/entity/entity.gc")
 
 ;; DECOMP BEGINS
 
-(define *viewer-sg* (new 'static 'skeleton-group
-                      :bounds (new 'static 'vector :w 16384.0)
-                      :lod-dist (new 'static 'array float 4 4095996000.0 0.0 0.0 0.0)
-                      )
-        )
+(define *viewer-sg*
+  (new 'static
+       'skeleton-group
+       :bounds
+       (new 'static 'vector :w 16384.0)
+       :lod-dist
+       (new 'static 'array float 4 4095996000.0 0.0 0.0 0.0)))
 
 (deftype viewer (process-drawable)
-  ((janim  art-joint-anim)
-   )
+  ((janim art-joint-anim))
   (:states
-    viewer-process
-    )
-  )
-
+   viewer-process))
 
 (define-extern *viewer* viewer)
 
 (defstate viewer-process (viewer)
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! (-> self janim)
-                  :num! (seek! (the float (+ (-> self janim data 0 length) -1)))
-                  :frame-num 0.0
-                  )
-      (until (ja-done? 0)
-        (compute-alignment! (-> self align))
-        (align!
-          (-> self align)
-          (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
-          1.0
-          1.0
-          1.0
-          )
-        (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! (-> self janim) :num! (seek! (the float (+ (-> self janim data 0 length) -1))) :frame-num 0.0)
+        (until (ja-done? 0)
+          (compute-alignment! (-> self align))
+          (align! (-> self align)
+                  (align-opts adjust-x-vel adjust-y-vel adjust-xz-vel keep-other-velocities adjust-quat)
+                  1.0
+                  1.0
+                  1.0)
+          (suspend)
+          (ja :num! (seek!)))))
+  :post ja-post)
 
 (define viewer-string (new 'global 'string 64 (the-as string #f)))
 
@@ -56,98 +46,58 @@
 
 (defun actor-get-arg! ((arg0 string) (arg1 string) (arg2 string))
   (let ((s5-0 (-> arg2 data))
-        (gp-0 (-> arg0 data))
-        )
+        (gp-0 (-> arg0 data)))
     (set! (-> gp-0 0) (the-as uint 0))
     (dotimes (s2-0 (- (length arg2) (+ (length arg1) 2)))
       (when (= (-> s5-0 0) 45)
         (let ((s1-0 #f))
           (dotimes (s0-0 (length arg1))
-            (if (!= (-> s5-0 (+ s0-0 1)) (-> arg1 data s0-0))
-                (goto cfg-10)
-                )
-            )
-          (if (= (-> s5-0 (+ (length arg1) 1)) 45)
-              (set! s1-0 #t)
-              )
+            (if (!= (-> s5-0 (+ s0-0 1)) (-> arg1 data s0-0)) (goto cfg-10)))
+          (if (= (-> s5-0 (+ (length arg1) 1)) 45) (set! s1-0 #t))
           (label cfg-10)
           (when s1-0
             (let ((v1-22 (&+ s5-0 (+ (length arg1) 2))))
               (while (and (!= (-> v1-22 0) 45) (nonzero? (-> v1-22 0)))
                 (set! (-> gp-0 0) (-> v1-22 0))
                 (set! v1-22 (&-> v1-22 1))
-                (set! gp-0 (&-> gp-0 1))
-                )
-              )
+                (set! gp-0 (&-> gp-0 1))))
             (set! (-> gp-0 0) (the-as uint 0))
-            (return #t)
-            )
-          )
-        )
-      (set! s5-0 (&-> s5-0 1))
-      )
-    )
-  #f
-  )
+            (return #t))))
+      (set! s5-0 (&-> s5-0 1))))
+  #f)
 
 (defun art-part-name ((arg0 string))
   (let ((gp-0 (-> arg0 data)))
     (while (nonzero? (-> gp-0 0))
       (when (= (-> gp-0 0) 45)
-        (copyn-string<-charp
-          viewer-string
-          (&-> gp-0 1)
-          (- (length arg0) (the-as int (+ (- -1 (the-as int (-> arg0 data))) (the-as int gp-0))))
-          )
-        (return viewer-string)
-        )
-      (set! gp-0 (&-> gp-0 1))
-      )
-    )
-  (clear viewer-string)
-  )
+        (copyn-string<-charp viewer-string
+                             (&-> gp-0 1)
+                             (- (length arg0) (the-as int (+ (- -1 (the-as int (-> arg0 data))) (the-as int gp-0)))))
+        (return viewer-string))
+      (set! gp-0 (&-> gp-0 1))))
+  (clear viewer-string))
 
 (defbehavior init-viewer viewer ((arg0 string))
-  (let ((s2-0 (load-to-heap-by-name
-                (-> (if (-> self entity)
-                        (-> self entity extra level)
-                        (-> *level* level-default)
-                        )
-                    art-group
-                    )
-                arg0
-                #f
-                global
-                0
-                )
-              )
+  (let ((s2-0 (load-to-heap-by-name (-> (if (-> self entity) (-> self entity extra level) (-> *level* level-default)) art-group)
+                                    arg0
+                                    #f
+                                    global
+                                    0))
         (s5-0 (the-as int #f))
         (s4-0 (the-as int #f))
-        (s3-0 (the-as int #f))
-        )
+        (s3-0 (the-as int #f)))
     (when s2-0
       (dotimes (s1-0 (-> s2-0 length))
         (cond
           ((and (not s4-0)
                 (= (-> s2-0 data s1-0 type) merc-ctrl)
-                (or (zero? (length viewer-geo-name)) (string= (art-part-name (-> s2-0 data s1-0 name)) viewer-geo-name))
-                )
-           (set! s4-0 s1-0)
-           )
-          ((= (-> s2-0 data s1-0 type) art-joint-geo)
-           (set! s3-0 s1-0)
-           )
+                (or (zero? (length viewer-geo-name)) (string= (art-part-name (-> s2-0 data s1-0 name)) viewer-geo-name)))
+           (set! s4-0 s1-0))
+          ((= (-> s2-0 data s1-0 type) art-joint-geo) (set! s3-0 s1-0))
           ((and (= (-> s2-0 data s1-0 type) art-joint-anim)
-                (or (zero? (length viewer-ja-name)) (string= (art-part-name (-> s2-0 data s1-0 name)) viewer-ja-name))
-                )
-           (set! s5-0 s1-0)
-           )
-          )
-        (if (and s4-0 s3-0 s5-0)
-            (goto cfg-34)
-            )
-        )
-      )
+                (or (zero? (length viewer-ja-name)) (string= (art-part-name (-> s2-0 data s1-0 name)) viewer-ja-name)))
+           (set! s5-0 s1-0)))
+        (if (and s4-0 s3-0 s5-0) (goto cfg-34))))
     (label cfg-34)
     (cond
       ((and s4-0 s3-0 s5-0)
@@ -157,17 +107,10 @@
          (set! (-> a1-3 jgeo) s3-0)
          (set! (-> a1-3 janim) s5-0)
          (set! (-> a1-3 mgeo 0) s4-0)
-         (initialize-skeleton self a1-3 '())
-         )
+         (initialize-skeleton self a1-3 '()))
        (set! (-> self align) (new 'process 'align-control self))
-       (go viewer-process)
-       )
-      (else
-        (go process-drawable-art-error arg0)
-        )
-      )
-    )
-  )
+       (go viewer-process))
+      (else (go process-drawable-art-error arg0)))))
 
 (defmethod init-from-entity! ((this viewer) (arg0 entity-actor))
   (set! *viewer* this)
@@ -176,13 +119,8 @@
   (actor-get-arg! viewer-ja-name "ja" (res-lump-struct arg0 'name string))
   (actor-get-arg! viewer-geo-name "geo" (res-lump-struct arg0 'name string))
   (let ((gp-1 (-> arg0 etype)))
-    (if (valid? gp-1 type #f #f 0)
-        (init-viewer (symbol->string (-> gp-1 symbol)))
-        (go process-drawable-art-error "unknown")
-        )
-    )
-  (none)
-  )
+    (if (valid? gp-1 type #f #f 0) (init-viewer (symbol->string (-> gp-1 symbol))) (go process-drawable-art-error "unknown")))
+  (none))
 
 (defbehavior init-viewer-for-other viewer ((arg0 string) (arg1 vector))
   (set! *viewer* self)
@@ -193,8 +131,7 @@
   (actor-get-arg! viewer-ja-name "ja" arg0)
   (actor-get-arg! viewer-geo-name "geo" arg0)
   (init-viewer arg0)
-  (none)
-  )
+  (none))
 
 (defun add-a-bunch ((arg0 string) (arg1 int) (arg2 int) (arg3 float))
   (local-vars (sv-32 process))
@@ -207,22 +144,12 @@
         (set! sv-32 (get-process *default-dead-pool* viewer #x4000))
         (when sv-32
           (let ((t9-2 (method-of-type viewer activate)))
-            (t9-2 (the-as viewer sv-32) *entity-pool* 'viewer (the-as pointer #x70004000))
-            )
+            (t9-2 (the-as viewer sv-32) *entity-pool* 'viewer (the-as pointer #x70004000)))
           (run-now-in-process sv-32 init-viewer-for-other arg0 s0-0)
-          (-> sv-32 ppointer)
-          )
-        )
-      )
-    )
-  #f
-  )
+          (-> sv-32 ppointer)))))
+  #f)
 
 (defun birth-viewer ((arg0 process) (arg1 entity-actor))
   (set! (-> arg0 type) viewer)
-  (let ((t9-0 init-entity))
-    viewer
-    (t9-0 arg0 arg1)
-    )
-  #t
-  )
+  (let ((t9-0 init-entity)) viewer (t9-0 arg0 arg1))
+  #t)

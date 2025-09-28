@@ -5,11 +5,12 @@ in vec4 vtx_color;
 in vec2 vtx_st;
 in float fog;
 
-
 uniform sampler2D tex_T0;
 
 uniform vec4 fog_color;
 uniform int ignore_alpha;
+uniform vec4 light_dir0_fade;
+uniform vec4 light_dir1_fade_en;
 
 uniform int decal_enable;
 
@@ -25,10 +26,20 @@ void main() {
       color = T0;
     }
     color.a *= 2;
-    //color.a = T0.a * 4;
   } else {
     color.rgb = vtx_color.rgb;
-    color.a = 1;
+
+    if (decal_enable == 0) {
+      color.a = vtx_color.a * 2;
+    } else {
+      color.a = 1;
+    }
+  }
+
+  if (light_dir1_fade_en.w > 0) {
+    color.a = light_dir0_fade.w;
+  } else if (light_dir1_fade_en.w < 0) {
+    color.a *= light_dir0_fade.w;
   }
 
 

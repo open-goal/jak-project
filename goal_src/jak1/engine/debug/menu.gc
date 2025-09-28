@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: menu.gc
-;; name in dgo: menu
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/hw/display.gc")
+(require "engine/gfx/font.gc")
 
 ;; This file contains the UI and rendering for the debug menu, but not the actual menu layout and callbacks.
 
@@ -12,6 +11,7 @@
 ;; An item is a line in the menu. It can be a flag, function, or variable.
 
 (declare-type debug-menu basic)
+
 (declare-type debug-menu-item basic)
 
 ;; DECOMP BEGINS
@@ -23,25 +23,21 @@
 ;; context, menu, and item
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 ;; There is one for the normal menu, and one for the "popup" one that appears when you press L3/R3
 ;; This stores a stack of open menus in sel-menu.
 ;; The 0th index is the selection in the root-menu.
 (deftype debug-menu-context (basic)
-  ((is-active    symbol) ;; should we draw?
-   (sel-length   int32) ;; depth of open menus
-   (sel-menu     debug-menu  8) ;; at each level, what is selected?
-   (root-menu    debug-menu) ;; the top level menu
-   (joypad-func  (function basic none)) ;; if not, #f, callback for getting joystick inputs
-   (joypad-item  basic) ;; object passed as arg to joypad-func
-   (font         font-context) ;; font rendering settings
-   (is-hidden    symbol) ;; set to #t to temporarily hide.
+  ((is-active   symbol) ;; should we draw?
+   (sel-length  int32) ;; depth of open menus
+   (sel-menu    debug-menu 8) ;; at each level, what is selected?
+   (root-menu   debug-menu) ;; the top level menu
+   (joypad-func (function basic none)) ;; if not, #f, callback for getting joystick inputs
+   (joypad-item basic) ;; object passed as arg to joypad-func
+   (font        font-context) ;; font rendering settings
+   (is-hidden   symbol) ;; set to #t to temporarily hide.
    )
   (:methods
-    (new (symbol type) _type_)
-    )
-  )
-
+   (new (symbol type) _type_)))
 
 (defmethod new debug-menu-context ((allocation symbol) (type-to-make type))
   "Create a new debug-menu-context"
@@ -53,12 +49,8 @@
     (set! (-> gp-0 joypad-func) #f)
     (set! (-> gp-0 joypad-item) #f)
     (set! (-> gp-0 font)
-          (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning pc-hack))
-          )
-    gp-0
-    )
-  )
-
+          (new 'debug 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning pc-hack)))
+    gp-0))
 
 ;; Parent type for entrees in the debug-menu tree.
 ;; This is used for both entries and menus.
@@ -67,65 +59,46 @@
 ;; Updating every item on every frame would be slow, so you can set a nonzero value in refresh-delay
 ;; to only run the refresh every refresh-delay frames.
 (deftype debug-menu-node (basic)
-  ((name           string)
-   (parent         debug-menu)
-   (refresh-delay  int32)
-   (refresh-ctr    int32)
-   )
-  )
-
+  ((name          string)
+   (parent        debug-menu)
+   (refresh-delay int32)
+   (refresh-ctr   int32)))
 
 (defmethod print ((this debug-menu-node))
   (format #t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
-  this
-  )
+  this)
 
 ;; Parent type for a menu (list of things)
 (deftype debug-menu (debug-menu-node)
-  ((context        debug-menu-context)
-   (selected-item  debug-menu-item)
-   (pix-width      int32)
-   (pix-height     int32)
-   (items          pair)
-   )
+  ((context       debug-menu-context)
+   (selected-item debug-menu-item)
+   (pix-width     int32)
+   (pix-height    int32)
+   (items         pair))
   (:methods
-    (new (symbol type debug-menu-context string) _type_)
-    )
-  )
-
+   (new (symbol type debug-menu-context string) _type_)))
 
 (defmethod new debug-menu ((allocation symbol) (type-to-make type) (arg0 debug-menu-context) (name string))
   "Create a new debug-menu"
-
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 context) arg0)
     (set! (-> v0-0 name) name)
     (set! (-> v0-0 parent) #f)
     (set! (-> v0-0 selected-item) #f)
     (set! (-> v0-0 items) '())
-    v0-0
-    )
-  )
+    v0-0))
 
 ;; Parent type for an item (an individual, selectable entry within a menu)
 (deftype debug-menu-item (debug-menu-node)
-  ((id  int32)
-   )
-  )
-
+  ((id int32)))
 
 (deftype debug-menu-item-submenu (debug-menu-item)
-  ((submenu  debug-menu)
-   )
+  ((submenu debug-menu))
   (:methods
-    (new (symbol type string debug-menu) _type_)
-    )
-  )
-
+   (new (symbol type string debug-menu) _type_)))
 
 (defmethod new debug-menu-item-submenu ((allocation symbol) (type-to-make type) (arg0 string) (menu debug-menu))
   "Create an item that opens the given menu."
-
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
     (set! (-> v0-0 parent) #f)
@@ -135,9 +108,7 @@
     ;; in this case, the submenu's parent is set to the item, not a menu.
     ;; it's possible that the type of parent here is just debug-menu-node, but this value is never used.
     (set! (-> v0-0 submenu parent) (the-as debug-menu v0-0))
-    v0-0
-    )
-  )
+    v0-0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Items
@@ -147,19 +118,15 @@
   (activate 1)
   (deactivate 2)
   (update 3)
-  (press 4)
-  )
+  (press 4))
 
 ;; An item that calls a function when you select it.
 (deftype debug-menu-item-function (debug-menu-item)
-  ((activate-func  (function object object))
-   (hilite-timer   int8) ;; how much longer to stay highlighted for.
+  ((activate-func (function object object))
+   (hilite-timer  int8) ;; how much longer to stay highlighted for.
    )
   (:methods
-    (new (symbol type string object (function object object)) _type_)
-    )
-  )
-
+   (new (symbol type string object (function object object)) _type_)))
 
 (defmethod new debug-menu-item-function ((allocation symbol) (type-to-make type) (arg0 string) (arg1 object) (arg2 (function object object)))
   "Create an item for a function."
@@ -171,27 +138,16 @@
     (set! (-> v0-0 id) (the-as int arg1))
     (set! (-> v0-0 activate-func) arg2)
     (set! (-> v0-0 hilite-timer) 0)
-    v0-0
-    )
-  )
+    v0-0))
 
 ;; An item with on/off state.
 (deftype debug-menu-item-flag (debug-menu-item)
-  ((activate-func  (function object debug-menu-msg object))
-   (is-on          object)
-   )
+  ((activate-func (function object debug-menu-msg object))
+   (is-on         object))
   (:methods
-    (new (symbol type string object (function object debug-menu-msg object)) _type_)
-    )
-  )
+   (new (symbol type string object (function object debug-menu-msg object)) _type_)))
 
-
-(defmethod new debug-menu-item-flag ((allocation symbol)
-                                   (type-to-make type)
-                                   (arg0 string)
-                                   (arg1 object)
-                                   (arg2 (function object debug-menu-msg object))
-                                   )
+(defmethod new debug-menu-item-flag ((allocation symbol) (type-to-make type) (arg0 string) (arg1 object) (arg2 (function object debug-menu-msg object)))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
     (set! (-> v0-0 parent) #f)
@@ -200,100 +156,76 @@
     (set! (-> v0-0 id) (the-as int arg1))
     (set! (-> v0-0 activate-func) arg2)
     (set! (-> v0-0 is-on) (the-as object #f))
-    v0-0
-    )
-  )
+    v0-0))
 
 (deftype debug-menu-item-var (debug-menu-item)
-  ((display-str       string)
-   (grabbed-joypad-p  symbol)
-   (float-p           symbol)
-   (range-p           symbol)
-   (show-len          int32)
-   (inc-delay         int32)
-   (inc-delay-ctr     int32)
-   (step-delay-ctr    int32)
-   (inc-dir           int32)
-   (fval              float)
-   (fundo-val         float)
-   (frange-min        float)
-   (frange-max        float)
-   (fstart-inc        float)
-   (fstep             float)
-   (fprecision        int32)
-   (factivate-func    (function int debug-menu-msg float float float))
-   (ival              int32                                      :overlay-at fval)
-   (iundo-val         int32                                      :overlay-at fundo-val)
-   (irange-min        int32                                      :overlay-at frange-min)
-   (irange-max        int32                                      :overlay-at frange-max)
-   (istart-inc        int32                                      :overlay-at fstart-inc)
-   (istep             int32                                      :overlay-at fstep)
-   (ihex-p            symbol)
-   (iactivate-func    (function int debug-menu-msg int int int)  :overlay-at factivate-func)
-   (ifloat-p          symbol)
-   )
+  ((display-str      string)
+   (grabbed-joypad-p symbol)
+   (float-p          symbol)
+   (range-p          symbol)
+   (show-len         int32)
+   (inc-delay        int32)
+   (inc-delay-ctr    int32)
+   (step-delay-ctr   int32)
+   (inc-dir          int32)
+   (fval             float)
+   (fundo-val        float)
+   (frange-min       float)
+   (frange-max       float)
+   (fstart-inc       float)
+   (fstep            float)
+   (fprecision       int32)
+   (factivate-func   (function int debug-menu-msg float float float))
+   (ival             int32 :overlay-at fval)
+   (iundo-val        int32 :overlay-at fundo-val)
+   (irange-min       int32 :overlay-at frange-min)
+   (irange-max       int32 :overlay-at frange-max)
+   (istart-inc       int32 :overlay-at fstart-inc)
+   (istep            int32 :overlay-at fstep)
+   (ihex-p           symbol)
+   (iactivate-func   (function int debug-menu-msg int int int) :overlay-at factivate-func)
+   (ifloat-p         symbol))
   (:methods
-    (new (symbol type string int int) _type_)
-    )
-  )
+   (new (symbol type string int int) _type_)))
 
 (defenum debug-menu-dest
   :type int32
   (root 1)
   (open-menus 2)
   (current-selection 3)
-  (activation 0)
-  )
+  (activation 0))
 
+(define-extern debug-menu-context-send-msg
+  (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
 
-(define-extern debug-menu-context-send-msg (function debug-menu-context debug-menu-msg debug-menu-dest debug-menu-context))
 (define-extern debug-menu-item-send-msg (function debug-menu-item debug-menu-msg debug-menu-item))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Variable Menu Setup
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defun debug-menu-item-var-update-display-str ((arg0 debug-menu-item-var))
   "Update display-str to the current value of the variable"
   (cond
-    ((-> arg0 float-p)
-     (format (clear (-> arg0 display-str)) "~f" (-> arg0 fval))
-     )
-    ((-> arg0 ihex-p)
-     (format (clear (-> arg0 display-str)) "x~X" (-> arg0 fval))
-     )
+    ((-> arg0 float-p) (format (clear (-> arg0 display-str)) "~f" (-> arg0 fval)))
+    ((-> arg0 ihex-p) (format (clear (-> arg0 display-str)) "x~X" (-> arg0 fval)))
     ((-> arg0 ifloat-p)
      (cond
        ((and (< (the-as int (-> arg0 fval)) 0) (< -100 (the-as int (-> arg0 fval))))
-        (let ((v1-8 (abs (the-as int (-> arg0 fval)))))
-          (format (clear (-> arg0 display-str)) "-0.~1d" (/ (mod v1-8 100) 10))
-          )
-        )
+        (let ((v1-8 (abs (the-as int (-> arg0 fval))))) (format (clear (-> arg0 display-str)) "-0.~1d" (/ (mod v1-8 100) 10))))
        (else
-         (let ((v1-12 (abs (the-as int (-> arg0 fval)))))
-           (format (clear (-> arg0 display-str)) "~2d.~1d" (/ (the-as int (-> arg0 fval)) 100) (/ (mod v1-12 100) 10))
-           )
-         )
-       )
-     )
-    (else
-      (format (clear (-> arg0 display-str)) "~D" (-> arg0 fval))
-      )
-    )
-  arg0
-  )
+        (let ((v1-12 (abs (the-as int (-> arg0 fval)))))
+          (format (clear (-> arg0 display-str)) "~2d.~1d" (/ (the-as int (-> arg0 fval)) 100) (/ (mod v1-12 100) 10))))))
+    (else (format (clear (-> arg0 display-str)) "~D" (-> arg0 fval))))
+  arg0)
 
 (defun debug-menu-item-var-make-int ((item debug-menu-item-var)
-                            (callback (function int debug-menu-msg int int int))
-                            (inc int)
-                            (has-range symbol)
-                            (range-min int)
-                            (range-max int)
-                            (hex symbol)
-                            )
+        (callback (function int debug-menu-msg int int int))
+        (inc int)
+        (has-range symbol)
+        (range-min int)
+        (range-max int)
+        (hex symbol))
   "Set up the given item as an integer variable"
   (set! (-> item float-p) #f)
   (set! (-> item range-p) has-range)
@@ -304,30 +236,20 @@
   (set! (-> item ihex-p) hex)
   (set! (-> item iactivate-func) callback)
   (cond
-    (has-range
-      (set! (-> item fval) (the-as float range-min))
-      )
-    (else
-      (set! (-> item fval) (the-as float 0))
-      0
-      )
-    )
+    (has-range (set! (-> item fval) (the-as float range-min)))
+    (else (set! (-> item fval) (the-as float 0)) 0))
   ;; initialize with the callback.
-  (if callback
-      (set! (-> item ival) (callback (-> item id) (debug-menu-msg update) (-> item ival) (-> item ival)))
-      )
+  (if callback (set! (-> item ival) (callback (-> item id) (debug-menu-msg update) (-> item ival) (-> item ival))))
   (debug-menu-item-var-update-display-str item)
-  item
-  )
+  item)
 
 (defun debug-menu-item-var-make-float ((item debug-menu-item-var)
-                              (callback (function int debug-menu-msg float float float))
-                              (inc float)
-                              (has-range symbol)
-                              (range-min float)
-                              (range-max float)
-                              (precision int)
-                              )
+        (callback (function int debug-menu-msg float float float))
+        (inc float)
+        (has-range symbol)
+        (range-min float)
+        (range-max float)
+        (precision int))
   "Set up the given item as a float variable"
   (set! (-> item float-p) #t)
   (set! (-> item range-p) has-range)
@@ -337,20 +259,12 @@
   (set! (-> item fstep) inc)
   (set! (-> item fprecision) precision)
   (set! (-> item factivate-func) callback)
-  (if has-range
-      (set! (-> item fval) range-min)
-      (set! (-> item fval) 0.0)
-      )
-
+  (if has-range (set! (-> item fval) range-min) (set! (-> item fval) 0.0))
   ;; note: the return value of the callback is treated as an integer and int->float converted. This is a bug in the original code.
   (if callback
-      (set! (-> item fval)
-            (the float (callback (-> item id) (debug-menu-msg update) (-> item fval) (-> item fval)))
-            )
-      )
+    (set! (-> item fval) (the float (callback (-> item id) (debug-menu-msg update) (-> item fval) (-> item fval)))))
   (debug-menu-item-var-update-display-str item)
-  item
-  )
+  item)
 
 (defmethod new debug-menu-item-var ((allocation symbol) (type-to-make type) (name string) (id int) (max-width int))
   "Create a new item for modifying a variable. Will default to int."
@@ -361,22 +275,13 @@
       (set! (-> gp-0 refresh-delay) (#if PC_PORT 1 31))
       (set! (-> gp-0 refresh-ctr) (-> gp-0 refresh-delay))
       (set! (-> gp-0 id) id)
-      (set! max-chars
-            (if (< 3 max-chars)
-                max-chars
-                3
-                )
-            )
-      (set! (-> gp-0 show-len) max-chars)
-      )
+      (set! max-chars (if (< 3 max-chars) max-chars 3))
+      (set! (-> gp-0 show-len) max-chars))
     (set! (-> gp-0 grabbed-joypad-p) #f)
     (set! (-> gp-0 ifloat-p) #f)
     (set! (-> gp-0 display-str) (new 'debug 'string 64 (the-as string #f)))
     (debug-menu-item-var-make-int gp-0 (the-as (function int debug-menu-msg int int int) #f) 1 #t 0 0 #f)
-    gp-0
-    )
-  )
-
+    gp-0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joypad grabbing
@@ -385,24 +290,14 @@
 (defun debug-menu-context-grab-joypad ((ctxt debug-menu-context) (callback-arg basic) (callback-func (function basic none)))
   "Set up this context to be controlled from a joypad. If we are already, return #f, otherwise return #t"
   (cond
-    ((-> ctxt joypad-func)
-     #f
-     )
-    (else
-      (set! (-> ctxt joypad-func) callback-func)
-      (set! (-> ctxt joypad-item) callback-arg)
-      #t
-      )
-    )
-  )
+    ((-> ctxt joypad-func) #f)
+    (else (set! (-> ctxt joypad-func) callback-func) (set! (-> ctxt joypad-item) callback-arg) #t)))
 
 (defun debug-menu-context-release-joypad ((ctxt debug-menu-context))
   "Remove joypad control from this context"
   (set! (-> ctxt joypad-func) #f)
   (set! (-> ctxt joypad-item) #f)
-  #f
-  )
-
+  #f)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; menu building
@@ -412,22 +307,14 @@
   "Determine the width, in screen units"
   0
   (cond
-    ((= (-> arg0 type) debug-menu-item-submenu)
-     (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 16)
-     )
+    ((= (-> arg0 type) debug-menu-item-submenu) (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 16))
     ((= (-> arg0 type) debug-menu-item-var)
-     (the int (get-string-length (-> (the-as debug-menu-item-var arg0) display-str) (-> arg1 context font)))
-     )
-    (else
-      (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 6)
-      )
-    )
-  )
+     (the int (get-string-length (-> (the-as debug-menu-item-var arg0) display-str) (-> arg1 context font))))
+    (else (+ (the int (get-string-length (-> arg0 name) (-> arg1 context font))) 6))))
 
 (defun debug-menu-context-default-selection ((ctxt debug-menu-context) (keep-current symbol))
   "Set the menu to a default selection.
   If keep-current-selection is set to #t, this will only change the selection if nothing is selected yet."
-
   ;; sel-length = 0 means nothing is selected
   (when (or (zero? (-> ctxt sel-length)) (not keep-current))
     (let ((menu (-> ctxt root-menu)))
@@ -435,126 +322,80 @@
       (when (and menu (not (null? (-> menu items))))
         (let ((currently-active (-> ctxt is-active)))
           ;; if we're active, deactivate it
-          (if currently-active
-              (debug-menu-context-send-msg ctxt (debug-menu-msg deactivate) (debug-menu-dest activation))
-              )
+          (if currently-active (debug-menu-context-send-msg ctxt (debug-menu-msg deactivate) (debug-menu-dest activation)))
           ;; reset the selection stack down to a single thing, just the root menu.
           (set! (-> ctxt sel-length) 1)
           (set! (-> ctxt sel-menu 0) menu)
           ;; select the first thing within the root menu
           (set! (-> menu selected-item) (the-as debug-menu-item (car (-> menu items))))
           ;; if we were active, activate again.
-          (if currently-active
-              (debug-menu-context-send-msg ctxt (debug-menu-msg activate) (debug-menu-dest activation))
-              )
-          )
-        )
-      )
-    )
-  ctxt
-  )
+          (if currently-active (debug-menu-context-send-msg ctxt (debug-menu-msg activate) (debug-menu-dest activation)))))))
+  ctxt)
 
 (defun debug-menu-rebuild ((menu debug-menu))
   "Set the width and height of the background. If needed, completely reset the menu."
   (let ((max-width 0)
-        (entry-count 0)
-        )
+        (entry-count 0))
     ;; loop over entries
     (let* ((iter (-> menu items))
-           (current-item (car iter))
-           )
+           (current-item (car iter)))
       (while (not (null? iter))
         (+! entry-count 1)
         ;; link to parent
         (set! (-> (the-as debug-menu-item current-item) parent) menu)
         (set! max-width (max max-width (debug-menu-item-get-max-width (the-as debug-menu-item current-item) menu)))
         (set! iter (cdr iter))
-        (set! current-item (car iter))
-        )
-      )
+        (set! current-item (car iter))))
     (set! (-> menu pix-width) (+ max-width 18))
-    (set! (-> menu pix-height) (+ (* entry-count 8) 6))
-    )
+    (set! (-> menu pix-height) (+ (* entry-count 8) 6)))
   (let ((a0-2 (-> menu context)))
     ;; will only reset to default if nothing is selected.
-    (debug-menu-context-default-selection a0-2 #t)
-    )
-  menu
-  )
+    (debug-menu-context-default-selection a0-2 #t))
+  menu)
 
 (defun debug-menu-context-set-root-menu ((context debug-menu-context) (menu debug-menu))
   "Set the root menu and reset everything."
-
   ;; deactivate, if we are active
   (let ((active (-> context is-active)))
-    (if active
-        (debug-menu-context-send-msg context (debug-menu-msg deactivate) (debug-menu-dest activation)))
+    (if active (debug-menu-context-send-msg context (debug-menu-msg deactivate) (debug-menu-dest activation)))
     ;; the actual set
     (set! (-> context root-menu) menu)
     ;; reset
     (debug-menu-context-default-selection context #f)
     ;; activate if needed
-    (if active
-        (debug-menu-context-send-msg context (debug-menu-msg activate) (debug-menu-dest activation))
-        )
-    )
-  context
-  )
+    (if active (debug-menu-context-send-msg context (debug-menu-msg activate) (debug-menu-dest activation))))
+  context)
 
 (defun debug-menu-append-item ((menu debug-menu) (item debug-menu-node))
   "Add an entry to the debug menu."
   (let* ((context (-> menu context))
-         (was-active (-> context is-active))
-         )
-    (if was-active
-        (debug-menu-context-send-msg context (debug-menu-msg deactivate) (debug-menu-dest activation))
-        )
+         (was-active (-> context is-active)))
+    (if was-active (debug-menu-context-send-msg context (debug-menu-msg deactivate) (debug-menu-dest activation)))
     (set! (-> item parent) menu)
     (set! (-> menu items) (the-as pair (append! (-> menu items) (dcons item '())))) ;; was normal cons
     (debug-menu-rebuild menu)
-    (if was-active
-        (debug-menu-context-send-msg context (debug-menu-msg activate) (debug-menu-dest activation))
-        )
-    )
-  item
-  )
+    (if was-active (debug-menu-context-send-msg context (debug-menu-msg activate) (debug-menu-dest activation))))
+  item)
 
 (defun debug-menu-remove-all-items ((arg0 debug-menu))
   "Remove all the items from a menu"
   (let* ((gp-0 (-> arg0 context))
-         (s4-0 (-> gp-0 is-active))
-         )
-    (if s4-0
-        (debug-menu-context-send-msg gp-0 (debug-menu-msg deactivate) (debug-menu-dest activation))
-        )
+         (s4-0 (-> gp-0 is-active)))
+    (if s4-0 (debug-menu-context-send-msg gp-0 (debug-menu-msg deactivate) (debug-menu-dest activation)))
     (set! (-> arg0 items) '())
     (set! (-> arg0 selected-item) #f)
     (debug-menu-rebuild arg0)
-    (if s4-0
-        (debug-menu-context-send-msg gp-0 (debug-menu-msg activate) (debug-menu-dest activation))
-        )
-    )
-  arg0
-  )
-
+    (if s4-0 (debug-menu-context-send-msg gp-0 (debug-menu-msg activate) (debug-menu-dest activation))))
+  arg0)
 
 (defun debug-menu-func-decode ((arg0 object))
   "Get a function. The input can be a symbol or a function. Otherwise it will give you the nothing function."
   (let ((v1-1 (rtype-of arg0)))
-    (the-as function (cond
-                       ((or (= v1-1 symbol) (= v1-1 type))
-                        (the-as symbol (-> (the-as symbol arg0) value))
-                        )
-                       ((= v1-1 function)
-                        (the-as symbol arg0)
-                        )
-                       (else
-                         (the-as symbol nothing)
-                         )
-                       )
-            )
-    )
-  )
+    (the-as function
+            (cond
+              ((or (= v1-1 symbol) (= v1-1 type)) (the-as symbol (-> (the-as symbol arg0) value)))
+              ((= v1-1 function) (the-as symbol arg0))
+              (else (the-as symbol nothing))))))
 
 (defun-recursive debug-menu-make-from-template debug-menu-node ((arg0 debug-menu-context) (arg1 pair))
   "Make a debug menu from static layout data.  The keys are:
@@ -566,161 +407,87 @@
   (local-vars (s5-0 basic) (sv-16 object) (sv-32 int) (sv-48 float) (sv-64 float) (sv-80 float) (sv-96 float))
   (when (or (not arg1) (null? arg1))
     (set! s5-0 #f)
-    (goto cfg-41)
-    )
+    (goto cfg-41))
   (let ((s4-0 (car arg1))
-        (s5-1 (the-as string (car (cdr arg1))))
-        )
+        (s5-1 (the-as string (car (cdr arg1)))))
     (cond
       ((= s4-0 'menu)
        (let ((s4-1 (new 'debug 'debug-menu arg0 s5-1)))
          (set! s5-0 (new 'debug 'debug-menu-item-submenu s5-1 s4-1))
          (let* ((gp-1 (cdr (cdr arg1)))
-                (a1-3 (car gp-1))
-                )
+                (a1-3 (car gp-1)))
            (while (not (null? gp-1))
-             (let ((a1-4 (debug-menu-make-from-template arg0 (the-as pair a1-3))))
-               (if a1-4
-                   (debug-menu-append-item s4-1 a1-4)
-                   )
-               )
+             (let ((a1-4 (debug-menu-make-from-template arg0 (the-as pair a1-3)))) (if a1-4 (debug-menu-append-item s4-1 a1-4)))
              (set! gp-1 (cdr gp-1))
-             (set! a1-3 (car gp-1))
-             )
-           )
-         )
-       )
+             (set! a1-3 (car gp-1))))))
       ((= s4-0 'main-menu)
        (set! s5-0 (new 'debug 'debug-menu arg0 s5-1))
        (let* ((gp-2 (cdr (cdr arg1)))
-              (a1-6 (car gp-2))
-              )
+              (a1-6 (car gp-2)))
          (while (not (null? gp-2))
            (let ((a1-7 (debug-menu-make-from-template arg0 (the-as pair a1-6))))
-             (if a1-7
-                 (debug-menu-append-item (the-as debug-menu s5-0) a1-7)
-                 )
-             )
+             (if a1-7 (debug-menu-append-item (the-as debug-menu s5-0) a1-7)))
            (set! gp-2 (cdr gp-2))
-           (set! a1-6 (car gp-2))
-           )
-         )
-       (debug-menu-context-set-root-menu arg0 (the-as debug-menu s5-0))
-       )
+           (set! a1-6 (car gp-2))))
+       (debug-menu-context-set-root-menu arg0 (the-as debug-menu s5-0)))
       (else
-        (set! s5-0
-              (cond
-                ((= s4-0 'flag)
-                 (new
-                   'debug
-                   'debug-menu-item-flag
-                   s5-1
-                   (car (cdr (cdr arg1)))
-                   (the-as (function object debug-menu-msg object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-                   )
-                 )
-                ((or (= s4-0 0) (= s4-0 'function))
-                 (new
-                   'debug
-                   'debug-menu-item-function
-                   s5-1
-                   (car (cdr (cdr arg1)))
-                   (the-as (function object object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-                   )
-                 )
-                ((= s4-0 'var)
-                 (new
-                   'debug
-                   'debug-menu-item-var
-                   s5-1
-                   (the-as int (car (cdr (cdr arg1))))
-                   (the-as int (car (cdr (cdr (cdr arg1)))))
-                   )
-                 )
-                ((or (= s4-0 'int-var) (= s4-0 'int-var-gat1) (= s4-0 'hex-var))
-                 (set! s5-0
-                       (new 'debug 'debug-menu-item-var s5-1 (the-as int (car (cdr (cdr arg1)))) (the-as int (ref arg1 4)))
-                       )
-                 (let ((s3-4 debug-menu-item-var-make-int)
-                       (s2-3 (the-as debug-menu-item-var s5-0))
-                       (s1-3 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-                       (s0-1 (/ (the-as int (ref arg1 5)) 8))
-                       )
-                   (set! sv-16 (ref arg1 6))
-                   (set! sv-32 (/ (the-as int (ref arg1 7)) 8))
-                   (let ((t1-0 (/ (the-as int (ref arg1 8)) 8))
-                         (t2-0 (= s4-0 'hex-var))
-                         )
-                     (s3-4 s2-3 (the-as (function int debug-menu-msg int int int) s1-3) s0-1 (the-as symbol sv-16) sv-32 t1-0 t2-0)
-                     )
-                   )
-                 ;; changed... i have no idea what they were trying to do here
-                 (set! (-> (the-as debug-menu-item-var s5-0) ifloat-p) (= s4-0 'int-var-gat1));;#t)
-                 s5-0
-                 )
-                ((= s4-0 'float-var)
-                 (set! s5-0
-                       (new 'debug 'debug-menu-item-var s5-1 (the-as int (car (cdr (cdr arg1)))) (the-as int (ref arg1 4)))
-                       )
-                 (let ((s4-5 debug-menu-item-var-make-float)
-                       (s3-6 (the-as debug-menu-item-var s5-0))
-                       (s2-5 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-                       (s1-5 (the float (/ (the-as int (ref arg1 5)) 8)))
-                       (s0-2 (ref arg1 6))
-                       )
-                   (set! sv-48 (the float (/ (the-as int (ref arg1 7)) 8)))
-                   (set! sv-64 (the float (/ (the-as int (ref arg1 8)) 8)))
-                   (let ((t2-1 (/ (the-as int (ref arg1 9)) 8)))
-                     (s4-5
-                       s3-6
-                       (the-as (function int debug-menu-msg float float float) s2-5)
-                       s1-5
-                       (the-as symbol s0-2)
-                       sv-48
-                       sv-64
-                       t2-1
-                       )
-                     )
-                   )
-                 s5-0
-                 )
-                ((= s4-0 'float-fixed-var)
-                 (set! s5-0
-                       (new 'debug 'debug-menu-item-var s5-1 (the-as int (car (cdr (cdr arg1)))) (the-as int (ref arg1 4)))
-                       )
-                 (let ((s4-7 debug-menu-item-var-make-float)
-                       (s3-8 (the-as debug-menu-item-var s5-0))
-                       (s2-7 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
-                       (s1-7 (* 0.001 (the float (/ (the-as int (ref arg1 5)) 8))))
-                       (s0-3 (ref arg1 6))
-                       )
-                   (set! sv-80 (* 0.001 (the float (/ (the-as int (ref arg1 7)) 8))))
-                   (set! sv-96 (* 0.001 (the float (/ (the-as int (ref arg1 8)) 8))))
-                   (let ((t2-2 (/ (the-as int (ref arg1 9)) 8)))
-                     (s4-7
-                       s3-8
-                       (the-as (function int debug-menu-msg float float float) s2-7)
-                       s1-7
-                       (the-as symbol s0-3)
-                       sv-80
-                       sv-96
-                       t2-2
-                       )
-                     )
-                   )
-                 s5-0
-                 )
-                (else
-                  #f
-                  )
-                )
-              )
-        )
-      )
-    )
+       (set! s5-0
+             (cond
+               ((= s4-0 'flag)
+                (new 'debug
+                     'debug-menu-item-flag
+                     s5-1
+                     (car (cdr (cdr arg1)))
+                     (the-as (function object debug-menu-msg object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))))
+               ((or (= s4-0 0) (= s4-0 'function))
+                (new 'debug
+                     'debug-menu-item-function
+                     s5-1
+                     (car (cdr (cdr arg1)))
+                     (the-as (function object object) (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))))
+               ((= s4-0 'var)
+                (new 'debug 'debug-menu-item-var s5-1 (the-as int (car (cdr (cdr arg1)))) (the-as int (car (cdr (cdr (cdr arg1)))))))
+               ((or (= s4-0 'int-var) (= s4-0 'int-var-gat1) (= s4-0 'hex-var))
+                (set! s5-0 (new 'debug 'debug-menu-item-var s5-1 (the-as int (car (cdr (cdr arg1)))) (the-as int (ref arg1 4))))
+                (let ((s3-4 debug-menu-item-var-make-int)
+                      (s2-3 (the-as debug-menu-item-var s5-0))
+                      (s1-3 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
+                      (s0-1 (/ (the-as int (ref arg1 5)) 8)))
+                  (set! sv-16 (ref arg1 6))
+                  (set! sv-32 (/ (the-as int (ref arg1 7)) 8))
+                  (let ((t1-0 (/ (the-as int (ref arg1 8)) 8))
+                        (t2-0 (= s4-0 'hex-var)))
+                    (s3-4 s2-3 (the-as (function int debug-menu-msg int int int) s1-3) s0-1 (the-as symbol sv-16) sv-32 t1-0 t2-0)))
+                ;; changed... i have no idea what they were trying to do here
+                (set! (-> (the-as debug-menu-item-var s5-0) ifloat-p) (= s4-0 'int-var-gat1)) ;;#t)
+                s5-0)
+               ((= s4-0 'float-var)
+                (set! s5-0 (new 'debug 'debug-menu-item-var s5-1 (the-as int (car (cdr (cdr arg1)))) (the-as int (ref arg1 4))))
+                (let ((s4-5 debug-menu-item-var-make-float)
+                      (s3-6 (the-as debug-menu-item-var s5-0))
+                      (s2-5 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
+                      (s1-5 (the float (/ (the-as int (ref arg1 5)) 8)))
+                      (s0-2 (ref arg1 6)))
+                  (set! sv-48 (the float (/ (the-as int (ref arg1 7)) 8)))
+                  (set! sv-64 (the float (/ (the-as int (ref arg1 8)) 8)))
+                  (let ((t2-1 (/ (the-as int (ref arg1 9)) 8)))
+                    (s4-5 s3-6 (the-as (function int debug-menu-msg float float float) s2-5) s1-5 (the-as symbol s0-2) sv-48 sv-64 t2-1)))
+                s5-0)
+               ((= s4-0 'float-fixed-var)
+                (set! s5-0 (new 'debug 'debug-menu-item-var s5-1 (the-as int (car (cdr (cdr arg1)))) (the-as int (ref arg1 4))))
+                (let ((s4-7 debug-menu-item-var-make-float)
+                      (s3-8 (the-as debug-menu-item-var s5-0))
+                      (s2-7 (debug-menu-func-decode (car (cdr (cdr (cdr arg1))))))
+                      (s1-7 (* 0.001 (the float (/ (the-as int (ref arg1 5)) 8))))
+                      (s0-3 (ref arg1 6)))
+                  (set! sv-80 (* 0.001 (the float (/ (the-as int (ref arg1 7)) 8))))
+                  (set! sv-96 (* 0.001 (the float (/ (the-as int (ref arg1 8)) 8))))
+                  (let ((t2-2 (/ (the-as int (ref arg1 9)) 8)))
+                    (s4-7 s3-8 (the-as (function int debug-menu-msg float float float) s2-7) s1-7 (the-as symbol s0-3) sv-80 sv-96 t2-2)))
+                s5-0)
+               (else #f))))))
   (label cfg-41)
-  (the-as debug-menu-node s5-0)
-  )
+  (the-as debug-menu-node s5-0))
 
 (defun debug-menu-find-from-template ((arg0 debug-menu-context) (arg1 pair))
   "Find a debug-menu that was added by a template. This could be used to modify it after,
@@ -728,33 +495,23 @@
   (let ((s4-0 (the-as object (-> arg0 root-menu))))
     (while (begin
              (label cfg-17)
-             (and s4-0 (type-type? (-> (the-as debug-menu-node s4-0) type) debug-menu) (not (null? arg1)))
-             )
+             (and s4-0 (type-type? (-> (the-as debug-menu-node s4-0) type) debug-menu) (not (null? arg1))))
       (let ((s3-0 (-> (the-as debug-menu s4-0) items))
-            (s4-1 (car arg1))
-            )
+            (s4-1 (car arg1)))
         (set! arg1 (cdr arg1))
         (let ((s5-0 (car s3-0)))
           (while (not (null? s3-0))
             (when (string= (the-as string s4-1) (-> (the-as debug-menu-item s5-0) name))
               (if (type-type? (rtype-of s5-0) debug-menu-item-submenu)
-                  (set! s4-0 (-> (the-as debug-menu-item-submenu s5-0) submenu))
-                  (set! s4-0 s5-0)
-                  )
-              (goto cfg-17)
-              )
+                (set! s4-0 (-> (the-as debug-menu-item-submenu s5-0) submenu))
+                (set! s4-0 s5-0))
+              (goto cfg-17))
             (set! s3-0 (cdr s3-0))
-            (set! s5-0 (car s3-0))
-            )
-          )
-        )
+            (set! s5-0 (car s3-0)))))
       (set! s4-0 #f)
-      (goto cfg-24)
-      )
+      (goto cfg-24))
     (label cfg-24)
-    (the-as debug-menu s4-0)
-    )
-  )
+    (the-as debug-menu s4-0)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rendering
@@ -765,18 +522,16 @@
   The submenus parameter is the number of _open_ menus below the one containing this item"
   (let ((s5-0 (-> item parent context font)))
     (set-origin! s5-0 x y)
-    (set! (-> s5-0 color) (cond ((zero? submenus) (font-color menu))        ;; in the active menu, white
-                                (selected         (font-color menu-selected-parent))  ;; a parent, but selected
-                                (else             (font-color menu-parent))         ;; a parent, but not selected
-                                ))
-    (with-dma-buffer-add-bucket ((s3-0 (-> (current-frame) debug-buf))
-                                 (bucket-id debug-no-zbuf))
+    (set! (-> s5-0 color)
+          (cond
+            ((zero? submenus) (font-color menu)) ;; in the active menu, white
+            (selected (font-color menu-selected-parent)) ;; a parent, but selected
+            (else (font-color menu-parent)) ;; a parent, but not selected
+            ))
+    (with-dma-buffer-add-bucket ((s3-0 (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
       (draw-string-adv (-> item name) s3-0 s5-0)
-      (draw-string-adv "..." s3-0 s5-0)
-      )
-    )
-  item
-  )
+      (draw-string-adv "..." s3-0 s5-0)))
+  item)
 
 (defun debug-menu-item-function-render ((item debug-menu-item-function) (x int) (y int) (submenus int) (selected symbol))
   "Draw the text for a function entry. Also updates the timer for the highlight."
@@ -787,30 +542,20 @@
             ((> (-> item hilite-timer) 0)
              ;; if the hilite is >0, we ran the function successfully, so we hilite in blue for a bit
              (1-! (-> item hilite-timer))
-             (font-color menu-selected)
-             )
+             (font-color menu-selected))
             ((< (-> item hilite-timer) 0)
              ;; if we're negative, it failed, so hilite in red
              (1+! (-> item hilite-timer))
-             (font-color menu-func-bad)
-             )
+             (font-color menu-func-bad))
             ((nonzero? submenus)
              ;; in a parent menu
-             (font-color menu-parent)
-             )
+             (font-color menu-parent))
             (else
-              ;; option in the active menu.
-              (font-color menu)
-              )
-            )
-          )
-    (with-dma-buffer-add-bucket ((s4-0 (-> (current-frame) debug-buf))
-                                 (bucket-id debug-no-zbuf))
-      (draw-string (-> item name) s4-0 v1-2)
-      )
-    )
-  item
-  )
+             ;; option in the active menu.
+             (font-color menu))))
+    (with-dma-buffer-add-bucket ((s4-0 (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
+      (draw-string (-> item name) s4-0 v1-2)))
+  item)
 
 (defun debug-menu-item-flag-render ((item debug-menu-item-flag) (x int) (y int) (submenus int) (arg4 symbol))
   "Draw the text for a flag."
@@ -823,25 +568,18 @@
              )
             ((-> item is-on)
              (if (zero? submenus)
-                 (font-color menu-flag-on) ;; on, and in active menu
-                 (font-color menu-flag-on-parent)   ;; on, and in parent menu
-                 )
-             )
+               (font-color menu-flag-on) ;; on, and in active menu
+               (font-color menu-flag-on-parent) ;; on, and in parent menu
+               ))
             ((zero? submenus)
-             (font-color menu-flag-off)  ;; off, and in active menu
+             (font-color menu-flag-off) ;; off, and in active menu
              )
             (else
-              (font-color menu-flag-off-parent)  ;; off, and in parent menu
-              )
-            )
-          )
-    (with-dma-buffer-add-bucket ((s4-0 (-> (current-frame) debug-buf))
-                                 (bucket-id debug-no-zbuf))
-      (draw-string (-> item name) s4-0 v1-2)
-      )
-    )
-  item
-  )
+             (font-color menu-flag-off-parent) ;; off, and in parent menu
+             )))
+    (with-dma-buffer-add-bucket ((s4-0 (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
+      (draw-string (-> item name) s4-0 v1-2)))
+  item)
 
 (defun debug-menu-item-var-render ((item debug-menu-item-var) (x int) (y int) (submenus int) (selected symbol))
   "Draw the text for a variable"
@@ -851,143 +589,95 @@
           (cond
             ((zero? submenus)
              (if (-> item grabbed-joypad-p)
-                 (font-color menu-selected) ;; active menu, using joypad
-                 (font-color menu)    ;; active menu, but not grabbed
-                 )
-             )
+               (font-color menu-selected) ;; active menu, using joypad
+               (font-color menu) ;; active menu, but not grabbed
+               ))
             (selected
-              (font-color menu-selected-parent) ;; not sure how this case can happen
-              )
-            (else
-              (font-color menu-parent)
-              )
-            )
-          )
-    (with-dma-buffer-add-bucket ((s1-0 (-> (current-frame) debug-buf))
-                                 (bucket-id debug-no-zbuf))
+             (font-color menu-selected-parent) ;; not sure how this case can happen
+             )
+            (else (font-color menu-parent))))
+    (with-dma-buffer-add-bucket ((s1-0 (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
       (draw-string-adv (-> item name) s1-0 s5-0)
       (draw-string-adv ":" s1-0 s5-0)
       (cond
         ((>= (-> item show-len) (length (-> item display-str)))
          ;; enough room to just draw the whole thing
-         (draw-string (-> item display-str) s1-0 s5-0)
-         )
+         (draw-string (-> item display-str) s1-0 s5-0))
         (else
-          ;; not enough room. normally just draw ...
-          (draw-string "..." s1-0 s5-0)
-
-          ;; display the whole thing if: we're selected and there are no submenus.
-          (set! selected (and (zero? submenus) selected))
-          (when selected
-            (set-origin! s5-0 20 204)
-            (draw-string-adv (-> item name) s1-0 s5-0)
-            (draw-string-adv ":" s1-0 s5-0)
-            (draw-string (-> item display-str) s1-0 s5-0)
-            )
-          )
-        )
-      )
-    )
-  item
-  )
+         ;; not enough room. normally just draw ...
+         (draw-string "..." s1-0 s5-0)
+         ;; display the whole thing if: we're selected and there are no submenus.
+         (set! selected (and (zero? submenus) selected))
+         (when selected
+           (set-origin! s5-0 20 204)
+           (draw-string-adv (-> item name) s1-0 s5-0)
+           (draw-string-adv ":" s1-0 s5-0)
+           (draw-string (-> item display-str) s1-0 s5-0))))))
+  item)
 
 (defun debug-menu-item-render ((item debug-menu-item) (x int) (y int) (submenus int) (selected symbol))
   "Draw an item. This feels like it should have been a method..."
-
   ;; do a refresh, if it's time.
   (when (> (-> item refresh-delay) 0)
     (+! (-> item refresh-ctr) -1)
     (when (<= (-> item refresh-ctr) 0)
       (set! (-> item refresh-ctr) (-> item refresh-delay))
-      (debug-menu-item-send-msg item (debug-menu-msg update))
-      )
-    )
-
+      (debug-menu-item-send-msg item (debug-menu-msg update))))
   ;; call the appropriate render function.
   (cond
     ((= (-> item type) debug-menu-item-submenu)
-     (debug-menu-item-submenu-render (the-as debug-menu-item-submenu item) x y submenus selected)
-     )
+     (debug-menu-item-submenu-render (the-as debug-menu-item-submenu item) x y submenus selected))
     ((= (-> item type) debug-menu-item-function)
-     (debug-menu-item-function-render (the-as debug-menu-item-function item) x y submenus selected)
-     )
+     (debug-menu-item-function-render (the-as debug-menu-item-function item) x y submenus selected))
     ((= (-> item type) debug-menu-item-flag)
-     (debug-menu-item-flag-render (the-as debug-menu-item-flag item) x y submenus selected)
-     )
+     (debug-menu-item-flag-render (the-as debug-menu-item-flag item) x y submenus selected))
     ((= (-> item type) debug-menu-item-var)
-     (debug-menu-item-var-render (the-as debug-menu-item-var item) x y submenus selected)
-     )
-    (else
-      (format 0 "ERROR: Found unknown item type!~%")
-      )
-    )
-  item
-  )
+     (debug-menu-item-var-render (the-as debug-menu-item-var item) x y submenus selected))
+    (else (format 0 "ERROR: Found unknown item type!~%")))
+  item)
 
 (defun debug-menu-render ((menu debug-menu) (x-pos int) (y-pos int) (selected debug-menu-node) (submenus int))
   "Render a menu."
-
   ;; draw the background
   (let ((v1-0 0))
     (let* ((a0-1 (-> menu items))
-           (a1-1 (car a0-1))
-           )
+           (a1-1 (car a0-1)))
       (while (not (null? a0-1))
-        (if (= a1-1 selected)
-            (goto cfg-7)
-            )
+        (if (= a1-1 selected) (goto cfg-7))
         (+! v1-0 1)
         (set! a0-1 (cdr a0-1))
-        (set! a1-1 (car a0-1))
-        )
-      )
+        (set! a1-1 (car a0-1))))
     (label cfg-7)
-    (if (< 16 v1-0)
-        (set! y-pos (- y-pos (* (+ v1-0 -16) 8)))
-        )
-    )
-  (with-dma-buffer-add-bucket ((s0-0 (-> (current-frame) debug-buf))
-                               (bucket-id debug-no-zbuf))
+    (if (< 16 v1-0) (set! y-pos (- y-pos (* (+ v1-0 -16) 8)))))
+  (with-dma-buffer-add-bucket ((s0-0 (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
     ;; og:preserve-this fixed for widescreen
-    (draw-sprite2d-xy s0-0 (correct-x-int x-pos) y-pos (correct-x-int (-> menu pix-width)) (-> menu pix-height) (static-rgba #x00 #x00 #x00 #x40))
-    )
-
+    (draw-sprite2d-xy s0-0
+                      (correct-x-int x-pos)
+                      y-pos
+                      (correct-x-int (-> menu pix-width))
+                      (-> menu pix-height)
+                      (static-rgba #x00 #x00 #x00 #x40)))
   ;; draw each item
   (let* ((s3-1 (+ x-pos 3))
          (s2-1 (+ y-pos 3))
          (s1-1 (-> menu items))
-         (s0-1 (car s1-1))
-         )
+         (s0-1 (car s1-1)))
     (while (not (null? s1-1))
-
       ;; draw > on the selected object
       (when (= s0-1 selected)
         ;; dim it if it's in a parent menu.
-        (set! (-> menu context font color)
-              (if (nonzero? submenus)
-                  (font-color menu-parent)
-                  (font-color menu)
-                  )
-              )
+        (set! (-> menu context font color) (if (nonzero? submenus) (font-color menu-parent) (font-color menu)))
         (set-origin! (-> menu context font) s3-1 s2-1)
-        (with-dma-buffer-add-bucket ((sv-16 (-> (current-frame) debug-buf))
-                                     (bucket-id debug-no-zbuf))
-          (draw-string ">" sv-16 (-> menu context font))
-          )
-        )
-
+        (with-dma-buffer-add-bucket ((sv-16 (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
+          (draw-string ">" sv-16 (-> menu context font))))
       ;; actually draw the item.
       ;; og:preserve-this do not render if text is out of bounds...
       (when (and (< -20 s2-1) (> 256 s2-1))
-        (debug-menu-item-render (the-as debug-menu-item s0-1) (+ s3-1 12) s2-1 submenus (= s0-1 selected))
-        )
+        (debug-menu-item-render (the-as debug-menu-item s0-1) (+ s3-1 12) s2-1 submenus (= s0-1 selected)))
       (+! s2-1 8)
       (set! s1-1 (cdr s1-1))
-      (set! s0-1 (car s1-1))
-      )
-    )
-  menu
-  )
+      (set! s0-1 (car s1-1))))
+  menu)
 
 (defun debug-menu-context-render ((arg0 debug-menu-context))
   "Render all menus"
@@ -998,14 +688,9 @@
       (let ((menu (-> arg0 sel-menu stack-idx)))
         ;; the thing that's selected at this depth.
         (let ((selection (-> menu selected-item)))
-          (debug-menu-render menu x-pos 28 selection (+ (- -1 stack-idx) (-> arg0 sel-length)))
-          )
-        (set! x-pos (+ x-pos 3 (-> menu pix-width)))
-        )
-      )
-    )
-  arg0
-  )
+          (debug-menu-render menu x-pos 28 selection (+ (- -1 stack-idx) (-> arg0 sel-length))))
+        (set! x-pos (+ x-pos 3 (-> menu pix-width))))))
+  arg0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; navigate
@@ -1014,7 +699,6 @@
 (defun debug-menu-context-select-next-or-prev-item ((arg0 debug-menu-context) (arg1 int))
   "Go up or down 1 in the currently open thing. The sign of arg1 determines direction"
   (local-vars (v1-6 object))
-
   ;; search for the currently selected thing.
   (let ((s5-0 (-> arg0 sel-menu (+ (-> arg0 sel-length) -1))))
     (let ((a2-0 (-> s5-0 selected-item))
@@ -1025,118 +709,69 @@
         (while (not (null? a3-0))
           (when (= (car a3-0) a2-0)
             (set! v1-4 a3-0)
-            (goto cfg-7)
-            )
+            (goto cfg-7))
           (set! a0-1 a3-0)
-          (set! a3-0 (cdr a3-0))
-          )
-        )
+          (set! a3-0 (cdr a3-0))))
       (label cfg-7)
       (when (null? v1-4)
         (format 0 "ERROR: Couldn't find selected item in menu.~%")
         (set! arg0 arg0)
-        (goto cfg-19)
-        )
+        (goto cfg-19))
       (cond
-        ((>= arg1 0)
-         (if (null? (cdr v1-4))
-             (set! v1-6 (car (-> s5-0 items)))
-             (set! v1-6 (car (cdr v1-4)))
-             )
-         )
-        ((null? a0-1)
-         (set! v1-6 (car (last (-> s5-0 items))))
-         )
-        (else
-          (set! v1-6 (car a0-1))
-          )
-        )
-      )
-    (set! (-> s5-0 selected-item) (the-as debug-menu-item v1-6))
-    )
+        ((>= arg1 0) (if (null? (cdr v1-4)) (set! v1-6 (car (-> s5-0 items))) (set! v1-6 (car (cdr v1-4)))))
+        ((null? a0-1) (set! v1-6 (car (last (-> s5-0 items)))))
+        (else (set! v1-6 (car a0-1)))))
+    (set! (-> s5-0 selected-item) (the-as debug-menu-item v1-6)))
   (label cfg-19)
-  arg0
-  )
+  arg0)
 
 (defun debug-menu-context-select-new-item ((arg0 debug-menu-context) (arg1 int))
   (let* ((a2-0 (-> arg0 sel-menu (+ (-> arg0 sel-length) -1)))
          (a1-1 (-> a2-0 selected-item))
          (a0-1 0)
-         (v1-4 -1)
-         )
+         (v1-4 -1))
     (let ((a2-1 (-> a2-0 items)))
       (while (not (null? a2-1))
-        (if (= (car a2-1) a1-1)
-            (set! v1-4 a0-1)
-            )
+        (if (= (car a2-1) a1-1) (set! v1-4 a0-1))
         (set! a2-1 (cdr a2-1))
-        (+! a0-1 1)
-        )
-      )
+        (+! a0-1 1)))
     (when (= v1-4 -1)
       (format 0 "ERROR: Couldn't find selected item in menu.~%")
       (set! arg0 arg0)
-      (goto cfg-25)
-      )
+      (goto cfg-25))
     (cond
       ((>= arg1 0)
        (cond
-         ((= v1-4 (+ a0-1 -1))
-          (set! arg1 1)
-          )
-         ((>= (+ v1-4 arg1) a0-1)
-          (set! arg1 (+ (- -1 v1-4) a0-1))
-          )
-         )
+         ((= v1-4 (+ a0-1 -1)) (set! arg1 1))
+         ((>= (+ v1-4 arg1) a0-1) (set! arg1 (+ (- -1 v1-4) a0-1))))
        (dotimes (s4-0 arg1)
-         (debug-menu-context-select-next-or-prev-item arg0 1)
-         )
-       )
+         (debug-menu-context-select-next-or-prev-item arg0 1)))
       (else
-        (cond
-          ((zero? v1-4)
-           (set! arg1 -1)
-           )
-          ((< (+ v1-4 arg1) 0)
-           (set! arg1 (- v1-4))
-           )
-          )
-        (dotimes (s4-1 (- arg1))
-          (debug-menu-context-select-next-or-prev-item arg0 -1)
-          )
-        )
-      )
-    )
+       (cond
+         ((zero? v1-4) (set! arg1 -1))
+         ((< (+ v1-4 arg1) 0) (set! arg1 (- v1-4))))
+       (dotimes (s4-1 (- arg1))
+         (debug-menu-context-select-next-or-prev-item arg0 -1)))))
   (label cfg-25)
-  arg0
-  )
+  arg0)
 
 (defun debug-menu-context-open-submenu ((arg0 debug-menu-context) (arg1 debug-menu))
   (let ((v1-0 (-> arg0 sel-length)))
     (when (>= v1-0 8)
       (format 0 "ERROR: Trying to exceed maximum menu depth!")
-      (return arg1)
-      )
+      (return arg1))
     (when (null? (-> arg1 items))
       (format 0 "ERROR: Submenu has no items!")
-      (return arg1)
-      )
+      (return arg1))
     (set! (-> arg0 sel-menu v1-0) arg1)
-    (if (not (-> arg1 selected-item))
-        (set! (-> arg1 selected-item) (the-as debug-menu-item (-> arg1 items car)))
-        )
-    (set! (-> arg0 sel-length) (+ v1-0 1))
-    )
-  (debug-menu-context-send-msg arg0 (debug-menu-msg activate) (debug-menu-dest current-selection))
-  )
+    (if (not (-> arg1 selected-item)) (set! (-> arg1 selected-item) (the-as debug-menu-item (-> arg1 items car))))
+    (set! (-> arg0 sel-length) (+ v1-0 1)))
+  (debug-menu-context-send-msg arg0 (debug-menu-msg activate) (debug-menu-dest current-selection)))
 
 (defun debug-menu-context-close-submenu ((arg0 debug-menu-context))
   (debug-menu-context-send-msg arg0 (debug-menu-msg deactivate) (debug-menu-dest current-selection))
-  (if (< 1 (-> arg0 sel-length))
-      (+! (-> arg0 sel-length) -1)
-      )
-  arg0
-  )
+  (if (< 1 (-> arg0 sel-length)) (+! (-> arg0 sel-length) -1))
+  arg0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; message handling
@@ -1147,12 +782,8 @@
 (defun debug-menu-item-submenu-msg ((arg0 debug-menu-item-submenu) (arg1 debug-menu-msg))
   ;; on press, open the submenu
   (when (= arg1 (debug-menu-msg press))
-    (let ((a0-1 (-> arg0 parent context)))
-      (debug-menu-context-open-submenu a0-1 (-> arg0 submenu))
-      )
-    )
-  arg0
-  )
+    (let ((a0-1 (-> arg0 parent context))) (debug-menu-context-open-submenu a0-1 (-> arg0 submenu))))
+  arg0)
 
 (defun debug-menu-item-function-msg ((arg0 debug-menu-item-function) (arg1 debug-menu-msg))
   (cond
@@ -1160,48 +791,28 @@
      ;; on press, call the function!
      (cond
        ((-> arg0 activate-func)
-        (if ((-> arg0 activate-func) (-> arg0 id))
-            (set! (-> arg0 hilite-timer) 6)
-            (set! (-> arg0 hilite-timer) -6)
-            )
-        )
-       (else
-         (set! (-> arg0 hilite-timer) -6)
-         )
-       )
-     )
+        (if ((-> arg0 activate-func) (-> arg0 id)) (set! (-> arg0 hilite-timer) 6) (set! (-> arg0 hilite-timer) -6)))
+       (else (set! (-> arg0 hilite-timer) -6))))
     ((= arg1 (debug-menu-msg deactivate))
      ;; on deactivate, clear hilite.
      (set! (-> arg0 hilite-timer) 0)
-     0
-     )
-    )
-  arg0
-  )
+     0))
+  arg0)
 
 (defun debug-menu-item-flag-msg ((arg0 debug-menu-item-flag) (arg1 debug-menu-msg))
   (cond
     ((= arg1 (debug-menu-msg press))
      ;; on press, call the function.
-     (if (-> arg0 activate-func)
-         (set! (-> arg0 is-on) ((-> arg0 activate-func) (-> arg0 id) (debug-menu-msg press)))
-         )
+     (if (-> arg0 activate-func) (set! (-> arg0 is-on) ((-> arg0 activate-func) (-> arg0 id) (debug-menu-msg press))))
      ;; also update all open menus.
      (let ((a0-2 (-> arg0 parent context)))
-       (debug-menu-context-send-msg a0-2 (debug-menu-msg update) (debug-menu-dest open-menus))
-       )
-     )
+       (debug-menu-context-send-msg a0-2 (debug-menu-msg update) (debug-menu-dest open-menus))))
     ((or (= arg1 (debug-menu-msg update)) (= arg1 (debug-menu-msg activate)))
      ;; just query the value.
-     (if (-> arg0 activate-func)
-         (set! (-> arg0 is-on) ((-> arg0 activate-func) (-> arg0 id) (debug-menu-msg update)))
-         )
+     (if (-> arg0 activate-func) (set! (-> arg0 is-on) ((-> arg0 activate-func) (-> arg0 id) (debug-menu-msg update))))
      ;; update the refresh counter.
-     (set! (-> arg0 refresh-ctr) (-> arg0 refresh-delay))
-     )
-    )
-  arg0
-  )
+     (set! (-> arg0 refresh-ctr) (-> arg0 refresh-delay))))
+  arg0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; joypad handling
@@ -1211,149 +822,77 @@
   "Handle joypad inputs for a variable"
   (cond
     ((not (cpad-hold? 0 x))
-     (let ((a0-1 (-> arg0 parent context)))
-       (debug-menu-context-release-joypad a0-1)
-       )
+     (let ((a0-1 (-> arg0 parent context))) (debug-menu-context-release-joypad a0-1))
      (set! (-> arg0 grabbed-joypad-p) #f)
      (when (cpad-pressed? 0 circle)
        (cond
          ((-> arg0 float-p)
           (if (-> arg0 factivate-func)
-              (set! (-> arg0 fval)
-                    ((-> arg0 factivate-func) (-> arg0 id) (debug-menu-msg press) (-> arg0 fundo-val) (-> arg0 fval))
-                    )
-              )
-          )
+            (set! (-> arg0 fval) ((-> arg0 factivate-func) (-> arg0 id) (debug-menu-msg press) (-> arg0 fundo-val) (-> arg0 fval)))))
          (else
-           (if (-> arg0 factivate-func)
-               (set! (-> arg0 fval) (the-as float ((the-as (function int int int int int) (-> arg0 factivate-func))
-                                                   (-> arg0 id)
-                                                   4
-                                                   (the-as int (-> arg0 fundo-val))
-                                                   (the-as int (-> arg0 fval))
-                                                   )
-                                            )
-                     )
-               )
-           )
-         )
-       (debug-menu-item-var-update-display-str arg0)
-       )
+          (if (-> arg0 factivate-func)
+            (set! (-> arg0 fval)
+                  (the-as float
+                          ((the-as (function int int int int int) (-> arg0 factivate-func))
+                           (-> arg0 id)
+                           4
+                           (the-as int (-> arg0 fundo-val))
+                           (the-as int (-> arg0 fval))))))))
+       (debug-menu-item-var-update-display-str arg0))
      (let ((a0-5 (-> arg0 parent context)))
-       (debug-menu-context-send-msg a0-5 (debug-menu-msg update) (debug-menu-dest open-menus))
-       )
-     )
+       (debug-menu-context-send-msg a0-5 (debug-menu-msg update) (debug-menu-dest open-menus))))
     ((or (cpad-hold? 0 right) (cpad-hold? 0 left) (cpad-hold? 0 down) (cpad-hold? 0 up))
      (let ((v1-39 (cond
-                    ((cpad-hold? 0 right)
-                     10
-                     )
-                    ((cpad-hold? 0 up)
-                     1
-                     )
-                    ((cpad-hold? 0 down)
-                     -1
-                     )
-                    (else
-                      -10
-                      )
-                    )
-                  )
-           )
+                    ((cpad-hold? 0 right) 10)
+                    ((cpad-hold? 0 up) 1)
+                    ((cpad-hold? 0 down) -1)
+                    (else -10))))
        (when (!= v1-39 (-> arg0 inc-dir))
          (set! (-> arg0 inc-dir) v1-39)
          (set! (-> arg0 inc-delay) 15)
          (set! (-> arg0 inc-delay-ctr) 0)
          (set! (-> arg0 step-delay-ctr) 30)
          (set! (-> arg0 fstep) (-> arg0 fstart-inc))
-         (set! (-> arg0 fstep) (-> arg0 fstart-inc))
-         )
-       )
+         (set! (-> arg0 fstep) (-> arg0 fstart-inc))))
      (cond
        ((<= (-> arg0 inc-delay-ctr) 0)
-        (if (> (-> arg0 inc-delay) 0)
-            (+! (-> arg0 inc-delay) -1)
-            )
+        (if (> (-> arg0 inc-delay) 0) (+! (-> arg0 inc-delay) -1))
         (when (zero? (-> arg0 inc-delay))
           (cond
             ((<= (-> arg0 step-delay-ctr) 0)
              (set! (-> arg0 step-delay-ctr) 30)
              (cond
-               ((-> arg0 float-p)
-                (if (< (-> arg0 fstep) 10000000.0)
-                    (set! (-> arg0 fstep) (* 2.0 (-> arg0 fstep)))
-                    )
-                )
+               ((-> arg0 float-p) (if (< (-> arg0 fstep) 10000000.0) (set! (-> arg0 fstep) (* 2.0 (-> arg0 fstep)))))
                (else
-                 (if (< (the-as int (-> arg0 fstep)) #x989680)
-                     (set! (-> arg0 fstep) (the-as float (* (the-as int (-> arg0 fstep)) 2)))
-                     )
-                 )
-               )
-             )
-            (else
-              (+! (-> arg0 step-delay-ctr) -1)
-              )
-            )
-          )
+                (if (< (the-as int (-> arg0 fstep)) #x989680) (set! (-> arg0 fstep) (the-as float (* (the-as int (-> arg0 fstep)) 2)))))))
+            (else (+! (-> arg0 step-delay-ctr) -1))))
         (set! (-> arg0 inc-delay-ctr) (-> arg0 inc-delay))
         (cond
           ((-> arg0 float-p)
            (when (-> arg0 factivate-func)
              (let ((f0-8 (+ (-> arg0 fval) (* (the float (-> arg0 inc-dir)) (-> arg0 fstep)))))
-               (if (-> arg0 range-p)
-                   (set! f0-8 (fmin (fmax f0-8 (-> arg0 frange-min)) (-> arg0 frange-max)))
-                   )
-               (set! (-> arg0 fval) ((-> arg0 factivate-func) (-> arg0 id) (debug-menu-msg press) f0-8 (-> arg0 fval)))
-               )
-             )
-           )
+               (if (-> arg0 range-p) (set! f0-8 (fmin (fmax f0-8 (-> arg0 frange-min)) (-> arg0 frange-max))))
+               (set! (-> arg0 fval) ((-> arg0 factivate-func) (-> arg0 id) (debug-menu-msg press) f0-8 (-> arg0 fval))))))
           (else
-            (when (-> arg0 factivate-func)
-              (let ((a2-4 (+ (the-as int (-> arg0 fval)) (* (-> arg0 inc-dir) (the-as int (-> arg0 fstep))))))
-                (if (-> arg0 range-p)
-                    (set! a2-4 (min (max a2-4 (the-as int (-> arg0 frange-min))) (the-as int (-> arg0 frange-max))))
-                    )
-                (set! (-> arg0 fval) (the-as float ((the-as (function int int int int int) (-> arg0 factivate-func))
-                                                    (-> arg0 id)
-                                                    4
-                                                    a2-4
-                                                    (the-as int (-> arg0 fval))
-                                                    )
-                                             )
-                      )
-                )
-              )
-            )
-          )
+           (when (-> arg0 factivate-func)
+             (let ((a2-4 (+ (the-as int (-> arg0 fval)) (* (-> arg0 inc-dir) (the-as int (-> arg0 fstep))))))
+               (if (-> arg0 range-p) (set! a2-4 (min (max a2-4 (the-as int (-> arg0 frange-min))) (the-as int (-> arg0 frange-max)))))
+               (set! (-> arg0 fval)
+                     (the-as float
+                             ((the-as (function int int int int int) (-> arg0 factivate-func)) (-> arg0 id) 4 a2-4 (the-as int (-> arg0 fval)))))))))
         (debug-menu-item-var-update-display-str arg0)
         (let ((a0-20 (-> arg0 parent context)))
-          (debug-menu-context-send-msg a0-20 (debug-menu-msg update) (debug-menu-dest current-selection))
-          )
-        )
-       (else
-         (+! (-> arg0 inc-delay-ctr) -1)
-         )
-       )
-     )
-    (else
-      (set! (-> arg0 inc-dir) 0)
-      0
-      )
-    )
-  arg0
-  )
+          (debug-menu-context-send-msg a0-20 (debug-menu-msg update) (debug-menu-dest current-selection))))
+       (else (+! (-> arg0 inc-delay-ctr) -1))))
+    (else (set! (-> arg0 inc-dir) 0) 0))
+  arg0)
 
 (defun debug-menu-item-var-msg ((arg0 debug-menu-item-var) (arg1 debug-menu-msg))
   (cond
     ((= arg1 (debug-menu-msg deactivate))
      (when (-> arg0 grabbed-joypad-p)
-       (let ((a0-1 (-> arg0 parent context)))
-         (debug-menu-context-release-joypad a0-1)
-         )
-       (set! (-> arg0 grabbed-joypad-p) #f)
-       )
-     )
+       (let ((a0-1 (-> arg0 parent context))) (debug-menu-context-release-joypad a0-1))
+       (set! (-> arg0 grabbed-joypad-p) #f)))
     ((= arg1 (debug-menu-msg press))
      (when (not (-> arg0 grabbed-joypad-p))
        (let ((a0-2 (-> arg0 parent context)))
@@ -1362,181 +901,107 @@
            (set! (-> arg0 fundo-val) (-> arg0 fval))
            (set! (-> arg0 fundo-val) (-> arg0 fval))
            (set! (-> arg0 inc-dir) 0)
-           0
-           )
-         )
-       )
-     )
+           0))))
     ((or (= arg1 (debug-menu-msg update)) (= arg1 (debug-menu-msg activate)))
      (cond
        ((-> arg0 float-p)
         (if (-> arg0 factivate-func)
-            (set! (-> arg0 fval)
-                  ((-> arg0 factivate-func) (-> arg0 id) (debug-menu-msg update) (-> arg0 fval) (-> arg0 fval))
-                  )
-            )
-        )
+          (set! (-> arg0 fval) ((-> arg0 factivate-func) (-> arg0 id) (debug-menu-msg update) (-> arg0 fval) (-> arg0 fval)))))
        (else
-         (if (-> arg0 factivate-func)
-             (set! (-> arg0 fval) (the-as float ((the-as (function int int int int int) (-> arg0 factivate-func))
-                                                 (-> arg0 id)
-                                                 3
-                                                 (the-as int (-> arg0 fval))
-                                                 (the-as int (-> arg0 fval))
-                                                 )
-                                          )
-                   )
-             )
-         )
-       )
+        (if (-> arg0 factivate-func)
+          (set! (-> arg0 fval)
+                (the-as float
+                        ((the-as (function int int int int int) (-> arg0 factivate-func))
+                         (-> arg0 id)
+                         3
+                         (the-as int (-> arg0 fval))
+                         (the-as int (-> arg0 fval))))))))
      (debug-menu-item-var-update-display-str arg0)
-     (set! (-> arg0 refresh-ctr) (-> arg0 refresh-delay))
-     )
-    )
-  arg0
-  )
+     (set! (-> arg0 refresh-ctr) (-> arg0 refresh-delay))))
+  arg0)
 
 (defun debug-menu-item-send-msg ((arg0 debug-menu-item) (arg1 debug-menu-msg))
   "Call the appropriate message handler for the given item."
   (cond
-    ((= (-> arg0 type) debug-menu-item-submenu)
-     (debug-menu-item-submenu-msg (the-as debug-menu-item-submenu arg0) arg1)
-     )
-    ((= (-> arg0 type) debug-menu-item-function)
-     (debug-menu-item-function-msg (the-as debug-menu-item-function arg0) arg1)
-     )
-    ((= (-> arg0 type) debug-menu-item-flag)
-     (debug-menu-item-flag-msg (the-as debug-menu-item-flag arg0) arg1)
-     )
-    ((= (-> arg0 type) debug-menu-item-var)
-     (debug-menu-item-var-msg (the-as debug-menu-item-var arg0) arg1)
-     )
-    (else
-      (format 0 "ERROR: Found unknown item type!~%")
-      )
-    )
-  arg0
-  )
+    ((= (-> arg0 type) debug-menu-item-submenu) (debug-menu-item-submenu-msg (the-as debug-menu-item-submenu arg0) arg1))
+    ((= (-> arg0 type) debug-menu-item-function) (debug-menu-item-function-msg (the-as debug-menu-item-function arg0) arg1))
+    ((= (-> arg0 type) debug-menu-item-flag) (debug-menu-item-flag-msg (the-as debug-menu-item-flag arg0) arg1))
+    ((= (-> arg0 type) debug-menu-item-var) (debug-menu-item-var-msg (the-as debug-menu-item-var arg0) arg1))
+    (else (format 0 "ERROR: Found unknown item type!~%")))
+  arg0)
 
 (defun-recursive debug-menu-send-msg debug-menu ((arg0 debug-menu) (arg1 debug-menu-msg) (arg2 symbol))
   "Send to all items in menu. Arg2 picks if we are recursive or not."
   (let* ((s3-0 (-> arg0 items))
-         (s2-0 (car s3-0))
-         )
+         (s2-0 (car s3-0)))
     (while (not (null? s3-0))
       (debug-menu-item-send-msg (the-as debug-menu-item s2-0) arg1)
       (if (and arg2 (= (-> (the-as debug-menu-item s2-0) type) debug-menu-item-submenu))
-          (debug-menu-send-msg (-> (the-as debug-menu-item-submenu s2-0) submenu) arg1 #t)
-          )
+        (debug-menu-send-msg (-> (the-as debug-menu-item-submenu s2-0) submenu) arg1 #t))
       (set! s3-0 (cdr s3-0))
-      (set! s2-0 (car s3-0))
-      )
-    )
-  arg0
-  )
+      (set! s2-0 (car s3-0))))
+  arg0)
 
 (defun debug-menu-context-send-msg ((arg0 debug-menu-context) (arg1 debug-menu-msg) (arg2 debug-menu-dest))
   "Send the arg1 message to the given place."
   (cond
     ((= arg2 (debug-menu-dest root))
      ;; sent to root, recursively. This will hit the whole menu.
-     (debug-menu-send-msg (-> arg0 root-menu) arg1 #t)
-     )
+     (debug-menu-send-msg (-> arg0 root-menu) arg1 #t))
     ((= arg2 (debug-menu-dest open-menus))
      ;; only send to open things
      (when (-> arg0 is-active) ;; only if context is open
        (dotimes (s4-0 (-> arg0 sel-length)) ;; go through stack
          (let ((a0-2 (-> arg0 sel-menu s4-0)))
            ;; send, not recursive
-           (debug-menu-send-msg a0-2 arg1 #f)
-           )
-         )
-       )
-     )
+           (debug-menu-send-msg a0-2 arg1 #f)))))
     ((= arg2 (debug-menu-dest current-selection))
      (when (-> arg0 is-active) ;; context open
        (if (nonzero? (-> arg0 sel-length)) ;; something in the stack
-           (debug-menu-send-msg (-> arg0 sel-menu (+ (-> arg0 sel-length) -1)) arg1 #f) ;; send to that.
-           )
-       )
-     )
+         (debug-menu-send-msg (-> arg0 sel-menu (+ (-> arg0 sel-length) -1)) arg1 #f) ;; send to that.
+         )))
     ((= arg2 (debug-menu-dest activation))
      ;; this is a special case for when we want to activate or deactivate something.
      (cond
        ((= arg1 (debug-menu-msg activate))
         (when (not (-> arg0 is-active))
           (set! (-> arg0 is-active) #t)
-          (debug-menu-context-send-msg arg0 (debug-menu-msg activate) (debug-menu-dest open-menus))
-          )
-        )
+          (debug-menu-context-send-msg arg0 (debug-menu-msg activate) (debug-menu-dest open-menus))))
        ((= arg1 (debug-menu-msg deactivate))
         (when (-> arg0 is-active)
           (debug-menu-context-send-msg arg0 (debug-menu-msg deactivate) (debug-menu-dest open-menus))
-          (set! (-> arg0 is-active) #f)
-          )
-        )
-       )
-     )
-    )
-  arg0
-  )
+          (set! (-> arg0 is-active) #f))))))
+  arg0)
 
 (defun debug-menu-context-activate-selection ((arg0 debug-menu-context))
   "Press on the selected thing. Note that we named this enum press, not activate."
   (let ((a0-1 (-> arg0 sel-menu (+ (-> arg0 sel-length) -1) selected-item)))
-    (debug-menu-item-send-msg a0-1 (debug-menu-msg press))
-    )
-  arg0
-  )
+    (debug-menu-item-send-msg a0-1 (debug-menu-msg press)))
+  arg0)
 
 (defun debug-menus-default-joypad-func ((arg0 debug-menu-context))
   "Control the menu from the joystick"
   (cond
     ((cpad-pressed? 0 square)
      (cond
-       ((< 1 (-> arg0 sel-length))
-        (debug-menu-context-close-submenu arg0)
-        )
-       (else
-         )
-       )
-     )
-    ((cpad-pressed? 0 x)
-     (debug-menu-context-activate-selection arg0)
-     )
-    ((cpad-pressed? 0 up)
-     (debug-menu-context-select-new-item arg0 -1)
-     )
-    ((cpad-pressed? 0 down)
-     (debug-menu-context-select-new-item arg0 1)
-     )
-    ((cpad-pressed? 0 left)
-     (debug-menu-context-select-new-item arg0 -5)
-     )
-    ((cpad-pressed? 0 right)
-     (debug-menu-context-select-new-item arg0 5)
-     )
-    )
-  arg0
-  )
+       ((< 1 (-> arg0 sel-length)) (debug-menu-context-close-submenu arg0))
+       (else)))
+    ((cpad-pressed? 0 x) (debug-menu-context-activate-selection arg0))
+    ((cpad-pressed? 0 up) (debug-menu-context-select-new-item arg0 -1))
+    ((cpad-pressed? 0 down) (debug-menu-context-select-new-item arg0 1))
+    ((cpad-pressed? 0 left) (debug-menu-context-select-new-item arg0 -5))
+    ((cpad-pressed? 0 right) (debug-menu-context-select-new-item arg0 5)))
+  arg0)
 
 (defun debug-menus-active ((arg0 debug-menu-context))
   "Run the menu context"
   (when (not (-> arg0 is-hidden))
     ;; grab inputs
-    (if (-> arg0 joypad-func)
-        ((-> arg0 joypad-func) (-> arg0 joypad-item))
-        (debug-menus-default-joypad-func arg0)
-        )
+    (if (-> arg0 joypad-func) ((-> arg0 joypad-func) (-> arg0 joypad-item)) (debug-menus-default-joypad-func arg0))
     ;; render
-    (debug-menu-context-render arg0)
-    )
-  arg0
-  )
+    (debug-menu-context-render arg0))
+  arg0)
 
 (defun debug-menus-handler ((arg0 debug-menu-context))
-  (if (-> arg0 is-active)
-      (debug-menus-active arg0)
-      )
-  arg0
-  )
+  (if (-> arg0 is-active) (debug-menus-active arg0))
+  arg0)

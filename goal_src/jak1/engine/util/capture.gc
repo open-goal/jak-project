@@ -1,9 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: capture.gc
-;; name in dgo: capture
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gkernel.gc")
+(require "engine/gfx/hw/gs.gc")
 
 ;; Functions for taking a screenshot of VRAM.
 ;; These are debug-only and leak memory.
@@ -15,46 +14,33 @@
 
 ;; vif/gif tags to do a transfer of data from VRAM to EE memory.
 (deftype gs-store-image-packet (structure)
-  ((vifcode         vif-tag  4)
-   (giftag          gif-tag)
-   (bitbltbuf       gs-bitbltbuf)
-   (bitbltbuf-addr  gs-reg64)
-   (trxpos          gs-trxpos)
-   (trxpos-addr     gs-reg64)
-   (trxreg          gs-trxreg)
-   (trxreg-addr     gs-reg64)
-   (finish          int64)
-   (finish-addr     gs-reg64)
-   (trxdir          gs-trxdir)
-   (trxdir-addr     gs-reg64)
-   )
-  )
+  ((vifcode        vif-tag 4)
+   (giftag         gif-tag)
+   (bitbltbuf      gs-bitbltbuf)
+   (bitbltbuf-addr gs-reg64)
+   (trxpos         gs-trxpos)
+   (trxpos-addr    gs-reg64)
+   (trxreg         gs-trxreg)
+   (trxreg-addr    gs-reg64)
+   (finish         int64)
+   (finish-addr    gs-reg64)
+   (trxdir         gs-trxdir)
+   (trxdir-addr    gs-reg64)))
 
 (defun gs-set-default-store-image ((packet gs-store-image-packet) (src-fbp int) (src-w int) (src-psm int) (ssax int) (ssay int) (rrw int) (rrh int))
   "Set up a gs-store-image-packet for storing"
   ;; nop
   (set! (-> packet vifcode 0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
   ;; set mskpath3
-  (set! (-> packet vifcode 1)
-        (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd mskpath3))
-        )
+  (set! (-> packet vifcode 1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd mskpath3)))
   ;; flush!
-  (set! (-> packet vifcode 2)
-        (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1)
-        )
+  (set! (-> packet vifcode 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
   ;; direct gif transfer.
-  (set! (-> packet vifcode 3)
-        (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-        )
+  (set! (-> packet vifcode 3) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
   ;;gif a+d
-  (set! (-> packet giftag) (the-as gif-tag
-                                   (make-u128
-                                    (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
-                                    (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
-                                    )
-                                   )
-        )
-
+  (set! (-> packet giftag)
+        (the-as gif-tag
+                (make-u128 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)) (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1))))
   ;; all the a+d
   (set! (-> packet bitbltbuf) (new 'static 'gs-bitbltbuf :sbp src-fbp :sbw src-w :spsm src-psm))
   (set! (-> packet bitbltbuf-addr) (gs-reg64 bitbltbuf))
@@ -67,17 +53,14 @@
   (set! (-> packet trxdir) (new 'static 'gs-trxdir :xdir #x1))
   (set! (-> packet trxdir-addr) (gs-reg64 trxdir))
   (.sync.l)
-  7
-  )
-
+  7)
 
 (defun store-image ((oddeven int))
   "Store an image to image.raw"
   (local-vars (ptr-1 (pointer uint128)) (y-idx int) (y-idx-2 int))
   (let ((width 512)
         (height (-> *video-parms* screen-sy))
-        (file (new 'debug 'file-stream "image.raw" 'write))
-        )
+        (file (new 'debug 'file-stream "image.raw" 'write)))
     ;; create (and leak memory) for 2 arrays.
     (let ((buff0 (the-as (array uint128) (new 'debug 'boxed-array uint128 (/ (* width height) 4)))))
       (let ((buff1 (the-as (array uint128) (new 'debug 'boxed-array uint128 (/ (* width height) 4)))))
@@ -91,8 +74,7 @@
           ;; capture other field
           (gs-set-default-store-image packet #x3000 (/ width 64) 0 0 0 width height)
           (flush-cache 0)
-          (gs-store-image packet (-> buff1 data))
-          )
+          (gs-store-image packet (-> buff1 data)))
         ;; wait for capture to complete.
         (sync-path 0 0)
         (let ((ptr-0 (-> buff0 data)))
@@ -103,27 +85,17 @@
              (while (< y-idx height)
                (file-stream-write file (&+ ptr-0 (* y-idx (* width 4))) (the-as uint (* width 4)))
                (file-stream-write file (&+ ptr-1 (* y-idx (* width 4))) (the-as uint (* width 4)))
-               (set! y-idx (+ y-idx 1))
-               )
-             )
+               (set! y-idx (+ y-idx 1))))
             (else
-              (set! y-idx-2 0)
-              (while (< y-idx-2 height)
-                (file-stream-write file (&+ ptr-1 (* y-idx-2 (* width 4))) (the-as uint (* width 4)))
-                (file-stream-write file (&+ ptr-0 (* y-idx-2 (* width 4))) (the-as uint (* width 4)))
-                (set! y-idx-2 (+ y-idx-2 1))
-                )
-              )
-            )
-          )
+             (set! y-idx-2 0)
+             (while (< y-idx-2 height)
+               (file-stream-write file (&+ ptr-1 (* y-idx-2 (* width 4))) (the-as uint (* width 4)))
+               (file-stream-write file (&+ ptr-0 (* y-idx-2 (* width 4))) (the-as uint (* width 4)))
+               (set! y-idx-2 (+ y-idx-2 1))))))
         (format #t "oddeven = ~d~%" oddeven)
         ;; this does nothing.
-        (delete buff1)
-        )
+        (delete buff1))
       ;; also does nothing.
-      (delete buff0)
-      )
-    (file-stream-close file)
-    )
-  0
-  )
+      (delete buff0))
+    (file-stream-close file))
+  0)

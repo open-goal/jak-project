@@ -84,9 +84,9 @@
   )
 
 (defun custom-level-cgo (output-name desc-file-name)
-  "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_levels/jak2/)"
+  "Add a CGO with the given output name (in $OUT/iso) and input name (in custom_assets/jak2/levels/)"
   (let ((out-name (string-append "$OUT/iso/" output-name)))
-    (defstep :in (string-append "custom_levels/jak2/" desc-file-name)
+    (defstep :in (string-append "custom_assets/jak2/levels/" desc-file-name)
       :tool 'dgo
       :out `(,out-name)
       )
@@ -135,11 +135,17 @@
     )
   )
 
-(defmacro build-custom-level (name)
-  (let* ((path (string-append "custom_levels/jak2/" name "/" name ".jsonc")))
-    `(defstep :in ,path
+(defmacro build-custom-level (name &key (force-run #f) &key (gen-fr3 #t))
+  (let* ((path (string-append "custom_assets/jak2/levels/" name "/" name ".jsonc")))
+    `(defstep :in '(,path ,(symbol->string force-run) ,(symbol->string gen-fr3))
               :tool 'build-level2
               :out '(,(string-append "$OUT/obj/" name ".go")))))
+
+(defmacro build-actor (name &key (gen-mesh #f) &key (force-run #f) &key (texture-bucket 0))
+  (let* ((path (string-append "custom_assets/jak2/models/custom_levels/" name ".glb")))
+    `(defstep :in '(,path ,(symbol->string gen-mesh) ,(symbol->string force-run) ,(if (integer? texture-bucket) (int->string texture-bucket) (symbol->string texture-bucket)))
+              :tool 'build-actor2
+              :out '(,(string-append "$OUT/obj/" name "-ag.go")))))
 
 (defmacro group (name &rest stuff)
   `(defstep :in ""

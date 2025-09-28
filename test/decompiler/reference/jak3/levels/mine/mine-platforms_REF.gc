@@ -1,0 +1,2278 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mine-platform-base
+(deftype mine-platform-base (base-plat)
+  ()
+  (:state-methods
+    plat-base-state
+    )
+  (:methods
+    (get-skel (_type_) art-group)
+    (alloc-path! (_type_ entity) none)
+    )
+  )
+
+;; definition for method 3 of type mine-platform-base
+(defmethod inspect ((this mine-platform-base))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type base-plat inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate plat-base-state (mine-platform-base)
+  :virtual #t
+  :event plat-event
+  :trans plat-trans
+  :code sleep-code
+  :post plat-post
+  )
+
+;; definition for method 37 of type mine-platform-base
+;; WARN: Return type mismatch symbol vs none.
+(defmethod alloc-path! ((this mine-platform-base) (arg0 entity))
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 arg0 #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (not (logtest? (-> this path flags) (path-control-flag not-found)))
+  (none)
+  )
+
+;; definition for method 11 of type mine-platform-base
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this mine-platform-base) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
+  (init-bounce-params! this)
+  (let ((a0-6 (-> this skel root-channel 0)))
+    (set! (-> a0-6 frame-group) (if (> (-> this skel active-channels) 0)
+                                    (-> this skel root-channel 0 frame-group)
+                                    )
+          )
+    (set! (-> a0-6 param 0) 1.0)
+    (set! (-> a0-6 frame-num) 0.0)
+    (joint-control-channel-group!
+      a0-6
+      (if (> (-> this skel active-channels) 0)
+          (-> this skel root-channel 0 frame-group)
+          )
+      num-func-loop!
+      )
+    )
+  (ja-post)
+  )
+
+;; definition of type min-moving-plat-spooler
+(deftype min-moving-plat-spooler (process-drawable)
+  ((spool-sound  sound-id)
+   )
+  (:state-methods
+    active
+    )
+  (:methods
+    (queue-drill-sound (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type min-moving-plat-spooler
+(defmethod inspect ((this min-moving-plat-spooler))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tspool-sound: ~D~%" (-> this spool-sound))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function min-moving-plat-spooler-init-by-other
+;; INFO: Used lq/sq
+(defbehavior min-moving-plat-spooler-init-by-other min-moving-plat-spooler ((arg0 vector))
+  (stack-size-set! (-> self main-thread) 32)
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self spool-sound) (new-sound-id))
+  (vector-copy! (-> self root trans) arg0)
+  (queue-drill-sound self)
+  (go-virtual active)
+  )
+
+;; definition for method 21 of type min-moving-plat-spooler
+;; WARN: Return type mismatch gui-connection vs none.
+(defmethod queue-drill-sound ((this min-moving-plat-spooler))
+  (remove-process *gui-control* this (gui-channel guard))
+  (set! (-> this spool-sound)
+        (add-process *gui-control* this (gui-channel guard) (gui-action queue) "lng-dril" -99.0 0)
+        )
+  (sound-params-set!
+    *gui-control*
+    (-> this spool-sound)
+    #t
+    35
+    70
+    9
+    (-> *setting-control* user-current sfx-volume)
+    )
+  (none)
+  )
+
+;; definition for method 10 of type min-moving-plat-spooler
+(defmethod deactivate ((this min-moving-plat-spooler))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (-> this spool-sound)
+    (gui-channel none)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  (call-parent-method this)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (min-moving-plat-spooler)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('play-sound)
+       (set-action!
+         *gui-control*
+         (gui-action play)
+         (-> self spool-sound)
+         (gui-channel none)
+         (gui-action none)
+         (the-as string #f)
+         (the-as (function gui-connection symbol) #f)
+         (the-as process #f)
+         )
+       )
+      (('queue-sound)
+       (set-action!
+         *gui-control*
+         (gui-action stop)
+         (-> self spool-sound)
+         (gui-channel none)
+         (gui-action none)
+         (the-as string #f)
+         (the-as (function gui-connection symbol) #f)
+         (the-as process #f)
+         )
+       (queue-drill-sound self)
+       )
+      )
+    )
+  :trans (behavior ()
+    (case (get-status *gui-control* (-> self spool-sound))
+      (((gui-status active))
+       (when *sound-player-enable*
+         (let ((v1-3 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+           (set! (-> v1-3 command) (sound-command set-param))
+           (set! (-> v1-3 id) (-> self spool-sound))
+           (set! (-> v1-3 params volume) (the int (* 1024.0 (-> *setting-control* user-current sfx-volume))))
+           (set! (-> v1-3 params mask) (the-as uint 1))
+           (-> v1-3 id)
+           )
+         )
+       )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition of type min-moving-plat
+(deftype min-moving-plat (mine-platform-base)
+  ((animation-speed    float)
+   (sync               sync-linear  :inline)
+   (min-frame-num      float)
+   (max-frame-num      float)
+   (sound-drill-spool  uint32)
+   (sound-loop         uint32)
+   (sound-bit          uint32)
+   (sound-gear         uint32)
+   (last-frame         float)
+   (spooler            handle)
+   (sync-offset        float)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  )
+
+;; definition for method 3 of type min-moving-plat
+(defmethod inspect ((this min-moving-plat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type mine-platform-base inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tanimation-speed: ~f~%" (-> this animation-speed))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
+  (format #t "~2Tmin-frame-num: ~f~%" (-> this min-frame-num))
+  (format #t "~2Tmax-frame-num: ~f~%" (-> this max-frame-num))
+  (format #t "~2Tsound-drill-spool: ~D~%" (-> this sound-drill-spool))
+  (format #t "~2Tsound-loop: ~D~%" (-> this sound-loop))
+  (format #t "~2Tsound-bit: ~D~%" (-> this sound-bit))
+  (format #t "~2Tsound-gear: ~D~%" (-> this sound-gear))
+  (format #t "~2Tlast-frame: ~f~%" (-> this last-frame))
+  (format #t "~2Tspooler: ~D~%" (-> this spooler))
+  (format #t "~2Tsync-offset: ~f~%" (-> this sync-offset))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-moving-plat min-moving-plat min-moving-plat-lod0-jg min-moving-plat-idle-ja
+              ((min-moving-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 24)
+              )
+
+;; definition for method 32 of type min-moving-plat
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this min-moving-plat))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 98304.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-11 transform-index) 5)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 0.0 43008.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 4)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 12288.0 81920.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 43008.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 36 of type min-moving-plat
+(defmethod get-skel ((this min-moving-plat))
+  (art-group-get-by-name *level* "skel-min-moving-plat" (the-as (pointer level) #f))
+  )
+
+;; definition for method 11 of type min-moving-plat
+(defmethod init-from-entity! ((this min-moving-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (let ((t9-0 (method-of-type mine-platform-base init-from-entity!)))
+    (t9-0 this arg0)
+    )
+  (let ((a1-2 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-1 0))
+      (if #f
+          (set! v1-1 (logior v1-1 1))
+          )
+      (set! (-> a1-2 sync-type) 'sync-linear)
+      (set! (-> a1-2 sync-flags) (the-as sync-flags v1-1))
+      )
+    (set! (-> a1-2 entity) arg0)
+    (set! (-> a1-2 period) (the-as uint 3000))
+    (set! (-> a1-2 percent) 0.0)
+    (initialize! (-> this sync) a1-2)
+    )
+  (let ((f0-1 (res-lump-float (-> this entity) 'scale :default 1.0)))
+    (set! (-> this root scale x) f0-1)
+    (set! (-> this root scale y) f0-1)
+    (set! (-> this root scale z) f0-1)
+    )
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (ja-channel-push! 1 0)
+  (let ((s5-1 (-> this skel root-channel 0)))
+    (joint-control-channel-group! s5-1 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
+    (set! (-> s5-1 frame-num) 0.0)
+    )
+  (sync-now! (-> this sync) 0.6)
+  (let ((f0-5 (* (get-norm! (-> this sync) 0) (the float (ja-num-frames 0))))
+        (v1-24 (-> this skel root-channel 0))
+        )
+    (set! (-> v1-24 num-func) num-func-identity)
+    (set! (-> v1-24 frame-num) f0-5)
+    )
+  (ja-post)
+  (set! (-> this sound-drill-spool) (the-as uint (new-sound-id)))
+  (set! (-> this sound-loop) (the-as uint (new-sound-id)))
+  (set! (-> this sound-bit) (the-as uint (new-sound-id)))
+  (set! (-> this sound-gear) (the-as uint (new-sound-id)))
+  (set! (-> this spooler) (the-as handle #f))
+  (when (string= (-> this name) "min-moving-plat-2")
+    (let ((s5-2 (get-process *default-dead-pool* min-moving-plat-spooler #x4000 1)))
+      (set! (-> this spooler)
+            (process->handle
+              (-> (when s5-2
+                    (let ((t9-15 (method-of-type min-moving-plat-spooler activate)))
+                      (t9-15 (the-as min-moving-plat-spooler s5-2) this "min-moving-plat-spooler" (the-as pointer #x70004000))
+                      )
+                    (run-now-in-process s5-2 min-moving-plat-spooler-init-by-other (-> this root trans))
+                    (-> s5-2 ppointer)
+                    )
+                  0
+                  )
+              )
+            )
+      )
+    )
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this active))
+      )
+  (go (method-of-object this idle))
+  )
+
+;; definition for method 10 of type min-moving-plat
+(defmethod deactivate ((this min-moving-plat))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (sound-stop (the-as sound-id (-> this sound-loop)))
+  (sound-stop (the-as sound-id (-> this sound-bit)))
+  (sound-stop (the-as sound-id (-> this sound-gear)))
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (the-as sound-id (-> this sound-drill-spool))
+    (gui-channel none)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  ((method-of-type mine-platform-base deactivate) this)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (min-moving-plat)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (sync-now! (-> self sync) 0.6)
+       (go-virtual active)
+       )
+      )
+    (plat-event proc argc message block)
+    )
+  :trans plat-trans
+  :code sleep-code
+  :post plat-post
+  )
+
+;; failed to figure out what this is:
+(when (or (zero? *drill-loop-mid-curve*) (!= loading-level global))
+  (set! *drill-loop-mid-curve* (new 'loading-level 'curve2d-piecewise))
+  (allocate! *drill-loop-mid-curve* 3 'loading-level #t)
+  )
+
+;; failed to figure out what this is:
+(set! (-> *drill-loop-mid-curve* pts data 0 first) 0.0)
+
+;; failed to figure out what this is:
+(set! (-> *drill-loop-mid-curve* pts data 0 second) 0.0)
+
+;; failed to figure out what this is:
+(set! (-> *drill-loop-mid-curve* pts data 1 first) 0.5)
+
+;; failed to figure out what this is:
+(set! (-> *drill-loop-mid-curve* pts data 1 second) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *drill-loop-mid-curve* pts data 2 first) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *drill-loop-mid-curve* pts data 2 second) 0.0)
+
+;; failed to figure out what this is:
+(defstate active (min-moving-plat)
+  :virtual #t
+  :event plat-event
+  :trans (behavior ()
+    (sound-play "mine-drill-bit" :id (the-as sound-id (-> self sound-bit)))
+    (let ((f30-0 (ja-frame-num 0)))
+      (cond
+        ((and (< 15.0 f30-0) (< f30-0 28.0))
+         (let ((f0-3 (* 0.07692308 (+ -15.0 f30-0))))
+           0.0
+           0.0
+           (let* ((f26-0 (evaluate *drill-loop-mid-curve* f0-3 (loop-behavior use-default)))
+                  (f28-0 (lerp -0.5 0.25 f26-0))
+                  )
+             (sound-play-by-name
+               (static-sound-name "mine-drill-loop")
+               (the-as sound-id (-> self sound-loop))
+               (the int (* 1024.0 f26-0))
+               0
+               0
+               (sound-group)
+               #t
+               )
+             (sound-play-by-name
+               (static-sound-name "mine-drill-gear")
+               (the-as sound-id (-> self sound-gear))
+               (the int (* 1024.0 f26-0))
+               (the int (* 1524.0 f28-0))
+               0
+               (sound-group)
+               #t
+               )
+             )
+           )
+         )
+        ((< f30-0 46.0)
+         (let ((f0-15 (* 0.055555556 (+ -28.0 f30-0))))
+           0.0
+           0.0
+           (let* ((f26-1 (evaluate *drill-loop-mid-curve* f0-15 (loop-behavior use-default)))
+                  (f28-1 (lerp -0.5 0.25 f26-1))
+                  )
+             (sound-play-by-name
+               (static-sound-name "mine-drill-loop")
+               (the-as sound-id (-> self sound-loop))
+               (the int (* 1024.0 f26-1))
+               0
+               0
+               (sound-group)
+               #t
+               )
+             (sound-play-by-name
+               (static-sound-name "mine-drill-gear")
+               (the-as sound-id (-> self sound-gear))
+               (the int (* 1024.0 f26-1))
+               (the int (* 1524.0 f28-1))
+               0
+               (sound-group)
+               #t
+               )
+             )
+           )
+         )
+        (else
+          (sound-play "mine-drill-loop" :id (the-as sound-id (-> self sound-loop)) :vol 0)
+          (sound-play "mine-drill-gear" :id (the-as sound-id (-> self sound-gear)) :vol 0)
+          )
+        )
+      (if (or (and (< (-> self last-frame) 50.0) (>= f30-0 50.0)) (and (< (-> self last-frame) 8.75) (>= f30-0 8.75)))
+          (sound-play "drill-arm-snap")
+          )
+      (if (and (< (-> self last-frame) 50.0) (>= f30-0 50.0))
+          (send-event (handle->process (-> self spooler)) 'play-sound)
+          )
+      (if (and (< (-> self last-frame) 12.0) (>= f30-0 12.0))
+          (send-event (handle->process (-> self spooler)) 'queue-sound)
+          )
+      (set! (-> self last-frame) f30-0)
+      )
+    (plat-trans)
+    )
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (suspend-for (seconds 2)
+      )
+    (let ((gp-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+          (s5-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+          (s4-0 #t)
+          )
+      (ja-channel-push! 1 0)
+      (ja-no-eval :group! min-moving-plat-idle-ja :num! min)
+      (sync-now! (-> self sync) 0.6)
+      (until #f
+        (let ((f30-1 (* (get-norm! (-> self sync) 0) (the float (ja-num-frames 0)))))
+          (let ((a0-8 (-> self skel root-channel 0)))
+            (set! (-> a0-8 param 0) f30-1)
+            (joint-control-channel-group-eval! a0-8 (the-as art-joint-anim #f) num-func-loop-set!)
+            )
+          (cond
+            ((or (< 55.0 f30-1) (< f30-1 5.0))
+             (if s4-0
+                 (set! s4-0 #f)
+                 )
+             (let ((s3-1 (new 'stack-no-clear 'matrix)))
+               (vector+float*! (-> s3-1 trans) (-> self root trans) *up-vector* (* 40960.0 (-> self root scale x)))
+               (vector+float*! (-> s3-1 trans) (-> s3-1 trans) gp-1 (* 106496.0 (-> self root scale x)))
+               (vector+float*! (-> s3-1 trans) (-> s3-1 trans) s5-0 (* -8192.0 (-> self root scale x)))
+               (vector-float*! (-> s3-1 fvec) gp-1 1.0)
+               (vector-copy! (-> s3-1 uvec) *up-vector*)
+               (vector-copy! (-> s3-1 rvec) s5-0)
+               (launch-particles (-> *part-id-table* 2316) s3-1 :origin-is-matrix #t)
+               (launch-particles (-> *part-id-table* 2315) s3-1 :origin-is-matrix #t)
+               )
+             )
+            (else
+              (set! s4-0 #t)
+              )
+            )
+          )
+        (suspend)
+        )
+      )
+    #f
+    )
+  :post plat-post
+  )
+
+;; definition of type min-rotating-plat
+(deftype min-rotating-plat (mine-platform-base)
+  ((animation-speed  float)
+   (sync             sync-linear  :inline)
+   (sound-loop-id    sound-id)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  )
+
+;; definition for method 3 of type min-rotating-plat
+(defmethod inspect ((this min-rotating-plat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type mine-platform-base inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tanimation-speed: ~f~%" (-> this animation-speed))
+  (format #t "~2Tsync: #<sync-linear @ #x~X>~%" (-> this sync))
+  (format #t "~2Tsound-loop-id: ~D~%" (-> this sound-loop-id))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-rotating-plat min-rotating-plat min-rotating-plat-lod0-jg min-rotating-plat-idle-ja
+              ((min-rotating-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 24)
+              )
+
+;; definition for method 32 of type min-rotating-plat
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this min-rotating-plat))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 12288.0 81920.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-13 transform-index) 4)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 43008.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 5)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 43008.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 36 of type min-rotating-plat
+(defmethod get-skel ((this min-rotating-plat))
+  (art-group-get-by-name *level* "skel-min-rotating-plat" (the-as (pointer level) #f))
+  )
+
+;; definition for method 11 of type min-rotating-plat
+(defmethod init-from-entity! ((this min-rotating-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (let ((t9-0 (method-of-type mine-platform-base init-from-entity!)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this bounce-scale) 0.0)
+  (let ((a1-2 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-1 0))
+      (if #f
+          (set! v1-1 (logior v1-1 1))
+          )
+      (set! (-> a1-2 sync-type) 'sync-linear)
+      (set! (-> a1-2 sync-flags) (the-as sync-flags v1-1))
+      )
+    (set! (-> a1-2 entity) arg0)
+    (set! (-> a1-2 period) (the-as uint 4500))
+    (set! (-> a1-2 percent) 0.0)
+    (initialize! (-> this sync) a1-2)
+    )
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (ja-channel-push! 1 0)
+  (let ((s5-1 (-> this skel root-channel 0)))
+    (joint-control-channel-group! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
+    (set! (-> s5-1 frame-num) 0.0)
+    )
+  (sync-now! (-> this sync) 0.0)
+  (let ((f0-5 (* (get-norm! (-> this sync) 0) (the float (ja-num-frames 0))))
+        (a0-12 (-> this skel root-channel 0))
+        )
+    (set! (-> a0-12 param 0) f0-5)
+    (joint-control-channel-group! a0-12 (the-as art-joint-anim #f) num-func-loop-set!)
+    )
+  (ja-post)
+  (set! (-> this sound-loop-id) (new-sound-id))
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this active))
+      )
+  (go (method-of-object this idle))
+  )
+
+;; failed to figure out what this is:
+(defstate idle (min-rotating-plat)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual active)
+       )
+      )
+    (plat-event proc argc message block)
+    )
+  :trans plat-trans
+  :code sleep-code
+  :post plat-post
+  )
+
+;; failed to figure out what this is:
+(defstate active (min-rotating-plat)
+  :virtual #t
+  :event plat-event
+  :exit (behavior ()
+    (if (nonzero? (-> self sound-loop-id))
+        (sound-stop (-> self sound-loop-id))
+        )
+    )
+  :trans plat-trans
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (suspend-for (seconds 2)
+      )
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! min-rotating-plat-idle-ja :num! min)
+    (sync-now! (-> self sync) 0.0)
+    (until #f
+      (let ((f0-3 (* (get-norm! (-> self sync) 0) (the float (ja-num-frames 0))))
+            (a0-6 (-> self skel root-channel 0))
+            )
+        (set! (-> a0-6 param 0) f0-3)
+        (joint-control-channel-group-eval! a0-6 (the-as art-joint-anim #f) num-func-loop-set!)
+        )
+      (if (nonzero? (-> self sound-loop-id))
+          (sound-play "min-rotate-plat" :id (-> self sound-loop-id))
+          )
+      (suspend)
+      )
+    #f
+    )
+  :post plat-post
+  )
+
+;; definition of type min-falling-elevator
+(deftype min-falling-elevator (elevator)
+  ((wheel-angle  float)
+   (stop-sound   symbol)
+   (pad          uint8  4)
+   )
+  (:state-methods
+    unstable
+    falling
+    resetting
+    )
+  )
+
+;; definition for method 3 of type min-falling-elevator
+(defmethod inspect ((this min-falling-elevator))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elevator inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Twheel-angle: ~f~%" (-> this wheel-angle))
+  (format #t "~2Tstop-sound: ~A~%" (-> this stop-sound))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-falling-elevator min-falling-elevator min-falling-elevator-lod0-jg min-falling-elevator-idle-ja
+              ((min-falling-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 5 10)
+              )
+
+;; definition for function min-falling-elevator-callback
+;; WARN: Return type mismatch int vs none.
+(defun min-falling-elevator-callback ((arg0 cspace) (arg1 transformq))
+  (let ((v1-0 (the-as min-falling-elevator (-> arg0 param1))))
+    (when (and (-> v1-0 next-state) (= (-> v1-0 next-state name) 'running))
+      (set! (-> v1-0 wheel-angle)
+            (the float
+                 (sar (shl (the int (+ (-> v1-0 wheel-angle) (* -4.956458 (seconds-per-frame) (-> v1-0 speed)))) 48) 48)
+                 )
+            )
+      (quaternion-rotate-local-x! (-> arg1 quat) (-> arg1 quat) (-> v1-0 wheel-angle))
+      (cspace<-parented-transformq-joint! arg0 arg1)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 34 of type min-falling-elevator
+;; WARN: Return type mismatch cspace vs none.
+(defmethod base-plat-method-34 ((this min-falling-elevator))
+  (set! (-> this bounce-scale) 0.0)
+  (set! (-> this sound-running-loop) (static-sound-spec "min-fall-elev" :group 0))
+  (set! (-> this stop-sound) #f)
+  (let ((v1-3 (-> this skel root-channel 0)))
+    (set! (-> v1-3 frame-group) (if (> (-> this skel active-channels) 0)
+                                    (-> this skel root-channel 0 frame-group)
+                                    )
+          )
+    )
+  (ja-post)
+  (let ((v0-1 (-> this node-list data 4)))
+    (set! (-> v0-1 param0) min-falling-elevator-callback)
+    (set! (-> v0-1 param1) this)
+    (set! (-> v0-1 param2) (the-as basic 0))
+    )
+  (none)
+  )
+
+;; definition for method 32 of type min-falling-elevator
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this min-falling-elevator))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 20480.0 40960.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 20480.0 40960.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-17 transform-index) 4)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 16384.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-20 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-20 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-20 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 31 of type min-falling-elevator
+(defmethod get-art-group ((this min-falling-elevator))
+  (art-group-get-by-name *level* "skel-min-falling-elevator" (the-as (pointer level) #f))
+  )
+
+;; failed to figure out what this is:
+(defstate running (min-falling-elevator)
+  :virtual #t
+  :enter (behavior ()
+    (if (task-node-closed? (game-task-node mine-blow-resolution))
+        (go-virtual dormant)
+        )
+    (let ((t9-2 (-> (method-of-type elevator running) enter)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (set! (-> self sound-id)
+          (add-process *gui-control* self (gui-channel background) (gui-action queue) "mfal-end" -99.0 0)
+          )
+    (set! (-> self stop-sound) #t)
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type elevator running) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (if (not (send-event self 'query 'player-standing-on?))
+        (send-event self 'use-camera #f)
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate arrived (min-falling-elevator)
+  :virtual #t
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type elevator arrived) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'query)
+      (set! (-> a1-0 param 0) (the-as uint 'player-standing-on?))
+      (cond
+        ((and (send-event-function self a1-0) (!= (-> self prev-state name) 'resetting))
+         (go-virtual unstable)
+         )
+        (else
+          (send-event self 'use-camera #f)
+          (if (-> self stop-sound)
+              (set-action!
+                *gui-control*
+                (gui-action stop)
+                (-> self sound-id)
+                (gui-channel none)
+                (gui-action none)
+                (the-as string #f)
+                (the-as (function gui-connection symbol) #f)
+                (the-as process #f)
+                )
+              )
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate unstable (min-falling-elevator)
+  :virtual #t
+  :parent (min-falling-elevator dormant)
+  :event elevator-event
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (time-elapsed? (-> self state-time) (seconds 2))
+        (go-virtual falling)
+        )
+    (if (not (send-event self 'query 'player-standing-on?))
+        (send-event self 'use-camera #f)
+        )
+    (let ((v1-18 (-> self state parent)))
+      (when v1-18
+        (let ((t9-3 (-> v1-18 trans)))
+          (if t9-3
+              (t9-3)
+              )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (when (-> self stop-sound)
+      (set! (-> self stop-sound) #f)
+      (sound-params-set! *gui-control* (-> self sound-id) #t -1 -1 -1 -1.0)
+      (set-action!
+        *gui-control*
+        (gui-action play)
+        (-> self sound-id)
+        (gui-channel none)
+        (gui-action none)
+        (the-as string #f)
+        (the-as (function gui-connection symbol) #f)
+        (the-as process #f)
+        )
+      )
+    (ja-no-eval :group! min-falling-elevator-start-unstable-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (until #f
+      (ja-no-eval :group! min-falling-elevator-unstable-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate falling (min-falling-elevator)
+  :virtual #t
+  :parent (min-falling-elevator dormant)
+  :event elevator-event
+  :enter (behavior ()
+    (send-event self 'use-camera #f)
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (ja-no-eval :group! min-falling-elevator-drop-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (until (time-elapsed? (-> self state-time) (seconds 2))
+      (suspend)
+      )
+    (go-virtual resetting)
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate resetting (min-falling-elevator)
+  :virtual #t
+  :parent (min-falling-elevator dormant)
+  :event elevator-event
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (sound-play "falling-step-up")
+    (ja-no-eval :group! min-falling-elevator-reset-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (until (time-elapsed? (-> self state-time) (seconds 2))
+      (suspend)
+      )
+    (go-virtual arrived)
+    )
+  )
+
+;; definition of type min-falling-step
+(deftype min-falling-step (mine-platform-base)
+  ((should-fall        symbol)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   )
+  (:state-methods
+    idle
+    lowering
+    lowered
+    )
+  )
+
+;; definition for method 3 of type min-falling-step
+(defmethod inspect ((this min-falling-step))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type mine-platform-base inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tshould-fall: ~A~%" (-> this should-fall))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (label cfg-7)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-falling-step min-falling-step min-falling-step-lod0-jg min-falling-step-idle-ja
+              ((min-falling-step-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 4 20)
+              :origin-joint-index 4
+              )
+
+;; definition for method 20 of type min-falling-step
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod get-search-info-flag ((this min-falling-step))
+  "Get search-info-flag for this process."
+  (let ((v0-0 0))
+    (cond
+      ((and (-> this next-state) (= (-> this next-state name) 'idle))
+       (set! v0-0 (logior v0-0 32))
+       )
+      ((and (-> this next-state) (= (-> this next-state name) 'lowering))
+       (set! v0-0 (logior v0-0 1))
+       )
+      )
+    (the-as search-info-flag v0-0)
+    )
+  )
+
+;; definition for method 21 of type min-falling-step
+(defmethod get-trans ((this min-falling-step) (arg0 int))
+  "Get the `trans` for this process."
+  (cond
+    ((= arg0 3)
+     (let ((a2-0 (-> this node-list data 4 bone transform))
+           (gp-0 (new 'static 'vector))
+           )
+       (set-vector! gp-0 0.0 0.0 24576.0 1.0)
+       (vector-matrix*! gp-0 gp-0 a2-0)
+       (set! (-> gp-0 w) 16384.0)
+       gp-0
+       )
+     )
+    (else
+      ((method-of-type process-focusable get-trans) this arg0)
+      )
+    )
+  )
+
+;; definition for method 32 of type min-falling-step
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this min-falling-step))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak hit-by-others-list player-list projectile))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable pull-rider-can-collide))
+      (set! (-> s4-0 transform-index) 4)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 16384.0 81920.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 36 of type min-falling-step
+(defmethod get-skel ((this min-falling-step))
+  (art-group-get-by-name *level* "skel-min-falling-step" (the-as (pointer level) #f))
+  )
+
+;; failed to figure out what this is:
+(defstate idle (min-falling-step)
+  :virtual #t
+  :parent (min-falling-step plat-base-state)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (go-virtual lowering)
+       )
+      (else
+        (plat-event proc argc message block)
+        )
+      )
+    )
+  :trans (behavior ()
+    (let ((v1-1 (-> self state parent)))
+      (when v1-1
+        (let ((t9-0 (-> v1-1 trans)))
+          (if t9-0
+              (t9-0)
+              )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-2 (ja-group)))
+      (if (not (and v1-2 (= v1-2 min-falling-step-idle-ja)))
+          (ja-channel-push! 1 0)
+          )
+      )
+    (until #f
+      (ja-no-eval :group! min-falling-step-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate lowering (min-falling-step)
+  :virtual #t
+  :parent (min-falling-step plat-base-state)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (plat-event proc argc message block)
+    )
+  :code (behavior ()
+    (dotimes (gp-0 (-> self actor-group-count))
+      (let ((s5-0 (-> self actor-group gp-0)))
+        (dotimes (s4-0 (-> s5-0 length))
+          (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-0 from) (process->ppointer self))
+            (set! (-> a1-0 num-params) 0)
+            (set! (-> a1-0 message) 'cue-chase)
+            (let ((t9-0 send-event-function)
+                  (v1-6 (-> s5-0 data s4-0 actor))
+                  )
+              (t9-0
+                (if v1-6
+                    (-> v1-6 extra process)
+                    )
+                a1-0
+                )
+              )
+            )
+          )
+        )
+      )
+    (ja-channel-push! 1 0)
+    (sound-play "fall-step-hinge")
+    (let ((gp-2 0))
+      (ja-no-eval :group! min-falling-step-falling-a-ja :num! (seek! max 0.6) :frame-num 0.0)
+      (until (ja-done? 0)
+        (let ((f30-0 (ja-frame-num 0))
+              (v1-31 (ja-num-frames 0))
+              )
+          (when (< gp-2 (the int f30-0))
+            (if (= (the int f30-0) (+ v1-31 -17))
+                (sound-play "falling-step")
+                )
+            )
+          )
+        (set! gp-2 (the int (ja-frame-num 0)))
+        (suspend)
+        (ja :num! (seek! max 0.6))
+        )
+      )
+    (go-virtual lowered)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate lowered (min-falling-step)
+  :virtual #t
+  :parent (min-falling-step plat-base-state)
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (ja :group! min-falling-step-falling-a-ja :num! max)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; definition for method 11 of type min-falling-step
+;; INFO: Used lq/sq
+(defmethod init-from-entity! ((this min-falling-step) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (local-vars (sv-16 res-tag))
+  (let ((t9-0 (method-of-type mine-platform-base init-from-entity!)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this bounce-scale) 204.8)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-3 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-3 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-3))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this lowered))
+      (go (method-of-object this idle))
+      )
+  )
+
+;; definition of type min-elev-track
+(deftype min-elev-track (elevator)
+  ()
+  )
+
+;; definition for method 3 of type min-elev-track
+(defmethod inspect ((this min-elev-track))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elevator inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-elev-track min-elev-track min-elev-track-lod0-jg min-elev-track-idle-ja
+              ((min-elev-track-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 4 8)
+              )
+
+;; definition for method 31 of type min-elev-track
+(defmethod get-art-group ((this min-elev-track))
+  (art-group-get-by-name *level* "skel-min-elev-track" (the-as (pointer level) #f))
+  )
+
+;; definition for method 32 of type min-elev-track
+;; WARN: Return type mismatch collide-shape vs none.
+(defmethod init-collision! ((this min-elev-track))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -8192.0 16384.0 28672.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 -8192.0 16384.0 28672.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 30 of type min-elev-track
+;; WARN: Return type mismatch int vs none.
+(defmethod start-bounce! ((this min-elev-track))
+  0
+  (none)
+  )
+
+;; definition for method 34 of type min-elev-track
+;; WARN: Return type mismatch sound-spec vs none.
+(defmethod base-plat-method-34 ((this min-elev-track))
+  (set! (-> this sound-running-loop) (static-sound-spec "min-elev-track" :group 0))
+  (set! (-> this sound-arrived) (static-sound-spec "min-elev-end" :group 0))
+  (none)
+  )
+
+;; definition of type min-folding-plat
+(deftype min-folding-plat (process-drawable)
+  ((root        collide-shape-moving :override)
+   (stop-sound  symbol)
+   (sound-id    sound-id)
+   )
+  (:state-methods
+    idle
+    extend
+    extended
+    )
+  (:methods
+    (set-bounds! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type min-folding-plat
+(defmethod inspect ((this min-folding-plat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstop-sound: ~A~%" (-> this stop-sound))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-folding-plat min-folding-plat min-folding-plat-lod0-jg min-folding-plat-idle-ja
+              ((min-folding-plat-lod0-mg (meters 20)) (min-folding-plat-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 4 10)
+              :origin-joint-index 5
+              )
+
+;; failed to figure out what this is:
+(defstate idle (min-folding-plat)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual extend)
+       )
+      )
+    )
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #f)
+    (ja-channel-set! 1)
+    (ja-no-eval :group! min-folding-plat-idle-ja :num! zero)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate extend (min-folding-plat)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self stop-sound) #t)
+    (set! (-> self sound-id)
+          (add-process *gui-control* self (gui-channel background) (gui-action queue) "minbridg" -99.0 0)
+          )
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (set-bounds! self)
+    )
+  :exit (behavior ()
+    (if (-> self stop-sound)
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (-> self sound-id)
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+    )
+  :trans rider-trans
+  :code (behavior ()
+    (suspend-for (seconds 1.5)
+      )
+    (when (-> self stop-sound)
+      (set! (-> self stop-sound) #f)
+      (sound-params-set! *gui-control* (-> self sound-id) #t -1 -1 -1 -1.0)
+      (set-action!
+        *gui-control*
+        (gui-action play)
+        (-> self sound-id)
+        (gui-channel none)
+        (gui-action none)
+        (the-as string #f)
+        (the-as (function gui-connection symbol) #f)
+        (the-as process #f)
+        )
+      )
+    (ja-no-eval :group! min-folding-plat-extend-ja :num! (seek! max 0.1) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.1))
+      )
+    (go-virtual extended)
+    )
+  :post rider-post
+  )
+
+;; failed to figure out what this is:
+(defstate extended (min-folding-plat)
+  :virtual #t
+  :code (behavior ()
+    (set-bounds! self)
+    (ja-no-eval :group! min-folding-plat-extend-ja
+                :num! (identity (the float (+ (-> (the-as art-joint-anim min-folding-plat-extend-ja) frames num-frames) -1)))
+                )
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; definition for method 23 of type min-folding-plat
+;; WARN: Return type mismatch int vs none.
+(defmethod set-bounds! ((this min-folding-plat))
+  (set! (-> this root root-prim local-sphere w) 69632.0)
+  (set! (-> this draw bounds w) 71680.0)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type min-folding-plat
+(defmethod init-from-entity! ((this min-folding-plat) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 5)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 16384.0 32768.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 8192.0 32768.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-17 transform-index) 5)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 8192.0 32768.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-19 transform-index) 7)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 8192.0 32768.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-22 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-22 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-22 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (set! (-> this sound-id) (new-sound-id))
+  (set! (-> this stop-sound) #f)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-min-folding-plat" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this extended))
+      (go (method-of-object this idle))
+      )
+  )
+
+;; definition of type min-ramp
+(deftype min-ramp (process-drawable)
+  ((angle             degrees)
+   (play-anim?        symbol)
+   (play-ramp-sound?  symbol)
+   (stop-ramp-sound   symbol)
+   (ramp-sound        sound-id)
+   )
+  (:state-methods
+    idle
+    rotating
+    rotated
+    )
+  )
+
+;; definition for method 3 of type min-ramp
+(defmethod inspect ((this min-ramp))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tangle: ~f~%" (-> this angle))
+  (format #t "~2Tplay-anim?: ~A~%" (-> this play-anim?))
+  (format #t "~2Tplay-ramp-sound?: ~A~%" (-> this play-ramp-sound?))
+  (format #t "~2Tstop-ramp-sound: ~A~%" (-> this stop-ramp-sound))
+  (format #t "~2Tramp-sound: ~D~%" (-> this ramp-sound))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-ramp min-ramp min-ramp-lod0-jg min-ramp-idle-ja
+              ((min-ramp-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 2 5.5)
+              :origin-joint-index 4
+              )
+
+;; failed to figure out what this is:
+(defstate idle (min-ramp)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual rotating)
+       )
+      )
+    )
+  :code (behavior ()
+    (ja-no-eval :group! min-ramp-idle-ja :num! zero)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate rotating (min-ramp)
+  :virtual #t
+  :enter (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (when (-> self play-ramp-sound?)
+      (set! (-> self stop-ramp-sound) #t)
+      (set! (-> self ramp-sound)
+            (add-process *gui-control* self (gui-channel background) (gui-action queue) "min-ramp" -99.0 0)
+            )
+      )
+    )
+  :exit (behavior ()
+    (if (and (-> self play-ramp-sound?) (-> self stop-ramp-sound))
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (-> self ramp-sound)
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+    )
+  :trans (behavior ()
+    (when (-> self play-anim?)
+      (when (time-elapsed? (-> self state-time) (seconds 0.75))
+        (let ((gp-0 (new 'stack-no-clear 'event-message-block)))
+          (set! (-> gp-0 from) (process->ppointer self))
+          (set! (-> gp-0 num-params) 0)
+          (set! (-> gp-0 message) 'trigger)
+          (let ((s5-0 send-event-function)
+                (v1-7 (entity-actor-lookup (-> self entity) 'alt-actor 0))
+                )
+            (s5-0
+              (if v1-7
+                  (-> v1-7 extra process)
+                  )
+              gp-0
+              )
+            )
+          )
+        )
+      (if (= (-> self angle) 0.0)
+          (go-virtual rotated)
+          )
+      (set! (-> self angle)
+            (seek-ease (-> self angle) 0.0 (* 8192.0 (seconds-per-frame)) 3640.889 (* 2048.0 (seconds-per-frame)))
+            )
+      (rider-trans)
+      )
+    )
+  :code (behavior ()
+    (when (-> self play-ramp-sound?)
+      (suspend-for (seconds 3)
+        )
+      (until (= (get-status *gui-control* (-> self ramp-sound)) (gui-status ready))
+        (suspend)
+        )
+      (when (-> self stop-ramp-sound)
+        (set! (-> self stop-ramp-sound) #f)
+        (sound-params-set! *gui-control* (-> self ramp-sound) #t -1 150 2 -1.0)
+        (set-action!
+          *gui-control*
+          (gui-action play)
+          (-> self ramp-sound)
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+      )
+    (set-time! (-> self state-time))
+    (set! (-> self play-anim?) #t)
+    (sleep-code)
+    )
+  :post rider-post
+  )
+
+;; failed to figure out what this is:
+(defstate rotated (min-ramp)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self angle) 0.0)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; definition for function min-ramp-callback
+;; WARN: Return type mismatch int vs none.
+(defun min-ramp-callback ((arg0 cspace) (arg1 transformq))
+  (quaternion-rotate-local-x! (-> arg1 quat) (-> arg1 quat) (-> (the-as min-ramp (-> arg0 param1)) angle))
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type min-ramp
+(defmethod init-from-entity! ((this min-ramp) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (local-vars (s5-3 symbol))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak enemy hit-by-others-list player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 4)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 8192.0 20480.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-min-ramp" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this play-anim?) #f)
+  (let* ((s5-2 #t)
+         (a0-10 (-> this entity))
+         (v1-18 (the-as uint128 ((method-of-object a0-10 get-property-value)
+                                 a0-10
+                                 'play-sound
+                                 'interp
+                                 -1000000000.0
+                                 (the-as uint128 0)
+                                 (the-as (pointer res-tag) #f)
+                                 *res-static-buf*
+                                 )
+                        )
+                )
+         )
+    (cmove-#f-zero s5-3 v1-18 s5-2)
+    )
+  (set! (-> this play-ramp-sound?) s5-3)
+  (set! (-> this ramp-sound) (new-sound-id))
+  (set! (-> this stop-ramp-sound) #f)
+  (set! (-> this angle) 8192.0)
+  (let ((a0-11 (-> this node-list data 4)))
+    (set! (-> a0-11 param0) min-ramp-callback)
+    (set! (-> a0-11 param1) this)
+    (set! (-> a0-11 param2) (the-as basic 0))
+    )
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this rotated))
+      )
+  (go (method-of-object this idle))
+  )
+
+;; definition of type min-bridge
+(deftype min-bridge (process-drawable)
+  ((stop-bridge-sound  symbol)
+   (bridge-sound       sound-id)
+   )
+  (:state-methods
+    idle
+    extend
+    extended
+    )
+  (:methods
+    (init-collision! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type min-bridge
+(defmethod inspect ((this min-bridge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstop-bridge-sound: ~A~%" (-> this stop-bridge-sound))
+  (format #t "~2Tbridge-sound: ~D~%" (-> this bridge-sound))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-bridge min-bridge min-bridge-lod0-jg min-bridge-idle-ja
+              ((min-bridge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 10 25)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate idle (min-bridge)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual extend)
+       )
+      )
+    )
+  :code (behavior ()
+    (ja-no-eval :group! min-bridge-idle-ja :num! zero)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate extend (min-bridge)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self stop-bridge-sound) #t)
+    (set! (-> self bridge-sound)
+          (add-process *gui-control* self (gui-channel background) (gui-action queue) "minbridg" -99.0 0)
+          )
+    )
+  :exit (behavior ()
+    (if (-> self stop-bridge-sound)
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (-> self bridge-sound)
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+    )
+  :trans rider-trans
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (suspend-for (seconds 1.5)
+      )
+    (when (-> self stop-bridge-sound)
+      (set! (-> self stop-bridge-sound) #f)
+      (sound-params-set! *gui-control* (-> self bridge-sound) #t -1 150 2 -1.0)
+      (set-action!
+        *gui-control*
+        (gui-action play)
+        (-> self bridge-sound)
+        (gui-channel none)
+        (gui-action none)
+        (the-as string #f)
+        (the-as (function gui-connection symbol) #f)
+        (the-as process #f)
+        )
+      )
+    (ja-no-eval :group! min-bridge-move-ja :num! (seek! max 0.1) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.1))
+      )
+    (go-virtual extended)
+    )
+  :post rider-post
+  )
+
+;; failed to figure out what this is:
+(defstate extended (min-bridge)
+  :virtual #t
+  :code (behavior ()
+    (ja-no-eval :group! min-bridge-move-ja
+                :num! (identity (the float (+ (-> (the-as art-joint-anim min-bridge-move-ja) frames num-frames) -1)))
+                )
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; definition for method 23 of type min-bridge
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-collision! ((this min-bridge))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 4) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 5))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak enemy hit-by-others-list player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 61440.0 122880.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak enemy hit-by-others-list player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 32768.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak enemy hit-by-others-list player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-17 transform-index) 5)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 32768.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 3) (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak enemy hit-by-others-list player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-19 transform-index) 8)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 0.0 32768.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec jak enemy hit-by-others-list player-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-21 transform-index) 6)
+      (set-vector! (-> v1-21 local-sphere) 0.0 0.0 0.0 32768.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-24 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-24 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-24 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 11 of type min-bridge
+(defmethod init-from-entity! ((this min-bridge) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-min-bridge" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this bridge-sound) (new-sound-id))
+  (set! (-> this stop-bridge-sound) #f)
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this extended))
+      )
+  (go (method-of-object this idle))
+  )
+
+;; definition of type min-plat-updown
+(deftype min-plat-updown (base-plat)
+  ((sync      sync-eased  :inline)
+   (path-pos  float)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  (:methods
+    (get-skel (_type_) art-group)
+    )
+  )
+
+;; definition for method 3 of type min-plat-updown
+(defmethod inspect ((this min-plat-updown))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type base-plat inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tsync: #<sync-eased @ #x~X>~%" (-> this sync))
+  (format #t "~2Tpath-pos: ~f~%" (-> this path-pos))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (min-plat-updown)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object) eco-door-event-handler)
+  :code sleep-code
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate active (min-plat-updown)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (plat-event proc argc message block)
+    )
+  :trans (behavior ()
+    (set! (-> self path-pos) (get-norm! (-> self sync) 0))
+    (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+    (plat-trans)
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post plat-post
+  )
+
+;; definition for method 34 of type min-plat-updown
+;; WARN: Return type mismatch object vs none.
+(defmethod base-plat-method-34 ((this min-plat-updown))
+  (cond
+    ((logtest? (-> this path flags) (path-control-flag not-found))
+     (go (method-of-object this idle))
+     )
+    ((> (-> this sync period) 0)
+     (go (method-of-object this active))
+     )
+    (else
+      (go (method-of-object this idle))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 11 of type min-plat-updown
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this min-plat-updown) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
+  (let ((a0-5 (-> this skel root-channel 0)))
+    (set! (-> a0-5 frame-group) (if (> (-> this skel active-channels) 0)
+                                    (-> this skel root-channel 0 frame-group)
+                                    )
+          )
+    (set! (-> a0-5 param 0) 1.0)
+    (set! (-> a0-5 frame-num) 0.0)
+    (joint-control-channel-group!
+      a0-5
+      (if (> (-> this skel active-channels) 0)
+          (-> this skel root-channel 0 frame-group)
+          )
+      num-func-loop!
+      )
+    )
+  (ja-post)
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 arg0 #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (let ((a1-6 (new 'stack-no-clear 'sync-info-params)))
+    (let ((v1-24 0))
+      (if (not (logtest? (-> this fact options) (actor-option loop)))
+          (set! v1-24 (logior v1-24 1))
+          )
+      (set! (-> a1-6 sync-type) 'sync-eased)
+      (set! (-> a1-6 sync-flags) (the-as sync-flags v1-24))
+      )
+    (set! (-> a1-6 period) (the-as uint 1500))
+    (set! (-> a1-6 entity) arg0)
+    (set! (-> a1-6 percent) 0.0)
+    (set! (-> a1-6 ease-in) 0.15)
+    (set! (-> a1-6 ease-out) 0.15)
+    (set! (-> a1-6 pause-in) 0.1)
+    (set! (-> a1-6 pause-out) 0.0)
+    (initialize! (-> this sync) a1-6)
+    )
+  (base-plat-method-34 this)
+  )
+
+;; definition of type min-moving-step
+(deftype min-moving-step (min-plat-updown)
+  ((holding?  basic)
+   )
+  (:state-methods
+    dormant
+    )
+  )
+
+;; definition for method 3 of type min-moving-step
+(defmethod inspect ((this min-moving-step))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type min-plat-updown inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tholding?: ~A~%" (-> this holding?))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-moving-step min-moving-step min-moving-step-lod0-jg min-moving-step-idle-ja
+              ((min-moving-step-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 3 8)
+              )
+
+;; failed to figure out what this is:
+(defstate dormant (min-moving-step)
+  :virtual #t
+  :event (the-as (function process int symbol event-message-block object) eco-door-event-handler)
+  :code (behavior ()
+    (set! (-> self path-pos) 0.0)
+    (get-point-at-percent-along-path! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+    (plat-trans)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (min-moving-step)
+  :virtual #t
+  :trans (behavior ()
+    (if (and (not (-> self holding?)) (or (= (-> self path-pos) 0.0) (= (-> self path-pos) 1.0)))
+        (set! (-> self holding?) (the-as basic #t))
+        )
+    (when (and (and (< 0.0 (-> self path-pos)) (< (-> self path-pos) 1.0)) (-> self holding?))
+      (set! (-> self holding?) #f)
+      (sound-play "min-moving-step")
+      )
+    (let ((t9-2 (-> (method-of-type min-plat-updown active) trans)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    )
+  )
+
+;; definition for method 37 of type min-moving-step
+(defmethod get-skel ((this min-moving-step))
+  (art-group-get-by-name *level* "skel-min-moving-step" (the-as (pointer level) #f))
+  )
+
+;; definition for method 32 of type min-moving-step
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this min-moving-step))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid semi-solid rideable pull-rider-can-collide))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 12288.0 32768.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 34 of type min-moving-step
+;; WARN: Return type mismatch object vs none.
+(defmethod base-plat-method-34 ((this min-moving-step))
+  (set! (-> this holding?) #f)
+  (cond
+    ((logtest? (-> this path flags) (path-control-flag not-found))
+     (go (method-of-object this idle))
+     )
+    ((and (or (task-node-open? (game-task-node mine-blow-resolution))
+              (task-node-closed? (game-task-node mine-blow-resolution))
+              )
+          (> (-> this sync period) 0)
+          )
+     (go (method-of-object this active))
+     )
+    (else
+      (go (method-of-object this dormant))
+      )
+    )
+  (none)
+  )
+
+;; definition of type min-elevator
+(deftype min-elevator (elevator)
+  ()
+  )
+
+;; definition for method 3 of type min-elevator
+(defmethod inspect ((this min-elevator))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elevator inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-min-elevator min-elevator min-elevator-lod0-jg min-elevator-idle-ja
+              ((min-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 11)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate running (min-elevator)
+  :virtual #t
+  :enter (behavior ()
+    (setup-masks (-> self draw) 3 0)
+    (let ((t9-1 (-> (method-of-type elevator running) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :exit (behavior ()
+    (setup-masks (-> self draw) 1 2)
+    (let ((t9-1 (-> (method-of-type elevator running) exit)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  )
+
+;; definition for method 31 of type min-elevator
+(defmethod get-art-group ((this min-elevator))
+  (art-group-get-by-name *level* "skel-min-elevator" (the-as (pointer level) #f))
+  )
+
+;; definition for method 32 of type min-elevator
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-collision! ((this min-elevator))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 45056.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 45056.0)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint (shl #xfe00 16)))))
+      (set! (-> v1-18 prim-core action) (collide-action solid))
+      (set! (-> v1-18 transform-index) 3)
+      (set-vector! (-> v1-18 local-sphere) 0.0 0.0 0.0 45056.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-21 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 34 of type min-elevator
+;; WARN: Return type mismatch int vs none.
+(defmethod base-plat-method-34 ((this min-elevator))
+  (setup-masks (-> this draw) 1 2)
+  (set! (-> this bounce-scale) 0.0)
+  (set! (-> this sound-running-loop) (static-sound-spec "min-elevator" :group 0))
+  (set! (-> this draw light-index) (the-as uint 2))
+  (none)
+  )

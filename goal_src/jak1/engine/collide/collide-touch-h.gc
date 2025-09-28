@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: collide-touch-h.gc
-;; name in dgo: collide-touch-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Collide Touch
@@ -13,52 +11,40 @@
 ;; As the collision is resolved, shapes are added and removed from the touching list.
 ;; Once collision is done solving, you can send events or inspect what you touched!
 
-
 (defconstant TOUCHING_LIST_LENGTH 32)
 
 ;; DECOMP BEGINS
 
 ;; A record of a primitive which is touching another, possibly including the triangle that is involved.
 (deftype touching-prim (structure)
-  ((cprim     collide-shape-prim)
-   (has-tri?  symbol)
-   (tri       collide-tri-result  :inline)
-   )
-  )
-
+  ((cprim    collide-shape-prim)
+   (has-tri? symbol)
+   (tri      collide-tri-result :inline)))
 
 ;; A record of two primitives which are touching.
 (deftype touching-prims-entry (structure)
-  ((next        touching-prims-entry)
-   (prev        touching-prims-entry)
-   (allocated?  symbol)
-   (u           float)
-   (prim1       touching-prim  :inline)
-   (prim2       touching-prim  :inline)
-   )
+  ((next       touching-prims-entry)
+   (prev       touching-prims-entry)
+   (allocated? symbol)
+   (u          float)
+   (prim1      touching-prim :inline)
+   (prim2      touching-prim :inline))
   (:methods
-    (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim)
-    (touching-prims-entry-method-10 () none)
-    (get-middle-of-bsphere-overlap (_type_ vector) vector)
-    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result)
-    )
-  )
-
+   (get-touched-prim (_type_ trsqv touching-shapes-entry) collide-shape-prim)
+   (touching-prims-entry-method-10 () none)
+   (get-middle-of-bsphere-overlap (_type_ vector) vector)
+   (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result)))
 
 ;; A pool of up to 64 touching primitives. There is a linked list of freed entries.
 (deftype touching-prims-entry-pool (structure)
-  ((head   touching-prims-entry)
-   (nodes  touching-prims-entry  64 :inline)
-   )
+  ((head  touching-prims-entry)
+   (nodes touching-prims-entry 64 :inline))
   (:methods
-    (new (symbol type) _type_)
-    (alloc-node (_type_) touching-prims-entry)
-    (get-free-node-count (_type_) int)
-    (init-list! (_type_) none)
-    (free-node (_type_ touching-prims-entry) touching-prims-entry)
-    )
-  )
-
+   (new (symbol type) _type_)
+   (alloc-node (_type_) touching-prims-entry)
+   (get-free-node-count (_type_) int)
+   (init-list! (_type_) none)
+   (free-node (_type_ touching-prims-entry) touching-prims-entry)))
 
 (defmethod init-list! ((this touching-prims-entry-pool))
   "Initialize all entries to be not allocated and in a linked list."
@@ -71,14 +57,9 @@
           (set! (-> current next) (the-as touching-prims-entry next))
           (set! (-> current allocated?) #f)
           (set! prev current)
-          (set! current (the-as touching-prims-entry next))
-          )
-        )
-      )
-    (set! (-> prev next) #f)
-    )
-  (none)
-  )
+          (set! current (the-as touching-prims-entry next)))))
+    (set! (-> prev next) #f))
+  (none))
 
 (defmethod new touching-prims-entry-pool ((allocation symbol) (type-to-make type))
   "Allocate and initialize a new touching-prims-entry-pool"
@@ -86,80 +67,66 @@
   ;; Note - the original code passed (-> type-to-make size) as an argument.
   ;; however, the new method of structure doesn't have this argument.
   ;; it uses the same value for the size so it doesn't really matter.
-  (let ((this (the touching-prims-entry-pool ((method-of-type structure new)
-                                             allocation
-                                             type-to-make
-                                             ;; (-> type-to-make size) see note
-                                             )
-                  )))
+  (let ((this (the touching-prims-entry-pool
+                   ((method-of-type structure new)
+                    allocation
+                    type-to-make
+                    ;; (-> type-to-make size) see note
+                    ))))
     (init-list! this)
-    this
-    )
-  )
-
+    this))
 
 ;; two collide shapes which are touching.
 ;; This stores a list of primitive pairs which are touching.
 (deftype touching-shapes-entry (structure)
-  ((cshape1    collide-shape)
-   (cshape2    collide-shape)
-   (resolve-u  int8)
-   (head       touching-prims-entry)
-   )
+  ((cshape1   collide-shape)
+   (cshape2   collide-shape)
+   (resolve-u int8)
+   (head      touching-prims-entry))
   :allow-misaligned
   (:methods
-    (touching-shapes-entry-method-9 (_type_) none)
-    (get-touched-shape (_type_ collide-shape) collide-shape)
-    (touching-shapes-entry-method-11 () none)
-    (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry)
-    (prims-touching-action? (_type_ collide-shape collide-action collide-action) touching-prims-entry)
-    (touching-shapes-entry-method-14 () none)
-    (free-touching-prims-list (_type_) symbol)
-    (get-head (_type_) touching-prims-entry)
-    (get-next (_type_ touching-prims-entry) touching-prims-entry)
-    )
-  )
+   (touching-shapes-entry-method-9 (_type_) none)
+   (get-touched-shape (_type_ collide-shape) collide-shape)
+   (touching-shapes-entry-method-11 () none)
+   (prims-touching? (_type_ collide-shape-moving uint) touching-prims-entry)
+   (prims-touching-action? (_type_ collide-shape collide-action collide-action) touching-prims-entry)
+   (touching-shapes-entry-method-14 () none)
+   (free-touching-prims-list (_type_) symbol)
+   (get-head (_type_) touching-prims-entry)
+   (get-next (_type_ touching-prims-entry) touching-prims-entry)))
 
 ;; A list of (up to) TOUCHING_LIST_LENGTH pairs of colliding shapes
 (deftype touching-list (structure)
-  ((num-touching-shapes  int32)
-   (resolve-u            int8)
-   (touching-shapes      touching-shapes-entry  TOUCHING_LIST_LENGTH :inline)
-   )
+  ((num-touching-shapes int32)
+   (resolve-u           int8)
+   (touching-shapes     touching-shapes-entry TOUCHING_LIST_LENGTH :inline))
   (:methods
-    (new (symbol type) _type_)
-    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none)
-    (touching-list-method-10 () none)
-    (update-from-step-size (_type_ float) none)
-    (send-events-for-touching-shapes (_type_) none)
-    (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
-    (free-all-prim-nodes (_type_) none)
-    )
-  )
-
+   (new (symbol type) _type_)
+   (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none)
+   (touching-list-method-10 () none)
+   (update-from-step-size (_type_ float) none)
+   (send-events-for-touching-shapes (_type_) none)
+   (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
+   (free-all-prim-nodes (_type_) none)))
 
 (defmethod new touching-list ((allocation symbol) (type-to-make type))
   "See note in touching-prims-entry-pool"
   ;; og:preserve-this
-  (let ((this (the touching-list ((method-of-type structure new)
-                                 allocation
-                                 type-to-make
-                                 ;; (-> type-to-make size) see note
-                                 )
-                  )))
+  (let ((this (the touching-list
+                   ((method-of-type structure new)
+                    allocation
+                    type-to-make
+                    ;; (-> type-to-make size) see note
+                    ))))
     (set! (-> this num-touching-shapes) 0)
     (set! (-> this resolve-u) 0)
-    this
-    )
-  )
+    this))
 
 (defmethod get-head ((this touching-shapes-entry))
-  (-> this head)
-  )
+  (-> this head))
 
 (defmethod get-next ((this touching-shapes-entry) (arg0 touching-prims-entry))
-  (-> arg0 next)
-  )
+  (-> arg0 next))
 
 ;; Allocate the global touching lists.
 ;; We have a pool of prim pairs that can be used in any shape pair

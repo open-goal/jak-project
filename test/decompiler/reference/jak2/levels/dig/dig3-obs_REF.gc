@@ -12,7 +12,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4978
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:scale-x (meters 3) (meters 1))
     (:rot-z (degrees 0) (degrees 360))
@@ -37,7 +37,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4980
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:x (meters 0) (meters 3))
     (:scale-x (meters 3) (meters 1))
@@ -62,7 +62,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4979
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 16.0)
     (:scale-x (meters 1.5) (meters 0.5))
     (:rot-z (degrees 0) (degrees 360))
@@ -166,7 +166,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4982
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 32.0)
     (:y (meters 3))
     (:scale-x (meters 2.5) (meters 2.5))
@@ -190,7 +190,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4981
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 1.0)
     (:scale-x (meters 1) (meters 0.1))
     (:rot-z (degrees 0) (degrees 3600))
@@ -211,7 +211,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4983
-  :init-specs ((:texture (new 'static 'texture-id :index #xc :page #xc))
+  :init-specs ((:texture (crate-wood-01-splinter effects))
     (:num 16.0)
     (:y (meters 3))
     (:scale-x (meters 0.5) (meters 0.2))
@@ -285,42 +285,28 @@
   :virtual #t
   :trans rider-trans
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (the int (-> self cycle-offset)))
-        (suspend)
-        )
+    (suspend-for (the int (-> self cycle-offset))
       )
     (until #f
-      (let ((gp-1 (current-time)))
-        (until (time-elapsed? gp-1 (the int (-> self cycle-time)))
-          (suspend)
-          )
+      (suspend-for (the int (-> self cycle-time))
         )
       (activate! (-> self smush) -1.0 60 225 1.0 1.0 (-> self clock))
       (sound-play "spikey-shake" :position (-> self root trans))
-      (let ((gp-3 (current-time)))
-        (until (time-elapsed? gp-3 (seconds 0.75))
-          (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush))))
-          (suspend)
-          )
+      (suspend-for (seconds 0.75)
+        (set! (-> self shudder-angle) (* 364.0889 (update! (-> self smush))))
         )
       (set! (-> self shudder-angle) 0.0)
       (set-zero! (-> self smush))
-      (let ((gp-4 (current-time)))
-        (until (time-elapsed? gp-4 (seconds 0.25))
-          (suspend)
-          )
+      (suspend-for (seconds 0.25)
         )
       (sound-play "spikey-turn" :position (-> self root trans))
       (let* ((f0-7 1.0)
              (f30-1 (* 65536.0 f0-7))
-             (gp-6 (current-time))
              )
-        (until (time-elapsed? gp-6 (seconds 1))
+        (suspend-for (seconds 1)
           (set! (-> self rot-angle)
                 (the float (sar (shl (the int (+ (-> self rot-angle) (* f30-1 (seconds-per-frame)))) 48) 48))
                 )
-          (suspend)
           )
         )
       (let ((v1-42 #x10000))
@@ -355,11 +341,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this dig-spikey-step) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 int))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
@@ -483,10 +469,7 @@ This commonly includes things such as:
       )
     (sound-play "spikey-break")
     (suspend)
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (seconds 4))
-        (suspend)
-        )
+    (suspend-for (seconds 4)
       )
     (let ((t9-7 (-> (method-of-type projectile-bounce die) code)))
       (if t9-7
@@ -745,10 +728,7 @@ This commonly includes things such as:
   :virtual #t
   :code (behavior ()
     (sound-play "spikey-door")
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 0.1))
-        (suspend)
-        )
+    (suspend-for (seconds 0.1)
       )
     (let ((gp-2 (new 'stack-no-clear 'vector))
           (s5-1 (new 'static 'vector :x -16384.0 :y -16384.0))
@@ -792,11 +772,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this dig-spikey-sphere-door) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -973,7 +953,7 @@ This commonly includes things such as:
       (let* ((f30-0 (the float (ja-num-frames 0)))
              (f0-10
                (+ (* 1.5 f30-0 (get-norm! (-> self parent-ptr 0 swing-sync) 0)) (if (= (-> self parent-ptr 0 options) 1)
-                                                                                    (* 0.5 f30-0)
+                                                                                    (/ f30-0 2)
                                                                                     0.0
                                                                                     )
                   )
@@ -992,7 +972,7 @@ This commonly includes things such as:
             1.0
             0.0
             )
-        (* 0.02 (-> self clock time-adjust-ratio))
+        (/ (-> self clock time-adjust-ratio) 50)
         )
       (dig-balloon-lurker-trapeze-method-21 self)
       (suspend)
@@ -1067,11 +1047,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this dig-balloon-lurker) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
@@ -1172,6 +1152,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type dig-balloon-lurker
 (defmethod deactivate ((this dig-balloon-lurker))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this pedal-sound-id))
   ((method-of-type process-drawable deactivate) this)
   (none)
@@ -1201,7 +1182,7 @@ This commonly includes things such as:
               -0.5
               0.5
               )
-          (* 0.01 (-> self clock time-adjust-ratio))
+          (/ (-> self clock time-adjust-ratio) 100)
           )
         (let ((f0-7 (+ -1.0 (fabs (* 2.0 (-> self pedal-anim-speed)))))
               (f1-5 (* 2.0 (fabs (-> self pedal-anim-speed))))
@@ -1343,6 +1324,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type dig-wheel-step
 (defmethod deactivate ((this dig-wheel-step))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this wheel-sound-id))
   ((method-of-type process-drawable deactivate) this)
   (none)
@@ -1352,11 +1334,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this dig-wheel-step) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s4-0 total-prims) (the-as uint 4))
@@ -1417,7 +1399,7 @@ This commonly includes things such as:
                  )
                 )
          )
-    (set! (-> this anim-speed) (* 0.000015258789 f0-18))
+    (set! (-> this anim-speed) (/ f0-18 (meters 16)))
     )
   (go (method-of-object this idle))
   (none)
@@ -2137,11 +2119,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this dig-stomp-block-controller) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (set! (-> this played-fall?) #f)
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
@@ -2178,6 +2160,7 @@ This commonly includes things such as:
 
 ;; definition for method 12 of type dig-totem
 (defmethod run-logic? ((this dig-totem))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
@@ -2191,11 +2174,11 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this dig-totem) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))

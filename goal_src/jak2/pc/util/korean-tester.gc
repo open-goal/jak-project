@@ -1,0 +1,155 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; To run this:
+
+#|
+(mng)  ;; build the engine
+(lt)   ;; connect to the runtime
+(ml "goal_src/jak2/pc/util/korean-tester.gc")  ;; build and load this file.
+|#
+
+(declare-file (debug))
+
+(defconstant KOREAN_TESTER_TEXT_Y (get-screen-y 0.5))
+
+(defun korean-tester-test-stop ()
+  "stop the encode test proc"
+  (kill-by-name "korean-tester" *active-pool*)
+  )
+
+(define *korean-tester-initial-jamos-o1* (new 'static 'boxed-array :type int64 ))
+(define *korean-tester-initial-jamos-o2* (new 'static 'boxed-array :type int64 ))
+(define *korean-tester-initial-jamos-o3* (new 'static 'boxed-array :type int64 #x8b #xb3 #x92 #x93 #x94 #x95 #x96 #x97 #x98 #x99 #x9a #x9b #x9c #x9d #x9e #x8c #x9f #xa0 #xa1))
+(define *korean-tester-initial-jamos-o4* (new 'static 'boxed-array :type int64 #x6 #x34 #x8 #x9 #xa #xb #xc #x0d #xe #x20 #x21 #xf #x10 #x11 #x2d #x12 #x13 #x14 #x2e))
+(define *korean-tester-initial-jamos-o5* (new 'static 'boxed-array :type int64 #x5e #x65 #x69 #x70 #x71 #x72 #x73 #x74 #x75 #x76 #x77 #x78 #x79 #x7a #x7b #x5f #x7c #x7d #x7e))
+(define *korean-tester-initial-jamos-o6* (new 'static 'boxed-array :type int64 #x8b #x91 #x92 #x93 #x94 #x95 #x96 #x97 #x98 #x99 #x9a #x9b #x9c #x9d #x9e #x8c #x9f #xa0 #xa1))
+(define *korean-tester-initial-jamos-o6-alt* (new 'static 'boxed-array :type int64 #xae #xb3 #xb4 #xb5 #xb6 #xb7 #xb2 #xb8 #x98 #xb9 #xba #xbb #xbc #xbd #xbe #xaf #xbf #xa0 #xc0))
+
+(define *korean-tester-middle-vertical-jamos-o1* (new 'static 'boxed-array :type int64 #x1a #x46 #x1b #x47 #x1d #x48 #x1e #x49 #x1c))
+(define *korean-tester-middle-horizontal-jamos-o2* (new 'static 'boxed-array :type int64 #x82 #x83 #x87 #x88 #x84))
+(define *korean-tester-middle-vertical-jamos-o4* (new 'static 'boxed-array :type int64 #x15 #x42 #x16 #x47 #x18 #x44 #x19 #x45 #x17))
+(define *korean-tester-middle-horizontal-jamos-o5* (new 'static 'boxed-array :type int64 #x7f #x80 #x85 #x86 #x81))
+
+(define *korean-tester-final-jamos-o4* (new 'static 'boxed-array :type int64 #xc5 #xc6 #xc7 #xc8 #xc9 #xca #xcb #xcc #xcd #xce #xcf #xe7 #xd0 #xe9 #xd1 #xd2 #xd3 #xd4 #xd5 #xd6 #xd7 #xd8 #xd9 #xda #xdb #xdc #xdd))
+(define *korean-tester-final-jamos-o5* (new 'static 'boxed-array :type int64 #xde #xdf #xe0 #xe1 #xc9 #xe2 #xe3 #xe4 #xe5 #xe6 #xcf #xe7 #xe8 #xe9 #xea #xeb #xec #xd4 #xed #xfc #xee #xef #xf0 #xf1 #xf2 #xf3 #xf4))
+(define *korean-tester-final-jamos-o6* (new 'static 'boxed-array :type int64 #xf5 #xdf #xe0 #xf6 #xc9 #xe2 #xe3 #xf7 #xe5 #xf8 #xcf #xe7 #xe8 #xe9 #xea #xf9 #xfa #xd4 #xfb #xfc #xfd #xef #xf0 #xf1 #xf2 #xf3 #xf4))
+
+(define *korean-tester-tmp-str* (new 'global 'string 4 (the-as string #f)))
+(define *korean-tester-static-combined-jamo* (new 'static 'boxed-array :type int64 #xa3 #xa7))
+(define *korean-tester-static-jamo-1* #x84)
+(define *korean-tester-static-jamo-2* #x0)
+(define *korean-tester-static-jamo-3* #x0)
+(define *korean-tester-current-jamo-coll-1* *korean-tester-initial-jamos-o6-alt*)
+(define *korean-tester-current-jamo-index-1* 0)
+
+(define *korean-tester-current-jamo-coll-2* *korean-tester-final-jamos-o6*)
+(define *korean-tester-current-jamo-index-2* 0)
+
+(defun korean-tester-test-start ()
+  "start the encode test proc"
+  (korean-tester-test-stop)
+  (process-spawn-function process :name "korean-tester"
+      (lambda :behavior process ()
+          (let ((fnt (new 'stack 'font-context *font-default-matrix* (get-screen-x 0.35) (get-screen-y 0.4) 0.0
+                                  (font-color red) (font-flags shadow kerning large middle)))
+                )
+
+              (set-width! fnt (get-screen-x 0.8))
+              (set-height! fnt (get-screen-y 0.1))
+
+              (loop
+                (suspend)
+
+                (if (or (cpad-pressed? 0 left))
+                  (-! *korean-tester-current-jamo-index-1* 1))
+                (if (or (cpad-pressed? 0 right))
+                  (+! *korean-tester-current-jamo-index-1* 1))
+                (minmax! *korean-tester-current-jamo-index-1* #x0 (dec (-> *korean-tester-current-jamo-coll-1* length)))
+
+                (if (or (cpad-pressed? 0 down))
+                  (-! *korean-tester-current-jamo-index-2* 1))
+                (if (or (cpad-pressed? 0 up))
+                  (+! *korean-tester-current-jamo-index-2* 1))
+                (minmax! *korean-tester-current-jamo-index-2* #x0 (dec (-> *korean-tester-current-jamo-coll-2* length)))
+
+                (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                             (bucket-id debug-no-zbuf2))
+                    ;; print out the current pure hex values
+                    (set-scale! fnt 0.5)
+                    (set-origin! fnt (get-screen-x 0.5) (- KOREAN_TESTER_TEXT_Y 10))
+                    ;; - 2 glyphs
+                    ;; (draw-string (string-format "0x~X, 0x~X" *korean-tester-static-jamo-1* (-> *korean-tester-current-jamo-coll* *korean-tester-current-jamo-index*)) buf fnt)
+                    ;; - 3 glyphs
+                    ;; (draw-string (string-format "0x~X , 0x~X , 0x~X"
+                    ;;   *korean-tester-static-jamo-1*
+                    ;;   (-> *korean-tester-current-jamo-coll-1* *korean-tester-current-jamo-index-1*)
+                    ;;   (-> *korean-tester-current-jamo-coll-2* *korean-tester-current-jamo-index-2*)) buf fnt)
+                    ;; - 3 glyphs combined
+                    (draw-string (string-format "0x~X , 0x~X"
+                      (-> *korean-tester-current-jamo-coll-1* *korean-tester-current-jamo-index-1*)
+                      (-> *korean-tester-current-jamo-coll-2* *korean-tester-current-jamo-index-2*)) buf fnt)
+
+                    ;; print out the korean symbol now
+                    (set-scale! fnt 1.0)
+                    (clear *korean-tester-tmp-str*)
+                    ;; - 2 glyphs
+                    ;; (set! (-> *korean-tester-tmp-str* data 0) 4)
+                    ;; (set! (-> *korean-tester-tmp-str* data 1) 2)
+                    ;; (set! (-> *korean-tester-tmp-str* data 2) *korean-tester-static-jamo-1*)
+                    ;; (if (= *korean-tester-static-jamo-2* #x0)
+                    ;;   (set! (-> *korean-tester-tmp-str* data 3) (-> *korean-tester-current-jamo-coll* *korean-tester-current-jamo-index*))
+                    ;;   (set! (-> *korean-tester-tmp-str* data 3) *korean-tester-static-jamo-2*))
+                    ;; (set! (-> *korean-tester-tmp-str* data 4) 0)
+
+                    ;; - 3 glyphs
+                    ;; (set! (-> *korean-tester-tmp-str* data 0) 4)
+                    ;; (set! (-> *korean-tester-tmp-str* data 1) 3)
+                    ;; (set! (-> *korean-tester-tmp-str* data 2) *korean-tester-static-jamo-1*)
+                    ;; (if (= *korean-tester-static-jamo-2* #x0)
+                    ;;   (set! (-> *korean-tester-tmp-str* data 3) (-> *korean-tester-current-jamo-coll-1* *korean-tester-current-jamo-index-1*))
+                    ;;   (set! (-> *korean-tester-tmp-str* data 3) *korean-tester-static-jamo-2*))
+                    ;; (if (= *korean-tester-static-jamo-3* #x0)
+                    ;;   (set! (-> *korean-tester-tmp-str* data 4) (-> *korean-tester-current-jamo-coll-2* *korean-tester-current-jamo-index-2*))
+                    ;;   (set! (-> *korean-tester-tmp-str* data 4) *korean-tester-static-jamo-3*))
+                    ;; (set! (-> *korean-tester-tmp-str* data 5) 0)
+
+                    ;; - 3 glyphs (combined static)
+                    (set! (-> *korean-tester-tmp-str* data 0) 4)
+                    (if (= 2 (-> *korean-tester-static-combined-jamo* length))
+                      (begin
+                        (set! (-> *korean-tester-tmp-str* data 1) 4)
+                        (set! (-> *korean-tester-tmp-str* data 2) (-> *korean-tester-static-combined-jamo* 0))
+                        (set! (-> *korean-tester-tmp-str* data 3) (-> *korean-tester-static-combined-jamo* 1))
+                        (if (= *korean-tester-static-jamo-2* #x0)
+                          (set! (-> *korean-tester-tmp-str* data 4) (-> *korean-tester-current-jamo-coll-1* *korean-tester-current-jamo-index-1*))
+                          (set! (-> *korean-tester-tmp-str* data 4) *korean-tester-static-jamo-2*))
+                        (if (= *korean-tester-static-jamo-3* #x0)
+                          (set! (-> *korean-tester-tmp-str* data 5) (-> *korean-tester-current-jamo-coll-2* *korean-tester-current-jamo-index-2*))
+                          (set! (-> *korean-tester-tmp-str* data 5) *korean-tester-static-jamo-3*))
+                        (set! (-> *korean-tester-tmp-str* data 6) 0))
+                      (begin
+                        (set! (-> *korean-tester-tmp-str* data 1) 3)
+                        (set! (-> *korean-tester-tmp-str* data 2) (-> *korean-tester-static-combined-jamo* 0))
+                        (if (= *korean-tester-static-jamo-2* #x0)
+                          (set! (-> *korean-tester-tmp-str* data 3) (-> *korean-tester-current-jamo-coll-1* *korean-tester-current-jamo-index-1*))
+                          (set! (-> *korean-tester-tmp-str* data 3) *korean-tester-static-jamo-2*))
+                        (if (= *korean-tester-static-jamo-3* #x0)
+                          (set! (-> *korean-tester-tmp-str* data 4) (-> *korean-tester-current-jamo-coll-2* *korean-tester-current-jamo-index-2*))
+                          (set! (-> *korean-tester-tmp-str* data 4) *korean-tester-static-jamo-3*))
+                        (set! (-> *korean-tester-tmp-str* data 5) 0)))
+
+
+                    ;; (log-string-bytes *korean-tester-tmp-str* 0)
+                    (set-origin! fnt (get-screen-x 0.5) (+ KOREAN_TESTER_TEXT_Y 10))
+                    (draw-string (convert-korean-text *korean-tester-tmp-str*) buf fnt)
+                    )
+                )
+              )
+
+          )
+      )
+  )
+
+(korean-tester-test-start)
+

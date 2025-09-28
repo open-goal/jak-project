@@ -58,6 +58,7 @@ add_library(
         level_extractor/extract_actors.cpp
         level_extractor/extract_collide_frags.cpp
         level_extractor/extract_common.cpp
+        level_extractor/extract_hfrag.cpp
         level_extractor/extract_joint_group.cpp
         level_extractor/extract_level.cpp
         level_extractor/extract_merc.cpp
@@ -67,6 +68,7 @@ add_library(
         level_extractor/fr3_to_gltf.cpp
         level_extractor/MercData.cpp
         level_extractor/tfrag_tie_fixup.cpp
+        level_extractor/merc_replacement.cpp
 
         ObjectFile/LinkedObjectFile.cpp
         ObjectFile/LinkedObjectFileCreation.cpp
@@ -88,7 +90,8 @@ add_library(
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp
 
-        config.cpp)
+        config.cpp
+        decompilation_process.cpp)
 
 target_link_libraries(decomp
         lzokay

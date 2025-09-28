@@ -267,22 +267,22 @@ static ZyanStatus ZydisInputPeek(ZydisDecoderState* state,
 /**
  * Increases the read-position of the input data-source by one byte.
  *
- * @param   context     A pointer to the `ZydisDecoderContext` instance
+ * @param   state       A pointer to the `ZydisDecoderState` instance
  * @param   instruction A pointer to the `ZydisDecodedInstruction` struct.
  *
  * This function is supposed to get called ONLY after a successful call of `ZydisInputPeek`.
  *
  * This function increases the `length` field of the `ZydisDecodedInstruction` struct by one.
  */
-static void ZydisInputSkip(ZydisDecoderState* context, ZydisDecodedInstruction* instruction)
+static void ZydisInputSkip(ZydisDecoderState* state, ZydisDecodedInstruction* instruction)
 {
-    ZYAN_ASSERT(context);
+    ZYAN_ASSERT(state);
     ZYAN_ASSERT(instruction);
     ZYAN_ASSERT(instruction->length < ZYDIS_MAX_INSTRUCTION_LENGTH);
 
     ++instruction->length;
-    ++context->buffer;
-    --context->buffer_len;
+    ++state->buffer;
+    --state->buffer_len;
 }
 
 /**
@@ -1589,7 +1589,7 @@ static void ZydisDecodeOperandImplicitMemory(const ZydisDecoder* decoder,
 #endif
 
 #ifndef ZYDIS_MINIMAL_MODE
-ZyanStatus ZydisDecodeOperands(const ZydisDecoder* decoder, const ZydisDecoderContext* context,
+static ZyanStatus ZydisDecodeOperands(const ZydisDecoder* decoder, const ZydisDecoderContext* context,
     const ZydisDecodedInstruction* instruction, ZydisDecodedOperand* operands, ZyanU8 operand_count)
 {
     ZYAN_ASSERT(decoder);
@@ -1862,6 +1862,7 @@ ZyanStatus ZydisDecodeOperands(const ZydisDecoder* decoder, const ZydisDecoderCo
         {
         case ZYDIS_SEMANTIC_OPTYPE_REL:
             ZYAN_ASSERT(instruction->raw.imm[imm_id].is_relative);
+            ZYAN_FALLTHROUGH;
         case ZYDIS_SEMANTIC_OPTYPE_IMM:
             ZYAN_ASSERT((imm_id == 0) || (imm_id == 1));
             operands[i].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
@@ -2102,7 +2103,7 @@ static void ZydisSetAttributes(ZydisDecoderState* state, ZydisDecodedInstruction
                     break;
                 }
             }
-            if (state->decoder->decoder_mode[ZYDIS_DECODER_MODE_MPX] &&
+            if ((state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_MPX)) &&
                 instruction->attributes & ZYDIS_ATTRIB_ACCEPTS_BND)
             {
                 instruction->attributes |= ZYDIS_ATTRIB_HAS_BND;
@@ -2166,7 +2167,7 @@ static void ZydisSetAttributes(ZydisDecoderState* state, ZydisDecodedInstruction
         if (def->accepts_NOTRACK)
         {
             instruction->attributes |= ZYDIS_ATTRIB_ACCEPTS_NOTRACK;
-            if (state->decoder->decoder_mode[ZYDIS_DECODER_MODE_CET] &&
+            if ((state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_CET)) &&
                 (state->prefixes.offset_notrack >= 0))
             {
                 instruction->attributes |= ZYDIS_ATTRIB_HAS_NOTRACK;
@@ -4313,7 +4314,7 @@ static ZyanStatus ZydisPopulateRegisterIds(ZydisDecoderContext* context,
         {
             1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0
         };
-        ZYAN_ASSERT(id_cr < ZYAN_ARRAY_LENGTH(lookup));
+        ZYAN_ASSERT((ZyanUSize)id_cr < ZYAN_ARRAY_LENGTH(lookup));
         if (!lookup[id_cr])
         {
             return ZYDIS_STATUS_BAD_REGISTER;
@@ -4776,28 +4777,31 @@ static ZyanStatus ZydisDecodeInstruction(ZydisDecoderState* state,
             break;
 #endif
         case ZYDIS_NODETYPE_FILTER_MODE_AMD:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_AMD_BRANCHES] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_AMD_BRANCHES));
             break;
         case ZYDIS_NODETYPE_FILTER_MODE_KNC:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_KNC] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_KNC));
             break;
         case ZYDIS_NODETYPE_FILTER_MODE_MPX:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_MPX] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_MPX));
             break;
         case ZYDIS_NODETYPE_FILTER_MODE_CET:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_CET] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_CET));
             break;
         case ZYDIS_NODETYPE_FILTER_MODE_LZCNT:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_LZCNT] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_LZCNT));
             break;
         case ZYDIS_NODETYPE_FILTER_MODE_TZCNT:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_TZCNT] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_TZCNT));
             break;
         case ZYDIS_NODETYPE_FILTER_MODE_WBNOINVD:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_WBNOINVD] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_WBNOINVD));
             break;
         case ZYDIS_NODETYPE_FILTER_MODE_CLDEMOTE:
-            index = state->decoder->decoder_mode[ZYDIS_DECODER_MODE_CLDEMOTE] ? 1 : 0;
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_CLDEMOTE));
+            break;
+        case ZYDIS_NODETYPE_FILTER_MODE_IPREFETCH:
+            index = !!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_IPREFETCH));
             break;
         default:
             if (node_type & ZYDIS_NODETYPE_DEFINITION_MASK)
@@ -4850,7 +4854,7 @@ static ZyanStatus ZydisDecodeInstruction(ZydisDecoderState* state,
                          (instruction->meta.category == ZYDIS_CATEGORY_RET)));
                 instruction->meta.exception_class = definition->exception_class;
 
-                if (!state->decoder->decoder_mode[ZYDIS_DECODER_MODE_MINIMAL])
+                if (!(state->decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_MINIMAL)))
                 {
                     ZydisSetAttributes(state, instruction, definition);
                     switch (instruction->encoding)
@@ -4869,9 +4873,9 @@ static ZyanStatus ZydisDecodeInstruction(ZydisDecoderState* state,
                     if (ZydisGetAccessedFlags(definition, &flags))
                     {
                         instruction->attributes |= ZYDIS_ATTRIB_CPUFLAG_ACCESS;
-                        instruction->cpu_flags = &flags->cpu_flags;
-                        instruction->fpu_flags = &flags->fpu_flags;
                     }
+                    instruction->cpu_flags = &flags->cpu_flags;
+                    instruction->fpu_flags = &flags->fpu_flags;
                 }
 
 #endif
@@ -4895,22 +4899,16 @@ static ZyanStatus ZydisDecodeInstruction(ZydisDecoderState* state,
 ZyanStatus ZydisDecoderInit(ZydisDecoder* decoder, ZydisMachineMode machine_mode,
     ZydisStackWidth stack_width)
 {
-    static const ZyanBool decoder_modes[ZYDIS_DECODER_MODE_MAX_VALUE + 1] =
-    {
+    static const ZyanU32 decoder_modes =
 #ifdef ZYDIS_MINIMAL_MODE
-        ZYAN_TRUE , // ZYDIS_DECODER_MODE_MINIMAL
-#else
-        ZYAN_FALSE, // ZYDIS_DECODER_MODE_MINIMAL
+        (1 << ZYDIS_DECODER_MODE_MINIMAL) |
 #endif
-        ZYAN_FALSE, // ZYDIS_DECODER_MODE_AMD_BRANCHES
-        ZYAN_FALSE, // ZYDIS_DECODER_MODE_KNC
-        ZYAN_TRUE , // ZYDIS_DECODER_MODE_MPX
-        ZYAN_TRUE , // ZYDIS_DECODER_MODE_CET
-        ZYAN_TRUE , // ZYDIS_DECODER_MODE_LZCNT
-        ZYAN_TRUE , // ZYDIS_DECODER_MODE_TZCNT
-        ZYAN_FALSE, // ZYDIS_DECODER_MODE_WBNOINVD
-        ZYAN_TRUE   // ZYDIS_DECODER_MODE_CLDEMOTE
-    };
+        (1 << ZYDIS_DECODER_MODE_MPX) |
+        (1 << ZYDIS_DECODER_MODE_CET) |
+        (1 << ZYDIS_DECODER_MODE_LZCNT) |
+        (1 << ZYDIS_DECODER_MODE_TZCNT) |
+        (1 << ZYDIS_DECODER_MODE_CLDEMOTE) |
+        (1 << ZYDIS_DECODER_MODE_IPREFETCH);
 
     if (!decoder)
     {
@@ -4940,7 +4938,7 @@ ZyanStatus ZydisDecoderInit(ZydisDecoder* decoder, ZydisMachineMode machine_mode
 
     decoder->machine_mode = machine_mode;
     decoder->stack_width = stack_width;
-    ZYAN_MEMCPY(&decoder->decoder_mode, &decoder_modes, sizeof(decoder_modes));
+    decoder->decoder_mode = decoder_modes;
 
     return ZYAN_STATUS_SUCCESS;
 }
@@ -4959,52 +4957,54 @@ ZyanStatus ZydisDecoderEnableMode(ZydisDecoder* decoder, ZydisDecoderMode mode, 
     }
 #endif
 
-    decoder->decoder_mode[mode] = enabled;
+    if (enabled)
+    {
+        decoder->decoder_mode |= (1 << mode);
+    }
+    else
+    {
+        decoder->decoder_mode &= ~(1 << mode);
+    }
 
     return ZYAN_STATUS_SUCCESS;
 }
 
 ZyanStatus ZydisDecoderDecodeFull(const ZydisDecoder* decoder,
     const void* buffer, ZyanUSize length, ZydisDecodedInstruction* instruction,
-    ZydisDecodedOperand* operands, ZyanU8 operand_count, ZydisDecodingFlags flags)
+    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT])
 {
-    if (!decoder || !buffer || !length || !instruction || (operand_count && !operands) ||
-        (operand_count > ZYDIS_MAX_OPERAND_COUNT))
+    if (!decoder || !instruction || !buffer || !operands)
     {
         return ZYAN_STATUS_INVALID_ARGUMENT;
     }
-
-    if (decoder->decoder_mode[ZYDIS_DECODER_MODE_MINIMAL])
+    if (!length)
+    {
+        return ZYDIS_STATUS_NO_MORE_DATA;
+    }
+    if (decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_MINIMAL))
     {
         return ZYAN_STATUS_MISSING_DEPENDENCY; // TODO: Introduce better status code
     }
 
     ZydisDecoderContext context;
     ZYAN_CHECK(ZydisDecoderDecodeInstruction(decoder, &context, buffer, length, instruction));
+    ZYAN_CHECK(ZydisDecoderDecodeOperands(decoder, &context, instruction, operands,
+        instruction->operand_count));
+    ZYAN_MEMSET(&operands[instruction->operand_count], 0,
+        (ZYDIS_MAX_OPERAND_COUNT - instruction->operand_count) * sizeof(operands[0]));
 
-    const ZyanBool visible_only = flags & ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY;
-    const ZyanU8 count = visible_only
-        ? instruction->operand_count_visible
-        : instruction->operand_count;
-
-    operand_count = ZYAN_MIN(operand_count, count);
-    if (!operand_count)
-    {
-        return ZYAN_STATUS_SUCCESS;
-    }
-
-    return ZydisDecoderDecodeOperands(decoder, &context, instruction, operands, operand_count);
+    return ZYAN_STATUS_SUCCESS;
 }
 
 ZyanStatus ZydisDecoderDecodeInstruction(const ZydisDecoder* decoder, ZydisDecoderContext* context,
     const void* buffer, ZyanUSize length, ZydisDecodedInstruction* instruction)
 {
-    if (!decoder || !instruction)
+    if (!decoder || !instruction || !buffer)
     {
         return ZYAN_STATUS_INVALID_ARGUMENT;
     }
 
-    if (!buffer || !length)
+    if (!length)
     {
         return ZYDIS_STATUS_NO_MORE_DATA;
     }
@@ -5032,6 +5032,8 @@ ZyanStatus ZydisDecoderDecodeInstruction(const ZydisDecoder* decoder, ZydisDecod
     ZYAN_CHECK(ZydisCollectOptionalPrefixes(&state, instruction));
     ZYAN_CHECK(ZydisDecodeInstruction(&state, instruction));
 
+    instruction->raw.encoding2 = instruction->encoding;
+
     return ZYAN_STATUS_SUCCESS;
 }
 
@@ -5057,7 +5059,7 @@ ZyanStatus ZydisDecoderDecodeOperands(const ZydisDecoder* decoder,
         return ZYAN_STATUS_INVALID_ARGUMENT;
     }
 
-    if (decoder->decoder_mode[ZYDIS_DECODER_MODE_MINIMAL])
+    if (decoder->decoder_mode & (1 << ZYDIS_DECODER_MODE_MINIMAL))
     {
         return ZYAN_STATUS_MISSING_DEPENDENCY; // TODO: Introduce better status code
     }

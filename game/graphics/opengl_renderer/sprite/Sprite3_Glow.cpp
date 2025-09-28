@@ -183,7 +183,6 @@ void Sprite3::glow_dma_and_draw(DmaFollower& dma,
                                 ScopedProfilerNode& prof) {
   auto maybe_consts_setup = dma.read_and_advance();
   if (maybe_consts_setup.size_bytes != sizeof(SpriteGlowConsts)) {
-    fmt::print("no consts...\n");
     return;
   }
   SpriteGlowConsts consts;

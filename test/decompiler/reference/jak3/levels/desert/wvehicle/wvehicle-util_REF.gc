@@ -1,0 +1,964 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 167 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-167 ((this wvehicle))
+  (let* ((v1-0 (-> this info))
+         (f0-1 (* (-> v1-0 engine drag) (-> v1-0 engine idle-rpm)))
+         (f1-2 (* (-> v1-0 engine peak-torque-rpm) (+ 1.0 (-> v1-0 engine drag))))
+         (f2-2 1.0)
+         (f3-3 (/ (- (-> v1-0 engine idle-rpm) (-> v1-0 engine peak-torque-rpm)) (-> v1-0 engine powerband-width-rpm)))
+         )
+    (set! (-> this idle-throttle) (/ f0-1 (* f1-2 (- f2-2 (* f3-3 f3-3)))))
+    )
+  (set! (-> this idle-throttle) (fmax 0.0 (fmin 1.0 (-> this idle-throttle))))
+  0
+  (none)
+  )
+
+;; definition for method 37 of type wvehicle
+(defmethod rigid-body-object-method-37 ((this wvehicle))
+  (let ((t9-0 (method-of-type vehicle rigid-body-object-method-37)))
+    (t9-0 this)
+    )
+  (set! (-> this wheel 0 info) (-> this info physics-model front-wheel))
+  (set! (-> this wheel 1 info) (-> this info physics-model front-wheel))
+  (set! (-> this wheel 2 info) (-> this info physics-model rear-wheel))
+  (set! (-> this wheel 3 info) (-> this info physics-model rear-wheel))
+  (dotimes (s5-0 (-> this info physics-model wheel-count))
+    (let ((s4-0 (-> this wheel s5-0 info)))
+      (set! (-> s4-0 tread-tid) (lookup-texture-id-by-name (-> s4-0 tread-texture) (the-as string #f)))
+      )
+    )
+  (set! (-> this info physics-model front-wheel callback) (method-of-object this wvehicle-method-164))
+  (set! (-> this info physics-model rear-wheel callback) (method-of-object this wvehicle-method-164))
+  (let ((v1-22 (-> this draw shadow-ctrl)))
+    (set! (-> v1-22 settings shadow-dir w) (-> this info setup shadow-locus-dist))
+    (set! (-> v1-22 settings top-plane w) 0.0)
+    (set! (-> v1-22 settings bot-plane w) (- (-> this info setup shadow-bot-clip)))
+    )
+  (wvehicle-method-167 this)
+  (none)
+  )
+
+;; definition for function have-earned-vehicle-v-type?
+(defun have-earned-vehicle-v-type? ((arg0 vehicle-type))
+  (case arg0
+    (((vehicle-type v-turtle))
+     (let ((v1-2 (-> *game-info* vehicles)))
+       (logtest? v1-2 (game-vehicles v-turtle))
+       )
+     )
+    (((vehicle-type v-snake))
+     (let ((v1-5 (-> *game-info* vehicles)))
+       (logtest? v1-5 (game-vehicles v-snake))
+       )
+     )
+    (((vehicle-type v-scorpion))
+     (let ((v1-8 (-> *game-info* vehicles)))
+       (logtest? v1-8 (game-vehicles v-scorpion))
+       )
+     )
+    (((vehicle-type v-toad))
+     (let ((v1-11 (-> *game-info* vehicles)))
+       (logtest? v1-11 (game-vehicles v-toad))
+       )
+     )
+    (((vehicle-type v-fox))
+     (let ((v1-14 (-> *game-info* vehicles)))
+       (logtest? v1-14 (game-vehicles v-fox))
+       )
+     )
+    (((vehicle-type v-rhino))
+     (let ((v1-17 (-> *game-info* vehicles)))
+       (logtest? v1-17 (game-vehicles v-rhino))
+       )
+     )
+    (((vehicle-type v-mirage))
+     (let ((v1-20 (-> *game-info* vehicles)))
+       (logtest? v1-20 (game-vehicles v-mirage))
+       )
+     )
+    (((vehicle-type v-x-ride))
+     (let ((v1-23 (-> *game-info* vehicles)))
+       (logtest? v1-23 (game-vehicles v-x-ride))
+       )
+     )
+    (((vehicle-type v-faccar))
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+;; definition for function have-vehicle-v-type?
+(defun have-vehicle-v-type? ((arg0 vehicle-type))
+  (case arg0
+    (((vehicle-type v-turtle))
+     (let ((v1-2 (-> *game-info* vehicles)))
+       (let ((a0-3 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-3)
+             (set! v1-2 (logand v1-2 a0-3))
+             )
+         )
+       (logtest? v1-2 (game-vehicles v-turtle))
+       )
+     )
+    (((vehicle-type v-snake))
+     (let ((v1-5 (-> *game-info* vehicles)))
+       (let ((a0-6 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-6)
+             (set! v1-5 (logand v1-5 a0-6))
+             )
+         )
+       (logtest? v1-5 (game-vehicles v-snake))
+       )
+     )
+    (((vehicle-type v-scorpion))
+     (let ((v1-8 (-> *game-info* vehicles)))
+       (let ((a0-9 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-9)
+             (set! v1-8 (logand v1-8 a0-9))
+             )
+         )
+       (logtest? v1-8 (game-vehicles v-scorpion))
+       )
+     )
+    (((vehicle-type v-toad))
+     (let ((v1-11 (-> *game-info* vehicles)))
+       (let ((a0-12 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-12)
+             (set! v1-11 (logand v1-11 a0-12))
+             )
+         )
+       (logtest? v1-11 (game-vehicles v-toad))
+       )
+     )
+    (((vehicle-type v-fox))
+     (let ((v1-14 (-> *game-info* vehicles)))
+       (let ((a0-15 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-15)
+             (set! v1-14 (logand v1-14 a0-15))
+             )
+         )
+       (logtest? v1-14 (game-vehicles v-fox))
+       )
+     )
+    (((vehicle-type v-rhino))
+     (let ((v1-17 (-> *game-info* vehicles)))
+       (let ((a0-18 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-18)
+             (set! v1-17 (logand v1-17 a0-18))
+             )
+         )
+       (logtest? v1-17 (game-vehicles v-rhino))
+       )
+     )
+    (((vehicle-type v-mirage))
+     (let ((v1-20 (-> *game-info* vehicles)))
+       (let ((a0-21 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-21)
+             (set! v1-20 (logand v1-20 a0-21))
+             )
+         )
+       (logtest? v1-20 (game-vehicles v-mirage))
+       )
+     )
+    (((vehicle-type v-x-ride))
+     (let ((v1-23 (-> *game-info* vehicles)))
+       (let ((a0-24 (-> *setting-control* user-current vehicles)))
+         (if (nonzero? a0-24)
+             (set! v1-23 (logand v1-23 a0-24))
+             )
+         )
+       (logtest? v1-23 (game-vehicles v-x-ride))
+       )
+     )
+    (((vehicle-type v-faccar))
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+;; definition for method 146 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-146 ((this wvehicle) (arg0 vector))
+  (with-pp
+    (vector-float*! (-> this surface-velocity) arg0 (-> pp clock frames-per-second))
+    0
+    (none)
+    )
+  )
+
+;; definition for method 54 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-54 ((this wvehicle))
+  ((method-of-type vehicle rigid-body-object-method-54) this)
+  0
+  (none)
+  )
+
+;; definition for method 128 of type wvehicle
+(defmethod vehicle-method-128 ((this wvehicle))
+  (have-vehicle-v-type? (the-as vehicle-type (-> this info vehicle-type)))
+  )
+
+;; definition for method 144 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-144 ((this wvehicle))
+  (send-event *vehicle-manager* 'extra-bank (-> this info sound bank-replace))
+  (let ((gp-0
+          (new 'stack 'font-context *font-default-matrix* 22 320 0.0 (font-color default) (font-flags shadow kerning))
+          )
+        )
+    1.0
+    (let* ((v1-9 (-> *setting-control* user-default language))
+           (f30-0 (cond
+                    ((= v1-9 (language-enum korean))
+                     1.3
+                     )
+                    ((= v1-9 (language-enum russian))
+                     1.3
+                     )
+                    (else
+                      1.0
+                      )
+                    )
+                  )
+           )
+      (set-width! gp-0 350)
+      (set-height! gp-0 80)
+      (set-scale! gp-0 (* 0.7 f30-0))
+      (set! (-> gp-0 flags) (font-flags shadow kerning large))
+      (print-game-text
+        (lookup-text! *common-text* (text-id press-to-use) #f)
+        gp-0
+        #f
+        44
+        (bucket-id hud-draw-hud-alpha)
+        )
+      (let ((a1-4 (-> this info name-text)))
+        (when (nonzero? a1-4)
+          (let ((a0-11 gp-0))
+            (set! (-> a0-11 color) (font-color cyan))
+            )
+          (+! (-> gp-0 origin y) (the float (the int (* 30.0 f30-0))))
+          (set-scale! gp-0 (* 0.6 f30-0))
+          (print-game-text (lookup-text! *common-text* a1-4 #f) gp-0 #f 44 (bucket-id hud-draw-hud-alpha))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 145 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-145 ((this wvehicle))
+  (when (not (have-earned-vehicle-v-type? (the-as vehicle-type (-> this info vehicle-type))))
+    (let ((gp-0
+            (new 'stack 'font-context *font-default-matrix* 22 320 0.0 (font-color default) (font-flags shadow kerning))
+            )
+          )
+      1.0
+      (let* ((v1-5 (-> *setting-control* user-default language))
+             (f30-0 (cond
+                      ((= v1-5 (language-enum korean))
+                       1.3
+                       )
+                      ((= v1-5 (language-enum russian))
+                       1.3
+                       )
+                      (else
+                        1.0
+                        )
+                      )
+                    )
+             )
+        (set-width! gp-0 350)
+        (set-height! gp-0 80)
+        (set-scale! gp-0 (* 0.7 f30-0))
+        (set! (-> gp-0 flags) (font-flags shadow kerning large))
+        (let ((a1-1 (-> this info name-text)))
+          (when (nonzero? a1-1)
+            (let ((a0-8 gp-0))
+              (set! (-> a0-8 color) (font-color cyan))
+              )
+            (set-scale! gp-0 (* 0.6 f30-0))
+            (print-game-text (lookup-text! *common-text* a1-1 #f) gp-0 #f 44 (bucket-id hud-draw-hud-alpha))
+            )
+          )
+        (+! (-> gp-0 origin y) (the float (the int (* 30.0 f30-0))))
+        )
+      (let ((a0-12 gp-0))
+        (set! (-> a0-12 color) (font-color default))
+        )
+      (print-game-text (lookup-text! *common-text* (text-id locked) #f) gp-0 #f 44 (bucket-id hud-draw-hud-alpha))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 170 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-170 ((this wvehicle))
+  (-> this info rider attach-point-count)
+  (none)
+  )
+
+;; definition for method 171 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-171 ((this wvehicle) (arg0 vector) (arg1 int))
+  (vector-matrix*! arg0 (-> this info rider attach-point-array arg1 local-pos) (-> this rbody matrix))
+  0
+  (none)
+  )
+
+;; definition for method 172 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-172 ((this wvehicle) (arg0 quaternion) (arg1 int))
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'quaternion 2)))
+    (quaternion-zxy! (-> gp-0 0) (-> this info rider attach-point-array arg1 rot))
+    (quaternion*! arg0 (the-as quaternion (-> this rbody rot)) (-> gp-0 0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 173 of type wvehicle
+(defmethod wvehicle-method-173 ((this wvehicle) (arg0 vector))
+  (let ((gp-0 (new 'stack-no-clear 'wvehicle-stack-type1)))
+    (set! (-> gp-0 float00) (the-as float #x7f800000))
+    (set! (-> gp-0 byte00) -1)
+    (dotimes (s3-0 (-> this info rider attach-point-count))
+      (when (not (as-type (handle->process (-> this attached-array s3-0)) process-focusable))
+        (wvehicle-method-171 this (-> gp-0 vec00) s3-0)
+        (set! (-> gp-0 float01) (vector-vector-distance-squared arg0 (-> gp-0 vec00)))
+        (when (< (-> gp-0 float01) (-> gp-0 float00))
+          (set! (-> gp-0 float00) (-> gp-0 float01))
+          (set! (-> gp-0 byte00) s3-0)
+          )
+        )
+      )
+    (-> gp-0 byte00)
+    )
+  )
+
+;; definition for method 174 of type wvehicle
+;; WARN: Return type mismatch process vs process-focusable.
+(defmethod get-attached-by-idx ((this wvehicle) (arg0 int))
+  (the-as process-focusable (as-type (handle->process (-> this attached-array arg0)) process-focusable))
+  )
+
+;; definition for method 175 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod add-attached-at-idx ((this wvehicle) (arg0 int) (arg1 process-focusable))
+  (if arg1
+      (set! (-> this attached-array arg0) (process->handle arg1))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 176 of type wvehicle
+(defmethod remove-attached-from-arr ((this wvehicle) (arg0 process-focusable))
+  (let ((v1-2 (process->handle arg0)))
+    (dotimes (a1-4 (-> this info rider attach-point-count))
+      (if (= v1-2 (-> this attached-array a1-4))
+          (set! (-> this attached-array a1-4) (the-as handle #f))
+          )
+      )
+    )
+  #f
+  )
+
+;; definition for method 142 of type wvehicle
+;; WARN: Return type mismatch symbol vs none.
+(defmethod vehicle-method-142 ((this wvehicle))
+  (reset-momentum! (-> this rbody))
+  (set! (-> this wheel-rev) 0.0)
+  (dotimes (v1-2 (-> this info physics-model wheel-count))
+    (let ((a0-5 (-> this wheel v1-2)))
+      (set! (-> a0-5 rev) 0.0)
+      (set! (-> a0-5 up-vel) 0.0)
+      (set! (-> a0-5 side-vel) 0.0)
+      (set! (-> a0-5 forward-vel) 0.0)
+      (set! (-> a0-5 forward-slip-vel) 0.0)
+      )
+    )
+  (none)
+  )
+
+;; definition for method 40 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-momentum! ((this wvehicle))
+  (let ((t9-0 (method-of-type vehicle apply-momentum!)))
+    (t9-0 this)
+    )
+  (set! (-> this v-flags) (the-as vehicle-flag (logior (vehicle-flag particles joints) (-> this v-flags))))
+  (none)
+  )
+
+;; definition for method 41 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod disable-physics! ((this wvehicle))
+  (let ((t9-0 (method-of-type vehicle disable-physics!)))
+    (t9-0 this)
+    )
+  (set! (-> this v-flags) (the-as vehicle-flag (logior (vehicle-flag particles joints) (-> this v-flags))))
+  (none)
+  )
+
+;; definition for method 124 of type wvehicle
+(defmethod vehicle-method-124 ((this wvehicle))
+  (when (-> this minimap)
+    (logior! (-> this minimap flags) (minimap-flag fade-out))
+    (set! (-> this minimap) #f)
+    )
+  ((method-of-type vehicle vehicle-method-124) this)
+  (none)
+  )
+
+;; definition for method 169 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-169 ((this wvehicle))
+  0
+  (none)
+  )
+
+;; definition for method 64 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-64 ((this wvehicle))
+  (when (and (not (logtest? (vehicle-flag turbo-boost) (-> this v-flags))) (>= (-> this turbo-supply) 1.0))
+    (cond
+      ((< (-> this turbo-supply) 1.0)
+       (if (not (logtest? (-> this controls prev-flags) (vehicle-controls-flag vcf2)))
+           (sound-play "turbo-dud")
+           )
+       )
+      ((< (-> this turbo-ready) 1.0)
+       (if (not (logtest? (-> this controls prev-flags) (vehicle-controls-flag vcf2)))
+           (sound-play "turbo-out")
+           )
+       )
+      (else
+        (set! (-> this turbo-ready) 0.0)
+        (+! (-> this turbo-supply) -1.0)
+        (set! (-> this turbo-boost-time) (the-as uint (current-time)))
+        (set! (-> this turbo-boost-factor) (-> this info handling turbo-boost-factor))
+        (set! (-> this turbo-boost-duration) (-> this info handling turbo-boost-duration))
+        (logior! (-> this v-flags) (vehicle-flag turbo-boost))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 143 of type wvehicle
+(defmethod vehicle-method-143 ((this wvehicle) (arg0 process))
+  (set! (-> this target-status handle) (process->handle arg0))
+  (set! (-> this ai-state) (the-as uint 1))
+  (go (method-of-object this hostile))
+  )
+
+;; definition for method 132 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-132 ((this wvehicle) (arg0 traffic-object-spawn-params))
+  (case (-> arg0 behavior)
+    ((3)
+     (set! (-> this target-status handle) (-> arg0 handle))
+     (go (method-of-object this hostile))
+     )
+    ((10)
+     (cond
+       ((race-setup this (the-as int (-> arg0 id)))
+        (cond
+          ((logtest? (-> arg0 flags) (traffic-spawn-flags tsf1))
+           (logior! (-> this v-flags) (vehicle-flag riding ai-driving))
+           (go (method-of-object this race-waiting))
+           )
+          (else
+            (logior! (-> this v-flags) (vehicle-flag waiting-for-player))
+            (logior! (-> this focus-status) (focus-status grabbed))
+            (go (method-of-object this waiting))
+            )
+          )
+        )
+       (else
+         (go (method-of-object this die))
+         )
+       )
+     )
+    ((13)
+     (go (method-of-object this undefined1))
+     )
+    (else
+      ((method-of-type vehicle vehicle-method-132) this arg0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 102 of type wvehicle
+(defmethod vehicle-method-102 ((this wvehicle))
+  (logtest? (vehicle-flag disturbed player-driving in-pursuit) (-> this v-flags))
+  )
+
+;; definition for method 103 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-103 ((this wvehicle))
+  (when (time-elapsed? (-> this disturbed-time) (seconds 2))
+    (let* ((f0-0 (-> this camera-dist2))
+           (f1-0 0.000024414063)
+           (f0-1 (* f0-0 (* f1-0 f1-0)))
+           )
+      (when (and (< (vector-length-squared (-> this rbody ang-velocity)) f0-1)
+                 (let ((f1-4 (vector-length-squared (-> this rbody lin-velocity)))
+                       (f2-0 614.4)
+                       )
+                   (< f1-4 (* f0-1 (* f2-0 f2-0)))
+                   )
+                 )
+        (logclear! (-> this v-flags) (vehicle-flag disturbed))
+        (vehicle-method-142 this)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 161 of type wvehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-wheels! ((this wvehicle) (arg0 skeleton-group) (arg1 skeleton-group) (arg2 skeleton-group) (arg3 skeleton-group))
+  (local-vars (sv-96 vehicle-wheel-state))
+  (let ((s1-0 (new 'stack-no-clear 'vehicle-wheel-init-params)))
+    (vector-copy! (-> s1-0 position) (-> this root trans))
+    (quaternion-identity! (-> s1-0 rotation))
+    (vector-identity! (-> s1-0 scale))
+    (set! (-> s1-0 skel) arg0)
+    (set! (-> s1-0 skel-blur) arg1)
+    (set! (-> s1-0 level) (the-as symbol (-> this level)))
+    (set! (-> s1-0 radius) 4096.0)
+    (set! (-> s1-0 collision-mesh-index) -1)
+    (&-> s1-0 skel)
+    (dotimes (s0-0 (-> this info physics-model wheel-count))
+      (cond
+        ((and arg2 (>= s0-0 2))
+         (set! (-> s1-0 skel) arg2)
+         (set! (-> s1-0 skel-blur) arg3)
+         )
+        (else
+          (set! (-> s1-0 skel) arg0)
+          (set! (-> s1-0 skel-blur) arg1)
+          )
+        )
+      (set! sv-96 (-> this wheel s0-0))
+      (set! (-> s1-0 radius) (* 1.3 (-> sv-96 info scale) (-> sv-96 info radius)))
+      (vector-identity! (-> s1-0 scale))
+      (set! (-> s1-0 scale x) (-> sv-96 x-scale))
+      (vector-float*! (-> s1-0 scale) (-> s1-0 scale) (-> sv-96 info scale))
+      (if (logtest? (-> this info flags) #x4000)
+          (set! (-> s1-0 collision-mesh-index) (if (>= (-> sv-96 x-scale) 0.0)
+                                                   0
+                                                   1
+                                                   )
+                )
+          )
+      (set! (-> sv-96 handle)
+            (process->handle (vehicle-wheel-spawn this (the-as vehicle-wheel-init-params (&-> s1-0 skel))))
+            )
+      (set! (-> sv-96 pos) (-> sv-96 info settle-pos))
+      (set! (-> sv-96 pos2) (-> sv-96 pos))
+      )
+    )
+  (wvehicle-method-165 this)
+  (vehicle-method-79 this)
+  0
+  (none)
+  )
+
+;; definition for method 82 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-82 ((this wvehicle))
+  (call-parent-method this)
+  (set-setting! 'rapid-tracking #f 0.0 0)
+  (let ((v1-2 (process->ppointer this)))
+    (persist-with-delay
+      *setting-control*
+      'butt-handle
+      (seconds 1.5)
+      'butt-handle
+      (the-as symbol v1-2)
+      32768.0
+      (-> v1-2 0 pid)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 83 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-83 ((this wvehicle))
+  (call-parent-method this)
+  (logclear! (-> this draw status) (draw-control-status force-vu1))
+  0
+  (none)
+  )
+
+;; definition for method 148 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-148 ((this wvehicle))
+  (send-event *target* 'draw #t)
+  0
+  (none)
+  )
+
+;; definition for method 147 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-147 ((this wvehicle))
+  (send-event *target* 'draw #f)
+  0
+  (none)
+  )
+
+;; definition for method 20 of type wvehicle
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod get-search-info-flag ((this wvehicle))
+  "Get search-info-flag for this process."
+  (let ((v0-0 0))
+    (if (logtest? (vehicle-flag ai-driving) (-> this v-flags))
+        (set! v0-0 (logior v0-0 40))
+        )
+    (if (logtest? (vehicle-flag dead ignore-damage ignore-impulse) (-> this v-flags))
+        (set! v0-0 0)
+        )
+    (the-as search-info-flag v0-0)
+    )
+  )
+
+;; definition for method 149 of type wvehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-149 ((this wvehicle))
+  (let ((gp-0 (new 'stack-no-clear 'wvehicle-stack-type2)))
+    (set! (-> gp-0 float0) 4096.0)
+    (quaternion->matrix (-> gp-0 mat0) (-> this root quat))
+    (vector-copy! (-> gp-0 mat0 trans) (-> this root trans))
+    (vector-copy! (-> gp-0 vec3) (-> gp-0 mat0 fvec))
+    (vector-copy! (-> gp-0 vec1) (-> this root trans))
+    (vector-copy! (-> gp-0 cquery start-pos) (-> gp-0 vec1))
+    (+! (-> gp-0 cquery start-pos y) 4096.0)
+    (vector-reset! (-> gp-0 vec2))
+    (set! (-> gp-0 vec2 y) 1.0)
+    (vector-z-quaternion! (-> gp-0 vec3) (-> this root quat))
+    (set-vector! (-> gp-0 cquery move-dist) 0.0 -40960.0 0.0 1.0)
+    (let ((v1-11 (-> gp-0 cquery)))
+      (set! (-> v1-11 radius) (-> gp-0 float0))
+      (set! (-> v1-11 collide-with) (collide-spec backgnd))
+      (set! (-> v1-11 ignore-process0) #f)
+      (set! (-> v1-11 ignore-process1) #f)
+      (set! (-> v1-11 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-11 action-mask) (collide-action solid))
+      )
+    (let ((f30-0 (fill-and-probe-using-line-sphere *collide-cache* (-> gp-0 cquery))))
+      (when (>= f30-0 0.0)
+        (vector+float*! (-> gp-0 vec1) (-> gp-0 cquery start-pos) (-> gp-0 cquery move-dist) f30-0)
+        (set! (-> gp-0 vec1 y) (- (-> gp-0 vec1 y) (-> gp-0 float0)))
+        (let* ((v1-19 (-> gp-0 cquery best-other-tri pat material))
+               (a0-22 (cond
+                        ((or (= v1-19 (pat-material stone)) (= v1-19 (pat-material wood)))
+                         0
+                         )
+                        ((or (= v1-19 (pat-material dirt)) (= v1-19 (pat-material unknown)))
+                         1
+                         )
+                        ((= v1-19 (pat-material sand))
+                         2
+                         )
+                        ((= v1-19 (pat-material quicksand))
+                         3
+                         )
+                        ((= v1-19 (pat-material metal))
+                         6
+                         )
+                        (else
+                          1
+                          )
+                        )
+                      )
+               (v1-21 (-> *wvehicle-surfaces* (the-as uint a0-22)))
+               )
+          (set! (-> gp-0 vec1 y) (- (-> gp-0 vec1 y) (-> v1-21 depth)))
+          )
+        (vector-copy! (-> gp-0 vec2) (-> gp-0 cquery best-other-tri normal))
+        (when (< (-> gp-0 vec2 y) (cos 3640.889))
+          (vector-reset! (-> gp-0 vec2))
+          (set! (-> gp-0 vec2 y) 1.0)
+          )
+        (vector-copy! (-> this root trans) (-> gp-0 vec1))
+        0
+        )
+      (if (< f30-0 0.0)
+          0
+          )
+      )
+    (vector-copy! (-> this root trans) (-> gp-0 vec1))
+    (forward-up-nopitch->quaternion (-> this root quat) (-> gp-0 vec3) (-> gp-0 vec2))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 198 of type wvehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-198 ((this wvehicle))
+  (let ((gp-0 (new 'stack-no-clear 'wvehicle-physics-work)))
+    (set! (-> gp-0 ground-pos z) (seconds-per-frame))
+    (let ((v1-2 (-> this info setup)))
+      (set! (-> gp-0 ground-pos y) (fmax (fmin (-> this gun-aim-yaw) (-> v1-2 gun-yaw-max)) (-> v1-2 gun-yaw-min)))
+      )
+    (matrix-copy! (-> gp-0 mat) (-> this node-list data 0 bone transform))
+    (vector-copy! (-> gp-0 tmp) (-> this turret-local-pos))
+    (set-vector! (-> gp-0 probe-dir) (sin (-> gp-0 ground-pos y)) 0.0 (cos (-> gp-0 ground-pos y)) 1.0)
+    (vector+float*! (-> gp-0 steering-axis) (-> gp-0 tmp) (-> gp-0 probe-dir) 204800.0)
+    (vector-matrix*! (-> gp-0 local-pos) (-> gp-0 tmp) (-> gp-0 mat))
+    (set! (-> this gun-targ-pitch) 0.0)
+    (set! (-> this gun-targ-yaw) (-> gp-0 ground-pos y))
+    (vector-matrix*! (-> gp-0 p-body) (-> gp-0 steering-axis) (-> gp-0 mat))
+    (set! (-> gp-0 p-body w) 163840.0)
+    (let ((s4-1 (new 'stack 'boxed-array collide-shape 128)))
+      (set! (-> gp-0 ground-normal-sum x) (the-as float (fill-actor-list-for-box
+                                                          *actor-hash*
+                                                          (-> gp-0 p-body)
+                                                          (the-as (pointer collide-shape) (-> s4-1 data))
+                                                          (-> s4-1 allocated-length)
+                                                          )
+                                                  )
+            )
+      (set! (-> s4-1 length) (the-as int (-> gp-0 ground-normal-sum x)))
+      (let ((a0-14 (find-nearest-focusable
+                     (the-as (array collide-shape) s4-1)
+                     (-> gp-0 p-body)
+                     655360.0
+                     (search-info-flag attackable enemy attackable-priority high-priority)
+                     (search-info-flag)
+                     (-> gp-0 mat fvec)
+                     (-> gp-0 local-pos)
+                     27306.666
+                     )
+                   )
+            )
+        (when a0-14
+          (vector-! (-> gp-0 axis) (get-trans a0-14 3) (-> gp-0 local-pos))
+          (matrix-transpose! (the-as matrix (-> gp-0 force)) (-> gp-0 mat))
+          (vector-matrix*! (-> gp-0 dir) (-> gp-0 axis) (the-as matrix (-> gp-0 force)))
+          (vector-normalize! (-> gp-0 dir) 1.0)
+          (set! (-> this gun-targ-yaw) (atan (-> gp-0 dir x) (-> gp-0 dir z)))
+          (set! (-> this gun-targ-pitch) (asin (-> gp-0 dir y)))
+          0
+          )
+        )
+      )
+    (let ((s4-4 (-> this info setup)))
+      (set! (-> this gun-targ-yaw) (fmax (fmin (-> this gun-targ-yaw) (-> s4-4 gun-yaw-max)) (-> s4-4 gun-yaw-min)))
+      (set! (-> this gun-targ-pitch)
+            (fmax (fmin (-> this gun-targ-pitch) (-> s4-4 gun-pitch-max)) (-> s4-4 gun-pitch-min))
+            )
+      (if (>= (-> s4-4 gun-yaw-max) 65536.0)
+          (set! (-> this gun-yaw)
+                (deg-seek
+                  (-> this gun-yaw)
+                  (-> this gun-targ-yaw)
+                  (* 10.0 (fabs (deg- (-> this gun-yaw) (-> this gun-targ-yaw))) (-> gp-0 ground-pos z))
+                  )
+                )
+          (+! (-> this gun-yaw)
+              (* (- (-> this gun-targ-yaw) (-> this gun-yaw)) (fmin 1.0 (* 10.0 (-> gp-0 ground-pos z))))
+              )
+          )
+      (+! (-> this gun-pitch)
+          (* (- (-> this gun-targ-pitch) (-> this gun-pitch)) (fmin 1.0 (* 10.0 (-> gp-0 ground-pos z))))
+          )
+      (set! (-> gp-0 ground-normal-sum y) (sin (-> this gun-yaw)))
+      (set! (-> gp-0 ground-normal-sum z) (cos (-> this gun-yaw)))
+      (set! (-> gp-0 ground-normal-sum w) (sin (-> this gun-pitch)))
+      (set! (-> gp-0 ground-pos x) (cos (-> this gun-pitch)))
+      (set-vector!
+        (-> gp-0 probe-dir)
+        (* (-> gp-0 ground-pos x) (-> gp-0 ground-normal-sum y))
+        (-> gp-0 ground-normal-sum w)
+        (* (-> gp-0 ground-pos x) (-> gp-0 ground-normal-sum z))
+        1.0
+        )
+      (vector+float*! (-> gp-0 steering-axis) (-> gp-0 tmp) (-> gp-0 probe-dir) (-> s4-4 gun-z-offset))
+      )
+    (vector-copy! (-> this gun-local-dir) (-> gp-0 probe-dir))
+    (vector-copy! (-> this gun-local-pos) (-> gp-0 steering-axis))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 199 of type wvehicle
+;; INFO: Used lq/sq
+(defmethod wvehicle-method-199 ((this wvehicle))
+  (let ((s5-0 (new 'stack-no-clear 'wvehicle-stack-type3)))
+    (set! (-> s5-0 float0) (vector-dot (-> this rbody lin-velocity) (-> this rbody matrix fvec)))
+    (if (and (cpad-hold? 0 square) (< (-> s5-0 float0) -20480.0))
+        (set! (-> this lock-turret) (the-as basic #t))
+        )
+    (if (or (< 0.0 (-> s5-0 float0))
+            (or (< 0.25 (fabs (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 1.0)))
+                (logtest? (vehicle-flag camera-look-mode) (-> this v-flags))
+                )
+            )
+        (set! (-> this lock-turret) #f)
+        )
+    (cond
+      ((-> this lock-turret)
+       (set! (-> this gun-aim-yaw) 0.0)
+       )
+      (else
+        (matrix-transpose! (-> s5-0 mat0) (-> this rbody matrix))
+        (matrix*! (-> s5-0 mat0) (camera-matrix) (-> s5-0 mat0))
+        (vector-copy! (-> s5-0 vec0) (-> s5-0 mat0 fvec))
+        (set! (-> this gun-aim-yaw) (atan (-> s5-0 vec0 x) (-> s5-0 vec0 z)))
+        )
+      )
+    )
+  0
+  (wvehicle-method-198 this)
+  (none)
+  )
+
+;; definition for method 201 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-201 ((this wvehicle) (arg0 float))
+  0
+  (none)
+  )
+
+;; definition for method 202 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod wvehicle-method-202 ((this wvehicle) (arg0 float))
+  0
+  (none)
+  )
+
+;; definition of type kill-player-process
+(deftype kill-player-process (process)
+  ((player  handle)
+   (mode    symbol)
+   )
+  (:state-methods
+    idle
+    die
+    )
+  )
+
+;; definition for method 3 of type kill-player-process
+(defmethod inspect ((this kill-player-process))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tplayer: ~D~%" (-> this player))
+  (format #t "~2Tmode: ~A~%" (-> this mode))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (kill-player-process)
+  :virtual #t
+  :trans (behavior ()
+    (let ((gp-0 (as-type (handle->process (-> self player)) process-focusable)))
+      (if (not gp-0)
+          (go-virtual die)
+          )
+      (if (focus-test? (the-as process-focusable gp-0) dead)
+          (go-virtual die)
+          )
+      (when (not (focus-test? (the-as process-focusable gp-0) grabbed))
+        (if (send-event
+              gp-0
+              'attack-invinc
+              #f
+              (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                  (damage 2.0)
+                                                                  (vehicle-damage-factor 1.0)
+                                                                  (vehicle-impulse-factor 1.0)
+                                                                  (mode (-> self mode))
+                                                                  )
+                                  )
+              )
+            (go-virtual die)
+            )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate die (kill-player-process)
+  :virtual #t
+  :code (behavior ()
+    '()
+    )
+  )
+
+;; definition for function kill-player-process-init-by-other
+(defbehavior kill-player-process-init-by-other kill-player-process ((arg0 process) (arg1 symbol))
+  (set! (-> self player) (process->handle arg0))
+  (set! (-> self mode) arg1)
+  (go-virtual idle)
+  )
+
+;; definition for function kill-player-process-spawn
+;; WARN: Return type mismatch process vs kill-player-process.
+(defun kill-player-process-spawn ((arg0 process) (arg1 process) (arg2 symbol))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn kill-player-process arg0 arg2 :name "kill-player-process" :to arg1)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as kill-player-process gp-0)
+    )
+  )
+
+;; definition for method 116 of type wvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-116 ((this wvehicle) (arg0 symbol))
+  (dotimes (s4-0 (-> this info rider seat-count))
+    (let ((a1-3 (as-type (handle->process (-> this rider-array s4-0)) process-focusable)))
+      (when (and a1-3 (logtest? (-> a1-3 mask) (process-mask target)))
+        (set! (-> this v-flags) (the-as vehicle-flag (logior (vehicle-flag player-killed) (-> this v-flags))))
+        (kill-player-process-spawn a1-3 a1-3 arg0)
+        )
+      )
+    (put-rider-in-seat this s4-0 (the-as process #f))
+    )
+  0
+  (none)
+  )

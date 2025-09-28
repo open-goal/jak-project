@@ -1,128 +1,110 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: jungle-obs.gc
-;; name in dgo: jungle-obs
-;; dgos: JUN, JUNGLE, L1
+(bundles "JUN.DGO")
+(require "engine/util/sync-info.gc")
+(require "engine/anim/joint-mod-h.gc")
+(require "engine/common-obs/baseplat.gc")
+(require "engine/common-obs/water-anim.gc")
+(require "engine/camera/pov-camera-h.gc")
 
 ;; DECOMP BEGINS
 
-(defskelgroup *med-res-firecanyon-sg* medres-firecanyon medres-firecanyon-lod0-jg medres-firecanyon-idle-ja
-              ((medres-firecanyon-lod0-mg (meters 999999)))
-              :bounds (static-spherem -200 0 -440 530)
-              :longest-edge (meters 0.01)
-              )
+(defskelgroup *med-res-firecanyon-sg*
+  medres-firecanyon
+  medres-firecanyon-lod0-jg
+  medres-firecanyon-idle-ja
+  ((medres-firecanyon-lod0-mg (meters 999999)))
+  :bounds (static-spherem -200 0 -440 530)
+  :longest-edge (meters 0.01))
 
-(defskelgroup *jungle-camera-sg* jungle-camera 0 2
-              ((1 (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              :texture-level 2
-              )
+(defskelgroup *jungle-camera-sg*
+  jungle-camera
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :texture-level 2)
 
 (deftype logtrap (process-drawable)
-  ((root  collide-shape-moving :override)
-   )
+  ((root collide-shape-moving :override))
   (:state-methods
-    idle
-    )
-  )
+   idle))
 
 
-(defskelgroup *logtrap-sg* logtrap logtrap-lod0-jg logtrap-idle-ja
-              ((logtrap-lod0-mg (meters 20)) (logtrap-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 8 0 13)
-              :longest-edge (meters 6)
-              :shadow logtrap-shadow-mg
-              )
+(defskelgroup *logtrap-sg*
+  logtrap
+  logtrap-lod0-jg
+  logtrap-idle-ja
+  ((logtrap-lod0-mg (meters 20)) (logtrap-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 8 0 13)
+  :longest-edge (meters 6)
+  :shadow logtrap-shadow-mg)
 
 (defstate idle (logtrap)
   :virtual #t
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (if (or (= message 'touch) (= message 'attack))
-        (send-event proc 'attack (-> block param 0) (new 'static 'attack-info))
-        )
-    )
-  :code (behavior ()
-    (transform-post)
-    (loop
-      (ja-no-eval :group! logtrap-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (when (logtest? (-> self draw status) (draw-status was-drawn))
-          (cond
-            ((> (-> self draw cur-lod) 0)
-             (ja-post)
-             )
-            (else
-              (transform-post)
-              (if *target*
-                  (look-at-enemy! (-> *target* neck) (the-as vector (-> self root root-prim prim-core)) #f self)
-                  )
-              )
-            )
-          )
-        (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (if (or (= message 'touch) (= message 'attack)) (send-event proc 'attack (-> block param 0) (new 'static 'attack-info))))
+  :code
+    (behavior ()
+      (transform-post)
+      (loop
+        (ja-no-eval :group! logtrap-idle-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (when (logtest? (-> self draw status) (draw-status was-drawn))
+            (cond
+              ((> (-> self draw cur-lod) 0) (ja-post))
+              (else
+               (transform-post)
+               (if *target* (look-at-enemy! (-> *target* neck) (the-as vector (-> self root root-prim prim-core)) #f self)))))
+          (suspend)
+          (ja :num! (seek!))))))
 
 (defmethod init-from-entity! ((this logtrap) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
       (set! (-> s3-0 transform-index) 6)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 19251.2)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *logtrap-sg* '())
-  (set! (-> this draw shadow-ctrl)
-        (new 'process 'shadow-control -5734.4 0.0 614400.0 (the-as float 1) 163840.0)
-        )
+  (set! (-> this draw shadow-ctrl) (new 'process 'shadow-control -5734.4 0.0 614400.0 (the-as float 1) 163840.0))
   (logclear! (-> this mask) (process-mask actor-pause))
   (update-transforms! (-> this root))
   (go (method-of-object this idle))
-  (none)
-  )
+  (none))
 
 (deftype towertop (process-drawable)
-  ((root-override  trsq  :overlay-at root)
-   )
+  ((root-override trsq :overlay-at root))
   (:states
-    towertop-idle
-    )
-  )
+   towertop-idle))
 
 
-(defskelgroup *towertop-sg* towertop towertop-lod0-jg towertop-idle-ja
-              ((towertop-lod0-mg (meters 20)) (towertop-lod1-mg (meters 40)) (towertop-lod2-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 30)
-              )
+(defskelgroup *towertop-sg*
+  towertop
+  towertop-lod0-jg
+  towertop-idle-ja
+  ((towertop-lod0-mg (meters 20)) (towertop-lod1-mg (meters 40)) (towertop-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 30))
 
 (defstate towertop-idle (towertop)
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! towertop-idle-ja :num! (seek! max 0.4) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek! max 0.4))
-        )
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! towertop-idle-ja :num! (seek! max 0.4) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max 0.4)))))
+  :post ja-post)
 
 (defmethod init-from-entity! ((this towertop) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask ambient))
@@ -131,64 +113,48 @@
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *towertop-sg* '())
   (go towertop-idle)
-  (none)
-  )
+  (none))
 
 (deftype lurkerm-tall-sail (process-drawable)
-  ((root       collide-shape-moving :override)
-   (speed      float)
-   (alt-actor  entity-actor)
-   )
+  ((root      collide-shape-moving :override)
+   (speed     float)
+   (alt-actor entity-actor))
   (:states
-    lurkerm-tall-sail-idle
-    )
-  )
+   lurkerm-tall-sail-idle))
 
 
-(defskelgroup *lurkerm-tall-sail-sg* lurkerm-tall-sail lurkerm-tall-sail-lod0-jg lurkerm-tall-sail-idle-ja
-              ((lurkerm-tall-sail-lod0-mg (meters 20))
-               (lurkerm-tall-sail-lod1-mg (meters 40))
-               (lurkerm-tall-sail-lod2-mg (meters 999999))
-               )
-              :bounds (static-spherem 0 5 0 7)
-              :longest-edge (meters 4)
-              )
+(defskelgroup *lurkerm-tall-sail-sg*
+  lurkerm-tall-sail
+  lurkerm-tall-sail-lod0-jg
+  lurkerm-tall-sail-idle-ja
+  ((lurkerm-tall-sail-lod0-mg (meters 20))
+   (lurkerm-tall-sail-lod1-mg (meters 40))
+   (lurkerm-tall-sail-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 5 0 7)
+  :longest-edge (meters 4))
 
 (defstate lurkerm-tall-sail-idle (lurkerm-tall-sail)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('stop)
-       (process-entity-status! self (entity-perm-status complete) #t)
-       (set! (-> self speed) 0.0)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('stop) (process-entity-status! self (entity-perm-status complete) #t) (set! (-> self speed) 0.0))))
   :trans rider-trans
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! lurkerm-tall-sail-idle-ja :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
-      (until (ja-done? 0)
-        (quaternion-rotate-local-y!
-          (-> self root quat)
-          (-> self root quat)
-          (* 12743.111 (seconds-per-frame) (-> self speed))
-          )
-        (suspend)
-        (ja :num! (seek! max (* 0.5 (-> self speed))))
-        )
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! lurkerm-tall-sail-idle-ja :num! (seek! max (/ (-> self speed) 2)) :frame-num 0.0)
+        (until (ja-done? 0)
+          (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* 12743.111 (seconds-per-frame) (-> self speed)))
+          (suspend)
+          (ja :num! (seek! max (/ (-> self speed) 2))))))
+  :post rider-post)
 
 (defmethod init-from-entity! ((this lurkerm-tall-sail) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -204,13 +170,10 @@
         (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-0 transform-index) 3)
         (set-vector! (-> s2-0 local-sphere) 39321.6 0.0 0.0 43417.6)
-        (append-prim s3-0 s2-0)
-        )
-      )
+        (append-prim s3-0 s2-0)))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lurkerm-tall-sail-sg* '())
   (logior! (-> this skel status) (janim-status inited))
@@ -218,63 +181,47 @@
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this speed) 1.0)
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
-      (set! (-> this speed) 0.0)
-      )
+    (set! (-> this speed) 0.0))
   (go lurkerm-tall-sail-idle)
-  (none)
-  )
+  (none))
 
 (deftype lurkerm-short-sail (process-drawable)
-  ((root       collide-shape-moving :override)
-   (speed      float)
-   (alt-actor  entity-actor)
-   )
+  ((root      collide-shape-moving :override)
+   (speed     float)
+   (alt-actor entity-actor))
   (:states
-    lurkerm-short-sail-idle
-    )
-  )
+   lurkerm-short-sail-idle))
 
 
-(defskelgroup *lurkerm-short-sail-sg* lurkerm-short-sail 0 4
-              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
-              :bounds (static-spherem 0 5 0 9)
-              )
+(defskelgroup *lurkerm-short-sail-sg*
+  lurkerm-short-sail
+  0
+  4
+  ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+  :bounds (static-spherem 0 5 0 9))
 
 (defstate lurkerm-short-sail-idle (lurkerm-short-sail)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('stop)
-       (process-entity-status! self (entity-perm-status complete) #t)
-       (set! (-> self speed) 0.0)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('stop) (process-entity-status! self (entity-perm-status complete) #t) (set! (-> self speed) 0.0))))
   :trans rider-trans
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
-      (until (ja-done? 0)
-        (quaternion-rotate-local-y!
-          (-> self root quat)
-          (-> self root quat)
-          (* -12743.111 (seconds-per-frame) (-> self speed))
-          )
-        (suspend)
-        (ja :num! (seek! max (* 0.5 (-> self speed))))
-        )
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (/ (-> self speed) 2)) :frame-num 0.0)
+        (until (ja-done? 0)
+          (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* -12743.111 (seconds-per-frame) (-> self speed)))
+          (suspend)
+          (ja :num! (seek! max (/ (-> self speed) 2))))))
+  :post rider-post)
 
 (defmethod init-from-entity! ((this lurkerm-short-sail) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -289,8 +236,7 @@
         (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-0 transform-index) 4)
         (set-vector! (-> s2-0 local-sphere) 0.0 0.0 0.0 36864.0)
-        (append-prim s3-0 s2-0)
-        )
+        (append-prim s3-0 s2-0))
       (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-1 collide-with) (collide-kind target))
@@ -298,8 +244,7 @@
         (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-1 transform-index) 3)
         (set-vector! (-> s2-1 local-sphere) 40960.0 0.0 0.0 24576.0)
-        (append-prim s3-0 s2-1)
-        )
+        (append-prim s3-0 s2-1))
       (let ((s2-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
         (set! (-> s2-2 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-2 collide-with) (collide-kind target))
@@ -307,13 +252,10 @@
         (set! (-> s2-2 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-2 transform-index) 3)
         (set-vector! (-> s2-2 local-sphere) 40960.0 0.0 0.0 24576.0)
-        (append-prim s3-0 s2-2)
-        )
-      )
+        (append-prim s3-0 s2-2)))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *lurkerm-short-sail-sg* '())
   (logior! (-> this skel status) (janim-status inited))
@@ -321,57 +263,46 @@
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this speed) 1.0)
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
-      (set! (-> this speed) 0.0)
-      )
+    (set! (-> this speed) 0.0))
   (go lurkerm-short-sail-idle)
-  (none)
-  )
+  (none))
 
 (deftype lurkerm-piston (process-drawable)
-  ((root       collide-shape-moving :override)
-   (sync       sync-info             :inline)
-   (base       vector                :inline)
-   (height     vector                :inline)
-   (speed      float)
-   (alt-actor  entity-actor)
-   )
+  ((root      collide-shape-moving :override)
+   (sync      sync-info :inline)
+   (base      vector :inline)
+   (height    vector :inline)
+   (speed     float)
+   (alt-actor entity-actor))
   (:states
-    lurkerm-piston-idle
-    )
-  )
+   lurkerm-piston-idle))
 
 
-(defskelgroup *lurkerm-piston-sg* lurkerm-piston lurkerm-piston-geo-jg lurkerm-piston-idle-ja
-              ((lurkerm-piston-geo-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 6)
-              )
+(defskelgroup *lurkerm-piston-sg*
+  lurkerm-piston
+  lurkerm-piston-geo-jg
+  lurkerm-piston-idle-ja
+  ((lurkerm-piston-geo-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 6))
 
 (defstate lurkerm-piston-idle (lurkerm-piston)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('stop)
-       (process-entity-status! self (entity-perm-status complete) #t)
-       (set! (-> self speed) 0.0)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('stop) (process-entity-status! self (entity-perm-status complete) #t) (set! (-> self speed) 0.0))))
   :trans rider-trans
-  :code (behavior ()
-    (loop
-      (ja-no-eval :group! lurkerm-piston-idle-ja :num! (seek! max (-> self speed)) :frame-num 0.0)
-      (until (ja-done? 0)
-        (let ((gp-0 (new-stack-vector0)))
-          (set! (-> gp-0 quad) (-> self base quad))
-          (+! (-> gp-0 y) (* (get-current-value-with-mirror (-> self sync) (-> self height y)) (-> self speed)))
-          (move-to-point! (-> self root) gp-0)
-          )
-        (suspend)
-        (ja :num! (seek! max (-> self speed)))
-        )
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja-no-eval :group! lurkerm-piston-idle-ja :num! (seek! max (-> self speed)) :frame-num 0.0)
+        (until (ja-done? 0)
+          (let ((gp-0 (new-stack-vector0)))
+            (set! (-> gp-0 quad) (-> self base quad))
+            (+! (-> gp-0 y) (* (get-current-value-with-mirror (-> self sync) (-> self height y)) (-> self speed)))
+            (move-to-point! (-> self root) gp-0))
+          (suspend)
+          (ja :num! (seek! max (-> self speed))))))
+  :post rider-post)
 
 (defmethod init-from-entity! ((this lurkerm-piston) (arg0 entity-actor))
   (local-vars (sv-16 res-tag) (sv-32 res-tag))
@@ -379,9 +310,7 @@
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -390,12 +319,10 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 3)
       (set-vector! (-> s3-0 local-sphere) 24576.0 0.0 0.0 20480.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
   (initialize-skeleton this *lurkerm-piston-sg* '())
@@ -405,74 +332,52 @@
   (let ((f30-0 (-> this base y)))
     (set! sv-16 (new 'static 'res-tag))
     (let ((v1-32 (res-lump-data arg0 'height-info pointer :tag-ptr (& sv-16))))
-      (set! (-> this base y) (+ f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0))
-                                          (-> (the-as (pointer float) v1-32))
-                                          0.0
-                                          )
-                                )
-            )
-      )
-    )
+      (set! (-> this base y)
+            (+ f30-0 (if (and v1-32 (> (the-as int (-> sv-16 elt-count)) 0)) (-> (the-as (pointer float) v1-32)) 0.0)))))
   (let ((s4-1 (-> this height)))
     (set! (-> s4-1 x) 0.0)
     (set! sv-32 (new 'static 'res-tag))
     (let ((v1-35 (res-lump-data arg0 'height-info (pointer float) :tag-ptr (& sv-32))))
-      (set! (-> s4-1 y) (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count))))
-                            (-> v1-35 1)
-                            20480.0
-                            )
-            )
-      )
+      (set! (-> s4-1 y) (if (and v1-35 (< 1 (the-as int (-> sv-32 elt-count)))) (-> v1-35 1) 20480.0)))
     (set! (-> s4-1 z) 0.0)
-    (set! (-> s4-1 w) 1.0)
-    )
+    (set! (-> s4-1 w) 1.0))
   (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this speed) 1.0)
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
-      (set! (-> this speed) 0.0)
-      )
+    (set! (-> this speed) 0.0))
   (go lurkerm-piston-idle)
-  (none)
-  )
+  (none))
 
 (deftype accordian (process-drawable)
-  ((speed      float)
-   (alt-actor  entity-actor)
-   )
+  ((speed     float)
+   (alt-actor entity-actor))
   (:states
-    accordian-idle
-    )
-  )
+   accordian-idle))
 
 
-(defskelgroup *accordian-sg* accordian accordian-lod0-jg accordian-idle-ja
-              ((accordian-lod0-mg (meters 20)) (accordian-lod1-mg (meters 999999)))
-              :bounds (static-spherem -7 0 23 25)
-              :longest-edge (meters 4)
-              )
+(defskelgroup *accordian-sg*
+  accordian
+  accordian-lod0-jg
+  accordian-idle-ja
+  ((accordian-lod0-mg (meters 20)) (accordian-lod1-mg (meters 999999)))
+  :bounds (static-spherem -7 0 23 25)
+  :longest-edge (meters 4))
 
 (defstate accordian-idle (accordian)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('stop)
-       (process-entity-status! self (entity-perm-status complete) #t)
-       (set! (-> self speed) 0.0)
-       )
-      )
-    )
-  :code (behavior ()
-    (ja-no-eval :num! (loop!) :frame-num 0.0)
-    (ja-post)
-    (loop
-      (suspend)
-      (when (logtest? (-> self draw status) (draw-status was-drawn))
-        (ja :num! (loop! (-> self speed)))
-        (ja-post)
-        )
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('stop) (process-entity-status! self (entity-perm-status complete) #t) (set! (-> self speed) 0.0))))
+  :code
+    (behavior ()
+      (ja-no-eval :num! (loop!) :frame-num 0.0)
+      (ja-post)
+      (loop
+        (suspend)
+        (when (logtest? (-> self draw status) (draw-status was-drawn))
+          (ja :num! (loop! (-> self speed)))
+          (ja-post)))))
 
 (defmethod init-from-entity! ((this accordian) (arg0 entity-actor))
   (set! (-> this root) (new 'process 'trsqv))
@@ -482,205 +387,155 @@
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this speed) 1.0)
   (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
-      (set! (-> this speed) 0.0)
-      )
+    (set! (-> this speed) 0.0))
   (go accordian-idle)
-  (none)
-  )
+  (none))
 
-(defskelgroup *junglecam-sg* junglecam junglecam-lod0-jg junglecam-beamcam-ja
-              ((junglecam-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 80)
-              )
+(defskelgroup *junglecam-sg*
+  junglecam
+  junglecam-lod0-jg
+  junglecam-beamcam-ja
+  ((junglecam-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 80))
 
-(deftype junglecam (process-hidden)
-  ()
-  )
+(deftype junglecam (process-hidden) ())
 
 
-(deftype precurbridgecam (pov-camera)
-  ()
-  )
+(deftype precurbridgecam (pov-camera) ())
 
 
 (defstate pov-camera-playing (precurbridgecam)
   :virtual #t
-  :code (behavior ()
-    (ambient-hint-spawn "gamcam30" (the-as vector #f) *entity-pool* 'camera)
-    (ja :group! junglecam-precurbridgecam-ja)
-    (ja-no-eval :group! junglecam-precurbridgecam-ja :num! (seek! (ja-aframe 0.0 0)) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek! (ja-aframe 0.0 0)))
-      )
-    (send-event (ppointer->process (-> self parent)) 'go)
-    (ja-no-eval :num! (seek!))
-    (while (not (ja-done? 0))
-      (suspend)
-      (ja-eval)
-      )
-    (go-virtual pov-camera-done-playing)
-    )
-  )
+  :code
+    (behavior ()
+      (ambient-hint-spawn "gamcam30" (the-as vector #f) *entity-pool* 'camera)
+      (ja :group! junglecam-precurbridgecam-ja)
+      (ja-no-eval :group! junglecam-precurbridgecam-ja :num! (seek! (ja-aframe 0.0 0)) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 0.0 0))))
+      (send-event (ppointer->process (-> self parent)) 'go)
+      (ja-no-eval :num! (seek!))
+      (while (not (ja-done? 0))
+        (suspend)
+        (ja-eval))
+      (go-virtual pov-camera-done-playing)))
 
-(deftype precurbridge-span (structure)
-  ()
-  )
+(deftype precurbridge-span (structure) ())
 
 
 (deftype precurbridge (process-drawable)
-  ((root              collide-shape-moving :override)
-   (smush             smush-control         :inline)
-   (base              vector                :inline)
-   (activation-point  vector                :inline)
-   (span-array        precurbridge-span     8)
-   )
+  ((root             collide-shape-moving :override)
+   (smush            smush-control :inline)
+   (base             vector :inline)
+   (activation-point vector :inline)
+   (span-array       precurbridge-span 8))
   (:states
-    precurbridge-activate
-    (precurbridge-active symbol)
-    precurbridge-idle
-    )
-  )
+   precurbridge-activate
+   (precurbridge-active symbol)
+   precurbridge-idle))
 
 
-(defskelgroup *precurbridge-sg* precurbridge precurbridge-geo-jg precurbridge-idle-ja
-              ((precurbridge-geo-mg (meters 20)) (precurbridge-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 40)
-              :longest-edge (meters 3.6)
-              )
+(defskelgroup *precurbridge-sg*
+  precurbridge
+  precurbridge-geo-jg
+  precurbridge-idle-ja
+  ((precurbridge-geo-mg (meters 20)) (precurbridge-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 40)
+  :longest-edge (meters 3.6))
 
 (defstate precurbridge-idle (precurbridge)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('go)
-       (go precurbridge-activate)
-       )
-      )
-    )
-  :code (behavior ()
-    (ja :group! precurbridge-idle-ja :num! min)
-    (transform-post)
-    (loop
-      (when (and *target*
-                 (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
-                 (< (-> self activation-point y) (-> *target* control trans y))
-                 (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
-                 (not (-> self child))
-                 )
-        (cond
-          ((send-event *target* 'query 'powerup (pickup-type eco-blue))
-           (logclear! (-> self mask) (process-mask actor-pause))
-           (logclear! (-> self mask) (process-mask platform))
-           (let ((gp-1 (entity-by-name "junglecam-1")))
-             (cond
-               (gp-1
-                 (process-spawn
-                   precurbridgecam
-                   :init pov-camera-init-by-other
-                   (-> gp-1 extra trans)
-                   *junglecam-sg*
-                   "precurbridgecam"
-                   0
-                   #f
-                   '()
-                   :to self
-                   )
-                 )
-               (else
-                 (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%")
-                 (go precurbridge-activate)
-                 )
-               )
-             )
-           )
-          (else
-            (level-hint-spawn
-              (text-id sidekick-hint-precurbridge)
-              "sksp0039"
-              (the-as entity #f)
-              *entity-pool*
-              (game-task none)
-              )
-            )
-          )
-        )
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('go) (go precurbridge-activate))))
+  :code
+    (behavior ()
+      (ja :group! precurbridge-idle-ja :num! min)
+      (transform-post)
+      (loop
+        (when (and *target*
+                   (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
+                   (< (-> self activation-point y) (-> *target* control trans y))
+                   (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
+                   (not (-> self child)))
+          (cond
+            ((send-event *target* 'query 'powerup (pickup-type eco-blue))
+             (logclear! (-> self mask) (process-mask actor-pause))
+             (logclear! (-> self mask) (process-mask platform))
+             (let ((gp-1 (entity-by-name "junglecam-1")))
+               (cond
+                 (gp-1
+                  (process-spawn precurbridgecam
+                                 :init
+                                 pov-camera-init-by-other
+                                 (-> gp-1 extra trans)
+                                 *junglecam-sg*
+                                 "precurbridgecam"
+                                 0
+                                 #f
+                                 '()
+                                 :to
+                                 self))
+                 (else (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%") (go precurbridge-activate)))))
+            (else
+             (level-hint-spawn (text-id sidekick-hint-precurbridge) "sksp0039" (the-as entity #f) *entity-pool* (game-task none)))))
+        (suspend)))
+  :post ja-post)
 
 (defstate precurbridge-activate (precurbridge)
-  :exit (behavior ()
-    (logior! (-> self mask) (process-mask actor-pause))
-    )
+  :exit
+    (behavior ()
+      (logior! (-> self mask) (process-mask actor-pause)))
   :trans rider-trans
-  :code (behavior ()
-    (process-entity-status! self (entity-perm-status complete) #t)
-    (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
-    (ja-no-eval :group! precurbridge-idle-ja :num! (seek! max 0.25) :frame-num 0.0)
-    (until (ja-done? 0)
-      (if (rand-vu-percent? 0.1)
-          (spawn-projectile-blue *target*)
-          )
-      (suspend)
-      (ja :num! (seek! max 0.25))
-      )
-    (go precurbridge-active #f)
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (process-entity-status! self (entity-perm-status complete) #t)
+      (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
+      (ja-no-eval :group! precurbridge-idle-ja :num! (seek! max 0.25) :frame-num 0.0)
+      (until (ja-done? 0)
+        (if (rand-vu-percent? 0.1) (spawn-projectile-blue *target*))
+        (suspend)
+        (ja :num! (seek! max 0.25)))
+      (go precurbridge-active #f))
+  :post rider-post)
 
 (defstate precurbridge-active (precurbridge)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('bonk)
-       (let* ((gp-0 (the-as object (-> block param 0)))
-              (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
-              (s5-0 (-> self root))
-              )
-         (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
-         ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0)
-         )
-       (activate! (-> self smush) -1.0 150 600 1.0 1.0)
-       )
-      )
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('bonk)
+         (let* ((gp-0 (the-as object (-> block param 0)))
+                (a0-2 (-> (the-as touching-shapes-entry gp-0) head))
+                (s5-0 (-> self root)))
+           (get-touched-prim a0-2 s5-0 (the-as touching-shapes-entry gp-0))
+           ((method-of-type touching-shapes-entry get-touched-shape) (the-as touching-shapes-entry gp-0) s5-0))
+         (activate! (-> self smush) -1.0 150 600 1.0 1.0))))
   :trans rider-trans
-  :code (behavior ((arg0 symbol))
-    (set! (-> self draw bounds w) 81920.0)
-    (when arg0
-      (ja-channel-set! 1)
-      (ja :group! precurbridge-float-ja :num! min)
-      )
-    (ja-post)
-    (update-transforms! (-> self root))
-    (logior! (-> self mask) (process-mask actor-pause))
-    (loop
-      (if (not (movie?))
-          (logior! (-> self mask) (process-mask platform))
-          )
-      (cond
-        ((and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-         (when (not (ja-group? precurbridge-static-ja))
-           (ja-channel-push! 1 (seconds 0.2))
-           (ja :group! precurbridge-static-ja :num! min)
-           )
-         )
-        (else
-          (when (not (ja-group? precurbridge-float-ja))
-            (ja-channel-push! 1 (seconds 0.2))
-            (ja :group! precurbridge-float-ja :num! min)
-            )
-          )
-        )
-      (update! (-> self sound))
-      (ja :num! (loop! 0.4))
-      (suspend)
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ((arg0 symbol))
+      (set! (-> self draw bounds w) 81920.0)
+      (when arg0
+        (ja-channel-set! 1)
+        (ja :group! precurbridge-float-ja :num! min))
+      (ja-post)
+      (update-transforms! (-> self root))
+      (logior! (-> self mask) (process-mask actor-pause))
+      (loop
+        (if (not (movie?)) (logior! (-> self mask) (process-mask platform)))
+        (cond
+          ((and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+           (when (not (ja-group? precurbridge-static-ja))
+             (ja-channel-push! 1 (seconds 0.2))
+             (ja :group! precurbridge-static-ja :num! min)))
+          (else
+           (when (not (ja-group? precurbridge-float-ja))
+             (ja-channel-push! 1 (seconds 0.2))
+             (ja :group! precurbridge-float-ja :num! min))))
+        (update! (-> self sound))
+        (ja :num! (loop! 0.4))
+        (suspend)))
+  :post rider-post)
 
 (defmethod init-from-entity! ((this precurbridge) (arg0 entity-actor))
   (stack-size-set! (-> this main-thread) 512)
@@ -688,9 +543,7 @@
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 16) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -706,8 +559,7 @@
         (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-0 transform-index) 5)
         (set-vector! (-> s2-0 local-sphere) -6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-0)
-        )
+        (append-prim s3-0 s2-0))
       (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-1 collide-with) (collide-kind target))
@@ -715,8 +567,7 @@
         (set! (-> s2-1 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-1 transform-index) 7)
         (set-vector! (-> s2-1 local-sphere) 6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-1)
-        )
+        (append-prim s3-0 s2-1))
       (let ((s2-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 1))))
         (set! (-> s2-2 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-2 collide-with) (collide-kind target))
@@ -724,8 +575,7 @@
         (set! (-> s2-2 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-2 transform-index) 9)
         (set-vector! (-> s2-2 local-sphere) -6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-2)
-        )
+        (append-prim s3-0 s2-2))
       (let ((s2-3 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
         (set! (-> s2-3 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-3 collide-with) (collide-kind target))
@@ -733,8 +583,7 @@
         (set! (-> s2-3 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-3 transform-index) 11)
         (set-vector! (-> s2-3 local-sphere) 6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-3)
-        )
+        (append-prim s3-0 s2-3))
       (let ((s2-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 1))))
         (set! (-> s2-4 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-4 collide-with) (collide-kind target))
@@ -742,8 +591,7 @@
         (set! (-> s2-4 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-4 transform-index) 13)
         (set-vector! (-> s2-4 local-sphere) -6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-4)
-        )
+        (append-prim s3-0 s2-4))
       (let ((s2-5 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
         (set! (-> s2-5 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-5 collide-with) (collide-kind target))
@@ -751,8 +599,7 @@
         (set! (-> s2-5 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-5 transform-index) 15)
         (set-vector! (-> s2-5 local-sphere) 6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-5)
-        )
+        (append-prim s3-0 s2-5))
       (let ((s2-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 3) (the-as uint 1))))
         (set! (-> s2-6 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-6 collide-with) (collide-kind target))
@@ -760,8 +607,7 @@
         (set! (-> s2-6 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-6 transform-index) 17)
         (set-vector! (-> s2-6 local-sphere) -6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-6)
-        )
+        (append-prim s3-0 s2-6))
       (let ((s2-7 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
         (set! (-> s2-7 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-7 collide-with) (collide-kind target))
@@ -769,8 +615,7 @@
         (set! (-> s2-7 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-7 transform-index) 19)
         (set-vector! (-> s2-7 local-sphere) 6144.0 0.0 0.0 17203.2)
-        (append-prim s3-0 s2-7)
-        )
+        (append-prim s3-0 s2-7))
       (let ((s2-8 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
         (set! (-> s2-8 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-8 collide-with) (collide-kind target))
@@ -778,8 +623,7 @@
         (set! (-> s2-8 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-8 transform-index) 4)
         (set-vector! (-> s2-8 local-sphere) -4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-8)
-        )
+        (append-prim s3-0 s2-8))
       (let ((s2-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> s2-9 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-9 collide-with) (collide-kind target))
@@ -787,8 +631,7 @@
         (set! (-> s2-9 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-9 transform-index) 6)
         (set-vector! (-> s2-9 local-sphere) 4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-9)
-        )
+        (append-prim s3-0 s2-9))
       (let ((s2-10 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
         (set! (-> s2-10 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-10 collide-with) (collide-kind target))
@@ -796,8 +639,7 @@
         (set! (-> s2-10 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-10 transform-index) 8)
         (set-vector! (-> s2-10 local-sphere) -4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-10)
-        )
+        (append-prim s3-0 s2-10))
       (let ((s2-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> s2-11 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-11 collide-with) (collide-kind target))
@@ -805,8 +647,7 @@
         (set! (-> s2-11 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-11 transform-index) 10)
         (set-vector! (-> s2-11 local-sphere) 4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-11)
-        )
+        (append-prim s3-0 s2-11))
       (let ((s2-12 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
         (set! (-> s2-12 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-12 collide-with) (collide-kind target))
@@ -814,8 +655,7 @@
         (set! (-> s2-12 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-12 transform-index) 12)
         (set-vector! (-> s2-12 local-sphere) -4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-12)
-        )
+        (append-prim s3-0 s2-12))
       (let ((s2-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> s2-13 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-13 collide-with) (collide-kind target))
@@ -823,8 +663,7 @@
         (set! (-> s2-13 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-13 transform-index) 14)
         (set-vector! (-> s2-13 local-sphere) 4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-13)
-        )
+        (append-prim s3-0 s2-13))
       (let ((s2-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
         (set! (-> s2-14 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-14 collide-with) (collide-kind target))
@@ -832,8 +671,7 @@
         (set! (-> s2-14 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-14 transform-index) 16)
         (set-vector! (-> s2-14 local-sphere) -4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-14)
-        )
+        (append-prim s3-0 s2-14))
       (let ((s2-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
         (set! (-> s2-15 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-15 collide-with) (collide-kind target))
@@ -841,13 +679,10 @@
         (set! (-> s2-15 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-15 transform-index) 18)
         (set-vector! (-> s2-15 local-sphere) 4096.0 0.0 0.0 9011.2)
-        (append-prim s3-0 s2-15)
-        )
-      )
+        (append-prim s3-0 s2-15)))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (set-vector! (-> this activation-point) 1765785.6 61440.0 -1279180.8 1.0)
   (initialize-skeleton this *precurbridge-sg* '())
@@ -859,97 +694,64 @@
   (cond
     ((and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
      (logclear! (-> this mask) (process-mask actor-pause))
-     (go precurbridge-active #t)
-     )
-    (else
-      (go precurbridge-idle)
-      )
-    )
-  (none)
-  )
+     (go precurbridge-active #t))
+    (else (go precurbridge-idle)))
+  (none))
 
 (deftype maindoor (process-drawable)
-  ((root    collide-shape :override)
-   (thresh  vector         :inline)
-   )
-  (:states
-    (maindoor-closed symbol)
-    (maindoor-open symbol)
-    )
-  )
+  ((root   collide-shape :override)
+   (thresh vector :inline))
+  (:states (maindoor-closed symbol)
+   (maindoor-open symbol)))
 
 
-(defskelgroup *maindoor-sg* maindoor maindoor-lod0-jg maindoor-idle-ja
-              ((maindoor-lod0-mg (meters 20)) (maindoor-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 7)
-              )
+(defskelgroup *maindoor-sg*
+  maindoor
+  maindoor-lod0-jg
+  maindoor-idle-ja
+  ((maindoor-lod0-mg (meters 20)) (maindoor-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 7))
 
 (defstate maindoor-closed (maindoor)
-  :code (behavior ((arg0 symbol))
-    (set! (-> self draw force-lod) 1)
-    (logclear! (-> self draw status) (draw-status hidden))
-    (if arg0
-        (ja :num-func num-func-identity :frame-num 0.0)
-        )
-    (suspend)
-    (update-transforms! (-> self root))
-    (loop
-      (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                (and (and *target*
-                          (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-                          )
-                     (send-event *target* 'query 'powerup (pickup-type eco-blue))
-                     )
-                )
-        (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
-        (go maindoor-open #f)
-        )
-      (if (and *target*
-               (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
-               )
-          (level-hint-spawn
-            (text-id sidekick-hint-rounddoor)
-            "sksp0038"
-            (the-as entity #f)
-            *entity-pool*
-            (game-task none)
-            )
-          )
-      (when (ja-min? 0)
-        (set! (-> self root root-prim prim-core action) (collide-action solid))
-        (set! (-> self root root-prim prim-core offense) (collide-offense indestructible))
-        )
-      (ja :num! (seek! 0.0))
-      (ja-post)
+  :code
+    (behavior ((arg0 symbol))
+      (set! (-> self draw force-lod) 1)
+      (logclear! (-> self draw status) (draw-status hidden))
+      (if arg0 (ja :num-func num-func-identity :frame-num 0.0))
       (suspend)
-      )
-    )
-  )
+      (update-transforms! (-> self root))
+      (loop
+        (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                  (and (and *target* (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                       (send-event *target* 'query 'powerup (pickup-type eco-blue))))
+          (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
+          (go maindoor-open #f))
+        (if (and *target* (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+          (level-hint-spawn (text-id sidekick-hint-rounddoor) "sksp0038" (the-as entity #f) *entity-pool* (game-task none)))
+        (when (ja-min? 0)
+          (set! (-> self root root-prim prim-core action) (collide-action solid))
+          (set! (-> self root root-prim prim-core offense) (collide-offense indestructible)))
+        (ja :num! (seek! 0.0))
+        (ja-post)
+        (suspend))))
 
 (defstate maindoor-open (maindoor)
-  :code (behavior ((arg0 symbol))
-    (set! (-> self draw force-lod) 0)
-    (logclear! (-> self draw status) (draw-status hidden))
-    (process-entity-status! self (entity-perm-status complete) #t)
-    (if arg0
-        (ja :num-func num-func-identity :frame-num max)
-        )
-    (set! (-> self root root-prim prim-core action) (collide-action))
-    (set! (-> self root root-prim prim-core offense) (collide-offense no-offense))
-    (while (not (ja-max? 0))
-      (ja :num! (seek! max 2.0))
-      (if (and (not arg0) (rand-vu-percent? 0.2))
-          (spawn-projectile-blue *target*)
-          )
-      (suspend)
-      )
-    (logior! (-> self draw status) (draw-status hidden))
-    (loop
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ((arg0 symbol))
+      (set! (-> self draw force-lod) 0)
+      (logclear! (-> self draw status) (draw-status hidden))
+      (process-entity-status! self (entity-perm-status complete) #t)
+      (if arg0 (ja :num-func num-func-identity :frame-num max))
+      (set! (-> self root root-prim prim-core action) (collide-action))
+      (set! (-> self root root-prim prim-core offense) (collide-offense no-offense))
+      (while (not (ja-max? 0))
+        (ja :num! (seek! max 2.0))
+        (if (and (not arg0) (rand-vu-percent? 0.2)) (spawn-projectile-blue *target*))
+        (suspend))
+      (logior! (-> self draw status) (draw-status hidden))
+      (loop
+        (suspend)))
+  :post ja-post)
 
 (defmethod init-from-entity! ((this maindoor) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-others))))
@@ -960,38 +762,30 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 0)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 24576.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *maindoor-sg* '())
   (update-transforms! (-> this root))
   (set! (-> this thresh w) 61440.0)
   (if (or (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status complete)))
-          (and (and *target*
-                    (>= (-> this thresh w) (vector-vector-distance (-> this root trans) (-> *target* control trans)))
-                    )
-               (send-event *target* 'query 'powerup (pickup-type eco-blue))
-               )
-          )
-      (go maindoor-open #t)
-      (go maindoor-closed #t)
-      )
-  (none)
-  )
+          (and (and *target* (>= (-> this thresh w) (vector-vector-distance (-> this root trans) (-> *target* control trans))))
+               (send-event *target* 'query 'powerup (pickup-type eco-blue))))
+    (go maindoor-open #t)
+    (go maindoor-closed #t))
+  (none))
 
-(deftype sidedoor (eco-door)
-  ()
-  )
+(deftype sidedoor (eco-door) ())
 
 
-(defskelgroup *sidedoor-sg* sidedoor sidedoor-geo-jg sidedoor-idle-ja
-              ((sidedoor-geo-mg (meters 20)) (sidedoor-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 8)
-              )
+(defskelgroup *sidedoor-sg*
+  sidedoor
+  sidedoor-geo-jg
+  sidedoor-idle-ja
+  ((sidedoor-geo-mg (meters 20)) (sidedoor-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 8))
 
 (defmethod eco-door-method-24 ((this sidedoor))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
@@ -1002,15 +796,12 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 2)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 14336.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod eco-door-method-25 ((this sidedoor))
   (initialize-skeleton this *sidedoor-sg* '())
@@ -1019,61 +810,50 @@
   (set! (-> this speed) 6.0)
   (update-transforms! (-> this root))
   0
-  (none)
-  )
+  (none))
 
 (deftype jngpusher (process-drawable)
-  ((root       trsqv     :override)
-   (sync       sync-info  :inline)
-   (back-prim  collide-shape-prim)
-   )
+  ((root      trsqv :override)
+   (sync      sync-info :inline)
+   (back-prim collide-shape-prim))
   (:states
-    jngpusher-idle
-    )
-  )
+   jngpusher-idle))
 
 
-(defmethod relocate ((this jngpusher) (arg0 int))
-  (if (nonzero? (-> this back-prim))
-      (&+! (-> this back-prim) arg0)
-      )
-  (call-parent-method this arg0)
-  )
+(defmethod relocate ((this jngpusher) (offset int))
+  (if (nonzero? (-> this back-prim)) (&+! (-> this back-prim) offset))
+  (call-parent-method this offset))
 
-(defskelgroup *jngpusher-sg* jngpusher 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 10))
+(defskelgroup *jngpusher-sg*
+  jngpusher
+  0
+  2
+  ((1 (meters 999999)))
+  :bounds (static-spherem 0 0 0 10))
 
 (defstate jngpusher-idle (jngpusher)
   :trans rider-trans
-  :code (behavior ()
-    (loop
-      (ja :num-func num-func-identity
-          :frame-num (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0)))
-          )
-      (cond
-        ((< (ja-frame-num 0) (the float (/ (ja-num-frames 0) 3)))
-         (set! (-> self back-prim prim-core collide-as) (collide-kind))
-         (set! (-> self back-prim collide-with) (collide-kind))
-         0
-         )
-        (else
-          (set! (-> self back-prim prim-core collide-as) (collide-kind ground-object))
-          (set! (-> self back-prim collide-with) (collide-kind target))
-          )
-        )
-      (suspend)
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (ja :num-func num-func-identity :frame-num (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0))))
+        (cond
+          ((< (ja-frame-num 0) (the float (/ (ja-num-frames 0) 3)))
+           (set! (-> self back-prim prim-core collide-as) (collide-kind))
+           (set! (-> self back-prim collide-with) (collide-kind))
+           0)
+          (else
+           (set! (-> self back-prim prim-core collide-as) (collide-kind ground-object))
+           (set! (-> self back-prim collide-with) (collide-kind target))))
+        (suspend)))
+  :post rider-post)
 
 (defmethod init-from-entity! ((this jngpusher) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy platform))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
       (set! (-> s3-0 collide-with) (collide-kind target))
@@ -1088,8 +868,7 @@
         (set! (-> s2-0 prim-core offense) (collide-offense indestructible))
         (set! (-> s2-0 transform-index) 4)
         (set-vector! (-> s2-0 local-sphere) 8192.0 0.0 0.0 20480.0)
-        (append-prim s3-0 s2-0)
-        )
+        (append-prim s3-0 s2-0))
       (let ((s2-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind ground-object))
         (set! (-> s2-1 collide-with) (collide-kind target))
@@ -1098,49 +877,42 @@
         (set! (-> s2-1 transform-index) 4)
         (set-vector! (-> s2-1 local-sphere) 36864.0 0.0 0.0 20480.0)
         (append-prim s3-0 s2-1)
-        (set! (-> this back-prim) s2-1)
-        )
-      )
+        (set! (-> this back-prim) s2-1)))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *jngpusher-sg* '())
   (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.15 0.15)
   (go jngpusher-idle)
-  (none)
-  )
+  (none))
 
-(deftype jungle-water (water-anim)
-  ()
-  )
+(deftype jungle-water (water-anim) ())
 
 
-(define ripple-for-jungle-water (new 'static 'ripple-wave-set
-                                  :count 3
-                                  :converted #f
-                                  :normal-scale 1.5
-                                  :wave (new 'static 'inline-array ripple-wave 4
-                                    (new 'static 'ripple-wave :scale 30.0 :xdiv -2 :speed 4.0)
-                                    (new 'static 'ripple-wave :scale 30.0 :xdiv 1 :zdiv -1 :speed 4.0)
-                                    (new 'static 'ripple-wave :scale 10.0 :xdiv -5 :zdiv -3 :speed 2.0)
-                                    (new 'static 'ripple-wave)
-                                    )
-                                  )
-        )
+(define ripple-for-jungle-water
+  (new 'static
+       'ripple-wave-set
+       :count 3
+       :converted #f
+       :normal-scale 1.5
+       :wave
+       (new 'static
+            'inline-array
+            ripple-wave
+            4
+            (new 'static 'ripple-wave :scale 30.0 :xdiv -2 :speed 4.0)
+            (new 'static 'ripple-wave :scale 30.0 :xdiv 1 :zdiv -1 :speed 4.0)
+            (new 'static 'ripple-wave :scale 10.0 :xdiv -5 :zdiv -3 :speed 2.0)
+            (new 'static 'ripple-wave))))
 
 (defmethod water-vol-method-22 ((this jungle-water))
-  (let ((t9-0 (method-of-type water-anim water-vol-method-22)))
-    (t9-0 this)
-    )
+  (let ((t9-0 (method-of-type water-anim water-vol-method-22))) (t9-0 this))
   (let ((v1-2 (new 'process 'ripple-control)))
     (set! (-> this draw ripple) v1-2)
     (set-vector! (-> this draw color-mult) 0.01 0.45 0.5 0.75)
     (set! (-> v1-2 global-scale) 3072.0)
     (set! (-> v1-2 close-fade-dist) 163840.0)
     (set! (-> v1-2 far-fade-dist) 245760.0)
-    (set! (-> v1-2 waveform) ripple-for-jungle-water)
-    )
-  (none)
-  )
+    (set! (-> v1-2 waveform) ripple-for-jungle-water))
+  (none))

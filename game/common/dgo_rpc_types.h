@@ -8,8 +8,7 @@
 #include "common/common_types.h"
 #include "common/versions/versions.h"
 
-// TODO: jak 3 stub
-constexpr PerGameVersion<int> DGO_RPC_ID(0xdeb4, 0xfab3, 0x0);
+constexpr PerGameVersion<int> DGO_RPC_ID(0xdeb4, 0xfab3, 0xfab3);
 constexpr int DGO_RPC_CHANNEL = 3;
 constexpr int DGO_RPC_LOAD_FNO = 0;
 constexpr int DGO_RPC_LOAD_NEXT_FNO = 1;
@@ -27,4 +26,8 @@ struct RPC_Dgo_Cmd {
   uint32_t buffer2;
   uint32_t buffer_heap_top;
   char name[16];
+
+  // note: padding this a bit so the jak 3 commands can get sent to overlord without overflowing
+  // a buffer.
+  uint8_t pad[32];
 };

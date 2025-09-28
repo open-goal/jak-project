@@ -18,7 +18,7 @@
 #include "CodeTester.h"
 #include "IGen.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 
 namespace emitter {
 
@@ -133,6 +133,7 @@ void CodeTester::clear() {
  * Execute the buffered code with no arguments, return the value of RAX.
  */
 u64 CodeTester::execute() {
+  // clang-format off
 #if defined(__APPLE__) && defined(__aarch64__)
   mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
   auto ret = ((u64(*)())code_buffer)();
@@ -141,6 +142,7 @@ u64 CodeTester::execute() {
 #else
   return ((u64(*)())code_buffer)();
 #endif
+  // clang-format on
 }
 
 /*!
@@ -148,6 +150,7 @@ u64 CodeTester::execute() {
  * arguments will appear in (will handle windows/linux differences)
  */
 u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
+  // clang-format off
 #if defined(__APPLE__) && defined(__aarch64__)
   mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
   auto ret = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
@@ -156,6 +159,7 @@ u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
 #else
   return ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
 #endif
+  // clang-format on
 }
 
 /*!

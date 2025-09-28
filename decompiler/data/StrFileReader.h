@@ -19,8 +19,10 @@ class StrFileReader {
   explicit StrFileReader(const fs::path& file_path, GameVersion version);
   int chunk_count() const;
   const std::vector<u8>& get_chunk(int idx) const;
+  std::string get_chunk_art_name(int idx) const;
+
   std::string get_full_name(const std::string& short_name) const;
-  std::string get_texture_name() const;
+  std::string get_chunk_texture_name(int idx) const;
 
  private:
   void init_jak1(const fs::path& file_path);
@@ -33,6 +35,8 @@ class StrFileReader {
         return "/src/next/data/art-group6/";
       case GameVersion::Jak2:
         return "/src/jak2/final/art-group7/";
+      case GameVersion::Jak3:
+        return "/src/jak3/final/art-group8/";
       default:
         ASSERT_MSG(false, "NYI get_file_info_string version");
         break;
@@ -43,6 +47,8 @@ class StrFileReader {
     switch (m_version) {
       case GameVersion::Jak2:
         return "/src/jak2/final/texture-page8/";
+      case GameVersion::Jak3:
+        return "/src/jak3/final/texture-page8/";
       default:
         ASSERT_MSG(false, "NYI get_file_info_string version");
         break;

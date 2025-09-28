@@ -1,5 +1,7 @@
 #include "analyze_inspect_method.h"
+
 #include "common/log/log.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
@@ -1427,10 +1429,15 @@ std::string inspect_inspect_method(Function& inspect_method,
                                  object_file_meta);
 }
 
-std::string old_method_string(const MethodInfo& info) {
+std::string old_method_string(const MethodInfo& info, const bool omit_comment = false) {
   if (info.type.arg_count() > 0) {
     if (info.type.base_type() == "function" || info.type.base_type() == "state") {
-      std::string result = fmt::format(" ;; ({} (", info.name);
+      std::string result;
+      if (omit_comment) {
+        result = fmt::format(" ({} (", info.name);
+      } else {
+        result = fmt::format(" ;; ({} (", info.name);
+      }
       bool add = false;
       for (int i = 0; i < (int)info.type.arg_count() - 1; i++) {
         result += info.type.get_arg(i).print();
@@ -1445,11 +1452,14 @@ std::string old_method_string(const MethodInfo& info) {
       if (info.type.base_type() == "state") {
         result += " :state";
       }
-      result += fmt::format(" {})", info.id);
+      result += ")";
       return result;
     }
   }
 
+  if (omit_comment) {
+    return fmt::format(" ({} {}) weird method", info.name, info.type.print());
+  }
   return fmt::format(" ;; ({} {}) weird method", info.name, info.type.print());
 }
 
@@ -1637,81 +1647,75 @@ std::string TypeInspectorResult::print_as_deftype(
     result.append("\n  ");
   }
 
+  std::string state_methods_list;
   std::unordered_map<int, std::string> method_states = {};
   if (object_file_meta.state_methods.count(type_name) != 0) {
     method_states = object_file_meta.state_methods.at(type_name);
+    for (const auto& [method_id, state_name] : method_states) {
+      MethodInfo info;
+      state_methods_list += fmt::format("    {} ;; {}", state_name, method_id);
+      if (old_game_type && old_game_type->get_my_method(method_id, &info)) {
+        state_methods_list += ", old:" + old_method_string(info, true);
+      }
+      state_methods_list += "\n";
+    }
   }
 
+  std::string methods_list;
   if (type_method_count > 9) {
-    std::string methods_list;
-    std::string state_methods_list;
-
     MethodInfo old_new_method;
     if (old_game_type && old_game_type->get_my_new_method(&old_new_method)) {
-      methods_list.append("    ");
+      methods_list.append("    (new (symbol type) _type_) ;; 0");
       methods_list.append(old_method_string(old_new_method));
       methods_list.push_back('\n');
     }
-    bool done_with_state_methods = false;
     for (int i = parent_method_count; i < type_method_count; i++) {
-      bool print_as_state_method = false;
-      if (method_states.count(i) != 0) {
-        if (!done_with_state_methods) {
-          print_as_state_method = true;
-          state_methods_list.append(fmt::format("    {}", method_states.at(i)));
-        } else {
-          methods_list.append(
-              fmt::format("    ({} () _type_ :state) ;; {}", method_states.at(i), i));
-        }
-      } else {
-        done_with_state_methods = true;
-        methods_list.append(fmt::format("    ({}-method-{} () none) ;; {}", type_name, i, i));
+      // If it's a state-method (virtual state) skip it
+      if (method_states.find(i) != method_states.end()) {
+        continue;
       }
+
+      methods_list.append(fmt::format("    ({}-method-{} () none) ;; {}", type_name, i, i));
       if (old_game_type) {
         MethodInfo info;
         if (old_game_type->get_my_method(i, &info)) {
-          if (print_as_state_method) {
-            state_methods_list += old_method_string(info);
-          } else {
-            methods_list += old_method_string(info);
-          }
+          methods_list += old_method_string(info);
         }
       }
-      if (print_as_state_method) {
-        state_methods_list.push_back('\n');
-      } else {
-        methods_list.push_back('\n');
-      }
-    }
-    if (!state_methods_list.empty()) {
-      result.append("(:state-methods\n");
-      result.append(state_methods_list);
-      result.append("    )\n  ");
-    }
-    if (!methods_list.empty()) {
-      result.append("(:methods");
-      result.append(methods_list);
-      result.append("    )\n  ");
+      methods_list.push_back('\n');
     }
   }
 
-  // Print out (normal) states if we have em
-  // - Could probably assume the process name comes first and associate it with the right type
-  // but that may or may not be risky so, edit the types yourself...
-  if (method_states.size() > 0) {
-    result.append("(:states\n    ");
-    for (const auto& [id, name] : method_states) {
-      result.append(name);
-      // Append old symbol def if we have it
-      auto it = previous_game_ts.symbol_types.find(name);
+  // non-virtual states
+  std::string non_virtual_states_list;
+  for (const auto& [state_name, guessed_type_name] : object_file_meta.non_virtual_state_guesses) {
+    if (type_name == guessed_type_name) {
+      std::string line;
+      line += fmt::format("    {}", state_name);
+      auto it = previous_game_ts.symbol_types.find(state_name);
       if (it != previous_game_ts.symbol_types.end()) {
-        result.append(fmt::format(" ;; {}", it->second.print()));
+        line += fmt::format(" ;; associated process guessed by decompiler, old: {}",
+                            it->second.print());
       }
-      // Add symbol name to `already_seen_symbols`
-      object_file_meta.already_seen_symbols.insert(name);
-      result.append("\n    ");
+      non_virtual_states_list.append(line + "\n");
     }
-    result.append(")\n  ");
+  }
+  // methods and virtual states
+  if (!methods_list.empty()) {
+    result.append("(:methods\n");
+    result.append(methods_list);
+    result.append("    )\n  ");
+  }
+  if (!state_methods_list.empty()) {
+    result.append("(:state-methods\n");
+    result.append(state_methods_list);
+    result.append("    )\n  ");
+  }
+  // non-virtual states
+  if (!non_virtual_states_list.empty()) {
+    result.append("(:states\n");
+    result.append(non_virtual_states_list);
+    result.append("    )\n  ");
   }
 
   result.append(")\n");
@@ -1800,7 +1804,8 @@ void inspect_top_level_for_metadata(Function& top_level,
     const auto& aop = top_level.ir2.atomic_ops->ops.at(i);
     const std::string as_str = aop.get()->to_string(top_level.ir2.env);
 
-    // Keep track of the last seen label so we can easily reference it if a later operation uses it
+    // Keep track of the last seen label so we can easily reference it if a later operation uses
+    // it
     auto label_match = get_regex_match(as_str, std::regex("\\(set!\\s[^\\s]*\\s(L.*)\\)"));
     if (!label_match.empty()) {
       last_seen_label = label_match;
@@ -1843,7 +1848,24 @@ void inspect_top_level_for_metadata(Function& top_level,
       if (state_name.empty()) {
         continue;
       }
-      objectFile.state_methods[type_match][method_id] = state_name;
+      // Ensure there are no labels between now and when the `method-set!` is actually called
+      bool was_another_label = false;
+      for (int j = i; j < (int)top_level.ir2.atomic_ops->ops.size(); j++) {
+        const auto& temp_aop = top_level.ir2.atomic_ops->ops.at(j);
+        const std::string temp_as_str = temp_aop.get()->to_string(top_level.ir2.env);
+        if (temp_as_str.find("call!") != std::string::npos) {
+          break;
+        }
+        auto temp_label_match =
+            get_regex_match(temp_as_str, std::regex("\\(set!\\s[^\\s]*\\s(L.*)\\)"));
+        if (!temp_label_match.empty()) {
+          was_another_label = true;
+          break;
+        }
+      }
+      if (!was_another_label) {
+        objectFile.state_methods[type_match][method_id] = state_name;
+      }
     }
   }
 
@@ -1858,7 +1880,8 @@ void inspect_top_level_for_metadata(Function& top_level,
     }
 
     // lwu t9, 16(v1)            ;; [ 21] (set! t9-0 (l.wu (+ v1-10 16)))
-    //                           ;; [v1: <the etype type> ] -> [t9: (function symbol type int type)
+    //                           ;; [v1: <the etype type> ] -> [t9: (function symbol type int
+    //                           type)
     const auto& aop_1 = top_level.ir2.atomic_ops->ops.at(i + 1);
     if (!is_set_reg_to_load(aop_1.get(), Register(Reg::GPR, Reg::T9), 16)) {
       continue;
@@ -1935,8 +1958,9 @@ std::string inspect_top_level_symbol_defines(Function& top_level,
     if (as_store && as_store->addr().kind() == SimpleExpression::Kind::IDENTITY &&
         as_store->addr().get_arg(0).is_sym_val()) {
       auto& sym_name = as_store->addr().get_arg(0).get_str();
-      if (object_file_meta.already_seen_symbols.find(sym_name) ==
-          object_file_meta.already_seen_symbols.end()) {
+      const auto sym_already_seen = object_file_meta.already_seen_symbols.find(sym_name) !=
+                                    object_file_meta.already_seen_symbols.end();
+      if (!sym_already_seen) {
         object_file_meta.already_seen_symbols.insert(sym_name);
         if (dts.ts.partially_defined_type_exists(sym_name)) {
           continue;

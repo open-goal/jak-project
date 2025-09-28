@@ -38,7 +38,7 @@ const COMMENT =
   token(/(;)[^\n]*/);
 
 const BLOCK_COMMENT =
-  token(seq('#|', repeat1(/[^#|]/), '|#'));
+  token(seq('#|', repeat(choice(/[^|#]/, seq('#', /[^|]/), seq('|', /[^#]/))), '|#'));
 
 const DIGIT =
   /[0-9]/;
@@ -67,11 +67,11 @@ const INTEGER =
 
 // TODO - does OG support negative hex/binary?
 const NUMBER =
-  token(prec(10, seq(optional(/[+-]/),
+  token(seq(optional(/[+-]/),
     choice(HEX_NUMBER,
       BINARY_NUMBER,
       FLOAT,
-      INTEGER))));
+      INTEGER)));
 
 const NULL =
   token('none');
@@ -117,15 +117,18 @@ const CHARACTER =
 // \u205f => <medium mathematical space>
 // \u3000 => <ideographic space>
 const SYMBOL_HEAD =
-  /[^\f\n\r\t \/()\[\]{}"@~^;`\\,:#'0-9\u000B\u001C\u001D\u001E\u001F\u2028\u2029\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2008\u2009\u200a\u205f\u3000]/;
+  /[^\f\n\r\t ()\[\]{}"@~^;`\\,:'0-9\u000B\u001C\u001D\u001E\u001F\u2028\u2029\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2008\u2009\u200a\u205f\u3000]/;
 
 const SYMBOL_BODY =
   choice(SYMBOL_HEAD,
-    /[:#'0-9]/);
+    /[:#~'0-9\/]/);
 
 const SYMBOL =
   token(seq(SYMBOL_HEAD,
     repeat(SYMBOL_BODY)));
+
+// Define a rule specifically for symbols starting with digits followed by non-digit characters
+const DIGIT_SYMBOL = token(seq(repeat1(DIGIT), SYMBOL_BODY, repeat(SYMBOL_BODY)));
 
 module.exports = grammar({
   name: 'opengoal',
@@ -137,8 +140,7 @@ module.exports = grammar({
     [],
 
   inline: $ =>
-    [$._kwd_unqualified,
-    $._sym_unqualified],
+    [$._sym_unqualified],
 
   rules: {
     // THIS MUST BE FIRST -- even though this doesn't look like it matters
@@ -202,10 +204,11 @@ module.exports = grammar({
       /[\[\]]/,
       /[<>]/,
       ';',
+      '`',
       seq(field('numberOfArgs', $._format_token), '*'),
       '?',
       "Newline",
-      seq(repeat(choice($._format_token, ',')), /[$rRbBdDgGxXeEoOsStTfF]/),
+      seq(repeat(choice($._format_token, ',')), /[$AmMrRbBdDgGxXeEoOsStTfFHhJjKkLlNnVwWyYzZ]/),
     ),
     format_specifier: $ =>
       prec.left(seq(
@@ -237,7 +240,9 @@ module.exports = grammar({
       BOOLEAN,
 
     sym_lit: $ =>
-      seq(choice($._sym_unqualified)),
+      seq(choice($._sym_unqualified, $._digit_sym)),
+
+    _digit_sym: $ => field('name', alias(DIGIT_SYMBOL, $.sym_name)),
 
     _sym_unqualified: $ =>
       field('name', alias(choice("/", SYMBOL),

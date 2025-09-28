@@ -38,6 +38,7 @@ void OceanNear::render(DmaFollower& dma,
       render_jak1(dma, render_state, prof);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       render_jak2(dma, render_state, prof);
       break;
   }

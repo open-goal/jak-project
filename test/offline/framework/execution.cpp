@@ -5,13 +5,15 @@
 #include "goalc/compiler/Compiler.h"
 #include "test/offline/config/config.h"
 
-#include "third-party/fmt/ranges.h"
+#include "fmt/ranges.h"
 
 // TODO - i think these should be partitioned by game name instead of it being in the filename
 // (and the names not being consistent)
-std::unordered_map<std::string, std::string> game_name_to_all_types1 = {
+std::unordered_map<std::string, std::string> game_name_to_all_types = {
     {"jak1", "jak1/all-types.gc"},
-    {"jak2", "jak2/all-types.gc"}};
+    {"jak2", "jak2/all-types.gc"},
+    {"jak3", "jak3/all-types.gc"},
+    {"jakx", "jakx/all-types.gc"}};
 
 void disassemble(OfflineTestDecompiler& dc) {
   dc.db->process_link_data(*dc.config);
@@ -105,13 +107,15 @@ OfflineTestCompileResult compile(OfflineTestDecompiler& dc,
   Compiler compiler(game_name_to_version(config.game_name));
 
   compiler.run_front_end_on_file(
-      {"decompiler", "config", game_name_to_all_types1[config.game_name]});
+      {"decompiler", "config", game_name_to_all_types[config.game_name]});
   compiler.run_front_end_on_file(
       {"test", "decompiler", "reference", config.game_name, "decompiler-macros.gc"});
   if (config.game_name == "jak2") {
     compiler.run_front_end_on_file({"goal_src", "jak2", "engine", "data", "art-elts.gc"});
   } else if (config.game_name == "jak1") {
     compiler.run_front_end_on_file({"goal_src", "jak1", "engine", "data", "art-elts.gc"});
+  } else if (config.game_name == "jak3") {
+    compiler.run_front_end_on_file({"goal_src", "jak3", "engine", "data", "art-elts.gc"});
   }
 
   int total_lines = 0;

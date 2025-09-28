@@ -1368,7 +1368,7 @@ void types2_for_add(types2::Type& type_out,
     }
   }
 
-  if (env.version == GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
+  if (env.version >= GameVersion::Jak2 && tc(dts, TypeSpec("symbol"), arg1_type) &&
       is_int_or_uint(dts, arg0_type)) {
     if (arg0_type.is_integer_constant(jak2::SYM_TO_STRING_OFFSET)) {
       // symbol -> GOAL String
@@ -1611,17 +1611,20 @@ void types2_for_expr(types2::Type& type_out,
     case SimpleExpression::Kind::VECTOR_3_DOT:
     case SimpleExpression::Kind::VECTOR_4_DOT:
     case SimpleExpression::Kind::VECTOR_LENGTH:
+    case SimpleExpression::Kind::VECTOR_LENGTH_SQUARED:
       types2_for_vectors_in_float_out(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_CROSS:
     case SimpleExpression::Kind::VECTOR_MINUS:
     case SimpleExpression::Kind::VECTOR_PLUS:
+    case SimpleExpression::Kind::VECTOR_XYZ_PRODUCT:
       types2_for_vector_in_and_out(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_FLOAT_PRODUCT:
       types2_for_vector_float_product(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::VECTOR_PLUS_FLOAT_TIMES:
+    case SimpleExpression::Kind::VECTOR_PLUS_TIMES:
       types2_for_vector_plus_float_times(type_out, expr, input_types, dts, extras);
       break;
     case SimpleExpression::Kind::PCPYLD:
@@ -1961,7 +1964,19 @@ bool load_var_op_determine_type(types2::Type& type_out,
         // normal virtual method access.
         // first check special cases
         if (type_name == "art" || type_name == "art-group") {
-          if (method_id == 10) {
+          int art_get_by_name_method_id = -1;
+          switch (dts.version()) {
+            case GameVersion::Jak1:
+            case GameVersion::Jak2:
+              art_get_by_name_method_id = 10;
+              break;
+            case GameVersion::Jak3:
+              art_get_by_name_method_id = 11;
+              break;
+            default:
+              ASSERT_NOT_REACHED();
+          }
+          if (method_id == art_get_by_name_method_id) {
             type_out.type =
                 TP_Type::make_get_art_by_name(method_type, TypeSpec(type_name), method_id);
             return true;
@@ -2564,7 +2579,6 @@ void CallOp::propagate_types2(types2::Instruction& instr,
 
     if (can_use_call_parent) {
       out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(call_parent_result_type);
-      printf("used special %s\n", call_parent_result_type.print().c_str());
       use_normal_last_arg = false;
     }
   }

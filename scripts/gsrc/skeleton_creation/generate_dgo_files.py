@@ -5,6 +5,7 @@
 # example - python .\scripts\gsrc\skeleton_creation\generate_dgo_files.py --game jak2 --dgotxt .\decompiler_out\jak2\dgo.txt
 
 import argparse
+import re
 
 parser = argparse.ArgumentParser("generate_dgo_files")
 parser.add_argument("--game", help="The name of the game", type=str)
@@ -18,6 +19,7 @@ with open(args.dgotxt, "r") as f:
   # so read line by line, assuming each DGO is seperated by an empty line
   current_dgo_name = None
   current_dgo_lines = []
+  current_o_files = []
   for line in lines:
     if line.strip() == "":
       # Write out contents to the .gd file
@@ -28,11 +30,26 @@ with open(args.dgotxt, "r") as f:
           wf.writelines(current_dgo_lines)
       current_dgo_name = None
       current_dgo_lines = []
+      current_o_files = []
       continue
     if ".CGO" in line or ".DGO" in line:
       print("found one! - {}".format(line.strip()))
       # figure out the name
       current_dgo_name = line.replace("(", "").replace("\"", "").strip().lower().replace(".dgo", ".gd").replace(".cgo", ".gd")
-      print(current_dgo_name)
-    if current_dgo_name is not None:
       current_dgo_lines.append(line)
+    elif current_dgo_name is not None:
+      match = re.match('\s*\((\"[^ ]+\") (\"[^ ]+\")\)', line)
+      if match:
+        o_file = match.groups()[0]
+        print(" ", o_file)
+        # collect our output file names
+        current_o_files.append(o_file)
+      elif line.strip() == ")":
+        #end of the DGO, write out collected filenames
+        current_dgo_lines.append(" ({}\n".format(current_o_files[0]))
+        #dirty check to sort which files should be .go vs .o TODO confirm this makes sense
+        for file in current_o_files[1:]:
+          if "tpage" in file or "-ag" in file:
+            file = file.replace(".o", ".go")
+          current_dgo_lines.append("  {}\n".format(file))
+        current_dgo_lines.append(" ))\n")

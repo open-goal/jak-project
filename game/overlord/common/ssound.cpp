@@ -7,7 +7,8 @@
 
 s32 gMusicFade = 0;
 s32 gSema;
-Sound gSounds[64];
+constexpr int kNumSounds = 64;
+Sound gSounds[kNumSounds];
 Vec3w gEarTrans[2];
 Vec3w gCamTrans;
 s32 gMusicFadeDir = 0;
@@ -15,6 +16,7 @@ Curve gCurves[16];
 s32 gCamAngle;
 u8 gMirrorMode = 0;
 u32 sLastTick = 0;
+s64 gAddIndex = 0;
 
 static s32 sqrt_table[256] = {
     0,     4096,  5793,  7094,  8192,  9159,  10033, 10837, 11585, 12288, 12953, 13585, 14189,
@@ -56,6 +58,7 @@ static s32 atan_table[257] = {
 void ssound_init_globals() {
   gMusicFade = 0;
   gSema = 0;
+  gAddIndex = 0;
 }
 
 Sound* LookupSound(s32 id) {
@@ -134,10 +137,12 @@ s32 CalculateAngle(Vec3w* trans) {
       } else {
         angle = angle + 90;
       }
-    } else if (diffZ >= 0) {
-      angle = angle + 270;
     } else {
-      angle = 270 - angle;
+      if (diffZ >= 0) {
+        angle = angle + 270;
+      } else {
+        angle = 270 - angle;
+      }
     }
   }
 
@@ -170,30 +175,18 @@ s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32
   } else {
     if (fo_curve == 1) {
       return volume;
-    }
-
-    if (fo_curve < 9) {
-      xdiff = gEarTrans[0].x - pos->x;
-      ydiff = gEarTrans[0].y - pos->y;
-      zdiff = gEarTrans[0].z - pos->z;
-    }
-
-    if (fo_curve == 9) {
+    } else if (fo_curve == 9 || fo_curve == 11) {
       xdiff = gEarTrans[1].x - pos->x;
       ydiff = gEarTrans[1].y - pos->y;
       zdiff = gEarTrans[1].z - pos->z;
-    }
-
-    if (fo_curve == 10) {
+    } else if (fo_curve == 10) {
       xdiff = 0;
       ydiff = gEarTrans[0].y - pos->y;
       zdiff = 0;
-    }
-
-    if (fo_curve == 11) {
-      xdiff = gEarTrans[1].x - pos->x;
-      ydiff = gEarTrans[1].y - pos->y;
-      zdiff = gEarTrans[1].z - pos->z;
+    } else {
+      xdiff = gEarTrans[0].x - pos->x;
+      ydiff = gEarTrans[0].y - pos->y;
+      zdiff = gEarTrans[0].z - pos->z;
     }
   }
 
@@ -210,67 +203,56 @@ s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32
   s32 min = fo_min << 8;
   s32 max = fo_max << 8;
 
-  if (max < xdiff || max < ydiff || max < zdiff) {
-    return 0;
-  }
-
-  while (max > 0x7FFF) {
-    max >>= 1;
-    min >>= 1;
-    xdiff >>= 1;
-    ydiff >>= 1;
-    zdiff >>= 1;
-  }
-
-  u32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
-  if (distance != 0) {
-    s32 steps = 0;
-    while ((distance & 0xc0000000) == 0) {
-      distance <<= 2;
-      steps++;
+  s32 new_vol = 0;
+  if (xdiff <= max && ydiff <= max && zdiff <= max) {
+    while (max > 0x7fff) {
+      max >>= 1;
+      min >>= 1;
+      xdiff >>= 1;
+      ydiff >>= 1;
+      zdiff >>= 1;
     }
-
-    distance = sqrt_table[distance >> 24] >> steps;
-  } else {
-    distance = 0;
+    u32 dist_squared = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
+    s32 dist_steps = 0;
+    if (dist_squared != 0) {
+      while ((dist_squared & 0xc0000000) == 0) {
+        ++dist_steps;
+        dist_squared <<= 2;
+      }
+      dist_steps = sqrt_table[dist_squared >> 24] >> (dist_steps & 0x1f);
+    }
+    new_vol = volume;
+    if (min < dist_steps) {
+      u32 voldiff = dist_steps - min;
+      if (dist_steps < max) {
+        dist_steps = max - min;
+        while (voldiff > 0xffff) {
+          dist_steps >>= 1;
+          voldiff >>= 1;
+        }
+        voldiff = (voldiff << 0x10) / dist_steps;
+        if (voldiff != 0x10000) {
+          new_vol = (voldiff * voldiff) >> 0x10;
+          new_vol = (gCurves[fo_curve].unk4 * 0x10000 + gCurves[fo_curve].unk3 * voldiff +
+                     gCurves[fo_curve].unk2 * new_vol +
+                     gCurves[fo_curve].unk1 * ((new_vol * voldiff) >> 0x10)) >>
+                    0xc;
+          if (new_vol < 0) {
+            new_vol = 0;
+          } else if (0x10000 < new_vol) {
+            new_vol = 0x10000;
+          }
+          new_vol = (new_vol * volume) >> 0x10;
+        }
+      } else {
+        new_vol = 0;
+      }
+    }
   }
-
-  if (distance <= (u32)min) {
-    return volume;
+  if (fo_curve == 11 && new_vol < 0x180) {
+    new_vol = 0x180;
   }
-
-  if (distance >= (u32)max) {
-    return 0;
-  }
-
-  s32 start = distance - min;
-  s32 end = max - min;
-
-  while (start > 0xFFFF) {
-    start >>= 1;
-    end >>= 1;
-  }
-
-  s32 v13 = (start << 16) / end;
-  if (v13 == 0x10000) {
-    return volume;
-  }
-
-  s32 factor = ((gCurves[fo_curve].unk4 << 16) + gCurves[fo_curve].unk3 * v13 +
-                gCurves[fo_curve].unk2 * ((v13 * v13) >> 16) +
-                gCurves[fo_curve].unk1 * (((((v13 * v13) >> 16) * v13) >> 16) >> 16)) >>
-               12;
-
-  if (factor > 0x10000) {
-    factor = 0x10000;
-  }
-
-  s32 ret = (factor * volume) >> 16;
-  if (fo_curve == 11 && ret < 0x180) {
-    ret = 0x180;
-  }
-
-  return ret;
+  return new_vol;
 }
 
 s32 GetVolume(Sound* sound) {
@@ -289,9 +271,66 @@ void UpdateVolume(Sound* sound) {
   }
 }
 
-Sound* AllocateSound() {
+void RemoveOldSounds() {
+  int unique_sounds = 0;
+  struct Entry {
+    u32 id;
+    u32 count;
+    Sound* info;
+  };
+  Entry entries[kNumSounds];
+  Entry* best_entry = nullptr;
+
+  for (auto& sound : gSounds) {
+    if (sound.id) {
+      Entry* existing_entry = nullptr;
+      u32 uid = snd_GetSoundID(sound.sound_handle);
+
+      // look for entry:
+      for (int i = 0; i < unique_sounds; i++) {
+        if (entries[i].id == uid) {
+          existing_entry = &entries[i];
+          break;
+        }
+      }
+
+      // if none found, create
+      if (!existing_entry) {
+        existing_entry = &entries[unique_sounds];
+        unique_sounds++;
+        existing_entry->id = uid;
+        existing_entry->count = 0;
+        existing_entry->info = &sound;
+      }
+
+      // update
+      existing_entry->count++;
+      // pick oldest sound
+      if (sound.add_index < existing_entry->info->add_index) {
+        existing_entry->info = &sound;
+      }
+
+      // se if we're best
+      if (!best_entry) {
+        best_entry = existing_entry;
+      } else {
+        if (best_entry->count < existing_entry->count) {
+          best_entry = existing_entry;
+        }
+      }
+    }
+  }
+
+  if (best_entry) {
+    snd_StopSound(best_entry->info->sound_handle);
+    best_entry->info->id = 0;
+  }
+}
+
+Sound* AllocateSound(bool remove_old_sounds) {
   for (auto& s : gSounds) {
     if (s.id == 0) {
+      s.add_index = gAddIndex++;
       return &s;
     }
   }
@@ -299,7 +338,18 @@ Sound* AllocateSound() {
   CleanSounds();
   for (auto& s : gSounds) {
     if (s.id == 0) {
+      s.add_index = gAddIndex++;
       return &s;
+    }
+  }
+
+  if (remove_old_sounds) {
+    RemoveOldSounds();
+    for (auto& s : gSounds) {
+      if (s.id == 0) {
+        s.add_index = gAddIndex++;
+        return &s;
+      }
     }
   }
 

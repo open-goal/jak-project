@@ -5,5 +5,124 @@
 ;; name in dgo: mission-squad-control-h
 ;; dgos: DESRESC, WWD, CWI
 
+;; +++city-attacker-info-flag
+(defenum city-attacker-info-flag
+  :type uint16
+  :bitfield #t
+  (cai0 0)
+  (cai1 1)
+  (cai2 2)
+  (cai3 3)
+  (cai4 4)
+  (cai5 5)
+  )
+;; ---city-attacker-info-flag
+
+
+;; +++city-hatred-info-flag
+(defenum city-hatred-info-flag
+  :type uint16
+  :bitfield #t
+  (chi0 0)
+  (chi1 1)
+  )
+;; ---city-hatred-info-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype city-attacker-info (structure)
+  ((proc                     handle)
+   (enemy                    handle)
+   (next-update-target-time  time-frame)
+   (flags                    city-attacker-info-flag)
+   (num-current-attackers    uint8)
+   (max-num-attackers        uint8)
+   (self-type                int16)
+   (enemy-type               int16)
+   (self-index               int16)
+   (enemy-index              int16)
+   (callback                 (function process city-attacker-info int))
+   (hatred-map-callback      (function process city-attacker-info int))
+   )
+  (:methods
+    (init! (_type_ process int) none)
+    (reset! (_type_) none)
+    )
+  )
+
+
+(deftype city-attacker-cache (structure)
+  ((pos          vector)
+   (proc         process)
+   (attackable?  symbol)
+   )
+  :pack-me
+  )
+
+
+(deftype city-hatred-info (structure)
+  ((hatred             float)
+   (max-consider-dist  float)
+   (hatred-dist        float)
+   (dist-scale         float)
+   (attacker-scale     float)
+   (flags              city-hatred-info-flag)
+   (index              uint8)
+   (pad                uint8)
+   )
+  :pack-me
+  )
+
+
+(deftype city-attacker-array (inline-array-class)
+  ((data  city-attacker-info  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> city-attacker-array heap-base) (the-as uint 48))
+
+(deftype city-hatred-array (inline-array-class)
+  ((data  city-hatred-info  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> city-hatred-array heap-base) (the-as uint 24))
+
+(deftype city-attacker-cache-array (inline-array-class)
+  ((data  city-attacker-cache  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> city-attacker-cache-array heap-base) (the-as uint 12))
+
+(deftype mission-squad-control (basic)
+  ((attackers             city-attacker-array)
+   (unused-list           (array int16))
+   (hatred-vals           city-hatred-array)
+   (hatred-indices        (array uint8))
+   (attacker-cache        city-attacker-cache-array)
+   (target-attacker       city-attacker-info)
+   (max-num-object-types  int32)
+   )
+  (:methods
+    (init! (_type_ int int int) none)
+    (allocate-attacker (_type_) city-attacker-info)
+    (remove-attacker (_type_ city-attacker-info) none)
+    (mission-squad-control-method-12 (_type_) symbol)
+    (mission-squad-control-method-13 (_type_ city-attacker-info) int)
+    (init-attackers (_type_) none)
+    (init-attack-controller (_type_) none)
+    (mission-squad-control-method-16 (_type_) none)
+    (set-hatred-indices-for-all (_type_ int city-hatred-info city-hatred-info int) symbol)
+    (get-attacker-at-idx (_type_ int) city-attacker-info)
+    (push-back-hatred (_type_) city-hatred-info)
+    (set-hatred-indices (_type_ city-hatred-info int int) uint)
+    (get-hatred-at-idx (_type_ int int) city-hatred-info)
+    (update-attack-target (_type_) none)
+    (reset-hatred (_type_) none)
+    )
+  )

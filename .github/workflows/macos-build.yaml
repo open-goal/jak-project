@@ -17,28 +17,40 @@ on:
 jobs:
   build:
     name: Intel
-    runs-on: macos-11
+    runs-on: macos-13
     timeout-minutes: 120
 
-    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
-      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
-      BUILDCACHE_COMPRESS_FORMAT: ZSTD
-      BUILDCACHE_COMPRESS_LEVEL: 19
-      BUILDCACHE_DIRECT_MODE: true
-      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
-
     steps:
+      # minimal checkout if we're NOT uploading artifacts
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        if: ${{ ! inputs.uploadArtifacts }}
+        uses: actions/checkout@v5
+
+      # full checkout with tags if we ARE uploading artifacts
+      - name: Checkout Repository with Tags
+        if: ${{ inputs.uploadArtifacts }}
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Install Package Dependencies
-        run: brew install cmake nasm ninja
+        env:
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+          HOMEBREW_NO_ANALYTICS: 1
+        run: |
+          if ! brew install ninja nasm; then
+            brew update
+            brew install ninja nasm
+          fi
 
-      - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v2.1.0
+      - name: Setup sccache
+        uses: hendrikmuhs/ccache-action@v1.2.18
         with:
-          cache_key: macos-11-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
-          buildcache_tag: v0.28.1
+          variant: sccache
+          key: macos-13-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
+          restore-keys: macos-13-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          max-size: 1000M
 
       - name: CMake Generation
         env:
@@ -46,11 +58,14 @@ jobs:
           CXX: clang++
         run: |
           cmake -B build --preset=${{ inputs.cmakePreset }} \
-            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build Project
         run: cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))
+
+      - name: List libraries of gk
+        run: otool -L ./build/game/gk
 
       - name: Run Tests
         run: ./test.sh
@@ -64,7 +79,7 @@ jobs:
           strip ./build/lsp/lsp
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: ${{ inputs.uploadArtifacts }}
         with:
           name: opengoal-macos-${{ inputs.cachePrefix }}

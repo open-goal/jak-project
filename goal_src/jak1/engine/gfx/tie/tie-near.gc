@@ -1,9 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: tie-near.gc
-;; name in dgo: tie-near
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/matrix.gc")
+(require "engine/game/main-h.gc")
+(require "engine/gfx/math-camera-h.gc")
+(require "engine/gfx/hw/gs.gc")
 
 ;; The "near" version of TIE.
 ;; This correctly handles scissoring triangles.
@@ -16,20 +17,18 @@
 
 ;; uploaded to VU1 once per frame.
 (deftype tie-near-consts (structure)
-  ((extra      qword       :inline)
-   (gifbufs    qword       :inline)
-   (clrbufs    qword       :inline)
-   (adgif      gs-gif-tag  :inline)
-   (strgif     gs-gif-tag  :inline)
-   (fangif     gs-gif-tag  :inline)
-   (hvdfoffs   vector      :inline)
-   (invhscale  vector      :inline)
-   (guard      vector      :inline)
-   (atest      ad-cmd      2 :inline)
-   (atest-tra  ad-cmd      :inline :overlay-at (-> atest 0))
-   (atest-def  ad-cmd      :inline :overlay-at (-> atest 1))
-   )
-  )
+  ((extra     qword :inline)
+   (gifbufs   qword :inline)
+   (clrbufs   qword :inline)
+   (adgif     gs-gif-tag :inline)
+   (strgif    gs-gif-tag :inline)
+   (fangif    gs-gif-tag :inline)
+   (hvdfoffs  vector :inline)
+   (invhscale vector :inline)
+   (guard     vector :inline)
+   (atest     ad-cmd 2 :inline)
+   (atest-tra ad-cmd :inline :overlay-at (-> atest 0))
+   (atest-def ad-cmd :inline :overlay-at (-> atest 1))))
 
 ;; the actual program.
 (define tie-near-vu1-block (new 'static 'vu-function :length #x6f8 :qlength #x37c))
@@ -45,66 +44,57 @@
   (cond
     ((zero? *subdivide-draw-mode*)
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
-             :pre #x1
-             :nreg #x3
-             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-             )
-           )
-     )
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :nreg #x3
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
     ((= *subdivide-draw-mode* 3)
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
-             :pre #x1
-             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
-             :nreg #x3
-             )
-           )
-     )
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
+                :nreg #x3)))
     ((= *subdivide-draw-mode* 1)
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
-             :pre #x1
-             :nreg #x3
-             :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe arg1)
-             )
-           )
-     )
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :nreg #x3
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :fge #x1 :abe arg1))))
     ((= *subdivide-draw-mode* 2)
      (set! (-> arg0 strgif tag)
-           (new 'static 'gif-tag64
+           (new 'static
+                'gif-tag64
+                :pre #x1
+                :nreg #x3
+                :prim
+                (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)))))
+  (set! (-> arg0 strgif regs)
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
+  (set! (-> arg0 fangif tag)
+        (new 'static
+             'gif-tag64
              :pre #x1
              :nreg #x3
-             :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)
-             )
-           )
-     )
-    )
-  (set! (-> arg0 strgif regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-        )
-  (set! (-> arg0 fangif tag)
-        (new 'static 'gif-tag64
-          :pre #x1
-          :nreg #x3
-          :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-          )
-        )
+             :prim
+             (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe arg1)))
   (set! (-> arg0 fangif regs)
-        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-        )
+        (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
   (let ((f1-0 8388894.0)
         (f2-0 8389078.0)
-        (f0-0 8389262.0)
-        )
+        (f0-0 8389262.0))
     (set! (-> arg0 gifbufs vector4w x) (the-as int f0-0))
     (set! (-> arg0 gifbufs vector4w y) (the-as int f2-0))
     (set! (-> arg0 gifbufs vector4w z) (the-as int f0-0))
     (set! (-> arg0 gifbufs vector4w w) (the-as int f2-0))
     (set! (-> arg0 extra vector4w x) (the-as int (+ f1-0 f2-0 f0-0)))
     (set! (-> arg0 extra vector4w y) (the-as int 0.0))
-    (set! (-> arg0 extra vector4w z) (the-as int (+ f1-0 f2-0 f0-0)))
-    )
+    (set! (-> arg0 extra vector4w z) (the-as int (+ f1-0 f2-0 f0-0))))
   (set! (-> arg0 clrbufs vector4w x) 198)
   (set! (-> arg0 clrbufs vector4w y) 242)
   (set! (-> arg0 clrbufs vector4w z) 198)
@@ -112,160 +102,63 @@
   (let ((v1-41 *math-camera*))
     (set! (-> arg0 invhscale quad) (-> v1-41 inv-hmge-scale quad))
     (set! (-> arg0 hvdfoffs quad) (-> v1-41 hvdf-off quad))
-    (set! (-> arg0 guard quad) (-> v1-41 guard quad))
-    )
-  (none)
-  )
+    (set! (-> arg0 guard quad) (-> v1-41 guard quad)))
+  (none))
 
 ;; SKIPPED tie-near-init-engine
 ;; SKIPPED tie-near-end-buffer
 
 (defun tie-near-make-perspective-matrix ((arg0 matrix))
-  (column-scale-matrix! arg0 (-> *math-camera* hmge-scale) (-> *math-camera* camera-temp))
-  )
+  (column-scale-matrix! arg0 (-> *math-camera* hmge-scale) (-> *math-camera* camera-temp)))
 
 (defun tie-near-int-reg ((arg0 int))
   (let ((v1-0 arg0))
     (cond
-      ((zero? v1-0)
-       "zero"
-       )
-      ((= v1-0 1)
-       "itemp"
-       )
-      ((= v1-0 2)
-       "delta"
-       )
-      ((= v1-0 3)
-       "dest-0"
-       )
-      ((= v1-0 4)
-       "dest-1"
-       )
-      ((= v1-0 5)
-       "dest-2"
-       )
-      ((= v1-0 6)
-       "dest-3"
-       )
-      ((= v1-0 7)
-       "delta-ptr"
-       )
-      ((= v1-0 8)
-       "prev"
-       )
-      ((= v1-0 9)
-       "itemp2"
-       )
-      )
-    )
-  )
+      ((zero? v1-0) "zero")
+      ((= v1-0 1) "itemp")
+      ((= v1-0 2) "delta")
+      ((= v1-0 3) "dest-0")
+      ((= v1-0 4) "dest-1")
+      ((= v1-0 5) "dest-2")
+      ((= v1-0 6) "dest-3")
+      ((= v1-0 7) "delta-ptr")
+      ((= v1-0 8) "prev")
+      ((= v1-0 9) "itemp2"))))
 
 (defun tie-near-float-reg ((arg0 int))
   (let ((v1-0 arg0))
     (cond
-      ((zero? v1-0)
-       "zero"
-       )
-      ((= v1-0 1)
-       "vtx-0"
-       )
-      ((= v1-0 2)
-       "vtx-1"
-       )
-      ((= v1-0 3)
-       "vtx-2"
-       )
-      ((= v1-0 4)
-       "vtx-3"
-       )
-      ((= v1-0 5)
-       "hvtx-0"
-       )
-      ((= v1-0 6)
-       "hvtx-1"
-       )
-      ((= v1-0 7)
-       "hvtx-2"
-       )
-      ((= v1-0 8)
-       "hvtx-3"
-       )
-      ((= v1-0 9)
-       "tex-0"
-       )
-      ((= v1-0 10)
-       "tex-1"
-       )
-      ((= v1-0 11)
-       "tex-2"
-       )
-      ((= v1-0 12)
-       "tex-3"
-       )
-      ((= v1-0 13)
-       "deltas"
-       )
-      ((= v1-0 14)
-       "invh"
-       )
-      ((= v1-0 15)
-       "hvdfcl"
-       )
-      ((= v1-0 16)
-       "hvdfnc"
-       )
-      ((= v1-0 17)
-       "--"
-       )
-      ((= v1-0 18)
-       "--"
-       )
-      ((= v1-0 19)
-       "--"
-       )
-      ((= v1-0 20)
-       "--"
-       )
-      ((= v1-0 19)
-       "--"
-       )
-      ((= v1-0 20)
-       "--"
-       )
-      ((= v1-0 21)
-       "gifbuf"
-       )
-      ((= v1-0 22)
-       "clrbuf"
-       )
-      ((= v1-0 23)
-       "extra"
-       )
-      ((= v1-0 24)
-       "inds"
-       )
-      ((= v1-0 25)
-       "--"
-       )
-      ((= v1-0 26)
-       "--"
-       )
-      ((= v1-0 27)
-       "morph"
-       )
-      ((= v1-0 28)
-       "xyzofs"
-       )
-      ((= v1-0 29)
-       "--"
-       )
-      ((= v1-0 30)
-       "--"
-       )
-      ((= v1-0 31)
-       "--"
-       )
-      )
-    )
-  )
+      ((zero? v1-0) "zero")
+      ((= v1-0 1) "vtx-0")
+      ((= v1-0 2) "vtx-1")
+      ((= v1-0 3) "vtx-2")
+      ((= v1-0 4) "vtx-3")
+      ((= v1-0 5) "hvtx-0")
+      ((= v1-0 6) "hvtx-1")
+      ((= v1-0 7) "hvtx-2")
+      ((= v1-0 8) "hvtx-3")
+      ((= v1-0 9) "tex-0")
+      ((= v1-0 10) "tex-1")
+      ((= v1-0 11) "tex-2")
+      ((= v1-0 12) "tex-3")
+      ((= v1-0 13) "deltas")
+      ((= v1-0 14) "invh")
+      ((= v1-0 15) "hvdfcl")
+      ((= v1-0 16) "hvdfnc")
+      ((= v1-0 17) "--")
+      ((= v1-0 18) "--")
+      ((= v1-0 19) "--")
+      ((= v1-0 20) "--")
+      ((= v1-0 19) "--")
+      ((= v1-0 20) "--")
+      ((= v1-0 21) "gifbuf")
+      ((= v1-0 22) "clrbuf")
+      ((= v1-0 23) "extra")
+      ((= v1-0 24) "inds")
+      ((= v1-0 25) "--")
+      ((= v1-0 26) "--")
+      ((= v1-0 27) "morph")
+      ((= v1-0 28) "xyzofs")
+      ((= v1-0 29) "--")
+      ((= v1-0 30) "--")
+      ((= v1-0 31) "--"))))

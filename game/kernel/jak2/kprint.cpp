@@ -5,6 +5,7 @@
 
 #include "common/goal_constants.h"
 #include "common/listener_common.h"
+#include "common/log/log.h"
 #include "common/symbols.h"
 
 #include "game/kernel/common/fileio.h"
@@ -76,6 +77,7 @@ s32 format_impl_jak2(uint64_t* args) {
     print_temp = PrintBufArea.cast<char>().c() + sizeof(ListenerMessageHeader);
   }
   PrintPending = make_ptr(strend(print_temp)).cast<u8>();
+  assert_print_buffer_has_room(PrintPending.c());
 
   // what we write to
   char* output_ptr = PrintPending.cast<char>().c();
@@ -534,6 +536,7 @@ s32 format_impl_jak2(uint64_t* args) {
   // end
   *output_ptr = 0;
   output_ptr++;
+  assert_print_buffer_has_room((const u8*)output_ptr);
 
   if (original_dest == s7.offset + FIX_SYM_TRUE) {
     // #t means to put it in the print buffer
@@ -544,8 +547,9 @@ s32 format_impl_jak2(uint64_t* args) {
     if (DiskBoot) {
       // however, we are going to disable it anyway because it spams the console and is annoying
       if (false) {
-        printf("%s", PrintPendingLocal3);
-        fflush(stdout);
+        lg::print("{}", PrintPendingLocal3);
+        // printf("%s", PrintPendingLocal3);
+        // fflush(stdout);
       }
       PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
       // if we don't comment this line, our output gets cleared
@@ -560,8 +564,9 @@ s32 format_impl_jak2(uint64_t* args) {
     *PrintPendingLocal3 = 0;
     return string;
   } else if (original_dest == 0) {
-    printf("%s", PrintPendingLocal3);
-    fflush(stdout);
+    lg::print("{}", PrintPendingLocal3);
+    // printf("%s", PrintPendingLocal3);
+    // fflush(stdout);
     PrintPending = make_ptr(PrintPendingLocal2).cast<u8>();
     *PrintPendingLocal3 = 0;
     return 0;

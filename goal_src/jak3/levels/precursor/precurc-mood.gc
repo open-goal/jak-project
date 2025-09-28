@@ -7,3 +7,80 @@
 
 ;; DECOMP BEGINS
 
+(deftype precurc-states (structure)
+  ((pulse  pulse-state  :inline)
+   )
+  )
+
+
+(defun init-mood-precurc ((arg0 mood-context))
+  (let ((v1-0 (the-as object (-> arg0 state))))
+    (set! (-> (the-as precurc-states v1-0) pulse brightness) 1.0)
+    (set! (-> (the-as precurc-states v1-0) pulse target-brightness) 1.0)
+    (set! (-> (the-as precurc-states v1-0) pulse speed) 1.0)
+    )
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun update-precurc-lights ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group)))
+    (let ((a0-1 (-> v1-0 0)))
+      (set! (-> a0-1 dir0 direction x) 0.0)
+      (set! (-> a0-1 dir0 direction y) 1.0)
+      (set! (-> a0-1 dir0 direction z) 0.0)
+      (set! (-> a0-1 dir0 direction w) 0.0)
+      )
+    (set-vector! (-> v1-0 0 dir0 color) 0.5 0.667 0.667 1.0)
+    (set-vector! (-> v1-0 0 ambi color) 0.25 0.333 0.333 1.0)
+    (set! (-> v1-0 0 dir0 extra x) 1.0)
+    (set! (-> v1-0 0 dir1 extra x) 0.0)
+    (set! (-> v1-0 0 dir2 extra x) 0.0)
+    (set! (-> v1-0 0 ambi extra x) 1.0)
+    )
+  (none)
+  )
+
+(defbehavior update-mood-precurc time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (update-precurc-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (set! (-> arg0 times 0 w) 1.0)
+      (update-mood-pulse arg0 1 0 1.0 0.25 (* 65536.0 (seconds-per-frame)) 0.0)
+      (set! (-> arg0 times 2 w) 1.0)
+      (let* ((v1-9 (-> *display* part-clock frame-counter))
+             (f0-5 (* 218.45334 (the float (mod v1-9 300))))
+             )
+        (set! (-> arg0 times 3 w) (+ 0.875 (* 0.175 (cos f0-5))))
+        )
+      (set! (-> arg0 times 4 w) 1.0)
+      (set! (-> arg0 times 5 w) 1.0)
+      (set! (-> arg0 times 6 w) 1.0)
+      (set! (-> arg0 times 7 w) 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun precurc-activate ((arg0 level))
+  (persist-with-delay
+    *setting-control*
+    'precur-activate
+    (the-as time-frame (the-as uint #xb2d05e00))
+    'sky-type
+    'star-field
+    0.0
+    0
+    )
+  (none)
+  )
+
+(defun precur-deactivate ((arg0 level))
+  (persist-with-delay *setting-control* 'precur-activate 0 'sky-type #f 0.0 0)
+  (none)
+  )

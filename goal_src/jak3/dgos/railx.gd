@@ -1,0 +1,11 @@
+("RAILX.DGO"
+ ("railx-mood.o"
+  "railx-obs.o"
+  "railx-scenes.o"
+  "tpage-2336.go"
+  "rail-warp-gate-ag.go"
+  "rail-gun-dark-ag.go"
+  "rail-oracle-door-ag.go"
+  "rail-oracle-eyes-ag.go"
+  "railx.go"
+ ))

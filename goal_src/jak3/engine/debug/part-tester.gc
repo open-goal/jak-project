@@ -5,5 +5,178 @@
 ;; name in dgo: part-tester
 ;; dgos: GAME
 
+(#when PC_PORT
+  (define *part-tester-id* 127)
+  )
+
 ;; DECOMP BEGINS
 
+;; this file is debug only
+(declare-file (debug))
+
+(defpartgroup group-part-tester
+  :id 198
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 249))
+  )
+
+(defpartgroup group-debug-placeholder-small
+  :id 199
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 822 :flags (sp7)))
+  )
+
+(defpart 822
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 0.2))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+(defpartgroup group-debug-placeholder-single
+  :id 200
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 823 :flags (sp7)))
+  )
+
+(defpart 823
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+(defpartgroup group-debug-placeholder-multiple
+  :id 201
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 824 :flags (sp7)))
+  )
+
+(defpart 824
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 0.3))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.01))
+    (:timer (seconds 2))
+    (:flags ())
+    (:conerot-x (degrees -45) (degrees 90))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(deftype part-tester (process)
+  ((root       trsqv)
+   (part       sparticle-launch-control)
+   (old-group  sparticle-launch-group)
+   )
+  (:states
+    part-tester-idle
+    )
+  )
+
+
+(define *part-tester-name* (the-as string #f))
+
+(defmethod deactivate ((this part-tester))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this part))
+      (kill-particles (-> this part))
+      )
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+(defstate part-tester-idle (part-tester)
+  :code (behavior ()
+    (until #f
+      (let ((gp-0 (entity-by-name *part-tester-name*)))
+        (when gp-0
+          (let ((s5-0 (the-as process-drawable (-> gp-0 extra process))))
+            (if (and s5-0 (type? s5-0 process-drawable) (nonzero? (-> s5-0 root)))
+                (set! (-> self root trans quad) (-> s5-0 root trans quad))
+                (set! (-> self root trans quad) (-> gp-0 extra trans quad))
+                )
+            )
+          )
+        )
+      (add-debug-x
+        #t
+        (bucket-id debug-no-zbuf1)
+        (-> self root trans)
+        (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+        )
+      (let ((gp-1 (-> *part-group-id-table* 198)))
+        (let ((s5-1 (-> self root trans)))
+          (when (!= gp-1 (-> self old-group))
+            (when (nonzero? (-> self part))
+              (kill-particles (-> self part))
+              (set! (-> self heap-cur) (&-> (-> self part) type))
+              )
+            (set! (-> self part) (create-launch-control gp-1 self))
+            )
+          (if (nonzero? (-> self part))
+              (spawn (-> self part) (cond
+                                      ((logtest? (-> gp-1 flags) (sp-group-flag sp2))
+                                       *zero-vector*
+                                       )
+                                      (else
+                                        (empty)
+                                        s5-1
+                                        )
+                                      )
+                     )
+              )
+          )
+        (set! (-> self old-group) gp-1)
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(define-extern *part-tester* (pointer part-tester))
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior part-tester-init-by-other process-drawable ((arg0 vector))
+  (+! (-> self clock ref-count) -1)
+  (+! (-> *display* part-clock ref-count) 1)
+  (set! (-> self clock) (-> *display* part-clock))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! *part-tester* (the-as (pointer part-tester) (process->ppointer self)))
+  (go part-tester-idle)
+  (none)
+  )
+
+(define-perm *debug-part-dead-pool* dead-pool (new 'debug 'dead-pool 1 #x10000 "*debug-part-dead-pool*"))
+
+;; WARN: Return type mismatch (pointer process) vs none.
+(defun start-part ()
+  (kill-by-type part-tester *active-pool*)
+  (process-spawn part-tester (target-pos 0) :name "part-tester" :from *debug-part-dead-pool*)
+  (none)
+  )

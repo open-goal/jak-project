@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: sky-h.gc
-;; name in dgo: sky-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/trigonometry.gc")
 
 ;; the "sky" system draws the sky and determines colors for lights.
 ;; each level has 8 skies that are interpolated between.
@@ -13,19 +11,14 @@
 ;; represents the skies that are used during a single hour.
 ;; there can be 1 or 2 skies used.
 (deftype sky-color-hour (structure)
-  ((snapshot1    int32)
-   (snapshot2    int32)
-   (morph-start  float)
-   (morph-end    float)
-   )
-  )
-
+  ((snapshot1   int32)
+   (snapshot2   int32)
+   (morph-start float)
+   (morph-end   float)))
 
 ;; a sky-color-hour for each hour of the day.
 (deftype sky-color-day (structure)
-  ((hour  sky-color-hour  24 :inline)
-   )
-  )
+  ((hour sky-color-hour 24 :inline)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Old Sky Renderer
@@ -37,82 +30,61 @@
 
 ;; these stores points on a squashed circle (xy only)
 (deftype sky-circle-data (structure)
-  ((data  vector  17 :inline)
-   )
-  )
-
+  ((data vector 17 :inline)))
 
 ;; sun particle tracks this
 (deftype sky-sun-data (structure)
-  ((data            uint128  4)
-   (pos             vector   :inline :overlay-at (-> data 0))
-   (r-sun           float            :overlay-at (-> data 1))
-   (r-halo          float            :offset  20)
-   (r-aurora        float            :offset  24)
-   (c-sun-start     rgba             :overlay-at (-> data 2))
-   (c-sun-end       rgba             :overlay-at (-> data 3))
-   (c-halo-start    rgba             :offset  36)
-   (c-halo-end      rgba             :offset  52)
-   (c-aurora-start  rgba             :offset  40)
-   (c-aurora-end    rgba             :offset  56)
-   )
-  )
-
+  ((data           uint128 4)
+   (pos            vector :inline :overlay-at (-> data 0))
+   (r-sun          float :overlay-at (-> data 1))
+   (r-halo         float :offset 20)
+   (r-aurora       float :offset 24)
+   (c-sun-start    rgba :overlay-at (-> data 2))
+   (c-sun-end      rgba :overlay-at (-> data 3))
+   (c-halo-start   rgba :offset 36)
+   (c-halo-end     rgba :offset 52)
+   (c-aurora-start rgba :offset 40)
+   (c-aurora-end   rgba :offset 56)))
 
 ;; moon particle tracks this
 (deftype sky-moon-data (structure)
-  ((data   uint128  2)
-   (pos    vector   :inline :overlay-at (-> data 0))
-   (scale  vector   :inline :overlay-at (-> data 1))
-   )
-  )
-
+  ((data  uint128 2)
+   (pos   vector :inline :overlay-at (-> data 0))
+   (scale vector :inline :overlay-at (-> data 1))))
 
 ;; parameters for the sun/moon motion.
 (deftype sky-orbit (structure)
-  ((high-noon  float)
-   (tilt       float)
-   (rise       float)
-   (dist       float)
-   (min-halo   float)
-   (max-halo   float)
-   )
-  :allow-misaligned
-  )
-
+  ((high-noon float)
+   (tilt      float)
+   (rise      float)
+   (dist      float)
+   (min-halo  float)
+   (max-halo  float))
+  :allow-misaligned)
 
 ;; sky data to send to old sky renderer.
 (deftype sky-upload-data (basic)
-  ((circle  sky-circle-data  :inline)
-   (sun     sky-sun-data     2 :inline)
-   (moon    sky-moon-data    :inline)
-   (data    uint128          27 :overlay-at (-> circle data))
-   )
-  )
-
+  ((circle sky-circle-data :inline)
+   (sun    sky-sun-data 2 :inline)
+   (moon   sky-moon-data :inline)
+   (data   uint128 27 :overlay-at (-> circle data))))
 
 ;; all sky data. This has a copy of sky-upload-data that's used by the new sky renderer.
 (deftype sky-parms (basic)
-  ((orbit              sky-orbit        3 :inline)
-   (upload-data        sky-upload-data  :inline)
-   (sun-lights         light-group      :inline)
-   (moon-lights        light-group      :inline)
-   (default-lights     light-group      :inline)
-   (default-vu-lights  vu-lights        :inline)
-   )
+  ((orbit             sky-orbit 3 :inline)
+   (upload-data       sky-upload-data :inline)
+   (sun-lights        light-group :inline)
+   (moon-lights       light-group :inline)
+   (default-lights    light-group :inline)
+   (default-vu-lights vu-lights :inline))
   (:methods
-    (new (symbol type) _type_)
-    )
-  )
-
+   (new (symbol type) _type_)))
 
 (defmethod new sky-parms ((allocation symbol) (type-to-make type))
   "allocate a new sky-parms"
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 upload-data type) sky-upload-data)
-    v0-0
-    )
-  )
+    v0-0))
 
 (define *sky-parms* (new 'global 'sky-parms))
 
@@ -123,54 +95,48 @@
 (dotimes (gp-0 17)
   (let ((f30-0 (+ MINUS_PI (* 0.39269906 (the float (logand gp-0 15))))))
     (set! (-> *sky-upload-data* circle data gp-0 x) (* 2.2 (sin-rad f30-0)))
-    (set! (-> *sky-upload-data* circle data gp-0 y) (cos-rad f30-0))
-    )
+    (set! (-> *sky-upload-data* circle data gp-0 y) (cos-rad f30-0)))
   (set! (-> *sky-upload-data* circle data gp-0 z) 0.0)
-  (set! (-> *sky-upload-data* circle data gp-0 w) 0.0)
-  )
+  (set! (-> *sky-upload-data* circle data gp-0 w) 0.0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; new sky renderer (TNG)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sky-tng-data (basic)
-  ((giftag-base   gs-gif-tag  :inline)
-   (giftag-roof   gs-gif-tag  :inline)
-   (giftag-ocean  gs-gif-tag  :inline)
-   (fog           vector      :inline)
-   (sky           uint32      8)
-   (time          float)
-   (off-s-0       uint16)
-   (off-t-0       uint16)
-   (off-s-1       uint16)
-   (off-t-1       uint16)
-   )
-  )
-
+  ((giftag-base  gs-gif-tag :inline)
+   (giftag-roof  gs-gif-tag :inline)
+   (giftag-ocean gs-gif-tag :inline)
+   (fog          vector :inline)
+   (sky          uint32 8)
+   (time         float)
+   (off-s-0      uint16)
+   (off-t-0      uint16)
+   (off-s-1      uint16)
+   (off-t-1      uint16)))
 
 (deftype sky-work (structure)
-  ((adgif-tmpl  dma-gif-packet  :inline)
-   (draw-tmpl   dma-gif-packet  :inline)
-   (blend-tmpl  dma-gif-packet  :inline)
-   (sky-data    qword           5 :inline)
-   (cloud-data  qword           5 :inline)
-   )
-  )
-
+  ((adgif-tmpl dma-gif-packet :inline)
+   (draw-tmpl  dma-gif-packet :inline)
+   (blend-tmpl dma-gif-packet :inline)
+   (sky-data   qword 5 :inline)
+   (cloud-data qword 5 :inline)))
 
 (deftype sky-vertex (structure)
-  ((pos  vector  :inline)
-   (stq  vector  :inline)
-   (col  vector  :inline)
-   )
-  )
-
+  ((pos vector :inline)
+   (stq vector :inline)
+   (col vector :inline)))
 
 ;; the sky renderer writes sky and cloud textures to vram - these booleans tell you if
 ;; it has done this, and if the sky/cloud textures should be used.
 (define *sky-drawn* #f)
+
 (define *cloud-drawn* #f)
+
 (declare-type time-of-day-context basic)
+
 (define-extern update-sky-tng-data (function float none))
+
 (define-extern make-sky-textures (function time-of-day-context int none))
+
 (define-extern sky-base-polygons (inline-array sky-vertex))

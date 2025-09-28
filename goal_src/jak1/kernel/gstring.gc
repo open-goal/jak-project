@@ -1,10 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: gstring.gc
-;; name in dgo: gstring
-;; dgos: KERNEL
-
+(bundles "KERNEL.CGO")
+(require "kernel/gstring-h.gc")
+(require "kernel/gcommon.gc")
 
 ;; The GOAL string type is like a C string plus a length field.
 ;; The number of bytes stored is the length + 1 for the null terminator.
@@ -21,88 +19,58 @@
   "Get the length of a string. Like strlen"
   (let ((str-ptr (-> this data)))
     (while (!= 0 (-> str-ptr 0))
-      (set! str-ptr (the (pointer uint8) (&+ str-ptr 1)))
-      )
-    (- (the int str-ptr) (the int (-> this data)))
-    )
-  )
+      (set! str-ptr (the (pointer uint8) (&+ str-ptr 1))))
+    (- (the int str-ptr) (the int (-> this data)))))
 
 (defmethod asize-of ((this string))
   "get the size in bytes of a string."
-  (+ (-> this allocated-length) 1 (-> string size))
-  )
+  (+ (-> this allocated-length) 1 (-> string size)))
 
 (defun copy-string<-string ((dst string) (src string))
   "Copy data from one string to another, like strcpy"
   (let ((dst-ptr (-> dst data))
-        (src-ptr (-> src data))
-        )
+        (src-ptr (-> src data)))
     (while (!= 0 (-> src-ptr))
       (set! (-> dst-ptr) (-> src-ptr))
       (&+! dst-ptr 1)
-      (&+! src-ptr 1)
-      )
-    (set! (-> dst-ptr 0) 0)
-    )
-  dst
-  )
+      (&+! src-ptr 1))
+    (set! (-> dst-ptr 0) 0))
+  dst)
 
 (defun copyn-string<-string ((dst string) (src string) (len int))
   "Copy len bytes of data from one string to another, like strncpy"
   (let ((dst-ptr (-> dst data))
-        (src-ptr (-> src data))
-        )
-    (if (<= len (length src))
-      (dotimes (i len)
-        (set! (-> dst-ptr) (-> src-ptr))
-        (&+! dst-ptr 1)
-        (&+! src-ptr 1)
-        )
-      )
-    (set! (-> dst-ptr 0) 0)
-    )
-  dst
-  )
+        (src-ptr (-> src data)))
+    (if (<= len (length src)) (dotimes (i len)   (set! (-> dst-ptr) (-> src-ptr))   (&+! dst-ptr 1)   (&+! src-ptr 1)))
+    (set! (-> dst-ptr 0) 0))
+  dst)
 
 (defun substring! ((dst string) (src string) (start int) (end int))
   "Copy the specified substring to dst. Returns an empty string if invalid indices are given."
   (let ((strlen (length src)))
     (if (and (< start strlen) (<= end strlen))
       (let ((start-ptr (-> src data))
-            (dst-ptr (-> dst data))
-            )
-            (dotimes (i (- end start))
-              (set! (-> dst-ptr) (-> start-ptr (+ start i)))
-              (&+! dst-ptr 1)
-              )
-            (set! (-> dst-ptr 0) 0)
-            dst
-        )
-        ""
-      )
-    )
-  )
+            (dst-ptr (-> dst data)))
+        (dotimes (i (- end start))
+          (set! (-> dst-ptr) (-> start-ptr (+ start i)))
+          (&+! dst-ptr 1))
+        (set! (-> dst-ptr 0) 0)
+        dst)
+      "")))
 
 (defmethod new string ((allocation symbol) (type-to-make type) (size int) (other string))
   "Create a new string of the given size. If other is not #f, copy data from it."
   (cond
     (other
-      (let* ((desired-size (max (length other) size))
-             (new-obj (object-new allocation type-to-make (+ desired-size 1 (-> type-to-make size))))
-             )
-        (set! (-> new-obj allocated-length) size)
-        (copy-string<-string new-obj other)
-        new-obj
-        )
-      )
+     (let* ((desired-size (max (length other) size))
+            (new-obj (object-new allocation type-to-make (+ desired-size 1 (-> type-to-make size)))))
+       (set! (-> new-obj allocated-length) size)
+       (copy-string<-string new-obj other)
+       new-obj))
     (else
-      (let ((new-obj (object-new allocation type-to-make (+ 1 size (-> type-to-make size)))))
-        (set! (-> new-obj allocated-length) size)
-        new-obj
-        )
-      )
-    )
-  )
+     (let ((new-obj (object-new allocation type-to-make (+ 1 size (-> type-to-make size)))))
+       (set! (-> new-obj allocated-length) size)
+       new-obj))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; String comparison
@@ -112,36 +80,23 @@
   "Does str-a hold the same data as str-b?.
    If either string is null, returns #f."
   (let ((a-ptr (-> str-a data))
-        (b-ptr (-> str-b data))
-        )
-    (if (or (zero? str-a) (zero? str-b))
-        (return #f)
-        )
+        (b-ptr (-> str-b data)))
+    (if (or (zero? str-a) (zero? str-b)) (return #f))
     (while (and (nonzero? (-> a-ptr 0)) (nonzero? (-> b-ptr 0)))
-      (if (!= (-> a-ptr 0) (-> b-ptr 0))
-          (return #f)
-          )
+      (if (!= (-> a-ptr 0) (-> b-ptr 0)) (return #f))
       (set! a-ptr (&-> a-ptr 1))
-      (set! b-ptr (&-> b-ptr 1))
-      )
+      (set! b-ptr (&-> b-ptr 1)))
     ;; only equal if both end here.
-    (and (zero? (-> a-ptr 0)) (zero? (-> b-ptr 0)))
-    )
-  )
+    (and (zero? (-> a-ptr 0)) (zero? (-> b-ptr 0)))))
 
 (defun string-charp= ((str string) (charp (pointer uint8)))
   "Is the data in str equal to the C string charp?"
   (let ((str-ptr (-> str data)))
     (while (and (nonzero? (-> str-ptr 0)) (nonzero? (-> charp 0)))
-      (if (!= (-> str-ptr 0) (-> charp 0))
-          (return #f)
-          )
+      (if (!= (-> str-ptr 0) (-> charp 0)) (return #f))
       (set! str-ptr (&-> str-ptr 1))
-      (set! charp (&-> charp 1))
-      )
-    (and (zero? (-> str-ptr 0)) (zero? (-> charp 0)))
-    )
-  )
+      (set! charp (&-> charp 1)))
+    (and (zero? (-> str-ptr 0)) (zero? (-> charp 0)))))
 
 (defun name= ((arg0 basic) (arg1 basic))
   "Do arg0 and arg1 have the same name?
@@ -150,18 +105,11 @@
     ((= arg0 arg1)
      ;; Either same symbols, or same string objects, fast check pass!
      #t)
-    ((and (= (-> arg0 type) string) (= (-> arg1 type) string))
-     (string= (the-as string arg0) (the-as string arg1))
-     )
-    ((and (= (-> arg0 type) string) (= (-> arg1 type) symbol))
-     (string= (the-as string arg0) (symbol->string arg1))
-     )
-    ((and (= (-> arg1 type) string) (= (-> arg0 type) symbol))
-     (string= (the-as string arg1) (symbol->string arg0))
-     )
+    ((and (= (-> arg0 type) string) (= (-> arg1 type) string)) (string= (the-as string arg0) (the-as string arg1)))
+    ((and (= (-> arg0 type) string) (= (-> arg1 type) symbol)) (string= (the-as string arg0) (symbol->string arg1)))
+    ((and (= (-> arg1 type) string) (= (-> arg0 type) symbol)) (string= (the-as string arg1) (symbol->string arg0)))
     ;; no need to check symbol - symbol, that would have passed the first check.
-    )
-  )
+    ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; String copying
@@ -173,12 +121,9 @@
     (dotimes (i len)
       (set! (-> str-ptr 0) (-> charp 0))
       (set! str-ptr (&-> str-ptr 1))
-      (set! charp (&-> charp 1))
-      )
-    (set! (-> str-ptr 0) (the-as uint 0))
-    )
-  str
-  )
+      (set! charp (&-> charp 1)))
+    (set! (-> str-ptr 0) (the-as uint 0)))
+  str)
 
 (defun string<-charp ((str string) (charp (pointer uint8)))
   "Copy all chars from a char* to a GOAL string.
@@ -187,12 +132,9 @@
     (while (nonzero? (-> charp 0))
       (set! (-> str-ptr 0) (-> charp 0))
       (set! str-ptr (&-> str-ptr 1))
-      (set! charp (&-> charp 1))
-      )
-    (set! (-> str-ptr 0) (the-as uint 0))
-    )
-  str
-  )
+      (set! charp (&-> charp 1)))
+    (set! (-> str-ptr 0) (the-as uint 0)))
+  str)
 
 (defun charp<-string ((dst (pointer uint8)) (src-string string))
   "Copy a GOAL string into a character array."
@@ -200,23 +142,18 @@
     (while (!= 0 (-> src))
       (set! (-> dst) (-> src))
       (&+! dst 1)
-      (&+! src 1)
-      )
+      (&+! src 1))
     (set! (-> dst) 0)
-    0
-    )
-  )
+    0))
 
 (defun copy-charp<-charp ((dst (pointer uint8)) (src (pointer uint8)))
   "C string copy."
   (while (nonzero? (-> src 0))
     (set! (-> dst 0) (-> src 0))
     (set! dst (&-> dst 1))
-    (set! src (&-> src 1))
-    )
+    (set! src (&-> src 1)))
   (set! (-> dst 0) 0)
-  dst
-  )
+  dst)
 
 (defun cat-string<-string ((a string) (b string))
   "Append b to a. No length checks"
@@ -226,60 +163,43 @@
         (nop!)
         (nop!)
         (nop!)
-        (set! a-ptr (&-> a-ptr 1))
-        )
+        (set! a-ptr (&-> a-ptr 1)))
       (while (nonzero? (-> b-ptr 0))
         (set! (-> a-ptr 0) (-> b-ptr 0))
         (set! a-ptr (&-> a-ptr 1))
-        (set! b-ptr (&-> b-ptr 1))
-        )
-      )
-    (set! (-> a-ptr 0) (the-as uint 0))
-    )
-  a
-  )
+        (set! b-ptr (&-> b-ptr 1))))
+    (set! (-> a-ptr 0) (the-as uint 0)))
+  a)
 
 (defun catn-string<-charp ((a string) (b (pointer uint8)) (len int))
   "Append b to a, exactly len chars"
   (let ((a-ptr (-> a data)))
     (while (nonzero? (-> a-ptr 0))
-      (set! a-ptr (&-> a-ptr 1))
-      )
+      (set! a-ptr (&-> a-ptr 1)))
     (dotimes (i len)
       (set! (-> a-ptr 0) (-> b 0))
       (set! a-ptr (&-> a-ptr 1))
-      (set! b (&-> b 1))
-      )
-    (set! (-> a-ptr 0) (the-as uint 0))
-    )
-  a
-  )
+      (set! b (&-> b 1)))
+    (set! (-> a-ptr 0) (the-as uint 0)))
+  a)
 
 (defun cat-string<-string_to_charp ((a string) (b string) (end-ptr (pointer uint8)))
   "Append b to a, using chars of b up to (and including) the one pointed to by end-ptr,
    or, until the end of b, whichever comes first."
-
   (let ((b-ptr (-> b data))
-        (a-ptr (-> a data))
-        )
+        (a-ptr (-> a data)))
     ;; seek to end of a
     (while (nonzero? (-> a-ptr 0))
       (nop!)
       (nop!)
       (nop!)
-      (set! a-ptr (&-> a-ptr 1))
-      )
-    (while (and (>= (the-as int end-ptr) (the-as int b-ptr))
-                (nonzero? (-> b-ptr 0)))
+      (set! a-ptr (&-> a-ptr 1)))
+    (while (and (>= (the-as int end-ptr) (the-as int b-ptr)) (nonzero? (-> b-ptr 0)))
       (set! (-> a-ptr 0) (-> b-ptr 0))
       (set! a-ptr (&-> a-ptr 1))
-      (set! b-ptr (&-> b-ptr 1))
-      )
+      (set! b-ptr (&-> b-ptr 1)))
     (set! (-> a-ptr 0) 0)
-    a-ptr
-    )
-  )
-
+    a-ptr))
 
 (defun append-character-to-string ((str string) (char uint8))
   "Append char to the end of the given string."
@@ -288,13 +208,10 @@
       (nop!)
       (nop!)
       (nop!)
-      (set! str-ptr (&-> str-ptr 1))
-      )
+      (set! str-ptr (&-> str-ptr 1)))
     (set! (-> str-ptr 0) char)
     (set! (-> str-ptr 1) 0)
-    0
-    )
-  )
+    0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; String utilities
@@ -305,70 +222,52 @@
   (let* ((in-ptr (-> in data))
          (in-data (-> in-ptr 0))
          (in-idx 1)
-         (out-idx 0)
-         )
+         (out-idx 0))
     (while (nonzero? in-data)
-      (if (and (>= in-data (the-as uint 97)) (>= (the-as uint 122) in-data))
-          (+! in-data -32)
-          )
+      (if (and (>= in-data (the-as uint 97)) (>= (the-as uint 122) in-data)) (+! in-data -32))
       (set! (-> out data out-idx) in-data)
       (set! in-data (-> in-ptr in-idx))
       (+! in-idx 1)
-      (+! out-idx 1)
-      )
-    (set! (-> out data out-idx) (the-as uint 0))
-    )
-  out
-  )
+      (+! out-idx 1))
+    (set! (-> out data out-idx) (the-as uint 0)))
+  out)
 
 (defun string-downcase ((in string) (out string))
   "Lowercase the given string."
   (let* ((in-ptr (-> in data))
          (in-data (-> in-ptr 0))
          (in-idx 1)
-         (out-idx 0)
-         )
+         (out-idx 0))
     (while (nonzero? in-data)
-      (if (and (>= in-data (the-as uint 97)) (>= (the-as uint 122) in-data))
-          (+! in-data 32)
-          )
+      (if (and (>= in-data (the-as uint 97)) (>= (the-as uint 122) in-data)) (+! in-data 32))
       (set! (-> out data out-idx) in-data)
       (set! in-data (-> in-ptr in-idx))
       (+! in-idx 1)
-      (+! out-idx 1)
-      )
-    (set! (-> out data out-idx) (the-as uint 0))
-    )
-  out
-  )
+      (+! out-idx 1))
+    (set! (-> out data out-idx) (the-as uint 0)))
+  out)
 
 (defun charp-basename ((charp (pointer uint8)))
   "Like basename in C"
   (let ((ptr charp))
     ;; seek to end
     (while (nonzero? (-> ptr 0))
-      (set! ptr (&-> ptr 1))
-      )
+      (set! ptr (&-> ptr 1)))
     ;; and back up...
     (while (< (the-as int charp) (the-as int ptr))
       (set! ptr (&-> ptr -1))
       ;; (if (or (zero? (+ (-> ptr 0) -47)) (zero? (+ (-> ptr 0) -92)))
       ;; check for equal to / or \
       (if (or (= (-> ptr 0) #\/) (= (-> ptr 0) #\\))
-          ;; return the next char after that
-          (return (&-> ptr 1))
-          )
-      )
+        ;; return the next char after that
+        (return (&-> ptr 1))))
     ;; didn't find any slashes, return the whole thing.
-    charp
-    )
-  )
+    charp))
 
 (defun clear ((a0-0 string))
   "Make string empty"
-  (set! (-> a0-0 data 0) 0) a0-0
-  )
-
+  (set! (-> a0-0 data 0) 0)
+  a0-0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; String ordering
@@ -384,66 +283,34 @@
   (let ((len (min (length a) (length b))))
     (dotimes (i len)
       (cond
-        ((< (-> a data i) (-> b data i))
-         (return #t)
-         )
-        ((< (-> b data i) (-> a data i))
-         (return #f)
-         )
-        )
-      )
-    )
-  #f
-  )
+        ((< (-> a data i) (-> b data i)) (return #t))
+        ((< (-> b data i) (-> a data i)) (return #f)))))
+  #f)
 
 (defun string>? ((a string) (b string))
   "In dictionary order, is a > b?"
   (let ((len (min (length a) (length b))))
     (dotimes (i len)
       (cond
-        ((< (-> a data i) (-> b data i))
-         (return #f)
-         )
-        ((< (-> b data i) (-> a data i))
-         (return #t)
-         )
-        )
-      )
-    )
-  #f
-  )
+        ((< (-> a data i) (-> b data i)) (return #f))
+        ((< (-> b data i) (-> a data i)) (return #t)))))
+  #f)
 
 (defun string<=? ((a string) (b string))
   (let ((len (min (length a) (length b))))
     (dotimes (i len)
       (cond
-        ((< (-> a data i) (-> b data i))
-         (return #t)
-         )
-        ((< (-> b data i) (-> a data i))
-         (return #f)
-         )
-        )
-      )
-    )
-  #t
-  )
+        ((< (-> a data i) (-> b data i)) (return #t))
+        ((< (-> b data i) (-> a data i)) (return #f)))))
+  #t)
 
 (defun string>=? ((a string) (b string))
   (let ((len (min (length a) (length b))))
     (dotimes (i len)
       (cond
-        ((< (-> a data i) (-> b data i))
-         (return #f)
-         )
-        ((< (-> b data i) (-> a data i))
-         (return #t)
-         )
-        )
-      )
-    )
-  #t
-  )
+        ((< (-> a data i) (-> b data i)) (return #f))
+        ((< (-> b data i) (-> a data i)) (return #t)))))
+  #t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; String argument parsing
@@ -455,10 +322,8 @@
 (defun string-skip-to-char ((str (pointer uint8)) (char uint))
   "Return pointer to first instance of char in C string, or to the null terminator if none"
   (while (and (nonzero? (-> str 0)) (!= (-> str 0) char))
-    (set! str (&-> str 1))
-    )
-  str
-  )
+    (set! str (&-> str 1)))
+  str)
 
 (defun string-cat-to-last-char ((base-str string) (append-str string) (char uint))
   "Append append-str to the end of base-str, up to the last occurance of char in append-str"
@@ -467,41 +332,24 @@
       (when (= (-> location-of-char 0) char)
         (until (!= (-> location-of-char 0) char)
           (set! end-of-append location-of-char)
-          (set! location-of-char (string-skip-to-char (&-> location-of-char 1) char))
-          )
-        )
-      )
-    (cat-string<-string_to_charp base-str append-str end-of-append)
-    )
-  )
-
+          (set! location-of-char (string-skip-to-char (&-> location-of-char 1) char)))))
+    (cat-string<-string_to_charp base-str append-str end-of-append)))
 
 (defmacro is-whitespace-char? (c)
   ;; 32 = space
   ;; 9 = \t
   ;; 13 = \r
   ;; 10 = \n
-  `(or (= ,c 32)
-       (= ,c 9)
-       (= ,c 13)
-       (= ,c 10)
-       )
-  )
+  `(or (= ,c 32) (= ,c 9) (= ,c 13) (= ,c 10)))
 
 (defmacro not-whitespace-char? (c)
-  `(not (is-whitespace-char? ,c))
-  )
+  `(not (is-whitespace-char? ,c)))
 
 (defun string-skip-whitespace ((arg0 (pointer uint8)))
   "Skip over spaces, tabs, r's and n's"
-  (while
-      (and (nonzero? (-> arg0 0))
-           (is-whitespace-char? (-> arg0 0))
-           )
-    (set! arg0 (&-> arg0 1))
-    )
-  arg0
-  )
+  (while (and (nonzero? (-> arg0 0)) (is-whitespace-char? (-> arg0 0)))
+    (set! arg0 (&-> arg0 1)))
+  arg0)
 
 (defun string-suck-up! ((str string) (location (pointer uint8)))
   "Remove character between the start of string and location.
@@ -513,53 +361,37 @@
       (while (nonzero? (-> location 0))
         (set! (-> str-ptr 0) (-> location 0))
         (set! str-ptr (&-> str-ptr 1))
-        (set! location (&-> location 1))
-        )
+        (set! location (&-> location 1)))
       ;; null terminate
-      (set! (-> str-ptr 0) 0)
-      )
-    #f
-    )
-  )
+      (set! (-> str-ptr 0) 0))
+    #f))
 
 (defun string-strip-leading-whitespace! ((str string))
   "Remove whitespace at the front of a string"
-  (let ((start-loc (string-skip-whitespace (-> str data))))
-    (string-suck-up! str start-loc)
-    )
-  #f
-  )
+  (let ((start-loc (string-skip-whitespace (-> str data)))) (string-suck-up! str start-loc))
+  #f)
 
 (defun string-strip-trailing-whitespace! ((str string))
   "Remove whitespace at the end of a string"
   (when (nonzero? (length str))
     (let ((ptr (&+ (-> str data) (+ (length str) -1))))
-      (while (and
-               (>= (the-as int ptr) (the-as int (-> str data)))
-               (is-whitespace-char? (-> ptr 0))
-               )
-        (set! ptr (&-> ptr -1))
-        )
-      (set! (-> ptr 1) (the-as uint 0))
-      )
-    0
-    )
-  #f
-  )
+      (while (and (>= (the-as int ptr) (the-as int (-> str data))) (is-whitespace-char? (-> ptr 0)))
+        (set! ptr (&-> ptr -1)))
+      (set! (-> ptr 1) (the-as uint 0)))
+    0)
+  #f)
 
 (defun string-strip-whitespace! ((arg0 string))
   "Remove whitespace at the beginning and end of a string"
   (string-strip-trailing-whitespace! arg0)
   (string-strip-leading-whitespace! arg0)
-  #f
-  )
+  #f)
 
 (defun string-get-arg!! ((a-str string) (arg string))
   "Get the first argument from a whitespace separated list of arguments.
    The arguments can be in quotes or not.
    Removes argument from arg string, sucks up white space before the next one
    Outputs argument to a-str."
-
   ;; seek to first arg
   (let ((arg-word-start (string-skip-whitespace (-> arg data))))
     (cond
@@ -569,55 +401,34 @@
          ;; now find end
          (let ((arg-start arg-end))
            (while (and (nonzero? (-> arg-end 0)) (!= (-> arg-end 0) 34)) ;; close quote
-             (set! arg-end (&-> arg-end 1))
-             )
+             (set! arg-end (&-> arg-end 1)))
            ;; copy to output
-           (copyn-string<-charp a-str arg-start (&- arg-end (the-as uint arg-start)))
-           )
-
+           (copyn-string<-charp a-str arg-start (&- arg-end (the-as uint arg-start))))
          ;; if we got a close quote, seek past it.
-         (if (= (-> arg-end 0) 34)
-             (set! arg-end (&-> arg-end 1))
-             )
-
+         (if (= (-> arg-end 0) 34) (set! arg-end (&-> arg-end 1)))
          ;; kill leading white space
-         (let ((a1-3 (string-skip-whitespace arg-end)))
-           (string-suck-up! arg a1-3)
-           )
-         )
-       (return #t)
-       )
+         (let ((a1-3 (string-skip-whitespace arg-end))) (string-suck-up! arg a1-3)))
+       (return #t))
       ((nonzero? (-> arg-word-start 0))
        (let ((v1-11 arg-word-start))
          ;; find end
-         (while (and
-                 (nonzero? (-> arg-word-start 0))
-                 (!= (-> arg-word-start 0) 32)
-                 (!= (-> arg-word-start 0) 9)
-                 (!= (-> arg-word-start 0) 13)
-                 (!= (-> arg-word-start 0) 10)
-                 )
-           (set! arg-word-start (&-> arg-word-start 1))
-           )
-         (copyn-string<-charp a-str v1-11 (&- arg-word-start (the-as uint v1-11)))
-         )
-       (let ((a1-9 (string-skip-whitespace arg-word-start)))
-         (string-suck-up! arg a1-9)
-         )
-       (return #t)
-       )
-      )
-    )
-  #f
-  )
+         (while (and (nonzero? (-> arg-word-start 0))
+                     (!= (-> arg-word-start 0) 32)
+                     (!= (-> arg-word-start 0) 9)
+                     (!= (-> arg-word-start 0) 13)
+                     (!= (-> arg-word-start 0) 10))
+           (set! arg-word-start (&-> arg-word-start 1)))
+         (copyn-string<-charp a-str v1-11 (&- arg-word-start (the-as uint v1-11))))
+       (let ((a1-9 (string-skip-whitespace arg-word-start))) (string-suck-up! arg a1-9))
+       (return #t))))
+  #f)
 
 (defun string->int ((str string))
   "String to int. Supports binary, hex, and decimal. Negative is implemented for decimal and hex
    But I think it's broken?"
   (let ((str-ptr (-> str data))
         (result 0)
-        (negative #f)
-        )
+        (negative #f))
     (cond
       ((= (-> str-ptr 0) 35)
        ;; starts with #.
@@ -629,91 +440,56 @@
               (when (= (-> next-char-2 1) 45)
                 ;; negate!
                 (set! negative #t)
-                (set! next-char-2 (&-> next-char-2 1))
-                )
-              (while (or
-                       (and (>= (-> next-char-2 0) (the-as uint 48)) (>= (the-as uint 57) (-> next-char-2 0)))
-                       (and (>= (-> next-char-2 0) (the-as uint 65)) (>= (the-as uint 70) (-> next-char-2 0)))
-                       (and (>= (-> next-char-2 0) (the-as uint 97)) (>= (the-as uint 102) (-> next-char-2 0)))
-                       )
+                (set! next-char-2 (&-> next-char-2 1)))
+              (while (or (and (>= (-> next-char-2 0) (the-as uint 48)) (>= (the-as uint 57) (-> next-char-2 0)))
+                         (and (>= (-> next-char-2 0) (the-as uint 65)) (>= (the-as uint 70) (-> next-char-2 0)))
+                         (and (>= (-> next-char-2 0) (the-as uint 97)) (>= (the-as uint 102) (-> next-char-2 0))))
                 (cond
                   ((and (>= (-> next-char-2 0) (the-as uint 65)) (>= (the-as uint 70) (-> next-char-2 0)))
-                    ;; is in [A-F]
-                   (set! result (the-as int (+ (-> next-char-2 0) -55 (* result 16))))
-                   )
+                   ;; is in [A-F]
+                   (set! result (the-as int (+ (-> next-char-2 0) -55 (* result 16)))))
                   ((and (>= (-> next-char-2 0) (the-as uint 97)) (>= (the-as uint 102) (-> next-char-2 0)))
-                    ;; is in [a-f]
-                   (set! result (the-as int (+ (-> next-char-2 0) -87 (* result 16))))
-                   )
+                   ;; is in [a-f]
+                   (set! result (the-as int (+ (-> next-char-2 0) -87 (* result 16)))))
                   (else
-                    ;; is in [0-9]
-                    (set! result (the-as int (+ (-> next-char-2 0) -48 (* result 16))))
-                    )
-                  )
-                (set! next-char-2 (&-> next-char-2 1))
-                )
-              )
-            )
+                   ;; is in [0-9]
+                   (set! result (the-as int (+ (-> next-char-2 0) -48 (* result 16))))))
+                (set! next-char-2 (&-> next-char-2 1)))))
            ((or (= (-> next-char-1 0) 98) (= (-> next-char-1 0) 66))
             ;; is #b (I guess we can't do negative binary?)
             (let ((a0-4 (&-> next-char-1 1)))
               (while (and (>= (-> a0-4 0) (the-as uint 48)) (>= (the-as uint 49) (-> a0-4 0)))
                 (set! result (the-as int (+ (-> a0-4 0) -48 (* result 2))))
-                (set! a0-4 (&-> a0-4 1))
-                )
-              )
-            )
-           )
-         )
-       )
+                (set! a0-4 (&-> a0-4 1))))))))
       (else
-        ;; decimal
-
-        ;; check for negative
-        (when (= (-> str-ptr 1) 45)
-          (set! negative #t)
-          (set! str-ptr (&-> str-ptr 1))
-          )
-        (while (and (>= (-> str-ptr 0) (the-as uint 48)) (>= (the-as uint 57) (-> str-ptr 0)))
-          (set! result (the-as int (+ (-> str-ptr 0) -48 (* 10 result))))
-          (set! str-ptr (&-> str-ptr 1))
-          )
-        )
-      )
+       ;; decimal
+       ;; check for negative
+       (when (= (-> str-ptr 1) 45)
+         (set! negative #t)
+         (set! str-ptr (&-> str-ptr 1)))
+       (while (and (>= (-> str-ptr 0) (the-as uint 48)) (>= (the-as uint 57) (-> str-ptr 0)))
+         (set! result (the-as int (+ (-> str-ptr 0) -48 (* 10 result))))
+         (set! str-ptr (&-> str-ptr 1)))))
     (cond
-      (negative
-        (- result)
-        )
-      (else
-        result
-        )
-      )
-    )
-  )
+      (negative (- result))
+      (else result))))
 
 (defun string->float ((str string))
   "Convert a string to a float, but it is not implemented."
   ;(format 0 "string->float left as an excersize for the reader~%")
   ;0.0
-
   ;; added...
   (let ((charp (-> str data))
         (result 0.0)
         (negative #f))
-
     (when (= (-> charp) #\-)
       (set! negative #t)
-      (&+! charp 1)
-      )
-
+      (&+! charp 1))
     (while (and (>= (-> charp) #\0) (<= (-> charp) #\9))
       ;; number
-
       (*! result 10) ;; bump oom (e.g. 123 -> 1230)
       (+! result (- (-> charp) #\0)) ;; add unit (e.g. 1230 -> 1234)
-      (&+! charp 1)
-      )
-
+      (&+! charp 1))
     (when (= (-> charp) #\.)
       ;; dot
       (&+! charp 1)
@@ -721,62 +497,33 @@
       (let ((frac 1.0))
         (while (and (>= (-> charp) #\0) (<= (-> charp) #\9))
           ;; number
-
           (*! frac 10) ;; bump frac oom
           (+! result (/ (the float (- (-> charp) #\0)) frac)) ;; add frac (e.g. 1234 -> 1234.5)
-          (&+! charp 1)
-          )
-        )
-      )
-
+          (&+! charp 1))))
     (cond
-      (negative
-        (- result)
-        )
-      (else
-        result
-        )
-      )
-    )
-  )
+      (negative (- result))
+      (else result))))
 
 (defun string-get-int32!! ((arg0 (pointer int32)) (arg1 string))
   "Get an int32 from a list of arguments"
   (cond
-   ((string-get-arg!! *string-tmp-str* arg1)
-    (set! (-> arg0 0) (string->int *string-tmp-str*))
-    #t
-    )
-   (else #f)
-   )
-  )
+    ((string-get-arg!! *string-tmp-str* arg1) (set! (-> arg0 0) (string->int *string-tmp-str*)) #t)
+    (else #f)))
 
 (defun string-get-float!! ((arg0 (pointer float)) (arg1 string))
   (cond
-   ((string-get-arg!! *string-tmp-str* arg1)
-    (set! (-> arg0 0) (string->float *string-tmp-str*))
-    #t
-    )
-   (else #f)
-   )
-  )
+    ((string-get-arg!! *string-tmp-str* arg1) (set! (-> arg0 0) (string->float *string-tmp-str*)) #t)
+    (else #f)))
 
 (defun string-get-flag!! ((result (pointer symbol)) (in string) (first-flag string) (second-flag string))
   (cond
     ((string-get-arg!! *string-tmp-str* in)
      (cond
-       ((or (string= *string-tmp-str* first-flag)
-            (string= *string-tmp-str* second-flag)
-            )
+       ((or (string= *string-tmp-str* first-flag) (string= *string-tmp-str* second-flag))
         (set! (-> result 0) (string= *string-tmp-str* first-flag))
-        #t
-        )
-       (else #f)
-       )
-     )
-    (else #f)
-    )
-  )
+        #t)
+       (else #f)))
+    (else #f)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Globals
@@ -794,12 +541,16 @@
 (define *debug-draw-pauseable* #f)
 
 (define *stdcon0* (new 'global 'string 16384 (the string #f)))
+
 (define *stdcon1* (new 'global 'string 16384 (the string #f)))
+
 (define *stdcon* *stdcon0*)
 
 ;; shared temporary strings.
 (define *temp-string* (new 'global 'string 256 (the string #f)))
+
 (define *temp-string2* (new 'global 'string 256 (the string #f)))
+
 (define *pc-cpp-temp-string*
   "A convenient place to retrieve a string from C++"
   (new 'global 'string 256 (the-as string #f)))
@@ -807,10 +558,6 @@
 (defmacro string-format (&rest args)
   "Formats into *temp-string* and returns it, for in-place string formating.
    DO NOT USE *temp-string* WITH THIS MACRO! It is read as input AFTER all of the args evaluate."
-
   `(begin
-     (format (clear *temp-string*) ,@args)
-     *temp-string*
-     )
-  )
-
+    (format (clear *temp-string*) ,@args)
+    *temp-string*))

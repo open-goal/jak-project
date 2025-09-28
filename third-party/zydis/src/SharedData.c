@@ -141,26 +141,31 @@ void ZydisGetElementInfo(ZydisInternalElementType element, ZydisElementType* typ
         { ZYDIS_ELEMENT_TYPE_UINT     ,   0 },
         { ZYDIS_ELEMENT_TYPE_INT      ,   1 },
         { ZYDIS_ELEMENT_TYPE_INT      ,   8 },
+        { ZYDIS_ELEMENT_TYPE_INT      ,  32 }, // TODO: Should indicate 4 INT8 elements
         { ZYDIS_ELEMENT_TYPE_INT      ,  16 },
+        { ZYDIS_ELEMENT_TYPE_INT      ,  32 }, // TODO: Should indicate 2 INT16 elements
         { ZYDIS_ELEMENT_TYPE_INT      ,  32 },
         { ZYDIS_ELEMENT_TYPE_INT      ,  64 },
         { ZYDIS_ELEMENT_TYPE_UINT     ,   8 },
+        { ZYDIS_ELEMENT_TYPE_UINT     ,  32 }, // TODO: Should indicate 4 UINT8 elements
         { ZYDIS_ELEMENT_TYPE_UINT     ,  16 },
+        { ZYDIS_ELEMENT_TYPE_UINT     ,  32 }, // TODO: Should indicate 2 UINT16 elements
         { ZYDIS_ELEMENT_TYPE_UINT     ,  32 },
         { ZYDIS_ELEMENT_TYPE_UINT     ,  64 },
         { ZYDIS_ELEMENT_TYPE_UINT     , 128 },
         { ZYDIS_ELEMENT_TYPE_UINT     , 256 },
         { ZYDIS_ELEMENT_TYPE_FLOAT16  ,  16 },
-        { ZYDIS_ELEMENT_TYPE_FLOAT16  ,  32 }, // TODO: Should indicate 2 float16 elements
+        { ZYDIS_ELEMENT_TYPE_FLOAT16  ,  32 }, // TODO: Should indicate 2 FLOAT16 elements
         { ZYDIS_ELEMENT_TYPE_FLOAT32  ,  32 },
         { ZYDIS_ELEMENT_TYPE_FLOAT64  ,  64 },
+        { ZYDIS_ELEMENT_TYPE_BFLOAT16 ,  32 }, // TODO: Should indicate 2 BFLOAT16 elements
         { ZYDIS_ELEMENT_TYPE_FLOAT80  ,  80 },
         { ZYDIS_ELEMENT_TYPE_LONGBCD  ,  80 },
         { ZYDIS_ELEMENT_TYPE_CC       ,   3 },
         { ZYDIS_ELEMENT_TYPE_CC       ,   5 }
     };
 
-    ZYAN_ASSERT(element < ZYAN_ARRAY_LENGTH(lookup));
+    ZYAN_ASSERT((ZyanUSize)element < ZYAN_ARRAY_LENGTH(lookup));
 
     *type = lookup[element].type;
     *size = lookup[element].size;

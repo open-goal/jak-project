@@ -1,225 +1,161 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: junglesnake.gc
-;; name in dgo: junglesnake
-;; dgos: JUN, JUNGLE, L1
+(bundles "JUN.DGO")
+(require "engine/common-obs/nav-enemy.gc")
 
 ;; DECOMP BEGINS
 
-(defskelgroup *junglesnake-sg* junglesnake junglesnake-lod0-jg junglesnake-idle-ja
-              ((junglesnake-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 14 0 18)
-              :longest-edge (meters 2.5)
-              )
+(defskelgroup *junglesnake-sg*
+  junglesnake
+  junglesnake-lod0-jg
+  junglesnake-idle-ja
+  ((junglesnake-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 14 0 18)
+  :longest-edge (meters 2.5))
 
 (defpartgroup group-junglesnake-dropping-down
   :id 173
   :flags (use-local-clock)
   :bounds (static-bspherem 0 -12 0 14)
-  :parts ((sp-item 799 :period (seconds 1) :length (seconds 0.5)))
-  )
+  :parts ((sp-item 799 :period (seconds 1) :length (seconds 0.5))))
 
 (defpart 799
-  :init-specs ((:texture (new 'static 'texture-id :index #x1d :page #x2))
-    (:num 1.0)
-    (:x (meters -9) (meters 18))
-    (:y (meters -6))
-    (:z (meters -9) (meters 18))
-    (:scale-x (meters 0.1) (meters 0.5))
-    (:rot-z (degrees 0) (degrees 360))
-    (:scale-y :copy scale-x)
-    (:r 32.0 40.0)
-    (:g 32.0 40.0)
-    (:b 32.0 40.0)
-    (:a 128.0)
-    (:vel-y (meters 0) (meters -0.04))
-    (:rotvel-z (degrees -0.3) (degrees 0.6))
-    (:accel-y (meters -0.0016666667) (meters -0.00016666666))
-    (:timer (seconds 1.3))
-    (:flags (bit2))
-    (:userdata 0.0)
-    (:func 'check-water-level-drop)
-    )
-  )
+  :init-specs
+  ((:texture (rockbit effects))
+   (:num 1.0)
+   (:x (meters -9) (meters 18))
+   (:y (meters -6))
+   (:z (meters -9) (meters 18))
+   (:scale-x (meters 0.1) (meters 0.5))
+   (:rot-z (degrees 0) (degrees 360))
+   (:scale-y :copy scale-x)
+   (:r 32.0 40.0)
+   (:g 32.0 40.0)
+   (:b 32.0 40.0)
+   (:a 128.0)
+   (:vel-y (meters 0) (meters -0.04))
+   (:rotvel-z (degrees -0.3) (degrees 0.6))
+   (:accel-y (meters -0.0016666667) (meters -0.00016666666))
+   (:timer (seconds 1.3))
+   (:flags (bit2))
+   (:userdata 0.0)
+   (:func 'check-water-level-drop)))
 
 (deftype junglesnake-twist-joint (structure)
-  ((joint-index    int32)
-   (ry             float)
-   (drag-delta-ry  float)
-   )
-  :allow-misaligned
-  )
+  ((joint-index   int32)
+   (ry            float)
+   (drag-delta-ry float))
+  :allow-misaligned)
 
 
 (deftype junglesnake-tilt-joint (structure)
-  ((joint-index  int32)
-   (flip-it      symbol)
-   )
-  :allow-misaligned
-  )
+  ((joint-index int32)
+   (flip-it     symbol))
+  :allow-misaligned)
 
 
 (deftype junglesnake (process-drawable)
-  ((root               collide-shape           :override)
-   (state-time2        time-frame)
-   (hit-player         symbol                              :offset 184)
-   (is-lethal?         symbol)
-   (refractory-delay   int32)
-   (ry                 float)
-   (des-ry             float)
-   (tilt               float)
-   (des-tilt           float)
-   (track-player-ry    symbol)
-   (track-player-tilt  symbol)
-   (twist-joints       junglesnake-twist-joint  24 :inline :offset 220)
-   (tilt-joints        junglesnake-tilt-joint   3 :inline  :offset 604)
-   )
+  ((root              collide-shape :override)
+   (state-time2       time-frame)
+   (hit-player        symbol :offset 184)
+   (is-lethal?        symbol)
+   (refractory-delay  int32)
+   (ry                float)
+   (des-ry            float)
+   (tilt              float)
+   (des-tilt          float)
+   (track-player-ry   symbol)
+   (track-player-tilt symbol)
+   (twist-joints      junglesnake-twist-joint 24 :inline :offset 220)
+   (tilt-joints       junglesnake-tilt-joint 3 :inline :offset 604))
   (:methods
-    (junglesnake-method-20 (_type_) symbol)
-    (junglesnake-method-21 (_type_) symbol)
-    (junglesnake-method-22 (_type_ float) symbol)
-    (junglesnake-method-23 (_type_) none)
-    (junglesnake-method-24 (_type_) none)
-    )
+   (junglesnake-method-20 (_type_) symbol)
+   (junglesnake-method-21 (_type_) symbol)
+   (junglesnake-method-22 (_type_ float) symbol)
+   (junglesnake-method-23 (_type_) none)
+   (junglesnake-method-24 (_type_) none))
   (:states
-    junglesnake-attack
-    junglesnake-die
-    junglesnake-give-up
-    junglesnake-sleeping
-    junglesnake-tracking
-    junglesnake-wake
-    )
-  )
+   junglesnake-attack
+   junglesnake-die
+   junglesnake-give-up
+   junglesnake-sleeping
+   junglesnake-tracking
+   junglesnake-wake))
 
 
 ;; WARN: disable def twice: 39. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defbehavior junglesnake-default-event-handler junglesnake ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touch)
-     (when (and *target* ((method-of-type touching-shapes-entry prims-touching?)
-                          (the-as touching-shapes-entry (-> arg3 param 0))
-                          (the-as collide-shape-moving (-> self root))
-                          (the-as uint 1)
-                          )
-                )
+     (when (and *target*
+                ((method-of-type touching-shapes-entry prims-touching?)
+                 (the-as touching-shapes-entry (-> arg3 param 0))
+                 (the-as collide-shape-moving (-> self root))
+                 (the-as uint 1)))
        (cond
          ((and (-> self is-lethal?)
                (not (logtest? (-> *target* state-flags)
-                              (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
-                              )
-                    )
-               )
+                              (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))))
           (when (send-event arg0 'attack (-> arg3 param 0) (new 'static 'attack-info))
-            (let ((v0-1 (the-as object #t)))
-              (set! (-> self hit-player) (the-as symbol v0-1))
-              v0-1
-              )
-            )
-          )
+            (let ((v0-1 (the-as object #t))) (set! (-> self hit-player) (the-as symbol v0-1)) v0-1)))
          (else
-           (do-push-aways! (-> self root))
-           (send-event
-             arg0
-             'shove
-             (-> arg3 param 0)
-             (static-attack-info ((shove-back (meters 2)) (shove-up (meters 0.5))))
-             )
-           )
-         )
-       )
-     )
-    (('attack)
-     (go junglesnake-die)
-     )
-    )
-  )
+          (do-push-aways! (-> self root))
+          (send-event arg0 'shove (-> arg3 param 0) (static-attack-info ((shove-back (meters 2)) (shove-up (meters 0.5)))))))))
+    (('attack) (go junglesnake-die))))
 
 junglesnake-default-event-handler
 
 (defmethod junglesnake-method-20 ((this junglesnake))
   (when (and *target* (-> this track-player-ry))
     (let ((v1-3 (target-pos 0)))
-      (set! (-> this des-ry) (atan (- (-> v1-3 x) (-> this root trans x)) (- (-> v1-3 z) (-> this root trans z))))
-      )
-    )
+      (set! (-> this des-ry) (atan (- (-> v1-3 x) (-> this root trans x)) (- (-> v1-3 z) (-> this root trans z))))))
   (let ((f0-7 (deg-diff (-> this ry) (-> this des-ry))))
-    (+! (-> this ry) (seek-with-smooth 0.0 f0-7 (* 655360.0 (seconds-per-frame)) 0.125 0.001))
-    )
+    (+! (-> this ry) (seek-with-smooth 0.0 f0-7 (* 655360.0 (seconds-per-frame)) 0.125 0.001)))
   (let ((f30-1 (-> this ry)))
     (dotimes (s5-0 24)
       (let ((s4-0 (-> this twist-joints s5-0)))
         (let ((f28-0 (-> s4-0 drag-delta-ry)))
           (cond
-            ((= f28-0 0.0)
-             (set! (-> s4-0 ry) f30-1)
-             )
+            ((= f28-0 0.0) (set! (-> s4-0 ry) f30-1))
             (else
-              (let ((f26-0 (-> s4-0 ry)))
-                (let ((f0-14 (deg-diff f30-1 (-> s4-0 ry))))
-                  (if (< f28-0 (fabs f0-14))
-                      (set! f26-0 (if (>= f0-14 0.0)
-                                      (+ f30-1 f28-0)
-                                      (- f30-1 f28-0)
-                                      )
-                            )
-                      )
-                  )
-                (let ((f0-16 (deg-diff (-> s4-0 ry) f26-0)))
-                  (+! (-> s4-0 ry) (seek-with-smooth 0.0 f0-16 (* 327680.0 (seconds-per-frame)) 0.25 0.001))
-                  )
-                )
-              )
-            )
-          )
-        (set! f30-1 (-> s4-0 ry))
-        )
-      )
-    )
-  #f
-  )
+             (let ((f26-0 (-> s4-0 ry)))
+               (let ((f0-14 (deg-diff f30-1 (-> s4-0 ry))))
+                 (if (< f28-0 (fabs f0-14)) (set! f26-0 (if (>= f0-14 0.0) (+ f30-1 f28-0) (- f30-1 f28-0)))))
+               (let ((f0-16 (deg-diff (-> s4-0 ry) f26-0)))
+                 (+! (-> s4-0 ry) (seek-with-smooth 0.0 f0-16 (* 327680.0 (seconds-per-frame)) 0.25 0.001)))))))
+        (set! f30-1 (-> s4-0 ry)))))
+  #f)
 
 (defun junglesnake-joint-callback ((arg0 junglesnake))
   (let ((s5-0 arg0))
     (let ((s4-0 (new 'stack-no-clear 'matrix))
           (s3-0 (new 'stack-no-clear 'matrix))
-          (s2-0 (new 'stack-no-clear 'matrix))
-          )
+          (s2-0 (new 'stack-no-clear 'matrix)))
       (let ((s1-0 (new 'stack-no-clear 'vector)))
         (set-vector! s1-0 (-> arg0 root trans x) (-> arg0 root trans y) (-> arg0 root trans z) 1.0)
         (matrix-translate! s2-0 s1-0)
         (vector-negate! s1-0 s1-0)
-        (matrix-translate! s3-0 s1-0)
-        )
+        (matrix-translate! s3-0 s1-0))
       (dotimes (s1-1 24)
         (let ((s0-0 (-> s5-0 twist-joints s1-1)))
           (matrix-rotate-y! s4-0 (-> s0-0 ry))
           (let ((s0-1 (-> arg0 node-list data (-> s0-0 joint-index) bone transform)))
             (matrix*! s0-1 s0-1 s3-0)
             (matrix*! s0-1 s0-1 s4-0)
-            (matrix*! s0-1 s0-1 s2-0)
-            )
-          )
-        )
-      )
+            (matrix*! s0-1 s0-1 s2-0)))))
     (dotimes (s4-1 9)
       (let ((s3-1 (-> arg0 node-list data (+ s4-1 11) bone transform)))
         (let ((a0-14 (-> arg0 node-list data (+ s4-1 12) bone transform))
-              (a1-7 (new 'stack-no-clear 'vector))
-              )
+              (a1-7 (new 'stack-no-clear 'vector)))
           (vector-! a1-7 (-> a0-14 vector 3) (-> s3-1 vector 3))
-          (vector-normalize-copy! (-> s3-1 vector 1) a1-7 1.0)
-          )
+          (vector-normalize-copy! (-> s3-1 vector 1) a1-7 1.0))
         (set! (-> s3-1 vector 1 w) 0.0)
         (vector-normalize! (vector-cross! (-> s3-1 vector 2) (the-as vector (-> s3-1 vector)) (-> s3-1 vector 1)) 1.0)
-        (vector-normalize! (vector-cross! (the-as vector (-> s3-1 vector)) (-> s3-1 vector 1) (-> s3-1 vector 2)) 1.0)
-        )
-      )
+        (vector-normalize! (vector-cross! (the-as vector (-> s3-1 vector)) (-> s3-1 vector 1) (-> s3-1 vector 2)) 1.0)))
     (cond
       ((and (-> s5-0 track-player-tilt) *target*)
        (let ((s2-1 (-> arg0 node-list data 25 bone transform))
-             (s4-2 (new 'stack-no-clear 'vector))
-             )
+             (s4-2 (new 'stack-no-clear 'vector)))
          (vector-normalize-copy! s4-2 (-> s2-1 vector 1) 1.0)
          (set! (-> s4-2 w) 1.0)
          (let ((s1-2 (new 'stack-no-clear 'vector)))
@@ -227,48 +163,27 @@ junglesnake-default-event-handler
            (+! (-> s1-2 y) 9011.2)
            (vector-normalize! s1-2 1.0)
            (let ((s0-2 (new 'stack-no-clear 'vector))
-                 (s3-4 (new 'stack-no-clear 'vector))
-                 )
+                 (s3-4 (new 'stack-no-clear 'vector)))
              (vector-normalize-copy! s0-2 (-> s2-1 vector 2) 1.0)
              (vector-flatten! s3-4 s1-2 s0-2)
              (vector-normalize! s3-4 1.0)
              (let ((f30-0 (acos (vector-dot s4-2 s3-4))))
-               (if (< (-> s4-2 y) (-> s3-4 y))
-                   (set! f30-0 (- f30-0))
-                   )
+               (if (< (-> s4-2 y) (-> s3-4 y)) (set! f30-0 (- f30-0)))
                (cond
-                 ((< 7281.778 f30-0)
-                  (set! f30-0 7281.778)
-                  )
-                 ((< f30-0 -11650.845)
-                  (set! f30-0 -11650.845)
-                  )
-                 )
+                 ((< 7281.778 f30-0) (set! f30-0 7281.778))
+                 ((< f30-0 -11650.845) (set! f30-0 -11650.845)))
                (let ((f0-16 (fabs (deg-diff (-> s5-0 ry) (-> s5-0 des-ry)))))
-                 (if (>= f0-16 24576.0)
-                     (set! f30-0 (* 0.00012207031 (- 32768.0 f0-16) f30-0))
-                     )
-                 )
-               (set! (-> s5-0 des-tilt) f30-0)
-               )
-             )
-           )
-         )
-       )
-      (else
-        (set! (-> s5-0 des-tilt) 0.0)
-        )
-      )
+                 (if (>= f0-16 24576.0) (set! f30-0 (* 0.00012207031 (- 32768.0 f0-16) f30-0))))
+               (set! (-> s5-0 des-tilt) f30-0))))))
+      (else (set! (-> s5-0 des-tilt) 0.0)))
     (let* ((f30-1 (-> s5-0 tilt))
            (f0-21 (deg-diff f30-1 (-> s5-0 des-tilt)))
-           (f28-0 (+ f30-1 (seek-with-smooth 0.0 f0-21 (* 65536.0 (seconds-per-frame)) 0.2 0.001)))
-           )
+           (f28-0 (+ f30-1 (seek-with-smooth 0.0 f0-21 (* 65536.0 (seconds-per-frame)) 0.2 0.001))))
       (set! (-> s5-0 tilt) f28-0)
       (let ((f30-2 (cos f28-0))
             (f28-1 (sin f28-0))
             (s4-3 (new 'stack-no-clear 'matrix))
-            (s3-5 (new 'stack-no-clear 'matrix))
-            )
+            (s3-5 (new 'stack-no-clear 'matrix)))
         (matrix-identity! s4-3)
         (set! (-> s4-3 vector 0 x) f30-2)
         (set! (-> s4-3 vector 0 y) f28-1)
@@ -279,331 +194,252 @@ junglesnake-default-event-handler
                (v1-47 (-> a3-1 vector 0 quad))
                (a0-36 (-> a3-1 vector 1 quad))
                (a1-20 (-> a3-1 vector 2 quad))
-               (a3-2 (-> a3-1 vector 3 quad))
-               )
+               (a3-2 (-> a3-1 vector 3 quad)))
           (set! (-> a2-9 vector 0 quad) v1-47)
           (set! (-> a2-9 vector 1 quad) a0-36)
           (set! (-> a2-9 vector 2 quad) a1-20)
-          (set! (-> a2-9 vector 3 quad) a3-2)
-          )
+          (set! (-> a2-9 vector 3 quad) a3-2))
         (set! (-> s3-5 vector 0 y) (- (-> s3-5 vector 0 y)))
         (set! (-> s3-5 vector 1 x) (- (-> s3-5 vector 1 x)))
         (dotimes (s2-2 3)
           (let* ((v1-50 (-> s5-0 tilt-joints s2-2))
-                 (a2-10 (-> arg0 node-list data (-> v1-50 joint-index) bone transform))
-                 )
-            (if (-> v1-50 flip-it)
-                (matrix*! a2-10 s3-5 a2-10)
-                (matrix*! a2-10 s4-3 a2-10)
-                )
-            )
-          )
-        )
-      )
-    )
+                 (a2-10 (-> arg0 node-list data (-> v1-50 joint-index) bone transform)))
+            (if (-> v1-50 flip-it) (matrix*! a2-10 s3-5 a2-10) (matrix*! a2-10 s4-3 a2-10)))))))
   0
-  (none)
-  )
+  (none))
 
 (defstate junglesnake-sleeping (junglesnake)
   :event junglesnake-default-event-handler
-  :enter (behavior ()
-    (set! (-> self skel postbind-function) #f)
-    (set! (-> self track-player-ry) #f)
-    (set! (-> self track-player-tilt) #f)
-    (set! (-> self des-ry) (-> self ry))
-    (set! (-> self des-tilt) (-> self tilt))
-    (logior! (-> self draw status) (draw-status hidden))
-    )
-  :trans (behavior ()
-    (when *target*
-      (let* ((a0-1 (target-pos 0))
-             (f0-1 (- (-> a0-1 y) (-> self root trans y)))
-             )
-        (if (and (>= 40960.0 f0-1) (>= 143360.0 (vector-vector-xz-distance a0-1 (-> self root trans))))
-            (go junglesnake-wake)
-            )
-        )
-      )
-    )
-  :code (behavior ()
-    (logior! (-> self mask) (process-mask sleep-code))
-    (suspend)
-    0
-    )
-  )
+  :enter
+    (behavior ()
+      (set! (-> self skel postbind-function) #f)
+      (set! (-> self track-player-ry) #f)
+      (set! (-> self track-player-tilt) #f)
+      (set! (-> self des-ry) (-> self ry))
+      (set! (-> self des-tilt) (-> self tilt))
+      (logior! (-> self draw status) (draw-status hidden)))
+  :trans
+    (behavior ()
+      (when *target*
+        (let* ((a0-1 (target-pos 0))
+               (f0-1 (- (-> a0-1 y) (-> self root trans y))))
+          (if (and (>= 40960.0 f0-1) (>= 143360.0 (vector-vector-xz-distance a0-1 (-> self root trans)))) (go junglesnake-wake)))))
+  :code
+    (behavior ()
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      0))
 
 (defstate junglesnake-wake (junglesnake)
   :event junglesnake-default-event-handler
-  :enter (behavior ()
-    (logclear! (-> self draw status) (draw-status hidden))
-    (set! (-> self track-player-ry) #f)
-    (set! (-> self track-player-tilt) #f)
-    (set! (-> self skel postbind-function) junglesnake-joint-callback)
-    (set! (-> self refractory-delay) 0)
-    0
-    )
-  :trans (behavior ()
-    (junglesnake-method-20 self)
-    (when *target*
-      (if *target*
-          (look-at-enemy!
-            (-> *target* neck)
-            (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
-            'attacking
-            self
-            )
-          )
-      )
-    )
-  :code (behavior ()
-    (ja-no-eval :group! junglesnake-drop-down-ja :num! (seek! max 0.85) :frame-num 0.5)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek! max 0.85))
-      )
-    (go junglesnake-tracking)
-    )
-  :post transform-post
-  )
+  :enter
+    (behavior ()
+      (logclear! (-> self draw status) (draw-status hidden))
+      (set! (-> self track-player-ry) #f)
+      (set! (-> self track-player-tilt) #f)
+      (set! (-> self skel postbind-function) junglesnake-joint-callback)
+      (set! (-> self refractory-delay) 0)
+      0)
+  :trans
+    (behavior ()
+      (junglesnake-method-20 self)
+      (when *target*
+        (if *target*
+          (look-at-enemy! (-> *target* neck)
+                          (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
+                          'attacking
+                          self))))
+  :code
+    (behavior ()
+      (ja-no-eval :group! junglesnake-drop-down-ja :num! (seek! max 0.85) :frame-num 0.5)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.85)))
+      (go junglesnake-tracking))
+  :post transform-post)
 
 (defstate junglesnake-tracking (junglesnake)
   :event junglesnake-default-event-handler
-  :enter (behavior ()
-    (set-time! (-> self state-time))
-    (set! (-> self track-player-ry) #t)
-    (set! (-> self track-player-tilt) #t)
-    )
-  :trans (behavior ()
-    (if (and (and *target* (>= 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-             (time-elapsed? (-> self state-time) (-> self refractory-delay))
-             (not (logtest? (-> *target* state-flags)
-                            (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying)
-                            )
-                  )
-             )
-        (go junglesnake-attack)
-        )
-    (when *target*
-      (let ((a0-8 (target-pos 0)))
-        (if (or (>= (- (-> a0-8 y) (-> self root trans y)) 57344.0)
-                (>= (vector-vector-xz-distance a0-8 (-> self root trans)) 163840.0)
-                )
-            (go junglesnake-give-up)
-            )
-        )
-      )
-    (junglesnake-method-20 self)
-    (when *target*
-      (if *target*
-          (look-at-enemy!
-            (-> *target* neck)
-            (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
-            'attacking
-            self
-            )
-          )
-      )
-    )
-  :code (behavior ()
-    (cond
-      ((ja-group? junglesnake-idle-ja)
-       (while (not (ja-done? 0))
-         (suspend)
-         (ja :num! (seek!))
-         )
-       )
-      (else
-        (ja-channel-push! 1 (seconds 0.15))
-        )
-      )
-    (loop
-      (ja-no-eval :group! junglesnake-idle-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    )
-  :post transform-post
-  )
+  :enter
+    (behavior ()
+      (set-time! (-> self state-time))
+      (set! (-> self track-player-ry) #t)
+      (set! (-> self track-player-tilt) #t))
+  :trans
+    (behavior ()
+      (if (and (and *target* (>= 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+               (time-elapsed? (-> self state-time) (-> self refractory-delay))
+               (not (logtest? (-> *target* state-flags)
+                              (state-flags being-attacked invulnerable timed-invulnerable invuln-powerup do-not-notice dying))))
+        (go junglesnake-attack))
+      (when *target*
+        (let ((a0-8 (target-pos 0)))
+          (if (or (>= (- (-> a0-8 y) (-> self root trans y)) 57344.0)
+                  (>= (vector-vector-xz-distance a0-8 (-> self root trans)) 163840.0))
+            (go junglesnake-give-up))))
+      (junglesnake-method-20 self)
+      (when *target*
+        (if *target*
+          (look-at-enemy! (-> *target* neck)
+                          (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
+                          'attacking
+                          self))))
+  :code
+    (behavior ()
+      (cond
+        ((ja-group? junglesnake-idle-ja) (while (not (ja-done? 0)) (suspend) (ja :num! (seek!))))
+        (else (ja-channel-push! 1 (seconds 0.15))))
+      (loop
+        (ja-no-eval :group! junglesnake-idle-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!)))))
+  :post transform-post)
 
 (defstate junglesnake-attack (junglesnake)
   :event junglesnake-default-event-handler
-  :enter (behavior ()
-    (set! (-> self hit-player) #f)
-    )
-  :exit (behavior ()
-    (junglesnake-method-24 self)
-    )
-  :trans (behavior ()
-    (junglesnake-method-20 self)
-    (when *target*
-      (if *target*
-          (look-at-enemy!
-            (-> *target* neck)
-            (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
-            'attacking
-            self
-            )
-          )
-      )
-    )
-  :code (behavior ()
-    (set! (-> self track-player-ry) #t)
-    (set! (-> self track-player-tilt) #t)
-    (ja-channel-push! 2 (seconds 0.15))
-    (junglesnake-method-23 self)
-    (let ((f30-0 (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root trans)) 0.0 24576.0)))
-      (ja-no-eval :group! junglesnake-strike-close-ja :num! (seek! max 1.25) :frame-num 0.0)
-      (ja-no-eval :chan 1 :group! junglesnake-strike-far-ja :num! (chan 0) :frame-interp f30-0 :frame-num 0.0)
-      (until (ja-done? 0)
-        (suspend)
-        (set! f30-0 (seek
-                      f30-0
+  :enter
+    (behavior ()
+      (set! (-> self hit-player) #f))
+  :exit
+    (behavior ()
+      (junglesnake-method-24 self))
+  :trans
+    (behavior ()
+      (junglesnake-method-20 self)
+      (when *target*
+        (if *target*
+          (look-at-enemy! (-> *target* neck)
+                          (the-as vector (-> (the-as collide-shape-prim-group (-> self root root-prim)) prims 0 prim-core))
+                          'attacking
+                          self))))
+  :code
+    (behavior ()
+      (set! (-> self track-player-ry) #t)
+      (set! (-> self track-player-tilt) #t)
+      (ja-channel-push! 2 (seconds 0.15))
+      (junglesnake-method-23 self)
+      (let ((f30-0 (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root trans)) 0.0 24576.0)))
+        (ja-no-eval :group! junglesnake-strike-close-ja :num! (seek! max 1.25) :frame-num 0.0)
+        (ja-no-eval :chan 1 :group! junglesnake-strike-far-ja :num! (chan 0) :frame-interp f30-0 :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (set! f30-0
+                (seek f30-0
                       (lerp-scale 0.0 1.0 (vector-vector-distance (target-pos 0) (-> self root trans)) 0.0 24576.0)
-                      (* 2.0 (seconds-per-frame))
-                      )
-              )
-        (ja :num! (seek! max 1.25))
-        (ja :chan 1 :num! (chan 0) :frame-interp f30-0)
-        (let ((f0-12 (ja-aframe-num 0)))
-          (cond
-            ((and (>= f0-12 22.0) (< f0-12 44.0))
-             (if (not (-> self is-lethal?))
-                 (junglesnake-method-23 self)
-                 )
-             )
-            (else
-              (if (-> self is-lethal?)
-                  (junglesnake-method-24 self)
-                  )
-              )
-            )
-          )
-        )
-      )
-    (if (-> self hit-player)
+                      (* 2.0 (seconds-per-frame))))
+          (ja :num! (seek! max 1.25))
+          (ja :chan 1 :num! (chan 0) :frame-interp f30-0)
+          (let ((f0-12 (ja-aframe-num 0)))
+            (cond
+              ((and (>= f0-12 22.0) (< f0-12 44.0)) (if (not (-> self is-lethal?)) (junglesnake-method-23 self)))
+              (else (if (-> self is-lethal?) (junglesnake-method-24 self)))))))
+      (if (-> self hit-player)
         (set! (-> self refractory-delay) (rand-vu-int-range 300 600))
-        (set! (-> self refractory-delay) (rand-vu-int-range 150 300))
-        )
-    (go junglesnake-tracking)
-    )
-  :post transform-post
-  )
+        (set! (-> self refractory-delay) (rand-vu-int-range 150 300)))
+      (go junglesnake-tracking))
+  :post transform-post)
 
 (defstate junglesnake-give-up (junglesnake)
   :event junglesnake-default-event-handler
-  :enter (behavior ()
-    (set-time! (-> self state-time))
-    (set! (-> self track-player-ry) #f)
-    (set! (-> self track-player-tilt) #f)
-    (set! (-> self des-ry) (-> self ry))
-    (set! (-> self des-tilt) (-> self tilt))
-    )
-  :trans (behavior ()
-    (junglesnake-method-20 self)
-    )
-  :code (behavior ()
-    (ja-channel-push! 1 (seconds 0.1))
-    (let ((gp-0 (new 'stack-no-clear 'vector)))
-      (let ((s5-0 (new 'stack-no-clear 'vector)))
-        (set! (-> gp-0 quad) (-> self root trans quad))
-        (set! (-> s5-0 quad) (-> gp-0 quad))
-        (+! (-> s5-0 y) 131072.0)
-        (ja-no-eval :group! junglesnake-give-up-ja :num! (seek! max 0.5) :frame-num 0.0)
-        (until (ja-done? 0)
-          (let* ((f0-6 (ja-frame-num 0))
-                 (v1-18 (ja-group))
-                 (f0-7 (/ f0-6 (the float (+ (-> v1-18 data 0 length) -1))))
-                 (s4-0 (new 'stack-no-clear 'vector))
-                 )
-            (set-vector! (-> self root scale) 1.0 (- 1.0 f0-7) 1.0 1.0)
-            (vector-lerp! s4-0 gp-0 s5-0 f0-7)
-            (move-to-point! (-> self root) s4-0)
-            )
-          (suspend)
-          (ja :num! (seek! max 0.5))
-          )
-        )
-      (move-to-point! (-> self root) gp-0)
-      )
-    (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
-    (go junglesnake-sleeping)
-    )
-  :post transform-post
-  )
+  :enter
+    (behavior ()
+      (set-time! (-> self state-time))
+      (set! (-> self track-player-ry) #f)
+      (set! (-> self track-player-tilt) #f)
+      (set! (-> self des-ry) (-> self ry))
+      (set! (-> self des-tilt) (-> self tilt)))
+  :trans
+    (behavior ()
+      (junglesnake-method-20 self))
+  :code
+    (behavior ()
+      (ja-channel-push! 1 (seconds 0.1))
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (let ((s5-0 (new 'stack-no-clear 'vector)))
+          (set! (-> gp-0 quad) (-> self root trans quad))
+          (set! (-> s5-0 quad) (-> gp-0 quad))
+          (+! (-> s5-0 y) 131072.0)
+          (ja-no-eval :group! junglesnake-give-up-ja :num! (seek! max 0.5) :frame-num 0.0)
+          (until (ja-done? 0)
+            (let* ((f0-6 (ja-frame-num 0))
+                   (v1-18 (ja-group))
+                   (f0-7 (/ f0-6 (the float (+ (-> v1-18 data 0 length) -1))))
+                   (s4-0 (new 'stack-no-clear 'vector)))
+              (set-vector! (-> self root scale) 1.0 (- 1.0 f0-7) 1.0 1.0)
+              (vector-lerp! s4-0 gp-0 s5-0 f0-7)
+              (move-to-point! (-> self root) s4-0))
+            (suspend)
+            (ja :num! (seek! max 0.5))))
+        (move-to-point! (-> self root) gp-0))
+      (set-vector! (-> self root scale) 1.0 1.0 1.0 1.0)
+      (go junglesnake-sleeping))
+  :post transform-post)
 
 (defstate junglesnake-die (junglesnake)
   :event process-drawable-death-event-handler
-  :code (behavior ()
-    (logclear! (-> self mask) (process-mask actor-pause))
-    (clear-collide-with-as (-> self root))
-    (ja-channel-push! 1 (seconds 0.15))
-    (ja-no-eval :group! junglesnake-death-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (cleanup-for-death self)
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (logclear! (-> self mask) (process-mask actor-pause))
+      (clear-collide-with-as (-> self root))
+      (ja-channel-push! 1 (seconds 0.15))
+      (ja-no-eval :group! junglesnake-death-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!)))
+      (cleanup-for-death self))
+  :post ja-post)
 
 (defmethod junglesnake-method-23 ((this junglesnake))
   (when (not (-> this is-lethal?))
     (set! (-> this is-lethal?) #t)
     (let ((v1-5 (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
-      (logclear! (-> v1-5 prim-core action) (collide-action solid))
-      )
-    )
+      (logclear! (-> v1-5 prim-core action) (collide-action solid))))
   0
-  (none)
-  )
+  (none))
 
 (defmethod junglesnake-method-24 ((this junglesnake))
   (when (-> this is-lethal?)
     (set! (-> this is-lethal?) #f)
     (let ((v1-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) prims 0)))
-      (logior! (-> v1-4 prim-core action) (collide-action solid))
-      )
-    (do-push-aways! (-> this root))
-    )
+      (logior! (-> v1-4 prim-core action) (collide-action solid)))
+    (do-push-aways! (-> this root)))
   0
-  (none)
-  )
+  (none))
 
-(define *junglesnake-twist-max-deltas* (new 'static 'array float 28
-                                         0.0
-                                         0.0
-                                         0.0
-                                         0.0
-                                         0.0
-                                         0.0
-                                         546.13336
-                                         1092.2667
-                                         1638.4
-                                         2184.5334
-                                         2730.6667
-                                         3276.8
-                                         3822.9333
-                                         4369.067
-                                         4915.2
-                                         5461.3335
-                                         6007.467
-                                         6553.6
-                                         7099.7334
-                                         7645.8667
-                                         8192.0
-                                         8738.134
-                                         9284.267
-                                         9830.4
-                                         10376.533
-                                         0.0
-                                         0.0
-                                         0.0
-                                         )
-        )
+(define *junglesnake-twist-max-deltas*
+  (new 'static
+       'array
+       float
+       28
+       0.0
+       0.0
+       0.0
+       0.0
+       0.0
+       0.0
+       546.13336
+       1092.2667
+       1638.4
+       2184.5334
+       2730.6667
+       3276.8
+       3822.9333
+       4369.067
+       4915.2
+       5461.3335
+       6007.467
+       6553.6
+       7099.7334
+       7645.8667
+       8192.0
+       8738.134
+       9284.267
+       9830.4
+       10376.533
+       0.0
+       0.0
+       0.0))
 
 (defmethod junglesnake-method-22 ((this junglesnake) (arg0 float))
   (let ((f0-0 0.0))
@@ -611,33 +447,17 @@ junglesnake-default-event-handler
       (let ((a2-2 (-> this twist-joints v1-0)))
         (set! (-> a2-2 ry) arg0)
         (set! (-> a2-2 joint-index) (- 26 v1-0))
-        (let ((f1-1 (-> *junglesnake-twist-max-deltas* v1-0)))
-          (set! (-> a2-2 drag-delta-ry) (- f1-1 f0-0))
-          (set! f0-0 f1-1)
-          )
-        )
-      )
-    )
-  #f
-  )
+        (let ((f1-1 (-> *junglesnake-twist-max-deltas* v1-0))) (set! (-> a2-2 drag-delta-ry) (- f1-1 f0-0)) (set! f0-0 f1-1)))))
+  #f)
 
 (defmethod junglesnake-method-21 ((this junglesnake))
   (dotimes (v1-0 3)
-    (let ((a1-2 (-> this tilt-joints v1-0)))
-      (set! (-> a1-2 joint-index) (+ v1-0 23))
-      (set! (-> a1-2 flip-it) #f)
-      )
-    )
-  (let ((v1-3 (the-as object (&-> this stack 524))))
-    (set! (-> (the-as junglesnake-tilt-joint v1-3) flip-it) #t)
-    )
+    (let ((a1-2 (-> this tilt-joints v1-0))) (set! (-> a1-2 joint-index) (+ v1-0 23)) (set! (-> a1-2 flip-it) #f)))
+  (let ((v1-3 (the-as object (&-> this stack 524)))) (set! (-> (the-as junglesnake-tilt-joint v1-3) flip-it) #t))
   (let ((v1-4 (the-as object (&-> this stack 476)))
-        (v0-0 #t)
-        )
+        (v0-0 #t))
     (set! (-> (the-as junglesnake-twist-joint v1-4) ry) (the-as float v0-0))
-    v0-0
-    )
-  )
+    v0-0))
 
 (defmethod init-from-entity! ((this junglesnake) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask enemy))
@@ -655,8 +475,7 @@ junglesnake-default-event-handler
         (set! (-> s2-0 prim-core offense) (collide-offense touch))
         (set! (-> s2-0 transform-index) 25)
         (set-vector! (-> s2-0 local-sphere) 0.0 2048.0 0.0 4096.0)
-        (append-prim s3-0 s2-0)
-        )
+        (append-prim s3-0 s2-0))
       (let ((s2-1 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-1 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-1 collide-with) (collide-kind target))
@@ -664,8 +483,7 @@ junglesnake-default-event-handler
         (set! (-> s2-1 prim-core offense) (collide-offense touch))
         (set! (-> s2-1 transform-index) 21)
         (set-vector! (-> s2-1 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-1)
-        )
+        (append-prim s3-0 s2-1))
       (let ((s2-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-2 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-2 collide-with) (collide-kind target))
@@ -673,8 +491,7 @@ junglesnake-default-event-handler
         (set! (-> s2-2 prim-core offense) (collide-offense touch))
         (set! (-> s2-2 transform-index) 20)
         (set-vector! (-> s2-2 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-2)
-        )
+        (append-prim s3-0 s2-2))
       (let ((s2-3 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-3 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-3 collide-with) (collide-kind target))
@@ -682,8 +499,7 @@ junglesnake-default-event-handler
         (set! (-> s2-3 prim-core offense) (collide-offense touch))
         (set! (-> s2-3 transform-index) 19)
         (set-vector! (-> s2-3 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-3)
-        )
+        (append-prim s3-0 s2-3))
       (let ((s2-4 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-4 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-4 collide-with) (collide-kind target))
@@ -691,8 +507,7 @@ junglesnake-default-event-handler
         (set! (-> s2-4 prim-core offense) (collide-offense touch))
         (set! (-> s2-4 transform-index) 18)
         (set-vector! (-> s2-4 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-4)
-        )
+        (append-prim s3-0 s2-4))
       (let ((s2-5 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-5 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-5 collide-with) (collide-kind target))
@@ -700,8 +515,7 @@ junglesnake-default-event-handler
         (set! (-> s2-5 prim-core offense) (collide-offense touch))
         (set! (-> s2-5 transform-index) 17)
         (set-vector! (-> s2-5 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-5)
-        )
+        (append-prim s3-0 s2-5))
       (let ((s2-6 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-6 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-6 collide-with) (collide-kind target))
@@ -709,8 +523,7 @@ junglesnake-default-event-handler
         (set! (-> s2-6 prim-core offense) (collide-offense touch))
         (set! (-> s2-6 transform-index) 16)
         (set-vector! (-> s2-6 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-6)
-        )
+        (append-prim s3-0 s2-6))
       (let ((s2-7 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-7 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-7 collide-with) (collide-kind target))
@@ -718,8 +531,7 @@ junglesnake-default-event-handler
         (set! (-> s2-7 prim-core offense) (collide-offense touch))
         (set! (-> s2-7 transform-index) 15)
         (set-vector! (-> s2-7 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-7)
-        )
+        (append-prim s3-0 s2-7))
       (let ((s2-8 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
         (set! (-> s2-8 prim-core collide-as) (collide-kind enemy))
         (set! (-> s2-8 collide-with) (collide-kind target))
@@ -727,18 +539,13 @@ junglesnake-default-event-handler
         (set! (-> s2-8 prim-core offense) (collide-offense touch))
         (set! (-> s2-8 transform-index) 14)
         (set-vector! (-> s2-8 local-sphere) 0.0 0.0 0.0 3276.8)
-        (append-prim s3-0 s2-8)
-        )
-      )
+        (append-prim s3-0 s2-8)))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *junglesnake-sg* '())
-  (set! (-> this fact)
-        (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
-        )
+  (set! (-> this fact) (new 'process 'fact-info-enemy this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this part) (create-launch-control (-> *part-group-id-table* 173) this))
   (set! (-> this is-lethal?) #f)
   (set! (-> this ry) (y-angle (-> this root)))
@@ -752,5 +559,4 @@ junglesnake-default-event-handler
   (junglesnake-method-21 this)
   (logior! (-> this skel status) (janim-status inited))
   (go junglesnake-sleeping)
-  (none)
-  )
+  (none))

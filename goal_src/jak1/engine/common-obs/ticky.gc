@@ -1,25 +1,19 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: ticky.gc
-;; name in dgo: ticky
-;; dgos: GAME, COMMON, L1
+(bundles "GAME.CGO")
+(require "engine/sound/gsound.gc")
 
 ;; DECOMP BEGINS
 
 (deftype ticky (structure)
-  ((delay-til-ramp     time-frame)
-   (delay-til-timeout  time-frame)
-   (starting-time      time-frame)
-   (last-tick-time     time-frame)
-   )
+  ((delay-til-ramp    time-frame)
+   (delay-til-timeout time-frame)
+   (starting-time     time-frame)
+   (last-tick-time    time-frame))
   (:methods
-    (sleep (_type_ time-frame) none)
-    (reached-delay? (_type_ time-frame) symbol)
-    (completed? (_type_) symbol)
-    )
-  )
-
+   (sleep (_type_ time-frame) none)
+   (reached-delay? (_type_ time-frame) symbol)
+   (completed? (_type_) symbol)))
 
 (defmethod sleep ((this ticky) (arg0 time-frame))
   (set-time! (-> this starting-time))
@@ -27,36 +21,22 @@
   (set! (-> this delay-til-ramp) (max 0 (+ arg0 (seconds -4))))
   (set! (-> this last-tick-time) 0)
   0
-  (none)
-  )
+  (none))
 
 (defmethod completed? ((this ticky))
   (let ((gp-0 #f))
     (let ((v1-2 (- (current-time) (-> this starting-time))))
       (cond
-        ((>= v1-2 (-> this delay-til-timeout))
-         (set! gp-0 #t)
-         )
+        ((>= v1-2 (-> this delay-til-timeout)) (set! gp-0 #t))
         (else
-          (let* ((f0-1 (fmin 1.0 (/ (the float (max 0 (- v1-2 (-> this delay-til-ramp))))
-                                    (the float (- (-> this delay-til-timeout) (-> this delay-til-ramp)))
-                                    )
-                             )
-                       )
-                 (v1-7 (the int (lerp 105.0 41.0 f0-1)))
-                 )
-            (when (time-elapsed? (-> this last-tick-time) v1-7)
-              (set-time! (-> this last-tick-time))
-              (sound-play "stopwatch")
-              )
-            )
-          )
-        )
-      )
-    gp-0
-    )
-  )
+         (let* ((f0-1 (fmin 1.0
+                            (/ (the float (max 0 (- v1-2 (-> this delay-til-ramp))))
+                               (the float (- (-> this delay-til-timeout) (-> this delay-til-ramp))))))
+                (v1-7 (the int (lerp 105.0 41.0 f0-1))))
+           (when (time-elapsed? (-> this last-tick-time) v1-7)
+             (set-time! (-> this last-tick-time))
+             (sound-play "stopwatch"))))))
+    gp-0))
 
 (defmethod reached-delay? ((this ticky) (arg0 time-frame))
-  (time-elapsed? (-> this starting-time) arg0)
-  )
+  (time-elapsed? (-> this starting-time) arg0))

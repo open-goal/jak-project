@@ -170,7 +170,7 @@ FormElement* handle_get_property_struct(const std::vector<Form*>& forms,
                                         const Env& env) {
   return handle_get_property_data_or_structure(
       forms, pool, env, ResLumpMacroElement::Kind::STRUCT,
-      env.version == GameVersion::Jak2 ? "(the-as structure #f)" : "#f", TypeSpec("structure"));
+      env.version >= GameVersion::Jak2 ? "(the-as structure #f)" : "#f", TypeSpec("structure"));
 }
 
 FormElement* handle_get_property_value(const std::vector<Form*>& forms,

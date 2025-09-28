@@ -9,9 +9,15 @@
 #include "third-party/sse2neon/sse2neon.h"
 #endif
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 namespace tfrag3 {
+
+void PackedTimeOfDay::serialize(Serializer& ser) {
+  ser.from_pod_vector(&data);
+  ser.from_ptr(&color_count);
+}
 
 void PackedTieVertices::serialize(Serializer& ser) {
   ser.from_pod_vector(&color_indices);
@@ -71,10 +77,9 @@ void TfragTree::serialize(Serializer& ser) {
     draw.serialize(ser);
   }
 
-  // ser.from_pod_vector(&vertices);
   ser.from_pod_vector(&packed_vertices.vertices);
   ser.from_pod_vector(&packed_vertices.cluster_origins);
-  ser.from_pod_vector(&colors);
+  colors.serialize(ser);
   bvh.serialize(ser);
   ser.from_ptr(&use_strips);
 }
@@ -88,10 +93,8 @@ math::Vector3f vopmsub(math::Vector3f acc, math::Vector3f a, math::Vector3f b) {
 }
 
 /*!
- * Compute the normal transformation for a TIE from the TIE matrix.
- * Note that this isn't identical to the original game - we're missing the vf14 scaling factor
- * For now, I just set this to 1, then normalize in the shader. Though I think we could avoid
- * this by figuring out the value of vf14 here (I am just too lazy right now).
+ * Compute the normal transformation for a TIE from the TIE matrix. This will return properly scaled
+ * normals.
  */
 std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vector4f, 4>& m) {
   // let:
@@ -181,11 +184,21 @@ std::array<math::Vector3f, 3> tie_normal_transform_v2(const std::array<math::Vec
   // sqc2 vf12, -80(t8)
 }
 
+s16 saturate_for_s10(s16 s10) {
+  // our error should be 1 or less as an s8, or 4 as a s10.
+  ASSERT(s10 >= -520 && s10 < 520);
+  if (s10 < -512) {
+    return -512;
+  }
+  if (s10 > 511) {
+    return 511;
+  }
+  return s10;
+}
+
 u32 pack_to_gl_normal(s16 nx, s16 ny, s16 nz) {
-  ASSERT(nx >= -512 && nx <= 511);
-  ASSERT(ny >= -512 && ny <= 511);
-  ASSERT(nz >= -512 && nz <= 511);
-  return (nx & 0x3ff) | ((ny & 0x3ff) << 10) | ((nz & 0x3ff) << 20);
+  return (saturate_for_s10(nx) & 0x3ff) | ((saturate_for_s10(ny) & 0x3ff) << 10) |
+         ((saturate_for_s10(nz) & 0x3ff) << 20);
 }
 
 /*!
@@ -197,10 +210,10 @@ u32 unpack_tie_normal(const std::array<math::Vector3f, 3>& mat, s8 nx, s8 ny, s8
   nrm += mat[0] * nx;
   nrm += mat[1] * ny;
   nrm += mat[2] * nz;
-  // convert to s16 for OpenGL renderer
-  // nrm /= 0x100;  // number from EE asm
-  // nrm *= 0x200;  // for normalized s10 -> float conversion by OpenGL.
-  nrm *= 2;  // for normalized s10 -> float conversion by OpenGL.
+
+  // game used signed 8-bit normals, but OpenGL uses signed 10-bit
+  // multiply by 2^2 = 4
+  nrm *= 4;
 
   auto as_int = nrm.cast<s16>();
 
@@ -299,13 +312,15 @@ void TieTree::unpack() {
 
   for (auto& draw : static_draws) {
     draw.unpacked.idx_of_first_idx_in_full_buffer = unpacked.indices.size();
-    ASSERT(draw.plain_indices.empty());
+    // indices can come from either runs or already in plain indices.
     for (auto& run : draw.runs) {
       for (u32 ri = 0; ri < run.length; ri++) {
         unpacked.indices.push_back(run.vertex0 + ri);
       }
       unpacked.indices.push_back(UINT32_MAX);
     }
+    unpacked.indices.insert(unpacked.indices.end(), draw.plain_indices.begin(),
+                            draw.plain_indices.end());
   }
 }
 
@@ -398,15 +413,17 @@ void TieTree::serialize(Serializer& ser) {
   }
 
   packed_vertices.serialize(ser);
-  ser.from_pod_vector(&colors);
+  colors.serialize(ser);
   bvh.serialize(ser);
+
+  ser.from_ptr(&use_strips);
 
   ser.from_ptr(&has_per_proto_visibility_toggle);
   ser.from_string_vector(&proto_names);
 }
 
 void ShrubTree::serialize(Serializer& ser) {
-  ser.from_pod_vector(&time_of_day_colors);
+  time_of_day_colors.serialize(ser);
   ser.from_pod_vector(&indices);
   packed_vertices.serialize(ser);
   if (ser.is_saving()) {
@@ -420,6 +437,30 @@ void ShrubTree::serialize(Serializer& ser) {
 
   ser.from_ptr(&has_per_proto_visibility_toggle);
   ser.from_string_vector(&proto_names);
+}
+
+void HfragmentBucket::serialize(Serializer& ser) {
+  ser.from_pod_vector(&corners);
+  ser.from_ptr(&montage_table);
+}
+
+void Hfragment::serialize(Serializer& ser) {
+  ser.from_pod_vector(&vertices);
+  ser.from_pod_vector(&indices);
+  ser.from_pod_vector(&corners);
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(buckets.size());
+  } else {
+    buckets.resize(ser.load<size_t>());
+  }
+  for (auto& x : buckets) {
+    x.serialize(ser);
+  }
+  time_of_day_colors.serialize(ser);
+  ser.from_ptr(&wang_tree_tex_id);
+  ser.from_ptr(&draw_mode);
+  ser.from_ptr(&occlusion_offset);
 }
 
 void BVH::serialize(Serializer& ser) {
@@ -463,6 +504,7 @@ void MercDraw::serialize(Serializer& ser) {
   ser.from_ptr(&first_index);
   ser.from_ptr(&index_count);
   ser.from_ptr(&num_triangles);
+  ser.from_ptr(&no_strip);
 }
 
 void Blerc::serialize(Serializer& ser) {
@@ -604,6 +646,8 @@ void Level::serialize(Serializer& ser) {
     tree.serialize(ser);
   }
 
+  hfrag.serialize(ser);
+
   collision.serialize(ser);
   merc_data.serialize(ser);
 
@@ -654,8 +698,7 @@ void PackedShrubVertices::memory_usage(MemoryUsageTracker* tracker) const {
 }
 
 void ShrubTree::memory_usage(MemoryUsageTracker* tracker) const {
-  tracker->add(MemoryUsageCategory::SHRUB_TIME_OF_DAY,
-               sizeof(TimeOfDayColor) * time_of_day_colors.size());
+  tracker->add(MemoryUsageCategory::SHRUB_TIME_OF_DAY, sizeof(u8) * time_of_day_colors.data.size());
   packed_vertices.memory_usage(tracker);
   tracker->add(MemoryUsageCategory::SHRUB_DRAW, sizeof(ShrubDraw) * static_draws.size());
   tracker->add(MemoryUsageCategory::SHRUB_IND, sizeof(u32) * indices.size());
@@ -683,7 +726,7 @@ void TieTree::memory_usage(MemoryUsageTracker* tracker) const {
                  draw.vis_groups.size() * sizeof(StripDraw::VisGroup));
   }
   packed_vertices.memory_usage(tracker);
-  tracker->add(MemoryUsageCategory::TIE_TIME_OF_DAY, sizeof(TimeOfDayColor) * colors.size());
+  tracker->add(MemoryUsageCategory::TIE_TIME_OF_DAY, sizeof(u8) * colors.data.size());
 
   for (auto& draw : instanced_wind_draws) {
     draw.memory_usage(tracker);
@@ -707,7 +750,7 @@ void TfragTree::memory_usage(MemoryUsageTracker* tracker) const {
                  draw.vis_groups.size() * sizeof(StripDraw::VisGroup));
   }
   packed_vertices.memory_usage(tracker);
-  tracker->add(MemoryUsageCategory::TFRAG_TIME_OF_DAY, sizeof(TimeOfDayColor) * colors.size());
+  tracker->add(MemoryUsageCategory::TFRAG_TIME_OF_DAY, sizeof(u8) * colors.data.size());
   tracker->add(MemoryUsageCategory::TFRAG_BVH, sizeof(VisNode) * bvh.vis_nodes.size());
 }
 
@@ -718,6 +761,13 @@ void Texture::memory_usage(MemoryUsageTracker* tracker) const {
 void IndexTexture::memory_usage(MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::SPECIAL_TEXTURE, index_data.size());
   tracker->add(MemoryUsageCategory::SPECIAL_TEXTURE, 256 * 4);  // clut
+}
+
+void Hfragment::memory_usage(tfrag3::MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::HFRAG_VERTS, vertices.size() * sizeof(HfragmentVertex));
+  tracker->add(MemoryUsageCategory::HFRAG_INDEX, indices.size() * sizeof(u32));
+  tracker->add(MemoryUsageCategory::HFRAG_TIME_OF_DAY, time_of_day_colors.data.size() * sizeof(u8));
+  tracker->add(MemoryUsageCategory::HFRAG_CORNERS, corners.size() * sizeof(HfragmentCorner));
 }
 
 void Level::memory_usage(MemoryUsageTracker* tracker) const {
@@ -740,6 +790,7 @@ void Level::memory_usage(MemoryUsageTracker* tracker) const {
   for (const auto& tree : shrub_trees) {
     tree.memory_usage(tracker);
   }
+  hfrag.memory_usage(tracker);
   collision.memory_usage(tracker);
   merc_data.memory_usage(tracker);
 }
@@ -783,6 +834,11 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"merc-mod-draw-1", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_1]},
       {"merc-mod-draw-2", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_2]},
       {"blerc", mem_use.data[tfrag3::MemoryUsageCategory::BLERC]},
+      {"hfrag-verts", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_VERTS]},
+      {"hfrag-index", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_INDEX]},
+      {"hfrag-time-of-day", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_TIME_OF_DAY]},
+      {"hfrag-corners", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_CORNERS]}
+
   };
   for (auto& known : known_categories) {
     total_accounted += known.second;
@@ -795,8 +851,8 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
 
   for (const auto& x : known_categories) {
     if (x.second) {
-      fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
-                 100.f * (float)x.second / uncompressed_data_size);
+      lg::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
+                100.f * (float)x.second / uncompressed_data_size);
     }
   }
 }
@@ -804,6 +860,13 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
 std::size_t PreloadedVertex::hash::operator()(const PreloadedVertex& v) const {
   return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
          std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^ std::hash<u16>()(v.color_index);
+}
+
+std::size_t PackedTieVertices::Vertex::hash::operator()(const Vertex& v) const {
+  return std::hash<float>()(v.x) ^ std::hash<float>()(v.y) ^ std::hash<float>()(v.z) ^
+         std::hash<float>()(v.r) ^ std::hash<float>()(v.g) ^ std::hash<float>()(v.b) ^
+         std::hash<float>()(v.a) ^ std::hash<float>()(v.s) ^ std::hash<float>()(v.t) ^
+         std::hash<float>()(v.nx) ^ std::hash<float>()(v.ny) ^ std::hash<float>()(v.nz);
 }
 
 }  // namespace tfrag3

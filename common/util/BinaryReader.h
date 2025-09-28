@@ -7,16 +7,15 @@
 
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <vector>
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
-#include "third-party/span.hpp"
-
 class BinaryReader {
  public:
-  explicit BinaryReader(nonstd::span<const uint8_t> _span) : m_span(_span) {}
+  explicit BinaryReader(std::span<const uint8_t> _span) : m_span(_span) {}
 
   template <typename T>
   T read() {
@@ -39,6 +38,6 @@ class BinaryReader {
   void set_seek(u32 seek) { m_seek = seek; }
 
  private:
-  nonstd::span<const u8> m_span;
+  std::span<const u8> m_span;
   uint32_t m_seek = 0;
 };

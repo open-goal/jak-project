@@ -1,0 +1,361 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *stats-blerc*, type symbol
+(define *stats-blerc* #f)
+
+;; definition of type blerc-block-header
+(deftype blerc-block-header (structure)
+  ((tag        generic-merc-tag  :inline)
+   (vtx-count  uint32)
+   (overlap    uint32)
+   (lump-dest  uint32)
+   (lump-qwc   uint32)
+   )
+  )
+
+;; definition for method 3 of type blerc-block-header
+(defmethod inspect ((this blerc-block-header))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blerc-block-header)
+  (format #t "~1Ttag: #<generic-merc-tag @ #x~X>~%" (-> this tag))
+  (format #t "~1Tvtx-count: ~D~%" (-> this vtx-count))
+  (format #t "~1Toverlap: ~D~%" (-> this overlap))
+  (format #t "~1Tlump-dest: ~D~%" (-> this lump-dest))
+  (format #t "~1Tlump-qwc: ~D~%" (-> this lump-qwc))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type blerc-block
+(deftype blerc-block (structure)
+  ((output  uint8               848)
+   (header  blerc-block-header  :inline)
+   )
+  )
+
+;; definition for method 3 of type blerc-block
+(defmethod inspect ((this blerc-block))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blerc-block)
+  (format #t "~1Toutput[848] @ #x~X~%" (-> this output))
+  (format #t "~1Theader: #<blerc-block-header @ #x~X>~%" (-> this header))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type blerc-dcache
+(deftype blerc-dcache (structure)
+  ((repl-mult  vector  40 :inline)
+   )
+  )
+
+;; definition for method 3 of type blerc-dcache
+(defmethod inspect ((this blerc-dcache))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blerc-dcache)
+  (format #t "~1Trepl-mult[40] @ #x~X~%" (-> this repl-mult))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type blerc-globals
+(deftype blerc-globals (structure)
+  ((first             uint32)
+   (next              uint32)
+   (min-val           int16)
+   (max-val           int16)
+   (fragment-count    int32)
+   (vtx-count         int32)
+   (target-vtx-count  int32)
+   )
+  )
+
+;; definition for method 3 of type blerc-globals
+(defmethod inspect ((this blerc-globals))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blerc-globals)
+  (format #t "~1Tfirst: #x~X~%" (-> this first))
+  (format #t "~1Tnext: #x~X~%" (-> this next))
+  (format #t "~1Tmin-val: ~D~%" (-> this min-val))
+  (format #t "~1Tmax-val: ~D~%" (-> this max-val))
+  (format #t "~1Tfragment-count: ~D~%" (-> this fragment-count))
+  (format #t "~1Tvtx-count: ~D~%" (-> this vtx-count))
+  (format #t "~1Ttarget-vtx-count: ~D~%" (-> this target-vtx-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *blerc-globals*, type blerc-globals
+(define *blerc-globals* (new 'global 'blerc-globals))
+
+;; definition of type blerc-context
+(deftype blerc-context (structure)
+  ((block-a  blerc-block  :inline)
+   (dummy    uint8        7312)
+   (block-b  blerc-block  :inline)
+   )
+  )
+
+;; definition for method 3 of type blerc-context
+(defmethod inspect ((this blerc-context))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blerc-context)
+  (format #t "~1Tblock-a: #<blerc-block @ #x~X>~%" (-> this block-a))
+  (format #t "~1Tdummy[7312] @ #x~X~%" (-> this dummy))
+  (format #t "~1Tblock-b: #<blerc-block @ #x~X>~%" (-> this block-b))
+  (label cfg-4)
+  this
+  )
+
+;; definition (debug) for function blerc-stats-init
+;; WARN: Return type mismatch int vs none.
+(defun-debug blerc-stats-init ()
+  (when *stats-blerc*
+    (when (nonzero? (-> *blerc-globals* fragment-count))
+      (format *stdcon* "~%BLERC (merc blend target) STATS~%")
+      (format
+        *stdcon*
+        "  ~D fragments, ~D vertices~%"
+        (-> *blerc-globals* fragment-count)
+        (-> *blerc-globals* vtx-count)
+        )
+      (format
+        *stdcon*
+        "  ~D blend target computations (~F average)~%"
+        (-> *blerc-globals* target-vtx-count)
+        (/ (the float (-> *blerc-globals* target-vtx-count)) (the float (-> *blerc-globals* vtx-count)))
+        )
+      (if (< (-> *blerc-globals* min-val) 0)
+          (format *stdcon* "MINIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* min-val))
+          )
+      (if (< 255 (-> *blerc-globals* max-val))
+          (format *stdcon* "MAXIMUM OUT OF RANGE: ~D~%" (-> *blerc-globals* max-val))
+          )
+      )
+    (let ((a0-7 *blerc-globals*))
+      (set! (-> a0-7 min-val) 255)
+      (set! (-> a0-7 max-val) 0)
+      (set! (-> a0-7 fragment-count) 0)
+      (set! (-> a0-7 vtx-count) 0)
+      (set! (-> a0-7 target-vtx-count) 0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function blerc-init
+;; WARN: Return type mismatch int vs none.
+(defun blerc-init ()
+  (blerc-stats-init)
+  (let ((v1-0 *blerc-globals*))
+    (set! (-> v1-0 first) (the-as uint 0))
+    (set! (-> v1-0 next) (the-as uint 0))
+    )
+  0
+  (none)
+  )
+
+;; definition for function blerc-a-fragment
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function dma-from-spr
+;; ERROR: function has no type analysis. Cannot decompile.
+
+;; definition for function merc-dma-chain-to-spr
+;; ERROR: function has no type analysis. Cannot decompile.
+
+;; definition for function blerc-execute
+;; INFO: function output is handled by mips2c
+(def-mips2c blerc-execute (function none))
+
+;; definition for function merc-blend-shape
+;; WARN: Return type mismatch int vs object.
+(defun merc-blend-shape ((arg0 process-drawable))
+  (let* ((v1-1 (-> arg0 skel float-channels))
+         (a2-0 (cond
+                 ((> v1-1 0)
+                  (-> arg0 skel channel (+ v1-1 -1 (-> arg0 skel active-channels)))
+                  )
+                 (else
+                   (let ((v1-7 (-> arg0 skel root-channel))
+                         (a0-5 (-> arg0 skel effect))
+                         )
+                     (-> v1-7 (if a0-5
+                                  (-> a0-5 channel-offset)
+                                  0
+                                  )
+                         )
+                     )
+                   )
+                 )
+               )
+         (a3-0 (-> a2-0 frame-group))
+         (a1-0 (new 'stack-no-clear 'array 'int16 128))
+         )
+    (when (and a3-0 (and (> (-> arg0 skel active-channels) 0)
+                         (zero? (-> arg0 draw cur-lod))
+                         (logtest? (-> arg0 skel status) (joint-control-status blend-shape))
+                         )
+               )
+      (cond
+        ((and (-> arg0 skel override) (!= (-> arg0 skel override 0) 0.0))
+         (let* ((a0-12 (-> arg0 draw mgeo))
+                (v1-20 (-> a0-12 header blend-target-count))
+                (a2-2 (-> arg0 skel override))
+                )
+           (when (nonzero? v1-20)
+             (dotimes (a3-1 (the-as int v1-20))
+               (set! (-> a1-0 a3-1) (the int (* 8192.0 (-> a2-2 (+ a3-1 1)))))
+               )
+             (setup-blerc-chains a0-12 a1-0 (-> *display* frames (-> *display* on-screen) global-buf))
+             (logior! (-> arg0 skel status) (joint-control-status blend-shape-valid))
+             (return (the-as object #f))
+             )
+           )
+         )
+        (else
+          (let ((t2-0 (-> a3-0 blend-shape-anim)))
+            (when t2-0
+              (let ((a0-14 (-> arg0 draw mgeo)))
+                (let* ((v1-33 (-> a0-14 header blend-target-count))
+                       (t0-8 (-> a2-0 frame-num))
+                       (t1-2 (the int t0-8))
+                       (a2-6 (&+ t2-0 (* (the-as uint t1-2) v1-33)))
+                       )
+                  (cond
+                    ((< t1-2 (the-as int (+ (-> a3-0 frames num-frames) -1)))
+                     (let* ((a3-6 (&+ a2-6 v1-33))
+                            (t0-9 (* 64.0 (- t0-8 (the float t1-2))))
+                            (t1-4 (- 64.0 t0-9))
+                            )
+                       (dotimes (t2-2 (the-as int v1-33))
+                         (set! (-> a1-0 t2-2) (the int (+ 0.5
+                                                          (* (the float (+ (-> (the-as (pointer uint8) (&+ a3-6 t2-2))) -64)) t0-9)
+                                                          (* (the float (+ (-> (the-as (pointer uint8) (&+ a2-6 t2-2))) -64)) t1-4)
+                                                          )
+                                                   )
+                               )
+                         )
+                       )
+                     )
+                    (else
+                      (dotimes (a3-7 (the-as int v1-33))
+                        (set! (-> a1-0 a3-7) (the-as int (* (+ (-> (the-as (pointer uint8) (&+ a2-6 a3-7))) -64) 64)))
+                        )
+                      )
+                    )
+                  )
+                (setup-blerc-chains a0-14 a1-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                )
+              (logior! (-> arg0 skel status) (joint-control-status blend-shape-valid))
+              (return (the-as object #f))
+              )
+            )
+          )
+        )
+      )
+    )
+  (when (logtest? (-> arg0 skel status) (joint-control-status blend-shape-valid))
+    (logclear! (-> arg0 skel status) (joint-control-status blend-shape-valid))
+    (setup-blerc-chains
+      (-> arg0 draw lod-set lod 0 geo)
+      (new 'static 'array int16 40 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0)
+      (-> *display* frames (-> *display* on-screen) global-buf)
+      )
+    )
+  0
+  )
+
+;; definition for function setup-blerc-chains-for-one-fragment
+;; INFO: function output is handled by mips2c
+(def-mips2c setup-blerc-chains-for-one-fragment (function object object object object object object object))
+
+;; definition for function setup-blerc-chains
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun setup-blerc-chains ((arg0 merc-ctrl) (arg1 (pointer int16)) (arg2 dma-buffer))
+  (local-vars
+    (sv-16 uint)
+    (sv-20 pointer)
+    (sv-24 merc-effect)
+    (sv-28 uint)
+    (sv-32 object)
+    (sv-48 int)
+    (sv-64 int)
+    )
+  (set! sv-16 (-> arg0 header effect-count))
+  (let ((s3-0 (-> arg0 header blend-target-count))
+        (v1-1 (-> arg2 base))
+        )
+    (set! sv-20 (&+ v1-1 0))
+    (let ((a2-1 (the-as object (&+ v1-1 16))))
+      (if (zero? (-> *blerc-globals* first))
+          (set! (-> *blerc-globals* first) (the-as uint a2-1))
+          )
+      (dotimes (s2-0 (the-as int sv-16))
+        (set! sv-24 (-> arg0 effect s2-0))
+        (set! sv-28 (-> sv-24 blend-frag-count))
+        (when (nonzero? sv-28)
+          (let ((v1-15 (the-as object (-> sv-24 frag-geo)))
+                (s1-0 (the-as structure (-> sv-24 frag-ctrl)))
+                (s0-0 (the-as object (-> sv-24 blend-data)))
+                )
+            (set! sv-32 (-> sv-24 blend-ctrl))
+            (set! sv-48 0)
+            (while (< sv-48 (the-as int sv-28))
+              (set! sv-64 (+ (the-as int v1-15)
+                             (logand (* (+ (-> (the-as merc-fragment-control s1-0) unsigned-four-count) 3) 4) #xfff0)
+                             )
+                    )
+              (if (nonzero? (-> (the-as (pointer uint8) sv-32) 0))
+                  (set! a2-1 (setup-blerc-chains-for-one-fragment s3-0 arg1 a2-1 s0-0 sv-32 sv-64))
+                  )
+              (let ((a0-14 (logand (+ (* (the-as uint 6) (-> (the-as merc-blend-ctrl sv-32) blend-vtx-count)) 15) #xfff0)))
+                (set! v1-15
+                      (+ sv-64
+                         (logand (* (+ (-> (the-as merc-fragment-control s1-0) lump-four-count) 3) 4) #xfff0)
+                         (* (-> (the-as merc-fragment-control s1-0) fp-qwc) 16)
+                         )
+                      )
+                (set! s1-0 (+ (the-as uint s1-0) (* (-> (the-as merc-fragment-control s1-0) mat-xfer-count) 2) 4))
+                (set! s0-0
+                      (+ (the-as int s0-0) (* (the-as uint a0-14) (+ (-> (the-as merc-blend-ctrl sv-32) nonzero-index-count) 1)))
+                      )
+                )
+              (set! sv-32 (+ (the-as int sv-32) s3-0 2))
+              (the-as int sv-32)
+              (set! sv-48 (+ sv-48 1))
+              )
+            )
+          )
+        )
+      (set! (-> (the-as (pointer int64) sv-20)) (logior #x20000000 (shr (shl (the-as int a2-1) 33) 1)))
+      (set! (-> (the-as (pointer uint32) sv-20) 2) (the-as uint 0))
+      (set! (-> (the-as (pointer uint32) sv-20) 3) (the-as uint 0))
+      (set! (-> arg2 base) (the-as pointer a2-1))
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+

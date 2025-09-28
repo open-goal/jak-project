@@ -1,8 +1,7 @@
 #include "mouse.h"
 
-#include "game/system/hid/sdl_util.h"
-
-MouseDevice::MouseDevice(std::shared_ptr<game_settings::InputSettings> settings) {
+MouseDevice::MouseDevice(SDL_Window* window, std::shared_ptr<game_settings::InputSettings> settings)
+    : m_window(window) {
   m_settings = settings;
   enable_relative_mode(m_control_camera);
 }
@@ -21,20 +20,60 @@ bool MouseDevice::is_action_already_active(const u32 sdl_code, const bool player
 
 void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
   auto& binds = m_settings->mouse_binds;
-  const auto mouse_state = SDL_GetMouseState(NULL, NULL);
+  float curr_mouse_x;
+  float curr_mouse_y;
+  const auto mouse_state = SDL_GetMouseState(&curr_mouse_x, &curr_mouse_y);
   const auto keyboard_modifier_state = SDL_GetModState();
+
+  // We also poll for mouse position to see if the mouse has stopped moving
+  // if it has, and we are controlling the camera, neutralize the stick direction
+  //
+  // This can all be cleaned up if the game ever has proper mouse motion integration
+  // since you would normally just map the motion of the camera to the relative motion
+  // instead of mapping it to a virtual analog stick.
+  m_frame_counter++;
+  if (m_frame_counter > 3) {
+    m_frame_counter = 0;
+    if (m_control_camera) {
+      float curr_mouse_relx;
+      float curr_mouse_rely;
+      const auto mouse_state_rel = SDL_GetRelativeMouseState(&curr_mouse_relx, &curr_mouse_rely);
+      (void)mouse_state_rel;
+      if (m_mouse_moved_x && m_last_xcoord == curr_mouse_x && curr_mouse_relx == 0) {
+        data->analog_data.at(2) = 127;
+        m_mouse_moved_x = false;
+      }
+      if (m_mouse_moved_y && m_last_ycoord == curr_mouse_y && curr_mouse_rely == 0) {
+        data->analog_data.at(3) = 127;
+        m_mouse_moved_y = false;
+      }
+      m_last_xcoord = curr_mouse_x;
+      m_last_ycoord = curr_mouse_y;
+    }
+  }
 
   // Iterate binds, see if there are any new actions we need to track
   // - Normal Buttons
   for (const auto& [sdl_code, bind_list] : binds.buttons) {
     for (const auto& bind : bind_list) {
-      if (mouse_state & SDL_BUTTON(sdl_code) &&
+      if (mouse_state & SDL_BUTTON_MASK(sdl_code) &&
           bind.modifiers.has_necessary_modifiers(keyboard_modifier_state) &&
           !is_action_already_active(sdl_code, false)) {
         data->button_data.at(bind.pad_data_index) = true;  // press the button
+        const auto pressure_index = data->button_index_to_pressure_index(
+            static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+        if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+          data->pressure_data.at(pressure_index) = 255;
+        }
         m_active_actions.push_back(
             {sdl_code, bind, false, [](std::shared_ptr<PadData> data, InputBinding bind) {
-               data->button_data.at(bind.pad_data_index) = false;  // let go of the button
+               // let go of the button
+               data->button_data.at(bind.pad_data_index) = false;
+               const auto pressure_index = data->button_index_to_pressure_index(
+                   static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+               if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+                 data->pressure_data.at(pressure_index) = 0;
+               }
              }});
       }
     }
@@ -42,13 +81,24 @@ void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
   // - Analog Buttons (useless for keyboards, but here for completeness)
   for (const auto& [sdl_code, bind_list] : binds.button_axii) {
     for (const auto& bind : bind_list) {
-      if (mouse_state & SDL_BUTTON(sdl_code) &&
+      if (mouse_state & SDL_BUTTON_MASK(sdl_code) &&
           bind.modifiers.has_necessary_modifiers(keyboard_modifier_state) &&
           !is_action_already_active(sdl_code, false)) {
         data->button_data.at(bind.pad_data_index) = true;  // press the button
+        const auto pressure_index = data->button_index_to_pressure_index(
+            static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+        if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+          data->pressure_data.at(pressure_index) = 255;
+        }
         m_active_actions.push_back(
             {sdl_code, bind, false, [](std::shared_ptr<PadData> data, InputBinding bind) {
-               data->button_data.at(bind.pad_data_index) = false;  // let go of the button
+               // let go of the button
+               data->button_data.at(bind.pad_data_index) = false;
+               const auto pressure_index = data->button_index_to_pressure_index(
+                   static_cast<PadData::ButtonIndex>(bind.pad_data_index));
+               if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
+                 data->pressure_data.at(pressure_index) = 0;
+               }
              }});
       }
     }
@@ -82,7 +132,7 @@ void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
         it++;
       }
     } else {
-      if (!(mouse_state & SDL_BUTTON(it->sdl_mouse_button)) ||
+      if (!(mouse_state & SDL_BUTTON_MASK(it->sdl_mouse_button)) ||
           !it->binding.modifiers.has_necessary_modifiers(keyboard_modifier_state)) {
         it->revert_action(data, it->binding);
         it = m_active_actions.erase(it);
@@ -106,43 +156,51 @@ void MouseDevice::process_event(const SDL_Event& event,
                                 std::optional<InputBindAssignmentMeta>& bind_assignment) {
   // We still want to keep track of the cursor location even if we aren't using it for inputs
   // return early
-  if (event.type == SDL_MOUSEMOTION) {
-    // https://wiki.libsdl.org/SDL2/SDL_MouseMotionEvent
+  if (event.type == SDL_EVENT_MOUSE_MOTION) {
+    // https://wiki.libsdl.org/SDL3/SDL_MouseMotionEvent
     m_xcoord = event.motion.x;
     m_ycoord = event.motion.y;
     if (m_control_camera) {
-      const auto xadjust = std::clamp(127 + int(float(event.motion.xrel) * m_xsens), 0, 255);
-      const auto yadjust = std::clamp(127 + int(float(event.motion.yrel) * m_ysens), 0, 255);
+      const auto xrel_amount = float(event.motion.xrel);
+      const auto xadjust = std::clamp(127 + int(xrel_amount * m_xsens), 0, 255);
+      if (xadjust > 0) {
+        m_mouse_moved_x = true;
+      }
       data->analog_data.at(2) = xadjust;
+      const auto yrel_amount = float(event.motion.yrel);
+      const auto yadjust = std::clamp(127 + int(yrel_amount * m_ysens), 0, 255);
+      if (yadjust > 0) {
+        m_mouse_moved_y = true;
+      }
       data->analog_data.at(3) = yadjust;
     }
-  } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
+  } else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
     // Mouse Button Events
-    // https://wiki.libsdl.org/SDL2/SDL_MouseButtonEvent
+    // https://wiki.libsdl.org/SDL3/SDL_MouseButtonEvent
     const auto button_event = event.button;
     // Update the internal mouse tracking, this is for GOAL reasons.
     switch (button_event.button) {
       case SDL_BUTTON_LEFT:
-        m_button_status.left = event.type == SDL_MOUSEBUTTONDOWN;
+        m_button_status.left = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
         break;
       case SDL_BUTTON_RIGHT:
-        m_button_status.right = event.type == SDL_MOUSEBUTTONDOWN;
+        m_button_status.right = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
         break;
       case SDL_BUTTON_MIDDLE:
-        m_button_status.middle = event.type == SDL_MOUSEBUTTONDOWN;
+        m_button_status.middle = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
         break;
       case SDL_BUTTON_X1:
-        m_button_status.mouse4 = event.type == SDL_MOUSEBUTTONDOWN;
+        m_button_status.mouse4 = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
         break;
       case SDL_BUTTON_X2:
-        m_button_status.mouse5 = event.type == SDL_MOUSEBUTTONDOWN;
+        m_button_status.mouse5 = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
         break;
     }
 
     auto& binds = m_settings->mouse_binds;
 
     // Binding re-assignment
-    if (bind_assignment && event.type == SDL_MOUSEBUTTONDOWN) {
+    if (bind_assignment && event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
       if (bind_assignment->device_type == InputDeviceType::MOUSE && !bind_assignment->for_analog) {
         binds.assign_button_bind(button_event.button, bind_assignment.value(), false,
                                  InputModifiers(SDL_GetModState()));
@@ -151,11 +209,17 @@ void MouseDevice::process_event(const SDL_Event& event,
     }
 
     // Check for commands
-    if (event.type == SDL_MOUSEBUTTONDOWN &&
+    if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         commands.mouse_binds.find(button_event.button) != commands.mouse_binds.end()) {
       for (const auto& command : commands.mouse_binds.at(button_event.button)) {
         if (command.modifiers.has_necessary_modifiers(SDL_GetModState())) {
-          command.command();
+          if (command.event_command) {
+            command.event_command(event);
+          } else if (command.command) {
+            command.command();
+          } else {
+            lg::warn("CommandBinding has no valid callback for mouse bind");
+          }
         }
       }
     }
@@ -163,8 +227,8 @@ void MouseDevice::process_event(const SDL_Event& event,
 }
 
 void MouseDevice::enable_relative_mode(const bool enable) {
-  // https://wiki.libsdl.org/SDL2/SDL_SetRelativeMouseMode
-  SDL_SetRelativeMouseMode(sdl_util::sdl_bool(enable));
+  // https://wiki.libsdl.org/SDL3/SDL_SetWindowRelativeMouseMode
+  SDL_SetWindowRelativeMouseMode(m_window, enable);
 }
 
 void MouseDevice::enable_camera_control(const bool enable) {

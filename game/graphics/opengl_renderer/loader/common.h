@@ -28,6 +28,9 @@ struct LevelData {
   GLuint merc_indices;
   std::unordered_map<std::string, const tfrag3::MercModel*> merc_model_lookup;
 
+  GLuint hfrag_vertices;
+  GLuint hfrag_indices;
+
   int frames_since_last_used = 0;
 };
 

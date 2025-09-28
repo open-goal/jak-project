@@ -1,5 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(require "engine/gfx/hw/display-h.gc")
+(require "kernel/gstring.gc")
+(require "kernel/gstate.gc")
 
 ;; This script creates a simple process that draws text demonstrating
 ;; all of GOAL's color constants to the on-screen debug output.
@@ -16,18 +19,18 @@
 ;; font-color is from font-h.gc
 (defun font-color->string ((val font-color))
   "return the name of the font-color"
-  (enum->string font-color val)
-  )
+  (enum->string font-color val))
 
 (defun draw-all-font-colors ()
   "draws all font color names onscreen"
-  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
-                                (bucket-id debug-no-zbuf))
-      (dotimes (i 48)
-        (draw-string-xy (string-format "~2D ~S" i (font-color->string (the font-color i))) buf
-                (+ 4 (* (get-screen-x 0.5) (mod i 2))) (+ 8 (* 8 (/ i 2))) (the font-color i) (font-flags shadow)))
-      )
-  )
+  (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf))
+    (dotimes (i 48)
+      (draw-string-xy (string-format "~2D ~S" i (font-color->string (the font-color i)))
+                      buf
+                      (+ 4 (* (get-screen-x 0.5) (mod i 2)))
+                      (+ 8 (* 8 (/ i 2)))
+                      (the font-color i)
+                      (font-flags shadow)))))
 
 (defun start-display-text-colors ()
   "Spawn an onscreen string displaying all possible colors"
@@ -35,18 +38,13 @@
     (format #t "Colors are already being displayed")
     ;; else
     (set! (get-color-display-handle)
-          (ppointer->handle (process-spawn-function process :name 'display-proc
-                  (lambda :behavior process ()
-                    (loop
-                      (draw-all-font-colors)
-                      (suspend))
-                    )
-        )))
-    )
-  )
-
+          (ppointer->handle (process-spawn-function process
+                              :name 'display-proc
+                              (lambda :behavior process ()
+                                (loop
+                                  (draw-all-font-colors)
+                                  (suspend))))))))
 
 (defun-debug stop-display-text-colors ()
   "Kill the example text color display"
-  (kill-by-name 'display-proc *active-pool*)
-  )
+  (kill-by-name 'display-proc *active-pool*))

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <optional>
 #include <string>
 
-// Note: these are not implemented on windows and will return zero.
 size_t get_peak_rss();
 void setup_cpu_info();
 
@@ -17,3 +17,5 @@ struct CpuInfo {
 };
 
 CpuInfo& get_cpu_info();
+
+std::optional<double> get_macos_major_version();

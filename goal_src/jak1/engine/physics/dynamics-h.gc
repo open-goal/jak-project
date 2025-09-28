@@ -1,54 +1,48 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: dynamics-h.gc
-;; name in dgo: dynamics-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/math/vector-h.gc")
 
 ;; DECOMP BEGINS
 
 ;; dyanamics contain gravity properties
 (deftype dynamics (basic)
-  ((name            basic)
-   (gravity-max     meters)
-   (gravity-length  meters)
-   (gravity         vector  :inline)
-   (gravity-normal  vector  :inline)
-   (walk-distance   meters)
-   (run-distance    meters)
-   )
-  )
+  ((name           basic)
+   (gravity-max    meters)
+   (gravity-length meters)
+   (gravity        vector :inline)
+   (gravity-normal vector :inline)
+   (walk-distance  meters)
+   (run-distance   meters)))
 
 
 (defun time-to-apex ((arg0 float) (arg1 float))
   "How many ticks it takes to reach the apex of a ballistic trajectory."
-  (the int (/ arg0 (- (vel-tick arg1))))
-  )
+  (the int (/ arg0 (- (vel-tick arg1)))))
 
 (defun time-to-ground ((arg0 float) (arg1 float) (arg2 float))
   "How many ticks it takes to reach the ground for a ballistic trajectory."
   (let ((f0-0 0.0)
-        (v0-0 0)
-        )
+        (v0-0 0))
     ;; actually integrate forward, just like the game will do so we're exact.
     (while (< (- arg2) f0-0)
-      (set! arg0 (- arg0 (* 0.0033333334 arg1)))
-      (+! f0-0 (* 0.0033333334 arg0))
-      (+! v0-0 1)
-      )
-    v0-0
-    )
-  )
+      (set! arg0 (- arg0 (/ arg1 300)))
+      (+! f0-0 (/ arg0 300))
+      (+! v0-0 1))
+    v0-0))
 
 ;; the default dynamics of the world.
 (define *standard-dynamics*
-    (new 'static 'dynamics
-         :name 'standard
-         :gravity-max GRAVITY_MAX
-         :gravity-length GRAVITY_AMOUNT
-         :gravity  (new 'static 'vector :x 0.0 :y GRAVITY_AMOUNT :z 0.0 :w 1.0)
-         :gravity-normal (new 'static 'vector :x 0.0 :y 1.0 :z 0.0 :w 1.0)
-         :walk-distance (meters 2)
-         :run-distance (meters 5)
-         )
-  )
+  (new 'static
+       'dynamics
+       :name 'standard
+       :gravity-max
+       GRAVITY_MAX
+       :gravity-length
+       GRAVITY_AMOUNT
+       :gravity
+       (new 'static 'vector :x 0.0 :y GRAVITY_AMOUNT :z 0.0 :w 1.0)
+       :gravity-normal
+       (new 'static 'vector :x 0.0 :y 1.0 :z 0.0 :w 1.0)
+       :walk-distance (meters 2)
+       :run-distance (meters 5)))

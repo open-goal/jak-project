@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,30 +19,37 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../SDL_internal.h"
+#include "SDL_internal.h"
 
 #ifndef SDL_dbus_h_
 #define SDL_dbus_h_
 
 #ifdef HAVE_DBUS_DBUS_H
 #define SDL_USE_LIBDBUS 1
-#include "SDL_stdinc.h"
 #include <dbus/dbus.h>
 
+#ifndef DBUS_TIMEOUT_USE_DEFAULT
+#define DBUS_TIMEOUT_USE_DEFAULT -1
+#endif
+#ifndef DBUS_TIMEOUT_INFINITE
+#define DBUS_TIMEOUT_INFINITE ((int) 0x7fffffff)
+#endif
 
-typedef struct SDL_DBusContext {
+typedef struct SDL_DBusContext
+{
     DBusConnection *session_conn;
     DBusConnection *system_conn;
 
     DBusConnection *(*bus_get_private)(DBusBusType, DBusError *);
     dbus_bool_t (*bus_register)(DBusConnection *, DBusError *);
     void (*bus_add_match)(DBusConnection *, const char *, DBusError *);
-    DBusConnection * (*connection_open_private)(const char *, DBusError *);
+    DBusConnection *(*connection_open_private)(const char *, DBusError *);
     void (*connection_set_exit_on_disconnect)(DBusConnection *, dbus_bool_t);
     dbus_bool_t (*connection_get_is_connected)(DBusConnection *);
     dbus_bool_t (*connection_add_filter)(DBusConnection *, DBusHandleMessageFunction, void *, DBusFreeFunction);
+    dbus_bool_t (*connection_remove_filter)(DBusConnection *, DBusHandleMessageFunction, void *);
     dbus_bool_t (*connection_try_register_object_path)(DBusConnection *, const char *,
-        const DBusObjectPathVTable *, void *, DBusError *);
+                                                       const DBusObjectPathVTable *, void *, DBusError *);
     dbus_bool_t (*connection_send)(DBusConnection *, DBusMessage *, dbus_uint32_t *);
     DBusMessage *(*connection_send_with_reply_and_block)(DBusConnection *, DBusMessage *, int, DBusError *);
     void (*connection_close)(DBusConnection *);
@@ -51,7 +58,8 @@ typedef struct SDL_DBusContext {
     void (*connection_flush)(DBusConnection *);
     dbus_bool_t (*connection_read_write)(DBusConnection *, int);
     DBusDispatchStatus (*connection_dispatch)(DBusConnection *);
-    dbus_bool_t (*message_is_signal)(DBusMessage *, const char *, const char *); 
+    dbus_bool_t (*message_is_signal)(DBusMessage *, const char *, const char *);
+    dbus_bool_t (*message_has_path)(DBusMessage *, const char *);
     DBusMessage *(*message_new_method_call)(const char *, const char *, const char *, const char *);
     dbus_bool_t (*message_append_args)(DBusMessage *, int, ...);
     dbus_bool_t (*message_append_args_valist)(DBusMessage *, int, va_list);
@@ -65,13 +73,14 @@ typedef struct SDL_DBusContext {
     dbus_bool_t (*message_iter_next)(DBusMessageIter *);
     void (*message_iter_get_basic)(DBusMessageIter *, void *);
     int (*message_iter_get_arg_type)(DBusMessageIter *);
-    void (*message_iter_recurse)(DBusMessageIter *, DBusMessageIter *); 
+    void (*message_iter_recurse)(DBusMessageIter *, DBusMessageIter *);
     void (*message_unref)(DBusMessage *);
     dbus_bool_t (*threads_init_default)(void);
     void (*error_init)(DBusError *);
     dbus_bool_t (*error_is_set)(const DBusError *);
     void (*error_free)(DBusError *);
     char *(*get_local_machine_id)(void);
+    char *(*try_get_local_machine_id)(DBusError *);
     void (*free)(void *);
     void (*free_string_array)(char **);
     void (*shutdown)(void);
@@ -80,23 +89,26 @@ typedef struct SDL_DBusContext {
 
 extern void SDL_DBus_Init(void);
 extern void SDL_DBus_Quit(void);
-extern SDL_DBusContext * SDL_DBus_GetContext(void);
+extern SDL_DBusContext *SDL_DBus_GetContext(void);
 
-/* These use the built-in Session connection. */
-extern SDL_bool SDL_DBus_CallMethod(const char *node, const char *path, const char *interface, const char *method, ...);
-extern SDL_bool SDL_DBus_CallVoidMethod(const char *node, const char *path, const char *interface, const char *method, ...);
-extern SDL_bool SDL_DBus_QueryProperty(const char *node, const char *path, const char *interface, const char *property, const int expectedtype, void *result);
+// These use the built-in Session connection.
+extern bool SDL_DBus_CallMethod(const char *node, const char *path, const char *interface, const char *method, ...);
+extern bool SDL_DBus_CallVoidMethod(const char *node, const char *path, const char *interface, const char *method, ...);
+extern bool SDL_DBus_QueryProperty(const char *node, const char *path, const char *interface, const char *property, int expectedtype, void *result);
 
-/* These use whatever connection you like. */
-extern SDL_bool SDL_DBus_CallMethodOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
-extern SDL_bool SDL_DBus_CallVoidMethodOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
-extern SDL_bool SDL_DBus_QueryPropertyOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *property, const int expectedtype, void *result);
+// These use whatever connection you like.
+extern bool SDL_DBus_CallMethodOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
+extern bool SDL_DBus_CallVoidMethodOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
+extern bool SDL_DBus_QueryPropertyOnConnection(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *property, int expectedtype, void *result);
 
 extern void SDL_DBus_ScreensaverTickle(void);
-extern SDL_bool SDL_DBus_ScreensaverInhibit(SDL_bool inhibit);
+extern bool SDL_DBus_ScreensaverInhibit(bool inhibit);
 
-#endif /* HAVE_DBUS_DBUS_H */
+extern void SDL_DBus_PumpEvents(void);
+extern char *SDL_DBus_GetLocalMachineId(void);
 
-#endif /* SDL_dbus_h_ */
+extern char **SDL_DBus_DocumentsPortalRetrieveFiles(const char *key, int *files_count);
 
-/* vi: set ts=4 sw=4 expandtab: */
+#endif // HAVE_DBUS_DBUS_H
+
+#endif // SDL_dbus_h_

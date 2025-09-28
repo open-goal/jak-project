@@ -1,0 +1,581 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defpart 659
+  :init-specs ((:num 0.1)
+    (:rot-x 5)
+    (:r 4096.0)
+    (:g 4096.0)
+    (:b 4096.0)
+    (:fade-g 1.3653333)
+    (:accel-y (meters 0.00016666666))
+    (:friction 0.99)
+    (:timer (seconds 1))
+    (:flags (distort))
+    (:next-time (seconds 0.5))
+    (:next-launcher 660)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 660
+  :init-specs ((:fade-g -1.3653333))
+  )
+
+;; definition for function target-invisible-start
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-invisible-start target ((arg0 time-frame))
+  (logior! (-> self target-flags) (target-flags invisible))
+  (set-time! (-> self invisible-start-time))
+  (set! (-> self invisible-duration) arg0)
+  (set-setting! 'cloth #f 0.0 0)
+  (target-gun-end-mode #f)
+  (if (and (focus-test? self light) (nonzero? (-> self lightjak)))
+      (send-event self 'end-mode 'lightjak)
+      )
+  (if (and (focus-test? self dark) (nonzero? (-> self darkjak)))
+      (send-event self 'end-mode 'lightjak)
+      )
+  (vector-copy! (-> self invisible-shadow-dir-backup) (-> self draw shadow-ctrl settings shadow-dir))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-idol-activate
+  :id 182
+  :duration (seconds 0.035)
+  :linger-duration (seconds 10)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 661 :flags (sp3)) (sp-item 662 :flags (sp3)) (sp-item 663 :flags (sp3 sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 661
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5))
+    (:rot-x (degrees 2250))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 255.0)
+    (:omega (degrees 18011.25))
+    (:scalevel-x (meters -0.125))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -6.375)
+    (:timer (seconds 0.135))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 409600.0)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 662
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 200.0)
+    (:scale-x (meters 0.05) (meters 0.05))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 64.0 64.0)
+    (:omega (degrees 0.225))
+    (:vel-x (meters 0.06666667) (meters 0.006666667))
+    (:fade-a -0.42666668 -0.42666668)
+    (:friction 0.94 0.04)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:conerot-z (degrees 0) (degrees 20))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 663
+  :init-specs ((:texture (big-cloud level-default-sprite))
+    (:num 30.0)
+    (:scale-x (meters 1) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 128.0)
+    (:a 32.0 32.0)
+    (:vel-y (meters 0.033333335) (meters 0.1))
+    (:scalevel-x (meters 0.006666667) (meters 0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.42666668)
+    (:fade-a -0.21333334 -0.21333334)
+    (:friction 0.93 0.02)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:conerot-x (degrees 60) (degrees 40))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; definition for function target-invisible-stop
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-invisible-stop target ()
+  (logclear! (-> self target-flags) (target-flags invisible))
+  (remove-setting! 'cloth)
+  0
+  (none)
+  )
+
+;; definition of type invis-particle-joint
+(deftype invis-particle-joint (structure)
+  ((joint     int16)
+   (distance  float)
+   (size      float)
+   (spawn?    symbol)
+   )
+  )
+
+;; definition for method 3 of type invis-particle-joint
+(defmethod inspect ((this invis-particle-joint))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'invis-particle-joint)
+  (format #t "~1Tjoint: ~D~%" (-> this joint))
+  (format #t "~1Tdistance: ~f~%" (-> this distance))
+  (format #t "~1Tsize: ~f~%" (-> this size))
+  (format #t "~1Tspawn?: ~A~%" (-> this spawn?))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *invis-joint-list*, type (array invis-particle-joint)
+(define *invis-joint-list*
+  (new 'static 'boxed-array :type invis-particle-joint
+    (new 'static 'invis-particle-joint :joint 4 :distance 819.2 :size 1638.4 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 5 :distance 819.2 :size 1638.4 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 6 :distance 1228.8 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 8 :distance 1228.8 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 9 :distance 1638.4 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 17 :distance 1228.8 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 18 :distance 819.2 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 19 :distance 409.6 :size 819.2 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 24 :distance 409.6 :size 409.6 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 26 :distance 1228.8 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 27 :distance 819.2 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 28 :distance 409.6 :size 819.2 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 33 :distance 409.6 :size 409.6 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 39 :distance 614.4 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 40 :distance 409.6 :size 819.2 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 41 :distance 409.6 :size 819.2 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 42 :distance 409.6 :size 819.2 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 45 :distance 614.4 :size 1228.8 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 46 :distance 409.6 :size 819.2 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 47 :distance 409.6 :size 819.2 :spawn? #t)
+    (new 'static 'invis-particle-joint :joint 48 :distance 409.6 :size 819.2 :spawn? #t)
+    )
+  )
+
+;; definition for function target-invisible-process
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-invisible-process target ()
+  (cond
+    ((logtest? (target-flags invisible) (-> self target-flags))
+     (seek! (-> self invisible-interp) 1.0 (* 2.0 (seconds-per-frame)))
+     (if (time-elapsed? (-> self invisible-start-time) (-> self invisible-duration))
+         (target-invisible-stop)
+         )
+     (when (= (-> self invisible-interp) 1.0)
+       (let ((gp-0 (new 'stack-no-clear 'vector)))
+         (vector-copy! gp-0 (math-camera-pos))
+         (dotimes (s5-0 (-> *invis-joint-list* length))
+           (when (-> *invis-joint-list* s5-0 spawn?)
+             (let ((v1-22 (-> *invis-joint-list* s5-0 joint))
+                   (s4-0 (new 'stack-no-clear 'vector))
+                   )
+               (let ((s3-0 (new 'stack-no-clear 'vector)))
+                 (vector<-cspace! s4-0 (-> self node-list data v1-22))
+                 (vector-! s3-0 gp-0 s4-0)
+                 (vector-normalize! s3-0 (-> *invis-joint-list* s5-0 distance))
+                 (vector+! s4-0 s4-0 s3-0)
+                 )
+               (set! (-> *part-id-table* 659 init-specs 2 initial-valuef) (-> *invis-joint-list* s5-0 size))
+               (set! (-> *part-id-table* 659 init-specs 3 initial-valuef) (/ (-> *invis-joint-list* s5-0 size) 2))
+               (set! (-> *part-id-table* 659 init-specs 4 initial-valuef) (/ (-> *invis-joint-list* s5-0 size) 2))
+               (launch-particles (-> *part-id-table* 659) s4-0)
+               )
+             )
+           )
+         )
+       )
+     (vector-lerp!
+       (-> self draw shadow-ctrl settings shadow-dir)
+       (-> self invisible-shadow-dir-backup)
+       (new 'static 'vector :y -1.0 :w 1.0)
+       (-> self invisible-interp)
+       )
+     (set! (-> self draw shadow-ctrl settings shadow-dir w) (-> self invisible-shadow-dir-backup w))
+     (logclear! (-> self target-effect) (target-effect te0))
+     (if (= (-> self invisible-interp) 1.0)
+         (logior! (-> self target-effect) (target-effect te0))
+         )
+     (if (and (time-elapsed? (-> self invisible-start-time) (+ (-> self invisible-duration) (seconds -2)))
+              (< (mod (- (current-time) (-> self invisible-start-time)) 60) 30)
+              )
+         (logclear! (-> self target-effect) (target-effect te0))
+         )
+     )
+    ((!= (-> self invisible-interp) 0.0)
+     (logclear! (-> self target-effect) (target-effect te0))
+     (seek! (-> self invisible-interp) 0.0 (* 0.5 (seconds-per-frame)))
+     )
+    )
+  (cond
+    ((= (-> self invisible-interp) 0.0)
+     (logclear! (-> self draw status) (draw-control-status force-fade))
+     )
+    (else
+      (logior! (-> self draw status) (draw-control-status force-fade))
+      (set! (-> self draw force-fade)
+            (the-as uint (the int (lerp-scale 128.0 16.0 (-> self invisible-interp) 0.0 1.0)))
+            )
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate target-invisible-get-on (target)
+  :event target-standard-event-handler
+  :exit (behavior ()
+    (logclear! (-> self target-flags) (target-flags lleg-still rleg-still))
+    (remove-setting! 'gun)
+    (persist-with-delay *setting-control* 'gun (seconds 0.5) 'gun #f 0.0 0)
+    (apply-settings *setting-control*)
+    (target-gun-end-mode #t)
+    )
+  :code (behavior ((arg0 handle) (arg1 time-frame))
+    (set-time! (-> self state-time))
+    (set! (-> self neck flex-blend) 0.0)
+    (set! (-> self control mod-surface) *grab-mods*)
+    (target-gun-end-mode #f)
+    (set-setting! 'gun #f 0.0 0)
+    (apply-settings *setting-control*)
+    (set-forward-vel 0.0)
+    (let ((s4-0 0))
+      (while (not (logtest? (-> self control status) (collide-status on-surface)))
+        (target-falling-anim-trans)
+        (+! s4-0 (- (current-time) (-> self clock old-frame-counter)))
+        (if (>= s4-0 300)
+            (go target-falling #f)
+            )
+        (suspend)
+        )
+      )
+    (when (= (-> self ext-anim) (target-anim default))
+      (let ((v1-24 (as-type (handle->process arg0) process-drawable)))
+        (when v1-24
+          (let ((s4-1 (-> v1-24 root trans))
+                (v1-27 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg main)))
+                )
+            (forward-up-nopitch->quaternion
+              (-> self control dir-targ)
+              (vector-! (new 'stack-no-clear 'vector) s4-1 v1-27)
+              (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self control dir-targ))
+              )
+            )
+          )
+        )
+      (ja-channel-push! 1 (seconds 0.1))
+      (ja-no-eval :group! jakb-stance-to-invisible-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (ja-no-eval :group! jakb-invisible-loop-ja :num! (seek! (ja-aframe 20.0 0)) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! (ja-aframe 20.0 0)))
+        )
+      (target-invisible-start arg1)
+      (ja-no-eval :num! (seek!))
+      (while (not (ja-done? 0))
+        (suspend)
+        (ja-eval)
+        )
+      (set! (-> self trans-hook) (lambda :behavior target () (if (move-legs?)
+                                                                 (go target-stance)
+                                                                 )
+                                                          )
+            )
+      (dotimes (gp-1 1)
+        (ja-no-eval :group! jakb-invisible-loop-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      (ja-no-eval :group! jakb-invisible-to-stance-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (go target-stance)
+    )
+  :post (-> target-grab post)
+  )
+
+;; definition of type dark-maker-idol
+(deftype dark-maker-idol (process-drawable)
+  ((root           collide-shape :override)
+   (humming-sound  ambient-sound)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  )
+
+;; definition for method 3 of type dark-maker-idol
+(defmethod inspect ((this dark-maker-idol))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Thumming-sound: ~A~%" (-> this humming-sound))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-dark-maker-idol dark-maker-idol dark-maker-idol-lod0-jg dark-maker-idol-idle-ja
+              ((dark-maker-idol-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 2)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate idle (dark-maker-idol)
+  :virtual #t
+  :trans (behavior ()
+    (when (and *target*
+               (logtest? (the-as game-feature (logand (game-feature artifact-invis) (-> *setting-control* user-current features)))
+                         (-> *game-info* features)
+                         )
+               (and (and *target* (and (>= 24576.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                                       )
+                         )
+                    (not (focus-test? *target* dead ignore hit in-head pole flut light board dark teleporting))
+                    (can-display-query? self "idol" -99.0)
+                    (-> *target* current-level)
+                    (zero? (-> *target* ext-anim))
+                    )
+               )
+      (let ((gp-0
+              (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
+              )
+            )
+        (set-width! gp-0 340)
+        (set-height! gp-0 80)
+        (let ((v1-23 gp-0)
+              (a0-16 (-> *setting-control* user-default language))
+              )
+          (set! (-> v1-23 scale) (if (or (= a0-16 (language-enum korean)) (= a0-16 (language-enum russian)))
+                                     0.9
+                                     0.7
+                                     )
+                )
+          )
+        (set! (-> gp-0 flags) (font-flags shadow kerning large))
+        (print-game-text
+          (lookup-text! *common-text* (text-id text-0083) #f)
+          gp-0
+          #f
+          44
+          (bucket-id hud-draw-hud-alpha)
+          )
+        )
+      (if (and (cpad-pressed? 0 triangle)
+               (send-event
+                 *target*
+                 'change-mode
+                 'invisible
+                 self
+                 (the int (* 300.0 (res-lump-float
+                                     (-> self entity)
+                                     'duration
+                                     :default (* 0.0033333334 (the float (-> *TARGET-bank* invisible-duration)))
+                                     )
+                             )
+                      )
+                 )
+               )
+          (go-virtual active)
+          )
+      3
+      )
+    (if *target*
+        (look-at!
+          (-> *target* neck)
+          (vector+!
+            (new 'stack-no-clear 'vector)
+            (-> self root root-prim prim-core world-sphere)
+            (new 'static 'vector :y 2048.0 :w 1.0)
+            )
+          'nothing-special
+          self
+          )
+        )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((gp-0 (and *target* (logtest? (target-flags invisible) (-> *target* target-flags)))))
+      (let ((s5-1 (vector+float*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 5324.8))
+            (a1-2 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
+            )
+        (vector-copy! (-> a1-2 trans) s5-1)
+        (if (and (nonzero? (-> self part)) (not gp-0))
+            (spawn-from-mat (-> self part) a1-2)
+            )
+        )
+      (update-vol! (-> self humming-sound) (if gp-0
+                                               0.0
+                                               0.8
+                                               )
+                   )
+      )
+    (update! (-> self humming-sound))
+    (ja-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (dark-maker-idol)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (suspend-for (seconds 0.66)
+      )
+    (cond
+      ((logtest? (-> *part-group-id-table* 182 flags) (sp-group-flag sp13))
+       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
+       (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 182))
+       )
+      (else
+        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
+        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 182))
+        )
+      )
+    (if *target*
+        (process-spawn
+          lightning-tracker
+          :init lightning-tracker-init
+          (-> *lightning-spec-id-table* 5)
+          300
+          #f
+          *target*
+          19
+          4
+          :name "lightning-tracker"
+          :to self
+          :unk 0
+          )
+        )
+    (sound-play "dark-maker")
+    (suspend-for (seconds 2)
+      )
+    (go-virtual idle)
+    )
+  :post (behavior ()
+    (update-vol!
+      (-> self humming-sound)
+      (lerp-clamp 0.8 0.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time)))))
+      )
+    (update! (-> self humming-sound))
+    (when (nonzero? (-> self part))
+      (let ((gp-2 (vector+float*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 5324.8))
+            (a1-4 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
+            )
+        (vector-copy! (-> a1-4 trans) gp-2)
+        (spawn-from-mat (-> self part) a1-4)
+        )
+      )
+    (ja-post)
+    )
+  )
+
+;; definition for method 11 of type dark-maker-idol
+(defmethod init-from-entity! ((this dark-maker-idol) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec collectable))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 0)
+      (set-vector! (-> v1-2 local-sphere) 0.0 4096.0 0.0 8192.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dark-maker-idol" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (if (task-node-closed? (game-task-node volcano-darkeco-resolution))
+      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 82) this))
+      )
+  (set! (-> this humming-sound) (new 'process 'ambient-sound "dark-maker-amb" (-> this root trans) 0.0))
+  (set-falloff-far! (-> this humming-sound) 122880.0)
+  (update-vol! (-> this humming-sound) 0.8)
+  (update-pitch-mod! (-> this humming-sound) 0.0)
+  (go (method-of-object this idle))
+  )
+
+;; definition for method 7 of type dark-maker-idol
+(defmethod relocate ((this dark-maker-idol) (offset int))
+  (if (nonzero? (-> this humming-sound))
+      (&+! (-> this humming-sound) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 10 of type dark-maker-idol
+(defmethod deactivate ((this dark-maker-idol))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this humming-sound))
+      (stop! (-> this humming-sound))
+      )
+  (call-parent-method this)
+  (none)
+  )

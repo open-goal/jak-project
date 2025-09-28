@@ -20,7 +20,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4595
-  :init-specs ((:texture (new 'static 'texture-id :page #xc))
+  :init-specs ((:texture (bigpuff effects))
     (:num 12.0)
     (:x (meters 0) (meters 1))
     (:y (meters 0) (meters 2))
@@ -48,7 +48,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4596
-  :init-specs ((:texture (new 'static 'texture-id :index #x2b :page #x52d))
+  :init-specs ((:texture (whack-nut ctyport-sprite))
     (:birth-func 'birth-func-texture-group)
     (:num 8.0)
     (:x (meters 0) (meters 1))
@@ -80,7 +80,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4597
-  :init-specs ((:texture (new 'static 'texture-id :index #x9b :page #xb))
+  :init-specs ((:texture (common-white common))
     (:birth-func 'birth-func-texture-group)
     (:num 16.0)
     (:x (meters 0) (meters 1))
@@ -146,7 +146,7 @@
 
 ;; failed to figure out what this is:
 (defpart 4598
-  :init-specs ((:texture (new 'static 'texture-id :index #x2c :page #x52d))
+  :init-specs ((:texture (whack-spring ctyport-sprite))
     (:num 8.0)
     (:x (meters 0) (meters 1))
     (:y (meters 0) (meters 2))
@@ -192,13 +192,9 @@
 ;; definition for method 15 of type hud-cargo
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-cargo))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 457.0 (* 130.0 (-> this offset))))
-    205
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 457.0 (* 130.0 (-> this offset)))) 205)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -19 27)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -19 27)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -221,7 +217,7 @@
         (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
         )
   (logior! (-> this flags) (hud-flags show))
-  (set! (-> this sprites 0 tex) (lookup-texture-by-id (new 'static 'texture-id :index #x3 :page #x679)))
+  (set! (-> this sprites 0 tex) (get-texture hud-cargo-icon-01 ctywide-minimap))
   (set! (-> this sprites 0 scale-x) 1.2)
   (set! (-> this sprites 0 scale-y) 1.2)
   (set! (-> this sprites 0 flags) (the-as uint 4))
@@ -974,9 +970,9 @@
                    )
                  (.lvf vf4 (&-> v1-27 quad))
                  )
-               (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-               (.mul.x.vf acc vf5 vf7 :mask #b111)
-               (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+               (.add.x.vf.w vf6 vf0 vf0)
+               (.mul.x.vf.xyz acc vf5 vf7)
+               (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                (.svf (&-> s4-0 quad) vf6)
                )
              )
@@ -1004,9 +1000,9 @@
                 )
               (.lvf vf4 (&-> s3-0 quad))
               )
-            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-            (.mul.x.vf acc vf5 vf7 :mask #b111)
-            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.add.x.vf.w vf6 vf0 vf0)
+            (.mul.x.vf.xyz acc vf5 vf7)
+            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
             (.svf (&-> s4-1 quad) vf6)
             )
           )
@@ -1032,10 +1028,7 @@
     0
     )
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 3))
-        (suspend)
-        )
+    (suspend-for (seconds 3)
       )
     (cleanup-for-death self)
     )
@@ -1500,9 +1493,9 @@
            (.mov vf7 a3-7)
            (.lvf vf5 (&-> a2-14 quad))
            (.lvf vf4 (&-> v1-33 quad))
-           (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-           (.mul.x.vf acc vf5 vf7 :mask #b111)
-           (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+           (.add.x.vf.w vf6 vf0 vf0)
+           (.mul.x.vf.xyz acc vf5 vf7)
+           (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
            (.svf (&-> a1-10 quad) vf6)
            (t9-12 a0-17 a1-10 a2-14 a3-7)
            )
@@ -1589,10 +1582,7 @@
 (defstate die (ctyport-cargo)
   :virtual #t
   :code (behavior ()
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
+    (suspend-for (seconds 1)
       )
     (cleanup-for-death self)
     )
@@ -1983,12 +1973,7 @@
         (dotimes (s5-0 (-> self max-count))
           (when (zero? (-> self data-int32 s5-0))
             (when (-> self slave s5-0)
-              (let* ((s3-0 (handle->process (-> self slave s5-0)))
-                     (s4-0 (if (type? s3-0 process-focusable)
-                               s3-0
-                               )
-                           )
-                     )
+              (let ((s4-0 (the-as process (as-type (handle->process (-> self slave s5-0)) process-focusable))))
                 (when (not gp-0)
                   (set! gp-0 #t)
                   (send-event s4-0 'focus-camera)
@@ -1999,10 +1984,7 @@
             )
           )
         )
-      (let ((gp-1 (current-time)))
-        (until (time-elapsed? gp-1 (seconds 2))
-          (suspend)
-          )
+      (suspend-for (seconds 2)
         )
       )
     (none)

@@ -1,0 +1,3203 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type enemy-info
+;; WARN: Return type mismatch int vs none.
+(defmethod copy-enemy-info! ((this enemy-info) (arg0 enemy-info))
+  (mem-copy! (&-> this type) (&-> arg0 type) 420)
+  0
+  (none)
+  )
+
+;; definition for symbol *enemy-dummy-shadow-control*, type shadow-control
+(define *enemy-dummy-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :center (new 'static 'vector :w (the-as float #x28))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 614400.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 4096.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w -4096.0)
+                                           )
+                               )
+  )
+
+;; definition for method 7 of type enemy
+(defmethod relocate ((this enemy) (offset int))
+  (if (nonzero? (-> this neck))
+      (&+! (-> this neck) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 128 of type enemy
+(defmethod rnd-float ((this enemy))
+  "Get a random number from 0 to 1"
+  (rand-vu)
+  )
+
+;; definition for method 129 of type enemy
+(defmethod rnd-float-range ((this enemy) (arg0 float) (arg1 float))
+  "Get a random float in the range"
+  (+ arg0 (* (rand-vu) (- arg1 arg0)))
+  )
+
+;; definition for method 130 of type enemy
+(defmethod rnd-int ((this enemy) (arg0 int))
+  "Get a random int from to to the specified int"
+  (the int (* (rand-vu) (the float arg0)))
+  )
+
+;; definition for method 132 of type enemy
+(defmethod rnd-time-frame ((this enemy) (arg0 time-frame) (arg1 time-frame))
+  "Get a random time frame."
+  (+ arg0 (the int (* (rand-vu) (the float (+ (- 1 arg0) arg1)))))
+  )
+
+;; definition for method 133 of type enemy
+(defmethod rnd-chance? ((this enemy) (arg0 float))
+  "Returns true with the given probability."
+  (>= arg0 (rand-vu))
+  )
+
+;; definition for method 131 of type enemy
+;; WARN: new jak 2 until loop case, check carefully
+(defmethod rnd-int-excluding-masked ((this enemy) (arg0 int) (arg1 int))
+  "Get a random int in the range. Exclude a value n by setting the n-th bit of the mask."
+  (let ((v1-0 0)
+        (s5-0 0)
+        )
+    (let ((a2-1 1))
+      (while (nonzero? arg0)
+        (+! arg0 -1)
+        (if (not (logtest? arg1 a2-1))
+            (+! v1-0 1)
+            )
+        (set! a2-1 (* a2-1 2))
+        )
+      )
+    (when (> v1-0 0)
+      (let ((v1-1 (rnd-int this v1-0))
+            (a0-1 1)
+            )
+        (until #f
+          (while (logtest? arg1 a0-1)
+            (nop!)
+            (nop!)
+            (+! s5-0 1)
+            (set! a0-1 (* a0-1 2))
+            )
+          (if (zero? v1-1)
+              (goto cfg-14)
+              )
+          (+! v1-1 -1)
+          (+! s5-0 1)
+          (set! a0-1 (* a0-1 2))
+          )
+        )
+      #f
+      )
+    (label cfg-14)
+    s5-0
+    )
+  )
+
+;; definition for method 134 of type enemy
+(defmethod rnd-chance-for-idle? ((this enemy) (arg0 float))
+  "Like rnd-chance, but is more likely to return true when the game is close to not fitting in frame rate.
+   This makes enemies start idling more if the game isn't running fast enough."
+  (let* ((v1-5 (-> *display* frames (-> *display* last-screen) run-time))
+         (f1-2 (fmax 0.0 (fmin 1.0 (* 0.001 (+ -7000.0 (the float v1-5))))))
+         )
+    (>= (+ arg0 (* f1-2 (- 1.0 arg0))) (rand-vu))
+    )
+  )
+
+;; definition for method 67 of type enemy
+(defmethod coin-flip? ((this enemy))
+  "Return #t half the time, #f the other."
+  (zero? (rnd-int this 2))
+  )
+
+;; definition for method 12 of type enemy
+;; WARN: disable def twice: 40. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod run-logic? ((this enemy))
+  "Should this process be run? Checked by execute-process-tree."
+  (cond
+    ((logtest? (-> this mask) (process-mask actor-pause))
+     (let ((gp-0 (-> this draw)))
+       (or (and (nonzero? gp-0)
+                (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
+                    (vector-vector-distance (-> this root trans) (camera-pos))
+                    )
+                (or (logtest? (-> gp-0 status) (draw-control-status on-screen))
+                    (not (and (-> this next-state) (= (-> this next-state name) 'idle)))
+                    )
+                )
+           (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
+           (and (nonzero? gp-0) (logtest? (-> gp-0 status) (draw-control-status uninited)))
+           )
+       )
+     )
+    (else
+      #t
+      )
+    )
+  )
+
+;; definition for method 57 of type enemy
+(defmethod can-focus-on? ((this enemy) (arg0 process-focusable))
+  "Check that this enemy can focus on the given focusable.
+   This reuses the collide bitmask, but isn't actually a collision."
+  (and arg0 (!= this arg0) (collide-spec-match? (-> this focus) arg0))
+  )
+
+;; definition for method 20 of type enemy
+(defmethod get-search-info-flag ((this enemy))
+  "Get search-info-flag for this process."
+  (let ((v1-0 (-> this enemy-flags))
+        (flag (search-info-flag))
+        )
+    (when (and (!= (-> this hit-points) 0.0)
+               (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
+               (logtest? (enemy-flag trackable) (-> this enemy-flags))
+               )
+      (if (logtest? (process-mask enemy) (-> this mask))
+          (set! flag (logior flag (search-info-flag enemy)))
+          )
+      (if (logtest? v1-0 (enemy-flag attackable))
+          (set! flag (logior flag (search-info-flag attackable)))
+          )
+      )
+    flag
+    )
+  )
+
+;; definition for method 21 of type enemy
+(defmethod get-trans ((this enemy) (arg0 int))
+  "Get the `trans` for this process."
+  (let ((s4-0 (-> this root)))
+    (cond
+      ((zero? arg0)
+       (-> s4-0 trans)
+       )
+      ((and (= arg0 1) (type? s4-0 collide-shape-moving))
+       (-> s4-0 gspot-pos)
+       )
+      ((= arg0 2)
+       (vector<-cspace! (new 'static 'vector) (-> this node-list data (-> this enemy-info look-at-joint)))
+       )
+      ((= arg0 3)
+       (let ((v0-0 (vector<-cspace! (new 'static 'vector) (-> this node-list data (-> this enemy-info bullseye-joint)))))
+         (set! (-> v0-0 w) (-> this root root-prim prim-core world-sphere w))
+         v0-0
+         )
+       )
+      (else
+        ((method-of-type process-focusable get-trans) this arg0)
+        )
+      )
+    )
+  )
+
+;; definition for method 66 of type enemy
+(defmethod get-penetrated-by ((this enemy))
+  "Figure out the penetrated-by mask for this process."
+  (penetrated-by-all&hit-points->penetrated-by (-> this penetrated-by-all) (the int (-> this hit-points)))
+  )
+
+;; definition for method 25 of type enemy
+;; WARN: Return type mismatch float vs meters.
+(defmethod get-water-height ((this enemy))
+  "Get the height of the water that we're in."
+  (the-as meters (-> this water-surface-height))
+  )
+
+;; definition for method 58 of type enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch enemy-flag vs object.
+(defmethod check-water ((this enemy))
+  "Respond to possibly being in water."
+  (let ((s4-0 (-> this root)))
+    (when (>= (-> this water-max-height) (-> s4-0 trans y))
+      (let ((s5-0 (new 'stack-no-clear 'water-info)))
+        (water-info-init! s4-0 s5-0 (collide-action solid semi-solid))
+        (let ((s3-0 (-> s5-0 flags)))
+          (when (logtest? (water-flag touch-water) s3-0)
+            (set! (-> this water-surface-height) (-> s5-0 trans y))
+            (when (not (focus-test? this touch-water under-water))
+              (let ((v1-9 (new 'stack-no-clear 'vector)))
+                (vector-copy! v1-9 (-> this root trans))
+                (set! (-> v1-9 y) (+ 409.6 (-> s5-0 trans y)))
+                (cond
+                  ((logtest? (-> *part-group-id-table* 192 flags) (sp-group-flag sp13))
+                   (vector-copy! (-> *launch-matrix* trans) v1-9)
+                   (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 192))
+                   )
+                  (else
+                    (vector-copy! (-> *launch-matrix* trans) v1-9)
+                    (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 192))
+                    )
+                  )
+                )
+              (cond
+                ((logtest? s3-0 (water-flag dark-eco))
+                 (sound-play "eco-splash")
+                 (send-event this 'instant-death)
+                 )
+                (else
+                  (play-damage-sound this 2)
+                  )
+                )
+              )
+            (logior! (-> this focus-status) (focus-status touch-water))
+            (let* ((v1-46 (-> s4-0 root-prim prim-core))
+                   (f0-6 (+ (-> v1-46 world-sphere y) (-> v1-46 world-sphere w)))
+                   )
+              (if (focus-test? this under-water)
+                  (set! f0-6 (+ -819.2 f0-6))
+                  )
+              (if (< f0-6 (-> s5-0 trans y))
+                  (logior! (-> this focus-status) (focus-status under-water))
+                  (logclear! (-> this focus-status) (focus-status under-water))
+                  )
+              )
+            (return (the-as object #f))
+            )
+          )
+        )
+      )
+    )
+  (logclear! (-> this focus-status) (focus-status touch-water under-water))
+  (let ((v0-11 (logclear (-> this enemy-flags) (enemy-flag checking-water))))
+    (set! (-> this enemy-flags) v0-11)
+    v0-11
+    )
+  )
+
+;; definition for method 59 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod enemy-common-post ((this enemy))
+  "Common implementation of post. Runs ja-post."
+  (if (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-control-status on-screen)))
+      (set-time! (-> this last-draw-time))
+      )
+  (update-focus this)
+  (when *target*
+    (if *target*
+        (look-at!
+          (-> *target* neck)
+          (-> this root root-prim prim-core world-sphere)
+          (if (logtest? (-> this enemy-flags) (enemy-flag cam-attack-mode))
+              'attacking
+              )
+          this
+          )
+        )
+    )
+  (when (nonzero? (-> this neck))
+    (when (logtest? (-> this enemy-flags) (enemy-flag look-at-focus))
+      (let ((a0-7 (handle->process (-> this focus handle))))
+        (if a0-7
+            (target-set! (-> this neck) (get-trans (the-as process-focusable a0-7) 2))
+            )
+        )
+      )
+    )
+  (when (and (logtest? (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
+             (time-elapsed? (-> this auto-reset-penetrate-time) (seconds 0.1))
+             )
+    (logclear! (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
+    (set! (-> this root penetrated-by) (get-penetrated-by this))
+    (let ((v1-43 0))
+      (if (logtest? (penetrate knocked) (-> this root penetrate-using))
+          (set! v1-43 (logior (shl 2 32) v1-43))
+          )
+      (set! (-> this root penetrate-using) (the-as penetrate v1-43))
+      )
+    )
+  (if (logtest? (-> this enemy-flags) (enemy-flag victory))
+      (clear-stale-victory this)
+      )
+  (if (logtest? (enemy-flag check-water checking-water) (-> this enemy-flags))
+      (check-water this)
+      )
+  (if (and *debug-segment* (-> this enemy-info debug-draw-neck) (nonzero? (-> this neck)))
+      (joint-mod-debug-draw (-> this neck))
+      )
+  (ja-post)
+  0
+  (none)
+  )
+
+;; definition for method 147 of type enemy
+;; WARN: Return type mismatch enemy-flag vs none.
+(defmethod clear-stale-victory ((this enemy))
+  "Remove victory flag if needed."
+  (if (or (time-elapsed? (-> this hit-focus-time) (seconds 2))
+          (and (handle->process (-> this focus handle))
+               (not (logtest? (-> (the-as process-focusable (handle->process (-> this focus handle))) focus-status)
+                              (focus-status disable dead ignore grabbed)
+                              )
+                    )
+               )
+          )
+      (logclear! (-> this enemy-flags) (enemy-flag victory))
+      )
+  (none)
+  )
+
+;; definition for function get-penetrate-using-from-attack-event
+(defun get-penetrate-using-from-attack-event ((arg0 process-drawable) (arg1 event-message-block))
+  "Given an attack event to an enemy, return the penetrate that should be applied to the enemy"
+  (let ((v1-0 (the-as object (-> arg1 param 1))))
+    (if (logtest? (attack-mask penetrate-using) (-> (the-as attack-info v1-0) mask))
+        (return (-> (the-as attack-info v1-0) penetrate-using))
+        )
+    )
+  (let ((v1-3 (as-type arg0 process-drawable)))
+    (when v1-3
+      (let* ((gp-1 (-> v1-3 root))
+             (v1-4 (if (the-as penetrate (type? gp-1 collide-shape))
+                       gp-1
+                       )
+                   )
+             )
+        (if v1-4
+            (return (logior (-> (the-as collide-shape v1-4) penetrate-using) (penetrate generic-attack)))
+            )
+        )
+      )
+    )
+  (penetrate generic-attack)
+  )
+
+;; definition for method 113 of type enemy
+;; WARN: Return type mismatch process vs process-focusable.
+(defmethod get-focus! ((this enemy))
+  "If we're focusing on something alive, return it."
+  (let ((v0-0 (handle->process (-> this focus handle))))
+    (if (and v0-0
+             (not (and v0-0
+                       (not (logtest? (-> (the-as process-focusable v0-0) focus-status) (focus-status disable dead ignore grabbed)))
+                       )
+                  )
+             )
+        (set! v0-0 (the-as process #f))
+        )
+    (the-as process-focusable v0-0)
+    )
+  )
+
+;; definition for method 70 of type enemy
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-focus! ((this enemy) (arg0 process-focusable) (arg1 enemy-aware))
+  "Change our focus to the given process. Optionally, specify awareness."
+  (if arg1
+      (focus-on-with-awareness! (-> this focus) arg0 arg1)
+      (focus-on! (-> this focus) arg0 this)
+      )
+  (none)
+  )
+
+;; definition for method 69 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod focus-on-attacker! ((this enemy))
+  "If possible, update this enemies focus to the attacker."
+  (when (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
+    (let ((s5-0 (as-type (handle->process (-> this incoming attacker-handle)) process-focusable)))
+      (when (can-focus-on? this (the-as process-focusable s5-0))
+        (set-focus! this (the-as process-focusable s5-0) (the-as enemy-aware #f))
+        (logior! (-> this focus flags) (enemy-flag look-at-focus))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 114 of type enemy
+(defmethod find-and-damage-attackers ((this enemy) (arg0 process-focusable) (arg1 event-message-block))
+  "Find things that have attacked us, then deal damage back.
+   This is used for attacks that damage both the player and the enemy,
+   like hitting a guard with a jetboard."
+  (let ((s4-0 (the-as touching-shapes-entry (-> arg1 param 0))))
+    (when (and s4-0
+               (and (logtest? (-> this incoming penetrate-using) (penetrate board))
+                    (not (logtest? (-> this incoming penetrate-using) (penetrate spin)))
+                    )
+               (begin
+                 (let ((s3-0 (-> s4-0 head)))
+                   (while s3-0
+                     (let ((s2-0 (get-touched-prim s3-0 (-> arg0 root) s4-0)))
+                       (get-touched-prim s3-0 (-> this root) s4-0)
+                       (when (logtest? (-> s2-0 prim-core action) (collide-action solid semi-solid deadly))
+                         (let* ((a0-5 this)
+                                (t9-2 (method-of-object a0-5 send-attack-from-tshape))
+                                (a1-3 arg0)
+                                (a2-3 s4-0)
+                                (v1-13 *game-info*)
+                                (a3-1 (+ (-> v1-13 attack-id) 1))
+                                )
+                           (set! (-> v1-13 attack-id) a3-1)
+                           (if (t9-2 a0-5 a1-3 a2-3 a3-1)
+                               (return 0)
+                               )
+                           )
+                         )
+                       )
+                     (set! s3-0 (-> s3-0 next))
+                     )
+                   )
+                 #f
+                 )
+               )
+      )
+    )
+  0
+  )
+
+;; definition for method 71 of type enemy
+(defmethod go-dormant ((this enemy))
+  "Go to the dormant state. This disables drawing/processing/collision, and runs no logic."
+  (let ((v1-1 (-> this root root-prim)))
+    (set! (-> v1-1 prim-core collide-as) (collide-spec))
+    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+    )
+  0
+  (logior! (-> this draw status) (draw-control-status no-draw))
+  (logior! (-> this focus-status) (focus-status disable))
+  (go (method-of-object this dormant))
+  )
+
+;; definition for method 72 of type enemy
+(defmethod go-dormant-aware ((this enemy))
+  "Go to the dormat aware state.
+   Similar to dormant, drawing/collision are disabled, but enemies can exit dormant-aware."
+  (let ((v1-1 (-> this root root-prim)))
+    (set! (-> v1-1 prim-core collide-as) (collide-spec))
+    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+    )
+  0
+  (logior! (-> this draw status) (draw-control-status no-draw))
+  (logior! (-> this focus-status) (focus-status disable))
+  (go (method-of-object this dormant-aware))
+  )
+
+;; definition for method 73 of type enemy
+(defmethod go-idle ((this enemy))
+  "Go to an idle state."
+  (go (method-of-object this idle))
+  )
+
+;; definition for method 75 of type enemy
+(defmethod go-stare ((this enemy))
+  (go (method-of-object this stare))
+  )
+
+;; definition for method 76 of type enemy
+(defmethod go-stare2 ((this enemy))
+  (go (method-of-object this stare))
+  )
+
+;; definition for method 78 of type enemy
+(defmethod go-hostile ((this enemy))
+  "Go to the hostile state, actively trying to attack the target."
+  (go (method-of-object this hostile))
+  )
+
+;; definition for method 149 of type enemy
+(defmethod have-more-than-10-joints? ((this enemy))
+  "Does what it says, unused"
+  (and (nonzero? (-> this node-list)) (-> this node-list) (< 10 (-> this node-list length)))
+  )
+
+;; definition for method 150 of type enemy
+(defmethod can-be-nuked? ((this enemy))
+  "Can this enemy be instantly destroyed by the nuke?"
+  #t
+  )
+
+;; definition for method 148 of type enemy
+(defmethod go-gun-dark-2-stretch ((this enemy))
+  "Go to the gun-dark-2-stretch state."
+  (if (not (and (-> this next-state) (= (-> this next-state name) 'gun-dark-2-stretch)))
+      (go (method-of-object this gun-dark-2-stretch))
+      )
+  )
+
+;; definition for method 74 of type enemy
+(defmethod go-ambush ((this enemy))
+  "May go to ambush-delay first, if set in the res-lump."
+  (if (< 0.0 (res-lump-float (-> this entity) 'ambush-delay))
+      (go (method-of-object this ambush-delay))
+      (go (method-of-object this ambush))
+      )
+  )
+
+;; definition for method 79 of type enemy
+(defmethod go-flee ((this enemy))
+  "Go to the flee state, running away."
+  (go (method-of-object this flee))
+  )
+
+;; definition for method 77 of type enemy
+(defmethod go-directed ((this enemy))
+  "Go to the directed state which assumes that something else will control the enemy."
+  (go (method-of-object this directed))
+  )
+
+;; definition for method 80 of type enemy
+(defmethod go-state-for-focused ((this enemy))
+  "Go to the appropriate state for the current awareness of the focused process."
+  (let ((s5-0 (-> this focus aware)))
+    (cond
+      ((and (= s5-0 (enemy-aware hostile)) (get-focus! this))
+       (go-hostile this)
+       )
+      ((<= (the-as int s5-0) 0)
+       (go-idle this)
+       )
+      ((>= 1 (the-as int s5-0))
+       (go (method-of-object this active))
+       )
+      ((= s5-0 (enemy-aware flee))
+       (go-flee this)
+       )
+      (else
+        (go-stare this)
+        )
+      )
+    )
+  )
+
+;; definition for method 102 of type enemy
+(defmethod go-next-state-auto ((this enemy))
+  "Pick the next state automatically. Will enter directed state if this enemy is directed, or pick based on focus/aware."
+  (if (logtest? (enemy-flag directed) (-> this enemy-flags))
+      (go-directed this)
+      (go-state-for-focused this)
+      )
+  )
+
+;; definition for method 81 of type enemy
+(defmethod go-die ((this enemy))
+  "Go to the die state."
+  (if (-> this enemy-info use-die-falling)
+      (go (method-of-object this die-falling))
+      (go (method-of-object this die))
+      )
+  )
+
+;; definition for method 146 of type enemy
+;; INFO: Used lq/sq
+(defmethod play-damage-sound ((this enemy) (arg0 int))
+  "Pick and play the damage/death sound."
+  (let ((name (static-sound-name "")))
+    (let ((v1-0 arg0))
+      (cond
+        ((zero? v1-0)
+         (set! name (-> this enemy-info sound-hit))
+         )
+        ((= v1-0 1)
+         (set! name (-> this enemy-info sound-die))
+         )
+        ((= v1-0 2)
+         (sound-play "splash")
+         )
+        )
+      )
+    (if (nonzero? (the-as uint name))
+        (sound-play-by-name (the-as sound-name name) (new-sound-id) 1024 0 0 (sound-group) #t)
+        )
+    )
+  )
+
+;; definition for method 103 of type enemy
+;; INFO: Used lq/sq
+(defmethod heading-matches-direction? ((this enemy) (arg0 vector) (arg1 float))
+  "Does this enemy's heading match the given heading? Threshold in degrees."
+  (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (vector-copy! s5-0 arg0)
+    (set! (-> s4-0 y) 0.0)
+    (vector-normalize! s4-0 1.0)
+    (set! (-> s5-0 y) 0.0)
+    (vector-normalize! s5-0 1.0)
+    (>= (vector-dot s4-0 s5-0) (cos arg1))
+    )
+  )
+
+;; definition for method 104 of type enemy
+(defmethod pointing-toward? ((this enemy) (arg0 vector) (arg1 float))
+  "Is this enemy pointing toward the given point? Threshold in degrees."
+  (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this root trans))))
+    (heading-matches-direction? this v1-1 arg1)
+    )
+  )
+
+;; definition for method 105 of type enemy
+(defmethod pointing-toward-focus? ((this enemy) (arg0 float) (arg1 symbol))
+  "Is this enemy pointing toward its focused process?"
+  (let ((a0-2 (handle->process (-> this focus handle))))
+    (cond
+      (a0-2
+        (let ((s4-1
+                (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-2) 0) (-> this root trans))
+                )
+              )
+          (heading-matches-direction? this s4-1 arg0)
+          )
+        )
+      (else
+        arg1
+        )
+      )
+    )
+  )
+
+;; definition for method 110 of type enemy
+(defmethod send-attack-from-tshape ((this enemy) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+  "Send an attack from this enemy to something else."
+  (let ((a0-1 (-> this enemy-info attack-damage)))
+    (if (and (logtest? (-> *game-info* secrets) (game-secrets hero-mode)) (= a0-1 1))
+        (set! a0-1 2)
+        )
+    (when (send-event
+            arg0
+            'attack
+            arg1
+            (static-attack-info :mask (vehicle-impulse-factor) ((id arg2)
+                                                                (damage (the float a0-1))
+                                                                (vehicle-damage-factor 1.0)
+                                                                (vehicle-impulse-factor 1.0)
+                                                                (shove-back (-> this enemy-info attack-shove-back))
+                                                                (shove-up (-> this enemy-info attack-shove-up))
+                                                                (mode (-> this enemy-info attack-mode))
+                                                                (knock (if (-> this enemy-info knocked-off)
+                                                                           (knocked-type knocked-off)
+                                                                           (knocked-type none)
+                                                                           )
+                                                                       )
+                                                                )
+                                )
+            )
+      (on-attack this (the-as process-focusable arg0))
+      #t
+      )
+    )
+  )
+
+;; definition for method 111 of type enemy
+;; WARN: Return type mismatch enemy-flag vs none.
+(defmethod on-attack ((this enemy) (arg0 process-focusable))
+  "Handler after this enemy attacks something. By default focuses on the attacked, but could be overriden."
+  (when (logtest? (process-mask target bot) (-> arg0 mask))
+    (set! (-> this root penetrated-by) (the-as penetrate -1))
+    (reset-penetrate-later! this)
+    )
+  (let ((s5-0 (as-type arg0 process-focusable)))
+    (when (can-focus-on? this s5-0)
+      (let ((v1-10 (handle->process (-> this focus handle))))
+        (when (or (= s5-0 v1-10) (and (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
+                                      (or (not v1-10) (not (logtest? (-> this focus flags) (enemy-flag look-at-focus))))
+                                      )
+                  )
+          (set-focus! this s5-0 (the-as enemy-aware #f))
+          (set-time! (-> this hit-focus-time))
+          (logior! (-> this enemy-flags) (enemy-flag victory))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 53 of type enemy
+;; WARN: Return type mismatch time-frame vs none.
+(defmethod reset-penetrate-later! ((this enemy))
+  "After a little bit, reset the penetrate flags back to default."
+  (logior! (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
+  (set-time! (-> this auto-reset-penetrate-time))
+  (none)
+  )
+
+;; definition for method 54 of type enemy
+;; INFO: Used lq/sq
+(defmethod get-knockback-dir! ((this enemy) (arg0 vector))
+  "Compute the knockback direction for an incoming attack."
+  (vector-copy! arg0 (-> this incoming attack-direction))
+  (let ((v1-1 arg0))
+    (when (= (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z))) 0.0)
+      (vector-z-quaternion! arg0 (-> this root quat))
+      (vector-negate-in-place! arg0)
+      )
+    )
+  (set! (-> arg0 y) 0.0)
+  (vector-xz-normalize! arg0 1.0)
+  )
+
+;; definition for method 142 of type enemy
+(defmethod penetrate->knocked-type ((this enemy) (arg0 penetrate))
+  "Based on the penetrate of an attacker, pick the knocked-type."
+  (cond
+    ((logtest? arg0 (penetrate vehicle))
+     (knocked-type vehicle)
+     )
+    ((logtest? (penetrate jak-blue-shot) arg0)
+     (knocked-type blue-shot)
+     )
+    ((logtest? (penetrate jak-yellow-shot enemy-yellow-shot) arg0)
+     (knocked-type yellow-shot)
+     )
+    ((logtest? (penetrate jak-red-shot) arg0)
+     (knocked-type red-shot)
+     )
+    ((logtest? (penetrate dark-bomb dark-smack) arg0)
+     (knocked-type dark-shot)
+     )
+    ((logtest? (penetrate explode jak-dark-shot enemy-dark-shot) arg0)
+     (knocked-type explode-or-darkjak)
+     )
+    ((logtest? arg0 (penetrate mech-punch))
+     (knocked-type mech-punch)
+     )
+    (else
+      (knocked-type none)
+      )
+    )
+  )
+
+;; definition for method 112 of type enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod handle-incoming-attack! ((this enemy)
+                                   (arg0 process-drawable)
+                                   (arg1 event-message-block)
+                                   (arg2 penetrate)
+                                   (arg3 attack-info)
+                                   (arg4 touching-shapes-entry)
+                                   )
+  "Set up this enemy to handle an incoming attack event."
+  (set! (-> this incoming penetrate-using) arg2)
+  (set! (-> this incoming attack-id) (-> arg3 id))
+  (let ((v1-3 (if (logtest? (attack-mask knock) (-> arg3 mask))
+                  (-> arg3 knock)
+                  (penetrate->knocked-type this arg2)
+                  )
+              )
+        )
+    (set! (-> this incoming knocked-type) v1-3)
+    (let ((a0-4 (current-time)))
+      (cond
+        ((!= v1-3 (knocked-type blue-shot))
+         (set! (-> this incoming blue-juggle-count) (the-as uint 0))
+         0
+         )
+        ((time-elapsed? (-> this incoming attack-time) (seconds 1))
+         (set! (-> this incoming blue-juggle-count) (the-as uint 1))
+         )
+        (else
+          (+! (-> this incoming blue-juggle-count) 1)
+          )
+        )
+      (set! (-> this incoming attack-time) a0-4)
+      )
+    (cond
+      ((= v1-3 (knocked-type vehicle))
+       (vector-copy! (-> this incoming attack-direction) (-> arg3 vector))
+       )
+      (else
+        (let ((s2-0 (new 'stack-no-clear 'attack-info)))
+          (attack-info-method-9 arg3 s2-0 arg0 this)
+          (vector-copy! (-> this incoming attacker-pos) (-> s2-0 intersection))
+          (vector-copy! (-> this incoming attack-direction) (-> s2-0 attacker-velocity))
+          )
+        )
+      )
+    )
+  (set! (-> this incoming intensity) (-> arg3 control))
+  (set! (-> this incoming attacker-handle) (process->handle (find-offending-pfoc this arg0 arg3)))
+  (cond
+    (arg4
+      (let ((a1-12 (-> arg4 head)))
+        (get-intersect-point (-> this incoming attack-position) a1-12 (-> this root) arg4)
+        )
+      )
+    (else
+      (vector-! (-> this incoming attack-position) (-> this root trans) (-> this incoming attack-direction))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 115 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod set-look-at-mode! ((this enemy) (arg0 int))
+  "Pick between 1: look at the focus, or 2: look at where you're going."
+  (case arg0
+    ((1)
+     (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+     (logior! (-> this enemy-flags) (enemy-flag look-at-focus))
+     )
+    ((2)
+     (logclear! (-> this enemy-flags) (enemy-flag look-at-focus))
+     (logior! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+     )
+    )
+  (if (nonzero? (-> this neck))
+      (mode-set! (-> this neck) (joint-mod-mode look-at))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 116 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod stop-look-at! ((this enemy))
+  "Stop looking at something. Disables neck joint mod."
+  (when (nonzero? (-> this neck))
+    (logclear! (-> this enemy-flags) (enemy-flag look-at-focus look-at-move-dest))
+    (shut-down (-> this neck))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 136 of type enemy
+(defmethod find-ground-and-set-pat! ((this enemy) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float) (arg5 process))
+  "Figure out what ground we're standing on and update the ground-pat.
+   Usually this will be done automatically by the collision system.
+   This method should be called after manually repositioning an enemy."
+  (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4 arg5)
+    (let ((v0-1 (-> arg0 best-other-tri pat)))
+      (set! (-> this root ground-pat) v0-1)
+      v0-1
+      )
+    )
+  )
+
+;; definition for method 137 of type enemy
+(defmethod enemy-above-ground? ((this enemy) (arg0 collide-query) (arg1 vector) (arg2 collide-spec) (arg3 float) (arg4 float) (arg5 float))
+  "Is this enemy above the ground?"
+  (above-ground? (-> this root) arg0 arg1 arg2 arg3 arg4 arg5)
+  )
+
+;; definition for method 138 of type enemy
+;; INFO: Used lq/sq
+(defmethod move-to-ground ((this enemy) (arg0 meters) (arg1 meters) (arg2 symbol) (arg3 collide-spec))
+  "Snap the enemy to the ground below."
+  (let ((s4-0 (new 'stack-no-clear 'collide-query)))
+    (cond
+      ((find-ground-and-set-pat! this s4-0 arg3 arg0 arg1 1024.0 (the-as process #f))
+       (let ((s5-1 (-> this root)))
+         (let ((s3-0 (new 'stack-no-clear 'vector)))
+           (vector-copy! s3-0 (-> this root trans))
+           (set! (-> s3-0 y) (-> s4-0 best-other-tri intersect y))
+           (move-to-point! s5-1 s3-0)
+           (let ((a0-3 (-> s4-0 best-other-tri normal))
+                 (v1-8 (-> s4-0 best-other-tri pat))
+                 )
+             (vector-copy! (-> s5-1 ground-touch-point) s3-0)
+             (vector-copy! (-> s5-1 poly-normal) a0-3)
+             (vector-copy! (-> s5-1 surface-normal) a0-3)
+             (vector-copy! (-> s5-1 local-normal) a0-3)
+             (vector-copy! (-> s5-1 ground-poly-normal) a0-3)
+             (set! (-> s5-1 poly-pat) v1-8)
+             (set! (-> s5-1 cur-pat) v1-8)
+             (set! (-> s5-1 ground-pat) v1-8)
+             )
+           )
+         (logior! (-> s5-1 status) (collide-status on-surface on-ground touch-surface))
+         )
+       #t
+       )
+      (else
+        (let ((v1-11 (-> this root)))
+          (logclear! (-> v1-11 status) (collide-status
+                                         on-surface
+                                         on-ground
+                                         touch-surface
+                                         touch-wall
+                                         touch-ceiling
+                                         touch-actor
+                                         on-special-surface
+                                         touch-edge
+                                         blocked
+                                         on-water
+                                         impact-surface
+                                         touch-background
+                                         stuck
+                                         glance
+                                         )
+                     )
+          (when (not (logtest? (-> v1-11 root-prim prim-core action) (collide-action no-normal-reset)))
+            (let ((a0-12 (-> v1-11 dynam gravity-normal)))
+              (vector-copy! (-> v1-11 local-normal) a0-12)
+              (vector-copy! (-> v1-11 surface-normal) a0-12)
+              (vector-copy! (-> v1-11 poly-normal) a0-12)
+              )
+            (set! (-> v1-11 coverage) 0.0)
+            (set! (-> v1-11 touch-angle) 0.0)
+            )
+          )
+        (if arg2
+            (format 0 "WARNING: enemy::move-to-ground: failed to locate ground for ~S!~%" (-> this name))
+            )
+        #f
+        )
+      )
+    )
+  )
+
+;; definition for method 139 of type enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod move-above-ground! ((this enemy) (arg0 vector) (arg1 move-above-ground-params))
+  "Move the enemy. May keep the enemy snapped to the ground depending on flags."
+  (let ((gp-0 (-> this root)))
+    (set! (-> arg1 on-ground?) #f)
+    (set! (-> arg1 do-move?) #t)
+    (vector-copy! (-> arg1 old-gspot-pos) (-> gp-0 gspot-pos))
+    (vector-copy! (-> arg1 old-gspot-normal) (-> gp-0 gspot-normal))
+    (set! (-> gp-0 trans-old-old-old quad) (-> gp-0 trans-old-old quad))
+    (set! (-> gp-0 trans-old-old quad) (-> gp-0 trans-old quad))
+    (set! (-> gp-0 trans-old quad) (-> gp-0 trans quad))
+    (set! (-> gp-0 prev-status) (-> gp-0 status))
+    (vector-v+! (-> gp-0 trans) (-> gp-0 trans) arg0)
+    (vector-copy! (-> arg1 new-pos) (-> gp-0 trans))
+    (let ((s2-0 (new 'stack-no-clear 'collide-query)))
+      (cond
+        ((find-ground-and-set-pat!
+           this
+           s2-0
+           (-> arg1 gnd-collide-with)
+           (-> arg1 popup)
+           81920.0
+           1024.0
+           (the-as process #f)
+           )
+         (when (>= (-> gp-0 gspot-pos y) (-> arg1 new-pos y))
+           (set! (-> arg1 on-ground?) #t)
+           (set! (-> arg1 pat) (-> s2-0 best-other-tri pat))
+           (set! (-> arg1 new-pos y) (-> s2-0 best-other-tri intersect y))
+           (set! (-> gp-0 ground-impact-vel) (- (vector-dot arg0 (-> gp-0 dynam gravity-normal))))
+           (set! (-> arg0 y) 0.0)
+           )
+         )
+        (else
+          (if (-> arg1 hover-if-no-ground?)
+              (set! (-> arg1 new-pos y) (-> gp-0 trans-old y))
+              )
+          )
+        )
+      )
+    (vector-copy! (-> gp-0 trans) (-> gp-0 trans-old))
+    (move-to-point! gp-0 (-> arg1 new-pos))
+    (when (logtest? (logand (-> arg1 overlaps-params collide-with-filter)
+                            (collide-spec hit-by-player-list hit-by-others-list player-list)
+                            )
+                    (-> gp-0 root-prim prim-core collide-with)
+                    )
+      (when (find-overlapping-shapes gp-0 (-> arg1 overlaps-params))
+        (when (-> arg1 dont-move-if-overlaps?)
+          (set! (-> arg1 do-move?) #f)
+          (move-to-point! gp-0 (-> gp-0 trans-old))
+          (vector-copy! (-> gp-0 gspot-pos) (-> arg1 old-gspot-pos))
+          (vector-copy! (-> gp-0 gspot-normal) (-> arg1 old-gspot-normal))
+          )
+        )
+      )
+    (when (-> arg1 do-move?)
+      (cond
+        ((-> arg1 on-ground?)
+         (let ((a1-6 (-> gp-0 gspot-pos))
+               (a0-21 (-> gp-0 gspot-normal))
+               (v1-39 (-> arg1 pat))
+               )
+           (vector-copy! (-> gp-0 ground-touch-point) a1-6)
+           (vector-copy! (-> gp-0 poly-normal) a0-21)
+           (vector-copy! (-> gp-0 surface-normal) a0-21)
+           (vector-copy! (-> gp-0 local-normal) a0-21)
+           (vector-copy! (-> gp-0 ground-poly-normal) a0-21)
+           (set! (-> gp-0 poly-pat) v1-39)
+           (set! (-> gp-0 cur-pat) v1-39)
+           (set! (-> gp-0 ground-pat) v1-39)
+           )
+         (logior! (-> gp-0 status) (collide-status on-surface on-ground touch-surface))
+         )
+        (else
+          (logclear! (-> gp-0 status) (collide-status
+                                        on-surface
+                                        on-ground
+                                        touch-surface
+                                        touch-wall
+                                        touch-ceiling
+                                        touch-actor
+                                        on-special-surface
+                                        touch-edge
+                                        blocked
+                                        on-water
+                                        impact-surface
+                                        touch-background
+                                        stuck
+                                        glance
+                                        )
+                     )
+          (when (not (logtest? (-> gp-0 root-prim prim-core action) (collide-action no-normal-reset)))
+            (let ((v1-49 (-> gp-0 dynam gravity-normal)))
+              (vector-copy! (-> gp-0 local-normal) v1-49)
+              (vector-copy! (-> gp-0 surface-normal) v1-49)
+              (vector-copy! (-> gp-0 poly-normal) v1-49)
+              )
+            (set! (-> gp-0 coverage) 0.0)
+            (set! (-> gp-0 touch-angle) 0.0)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 117 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-friction ((this enemy))
+  "Slow down the enemy due to friction with the ground."
+  (let ((v1-0 (-> this root)))
+    (when (logtest? (-> v1-0 status) (collide-status touch-surface))
+      (let ((f0-1 (fmax 0.0 (+ 1.0 (* 60.0 (seconds-per-frame) (+ -1.0 (-> this enemy-info friction)))))))
+        (vector-float*! (-> v1-0 transv) (-> v1-0 transv) f0-1)
+        )
+      0
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 120 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! ((this enemy))
+  "Typical place to construct collision shapes"
+  0
+  (none)
+  )
+
+;; definition for method 121 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this enemy))
+  "Typical place for shared init code. Runs from entity or process style init."
+  0
+  (none)
+  )
+
+;; definition for method 122 of type enemy
+(defmethod go-fallback-init ((this enemy))
+  "If there's no specific settings for initial state, go to this state after spawning."
+  (go (method-of-object this idle))
+  )
+
+;; definition for method 118 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod set-enemy-info! ((this enemy) (arg0 enemy-info))
+  "Set the enemy-info"
+  (set! (-> this enemy-info) arg0)
+  (when (and (!= (-> this enemy-info neck-joint) -1) (zero? (-> this neck)))
+    (set! (-> this neck)
+          (new 'process 'joint-mod (joint-mod-mode flex-blend) this (-> this enemy-info neck-joint))
+          )
+    (set-vector! (-> this neck twist-max) 8192.0 8192.0 0.0 1.0)
+    (set! (-> this neck up) (the-as uint 1))
+    (set! (-> this neck nose) (the-as uint 2))
+    (set! (-> this neck ear) (the-as uint 0))
+    (set! (-> this neck max-dist) 102400.0)
+    (set! (-> this neck ignore-angle) 16384.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 119 of type enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-enemy! ((this enemy) (arg0 enemy-info))
+  "Initialize the enemy by setting all the enemy-specific fields."
+  (local-vars (sv-16 res-tag))
+  (when (coin-flip? this)
+    (let ((a0-2 (-> this node-list data 2)))
+      (set! (-> a0-2 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint-flip-z!))
+      (set! (-> a0-2 param1) #f)
+      (set! (-> a0-2 param2) #f)
+      )
+    (logior! (-> this enemy-flags) (enemy-flag drawn-mirrored))
+    )
+  (logior! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask actor-pause))
+  (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+  (set-enemy-info! this arg0)
+  (set! (-> this ragdoll-proc) (the-as handle #f))
+  (let ((a1-2 (-> this enemy-info idle-anim-script)))
+    (if a1-2
+        (init! (-> this idle-anim-player) a1-2)
+        )
+    )
+  (if (-> this draw shadow)
+      (set! (-> this draw shadow-ctrl) (new
+                                         'process
+                                         'shadow-control
+                                         (-> this enemy-info shadow-min-y)
+                                         (-> this enemy-info shadow-max-y)
+                                         (-> this enemy-info shadow-locus-dist)
+                                         (the-as vector #f)
+                                         (shadow-flags shdf00 shdf04)
+                                         245760.0
+                                         )
+            )
+      (set! (-> this draw shadow-ctrl) *enemy-dummy-shadow-control*)
+      )
+  (set! (-> this water-max-height) 8192.0)
+  (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+      (set! (-> this hit-points) (* 2.0 (-> this enemy-info default-hit-points)))
+      (set! (-> this hit-points) (-> this enemy-info default-hit-points))
+      )
+  (let* ((v1-37 *game-info*)
+         (a0-10 (+ (-> v1-37 attack-id) 1))
+         )
+    (set! (-> v1-37 attack-id) a0-10)
+    (set! (-> this attack-id) a0-10)
+    )
+  (let* ((v1-38 *game-info*)
+         (a0-12 (+ (-> v1-38 attack-id) 1))
+         )
+    (set! (-> v1-38 attack-id) a0-12)
+    (set! (-> this persistent-attack-id) a0-12)
+    )
+  (set! (-> this incoming attacker-handle) (the-as handle #f))
+  (set! (-> this gnd-collide-with) (-> this enemy-info gnd-collide-with))
+  (set! (-> this fact) (new 'process 'fact-info-enemy this (the-as (pointer float) (-> arg0 fact-defaults))))
+  (let ((cspec (if (logtest? (enemy-option multi-focus) (-> this fact enemy-options))
+                   (the-as collide-spec (collide-spec jak bot player-list jak-vehicle))
+                   (the-as collide-spec (collide-spec jak player-list jak-vehicle))
+                   )
+               )
+        )
+    (reset-to-collide-spec (-> this focus) (the-as collide-spec cspec))
+    )
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-47 (res-lump-data (-> this entity) 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-47 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) v1-47)
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> this on-notice) (res-lump-struct (-> this entity) 'on-notice pair))
+  (set! (-> this on-active) (res-lump-struct (-> this entity) 'on-active pair))
+  (set! (-> this on-hostile) (res-lump-struct (-> this entity) 'on-hostile pair))
+  (set! (-> this on-death) (res-lump-struct (-> this entity) 'on-death pair))
+  (if (-> this on-notice)
+      (logior! (-> this enemy-flags) (enemy-flag enable-on-notice))
+      )
+  (if (-> this on-active)
+      (logior! (-> this enemy-flags) (enemy-flag enable-on-active))
+      )
+  (if (-> this on-hostile)
+      (logior! (-> this enemy-flags) (enemy-flag enable-on-hostile))
+      )
+  (let ((s4-0 (-> this root)))
+    (set! (-> this penetrated-by-all) (-> s4-0 penetrated-by))
+    (set! (-> s4-0 penetrated-by) (get-penetrated-by this))
+    (set! (-> s4-0 event-self) 'touched)
+    )
+  (set! (-> this penetrate-flinch) (-> arg0 penetrate-flinch))
+  (set! (-> this penetrate-knocked) (-> arg0 penetrate-knocked))
+  (set! (-> this reaction-time) (rnd-time-frame this (seconds 0.1) (seconds 0.6)))
+  (let* ((v1-77 (-> this enemy-flags))
+         (a0-28 (-> this fact enemy-options))
+         (v1-78
+           (logior (enemy-flag vulnerable vulnerable-backup use-notice-distance attackable-backup trackable trackable-backup)
+                   v1-77
+                   )
+           )
+         )
+    (if (logtest? (enemy-option multi-focus) a0-28)
+        (set! v1-78 (logior (enemy-flag multi-focus) v1-78))
+        )
+    (if (logtest? (enemy-option has-trigger) a0-28)
+        (set! v1-78 (logior (enemy-flag use-trigger) v1-78))
+        )
+    (set! (-> this enemy-flags) v1-78)
+    )
+  (if (and (should-move-to-ground? this)
+           (not (logtest? (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
+           (not (logtest? (enemy-option ambush) (-> this fact enemy-options)))
+           )
+      (move-to-ground this (meters 10) (meters 10) #t (-> this gnd-collide-with))
+      )
+  (if (zero? (-> this draw light-index))
+      (set! (-> this draw light-index) (the-as uint 10))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 152 of type enemy
+(defmethod gem-chance ((this enemy))
+  "The chance of this enemy having a gem."
+  1.0
+  )
+
+;; definition for method 153 of type enemy
+(defmethod get-gem-pool-idx ((this enemy))
+  (-> *setting-control* user-current gem-pool-index)
+  )
+
+;; definition for function enemy-setup-gem
+(defbehavior enemy-setup-gem enemy ()
+  "Determine if the enemy should have a gem and set drawing masks/particles as needed."
+  (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag has-gem))))
+  (when (> (-> self enemy-info gem-joint) 0)
+    (let ((gp-0 (get-gem-pool-idx self)))
+      (when (gems-available? gp-0)
+        (if (or (and (zero? gp-0)
+                     (-> self entity)
+                     (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status save))))
+                     )
+                (and (nonzero? gp-0) (let* ((v1-14 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                                            (v1-15 (the-as number (logior #x3f800000 v1-14)))
+                                            )
+                                       (< (+ -1.0 (the-as float v1-15)) (gem-chance self))
+                                       )
+                     )
+                )
+            (set! (-> self enemy-flags) (the-as enemy-flag (logior (enemy-flag has-gem) (-> self enemy-flags))))
+            )
+        )
+      )
+    (cond
+      ((logtest? (enemy-flag has-gem) (-> self enemy-flags))
+       (setup-masks
+         (-> self draw)
+         (the-as int (-> self enemy-info gem-seg))
+         (the-as int (-> self enemy-info gem-no-seg))
+         )
+       (add-connection *part-engine* self (-> self enemy-info gem-joint) self 464 (-> self enemy-info gem-offset))
+       )
+      (else
+        (setup-masks
+          (-> self draw)
+          (the-as int (-> self enemy-info gem-seg))
+          (the-as int (-> self enemy-info gem-no-seg))
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function enemy-init-by-other
+;; INFO: Used lq/sq
+(defbehavior enemy-init-by-other enemy ((arg0 process-drawable) (arg1 enemy-init-by-other-params))
+  "Function to initialize an enemy from a parent process."
+  (let ((a1-1 (-> arg1 entity)))
+    (if a1-1
+        (process-entity-set! self a1-1)
+        )
+    )
+  (when (-> arg1 art-level)
+    (let ((v1-5 (level-get *level* (-> arg1 art-level))))
+      (if v1-5
+          (set! (-> self level) v1-5)
+          )
+      )
+    )
+  (if (-> arg1 directed?)
+      (logior! (-> self enemy-flags) (enemy-flag directed))
+      )
+  (if (-> arg1 no-initial-move-to-ground?)
+      (set! (-> self enemy-flags)
+            (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> self enemy-flags)))
+            )
+      )
+  (init-enemy-collision! self)
+  (vector-copy! (-> self root trans) (-> arg1 trans))
+  (quaternion-copy! (-> self root quat) (-> arg1 quat))
+  (vector-identity! (-> self root scale))
+  (init-enemy! self)
+  (enemy-setup-gem)
+  (process-entity-status! self (entity-perm-status subtask-complete) #f)
+  (let ((v1-24 (-> self fact enemy-options)))
+    (cond
+      (*debug-view-anims*
+        (go-virtual view-anims)
+        )
+      ((logtest? (enemy-option dormant) v1-24)
+       (go-dormant self)
+       )
+      ((logtest? (enemy-flag directed) (-> self enemy-flags))
+       (go-directed self)
+       )
+      ((logtest? (enemy-option dormant-aware) v1-24)
+       (go-dormant-aware self)
+       )
+      ((logtest? (enemy-option ambush) (-> self fact enemy-options))
+       (go-ambush self)
+       )
+      (else
+        (go-fallback-init self)
+        )
+      )
+    )
+  )
+
+;; definition for method 11 of type enemy
+(defmethod init-from-entity! ((this enemy) (arg0 entity-actor))
+  "Set up a newly created process from the entity that created it."
+  (let ((a1-2 (res-lump-struct arg0 'art-level symbol)))
+    (when a1-2
+      (let ((a0-3 (level-get *level* a1-2)))
+        (if a0-3
+            (set! (-> this level) a0-3)
+            )
+        )
+      )
+    )
+  (init-enemy-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (init-enemy! this)
+  (enemy-setup-gem)
+  (let ((v1-10 (-> this fact enemy-options)))
+    (cond
+      ((logtest? (enemy-option spawner) v1-10)
+       (process-entity-status! this (entity-perm-status dead) #t)
+       (go (method-of-object this die-fast))
+       )
+      (*debug-view-anims*
+        (go (method-of-object this view-anims))
+        )
+      ((logtest? (enemy-option dormant) v1-10)
+       (go-dormant this)
+       )
+      ((logtest? (enemy-option dormant-aware) v1-10)
+       (go-dormant-aware this)
+       )
+      (else
+        (go-fallback-init this)
+        )
+      )
+    )
+  )
+
+;; definition for method 107 of type enemy
+(defmethod can-become-hostile-to? ((this enemy) (arg0 process-focusable) (arg1 vector))
+  "Return if this enemy can become hostile to the process."
+  #t
+  )
+
+;; definition for method 108 of type enemy
+(defmethod should-flee-from? ((this enemy) (arg0 process-focusable))
+  "Return if this enemy should flee from the process."
+  #f
+  )
+
+;; definition for method 11 of type enemy-focus
+;; WARN: Return type mismatch int vs none.
+(defmethod reset-to-collide-spec ((this enemy-focus) (arg0 collide-spec))
+  "Reset this focus with the given [[collide-spec]]."
+  (let ((t9-0 (method-of-type focus reset-to-collide-spec)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this aware) (enemy-aware unaware))
+  0
+  (none)
+  )
+
+;; definition for method 140 of type enemy
+(defmethod update-focus ((this enemy))
+  "Potentially update the focus, if there is something better to focus on."
+  (let ((gp-0 (-> this focus)))
+    (let ((a1-0 (handle->process (-> gp-0 handle))))
+      (when a1-0
+        (let ((v1-4 (-> this enemy-flags)))
+          (cond
+            ((and a1-0 (not (logtest? (-> (the-as process-focusable a1-0) focus-status) (focus-status disable dead))))
+             (when (and (logtest? (enemy-flag multi-focus) v1-4)
+                        (not (logtest? (enemy-flag lock-focus) v1-4))
+                        (not (logtest? (-> gp-0 flags) (enemy-flag look-at-focus)))
+                        )
+               (find-best-focus this)
+               (return (the-as process #f))
+               )
+             (let ((v1-14 (modify-awareness
+                            this
+                            (get-awareness-of-proc this (the-as process-focusable a1-0) (the-as enemy-best-focus #f))
+                            )
+                          )
+                   )
+               (set! (-> gp-0 aware) v1-14)
+               (if (>= 1 (the-as int v1-14))
+                   (logclear! (-> gp-0 flags) (enemy-flag look-at-focus))
+                   )
+               )
+             (return (the-as process #f))
+             )
+            (else
+              (clear-focused gp-0)
+              )
+            )
+          )
+        )
+      )
+    (if (!= (-> gp-0 handle) #f)
+        (clear-focused gp-0)
+        )
+    )
+  (if (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
+      (find-best-focus this)
+      )
+  )
+
+;; definition for method 106 of type enemy
+(defmethod find-best-focus ((this enemy))
+  "Search for the best thing to focus on."
+  (let ((s4-0 (-> this focus collide-with))
+        (gp-0 (new 'stack-no-clear 'enemy-best-focus))
+        )
+    (set! (-> gp-0 proc) #f)
+    (set! (-> gp-0 rating) 409600000.0)
+    (set! (-> gp-0 aware) (enemy-aware unaware))
+    (when (logtest? s4-0 (collide-spec player-list))
+      (let ((v1-4 (-> *collide-player-list* alive-list next0)))
+        *collide-player-list*
+        (let ((s3-0 (-> v1-4 next0)))
+          (while (!= v1-4 (-> *collide-player-list* alive-list-end))
+            (let ((v1-5 (the-as collide-shape (-> (the-as connection v1-4) param1))))
+              (when (logtest? s4-0 (-> v1-5 root-prim prim-core collide-as))
+                (let ((a1-1 (as-type (-> v1-5 process) process-focusable)))
+                  (if (and a1-1
+                           (and a1-1 (not (logtest? (-> (the-as process-focusable a1-1) focus-status) (focus-status disable dead))))
+                           (!= this a1-1)
+                           )
+                      (get-awareness-of-proc this (the-as process-focusable a1-1) gp-0)
+                      )
+                  )
+                )
+              )
+            (set! v1-4 s3-0)
+            *collide-player-list*
+            (set! s3-0 (-> s3-0 next0))
+            )
+          )
+        )
+      )
+    (when (logtest? s4-0 (collide-spec hit-by-player-list hit-by-others-list))
+      (when (logtest? s4-0 (collide-spec hit-by-player-list))
+        (let ((v1-19 (-> *collide-hit-by-player-list* alive-list next0)))
+          *collide-hit-by-player-list*
+          (let ((s3-1 (-> v1-19 next0)))
+            (while (!= v1-19 (-> *collide-hit-by-player-list* alive-list-end))
+              (let ((v1-20 (the-as collide-shape (-> (the-as connection v1-19) param1))))
+                (when (logtest? s4-0 (-> v1-20 root-prim prim-core collide-as))
+                  (let ((a1-3 (as-type (-> v1-20 process) process-focusable)))
+                    (if (and a1-3
+                             (and a1-3 (not (logtest? (-> (the-as process-focusable a1-3) focus-status) (focus-status disable dead))))
+                             (!= this a1-3)
+                             )
+                        (get-awareness-of-proc this (the-as process-focusable a1-3) gp-0)
+                        )
+                    )
+                  )
+                )
+              (set! v1-19 s3-1)
+              *collide-hit-by-player-list*
+              (set! s3-1 (-> s3-1 next0))
+              )
+            )
+          )
+        )
+      (when (logtest? s4-0 (collide-spec hit-by-others-list))
+        (let ((v1-32 (-> *collide-hit-by-others-list* alive-list next0)))
+          *collide-hit-by-others-list*
+          (let ((s3-2 (-> v1-32 next0)))
+            (while (!= v1-32 (-> *collide-hit-by-others-list* alive-list-end))
+              (let ((v1-33 (the-as collide-shape (-> (the-as connection v1-32) param1))))
+                (when (logtest? s4-0 (-> v1-33 root-prim prim-core collide-as))
+                  (let ((a1-5 (as-type (-> v1-33 process) process-focusable)))
+                    (if (and a1-5
+                             (and a1-5 (not (logtest? (-> (the-as process-focusable a1-5) focus-status) (focus-status disable dead))))
+                             (!= this a1-5)
+                             )
+                        (get-awareness-of-proc this (the-as process-focusable a1-5) gp-0)
+                        )
+                    )
+                  )
+                )
+              (set! v1-32 s3-2)
+              *collide-hit-by-others-list*
+              (set! s3-2 (-> s3-2 next0))
+              )
+            )
+          )
+        )
+      )
+    (let ((s4-1 (-> gp-0 proc)))
+      (when s4-1
+        (set-focus! this (the-as process-focusable s4-1) (modify-awareness this (-> gp-0 aware)))
+        s4-1
+        )
+      )
+    )
+  )
+
+;; definition for method 64 of type enemy
+;; WARN: Return type mismatch int vs enemy-aware.
+(defmethod get-awareness-of-proc ((this enemy) (arg0 process-focusable) (arg1 enemy-best-focus))
+  "Check what the enemies awareness of this pfoc would be. Optionally return more awareness stats in enemy-best-focus."
+  (let ((f30-0 (vector-vector-distance (get-trans arg0 0) (-> this root trans)))
+        (s3-1 #f)
+        (s2-0 #f)
+        )
+    (cond
+      ((< f30-0 (-> this enemy-info proximity-notice-distance))
+       (set! s3-1 #t)
+       (set! s2-0 (can-become-hostile-to? this arg0 (the-as vector #f)))
+       )
+      (else
+        (let ((f0-1 (the-as float (-> this enemy-info notice-distance))))
+          (if (< 1 (the-as int (-> this focus aware)))
+              (set! f0-1 (+ (the-as meters f0-1) (-> this enemy-info notice-distance-delta)))
+              )
+          (when (or (< f30-0 f0-1) (not (logtest? (-> this enemy-flags) (enemy-flag use-notice-distance))))
+            (set! s2-0 (can-become-hostile-to? this arg0 (the-as vector #f)))
+            (if s2-0
+                (set! s3-1 #t)
+                )
+            )
+          )
+        )
+      )
+    (let ((aware (cond
+                   (s3-1
+                     (cond
+                       ((should-flee-from? this arg0)
+                        (the-as enemy-aware (enemy-aware flee))
+                        )
+                       (s2-0
+                         (the-as enemy-aware (enemy-aware hostile))
+                         )
+                       (else
+                         (the-as enemy-aware (enemy-aware aware2))
+                         )
+                       )
+                     )
+                   ((< f30-0 (-> this fact idle-distance))
+                    (the-as enemy-aware (enemy-aware aware1))
+                    )
+                   (else
+                     (the-as enemy-aware (enemy-aware unaware))
+                     )
+                   )
+                 )
+          )
+      (when (and (> (the-as int aware) 0) (logtest? (enemy-flag use-trigger) (-> this enemy-flags)))
+        (cond
+          ((logtest? (enemy-option idle-til-trigger) (-> this fact enemy-options))
+           (if (not (check-awareness-trigger this f30-0))
+               (set! aware (enemy-aware unaware))
+               )
+           )
+          (else
+            (if (and (< 1 (the-as int aware)) (not (check-awareness-trigger this f30-0)))
+                (set! aware (enemy-aware aware1))
+                )
+            )
+          )
+        )
+      (when arg1
+        (when (and (>= (the-as int aware) (the-as int (-> arg1 aware))) (< f30-0 (-> arg1 rating)))
+          (set! (-> arg1 aware) (the-as enemy-aware aware))
+          (set! (-> arg1 rating) f30-0)
+          (set! (-> arg1 proc) arg0)
+          )
+        )
+      (the-as enemy-aware aware)
+      )
+    )
+  )
+
+;; definition for method 141 of type enemy
+(defmethod check-awareness-trigger ((this enemy) (arg0 float))
+  "Check triggering logic for awareness to see if this enemy can become aware yet."
+  (let* ((v1-0 (-> this fact))
+         (a2-0 (-> v1-0 trig-mask-count))
+         (a3-0 (-> v1-0 trig-mask))
+         )
+    (dotimes (t0-0 a2-0)
+      (let ((t1-1 (the-as int (-> a3-0 t0-0))))
+        (if (and (logtest? (the-as uint t1-1) 1) (>= (-> v1-0 trig-dist) arg0))
+            (set! t1-1 (the-as int (logand -2 (the-as uint t1-1))))
+            )
+        (when (logtest? (the-as uint t1-1) 2)
+          (let ((t2-8 (-> v1-0 trig-actor-group 0)))
+            (countdown (t3-0 (-> t2-8 length))
+              (let ((t5-0 (-> t2-8 data t3-0 actor)))
+                (when (and t5-0 (logtest? (-> t5-0 extra perm status) (entity-perm-status subtask-complete)))
+                  (set! t1-1 (the-as int (logand -3 (the-as uint t1-1))))
+                  (goto cfg-17)
+                  )
+                )
+              )
+            )
+          )
+        (label cfg-17)
+        (when (zero? t1-1)
+          (logclear! (-> this enemy-flags) (enemy-flag use-trigger))
+          (return #t)
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 68 of type enemy
+(defmethod modify-awareness ((this enemy) (arg0 enemy-aware))
+  "Apply modifications to awareness based on the reaction time of an enemy and other settings."
+  (let ((v1-1 (< 1 (the-as int arg0))))
+    (cond
+      (v1-1
+        (when (not (logtest? (-> this enemy-flags) (enemy-flag notice)))
+          (logior! (-> this enemy-flags) (enemy-flag notice))
+          (set-time! (-> this notice-time))
+          )
+        (if (and (not (logtest? (-> this enemy-flags) (enemy-flag alert)))
+                 (not (time-elapsed? (-> this notice-time) (-> this reaction-time)))
+                 )
+            (set! v1-1 #f)
+            )
+        )
+      (else
+        (logclear! (-> this enemy-flags) (enemy-flag notice))
+        )
+      )
+    (cond
+      (v1-1
+        arg0
+        )
+      ((or (= arg0 (enemy-aware unaware)) (time-elapsed? (-> this last-draw-time) (seconds 2)))
+       (enemy-aware unaware)
+       )
+      (else
+        (enemy-aware aware1)
+        )
+      )
+    )
+  )
+
+;; definition for method 82 of type enemy
+;; INFO: Used lq/sq
+(defmethod event-handler ((this enemy) (proc process) (argc int) (msg symbol) (block event-message-block))
+  "Commmon handler for events."
+  (local-vars (s5-6 rgbaf) (sv-640 event-message-block) (sv-656 process) (sv-672 event-message-block))
+  (cond
+    ((= msg 'go-gun-dark-2-stretch)
+     (go-gun-dark-2-stretch this)
+     )
+    ((= msg 'go-gun-dark-3-nuke)
+     (on-dying this)
+     (send-event (ppointer->process (-> this parent)) 'child-die)
+     (mark-as-dead this)
+     (cleanup-for-death this)
+     (go (method-of-object this die-fast))
+     )
+    ((= msg 'combo)
+     (and (not (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))) (!= (-> this hit-points) 0.0))
+     )
+    ((= msg 'touch)
+     (enemy-touch-handler this proc block)
+     )
+    ((= msg 'touched)
+     (when (logtest? (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
+       (let ((v1-27 (as-type proc process-drawable)))
+         (when v1-27
+           (let ((a1-5 (as-type (-> (the-as process-drawable v1-27) root) collide-shape))
+                 (s3-3 (-> block param 0))
+                 )
+             (if (and a1-5
+                      s3-3
+                      ((method-of-type touching-shapes-entry prims-touching-action?)
+                       (the-as touching-shapes-entry s3-3)
+                       (the-as collide-shape a1-5)
+                       (collide-action solid)
+                       (collide-action)
+                       )
+                      ((method-of-type touching-shapes-entry prims-touching-action?)
+                       (the-as touching-shapes-entry s3-3)
+                       (-> this root)
+                       (collide-action solid)
+                       (collide-action)
+                       )
+                      )
+                 (set-time! (-> this auto-reset-penetrate-time))
+                 )
+             )
+           )
+         )
+       )
+     (enemy-touched-handler this proc block)
+     )
+    ((= msg 'attack-invinc)
+     (case (-> (the-as attack-info (-> block param 1)) mode)
+       (('endlessfall)
+        (let ((v1-39 (-> this root root-prim)))
+          (set! (-> v1-39 prim-core collide-as) (collide-spec))
+          (set! (-> v1-39 prim-core collide-with) (collide-spec))
+          )
+        0
+        (go-die this)
+        )
+       )
+     )
+    ((= msg 'attack-no-avoid)
+     (let* ((s2-0 (-> block param 1))
+            (s3-4 this)
+            (s1-0 (method-of-object s3-4 handle-incoming-attack!))
+            (s0-0 proc)
+            )
+       (set! sv-640 block)
+       (let ((a3-3 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block))
+             (t1-0 (-> block param 0))
+             )
+         (s1-0
+           s3-4
+           (the-as process-drawable s0-0)
+           sv-640
+           a3-3
+           (the-as attack-info s2-0)
+           (the-as touching-shapes-entry t1-0)
+           )
+         )
+       )
+     (damage-enemy-from-attack! this proc block)
+     )
+    ((= msg 'attack)
+     (let ((s2-1 (the-as object (-> block param 1))))
+       (when (!= (-> (the-as attack-info s2-1) id) (-> this incoming attack-id))
+         (cond
+           ((and (logtest? (-> this enemy-flags) (enemy-flag vulnerable))
+                 (not (logtest? (-> this focus-status) (focus-status grabbed)))
+                 )
+            (let* ((s1-1 this)
+                   (s0-1 (method-of-object s1-1 handle-incoming-attack!))
+                   )
+              (set! sv-656 proc)
+              (set! sv-672 block)
+              (let ((a3-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block))
+                    (t1-1 (-> block param 0))
+                    )
+                (s0-1
+                  s1-1
+                  (the-as process-drawable sv-656)
+                  sv-672
+                  a3-4
+                  (the-as attack-info s2-1)
+                  (the-as touching-shapes-entry t1-1)
+                  )
+                )
+              )
+            (send-event (ppointer->process (-> this parent)) 'child-hit)
+            (let ((f0-1 0.0))
+              (if (not *debug-unkillable*)
+                  (set! f0-1 (damage-enemy-from-attack! this proc block))
+                  )
+              (let ((s2-2 (msg-for-incoming-attack this proc block f0-1)))
+                (when s2-2
+                  (logclear! (-> this enemy-flags) (enemy-flag use-trigger))
+                  (find-and-damage-attackers this (the-as process-focusable proc) block)
+                  (let ((a1-17 (new 'stack-no-clear 'event-message-block)))
+                    (set! (-> a1-17 from) (process->ppointer proc))
+                    (set! (-> a1-17 num-params) argc)
+                    (set! (-> a1-17 message) s2-2)
+                    (set! (-> a1-17 param 0) (-> block param 0))
+                    (set! (-> a1-17 param 1) (-> block param 1))
+                    (set! (-> a1-17 param 2) (-> block param 2))
+                    (set! (-> a1-17 param 3) (-> block param 3))
+                    (set! (-> a1-17 param 4) (-> block param 4))
+                    (set! (-> a1-17 param 5) (-> block param 5))
+                    (send-event-function this a1-17)
+                    )
+                  #t
+                  )
+                )
+              )
+            )
+           (else
+             (set! (-> this incoming attack-id) (-> (the-as attack-info s2-1) id))
+             (enemy-touch-handler this proc block)
+             )
+           )
+         )
+       )
+     )
+    ((= msg 'impact-impulse)
+     (let* ((s4-1 (the-as object (-> block param 0)))
+            (s3-5 (as-type proc process-focusable))
+            (f30-1 (* (-> (the-as rigid-body-impact s4-1) impulse) (get-inv-mass this)))
+            )
+       (when (and s3-5 (< 20480.0 f30-1))
+         (let ((s5-1 (new 'stack-no-clear 'attack-info)))
+           (let ((v1-85 (process->handle s3-5)))
+             (let ((a0-41 s5-1))
+               (set! (-> a0-41 mode) 'impact)
+               (set! (-> a0-41 penetrate-using) (penetrate vehicle))
+               (set! (-> a0-41 mask) (attack-mask mode penetrate-using))
+               )
+             (cond
+               ((and (= v1-85 (-> this incoming attacker-handle))
+                     (not (time-elapsed? (-> this incoming attack-time) (seconds 0.1)))
+                     )
+                (set! (-> s5-1 id) (-> this incoming attack-id))
+                )
+               (else
+                 (let* ((a0-48 *game-info*)
+                        (a1-26 (+ (-> a0-48 attack-id) 1))
+                        )
+                   (set! (-> a0-48 attack-id) a1-26)
+                   (set! (-> s5-1 id) a1-26)
+                   )
+                 )
+               )
+             (logior! (-> s5-1 mask) (attack-mask id))
+             (set! (-> s5-1 attacker) (the-as handle v1-85))
+             )
+           (logior! (-> s5-1 mask) (attack-mask attacker))
+           (let ((v1-89 (attack-direction-from-impact-vel
+                          this
+                          (new 'stack-no-clear 'vector)
+                          (vector-negate! (new 'stack-no-clear 'vector) (-> (the-as rigid-body-impact s4-1) velocity))
+                          f30-1
+                          )
+                        )
+                 )
+             (vector-copy! (-> s5-1 attacker-velocity) v1-89)
+             (vector-copy! (-> s5-1 vector) v1-89)
+             )
+           (logior! (-> s5-1 mask) (attack-mask attacker-velocity))
+           (logior! (-> s5-1 mask) (attack-mask vector))
+           (vector-copy! (-> s5-1 intersection) (-> (the-as rigid-body-impact s4-1) point))
+           (logior! (-> s5-1 mask) (attack-mask intersection))
+           (set! (-> s5-1 damage) (impact-velocity-to-hit-points this f30-1))
+           (logior! (-> s5-1 mask) (attack-mask damage))
+           (when (< 0.0 (-> s5-1 damage))
+             (format
+               0
+               "Sending impact-impulse attack with ~f damage (~m impulse,  ~m attacker-velocity)~%"
+               (-> s5-1 damage)
+               f30-1
+               (vector-length (-> s5-1 attacker-velocity))
+               )
+             (send-event this 'attack #f s5-1)
+             (when (= (-> this hit-points) 0.0)
+               (logior! (-> this root penetrated-by) (penetrate vehicle))
+               #t
+               )
+             )
+           )
+         )
+       )
+     )
+    ((= msg 'hit-flinch)
+     (when (= (-> this hit-points) 0.0)
+       (logclear! (-> this mask) (process-mask actor-pause))
+       (logclear! (-> this focus-status) (focus-status dangerous))
+       (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+       (logior! (-> this enemy-flags) (enemy-flag alert))
+       (logior! (-> this focus-status) (focus-status hit))
+       (if (= (-> this hit-points) 0.0)
+           (logior! (-> this focus-status) (focus-status dead))
+           )
+       (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+       (focus-on-attacker! this)
+       (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+       (process-contact-action proc)
+       (send-event proc 'get-attack-count 1)
+       (freeze-hit-begin)
+       (go-die this)
+       )
+     #t
+     )
+    ((= msg 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (focus-on-attacker! this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action proc)
+     (send-event proc 'get-attack-count 1)
+     (freeze-hit-begin)
+     (when (= (-> this hit-points) 0.0)
+       (case (-> this incoming knocked-type)
+         (((knocked-type yellow-shot) (knocked-type blue-shot))
+          (set! (-> this incoming knocked-type) (knocked-type none))
+          0
+          )
+         )
+       )
+     (go (method-of-object this knocked))
+     )
+    ((= msg 'hit)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (focus-on-attacker! this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action proc)
+     (send-event proc 'get-attack-count 1)
+     (freeze-hit-begin)
+     (if (= (-> this hit-points) 0.0)
+         (go-die this)
+         (go (method-of-object this hit))
+         )
+     )
+    ((= msg 'cue-chase)
+     (when (and (< 0.0 (-> this hit-points))
+                (zero? (-> this fated-time))
+                (not (logtest? (-> this focus-status) (focus-status grabbed)))
+                )
+       (let ((v1-202 (logtest? (enemy-flag directed) (-> this enemy-flags))))
+         (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance directed directed-ready use-trigger))
+         (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+         (logclear! (-> this mask) (process-mask actor-pause))
+         (cond
+           (v1-202
+             (if (logtest? (enemy-option ambush) (-> this fact enemy-options))
+                 (go-ambush this)
+                 (go-hostile this)
+                 )
+             )
+           ((and (-> this next-state) (let ((v1-213 (-> this next-state name)))
+                                        (or (= v1-213 'dormant) (= v1-213 'dormant-aware))
+                                        )
+                 )
+            (if (logtest? (enemy-option ambush) (-> this fact enemy-options))
+                (go-ambush this)
+                (go (method-of-object this notice))
+                )
+            )
+           )
+         )
+       #t
+       )
+     )
+    ((= msg 'cue-wake)
+     (when (and (< 0.0 (-> this hit-points))
+                (zero? (-> this fated-time))
+                (not (logtest? (-> this focus-status) (focus-status grabbed)))
+                )
+       (logclear! (-> this enemy-flags) (enemy-flag directed directed-ready use-trigger))
+       (if (logtest? (enemy-option ambush) (-> this fact enemy-options))
+           (go-ambush this)
+           (go-state-for-focused this)
+           )
+       #t
+       )
+     )
+    ((= msg 'jump)
+     (when (and (< 0.0 (-> this hit-points))
+                (zero? (-> this fated-time))
+                (not (logtest? (-> this focus-status) (focus-status grabbed)))
+                )
+       (logclear! (-> this mask) (process-mask actor-pause))
+       (set! (-> this jump-why) (-> block param 0))
+       (vector-copy! (-> this event-param-point) (the-as vector (-> block param 1)))
+       (go (method-of-object this jump))
+       )
+     )
+    ((= msg 'birth-pickup)
+     (if (not (-> *setting-control* user-current gun-special-mode))
+         (drop-pickup (-> this fact) #t *entity-pool* (-> this fact) 0 #f)
+         )
+     )
+    ((= msg 'death-start)
+     (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag death-start) (-> this enemy-flags))))
+     (send-event (ppointer->process (-> this parent)) 'child-die)
+     (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+       (let ((v1-269 (-> *event-queue* data (-> *event-queue* length))))
+         (+! (-> *event-queue* length) 1)
+         (set! (-> v1-269 from-handle) (process->handle self))
+         (set! (-> v1-269 to-handle) (process->handle this))
+         (set! (-> v1-269 num-params) 0)
+         (set! (-> v1-269 message) 'birth-pickup)
+         )
+       )
+     (let ((s5-2 (-> this on-death)))
+       (if s5-2
+           (script-eval s5-2 :vector (-> this root trans))
+           )
+       )
+     )
+    ((= msg 'death-end)
+     (if (-> this skel effect)
+         (logior! (-> this skel effect flags) (effect-control-flag ecf2))
+         )
+     (logior! (-> this draw status) (draw-control-status no-draw))
+     (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (set! (-> this enemy-flags) (logclear (-> this enemy-flags) (enemy-flag dangerous-backup)))
+     )
+    ((= msg 'instant-death)
+     (when (and (< 0.0 (-> this hit-points)) (zero? (-> this fated-time)))
+       (set! (-> this hit-points) 0.0)
+       (set! (-> this root penetrated-by) (get-penetrated-by this))
+       (let ((s5-3 (get-knockback-dir! this (new 'stack-no-clear 'vector))))
+         (vector-z-quaternion! s5-3 (-> this root quat))
+         (vector-float*! s5-3 s5-3 -1.0)
+         (vector-normalize! s5-3 1.0)
+         )
+       (logclear! (-> this mask) (process-mask actor-pause))
+       (logclear! (-> this focus-status) (focus-status dangerous))
+       (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+       (logior! (-> this enemy-flags) (enemy-flag alert))
+       (logior! (-> this focus-status) (focus-status hit))
+       (if (= (-> this hit-points) 0.0)
+           (logior! (-> this focus-status) (focus-status dead))
+           )
+       (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+       (focus-on-attacker! this)
+       (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+       (go-die this)
+       )
+     )
+    ((= msg 'die-fast)
+     (logior! (-> this draw status) (draw-control-status no-draw))
+     (on-dying this)
+     (send-event (ppointer->process (-> this parent)) 'child-die)
+     (let ((s5-4 (-> this on-death)))
+       (if s5-4
+           (script-eval s5-4 :vector (-> this root trans))
+           )
+       )
+     (cleanup-for-death this)
+     (go (method-of-object this die-fast))
+     )
+    ((= msg 'victory)
+     (if (and (-> this enemy-info use-victory)
+              (not (and (-> this next-state) (= (-> this next-state name) 'victory)))
+              (and (< 0.0 (-> this hit-points))
+                   (zero? (-> this fated-time))
+                   (not (logtest? (-> this focus-status) (focus-status grabbed)))
+                   )
+              )
+         (go (method-of-object this victory))
+         )
+     )
+    ((= msg 'nav-control)
+     (if (nonzero? (-> this nav))
+         (-> this nav)
+         )
+     )
+    ((= msg 'push-trans)
+     (move-by-vector! (-> this root) (the-as vector (-> block param 0)))
+     )
+    ((= msg 'move-trans)
+     (move-to-point! (-> this root) (the-as vector (-> block param 0)))
+     )
+    ((= msg 'shadow)
+     (cond
+       ((-> block param 0)
+        (let ((v1-371 (-> this draw shadow-ctrl)))
+          (logclear! (-> v1-371 settings flags) (shadow-flags disable-draw))
+          )
+        0
+        )
+       (else
+         (let ((v1-374 (-> this draw shadow-ctrl)))
+           (logior! (-> v1-374 settings flags) (shadow-flags disable-draw))
+           )
+         0
+         )
+       )
+     )
+    ((= msg 'color-effect)
+     (case (-> block param 0)
+       (('dark)
+        (let ((f30-2 (rand-vu-float-range 0.2 1.0)))
+          (set-vector! (-> this draw color-mult) (lerp 1.0 1.0 f30-2) (lerp 1.0 0.0 f30-2) (lerp 1.0 1.0 f30-2) 1.0)
+          (set! s5-6 (-> this draw color-emissive))
+          (set! (-> s5-6 x) (lerp 0.0 0.3 f30-2))
+          (set! (-> s5-6 y) (lerp 0.0 0.0 f30-2))
+          (set! (-> s5-6 z) (lerp 0.0 0.3 f30-2))
+          )
+        (set! (-> s5-6 w) 1.0)
+        s5-6
+        )
+       ((#f)
+        (set-vector! (-> this draw color-mult) 1.0 1.0 1.0 1.0)
+        (set! s5-6 (-> this draw color-emissive))
+        (set! (-> s5-6 quad) (the-as uint128 0))
+        s5-6
+        )
+       )
+     )
+    ((= msg 'enable-envmap)
+     (cond
+       ((-> block param 0)
+        (logclear! (-> this draw global-effect) (draw-control-global-effect disable-envmap))
+        #t
+        )
+       (else
+         (logior! (-> this draw global-effect) (draw-control-global-effect disable-envmap))
+         #t
+         )
+       )
+     )
+    )
+  )
+
+;; definition for method 60 of type enemy
+(defmethod impact-velocity-to-hit-points ((this enemy) (arg0 float))
+  "Given an impact velocity, compute hit points."
+  (lerp-scale 0.0 (-> this enemy-info default-hit-points) arg0 20480.0 122880.0)
+  )
+
+;; definition for method 61 of type enemy
+;; INFO: Used lq/sq
+(defmethod attack-direction-from-impact-vel ((this enemy) (arg0 vector) (arg1 vector) (arg2 float))
+  "Compute the direction of an attack given an impact velocity.
+   This reduces the vertical component, probably to avoid sending the enemy into the air too much."
+  (vector-copy! arg0 arg1)
+  (vector-normalize! arg0 arg2)
+  (set! (-> arg0 y) (lerp-scale
+                      (-> this enemy-info knocked-hard-vy-lo)
+                      (-> this enemy-info knocked-hard-vy-hi)
+                      arg2
+                      20480.0
+                      204800.0
+                      )
+        )
+  (vector-normalize! arg0 arg2)
+  arg0
+  )
+
+;; definition for method 62 of type enemy
+(defmethod get-damage-from-attack ((this enemy) (arg0 object) (arg1 event-message-block))
+  "Compute hit point damage for an attack message."
+  (let ((v1-0 (the-as object (-> arg1 param 1))))
+    (if (logtest? (attack-mask damage) (-> (the-as attack-info v1-0) mask))
+        (-> (the-as attack-info v1-0) damage)
+        (penetrate-using->damage (-> this incoming penetrate-using))
+        )
+    )
+  )
+
+;; definition for method 63 of type enemy
+(defmethod apply-incoming-hitpoint-mods ((this enemy) (arg0 float))
+  "Modify the hitpoints from an incoming attack.
+   Keeps enemy alive for a bit while being shot with a blue gun.
+   This looks cool because you can shoot them many times."
+  (let ((f0-1 (fmax 0.0 (fmin arg0 (-> this hit-points)))))
+    (cond
+      ((and (= (-> this incoming knocked-type) (knocked-type blue-shot)) (= f0-1 (-> this hit-points)) (< 0.0 f0-1))
+       (cond
+         ((zero? (-> this fated-time))
+          (set-time! (-> this fated-time))
+          (+ -1.0 f0-1)
+          )
+         ((not (time-elapsed? (-> this fated-time) (seconds 1)))
+          (+ -1.0 f0-1)
+          )
+         (else
+           f0-1
+           )
+         )
+       )
+      (else
+        f0-1
+        )
+      )
+    )
+  )
+
+;; definition for method 65 of type enemy
+(defmethod msg-for-incoming-attack ((this enemy) (arg0 process) (arg1 event-message-block) (arg2 float))
+  "Given an attack message, what do we do next? Returns a message name that should be sent to self."
+  (let ((gp-0 (-> this incoming penetrate-using)))
+    (cond
+      ((and (logtest? (penetrate jak-dark-blackhole) gp-0) #t)
+       'go-gun-dark-2-stretch
+       )
+      ((and (logtest? (penetrate jak-dark-nuke) (-> this incoming penetrate-using)) (can-be-nuked? this))
+       'go-gun-dark-3-nuke
+       )
+      ((logtest? gp-0 (-> this penetrate-flinch))
+       'hit-flinch
+       )
+      ((logtest? gp-0 (-> this penetrate-knocked))
+       'hit-knocked
+       )
+      (else
+        'hit
+        )
+      )
+    )
+  )
+
+;; definition for method 52 of type enemy
+(defmethod damage-enemy-from-attack! ((this enemy) (arg0 object) (arg1 event-message-block))
+  "Given an attack message, apply damage."
+  (let* ((f0-0 (get-damage-from-attack this arg0 arg1))
+         (f30-0 (apply-incoming-hitpoint-mods this f0-0))
+         )
+    (set! (-> this hit-points) (- (-> this hit-points) f30-0))
+    (if (not (logtest? (-> this enemy-flags) (enemy-flag auto-reset-penetrate)))
+        (set! (-> this root penetrated-by) (get-penetrated-by this))
+        )
+    f30-0
+    )
+  )
+
+;; definition for method 145 of type enemy
+(defmethod find-offending-pfoc ((this enemy) (arg0 process) (arg1 attack-info))
+  "Figure out the attacker process from the attack message sender and attack-info.
+   This is to handle cases where the attacker process is a non-focusable subprocess,
+   or the attacker is driving a vehicle."
+  (find-offending-process-focusable arg0 arg1)
+  )
+
+;; definition for method 83 of type enemy
+(defmethod enemy-touch-handler ((this enemy) (arg0 process) (arg1 event-message-block))
+  "General handler for an event when a process intentionally sends a touch event."
+  (let ((s4-0 (-> arg1 param 0))
+        (s3-0 (as-type arg0 process-focusable))
+        )
+    (when (and s4-0 s3-0)
+      (cond
+        ((and (focus-test? this dangerous)
+              (and s3-0
+                   (not (logtest? (-> (the-as process-focusable s3-0) focus-status) (focus-status disable dead ignore grabbed)))
+                   )
+              ((method-of-type touching-shapes-entry prims-touching-action?)
+               (the-as touching-shapes-entry s4-0)
+               (-> this root)
+               (collide-action deadly)
+               (collide-action)
+               )
+              )
+         (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                          (the-as touching-shapes-entry s4-0)
+                          (-> this root)
+                          (collide-action persistent-attack)
+                          (collide-action)
+                          )
+                         (-> this persistent-attack-id)
+                         (-> this attack-id)
+                         )
+                     )
+               )
+           (send-attack-from-tshape this arg0 (the-as touching-shapes-entry s4-0) a3-2)
+           )
+         )
+        ((and ((method-of-type touching-shapes-entry prims-touching-action?)
+               (the-as touching-shapes-entry s4-0)
+               (-> this root)
+               (collide-action no-standon)
+               (collide-action)
+               )
+              (not (logtest? (-> this root penetrated-by)
+                             (-> (the-as collide-shape (-> (the-as process-drawable s3-0) root)) penetrate-using)
+                             )
+                   )
+              )
+         (if (send-shoves (-> this root) arg0 (the-as touching-shapes-entry s4-0) 0.7 6144.0 16384.0)
+             (send-event this 'bouncing-off arg0)
+             )
+         )
+        )
+      )
+    )
+  )
+
+;; definition for method 84 of type enemy
+;; WARN: Return type mismatch symbol vs object.
+(defmethod enemy-touched-handler ((this enemy) (arg0 process) (arg1 event-message-block))
+  "General handler for when anything touches an enemy (automatic response)."
+  (let ((s4-0 (-> arg1 param 0)))
+    (when s4-0
+      (when (or (and (and (-> this next-state) (= (-> this next-state name) 'knocked))
+                     (logtest? (process-mask crate) (-> arg0 mask))
+                     )
+                (and (and (-> this next-state) (= (-> this next-state name) 'jump))
+                     (logtest? (process-mask target sidekick crate bot) (-> arg0 mask))
+                     )
+                )
+        (when ((method-of-type touching-shapes-entry prims-touching-action?)
+               (the-as touching-shapes-entry s4-0)
+               (-> this root)
+               (collide-action solid semi-solid deadly)
+               (collide-action)
+               )
+          (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                           (the-as touching-shapes-entry s4-0)
+                           (-> this root)
+                           (collide-action persistent-attack)
+                           (collide-action)
+                           )
+                          (-> this persistent-attack-id)
+                          (-> this attack-id)
+                          )
+                      )
+                )
+            (send-attack-from-tshape this arg0 (the-as touching-shapes-entry s4-0) a3-2)
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function enemy-event-handler
+(defbehavior enemy-event-handler enemy ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  "Default event handler for enemy."
+  (event-handler self arg0 arg1 arg2 arg3)
+  )
+
+;; definition for function enemy-simple-post
+;; WARN: Return type mismatch int vs none.
+(defbehavior enemy-simple-post enemy ()
+  "Default post for enemy."
+  (enemy-common-post self)
+  (update-transforms (-> self root))
+  0
+  (none)
+  )
+
+;; definition for function enemy-falling-post
+;; INFO: Used lq/sq
+(defbehavior enemy-falling-post enemy ()
+  "Post function that simply makes the enemy go down.
+   Collision is enabled, so enemy will bounce off of walls or similar."
+  (let ((gp-0 (-> self root)))
+    (cond
+      ((focus-test? self under-water)
+       (adjust-transv-under-water! self (-> gp-0 transv))
+       )
+      (else
+        (let ((a1-1 (new-stack-vector0)))
+          (vector-v++! (-> gp-0 transv) (compute-acc-due-to-gravity gp-0 a1-1 (-> self enemy-info slip-factor)))
+          )
+        )
+      )
+    (let ((a2-1 (new 'stack-no-clear 'collide-query)))
+      (set! (-> a2-1 collide-with) (-> gp-0 root-prim prim-core collide-with))
+      (set! (-> a2-1 ignore-process0) self)
+      (set! (-> a2-1 ignore-process1) #f)
+      (set! (-> a2-1 ignore-pat) (logior (new 'static 'pat-surface :noendlessfall #x1) (-> gp-0 pat-ignore-mask)))
+      (set! (-> a2-1 action-mask) (collide-action solid))
+      (fill-cache-integrate-and-collide gp-0 (-> gp-0 transv) a2-1 (meters 0))
+      )
+    )
+  (apply-friction self)
+  (enemy-common-post self)
+  (none)
+  )
+
+;; definition for method 51 of type enemy
+(defmethod adjust-transv-under-water! ((this enemy) (arg0 vector))
+  "Modify the velocity as needed if the enemy is underwater."
+  (let* ((f2-0 0.8)
+         (f0-1 (fmax 0.0 (+ 1.0 (* 60.0 (seconds-per-frame) (+ -1.0 f2-0)))))
+         )
+    (vector-float*! arg0 arg0 f0-1)
+    )
+  (set! (-> arg0 y) (+ (-> arg0 y) (* -204800.0 (seconds-per-frame))))
+  )
+
+;; definition for function enemy-die-falling-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior enemy-die-falling-post enemy ()
+  "Post function that causes the enemy to go down until it hits the ground.
+   Doesn't use full collision system - enemy will stop moving as soon as it hits any ground."
+  (let ((gp-0 (-> self root)))
+    (if (focus-test? self under-water)
+        (adjust-transv-under-water! self (-> gp-0 transv))
+        (vector-v++! (-> gp-0 transv) (compute-acc-due-to-gravity gp-0 (new-stack-vector0) 0.0))
+        )
+    (let ((s4-1 (new 'stack-no-clear 'collide-query))
+          (s5-1 (new 'stack-no-clear 'vector))
+          )
+      (vector-copy! s5-1 (-> gp-0 trans))
+      (vector-v++! s5-1 (-> gp-0 transv))
+      (when (find-ground
+              gp-0
+              s4-1
+              (-> self enemy-info recover-gnd-collide-with)
+              8192.0
+              81920.0
+              1024.0
+              (the-as process #f)
+              )
+        (when (>= (-> gp-0 gspot-pos y) (-> s5-1 y))
+          (set! (-> s5-1 y) (-> gp-0 gspot-pos y))
+          (vector-reset! (-> gp-0 transv))
+          )
+        )
+      (move-to-point! gp-0 s5-1)
+      )
+    )
+  (enemy-common-post self)
+  0
+  (none)
+  )
+
+;; definition for method 91 of type enemy
+;; WARN: Return type mismatch symbol vs object.
+(defmethod check-jump-blocked? ((this enemy) (arg0 enemy-jump-info))
+  "Is this jump blocked by something?"
+  #f
+  )
+
+;; definition for method 92 of type enemy
+;; INFO: Used lq/sq
+(defmethod init-jump-info! ((this enemy) (arg0 enemy-jump-info))
+  "Populate an enemy-jump-info for jumping to this enemy's event-param-point"
+  (set! (-> arg0 flags) (enemy-jump-flags ejf0))
+  (set! (-> arg0 anim-speed) (rnd-float-range this 0.9 1.1))
+  (set! (-> arg0 hang-time) 0)
+  (vector-copy! (-> arg0 dest-pos) (-> this event-param-point))
+  (vector-copy! (-> arg0 start-pos) (-> this root trans))
+  (let ((s4-0 (new 'stack-no-clear 'collide-query)))
+    (if (enemy-above-ground? this s4-0 (-> arg0 dest-pos) (-> this gnd-collide-with) 8192.0 81920.0 1024.0)
+        (set! (-> arg0 dest-pos y) (-> s4-0 best-other-tri intersect y))
+        )
+    )
+  (setup-jump-trajectory! this arg0)
+  (none)
+  )
+
+;; definition for method 93 of type enemy
+(defmethod setup-jump-trajectory! ((this enemy) (arg0 enemy-jump-info))
+  "Compute jump trajectory."
+  (let* ((f0-0 (vector-vector-xz-distance (-> arg0 start-pos) (-> arg0 dest-pos)))
+         (f0-2 (fmax (-> this enemy-info jump-height-min) (* (-> this enemy-info jump-height-factor) f0-0)))
+         )
+    (setup-from-to-height! (-> arg0 traj) (-> arg0 start-pos) (-> arg0 dest-pos) f0-2 -4.551111)
+    )
+  (none)
+  )
+
+;; definition for method 95 of type enemy
+(defmethod landed-jump-yet? ((this enemy) (arg0 enemy-jump-info))
+  "Is this on, or close to, the ground?"
+  (let ((gp-0 (-> this root)))
+    (when (< (-> gp-0 transv y) 0.0)
+      (let ((a1-1 (new 'stack-no-clear 'collide-query)))
+        (find-ground (-> this root) a1-1 (-> this gnd-collide-with) 8192.0 81920.0 1024.0 (the-as process #f))
+        )
+      (>= (+ 409.6 (-> gp-0 gspot-pos y)) (-> gp-0 trans y))
+      )
+    )
+  )
+
+;; definition for method 94 of type enemy
+(defmethod move-to-gspot! ((this enemy))
+  "Snap the enemy down onto the cached ground spot (gspot)."
+  (let* ((v1-0 (-> this root))
+         (f0-0 (-> v1-0 gspot-pos y))
+         )
+    (if (< (-> v1-0 trans y) f0-0)
+        (set! (-> v1-0 trans y) f0-0)
+        )
+    )
+  (set! (-> this root transv y) 0.0)
+  )
+
+;; definition for method 101 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod adjust-heading-for-jump ((this enemy) (arg0 jump-stage) (arg1 enemy-jump-info))
+  "Can be overriden. Yaw the enemy in response to an ongoing jump."
+  0
+  (none)
+  )
+
+;; definition for method 100 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod move-along-ballistic-trajectory-for-jump ((this enemy) (arg0 jump-stage) (arg1 enemy-jump-info))
+  "Adjust trans, transv for the jump, if we're airborne."
+  (case arg0
+    (((jump-stage takeoff) (jump-stage in-air))
+     (let ((f30-0 (the float (-> arg1 hang-time))))
+       (let ((a1-3 (compute-trans-at-time (-> arg1 traj) f30-0 (new 'stack-no-clear 'vector))))
+         (move-to-point! (-> this root) a1-3)
+         )
+       (let ((s5-1 (-> this root transv)))
+         (compute-transv-at-time (-> arg1 traj) f30-0 s5-1)
+         (vector-float*! s5-1 s5-1 300.0)
+         )
+       )
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 98 of type enemy
+(defmethod jump-wind-up-anim ((this enemy) (arg0 enemy-jump-info))
+  "Start playing the wind-up anim"
+  (let ((a0-1 (-> this skel root-channel 0)))
+    (set! (-> a0-1 param 0) 1.0)
+    (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
+    )
+  (ja-channel-push! 1 (seconds 0.1))
+  (let ((a1-3 (-> this draw art-group data (-> this enemy-info jump-wind-up-anim)))
+        (a0-5 (-> this skel root-channel 0))
+        )
+    (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-3))
+    (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-3) frames num-frames) -1)))
+    (set! (-> a0-5 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-5 frame-num) 0.0)
+    (joint-control-channel-group! a0-5 (the-as art-joint-anim a1-3) num-func-seek!)
+    )
+  #t
+  )
+
+;; definition for method 96 of type enemy
+(defmethod jump-in-air-anim ((this enemy) (arg0 enemy-jump-info))
+  "Start playing the in-air anim"
+  (let ((s5-0 (-> this draw art-group data (-> this enemy-info jump-in-air-anim))))
+    (let ((v1-6 (if (> (-> this skel active-channels) 0)
+                    (-> this skel root-channel 0 frame-group)
+                    )
+                )
+          )
+      (cond
+        ((and v1-6 (= v1-6 (-> this draw art-group data (-> this enemy-info jump-wind-up-anim))))
+         (ja-channel-push! 1 0)
+         )
+        (else
+          (let ((a0-10 (-> this skel root-channel 0)))
+            (set! (-> a0-10 param 0) 1.0)
+            (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-loop!)
+            )
+          (ja-channel-push! 1 (seconds 0.1))
+          )
+        )
+      )
+    (let ((a0-12 (-> this skel root-channel 0)))
+      (set! (-> a0-12 frame-group) (the-as art-joint-anim s5-0))
+      (set! (-> a0-12 param 0) (the float (+ (-> (the-as art-joint-anim s5-0) frames num-frames) -1)))
+      (set! (-> a0-12 param 1) (-> arg0 anim-speed))
+      (set! (-> a0-12 frame-num) 0.0)
+      (joint-control-channel-group! a0-12 (the-as art-joint-anim s5-0) num-func-seek!)
+      )
+    )
+  #t
+  )
+
+;; definition for method 97 of type enemy
+(defmethod jump-land-anim ((this enemy) (arg0 enemy-jump-info))
+  "Play the landing anim"
+  (let ((a0-1 (-> this skel root-channel 0)))
+    (set! (-> a0-1 param 0) 1.0)
+    (joint-control-channel-group! a0-1 (the-as art-joint-anim #f) num-func-loop!)
+    )
+  (ja-channel-push! 1 (seconds 0.075))
+  (let ((a1-3 (-> this draw art-group data (-> this enemy-info jump-land-anim)))
+        (a0-5 (-> this skel root-channel 0))
+        )
+    (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-3))
+    (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-3) frames num-frames) -1)))
+    (set! (-> a0-5 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-5 frame-num) 0.0)
+    (joint-control-channel-group! a0-5 (the-as art-joint-anim a1-3) num-func-seek!)
+    )
+  #t
+  )
+
+;; definition for method 99 of type enemy
+(defmethod jump-anim-handler ((this enemy) (arg0 jump-stage) (arg1 enemy-jump-info))
+  (local-vars (s5-0 symbol))
+  (case arg0
+    (((jump-stage init))
+     (not (jump-wind-up-anim this arg1))
+     )
+    (((jump-stage winding-up))
+     (set! s5-0 (ja-done? 0))
+     (let ((a0-4 (-> this skel root-channel 0)))
+       (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group frames num-frames) -1)))
+       (set! (-> a0-4 param 1) (-> arg1 anim-speed))
+       (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
+       )
+     (ja-blend-eval)
+     s5-0
+     )
+    (((jump-stage takeoff))
+     (jump-in-air-anim this arg1)
+     #f
+     )
+    (((jump-stage in-air))
+     (set! s5-0 (ja-done? 0))
+     (let ((a0-9 (-> this skel root-channel 0)))
+       (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group frames num-frames) -1)))
+       (set! (-> a0-9 param 1) (-> arg1 anim-speed))
+       (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
+       )
+     (ja-blend-eval)
+     s5-0
+     )
+    (((jump-stage touchdown))
+     (not (jump-land-anim this arg1))
+     )
+    (((jump-stage landing))
+     (set! s5-0 (ja-done? 0))
+     (let ((a0-14 (-> this skel root-channel 0)))
+       (set! (-> a0-14 param 0) (the float (+ (-> a0-14 frame-group frames num-frames) -1)))
+       (set! (-> a0-14 param 1) (-> arg1 anim-speed))
+       (joint-control-channel-group-eval! a0-14 (the-as art-joint-anim #f) num-func-seek!)
+       )
+     (ja-blend-eval)
+     s5-0
+     )
+    (else
+      #t
+      )
+    )
+  )
+
+;; definition for method 109 of type enemy
+(defmethod out-of-bounds? ((this enemy))
+  "Has the enemy gone somewhere it shouldn't?
+   Used to kill some enemies that can be knocked of regions."
+  #f
+  )
+
+;; definition for method 50 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod update-collision-action ((this enemy) (arg0 int))
+  "Change the collision for certain conditions (knocked, etc)"
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(if #t
+    (set! *shockwave-knock-scalar* (new 'static 'curve2d-fast
+                                     :xs (new 'static 'vector :y -0.3 :z -1.0 :w -2.0)
+                                     :ys (new 'static 'vector :x 0.5 :y 1.0 :z 1.5 :w 2.5)
+                                     :one-over-x-deltas (new 'static 'vector :x 1.6666666 :y 0.71428573 :z 1.0 :w 1.0)
+                                     )
+          )
+    )
+
+;; definition for method 56 of type enemy
+;; INFO: Used lq/sq
+(defmethod knocked-handler ((this enemy) (arg0 vector))
+  "Called when this enemy is knocked."
+  (local-vars (v0-22 number))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf24 :class vf)
+         (vf25 :class vf)
+         (vf26 :class vf)
+         (vf27 :class vf)
+         (vf28 :class vf)
+         (vf29 :class vf)
+         )
+    (init-vf0-vector)
+    (get-knockback-dir! this arg0)
+    (let ((s5-0 (-> this enemy-info)))
+      (case (-> this incoming knocked-type)
+        (((knocked-type explode-or-darkjak))
+         (let ((f30-0 (rnd-float-range this 0.0 1.0)))
+           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-hard-vxz-lo) (-> s5-0 knocked-hard-vxz-hi) f30-0))
+           (set! (-> arg0 y) (lerp (-> s5-0 knocked-hard-vy-lo) (-> s5-0 knocked-hard-vy-hi) f30-0))
+           )
+         )
+        (((knocked-type mech-punch))
+         (let ((f30-1 (rnd-float-range this 0.0 1.0)))
+           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-medium-vxz-lo) (-> s5-0 knocked-medium-vxz-hi) f30-1))
+           (set! (-> arg0 y) (lerp (-> s5-0 knocked-medium-vy-lo) (-> s5-0 knocked-medium-vy-hi) f30-1))
+           )
+         )
+        (((knocked-type dark-shot))
+         (let ((f30-2 (rnd-float-range this 0.0 1.0)))
+           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-huge-vxz-lo) (-> s5-0 knocked-huge-vxz-hi) f30-2))
+           (set! (-> arg0 y) (lerp (-> s5-0 knocked-huge-vy-lo) (-> s5-0 knocked-huge-vy-hi) f30-2))
+           )
+         )
+        (((knocked-type yellow-shot))
+         (vector-rotate90-around-y! arg0 arg0)
+         (let ((v1-9 (new 'stack-no-clear 'vector)))
+           (vector-! v1-9 (-> this incoming attacker-pos) (-> this root trans))
+           (set! (-> v1-9 y) 0.0)
+           (if (< 0.0 (vector-dot v1-9 arg0))
+               (vector-negate! arg0 arg0)
+               )
+           )
+         (let ((f30-3 (rnd-float-range this 0.0 1.0)))
+           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-yellow-vxz-lo) (-> s5-0 knocked-yellow-vxz-hi) f30-3))
+           (set! (-> arg0 y) (lerp (-> s5-0 knocked-yellow-vy-lo) (-> s5-0 knocked-yellow-vy-hi) f30-3))
+           )
+         )
+        (((knocked-type red-shot))
+         (let ((f30-4 0.0))
+           (cond
+             ((logtest? (penetrate jak-red-shockwave) (-> this incoming penetrate-using))
+              (format 0 "Intensity ~f (handle ~d)~%" f30-4 (process->handle this))
+              )
+             (else
+               (let* ((f1-2 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
+                      (f0-26 1.0)
+                      (f2-0 61440.0)
+                      (f1-3 (fmin f1-2 (* f2-0 f2-0)))
+                      (f2-3 61440.0)
+                      )
+                 (set! f30-4 (* (- f0-26 (/ f1-3 (* f2-3 f2-3))) (rnd-float-range this 0.8 1.0)))
+                 )
+               )
+             )
+           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-red-vxz-lo) (-> s5-0 knocked-red-vxz-hi) f30-4))
+           (set! (-> arg0 y) (lerp (-> s5-0 knocked-red-vy-lo) (-> s5-0 knocked-red-vy-hi) f30-4))
+           )
+         (when (logtest? (penetrate jak-red-shockwave) (-> this incoming penetrate-using))
+           (let ((a0-31 *shockwave-knock-scalar*)
+                 (f0-34 (-> this incoming intensity))
+                 (a1-23 (new 'stack-no-clear 'vector))
+                 (v1-33 (new 'stack-no-clear 'vector))
+                 )
+             (let ((a2-18 f0-34))
+               (.mov vf27 a2-18)
+               )
+             (.lvf vf24 (&-> a0-31 xs quad))
+             (.lvf vf25 (&-> a0-31 ys quad))
+             (.lvf vf26 (&-> a0-31 one-over-x-deltas quad))
+             (.min.w.vf vf27 vf27 vf0)
+             (.max.x.vf vf27 vf27 vf0)
+             (.add.x.vf vf28 vf24 vf27)
+             (.mul.w.vf acc vf25 vf0)
+             (.add.mul.vf vf29 vf28 vf26 acc)
+             (.svf (&-> a1-23 quad) vf28)
+             (.svf (&-> v1-33 quad) vf29)
+             (let ((a0-32 (-> a1-23 z))
+                   (a1-24 (-> a1-23 y))
+                   )
+               (b! (>= (the-as int a0-32) 0) cfg-23 :delay (set! v0-22 (-> v1-33 z)))
+               (b! (>= (the-as int a1-24) 0) cfg-23 :delay (set! v0-22 (-> v1-33 y)))
+               )
+             (set! v0-22 (-> v1-33 x))
+             )
+           (label cfg-23)
+           (let ((f0-35 (the-as float v0-22)))
+             (vector-float*! arg0 arg0 f0-35)
+             )
+           )
+         )
+        (((knocked-type blue-shot))
+         (let* ((f1-5 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
+                (f0-36 1.0)
+                (f2-6 122880.0)
+                (f1-6 (fmin f1-5 (* f2-6 f2-6)))
+                (f2-9 122880.0)
+                (f30-7 (* (- f0-36 (/ f1-6 (* f2-9 f2-9))) (rnd-float-range this 0.8 1.0)))
+                )
+           (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-blue-vxz-lo) (-> s5-0 knocked-blue-vxz-hi) f30-7))
+           (cond
+             ((or (>= (the-as uint 4) (-> this incoming blue-juggle-count)) (handle->process (-> this ragdoll-proc)))
+              (set! (-> arg0 y) (lerp (-> s5-0 knocked-blue-vy-lo) (-> s5-0 knocked-blue-vy-hi) f30-7))
+              )
+             (else
+               (if (zero? (rnd-int this 3))
+                   (set! (-> arg0 y) 40960.0)
+                   )
+               )
+             )
+           )
+         )
+        (((knocked-type vehicle))
+         (let ((v0-4 (the-as object arg0)))
+           (set! (-> (the-as vector v0-4) quad) (-> this incoming attack-direction quad))
+           v0-4
+           )
+         )
+        (else
+          (let ((f30-8 (rnd-float-range this 0.0 1.0)))
+            (vector-float*! arg0 arg0 (lerp (-> s5-0 knocked-soft-vxz-lo) (-> s5-0 knocked-soft-vxz-hi) f30-8))
+            (set! (-> arg0 y) (lerp (-> s5-0 knocked-soft-vy-lo) (-> s5-0 knocked-soft-vy-hi) f30-8))
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 55 of type enemy
+;; WARN: Return type mismatch float vs degrees.
+(defmethod get-knockback-angle ((this enemy))
+  "Get the yaw angle for the current knock."
+  (let ((f30-0 (quaternion-y-angle (-> this root quat))))
+    (case (-> this incoming knocked-type)
+      (((knocked-type yellow-shot) (knocked-type blue-shot))
+       (let ((a0-5 (handle->process (-> this focus handle))))
+         (when a0-5
+           (let ((v1-9 (get-trans (the-as process-focusable a0-5) 0)))
+             (set! f30-0 (atan (- (-> v1-9 x) (-> this root trans x)) (- (-> v1-9 z) (-> this root trans z))))
+             )
+           )
+         )
+       )
+      (else
+        (let* ((v1-13 (-> this root transv))
+               (f28-0 (atan (-> v1-13 x) (-> v1-13 z)))
+               (f1-2 (deg- f30-0 f28-0))
+               (f2-0 (fabs f1-2))
+               (f0-6 (-> this enemy-info knocked-seek-ry-clamp))
+               )
+          (when (and (< f0-6 f2-0) (< f2-0 (- 32768.0 f0-6)))
+            (set! f30-0 (+ (cond
+                             ((< f2-0 16384.0)
+                              (if (>= f1-2 0.0)
+                                  f0-6
+                                  (- f0-6)
+                                  )
+                              )
+                             ((>= f1-2 0.0)
+                              (- 32768.0 f0-6)
+                              )
+                             (else
+                               (+ -32768.0 f0-6)
+                               )
+                             )
+                           f28-0
+                           )
+                  )
+            (if (< f30-0 0.0)
+                (set! f30-0 (+ 65536.0 f30-0))
+                )
+            )
+          )
+        )
+      )
+    (the-as degrees f30-0)
+    )
+  )
+
+;; definition for method 85 of type enemy
+(defmethod knocked-anim ((this enemy) (arg0 enemy-knocked-info))
+  "start the knocked animation."
+  (ja-channel-push! 1 0)
+  (let ((a1-2 (-> this draw art-group data (-> this enemy-info knocked-anim)))
+        (a0-4 (-> this skel root-channel 0))
+        )
+    (set! (-> a0-4 frame-group) (the-as art-joint-anim a1-2))
+    (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
+    (set! (-> a0-4 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-4 frame-num) 0.0)
+    (joint-control-channel-group! a0-4 (the-as art-joint-anim a1-2) num-func-seek!)
+    )
+  #t
+  )
+
+;; definition for method 86 of type enemy
+(defmethod knocked-land-anim ((this enemy) (arg0 enemy-knocked-info))
+  "start the knocked-land animation."
+  (let ((v1-4 (-> this draw art-group data (-> this enemy-info knocked-land-anim)))
+        (a0-3 (-> this skel root-channel 0))
+        )
+    (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-4))
+    (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim v1-4) frames num-frames) -1)))
+    (set! (-> a0-3 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-3 frame-num) 0.0)
+    (joint-control-channel-group! a0-3 (the-as art-joint-anim v1-4) num-func-seek!)
+    )
+  #t
+  )
+
+;; definition for method 88 of type enemy
+(defmethod done-being-knocked? ((this enemy) (arg0 enemy-knocked-info))
+  "has the enemy hit the ground or stopped after being knocked back?"
+  (let ((gp-0 (-> this root)))
+    (or (>= (-> arg0 on-surface-count) 3)
+        (and (logtest? (-> gp-0 status) (collide-status on-ground)) (>= 16384.0 (-> gp-0 transv y)))
+        (and (>= (-> arg0 move-count) 3)
+             (let ((f0-1 40.96))
+               (>= (* f0-1 f0-1) (vector-vector-distance-squared (-> gp-0 trans-old) (-> gp-0 trans-old-old)))
+               )
+             (let ((f0-4 40.96))
+               (>= (* f0-4 f0-4) (vector-vector-distance-squared (-> gp-0 trans-old-old) (-> gp-0 trans-old-old-old)))
+               )
+             )
+        )
+    )
+  )
+
+;; definition for method 89 of type enemy
+(defmethod invalid-height? ((this enemy))
+  "Return #t if the enemy is too high in the air, or below the ground."
+  (let ((gp-0 (-> this root))
+        (a1-0 (new 'stack-no-clear 'collide-query))
+        )
+    (if (or (< 0.0 (-> this root transv y)) (begin
+                                              (find-ground
+                                                gp-0
+                                                a1-0
+                                                (-> this enemy-info recover-gnd-collide-with)
+                                                8192.0
+                                                81920.0
+                                                1024.0
+                                                (the-as process #f)
+                                                )
+                                              (let ((f0-2 (- (-> gp-0 trans y) (-> gp-0 gspot-pos y))))
+                                                (and (>= f0-2 -1228.8) (>= 6144.0 f0-2))
+                                                )
+                                              )
+            )
+        #f
+        #t
+        )
+    )
+  )
+
+;; definition for method 90 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod copy-ragdoll-orientation-to-root ((this enemy) (arg0 ragdoll-proc))
+  "Apply rotational offset from ragdolling back to the enemy.
+   Used when disabling a ragdoll to update the enemy
+   orientation to match the end of ragdoll orientation."
+  (let* ((s4-0 (-> arg0 ragdoll))
+         (s2-0 (-> s4-0 ragdoll-joints))
+         (s1-0
+           (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) (-> s4-0 orient-tform) (-> s4-0 orient-tform w))
+           )
+         (s3-0 (new 'stack-no-clear 'matrix))
+         (s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat)))
+         )
+    (quaternion-normalize! (quaternion*! s1-0 (-> s2-0 0 quat) s1-0))
+    (quaternion->matrix s3-0 s1-0)
+    (if (logtest? (-> s4-0 ragdoll-flags) (ragdoll-flag mirror))
+        (matrix*! s3-0 s3-0 (-> s4-0 mirror))
+        )
+    (vector-flatten! (-> s5-0 fvec) (-> s3-0 uvec) (-> s5-0 uvec))
+    (vector-normalize! (-> s5-0 fvec) 1.0)
+    (vector-cross! (-> s5-0 rvec) (-> s5-0 uvec) (-> s5-0 fvec))
+    (matrix->quaternion (-> this root quat) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 87 of type enemy
+(defmethod knocked-anim-handler ((this enemy) (arg0 int) (arg1 enemy-knocked-info))
+  "start or play the approriate animation for an enemy being knocked."
+  (local-vars (s5-0 symbol))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (knocked-anim this arg1)
+       (set! s5-0 #f)
+       )
+      ((= v1-0 1)
+       (set! s5-0 (ja-done? 0))
+       (let ((a0-4 (-> this skel root-channel 0)))
+         (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group frames num-frames) -1)))
+         (set! (-> a0-4 param 1) (-> arg1 anim-speed))
+         (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
+         )
+       )
+      ((= v1-0 2)
+       (freeze-hit-end)
+       (set! s5-0 (not (knocked-land-anim this arg1)))
+       (set! (-> this incoming blue-juggle-count) (the-as uint 0))
+       )
+      ((= v1-0 3)
+       (set! s5-0 (ja-done? 0))
+       (let ((a0-9 (-> this skel root-channel 0)))
+         (set! (-> a0-9 param 0) (the float (+ (-> a0-9 frame-group frames num-frames) -1)))
+         (set! (-> a0-9 param 1) (-> arg1 anim-speed))
+         (joint-control-channel-group-eval! a0-9 (the-as art-joint-anim #f) num-func-seek!)
+         )
+       )
+      ((= v1-0 4)
+       (vector-reset! (-> this root transv))
+       (set! s5-0 #t)
+       )
+      (else
+        (set! s5-0 #t)
+        )
+      )
+    )
+  s5-0
+  )
+
+;; definition for function ja-group-index?
+(defbehavior ja-group-index? enemy ((arg0 int))
+  (ja-group? (-> self draw art-group data arg0))
+  )
+
+;; definition for method 123 of type enemy
+(defmethod allow-ragdoll? ((this enemy))
+  "Can this enemy ragdoll now?"
+  #t
+  )
+
+;; definition for method 126 of type enemy
+;; INFO: Used lq/sq
+(defmethod ragdoll-spawn! ((this enemy) (arg0 symbol) (arg1 symbol))
+  "If possible, spawn ragdoll and start using it."
+  (local-vars (s2-0 process))
+  (with-pp
+    (when (and (allow-ragdoll? this) (-> this enemy-info ragdoll-info))
+      (let ((s3-0 (handle->process (-> this ragdoll-proc))))
+        (cond
+          (s3-0
+            (set! s2-0 s3-0)
+            )
+          (else
+            (set! (-> this ragdoll-proc)
+                  (ppointer->handle
+                    (process-spawn
+                      ragdoll-proc
+                      (-> this enemy-info ragdoll-info)
+                      :name "ragdoll-proc"
+                      :to this
+                      :stack-size #x5000
+                      )
+                    )
+                  )
+            (set! s2-0 (handle->process (-> this ragdoll-proc)))
+            (when (not s2-0)
+              (format 0 "deactivated ~A because a ragdoll allocate failed~%" (-> this name))
+              (deactivate this)
+              )
+            (set! (-> this enemy-flags)
+                  (the-as enemy-flag (logior (enemy-flag auto-death-phase-out) (-> this enemy-flags)))
+                  )
+            )
+          )
+        (when (and (-> this draw) (-> this draw shadow-ctrl))
+          (let ((v1-29 (-> this draw shadow-ctrl)))
+            (logior! (-> v1-29 settings flags) (shadow-flags disable-draw))
+            )
+          0
+          )
+        (if (-> (the-as ragdoll-proc s2-0) ragdoll)
+            (logior! (-> (the-as ragdoll-proc s2-0) ragdoll ragdoll-flags) (ragdoll-flag rf3 rf4))
+            )
+        (let ((s1-0 (new 'stack-no-clear 'vector)))
+          (vector-float*! s1-0 (-> this root transv) (seconds-per-frame))
+          (if s3-0
+              (ragdoll-proc-method-15 (the-as ragdoll-proc s2-0) arg1 (the-as vector #f) #f)
+              (ragdoll-proc-method-15 (the-as ragdoll-proc s2-0) arg1 (the-as vector #f) #t)
+              )
+          (if arg0
+              (ragdoll-method-23
+                (-> (the-as ragdoll-proc s2-0) ragdoll)
+                (-> this incoming attack-position)
+                s1-0
+                (-> this enemy-info ragdoll-rotate-velocity-mult)
+                #t
+                )
+              )
+          (vector-float*! s1-0 s1-0 (/ 1.0 (-> pp clock time-adjust-ratio)))
+          (let ((v0-1 (-> (the-as ragdoll-proc s2-0) ragdoll ragdoll-joints 0 velocity)))
+            (vector-copy! v0-1 s1-0)
+            v0-1
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 127 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod deactivate-ragdoll! ((this enemy))
+  "Deactivate the ragdoll process."
+  (when (and (allow-ragdoll? this) (-> this enemy-info ragdoll-info))
+    (let ((a0-3 (handle->process (-> this ragdoll-proc))))
+      (when a0-3
+        (when (and (-> this draw) (-> this draw shadow-ctrl))
+          (let ((v1-14 (-> this draw shadow-ctrl)))
+            (logclear! (-> v1-14 settings flags) (shadow-flags disable-draw))
+            )
+          0
+          )
+        (deactivate a0-3)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 125 of type enemy
+;; WARN: Return type mismatch symbol vs object.
+(defmethod ragdoll-settled? ((this enemy))
+  "Has the ragdoll stopped moving?"
+  (let ((s5-0 (handle->process (-> this ragdoll-proc))))
+    (or (not s5-0)
+        (or (ragdoll-proc-method-19 (the-as ragdoll-proc s5-0))
+            (and (time-elapsed? (-> this state-time) (seconds 0.1))
+                 (let ((f0-1 (if (= (-> this hit-points) 0.0)
+                                 4096.0
+                                 49152.0
+                                 )
+                             )
+                       (f1-2 (if (= (-> this hit-points) 0.0)
+                                 364.0889
+                                 16384.0
+                                 )
+                             )
+                       )
+                   (and (and (< (vector-length (-> (the-as ragdoll-proc s5-0) ragdoll ragdoll-joints 0 velocity))
+                                (* f0-1 (seconds-per-frame))
+                                )
+                             (< (cos (* f1-2 (seconds-per-frame))) (-> (the-as ragdoll-proc s5-0) ragdoll rotate-vel w))
+                             )
+                        (and (not (out-of-bounds? this)) (not (invalid-height? this)))
+                        )
+                   )
+                 )
+            )
+        )
+    )
+  )
+
+;; definition for method 124 of type enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod disable-ragdoll ((this enemy))
+  "Smoothly disable the ragdoll and transition back to normal control."
+  (let ((s5-0 (handle->process (-> this ragdoll-proc))))
+    (when s5-0
+      (disable-for-duration (the-as ragdoll-proc s5-0) (-> this enemy-info ragdoll-blend-out-time))
+      (logclear! (-> (the-as ragdoll-proc s5-0) ragdoll ragdoll-flags) (ragdoll-flag rf9))
+      (copy-ragdoll-orientation-to-root this (the-as ragdoll-proc s5-0))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 151 of type enemy
+(defmethod should-move-to-ground? ((this enemy))
+  "Should this enemy be moved to the ground while moving?"
+  (-> this enemy-info move-to-ground)
+  )

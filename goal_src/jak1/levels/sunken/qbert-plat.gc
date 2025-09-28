@@ -1,129 +1,106 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: qbert-plat.gc
-;; name in dgo: qbert-plat
-;; dgos: L1, SUN, SUNKEN
-
+(bundles "SUN.DGO")
+(require "engine/game/task/hint-control.gc")
+(require "engine/camera/pov-camera-h.gc")
+(require "engine/common-obs/rigid-body.gc")
 (declare-type qbert-plat-master process-drawable)
+
 (declare-type qbert-plat rigid-body-platform)
 
 ;; DECOMP BEGINS
 
-(deftype qbert-plat-on (process-drawable)
-  ()
-  )
+(deftype qbert-plat-on (process-drawable) ())
 
-
-(defskelgroup *qbert-plat-on-sg* qbert-plat-on qbert-plat-on-lod0-jg qbert-plat-on-idle-ja
-              ((qbert-plat-on-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 -2 0 4.5)
-              )
+(defskelgroup *qbert-plat-on-sg*
+  qbert-plat-on
+  qbert-plat-on-lod0-jg
+  qbert-plat-on-idle-ja
+  ((qbert-plat-on-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 -2 0 4.5))
 
 (deftype qbert-plat (rigid-body-platform)
-  ((anchor-point       vector  :inline)
-   (plat-id            int32)
-   (on?                symbol)
-   (player-is-riding?  symbol)
-   (master             entity-actor)
-   )
+  ((anchor-point      vector :inline)
+   (plat-id           int32)
+   (on?               symbol)
+   (player-is-riding? symbol)
+   (master            entity-actor))
   (:states
-    qbert-plat-on-die
-    qbert-plat-on-mimic
-    qbert-plat-wait-for-master
-    )
-  )
+   qbert-plat-on-die
+   qbert-plat-on-mimic
+   qbert-plat-wait-for-master))
 
+(defskelgroup *qbert-plat-sg*
+  qbert-plat
+  qbert-plat-lod0-jg
+  qbert-plat-idle-ja
+  ((qbert-plat-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 -2 0 4.5))
 
-(defskelgroup *qbert-plat-sg* qbert-plat qbert-plat-lod0-jg qbert-plat-idle-ja
-              ((qbert-plat-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 -2 0 4.5)
-              )
-
-(define *qbert-plat-constants* (new 'static 'rigid-body-platform-constants
-                                 :drag-factor 2.0
-                                 :buoyancy-factor 1.5
-                                 :max-buoyancy-depth (meters 1)
-                                 :gravity-factor 1.0
-                                 :gravity (meters 80)
-                                 :player-weight (meters 35)
-                                 :player-bonk-factor 1.0
-                                 :player-dive-factor 1.0
-                                 :player-force-distance (meters 1000)
-                                 :player-force-clamp (meters 1000000)
-                                 :player-force-timeout (seconds 0.1)
-                                 :explosion-force (meters 1000)
-                                 :linear-damping 1.0
-                                 :angular-damping 1.0
-                                 :control-point-count 4
-                                 :mass 4.0
-                                 :inertial-tensor-x (meters 4)
-                                 :inertial-tensor-y (meters 4)
-                                 :inertial-tensor-z (meters 4)
-                                 :idle-distance (meters 70)
-                                 :platform #t
-                                 :sound-name #f
-                                 )
-        )
+(define *qbert-plat-constants*
+  (new 'static
+       'rigid-body-platform-constants
+       :drag-factor 2.0
+       :buoyancy-factor 1.5
+       :max-buoyancy-depth (meters 1)
+       :gravity-factor 1.0
+       :gravity (meters 80)
+       :player-weight (meters 35)
+       :player-bonk-factor 1.0
+       :player-dive-factor 1.0
+       :player-force-distance (meters 1000)
+       :player-force-clamp (meters 1000000)
+       :player-force-timeout (seconds 0.1)
+       :explosion-force (meters 1000)
+       :linear-damping 1.0
+       :angular-damping 1.0
+       :control-point-count 4
+       :mass 4.0
+       :inertial-tensor-x (meters 4)
+       :inertial-tensor-y (meters 4)
+       :inertial-tensor-z (meters 4)
+       :idle-distance (meters 70)
+       :platform #t
+       :sound-name #f))
 
 (deftype qbert-plat-master (process-drawable)
-  ((last-plat-triggered              int32)
-   (plat-states                      uint32)
-   (plat-states-needed-to-open-door  uint32)
-   (player-in-bounds?                symbol)
-   (player-in-water?                 symbol)
-   (play-door-cam?                   symbol)
-   (puzzle-beaten?                   symbol)
-   (door                             entity-actor)
-   (door-plat                        entity-actor)
-   (bounds-start                     vector  :inline)
-   (bounds-end                       vector  :inline)
-   )
+  ((last-plat-triggered             int32)
+   (plat-states                     uint32)
+   (plat-states-needed-to-open-door uint32)
+   (player-in-bounds?               symbol)
+   (player-in-water?                symbol)
+   (play-door-cam?                  symbol)
+   (puzzle-beaten?                  symbol)
+   (door                            entity-actor)
+   (door-plat                       entity-actor)
+   (bounds-start                    vector :inline)
+   (bounds-end                      vector :inline))
   (:methods
-    (plat-state-set? (_type_ uint) symbol)
-    )
-  (:states
-    (qbert-plat-master-do-door symbol)
-    qbert-plat-master-idle
-    qbert-plat-master-wait-for-door
-    )
-  )
-
+   (plat-state-set? (_type_ uint) symbol))
+  (:states (qbert-plat-master-do-door symbol)
+   qbert-plat-master-idle
+   qbert-plat-master-wait-for-door))
 
 (defstate qbert-plat-on-mimic (qbert-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('die)
-       (go qbert-plat-on-die)
-       )
-      )
-    )
-  :code (behavior ()
-    (set-vector! (-> self draw color-emissive) 0.0 0.0 1.0 0.0)
-    (loop
-      (let ((gp-0 (-> self parent)))
-        (set! (-> self root-overlay trans quad)
-              (-> (the-as (pointer rigid-body-platform) gp-0) 0 root-overlay trans quad)
-              )
-        (quaternion-copy!
-          (-> self root-overlay quat)
-          (-> (the-as (pointer rigid-body-platform) gp-0) 0 root-overlay quat)
-          )
-        (set! (-> self root-overlay scale quad)
-              (-> (the-as (pointer rigid-body-platform) gp-0) 0 root-overlay scale quad)
-              )
-        )
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('die) (go qbert-plat-on-die))))
+  :code
+    (behavior ()
+      (set-vector! (-> self draw color-emissive) 0.0 0.0 1.0 0.0)
+      (loop
+        (let ((gp-0 (-> self parent)))
+          (set! (-> self root-overlay trans quad) (-> (the-as (pointer rigid-body-platform) gp-0) 0 root-overlay trans quad))
+          (quaternion-copy! (-> self root-overlay quat) (-> (the-as (pointer rigid-body-platform) gp-0) 0 root-overlay quat))
+          (set! (-> self root-overlay scale quad) (-> (the-as (pointer rigid-body-platform) gp-0) 0 root-overlay scale quad)))
+        (suspend)))
+  :post ja-post)
 
 (defstate qbert-plat-on-die (qbert-plat)
-  :code (behavior ()
-    '()
-    )
-  )
+  :code
+    (behavior ()
+      '()))
 
 (defbehavior qbert-plat-on-init-by-other qbert-plat ((arg0 entity-actor) (arg1 qbert-plat))
   (set! (-> self entity) arg0)
@@ -137,150 +114,89 @@
   (ja-channel-set! 1)
   (ja :group! qbert-plat-idle-ja :num! min)
   (go qbert-plat-on-mimic)
-  (none)
-  )
+  (none))
 
 (defbehavior qbert-plat-event-handler qbert-plat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
-    (('notify)
-     (rigid-body-platform-method-32 self)
-     )
-    (else
-      (rigid-body-platform-event-handler arg0 arg1 arg2 arg3)
-      )
-    )
-  )
+    (('notify) (rigid-body-platform-method-32 self))
+    (else (rigid-body-platform-event-handler arg0 arg1 arg2 arg3))))
 
 (defmethod rigid-body-platform-method-33 ((this qbert-plat))
   (let* ((a1-0 (-> this master))
-         (v1-0 (if a1-0
-                   (-> a1-0 extra process)
-                   )
-               )
-         )
-    (if v1-0
-        (send-event v1-0 'trigger (-> this plat-id))
-        )
-    )
-  )
+         (v1-0 (if a1-0 (-> a1-0 extra process))))
+    (if v1-0 (send-event v1-0 'trigger (-> this plat-id)))))
 
 (defmethod rigid-body-platform-method-32 ((this qbert-plat))
   (let* ((v1-0 (-> this master))
-         (a0-1 (if v1-0
-                   (-> v1-0 extra process)
-                   )
-               )
-         )
+         (a0-1 (if v1-0 (-> v1-0 extra process))))
     (when (the-as qbert-plat-master a0-1)
       (let ((v1-3 (plat-state-set? (the-as qbert-plat-master a0-1) (the-as uint (-> this plat-id)))))
         (when (!= v1-3 (-> this on?))
           (set! (-> this on?) v1-3)
           (cond
-            (v1-3
-              (process-spawn qbert-plat-on (-> this entity) this :to this)
-              (sound-play "plat-light-on")
-              )
+            (v1-3 (process-spawn qbert-plat-on (-> this entity) this :to this) (sound-play "plat-light-on"))
             (else
-              (let ((gp-2 (-> this child)))
-                (while gp-2
-                  (send-event (ppointer->process gp-2) 'die)
-                  (set! gp-2 (-> gp-2 0 brother))
-                  )
-                )
-              (sound-play "plat-light-off")
-              )
-            )
-          )
-        )
-      )
-    )
-  )
+             (let ((gp-2 (-> this child))) (while gp-2 (send-event (ppointer->process gp-2) 'die) (set! gp-2 (-> gp-2 0 brother))))
+             (sound-play "plat-light-off"))))))))
 
 (defstate qbert-plat-wait-for-master (qbert-plat)
-  :code (behavior ()
-    (loop
-      (let ((v1-0 (-> self master)))
-        (when (if v1-0
-                  (-> v1-0 extra process)
-                  )
-          (suspend)
-          (rigid-body-platform-method-32 self)
-          (go-virtual rigid-body-platform-idle)
-          )
-        )
-      (suspend)
-      0
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (let ((v1-0 (-> self master)))
+          (when (if v1-0 (-> v1-0 extra process))
+            (suspend)
+            (rigid-body-platform-method-32 self)
+            (go-virtual rigid-body-platform-idle)))
+        (suspend)
+        0))
+  :post ja-post)
 
 (defstate rigid-body-platform-idle (qbert-plat)
   :virtual #t
   :event qbert-plat-event-handler
-  :code (behavior ()
-    (loop
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ()
+      (loop
+        (suspend)))
+  :post ja-post)
 
 (defstate rigid-body-platform-float (qbert-plat)
   :virtual #t
   :event qbert-plat-event-handler
-  :exit (behavior ()
-    (if (-> self on?)
-        (logior! (-> self draw status) (draw-status hidden))
-        )
-    )
-  :trans (behavior ()
-    (logclear! (-> self draw status) (draw-status hidden))
-    ((-> (method-of-type rigid-body-platform rigid-body-platform-float) trans))
-    (let* ((v1-5 (-> self root-overlay riders))
-           (gp-1 (nonzero? (-> v1-5 num-riders)))
-           )
-      (when gp-1
-        (if (not (-> self player-is-riding?))
-            (rigid-body-platform-method-33 self)
-            )
-        )
-      (set! (-> self player-is-riding?) gp-1)
-      )
-    )
-  :post (behavior ()
-    ((the-as
-       (function none :behavior qbert-plat)
-       (-> (method-of-type rigid-body-platform rigid-body-platform-float) post)
-       )
-     )
-    (if (-> self on?)
-        (logior! (-> self draw status) (draw-status hidden))
-        )
-    )
-  )
+  :exit
+    (behavior ()
+      (if (-> self on?) (logior! (-> self draw status) (draw-status hidden))))
+  :trans
+    (behavior ()
+      (logclear! (-> self draw status) (draw-status hidden))
+      ((-> (method-of-type rigid-body-platform rigid-body-platform-float) trans))
+      (let* ((v1-5 (-> self root-overlay riders))
+             (gp-1 (nonzero? (-> v1-5 num-riders))))
+        (when gp-1
+          (if (not (-> self player-is-riding?)) (rigid-body-platform-method-33 self)))
+        (set! (-> self player-is-riding?) gp-1)))
+  :post
+    (behavior ()
+      ((the-as (function none :behavior qbert-plat) (-> (method-of-type rigid-body-platform rigid-body-platform-float) post)))
+      (if (-> self on?) (logior! (-> self draw status) (draw-status hidden)))))
 
 (defmethod rigid-body-platform-method-22 ((this qbert-plat) (arg0 vector) (arg1 float))
   (+ (-> this anchor-point y)
      (-> this float-height-offset)
-     (* 512.0 (cos (* 546.13336 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))
-     )
-  )
+     (* 512.0 (cos (* 546.13336 (+ (* 60.0 arg1) (* 0.03 (-> arg0 x)) (* 0.03 (-> arg0 z))))))))
 
 (defmethod rigid-body-platform-method-23 ((this qbert-plat) (arg0 float))
   (call-parent-method this arg0)
   (rigid-body-platform-method-27 this (-> this anchor-point))
   0
-  (none)
-  )
+  (none))
 
 (defmethod rigid-body-platform-method-30 ((this qbert-plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -289,15 +205,12 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 -8192.0 0.0 18432.0)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root-overlay) s5-0)
-    )
+    (set! (-> this root-overlay) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod rigid-body-platform-method-31 ((this qbert-plat))
   (initialize-skeleton this *qbert-plat-sg* '())
@@ -310,34 +223,29 @@
     (set! (-> v1-11 0 local-pos x) -14336.0)
     (set! (-> v1-11 0 local-pos y) 0.0)
     (set! (-> v1-11 0 local-pos z) -14336.0)
-    (set! (-> v1-11 0 local-pos w) 1.0)
-    )
+    (set! (-> v1-11 0 local-pos w) 1.0))
   (let ((v1-13 (-> this control-point-array data 1)))
     (set! (-> v1-13 local-pos x) -14336.0)
     (set! (-> v1-13 local-pos y) 0.0)
     (set! (-> v1-13 local-pos z) 14336.0)
-    (set! (-> v1-13 local-pos w) 1.0)
-    )
+    (set! (-> v1-13 local-pos w) 1.0))
   (let ((v1-15 (-> this control-point-array data 2)))
     (set! (-> v1-15 local-pos x) 14336.0)
     (set! (-> v1-15 local-pos y) 0.0)
     (set! (-> v1-15 local-pos z) 14336.0)
-    (set! (-> v1-15 local-pos w) 1.0)
-    )
+    (set! (-> v1-15 local-pos w) 1.0))
   (let ((v1-17 (-> this control-point-array data 3)))
     (set! (-> v1-17 local-pos x) 14336.0)
     (set! (-> v1-17 local-pos y) 0.0)
     (set! (-> v1-17 local-pos z) -14336.0)
-    (set! (-> v1-17 local-pos w) 1.0)
-    )
+    (set! (-> v1-17 local-pos w) 1.0))
   (set! (-> this on?) #f)
   (set! (-> this player-is-riding?) #f)
   (set! (-> this master) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this link) (new 'process 'actor-link-info this))
   (set! (-> this plat-id) (actor-count-before (-> this link)))
   0
-  (none)
-  )
+  (none))
 
 (defmethod init-from-entity! ((this qbert-plat) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
@@ -345,360 +253,191 @@
   (process-drawable-from-entity! this arg0)
   (rigid-body-platform-method-31 this)
   (go qbert-plat-wait-for-master)
-  (none)
-  )
+  (none))
 
 (defmethod plat-state-set? ((this qbert-plat-master) (arg0 uint))
-  (logtest? (-> this plat-states) (ash 1 arg0))
-  )
+  (logtest? (-> this plat-states) (ash 1 arg0)))
 
 (defstate qbert-plat-master-idle (qbert-plat-master)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('trigger)
-       (start-hint-timer (text-id sunken-qbert-plat-hint))
-       (close-specific-task! (game-task sunken-platforms) (task-status need-hint))
-       (when (not (-> self puzzle-beaten?))
-         (let ((v1-2 (-> block param 0)))
-           (when (!= v1-2 (-> self last-plat-triggered))
-             (set! (-> self last-plat-triggered) (the-as int v1-2))
-             (let ((s5-1 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
-               (let ((v1-3 (ash 1 v1-2)))
-                 (logxor! (-> self plat-states) (the-as uint v1-3))
-                 (if (not (logtest? v1-3 (-> self plat-states)))
-                     (level-hint-spawn
-                       (text-id sunken-qbert-plat-hint)
-                       "sksp0130"
-                       (the-as entity #f)
-                       *entity-pool*
-                       (game-task none)
-                       )
-                     )
-                 )
-               (send-event proc 'notify)
-               (let ((a0-13 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
-                 (if (!= s5-1 a0-13)
-                     (go qbert-plat-master-do-door a0-13)
-                     )
-                 )
-               )
-             )
-           )
-         )
-       )
-      )
-    )
-  :code (behavior ()
-    (loop
-      (when (not (-> self puzzle-beaten?))
-        (when (task-complete? *game-info* (game-task sunken-platforms))
-          (set! (-> self puzzle-beaten?) #t)
-          (set! (-> self plat-states) (-> self plat-states-needed-to-open-door))
-          (set! (-> self play-door-cam?) #f)
-          (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-1 from) self)
-            (set! (-> a1-1 num-params) 0)
-            (set! (-> a1-1 message) 'trigger)
-            (let ((t9-1 send-event-function)
-                  (v1-8 (-> self door))
-                  )
-              (t9-1
-                (if v1-8
-                    (-> v1-8 extra process)
-                    )
-                a1-1
-                )
-              )
-            )
-          (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-2 from) self)
-            (set! (-> a1-2 num-params) 0)
-            (set! (-> a1-2 message) 'trigger)
-            (let ((t9-2 send-event-function)
-                  (v1-12 (-> self door-plat))
-                  )
-              (t9-2
-                (if v1-12
-                    (-> v1-12 extra process)
-                    )
-                a1-2
-                )
-              )
-            )
-          (send-to-all (-> self link) 'notify)
-          )
-        )
-      (when (and *target* (not (-> self puzzle-beaten?)))
-        (let ((gp-0 #f))
-          (let ((s5-1 (logtest? (-> *target* water flags) (water-flags wt09))))
-            (when s5-1
-              (when (not (-> self player-in-water?))
-                (set! gp-0 #t)
-                (level-hint-spawn
-                  (text-id sunken-qbert-plat-hint)
-                  "sksp0130"
-                  (the-as entity #f)
-                  *entity-pool*
-                  (game-task none)
-                  )
-                )
-              )
-            (set! (-> self player-in-water?) s5-1)
-            )
-          (when (logtest? (-> *target* control status) (cshape-moving-flags onsurf))
-            (let ((s5-2 #t))
-              (let ((s3-0 (new 'stack-no-clear 'vector))
-                    (s4-0 (new 'stack-no-clear 'vector))
-                    )
-                (vector-! s3-0 (target-pos 0) (-> self bounds-start))
-                (set! (-> s3-0 y) 0.0)
-                (vector-! s4-0 (-> self bounds-end) (-> self bounds-start))
-                (if (< (vector-dot s3-0 s4-0) 0.0)
-                    (set! s5-2 #f)
-                    )
-                )
-              (when (and (not s5-2) (-> self player-in-bounds?))
-                (set! gp-0 #t)
-                (level-hint-spawn
-                  (text-id sunken-qbert-plat-hint)
-                  "sksp0130"
-                  (the-as entity #f)
-                  *entity-pool*
-                  (game-task none)
-                  )
-                )
-              (set! (-> self player-in-bounds?) s5-2)
-              )
-            )
-          (when gp-0
-            (set! (-> self plat-states) (the-as uint 0))
-            (set! (-> self last-plat-triggered) -1)
-            (send-to-all (-> self link) 'notify)
-            (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-9 from) self)
-              (set! (-> a1-9 num-params) 0)
-              (set! (-> a1-9 message) 'untrigger)
-              (let ((t9-8 send-event-function)
-                    (v1-47 (-> self door))
-                    )
-                (t9-8
-                  (if v1-47
-                      (-> v1-47 extra process)
-                      )
-                  a1-9
-                  )
-                )
-              )
-            (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
-              (set! (-> a1-10 from) self)
-              (set! (-> a1-10 num-params) 0)
-              (set! (-> a1-10 message) 'untrigger)
-              (let ((t9-9 send-event-function)
-                    (v1-51 (-> self door-plat))
-                    )
-                (t9-9
-                  (if v1-51
-                      (-> v1-51 extra process)
-                      )
-                  a1-10
-                  )
-                )
-              )
-            )
-          )
-        )
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('trigger)
+         (start-hint-timer (text-id sunken-qbert-plat-hint))
+         (close-specific-task! (game-task sunken-platforms) (task-status need-hint))
+         (when (not (-> self puzzle-beaten?))
+           (let ((v1-2 (-> block param 0)))
+             (when (!= v1-2 (-> self last-plat-triggered))
+               (set! (-> self last-plat-triggered) (the-as int v1-2))
+               (let ((s5-1 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
+                 (let ((v1-3 (ash 1 v1-2)))
+                   (logxor! (-> self plat-states) (the-as uint v1-3))
+                   (if (not (logtest? v1-3 (-> self plat-states)))
+                     (level-hint-spawn (text-id sunken-qbert-plat-hint) "sksp0130" (the-as entity #f) *entity-pool* (game-task none))))
+                 (send-event proc 'notify)
+                 (let ((a0-13 (= (-> self plat-states-needed-to-open-door) (-> self plat-states))))
+                   (if (!= s5-1 a0-13) (go qbert-plat-master-do-door a0-13))))))))))
+  :code
+    (behavior ()
+      (loop
+        (when (not (-> self puzzle-beaten?))
+          (when (task-complete? *game-info* (game-task sunken-platforms))
+            (set! (-> self puzzle-beaten?) #t)
+            (set! (-> self plat-states) (-> self plat-states-needed-to-open-door))
+            (set! (-> self play-door-cam?) #f)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) self)
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'trigger)
+              (let ((t9-1 send-event-function)
+                    (v1-8 (-> self door)))
+                (t9-1 (if v1-8 (-> v1-8 extra process)) a1-1)))
+            (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-2 from) self)
+              (set! (-> a1-2 num-params) 0)
+              (set! (-> a1-2 message) 'trigger)
+              (let ((t9-2 send-event-function)
+                    (v1-12 (-> self door-plat)))
+                (t9-2 (if v1-12 (-> v1-12 extra process)) a1-2)))
+            (send-to-all (-> self link) 'notify)))
+        (when (and *target* (not (-> self puzzle-beaten?)))
+          (let ((gp-0 #f))
+            (let ((s5-1 (logtest? (-> *target* water flags) (water-flags wt09))))
+              (when s5-1
+                (when (not (-> self player-in-water?))
+                  (set! gp-0 #t)
+                  (level-hint-spawn (text-id sunken-qbert-plat-hint) "sksp0130" (the-as entity #f) *entity-pool* (game-task none))))
+              (set! (-> self player-in-water?) s5-1))
+            (when (logtest? (-> *target* control status) (cshape-moving-flags onsurf))
+              (let ((s5-2 #t))
+                (let ((s3-0 (new 'stack-no-clear 'vector))
+                      (s4-0 (new 'stack-no-clear 'vector)))
+                  (vector-! s3-0 (target-pos 0) (-> self bounds-start))
+                  (set! (-> s3-0 y) 0.0)
+                  (vector-! s4-0 (-> self bounds-end) (-> self bounds-start))
+                  (if (< (vector-dot s3-0 s4-0) 0.0) (set! s5-2 #f)))
+                (when (and (not s5-2) (-> self player-in-bounds?))
+                  (set! gp-0 #t)
+                  (level-hint-spawn (text-id sunken-qbert-plat-hint) "sksp0130" (the-as entity #f) *entity-pool* (game-task none)))
+                (set! (-> self player-in-bounds?) s5-2)))
+            (when gp-0
+              (set! (-> self plat-states) (the-as uint 0))
+              (set! (-> self last-plat-triggered) -1)
+              (send-to-all (-> self link) 'notify)
+              (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-9 from) self)
+                (set! (-> a1-9 num-params) 0)
+                (set! (-> a1-9 message) 'untrigger)
+                (let ((t9-8 send-event-function)
+                      (v1-47 (-> self door)))
+                  (t9-8 (if v1-47 (-> v1-47 extra process)) a1-9)))
+              (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-10 from) self)
+                (set! (-> a1-10 num-params) 0)
+                (set! (-> a1-10 message) 'untrigger)
+                (let ((t9-9 send-event-function)
+                      (v1-51 (-> self door-plat)))
+                  (t9-9 (if v1-51 (-> v1-51 extra process)) a1-10))))))
+        (suspend))))
 
 (defstate qbert-plat-master-do-door (qbert-plat-master)
-  :code (behavior ((arg0 symbol))
-    (when (not (-> self play-door-cam?))
+  :code
+    (behavior ((arg0 symbol))
+      (when (not (-> self play-door-cam?))
+        (cond
+          (arg0
+           (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-0 from) self)
+             (set! (-> a1-0 num-params) 0)
+             (set! (-> a1-0 message) 'trigger)
+             (let ((t9-0 send-event-function)
+                   (v1-3 (-> self door)))
+               (t9-0 (if v1-3 (-> v1-3 extra process)) a1-0)))
+           (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-1 from) self)
+             (set! (-> a1-1 num-params) 0)
+             (set! (-> a1-1 message) 'trigger)
+             (let ((t9-1 send-event-function)
+                   (v1-7 (-> self door-plat)))
+               (t9-1 (if v1-7 (-> v1-7 extra process)) a1-1))))
+          (else
+           (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-2 from) self)
+             (set! (-> a1-2 num-params) 0)
+             (set! (-> a1-2 message) 'untrigger)
+             (let ((t9-2 send-event-function)
+                   (v1-11 (-> self door)))
+               (t9-2 (if v1-11 (-> v1-11 extra process)) a1-2)))
+           (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-3 from) self)
+             (set! (-> a1-3 num-params) 0)
+             (set! (-> a1-3 message) 'untrigger)
+             (let ((t9-3 send-event-function)
+                   (v1-15 (-> self door-plat)))
+               (t9-3 (if v1-15 (-> v1-15 extra process)) a1-3)))))
+        (go qbert-plat-master-idle))
+      (set-time! (-> self state-time))
       (cond
         (arg0
-          (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-0 from) self)
-            (set! (-> a1-0 num-params) 0)
-            (set! (-> a1-0 message) 'trigger)
-            (let ((t9-0 send-event-function)
-                  (v1-3 (-> self door))
-                  )
-              (t9-0
-                (if v1-3
-                    (-> v1-3 extra process)
-                    )
-                a1-0
-                )
-              )
-            )
-          (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-1 from) self)
-            (set! (-> a1-1 num-params) 0)
-            (set! (-> a1-1 message) 'trigger)
-            (let ((t9-1 send-event-function)
-                  (v1-7 (-> self door-plat))
-                  )
-              (t9-1
-                (if v1-7
-                    (-> v1-7 extra process)
-                    )
-                a1-1
-                )
-              )
-            )
-          )
+         (ambient-hint-spawn "gamcam08" (the-as vector #f) *entity-pool* 'camera)
+         (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-open" 0 #f '() :to self)
+         (until (time-elapsed? (-> self state-time) (seconds 1.4))
+           (suspend)))
         (else
-          (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-2 from) self)
-            (set! (-> a1-2 num-params) 0)
-            (set! (-> a1-2 message) 'untrigger)
-            (let ((t9-2 send-event-function)
-                  (v1-11 (-> self door))
-                  )
-              (t9-2
-                (if v1-11
-                    (-> v1-11 extra process)
-                    )
-                a1-2
-                )
-              )
-            )
-          (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
-            (set! (-> a1-3 from) self)
-            (set! (-> a1-3 num-params) 0)
-            (set! (-> a1-3 message) 'untrigger)
-            (let ((t9-3 send-event-function)
-                  (v1-15 (-> self door-plat))
-                  )
-              (t9-3
-                (if v1-15
-                    (-> v1-15 extra process)
-                    )
-                a1-3
-                )
-              )
-            )
-          )
-        )
-      (go qbert-plat-master-idle)
-      )
-    (set-time! (-> self state-time))
-    (cond
-      (arg0
-        (ambient-hint-spawn "gamcam08" (the-as vector #f) *entity-pool* 'camera)
-        (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-open" 0 #f '() :to self)
-        (until (time-elapsed? (-> self state-time) (seconds 1.4))
-          (suspend)
-          )
-        )
-      (else
-        (ambient-hint-spawn "gamcam07" (the-as vector #f) *entity-pool* 'camera)
-        (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-close" 0 #f '() :to self)
-        (until (time-elapsed? (-> self state-time) (seconds 1))
-          (suspend)
-          )
-        )
-      )
-    (cond
-      (arg0
-        (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-12 from) self)
-          (set! (-> a1-12 num-params) 0)
-          (set! (-> a1-12 message) 'trigger)
-          (let ((t9-13 send-event-function)
-                (v1-41 (-> self door))
-                )
-            (t9-13
-              (if v1-41
-                  (-> v1-41 extra process)
-                  )
-              a1-12
-              )
-            )
-          )
-        (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-13 from) self)
-          (set! (-> a1-13 num-params) 0)
-          (set! (-> a1-13 message) 'trigger)
-          (let ((t9-14 send-event-function)
-                (v1-45 (-> self door-plat))
-                )
-            (t9-14
-              (if v1-45
-                  (-> v1-45 extra process)
-                  )
-              a1-13
-              )
-            )
-          )
-        )
-      (else
-        (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-14 from) self)
-          (set! (-> a1-14 num-params) 0)
-          (set! (-> a1-14 message) 'untrigger)
-          (let ((t9-15 send-event-function)
-                (v1-49 (-> self door))
-                )
-            (t9-15
-              (if v1-49
-                  (-> v1-49 extra process)
-                  )
-              a1-14
-              )
-            )
-          )
-        (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
-          (set! (-> a1-15 from) self)
-          (set! (-> a1-15 num-params) 0)
-          (set! (-> a1-15 message) 'untrigger)
-          (let ((t9-16 send-event-function)
-                (v1-53 (-> self door-plat))
-                )
-            (t9-16
-              (if v1-53
-                  (-> v1-53 extra process)
-                  )
-              a1-15
-              )
-            )
-          )
-        (set! (-> self play-door-cam?) #f)
-        )
-      )
-    (go qbert-plat-master-idle)
-    )
-  )
+         (ambient-hint-spawn "gamcam07" (the-as vector #f) *entity-pool* 'camera)
+         (process-spawn pov-camera (-> self root trans) *sunkencam-sg* "qbert-show-door-close" 0 #f '() :to self)
+         (until (time-elapsed? (-> self state-time) (seconds 1))
+           (suspend))))
+      (cond
+        (arg0
+         (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-12 from) self)
+           (set! (-> a1-12 num-params) 0)
+           (set! (-> a1-12 message) 'trigger)
+           (let ((t9-13 send-event-function)
+                 (v1-41 (-> self door)))
+             (t9-13 (if v1-41 (-> v1-41 extra process)) a1-12)))
+         (let ((a1-13 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-13 from) self)
+           (set! (-> a1-13 num-params) 0)
+           (set! (-> a1-13 message) 'trigger)
+           (let ((t9-14 send-event-function)
+                 (v1-45 (-> self door-plat)))
+             (t9-14 (if v1-45 (-> v1-45 extra process)) a1-13))))
+        (else
+         (let ((a1-14 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-14 from) self)
+           (set! (-> a1-14 num-params) 0)
+           (set! (-> a1-14 message) 'untrigger)
+           (let ((t9-15 send-event-function)
+                 (v1-49 (-> self door)))
+             (t9-15 (if v1-49 (-> v1-49 extra process)) a1-14)))
+         (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-15 from) self)
+           (set! (-> a1-15 num-params) 0)
+           (set! (-> a1-15 message) 'untrigger)
+           (let ((t9-16 send-event-function)
+                 (v1-53 (-> self door-plat)))
+             (t9-16 (if v1-53 (-> v1-53 extra process)) a1-15)))
+         (set! (-> self play-door-cam?) #f)))
+      (go qbert-plat-master-idle)))
 
 (defstate qbert-plat-master-wait-for-door (qbert-plat-master)
-  :code (behavior ()
-    (loop
-      (let* ((v1-0 (-> self door))
-             (gp-0 (if v1-0
-                       (-> v1-0 extra process)
-                       )
-                   )
-             (v1-2 (-> self door-plat))
-             (s5-0 (if v1-2
-                       (-> v1-2 extra process)
-                       )
-                   )
-             )
-        (when (and gp-0 s5-0)
-          (logclear! (-> s5-0 mask) (process-mask platform))
-          (when (-> self puzzle-beaten?)
-            (suspend)
-            (send-event gp-0 'trigger)
-            (send-event s5-0 'trigger)
-            )
-          (go qbert-plat-master-idle)
-          )
-        )
-      (suspend)
-      )
-    )
-  )
+  :code
+    (behavior ()
+      (loop
+        (let* ((v1-0 (-> self door))
+               (gp-0 (if v1-0 (-> v1-0 extra process)))
+               (v1-2 (-> self door-plat))
+               (s5-0 (if v1-2 (-> v1-2 extra process))))
+          (when (and gp-0 s5-0)
+            (logclear! (-> s5-0 mask) (process-mask platform))
+            (when (-> self puzzle-beaten?)
+              (suspend)
+              (send-event gp-0 'trigger)
+              (send-event s5-0 'trigger))
+            (go qbert-plat-master-idle)))
+        (suspend))))
 
 (defmethod init-from-entity! ((this qbert-plat-master) (arg0 entity-actor))
   (set! (-> this last-plat-triggered) -1)
@@ -710,9 +449,7 @@
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (set! (-> this link) (new 'process 'actor-link-info this))
-  (set! (-> this plat-states-needed-to-open-door)
-        (the-as uint (get-matching-actor-type-mask (-> this link) qbert-plat))
-        )
+  (set! (-> this plat-states-needed-to-open-door) (the-as uint (get-matching-actor-type-mask (-> this link) qbert-plat)))
   (set! (-> this door) (entity-actor-lookup arg0 'alt-actor 0))
   (set! (-> this door-plat) (entity-actor-lookup arg0 'alt-actor 1))
   (set-vector! (-> this bounds-start) -39034.88 0.0 27729.92 1.0)
@@ -723,9 +460,6 @@
     (set! (-> this puzzle-beaten?) v1-11)
     (when v1-11
       (set! (-> this plat-states) (-> this plat-states-needed-to-open-door))
-      (set! (-> this play-door-cam?) #f)
-      )
-    )
+      (set! (-> this play-door-cam?) #f)))
   (go qbert-plat-master-wait-for-door)
-  (none)
-  )
+  (none))

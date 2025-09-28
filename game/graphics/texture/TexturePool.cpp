@@ -10,8 +10,9 @@
 #include "game/graphics/pipelines/opengl.h"
 #include "game/graphics/texture/jak1_tpage_dir.h"
 #include "game/graphics/texture/jak2_tpage_dir.h"
+#include "game/graphics/texture/jak3_tpage_dir.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/format.h"
 #include "third-party/imgui/imgui.h"
 
 namespace {
@@ -312,6 +313,8 @@ const std::vector<u32>& get_tpage_dir(GameVersion version) {
       return get_jak1_tpage_dir();
     case GameVersion::Jak2:
       return get_jak2_tpage_dir();
+    case GameVersion::Jak3:
+      return get_jak3_tpage_dir();
     default:
       ASSERT(false);
   }
@@ -379,7 +382,7 @@ void TexturePool::draw_debug_for_tex(const std::string& name, GpuTexture* tex, u
   if (ImGui::TreeNode(fmt::format("{}) {}", slot, name).c_str())) {
     ImGui::Text("P: %s sz: %d x %d", get_debug_texture_name(tex->tex_id).c_str(), tex->w, tex->h);
     if (!tex->is_placeholder) {
-      ImGui::Image((void*)(u64)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
+      ImGui::Image((ImTextureID)(intptr_t)tex->gpu_textures.at(0).gl, ImVec2(tex->w, tex->h));
     } else {
       ImGui::Text("PLACEHOLDER");
     }
@@ -397,6 +400,8 @@ PcTextureId TexturePool::allocate_pc_port_texture(GameVersion version) {
       return PcTextureId(get_jak1_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
     case GameVersion::Jak2:
       return PcTextureId(get_jak2_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
+    case GameVersion::Jak3:
+      return PcTextureId(get_jak3_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
     default:
       ASSERT_NOT_REACHED();
   }
@@ -407,6 +412,15 @@ std::string TexturePool::get_debug_texture_name(PcTextureId id) {
   if (it) {
     return *it;
   } else {
-    return "???";
+    return "??? (missing PC id to name mapping)";
+  }
+}
+
+std::string TexturePool::get_debug_texture_name_from_tbp(u32 tbp) {
+  auto info = lookup_gpu_texture(tbp);
+  if (!info) {
+    return "??? (bad tbp)";
+  } else {
+    return get_debug_texture_name(info->tex_id);
   }
 }

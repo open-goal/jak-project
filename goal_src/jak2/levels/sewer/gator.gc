@@ -274,12 +274,12 @@
   )
 
 ;; WARN: Return type mismatch vector vs none.
-(defmethod track-target! ((this gator))
+(defmethod common-post ((this gator))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((func (method-of-type nav-enemy track-target!)))
+  (let ((func (method-of-type nav-enemy common-post)))
     (func this)
     )
   (adjust-depth! this)
@@ -351,7 +351,7 @@
       )
     )
   :code (behavior ()
-    (let ((circle-for (get-rand-float-range self 0.9 1.1)))
+    (let ((circle-for (rnd-float-range self 0.9 1.1)))
       (until #f
         (encircle-target! self 2.0 0.5 #t)
         (suspend)
@@ -366,7 +366,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (let ((_self self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> _self enemy-flags)))
           (set! (-> _self enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag38) (-> _self enemy-flags))))
@@ -393,8 +393,8 @@
       )
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -409,7 +409,7 @@
     (cond
       ((-> self lock-nav-target)
        )
-      ((or (logtest? (-> self enemy-flags) (enemy-flag look-at-focus))
+      ((or (logtest? (-> self enemy-flags) (enemy-flag victory))
            (logtest? (-> self nav state flags) (nav-state-flag at-target))
            )
        (set! (-> self lock-nav-target) #t)
@@ -471,7 +471,7 @@
 (defstate pacing (gator)
   :virtual #t
   :code (behavior ()
-    (let ((circle-for? (get-rand-float-range self 0.9 1.1)))
+    (let ((circle-for? (rnd-float-range self 0.9 1.1)))
       (until #f
         (encircle-target! self 2.0 0.5 #f)
         (suspend)
@@ -498,7 +498,7 @@
         )
     )
   :code (behavior ()
-    (let ((circle-for? (get-rand-float-range self 0.9 1.1)))
+    (let ((circle-for? (rnd-float-range self 0.9 1.1)))
       (until #f
         (encircle-target! self 2.0 0.5 #f)
         (suspend)

@@ -1,0 +1,10 @@
+("CTB.DGO"
+ ("ctyslumb-part.o"
+  "tpage-166.go"
+  "tpage-165.go"
+  "tpage-1743.go"
+  "tpage-162.go"
+  "tpage-159.go"
+  "cty-door-ag.go"
+  "ctyslumb-vis.go"
+ ))

@@ -200,6 +200,7 @@
 
 ;; definition for function disasm-vif-details
 (defun disasm-vif-details ((arg0 symbol) (arg1 (pointer uint8)) (arg2 vif-cmd) (arg3 int))
+  "Disassemble the data stored in a vif unpack."
   (let ((s4-0 arg3))
     (cond
       ((= arg2 (vif-cmd unpack-v4-8))
@@ -308,6 +309,7 @@
 ;; definition for function disasm-vif-tag
 ;; INFO: Used lq/sq
 (defun disasm-vif-tag ((arg0 (pointer vif-tag)) (arg1 int) (arg2 symbol) (arg3 symbol))
+  "Disassemble vif tag, and possibly the associated data."
   (local-vars (sv-16 vif-cmd) (sv-32 (pointer vif-tag)) (sv-48 int) (sv-64 vif-unpack-imm))
   (let ((gp-0 0))
     (while (< gp-0 (* arg1 4))
@@ -445,12 +447,13 @@
 
 ;; definition for function disasm-dma-tag
 ;; WARN: Return type mismatch object vs none.
-(defun disasm-dma-tag ((arg0 dma-tag) (arg1 symbol))
-  (format arg1 "(dma-tag ")
+(defun disasm-dma-tag ((tag dma-tag) (format-dest symbol))
+  "Disassemble just the 64-byte dma tag"
+  (format format-dest "(dma-tag ")
   (let ((t9-1 format)
-        (a0-2 arg1)
+        (a0-2 format-dest)
         (a1-2 "~s")
-        (v1-1 (-> arg0 id))
+        (v1-1 (-> tag id))
         )
     (t9-1 a0-2 a1-2 (cond
                       ((= v1-1 (dma-tag-id refe))
@@ -483,22 +486,22 @@
                       )
           )
     )
-  (if (> (-> arg0 addr) 0)
-      (format arg1 " :addr #x~8x" (-> arg0 addr))
+  (if (> (-> tag addr) 0)
+      (format format-dest " :addr #x~8x" (-> tag addr))
       )
-  (if (> (-> arg0 qwc) 0)
-      (format arg1 " :qwc ~d" (-> arg0 qwc))
+  (if (> (-> tag qwc) 0)
+      (format format-dest " :qwc ~d" (-> tag qwc))
       )
-  (if (> (-> arg0 spr) 0)
-      (format arg1 " :spr ~d" (-> arg0 spr))
+  (if (> (-> tag spr) 0)
+      (format format-dest " :spr ~d" (-> tag spr))
       )
-  (if (> (-> arg0 irq) 0)
-      (format arg1 " :irq ~d" (-> arg0 irq))
+  (if (> (-> tag irq) 0)
+      (format format-dest " :irq ~d" (-> tag irq))
       )
-  (if (> (-> arg0 pce) 0)
-      (format arg1 " :pce ~d" (-> arg0 pce))
+  (if (> (-> tag pce) 0)
+      (format format-dest " :pce ~d" (-> tag pce))
       )
-  (format arg1 ")~%")
+  (format format-dest ")~%")
   (none)
   )
 
@@ -509,6 +512,10 @@
 ;; WARN: Check prologue - tricky store of a0
 ;; INFO: Used lq/sq
 (defun disasm-dma-list ((arg0 dma-packet) (arg1 symbol) (arg2 symbol) (arg3 symbol) (arg4 int))
+  "Print out an entire DMA list.
+   If mode is #t, print vif tags too. If mode is 'details, also print data unpacked by vif-tags.
+   If verbose is #t, print out the addresses of each tag, and total size statistics.
+   If expected size is negative, it is ignored. Otherwise, only disassemble this much dma data."
   (local-vars
     (sv-16 object)
     (sv-32 dma-packet)

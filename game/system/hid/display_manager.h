@@ -10,28 +10,27 @@
 #include "game/settings/settings.h"
 #include "game/system/hid/input_manager.h"
 
-#include "third-party/SDL/include/SDL.h"
+#include "third-party/SDL/include/SDL3/SDL.h"
 
 /*
 TODO:
   - hiDPI support, see https://wiki.libsdl.org/SDL2/SDL_GetRendererOutputSize
 */
 
-enum class WindowDisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
-
 enum class WindowState { Minimized, Maximized, Restored };
 
 enum class Orientation { Landscape, LandscapeFlipped, Portrait, PortraitFlipped, Unknown };
 
-/// https://wiki.libsdl.org/SDL2/SDL_DisplayMode
+/// https://wiki.libsdl.org/SDL3/SDL_DisplayMode
 struct DisplayMode {
+  SDL_DisplayID sdl_display_id;
   std::string display_name;
-  /// https://wiki.libsdl.org/SDL2/SDL_PixelFormatEnum
+  /// https://wiki.libsdl.org/SDL3/SDL_PixelFormat
   uint32_t sdl_pixel_format;
   int screen_width;
   int screen_height;
   /// refresh rate (in Hz), or 0 for unspecified
-  int refresh_rate;
+  float refresh_rate;
   Orientation orientation;
 };
 
@@ -47,16 +46,14 @@ struct Resolution {
 /// Manages display related operations and querying
 class DisplayManager {
  private:
-  enum class EEDisplayEventType {
-    SET_WINDOW_SIZE,
-    SET_WINDOW_DISPLAY_MODE,
-    SET_FULLSCREEN_DISPLAY_ID
-  };
-
+  enum class EEDisplayEventType { SET_WINDOW_SIZE, SET_DISPLAY_MODE, SET_DISPLAY_ID };
+  game_settings::DisplaySettings::DisplayMode m_previous_fullscreen_display_mode =
+      game_settings::DisplaySettings::DisplayMode::Fullscreen;
   struct EEDisplayEvent {
     EEDisplayEventType type;
-    std::variant<bool, int, WindowDisplayMode> param1;
-    std::variant<bool, int, WindowDisplayMode> param2;
+    std::variant<bool, int, game_settings::DisplaySettings::DisplayMode> param1;
+    std::variant<bool, int> param2;
+    std::variant<int> param3;
   };
 
  public:
@@ -69,7 +66,7 @@ class DisplayManager {
   /// event so it can be ran from the proper thread context (the graphics thread)
   void process_ee_events();
 
-  // Accessors
+  int get_active_display_index() { return m_display_settings.display_id; }
   bool is_window_active() { return m_window != nullptr; }
   bool is_minimized() { return m_window_state == WindowState::Minimized; }
   int get_window_width() { return m_window_width; }
@@ -83,14 +80,20 @@ class DisplayManager {
   int get_active_display_refresh_rate();
   int get_screen_width();
   int get_screen_height();
-  WindowDisplayMode get_window_display_mode() { return m_window_display_mode; }
-  int get_num_resolutions() { return m_available_resolutions.size(); }
-  Resolution get_resolution(int id);
+  game_settings::DisplaySettings::DisplayMode get_display_mode() {
+    return m_display_settings.display_mode;
+  }
+  int get_num_resolutions(bool for_window_size);
+  Resolution get_resolution(int id, bool for_window_size);
+  bool is_supported_resolution(int width, int height);
 
   // Mutators
   void enqueue_set_window_size(int width, int height);
-  void enqueue_set_window_display_mode(WindowDisplayMode mode);
-  void enqueue_set_fullscreen_display_id(int display_id);
+  void enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode mode,
+                                       const int window_width,
+                                       const int window_height);
+  void toggle_display_mode();
+  void enqueue_set_display_id(int display_id);
 
   void set_game_size(int width, int height) {
     m_window_game_width = width;
@@ -109,12 +112,6 @@ class DisplayManager {
   std::mutex event_queue_mtx;
   std::queue<EEDisplayEvent> ee_event_queue;
 
-  WindowDisplayMode m_window_display_mode = WindowDisplayMode::Windowed;
-  int m_active_display_id;
-  // This can differ from the active display id, this is set by the game
-  // to explicitly define which monitor the game should be fullscreened with
-  int m_selected_fullscreen_display_id;
-
   int m_window_xpos = 0;
   int m_window_ypos = 0;
   int m_window_width = 0;
@@ -130,8 +127,9 @@ class DisplayManager {
   // the only one that matters is the one the user _currently_ has configured
   //
   // ie. allowing someone to set 150fps on a monitor set to 60hz is not correct
-  std::unordered_map<int, DisplayMode> m_current_display_modes;
+  std::vector<DisplayMode> m_current_display_modes;
   std::vector<Resolution> m_available_resolutions;
+  std::vector<Resolution> m_available_window_sizes;
 
   void initialize_window_position_from_settings();
   void update_curr_display_info();
@@ -139,6 +137,8 @@ class DisplayManager {
   void update_resolutions();
 
   void set_window_size(int width, int height);
-  void set_window_display_mode(WindowDisplayMode mode);
-  void set_fullscreen_display_id(int display_id);
+  void set_display_mode(game_settings::DisplaySettings::DisplayMode mode,
+                        const int window_width,
+                        const int window_height);
+  void set_display_id(int display_id);
 };

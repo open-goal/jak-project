@@ -471,7 +471,7 @@
 
 ;; *user* is defined when goos starts!
 (when *user*
-  (fmt #t "Loading user scripts for user: {}...\n" *user*)
+  ;; (fmt #t "Loading user scripts for user: {}...\n" *user*)
   ;; i'm not sure what naming scheme to use here. user/<name>/user.gs?
   ;; the GOAL one is loaded in Compiler.cpp
   (try-load-file (fmt #f "goal_src/user/{}/user.gs" *user*))
@@ -496,6 +496,8 @@
 ;; a map for joint node names used by art loading code.
 (define *jg-info* (make-string-hash-table))
 
+;; a map for tpages used by texture macros.
+(define *tpage-info* (make-string-hash-table))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  build system      ;;

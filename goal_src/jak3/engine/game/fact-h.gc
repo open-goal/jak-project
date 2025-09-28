@@ -5,5 +5,601 @@
 ;; name in dgo: fact-h
 ;; dgos: GAME
 
+;; +++enemy-option
+(defenum enemy-option
+  :bitfield #t
+  :type uint32
+  (user0              0) ;; 1
+  (user1              1) ;; 2
+  (user2              2) ;; 4
+  (user3              3) ;; 8
+  (user4              4) ;; 16
+  (user5              5) ;; 32
+  (user6              6) ;; 64
+  (user7              7) ;; 128
+  (user8              8) ;; 256
+  (user9              9) ;; 512
+  (user10            10) ;; 1024
+  (user11            11) ;; 2048
+  (user12            12) ;; 4096
+  (user13            13) ;; 8192
+  (user14            14) ;; 16k
+  (user15            15)
+
+  (dormant           16) ;; hi 1
+  (dormant-aware     17) ;; hi 2
+  (ambush            18) ;; hi 4
+  (spawner           19) ;; hi 8
+  (prespawned        20) ;; hi 16
+  (multi-focus       21) ;; hi 32
+  (has-trigger       22)
+  (idle-til-trigger  23) ;; hi 128
+  (knocked-into-water 24) ;; hi 256
+  (water             25) ;; hi 512
+  )
+;; ---enemy-option
+
+
+;; +++actor-option
+(defenum actor-option
+  :bitfield #t
+  :type uint64
+  (blocked           0) ;; 1
+  (spawns-fuel-cell  1) ;; 2
+  (draw-blocker      2) ;; 4
+  (loop              3) ;; 8
+  (reflect           4) ;; 16
+  (wait-for-cue      5) ;; 32
+  (auto-pickup       6) ;; 64
+  (fuel-cell-no-jump 7) ;; 128
+  (suck-in           8) ;; 256
+  (fade-out          9) ;; 512
+  (big-collision    10) ;; 1024
+  (racer-only       11) ;; 2048
+  (no-reaction      12) ;; 4096
+  (no-shadow        13) ;; 8192
+  (wait-for-task-complete 14) ;; 16384
+  (respawn-delay    15) ;; 32768
+
+  (no-amb-sound     16) ;; hi 1
+  (user17           17) ;; hi 2
+  (user18           18) ;; hi 4
+  (user19           19) ;; hi 8
+  (user20           20) ;; hi 16
+  (cond-hide        21) ;; hi 32
+  (cond-respawn     22) ;; hi 64
+  (fall             23) ;; hi 128
+  (mirror           24) ;; hi 256
+  (cond-low-ammo             25) ;; hi 512
+  (no-distance-check-fadeout 26) ;; 1024
+  (no-track                  27) ;; hi 2048
+  (dont-override-fact        28)
+  )
+;; ---actor-option
+
+
+(declare-type actor-group inline-array-class)
+(define-extern process-task-mask (function process task-mask))
+(declare-type process-focusable process-drawable)
+
 ;; DECOMP BEGINS
 
+(deftype fact-bank (basic)
+  ((eco-level-max               float)
+   (eco-single-inc              float)
+   (eco-full-inc                float)
+   (eco-single-timeout          seconds)
+   (eco-full-timeout            seconds)
+   (dummy                       seconds)
+   (health-max-default          float)
+   (health-max-max              float)
+   (health-small-inc            float)
+   (health-single-inc           float)
+   (health-default-inc          float)
+   (health-darkjak-inc          float)
+   (health-darkjak-min          float)
+   (health-darkjak-error        float)
+   (eco-pill-green-max-default  float)
+   (eco-pill-dark-max-default   float)
+   (eco-pill-light-max-default  float)
+   (eco-green-max-default       float)
+   (default-eco-pill-green-inc  float)
+   (default-eco-pill-dark-inc   float)
+   (default-eco-pill-light-inc  float)
+   (buzzer-max-default          float)
+   (buzzer-single-inc           float)
+   (suck-bounce-dist            meters)
+   (suck-suck-dist              meters)
+   (ammo-yellow-max             float)
+   (ammo-red-max                float)
+   (ammo-blue-max               float)
+   (ammo-dark-max               float)
+   (ammo-yellow-start           float)
+   (ammo-red-start              float)
+   (ammo-blue-start             float)
+   (ammo-dark-start             float)
+   (shield-max                  float)
+   (shield-use-speed            float)
+   (shield-time-min             seconds)
+   (trick-point-max             float)
+   (super-skill-inc             float)
+   (lightjak-regen-inc          float)
+   (lightjak-swoop-inc          float)
+   (lightjak-freeze-inc         float)
+   (lightjak-freeze-min         float)
+   (lightjak-freeze-duration    seconds)
+   (lightjak-shield-inc         float)
+   (lightjak-shield-hit-inc     float)
+   (darkjak-spin-inc            float)
+   (darkjak-punch-inc           float)
+   (darkjak-flop-inc            float)
+   (darkjak-uppercut-inc        float)
+   (darkjak-bomb0-inc           float)
+   (darkjak-bomb1-inc           float)
+   (darkjak-smack-inc           float)
+   (darkjak-bomb-min            float)
+   (darkjak-button-invis-inc    float)
+   )
+  )
+
+
+(define *FACT-bank* (new 'static 'fact-bank
+                      :eco-level-max 2.0
+                      :eco-single-inc 1.0
+                      :eco-full-inc 5.0
+                      :eco-single-timeout (seconds 5)
+                      :eco-full-timeout (seconds 20)
+                      :dummy (seconds 15)
+                      :health-max-default 8.0
+                      :health-max-max 16.0
+                      :health-small-inc 1.0
+                      :health-single-inc 1.0
+                      :health-default-inc 2.0
+                      :health-darkjak-inc 0.1
+                      :health-darkjak-min 1.05
+                      :health-darkjak-error 0.05
+                      :eco-pill-green-max-default 50.0
+                      :eco-pill-dark-max-default 100.0
+                      :eco-pill-light-max-default 100.0
+                      :eco-green-max-default 100.0
+                      :buzzer-max-default 7.0
+                      :buzzer-single-inc 1.0
+                      :suck-bounce-dist (meters 18)
+                      :suck-suck-dist (meters 7.5)
+                      :ammo-yellow-max 100.0
+                      :ammo-red-max 50.0
+                      :ammo-blue-max 100.0
+                      :ammo-dark-max 5.0
+                      :ammo-yellow-start 100.0
+                      :ammo-red-start 20.0
+                      :ammo-blue-start 100.0
+                      :ammo-dark-start 5.0
+                      :shield-max 100.0
+                      :shield-use-speed 10.0
+                      :shield-time-min (seconds 1.5)
+                      :trick-point-max 999999.0
+                      :super-skill-inc 3.0
+                      :lightjak-swoop-inc 1.0
+                      :lightjak-freeze-inc 50.0
+                      :lightjak-freeze-min 2.0
+                      :lightjak-freeze-duration (seconds 15)
+                      :lightjak-shield-inc 3.0
+                      :lightjak-shield-hit-inc 2.0
+                      :darkjak-spin-inc 4.0
+                      :darkjak-punch-inc 4.0
+                      :darkjak-flop-inc 6.0
+                      :darkjak-uppercut-inc 6.0
+                      :darkjak-bomb0-inc 100.0
+                      :darkjak-bomb1-inc 100.0
+                      :darkjak-smack-inc 15.0
+                      :darkjak-bomb-min 50.0
+                      :darkjak-button-invis-inc 20.0
+                      )
+        )
+
+(defun-debug pickup-type->string ((arg0 pickup-type))
+  (case arg0
+    (((pickup-type eco-pill-dark))
+     "eco-pill-dark"
+     )
+    (((pickup-type ammo-dark-light-random))
+     "ammo-dark-light-random"
+     )
+    (((pickup-type ammo-random))
+     "ammo-random"
+     )
+    (((pickup-type eco-blue))
+     "eco-blue"
+     )
+    (((pickup-type gun-yellow-1))
+     "gun-yellow-1"
+     )
+    (((pickup-type pass-red))
+     "pass-red"
+     )
+    (((pickup-type eco-pill-green))
+     "eco-pill-green"
+     )
+    (((pickup-type eco-red))
+     "eco-red"
+     )
+    (((pickup-type dark-eco-crystal))
+     "dark-eco-crystal"
+     )
+    (((pickup-type skill))
+     "skill"
+     )
+    (((pickup-type karma))
+     "karma"
+     )
+    (((pickup-type eco-dark))
+     "eco-dark"
+     )
+    (((pickup-type gun-red-3))
+     "gun-red-3"
+     )
+    (((pickup-type gun-dark-1))
+     "gun-dark-1"
+     )
+    (((pickup-type gun-yellow-3))
+     "gun-yellow-3"
+     )
+    (((pickup-type gem))
+     "gem"
+     )
+    (((pickup-type eco-green))
+     "eco-green"
+     )
+    (((pickup-type darkjak))
+     "darkjak"
+     )
+    (((pickup-type ammo-yellow))
+     "ammo-yellow"
+     )
+    (((pickup-type gun-blue-1))
+     "gun-blue-1"
+     )
+    (((pickup-type pass-blue))
+     "pass-blue"
+     )
+    (((pickup-type ammo-light-random))
+     "ammo-light-random"
+     )
+    (((pickup-type gun-dark-2))
+     "gun-dark-2"
+     )
+    (((pickup-type ammo-red))
+     "ammo-red"
+     )
+    (((pickup-type lightjak))
+     "lightjak"
+     )
+    (((pickup-type fuel-cell))
+     "fuel-cell"
+     )
+    (((pickup-type gun-blue-2))
+     "gun-blue-2"
+     )
+    (((pickup-type buzzer))
+     "buzzer"
+     )
+    (((pickup-type gun-dark-3))
+     "gun-dark-3"
+     )
+    (((pickup-type gun-red-1))
+     "gun-red-1"
+     )
+    (((pickup-type gun-blue-3))
+     "gun-blue-3"
+     )
+    (((pickup-type shield))
+     "shield"
+     )
+    (((pickup-type eco-pill-random))
+     "eco-pill-random"
+     )
+    (((pickup-type health-max))
+     "health-max"
+     )
+    (((pickup-type light-eco-crystal))
+     "light-eco-crystal"
+     )
+    (((pickup-type board))
+     "board"
+     )
+    (((pickup-type none))
+     "none"
+     )
+    (((pickup-type pass-green))
+     "pass-green"
+     )
+    (((pickup-type light-random))
+     "light-random"
+     )
+    (((pickup-type gun-yellow-2))
+     "gun-yellow-2"
+     )
+    (((pickup-type pass-slumb-genb))
+     "pass-slumb-genb"
+     )
+    (((pickup-type money))
+     "money"
+     )
+    (((pickup-type eco-yellow))
+     "eco-yellow"
+     )
+    (((pickup-type ammo-dark))
+     "ammo-dark"
+     )
+    (((pickup-type trick-judge))
+     "trick-judge"
+     )
+    (((pickup-type eco-pill-light))
+     "eco-pill-light"
+     )
+    (((pickup-type trick-point))
+     "trick-point"
+     )
+    (((pickup-type ammo-blue))
+     "ammo-blue"
+     )
+    (((pickup-type pass-yellow))
+     "pass-yellow"
+     )
+    (((pickup-type gun-red-2))
+     "gun-red-2"
+     )
+    (((pickup-type health))
+     "health"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(deftype fact-info (basic)
+  ((process              process)
+   (pickup-type          pickup-type)
+   (pickup-amount        float)
+   (pickup-spawn-amount  float)
+   (options              actor-option)
+   (fade-time            time-frame)
+   )
+  (:methods
+    (new (symbol type process pickup-type float) _type_)
+    (drop-pickup (_type_ symbol process-tree fact-info int symbol) (pointer process))
+    (reset! (_type_ symbol) none)
+    (pickup-collectable! (_type_ pickup-type float handle) float)
+    )
+  )
+
+
+(deftype fact-info-target (fact-info)
+  ((process                     target :override)
+   (eco-type                    int32)
+   (eco-level                   float)
+   (eco-pickup-time             time-frame)
+   (eco-timeout                 seconds)
+   (eco-source                  handle)
+   (eco-source-time             time-frame)
+   (health                      float)
+   (health-max                  float)
+   (health-pickup-time          time-frame)
+   (buzzer                      float)
+   (buzzer-max                  float)
+   (eco-pill-green              float)
+   (eco-pill-green-max          float)
+   (eco-pill-green-pickup-time  time-frame)
+   (eco-pill-dark-pickup-time   time-frame)
+   (eco-pill-light-pickup-time  time-frame)
+   (money-pickup-time           time-frame)
+   (buzzer-pickup-time          time-frame)
+   (task-pickup-time            time-frame)
+   (stop-time-timeout           time-frame)
+   (darkjak-start-time          time-frame)
+   (darkjak-effect-time         time-frame)
+   (lightjak-start-time         time-frame)
+   (lightjak-effect-time        time-frame)
+   (ammo-pickup-time            time-frame)
+   (shield-pickup-time          time-frame)
+   (shield-start-time           time-frame)
+   (shield-use-time             time-frame)
+   (shield-level                float)
+   (shield-attack-id            uint32)
+   (trick-point                 float)
+   (trick-point-pickup-time     time-frame)
+   (trick-point-start-time      time-frame)
+   (trick-point-duration        time-frame)
+   (gem-pickup-time             time-frame)
+   (skill-pickup-time           time-frame)
+   (karma-pickup-time           time-frame)
+   (eco-green                   float)
+   (eco-green-max               float)
+   (eco-green-pickup-time       time-frame)
+   )
+  (:methods
+    (new (symbol type process-drawable pickup-type float) _type_)
+    (get-gun-ammo (_type_) float)
+    )
+  )
+
+
+(deftype fact-info-enemy (fact-info)
+  ((speed             float)
+   (idle-distance     meters)
+   (notice-top        meters)
+   (notice-bottom     meters)
+   (cam-horz          meters)
+   (cam-vert          meters)
+   (cam-notice-dist   meters)
+   (enemy-options     enemy-option)
+   (trig-dist         meters)
+   (trig-actor-group  (pointer actor-group))
+   (trig-mask-count   int8)
+   (trig-mask         uint8  2)
+   )
+  (:methods
+    (new (symbol type process (pointer float)) _type_)
+    (clear-mask-bits (_type_ int) none)
+    )
+  )
+
+
+(deftype fact-info-crate (fact-info)
+  ((suck-count  int32)
+   )
+  (:methods
+    (new (symbol type process pickup-type float) _type_)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs fact-info.
+(defmethod new fact-info ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
+  (local-vars (sv-16 fact-info) (sv-20 res-lump) (sv-24 task-mask))
+  (set! sv-16 (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+  (set! sv-20 (the-as res-lump (-> arg0 entity)))
+  (set! sv-24 (process-task-mask arg0))
+  (when (zero? sv-16)
+    (go process-drawable-art-error "memory")
+    (return (the-as fact-info 0))
+    )
+  (set! (-> sv-16 process) arg0)
+  (set! (-> sv-16 pickup-type) arg1)
+  (set! (-> sv-16 pickup-amount) arg2)
+  (let ((s4-1 (-> (lookup-tag-idx sv-20 'eco-info 'base -1000000000.0) lo)))
+    (when (>= (the-as int s4-1) 0)
+      (let ((s3-0 (the-as int s4-1))
+            (s2-0 (-> sv-20 tag s4-1))
+            )
+        0
+        (while (= (-> s2-0 name) (-> sv-20 tag s4-1 name))
+          (let ((v1-17 (make-property-data sv-20 0.0 (the-as res-tag-pair s3-0) (the-as pointer #f)))
+                (a0-7 (the int (-> s2-0 key-frame)))
+                )
+            (when (or (< a0-7 0) (and (-> arg0 entity) (logtest? sv-24 (ash 1 a0-7))))
+              (when v1-17
+                (let ((a0-15 (-> s2-0 elt-count)))
+                  (set! (-> sv-16 pickup-type) (the-as pickup-type (-> (the-as (pointer int32) v1-17))))
+                  (set! (-> sv-16 pickup-amount) (if (< (the-as uint 1) a0-15)
+                                                     (the float (-> (the-as (pointer int32) v1-17) 1))
+                                                     arg2
+                                                     )
+                        )
+                  )
+                )
+              )
+            )
+          (+! s3-0 1)
+          (set! s2-0 (-> sv-20 tag s3-0))
+          )
+        )
+      )
+    )
+  (set! (-> sv-16 options) (res-lump-value sv-20 'options actor-option :time -1000000000.0))
+  (if (logtest? (-> sv-16 options) (actor-option fade-out respawn-delay))
+      (set! (-> sv-16 fade-time) (the-as time-frame (the int (* 300.0 (res-lump-float sv-20 'timeout)))))
+      )
+  (the-as fact-info sv-16)
+  )
+
+(defmethod pickup-collectable! ((this fact-info) (arg0 pickup-type) (arg1 float) (arg2 handle))
+  0.0
+  )
+
+(deftype fact-info-enemy-defaults (basic)
+  ((idle-distance  meters)
+   (pickup-type    int32)
+   (pickup-amount  float)
+   )
+  )
+
+
+(define *fact-info-enemy-defaults*
+  (new 'static 'fact-info-enemy-defaults :idle-distance (meters 80) :pickup-type 9)
+  )
+
+(defmethod new fact-info-enemy ((allocation symbol) (type-to-make type) (arg0 process) (arg1 (pointer float)))
+  (local-vars (sv-16 res-tag) (sv-32 res-tag))
+  (let ((gp-0
+          (the-as
+            fact-info-enemy
+            ((method-of-type fact-info new) allocation type-to-make arg0 (the-as pickup-type (-> arg1 1)) (-> arg1 2))
+            )
+          )
+        )
+    (let ((s5-0 (-> gp-0 process entity)))
+      (set! (-> gp-0 speed) (res-lump-float s5-0 'speed :default 1.0))
+      (set! (-> gp-0 idle-distance) (res-lump-float s5-0 'idle-distance :default (-> arg1 0)))
+      (set! (-> gp-0 notice-top) (res-lump-float s5-0 'notice-top :default 4096000.0))
+      (set! (-> gp-0 notice-bottom) (res-lump-float s5-0 'notice-bottom :default 4096000.0))
+      (set! (-> gp-0 cam-horz) (res-lump-float s5-0 'cam-horz))
+      (set! (-> gp-0 cam-vert) (res-lump-float s5-0 'cam-vert))
+      (set! (-> gp-0 cam-notice-dist) (res-lump-float s5-0 'cam-notice-dist :default -4096.0))
+      (set! (-> gp-0 enemy-options) (res-lump-value s5-0 'enemy-options enemy-option :time -1000000000.0))
+      (let ((s4-1 0))
+        (set! sv-16 (new 'static 'res-tag))
+        (let ((v1-11 (res-lump-data s5-0 'trigger pointer :tag-ptr (& sv-16))))
+          (when v1-11
+            (logior! (-> gp-0 enemy-options) (enemy-option has-trigger))
+            (let ((a0-13 0))
+              (dotimes (a1-11 (the-as int (-> sv-16 elt-count)))
+                (let ((a2-12 (-> (the-as (pointer uint32) (&+ v1-11 (* a1-11 4))))))
+                  (when (and (nonzero? a2-12) (< a0-13 2))
+                    (set! (-> gp-0 trig-mask a0-13) a2-12)
+                    (set! s4-1 (logior s4-1 a2-12))
+                    (+! a0-13 1)
+                    )
+                  )
+                )
+              (set! (-> gp-0 trig-mask-count) a0-13)
+              )
+            )
+          )
+        (set! (-> gp-0 trig-dist) (if (logtest? s4-1 1)
+                                      (res-lump-float s5-0 'trig-dist :default 327680.0)
+                                      327680.0
+                                      )
+              )
+        (when (logtest? s4-1 2)
+          (set! sv-32 (new 'static 'res-tag))
+          (let ((v1-20 (res-lump-data s5-0 'trig-ag pointer :tag-ptr (& sv-32))))
+            (if (and v1-20 (nonzero? (-> sv-32 elt-count)))
+                (set! (-> gp-0 trig-actor-group) (the-as (pointer actor-group) v1-20))
+                (clear-mask-bits gp-0 2)
+                )
+            )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+(defmethod clear-mask-bits ((this fact-info-enemy) (arg0 int))
+  (let ((v1-0 (lognot arg0)))
+    (dotimes (a1-1 (-> this trig-mask-count))
+      (logand! (-> this trig-mask a1-1) v1-0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod new fact-info-crate ((allocation symbol) (type-to-make type) (arg0 process) (arg1 pickup-type) (arg2 float))
+  (let ((gp-0 (the-as fact-info-crate ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (let ((a0-1 (-> gp-0 process entity)))
+      (set! (-> gp-0 suck-count) (res-lump-value a0-1 'suck-count int :time -1000000000.0))
+      )
+    gp-0
+    )
+  )
+
+(defmethod new fact-info-target ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 pickup-type) (arg2 float))
+  (let ((gp-0 (the-as fact-info-target ((method-of-type fact-info new) allocation type-to-make arg0 arg1 arg2))))
+    (set! (-> gp-0 eco-source) (the-as handle #f))
+    (reset! gp-0 #f)
+    gp-0
+    )
+  )

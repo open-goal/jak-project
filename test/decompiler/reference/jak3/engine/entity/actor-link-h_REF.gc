@@ -1,0 +1,434 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function entity-actor-lookup
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch entity vs entity-actor.
+(defun entity-actor-lookup ((arg0 res-lump) (arg1 symbol) (arg2 int))
+  "Given an entity (the res-lump), look up a reference to another entity and return that entity."
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 (res-lump-data arg0 arg1 pointer :tag-ptr (& sv-16))))
+    (the-as
+      entity-actor
+      (when (and v1-1 (< arg2 (the-as int (-> sv-16 elt-count))))
+        (if (= (-> sv-16 elt-type) string)
+            (entity-by-name (the-as string (-> (the-as (pointer uint32) (&+ v1-1 (* arg2 4))))))
+            (entity-by-aid (-> (the-as (pointer uint32) (&+ v1-1 (* arg2 4)))))
+            )
+        )
+      )
+    )
+  )
+
+;; definition for function entity-actor-count
+;; WARN: Check prologue - tricky store of r0
+;; INFO: Used lq/sq
+(defun entity-actor-count ((arg0 res-lump) (arg1 symbol))
+  "Get the number of entities that this res references under the name.
+   This works on more than just next/prev."
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (if (res-lump-data arg0 arg1 pointer :tag-ptr (& sv-16))
+      (the-as int (-> sv-16 elt-count))
+      0
+      )
+  )
+
+;; definition of type actor-link-info
+(deftype actor-link-info (basic)
+  "A linked list of actors.
+
+Actors allocate this on their process heap if they have a
+`next-actor` or `prev-actor` defined in their lump
+and use it for entity lookups."
+  ((process  process)
+   (next     entity-actor)
+   (prev     entity-actor)
+   )
+  (:methods
+    (new (symbol type process symbol) _type_)
+    (get-matching-actor-type-mask (_type_ type) int)
+    (actor-count-before (_type_) int)
+    (link-to-next-and-prev-actor (_type_) actor-link-info)
+    (get-next (_type_) entity-actor)
+    (get-prev (_type_) entity-actor)
+    (get-next-process (_type_) process)
+    (get-prev-process (_type_) process)
+    (apply-function-forward (_type_ (function entity-actor object object) object) int)
+    (apply-function-reverse (_type_ (function entity-actor object object) object) int)
+    (apply-all (_type_ (function entity-actor object object) object) int)
+    (send-to-all (_type_ symbol) none)
+    (send-to-all-after (_type_ symbol) object)
+    (send-to-all-before (_type_ symbol) object)
+    (send-to-next-and-prev (_type_ symbol) none)
+    (send-to-next (_type_ symbol) none)
+    (send-to-prev (_type_ symbol) none)
+    (actor-count (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type actor-link-info
+(defmethod inspect ((this actor-link-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tprocess: ~A~%" (-> this process))
+  (format #t "~1Tnext: ~A~%" (-> this next))
+  (format #t "~1Tprev: ~A~%" (-> this prev))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 27 of type entity-actor
+(defmethod next-actor ((this entity-actor))
+  (entity-actor-lookup this 'next-actor 0)
+  )
+
+;; definition for method 28 of type entity-actor
+(defmethod prev-actor ((this entity-actor))
+  (entity-actor-lookup this 'prev-actor 0)
+  )
+
+;; definition for method 0 of type actor-link-info
+(defmethod new actor-link-info ((allocation symbol) (type-to-make type) (arg0 process) (arg1 symbol))
+  "Set up an actor-link-info for the given process.
+   The entity of this process should be the entity-actor
+   that will get this actor-link-info."
+  (let* ((a0-1 (-> arg0 entity))
+         (s4-0 (entity-actor-lookup a0-1 'next-actor 0))
+         (a0-2 (-> arg0 entity))
+         (s3-0 (entity-actor-lookup a0-2 'prev-actor 0))
+         )
+    (when (or (not arg1) s4-0 s3-0)
+      (let ((v0-2 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+        (set! (-> v0-2 process) arg0)
+        (set! (-> v0-2 next) s4-0)
+        (set! (-> v0-2 prev) s3-0)
+        v0-2
+        )
+      )
+    )
+  )
+
+;; definition for method 12 of type actor-link-info
+(defmethod get-next ((this actor-link-info))
+  (-> this next)
+  )
+
+;; definition for method 13 of type actor-link-info
+(defmethod get-prev ((this actor-link-info))
+  (-> this prev)
+  )
+
+;; definition for method 14 of type actor-link-info
+;; WARN: Return type mismatch basic vs process.
+(defmethod get-next-process ((this actor-link-info))
+  "Get the process for the next, if it exists."
+  (the-as process (and (-> this next) (-> this next extra process)))
+  )
+
+;; definition for method 15 of type actor-link-info
+;; WARN: Return type mismatch basic vs process.
+(defmethod get-prev-process ((this actor-link-info))
+  "Get the process for the prev, if it exists."
+  (the-as process (and (-> this prev) (-> this prev extra process)))
+  )
+
+;; definition for method 11 of type actor-link-info
+(defmethod link-to-next-and-prev-actor ((this actor-link-info))
+  "Redo the linking in the constructor by looking up the next/prev actor."
+  (let ((a0-1 (-> this process entity)))
+    (set! (-> this next) (entity-actor-lookup a0-1 'next-actor 0))
+    )
+  (let ((a0-2 (-> this process entity)))
+    (set! (-> this prev) (entity-actor-lookup a0-2 'prev-actor 0))
+    )
+  this
+  )
+
+;; definition for method 16 of type actor-link-info
+(defmethod apply-function-forward ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
+  "Iterate forward through actors, and apply this function. Starts at (-> this next)
+   If the function returns truthy, stop iterating."
+  (let ((s3-0 (-> this next)))
+    (while s3-0
+      (if (arg0 s3-0 arg1)
+          (return (the-as int #f))
+          )
+      (set! s3-0 (entity-actor-lookup s3-0 'next-actor 0))
+      )
+    )
+  0
+  )
+
+;; definition for method 17 of type actor-link-info
+(defmethod apply-function-reverse ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
+  "Iterate backward through actors and apply function.
+   If the function returns truth, stop iterating."
+  (let ((s3-0 (-> this prev)))
+    (while s3-0
+      (if (arg0 s3-0 arg1)
+          (return (the-as int #f))
+          )
+      (set! s3-0 (entity-actor-lookup s3-0 'prev-actor 0))
+      )
+    )
+  0
+  )
+
+;; definition for method 18 of type actor-link-info
+(defmethod apply-all ((this actor-link-info) (arg0 (function entity-actor object object)) (arg1 object))
+  "Apply to all entities.  Starts at the back and hits everyone, including this object."
+  (let ((s4-0 (-> this process entity)))
+    (while (let ((a0-2 s4-0))
+             (entity-actor-lookup a0-2 'prev-actor 0)
+             )
+      (set! s4-0 (entity-actor-lookup s4-0 'prev-actor 0))
+      )
+    (while s4-0
+      (if (arg0 s4-0 arg1)
+          (return (the-as int #f))
+          )
+      (let ((a0-4 s4-0))
+        (set! s4-0 (entity-actor-lookup a0-4 'next-actor 0))
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 20 of type actor-link-info
+(defmethod send-to-all-after ((this actor-link-info) (arg0 symbol))
+  "Send an event to all processes after this link with no parameters."
+  (with-pp
+    (let ((s4-0 (-> this next))
+          (s5-0 (the-as object #f))
+          )
+      (while s4-0
+        (let ((a0-1 (-> s4-0 extra process)))
+          (when a0-1
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) arg0)
+              (set! s5-0 (or (send-event-function a0-1 a1-1) s5-0))
+              )
+            )
+          )
+        (set! s4-0 (entity-actor-lookup s4-0 'next-actor 0))
+        )
+      s5-0
+      )
+    )
+  )
+
+;; definition for method 21 of type actor-link-info
+(defmethod send-to-all-before ((this actor-link-info) (arg0 symbol))
+  "Send an event to all processes before this link with no parameters."
+  (with-pp
+    (let ((s4-0 (-> this prev))
+          (s5-0 (the-as object #f))
+          )
+      (while s4-0
+        (let ((a0-1 (-> s4-0 extra process)))
+          (when a0-1
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer pp))
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) arg0)
+              (set! s5-0 (or (send-event-function a0-1 a1-1) s5-0))
+              )
+            )
+          )
+        (set! s4-0 (entity-actor-lookup s4-0 'prev-actor 0))
+        )
+      s5-0
+      )
+    )
+  )
+
+;; definition for method 23 of type actor-link-info
+;; WARN: Return type mismatch symbol vs none.
+(defmethod send-to-next ((this actor-link-info) (arg0 symbol))
+  "Send event arg0 to the next actor's process."
+  (let ((a0-1 (-> this next)))
+    (when a0-1
+      (let ((a0-2 (-> a0-1 extra process)))
+        (if a0-2
+            (send-event a0-2 arg0)
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 24 of type actor-link-info
+;; WARN: Return type mismatch symbol vs none.
+(defmethod send-to-prev ((this actor-link-info) (arg0 symbol))
+  "Send event arg1 to the next actor's process."
+  (let ((a0-1 (-> this prev)))
+    (when a0-1
+      (let ((a0-2 (-> a0-1 extra process)))
+        (if a0-2
+            (send-event a0-2 arg0)
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 22 of type actor-link-info
+;; WARN: Return type mismatch symbol vs none.
+(defmethod send-to-next-and-prev ((this actor-link-info) (arg0 symbol))
+  "Send an event to both next and prev with no params."
+  (send-to-next this arg0)
+  (send-to-prev this arg0)
+  (none)
+  )
+
+;; definition for method 19 of type actor-link-info
+;; WARN: Return type mismatch symbol vs none.
+(defmethod send-to-all ((this actor-link-info) (arg0 symbol))
+  (send-to-all-after this arg0)
+  (send-to-all-before this arg0)
+  (none)
+  )
+
+;; definition for method 25 of type actor-link-info
+(defmethod actor-count ((this actor-link-info))
+  "Count the number of actors in the entire list."
+  (let ((s5-0 (-> this process entity))
+        (gp-0 0)
+        )
+    (while (let ((a0-2 s5-0))
+             (entity-actor-lookup a0-2 'prev-actor 0)
+             )
+      (set! s5-0 (entity-actor-lookup s5-0 'prev-actor 0))
+      )
+    (while s5-0
+      (+! gp-0 1)
+      (let ((a0-3 s5-0))
+        (set! s5-0 (entity-actor-lookup a0-3 'next-actor 0))
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for method 9 of type actor-link-info
+(defmethod get-matching-actor-type-mask ((this actor-link-info) (arg0 type))
+  "Iterate through _all_ actors that are part of this actor list.
+   If the nth actor is type matching-type, then set the nth bit of the result."
+  (let ((s3-0 (-> this process entity))
+        (s5-0 0)
+        )
+    (let ((s4-0 1))
+      (while (let ((a0-2 s3-0))
+               (entity-actor-lookup a0-2 'prev-actor 0)
+               )
+        (set! s3-0 (entity-actor-lookup s3-0 'prev-actor 0))
+        )
+      (while s3-0
+        (if (= (-> s3-0 etype) arg0)
+            (set! s5-0 (logior s5-0 s4-0))
+            )
+        (let ((a0-3 s3-0))
+          (set! s3-0 (entity-actor-lookup a0-3 'next-actor 0))
+          )
+        (set! s4-0 (* s4-0 2))
+        )
+      )
+    s5-0
+    )
+  )
+
+;; definition for method 10 of type actor-link-info
+(defmethod actor-count-before ((this actor-link-info))
+  "Get the number of actors before this actor in the list."
+  (let* ((s5-0 (-> this process entity))
+         (s4-0 s5-0)
+         (gp-0 0)
+         )
+    (while (let ((a0-2 s4-0))
+             (entity-actor-lookup a0-2 'prev-actor 0)
+             )
+      (set! s4-0 (entity-actor-lookup s4-0 'prev-actor 0))
+      )
+    (while (!= s4-0 s5-0)
+      (+! gp-0 1)
+      (let ((a0-3 s4-0))
+        (set! s4-0 (entity-actor-lookup a0-3 'next-actor 0))
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for function actor-link-subtask-complete-hook
+(defun actor-link-subtask-complete-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
+  "Sets arg1 if the thing is complete. Does not continue the apply if the complete perm is set."
+  (cond
+    ((logtest? (-> arg0 extra perm status) (entity-perm-status subtask-complete))
+     (set! (-> arg1 0) #t)
+     #f
+     )
+    (else
+      (set! (-> arg1 0) #f)
+      #t
+      )
+    )
+  )
+
+;; definition for function actor-link-subtask-incomplete-count-hook
+(defun actor-link-subtask-incomplete-count-hook ((arg0 entity-actor) (arg1 (pointer uint64)))
+  (cond
+    ((logtest? (-> arg0 extra perm status) (entity-perm-status subtask-complete))
+     #f
+     )
+    (else
+      (+! (-> arg1 0) 1)
+      #f
+      )
+    )
+  )
+
+;; definition for function actor-link-dead-hook
+(defun actor-link-dead-hook ((arg0 entity-actor) (arg1 (pointer symbol)))
+  "Sets arg1 if the thing is dead. Does not continue the apply if the dead perm is set."
+  (cond
+    ((logtest? (-> arg0 extra perm status) (entity-perm-status dead))
+     (set! (-> arg1 0) #t)
+     #f
+     )
+    (else
+      (set! (-> arg1 0) #f)
+      #t
+      )
+    )
+  )
+
+;; definition for function alt-actor-list-subtask-incomplete-count
+(defun alt-actor-list-subtask-incomplete-count ((arg0 process-drawable))
+  "Get the number of alt-actors which do not have the complete bit set in their perm."
+  (let ((s4-0 (entity-actor-count (-> arg0 entity) 'alt-actor))
+        (gp-0 0)
+        )
+    (dotimes (s3-0 s4-0)
+      (let ((a0-3 (entity-actor-lookup (-> arg0 entity) 'alt-actor s3-0)))
+        (if (or (not a0-3) (not (logtest? (-> a0-3 extra perm status) (entity-perm-status subtask-complete))))
+            (+! gp-0 1)
+            )
+        )
+      )
+    gp-0
+    )
+  )
+
+
+
+

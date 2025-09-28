@@ -1,0 +1,646 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type hud-forest-plants
+(deftype hud-forest-plants (hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-forest-plants
+(defmethod inspect ((this hud-forest-plants))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 15 of type hud-forest-plants
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-forest-plants))
+  (set-hud-piece-position! (-> this sprites 2) (the int (+ 422.0 (* 130.0 (-> this offset)))) 160)
+  (set! (-> this sprites 0 angle)
+        (* 182.04445
+           (the float
+                (- 270
+                   (/ (* 90 (the int (* 100.0 (/ (the float (-> this values 0 current)) (the float (-> this values 1 current))))))
+                      100
+                      )
+                   )
+                )
+           )
+        )
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 2 pos) 40 16)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 2 pos) 1 16)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 2 pos) 8 2)
+  (let ((f30-1
+          (the float
+               (+ (the int (* 127.0 (sin (* 182.04445 (the float (* (-> *display* game-clock frame-counter) 2)))))) 127)
+               )
+          )
+        )
+    (set! (-> this sprites 1 color x) (the int (lerp-scale 96.0 128.0 f30-1 0.0 255.0)))
+    (set! (-> this sprites 1 color y) (the int (lerp-scale 128.0 128.0 f30-1 0.0 255.0)))
+    (set! (-> this sprites 1 color z) (the int (lerp-scale 128.0 128.0 f30-1 0.0 255.0)))
+    )
+  (when (>= 10 (-> this values 0 current))
+    (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+    (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 3 pos) 20 62)
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-forest-plants
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-forest-plants))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  (set! (-> this values 1 target) (the int (-> *game-info* goal)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-forest-plants
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-forest-plants))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-transparent-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 12.0)
+  (set! (-> this sprites 0 scale-y) 11.2)
+  (set! (-> this sprites 0 pos z) #xfffff2)
+  (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-purple-bar-01 foresta-minimap)))
+  (set! (-> this sprites 1 pos z) #xfffff0)
+  (set! (-> this sprites 2 tid) (the-as texture-id (get-texture hud-npcring-01 level-default-minimap)))
+  (set! (-> this sprites 2 pos z) #xffffff)
+  (set! (-> this sprites 3 tid) (the-as texture-id (get-texture hud-dark-eco-plant foresta-minimap)))
+  (set! (-> this sprites 3 scale-x) 1.0)
+  (set! (-> this sprites 3 scale-y) 1.4)
+  (set! (-> this sprites 3 pos z) #xffffff)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 1.0)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  0
+  (none)
+  )
+
+;; definition of type hud-green-eco-gauge
+(deftype hud-green-eco-gauge (hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-green-eco-gauge
+(defmethod inspect ((this hud-green-eco-gauge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 15 of type hud-green-eco-gauge
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-green-eco-gauge))
+  (set-hud-piece-position! (-> this sprites 1) 256 (- 40 (the int (* 50.0 (-> this offset)))))
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 1 pos) -55 -5)
+  (set! (-> this sprites 0 pos z) #xfffff1)
+  (set! (-> this sprites 1 pos z) #xfffff2)
+  (let ((f0-5 (if *target*
+                  (/ (-> *target* fact eco-green) (-> *target* fact eco-green-max))
+                  0.0
+                  )
+              )
+        )
+    (set! (-> this sprites 0 color x) 0)
+    (set! (-> this sprites 0 color y) (the int (+ 170.0 (* 85.0 f0-5))))
+    (set! (-> this sprites 0 color z) 0)
+    (set! (-> this sprites 0 color w) 48)
+    (set! (-> this sprites 0 scale-x) (* 28.0 f0-5))
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-green-eco-gauge
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-green-eco-gauge))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-green-eco-gauge
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-green-eco-gauge))
+  (set! (-> this level) (level-get *level* 'wasall))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center-2) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture common-white common)))
+  (set! (-> this sprites 0 flags) (hud-sprite-flags))
+  (set! (-> this sprites 0 scale-x) 0.0)
+  (set! (-> this sprites 0 scale-y) 2.75)
+  (set! (-> this sprites 1 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #x962)))
+        )
+  (set! (-> this sprites 1 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 1 scale-x) 1.0)
+  (set! (-> this sprites 1 scale-y) 1.0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(if #t
+    (set! *eco-width-curve* (new 'static 'curve2d-fast
+                              :xs (new 'static 'vector :y -0.45 :z -0.65 :w -1.0)
+                              :ys (new 'static 'vector :x 0.25 :y 1.0 :z 1.35 :w 0.75)
+                              :one-over-x-deltas (new 'static 'vector :x 1.6666667 :y 1.7500002 :z -1.7142856 :w 1.0)
+                              )
+          )
+    )
+
+;; failed to figure out what this is:
+(if #t
+    (set! *eco-alpha-curve* (new 'static 'curve2d-fast
+                              :xs (new 'static 'vector :y -0.85 :z -1.0 :w -2.0)
+                              :ys (new 'static 'vector :x 1.0 :w 1.0)
+                              :one-over-x-deltas (new 'static 'vector :x -1.1764705 :z 1.0 :w 1.0)
+                              )
+          )
+    )
+
+;; failed to figure out what this is:
+(if #t
+    (set! *eco-color-curve-green* (new 'static 'curve-color-fast
+                                    :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                    :ys (new 'static 'inline-array vector 4
+                                      (new 'static 'vector :y 1.0 :w 128.0)
+                                      (new 'static 'vector :y 1.0 :w 128.0)
+                                      (new 'static 'vector :y 1.0 :w 128.0)
+                                      (new 'static 'vector :y 1.0 :w 128.0)
+                                      )
+                                    :one-over-x-deltas (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                                    )
+          )
+    )
+
+;; failed to figure out what this is:
+(if (or (zero? *eco-green-trail*) (!= loading-level global))
+    (set! *eco-green-trail* (new 'loading-level 'light-trail-composition))
+    )
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* color-mode) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* color-repeat-dist) 4096.0)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* alpha-1-mode) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* alpha-2-mode) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* base-alpha) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* alpha-repeat-dist) 32768.0)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* width-mode) (the-as uint 0))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* base-width) 14336.0)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* width-repeat-dist) 4096.0)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* uv-mode) (the-as uint 3))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* uv-repeat-dist) 102399.99)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* lie-mode) (lie-mode use-two-strips))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* max-age) (seconds 2))
+
+;; failed to figure out what this is:
+(if #f
+    (set! (-> *eco-green-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *eco-green-trail* tex-id) (new 'static 'texture-id :index #x8 :page #x5))
+    )
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* width-curve) (the-as curve2d-piecewise *eco-width-curve*))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* color-curve) (the-as curve-color-piecewise *eco-color-curve-green*))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* alpha-curve-1) (the-as curve2d-piecewise *eco-alpha-curve*))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* alpha-curve-2) (the-as curve2d-piecewise *curve-linear-up*))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* zbuffer?) #f)
+
+;; failed to figure out what this is:
+(vector-copy! (-> *eco-green-trail* lie-vector) *up-vector*)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* use-tape-mode?) #f)
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* blend-mode) (the-as uint 1))
+
+;; failed to figure out what this is:
+(set! (-> *eco-green-trail* frame-stagger) (the-as uint 1))
+
+;; definition of type eco-green-trail-tracker
+(deftype eco-green-trail-tracker (light-trail-tracker)
+  ()
+  )
+
+;; definition for method 3 of type eco-green-trail-tracker
+(defmethod inspect ((this eco-green-trail-tracker))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type light-trail-tracker inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 17 of type eco-green-trail-tracker
+;; WARN: Return type mismatch object vs symbol.
+(defmethod should-track? ((this eco-green-trail-tracker) (arg0 process-focusable))
+  (the-as symbol (and *target* (focus-test? *target* board) (< 0.0 (-> *target* fact eco-green))))
+  )
+
+;; definition for method 16 of type eco-green-trail-tracker
+(defmethod get-tracked-object-pos ((this eco-green-trail-tracker) (arg0 process-focusable) (arg1 vector))
+  (if *target*
+      (vector<-cspace! arg1 (-> *target* node-list data 37))
+      )
+  arg1
+  )
+
+;; definition of type task-manager-forest-plants
+(deftype task-manager-forest-plants (task-manager)
+  ((plant-manager-entity  entity)
+   (actor-group           (pointer actor-group))
+   (actor-group-count     int32)
+   (plants                (array entity-actor))
+   (check-timer           time-frame)
+   (displayed-hint?       symbol)
+   (trail-handle          handle)
+   (hud-green-eco         handle  :overlay-at (-> hud 2))
+   (updated-minimap?      symbol)
+   (cam-setting-timer     time-frame)
+   )
+  (:methods
+    (init-actor-group! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type task-manager-forest-plants
+(defmethod inspect ((this task-manager-forest-plants))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tplant-manager-entity: ~A~%" (-> this plant-manager-entity))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tplants: ~A~%" (-> this plants))
+  (format #t "~2Tcheck-timer: ~D~%" (-> this check-timer))
+  (format #t "~2Tdisplayed-hint?: ~A~%" (-> this displayed-hint?))
+  (format #t "~2Ttrail-handle: ~D~%" (-> this trail-handle))
+  (format #t "~2Thud-green-eco: ~D~%" (-> this hud-green-eco))
+  (format #t "~2Tupdated-minimap?: ~A~%" (-> this updated-minimap?))
+  (format #t "~2Tcam-setting-timer: ~D~%" (-> this cam-setting-timer))
+  (label cfg-7)
+  this
+  )
+
+;; definition for method 30 of type task-manager-forest-plants
+(defmethod taskman-event-handler ((this task-manager-forest-plants) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('displayed-hint?)
+     (if (-> arg3 param 0)
+         (set! (-> this displayed-hint?) #t)
+         )
+     (-> this displayed-hint?)
+     )
+    (('string-max-height)
+     (set-setting! 'string-max-height 'abs (-> arg3 param 0) 0)
+     (set-setting! 'string-min-height 'abs (-> arg3 param 0) 0)
+     (set! v0-0 (current-time))
+     (set! (-> this cam-setting-timer) (the-as time-frame v0-0))
+     v0-0
+     )
+    (('string-max-length)
+     (set-setting! 'string-max-length 'abs (-> arg3 param 0) 0)
+     (set-setting! 'string-min-length 'abs (-> arg3 param 0) 0)
+     (set! v0-0 (current-time))
+     (set! (-> this cam-setting-timer) (the-as time-frame v0-0))
+     v0-0
+     )
+    (('mh-plant-death)
+     (when (< 1.0 (-> *game-info* counter))
+       (let ((a0-10 (handle->process (-> this arrow))))
+         (when a0-10
+           (send-event a0-10 'die)
+           (set! (-> this arrow) (the-as handle #f))
+           #f
+           )
+         )
+       )
+     )
+    (else
+      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 26 of type task-manager-forest-plants
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-forest-plants))
+  (let ((t9-0 (method-of-type task-manager task-manager-method-26)))
+    (t9-0 this)
+    )
+  (when (and (nonzero? (-> this cam-setting-timer)) (time-elapsed? (-> this cam-setting-timer) (seconds 1)))
+    (set-setting! 'string-min-length 'abs (meters 8) 0)
+    (set-setting! 'string-max-length 'abs (meters 14) 0)
+    (set-setting! 'string-min-height 'abs (meters 4) 0)
+    (set-setting! 'string-max-height 'abs (meters 8) 0)
+    (set! (-> this cam-setting-timer) 0)
+    0
+    )
+  (when (time-elapsed? (-> this check-timer) (seconds 0.1))
+    (if (not (-> this plant-manager-entity))
+        (init-actor-group! this)
+        )
+    (let ((a0-9 *target*))
+      (when a0-9
+        (cond
+          ((focus-test? a0-9 board)
+           (let ((s5-0 (as-type (handle->process (-> this hud-green-eco)) hud)))
+             (if (and s5-0 (hidden? (the-as hud s5-0)))
+                 (send-event s5-0 'force-show)
+                 )
+             )
+           )
+          (else
+            (let ((s5-1 (as-type (handle->process (-> this hud-green-eco)) hud)))
+              (if (and s5-1 (not (hidden? (the-as hud s5-1))))
+                  (send-event s5-1 'force-hide)
+                  )
+              )
+            )
+          )
+        )
+      )
+    (when (not (handle->process (-> this trail-handle)))
+      (cond
+        (*target*
+          (let ((s5-2 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
+            (set! (-> s5-2 tracked-obj) (process->handle *target*))
+            (set! (-> s5-2 appearance) *eco-green-trail*)
+            (set! (-> s5-2 max-num-crumbs) (the int (* 0.5 (the float (-> s5-2 appearance max-age)))))
+            (set! (-> s5-2 track-immediately?) #t)
+            (let* ((v1-62
+                     (estimate-light-trail-mem-usage
+                       (the-as uint (-> s5-2 max-num-crumbs))
+                       (the-as uint (= (-> s5-2 appearance lie-mode) (lie-mode use-two-strips)))
+                       )
+                     )
+                   (s4-2 (get-process *default-dead-pool* eco-green-trail-tracker (+ v1-62 8192) 1))
+                   )
+              (set! (-> this trail-handle)
+                    (process->handle (-> (when s4-2
+                                           (let ((t9-14 (method-of-type process activate)))
+                                             (t9-14 s4-2 this "light-trail" (the-as pointer #x70004000))
+                                             )
+                                           (run-now-in-process s4-2 light-trail-tracker-init-by-other s5-2)
+                                           (-> s4-2 ppointer)
+                                           )
+                                         0
+                                         )
+                                     )
+                    )
+              )
+            )
+          )
+        (else
+          (set! (-> this trail-handle) (the-as handle #f))
+          )
+        )
+      )
+    (let ((s5-3 0))
+      0
+      (let* ((s4-3 (length (-> this plants)))
+             (s3-0 (/ s4-3 32))
+             (s2-0 #f)
+             )
+        (when (-> this plants)
+          (dotimes (s1-0 s4-3)
+            (cond
+              ((not (logtest? (-> this plants s1-0 extra perm status) (entity-perm-status subtask-complete)))
+               (+! s5-3 1)
+               )
+              (else
+                (if (-> *setting-control* user-current airlock)
+                    (set-setting! 'airlock #f 0.0 0)
+                    )
+                (if (and (not s2-0) *minimap* (or (-> this updated-minimap?) (zero? (mod s1-0 s3-0))))
+                    (kill-matching
+                      (-> *minimap* engine)
+                      (lambda ((arg0 engine-pers) (arg1 connection-pers) (arg2 object) (arg3 object))
+                        (and (= (-> arg1 update-time) arg2)
+                             (= (-> arg1 param 3) (-> *minimap-class-list* 131))
+                             (= (-> (the-as connection-minimap arg1) node) arg3)
+                             #t
+                             )
+                        )
+                      (process->handle this)
+                      s1-0
+                      )
+                    )
+                )
+              )
+            )
+          )
+        )
+      (set! (-> *game-info* counter) (the float s5-3))
+      )
+    (when (= (-> *game-info* counter) 1.0)
+      )
+    (set-time! (-> this check-timer))
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-forest-plants)
+  :virtual #t
+  )
+
+;; definition for method 7 of type task-manager-forest-plants
+;; WARN: Return type mismatch task-manager vs task-manager-forest-plants.
+(defmethod relocate ((this task-manager-forest-plants) (offset int))
+  (if (nonzero? (-> this plants))
+      (&+! (-> this plants) offset)
+      )
+  (the-as task-manager-forest-plants ((method-of-type task-manager relocate) this offset))
+  )
+
+;; definition for method 20 of type task-manager-forest-plants
+;; WARN: Return type mismatch symbol vs none.
+(defmethod init! ((this task-manager-forest-plants))
+  (let ((t9-0 (method-of-type task-manager init!)))
+    (t9-0 this)
+    )
+  (set! (-> this plants) #f)
+  (let ((s4-0 0)
+        (s5-0 (level-get *level* 'lforplnt))
+        )
+    (when s5-0
+      (let ((s3-0 (-> s5-0 bsp actors)))
+        (when (nonzero? s3-0)
+          (dotimes (s2-0 (-> s3-0 length))
+            (let* ((a0-3 (-> s3-0 data s2-0 actor))
+                   (a1-2 ((method-of-type res-lump get-property-struct)
+                          a0-3
+                          'name
+                          'interp
+                          -1000000000.0
+                          ""
+                          (the-as (pointer res-tag) #f)
+                          *res-static-buf*
+                          )
+                         )
+                   )
+              (if (string-prefix= "mh-plant" (the-as string a1-2))
+                  (+! s4-0 1)
+                  )
+              )
+            )
+          )
+        )
+      (set! (-> *game-info* counter) (the float s4-0))
+      (set! (-> *game-info* goal) (the float s4-0))
+      (set! (-> this plants) (new 'process 'boxed-array entity-actor s4-0))
+      (set! (-> this plants length) 0)
+      (let ((s5-1 (-> s5-0 bsp actors)))
+        (when (nonzero? s5-1)
+          (dotimes (s4-1 (-> s5-1 length))
+            (let* ((s3-1 (-> s5-1 data s4-1 actor))
+                   (a1-5 ((method-of-type res-lump get-property-struct)
+                          s3-1
+                          'name
+                          'interp
+                          -1000000000.0
+                          ""
+                          (the-as (pointer res-tag) #f)
+                          *res-static-buf*
+                          )
+                         )
+                   )
+              (when (string-prefix= "mh-plant" (the-as string a1-5))
+                (set! (-> this plants (-> this plants length)) s3-1)
+                (+! (-> this plants length) 1)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 32 of type task-manager-forest-plants
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init-actor-group! ((this task-manager-forest-plants))
+  (local-vars (sv-16 res-tag))
+  (let ((a0-2 (entity-by-name "for-plant-manager-1")))
+    (when a0-2
+      (set! (-> this plant-manager-entity) a0-2)
+      (set! sv-16 (new 'static 'res-tag))
+      (let ((v1-1 (res-lump-data a0-2 'actor-groups pointer :tag-ptr (& sv-16))))
+        (cond
+          ((and v1-1 (>= (-> sv-16 elt-count) (the-as uint 2)))
+           (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+           (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
+           )
+          (else
+            (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))
+            )
+          )
+        )
+      (when (not (task-node-closed? (game-task-node forest-kill-plants-pillars)))
+        (set! (-> this hud-counter)
+              (ppointer->handle
+                (process-spawn hud-forest-plants :init hud-init-by-other :name "hud-forest-plants" :to this)
+                )
+              )
+        (set! (-> this hud-green-eco)
+              (ppointer->handle
+                (process-spawn hud-green-eco-gauge :init hud-init-by-other :name "hud-green-eco-gauge" :to this)
+                )
+              )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-forest-plants
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-time-limit ((this task-manager-forest-plants))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set-setting! 'board-trail #t 0.0 0)
+  (set! (-> this plant-manager-entity) #f)
+  (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+  (set! (-> this actor-group-count) 0)
+  (set! (-> this displayed-hint?) #f)
+  (set! (-> this trail-handle) (the-as handle #f))
+  (set! (-> this updated-minimap?) #f)
+  (none)
+  )

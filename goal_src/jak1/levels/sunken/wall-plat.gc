@@ -1,185 +1,131 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: wall-plat.gc
-;; name in dgo: wall-plat
-;; dgos: L1, SUN, SUNKEN
-
+(bundles "SUN.DGO")
+(require "engine/common-obs/generic-obs.gc")
+(require "engine/util/sync-info.gc")
 (declare-type wall-plat process-drawable)
 
 ;; DECOMP BEGINS
 
 (deftype wall-plat (process-drawable)
-  ((root             collide-shape-moving :override)
-   (use-sync?        symbol)
-   (extended-amount  float)
-   (in-trans         vector                :inline)
-   (out-trans        vector                :inline)
-   (sync             sync-info-paused      :inline)
-   )
+  ((root            collide-shape-moving :override)
+   (use-sync?       symbol)
+   (extended-amount float)
+   (in-trans        vector :inline)
+   (out-trans       vector :inline)
+   (sync            sync-info-paused :inline))
   (:states
-    wall-plat-extended
-    wall-plat-extending
-    wall-plat-retracted
-    wall-plat-retracting
-    wall-plat-sync-idle
-    )
-  )
+   wall-plat-extended
+   wall-plat-extending
+   wall-plat-retracted
+   wall-plat-retracting
+   wall-plat-sync-idle))
 
-
-(defskelgroup *wall-plat-sg* wall-plat wall-plat-lod0-jg -1
-              ((wall-plat-lod0-mg (meters 999999)))
-              :bounds (static-spherem 1 -2 0 6.5)
-              )
+(defskelgroup *wall-plat-sg*
+  wall-plat
+  wall-plat-lod0-jg
+  -1
+  ((wall-plat-lod0-mg (meters 999999)))
+  :bounds (static-spherem 1 -2 0 6.5))
 
 (defstate wall-plat-retracted (wall-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('trigger)
-       (go wall-plat-extending)
-       )
-      )
-    )
-  :code (behavior ()
-    (set! (-> self extended-amount) 0.0)
-    (move-to-point! (-> self root) (-> self in-trans))
-    (transform-post)
-    (clear-collide-with-as (-> self root))
-    (loop
-      (logior! (-> self mask) (process-mask sleep-code))
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('trigger) (go wall-plat-extending))))
+  :code
+    (behavior ()
+      (set! (-> self extended-amount) 0.0)
+      (move-to-point! (-> self root) (-> self in-trans))
+      (transform-post)
+      (clear-collide-with-as (-> self root))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend))))
 
 (defstate wall-plat-extending (wall-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch)
-       (send-event proc 'no-look-around (seconds 1.5))
-       #f
-       )
-      )
-    )
-  :enter (behavior ()
-    (sound-play "wall-plat")
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch) (send-event proc 'no-look-around (seconds 1.5)) #f)))
+  :enter
+    (behavior ()
+      (sound-play "wall-plat"))
   :trans rider-trans
-  :code (behavior ()
-    (restore-collide-with-as (-> self root))
-    (set-time! (-> self state-time))
-    (loop
-      (seek! (-> self extended-amount) 1.0 (* 2.5 (seconds-per-frame)))
-      (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
-        (move-to-point! (-> self root) gp-0)
-        )
-      (suspend)
-      (if (= (-> self extended-amount) 1.0)
-          (go wall-plat-extended)
-          )
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (restore-collide-with-as (-> self root))
+      (set-time! (-> self state-time))
+      (loop
+        (seek! (-> self extended-amount) 1.0 (* 2.5 (seconds-per-frame)))
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
+          (move-to-point! (-> self root) gp-0))
+        (suspend)
+        (if (= (-> self extended-amount) 1.0) (go wall-plat-extended))))
+  :post rider-post)
 
 (defstate wall-plat-extended (wall-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('untrigger)
-       (go wall-plat-retracting)
-       )
-      )
-    )
-  :code (behavior ()
-    (set! (-> self extended-amount) 1.0)
-    (move-to-point! (-> self root) (-> self out-trans))
-    (transform-post)
-    (loop
-      (logior! (-> self mask) (process-mask sleep-code))
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('untrigger) (go wall-plat-retracting))))
+  :code
+    (behavior ()
+      (set! (-> self extended-amount) 1.0)
+      (move-to-point! (-> self root) (-> self out-trans))
+      (transform-post)
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
+        (suspend))))
 
 (defstate wall-plat-retracting (wall-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch)
-       (send-event proc 'no-look-around (seconds 1.5))
-       #f
-       )
-      )
-    )
-  :enter (behavior ()
-    (sound-play "wall-plat")
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch) (send-event proc 'no-look-around (seconds 1.5)) #f)))
+  :enter
+    (behavior ()
+      (sound-play "wall-plat"))
   :trans rider-trans
-  :code (behavior ()
-    (set-time! (-> self state-time))
-    (loop
-      (seek! (-> self extended-amount) 0.0 (* 2.5 (seconds-per-frame)))
-      (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
-        (move-to-point! (-> self root) gp-0)
-        )
-      (suspend)
-      (if (= (-> self extended-amount) 0.0)
-          (go wall-plat-retracted)
-          )
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (set-time! (-> self state-time))
+      (loop
+        (seek! (-> self extended-amount) 0.0 (* 2.5 (seconds-per-frame)))
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
+          (move-to-point! (-> self root) gp-0))
+        (suspend)
+        (if (= (-> self extended-amount) 0.0) (go wall-plat-retracted))))
+  :post rider-post)
 
 (defstate wall-plat-sync-idle (wall-plat)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch)
-       (send-event proc 'no-look-around (seconds 1.5))
-       #f
-       )
-      )
-    )
-  :enter (behavior ()
-    (logclear! (-> self mask) (process-mask actor-pause))
-    )
-  :exit (behavior ()
-    (logior! (-> self mask) (process-mask actor-pause))
-    )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch) (send-event proc 'no-look-around (seconds 1.5)) #f)))
+  :enter
+    (behavior ()
+      (logclear! (-> self mask) (process-mask actor-pause)))
+  :exit
+    (behavior ()
+      (logior! (-> self mask) (process-mask actor-pause)))
   :trans rider-trans
-  :code (behavior ()
-    (let ((gp-0 #f))
-      (loop
-        (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
-          (let ((s5-0 (new 'stack-no-clear 'vector)))
-            (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
-            (move-to-point! (-> self root) s5-0)
-            )
-          (cond
-            ((= f30-0 0.0)
-             (set! gp-0 #f)
-             (clear-collide-with-as (-> self root))
-             )
-            ((= f30-0 1.0)
-             (set! gp-0 #f)
-             (restore-collide-with-as (-> self root))
-             )
-            (else
-              (when (not gp-0)
-                (sound-play "wall-plat")
-                (set! gp-0 #t)
-                )
-              (restore-collide-with-as (-> self root))
-              )
-            )
-          )
-        (suspend)
-        )
-      )
-    )
-  :post rider-post
-  )
+  :code
+    (behavior ()
+      (let ((gp-0 #f))
+        (loop
+          (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
+            (let ((s5-0 (new 'stack-no-clear 'vector)))
+              (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
+              (move-to-point! (-> self root) s5-0))
+            (cond
+              ((= f30-0 0.0) (set! gp-0 #f) (clear-collide-with-as (-> self root)))
+              ((= f30-0 1.0) (set! gp-0 #f) (restore-collide-with-as (-> self root)))
+              (else (when (not gp-0) (sound-play "wall-plat") (set! gp-0 #t)) (restore-collide-with-as (-> self root)))))
+          (suspend))))
+  :post rider-post)
 
 (defmethod init-from-entity! ((this wall-plat) (arg0 entity-actor))
   (set! (-> this extended-amount) 0.0)
@@ -187,9 +133,7 @@
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s4-0 1)
     (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind ground-object))
@@ -198,45 +142,29 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 2)
       (set-vector! (-> s3-0 local-sphere) 0.0 -6144.0 -12288.0 19456.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *wall-plat-sg* '())
   (logior! (-> this skel status) (janim-status inited))
   (set! (-> this use-sync?) (load-params! (-> this sync) this (the-as uint 1500) 0.0 0.2 0.2))
   (let ((f30-0 (quaternion-y-angle (-> this root quat)))
-        (s4-1 (new 'stack-no-clear 'vector))
-        )
+        (s4-1 (new 'stack-no-clear 'vector)))
     (set-vector! s4-1 0.0 0.0 (+ 1638.4 (res-lump-float arg0 'tunemeters)) 1.0)
     (vector-rotate-around-y! s4-1 s4-1 f30-0)
     (vector+! (-> this out-trans) (-> this root trans) s4-1)
     (set-vector! s4-1 0.0 0.0 20480.0 1.0)
     (vector-rotate-around-y! s4-1 s4-1 f30-0)
-    (vector+! (-> this in-trans) (-> this out-trans) s4-1)
-    )
+    (vector+! (-> this in-trans) (-> this out-trans) s4-1))
   (ja-channel-push! 1 0)
   (let ((s5-1 (-> this skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      s5-1
-      (the-as art-joint-anim (-> this draw art-group data 2))
-      num-func-identity
-      )
-    (set! (-> s5-1 frame-num) 0.0)
-    )
+    (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
+    (set! (-> s5-1 frame-num) 0.0))
   (ja-post)
   (update-transforms! (-> this root))
   (cond
-    ((-> this use-sync?)
-     (logclear! (-> this mask) (process-mask actor-pause))
-     (go wall-plat-sync-idle)
-     )
-    (else
-      (go wall-plat-retracted)
-      )
-    )
-  (none)
-  )
+    ((-> this use-sync?) (logclear! (-> this mask) (process-mask actor-pause)) (go wall-plat-sync-idle))
+    (else (go wall-plat-retracted)))
+  (none))

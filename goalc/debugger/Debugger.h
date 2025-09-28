@@ -91,6 +91,7 @@ class Debugger {
   void read_symbol_table();
   void read_symbol_table_jak1();
   void read_symbol_table_jak2();
+  void read_symbol_table_jak3();
   u32 get_symbol_address(const std::string& sym_name);
   bool get_symbol_value(const std::string& sym_name, u32* output);
   const char* get_symbol_name_from_offset(s32 ofs) const;

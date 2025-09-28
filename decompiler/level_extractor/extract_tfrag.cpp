@@ -8,6 +8,7 @@
 #include "common/util/FileUtil.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/level_extractor/extract_common.h"
 #include "decompiler/util/Error.h"
 
 namespace decompiler {
@@ -1677,9 +1678,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   }
 
 end:
-  [[maybe_unused]] int total_dvert = 0;
   for (auto& draw : all_draws) {
-    total_dvert += draw.verts.size();
     draw.tfrag_id = frag.id;
   }
 
@@ -2033,6 +2032,20 @@ s32 find_or_add_texture_to_level(u32 combo_tex_id,
       if (ok_to_miss) {
         // we're missing a texture, just use the first one.
         tex_it = tdb.textures.begin();
+        // some tfrags in jak 3 are missing textures, so we use some suitable
+        // replacements instead of the default eye texture
+        static std::map<std::string, std::string> per_level_tex_hacks = {
+            {"wasintro", "des-rock-01"},
+            {"intpfall", "common-black"},
+            {"powergd", "common-black"},
+        };
+        auto it = std::find_if(tdb.textures.begin(), tdb.textures.end(),
+                               [&](const std::pair<u32, TextureDB::TextureData> val) {
+                                 return val.second.name == per_level_tex_hacks[level_name];
+                               });
+        if (it != tdb.textures.end()) {
+          tex_it = it;
+        }
       } else {
         ASSERT_MSG(
             false,
@@ -2166,12 +2179,7 @@ void emulate_tfrags(int geom,
 }
 
 void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::TfragTree& out) {
-  out.colors.resize(tree->time_of_day.height);
-  for (int i = 0; i < (int)tree->time_of_day.height; i++) {
-    for (int j = 0; j < 8; j++) {
-      memcpy(out.colors[i].rgba[j].data(), &tree->time_of_day.colors[i * 8 + j], 4);
-    }
-  }
+  out.colors = pack_colors(tree->time_of_day);
 }
 
 void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {

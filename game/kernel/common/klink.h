@@ -32,6 +32,13 @@ struct ObjectFileHeader {
   uint32_t link_block_length;
 };
 
+struct SegmentInfoV5 {
+  uint32_t relocs;  // offset of relocation table
+  uint32_t data;    // offset of segment data
+  uint32_t size;    // segment data size (0 if segment doesn't exist)
+  uint32_t magic;   // always 0
+};
+
 void klink_init_globals();
 /*!
  * Stores the state of the linker. Used for multi-threaded linking, so it can be suspended.
@@ -60,22 +67,44 @@ struct link_control {
 
   bool m_opengoal;
   bool m_busy;  // only in jak2, but doesn't hurt to set it in jak 1.
-  void begin(Ptr<uint8_t> object_file,
-             const char* name,
-             int32_t size,
-             Ptr<kheapinfo> heap,
-             uint32_t flags);
+
+  // jak 3 new stuff
+  bool m_on_global_heap = false;
+  LinkHeaderV5Core* m_link_hdr = nullptr;
+  bool m_moved_link_block = false;
+  int m_n_segments = 0;
+  SegmentInfoV5* m_link_segments_table = nullptr;
+
+  void jak1_jak2_begin(Ptr<uint8_t> object_file,
+                       const char* name,
+                       int32_t size,
+                       Ptr<kheapinfo> heap,
+                       uint32_t flags);
+
+  void jak3_begin(Ptr<uint8_t> object_file,
+                  const char* name,
+                  int32_t size,
+                  Ptr<kheapinfo> heap,
+                  uint32_t flags);
 
   // was originally "work"
   uint32_t jak1_work();
   uint32_t jak2_work();
+  uint32_t jak3_work();
 
   uint32_t jak1_work_v3();
   uint32_t jak1_work_v2();
+
   uint32_t jak2_work_v3();
   uint32_t jak2_work_v2();
+
+  uint32_t jak3_work_v2_v4();
+  uint32_t jak3_work_v5();
+  uint32_t jak3_work_opengoal();
+
   void jak1_finish(bool jump_from_c_to_goal);
   void jak2_finish(bool jump_from_c_to_goal);
+  void jak3_finish(bool jump_from_c_to_goal);
 
   void reset() {
     m_object_data.offset = 0;
@@ -96,7 +125,6 @@ struct link_control {
   }
 };
 
-void klink_init_globals();
 Ptr<u8> c_symlink2(Ptr<u8> objData, Ptr<u8> linkObj, Ptr<u8> relocTable);
 
 extern link_control saved_link_control;

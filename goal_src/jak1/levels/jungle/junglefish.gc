@@ -1,21 +1,19 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: junglefish.gc
-;; name in dgo: junglefish
-;; dgos: JUN, JUNGLE, L1
+(bundles "JUN.DGO")
+(require "engine/common-obs/nav-enemy.gc")
+(require "engine/common-obs/water.gc")
 
 ;; DECOMP BEGINS
 
-(deftype junglefish (nav-enemy)
-  ()
-  )
+(deftype junglefish (nav-enemy) ())
 
-
-(defskelgroup *junglefish-sg* junglefish junglefish-lod0-jg junglefish-swim-ja
-              ((junglefish-lod0-mg (meters 20)) (junglefish-lod1-mg (meters 40)) (junglefish-lod2-mg (meters 999999)))
-              :bounds (static-spherem 0 1 0 1.5)
-              )
+(defskelgroup *junglefish-sg*
+  junglefish
+  junglefish-lod0-jg
+  junglefish-swim-ja
+  ((junglefish-lod0-mg (meters 20)) (junglefish-lod1-mg (meters 40)) (junglefish-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 1 0 1.5))
 
 nav-enemy-default-event-handler
 
@@ -23,217 +21,180 @@ nav-enemy-default-event-handler
   (water-control-method-10 (-> this water))
   (call-parent-method this)
   0
-  (none)
-  )
+  (none))
 
 (defstate nav-enemy-patrol (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :exit (behavior ()
-    (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
-    )
-  :code (behavior ()
-    (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
-      (loop
-        (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
-                    :num! (seek! max f30-0)
-                    :frame-num 0.0
-                    )
-        (until (ja-done? 0)
-          (suspend)
-          (ja :num! (seek! max f30-0))
-          )
-        (when (nav-enemy-rnd-go-idle? 0.2)
-          (ja-no-eval :num! (loop!))
-          (ja-channel-push! 1 (seconds 0.6))
-          (set! (-> self target-speed) 0.0)
-          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
-                      :num! (seek! max f30-0)
-                      :frame-num 0.0
-                      )
+  :exit
+    (behavior ()
+      (set! (-> self target-speed) (-> self nav-info walk-travel-speed)))
+  :code
+    (behavior ()
+      (ja-channel-push! 1 (seconds 0.2))
+      (let ((f30-0 (nav-enemy-rnd-float-range 0.9 1.1)))
+        (loop
+          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim)) :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
-            (ja-blend-eval)
             (suspend)
-            (ja :num! (seek! max f30-0))
-            )
-          (until (not (nav-enemy-rnd-go-idle? 0.2))
-            (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim))
-                        :num! (seek! max f30-0)
-                        :frame-num 0.0
-                        )
+            (ja :num! (seek! max f30-0)))
+          (when (nav-enemy-rnd-go-idle? 0.2)
+            (ja-no-eval :num! (loop!))
+            (ja-channel-push! 1 (seconds 0.6))
+            (set! (-> self target-speed) 0.0)
+            (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek! max f30-0) :frame-num 0.0)
             (until (ja-done? 0)
+              (ja-blend-eval)
               (suspend)
-              (ja :num! (seek! max f30-0))
-              )
-            )
-          (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
-          (ja-no-eval :num! (loop!))
-          (ja-channel-push! 1 (seconds 0.6))
-          (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim))
-                      :num! (seek! max f30-0)
-                      :frame-num 0.0
-                      )
-          (until (ja-done? 0)
-            (ja-blend-eval)
-            (suspend)
-            (ja :num! (seek! max f30-0))
-            )
-          )
-        )
-      )
-    )
-  )
+              (ja :num! (seek! max f30-0)))
+            (until (not (nav-enemy-rnd-go-idle? 0.2))
+              (ja-no-eval :group! (-> self draw art-group data (-> self nav-info idle-anim)) :num! (seek! max f30-0) :frame-num 0.0)
+              (until (ja-done? 0)
+                (suspend)
+                (ja :num! (seek! max f30-0))))
+            (set! (-> self target-speed) (-> self nav-info walk-travel-speed))
+            (ja-no-eval :num! (loop!))
+            (ja-channel-push! 1 (seconds 0.6))
+            (ja-no-eval :group! (-> self draw art-group data (-> self nav-info walk-anim)) :num! (seek! max f30-0) :frame-num 0.0)
+            (until (ja-done? 0)
+              (ja-blend-eval)
+              (suspend)
+              (ja :num! (seek! max f30-0))))))))
 
 (defstate nav-enemy-notice (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (go-virtual nav-enemy-chase)
-    )
-  )
+  :code
+    (behavior ()
+      (go-virtual nav-enemy-chase)))
 
 (defstate nav-enemy-chase (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :trans (behavior ()
-    ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
-    (if (and *target* (>= 8192.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
-        (go-virtual nav-enemy-attack)
-        )
-    )
-  )
+  :trans
+    (behavior ()
+      ((-> (method-of-type nav-enemy nav-enemy-chase) trans))
+      (if (and *target* (>= 8192.0 (vector-vector-distance (-> self collide-info trans) (-> *target* control trans))))
+        (go-virtual nav-enemy-attack))))
 
 (defstate nav-enemy-stop-chase (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (go-virtual nav-enemy-patrol)
-    )
-  )
+  :code
+    (behavior ()
+      (go-virtual nav-enemy-patrol)))
 
 (defstate nav-enemy-stare (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (go-virtual nav-enemy-patrol)
-    )
-  )
+  :code
+    (behavior ()
+      (go-virtual nav-enemy-patrol)))
 
 (defstate nav-enemy-give-up (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (go-virtual nav-enemy-patrol)
-    )
-  )
+  :code
+    (behavior ()
+      (go-virtual nav-enemy-patrol)))
 
 (defstate nav-enemy-attack (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (ja-channel-push! 1 (seconds 0.1))
-    (ja-no-eval :group! junglefish-chomp-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (go-virtual nav-enemy-chase)
-    )
-  :post nav-enemy-chase-post
-  )
+  :code
+    (behavior ()
+      (ja-channel-push! 1 (seconds 0.1))
+      (ja-no-eval :group! junglefish-chomp-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!)))
+      (go-virtual nav-enemy-chase))
+  :post nav-enemy-chase-post)
 
 (defstate nav-enemy-victory (junglefish)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (ja-channel-push! 1 (seconds 0.075))
-    (ja-no-eval :group! junglefish-swim-ja :num! (seek! max 2.0) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek! max 2.0))
-      )
-    (ja-no-eval :group! junglefish-swim-ja :num! (seek! max 2.0) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek! max 2.0))
-      )
-    (go-virtual nav-enemy-patrol)
-    )
-  )
+  :code
+    (behavior ()
+      (ja-channel-push! 1 (seconds 0.075))
+      (ja-no-eval :group! junglefish-swim-ja :num! (seek! max 2.0) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 2.0)))
+      (ja-no-eval :group! junglefish-swim-ja :num! (seek! max 2.0) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 2.0)))
+      (go-virtual nav-enemy-patrol)))
 
-(define *junglefish-nav-enemy-info* (new 'static 'nav-enemy-info
-                                      :idle-anim 4
-                                      :walk-anim 4
-                                      :turn-anim -1
-                                      :notice-anim 4
-                                      :run-anim 4
-                                      :jump-anim -1
-                                      :jump-land-anim -1
-                                      :victory-anim 4
-                                      :taunt-anim 4
-                                      :die-anim 6
-                                      :neck-joint -1
-                                      :player-look-at-joint 5
-                                      :run-travel-speed (meters 5.5)
-                                      :run-rotate-speed (degrees 720)
-                                      :run-acceleration (meters 6)
-                                      :run-turn-time (seconds 0.15)
-                                      :walk-travel-speed (meters 4)
-                                      :walk-rotate-speed (degrees 720)
-                                      :walk-acceleration (meters 6)
-                                      :walk-turn-time (seconds 0.15)
-                                      :attack-shove-back (meters 1)
-                                      :attack-shove-up (meters 0.5)
-                                      :shadow-size (meters 2)
-                                      :notice-nav-radius (meters 1)
-                                      :nav-nearest-y-threshold (meters 10)
-                                      :notice-distance (meters 25)
-                                      :stop-chase-distance (meters 35)
-                                      :frustration-distance (meters 8)
-                                      :frustration-time (seconds 4)
-                                      :die-anim-hold-frame 10000000000.0
-                                      :jump-land-anim-end-frame 10000000000.0
-                                      :jump-height-min (meters 1)
-                                      :jump-height-factor 0.5
-                                      :jump-start-anim-speed 1.0
-                                      :shadow-max-y (meters 1)
-                                      :shadow-min-y (meters -1)
-                                      :shadow-locus-dist (meters 150)
-                                      :use-align #f
-                                      :draw-shadow #f
-                                      :move-to-ground #f
-                                      :hover-if-no-ground #f
-                                      :use-momentum #t
-                                      :use-flee #f
-                                      :use-proximity-notice #f
-                                      :use-jump-blocked #f
-                                      :use-jump-patrol #f
-                                      :gnd-collide-with (collide-kind background)
-                                      :debug-draw-neck #f
-                                      :debug-draw-jump #f
-                                      )
-        )
+(define *junglefish-nav-enemy-info*
+  (new 'static
+       'nav-enemy-info
+       :idle-anim 4
+       :walk-anim 4
+       :turn-anim -1
+       :notice-anim 4
+       :run-anim 4
+       :jump-anim -1
+       :jump-land-anim -1
+       :victory-anim 4
+       :taunt-anim 4
+       :die-anim 6
+       :neck-joint -1
+       :player-look-at-joint 5
+       :run-travel-speed (meters 5.5)
+       :run-rotate-speed (degrees 720)
+       :run-acceleration (meters 6)
+       :run-turn-time (seconds 0.15)
+       :walk-travel-speed (meters 4)
+       :walk-rotate-speed (degrees 720)
+       :walk-acceleration (meters 6)
+       :walk-turn-time (seconds 0.15)
+       :attack-shove-back (meters 1)
+       :attack-shove-up (meters 0.5)
+       :shadow-size (meters 2)
+       :notice-nav-radius (meters 1)
+       :nav-nearest-y-threshold (meters 10)
+       :notice-distance (meters 25)
+       :stop-chase-distance (meters 35)
+       :frustration-distance (meters 8)
+       :frustration-time (seconds 4)
+       :die-anim-hold-frame 10000000000.0
+       :jump-land-anim-end-frame 10000000000.0
+       :jump-height-min (meters 1)
+       :jump-height-factor 0.5
+       :jump-start-anim-speed 1.0
+       :shadow-max-y (meters 1)
+       :shadow-min-y (meters -1)
+       :shadow-locus-dist (meters 150)
+       :use-align #f
+       :draw-shadow #f
+       :move-to-ground #f
+       :hover-if-no-ground #f
+       :use-momentum #t
+       :use-flee #f
+       :use-proximity-notice #f
+       :use-jump-blocked #f
+       :use-jump-patrol #f
+       :gnd-collide-with (collide-kind background)
+       :debug-draw-neck #f
+       :debug-draw-jump #f))
 
 (defmethod init-from-entity! ((this junglefish) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) default-collision-reaction)
-    (set! (-> s4-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s4-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s3-0 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 3))))
       (set! (-> s3-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s3-0 collide-with) (collide-kind target))
       (set! (-> s3-0 prim-core action) (collide-action solid))
       (set! (-> s3-0 prim-core offense) (collide-offense touch))
       (set-vector! (-> s3-0 local-sphere) 0.0 3276.8 0.0 2457.6)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this collide-info) s4-0)
-    )
+    (set! (-> this collide-info) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *junglefish-sg* '())
   (init-defaults! this *junglefish-nav-enemy-info*)
@@ -243,5 +204,4 @@ nav-enemy-default-event-handler
   (set! (-> this water ripple-size) 5734.4)
   (set! (-> this collide-info trans y) (+ -4096.0 (-> this water height)))
   (go (method-of-object this nav-enemy-idle))
-  (none)
-  )
+  (none))

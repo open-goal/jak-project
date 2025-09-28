@@ -1,9 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: collide-mesh-h.gc
-;; name in dgo: collide-mesh-h
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; DECOMP BEGINS
 
@@ -17,12 +15,10 @@
 ;; The triangle involved in collision
 ;; Note: this is reused for the background collision system.
 (deftype collide-tri-result (structure)
-  ((vertex     vector  3 :inline)
-   (intersect  vector  :inline)
-   (normal     vector  :inline)
-   (pat        pat-surface)
-   )
-  )
+  ((vertex    vector 3 :inline)
+   (intersect vector :inline)
+   (normal    vector :inline)
+   (pat       pat-surface)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; static mesh data
@@ -32,34 +28,29 @@
 ;; The vertex indices index into the collide-mesh vertex-data array.
 ;; Due to using uint8's you only get 256 vertices.
 (deftype collide-mesh-tri (structure)
-  ((vertex-index  uint8  3)
-   (unused        uint8)
-   (pat           pat-surface)
-   )
-  :pack-me
-  )
+  ((vertex-index uint8 3)
+   (unused       uint8)
+   (pat          pat-surface))
+  :pack-me)
 
 ;; og:preserve-this
 (declare-type collide-mesh-cache-tri structure)
 
 ;; A collision mesh. Note that's it's bound to a specific joint.
 (deftype collide-mesh (basic)
-  ((joint-id     int32)
-   (num-tris     uint32)
-   (num-verts    uint32)
-   (vertex-data  (inline-array vector))
-   (tris         collide-mesh-tri  1 :inline :offset  32)
-   )
+  ((joint-id    int32)
+   (num-tris    uint32)
+   (num-verts   uint32)
+   (vertex-data (inline-array vector))
+   (tris        collide-mesh-tri 1 :inline :offset 32))
   (:methods
-    (debug-draw-tris (_type_ process-drawable int) none)
-    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol)
-    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
-    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
-    (populate-cache! (_type_ collide-mesh-cache-tri matrix) none)
-    (collide-mesh-math-1 (_type_ object object) none)
-    (collide-mesh-math-2 (_type_ object object object) none)
-    )
-  )
+   (debug-draw-tris (_type_ process-drawable int) none)
+   (overlap-test (_type_ collide-mesh-cache-tri vector) symbol)
+   (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+   (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+   (populate-cache! (_type_ collide-mesh-cache-tri matrix) none)
+   (collide-mesh-math-1 (_type_ object object) none)
+   (collide-mesh-math-2 (_type_ object object object) none)))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; cache
@@ -75,19 +66,16 @@
 (defconstant COLLIDE_MESH_CACHE_SIZE #xa000)
 
 (deftype collide-mesh-cache (basic)
-  ((used-size  uint32)
-   (max-size   uint32)
-   (id         uint64)
-   (data       uint8  40960 :offset  32)
-   )
+  ((used-size uint32)
+   (max-size  uint32)
+   (id        uint64)
+   (data      uint8 40960 :offset 32))
   (:methods
-    (allocate! (_type_ int) int)
-    (is-id? (_type_ int) symbol)
-    (next-id! (_type_) uint)
-    )
-  )
+   (allocate! (_type_ int) int)
+   (is-id? (_type_ int) symbol)
+   (next-id! (_type_) uint)))
 
-(defmethod next-id! collide-mesh-cache ((obj collide-mesh-cache))
+(defmethod next-id! ((obj collide-mesh-cache))
   "Reset all used entries in the cache and increment the id.
    If the id is zero, set it to 1"
   ;;     ld v1, 12(a0)
@@ -98,30 +86,22 @@
     (let ((v0 (+ v1 1)))
       ;;     beql v0, r0, L3
       ;;     addiu v0, r0, 1 (only taken if v0 = 0)
-      (if (= v0 0)
-          (set! v0 (the uint 1))
-          )
+      (if (= v0 0) (set! v0 (the uint 1)))
       ;; L3:
       ;;     sd v0, 12(a0)
       (set! (-> obj id) v0)
-      v0
-      )
-    )
-  )
+      v0)))
 
 (defmethod is-id? ((this collide-mesh-cache) (arg0 int))
   "Is this our id?"
-  (= (-> this id) arg0)
-  )
+  (= (-> this id) arg0))
 
 ;; possibly this is stored in the data of the collide-mesh-cache
 (deftype collide-mesh-cache-tri (structure)
-  ((vertex  vector          3 :inline)
-   (normal  vector          :inline)
-   (bbox4w  bounding-box4w  :inline)
-   (pat     pat-surface     :overlay-at (-> normal w))
-   )
-  )
+  ((vertex vector 3 :inline)
+   (normal vector :inline)
+   (bbox4w bounding-box4w :inline)
+   (pat    pat-surface :overlay-at (-> normal w))))
 
 ;; only allocate if we don't have an existing one.
 (define-perm *collide-mesh-cache* collide-mesh-cache (new 'global 'collide-mesh-cache))
@@ -129,5 +109,7 @@
 ;; og:preserve-this
 ;; in all cases, re-init.
 (set! (-> *collide-mesh-cache* id) 1)
+
 (set! (-> *collide-mesh-cache* used-size) 0)
+
 (set! (-> *collide-mesh-cache* max-size) COLLIDE_MESH_CACHE_SIZE)

@@ -1,0 +1,856 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type connectable
+(deftype connectable (structure)
+  ((next0  connectable)
+   (prev0  connectable)
+   (next1  connectable)
+   (prev1  connectable)
+   )
+  )
+
+;; definition for method 3 of type connectable
+(defmethod inspect ((this connectable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'connectable)
+  (format #t "~1Tnext0: ~`connectable`P~%" (-> this next0))
+  (format #t "~1Tprev0: ~`connectable`P~%" (-> this prev0))
+  (format #t "~1Tnext1: ~`connectable`P~%" (-> this next1))
+  (format #t "~1Tprev1: ~`connectable`P~%" (-> this prev1))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type connection
+(deftype connection (connectable)
+  "This is the actual data for the connection.
+It may be used in multiple ways, but the most common is to use `param0` as a function.
+It receives `param1`, `param2`, `param3`, and the engine as the arguments.
+In some cases, the return value is checked for `'dead`."
+  ((param0  basic)
+   (param1  basic)
+   (param2  int32)
+   (param3  int32)
+   (quad    uint128  2 :overlay-at next0)
+   )
+  (:methods
+    (get-engine (connection) engine)
+    (get-process (connection) process)
+    (belongs-to-engine? (connection engine) symbol)
+    (belongs-to-process? (connection process) symbol)
+    (move-to-dead (connection) connection)
+    )
+  )
+
+;; definition for method 3 of type connection
+(defmethod inspect ((this connection))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'connection)
+  (format #t "~1Tnext0: ~`connectable`P~%" (-> this next0))
+  (format #t "~1Tprev0: ~`connectable`P~%" (-> this prev0))
+  (format #t "~1Tnext1: ~`connectable`P~%" (-> this next1))
+  (format #t "~1Tprev1: ~`connectable`P~%" (-> this prev1))
+  (format #t "~1Tparam0: ~A~%" (-> this param0))
+  (format #t "~1Tparam1: ~A~%" (-> this param1))
+  (format #t "~1Tparam2: ~A~%" (-> this param2))
+  (format #t "~1Tparam3: ~A~%" (-> this param3))
+  (format #t "~1Tquad[2] @ #x~X~%" (&-> this next0))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type engine
+(deftype engine (basic)
+  "An engine is a collection of connections.
+You can iterate over the connections, or run them.
+The engine is dynamically sized based on how many connections it can store.
+
+New for Jak 2: You can use a child class of [[connection]]."
+  ((name              symbol)
+   (engine-time       time-frame   :offset  16)
+   (allocated-length  int16        :offset  10)
+   (length            int16        :offset   8)
+   (element-type      type         :offset  12)
+   (alive-list        connectable  :inline)
+   (alive-list-end    connectable  :inline)
+   (dead-list         connectable  :inline)
+   (dead-list-end     connectable  :inline)
+   (data              connection   :inline :dynamic)
+   )
+  (:methods
+    (new (symbol type symbol int type) _type_)
+    (inspect-all-connections (engine) engine)
+    (apply-to-connections (engine (function connectable none)) int)
+    (apply-to-connections-reverse (engine (function connectable none)) int)
+    (execute-connections (engine object) int)
+    (execute-connections-and-move-to-dead (engine object) int)
+    (execute-connections-if-needed (engine object) int)
+    (add-connection (engine process object object object object) connection)
+    (remove-from-process (engine process) int)
+    (remove-matching (engine (function connection engine symbol)) int)
+    (remove-all (engine) int)
+    (remove-by-param0 (engine object) int)
+    (remove-by-param1 (engine int) int)
+    (remove-by-param2 (engine int) int)
+    (get-first-connectable (engine) connectable)
+    (get-last-connectable (engine) connectable)
+    (get-next-connectable (_type_ connectable) connectable)
+    (get-prev-connectable (_type_ connectable) connectable)
+    )
+  )
+
+;; definition for method 12 of type connection
+(defmethod belongs-to-process? ((this connection) (arg0 process))
+  "Does this connection belong to the given process?"
+  (= arg0 (get-process this))
+  )
+
+;; definition for method 2 of type connection
+(defmethod print ((this connection))
+  (format
+    #t
+    "#<connection (~A ~A ~A ~A) @ #x~X>"
+    (-> this param0)
+    (-> this param1)
+    (-> this param2)
+    (-> this param3)
+    this
+    )
+  this
+  )
+
+;; definition for method 9 of type connection
+;; WARN: Return type mismatch pointer vs engine.
+(defmethod get-engine ((this connection))
+  "Get the engine for this connection. This must be used on a live connection."
+  (while (-> (the-as connectable this) prev0)
+    (nop!)
+    (nop!)
+    (set! this (the-as connection (-> (the-as connectable this) prev0)))
+    )
+  (the-as engine (&+ (the-as pointer this) -28))
+  )
+
+;; definition for method 10 of type connection
+;; WARN: Return type mismatch pointer vs process.
+(defmethod get-process ((this connection))
+  "Get the process for this connection."
+  (while (-> (the-as connectable this) prev1)
+    (nop!)
+    (nop!)
+    (set! this (the-as connection (-> (the-as connectable this) prev1)))
+    )
+  (the-as process (&+ (the-as pointer this) -108))
+  )
+
+;; definition for method 11 of type connection
+(defmethod belongs-to-engine? ((this connection) (arg0 engine))
+  "Check to see if this connection is located in the data section of the engine.
+   This works on dead or alive connections."
+  (and (< (the-as int arg0) (the-as int this))
+       (< (the-as int this) (the-as int (&+
+                                          (&+ (the-as pointer arg0) (-> arg0 type size))
+                                          (* (-> arg0 allocated-length) (the-as int (-> arg0 element-type size)))
+                                          )
+                                    )
+          )
+       )
+  )
+
+;; definition for method 22 of type engine
+(defmethod get-first-connectable ((this engine))
+  (-> this alive-list next0)
+  )
+
+;; definition for method 23 of type engine
+(defmethod get-last-connectable ((this engine))
+  (-> this alive-list-end)
+  )
+
+;; definition for method 24 of type engine
+(defmethod get-next-connectable ((this engine) (arg0 connectable))
+  (-> arg0 next0)
+  )
+
+;; definition for method 25 of type engine
+(defmethod get-prev-connectable ((this engine) (arg0 connectable))
+  (-> arg0 prev0)
+  )
+
+;; definition for method 0 of type engine
+(defmethod new engine ((allocation symbol) (type-to-make type) (arg0 symbol) (arg1 int) (arg2 type))
+  (let ((v0-0
+          (object-new
+            allocation
+            type-to-make
+            (the-as int (+ (-> type-to-make size) (* (the-as uint arg1) (-> arg2 size))))
+            )
+          )
+        )
+    (set! (-> v0-0 allocated-length) arg1)
+    (set! (-> v0-0 length) 0)
+    (set! (-> v0-0 name) arg0)
+    (set! (-> v0-0 element-type) arg2)
+    (set! (-> v0-0 alive-list next0) (-> v0-0 alive-list-end))
+    (set! (-> v0-0 alive-list prev0) #f)
+    (set! (-> v0-0 alive-list next1) #f)
+    (set! (-> v0-0 alive-list prev1) #f)
+    (set! (-> v0-0 alive-list-end next0) #f)
+    (set! (-> v0-0 alive-list-end prev0) (-> v0-0 alive-list))
+    (set! (-> v0-0 alive-list-end next1) #f)
+    (set! (-> v0-0 alive-list-end prev1) #f)
+    (set! (-> v0-0 dead-list next0) (the-as connectable (-> v0-0 data)))
+    (set! (-> v0-0 dead-list prev0) #f)
+    (set! (-> v0-0 dead-list next1) #f)
+    (set! (-> v0-0 dead-list prev1) #f)
+    (set! (-> v0-0 dead-list-end next0) #f)
+    (set! (-> v0-0 dead-list-end prev0)
+          (the-as connectable (+ (+ (* (the-as uint (+ arg1 -1)) (-> arg2 size)) 92) (the-as uint v0-0)))
+          )
+    (set! (-> v0-0 dead-list-end next1) #f)
+    (set! (-> v0-0 dead-list-end prev1) #f)
+    (let ((v1-9 (the-as object (-> v0-0 data))))
+      (set! (-> v0-0 data 0 prev0) (-> v0-0 dead-list))
+      (set! (-> v0-0 data 0 next0) (the-as connectable (&+ (the-as pointer v1-9) (-> arg2 size))))
+      (let ((v1-10 (the-as object (&+ (the-as pointer v1-9) (-> arg2 size)))))
+        (let ((a0-6 1)
+              (a1-3 (+ arg1 -2))
+              )
+          (while (>= a1-3 a0-6)
+            (set! (-> (the-as connectable v1-10) prev0)
+                  (the-as connectable (&- (the-as pointer v1-10) (the-as uint (-> arg2 size))))
+                  )
+            (set! (-> (the-as (pointer int32) v1-10)) (&+ (the-as pointer v1-10) (-> arg2 size)))
+            (set! v1-10 (&+ (the-as pointer v1-10) (-> arg2 size)))
+            (+! a0-6 1)
+            )
+          )
+        (set! (-> (the-as connectable v1-10) prev0)
+              (the-as connectable (&- (the-as pointer v1-10) (the-as uint (-> arg2 size))))
+              )
+        (set! (-> (the-as (pointer int32) v1-10)) (-> v0-0 dead-list-end))
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 2 of type engine
+(defmethod print ((this engine))
+  (format #t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
+  this
+  )
+
+;; definition for method 3 of type engine
+(defmethod inspect ((this engine))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tname: ~A~%" (-> this name))
+  (format #t "~Tengine-time: ~D~%" (-> this engine-time))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Telement-type: ~A~%" (-> this element-type))
+  (format #t "~Talive-list:~%")
+  (let ((s5-0 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> this alive-list))
+    (set! *print-column* s5-0)
+    )
+  (format #t "~Talive-list-end:~%")
+  (let ((s5-1 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> this alive-list-end))
+    (set! *print-column* s5-1)
+    )
+  (format #t "~Tdead-list:~%")
+  (let ((s5-2 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> this dead-list))
+    (set! *print-column* s5-2)
+    )
+  (format #t "~Tdead-list-end:~%")
+  (let ((s5-3 *print-column*))
+    (set! *print-column* (+ *print-column* 64))
+    (inspect (-> this dead-list-end))
+    (set! *print-column* s5-3)
+    )
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this allocated-length) (-> this data))
+  this
+  )
+
+;; definition for method 4 of type engine
+(defmethod length ((this engine))
+  (-> this length)
+  )
+
+;; definition for method 5 of type engine
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this engine))
+  (the-as int (+ (-> this type size) (* (-> this allocated-length) (the-as int (-> this element-type size)))))
+  )
+
+;; definition for method 10 of type engine
+(defmethod apply-to-connections ((this engine) (arg0 (function connectable none)))
+  "Apply arg0 to all connections for the engine.
+   It's okay to have arg0 remove the connection."
+  (let* ((a0-1 (-> this alive-list next0))
+         (s4-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> this alive-list-end))
+      (arg0 a0-1)
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+;; definition for method 11 of type engine
+(defmethod apply-to-connections-reverse ((this engine) (arg0 (function connectable none)))
+  "Apply arg0 to all connections, reverse order.
+   Do not use arg0 to remove yourself from the list."
+  (let ((s4-0 (-> this alive-list-end prev0)))
+    (while (!= s4-0 (-> this alive-list))
+      (arg0 s4-0)
+      (set! s4-0 (-> s4-0 prev0))
+      )
+    )
+  0
+  )
+
+;; definition for method 12 of type engine
+(defmethod execute-connections ((this engine) (arg0 object))
+  "Run the engine!"
+  (set! (-> this engine-time) (-> *display* real-clock frame-counter))
+  (let ((s4-0 (the-as connection (-> this alive-list-end prev0))))
+    (while (!= s4-0 (-> this alive-list))
+      ((the-as (function object object object object object) (-> s4-0 param0))
+       (-> s4-0 param1)
+       (-> s4-0 param2)
+       (-> s4-0 param3)
+       arg0
+       )
+      (set! s4-0 (the-as connection (-> s4-0 prev0)))
+      )
+    )
+  0
+  )
+
+;; definition for method 13 of type engine
+(defmethod execute-connections-and-move-to-dead ((this engine) (arg0 object))
+  "Run the engine! If any objects return `'dead`, remove them."
+  (set! (-> this engine-time) (-> *display* real-clock frame-counter))
+  (let ((s4-0 (the-as connection (-> this alive-list-end prev0))))
+    (while (!= s4-0 (-> this alive-list))
+      (let ((v1-3 ((the-as (function object object object object object) (-> s4-0 param0))
+                   (-> s4-0 param1)
+                   (-> s4-0 param2)
+                   (-> s4-0 param3)
+                   arg0
+                   )
+                  )
+            )
+        (set! s4-0 (the-as connection (-> s4-0 prev0)))
+        (if (= v1-3 'dead)
+            ((method-of-type connection move-to-dead) (the-as connection (-> s4-0 next0)))
+            )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 14 of type engine
+(defmethod execute-connections-if-needed ((this engine) (arg0 object))
+  "Execute connections, but only if it hasn't been done on this frame."
+  (if (!= (-> *display* real-clock frame-counter) (-> this engine-time))
+      (execute-connections this arg0)
+      )
+  0
+  )
+
+;; definition for function connection-process-apply
+(defun connection-process-apply ((arg0 process) (arg1 (function object none)))
+  "Apply a function to all connectables of a process."
+  (when arg0
+    (let ((s5-0 (-> arg0 connection-list next1)))
+      (while s5-0
+        (arg1 s5-0)
+        (set! s5-0 (-> s5-0 next1))
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for method 9 of type engine
+(defmethod inspect-all-connections ((this engine))
+  "inspect all of the connections."
+  (let ((gp-0 *kernel-symbol-warnings*))
+    (set! *kernel-symbol-warnings* #f)
+    (let* ((s4-0 (-> this alive-list next0))
+           (s3-0 (-> s4-0 next0))
+           )
+      (while (!= s4-0 (-> this alive-list-end))
+        (format
+          #t
+          "from process ~A:~%~`connection`I"
+          ((method-of-type connection get-process) (the-as connection s4-0))
+          s4-0
+          )
+        (set! s4-0 s3-0)
+        (set! s3-0 (-> s3-0 next0))
+        )
+      )
+    (set! *kernel-symbol-warnings* gp-0)
+    )
+  this
+  )
+
+;; definition for method 15 of type engine
+(defmethod add-connection ((this engine) (arg0 process) (arg1 object) (arg2 object) (arg3 object) (arg4 object))
+  "Add a connection between this engine and a given process."
+  (let ((v1-0 (the-as connection (-> this dead-list next0))))
+    (when (not (or (not arg0) (= v1-0 (-> this dead-list-end))))
+      (set! (-> v1-0 param0) (the-as basic arg1))
+      (set! (-> v1-0 param1) (the-as basic arg2))
+      (set! (-> v1-0 param2) (the-as int arg3))
+      (set! (-> v1-0 param3) (the-as int arg4))
+      (set! (-> this dead-list next0) (-> v1-0 next0))
+      (set! (-> v1-0 next0 prev0) (-> this dead-list))
+      (set! (-> v1-0 next0) (-> this alive-list next0))
+      (set! (-> v1-0 next0 prev0) v1-0)
+      (set! (-> v1-0 prev0) (-> this alive-list))
+      (set! (-> this alive-list next0) v1-0)
+      (set! (-> v1-0 next1) (-> arg0 connection-list next1))
+      (if (-> v1-0 next1)
+          (set! (-> v1-0 next1 prev1) v1-0)
+          )
+      (set! (-> v1-0 prev1) (-> arg0 connection-list))
+      (set! (-> arg0 connection-list next1) v1-0)
+      (+! (-> this length) 1)
+      v1-0
+      )
+    )
+  )
+
+;; definition for method 13 of type connection
+(defmethod move-to-dead ((this connection))
+  "Move this connection from the alive list to the dead list."
+  (let ((v1-1 (get-engine this)))
+    (set! (-> this prev0 next0) (-> this next0))
+    (set! (-> this next0 prev0) (-> this prev0))
+    (set! (-> this prev1 next1) (-> this next1))
+    (if (-> this next1)
+        (set! (-> this next1 prev1) (-> this prev1))
+        )
+    (set! (-> this next0) (-> v1-1 dead-list next0))
+    (set! (-> this next0 prev0) this)
+    (set! (-> this prev0) (-> v1-1 dead-list))
+    (set! (-> v1-1 dead-list next0) this)
+    (+! (-> v1-1 length) -1)
+    )
+  this
+  )
+
+;; definition for function process-disconnect
+(defun process-disconnect ((arg0 process))
+  "Disconnect all connections for the given process."
+  (when arg0
+    (let ((gp-0 (-> arg0 connection-list next1)))
+      (while gp-0
+        ((method-of-type connection move-to-dead) (the-as connection gp-0))
+        (set! gp-0 (-> gp-0 next1))
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 16 of type engine
+(defmethod remove-from-process ((this engine) (arg0 process))
+  "Remove all connections from process for this engine."
+  (when arg0
+    (let ((s5-0 (-> arg0 connection-list next1)))
+      (while s5-0
+        (if ((method-of-type connection belongs-to-engine?) (the-as connection s5-0) this)
+            ((method-of-type connection move-to-dead) (the-as connection s5-0))
+            )
+        (set! s5-0 (-> s5-0 next1))
+        )
+      )
+    )
+  0
+  )
+
+;; definition for method 17 of type engine
+(defmethod remove-matching ((this engine) (arg0 (function connection engine symbol)))
+  "Call the given function on each connection and the engine.
+   If it returns truthy, `move-to-dead` that connection."
+  (let* ((s4-0 (-> this alive-list next0))
+         (s3-0 (-> s4-0 next0))
+         )
+    (while (!= s4-0 (-> this alive-list-end))
+      (if (arg0 (the-as connection s4-0) this)
+          ((method-of-type connection move-to-dead) (the-as connection s4-0))
+          )
+      (set! s4-0 s3-0)
+      (set! s3-0 (-> s3-0 next0))
+      )
+    )
+  0
+  )
+
+;; definition for method 18 of type engine
+(defmethod remove-all ((this engine))
+  "Remove all connections from an engine."
+  (let* ((a0-1 (-> this alive-list next0))
+         (s5-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> this alive-list-end))
+      ((method-of-type connection move-to-dead) (the-as connection a0-1))
+      (set! a0-1 s5-0)
+      (set! s5-0 (-> s5-0 next0))
+      )
+    )
+  0
+  )
+
+;; definition for method 19 of type engine
+(defmethod remove-by-param0 ((this engine) (arg0 object))
+  "Remove all connections with param0 matching arg0."
+  (let* ((a0-1 (-> this alive-list next0))
+         (s4-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> this alive-list-end))
+      (if (= (-> (the-as connection a0-1) param0) arg0)
+          ((method-of-type connection move-to-dead) (the-as connection a0-1))
+          )
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+;; definition for method 20 of type engine
+(defmethod remove-by-param1 ((this engine) (arg0 int))
+  "Remove all connections with param1 matching arg0."
+  (let* ((a0-1 (-> this alive-list next0))
+         (s4-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> this alive-list-end))
+      (if (= (-> (the-as connection a0-1) param1) arg0)
+          ((method-of-type connection move-to-dead) (the-as connection a0-1))
+          )
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+;; definition for method 21 of type engine
+(defmethod remove-by-param2 ((this engine) (arg0 int))
+  "Remove all connections with param2 matching arg0."
+  (let* ((a0-1 (-> this alive-list next0))
+         (s4-0 (-> a0-1 next0))
+         )
+    (while (!= a0-1 (-> this alive-list-end))
+      (if (= (-> (the-as connection a0-1) param2) arg0)
+          ((method-of-type connection move-to-dead) (the-as connection a0-1))
+          )
+      (set! a0-1 s4-0)
+      (set! s4-0 (-> s4-0 next0))
+      )
+    )
+  0
+  )
+
+;; definition of type connection-pers
+(deftype connection-pers (structure)
+  "This is another engine system, very similar to the first, but not specific to a process.
+Each connection has a `key`, which is like the process, but unlike normal engine,
+the key's don't track which engine-pers they belong to.
+
+Unlike [[engine]], users can use [[engine-pers]] as a parent class."
+  ((next         connection-pers)
+   (key          object)
+   (update-time  time-frame)
+   (param        object   4)
+   (param-int32  int32    4 :overlay-at (-> param 0))
+   (param-int64  int64    2 :overlay-at (-> param 0))
+   (param-float  float    4 :overlay-at (-> param 0))
+   (param-quat   uint128    :overlay-at (-> param 0))
+   )
+  )
+
+;; definition for method 3 of type connection-pers
+;; INFO: Used lq/sq
+(defmethod inspect ((this connection-pers))
+  (when (not this)
+    (set! this this)
+    (goto cfg-16)
+    )
+  (format #t "[~8x] ~A~%" this 'connection-pers)
+  (format #t "~1Tnext: #<connection-pers @ #x~X>~%" (-> this next))
+  (format #t "~1Tkey: ~A~%" (-> this key))
+  (format #t "~1Tupdate-time: ~D~%" (-> this update-time))
+  (format #t "~1Tparam[4] @ #x~X~%" (-> this param))
+  (dotimes (s5-0 4)
+    (format #t "~T  [~D]~1Tparam: ~A~%" s5-0 (-> this param s5-0))
+    )
+  (format #t "~1Tparam-int32[4] @ #x~X~%" (-> this param))
+  (dotimes (s5-1 4)
+    (format #t "~T  [~D]~1Tparam-int32: ~D~%" s5-1 (-> this param s5-1))
+    )
+  (format #t "~1Tparam-int64[2] @ #x~X~%" (-> this param))
+  (dotimes (s5-2 2)
+    (format #t "~T  [~D]~1Tparam-int64: ~D~%" s5-2 (-> this param-int64 s5-2))
+    )
+  (format #t "~1Tparam-float[4] @ #x~X~%" (-> this param))
+  (dotimes (s5-3 4)
+    (format #t "~T  [~D]~1Tparam-float: ~f~%" s5-3 (the-as float (-> this param s5-3)))
+    )
+  (format #t "~1Tparam-quat: #x~X~%" (-> this param-quat))
+  (label cfg-16)
+  this
+  )
+
+;; definition of type engine-pers
+(deftype engine-pers (basic)
+  ((name              symbol)
+   (length            int16)
+   (allocated-length  int16)
+   (element-type      type)
+   (execute-time      time-frame)
+   (alive-list        connection-pers)
+   (dead-list         connection-pers)
+   (data              connection-pers  :inline :dynamic)
+   )
+  (:methods
+    (new (symbol type symbol int type) _type_)
+    (schedule-callback (_type_ object time-frame) connection-pers)
+    (kill-callback (_type_ connection-pers) none)
+    (kill-by-key (_type_ object) none)
+    (kill-matching (_type_ (function engine-pers connection-pers object object symbol) object object) none)
+    (update-callback (_type_) none)
+    (run-pending-updates! (_type_ time-frame) none)
+    )
+  )
+
+;; definition for method 3 of type engine-pers
+(defmethod inspect ((this engine-pers))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Telement-type: ~A~%" (-> this element-type))
+  (format #t "~1Texecute-time: ~D~%" (-> this execute-time))
+  (format #t "~1Talive-list: #<connection-pers @ #x~X>~%" (-> this alive-list))
+  (format #t "~1Tdead-list: #<connection-pers @ #x~X>~%" (-> this dead-list))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type engine-pers
+(defmethod new engine-pers ((allocation symbol) (type-to-make type) (arg0 symbol) (arg1 int) (arg2 type))
+  (let ((v0-0 (object-new
+                allocation
+                type-to-make
+                (the-as int (+ (-> type-to-make size) (* (the-as uint arg1) (-> arg2 size))))
+                )
+              )
+        )
+    (set! (-> v0-0 allocated-length) arg1)
+    (set! (-> v0-0 length) 0)
+    (set! (-> v0-0 name) arg0)
+    (set! (-> v0-0 element-type) arg2)
+    (set! (-> v0-0 alive-list) #f)
+    (set! (-> v0-0 dead-list) (the-as connection-pers (-> v0-0 data)))
+    (let ((v1-3 (the-as object (-> v0-0 data))))
+      (dotimes (a0-1 arg1)
+        (set! (-> (the-as (pointer pointer) v1-3) 0) (&+ (the-as pointer v1-3) (-> arg2 size)))
+        (set! v1-3 (&+ (the-as pointer v1-3) (-> arg2 size)))
+        )
+      (set! (-> (the-as (pointer int32) (&- (the-as pointer v1-3) (the-as uint (-> arg2 size))))) #f)
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 4 of type engine-pers
+(defmethod length ((this engine-pers))
+  (-> this length)
+  )
+
+;; definition for method 5 of type engine-pers
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this engine-pers))
+  (the-as int (+ (-> this type size) (* (-> this allocated-length) (the-as int (-> this element-type size)))))
+  )
+
+;; definition for method 9 of type engine-pers
+;; INFO: Used lq/sq
+(defmethod schedule-callback ((this engine-pers) (arg0 object) (arg1 time-frame))
+  "Get a connection for this key.
+   If no connection exists, add it.
+   Schedule an update to happen in arg1 seconds."
+  (local-vars (v0-0 connection-pers))
+  (let ((v1-0 (-> this alive-list)))
+    (while v1-0
+      (when (= arg0 (-> v1-0 key))
+        (set! v0-0 v1-0)
+        (goto cfg-8)
+        )
+      (set! v1-0 (-> v1-0 next))
+      )
+    )
+  (set! v0-0 (-> this dead-list))
+  (when v0-0
+    (set! (-> this dead-list) (-> v0-0 next))
+    (set! (-> v0-0 next) (-> this alive-list))
+    (set! (-> this alive-list) v0-0)
+    (+! (-> this length) 1)
+    (set! (-> v0-0 key) arg0)
+    (set! (-> v0-0 param-quat) (the-as uint128 0))
+    0
+    )
+  (label cfg-8)
+  (if v0-0
+      (set! (-> v0-0 update-time) (+ (-> this execute-time) arg1))
+      )
+  v0-0
+  )
+
+;; definition for method 10 of type engine-pers
+;; WARN: Return type mismatch int vs none.
+(defmethod kill-callback ((this engine-pers) (arg0 connection-pers))
+  "Called when a connection is removed."
+  0
+  (none)
+  )
+
+;; definition for method 13 of type engine-pers
+;; WARN: Return type mismatch int vs none.
+(defmethod update-callback ((this engine-pers))
+  "Called when a connection is run.
+   Users can override this as needed."
+  0
+  (none)
+  )
+
+;; definition for method 11 of type engine-pers
+;; WARN: Return type mismatch int vs none.
+(defmethod kill-by-key ((this engine-pers) (arg0 object))
+  "Remove connections with this key, calling `kill-callback`."
+  (let ((s4-0 (&-> this alive-list))
+        (s2-0 (-> this alive-list))
+        )
+    (while s2-0
+      (let ((s3-0 (-> s2-0 next)))
+        (cond
+          ((!= arg0 (-> s2-0 key))
+           (set! s4-0 (&-> s2-0 next))
+           )
+          (else
+            (kill-callback this s2-0)
+            (set! (-> s4-0 0) (-> s2-0 next))
+            (set! (-> s2-0 next) (-> this dead-list))
+            (set! (-> this dead-list) s2-0)
+            (+! (-> this length) -1)
+            )
+          )
+        (set! s2-0 s3-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 12 of type engine-pers
+;; WARN: Return type mismatch int vs none.
+(defmethod kill-matching ((this engine-pers)
+                         (arg0 (function engine-pers connection-pers object object symbol))
+                         (arg1 object)
+                         (arg2 object)
+                         )
+  "Call the given function on each connection. If it returns truthy, kill that connection."
+  (let ((s2-0 (&-> this alive-list))
+        (s0-0 (-> this alive-list))
+        )
+    (while s0-0
+      (let ((s1-0 (-> s0-0 next)))
+        (cond
+          ((not (arg0 this s0-0 arg1 arg2))
+           (set! s2-0 (&-> s0-0 next))
+           )
+          (else
+            (kill-callback this s0-0)
+            (set! (-> s2-0 0) (-> s0-0 next))
+            (set! (-> s0-0 next) (-> this dead-list))
+            (set! (-> this dead-list) s0-0)
+            (+! (-> this length) -1)
+            )
+          )
+        (set! s0-0 s1-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type engine-pers
+;; WARN: Return type mismatch int vs none.
+(defmethod run-pending-updates! ((this engine-pers) (arg0 time-frame))
+  "Run updates if they scheduled. If something is found that has no pending update, kill it.
+   Note that we won't kill things on this call if they fail to update their `update-time`.
+   They will survive until the next call to `run-pending-updates`!
+   (or you can modify their `update-time` before that to prevent them from being killed.)"
+  (let ((s4-0 (-> this execute-time))
+        (s2-0 (&-> this alive-list))
+        (s1-0 (-> this alive-list))
+        )
+    (while s1-0
+      (let ((s3-0 (-> s1-0 next)))
+        (cond
+          ((>= (-> s1-0 update-time) s4-0)
+           (update-callback this)
+           (set! s2-0 (&-> s1-0 next))
+           )
+          (else
+            (kill-callback this s1-0)
+            (set! (-> s2-0 0) (-> s1-0 next))
+            (set! (-> s1-0 next) (-> this dead-list))
+            (set! (-> this dead-list) s1-0)
+            (+! (-> this length) -1)
+            )
+          )
+        (set! s1-0 s3-0)
+        )
+      )
+    )
+  (set! (-> this execute-time) arg0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

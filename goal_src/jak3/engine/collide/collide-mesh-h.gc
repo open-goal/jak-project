@@ -5,5 +5,126 @@
 ;; name in dgo: collide-mesh-h
 ;; dgos: GAME
 
+(declare-type collide-mesh-cache-tri structure)
+(declare-type collide-shape-prim-mesh basic)
+
 ;; DECOMP BEGINS
 
+(deftype collide-tri-result (structure)
+  "A triangle result of a collision."
+  ((vertex       vector  3 :inline)
+   (intersect    vector  :inline)
+   (normal       vector  :inline)
+   (pat          pat-surface)
+   (collide-ptr  basic)
+   )
+  )
+
+
+(deftype collide-mesh-tri (structure)
+  "A triangle for foreground collision meshes."
+  ((vertex-index  uint8  3)
+   (unused        uint8)
+   (pat           pat-surface)
+   )
+  :pack-me
+  )
+
+
+(deftype collide-mesh (basic)
+  "A collision mesh for foreground objects,
+bound to the joint specified by `joint-id`."
+  ((joint-id     int32)
+   (num-tris     uint32)
+   (num-verts    uint32)
+   (vertex-data  (inline-array vector))
+   (tris         collide-mesh-tri  1 :inline :offset  32)
+   )
+  (:methods
+    (debug-draw-tris (_type_ process-drawable int) none)
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol)
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
+    (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none)
+    (collide-mesh-math-1 (_type_ object object) none)
+    (collide-mesh-math-2 (_type_ object object object) none)
+    )
+  )
+
+
+(deftype collide-mesh-cache-tri (structure)
+  "A triangle stored in the foreground mesh collide cache."
+  ((vertex  vector          3 :inline)
+   (normal  vector          :inline)
+   (bbox4w  bounding-box4w  :inline)
+   (pat     pat-surface     :overlay-at (-> normal data 3))
+   )
+  )
+
+
+(deftype collide-mesh-cache-entry (structure)
+  "A foreground mesh collide cache entry."
+  ((mat   matrix                  :inline)
+   (tris  collide-mesh-cache-tri  :inline :dynamic)
+   )
+  )
+
+
+(deftype collide-mesh-cache (basic)
+  "A collide cache for foreground meshes."
+  ((used-size  uint32)
+   (max-size   uint32)
+   (id         uint32)
+   (data       uint8  48000)
+   )
+  (:methods
+    (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry)
+    (is-id? (_type_ int) symbol)
+    (next-id! (_type_) uint)
+    (allocate! (_type_ int) collide-mesh-cache-entry)
+    )
+  )
+
+
+(defmethod next-id! ((this collide-mesh-cache))
+  "Reset all used entries in the cache and increment the ID.
+   If the id is zero, set it to 1."
+  ;; og:preserve-this
+  ;; (local-vars (v0-0 int) (v1-0 uint) (v1-1 int))
+  ;; (set! v1-0 (-> this id))
+  ;; (set! (-> this used-size) (the-as uint 0))
+  ;; (set! v1-1 (the-as int (+ v1-0 1)))
+  ;; (bl! (zero? (the-as uint v1-1)) L3 (no-delay!))
+  ;; (set! v1-1 1)
+  ;; (label cfg-2)
+  ;; (set! (-> this id) (the-as uint v1-1))
+  ;; (set! v0-0 0)
+  ;; (ret-value v0-0)
+  (let ((id (-> this id)))
+    (set! (-> this used-size) 0)
+    (let ((ret (1+ id)))
+      (if (zero? id)
+        (set! id (the uint 1))
+        )
+      (set! (-> this id) ret)
+      ret
+      )
+    )
+  )
+
+(defmethod is-id? ((this collide-mesh-cache) (id int))
+  "Does this cache have the given ID?"
+  (= (-> this id) id)
+  )
+
+(kmemopen global "collide-mesh-cache")
+
+(define-perm *collide-mesh-cache* collide-mesh-cache (new 'global 'collide-mesh-cache))
+
+(set! (-> *collide-mesh-cache* id) (the-as uint 1))
+
+(set! (-> *collide-mesh-cache* used-size) (the-as uint 0))
+
+(set! (-> *collide-mesh-cache* max-size) (the-as uint #xbb80))
+
+(kmemclose)

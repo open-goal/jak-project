@@ -5,5 +5,343 @@
 ;; name in dgo: pat-h
 ;; dgos: GAME
 
+;; +++pat-event
+(defenum pat-event
+  :type uint8
+  (none        0)
+  (deadly      1)
+  (endlessfall 2)
+  (burn        3)
+  (deadlyup    4)
+  (burnup      5)
+  (melt        6)
+  (slide       7)
+  (lip         8)
+  (lipramp     9)
+  (shock      10)
+  (shockup    11)
+  (hide       12)
+  (rail       13)
+  (slippery   14)
+  (drag       15)
+  (waterfloor 16)
+  (hang       17)
+  (fry        18)
+  (slime      19)
+  )
+;; ---pat-event
+
+
+;; +++pat-material
+(defenum pat-material
+  :type uint8
+  (unknown     0)
+  (ice         1)
+  (quicksand   2)
+  (waterbottom 3)
+  (tar         4)
+  (sand        5)
+  (wood        6)
+  (grass       7)
+  (pcmetal     8)
+  (snow        9)
+  (deepsnow   10)
+  (hotcoals   11)
+  (lava       12)
+  (crwood     13)
+  (gravel     14)
+  (dirt       15)
+  (metal      16)
+  (straw      17)
+  (tube       18)
+  (swamp      19)
+  (stopproj   20)
+  (rotate     21)
+  (neutral    22)
+  (stone      23)
+  (crmetal    24)
+  (carpet     25)
+  (grmetal    26)
+  (shmetal    27)
+  (hdwood     28)
+  (squish     29)
+  (mhshroom   30)
+  (forest     31)
+  (mhswamp    32)
+  (dmaker     33)
+  )
+;; ---pat-material
+
+
+;; +++pat-mode
+(defenum pat-mode
+  :type uint8
+  (ground 0)
+  (wall 1)
+  (obstacle 2)
+  (halfpipe 3)
+  )
+;; ---pat-mode
+
+
 ;; DECOMP BEGINS
 
+(deftype pat-surface (uint32)
+  ((skip          uint8        :offset   0 :size   7)
+   (mode          pat-mode     :offset   7 :size   3)
+   (material      pat-material :offset  10 :size   6)
+   (camera        uint8        :offset  16 :size   1)
+   (event         pat-event    :offset  18 :size   6)
+   (skip2         uint8        :offset  24 :size   5)
+   (noentity      uint8        :offset   0 :size   1)
+   (nocamera      uint8        :offset   1 :size   1)
+   (noedge        uint8        :offset   2 :size   1)
+   (nogrind       uint8        :offset   3 :size   1)
+   (nojak         uint8        :offset   4 :size   1)
+   (noboard       uint8        :offset   5 :size   1)
+   (nopilot       uint8        :offset   6 :size   1)
+   (probe         uint8        :offset  24 :size   1)
+   (nomech        uint8        :offset  25 :size   1)
+   (noproj        uint8        :offset  26 :size   1)
+   (noendlessfall uint8        :offset  27 :size   1)
+   (noprobe       uint8        :offset  28 :size   1)
+   (nolineofsight uint8        :offset  16 :size   1)
+   (board         uint8        :offset   4 :size   1)
+   )
+  )
+
+
+(defun-debug pat-material->string ((arg0 pat-surface))
+  (case (-> arg0 material)
+    (((pat-material deepsnow))
+     "deepsnow"
+     )
+    (((pat-material neutral))
+     "neutral"
+     )
+    (((pat-material carpet))
+     "carpet"
+     )
+    (((pat-material shmetal))
+     "shmetal"
+     )
+    (((pat-material grmetal))
+     "grmetal"
+     )
+    (((pat-material lava))
+     "lava"
+     )
+    (((pat-material crmetal))
+     "crmetal"
+     )
+    (((pat-material pcmetal))
+     "pcmetal"
+     )
+    (((pat-material grass))
+     "grass"
+     )
+    (((pat-material snow))
+     "snow"
+     )
+    (((pat-material swamp))
+     "swamp"
+     )
+    (((pat-material stone))
+     "stone"
+     )
+    (((pat-material hotcoals))
+     "hotcoals"
+     )
+    (((pat-material unknown))
+     "unknown"
+     )
+    (((pat-material dirt))
+     "dirt"
+     )
+    (((pat-material dmaker))
+     "dmaker"
+     )
+    (((pat-material tube))
+     "tube"
+     )
+    (((pat-material forest))
+     "forest"
+     )
+    (((pat-material stopproj))
+     "stopproj"
+     )
+    (((pat-material mhshroom))
+     "mhshroom"
+     )
+    (((pat-material mhswamp))
+     "mhswamp"
+     )
+    (((pat-material tar))
+     "tar"
+     )
+    (((pat-material straw))
+     "straw"
+     )
+    (((pat-material wood))
+     "wood"
+     )
+    (((pat-material quicksand))
+     "quicksand"
+     )
+    (((pat-material squish))
+     "squish"
+     )
+    (((pat-material ice))
+     "ice"
+     )
+    (((pat-material rotate))
+     "rotate"
+     )
+    (((pat-material crwood))
+     "crwood"
+     )
+    (((pat-material waterbottom))
+     "waterbottom"
+     )
+    (((pat-material hdwood))
+     "hdwood"
+     )
+    (((pat-material sand))
+     "sand"
+     )
+    (((pat-material gravel))
+     "gravel"
+     )
+    (((pat-material metal))
+     "metal"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(defun-debug pat-mode->string ((arg0 pat-surface))
+  (case (-> arg0 mode)
+    (((pat-mode wall))
+     "wall"
+     )
+    (((pat-mode halfpipe))
+     "halfpipe"
+     )
+    (((pat-mode obstacle))
+     "obstacle"
+     )
+    (((pat-mode ground))
+     "ground"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(defun-debug pat-event->string ((arg0 pat-surface))
+  (case (-> arg0 event)
+    (((pat-event burn))
+     "burn"
+     )
+    (((pat-event deadly))
+     "deadly"
+     )
+    (((pat-event waterfloor))
+     "waterfloor"
+     )
+    (((pat-event slippery))
+     "slippery"
+     )
+    (((pat-event melt))
+     "melt"
+     )
+    (((pat-event endlessfall))
+     "endlessfall"
+     )
+    (((pat-event burnup))
+     "burnup"
+     )
+    (((pat-event hide))
+     "hide"
+     )
+    (((pat-event deadlyup))
+     "deadlyup"
+     )
+    (((pat-event fry))
+     "fry"
+     )
+    (((pat-event slime))
+     "slime"
+     )
+    (((pat-event drag))
+     "drag"
+     )
+    (((pat-event shockup))
+     "shockup"
+     )
+    (((pat-event slide))
+     "slide"
+     )
+    (((pat-event hang))
+     "hang"
+     )
+    (((pat-event lipramp))
+     "lipramp"
+     )
+    (((pat-event rail))
+     "rail"
+     )
+    (((pat-event none))
+     "none"
+     )
+    (((pat-event lip))
+     "lip"
+     )
+    (((pat-event shock))
+     "shock"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+(deftype pat-mode-info (structure)
+  ((name          string)
+   (wall-angle    float)
+   (color         rgba)
+   (hilite-color  rgba)
+   )
+  )
+
+
+(define *pat-mode-info* (new 'static 'inline-array pat-mode-info 4
+                          (new 'static 'pat-mode-info
+                            :name "ground"
+                            :wall-angle 0.2
+                            :color (new 'static 'rgba :r #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :r #xff :a #x80)
+                            )
+                          (new 'static 'pat-mode-info
+                            :name "wall"
+                            :wall-angle 2.0
+                            :color (new 'static 'rgba :b #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :b #xff :a #x80)
+                            )
+                          (new 'static 'pat-mode-info
+                            :name "obstacle"
+                            :wall-angle 0.82
+                            :color (new 'static 'rgba :r #x7f :b #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :r #xff :b #xff :a #x80)
+                            )
+                          (new 'static 'pat-mode-info
+                            :name "halfpipe"
+                            :wall-angle -2.0
+                            :color (new 'static 'rgba :r #x7f :g #x7f :a #x40)
+                            :hilite-color (new 'static 'rgba :r #xff :g #xff :a #x80)
+                            )
+                          )
+        )

@@ -1,0 +1,2690 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type title-control
+(deftype title-control (process)
+  ((selected     int32)
+   (sprites      hud-sprite           2 :inline)
+   (sprite-pos   vector               :inline)
+   (sprite-draw  uint32)
+   (buffer       external-art-buffer  2)
+   (want         int32                2)
+   (want-name    string               2)
+   (have         int32                2)
+   (draw         int32)
+   (draw-name    string)
+   (active       symbol)
+   (spark-time   time-frame)
+   (gui-id       sound-id)
+   (logo         (pointer manipy))
+   )
+  (:state-methods
+    startup
+    wait
+    idle
+    (scrap-book int)
+    (control-spec int)
+    )
+  )
+
+;; definition for method 3 of type title-control
+(defmethod inspect ((this title-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tselected: ~D~%" (-> this selected))
+  (format #t "~2Tsprites[2] @ #x~X~%" (-> this sprites))
+  (format #t "~2Tsprite-pos: ~`vector`P~%" (-> this sprite-pos))
+  (format #t "~2Tsprite-draw: ~D~%" (-> this sprite-draw))
+  (format #t "~2Tbuffer[2] @ #x~X~%" (-> this buffer))
+  (dotimes (s5-0 2)
+    (format #t "~T  [~D]~2Tbuffer: ~A~%" s5-0 (-> this buffer s5-0))
+    )
+  (format #t "~2Twant[2] @ #x~X~%" (-> this want))
+  (format #t "~2Twant-name[2] @ #x~X~%" (-> this want-name))
+  (format #t "~2Thave[2] @ #x~X~%" (-> this have))
+  (format #t "~2Tdraw: ~D~%" (-> this draw))
+  (format #t "~2Tdraw-name: ~A~%" (-> this draw-name))
+  (format #t "~2Tactive: ~A~%" (-> this active))
+  (format #t "~2Tspark-time: ~D~%" (-> this spark-time))
+  (format #t "~2Tgui-id: ~D~%" (-> this gui-id))
+  (format #t "~2Tlogo: #x~X~%" (-> this logo))
+  (label cfg-7)
+  this
+  )
+
+;; definition for method 7 of type title-control
+;; WARN: Return type mismatch process vs title-control.
+(defmethod relocate ((this title-control) (offset int))
+  (dotimes (v1-0 2)
+    (if (nonzero? (-> this buffer v1-0))
+        (&+! (-> this buffer v1-0) offset)
+        )
+    )
+  (the-as title-control ((method-of-type process relocate) this offset))
+  )
+
+;; definition for method 10 of type title-control
+(defmethod deactivate ((this title-control))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (send-event (handle->process (-> *game-info* dust-storm)) 'set-intro #f)
+  (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
+  (dotimes (s5-0 2)
+    (set-pending-file (-> this buffer s5-0) (the-as string #f) -1 (the-as handle #f) 100000000.0)
+    )
+  (dotimes (s5-1 2)
+    (update (-> this buffer s5-1))
+    )
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-jakthreelogo jakthreelogo jakthreelogo-lod0-jg jakthreelogo-idle-ja
+              ((jakthreelogo-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 50)
+              )
+
+;; definition for function title-screen-change
+(defbehavior title-screen-change title-control ((arg0 string) (arg1 int) (arg2 string) (arg3 int) (arg4 symbol) (arg5 symbol))
+  (when arg5
+    (let ((s1-0 (the-as int (-> *setting-control* user-current language))))
+      0
+      (if (and (= (the-as language-enum s1-0) (language-enum english)) (= (scf-get-territory) 1))
+          (set! s1-0 11)
+          )
+      (let ((v1-6 (cond
+                    ((zero? s1-0)
+                     0
+                     )
+                    ((= s1-0 11)
+                     1
+                     )
+                    ((= s1-0 1)
+                     2
+                     )
+                    ((= s1-0 2)
+                     3
+                     )
+                    ((= s1-0 4)
+                     4
+                     )
+                    ((= s1-0 3)
+                     5
+                     )
+                    (else
+                      0
+                      )
+                    )
+                  )
+            )
+        (if (>= arg1 0)
+            (+! arg1 (* 3 v1-6))
+            )
+        (if (>= arg3 0)
+            (+! arg3 (* 3 v1-6))
+            )
+        )
+      )
+    )
+  (set! (-> self want-name 0) arg0)
+  (set! (-> self want 0) arg1)
+  (set! (-> self want-name 1) (-> self draw-name))
+  (set! (-> self want 1) (-> self draw))
+  (when arg4
+    (set-setting! 'bg-a 'abs 1.0 0)
+    (set! (-> *setting-control* user-current bg-a) 1.0)
+    (set-blackout-frames 0)
+    (apply-settings *setting-control*)
+    )
+  (when (>= (-> self draw) 0)
+    (set-setting! 'bg-a 'abs 1.0 0)
+    (apply-settings *setting-control*)
+    (while (!= (-> *setting-control* user-current bg-a) 1.0)
+      (suspend)
+      )
+    )
+  (set! (-> self draw) arg1)
+  (set! (-> self draw-name) arg0)
+  (set! (-> self active) #f)
+  (while (and (>= (-> self draw) 0) (not (-> self active)))
+    (suspend)
+    )
+  (remove-setting! 'bg-a)
+  (set! (-> self want-name 1) arg2)
+  (set! (-> self want 1) arg3)
+  0
+  )
+
+;; definition for function wait-for-press
+(defun wait-for-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
+  (let ((s2-0 (current-time))
+        (s3-0 #f)
+        )
+    (while (not (or (time-elapsed? s2-0 arg1) (and (time-elapsed? s2-0 arg0) s3-0)))
+      (if (cpad-pressed? 0 confirm)
+          (set! s3-0 #t)
+          )
+      (when (and arg2 (cpad-pressed? 0 triangle))
+        (set! s3-0 'abort)
+        (goto cfg-17)
+        )
+      (suspend)
+      )
+    (label cfg-17)
+    s3-0
+    )
+  )
+
+;; definition for function direction-press
+(defun direction-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
+  (let ((s2-0 (current-time))
+        (s3-0 #f)
+        )
+    (while (not (or (time-elapsed? s2-0 arg1) (and (time-elapsed? s2-0 arg0) s3-0)))
+      (if (cpad-pressed? 0 r1 confirm)
+          (set! s3-0 'forward)
+          )
+      (if (cpad-pressed? 0 l1)
+          (set! s3-0 'back)
+          )
+      (when (and arg2 (cpad-pressed? 0 triangle))
+        (set! s3-0 'abort)
+        (goto cfg-19)
+        )
+      (suspend)
+      )
+    (label cfg-19)
+    s3-0
+    )
+  )
+
+;; definition for function title-menu
+;; WARN: Return type mismatch int vs object.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior title-menu title-control ()
+  (local-vars (sv-112 font-context))
+  (sound-play "dmenu-hit")
+  (let ((gp-1 (new 'static 'boxed-array :type text-id (text-id progress-start-button)))
+        (s5-1 (current-time))
+        )
+    (while (not *common-text*)
+      (suspend)
+      )
+    (until #f
+      (when (not (paused?))
+        (cond
+          ((and (kiosk?) (or (cpad-pressed? 0 square) (time-elapsed? s5-1 (seconds 60))))
+           (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f) (the-as resetter-spec #f))
+           (suspend-for (seconds 5)
+             )
+           (set! s5-1 (current-time))
+           )
+          ((and (cpad-pressed? 0 up l-analog-up) (> (-> self selected) 0))
+           (seekl! (-> self selected) 0 1)
+           (sound-play "dmenu-move")
+           )
+          ((and (cpad-pressed? 0 down l-analog-down) (< (-> self selected) (+ (-> gp-1 length) -1)))
+           (seekl! (-> self selected) (+ (-> gp-1 length) -1) 1)
+           (sound-play "dmenu-move")
+           )
+          ((or (cpad-pressed? 0 confirm)
+               (and (cpad-pressed? 0 start)
+                    (or (not *debug-segment*) (not (logtest? (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons l3))))
+                    )
+               )
+           (sound-play "dmenu-pick")
+           (return (the-as object (-> self selected)))
+           )
+          )
+        (when (< (mod (current-time) 300) 210)
+          (set! sv-112
+                (new 'stack 'font-context *font-default-matrix* 64 312 0.0 (font-color default) (font-flags shadow kerning))
+                )
+          (set-width! sv-112 384)
+          (set-height! sv-112 50)
+          (set! (-> sv-112 flags) (font-flags shadow kerning middle middle-vert large))
+          (set! (-> sv-112 scale) 0.7)
+          (dotimes (s4-2 (-> gp-1 length))
+            (if (= (-> self selected) s4-2)
+                (set! (-> sv-112 color) (font-color progress-old-selected))
+                (set! (-> sv-112 color) (font-color white))
+                )
+            (print-game-text (lookup-text! *common-text* (-> gp-1 s4-2) #f) sv-112 #f 44 (bucket-id hud-draw-hud-alpha))
+            (+! (-> sv-112 origin y) 22.0)
+            )
+          )
+        )
+      (suspend)
+      )
+    )
+  #f
+  -1
+  )
+
+;; definition for function title-fade-out
+(defun title-fade-out ((arg0 float))
+  (setup
+    *screen-filter*
+    (new 'static 'vector)
+    (new 'static 'vector :w 128.0)
+    arg0
+    (bucket-id tex-hud-pris2)
+    #x3fffff
+    #x33001
+    #t
+    )
+  (suspend-for (seconds 0.4)
+    )
+  (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+  (set! (-> *setting-control* user-current bg-a) 0.0)
+  (while (or (-> *setting-control* user-current movie)
+             (not *target*)
+             (not (and (-> *target* next-state) (= (-> *target* next-state name) 'target-title)))
+             (!= (-> *setting-control* user-current bg-a) 0.0)
+             )
+    (suspend)
+    )
+  (set! (-> *game-info* blackout-time) 0)
+  (set! (-> *setting-control* user-current bg-a-force) 0.0)
+  (disable *screen-filter*)
+  0
+  )
+
+;; definition for function title-progress
+(defun title-progress ((arg0 symbol))
+  (setup
+    *screen-filter*
+    (new 'static 'vector :w 128.0)
+    (new 'static 'vector :w 128.0)
+    (seconds-per-frame)
+    (bucket-id tex-hud-pris2)
+    #x3fffff
+    #x33001
+    #t
+    )
+  (set-setting! 'allow-progress #t 0.0 0)
+  (apply-settings *setting-control*)
+  (activate-progress *dproc* arg0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (dotimes (gp-1 5)
+    (suspend)
+    )
+  (disable *screen-filter*)
+  (remove-setting! 'allow-error)
+  (while (-> *blit-displays-work* menu-mode)
+    (suspend)
+    )
+  (set-setting! 'allow-error #f 0.0 0)
+  (apply-settings *setting-control*)
+  (set-blackout-frames (seconds 0.2))
+  0
+  )
+
+;; failed to figure out what this is:
+(defstate startup (title-control)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('scrap-book)
+       (go-virtual scrap-book (the-as int (-> block param 0)))
+       )
+      (('control-spec)
+       (go-virtual control-spec (the-as int (-> block param 0)))
+       )
+      )
+    )
+  :exit (behavior ()
+    (when (not (and (-> self next-state)
+                    (let ((v1-3 (-> self next-state name)))
+                      (or (= v1-3 'startup) (= v1-3 'wait) (= v1-3 'idle) (= v1-3 'scrap-book) (= v1-3 'control-spec))
+                      )
+                    )
+               )
+      (disable *screen-filter*)
+      (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+      )
+    )
+  :code (behavior ()
+    (when (zero? (-> *game-info* demo-state))
+      (let ((a1-0 (new 'stack-no-clear 'array 'symbol 10)))
+        (set! (-> a1-0 9) #f)
+        (set! (-> a1-0 8) #f)
+        (set! (-> a1-0 7) #f)
+        (set! (-> a1-0 6) #f)
+        (set! (-> a1-0 5) #f)
+        (set! (-> a1-0 4) #f)
+        (set! (-> a1-0 3) #f)
+        (set! (-> a1-0 2) 'introcst)
+        (set! (-> a1-0 1) 'wasintro)
+        (set! (-> a1-0 0) 'title)
+        (want-levels *load-state* a1-0)
+        )
+      (when (zero? (-> *game-info* demo-state))
+        (title-screen-change "demo-screen" 27 (the-as string #f) -1 #t #f)
+        (wait-for-press (seconds 1) (seconds 5) #t)
+        (title-screen-change (the-as string #f) -1 (the-as string #f) -1 #f #f)
+        (set-blackout-frames (seconds 0.2))
+        )
+      (when (and (not (kiosk?)) (not (demo?)))
+        (label cfg-8)
+        (let ((gp-0 (the-as mc-slot-info (new 'stack-no-clear 'event-message-block))))
+          (mc-get-slot-info 0 gp-0)
+          (when (zero? (-> gp-0 known))
+            (set-blackout-frames (seconds 0.05))
+            (suspend)
+            (goto cfg-8)
+            )
+          (set! (-> *setting-control* user-default bg-a) 0.0)
+          (when (and (= (scf-get-territory) 1) (zero? (scf-get-language)))
+            (cond
+              ((or (zero? (-> gp-0 handle)) (zero? (-> gp-0 formatted)) (zero? (-> gp-0 inited)) (< (-> gp-0 last-file) 0))
+               (set-blackout-frames 0)
+               (title-fade-out 1000.0)
+               (title-progress 'language-select)
+               )
+              (else
+                (let ((v1-27 (-> gp-0 file (-> gp-0 last-file) language)))
+                  (when (and (>= v1-27 0) (< v1-27 (the-as uint 11)))
+                    (set! (-> *setting-control* user-default language) (the-as language-enum v1-27))
+                    (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum v1-27))
+                    (if (< v1-27 (the-as uint 5))
+                        (set! (-> *setting-control* user-default audio-language) (the-as language-enum v1-27))
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          (when (or (zero? (-> gp-0 handle))
+                    (and (nonzero? (-> gp-0 formatted)) (zero? (-> gp-0 inited)) (< (-> gp-0 mem-actual) (-> gp-0 mem-required)))
+                    )
+            (mem-copy! (the-as pointer *auto-save-info*) (the-as pointer gp-0) 300)
+            (set-blackout-frames 0)
+            (let ((s5-2 'insufficient-space))
+              (if (zero? (-> gp-0 handle))
+                  (set! s5-2 'no-memory-card)
+                  )
+              (title-fade-out 1000.0)
+              (title-progress s5-2)
+              )
+            )
+          )
+        )
+      )
+    (let ((v1-39 (-> *game-info* demo-state)))
+      (cond
+        ((zero? v1-39)
+         (set! (-> *game-info* demo-state) (the-as uint 1))
+         (initialize! *game-info* 'game (the-as game-save #f) "pre-intro-start" (the-as resetter-spec #f))
+         )
+        ((or (= v1-39 1) (= v1-39 2) (= v1-39 3))
+         (send-event (ppointer->process *time-of-day*) 'change 'ratio 0.0)
+         (-> *game-info* demo-state)
+         (send-event (ppointer->process *time-of-day*) 'change 'hour 18)
+         (let ((a1-12 (new 'stack-no-clear 'array 'symbol 10)))
+           (set! (-> a1-12 9) #f)
+           (set! (-> a1-12 8) #f)
+           (set! (-> a1-12 7) #f)
+           (set! (-> a1-12 6) #f)
+           (set! (-> a1-12 5) #f)
+           (set! (-> a1-12 4) #f)
+           (set! (-> a1-12 3) #f)
+           (set! (-> a1-12 2) #f)
+           (set! (-> a1-12 1) 'wasintro)
+           (set! (-> a1-12 0) 'title)
+           (want-levels *load-state* a1-12)
+           )
+         (want-display-level *load-state* 'wasintro 'display)
+         (while (!= (level-status? *level* 'wasintro #f) 'active)
+           (suspend)
+           )
+         (set-setting! 'fog-special-interp-targ #f 0.15 0)
+         (set-setting! 'fog-special-interp-rate #f 0.4 0)
+         (persist-with-delay *setting-control* 'fog-special-interp-targ 0 'fog-special-interp-targ #f 0.15 0)
+         (case (-> *game-info* demo-state)
+           ((3)
+            (set-setting! 'dust-storm-fog-scalar #f 2.0 0)
+            )
+           )
+         (suspend)
+         (let* ((s5-3 (position-in-front-of-camera! (new 'stack-no-clear 'vector) 184320.0 0.0))
+                (s4-0 (get-process *default-dead-pool* manipy #x20000 1))
+                (gp-2 (when s4-0
+                        (let ((t9-30 (method-of-type manipy activate)))
+                          (t9-30 (the-as manipy s4-0) self "manipy" (the-as pointer #x70004000))
+                          )
+                        (run-now-in-process
+                          s4-0
+                          manipy-init
+                          s5-3
+                          (-> self entity)
+                          (art-group-get-by-name *level* "skel-jakthreelogo" (the-as (pointer level) #f))
+                          #f
+                          0
+                          )
+                        (-> s4-0 ppointer)
+                        )
+                      )
+                )
+           (set! (-> self logo) (the-as (pointer manipy) gp-2))
+           (when gp-2
+             (quaternion-axis-angle!
+               (-> (the-as process-drawable (-> gp-2 0)) root quat)
+               0.0
+               1.0
+               0.0
+               (+ 32768.0 (vector-y-angle (-> *math-camera* inv-camera-rot fvec)))
+               )
+             (send-event (ppointer->process gp-2) 'eval (lambda :behavior manipy
+                                                          ()
+                                                          (set! (-> self speed) 0.0)
+                                                          (logior! (-> self draw status) (draw-control-status force-fade))
+                                                          (send-event self 'draw #f)
+                                                          )
+                         )
+             )
+           )
+         (set! (-> *game-info* demo-state) (the-as uint 1))
+         (set! (-> *game-info* demo-state) (the-as uint 2))
+         )
+        )
+      )
+    (go-virtual wait)
+    )
+  :post (behavior ()
+    (local-vars (gp-4 external-art-buffer))
+    (set! (-> *setting-control* cam-current fov) (-> *setting-control* cam-target fov))
+    (dotimes (v1-2 2)
+      (set! (-> self buffer v1-2 frame-lock) #f)
+      (set! (-> self have v1-2) -1)
+      )
+    (dotimes (gp-0 2)
+      (let ((s5-0 (-> self want gp-0))
+            (s4-0 (-> self want-name gp-0))
+            )
+        (when (>= s5-0 0)
+          (dotimes (s3-0 2)
+            (case (file-status (-> self buffer s3-0) s4-0 s5-0)
+              (('locked 'active)
+               (set! (-> self buffer s3-0 frame-lock) #t)
+               (set! (-> self have gp-0) s3-0)
+               )
+              )
+            )
+          )
+        )
+      )
+    (dotimes (gp-1 2)
+      (let ((a2-1 (-> self want gp-1))
+            (a1-4 (-> self want-name gp-1))
+            )
+        (when (and (>= a2-1 0) (< (-> self have gp-1) 0))
+          (dotimes (v1-32 2)
+            (when (not (-> self buffer v1-32 frame-lock))
+              (set-pending-file (-> self buffer v1-32) a1-4 a2-1 (process->handle self) -1.0)
+              (goto cfg-33)
+              )
+            )
+          )
+        )
+      (label cfg-33)
+      )
+    (dotimes (gp-2 2)
+      (update (-> self buffer gp-2))
+      )
+    (set! (-> self active) #f)
+    (when (>= (-> self draw) 0)
+      (dotimes (gp-3 2)
+        (when (file-status (-> self buffer gp-3) (-> self draw-name) (-> self draw))
+          (set! gp-4 (-> self buffer gp-3))
+          (goto cfg-46)
+          )
+        )
+      (set! gp-4 (the-as external-art-buffer #f))
+      (label cfg-46)
+      (when (and gp-4 (-> gp-4 art-group))
+        (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id debug-no-zbuf1)
+                                     )
+          (dma-buffer-add-gs-set s4-1
+                                 (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                                 )
+          (let ((t1-0 (shl #x8000 16)))
+            (draw-sprite2d-xy s4-1 -256 -208 512 416 (the-as rgba t1-0) #x3fffff)
+            )
+          )
+        (let ((t9-6 draw-raw-image)
+              (a0-31 *blit-displays-work*)
+              (a1-15 577)
+              (a2-5 (-> gp-4 art-group))
+              (a3-7 (new 'static 'vector :x 512.0 :y 416.0 :w 1.0))
+              (t0-2 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> t0-2 x) (-> *video-params* relative-x-scale))
+          (set! (-> t0-2 y) 1.0)
+          (set! (-> t0-2 z) 0.0)
+          (set! (-> t0-2 w) 1.0)
+          (t9-6 a0-31 (the-as bucket-id a1-15) a2-5 a3-7 t0-2 (-> self level) 8)
+          )
+        (set! (-> self active) #t)
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :trans (behavior ()
+    0
+    )
+  :code (behavior ()
+    (remove-setting! 'allow-timeout)
+    (remove-setting! 'dialog-volume)
+    (suspend-for (seconds 1)
+      )
+    (send-event
+      (ppointer->process (-> self logo))
+      'trans-hook
+      (lambda :behavior manipy
+        ()
+        (seek! (-> self speed) 1.0 (* 0.5 (seconds-per-frame)))
+        (when (< 0.0 (-> self speed))
+          (if (zero? (-> self draw force-fade))
+              (send-event self 'draw #t)
+              )
+          (set! (-> self draw force-fade) (the-as uint (the int (* 128.0 (-> self speed)))))
+          )
+        (let ((v1-14 (position-in-front-of-camera!
+                       (new 'stack-no-clear 'vector)
+                       (if (= (-> *setting-control* user-default aspect-ratio) 'aspect4x3)
+                           184320.0
+                           225280.0
+                           )
+                       0.0
+                       )
+                     )
+              (v0-3 (-> self root trans))
+              )
+          (vector-copy! v0-3 v1-14)
+          v0-3
+          )
+        )
+      )
+    (suspend-for (seconds 1)
+      )
+    (remove-setting! 'dust-storm-fog-scalar)
+    (if (zero? (title-menu))
+        (go-virtual idle)
+        )
+    (sleep-code)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ()
+    (title-fade-out (* 3.0 (seconds-per-frame)))
+    (title-progress (if (or (demo?) (kiosk?))
+                        'select-kiosk-start
+                        'title
+                        )
+                    )
+    (until (= (-> *game-info* current-continue level) 'title)
+      (suspend-for (seconds 1)
+        )
+      )
+    (go-virtual wait)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; definition for symbol *scrap-book-1*, type (array int16)
+(define *scrap-book-1* (new 'static 'boxed-array :type int16
+                         82
+                         83
+                         84
+                         85
+                         86
+                         87
+                         88
+                         89
+                         90
+                         91
+                         92
+                         93
+                         94
+                         95
+                         97
+                         98
+                         99
+                         100
+                         #x65
+                         #x67
+                         #x68
+                         #x69
+                         #x6a
+                         #x6b
+                         #x6c
+                         #x6d
+                         #x6e
+                         #x70
+                         #x71
+                         #x72
+                         #x73
+                         #x74
+                         #x75
+                         #x76
+                         #x77
+                         #x78
+                         #x7b
+                         #x7c
+                         #x7d
+                         #x7e
+                         #x7f
+                         #x80
+                         #x81
+                         #x82
+                         #x83
+                         #x84
+                         #x85
+                         #x86
+                         #x87
+                         #x88
+                         #x89
+                         #x8a
+                         #x8b
+                         #x8c
+                         #x8d
+                         #x8e
+                         #x8f
+                         #x90
+                         #x91
+                         #x92
+                         #x93
+                         #x94
+                         #x95
+                         #x96
+                         #x97
+                         #x98
+                         #x99
+                         #x9a
+                         #x9b
+                         #x9c
+                         #x9d
+                         #x9e
+                         #x9f
+                         #xa0
+                         #xa1
+                         #xa2
+                         34
+                         35
+                         36
+                         37
+                         38
+                         39
+                         40
+                         41
+                         42
+                         43
+                         44
+                         45
+                         46
+                         47
+                         48
+                         49
+                         50
+                         51
+                         52
+                         53
+                         54
+                         55
+                         56
+                         57
+                         58
+                         59
+                         60
+                         61
+                         62
+                         63
+                         64
+                         65
+                         66
+                         #x66
+                         #x79
+                         #x7a
+                         #xca
+                         #xcb
+                         #xcc
+                         #xcd
+                         #xce
+                         #xcf
+                         #xd0
+                         #xd1
+                         #xd2
+                         #xd3
+                         #xd4
+                         #xd5
+                         #xd6
+                         #xd7
+                         #xd8
+                         #xd9
+                         #xda
+                         )
+        )
+
+;; definition for symbol *scrap-book-2*, type (array int16)
+(define *scrap-book-2* (new 'static 'boxed-array :type int16
+                         1
+                         2
+                         3
+                         4
+                         5
+                         6
+                         7
+                         8
+                         9
+                         10
+                         11
+                         12
+                         13
+                         14
+                         15
+                         16
+                         17
+                         18
+                         19
+                         20
+                         21
+                         22
+                         23
+                         24
+                         25
+                         26
+                         27
+                         28
+                         29
+                         30
+                         31
+                         32
+                         33
+                         #x6f
+                         #xac
+                         #xad
+                         #xae
+                         #xaf
+                         #xb0
+                         #xb1
+                         #xb2
+                         #xb3
+                         #xb4
+                         #xb5
+                         #xb6
+                         #xb7
+                         #xb8
+                         #xb9
+                         #xba
+                         #xbb
+                         #xbc
+                         #xbd
+                         #xbe
+                         #xbf
+                         #xc0
+                         #xdb
+                         #xdc
+                         #xdd
+                         67
+                         68
+                         69
+                         70
+                         71
+                         72
+                         73
+                         74
+                         75
+                         76
+                         77
+                         78
+                         79
+                         80
+                         81
+                         #xc1
+                         #xc2
+                         #xc3
+                         #xc4
+                         #xc5
+                         #xc6
+                         #xc7
+                         #xc8
+                         #xc9
+                         #xa3
+                         #xa4
+                         #xa5
+                         #xa6
+                         #xa7
+                         #xa8
+                         #xa9
+                         #xaa
+                         #xab
+                         )
+        )
+
+;; failed to figure out what this is:
+(defstate scrap-book (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ((arg0 int))
+    (while (-> *blit-displays-work* menu-mode)
+      (suspend)
+      )
+    (set-blackout-frames (seconds 1000))
+    (let ((gp-1 (if (= arg0 2)
+                    *scrap-book-2*
+                    *scrap-book-1*
+                    )
+                )
+          (s5-0 0)
+          )
+      0
+      (let ((s4-0 (length gp-1))
+            (s3-0 s5-0)
+            (s2-0 (+ s5-0 1))
+            (v1-6 #f)
+            )
+        (while (not (or (>= s3-0 s4-0) (= v1-6 'abort)))
+          (title-screen-change
+            "scrap-book"
+            (-> gp-1 s3-0)
+            "scrap-book"
+            (if (>= s2-0 s4-0)
+                -1
+                (-> gp-1 s2-0)
+                )
+            (= s3-0 s5-0)
+            #f
+            )
+          (format #t "display index ~d    page ~D (next is ~D)~%" s3-0 (-> gp-1 s3-0) (if (>= s2-0 s4-0)
+                                                                                          -1
+                                                                                          (-> gp-1 s2-0)
+                                                                                          )
+                  )
+          (set! v1-6 (direction-press (seconds 1) (seconds 5) #t))
+          (case v1-6
+            (('back)
+             (set! s3-0 (max 0 (+ s3-0 -1)))
+             )
+            (else
+              (+! s3-0 1)
+              )
+            )
+          (set! s2-0 (+ s3-0 1))
+          )
+        )
+      )
+    (title-screen-change (the-as string #f) -1 (the-as string #f) -1 #f #f)
+    (set-blackout-frames (seconds 0.2))
+    (set! (-> *game-info* demo-state) (the-as uint 1))
+    (go-virtual idle)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; failed to figure out what this is:
+(defstate control-spec (title-control)
+  :virtual #t
+  :event (-> (method-of-type title-control startup) event)
+  :enter (-> (method-of-type title-control startup) enter)
+  :exit (-> (method-of-type title-control startup) exit)
+  :code (behavior ((arg0 int))
+    (let* ((v1-0 arg0)
+           (a1-0 (cond
+                   ((= v1-0 18)
+                    0
+                    )
+                   ((= v1-0 24)
+                    0
+                    )
+                   ((= v1-0 32)
+                    1
+                    )
+                   ((= v1-0 33)
+                    1
+                    )
+                   ((= v1-0 38)
+                    2
+                    )
+                   ((= v1-0 50)
+                    1
+                    )
+                   (else
+                     -1
+                     )
+                   )
+                 )
+           )
+      (cond
+        ((!= a1-0 -1)
+         (title-screen-change "demo-screen" a1-0 (the-as string #f) -1 #t #t)
+         )
+        (else
+          (set-setting! 'bg-a 'abs 1.0 0)
+          (set! (-> *setting-control* user-current bg-a) 1.0)
+          (set-blackout-frames (seconds 100))
+          (apply-settings *setting-control*)
+          )
+        )
+      )
+    (suspend-for (seconds 0.6)
+      )
+    (process-spawn-function
+      process
+      (lambda ((arg0 game-task))
+        (let ((v1-2 (-> *game-info* play-list arg0)))
+          (let ((s5-0 (-> v1-2 kiosk-play-continue))
+                (gp-0 (play-task arg0 'debug 'kiosk))
+                )
+            (cond
+              ((pair? s5-0)
+               (persist-with-delay *setting-control* 'title-control-scene (seconds 1000000) 'render #f 0.0 0)
+               (start 'play (get-continue-by-name *game-info* gp-0))
+               (process-spawn scene-player :init scene-player-init (car (cdr s5-0)) #t gp-0 :name "scene-player")
+               )
+              (else
+                (persist-with-delay *setting-control* 'title-control (seconds 1000000) 'render #f 0.0 0)
+                (start 'play (get-continue-by-name *game-info* gp-0))
+                )
+              )
+            )
+          )
+        )
+      arg0
+      :from *4k-dead-pool*
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    (title-screen-change (the-as string #f) -1 (the-as string #f) -1 #f #f)
+    (set-blackout-frames (seconds 0.2))
+    (set! (-> *game-info* demo-state) (the-as uint 1))
+    (go-virtual idle)
+    )
+  :post (-> (method-of-type title-control startup) post)
+  )
+
+;; definition for function title-control-init
+(defbehavior title-control-init title-control ()
+  (stack-size-set! (-> self main-thread) 2048)
+  (logclear! (-> self mask) (process-mask freeze pause menu progress actor-pause))
+  (set! (-> self level) (level-get *level* 'title))
+  (let ((a1-2 (if (and (nonzero? (-> self level entity)) (> (-> self level entity length) 0))
+                  (-> self level entity data 0 entity)
+                  )
+              )
+        )
+    (process-entity-set! self a1-2)
+    )
+  (set-setting! 'allow-pause #f 0.0 0)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (set-setting! 'airlock #f 0.0 0)
+  (set-setting! 'music #f 0.0 0)
+  (set-setting! 'allow-timeout #f 0.0 0)
+  (set-setting! 'allow-error #f 0.0 0)
+  (set-setting! 'music-volume 'abs 0.0 0)
+  (set-setting! 'entity-name "camera-311" 0.0 0)
+  (apply-settings *setting-control*)
+  (dotimes (gp-0 2)
+    (set! (-> self buffer gp-0)
+          (new
+            'process
+            'external-art-buffer
+            gp-0
+            (lambda ((arg0 external-art-buffer))
+              (let ((gp-0 (level-get *level* 'title)))
+                (cond
+                  ((not (-> gp-0 user-object (-> arg0 index)))
+                   (let ((s4-0 (-> arg0 heap)))
+                     (set! (-> s4-0 base) (kmalloc (-> gp-0 heap) #xd0000 (kmalloc-flags) "heap"))
+                     (set! (-> s4-0 current) (-> s4-0 base))
+                     (set! (-> s4-0 top-base) (&+ (-> s4-0 base) #xd0000))
+                     (set! (-> s4-0 top) (-> s4-0 top-base))
+                     )
+                   (set! (-> gp-0 user-object (-> arg0 index)) (the-as basic (-> arg0 heap base)))
+                   )
+                  (else
+                    (let ((v1-10 (-> arg0 heap)))
+                      (set! (-> v1-10 base) (the-as pointer (-> gp-0 user-object (-> arg0 index))))
+                      (set! (-> v1-10 current) (-> v1-10 base))
+                      (set! (-> v1-10 top-base) (&+ (-> v1-10 base) #xd0000))
+                      (set! (-> v1-10 top) (-> v1-10 top-base))
+                      )
+                    )
+                  )
+                )
+              0
+              )
+            #f
+            )
+          )
+    )
+  (set! (-> self selected) 0)
+  (dotimes (v1-38 2)
+    (set! (-> self want v1-38) -1)
+    (set! (-> self have v1-38) -1)
+    )
+  (set! (-> self draw) -1)
+  (set! (-> self active) #f)
+  (dotimes (v1-42 2)
+    (let ((a0-17 (&+ (-> self sprites 0 color-ptr) (* v1-42 64))))
+      (set! (-> a0-17 0) 128)
+      (set! (-> a0-17 1) 128)
+      (set! (-> a0-17 2) 128)
+      (set! (-> a0-17 3) 128)
+      )
+    (set! (-> self sprites v1-42 pos z) #xffffff)
+    (set! (-> self sprites v1-42 pos w) 0)
+    (set! (-> self sprites v1-42 scale-x) 1.0)
+    (set! (-> self sprites v1-42 scale-y) 1.0)
+    (set! (-> self sprites v1-42 angle) 0.0)
+    (set! (-> self sprites v1-42 flags) (hud-sprite-flags))
+    (set! (-> self sprites v1-42 tid) (the-as texture-id #f))
+    )
+  (set! (-> self sprite-draw) (the-as uint 0))
+  (set! (-> self logo) (the-as (pointer manipy) #f))
+  (send-event (handle->process (-> *game-info* dust-storm)) 'set-intro #t)
+  (let ((v1-55 (-> *game-info* demo-state)))
+    (cond
+      ((zero? v1-55)
+       (set! (-> *setting-control* user-current fog-special-interp-targ) 0.0)
+       (send-event (handle->process (-> *game-info* dust-storm)) 'set-intensity 0)
+       )
+      ((or (= v1-55 1) (= v1-55 2))
+       )
+      ((= v1-55 3)
+       (set! (-> *setting-control* user-current fog-special-interp-targ) 2.0)
+       (send-event (handle->process (-> *game-info* dust-storm)) 'set-intensity #x40000000)
+       (set-setting! 'fog-special-interp-targ #f 2.0 0)
+       (set-setting! 'fog-special-interp-rate #f 0.2 0)
+       )
+      ((= v1-55 100)
+       (set! (-> *game-info* demo-state) (the-as uint 1))
+       )
+      ((= v1-55 201)
+       (go-virtual scrap-book 1)
+       )
+      ((= v1-55 202)
+       (go-virtual scrap-book 2)
+       )
+      ((= v1-55 203)
+       (go-virtual scrap-book 3)
+       )
+      )
+    )
+  (set! *title-control* (the-as (pointer title-control) (process->ppointer self)))
+  (set! (-> *game-info* controller 0) (process->handle self))
+  (go-virtual startup)
+  )
+
+;; failed to figure out what this is:
+(defstate target-title (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('change-mode)
+       (case (-> block param 0)
+         (('grab)
+          (if (not (-> block param 1))
+              #t
+              (go target-grab 'stance)
+              )
+          )
+         )
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ((arg0 symbol))
+    (let ((a0-1 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((s5-0 (-> a0-1 next0)))
+        (while (!= a0-1 (-> *hud-engine* alive-list-end))
+          (deactivate ((method-of-type connection get-process) (the-as connection a0-1)))
+          (set! a0-1 s5-0)
+          *hud-engine*
+          (set! s5-0 (-> s5-0 next0))
+          )
+        )
+      )
+    (ja-channel-set! 0)
+    (when arg0
+      (let ((gp-1 (-> self mask))
+            (s5-1 (-> *game-info* mode))
+            )
+        (set! (-> *game-info* mode) 'movie)
+        (logior! (-> self mask) (process-mask no-kill))
+        (initialize! *game-info* 'game (the-as game-save #f) (the-as string #f) (the-as resetter-spec #f))
+        (set! (-> self mask) gp-1)
+        (set! (-> *game-info* mode) s5-1)
+        )
+      (send-event (ppointer->process (-> *setting-control* user-current movie)) 'abort)
+      (kill-by-type title-control *active-pool*)
+      (set! (-> self game controller 0)
+            (ppointer->handle
+              (process-spawn title-control :init title-control-init :name "title-control" :to *entity-pool*)
+              )
+            )
+      )
+    )
+  :exit (behavior ()
+    (activate-hud self)
+    )
+  :code (the-as (function symbol object) sleep-code)
+  :post target-no-move-post
+  )
+
+;; definition of type museum-char
+(deftype museum-char (structure)
+  ((skel                     string)
+   (anim                     uint32)
+   (height-min               float)
+   (height-max               float)
+   (zoom-min                 float)
+   (zoom-max                 float)
+   (scale                    float)
+   (text-id                  text-id)
+   (cloth-reset-time         time-frame)
+   (use-orient-cloth-reset?  symbol)
+   (outtake-num              uint32)
+   (outtake                  (array string))
+   )
+  )
+
+;; definition for method 3 of type museum-char
+(defmethod inspect ((this museum-char))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'museum-char)
+  (format #t "~1Tskel: ~A~%" (-> this skel))
+  (format #t "~1Tanim: ~D~%" (-> this anim))
+  (format #t "~1Theight-min: ~f~%" (-> this height-min))
+  (format #t "~1Theight-max: ~f~%" (-> this height-max))
+  (format #t "~1Tzoom-min: ~f~%" (-> this zoom-min))
+  (format #t "~1Tzoom-max: ~f~%" (-> this zoom-max))
+  (format #t "~1Tscale: ~f~%" (-> this scale))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tcloth-reset-time: ~D~%" (-> this cloth-reset-time))
+  (format #t "~1Tuse-orient-cloth-reset?: ~A~%" (-> this use-orient-cloth-reset?))
+  (format #t "~1Touttake-num: ~D~%" (-> this outtake-num))
+  (format #t "~1Touttake: ~A~%" (-> this outtake))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hirez-viewer
+(deftype hirez-viewer (process-drawable)
+  ((angley                   float)
+   (anglex                   float)
+   (updown                   float)
+   (zoom                     float)
+   (char                     museum-char)
+   (pos-x                    float)
+   (dest-pos-x               float)
+   (alpha                    float)
+   (cloth-reset-time         time-frame)
+   (use-orient-cloth-reset?  symbol)
+   (id                       sound-id)
+   (credits                  symbol)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type hirez-viewer
+(defmethod inspect ((this hirez-viewer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tangley: ~f~%" (-> this angley))
+  (format #t "~2Tanglex: ~f~%" (-> this anglex))
+  (format #t "~2Tupdown: ~f~%" (-> this updown))
+  (format #t "~2Tzoom: ~f~%" (-> this zoom))
+  (format #t "~2Tchar: #<museum-char @ #x~X>~%" (-> this char))
+  (format #t "~2Tpos-x: ~f~%" (-> this pos-x))
+  (format #t "~2Tdest-pos-x: ~f~%" (-> this dest-pos-x))
+  (format #t "~2Talpha: ~f~%" (-> this alpha))
+  (format #t "~2Tcloth-reset-time: ~D~%" (-> this cloth-reset-time))
+  (format #t "~2Tuse-orient-cloth-reset?: ~A~%" (-> this use-orient-cloth-reset?))
+  (format #t "~2Tid: ~D~%" (-> this id))
+  (format #t "~2Tcredits: ~A~%" (-> this credits))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (hirez-viewer)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('go-right)
+       (set! (-> self dest-pos-x) 550.0)
+       )
+      (('go-left)
+       (set! (-> self dest-pos-x) -550.0)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self id) (new 'static 'sound-id))
+    (when (and (not (-> self credits))
+               (nonzero? (-> self char outtake))
+               (or (= (-> *setting-control* user-default subtitle-language) (language-enum english))
+                   (= (-> *setting-control* user-default subtitle-language) (language-enum french))
+                   (= (-> *setting-control* user-default subtitle-language) (language-enum german))
+                   (= (-> *setting-control* user-default subtitle-language) (language-enum spanish))
+                   (= (-> *setting-control* user-default subtitle-language) (language-enum italian))
+                   )
+               )
+      (add-setting! 'music-volume 'rel 0.25 0)
+      (set! (-> self id) (add-process
+                           *gui-control*
+                           self
+                           (gui-channel hal)
+                           (gui-action play)
+                           (-> self char outtake (-> self char outtake-num))
+                           -99.0
+                           0
+                           )
+            )
+      (sound-params-set! *gui-control* (-> self id) #f -1 -1 -1 (-> *setting-control* user-current talker-volume))
+      (+! (-> self char outtake-num) 1)
+      (when (= (-> self char outtake length) (-> self char outtake-num))
+        (set! (-> self char outtake-num) (the-as uint 0))
+        0
+        )
+      )
+    )
+  :exit (behavior ()
+    (set-action!
+      *gui-control*
+      (gui-action stop)
+      (-> self id)
+      (gui-channel none)
+      (gui-action none)
+      (the-as string #f)
+      (the-as (function gui-connection symbol) #f)
+      (the-as process #f)
+      )
+    )
+  :trans (behavior ()
+    (when (and (nonzero? (-> self id)) (zero? (get-status *gui-control* (-> self id))))
+      (set! (-> self id) (new 'static 'sound-id))
+      (remove-setting! 'music-volume)
+      )
+    (let ((v1-7 (-> *cpad-list* cpads 0)))
+      (let ((f1-0 (the float (+ (-> v1-7 rightx) -128)))
+            (f0-2 (the float (+ (-> v1-7 righty) -128)))
+            )
+        (if (< 64.0 (fabs f1-0))
+            (set! (-> self angley) (- (-> self angley) (* 364.0889 (seconds-per-frame) f1-0)))
+            )
+        (when (< 64.0 (fabs f0-2))
+          (set! (-> self anglex) (- (-> self anglex) (* 364.0889 (seconds-per-frame) f0-2)))
+          (set! (-> self anglex) (fmax -5461.3335 (fmin 5461.3335 (-> self anglex))))
+          )
+        )
+      (the float (+ (-> v1-7 leftx) -128))
+      (let ((f0-10 (the float (+ (-> v1-7 lefty) -128))))
+        (when (< 64.0 (fabs f0-10))
+          (+! (-> self zoom) (* 204.8 (seconds-per-frame) f0-10))
+          (set! (-> self zoom) (fmax (fmin (-> self zoom) (-> self char zoom-max)) (-> self char zoom-min)))
+          )
+        )
+      (let ((f1-11 (the float (-> v1-7 abutton 9)))
+            (f0-18 (the float (-> v1-7 abutton 8)))
+            )
+        (+! (-> self updown) (* 50.0 (seconds-per-frame) f1-11))
+        (set! (-> self updown) (- (-> self updown) (* 50.0 (seconds-per-frame) f0-18)))
+        )
+      )
+    (set! (-> self updown) (fmax (fmin (-> self updown) (-> self char height-max)) (-> self char height-min)))
+    (+! (-> self pos-x) (* 5.0 (seconds-per-frame) (- (-> self dest-pos-x) (-> self pos-x))))
+    (if (< 520.0 (fabs (-> self pos-x)))
+        (deactivate self)
+        )
+    (if (nonzero? (-> self skel))
+        (set-vector! (-> self draw color-mult) (-> self alpha) (-> self alpha) (-> self alpha) 1.0)
+        )
+    (if (< (fabs (-> self dest-pos-x)) 200.0)
+        (seek! (-> self alpha) 1.0 (* 2.0 (seconds-per-frame)))
+        (seek! (-> self alpha) 0.0 (* 2.0 (seconds-per-frame)))
+        )
+    (cond
+      ((not (time-elapsed? (-> self state-time) (-> self cloth-reset-time)))
+       (process-drawable-cloth-command self '(reset))
+       )
+      ((-> self use-orient-cloth-reset?)
+       (process-drawable-cloth-command self '(set-flags local-space))
+       )
+      (else
+        (process-drawable-cloth-command self '(set-flags local-space-xyz))
+        )
+      )
+    (let ((a2-3 (new 'stack-no-clear 'vector))
+          (a1-7 (new 'stack-no-clear 'vector))
+          (v1-40 (new 'stack-no-clear 'vector))
+          (gp-2 (new 'stack-no-clear 'vector))
+          )
+      (let ((a3-0 (new 'stack-no-clear 'vector)))
+        (vector-copy! v1-40 (-> *math-camera* trans))
+        (set-vector! a3-0 (-> self pos-x) 0.0 0.0 1.0)
+        (vector-copy! a2-3 (-> *math-camera* inv-camera-rot fvec))
+        (vector+*! a1-7 v1-40 (-> *math-camera* inv-camera-rot fvec) (-> self zoom))
+        (reverse-transform-point! gp-2 a1-7 a2-3 a3-0)
+        )
+      (vector-copy! (-> self root trans) gp-2)
+      )
+    (matrix->quaternion (-> self root quat) (-> *math-camera* inv-camera-rot))
+    (quaternion*!
+      (-> self root quat)
+      (-> self root quat)
+      (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) *y-vector* (-> self angley))
+      )
+    (vector+*!
+      (-> self root trans)
+      (-> self root trans)
+      (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))
+      (- (-> self updown))
+      )
+    (let ((gp-6 (new
+                  'stack
+                  'font-context
+                  *font-default-matrix*
+                  20
+                  350
+                  0.0
+                  (font-color font-color-43)
+                  (font-flags shadow kerning)
+                  )
+                )
+          )
+      (set-width! gp-6 300)
+      (set-height! gp-6 30)
+      (set-scale! gp-6 0.7)
+      (let ((v1-55 gp-6))
+        (set! (-> v1-55 alpha) (-> self alpha))
+        )
+      (set! (-> gp-6 flags) (font-flags shadow kerning large))
+      (let ((s5-2 print-game-text))
+        (format (clear *temp-string*) (lookup-text! *common-text* (-> self char text-id) #f))
+        (s5-2 *temp-string* gp-6 #f 44 (bucket-id hud-draw-hud-alpha))
+        )
+      )
+    )
+  :code (behavior ()
+    (cond
+      ((nonzero? (-> self skel))
+       (until #f
+         (ja-no-eval :group! (-> self draw art-group data (-> self char anim)) :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (ja-post)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+       #f
+       )
+      (else
+        (until #f
+          (format *stdcon* "no skel~%")
+          (suspend)
+          )
+        #f
+        )
+      )
+    )
+  )
+
+;; definition for function hirez-viewer-init-by-other
+(defbehavior hirez-viewer-init-by-other hirez-viewer ((arg0 museum-char) (arg1 symbol) (arg2 symbol))
+  (set! (-> self credits) arg2)
+  (set! (-> self char) arg0)
+  (set! (-> self root) (new 'process 'trsqv))
+  (set-vector! (-> self root scale) (-> arg0 scale) (-> arg0 scale) (-> arg0 scale) 1.0)
+  (set! (-> self cloth-reset-time) (-> arg0 cloth-reset-time))
+  (set! (-> self use-orient-cloth-reset?) (-> arg0 use-orient-cloth-reset?))
+  (let ((s4-1 (art-group-get-by-name *level* (-> arg0 skel) (the-as (pointer level) #f))))
+    (when s4-1
+      (when (art-group-get-by-name *level* (the-as string (-> s4-1 data 0)) (&-> self level))
+        (initialize-skeleton self (the-as skeleton-group s4-1) (the-as pair 0))
+        (logior! (-> self skel status) (joint-control-status blend-shape eye-anim))
+        (logior! (-> self draw global-effect) (draw-control-global-effect title-light))
+        )
+      )
+    )
+  (set! (-> self pos-x) (if arg1
+                            500.0
+                            -500.0
+                            )
+        )
+  (if arg2
+      (set! (-> self dest-pos-x) -100.0)
+      (set! (-> self dest-pos-x) 0.0)
+      )
+  (set! (-> self angley) 32768.0)
+  (set! (-> self zoom) (-> self char zoom-max))
+  (set! (-> self updown) (* 0.5 (+ (-> self char height-max) (-> self char height-min))))
+  (if (nonzero? (-> self skel))
+      (logior! (-> self skel status) (joint-control-status blend-shape eye-anim))
+      )
+  (set! (-> self alpha) 0.0)
+  (go-virtual idle)
+  )
+
+;; definition for function spawn-hirez-viewer
+;; WARN: Return type mismatch int vs handle.
+(defun spawn-hirez-viewer ((arg0 museum-char) (arg1 symbol) (arg2 symbol))
+  (the-as
+    handle
+    (ppointer->handle
+      (process-spawn hirez-viewer arg0 arg1 arg2 :name "hirez-viewer" :to *entity-pool* :stack-size #x20000)
+      )
+    )
+  )
+
+;; definition for symbol *museum-1*, type (array museum-char)
+(define *museum-1*
+  (new 'static 'boxed-array :type museum-char
+    (new 'static 'museum-char
+      :skel "skel-jakc-highres"
+      :anim #x7
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.4
+      :text-id (text-id museum-jakc)
+      :cloth-reset-time (seconds 0.1)
+      :use-orient-cloth-reset? #f
+      :outtake (new 'static 'boxed-array :type string "jakout01" "jakout02" "jakout03" "jakout04")
+      )
+    (new 'static 'museum-char
+      :skel "skel-ashelin-highres"
+      :anim #x5
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 20480.0
+      :scale 1.0
+      :text-id (text-id museum-ashelin)
+      :outtake (new 'static 'boxed-array :type string
+        "ashout01"
+        "ashout02"
+        "ashout03"
+        "ashout04"
+        "ashout05"
+        "ashout06"
+        "ashout07"
+        )
+      )
+    (new 'static 'museum-char
+      :skel "skel-keira-highres"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 9011.2
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.0
+      :text-id (text-id museum-keira)
+      )
+    (new 'static 'museum-char
+      :skel "skel-kleever-highres"
+      :anim #xe
+      :height-min 2048.0
+      :height-max 12288.0
+      :zoom-min 10240.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-kleever)
+      :cloth-reset-time (seconds 0.1)
+      :use-orient-cloth-reset? #f
+      )
+    (new 'static 'museum-char
+      :skel "skel-onin-highres"
+      :anim #x6
+      :height-min 2048.0
+      :height-max 6144.0
+      :zoom-min 8192.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-onin)
+      )
+    (new 'static 'museum-char
+      :skel "skel-ottsel-daxpants"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-daxter)
+      :outtake (new 'static 'boxed-array :type string
+        "daxout01"
+        "daxout02"
+        "daxout03"
+        "daxout04"
+        "daxout05"
+        "daxout06"
+        "daxout07"
+        "daxout08"
+        )
+      )
+    (new 'static 'museum-char
+      :skel "skel-pecker-highres"
+      :anim #x5
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 16384.0
+      :scale 1.0
+      :text-id (text-id museum-pecker)
+      :outtake (new 'static 'boxed-array :type string "pekout01")
+      )
+    (new 'static 'museum-char
+      :skel "skel-samos-highres"
+      :anim #x5
+      :height-min 2048.0
+      :height-max 8192.0
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.0
+      :text-id (text-id museum-samos)
+      )
+    (new 'static 'museum-char
+      :skel "skel-seem-highres"
+      :anim #x6
+      :height-min 2048.0
+      :height-max 9011.2
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.0
+      :text-id (text-id museum-seem)
+      :cloth-reset-time (seconds 0.1)
+      :use-orient-cloth-reset? #t
+      )
+    (new 'static 'museum-char
+      :skel "skel-tess-highres"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.0
+      :text-id (text-id museum-tess)
+      :outtake (new 'static 'boxed-array :type string "tesout01" "tesout02" "tesout03" "tesout04" "tesout05")
+      )
+    (new 'static 'museum-char
+      :skel "skel-torn-highres"
+      :anim #x7
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 20480.0
+      :scale 1.0
+      :text-id (text-id museum-torn)
+      :outtake (new 'static 'boxed-array :type string "torout01" "torout02")
+      )
+    (new 'static 'museum-char
+      :skel "skel-errol"
+      :anim #x3
+      :height-min 2048.0
+      :height-max 12288.0
+      :zoom-min 8192.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-cyber-errol)
+      )
+    (new 'static 'museum-char
+      :skel "skel-jinx-highres"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.0
+      :text-id (text-id museum-jinx)
+      )
+    (new 'static 'museum-char
+      :skel "skel-damus-highres"
+      :anim #xa
+      :height-min 2048.0
+      :height-max 12288.0
+      :zoom-min 8192.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-damus)
+      :cloth-reset-time (seconds 0.4)
+      :use-orient-cloth-reset? #f
+      )
+    (new 'static 'museum-char
+      :skel "skel-sig-highres"
+      :anim #x5
+      :height-min 2048.0
+      :height-max 12288.0
+      :zoom-min 8192.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-sig)
+      )
+    (new 'static 'museum-char
+      :skel "skel-veger-highres"
+      :anim #x6
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.0
+      :text-id (text-id museum-veger)
+      :cloth-reset-time (seconds 0.4)
+      :use-orient-cloth-reset? #f
+      )
+    (new 'static 'museum-char
+      :skel "skel-ottsel-dummy"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-ottsel-dummy)
+      )
+    (new 'static 'museum-char
+      :skel "skel-ottsel-leader"
+      :anim #x5
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-ottsel-leader)
+      :cloth-reset-time (seconds 0.1)
+      :use-orient-cloth-reset? #f
+      )
+    (new 'static 'museum-char
+      :skel "skel-ottsel-surfer"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-ottsel-surfer)
+      )
+    (new 'static 'museum-char
+      :skel "skel-ottsel-tess"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-ottsel-tess)
+      )
+    (new 'static 'museum-char
+      :skel "skel-ottsel-veger"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-ottsel-veger)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-jak-one jak-one jak-one-lod0-jg jak-one-idle-ja
+              ((jak-one-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.2)
+              :longest-edge (meters 1)
+              :sort 1
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-brutter-highres brutter-highres brutter-highres-lod0-jg brutter-highres-brutter-idle-ja
+              ((brutter-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-baron-highres baron-highres baron-highres-lod0-jg baron-highres-idle-ja
+              ((baron-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-crocadog-highres crocadog-highres crocadog-highres-lod0-jg crocadog-highres-idle-ja
+              ((crocadog-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-red-crimson-guard-highres red-crimson-guard-highres red-crimson-guard-highres-lod0-jg red-crimson-guard-highres-red-crimson-guard-walk-ja
+              ((red-crimson-guard-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-kid-highres kid-highres kid-highres-lod0-jg kid-highres-kid-walk-ja
+              ((kid-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-kor-highres kor-highres kor-highres-lod0-jg kor-highres-idle-ja
+              ((kor-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-errol-highres errol-highres errol-highres-lod0-jg errol-highres-errol-walk-ja
+              ((errol-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-youngsamos-highres youngsamos-highres youngsamos-highres-lod0-jg youngsamos-highres-youngsamos-idle-ja
+              ((youngsamos-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-krew krew krew-lod0-jg krew-idle-ja
+              ((krew-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-vin vin vin-lod0-jg vin-idle-ja
+              ((vin-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-daxter-highres daxter-highres daxter-highres-lod0-jg daxter-highres-daxter-walk-ja
+              ((daxter-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; definition for symbol *museum-2*, type (array museum-char)
+(define *museum-2*
+  (new 'static 'boxed-array :type museum-char
+    (new 'static 'museum-char
+      :skel "skel-jak-highres"
+      :anim #x4
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 18432.0
+      :scale 1.4
+      :text-id (text-id museum-jak)
+      :outtake (new 'static 'boxed-array :type string "jakout01" "jakout02" "jakout03" "jakout04")
+      )
+    (new 'static 'museum-char
+      :skel "skel-daxter-highres"
+      :anim #x3
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-daxter)
+      :outtake (new 'static 'boxed-array :type string
+        "daxout01"
+        "daxout02"
+        "daxout03"
+        "daxout04"
+        "daxout05"
+        "daxout06"
+        "daxout07"
+        "daxout08"
+        )
+      )
+    (new 'static 'museum-char
+      :skel "skel-vin"
+      :anim #x2
+      :height-min 4096.0
+      :height-max 10240.0
+      :zoom-min 12288.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-vin)
+      :outtake (new 'static 'boxed-array :type string "vinout01" "vinout02" "vinout03")
+      )
+    (new 'static 'museum-char
+      :skel "skel-krew"
+      :anim #x2
+      :height-min 4096.0
+      :height-max 12288.0
+      :zoom-min 12288.0
+      :zoom-max 28672.0
+      :scale 1.0
+      :text-id (text-id museum-krew)
+      :outtake (new 'static 'boxed-array :type string "krwout01" "krwout02" "krwout03" "krwout04" "krwout05")
+      )
+    (new 'static 'museum-char
+      :skel "skel-errol-highres"
+      :anim #x3
+      :height-min 2048.0
+      :height-max 10240.0
+      :zoom-min 8192.0
+      :zoom-max 20480.0
+      :scale 1.0
+      :text-id (text-id museum-errol)
+      )
+    (new 'static 'museum-char
+      :skel "skel-youngsamos-highres"
+      :anim #x2
+      :height-min 2048.0
+      :height-max 4096.0
+      :zoom-min 8192.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-youngsamos)
+      )
+    (new 'static 'museum-char
+      :skel "skel-kor-highres"
+      :anim #x3
+      :height-min 2048.0
+      :height-max 9011.2
+      :zoom-min 8192.0
+      :zoom-max 16384.0
+      :scale 1.0
+      :text-id (text-id museum-kor)
+      )
+    (new 'static 'museum-char
+      :skel "skel-kid-highres"
+      :anim #x2
+      :height-min 2048.0
+      :height-max 6144.0
+      :zoom-min 4096.0
+      :zoom-max 12288.0
+      :scale 1.0
+      :text-id (text-id museum-kid)
+      )
+    (new 'static 'museum-char
+      :skel "skel-baron-highres"
+      :anim #x3
+      :height-min 2048.0
+      :height-max 14336.0
+      :zoom-min 8192.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-baron)
+      :outtake (new 'static 'boxed-array :type string "barout01" "barout02" "barout03" "barout04" "barout05")
+      )
+    (new 'static 'museum-char
+      :skel "skel-red-crimson-guard-highres"
+      :anim #x2
+      :height-min 2048.0
+      :height-max 14336.0
+      :zoom-min 12288.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-red-crimson-guard)
+      )
+    (new 'static 'museum-char
+      :skel "skel-brutter-highres"
+      :anim #x2
+      :height-min 2048.0
+      :height-max 12288.0
+      :zoom-min 8192.0
+      :zoom-max 24576.0
+      :scale 1.0
+      :text-id (text-id museum-brutter)
+      )
+    (new 'static 'museum-char
+      :skel "skel-crocadog-highres"
+      :anim #x2
+      :height-min 2048.0
+      :height-max 3276.8
+      :zoom-min 12288.0
+      :zoom-max 16384.0
+      :scale 1.0
+      :text-id (text-id museum-crocadog)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-flutflut flutflut flutflut-lod0-jg flutflut-flutflut-walk-ja
+              ((flutflut-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-sidekick-human sidekick-human sidekick-human-lod0-jg sidekick-human-sidekick-human-idle-ja
+              ((sidekick-human-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-yellowsage yellowsage yellowsage-lod0-jg yellowsage-yellowsage-idle-ja
+              ((yellowsage-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-redsage redsage redsage-lod0-jg redsage-redsage-idle-ja
+              ((redsage-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-sculptor sculptor sculptor-lod0-jg sculptor-sculptor-idle-ja
+              ((sculptor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-ogreboss ogreboss ogreboss-lod0-jg ogreboss-ogreboss-idle-ja
+              ((ogreboss-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-minershort minershort minershort-lod0-jg minershort-minershort-idle-ja
+              ((minershort-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-minertall minertall minertall-lod0-jg minertall-minertall-idle-ja
+              ((minertall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-mayor mayor mayor-lod0-jg mayor-mayor-pace-ja
+              ((mayor-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-geologist geologist geologist-lod0-jg geologist-geologist-idle-ja
+              ((geologist-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gambler gambler gambler-lod0-jg gambler-gambler-idle-ja
+              ((gambler-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-fisher fisher fisher-lod0-jg fisher-fisher-idle-ja
+              ((fisher-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-farmer farmer farmer-lod0-jg farmer-farmer-idle-ja
+              ((farmer-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-billy billy billy-lod0-jg billy-billy-idle-ja
+              ((billy-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-bluesage bluesage bluesage-lod0-jg bluesage-bluesage-idle-ja
+              ((bluesage-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-babak babak babak-lod0-jg babak-babak-idle-ja
+              ((babak-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-bird-lady bird-lady bird-lady-lod0-jg bird-lady-bird-lady-idle-ja
+              ((bird-lady-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-evilbro evilbro evilbro-lod0-jg evilbro-evilbro-idle-ja
+              ((evilbro-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-evilsis evilsis evilsis-lod0-jg evilsis-evilsis-idle-ja
+              ((evilsis-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-explorer explorer explorer-lod0-jg explorer-explorer-idle-ja
+              ((explorer-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-warrior warrior warrior-lod0-jg warrior-warrior-idle-ja
+              ((warrior-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; definition for symbol *museum-3*, type (array museum-char)
+(define *museum-3* (new 'static 'boxed-array :type museum-char
+                     (new 'static 'museum-char
+                       :skel "skel-jak-one"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 4096.0
+                       :zoom-max 18432.0
+                       :scale 1.4
+                       :text-id (text-id museum-jak-one)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-warrior"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 16384.0
+                       :zoom-min 12288.0
+                       :zoom-max 32768.0
+                       :scale 1.0
+                       :text-id (text-id museum-warrior)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-evilsis"
+                       :anim #x3
+                       :height-min 2048.0
+                       :height-max 11059.2
+                       :zoom-min 6144.0
+                       :zoom-max 18432.0
+                       :scale 0.8
+                       :text-id (text-id museum-evilsis)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-evilbro"
+                       :anim #x3
+                       :height-max 9830.4
+                       :zoom-min 6144.0
+                       :zoom-max 18432.0
+                       :scale 0.8
+                       :text-id (text-id museum-evilbro)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-bird-lady"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 8192.0
+                       :zoom-max 20480.0
+                       :scale 0.8
+                       :text-id (text-id museum-bird-lady)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-explorer"
+                       :anim #x3
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 4096.0
+                       :zoom-max 16384.0
+                       :scale 0.8
+                       :text-id (text-id museum-explorer)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-billy"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 8192.0
+                       :zoom-max 16384.0
+                       :scale 0.8
+                       :text-id (text-id museum-billy)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-farmer"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 10240.0
+                       :zoom-min 12288.0
+                       :zoom-max 28672.0
+                       :scale 0.8
+                       :text-id (text-id museum-farmer)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-fisher"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 8192.0
+                       :zoom-max 20480.0
+                       :scale 0.8
+                       :text-id (text-id museum-fisher)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-mayor"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 8192.0
+                       :zoom-max 16384.0
+                       :scale 0.8
+                       :text-id (text-id museum-mayor)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-minershort"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 6144.0
+                       :zoom-min 8192.0
+                       :zoom-max 16384.0
+                       :scale 0.8
+                       :text-id (text-id museum-minershort)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-minertall"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 12288.0
+                       :zoom-min 8192.0
+                       :zoom-max 20480.0
+                       :scale 0.8
+                       :text-id (text-id museum-minertall)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-gambler"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 8192.0
+                       :zoom-max 16384.0
+                       :scale 0.8
+                       :text-id (text-id museum-gambler)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-ogreboss"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 8192.0
+                       :zoom-max 16384.0
+                       :scale 0.1
+                       :text-id (text-id museum-ogreboss)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-sculptor"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 12288.0
+                       :zoom-min 8192.0
+                       :zoom-max 24576.0
+                       :scale 1.0
+                       :text-id (text-id museum-sculptor)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-redsage"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 10240.0
+                       :zoom-min 10240.0
+                       :zoom-max 22528.0
+                       :scale 0.8
+                       :text-id (text-id museum-redsage)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-yellowsage"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 10240.0
+                       :zoom-max 20480.0
+                       :scale 0.8
+                       :text-id (text-id museum-yellowsage)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-sidekick-human"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 4096.0
+                       :zoom-max 16384.0
+                       :scale 0.8
+                       :text-id (text-id museum-sidekick-human)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-geologist"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 4096.0
+                       :zoom-max 20480.0
+                       :scale 0.8
+                       :text-id (text-id museum-geologist)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-bluesage"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 14336.0
+                       :zoom-min 8192.0
+                       :zoom-max 24576.0
+                       :scale 0.8
+                       :text-id (text-id museum-bluesage)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-babak"
+                       :anim #x2
+                       :height-min 2048.0
+                       :height-max 8192.0
+                       :zoom-min 12288.0
+                       :zoom-max 22528.0
+                       :scale 0.8
+                       :text-id (text-id museum-babak)
+                       )
+                     (new 'static 'museum-char
+                       :skel "skel-flutflut"
+                       :anim #x2
+                       :height-min 4096.0
+                       :height-max 8192.0
+                       :zoom-min 10240.0
+                       :zoom-max 20480.0
+                       :scale 0.8
+                       :text-id (text-id museum-flutflut)
+                       )
+                     )
+        )
+
+;; definition of type highres-viewer-manager
+(deftype highres-viewer-manager (process)
+  ((current     int32)
+   (next        int32)
+   (handle      handle)
+   (left-right  symbol)
+   (museum      (array museum-char))
+   (next-time   time-frame)
+   )
+  (:state-methods
+    idle
+    credits
+    )
+  )
+
+;; definition for method 3 of type highres-viewer-manager
+(defmethod inspect ((this highres-viewer-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tcurrent: ~D~%" (-> this current))
+  (format #t "~2Tnext: ~D~%" (-> this next))
+  (format #t "~2Thandle: ~D~%" (-> this handle))
+  (format #t "~2Tleft-right: ~A~%" (-> this left-right))
+  (format #t "~2Tmuseum: ~A~%" (-> this museum))
+  (format #t "~2Tnext-time: ~D~%" (-> this next-time))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (highres-viewer-manager)
+  :virtual #t
+  :trans (behavior ()
+    (when (!= (-> self current) (-> self next))
+      (set! (-> self current) (-> self next))
+      (set! (-> self handle) (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #f))
+      )
+    (let ((a0-3 (-> *cpad-list* cpads 0)))
+      (cond
+        ((logtest? (logclear (pad-buttons right) (-> a0-3 button0-abs 0)) (-> a0-3 button0-abs 1))
+         (set! (-> self left-right) #f)
+         (send-event (handle->process (-> self handle)) 'go-right)
+         (set! (-> self next) (mod (+ (-> self next) 1) (-> self museum length)))
+         )
+        ((let ((a0-13 (-> *cpad-list* cpads 0)))
+           (logtest? (logclear (pad-buttons left) (-> a0-13 button0-abs 0)) (-> a0-13 button0-abs 1))
+           )
+         (set! (-> self left-right) #t)
+         (send-event (handle->process (-> self handle)) 'go-left)
+         (set! (-> self next) (mod (+ (-> self museum length) -1 (-> self next)) (-> self museum length)))
+         )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate credits (highres-viewer-manager)
+  :virtual #t
+  :trans (behavior ()
+    (when (!= (-> self current) (-> self next))
+      (set-time! (-> self next-time))
+      (set! (-> self current) (-> self next))
+      (set! (-> self handle) (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #t))
+      )
+    (when (time-elapsed? (-> self next-time) (seconds 20))
+      (set! (-> self left-right) #f)
+      (send-event (handle->process (-> self handle)) 'go-right)
+      (set! (-> self next) (mod (+ (-> self next) 1) (-> self museum length)))
+      )
+    (let ((a0-11 (-> *cpad-list* cpads 0)))
+      (cond
+        ((logtest? (logclear (pad-buttons left) (-> a0-11 button0-abs 0)) (-> a0-11 button0-abs 1))
+         (set-time! (-> self next-time))
+         (set! (-> self left-right) #f)
+         (send-event (handle->process (-> self handle)) 'go-right)
+         (set! (-> self next) (mod (+ (-> self next) 1) (-> self museum length)))
+         )
+        ((let ((a0-21 (-> *cpad-list* cpads 0)))
+           (logtest? (logclear (pad-buttons right) (-> a0-21 button0-abs 0)) (-> a0-21 button0-abs 1))
+           )
+         (set-time! (-> self next-time))
+         (set! (-> self left-right) #t)
+         (send-event (handle->process (-> self handle)) 'go-left)
+         (set! (-> self next) (mod (+ (-> self museum length) -1 (-> self next)) (-> self museum length)))
+         )
+        )
+      )
+    (let ((gp-0 (new
+                  'stack
+                  'font-context
+                  *font-default-matrix*
+                  20
+                  20
+                  0.0
+                  (font-color font-color-43)
+                  (font-flags shadow kerning)
+                  )
+                )
+          )
+      (set-width! gp-0 300)
+      (set-height! gp-0 30)
+      (set-scale! gp-0 0.7)
+      (set! (-> gp-0 flags) (font-flags shadow kerning large))
+      (let ((s5-0 print-game-text))
+        (format (clear *temp-string*) (lookup-text! *common-text* (text-id credits-starring) #f))
+        (s5-0 *temp-string* gp-0 #f 44 (bucket-id hud-draw-hud-alpha))
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for function hvm-init-by-other
+(defbehavior hvm-init-by-other highres-viewer-manager ((arg0 (array museum-char)) (arg1 symbol))
+  (set-setting! 'entity-name "camera-311" 0.0 0)
+  (set! (-> self museum) arg0)
+  (set! (-> self next) 0)
+  (set! (-> self current) -1)
+  (set! (-> self handle) (the-as handle #f))
+  (set-time! (-> self next-time))
+  (if arg1
+      (go-virtual credits)
+      (go-virtual idle)
+      )
+  )
+
+;; definition for function spawn-hirez-viewer-manager
+;; WARN: Return type mismatch int vs handle.
+(defun spawn-hirez-viewer-manager ((arg0 (array museum-char)) (arg1 symbol))
+  (kill-by-type highres-viewer-manager *active-pool*)
+  (the-as handle (ppointer->handle (process-spawn
+                                     highres-viewer-manager
+                                     :init hvm-init-by-other
+                                     arg0
+                                     arg1
+                                     :name "highres-viewer-manager"
+                                     :to *entity-pool*
+                                     :stack-size 4096
+                                     )
+                                   )
+          )
+  )
+
+;; definition for function draw-end-credits
+(defun draw-end-credits ((arg0 level) (arg1 float))
+  (let* ((f26-0 (lerp-scale 0.75 0.75 arg1 800.0 900.0))
+         (f30-0 (- 416.0 (* 0.75 arg1)))
+         (s5-1 0)
+         (f28-0 0.0)
+         (s3-0 #t)
+         (s4-0 (new
+                 'stack
+                 'font-context
+                 *font-default-matrix*
+                 (- 496 (the int (* 375.0 f26-0)))
+                 0
+                 0.0
+                 (font-color font-color-43)
+                 (font-flags shadow kerning)
+                 )
+               )
+         )
+    (let ((v1-4 s4-0))
+      (set! (-> v1-4 width) (* 375.0 f26-0))
+      )
+    (set-height! s4-0 150)
+    (set-scale! s4-0 (* 0.8 f26-0))
+    (set! (-> s4-0 flags) (font-flags shadow kerning middle large))
+    (while (or s3-0 (and (< f30-0 (- f28-0)) (< s5-1 (-> *credits-ids* length))))
+      (+! f30-0 f28-0)
+      (+! s5-1 1)
+      (let ((a0-7 (lookup-text arg0 (-> *credits-ids* s5-1) #t)))
+        (while (and a0-7 (zero? (-> a0-7 data 0)) (< s5-1 (-> *credits-ids* length)))
+          (+! s5-1 1)
+          (set! a0-7 (lookup-text arg0 (-> *credits-ids* s5-1) #t))
+          )
+        (set! f28-0 (if a0-7
+                        (+ 5.0 (print-game-text a0-7 s4-0 #t 35 (bucket-id hud-draw-hud-alpha)))
+                        40.0
+                        )
+              )
+        )
+      (set! s3-0 #f)
+      )
+    (cond
+      ((and (< 70 s5-1) (cpad-pressed? 0 triangle circle x))
+       #t
+       )
+      ((and (= s5-1 (-> *credits-ids* length)) (< f30-0 (- f28-0)))
+       #t
+       )
+      (else
+        (set! (-> s4-0 origin y) f30-0)
+        (while (< (-> s4-0 origin y) 416.0)
+          (let ((a0-16 (lookup-text arg0 (-> *credits-ids* s5-1) #t)))
+            (while (and a0-16 (zero? (-> a0-16 data 0)) (< s5-1 (-> *credits-ids* length)))
+              (+! s5-1 1)
+              (set! a0-16 (lookup-text arg0 (-> *credits-ids* s5-1) #t))
+              )
+            (let ((f0-14 (if a0-16
+                             (+ 5.0 (print-game-text a0-16 s4-0 #f 35 (bucket-id hud-draw-hud-alpha)))
+                             40.0
+                             )
+                         )
+                  )
+              (+! (-> s4-0 origin y) f0-14)
+              )
+            )
+          (+! s5-1 1)
+          )
+        #f
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-credits (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('change-mode)
+       (case (-> block param 0)
+         (('grab)
+          (if (not (-> block param 1))
+              #t
+              (go target-grab 'stance)
+              )
+          )
+         )
+       )
+      (else
+        (target-generic-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ((arg0 int))
+    (set! (-> self control mod-surface) *empty-mods*)
+    (let ((a0-2 (-> *hud-engine* alive-list next0)))
+      *hud-engine*
+      (let ((s5-0 (-> a0-2 next0)))
+        (while (!= a0-2 (-> *hud-engine* alive-list-end))
+          (deactivate ((method-of-type connection get-process) (the-as connection a0-2)))
+          (set! a0-2 s5-0)
+          *hud-engine*
+          (set! s5-0 (-> s5-0 next0))
+          )
+        )
+      )
+    (ja-channel-set! 0)
+    (kill-by-type hirez-viewer *active-pool*)
+    (kill-by-type highres-viewer-manager *active-pool*)
+    (cond
+      ((= arg0 1)
+       (spawn-hirez-viewer-manager *museum-3* #f)
+       )
+      ((= arg0 2)
+       (spawn-hirez-viewer-manager *museum-2* #f)
+       )
+      ((= arg0 3)
+       (spawn-hirez-viewer-manager *museum-1* #f)
+       )
+      (else
+        (spawn-hirez-viewer-manager *museum-1* #t)
+        )
+      )
+    (remove-setting! 'music-volume)
+    (persist-with-delay *setting-control* 'music-volume (seconds 3) 'music-volume 'abs 0.001 0)
+    (set-setting! 'allow-pause #f 0.0 0)
+    (set-setting! 'allow-progress #f 0.0 0)
+    (set-setting! 'music 'mcredits 0.0 0)
+    (set-setting! 'sound-mode #f 0.0 1)
+    (apply-settings *setting-control*)
+    )
+  :exit (behavior ()
+    (activate-hud self)
+    (target-exit)
+    )
+  :code (behavior ((arg0 int))
+    (cond
+      ((zero? arg0)
+       (let ((s5-0 (current-time)))
+         (while (let ((a0-2 (level-get *level* 'title)))
+                  (and a0-2 (not (draw-end-credits a0-2 (* 0.15 (the float (- (current-time) s5-0))))))
+                  )
+           (suspend)
+           )
+         )
+       )
+      (else
+        (until (cpad-pressed? 0 triangle)
+          (suspend)
+          )
+        )
+      )
+    (suspend)
+    (kill-by-type hirez-viewer *active-pool*)
+    (kill-by-type highres-viewer-manager *active-pool*)
+    (remove-setting! 'allow-pause)
+    (remove-setting! 'allow-progress)
+    (remove-setting! 'music)
+    (remove-setting! 'sound-mode)
+    (apply-settings *setting-control*)
+    (let ((v1-25 (get-continue-by-name *game-info* (if (zero? arg0)
+                                                       "wascity-start"
+                                                       "title-restart"
+                                                       )
+                                       )
+                 )
+          )
+      (send-event self 'continue v1-25)
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post target-no-move-post
+  )

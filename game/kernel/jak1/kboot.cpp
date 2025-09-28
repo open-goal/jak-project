@@ -13,6 +13,7 @@
 #include <thread>
 
 #include "common/common_types.h"
+#include "common/log/log.h"
 #include "common/util/Timer.h"
 
 #include "game/common/game_common_types.h"
@@ -140,7 +141,7 @@ void KernelCheckAndDispatch() {
 
     auto time_ms = kernel_dispatch_timer.getMs();
     if (time_ms > 50) {
-      printf("Kernel dispatch time: %.3f ms\n", time_ms);
+      lg::print("Kernel dispatch time: {:.3f} ms\n", time_ms);
     }
 
     ClearPending();

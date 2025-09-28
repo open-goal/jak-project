@@ -5,5 +5,122 @@
 ;; name in dgo: speech-manager
 ;; dgos: GAME
 
+;; +++speech-info-flag
+(defenum speech-info-flag
+  :type uint64
+  :bitfield #t
+  (si0 0)
+  (si1 1)
+  (si2 2)
+  (si3 3)
+  (si4 4)
+  (si5 5)
+  (si6 6)
+  (si7 7)
+  (si8 8)
+  )
+;; ---speech-info-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype speech-instance (structure)
+  ((speech          uint16)
+   (num-play-times  int8)
+   (probability     float)
+   )
+  )
+
+
+(deftype speech-info (structure)
+  ((speeches   (array speech-instance))
+   (flags      speech-info-flag)
+   (play-time  time-frame)
+   )
+  )
+
+
+(defun mark-speech-played ((arg0 speech-info) (arg1 int))
+  (logior! (-> arg0 flags) (speech-info-flag si6 si7))
+  (+! (-> arg0 speeches arg1 num-play-times) 1)
+  (let ((v0-0 (current-time)))
+    (set! (-> arg0 play-time) v0-0)
+    v0-0
+    )
+  )
+
+(defun speech-play ((arg0 (array speech-info)) (arg1 int) (arg2 (inline-array talker-speech-class)) (arg3 vector))
+  (local-vars (v0-0 int))
+  (let ((s1-0 (-> arg0 arg1))
+        (v1-2 #xf4240)
+        (a1-1 0)
+        (s2-0 #f)
+        )
+    (if (and (logtest? (-> s1-0 flags) (speech-info-flag si0)) (logtest? (-> s1-0 flags) (speech-info-flag si6)))
+        (return -1)
+        )
+    (when (and (logtest? (-> s1-0 flags) (speech-info-flag si3)) (logtest? (-> s1-0 flags) (speech-info-flag si7)))
+      (set! s2-0 #t)
+      (set! s1-0 (-> arg0 (+ arg1 1)))
+      )
+    (if (and (logtest? (-> s1-0 flags) (speech-info-flag si0)) (logtest? (-> s1-0 flags) (speech-info-flag si6)))
+        (return -1)
+        )
+    (dotimes (a0-20 (-> s1-0 speeches length))
+      (set! v1-2 (min (-> s1-0 speeches a0-20 num-play-times) v1-2))
+      )
+    (if (and (> v1-2 0) (logtest? (-> s1-0 flags) (speech-info-flag si4)))
+        (return -1)
+        )
+    (dotimes (a0-26 (-> s1-0 speeches length))
+      (if (< v1-2 (-> s1-0 speeches a0-26 num-play-times))
+          (set! a1-1 (logior a1-1 (ash 1 a0-26)))
+          )
+      )
+    (let ((s0-0 0))
+      (set! s0-0 (cond
+                   ((logtest? (-> s1-0 flags) (speech-info-flag si5))
+                    (dotimes (v1-7 (-> s1-0 speeches length))
+                      (when (not (logtest? a1-1 (ash 1 v1-7)))
+                        (set! s0-0 v1-7)
+                        0
+                        (goto cfg-45)
+                        )
+                      )
+                    (label cfg-45)
+                    s0-0
+                    )
+                   (else
+                     (rand-vu-int-count-excluding (-> s1-0 speeches length) a1-1)
+                     )
+                   )
+            )
+      (if (logtest? (-> s1-0 flags) (speech-info-flag si8))
+          (set! arg2 *talker-speech*)
+          )
+      (mark-speech-played s1-0 s0-0)
+      (talker-spawn-func (-> arg2 (-> s1-0 speeches s0-0 speech)) *entity-pool* arg3 (the-as region #f))
+      (if s2-0
+          (set-time! (-> arg0 arg1 play-time))
+          )
+      (return s0-0)
+      )
+    )
+  v0-0
+  )
+
+(defun speeches-reset ((arg0 (array speech-info)))
+  (dotimes (v1-0 (-> arg0 length))
+    (logclear! (-> arg0 v1-0 flags) (speech-info-flag si6))
+    (set! (-> arg0 v1-0 play-time) 0)
+    )
+  #f
+  )
+
+(defun speeches-debug-reset ((arg0 (array speech-info)))
+  (dotimes (v1-0 (-> arg0 length))
+    (logclear! (-> arg0 v1-0 flags) (speech-info-flag si6 si7))
+    (set! (-> arg0 0 play-time) 0)
+    )
+  #f
+  )

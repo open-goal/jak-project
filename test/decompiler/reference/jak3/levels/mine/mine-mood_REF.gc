@@ -1,0 +1,219 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function init-mood-minea
+(defun init-mood-minea ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group 1)))
+    (let ((a1-0 (-> v1-0 dir0)))
+      (set! (-> a1-0 direction x) 0.0)
+      (set! (-> a1-0 direction y) 1.0)
+      (set! (-> a1-0 direction z) 0.0)
+      (set! (-> a1-0 direction w) 0.0)
+      )
+    (set-vector! (-> v1-0 dir0 color) 0.667 0.667 0.667 1.0)
+    (set-vector! (-> v1-0 ambi color) 0.333 0.333 0.333 1.0)
+    (set! (-> v1-0 dir0 extra x) 0.25)
+    (set! (-> v1-0 dir1 extra x) 0.0)
+    (set! (-> v1-0 dir2 extra x) 0.0)
+    (set! (-> v1-0 ambi extra x) 0.25)
+    )
+  (let ((v1-2 (-> arg0 light-group 2)))
+    (let ((a1-5 (-> v1-2 dir0)))
+      (set! (-> a1-5 direction x) 0.0)
+      (set! (-> a1-5 direction y) 1.0)
+      (set! (-> a1-5 direction z) 0.0)
+      (set! (-> a1-5 direction w) 0.0)
+      )
+    (set-vector! (-> v1-2 dir0 color) 0.667 0.667 0.667 1.0)
+    (set-vector! (-> v1-2 ambi color) 0.333 0.333 0.333 1.0)
+    (set! (-> v1-2 dir0 extra x) 0.75)
+    (set! (-> v1-2 dir1 extra x) 0.0)
+    (set! (-> v1-2 dir2 extra x) 0.0)
+    (set! (-> v1-2 ambi extra x) 0.25)
+    )
+  (let ((v1-4 (-> arg0 light-group 3)))
+    (let ((a0-1 (-> v1-4 dir0)))
+      (set! (-> a0-1 direction x) -0.2357)
+      (set! (-> a0-1 direction y) 0.9428)
+      (set! (-> a0-1 direction z) -0.2357)
+      (set! (-> a0-1 direction w) 0.0)
+      )
+    (set-vector! (-> v1-4 dir0 color) 0.667 0.667 0.667 1.0)
+    (set-vector! (-> v1-4 ambi color) 0.3 0.25 0.4 1.0)
+    (set! (-> v1-4 dir0 extra x) 0.75)
+    (set! (-> v1-4 dir1 extra x) 0.0)
+    (set! (-> v1-4 dir2 extra x) 0.0)
+    (set! (-> v1-4 ambi extra x) 0.5)
+    )
+  )
+
+;; definition for function update-mood-minea
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-minea time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (if (< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+      (palette-select-special arg0)
+      (set! (-> arg0 times 0 w) 1.0)
+      )
+  0
+  (none)
+  )
+
+;; definition of type mineb-light-state
+(deftype mineb-light-state (structure)
+  ((current  float)
+   (target   float)
+   )
+  )
+
+;; definition for method 3 of type mineb-light-state
+(defmethod inspect ((this mineb-light-state))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'mineb-light-state)
+  (format #t "~1Tcurrent: ~f~%" (-> this current))
+  (format #t "~1Ttarget: ~f~%" (-> this target))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type mineb-states
+(deftype mineb-states (structure)
+  ((lights  mineb-light-state  3 :inline)
+   )
+  )
+
+;; definition for method 3 of type mineb-states
+(defmethod inspect ((this mineb-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'mineb-states)
+  (format #t "~1Tlights[3] @ #x~X~%" (-> this lights))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function init-mood-mineb
+;; WARN: Return type mismatch symbol vs float.
+(defun init-mood-mineb ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 state)))
+    (dotimes (a0-1 3)
+      (set! (-> (&+ v1-0 (* a0-1 16)) 0) (the-as uint 0.0))
+      (set! (-> (&+ v1-0 (* a0-1 16)) 1) (the-as uint 0.0))
+      )
+    )
+  (the-as float #f)
+  )
+
+;; definition for function update-mood-mineb
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-mineb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (let ((v1-0 (-> arg0 light-group)))
+    (set! (-> v1-0 0 dir0 extra x) 0.8)
+    (set! (-> v1-0 0 ambi extra x) 0.8)
+    )
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((gp-0 (-> arg0 state)))
+        (set! (-> arg0 times 0 w) 1.0)
+        (set! (-> arg0 times 1 w) (the-as float (-> gp-0 0)))
+        (set! (-> arg0 times 2 w) (the-as float (-> gp-0 4)))
+        (set! (-> arg0 times 3 w) (the-as float (-> gp-0 8)))
+        (when (not (paused?))
+          (dotimes (s5-1 3)
+            (set! (-> (&+ gp-0 (* s5-1 16)) 0)
+                  (the-as
+                    uint
+                    (seek (the-as float (-> (&+ gp-0 (* s5-1 16)) 0)) (the-as float (-> (&+ gp-0 (* s5-1 16)) 1)) 0.05)
+                    )
+                  )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-mineb-lights!
+;; WARN: Return type mismatch float vs none.
+(defun set-mineb-lights! ((arg0 int) (arg1 float))
+  (let ((v1-1 (level-get *level* 'mineb)))
+    (when (and v1-1 (= (-> v1-1 status) 'active))
+      (let ((v1-2 (-> v1-1 mood-context state)))
+        (set! (-> (&+ v1-2 (* arg0 16)) 1) (the-as uint arg1))
+        (if (= arg1 0.0)
+            (set! (-> (&+ v1-2 (* arg0 16)) 0) (the-as uint arg1))
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition of type minec-states
+(deftype minec-states (structure)
+  ((light        light-state        :inline)
+   (electricity  electricity-state  :inline)
+   )
+  )
+
+;; definition for method 3 of type minec-states
+(defmethod inspect ((this minec-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'minec-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> this light))
+  (format #t "~1Telectricity: #<electricity-state @ #x~X>~%" (-> this electricity))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function init-mood-minec
+(defun init-mood-minec ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 state))
+        (f0-0 0.0)
+        )
+    (set! (-> v1-0 3) (the-as uint f0-0))
+    f0-0
+    )
+  )
+
+;; definition for function update-mood-minec
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-minec time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s4-1 (-> arg0 state)))
+      (set! (-> arg0 times 6 w) 1.0)
+      (update-mood-light arg0 5 0 -1.0 0.0 arg1 0.0 2.0)
+      (cond
+        ((!= (the-as float (-> s4-1 3)) 0.0)
+         (update-mood-electricity arg0 7 8 1.2 1.7)
+         )
+        ((or (>= arg1 18.0) (>= 6.0 arg1))
+         (set! (-> arg0 times 7 w) 1.0)
+         )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+

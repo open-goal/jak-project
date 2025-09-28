@@ -1,134 +1,103 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: plat.gc
-;; name in dgo: plat
-;; dgos: GAME, COMMON, L1
+(bundles "GAME.CGO")
+(require "engine/common-obs/generic-obs.gc")
+(require "engine/geometry/path.gc")
+(require "engine/util/sync-info.gc")
 
 ;; DECOMP BEGINS
 
 (defpartgroup group-standard-plat
   :id 107
   :bounds (static-bspherem 0 -12 0 14)
-  :parts ((sp-item 363 :fade-after (meters 60) :falloff-to (meters 60))
-    (sp-item 364 :fade-after (meters 160) :falloff-to (meters 160))
-    )
-  )
+  :parts
+  ((sp-item 363 :fade-after (meters 60) :falloff-to (meters 60))
+   (sp-item 364 :fade-after (meters 160) :falloff-to (meters 160))))
 
 (defpart 363
-  :init-specs ((:num 1.5)
-    (:y (meters 1))
-    (:rot-x 5)
-    (:r 5324.8)
-    (:g 4096.0)
-    (:b 3686.4)
-    (:vel-y (meters 0.0033333334))
-    (:fade-b -16.383999)
-    (:timer (seconds 0.085))
-    (:flags (aux-list))
-    (:conerot-x (degrees 140) (degrees 40))
-    (:conerot-y (degrees 0) (degrees 360))
-    (:conerot-radius (meters 3))
-    )
-  )
+  :init-specs
+  ((:num 1.5)
+   (:y (meters 1))
+   (:rot-x 5)
+   (:r 5324.8)
+   (:g 4096.0)
+   (:b 3686.4)
+   (:vel-y (meters 0.0033333334))
+   (:fade-b -16.383999)
+   (:timer (seconds 0.085))
+   (:flags (aux-list))
+   (:conerot-x (degrees 140) (degrees 40))
+   (:conerot-y (degrees 0) (degrees 360))
+   (:conerot-radius (meters 3))))
 
 (defpart 364
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x2))
-    (:num 2.0)
-    (:y (meters 1.5))
-    (:scale-x (meters 2) (meters 1))
-    (:scale-y :copy scale-x)
-    (:g 0.0 64.0)
-    (:b 128.0 128.0)
-    (:a 16.0 32.0)
-    (:vel-y (meters 0.01))
-    (:fade-g -0.42666668)
-    (:fade-a -0.32)
-    (:accel-y (meters -0.000033333334))
-    (:friction 0.96)
-    (:timer (seconds 0.5))
-    (:flags (bit2 bit3))
-    (:conerot-x (degrees 130) (degrees 100.00001))
-    (:conerot-y (degrees 0) (degrees 360))
-    (:conerot-radius (meters 3))
-    )
-  )
+  :init-specs
+  ((:texture (hotdot effects))
+   (:num 2.0)
+   (:y (meters 1.5))
+   (:scale-x (meters 2) (meters 1))
+   (:scale-y :copy scale-x)
+   (:g 0.0 64.0)
+   (:b 128.0 128.0)
+   (:a 16.0 32.0)
+   (:vel-y (meters 0.01))
+   (:fade-g -0.42666668)
+   (:fade-a -0.32)
+   (:accel-y (meters -0.000033333334))
+   (:friction 0.96)
+   (:timer (seconds 0.5))
+   (:flags (bit2 bit3))
+   (:conerot-x (degrees 130) (degrees 100.00001))
+   (:conerot-y (degrees 0) (degrees 360))
+   (:conerot-radius (meters 3))))
 
 (deftype plat (baseplat)
-  ((path-pos  float)
-   (sync      sync-info-eased  :inline)
-   (sound-id  sound-id)
-   )
+  ((path-pos float)
+   (sync     sync-info-eased :inline)
+   (sound-id sound-id))
   (:methods
-    (get-lit-skel (_type_) skeleton-group)
-    (plat-method-28 () none)
-    (wad () _type_ :state)
-    (plat-startup (plat) _type_ :state)
-    (plat-idle () _type_ :state)
-    (plat-path-active (plat) _type_ :state)
-    )
-  )
+   (get-lit-skel (_type_) skeleton-group)
+   (plat-method-28 () none)
+   (wad () _type_ :state)
+   (plat-startup (plat) _type_ :state)
+   (plat-idle () _type_ :state)
+   (plat-path-active (plat) _type_ :state)))
 
 
-(defskelgroup *plat-sg* plat plat-lod0-jg plat-idle-ja
-              ((plat-lod0-mg (meters 20)) (plat-lod1-mg (meters 40)) (plat-lod2-mg (meters 999999)))
-              :bounds (static-spherem 0 -0.5 0 3)
-              )
+(defskelgroup *plat-sg*
+  plat
+  plat-lod0-jg
+  plat-idle-ja
+  ((plat-lod0-mg (meters 20)) (plat-lod1-mg (meters 40)) (plat-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 -0.5 0 3))
 
-(defskelgroup *plat-jungleb-sg* plat-jungleb plat-jungleb-lod0-jg plat-jungleb-idle-ja
-              ((plat-jungleb-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 -0.5 0 3)
-              )
+(defskelgroup *plat-jungleb-sg*
+  plat-jungleb
+  plat-jungleb-lod0-jg
+  plat-jungleb-idle-ja
+  ((plat-jungleb-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 -0.5 0 3))
 
-(defskelgroup *plat-sunken-sg* plat-sunken plat-sunken-lod0-jg plat-sunken-idle-ja
-              ((plat-sunken-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 -0.5 0 3.2)
-              )
+(defskelgroup *plat-sunken-sg*
+  plat-sunken
+  plat-sunken-lod0-jg
+  plat-sunken-idle-ja
+  ((plat-sunken-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 -0.5 0 3.2))
 
 (defmethod get-unlit-skel ((this plat))
   (cond
-    ((= (-> (if (-> this entity)
-                (-> this entity extra level)
-                (-> *level* level-default)
-                )
-            name
-            )
-        'jungleb
-        )
-     *plat-jungleb-sg*
-     )
-    ((or (= (-> (if (-> this entity)
-                    (-> this entity extra level)
-                    (-> *level* level-default)
-                    )
-                name
-                )
-            'sunken
-            )
-         (= (-> (if (-> this entity)
-                    (-> this entity extra level)
-                    (-> *level* level-default)
-                    )
-                name
-                )
-            'sunkenb
-            )
-         )
-     *plat-sunken-sg*
-     )
-    (else
-      *plat-sg*
-      )
-    )
-  )
+    ((= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'jungleb) *plat-jungleb-sg*)
+    ((or (= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'sunken)
+         (= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'sunkenb))
+     *plat-sunken-sg*)
+    (else *plat-sg*)))
 
 (defmethod baseplat-method-24 ((this plat))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (alloc-riders s5-0 1)
     (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind ground-object))
@@ -137,103 +106,74 @@
       (set! (-> s4-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s4-0 transform-index) 0)
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 13107.2)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod baseplat-method-26 ((this plat))
   0
-  (none)
-  )
+  (none))
 
 (defmethod baseplat-method-25 ((this plat))
-  (the-as sparticle-launch-group (when (!= (-> (if (-> this entity)
-                                                   (-> this entity extra level)
-                                                   (-> *level* level-default)
-                                                   )
-                                               name
-                                               )
-                                           'maincave
-                                           )
-                                   (let ((v0-0 (create-launch-control (-> *part-group-id-table* 107) this)))
-                                     (set! (-> this part) v0-0)
-                                     v0-0
-                                     )
-                                   )
-          )
-  )
+  (the-as sparticle-launch-group
+          (when (!= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'maincave)
+            (let ((v0-0 (create-launch-control (-> *part-group-id-table* 107) this))) (set! (-> this part) v0-0) v0-0))))
 
 (defstate plat-startup (plat)
   :virtual #t
-  :code (behavior ((arg0 plat))
-    (cond
-      ((logtest? (-> self path flags) (path-control-flag not-found))
-       (go-virtual plat-idle)
-       )
-      ((> (-> self sync period) 0)
-       (go-virtual plat-path-active arg0)
-       )
-      (else
-        (go-virtual plat-idle)
-        )
-      )
-    )
-  )
+  :code
+    (behavior ((arg0 plat))
+      (cond
+        ((logtest? (-> self path flags) (path-control-flag not-found)) (go-virtual plat-idle))
+        ((> (-> self sync period) 0) (go-virtual plat-path-active arg0))
+        (else (go-virtual plat-idle)))))
 
 (defstate plat-idle (plat)
   :virtual #t
   :event plat-event
-  :trans (behavior ()
-    (baseplat-method-20 self)
-    )
-  :code (behavior ()
-    (plat-trans)
-    (rider-post)
-    (suspend)
-    (loop
-      (when (not (-> self bouncing))
-        (plat-trans)
-        (rider-post)
-        (logior! (-> self mask) (process-mask sleep-code))
-        (suspend)
-        0
-        )
-      (while (-> self bouncing)
-        (plat-trans)
-        (rider-post)
-        (suspend)
-        )
-      )
-    )
-  )
+  :trans
+    (behavior ()
+      (baseplat-method-20 self))
+  :code
+    (behavior ()
+      (plat-trans)
+      (rider-post)
+      (suspend)
+      (loop
+        (when (not (-> self bouncing))
+          (plat-trans)
+          (rider-post)
+          (logior! (-> self mask) (process-mask sleep-code))
+          (suspend)
+          0)
+        (while (-> self bouncing)
+          (plat-trans)
+          (rider-post)
+          (suspend)))))
 
 (defstate plat-path-active (plat)
   :virtual #t
   :event plat-event
-  :exit (behavior ()
-    (sound-stop (-> self sound-id))
-    )
-  :trans (behavior ()
-    (set! (-> self path-pos) (if (logtest? (-> self fact options) (fact-options wrap-phase))
-                                 (get-current-phase (-> self sync))
-                                 (get-current-phase-with-mirror (-> self sync))
-                                 )
-          )
-    (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
-    (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
-        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans)))
-        )
-    (plat-trans)
-    )
-  :code (the-as (function plat object) anim-loop)
-  :post plat-post
-  )
+  :exit
+    (behavior ()
+      (sound-stop (-> self sound-id)))
+  :trans
+    (behavior ()
+      (set! (-> self path-pos)
+            (if (logtest? (-> self fact options) (fact-options wrap-phase))
+              (get-current-phase (-> self sync))
+              (get-current-phase-with-mirror (-> self sync))))
+      (eval-path-curve! (-> self path) (-> self basetrans) (-> self path-pos) 'interp)
+      (if (< (vector-vector-distance (-> self root trans) (ear-trans)) 81920.0)
+        (sound-play "eco-plat-hover" :id (-> self sound-id) :position (the-as symbol (-> self root trans))))
+      (plat-trans))
+  :code
+    (the-as (function plat object)
+            anim-loop)
+  :post plat-post)
 
 (defmethod init-from-entity! ((this plat) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
@@ -245,40 +185,23 @@
   (baseplat-method-21 this)
   (baseplat-method-25 this)
   (load-params! (-> this sync) this (the-as uint 0) 0.0 0.15 0.15)
-  (set! (-> this fact)
-        (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc))
-        )
+  (set! (-> this fact) (new 'process 'fact-info this (pickup-type eco-pill-random) (-> *FACT-bank* default-pill-inc)))
   (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
   (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
   (set! (-> this sound-id) (new-sound-id))
   (cond
     ((logtest? (-> this path flags) (path-control-flag not-found))
      (set! (-> this path-pos) 0.0)
-     (let ((a0-14 this))
-       (baseplat-method-26 a0-14)
-       (go (method-of-object this plat-startup) a0-14)
-       )
-     )
+     (let ((a0-14 this)) (baseplat-method-26 a0-14) (go (method-of-object this plat-startup) a0-14)))
     ((> (-> this sync period) 0)
-     (set! (-> this path-pos) (if (logtest? (-> this fact options) (fact-options wrap-phase))
-                                  (get-current-phase (-> this sync))
-                                  (get-current-phase-with-mirror (-> this sync))
-                                  )
-           )
+     (set! (-> this path-pos)
+           (if (logtest? (-> this fact options) (fact-options wrap-phase))
+             (get-current-phase (-> this sync))
+             (get-current-phase-with-mirror (-> this sync))))
      (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
-     (let ((a0-18 this))
-       (baseplat-method-26 a0-18)
-       (go (method-of-object this plat-startup) a0-18)
-       )
-     )
+     (let ((a0-18 this)) (baseplat-method-26 a0-18) (go (method-of-object this plat-startup) a0-18)))
     (else
-      (set! (-> this path-pos) 0.0)
-      (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
-      (let ((a0-20 this))
-        (baseplat-method-26 a0-20)
-        (go (method-of-object this plat-startup) a0-20)
-        )
-      )
-    )
-  (none)
-  )
+     (set! (-> this path-pos) 0.0)
+     (eval-path-curve! (-> this path) (-> this root trans) (-> this path-pos) 'interp)
+     (let ((a0-20 this)) (baseplat-method-26 a0-20) (go (method-of-object this plat-startup) a0-20))))
+  (none))

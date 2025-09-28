@@ -1,0 +1,165 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type traffic-guard-type-info
+(deftype traffic-guard-type-info (structure)
+  ((object-type       traffic-type)
+   (max-target-count  int8)
+   (min-target-count  int8)
+   (target-count      int8)
+   (count             int8)
+   (change-to-type    traffic-type)
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type traffic-guard-type-info
+(defmethod inspect ((this traffic-guard-type-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'traffic-guard-type-info)
+  (format #t "~1Tobject-type: ~D~%" (-> this object-type))
+  (format #t "~1Tmax-target-count: ~D~%" (-> this max-target-count))
+  (format #t "~1Tmin-target-count: ~D~%" (-> this min-target-count))
+  (format #t "~1Ttarget-count: ~D~%" (-> this target-count))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tchange-to-type: ~D~%" (-> this change-to-type))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type traffic-guard-type-array
+(deftype traffic-guard-type-array (structure)
+  ((data                traffic-guard-type-info  3 :inline)
+   (guard-info-normal   traffic-guard-type-info  :inline :overlay-at (-> data 0))
+   (guard-info-war      traffic-guard-type-info  :inline :offset  16)
+   (guard-info-mission  traffic-guard-type-info  :inline :offset  32)
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type traffic-guard-type-array
+(defmethod inspect ((this traffic-guard-type-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'traffic-guard-type-array)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> this data))
+  (format #t "~1Tguard-info-normal: #<traffic-guard-type-info @ #x~X>~%" (-> this data))
+  (format #t "~1Tguard-info-war: #<traffic-guard-type-info @ #x~X>~%" (-> this guard-info-war))
+  (format #t "~1Tguard-info-mission: #<traffic-guard-type-info @ #x~X>~%" (-> this guard-info-mission))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type squad-alert-state-settings
+(deftype squad-alert-state-settings (structure)
+  ((guard-settings-array  squad-unit-settings  10 :inline)
+   (ped-tazer             squad-unit-settings  :inline :overlay-at (-> guard-settings-array 0))
+   (ped-rifle             squad-unit-settings  :inline :offset  32)
+   (ped-grenade           squad-unit-settings  :inline :offset  64)
+   (ped-waster            squad-unit-settings  :inline :offset  96)
+   (bike-turret           squad-unit-settings  :inline :offset 128)
+   (hellcat-turret        squad-unit-settings  :inline :offset 160)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type squad-alert-state-settings
+(defmethod inspect ((this squad-alert-state-settings))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'squad-alert-state-settings)
+  (format #t "~1Tguard-settings-array[10] @ #x~X~%" (-> this ped-tazer))
+  (format #t "~1Tped-tazer: #<squad-unit-settings @ #x~X>~%" (-> this ped-tazer))
+  (format #t "~1Tped-rifle: #<squad-unit-settings @ #x~X>~%" (-> this ped-rifle))
+  (format #t "~1Tped-grenade: #<squad-unit-settings @ #x~X>~%" (-> this ped-grenade))
+  (format #t "~1Tped-waster: #<squad-unit-settings @ #x~X>~%" (-> this ped-waster))
+  (format #t "~1Tbike-turret: #<squad-unit-settings @ #x~X>~%" (-> this bike-turret))
+  (format #t "~1Thellcat-turret: #<squad-unit-settings @ #x~X>~%" (-> this hellcat-turret))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type traffic-target-formation
+(deftype traffic-target-formation (structure)
+  ((circle-range  float  16)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type traffic-target-formation
+(defmethod inspect ((this traffic-target-formation))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'traffic-target-formation)
+  (format #t "~1Tcircle-range[16] @ #x~X~%" (-> this circle-range))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type ff-squad-control
+(deftype ff-squad-control (squad-control-city)
+  ((squad-settings                    squad-alert-state-settings  3 :inline :offset 824)
+   (settings                          squad-alert-state-settings  :inline   :overlay-at (-> squad-settings 0))
+   (settings-war                      squad-alert-state-settings  :inline   :overlay-at (-> squad-settings 1))
+   (settings-mission                  squad-alert-state-settings  :inline   :overlay-at (-> squad-settings 2))
+   (guard-type-info-array             traffic-guard-type-array    10 :inline)
+   (guard-type-mask-from-object-type  uint32                      29)
+   (target-formation-array            traffic-target-formation    3 :inline)
+   )
+  (:methods
+    (ff-squad-control-method-45 (_type_) none)
+    (ff-squad-control-method-46 (_type_) none)
+    (ff-squad-control-method-47 (_type_) none)
+    (ff-squad-control-method-48 (_type_) none)
+    (set-guard-target-level (_type_ float) none)
+    (get-focus (_type_) process-focusable)
+    (ff-squad-control-method-51 (_type_ process-focusable collide-spec) process-focusable)
+    (end-pursuit-for-all (_type_ int) none)
+    (get-unit-settings-by-idx (_type_ int) squad-unit-settings)
+    (ff-squad-control-method-54 (_type_ int) none)
+    (ff-squad-control-method-55 (_type_ int int) traffic-type)
+    (ff-squad-control-method-56 (_type_ int int int) none)
+    )
+  )
+
+;; definition for method 3 of type ff-squad-control
+(defmethod inspect ((this ff-squad-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tsync-clock: ~D~%" (-> this sync-clock))
+  (format #t "~1Tsync-mask-8: ~D~%" (-> this sync-mask-8))
+  (format #t "~1Tsync-mask-16: ~D~%" (-> this sync-mask-16))
+  (format #t "~1Tsync-mask-32: ~D~%" (-> this sync-mask-32))
+  (format #t "~1Talert-state: #<squad-alert-state @ #x~X>~%" (-> this alert-state))
+  (format #t "~1Tprimary-target-history[16] @ #x~X~%" (-> this primary-target-history))
+  (format #t "~1Ttraffic: ~A~%" (-> this traffic))
+  (format #t "~1Tcity-mode: ~D~%" (-> this city-mode))
+  (format #t "~1Tsquad-settings[3] @ #x~X~%" (-> this settings))
+  (format #t "~1Tsettings: #<squad-alert-state-settings @ #x~X>~%" (-> this settings))
+  (format #t "~1Tsettings-war: #<squad-alert-state-settings @ #x~X>~%" (-> this settings-war))
+  (format #t "~1Tsettings-mission: #<squad-alert-state-settings @ #x~X>~%" (-> this settings-mission))
+  (format #t "~1Tguard-type-info-array[10] @ #x~X~%" (-> this guard-type-info-array))
+  (format #t "~1Tguard-type-mask-from-object-type[29] @ #x~X~%" (-> this guard-type-mask-from-object-type))
+  (format #t "~1Ttarget-formation-array[3] @ #x~X~%" (-> this target-formation-array))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *ff-squad-control*, type ff-squad-control
+(define *ff-squad-control* (the-as ff-squad-control #f))
+
+
+
+

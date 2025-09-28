@@ -16,7 +16,9 @@
 #include "common/util/string_util.h"
 #include "common/util/unicode_util.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/args.h"
+#include "fmt/base.h"
+#include "fmt/format.h"
 
 namespace goos {
 Interpreter::Interpreter(const std::string& username) {
@@ -569,104 +571,6 @@ Object Interpreter::eval(Object obj, const std::shared_ptr<EnvironmentObject>& e
       throw_eval_error(obj, "cannot evaluate this object");
       return Object();
   }
-}
-
-EnvironmentMap::EnvironmentMap() {
-  clear();
-}
-
-void EnvironmentMap::clear() {
-  m_entries.clear();
-  m_power_of_two_size = 3;  // 2 ^ 3 = 8
-  m_entries.resize(8);
-  m_used_entries = 0;
-  m_next_resize = (m_entries.size() * kMaxUsed);
-  m_mask = 0b111;
-}
-
-Object* EnvironmentMap::lookup(InternedSymbolPtr str) {
-  if (m_entries.size() < 10) {
-    for (auto& e : m_entries) {
-      if (e.key == str.name_ptr) {
-        return &e.value;
-      }
-    }
-    return nullptr;
-  }
-  u32 hash = crc32((const u8*)&str.name_ptr, sizeof(const char*));
-
-  // probe
-  for (u32 i = 0; i < m_entries.size(); i++) {
-    u32 slot_addr = (hash + i) & m_mask;
-    auto& slot = m_entries[slot_addr];
-    if (!slot.key) {
-      return nullptr;
-    } else {
-      if (slot.key != str.name_ptr) {
-        continue;  // bad hash
-      }
-      return &slot.value;
-    }
-  }
-
-  // should be impossible to reach.
-  ASSERT_NOT_REACHED();
-}
-
-void EnvironmentMap::set(InternedSymbolPtr ptr, const Object& obj) {
-  u32 hash = crc32((const u8*)&ptr.name_ptr, sizeof(const char*));
-
-  // probe
-  for (u32 i = 0; i < m_entries.size(); i++) {
-    u32 slot_addr = (hash + i) & m_mask;
-    auto& slot = m_entries[slot_addr];
-    if (!slot.key) {
-      // not found, insert!
-      slot.key = ptr.name_ptr;
-      slot.value = obj;
-      m_used_entries++;
-
-      if (m_used_entries >= m_next_resize) {
-        resize();
-      }
-      return;
-    } else {
-      if (slot.key == ptr.name_ptr) {
-        slot.value = obj;
-        return;
-      }
-    }
-  }
-
-  // should be impossible to reach.
-  ASSERT_NOT_REACHED();
-}
-
-void EnvironmentMap::resize() {
-  m_power_of_two_size++;
-  m_mask = (1U << m_power_of_two_size) - 1;
-
-  std::vector<Entry> new_entries(m_entries.size() * 2);
-  for (const auto& old_entry : m_entries) {
-    if (old_entry.key) {
-      bool done = false;
-      u32 hash = crc32((const u8*)&old_entry.key, sizeof(const char*));
-      for (u32 i = 0; i < new_entries.size(); i++) {
-        u32 slot_addr = (hash + i) & m_mask;
-        auto& slot = new_entries[slot_addr];
-        if (!slot.key) {
-          slot.key = old_entry.key;
-          slot.value = std::move(old_entry.value);
-          done = true;
-          break;
-        }
-      }
-      ASSERT(done);
-    }
-  }
-
-  m_entries = std::move(new_entries);
-  m_next_resize = kMaxUsed * m_entries.size();
 }
 
 namespace {
@@ -1867,28 +1771,18 @@ Object Interpreter::eval_format(const Object& form,
     throw_eval_error(form, "format string must be a string");
   }
 
-  // Note: this might be relying on internal implementation details of libfmt to work properly
-  // and isn't a great solution.
-  std::vector<fmt::basic_format_arg<fmt::format_context>> args2;
-  std::vector<std::string> strings;
+  fmt::dynamic_format_arg_store<fmt::format_context> arg_store;
   for (size_t i = 2; i < args.unnamed.size(); i++) {
     if (args.unnamed.at(i).is_string()) {
-      strings.push_back(args.unnamed.at(i).as_string()->data);
+      arg_store.push_back(args.unnamed.at(i).as_string()->data);
     } else {
-      strings.push_back(args.unnamed.at(i).print());
+      arg_store.push_back(args.unnamed.at(i).print());
     }
   }
 
-  for (auto& x : strings) {
-    args2.push_back(fmt::detail::make_arg<fmt::format_context>(x));
-  }
-
-  auto formatted =
-      fmt::vformat(format_str.as_string()->data,
-                   fmt::format_args(args2.data(), static_cast<unsigned>(args2.size())));
-
+  auto formatted = fmt::vformat(format_str.as_string()->data, arg_store);
   if (truthy(dest)) {
-    lg::print(formatted.c_str());
+    lg::print("{}", formatted.c_str());
   }
 
   return StringObject::make_new(formatted);

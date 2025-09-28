@@ -80,6 +80,13 @@ uint32_t FS_LoadSoundBank(char* name, SoundBank* buffer);
 uint32_t FS_LoadMusic(char* name, snd::BankHandle* buffer);
 u32 FS_SyncRead();
 
+struct FakeCd {
+  int offset_into_file = 0;
+  FILE* fp = nullptr;
+  void (*callback)(int) = nullptr;
+  FileRecord* last_fr = nullptr;
+} gFakeCd;
+
 void iso_cd_init_globals() {
   ReadPagesCurrentPage = nullptr;
   DvdSema = -1;
@@ -110,6 +117,7 @@ void iso_cd_init_globals() {
   iso_cd.load_sound_bank = FS_LoadSoundBank;
   iso_cd.load_music = FS_LoadMusic;
   iso_cd.sync_read = FS_SyncRead;
+  gFakeCd.last_fr = nullptr;
 }
 
 static FILE* open_fr(FileRecord* fr, s32 thread_to_wake) {
@@ -123,13 +131,6 @@ static FILE* open_fr(FileRecord* fr, s32 thread_to_wake) {
 ///////////////////////////
 // Sony Fake CD Functions
 ///////////////////////////
-
-struct FakeCd {
-  int offset_into_file = 0;
-  FILE* fp = nullptr;
-  void (*callback)(int) = nullptr;
-  FileRecord* last_fr = nullptr;
-} gFakeCd;
 
 auto sceCdCallback(void (*callback)(int)) {
   auto ret = gFakeCd.callback;

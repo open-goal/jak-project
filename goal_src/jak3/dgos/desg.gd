@@ -1,0 +1,12 @@
+("DESG.DGO"
+ ("elec-gate.o"
+  "desertg-obs.o"
+  "tpage-1373.go"
+  "tpage-1376.go"
+  "tpage-1374.go"
+  "tpage-3409.go"
+  "desert-eggwall-ag.go"
+  "des-cactus-obstacle-ag.go"
+  "particleman-ag.go"
+  "desertg-vis.go"
+ ))

@@ -1,258 +1,209 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: lurkerpuppy.gc
-;; name in dgo: lurkerpuppy
-;; dgos: BEA, L1
+(bundles "BEA.DGO")
+(require "engine/common-obs/nav-enemy.gc")
 
 ;; DECOMP BEGINS
 
-(deftype lurkerpuppy (nav-enemy)
-  ()
-  )
+(deftype lurkerpuppy (nav-enemy) ())
 
 
-(defskelgroup *lurkerpuppy-sg* lurkerpuppy lurkerpuppy-lod0-jg lurkerpuppy-idle-ja
-              ((lurkerpuppy-lod0-mg (meters 20)) (lurkerpuppy-lod1-mg (meters 40)) (lurkerpuppy-lod2-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 2)
-              :shadow lurkerpuppy-shadow-mg
-              )
+(defskelgroup *lurkerpuppy-sg*
+  lurkerpuppy
+  lurkerpuppy-lod0-jg
+  lurkerpuppy-idle-ja
+  ((lurkerpuppy-lod0-mg (meters 20)) (lurkerpuppy-lod1-mg (meters 40)) (lurkerpuppy-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 2)
+  :shadow lurkerpuppy-shadow-mg)
 
 nav-enemy-default-event-handler
 
 (defstate nav-enemy-notice (lurkerpuppy)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (ja-no-eval :num! (loop!))
-    (ja-channel-push! 1 (seconds 0.17))
-    (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (ja-blend-eval)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (go-virtual nav-enemy-chase)
-    )
-  )
+  :code
+    (behavior ()
+      (ja-no-eval :num! (loop!))
+      (ja-channel-push! 1 (seconds 0.17))
+      (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (ja-blend-eval)
+        (suspend)
+        (ja :num! (seek!)))
+      (go-virtual nav-enemy-chase)))
 
 (defstate nav-enemy-chase (lurkerpuppy)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (cond
-      ((ja-group? lurkerpuppy-jump-land-ja)
-       (ja-channel-push! 1 (seconds 0.17))
-       (ja-no-eval :group! lurkerpuppy-run-ja :num! (seek!) :frame-num (ja-aframe 4.0 0))
-       (until (ja-done? 0)
-         (suspend)
-         (ja :num! (seek!))
-         )
-       )
-      (else
-        (ja-channel-push! 1 (seconds 0.17))
-        )
-      )
-    (let ((f30-0 (rand-vu-float-range 0.9 1.1)))
-      (loop
-        (if (rand-vu-percent? 0.25)
-            (sound-play "puppy-bark")
-            )
-        (ja-no-eval :group! lurkerpuppy-run-ja :num! (seek! max f30-0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8))
-              (go-virtual nav-enemy-attack)
-              )
-          (suspend)
-          (ja :num! (seek! max f30-0))
-          )
-        )
-      )
-    )
-  )
+  :code
+    (behavior ()
+      (cond
+        ((ja-group? lurkerpuppy-jump-land-ja)
+         (ja-channel-push! 1 (seconds 0.17))
+         (ja-no-eval :group! lurkerpuppy-run-ja :num! (seek!) :frame-num (ja-aframe 4.0 0))
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))))
+        (else (ja-channel-push! 1 (seconds 0.17))))
+      (let ((f30-0 (rand-vu-float-range 0.9 1.1)))
+        (loop
+          (if (rand-vu-percent? 0.25) (sound-play "puppy-bark"))
+          (ja-no-eval :group! lurkerpuppy-run-ja :num! (seek! max f30-0) :frame-num 0.0)
+          (until (ja-done? 0)
+            (if (logtest? (-> self nav-enemy-flags) (nav-enemy-flags navenmf8)) (go-virtual nav-enemy-attack))
+            (suspend)
+            (ja :num! (seek! max f30-0)))))))
 
 (defstate nav-enemy-stare (lurkerpuppy)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (set! (-> self rotate-speed) 1456355.5)
-    (set! (-> self turn-time) (seconds 0.1))
-    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-    (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
-      (loop
-        (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-        (ja-channel-push! 1 (seconds 0.1))
-        (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek! (ja-aframe 12.0 0) f30-0) :frame-num 0.0)
-        (until (ja-done? 0)
-          (let ((f0-3 (ja-aframe-num 0)))
-            (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-            (if (and (>= f0-3 2.5) (>= 7.5 f0-3))
-                (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-                )
-            )
-          (suspend)
-          (ja :num! (seek! (ja-aframe 12.0 0) f30-0))
-          )
-        (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-        (ja-no-eval :num! (loop!))
-        (ja-channel-push! 1 (seconds 0.1))
-        (ja :group! lurkerpuppy-idle-ja)
-        (ja :num-func num-func-identity :frame-num 0.0)
-        (let ((gp-2 (rand-vu-int-range 750 900))
-              (s5-0 (current-time))
-              )
-          (until (time-elapsed? s5-0 gp-2)
-            (ja :num! (loop!))
-            (ja-blend-eval)
+  :code
+    (behavior ()
+      (set! (-> self rotate-speed) 1456355.5)
+      (set! (-> self turn-time) (seconds 0.1))
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+      (let ((f30-0 (rand-vu-float-range 0.8 1.2)))
+        (loop
+          (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek! (ja-aframe 12.0 0) f30-0) :frame-num 0.0)
+          (until (ja-done? 0)
+            (let ((f0-3 (ja-aframe-num 0)))
+              (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+              (if (and (>= f0-3 2.5) (>= 7.5 f0-3)) (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))))
             (suspend)
-            )
-          )
-        )
-      )
-    )
-  )
+            (ja :num! (seek! (ja-aframe 12.0 0) f30-0)))
+          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+          (ja-no-eval :num! (loop!))
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja :group! lurkerpuppy-idle-ja)
+          (ja :num-func num-func-identity :frame-num 0.0)
+          (let ((gp-2 (rand-vu-int-range 750 900))) (suspend-for gp-2 (ja :num! (loop!)) (ja-blend-eval)))))))
 
 (defstate nav-enemy-give-up (lurkerpuppy)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (set! (-> self rotate-speed) 218453.33)
-    (set! (-> self turn-time) (seconds 0.5))
-    (ja-channel-push! 1 (seconds 0.075))
-    (ja-no-eval :group! lurkerpuppy-idle-ja :num! (seek!) :frame-num 0.0)
-    (until (ja-done? 0)
-      (suspend)
-      (ja :num! (seek!))
-      )
-    (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
-    (nav-enemy-get-new-patrol-point)
-    (ja-no-eval :group! lurkerpuppy-idle-ja :num! (seek! max 1.4) :frame-num 0.0)
-    (until (ja-done? 0)
-      (seek-to-point-toward-point!
-        (-> self collide-info)
-        (-> self nav destination-pos)
-        (-> self rotate-speed)
-        (-> self turn-time)
-        )
-      (suspend)
-      (ja :num! (seek! max 1.4))
-      )
-    (go-virtual nav-enemy-patrol)
-    )
-  )
+  :code
+    (behavior ()
+      (set! (-> self rotate-speed) 218453.33)
+      (set! (-> self turn-time) (seconds 0.5))
+      (ja-channel-push! 1 (seconds 0.075))
+      (ja-no-eval :group! lurkerpuppy-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!)))
+      (logclear! (-> self nav flags) (nav-control-flags navcf17 navcf19))
+      (nav-enemy-get-new-patrol-point)
+      (ja-no-eval :group! lurkerpuppy-idle-ja :num! (seek! max 1.4) :frame-num 0.0)
+      (until (ja-done? 0)
+        (seek-to-point-toward-point! (-> self collide-info)
+                                     (-> self nav destination-pos)
+                                     (-> self rotate-speed)
+                                     (-> self turn-time))
+        (suspend)
+        (ja :num! (seek! max 1.4)))
+      (go-virtual nav-enemy-patrol)))
 
 (defstate nav-enemy-attack (lurkerpuppy)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :code (behavior ()
-    (sound-play "head-butt")
-    (go-virtual nav-enemy-victory)
-    )
-  )
+  :code
+    (behavior ()
+      (sound-play "head-butt")
+      (go-virtual nav-enemy-victory)))
 
 (defstate nav-enemy-victory (lurkerpuppy)
   :virtual #t
   :event nav-enemy-default-event-handler
-  :exit (behavior ()
-    (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-    )
-  :code (behavior ()
-    (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-    (ja-channel-push! 1 (seconds 0.075))
-    (dotimes (gp-0 4)
-      (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0)
-      (until (ja-done? 0)
-        (let ((f0-4 (ja-aframe-num 0)))
-          (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-          (if (and (>= f0-4 2.5) (>= 7.5 f0-4))
-              (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-              )
-          )
-        (suspend)
-        (ja :num! (seek!))
-        )
-      )
-    (go-virtual nav-enemy-chase)
-    )
-  :post nav-enemy-face-player-post
-  )
+  :exit
+    (behavior ()
+      (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))
+  :code
+    (behavior ()
+      (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+      (ja-channel-push! 1 (seconds 0.075))
+      (dotimes (gp-0 4)
+        (ja-no-eval :group! lurkerpuppy-celebrate-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (let ((f0-4 (ja-aframe-num 0)))
+            (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+            (if (and (>= f0-4 2.5) (>= 7.5 f0-4)) (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))))
+          (suspend)
+          (ja :num! (seek!))))
+      (go-virtual nav-enemy-chase))
+  :post nav-enemy-face-player-post)
 
-(define *lurkerpuppy-nav-enemy-info* (new 'static 'nav-enemy-info
-                                       :idle-anim 5
-                                       :walk-anim 6
-                                       :turn-anim 6
-                                       :notice-anim 8
-                                       :run-anim 7
-                                       :jump-anim 9
-                                       :jump-land-anim 10
-                                       :victory-anim 8
-                                       :taunt-anim 8
-                                       :die-anim 11
-                                       :neck-joint -1
-                                       :player-look-at-joint 5
-                                       :run-travel-speed (meters 5)
-                                       :run-rotate-speed (degrees 3999.9998)
-                                       :run-acceleration (meters 1)
-                                       :run-turn-time (seconds 0.15)
-                                       :walk-travel-speed (meters 2)
-                                       :walk-rotate-speed (degrees 1999.9999)
-                                       :walk-acceleration (meters 1)
-                                       :walk-turn-time (seconds 0.1)
-                                       :attack-shove-back (meters 3)
-                                       :attack-shove-up (meters 2)
-                                       :shadow-size (meters 2)
-                                       :notice-nav-radius (meters 1)
-                                       :nav-nearest-y-threshold (meters 10)
-                                       :notice-distance (meters 30)
-                                       :stop-chase-distance (meters 40)
-                                       :frustration-distance (meters 8)
-                                       :frustration-time (seconds 4)
-                                       :die-anim-hold-frame 6.0
-                                       :jump-anim-start-frame 3.5
-                                       :jump-land-anim-end-frame 14.0
-                                       :jump-height-min (meters 1)
-                                       :jump-height-factor 0.5
-                                       :jump-start-anim-speed 1.0
-                                       :shadow-max-y (meters 0.5)
-                                       :shadow-min-y (meters -1)
-                                       :shadow-locus-dist (meters 150)
-                                       :use-align #f
-                                       :draw-shadow #t
-                                       :move-to-ground #t
-                                       :hover-if-no-ground #f
-                                       :use-momentum #f
-                                       :use-flee #f
-                                       :use-proximity-notice #f
-                                       :use-jump-blocked #f
-                                       :use-jump-patrol #f
-                                       :gnd-collide-with (collide-kind background)
-                                       :debug-draw-neck #f
-                                       :debug-draw-jump #f
-                                       )
-        )
+(define *lurkerpuppy-nav-enemy-info*
+  (new 'static
+       'nav-enemy-info
+       :idle-anim 5
+       :walk-anim 6
+       :turn-anim 6
+       :notice-anim 8
+       :run-anim 7
+       :jump-anim 9
+       :jump-land-anim 10
+       :victory-anim 8
+       :taunt-anim 8
+       :die-anim 11
+       :neck-joint -1
+       :player-look-at-joint 5
+       :run-travel-speed (meters 5)
+       :run-rotate-speed (degrees 3999.9998)
+       :run-acceleration (meters 1)
+       :run-turn-time (seconds 0.15)
+       :walk-travel-speed (meters 2)
+       :walk-rotate-speed (degrees 1999.9999)
+       :walk-acceleration (meters 1)
+       :walk-turn-time (seconds 0.1)
+       :attack-shove-back (meters 3)
+       :attack-shove-up (meters 2)
+       :shadow-size (meters 2)
+       :notice-nav-radius (meters 1)
+       :nav-nearest-y-threshold (meters 10)
+       :notice-distance (meters 30)
+       :stop-chase-distance (meters 40)
+       :frustration-distance (meters 8)
+       :frustration-time (seconds 4)
+       :die-anim-hold-frame 6.0
+       :jump-anim-start-frame 3.5
+       :jump-land-anim-end-frame 14.0
+       :jump-height-min (meters 1)
+       :jump-height-factor 0.5
+       :jump-start-anim-speed 1.0
+       :shadow-max-y (meters 0.5)
+       :shadow-min-y (meters -1)
+       :shadow-locus-dist (meters 150)
+       :use-align #f
+       :draw-shadow #t
+       :move-to-ground #t
+       :hover-if-no-ground #f
+       :use-momentum #f
+       :use-flee #f
+       :use-proximity-notice #f
+       :use-jump-blocked #f
+       :use-jump-patrol #f
+       :gnd-collide-with (collide-kind background)
+       :debug-draw-neck #f
+       :debug-draw-jump #f))
 
 (defmethod initialize-collision ((this lurkerpuppy))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) default-collision-reaction)
-    (set! (-> s5-0 no-reaction)
-          (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing)
-          )
+    (set! (-> s5-0 no-reaction) (the-as (function collide-shape-moving collide-shape-intersect vector vector none) nothing))
     (let ((s4-0 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 3))))
       (set! (-> s4-0 prim-core collide-as) (collide-kind enemy))
       (set! (-> s4-0 collide-with) (collide-kind target))
       (set! (-> s4-0 prim-core action) (collide-action solid))
       (set! (-> s4-0 prim-core offense) (collide-offense normal-attack))
       (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 4915.2)
-      (set-root-prim! s5-0 s4-0)
-      )
+      (set-root-prim! s5-0 s4-0))
     (set! (-> s5-0 nav-radius) 2048.0)
     (backup-collide-with-as s5-0)
-    (set! (-> this collide-info) s5-0)
-    )
+    (set! (-> this collide-info) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod nav-enemy-method-48 ((this lurkerpuppy))
   (initialize-skeleton this *lurkerpuppy-sg* '())
@@ -260,8 +211,6 @@ nav-enemy-default-event-handler
   (when (nonzero? (-> this neck))
     (set! (-> this neck up) (the-as uint 0))
     (set! (-> this neck nose) (the-as uint 1))
-    (set! (-> this neck ear) (the-as uint 2))
-    )
+    (set! (-> this neck ear) (the-as uint 2)))
   0
-  (none)
-  )
+  (none))

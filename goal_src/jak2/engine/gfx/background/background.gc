@@ -233,14 +233,16 @@
 (defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level))
   "Add PC-port specific tfrag data"
   (let ((packet (the-as dma-packet (-> dma-buf base))))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 25))
     (set! (-> packet vif0) (new 'static 'vif-tag))
     (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
     (set! (-> dma-buf base) (the pointer (&+ packet 16)))
     )
 
   ;; first 4 quadwords are planes, then itimes
-  (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base))))
+  (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base)))
+        (vec-ptr (the-as (inline-array vector) (-> dma-buf base)))
+        )
     ;; the "use-camera-other" flag is set to "move" entire levels,
     ;; like the rotating city below in the throne room.
     (cond
@@ -263,12 +265,18 @@
           (set! (-> vec y) (-> *math-camera* fog-min))
           (set! (-> vec z) (-> *math-camera* fog-max))
           )
-        (set! (-> data-ptr 14) (-> *math-camera* trans-other quad))
+
+        ;; the "other" version of trans doesn't have the same meaning as the normal one.
+        ;; but inv-camera-rot-other is right, and we can just pull the translation from there.
+        ;; I'm not certain the most accurate way to get this - either way there is an extra rotation to do.
+        (set! (-> data-ptr 14) (-> *math-camera* inv-camera-rot-other vector 3 quad))
+        (set! (-> vec-ptr 14 w) 1.0)
 
         (set! (-> data-ptr 15) (-> *math-camera* camera-rot-other vector 0 quad))
         (set! (-> data-ptr 16) (-> *math-camera* camera-rot-other vector 1 quad))
         (set! (-> data-ptr 17) (-> *math-camera* camera-rot-other vector 2 quad))
         (set! (-> data-ptr 18) (-> *math-camera* camera-rot-other vector 3 quad))
+
 
         (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
         (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
@@ -295,6 +303,7 @@
           (set! (-> vec y) (-> *math-camera* fog-min))
           (set! (-> vec z) (-> *math-camera* fog-max))
           )
+        ;; use the camera-trans used to derive the camera matrix.
         (set! (-> data-ptr 14) (-> *math-camera* trans quad))
 
         (set! (-> data-ptr 15) (-> *math-camera* camera-rot vector 0 quad))
@@ -309,16 +318,16 @@
         )
       )
 
-    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (-> lev nickname)))
+    (copyn-charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (bsp-name lev)) 32)
     )
-  (&+! (-> dma-buf base) (* 16 24))
+  (&+! (-> dma-buf base) (* 16 25))
   )
 
 (defun add-pc-camera-data ((dma-buf dma-buffer))
   "Add PC-port specific camera data. used as fallback for collide mesh renderer.
    Same as add-pc-trag3-data but level-specific data is left undefined."
   (let ((packet (the-as dma-packet (-> dma-buf base))))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 25))
     (set! (-> packet vif0) (new 'static 'vif-tag))
     (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
     (set! (-> dma-buf base) (the pointer (&+ packet 16)))
@@ -360,7 +369,7 @@
 
     (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string #f))
     )
-  (&+! (-> dma-buf base) (* 16 24))
+  (&+! (-> dma-buf base) (* 16 25))
   )
 
 

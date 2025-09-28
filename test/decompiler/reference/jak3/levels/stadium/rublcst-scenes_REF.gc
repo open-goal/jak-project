@@ -1,0 +1,946 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-kid kid kid-lod0-jg kid-idle-ja
+              ((kid-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rhino-wheel-fma rhino-wheel-fma rhino-wheel-fma-lod0-jg rhino-wheel-fma-idle-ja
+              ((rhino-wheel-fma-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "palace-ruins-attack-res-a"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-177"
+              :art-group "scenecamera"
+              :anim "palace-ruins-attack-res-a"
+              :parts 3
+              :command-list '((0 (fadein (frame-time-30 10)) (send-event *target* 'draw-vehicle #f))
+                (160 (part-tracker
+                       "group-rubble-missile"
+                       entity
+                       "particleman"
+                       joint
+                       "particleC"
+                       track
+                       #t
+                       duration
+                       (frame-range 160 221)
+                       )
+                     )
+                (222
+                  (part-tracker
+                    "group-rubble-missile-explode"
+                    entity
+                    "particleman"
+                    joint
+                    "particleA"
+                    track
+                    #f
+                    duration
+                    (frame-range 222 232)
+                    )
+                  (part-tracker
+                    "group-placeholder-multiple"
+                    entity
+                    "particleman"
+                    joint
+                    "particleB"
+                    track
+                    #t
+                    duration
+                    (frame-range 222 310)
+                    )
+                  )
+                (290 (fadeout (frame-time-30 20)))
+                (309 (apply ,(lambda :behavior scene-player
+                               ()
+                               (when (not (-> self aborted?))
+                                 (disable *screen-filter*)
+                                 (setup
+                                   *screen-filter*
+                                   (new 'static 'vector :w 128.0)
+                                   (new 'static 'vector :w 128.0)
+                                   (* 1.1111112 (seconds-per-frame))
+                                   (bucket-id tex-hud-pris2)
+                                   #x3fffff
+                                   #x33001
+                                   #t
+                                   )
+                                 (set-setting! 'allow-blackout #f 0.0 0)
+                                 )
+                               (none)
+                               )
+                            )
+                     )
+                (10000
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (when (not (-> self aborted?))
+                              (remove-setting! 'allow-blackout)
+                              (setup
+                                *screen-filter*
+                                (new 'static 'vector :w 128.0)
+                                (new 'static 'vector :x 255.0 :y 255.0 :z 255.0)
+                                (* 1.1111112 (seconds-per-frame))
+                                (bucket-id tex-hud-pris2)
+                                #x3fffff
+                                #x33001
+                                #t
+                                )
+                              (set-filter-color! 1.0 1.0 1.0)
+                              )
+                            (none)
+                            )
+                         )
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (if (-> self aborted?)
+                                (task-close! "comb-wild-ride-introduction")
+                                )
+                            (none)
+                            )
+                         )
+                  )
+                )
+              :cut-list '(56 100 145 165 222)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "darkjak-highres"
+                  :level 'rublcst
+                  :art-group "skel-darkjak-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x20
+                  )
+                (new 'static 'scene-actor
+                  :name "damus-highres"
+                  :level 'rublcst
+                  :art-group "skel-damus-highres"
+                  :prefix ""
+                  :draw-frames '((min 294) (315 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'rublcst
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "rhino-fma"
+                  :level 'lpattack
+                  :art-group "skel-rhino-fma"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '((min max))
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "rhino-wheel-fma"
+                  :level 'rublcst
+                  :art-group "skel-rhino-wheel-fma"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '((min max))
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'rublcst
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "rubblec-fma"
+              :end-point "railb-start"
+              :borrow '((stadiuma 0 lpattack special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :scene-task #x105
+              :on-running #f
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(set! (-> *lightning-spec-id-table* 35) (new 'static 'lightning-spec
+                                          :name "lightning-darkjak-rubble-shock"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :rand-func #x2
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 0.2
+                                          :texture (new 'static 'texture-id :index #x3a :page #x4)
+                                          :reduction 0.42
+                                          :num-points 32
+                                          :box-size 4096.0
+                                          :merge-factor 0.6
+                                          :merge-count 2
+                                          :radius 409.6
+                                          :duration 30.0
+                                          :duration-rand 150.0
+                                          :sound #f
+                                          )
+      )
+
+;; failed to figure out what this is:
+(load-scene
+  (new 'static 'scene
+    :name "palace-ruins-attack-res"
+    :extra #f
+    :info #f
+    :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+    :mask-to-clear (process-mask movie projectile)
+    :entity "scene-stage-177"
+    :art-group "scenecamera"
+    :anim "palace-ruins-attack-res"
+    :parts 41
+    :command-list '((0
+        (fadein (frame-time-30 30))
+        (apply ,(lambda :behavior scene-player () (set-lightning-time! *mood-control* 0 0 0.0) (none)))
+        )
+      (1
+        (part-tracker
+          "group-fma-rhino-smoke"
+          entity
+          "particleman"
+          joint
+          "particleA"
+          track
+          #t
+          duration
+          (frame-range 1 3620)
+          )
+        (apply ,(lambda :behavior scene-player () (set-darkjak-highres-texture-morph! 0.0) (none)))
+        )
+      (745 (apply ,(lambda :behavior scene-player () (set-lightning-time! *mood-control* 1 1 0.0) (none))))
+      (1350 (apply ,(lambda :behavior scene-player
+                      ()
+                      (when (not (-> self aborted?))
+                        (set! (-> *display* force-sync) (the-as uint 196))
+                        (persist-with-delay *setting-control* 'blur-a (seconds 6.535) 'blur-a 'abs 0.8 0)
+                        (sound-play "trans3")
+                        )
+                      (none)
+                      )
+                   )
+            )
+      (1379
+        (send-event *time-of-day* 'save)
+        (send-event *time-of-day* 'change 'hour (int 14))
+        (apply
+          ,(lambda :behavior scene-player
+             ()
+             (set-cloud-and-fog-interp! *mood-control* 0.25 0.5 0.0 0.0)
+             (set-cloud-and-fog-interp! *mood-control* 0.25 0.5 1.0 1.0)
+             (set-time-for-random-weather! *mood-control* -99.0 -99.0)
+             (none)
+             )
+          )
+        )
+      (1546
+        (send-event *time-of-day* 'restore)
+        (apply
+          ,(lambda :behavior scene-player
+             ()
+             (set-cloud-and-fog-interp! *mood-control* 1.0 0.64 0.0 0.0)
+             (set-cloud-and-fog-interp! *mood-control* 1.0 0.64 1.0 1.0)
+             (set-time-for-random-weather! *mood-control* 90000.0 90000.0)
+             (none)
+             )
+          )
+        )
+      (2015 (apply ,(lambda :behavior scene-player () (set-lightning-time! *mood-control* 5 2 0.0) (none))))
+      (2730
+        (send-event
+          "darkjak-highres"
+          'trans-hook
+          ,(lambda :behavior scene-player
+             ()
+             (let ((f30-0 (ja-aframe-num 0)))
+               (cond
+                 ((< f30-0 2754.0)
+                  (set-darkjak-highres-texture-morph! 0.0)
+                  )
+                 ((and (>= f30-0 2754.0) (>= 2760.0 f30-0))
+                  (set-darkjak-highres-texture-morph! (* 0.16666667 (+ -2754.0 f30-0)))
+                  )
+                 ((and (>= f30-0 2761.0) (>= 2795.0 f30-0))
+                  (set-darkjak-highres-texture-morph! (+ 1.0 (* 0.029411765 (- 2761.0 f30-0))))
+                  )
+                 ((and (>= f30-0 2795.0) (>= 3630.0 f30-0))
+                  (set-darkjak-highres-texture-morph! 0.0)
+                  )
+                 (else
+                   (set-darkjak-highres-texture-morph! 1.0)
+                   )
+                 )
+               (setup-masks (-> self draw) 0 32)
+               (when (and (>= f30-0 2754.0) (>= 2780.0 f30-0))
+                 (process-drawable-shock-skel-effect
+                   self
+                   (-> *lightning-spec-id-table* 35)
+                   lightning-probe-callback
+                   (-> *part-id-table* 160)
+                   1228.8
+                   -1
+                   -1
+                   )
+                 (process-drawable-shock-effect
+                   self
+                   (-> *lightning-spec-id-table* 9)
+                   lightning-probe-callback
+                   (-> *part-id-table* 187)
+                   0
+                   0
+                   40960.0
+                   )
+                 )
+               )
+             (none)
+             )
+          )
+        )
+      (3008 (apply ,(lambda :behavior scene-player () (set-lightning-time! *mood-control* 3 3 0.0) (none))))
+      (3040
+        (part-tracker
+          "group-fma-rub-hover-vehicle-exhaust-glow"
+          entity
+          "particleman"
+          joint
+          "particleB"
+          track
+          #t
+          duration
+          (frame-range 3040 3074)
+          )
+        (part-tracker
+          "group-fma-rub-hover-vehicle-exhaust-glow"
+          entity
+          "particleman"
+          joint
+          "particleC"
+          track
+          #t
+          duration
+          (frame-range 3040 3074)
+          )
+        )
+      (3559
+        (part-tracker
+          "group-fma-rub-hover-vehicle-exhaust-glow"
+          entity
+          "particleman"
+          joint
+          "particleD"
+          track
+          #t
+          duration
+          (frame-range 3559 3603)
+          )
+        (part-tracker
+          "group-fma-rub-hover-vehicle-exhaust-glow"
+          entity
+          "particleman"
+          joint
+          "particleE"
+          track
+          #t
+          duration
+          (frame-range 3559 3603)
+          )
+        )
+      (10000
+        (task-close! "comb-wild-ride-introduction")
+        (send-event
+          "darkjak-highres"
+          'trans-hook
+          ,(lambda :behavior scene-player
+             ()
+             (set-darkjak-highres-texture-morph! 0.0)
+             (setup-masks (-> self draw) 0 32)
+             (none)
+             )
+          )
+        )
+      )
+    :cut-list '(0
+       127
+       196
+       294
+       315
+       593
+       745
+       805
+       886
+       1046
+       1145
+       1278
+       1316
+       1379
+       1546
+       1600
+       1693
+       2018
+       2070
+       2136
+       2236
+       2315
+       2439
+       2510
+       2555
+       2624
+       2731
+       2796
+       2831
+       2925
+       3013
+       3104
+       3148
+       3442
+       )
+    :wait-ground-time (seconds 1)
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "darkjak-highres"
+        :level 'rublcst
+        :art-group "skel-darkjak-highres"
+        :prefix ""
+        :draw-frames '((min 196) (294 315) (384 max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '((127 130))
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        :no-draw-seg #x20
+        )
+      (new 'static 'scene-actor
+        :name "damus-highres"
+        :level 'rublcst
+        :art-group "skel-damus-highres"
+        :prefix ""
+        :draw-frames '((min 294) (315 max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "veger-highres"
+        :level 'rublcst
+        :art-group "skel-veger-highres"
+        :prefix ""
+        :draw-frames '((1919 max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '(2796)
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'rublcst
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "rhino-fma"
+        :level 'lpattack
+        :art-group "skel-rhino-fma"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "rhino-wheel-fma"
+        :level 'rublcst
+        :art-group "skel-rhino-wheel-fma"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '((min max))
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "kid"
+        :level 'rublcst
+        :art-group "skel-kid"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "kidmedallion"
+        :level 'rublcst
+        :art-group "skel-kidmedallion"
+        :prefix ""
+        :draw-frames '((1255 max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "comb-rail-rider-fma"
+        :level 'rublcst
+        :art-group "skel-comb-rail-rider-fma"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "comb-rail-rider-fma"
+        :level 'rublcst
+        :art-group "skel-comb-rail-rider-fma"
+        :prefix "b-"
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "particleman"
+        :level 'rublcst
+        :art-group "skel-particleman"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point "rubblec-fma"
+    :end-point "railb-start"
+    :borrow '((stadiuma 0 lpattack special))
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-delay 1500.0
+    :scene-task #x105
+    :on-running '(sound-play-loop "ruin-amb-mov")
+    :on-complete #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-rubble-missile
+  :id 1295
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 640)
+  :parts ((sp-item 4353 :binding 4352)
+    (sp-item 4352 :flags (sp2) :period (seconds 0.017) :length (seconds 0.017))
+    (sp-item 4354)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4353
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 12) (meters 1))
+    (:rot-x (degrees 22.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 200.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4352
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10) (meters 10))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 90.0 30.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 64.0)
+    (:scalevel-x (meters 0.06666667) (meters 0.06666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.21333334)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4354
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 30) (meters 2))
+    (:rot-x (degrees 22.5))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 100.0 28.0)
+    (:b 0.0)
+    (:a 12.0 12.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-rubble-missile-explode
+  :id 1296
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 4355 :flags (sp3)) (sp-item 4356) (sp-item 4357) (sp-item 4358 :flags (sp3)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4355
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 30))
+    (:rot-x (degrees 225))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 128.0)
+    (:b 40.0)
+    (:a 32.0)
+    (:fade-a -0.035555556)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 glow))
+    (:userdata 40960.0)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4357
+  :init-specs ((:texture (big-cloud level-default-sprite))
+    (:num 5.0)
+    (:scale-x (meters 1) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 80.0 20.0)
+    (:b 30.0)
+    (:a 255.0)
+    (:vel-y (meters 0.26666668))
+    (:scalevel-x (meters 0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.08888889)
+    (:fade-b -0.033333335)
+    (:fade-a -0.28333333 -0.28333333)
+    (:friction 0.95 0.02)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:conerot-x (degrees 80) (degrees 20))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4356
+  :init-specs ((:texture (explosion-edge level-default-sprite))
+    (:num 10.0)
+    (:scale-x (meters 1) (meters 2))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 80.0 20.0)
+    (:b 30.0)
+    (:a 255.0)
+    (:vel-y (meters 0.033333335) (meters 0.26666668))
+    (:scalevel-x (meters 0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.08888889)
+    (:fade-b -0.033333335)
+    (:fade-a -0.28333333 -0.28333333)
+    (:friction 0.9 0.09)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:func 'sparticle-2d-spline-align-instant)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4358
+  :init-specs ((:texture (explo-texture level-default-sprite))
+    (:num 5.0)
+    (:scale-x (meters 10) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 80.0 20.0)
+    (:b 30.0)
+    (:a 255.0)
+    (:vel-y (meters 0) (meters 0.33333334))
+    (:scalevel-x (meters 0.06666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.08888889)
+    (:fade-b -0.033333335)
+    (:fade-a -0.28333333 -0.28333333)
+    (:friction 0.9)
+    (:timer (seconds 3))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-fma-rhino-smoke
+  :id 1297
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 600)
+  :parts ((sp-item 4359 :period (seconds 200) :length (seconds 0.035)) (sp-item 4360) (sp-item 4361))
+  )
+
+;; failed to figure out what this is:
+(defpart 4359
+  :init-specs ((:texture (big-cloud level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 40.0)
+    (:y (meters -3))
+    (:z (meters 0) (meters 10))
+    (:scale-x (meters 5) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 190.0)
+    (:g 150.0)
+    (:b 90.0)
+    (:a 32.0 32.0)
+    (:vel-x (meters 0.016666668) (meters 0.016666668))
+    (:scalevel-x (meters 0.0033333334))
+    (:rotvel-z (degrees -0.06666667) (degrees 0.13333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.021333333 -0.021333333)
+    (:accel-y (meters 0) (meters 0.000033333334))
+    (:friction 0.95)
+    (:timer (seconds 10))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 left-multiply-quat))
+    (:userdata :data (new 'static 'boxed-array :type int32 5 1 0 #x40a000 #x405c00))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4360
+  :init-specs ((:texture (big-cloud level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 0.1)
+    (:x (meters -3))
+    (:y (meters -3))
+    (:z (meters 1))
+    (:scale-x (meters 0.5) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 0.0 60.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 0.0)
+    (:scalevel-x (meters 0.00033333333) (meters 0.0033333334))
+    (:rotvel-z (degrees -0.13333334) (degrees 0.26666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.21333334 0.21333334)
+    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
+    (:friction 0.94 0.02)
+    (:timer (seconds 10))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 launch-along-z))
+    (:userdata :data (new 'static 'boxed-array :type int32 5 1 0 #x40a000 #x405c00))
+    (:next-time (seconds 1))
+    (:next-launcher 4362)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4362
+  :init-specs ((:scalevel-x (meters 0.00033333333) (meters 0.006666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.047407407)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4361
+  :init-specs ((:texture (big-cloud level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 0.1)
+    (:x (meters 1))
+    (:y (meters -3))
+    (:z (meters 4))
+    (:scale-x (meters 0.5) (meters 0.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 0.0 60.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 0.0)
+    (:scalevel-x (meters 0.00033333333) (meters 0.0016666667))
+    (:rotvel-z (degrees -0.13333334) (degrees 0.26666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.21333334 0.21333334)
+    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
+    (:friction 0.94 0.02)
+    (:timer (seconds 10))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 launch-along-z))
+    (:userdata :data (new 'static 'boxed-array :type int32 5 1 0 #x40a000 #x405c00))
+    (:next-time (seconds 1))
+    (:next-launcher 4362)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-fma-rub-hover-vehicle-exhaust-glow
+  :id 1298
+  :bounds (static-bspherem 0 0 0 100)
+  :parts ((sp-item 4363 :flags (sp6)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4363
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 2) (meters 0.5))
+    (:rot-z (degrees 0))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 64.0 64.0)
+    (:b 255.0)
+    (:a 80.0 20.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    )
+  )
+
+
+
+

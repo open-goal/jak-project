@@ -195,6 +195,8 @@ class Function {
 
   std::vector<std::string> types_defined;
 
+  int process_stack_size = 0;
+
  private:
   void check_epilogue(const LinkedObjectFile& file);
   void resize_first_block(int new_start, const LinkedObjectFile& file);

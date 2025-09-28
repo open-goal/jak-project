@@ -5,9 +5,9 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-predator))
   (set-hud-piece-position! (-> this sprites 1) (the int (+ 480.0 (* 130.0 (-> this offset)))) 205)
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -44 0)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 1 pos) -44 0)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites 1)) -45 45)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 1 pos) -45 45)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -48,14 +48,10 @@
 ;; definition for method 15 of type hud-pegasus
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this hud-pegasus))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 472.0 (* 130.0 (-> this offset))))
-    190
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 472.0 (* 130.0 (-> this offset)))) 190)
   (set! (-> this sprites 0 flags) (the-as uint 4))
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -26 35)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -26 35)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -461,7 +457,7 @@
 ;; definition for method 74 of type predator
 (defmethod general-event-handler ((this predator) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('attack)
      (set! (-> this shock-effect-end) (the-as uint (+ (current-time) (seconds 1))))
@@ -482,7 +478,7 @@
   )
 
 ;; definition for method 77 of type predator
-(defmethod enemy-method-77 ((this predator) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this predator) (arg0 enemy-knocked-info))
   (cond
     ((zero? (-> this hit-points))
      (case (-> this incoming knocked-type)
@@ -493,7 +489,7 @@
           (set! (-> a0-3 param 0)
                 (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 18)) frames num-frames) -1))
                 )
-          (set! (-> a0-3 param 1) (-> arg0 0))
+          (set! (-> a0-3 param 1) (-> arg0 anim-speed))
           (set! (-> a0-3 frame-num) 0.0)
           (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 18)) num-func-seek!)
           )
@@ -505,7 +501,7 @@
            (set! (-> a0-5 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 14)) frames num-frames) -1))
                  )
-           (set! (-> a0-5 param 1) (-> arg0 0))
+           (set! (-> a0-5 param 1) (-> arg0 anim-speed))
            (set! (-> a0-5 frame-num) 0.0)
            (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 14)) num-func-seek!)
            )
@@ -517,7 +513,7 @@
       (case (-> this incoming knocked-type)
         (((knocked-type knocked-type-6))
          (ja-channel-push! 1 (seconds 0.01))
-         (let ((v1-32 (get-rand-int this 2)))
+         (let ((v1-32 (rnd-int-count this 2)))
            (cond
              ((zero? v1-32)
               (let ((a0-10 (-> this skel root-channel 0)))
@@ -525,7 +521,7 @@
                 (set! (-> a0-10 param 0)
                       (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 21)) frames num-frames) -1))
                       )
-                (set! (-> a0-10 param 1) (-> arg0 0))
+                (set! (-> a0-10 param 1) (-> arg0 anim-speed))
                 (set! (-> a0-10 frame-num) 0.0)
                 (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> this draw art-group data 21)) num-func-seek!)
                 )
@@ -536,7 +532,7 @@
                 (set! (-> a0-12 param 0)
                       (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 22)) frames num-frames) -1))
                       )
-                (set! (-> a0-12 param 1) (-> arg0 0))
+                (set! (-> a0-12 param 1) (-> arg0 anim-speed))
                 (set! (-> a0-12 frame-num) 0.0)
                 (joint-control-channel-group! a0-12 (the-as art-joint-anim (-> this draw art-group data 22)) num-func-seek!)
                 )
@@ -551,7 +547,7 @@
            (set! (-> a0-15 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 18)) frames num-frames) -1))
                  )
-           (set! (-> a0-15 param 1) (-> arg0 0))
+           (set! (-> a0-15 param 1) (-> arg0 anim-speed))
            (set! (-> a0-15 frame-num) 0.0)
            (joint-control-channel-group! a0-15 (the-as art-joint-anim (-> this draw art-group data 18)) num-func-seek!)
            )
@@ -563,7 +559,7 @@
             (set! (-> a0-17 param 0)
                   (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 12)) frames num-frames) -1))
                   )
-            (set! (-> a0-17 param 1) (-> arg0 0))
+            (set! (-> a0-17 param 1) (-> arg0 anim-speed))
             (set! (-> a0-17 frame-num) 0.0)
             (joint-control-channel-group! a0-17 (the-as art-joint-anim (-> this draw art-group data 12)) num-func-seek!)
             )
@@ -575,7 +571,7 @@
   )
 
 ;; definition for method 78 of type predator
-(defmethod enemy-method-78 ((this predator) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this predator) (arg0 enemy-knocked-info))
   (cond
     ((zero? (-> this hit-points))
      (case (-> this incoming knocked-type)
@@ -586,7 +582,7 @@
           (set! (-> a0-3 param 0)
                 (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 20)) frames num-frames) -1))
                 )
-          (set! (-> a0-3 param 1) (-> arg0 0))
+          (set! (-> a0-3 param 1) (-> arg0 anim-speed))
           (set! (-> a0-3 frame-num) 0.0)
           (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 20)) num-func-seek!)
           )
@@ -598,7 +594,7 @@
            (set! (-> a0-5 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 15)) frames num-frames) -1))
                  )
-           (set! (-> a0-5 param 1) (-> arg0 0))
+           (set! (-> a0-5 param 1) (-> arg0 anim-speed))
            (set! (-> a0-5 frame-num) 0.0)
            (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 15)) num-func-seek!)
            )
@@ -615,7 +611,7 @@
            (set! (-> a0-8 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 23)) frames num-frames) -1))
                  )
-           (set! (-> a0-8 param 1) (-> arg0 0))
+           (set! (-> a0-8 param 1) (-> arg0 anim-speed))
            (set! (-> a0-8 frame-num) 0.0)
            (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> this draw art-group data 23)) num-func-seek!)
            )
@@ -627,7 +623,7 @@
            (set! (-> a0-11 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 19)) frames num-frames) -1))
                  )
-           (set! (-> a0-11 param 1) (-> arg0 0))
+           (set! (-> a0-11 param 1) (-> arg0 anim-speed))
            (set! (-> a0-11 frame-num) 0.0)
            (joint-control-channel-group! a0-11 (the-as art-joint-anim (-> this draw art-group data 19)) num-func-seek!)
            )
@@ -639,7 +635,7 @@
             (set! (-> a0-13 param 0)
                   (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 13)) frames num-frames) -1))
                   )
-            (set! (-> a0-13 param 1) (-> arg0 0))
+            (set! (-> a0-13 param 1) (-> arg0 anim-speed))
             (set! (-> a0-13 frame-num) 0.0)
             (joint-control-channel-group! a0-13 (the-as art-joint-anim (-> this draw art-group data 13)) num-func-seek!)
             )
@@ -704,18 +700,14 @@
        #t
        )
       (else
-        (let ((s4-1 (-> s5-0 best-other-tri collide-ptr)))
-          (when (and (if (type? s4-1 collide-shape-prim)
-                         s4-1
-                         )
-                     (< (vector-dot
-                          (-> s5-0 best-other-tri normal)
-                          (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
-                          )
-                        0.0
+        (when (and (the-as basic (as-type (-> s5-0 best-other-tri collide-ptr) collide-shape-prim))
+                   (< (vector-dot
+                        (-> s5-0 best-other-tri normal)
+                        (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
                         )
-                     )
-            )
+                      0.0
+                      )
+                   )
           )
         )
       )
@@ -766,11 +758,11 @@
             (.lvf vf4 (&-> v1-24 quad))
             (.lvf vf5 (&-> a0-18 quad))
             )
-          (.mov.vf vf6 vf0 :mask #b1000)
-          (.sub.vf vf6 vf4 vf5 :mask #b111)
+          (.mov.vf.w vf6 vf0)
+          (.sub.vf.xyz vf6 vf4 vf5)
           (.svf (&-> sv-224 quad) vf6)
           (let* ((f0-5 (vector-length sv-224))
-                 (f0-6 (* 0.0000018780048 f0-5))
+                 (f0-6 (/ f0-5 (meters 130)))
                  )
             (set! sv-240 (new 'stack-no-clear 'vector))
             (let ((s0-0 (new 'stack-no-clear 'vector))
@@ -786,9 +778,9 @@
                     )
                   (.lvf vf4 (&-> v1-30 quad))
                   )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.add.x.vf.w vf6 vf0 vf0)
+                (.mul.x.vf.xyz acc vf5 vf7)
+                (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                 (.svf (&-> a0-19 quad) vf6)
                 )
               (vector-normalize! sv-224 1.0)
@@ -814,9 +806,9 @@
                   (.lvf vf5 (&-> sv-240 quad))
                   (.lvf vf4 (&-> v1-32 quad))
                   )
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.add.x.vf.w vf6 vf0 vf0)
+                (.mul.x.vf.xyz acc vf5 vf7)
+                (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                 (.svf (&-> a0-29 quad) vf6)
                 )
               (let ((v1-33 s3-0))
@@ -825,9 +817,9 @@
                   )
                 (.lvf vf5 (&-> s0-0 quad))
                 (.lvf vf4 (&-> s1-1 quad))
-                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                (.mul.x.vf acc vf5 vf7 :mask #b111)
-                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.add.x.vf.w vf6 vf0 vf0)
+                (.mul.x.vf.xyz acc vf5 vf7)
+                (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                 (.svf (&-> v1-33 quad) vf6)
                 )
               )
@@ -935,7 +927,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! predator-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
         (until (ja-done? 0)
@@ -985,7 +977,7 @@
       )
     )
   :exit (behavior ()
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1043,7 +1035,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     (set-dangerous! self #t)
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let* ((v1-6 *game-info*)
            (a0-3 (+ (-> v1-6 attack-id) 1))
@@ -1058,7 +1050,7 @@
     )
   :exit (behavior ()
     (set-dangerous! self #f)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1079,7 +1071,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (if (zero? (get-rand-int self 3))
+    (if (zero? (rnd-int-count self 3))
         (sound-play "pred-talk")
         )
     (go-virtual hostile)
@@ -1233,7 +1225,7 @@
     (set! (-> self next-change)
           (the-as uint (+ (current-time) (the int (* 300.0 (rand-vu-float-range 4.0 8.0)))))
           )
-    (if (zero? (get-rand-int self 3))
+    (if (zero? (rnd-int-count self 3))
         (sound-play "pred-talk")
         )
     )
@@ -1314,9 +1306,9 @@
                 (.lvf vf5 (&-> s1-0 quad))
                 (.lvf vf4 (&-> v1-7 quad))
                 )
-              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-              (.mul.x.vf acc vf5 vf7 :mask #b111)
-              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.add.x.vf.w vf6 vf0 vf0)
+              (.mul.x.vf.xyz acc vf5 vf7)
+              (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
               (.svf (&-> a0-6 quad) vf6)
               )
             (let ((f0-3 (vector-vector-distance (target-pos 0) s2-0)))
@@ -1388,12 +1380,12 @@
 
 ;; definition for method 55 of type predator
 ;; WARN: Return type mismatch int vs none.
-(defmethod track-target! ((this predator))
+(defmethod common-post ((this predator))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (predator-method-183 this)
@@ -1500,8 +1492,8 @@
   )
 
 ;; definition for method 7 of type predator
-(defmethod relocate ((this predator) (arg0 int))
-  (call-parent-method this arg0)
+(defmethod relocate ((this predator) (offset int))
+  (call-parent-method this offset)
   )
 
 ;; definition for method 167 of type predator
@@ -1521,6 +1513,7 @@
 
 ;; definition for method 12 of type predator
 (defmethod run-logic? ((this predator))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
@@ -1539,11 +1532,11 @@
 ;; WARN: Return type mismatch entity-perm-status vs none.
 (defmethod init-from-entity! ((this predator) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (process-entity-status! this (entity-perm-status dead) #t)
   (none)
   )
@@ -1557,7 +1550,7 @@ This commonly includes things such as:
     (t9-0 this arg0)
     )
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   0
   (none)
   )
@@ -1601,7 +1594,7 @@ This commonly includes things such as:
   (set! (-> this sound)
         (new 'process 'ambient-sound (static-sound-spec "pred-hum" :fo-min 2 :fo-max 30) (-> this root trans))
         )
-  (logior! (-> this enemy-flags) (enemy-flag trackable-backup enable-on-hostile))
+  (logior! (-> this enemy-flags) (enemy-flag check-water check-water-backup))
   (add-icon! *minimap* this (the-as uint 16) (the-as int #f) (the-as vector #t) 0)
   0
   (none)
@@ -1650,12 +1643,12 @@ This commonly includes things such as:
 
 ;; definition for method 7 of type predator-manager
 ;; WARN: Return type mismatch process vs predator-manager.
-(defmethod relocate ((this predator-manager) (arg0 int))
+(defmethod relocate ((this predator-manager) (offset int))
   (set! *predator-manager* this)
   (if *predator-manager*
-      (set! *predator-manager* (&+ *predator-manager* arg0))
+      (set! *predator-manager* (&+ *predator-manager* offset))
       )
-  (the-as predator-manager ((method-of-type process relocate) this arg0))
+  (the-as predator-manager ((method-of-type process relocate) this offset))
   )
 
 ;; definition for method 16 of type predator-manager
@@ -1716,11 +1709,11 @@ This commonly includes things such as:
 ;; WARN: new jak 2 until loop case, check carefully
 (defmethod init-from-entity! ((this predator-manager) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (local-vars (sv-16 res-tag))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1798,9 +1791,9 @@ This commonly includes things such as:
                               (.lvf vf5 (&-> s0-0 quad))
                               (.lvf vf4 (&-> v1-53 quad))
                               )
-                            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
-                            (.mul.x.vf acc vf5 vf7 :mask #b111)
-                            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                            (.add.x.vf.w vf6 vf0 vf0)
+                            (.mul.x.vf.xyz acc vf5 vf7)
+                            (.add.mul.w.vf.xyz vf6 vf4 vf0 acc)
                             (.svf (&-> a0-29 quad) vf6)
                             )
                           (goto cfg-40)
@@ -1816,17 +1809,15 @@ This commonly includes things such as:
                   (set! (-> s2-1 entity) (-> this actor-group 1 data s5-2 actor))
                   (set! (-> s2-1 directed?) #f)
                   (set! (-> s2-1 no-initial-move-to-ground?) #f)
-                  (let* ((s1-2 (ppointer->process (process-spawn predator :init enemy-init-by-other this s2-1 :to this)))
-                         (s2-2 (if (type? s1-2 process-focusable)
-                                   s1-2
-                                   )
-                               )
-                         (s3-2 (entity-nav-mesh-by-aid (the-as actor-id (-> s3-1 nav-mesh-id))))
-                         (v1-66 (if (type? s3-2 entity-nav-mesh)
-                                    s3-2
-                                    )
-                                )
-                         )
+                  (let ((s2-2
+                          (the-as process (as-type
+                                            (ppointer->process (process-spawn predator :init enemy-init-by-other this s2-1 :to this))
+                                            process-focusable
+                                            )
+                                  )
+                          )
+                        (v1-66 (as-type (entity-nav-mesh-by-aid (the-as actor-id (-> s3-1 nav-mesh-id))) entity-nav-mesh))
+                        )
                     (set! (-> this predator-h (-> this predator-count)) (process->handle s2-2))
                     (+! (-> this predator-count) 1)
                     (when v1-66

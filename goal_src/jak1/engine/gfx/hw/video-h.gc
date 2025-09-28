@@ -1,10 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: video-h.gc
-;; name in dgo: video-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel-defs.gc")
 
 ;; The "video" system manages PAL vs. NTSC and aspect ratio settings
 ;;  (not including timing difference between PAL/NTSC)
@@ -15,52 +12,53 @@
 ;; DECOMP BEGINS
 
 (deftype video-parms (structure)
-  ((set-video-mode               basic)
-   (reset-video-mode             basic)
-   (screen-sy                    int32)
-   (screen-hy                    int32)
-   (screen-miny                  int32)
-   (screen-maxy                  int32)
-   (screen-masky                 int32)
-   (display-dx                   int32)
-   (display-dy                   int32)
-   (screen-pages-high            int32)
-   (_pad                         int64)
-   (relative-x-scale             float)
-   (relative-y-scale             float)
-   (_pad2                        int64)
-   (relative-x-scale-reciprical  float)
-   (relative-y-scale-reciprical  float)
-   )
-  )
+  ((set-video-mode              basic)
+   (reset-video-mode            basic)
+   (screen-sy                   int32)
+   (screen-hy                   int32)
+   (screen-miny                 int32)
+   (screen-maxy                 int32)
+   (screen-masky                int32)
+   (display-dx                  int32)
+   (display-dy                  int32)
+   (screen-pages-high           int32)
+   (_pad                        int64)
+   (relative-x-scale            float)
+   (relative-y-scale            float)
+   (_pad2                       int64)
+   (relative-x-scale-reciprical float)
+   (relative-y-scale-reciprical float)))
 
 ;; default to NTSC
 (define *video-parms*
-    (new 'static 'video-parms
-         :set-video-mode #f
-         :reset-video-mode #f
-         :screen-sy 224
-         :screen-hy 112
-         :screen-miny 1824
-         :screen-maxy 2272
-         :screen-masky #xdf
-         :display-dx 0
-         :display-dy 8
-         :screen-pages-high 7
-         :relative-x-scale 1.0
-         :relative-y-scale 1.0
-         :relative-x-scale-reciprical 1.0
-         :relative-y-scale-reciprical 0.0 ;; wrong.
-         )
-  )
+  (new 'static
+       'video-parms
+       :set-video-mode #f
+       :reset-video-mode #f
+       :screen-sy 224
+       :screen-hy 112
+       :screen-miny 1824
+       :screen-maxy 2272
+       :screen-masky #xdf
+       :display-dx 0
+       :display-dy 8
+       :screen-pages-high 7
+       :relative-x-scale 1.0
+       :relative-y-scale 1.0
+       :relative-x-scale-reciprical 1.0
+       :relative-y-scale-reciprical 0.0
+       ;; wrong.
+       ))
 
 (define-extern get-video-mode (function symbol))
+
 (define-extern get-aspect-ratio (function symbol))
+
 (define-extern set-hud-aspect-ratio (function symbol symbol none))
+
 (define-extern set-aspect-ratio (function symbol none))
+
 (define-extern set-video-mode (function symbol none))
 
 (defmacro correct-x-int (pos)
-  `(the int (* (-> *video-parms* relative-x-scale) (the float ,pos)))
-  )
-
+  `(the int (* (-> *video-parms* relative-x-scale) (the float ,pos))))

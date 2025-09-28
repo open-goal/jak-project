@@ -69,11 +69,11 @@ class Merc2 {
 
   struct VuLights {
     math::Vector3f direction0;
-    u32 w0;
+    u32 w0;  // 12
     math::Vector3f direction1;
-    u32 w1;
+    u32 w1;  // 28
     math::Vector3f direction2;
-    u32 w2;
+    u32 w2;  // 44
     math::Vector4f color0;
     math::Vector4f color1;
     math::Vector4f color2;
@@ -177,6 +177,7 @@ class Merc2 {
   enum DrawFlags {
     IGNORE_ALPHA = 1,
     MOD_VTX = 2,
+    NO_TEXTURE = 4,
   };
 
   struct Draw {
@@ -190,6 +191,9 @@ class Merc2 {
     u8 flags;
     ModBuffers mod_vtx_buffer;
     u8 fade[4];
+    // no strip hack for custom models
+    u8 no_strip;
+    u64 hash;
   };
 
   struct LevelDrawBucket {
@@ -205,22 +209,25 @@ class Merc2 {
       next_free_envmap_draw = 0;
     }
   };
-  Draw* alloc_normal_draw(const tfrag3::MercDraw& mdraw,
-                          bool ignore_alpha,
-                          LevelDrawBucket* lev_bucket,
-                          u32 first_bone,
-                          u32 lights,
-                          bool jak1_water_mode,
-                          bool disable_fog);
+
+  struct DrawArgs {
+    LevelDrawBucket* lev_bucket;
+    const u8* fade;
+    bool jak1_water_mode;
+    bool ignore_alpha;
+    bool disable_fog;
+    bool no_texture;
+    u64 hash;
+    u32 lights;
+    u32 first_bone;
+  };
+
+  Draw* alloc_normal_draw(const tfrag3::MercDraw& mdraw, const DrawArgs& args);
 
   Draw* try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
                               const DrawMode& envmap_mode,
                               u32 envmap_texture,
-                              LevelDrawBucket* lev_bucket,
-                              const u8* fade,
-                              u32 first_bone,
-                              u32 lights,
-                              bool jak1_water_mode);
+                              const DrawArgs& args);
 
   void do_draws(const Draw* draw_array,
                 const LevelData* lev,

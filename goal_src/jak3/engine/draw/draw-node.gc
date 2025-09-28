@@ -5,5 +5,44 @@
 ;; name in dgo: draw-node
 ;; dgos: GAME
 
+(define-extern draw-node-cull (function pointer pointer (inline-array draw-node) int none))
+
 ;; DECOMP BEGINS
 
+(defmethod collect-regions ((this draw-node) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+  "Fill the region-prim-list with regions that intersect the sphere."
+  (dotimes (s2-0 arg1)
+    (if (spheres-overlap? arg0 (the-as sphere (-> this bsphere)))
+        (collect-regions (-> this child) arg0 (the-as int (-> this child-count)) arg2)
+        )
+    (&+! this 32)
+    )
+  0
+  (none)
+  )
+
+
+(defmethod mem-usage ((this drawable-inline-array-node) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 65 (-> usage length)))
+  (set! (-> usage data 64 name) "draw-node")
+  (+! (-> usage data 64 count) (-> this length))
+  (let ((v1-6 (asize-of this)))
+    (+! (-> usage data 64 used) v1-6)
+    (+! (-> usage data 64 total) (logand -16 (+ v1-6 15)))
+    )
+  this
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this drawable-inline-array-node))
+  (the-as int (+ (-> drawable-inline-array-node size) (* (+ (-> this length) -1) 32)))
+  )
+
+(defmethod collect-regions ((this drawable-inline-array-node) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
+  "Fill the region-prim-list with regions that intersect the sphere."
+  (collect-regions (the-as draw-node (-> this data)) arg0 (-> this length) arg2)
+  0
+  (none)
+  )
+
+;; ERROR: function was not converted to expressions. Cannot decompile.

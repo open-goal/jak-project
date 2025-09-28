@@ -6,26 +6,26 @@
 
 #include "game/system/hid/sdl_util.h"
 
-#include "third-party/SDL/include/SDL.h"
+#include "third-party/SDL/include/SDL3/SDL.h"
 
 InputModifiers::InputModifiers(const u16 sdl_mod_state) {
-  need_shift = sdl_mod_state & KMOD_SHIFT;
-  need_alt = sdl_mod_state & KMOD_ALT;
-  need_ctrl = sdl_mod_state & KMOD_CTRL;
-  need_meta = sdl_mod_state & KMOD_GUI;
+  need_shift = sdl_mod_state & SDL_KMOD_SHIFT;
+  need_alt = sdl_mod_state & SDL_KMOD_ALT;
+  need_ctrl = sdl_mod_state & SDL_KMOD_CTRL;
+  need_meta = sdl_mod_state & SDL_KMOD_GUI;
 }
 
 bool InputModifiers::has_necessary_modifiers(const u16 key_modifiers) const {
-  if (need_alt && ((key_modifiers & KMOD_ALT) == 0)) {
+  if (need_alt && ((key_modifiers & SDL_KMOD_ALT) == 0)) {
     return false;
   }
-  if (need_ctrl && ((key_modifiers & KMOD_CTRL) == 0)) {
+  if (need_ctrl && ((key_modifiers & SDL_KMOD_CTRL) == 0)) {
     return false;
   }
-  if (need_meta && ((key_modifiers & KMOD_GUI) == 0)) {
+  if (need_meta && ((key_modifiers & SDL_KMOD_GUI) == 0)) {
     return false;
   }
-  if (need_shift && ((key_modifiers & KMOD_SHIFT) == 0)) {
+  if (need_shift && ((key_modifiers & SDL_KMOD_SHIFT) == 0)) {
     return false;
   }
   return true;
@@ -70,62 +70,54 @@ void from_json(const json& j, InputBindingGroups& obj) {
   json_deserialize_if_exists(buttons);
 }
 
-const std::vector<PadData::ButtonIndex> PAD_DATA_PRESSURE_INDEX_ORDER = {
-    PadData::ButtonIndex::DPAD_RIGHT, PadData::ButtonIndex::DPAD_LEFT,
-    PadData::ButtonIndex::DPAD_UP,    PadData::ButtonIndex::DPAD_DOWN,
-    PadData::ButtonIndex::TRIANGLE,   PadData::ButtonIndex::CIRCLE,
-    PadData::ButtonIndex::CROSS,      PadData::ButtonIndex::SQUARE,
-    PadData::ButtonIndex::L1,         PadData::ButtonIndex::R1,
-    PadData::ButtonIndex::L2,         PadData::ButtonIndex::R2};
-
 const InputBindingGroups DEFAULT_CONTROLLER_BINDS = InputBindingGroups(
     CONTROLLER,
-    {{SDL_CONTROLLER_AXIS_LEFTX, {InputBinding(PadData::AnalogIndex::LEFT_X)}},
-     {SDL_CONTROLLER_AXIS_LEFTY, {InputBinding(PadData::AnalogIndex::LEFT_Y)}},
-     {SDL_CONTROLLER_AXIS_RIGHTX, {InputBinding(PadData::AnalogIndex::RIGHT_X)}},
-     {SDL_CONTROLLER_AXIS_RIGHTY, {InputBinding(PadData::AnalogIndex::RIGHT_Y)}}},
+    {{SDL_GAMEPAD_AXIS_LEFTX, {InputBinding(PadData::AnalogIndex::LEFT_X)}},
+     {SDL_GAMEPAD_AXIS_LEFTY, {InputBinding(PadData::AnalogIndex::LEFT_Y)}},
+     {SDL_GAMEPAD_AXIS_RIGHTX, {InputBinding(PadData::AnalogIndex::RIGHT_X)}},
+     {SDL_GAMEPAD_AXIS_RIGHTY, {InputBinding(PadData::AnalogIndex::RIGHT_Y)}}},
     {
-        {SDL_CONTROLLER_AXIS_TRIGGERLEFT, {InputBinding(PadData::ButtonIndex::L2)}},
-        {SDL_CONTROLLER_AXIS_TRIGGERRIGHT, {InputBinding(PadData::ButtonIndex::R2)}},
+        {SDL_GAMEPAD_AXIS_LEFT_TRIGGER, {InputBinding(PadData::ButtonIndex::L2)}},
+        {SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, {InputBinding(PadData::ButtonIndex::R2)}},
     },
-    {{SDL_CONTROLLER_BUTTON_A, {InputBinding(PadData::ButtonIndex::CROSS)}},
-     {SDL_CONTROLLER_BUTTON_B, {InputBinding(PadData::ButtonIndex::CIRCLE)}},
-     {SDL_CONTROLLER_BUTTON_X, {InputBinding(PadData::ButtonIndex::SQUARE)}},
-     {SDL_CONTROLLER_BUTTON_Y, {InputBinding(PadData::ButtonIndex::TRIANGLE)}},
-     {SDL_CONTROLLER_BUTTON_LEFTSTICK, {InputBinding(PadData::ButtonIndex::L3)}},
-     {SDL_CONTROLLER_BUTTON_RIGHTSTICK, {InputBinding(PadData::ButtonIndex::R3)}},
-     {SDL_CONTROLLER_BUTTON_BACK, {InputBinding(PadData::ButtonIndex::SELECT)}},
-     {SDL_CONTROLLER_BUTTON_START, {InputBinding(PadData::ButtonIndex::START)}},
-     {SDL_CONTROLLER_BUTTON_LEFTSHOULDER, {InputBinding(PadData::ButtonIndex::L1)}},
-     {SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, {InputBinding(PadData::ButtonIndex::R1)}},
-     {SDL_CONTROLLER_BUTTON_DPAD_UP, {InputBinding(PadData::ButtonIndex::DPAD_UP)}},
-     {SDL_CONTROLLER_BUTTON_DPAD_DOWN, {InputBinding(PadData::ButtonIndex::DPAD_DOWN)}},
-     {SDL_CONTROLLER_BUTTON_DPAD_LEFT, {InputBinding(PadData::ButtonIndex::DPAD_LEFT)}},
-     {SDL_CONTROLLER_BUTTON_DPAD_RIGHT, {InputBinding(PadData::ButtonIndex::DPAD_RIGHT)}}});
+    {{SDL_GAMEPAD_BUTTON_SOUTH, {InputBinding(PadData::ButtonIndex::CROSS)}},
+     {SDL_GAMEPAD_BUTTON_EAST, {InputBinding(PadData::ButtonIndex::CIRCLE)}},
+     {SDL_GAMEPAD_BUTTON_WEST, {InputBinding(PadData::ButtonIndex::SQUARE)}},
+     {SDL_GAMEPAD_BUTTON_NORTH, {InputBinding(PadData::ButtonIndex::TRIANGLE)}},
+     {SDL_GAMEPAD_BUTTON_LEFT_STICK, {InputBinding(PadData::ButtonIndex::L3)}},
+     {SDL_GAMEPAD_BUTTON_RIGHT_STICK, {InputBinding(PadData::ButtonIndex::R3)}},
+     {SDL_GAMEPAD_BUTTON_BACK, {InputBinding(PadData::ButtonIndex::SELECT)}},
+     {SDL_GAMEPAD_BUTTON_START, {InputBinding(PadData::ButtonIndex::START)}},
+     {SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, {InputBinding(PadData::ButtonIndex::L1)}},
+     {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, {InputBinding(PadData::ButtonIndex::R1)}},
+     {SDL_GAMEPAD_BUTTON_DPAD_UP, {InputBinding(PadData::ButtonIndex::DPAD_UP)}},
+     {SDL_GAMEPAD_BUTTON_DPAD_DOWN, {InputBinding(PadData::ButtonIndex::DPAD_DOWN)}},
+     {SDL_GAMEPAD_BUTTON_DPAD_LEFT, {InputBinding(PadData::ButtonIndex::DPAD_LEFT)}},
+     {SDL_GAMEPAD_BUTTON_DPAD_RIGHT, {InputBinding(PadData::ButtonIndex::DPAD_RIGHT)}}});
 
 const InputBindingGroups DEFAULT_KEYBOARD_BINDS =
     InputBindingGroups(KEYBOARD,
-                       {{SDLK_a, {InputBinding(PadData::AnalogIndex::LEFT_X, true)}},
-                        {SDLK_d, {InputBinding(PadData::AnalogIndex::LEFT_X)}},
-                        {SDLK_s, {InputBinding(PadData::AnalogIndex::LEFT_Y)}},
-                        {SDLK_w, {InputBinding(PadData::AnalogIndex::LEFT_Y, true)}},
-                        {SDLK_l, {InputBinding(PadData::AnalogIndex::RIGHT_X, true)}},
-                        {SDLK_j, {InputBinding(PadData::AnalogIndex::RIGHT_X)}},
-                        {SDLK_k, {InputBinding(PadData::AnalogIndex::RIGHT_Y)}},
-                        {SDLK_i, {InputBinding(PadData::AnalogIndex::RIGHT_Y, true)}}},
+                       {{SDLK_A, {InputBinding(PadData::AnalogIndex::LEFT_X, true)}},
+                        {SDLK_D, {InputBinding(PadData::AnalogIndex::LEFT_X)}},
+                        {SDLK_S, {InputBinding(PadData::AnalogIndex::LEFT_Y)}},
+                        {SDLK_W, {InputBinding(PadData::AnalogIndex::LEFT_Y, true)}},
+                        {SDLK_L, {InputBinding(PadData::AnalogIndex::RIGHT_X, true)}},
+                        {SDLK_J, {InputBinding(PadData::AnalogIndex::RIGHT_X)}},
+                        {SDLK_K, {InputBinding(PadData::AnalogIndex::RIGHT_Y)}},
+                        {SDLK_I, {InputBinding(PadData::AnalogIndex::RIGHT_Y, true)}}},
                        {},
                        {{SDLK_SPACE, {InputBinding(PadData::ButtonIndex::CROSS)}},
-                        {SDLK_e, {InputBinding(PadData::ButtonIndex::CIRCLE)}},
-                        {SDLK_f, {InputBinding(PadData::ButtonIndex::SQUARE)}},
-                        {SDLK_r, {InputBinding(PadData::ButtonIndex::TRIANGLE)}},
+                        {SDLK_E, {InputBinding(PadData::ButtonIndex::CIRCLE)}},
+                        {SDLK_F, {InputBinding(PadData::ButtonIndex::SQUARE)}},
+                        {SDLK_R, {InputBinding(PadData::ButtonIndex::TRIANGLE)}},
                         {SDLK_COMMA, {InputBinding(PadData::ButtonIndex::L3)}},
                         {SDLK_PERIOD, {InputBinding(PadData::ButtonIndex::R3)}},
-                        {SDLK_QUOTE, {InputBinding(PadData::ButtonIndex::SELECT)}},
+                        {SDLK_APOSTROPHE, {InputBinding(PadData::ButtonIndex::SELECT)}},
                         {SDLK_RETURN, {InputBinding(PadData::ButtonIndex::START)}},
-                        {SDLK_q, {InputBinding(PadData::ButtonIndex::L1)}},
-                        {SDLK_o, {InputBinding(PadData::ButtonIndex::R1)}},
+                        {SDLK_Q, {InputBinding(PadData::ButtonIndex::L1)}},
+                        {SDLK_O, {InputBinding(PadData::ButtonIndex::R1)}},
                         {SDLK_1, {InputBinding(PadData::ButtonIndex::L2)}},
-                        {SDLK_p, {InputBinding(PadData::ButtonIndex::R2)}},
+                        {SDLK_P, {InputBinding(PadData::ButtonIndex::R2)}},
                         {SDLK_UP, {InputBinding(PadData::ButtonIndex::DPAD_UP)}},
                         {SDLK_DOWN, {InputBinding(PadData::ButtonIndex::DPAD_DOWN)}},
                         {SDLK_LEFT, {InputBinding(PadData::ButtonIndex::DPAD_LEFT)}},
@@ -150,7 +142,7 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_analog_binds(PadData::A
       InputBindingInfo new_info;
       switch (device_type) {
         case KEYBOARD:
-          new_info = InputBindingInfo(bind, device_type, sdl_code);
+          new_info = InputBindingInfo(bind, device_type, sdl_code, false);
           break;
         default:
           new_info.host_name = "TODO - NON-KB ANALOG BIND LOOKUP";
@@ -176,7 +168,7 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
       if (bind.pad_data_index != idx) {
         continue;
       }
-      InputBindingInfo new_info(bind, device_type, sdl_code);
+      InputBindingInfo new_info(bind, device_type, sdl_code, false);
       entry.push_back(new_info);
     }
   }
@@ -185,7 +177,7 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
       if (bind.pad_data_index != idx) {
         continue;
       }
-      InputBindingInfo new_info(bind, device_type, sdl_code);
+      InputBindingInfo new_info(bind, device_type, sdl_code, true);
       entry.push_back(new_info);
     }
   }
@@ -309,8 +301,24 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
   // unmapped
   const auto current_button_binds = lookup_button_binds((PadData::ButtonIndex)bind_meta.pad_idx);
   const auto current_analog_bind = find_analog_bind_from_sdl_idx(sdl_idx, modifiers);
-  if (buttons.find(sdl_idx) != buttons.end()) {
+  if (!analog_button && buttons.find(sdl_idx) != buttons.end()) {
     const auto existing_binds = buttons.at(sdl_idx);
+    if (analog_button) {
+      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    } else {
+      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    }
+    // there already a bind, so swap (as long as it's not the same key)
+    if (!current_button_binds.empty() && current_button_binds.front().sdl_idx != (s32)sdl_idx) {
+      if (current_button_binds.front().analog_button) {
+        button_axii[current_button_binds.front().sdl_idx] = existing_binds;
+      } else {
+        buttons[current_button_binds.front().sdl_idx] = existing_binds;
+      }
+    }
+  } else if (analog_button && button_axii.find(sdl_idx) != button_axii.end()) {
+    // TODO - cleanup this duplication
+    const auto existing_binds = button_axii.at(sdl_idx);
     if (analog_button) {
       button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     } else {
@@ -357,12 +365,19 @@ void InputBindingGroups::set_bindings(const InputBindingGroups& binds) {
 
 InputBindingInfo::InputBindingInfo(const InputBinding bind,
                                    const InputDeviceType device_type,
-                                   const s32 sdl_code)
-    : sdl_idx(sdl_code), pad_idx(bind.pad_data_index), modifiers(bind.modifiers) {
-  analog_button = false;
+                                   const s32 sdl_code,
+                                   const bool _analog_button)
+    : sdl_idx(sdl_code),
+      pad_idx(bind.pad_data_index),
+      analog_button(_analog_button),
+      modifiers(bind.modifiers) {
   switch (device_type) {
     case CONTROLLER:
-      host_name = sdl_util::get_controller_button_name(sdl_code);
+      if (analog_button) {
+        host_name = sdl_util::get_controller_axis_name(sdl_code);
+      } else {
+        host_name = sdl_util::get_controller_button_name(sdl_code);
+      }
       break;
     case KEYBOARD:
       host_name = sdl_util::get_keyboard_button_name(sdl_code, modifiers);

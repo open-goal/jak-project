@@ -1,12 +1,11 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: drawable-h.gc
-;; name in dgo: drawable-h
-;; dgos: GAME, ENGINE
-
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "kernel/gkernel-h.gc")
 (declare-type ambient-list structure)
+
 (declare-type collide-list structure)
+
 (declare-type drawable-error drawable)
 
 ;; These is the base class for the scene graph node.
@@ -16,54 +15,54 @@
 ;; In many cases, "draw" simply adds data to a buffer that must later be converted to dma in finish-background
 ;; or similar.  Or just does nothing.
 
-
 ;; DECOMP BEGINS
 
 (deftype drawable (basic)
-  ((id       int16) ;; ID number for visibility (not always used)
-   (bsphere  vector  :inline) ;; bounding sphere
+  ((id      int16) ;; ID number for visibility (not always used)
+   (bsphere vector :inline) ;; bounding sphere
    )
   (:methods
-    ;; initialize the drawable after it has been loaded.
-    (login (_type_) _type_)
-    ;; do some sort of drawing... this really does different things for different types.
-    (draw (_type_ _type_ display-frame) none)
-    ;; add collision meshes to the given collide list if they intersect the bounding box in *collide-work*
-    ;; the integer argument can be used to call this method on an inline-array of drawables (only some support this)
-    ;; this avoids the dynamic dispatch on each element of the array.
-    (collide-with-box (_type_ int collide-list) none)
-    ;; similar to above, but only add if the collision mesh intersects with a "y probe"
-    (collide-y-probe (_type_ int collide-list) none)
-    ;; similar to above, but only add if the collision mesh intersects a ray of spheres.
-    (collide-ray (_type_ int collide-list) none)
-    ;; different for different types, but generally collects debug statistics like numbers of triangles
-    (collect-stats (_type_) none)
-    ;; different for different types, but usually does nothing.
-    (debug-draw (_type_ drawable display-frame) none)
-    ;; given VIS data (uncompressed), compute the visiblity bit string.
-    (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8))
-    ;; find "ambients" inside the given sphere and add to list.
-    (collect-ambients (_type_ sphere int ambient-list) none)
-    )
-  )
-
-
+   ;; initialize the drawable after it has been loaded.
+   (login (_type_) _type_)
+   ;; do some sort of drawing... this really does different things for different types.
+   (draw (_type_ _type_ display-frame) none)
+   ;; add collision meshes to the given collide list if they intersect the bounding box in *collide-work*
+   ;; the integer argument can be used to call this method on an inline-array of drawables (only some support this)
+   ;; this avoids the dynamic dispatch on each element of the array.
+   (collide-with-box (_type_ int collide-list) none)
+   ;; similar to above, but only add if the collision mesh intersects with a "y probe"
+   (collide-y-probe (_type_ int collide-list) none)
+   ;; similar to above, but only add if the collision mesh intersects a ray of spheres.
+   (collide-ray (_type_ int collide-list) none)
+   ;; different for different types, but generally collects debug statistics like numbers of triangles
+   (collect-stats (_type_) none)
+   ;; different for different types, but usually does nothing.
+   (debug-draw (_type_ drawable display-frame) none)
+   ;; given VIS data (uncompressed), compute the visiblity bit string.
+   (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8))
+   ;; find "ambients" inside the given sphere and add to list.
+   (collect-ambients (_type_ sphere int ambient-list) none)))
 
 ;; A drawable that simply draws a sphere and an error message at the origin of the bounding sphere.
 (deftype drawable-error (drawable)
-  ((name  string)
-   )
-  )
+  ((name string)))
 
 (declare-type process-drawable process)
+
 (define-extern process-drawable-art-error (state string process-drawable))
+
 (define-extern foreground-engine-execute (function engine display-frame int int none))
+
 (define-extern sphere-in-view-frustum? (function sphere symbol))
 
 (declare-type draw-control basic)
+
 (define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
+
 (define-extern dma-add-process-drawable-hud (function process-drawable draw-control symbol dma-buffer none))
+
 (define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
+
 (define-extern vis-cull (function int symbol))
 
 (define-extern line-in-view-frustum? (function vector vector symbol)) ;; TODO - not confirmed

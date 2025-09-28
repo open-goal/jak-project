@@ -1,0 +1,11 @@
+("CTYPESC.DGO"
+ ("roboguard-city.o"
+  "spydroid.o"
+  "flying-turret.o"
+  "tpage-1244.go"
+  "roboguard-city-ag.go"
+  "spydroid-ag.go"
+  "kg-flying-turret-ag.go"
+  "kg-debris-ag.go"
+  "ctypesc.go"
+ ))

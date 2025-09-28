@@ -1,0 +1,1753 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mech-shield
+(deftype mech-shield (shield-sphere)
+  ()
+  )
+
+;; definition for method 3 of type mech-shield
+(defmethod inspect ((this mech-shield))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type shield-sphere inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for function mech-shield-init-by-other
+;; INFO: Used lq/sq
+(defbehavior mech-shield-init-by-other mech-shield ((arg0 shield-sphere-spawn-params))
+  (set! (-> self level) (level-get *level* 'precura))
+  (stack-size-set! (-> self main-thread) 128)
+  (set! (-> self sphere-size) (-> arg0 sphere-size))
+  (set! (-> self owner) (-> arg0 owner))
+  (set! (-> self track-joint) (-> arg0 track-joint))
+  (vector-copy! (-> self offset-vec) (-> arg0 offset-vec))
+  (init-collision! self)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-shield-sphere" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set-vector! (-> self root scale) (-> self sphere-size) (-> self sphere-size) (-> self sphere-size) 1.0)
+  (set! (-> self shield-type) (-> arg0 shield-type))
+  (case (-> self shield-type)
+    (((shield-type shield-type-0))
+     (set! (-> self heat-info damage-scalar) (/ 1.0 (the float (-> arg0 shield-strength))))
+     (let ((s5-1 (new 'stack-no-clear 'shield-sphere-distort-spawn-params)))
+       (set! (-> s5-1 owner) (process->handle self))
+       (set! (-> s5-1 sphere-size) (-> self sphere-size))
+       (let ((s4-1 (the-as process #f)))
+         (let* ((s3-0 (get-process *default-dead-pool* shield-sphere-distort #x4000 1))
+                (v1-22 (when s3-0
+                         (let ((t9-6 (method-of-type process activate)))
+                           (t9-6 s3-0 self "process" (the-as pointer #x70004000))
+                           )
+                         (run-now-in-process s3-0 shield-sphere-distort-init-by-other s5-1)
+                         (-> s3-0 ppointer)
+                         )
+                       )
+                )
+           (if v1-22
+               (set! s4-1 (-> v1-22 0))
+               )
+           )
+         (set! (-> self heat-info distort-handle) (process->handle s4-1))
+         )
+       )
+     )
+    (((shield-type shield-type-1))
+     (set! (-> self toggle-info enable-time) (-> arg0 enable-time))
+     (set! (-> self heat-info last-heat-time) (-> arg0 disable-time))
+     )
+    )
+  (ja-no-eval :group! (ja-group) :num! (loop!) :frame-num 0.0)
+  (ja-post)
+  (logior! (-> self draw status) (draw-control-status disable-fog))
+  (when (as-type (handle->process (-> arg0 owner)) process-focusable)
+    )
+  (set! (-> self event-hook) (-> (method-of-type shield-sphere shield-enabled) event))
+  (init-and-go! self)
+  )
+
+;; failed to figure out what this is:
+(defstate shield-disabled (mech-shield)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (shield-event-handler self proc argc message block)
+    )
+  :enter (behavior ()
+    (toggle-shield self #f)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (shield-enabled-trans self)
+    (if (and (= (-> self shield-type) (shield-type shield-type-1))
+             (time-elapsed? (-> self state-time) (-> self heat-info last-heat-time))
+             )
+        (go-virtual shield-enabled)
+        )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (shield-post self)
+    )
+  )
+
+;; definition for method 37 of type mech-shield
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this mech-shield))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec obstacle impenetrable-obj))
+      (set! (-> v1-6 prim-core action) (collide-action))
+      (set-vector! (-> v1-6 local-sphere) 0.0 0.0 -4096.0 (+ 4096.0 (* 4096.0 (-> this sphere-size))))
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-heatmeter
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-heatmeter))
+  (set-hud-piece-position! (-> this sprites 0) 256 (the int (+ 25.0 (* -100.0 (-> this offset)))))
+  (set! (-> this sprites 0 pos z) #xfffff0)
+  (set-as-offset-from!
+    (-> this sprites 1)
+    (-> this sprites 0 pos)
+    (+ (the int (* 0.128 (the float (-> this values 0 current)))) -63)
+    1
+    )
+  (set! (-> this sprites 1 pos z) #xfffff0)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-heatmeter
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-heatmeter))
+  (set! (-> this values 0 target) (the int (* 1000.0 (-> *game-info* distance))))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-heatmeter
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-heatmeter))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center-2) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #xa76)))
+        )
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 scale-y) 1.2)
+  (set! (-> this sprites 1 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :index #x3 :page #xa76)))
+        )
+  (set! (-> this sprites 1 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 1 scale-x) 1.8)
+  (set! (-> this sprites 1 scale-y) 1.8)
+  0
+  (none)
+  )
+
+;; definition for symbol *mech-stance-mods*, type surface
+(define *mech-stance-mods*
+  (new 'static 'surface
+    :name 'run
+    :turnv 18204262.0
+    :turnvf 0.03
+    :turnvv 40049.777
+    :turnvvf 30.0
+    :tiltv 65536.0
+    :tiltvf 150.0
+    :tiltvv 262144.0
+    :tiltvvf 15.0
+    :fric 0.3
+    :nonlin-fric-dist 1.0
+    :slip-factor 1.0
+    :slide-factor 1.0
+    :slope-up-factor 1.0
+    :slope-down-factor 4.0
+    :slope-slip-angle 1.0
+    :impact-fric 1.0
+    :bend-factor 1.0
+    :bend-speed 1.0
+    :slope-up-traction 1.0
+    :mult-hook (lambda :behavior target
+      ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
+      (case arg3
+        ((1)
+         (if (= (-> *cpad-list* cpads (-> self control cpad number) stick0-speed) 0.0)
+             (seek! (-> self control did-move-to-pole-or-max-jump-height) 0.0 (* 127431.11 (seconds-per-frame)))
+             (seek!
+               (-> self control did-move-to-pole-or-max-jump-height)
+               (* (-> self control turn-to-magnitude) (-> arg0 turnvv))
+               (* 127431.11 (seconds-per-frame))
+               )
+             )
+         (set! (-> arg0 turnvv) (-> self control did-move-to-pole-or-max-jump-height))
+         (when (= (-> arg2 name) '*edge-surface*)
+           (set! (-> arg0 target-speed) 40960.0)
+           (set! (-> arg0 transv-max) 40960.0)
+           (set! (-> arg0 seek0) (* 1.6666 (-> arg2 seek0)))
+           (set! (-> arg0 seek90) (* 1.6666 (-> arg2 seek90)))
+           (set! (-> arg0 seek180) (* 1.6666 (-> arg2 seek180)))
+           )
+         )
+        )
+      )
+    :flags (surface-flag look-around no-turn-around)
+    )
+  )
+
+;; definition for symbol *mech-walk-mods*, type surface
+(define *mech-walk-mods*
+  (new 'static 'surface
+    :name 'run
+    :turnv 32768.0
+    :turnvf 120.0
+    :turnvv 524288.0
+    :turnvvf 30.0
+    :tiltv 65536.0
+    :tiltvf 150.0
+    :tiltvv 262144.0
+    :tiltvvf 15.0
+    :vel-turn -1.0
+    :transv-max 40960.0
+    :target-speed 40960.0
+    :seek0 1.6666
+    :seek90 1.6666
+    :seek180 1.0
+    :fric 0.1
+    :nonlin-fric-dist 1.0
+    :slip-factor 1.0
+    :slide-factor 1.0
+    :slope-up-factor 1.0
+    :slope-down-factor 1.0
+    :slope-slip-angle 1.0
+    :impact-fric 1.0
+    :bend-factor 1.0
+    :bend-speed 1.0
+    :alignv 1.0
+    :slope-up-traction 1.0
+    :align-speed 1.0
+    :mult-hook (lambda :behavior target
+      ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
+      (case arg3
+        ((1)
+         (when (= (-> arg2 name) '*edge-surface*)
+           (let ((v1-5 (vector-flatten!
+                         (new 'stack-no-clear 'vector)
+                         (vector-negate! (new-stack-vector0) (-> self control dynam gravity-normal))
+                         (-> self control local-normal)
+                         )
+                       )
+                 )
+             (set! (-> arg0 vel-turn) 0.0)
+             (vector+float*! (-> self control transv) (-> self control transv) v1-5 (* 409600.0 (seconds-per-frame)))
+             )
+           )
+         )
+        )
+      )
+    :flags (surface-flag look-around no-turn-around)
+    )
+  )
+
+;; definition for symbol *mech-jump-mods*, type surface
+(define *mech-jump-mods* (new 'static 'surface
+                           :name 'jump
+                           :turnv 131072.0
+                           :turnvf 90.0
+                           :turnvv 18204.445
+                           :turnvvf 30.0
+                           :tiltv 32768.0
+                           :tiltvf 150.0
+                           :tiltvv 262144.0
+                           :tiltvvf 15.0
+                           :transv-max 40960.0
+                           :target-speed 40960.0
+                           :seek0 0.3
+                           :seek90 0.3
+                           :seek180 0.3
+                           :fric 0.2
+                           :nonlin-fric-dist 1.0
+                           :slip-factor 1.0
+                           :slide-factor 1.0
+                           :slope-up-factor 1.0
+                           :slope-down-factor 1.0
+                           :slope-slip-angle 1.0
+                           :impact-fric 1.0
+                           :bend-factor 1.0
+                           :bend-speed 1.0
+                           :alignv 1.0
+                           :slope-up-traction 1.0
+                           :align-speed 1.0
+                           :mode 'air
+                           :flags (surface-flag no-turn-around air)
+                           )
+        )
+
+;; definition for symbol *mech-punch-mods*, type surface
+(define *mech-punch-mods* (new 'static 'surface
+                            :name 'punch
+                            :turnv 131072.0
+                            :tiltv 32768.0
+                            :tiltvf 150.0
+                            :tiltvv 262144.0
+                            :tiltvvf 15.0
+                            :transv-max 91750.4
+                            :target-speed 122880.0
+                            :seek90 0.5
+                            :seek180 0.15
+                            :slip-factor 1.0
+                            :slide-factor 1.0
+                            :slope-up-factor 0.25
+                            :slope-down-factor 1.0
+                            :slope-slip-angle 1.0
+                            :impact-fric 1.0
+                            :bend-factor 1.0
+                            :bend-speed 1.0
+                            :alignv 1.0
+                            :slope-up-traction 1.0
+                            :align-speed 1.0
+                            :mode 'attack
+                            :flags (surface-flag no-turn-around turn-to-pad attack)
+                            )
+        )
+
+;; definition for symbol *mech-pickup-mods*, type surface
+(define *mech-pickup-mods* (new 'static 'surface
+                             :name 'run
+                             :turnv 16384.0
+                             :turnvf 240.0
+                             :tiltv 65536.0
+                             :tiltvf 150.0
+                             :tiltvv 262144.0
+                             :tiltvvf 15.0
+                             :vel-turn -1.0
+                             :transv-max 12288.0
+                             :target-speed 12288.0
+                             :seek0 1.0
+                             :seek90 1.0
+                             :seek180 1.0
+                             :fric 0.5
+                             :nonlin-fric-dist 1.0
+                             :slip-factor 1.0
+                             :slide-factor 1.0
+                             :slope-up-factor 1.0
+                             :slope-down-factor 1.0
+                             :slope-slip-angle 1.0
+                             :impact-fric 1.0
+                             :bend-factor 1.0
+                             :bend-speed 1.0
+                             :alignv 1.0
+                             :slope-up-traction 1.0
+                             :align-speed 1.0
+                             :flags (surface-flag look-around no-turn-around)
+                             )
+        )
+
+;; definition for symbol *mech-carry-walk-mods*, type surface
+(define *mech-carry-walk-mods* (new 'static 'surface
+                                 :name 'run
+                                 :turnv 25486.223
+                                 :turnvf 96.0
+                                 :turnvv 524288.0
+                                 :turnvvf 30.0
+                                 :tiltv 65536.0
+                                 :tiltvf 150.0
+                                 :tiltvv 262144.0
+                                 :tiltvvf 15.0
+                                 :vel-turn -1.0
+                                 :transv-max 12288.0
+                                 :target-speed 36864.0
+                                 :seek0 1.0
+                                 :seek90 1.0
+                                 :seek180 1.0
+                                 :fric 0.5
+                                 :nonlin-fric-dist 1.0
+                                 :slip-factor 1.0
+                                 :slide-factor 1.0
+                                 :slope-up-factor 1.0
+                                 :slope-down-factor 1.0
+                                 :slope-slip-angle 1.0
+                                 :impact-fric 1.0
+                                 :bend-factor 1.0
+                                 :bend-speed 1.0
+                                 :alignv 1.0
+                                 :slope-up-traction 1.0
+                                 :align-speed 1.0
+                                 :flags (surface-flag look-around no-turn-around)
+                                 )
+        )
+
+;; failed to figure out what this is:
+(set! (-> *mech-carry-walk-mods* mult-hook) (-> *mech-walk-mods* mult-hook))
+
+;; definition for symbol *mech-carry-drag-mods*, type surface
+(define *mech-carry-drag-mods* (new 'static 'surface
+                                 :name 'run
+                                 :tiltv 65536.0
+                                 :tiltvf 150.0
+                                 :tiltvv 262144.0
+                                 :tiltvvf 15.0
+                                 :transv-max 12288.0
+                                 :fric 1.0
+                                 :nonlin-fric-dist 1.0
+                                 :slip-factor 1.0
+                                 :slide-factor 1.0
+                                 :slope-up-factor 1.0
+                                 :slope-down-factor 1.0
+                                 :slope-slip-angle 1.0
+                                 :impact-fric 1.0
+                                 :bend-factor 1.0
+                                 :bend-speed 1.0
+                                 :alignv 1.0
+                                 :slope-up-traction 1.0
+                                 :align-speed 1.0
+                                 :flags (surface-flag look-around no-turn-around)
+                                 )
+        )
+
+;; definition for symbol *mech-carry-jump-mods*, type surface
+(define *mech-carry-jump-mods* (new 'static 'surface
+                                 :name 'jump
+                                 :turnv 131072.0
+                                 :turnvf 90.0
+                                 :turnvv 18204.445
+                                 :turnvvf 30.0
+                                 :tiltv 32768.0
+                                 :tiltvf 150.0
+                                 :tiltvv 262144.0
+                                 :tiltvvf 15.0
+                                 :transv-max 36864.0
+                                 :target-speed 36864.0
+                                 :seek0 0.3
+                                 :seek90 0.3
+                                 :seek180 0.3
+                                 :fric 0.2
+                                 :nonlin-fric-dist 1.0
+                                 :slip-factor 1.0
+                                 :slide-factor 1.0
+                                 :slope-up-factor 1.0
+                                 :slope-down-factor 1.0
+                                 :slope-slip-angle 1.0
+                                 :impact-fric 1.0
+                                 :bend-factor 1.0
+                                 :bend-speed 1.0
+                                 :alignv 1.0
+                                 :slope-up-traction 1.0
+                                 :align-speed 1.0
+                                 :mode 'air
+                                 :flags (surface-flag air)
+                                 )
+        )
+
+;; definition for function target-mech-falling-anim-trans
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-mech-falling-anim-trans target ()
+  0
+  (none)
+  )
+
+;; definition for function target-mech-mech-effect
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-mech-mech-effect mech ((arg0 target))
+  (when (!= (-> arg0 mech thruster-flame-length) 0.0)
+    (let ((f30-0 0.0))
+      (if (!= (-> *setting-control* user-current under-water-pitch-mod) 0.0)
+          (set! f30-0 -2.0)
+          )
+      (sound-play-by-name
+        (static-sound-name "mech-thrust")
+        (-> arg0 mech thrust-sound-id)
+        (the int (* 1024.0 (lerp-scale 0.3 1.0 (-> arg0 mech thruster-flame-length) 0.0 4096.0)))
+        (the int (* 1524.0 f30-0))
+        0
+        (sound-group)
+        #t
+        )
+      )
+    (dotimes (s5-1 2)
+      (let* ((s3-1 (-> self node-list data (if (zero? s5-1)
+                                               37
+                                               38
+                                               )
+                       )
+                   )
+             (s4-1 (vector<-cspace! (new 'stack-no-clear 'vector) s3-1))
+             (a2-2 (vector-negate! (new 'stack-no-clear 'vector) (-> s3-1 bone transform uvec)))
+             )
+        (mech-spawn-thruster
+          (-> arg0 mech)
+          s4-1
+          a2-2
+          (-> arg0 mech thruster-flame-width)
+          (-> arg0 mech thruster-flame-length)
+          )
+        )
+      )
+    )
+  (when (logtest? (water-flag touch-water) (-> arg0 water flags))
+    (let ((f30-1 (-> arg0 water height)))
+      (let ((s5-2 (-> *part-id-table* 1045)))
+        (let ((v1-28 (get-field-spec-by-id s5-2 (sp-field-id spt-userdata))))
+          (if v1-28
+              (set! (-> v1-28 initial-valuef) f30-1)
+              )
+          )
+        (let ((t9-6 sp-launch-particles-var)
+              (a0-12 *sp-particle-system-2d*)
+              (a2-3 *launch-matrix*)
+              )
+          (vector-copy! (-> a2-3 trans) (-> self root trans))
+          (t9-6 a0-12 s5-2 a2-3 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+          )
+        )
+      (let ((s5-3 (-> *part-id-table* 1048)))
+        (let ((v1-34 (get-field-spec-by-id s5-3 (sp-field-id spt-userdata))))
+          (if v1-34
+              (set! (-> v1-34 initial-valuef) f30-1)
+              )
+          )
+        (let ((t9-8 sp-launch-particles-var)
+              (a0-15 *sp-particle-system-2d*)
+              (a2-4 *launch-matrix*)
+              )
+          (vector-copy! (-> a2-4 trans) (-> self root trans))
+          (t9-8 a0-15 s5-3 a2-4 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+          )
+        )
+      (let* ((s5-4 (-> *part-id-table* 1051))
+             (v1-40 (get-field-spec-by-id s5-4 (sp-field-id spt-userdata)))
+             (s4-2 (new 'stack-no-clear 'vector))
+             )
+        (if v1-40
+            (set! (-> v1-40 initial-valuef) f30-1)
+            )
+        (let ((s3-2 (get-field-spec-by-id s5-4 (sp-field-id spt-num))))
+          (if s3-2
+              (set! (-> s3-2 initial-valuef) (lerp-scale 0.1 2.0 (-> arg0 control ctrl-xz-vel) 0.0 40960.0))
+              )
+          )
+        (process-drawable-random-point! self s4-2)
+        (let ((t9-13 sp-launch-particles-var)
+              (a0-21 *sp-particle-system-2d*)
+              (a2-6 *launch-matrix*)
+              )
+          (vector-copy! (-> a2-6 trans) s4-2)
+          (t9-13 a0-21 s5-4 a2-6 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function mech-on-ground?
+(defbehavior mech-on-ground? target ()
+  (logtest? (-> self control status) (collide-status on-surface))
+  )
+
+;; definition for function target-mech-get-off?
+(defbehavior target-mech-get-off? target ()
+  (when (and (mech-on-ground?)
+             (< (-> self mech no-get-off-time) (current-time))
+             (-> *setting-control* user-current pilot-exit)
+             )
+    (let ((gp-0 (new 'stack-no-clear 'collide-query))
+          (s4-0 (new 'stack-no-clear 'inline-array 'sphere 1))
+          )
+      (dotimes (s5-0 1)
+        ((method-of-type sphere new) (the-as symbol (-> s4-0 s5-0)) sphere)
+        )
+      (let ((s5-1 (-> self node-list data 0 bone transform)))
+        (vector-matrix*! (-> s4-0 0) (new 'static 'vector :y 14336.0 :z 12288.0 :w 1.0) s5-1)
+        (set! (-> s4-0 0 r) 10240.0)
+        (let ((v1-11 gp-0))
+          (set! (-> v1-11 best-dist) (the-as float s4-0))
+          (set! (-> v1-11 best-other-prim) (the-as collide-shape-prim 1))
+          (set! (-> v1-11 collide-with) (-> self control root-prim prim-core collide-with))
+          (set! (-> v1-11 ignore-process0) #f)
+          (set! (-> v1-11 ignore-process1) #f)
+          (set! (-> v1-11 ignore-pat)
+                (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                )
+          (set! (-> v1-11 best-my-prim) (the-as collide-shape-prim #t))
+          (set! (-> v1-11 action-mask) (collide-action solid))
+          )
+        (let ((s4-1 (fill-and-probe-using-spheres *collide-cache* gp-0)))
+          (when (not s4-1)
+            (vector-matrix*! (-> gp-0 start-pos) (new 'static 'vector :y 8192.0 :z 4096.0 :w 1.0) s5-1)
+            (set-vector! (-> gp-0 move-dist) 0.0 -40960.0 0.0 0.0)
+            (let ((v1-15 gp-0))
+              (set! (-> v1-15 radius) 409.6)
+              (set! (-> v1-15 collide-with) (collide-spec backgnd obstacle hit-by-others-list pusher))
+              (set! (-> v1-15 ignore-process0) self)
+              (set! (-> v1-15 ignore-process1) #f)
+              (set! (-> v1-15 ignore-pat)
+                    (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                    )
+              (set! (-> v1-15 action-mask) (collide-action solid))
+              )
+            (set! s4-1 (< (fill-and-probe-using-line-sphere *collide-cache* gp-0) 0.0))
+            )
+          (if (and s4-1 (-> *setting-control* user-current pilot))
+              (talker-spawn-func (-> *talker-speech* 48) *entity-pool* (target-pos 0) (the-as region #f))
+              )
+          (not s4-1)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function target-mech-handler
+;; INFO: Used lq/sq
+(defbehavior target-mech-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object) (a0-19 symbol) (sv-96 target) (sv-112 process))
+  (cond
+    ((and (= arg2 'query) (= (-> arg3 param 0) 'mode))
+     'mech
+     )
+    (else
+      (case arg2
+        (('end-mode)
+         (case (-> arg3 param 0)
+           (('mech)
+            enter-state
+            (process->handle arg0)
+            (go target-mech-get-off)
+            )
+           )
+         )
+        (('change-mode)
+         (let ((v1-8 (-> arg3 param 0)))
+           (cond
+             ((= v1-8 'grab)
+              (when (not (focus-test? self dead))
+                (if (not (-> arg3 param 1))
+                    #t
+                    (go target-mech-grab)
+                    )
+                )
+              )
+             ((= v1-8 'normal)
+              enter-state
+              (process->handle arg0)
+              (go target-mech-get-off)
+              )
+             ((begin (set! a0-19 'falling) (= v1-8 a0-19))
+              (go target-mech-falling a0-19)
+              )
+             )
+           )
+         )
+        (('swim 'slide 'edge-grab)
+         #f
+         )
+        (('clone-anim)
+         (go target-mech-clone-anim (process->handle (the-as process (-> arg3 param 0))))
+         )
+        (('touched)
+         (cond
+           ((logtest? (process-mask crate) (-> arg0 mask))
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) (process->ppointer self))
+              (set! (-> a1-1 num-params) 2)
+              (set! (-> a1-1 message) 'attack)
+              (set! (-> a1-1 param 0) (-> arg3 param 0))
+              (set! (-> a1-1 param 1)
+                    (the-as
+                      uint
+                      (static-attack-info :mask (vehicle-impulse-factor) ((id (-> self mech attack-id))
+                                                                          (damage 2.0)
+                                                                          (vehicle-damage-factor 1.0)
+                                                                          (vehicle-impulse-factor 1.0)
+                                                                          (mode 'mech)
+                                                                          (penetrate-using (-> self control penetrate-using))
+                                                                          )
+                                          )
+                      )
+                    )
+              (set! v0-0 (send-event-function arg0 a1-1))
+              )
+            (when v0-0
+              (let* ((v1-28 (-> self game))
+                     (a0-43 (+ (-> v1-28 attack-id) 1))
+                     )
+                (set! (-> v1-28 attack-id) a0-43)
+                (set! (-> self mech attack-id) a0-43)
+                )
+              )
+            v0-0
+            )
+           (else
+             (target-standard-event-handler arg0 arg1 arg2 arg3)
+             )
+           )
+         )
+        (('attack 'attack-or-shove 'attack-invinc)
+         (let ((s3-0
+                 (the-as object (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 168))
+                 )
+               )
+           (let ((s2-0 (the-as pointer s3-0))
+                 (s1-0 (method-of-type attack-info compute-intersect-info))
+                 (s0-0 (-> arg3 param 1))
+                 )
+             (set! sv-96 self)
+             (set! sv-112 arg0)
+             (let ((a3-2 (if (type? sv-112 process-drawable)
+                             sv-112
+                             )
+                         )
+                   (t0-0 (-> arg3 param 0))
+                   )
+               (s1-0 (the-as attack-info s2-0) s0-0 sv-96 a3-2 (the-as touching-shapes-entry t0-0))
+               )
+             )
+           (format 0 "info: ~A~%" (-> (the-as attack-info s3-0) mode))
+           (let* ((v1-31 (-> (the-as attack-info s3-0) mode))
+                  (f30-0 (cond
+                           ((= v1-31 'tar)
+                            (set! (-> (the-as attack-info s3-0) id) (the-as uint 2))
+                            (* 100.0 (seconds-per-frame))
+                            )
+                           ((= v1-31 'melt)
+                            (set! (-> (the-as attack-info s3-0) id) (the-as uint 2))
+                            (let ((s2-1 (if (logtest? (-> (the-as attack-info s3-0) mask) (attack-mask intersection))
+                                            (-> (the-as attack-info s3-0) intersection)
+                                            (-> self control trans)
+                                            )
+                                        )
+                                  )
+                              (launch-particles (-> *part-id-table* 1053) s2-1)
+                              (launch-particles (-> *part-id-table* 1055) s2-1)
+                              )
+                            (* 100.0 (seconds-per-frame))
+                            )
+                           ((or (= v1-31 'burn) (= v1-31 'burnup))
+                            (set! (-> (the-as attack-info s3-0) id) (the-as uint 2))
+                            (if (logtest? (-> (the-as attack-info s3-0) mask) (attack-mask intersection))
+                                (-> (the-as attack-info s3-0) intersection)
+                                (-> self control trans)
+                                )
+                            (launch-particles (-> *part-id-table* 1053) (-> self control trans))
+                            (launch-particles (-> *part-id-table* 1055) (-> self control trans))
+                            (* 20.0 (seconds-per-frame))
+                            )
+                           ((= v1-31 'shock)
+                            (let ((s2-2 (if (logtest? (-> (the-as attack-info s3-0) mask) (attack-mask intersection))
+                                            (-> (the-as attack-info s3-0) intersection)
+                                            (-> self control trans)
+                                            )
+                                        )
+                                  )
+                              (launch-particles (-> *part-id-table* 1057) s2-2)
+                              (launch-particles (-> *part-id-table* 1058) s2-2)
+                              )
+                            (set! (-> (the-as attack-info s3-0) id) (the-as uint 2))
+                            10.0
+                            )
+                           ((= v1-31 'explode)
+                            (if (and (-> self next-state) (= (-> self next-state name) 'target-mech-shield))
+                                0.0
+                                4.0
+                                )
+                            )
+                           ((= v1-31 'grunt)
+                            1.0
+                            )
+                           ((= v1-31 'air)
+                            100.0
+                            )
+                           ((or (= v1-31 'endlessfall) (= v1-31 'crush) (= v1-31 'instant-death))
+                            100.0
+                            )
+                           (else
+                             (-> (the-as attack-info s3-0) damage)
+                             )
+                           )
+                         )
+                  )
+             (when (target-log-attack (the-as attack-info s3-0) 'background)
+               (case arg2
+                 (('attack 'attack-or-shove 'attack-invinc)
+                  (if (not (or (logtest? (-> self target-flags) (target-flags tf2))
+                               (logtest? (game-secrets invulnerable) (-> self game secrets))
+                               )
+                           )
+                      (seek! (-> self mech shield-value) 0.0 f30-0)
+                      )
+                  )
+                 )
+               (if (and (= arg2 'attack-or-shove) (< 0.0 (-> self mech shield-value)))
+                   (set! arg2 'shove)
+                   )
+               (if (= arg2 'attack-invinc)
+                   (set! (-> self mech shield-value) 0.0)
+                   )
+               (if (or (= (-> self mech shield-value) 0.0) (= arg2 'shove))
+                   (target-attacked
+                     arg2
+                     (the-as attack-info s3-0)
+                     arg0
+                     (the-as touching-shapes-entry (-> arg3 param 0))
+                     target-mech-hit
+                     )
+                   'block
+                   )
+               )
+             )
+           )
+         )
+        (('shove)
+         (when (not (focus-test? self dead hit))
+           (mem-copy! (the-as pointer (-> self attack-info-rec)) (the-as pointer (-> arg3 param 1)) 168)
+           (when (not (logtest? (-> self attack-info-rec mask) (attack-mask attacker)))
+             (set! (-> self attack-info-rec attacker) (process->handle arg0))
+             (logior! (-> self attack-info-rec mask) (attack-mask attacker))
+             )
+           (go target-mech-hit 'shove (-> self attack-info-rec))
+           )
+         )
+        (('effect-control)
+         (if (string= (the-as string (-> arg3 param 0)) "target-mech-walk")
+             (sound-play-by-name
+               (static-sound-name "mech-walk")
+               (new-sound-id)
+               1024
+               (the int (* 1524.0 (lerp-scale -0.2 0.0 (-> self control ctrl-xz-vel) 12288.0 40960.0)))
+               0
+               (sound-group)
+               #t
+               )
+             )
+         )
+        (('target-mech-get-off)
+         (set! v0-0 (+ (current-time) (the-as time-frame (-> arg3 param 0))))
+         (set! (-> self mech no-get-off-time) (the-as time-frame v0-0))
+         v0-0
+         )
+        (else
+          (target-standard-event-handler arg0 arg1 arg2 arg3)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function target-mech-bonk-event-handler
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior target-mech-bonk-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (when (and (= arg2 'touched)
+               ((method-of-type touching-shapes-entry prims-touching?)
+                (the-as touching-shapes-entry (-> arg3 param 0))
+                (-> self control)
+                (the-as uint 6)
+                )
+               (>= 409.6 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
+               (begin
+                 (vector-normalize!
+                   (vector-!
+                     s4-0
+                     (-> self control collision-spheres 0 prim-core world-sphere)
+                     (-> self control actor-contact-pt)
+                     )
+                   1.0
+                   )
+                 (< 0.01 (-> s4-0 y))
+                 )
+               )
+      (if (< 0.75 (-> s4-0 y))
+          (send-event
+            arg0
+            'bonk
+            (-> arg3 param 0)
+            (fmax
+              (-> self control ground-impact-vel)
+              (- (vector-dot (-> self control transv) (-> self control dynam gravity-normal)))
+              )
+            )
+          )
+      (when (and (= (target-send-attack
+                      arg0
+                      'bonk
+                      (the-as touching-shapes-entry (-> arg3 param 0))
+                      (the-as int (-> self control target-attack-id))
+                      (the-as int (-> self control attack-count))
+                      (penetrate touch bonk mech-bonk)
+                      )
+                    'bounce
+                    )
+                 (not (logtest? (-> self focus-status) (focus-status dead hit)))
+                 )
+        (vector-copy! (-> self control last-trans-any-surf) (-> self control trans))
+        (target-timed-invulnerable (seconds 0.1) self 1)
+        (cond
+          ((focus-test? self carry)
+           enter-state
+           (let ((a0-19 (-> *TARGET-bank* mech-carry-jump-height-min))
+                 (a1-8 (-> *TARGET-bank* mech-carry-jump-height-max))
+                 )
+             (go target-mech-carry-jump a0-19 a1-8)
+             )
+           )
+          (else
+            (go
+              target-mech-jump
+              (-> *TARGET-bank* mech-jump-height-min)
+              (-> *TARGET-bank* mech-jump-height-max)
+              (the-as surface #f)
+              )
+            )
+          )
+        )
+      #f
+      )
+    )
+  )
+
+;; definition for function mech-leg-ik-callback
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
+(defbehavior mech-leg-ik-callback target ((arg0 joint-mod-ik) (arg1 matrix) (arg2 matrix) (arg3 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (vector-copy! s5-0 arg3)
+    (let ((f0-1 (- (-> arg3 y) (-> (target-pos 0) y))))
+      (if (< 6144.0 f0-1)
+          (set! f0-1 6144.0)
+          )
+      (if (< f0-1 -6144.0)
+          (set! f0-1 -6144.0)
+          )
+      (+! (-> arg0 user-position y) f0-1)
+      )
+    (let ((f0-4 (- (-> arg3 y) (-> arg0 user-position y))))
+      (seek! (-> arg0 user-float) f0-4 (* 40960.0 (seconds-per-frame)))
+      )
+    (let* ((f28-0 (-> arg0 user-float))
+           (f30-1 (lerp-scale 1.0 0.0 f28-0 0.0 12288.0))
+           (s3-1 (vector+*! (new 'stack-no-clear 'vector) s5-0 *up-vector* 8192.0))
+           )
+      (vector-float*! (new 'stack-no-clear 'vector) *up-vector* -16384.0)
+      (let ((s2-0 (new 'stack-no-clear 'vector)))
+        0.0
+        (let ((f0-11 (intersect-ray-plane s3-1 *up-vector* (-> arg0 user-position) *up-vector*)))
+          (vector+*! s2-0 s3-1 *up-vector* f0-11)
+          )
+        (vector+*! s2-0 arg3 *up-vector* (- f28-0))
+        (vector+*!
+          s5-0
+          s5-0
+          (vector-! (new 'stack-no-clear 'vector) s2-0 s5-0)
+          (fmin 1.0 (* (-> arg0 user-blend) f30-1))
+          )
+        )
+      )
+    (set-ik-target! arg0 s5-0)
+    )
+  )
+
+;; definition for function mech-update-ik
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior mech-update-ik target ()
+  (local-vars (sv-720 vector))
+  (let ((gp-0 (new 'stack-no-clear 'collide-query))
+        (s5-0 (-> (the-as process-drawable (-> self parent 0)) root))
+        )
+    (let ((a1-0 (-> gp-0 bbox))
+          (v1-2 (-> s5-0 trans))
+          (a0-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> a0-0 x) 10240.0)
+      (set! (-> a0-0 y) 10240.0)
+      (set! (-> a0-0 z) 10240.0)
+      (set! (-> a0-0 w) 1.0)
+      (vector-! (-> a1-0 min) v1-2 a0-0)
+      )
+    (let ((a1-2 (-> gp-0 bbox max))
+          (v1-3 (-> s5-0 trans))
+          (a0-1 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> a0-1 x) 10240.0)
+      (set! (-> a0-1 y) 10240.0)
+      (set! (-> a0-1 z) 10240.0)
+      (set! (-> a0-1 w) 1.0)
+      (vector+! a1-2 v1-3 a0-1)
+      )
+    (set! (-> gp-0 collide-with) (-> (the-as collide-shape s5-0) root-prim prim-core collide-with))
+    (set! (-> gp-0 ignore-process0) #f)
+    (set! (-> gp-0 ignore-process1) #f)
+    (set! (-> gp-0 ignore-pat) (-> (the-as collide-shape s5-0) pat-ignore-mask))
+    (fill-using-bounding-box *collide-cache* gp-0)
+    (dotimes (s4-0 2)
+      (let ((s3-0 (-> self mech-ik s4-0)))
+        #t
+        (set! (-> s3-0 callback) mech-leg-ik-callback)
+        (-> s3-0 shoulder-matrix-no-ik)
+        (let ((v1-13 (-> s3-0 elbow-matrix-no-ik))
+              (s0-0 (new 'stack-no-clear 'vector))
+              )
+          (set! sv-720 (new 'stack-no-clear 'vector))
+          (let ((a0-5 (-> *y-vector* quad)))
+            (set! (-> sv-720 quad) a0-5)
+            )
+          (let ((s2-0 (new 'stack-no-clear 'vector)))
+            (new 'stack-no-clear 'vector)
+            (new 'stack-no-clear 'vector)
+            (let ((s1-0 (new 'stack-no-clear 'vector)))
+              (vector+*! s0-0 (-> v1-13 trans) (-> v1-13 uvec) (-> s3-0 hand-dist))
+              (let ((f0-11
+                      (lerp-scale 1.0 0.0 (- (-> s0-0 y) (-> (the-as collide-shape-moving s5-0) gspot-pos y)) 2048.0 12288.0)
+                      )
+                    )
+                (seek! (-> s3-0 user-blend) f0-11 (* 4.0 (seconds-per-frame)))
+                )
+              (vector+*! (-> gp-0 start-pos) s0-0 sv-720 6144.0)
+              (let ((v1-19 (-> gp-0 move-dist))
+                    (f0-16 -20480.0)
+                    )
+                (vector-float*! v1-19 sv-720 f0-16)
+                )
+              (let ((v1-21 gp-0))
+                (set! (-> v1-21 radius) 4.096)
+                (set! (-> v1-21 collide-with) (-> gp-0 collide-with))
+                (set! (-> v1-21 ignore-process0) #f)
+                (set! (-> v1-21 ignore-process1) #f)
+                (set! (-> v1-21 ignore-pat)
+                      (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                      )
+                (set! (-> v1-21 action-mask) (collide-action solid))
+                )
+              (let ((f30-0 (probe-using-line-sphere *collide-cache* gp-0)))
+                (cond
+                  ((>= f30-0 0.0)
+                   (vector-copy! s1-0 (-> gp-0 best-other-tri normal))
+                   (when (< 8192.0 (vector-vector-angle-safe *y-vector* s1-0))
+                     (let* ((a1-16 (vector-normalize! (vector-cross! (new 'stack-no-clear 'vector) *y-vector* s1-0) 1.0))
+                            (a2-12 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) a1-16 8192.0))
+                            )
+                       (vector-orient-by-quat! s1-0 *y-vector* a2-12)
+                       )
+                     )
+                   (vector+*! s2-0 (-> gp-0 start-pos) (-> gp-0 move-dist) f30-0)
+                   (vector-copy! (-> s3-0 user-position) s2-0)
+                   (vector-copy! (-> s3-0 user-normal) s1-0)
+                   )
+                  (else
+                    (set! (-> s0-0 y) (-> (target-pos 0) y))
+                    (vector-copy! (-> s3-0 user-position) s0-0)
+                    (vector-copy! (-> s3-0 user-normal) *y-vector*)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function target-mech-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defbehavior target-mech-init target ((arg0 handle) (arg1 float) (arg2 symbol))
+  (local-vars
+    (sv-160 (function vector entity-actor skeleton-group vector manipy-options none :behavior manipy))
+    (sv-176 vector)
+    (sv-192 entity-actor)
+    )
+  (target-gun-end-mode #f)
+  (target-exit)
+  (when (zero? (-> self mech))
+    (set! (-> self mech) (new 'process 'mech-info))
+    (set! (-> self mech hud 0) (the-as handle #f))
+    (set! (-> self mech shield-handle) (the-as handle #f))
+    (set! (-> self mech engine-sound-id) (new-sound-id))
+    (set! (-> self mech thrust-sound-id) (new-sound-id))
+    (set! (-> self mech drag-sound-id) (new-sound-id))
+    (set! (-> self mech whine-sound-id) (new-sound-id))
+    (set! (-> self mech shield-sound-id) (new-sound-id))
+    (set! (-> self mech mode-sound-bank) #f)
+    )
+  (set! (-> self board latch?) #f)
+  (set! (-> self mech stick-lock) #f)
+  (set! (-> self mech stick-off) #f)
+  (set-time! (-> self mech unstuck-time))
+  (set! (-> self mech stuck-count) 0)
+  (set-time! (-> self mech mech-start-time))
+  (set! (-> self mech jump-thrust) 0.0)
+  (set! (-> self mech jump-thrust-fuel) (-> *TARGET-bank* mech-jump-thrust-fuel))
+  (set! (-> self mech state-impact? 0) #f)
+  ((method-of-type impact-control initialize) (-> self mech state-impact 0) self -1 0.0 (collide-spec))
+  (set! (-> self mech shield-max) 100.0)
+  (set! (-> self mech shield-value) arg1)
+  (set! (-> self mech entity) (entity-by-type mech))
+  (let ((v1-31 (handle->process arg0)))
+    (if v1-31
+        (set! (-> self mech entity) (-> v1-31 entity))
+        )
+    )
+  (when (not (and (-> self mech entity) (logtest? (level-flags mech) (-> self mech entity extra level info level-flags)))
+             )
+    (dotimes (v1-39 (-> *level* length))
+      (let ((a0-18 (-> *level* level v1-39)))
+        (when (= (-> a0-18 status) 'active)
+          (when (logtest? (level-flags mech) (-> a0-18 info level-flags))
+            (let ((a0-20 (-> a0-18 entity data 0 entity)))
+              (when a0-20
+                (set! (-> self mech entity) (the-as entity-actor a0-20))
+                (goto cfg-22)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (label cfg-22)
+  (let ((v1-44 (-> self mech)))
+    (set! (-> v1-44 particle-system-2d) *sp-particle-system-2d*)
+    (set! (-> v1-44 particle-system-3d) *sp-particle-system-3d*)
+    (set! (-> v1-44 part-quat) *particle-quat*)
+    (set! (-> v1-44 part-vel) *particle-vel*)
+    (set! (-> v1-44 part-thruster) (-> *part-id-table* 1037))
+    (set! (-> v1-44 part-thruster-scale-x) (-> *part-id-table* 1037 init-specs 4))
+    (set! (-> v1-44 part-thruster-scale-y) (-> *part-id-table* 1037 init-specs 5))
+    (set! (-> v1-44 thruster-flame-width) 0.0)
+    (set! (-> v1-44 thruster-flame-length) 0.0)
+    )
+  (set! (-> self control reaction) target-collision-reaction)
+  (set! (-> self control transv quad) (the-as uint128 0))
+  (set! (-> self control ctrl-xz-vel) 0.0)
+  (logior! (-> self focus-status) (focus-status mech))
+  (set! (-> self control bend-target) 0.0)
+  (let ((v1-54 (-> self node-list data)))
+    (set! (-> v1-54 0 param0) (the-as (function cspace transformq none) cspace<-transformq+world-trans!))
+    (set! (-> v1-54 0 param1) (the-as basic (-> self control trans)))
+    (set! (-> v1-54 0 param2) (the-as basic (-> self control cspace-offset)))
+    )
+  (target-collide-set! 'mech 0.0)
+  (set! (-> self control pat-ignore-mask) (new 'static 'pat-surface :noentity #x1 :nomech #x1))
+  (logior! (-> self draw status) (draw-control-status no-draw-bounds))
+  (set! (-> self draw shadow) #f)
+  (let ((s4-1 (-> self entity))
+        (s3-0 (-> self level))
+        )
+    (process-entity-set! self (-> self mech entity))
+    (let ((s2-0 (get-process *8k-dead-pool* manipy #x20000 1)))
+      (set! (-> self manipy)
+            (the-as
+              (pointer manipy)
+              (when s2-0
+                (let ((t9-13 (method-of-type manipy activate)))
+                  (t9-13 (the-as manipy s2-0) self "manipy" (the-as pointer #x70004000))
+                  )
+                (let ((s1-0 run-function-in-process)
+                      (s0-0 s2-0)
+                      )
+                  (set! sv-160 manipy-init)
+                  (set! sv-176 (-> self control trans))
+                  (set! sv-192 (-> self entity))
+                  (let ((t0-1 (art-group-get-by-name *level* "skel-mech" (the-as (pointer level) #f)))
+                        (t1-0 #f)
+                        (t2-0 0)
+                        )
+                    ((the-as (function object object object object object object object none) s1-0)
+                     s0-0
+                     sv-160
+                     sv-176
+                     sv-192
+                     t0-1
+                     t1-0
+                     t2-0
+                     )
+                    )
+                  )
+                (-> s2-0 ppointer)
+                )
+              )
+            )
+      )
+    (set! (-> self entity) s4-1)
+    (set! (-> self level) s3-0)
+    )
+  (when (-> self manipy)
+    (send-event
+      (ppointer->process (-> self manipy))
+      'trans-hook
+      (lambda :behavior target
+        ()
+        (let ((v1-0 (ppointer->process (-> self parent))))
+          (vector-copy! (-> self control trans) (-> (the-as target v1-0) mech mech-trans))
+          (let ((a0-4 (-> (the-as target v1-0) mech mech-quat quad)))
+            (set! (-> self control quat quad) a0-4)
+            )
+          (vector-copy! (-> self control scale) (-> (the-as target v1-0) mech mech-scale))
+          (set! (-> self draw light-index) (-> (the-as target v1-0) draw light-index))
+          (let ((a0-10 (-> (the-as target v1-0) draw color-mult quad)))
+            (set! (-> self draw color-mult quad) a0-10)
+            )
+          (let ((a0-12 (-> (the-as target v1-0) draw color-emissive quad)))
+            (set! (-> self draw color-emissive quad) a0-12)
+            )
+          (let ((v0-0 (-> (the-as target v1-0) draw shadow-ctrl settings shadow-dir quad)))
+            (set! (-> self draw shadow-ctrl settings shadow-dir quad) v0-0)
+            v0-0
+            )
+          )
+        )
+      )
+    (send-event
+      (ppointer->process (-> self manipy))
+      'post-hook
+      (lambda :behavior target
+        ()
+        (let ((gp-0 (ppointer->process (-> self parent))))
+          ((method-of-type impact-control update-from-cspace) (-> (the-as target gp-0) mech state-impact 0))
+          (when (-> (the-as target gp-0) mech state-impact? 0)
+            (let ((a1-0 (new 'stack-no-clear 'collide-query)))
+              ((method-of-type impact-control impact-control-method-11)
+               (-> (the-as target gp-0) mech state-impact 0)
+               a1-0
+               (the-as process gp-0)
+               (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+               )
+              )
+            )
+          (mech-update-ik)
+          (target-mech-mech-effect (the-as target gp-0))
+          )
+        )
+      )
+    (send-event (ppointer->process (-> self manipy)) 'anim-mode 'clone-anim)
+    (send-event (ppointer->process (-> self manipy)) 'sync #t)
+    (send-event
+      (ppointer->process (-> self manipy))
+      'eval
+      (lambda :behavior target
+        ()
+        (set! (-> self state-hook) #f)
+        (set! (-> self draw shadow-ctrl) *mech-shadow-control*)
+        (set! (-> self mech-ik 0) (new 'process 'joint-mod-ik self 27 5283.84))
+        (set! (-> self mech-ik 1) (new 'process 'joint-mod-ik self 33 5283.84))
+        (dotimes (v1-3 2)
+          (let ((a0-5 (-> self mech-ik v1-3)))
+            (set! (-> a0-5 elbow-pole-vector-axis) (the-as uint 2))
+            (set! (-> a0-5 elbow-rotation-axis) (the-as uint 0))
+            (set! (-> a0-5 callback) mech-leg-ik-callback)
+            (logior! (-> a0-5 flags) (joint-mod-ik-flags elbow-trans-neg))
+            )
+          )
+        (dotimes (gp-0 2)
+          (enable-set! (-> self mech-ik gp-0) #t)
+          )
+        #f
+        )
+      )
+    )
+  (logior! (-> self target-flags) (target-flags tf6))
+  (set-setting! 'string-max-length 'low (meters 7) 0)
+  (set-setting! 'string-min-length 'low (meters 4) 0)
+  (set-setting! 'string-max-height 'low (meters 3.5) 0)
+  (set-setting! 'string-min-height 'low (meters 1.5) 0)
+  (set-setting! 'fov 'abs (degrees 75.0) 0)
+  (set-setting! 'head-offset 'abs (meters 4.5) 0)
+  (set! (-> self mech mode-sound-bank) (add-setting! 'mode-sound-bank 'modemech 0.0 0))
+  (set! (-> self mech hud 0)
+        (ppointer->handle (process-spawn hud-heatmeter :init hud-init-by-other :name "hud-heatmeter" :to self))
+        )
+  (let ((s4-3 (new 'stack-no-clear 'shield-sphere-spawn-params)))
+    (set! (-> s4-3 owner) (process->handle self))
+    (set! (-> s4-3 sphere-size) 3.75)
+    (set! (-> s4-3 track-joint) 3)
+    (set! (-> s4-3 enable-time) (seconds 0.1))
+    (set! (-> s4-3 disable-time) (seconds 0.1))
+    (set! (-> s4-3 shield-strength) 8)
+    (set! (-> s4-3 shield-type) (shield-type shield-type-0))
+    (if (new 'static 'vector :z -4096.0 :w 1.0)
+        (vector-copy! (-> s4-3 offset-vec) (new 'static 'vector :z -4096.0 :w 1.0))
+        (vector-reset! (-> s4-3 offset-vec))
+        )
+    (let ((s3-1 (the-as process #f)))
+      (let* ((s2-1 (get-process *default-dead-pool* mech-shield #x4000 1))
+             (v1-129 (when s2-1
+                       (let ((t9-32 (method-of-type process activate)))
+                         (t9-32 s2-1 self "process" (the-as pointer #x70004000))
+                         )
+                       (run-now-in-process s2-1 mech-shield-init-by-other s4-3)
+                       (-> s2-1 ppointer)
+                       )
+                     )
+             )
+        (if v1-129
+            (set! s3-1 (-> v1-129 0))
+            )
+        )
+      (cond
+        (s3-1
+          (set! (-> self mech shield-handle) (process->handle s3-1))
+          (send-event (handle->process (-> self mech shield-handle)) 'disabled)
+          )
+        (else
+          )
+        )
+      )
+    )
+  (remove-exit)
+  (if arg2
+      (go target-mech-stance)
+      (go target-mech-get-on arg0)
+      )
+  (none)
+  )
+
+;; definition for function target-mech-exit
+;; INFO: Used lq/sq
+(defbehavior target-mech-exit target ()
+  (when (not (and (-> self next-state)
+                  (let ((v1-3 (-> self next-state name)))
+                    (or (= v1-3 'target-mech-stance)
+                        (= v1-3 'target-mech-walk)
+                        (= v1-3 'target-mech-jump)
+                        (= v1-3 'target-mech-jump-jump)
+                        (= v1-3 'target-mech-falling)
+                        (= v1-3 'target-mech-hit-ground)
+                        (= v1-3 'target-mech-punch)
+                        (= v1-3 'target-mech-hit)
+                        (= v1-3 'target-mech-death)
+                        (= v1-3 'target-mech-carry-drag)
+                        (= v1-3 'target-mech-carry-pickup)
+                        (= v1-3 'target-mech-carry-drop)
+                        (= v1-3 'target-mech-carry-stance)
+                        (= v1-3 'target-mech-carry-walk)
+                        (= v1-3 'target-mech-carry-jump)
+                        (= v1-3 'target-mech-carry-falling)
+                        (= v1-3 'target-mech-carry-hit-ground)
+                        (= v1-3 'target-mech-carry-throw)
+                        (= v1-3 'target-mech-get-off)
+                        (= v1-3 'target-mech-get-off-jump)
+                        (= v1-3 'target-mech-grab)
+                        (= v1-3 'target-mech-clone-anim)
+                        (= v1-3 'target-mech-shield)
+                        )
+                    )
+                  )
+             )
+    (let ((v1-4 (-> self manipy)))
+      (when v1-4
+        (deactivate (-> v1-4 0))
+        (set! (-> self manipy) (the-as (pointer manipy) #f))
+        )
+      )
+    (let ((a0-27 (handle->process (-> self mech shield-handle))))
+      (if a0-27
+          (deactivate a0-27)
+          )
+      )
+    (setting-control-method-14 *setting-control* (-> self mech mode-sound-bank))
+    (set! (-> self mech mode-sound-bank) #f)
+    (logclear! (-> self draw status) (draw-control-status no-draw-bounds))
+    (logclear! (-> self focus-status) (focus-status mech))
+    (logclear! (-> self control root-prim prim-core action) (collide-action stuck-wall-escape))
+    (set! (-> self control mod-surface) *walk-mods*)
+    (logclear! (-> self target-flags) (target-flags tf6))
+    (remove-setting! 'string-max-length)
+    (remove-setting! 'string-min-length)
+    (remove-setting! 'string-max-height)
+    (remove-setting! 'string-min-height)
+    (remove-setting! 'fov)
+    (remove-setting! 'head-offset)
+    (remove-setting! 'sound-flava)
+    (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
+    (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
+    (let ((v1-50 (-> self node-list data)))
+      (set! (-> v1-50 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
+      (set! (-> v1-50 0 param1) (the-as basic (-> self control trans)))
+      (set! (-> v1-50 0 param2) (the-as basic (-> self control cspace-offset)))
+      )
+    (target-collide-set! 'normal 0.0)
+    (set! (-> self control reaction) target-collision-reaction)
+    (set! (-> self control pat-ignore-mask)
+          (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :board #x1)
+          )
+    (sound-stop (-> self mech engine-sound-id))
+    (sound-stop (-> self mech thrust-sound-id))
+    (sound-stop (-> self mech drag-sound-id))
+    (sound-stop (-> self mech whine-sound-id))
+    (send-event (handle->process (-> self mech hud 0)) 'hide-and-die)
+    (set! (-> self draw shadow) (-> self shadow-backup))
+    (set! (-> self control cspace-offset quad) (the-as uint128 0))
+    (remove-setting! 'sound-flava)
+    (target-exit)
+    )
+  (none)
+  )
+
+;; definition for function target-mech-effect
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-mech-effect target ()
+  (sound-play "mech-pulse" :id (-> self mech engine-sound-id))
+  (set! (-> self game distance) (/ (-> self mech shield-value) (-> self mech shield-max)))
+  0
+  (none)
+  )
+
+;; definition for function target-mech-add-thrust
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defbehavior target-mech-add-thrust target ()
+  (let ((s5-0 (-> self control target-transv))
+        (gp-0 (-> self control transv-ctrl))
+        )
+    (vector-copy! (new 'stack-no-clear 'vector) (-> self control target-transv))
+    (target-bend-vel-turn gp-0)
+    (target-add-slide-factor s5-0)
+    (let ((t9-2 vector-xz-normalize!)
+          (a0-5 (new-stack-vector0))
+          )
+      (vector-copy! a0-5 s5-0)
+      (let ((s4-0 (t9-2 a0-5 1.0)))
+        (let ((t9-3 vector-xz-normalize!)
+              (a0-6 (new-stack-vector0))
+              )
+          (vector-copy! a0-6 gp-0)
+          (let ((v1-7 (t9-3 a0-6 1.0)))
+            (set! (-> s4-0 y) 0.0)
+            (set! (-> v1-7 y) 0.0)
+            )
+          )
+        (let* ((f0-2 (-> s4-0 z))
+               (v1-8 gp-0)
+               (f1-4 (sqrtf (+ (* (-> v1-8 x) (-> v1-8 x)) (* (-> v1-8 z) (-> v1-8 z)))))
+               (v1-10 s5-0)
+               (f0-11
+                 (cond
+                   ((>= f1-4 (sqrtf (+ (* (-> v1-10 x) (-> v1-10 x)) (* (-> v1-10 z) (-> v1-10 z)))))
+                    (let ((f0-3 (-> self control current-surface fric))
+                          (f1-5 1.0)
+                          (v1-15 gp-0)
+                          )
+                      (* f0-3 (fmax f1-5 (/ (sqrtf (+ (* (-> v1-15 x) (-> v1-15 x)) (* (-> v1-15 z) (-> v1-15 z))))
+                                            (-> self control current-surface nonlin-fric-dist)
+                                            )
+                                    )
+                         )
+                      )
+                    )
+                   ((>= f0-2 0.0)
+                    (+ (* f0-2 (-> self control current-surface seek0)) (* (- 1.0 f0-2) (-> self control current-surface seek90)))
+                    )
+                   (else
+                     (+ (* (fabs f0-2) (-> self control current-surface seek180))
+                        (* (+ 1.0 f0-2) (-> self control current-surface seek90))
+                        )
+                     )
+                   )
+                 )
+               (s4-1 vector-xz-normalize!)
+               (s3-0 gp-0)
+               (t9-4 seek)
+               (v1-30 gp-0)
+               )
+          (s4-1 s3-0 (t9-4
+                       (sqrtf (+ (* (-> v1-30 x) (-> v1-30 x)) (* (-> v1-30 z) (-> v1-30 z))))
+                       (sqrtf (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z))))
+                       (* f0-11 (seconds-per-frame))
+                       )
+                )
+          )
+        )
+      )
+    (set! (-> self control velocity-after-thrust) (vector-length gp-0))
+    )
+  (let ((gp-1 (new-stack-vector0)))
+    (vector-matrix*! gp-1 (-> self control transv-ctrl) (-> self control c-R-w))
+    (vector-float*! gp-1 gp-1 0.5)
+    (vector+! gp-1 gp-1 (-> self control trans))
+    (add-debug-text-sphere
+      *display-target-marks*
+      (bucket-id debug-no-zbuf1)
+      gp-1
+      (meters 0.2)
+      "ltransv"
+      (new 'static 'rgba :g #xff :a #x80)
+      )
+    )
+  (none)
+  )
+
+;; definition for function target-mech-collision
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-mech-collision target ()
+  (cond
+    ((and (-> self next-state) (= (-> self next-state name) 'target-mech-carry-drag))
+     (let ((s5-0 (new 'stack-no-clear 'vector))
+           (gp-0 (new 'stack-no-clear 'vector))
+           )
+       (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-0 from) (process->ppointer self))
+         (set! (-> a1-0 num-params) 2)
+         (set! (-> a1-0 message) 'move)
+         (set! (-> a1-0 param 0) (the-as uint (-> self control transv)))
+         (set! (-> a1-0 param 1) (the-as uint s5-0))
+         (let ((s3-0 (send-event-function (handle->process (-> self carry other)) a1-0))
+               (s4-0 (new 'stack-no-clear 'vector))
+               )
+           (vector-copy! s4-0 (-> self control trans))
+           (vector-copy! (new 'stack-no-clear 'vector) (-> self control transv))
+           (let ((a2-1 (new 'stack-no-clear 'collide-query))
+                 (v1-18 (-> self control))
+                 )
+             (set! (-> a2-1 collide-with) (-> v1-18 root-prim prim-core collide-with))
+             (set! (-> a2-1 ignore-process0) self)
+             (set! (-> a2-1 ignore-process1) #f)
+             (set! (-> a2-1 ignore-pat) (-> v1-18 pat-ignore-mask))
+             (set! (-> a2-1 action-mask) (collide-action solid))
+             (fill-cache-integrate-and-collide v1-18 (-> v1-18 transv) a2-1 (meters 1))
+             )
+           (vector-! gp-0 (-> self control trans) s4-0)
+           (let* ((s2-0 (-> self control dynam gravity-normal))
+                  (f30-0 (- (vector-dot s2-0 gp-0) (vector-dot s2-0 s5-0)))
+                  (a1-4 (new 'stack-no-clear 'event-message-block))
+                  )
+             (set! (-> a1-4 from) (process->ppointer self))
+             (set! (-> a1-4 num-params) 0)
+             (set! (-> a1-4 message) 'carry-info)
+             (let* ((s1-0 (the-as carry-info (send-event-function (handle->process (-> self carry other)) a1-4)))
+                    (f0-2 (distance-from-destination (-> self carry) s1-0))
+                    )
+               (cond
+                 ((not s3-0)
+                  )
+                 ((>= f0-2 0.0)
+                  (let ((v1-38 (vector-float*! (new 'stack-no-clear 'vector) s2-0 f30-0)))
+                    (vector+! (-> s1-0 hold-trans) (-> s1-0 hold-trans) v1-38)
+                    )
+                  (let ((v1-39 (new-stack-vector0)))
+                    (let ((f0-4 (vector-dot (-> self control dynam gravity-normal) s5-0)))
+                      0.0
+                      (vector-! v1-39 s5-0 (vector-float*! v1-39 (-> self control dynam gravity-normal) f0-4))
+                      )
+                    (let ((f0-5 (vector-length v1-39)))
+                      f0-5
+                      (let ((f0-6 f0-5)
+                            (v1-42 (new-stack-vector0))
+                            )
+                        (let ((f1-6 (vector-dot (-> self control dynam gravity-normal) gp-0)))
+                          0.0
+                          (vector-! v1-42 gp-0 (vector-float*! v1-42 (-> self control dynam gravity-normal) f1-6))
+                          )
+                        (let ((f1-7 (vector-length v1-42)))
+                          f1-7
+                          (when (< f0-6 f1-7)
+                            (let ((v1-46 (new-stack-vector0))
+                                  (f0-8 (vector-dot (-> self control dynam gravity-normal) gp-0))
+                                  )
+                              0.0
+                              (vector-! v1-46 gp-0 (vector-float*! v1-46 (-> self control dynam gravity-normal) f0-8))
+                              (let ((f1-11 (vector-length v1-46))
+                                    (a0-43 (new-stack-vector0))
+                                    )
+                                (let ((f2-3 (vector-dot (-> self control dynam gravity-normal) s5-0)))
+                                  0.0
+                                  (vector-! a0-43 s5-0 (vector-float*! a0-43 (-> self control dynam gravity-normal) f2-3))
+                                  )
+                                (let ((f2-4 (vector-length a0-43)))
+                                  f2-4
+                                  (let ((f2-5 f2-4))
+                                    (vector+!
+                                      gp-0
+                                      (vector-float*! gp-0 (-> self control dynam gravity-normal) f0-8)
+                                      (vector-float*! v1-46 v1-46 (/ f2-5 f1-11))
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            (let ((a1-25 (vector+! (new 'stack-no-clear 'vector) s4-0 gp-0)))
+                              (move-to-point! (-> self control) a1-25)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                 (else
+                   (send-event self 'drop (seconds 0.5))
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
+     )
+    (else
+      (let ((a2-17 (new 'stack-no-clear 'collide-query))
+            (v1-54 (-> self control))
+            )
+        (set! (-> a2-17 collide-with) (-> v1-54 root-prim prim-core collide-with))
+        (set! (-> a2-17 ignore-process0) self)
+        (set! (-> a2-17 ignore-process1) #f)
+        (set! (-> a2-17 ignore-pat) (-> v1-54 pat-ignore-mask))
+        (set! (-> a2-17 action-mask) (collide-action solid))
+        (fill-cache-integrate-and-collide v1-54 (-> v1-54 transv) a2-17 (meters 1))
+        )
+      )
+    )
+  (when (logtest? (-> self control status) (collide-status touch-wall))
+    (let ((v1-61 (vector-! (new 'stack-no-clear 'vector) (-> self control wall-contact-pt) (-> self control trans))))
+      (set! (-> v1-61 y) 0.0)
+      (when (< (vector-dot v1-61 (-> self control c-R-w fvec)) 0.0)
+        (set-time! (-> self mech back-touch-time))
+        (vector-copy! (-> self mech back-touch-point) (-> self control wall-contact-pt))
+        (vector-copy! (-> self mech back-touch-trans) (-> self control trans))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function target-mech-real-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior target-mech-real-post target ()
+  (let ((f30-0 (-> self clock clock-ratio)))
+    (let ((gp-1 (max 1 (the int (-> self clock time-adjust-ratio)))))
+      (update-rates! (-> self clock) (/ f30-0 (the float gp-1)))
+      (while (nonzero? gp-1)
+        (+! gp-1 -1)
+        (set! (-> self control remaining-ctrl-iterations) gp-1)
+        (flag-setup)
+        (if (< (-> self control force-turn-to-strength) 0.0)
+            (set! (-> self control force-turn-to-strength) (- 1.0 (-> self control cpad stick0-speed)))
+            )
+        (build-conversions (-> self control transv))
+        (do-rotations1)
+        (let ((s5-0 (new-stack-vector0)))
+          (read-pad s5-0)
+          (let ((f28-0 (-> self control pad-magnitude)))
+            (if (or (and (< 0.0 f28-0)
+                         (< 0.3 (-> self control pad-magnitude))
+                         (< (vector-dot (-> self control pad-xz-dir) (-> self control last-pad-xz-dir)) 0.2)
+                         (< f28-0 0.7)
+                         )
+                    (-> self mech stick-off)
+                    )
+                (set! f28-0 0.0)
+                )
+            (when (!= (-> self control force-turn-to-strength) 0.0)
+              (let ((f0-15 (fmin 1.0 (-> self control force-turn-to-strength))))
+                (set! (-> self control force-turn-to-strength) f0-15)
+                (let ((a1-2 (vector-float*!
+                              (new 'stack-no-clear 'vector)
+                              (if (= f28-0 0.0)
+                                  *zero-vector*
+                                  s5-0
+                                  )
+                              f28-0
+                              )
+                            )
+                      (a2-1 (vector-float*!
+                              (new 'stack-no-clear 'vector)
+                              (-> self control force-turn-to-direction)
+                              (-> self control force-turn-to-speed)
+                              )
+                            )
+                      )
+                  (vector-lerp! s5-0 a1-2 a2-1 f0-15)
+                  )
+                )
+              (set! f28-0 (vector-length s5-0))
+              (vector-normalize! s5-0 1.0)
+              )
+            (turn-to-vector s5-0 f28-0)
+            )
+          )
+        (cond
+          ((and (logtest? (-> self control mod-surface flags) (surface-flag air))
+                (not (logtest? (-> self control status) (collide-status on-surface)))
+                )
+           (add-thrust)
+           )
+          (else
+            (let* ((v1-51 (-> self control target-transv))
+                   (f0-20 (sqrtf (+ (* (-> v1-51 x) (-> v1-51 x)) (* (-> v1-51 z) (-> v1-51 z)))))
+                   )
+              (set-vector! (-> self control target-transv) 0.0 0.0 f0-20 1.0)
+              )
+            (target-mech-add-thrust)
+            )
+          )
+        (add-gravity)
+        (do-rotations2)
+        (reverse-conversions (-> self control transv))
+        (pre-collide-setup)
+        (target-mech-collision)
+        (bend-gravity)
+        (post-flag-setup)
+        )
+      )
+    (update-rates! (-> self clock) f30-0)
+    )
+  (ja-post)
+  (joint-points)
+  (do-target-gspot)
+  (target-powerup-process)
+  (vector+! (-> self mech mech-trans) (-> self control trans) (-> self control cspace-offset))
+  (quaternion-copy! (the-as quaternion (-> self mech mech-quat)) (-> self control quat))
+  (vector-copy! (-> self mech mech-scale) (-> self control scale))
+  (vector+! (-> self alt-cam-pos) (-> self control camera-pos) (new 'static 'vector :y 4096.0 :w 1.0))
+  (set-time! (-> self mech mech-time))
+  (target-mech-effect)
+  0
+  (none)
+  )
+
+;; definition for function target-mech-post
+(defbehavior target-mech-post target ()
+  (target-mech-real-post)
+  (none)
+  )

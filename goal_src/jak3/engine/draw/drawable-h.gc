@@ -5,5 +5,42 @@
 ;; name in dgo: drawable-h
 ;; dgos: GAME
 
+(declare-type region-prim-list structure)
+(declare-type draw-control structure)
+
+(define-extern sphere-cull "Is this sphere visible? Uses cached camera matrix registers, so use with care." (function vector symbol))
+(define-extern sphere-in-view-frustum? (function sphere symbol))
+(define-extern line-in-view-frustum? (function vector vector symbol))
+(define-extern vis-cull (function int symbol))
+(define-extern calc-vu1-lights (function vu-lights draw-control symbol none))
+
 ;; DECOMP BEGINS
 
+(deftype drawable (basic)
+  "Base class for `drawable` scene graph system.
+This base class is really abused in many ways, and the meaning of the various methods differ depending
+on the exact type. Not even the ID and bsphere here are always populated.
+This is used for very high level organization of different rendering data types, and also very low-level
+culling/rendering optimizations. It supports both array-of-references and inline-array containers with precise
+control over memory layout for use with DMA."
+  ((id       int16)
+   (bsphere  vector  :inline)
+   )
+  (:methods
+    (login (_type_) _type_)
+    (draw (_type_) none)
+    (drawable-method-11 (_type_) none)
+    (drawable-method-12 (_type_) none)
+    (collect-stats (_type_) none)
+    (debug-draw (_type_) none)
+    (unpack-vis (_type_ (pointer int8) (pointer int8)) (pointer int8))
+    (collect-regions (_type_ sphere int region-prim-list) none)
+    )
+  )
+
+
+(deftype drawable-error (drawable)
+  "A drawable which just represents an error. When drawn, it simply displays a sphere with an error message."
+  ((name  string)
+   )
+  )

@@ -1,0 +1,516 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type color-array
+(deftype color-array (inline-array-class)
+  ((data  rgbaf  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type color-array
+(defmethod inspect ((this color-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> color-array heap-base) (the-as uint 16))
+
+;; definition of type light-trail-composition
+(deftype light-trail-composition (structure)
+  ((color-mode         uint64)
+   (color-curve        curve-color-piecewise)
+   (color-repeat-dist  float)
+   (alpha-1-mode       uint64)
+   (alpha-2-mode       uint64)
+   (base-alpha         float)
+   (alpha-curve-1      curve2d-piecewise)
+   (alpha-curve-2      curve2d-piecewise)
+   (alpha-repeat-dist  float)
+   (width-mode         uint64)
+   (base-width         float)
+   (width-curve        curve2d-piecewise)
+   (width-repeat-dist  float)
+   (uv-mode            uint64)
+   (uv-repeat-dist     float)
+   (max-age            time-frame)
+   (tex-id             texture-id)
+   (lie-mode           lie-mode)
+   (lie-vector         vector  :inline)
+   (zbuffer?           symbol)
+   (use-tape-mode?     symbol)
+   (blend-mode         uint64)
+   (frame-stagger      uint8)
+   )
+  )
+
+;; definition for method 3 of type light-trail-composition
+(defmethod inspect ((this light-trail-composition))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light-trail-composition)
+  (format #t "~1Tcolor-mode: ~D~%" (-> this color-mode))
+  (format #t "~1Tcolor-curve: ~A~%" (-> this color-curve))
+  (format #t "~1Tcolor-repeat-dist: ~f~%" (-> this color-repeat-dist))
+  (format #t "~1Talpha-1-mode: ~D~%" (-> this alpha-1-mode))
+  (format #t "~1Talpha-2-mode: ~D~%" (-> this alpha-2-mode))
+  (format #t "~1Tbase-alpha: ~f~%" (-> this base-alpha))
+  (format #t "~1Talpha-curve-1: ~A~%" (-> this alpha-curve-1))
+  (format #t "~1Talpha-curve-2: ~A~%" (-> this alpha-curve-2))
+  (format #t "~1Talpha-repeat-dist: ~f~%" (-> this alpha-repeat-dist))
+  (format #t "~1Twidth-mode: ~D~%" (-> this width-mode))
+  (format #t "~1Tbase-width: ~f~%" (-> this base-width))
+  (format #t "~1Twidth-curve: ~A~%" (-> this width-curve))
+  (format #t "~1Twidth-repeat-dist: ~f~%" (-> this width-repeat-dist))
+  (format #t "~1Tuv-mode: ~D~%" (-> this uv-mode))
+  (format #t "~1Tuv-repeat-dist: ~f~%" (-> this uv-repeat-dist))
+  (format #t "~1Tmax-age: ~D~%" (-> this max-age))
+  (format #t "~1Ttex-id: ~D~%" (-> this tex-id))
+  (format #t "~1Tlie-mode: ~D~%" (-> this lie-mode))
+  (format #t "~1Tlie-vector: #<vector @ #x~X>~%" (-> this lie-vector))
+  (format #t "~1Tzbuffer?: ~A~%" (-> this zbuffer?))
+  (format #t "~1Tuse-tape-mode?: ~A~%" (-> this use-tape-mode?))
+  (format #t "~1Tblend-mode: ~D~%" (-> this blend-mode))
+  (format #t "~1Tframe-stagger: ~D~%" (-> this frame-stagger))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-trail-breadcrumb
+(deftype light-trail-breadcrumb (structure)
+  ((pos         vector  :inline)
+   (birth-time  uint32  :overlay-at (-> pos data 3))
+   )
+  )
+
+;; definition for method 3 of type light-trail-breadcrumb
+(defmethod inspect ((this light-trail-breadcrumb))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light-trail-breadcrumb)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tbirth-time: ~D~%" (-> this birth-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type breadcrumb-array
+(deftype breadcrumb-array (inline-array-class)
+  ((data  light-trail-breadcrumb  :dynamic)
+   )
+  )
+
+;; definition for method 3 of type breadcrumb-array
+(defmethod inspect ((this breadcrumb-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> breadcrumb-array heap-base) (the-as uint 16))
+
+;; definition of type light-trail
+(deftype light-trail (basic)
+  ((crumb-array              (array uint8))
+   (crumb-size               uint8)
+   (crumb-count              int16)
+   (max-crumb-count          int16)
+   (appearance               light-trail-composition)
+   (start-marker             uint64)
+   (end-marker               uint64)
+   (decision                 light-trail-decision)
+   (total-distance-traveled  float)
+   (strip                    prim-strip)
+   (strip2                   prim-strip)
+   (cache-vector             vector  4 :inline)
+   )
+  (:methods
+    (setup! (_type_ light-trail-composition int) none)
+    (reset! (_type_) none)
+    (add-crumb! (_type_ vector time-frame) int)
+    (build-prim-strip! (_type_) none)
+    (common-trans! (_type_) int)
+    (expire-old-points! (_type_) none)
+    (light-trail-method-15 (_type_) none)
+    (add-vert-to-prim-strip! (_type_ prim-strip vector rgba float float) none)
+    (add-tri-pair-to-prim! (_type_ vector rgba float vector float) symbol)
+    (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none)
+    (crumb-age-out-callback (_type_ float int) none)
+    (reset-crumbs! (_type_) none)
+    (replace-last-crumb! (_type_ vector) none)
+    )
+  )
+
+;; definition for method 3 of type light-trail
+(defmethod inspect ((this light-trail))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcrumb-array: ~A~%" (-> this crumb-array))
+  (format #t "~1Tcrumb-size: ~D~%" (-> this crumb-size))
+  (format #t "~1Tcrumb-count: ~D~%" (-> this crumb-count))
+  (format #t "~1Tmax-crumb-count: ~D~%" (-> this max-crumb-count))
+  (format #t "~1Tappearance: #<light-trail-composition @ #x~X>~%" (-> this appearance))
+  (format #t "~1Tstart-marker: ~D~%" (-> this start-marker))
+  (format #t "~1Tend-marker: ~D~%" (-> this end-marker))
+  (format #t "~1Tdecision: ~D~%" (-> this decision))
+  (format #t "~1Ttotal-distance-traveled: ~f~%" (-> this total-distance-traveled))
+  (format #t "~1Tstrip: ~A~%" (-> this strip))
+  (format #t "~1Tstrip2: ~A~%" (-> this strip2))
+  (format #t "~1Tcache-vector[4] @ #x~X~%" (-> this cache-vector))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type weapon-trail-crumb
+(deftype weapon-trail-crumb (light-trail-breadcrumb)
+  ((offset  vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type weapon-trail-crumb
+(defmethod inspect ((this weapon-trail-crumb))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'weapon-trail-crumb)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tbirth-time: ~D~%" (-> this birth-time))
+  (format #t "~1Toffset: #<vector @ #x~X>~%" (-> this offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type weapon-trail
+(deftype weapon-trail (light-trail)
+  ()
+  (:methods
+    (add-crumb-with-offset (_type_ vector vector) light-trail-breadcrumb)
+    (weapon-trail-method-23 (_type_ vector vector) none)
+    )
+  )
+
+;; definition for method 3 of type weapon-trail
+(defmethod inspect ((this weapon-trail))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcrumb-array: ~A~%" (-> this crumb-array))
+  (format #t "~1Tcrumb-size: ~D~%" (-> this crumb-size))
+  (format #t "~1Tcrumb-count: ~D~%" (-> this crumb-count))
+  (format #t "~1Tmax-crumb-count: ~D~%" (-> this max-crumb-count))
+  (format #t "~1Tappearance: #<light-trail-composition @ #x~X>~%" (-> this appearance))
+  (format #t "~1Tstart-marker: ~D~%" (-> this start-marker))
+  (format #t "~1Tend-marker: ~D~%" (-> this end-marker))
+  (format #t "~1Tdecision: ~D~%" (-> this decision))
+  (format #t "~1Ttotal-distance-traveled: ~f~%" (-> this total-distance-traveled))
+  (format #t "~1Tstrip: ~A~%" (-> this strip))
+  (format #t "~1Tstrip2: ~A~%" (-> this strip2))
+  (format #t "~1Tcache-vector[4] @ #x~X~%" (-> this cache-vector))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type tread-trail-crumb
+(deftype tread-trail-crumb (light-trail-breadcrumb)
+  ((normal  vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type tread-trail-crumb
+(defmethod inspect ((this tread-trail-crumb))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'tread-trail-crumb)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tbirth-time: ~D~%" (-> this birth-time))
+  (format #t "~1Tnormal: #<vector @ #x~X>~%" (-> this normal))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type tread-trail
+(deftype tread-trail (light-trail)
+  ()
+  (:methods
+    (add-crumb-with-offset (_type_ vector vector) none)
+    (tread-trail-method-23 (_type_ vector vector) none)
+    )
+  )
+
+;; definition for method 3 of type tread-trail
+(defmethod inspect ((this tread-trail))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcrumb-array: ~A~%" (-> this crumb-array))
+  (format #t "~1Tcrumb-size: ~D~%" (-> this crumb-size))
+  (format #t "~1Tcrumb-count: ~D~%" (-> this crumb-count))
+  (format #t "~1Tmax-crumb-count: ~D~%" (-> this max-crumb-count))
+  (format #t "~1Tappearance: #<light-trail-composition @ #x~X>~%" (-> this appearance))
+  (format #t "~1Tstart-marker: ~D~%" (-> this start-marker))
+  (format #t "~1Tend-marker: ~D~%" (-> this end-marker))
+  (format #t "~1Tdecision: ~D~%" (-> this decision))
+  (format #t "~1Ttotal-distance-traveled: ~f~%" (-> this total-distance-traveled))
+  (format #t "~1Tstrip: ~A~%" (-> this strip))
+  (format #t "~1Tstrip2: ~A~%" (-> this strip2))
+  (format #t "~1Tcache-vector[4] @ #x~X~%" (-> this cache-vector))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-trail-tracker-spawn-params
+(deftype light-trail-tracker-spawn-params (structure)
+  ((appearance          light-trail-composition)
+   (max-num-crumbs      int32)
+   (tracked-obj         handle)
+   (track-immediately?  symbol)
+   )
+  )
+
+;; definition for method 3 of type light-trail-tracker-spawn-params
+(defmethod inspect ((this light-trail-tracker-spawn-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'light-trail-tracker-spawn-params)
+  (format #t "~1Tappearance: #<light-trail-composition @ #x~X>~%" (-> this appearance))
+  (format #t "~1Tmax-num-crumbs: ~D~%" (-> this max-num-crumbs))
+  (format #t "~1Ttracked-obj: ~D~%" (-> this tracked-obj))
+  (format #t "~1Ttrack-immediately?: ~A~%" (-> this track-immediately?))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type weapon-trail-tracker-spawn-params
+(deftype weapon-trail-tracker-spawn-params (light-trail-tracker-spawn-params)
+  ((joint0  int16)
+   (joint1  int16)
+   )
+  )
+
+;; definition for method 3 of type weapon-trail-tracker-spawn-params
+(defmethod inspect ((this weapon-trail-tracker-spawn-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'weapon-trail-tracker-spawn-params)
+  (format #t "~1Tappearance: #<light-trail-composition @ #x~X>~%" (-> this appearance))
+  (format #t "~1Tmax-num-crumbs: ~D~%" (-> this max-num-crumbs))
+  (format #t "~1Ttracked-obj: ~D~%" (-> this tracked-obj))
+  (format #t "~1Ttrack-immediately?: ~A~%" (-> this track-immediately?))
+  (format #t "~1Tjoint0: ~D~%" (-> this joint0))
+  (format #t "~1Tjoint1: ~D~%" (-> this joint1))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-trail-tracker
+(deftype light-trail-tracker (process)
+  ((trail                 light-trail)
+   (tracked-object        handle)
+   (offscreen?            symbol)
+   (offscreen-start-time  time-frame)
+   (next-line-check-time  time-frame)
+   (last-add-frame-val    uint32)
+   )
+  (:state-methods
+    tracking
+    die
+    )
+  (:methods
+    (get-tracked-object-pos (_type_ process-focusable vector) vector)
+    (should-track? (_type_ process-focusable) symbol)
+    (should-end? (_type_ process-focusable) symbol)
+    (should-draw? (_type_) symbol)
+    (add-crumb! (_type_ vector) none)
+    )
+  )
+
+;; definition for method 3 of type light-trail-tracker
+(defmethod inspect ((this light-trail-tracker))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Ttrail: ~A~%" (-> this trail))
+  (format #t "~2Ttracked-object: ~D~%" (-> this tracked-object))
+  (format #t "~2Toffscreen?: ~A~%" (-> this offscreen?))
+  (format #t "~2Toffscreen-start-time: ~D~%" (-> this offscreen-start-time))
+  (format #t "~2Tnext-line-check-time: ~D~%" (-> this next-line-check-time))
+  (format #t "~2Tlast-add-frame-val: ~D~%" (-> this last-add-frame-val))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type weapon-trail-tracker
+(deftype weapon-trail-tracker (light-trail-tracker)
+  ((trail       weapon-trail :override)
+   (joint0      int16)
+   (joint1      int16)
+   (state-time  time-frame)
+   )
+  (:state-methods
+    hang-on
+    )
+  )
+
+;; definition for method 3 of type weapon-trail-tracker
+(defmethod inspect ((this weapon-trail-tracker))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type light-trail-tracker inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tjoint0: ~D~%" (-> this joint0))
+  (format #t "~2Tjoint1: ~D~%" (-> this joint1))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type tread-trail-tracker
+(deftype tread-trail-tracker (light-trail-tracker)
+  ((trail  tread-trail :override)
+   )
+  )
+
+;; definition for method 3 of type tread-trail-tracker
+(defmethod inspect ((this tread-trail-tracker))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type light-trail-tracker inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for function light-trail-tracker-init-by-other
+(defbehavior light-trail-tracker-init-by-other light-trail-tracker ((arg0 light-trail-tracker-spawn-params))
+  (stack-size-set! (-> self main-thread) 32)
+  (set! (-> self tracked-object) (-> arg0 tracked-obj))
+  (set! (-> self trail) (new 'process 'light-trail))
+  (set! (-> self next-line-check-time) 0)
+  (set! (-> self last-add-frame-val) (the-as uint 0))
+  (set! (-> self offscreen?) #f)
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (when (-> arg0 track-immediately?)
+    (let ((gp-1 (handle->process (-> self tracked-object))))
+      (if (should-track? self (the-as process-focusable gp-1))
+          (add-crumb!
+            (-> self trail)
+            (get-tracked-object-pos self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
+            (seconds 10000)
+            )
+          )
+      )
+    )
+  (go-virtual tracking)
+  )
+
+;; definition for function weapon-trail-tracker-init-by-other
+(defbehavior weapon-trail-tracker-init-by-other weapon-trail-tracker ((arg0 weapon-trail-tracker-spawn-params))
+  (set! (-> self tracked-object) (-> arg0 tracked-obj))
+  (set! (-> self trail) (new 'process 'weapon-trail))
+  (set! (-> self next-line-check-time) 0)
+  (set! (-> self last-add-frame-val) (the-as uint 0))
+  (set! (-> self joint0) (-> arg0 joint0))
+  (set! (-> self joint1) (-> arg0 joint1))
+  (set! (-> self offscreen?) #f)
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (go-virtual tracking)
+  )
+
+;; definition for function tread-trail-tracker-init-by-other
+(defbehavior tread-trail-tracker-init-by-other tread-trail-tracker ((arg0 light-trail-tracker-spawn-params))
+  (set! (-> self tracked-object) (-> arg0 tracked-obj))
+  (set! (-> self trail) (new 'process 'tread-trail))
+  (set! (-> self offscreen?) #f)
+  (set! (-> self next-line-check-time) 0)
+  (set! (-> self last-add-frame-val) (the-as uint 0))
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (go-virtual tracking)
+  )
+
+;; definition of type light-trail-tracker-water
+(deftype light-trail-tracker-water (light-trail-tracker)
+  ()
+  )
+
+;; definition for method 3 of type light-trail-tracker-water
+(defmethod inspect ((this light-trail-tracker-water))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type light-trail-tracker inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type light-trail-tracker-projectile
+(deftype light-trail-tracker-projectile (light-trail-tracker)
+  ((state-time  time-frame)
+   )
+  (:state-methods
+    hang-on
+    )
+  )
+
+;; definition for method 3 of type light-trail-tracker-projectile
+(defmethod inspect ((this light-trail-tracker-projectile))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type light-trail-tracker inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0

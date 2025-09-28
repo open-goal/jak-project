@@ -3,6 +3,9 @@
 
 ;; definition of type matrix
 (deftype matrix (structure)
+  "A 4x4 matrix, stored in row-major order.
+some, but not all, functions assume that a matrix is an affine transform.
+others assume that the rotation has no scale or shear (and that its inverse is its transpose)."
   ((data    float    16)
    (vector  vector   4 :inline :overlay-at (-> data 0))
    (quad    uint128  4         :overlay-at (-> data 0))
@@ -31,6 +34,10 @@
 
 ;; definition of type matrix3
 (deftype matrix3 (structure)
+  "A 3x3 matrix, stored in row-major order.
+NOTE: the rows each have an extra 4-bytes of padding,
+so this is really a 3x4 matrix.
+This type is rarely used."
   ((data    float    12)
    (vector  vector   3 :inline :overlay-at (-> data 0))
    (quad    uint128  3         :overlay-at (-> data 0))
@@ -54,6 +61,11 @@
 
 ;; definition of type matrix4h
 (deftype matrix4h (structure)
+  "A matrix stored using 16-bit integers.
+Note that these usually have different scaling for the 4th row which
+contains the translation in an affine transform.
+So you generally should not unpack these to floats without knowing where they came from
+and how they were originally packed (for example, in tie/shrub)."
   ((data      int16     16)
    (vector4h  vector4h  4 :inline :overlay-at (-> data 0))
    (long      int64     4         :overlay-at (-> data 0))
@@ -77,6 +89,7 @@
 ;; definition for function matrix-copy!
 ;; INFO: Used lq/sq
 (defun matrix-copy! ((arg0 matrix) (arg1 matrix))
+  "Copy arg1 to arg0"
   (let ((v1-0 (-> arg1 quad 0))
         (a2-0 (-> arg1 quad 1))
         (a3-0 (-> arg1 quad 2))

@@ -32,4 +32,24 @@ struct DidCloseTextDocumentParams {
 void to_json(json& j, const DidCloseTextDocumentParams& obj);
 void from_json(const json& j, DidCloseTextDocumentParams& obj);
 
+enum class TextDocumentSaveReason {
+  // Manually triggered, e.g. by the user pressing save, by starting debugging, or by an API call.
+  Manual = 1,
+  // Automatic after a delay.
+  AfterDelay = 2,
+  // When the editor lost focus.
+  FocusOut = 3,
+};
+
+// The parameters send in a will save text document notification.
+struct WillSaveTextDocumentParams {
+  // The document that will be saved.
+  TextDocumentIdentifier textDocument;
+  // The 'TextDocumentSaveReason'.
+  TextDocumentSaveReason reason;
+};
+
+void to_json(json& j, const WillSaveTextDocumentParams& obj);
+void from_json(const json& j, WillSaveTextDocumentParams& obj);
+
 }  // namespace LSPSpec

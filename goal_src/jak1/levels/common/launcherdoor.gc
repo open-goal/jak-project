@@ -1,133 +1,88 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: launcherdoor.gc
-;; name in dgo: launcherdoor
-;; dgos: JUN, JUNGLE, L1, MAI, MAINCAVE, SUN, SUNKEN
-
+(bundles "JUN.DGO" "MAI.DGO" "SUN.DGO")
+(require "engine/common-obs/generic-obs.gc")
 
 ;; DECOMP BEGINS
 
 (deftype launcherdoor (process-drawable)
-  ((root                        collide-shape :override)
-   (notify-player-passed-thru?  symbol)
-   (thresh-y                    float)
-   (open-speed                  float)
-   (close-speed                 float)
-   (load-mode                   symbol)
-   )
-  (:states
-    (launcherdoor-closed symbol)
-    (launcherdoor-open symbol)
-    )
-  )
+  ((root                       collide-shape :override)
+   (notify-player-passed-thru? symbol)
+   (thresh-y                   float)
+   (open-speed                 float)
+   (close-speed                float)
+   (load-mode                  symbol))
+  (:states (launcherdoor-closed symbol)
+   (launcherdoor-open symbol)))
 
+(defskelgroup *launcherdoor-sg*
+  launcherdoor
+  launcherdoor-geo-jg
+  -1
+  ((launcherdoor-geo-mg (meters 20)) (launcherdoor-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4))
 
-(defskelgroup *launcherdoor-sg* launcherdoor launcherdoor-geo-jg -1
-              ((launcherdoor-geo-mg (meters 20)) (launcherdoor-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              )
-
-(defskelgroup *launcherdoor-maincave-sg* launcherdoor-maincave launcherdoor-maincave-geo-jg -1
-              ((launcherdoor-maincave-geo-mg (meters 20)) (launcherdoor-maincave-lod1-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              )
+(defskelgroup *launcherdoor-maincave-sg*
+  launcherdoor-maincave
+  launcherdoor-maincave-geo-jg
+  -1
+  ((launcherdoor-maincave-geo-mg (meters 20)) (launcherdoor-maincave-lod1-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4))
 
 (defstate launcherdoor-closed (launcherdoor)
-  :code (behavior ((arg0 symbol))
-    (if (not arg0)
-        (sound-play "ldoor-close")
-        )
-    (when *target*
-      (case (-> *target* current-level name)
-        (('jungle 'jungleb)
-         (send-event *target* 'no-load-wait (seconds 20))
-         )
-        )
-      )
-    (restore-collide-with-as (-> self root))
-    (ja-no-eval :num! (seek! 0.0))
-    (when arg0
-      (ja :num-func num-func-identity :frame-num 0.0)
-      (set! (-> self draw force-lod) 1)
-      )
-    (suspend)
-    (loop
-      (if (and *target*
-               (= (-> *target* control unknown-surface00 name) 'launch-jump)
-               (< (-> *target* control trans y) (-> self thresh-y))
-               )
-          (go launcherdoor-open #f)
-          )
-      (ja :num! (seek! 0.0 (-> self close-speed)))
+  :code
+    (behavior ((arg0 symbol))
+      (if (not arg0) (sound-play "ldoor-close"))
+      (when *target*
+        (case (-> *target* current-level name)
+          (('jungle 'jungleb) (send-event *target* 'no-load-wait (seconds 20)))))
+      (restore-collide-with-as (-> self root))
+      (ja-no-eval :num! (seek! 0.0))
+      (when arg0
+        (ja :num-func num-func-identity :frame-num 0.0)
+        (set! (-> self draw force-lod) 1))
       (suspend)
-      (when (ja-done? 0)
-        (set! (-> self draw force-lod) 1)
-        (when (-> self notify-player-passed-thru?)
-          (set! (-> self notify-player-passed-thru?) #f)
-          (let* ((gp-1 (-> self entity))
-                 (s5-1 (entity-actor-count gp-1 'alt-actor))
-                 )
-            (dotimes (s4-1 s5-1)
-              (let ((v1-43 (entity-actor-lookup gp-1 'alt-actor s4-1)))
-                (if v1-43
-                    (send-event
-                      (if v1-43
-                          (-> v1-43 extra process)
-                          )
-                      'notify
-                      )
-                    )
-                )
-              )
-            )
-          (case (-> self load-mode)
-            (('jungle)
-             (load-state-want-levels 'village1 'jungle)
-             (load-state-want-display-level 'village1 'display)
-             )
-            )
-          )
-        )
-      )
-    )
-  :post ja-post
-  )
+      (loop
+        (if (and *target*
+                 (= (-> *target* control unknown-surface00 name) 'launch-jump)
+                 (< (-> *target* control trans y) (-> self thresh-y)))
+          (go launcherdoor-open #f))
+        (ja :num! (seek! 0.0 (-> self close-speed)))
+        (suspend)
+        (when (ja-done? 0)
+          (set! (-> self draw force-lod) 1)
+          (when (-> self notify-player-passed-thru?)
+            (set! (-> self notify-player-passed-thru?) #f)
+            (let* ((gp-1 (-> self entity))
+                   (s5-1 (entity-actor-count gp-1 'alt-actor)))
+              (dotimes (s4-1 s5-1)
+                (let ((v1-43 (entity-actor-lookup gp-1 'alt-actor s4-1)))
+                  (if v1-43 (send-event (if v1-43 (-> v1-43 extra process)) 'notify)))))
+            (case (-> self load-mode)
+              (('jungle) (load-state-want-levels 'village1 'jungle) (load-state-want-display-level 'village1 'display)))))))
+  :post ja-post)
 
 (defstate launcherdoor-open (launcherdoor)
-  :code (behavior ((arg0 symbol))
-    (if (not arg0)
-        (sound-play "ldoor-open")
-        )
-    (set! (-> self draw force-lod) 0)
-    (clear-collide-with-as (-> self root))
-    (ja-no-eval :num! (seek!))
-    (if arg0
-        (ja :num-func num-func-identity :frame-num max)
-        )
-    (loop
-      (when (or (not *target*)
-                (!= (-> *target* control unknown-surface00 name) 'launch-jump)
-                (< (+ 4096.0 (-> self root trans y)) (-> *target* control trans y))
-                )
-        (when (and *target* (< (-> self thresh-y) (-> *target* control trans y)))
-          (let ((a1-3 (res-lump-struct (-> self entity) 'continue-name structure)))
-            (when a1-3
-              (let ((v1-36 (set-continue! *game-info* (the-as basic a1-3))))
-                (load-commands-set! *level* (-> v1-36 load-commands))
-                )
-              )
-            )
-          (set! (-> self notify-player-passed-thru?) #t)
-          )
-        (go launcherdoor-closed #f)
-        )
-      (ja :num! (seek! max (-> self open-speed)))
-      (suspend)
-      )
-    )
-  :post ja-post
-  )
+  :code
+    (behavior ((arg0 symbol))
+      (if (not arg0) (sound-play "ldoor-open"))
+      (set! (-> self draw force-lod) 0)
+      (clear-collide-with-as (-> self root))
+      (ja-no-eval :num! (seek!))
+      (if arg0 (ja :num-func num-func-identity :frame-num max))
+      (loop
+        (when (or (not *target*)
+                  (!= (-> *target* control unknown-surface00 name) 'launch-jump)
+                  (< (+ 4096.0 (-> self root trans y)) (-> *target* control trans y)))
+          (when (and *target* (< (-> self thresh-y) (-> *target* control trans y)))
+            (let ((a1-3 (res-lump-struct (-> self entity) 'continue-name structure)))
+              (when a1-3
+                (let ((v1-36 (set-continue! *game-info* (the-as basic a1-3)))) (load-commands-set! *level* (-> v1-36 load-commands)))))
+            (set! (-> self notify-player-passed-thru?) #t))
+          (go launcherdoor-closed #f))
+        (ja :num! (seek! max (-> self open-speed)))
+        (suspend)))
+  :post ja-post)
 
 (defmethod init-from-entity! ((this launcherdoor) (arg0 entity-actor))
   (set! (-> this notify-player-passed-thru?) #f)
@@ -141,64 +96,31 @@
       (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-0 transform-index) 0)
       (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 14336.0)
-      (set-root-prim! s4-0 s3-0)
-      )
+      (set-root-prim! s4-0 s3-0))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (cond
-    ((= (-> (if (-> this entity)
-                (-> this entity extra level)
-                (-> *level* level-default)
-                )
-            name
-            )
-        'maincave
-        )
+    ((= (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name) 'maincave)
      (set! (-> this close-speed) 4.0)
      (initialize-skeleton this *launcherdoor-maincave-sg* '())
      (ja-channel-set! 1)
      (let ((s5-1 (-> this skel root-channel 0)))
-       (joint-control-channel-group-eval!
-         s5-1
-         (the-as art-joint-anim (-> this draw art-group data 3))
-         num-func-identity
-         )
-       (set! (-> s5-1 frame-num) 0.0)
-       )
-     )
+       (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
+       (set! (-> s5-1 frame-num) 0.0)))
     (else
-      (initialize-skeleton this *launcherdoor-sg* '())
-      (ja-channel-set! 1)
-      (let ((s5-2 (-> this skel root-channel 0)))
-        (joint-control-channel-group-eval!
-          s5-2
-          (the-as art-joint-anim (-> this draw art-group data 3))
-          num-func-identity
-          )
-        (set! (-> s5-2 frame-num) 0.0)
-        )
-      )
-    )
+     (initialize-skeleton this *launcherdoor-sg* '())
+     (ja-channel-set! 1)
+     (let ((s5-2 (-> this skel root-channel 0)))
+       (joint-control-channel-group-eval! s5-2 (the-as art-joint-anim (-> this draw art-group data 3)) num-func-identity)
+       (set! (-> s5-2 frame-num) 0.0))))
   (transform-post)
   (case (-> this entity extra level name)
-    (('jungle)
-     (set! (-> this draw shadow-mask) (the-as uint 28))
-     )
-    )
-  (set! (-> this load-mode) (-> (if (-> this entity)
-                                    (-> this entity extra level)
-                                    (-> *level* level-default)
-                                    )
-                                name
-                                )
-        )
+    (('jungle) (set! (-> this draw shadow-mask) (the-as uint 28))))
+  (set! (-> this load-mode) (-> (if (-> this entity) (-> this entity extra level) (-> *level* level-default)) name))
   (set! (-> this thresh-y) (+ -81920.0 (-> this root trans y)))
   (if (and *target* (= (-> *target* control unknown-surface00 name) 'launch-jump))
-      (go launcherdoor-open #t)
-      (go launcherdoor-closed #t)
-      )
-  (none)
-  )
+    (go launcherdoor-open #t)
+    (go launcherdoor-closed #t))
+  (none))

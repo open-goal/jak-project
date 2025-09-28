@@ -206,7 +206,7 @@
     (vector--float*! (the-as vector s2-0) arg2 (-> arg3 sun1-normal) 9.0)
     (vector--float*! (the-as vector s4-0) arg2 (-> arg3 moon-normal) 9.0)
     (vector4-scale! s5-0 s5-0 (* (-> arg3 sun0-scale) f28-0))
-    (vector4-madd! s5-0 s5-0 s2-0 (* 0.25 f28-0 (-> arg3 sun1-scale)))
+    (vector4-madd! s5-0 s5-0 s2-0 (* (/ f28-0 4) (-> arg3 sun1-scale)))
     (vector4-madd! s5-0 s5-0 s4-0 (* (-> arg3 moon-scale) f28-0))
     (+! (-> arg0 x) (fmax (fmin (-> s5-0 x) f30-0) (- f30-0)))
     (+! (-> arg0 y) (fmax (fmin (-> s5-0 z) f30-0) (- f30-0)))
@@ -251,7 +251,7 @@
       (vector4-scale!
         (the-as vector4 (-> s4-0 sun1-color))
         (the-as vector4 (-> this sun1-color))
-        (* 0.5 (-> s4-0 sun1-scale))
+        (/ (-> s4-0 sun1-scale) 2)
         )
       (vector4-scale!
         (the-as vector4 (-> s4-0 moon-color))
@@ -434,7 +434,7 @@
     (vector4-scale!
       (the-as vector4 (-> s4-0 sun1-color))
       (the-as vector4 (-> this sun1-color))
-      (* 0.5 (-> s4-0 sun1-scale))
+      (/ (-> s4-0 sun1-scale) 2)
       )
     (vector4-scale!
       (the-as vector4 (-> s4-0 moon-color))
@@ -483,7 +483,7 @@
         (haze-vtx-to-sky this (-> sv-20 (+ (* s3-0 4) 3)) (-> sv-20 (+ (* s3-0 4) 2)) (-> sv-16 data (+ s3-0 1)))
         )
       (haze-vtx-to-sky this (-> sv-20 140) (-> sv-20 141) (-> sv-16 data 35))
-      (haze-vtx-to-sky this (-> sv-20 143) (-> sv-20 142) (the-as haze-vertex (-> sv-16 data)))
+      (haze-vtx-to-sky this (-> sv-20 143) (-> sv-20 142) (-> sv-16 data 0))
       (dotimes (s5-1 36)
         (render-sky-quad (the-as (inline-array sky-vertex) (-> sv-20 (* s5-1 4))) arg0)
         )
@@ -517,9 +517,9 @@
 (defmethod setup-stars ((this sky-work) (arg0 matrix) (arg1 sky-upload-data))
   (set! (-> arg0 vector 2 quad) (-> arg1 data 0))
   (vector-normalize! (-> arg0 vector 2) 1.0)
-  (vector-cross! (the-as vector (-> arg0 vector)) *z-vector* (-> arg0 vector 2))
-  (vector-normalize! (the-as vector (-> arg0 vector)) 1.0)
-  (vector-cross! (-> arg0 vector 1) (-> arg0 vector 2) (the-as vector (-> arg0 vector)))
+  (vector-cross! (-> arg0 vector 0) *z-vector* (-> arg0 vector 2))
+  (vector-normalize! (-> arg0 vector 0) 1.0)
+  (vector-cross! (-> arg0 vector 1) (-> arg0 vector 2) (-> arg0 vector 0))
   (vector-normalize! (-> arg0 vector 1) 1.0)
   (let ((s4-1 (new 'stack-no-clear 'vector)))
     (set! (-> s4-1 quad) (-> arg1 data 0))

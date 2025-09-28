@@ -7,3 +7,43 @@
 
 ;; DECOMP BEGINS
 
+(deftype mh-squad-member-settings (structure)
+  ((object-type               traffic-type)
+   (max-target-count          int8)
+   (min-target-count          int8)
+   (target-count              int8)
+   (toggle-shield-percentage  float)
+   (heat-shield-percentage    float)
+   )
+  )
+
+
+(deftype mh-squad-settings (structure)
+  ((mh-enemy-settings  mh-squad-member-settings  3 :inline)
+   (grunt-settings     mh-squad-member-settings  :inline :overlay-at (-> mh-enemy-settings 0))
+   (flitter-settings   mh-squad-member-settings  :inline :offset  16)
+   (predator-settings  mh-squad-member-settings  :inline :offset  32)
+   )
+  )
+
+
+(deftype mh-squad-control (squad-control-city)
+  ((active-squad-member-list          handle-array               :offset 828)
+   (squad-settings                    mh-squad-settings  3 :inline)
+   (squad-normal-settings             mh-squad-settings  :inline :overlay-at (-> squad-settings 0))
+   (squad-war-settings                mh-squad-settings  :inline :overlay-at (-> squad-settings 1))
+   (squad-mission-settings            mh-squad-settings  :inline :overlay-at (-> squad-settings 2))
+   (alert-level                       int8)
+   (map-traffic-object-type-to-squad  traffic-type       29)
+   (current-target-attackers          int8)
+   )
+  (:methods
+    (add-squad-member (_type_ process) int)
+    (pop-squad-member-from-list (_type_ process) int)
+    (copy-squad-settings-to-idx (_type_ (inline-array mh-squad-member-settings) int) none)
+    (mh-squad-control-method-48 (_type_) symbol)
+    )
+  )
+
+
+(define *mh-squad-control* (the-as mh-squad-control #f))

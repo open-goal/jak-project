@@ -187,7 +187,7 @@
 
 (defmethod general-event-handler ((this tomb-beetle) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (let ((v1-0 (new 'static 'array int64 2 -1 0)))
     (case arg2
       (('cue-chase)
@@ -533,8 +533,8 @@
       (set! (-> gp-0 0 dist) (vector-vector-distance (-> self root trans) (the-as vector (-> gp-0 0))))
       )
     (vector-reset! (-> self root transv))
-    (set! (-> self fly-away-acc) (get-rand-float-range self 204800.0 512000.0))
-    (set! (-> self fly-away-ry-speed) (get-rand-float-range self 32768.0 109226.664))
+    (set! (-> self fly-away-acc) (rnd-float-range self 204800.0 512000.0))
+    (set! (-> self fly-away-ry-speed) (rnd-float-range self 32768.0 109226.664))
     (set! (-> self flying?) #f)
     )
   :trans (behavior ()
@@ -627,8 +627,8 @@
                 (.mov at-0 f0-14)
                 )
               (.mov vf2 at-0)
-              (.mov.vf vf1 vf0 :mask #b1000)
-              (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+              (.mov.vf.w vf1 vf0)
+              (.mul.x.vf.xyz vf1 vf1 vf2)
               (.svf (&-> v1-10 quad) vf1)
               )
             (set! (-> gp-0 trans quad) (-> s5-1 quad))
@@ -651,7 +651,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 1.8 2.2)))
+    (let ((f30-0 (rnd-float-range self 1.8 2.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -730,11 +730,7 @@
         (-> gp-1 ppointer)
         )
       )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (seconds 2))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 2))
     )
   :post nav-enemy-simple-post
   )
@@ -880,8 +876,8 @@
               (.mov at-0 f0-9)
               )
             (.mov vf2 at-0)
-            (.mov.vf vf1 vf0 :mask #b1000)
-            (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+            (.mov.vf.w vf1 vf0)
+            (.mul.x.vf.xyz vf1 vf1 vf2)
             (.svf (&-> v1-13 quad) vf1)
             (vector+! (-> self root trans) (-> self root trans) v1-13)
             )
@@ -991,7 +987,7 @@
     (set! (-> v1-5 sphere-mask) (the-as uint #x800fa))
     )
   0
-  (logclear! (-> this enemy-flags) (enemy-flag check-water-backup no-initial-move-to-ground))
+  (logclear! (-> this enemy-flags) (enemy-flag trackable trackable-backup))
   (set! (-> this flags) (the-as uint 0))
   (logclear! (-> this mask) (process-mask actor-pause))
   0

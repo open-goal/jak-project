@@ -1,93 +1,68 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: cam-states-dbg.gc
-;; name in dgo: cam-states-dbg
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/camera/camera.gc")
+(require "pc/pckernel-impl.gc")
 
 ;; DECOMP BEGINS
 
 (deftype cam-point-watch-bank (basic)
-  ((speed      float)
-   (rot-speed  degrees)
-   )
-  )
+  ((speed     float)
+   (rot-speed degrees)))
 
 
 (define *CAM_POINT_WATCH-bank* (new 'static 'cam-point-watch-bank :speed 1600.0 :rot-speed (degrees 0.6)))
 
 (defstate cam-point-watch (camera-slave)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('teleport)
-       #f
-       )
-      (else
-        (cam-standard-event-handler proc argc message block)
-        )
-      )
-    )
-  :enter (behavior ()
-    (when (not (-> self enter-has-run))
-      (set! (-> self pivot-rad) 40960.0)
-      (set! (-> self blend-from-type) (the-as uint 1))
-      (set! (-> self blend-to-type) (the-as uint 1))
-      )
-    )
-  :code (behavior ()
-    (loop
-      (let ((s5-0 (new-stack-vector0))
-            (gp-0 (new-stack-vector0))
-            )
-        (when *camera-read-analog*
-          (let ((f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
-                (f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0))
-                (f26-0 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 -1.0))
-                (f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 48.0 110.0 -1.0))
-                )
-            (cond
-              ((cpad-hold? (-> *CAMERA-bank* joypad) r2)
-               (set! (-> s5-0 y) (- (-> s5-0 y) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
-               (set! (-> s5-0 x) (- (-> s5-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
-               (+! (-> gp-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
-               (+! (-> gp-0 z) (* 0.2 (-> *CAM_POINT_WATCH-bank* speed) f30-0))
-               )
-              (else
-                (set! (-> s5-0 y) (- (-> s5-0 y) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
-                (set! (-> s5-0 x) (- (-> s5-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
-                (+! (-> gp-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
-                (+! (-> gp-0 z) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f30-0))
-                )
-              )
-            )
-          (let ((s4-0 (new-stack-vector0)))
-            (let ((s3-0 (new-stack-matrix0)))
-              (matrix-axis-angle! s3-0 (the-as vector (-> self tracking)) (- (-> s5-0 x)))
-              (vector-matrix*! s4-0 (-> self tracking inv-mat vector 2) s3-0)
-              (matrix-axis-angle! s3-0 (-> *camera* local-down) (- (-> s5-0 y)))
-              (vector-matrix*! s4-0 s4-0 s3-0)
-              )
-            (forward-down->inv-matrix (the-as matrix (-> self tracking)) s4-0 (-> *camera* local-down))
-            )
-          (set! (-> self pivot-rad) (- (-> self pivot-rad) (-> gp-0 z)))
-          (if (< (-> self pivot-rad) 4096.0)
-              (set! (-> self pivot-rad) 4096.0)
-              )
-          (set-vector! gp-0 0.0 0.0 (- (-> self pivot-rad)) 1.0)
-          (vector-matrix*! (-> self trans) gp-0 (the-as matrix (-> self tracking)))
-          )
-        )
-      (suspend)
-      0
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('teleport) #f)
+        (else (cam-standard-event-handler proc argc message block))))
+  :enter
+    (behavior ()
+      (when (not (-> self enter-has-run))
+        (set! (-> self pivot-rad) 40960.0)
+        (set! (-> self blend-from-type) (the-as uint 1))
+        (set! (-> self blend-to-type) (the-as uint 1))))
+  :code
+    (behavior ()
+      (loop
+        (let ((s5-0 (new-stack-vector0))
+              (gp-0 (new-stack-vector0)))
+          (when *camera-read-analog*
+            (let ((f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
+                  (f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0))
+                  (f26-0 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 -1.0))
+                  (f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 48.0 110.0 -1.0)))
+              (cond
+                ((cpad-hold? (-> *CAMERA-bank* joypad) r2)
+                 (set! (-> s5-0 y) (- (-> s5-0 y) (* (/ (-> *CAM_POINT_WATCH-bank* rot-speed) 5) (- f26-0))))
+                 (set! (-> s5-0 x) (- (-> s5-0 x) (* (/ (-> *CAM_POINT_WATCH-bank* rot-speed) 5) (- f0-0))))
+                 (+! (-> gp-0 x) (* (/ (-> *CAM_POINT_WATCH-bank* speed) 5) f28-0))
+                 (+! (-> gp-0 z) (* (/ (-> *CAM_POINT_WATCH-bank* speed) 5) f30-0)))
+                (else
+                 (set! (-> s5-0 y) (- (-> s5-0 y) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
+                 (set! (-> s5-0 x) (- (-> s5-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
+                 (+! (-> gp-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
+                 (+! (-> gp-0 z) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f30-0)))))
+            (let ((s4-0 (new-stack-vector0)))
+              (let ((s3-0 (new-stack-matrix0)))
+                (matrix-axis-angle! s3-0 (the-as vector (-> self tracking)) (- (-> s5-0 x)))
+                (vector-matrix*! s4-0 (-> self tracking inv-mat vector 2) s3-0)
+                (matrix-axis-angle! s3-0 (-> *camera* local-down) (- (-> s5-0 y)))
+                (vector-matrix*! s4-0 s4-0 s3-0))
+              (forward-down->inv-matrix (the-as matrix (-> self tracking)) s4-0 (-> *camera* local-down)))
+            (set! (-> self pivot-rad) (- (-> self pivot-rad) (-> gp-0 z)))
+            (if (< (-> self pivot-rad) 4096.0) (set! (-> self pivot-rad) 4096.0))
+            (set-vector! gp-0 0.0 0.0 (- (-> self pivot-rad)) 1.0)
+            (vector-matrix*! (-> self trans) gp-0 (the-as matrix (-> self tracking)))))
+        (suspend)
+        0)))
 
 (deftype cam-free-bank (basic)
-  ((speed      float)
-   (rot-speed  degrees)
-   )
-  )
+  ((speed     float)
+   (rot-speed degrees)))
 
 
 (define *CAM_FREE-bank* (new 'static 'cam-free-bank :speed 1600.0 :rot-speed (degrees 0.6)))
@@ -96,350 +71,246 @@
   (when (and (!= *master-mode* 'menu) (not *cam-layout*))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 x)
-          (set! (-> arg0 x)
-                (- (-> arg0 x) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
-                                                                   (the-as int (-> *cpad-list* cpads arg3 abutton 6))
-                                                                   0.0
-                                                                   32.0
-                                                                   230.0
-                                                                   (-> *CAM_FREE-bank* rot-speed)
-                                                                   )
-                                  )
-                   )
-                )
-          )
-      )
+        (set! (-> arg0 x)
+              (- (-> arg0 x)
+                 (+ (-> *CAM_FREE-bank* rot-speed)
+                    (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx x))) ;; og:preserve-this abutton indexing
+                                  0.0
+                                  32.0
+                                  230.0
+                                  (-> *CAM_FREE-bank* rot-speed)))))))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 triangle)
-          (+! (-> arg0 x) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
-                                                              (the-as int (-> *cpad-list* cpads arg3 abutton 4))
-                                                              0.0
-                                                              32.0
-                                                              230.0
-                                                              (-> *CAM_FREE-bank* rot-speed)
-                                                              )
-                             )
-              )
-          )
-      )
+        (+! (-> arg0 x)
+            (+ (-> *CAM_FREE-bank* rot-speed)
+               (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx triangle))) ;; og:preserve-this abutton indexing
+                             0.0
+                             32.0
+                             230.0
+                             (-> *CAM_FREE-bank* rot-speed))))))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 square)
-          (+! (-> arg0 y) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
-                                                              (the-as int (-> *cpad-list* cpads arg3 abutton 7))
-                                                              0.0
-                                                              32.0
-                                                              230.0
-                                                              (-> *CAM_FREE-bank* rot-speed)
-                                                              )
-                             )
-              )
-          )
-      )
+        (+! (-> arg0 y)
+            (+ (-> *CAM_FREE-bank* rot-speed)
+               (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx square))) ;; og:preserve-this abutton indexing
+                             0.0
+                             32.0
+                             230.0
+                             (-> *CAM_FREE-bank* rot-speed))))))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 circle)
-          (set! (-> arg0 y)
-                (- (-> arg0 y) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
-                                                                   (the-as int (-> *cpad-list* cpads arg3 abutton 5))
-                                                                   0.0
-                                                                   32.0
-                                                                   230.0
-                                                                   (-> *CAM_FREE-bank* rot-speed)
-                                                                   )
-                                  )
-                   )
-                )
-          )
-      )
-    )
+        (set! (-> arg0 y)
+              (- (-> arg0 y)
+                 (+ (-> *CAM_FREE-bank* rot-speed)
+                    (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx circle))) ;; og:preserve-this abutton indexing
+                                  0.0
+                                  32.0
+                                  230.0
+                                  (-> *CAM_FREE-bank* rot-speed))))))))
   (when arg2
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 l2)
-          (+! (-> arg0 z) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
-                                                              (the-as int (-> *cpad-list* cpads arg3 abutton 10))
-                                                              0.0
-                                                              32.0
-                                                              230.0
-                                                              (-> *CAM_FREE-bank* rot-speed)
-                                                              )
-                             )
-              )
-          )
-      )
+        (+! (-> arg0 z)
+            (+ (-> *CAM_FREE-bank* rot-speed)
+               (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx l2))) ;; og:preserve-this abutton indexing
+                             0.0
+                             32.0
+                             230.0
+                             (-> *CAM_FREE-bank* rot-speed))))))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 r2)
-          (set! (-> arg0 z)
-                (- (-> arg0 z) (+ (-> *CAM_FREE-bank* rot-speed) (analog-input
-                                                                   (the-as int (-> *cpad-list* cpads arg3 abutton 11))
-                                                                   0.0
-                                                                   32.0
-                                                                   230.0
-                                                                   (-> *CAM_FREE-bank* rot-speed)
-                                                                   )
-                                  )
-                   )
-                )
-          )
-      )
-    )
+        (set! (-> arg0 z)
+              (- (-> arg0 z)
+                 (+ (-> *CAM_FREE-bank* rot-speed)
+                    (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx r2))) ;; og:preserve-this abutton indexing
+                                  0.0
+                                  32.0
+                                  230.0
+                                  (-> *CAM_FREE-bank* rot-speed))))))))
   (cond
-    ((not *cam-free-move-along-z*)
-     )
-    ((not *camera-read-analog*)
-     )
+    ((not *cam-free-move-along-z*))
+    ((not *camera-read-analog*))
     ((cpad-hold? arg3 r2)
      (when *camera-read-buttons*
        (if (cpad-hold? arg3 r1)
-           (+! (-> arg1 y) (+ (* 0.2 (-> *CAM_FREE-bank* speed)) (analog-input
-                                                                   (the-as int (-> *cpad-list* cpads arg3 abutton 9))
-                                                                   0.0
-                                                                   32.0
-                                                                   230.0
-                                                                   (* 0.2 (-> *CAM_FREE-bank* speed))
-                                                                   )
-                              )
-               )
-           )
-       )
+         (+! (-> arg1 y)
+             (+ (* 0.2 (-> *CAM_FREE-bank* speed))
+                (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
+                              0.0
+                              32.0
+                              230.0
+                              (* 0.2 (-> *CAM_FREE-bank* speed)))))))
      (when *camera-read-buttons*
        (if (cpad-hold? arg3 l1)
-           (set! (-> arg1 y)
-                 (- (-> arg1 y) (+ (* 0.2 (-> *CAM_FREE-bank* speed)) (analog-input
-                                                                        (the-as int (-> *cpad-list* cpads arg3 abutton 8))
-                                                                        0.0
-                                                                        32.0
-                                                                        230.0
-                                                                        (* 0.2 (-> *CAM_FREE-bank* speed))
-                                                                        )
-                                   )
-                    )
-                 )
-           )
-       )
-     )
+         (set! (-> arg1 y)
+               (- (-> arg1 y)
+                  (+ (* 0.2 (-> *CAM_FREE-bank* speed))
+                     (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
+                                   0.0
+                                   32.0
+                                   230.0
+                                   (* 0.2 (-> *CAM_FREE-bank* speed)))))))))
     (else
-      (when *camera-read-buttons*
-        (if (cpad-hold? arg3 r1)
-            (+! (-> arg1 y)
-                (+ (-> *CAM_FREE-bank* speed)
-                   (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 9)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
-                   )
-                )
-            )
-        )
-      (when *camera-read-buttons*
-        (if (cpad-hold? arg3 l1)
-            (set! (-> arg1 y)
-                  (- (-> arg1 y)
-                     (+ (-> *CAM_FREE-bank* speed)
-                        (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 8)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
-                        )
-                     )
-                  )
-            )
-        )
-      )
-    )
+     (when *camera-read-buttons*
+       (if (cpad-hold? arg3 r1)
+         (+! (-> arg1 y)
+             (+ (-> *CAM_FREE-bank* speed)
+                (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx r1))) ;; og:preserve-this abutton indexing
+                              0.0
+                              32.0
+                              230.0
+                              (-> *CAM_FREE-bank* speed))))))
+     (when *camera-read-buttons*
+       (if (cpad-hold? arg3 l1)
+         (set! (-> arg1 y)
+               (- (-> arg1 y)
+                  (+ (-> *CAM_FREE-bank* speed)
+                     (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx l1))) ;; og:preserve-this abutton indexing
+                                   0.0
+                                   32.0
+                                   230.0
+                                   (-> *CAM_FREE-bank* speed)))))))))
   (when (and (!= *master-mode* 'menu) (not *cam-layout*))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 left)
-          (+! (-> arg1 x)
-              (+ (-> *CAM_FREE-bank* speed)
-                 (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 1)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
-                 )
-              )
-          )
-      )
+        (+! (-> arg1 x)
+            (+ (-> *CAM_FREE-bank* speed)
+               (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx left))) ;; og:preserve-this abutton indexing
+                             0.0
+                             32.0
+                             230.0
+                             (-> *CAM_FREE-bank* speed))))))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 right)
-          (set! (-> arg1 x)
-                (- (-> arg1 x)
-                   (+ (-> *CAM_FREE-bank* speed)
-                      (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 0)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
-                      )
-                   )
-                )
-          )
-      )
+        (set! (-> arg1 x)
+              (- (-> arg1 x)
+                 (+ (-> *CAM_FREE-bank* speed)
+                    (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx right))) ;; og:preserve-this abutton indexing
+                                  0.0
+                                  32.0
+                                  230.0
+                                  (-> *CAM_FREE-bank* speed)))))))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 up)
-          (+! (-> arg1 z)
-              (+ (-> *CAM_FREE-bank* speed)
-                 (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 2)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
-                 )
-              )
-          )
-      )
+        (+! (-> arg1 z)
+            (+ (-> *CAM_FREE-bank* speed)
+               (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx up))) ;; og:preserve-this abutton indexing
+                             0.0
+                             32.0
+                             230.0
+                             (-> *CAM_FREE-bank* speed))))))
     (when *camera-read-buttons*
       (if (cpad-hold? arg3 down)
-          (set! (-> arg1 z)
-                (- (-> arg1 z)
-                   (+ (-> *CAM_FREE-bank* speed)
-                      (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton 3)) 0.0 32.0 230.0 (-> *CAM_FREE-bank* speed))
-                      )
-                   )
-                )
-          )
-      )
-    )
+        (set! (-> arg1 z)
+              (- (-> arg1 z)
+                 (+ (-> *CAM_FREE-bank* speed)
+                    (analog-input (the-as int (-> *cpad-list* cpads arg3 abutton (abutton-idx down))) ;; og:preserve-this abutton indexing
+                                  0.0
+                                  32.0
+                                  230.0
+                                  (-> *CAM_FREE-bank* speed))))))))
   (when *camera-read-analog*
     (let ((f28-14 (analog-input (the-as int (-> *cpad-list* cpads arg3 leftx)) 128.0 48.0 110.0 -1.0))
           (f30-14 (analog-input (the-as int (-> *cpad-list* cpads arg3 lefty)) 128.0 48.0 110.0 -1.0))
-          (f24-0 (analog-input-horizontal-first (the-as int (-> *cpad-list* cpads arg3 rightx)) 128.0 48.0 110.0 -1.0))   ;; changed for pc port
-          (f26-0 (analog-input-vertical-first (the-as int (-> *cpad-list* cpads arg3 righty)) 128.0 48.0 110.0 -1.0))   ;; changed for pc port
+          (f24-0 (analog-input-horizontal-first (the-as int (-> *cpad-list* cpads arg3 rightx)) 128.0 48.0 110.0 -1.0)) ;; changed for pc port
+          (f26-0 (analog-input-vertical-first (the-as int (-> *cpad-list* cpads arg3 righty)) 128.0 48.0 110.0 -1.0)) ;; changed for pc port
           )
       (when *display-load-boundaries*
         (when (and (!= arg3 1)
                    (not (cpad-hold? 1 x))
                    (not (cpad-hold? 1 r1))
-                   (not (logtest? (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r2)))
-                   )
+                   (not (logtest? (-> *cpad-list* cpads 1 button0-abs 0) (pad-buttons r2))))
           (+! f28-14 (analog-input (the-as int (-> *cpad-list* cpads 1 leftx)) 128.0 48.0 110.0 -1.0))
           (+! f30-14 (analog-input (the-as int (-> *cpad-list* cpads 1 lefty)) 128.0 48.0 110.0 -1.0))
           (+! f24-0 (analog-input (the-as int (-> *cpad-list* cpads 1 rightx)) 128.0 48.0 110.0 -1.0))
-          (+! f26-0 (analog-input (the-as int (-> *cpad-list* cpads 1 righty)) 128.0 48.0 110.0 -1.0))
-          )
-        )
+          (+! f26-0 (analog-input (the-as int (-> *cpad-list* cpads 1 righty)) 128.0 48.0 110.0 -1.0))))
       (cond
         ((cpad-hold? arg3 r2)
          (cond
            ((cpad-hold? arg3 l2)
-            (set! (-> arg0 y) (- (-> arg0 y) (* 0.5 (-> *CAM_FREE-bank* rot-speed) (- f24-0))))
-            (set! (-> arg0 x) (- (-> arg0 x) (* 0.5 (-> *CAM_FREE-bank* rot-speed) (- f26-0))))
-            )
+            (set! (-> arg0 y) (- (-> arg0 y) (* (/ (-> *CAM_FREE-bank* rot-speed) 2) (- f24-0))))
+            (set! (-> arg0 x) (- (-> arg0 x) (* (/ (-> *CAM_FREE-bank* rot-speed) 2) (- f26-0)))))
            (else
-             (set! (-> arg0 y) (- (-> arg0 y) (* (- f24-0) (-> *CAM_FREE-bank* rot-speed))))
-             (set! (-> arg0 x) (- (-> arg0 x) (* (- f26-0) (-> *CAM_FREE-bank* rot-speed))))
-             )
-           )
-         (+! (-> arg1 x) (* 0.2 (-> *CAM_FREE-bank* speed) f28-14))
-         (+! (-> arg1 z) (* 0.2 (-> *CAM_FREE-bank* speed) f30-14))
-         )
+            (set! (-> arg0 y) (- (-> arg0 y) (* (- f24-0) (-> *CAM_FREE-bank* rot-speed))))
+            (set! (-> arg0 x) (- (-> arg0 x) (* (- f26-0) (-> *CAM_FREE-bank* rot-speed))))))
+         (+! (-> arg1 x) (* (/ (-> *CAM_FREE-bank* speed) 5) f28-14))
+         (+! (-> arg1 z) (* (/ (-> *CAM_FREE-bank* speed) 5) f30-14)))
         ((cpad-hold? arg3 l2)
          (+! (-> arg1 x) (* f28-14 (-> *CAM_FREE-bank* speed)))
          (+! (-> arg1 y) (* f26-0 (-> *CAM_FREE-bank* speed)))
-         (+! (-> arg1 z) (* f30-14 (-> *CAM_FREE-bank* speed)))
-         )
+         (+! (-> arg1 z) (* f30-14 (-> *CAM_FREE-bank* speed))))
         (else
-          (set! (-> arg0 y) (- (-> arg0 y) (* 2.0 (-> *CAM_FREE-bank* rot-speed) (- f24-0))))
-          (set! (-> arg0 x) (- (-> arg0 x) (* 2.0 (-> *CAM_FREE-bank* rot-speed) (- f26-0))))
-          (+! (-> arg1 x) (* 2.0 (-> *CAM_FREE-bank* speed) f28-14))
-          (+! (-> arg1 z) (* 2.0 (-> *CAM_FREE-bank* speed) f30-14))
-          )
-        )
-      )
-    )
+         (set! (-> arg0 y) (- (-> arg0 y) (* 2.0 (-> *CAM_FREE-bank* rot-speed) (- f24-0))))
+         (set! (-> arg0 x) (- (-> arg0 x) (* 2.0 (-> *CAM_FREE-bank* rot-speed) (- f26-0))))
+         (+! (-> arg1 x) (* 2.0 (-> *CAM_FREE-bank* speed) f28-14))
+         (+! (-> arg1 z) (* 2.0 (-> *CAM_FREE-bank* speed) f30-14))))))
   (vector-float*! arg0 arg0 (-> *display* time-adjust-ratio))
-  (vector-float*! arg1 arg1 (-> *display* time-adjust-ratio))
-  )
+  (vector-float*! arg1 arg1 (-> *display* time-adjust-ratio)))
 
 (deftype camera-free-floating-move-info (structure)
-  ((rv  vector  :inline)
-   (tv  vector  :inline)
-   (up  vector  :inline)
-   (tm  matrix  :inline)
-   )
-  )
+  ((rv vector :inline)
+   (tv vector :inline)
+   (up vector :inline)
+   (tm matrix :inline)))
 
 
 (defun cam-free-floating-move ((arg0 matrix) (arg1 vector) (arg2 vector) (arg3 int))
-  (if (logtest? (-> *cpad-list* cpads arg3 valid) 128)
-      (return (the-as vector #f))
-      )
-  (if (= *master-mode* 'menu)
-      (return (the-as vector #f))
-      )
+  (if (logtest? (-> *cpad-list* cpads arg3 valid) 128) (return (the-as vector #f)))
+  (if (= *master-mode* 'menu) (return (the-as vector #f)))
   (let ((s3-0 (new 'stack 'camera-free-floating-move-info)))
     (cam-free-floating-input (-> s3-0 rv) (-> s3-0 tv) (not arg2) arg3)
     (cond
       (arg2
-        (matrix-axis-angle! (-> s3-0 tm) arg2 (-> s3-0 rv y))
-        (matrix*! arg0 arg0 (-> s3-0 tm))
-        (cond
-          ((< (vector-dot (-> arg0 vector 1) arg2) 0.0)
-           (forward-down->inv-matrix arg0 (-> arg0 vector 2) arg2)
-           )
-          (else
-            (vector-negate! (-> s3-0 up) arg2)
-            (forward-down->inv-matrix arg0 (-> arg0 vector 2) (-> s3-0 up))
-            )
-          )
-        )
-      (else
-        (matrix-axis-angle! (-> s3-0 tm) (-> arg0 vector 1) (- (-> s3-0 rv y)))
-        (matrix*! arg0 arg0 (-> s3-0 tm))
-        )
-      )
+       (matrix-axis-angle! (-> s3-0 tm) arg2 (-> s3-0 rv y))
+       (matrix*! arg0 arg0 (-> s3-0 tm))
+       (cond
+         ((< (vector-dot (-> arg0 vector 1) arg2) 0.0) (forward-down->inv-matrix arg0 (-> arg0 vector 2) arg2))
+         (else (vector-negate! (-> s3-0 up) arg2) (forward-down->inv-matrix arg0 (-> arg0 vector 2) (-> s3-0 up)))))
+      (else (matrix-axis-angle! (-> s3-0 tm) (-> arg0 vector 1) (- (-> s3-0 rv y))) (matrix*! arg0 arg0 (-> s3-0 tm))))
     (matrix-axis-angle! (-> s3-0 tm) (the-as vector (-> arg0 vector)) (- (-> s3-0 rv x)))
     (matrix*! arg0 arg0 (-> s3-0 tm))
     (matrix-axis-angle! (-> s3-0 tm) (-> arg0 vector 2) (- (-> s3-0 rv z)))
     (matrix*! arg0 arg0 (-> s3-0 tm))
     (vector-matrix*! (-> s3-0 tv) (-> s3-0 tv) arg0)
-    (vector+! arg1 arg1 (-> s3-0 tv))
-    )
-  )
+    (vector+! arg1 arg1 (-> s3-0 tv))))
 
 (defstate cam-free-floating (camera-slave)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('teleport)
-       #f
-       )
-      (else
-        (cam-standard-event-handler proc argc message block)
-        )
-      )
-    )
-  :enter (behavior ()
-    (when (not (-> self enter-has-run))
-      (set! (-> self blend-from-type) (the-as uint 1))
-      (set! (-> self blend-to-type) (the-as uint 1))
-      (send-event *camera-combiner* 'stop-tracking)
-      )
-    )
-  :code (behavior ()
-    (loop
-      (let ((a2-0 (-> *camera* local-down)))
-        (if (logtest? (-> self options) 8)
-            (set! a2-0 (the-as vector #f))
-            )
-        (cam-free-floating-move
-          (the-as matrix (-> self tracking))
-          (-> self trans)
-          a2-0
-          (the-as int (-> *CAMERA-bank* joypad))
-          )
-        )
-      (suspend)
-      )
-    )
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('teleport) #f)
+        (else (cam-standard-event-handler proc argc message block))))
+  :enter
+    (behavior ()
+      (when (not (-> self enter-has-run))
+        (set! (-> self blend-from-type) (the-as uint 1))
+        (set! (-> self blend-to-type) (the-as uint 1))
+        (send-event *camera-combiner* 'stop-tracking)))
+  :code
+    (behavior ()
+      (loop
+        (let ((a2-0 (-> *camera* local-down)))
+          (if (logtest? (-> self options) 8) (set! a2-0 (the-as vector #f)))
+          (cam-free-floating-move (the-as matrix (-> self tracking)) (-> self trans) a2-0 (the-as int (-> *CAMERA-bank* joypad))))
+        (suspend))))
 
 (deftype camera-orbit-info (structure)
-  ((radius       float)
-   (rot          float)
-   (target-off   vector  :inline)
-   (orbit-off    vector  :inline)
-   (radius-lerp  float)
-   )
-  )
+  ((radius      float)
+   (rot         float)
+   (target-off  vector :inline)
+   (orbit-off   vector :inline)
+   (radius-lerp float)))
 
 
 (deftype CAM_ORBIT-bank (basic)
-  ((RADIUS_MAX         float)
-   (RADIUS_MIN         float)
-   (TARGET_OFF_ADJUST  float)
-   (ORBIT_OFF_ADJUST   float)
-   )
-  )
+  ((RADIUS_MAX        float)
+   (RADIUS_MIN        float)
+   (TARGET_OFF_ADJUST float)
+   (ORBIT_OFF_ADJUST  float)))
 
 
-(define *CAM_ORBIT-bank* (new 'static 'CAM_ORBIT-bank
-                           :RADIUS_MAX 61440.0
-                           :RADIUS_MIN 409.6
-                           :TARGET_OFF_ADJUST 81.92
-                           :ORBIT_OFF_ADJUST 81.92
-                           )
-        )
+(define *CAM_ORBIT-bank*
+  (new 'static 'CAM_ORBIT-bank :RADIUS_MAX 61440.0 :RADIUS_MIN 409.6 :TARGET_OFF_ADJUST 81.92 :ORBIT_OFF_ADJUST 81.92))
 
 (define *camera-orbit-info* (new 'static 'camera-orbit-info))
 
@@ -450,114 +321,63 @@
 (set! (-> *camera-orbit-info* orbit-off y) 4096.0)
 
 (defstate cam-orbit (camera-slave)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('teleport)
-       #f
-       )
-      (else
-        (cam-standard-event-handler proc argc message block)
-        )
-      )
-    )
-  :enter (behavior ()
-    (when (not (-> self enter-has-run))
-      (if (not *camera-orbit-target*)
-          (cam-slave-go cam-free-floating)
-          )
-      (let ((v1-4 (new-stack-vector0)))
-        (vector-! v1-4 (-> self trans) (-> *camera-orbit-target* 0 root trans))
-        (set! (-> *camera-orbit-info* rot) (atan (-> v1-4 x) (-> v1-4 z)))
-        )
-      (set! (-> self blend-from-type) (the-as uint 1))
-      (set! (-> self blend-to-type) (the-as uint 1))
-      )
-    )
-  :exit (behavior ()
-    '()
-    )
-  :code (behavior ()
-    (loop
-      (if (not *camera-orbit-target*)
-          (cam-slave-go cam-free-floating)
-          )
-      (when *camera-read-analog*
-        (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
-          (cond
-            ((< (* 0.05 (- 1.0 (-> *camera-orbit-info* radius-lerp))) f0-0)
-             (+! (-> *camera-orbit-info* radius-lerp) (* 0.05 (- 1.0 (-> *camera-orbit-info* radius-lerp))))
-             )
-            ((< f0-0 (* 0.05 (- (-> *camera-orbit-info* radius-lerp))))
-             (+! (-> *camera-orbit-info* radius-lerp) (* 0.05 (- (-> *camera-orbit-info* radius-lerp))))
-             )
-            (else
-              (+! (-> *camera-orbit-info* radius-lerp) f0-0)
-              )
-            )
-          )
-        (set! (-> *camera-orbit-info* radius)
-              (lerp (-> *CAM_ORBIT-bank* RADIUS_MIN) (-> *CAM_ORBIT-bank* RADIUS_MAX) (-> *camera-orbit-info* radius-lerp))
-              )
-        )
-      (cond
-        ((cpad-hold? 0 l2)
-         (if (cpad-hold? 0 l1)
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('teleport) #f)
+        (else (cam-standard-event-handler proc argc message block))))
+  :enter
+    (behavior ()
+      (when (not (-> self enter-has-run))
+        (if (not *camera-orbit-target*) (cam-slave-go cam-free-floating))
+        (let ((v1-4 (new-stack-vector0)))
+          (vector-! v1-4 (-> self trans) (-> *camera-orbit-target* 0 root trans))
+          (set! (-> *camera-orbit-info* rot) (atan (-> v1-4 x) (-> v1-4 z))))
+        (set! (-> self blend-from-type) (the-as uint 1))
+        (set! (-> self blend-to-type) (the-as uint 1))))
+  :exit
+    (behavior ()
+      '())
+  :code
+    (behavior ()
+      (loop
+        (if (not *camera-orbit-target*) (cam-slave-go cam-free-floating))
+        (when *camera-read-analog*
+          (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
+            (cond
+              ((< (* 0.05 (- 1.0 (-> *camera-orbit-info* radius-lerp))) f0-0)
+               (+! (-> *camera-orbit-info* radius-lerp) (* 0.05 (- 1.0 (-> *camera-orbit-info* radius-lerp)))))
+              ((< f0-0 (* 0.05 (- (-> *camera-orbit-info* radius-lerp))))
+               (+! (-> *camera-orbit-info* radius-lerp) (* 0.05 (- (-> *camera-orbit-info* radius-lerp)))))
+              (else (+! (-> *camera-orbit-info* radius-lerp) f0-0))))
+          (set! (-> *camera-orbit-info* radius)
+                (lerp (-> *CAM_ORBIT-bank* RADIUS_MIN) (-> *CAM_ORBIT-bank* RADIUS_MAX) (-> *camera-orbit-info* radius-lerp))))
+        (cond
+          ((cpad-hold? 0 l2)
+           (if (cpad-hold? 0 l1)
              (set! (-> *camera-orbit-info* target-off y)
-                   (- (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))
-                   )
-             )
-         (if (cpad-hold? 0 r1)
-             (+! (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))
-             )
-         )
-        (else
-          (if (cpad-hold? 0 l1)
-              (set! (-> *camera-orbit-info* orbit-off y)
-                    (- (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST))
-                    )
-              )
-          (if (cpad-hold? 0 r1)
-              (+! (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST))
-              )
-          )
-        )
-      (when *camera-read-analog*
-        (let ((f0-20
-                (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
-                )
-              )
-          (set! (-> *camera-orbit-info* rot)
-                (the float (sar (shl (the int (+ (-> *camera-orbit-info* rot) f0-20)) 48) 48))
-                )
-          )
-        )
-      (let ((gp-0 (new-stack-vector0)))
-        (let ((s5-0 (new-stack-vector0)))
-          (set-vector!
-            (-> self trans)
-            (+ (-> *camera-orbit-target* 0 root trans x)
-               (* (sin (-> *camera-orbit-info* rot)) (-> *camera-orbit-info* radius))
-               )
-            (-> *camera-orbit-target* 0 root trans y)
-            (+ (-> *camera-orbit-target* 0 root trans z)
-               (* (cos (-> *camera-orbit-info* rot)) (-> *camera-orbit-info* radius))
-               )
-            1.0
-            )
-          (vector+! (-> self trans) (-> self trans) (-> *camera-orbit-info* orbit-off))
-          (vector+!
-            (-> self tracking follow-pt)
-            (-> *camera-orbit-target* 0 root trans)
-            (-> *camera-orbit-info* target-off)
-            )
-          (vector-! s5-0 (-> self trans) (-> self tracking follow-pt))
-          (set! (-> gp-0 y) (the float (sar (shl (the int (+ 32768.0 (atan (-> s5-0 x) (-> s5-0 z)))) 48) 48)))
-          (set! (-> gp-0 x) (atan (-> s5-0 y) (vector-xz-length s5-0)))
-          )
-        (set! (-> gp-0 z) 0.0)
-        (matrix-rotate-zxy! (the-as matrix (-> self tracking)) gp-0)
-        )
-      (suspend)
-      )
-    )
-  )
+                   (- (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))))
+           (if (cpad-hold? 0 r1) (+! (-> *camera-orbit-info* target-off y) (-> *CAM_ORBIT-bank* TARGET_OFF_ADJUST))))
+          (else
+           (if (cpad-hold? 0 l1)
+             (set! (-> *camera-orbit-info* orbit-off y)
+                   (- (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST))))
+           (if (cpad-hold? 0 r1) (+! (-> *camera-orbit-info* orbit-off y) (-> *CAM_ORBIT-bank* ORBIT_OFF_ADJUST)))))
+        (when *camera-read-analog*
+          (let ((f0-20 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))))
+            (set! (-> *camera-orbit-info* rot) (the float (sar (shl (the int (+ (-> *camera-orbit-info* rot) f0-20)) 48) 48)))))
+        (let ((gp-0 (new-stack-vector0)))
+          (let ((s5-0 (new-stack-vector0)))
+            (set-vector! (-> self trans)
+                         (+ (-> *camera-orbit-target* 0 root trans x) (* (sin (-> *camera-orbit-info* rot)) (-> *camera-orbit-info* radius)))
+                         (-> *camera-orbit-target* 0 root trans y)
+                         (+ (-> *camera-orbit-target* 0 root trans z) (* (cos (-> *camera-orbit-info* rot)) (-> *camera-orbit-info* radius)))
+                         1.0)
+            (vector+! (-> self trans) (-> self trans) (-> *camera-orbit-info* orbit-off))
+            (vector+! (-> self tracking follow-pt) (-> *camera-orbit-target* 0 root trans) (-> *camera-orbit-info* target-off))
+            (vector-! s5-0 (-> self trans) (-> self tracking follow-pt))
+            (set! (-> gp-0 y) (the float (sar (shl (the int (+ 32768.0 (atan (-> s5-0 x) (-> s5-0 z)))) 48) 48)))
+            (set! (-> gp-0 x) (atan (-> s5-0 y) (vector-xz-length s5-0))))
+          (set! (-> gp-0 z) 0.0)
+          (matrix-rotate-zxy! (the-as matrix (-> self tracking)) gp-0))
+        (suspend))))

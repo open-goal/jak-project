@@ -23,8 +23,6 @@ for file in file_list:
       gsrc_length = len(fp.readlines())
 
     if gsrc_length > 15:
-      if file_name == "enemy-h":
-        print(file_name)
       # check if ref exists
       ref_path = get_ref_path_from_filename("jak2", file_name, "./test/decompiler/reference/")
       if not os.path.exists(ref_path):

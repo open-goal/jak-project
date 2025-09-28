@@ -1,5 +1,8 @@
 #include "dma.h"
 
+#include "common/log/log.h"
+#include "common/util/string_util.h"
+
 #include "game/overlord/jak2/ssound.h"
 #include "game/overlord/jak2/vag.h"
 #include "game/sound/sdshim.h"
@@ -69,6 +72,14 @@ int SpuDmaIntr(int, void*) {
 
       // start the transfer!
       pending_dma = kDmaDelay;
+      // TODO - temporary hack, `channel` being set to -1 is what causes the lifeseed cutscene crash
+      // narrow down why/where -1 is coming from
+      // - https://github.com/open-goal/jak-project/issues/2988
+      if (chan < 0) {
+        lg::error("SND-ERROR: channel was invalid: {} for command: {}", chan,
+                  DmaStereoVagCmd->name);
+        return -1;
+      }
       sceSdVoiceTrans((int)chan, 0, iop_ptr, spu_addr, old_xfer);
       // and return. This will get called again on completion
       return 0;

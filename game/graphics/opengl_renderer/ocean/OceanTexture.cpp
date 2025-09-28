@@ -68,6 +68,7 @@ void OceanTexture::init_textures(TexturePool& pool, GameVersion version) {
       m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP_JAK1);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP_JAK2);
       break;
   }
@@ -75,7 +76,7 @@ void OceanTexture::init_textures(TexturePool& pool, GameVersion version) {
 
 void OceanTexture::draw_debug_window() {
   if (m_tex0_gpu) {
-    ImGui::Image((void*)(u64)m_tex0_gpu->gpu_textures.at(0).gl,
+    ImGui::Image((ImTextureID)(intptr_t)m_tex0_gpu->gpu_textures.at(0).gl,
                  ImVec2(m_tex0_gpu->w, m_tex0_gpu->h));
   }
 }

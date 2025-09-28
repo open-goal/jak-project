@@ -1,7 +1,8 @@
 # Updates files in gsrc if they are modified in the reference test folder
 # Uses git
-import subprocess
 from git import Repo
+
+from utils import decompile_file
 
 repo = Repo("./")
 
@@ -45,19 +46,7 @@ else:
 
 all_names = str(file_names).replace("'", "\"").replace("{", "[").replace("}", "]");
 print("Decompiling - {}".format(all_names))
-# Decompile file
-subprocess.run(
-    [
-        args.decompiler,
-        "./decompiler/config/{}".format(args.decompiler_config),
-        "./iso_data",
-        "./decompiler_out",
-        "--version",
-        args.version,
-        "--config-override",
-        '{{"levels_extract": false, "process_art_groups": false, "decompile_code": true, "allowed_objects": {}}}'.format(all_names),
-    ]
-)
+decompile_file(args.decompiler, args.decompiler_config, args.version, all_names, False)
 
 for file_name in file_names:
     print("Updating - {}".format(file_name))

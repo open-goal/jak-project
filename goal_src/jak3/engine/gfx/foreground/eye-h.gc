@@ -5,5 +5,83 @@
 ;; name in dgo: eye-h
 ;; dgos: GAME
 
+(define-extern get-eye-block (function int int int))
+(define-extern find-free-eye-index (function int string int int))
+(define-extern free-eye-index (function int int))
+(define-extern merc-eye-anim (function process-drawable none))
+(define-extern update-eyes (function none))
+
 ;; DECOMP BEGINS
 
+(deftype eye (structure)
+  "Data for a single eye."
+  ((data          vector        2 :inline)
+   (x             float         :overlay-at (-> data 0 data 0))
+   (y             float         :overlay-at (-> data 0 data 1))
+   (lid           float         :overlay-at (-> data 0 data 2))
+   (iris-scale    float         :offset  16)
+   (pupil-scale   float         :offset  20)
+   (lid-scale     float         :offset  24)
+   (shader-count  uint32        :offset  32)
+   (shader        adgif-shader  8)
+   )
+  )
+
+
+(deftype eye-control (structure)
+  "Information about the state of both eyes of a [[process-drawable]]."
+  ((process         handle)
+   (random-time     uint16)
+   (bucket          uint16)
+   (blink           float)
+   (shaders         (inline-array adgif-shader))
+   (eyes            eye    2 :inline)
+   (left            eye    :inline :overlay-at (-> eyes 0))
+   (right           eye    :inline :offset 112)
+   (level-index     int16)
+   (high-res?       symbol)
+   (eye-slot        uint8)
+   (art-group-name  uint8  64      :offset 201)
+   )
+  )
+
+
+(deftype eye-control-array (basic)
+  "An array of [[eye-control]]s."
+  ((data  eye-control  32 :inline)
+   )
+  )
+
+
+(deftype eye-work (structure)
+  "Eye renderer DMA data."
+  ((sprite-tmpl   dma-gif-packet  :inline)
+   (sprite-tmpl2  dma-gif-packet  :inline)
+   (adgif-tmpl    dma-gif-packet  :inline)
+   (blink-table   float           10)
+   )
+  )
+
+
+(define *eye-control-array* (new 'static 'eye-control-array))
+
+(dotimes (ctrl-idx 32)
+  (let ((eye-ctrl (-> *eye-control-array* data ctrl-idx)))
+    (set! (-> eye-ctrl process) (the-as handle #f))
+    (set! (-> eye-ctrl random-time) (the-as uint 60))
+    (set! (-> eye-ctrl blink) 0.0)
+    (set! (-> eye-ctrl shaders) (the-as (inline-array adgif-shader) #f))
+    (set! (-> eye-ctrl level-index) -1)
+    (set! (-> eye-ctrl high-res?) #f)
+    (set! (-> eye-ctrl eye-slot) (the-as uint 0))
+    (set! (-> eye-ctrl art-group-name 0) (the-as uint 0))
+    (dotimes (eye-idx 2)
+      (set! (-> eye-ctrl eyes eye-idx shader-count) (the-as uint 0))
+      (dotimes (shader-idx 8)
+        (set! (-> (the-as eye-control (+ (+ (* shader-idx 4) (* 80 eye-idx)) (the-as int eye-ctrl))) left shader 0)
+              #f
+              )
+        )
+      )
+    )
+  )

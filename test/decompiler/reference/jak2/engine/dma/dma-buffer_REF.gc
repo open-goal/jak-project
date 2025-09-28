@@ -3,6 +3,7 @@
 
 ;; definition of type dma-packet
 (deftype dma-packet (structure)
+  "The header for a DMA transfer, containing an DMA tag, and VIF tags."
   ((dma   dma-tag)
    (vif0  vif-tag)
    (vif1  vif-tag)
@@ -28,6 +29,7 @@
 
 ;; definition of type dma-packet-array
 (deftype dma-packet-array (inline-array-class)
+  "Unused dma array. Unclear how it should be used."
   ((data  dma-packet  :inline :dynamic)
    )
   )
@@ -51,6 +53,7 @@
 
 ;; definition of type dma-gif
 (deftype dma-gif (structure)
+  "Believed unused GIF header type."
   ((gif   uint64   2)
    (quad  uint128  :overlay-at (-> gif 0))
    (gif0  uint64   :overlay-at (-> gif 0))
@@ -74,6 +77,7 @@
 
 ;; definition of type dma-gif-packet
 (deftype dma-gif-packet (structure)
+  "The header for a DMA transfer that goes directly to GIF, containing DMA, VIF, GIF tags."
   ((dma-vif  dma-packet  :inline)
    (gif      uint64      2)
    (gif0     uint64        :overlay-at (-> gif 0))
@@ -98,6 +102,7 @@
 
 ;; definition of type dma-buffer
 (deftype dma-buffer (basic)
+  "A buffer for DMA data."
   ((allocated-length  int32)
    (base              pointer)
    (end               pointer)
@@ -134,10 +139,11 @@
   )
 
 ;; definition for function dma-buffer-inplace-new
-(defun dma-buffer-inplace-new ((arg0 dma-buffer) (arg1 int))
-  (set! (-> arg0 base) (-> arg0 data))
-  (set! (-> arg0 allocated-length) arg1)
-  arg0
+(defun dma-buffer-inplace-new ((dma-buff dma-buffer) (size-bytes int))
+  "Create a dma-buffer in-place. Does not set the type of the dma-buffer object."
+  (set! (-> dma-buff base) (-> dma-buff data))
+  (set! (-> dma-buff allocated-length) size-bytes)
+  dma-buff
   )
 
 ;; definition for method 4 of type dma-buffer
@@ -151,13 +157,15 @@
   )
 
 ;; definition for function dma-buffer-length
-(defun dma-buffer-length ((arg0 dma-buffer))
-  (shr (+ (&- (-> arg0 base) (the-as uint (-> arg0 data))) 15) 4)
+(defun dma-buffer-length ((dma-buf dma-buffer))
+  "Get length used in quadwords, rounded up."
+  (shr (+ (&- (-> dma-buf base) (the-as uint (-> dma-buf data))) 15) 4)
   )
 
 ;; definition for function dma-buffer-free
-(defun dma-buffer-free ((arg0 dma-buffer))
-  (shr (+ (&- (-> arg0 end) (the-as uint (-> arg0 base))) 15) 4)
+(defun dma-buffer-free ((dma-buf dma-buffer))
+  "Get the number of free quadwords between base and end pointers."
+  (shr (+ (&- (-> dma-buf end) (the-as uint (-> dma-buf base))) 15) 4)
   )
 
 ;; definition for function dma-buffer-add-vu-function
@@ -188,21 +196,23 @@
   )
 
 ;; definition for function dma-buffer-send
-(defun dma-buffer-send ((arg0 dma-bank) (arg1 dma-buffer))
-  (when (< (-> arg1 allocated-length) (&- (-> arg1 base) (the-as uint (-> arg1 data))))
+(defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
+  "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
+  (when (< (-> buf allocated-length) (&- (-> buf base) (the-as uint (-> buf data))))
     (crash!)
     0
     )
-  (dma-send arg0 (the-as uint (-> arg1 data)) (the-as uint (dma-buffer-length arg1)))
+  (dma-send chan (the-as uint (-> buf data)) (the-as uint (dma-buffer-length buf)))
   (none)
   )
 
 ;; definition for function dma-buffer-send-chain
-(defun dma-buffer-send-chain ((arg0 dma-bank-source) (arg1 dma-buffer))
-  (when (< (-> arg1 allocated-length) (&- (-> arg1 base) (the-as uint (-> arg1 data))))
+(defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
+  "Send the DMA buffer! Sends the tags, so this is suitable for the main graphics chain."
+  (when (< (-> buf allocated-length) (&- (-> buf base) (the-as uint (-> buf data))))
     (crash!)
     0
     )
-  (dma-send-chain arg0 (the-as uint (-> arg1 data)))
+  (dma-send-chain chan (the-as uint (-> buf data)))
   (none)
   )

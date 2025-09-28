@@ -1,0 +1,73 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for function gs-set-default-store-image
+;; INFO: Used lq/sq
+(defun gs-set-default-store-image ((packet gs-store-image-packet)
+                          (source-vram int)
+                          (width int)
+                          (tex-fmt gs-psm)
+                          (ssax int)
+                          (ssay int)
+                          (rrw int)
+                          (rrh int)
+                          )
+  "Set up a gs-store-image-packet for copying VRAM data to RAM."
+  (set! (-> packet vifcode 0) (new 'static 'vif-tag))
+  (set! (-> packet vifcode 1) (new 'static 'vif-tag :imm #x8000 :cmd (vif-cmd mskpath3)))
+  (set! (-> packet vifcode 2) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
+  (set! (-> packet vifcode 3) (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1))
+  (set! (-> packet giftag) (new 'static 'gif-tag :nloop #x5 :eop #x1 :nreg #x1 :regs0 (gif-reg-id a+d)))
+  (set! (-> packet bitbltbuf)
+        (new 'static 'gs-bitbltbuf :sbp source-vram :sbw width :spsm (the-as int tex-fmt))
+        )
+  (set! (-> packet bitbltbuf-addr) (gs-reg64 bitbltbuf))
+  (set! (-> packet trxpos) (new 'static 'gs-trxpos :ssax ssax :ssay ssay))
+  (set! (-> packet trxpos-addr) (gs-reg64 trxpos))
+  (set! (-> packet trxreg) (new 'static 'gs-trxreg :rrw rrw :rrh rrh))
+  (set! (-> packet trxreg-addr) (gs-reg64 trxreg))
+  (set! (-> packet finish) (the-as uint 0))
+  (set! (-> packet finish-addr) (gs-reg64 finish))
+  (set! (-> packet trxdir) (new 'static 'gs-trxdir :xdir #x1))
+  (set! (-> packet trxdir-addr) (gs-reg64 trxdir))
+  (.sync.l)
+  7
+  )
+
+;; definition for function store-image
+;; WARN: Return type mismatch int vs none.
+(defun store-image ((work screen-shot-work))
+  "Take a screenshot!"
+  (let ((gp-0 512)
+        (s5-0 416)
+        )
+    (let ((a3-0 (-> work count))
+          (a2-0 (-> work name))
+          )
+      (set! (-> *image-name* data 0) (the-as uint 0))
+      (format *image-name* "final/rawshots/~s-~d.raw" a2-0 a3-0)
+      )
+    (format 0 "writing ~s~%" *image-name*)
+    (let ((s4-0 (new 'stack 'file-stream *image-name* 'write)))
+      (let ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf data)))
+        (let ((s2-0 (new 'static 'gs-store-image-packet)))
+          (gs-set-default-store-image s2-0 #x3300 (/ gp-0 64) (gs-psm ct32) 0 0 gp-0 s5-0)
+          (flush-cache 0)
+          (gs-store-image s2-0 s3-0)
+          )
+        (sync-path 0 0)
+        (file-stream-write s4-0 s3-0 (the-as uint (* (* s5-0 gp-0) 4)))
+        )
+      (file-stream-close s4-0)
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+

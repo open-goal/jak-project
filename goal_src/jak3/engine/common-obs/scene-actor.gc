@@ -7,3 +7,1523 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-scenecamera scenecamera scenecamera-lod0-jg -1
+              ((scenecamera-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :texture-level 10
+              )
+
+(defskelgroup skel-particleman particleman particleman-lod0-jg -1
+              ((particleman-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-darkjak-highres darkjak-highres darkjak-highres-lod0-jg -1
+              ((darkjak-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.2)
+              :longest-edge (meters 1)
+              :sort 1
+              :origin-joint-index 3
+              :clothing (((mesh darkjak-highres-jakcfma0-skirt-cg)
+                (gravity-constant (meters 16))
+                (wind-constant 0.5)
+                (cloth-width 13)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "jakc-skirt")
+                (tex-name2 "jakc-skirt")
+                (tex-name3 "jakc-skirt")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.151)
+                (ball-collision-radius (meters 0.05))
+                (num-iterations 1)
+                (timestep-frequency 7)
+                )
+               ((mesh darkjak-highres-jakcfma0-sash-cg)
+                (gravity-constant (meters 32))
+                (wind-constant 0.75)
+                (cloth-width 6)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "jakc-skirt")
+                (tex-name2 "jakc-skirt")
+                (tex-name3 "jakc-skirt")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.251)
+                (ball-collision-radius (meters 0.05))
+                (num-iterations 1)
+                (timestep-frequency 7)
+                )
+               ((mesh darkjak-highres-jakcfma0-scarf-cg)
+                (gravity-constant (meters 16))
+                (wind-constant 1.25)
+                (cloth-width 6)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "jakc-scarfhanging")
+                (tex-name2 "jakc-scarfhanging")
+                (tex-name3 "jakc-scarfhanging")
+                (cloth-thickness 2.0)
+                (initial-xform 4)
+                (drag 0.151)
+                (ball-collision-radius (meters 0.05))
+                (num-iterations 1)
+                (timestep-frequency 7)
+                )
+               )
+              )
+
+(defskelgroup skel-pecker-highres pecker-highres pecker-highres-lod0-jg pecker-highres-idle-ja
+              ((pecker-highres-lod0-mg (meters 200)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow pecker-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(deftype pecker-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this pecker-npc))
+  (-> this draw art-group data 3)
+  )
+
+(defmethod init-skeleton! ((this pecker-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pecker-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defskelgroup skel-veger-highres veger-highres veger-highres-lod0-jg veger-highres-idle-ja
+              ((veger-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow veger-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              :clothing (((mesh veger-highres-veger-coatL-cg)
+                (gravity-constant (meters 36))
+                (wind-constant 1.0)
+                (cloth-width 10)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "veger-coat")
+                (tex-name2 "veger-coat")
+                (tex-name3 "veger-coat")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.051)
+                (num-iterations 1)
+                )
+               ((mesh veger-highres-veger-coatR-cg)
+                (gravity-constant (meters 36))
+                (wind-constant 1.0)
+                (cloth-width 10)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "veger-coat")
+                (tex-name2 "veger-coat")
+                (tex-name3 "veger-coat")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.051)
+                (num-iterations 1)
+                )
+               )
+              )
+
+(deftype veger-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod init-skeleton! ((this veger-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-veger-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defmethod get-art-element ((this veger-npc))
+  (case (-> this task actor)
+    (((game-task-actor veger-cave))
+     (logior! (-> this draw status) (draw-control-status no-draw-bounds))
+     (let ((v1-7 (-> this root root-prim)))
+       (set! (-> v1-7 prim-core collide-as) (collide-spec))
+       (set! (-> v1-7 prim-core collide-with) (collide-spec))
+       )
+     0
+     )
+    )
+  (-> this draw art-group data 5)
+  )
+
+(defskelgroup skel-ashelin-highres ashelin-highres ashelin-highres-lod0-jg ashelin-highres-idle-stand-ja
+              ((ashelin-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              :shadow ashelin-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(deftype ashelin-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod init-skeleton! ((this ashelin-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-ashelin-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defmethod get-art-element ((this ashelin-npc))
+  (case (-> this task actor)
+    (((game-task-actor ashelin-oasis))
+     )
+    )
+  (-> this draw art-group data 4)
+  )
+
+(defskelgroup skel-damus-highres king-highres king-highres-lod0-jg king-highres-idle-ja
+              ((king-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow king-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              :clothing (((mesh king-highres-king-kingskirt-cg)
+                (gravity-constant (meters 12))
+                (cloth-width 13)
+                (flags (cloth-flag use-wind double-sided flip-normals))
+                (tex-name "king-skirt-b")
+                (tex-name2 "king-skirt-b")
+                (tex-name3 "king-skirt-b")
+                (cloth-thickness 1.3)
+                (initial-xform 3)
+                (drag 0.051)
+                (num-iterations 1)
+                )
+               )
+              )
+
+(deftype damus-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this damus-npc))
+  (case (-> this task actor)
+    (((game-task-actor damus-wasdoors))
+     (-> this draw art-group data 9)
+     )
+    (else
+      (let ((v1-6 (if (> (-> this skel active-channels) 0)
+                      (-> this skel root-channel 0 frame-group)
+                      )
+                  )
+            )
+        (cond
+          ((and v1-6 (= v1-6 (-> this draw art-group data 4)))
+           (-> this draw art-group data 5)
+           )
+          ((let ((v1-14 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-14 (= v1-14 (-> this draw art-group data 5)))
+             )
+           (if (= (the int (ja-aframe-num 0)) 14)
+               (-> this draw art-group data 6)
+               (-> this draw art-group data 5)
+               )
+           )
+          ((let ((v1-25 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-25 (= v1-25 (-> this draw art-group data 6)))
+             )
+           (if (and (= (the int (ja-aframe-num 0)) 44) (rand-vu-percent? 0.1))
+               (-> this draw art-group data 7)
+               (-> this draw art-group data 6)
+               )
+           )
+          ((let ((v1-38 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-38 (= v1-38 (-> this draw art-group data 7)))
+             )
+           (if (= (the int (ja-aframe-num 0)) 54)
+               (-> this draw art-group data 8)
+               (-> this draw art-group data 7)
+               )
+           )
+          ((let ((v1-49 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-49 (= v1-49 (-> this draw art-group data 8)))
+             )
+           (if (and (= (the int (ja-aframe-num 0)) 84) (rand-vu-percent? 0.1))
+               (-> this draw art-group data 5)
+               (-> this draw art-group data 8)
+               )
+           )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this damus-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-damus-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defskelgroup skel-crimson-guard-highres crimson-guard-highres crimson-guard-highres-lod0-jg -1
+              ((crimson-guard-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow crimson-guard-highres-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-torn-highres torn-highres torn-highres-lod0-jg torn-highres-idle-ja
+              ((torn-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow torn-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(deftype torn-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod init-skeleton! ((this torn-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-torn-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defmethod get-art-element ((this torn-npc))
+  (case (-> this task actor)
+    (((game-task-actor torn-freehq))
+     (-> this draw art-group data 4)
+     )
+    (((game-task-actor torn-hiptable))
+     (-> this draw art-group data 4)
+     )
+    (((game-task-actor torn-hipbar))
+     (-> this draw art-group data 6)
+     )
+    (((game-task-actor torn-hipbooth))
+     (-> this draw art-group data 5)
+     )
+    (else
+      (-> this draw art-group data 3)
+      )
+    )
+  )
+
+(defmethod get-trans ((this torn-npc) (arg0 int))
+  "Get the `trans` for this process."
+  (let ((v1-0 (-> this root)))
+    (if (= arg0 2)
+        (vector<-cspace! (new 'static 'vector) (-> this node-list data 6))
+        (-> v1-0 trans)
+        )
+    )
+  )
+
+(defskelgroup skel-samos-highres samos-highres samos-highres-lod0-jg samos-highres-idle-ja
+              ((samos-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              :shadow samos-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(deftype samos-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this samos-npc))
+  (case (-> this task actor)
+    (((game-task-actor samos-genb))
+     (-> this draw art-group data 4)
+     )
+    (((game-task-actor samos-freehq))
+     (-> this draw art-group data 4)
+     )
+    (else
+      (-> this draw art-group data 4)
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this samos-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-samos-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defskelgroup skel-palmpilot palmpilot palmpilot-lod0-jg -1
+              ((palmpilot-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-palmpilot-b palmpilot-b palmpilot-b-lod0-jg -1
+              ((palmpilot-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-sig-highres sig-highres sig-highres-lod0-jg sig-highres-idle-ja
+              ((sig-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow sig-highres-shadow-mg
+              :origin-joint-index 17
+              :shadow-joint-index 3
+              )
+
+(deftype sig-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this sig-npc))
+  (case (-> this task actor)
+    (((game-task-actor sig-wasdoors))
+     (-> this draw art-group data 4)
+     )
+    (else
+      (-> this draw art-group data 3)
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this sig-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sig-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defskelgroup skel-kleever-highres kleever-highres kleever-highres-lod0-jg kleever-highres-idle-ja
+              ((kleever-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow kleever-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              :clothing (((mesh kleever-highres-kleever-L1-cg)
+                (gravity-constant (meters 24))
+                (wind-constant 0.5)
+                (cloth-width 3)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "klever-skirtlight")
+                (tex-name2 "klever-skirtlight")
+                (tex-name3 "klever-skirtlight")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.151)
+                (num-iterations 1)
+                (timestep-frequency 7)
+                (secret-disable (game-secrets kleever-diaper))
+                )
+               ((mesh kleever-highres-kleever-R1-cg)
+                (gravity-constant (meters 24))
+                (wind-constant 0.5)
+                (cloth-width 3)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "klever-skirtlight")
+                (tex-name2 "klever-skirtlight")
+                (tex-name3 "klever-skirtlight")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.151)
+                (num-iterations 1)
+                (timestep-frequency 7)
+                (secret-disable (game-secrets kleever-diaper))
+                )
+               ((mesh kleever-highres-kleever-Center-cg)
+                (gravity-constant (meters 24))
+                (wind-constant 0.5)
+                (cloth-width 11)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "klever-skirtdark")
+                (tex-name2 "klever-skirtdark")
+                (tex-name3 "klever-skirtdark")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.151)
+                (num-iterations 1)
+                (timestep-frequency 7)
+                (secret-disable (game-secrets kleever-diaper))
+                )
+               ((mesh kleever-highres-kleever-L2-cg)
+                (gravity-constant (meters 12))
+                (wind-constant 1.0)
+                (cloth-width 4)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "klever-skirtlight")
+                (tex-name2 "klever-skirtlight")
+                (tex-name3 "klever-skirtlight")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.151)
+                (num-iterations 1)
+                (timestep-frequency 7)
+                (secret-disable (game-secrets kleever-diaper))
+                )
+               ((mesh kleever-highres-kleever-R2-cg)
+                (gravity-constant (meters 12))
+                (wind-constant 1.0)
+                (cloth-width 4)
+                (flags (cloth-flag use-wind double-sided))
+                (tex-name "klever-skirtlight")
+                (tex-name2 "klever-skirtlight")
+                (tex-name3 "klever-skirtlight")
+                (cloth-thickness 1.0)
+                (initial-xform 3)
+                (drag 0.151)
+                (num-iterations 1)
+                (timestep-frequency 7)
+                (secret-disable (game-secrets kleever-diaper))
+                )
+               )
+              )
+
+(deftype kleever-npc (process-taskable)
+  ((cloth  basic)
+   )
+  )
+
+
+(defmethod init-collision! ((this kleever-npc))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 6) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 7))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec civilian))
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 -1024.0 0.0 9011.2)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set! (-> v1-7 transform-index) 0)
+      (set-vector! (-> v1-7 local-sphere) 0.0 -4096.0 0.0 4096.0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 0)
+      (set-vector! (-> v1-9 local-sphere) 0.0 -1024.0 0.0 4096.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-11 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-11 transform-index) 0)
+      (set-vector! (-> v1-11 local-sphere) 0.0 2048.0 0.0 4096.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 0)
+      (set-vector! (-> v1-13 local-sphere) 6144.0 -4096.0 1638.4 819.2)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 6144.0 -1024.0 1638.4 819.2)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-17 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 6144.0 2048.0 1638.4 819.2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-20 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-20 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-20 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod get-art-element ((this kleever-npc))
+  (case (-> this task actor)
+    (((game-task-actor kleever-arena))
+     (-> this draw art-group data 9)
+     )
+    (else
+      (let ((v1-6 (if (> (-> this skel active-channels) 0)
+                      (-> this skel root-channel 0 frame-group)
+                      )
+                  )
+            )
+        (cond
+          ((and v1-6 (= v1-6 (-> this draw art-group data 8)))
+           (-> this draw art-group data 10)
+           )
+          ((let ((v1-14 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-14 (= v1-14 (-> this draw art-group data 10)))
+             )
+           (if (and (= (the int (ja-aframe-num 0)) 59) (rand-vu-percent? 0.1))
+               (-> this draw art-group data 11)
+               (-> this draw art-group data 10)
+               )
+           )
+          ((let ((v1-27 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-27 (= v1-27 (-> this draw art-group data 11)))
+             )
+           (if (= (the int (ja-aframe-num 0)) 74)
+               (-> this draw art-group data 12)
+               (-> this draw art-group data 11)
+               )
+           )
+          ((let ((v1-38 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-38 (= v1-38 (-> this draw art-group data 12)))
+             )
+           (if (and (= (the int (ja-aframe-num 0)) 127) (rand-vu-percent? 0.1))
+               (-> this draw art-group data 13)
+               (-> this draw art-group data 12)
+               )
+           )
+          ((let ((v1-51 (if (> (-> this skel active-channels) 0)
+                            (-> this skel root-channel 0 frame-group)
+                            )
+                        )
+                 )
+             (and v1-51 (= v1-51 (-> this draw art-group data 13)))
+             )
+           (if (= (the int (ja-aframe-num 0)) 139)
+               (-> this draw art-group data 10)
+               (-> this draw art-group data 13)
+               )
+           )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this kleever-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-kleever-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  (set! (-> this cloth) (the-as basic #t))
+  0
+  (none)
+  )
+
+(defskelgroup skel-seem-highres seem-highres seem-highres-lod0-jg seem-highres-idle-ja
+              ((seem-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow seem-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              :clothing (((mesh seem-highres-seem-seemskirt_fr-cg)
+                (gravity-constant (meters 20))
+                (wind-constant 1.0)
+                (cloth-width 21)
+                (flags (cloth-flag double-sided wraps autogen-uvs use-old-resets))
+                (tex-name "seem-skirt")
+                (tex-name2 "seem-skirt")
+                (tex-name3 "seem-skirt")
+                (initial-xform 3)
+                (drag 0.301)
+                (num-iterations 3)
+                (timestep-frequency 7)
+                )
+               )
+              )
+
+(deftype seem-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this seem-npc))
+  (case (-> this task actor)
+    (((game-task-actor seem-wascity))
+     (-> this draw art-group data 5)
+     )
+    (((game-task-actor seem-leaper))
+     (-> this draw art-group data 7)
+     )
+    (else
+      (-> this draw art-group data 4)
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this seem-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-seem-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defmethod init-defaults! ((this seem-npc))
+  (let ((t9-0 (method-of-type process-taskable init-defaults!)))
+    (t9-0 this)
+    )
+  (case (-> this task actor)
+    (((game-task-actor seem-wascity))
+     (logior! (-> this flags) (process-taskable-flags ptf6))
+     )
+    )
+  0
+  (none)
+  )
+
+(defskelgroup skel-onin-highres onin-highres onin-highres-lod0-jg onin-highres-idle-ja
+              ((onin-highres-lod0-mg (meters 200)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow onin-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(deftype onin-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod init-skeleton! ((this onin-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-onin-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defmethod get-art-element ((this onin-npc))
+  (case (-> this task actor)
+    (((game-task-actor onin-onintent))
+     )
+    )
+  (-> this draw art-group data 4)
+  )
+
+(defskelgroup skel-jinx-highres jinx-highres jinx-highres-lod0-jg jinx-highres-idle-ja
+              ((jinx-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :origin-joint-index 3
+              )
+
+(deftype jinx-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod init-skeleton! ((this jinx-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-jinx-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defmethod get-art-element ((this jinx-npc))
+  (case (-> this task actor)
+    (((game-task-actor jinx-hiphog))
+     (-> this draw art-group data 3)
+     )
+    (else
+      (-> this draw art-group data 2)
+      )
+    )
+  )
+
+(defskelgroup skel-gun-npc gun-npc gun-npc-lod0-jg -1
+              ((gun-npc-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              :shadow gun-npc-shadow-mg
+              :origin-joint-index 3
+              )
+
+(deftype gun-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this gun-npc))
+  (case (-> this task actor)
+    (((game-task-actor gun-gungame))
+     (cond
+       ((task-node-closed? (game-task-node city-port-assault-resolution))
+        (-> this draw art-group data 3)
+        )
+       ((task-node-closed? (game-task-node city-gun-course-1-introduction))
+        (-> this draw art-group data 4)
+        )
+       (else
+         (-> this draw art-group data 3)
+         )
+       )
+     )
+    (else
+      (-> this draw art-group data 3)
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this gun-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-npc" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defskelgroup skel-tess-highres tess-highres tess-highres-lod0-jg tess-highres-idle-ja
+              ((tess-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow tess-highres-shadow-mg
+              :origin-joint-index 3
+              )
+
+(deftype tess-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this tess-npc))
+  (case (-> this task actor)
+    (((game-task-actor tess-gungame))
+     (cond
+       ((task-node-closed? (game-task-node city-gun-course-2-resolution))
+        (-> this draw art-group data 7)
+        )
+       ((task-node-closed? (game-task-node city-gun-course-2-introduction))
+        (-> this draw art-group data 5)
+        )
+       ((task-node-closed? (game-task-node city-port-assault-resolution))
+        (-> this draw art-group data 5)
+        )
+       ((task-node-closed? (game-task-node city-gun-course-1-resolution))
+        (-> this draw art-group data 7)
+        )
+       ((task-node-closed? (game-task-node city-gun-course-1-introduction))
+        (-> this draw art-group data 6)
+        )
+       (else
+         (-> this draw art-group data 5)
+         )
+       )
+     )
+    (else
+      (-> this draw art-group data 3)
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this tess-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tess-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defskelgroup skel-wlander-male wlander-male wlander-male-lod0-jg -1
+              ((wlander-male-lod0-mg (meters 20)) (wlander-male-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow wlander-male-shadow-mg
+              :origin-joint-index 3
+              )
+
+(deftype vin-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this vin-npc))
+  (-> this draw art-group data 5)
+  )
+
+(defmethod init-skeleton! ((this vin-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sidekick" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> this draw status) (draw-control-status no-draw-bounds2))
+  0
+  (none)
+  )
+
+(defskelgroup skel-eco-crystal-dark eco-crystal-dark eco-crystal-dark-lod0-jg eco-crystal-dark-idle-ja
+              ((eco-crystal-dark-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.5)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-keira-highres keira-highres keira-highres-lod0-jg keira-highres-idle-ja
+              ((keira-highres-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow keira-highres-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 4
+              )
+
+(deftype keira-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod get-art-element ((this keira-npc))
+  (case (-> this task actor)
+    (((game-task-actor keira-freehq))
+     (-> this draw art-group data 3)
+     )
+    (((game-task-actor keira-genb))
+     (-> this draw art-group data 3)
+     )
+    (else
+      (-> this draw art-group data 3)
+      )
+    )
+  )
+
+(defmethod init-skeleton! ((this keira-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-keira-highres" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  0
+  (none)
+  )
+
+(defskelgroup skel-hellcat-movie hellcat hellcat-lod0-jg hellcat-idle-ja
+              ((hellcat-lod0-mg (meters 20)) (hellcat-lod0-mg (meters 40)) (hellcat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.8)
+              :shadow hellcat-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-kidmedallion kidmedallion kidmedallion-lod0-jg kidmedallion-idle-ja
+              ((kidmedallion-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              )
+
+(defun pre-intro-play ()
+  (set! (-> *setting-control* user-default border-mode) #t)
+  (set! (-> *level* play?) (-> *setting-control* user-default border-mode))
+  (process-spawn
+    scene-player
+    :init scene-player-init
+    '("intro-drop" "intro-lost" "intro-ffhq" "intro-tired" "intro-palace" "intro-rescue")
+    #t
+    "wasintro-start"
+    :name "scene-player"
+    )
+  0
+  (none)
+  )
+
+(defun intro-play ()
+  (set! (-> *setting-control* user-default border-mode) #t)
+  (set! (-> *level* play?) (-> *setting-control* user-default border-mode))
+  (process-spawn
+    scene-player
+    :init scene-player-init
+    '("intro-training" "arena-training-1-intro")
+    #t
+    "waspala-intro-training"
+    :name "scene-player"
+    )
+  0
+  (none)
+  )
+
+(defun outro-play ()
+  (set! (-> *setting-control* user-default border-mode) #t)
+  (set! (-> *level* play?) (-> *setting-control* user-default border-mode))
+  (process-spawn scene-player :init scene-player-init "arena-outro" #t "wasstada-outro" :name "scene-player")
+  0
+  (none)
+  )
+
+((lambda ()
+   (let ((a0-0
+           (new 'static 'skeleton-group
+             :name "skel-flut-wild"
+             :extra #f
+             :info #f
+             :art-group-name "flut-wild"
+             :bounds (new 'static 'vector :y 8192.0 :w 16384.0)
+             :version 8
+             :shadow 2
+             :origin-joint-index 3
+             :sort 1
+             :clothing #f
+             )
+           )
+         )
+     (when #f
+       (set! (-> a0-0 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-0 clothing length) (-> a0-0 clothing allocated-length))
+       )
+     (set! (-> a0-0 jgeo) 0)
+     (set! (-> a0-0 janim) 3)
+     (set! (-> a0-0 mgeo 0) 1)
+     (set! (-> a0-0 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-0)
+     )
+
+
+(deftype flut-npc (process-taskable)
+  ()
+  )
+
+(defmethod inspect ((this flut-npc))
+  (when (not this)
+    (set! this this)
+    (return this)
+    )
+  ((method-of-type process-taskable inspect) this)
+  this
+  )
+
+(defmethod get-art-element ((this flut-npc))
+  (case (-> this task actor)
+    (((game-task-actor wascity-leaper))
+     (-> this draw art-group data 12)
+     )
+    (else
+      (-> this draw art-group data 3)
+      )
+    )
+  )
+   ; (type-new 'flut-npc process-taskable (the-as int (the-as uint #x2800a00118)))
+   ; (method-set! flut-npc 3 (lambda ((arg0 flut-npc))
+   ;                           (when (not arg0)
+   ;                             (set! arg0 arg0)
+   ;                             (goto cfg-4)
+   ;                             )
+   ;                           (let ((t9-0 (method-of-type process-taskable inspect)))
+   ;                             (t9-0 arg0)
+   ;                             )
+   ;                           (label cfg-4)
+   ;                           arg0
+   ;                           )
+   ;              )
+   ; (method-set! flut-npc 37 (lambda ((arg0 flut-npc)) (case (-> arg0 task actor)
+   ;                                                      (((game-task-actor wascity-leaper))
+   ;                                                       (-> arg0 draw art-group data 12)
+   ;                                                       )
+   ;                                                      (else
+   ;                                                        (-> arg0 draw art-group data 3)
+   ;                                                        )
+   ;                                                      )
+   ;                                  )
+   ;              )
+   ; (method-set!
+   ;   flut-npc
+   ;   35
+   ;   (lambda ((arg0 flut-npc))
+   ;     (initialize-skeleton
+   ;       arg0
+   ;       (the-as skeleton-group (art-group-get-by-name *level* "skel-flut-wild" (the-as (pointer level) #f)))
+   ;       (the-as pair 0)
+   ;       )
+   ;     (set! (-> arg0 draw light-index) (the-as uint 30))
+   ;     0
+   ;     (none)
+   ;     )
+   ;   )
+(defmethod init-skeleton! ((this flut-npc))
+  (initialize-skeleton
+    this
+    (the skeleton-group (art-group-get-by-name *level* "skel-flut-wild" (the (pointer level) #f)))
+    (the pair 0)
+    )
+  (set! (-> this draw light-index) (the uint 30))
+  (none)
+  )
+   (let ((a0-5 (new 'static 'skeleton-group
+                 :name "skel-mhcity-de-tower-egg"
+                 :extra #f
+                 :info #f
+                 :art-group-name "mhcity-de-tower-egg"
+                 :bounds (new 'static 'vector :w 40960.0)
+                 :version 8
+                 :origin-joint-index 3
+                 :clothing #f
+                 )
+               )
+         )
+     (when #f
+       (set! (-> a0-5 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-5 clothing length) (-> a0-5 clothing allocated-length))
+       )
+     (set! (-> a0-5 jgeo) 0)
+     (set! (-> a0-5 janim) 2)
+     (set! (-> a0-5 mgeo 0) 1)
+     (set! (-> a0-5 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-5)
+     )
+   (let ((a0-6 (new 'static 'skeleton-group
+                 :name "skel-errol-effect"
+                 :extra #f
+                 :info #f
+                 :art-group-name "errol-effect"
+                 :bounds (new 'static 'vector :w 32768.0)
+                 :version 8
+                 :origin-joint-index 3
+                 :clothing #f
+                 )
+               )
+         )
+     (when #f
+       (set! (-> a0-6 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-6 clothing length) (-> a0-6 clothing allocated-length))
+       )
+     (set! (-> a0-6 jgeo) 0)
+     (set! (-> a0-6 janim) 2)
+     (set! (-> a0-6 mgeo 0) 1)
+     (set! (-> a0-6 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-6)
+     )
+   (let ((a0-7 (new 'static 'skeleton-group
+                 :name "skel-errol"
+                 :extra #f
+                 :info #f
+                 :art-group-name "errol"
+                 :bounds (new 'static 'vector :w 32768.0)
+                 :version 8
+                 :origin-joint-index 6
+                 :clothing #f
+                 )
+               )
+         )
+     (when #f
+       (set! (-> a0-7 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-7 clothing length) (-> a0-7 clothing allocated-length))
+       )
+     (set! (-> a0-7 jgeo) 0)
+     (set! (-> a0-7 janim) 2)
+     (set! (-> a0-7 mgeo 0) 1)
+     (set! (-> a0-7 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-7)
+     )
+   (let ((a0-8 (new 'static 'skeleton-group
+                 :name "skel-snake-wheel-fma"
+                 :extra #f
+                 :info #f
+                 :art-group-name "snake-wheel-fma"
+                 :bounds (new 'static 'vector :w 40960.0)
+                 :version 8
+                 :shadow 2
+                 :shadow-joint-index 3
+                 :origin-joint-index 3
+                 :clothing #f
+                 )
+               )
+         )
+     (when #f
+       (set! (-> a0-8 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-8 clothing length) (-> a0-8 clothing allocated-length))
+       )
+     (set! (-> a0-8 jgeo) 0)
+     (set! (-> a0-8 janim) 3)
+     (set! (-> a0-8 mgeo 0) 1)
+     (set! (-> a0-8 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-8)
+     )
+   (let ((a0-9 (new 'static 'skeleton-group
+                 :name "skel-ottsel-veger"
+                 :extra #f
+                 :info #f
+                 :art-group-name "ottsel-veger"
+                 :bounds (new 'static 'vector :w 10240.0)
+                 :version 8
+                 :shadow 2
+                 :origin-joint-index 3
+                 :clothing #f
+                 )
+               )
+         )
+     (when #f
+       (set! (-> a0-9 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-9 clothing length) (-> a0-9 clothing allocated-length))
+       )
+     (set! (-> a0-9 jgeo) 0)
+     (set! (-> a0-9 janim) 3)
+     (set! (-> a0-9 mgeo 0) 1)
+     (set! (-> a0-9 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-9)
+     )
+   (let ((a0-10 (new 'static 'skeleton-group
+                  :name "skel-ottsel-surfer"
+                  :extra #f
+                  :info #f
+                  :art-group-name "ottsel-surfer"
+                  :bounds (new 'static 'vector :w 10240.0)
+                  :version 8
+                  :shadow 2
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-10 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-10 clothing length) (-> a0-10 clothing allocated-length))
+       )
+     (set! (-> a0-10 jgeo) 0)
+     (set! (-> a0-10 janim) 3)
+     (set! (-> a0-10 mgeo 0) 1)
+     (set! (-> a0-10 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-10)
+     )
+   (let ((a0-11 (new 'static 'skeleton-group
+                  :name "skel-ottsel-leader"
+                  :extra #f
+                  :info #f
+                  :art-group-name "ottsel-leader"
+                  :bounds (new 'static 'vector :w 10240.0)
+                  :version 8
+                  :shadow 2
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #t
+       (set! (-> a0-11 clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length 1))
+       (set! (-> a0-11 clothing 0) (new 'static 'cloth-params
+                                     :mesh 3
+                                     :gravity-constant (meters 12)
+                                     :wind-constant 1.0
+                                     :cloth-width #xd
+                                     :flags (cloth-flag use-wind double-sided flip-normals autogen-uvs)
+                                     :tex-name "prec-leader-robe-01"
+                                     :tex-name2 "prec-leader-robe-01"
+                                     :tex-name3 "prec-leader-robe-01"
+                                     :alt-tex-name #f
+                                     :alt-tex-name2 #f
+                                     :alt-tex-name3 #f
+                                     :cloth-thickness 1.0
+                                     :initial-xform 3
+                                     :drag 0.151
+                                     :num-iterations 1
+                                     :timestep-frequency 7
+                                     )
+             )
+       (set! (-> a0-11 clothing length) (-> a0-11 clothing allocated-length))
+       )
+     (set! (-> a0-11 jgeo) 0)
+     (set! (-> a0-11 janim) 4)
+     (set! (-> a0-11 mgeo 0) 1)
+     (set! (-> a0-11 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-11)
+     )
+   (let ((a0-12 (new 'static 'skeleton-group
+                  :name "skel-battle-amulet"
+                  :extra #f
+                  :info #f
+                  :art-group-name "battle-amulet"
+                  :bounds (new 'static 'vector :w 8192.0)
+                  :version 8
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-12 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-12 clothing length) (-> a0-12 clothing allocated-length))
+       )
+     (set! (-> a0-12 jgeo) 0)
+     (set! (-> a0-12 janim) 2)
+     (set! (-> a0-12 mgeo 0) 1)
+     (set! (-> a0-12 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-12)
+     )
+   (let ((a0-13 (new 'static 'skeleton-group
+                  :name "skel-precursor"
+                  :extra #f
+                  :info #f
+                  :art-group-name "precursor"
+                  :bounds (new 'static 'vector :w 34816.0)
+                  :version 8
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-13 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-13 clothing length) (-> a0-13 clothing allocated-length))
+       )
+     (set! (-> a0-13 jgeo) 0)
+     (set! (-> a0-13 janim) 2)
+     (set! (-> a0-13 mgeo 0) 1)
+     (set! (-> a0-13 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-13)
+     )
+   (let ((a0-14 (new 'static 'skeleton-group
+                  :name "skel-comb-rail-rider-fma"
+                  :extra #f
+                  :info #f
+                  :art-group-name "comb-rail-rider"
+                  :bounds (new 'static 'vector :w 43008.0)
+                  :version 8
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-14 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-14 clothing length) (-> a0-14 clothing allocated-length))
+       )
+     (set! (-> a0-14 jgeo) 0)
+     (set! (-> a0-14 janim) 3)
+     (set! (-> a0-14 mgeo 0) 1)
+     (set! (-> a0-14 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-14)
+     )
+   (let ((a0-15 (new 'static 'skeleton-group
+                  :name "skel-monk"
+                  :extra #f
+                  :info #f
+                  :art-group-name "monk"
+                  :bounds (new 'static 'vector :w 16384.0)
+                  :version 8
+                  :shadow 2
+                  :shadow-joint-index 3
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-15 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-15 clothing length) (-> a0-15 clothing allocated-length))
+       )
+     (set! (-> a0-15 jgeo) 0)
+     (set! (-> a0-15 janim) 3)
+     (set! (-> a0-15 mgeo 0) 1)
+     (set! (-> a0-15 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-15)
+     )
+   (let ((a0-16 (new 'static 'skeleton-group
+                  :name "skel-terraformer-fma"
+                  :extra #f
+                  :info #f
+                  :art-group-name "terraformer-fma"
+                  :bounds (new 'static 'vector :w 16384.0)
+                  :version 8
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-16 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-16 clothing length) (-> a0-16 clothing allocated-length))
+       )
+     (set! (-> a0-16 jgeo) 0)
+     (set! (-> a0-16 janim) 2)
+     (set! (-> a0-16 mgeo 0) 1)
+     (set! (-> a0-16 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-16)
+     )
+   (let ((a0-17 (new 'static 'skeleton-group
+                  :name "skel-rhino-fma"
+                  :extra #f
+                  :info #f
+                  :art-group-name "rhino"
+                  :bounds (new 'static 'vector :w 409600.0)
+                  :version 8
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-17 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-17 clothing length) (-> a0-17 clothing allocated-length))
+       )
+     (set! (-> a0-17 jgeo) 4)
+     (set! (-> a0-17 janim) 7)
+     (set! (-> a0-17 mgeo 0) 5)
+     (set! (-> a0-17 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-17)
+     )
+   (let ((a0-18 (new 'static 'skeleton-group
+                  :name "skel-neo-satellite-fma"
+                  :extra #f
+                  :info #f
+                  :art-group-name "neo-satellite-fma"
+                  :bounds (new 'static 'vector :w 40960.0)
+                  :version 8
+                  :shadow 2
+                  :origin-joint-index 3
+                  :clothing #f
+                  :global-effects #x20
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-18 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-18 clothing length) (-> a0-18 clothing allocated-length))
+       )
+     (set! (-> a0-18 jgeo) 0)
+     (set! (-> a0-18 janim) 3)
+     (set! (-> a0-18 mgeo 0) 1)
+     (set! (-> a0-18 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-18)
+     )
+   (let ((a0-19 (new 'static 'skeleton-group
+                  :name "skel-neo-satellite-break"
+                  :extra #f
+                  :info #f
+                  :art-group-name "neo-satellite-break"
+                  :bounds (new 'static 'vector :w 2048000.0)
+                  :version 8
+                  :origin-joint-index 3
+                  :clothing #f
+                  :global-effects #x20
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-19 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-19 clothing length) (-> a0-19 clothing allocated-length))
+       )
+     (set! (-> a0-19 jgeo) 0)
+     (set! (-> a0-19 janim) 2)
+     (set! (-> a0-19 mgeo 0) 1)
+     (set! (-> a0-19 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-19)
+     )
+   (let ((a0-20 (new 'static 'skeleton-group
+                  :name "skel-talk-box"
+                  :extra #f
+                  :info #f
+                  :art-group-name "talk-box"
+                  :bounds (new 'static 'vector :w 8192.0)
+                  :version 8
+                  :origin-joint-index 3
+                  :clothing #f
+                  )
+                )
+         )
+     (when #f
+       (set! (-> a0-20 clothing) (new 'static 'boxed-array :type cloth-params))
+       (set! (-> a0-20 clothing length) (-> a0-20 clothing allocated-length))
+       )
+     (set! (-> a0-20 jgeo) 0)
+     (set! (-> a0-20 janim) 2)
+     (set! (-> a0-20 mgeo 0) 1)
+     (set! (-> a0-20 lod-dist 0) 4095996000.0)
+     (add-to-loading-level a0-20)
+     )
+   (none)
+   )
+ )
+
+(defskelgroup skel-ottsel-daxpants ottsel-daxpants ottsel-daxpants-lod0-jg ottsel-daxpants-idle-ja
+              ((ottsel-daxpants-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-ottsel-dummy ottsel-dummy ottsel-dummy-lod0-jg ottsel-dummy-idle-ja
+              ((ottsel-dummy-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-ottsel-tess ottsel-tess ottsel-tess-lod0-jg ottsel-tess-idle-ja
+              ((ottsel-tess-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2.5)
+              :shadow ottsel-tess-shadow-mg
+              :origin-joint-index 3
+              )

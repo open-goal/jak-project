@@ -1,9 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: tfrag.gc
-;; name in dgo: tfrag
-;; dgos: GAME, ENGINE
+(bundles "ENGINE.CGO" "GAME.CGO")
+(require "engine/gfx/background/subdivide.gc")
+(require "engine/anim/joint.gc")
+(require "engine/gfx/background/background-h.gc")
+(require "engine/gfx/tfrag/tfrag-near.gc")
 
 ;; TFRAG drawing procedure
 
@@ -31,168 +32,114 @@
 (defmethod login ((this tfragment))
   "Initialize a tfragment by linking the textures in adgif shaders"
   (dotimes (s5-0 (the-as int (-> this num-shaders)))
-    (adgif-shader-login-no-remap (-> this shader s5-0))
-    )
-  this
-  )
+    (adgif-shader-login-no-remap (-> this shader s5-0)))
+  this)
 
 (defmethod mem-usage ((this tfragment) (arg0 memory-usage-block) (arg1 int))
   "Compute the memory usage of a tfragment"
-
   ;; seems like this flag does colors?
   (when (logtest? arg1 2)
     (+! (-> arg0 data 19 count) 1)
     (let ((v1-6 (+ (-> this num-base-colors) (-> this num-level0-colors) (-> this num-level1-colors))))
       (+! (-> arg0 data 19 used) v1-6)
-      (+! (-> arg0 data 19 total) (logand -4 (+ v1-6 3)))
-      )
-    (return this)
-    )
-
+      (+! (-> arg0 data 19 total) (logand -4 (+ v1-6 3))))
+    (return this))
   (let ((s4-0 1))
     (set! (-> arg0 length) (max (-> arg0 length) (+ s4-0 8)))
     (set! (-> arg0 data s4-0 name) (symbol->string 'tfragment))
     (+! (-> arg0 data s4-0 count) 1)
-
     ;; the size of the actual tfragment
     (let ((v1-22 (asize-of this)))
       (+! (-> arg0 data s4-0 used) v1-22)
-      (+! (-> arg0 data s4-0 total) (logand -16 (+ v1-22 15)))
-      )
-
+      (+! (-> arg0 data s4-0 total) (logand -16 (+ v1-22 15))))
     ;; the size of the "base" DMA
     (set! (-> arg0 data (+ s4-0 1) name) "tfragment-base")
     (+! (-> arg0 data (+ s4-0 1) count) 1)
     (let ((v1-33 (* (-> this dma-qwc 0) 16)))
       (+! (-> arg0 data (+ s4-0 1) used) v1-33)
-      (+! (-> arg0 data (+ s4-0 1) total) v1-33)
-      )
-
+      (+! (-> arg0 data (+ s4-0 1) total) v1-33))
     ;; the size of the "common" DMA
     (set! (-> arg0 data (+ s4-0 2) name) "tfragment-common")
     (+! (-> arg0 data (+ s4-0 2) count) 1)
     (let ((v1-43 (* (- (-> this dma-qwc 1) (-> this dma-qwc 0)) 16)))
       (+! (-> arg0 data (+ s4-0 2) used) v1-43)
-      (+! (-> arg0 data (+ s4-0 2) total) v1-43)
-      )
-
+      (+! (-> arg0 data (+ s4-0 2) total) v1-43))
     ;; the size of the "level0" DMA
     (set! (-> arg0 data (+ s4-0 3) name) "tfragment-level0")
     (when (nonzero? (-> this num-level0-colors))
       (+! (-> arg0 data (+ s4-0 3) count) 1)
       (let ((v1-55 (* (- (-> this dma-qwc 2) (-> this dma-qwc 0)) 16)))
         (+! (-> arg0 data (+ s4-0 3) used) v1-55)
-        (+! (-> arg0 data (+ s4-0 3) total) v1-55)
-        )
-      )
-
+        (+! (-> arg0 data (+ s4-0 3) total) v1-55)))
     ;; The size of the "level0" DMA. Note that the dma chains can overlap, so this is a bit weird.
     (set! (-> arg0 data (+ s4-0 4) name) "tfragment-level1")
     (when (not (or (= (-> this dma-level-1) (-> this dma-common))
                    (= (-> this dma-level-1) (-> this dma-base))
-                   (zero? (-> this num-level1-colors))
-                   )
-               )
+                   (zero? (-> this num-level1-colors))))
       (+! (-> arg0 data (+ s4-0 4) count) 1)
-      (let ((v1-70
-              (* (- (-> this dma-qwc 3)
-                    (the-as
-                      uint
-                      (- (/ (the-as int (- (-> this dma-level-1) (-> this dma-common))) 16) (the-as int (-> this dma-qwc 0)))
-                      )
-                    )
-                 16
-                 )
-              )
-            )
+      (let ((v1-70 (* (- (-> this dma-qwc 3)
+                         (the-as uint (- (/ (the-as int (- (-> this dma-level-1) (-> this dma-common))) 16) (the-as int (-> this dma-qwc 0)))))
+                      16)))
         (+! (-> arg0 data (+ s4-0 4) used) v1-70)
-        (+! (-> arg0 data (+ s4-0 4) total) v1-70)
-        )
-      )
-
+        (+! (-> arg0 data (+ s4-0 4) total) v1-70)))
     ;; colors
     (set! (-> arg0 data (+ s4-0 5) name) "tfragment-color")
     (+! (-> arg0 data (+ s4-0 5) count) 1)
-    (let ((v1-79
-            (if (logtest? arg1 1)
-                0
-                (the-as int (* (+ (-> this num-base-colors) (-> this num-level0-colors) (-> this num-level1-colors)) 2))
-                )
-            )
-          )
+    (let ((v1-79 (if (logtest? arg1 1)
+                   0
+                   (the-as int (* (+ (-> this num-base-colors) (-> this num-level0-colors) (-> this num-level1-colors)) 2)))))
       (+! (-> arg0 data (+ s4-0 5) used) v1-79)
-      (+! (-> arg0 data (+ s4-0 5) total) (logand -16 (+ v1-79 15)))
-      )
-
+      (+! (-> arg0 data (+ s4-0 5) total) (logand -16 (+ v1-79 15))))
     ;; debug (unused)
-    (set! (-> arg0 data (+ s4-0 6) name) "tfragment-debug")
-    )
+    (set! (-> arg0 data (+ s4-0 6) name) "tfragment-debug"))
   (label cfg-16)
-  this
-  )
+  this)
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; tree/array methods
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod inspect drawable-inline-array-tfrag ((this drawable-inline-array-tfrag))
+(defmethod inspect ((this drawable-inline-array-tfrag))
   "Inspect an array of tfragments."
   (format #t "[~8x] ~A~%" this (-> this type))
   (format #t "~Tlength: ~D~%" (-> this length))
   (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this data))
   (dotimes (s5-0 (-> this length))
-    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0))
-    )
-  this
-  )
+    (format #t "~T  [~D] ~A~%" s5-0 (-> this data s5-0)))
+  this)
 
 (defmethod login ((this drawable-inline-array-tfrag))
   (dotimes (s5-0 (-> this length))
-    (login (-> this data s5-0))
-    )
-  this
-  )
+    (login (-> this data s5-0)))
+  this)
 
 (defmethod mem-usage ((this drawable-inline-array-tfrag) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
   (+! (-> arg0 data 0 count) 1)
-  (let ((v1-7 32))
-    (+! (-> arg0 data 0 used) v1-7)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
-    )
+  (let ((v1-7 32)) (+! (-> arg0 data 0 used) v1-7) (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15))))
   (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1)
-    )
-  this
-  )
+    (mem-usage (-> this data s3-0) arg0 arg1))
+  this)
 
 (defmethod mem-usage ((this drawable-tree-tfrag) (arg0 memory-usage-block) (arg1 int))
   (set! (-> arg0 length) (max 1 (-> arg0 length)))
   (set! (-> arg0 data 0 name) "drawable-group")
   (+! (-> arg0 data 0 count) 1)
-  (let ((v1-6 (asize-of this)))
-    (+! (-> arg0 data 0 used) v1-6)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-6 15)))
-    )
+  (let ((v1-6 (asize-of this))) (+! (-> arg0 data 0 used) v1-6) (+! (-> arg0 data 0 total) (logand -16 (+ v1-6 15))))
   (when (nonzero? (-> this time-of-day-pal))
     (set! (-> arg0 length) (max 9 (-> arg0 length)))
     (set! (-> arg0 data 8 name) "tfragment-pal")
     (+! (-> arg0 data 8 count) 1)
     (let ((v1-18 (asize-of (-> this time-of-day-pal))))
       (+! (-> arg0 data 8 used) v1-18)
-      (+! (-> arg0 data 8 total) (logand -16 (+ v1-18 15)))
-      )
-    )
+      (+! (-> arg0 data 8 total) (logand -16 (+ v1-18 15)))))
   (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this arrays s3-0) arg0 arg1)
-    )
-  this
-  )
+    (mem-usage (-> this arrays s3-0) arg0 arg1))
+  this)
 
 (defmethod asize-of ((this drawable-inline-array-tfrag))
-  (the-as int (+ (-> drawable-inline-array-tfrag size) (* (+ (-> this length) -1) 64)))
-  )
+  (the-as int (+ (-> drawable-inline-array-tfrag size) (* (+ (-> this length) -1) 64))))
 
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; tfrag renderer
@@ -211,144 +158,114 @@
     (cond
       ((zero? *subdivide-draw-mode*)
        (set! (-> arg0 strgif tag)
-             (new 'static 'gif-tag64
-               :pre #x1
-               :nreg #x3
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-               )
-             )
+             (new 'static
+                  'gif-tag64
+                  :pre #x1
+                  :nreg #x3
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)))
        (set! (-> arg0 fangif tag)
-             (new 'static 'gif-tag64
-               :pre #x1
-               :nreg #x3
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :pre #x1
+                  :nreg #x3
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
       ((= *subdivide-draw-mode* 1)
        (set! (-> arg0 strgif tag)
-             (new 'static 'gif-tag64
-               :pre #x1
-               :nreg #x3
-               :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-               )
-             )
+             (new 'static
+                  'gif-tag64
+                  :pre #x1
+                  :nreg #x3
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)))
        (set! (-> arg0 fangif tag)
-             (new 'static 'gif-tag64
-               :pre #x1
-               :nreg #x3
-               :prim (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1)
-               )
-             )
-       )
+             (new 'static
+                  'gif-tag64
+                  :pre #x1
+                  :nreg #x3
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type line-strip) :iip #x1 :tme #x1 :fge #x1 :abe arg1))))
       ((= *subdivide-draw-mode* 2)
        (set! (-> arg0 strgif tag)
-             (new 'static 'gif-tag64
-               :pre #x1
-               :nreg #x3
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)
-               )
-             )
+             (new 'static
+                  'gif-tag64
+                  :pre #x1
+                  :nreg #x3
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :fge #x1 :abe arg1)))
        (set! (-> arg0 fangif tag)
-             (new 'static 'gif-tag64
-               :pre #x1
-               :nreg #x3
-               :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe arg1)
-               )
-             )
-       )
-      )
+             (new 'static
+                  'gif-tag64
+                  :pre #x1
+                  :nreg #x3
+                  :prim
+                  (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :fge #x1 :abe arg1)))))
     (set! (-> arg0 strgif regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-          )
+          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
     (set! (-> arg0 fangif regs)
-          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
-          )
+          (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2)))
     (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
     (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
     (set! (-> arg0 hvdf-offset quad) (-> v1-0 hvdf-off quad))
     (set! (-> arg0 hmge-scale quad) (-> v1-0 hmge-scale quad))
     (set! (-> arg0 invh-scale quad) (-> v1-0 inv-hmge-scale quad))
-    (set! (-> arg0 guard quad) (-> v1-0 guard quad))
-    )
+    (set! (-> arg0 guard quad) (-> v1-0 guard quad)))
   (set-tfrag-dists! (-> arg0 dists))
-  (none)
-  )
+  (none))
 
 (defun add-tfrag-mtx-0 ((arg0 dma-buffer))
   (let* ((a1-0 4)
          (v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-0))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1)
-          (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd unpack-v4-32) :num a1-0)
-          )
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
-  (column-scale-matrix!
-    (the-as matrix (-> arg0 base))
-    (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
-    (-> *math-camera* camera-temp)
-    )
+    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x5 :cmd (vif-cmd unpack-v4-32) :num a1-0))
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+  (column-scale-matrix! (the-as matrix (-> arg0 base))
+                        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                        (-> *math-camera* camera-temp))
   (&+! (-> arg0 base) 64)
-  (none)
-  )
+  (none))
 
 (defun add-tfrag-mtx-1 ((arg0 dma-buffer))
   (let* ((a1-0 4)
          (v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a1-0))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1)
-          (new 'static 'vif-tag :imm #x14d :cmd (vif-cmd unpack-v4-32) :num a1-0)
-          )
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
-  (column-scale-matrix!
-    (the-as matrix (-> arg0 base))
-    (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
-    (-> *math-camera* camera-temp)
-    )
+    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x14d :cmd (vif-cmd unpack-v4-32) :num a1-0))
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
+  (column-scale-matrix! (the-as matrix (-> arg0 base))
+                        (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                        (-> *math-camera* camera-temp))
   (&+! (-> arg0 base) 64)
-  (none)
-  )
+  (none))
 
 (defun add-tfrag-data ((arg0 dma-buffer) (arg1 int))
   (let* ((a2-0 14)
          (v1-0 arg0)
-         (a0-1 (the-as object (-> v1-0 base)))
-         )
+         (a0-1 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-1) dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc a2-0))
     (set! (-> (the-as dma-packet a0-1) vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
-    (set! (-> (the-as dma-packet a0-1) vif1)
-          (new 'static 'vif-tag :imm #x290 :cmd (vif-cmd unpack-v4-32) :num a2-0)
-          )
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16))
-    )
+    (set! (-> (the-as dma-packet a0-1) vif1) (new 'static 'vif-tag :imm #x290 :cmd (vif-cmd unpack-v4-32) :num a2-0))
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-1) 16)))
   (tfrag-data-setup (the-as tfrag-data (-> arg0 base)) arg1)
   (&+! (-> arg0 base) 224)
   (let ((v1-3 (the-as object (-> arg0 base))))
     (set! (-> (the-as dma-packet v1-3) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet v1-3) vif0) (new 'static 'vif-tag))
     (set! (-> (the-as dma-packet v1-3) vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1))
-    (set! (-> arg0 base) (&+ (the-as pointer v1-3) 16))
-    )
-  (none)
-  )
+    (set! (-> arg0 base) (&+ (the-as pointer v1-3) 16)))
+  (none))
 
 (defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level))
   "Add PC-port specific tfrag data"
   (let ((packet (the-as dma-packet (-> dma-buf base))))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 25))
     (set! (-> packet vif0) (new 'static 'vif-tag))
     (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
-    (set! (-> dma-buf base) (the pointer (&+ packet 16)))
-    )
-
+    (set! (-> dma-buf base) (the pointer (&+ packet 16))))
   ;; first 4 quadwords are planes, then itimes
   (let ((data-ptr (the-as (pointer uint128) (-> dma-buf base))))
     (set! (-> data-ptr 0) (-> *math-camera* plane 0 quad))
@@ -367,22 +284,20 @@
     (let ((vec (-> (the (inline-array vector) data-ptr) 13)))
       (set! (-> vec x) (-> *math-camera* pfog0))
       (set! (-> vec y) (-> *math-camera* fog-min))
-      (set! (-> vec z) (-> *math-camera* fog-max))
-      )
+      (set! (-> vec z) (-> *math-camera* fog-max)))
     (set! (-> data-ptr 14) (-> (math-camera-pos) quad))
     (set! (-> data-ptr 15) (-> *math-camera* camera-rot vector 0 quad))
     (set! (-> data-ptr 16) (-> *math-camera* camera-rot vector 1 quad))
     (set! (-> data-ptr 17) (-> *math-camera* camera-rot vector 2 quad))
     (set! (-> data-ptr 18) (-> *math-camera* camera-rot vector 3 quad))
-
     (set! (-> data-ptr 19) (-> *math-camera* perspective vector 0 quad))
     (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
     (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
     (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
-    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (-> lev nickname)))
-    )
-  (&+! (-> dma-buf base) (* 16 24))
-  )
+    (if (<= 32 (length (symbol->string (bsp-name lev))))
+      (format #t "level name ~a is too long!! must be shorter than 32 characters~%" (bsp-name lev)))
+    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (bsp-name lev))))
+  (&+! (-> dma-buf base) (* 16 25)))
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; TFRAG Stats
@@ -409,18 +324,15 @@
     (format arg0 "dma-dta:~8d (~8d)~%" (-> t-stat dma-dta) (/ (* 33 (-> t-stat dma-dta)) 10))
     (let ((f0-4 (* 32.0 (the float (-> t-stat dma-cnt))))
           (f1-5 (* 3.3 (the float (-> t-stat dma-dta))))
-          (f2-3 (* 30.0 (the float (-> t-stat tfrags))))
-          )
-      (+ f0-4 f1-5 f2-3)
-      )
-    )
-  (none)
-  )
+          (f2-3 (* 30.0 (the float (-> t-stat tfrags)))))
+      (+ f0-4 f1-5 f2-3)))
+  (none))
 
 (set! (-> t-stat from) 0)
-(set! (-> t-stat to) 0)
-(set! (-> t-stat cnt) 0)
 
+(set! (-> t-stat to) 0)
+
+(set! (-> t-stat cnt) 0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; buffer
@@ -429,39 +341,31 @@
 (defun tfrag-init-buffer ((arg0 dma-buffer) (arg1 gs-test) (arg2 int) (lev level))
   (dma-buffer-add-vu-function arg0 tfrag-vu1-block 1)
   (let* ((v1-0 arg0)
-         (a0-2 (the-as object (-> v1-0 base)))
-         )
+         (a0-2 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag))
     (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-2) 16))
-    )
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-2) 16)))
   (let* ((v1-1 arg0)
-         (a0-4 (the-as object (-> v1-1 base)))
-         )
+         (a0-4 (the-as object (-> v1-1 base))))
     (set! (-> (the-as gs-gif-tag a0-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
     (set! (-> (the-as gs-gif-tag a0-4) regs) GIF_REGS_ALL_AD)
-    (set! (-> v1-1 base) (&+ (the-as pointer a0-4) 16))
-    )
+    (set! (-> v1-1 base) (&+ (the-as pointer a0-4) 16)))
   (let* ((v1-2 arg0)
-         (a0-6 (-> v1-2 base))
-         )
+         (a0-6 (-> v1-2 base)))
     (set! (-> (the-as (pointer gs-test) a0-6) 0) arg1)
     (set! (-> (the-as (pointer gs-reg64) a0-6) 1) (gs-reg64 test-1))
-    (set! (-> v1-2 base) (&+ a0-6 16))
-    )
+    (set! (-> v1-2 base) (&+ a0-6 16)))
   (add-tfrag-mtx-0 arg0)
   (add-tfrag-mtx-1 arg0)
   (add-tfrag-data arg0 arg2)
   (#when PC_PORT
-    (add-pc-tfrag3-data arg0 lev)
-    )
+    (add-pc-tfrag3-data arg0 lev))
   (let ((v1-3 (the-as object (-> arg0 base))))
     (set! (-> (the-as dma-packet v1-3) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet v1-3) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
     (set! (-> (the-as dma-packet v1-3) vif1) (new 'static 'vif-tag :imm #x148 :cmd (vif-cmd offset)))
-    (set! (-> arg0 base) (&+ (the-as pointer v1-3) 16))
-    )
+    (set! (-> arg0 base) (&+ (the-as pointer v1-3) 16)))
   (set! (-> *tfrag-work* last-call) (the-as uint 0))
   (set! (-> t-stat cnt) 0)
   (set! (-> t-stat tris) 0)
@@ -476,21 +380,17 @@
   (set! (-> t-stat base-verts) 0)
   (set! (-> t-stat level0-verts) 0)
   (set! (-> t-stat level1-verts) 0)
-  (none)
-  )
+  (none))
 
 (defun tfrag-end-buffer ((arg0 dma-buffer))
   (let* ((v1-0 arg0)
-         (a1-0 (the-as object (-> v1-0 base)))
-         )
+         (a1-0 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
     (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
-    (set! (-> v1-0 base) (&+ (the-as pointer a1-0) 16))
-    )
+    (set! (-> v1-0 base) (&+ (the-as pointer a1-0) 16)))
   (let* ((v1-1 arg0)
-         (a0-1 (-> v1-1 base))
-         )
+         (a0-1 (-> v1-1 base)))
     (set! (-> (the-as (pointer vif-tag) a0-1) 0) (the-as vif-tag (-> *tfrag-work* last-call)))
     (set! (-> (the-as (pointer vif-tag) a0-1) 1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
     (set! (-> (the-as (pointer vif-tag) a0-1) 2) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
@@ -503,10 +403,8 @@
     (set! (-> (the-as (pointer vif-tag) a0-1) 9) (new 'static 'vif-tag :cmd (vif-cmd offset)))
     (set! (-> (the-as (pointer vif-tag) a0-1) 10) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
     (set! (-> (the-as (pointer vif-tag) a0-1) 11) (new 'static 'vif-tag))
-    (set! (-> v1-1 base) (&+ a0-1 48))
-    )
-  (none)
-  )
+    (set! (-> v1-1 base) (&+ a0-1 48)))
+  (none))
 
 ;;(define-extern draw-inline-array-tfrag (function pointer drawable-inline-array int dma-buffer none))
 (def-mips2c draw-inline-array-tfrag (function pointer drawable-inline-array int dma-buffer none))
@@ -514,27 +412,21 @@
 (defun tfrag-near-init-buffer ((arg0 dma-buffer) (arg1 gs-test) (arg2 int))
   (dma-buffer-add-vu-function arg0 tnear-vu1-block 1)
   (let* ((v1-0 arg0)
-         (a0-2 (the-as object (-> v1-0 base)))
-         )
+         (a0-2 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a0-2) dma) (new 'static 'dma-tag :qwc #x2 :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a0-2) vif0) (new 'static 'vif-tag))
     (set! (-> (the-as dma-packet a0-2) vif1) (new 'static 'vif-tag :imm #x2 :cmd (vif-cmd direct) :msk #x1))
-    (set! (-> v1-0 base) (&+ (the-as pointer a0-2) 16))
-    )
+    (set! (-> v1-0 base) (&+ (the-as pointer a0-2) 16)))
   (let* ((v1-1 arg0)
-         (a0-4 (the-as object (-> v1-1 base)))
-         )
+         (a0-4 (the-as object (-> v1-1 base))))
     (set! (-> (the-as gs-gif-tag a0-4) tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
     (set! (-> (the-as gs-gif-tag a0-4) regs) GIF_REGS_ALL_AD)
-    (set! (-> v1-1 base) (&+ (the-as pointer a0-4) 16))
-    )
+    (set! (-> v1-1 base) (&+ (the-as pointer a0-4) 16)))
   (let* ((v1-2 arg0)
-         (a0-6 (-> v1-2 base))
-         )
+         (a0-6 (-> v1-2 base)))
     (set! (-> (the-as (pointer gs-test) a0-6) 0) arg1)
     (set! (-> (the-as (pointer gs-reg64) a0-6) 1) (gs-reg64 test-1))
-    (set! (-> v1-2 base) (&+ a0-6 16))
-    )
+    (set! (-> v1-2 base) (&+ a0-6 16)))
   (add-tfrag-mtx-0 arg0)
   (add-tfrag-mtx-1 arg0)
   (add-tfrag-data arg0 arg2)
@@ -542,24 +434,19 @@
     (set! (-> (the-as dma-packet v1-3) dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet v1-3) vif0) (new 'static 'vif-tag :cmd (vif-cmd base)))
     (set! (-> (the-as dma-packet v1-3) vif1) (new 'static 'vif-tag :imm #x148 :cmd (vif-cmd offset)))
-    (set! (-> arg0 base) (&+ (the-as pointer v1-3) 16))
-    )
+    (set! (-> arg0 base) (&+ (the-as pointer v1-3) 16)))
   (set! (-> *tfrag-work* last-call) (the-as uint 0))
-  (none)
-  )
+  (none))
 
 (defun tfrag-near-end-buffer ((arg0 dma-buffer))
   (let* ((v1-0 arg0)
-         (a1-0 (the-as object (-> v1-0 base)))
-         )
+         (a1-0 (the-as object (-> v1-0 base))))
     (set! (-> (the-as dma-packet a1-0) dma) (new 'static 'dma-tag :qwc #x3 :id (dma-tag-id cnt)))
     (set! (-> (the-as dma-packet a1-0) vif0) (new 'static 'vif-tag :cmd (vif-cmd stmask)))
     (set! (-> (the-as dma-packet a1-0) vif1) (new 'static 'vif-tag))
-    (set! (-> v1-0 base) (&+ (the-as pointer a1-0) 16))
-    )
+    (set! (-> v1-0 base) (&+ (the-as pointer a1-0) 16)))
   (let* ((v1-1 arg0)
-         (a0-1 (-> v1-1 base))
-         )
+         (a0-1 (-> v1-1 base)))
     (set! (-> (the-as (pointer uint32) a0-1)) (-> *tfrag-work* last-call))
     (set! (-> (the-as (pointer vif-tag) a0-1) 1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
     (set! (-> (the-as (pointer vif-tag) a0-1) 2) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
@@ -572,10 +459,8 @@
     (set! (-> (the-as (pointer vif-tag) a0-1) 9) (new 'static 'vif-tag :cmd (vif-cmd offset)))
     (set! (-> (the-as (pointer vif-tag) a0-1) 10) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
     (set! (-> (the-as (pointer vif-tag) a0-1) 11) (new 'static 'vif-tag))
-    (set! (-> v1-1 base) (&+ a0-1 48))
-    )
-  (none)
-  )
+    (set! (-> v1-1 base) (&+ a0-1 48)))
+  (none))
 
 (define-extern draw-inline-array-tfrag-near (function pointer drawable-inline-array int dma-buffer none))
 

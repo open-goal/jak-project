@@ -1,10 +1,11 @@
 #include "log.h"
 
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
 
-#include "third-party/fmt/color.h"
+#include "fmt/color.h"
 #ifdef _WIN32  // see lg::initialize
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -106,7 +107,28 @@ void log_print(const char* message) {
     }
 
     if (gLogger.stdout_log_level < lg::level::off_unless_die) {
-      fmt::print(message);
+      fmt::print("{}", message);
+      fflush(stdout);
+      fflush(stderr);
+    }
+  }
+}
+
+void log_vprintf(const char* format, va_list arg_list) {
+  {
+    // We always immediately flush prints because since it has no associated level
+    // it could be anything from a fatal error to a useless debug log.
+    std::lock_guard<std::mutex> lock(gLogger.mutex);
+    va_list arg_list_2;
+    va_copy(arg_list_2, arg_list);
+    if (gLogger.fp) {
+      // Log to File
+      vfprintf(gLogger.fp, format, arg_list);
+      fflush(gLogger.fp);
+    }
+
+    if (gLogger.stdout_log_level < lg::level::off_unless_die) {
+      vprintf(format, arg_list_2);
       fflush(stdout);
       fflush(stderr);
     }
@@ -114,7 +136,11 @@ void log_print(const char* message) {
 }
 }  // namespace internal
 
-// how many extra log files for a single program should be kept?
+void printstd(const char* format, va_list arg_list) {
+  internal::log_vprintf(format, arg_list);
+}
+
+// how many extra log files for a single program should be kept
 constexpr int LOG_ROTATE_MAX = 10;
 
 void set_file(const std::string& filename,
@@ -137,7 +163,7 @@ void set_file(const std::string& filename,
         file_util::find_files_in_dir(fs::path(complete_filename).parent_path(),
                                      std::regex(fmt::format("{}\\.(\\d\\.)?log", filename)));
     for (const auto& file : old_log_files) {
-      lg::info("removing {}", file.string());
+      lg::debug("removing {}", file.string());
       fs::remove(file);
     }
     // remove the oldest log file if there are more than LOG_ROTATE_MAX
@@ -146,9 +172,9 @@ void set_file(const std::string& filename,
     // sort the names and remove them
     existing_log_files = file_util::sort_filepaths(existing_log_files, true);
     if (existing_log_files.size() > (LOG_ROTATE_MAX - 1)) {
-      lg::info("removing {} log files", existing_log_files.size() - (LOG_ROTATE_MAX - 1));
+      lg::debug("removing {} log files", existing_log_files.size() - (LOG_ROTATE_MAX - 1));
       for (int i = 0; i < (int)existing_log_files.size() - (LOG_ROTATE_MAX - 1); i++) {
-        lg::info("removing {}", existing_log_files.at(i).string());
+        lg::debug("removing {}", existing_log_files.at(i).string());
         fs::remove(existing_log_files.at(i));
       }
     }

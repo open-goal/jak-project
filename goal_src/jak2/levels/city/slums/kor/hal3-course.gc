@@ -8,15 +8,15 @@
 ;; DECOMP BEGINS
 
 (deftype hal3-course (bot-course)
-  ((transport handle  :offset-assert  48)
+  ((transport  handle)
    )
   )
 
 
 (deftype hal-help-kid (hal)
-  ((nav-mesh   nav-mesh                             :offset-assert 1024)
-   (alley-bbox bounding-box               :inline   :offset-assert 1040)
-   (suppress   traffic-suppression-params 2 :inline :offset-assert 1072)
+  ((nav-mesh    nav-mesh)
+   (alley-bbox  bounding-box                :inline)
+   (suppress    traffic-suppression-params  2 :inline)
    )
   (:methods
     (hal-help-kid-method-227 (_type_) none)
@@ -25,12 +25,12 @@
   )
 
 
-(defmethod init! ((obj hal-help-kid))
+(defmethod init! ((this hal-help-kid))
   "Set defaults for various fields."
   (let ((t9-0 (method-of-type hal init!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (let ((v1-1 (-> obj suppress)))
+  (let ((v1-1 (-> this suppress)))
     (set! (-> v1-1 0 duration) (seconds 1))
     (set! (-> v1-1 0 id) -1)
     (let ((a0-4 (-> v1-1 0)))
@@ -41,8 +41,8 @@
       )
     (set-vector! (-> v1-1 0 bbox max) 2785280.0 40960.0 20480.0 1.0)
     )
-  (let ((v1-3 (-> obj suppress 1))
-        (a1-4 (-> obj alley-bbox))
+  (let ((v1-3 (-> this suppress 1))
+        (a1-4 (-> this alley-bbox))
         )
     (set-vector! (-> a1-4 min) 2531328.0 20480.0 -675840.0 1.0)
     (set-vector! (-> a1-4 max) 2785280.0 40960.0 -233472.0 1.0)
@@ -50,11 +50,11 @@
     (set! (-> v1-3 id) -1)
     (mem-copy! (the-as pointer (-> v1-3 bbox)) (the-as pointer a1-4) 32)
     )
-  (set! (-> obj channel) (the-as uint 30))
+  (set! (-> this channel) (gui-channel guard))
   (none)
   )
 
-(defmethod hal-help-kid-method-228 ((obj hal-help-kid) (arg0 vector))
+(defmethod hal-help-kid-method-228 ((this hal-help-kid) (arg0 vector))
   (let ((v1-0 (new 'stack-no-clear 'traffic-danger-info)))
     (set! (-> v1-0 sphere quad) (-> arg0 quad))
     (set! (-> v1-0 sphere r) 32768.0)
@@ -69,43 +69,43 @@
   (none)
   )
 
-(defmethod general-event-handler ((obj hal-help-kid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod general-event-handler ((this hal-help-kid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
 @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v0-0 object))
   (case arg2
     (('fail)
-     (set! v0-0 (logior (-> obj bot-task-bits) (bot-task-bits botbits-0)))
-     (set! (-> obj bot-task-bits) (the-as bot-task-bits v0-0))
+     (set! v0-0 (logior (-> this bot-task-bits) (bot-task-bits botbits-0)))
+     (set! (-> this bot-task-bits) (the-as bot-task-bits v0-0))
      v0-0
      )
     (('request)
      (case (-> arg3 param 0)
        (('scene-player)
-        (set! v0-0 (logior (-> obj bot-task-bits) (bot-task-bits botbits-3)))
-        (set! (-> obj bot-task-bits) (the-as bot-task-bits v0-0))
+        (set! v0-0 (logior (-> this bot-task-bits) (bot-task-bits botbits-3)))
+        (set! (-> this bot-task-bits) (the-as bot-task-bits v0-0))
         v0-0
         )
        (else
-         ((method-of-type hal general-event-handler) obj arg0 arg1 arg2 arg3)
+         ((method-of-type hal general-event-handler) this arg0 arg1 arg2 arg3)
          )
        )
      )
     (else
-      ((method-of-type hal general-event-handler) obj arg0 arg1 arg2 arg3)
+      ((method-of-type hal general-event-handler) this arg0 arg1 arg2 arg3)
       )
     )
   )
 
-(defmethod hal-help-kid-method-227 ((obj hal-help-kid))
-  (let ((s4-0 (-> obj suppress))
-        (gp-0 (-> obj suppress 1))
+(defmethod hal-help-kid-method-227 ((this hal-help-kid))
+  (let ((s4-0 (-> this suppress))
+        (gp-0 (-> this suppress 1))
         )
     ((method-of-type traffic-suppression-params create-or-update-suppression-box)
      (the-as traffic-suppression-params s4-0)
      )
     (let ((s5-0 (new 'stack-no-clear 'vector))
-          (s3-1 (-> obj alley-bbox))
+          (s3-1 (-> this alley-bbox))
           )
       (set! (-> s5-0 quad) (-> (target-pos 0) quad))
       (mem-copy! (the-as pointer (-> gp-0 bbox)) (the-as pointer s3-1) 32)
@@ -120,12 +120,12 @@
   )
 
 ;; WARN: Return type mismatch nav-mesh vs none.
-(defmethod init-enemy! ((obj hal-help-kid))
+(defmethod init-enemy! ((this hal-help-kid))
   "Common method called to initialize the enemy, typically sets up default field values and calls ancillary helper methods"
   (let ((t9-0 (method-of-type hal init-enemy!)))
-    (t9-0 obj)
+    (t9-0 this)
     )
-  (set! (-> obj nav-mesh) (nav-mesh-from-res-tag (-> obj entity) 'nav-mesh-actor 0))
+  (set! (-> this nav-mesh) (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 0))
   (none)
   )
 
@@ -443,7 +443,7 @@
                 )
               )
             (when (and (not (logtest? (-> arg0 waypoint-bits) (waypoint-bits wabits-1)))
-                       (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 3))
+                       (time-elapsed? (-> arg0 waypoint-time0) (seconds 3))
                        )
               (logior! (-> arg0 waypoint-bits) (waypoint-bits wabits-1))
               (let ((s5-0 (new 'stack-no-clear 'transport-params)))
@@ -460,7 +460,7 @@
               )
             (hal-help-kid-method-227 arg0)
             (when (and (not (logtest? (-> arg0 waypoint-bits) (waypoint-bits wabits-0)))
-                       (>= (- (current-time) (-> arg0 waypoint-time0)) (seconds 0.2))
+                       (time-elapsed? (-> arg0 waypoint-time0) (seconds 0.2))
                        )
               (logior! (-> arg0 waypoint-bits) (waypoint-bits wabits-0))
               (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
@@ -621,7 +621,7 @@
                     (function halt-wait-spot hal symbol)
                     (lambda ((arg0 object) (arg1 hal-help-kid))
                       (if (and *target* (not (logtest? (-> arg1 bot-task-bits) (bot-task-bits botbits-3))))
-                          (set! (-> arg1 waypoint-time0) (current-time))
+                          (set-time! (-> arg1 waypoint-time0))
                           )
                       (let ((v1-7 (get-current-task-event (-> arg1 task))))
                         (when (and (= (-> v1-7 action) (game-task-action say)) (scene-play arg1 (the-as string (-> v1-7 scene)) #f))

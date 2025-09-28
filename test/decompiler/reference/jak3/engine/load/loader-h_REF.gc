@@ -1,0 +1,302 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type load-dir
+(deftype load-dir (basic)
+  "`load-dir` is an array of references to loaded things.
+It's used to handle art groups that are loaded as part of a level load."
+  ((lev           level)
+   (string-array  (array string))
+   (data-array    (array basic))
+   )
+  (:methods
+    (new (symbol type int level) _type_)
+    (load-to-heap-by-name (_type_ string symbol kheap int) art-group)
+    (set-loaded-art (_type_ art-group) art-group)
+    )
+  )
+
+;; definition of type load-dir-art-group
+(deftype load-dir-art-group (load-dir)
+  "Specialization of load-dir for `art-group`s."
+  ((art-group-array  (array art-group)  :overlay-at data-array)
+   )
+  (:methods
+    (new (symbol type int level) _type_)
+    )
+  )
+
+;; definition for method 0 of type load-dir
+(defmethod new load-dir ((allocation symbol) (type-to-make type) (arg0 int) (arg1 level))
+  (let ((s4-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> s4-0 lev) arg1)
+    (set! (-> s4-0 string-array)
+          (the-as (array string) ((method-of-type array new) allocation array string arg0))
+          )
+    (set! (-> s4-0 string-array length) 0)
+    (set! (-> s4-0 data-array) (the-as (array basic) ((method-of-type array new) allocation array basic arg0)))
+    (set! (-> s4-0 data-array length) 0)
+    s4-0
+    )
+  )
+
+;; definition for method 0 of type load-dir-art-group
+;; WARN: Return type mismatch load-dir vs load-dir-art-group.
+(defmethod new load-dir-art-group ((allocation symbol) (type-to-make type) (arg0 int) (arg1 level))
+  (let ((v0-0 ((method-of-type load-dir new) allocation type-to-make arg0 arg1)))
+    (set! (-> v0-0 data-array content-type) art-group)
+    (the-as load-dir-art-group v0-0)
+    )
+  )
+
+;; definition of type external-art-buffer
+(deftype external-art-buffer (basic)
+  "An `external-art-buffer` is a buffer that streamed files use."
+  ((index                       int32)
+   (other                       external-art-buffer)
+   (status                      symbol)
+   (locked?                     symbol)
+   (login?                      symbol)
+   (frame-lock                  symbol)
+   (init-heap                   (function external-art-buffer object))
+   (heap                        kheap   :inline)
+   (pending-load-file           string)
+   (pending-load-file-part      int32)
+   (pending-load-file-owner     handle)
+   (pending-load-file-priority  float)
+   (load-file                   string)
+   (load-file-part              int32)
+   (load-file-owner             handle)
+   (load-file-priority          float)
+   (buf                         pointer)
+   (len                         int32)
+   (art-group                   art-group)
+   (art-data                    uint32  :overlay-at art-group)
+   )
+  (:methods
+    (new (symbol type int function symbol) _type_)
+    (set-pending-file (_type_ string int handle float) int)
+    (update (_type_) int)
+    (inactive? (_type_) symbol)
+    (file-status (_type_ string int) symbol)
+    (link-file (_type_ art-group) art-group)
+    (unlink-file (_type_ art-group) int)
+    (unlock! (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type external-art-buffer
+(defmethod inspect ((this external-art-buffer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tother: ~A~%" (-> this other))
+  (format #t "~1Tstatus: ~A~%" (-> this status))
+  (format #t "~1Tlocked?: ~A~%" (-> this locked?))
+  (format #t "~1Tlogin?: ~A~%" (-> this login?))
+  (format #t "~1Tframe-lock: ~A~%" (-> this frame-lock))
+  (format #t "~1Tinit-heap: ~A~%" (-> this init-heap))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (-> this heap))
+  (format #t "~1Tpending-load-file: ~A~%" (-> this pending-load-file))
+  (format #t "~1Tpending-load-file-part: ~D~%" (-> this pending-load-file-part))
+  (format #t "~1Tpending-load-file-owner: ~D~%" (-> this pending-load-file-owner))
+  (format #t "~1Tpending-load-file-priority: ~f~%" (-> this pending-load-file-priority))
+  (format #t "~1Tload-file: ~A~%" (-> this load-file))
+  (format #t "~1Tload-file-part: ~D~%" (-> this load-file-part))
+  (format #t "~1Tload-file-owner: ~D~%" (-> this load-file-owner))
+  (format #t "~1Tload-file-priority: ~f~%" (-> this load-file-priority))
+  (format #t "~1Tbuf: #x~X~%" (-> this buf))
+  (format #t "~1Tlen: ~D~%" (-> this len))
+  (format #t "~1Tart-group: ~A~%" (-> this art-group))
+  (format #t "~1Tart-data: #x~X~%" (-> this art-group))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type external-art-buffer
+(defmethod new external-art-buffer ((allocation symbol) (type-to-make type) (arg0 int) (arg1 function) (arg2 symbol))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 index) arg0)
+    (set! (-> v0-0 init-heap) (the-as (function external-art-buffer object) arg1))
+    (set! (-> v0-0 login?) arg2)
+    (set! (-> v0-0 load-file) #f)
+    (set! (-> v0-0 load-file-part) -1)
+    (set! (-> v0-0 load-file-owner) (the-as handle #f))
+    (set! (-> v0-0 load-file-priority) 100000000.0)
+    (set! (-> v0-0 pending-load-file) #f)
+    (set! (-> v0-0 pending-load-file-part) -1)
+    (set! (-> v0-0 pending-load-file-owner) (the-as handle #f))
+    (set! (-> v0-0 pending-load-file-priority) 100000000.0)
+    (set! (-> v0-0 art-group) #f)
+    (set! (-> v0-0 status) 'initialize)
+    (set! (-> v0-0 locked?) #f)
+    (set! (-> v0-0 other) #f)
+    v0-0
+    )
+  )
+
+;; definition of type spool-anim
+(deftype spool-anim (basic)
+  "A `spool-anim` is metadata for an animation that will be loaded in chunks
+to a pair of external-art-buffers."
+  ((name          string               :offset  16)
+   (anim-name     string)
+   (buffer        external-art-buffer  :overlay-at anim-name)
+   (parts         int32)
+   (hint-id       int32                :overlay-at parts)
+   (priority      float)
+   (owner         handle)
+   (command-list  pair)
+   )
+  )
+
+;; definition for method 3 of type spool-anim
+(defmethod inspect ((this spool-anim))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tanim-name: ~A~%" (-> this anim-name))
+  (format #t "~1Tparts: ~D~%" (-> this parts))
+  (format #t "~1Thint-id: ~D~%" (-> this parts))
+  (format #t "~1Tpriority: ~f~%" (-> this priority))
+  (format #t "~1Towner: ~D~%" (-> this owner))
+  (format #t "~1Tcommand-list: ~A~%" (-> this command-list))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type external-art-control
+(deftype external-art-control (basic)
+  "The `external-art-control` manages loading chunks from `spool-anim`s to `external-art-buffer`."
+  ((buffer                    external-art-buffer  2)
+   (rec                       spool-anim           3 :inline)
+   (spool-lock                handle)
+   (reserve-buffer            external-art-buffer)
+   (reserve-buffer-count      int16)
+   (dma-reserve-buffer-count  int16)
+   (active-stream             string)
+   (queue-stream              (array spool-anim))
+   (frame-mask                uint32)
+   (dma-reserve-heap          kheap                :inline)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (update (_type_ symbol) int)
+    (clear-rec (_type_) int)
+    (spool-push (_type_ string int process float) int)
+    (file-status (_type_ string int) symbol)
+    (reserve-alloc (_type_) kheap)
+    (reserve-free (_type_ kheap) int)
+    (none-reserved? (_type_) symbol)
+    )
+  )
+
+;; definition for method 3 of type external-art-control
+(defmethod inspect ((this external-art-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tbuffer[2] @ #x~X~%" (-> this buffer))
+  (format #t "~1Trec[3] @ #x~X~%" (-> this rec))
+  (format #t "~1Tspool-lock: ~D~%" (-> this spool-lock))
+  (format #t "~1Treserve-buffer: ~A~%" (-> this reserve-buffer))
+  (format #t "~1Treserve-buffer-count: ~D~%" (-> this reserve-buffer-count))
+  (format #t "~1Tdma-reserve-buffer-count: ~D~%" (-> this dma-reserve-buffer-count))
+  (format #t "~1Tactive-stream: ~A~%" (-> this active-stream))
+  (format #t "~1Tqueue-stream: ~A~%" (-> this queue-stream))
+  (format #t "~1Tframe-mask: ~D~%" (-> this frame-mask))
+  (format #t "~1Tdma-reserve-heap: #<kheap @ #x~X>~%" (-> this dma-reserve-heap))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type external-art-control
+(defmethod new external-art-control ((allocation symbol) (type-to-make type))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (dotimes (s4-0 2)
+      (set! (-> gp-0 buffer s4-0)
+            ((method-of-type external-art-buffer new) allocation external-art-buffer s4-0 external-art-buffer-init #t)
+            )
+      )
+    (set! (-> gp-0 buffer 0 other) (-> gp-0 buffer 1))
+    (set! (-> gp-0 buffer 1 other) (-> gp-0 buffer 0))
+    (dotimes (v1-9 3)
+      (set! (-> gp-0 rec v1-9 name) #f)
+      (set! (-> gp-0 rec v1-9 priority) 100000000.0)
+      (set! (-> gp-0 rec v1-9 owner) (the-as handle #f))
+      )
+    (set! (-> gp-0 spool-lock) (the-as handle #f))
+    (set! (-> gp-0 reserve-buffer) #f)
+    (set! (-> gp-0 active-stream) #f)
+    (set! (-> gp-0 queue-stream) (new 'global 'boxed-array spool-anim 4))
+    (dotimes (s5-1 (-> gp-0 queue-stream allocated-length))
+      (set! (-> gp-0 queue-stream s5-1) (new 'global 'spool-anim))
+      )
+    (set! (-> gp-0 queue-stream length) 0)
+    gp-0
+    )
+  )
+
+;; definition of type subtitle-range
+(deftype subtitle-range (basic)
+  ((start-frame  float)
+   (end-frame    float)
+   (message      basic  12)
+   )
+  )
+
+;; definition for method 3 of type subtitle-range
+(defmethod inspect ((this subtitle-range))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tstart-frame: ~f~%" (-> this start-frame))
+  (format #t "~1Tend-frame: ~f~%" (-> this end-frame))
+  (format #t "~1Tmessage[12] @ #x~X~%" (-> this message))
+  (dotimes (s5-0 12)
+    (format #t "~T  [~D]~1Tmessage: ~`object`P~%" s5-0 (-> this message s5-0))
+    )
+  (label cfg-7)
+  this
+  )
+
+;; definition of type subtitle-image
+(deftype subtitle-image (basic)
+  ((width    uint16)
+   (height   uint16)
+   (palette  rgba   16 :offset  16)
+   (data     uint8  :dynamic)
+   )
+  )
+
+;; definition for method 3 of type subtitle-image
+(defmethod inspect ((this subtitle-image))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Twidth: ~D~%" (-> this width))
+  (format #t "~1Theight: ~D~%" (-> this height))
+  (format #t "~1Tpalette[16] @ #x~X~%" (-> this palette))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

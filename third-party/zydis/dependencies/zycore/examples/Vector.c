@@ -98,6 +98,7 @@ static ZyanStatus PerformBasicTests(ZyanVector* vector)
     {
         InitTestdata(&e_v, i);
         ZYAN_CHECK(ZyanVectorPushBack(vector, &e_v));
+        printf("i=%d cap=%" PRIuPTR, i, vector->capacity);
     }
 
     // Remove elements `#05..#09`

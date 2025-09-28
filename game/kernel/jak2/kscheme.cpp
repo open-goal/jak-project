@@ -49,10 +49,15 @@ void kscheme_init_globals() {
 u64 new_illegal(u32 allocation, u32 type) {
   (void)allocation;
   MsgErr("dkernel: illegal attempt to call new method of static object type %s\n",
-         Ptr<Type>(type)->symbol->name_cstr());
+         symbol_name_cstr(*Ptr<Type>(type)->symbol));
   return s7.offset;
 }
 
+u32 u32_in_fixed_sym(u32 offset) {
+  return Ptr<Symbol4<u32>>(s7.offset + offset)->value();
+}
+
+namespace {
 template <typename T>
 Ptr<Ptr<String>> sym_to_string_ptr(Ptr<Symbol4<T>> in) {
   return Ptr<Ptr<String>>(in.offset + SYM_TO_STRING_OFFSET);
@@ -68,13 +73,10 @@ Ptr<u32> sym_to_hash(Ptr<Symbol4<T>> in) {
   return Ptr<u32>(in.offset + SYM_TO_HASH_OFFSET);
 }
 
-u32 u32_in_fixed_sym(u32 offset) {
-  return Ptr<Symbol4<u32>>(s7.offset + offset)->value();
-}
-
 void fixed_sym_set(u32 offset, u32 value) {
   Ptr<Symbol4<u32>>(s7.offset + offset)->value() = value;
 }
+}  // namespace
 
 u64 alloc_from_heap(u32 heap_symbol, u32 type, s32 size, u32 pp) {
   using namespace jak2_symbols;
@@ -1409,7 +1411,6 @@ u64 inspect_type(u32 obj) {
   } else {
     auto typ = Ptr<Type>(obj);
     auto sym = typ->symbol;
-    ;
 
     cprintf("[%8x] type\n\tname: %s\n\tparent: ", obj, sym_to_string(sym)->data());
     print_object(typ->parent.offset);
@@ -1462,11 +1463,11 @@ u64 inspect_link_block(u32 ob) {
   return ob;
 }
 
+namespace {
 Ptr<Symbol4<Ptr<Type>>> get_fixed_type_symbol(u32 offset) {
   return (s7 + offset).cast<Symbol4<Ptr<Type>>>();
 }
 
-namespace {
 u64 pack_type_flag(u64 methods, u64 heap_base, u64 size) {
   return (methods << 32) + (heap_base << 16) + (size);
 }
@@ -1799,7 +1800,6 @@ u64 loadc(const char* /*file_name*/, kheapinfo* /*heap*/, u32 /*flags*/) {
   return 0;
 }
 
-// NOTE: copied from jak 1
 u64 loado(u32 file_name_in, u32 heap_in) {
   char loadName[272];
   Ptr<String> file_name(file_name_in);
@@ -1823,7 +1823,6 @@ u64 unload(u32 name) {
   return 0;
 }
 
-// NOTE: copied from jak 1
 s64 load_and_link(const char* filename, char* decode_name, kheapinfo* heap, u32 flags) {
   (void)filename;
   s32 sz;

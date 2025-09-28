@@ -7,3 +7,53 @@
 
 ;; DECOMP BEGINS
 
+(deftype ramdisk-rpc-fill (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
+  ((rsvd1     int32)
+   (ee-id     int32)
+   (rsvd2     int32  2)
+   (filename  uint128)
+   )
+  )
+
+
+(deftype ramdisk-rpc-load (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
+  ((rsvd    int32)
+   (ee-id   int32)
+   (offset  uint32)
+   (length  uint32)
+   )
+  )
+
+
+(deftype ramdisk-rpc-load-to-ee (structure)
+  "Unused RAMDISK rpc to load files from DVD to the IOP RAM."
+  ((rsvd      int32)
+   (addr      int32)
+   (offset    int32)
+   (length    int32)
+   (filename  uint128)
+   )
+  )
+
+
+(define *ramdisk-rpc* (new 'global 'rpc-buffer-pair (the-as uint 32) (the-as uint 1) 2))
+
+(define *current-ramdisk-id* 0)
+
+(defun ramdisk-load ((arg0 int) (arg1 uint) (arg2 uint) (arg3 pointer))
+  (let ((v1-1 (the-as ramdisk-rpc-load (add-element *ramdisk-rpc*))))
+    (set! (-> v1-1 offset) arg1)
+    (set! (-> v1-1 ee-id) arg0)
+    (set! (-> v1-1 length) arg2)
+    )
+  (call *ramdisk-rpc* (the-as uint 0) arg3 arg2)
+  0
+  )
+
+(defun ramdisk-sync ()
+  (sync *ramdisk-rpc* #t)
+  0
+  (none)
+  )

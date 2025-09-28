@@ -7,3 +7,97 @@
 
 ;; DECOMP BEGINS
 
+(defun restore-wascity-speeches ()
+  (speech-table-set!
+    *speech-control*
+    (speech-type civ-m-shot-by-player)
+    (new 'static 'speech-type-info
+      :channel #x1
+      :flags (speech-type-flag random-order)
+      :priority 1
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 0.1)
+      :min-delay (seconds 2)
+      :max-delay (seconds 6)
+      :list (new 'static 'boxed-array :type string
+        "cit220"
+        "cit220a"
+        "cit221"
+        "cit221a"
+        "cit222"
+        "cit222a"
+        "cit223"
+        "cit223a"
+        "cit224"
+        )
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type civ-f-shot-by-player)
+    (new 'static 'speech-type-info
+      :channel #x1
+      :flags (speech-type-flag random-order)
+      :priority 1
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 0.1)
+      :min-delay (seconds 2)
+      :max-delay (seconds 6)
+      :list (new 'static 'boxed-array :type string "citi097" "citi098" "citi099" "citi138")
+      )
+    )
+  (none)
+  )
+
+(defun waswide-login ((arg0 level))
+  (format 0 "waswide-login~%")
+  (set! *traffic-engine* (new 'loading-level 'traffic-engine))
+  (set! *waswide-squad-control* (new 'loading-level 'squad-control))
+  (set! *city-mode* 'waswide)
+  0
+  (none)
+  )
+
+(defun waswide-activate ((arg0 level) (arg1 symbol))
+  (format 0 "waswide-activate~%")
+  (let ((v1-0 *traffic-info*))
+    (set! (-> v1-0 ctywide-level) arg0)
+    (set! (-> v1-0 traffic-object-levels 11) 'waswide)
+    (set! (-> v1-0 traffic-object-levels 12) 'waswide)
+    )
+  (set! *traffic-fast-spawn* (or (= arg1 'life) (= arg1 'debug)))
+  (if (and (= arg1 'debug) (not *spawn-actors*))
+      (traffic-kill)
+      (traffic-start)
+      )
+  (let ((v1-9 *traffic-engine*))
+    (when v1-9
+      (dotimes (a0-7 29)
+        (set! (-> v1-9 object-type-info-array a0-7 level) #f)
+        )
+      (when *waswide-squad-control*
+        )
+      )
+    )
+  (let ((v1-13 *traffic-info*)
+        (a0-10 *traffic-engine*)
+        )
+    (when a0-10
+      (dotimes (a1-5 29)
+        (set! (-> a0-10 object-type-info-array a1-5 level) (-> v1-13 traffic-object-levels a1-5))
+        )
+      )
+    )
+  (market-activate arg0)
+  (restore-wascity-speeches)
+  0
+  (none)
+  )
+
+(defun waswide-deactivate ((arg0 level))
+  (format 0 "waswide-deactivate~%")
+  (set! (-> *traffic-info* ctywide-level) (the-as level #f))
+  (set! *city-mode* #f)
+  0
+  (none)
+  )

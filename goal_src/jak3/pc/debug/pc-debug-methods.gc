@@ -1,0 +1,151 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+#|
+  Various debugging displays made for the pc port. This file includes overrides or game-specific implementations.
+ |#
+
+;; debug-only file!
+(declare-file (debug))
+
+;; updated macro for jak 3, draw-sprite2d-xy also has z now
+(defmacro draw-memory-bar-generic (buf &key remain &key total &key name &key idx &key color)
+  "draw a memory usage bar"
+  `(let* (
+        (total  (the float ,total))
+        (remain (the float ,remain))
+        (bar-width (the int (/ (the float MEM_BAR_WIDTH) (-> *pc-settings* aspect-ratio-scale))))
+        (bar-x (- MEM_BAR_RIGHT bar-width MEM_BAR_HORZ_PAD)) ;; x coord for left side of the bar list
+        (used-p (if (zero? total) 0.0 (/ (- total remain) total)))
+        (used-x (the int (* used-p bar-width)))
+        (used-y (+ MEM_BAR_Y (* ,idx MEM_BAR_HEIGHT)))
+        )
+      (draw-sprite2d-xy ,buf    bar-x         used-y used-x MEM_BAR_HEIGHT ,color #x3fffff)
+      (draw-sprite2d-xy ,buf (+ bar-x used-x) used-y (- bar-width used-x) MEM_BAR_HEIGHT MEM_BAR_BG_COL  #x3fffff)
+      (if (zero? total) (set! used-x (the int (* 0.5 bar-width))))
+      (draw-string-xy ,name ,buf (- bar-x MEM_BAR_HORZ_PAD) used-y (font-color red) (font-flags shadow kerning right))
+      (draw-string-xy (if (zero? total) "NO HEAP" (string-format "~,,2f%" (* used-p 100))) ,buf (+ bar-x used-x) used-y (font-color default) (font-flags shadow kerning middle))
+      (draw-string-xy (string-format "~,,1fM" (/ total (* 1024 1024))) ,buf (+ bar-x bar-width MEM_BAR_HORZ_PAD) used-y (font-color red) (font-flags shadow kerning middle-vert))
+      )
+  )
+
+(defmacro draw-memory-bar-level-masks (buf levels bit-amount &key name &key idx &key colors)
+  "draw a memory usage bar from level memory masks"
+  `(let* (
+        (bar-width (the int (/ (the float MEM_BAR_WIDTH) (-> *pc-settings* aspect-ratio-scale))))
+        (bar-x (- MEM_BAR_RIGHT bar-width MEM_BAR_HORZ_PAD)) ;; x coord for left side of the bar list
+        (bit-w (/ (the float bar-width) ,bit-amount))
+        (used-y (+ MEM_BAR_Y (* ,idx MEM_BAR_HEIGHT)))
+        (used-x 0)
+        (used-bits 0)
+        (bit-found? #f)
+        )
+      (dotimes (b ,bit-amount)
+        (set! used-x (+ bar-x (the int (* bit-w b))))
+        (set! bit-found? #f)
+        (dotimes (i (-> ,levels length))
+          (cond
+            ((or (-> ,levels level i borrow-from-level) (= (-> ,levels level i status) 'inactive))
+              )
+            ((logtest? (ash 1 b) (-> ,levels level i memory-mask))
+              (draw-sprite2d-xy ,buf used-x used-y (- (+ bar-x (the int (* bit-w (1+ b)))) used-x) MEM_BAR_HEIGHT (-> ,colors i) #x3fffff)
+              (set! i (-> ,levels length))
+              (set! bit-found? #t)
+              (1+! used-bits))
+            )
+          )
+        (unless bit-found?
+          (draw-sprite2d-xy ,buf used-x used-y (- (+ bar-x (the int (* bit-w (1+ b)))) used-x) MEM_BAR_HEIGHT MEM_BAR_BG_COL #x3fffff))
+        )
+      (draw-string-xy ,name ,buf (- bar-x MEM_BAR_HORZ_PAD) used-y (font-color red) (font-flags shadow kerning right))
+      (draw-string-xy (string-format "~D/~D" used-bits ,bit-amount) ,buf (+ bar-x bar-width MEM_BAR_HORZ_PAD) used-y (font-color red) (font-flags shadow kerning middle-vert))
+      )
+  )
+
+
+
+(defmethod print-debug-misc pc-settings-jak3 ((obj pc-settings-jak3))
+  "prints various miscellaneous debug text to the game console, according to what's enabled in this object."
+
+  #f
+  )
+
+(defconstant MEM_BAR_HEIGHT (the int (* 14.0 (get-debug-font-scale-factor)))) ;; total height of the bar
+(defconstant MEM_BAR_BOTTOM 416) ;; x coord for the bottom side of the bar list
+(defconstant MEM_BAR_NUM (+ LEVEL_MAX 6)) ;; amount of memory usage bars (override later if wanted)
+(defmethod draw-memory pc-settings-jak3 ((obj pc-settings-jak3) (buf dma-buffer))
+  "draw the memory heap status in the bottom right corner"
+
+  (when *display-heap-status*
+    (let ((idx 0)
+          (level-heap-colors (new 'static 'array rgba 10  (static-rgba #x20 #xff #xff #x40)
+                                                          (static-rgba #xff #x20 #xff #x40)
+                                                          (static-rgba #xff #xff #x20 #x40)
+                                                          (static-rgba #xff #x20 #x20 #x40)
+                                                          (static-rgba #x20 #xff #x20 #x40)
+                                                          (static-rgba #x20 #x20 #xff #x40)
+                                                          (static-rgba #xff #xff #xff #x40)
+                                                          (static-rgba #x80 #x20 #x80 #x40)
+                                                          (static-rgba #xff #x80 #x20 #x40)
+                                                          (static-rgba #x20 #x80 #x20 #x40)
+                                                          )))
+      (draw-memory-bar-kheap buf global :idx idx :color (static-rgba 32 32 255 64))
+      (draw-memory-bar-kheap buf debug :idx (1+! idx) :color (static-rgba 255 32 32 64))
+      (dotimes (i (-> *level* length))
+        (draw-memory-bar-kheap buf (if (= (-> *level* level i status) 'inactive) (-> *level* level-default heap) (-> *level* level i heap))
+                :name (aif (-> *level* level i borrow-from-level)
+                          (string-format "(~A)l~D<-l~D" (-> *level* level i name) i (-> it index))
+                          (string-format "(~A)l~D" (-> *level* level i name) i))
+                :idx (1+! idx) :color (-> level-heap-colors (mod i 10)))
+        )
+      (draw-memory-bar-level-masks buf *level* 18 :name "level" :idx (1+! idx) :colors level-heap-colors)
+      (draw-memory-bar-dead-pool-heap buf *nk-dead-pool* :name "actor" :idx (1+! idx) :color (static-rgba 32 255 32 64))
+      (draw-memory-bar-generic buf
+              :remain (* 16 (dma-buffer-free (-> *display* frames (-> *display* on-screen) global-buf)))
+              :total  (length (-> *display* frames (-> *display* on-screen) global-buf))
+              :name "dma-global" :idx (1+! idx) :color (static-rgba 32 32 255 64))
+      (draw-memory-bar-generic buf
+              :remain (* 16 (dma-buffer-free (-> *display* frames (-> *display* on-screen) debug-buf)))
+              :total  (length (-> *display* frames (-> *display* on-screen) debug-buf))
+              :name "dma-debug" :idx (1+! idx) :color (static-rgba 255 32 32 64))
+      )
+    #t)
+  )
+
+
+(define *region-debug-inspect* (the drawable-region-prim #f))
+(define *display-region-inside* #f)
+(define *merge-region-prims* #f)
+
+(define *display-city-info* #f)
+(define *city-info-x* 0)
+(define *city-info-y* 0)
+(define *city-info-z* 0)
+
+
+(define *debug-track-skill* #f)
+(defun debug-track-skill ()
+  "draws a line and prints the distance to every skill in every active level"
+  (let ((start-pos (target-pos 0)))
+    (dotimes (i (-> *level* length))
+      (let ((lev (-> *level* level i)))
+        (when (= (-> lev status) 'active)
+          ;; actor entities
+          (let ((actors (-> lev bsp actors)))
+            (when (nonzero? actors)
+              (dotimes (ii (-> actors length))
+                (let ((e (-> actors data ii actor)))
+                  (when (and (= (-> e etype symbol) 'skill) (or (not (-> e extra)) (zero? (-> e extra)) (not (logtest? (-> e extra perm status) (entity-perm-status dead)))))
+                      (add-debug-line #t (bucket-id debug-no-zbuf1) start-pos (-> e trans) (new 'static 'rgba :r #xff :a #x80) #f (the-as rgba -1))
+                      (format *stdcon* "~S at ~m ~m ~m (~m away)~%" (res-lump-struct e 'name string) (-> e trans x) (-> e trans y) (-> e trans z) (vector-vector-distance start-pos (-> e trans)))
+                      )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  #f)
+

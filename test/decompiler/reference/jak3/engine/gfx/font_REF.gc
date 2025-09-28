@@ -1,0 +1,80 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type font-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 9 font-work)" 9 font-work)
+
+;; definition for function draw-string-asm
+;; INFO: function output is handled by mips2c
+(def-mips2c draw-string-asm (function string dma-buffer font-context draw-string-result))
+
+;; definition for function draw-string
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch uint vs draw-string-result.
+;; ERROR: Failed load: (set! a2-4 (l.wu (+ a2-3 2224))) at op 19
+(defun draw-string ((arg0 string) (arg1 dma-buffer) (arg2 font-context))
+  (local-vars (v0-2 uint))
+  (let ((v1-1 (the int (* 128.0 (-> arg2 alpha)))))
+    (-> arg2 origin quad)
+    (dotimes (a0-2 45)
+      (dotimes (a1-1 4)
+        (let ((a2-6
+                (logior (logand (l.wu (+ (+ (* a1-1 4) (* a0-2 16)) (the-as int *font-work*) 2224)) (the-as uint #xffffffff00ffffff))
+                        (shr (shl v1-1 56) 32)
+                        )
+                )
+              (a3-7 (+ (+ (* a1-1 4) (* a0-2 16)) (the-as int *font-work*)))
+              )
+          (s.w! (+ a3-7 2224) a2-6)
+          )
+        )
+      )
+    (set! (-> *font-work* color-shadow w) v1-1)
+    )
+  (if (< (the-as uint (dma-buffer-free arg1)) (the-as uint (* (length arg0) 32)))
+      (set! v0-2 (the-as uint (-> arg2 origin quad)))
+      (set! v0-2 (the-as uint (draw-string-asm arg0 arg1 arg2)))
+      )
+  (dotimes (v1-7 45)
+    (dotimes (a0-9 4)
+      (let ((a1-10
+              (logior (logand (l.wu (+ (+ (* a0-9 4) (* v1-7 16)) (the-as int *font-work*) 2224)) (the-as uint #xffffffff00ffffff))
+                      (shl #x8000 16)
+                      )
+              )
+            (a2-15 (+ (+ (* a0-9 4) (* v1-7 16)) (the-as int *font-work*)))
+            )
+        (s.w! (+ a2-15 2224) a1-10)
+        )
+      )
+    )
+  (set! (-> *font-work* color-shadow w) 128)
+  (the-as draw-string-result v0-2)
+  )
+
+;; definition for function get-string-length
+;; INFO: function output is handled by mips2c
+(def-mips2c get-string-length (function string font-context draw-string-result))
+
+;; definition for function draw-string-xy
+(defun draw-string-xy ((arg0 string) (arg1 dma-buffer) (arg2 int) (arg3 int) (arg4 font-color) (arg5 font-flags))
+  (let ((s4-0 (new 'stack 'font-context *font-default-matrix* arg2 arg3 0.0 arg4 arg5)))
+    (set-context! *font-work* s4-0)
+    (draw-string arg0 arg1 s4-0)
+    )
+  )
+
+;; definition for function draw-string-adv
+;; WARN: Return type mismatch float vs none.
+(defun draw-string-adv ((arg0 string) (arg1 dma-buffer) (arg2 font-context))
+  (set-context! *font-work* arg2)
+  (let ((v1-2 (draw-string arg0 arg1 arg2)))
+    (+! (-> arg2 origin x) (-> v1-2 length))
+    )
+  (none)
+  )
+
+
+
+

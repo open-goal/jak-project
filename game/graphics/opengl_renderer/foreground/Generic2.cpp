@@ -70,10 +70,15 @@ void Generic2::render_in_mode(DmaFollower& dma,
       case Mode::LIGHTNING:
         process_dma_lightning(dma, render_state->next_bucket);
         break;
+      case Mode::PRIM:
+        process_dma_prim(dma, render_state->next_bucket);
+        break;
       default:
         ASSERT_NOT_REACHED();
     }
   }
+
+  m_empty = m_next_free_vert == 0;
 
   {
     // the next pass is to look at all of that data, and figure out the best order to draw it
@@ -84,6 +89,7 @@ void Generic2::render_in_mode(DmaFollower& dma,
         setup_draws(true, true);
         break;
       case Mode::LIGHTNING:
+      case Mode::PRIM:
         setup_draws(false, true);
         break;
       case Mode::WARP:

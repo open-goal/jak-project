@@ -7,6 +7,5 @@
  */
 #include "common/versions/versions.h"
 
-// TODO: jak 3 stub
-constexpr PerGameVersion<int> PLAYER_RPC_ID(0xdeb1, 0xfab0, 0x0);
+constexpr PerGameVersion<int> PLAYER_RPC_ID(0xdeb1, 0xfab0, 0xfab0);
 constexpr int PLAYER_RPC_CHANNEL = 0;

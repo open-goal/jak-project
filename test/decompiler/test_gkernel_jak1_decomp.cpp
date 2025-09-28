@@ -2761,7 +2761,7 @@ TEST_F(FormRegressionTestJak1, ExprMethod18DeadPoolHeap) {
       "       (-> s4-0 process)\n"
       "       (relocate\n"
       "        (-> s4-0 process)\n"
-      "        (&- (gap-location arg0 a1-3) (the-as uint (&-> (-> s4-0 process) type)))\n"
+      "        (&- (gap-location arg0 a1-3) (the-as uint (&-> s4-0 process type)))\n"
       "        )\n"
       "       )\n"
       "      )\n"

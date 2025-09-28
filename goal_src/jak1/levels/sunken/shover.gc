@@ -1,82 +1,59 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: shover.gc
-;; name in dgo: shover
-;; dgos: L1, SUN, SUNKEN
-
+(bundles "SUN.DGO")
+(require "engine/common-obs/generic-obs.gc")
+(require "engine/geometry/path-h.gc")
 (declare-type shover process-drawable)
+
 (define-extern *shover* shover) ;; unknown type
 
 ;; DECOMP BEGINS
 
 (deftype shover (process-drawable)
-  ((root      collide-shape :override)
-   (shove-up  float)
-   )
+  ((root     collide-shape :override)
+   (shove-up float))
   (:states
-    shover-idle
-    )
-  )
+   shover-idle))
 
-
-(defskelgroup *shover-sg* shover shover-lod0-jg shover-idle-ja
-              ((shover-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 2)
-              )
+(defskelgroup *shover-sg*
+  shover
+  shover-lod0-jg
+  shover-idle-ja
+  ((shover-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 2))
 
 (defstate shover-idle (shover)
-  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
-    (case message
-      (('touch 'attack)
-       (when (= (-> proc type) target)
-         (when ((method-of-type touching-shapes-entry prims-touching-action?)
-                (the-as touching-shapes-entry (-> block param 0))
-                (-> *target* control)
-                (collide-action solid)
-                (collide-action)
-                )
-           (let ((s4-0 (new 'stack 'attack-info)))
-             (calc-shove-up (-> self root) s4-0 (-> self shove-up))
-             (level-hint-spawn (text-id sunken-hotpipes) "sksp0134" (the-as entity #f) *entity-pool* (game-task none))
-             (if (or (= (-> *target* control unknown-surface00 mode) 'air)
-                     (>= (+ (current-time) (seconds -0.2)) (-> *target* control unknown-dword11))
-                     (< 0.75 (-> *target* control poly-normal y))
-                     )
-                 (send-event
-                   proc
-                   'attack-or-shove
-                   (-> block param 0)
-                   (static-attack-info ((mode 'burn) (vector (-> s4-0 vector)) (shove-up (-> s4-0 shove-up))))
-                   )
-                 (send-event
-                   proc
-                   'attack-or-shove
-                   (-> block param 0)
-                   (static-attack-info ((mode 'burn)
-                                        (shove-up (meters 0))
-                                        (shove-back (meters 2))
-                                        (vector (-> *target* control poly-normal))
-                                        (angle 'shove)
-                                        )
-                                       )
-                   )
-                 )
-             )
-           )
-         )
-       )
-      )
-    )
-  :code anim-loop
-  )
+  :event
+    (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+      (case message
+        (('touch 'attack)
+         (when (= (-> proc type) target)
+           (when ((method-of-type touching-shapes-entry prims-touching-action?)
+                  (the-as touching-shapes-entry (-> block param 0))
+                  (-> *target* control)
+                  (collide-action solid)
+                  (collide-action))
+             (let ((s4-0 (new 'stack 'attack-info)))
+               (calc-shove-up (-> self root) s4-0 (-> self shove-up))
+               (level-hint-spawn (text-id sunken-hotpipes) "sksp0134" (the-as entity #f) *entity-pool* (game-task none))
+               (if (or (= (-> *target* control unknown-surface00 mode) 'air)
+                       (>= (+ (current-time) (seconds -0.2)) (-> *target* control unknown-dword11))
+                       (< 0.75 (-> *target* control poly-normal y)))
+                 (send-event proc
+                             'attack-or-shove
+                             (-> block param 0)
+                             (static-attack-info ((mode 'burn) (vector (-> s4-0 vector)) (shove-up (-> s4-0 shove-up)))))
+                 (send-event proc
+                             'attack-or-shove
+                             (-> block param 0)
+                             (static-attack-info ((mode 'burn) (shove-up (meters 0)) (shove-back (meters 2)) (vector (-> *target* control poly-normal)) (angle 'shove)))))))))))
+  :code anim-loop)
 
 (defmethod init-from-entity! ((this shover) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (set! (-> this shove-up) (res-lump-float arg0 'shove :default 12288.0))
   (let ((s3-0 (res-lump-value arg0 'collision-mesh-id uint128))
-        (s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player)))
-        )
+        (s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
     (let ((s3-1 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint s3-0) (the-as uint 0))))
       (set! (-> s3-1 prim-core collide-as) (collide-kind wall-object))
       (set! (-> s3-1 collide-with) (collide-kind target))
@@ -84,46 +61,30 @@
       (set! (-> s3-1 prim-core offense) (collide-offense indestructible))
       (set! (-> s3-1 transform-index) 0)
       (set-vector! (-> s3-1 local-sphere) 0.0 0.0 0.0 53248.0)
-      (set-root-prim! s4-0 s3-1)
-      )
+      (set-root-prim! s4-0 s3-1))
     (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
     (backup-collide-with-as s4-0)
-    (set! (-> this root) s4-0)
-    )
+    (set! (-> this root) s4-0))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton this *shover-sg* '())
   (let ((v1-17 (new 'process 'path-control this 'path 0.0)))
     (set! (-> this path) v1-17)
     (logior! (-> v1-17 flags) (path-control-flag display draw-line draw-point draw-text))
-    (if (<= (-> v1-17 curve num-cverts) 0)
-        (go process-drawable-art-error "no path")
-        )
-    )
+    (if (<= (-> v1-17 curve num-cverts) 0) (go process-drawable-art-error "no path")))
   (set! sv-16 (new 'static 'res-tag))
   (let ((v1-23 (res-lump-data arg0 'trans-offset (pointer float) :tag-ptr (& sv-16))))
     (when v1-23
       (+! (-> this root trans x) (-> v1-23 0))
       (+! (-> this root trans y) (-> v1-23 1))
-      (+! (-> this root trans z) (-> v1-23 2))
-      )
-    )
+      (+! (-> this root trans z) (-> v1-23 2))))
   (let ((f0-13 (res-lump-float arg0 'rotoffset)))
-    (if (!= f0-13 0.0)
-        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-13)
-        )
-    )
+    (if (!= f0-13 0.0) (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-13)))
   (ja-channel-set! 1)
   (let ((s5-1 (-> this skel root-channel 0)))
-    (joint-control-channel-group-eval!
-      s5-1
-      (the-as art-joint-anim (-> this draw art-group data 2))
-      num-func-identity
-      )
-    (set! (-> s5-1 frame-num) 0.0)
-    )
+    (joint-control-channel-group-eval! s5-1 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
+    (set! (-> s5-1 frame-num) 0.0))
   (ja-post)
   (update-transforms! (-> this root))
   (set! *shover* this)
   (go shover-idle)
-  (none)
-  )
+  (none))

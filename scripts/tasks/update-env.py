@@ -58,7 +58,8 @@ decomp_config_version_map = {
   },
   # TODO other versions
   "jak3": {
-    "ntscv1": "ntsc_v1"
+    "ntscv1": "ntsc_v1",
+    "pal": "pal"
   }
 }
 
@@ -66,6 +67,12 @@ default_config_version_map = {
   "jak1": "ntsc_v1",
   "jak2": "ntsc_v1",
   "jak3": "ntsc_v1"
+}
+
+type_consistency_filter_map = {
+  "jak1": "Jak1TypeConsistency",
+  "jak2": "Jak2TypeConsistency",
+  "jak3": "Jak3TypeConsistency"
 }
 
 if args.game:
@@ -77,12 +84,14 @@ if args.game:
   if (curr != file["GAME"]) or file["DECOMP_CONFIG_VERSION"] not in decomp_config_version_map[file["GAME"]]:
     file["DECOMP_CONFIG"] = decomp_config_map[file["GAME"]]
     file["DECOMP_CONFIG_VERSION"] = default_config_version_map[file["GAME"]]
+    file["TYPE_CONSISTENCY_TEST_FILTER"] = type_consistency_filter_map[file["GAME"]]
 if args.decomp_config:
   if args.decomp_config not in decomp_config_version_map[file["GAME"]]:
     print("Unsupported decomp config '{}' for game '{}'".format(args.decomp_config, file["GAME"]))
     sys.exit(1)
   file["DECOMP_CONFIG"] = decomp_config_map[file["GAME"]]
   file["DECOMP_CONFIG_VERSION"] = decomp_config_version_map[file["GAME"]][args.decomp_config]
+  file["TYPE_CONSISTENCY_TEST_FILTER"] = type_consistency_filter_map[file["GAME"]]
 
 with open(env_path, 'w') as env_file:
   for item in file.items():

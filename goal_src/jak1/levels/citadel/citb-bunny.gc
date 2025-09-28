@@ -1,83 +1,78 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: citb-bunny.gc
-;; name in dgo: citb-bunny
-;; dgos: CIT, L1
+(bundles "CIT.DGO")
+(require "levels/snow/snow-bunny.gc")
 
 ;; DECOMP BEGINS
 
-(deftype citb-bunny (snow-bunny)
-  ()
+(deftype citb-bunny (snow-bunny) ()
   (:methods
-    (nav-enemy-method-48 (_type_ object) none :replace)
-    )
-  )
+   (nav-enemy-method-48 (_type_ object) none :replace)))
 
+(defskelgroup *citb-bunny-sg*
+  citb-bunny
+  citb-bunny-lod0-jg
+  citb-bunny-idle-ja
+  ((citb-bunny-lod0-mg (meters 999999)))
+  :bounds (static-spherem 0 0.25 0 2))
 
-(defskelgroup *citb-bunny-sg* citb-bunny citb-bunny-lod0-jg citb-bunny-idle-ja
-              ((citb-bunny-lod0-mg (meters 999999)))
-              :bounds (static-spherem 0 0.25 0 2)
-              )
-
-(define *citb-bunny-nav-enemy-info* (new 'static 'nav-enemy-info
-                                      :idle-anim 3
-                                      :walk-anim 3
-                                      :turn-anim 3
-                                      :notice-anim 7
-                                      :run-anim 3
-                                      :jump-anim 5
-                                      :jump-land-anim 8
-                                      :victory-anim 7
-                                      :taunt-anim 7
-                                      :die-anim 9
-                                      :neck-joint 5
-                                      :player-look-at-joint 5
-                                      :run-travel-speed (meters 6)
-                                      :run-rotate-speed (degrees 2880)
-                                      :run-acceleration (meters 1)
-                                      :run-turn-time (seconds 0.1)
-                                      :walk-travel-speed (meters 4)
-                                      :walk-rotate-speed (degrees 720)
-                                      :walk-acceleration (meters 1)
-                                      :walk-turn-time (seconds 0.5)
-                                      :shadow-size (meters 2)
-                                      :notice-nav-radius (meters 1.2)
-                                      :nav-nearest-y-threshold (meters 10)
-                                      :notice-distance (meters 130)
-                                      :stop-chase-distance (meters 150)
-                                      :frustration-distance (meters 8)
-                                      :frustration-time (seconds 4)
-                                      :die-anim-hold-frame 31.0
-                                      :jump-anim-start-frame 11.0
-                                      :jump-land-anim-end-frame 10000000000.0
-                                      :jump-height-min (meters 1)
-                                      :jump-height-factor 0.6
-                                      :jump-start-anim-speed 1.0
-                                      :shadow-max-y (meters 0.25)
-                                      :shadow-min-y (meters -3.5)
-                                      :shadow-locus-dist (meters 150)
-                                      :use-align #f
-                                      :draw-shadow #t
-                                      :move-to-ground #t
-                                      :hover-if-no-ground #f
-                                      :use-momentum #f
-                                      :use-flee #f
-                                      :use-proximity-notice #f
-                                      :use-jump-blocked #f
-                                      :use-jump-patrol #f
-                                      :gnd-collide-with (collide-kind background)
-                                      :debug-draw-neck #f
-                                      :debug-draw-jump #f
-                                      )
-        )
+(define *citb-bunny-nav-enemy-info*
+  (new 'static
+       'nav-enemy-info
+       :idle-anim 3
+       :walk-anim 3
+       :turn-anim 3
+       :notice-anim 7
+       :run-anim 3
+       :jump-anim 5
+       :jump-land-anim 8
+       :victory-anim 7
+       :taunt-anim 7
+       :die-anim 9
+       :neck-joint 5
+       :player-look-at-joint 5
+       :run-travel-speed (meters 6)
+       :run-rotate-speed (degrees 2880)
+       :run-acceleration (meters 1)
+       :run-turn-time (seconds 0.1)
+       :walk-travel-speed (meters 4)
+       :walk-rotate-speed (degrees 720)
+       :walk-acceleration (meters 1)
+       :walk-turn-time (seconds 0.5)
+       :shadow-size (meters 2)
+       :notice-nav-radius (meters 1.2)
+       :nav-nearest-y-threshold (meters 10)
+       :notice-distance (meters 130)
+       :stop-chase-distance (meters 150)
+       :frustration-distance (meters 8)
+       :frustration-time (seconds 4)
+       :die-anim-hold-frame 31.0
+       :jump-anim-start-frame 11.0
+       :jump-land-anim-end-frame 10000000000.0
+       :jump-height-min (meters 1)
+       :jump-height-factor 0.6
+       :jump-start-anim-speed 1.0
+       :shadow-max-y (meters 0.25)
+       :shadow-min-y (meters -3.5)
+       :shadow-locus-dist (meters 150)
+       :use-align #f
+       :draw-shadow #t
+       :move-to-ground #t
+       :hover-if-no-ground #f
+       :use-momentum #f
+       :use-flee #f
+       :use-proximity-notice #f
+       :use-jump-blocked #f
+       :use-jump-patrol #f
+       :gnd-collide-with (collide-kind background)
+       :debug-draw-neck #f
+       :debug-draw-jump #f))
 
 (defmethod nav-enemy-method-60 ((this citb-bunny))
   (initialize-skeleton this *citb-bunny-sg* '())
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   0
-  (none)
-  )
+  (none))
 
 (defmethod nav-enemy-method-48 ((this citb-bunny) (arg0 object))
   (nav-enemy-method-60 this)
@@ -86,13 +81,8 @@
   (cond
     ((zero? (res-lump-value (-> this entity) 'mode uint128))
      (set! (-> this defense) (the-as uint 1))
-     (set! (-> this retreat-timeout) 5.0)
-     )
-    (else
-      (set! (-> this defense) (the-as uint 0))
-      (set! (-> this retreat-timeout) 0.1)
-      )
-    )
+     (set! (-> this retreat-timeout) 5.0))
+    (else (set! (-> this defense) (the-as uint 0)) (set! (-> this retreat-timeout) 0.1)))
   (set-time! (-> this last-nondangerous-time))
   (set! (-> this gnd-popup) 16384.0)
   (set! (-> this got-jump-event?) #f)
@@ -105,8 +95,7 @@
   (set! (-> this patrol-hop-failed?) #f)
   (logclear! (-> this mask) (process-mask actor-pause))
   0
-  (none)
-  )
+  (none))
 
 (defmethod set-jump-height-factor! ((this citb-bunny) (arg0 int))
   (let ((v1-0 arg0))
@@ -114,19 +103,13 @@
       ((zero? v1-0)
        (set! (-> this jump-anim) 6)
        (set! (-> this jump-height-min) 4096.0)
-       (set! (-> this jump-height-factor) 0.6)
-       )
+       (set! (-> this jump-height-factor) 0.6))
       ((= v1-0 1)
        (set! (-> this jump-anim) 5)
        (set! (-> this jump-height-min) 4096.0)
-       (set! (-> this jump-height-factor) 0.6)
-       )
+       (set! (-> this jump-height-factor) 0.6))
       ((= v1-0 2)
        (set! (-> this jump-anim) 5)
        (set! (-> this jump-height-min) 4096.0)
-       (set! (-> this jump-height-factor) 0.4)
-       )
-      )
-    )
-  (none)
-  )
+       (set! (-> this jump-height-factor) 0.4))))
+  (none))

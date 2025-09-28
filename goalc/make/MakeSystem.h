@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/goos/Interpreter.h"
+#include "common/util/FileUtil.h"
 
 #include "goalc/make/Tool.h"
 
@@ -57,7 +58,7 @@ class MakeSystem {
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
 
-  bool make(const std::string& target, bool force, bool verbose);
+  bool make(const std::string& target, bool force, bool verbose, bool gen_report);
 
   void add_tool(std::shared_ptr<Tool> tool);
   void set_constant(const std::string& name, const std::string& value);
@@ -70,6 +71,7 @@ class MakeSystem {
   }
 
   void clear_project();
+  std::vector<std::string> get_loaded_projects() const { return m_loaded_projects; }
 
   /*!
    * Get the prefix that the project has requested for all compiler outputs
@@ -91,6 +93,7 @@ class MakeSystem {
   goos::Interpreter m_goos;
 
   std::optional<REPL::Config> m_repl_config;
+  std::vector<std::string> m_loaded_projects;
 
   std::unordered_map<std::string, std::shared_ptr<MakeStep>> m_output_to_step;
   std::unordered_map<std::string, std::shared_ptr<Tool>> m_tools;

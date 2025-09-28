@@ -1,174 +1,110 @@
 ;;-*-Lisp-*-
 (in-package goal)
-
-;; name: warrior.gc
-;; name in dgo: warrior
-;; dgos: L1, VI2
+(bundles "VI2.DGO")
+(require "levels/village2/village2-obs.gc")
+(require "engine/common-obs/process-taskable.gc")
 
 ;; DECOMP BEGINS
 
-(deftype warrior (process-taskable)
-  ()
-  )
+(deftype warrior (process-taskable) ())
 
-
-(defskelgroup *warrior-sg* warrior warrior-lod0-jg warrior-idle-ja
-              ((warrior-lod0-mg (meters 20)) (warrior-lod1-mg (meters 40)) (warrior-lod2-mg (meters 999999)))
-              :bounds (static-spherem 0 0 0 4)
-              :shadow warrior-shadow-mg
-              )
+(defskelgroup *warrior-sg*
+  warrior
+  warrior-lod0-jg
+  warrior-idle-ja
+  ((warrior-lod0-mg (meters 20)) (warrior-lod1-mg (meters 40)) (warrior-lod2-mg (meters 999999)))
+  :bounds (static-spherem 0 0 0 4)
+  :shadow warrior-shadow-mg)
 
 (defmethod process-taskable-method-52 ((this warrior))
   (let ((v1-1 (-> this draw shadow-ctrl)))
     (when v1-1
       (let ((f0-0 (-> this root trans y)))
-        (let ((a0-2 v1-1))
-          (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0)))
-          )
+        (let ((a0-2 v1-1)) (set! (-> a0-2 settings bot-plane w) (- (+ -4096.0 f0-0))))
         0
-        (set! (-> v1-1 settings top-plane w) (- (+ 3072.0 f0-0)))
-        )
-      0
-      )
-    )
-  (none)
-  )
+        (set! (-> v1-1 settings top-plane w) (- (+ 3072.0 f0-0))))
+      0))
+  (none))
 
 (defmethod draw-npc-shadow ((this warrior))
   (-> this draw shadow-ctrl)
   (cond
-    ((and (-> this draw shadow)
-          (zero? (-> this draw cur-lod))
-          (logtest? (-> this draw status) (draw-status was-drawn))
-          )
-     (let ((v1-9 (-> this draw shadow-ctrl)))
-       (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw))
-       )
+    ((and (-> this draw shadow) (zero? (-> this draw cur-lod)) (logtest? (-> this draw status) (draw-status was-drawn)))
+     (let ((v1-9 (-> this draw shadow-ctrl))) (logclear! (-> v1-9 settings flags) (shadow-flags disable-draw)))
      0
-     (update-direction-from-time-of-day (-> this draw shadow-ctrl))
-     )
-    (else
-      (let ((v1-14 (-> this draw shadow-ctrl)))
-        (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))
-        )
-      0
-      )
-    )
-  (none)
-  )
+     (update-direction-from-time-of-day (-> this draw shadow-ctrl)))
+    (else (let ((v1-14 (-> this draw shadow-ctrl))) (logior! (-> v1-14 settings flags) (shadow-flags disable-draw))) 0))
+  (none))
 
 (defmethod play-anim! ((this warrior) (arg0 symbol))
   (with-pp
     (set! (-> this talk-message) (text-id press-to-talk))
     (case (current-status (-> this tasks))
       (((task-status need-hint) (task-status need-introduction))
-       (if arg0
-           (close-status! (-> this tasks) (task-status need-introduction))
-           )
-       (new 'static 'spool-anim
-         :name "warrior-introduction"
-         :index 6
-         :parts 29
-         :command-list '((125 joint "cameraB")
-           (260 joint "camera")
-           (574 joint "cameraB")
-           (918 joint "camera")
-           (1174 joint "cameraB")
-           (1174 shadow self #f)
-           (1301 joint "camera")
-           (1301 shadow self #t)
-           (2025 joint "cameraB")
-           (2322 joint "camera")
-           (2560 joint "cameraB")
-           )
-         )
-       )
+       (if arg0 (close-status! (-> this tasks) (task-status need-introduction)))
+       (new 'static
+            'spool-anim
+            :name "warrior-introduction"
+            :index 6
+            :parts 29
+            :command-list
+            '((125 joint "cameraB")
+             (260 joint "camera")
+             (574 joint "cameraB")
+             (918 joint "camera")
+             (1174 joint "cameraB")
+             (1174 shadow self #f)
+             (1301 joint "camera")
+             (1301 shadow self #t)
+             (2025 joint "cameraB")
+             (2322 joint "camera")
+             (2560 joint "cameraB"))))
       (((task-status need-reminder))
        (set! (-> this skippable) #t)
-       (new 'static 'spool-anim :name "warrior-reminder-1" :index 7 :parts 3 :command-list '())
-       )
+       (new 'static 'spool-anim :name "warrior-reminder-1" :index 7 :parts 3 :command-list '()))
       (((task-status need-reward-speech))
        (cond
          (arg0
-           (set! (-> this cell-for-task) (current-task (-> this tasks)))
-           (close-current! (-> this tasks))
-           (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
-           (send-event (-> (entity-by-type allpontoons) extra process) 'clone (process->handle this))
-           (dotimes (s5-2 (entity-actor-count (-> this entity) 'alt-actor))
-             (entity-birth-no-kill (entity-actor-lookup (-> this entity) 'alt-actor s5-2))
-             (let ((s4-2 (new 'stack-no-clear 'event-message-block)))
-               (set! (-> s4-2 from) pp)
-               (set! (-> s4-2 num-params) 0)
-               (set! (-> s4-2 message) 'die)
-               (let ((s3-0 send-event-function)
-                     (v1-25 (entity-actor-lookup (-> this entity) 'alt-actor s5-2))
-                     )
-                 (s3-0
-                   (if v1-25
-                       (-> v1-25 extra process)
-                       )
-                   s4-2
-                   )
-                 )
-               )
-             )
-           )
-         (else
-           (set! (-> this will-talk) #t)
-           (set! (-> this talk-message) (text-id press-to-trade-money))
-           )
-         )
-       (new 'static 'spool-anim
-         :name "warrior-resolution"
-         :index 8
-         :parts 6
-         :command-list '((508 blackout 10) (511 blackout 0))
-         )
-       )
+          (set! (-> this cell-for-task) (current-task (-> this tasks)))
+          (close-current! (-> this tasks))
+          (send-event *target* 'get-pickup 5 (- (-> *GAME-bank* money-task-inc)))
+          (send-event (-> (entity-by-type allpontoons) extra process) 'clone (process->handle this))
+          (dotimes (s5-2 (entity-actor-count (-> this entity) 'alt-actor))
+            (entity-birth-no-kill (entity-actor-lookup (-> this entity) 'alt-actor s5-2))
+            (let ((s4-2 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> s4-2 from) pp)
+              (set! (-> s4-2 num-params) 0)
+              (set! (-> s4-2 message) 'die)
+              (let ((s3-0 send-event-function)
+                    (v1-25 (entity-actor-lookup (-> this entity) 'alt-actor s5-2)))
+                (s3-0 (if v1-25 (-> v1-25 extra process)) s4-2)))))
+         (else (set! (-> this will-talk) #t) (set! (-> this talk-message) (text-id press-to-trade-money))))
+       (new 'static 'spool-anim :name "warrior-resolution" :index 8 :parts 6 :command-list '((508 blackout 10) (511 blackout 0))))
       (else
-        (if arg0
-            (format
-              0
-              "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
-              (-> this name)
-              (task-status->string (current-status (-> this tasks)))
-              )
-            )
-        (-> this draw art-group data 5)
-        )
-      )
-    )
-  )
+       (if arg0
+         (format 0
+                 "ERROR: <GMJ>: ~S playing anim for task status ~S~%"
+                 (-> this name)
+                 (task-status->string (current-status (-> this tasks)))))
+       (-> this draw art-group data 5)))))
 
 (defmethod get-art-elem ((this warrior))
-  (-> this draw art-group data 5)
-  )
+  (-> this draw art-group data 5))
 
 (defstate play-anim (warrior)
   :virtual #t
-  :exit (behavior ()
-    (send-event (-> (entity-by-type allpontoons) extra process) 'end-mode)
-    ((-> (method-of-type process-taskable play-anim) exit))
-    )
-  )
+  :exit
+    (behavior ()
+      (send-event (-> (entity-by-type allpontoons) extra process) 'end-mode)
+      ((-> (method-of-type process-taskable play-anim) exit))))
 
 (defmethod process-taskable-method-43 ((this warrior))
   (when (ambient-control-method-10 (-> this ambient) (new 'stack-no-clear 'vector) (seconds 2) 61440.0 this)
     (let ((f0-2 (rand-float-gen)))
       (cond
-        ((< 0.66 f0-2)
-         (play-ambient (-> this ambient) "WAR-LO1A" #f (-> this root trans))
-         )
-        ((< 0.33 f0-2)
-         (play-ambient (-> this ambient) "WAR-LO1B" #f (-> this root trans))
-         )
-        (else
-          (play-ambient (-> this ambient) "WAR-LO1C" #f (-> this root trans))
-          )
-        )
-      )
-    )
-  )
+        ((< 0.66 f0-2) (play-ambient (-> this ambient) "WAR-LO1A" #f (-> this root trans)))
+        ((< 0.33 f0-2) (play-ambient (-> this ambient) "WAR-LO1B" #f (-> this root trans)))
+        (else (play-ambient (-> this ambient) "WAR-LO1C" #f (-> this root trans)))))))
 
 (defmethod initialize-collision ((this warrior) (arg0 int) (arg1 vector))
   (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
@@ -185,24 +121,19 @@
         (set! (-> s3-0 prim-core action) (collide-action solid))
         (set! (-> s3-0 prim-core offense) (collide-offense indestructible))
         (set-vector! (-> s3-0 local-sphere) -2048.0 9216.0 0.0 8192.0)
-        (append-prim s4-0 s3-0)
-        )
+        (append-prim s4-0 s3-0))
       (let ((s3-1 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
         (set! (-> s3-1 prim-core collide-as) (collide-kind enemy))
         (set! (-> s3-1 collide-with) (collide-kind target))
         (set! (-> s3-1 prim-core action) (collide-action solid))
         (set! (-> s3-1 prim-core offense) (collide-offense indestructible))
         (set-vector! (-> s3-1 local-sphere) 0.0 2048.0 0.0 4096.0)
-        (append-prim s4-0 s3-1)
-        )
-      )
+        (append-prim s4-0 s3-1)))
     (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
     (backup-collide-with-as s5-0)
-    (set! (-> this root) s5-0)
-    )
+    (set! (-> this root) s5-0))
   0
-  (none)
-  )
+  (none))
 
 (defmethod init-from-entity! ((this warrior) (arg0 entity-actor))
   (process-taskable-method-40 this arg0 *warrior-sg* 3 33 (new 'static 'vector :y -4096.0 :w 10240.0) 5)
@@ -210,5 +141,4 @@
   (set! (-> this sound-flava) (music-flava warrior))
   (set! (-> this draw light-index) (the-as uint 3))
   (process-taskable-method-42 this)
-  (none)
-  )
+  (none))

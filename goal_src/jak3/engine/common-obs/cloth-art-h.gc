@@ -5,5 +5,151 @@
 ;; name in dgo: cloth-art-h
 ;; dgos: GAME
 
+;; +++cloth-flag
+(defenum cloth-flag
+  :type uint64
+  :bitfield #t
+  (no-gravity 0)
+  (use-wind 1)
+  (need-reset 2)
+  (double-sided 3)
+  (suppress-mesh-failure 4)
+  (active 5)
+  (check-ground 6)
+  (flip-normals 7)
+  (wraps 8)
+  (inited 9)
+  (no-draw 10)
+  (need-setup 11)
+  (use-global-wind 12)
+  (autogen-uvs 13)
+  (use-momentum 14)
+  (use-parent-momentum 15)
+  (riding 16)
+  (hidden 17)
+  (local-space 18)
+  (local-space-xyz 19)
+  (local-space-y 20)
+  (use-old-resets 21)
+  (using-alt-tex 22)
+  )
+;; ---cloth-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype cloth-pt (structure)
+  ((pt  vector  :inline)
+   (u   float)
+   (v   float)
+   )
+  )
+
+
+(deftype anchor-transform (structure)
+  ((offset            vector  :inline)
+   (joint-name        string)
+   (joint             int16)
+   (constraint-index  int16)
+   )
+  )
+
+
+(deftype sphere-transform (structure)
+  ((offset      vector  :inline)
+   (joint-name  string)
+   (radius      float)
+   (joint       int16)
+   )
+  )
+
+
+(deftype disc-transform (structure)
+  ((offset                vector  :inline)
+   (normal                vector  :inline)
+   (joint-name            basic)
+   (radius                float)
+   (joint                 int16)
+   (start-particle-index  int16)
+   (end-particle-index    int16)
+   )
+  )
+
+
+(deftype anchor-transform-array (inline-array-class)
+  ((data  anchor-transform  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> anchor-transform-array heap-base) (the-as uint 32))
+
+(deftype sphere-transform-array (inline-array-class)
+  ((data  sphere-transform  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> sphere-transform-array heap-base) (the-as uint 32))
+
+(deftype disc-transform-array (inline-array-class)
+  ((data  disc-transform  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> disc-transform-array heap-base) (the-as uint 48))
+
+(deftype cloth-thickness-array (inline-array-class)
+  ((data  uint8  :dynamic)
+   )
+  )
+
+
+(set! (-> cloth-thickness-array heap-base) (the-as uint 1))
+
+(deftype cloth-params (structure)
+  ((mesh                    int16)
+   (gravity-constant        meters)
+   (wind-constant           float)
+   (cloth-width             uint16)
+   (num-sphere-constraints  uint16)
+   (num-disc-constraints    uint16)
+   (num-anchor-points       uint16)
+   (flags                   cloth-flag)
+   (tex-name                string)
+   (tex-name2               string)
+   (tex-name3               string)
+   (alt-tex-name            string)
+   (alt-tex-name2           string)
+   (alt-tex-name3           string)
+   (cloth-thickness         float)
+   (initial-xform           int16)
+   (drag                    float)
+   (ball-collision-radius   meters)
+   (num-iterations          int8)
+   (timestep-frequency      int8)
+   (secret-disable          game-secrets)
+   )
+  )
+
+(defmacro static-cloth-params (ag-name args)
+ `(let ((parms (new 'static 'cloth-params)))
+    (false! (-> parms alt-tex-name))
+    (false! (-> parms alt-tex-name2))
+    (false! (-> parms alt-tex-name3))
+    ,@(apply (lambda (x) (if (and (eq? (car x) 'mesh) (not (integer? (cadr x))))
+                           `(set! (-> parms ,(car x)) ,(art-elt-index ag-name (cadr x)))
+                           `(set! (-> parms ,(car x)) ,(cadr x))
+                           )) args)
+    parms
+    )
+  )
+
+(deftype cloth-base (basic)
+  ()
+  (:methods
+    (update! (_type_) int)
+    (setup-from-params! (_type_ cloth-params handle) int)
+    )
+  )

@@ -5,5 +5,422 @@
 ;; name in dgo: texture-anim-h
 ;; dgos: GAME
 
+(declare-type texture-anim-array array)
+(define-extern update-texture-anim (function bucket-id texture-anim-array none))
+
 ;; DECOMP BEGINS
 
+(deftype texture-anim-layer (structure)
+  ((interpolated-color            vector   :inline)
+   (interpolated-scale-offset     vector   :inline)
+   (interpolated-st-scale-offset  vector   :inline)
+   (interpolated-qs               vector   :inline)
+   (interpolated-rot              vector   :inline)
+   (extra                         vector   :inline :offset 240)
+   (func                          (function dma-buffer uint int int texture-anim-layer float int))
+   (func-id                       symbol           :overlay-at func)
+   (init-func                     (function texture-anim-layer int))
+   (init-func-id                  symbol           :overlay-at init-func)
+   (tex                           texture)
+   (start-time                    float)
+   (end-time                      float)
+   (tex-name                      string)
+   (test                          gs-test)
+   (alpha                         gs-alpha)
+   (clamp                         gs-clamp)
+   (start-vectors   vector 5 :inline :offset 80) ;; added
+   (start-color                   vector   :inline :offset  80)
+   (start-scale                   vector2  :inline :offset  96)
+   (start-offset                  vector2  :inline :offset 104)
+   (start-st-scale                vector2  :inline :offset 112)
+   (start-st-offset               vector2  :inline :offset 120)
+   (start-qs                      vector   :inline :offset 128)
+   (start-rot                     degrees          :offset 144)
+   (start-st-rot                  degrees          :offset 148)
+   (end-vectors     vector 5 :inline :offset 160) ;; added
+   (end-color                     vector   :inline :offset 160)
+   (end-scale                     vector2  :inline :offset 176)
+   (end-offset                    vector2  :inline :offset 184)
+   (end-st-scale                  vector2  :inline :offset 192)
+   (end-st-offset                 vector2  :inline :offset 200)
+   (end-qs                        vector   :inline :offset 208)
+   (end-rot                       degrees          :offset 224)
+   (end-st-rot                    degrees          :offset 228)
+   )
+  (:methods
+    (initialize-texture! (_type_) _type_)
+    (clear-texture! (_type_) _type_)
+    )
+  )
+
+
+(deftype texture-anim (structure)
+  ((num-layers    uint32)
+   (func          (function dma-buffer texture-anim int))
+   (func-id       symbol              :overlay-at func)
+   (init-func     (function texture-anim int))
+   (init-func-id  symbol              :overlay-at init-func)
+   (tex           texture)
+   (tex-name      string)
+   (extra         vector              :inline)
+   (color         rgba)
+   (frame-time    float)
+   (frame-delta   float)
+   (frame-mod     float)
+   (test          gs-test)
+   (alpha         gs-alpha)
+   (clamp         gs-clamp)
+   (data          texture-anim-layer  :dynamic)
+   )
+  (:methods
+    (init-textures! (_type_) _type_)
+    (clear-textures! (_type_) _type_)
+    )
+  )
+
+
+(deftype texture-anim-array (array)
+  ((array-data  texture-anim  :dynamic)
+   )
+  (:methods
+    (init! (_type_) _type_)
+    (clear! (_type_) _type_)
+    )
+  )
+
+
+(deftype texture-anim-work (structure)
+  ((erase-tmpl    dma-gif-packet  :inline)
+   (draw-tmpl     dma-gif-packet  :inline)
+   (draw2-tmpl    dma-gif-packet  :inline)
+   (fill-tmpl     dma-gif-packet  :inline)
+   (adgif-tmpl    dma-gif-packet  :inline)
+   (corner0       vector          :inline)
+   (corner1       vector          :inline)
+   (corner2       vector          :inline)
+   (corner3       vector          :inline)
+   (const         vector          :inline)
+   (color         vector4w        :inline)
+   (random        vector4w        8 :inline)
+   (random-index  uint8)
+   )
+  )
+
+
+(deftype clut16x16 (structure)
+  ((clut  rgba  256)
+   )
+  )
+
+
+(deftype noise8x8 (structure)
+  ((image  uint8  64)
+   )
+  )
+
+
+(deftype noise16x16 (structure)
+  ((image  uint8  256)
+   )
+  )
+
+
+(deftype noise32x32 (structure)
+  ((image  uint8  1024)
+   )
+  )
+
+
+(deftype noise64x64 (structure)
+  ((image  uint8  4096)
+   )
+  )
+
+
+(deftype noise128x128 (structure)
+  ((image  uint8  16384)
+   )
+  )
+
+
+(deftype fog8x256 (structure)
+  ((image  uint8  256)
+   )
+  )
+
+
+(deftype fog-texture-work (structure)
+  ((corner       vector  4 :inline)
+   (const        vector  :inline)
+   (min-corner   vector  :inline)
+   (max-corner   vector  :inline)
+   (fog-near     float)
+   (fog-far      float)
+   (fog-delta    float)
+   (alpha-near   float)
+   (alpha-far    float)
+   (alpha-delta  float)
+   (color        rgba)
+   )
+  )
+
+
+(define *clut-translate* (new 'static 'array uint8 256
+                           #x0
+                           #x1
+                           #x2
+                           #x3
+                           #x4
+                           #x5
+                           #x6
+                           #x7
+                           #x10
+                           #x11
+                           #x12
+                           #x13
+                           #x14
+                           #x15
+                           #x16
+                           #x17
+                           #x8
+                           #x9
+                           #xa
+                           #xb
+                           #xc
+                           #xd
+                           #xe
+                           #xf
+                           #x18
+                           #x19
+                           #x1a
+                           #x1b
+                           #x1c
+                           #x1d
+                           #x1e
+                           #x1f
+                           #x20
+                           #x21
+                           #x22
+                           #x23
+                           #x24
+                           #x25
+                           #x26
+                           #x27
+                           #x30
+                           #x31
+                           #x32
+                           #x33
+                           #x34
+                           #x35
+                           #x36
+                           #x37
+                           #x28
+                           #x29
+                           #x2a
+                           #x2b
+                           #x2c
+                           #x2d
+                           #x2e
+                           #x2f
+                           #x38
+                           #x39
+                           #x3a
+                           #x3b
+                           #x3c
+                           #x3d
+                           #x3e
+                           #x3f
+                           #x40
+                           #x41
+                           #x42
+                           #x43
+                           #x44
+                           #x45
+                           #x46
+                           #x47
+                           #x50
+                           #x51
+                           #x52
+                           #x53
+                           #x54
+                           #x55
+                           #x56
+                           #x57
+                           #x48
+                           #x49
+                           #x4a
+                           #x4b
+                           #x4c
+                           #x4d
+                           #x4e
+                           #x4f
+                           #x58
+                           #x59
+                           #x5a
+                           #x5b
+                           #x5c
+                           #x5d
+                           #x5e
+                           #x5f
+                           #x60
+                           #x61
+                           #x62
+                           #x63
+                           #x64
+                           #x65
+                           #x66
+                           #x67
+                           #x70
+                           #x71
+                           #x72
+                           #x73
+                           #x74
+                           #x75
+                           #x76
+                           #x77
+                           #x68
+                           #x69
+                           #x6a
+                           #x6b
+                           #x6c
+                           #x6d
+                           #x6e
+                           #x6f
+                           #x78
+                           #x79
+                           #x7a
+                           #x7b
+                           #x7c
+                           #x7d
+                           #x7e
+                           #x7f
+                           #x80
+                           #x81
+                           #x82
+                           #x83
+                           #x84
+                           #x85
+                           #x86
+                           #x87
+                           #x90
+                           #x91
+                           #x92
+                           #x93
+                           #x94
+                           #x95
+                           #x96
+                           #x97
+                           #x88
+                           #x89
+                           #x8a
+                           #x8b
+                           #x8c
+                           #x8d
+                           #x8e
+                           #x8f
+                           #x98
+                           #x99
+                           #x9a
+                           #x9b
+                           #x9c
+                           #x9d
+                           #x9e
+                           #x9f
+                           #xa0
+                           #xa1
+                           #xa2
+                           #xa3
+                           #xa4
+                           #xa5
+                           #xa6
+                           #xa7
+                           #xb0
+                           #xb1
+                           #xb2
+                           #xb3
+                           #xb4
+                           #xb5
+                           #xb6
+                           #xb7
+                           #xa8
+                           #xa9
+                           #xaa
+                           #xab
+                           #xac
+                           #xad
+                           #xae
+                           #xaf
+                           #xb8
+                           #xb9
+                           #xba
+                           #xbb
+                           #xbc
+                           #xbd
+                           #xbe
+                           #xbf
+                           #xc0
+                           #xc1
+                           #xc2
+                           #xc3
+                           #xc4
+                           #xc5
+                           #xc6
+                           #xc7
+                           #xd0
+                           #xd1
+                           #xd2
+                           #xd3
+                           #xd4
+                           #xd5
+                           #xd6
+                           #xd7
+                           #xc8
+                           #xc9
+                           #xca
+                           #xcb
+                           #xcc
+                           #xcd
+                           #xce
+                           #xcf
+                           #xd8
+                           #xd9
+                           #xda
+                           #xdb
+                           #xdc
+                           #xdd
+                           #xde
+                           #xdf
+                           #xe0
+                           #xe1
+                           #xe2
+                           #xe3
+                           #xe4
+                           #xe5
+                           #xe6
+                           #xe7
+                           #xf0
+                           #xf1
+                           #xf2
+                           #xf3
+                           #xf4
+                           #xf5
+                           #xf6
+                           #xf7
+                           #xe8
+                           #xe9
+                           #xea
+                           #xeb
+                           #xec
+                           #xed
+                           #xee
+                           #xef
+                           #xf8
+                           #xf9
+                           #xfa
+                           #xfb
+                           #xfc
+                           #xfd
+                           #xfe
+                           #xff
+                           )
+        )

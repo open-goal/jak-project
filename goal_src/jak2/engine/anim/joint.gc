@@ -8,6 +8,518 @@
 (define-extern create-interpolated-joint-animation-frame (function joint-anim-frame int joint-control int))
 (define-extern *anim-manager* art-joint-anim-manager)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; experimental new joint decompressor
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define *use-new-decompressor* #t)
+
+;; this was re-written in GOAL. Despite being not well optimized, it ends up being faster
+;; than the original when decompiled with MIPS2C.
+
+;; request to decompress data from an animation
+(deftype joint-decomp-request (structure)
+  ((jacc joint-anim-compressed-control)
+   (frame int)
+   (frame-interp float)
+   (amount float))
+  )
+
+(deftype blend-tree-stack-frame (structure)
+  ((weights float 24)
+   (quads   vector 6 :inline :overlay-at weights))
+  )
+
+(deftype new-joint-decompressor-work (structure)
+  ((requests joint-decomp-request 24 :inline)
+   (num-requests int32)
+   (blend-stack blend-tree-stack-frame 4 :inline)
+   )
+  (:methods
+   (eval-blend-tree! (_type_ joint-control) none)
+   (output-blend-tree! (_type_ joint-control) none)
+   (build-requests! (_type_ joint-control) none)
+   (init-frame! (_type_ joint-anim-frame int) none)
+   (process-request! (_type_ joint-decomp-request joint-anim-frame int) none)
+   (process-requests! (_type_ joint-anim-frame int) none)
+   (finalize-frame! (_type_ joint-anim-frame int) none)
+   )
+  )
+
+(deftype new-joint-decompressor-stats (structure)
+  ((num-calls int32)
+   (num-anims int32)
+   (num-joints int32)
+   (total-time int32)
+   )
+  (:methods
+    (reset! (_type_) none)
+    )
+  )
+
+(defmethod reset! ((this new-joint-decompressor-stats))
+  (set! (-> this num-calls) 0)
+  (set! (-> this num-anims) 0)
+  (set! (-> this num-joints) 0)
+  (set! (-> this total-time) 0)
+  (none)
+  )
+
+(define *new-joint-decompressor-stats* (new 'global 'new-joint-decompressor-stats))
+(define *new-joint-decompressor-work* (new 'global 'new-joint-decompressor-work))
+
+(defun new-joint-decompressor ((dst joint-anim-frame) (num-joints int) (jc joint-control))
+  "Decompress a joint animation!"
+  (+! (-> *new-joint-decompressor-stats* num-calls) 1)
+  ;; determine anim weights, write them out to the joint-control for other stuff to see.
+  (eval-blend-tree! *new-joint-decompressor-work* jc)
+  (output-blend-tree! *new-joint-decompressor-work* jc)
+
+  ;; figure out which animations need decompression
+  (build-requests! *new-joint-decompressor-work* jc)
+
+  ;; run the decompression
+  (init-frame! *new-joint-decompressor-work* dst num-joints)
+  (process-requests! *new-joint-decompressor-work* dst num-joints)
+  (finalize-frame! *new-joint-decompressor-work* dst num-joints)
+
+  (none)
+  )
+
+(defmethod eval-blend-tree! ((this new-joint-decompressor-work) (jc joint-control))
+  "Evaluate weights of all channels, producing the final per-animation weights in the first stack-frame."
+
+  (let ((num-channels (+ (-> jc active-channels) (-> jc float-channels)))
+        (stack-top 0)
+        )
+    (when (> num-channels 24)
+      (break!) ;; insufficient weights per stack frame
+      )
+
+    ;; loop over channels
+    (dotimes (chan-idx num-channels)
+      (let ((chan (-> jc channel chan-idx)))
+        (case (-> chan command)
+
+          (((joint-control-command push)) ;; push new anim to stack frame
+           (when (> stack-top 4)
+             (break!) ;; insufficient stack frames.
+             )
+
+           ;; init all weights to zero:
+           (let ((new-frame (-> this blend-stack stack-top)))
+             (vector-zero! (-> new-frame quads 0))
+             (vector-zero! (-> new-frame quads 1))
+             (vector-zero! (-> new-frame quads 2))
+             (vector-zero! (-> new-frame quads 3))
+             (vector-zero! (-> new-frame quads 4))
+             (vector-zero! (-> new-frame quads 5))
+             ;; except for this channel
+             (set! (-> new-frame weights chan-idx) 1.0)
+             )
+           (+! stack-top 1) ;; bump stack pointer!
+           )
+
+          ;; blend case: note that push1/stack1 always are a pair, so we can treat push1 as blend and ignore
+          ;; the stack1 as an optimization.
+          (((joint-control-command blend) (joint-control-command push1) (joint-control-command float))
+           (let* ((sf (-> this blend-stack (- stack-top 1))) ;; modify most recent stack frame
+                  (new-weight (-> chan frame-interp (-> jc active-frame-interp)))
+                  (old-weight (- 1.0 new-weight)))
+
+             ;; do the multiplies:
+             (rlet ((temp :class vf)
+                    (weight-vec :class vf))
+               (.mov weight-vec old-weight)
+               (dotimes (i 6)
+                 (.lvf temp (&-> sf quads i quad))
+                 (.mul.x.vf temp temp weight-vec)
+                 (.svf (&-> sf quads i quad) temp)
+                 )
+               (+! (-> sf weights chan-idx) new-weight)
+               )
+             )
+           )
+
+          ;; stack case: pop two frames, add together, push result.
+          (((joint-control-command stack))
+           (let* ((sf0 (-> this blend-stack (- stack-top 1)))
+                  (sf1 (-> this blend-stack (- stack-top 2)))
+                  (weight0 (-> chan frame-interp (-> jc active-frame-interp)))
+                  (weight1 (- 1.0 weight0)))
+
+
+             (rlet ((temp0 :class vf)
+                    (temp1 :class vf)
+                    (weight0-vec :class vf)
+                    (weight1-vec :class vf))
+               (.mov weight0-vec weight0)
+               (.mov weight1-vec weight1)
+               (dotimes (i 6)
+                 (.lvf temp0 (&-> sf0 quads i quad))
+                 (.lvf temp1 (&-> sf1 quads i quad))
+                 (.mul.x.vf temp0 temp0 weight0-vec)
+                 (.mul.x.vf temp1 temp1 weight1-vec)
+                 (.add.vf temp0 temp0 temp1)
+                 (.svf (&-> sf1 quads i quad) temp0)
+                 )
+               )
+             (-! stack-top 1) ;; pop stack frame
+             )
+           )
+
+          )
+        )
+      )
+    )
+
+  (none)
+  )
+
+(defmethod output-blend-tree! ((this new-joint-decompressor-work) (jc joint-control))
+  "Copy result of the blend tree evaluation into the joint-control."
+  (let ((num-channels (+ (-> jc active-channels) (-> jc float-channels))))
+    (dotimes (chan-idx num-channels)
+      (set! (-> jc channel chan-idx inspector-amount)
+            (the int (* 255.0 (-> this blend-stack 0 weights chan-idx))))
+      )
+    )
+  (none)
+  )
+
+(defmethod build-requests! ((this new-joint-decompressor-work) (jc joint-control))
+  "Use the anim weights computed by eval-blend-tree! to build decompression requests"
+
+  (set! (-> this num-requests) 0)
+
+  (let ((num-channels (+ (-> jc active-channels) (-> jc float-channels))))
+    (dotimes (chan-idx num-channels)
+      (let ((weight (-> this blend-stack 0 weights chan-idx))
+            (chan (-> jc channel chan-idx)))
+        (when (> weight 0.001) ;; only both if weight is nonzero
+          (let* ((req (-> this requests (-> this num-requests))) ;; request to create
+                 (jacc (-> chan frame-group frames))             ;; compressed animation
+                 (frame-num (-> chan frame-num))                 ;; floating-point frame (eg 1.23)
+                 (base-frame (the int frame-num))                ;; integer round-down frame (eg 1)
+                 (frac-frame (- frame-num (the float base-frame))) ;; interp to next frame (eg 0.23)
+                 (last-frame (the int (- (-> jacc num-frames) 1)))
+                 )
+            (+! (-> this num-requests) 1)
+
+            ;; check our frame group is valid
+            ;; TODO
+
+            ;; make sure we didn't go off the end of the animation:
+            (when (>= base-frame last-frame)
+              (set! frac-frame 0.0)
+              (set! base-frame last-frame)
+              )
+
+            ;; set up request
+            (set! (-> req jacc) jacc)
+            (set! (-> req frame) base-frame)
+            (set! (-> req frame-interp) frac-frame)
+            (set! (-> req amount) weight)
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod init-frame! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
+  "Initialize an output frame by zeroing the data."
+  (let ((num-qwc 8) ;; 2x matrix, each 4 qw
+        (data (the (pointer uint128) output-frame)))
+    (when (> num-joints 2) ;; we have transformq's
+      (+! num-qwc (* 3 (- num-joints 2)))
+      )
+
+    (let ((data-end (&+ data (* num-qwc 16))))
+      (rlet ((zero :class vf))
+        (.xor.vf zero zero zero)
+        (while (!= data data-end) ;; this loop is 5 instructions :)
+          (.svf data zero)
+          (&+! data 16)
+          )
+        )
+      )
+
+    )
+  (none)
+  )
+
+(defmethod process-requests! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
+  "Decompress all pending animation requests."
+  (dotimes (i (-> this num-requests))
+    (process-request! this (-> this requests i) output-frame num-joints)
+    )
+  (set! (-> this num-requests) 0)
+  (none)
+  )
+
+(defmacro fderef-s16 (ptr)
+  `(the float (-> (the (pointer int16) ,ptr)))
+  )
+
+(defmacro deref-f32 (ptr)
+  `(-> (the (pointer float) ,ptr))
+  )
+
+(defconstant QUAT_SCALE 0.000030517578125)
+(defconstant SCALE_SCALE 0.000244140625)
+
+(defun add-scaled-matrix! ((dest matrix) (src matrix) (scale float))
+  (dotimes (i 16)
+    (+! (-> dest data i) (* scale (-> src data i)))
+    )
+  )
+
+(defun decomp-fixed ((output-frame joint-anim-frame) (num-joints int) (anim joint-anim-compressed-fixed) (amount float))
+  "Decompress the fixed part."
+
+  (let* ((mbits (-> anim hdr matrix-bits))
+         (data (the pointer (&-> anim data 0 quad)))
+         (data64 (the (pointer uint64) (&+ data (-> anim offset-64))))
+         (data32 (the (pointer uint32) (&+ data (-> anim offset-32))))
+         (data16 (the (pointer uint16) (&+ data (-> anim offset-16))))
+         (ctrl-ptr (-> anim hdr control-bits))
+         )
+    ;; process matrix:
+    (when (zero? (logand mbits 1))
+      ;; matrix comes from fixed data
+      (add-scaled-matrix! (-> output-frame matrices 0) (the matrix data64) amount)
+      (&+! data64 64)
+      )
+
+    (when (zero? (logand mbits 2))
+      ;; matrix comes from fixed data
+      (add-scaled-matrix! (-> output-frame matrices 1) (the matrix data64) amount)
+      (&+! data64 64)
+      )
+
+    ;; process tq's
+    (dotimes (tqi num-joints) ;; TODO - not sure if this is too many??
+      (let* ((ctrl-idx (/ tqi 8))
+             (ctrl-shift (* 4 (mod tqi 8)))
+             (ctrl (logand #b1111 (sar (-> ctrl-ptr ctrl-idx) ctrl-shift)))
+             (tq (-> output-frame data tqi))
+             )
+        ;; TRANS
+        (when (zero? (logand ctrl #b0001))
+          ;; we have trans
+          (cond
+            ((nonzero? (logand ctrl #b1000))
+             ;; big trans
+             (+! (-> tq trans x) (* amount (deref-f32 data64)))
+             (&+! data64 4)
+             (+! (-> tq trans y) (* amount (deref-f32 data64)))
+             (&+! data64 4)
+             (+! (-> tq trans z) (* amount (deref-f32 data32)))
+             (&+! data32 4)
+             )
+            (else
+             ;; little trans
+             (+! (-> tq trans x) (* amount (fderef-s16 data32) 4.))
+             (&+! data32 2)
+             (+! (-> tq trans y) (* amount (fderef-s16 data32) 4.))
+             (&+! data32 2)
+             (+! (-> tq trans z) (* amount (fderef-s16 data16) 4.))
+             (&+! data16 2)
+             )
+            )
+          )
+        ;; QUAT
+        (when (zero? (logand ctrl #b0010))
+          (let ((temp (new 'stack-no-clear 'vector)))
+            (set! (-> temp x) (fderef-s16 data64)) (&+! data64 2)
+            (set! (-> temp y) (fderef-s16 data64)) (&+! data64 2)
+            (set! (-> temp z) (fderef-s16 data64)) (&+! data64 2)
+            (set! (-> temp w) (fderef-s16 data64)) (&+! data64 2)
+
+            (let ((dot (+ (* (-> temp x) (-> tq quat x))
+                          (* (-> temp y) (-> tq quat y))
+                          (* (-> temp z) (-> tq quat z))
+                          (* (-> temp w) (-> tq quat w)))))
+              (when (< dot 0.0)
+                (*! (-> temp x) -1.)
+                (*! (-> temp y) -1.)
+                (*! (-> temp z) -1.)
+                (*! (-> temp w) -1.)
+                )
+              (+! (-> tq quat x) (* amount (-> temp x) QUAT_SCALE))
+              (+! (-> tq quat y) (* amount (-> temp y) QUAT_SCALE))
+              (+! (-> tq quat z) (* amount (-> temp z) QUAT_SCALE))
+              (+! (-> tq quat w) (* amount (-> temp w) QUAT_SCALE))
+              )
+            )
+          )
+        ;; SCALE
+        (when (zero? (logand ctrl #b0100))
+          (+! (-> tq scale x) (* amount (fderef-s16 data32) SCALE_SCALE))
+          (&+! data32 2)
+          (+! (-> tq scale y) (* amount (fderef-s16 data32) SCALE_SCALE))
+          (&+! data32 2)
+          (+! (-> tq scale z) (* amount (fderef-s16 data16) SCALE_SCALE))
+          (&+! data16 2)
+          )
+        )
+      )
+    )
+
+  (none)
+  )
+
+(defun decomp-frame ((output-frame joint-anim-frame) (num-joints int) (anim joint-anim-compressed-frame) (amount float) (hdr joint-anim-compressed-hdr))
+  "Decompress the fixed part."
+
+  (let* ((mbits (-> hdr matrix-bits))
+         (data (the pointer (-> anim data)))
+         (data64 (the (pointer uint64) (&+ data (-> anim offset-64))))
+         (data32 (the (pointer uint32) (&+ data (-> anim offset-32))))
+         (data16 (the (pointer uint16) (&+ data (-> anim offset-16))))
+         (ctrl-ptr (-> hdr control-bits))
+         )
+    ;; process matrix:
+    (when (nonzero? (logand mbits 1))
+      ;; matrix comes from fixed data
+      (add-scaled-matrix! (-> output-frame matrices 0) (the matrix data64) amount)
+      (&+! data64 64)
+      )
+
+    (when (nonzero? (logand mbits 2))
+      ;; matrix comes from fixed data
+      (add-scaled-matrix! (-> output-frame matrices 1) (the matrix data64) amount)
+      (&+! data64 64)
+      )
+
+    ;; process tq's
+    (dotimes (tqi num-joints) ;; TODO - not sure if this is too many??
+      (let* ((ctrl-idx (/ tqi 8))
+             (ctrl-shift (* 4 (mod tqi 8)))
+             (ctrl (logand #b1111 (sar (-> ctrl-ptr ctrl-idx) ctrl-shift)))
+             (tq (-> output-frame data tqi))
+             )
+
+        ;; TRANS
+        (when (nonzero? (logand ctrl #b0001))
+          ;; we have trans
+          (cond
+            ((nonzero? (logand ctrl #b1000))
+             ;; big trans
+             (+! (-> tq trans x) (* amount (deref-f32 data64)))
+             (&+! data64 4)
+             (+! (-> tq trans y) (* amount (deref-f32 data64)))
+             (&+! data64 4)
+             (+! (-> tq trans z) (* amount (deref-f32 data32)))
+             (&+! data32 4)
+             )
+            (else
+             ;; little trans
+             (+! (-> tq trans x) (* amount (fderef-s16 data32) 4.))
+             (&+! data32 2)
+             (+! (-> tq trans y) (* amount (fderef-s16 data32) 4.))
+             (&+! data32 2)
+             (+! (-> tq trans z) (* amount (fderef-s16 data16) 4.))
+             (&+! data16 2)
+             )
+            )
+          )
+        ;; QUAT
+        (when (nonzero? (logand ctrl #b0010))
+          (let ((temp (new 'stack-no-clear 'vector)))
+
+            (set! (-> temp x) (fderef-s16 data64)) (&+! data64 2)
+            (set! (-> temp y) (fderef-s16 data64)) (&+! data64 2)
+            (set! (-> temp z) (fderef-s16 data64)) (&+! data64 2)
+            (set! (-> temp w) (fderef-s16 data64)) (&+! data64 2)
+
+            (let ((dot (+ (* (-> temp x) (-> tq quat x))
+                          (* (-> temp y) (-> tq quat y))
+                          (* (-> temp z) (-> tq quat z))
+                          (* (-> temp w) (-> tq quat w)))))
+              (when (< dot 0.0)
+                (*! (-> temp x) -1.)
+                (*! (-> temp y) -1.)
+                (*! (-> temp z) -1.)
+                (*! (-> temp w) -1.)
+                )
+              (+! (-> tq quat x) (* amount (-> temp x) QUAT_SCALE))
+              (+! (-> tq quat y) (* amount (-> temp y) QUAT_SCALE))
+              (+! (-> tq quat z) (* amount (-> temp z) QUAT_SCALE))
+              (+! (-> tq quat w) (* amount (-> temp w) QUAT_SCALE))
+              )
+            )
+          )
+        ;; SCALE
+        (when (nonzero? (logand ctrl #b0100))
+          (+! (-> tq scale x) (* amount (fderef-s16 data32) SCALE_SCALE))
+          (&+! data32 2)
+          (+! (-> tq scale y) (* amount (fderef-s16 data32) SCALE_SCALE))
+          (&+! data32 2)
+          (+! (-> tq scale z) (* amount (fderef-s16 data16) SCALE_SCALE))
+          (&+! data16 2)
+          )
+        )
+      )
+    )
+
+  (none)
+  )
+
+(defmethod process-request! ((this new-joint-decompressor-work) (request joint-decomp-request) (output-frame joint-anim-frame) (num-joints int))
+  "Decompress a single animation, adding to accumulator"
+
+  (+! (-> *new-joint-decompressor-stats* num-anims) 1)
+  (+! (-> *new-joint-decompressor-stats* num-joints) (+ num-joints 2))
+
+
+  ;; first, the fixed part
+  (decomp-fixed output-frame num-joints (-> request jacc fixed) (-> request amount))
+
+  ;; base frame
+  (decomp-frame
+   output-frame
+   num-joints
+   (-> request jacc data (-> request frame))
+   (* (- 1.0 (-> request frame-interp)) (-> request amount))
+   (-> request jacc fixed hdr)
+   )
+
+  ;; interpolate to next frame
+  (cond
+    ((!= 0.0 (-> request frame-interp))
+     (decomp-frame
+      output-frame
+      num-joints
+      (-> request jacc data (+ 1 (-> request frame)))
+      (* (-> request frame-interp) (-> request amount))
+      (-> request jacc fixed hdr))
+     )
+    (else
+     )
+    )
+
+  (none)
+  )
+
+(defmethod finalize-frame! ((this new-joint-decompressor-work) (output-frame joint-anim-frame) (num-joints int))
+  (when (<= num-joints 2)
+    (return #f)
+    )
+
+  (dotimes (tqi (- num-joints 2))
+    (let ((tq (-> output-frame data tqi)))
+      (set! (-> tq trans w) 1.0)
+      (set! (-> tq scale w) 1.0)
+      (quaternion-normalize! (-> tq quat))
+      )
+    )
+  (none)
+  )
+
+
 ;; DECOMP BEGINS
 
 (defmethod print ((this joint))
@@ -1537,10 +2049,25 @@
 
 (def-mips2c calc-animation-from-spr (function joint-anim-frame int none))
 
-(defun create-interpolated-joint-animation-frame ((arg0 joint-anim-frame) (arg1 int) (arg2 joint-control))
-  (flatten-joint-control-to-spr arg2)
-  (make-joint-jump-tables)
-  (calc-animation-from-spr arg0 arg1)
+
+(defun create-interpolated-joint-animation-frame ((output-frame joint-anim-frame) (arg1 int) (arg2 joint-control))
+  (let ((start (get-cpu-clock)))
+    (cond
+      (*use-new-decompressor*
+
+        (new-joint-decompressor output-frame arg1 arg2)
+
+        )
+      (else
+        (flatten-joint-control-to-spr arg2)
+        (make-joint-jump-tables)
+        (calc-animation-from-spr output-frame arg1)
+        )
+      )
+    (+! (-> *new-joint-decompressor-stats* total-time)
+        (the int (* 1000000. (cpu-ticks-to-seconds (- (get-cpu-clock) start))))
+        )
+    )
   0
   )
 
@@ -1549,9 +2076,10 @@
       (return (create-interpolated-joint-animation-frame arg0 arg1 arg2))
       )
   (set! (-> arg2 active-frame-interp) (the-as uint 1))
-  (flatten-joint-control-to-spr arg2)
-  (make-joint-jump-tables)
-  (calc-animation-from-spr arg0 arg1)
+  (create-interpolated-joint-animation-frame arg0 arg1 arg2)
+  ;(flatten-joint-control-to-spr arg2)
+  ;(make-joint-jump-tables)
+  ;(calc-animation-from-spr arg0 arg1)
   ;; happens during gun stuff, seems to work.
   ; (format 0 "create-interpolated2-joint-animation-frame: untested copy~%")
   (ultimate-memcpy (the-as pointer *gsf-buffer*) (the-as pointer arg0) (the-as uint (+ (* 48 arg1) 128)))
@@ -1562,9 +2090,11 @@
   ;   #f
   ;   )
   (set! (-> arg2 active-frame-interp) (the-as uint 0))
-  (flatten-joint-control-to-spr arg2)
-  (make-joint-jump-tables)
-  (calc-animation-from-spr arg0 arg1)
+  ;(flatten-joint-control-to-spr arg2)
+  ;(make-joint-jump-tables)
+  ;;(calc-animation-from-spr arg0 arg1)
+  (create-interpolated-joint-animation-frame arg0 arg1 arg2)
+
   (let ((v1-9 (the-as joint-anim-frame *gsf-buffer*)))
     (let ((a0-8 (-> arg2 interp-select 0)))
       (dotimes (a1-5 2)

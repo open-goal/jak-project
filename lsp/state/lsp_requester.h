@@ -9,9 +9,13 @@
 
 class LSPRequester {
  public:
-  void send_progress_create_request(const std::string& token, const std::string& title);
-  void send_progress_update_request(const std::string& token, const std::string& message);
-  void send_progress_finish_request(const std::string& token, const std::string& message);
+  void send_progress_create_request(const std::string& title,
+                                    const std::string& message,
+                                    const int percentage);
+  void send_progress_update_request(const std::string& title,
+                                    const std::string& message,
+                                    const int percentage);
+  void send_progress_finish_request(const std::string& title, const std::string& message);
 
  private:
   void send_request(const json& payload, const std::string& method);
