@@ -36,6 +36,13 @@ endif()
 # a more recent issue - https://github.com/libsdl-org/SDL/issues/12078
 if (APPLE)
   enable_language(OBJC)
+  execute_process(
+    COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE MACOSX_SYSROOT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    # Tell CMake to use it
+    set(CMAKE_OSX_SYSROOT "${MACOSX_SYSROOT}" CACHE PATH "macOS SDK path" FORCE)
 endif()
 
 # Setup compiler flags
@@ -127,12 +134,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         -Wsign-promo \
         -fdiagnostics-color=always"
         )
-    
-    # pin to AVX for macOS, hopefully all macOS runners have atleast this architecture
-    # technically speaking, SSE4 is the cutoff for Apple Silicon so...only a matter of time!
-    if(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
-    endif()
 
     # TODO - make a proper flag for arm compiling
     if(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
