@@ -13,6 +13,8 @@
   (file-json 0 jak3 "common" '("game/assets/jak3/text/game_custom_text_en-US.json"))
   (file-json 6 jak3 "common" '("game/assets/jak3/text/game_custom_text_ja-JP.json"))
   (file-json 11 jak3 "common" '("game/assets/jak3/text/game_custom_text_en-GB.json"))
+  (file-json 12 jak3 "common" '("game/assets/jak3/text/game_base_text_fi-FI.json"
+				"game/assets/jak3/text/game_custom_text_fi-FI.json"))
   )
 
 
