@@ -23,6 +23,7 @@ class BlitDisplays : public BucketRenderer {
   void draw_debug_window() override;
   void do_copy_back(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_zoom_blur(SharedRenderState* render_state, ScopedProfilerNode& prof);
+  void apply_color_filter(SharedRenderState* render_state, ScopedProfilerNode& prof);
 
  private:
   std::unique_ptr<FramebufferCopier> m_copier;
@@ -32,6 +33,9 @@ class BlitDisplays : public BucketRenderer {
   u32 m_tbp;
   bool m_copy_back_pending = false;
   bool m_zoom_blur_pending = false;
+  bool m_color_filter_pending = false;
+  math::Vector4f m_color_filter;
   PcZoomBlur m_zoom_blur;
   FullScreenTexDraw m_fullscreen_tex_draw;
+  FullScreenDraw m_color_draw;
 };

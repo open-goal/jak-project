@@ -359,6 +359,7 @@
   (none)
   )
 
+
 (defmethod fx-to-raster-flipped ((this blit-displays-work) (arg0 dma-buffer))
   (set-display-gs-state arg0 408 512 416 0 0)
   (dma-buffer-add-gs-set arg0
@@ -537,6 +538,19 @@
     )
   )
 
+(defun add-pc-color-filter ((dma-buf dma-buffer))
+  (dma-buffer-add-cnt-vif2
+    dma-buf
+    1
+    (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm #x14)
+    (new 'static 'vif-tag)
+    )
+  (let ((ret (-> dma-buf base)))
+    (&+! (-> dma-buf base) (* 16 1))
+    (the vector ret)
+    )
+  )
+
 (defmethod draw-brightness-and-contrast ((this blit-displays-work) (arg0 dma-buffer) (arg1 float) (arg2 float))
   (set-display-gs-state arg0 408 512 416 0 0)
   (let ((s4-1 (fmax 0.0 (fmin 1.0 arg2)))
@@ -597,7 +611,7 @@
 
 (defmethod do-blit-displays ((this blit-displays-work))
   (set! (-> this slow-time) (- 1.0 (-> *setting-control* user-current slow-time)))
-  
+
   ;; in-place draw on rasterization buffer to apply brightness and contrast. Added to almost
   ;; the last bucket, so it applies to HUD too.
   (let ((v1-3 (-> *setting-control* user-current)))
@@ -610,7 +624,7 @@
         )
       )
     )
-  
+
   ;; The count-down is used to delay blitting while rendering settings are propagating through
   ;; the engine. When count-down reaches 0, the changes have propagated to the raster buffer.
   ;; While counting down, the display buffer isn't updated.
@@ -619,7 +633,7 @@
       ;; if menu mode has activated, take a picture of the screen and disable almost all renderers.
       ;; generic is kept on since it renders the menu itself.
       ((and (-> this menu-mode) (not (-> this screen-copied)))
-       
+
        ;; capture the raster buffer! Instead of blitting to the display buffer, copy to the "fx buffer"
        ;; note that this runs in the blit bucket (bucket 3) and so it contains the raster buffer
        ;; from the previous frame that we'd normally copy to the display buffer.
@@ -630,7 +644,7 @@
          )
        ;; backup which renderers were enabled
        (set! (-> this vu1-enable-user-menu) (-> *display* vu1-enable-user-menu))
-       
+
        ;; og:preserve-this, was generic in the original
        ;; only render merc
        (set! (-> *display* vu1-enable-user-menu) (vu1-renderer-mask merc))
@@ -646,7 +660,7 @@
        (set! (-> this progress-interp-dest) 1.0)
        (set! (-> this progress-interp-speed) 0.033333335)
        )
-      
+
       ;; menu mode has deactivated, re-enable renderers and wait 3 frames
       ((and (not (get-menu-mode this)) (get-screen-copied this))
        (set! (-> *display* vu1-enable-user-menu) (-> this vu1-enable-user-menu))
@@ -658,7 +672,7 @@
        )
       )
     )
-  
+
   (when (and (-> *setting-control* user-current render) (>= (the-as uint 1) (-> this count-down)))
     ;; handle horizontal flip by copying to fx buf, then copying back.
     ;; this is done before any HUD/text rendering.
@@ -672,7 +686,7 @@
         )
       )
 
-    
+
     ;; draw "depth-cue" or a simple attempt at anti-aliasing. This happens before particles, and
     ;; simply redraws the entire raster buffer, in place, with a half-pixel offset.
     ;; you might be wondering how this is a safe thing to do, reading and writing from the same texture.
@@ -701,8 +715,8 @@
       )
     |#
     )
-  
-  
+
+
   ;; apply color filter, if enabled. This is again drawn in-place in the raster buffer, before text, but
   ;; after particles.
   (let ((f0-9 (-> this slow-time))
@@ -712,11 +726,15 @@
     (set-vector! s5-4 1.0 1.0 1.5 1.0)
     (vector4-lerp! s5-4 s5-4 a2-6 f0-9)
     (when (and (or (!= (-> s5-4 x) 1.0) (!= (-> s5-4 y) 1.0) (!= (-> s5-4 z) 1.0)) (not (get-menu-mode this)))
+
       (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
-                                   (bucket-id tex-hud-hud-alpha)
+                                   ;;(bucket-id tex-hud-hud-alpha)
+                                   (bucket-id blit)
+
                                    )
-        (draw-color-filter this s3-0 s5-4)
-        (reset-display-gs-state *display* s3-0)
+        (vector-copy! (add-pc-color-filter s3-0) s5-4)
+        ;; (draw-color-filter this s3-0 s5-4)
+        ;; (reset-display-gs-state *display* s3-0)
         )
       )
     )
@@ -776,26 +794,26 @@
                ;; display is copied to FX
                ;; FX is copied to display, with alpha = 1 (overwriting it), but with distortion
                ;; raster is copied over display, with alpha
-               
+
                ;; so the final output is:
                ;; previous output, with distortion applied
                ;; plus new frame with alpha applied
-               
+
                ;; destination is the FX buffer (38 = #x26)
                (set-display-gs-state s4-5 38 512 416 (shl #xff00 16) 0)
-               
+
                ;; source is the display buffer
                (dma-buffer-add-gs-set s4-5
                                       (tex0-1 (new 'static 'gs-tex0 :tbw #xa :tw #xa :th #x9 :tbp0 (* (-> s0-0 display-fbp) 32)))
                                       )
-               
+
                ;; copy from raster to FX
                (draw-sprite-color this s4-5 s2-0)
-               
+
                ;; PC Port Added Zoom Blur
                (let ((zblur (add-pc-zoom-blur s4-5)))
                  (vector-copy! (-> zblur pos) (-> this zoom-blur-pos))
-                 
+
                  ;; if using 3D zoom blur, the blur is in world,
                  ;; so we need to project it to a point on the screen
                  (when (not (-> this zoom-blur-2d))
@@ -808,27 +826,27 @@
                      (+! (-> projected y) -1840.0)
                      (vector-copy! (-> zblur pos) projected)
                      )
-                   
+
                    )
                  (vector-copy! (-> zblur color) (-> this color))
                  (set! (-> zblur is-2d?) (if (-> this zoom-blur-2d) 1 0))
                  (set! (-> zblur texels) (-> this zoom-blur-texels))
                  (set! (-> zblur alpha-current) (-> this zoom-blur-alpha-current))
                  )
-               
+
                ;; End
-               
+
                ;; destination is the display buffer now
                (set-display-gs-state s4-5 s1-0 640 s2-0 (shl #xff00 16) 0)
                ;; source is the FX buffer
                (dma-buffer-add-gs-set s4-5 (tex0-1 (new 'static 'gs-tex0 :tbp0 #x4c0 :tbw #x8 :tw #x9 :th #x9)))
-               ;; draw distorted stuff to display buffer               
+               ;; draw distorted stuff to display buffer
                (draw-zoom-blur this s4-5 s2-0)
                ;; read from raster buffer
                (dma-buffer-add-gs-set s4-5 (tex0-1 (new 'static 'gs-tex0 :tbp0 #x3300 :tbw #x8 :tw #x9 :th #x9)))
                ;; draw over the display with the raster, using alpha arg
                (blit-standard this s4-5 416 s2-0 (the int (* 128.0 (-> this zoom-blur-alpha-current))))
-               
+
                ;; draw letterbox if needed
                (when (or (!= (-> *setting-control* user-current letterbox) 0.0)
                          (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
@@ -851,7 +869,7 @@
                )
              )
            )
-         
+
          ;; draw the scanline effect
          ;; currently this effect is ignored by the BlitDisplays renderer
          (when (!= (-> *setting-control* user-current scanlines) 0.0)

@@ -1426,6 +1426,11 @@ void OpenGLRenderer::dispatch_buckets_jak3(DmaFollower dma,
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
     }
+
+    if (bucket_id == (int)jak3::BucketId::TEX_HUD_HUD_ALPHA) {
+      auto p = prof.make_scoped_child("color-filter");
+      m_blit_displays->apply_color_filter(&m_render_state, p);
+    }
   }
   vif_interrupt_callback(m_bucket_renderers.size());
 

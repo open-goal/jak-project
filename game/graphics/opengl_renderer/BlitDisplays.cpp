@@ -34,7 +34,7 @@ void BlitDisplays::init_textures(TexturePool& texture_pool, GameVersion version)
 
 void BlitDisplays::render(DmaFollower& dma,
                           SharedRenderState* render_state,
-                          ScopedProfilerNode& /*prof*/) {
+                          ScopedProfilerNode& prof) {
   // loop through all data
   while (dma.current_tag_offset() != render_state->next_bucket) {
     auto data = dma.read_and_advance();
@@ -71,6 +71,10 @@ void BlitDisplays::render(DmaFollower& dma,
 
           memcpy(&m_zoom_blur, data.data, sizeof(PcZoomBlur));
           m_zoom_blur_pending = true;
+        } break;
+        case 0x14: {
+          m_color_filter_pending = true;
+          memcpy(m_color_filter.data(), data.data, sizeof(math::Vector4f));
         } break;
       }
     }
@@ -168,4 +172,14 @@ void BlitDisplays::draw_debug_window() {
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &w);
   glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &h);
   ImGui::Image((ImTextureID)(intptr_t)m_copier->texture(), ImVec2(w, h));
+}
+
+void BlitDisplays::apply_color_filter(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  if (m_color_filter_pending) {
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
+    m_color_draw.draw(m_color_filter, render_state, prof);
+    m_color_filter_pending = false;
+  }
 }
