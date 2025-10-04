@@ -117,6 +117,9 @@ void BlitDisplays::do_copy_back(SharedRenderState* render_state, ScopedProfilerN
 
 void BlitDisplays::do_zoom_blur(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   const float texels = m_zoom_blur.texels;
+  // this is computing texture coordinates that zoom by texels, and offset by pos
+  // the reason to limit only in non-2d is not understood.
+
   float xmin, xmax, ymin, ymax;
   if (m_zoom_blur.is_2d) {
     const float f2_0 = (texels / 512.f) * m_zoom_blur.pos.x();
