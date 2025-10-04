@@ -5,83 +5,36 @@
 ;; name in dgo: blit-displays
 ;; dgos: GAME
 
-;; just a stub for now.
-(define-extern draw-color-bars (function blit-displays-work none))
+;; Background on the VRAM.
+;; the PS2 has 4 MB of VRAM.
+;; the "TBP" register addresses VRAM with 256 byte (64 word).
+;; the full VRAM of the PS2 (4 MB) is 16384 TBP pages (#x4000)
+;; The "FBP" register addresses with 8192 byte units. (32 times the TBP value)
 
-(define *blit-displays-work* (new 'static 'blit-displays-work
-                               :adgif-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x1000000000008005 #xe)
-                                 )
-                               :sprite-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x408b400000008010 #x5353)
-                                 )
-                               :contrast-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x40ab400000008010 #x5353)
-                                 )
-                               :sprite-slow-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x50ab400000008001 #x53531)
-                                 )
-                               :draw-slow-time-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x13 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x13 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x30aec00000008006 #x531)
-                                 )
-                               :line-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x2020c00000008020 #x55)
-                                 )
-                               :scan-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x4c :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x4c :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x5020c0000000800f #x55551)
-                                 )
-                               :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
-                               :line-color #x3f80000000000000
-                               :scan-colors (new 'static 'inline-array vector4w 15
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :x 1 :y 3 :z 2)
-                                 (new 'static 'vector4w :x 1 :y 4 :z 3)
-                                 (new 'static 'vector4w :x 2 :y 6 :z 5)
-                                 (new 'static 'vector4w :x 3 :y 8 :z 7)
-                                 (new 'static 'vector4w :x 5 :y 11 :z 10)
-                                 (new 'static 'vector4w :x 6 :y 14 :z 13)
-                                 (new 'static 'vector4w :x 9 :y 20 :z 17)
-                                 (new 'static 'vector4w :x 13 :y 27 :z 21)
-                                 (new 'static 'vector4w :x 17 :y 36 :z 24)
-                                 (new 'static 'vector4w :x 22 :y 45 :z 28)
-                                 (new 'static 'vector4w :x 32 :y 63 :z 32)
-                                 )
-                               :menu-mode #f
-                               :screen-copied #f
-                               :horizontal-flip-flag #f
-                               )
-        )
+;; The first #xf80 are the texture pool, used for normal textures of levels, etc.
+;; It's possible for other code to temporarily use this VRAM too.
+;; From #xf80 to #x11d1 are various "dynamic" textures used for effects, etc.
+
+;; the fx buffer is at FBP = #x26 or TBP = #x4c0
+
+;; The "display-fbp" is 0xa4 (NTSC) = TBP of #x1480. This is the location for the
+;; frame that's being displayed on the TV.
+
+;; The z-buffer is at ZBP = #x130 = TBP of #x2600
+
+;; By default, the framebuffer used during rasterization is FBP = #x198 = TBP of #x3300.
+;; This is the frame that is being written to by triangle drawing.
+
+;; The bucket order is roughly
+
+;; bucket3
+;; normal drawing
+;; bucket567
+;; sprite/prim/shadow2,3
+;; warp
+;; debug menu (585)
+
+;; The brightness/contrast effect is done in place on the rasterization buffer, at the very end.
 
 (defun pc-upload-raw-texture ((dma-buf dma-buffer) (image-data pointer) (width int) (height int) (tbp int))
   "Added function in the PC port to create a 'raw' texture (no clut)"
@@ -101,82 +54,149 @@
 
 ;; DECOMP BEGINS
 
-(define *blit-displays-work* (new 'static 'blit-displays-work
-                               :adgif-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x1000000000008005 #xe)
-                                 )
-                               :sprite-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x408b400000008010 #x5353)
-                                 )
-                               :contrast-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x40ab400000008010 #x5353)
-                                 )
-                               :sprite-slow-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x50ab400000008001 #x53531)
-                                 )
-                               :draw-slow-time-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x13 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x13 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x30aec00000008006 #x531)
-                                 )
-                               :line-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x2020c00000008020 #x55)
-                                 )
-                               :scan-tmpl (new 'static 'dma-gif-packet
-                                 :dma-vif (new 'static 'dma-packet
-                                   :dma (new 'static 'dma-tag :qwc #x4c :id (dma-tag-id cnt))
-                                   :vif1 (new 'static 'vif-tag :imm #x4c :cmd (vif-cmd direct) :msk #x1)
-                                   )
-                                 :gif (new 'static 'array uint64 2 #x5020c0000000800f #x55551)
-                                 )
-                               :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
-                               :line-color #x3f80000000000000
-                               :scan-colors (new 'static 'inline-array vector4w 15
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :y 1 :z 1)
-                                 (new 'static 'vector4w :x 1 :y 3 :z 2)
-                                 (new 'static 'vector4w :x 1 :y 4 :z 3)
-                                 (new 'static 'vector4w :x 2 :y 6 :z 5)
-                                 (new 'static 'vector4w :x 3 :y 8 :z 7)
-                                 (new 'static 'vector4w :x 5 :y 11 :z 10)
-                                 (new 'static 'vector4w :x 6 :y 14 :z 13)
-                                 (new 'static 'vector4w :x 9 :y 20 :z 17)
-                                 (new 'static 'vector4w :x 13 :y 27 :z 21)
-                                 (new 'static 'vector4w :x 17 :y 36 :z 24)
-                                 (new 'static 'vector4w :x 22 :y 45 :z 28)
-                                 (new 'static 'vector4w :x 32 :y 63 :z 32)
-                                 )
-                               :menu-mode #f
-                               :screen-copied #f
-                               :horizontal-flip-flag #f
-                               )
+(define *blit-displays-work*
+  (new 'static 'blit-displays-work
+    :adgif-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
         )
+      :gif0 (new 'static 'gif-tag64 :nloop #x5 :eop #x1 :nreg #x1)
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d))
+      )
+    :sprite-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x10
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :fst #x1)
+        :nreg #x4
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id uv)
+        :regs1 (gif-reg-id xyz2)
+        :regs2 (gif-reg-id uv)
+        :regs3 (gif-reg-id xyz2)
+        )
+      )
+    :contrast-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x10
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+        :nreg #x4
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id uv)
+        :regs1 (gif-reg-id xyz2)
+        :regs2 (gif-reg-id uv)
+        :regs3 (gif-reg-id xyz2)
+        )
+      )
+    :sprite-slow-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x6 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x1
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type sprite) :tme #x1 :abe #x1 :fst #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id uv)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id uv)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :draw-slow-time-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x13 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x13 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x6
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :abe #x1 :fst #x1)
+        :nreg #x3
+        )
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id rgbaq) :regs1 (gif-reg-id uv) :regs2 (gif-reg-id xyz2))
+      )
+    :line-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x41 :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x41 :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #x20
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type line) :abe #x1)
+        :nreg #x2
+        )
+      :gif1 (new 'static 'gif-tag-regs :regs0 (gif-reg-id xyz2) :regs1 (gif-reg-id xyz2))
+      )
+    :scan-tmpl (new 'static 'dma-gif-packet
+      :dma-vif (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #x4c :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x4c :cmd (vif-cmd direct) :msk #x1)
+        )
+      :gif0 (new 'static 'gif-tag64
+        :nloop #xf
+        :eop #x1
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type line) :abe #x1)
+        :nreg #x5
+        )
+      :gif1 (new 'static 'gif-tag-regs
+        :regs0 (gif-reg-id rgbaq)
+        :regs1 (gif-reg-id xyz2)
+        :regs2 (gif-reg-id xyz2)
+        :regs3 (gif-reg-id xyz2)
+        :regs4 (gif-reg-id xyz2)
+        )
+      )
+    :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
+    :line-color (new 'static 'gs-rgbaq :q 1.0)
+    :scan-colors (new 'static 'inline-array vector4w 15
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :y 1 :z 1)
+      (new 'static 'vector4w :x 1 :y 3 :z 2)
+      (new 'static 'vector4w :x 1 :y 4 :z 3)
+      (new 'static 'vector4w :x 2 :y 6 :z 5)
+      (new 'static 'vector4w :x 3 :y 8 :z 7)
+      (new 'static 'vector4w :x 5 :y 11 :z 10)
+      (new 'static 'vector4w :x 6 :y 14 :z 13)
+      (new 'static 'vector4w :x 9 :y 20 :z 17)
+      (new 'static 'vector4w :x 13 :y 27 :z 21)
+      (new 'static 'vector4w :x 17 :y 36 :z 24)
+      (new 'static 'vector4w :x 22 :y 45 :z 28)
+      (new 'static 'vector4w :x 32 :y 63 :z 32)
+      )
+    :menu-mode #f
+    :screen-copied #f
+    :horizontal-flip-flag #f
+    )
+  )
 
-(defmethod blit-displays-work-method-9 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+(defmethod blit-standard ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+  "Draw a full-width quad of the given height to copy from raster to display buffer"
   (let ((v1-0 (the-as object (-> arg0 base))))
     (set! (-> (the-as (inline-array vector4w) v1-0) 0 quad) (-> this sprite-slow-tmpl dma-vif quad))
     (set! (-> (the-as (inline-array vector4w) v1-0) 1 quad) (-> this sprite-slow-tmpl quad 1))
@@ -191,7 +211,10 @@
   (none)
   )
 
-(defmethod blit-displays-work-method-10 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+(defmethod blit-slow-time ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+  "Draw a full-screen triangle fan to copy from raster to display buffer.
+   The fan is centered in the center of the screen.
+   This applies a gradient of alpha from 192 at the center to arg3 at the corners."
   (let ((v1-0 (the-as object (-> arg0 base))))
     (set! (-> (the-as (inline-array vector4w) v1-0) 0 quad) (-> this draw-slow-time-tmpl dma-vif quad))
     (set! (-> (the-as (inline-array vector4w) v1-0) 1 quad) (-> this draw-slow-time-tmpl quad 1))
@@ -219,7 +242,7 @@
   (none)
   )
 
-(defmethod blit-displays-work-method-11 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int))
+(defmethod draw-sprite-color ((this blit-displays-work) (arg0 dma-buffer) (arg1 int))
   (let ((v1-0 (the-as object (-> arg0 base))))
     (set! (-> (the-as (inline-array vector4w) v1-0) 0 quad) (-> this sprite-slow-tmpl dma-vif quad))
     (set! (-> (the-as (inline-array vector4w) v1-0) 1 quad) (-> this sprite-slow-tmpl quad 1))
@@ -271,7 +294,9 @@
   (none)
   )
 
-(defmethod blit-displays-work-method-13 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+(defmethod draw-antialias ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+  "Draw the raster buffer on top of itself, with a half-pixel offset.
+   This is used as an antialiasing effect."
   (set-display-gs-state arg0 408 512 416 0 0)
   (dma-buffer-add-gs-set arg0 (rgbaq (new 'static 'gs-rgbaq :r #x80 :g #x80 :b #x80 :a #x80 :q 1.0)))
   (let ((v1-3 (the-as object (-> arg0 base))))
@@ -295,7 +320,7 @@
   (none)
   )
 
-(defmethod blit-displays-work-method-14 ((this blit-displays-work) (arg0 dma-buffer) (arg1 vector))
+(defmethod draw-color-filter ((this blit-displays-work) (arg0 dma-buffer) (arg1 vector))
   (set-display-gs-state arg0 408 512 416 0 0)
   (dma-buffer-add-gs-set arg0
                          (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
@@ -334,7 +359,7 @@
   (none)
   )
 
-(defmethod blit-displays-work-method-15 ((this blit-displays-work) (arg0 dma-buffer))
+(defmethod fx-to-raster-flipped ((this blit-displays-work) (arg0 dma-buffer))
   (set-display-gs-state arg0 408 512 416 0 0)
   (dma-buffer-add-gs-set arg0
                          (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
@@ -490,7 +515,29 @@
   (none)
   )
 
-(defmethod setup-brightness-and-contrast ((this blit-displays-work) (arg0 dma-buffer) (arg1 float) (arg2 float))
+(deftype pc-zoom-blur (structure)
+  ((pos           vector   :inline)
+   (color         vector4w :inline)
+   (is-2d?        int32)
+   (texels        int32)
+   (alpha-current float)
+   )
+  )
+
+(defun add-pc-zoom-blur ((dma-buf dma-buffer))
+  (dma-buffer-add-cnt-vif2
+    dma-buf
+    3
+    (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm #x13)
+    (new 'static 'vif-tag)
+    )
+  (let ((ret (-> dma-buf base)))
+    (&+! (-> dma-buf base) (* 16 3))
+    (the pc-zoom-blur ret)
+    )
+  )
+
+(defmethod draw-brightness-and-contrast ((this blit-displays-work) (arg0 dma-buffer) (arg1 float) (arg2 float))
   (set-display-gs-state arg0 408 512 416 0 0)
   (let ((s4-1 (fmax 0.0 (fmin 1.0 arg2)))
         (s3-1 (fmax 0.0 (fmin 1.0 arg1)))
@@ -548,45 +595,59 @@
   (none)
   )
 
-;; TODO new jak3 effects
 (defmethod do-blit-displays ((this blit-displays-work))
   (set! (-> this slow-time) (- 1.0 (-> *setting-control* user-current slow-time)))
+  
+  ;; in-place draw on rasterization buffer to apply brightness and contrast. Added to almost
+  ;; the last bucket, so it applies to HUD too.
   (let ((v1-3 (-> *setting-control* user-current)))
     (when (or (!= (-> v1-3 contrast) 0.5) (!= (-> v1-3 brightness) 0.5))
       (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                    (bucket-id debug-menu)
                                    )
-        (setup-brightness-and-contrast this s4-0 (-> v1-3 brightness) (-> v1-3 contrast))
+        (draw-brightness-and-contrast this s4-0 (-> v1-3 brightness) (-> v1-3 contrast))
         (reset-display-gs-state *display* s4-0)
         )
       )
     )
+  
+  ;; The count-down is used to delay blitting while rendering settings are propagating through
+  ;; the engine. When count-down reaches 0, the changes have propagated to the raster buffer.
+  ;; While counting down, the display buffer isn't updated.
   (when (zero? (-> this count-down))
     (cond
+      ;; if menu mode has activated, take a picture of the screen and disable almost all renderers.
+      ;; generic is kept on since it renders the menu itself.
       ((and (-> this menu-mode) (not (-> this screen-copied)))
+       
+       ;; capture the raster buffer! Instead of blitting to the display buffer, copy to the "fx buffer"
+       ;; note that this runs in the blit bucket (bucket 3) and so it contains the raster buffer
+       ;; from the previous frame that we'd normally copy to the display buffer.
        (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
-                                    (bucket-id bucket3)
+                                    (bucket-id blit)
                                     )
          (fx-copy-buf s4-1)
          )
+       ;; backup which renderers were enabled
        (set! (-> this vu1-enable-user-menu) (-> *display* vu1-enable-user-menu))
-       ;; og:preserve-this
+       
+       ;; og:preserve-this, was generic in the original
+       ;; only render merc
        (set! (-> *display* vu1-enable-user-menu) (vu1-renderer-mask merc))
        (set! (-> *display* vu1-enable-user) (vu1-renderer-mask merc))
        (set! (-> this texture-enable-user-menu) (the-as uint (-> *texture-pool* texture-enable-user-menu)))
        (set! (-> *texture-pool* texture-enable-user-menu) (texture-enable-mask shrub water hud))
        (set! (-> *texture-pool* texture-enable-user) (texture-enable-mask shrub water hud))
+       ;; activate a countdown as the renderers disable.
        (set! (-> this count-down) (the-as uint 3))
        (set! (-> this screen-copied) #t)
+       ;; progress menu can start coming out now.
        (set! (-> this progress-interp) 0.0)
        (set! (-> this progress-interp-dest) 1.0)
        (set! (-> this progress-interp-speed) 0.033333335)
-       (#when PC_PORT
-         (when (-> *pc-settings* fast-progress?)
-           (*! (-> this progress-interp-speed) (-> *pc-cheat-state* progress-speed))
-           )
-         )
        )
+      
+      ;; menu mode has deactivated, re-enable renderers and wait 3 frames
       ((and (not (get-menu-mode this)) (get-screen-copied this))
        (set! (-> *display* vu1-enable-user-menu) (-> this vu1-enable-user-menu))
        (set! (-> *texture-pool* texture-enable-user-menu)
@@ -597,56 +658,76 @@
        )
       )
     )
-  ; (when (and (-> *setting-control* user-current render) (>= (the-as uint 1) (-> this count-down)))
-  ;   (when (and (get-horizontal-flip-flag this) (not (get-menu-mode this)))
-  ;     (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
-  ;                                  (bucket-id debug-no-zbuf1)
-  ;                                  )
-  ;       (fx-copy-buf s4-2)
-  ;       (blit-displays-work-method-15 this s4-2)
-  ;       (reset-display-gs-state *display* s4-2)
-  ;       )
-  ;     )
-  ;   (when (logtest? (vu1-renderer-mask rn36) (-> *display* vu1-enable-user))
-  ;     (when (not *display-color-bars*)
-  ;       (with-dma-buffer-add-bucket ((s4-3 (-> *display* frames (-> *display* on-screen) global-buf))
-  ;                                    (bucket-id bucket567)
-  ;                                    )
-  ;         (dma-buffer-add-gs-set s4-3
-  ;                                (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
-  ;                                (alpha-1 (new 'static 'gs-alpha))
-  ;                                (tex0-1 (new 'static 'gs-tex0 :tbp0 #x3300 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
-  ;                                (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
-  ;                                (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-  ;                                (texflush 0)
-  ;                                )
-  ;         (if (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
-  ;             (blit-displays-work-method-13 this s4-3 0 6656 8)
-  ;             )
-  ;         (reset-display-gs-state *display* s4-3)
-  ;         )
-  ;       )
-  ;     )
-  ;   )
-  ; (let ((f0-9 (-> this slow-time))
-  ;       (a2-6 (-> *time-of-day-context* filter))
-  ;       (s5-4 (new 'stack-no-clear 'vector))
-  ;       )
-  ;   (set-vector! s5-4 1.0 1.0 1.5 1.0)
-  ;   (vector4-lerp! s5-4 s5-4 a2-6 f0-9)
-  ;   (when (and (or (!= (-> s5-4 x) 1.0) (!= (-> s5-4 y) 1.0) (!= (-> s5-4 z) 1.0)) (not (get-menu-mode this)))
-  ;     (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
-  ;                                  (bucket-id tex-hud-hud-alpha)
-  ;                                  )
-  ;       (blit-displays-work-method-14 this s3-0 s5-4)
-  ;       (reset-display-gs-state *display* s3-0)
-  ;       )
-  ;     )
-  ;   )
+  
+  (when (and (-> *setting-control* user-current render) (>= (the-as uint 1) (-> this count-down)))
+    ;; handle horizontal flip by copying to fx buf, then copying back.
+    ;; this is done before any HUD/text rendering.
+    (when (and (get-horizontal-flip-flag this) (not (get-menu-mode this)))
+      (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id debug-no-zbuf1)
+                                   )
+        (fx-copy-buf s4-2)
+        (fx-to-raster-flipped this s4-2)
+        (reset-display-gs-state *display* s4-2)
+        )
+      )
+
+    
+    ;; draw "depth-cue" or a simple attempt at anti-aliasing. This happens before particles, and
+    ;; simply redraws the entire raster buffer, in place, with a half-pixel offset.
+    ;; you might be wondering how this is a safe thing to do, reading and writing from the same texture.
+    ;; I guess they just tested it and found that it worked.
+    ;; og:preserve-this disabled anti-aliasing
+    #|
+    (when (logtest? (vu1-renderer-mask depth-cue) (-> *display* vu1-enable-user))
+      (when (not *display-color-bars*)
+        (with-dma-buffer-add-bucket ((s4-3 (-> *display* frames (-> *display* on-screen) global-buf))
+                                     (bucket-id anti-alias)
+                                     )
+          (dma-buffer-add-gs-set s4-3
+                                 (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
+                                 (alpha-1 (new 'static 'gs-alpha))
+                                 (tex0-1 (new 'static 'gs-tex0 :tbp0 #x3300 :tbw #x8 :tw #x9 :th #x9 :tcc #x1))
+                                 (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+                                 (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                                 (texflush 0)
+                                 )
+          (if (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+              (draw-antialias this s4-3 0 6656 8)
+              )
+          (reset-display-gs-state *display* s4-3)
+          )
+        )
+      )
+    |#
+    )
+  
+  
+  ;; apply color filter, if enabled. This is again drawn in-place in the raster buffer, before text, but
+  ;; after particles.
+  (let ((f0-9 (-> this slow-time))
+        (a2-6 (-> *time-of-day-context* filter))
+        (s5-4 (new 'stack-no-clear 'vector))
+        )
+    (set-vector! s5-4 1.0 1.0 1.5 1.0)
+    (vector4-lerp! s5-4 s5-4 a2-6 f0-9)
+    (when (and (or (!= (-> s5-4 x) 1.0) (!= (-> s5-4 y) 1.0) (!= (-> s5-4 z) 1.0)) (not (get-menu-mode this)))
+      (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                   (bucket-id tex-hud-hud-alpha)
+                                   )
+        (draw-color-filter this s3-0 s5-4)
+        (reset-display-gs-state *display* s3-0)
+        )
+      )
+    )
+
+  ;; main copying function
   (cond
     ((and (-> *setting-control* user-current render) (zero? (-> this count-down)))
+     ;; run in the blit bucket of the next frame. This relies on the blit being fast enough to finish
+     ;; before the actual image starts being displayed on screen.
      (with-dma-buffer-add-bucket ((s4-5 (-> *display* frames (-> *display* on-screen) global-buf))
-                                  (bucket-id bucket3)
+                                  (bucket-id blit)
                                   )
        (dma-buffer-add-gs-set s4-5
                               (dthe (new 'static 'gs-dthe))
@@ -672,30 +753,83 @@
                                   )
            (cond
              ((or (zero? (-> this zoom-blur-texels)) (or (= (-> this zoom-blur-alpha-target) 1.0) (paused?)))
+              ;; zoom-blur is disabled.
               (let ((f0-14 (-> this slow-time))
                     (f30-0 1.0)
                     )
                 (if (!= f0-14 1.0)
                     (set! f30-0 (lerp 0.05 1.0 f0-14))
                     )
+                ;; destination is the display buffer
                 (set-display-gs-state s4-5 (-> s0-0 display-fbp) 640 s2-0 (shl #xff00 16) 0)
+                ;; draw either normal or slow-time effect.
+                ;; currently this slow-time effect is ignored by the BlitDisplays renderer
                 (if (= f30-0 1.0)
-                    (blit-displays-work-method-9 this s4-5 416 s2-0 128)
-                    (blit-displays-work-method-10 this s4-5 416 s2-0 (the int (* 128.0 f30-0)))
+                    (blit-standard this s4-5 416 s2-0 128)
+                    (blit-slow-time this s4-5 416 s2-0 (the int (* 128.0 f30-0)))
                     )
                 )
               )
              (else
+               ;; zoom-blur is enabled.
+               ;; At the start: display holds the last frame (possibly blurry)
+               ;; display is copied to FX
+               ;; FX is copied to display, with alpha = 1 (overwriting it), but with distortion
+               ;; raster is copied over display, with alpha
+               
+               ;; so the final output is:
+               ;; previous output, with distortion applied
+               ;; plus new frame with alpha applied
+               
+               ;; destination is the FX buffer (38 = #x26)
                (set-display-gs-state s4-5 38 512 416 (shl #xff00 16) 0)
+               
+               ;; source is the display buffer
                (dma-buffer-add-gs-set s4-5
                                       (tex0-1 (new 'static 'gs-tex0 :tbw #xa :tw #xa :th #x9 :tbp0 (* (-> s0-0 display-fbp) 32)))
                                       )
-               (blit-displays-work-method-11 this s4-5 s2-0)
+               
+               ;; copy from raster to FX
+               (draw-sprite-color this s4-5 s2-0)
+               
+               ;; PC Port Added Zoom Blur
+               (let ((zblur (add-pc-zoom-blur s4-5)))
+                 (vector-copy! (-> zblur pos) (-> this zoom-blur-pos))
+                 
+                 ;; if using 3D zoom blur, the blur is in world,
+                 ;; so we need to project it to a point on the screen
+                 (when (not (-> this zoom-blur-2d))
+                   (let ((projected (new-stack-vector0)))
+                     (transform-point-vector! projected (-> this zoom-blur-pos))
+                     (if (< (-> projected z) 0.0)
+                         (vector-negate! projected projected)
+                         )
+                     (+! (-> projected x) -1792.0)
+                     (+! (-> projected y) -1840.0)
+                     (vector-copy! (-> zblur pos) projected)
+                     )
+                   
+                   )
+                 (vector-copy! (-> zblur color) (-> this color))
+                 (set! (-> zblur is-2d?) (if (-> this zoom-blur-2d) 1 0))
+                 (set! (-> zblur texels) (-> this zoom-blur-texels))
+                 (set! (-> zblur alpha-current) (-> this zoom-blur-alpha-current))
+                 )
+               
+               ;; End
+               
+               ;; destination is the display buffer now
                (set-display-gs-state s4-5 s1-0 640 s2-0 (shl #xff00 16) 0)
+               ;; source is the FX buffer
                (dma-buffer-add-gs-set s4-5 (tex0-1 (new 'static 'gs-tex0 :tbp0 #x4c0 :tbw #x8 :tw #x9 :th #x9)))
+               ;; draw distorted stuff to display buffer               
                (draw-zoom-blur this s4-5 s2-0)
+               ;; read from raster buffer
                (dma-buffer-add-gs-set s4-5 (tex0-1 (new 'static 'gs-tex0 :tbp0 #x3300 :tbw #x8 :tw #x9 :th #x9)))
-               (blit-displays-work-method-9 this s4-5 416 s2-0 (the int (* 128.0 (-> this zoom-blur-alpha-current))))
+               ;; draw over the display with the raster, using alpha arg
+               (blit-standard this s4-5 416 s2-0 (the int (* 128.0 (-> this zoom-blur-alpha-current))))
+               
+               ;; draw letterbox if needed
                (when (or (!= (-> *setting-control* user-current letterbox) 0.0)
                          (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
                          )
@@ -717,11 +851,12 @@
                )
              )
            )
+         
+         ;; draw the scanline effect
+         ;; currently this effect is ignored by the BlitDisplays renderer
          (when (!= (-> *setting-control* user-current scanlines) 0.0)
            (let ((v1-213 (the int (* 128.0 (-> *setting-control* user-current scanlines)))))
-             (set! (-> this line-color)
-                   (logior (logand (-> this line-color) (the-as uint #xffffffff00ffffff)) (shr (shl v1-213 56) 32))
-                   )
+             (set! (-> this line-color a) v1-213)
              (dotimes (a0-120 15)
                (set! (-> this scan-colors a0-120 w) v1-213)
                )
@@ -780,7 +915,7 @@
      )
     (else
       (with-dma-buffer-add-bucket ((s4-6 (-> *display* frames (-> *display* on-screen) global-buf))
-                                   (bucket-id bucket3)
+                                   (bucket-id blit)
                                    )
         (reset-display-gs-state *display* s4-6)
         )
@@ -790,7 +925,7 @@
       (+! (-> this count-down) -1)
       ;; og:preserve-this
       (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
-                                   (bucket-id bucket3)
+                                   (bucket-id blit)
                                    )
         (dma-buffer-add-cnt-vif2 buf 0 (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm #x11) ;; kind - do nothing
                                  (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
@@ -800,7 +935,9 @@
   (none)
   )
 
-(defmethod draw-sky ((this blit-displays-work) (arg0 dma-buffer))
+(defmethod blit-menu-mode ((this blit-displays-work) (arg0 dma-buffer))
+  "Called from the sky renderer when in menu mode.
+   Instead of clearing the screen, this combines the captured screen plus the rendered screen."
   (let ((f0-0 (-> this progress-interp))
         (v1-0 *time-of-day-context*)
         )

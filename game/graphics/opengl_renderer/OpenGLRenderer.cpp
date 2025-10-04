@@ -970,9 +970,9 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
 }
 }  // namespace
 
-void OpenGLRenderer::blit_display() {
+void OpenGLRenderer::blit_display(ScopedProfilerNode& prof) {
   if (m_blit_displays) {
-    m_blit_displays->do_copy_back(&m_render_state);
+    m_blit_displays->do_copy_back(&m_render_state, prof);
   }
 }
 
@@ -1021,7 +1021,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   {
     g_current_renderer = "blit-display";
     auto prof = m_profiler.root()->make_scoped_child("blit-display");
-    blit_display();
+    blit_display(prof);
   }
 
   // apply effects done with PCRTC registers

@@ -19,6 +19,7 @@ void BlitDisplays::init_textures(TexturePool& texture_pool, GameVersion version)
     default:
       ASSERT_NOT_REACHED();
   }
+
   m_copier = std::make_unique<FramebufferCopier>();
   TextureInput in;
   in.gpu_texture = m_copier->texture();
@@ -63,6 +64,14 @@ void BlitDisplays::render(DmaFollower& dma,
           // buffer back.
           m_copy_back_pending = true;
         } break;
+        case 0x13: {
+          // copy from render buffer
+          m_blur_old_copier.copy_now(render_state->render_fb_w, render_state->render_fb_h,
+                                     render_state->render_fb);
+
+          memcpy(&m_zoom_blur, data.data, sizeof(PcZoomBlur));
+          m_zoom_blur_pending = true;
+        } break;
       }
     }
   }
@@ -88,7 +97,7 @@ void BlitDisplays::render(DmaFollower& dma,
   render_state->stencil_dirty = false;
 }
 
-void BlitDisplays::do_copy_back(SharedRenderState* render_state) {
+void BlitDisplays::do_copy_back(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   if (m_copy_back_pending) {
     if (render_state->render_fb_w == m_copier->width() &&
         render_state->render_fb_h == m_copier->height()) {
@@ -96,7 +105,61 @@ void BlitDisplays::do_copy_back(SharedRenderState* render_state) {
                               render_state->render_fb);
     }
     m_copy_back_pending = false;
+  } else if (m_zoom_blur_pending) {
+    do_zoom_blur(render_state, prof);
+    m_zoom_blur_pending = false;
   }
+}
+
+void BlitDisplays::do_zoom_blur(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  const float texels = m_zoom_blur.texels;
+  float xmin, xmax, ymin, ymax;
+  if (m_zoom_blur.is_2d) {
+    const float f2_0 = (texels / 512.f) * m_zoom_blur.pos.x();
+    const float f0_6 = 512.f - (texels - f2_0);
+    const float f3_1 = (texels / 416.f) * m_zoom_blur.pos.y();
+    const float f1_4 = 416.f - (texels - f3_1);
+
+    xmin = f2_0 / 512.f;
+    xmax = (f0_6 - 1.f) / 512.f;
+    ymin = f3_1 / 416.f;
+    ymax = (f1_4 - 1.f) / 416.f;
+
+  } else {
+    const float f1_10 = (texels / 512.f) * m_zoom_blur.pos.x();
+    const float f2_8 = std::max(0.f, std::min(f1_10, texels));
+    const float f0_22 = 512.f - (texels - f2_8);
+    const float f3_4 = (texels / 416.f) * m_zoom_blur.pos.y();
+    const float f3_6 = std::max(0.f, std::min(f3_4, texels));
+    const float f1_16 = 416.f - (texels - f3_6);
+
+    xmin = f2_8 / 512.f;
+    xmax = (f0_22 - 1.f) / 512.f;
+    ymin = f3_6 / 416.f;
+    ymax = (f1_16 - 1.f) / 416.f;
+  }
+
+  m_blur_new_copier.copy_now(render_state->render_fb_w, render_state->render_fb_h,
+                             render_state->render_fb);
+
+  // clear screen
+  glBindFramebuffer(GL_FRAMEBUFFER, render_state->render_fb);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  // GL Setup
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBindTexture(GL_TEXTURE_2D, m_blur_old_copier.texture());
+
+  // zoom blur draw
+  m_fullscreen_tex_draw.draw(m_zoom_blur.color.cast<float>() / 128.f, math::Vector2f{xmin, ymin},
+                             math::Vector2f{xmax, ymax}, render_state, prof);
+
+  // screen draw
+  glBindTexture(GL_TEXTURE_2D, m_blur_new_copier.texture());
+  m_fullscreen_tex_draw.draw(math::Vector4f{1.f, 1.f, 1.f, m_zoom_blur.alpha_current},
+                             math::Vector2f{0, 0}, math::Vector2f{1, 1}, render_state, prof);
 }
 
 void BlitDisplays::draw_debug_window() {

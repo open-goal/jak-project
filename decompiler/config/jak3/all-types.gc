@@ -1966,7 +1966,7 @@
   :size-assert         #x1c
   :flag-assert         #xa0000001c
   (:methods
-    (evaluate! "Set the x and y component of the vector to the current point on the curve." 
+    (evaluate! "Set the x and y component of the vector to the current point on the curve."
                (_type_ vector) vector) ;; 9
     )
   )
@@ -3525,7 +3525,7 @@
   (bucket0 0)
   (bucket1 1)
   (bucket2 2) ;; pc vis stuff
-  (bucket3 3) ;; blit?
+  (blit 3)
   (tex-lcom-sky-pre 4)
   (sky 5) ;; sky
   (bucket6 6) ;; ocean
@@ -4156,7 +4156,7 @@
   (merc-lcom-water 564)
   (gmerc-lcom-water 565)
   (gmerc2-lcom-water 566) ;; default for prim
-  (bucket567 567)
+  (anti-alias 567)
 
   (tex-sprite 568)
   (generic-sprite-1 569) ;; ;prim
@@ -4254,7 +4254,7 @@
   (rn33)
   (rn34)
   (rn35)
-  (rn36)
+  (depth-cue)
   (rn37)
   )
 ;; ---vu1-user-h:vu1-renderer-mask
@@ -11778,7 +11778,7 @@
    (line-tmpl                dma-gif-packet :inline :offset-assert 160)
    (scan-tmpl                dma-gif-packet :inline :offset-assert 192)
    (color                    vector4w       :inline :offset-assert 224)
-   (line-color               uint64                 :offset-assert 240)
+   (line-color               gs-rgbaq               :offset-assert 240)
    (scan-colors              vector4w    15 :inline :offset-assert 256) ;; guessed by decompiler
    (zoom-blur-pos            vector         :inline :offset-assert 496)
    (zoom-blur-count          int32                  :offset-assert 512)
@@ -11803,18 +11803,26 @@
   :size-assert         #x24c
   :flag-assert         #x1b0000024c
   (:methods
-    (blit-displays-work-method-9 (_type_ dma-buffer int int int) none) ;; 9
-    (blit-displays-work-method-10 (_type_ dma-buffer int int int) none) ;; 10
-    (blit-displays-work-method-11 (_type_ dma-buffer int) none) ;; 11
+    (blit-standard "Draw a full-width quad of the given height to copy from raster to display buffer"
+                   (_type_ dma-buffer int int int) none) ;; 9
+    (blit-slow-time
+      "Draw a full-screen triangle fan to copy from raster to display buffer.
+       The fan is centered in the center of the screen.
+       This applies a gradient of alpha from 192 at the center to arg3 at the corners."
+      (_type_ dma-buffer int int int) none) ;; 10
+    (draw-sprite-color (_type_ dma-buffer int) none) ;; 11
     (draw-letterbox (_type_ dma-buffer float int float) none) ;; 12
-    (blit-displays-work-method-13 (_type_ dma-buffer int int int) none) ;; 13
-    (blit-displays-work-method-14 (_type_ dma-buffer vector) none) ;; 14
-    (blit-displays-work-method-15 (_type_ dma-buffer) none) ;; 15
+    (draw-antialias
+      "Draw the raster buffer on top of itself, with a half-pixel offset.
+       This is used as an antialiasing effect."
+      (_type_ dma-buffer int int int) none) ;; 13
+    (draw-color-filter (_type_ dma-buffer vector) none) ;; 14
+    (fx-to-raster-flipped (_type_ dma-buffer) none) ;; 15
     (draw-zoom-blur (_type_ dma-buffer int) none) ;; 16
     (setup-zoom-blur-2d (_type_ vector int float symbol) none) ;; 17
-    (setup-brightness-and-contrast (_type_ dma-buffer float float) none) ;; 18
+    (draw-brightness-and-contrast (_type_ dma-buffer float float) none) ;; 18
     (do-blit-displays (_type_) none) ;; 19 (called from main.gc)
-    (draw-sky (_type_ dma-buffer) none) ;; 20
+    (blit-menu-mode (_type_ dma-buffer) none) ;; 20
     (get-menu-mode (_type_) symbol) ;; 21
     (get-screen-copied (_type_) symbol) ;; 22
     (get-horizontal-flip-flag (_type_) symbol) ;; 23
@@ -19737,8 +19745,8 @@
    The prejoint is the parent for all joints, so it causes all bones to move.
    The align joint has no children, but the convention is that moving align will
    cause the entire process-drawable's root to move, effectively moving the entire character.
-   Most of the time, this is the preferable way to move a character as part of an animation - 
-   it will update their velocity and when the animation ends or is canceled, 
+   Most of the time, this is the preferable way to move a character as part of an animation -
+   it will update their velocity and when the animation ends or is canceled,
    the offset in position from playing the animation will stay. For example, if Jak punches,
    his velocity will increase due to the animated align in the punch animation.
    To implement this, the align-control computes the relative transform between align frames.
@@ -42018,7 +42026,7 @@
     (rnd-int-excluding-masked "Get a random int in the range. Exclude a value n by setting the n-th bit of the mask."(_type_ int int) int) ;; 131
     (rnd-time-frame "Get a random time frame." (_type_ time-frame time-frame) time-frame) ;; 132
     (rnd-chance? "Returns true with the given probability." (_type_ float) symbol) ;; 133
-    (rnd-chance-for-idle? 
+    (rnd-chance-for-idle?
       "Like rnd-chance, but is more likely to return true when the game is close to not fitting in frame rate.
        This makes enemies start idling more if the game isn't running fast enough." (_type_ float) symbol) ;; 134
     (enemy-method-135 (_type_) none) ;; 135
@@ -42166,7 +42174,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *enemy-dummy-shadow-control* shadow-control)
-(define-extern get-penetrate-using-from-attack-event "Given an attack event to an enemy, return the penetrate that should be applied to the enemy" 
+(define-extern get-penetrate-using-from-attack-event "Given an attack event to an enemy, return the penetrate that should be applied to the enemy"
                (function process-drawable event-message-block penetrate))
 (define-extern enemy-setup-gem "Determine if the enemy should have a gem and set drawing masks/particles as needed." (function object :behavior enemy))
 (define-extern enemy-init-by-other "Function to initialize an enemy from a parent process." (function process-drawable enemy-init-by-other-params object :behavior enemy))
