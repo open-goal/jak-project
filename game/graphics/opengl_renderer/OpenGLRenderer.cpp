@@ -970,9 +970,9 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
 }
 }  // namespace
 
-void OpenGLRenderer::blit_display() {
+void OpenGLRenderer::blit_display(ScopedProfilerNode& prof) {
   if (m_blit_displays) {
-    m_blit_displays->do_copy_back(&m_render_state);
+    m_blit_displays->do_copy_back(&m_render_state, prof);
   }
 }
 
@@ -1021,7 +1021,7 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   {
     g_current_renderer = "blit-display";
     auto prof = m_profiler.root()->make_scoped_child("blit-display");
-    blit_display();
+    blit_display(prof);
   }
 
   // apply effects done with PCRTC registers
@@ -1425,6 +1425,11 @@ void OpenGLRenderer::dispatch_buckets_jak3(DmaFollower dma,
         Gfx::g_global_settings.collision_enable) {
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
+    }
+
+    if (bucket_id == (int)jak3::BucketId::TEX_HUD_HUD_ALPHA) {
+      auto p = prof.make_scoped_child("color-filter");
+      m_blit_displays->apply_color_filter(&m_render_state, p);
     }
   }
   vif_interrupt_callback(m_bucket_renderers.size());
