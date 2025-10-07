@@ -35,8 +35,8 @@ struct VagCmdPriListEntry {
   ISO_VAGCommand* cmds[6];
 };
 
-VagCmdPriListEntry g_aapVagCmdsPriList[10];
-u32 g_anVagCmdPriCounter[10];
+VagCmdPriListEntry g_aapVagCmdsPriList[11];
+u32 g_anVagCmdPriCounter[11];
 
 void jak3_overlord_init_globals_vag() {
   g_bExtPause = false;
@@ -192,6 +192,7 @@ void RemoveVagCmd(ISO_VAGCommand* cmd) {
   ASSERT(cmd);
   ASSERT(!cmd->music_flag);
   ASSERT(cmd->info_idx < 4);
+  ASSERT(cmd->priority_pq >= 0 && cmd->priority_pq <= 10);
 
   g_aapVagCmdsPriList[cmd->priority_pq].cmds[cmd->info_idx] = nullptr;
   if (g_anVagCmdPriCounter[cmd->priority_pq]) {
@@ -215,6 +216,7 @@ void SetNewVagCmdPri(ISO_VAGCommand* cmd, int pri) {
   ASSERT(cmd);
   ASSERT(!cmd->music_flag);
   ASSERT(cmd->info_idx < 4);
+  ASSERT(pri >= 0 && pri <= 10);
   auto old_pri = cmd->priority_pq;
   g_aapVagCmdsPriList[old_pri].cmds[cmd->info_idx] = nullptr;
   if (0 < g_anVagCmdPriCounter[old_pri]) {
