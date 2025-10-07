@@ -398,6 +398,8 @@ void render_game_frame(int game_width,
                        int draw_region_width,
                        int draw_region_height,
                        int msaa_samples,
+                       int brightness_contrast_color,
+                       int brightness_contrast_alpha,
                        bool take_screenshot) {
   // wait for a copied chain.
   bool got_chain = false;
@@ -419,6 +421,8 @@ void render_game_frame(int game_width,
     options.draw_region_width = draw_region_width;
     options.draw_region_height = draw_region_height;
     options.msaa_samples = msaa_samples;
+    options.brightness_contrast_color = brightness_contrast_color;
+    options.brightness_contrast_alpha = brightness_contrast_alpha;
     options.draw_render_debug_window = g_gfx_data->debug_gui.should_draw_render_debug();
     options.draw_profiler_window = g_gfx_data->debug_gui.should_draw_profiler();
     options.draw_loader_window = g_gfx_data->debug_gui.should_draw_loader_menu();
@@ -572,6 +576,8 @@ void GLDisplay::render() {
     render_game_frame(
         game_res_w, game_res_h, fbuf_w, fbuf_h, Gfx::g_global_settings.lbox_w,
         Gfx::g_global_settings.lbox_h, Gfx::g_global_settings.msaa_samples,
+        Gfx::g_global_settings.brightness_contrast_color,
+        Gfx::g_global_settings.brightness_contrast_alpha,
         m_take_screenshot_next_frame && g_gfx_data->debug_gui.screenshot_hotkey_enabled);
     // If we took a screenshot, stop taking them now!
     if (m_take_screenshot_next_frame) {
