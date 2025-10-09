@@ -149,6 +149,7 @@ void CollideMeshRenderer::init_pat_colors(GameVersion version) {
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       material_colors = &material_colors_jak2;
       event_colors = &event_colors_jak2;
       mode_colors = &mode_colors_jak2;

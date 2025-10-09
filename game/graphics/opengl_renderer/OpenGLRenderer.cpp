@@ -136,6 +136,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       m_texture_animator =
           std::make_shared<TextureAnimator>(m_render_state.shaders, common_level, m_version);
       break;
@@ -156,6 +157,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
       init_bucket_renderers_jak2();
       break;
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       init_bucket_renderers_jak3();
       break;
     default:
@@ -1457,6 +1459,7 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
       dispatch_buckets_jak2(dma, prof, sync_after_buckets);
       break;
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       dispatch_buckets_jak3(dma, prof, sync_after_buckets);
       break;
     default:

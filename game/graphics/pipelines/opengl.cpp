@@ -48,7 +48,8 @@ constexpr bool run_dma_copy = false;
 
 constexpr PerGameVersion<int> fr3_level_count(jak1::LEVEL_TOTAL,
                                               jak2::LEVEL_TOTAL,
-                                              jak3::LEVEL_TOTAL);
+                                              jak3::LEVEL_TOTAL,
+                                              jakx::LEVEL_TOTAL);
 
 struct GraphicsData {
   // vsync

@@ -14,6 +14,7 @@ void BlitDisplays::init_textures(TexturePool& texture_pool, GameVersion version)
       tbp = 0x3300;
       break;
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       tbp = 0x3300;  // assuming this for now...
       break;
     default:
