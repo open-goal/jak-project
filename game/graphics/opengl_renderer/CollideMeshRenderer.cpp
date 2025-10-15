@@ -181,17 +181,17 @@ CollideMeshRenderer::~CollideMeshRenderer() {
 }
 
 void CollideMeshRenderer::init_pat_colors(GameVersion version) {
-  for (int i = 0; i < 4; ++i) {  // PAT_MOD_COUNT
+  for (int i = 0; i < PAT_MOD_COUNT; ++i) {
     m_colors.pat_mode_colors[i].x() = -1.f;
     m_colors.pat_mode_colors[i].y() = -1.f;
     m_colors.pat_mode_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 34; ++i) {  // PAT_MAT_COUNT
+  for (int i = 0; i < PAT_MAT_COUNT; ++i) {
     m_colors.pat_material_colors[i].x() = -1.f;
     m_colors.pat_material_colors[i].y() = -1.f;
     m_colors.pat_material_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 20; ++i) {  // PAT_EVT_COUNT
+  for (int i = 0; i < PAT_EVT_COUNT; ++i) {
     m_colors.pat_event_colors[i].x() = -1.f;
     m_colors.pat_event_colors[i].y() = -1.f;
     m_colors.pat_event_colors[i].z() = -1.f;
