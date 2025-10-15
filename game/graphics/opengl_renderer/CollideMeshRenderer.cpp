@@ -161,7 +161,7 @@ const static std::vector<float> event_colors_jak3 = {
     1.2f, 2.0f, 2.0f,  // 16, waterfloor
     2.0f, 1.0f, 0.1f,  // 17, hang
     1.2f, 0.1f, 0.1f,  // 18, fry
-    0.1f, 2.0f, 0.1f  // 19, slime
+    0.1f, 2.0f, 0.1f   // 19, slime
 };
 
 CollideMeshRenderer::CollideMeshRenderer(GameVersion version) {
@@ -181,17 +181,17 @@ CollideMeshRenderer::~CollideMeshRenderer() {
 }
 
 void CollideMeshRenderer::init_pat_colors(GameVersion version) {
-  for (int i = 0; i < 4; ++i) { // PAT_MOD_COUNT
+  for (int i = 0; i < 4; ++i) {  // PAT_MOD_COUNT
     m_colors.pat_mode_colors[i].x() = -1.f;
     m_colors.pat_mode_colors[i].y() = -1.f;
     m_colors.pat_mode_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 34; ++i) { // PAT_MAT_COUNT
+  for (int i = 0; i < 34; ++i) {  // PAT_MAT_COUNT
     m_colors.pat_material_colors[i].x() = -1.f;
     m_colors.pat_material_colors[i].y() = -1.f;
     m_colors.pat_material_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 20; ++i) { // PAT_EVT_COUNT
+  for (int i = 0; i < 20; ++i) {  // PAT_EVT_COUNT
     m_colors.pat_event_colors[i].x() = -1.f;
     m_colors.pat_event_colors[i].y() = -1.f;
     m_colors.pat_event_colors[i].z() = -1.f;
@@ -215,7 +215,7 @@ void CollideMeshRenderer::init_pat_colors(GameVersion version) {
     case GameVersion::Jak3:
       material_colors = &material_colors_jak3;
       event_colors = &event_colors_jak3;
-      mode_colors = &mode_colors_jak2; // unchanged from jak2
+      mode_colors = &mode_colors_jak2;  // unchanged from jak2
       break;
   }
 
