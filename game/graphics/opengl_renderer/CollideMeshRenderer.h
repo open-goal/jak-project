@@ -2,11 +2,12 @@
 #include "common/versions/versions.h"
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
+#include <game/graphics/gfx.h>
 
 struct PatColors {
-  math::Vector4f pat_mode_colors[4];       // PAT_MOD_COUNT
-  math::Vector4f pat_material_colors[34];  // PAT_MAT_COUNT
-  math::Vector4f pat_event_colors[20];     // PAT_EVT_COUNT
+  math::Vector4f pat_mode_colors[PAT_MOD_COUNT];
+  math::Vector4f pat_material_colors[PAT_MAT_COUNT];
+  math::Vector4f pat_event_colors[PAT_EVT_COUNT];
 };
 
 class CollideMeshRenderer {
