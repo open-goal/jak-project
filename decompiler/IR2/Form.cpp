@@ -3276,6 +3276,7 @@ goos::Object DefskelgroupElement::to_form_internal(const Env& env) const {
       }
       break;
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       if (m_static_info.version != 8) {
         forms.push_back(pretty_print::to_symbol(fmt::format(":version {}", m_static_info.version)));
       }

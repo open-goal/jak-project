@@ -23,6 +23,7 @@ StrFileReader::StrFileReader(const fs::path& file_path, GameVersion version) : m
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       init_jak2(file_path);
       break;
     default:

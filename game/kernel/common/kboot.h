@@ -38,8 +38,14 @@ extern char DebugBootLevel[64];
 // Pass to GOAL kernel on boot
 extern char DebugBootMessage[64];
 
+// Added in Jak X, set to false by Sce callback
+extern bool POWERING_OFF_W;
+
 // Added in PC port, option to run listener functions without the kernel for debugging
 extern u32 MasterUseKernel;
+
+// Added in Jak X
+extern bool USE_OVERLORD2_W;
 
 struct MasterConfig {
   u16 language;          //! GOAL language 0

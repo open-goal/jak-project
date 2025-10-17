@@ -87,10 +87,17 @@ struct link_control {
                   Ptr<kheapinfo> heap,
                   uint32_t flags);
 
+  void jakx_begin(Ptr<uint8_t> object_file,
+                  const char* name,
+                  int32_t size,
+                  Ptr<kheapinfo> heap,
+                  uint32_t flags);
+
   // was originally "work"
   uint32_t jak1_work();
   uint32_t jak2_work();
   uint32_t jak3_work();
+  uint32_t jakx_work();
 
   uint32_t jak1_work_v3();
   uint32_t jak1_work_v2();
@@ -101,10 +108,15 @@ struct link_control {
   uint32_t jak3_work_v2_v4();
   uint32_t jak3_work_v5();
   uint32_t jak3_work_opengoal();
+  
+  uint32_t jakx_work_v2_v4();
+  uint32_t jakx_work_v5();
+  uint32_t jakx_work_opengoal();
 
   void jak1_finish(bool jump_from_c_to_goal);
   void jak2_finish(bool jump_from_c_to_goal);
   void jak3_finish(bool jump_from_c_to_goal);
+  void jakx_finish(bool jump_from_c_to_goal);
 
   void reset() {
     m_object_data.offset = 0;

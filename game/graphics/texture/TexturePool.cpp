@@ -314,6 +314,7 @@ const std::vector<u32>& get_tpage_dir(GameVersion version) {
     case GameVersion::Jak2:
       return get_jak2_tpage_dir();
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       return get_jak3_tpage_dir();
     default:
       ASSERT(false);
@@ -401,6 +402,7 @@ PcTextureId TexturePool::allocate_pc_port_texture(GameVersion version) {
     case GameVersion::Jak2:
       return PcTextureId(get_jak2_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       return PcTextureId(get_jak3_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
     default:
       ASSERT_NOT_REACHED();

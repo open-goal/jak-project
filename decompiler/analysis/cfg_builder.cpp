@@ -1430,7 +1430,7 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
   f.ir2.env.disable_def(b2_delay_op.dst(), f.warnings);
   f.ir2.env.disable_use(shift_left->expr().get_arg(0).var());
 
-  if (f.ir2.env.version != GameVersion::Jak3) {
+  if (f.ir2.env.version != GameVersion::Jak3 && f.ir2.env.version != GameVersion::JakX) {
     f.warnings.warning("Using new Jak 2 rtype-of");
   }
   return b0_ptr;
@@ -1574,6 +1574,7 @@ Form* try_sc_as_type_of(FormPool& pool, Function& f, const ShortCircuit* vtx, Ga
       return try_sc_as_type_of_jak1(pool, f, vtx);
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       return try_sc_as_type_of_jak2(pool, f, vtx);
     default:
       ASSERT(false);

@@ -8,6 +8,7 @@
 #include "game_subs.h"
 
 #include "common/goos/Reader.h"
+#include "common/log/log.h"
 #include "common/util/BitUtils.h"
 #include "common/util/font/font_utils.h"
 #include "common/util/font/font_utils_korean.h"
@@ -43,6 +44,8 @@ bool word_is_type(const LinkedWord& word, const std::string& type_name) {
 }  // namespace
 
 /*
+Jak 3:
+
 (deftype game-text (structure)
   ((id   uint32  :offset-assert 0)
    (text basic   :offset-assert 4)
@@ -54,6 +57,25 @@ bool word_is_type(const LinkedWord& word, const std::string& type_name) {
    (language-id int32            :offset-assert 8)
    (group-name  basic            :offset-assert 12)
    (data        game-text :dynamic :offset-assert 16)
+   )
+  )
+
+Jak X:
+
+(deftype game-text (structure)
+  ((id    text-id  :offset-assert 0)
+   (index uint32   :offset-assert 4)
+   )
+  )
+
+(deftype game-text-info (basic)
+  ((length      int32               :offset-assert 4)
+   (language-id int32               :offset-assert 8)
+   (group-name  string              :offset-assert 12)
+   (dic-index   (pointer uint32)    :offset-assert 16)
+   (dic-data    (pointer uint8)     :offset-assert 20)
+   (text        (pointer game-text) :offset-assert 24)
+   (text-data   (pointer uint8)     :offset-assert 28)
    )
   )
  */
@@ -86,65 +108,205 @@ GameTextResult process_game_text(ObjectFileData& data, GameTextVersion version) 
   read_words.at(offset)++;
   auto group_label = get_label(data, words.at(offset++));
   auto group_name = data.linked_data.get_goal_string_by_label(group_label);
-  ASSERT(group_name == "common");
+  if (version == GameTextVersion::JAKX) {
+    ASSERT(group_name == "common" || group_name == "subtitles");
+  } else {
+    ASSERT(group_name == "common");
+  }
   // remember that we read these bytes
   auto group_start = (group_label.offset / 4) - 1;
-  for (int j = 0; j < align16(8 + 1 + (int)group_name.length()) / 4; j++) {
+  for (int j = 0;
+       j < align16(8 + 1 + (int)group_name.length()) / 4 && (group_start + j) < read_words.size();
+       j++) {
     read_words.at(group_start + j)++;
   }
 
-  // read each text...
-  for (u32 i = 0; i < text_count; i++) {
-    // id number
-    read_words.at(offset)++;
-    auto text_id = get_word<u32>(words.at(offset++));
+  if (version != GameTextVersion::JAKX) {
+    // read each text...
+    for (u32 i = 0; i < text_count; i++) {
+      // id number
+      read_words.at(offset)++;
+      auto text_id = get_word<u32>(words.at(offset++));
 
-    // label to string
-    read_words.at(offset)++;
-    auto text_label = get_label(data, words.at(offset++));
+      // label to string
+      read_words.at(offset)++;
+      auto text_label = get_label(data, words.at(offset++));
 
-    // actual string
-    auto text = data.linked_data.get_goal_string_by_label(text_label);
-    result.total_text++;
-    result.total_chars += text.length();
+      // actual string
+      auto text = data.linked_data.get_goal_string_by_label(text_label);
+      result.total_text++;
+      result.total_chars += text.length();
 
-    // no duplicate ids
-    if (result.text.find(text_id) != result.text.end()) {
-      ASSERT(false);
+      // no duplicate ids
+      if (result.text.find(text_id) != result.text.end()) {
+        ASSERT(false);
+      }
+
+      // escape characters
+      if (get_font_bank(version)->is_language_id_korean(language)) {
+        // If we are doing korean, we process it differently
+        result.text[text_id] = get_font_bank(version)->convert_korean_game_to_utf8(text.c_str());
+      } else if (font_bank_exists(version)) {
+        result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
+      } else {
+        result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!
+      }
+
+      // remember what we read (-1 for the type tag)
+      auto string_start = (text_label.offset / 4) - 1;
+      // 8 for type tag and length fields, 1 for null char.
+      for (int j = 0, m = align16(8 + 1 + (int)text.length()) / 4;
+           j < m && string_start + j < (int)read_words.size(); j++) {
+        read_words.at(string_start + j)++;
+      }
     }
 
-    // escape characters
-    if (get_font_bank(version)->is_language_id_korean(language)) {
-      // If we are doing korean, we process it differently
-      result.text[text_id] = get_font_bank(version)->convert_korean_game_to_utf8(text.c_str());
-    } else if (font_bank_exists(version)) {
-      result.text[text_id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
-    } else {
-      result.text[text_id] = goos::get_readable_string(text.c_str());  // HACK!
+    // alignment to the string section.
+    while (offset & 3) {
+      read_words.at(offset)++;
+      offset++;
     }
 
-    // remember what we read (-1 for the type tag)
-    auto string_start = (text_label.offset / 4) - 1;
-    // 8 for type tag and length fields, 1 for null char.
-    for (int j = 0, m = align16(8 + 1 + (int)text.length()) / 4;
-         j < m && string_start + j < (int)read_words.size(); j++) {
-      read_words.at(string_start + j)++;
+    // make sure we read each thing at least once.
+    // reading more than once is ok, some text is duplicated.
+    for (int i = 0; i < int(words.size()); i++) {
+      if (read_words[i] < 1) {
+        std::string debug;
+        data.linked_data.append_word_to_string(debug, words.at(i));
+        ASSERT_MSG(false, fmt::format("[{}] {} 0x{}", i, int(read_words[i]), debug.c_str()));
+      }
     }
-  }
-
-  // alignment to the string section.
-  while (offset & 3) {
+  } else {
+    // dic-index field
     read_words.at(offset)++;
-    offset++;
-  }
+    auto dic_index = get_label(data, words.at(offset++));
 
-  // make sure we read each thing at least once.
-  // reading more than once is ok, some text is duplicated.
-  for (int i = 0; i < int(words.size()); i++) {
-    if (read_words[i] < 1) {
-      std::string debug;
-      data.linked_data.append_word_to_string(debug, words.at(i));
-      ASSERT_MSG(false, fmt::format("[{}] {} 0x{}", i, int(read_words[i]), debug.c_str()));
+    // dic-data field
+    read_words.at(offset)++;
+    auto dic_data = get_label(data, words.at(offset++));
+
+    // text field
+    read_words.at(offset)++;
+    auto game_texts = get_label(data, words.at(offset++));
+
+    // text-data field
+    read_words.at(offset)++;
+    auto text_data = get_label(data, words.at(offset++));
+
+    for (u32 i = 0; i < text_count; i++) {
+      // id number
+      read_words.at(game_texts.offset / 4 + i * 2)++;
+      auto id = get_word<u32>(words.at(game_texts.offset / 4 + i * 2));
+
+      if (result.text.find(id) != result.text.end()) {
+        ASSERT(false);
+      }
+
+      // index within text-data
+      read_words.at(game_texts.offset / 4 + i * 2 - 1)++;
+      auto index = get_word<u32>(words.at(game_texts.offset / 4 + i * 2 + 1));
+
+      result.total_text++;
+
+      std::string text;
+
+      u32 text_offset = text_data.offset + index;
+
+      // number of dictionary elements
+      read_words.at(text_offset / 4)++;
+      u32 entries = data.data.at(text_offset++ + 0x80);
+
+      auto flag = entries & 128;
+      entries = 127 & entries;
+
+      if (entries == 127) {
+        u32 add;
+        do {
+          read_words.at(text_offset / 4)++;
+          add = data.data.at(text_offset++ + 0x80);
+          entries += add;
+        } while (add == 255);
+      }
+
+      for (u32 j = 0; j < entries; j++) {
+        u32 idx;
+
+        if (flag) {
+          u32 low_address = text_offset + j * 2;
+          u32 high_address = text_offset + j * 2 + 1;
+
+          read_words.at(low_address / 4)++;
+          read_words.at(high_address / 4)++;
+
+          idx = data.data.at(low_address + 0x80) + data.data.at(high_address + 0x80) * 256;
+        } else {
+          read_words.at((text_offset + j) / 4)++;
+          idx = data.data.at(text_offset + j + 0x80);
+        }
+
+        read_words.at(dic_index.offset / 4 + idx)++;
+        auto d_idx = get_word<u32>(words.at(dic_index.offset / 4 + idx));
+
+        read_words.at((dic_data.offset + d_idx) / 4)++;
+        auto sublen = data.data.at(dic_data.offset + d_idx + 0x80);
+
+        for (u32 x = 0; x < sublen; x++) {
+          read_words.at((dic_data.offset + d_idx + x + 1) / 4)++;
+          text += data.data.at(dic_data.offset + d_idx + x + 1 + 0x80);
+        }
+
+        result.total_chars += sublen;
+      }
+
+      // escape characters
+      if (font_bank_exists(version)) {
+        result.text[id] = get_font_bank(version)->convert_game_to_utf8(text.c_str());
+      } else {
+        result.text[id] = goos::get_readable_string(text.c_str());  // HACK!
+      }
+    }
+
+    size_t unused_dictionary_indices = 0;
+    size_t unused_words = 0;
+
+    // check if we read each thing at least once.
+    // reading more than once is ok, some text is duplicated.
+    for (int i = 0; i < int(words.size()); i++) {
+      if (read_words[i] < 1) {
+        if (i < dic_data.offset / 4) {
+          std::string text;
+          u32 d_idx = get_word<u32>(words.at(i));
+
+          auto sublen = data.data.at(dic_data.offset + d_idx + 0x80);
+
+          for (u32 x = 0; x < sublen; x++) {
+            read_words.at((dic_data.offset + d_idx + x + 1) / 4)++;
+            text += data.data.at(dic_data.offset + d_idx + x + 1 + 0x80);
+          }
+
+          lg::debug(fmt::format("Unused dictionary entry in {} [index {}] {} {:?}",
+                                data.name_in_dgo, i - (dic_index.offset / 4), int(read_words[i]),
+                                text.c_str()));
+
+          unused_dictionary_indices++;
+        } else {
+          std::string debug;
+          data.linked_data.append_word_to_string(debug, words.at(i));
+          lg::debug(fmt::format("Unused word in {} [{}] {} 0x{}", data.name_in_dgo, i,
+                                int(read_words[i]), debug.c_str()));
+          unused_words++;
+        }
+      }
+    }
+
+    if (unused_dictionary_indices) {
+      lg::warn(fmt::format("{} dictionary entries unused by game text in {}",
+                           unused_dictionary_indices, data.name_in_dgo));
+    }
+
+    if (unused_words) {
+      lg::warn(
+          fmt::format("{} data words unused by game text in {}", unused_words, data.name_in_dgo));
     }
   }
 

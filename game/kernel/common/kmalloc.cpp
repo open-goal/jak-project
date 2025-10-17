@@ -90,7 +90,7 @@ Ptr<kheapinfo> kheapstatus(Ptr<kheapinfo> heap) {
   }
 
   for (int i = 0; i < NUM_CATEGORIES; i++) {
-    printf("  %d: %d %d\n", i, MemItemsCount[i], MemItemsSize[i]);
+    printf("   %d: %d %d\n", i, MemItemsCount[i], MemItemsSize[i]);
   }
 
   // might not have returned heap in jak 1
@@ -133,7 +133,7 @@ Ptr<u8> kmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
   // if we got a null heap, put it on the global heap, but warn about it
   if (!heap.offset) {
     // the 0 is uninitialized in jak1, set to zero in jak 2. might just be compiler differences.
-    Msg(6, "-----------> kmalloc: alloc %s,  mem %s #x%x (a:%d  %dbytes)\n", "DEBUG", name, 0,
+    Msg(6, "--------------------> kmalloc: alloc %s mem %s #x%x (a:%d  %dbytes)\n", "DEBUG", name, 0,
         alignment_flag, size);
     heap = kglobalheap;
   }
@@ -163,9 +163,6 @@ Ptr<u8> kmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
     }
 
     heap->current.offset = memend;
-    if (flags & KMALLOC_MEMSET)
-      std::memset(Ptr<u8>(memstart).c(), 0, (size_t)size);
-    return Ptr<u8>(memstart);
   } else {
     // allocate from top
     if (alignment_flag == 0) {
@@ -186,22 +183,25 @@ Ptr<u8> kmalloc(Ptr<kheapinfo> heap, s32 size, u32 flags, char const* name) {
     }
 
     heap->top.offset = memstart;
-
-    if (flags & KMALLOC_MEMSET)
-      std::memset(Ptr<u8>(memstart).c(), 0, (size_t)size);
-
-    // this logging was added in Jak 3, but we port it back to all games:
-    if ((heap == kglobalheap) && (kheaplogging != 0)) {
-      if (strcmp(name, "string") == 0) {
-        MemItemsCount[STRING]++;
-        MemItemsSize[STRING] += size;
-      } else if (strcmp(name, "type") == 0) {
-        MemItemsCount[TYPE]++;
-        MemItemsSize[TYPE] += size;
-      }
-    }
-    return Ptr<u8>(memstart);
   }
+
+  // NOTE: This code is slightly different to jak3.
+  // Naughty Dog could have moved this out of the if statement in Jak X...
+  // Or this was intentionally split by OpenGoal already?
+  if (flags & KMALLOC_MEMSET)
+    std::memset(Ptr<u8>(memstart).c(), 0, (size_t)size);
+
+  // this logging was added in Jak 3, but we port it back to all games:
+  if ((heap == kglobalheap) && (kheaplogging != 0)) {
+    if (strcmp(name, "string") == 0) {
+      MemItemsCount[STRING]++;
+      MemItemsSize[STRING] += size;
+    } else if (strcmp(name, "type") == 0) {
+      MemItemsCount[TYPE]++;
+      MemItemsSize[TYPE] += size;
+    }
+  }
+  return Ptr<u8>(memstart);
 }
 
 /*!

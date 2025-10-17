@@ -350,6 +350,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       // in jak 2, the event message block holds a ppointer instead.
       set_from_matcher = Matcher::set(
           Matcher::deref(Matcher::reg(block_var_reg), false, {DerefTokenMatcher::string("from")}),
@@ -370,6 +371,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
         break;
       case GameVersion::Jak2:
       case GameVersion::Jak3:
+      case GameVersion::JakX:
         set_from_form_matcher = Matcher::set(
             Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
             Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::any(1)}));
@@ -1901,6 +1903,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
             break;
           case GameVersion::Jak2:
           case GameVersion::Jak3:
+          case GameVersion::JakX:
             expected_name = fmt::format("(symbol->string (-> {} symbol))", proc_type);
             break;
           default:
@@ -2051,7 +2054,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   if (env.version == GameVersion::Jak2) {
     possible_args = possible_args_jak2;
   }
-  if (env.version == GameVersion::Jak3) {
+  if (env.version >= GameVersion::Jak3) {
     possible_args = possible_args_jak3;
   }
 
@@ -2598,7 +2601,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
 
   // New for Jak 3: they check to see if nothing was added, and skip adding an empty DMA transfer
   // if so. This means the usual 2 ending let body forms are now wrapped in a `when`.
-  const int expected_last_let_body_size = env.version == GameVersion::Jak3 ? 1 : 2;
+  const int expected_last_let_body_size = env.version >= GameVersion::Jak3 ? 1 : 2;
   if (last_part->entries().size() != 1 ||
       last_part->body()->size() != expected_last_let_body_size) {
     return nullptr;
@@ -2608,7 +2611,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   LetElement* dmatag_let;
   FormElement* insert_tag_call;
 
-  if (env.version == GameVersion::Jak3) {
+  if (env.version >= GameVersion::Jak3) {
     // check for the when:
     auto outer_when = dynamic_cast<CondNoElseElement*>(last_part->body()->at(0));
     if (!outer_when) {

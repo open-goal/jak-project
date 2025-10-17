@@ -38,7 +38,7 @@ nlohmann::json read_json_file_from_config(const nlohmann::json& json, const std:
 Config make_config_via_json(nlohmann::json& json) {
   Config config;
   int version_int = json.at("game_version").get<int>();
-  ASSERT(version_int == 1 || version_int == 2 || version_int == 3);
+  ASSERT(version_int == 1 || version_int == 2 || version_int == 3 || version_int == 4);
   config.game_version = (GameVersion)version_int;
   config.text_version = json.at("text_version").get<GameTextVersion>();
   config.game_name = json.at("game_name").get<std::string>();

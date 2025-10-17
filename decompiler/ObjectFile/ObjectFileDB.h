@@ -270,7 +270,7 @@ class ObjectFileDB {
                              const Config& cfg,
                              const fs::path& dump_out);
   std::string process_game_count_file();
-  std::string process_game_text_files(const Config& cfg);
+  std::string process_game_text_files(const Config& cfg, std::string text_string = "COMMON");
   std::string process_all_spool_subtitles(const Config& cfg, const fs::path& image_out);
 
   const ObjectFileData& lookup_record(const ObjectFileRecord& rec) const;

@@ -185,7 +185,7 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
     header->msg_id = msg_id;
 
     // start send!
-    auto rv = ee::sceDeci2ReqSend(protoBlock.socket, header->deci2_header.dst);
+    auto rv = ee::sceDeci2ReqSend(protoBlock.socket, 0x48); // hard-coded? header->deci2_header.dst);
     if (rv < 0) {
       printf("1sceDeci2ReqSend fail, reason code = %08x\n", rv);
       return 0xfffffffa;
@@ -197,7 +197,7 @@ s32 SendFromBufferD(s32 msg_kind, u64 msg_id, char* data, s32 size) {
     }
 
     // if send completes, exit.  Otherwise if there's an error, just try again.
-    if (protoBlock.send_status == 0) {
+    if (protoBlock.send_status > -1) { // TODO: Why not check 0 anymore?
       break;
     }
   }

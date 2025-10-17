@@ -1,0 +1,3 @@
+
+
+#include "kmemcard.h"

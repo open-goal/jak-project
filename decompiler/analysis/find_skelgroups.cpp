@@ -450,14 +450,14 @@ FormElement* rewrite_defskelgroup(LetElement* elt,
   //  (set! *hopper-sg* v1-1)
   ASSERT(elt->body()->size() > 0);
 
-  int last_lod = env.version == GameVersion::Jak3 ? (elt->body()->size() - 4) / 2 - 1
+  int last_lod = env.version >= GameVersion::Jak3 ? (elt->body()->size() - 4) / 2 - 1
                                                   : (elt->body()->size() - 3) / 2 - 1;
   if (last_lod > skelgroup_info.max_lod) {
     env.func->warnings.error_and_throw("defskelgroup exceeds max-lod of {} ({})",
                                        skelgroup_info.max_lod, last_lod);
   }
 
-  auto rest_info = env.version == GameVersion::Jak3
+  auto rest_info = env.version >= GameVersion::Jak3
                        ? get_defskelgroup_entries_jak3(elt->body(), env, elt->entries().at(0).dest)
                        : get_defskelgroup_entries(elt->body(), env, elt->entries().at(0).dest);
 
@@ -630,6 +630,7 @@ void run_defskelgroups(Function& top_level_func) {
               sg = inspect_skel_group_data_jak2(src_as_label, env);
               break;
             case GameVersion::Jak3:
+            case GameVersion::JakX:
               sg = inspect_skel_group_data_jak3(src_as_label, env);
               inspect_cloth_data_jak3(as_let, sg, env);
               break;

@@ -750,6 +750,8 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
     case GameVersion::Jak3:
       animated_slots = jak3_animated_texture_slots();
       break;
+    case GameVersion::JakX:
+      break;
     default:
       ASSERT_NOT_REACHED();
   }
@@ -857,10 +859,9 @@ std::string ObjectFileDB::process_all_spool_subtitles(const Config& cfg,
   }
 }
 
-std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
+std::string ObjectFileDB::process_game_text_files(const Config& cfg, std::string text_string) {
   try {
     lg::info("- Finding game text...");
-    std::string text_string = "COMMON";
     Timer timer;
     int file_count = 0;
     int string_count = 0;
@@ -868,7 +869,7 @@ std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
     std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
 
     for_each_obj([&](ObjectFileData& data) {
-      if (data.name_in_dgo.substr(1) == text_string) {
+      if (data.name_in_dgo.ends_with(text_string)) {
         file_count++;
         auto statistics = process_game_text(data, cfg.text_version);
         string_count += statistics.total_text;
@@ -924,7 +925,7 @@ void get_joint_info(ObjectFileDB& db, ObjectFileData& obj, JointGeo jg) {
   const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
   for (size_t i = 0; i < jg.length; ++i) {
     u32 label = 0x0;
-    if (db.version() == GameVersion::Jak3) {
+    if (db.version() >= GameVersion::Jak3) {
       label = words.at((jg.offset / 4) + 11 + i).label_id();
     } else {
       label = words.at((jg.offset / 4) + 7 + i).label_id();

@@ -25,7 +25,8 @@ std::string get_object_file_name(const std::string& original_name, const u8* dat
   const std::string art_group_text_strings[] = {
       fmt::format("/src/next/data/art-group{}/", versions::jak1::ART_FILE_VERSION),
       fmt::format("/src/jak2/final/art-group{}/", versions::jak2::ART_FILE_VERSION),
-      fmt::format("/src/jak3/final/art-group{}/", versions::jak3::ART_FILE_VERSION)};
+      fmt::format("/src/jak3/final/art-group{}/", versions::jak3::ART_FILE_VERSION),
+      fmt::format("/src/jakx/final/art-group{}/", versions::jakx::ART_FILE_VERSION)};
   const std::string suffix = "-ag.go";
 
   for (auto& art_group_text : art_group_text_strings) {

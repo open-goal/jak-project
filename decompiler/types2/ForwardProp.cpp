@@ -747,6 +747,12 @@ void types2_for_logior(types2::Type& type_out,
     return;
   }
 
+  if (arg0_type.typespec().base_type() == "pointer" && arg1_type.typespec().base_type() == "pointer") {
+    env.func->warnings.warning("Using logior on pointers");
+    type_out.type = TP_Type::make_from_ts("int");
+    return;
+  }
+
   if (common_int2_case(type_out, dts, arg0_type, arg1_type)) {
     return;
   }
@@ -1971,6 +1977,7 @@ bool load_var_op_determine_type(types2::Type& type_out,
               art_get_by_name_method_id = 10;
               break;
             case GameVersion::Jak3:
+            case GameVersion::JakX:
               art_get_by_name_method_id = 11;
               break;
             default:

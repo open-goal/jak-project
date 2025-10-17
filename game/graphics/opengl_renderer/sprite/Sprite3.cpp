@@ -171,7 +171,8 @@ void Sprite3::handle_sprite_frame_setup(DmaFollower& dma,
       m_frame_data.from_jak1(jak1_data);
     } break;
     case GameVersion::Jak2:
-    case GameVersion::Jak3: {
+    case GameVersion::Jak3:
+    case GameVersion::JakX: {
       render_state->shaders[ShaderId::SPRITE3].activate();
       auto frame_data = dma.read_and_advance();
       ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
@@ -379,6 +380,7 @@ void Sprite3::render_2d_group1(DmaFollower& dma,
         ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud_Jak2);
         break;
       case GameVersion::Jak3:
+      case GameVersion::JakX:
         ASSERT_EQ_IMM(run.vifcode1().immediate, (int)SpriteProgMem::Sprites2dHud_Jak3);
         break;
       default:
@@ -397,6 +399,7 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       render_jak2(dma, render_state, prof);
       break;
     default:
@@ -835,7 +838,7 @@ void Sprite3::do_block_common(SpriteMode mode,
 
     auto& vert1 = m_vertices_3d.at(start_vtx_id + 0);
 
-    if (render_state->version == GameVersion::Jak3) {
+    if (render_state->version >= GameVersion::Jak3) {
       auto flag = m_vec_data_2d[sprite_idx].flag();
 
       if ((flag & 0x10) || (flag & 0x20)) {
