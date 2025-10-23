@@ -8,6 +8,8 @@ bl_info = {
     "category": "Development"
 }
 
+plugin_version = 0.04
+
 import bpy
 import colorsys
 import bmesh
@@ -26,16 +28,8 @@ from bpy.types import (Panel,
                        PropertyGroup,
                        )
 
-def plugin_version_to_float(version_tuple):
-    major, minor, patch = version_tuple
-    d_minor = len(str(minor))
-    d_patch = len(str(patch))
-    return major + minor / (10 ** d_minor) + patch / (10 ** (d_minor + d_patch))
-
-plugin_version = plugin_version_to_float(bl_info["version"])
-
 version_changes = {
-    0.04: {"collide_mode": {"old": (0, None), "new": 4}},
+    0.04: {"collide_mode": {0: 4, None: 5}},
 }
 
 def update_item(item):
@@ -43,9 +37,10 @@ def update_item(item):
     for version in sorted(version_changes.keys()):
         if item_version < version <= plugin_version:
             mapping = version_changes[version]
-            for prop, changes in mapping.items():
-                if item.get(prop) in changes["old"]:
-                    item[prop] = changes["new"]
+            for prop, replacements in mapping.items():
+                current = item.get(prop)
+                if current in replacements:
+                    item[prop] = replacements[current]
             item_version = version
     item["plugin_version"] = plugin_version
 
