@@ -970,9 +970,9 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
 }
 }  // namespace
 
-void OpenGLRenderer::blit_display() {
+void OpenGLRenderer::blit_display(ScopedProfilerNode& prof) {
   if (m_blit_displays) {
-    m_blit_displays->do_copy_back(&m_render_state);
+    m_blit_displays->do_copy_back(&m_render_state, prof);
   }
 }
 
@@ -1021,14 +1021,16 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   {
     g_current_renderer = "blit-display";
     auto prof = m_profiler.root()->make_scoped_child("blit-display");
-    blit_display();
+    blit_display(prof);
   }
 
-  // apply effects done with PCRTC registers
+  // apply effects done with PCRTC registers, as well as blit the framebuffer to the window and
+  // apply brightness/contrast
   {
     g_current_renderer = "pcrtc";
     auto prof = m_profiler.root()->make_scoped_child("pcrtc");
-    do_pcrtc_effects(settings.pmode_alp_register, &m_render_state, prof);
+    do_pcrtc_effects(settings.pmode_alp_register, settings.brightness_contrast_color,
+                     settings.brightness_contrast_alpha, &m_render_state, prof);
     if (settings.gpu_sync) {
       glFinish();
     }
@@ -1426,6 +1428,11 @@ void OpenGLRenderer::dispatch_buckets_jak3(DmaFollower dma,
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
     }
+
+    if (bucket_id == (int)jak3::BucketId::TEX_HUD_HUD_ALPHA) {
+      auto p = prof.make_scoped_child("color-filter");
+      m_blit_displays->apply_color_filter(&m_render_state, p);
+    }
   }
   vif_interrupt_callback(m_bucket_renderers.size());
 
@@ -1605,6 +1612,8 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
 }
 
 void OpenGLRenderer::do_pcrtc_effects(float alp,
+                                      int brightness_contrast_color,
+                                      int brightness_contrast_alpha,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
   Fbo* window_blit_src = nullptr;
@@ -1637,9 +1646,22 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
   glBindVertexArray(screen_vao);
   glBindBuffer(GL_ARRAY_BUFFER, screen_vbo);
 
-  auto& shader = render_state->shaders[ShaderId::PLAIN_TEXTURE];
+  float color = (float)brightness_contrast_color / 128.0f;
+  float alpha = (float)brightness_contrast_alpha / 128.0f;
+  auto& shader = render_state->shaders[ShaderId::POST_PROCESSING];
   shader.activate();
   glUniform1i(glGetUniformLocation(shader.id(), "tex_T0"), 0);
+  if (brightness_contrast_color < 0) {
+    // subtractive blend - note that color is already negative
+    float color_neg = color * alpha;
+    glUniform4f(glGetUniformLocation(shader.id(), "color_mult"), 1.0f, 1.0f, 1.0f, alpha);
+    glUniform4f(glGetUniformLocation(shader.id(), "color_add"), color_neg, color_neg, color_neg,
+                0.0f);
+  } else {
+    // additive blend
+    glUniform4f(glGetUniformLocation(shader.id(), "color_mult"), 1.0f, 1.0f, 1.0f, alpha);
+    glUniform4f(glGetUniformLocation(shader.id(), "color_add"), color, color, color, 0.0f);
+  }
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glActiveTexture(GL_TEXTURE0);

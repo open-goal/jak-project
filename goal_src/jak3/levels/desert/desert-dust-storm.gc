@@ -66,6 +66,7 @@
   (set! (-> self wind-sound) (new-sound-id))
   (set! (-> self dust-storm-clock-scalar) 1.0)
   (set! (-> self is-intro?) #f)
+  (#when PC_PORT (set! (-> *duststorm-helper* sparticle-time) (- (-> self clock frame-counter) (seconds 1)))) ;; og:preserve-this fix particles spawning every frame no matter what
   (if (= arg1 'track)
       (go-virtual track)
       (go-virtual hold-pos)
@@ -519,10 +520,23 @@
         )
       (set! (-> *part-id-table* 1421 init-specs 2 initial-valuef) 61440.0)
       (set! (-> *part-id-table* 1422 init-specs 2 initial-valuef) 61440.0)
-      (if (-> this is-intro?)
-          (launch-particles (-> *part-id-table* 1422) s3-0)
-          (launch-particles (-> *part-id-table* 1421) s3-0)
+      (#cond
+        (PC_PORT
+          (when (>= (- (-> this clock frame-counter) (-> *duststorm-helper* sparticle-time)) 5) ;; og:preserve-this fix particles spawning every frame no matter what (we know 5 ticks = 1/60 frame)
+            (set! (-> *duststorm-helper* sparticle-time) (-> this clock frame-counter))
+            (if (-> this is-intro?)
+                (launch-particles (-> *part-id-table* 1422) s3-0)
+                (launch-particles (-> *part-id-table* 1421) s3-0)
+                )
+            )
           )
+        (#t
+          (if (-> this is-intro?)
+              (launch-particles (-> *part-id-table* 1422) s3-0)
+              (launch-particles (-> *part-id-table* 1421) s3-0)
+              )
+          )
+        )
       )
     )
   (none)
@@ -573,10 +587,23 @@
         (set! (-> *part-id-table* 1421 init-specs 2 initial-valuef) (lerp 20480.0 61440.0 f30-4))
         (set! (-> *part-id-table* 1422 init-specs 2 initial-valuef) (lerp 20480.0 61440.0 f30-4))
         )
-      (if (-> this is-intro?)
-          (launch-particles (-> *part-id-table* 1422) s4-0)
-          (launch-particles (-> *part-id-table* 1421) s4-0)
+      (#cond
+        (PC_PORT
+          (when (>= (- (-> this clock frame-counter) (-> *duststorm-helper* sparticle-time)) 5) ;; og:preserve-this fix particles spawning every frame no matter what (we know 5 ticks = 1/60 frame)
+            (set! (-> *duststorm-helper* sparticle-time) (-> this clock frame-counter))
+            (if (-> this is-intro?)
+                (launch-particles (-> *part-id-table* 1422) s4-0)
+                (launch-particles (-> *part-id-table* 1421) s4-0)
+                )
+            )
           )
+        (#t
+          (if (-> this is-intro?)
+              (launch-particles (-> *part-id-table* 1422) s4-0)
+              (launch-particles (-> *part-id-table* 1421) s4-0)
+              )
+          )
+        )
       )
     )
   (none)
@@ -680,7 +707,7 @@
             (send-event
               *target*
               'push-trans
-              (vector-float*! (new 'stack-no-clear 'vector) *duststorm-wind-vec* (/ (the float *duststorm-wind-vel*) 50))
+              (vector-float*! (new 'stack-no-clear 'vector) *duststorm-wind-vec* (* (/ (the float *duststorm-wind-vel*) 50) 60 (seconds-per-frame))) ;; og:preserve-this normalize speed to per-sec instead of per-frame
               (seconds 0.11)
               )
             )
