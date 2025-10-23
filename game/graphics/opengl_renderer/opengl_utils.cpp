@@ -154,6 +154,46 @@ void FullScreenDraw::draw(const math::Vector4f& color,
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
+FullScreenTexDraw::FullScreenTexDraw() {
+  glGenVertexArrays(1, &m_vao);
+  glGenBuffers(1, &m_vertex_buffer);
+  glBindVertexArray(m_vao);
+
+  std::array<int32_t, 4> vertices = {0, 1, 2, 4};
+
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(int32_t) * 4, vertices.data(), GL_STATIC_DRAW);
+
+  glEnableVertexAttribArray(0);
+  glVertexAttribIPointer(0, 1, GL_INT, sizeof(int32_t), nullptr);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+}
+
+FullScreenTexDraw::~FullScreenTexDraw() {
+  glDeleteVertexArrays(1, &m_vao);
+  glDeleteBuffers(1, &m_vertex_buffer);
+}
+
+void FullScreenTexDraw::draw(const math::Vector4f& color,
+                             const math::Vector2f& tex0,
+                             const math::Vector2f& tex1,
+                             SharedRenderState* render_state,
+                             ScopedProfilerNode& prof) {
+  glBindVertexArray(m_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
+  auto& shader = render_state->shaders[ShaderId::SIMPLE_TEXTURE];
+  shader.activate();
+  glUniform4f(glGetUniformLocation(shader.id(), "color"), color[0], color[1], color[2], color[3]);
+  glUniform2f(glGetUniformLocation(shader.id(), "tex_coord_0"), tex0.x(), tex0.y());
+  glUniform2f(glGetUniformLocation(shader.id(), "tex_coord_1"), tex1.x(), tex1.y());
+
+  prof.add_tri(2);
+  prof.add_draw_call();
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
 FramebufferCopier::FramebufferCopier() {
   glGenFramebuffers(1, &m_fbo);
   glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);

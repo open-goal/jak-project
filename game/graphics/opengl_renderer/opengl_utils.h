@@ -79,6 +79,23 @@ class FullScreenDraw {
   GLuint m_vertex_buffer;
 };
 
+class FullScreenTexDraw {
+ public:
+  FullScreenTexDraw();
+  ~FullScreenTexDraw();
+  FullScreenTexDraw(const FullScreenTexDraw&) = delete;
+  FullScreenTexDraw& operator=(const FullScreenTexDraw&) = delete;
+  void draw(const math::Vector4f& color,
+            const math::Vector2f& tex0,
+            const math::Vector2f& tex1,
+            SharedRenderState* render_state,
+            ScopedProfilerNode& prof);
+
+ private:
+  GLuint m_vao;
+  GLuint m_vertex_buffer;
+};
+
 class FramebufferCopier {
  public:
   FramebufferCopier();
