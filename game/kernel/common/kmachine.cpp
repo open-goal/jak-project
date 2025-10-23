@@ -916,6 +916,11 @@ void pc_set_letterbox(int w, int h) {
   Gfx::g_global_settings.lbox_h = h;
 }
 
+void pc_set_brightness_contrast(s32 color, s32 alpha) {
+  Gfx::g_global_settings.brightness_contrast_color = color;
+  Gfx::g_global_settings.brightness_contrast_alpha = alpha;
+}
+
 void pc_renderer_tree_set_lod(Gfx::RendererTreeType tree, int lod) {
   switch (tree) {
     case Gfx::RendererTreeType::TFRAG3:
@@ -1108,6 +1113,7 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-set-msaa", (void*)pc_set_msaa);
   make_func_symbol_func("pc-set-frame-rate", (void*)pc_set_frame_rate);
   make_func_symbol_func("pc-set-game-resolution", (void*)pc_set_game_resolution);
+  make_func_symbol_func("pc-set-brightness-contrast", (void*)pc_set_brightness_contrast);
   make_func_symbol_func("pc-set-letterbox", (void*)pc_set_letterbox);
   make_func_symbol_func("pc-renderer-tree-set-lod", (void*)pc_renderer_tree_set_lod);
   make_func_symbol_func("pc-set-collision-mode", (void*)Gfx::CollisionRendererSetMode);

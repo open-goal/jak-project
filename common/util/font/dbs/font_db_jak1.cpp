@@ -230,6 +230,7 @@ std::vector<ReplaceInfo> replace_info_jak1 = {
     {"Z~Y~-21H~-5Vº~Z", "Ż"},
     {"E~Y~-20H~-5Vº~Z", "Ė"},
     {"C~Y~-20H~-4Vˇ~Z", "Č"},
+    {"D~Y~-20H~-4Vˇ~Z", "Ď"},
     {"S~Y~-22H~-4Vˇ~Z", "Š"},
     {"Z~Y~-22H~-4Vˇ~Z", "Ž"},
     {"U~Y~-13H~+2V,~Z", "Ų"},

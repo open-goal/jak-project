@@ -53,7 +53,7 @@
                                  :gif (new 'static 'array uint64 2 #x5020c0000000800f #x55551)
                                  )
                                :color (new 'static 'vector4w :x #x80 :y #x80 :z #x80 :w #x80)
-                               :line-color #x3f80000000000000
+                               :line-color (new 'static 'gs-rgbaq :q 1.0)
                                :scan-colors (new 'static 'inline-array vector4w 15
                                  (new 'static 'vector4w :y 1 :z 1)
                                  (new 'static 'vector4w :y 1 :z 1)
@@ -80,7 +80,8 @@
 ;; definition for method 9 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod blit-displays-work-method-9 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+(defmethod blit-standard ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+  "Draw a full-width quad of the given height to copy from raster to display buffer"
   (let ((v1-0 (the-as object (-> arg0 base))))
     (set! (-> (the-as (inline-array vector4w) v1-0) 0 quad) (-> this sprite-slow-tmpl dma-vif quad))
     (set! (-> (the-as (inline-array vector4w) v1-0) 1 quad) (-> this sprite-slow-tmpl quad 1))
@@ -98,7 +99,10 @@
 ;; definition for method 10 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod blit-displays-work-method-10 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+(defmethod blit-slow-time ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+  "Draw a full-screen triangle fan to copy from raster to display buffer.
+   The fan is centered in the center of the screen.
+   This applies a gradient of alpha from 192 at the center to arg3 at the corners."
   (let ((v1-0 (the-as object (-> arg0 base))))
     (set! (-> (the-as (inline-array vector4w) v1-0) 0 quad) (-> this draw-slow-time-tmpl dma-vif quad))
     (set! (-> (the-as (inline-array vector4w) v1-0) 1 quad) (-> this draw-slow-time-tmpl quad 1))
@@ -129,7 +133,7 @@
 ;; definition for method 11 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod blit-displays-work-method-11 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int))
+(defmethod draw-sprite-color ((this blit-displays-work) (arg0 dma-buffer) (arg1 int))
   (let ((v1-0 (the-as object (-> arg0 base))))
     (set! (-> (the-as (inline-array vector4w) v1-0) 0 quad) (-> this sprite-slow-tmpl dma-vif quad))
     (set! (-> (the-as (inline-array vector4w) v1-0) 1 quad) (-> this sprite-slow-tmpl quad 1))
@@ -187,7 +191,9 @@
 ;; definition for method 13 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod blit-displays-work-method-13 ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+(defmethod draw-antialias ((this blit-displays-work) (arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int))
+  "Draw the raster buffer on top of itself, with a half-pixel offset.
+   This is used as an antialiasing effect."
   (set-display-gs-state arg0 408 512 416 0 0)
   (dma-buffer-add-gs-set arg0 (rgbaq (new 'static 'gs-rgbaq :r #x80 :g #x80 :b #x80 :a #x80 :q 1.0)))
   (let ((v1-3 (the-as object (-> arg0 base))))
@@ -214,7 +220,7 @@
 ;; definition for method 14 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod blit-displays-work-method-14 ((this blit-displays-work) (arg0 dma-buffer) (arg1 vector))
+(defmethod draw-color-filter ((this blit-displays-work) (arg0 dma-buffer) (arg1 vector))
   (set-display-gs-state arg0 408 512 416 0 0)
   (dma-buffer-add-gs-set arg0
                          (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
@@ -256,7 +262,7 @@
 ;; definition for method 15 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod blit-displays-work-method-15 ((this blit-displays-work) (arg0 dma-buffer))
+(defmethod fx-to-raster-flipped ((this blit-displays-work) (arg0 dma-buffer))
   (set-display-gs-state arg0 408 512 416 0 0)
   (dma-buffer-add-gs-set arg0
                          (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
@@ -421,7 +427,7 @@
 ;; definition for method 18 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-brightness-and-contrast ((this blit-displays-work) (arg0 dma-buffer) (arg1 float) (arg2 float))
+(defmethod draw-brightness-and-contrast ((this blit-displays-work) (arg0 dma-buffer) (arg1 float) (arg2 float))
   (set-display-gs-state arg0 408 512 416 0 0)
   (let ((s4-1 (fmax 0.0 (fmin 1.0 arg2)))
         (s3-1 (fmax 0.0 (fmin 1.0 arg1)))
@@ -489,7 +495,7 @@
       (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                    (bucket-id debug-menu)
                                    )
-        (setup-brightness-and-contrast this s4-0 (-> v1-3 brightness) (-> v1-3 contrast))
+        (draw-brightness-and-contrast this s4-0 (-> v1-3 brightness) (-> v1-3 contrast))
         (reset-display-gs-state *display* s4-0)
         )
       )
@@ -498,7 +504,7 @@
     (cond
       ((and (-> this menu-mode) (not (-> this screen-copied)))
        (with-dma-buffer-add-bucket ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf))
-                                    (bucket-id bucket3)
+                                    (bucket-id blit)
                                     )
          (fx-copy-buf s4-1)
          )
@@ -530,14 +536,14 @@
                                    (bucket-id debug-no-zbuf1)
                                    )
         (fx-copy-buf s4-2)
-        (blit-displays-work-method-15 this s4-2)
+        (fx-to-raster-flipped this s4-2)
         (reset-display-gs-state *display* s4-2)
         )
       )
-    (when (logtest? (vu1-renderer-mask rn36) (-> *display* vu1-enable-user))
+    (when (logtest? (vu1-renderer-mask depth-cue) (-> *display* vu1-enable-user))
       (when (not *display-color-bars*)
         (with-dma-buffer-add-bucket ((s4-3 (-> *display* frames (-> *display* on-screen) global-buf))
-                                     (bucket-id bucket567)
+                                     (bucket-id anti-alias)
                                      )
           (dma-buffer-add-gs-set s4-3
                                  (test-1 (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always)))
@@ -548,7 +554,7 @@
                                  (texflush 0)
                                  )
           (if (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
-              (blit-displays-work-method-13 this s4-3 0 6656 8)
+              (draw-antialias this s4-3 0 6656 8)
               )
           (reset-display-gs-state *display* s4-3)
           )
@@ -565,7 +571,7 @@
       (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                    (bucket-id tex-hud-hud-alpha)
                                    )
-        (blit-displays-work-method-14 this s3-0 s5-4)
+        (draw-color-filter this s3-0 s5-4)
         (reset-display-gs-state *display* s3-0)
         )
       )
@@ -573,7 +579,7 @@
   (cond
     ((and (-> *setting-control* user-current render) (zero? (-> this count-down)))
      (with-dma-buffer-add-bucket ((s4-5 (-> *display* frames (-> *display* on-screen) global-buf))
-                                  (bucket-id bucket3)
+                                  (bucket-id blit)
                                   )
        (dma-buffer-add-gs-set s4-5
                               (dthe (new 'static 'gs-dthe))
@@ -607,8 +613,8 @@
                     )
                 (set-display-gs-state s4-5 (-> s0-0 display-fbp) 640 s2-0 (shl #xff00 16) 0)
                 (if (= f30-0 1.0)
-                    (blit-displays-work-method-9 this s4-5 416 s2-0 128)
-                    (blit-displays-work-method-10 this s4-5 416 s2-0 (the int (* 128.0 f30-0)))
+                    (blit-standard this s4-5 416 s2-0 128)
+                    (blit-slow-time this s4-5 416 s2-0 (the int (* 128.0 f30-0)))
                     )
                 )
               )
@@ -617,12 +623,12 @@
                (dma-buffer-add-gs-set s4-5
                                       (tex0-1 (new 'static 'gs-tex0 :tbw #xa :tw #xa :th #x9 :tbp0 (* (-> s0-0 display-fbp) 32)))
                                       )
-               (blit-displays-work-method-11 this s4-5 s2-0)
+               (draw-sprite-color this s4-5 s2-0)
                (set-display-gs-state s4-5 s1-0 640 s2-0 (shl #xff00 16) 0)
                (dma-buffer-add-gs-set s4-5 (tex0-1 (new 'static 'gs-tex0 :tbp0 #x4c0 :tbw #x8 :tw #x9 :th #x9)))
                (draw-zoom-blur this s4-5 s2-0)
                (dma-buffer-add-gs-set s4-5 (tex0-1 (new 'static 'gs-tex0 :tbp0 #x3300 :tbw #x8 :tw #x9 :th #x9)))
-               (blit-displays-work-method-9 this s4-5 416 s2-0 (the int (* 128.0 (-> this zoom-blur-alpha-current))))
+               (blit-standard this s4-5 416 s2-0 (the int (* 128.0 (-> this zoom-blur-alpha-current))))
                (when (or (!= (-> *setting-control* user-current letterbox) 0.0)
                          (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
                          )
@@ -646,9 +652,7 @@
            )
          (when (!= (-> *setting-control* user-current scanlines) 0.0)
            (let ((v1-213 (the int (* 128.0 (-> *setting-control* user-current scanlines)))))
-             (set! (-> this line-color)
-                   (logior (logand (-> this line-color) (the-as uint #xffffffff00ffffff)) (shr (shl v1-213 56) 32))
-                   )
+             (set! (-> this line-color a) v1-213)
              (dotimes (a0-120 15)
                (set! (-> this scan-colors a0-120 w) v1-213)
                )
@@ -707,7 +711,7 @@
      )
     (else
       (with-dma-buffer-add-bucket ((s4-6 (-> *display* frames (-> *display* on-screen) global-buf))
-                                   (bucket-id bucket3)
+                                   (bucket-id blit)
                                    )
         (reset-display-gs-state *display* s4-6)
         )
@@ -723,7 +727,7 @@
 ;; definition for method 20 of type blit-displays-work
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod draw-sky ((this blit-displays-work) (arg0 dma-buffer))
+(defmethod blit-menu-mode ((this blit-displays-work) (arg0 dma-buffer))
   (let ((f0-0 (-> this progress-interp))
         (v1-0 *time-of-day-context*)
         )
