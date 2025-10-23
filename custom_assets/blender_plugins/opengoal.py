@@ -29,7 +29,7 @@ from bpy.types import (Panel,
                        )
 
 version_changes = {
-    0.04: {"collide_mode": {0: 4, None: 5}},
+    0.04: {"collide_mode": {0: 4, None: 4}},
 }
 
 def update_item(item):
