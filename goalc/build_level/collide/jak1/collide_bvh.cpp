@@ -219,9 +219,10 @@ void split_recursive(CNode& to_split) {
     for (auto& c : temp_children) {
       if (!c.faces.empty()) {
         to_split.child_nodes.emplace_back();
-        to_split.child_nodes.emplace_back();
-        split_node_once(c, &to_split.child_nodes[to_split.child_nodes.size() - 1],
-                        &to_split.child_nodes[to_split.child_nodes.size() - 2]);
+        auto& wrapper = to_split.child_nodes.back();
+        wrapper.child_nodes.clear();
+        wrapper.child_nodes.push_back(std::move(c));
+        compute_my_bsphere_ritters(wrapper);
       } else {
         to_split.child_nodes.push_back(std::move(c));
       }
