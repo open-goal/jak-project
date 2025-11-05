@@ -72,6 +72,7 @@ s32 IOP_Kernel::CreateThread(std::string name, void (*func)(), u32 priority) {
  * Start a thread. Marking it to run on each dispatch of the IOP kernel.
  */
 void IOP_Kernel::StartThread(s32 id) {
+  threads.at(id).waitType = IopThread::Wait::None;
   threads.at(id).state = IopThread::State::Ready;
 }
 
@@ -107,6 +108,7 @@ void IOP_Kernel::SleepThread() {
 
 void IOP_Kernel::YieldThread() {
   ASSERT(_currentThread);
+  _currentThread->waitType = IopThread::Wait::None;
   _currentThread->state = IopThread::State::Ready;
   leaveThread();
 }
@@ -116,6 +118,7 @@ void IOP_Kernel::YieldThread() {
  */
 void IOP_Kernel::WakeupThread(s32 id) {
   ASSERT(id > 0);
+  threads.at(id).waitType = IopThread::Wait::None;
   threads.at(id).state = IopThread::State::Ready;
 }
 
