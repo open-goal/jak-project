@@ -340,40 +340,41 @@
         ;; og:preserve-this modified for high fps
         (let ((f30-0 (* -0.025 (+ (-> self y-offset) (-> self y-travel))))
               (f28-0 (* -0.025 (- (-> self y-offset) (-> self y-travel)))))
-          (cond
-            ((and (-> self root riders)
-                  (nonzero? (-> self root riders num-riders))
-                  (time-elapsed? (-> self state-time) (seconds 0.01666666))) ;; changed for high fps
-             (set-state-time) ;; changed for high fps
-             ;; has rider, accelerate downwards
-             (send-event *target* 'no-look-around (seconds 0.25))
-             (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ -0.2048 (-> self y-accel)))))
-             (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
-             ;; tell linked platforms to go up
-             (send-to-all-after (-> self link) 'grow)
-             (send-to-all-before (-> self link) 'grow))
-            ((-> self got-grow)
-             ;; got 'grow' signal, accelerate upwards
-             (set-state-time) ;; changed for high fps
-             (set! (-> self got-grow) #f)
-             (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ 0.2048 (-> self y-accel)))))
-             (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel)))))))
-            ((and (< (-> self y-offset) 0.0) (time-elapsed? (-> self state-time) (seconds 0.01666666))) ;; changed for high fps
-             ;; accelerate towards neutral position (from below)
-             (set! (-> self y-accel)
-                   (fmin (fmin 4.096 (fmax -4.096 (+ 0.1024 (-> self y-accel)))) (* -0.0001 (-> self y-offset))))
-             (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
-             ;; slow down
-             (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel))))
-            ((time-elapsed? (-> self state-time) (seconds 0.01666666)) ;; changed for high fps
-             ;; accelerate towards neutral position (from above)
-             (set! (-> self y-accel)
-                   (fmin 4.096 (fmax (fmax -4.096 (+ -0.1024 (-> self y-accel))) (* -0.0001 (-> self y-offset)))))
-             (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
-             ;; slow down
-             (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel))))))
-        (+! (-> self y-offset) (* DISPLAY_FPS_RATIO (-> self y-vel)))
-        (set! (-> self root trans y) (+ (-> self y-init) (-> self y-offset)))
+          (when (or (= (-> *pc-settings* target-fps) 60)
+                    (time-elapsed? (-> self state-time) (seconds 0.01666666))
+                    (-> self got-grow))
+            (cond
+              ((and (-> self root riders) (nonzero? (-> self root riders num-riders)))
+               (set-state-time) ;; changed for high fps
+               ;; has rider, accelerate downwards
+               (send-event *target* 'no-look-around (seconds 0.25))
+               (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ -0.2048 (-> self y-accel)))))
+               (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+               ;; tell linked platforms to go up
+               (send-to-all-after (-> self link) 'grow)
+               (send-to-all-before (-> self link) 'grow))
+              ((-> self got-grow)
+               (set-state-time) ;; changed for high fps
+               ;; got 'grow' signal, accelerate upwards
+               (set! (-> self got-grow) #f)
+               (set! (-> self y-accel) (fmin 4.096 (fmax -4.096 (+ 0.2048 (-> self y-accel)))))
+               (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel)))))))
+              ((< (-> self y-offset) 0.0)
+               ;; accelerate towards neutral position (from below)
+               (set! (-> self y-accel)
+                     (fmin (fmin 4.096 (fmax -4.096 (+ 0.1024 (-> self y-accel)))) (* -0.0001 (-> self y-offset))))
+               (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+               ;; slow down
+               (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel))))
+              (else
+               ;; accelerate towards neutral position (from above)
+               (set! (-> self y-accel)
+                     (fmin 4.096 (fmax (fmax -4.096 (+ -0.1024 (-> self y-accel))) (* -0.0001 (-> self y-offset)))))
+               (set! (-> self y-vel) (fmin f28-0 (fmax f30-0 (+ (-> self y-vel) (* DISPLAY_FPS_RATIO (-> self y-accel))))))
+               ;; slow down
+               (set! (-> self y-vel) (* (- 1.0 (* DISPLAY_FPS_RATIO (- 1.0 0.99))) (-> self y-vel))))))
+          (+! (-> self y-offset) (* DISPLAY_FPS_RATIO (-> self y-vel)))
+          (set! (-> self root trans y) (+ (-> self y-init) (-> self y-offset))))
         (suspend)))
   :post rider-post)
 
