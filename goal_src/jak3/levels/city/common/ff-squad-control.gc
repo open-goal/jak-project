@@ -672,6 +672,23 @@
                     (-> a1-13 guard-info-normal min-target-count)
                     )
                   )
+            ;; og:preserve-this peaceful city cheat
+            (#when PC_PORT
+              (when (and (pc-cheats? (-> *pc-settings* cheats) city-peace) 
+                         (not (task-node-open? (game-task-node city-port-fight-resolution)))
+                         (not (task-node-open? (game-task-node city-port-assault-resolution)))
+                         (not (task-node-open? (game-task-node city-protect-hq-resolution)))
+                         )
+                (dotimes (guard-info-type 3) ;; normal/war/mission
+                  (when (= (-> a1-13 data guard-info-type object-type) (traffic-type guard-a))
+                    (set! (-> a1-13 data guard-info-type target-count) (-> a1-13 data guard-info-type min-target-count))
+                    ;; (set! (-> this alert-level) 0)
+                    (when (zero? (-> a1-13 data guard-info-type target-count))
+                        (send-event *traffic-manager* 'deactivate-by-type (-> a1-13 data guard-info-type object-type)))
+                    )
+                  )
+                )
+              )
             )
           )
         )
