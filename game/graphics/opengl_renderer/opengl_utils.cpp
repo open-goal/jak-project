@@ -159,7 +159,7 @@ FullScreenTexDraw::FullScreenTexDraw() {
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
 
-  std::array<int32_t, 4> vertices = {0, 1, 2, 4};
+  std::array<int32_t, 4> vertices = {0, 1, 2, 3};
 
   glBindBuffer(GL_ARRAY_BUFFER, m_vertex_buffer);
   glBufferData(GL_ARRAY_BUFFER, sizeof(int32_t) * 4, vertices.data(), GL_STATIC_DRAW);
