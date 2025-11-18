@@ -1614,6 +1614,26 @@ Val* Compiler::compile_psize_of(const goos::Object& form, const goos::Object& re
   return compile_integer((get_size_for_size_of(form, rest) + 0xf) & ~0xf, env);
 }
 
+Val* Compiler::compile_offset_of(const goos::Object& form, const goos::Object& rest, Env* env) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL}, {});
+  auto type_to_look_for = args.unnamed.at(0).as_symbol();
+  if (!m_ts.fully_defined_type_exists(type_to_look_for.name_ptr)) {
+    throw_compiler_error(form, "The type {} could not be found or was not fully defined.",
+                         args.unnamed.at(0).print());
+  }
+  auto type = m_ts.lookup_type(type_to_look_for.name_ptr);
+  auto field_name = args.unnamed.at(1).as_symbol().name_ptr;
+  auto as_struct = dynamic_cast<StructureType*>(type);
+  if (as_struct) {
+    auto info = m_ts.lookup_field_info(type->get_name(), field_name);
+    auto off = as_struct->is_boxed() ? info.field.offset() - 4 : info.field.offset();
+    return compile_integer(off, env);
+  } else {
+    throw_compiler_error(form, "The type {} is not a reference type.", args.unnamed.at(0).print());
+  }
+}
+
 Val* Compiler::compile_current_method_id(const goos::Object& form,
                                          const goos::Object& rest,
                                          Env* env) {
