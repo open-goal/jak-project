@@ -1927,12 +1927,18 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   // part-tracker-spawn macro for jak 3
   if (env.version >= GameVersion::Jak3 &&
       (proc_type == "part-tracker" || proc_type == "part-tracker-subsampler")) {
-    return rewrite_part_tracker_new_jak3(proc_type, in, env, pool);
+    auto form = rewrite_part_tracker_new_jak3(proc_type, in, env, pool);
+    if (form) {
+      return form;
+    }
   }
 
   // part-tracker-spawn macro for jak 2
   if (env.version == GameVersion::Jak2 && proc_type == "part-tracker") {
-    return rewrite_part_tracker_new_jak2(proc_type, in, env, pool);
+    auto form = rewrite_part_tracker_new_jak2(proc_type, in, env, pool);
+    if (form) {
+      return form;
+    }
   }
 
   auto macro_form =
