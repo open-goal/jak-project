@@ -519,42 +519,14 @@
   )
 
 (defbehavior target-hit-effect target ((arg0 attack-info))
-  (let ((s5-0 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when s5-0
-      (let ((t9-1 (method-of-type part-tracker activate)))
-        (t9-1 (the-as part-tracker s5-0) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-        )
-      (let ((t9-2 run-function-in-process)
-            (a0-3 s5-0)
-            (a1-2 part-tracker-init)
-            (a2-4 (-> *part-group-id-table* 9))
-            (a3-1 0)
-            (t0-0 #f)
-            (t1-0 #f)
-            (t2-0 #f)
-            (t3-0 *launch-matrix*)
+  (part-tracker-spawn
+    :to self
+    :group group-target-hit
+    :mat-joint (the-as vector (if (logtest? (-> arg0 mask) (attack-mask intersection))
+                       (-> arg0 intersection)
+                       (the-as vector (-> self control root-prim prim-core))
+                       )
             )
-        (set! (-> t3-0 trans quad) (-> (the-as vector (if (logtest? (-> arg0 mask) (attack-mask intersection))
-                                                          (-> arg0 intersection)
-                                                          (the-as vector (-> self control root-prim prim-core))
-                                                          )
-                                               )
-                                       quad
-                                       )
-              )
-        ((the-as (function object object object object object object object object none) t9-2)
-         a0-3
-         a1-2
-         a2-4
-         a3-1
-         t0-0
-         t1-0
-         t2-0
-         t3-0
-         )
-        )
-      (-> s5-0 ppointer)
-      )
     )
   (let ((v1-8 (-> arg0 mode)))
     (cond
@@ -938,7 +910,7 @@
       (logclear! (-> self focus-status) (focus-status dead hit))
       (logclear! (-> self state-flags) (state-flags disable-attacks))
       )
-    ((method-of-type focus clear-focused) (the-as focus (-> self gun track-target)))
+    ((method-of-type focus clear-focused) (-> self gun track-target 0))
     (target-exit)
     )
   :trans (behavior ()
@@ -1032,41 +1004,7 @@
           )
          (('lava 'melt)
           (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
-          (let ((gp-2 (get-process *default-dead-pool* part-tracker #x4000)))
-            (when gp-2
-              (let ((t9-15 (method-of-type part-tracker activate)))
-                (t9-15
-                  (the-as part-tracker gp-2)
-                  *entity-pool*
-                  (symbol->string (-> part-tracker symbol))
-                  (the-as pointer #x70004000)
-                  )
-                )
-              (let ((t9-16 run-function-in-process)
-                    (a0-53 gp-2)
-                    (a1-13 part-tracker-init)
-                    (a2-9 (-> *part-group-id-table* 57))
-                    (a3-3 0)
-                    (t0-0 #f)
-                    (t1-0 #f)
-                    (t2-0 #f)
-                    (t3-0 *launch-matrix*)
-                    )
-                (set! (-> t3-0 trans quad) (-> self control trans quad))
-                ((the-as (function object object object object object object object object none) t9-16)
-                 a0-53
-                 a1-13
-                 a2-9
-                 a3-3
-                 t0-0
-                 t1-0
-                 t2-0
-                 t3-0
-                 )
-                )
-              (-> gp-2 ppointer)
-              )
-            )
+          (part-tracker-spawn :to *entity-pool* :group group-lava-death :mat-joint (-> self control trans))
           (set! (-> sv-32 angle) 'lava)
           (set! (-> sv-32 shove-up) 20480.0)
           )
@@ -1102,13 +1040,13 @@
           (let* ((v1-123 (-> sv-32 mode))
                  (gp-3 (cond
                          ((= v1-123 'shock-red)
-                          (-> *part-group-id-table* 62)
+                          group-lightning-red-glow
                           )
                          ((= v1-123 'shock-green)
-                          (-> *part-group-id-table* 61)
+                          group-lightning-green-glow
                           )
                          (else
-                           (-> *part-group-id-table* 60)
+                           group-lightning-glow
                            )
                          )
                        )
@@ -1300,7 +1238,7 @@
   (compute-alignment! (-> self align))
   (let ((gp-0 (new 'stack-no-clear 'vector)))
     (when (not (logtest? (-> self align flags) (align-flags disabled)))
-      (vector-matrix*! gp-0 (the-as vector (-> self align delta)) (-> self control c-R-w))
+      (vector-matrix*! gp-0 (-> self align delta trans) (-> self control c-R-w))
       (vector-float*! (-> self control transv) gp-0 (-> self clock frames-per-second))
       )
     )
@@ -1577,53 +1515,15 @@
         cfg-132
         :delay (nop!)
         )
-      (let ((s5-0 (handle->process (-> self attack-info attacker))))
-        (when (if (type? s5-0 water-vol)
-                  s5-0
-                  )
-          (logior! (-> self state-flags) (state-flags sf14))
-          (set! (-> self alt-cam-pos y) (+ 4096.0 (-> self water height)))
-          )
+      (when (the-as process (as-type (handle->process (-> self attack-info attacker)) water-vol))
+        (logior! (-> self state-flags) (state-flags sf14))
+        (set! (-> self alt-cam-pos y) (+ 4096.0 (-> self water height)))
         )
       (set! (-> self control mod-surface) *neutral-mods*)
       (let ((v1-63 arg0))
         (b! (!= v1-63 'dark-eco-pool) cfg-79 :delay (empty-form))
         (sound-play "death-darkeco")
-        (let ((s5-2 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when s5-2
-            (let ((t9-14 (method-of-type part-tracker activate)))
-              (t9-14
-                (the-as part-tracker s5-2)
-                *entity-pool*
-                (symbol->string (-> part-tracker symbol))
-                (the-as pointer #x70004000)
-                )
-              )
-            (let ((t9-15 run-function-in-process)
-                  (a0-61 s5-2)
-                  (a1-27 part-tracker-init)
-                  (a2-10 (-> *part-group-id-table* 56))
-                  (a3-6 0)
-                  (t0-5 #f)
-                  (t1-5 #f)
-                  (t2-1 #f)
-                  (t3-0 *launch-matrix*)
-                  )
-              (set! (-> t3-0 trans quad) (-> self control trans quad))
-              ((the-as (function object object object object object object object object none) t9-15)
-               a0-61
-               a1-27
-               a2-10
-               a3-6
-               t0-5
-               t1-5
-               t2-1
-               t3-0
-               )
-              )
-            (-> s5-2 ppointer)
-            )
-          )
+        (part-tracker-spawn :to *entity-pool* :group group-dark-eco-death :mat-joint (-> self control trans))
         (let ((v1-75 (-> self control root-prim)))
           (set! (-> v1-75 prim-core collide-as) (collide-spec))
           (set! (-> v1-75 prim-core collide-with) (collide-spec))
@@ -1653,41 +1553,7 @@
             (sound-play "explosion")
             )
           )
-        (let ((s5-6 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when s5-6
-            (let ((t9-23 (method-of-type part-tracker activate)))
-              (t9-23
-                (the-as part-tracker s5-6)
-                *entity-pool*
-                (symbol->string (-> part-tracker symbol))
-                (the-as pointer #x70004000)
-                )
-              )
-            (let ((t9-24 run-function-in-process)
-                  (a0-80 s5-6)
-                  (a1-36 part-tracker-init)
-                  (a2-17 (-> *part-group-id-table* 58))
-                  (a3-10 0)
-                  (t0-8 #f)
-                  (t1-8 #f)
-                  (t2-4 #f)
-                  (t3-1 *launch-matrix*)
-                  )
-              (set! (-> t3-1 trans quad) (-> self control trans quad))
-              ((the-as (function object object object object object object object object none) t9-24)
-               a0-80
-               a1-36
-               a2-17
-               a3-10
-               t0-8
-               t1-8
-               t2-4
-               t3-1
-               )
-              )
-            (-> s5-6 ppointer)
-            )
-          )
+        (part-tracker-spawn :to *entity-pool* :group group-explode-death :mat-joint (-> self control trans))
         (set-vector! (-> self control transv) 0.0 65502.96 0.0 1.0)
         (ja-channel-push! 1 (seconds 0.1))
         (ja-no-eval :group! jakb-hit-from-front-ja :num! (seek!) :frame-num 0.0)
@@ -1751,41 +1617,7 @@
         (label cfg-122)
         (when (or (= v1-63 'lava) (= v1-63 'melt))
           (sound-play "death-melt")
-          (let ((s5-9 (get-process *default-dead-pool* part-tracker #x4000)))
-            (when s5-9
-              (let ((t9-37 (method-of-type part-tracker activate)))
-                (t9-37
-                  (the-as part-tracker s5-9)
-                  *entity-pool*
-                  (symbol->string (-> part-tracker symbol))
-                  (the-as pointer #x70004000)
-                  )
-                )
-              (let ((t9-38 run-function-in-process)
-                    (a0-107 s5-9)
-                    (a1-49 part-tracker-init)
-                    (a2-28 (-> *part-group-id-table* 57))
-                    (a3-13 0)
-                    (t0-10 #f)
-                    (t1-10 #f)
-                    (t2-6 #f)
-                    (t3-2 *launch-matrix*)
-                    )
-                (set! (-> t3-2 trans quad) (-> self control trans quad))
-                ((the-as (function object object object object object object object object none) t9-38)
-                 a0-107
-                 a1-49
-                 a2-28
-                 a3-13
-                 t0-10
-                 t1-10
-                 t2-6
-                 t3-2
-                 )
-                )
-              (-> s5-9 ppointer)
-              )
-            )
+          (part-tracker-spawn :to *entity-pool* :group group-lava-death :mat-joint (-> self control trans))
           (let ((v1-219 (-> self control root-prim)))
             (set! (-> v1-219 prim-core collide-as) (collide-spec))
             (set! (-> v1-219 prim-core collide-with) (collide-spec))
@@ -1902,41 +1734,7 @@
           )
          )
         ((or (= v1-50 'burn) (= v1-50 'burnup))
-         (let ((s5-12 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-12
-             (let ((t9-45 (method-of-type part-tracker activate)))
-               (t9-45
-                 (the-as part-tracker s5-12)
-                 *entity-pool*
-                 (symbol->string (-> part-tracker symbol))
-                 (the-as pointer #x70004000)
-                 )
-               )
-             (let ((t9-46 run-function-in-process)
-                   (a0-118 s5-12)
-                   (a1-53 part-tracker-init)
-                   (a2-33 (-> *part-group-id-table* 59))
-                   (a3-15 0)
-                   (t0-11 #f)
-                   (t1-11 #f)
-                   (t2-7 #f)
-                   (t3-3 *launch-matrix*)
-                   )
-               (set! (-> t3-3 trans quad) (-> self control trans quad))
-               ((the-as (function object object object object object object object object none) t9-46)
-                a0-118
-                a1-53
-                a2-33
-                a3-15
-                t0-11
-                t1-11
-                t2-7
-                t3-3
-                )
-               )
-             (-> s5-12 ppointer)
-             )
-           )
+         (part-tracker-spawn :to *entity-pool* :group group-burn-death :mat-joint (-> self control trans))
          (target-death-anim (the-as spool-anim #f))
          )
         ((or (= v1-50 'drown) (= v1-50 'drown-death))
