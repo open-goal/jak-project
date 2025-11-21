@@ -38,7 +38,7 @@ namespace decompiler {
 void ObjectFileDB::process_object_file_data(
     ObjectFileData& data,
     const fs::path& output_dir,
-    const Config& config,
+    Config& config,
     const std::unordered_set<std::string>& skip_functions,
     const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states) {
   Timer file_timer;
@@ -50,7 +50,8 @@ void ObjectFileDB::process_object_file_data(
   if (data.linked_data.functions_by_seg.size() == 3) {
     enum { DEFPART, DEFSTATE, DEFSKELGROUP } step = DEFPART;
     try {
-      run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front());
+      run_defpartgroup(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(),
+                       config.part_group_table);
       step = DEFSTATE;
       run_defstate(data.linked_data.functions_by_seg.at(TOP_LEVEL_SEGMENT).front(), skip_states);
       step = DEFSKELGROUP;
@@ -126,7 +127,7 @@ void ObjectFileDB::process_object_file_data(
  */
 void ObjectFileDB::analyze_functions_ir2(
     const fs::path& output_dir,
-    const Config& config,
+    Config& config,
     const std::optional<std::function<void(std::string)>> prefile_callback,
     const std::optional<std::function<void()>> postfile_callback,
     const std::unordered_set<std::string>& skip_functions,

@@ -166,6 +166,7 @@ class Env {
   }
   const std::string& joint_geo() const { return m_joint_geo; }
   std::optional<std::string> get_joint_node_name(int idx) const;
+  std::optional<std::string> get_part_group_name(int idx) const;
 
   void set_remap_for_function(const Function& func);
   void set_remap_for_method(const TypeSpec& ts);

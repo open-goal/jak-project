@@ -1237,18 +1237,17 @@
     (sound-stop (-> self ground-sound))
     (sound-stop (-> self evasive-sound))
     (sound-stop (-> self wake-sound))
-    (let ((v1-45
-            (cond
-              ((logtest? (-> *part-group-id-table* 529 flags) (sp-group-flag sp13))
-               (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-               (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 529))
-               )
-              (else
-                (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-                (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 529))
-                )
-              )
-            )
+    (let ((v1-45 (cond
+                   ((logtest? (-> group-torpedo-explosion flags) (sp-group-flag sp13))
+                    (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
+                    (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-torpedo-explosion)
+                    )
+                   (else
+                     (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
+                     (part-tracker-spawn part-tracker :to *entity-pool* :group group-torpedo-explosion)
+                     )
+                   )
+                 )
           )
       (send-event (ppointer->process v1-45) 'clock self)
       )
@@ -1649,7 +1648,7 @@
     (set! (-> this ground-sound) (new-sound-id))
     (set! (-> this evasive-sound) (new-sound-id))
     (set! (-> this wake-sound) (new-sound-id))
-    (set! (-> this heat-haze) (create-launch-control (-> *part-group-id-table* 526) this))
+    (set! (-> this heat-haze) (create-launch-control group-daxter-missile-heathaze this))
     (let* ((s5-1 (-> this heat-haze))
            (s4-1 (method-of-object s5-1 set-local-space-info))
            (s3-0 (add-connection *part-local-space-engine* this local-space-proc-joint 0 0 0))
@@ -1712,18 +1711,18 @@
   (when (and (-> this on-water?) (= (-> this jump-state) 0))
     )
   (when (-> this spawn-splash?)
-    (if (logtest? (-> *part-group-id-table* 528 flags) (sp-group-flag sp13))
+    (if (logtest? (-> group-nuke-water-splash flags) (sp-group-flag sp13))
         (part-tracker-spawn
           part-tracker-subsampler
           :to *entity-pool*
-          :group (-> *part-group-id-table* 528)
+          :group group-nuke-water-splash
           :target this
           :mat-joint (the-as object 0)
           )
         (part-tracker-spawn
           part-tracker
           :to *entity-pool*
-          :group (-> *part-group-id-table* 528)
+          :group group-nuke-water-splash
           :target this
           :mat-joint (the-as object 0)
           )
