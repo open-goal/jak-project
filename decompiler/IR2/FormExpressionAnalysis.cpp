@@ -4364,6 +4364,28 @@ ConstantTokenElement* DerefElement::try_as_art_const(const Env& env, FormPool& p
   return nullptr;
 }
 
+ConstantTokenElement* DerefElement::try_as_part_group_const(const Env& env, FormPool& pool) {
+  auto mr = match(Matcher::deref(Matcher::symbol("*part-group-id-table*"), false,
+                                 {DerefTokenMatcher::any_integer(0)}),
+                  this);
+
+  if (mr.matched) {
+    auto group_name = env.get_part_group_name(mr.maps.ints.at(0));
+    // already defined in all games
+    if (group_name == "group-rain-screend-drop-real") {
+      return nullptr;
+    }
+    if (group_name) {
+      return pool.alloc_element<ConstantTokenElement>(*group_name);
+    } else {
+      lg::error("function `{}`: did not find part group name for id {}", env.func->name(),
+                mr.maps.ints.at(0));
+    }
+  }
+
+  return nullptr;
+}
+
 GenericElement* DerefElement::try_as_joint_node_index(const Env& env, FormPool& pool) {
   auto mr =
       match(Matcher::deref(Matcher::s6(), false,
@@ -4458,6 +4480,12 @@ void DerefElement::update_from_stack(const Env& env,
   auto as_art = try_as_art_const(env, pool);
   if (as_art) {
     result->push_back(as_art);
+    return;
+  }
+
+  auto as_part_group = try_as_part_group_const(env, pool);
+  if (as_part_group) {
+    result->push_back(as_part_group);
     return;
   }
 

@@ -354,13 +354,9 @@
      (go-virtual defend-stadium-die)
      )
     (('touch)
-     (let* ((gp-1 (-> arg3 param 0))
-            (s3-7 arg0)
-            (s4-1 (if (type? s3-7 process-focusable)
-                      s3-7
-                      )
-                  )
-            )
+     (let ((gp-1 (-> arg3 param 0))
+           (s4-1 (the-as process (as-type arg0 process-focusable)))
+           )
        (if (and gp-1
                 s4-1
                 ((method-of-type touching-shapes-entry prims-touching-action?)
@@ -884,36 +880,7 @@
 (defstate defend-stadium-explode (rift-rider)
   :virtual #t
   :code (behavior ()
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1 (the-as part-tracker gp-0) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-          )
-        (let ((t9-2 run-function-in-process)
-              (a0-2 gp-0)
-              (a1-2 part-tracker-init)
-              (a2-4 (-> *part-group-id-table* 125))
-              (a3-1 0)
-              (t0-0 #f)
-              (t1-0 #f)
-              (t2-0 #f)
-              (t3-0 *launch-matrix*)
-              )
-          (set! (-> t3-0 trans quad) (-> self root trans quad))
-          ((the-as (function object object object object object object object object none) t9-2)
-           a0-2
-           a1-2
-           a2-4
-           a3-1
-           t0-0
-           t1-0
-           t2-0
-           t3-0
-           )
-          )
-        (-> gp-0 ppointer)
-        )
-      )
+    (part-tracker-spawn :to self :group group-crate-steel-explode :mat-joint (-> self root trans))
     (suspend)
     (cleanup-for-death self)
     )
@@ -931,7 +898,7 @@
 (defmethod rigid-body-object-method-34 ((this rift-rider))
   (cond
     ((nonzero? (-> this path))
-     (set! (-> this part) (create-launch-control (-> *part-group-id-table* 902) this))
+     (set! (-> this part) (create-launch-control group-defend-rift-rider-energy this))
      (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
      (go defend-stadium-wait)
      )
@@ -1396,11 +1363,7 @@
        (let ((s5-1 (the-as object (-> arg3 param 1))))
          (when (!= (-> (the-as attack-info s5-1) id) (-> self incoming-attack-id))
            (set! (-> self incoming-attack-id) (-> (the-as attack-info s5-1) id))
-           (let ((a0-14 (if (type? arg0 process-focusable)
-                            arg0
-                            )
-                        )
-                 )
+           (let ((a0-14 (the-as process (as-type arg0 process-focusable))))
              (cond
                (a0-14
                  (vector-! (-> self hit-dir) (-> self root trans) (-> (the-as process-drawable a0-14) root trans))
@@ -2020,7 +1983,7 @@
   (set! (-> this hit-points) (-> this max-hit-points))
   (set! (-> this incoming-attack-id) (the-as uint -1))
   (set! (-> this focus-disable-timer) 0)
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 903) this))
+  (set! (-> this part) (create-launch-control group-defend-stadium-samos-energy this))
   (go (method-of-object this idle))
   (none)
   )
@@ -2353,7 +2316,7 @@
               (when sv-272
                 (quaternion-look-at! (-> (the-as process-drawable (-> s4-0 0)) root quat) (-> sv-272 normal) *up-vector*)
                 (set! (-> this plane quad) (-> sv-272 normal quad))
-                (set! (-> this plane w) (- (vector-dot (-> sv-272 normal) (the-as vector (-> sv-272 vertex)))))
+                (set! (-> this plane w) (- (vector-dot (-> sv-272 normal) (-> sv-272 vertex 0))))
                 (let ((f30-0 (the-as float #x7f800000))
                       (f28-0 (the-as float #xff800000))
                       (s0-1 (new 'stack-no-clear 'vector))
@@ -2382,7 +2345,7 @@
                   (vector+! sv-336 s1-1 sv-336)
                   (vector-inv-orient-by-quat!
                     s0-1
-                    (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> sv-272 vertex)) s1-1)
+                    (vector-! (new 'stack-no-clear 'vector) (-> sv-272 vertex 0) s1-1)
                     (-> (the-as process-drawable (-> s4-0 0)) root quat)
                     )
                   (if (< (-> s0-1 x) f30-0)
@@ -3077,9 +3040,9 @@
     (the int (+ 130.0 (* -100.0 (-> this offset))))
     )
   (set! (-> this sprites 0 angle) (* 182.04445 (the float (- 270 (/ (* 90 (-> this values 0 current)) 100)))))
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 2)) 40 16)
-  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites 2)) 1 16)
-  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 2)) 5 2)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 2 pos) 40 16)
+  (set-as-offset-from! (-> this sprites 1) (-> this sprites 2 pos) 1 16)
+  (set-as-offset-from! (-> this sprites 3) (-> this sprites 2 pos) 5 2)
   ((method-of-type hud draw) this)
   0
   (none)
