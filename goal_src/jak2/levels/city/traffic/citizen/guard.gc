@@ -499,12 +499,7 @@
     (('hit 'hit-flinch 'hit-knocked)
      (speech-control-method-13 *speech-control* (the-as handle this))
      (logior! (-> this flags) (citizen-flag hostile))
-     (let* ((s0-0 (handle->process (-> this incoming attacker-handle)))
-            (s1-0 (if (type? s0-0 process-focusable)
-                      s0-0
-                      )
-                  )
-            )
+     (let ((s1-0 (the-as process (as-type (handle->process (-> this incoming attacker-handle)) process-focusable))))
        (when s1-0
          (speech-control-method-12 *speech-control* this (speech-type speech-type-11))
          (trigger-alert this 1 (the-as target s1-0))
@@ -539,15 +534,10 @@
        (case (-> v1-38 danger-type)
          (((traffic-danger-type tdt7))
           (set! (-> this cp-factor) 20.0)
-          (let ((s5-1 (method-of-object this trigger-alert))
-                (s4-1 1)
-                (s3-1 (handle->process (-> v1-38 handle)))
-                )
-            (s5-1 this s4-1 (the-as target (if (type? s3-1 process-focusable)
-                                               s3-1
-                                               )
-                                    )
-                  )
+          (trigger-alert
+            this
+            1
+            (the-as target (the-as process (as-type (handle->process (-> v1-38 handle)) process-focusable)))
             )
           )
          )
@@ -1099,18 +1089,10 @@
   (case (-> arg0 behavior)
     ((5)
      (logior! (-> this flags) (citizen-flag persistent hostile))
-     (let ((s4-0 (-> this focus))
-           (s3-0 (method-of-type enemy-focus enemy-focus-method-13))
-           (s5-1 (handle->process (-> arg0 handle)))
-           )
-       (s3-0
-         s4-0
-         (the-as process-focusable (if (type? s5-1 process-focusable)
-                                       s5-1
-                                       )
-                 )
-         (enemy-aware enemy-aware-3)
-         )
+     (enemy-focus-method-13
+       (-> this focus)
+       (the-as process-focusable (the-as process (as-type (handle->process (-> arg0 handle)) process-focusable)))
+       (enemy-aware enemy-aware-3)
        )
      (go (method-of-object this arrest))
      )
@@ -1436,22 +1418,18 @@
         ((< (fill-and-probe-using-line-sphere *collide-cache* s5-0) 0.0)
          0
          )
+        ((and (the-as basic (as-type (-> s5-0 best-other-tri collide-ptr) collide-shape-prim))
+              (< (vector-dot
+                   (-> s5-0 best-other-tri normal)
+                   (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
+                   )
+                 0.0
+                 )
+              )
+         2
+         )
         (else
-          (let ((s4-1 (-> s5-0 best-other-tri collide-ptr)))
-            (if (and (if (type? s4-1 collide-shape-prim)
-                         s4-1
-                         )
-                     (< (vector-dot
-                          (-> s5-0 best-other-tri normal)
-                          (vector-! (new 'stack-no-clear 'vector) arg2 (the-as vector (-> s5-0 best-other-tri)))
-                          )
-                        0.0
-                        )
-                     )
-                2
-                0
-                )
-            )
+          0
           )
         )
       )
@@ -1482,12 +1460,8 @@
       (else
         (when (logtest? (enemy-flag multi-focus) (-> this enemy-flags))
           (logclear! (-> this enemy-flags) (enemy-flag multi-focus))
-          (let* ((s5-0 (handle->process (-> this traffic-target-status handle)))
-                 (v1-21 (if (type? s5-0 process-focusable)
-                            s5-0
-                            )
-                        )
-                 )
+          (let ((v1-21 (the-as process (as-type (handle->process (-> this traffic-target-status handle)) process-focusable)))
+                )
             (if (and v1-21 (!= (-> v1-21 type) target))
                 (set! (-> this traffic-target-status handle) (the-as handle #f))
                 )
@@ -1506,18 +1480,13 @@
                     )
                   )
             )
-        (let* ((s4-0 this)
-               (s3-0 (method-of-object s4-0 enemy-method-63))
-               (s2-0 (handle->process (-> this traffic-target-status handle)))
-               )
-          (s3-0
-            s4-0
-            (the-as process-focusable (if (type? s2-0 process-focusable)
-                                          s2-0
-                                          )
-                    )
-            (the-as enemy-aware #f)
+        (enemy-method-63
+          this
+          (the-as
+            process-focusable
+            (the-as process (as-type (handle->process (-> this traffic-target-status handle)) process-focusable))
             )
+          (the-as enemy-aware #f)
           )
         (let ((s4-1 (handle->process (-> this focus handle))))
           (cond
@@ -1818,11 +1787,7 @@
         )
       )
     (let* ((s5-0 (-> self traffic-target-status))
-           (s4-0 (handle->process (-> s5-0 handle)))
-           (gp-0 (if (type? s4-0 process-focusable)
-                     (the-as process-focusable s4-0)
-                     )
-                 )
+           (gp-0 (as-type (handle->process (-> s5-0 handle)) process-focusable))
            )
       (if (or (focus-test? gp-0 inactive) (focus-test? gp-0 disable))
           (set! gp-0 (the-as process-focusable #f))
@@ -2806,77 +2771,15 @@
                (vector-orient-by-quat! s2-1 s2-1 a2-4)
                )
              )
-           (let ((s1-2 (get-process *default-dead-pool* part-tracker #x4000)))
-             (when s1-2
-               (let ((t9-14 (method-of-type part-tracker activate)))
-                 (t9-14 (the-as part-tracker s1-2) this (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                 )
-               (let ((t9-15 run-function-in-process)
-                     (a0-33 s1-2)
-                     (a1-24 part-tracker-init)
-                     (a2-9 (-> *part-group-id-table* 140))
-                     (a3-1 0)
-                     (t0-0 #f)
-                     (t1-0 #f)
-                     (t2-0 #f)
-                     (t3-0 *launch-matrix*)
-                     )
-                 (set! (-> t3-0 trans quad) (-> s4-0 quad))
-                 ((the-as (function object object object object object object object object none) t9-15)
-                  a0-33
-                  a1-24
-                  a2-9
-                  a3-1
-                  t0-0
-                  t1-0
-                  t2-0
-                  t3-0
-                  )
-                 )
-               (-> s1-2 ppointer)
-               )
-             )
-           (let ((s1-3 (get-process *default-dead-pool* part-tracker #x4000)))
-             (when s1-3
-               (let ((t9-17 (method-of-type part-tracker activate)))
-                 (t9-17 (the-as part-tracker s1-3) this (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                 )
-               (let ((t9-18 run-function-in-process)
-                     (a0-36 s1-3)
-                     (a1-27 part-tracker-init)
-                     (a2-14 (-> *part-group-id-table* 140))
-                     (a3-3 0)
-                     (t0-1 #f)
-                     (t1-1 #f)
-                     (t2-1 #f)
-                     (t3-1 *launch-matrix*)
-                     )
-                 (set! (-> t3-1 trans quad) (-> s5-0 quad))
-                 ((the-as (function object object object object object object object object none) t9-18)
-                  a0-36
-                  a1-27
-                  a2-14
-                  a3-3
-                  t0-1
-                  t1-1
-                  t2-1
-                  t3-1
-                  )
-                 )
-               (-> s1-3 ppointer)
-               )
-             )
+           (part-tracker-spawn :to this :group part-crimson-lightning-glow :mat-joint s4-0)
+           (part-tracker-spawn :to this :group part-crimson-lightning-glow :mat-joint s5-0)
            (set-point! (-> this l-control) 0 s4-0)
            (set-point! (-> this l-control) 1 s5-0)
            (set! (-> this l-control spec) (-> *lightning-spec-id-table* 13))
            (+! (-> this l-control state points-to-draw) 2)
-           (let* ((s1-4 (-> s3-0 best-other-tri collide-ptr))
-                  (v1-43 (if (type? s1-4 collide-shape-prim)
-                             s1-4
-                             )
-                         )
-                  (s1-5 #t)
-                  )
+           (let ((v1-43 (the-as basic (as-type (-> s3-0 best-other-tri collide-ptr) collide-shape-prim)))
+                 (s1-5 #t)
+                 )
              (when v1-43
                (set! s1-5 #f)
                (let ((s0-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
@@ -2898,66 +2801,8 @@
            (spread-lightning-lazer (-> this l-control) s5-0 s2-1 (-> s3-0 best-other-tri normal))
            )
           (else
-            (let ((s3-1 (get-process *default-dead-pool* part-tracker #x4000)))
-              (when s3-1
-                (let ((t9-26 (method-of-type part-tracker activate)))
-                  (t9-26 (the-as part-tracker s3-1) this (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                  )
-                (let ((t9-27 run-function-in-process)
-                      (a0-59 s3-1)
-                      (a1-36 part-tracker-init)
-                      (a2-23 (-> *part-group-id-table* 140))
-                      (a3-7 0)
-                      (t0-3 #f)
-                      (t1-2 #f)
-                      (t2-2 #f)
-                      (t3-2 *launch-matrix*)
-                      )
-                  (set! (-> t3-2 trans quad) (-> s4-0 quad))
-                  ((the-as (function object object object object object object object object none) t9-27)
-                   a0-59
-                   a1-36
-                   a2-23
-                   a3-7
-                   t0-3
-                   t1-2
-                   t2-2
-                   t3-2
-                   )
-                  )
-                (-> s3-1 ppointer)
-                )
-              )
-            (let ((s3-2 (get-process *default-dead-pool* part-tracker #x4000)))
-              (when s3-2
-                (let ((t9-29 (method-of-type part-tracker activate)))
-                  (t9-29 (the-as part-tracker s3-2) this (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                  )
-                (let ((t9-30 run-function-in-process)
-                      (a0-62 s3-2)
-                      (a1-39 part-tracker-init)
-                      (a2-28 (-> *part-group-id-table* 140))
-                      (a3-9 0)
-                      (t0-4 #f)
-                      (t1-3 #f)
-                      (t2-3 #f)
-                      (t3-3 *launch-matrix*)
-                      )
-                  (set! (-> t3-3 trans quad) (-> s5-0 quad))
-                  ((the-as (function object object object object object object object object none) t9-30)
-                   a0-62
-                   a1-39
-                   a2-28
-                   a3-9
-                   t0-4
-                   t1-3
-                   t2-3
-                   t3-3
-                   )
-                  )
-                (-> s3-2 ppointer)
-                )
-              )
+            (part-tracker-spawn :to this :group part-crimson-lightning-glow :mat-joint s4-0)
+            (part-tracker-spawn :to this :group part-crimson-lightning-glow :mat-joint s5-0)
             (set! (-> this l-control state points-to-draw) 9)
             (set! (-> this l-control spec) (-> *lightning-spec-id-table* 14))
             (let ((v1-77 s4-0))
@@ -3228,12 +3073,7 @@
   )
 
 (defmethod crimson-guard-method-223 ((this crimson-guard) (arg0 float))
-  (let* ((s3-0 (handle->process (-> this transport)))
-         (s4-0 (if (type? s3-0 process-focusable)
-                   (the-as process-focusable s3-0)
-                   )
-               )
-         )
+  (let ((s4-0 (as-type (handle->process (-> this transport)) process-focusable)))
     (when s4-0
       (let ((s2-0 (matrix<-transformq! (new 'stack-no-clear 'matrix) (the-as transformq (-> s4-0 root trans))))
             (s3-1 (new 'stack-no-clear 'vector))

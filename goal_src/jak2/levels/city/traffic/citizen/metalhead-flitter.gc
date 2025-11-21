@@ -308,78 +308,10 @@
   :code (behavior ()
     (case (-> self level name)
       (('ruins)
-       (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-0
-           (let ((t9-1 (method-of-type part-tracker activate)))
-             (t9-1
-               (the-as part-tracker gp-0)
-               *entity-pool*
-               (symbol->string (-> part-tracker symbol))
-               (the-as pointer #x70004000)
-               )
-             )
-           (let ((t9-2 run-function-in-process)
-                 (a0-4 gp-0)
-                 (a1-2 part-tracker-init)
-                 (a2-4 (-> *part-group-id-table* 163))
-                 (a3-1 0)
-                 (t0-0 #f)
-                 (t1-0 #f)
-                 (t2-0 #f)
-                 (t3-0 *launch-matrix*)
-                 )
-             (set! (-> t3-0 trans quad) (-> self root trans quad))
-             ((the-as (function object object object object object object object object none) t9-2)
-              a0-4
-              a1-2
-              a2-4
-              a3-1
-              t0-0
-              t1-0
-              t2-0
-              t3-0
-              )
-             )
-           (-> gp-0 ppointer)
-           )
-         )
+       (part-tracker-spawn :to *entity-pool* :group (-> *part-group-id-table* 163) :mat-joint (-> self root trans))
        )
       (('strip)
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-         (when gp-1
-           (let ((t9-4 (method-of-type part-tracker activate)))
-             (t9-4
-               (the-as part-tracker gp-1)
-               *entity-pool*
-               (symbol->string (-> part-tracker symbol))
-               (the-as pointer #x70004000)
-               )
-             )
-           (let ((t9-5 run-function-in-process)
-                 (a0-8 gp-1)
-                 (a1-5 part-tracker-init)
-                 (a2-9 (-> *part-group-id-table* 164))
-                 (a3-3 0)
-                 (t0-1 #f)
-                 (t1-1 #f)
-                 (t2-1 #f)
-                 (t3-1 *launch-matrix*)
-                 )
-             (set! (-> t3-1 trans quad) (-> self root trans quad))
-             ((the-as (function object object object object object object object object none) t9-5)
-              a0-8
-              a1-5
-              a2-9
-              a3-3
-              t0-1
-              t1-1
-              t2-1
-              t3-1
-              )
-             )
-           (-> gp-1 ppointer)
-           )
-         )
+       (part-tracker-spawn :to *entity-pool* :group (-> *part-group-id-table* 164) :mat-joint (-> self root trans))
        )
       )
     (suspend-for (seconds 0.6)
@@ -421,41 +353,7 @@
     (ja-no-eval :group! flitter-ambush-jump-ja :num! (seek!))
     (until #f
       (when (< (-> self base-height) (-> self root trans y))
-        (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when gp-0
-            (let ((t9-3 (method-of-type part-tracker activate)))
-              (t9-3
-                (the-as part-tracker gp-0)
-                *entity-pool*
-                (symbol->string (-> part-tracker symbol))
-                (the-as pointer #x70004000)
-                )
-              )
-            (let ((t9-4 run-function-in-process)
-                  (a0-4 gp-0)
-                  (a1-4 part-tracker-init)
-                  (a2-5 (-> *part-group-id-table* 144))
-                  (a3-1 0)
-                  (t0-0 #f)
-                  (t1-0 #f)
-                  (t2-0 #f)
-                  (t3-0 *launch-matrix*)
-                  )
-              (set! (-> t3-0 trans quad) (-> self root trans quad))
-              ((the-as (function object object object object object object object object none) t9-4)
-               a0-4
-               a1-4
-               a2-5
-               a3-1
-               t0-0
-               t1-0
-               t2-0
-               t3-0
-               )
-              )
-            (-> gp-0 ppointer)
-            )
-          )
+        (part-tracker-spawn :to *entity-pool* :group group-flitter-dust-puff :mat-joint (-> self root trans))
         (goto cfg-10)
         )
       (suspend)
@@ -512,12 +410,7 @@
   )
 
 (defmethod metalhead-flitter-method-205 ((this metalhead-flitter))
-  (let* ((s5-0 (handle->process (-> this focus handle)))
-         (s3-0 (if (type? s5-0 process-focusable)
-                   s5-0
-                   )
-               )
-         )
+  (let ((s3-0 (the-as process (as-type (handle->process (-> this focus handle)) process-focusable))))
     (when s3-0
       (let* ((s5-1 (get-trans (the-as process-focusable s3-0) 0))
              (s4-1 (vector-! (new 'stack-no-clear 'vector) s5-1 (-> this root trans)))
@@ -593,12 +486,8 @@
   (local-vars (v1-29 symbol))
   (stop-looking-at-target! self)
   (set! (-> self skel root-channel 0 frame-group) (the-as art-joint-anim arg0))
-  (let ((s4-1 (enemy-method-50 self (new 'stack-no-clear 'vector)))
-        (s3-0 (-> self root))
-        )
-    (when (if (type? s3-0 collide-shape-moving)
-              s3-0
-              )
+  (let ((s4-1 (enemy-method-50 self (new 'stack-no-clear 'vector))))
+    (when (as-type (-> self root) collide-shape-moving)
       (set! (-> self root transv y) 33775.48)
       (ja :num-func num-func-identity :frame-num 0.0)
       (set-time! (-> self state-time))
@@ -777,12 +666,7 @@
     )
   :trans (behavior ()
     (local-vars (s5-2 vector))
-    (let* ((s5-0 (handle->process (-> self focus handle)))
-           (gp-0 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((gp-0 (the-as process (as-type (handle->process (-> self focus handle)) process-focusable))))
       (set! s5-2
             (cond
               ((and gp-0
@@ -932,18 +816,15 @@
           (cond
             ((= v1-11 (enemy-aware enemy-aware-3))
              (cond
-               ((when gp-0
-                  (let* ((gp-1 self)
-                         (s5-1 (method-of-object gp-1 metalhead-flitter-method-207))
-                         (s4-0 (handle->process (-> self focus handle)))
-                         )
-                    (s5-1 gp-1 (the-as process-focusable (if (type? s4-0 process-focusable)
-                                                             s4-0
-                                                             )
-                                       )
-                          )
+               ((if gp-0
+                    (metalhead-flitter-method-207
+                      self
+                      (the-as
+                        process-focusable
+                        (the-as process (as-type (handle->process (-> self focus handle)) process-focusable))
+                        )
+                      )
                     )
-                  )
                 (if (and (get-enemy-target self) (time-elapsed? (the-as int (-> self off-screen-timer)) (seconds 0.3)))
                     (go-hostile self)
                     )

@@ -438,7 +438,7 @@
                                    (the-as process-drawable #f)
                                    0.0
                                    81920.0))
-    (if (-> this launched?) (spawn (-> this part2) (the-as vector (-> this root root-prim prim-core))))
+    (if (-> this launched?) (spawn (-> this part2) (-> this root root-prim prim-core world-sphere)))
     (let ((s5-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
       (set! (-> s5-0 command) (sound-command set-param))
       (set! (-> s5-0 id) (-> this sound-id))
@@ -495,8 +495,8 @@
 
 (defmethod projectile-method-27 ((this ram-boss-proj))
   (set! (-> this charge-sound-id) (new 'static 'sound-id))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 521) this))
-  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 522) this))
+  (set! (-> this part) (create-launch-control group-ram-boss-proj-grow this))
+  (set! (-> this part2) (create-launch-control group-ram-boss-proj-fly this))
   (set! (-> this launched?) #f)
   (set! (-> this growth) 0.0)
   (set! (-> this max-speed) 40960.0)
@@ -594,7 +594,7 @@
       (process-spawn part-tracker
                      :init
                      part-tracker-init
-                     (-> *part-group-id-table* 523)
+                     group-ram-boss-proj-hit
                      -1
                      #f
                      #f
@@ -614,7 +614,7 @@
       (process-spawn part-tracker
                      :init
                      part-tracker-init
-                     (-> *part-group-id-table* 524)
+                     group-ram-boss-proj-die
                      -1
                      #f
                      #f
@@ -887,8 +887,8 @@
   (set! (-> this draw origin-joint-index) (the-as uint 3))
   (init-defaults! this *ram-boss-nav-enemy-info*)
   (logclear! (-> this enemy-info options) (fact-options has-power-cell))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 525) this))
-  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 574) this))
+  (set! (-> this part) (create-launch-control group-ram-boss-shield-on-fire this))
+  (set! (-> this part2) (create-launch-control group-ram-boss-foot-puff this))
   (set! (-> this shield-jmod) (new 'process 'joint-mod-set-local this 32 #f #f #t))
   (set! (-> this shield-jmod enable) #f)
   (set! (-> this has-shield?) #t)
@@ -1018,7 +1018,7 @@
         (when *target*
           (if *target*
             (look-at-enemy! (-> *target* neck)
-                            (the-as vector (-> (the-as collide-shape-prim-group (-> self collide-info root-prim)) prims 0 prim-core))
+                            (-> (the-as collide-shape-prim-group (-> self collide-info root-prim)) prims 0 prim-core world-sphere)
                             'attacking
                             self)))
         (suspend))))
