@@ -1058,19 +1058,19 @@
                 )
               0
               (cond
-                ((logtest? (-> *part-group-id-table* 224 flags) (sp-group-flag sp13))
+                ((logtest? (-> group-vehicle-explosion flags) (sp-group-flag sp13))
                  (vector-copy!
                    (-> *launch-matrix* trans)
                    (vector+*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 8192.0)
                    )
-                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 224))
+                 (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-vehicle-explosion)
                  )
                 (else
                   (vector-copy!
                     (-> *launch-matrix* trans)
                     (vector+*! (new 'stack-no-clear 'vector) (-> self root trans) *up-vector* 8192.0)
                     )
-                  (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 224))
+                  (part-tracker-spawn part-tracker :to *entity-pool* :group group-vehicle-explosion)
                   )
                 )
               (go-virtual broken)
@@ -1277,7 +1277,7 @@
 
 (defmethod propa-method-31 ((this propa))
   (logior! (-> this mask) (process-mask crate))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 259) this))
+  (set! (-> this part) (create-launch-control group-ctywide-baron-propoganda-holo this))
   0
   (none)
   )
@@ -1824,9 +1824,9 @@
   )
 
 (defmethod burning-bush-method-33 ((this burning-bush))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 260) this))
-  (set! (-> this part-off) (create-launch-control (-> *part-group-id-table* 261) this))
-  (set! (-> this part-alert) (create-launch-control (-> *part-group-id-table* 262) this))
+  (set! (-> this part) (create-launch-control group-ctywide-burning-bush-holo-on this))
+  (set! (-> this part-off) (create-launch-control group-ctywide-burning-bush-holo-off this))
+  (set! (-> this part-alert) (create-launch-control group-ctywide-burning-bush-holo-red this))
   0
   (none)
   )
@@ -2600,6 +2600,24 @@
     (set-time! (-> self state-time))
     )
   :trans (behavior ()
+    ;; og:preserve-this peaceful city cheat
+    (#when PC_PORT
+      (when (and (pc-cheats? (-> *pc-settings* cheats) city-peace)
+                 (not (task-node-open? (game-task-node city-port-fight-resolution)))
+                 (not (task-node-open? (game-task-node city-port-assault-resolution)))
+                 (not (task-node-open? (game-task-node city-protect-hq-resolution)))
+                 )
+        (dotimes (s5-0 (-> self spawner records length))
+          (let ((v1-11 (as-type (handle->process (-> self spawner records data s5-0 proc)) process-focusable)))
+            (when v1-11
+              (if (not (focus-test? (the-as process-focusable v1-11) disable dead inactive))
+                (send-event v1-11 'traffic-off-force)
+                )
+              )
+            )
+          )
+        )
+      )
     (when (time-elapsed? (-> self state-time) (seconds 1))
       (set-time! (-> self state-time))
       (let ((gp-0 0))
@@ -3155,7 +3173,7 @@
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (logclear! (-> this mask) (process-mask actor-pause))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 297) this))
+  (set! (-> this part) (create-launch-control group-mh-tower-smoke-cty this))
   (cond
     ((not (task-node-closed? (game-task-node tower-destroy-resolution)))
      (cleanup-for-death this)

@@ -655,6 +655,16 @@ std::optional<std::string> Env::get_art_elt_name(int idx) const {
   }
 }
 
+std::optional<std::string> Env::get_part_group_name(int id) const {
+  ASSERT(dts);
+  auto it = dts->part_group_table.find(id);
+  if (it == dts->part_group_table.end()) {
+    return {};
+  } else {
+    return it->second;
+  }
+}
+
 std::optional<std::string> Env::get_joint_node_name(int idx) const {
   ASSERT(dts);
   auto it = dts->jg_info.find(joint_geo());

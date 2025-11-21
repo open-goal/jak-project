@@ -57,6 +57,7 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
   dc.db->dts.art_group_info = dc.config->art_group_info_dump;
   dc.db->dts.jg_info = dc.config->jg_info_dump;
   dc.db->dts.textures = dc.config->texture_info_dump;
+  dc.db->dts.part_group_table = dc.config->part_group_table;
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
