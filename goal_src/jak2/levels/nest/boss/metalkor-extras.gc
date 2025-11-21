@@ -300,41 +300,7 @@
          )
     (set! (-> gp-0 quad) (-> s4-0 trans quad))
     (vector+! gp-0 gp-0 v0-0)
-    (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s4-1
-        (let ((t9-2 (method-of-type part-tracker activate)))
-          (t9-2
-            (the-as part-tracker s4-1)
-            *entity-pool*
-            (symbol->string (-> part-tracker symbol))
-            (the-as pointer #x70004000)
-            )
-          )
-        (let ((t9-3 run-function-in-process)
-              (a0-7 s4-1)
-              (a1-5 part-tracker-init)
-              (a2-4 (-> *part-group-id-table* 141))
-              (a3-1 0)
-              (t0-0 #f)
-              (t1-0 #f)
-              (t2-0 #f)
-              (t3-0 *launch-matrix*)
-              )
-          (set! (-> t3-0 trans quad) (-> gp-0 quad))
-          ((the-as (function object object object object object object object object none) t9-3)
-           a0-7
-           a1-5
-           a2-4
-           a3-1
-           t0-0
-           t1-0
-           t2-0
-           t3-0
-           )
-          )
-        (-> s4-1 ppointer)
-        )
-      )
+    (part-tracker-spawn :to *entity-pool* :group group-metalhead-shot-hit :mat-joint gp-0)
     )
   (let ((s4-2 (new 'stack-no-clear 'vector)))
     (set! (-> s4-2 quad) (-> this root trans quad))
@@ -388,7 +354,7 @@
               )
             )
           (vector-normalize! (-> s2-0 vector 2) 1.0)
-          (vector-cross! (the-as vector (-> s2-0 vector)) (-> s2-0 vector 1) (-> s2-0 vector 2))
+          (vector-cross! (-> s2-0 vector 0) (-> s2-0 vector 1) (-> s2-0 vector 2))
           (matrix->quaternion gp-1 s2-0)
           )
         (sound-play "nboss-shoot-hit")
@@ -563,7 +529,7 @@
         (set! (-> a1-1 y) 32768.0)
         (set! (-> a1-1 z) 32768.0)
         (set! (-> a1-1 w) 1.0)
-        (vector-! (the-as vector v1-1) a0-2 a1-1)
+        (vector-! (-> v1-1 min) a0-2 a1-1)
         )
       (let ((v1-3 (-> gp-0 bbox max))
             (a0-4 (-> self root trans))
@@ -645,7 +611,7 @@
                   )
                 )
               )
-            ((method-of-type cam-float-seeker update!) (the-as cam-float-seeker (-> self foot-locks s4-0)) 0.0)
+            ((method-of-type cam-float-seeker update!) (-> self foot-locks s4-0 lock) 0.0)
             (cond
               ((-> self foot-locks s4-0 initialized)
                (let ((s2-1 vector-lerp!)
@@ -682,7 +648,7 @@
     (set-time! (-> self state-time))
     (dotimes (gp-0 6)
       (enable-set! (-> self joint-ik gp-0) #t)
-      ((method-of-type cam-float-seeker init) (the-as cam-float-seeker (-> self foot-locks gp-0)) 0.0 0.1 0.3 0.9)
+      ((method-of-type cam-float-seeker init) (-> self foot-locks gp-0 lock) 0.0 0.1 0.3 0.9)
       (set! (-> self foot-locks gp-0 initialized) #f)
       )
     )
@@ -954,7 +920,7 @@
                          (set! s2-2 #f)
                          )
                         (else
-                          (vector-! arg0 (target-pos 0) (the-as vector (-> this chain-joints arg1)))
+                          (vector-! arg0 (target-pos 0) (-> this chain-joints arg1 position))
                           (vector-normalize! arg0 12288.0)
                           )
                         )
@@ -1270,11 +1236,7 @@
              (a0-9 (-> self tail))
              )
          (dotimes (a1-1 (the-as int (-> a0-9 num-joints)))
-           (vector+!
-             (the-as vector (-> a0-9 chain-joints a1-1))
-             (the-as vector (-> a0-9 chain-joints a1-1))
-             (the-as vector v1-7)
-             )
+           (vector+! (-> a0-9 chain-joints a1-1 position) (-> a0-9 chain-joints a1-1 position) (the-as vector v1-7))
            )
          )
        #f
@@ -1331,12 +1293,7 @@
       (('touch)
        (let ((s4-0 (new 'stack-no-clear 'vector)))
          (set! (-> s4-0 quad) (-> self entity trans quad))
-         (let* ((s3-0 proc)
-                (v1-36 (if (type? s3-0 process-drawable)
-                           s3-0
-                           )
-                       )
-                )
+         (let ((v1-36 (the-as process (as-type proc process-drawable))))
            (when v1-36
              (let ((s3-2 (vector-! (new 'stack-no-clear 'vector) (-> (the-as process-drawable v1-36) root trans) s4-0))
                    (s4-2
@@ -1659,7 +1616,7 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-rift-ring-ingame" (the-as (pointer uint32) #f)))
     (the-as pair 0)
     )
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1236) this))
+  (set! (-> this part) (create-launch-control group-nestb-rift-ring this))
   (set! (-> this draw light-index) (the-as uint 10))
   (set! (-> this stutter) #f)
   (set! (-> this spin-sound) (new-sound-id))
@@ -1913,13 +1870,13 @@
 
 (defmethod draw ((this hud-metalkor))
   (set-hud-piece-position! (-> this sprites 1) (the int (+ 462.0 (* 130.0 (-> this offset)))) 350)
-  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) -32 0)
-  (set-as-offset-from! (-> this sprites 5) (the-as vector4w (-> this sprites 1)) -62 14)
-  (set-as-offset-from! (-> this sprites 6) (the-as vector4w (-> this sprites 1)) -32 14)
+  (set-as-offset-from! (-> this sprites 0) (-> this sprites 1 pos) -32 0)
+  (set-as-offset-from! (-> this sprites 5) (-> this sprites 1 pos) -62 14)
+  (set-as-offset-from! (-> this sprites 6) (-> this sprites 1 pos) -32 14)
   (let ((s5-0 (-> this values 0 current))
         (f30-0 (* 0.01 (the float (-> this values 1 current))))
         )
-    (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites 1)) -92 15)
+    (set-as-offset-from! (-> this sprites 4) (-> this sprites 1 pos) -92 15)
     (cond
       ((= s5-0 1)
        (set! (-> this sprites 4 color x) 0)
@@ -2153,7 +2110,7 @@
             (let ((s5-0 run-function-in-process)
                   (s4-0 gp-0)
                   (s3-0 part-tracker-init)
-                  (s2-0 (-> *part-group-id-table* 1238))
+                  (s2-0 group-metalkor-explode)
                   (s1-0 0)
                   (s0-0 #f)
                   )

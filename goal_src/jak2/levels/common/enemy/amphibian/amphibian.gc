@@ -256,14 +256,14 @@
 
 (set! (-> *amphibian-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
-(defmethod relocate ((this amphibian-joint-mod) (arg0 int))
-  (&+! (-> this proc) arg0)
+(defmethod relocate ((this amphibian-joint-mod) (offset int))
+  (&+! (-> this proc) offset)
   this
   )
 
 (defmethod general-event-handler ((this amphibian) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
@@ -590,41 +590,7 @@
                   (set! (-> s2-0 quad) (-> this root trans quad))
                   (when (logtest? (water-flags touch-water) (-> s3-0 flags))
                     (set! (-> s2-0 y) (-> s3-0 trans y))
-                    (let ((s3-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                      (when s3-1
-                        (let ((t9-2 (method-of-type part-tracker activate)))
-                          (t9-2
-                            (the-as part-tracker s3-1)
-                            *entity-pool*
-                            (symbol->string (-> part-tracker symbol))
-                            (the-as pointer #x70004000)
-                            )
-                          )
-                        (let ((t9-3 run-function-in-process)
-                              (a0-28 s3-1)
-                              (a1-6 part-tracker-init)
-                              (a2-6 (-> *part-group-id-table* 121))
-                              (a3-1 0)
-                              (t0-0 #f)
-                              (t1-0 #f)
-                              (t2-0 #f)
-                              (t3-0 *launch-matrix*)
-                              )
-                          (set! (-> t3-0 trans quad) (-> s2-0 quad))
-                          ((the-as (function object object object object object object object object none) t9-3)
-                           a0-28
-                           a1-6
-                           a2-6
-                           a3-1
-                           t0-0
-                           t1-0
-                           t2-0
-                           t3-0
-                           )
-                          )
-                        (-> s3-1 ppointer)
-                        )
-                      )
+                    (part-tracker-spawn :to *entity-pool* :group group-part-water-splash :mat-joint s2-0)
                     (sound-play "splash-out")
                     )
                   )
@@ -768,12 +734,7 @@
       (set! (-> v1-4 action-mask) (collide-action solid))
       )
     (when (>= (fill-and-probe-using-line-sphere *collide-cache* s4-0) 0.0)
-      (let* ((s3-0 (-> s4-0 best-other-tri collide-ptr))
-             (s4-1 (if (type? s3-0 collide-shape-prim-sphere)
-                       (the-as collide-shape-prim-sphere s3-0)
-                       )
-                   )
-             )
+      (let ((s4-1 (as-type (-> s4-0 best-other-tri collide-ptr) collide-shape-prim-sphere)))
         (when s4-1
           (set! (-> s5-0 y) 0.0)
           (vector-normalize! s5-0 1.0)
@@ -840,12 +801,7 @@
   )
 
 (defmethod go-hostile ((this amphibian))
-  (let* ((s4-0 (handle->process (-> this attacker-handle)))
-         (s5-0 (if (type? s4-0 process-focusable)
-                   s4-0
-                   )
-               )
-         )
+  (let ((s5-0 (the-as process (as-type (handle->process (-> this attacker-handle)) process-focusable))))
     (when s5-0
       (set! (-> this attacker-handle) (the-as handle #f))
       (when (collide-check? (-> this focus) (the-as process-focusable s5-0))
@@ -859,9 +815,9 @@
 
 (defmethod common-post ((this amphibian))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (set! (-> this prev-ry) (-> this prev-ry1))
   (set! (-> this prev-ry1) (quaternion-y-angle (-> this root quat)))
   ((method-of-type nav-enemy common-post) this)
@@ -1664,11 +1620,11 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs amphibian.
-(defmethod relocate ((this amphibian) (arg0 int))
+(defmethod relocate ((this amphibian) (offset int))
   (if (nonzero? (-> this tongue-mod))
-      (&+! (-> this tongue-mod) arg0)
+      (&+! (-> this tongue-mod) offset)
       )
-  (the-as amphibian ((method-of-type nav-enemy relocate) this arg0))
+  (the-as amphibian ((method-of-type nav-enemy relocate) this offset))
   )
 
 (defmethod init-enemy-collision! ((this amphibian))
