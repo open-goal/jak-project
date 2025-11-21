@@ -36,7 +36,7 @@
   (none))
 
 (defun birth-func-ocean-height ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
-  (set! (-> arg2 vector 0 y) (+ (ocean-get-height (the-as vector (-> arg2 vector))) (-> arg1 user-float)))
+  (set! (-> arg2 vector 0 y) (+ (ocean-get-height (-> arg2 vector 0)) (-> arg1 user-float)))
   0
   (none))
 
@@ -577,7 +577,7 @@
          (logior! (-> this flags) (water-flags wt16)))
         ((begin
            (set! (-> this top 1 quad) (-> this top 0 quad))
-           (vector<-cspace! (the-as vector (-> this top)) (-> this process node-list data (-> this joint-index)))
+           (vector<-cspace! (-> this top 0) (-> this process node-list data (-> this joint-index)))
            (+! (-> this top 0 y) (-> this top-y-offset))
            (set! (-> this bottom 1 quad) (-> this bottom 0 quad))
            (set! (-> this bottom 0 quad) (-> this process root trans quad))
@@ -586,13 +586,13 @@
            (cond
              ((and (logtest? (-> this flags) (water-flags wt08))
                    (not (logtest? (-> (the-as collide-shape-moving (-> this process root)) root-prim prim-core action) (collide-action racer))))
-              (set! (-> this real-ocean-offset) (- (ocean-get-height (the-as vector (-> this bottom))) (-> this base-height)))
+              (set! (-> this real-ocean-offset) (- (ocean-get-height (-> this bottom 0)) (-> this base-height)))
               (if (not (logtest? (-> this flags) (water-flags wt09)))
                 (set! (-> this ocean-offset) (-> this real-ocean-offset))
                 (set! (-> this ocean-offset) (lerp (-> this ocean-offset) (-> this real-ocean-offset) 0.2))))
              ((logtest? (water-flags wt20) (-> this flags))
               (let* ((a0-26 (-> this volume process 0))
-                     (f30-0 (ripple-find-height (the-as process-drawable a0-26) 0 (the-as vector (-> this bottom)))))
+                     (f30-0 (ripple-find-height (the-as process-drawable a0-26) 0 (-> this bottom 0))))
                 (set! (-> this real-ocean-offset) (- f30-0 (-> this base-height)))
                 (if (not (logtest? (-> this flags) (water-flags wt09)))
                   (set! (-> this ocean-offset) (-> this real-ocean-offset))
@@ -892,7 +892,7 @@
   (process-spawn part-tracker
                  :init
                  part-tracker-init
-                 (if (zero? arg2) (-> *part-group-id-table* 41) (-> *part-group-id-table* 40))
+                 (if (zero? arg2) group-part-water-splash-small group-part-water-splash)
                  -1
                  part-water-splash-callback
                  arg0

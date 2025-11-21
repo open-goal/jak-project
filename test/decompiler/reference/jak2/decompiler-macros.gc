@@ -1085,7 +1085,7 @@
                              &key (rotate (0.0 0.0 0.0)) &key (scale (1.0 1.0 1.0)))
   "define a new part group. defines a constant with the name of the group with the ID as its value"
   `(begin
-    (defconstant ,name ,id)
+    ; (defconstant ,name ,id)
     (set! (-> *part-group-id-table* ,id)
       (new 'static 'sparticle-launch-group
           :duration ,duration
@@ -1737,6 +1737,38 @@
                       )
                   )
           )
+    )
+  )
+
+(defmacro part-tracker-spawn (&key (group #f)
+                              &key (to #f)
+                              &key (name #f)
+                              &key (stack-size #x4000)
+                              &key (stack *scratch-memory-top*)
+                              &key (duration (seconds 0))
+                              &key (callback #f)
+                              &key (userdata (the uint #f))
+                              &key (target #f)
+                              &key mat-joint)
+  "Specialized `process-spawn` macro for [[part-tracker]]s.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+  (with-gensyms (new-tracker)
+    `(let ((,new-tracker (the part-tracker (get-process *default-dead-pool* part-tracker ,stack-size))))
+        (when ,new-tracker
+          ((method-of-type part-tracker activate) ,new-tracker ,to ,(if name name "part-tracker") ,stack)
+          (vector-copy! (-> *launch-matrix* trans) ,mat-joint)
+          (run-now-in-process ,new-tracker
+            part-tracker-init
+            ,group
+            ,duration
+            ,callback
+            ,userdata
+            ,target
+            *launch-matrix*
+            )
+          (the (pointer part-tracker) (-> ,new-tracker ppointer))
+          )
+        )
     )
   )
 

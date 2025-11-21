@@ -190,6 +190,8 @@ class ObjectFileDB {
   void extract_art_info();
   void dump_art_info(const fs::path& output_dir);
   void dump_raw_objects(const fs::path& output_dir);
+  void dump_part_group_table(const fs::path& output_dir,
+                             const std::unordered_map<u32, std::string>& part_group_table);
   void write_object_file_words(const fs::path& output_dir, bool dump_data, bool dump_code);
   void write_disassembly(const fs::path& output_dir,
                          bool disassemble_data,
@@ -199,12 +201,12 @@ class ObjectFileDB {
   void process_object_file_data(
       ObjectFileData& data,
       const fs::path& output_dir,
-      const Config& config,
+      Config& config,
       const std::unordered_set<std::string>& skip_functions,
       const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states);
   void analyze_functions_ir2(
       const fs::path& output_dir,
-      const Config& config,
+      Config& config,
       const std::optional<std::function<void(std::string)>> prefile_callback,
       const std::optional<std::function<void()>> postfile_callback,
       const std::unordered_set<std::string>& skip_functions,

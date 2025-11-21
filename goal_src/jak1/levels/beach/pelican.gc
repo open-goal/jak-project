@@ -19,6 +19,7 @@
    (post-spit-wait-time seconds)
    (run-away-time       seconds)))
 
+
 (define *PELICAN-bank*
   (new 'static
        'pelican-bank
@@ -69,12 +70,13 @@
    (pelican-wait-at-end symbol)
    (pelican-wait-at-nest symbol)))
 
-(defmethod relocate ((this pelican) (arg0 int))
+
+(defmethod relocate ((this pelican) (offset int))
   (countdown (v1-0 8)
-    (if (nonzero? (-> this path-data v1-0)) (&+! (-> this path-data v1-0) arg0)))
-  (if (nonzero? (-> this path-cache)) (&+! (-> this path-cache) arg0))
-  (if (nonzero? (-> this neck)) (&+! (-> this neck) arg0))
-  (call-parent-method this arg0))
+    (if (nonzero? (-> this path-data v1-0)) (&+! (-> this path-data v1-0) offset)))
+  (if (nonzero? (-> this path-cache)) (&+! (-> this path-cache) offset))
+  (if (nonzero? (-> this neck)) (&+! (-> this neck) offset))
+  (call-parent-method this offset))
 
 (defskelgroup *pelican-sg*
   pelican
@@ -155,7 +157,7 @@
             (send-event (ppointer->process v1-8)
                         'eval
                         (lambda :behavior pelican ()
-                          (let ((v0-0 (create-launch-control (-> *part-group-id-table* 63) self))) (set! (-> self part) v0-0) v0-0))))))
+                          (let ((v0-0 (create-launch-control group-fuel-cell-starburst self))) (set! (-> self part) v0-0) v0-0))))))
       (set! (-> self path) (-> self path-circle))
       (set! (-> self path-pos) 0.0)
       (set! (-> self path-max) (the float (+ (-> self path curve num-cverts) -1)))
@@ -381,7 +383,7 @@
   :post
     (behavior ()
       (when *target*
-        (if *target* (look-at-enemy! (-> *target* neck) (the-as vector (-> self root root-prim prim-core)) 'nothing self))
+        (if *target* (look-at-enemy! (-> *target* neck) (-> self root root-prim prim-core world-sphere) 'nothing self))
         (if (nonzero? (-> self neck)) (set-target! (-> self neck) (target-pos 5))))
       (pelican-post)))
 
@@ -522,7 +524,7 @@
         (process-spawn part-tracker
                        :init
                        part-tracker-init
-                       (-> *part-group-id-table* 71)
+                       group-crate-explode
                        -1
                        #f
                        #f
@@ -594,7 +596,7 @@
          (send-event (ppointer->process s5-2)
                      'eval
                      (lambda :behavior pelican ()
-                       (let ((v0-0 (create-launch-control (-> *part-group-id-table* 63) self))) (set! (-> self part) v0-0) v0-0)))
+                       (let ((v0-0 (create-launch-control group-fuel-cell-starburst self))) (set! (-> self part) v0-0) v0-0)))
          (send-event (ppointer->process s5-2) 'trans-hook fuel-cell-animate)))
      (go pelican-wait-at-nest #t))
     (else (go pelican-circle)))
