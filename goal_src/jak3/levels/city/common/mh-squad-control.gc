@@ -109,6 +109,21 @@
   (dotimes (v1-0 3)
     (dotimes (a1-0 3)
       (let ((a3-2 (the-as mh-squad-settings (+ (+ (* a1-0 16) 828 (* 48 v1-0)) (the-as int this)))))
+        ;; og:preserve-this peaceful city cheat
+        (#when PC_PORT
+          (when (and (pc-cheats? (-> *pc-settings* cheats) city-peace)
+                     (not (task-node-open? (game-task-node city-port-fight-resolution)))
+                     (not (task-node-open? (game-task-node city-port-assault-resolution)))
+                     (not (task-node-open? (game-task-node city-protect-hq-resolution)))
+                     )
+            (dotimes (squad-setting-type 3) ;; grunt/flitter/predator
+              (set! (-> a3-2 mh-enemy-settings squad-setting-type target-count) (-> a3-2 mh-enemy-settings squad-setting-type min-target-count))
+              (set! (-> this alert-level) 0)
+              (when (zero? (-> a3-2 mh-enemy-settings squad-setting-type target-count))
+                  (send-event *traffic-manager* 'deactivate-by-type (-> a3-2 mh-enemy-settings squad-setting-type object-type)))
+              )
+            )
+          )
         (set! (-> this traffic object-type-info-array 0 target-counts (+ v1-0 (* (-> a3-2 grunt-settings object-type) 32)))
               (max
                 (min (-> a3-2 grunt-settings target-count) (-> a3-2 grunt-settings max-target-count))
@@ -139,6 +154,17 @@
         0
         )
       )
+    )
+  ;; og:preserve-this - restore war/mission squad settings (e.g. if city-peace cheat is toggled on->off)
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *war-mh-squad-member-settings*)
+    1
+    )
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *default-mh-squad-member-settings*)
+    2
     )
   (when *cty-faction-manager*
     (let ((a2-2 (if (-> *setting-control* user-current mh-enemy-settings)

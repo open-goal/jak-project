@@ -751,23 +751,13 @@
   :code (behavior ((arg0 handle))
     (set! (-> self target) arg0)
     (until #f
-      (let* ((gp-0 (handle->process (-> self target)))
-             (v1-3 (if (type? gp-0 process-drawable)
-                       gp-0
-                       )
-                   )
-             )
+      (let ((v1-3 (the-as process (as-type (handle->process (-> self target)) process-drawable))))
         (when v1-3
-          (let* ((gp-1 (-> (the-as process-drawable v1-3) root))
-                 (v1-4 (if (type? (the-as collide-shape-moving gp-1) collide-shape)
-                           gp-1
-                           )
-                       )
-                 )
+          (let ((v1-4 (the-as trsqv (as-type (-> (the-as process-drawable v1-3) root) collide-shape))))
             (when v1-4
               (let* ((gp-2 (-> (the-as collide-shape-moving (-> self root)) root-prim prim-core))
                      (a1-3 (-> (the-as collide-shape-moving v1-4) root-prim prim-core))
-                     (f30-0 (vector-vector-distance (the-as vector gp-2) (the-as vector a1-3)))
+                     (f30-0 (vector-vector-distance (-> gp-2 world-sphere) (-> a1-3 world-sphere)))
                      )
                 (when (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (!= (-> self defense) 'steel))
                   (logior! (-> self fact options) (actor-option suck-in))
@@ -875,100 +865,13 @@
         )
       (case (-> self look)
         (('darkeco)
-         (let ((s5-8 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-8
-             (let ((t9-17 (method-of-type part-tracker activate)))
-               (t9-17 (the-as part-tracker s5-8) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-               )
-             (let ((t9-18 run-function-in-process)
-                   (a0-34 s5-8)
-                   (a1-21 part-tracker-init)
-                   (a2-11 (-> *part-group-id-table* 126))
-                   (a3-9 0)
-                   (t0-6 #f)
-                   (t1-4 #f)
-                   (t2-4 #f)
-                   (t3-0 *launch-matrix*)
-                   )
-               (set! (-> t3-0 trans quad) (-> self root trans quad))
-               ((the-as (function object object object object object object object object none) t9-18)
-                a0-34
-                a1-21
-                a2-11
-                a3-9
-                t0-6
-                t1-4
-                t2-4
-                t3-0
-                )
-               )
-             (-> s5-8 ppointer)
-             )
-           )
+         (part-tracker-spawn :to self :group group-dark-eco-box-explosion :mat-joint (-> self root trans))
          )
         (('steel 'iron)
-         (let ((s5-9 (get-process *default-dead-pool* part-tracker #x4000)))
-           (when s5-9
-             (let ((t9-20 (method-of-type part-tracker activate)))
-               (t9-20 (the-as part-tracker s5-9) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-               )
-             (let ((t9-21 run-function-in-process)
-                   (a0-39 s5-9)
-                   (a1-27 part-tracker-init)
-                   (a2-14 (-> *part-group-id-table* 125))
-                   (a3-11 0)
-                   (t0-7 #f)
-                   (t1-5 #f)
-                   (t2-5 #f)
-                   (t3-1 *launch-matrix*)
-                   )
-               (set! (-> t3-1 trans quad) (-> self root trans quad))
-               ((the-as (function object object object object object object object object none) t9-21)
-                a0-39
-                a1-27
-                a2-14
-                a3-11
-                t0-7
-                t1-5
-                t2-5
-                t3-1
-                )
-               )
-             (-> s5-9 ppointer)
-             )
-           )
+         (part-tracker-spawn :to self :group group-crate-steel-explode :mat-joint (-> self root trans))
          )
         (else
-          (let ((s5-10 (get-process *default-dead-pool* part-tracker #x4000)))
-            (when s5-10
-              (let ((t9-23 (method-of-type part-tracker activate)))
-                (t9-23 (the-as part-tracker s5-10) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                )
-              (let ((t9-24 run-function-in-process)
-                    (a0-42 s5-10)
-                    (a1-32 part-tracker-init)
-                    (a2-17 (-> *part-group-id-table* 124))
-                    (a3-13 0)
-                    (t0-8 #f)
-                    (t1-6 #f)
-                    (t2-6 #f)
-                    (t3-2 *launch-matrix*)
-                    )
-                (set! (-> t3-2 trans quad) (-> self root trans quad))
-                ((the-as (function object object object object object object object object none) t9-24)
-                 a0-42
-                 a1-32
-                 a2-17
-                 a3-13
-                 t0-8
-                 t1-6
-                 t2-6
-                 t3-2
-                 )
-                )
-              (-> s5-10 ppointer)
-              )
-            )
+          (part-tracker-spawn :to self :group group-crate-explode :mat-joint (-> self root trans))
           )
         )
       )

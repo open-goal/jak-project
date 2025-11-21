@@ -1248,7 +1248,7 @@
   (set! (-> *game-info* miss) 0.0)
   (set! (-> *game-info* miss-max) (the float (-> this miss-max)))
   (set! (-> this score-met) #f)
-  (set! (-> this score-part 0) (create-launch-control (-> *part-group-id-table* 912) this))
+  (set! (-> this score-part 0) (create-launch-control group-power-scoreboard-points this))
   (let ((v1-41 (-> this root root-prim)))
     (set! (-> v1-41 prim-core collide-as) (collide-spec))
     (set! (-> v1-41 prim-core collide-with) (collide-spec))
@@ -2098,13 +2098,13 @@
         )
       )
     (cond
-      ((logtest? (-> *part-group-id-table* 911 flags) (sp-group-flag sp13))
+      ((logtest? (-> group-player-die flags) (sp-group-flag sp13))
        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-       (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 911))
+       (part-tracker-spawn part-tracker-subsampler :to self :group group-player-die)
        )
       (else
         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 911))
+        (part-tracker-spawn part-tracker :to self :group group-player-die)
         )
       )
     (sound-play "magic-poof-die")
@@ -2340,11 +2340,11 @@
     )
   :code (behavior ()
     (sound-play "switcher-appear")
-    (if (logtest? (-> *part-group-id-table* 907 flags) (sp-group-flag sp13))
+    (if (logtest? (-> group-switcher-charge flags) (sp-group-flag sp13))
         (part-tracker-spawn
           part-tracker-subsampler
           :to self
-          :group (-> *part-group-id-table* 907)
+          :group group-switcher-charge
           :duration (seconds 4)
           :target self
           :mat-joint (the-as object 0)
@@ -2352,7 +2352,7 @@
         (part-tracker-spawn
           part-tracker
           :to self
-          :group (-> *part-group-id-table* 907)
+          :group group-switcher-charge
           :duration (seconds 4)
           :target self
           :mat-joint (the-as object 0)
@@ -2495,13 +2495,13 @@
         )
       )
     (cond
-      ((logtest? (-> *part-group-id-table* 908 flags) (sp-group-flag sp13))
+      ((logtest? (-> group-switcher-die flags) (sp-group-flag sp13))
        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-       (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 908))
+       (part-tracker-spawn part-tracker-subsampler :to self :group group-switcher-die)
        )
       (else
         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 908))
+        (part-tracker-spawn part-tracker :to self :group group-switcher-die)
         )
       )
     (logior! (-> self focus-status) (focus-status dead))
@@ -2747,21 +2747,15 @@
 (defstate die (power-game-zapper)
   :virtual #t
   :code (behavior ()
-    (if (logtest? (-> *part-group-id-table* 908 flags) (sp-group-flag sp13))
+    (if (logtest? (-> group-switcher-die flags) (sp-group-flag sp13))
         (part-tracker-spawn
           part-tracker-subsampler
           :to self
-          :group (-> *part-group-id-table* 908)
+          :group group-switcher-die
           :target self
           :mat-joint (the-as object 0)
           )
-        (part-tracker-spawn
-          part-tracker
-          :to self
-          :group (-> *part-group-id-table* 908)
-          :target self
-          :mat-joint (the-as object 0)
-          )
+        (part-tracker-spawn part-tracker :to self :group group-switcher-die :target self :mat-joint (the-as object 0))
         )
     (logior! (-> self focus-status) (focus-status dead))
     (ja-channel-push! 1 (seconds 0.05))
@@ -2905,13 +2899,13 @@
   :virtual #t
   :code (behavior ()
     (cond
-      ((logtest? (-> *part-group-id-table* 910 flags) (sp-group-flag sp13))
+      ((logtest? (-> group-glyph-die flags) (sp-group-flag sp13))
        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 910))
+       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-glyph-die)
        )
       (else
         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 910))
+        (part-tracker-spawn part-tracker :to *entity-pool* :group group-glyph-die)
         )
       )
     (sound-play "glyph-kill")
@@ -2957,13 +2951,13 @@
     (-> self local z)
     )
   (cond
-    ((logtest? (-> *part-group-id-table* 909 flags) (sp-group-flag sp13))
+    ((logtest? (-> group-glyph-charge flags) (sp-group-flag sp13))
      (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-     (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 909))
+     (part-tracker-spawn part-tracker-subsampler :to self :group group-glyph-charge)
      )
     (else
       (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-      (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 909))
+      (part-tracker-spawn part-tracker :to self :group group-glyph-charge)
       )
     )
   (go-virtual active)
