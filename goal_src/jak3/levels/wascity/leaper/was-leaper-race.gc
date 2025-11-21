@@ -356,19 +356,14 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('hit)
-       (if (logtest? (-> *part-group-id-table* 521 flags) (sp-group-flag sp13))
+       (if (logtest? (-> group-leaper-ring-explode flags) (sp-group-flag sp13))
            (part-tracker-spawn
              part-tracker-subsampler
              :to *entity-pool*
-             :group (-> *part-group-id-table* 521)
+             :group group-leaper-ring-explode
              :mat-joint (-> self mat)
              )
-           (part-tracker-spawn
-             part-tracker
-             :to *entity-pool*
-             :group (-> *part-group-id-table* 521)
-             :mat-joint (-> self mat)
-             )
+           (part-tracker-spawn part-tracker :to *entity-pool* :group group-leaper-ring-explode :mat-joint (-> self mat))
            )
        (update self)
        (if (not (-> self active?))
@@ -402,26 +397,26 @@
                    (cond
                      ((-> self is-final?)
                       (sound-play "ring-final")
-                      (if (logtest? (-> *part-group-id-table* 523 flags) (sp-group-flag sp13))
+                      (if (logtest? (-> group-player-leaper-ring-explode-final flags) (sp-group-flag sp13))
                           (part-tracker-spawn
                             part-tracker-subsampler
                             :to *entity-pool*
-                            :group (-> *part-group-id-table* 523)
+                            :group group-player-leaper-ring-explode-final
                             :mat-joint (-> self mat)
                             )
                           (part-tracker-spawn
                             part-tracker
                             :to *entity-pool*
-                            :group (-> *part-group-id-table* 523)
+                            :group group-player-leaper-ring-explode-final
                             :mat-joint (-> self mat)
                             )
                           )
                       )
-                     ((begin (sound-play "ring-pass") (logtest? (-> *part-group-id-table* 522 flags) (sp-group-flag sp13)))
+                     ((begin (sound-play "ring-pass") (logtest? (-> group-player-leaper-ring-explode flags) (sp-group-flag sp13)))
                       (part-tracker-spawn
                         part-tracker-subsampler
                         :to *entity-pool*
-                        :group (-> *part-group-id-table* 522)
+                        :group group-player-leaper-ring-explode
                         :mat-joint (-> self mat)
                         )
                       )
@@ -429,7 +424,7 @@
                        (part-tracker-spawn
                          part-tracker
                          :to *entity-pool*
-                         :group (-> *part-group-id-table* 522)
+                         :group group-player-leaper-ring-explode
                          :mat-joint (-> self mat)
                          )
                        )
@@ -576,11 +571,11 @@
   (quaternion->matrix (-> this mat) (-> this root quat))
   (vector-copy! (-> this mat trans) (-> this root trans))
   (set! (-> this taskman) (the-as handle #f))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 518) this))
-  (set! (-> this player-part) (create-launch-control (-> *part-group-id-table* 519) this))
+  (set! (-> this part) (create-launch-control group-leaper-ring this))
+  (set! (-> this player-part) (create-launch-control group-player-leaper-ring this))
   (set! (-> this player-ring?) #f)
   (set! (-> this is-final?) #f)
-  (set! (-> this part-final) (create-launch-control (-> *part-group-id-table* 520) this))
+  (set! (-> this part-final) (create-launch-control group-player-leaper-ring-final this))
   (go (method-of-object this idle))
   )
 

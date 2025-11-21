@@ -221,6 +221,7 @@ const std::unordered_map<std::string, GoalCompilerForm> g_goal_forms = {
     {"none", {.form_function = &Compiler::compile_none}},
     {"size-of", {.form_function = &Compiler::compile_size_of}},
     {"psize-of", {.form_function = &Compiler::compile_psize_of}},
+    {"offset-of", {.form_function = &Compiler::compile_offset_of}},
     {"current-method-id", {.form_function = &Compiler::compile_current_method_id}},
     {"cast-to-method-type", {.form_function = &Compiler::compile_cast_to_method_type}},
 

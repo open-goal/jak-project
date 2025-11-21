@@ -164,7 +164,7 @@
   :event race-signal-event-handler
   :code (behavior ()
     (sound-play "red-light")
-    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 194) 1500 #f #f self 5 :to self)
+    (process-spawn part-tracker :init part-tracker-init group-race-signal-red-light-3 1500 #f #f self 5 :to self)
     (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 2.0 0)) :frame-num (ja-aframe 0.0 0))
     (until (ja-done? 0)
       (suspend)
@@ -185,7 +185,7 @@
   :event race-signal-event-handler
   :code (behavior ()
     (sound-play "red-light")
-    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 195) 1500 #f #f self 7 :to self)
+    (process-spawn part-tracker :init part-tracker-init group-race-signal-red-light-2 1500 #f #f self 7 :to self)
     (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 2.0 0))
     (until (ja-done? 0)
       (suspend)
@@ -206,7 +206,7 @@
   :event race-signal-event-handler
   :code (behavior ()
     (sound-play "red-light")
-    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 196) 1500 #f #f self 9 :to self)
+    (process-spawn part-tracker :init part-tracker-init group-race-signal-red-light-1 1500 #f #f self 9 :to self)
     (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 4.0 0))
     (until (ja-done? 0)
       (suspend)
@@ -227,17 +227,7 @@
   :event race-signal-event-handler
   :code (behavior ()
     (sound-play "green-light")
-    (process-spawn
-      part-tracker
-      :init part-tracker-init
-      (-> *part-group-id-table* 197)
-      1500
-      #f
-      #f
-      self
-      10
-      :to self
-      )
+    (process-spawn part-tracker :init part-tracker-init group-race-signal-green-light 1500 #f #f self 10 :to self)
     (let ((v1-8 (new 'stack-no-clear 'matrix)))
       (vector-reset! (-> v1-8 vector 2))
       (vector-reset! (-> v1-8 trans))
@@ -247,7 +237,7 @@
       (+! (-> v1-8 vector 1 y) 204800.0)
       (cubic-curve-method-9
         (-> self curve)
-        (the-as vector (-> v1-8 vector))
+        (-> v1-8 vector 0)
         (-> v1-8 vector 2)
         (-> v1-8 vector 1)
         (-> v1-8 trans)
@@ -283,30 +273,35 @@
   :code (behavior ()
     (until #f
       (ja :num-func num-func-identity :frame-num (ja-aframe 0.0 0))
-      (suspend-for (seconds 0.5))
+      (suspend-for (seconds 0.5)
+        )
       (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 2.0 0)) :frame-num (ja-aframe 0.0 0))
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! (ja-aframe 2.0 0)))
         )
-      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 196) 600 #f #f self 5 :to self)
-      (suspend-for (seconds 0.5))
+      (process-spawn part-tracker :init part-tracker-init group-race-signal-red-light-1 600 #f #f self 5 :to self)
+      (suspend-for (seconds 0.5)
+        )
       (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 4.0 0)) :frame-num (ja-aframe 2.0 0))
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! (ja-aframe 4.0 0)))
         )
-      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 195) 300 #f #f self 7 :to self)
-      (suspend-for (seconds 0.5))
+      (process-spawn part-tracker :init part-tracker-init group-race-signal-red-light-2 300 #f #f self 7 :to self)
+      (suspend-for (seconds 0.5)
+        )
       (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 4.0 0))
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek! (ja-aframe 6.0 0)))
         )
-      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 194) 300 #f #f self 9 :to self)
-      (suspend-for (seconds 0.5))
-      (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 197) 300 #f #f self 10 :to self)
-      (suspend-for (seconds 0.5))
+      (process-spawn part-tracker :init part-tracker-init group-race-signal-red-light-3 300 #f #f self 9 :to self)
+      (suspend-for (seconds 0.5)
+        )
+      (process-spawn part-tracker :init part-tracker-init group-race-signal-green-light 300 #f #f self 10 :to self)
+      (suspend-for (seconds 0.5)
+        )
       )
     #f
     )
@@ -651,41 +646,7 @@
   :virtual #t
   :code (behavior ()
     (set-time! (-> self state-time))
-    (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-0
-        (let ((t9-1 (method-of-type part-tracker activate)))
-          (t9-1
-            (the-as part-tracker gp-0)
-            *entity-pool*
-            (symbol->string (-> part-tracker symbol))
-            (the-as pointer #x70004000)
-            )
-          )
-        (let ((t9-2 run-function-in-process)
-              (a0-2 gp-0)
-              (a1-2 part-tracker-init)
-              (a2-4 (-> *part-group-id-table* 199))
-              (a3-1 0)
-              (t0-0 #f)
-              (t1-0 #f)
-              (t2-0 #f)
-              (t3-0 *launch-matrix*)
-              )
-          (set! (-> t3-0 trans quad) (-> self root trans quad))
-          ((the-as (function object object object object object object object object none) t9-2)
-           a0-2
-           a1-2
-           a2-4
-           a3-1
-           t0-0
-           t1-0
-           t2-0
-           t3-0
-           )
-          )
-        (-> gp-0 ppointer)
-        )
-      )
+    (part-tracker-spawn :to *entity-pool* :group group-turbo-pickup-explode :mat-joint (-> self root trans))
     (let ((v1-11 (-> self root root-prim)))
       (set! (-> v1-11 prim-core collide-as) (collide-spec))
       (set! (-> v1-11 prim-core collide-with) (collide-spec))
@@ -721,7 +682,7 @@
   (quaternion-identity! (-> self root quat))
   (update-transforms (-> self root))
   (set! (-> self available) #t)
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 198) self))
+  (set! (-> self part) (create-launch-control group-turbo-pickup self))
   (go-virtual idle)
   (none)
   )

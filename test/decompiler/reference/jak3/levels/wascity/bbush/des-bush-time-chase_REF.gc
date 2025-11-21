@@ -500,8 +500,8 @@
 (defbehavior trail-effect-init-by-other trail-effect ((arg0 vector))
   (set! (-> self root) (new 'process 'trsqv))
   (vector-copy! (-> self root trans) arg0)
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1534) self))
-  (set! (-> self goal-part) (create-launch-control (-> *part-group-id-table* 1532) self))
+  (set! (-> self part) (create-launch-control group-bb-finder self))
+  (set! (-> self goal-part) (create-launch-control group-trail-goal self))
   (let ((gp-1 (new 'stack-no-clear 'light-trail-tracker-spawn-params)))
     (set! (-> gp-1 tracked-obj) (process->handle self))
     (set! (-> gp-1 appearance) *bb-timer-chase-trail*)
@@ -621,13 +621,13 @@
   :virtual #t
   :enter (behavior ()
     (cond
-      ((logtest? (-> *part-group-id-table* 1531 flags) (sp-group-flag sp13))
+      ((logtest? (-> group-goal-explode flags) (sp-group-flag sp13))
        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-       (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 1531))
+       (part-tracker-spawn part-tracker-subsampler :to self :group group-goal-explode)
        )
       (else
         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1531))
+        (part-tracker-spawn part-tracker :to self :group group-goal-explode)
         )
       )
     )
@@ -662,7 +662,7 @@
   (set! (-> self root) (new 'process 'trsqv))
   (process-drawable-from-entity! self arg0)
   (logclear! (-> self mask) (process-mask actor-pause))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1536) self))
+  (set! (-> self part) (create-launch-control group-bb-goal self))
   (set! (-> self activate-radius) arg1)
   (go-virtual idle)
   )
@@ -1448,7 +1448,7 @@
   (set! (-> self activate-radius) arg2)
   (set! (-> self freeze-time) arg3)
   (set! (-> self freeze-pickup-radius) arg4)
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1539) self))
+  (set! (-> self part) (create-launch-control group-bb-freeze self))
   (go-virtual dormant)
   )
 
@@ -1481,7 +1481,7 @@
   (set! (-> self activate-radius) arg2)
   (set! (-> self freeze-time) arg3)
   (set! (-> self freeze-pickup-radius) arg4)
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1538) self))
+  (set! (-> self part) (create-launch-control group-bb-freeze-2 self))
   (go-virtual dormant)
   )
 
@@ -1514,7 +1514,7 @@
   (set! (-> self activate-radius) arg2)
   (set! (-> self freeze-time) arg3)
   (set! (-> self freeze-pickup-radius) arg4)
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1537) self))
+  (set! (-> self part) (create-launch-control group-bb-freeze-3 self))
   (go-virtual dormant)
   )
 
