@@ -1485,12 +1485,32 @@
   )
 
 (defmethod power-game-method-40 ((this power-game) (arg0 int))
-  ;; og:preserve-this support dpad inputs for pacman (if no left stick input)
+  ;; og:preserve-this support dpad inputs for pacman
+  ;; when enabled, dpad input will supercede stick input
   (#cond
     (PC_PORT
       (cond
-        ((nonzero? (-> *cpad-list* cpads 0 stick0-speed))
-          ;; move with stick like vanilla
+        ((and (-> *pc-settings* pacman-dpad?)
+              (or (and (= arg0 0) (or (cpad-pressed? 0 up) (cpad-hold? 0 up)))
+                  (and (= arg0 1) (or (cpad-pressed? 0 right) (cpad-hold? 0 right)))
+                  (and (= arg0 2) (or (cpad-pressed? 0 down) (cpad-hold? 0 down)))
+                  (and (= arg0 3) (or (cpad-pressed? 0 left) (cpad-hold? 0 left)))
+                  ))
+          ;; clear dpad inputs when we have a match
+          ;; gives better control moving across 1 lane vs 2 lanes
+          (logclear!
+            (-> *cpad-list* cpads 0 button0-abs 0)
+            (pad-buttons up right down left)
+            )
+          (logclear!
+            (-> *cpad-list* cpads 0 button0-rel 0)
+            (pad-buttons up right down left)
+            )
+          ;; allow moving with dpad (added in pc port)
+          #t
+          )
+        (else
+          ;; allow moving with stick (original)
           (let ((s3-0 (new 'stack-no-clear 'vector))
                 (gp-0 (new 'stack-no-clear 'vector))
                 )
@@ -1508,14 +1528,6 @@
               (< 0.5 (vector-dot gp-0 v1-8))
               )
             )
-          )
-        (else
-          ;; move with dpad!
-          (or (and (= arg0 0) (or (cpad-pressed? 0 up) (cpad-hold? 0 up)))
-              (and (= arg0 1) (or (cpad-pressed? 0 right) (cpad-hold? 0 right)))
-              (and (= arg0 2) (or (cpad-pressed? 0 down) (cpad-hold? 0 down)))
-              (and (= arg0 3) (or (cpad-pressed? 0 left) (cpad-hold? 0 left)))
-              )
           )
         )
       )
@@ -2039,17 +2051,6 @@
                  )
                )
              )
-            )
-          ;; og:preserve-this clear dpad inputs to give better control over moving across 1 lane vs 2 lanes
-          (#when PC_PORT
-            (logclear!
-              (-> *cpad-list* cpads 0 button0-abs 0)
-              (pad-buttons up right down left)
-              )
-            (logclear!
-              (-> *cpad-list* cpads 0 button0-rel 0)
-              (pad-buttons up right down left)
-              )
             )
           )
         )
