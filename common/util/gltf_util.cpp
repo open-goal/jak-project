@@ -228,55 +228,40 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
   }
 
   if (get_colors) {
-    const auto& color_attrib = attributes.find("COLOR_0");
-    if (color_attrib == attributes.end()) {
-      lg::error("Mesh {} didn't have any colors, using white", debug_name);
-      for (size_t i = 0; i < result.size(); i++) {
-        vtx_colors.emplace_back(0x80, 0x80, 0x80, 0xff);
-      }
-    } else {
-      const auto attrib_accessor = model.accessors[color_attrib->second];
-      const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
-      const auto& buffer = model.buffers[buffer_view.buffer];
-      const auto data_ptr =
-          buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
-      const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
-      const auto count = attrib_accessor.count;
-      std::vector<math::Vector<u8, 4>> colors;
+    const std::array<std::string, 8> slot_names = {
+      "_SUNRISE", "_MORNING", "_NOON", "_AFTERNOON",
+      "_SUNSET", "_TWILIGHT", "_EVENING", "_GREENSUN"
+    };
+    vtx_colors.resize(result.size());
+    
+    //Fall back to all vertex colors being white if: 
+    //at least one time of day is not in attributes, and
+    //COLOR_0 is not defined.
+    bool white_fallback = false;
+    for (const std::string &slot_name : slot_names) {
+      lg::info("Checking time of day {}", slot_name);
 
-      switch (attrib_accessor.type) {
-        case TINYGLTF_TYPE_VEC4:
-          switch (attrib_accessor.componentType) {
-            case TINYGLTF_COMPONENT_TYPE_FLOAT:
-              colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
-              break;
-            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-              colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
-              break;
-            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-              colors = extract_color_from_vec4_u8(data_ptr, count, byte_stride);
-              break;
-            default:
-              lg::die("Unknown type for COLOR_0: {}", attrib_accessor.componentType);
-          }
-          break;
-        case TINYGLTF_TYPE_VEC3:
-          switch (attrib_accessor.componentType) {
-            case TINYGLTF_COMPONENT_TYPE_FLOAT:
-              colors = extract_color_from_vec3_float(data_ptr, count, byte_stride);
-              break;
-            default:
-              lg::die("unkonwn component type for vec3 color {}", attrib_accessor.componentType);
-          }
-          break;
-        default:
-          lg::die("unknown attribute type for color {}", attrib_accessor.type);
+      std::map<std::string, int>::const_iterator color_attrib;
+      if ( color_attrib = attributes.find(slot_name); 
+        color_attrib != attributes.end() ){  
+        lg::info("Found time of day {}", slot_name);
       }
-
-      vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
+      else if( color_attrib = attributes.find("COLOR_0"); 
+        color_attrib != attributes.end() ) {  
+        lg::info("Mesh {} didn't have time of day {}, using COLOR_0", debug_name, slot_name);
+      }
+      else
+      {
+        lg::error("Mesh {} didn't have time of day {} or COLOR_0, using white", debug_name, slot_name);
+        white_fallback = true;
+      }
+    }
+    if(white_fallback)
+    {
+      for(auto& color : vtx_colors)
+        color = { 0x80, 0x80, 0x80, 0xff }; 
     }
   }
-
   bool got_texture = false;
   {
     const auto& texcoord_attrib = attributes.find("TEXCOORD_0");
