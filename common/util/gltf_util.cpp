@@ -196,7 +196,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
                                 bool get_normals,
                                 const std::string& debug_name) {
   std::vector<tfrag3::PreloadedVertex> result;
-  std::vector<math::Vector<u8, 4>> vtx_colors;
+  std::vector<math::Vector<u8, 32>> vtx_colors;
 
   {
     const auto& position_attrib = attributes.find("POSITION");
@@ -237,9 +237,12 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     //Fall back to all vertex colors being white if: 
     //at least one time of day is not in attributes, and
     //COLOR_0 is not defined.
-    bool white_fallback = false;
-    for (const std::string &slot_name : slot_names) {
+    for( size_t slot_index = 0; slot_index < slot_names.size(); ++ slot_index )
+    {
+      const auto& slot_name = slot_names[slot_index];
       lg::info("Checking time of day {}", slot_name);
+
+      size_t byte_offset = slot_index * 4;
 
       std::map<std::string, int>::const_iterator color_attrib;
       if ( color_attrib = attributes.find(slot_name); 
@@ -253,13 +256,67 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       else
       {
         lg::error("Mesh {} didn't have time of day {} or COLOR_0, using white", debug_name, slot_name);
-        white_fallback = true;
+        const uint32_t WHITE_COLOR = 0x808080FF; 
+        for(auto& vtx_color : vtx_colors) //Write white into the color slot for this time of day.
+        {
+          u8* target_ptr = vtx_color.data() + byte_offset;
+          std::memcpy(target_ptr, &WHITE_COLOR, sizeof(uint32_t));
+        }
+        continue;
       }
-    }
-    if(white_fallback)
-    {
-      for(auto& color : vtx_colors)
-        color = { 0x80, 0x80, 0x80, 0xff }; 
+      
+      const auto attrib_accessor = model.accessors[color_attrib->second];
+      const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
+      const auto& buffer = model.buffers[buffer_view.buffer];
+      const auto data_ptr =
+          buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
+      const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
+      const auto count = attrib_accessor.count;
+      std::vector<math::Vector<u8, 4>> colors;
+
+      switch (attrib_accessor.type) {
+        case TINYGLTF_TYPE_VEC4:
+          switch (attrib_accessor.componentType) {
+            case TINYGLTF_COMPONENT_TYPE_FLOAT:
+              colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
+              break;
+            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+              colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
+              break;
+            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+              colors = extract_color_from_vec4_u8(data_ptr, count, byte_stride);
+              break;
+            default:
+              lg::die("Unknown type for COLOR_0: {}", attrib_accessor.componentType);
+          }
+          break;
+        case TINYGLTF_TYPE_VEC3:
+          switch (attrib_accessor.componentType) {
+            case TINYGLTF_COMPONENT_TYPE_FLOAT:
+              colors = extract_color_from_vec3_float(data_ptr, count, byte_stride);
+              break;
+            default:
+              lg::die("unkonwn component type for vec3 color {}", attrib_accessor.componentType);
+          }
+          break;
+        default:
+          lg::die("unknown attribute type for color {}", attrib_accessor.type);
+      }
+
+      //Write the colors for the time of day (or color0, if it exists) 
+      //into the right slot for the time of day
+      auto vtx_color_iter = vtx_colors.begin();
+      auto color_iter = colors.begin();
+      while( vtx_color_iter != vtx_colors.end() )
+      {
+        auto& vtx_color = *vtx_color_iter;
+        u8* target_ptr = vtx_color.data() + byte_offset;
+        u8* source_ptr = color_iter->data();
+        std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
+        
+        ++vtx_color_iter;
+        ++color_iter;
+      }
     }
   }
   bool got_texture = false;
@@ -741,14 +798,14 @@ std::size_t TieFullVertex::hash::operator()(const TieFullVertex& x) const {
   return tfrag3::PackedTieVertices::Vertex::hash()(x.vertex) ^ std::hash<u16>()(x.color_index);
 }
 
-tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8, 4>>& color_palette) {
+tfrag3::PackedTimeOfDay pack_time_of_day(const std::vector<math::Vector<u8,32>>& color_palette) {
   tfrag3::PackedTimeOfDay colors;
   colors.color_count = (color_palette.size() + 3) & (~3);
   colors.data.resize(colors.color_count * 8 * 4);
   for (u32 color_index = 0; color_index < color_palette.size(); color_index++) {
     for (u32 palette = 0; palette < 8; palette++) {
       for (u32 channel = 0; channel < 4; channel++) {
-        colors.read(color_index, palette, channel) = color_palette[color_index][channel];
+        colors.read(color_index, palette, channel) = color_palette[color_index][4*palette + channel];
       }
     }
   }
