@@ -50,15 +50,6 @@ void extract(tfrag3::MercModel& mdl,
             gltf_util::gltf_vertices(model, prim.attributes, n.w_T_node, true, true, mesh.name);
         out.new_vertices.insert(out.new_vertices.end(), verts.vtx.begin(), verts.vtx.end());
 
-        // const u32 time_of_day = 0; //Defaulting to time of day being zero for now.
-        // const u32 vtx_color_offset = time_of_day * 4;
-        // for( const auto &vtx_color : verts.vtx_colors )
-        // {
-        //   math::Vector<u8, 4> &new_color = out.new_colors.emplace_back();
-        //   const u8* source_ptr = vtx_color.data() + vtx_color_offset;
-        //   u8* target_ptr = new_color.data();
-        //   std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
-        // }
         out.new_colors.insert(out.new_colors.end(), verts.vtx_colors.begin(), verts.vtx_colors.end());
 
         out.normals.insert(out.normals.end(), verts.normals.begin(), verts.normals.end());
@@ -196,16 +187,6 @@ void extract(const std::string& name,
         auto verts =
             gltf_util::gltf_vertices(model, prim.attributes, n.w_T_node, true, true, mesh.name);
         out.new_vertices.insert(out.new_vertices.end(), verts.vtx.begin(), verts.vtx.end());
-
-        // const u32 time_of_day = 0; //Defaulting to time of day being zero for now.
-        // const u32 vtx_color_offset = time_of_day * 4;
-        // for( const auto &vtx_color : verts.vtx_colors )
-        // {
-        //   math::Vector<u8, 4> &new_color = out.new_colors.emplace_back();
-        //   const u8* source_ptr = vtx_color.data() + vtx_color_offset;
-        //   u8* target_ptr = new_color.data();
-        //   std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
-        // }
 
         out.new_colors.insert(out.new_colors.end(), verts.vtx_colors.begin(),verts.vtx_colors.end());
         out.normals.insert(out.normals.end(), verts.normals.begin(), verts.normals.end());

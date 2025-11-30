@@ -485,11 +485,9 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 32>>&
     math::Vector<u64,32> color_totals = math::Vector<u64,32>::zero();
     const u32 n = node->colors.size();
     for (auto& color : node->colors) {
+      color_value_to_color_idx[color] = slot;
       for(int channel = 0; channel < 32; ++channel)
-      {
-        color_value_to_color_idx[color] = slot;
         color_totals[channel] += color[channel];
-      }
     }
     auto& final_color = result.final_colors.emplace_back();
     for(int time_of_day = 0; time_of_day < 8; ++time_of_day){
