@@ -76,6 +76,12 @@ void BlitDisplays::render(DmaFollower& dma,
           m_color_filter_pending = true;
           memcpy(m_color_filter.data(), data.data, sizeof(math::Vector4f));
         } break;
+        case 0x15: {  // slow-time
+          m_blur_old_copier.copy_now(render_state->render_fb_w, render_state->render_fb_h,
+                                     render_state->render_fb);
+          m_slow_time_pending = true;
+          memcpy(&m_slow_time_amount, data.data, sizeof(float));
+        } break;
       }
     }
   }
@@ -112,6 +118,9 @@ void BlitDisplays::do_copy_back(SharedRenderState* render_state, ScopedProfilerN
   } else if (m_zoom_blur_pending) {
     do_zoom_blur(render_state, prof);
     m_zoom_blur_pending = false;
+  } else if (m_slow_time_pending) {
+    do_slow_time(render_state, prof);
+    m_slow_time_pending = false;
   }
 }
 
@@ -159,14 +168,35 @@ void BlitDisplays::do_zoom_blur(SharedRenderState* render_state, ScopedProfilerN
   glEnable(GL_BLEND);
   glBindTexture(GL_TEXTURE_2D, m_blur_old_copier.texture());
 
-  // zoom blur draw
+  // draw old image
   m_fullscreen_tex_draw.draw(m_zoom_blur.color.cast<float>() / 128.f, math::Vector2f{xmin, ymin},
                              math::Vector2f{xmax, ymax}, render_state, prof);
 
-  // screen draw
+  // draw new image on top of it
   glBindTexture(GL_TEXTURE_2D, m_blur_new_copier.texture());
   m_fullscreen_tex_draw.draw(math::Vector4f{1.f, 1.f, 1.f, m_zoom_blur.alpha_current},
                              math::Vector2f{0, 0}, math::Vector2f{1, 1}, render_state, prof);
+}
+
+void BlitDisplays::do_slow_time(SharedRenderState* render_state, ScopedProfilerNode& prof) {
+  m_blur_new_copier.copy_now(render_state->render_fb_w, render_state->render_fb_h,
+                             render_state->render_fb);
+
+  // clear screen
+  glBindFramebuffer(GL_FRAMEBUFFER, render_state->render_fb);
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  // GL Setup
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBindTexture(GL_TEXTURE_2D, m_blur_old_copier.texture());
+
+  // draw old image
+  m_fullscreen_tex_draw.draw({1.f, 1.f, 1.f, 1.f}, math::Vector2f{0, 0}, math::Vector2f{1, 1},
+                             render_state, prof);
+  glBindTexture(GL_TEXTURE_2D, m_blur_new_copier.texture());
+  m_slow_time_effect.draw(m_slow_time_amount, render_state, prof);
 }
 
 void BlitDisplays::draw_debug_window() {
@@ -179,10 +209,15 @@ void BlitDisplays::draw_debug_window() {
 
 void BlitDisplays::apply_color_filter(SharedRenderState* render_state, ScopedProfilerNode& prof) {
   if (m_color_filter_pending) {
-    glEnable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_DST_COLOR, GL_ZERO);
-    m_color_draw.draw(m_color_filter, render_state, prof);
+    // if the multiplier is >1, the only way I see to do this is copy and redraw the whole screen.
+    // doing the fullscreen draw also seems to cause alpha-related issues - the debug menu
+    // background stops showing up.
+    m_blur_new_copier.copy_now(render_state->render_fb_w, render_state->render_fb_h,
+                               render_state->render_fb);
+    glDisable(GL_DEPTH_TEST);
+    glBindTexture(GL_TEXTURE_2D, m_blur_new_copier.texture());
+    m_fullscreen_tex_draw.draw(m_color_filter, math::Vector2f{0, 0}, math::Vector2f{1, 1},
+                               render_state, prof);
     m_color_filter_pending = false;
   }
 }
