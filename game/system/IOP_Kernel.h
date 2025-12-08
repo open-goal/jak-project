@@ -53,7 +53,7 @@ struct IopThread {
     Dormant,
   };
 
-  enum class Wait { None, Semaphore, Delay, Messagebox, EventFlag };
+  enum class Wait { None, Sleep, Semaphore, Delay, Messagebox, EventFlag };
 
   IopThread(std::string n, void (*f)(), s32 ID, u32 pri)
       : name(std::move(n)), function(f), priority(pri), thID(ID) {
@@ -71,6 +71,7 @@ struct IopThread {
   time_stamp resumeTime = {};
   u32 priority = 0;
   s32 thID = -1;
+  s32 wakeupCount = 0;
 };
 
 struct Semaphore {
