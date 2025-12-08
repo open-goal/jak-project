@@ -647,15 +647,15 @@
                     )
               (case (-> self control danger-mode)
                 (('board-spin)
-                 (if (logtest? (-> *part-group-id-table* 184 flags) (sp-group-flag sp13))
+                 (if (logtest? (-> group-board-spin-attack flags) (sp-group-flag sp13))
                      (part-tracker-spawn
                        part-tracker-subsampler
                        :to self
-                       :group (-> *part-group-id-table* 184)
+                       :group group-board-spin-attack
                        :target self
                        :mat-joint 37
                        )
-                     (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 184) :target self :mat-joint 37)
+                     (part-tracker-spawn part-tracker :to self :group group-board-spin-attack :target self :mat-joint 37)
                      )
                  )
                 )
@@ -841,10 +841,10 @@
       (set! (-> self board upper-body) (new 'process 'joint-mod (joint-mod-mode flex-blend) self 5))
       )
   (if (zero? (-> self board effect-part))
-      (set! (-> self board effect-part) (create-launch-control (-> *part-group-id-table* 185) self))
+      (set! (-> self board effect-part) (create-launch-control group-target-board self))
       )
   (if (zero? (-> self board charge-part))
-      (set! (-> self board charge-part) (create-launch-control (-> *part-group-id-table* 186) self))
+      (set! (-> self board charge-part) (create-launch-control group-target-board-duck-charge self))
       )
   (mode-set! (-> self board main) (joint-mod-mode flex-blend))
   (mode-set! (-> self board upper-body) (joint-mod-mode flex-blend))
@@ -1255,7 +1255,8 @@
              (< 0.0 (-> self fact eco-green))
              )
     (target-board-green-eco-attack #f)
-    (target-board-green-eco-use 0.075)
+    ;; og:preserve-this changed for high fps
+    (target-board-green-eco-use (* DISPLAY_FPS_RATIO 0.075))
     )
   0
   (none)
@@ -1505,13 +1506,13 @@
      (set! (-> self board shock-offset) -3072.0)
      (set! (-> self board shock-offsetv) 0.0)
      (cond
-       ((logtest? (-> *part-group-id-table* 23 flags) (sp-group-flag sp13))
+       ((logtest? (-> group-land-poof-stn flags) (sp-group-flag sp13))
         (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
-        (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 23))
+        (part-tracker-spawn part-tracker-subsampler :to self :group group-land-poof-stn)
         )
        (else
          (vector-copy! (-> *launch-matrix* trans) (-> self control trans))
-         (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 23))
+         (part-tracker-spawn part-tracker :to self :group group-land-poof-stn)
          )
        )
      )
@@ -2164,30 +2165,24 @@
                    (focus-test? self board)
                    (< 0.0 (-> self fact eco-green))
                    )
-              (if (logtest? (-> *part-group-id-table* 187 flags) (sp-group-flag sp13))
+              (if (logtest? (-> group-board-green-eco-zap-attack flags) (sp-group-flag sp13))
                   (part-tracker-spawn
                     part-tracker-subsampler
                     :to self
-                    :group (-> *part-group-id-table* 187)
+                    :group group-board-green-eco-zap-attack
                     :target self
                     :mat-joint 37
                     )
-                  (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 187) :target self :mat-joint 37)
+                  (part-tracker-spawn part-tracker :to self :group group-board-green-eco-zap-attack :target self :mat-joint 37)
                   )
               (target-board-green-eco-attack #t)
               (target-board-green-eco-use 5.0)
               )
-             ((logtest? (-> *part-group-id-table* 188 flags) (sp-group-flag sp13))
-              (part-tracker-spawn
-                part-tracker-subsampler
-                :to self
-                :group (-> *part-group-id-table* 188)
-                :target self
-                :mat-joint 37
-                )
+             ((logtest? (-> group-board-zap-attack flags) (sp-group-flag sp13))
+              (part-tracker-spawn part-tracker-subsampler :to self :group group-board-zap-attack :target self :mat-joint 37)
               )
              (else
-               (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 188) :target self :mat-joint 37)
+               (part-tracker-spawn part-tracker :to self :group group-board-zap-attack :target self :mat-joint 37)
                )
              )
            (target-timed-invulnerable (-> *TARGET_BOARD-bank* zap-duration) self 2)

@@ -104,6 +104,66 @@ const static std::vector<float> mode_colors_jak2 = {
     1.0f,  1.0f, 0.1f,  // 3, halfpipe
 };
 
+const static std::vector<float> material_colors_jak3 = {
+    1.0f,  0.1f,  1.0f,   // 0, unknown
+    0.1f,  2.0f,  2.0f,   // 1, ice
+    0.75f, 0.25f, 0.1f,   // 2, quicksand
+    0.1f,  0.25f, 0.75f,  // 3, waterbottom
+    0.5f,  0.15f, 0.1f,   // 4, tar
+    2.0f,  1.5f,  0.5f,   // 5, sand
+    1.5f,  0.75f, 0.1f,   // 6, wood
+    0.1f,  1.35f, 0.1f,   // 7, grass
+    1.7f,  1.3f,  0.1f,   // 8, pcmetal
+    1.8f,  1.8f,  1.8f,   // 9, snow
+    1.5f,  0.2f,  1.0f,   // 10, deepsnow
+    1.2f,  0.5f,  0.3f,   // 11, hotcoals
+    1.4f,  0.1f,  0.1f,   // 12, lava
+    0.8f,  0.3f,  0.1f,   // 13, crwood
+    1.0f,  0.4f,  1.0f,   // 14, gravel
+    1.5f,  0.5f,  0.15f,  // 15, dirt
+    0.7f,  0.7f,  1.0f,   // 16, metal
+    0.1f,  0.1f,  1.2f,   // 17, straw
+    0.75f, 1.75f, 0.75f,  // 18, tube
+    0.4f,  0.1f,  0.8f,   // 19, swamp
+    0.1f,  0.4f,  0.8f,   // 20, stopproj
+    1.9f,  0.1f,  1.9f,   // 21, rotate
+    1.0f,  1.0f,  1.0f,   // 22, neutral
+    1.0f,  0.7f,  1.0f,   // 23, stone
+    0.8f,  1.2f,  1.2f,   // 24, crmetal
+    0.7f,  0.0f,  0.0f,   // 25, carpet
+    0.1f,  0.9f,  0.1f,   // 26, grmetal
+    1.4f,  0.7f,  0.1f,   // 27, shmetal
+    0.5f,  0.5f,  0.0f,   // 28, hdwood
+    2.0f,  1.2f,  1.2f,   // 29, squish
+    2.0f,  1.25f, 0.1f,   // 30, mhshroom
+    0.5f,  1.0f,  0.5f,   // 31, forest
+    1.25f, 2.0f,  0.75f,  // 32, mhswamp
+    0.85f, 0.5f,  2.0f,   // 33, dmaker
+};
+
+const static std::vector<float> event_colors_jak3 = {
+    1.0f, 1.0f, 1.0f,  // 0, none
+    0.5f, 1.0f, 1.0f,  // 1, deadly
+    0.1f, 1.0f, 0.1f,  // 2, endlessfall
+    1.0f, 1.0f, 0.1f,  // 3, burn
+    0.1f, 0.1f, 1.0f,  // 4, deadlyup
+    1.0f, 0.1f, 0.5f,  // 5, burnup
+    1.0f, 0.1f, 0.1f,  // 6, melt
+    0.1f, 0.7f, 0.7f,  // 7, slide
+    1.0f, 0.2f, 1.0f,  // 8, lip
+    0.5f, 0.2f, 1.0f,  // 9, lipramp
+    0.1f, 0.5f, 1.0f,  // 10, shock
+    0.5f, 0.6f, 1.0f,  // 11, shockup
+    0.5f, 0.6f, 0.5f,  // 12, hide
+    0.5f, 1.0f, 0.5f,  // 13, rail
+    0.7f, 0.7f, 0.7f,  // 14, slippery
+    1.2f, 1.2f, 0.1f,  // 15, drag
+    1.2f, 2.0f, 2.0f,  // 16, waterfloor
+    2.0f, 1.0f, 0.1f,  // 17, hang
+    1.2f, 0.1f, 0.1f,  // 18, fry
+    0.1f, 2.0f, 0.1f   // 19, slime
+};
+
 CollideMeshRenderer::CollideMeshRenderer(GameVersion version) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_ubo);
@@ -121,17 +181,17 @@ CollideMeshRenderer::~CollideMeshRenderer() {
 }
 
 void CollideMeshRenderer::init_pat_colors(GameVersion version) {
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < PAT_MOD_COUNT; ++i) {
     m_colors.pat_mode_colors[i].x() = -1.f;
     m_colors.pat_mode_colors[i].y() = -1.f;
     m_colors.pat_mode_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 32; ++i) {
+  for (int i = 0; i < PAT_MAT_COUNT; ++i) {
     m_colors.pat_material_colors[i].x() = -1.f;
     m_colors.pat_material_colors[i].y() = -1.f;
     m_colors.pat_material_colors[i].z() = -1.f;
   }
-  for (int i = 0; i < 32; ++i) {
+  for (int i = 0; i < PAT_EVT_COUNT; ++i) {
     m_colors.pat_event_colors[i].x() = -1.f;
     m_colors.pat_event_colors[i].y() = -1.f;
     m_colors.pat_event_colors[i].z() = -1.f;
@@ -148,10 +208,14 @@ void CollideMeshRenderer::init_pat_colors(GameVersion version) {
       mode_colors = &mode_colors_jak1;
       break;
     case GameVersion::Jak2:
-    case GameVersion::Jak3:
       material_colors = &material_colors_jak2;
       event_colors = &event_colors_jak2;
       mode_colors = &mode_colors_jak2;
+      break;
+    case GameVersion::Jak3:
+      material_colors = &material_colors_jak3;
+      event_colors = &event_colors_jak3;
+      mode_colors = &mode_colors_jak2;  // unchanged from jak2
       break;
   }
 

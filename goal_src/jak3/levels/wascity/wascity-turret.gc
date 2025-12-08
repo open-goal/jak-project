@@ -173,13 +173,13 @@
     (vector-copy! v1-12 (-> this root trans))
     (+! (-> v1-12 y) 8192.0)
     (cond
-      ((logtest? (-> *part-group-id-table* 542 flags) (sp-group-flag sp13))
+      ((logtest? (-> group-wc-turret-explode flags) (sp-group-flag sp13))
        (vector-copy! (-> *launch-matrix* trans) v1-12)
-       (part-tracker-spawn part-tracker-subsampler :to this :group (-> *part-group-id-table* 542))
+       (part-tracker-spawn part-tracker-subsampler :to this :group group-wc-turret-explode)
        )
       (else
         (vector-copy! (-> *launch-matrix* trans) v1-12)
-        (part-tracker-spawn part-tracker :to this :group (-> *part-group-id-table* 542))
+        (part-tracker-spawn part-tracker :to this :group group-wc-turret-explode)
         )
       )
     )
@@ -326,8 +326,8 @@
   (set! (-> this info) (new 'static 'target-turret-info :idle-anim 4 :camera-joint 3))
   (set! (-> this info explode-sg) #f)
   (set! (-> this info explode-params) #f)
-  (set! (-> this reticle-part) (create-launch-control (-> *part-group-id-table* 548) this))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 549) this))
+  (set! (-> this reticle-part) (create-launch-control group-turret-reticle this))
+  (set! (-> this part) (create-launch-control group-turret-skeet this))
   0
   (none)
   )
@@ -425,7 +425,8 @@
     (if (>= 182.04445 (fabs (deg-diff (-> this roty) (-> this dest-roty))))
         (set! (-> this reset-facing) #f)
         )
-    (+! (-> this rotyv) (* (-> this speed-mult) (-> this rotyvv) (seconds-per-frame)))
+    ;; og:preserve-this changed for high fps
+    (+! (-> this rotyv) (* (-> this speed-mult) (-> this rotyvv) (seconds-per-frame-high-fps)))
     (set! (-> this rotyv) (* (-> this rotyv) (-> s5-0 roty-friction)))
     (set! (-> this rotyv) (fmax (fmin (-> this rotyv) (-> s5-0 rotyv-max)) (- (-> s5-0 rotyv-max))))
     (set! (-> this roty)
@@ -433,7 +434,8 @@
                (sar (shl (the int (+ (-> this roty) (* (-> this speed-mult) (-> this rotyv) (seconds-per-frame)))) 48) 48)
                )
           )
-    (+! (-> this rotxv) (* (-> this speed-mult) (-> this rotxvv) (seconds-per-frame)))
+    ;; og:preserve-this changed for high fps
+    (+! (-> this rotxv) (* (-> this speed-mult) (-> this rotxvv) (seconds-per-frame-high-fps)))
     (set! (-> this rotxv) (* (-> this rotxv) (-> s5-0 rotx-friction)))
     (set! (-> this rotxv) (fmax (fmin (-> this rotxv) (-> s5-0 rotxv-max)) (- (-> s5-0 rotxv-max))))
     )

@@ -632,13 +632,30 @@
 
   ;; in-place draw on rasterization buffer to apply brightness and contrast. Added to almost
   ;; the last bucket, so it applies to HUD too.
+  ;; this type of full-screen draw is done at the end of rendering a frame on PC port, so we just pass the parameters required for it instead
   (let ((v1-3 (-> *setting-control* user-current)))
-    (when (or (!= (-> v1-3 contrast) 0.5) (!= (-> v1-3 brightness) 0.5))
-      (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
-                                   (bucket-id debug-menu)
-                                   )
-        (draw-brightness-and-contrast this s4-0 (-> v1-3 brightness) (-> v1-3 contrast))
-        (reset-display-gs-state *display* s4-0)
+    (#cond
+      ((not PC_PORT)
+        (when (or (!= (-> v1-3 contrast) 0.5) (!= (-> v1-3 brightness) 0.5))
+          (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                      (bucket-id debug-menu)
+                                      )
+            (draw-brightness-and-contrast this s4-0 (-> v1-3 brightness) (-> v1-3 contrast))
+            (reset-display-gs-state *display* s4-0)
+            )
+          )
+        )
+      (#t
+        ;; og:preserve-this always calculate contrast and brightness and pass it to display settings
+        (let ((contrast (fmax 0.0 (fmin 1.0 (-> v1-3 contrast))))
+              (brightness (fmax 0.0 (fmin 1.0 (-> v1-3 brightness))))
+              )
+          (let ((bc-color (the int (* 64.2509 (+ (- 0.5 contrast) (* 2.0 (fmax 0.0 (+ -0.5 brightness)))))))
+                (bc-alpha (the int (fmin 255.0 (* 256.0 (fmin 1.0 (* 2.0 brightness)) contrast))))
+                )
+            (pc-set-brightness-contrast bc-color bc-alpha)
+            )
+          )
         )
       )
     )

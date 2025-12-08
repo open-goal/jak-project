@@ -142,7 +142,7 @@
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
   (set! (-> this attack-mode) 'eco-dark)
   (vector-normalize! (-> this root transv) (+ 225280.0 (* 225280.0 (-> this charge-level))))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 72) this))
+  (set! (-> this part) (create-launch-control group-gun-dark-shot-trail this))
   (set! (-> this blast-radius) 40960.0)
   (set! (-> this size-t) 0.0)
   (set! (-> this charge-sound) (new-sound-id))
@@ -287,41 +287,7 @@
           )
       )
     (set-time! (-> self state-time))
-    (let ((gp-2 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when gp-2
-        (let ((t9-4 (method-of-type part-tracker activate)))
-          (t9-4
-            (the-as part-tracker gp-2)
-            *entity-pool*
-            (symbol->string (-> part-tracker symbol))
-            (the-as pointer #x70004000)
-            )
-          )
-        (let ((t9-5 run-function-in-process)
-              (a0-18 gp-2)
-              (a1-4 part-tracker-init)
-              (a2-4 (-> *part-group-id-table* 70))
-              (a3-1 0)
-              (t0-0 #f)
-              (t1-0 #f)
-              (t2-0 #f)
-              (t3-0 *launch-matrix*)
-              )
-          (set! (-> t3-0 trans quad) (-> self root trans quad))
-          ((the-as (function object object object object object object object object none) t9-5)
-           a0-18
-           a1-4
-           a2-4
-           a3-1
-           t0-0
-           t1-0
-           t2-0
-           t3-0
-           )
-          )
-        (-> gp-2 ppointer)
-        )
-      )
+    (part-tracker-spawn :to *entity-pool* :group group-gun-dark-shot-fired :mat-joint (-> self root trans))
     (draw-beam (-> *part-id-table* 210) (-> self root trans) (-> self core-velocity) #f #t)
     )
   :trans (behavior ()
@@ -335,12 +301,7 @@
         (let ((s5-0 (new 'stack-no-clear 'matrix)))
           (let ((s4-0 (new 'stack-no-clear 'vector)))
             (vector-normalize-copy! s4-0 (-> self core-velocity) 1.0)
-            (let* ((s3-0 (handle->process (-> self track-target)))
-                   (v1-3 (if (type? s3-0 process-drawable)
-                             (the-as process-drawable s3-0)
-                             )
-                         )
-                   )
+            (let ((v1-3 (as-type (handle->process (-> self track-target)) process-drawable)))
               (when v1-3
                 (let* ((s3-2 (vector-! (new 'stack-no-clear 'vector) (-> v1-3 root trans) (-> self core-position)))
                        (f0-0 (vector-normalize-ret-len! s3-2 1.0))
@@ -372,13 +333,14 @@
                   )
                 )
               (vector-normalize! (-> self spin-vector) f30-0)
-              (vector-normalize! (-> self core-velocity) 7372.8)
+              ;; og:preserve-this changed for high fps
+              (vector-normalize! (-> self core-velocity) (* DISPLAY_FPS_RATIO (meters 1.8)))
               (set! (-> s5-0 vector 2 quad) (-> s4-0 quad))
               (set! (-> s5-0 vector 1 quad) (-> self spin-vector quad))
               (vector-float*! (-> s5-0 vector 1) (-> s5-0 vector 1) (/ 1.0 f30-0))
               )
             )
-          (vector-cross! (the-as vector (-> s5-0 vector)) (-> s5-0 vector 1) (-> s5-0 vector 2))
+          (vector-cross! (-> s5-0 vector 0) (-> s5-0 vector 1) (-> s5-0 vector 2))
           (matrix->quaternion (-> self root quat) s5-0)
           )
         (vector+! (-> self core-position) (-> self core-position) (-> self core-velocity))
@@ -638,7 +600,7 @@
       (set! (-> gp-1 spawn-point quad) (-> self root trans quad))
       (quaternion-copy! (-> gp-1 spawn-quat) (-> self root quat))
       (set! (-> gp-1 radius) 36864.0)
-      (set! (-> gp-1 group) (-> *part-group-id-table* 71))
+      (set! (-> gp-1 group) group-jak-peacemaker-shot-hit)
       (set! (-> gp-1 collide-with)
             (collide-spec backgnd crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
             )
@@ -736,12 +698,7 @@
               )
           )
         (countdown (s5-3 gp-2)
-          (let* ((s3-1 (handle->process (-> self result-array s5-3)))
-                 (s4-1 (if (type? s3-1 process-focusable)
-                           s3-1
-                           )
-                       )
-                 )
+          (let ((s4-1 (the-as process (as-type (handle->process (-> self result-array s5-3)) process-focusable))))
             (when s4-1
               (send-event s4-1 'attack #f (static-attack-info ((id (new-attack-id)) (mode 'explode) (damage 16.0))))
               (process-spawn-function

@@ -707,7 +707,7 @@
   (set! (-> this move) warf-projectile-move)
   (logior! (-> this options) (projectile-options po13))
   (set! (-> this muzzle-flash-part) (the-as sparticle-launch-control (-> *part-id-table* 2896)))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 778) this))
+  (set! (-> this part) (create-launch-control group-factory-vehicle-shot this))
   (let* ((v1-12 *game-info*)
          (a0-6 (+ (-> v1-12 attack-id) 1))
          )
@@ -1044,26 +1044,26 @@
     (vector+! (-> gp-0 trans) (-> this root trans) s3-0)
     (cond
       ((-> this hit-actor?)
-       (if (logtest? (-> *part-group-id-table* 734 flags) (sp-group-flag sp13))
+       (if (logtest? (-> group-gun-tower-hit-explosion flags) (sp-group-flag sp13))
            (part-tracker-spawn
              part-tracker-subsampler
              :to *entity-pool*
-             :group (-> *part-group-id-table* 734)
+             :group group-gun-tower-hit-explosion
              :mat-joint gp-0
              )
-           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 734) :mat-joint gp-0)
+           (part-tracker-spawn part-tracker :to *entity-pool* :group group-gun-tower-hit-explosion :mat-joint gp-0)
            )
        )
-      ((logtest? (-> *part-group-id-table* 735 flags) (sp-group-flag sp13))
+      ((logtest? (-> group-gun-tower-hit-object flags) (sp-group-flag sp13))
        (part-tracker-spawn
          part-tracker-subsampler
          :to *entity-pool*
-         :group (-> *part-group-id-table* 735)
+         :group group-gun-tower-hit-object
          :mat-joint gp-0
          )
        )
       (else
-        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 735) :mat-joint gp-0)
+        (part-tracker-spawn part-tracker :to *entity-pool* :group group-gun-tower-hit-object :mat-joint gp-0)
         )
       )
     )
@@ -1170,7 +1170,7 @@
   (set! (-> this damage) 1.0)
   (set! (-> this sound-id) (new-sound-id))
   (logior! (-> this options) (projectile-options po13))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 777) this))
+  (set! (-> this part) (create-launch-control group-fac-guntower-particle this))
   (let* ((v1-10 *game-info*)
          (a0-6 (+ (-> v1-10 attack-id) 1))
          )
@@ -1183,30 +1183,29 @@
 
 (defmethod projectile-method-26 ((this gun-warf-shot))
   (when (not (-> this hit-actor?))
-    (let ((v1-10
-            (cond
-              ((-> this hit-actor?)
-               (cond
-                 ((logtest? (-> *part-group-id-table* 776 flags) (sp-group-flag sp13))
-                  (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
-                  (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 776))
-                  )
-                 (else
-                   (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
-                   (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 776))
+    (let ((v1-10 (cond
+                   ((-> this hit-actor?)
+                    (cond
+                      ((logtest? (-> group-gun-warf-shot-hit flags) (sp-group-flag sp13))
+                       (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+                       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-gun-warf-shot-hit)
+                       )
+                      (else
+                        (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+                        (part-tracker-spawn part-tracker :to *entity-pool* :group group-gun-warf-shot-hit)
+                        )
+                      )
+                    )
+                   ((logtest? (-> group-gun-warf-shot-hit flags) (sp-group-flag sp13))
+                    (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+                    (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-gun-warf-shot-hit)
+                    )
+                   (else
+                     (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
+                     (part-tracker-spawn part-tracker :to *entity-pool* :group group-gun-warf-shot-hit)
+                     )
                    )
                  )
-               )
-              ((logtest? (-> *part-group-id-table* 776 flags) (sp-group-flag sp13))
-               (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
-               (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 776))
-               )
-              (else
-                (vector-copy! (-> *launch-matrix* trans) (-> this root trans))
-                (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 776))
-                )
-              )
-            )
           )
       (send-event (ppointer->process v1-10) 'clock this)
       )

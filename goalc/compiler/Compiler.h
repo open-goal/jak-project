@@ -730,6 +730,7 @@ class Compiler {
   Val* compile_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   ConstPropResult const_prop_size_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_psize_of(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_offset_of(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_current_method_id(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_current_method_type(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_cast_to_method_type(const goos::Object& form, const goos::Object& rest, Env* env);

@@ -213,7 +213,7 @@
       (quaternion-identity! (-> gp-1 spawn-quat))
       (set! (-> gp-1 radius) 8192.0)
       (set! (-> gp-1 scale) 1.0)
-      (set! (-> gp-1 group) (-> *part-group-id-table* 218))
+      (set! (-> gp-1 group) group-kg-big-explosion)
       (set! (-> gp-1 collide-with) (collide-spec))
       (set! (-> gp-1 damage) 2.0)
       (set! (-> gp-1 damage-scale) 1.0)
@@ -722,7 +722,7 @@
 
 (defmethod init-proj-settings! ((this prebot-gun-shot))
   (set! (-> this attack-mode) 'eco-dark)
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1335) this))
+  (set! (-> this part) (create-launch-control group-prebot-gun-shot-trail this))
   (set! (-> this sound-id) (new-sound-id))
   ((method-of-type projectile init-proj-settings!) this)
   0
@@ -802,7 +802,7 @@
       (quaternion-identity! (-> gp-0 spawn-quat))
       (set! (-> gp-0 radius) 8192.0)
       (set! (-> gp-0 scale) 1.0)
-      (set! (-> gp-0 group) (-> *part-group-id-table* 1343))
+      (set! (-> gp-0 group) group-prebot-gun-shot-explosion)
       (set! (-> gp-0 collide-with)
             (collide-spec backgnd jak crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher shield)
             )
@@ -840,7 +840,8 @@
          (vector-copy! (-> gp-0 vel) (vector-normalize-copy!
                                        (new 'stack-no-clear 'vector)
                                        (-> self node-list data 7 bone transform uvec)
-                                       (* 4096.0 (-> self clock frames-per-second))
+                                       ;; og:preserve-this changed for high fps
+                                       (* (meters 1) (fmin 60.0 (-> self clock frames-per-second)))
                                        )
                        )
          (set! (-> gp-0 notify-handle) (the-as handle #f))
@@ -857,18 +858,18 @@
          (set! (-> gp-0 timeout) (seconds 4))
          (spawn-projectile prebot-gun-shot gp-0 (ppointer->process (-> self parent)) *default-dead-pool*)
          )
-       (if (logtest? (-> *part-group-id-table* 1334 flags) (sp-group-flag sp13))
+       (if (logtest? (-> group-prebot-launch-critter flags) (sp-group-flag sp13))
            (part-tracker-spawn
              part-tracker-subsampler
              :to *entity-pool*
-             :group (-> *part-group-id-table* 1334)
+             :group group-prebot-launch-critter
              :duration (seconds 1)
              :mat-joint (-> self node-list data 7 bone transform)
              )
            (part-tracker-spawn
              part-tracker
              :to *entity-pool*
-             :group (-> *part-group-id-table* 1334)
+             :group group-prebot-launch-critter
              :duration (seconds 1)
              :mat-joint (-> self node-list data 7 bone transform)
              )
@@ -1050,13 +1051,13 @@
          )
        (sound-play "columns-break" :position (-> self root trans))
        (cond
-         ((logtest? (-> *part-group-id-table* 1344 flags) (sp-group-flag sp13))
+         ((logtest? (-> group-prebot-pillar-shatter flags) (sp-group-flag sp13))
           (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1344))
+          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group group-prebot-pillar-shatter)
           )
          (else
            (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1344))
+           (part-tracker-spawn part-tracker :to *entity-pool* :group group-prebot-pillar-shatter)
            )
          )
        (go-virtual wait-to-die)

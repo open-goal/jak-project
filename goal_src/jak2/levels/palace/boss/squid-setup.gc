@@ -400,7 +400,7 @@
   (set! (-> self current-nav-poly)
         (cloest-point-on-mesh (-> self nav) (-> self root trans) (-> self root trans) (the-as nav-poly #f))
         )
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1122) self))
+  (set! (-> self part) (create-launch-control group-squid-whirlwind-fire self))
   (set! (-> self whirl-sound) (new-sound-id))
   (set! (-> self whirl-sound-playing) #f)
   (go-virtual idle)
@@ -995,8 +995,8 @@
           (when (< s0-0 11)
             (vector-! (-> s5-1 vector 1) sv-1904 s4-1)
             (vector-normalize! (-> s5-1 vector 1) 1.0)
-            (vector-cross! (the-as vector (-> s5-1 vector)) (-> s5-1 vector 1) s3-1)
-            (vector-normalize! (the-as vector (-> s5-1 vector)) 1.0)
+            (vector-cross! (-> s5-1 vector 0) (-> s5-1 vector 1) s3-1)
+            (vector-normalize! (-> s5-1 vector 0) 1.0)
             (set! sv-1872 (new 'stack-no-clear 'vector))
             (let ((v1-182 (-> sv-1456 old-x))
                   (a0-93 (-> s5-1 vector))
@@ -1010,9 +1010,9 @@
             (vector-flatten! sv-1872 (-> sv-1456 old-x) (-> s5-1 vector 1))
             (vector-normalize! sv-1872 1.0)
             (cond
-              ((< (vector-dot (the-as vector (-> s5-1 vector)) sv-1872) (cos 3640.889))
-               (vector-cross! sv-1872 sv-1872 (the-as vector (-> s5-1 vector)))
-               (vector-cross! sv-1872 (the-as vector (-> s5-1 vector)) sv-1872)
+              ((< (vector-dot (-> s5-1 vector 0) sv-1872) (cos 3640.889))
+               (vector-cross! sv-1872 sv-1872 (-> s5-1 vector 0))
+               (vector-cross! sv-1872 (-> s5-1 vector 0) sv-1872)
                (vector-normalize! sv-1872 1.0)
                (set! sv-1840 (-> s5-1 vector))
                (set! sv-1824 (-> s5-1 vector))
@@ -1045,7 +1045,7 @@
                 (set! (-> sv-1456 old-x quad) (-> s5-1 vector 0 quad))
                 )
               )
-            (vector-cross! (-> s5-1 vector 2) (the-as vector (-> s5-1 vector)) (-> s5-1 vector 1))
+            (vector-cross! (-> s5-1 vector 2) (-> s5-1 vector 0) (-> s5-1 vector 1))
             (matrix->quaternion (-> sv-1456 joint-mod quat) s5-1)
             (set! (-> s2-0 quad) (-> s5-1 vector 1 quad))
             (set! (-> s3-1 quad) (-> s5-1 vector 2 quad))
@@ -1199,36 +1199,7 @@
           )
         )
       (when arg2
-        (let ((s4-1 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when s4-1
-            (let ((t9-2 (method-of-type part-tracker activate)))
-              (t9-2 (the-as part-tracker s4-1) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-              )
-            (let ((t9-3 run-function-in-process)
-                  (a0-4 s4-1)
-                  (a1-4 part-tracker-init)
-                  (a2-6 (-> *part-group-id-table* 1121))
-                  (a3-2 0)
-                  (t0-0 #f)
-                  (t1-0 #f)
-                  (t2-0 #f)
-                  (t3-0 *launch-matrix*)
-                  )
-              (set! (-> t3-0 trans quad) (-> gp-0 quad))
-              ((the-as (function object object object object object object object object none) t9-3)
-               a0-4
-               a1-4
-               a2-6
-               a3-2
-               t0-0
-               t1-0
-               t2-0
-               t3-0
-               )
-              )
-            (-> s4-1 ppointer)
-            )
-          )
+        (part-tracker-spawn :to self :group group-squid-grenade-explode :mat-joint gp-0)
         (sound-play "hit-squid")
         )
       (if (logtest? (attack-mask attacker-velocity) (-> arg1 mask))
@@ -1290,7 +1261,7 @@
            (let ((s5-0 run-function-in-process)
                  (s4-0 gp-0)
                  (s3-0 part-tracker-init)
-                 (s2-0 (-> *part-group-id-table* 1121))
+                 (s2-0 group-squid-grenade-explode)
                  (s1-0 0)
                  (s0-0 #f)
                  )
@@ -1326,7 +1297,7 @@
            (let ((s5-1 run-function-in-process)
                  (s4-1 gp-1)
                  (s3-1 part-tracker-init)
-                 (s2-1 (-> *part-group-id-table* 1121))
+                 (s2-1 group-squid-grenade-explode)
                  (s1-1 0)
                  (s0-1 #f)
                  )
@@ -1477,11 +1448,7 @@
     (('touched)
      (-> arg3 param 0)
      (when #t
-       (let ((a0-66 (if (type? arg0 process-focusable)
-                        arg0
-                        )
-                    )
-             )
+       (let ((a0-66 (the-as process (as-type arg0 process-focusable))))
          (when a0-66
            (if (send-event
                  a0-66
@@ -1785,7 +1752,7 @@
     )
   (set! (-> this blink-time) 0)
   (setup-part-engine this #t)
-  (set! (-> this thruster-part) (create-launch-control (-> *part-group-id-table* 1118) this))
+  (set! (-> this thruster-part) (create-launch-control group-squid-thruster this))
   (dotimes (v1-110 10)
     (set! (-> this grenade v1-110 grenade) (the-as handle #f))
     (set! (-> this grenade v1-110 marker) (the-as handle #f))
@@ -1824,7 +1791,7 @@
     )
   (set! (-> this hud) (the-as handle #f))
   (setup-masks (-> this draw) 0 5440)
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1124) this))
+  (set! (-> this part) (create-launch-control group-squid-damage this))
   (set! (-> this desired-rotate-to-vector-angle) 0.0)
   (set! (-> this allowed-rotate-to-vector-angle) 0.0)
   (set! (-> this rush-sound) (new-sound-id))
@@ -2379,7 +2346,7 @@
         )
       )
     (update! (-> this hit-reaction) (the-as vector #f))
-    (vector+float*! (-> this root trans) (-> this root trans) (the-as vector (-> this hit-reaction)) 4096.0)
+    (vector+float*! (-> this root trans) (-> this root trans) (-> this hit-reaction value) 4096.0)
     (update! (-> this tentacle-base-rotation-speed) 0.0)
     (let ((f0-14 (+ (-> this tentacle-base-rotation) (* 910.2222 (-> this tentacle-base-rotation-speed value)))))
       (set! (-> this tentacle-base-rotation) (- f0-14 (* (the float (the int (/ f0-14 65536.0))) 65536.0)))
@@ -2863,41 +2830,7 @@
       (draw-beam (-> *part-id-table* 4857) (-> this tail-pos) a2-1 #f #t)
       )
     (vector+! gp-0 gp-0 s4-0)
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-3 (method-of-type part-tracker activate)))
-          (t9-3
-            (the-as part-tracker s5-1)
-            *entity-pool*
-            (symbol->string (-> part-tracker symbol))
-            (the-as pointer #x70004000)
-            )
-          )
-        (let ((t9-4 run-function-in-process)
-              (a0-12 s5-1)
-              (a1-5 part-tracker-init)
-              (a2-6 (-> *part-group-id-table* 1125))
-              (a3-2 0)
-              (t0-1 #f)
-              (t1-0 #f)
-              (t2-0 #f)
-              (t3-0 *launch-matrix*)
-              )
-          (set! (-> t3-0 trans quad) (-> gp-0 quad))
-          ((the-as (function object object object object object object object object none) t9-4)
-           a0-12
-           a1-5
-           a2-6
-           a3-2
-           t0-1
-           t1-0
-           t2-0
-           t3-0
-           )
-          )
-        (-> s5-1 ppointer)
-        )
-      )
+    (part-tracker-spawn :to *entity-pool* :group group-squid-shot-hit :mat-joint gp-0)
     )
   0
   (none)
