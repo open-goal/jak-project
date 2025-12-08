@@ -220,6 +220,12 @@ bool run_build_level(const std::string& input_file,
               file.texture_remap_table.resize(tex_remap.size());
               memcpy(file.texture_remap_table.data(), level_file.texture_remap_table.data(),
                      tex_remap.size() * sizeof(level_tools::TextureRemap));
+              if (!tpages.empty()) {
+                file.texture_ids.resize(tpages.size());
+                for (size_t i = 0; i < tpages.size(); ++i) {
+                  file.texture_ids[i] = tpages[i] << 20;
+                }
+              }
             }
             if (is_sky_bsp) {
               // copy adgif data from bsp
