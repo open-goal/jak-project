@@ -200,6 +200,13 @@ void Generic2::determine_draw_modes(bool enable_at, bool default_fog) {
         current_mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
         current_mode.disable_depth_write();
       }
+
+      // another way to disable z-writing:
+      if (current_mode.get_alpha_test() == DrawMode::AlphaTest::NEVER &&
+          current_mode.get_alpha_fail() == GsTest::AlphaFail::FB_ONLY) {
+        current_mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
+        current_mode.disable_depth_write();
+      }
     }
 
     m_adgifs[i].mode = current_mode;
