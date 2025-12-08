@@ -20,7 +20,7 @@ extern size_t PrintBufSize;  // added
 constexpr u32 DEBUG_MESSAGE_BUFFER_SIZE = 0x80000;
 constexpr u32 DEBUG_OUTPUT_BUFFER_SIZE = 0x80000;
 constexpr u32 DEBUG_PRINT_BUFFER_SIZE = 0x200000;
-constexpr u32 PRINT_BUFFER_SIZE = 0x20000;  // upped from 0x2000 on PS2 because we ran out of memory
+constexpr u32 PRINT_BUFFER_SIZE = 0x40000;  // upped from 0x2000 on PS2 because we ran out of memory
 
 struct format_struct {
   char data[0x40];
