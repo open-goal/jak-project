@@ -1658,6 +1658,11 @@
 ;; the DGO file
 (custom-level-cgo "TSZ.DGO" "test-zone/testzone.gd")
 
+;; it should point to the .jsonc file that specifies the level.
+(build-custom-level "my-first-l")
+;; the DGO file
+(custom-level-cgo "MFL.DGO" "my-first-l/myfirstl.gd")
+
 ;; generate the art group for a custom actor.
 ;; requires a .glb model file in custom_assets/jak1/models/custom_levels
 ;; to also generate a collide-mesh, add :gen-mesh #t
