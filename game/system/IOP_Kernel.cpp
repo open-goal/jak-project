@@ -101,7 +101,14 @@ void IOP_Kernel::DelayThread(u32 usec) {
 void IOP_Kernel::SleepThread() {
   ASSERT(_currentThread);
 
-  _currentThread->state = IopThread::State::Suspend;
+  if (_currentThread->wakeupCount > 0) {
+    _currentThread->wakeupCount--;
+    return;
+  }
+
+  _currentThread->state = IopThread::State::Wait;
+  _currentThread->waitType = IopThread::Wait::Sleep;
+
   leaveThread();
 }
 
@@ -116,6 +123,13 @@ void IOP_Kernel::YieldThread() {
  */
 void IOP_Kernel::WakeupThread(s32 id) {
   ASSERT(id > 0);
+
+  auto& thread = threads.at(id);
+  if (thread.state != IopThread::State::Wait || thread.waitType != IopThread::Wait::Sleep) {
+    thread.wakeupCount++;
+    return;
+  }
+
   threads.at(id).state = IopThread::State::Ready;
 }
 
