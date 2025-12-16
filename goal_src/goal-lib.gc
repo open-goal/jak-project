@@ -376,19 +376,89 @@
   )
 )
 
-(defmacro dotimes (var &key (label #f) &rest body)
-  "Loop like for (int i = 0; i < end; i++)
-   var is a list made up of a variable to bind the amount to (second item), and the remaining forms are evaluated after the loop is finished."
-  (let ((continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
-    `(let (( ,(first var) 0))
-      (while (< ,(first var) ,(second var)) :label ,label
-              (block ,continue-label
-                ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
-              )
-              (1+! ,(first var))
-              )
-      ,@(cddr var)
+(defmacro dotimes (var &key (label #f) &key (unroll 1) &rest body)
+  "Loop like for (int i = 0; i < end, i++)
+   var is a list made up of a variable to bind the amount to (second item), and the remaining forms are evaluated after the loop is finished
+   Supports optional loop unrolling with :unroll factor
+   Supports (_ x) syntax to iterate without binding and incrementing a variable when unrolled, and unrolls by default
+   Warning: Does not validate the :unroll factor ratio and doesn't support break/continue when unrolling"
+  (let ((index-var (first var))
+        (limit (second var))
+        (continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue")))
+        (unrolled-body '())
+       )
+
+    (when (and (integer? limit)
+               (> unroll limit)
+           )
+      (error ":unroll factor must be <= the loop limit.")
+    )
+    (when (< unroll 1)
+      (error ":unroll factor must be >= 1.")
+    )
+
+    ;; gensym to support iterating when needed if a binding var wasn't provided
+    (with-gensyms (temp-index-var)
+      ;; Append each expression from the body followed by the increment if needed, :unroll times
+      (dotimes (x unroll)
+        (let ((body-copy body))
+          (while (> (length body-copy) 0)
+            (set! unrolled-body (cons (car body-copy) unrolled-body))
+            (set! body-copy (cdr body-copy))
+          )
+        )
+        (unless (eq? index-var '_)
+          (set! unrolled-body (cons `(1+! ,index-var) unrolled-body))
+        )
+
+        ;; Only append the temporary index increment if we aren't fully unrolling
+        ;; or if the limit could be dynamic
+        (when (and (eq? index-var '_)
+                   (or (not (integer? limit))
+                       (not (eq? limit unroll))
+                    )
+               )
+          (set! unrolled-body (cons `(1+! ,temp-index-var) unrolled-body))
+        )
       )
+      ;; Reverse the unrolled body to maintain order
+      (let ((reversed-body '()))
+        (while (> (length unrolled-body) 0)
+          (set! reversed-body (cons (car unrolled-body) reversed-body))
+          (set! unrolled-body (cdr unrolled-body))
+        )
+        (set! unrolled-body reversed-body)
+      )
+      ;; Build the loop construct or the unrolled body
+      (if (eq? index-var '_)
+          (if (eq? unroll limit)
+              ;; Don't need any loop constructs or index variables when fully unrolling
+              `(begin ,@unrolled-body)
+
+              `(let ((,temp-index-var 0))
+                 (while (< ,temp-index-var ,limit) :label ,label
+                   (block ,continue-label
+                     ,@unrolled-body
+                   )
+                 )
+                 ,@(cddr var)
+               )
+            )
+        `(let ((,index-var 0))
+           ,@(if (eq? unroll limit)
+                  ;; Don't need any loop constructs when fully unrolling
+                  unrolled-body
+
+                 (list `(while (< ,index-var ,limit) :label ,label
+                         (block ,continue-label
+                           ,@unrolled-body)
+                       )
+                 )
+             )
+           ,@(cddr var)
+         )
+      )
+    )
   )
 )
 
