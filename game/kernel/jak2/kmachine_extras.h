@@ -192,6 +192,7 @@ struct SpeedrunCustomCategoryEntry {
   u64 cheats;
   std::string continue_point_name;
   u64 completed_task;
+  u32 continue_point;
 };
 void to_json(json& j, const SpeedrunCustomCategoryEntry& obj);
 void from_json(const json& j, SpeedrunCustomCategoryEntry& obj);
@@ -203,6 +204,7 @@ struct SpeedrunCustomCategory {
   u64 forbidden_features;
   u64 cheats;
   u8 completed_task;
+  u32 continue_point;
 };
 
 }  // namespace kmachine_extras
