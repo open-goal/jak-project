@@ -49,6 +49,16 @@
        (game-task firecanyon-end)
        (game-task firecanyon-buzzer)))
 
+(define *hub1-buzzer-task-list*
+  (new 'static 'boxed-array :type game-task
+    (game-task training-buzzer)
+    (game-task village1-buzzer)
+    (game-task beach-buzzer)
+    (game-task jungle-buzzer)
+    (game-task misty-buzzer)
+    (game-task firecanyon-buzzer)
+    ))
+
 (define *hub2-cell-list*
   (new 'static
        'boxed-array
@@ -88,6 +98,15 @@
        (game-task ogre-end)
        (game-task ogre-secret)
        (game-task ogre-buzzer)))
+
+(define *hub2-buzzer-task-list*
+  (new 'static 'boxed-array :type game-task
+    (game-task village2-buzzer)
+    (game-task sunken-buzzer)
+    (game-task swamp-buzzer)
+    (game-task rolling-buzzer)
+    (game-task ogre-buzzer)
+    ))
 
 (define *hub3-cell-list*
   (new 'static
@@ -232,6 +251,18 @@
   (set! (-> *setting-control* default auto-save) #t)
   (none))
 
+(defun buzzer-task-collect-all ((buzz-task game-task))
+  (let* ((ctrl (get-task-control buzz-task))
+         (buzz-bits (get-reminder ctrl 0)))
+    (dotimes (buzz-index (the int (-> *FACT-bank* buzzer-max-default)))
+      ;; increment total if we haven't collected it before
+      (if (not (logtest? buzz-bits (ash 1 buzz-index))) (+! (-> *game-info* buzzer-total) 1.0))
+      ;; set the updated bits
+      (set! buzz-bits (logior buzz-bits (ash 1 buzz-index)))
+      (save-reminder ctrl buzz-bits 0)))
+  (none)
+  )
+
 (defun setup-speedrun-post-blackout ()
   (when (and (-> *speedrun-info* needs-post-blackout-setup?)
              (>= (-> *display* base-frame-counter) (-> *game-info* blackout-time)))
@@ -350,6 +381,9 @@
        ;; give all orbs from hub1
        (set! (-> *game-info* money-total) 600.0) ;; 50+50+150+150+150+50
        (set! (-> *game-info* money) 180.0) ;; 50+50+150+150+150+50 - (90+90+120+120)
+       ;; give all flies from hub1 (updates both buzzer-total and task reminder bitmasks)
+       (dotimes (idx (length *hub1-buzzer-task-list*))
+        (buzzer-task-collect-all (-> *hub1-buzzer-task-list* idx)))
        )
       (((speedrun-category hub3-100))
        ;; skip intro cutscene
@@ -365,6 +399,12 @@
        ;; give all orbs from hub1+2
        (set! (-> *game-info* money-total) 1300.0) ;; 50+50+150+150+150+50 + 50+200+200+200+50
        (set! (-> *game-info* money) 370.0) ;; 50+50+150+150+150+50 - (90+90+120+120) + 50+200+200+200+50 - (90+90+90+120+120)
+       ;; give all flies from hub1 (updates both buzzer-total and task reminder bitmasks)
+       (dotimes (idx (length *hub1-buzzer-task-list*))
+        (buzzer-task-collect-all (-> *hub1-buzzer-task-list* idx)))
+       ;; give all flies from hub2 (updates both buzzer-total and task reminder bitmasks)
+       (dotimes (idx (length *hub2-buzzer-task-list*))
+        (buzzer-task-collect-all (-> *hub2-buzzer-task-list* idx)))
        )
       (((speedrun-category all-cutscenes))
        ;; no post-blackout actions needed
