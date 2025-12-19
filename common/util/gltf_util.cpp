@@ -237,34 +237,35 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     //Fall back to all vertex colors being white if: 
     //at least one time of day is not in attributes, and
     //COLOR_0 is not defined.
+    std::string times_found = "";
+    std::string times_missing = "";
+    bool hadColor0 = false;
     for( size_t slot_index = 0; slot_index < slot_names.size(); ++ slot_index )
     {
       const auto& slot_name = slot_names[slot_index];
-      lg::info("Checking time of day {}", slot_name);
-
-      size_t byte_offset = slot_index * 4;
-
-      std::map<std::string, int>::const_iterator color_attrib;
-      if ( color_attrib = attributes.find(slot_name); 
-        color_attrib != attributes.end() ){  
-        lg::info("Found time of day {}", slot_name);
-      }
-      else if( color_attrib = attributes.find("COLOR_0"); 
-        color_attrib != attributes.end() ) {  
-        lg::info("Mesh {} didn't have time of day {}, using COLOR_0", debug_name, slot_name);
-      }
-      else
-      {
-        lg::error("Mesh {} didn't have time of day {} or COLOR_0, using white", debug_name, slot_name);
-        const uint32_t WHITE_COLOR = 0x808080FF; 
-        for(auto& vtx_color : vtx_colors) //Write white into the color slot for this time of day.
-        {
-          u8* target_ptr = vtx_color.data() + byte_offset;
-          std::memcpy(target_ptr, &WHITE_COLOR, sizeof(uint32_t));
-        }
-        continue;
-      }
       
+      size_t byte_offset = slot_index * 4;
+      std::map<std::string, int>::const_iterator color_attrib;
+      if (color_attrib = attributes.find(slot_name); color_attrib != attributes.end()){
+        times_found += times_found.empty() ? slot_name : ", " + slot_name;
+      }
+      else{
+        times_missing += times_missing.empty() ? slot_name : ", " + slot_name;
+        if(color_attrib = attributes.find("COLOR_0"); color_attrib != attributes.end()) 
+        {
+          hadColor0 = true;
+        }
+        else
+        {
+          const uint32_t WHITE_COLOR = 0x808080FF; 
+          for(auto& vtx_color : vtx_colors) //Write white into the color slot for this time of day.
+          {
+            u8* target_ptr = vtx_color.data() + byte_offset;
+            std::memcpy(target_ptr, &WHITE_COLOR, sizeof(uint32_t));
+          }
+          continue;
+        }
+      }
       const auto attrib_accessor = model.accessors[color_attrib->second];
       const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
       const auto& buffer = model.buffers[buffer_view.buffer];
@@ -287,7 +288,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
               colors = extract_color_from_vec4_u8(data_ptr, count, byte_stride);
               break;
             default:
-              lg::die("Unknown type for COLOR_0: {}", attrib_accessor.componentType);
+              lg::die("Unknown type for {}", attrib_accessor.componentType);
           }
           break;
         case TINYGLTF_TYPE_VEC3:
@@ -296,11 +297,11 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
               colors = extract_color_from_vec3_float(data_ptr, count, byte_stride);
               break;
             default:
-              lg::die("unkonwn component type for vec3 color {}", attrib_accessor.componentType);
+              lg::die("Unknown component type for vec3 color {}", attrib_accessor.componentType);
           }
           break;
         default:
-          lg::die("unknown attribute type for color {}", attrib_accessor.type);
+          lg::die("Unknown attribute type for color {}", attrib_accessor.type);
       }
 
       //Write the colors for the time of day (or color0, if it exists) 
@@ -318,7 +319,21 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
         ++color_iter;
       }
     }
+    if(times_missing.empty()){
+      lg::info("{} had all times of day.", debug_name);
+    }
+    else{
+      std::string defaulting_string = hadColor0 ? "COLOR_0" : "white";
+      if(times_found.empty()){
+        lg::info("{} missing all times of day, defaulting to {}.", debug_name, defaulting_string);
+      }
+      else{
+        lg::info("{} had times of day: {} but was missing: {}.", debug_name, times_found, times_missing);
+        lg::info( "The missing times of day default to {}", defaulting_string);
+      }
+    }
   }
+
   bool got_texture = false;
   {
     const auto& texcoord_attrib = attributes.find("TEXCOORD_0");
