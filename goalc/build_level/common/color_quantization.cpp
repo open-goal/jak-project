@@ -4,7 +4,6 @@
 #include <array>
 #include <cstring>
 #include <memory>
-#include <set>
 #include <unordered_map>
 #include <map>
 #include "common/log/log.h"
@@ -12,35 +11,11 @@
 #include "common/util/Assert.h"
 #include "common/util/Timer.h"
 
-/*!
- * Just removes duplicate colors, which can work if there are only a few unique colors.
- */
-QuantizedColors quantize_colors_dumb(const std::vector<math::Vector<u8, 32>>& in) {
-  QuantizedColors result;
-  std::unordered_map<u64, u32> color_to_slot;
-  for (auto& vtx : in) {
-    u64 key;
-    memcpy(&key, vtx.data(), sizeof(u64));
-    const auto& existing = color_to_slot.find(key);
-    if (existing == color_to_slot.end()) {
-      auto cidx = result.final_colors.size();
-      result.vtx_to_color.push_back(cidx);
-      color_to_slot[key] = cidx;
-      result.final_colors.push_back(vtx);
-    } else {
-      result.vtx_to_color.push_back(existing->second);
-    }
-  }
-  lg::print("quantize_colors_dumb: {} -> {}\n", in.size(), result.final_colors.size());
-  ASSERT(result.final_colors.size() < 8192);
-  return result;
-}
-
 namespace {
+  
+  using Color = math::Vector<u8, 32>;
 
-using Color = math::Vector<u8, 32>;
-
-bool color_less_than(const math::Vector<u8, 32>& colorA, const math::Vector<u8, 32>& colorB)
+bool color_less_than(const Color& colorA, const Color& colorB)
 {
   for(int channel = 0; channel < 32; ++channel){
     if(colorA[channel] > colorB[channel])
@@ -406,7 +381,7 @@ u8 saturate_to_u8(u32 in) {
 
 s32 color_difference(const Color& c1, const Color& c2) {
   s32 ret = 0;
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 32; i++) {
     const int diff = (int)c1[i] - (int)c2[i];
     ret += diff * diff;
   }
@@ -437,7 +412,31 @@ void get_splittable(KdNode* node, std::vector<KdNode*>* out) {
   }
 }
 
-QuantizedColors quantize_colors_kd_tree(const std::vector<math::Vector<u8, 32>>& in,
+/*!
+* Just removes duplicate colors, which can work if there are only a few unique colors.
+*/
+QuantizedColors quantize_colors_dumb(const std::vector<Color>& in) {
+  QuantizedColors result;
+  std::unordered_map<u64, u32> color_to_slot;
+  for (auto& vtx : in) {
+    u64 key;
+    memcpy(&key, vtx.data(), sizeof(u64));
+    const auto& existing = color_to_slot.find(key);
+    if (existing == color_to_slot.end()) {
+      auto cidx = result.final_colors.size();
+      result.vtx_to_color.push_back(cidx);
+      color_to_slot[key] = cidx;
+      result.final_colors.push_back(vtx);
+    } else {
+      result.vtx_to_color.push_back(existing->second);
+    }
+  }
+  lg::print("quantize_colors_dumb: {} -> {}\n", in.size(), result.final_colors.size());
+  ASSERT(result.final_colors.size() < 8192);
+  return result;
+}
+
+QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
                                         u32 target_depth) {
   Timer timer;
   // Build root node:

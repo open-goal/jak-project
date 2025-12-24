@@ -233,17 +233,14 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       "_SUNSET", "_TWILIGHT", "_EVENING", "_GREENSUN"
     };
     vtx_colors.resize(result.size());
-    
-    //Fall back to all vertex colors being white if: 
-    //at least one time of day is not in attributes, and
-    //COLOR_0 is not defined.
+
     std::string times_found = "";
     std::string times_missing = "";
     bool hadColor0 = false;
-    for( size_t slot_index = 0; slot_index < slot_names.size(); ++ slot_index )
+    for( size_t slot_index = 0; slot_index < slot_names.size(); ++slot_index )
     {
       const auto& slot_name = slot_names[slot_index];
-      
+
       size_t byte_offset = slot_index * 4;
       std::map<std::string, int>::const_iterator color_attrib;
       if (color_attrib = attributes.find(slot_name); color_attrib != attributes.end()){
@@ -251,13 +248,15 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       }
       else{
         times_missing += times_missing.empty() ? slot_name : ", " + slot_name;
-        if(color_attrib = attributes.find("COLOR_0"); color_attrib != attributes.end()) 
+        if(color_attrib = attributes.find("COLOR_0"); color_attrib != attributes.end())
         {
           hadColor0 = true;
         }
         else
         {
-          const uint32_t WHITE_COLOR = 0x808080FF; 
+          //On little endian systems, the most significant byte is stored last.
+          //Thus why byte for transparency is first in the constant here.
+          const uint32_t WHITE_COLOR = 0xFF808080;
           for(auto& vtx_color : vtx_colors) //Write white into the color slot for this time of day.
           {
             u8* target_ptr = vtx_color.data() + byte_offset;
@@ -303,7 +302,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
         default:
           lg::die("Unknown attribute type for color {}", attrib_accessor.type);
       }
-
+      assert(vtx_colors.size() == colors.size());
       //Write the colors for the time of day (or color0, if it exists) 
       //into the right slot for the time of day
       auto vtx_color_iter = vtx_colors.begin();
@@ -324,13 +323,10 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     }
     else{
       std::string defaulting_string = hadColor0 ? "COLOR_0" : "white";
-      if(times_found.empty()){
-        lg::info("{} missing all times of day, defaulting to {}.", debug_name, defaulting_string);
-      }
-      else{
-        lg::info("{} had times of day: {} but was missing: {}.", debug_name, times_found, times_missing);
-        lg::info( "The missing times of day default to {}", defaulting_string);
-      }
+      if(times_found.empty())
+        lg::info("{} missing all times of day, defaulted to {}.", debug_name, defaulting_string);
+      else
+        lg::info("{} had times of day: {} but was missing: {} which defaulted to {}.", debug_name, times_found, times_missing, defaulting_string);
     }
   }
 
