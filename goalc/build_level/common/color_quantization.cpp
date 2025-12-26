@@ -4,6 +4,7 @@
 #include <array>
 #include <cstring>
 #include <memory>
+#include <tuple>
 #include <unordered_map>
 #include <map>
 #include "common/log/log.h"
@@ -17,8 +18,11 @@ namespace {
 
 bool color_less_than(const Color& colorA, const Color& colorB)
 {
-  for(int channel = 0; channel < 32; ++channel){
-    if(colorA[channel] > colorB[channel])
+  for(int channel = 0; channel < 31; ++channel){
+    const s32 sum = colorA[channel] - colorB[channel];
+    if(sum < 0)
+      return true;
+    else if(sum > 0)
       return false;
   }
   return colorA[31] < colorB[31];
@@ -42,24 +46,37 @@ struct Node {
   u32 final_idx = UINT32_MAX;
 };
 
-u8 child_index(Color color, u8 depth) {
+u8 child_index(Color &color, u8 depth) {
   u8 r_bit = (color.x() >> (7 - depth)) & 1;
   u8 g_bit = (color.y() >> (7 - depth)) & 1;
   u8 b_bit = (color.z() >> (7 - depth)) & 1;
   return (r_bit) + (g_bit * 2) + (b_bit * 4);
 }
 
+std::tuple<u32,u32,u32> color_rgb(Color &color){
+  u32 r = 0;
+  u32 g = 0;
+  u32 b = 0;
+  for(int channel = 0;channel < 32;channel += 4){
+    r += color[channel];
+    g += color[channel + 1];
+    b += color[channel + 2];
+  }
+  return std::make_tuple(r,g,b);
+}
+
 void insert(Node& root, Color color, u8 current_depth) {
   if (current_depth == 7) {
-    root.r_sum += color.x();
-    root.g_sum += color.y();
-    root.b_sum += color.z();
+    const auto rgb = color_rgb(color);
+    root.r_sum += std::get<0,u32>(rgb);
+    root.g_sum += std::get<1,u32>(rgb);
+    root.b_sum += std::get<2,u32>(rgb);
     if (root.rgb_sum_count == 0) {
       for (auto* up = root.parent; up; up = up->parent) {
         up->leaves_under_me++;
       }
     }
-    root.rgb_sum_count++;
+    root.rgb_sum_count += 8;
   } else {
     if (root.children.empty()) {
       root.children.resize(8);
@@ -256,19 +273,19 @@ size_t pick_split_point(const std::vector<Color>& colors, int dim) {
 }
 
 int pick_split_dim_final_splits(const std::vector<Color>& colors) {
-  int mins[4] = {255, 255, 255, 255};
-  int maxs[4] = {0, 0, 0, 0};
+  std::vector<int> mins(32,255);
+  std::vector<int> maxes(32,0);
   for (const auto& color : colors) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 32; i++) {
       mins[i] = std::min(mins[i], (int)color[i]);
-      maxs[i] = std::max(maxs[i], (int)color[i]);
+      maxes[i] = std::max(maxes[i], (int)color[i]);
     }
   }
 
   int best_dim = 0;
   int best_diff = 0;
-  for (int i = 0; i < 4; i++) {
-    const int diff = maxs[i] - mins[i];
+  for (int i = 0; i < 32; i++) {
+    const int diff = maxes[i] - mins[i];
     if (diff > best_diff) {
       best_diff = diff;
       best_dim = i;
