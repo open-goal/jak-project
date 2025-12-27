@@ -1,7 +1,7 @@
 #include "gltf_util.h"
 
 #include "image_resize.h"
-
+#include "algorithm"
 #include "common/log/log.h"
 
 namespace gltf_util {
@@ -186,6 +186,47 @@ std::vector<JointsAndWeights> extract_and_flatten_joints_and_weights(
   return ret;
 }
 
+std::vector<math::Vector<u8, 4>> colors_from_attribute(const tinygltf::Model& model, int attrib){
+  const auto attrib_accessor = model.accessors[attrib];
+  const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
+  const auto& buffer = model.buffers[buffer_view.buffer];
+  const auto data_ptr =
+      buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
+  const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
+  const auto count = attrib_accessor.count;
+  std::vector<math::Vector<u8, 4>> colors;
+
+  switch (attrib_accessor.type) {
+    case TINYGLTF_TYPE_VEC4:
+      switch (attrib_accessor.componentType) {
+        case TINYGLTF_COMPONENT_TYPE_FLOAT:
+          colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
+          break;
+        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+          colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
+          break;
+        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+          colors = extract_color_from_vec4_u8(data_ptr, count, byte_stride);
+          break;
+        default:
+          lg::die("Unknown type for {}", attrib_accessor.componentType);
+      }
+      break;
+    case TINYGLTF_TYPE_VEC3:
+      switch (attrib_accessor.componentType) {
+        case TINYGLTF_COMPONENT_TYPE_FLOAT:
+          colors = extract_color_from_vec3_float(data_ptr, count, byte_stride);
+          break;
+        default:
+          lg::die("Unknown component type for vec3 color {}", attrib_accessor.componentType);
+      }
+      break;
+    default:
+      lg::die("Unknown attribute type for color {}", attrib_accessor.type);
+  }
+  return colors;
+}
+
 /*!
  * Extract positions, colors, and normals from a mesh.
  */
@@ -226,107 +267,113 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       new_vert.z = v_w.z() * 4096;
     }
   }
-
-  if (get_colors) {
-    const std::array<std::string, 8> slot_names = {
-      "_SUNRISE", "_MORNING", "_NOON", "_AFTERNOON",
-      "_SUNSET", "_TWILIGHT", "_EVENING", "_GREENSUN"
-    };
+  if (get_colors)
+  {
+    std::array<std::pair<std::string,std::optional<std::vector<math::Vector<u8, 4>>>>, 8> times_of_day = {{
+      {"_SUNRISE",std::nullopt}, {"_MORNING",std::nullopt}, {"_NOON",std::nullopt}, {"_AFTERNOON",std::nullopt},
+      {"_SUNSET",std::nullopt}, {"_TWILIGHT",std::nullopt}, {"_EVENING",std::nullopt}, {"_GREENSUN",std::nullopt}
+    }};
+    std::optional<std::vector<math::Vector<u8, 4>>> color0 = std::nullopt;
     vtx_colors.resize(result.size());
-
-    std::string times_found = "";
-    std::string times_missing = "";
-    bool hadColor0 = false;
-    for( size_t slot_index = 0; slot_index < slot_names.size(); ++slot_index )
+    bool found_one = false;
+    bool found_all = true;
+    
+    for(size_t slot_index = 0; slot_index < times_of_day.size(); ++slot_index)
     {
-      const auto& slot_name = slot_names[slot_index];
-
-      size_t byte_offset = slot_index * 4;
-      std::map<std::string, int>::const_iterator color_attrib;
-      if (color_attrib = attributes.find(slot_name); color_attrib != attributes.end()){
-        times_found += times_found.empty() ? slot_name : ", " + slot_name;
+      auto& slot = times_of_day[slot_index];
+      if (const auto attr_val = attributes.find(slot.first); attr_val != attributes.end())
+      {
+        slot.second = colors_from_attribute(model, attr_val->second);
+        found_one = true;
       }
-      else{
-        times_missing += times_missing.empty() ? slot_name : ", " + slot_name;
-        if(color_attrib = attributes.find("COLOR_0"); color_attrib != attributes.end())
+      else
+      {
+        found_all = false;
+      }
+    }
+
+    if(!found_one){
+      std::string defaulting_string;
+      if(const auto color0_iter = attributes.find("COLOR_0"); color0_iter != attributes.end())
+      {  
+        color0 = colors_from_attribute(model, color0_iter->second);
+        defaulting_string = "COLOR_0";
+      }
+      else
+      {
+        const uint32_t WHITE_COLOR = 0xFF808080;
+        for(auto& vtx_color : vtx_colors) 
         {
-          hadColor0 = true;
-        }
-        else
-        {
-          //On little endian systems, the most significant byte is stored last.
-          //Thus why byte for transparency is first in the constant here.
-          const uint32_t WHITE_COLOR = 0xFF808080;
-          for(auto& vtx_color : vtx_colors) //Write white into the color slot for this time of day.
+          //Write white into the color slot for all times of day.
+          for(u8 byte_offset = 0; byte_offset < 32; byte_offset += 4)
           {
             u8* target_ptr = vtx_color.data() + byte_offset;
             std::memcpy(target_ptr, &WHITE_COLOR, sizeof(uint32_t));
           }
-          continue;
+        }
+        defaulting_string = "white";
+      }
+      lg::info("{} missing all times of day, defaulted to {}.", debug_name, defaulting_string);
+    }
+
+    if(found_one || color0.has_value())
+    {
+      if(found_all){
+        lg::info("{} had all times of day.", debug_name);
+      }
+      else if(found_one)
+      { 
+        std::string log_string = "";
+        for(size_t slot_index = 0; slot_index < times_of_day.size(); ++slot_index)
+        {
+          auto& slot = times_of_day[slot_index];
+          std::string time_name = slot.first, value_name;
+          if(slot.second.has_value())
+          {
+            value_name = slot.first;
+          }
+          else
+          {
+            for(int i = 1; i <= 4;++i){
+              int neg_index = (slot_index - i + 8) % 8;
+              int pos_index = (slot_index + i + 8) % 8;
+              if(const auto& near_slot = times_of_day[neg_index]; near_slot.second.has_value())
+              {
+                slot.second = near_slot.second.value();
+                value_name = near_slot.first;
+                break;
+              }
+              
+              if(const auto& near_slot = times_of_day[pos_index]; near_slot.second.has_value())
+              {
+                slot.second = near_slot.second.value();
+                value_name = near_slot.first;
+                break;
+              }
+            }
+          }
+          time_name = time_name.substr(1);
+          std::transform(time_name.begin(), time_name.end(), time_name.begin(),[](unsigned char c){ return std::tolower(c); });
+          std::string mapping = time_name + ":" + value_name;
+          log_string += log_string.empty() ? mapping : ", " + mapping;
+        }
+        lg::info("{} missing some times of day, using {}", debug_name, log_string);
+      }
+
+      for(size_t slot_index = 0; slot_index < times_of_day.size(); ++slot_index)
+      {
+        const auto &colors = times_of_day[slot_index].second.has_value() ? times_of_day[slot_index].second.value() : color0.value();
+        assert(vtx_colors.size() == colors.size());
+        //Write the color for this time of day into the channels for the time of day.
+        auto vtx_color_iter = vtx_colors.begin();
+        auto color_iter = colors.begin();
+        for( ;vtx_color_iter != vtx_colors.end(); ++vtx_color_iter, ++color_iter)
+        {
+            u8* target_ptr = vtx_color_iter->data() + (4 * slot_index);
+            const u8* source_ptr = color_iter->data();
+            std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
         }
       }
-      const auto attrib_accessor = model.accessors[color_attrib->second];
-      const auto& buffer_view = model.bufferViews[attrib_accessor.bufferView];
-      const auto& buffer = model.buffers[buffer_view.buffer];
-      const auto data_ptr =
-          buffer.data.data() + buffer_view.byteOffset + attrib_accessor.byteOffset;
-      const auto byte_stride = attrib_accessor.ByteStride(buffer_view);
-      const auto count = attrib_accessor.count;
-      std::vector<math::Vector<u8, 4>> colors;
-
-      switch (attrib_accessor.type) {
-        case TINYGLTF_TYPE_VEC4:
-          switch (attrib_accessor.componentType) {
-            case TINYGLTF_COMPONENT_TYPE_FLOAT:
-              colors = extract_color_from_vec4_float(data_ptr, count, byte_stride);
-              break;
-            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-              colors = extract_color_from_vec4_u16(data_ptr, count, byte_stride);
-              break;
-            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-              colors = extract_color_from_vec4_u8(data_ptr, count, byte_stride);
-              break;
-            default:
-              lg::die("Unknown type for {}", attrib_accessor.componentType);
-          }
-          break;
-        case TINYGLTF_TYPE_VEC3:
-          switch (attrib_accessor.componentType) {
-            case TINYGLTF_COMPONENT_TYPE_FLOAT:
-              colors = extract_color_from_vec3_float(data_ptr, count, byte_stride);
-              break;
-            default:
-              lg::die("Unknown component type for vec3 color {}", attrib_accessor.componentType);
-          }
-          break;
-        default:
-          lg::die("Unknown attribute type for color {}", attrib_accessor.type);
-      }
-      assert(vtx_colors.size() == colors.size());
-      //Write the colors for the time of day (or color0, if it exists) 
-      //into the right slot for the time of day
-      auto vtx_color_iter = vtx_colors.begin();
-      auto color_iter = colors.begin();
-      while( vtx_color_iter != vtx_colors.end() )
-      {
-        auto& vtx_color = *vtx_color_iter;
-        u8* target_ptr = vtx_color.data() + byte_offset;
-        u8* source_ptr = color_iter->data();
-        std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
-        
-        ++vtx_color_iter;
-        ++color_iter;
-      }
-    }
-    if(times_missing.empty()){
-      lg::info("{} had all times of day.", debug_name);
-    }
-    else{
-      std::string defaulting_string = hadColor0 ? "COLOR_0" : "white";
-      if(times_found.empty())
-        lg::info("{} missing all times of day, defaulted to {}.", debug_name, defaulting_string);
-      else
-        lg::info("{} had times of day: {} but was missing: {} which defaulted to {}.", debug_name, times_found, times_missing, defaulting_string);
     }
   }
 
