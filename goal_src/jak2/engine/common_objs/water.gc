@@ -691,7 +691,7 @@
          )
         ((begin
            (set! (-> this top 1 quad) (-> this top 0 quad))
-           (vector<-cspace! (the-as vector (-> this top)) (-> this process node-list data (-> this joint-index)))
+           (vector<-cspace! (-> this top 0) (-> this process node-list data (-> this joint-index)))
            (+! (-> this top 0 y) (-> this top-y-offset))
            (set! (-> this bottom 1 quad) (-> this bottom 0 quad))
            (set! (-> this bottom 0 quad) (-> this process control trans quad))
@@ -888,11 +888,7 @@
                          )
                       )
                )
-           (let* ((s3-2 (-> this process control))
-                  (v1-236 (if (type? s3-2 control-info)
-                              s3-2
-                              )
-                          )
+           (let* ((v1-236 (as-type (-> this process control) control-info))
                   (v1-237 (and v1-236 (not (time-elapsed? (-> v1-236 last-time-on-surface) (seconds 0.5)))))
                   )
              (if (and (logtest? (-> this flags) (water-flags swim-ground))
@@ -1267,8 +1263,8 @@
             (a0-3 s5-0)
             (a1-3 part-tracker-init)
             (a2-5 (if (zero? arg2)
-                      (-> *part-group-id-table* 122)
-                      (-> *part-group-id-table* 121)
+                      group-part-water-splash-small
+                      group-part-water-splash
                       )
                   )
             (a3-1 0)
@@ -1393,16 +1389,16 @@
              )
            )
           (('water-anim)
-           (let* ((s0-0 (command-get-process
-                          (-> (the-as pair (-> (the-as pair (-> (the-as pair s2-0) cdr)) cdr)) car)
-                          (the-as process #f)
-                          )
-                        )
-                  (s1-0 (if (type? s0-0 process-drawable)
-                            s0-0
-                            )
-                        )
-                  )
+           (let ((s1-0 (the-as process (as-type
+                                         (command-get-process
+                                           (-> (the-as pair (-> (the-as pair (-> (the-as pair s2-0) cdr)) cdr)) car)
+                                           (the-as process #f)
+                                           )
+                                         process-drawable
+                                         )
+                               )
+                       )
+                 )
              (cond
                (s1-0
                  (set! (-> arg0 flags) (water-flags active use-water-anim))
@@ -1443,12 +1439,7 @@
                  (logior! (-> arg0 flags) (water-flags lava))
                  )
                 ((= v1-39 'mech)
-                 (let* ((s1-1 (-> arg2 process))
-                        (a0-39 (if (type? s1-1 process-focusable)
-                                   s1-1
-                                   )
-                               )
-                        )
+                 (let ((a0-39 (the-as process-drawable (as-type (-> arg2 process) process-focusable))))
                    (when (and a0-39 (not (logtest? (focus-status mech) (-> (the-as process-focusable a0-39) focus-status))))
                      (set! (-> arg0 flags) (water-flags))
                      0

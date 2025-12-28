@@ -81,4 +81,11 @@
     :lines "game/assets/jak3/subtitle/subtitle_lines_en-GB.json"
     :meta "game/assets/jak3/subtitle/subtitle_meta_en-GB.json"
     :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
+    :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json")
+  (file-json
+    :language-id 12
+    :text-version "jak3"
+    :lines "game/assets/jak3/subtitle/subtitle_lines_fi-FI.json"
+    :meta "game/assets/jak3/subtitle/subtitle_meta_fi-FI.json"
+    :lines-base "game/assets/jak3/subtitle/subtitle_lines_en-US.json"
     :meta-base "game/assets/jak3/subtitle/subtitle_meta_en-US.json"))

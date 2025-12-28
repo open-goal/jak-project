@@ -681,9 +681,9 @@
                     (a2-1 (new 'stack-no-clear 'vector))
                     (t2-0 (new 'stack-no-clear 'collide-tri-result)))
                0.0
-               (vector-! a2-1 (the-as vector v1-5) (the-as vector a1-2))
+               (vector-! a2-1 (-> v1-5 world-sphere) (-> a1-2 world-sphere))
                (when (< (fill-and-probe-using-line-sphere *collide-cache*
-                                                          (the-as vector a1-2)
+                                                          (-> a1-2 world-sphere)
                                                           a2-1
                                                           40.96
                                                           (collide-kind background)
@@ -780,8 +780,8 @@
   (set! (-> self root transv quad) (-> arg0 vel quad))
   (set! (-> self blast-radius) (-> arg0 blast-radius))
   (set! (-> self water-height) (res-lump-float (-> self entity) 'water-height :default -4096000.0))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 117) self))
-  (set! (-> self part2) (create-launch-control (-> *part-group-id-table* 118) self))
+  (set! (-> self part) (create-launch-control group-beach-sack-fuse self))
+  (set! (-> self part2) (create-launch-control group-beach-sack-explosion self))
   (go mistycannon-missile-idle)
   (none))
 
@@ -1115,8 +1115,8 @@
           (kill-current-level-hint '() '(sidekick voicebox) 'exit)
           (when (and (hud-hidden?) (can-grab-display? self))
             (let ((gp-0 (new 'stack 'font-context *font-default-matrix* 32 160 0.0 (font-color default) (font-flags shadow kerning))))
-              (let ((v1-15 gp-0)) (set! (-> v1-15 width) (the float 440)))
-              (let ((v1-16 gp-0)) (set! (-> v1-16 height) (the float 80)))
+              (set-width! gp-0 440)
+              (set-height! gp-0 80)
               (set! (-> gp-0 flags) (font-flags shadow kerning large))
               (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) gp-0 #f 128 22))
             (when (cpad-pressed? 0 circle)
@@ -1145,7 +1145,7 @@
           (let ((t9-0 matrix-rotate-yx!)
                 (a0-1 (-> self tracking))
                 (v1-2 (-> (the-as mistycannon (-> v1-0 0)) rotate)))
-            (t9-0 (the-as matrix a0-1) (the float (sar (shl (the int (+ (-> v1-2 min) (-> v1-2 value))) 48) 48)) 3640.889)))
+            (t9-0 (-> a0-1 inv-mat) (the float (sar (shl (the int (+ (-> v1-2 min) (-> v1-2 value))) 48) 48)) 3640.889)))
         (suspend))))
 
 (defstate mistycannon-player-control (mistycannon)
@@ -1298,7 +1298,7 @@
        (set! (-> this center-point z) (if (and v1-70 (< 2.0 (the float (-> sv-48 elt-count)))) (-> v1-70 2) 0.0)))))
   (set! (-> this accuracy-range) 16384.0)
   (mistycannon-pick-random-target-point)
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 119) this))
+  (set! (-> this part) (create-launch-control group-beach-cannon-fire this))
   (set! (-> this part-timer) (+ (current-time) (seconds -10)))
   (set! (-> this postbindinfo-ok) #f)
   (let ((v1-79 (-> this rotate)))

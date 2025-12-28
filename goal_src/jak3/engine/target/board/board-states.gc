@@ -167,7 +167,8 @@
          (if (not (-> self control danger-mode))
              (target-danger-set! 'board-spin #f)
              )
-         (+! (-> self board rotyv) (* (-> self board spin-control) (seconds-per-frame)))
+         ;; og:preserve-this changed for high fps
+         (+! (-> self board rotyv) (* (-> self board spin-control) (seconds-per-frame-high-fps)))
          (when (and (< (fabs f28-0) 1092266.6)
                     (< (fabs (-> self board spin-control)) 1092266.6)
                     (< (* 0.9 (fabs (-> self board flip-control))) (fabs f30-0))
@@ -428,13 +429,13 @@
                 (vector-copy! gp-2 (-> self control trans))
                 (+! (-> gp-2 y) 2048.0)
                 (cond
-                  ((logtest? (-> *part-group-id-table* 189 flags) (sp-group-flag sp13))
+                  ((logtest? (-> group-board-land-straight flags) (sp-group-flag sp13))
                    (vector-copy! (-> *launch-matrix* trans) gp-2)
-                   (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 189))
+                   (part-tracker-spawn part-tracker-subsampler :to self :group group-board-land-straight)
                    )
                   (else
                     (vector-copy! (-> *launch-matrix* trans) gp-2)
-                    (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 189))
+                    (part-tracker-spawn part-tracker :to self :group group-board-land-straight)
                     )
                   )
                 (let ((s5-3 (process-spawn
@@ -838,17 +839,17 @@
                  )
              (sound-play "board-launch")
              (when (!= (-> self board charge-progress) 0.0)
-               (if (logtest? (-> *part-group-id-table* 191 flags) (sp-group-flag sp13))
+               (if (logtest? (-> group-board-launch flags) (sp-group-flag sp13))
                    (part-tracker-spawn
                      part-tracker-subsampler
                      :to self
-                     :group (-> *part-group-id-table* 191)
+                     :group group-board-launch
                      :mat-joint (-> self node-list data 0 bone transform)
                      )
                    (part-tracker-spawn
                      part-tracker
                      :to self
-                     :group (-> *part-group-id-table* 191)
+                     :group group-board-launch
                      :mat-joint (-> self node-list data 0 bone transform)
                      )
                    )
@@ -949,17 +950,17 @@
       (when (and (cpad-hold? (-> self control cpad number) l1) (!= (-> self board charge-progress) 0.0))
         (+! f30-0 (* (-> self board charge-progress) (-> *TARGET_BOARD-bank* charge-jump-height)))
         (sound-play "board-launch")
-        (if (logtest? (-> *part-group-id-table* 191 flags) (sp-group-flag sp13))
+        (if (logtest? (-> group-board-launch flags) (sp-group-flag sp13))
             (part-tracker-spawn
               part-tracker-subsampler
               :to self
-              :group (-> *part-group-id-table* 191)
+              :group group-board-launch
               :mat-joint (-> self node-list data 0 bone transform)
               )
             (part-tracker-spawn
               part-tracker
               :to self
-              :group (-> *part-group-id-table* 191)
+              :group group-board-launch
               :mat-joint (-> self node-list data 0 bone transform)
               )
             )
@@ -975,13 +976,13 @@
            (vector-copy! s3-5 (-> self control trans))
            (+! (-> s3-5 y) 2048.0)
            (cond
-             ((logtest? (-> *part-group-id-table* 190 flags) (sp-group-flag sp13))
+             ((logtest? (-> group-board-quick-jump flags) (sp-group-flag sp13))
               (vector-copy! (-> *launch-matrix* trans) s3-5)
-              (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 190))
+              (part-tracker-spawn part-tracker-subsampler :to self :group group-board-quick-jump)
               )
              (else
                (vector-copy! (-> *launch-matrix* trans) s3-5)
-               (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 190))
+               (part-tracker-spawn part-tracker :to self :group group-board-quick-jump)
                )
              )
            (let* ((s1-1 (get-process *default-dead-pool* manipy #x20000 1))

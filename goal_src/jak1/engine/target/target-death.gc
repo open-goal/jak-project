@@ -69,7 +69,7 @@
       (quaternion-copy! (-> self control unknown-quaternion00) (-> arg0 quat))
       (move-to-point! (-> self control) (-> arg0 trans))
       (rot->dir-targ! (-> self control))
-      (set! (-> (&-> (-> self control) unknown-qword00) 0) (-> self control trans quad))
+      (set! (-> (&-> self control unknown-qword00) 0) (-> self control trans quad))
       (cond
         ((not (string= (-> arg0 name) "default")) (set! *external-cam-mode* #f) (cam-stop) (suspend) 0)
         (else (send-event *camera* 'clear-entity) (send-event *camera* 'change-state cam-fixed 0) (suspend) 0))
@@ -382,7 +382,7 @@
   (process-spawn part-tracker
                  :init
                  part-tracker-init
-                 (-> *part-group-id-table* 1)
+                 group-target-hit
                  -1
                  #f
                  #f
@@ -647,7 +647,7 @@
     (compute-alignment! (-> self align))
     (let ((s5-0 (new 'stack-no-clear 'vector)))
       (when (not (logtest? (-> self align flags) (align-flags disabled)))
-        (vector-matrix*! s5-0 (the-as vector (-> self align delta)) (-> self control unknown-matrix01))
+        (vector-matrix*! s5-0 (-> self align delta trans) (-> self control unknown-matrix01))
         (vector-float*! (-> self control transv) s5-0 (-> *display* frames-per-second))))
     (suspend)
     (ja :num! (seek!)))
@@ -747,7 +747,7 @@
             (process-spawn part-tracker
                            :init
                            part-tracker-init
-                           (-> *part-group-id-table* 31)
+                           group-dark-eco-death
                            -1
                            #f
                            #f
@@ -760,7 +760,7 @@
             (process-spawn part-tracker
                            :init
                            part-tracker-init
-                           (-> *part-group-id-table* 32)
+                           group-lava-death
                            -1
                            #f
                            #f
@@ -809,7 +809,8 @@
          (target-falling-anim (seconds 0.1) (seconds 0.33))
          (ja-channel-push! 1 (seconds 0.3))
          (ja-no-eval :group! eichar-launch-jump-loop-ja :num! (loop! 0.5) :frame-num 0.0)
-         (suspend-for (seconds 0.8) (ja :group! eichar-launch-jump-loop-ja :num! (loop! 0.5)))
+         (suspend-for (seconds 0.8)
+           (ja :group! eichar-launch-jump-loop-ja :num! (loop! 0.5)))
          (camera-change-to (the-as string 'base) 0 #f))
         (('target-hit-ground-hard)
          (set! (-> self control unknown-surface00) *neutral-mods*)
@@ -859,7 +860,7 @@
          (process-spawn part-tracker
                         :init
                         part-tracker-init
-                        (-> *part-group-id-table* 708)
+                        group-burn-death
                         -1
                         #f
                         #f

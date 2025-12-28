@@ -221,18 +221,23 @@
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 2) 96 96 96 192)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 3) 4088 3320 0 0)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 4) 5120 (* arg2 8) #xffffff #x10000)
+
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 5) 128 128 128 arg3)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 6) 8 8 0 0)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 7) 0 0 #xffffff 0)
+
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 8) 128 128 128 arg3)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 9) 8184 8 0 0)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 10) #x2800 0 #xffffff #x10000)
+
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 11) 128 128 128 arg3)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 12) 8184 (+ (* (+ arg1 -1) 16) 8) 0 0)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 13) #x2800 (* arg2 16) #xffffff #x10000)
+
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 14) 128 128 128 arg3)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 15) 8 (+ (* (+ arg1 -1) 16) 8) 0 0)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 16) 0 (* arg2 16) #xffffff #x10000)
+
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 17) 128 128 128 arg3)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 18) 8 8 0 0)
     (set-vector! (-> (the-as (inline-array vector4w) v1-0) 19) 0 0 #xffffff 0)
@@ -551,6 +556,19 @@
     )
   )
 
+(defun add-pc-slow-time ((dma-buf dma-buffer))
+  (dma-buffer-add-cnt-vif2
+    dma-buf
+    1
+    (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm #x15)
+    (new 'static 'vif-tag)
+    )
+  (let ((ret (-> dma-buf base)))
+    (&+! (-> dma-buf base) (* 16 1))
+    (the vector ret)
+    )
+  )
+
 (defmethod draw-brightness-and-contrast ((this blit-displays-work) (arg0 dma-buffer) (arg1 float) (arg2 float))
   (set-display-gs-state arg0 408 512 416 0 0)
   (let ((s4-1 (fmax 0.0 (fmin 1.0 arg2)))
@@ -798,10 +816,12 @@
                 ;; destination is the display buffer
                 (set-display-gs-state s4-5 (-> s0-0 display-fbp) 640 s2-0 (shl #xff00 16) 0)
                 ;; draw either normal or slow-time effect.
-                ;; currently this slow-time effect is ignored by the BlitDisplays renderer
                 (if (= f30-0 1.0)
                     (blit-standard this s4-5 416 s2-0 128)
-                    (blit-slow-time this s4-5 416 s2-0 (the int (* 128.0 f30-0)))
+
+                    ;; og:preserve-this
+                    ;;(blit-slow-time this s4-5 416 s2-0 (the int (* 128.0 f30-0)))
+                    (set! (-> (add-pc-slow-time s4-5) x) f30-0)
                     )
                 )
               )

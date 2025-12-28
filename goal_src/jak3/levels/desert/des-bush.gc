@@ -994,26 +994,21 @@
   :enter (behavior ()
     (cond
       ((-> self is-final?)
-       (if (logtest? (-> *part-group-id-table* 1552 flags) (sp-group-flag sp13))
+       (if (logtest? (-> group-desert-ring-birth-final flags) (sp-group-flag sp13))
            (part-tracker-spawn
              part-tracker-subsampler
              :to self
-             :group (-> *part-group-id-table* 1552)
+             :group group-desert-ring-birth-final
              :mat-joint (-> self mat)
              )
-           (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1552) :mat-joint (-> self mat))
+           (part-tracker-spawn part-tracker :to self :group group-desert-ring-birth-final :mat-joint (-> self mat))
            )
        )
-      ((logtest? (-> *part-group-id-table* 1551 flags) (sp-group-flag sp13))
-       (part-tracker-spawn
-         part-tracker-subsampler
-         :to self
-         :group (-> *part-group-id-table* 1551)
-         :mat-joint (-> self mat)
-         )
+      ((logtest? (-> group-desert-ring-birth flags) (sp-group-flag sp13))
+       (part-tracker-spawn part-tracker-subsampler :to self :group group-desert-ring-birth :mat-joint (-> self mat))
        )
       (else
-        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1551) :mat-joint (-> self mat))
+        (part-tracker-spawn part-tracker :to self :group group-desert-ring-birth :mat-joint (-> self mat))
         )
       )
     (sound-play "ring-create")
@@ -1053,26 +1048,26 @@
                 )
             (cond
               ((-> self is-final?)
-               (if (logtest? (-> *part-group-id-table* 1550 flags) (sp-group-flag sp13))
+               (if (logtest? (-> group-desert-ring-explode-final flags) (sp-group-flag sp13))
                    (part-tracker-spawn
                      part-tracker-subsampler
                      :to self
-                     :group (-> *part-group-id-table* 1550)
+                     :group group-desert-ring-explode-final
                      :mat-joint (-> self mat)
                      )
-                   (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1550) :mat-joint (-> self mat))
+                   (part-tracker-spawn part-tracker :to self :group group-desert-ring-explode-final :mat-joint (-> self mat))
                    )
                )
-              ((logtest? (-> *part-group-id-table* 1549 flags) (sp-group-flag sp13))
+              ((logtest? (-> group-desert-ring-explode flags) (sp-group-flag sp13))
                (part-tracker-spawn
                  part-tracker-subsampler
                  :to self
-                 :group (-> *part-group-id-table* 1549)
+                 :group group-desert-ring-explode
                  :mat-joint (-> self mat)
                  )
                )
               (else
-                (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1549) :mat-joint (-> self mat))
+                (part-tracker-spawn part-tracker :to self :group group-desert-ring-explode :mat-joint (-> self mat))
                 )
               )
             (go-virtual die)
@@ -1147,8 +1142,8 @@
   (set! (-> this ring-radius) (res-lump-float arg0 'ring-radius :default 24576.0))
   (quaternion->matrix (-> this mat) (-> this root quat))
   (vector-copy! (-> this mat trans) (-> this root trans))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1547) this))
-  (set! (-> this part-final) (create-launch-control (-> *part-group-id-table* 1548) this))
+  (set! (-> this part) (create-launch-control group-desert-ring this))
+  (set! (-> this part-final) (create-launch-control group-desert-ring-final this))
   (logclear! (-> this mask) (process-mask actor-pause))
   (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
   (set! (-> this is-final?) #f)
@@ -1175,13 +1170,13 @@
   :virtual #t
   :enter (behavior ()
     (cond
-      ((logtest? (-> *part-group-id-table* 1546 flags) (sp-group-flag sp13))
+      ((logtest? (-> group-spirit-explode flags) (sp-group-flag sp13))
        (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-       (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 1546))
+       (part-tracker-spawn part-tracker-subsampler :to self :group group-spirit-explode)
        )
       (else
         (vector-copy! (-> *launch-matrix* trans) (-> self root trans))
-        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 1546))
+        (part-tracker-spawn part-tracker :to self :group group-spirit-explode)
         )
       )
     )
@@ -1281,12 +1276,12 @@
   (vector-copy! (-> self root trans) arg0)
   (set! (-> self sound-id) (new-sound-id))
   (set! (-> self sound-id-2) (new-sound-id))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1541) self))
+  (set! (-> self part) (create-launch-control group-bb-ring-finder self))
   self
   (set! (-> self part-subsampler)
         (new 'process 'sparticle-subsampler *sp-particle-system-2d* (-> *part-id-table* 5117) 3.0)
         )
-  (set! (-> self goal-part) (create-launch-control (-> *part-group-id-table* 1540) self))
+  (set! (-> self goal-part) (create-launch-control group-spirit-goal self))
   (set! (-> self draw-start-goal?) #t)
   (go-virtual dormant)
   )
@@ -2046,16 +2041,16 @@
   (logclear! (-> self mask) (process-mask actor-pause))
   (cond
     ((= (-> arg0 etype) bb-score-a-pickup)
-     (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1545) self))
+     (set! (-> self part) (create-launch-control group-score-drop-a self))
      (set! (-> self bb-score-type) (bb-score-type small))
      0
      )
     ((= (-> arg0 etype) bb-score-b-pickup)
-     (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1544) self))
+     (set! (-> self part) (create-launch-control group-score-drop-b self))
      (set! (-> self bb-score-type) (bb-score-type medium))
      )
     (else
-      (set! (-> self part) (create-launch-control (-> *part-group-id-table* 1543) self))
+      (set! (-> self part) (create-launch-control group-score-drop-c self))
       (set! (-> self bb-score-type) (bb-score-type large))
       )
     )

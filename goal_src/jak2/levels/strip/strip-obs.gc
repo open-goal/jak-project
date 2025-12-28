@@ -8,13 +8,9 @@
 ;; DECOMP BEGINS
 
 (defmethod draw ((this hud-plasmite))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 457.0 (* 130.0 (-> this offset))))
-    210
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 457.0 (* 130.0 (-> this offset)))) 210)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -16 20)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -16 20)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -61,12 +57,7 @@
 (defbehavior strip-handler strip-hazard ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('touch 'attack)
-     (let* ((s4-0 arg0)
-            (gp-0 (if (type? s4-0 process-focusable)
-                      (the-as process-focusable s4-0)
-                      )
-                  )
-            )
+     (let ((gp-0 (as-type arg0 process-focusable)))
        (when gp-0
          (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
            (let* ((v1-4 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 root quat)))
@@ -409,7 +400,7 @@
                           (vector<-cspace! (new 'static 'vector) (-> this node-list data 4))
                           )
         )
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 214) this))
+  (set! (-> this part) (create-launch-control group-strip-pitspikes-dust this))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go (method-of-object this idle))
   (none)
@@ -502,7 +493,7 @@
                           (vector<-cspace! (new 'static 'vector) (-> this node-list data 3))
                           )
         )
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 213) this))
+  (set! (-> this part) (create-launch-control group-strip-curtain-saw-dust this))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go (method-of-object this idle))
   (none)
@@ -871,10 +862,10 @@
     )
   (process-drawable-from-entity! this arg0)
   (set! (-> this camera-name) (res-lump-struct (-> this entity) 'camera-name string))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 215) this))
-  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 216) this))
-  (set! (-> this part3) (create-launch-control (-> *part-group-id-table* 217) this))
-  (set! (-> this part-lightning-hit) (create-launch-control (-> *part-group-id-table* 218) this))
+  (set! (-> this part) (create-launch-control group-grenade-point this))
+  (set! (-> this part2) (create-launch-control group-grenade-point-hit this))
+  (set! (-> this part3) (create-launch-control group-grenade-point-dead this))
+  (set! (-> this part-lightning-hit) (create-launch-control group-lightning-silo-tip this))
   (set! (-> this lightning-time) 0)
   (set! (-> this strike-table)
         (-> *grenade-point-strike-table*
@@ -1082,41 +1073,7 @@
 
 (defmethod draw-laser-sight ((this grenade))
   "TODO - confirm If applicable, draw the laser sight particles"
-  (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when gp-0
-      (let ((t9-1 (method-of-type part-tracker activate)))
-        (t9-1
-          (the-as part-tracker gp-0)
-          *entity-pool*
-          (symbol->string (-> part-tracker symbol))
-          (the-as pointer #x70004000)
-          )
-        )
-      (let ((t9-2 run-function-in-process)
-            (a0-3 gp-0)
-            (a1-2 part-tracker-init)
-            (a2-4 (-> *part-group-id-table* 237))
-            (a3-1 0)
-            (t0-0 #f)
-            (t1-0 #f)
-            (t2-0 #f)
-            (t3-0 *launch-matrix*)
-            )
-        (set! (-> t3-0 trans quad) (-> this root trans quad))
-        ((the-as (function object object object object object object object object none) t9-2)
-         a0-3
-         a1-2
-         a2-4
-         a3-1
-         t0-0
-         t1-0
-         t2-0
-         t3-0
-         )
-        )
-      (-> gp-0 ppointer)
-      )
-    )
+  (part-tracker-spawn :to *entity-pool* :group group-grenade-fired :mat-joint (-> this root trans))
   0
   (none)
   )
@@ -1131,41 +1088,7 @@
 
 (defmethod spawn-shell-particles ((this grenade))
   "TODO - confirm"
-  (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when gp-0
-      (let ((t9-1 (method-of-type part-tracker activate)))
-        (t9-1
-          (the-as part-tracker gp-0)
-          *entity-pool*
-          (symbol->string (-> part-tracker symbol))
-          (the-as pointer #x70004000)
-          )
-        )
-      (let ((t9-2 run-function-in-process)
-            (a0-3 gp-0)
-            (a1-2 part-tracker-init)
-            (a2-4 (-> *part-group-id-table* 236))
-            (a3-1 0)
-            (t0-0 #f)
-            (t1-0 #f)
-            (t2-0 #f)
-            (t3-0 *launch-matrix*)
-            )
-        (set! (-> t3-0 trans quad) (-> this root trans quad))
-        ((the-as (function object object object object object object object object none) t9-2)
-         a0-3
-         a1-2
-         a2-4
-         a3-1
-         t0-0
-         t1-0
-         t2-0
-         t3-0
-         )
-        )
-      (-> gp-0 ppointer)
-      )
-    )
+  (part-tracker-spawn :to *entity-pool* :group group-grenade-hit :mat-joint (-> this root trans))
   0
   (none)
   )
@@ -1190,12 +1113,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touched)
-       (let* ((s4-0 proc)
-              (v1-1 (if (type? s4-0 process-drawable)
-                        (the-as process-drawable s4-0)
-                        )
-                    )
-              )
+       (let ((v1-1 (as-type proc process-drawable)))
          (when v1-1
            (let ((a0-3 (-> v1-1 root))
                  (a1-2 (new 'stack-no-clear 'collide-query))
@@ -1205,7 +1123,7 @@
                    )
                0.0
                (set! (-> a1-2 start-pos quad) (-> v1-4 world-sphere quad))
-               (vector-! (-> a1-2 move-dist) (the-as vector a0-5) (the-as vector v1-4))
+               (vector-! (-> a1-2 move-dist) (-> a0-5 world-sphere) (-> v1-4 world-sphere))
                )
              (let ((v1-5 a1-2))
                (set! (-> v1-5 radius) 40.96)
@@ -1332,44 +1250,33 @@
 
 (defmethod init-proj-settings! ((this grenade))
   "Init relevant settings for the [[projectile]] such as gravity, speed, timeout, etc"
-  (with-pp
-    (initialize-skeleton
-      this
-      (the-as skeleton-group (art-group-get-by-name *level* "skel-grenade" (the-as (pointer uint32) #f)))
-      (the-as pair 0)
-      )
-    (logclear! (-> this options) (projectile-options proj-options-4))
-    (vector-normalize! (-> this root transv) 1.0)
-    (+! (-> this root transv y) 1.0)
-    (vector-normalize! (-> this root transv) 184320.0)
-    (set! (-> this attack-mode) 'eco-yellow)
-    (set! (-> this blast-radius) 20480.0)
-    (set! (-> this max-speed) 184320.0)
-    (set! (-> this timeout) (seconds 3.6))
-    (set! (-> this update-velocity) (method-of-object this grenade-method-40))
-    (set! (-> this move) (method-of-object this grenade-method-41))
-    (set! (-> this root dynam gravity y) 327680.0)
-    (set! (-> this root dynam gravity-length) 327680.0)
-    (set! (-> this root dynam gravity-max) 327680.0)
-    (let ((f0-7 1092.2667))
-      (quaternion-axis-angle! (-> this tumble-quat) 1.0 0.0 0.0 f0-7)
-      )
-    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
-      (set! (-> a1-5 from) (process->ppointer pp))
-      (set! (-> a1-5 num-params) 0)
-      (set! (-> a1-5 message) 'target)
-      (let ((s5-1 (send-event-function (ppointer->process (-> this parent)) a1-5)))
-        (set! (-> this end-target) (process->handle (if (type? s5-1 process-drawable)
-                                                        (the-as process-drawable s5-1)
-                                                        )
-                                                    )
-              )
-        )
-      )
-    (set! (-> this part) (create-launch-control (-> *part-group-id-table* 235) this))
-    (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
-    (none)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-grenade" (the-as (pointer uint32) #f)))
+    (the-as pair 0)
     )
+  (logclear! (-> this options) (projectile-options proj-options-4))
+  (vector-normalize! (-> this root transv) 1.0)
+  (+! (-> this root transv y) 1.0)
+  (vector-normalize! (-> this root transv) 184320.0)
+  (set! (-> this attack-mode) 'eco-yellow)
+  (set! (-> this blast-radius) 20480.0)
+  (set! (-> this max-speed) 184320.0)
+  (set! (-> this timeout) (seconds 3.6))
+  (set! (-> this update-velocity) (method-of-object this grenade-method-40))
+  (set! (-> this move) (method-of-object this grenade-method-41))
+  (set! (-> this root dynam gravity y) 327680.0)
+  (set! (-> this root dynam gravity-length) 327680.0)
+  (set! (-> this root dynam gravity-max) 327680.0)
+  (let ((f0-7 1092.2667))
+    (quaternion-axis-angle! (-> this tumble-quat) 1.0 0.0 0.0 f0-7)
+    )
+  (set! (-> this end-target)
+        (process->handle (as-type (send-event (ppointer->process (-> this parent)) 'target) process-drawable))
+        )
+  (set! (-> this part) (create-launch-control group-grenade-armed this))
+  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
+  (none)
   )
 
 (defskelgroup skel-ecowell-a ecowell-a ecowell-a-lod0-jg -1

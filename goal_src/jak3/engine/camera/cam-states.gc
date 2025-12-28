@@ -510,6 +510,8 @@
         (when (not (paused?))
           (let ((s4-0 (vector-reset! (new-stack-vector0)))
                 (s5-0 (new-stack-matrix0))
+                ;; og:preserve-this added for high fps
+                (rot-speed (* DISPLAY_FPS_RATIO (-> *CAM_EYE-bank* rot-speed)))
                 )
             (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
               (let ((f30-0 (analog-input
@@ -532,24 +534,27 @@
                 (if (-> *camera* settings flip-vertical)
                     (set! f0-0 (- f0-0))
                     )
-                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (-> *CAM_EYE-bank* rot-speed))))
-                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (-> *CAM_EYE-bank* rot-speed))))
+                ;; og:preserve-this changed for high fps
+                (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) rot-speed)))
+                (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) rot-speed)))
                 )
               )
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 x))
-               (set! (-> s4-0 x) (-> *CAM_EYE-bank* rot-speed))
+              ;; og:preserve-this changed for high fps
+              ((< rot-speed (-> s4-0 x))
+               (set! (-> s4-0 x) rot-speed)
                )
-              ((< (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 x) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 x) (- rot-speed))
+               (set! (-> s4-0 x) (- rot-speed))
                )
               )
             (cond
-              ((< (-> *CAM_EYE-bank* rot-speed) (-> s4-0 y))
-               (set! (-> s4-0 y) (-> *CAM_EYE-bank* rot-speed))
+              ;; og:preserve-this changed for high fps
+              ((< rot-speed (-> s4-0 y))
+               (set! (-> s4-0 y) rot-speed)
                )
-              ((< (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
-               (set! (-> s4-0 y) (- (-> *CAM_EYE-bank* rot-speed)))
+              ((< (-> s4-0 y) (- rot-speed))
+               (set! (-> s4-0 y) (- rot-speed))
                )
               )
             (cond

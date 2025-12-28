@@ -44,7 +44,7 @@
     (when (!= f0-1 0.0)
       (dotimes (v1-4 (-> arg0 count))
         (let ((a1-4 (-> arg0 wave v1-4)))
-          (+! (-> a1-4 offs) (* f0-1 (-> a1-4 delta)))
+          (+! (-> a1-4 offs) (* f0-1 (* DISPLAY_FPS_RATIO (-> a1-4 delta)))) ;; changed for high fps
           (set! (-> a1-4 offs) (the float (logand (the int (-> a1-4 offs)) #xffff)))))
       (set! (-> arg0 frame-save) (the-as uint (-> *display* integral-frame-counter)))))
   0
@@ -66,7 +66,11 @@
         (when (-> s4-0 gp-0 waveform)
           (let ((s3-0 gp-0)
                 (s2-0 (-> s4-0 gp-0 waveform)))
-            (ripple-create-wave-table (the-as ripple-wave-set s2-0))
+            ;; og:preserve-this changed for high fps, use ntsc for table
+            (protect ((-> *setting-control* current video-mode))
+              (when (= (-> *setting-control* current video-mode) 'custom)
+                (set! (-> *setting-control* current video-mode) 'ntsc))
+              (ripple-create-wave-table (the-as ripple-wave-set s2-0)))
             (while (!= s3-0 s5-0)
               (when (= s2-0 (-> s4-0 s3-0 waveform))
                 (ripple-apply-wave-table (-> s4-0 s3-0 effect))

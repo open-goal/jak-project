@@ -959,36 +959,7 @@
     (logior! (-> self draw status) (draw-control-status no-draw))
     (sound-play "sew-mine-b")
     (process-spawn touch-tracker :init touch-tracker-init (-> self root trans) #x47200000 30 :to self)
-    (let ((part (get-process *default-dead-pool* part-tracker #x4000)))
-      (when part
-        (let ((func (method-of-type part-tracker activate)))
-          (func (the-as part-tracker part) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-          )
-        (let ((t9-7 run-function-in-process)
-              (a0-8 part)
-              (a1-6 part-tracker-init)
-              (a2-10 (-> *part-group-id-table* 124))
-              (a3-4 0)
-              (t0-2 #f)
-              (t1-1 #f)
-              (t2-1 #f)
-              (t3-0 *launch-matrix*)
-              )
-          (set! (-> t3-0 trans quad) (-> self root trans quad))
-          ((the-as (function object object object object object object object object none) t9-7)
-           a0-8
-           a1-6
-           a2-10
-           a3-4
-           t0-2
-           t1-1
-           t2-1
-           t3-0
-           )
-          )
-        (-> part ppointer)
-        )
-      )
+    (part-tracker-spawn :to self :group group-crate-explode :mat-joint (-> self root trans))
     (cleanup-for-death self)
     (suspend-for (seconds 2)
       )
@@ -999,7 +970,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-mine! ((this sew-mine))
   "Initializes the mine's particles and sets `last-time` to `0`"
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 345) this))
+  (set! (-> this part) (create-launch-control group-sew-mine-light this))
   (set! (-> this last-time) 0)
   0
   (none)

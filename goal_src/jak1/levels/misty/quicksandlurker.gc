@@ -306,7 +306,7 @@
       (while (not (time-elapsed? (-> self state-time) (seconds 4)))
         (fill-cache-integrate-and-collide! (-> self root) (-> self root transv) (-> self root root-prim collide-with))
         (if (or (logtest? (-> self root status) (cshape-moving-flags twall))
-                (< (vector-vector-distance (-> self root trans) (the-as vector (-> self root trans-old))) 40.96))
+                (< (vector-vector-distance (-> self root trans) (-> self root trans-old 0)) 40.96))
           (go quicksandlurker-missile-impact))
         (spawn (-> self part) (-> self root trans))
         (find-ground-and-draw-shadow (-> self root trans)
@@ -329,7 +329,7 @@
       (process-spawn part-tracker
                      :init
                      part-tracker-init
-                     (-> *part-group-id-table* 200)
+                     group-quicksandlurker-missile-impact
                      -1
                      #f
                      #f
@@ -369,7 +369,7 @@
   (set! (-> self root quat vec quad) (-> (the-as process-drawable (-> self parent 0)) root quat vec quad))
   (vector-identity! (-> self root scale))
   (set! (-> self root transv quad) (-> arg0 velocity quad))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 198) self))
+  (set! (-> self part) (create-launch-control group-quicksandlurker-missile self))
   (go quicksandlurker-missile-idle)
   (none))
 
@@ -560,7 +560,17 @@
       (let ((f1-0 (vector-xz-length s5-0))) (set! (-> s5-0 y) (fmin (-> s5-0 y) (/ f1-0 2))))
       (vector-normalize! s5-0 49152.0)
       (spawn-quicksandlurker-missile self gp-0 s5-0 (-> self entity)))
-    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 199) -1 #f #f #f gp-0 :to *entity-pool*)))
+    (process-spawn part-tracker
+                   :init
+                   part-tracker-init
+                   group-quicksandlurker-pre-missile
+                   -1
+                   #f
+                   #f
+                   #f
+                   gp-0
+                   :to
+                   *entity-pool*)))
 
 (defstate quicksandlurker-attack (quicksandlurker)
   :event quicksandlurker-default-event-handler
@@ -628,7 +638,7 @@
       (process-spawn part-tracker
                      :init
                      part-tracker-init
-                     (-> *part-group-id-table* 201)
+                     group-quicksandlurker-hide
                      -1
                      #f
                      #f
@@ -649,7 +659,7 @@
       (process-spawn part-tracker
                      :init
                      part-tracker-init
-                     (-> *part-group-id-table* 202)
+                     group-quicksandlurker-popup
                      -1
                      #f
                      #f
