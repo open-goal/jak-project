@@ -337,14 +337,14 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
             for(int i = 1; i <= 4;++i){
               int neg_index = (slot_index - i + 8) % 8;
               int pos_index = (slot_index + i + 8) % 8;
-              if(const auto& near_slot = times_of_day[neg_index]; near_slot.second.has_value())
+              if(const auto& near_slot = times_of_day[neg_index]; attributes.contains(near_slot.first) )
               {
                 slot.second = near_slot.second.value();
                 value_name = near_slot.first;
                 break;
               }
               
-              if(const auto& near_slot = times_of_day[pos_index]; near_slot.second.has_value())
+              if(const auto& near_slot = times_of_day[pos_index]; attributes.contains(near_slot.first) )
               {
                 slot.second = near_slot.second.value();
                 value_name = near_slot.first;
