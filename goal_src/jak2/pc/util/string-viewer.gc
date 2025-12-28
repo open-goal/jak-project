@@ -1,0 +1,108 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; To run this:
+
+#|
+(mng)  ;; build the engine
+(lt)   ;; connect to the runtime
+(ml "goal_src/jak2/pc/util/string-viewer.gc")  ;; build and load this file.
+|#
+
+(declare-file (debug))
+
+(define *string-viewer-text-id-val* #x0100)
+(defconstant STRING_VIEWER_TEXT_Y (get-screen-y 0.05))
+
+(defun string-viewer-test-stop ()
+  "stop the encode test proc"
+  (kill-by-name "string-viewer" *active-pool*)
+  )
+
+(define *string-viewer-tmp-str* (new 'global 'string 128 (the-as string #f)))
+
+(defun string-viewer-test-start ()
+  "start the encode test proc"
+
+  (string-viewer-test-stop)
+  (process-spawn-function process :name "string-viewer"
+      (lambda :behavior process ()
+          (let ((fnt (new 'stack 'font-context *font-default-matrix* (get-screen-x 0.35) (get-screen-y 0.4) 0.0
+                                  (font-color red) (font-flags shadow kerning large middle)))
+                )
+
+              (set-width! fnt (get-screen-x 0.8))
+              (set-height! fnt (get-screen-y 0.1))
+
+              (loop
+                (suspend)
+
+                (if (or (cpad-pressed? 0 left) (cpad-hold? 0 l1))
+                  (-! *string-viewer-text-id-val* 1))
+                (if (or (cpad-pressed? 0 right) (cpad-hold? 0 r1))
+                  (+! *string-viewer-text-id-val* 1))
+
+                (minmax! *string-viewer-text-id-val* #x0 #x134c)
+
+                (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf))
+                                             (bucket-id debug-no-zbuf2))
+                    (set-scale! fnt 0.5)
+                    (set-origin! fnt (get-screen-x 0.5) (- STRING_VIEWER_TEXT_Y 10))
+                    (draw-string (string-format "Text ID: ~x" *string-viewer-text-id-val*) buf fnt)
+
+                    (set-origin! fnt (get-screen-x 0.5) (+ STRING_VIEWER_TEXT_Y 10))
+                    (draw-string "English:" buf fnt)
+
+                    (set-origin! fnt (get-screen-x 0.5) (+ STRING_VIEWER_TEXT_Y 30))
+                    (draw-string (lookup-text! *fallback-text* (the text-id *string-viewer-text-id-val*) #f) buf fnt)
+
+                    ;; Assumes you have your text set to korean
+                    (set-origin! fnt (get-screen-x 0.5) (+ STRING_VIEWER_TEXT_Y 50))
+                    (draw-string "Korean:" buf fnt)
+
+                    (set-scale! fnt 1.0)
+                    (set-origin! fnt (get-screen-x 0.5) (+ STRING_VIEWER_TEXT_Y 75))
+                    (draw-string (lookup-text! *common-text* (the text-id *string-viewer-text-id-val*) #f) buf fnt)
+                    (lookup-text! *common-text* (the text-id *string-viewer-text-id-val*) #t)
+
+                    ;; draw the bytes of each character
+                    (set-scale! fnt 0.35)
+                    (set-origin! fnt (get-screen-x 0.5) (+ STRING_VIEWER_TEXT_Y 115))
+                    (clear *pc-cpp-temp-string*)
+                    (clear *string-viewer-tmp-str*)
+                    (let ((raw-str (lookup-text-string *common-text* (the text-id *string-viewer-text-id-val*))))
+                      (let ((str-ptr (-> raw-str data))
+                            (first-line-break #f)
+                            (y-origin (+ STRING_VIEWER_TEXT_Y 115))
+                            (last-byte (the-as uint 0)))
+                        (while (and (nonzero? (-> str-ptr 0)))
+                          (when (and first-line-break (= (-> str-ptr 0) #x4))
+                            (draw-string (string-format "~S~S~S~S" "~[~1L" *string-viewer-tmp-str* "~[~6L" *pc-cpp-temp-string*) buf fnt)
+                            (set! y-origin (+ y-origin 15))
+                            (set-origin! fnt (get-screen-x 0.5) y-origin)
+                            (clear *pc-cpp-temp-string*)
+                            (clear *string-viewer-tmp-str*))
+                          (when (= (-> str-ptr 0) #x4)
+                            (set! first-line-break #t)
+                            (format *string-viewer-tmp-str* "0x~X " (-> str-ptr 0)))
+                          (when (and (or (= (-> str-ptr 0) #x3) (= (-> str-ptr 0) #x2)) (= last-byte #x4))
+                            (format *string-viewer-tmp-str* "0x~X " (-> str-ptr 0)))
+                          (when (and (not (= (-> str-ptr 0) #x4))
+                                     (not (and (or (= (-> str-ptr 0) #x3) (= (-> str-ptr 0) #x2)) (= last-byte #x4))))
+                            (format *pc-cpp-temp-string* "0x~X " (-> str-ptr 0)))
+                          (set! last-byte (-> str-ptr 0))
+                          (set! str-ptr (&-> str-ptr 1)))
+                        (draw-string (string-format "~S~S~S~S" "~[~1L" *string-viewer-tmp-str* "~[~6L" *pc-cpp-temp-string*) buf fnt)
+                        )
+                      )
+                    (clear *temp-string*)
+                    )
+                )
+              )
+
+          )
+      )
+  )
+
+(string-viewer-test-start)
+

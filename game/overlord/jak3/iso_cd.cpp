@@ -383,7 +383,6 @@ ISOFileDef* CISOCDFileSystem::FindIN(const jak3::ISOName* name) {
 int CISOCDFileSystem::GetLength(const jak3::ISOFileDef* file) {
   // actually open the file and get the length, in case it changed.
   // return file->length;
-  lg::info("getlength");
   file_util::assert_file_exists(file->full_path.c_str(), "CISOCDFileSystem GetLength");
   FILE* fp = file_util::open_file(file->full_path.c_str(), "rb");
   ASSERT(fp);

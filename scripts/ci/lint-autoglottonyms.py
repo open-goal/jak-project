@@ -30,6 +30,7 @@ JAK1_AUTOGLOT_IDS = [
     "111d",
     "111e",
     "111f",
+    "1120"
 ]
 JAK2_AUTOGLOT_IDS = [
     "133a",

@@ -40,6 +40,7 @@ class DecompilerTypeSystem {
   std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> jg_info;
   std::unordered_map<u32, TexInfo> textures;
+  std::unordered_map<u32, std::string> part_group_table;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {

@@ -48,6 +48,9 @@ bool run_build_level(const std::string& input_file,
   // unk zero
   // name
   file.name = level_json.at("long_name").get<std::string>();
+  ASSERT_MSG(file.name.size() <= 10,
+             fmt::format("long_name over 10 characters ({} characters): '{}'", file.name.size(),
+                         file.name));
   // nick
   file.nickname = level_json.at("nickname").get<std::string>();
   // vis infos
@@ -217,6 +220,12 @@ bool run_build_level(const std::string& input_file,
               file.texture_remap_table.resize(tex_remap.size());
               memcpy(file.texture_remap_table.data(), level_file.texture_remap_table.data(),
                      tex_remap.size() * sizeof(level_tools::TextureRemap));
+              if (!tpages.empty()) {
+                file.texture_ids.resize(tpages.size());
+                for (size_t i = 0; i < tpages.size(); ++i) {
+                  file.texture_ids[i] = tpages[i] << 20;
+                }
+              }
             }
             if (is_sky_bsp) {
               // copy adgif data from bsp

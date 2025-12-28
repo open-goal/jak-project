@@ -165,6 +165,10 @@ int run_decompilation_process(decompiler::Config config,
     return 1;
   }
 
+  if (config.process_part_group_table && !config.part_group_table.empty()) {
+    db.dts.part_group_table = config.part_group_table;
+  }
+
   if (config.process_tpages && !config.texture_info_dump.empty()) {
     db.dts.textures = config.texture_info_dump;
   }
@@ -188,6 +192,10 @@ int run_decompilation_process(decompiler::Config config,
   // write art groups
   if (config.process_art_groups) {
     db.dump_art_info(out_folder);
+  }
+
+  if (config.dump_part_group_table) {
+    db.dump_part_group_table(out_folder, config.part_group_table);
   }
 
   if (config.hexdump_code || config.hexdump_data) {

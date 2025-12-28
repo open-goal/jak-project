@@ -679,7 +679,6 @@ u32 ISOThread() {
         if (pLVar14->id != 0) {
           if (g_game_version != GameVersion::Jak3) {
             // doesn't work.
-            printf("jak3 skipping vag stream\n");
             QueueVAGStream(pLVar14);
           }
         }

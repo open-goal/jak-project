@@ -43,5 +43,8 @@
 
 #define ASSERT(EX) ((void)0)
 #define ASSERT_MSG(EXPR, STR) ((void)0)
+#define ASSERT_NOT_REACHED() ((void)0)
+#define ASSERT_NOT_REACHED_MSG(STR) ((void)0)
+#define ASSERT_EQ_IMM(EXPR, EXPECTED) ((void)0)
 
 #endif

@@ -2,6 +2,7 @@
 
 #include "common/goos/ParseHelpers.h"
 #include "common/goos/Reader.h"
+#include "common/util/font/font_utils_korean.h"
 
 int64_t get_int(const goos::Object& obj) {
   if (obj.is_int()) {
@@ -44,7 +45,7 @@ std::string get_string(const goos::Object& x) {
 void parse_text_goal(const goos::Object& data,
                      GameTextDB& db,
                      const GameTextDefinitionFile& /*file_info*/) {
-  const GameTextFontBank* font = nullptr;
+  GameTextFontBank* font = nullptr;
   std::vector<std::shared_ptr<GameTextBank>> banks;
   std::string possible_group_name;
 
@@ -122,9 +123,15 @@ void parse_text_goal(const goos::Object& data,
                 if (b_i >= int(banks.size())) {
                   throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
                 }
-
-                auto line = font->convert_utf8_to_game(entry.as_string()->data);
-                banks[b_i++]->set_line(id, line);
+                if (font->is_language_id_korean(b_i)) {
+                  // korean changes differently!
+                  auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
+                  banks[b_i]->set_line(id, line);
+                } else {
+                  auto line = font->convert_utf8_to_game(entry.as_string()->data);
+                  banks[b_i]->set_line(id, line);
+                }
+                b_i++;
               } else {
                 throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
               }
@@ -165,8 +172,15 @@ void parse_text_goal(const goos::Object& data,
               throw std::runtime_error(fmt::format("Too many strings in text id #x{:x}", id));
             }
 
-            auto line = font->convert_utf8_to_game(entry.as_string()->data);
-            banks[i++]->set_line(id, line);
+            if (font->is_language_id_korean(i)) {
+              // handle korean differently!
+              auto line = font->convert_utf8_to_game_korean(entry.as_string()->data);
+              banks[i]->set_line(id, line);
+            } else {
+              auto line = font->convert_utf8_to_game(entry.as_string()->data);
+              banks[i]->set_line(id, line);
+            }
+            i++;
           } else {
             throw std::runtime_error(fmt::format("Non-string value in text id #x{:x}", id));
           }
@@ -230,15 +244,20 @@ void parse_text_json(const nlohmann::json& json,
   } else {
     bank = db.bank_by_id(file_info.group_name.value(), file_info.language_id);
   }
-  const GameTextFontBank* font = get_font_bank(file_info.text_version);
+  GameTextFontBank* font = get_font_bank(file_info.text_version);
   // Parse the file
   for (const auto& [text_id, text_value] : json.items()) {
     auto line_id = std::stoi(text_id, nullptr, 16);
     if (text_value.is_string()) {
       // single line replacement
-      auto line = font->convert_utf8_to_game(text_value);
-      // TODO - lint duplicate line definitions across text files
-      bank->set_line(line_id, line);
+      if (font->is_language_id_korean(file_info.language_id)) {
+        auto line = font->convert_utf8_to_game_korean(text_value);
+        bank->set_line(line_id, line);
+      } else {
+        auto line = font->convert_utf8_to_game(text_value);
+        bank->set_line(line_id, line);
+      }
+
     } else if (text_value.is_array()) {
       // multi-line replacement starting from line_id
       //  (e.g. for Jak 1 credits, start from x0b00)
@@ -247,8 +266,14 @@ void parse_text_json(const nlohmann::json& json,
           throw std::runtime_error(fmt::format(
               "Non string provided for line {} / text id #x{} of _credits", idx, line_id));
         }
-        auto line = font->convert_utf8_to_game(raw_line);
-        bank->set_line(line_id++, line);  // increment line_id
+
+        if (font->is_language_id_korean(file_info.language_id)) {
+          auto line = font->convert_utf8_to_game_korean(raw_line);
+          bank->set_line(line_id++, line);  // increment line_id
+        } else {
+          auto line = font->convert_utf8_to_game(raw_line);
+          bank->set_line(line_id++, line);  // increment line_id
+        }
       }
     } else {
       // Unexpected value type

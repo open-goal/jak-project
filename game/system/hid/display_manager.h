@@ -30,7 +30,7 @@ struct DisplayMode {
   int screen_width;
   int screen_height;
   /// refresh rate (in Hz), or 0 for unspecified
-  int refresh_rate;
+  float refresh_rate;
   Orientation orientation;
 };
 

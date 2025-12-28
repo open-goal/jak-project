@@ -240,9 +240,7 @@
            (the-as attack-info (mem-copy! (the-as pointer (new 'stack-no-clear 'attack-info)) (the-as pointer s4-0) 160))
            (the-as uint s4-0)
            self
-           (if (type? arg0 process-drawable)
-               arg0
-               )
+           (the-as process (as-type arg0 process-drawable))
            (the-as touching-shapes-entry (-> arg3 param 0))
            )
           (+! (-> self next-hit-state) 1)
@@ -419,12 +417,7 @@
 (defstate idle (drill-sliding-door)
   :virtual #t
   :trans (behavior ()
-    (let* ((gp-0 *target*)
-           (a0-1 (if (type? gp-0 process-focusable)
-                     gp-0
-                     )
-                 )
-           )
+    (let ((a0-1 (the-as target (as-type *target* process-focusable))))
       (if (and a0-1 (< (vector-vector-distance (-> self root trans) (get-trans a0-1 0)) 40960.0))
           (go-virtual open)
           )
@@ -661,14 +654,10 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack)
-       (let* ((s5-0 (-> block param 0))
-              (gp-0 (the-as object (-> block param 1)))
-              (s4-0 proc)
-              (v1-1 (if (type? s4-0 process-drawable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((s5-0 (-> block param 0))
+             (gp-0 (the-as object (-> block param 1)))
+             (v1-1 (the-as process (as-type proc process-drawable)))
+             )
          (when (and s5-0
                     v1-1
                     (or (= (-> (the-as attack-info gp-0) mode) 'turret) (= (-> (the-as attack-info gp-0) mode) 'explode))
@@ -752,43 +741,10 @@
     (let ((gp-1 (new 'stack-no-clear 'vector)))
       (set! (-> gp-1 quad) (-> self root trans quad))
       (+! (-> gp-1 y) 8192.0)
-      (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when s5-1
-          (let ((t9-3 (method-of-type part-tracker activate)))
-            (t9-3
-              (the-as part-tracker s5-1)
-              *entity-pool*
-              (symbol->string (-> part-tracker symbol))
-              (the-as pointer #x70004000)
-              )
-            )
-          (let ((t9-4 run-function-in-process)
-                (a0-9 s5-1)
-                (a1-3 part-tracker-init)
-                (a2-5 (-> *part-group-id-table* 420))
-                (a3-2 0)
-                (t0-1 #f)
-                (t1-1 #f)
-                (t2-1 #f)
-                (t3-0 *launch-matrix*)
-                )
-            (set! (-> t3-0 trans quad) (-> gp-1 quad))
-            ((the-as (function object object object object object object object object none) t9-4)
-             a0-9
-             a1-3
-             a2-5
-             a3-2
-             t0-1
-             t1-1
-             t2-1
-             t3-0
-             )
-            )
-          (-> s5-1 ppointer)
-          )
-        )
+      (part-tracker-spawn :to *entity-pool* :group group-drill-metalhead-egg-explode :mat-joint gp-1)
       )
-    (suspend-for (seconds 0.5))
+    (suspend-for (seconds 0.5)
+      )
     (cleanup-for-death self)
     )
   )
@@ -1031,14 +987,10 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('attack)
-       (let* ((gp-0 (-> block param 0))
-              (s5-0 (the-as object (-> block param 1)))
-              (s4-0 proc)
-              (v1-1 (if (type? s4-0 process-drawable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (-> block param 0))
+             (s5-0 (the-as object (-> block param 1)))
+             (v1-1 (the-as process (as-type proc process-drawable)))
+             )
          (if (and gp-0 v1-1 (case (-> (the-as attack-info s5-0) mode)
                               (('turret 'explode 'wasp-shot)
                                #t
@@ -1093,36 +1045,7 @@
     (set! (-> self draw force-lod) 0)
     (set! (-> self draw bounds w) 573440.0)
     (when (not arg0)
-      (let ((gp-1 (get-process *default-dead-pool* part-tracker #x4000)))
-        (when gp-1
-          (let ((t9-3 (method-of-type part-tracker activate)))
-            (t9-3 (the-as part-tracker gp-1) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-            )
-          (let ((t9-4 run-function-in-process)
-                (a0-11 gp-1)
-                (a1-7 part-tracker-init)
-                (a2-5 (-> *part-group-id-table* 444))
-                (a3-2 0)
-                (t0-1 #f)
-                (t1-1 #f)
-                (t2-1 #f)
-                (t3-0 *launch-matrix*)
-                )
-            (set! (-> t3-0 trans quad) (-> self root trans quad))
-            ((the-as (function object object object object object object object object none) t9-4)
-             a0-11
-             a1-7
-             a2-5
-             a3-2
-             t0-1
-             t1-1
-             t2-1
-             t3-0
-             )
-            )
-          (-> gp-1 ppointer)
-          )
-        )
+      (part-tracker-spawn :to self :group group-drill-bridge-explode :mat-joint (-> self root trans))
       (ja-no-eval :group! drill-bridge-shot-break-ja :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)

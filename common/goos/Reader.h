@@ -75,7 +75,6 @@ class Reader {
                           const std::optional<std::string>& string_name = {});
   std::optional<Object> read_from_stdin(const std::string& prompt, REPL::Wrapper& repl);
   Object read_from_file(const std::vector<std::string>& file_path, bool check_encoding = false);
-  bool check_string_is_valid(const std::string& str) const;
 
   SymbolTable symbolTable;
   TextDb db;
@@ -101,12 +100,10 @@ class Reader {
   void add_reader_macro(const std::string& shortcut, std::string replacement);
 
   bool m_valid_symbols_chars[256];
-  bool m_valid_source_text_chars[256];
-
-  bool is_valid_source_char(char c) const;
 
   std::unordered_map<std::string, std::string> m_reader_macros;
 };
 
+std::string get_byte_string(const char* in);
 std::string get_readable_string(const char* in);
 }  // namespace goos

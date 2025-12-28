@@ -24,11 +24,11 @@
                                )
   )
 
-(defmethod relocate ((this enemy) (arg0 int))
+(defmethod relocate ((this enemy) (offset int))
   (if (nonzero? (-> this neck))
-      (&+! (-> this neck) arg0)
+      (&+! (-> this neck) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod rnd-float ((this enemy))
@@ -38,28 +38,28 @@
 
 (defmethod rnd-float-range ((this enemy) (low float) (high float))
   "@param low The lower bound of the range (inclusive)
-@param high The upper bound of the range (exclusive)
-@returns A random float in the specified range"
+   @param high The upper bound of the range (exclusive)
+   @returns A random float in the specified range"
   (+ low (* (rand-vu) (- high low)))
   )
 
 (defmethod rnd-int-count ((this enemy) (high int))
   "@param high The upper bound of the range (exclusive)
-@returns a random integer in the range 0 to `high`
-@see [[rand-vu]]"
+   @returns a random integer in the range 0 to `high`
+   @see [[rand-vu]]"
   (the int (* (rand-vu) (the float high)))
   )
 
 (defmethod rnd-int-range ((this enemy) (low int) (high int))
   "@param low The lower bound of the range (inclusive)
-@param high The upper bound of the range (exclusive)
-@returns A random integer in the specified range"
+   @param high The upper bound of the range (exclusive)
+   @returns A random integer in the specified range"
   (+ low (the int (* (rand-vu) (the float (+ (- 1 low) high)))))
   )
 
 (defmethod rnd-percent? ((this enemy) (chance float))
   "@param chance The value to compare ([[>=]]) with the result from [[rand-vu]].
-@returns If `chance` is greater than the random draw"
+   @returns If `chance` is greater than the random draw"
   (>= chance (rand-vu))
   )
 
@@ -120,6 +120,7 @@
 
 ;; WARN: disable def twice: 40. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defmethod run-logic? ((this enemy))
+  "Should this process be run? Checked by execute-process-tree."
   (cond
     ((logtest? (-> this mask) (process-mask actor-pause))
      (let ((draw (-> this draw)))
@@ -190,7 +191,7 @@
 
 (defmethod get-penetrate-info ((this enemy))
   "@returns the allowed way(s) this enemy can take damage
-@see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
+   @see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (penetrated-by-all&hit-points->penetrated-by (-> this penetrated-by-all) (-> this hit-points))
   )
 
@@ -211,41 +212,7 @@
               (let ((s2-0 (new 'stack-no-clear 'vector)))
                 (set! (-> s2-0 quad) (-> this root trans quad))
                 (set! (-> s2-0 y) (+ 409.6 (-> s5-0 trans y)))
-                (let ((s1-0 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s1-0
-                    (let ((t9-2 (method-of-type part-tracker activate)))
-                      (t9-2
-                        (the-as part-tracker s1-0)
-                        *entity-pool*
-                        (symbol->string (-> part-tracker symbol))
-                        (the-as pointer #x70004000)
-                        )
-                      )
-                    (let ((t9-3 run-function-in-process)
-                          (a0-8 s1-0)
-                          (a1-3 part-tracker-init)
-                          (a2-5 (-> *part-group-id-table* 121))
-                          (a3-1 0)
-                          (t0-0 #f)
-                          (t1-0 #f)
-                          (t2-0 #f)
-                          (t3-0 *launch-matrix*)
-                          )
-                      (set! (-> t3-0 trans quad) (-> s2-0 quad))
-                      ((the-as (function object object object object object object object object none) t9-3)
-                       a0-8
-                       a1-3
-                       a2-5
-                       a3-1
-                       t0-0
-                       t1-0
-                       t2-0
-                       t3-0
-                       )
-                      )
-                    (-> s1-0 ppointer)
-                    )
-                  )
+                (part-tracker-spawn :to *entity-pool* :group group-part-water-splash :mat-joint s2-0)
                 )
               (cond
                 ((logtest? s3-0 (water-flags dark-eco))
@@ -286,9 +253,9 @@
 
 (defmethod common-post ((self enemy))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
       (set-time! (-> self last-draw-time))
       )
@@ -361,19 +328,9 @@
         (return (the-as penetrate (-> v1-0 penetrate-using)))
         )
     )
-  (let* ((gp-0 arg0)
-         (v1-3 (if (type? gp-0 process-drawable)
-                   gp-0
-                   )
-               )
-         )
+  (let ((v1-3 (as-type arg0 process-drawable)))
     (when v1-3
-      (let* ((gp-1 (-> v1-3 root))
-             (v1-4 (if (type? gp-1 collide-shape)
-                       (the-as collide-shape gp-1)
-                       )
-                   )
-             )
+      (let ((v1-4 (as-type (-> v1-3 root) collide-shape)))
         (if v1-4
             (return (the-as penetrate (logior (-> v1-4 penetrate-using) (penetrate generic-attack))))
             )
@@ -408,12 +365,7 @@
 
 (defmethod enemy-method-62 ((this enemy))
   (when (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
-    (let* ((s4-0 (handle->process (-> this incoming attacker-handle)))
-           (s5-0 (if (type? s4-0 process-focusable)
-                     s4-0
-                     )
-                 )
-           )
+    (let ((s5-0 (the-as process (as-type (handle->process (-> this incoming attacker-handle)) process-focusable))))
       (when (enemy-method-53 this (the-as process-focusable s5-0))
         (enemy-method-63 this (the-as process-focusable s5-0) (the-as enemy-aware #f))
         (logior! (-> this focus flags) (enemy-flag look-at-focus))
@@ -627,11 +579,7 @@
     (set! (-> this root penetrated-by) (the-as penetrate -1))
     (enemy-method-49 this)
     )
-  (let ((s5-0 (if (type? arg0 process-focusable)
-                  arg0
-                  )
-              )
-        )
+  (let ((s5-0 (the-as process (as-type arg0 process-focusable))))
     (when (enemy-method-53 this (the-as process-focusable s5-0))
       (let ((v1-10 (handle->process (-> this focus handle))))
         (when (or (= s5-0 v1-10) (and (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
@@ -746,7 +694,7 @@
 
 (defmethod look-at-target! ((this enemy) (arg0 enemy-flag))
   "Logic for looking at the target that is locked on, sets some flags and adjusts the neck to look at the target if available
-@param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
+   @param flag Reacts to [[enemy-flag::death-start]] and [[enemy-flag::enable-on-active]], see implementation for details"
   (case arg0
     (((enemy-flag look-at-focus))
      (logclear! (-> this enemy-flags) (enemy-flag look-at-move-dest))
@@ -785,7 +733,7 @@
 
 (defmethod enemy-above-ground? ((this enemy) (arg0 collide-query) (arg1 vector) (arg2 collide-spec) (arg3 float) (arg4 float) (arg5 float))
   "@returns if the enemy is above the ground or not
-@see [[above-ground?]]"
+   @see [[above-ground?]]"
   (above-ground? (-> this root) arg0 arg1 arg2 arg3 arg4 arg5)
   )
 
@@ -985,7 +933,7 @@
 
 (defmethod set-enemy-info! ((this enemy) (arg0 enemy-info))
   "In addition to setting the `enemy-info`, also init the `neck-joint` if applicable from it
-@param info Set `enemy-info` accordingly"
+   @param info Set `enemy-info` accordingly"
   (set! (-> this enemy-info) arg0)
   (when (and (!= (-> this enemy-info neck-joint) -1) (zero? (-> this neck)))
     (set! (-> this neck)
@@ -1210,11 +1158,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this enemy) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (init-enemy-collision! this)
   (process-drawable-from-entity! this arg0)
   (init-enemy! this)
@@ -1269,10 +1217,10 @@ This commonly includes things such as:
 
 (defmethod in-aggro-range? ((this enemy) (arg0 process-focusable) (arg1 vector))
   "Should the enemy activate.
-- if `activate-distance` is `0.0`, always true
-- otherwise, check if the provided process is close enough
-@param proc The process used to distance check
-@returns true/false"
+   - if `activate-distance` is `0.0`, always true
+   - otherwise, check if the provided process is close enough
+   @param proc The process used to distance check
+   @returns true/false"
   #t
   )
 
@@ -1281,6 +1229,7 @@ This commonly includes things such as:
   )
 
 (defmethod reset-to-collide-spec ((this enemy-focus) (arg0 collide-spec))
+  "Reset this focus with the given [[collide-spec]]."
   (let ((t9-0 (method-of-type focus reset-to-collide-spec)))
     (t9-0 this arg0)
     )
@@ -1350,12 +1299,7 @@ This commonly includes things such as:
           (while (!= v1-4 (-> *collide-player-list* alive-list-end))
             (let ((v1-5 (the-as collide-shape (-> (the-as connection v1-4) param1))))
               (when (logtest? s4-0 (-> v1-5 root-prim prim-core collide-as))
-                (let* ((s2-0 (-> v1-5 process))
-                       (a1-1 (if (type? s2-0 process-focusable)
-                                 (the-as process-focusable s2-0)
-                                 )
-                             )
-                       )
+                (let ((a1-1 (as-type (-> v1-5 process) process-focusable)))
                   (if (and a1-1 (and a1-1 (not (logtest? (-> a1-1 focus-status) (focus-status disable dead)))) (!= this a1-1))
                       (update-target-awareness! this a1-1 gp-0)
                       )
@@ -1377,12 +1321,7 @@ This commonly includes things such as:
             (while (!= v1-19 (-> *collide-hit-by-player-list* alive-list-end))
               (let ((v1-20 (the-as collide-shape (-> (the-as connection v1-19) param1))))
                 (when (logtest? s4-0 (-> v1-20 root-prim prim-core collide-as))
-                  (let* ((s2-1 (-> v1-20 process))
-                         (a1-3 (if (type? s2-1 process-focusable)
-                                   (the-as process-focusable s2-1)
-                                   )
-                               )
-                         )
+                  (let ((a1-3 (as-type (-> v1-20 process) process-focusable)))
                     (if (and a1-3 (and a1-3 (not (logtest? (-> a1-3 focus-status) (focus-status disable dead)))) (!= this a1-3))
                         (update-target-awareness! this a1-3 gp-0)
                         )
@@ -1403,12 +1342,7 @@ This commonly includes things such as:
             (while (!= v1-32 (-> *collide-hit-by-others-list* alive-list-end))
               (let ((v1-33 (the-as collide-shape (-> (the-as connection v1-32) param1))))
                 (when (logtest? s4-0 (-> v1-33 root-prim prim-core collide-as))
-                  (let* ((s2-2 (-> v1-33 process))
-                         (a1-5 (if (type? s2-2 process-focusable)
-                                   (the-as process-focusable s2-2)
-                                   )
-                               )
-                         )
+                  (let ((a1-5 (as-type (-> v1-33 process) process-focusable)))
                     (if (and a1-5 (and a1-5 (not (logtest? (-> a1-5 focus-status) (focus-status disable dead)))) (!= this a1-5))
                         (update-target-awareness! this a1-5 gp-0)
                         )
@@ -1439,8 +1373,8 @@ This commonly includes things such as:
 ;; WARN: Return type mismatch int vs enemy-aware.
 (defmethod update-target-awareness! ((this enemy) (arg0 process-focusable) (arg1 enemy-best-focus))
   "Checks a variety of criteria to determine the level of awareness the enemy is of the target.  Sets `aware` and related fields as well!
-@TODO - flesh out docs
-@returns the value that sets `aware`"
+   @TODO - flesh out docs
+   @returns the value that sets `aware`"
   (let ((f30-0 (vector-vector-distance (get-trans arg0 0) (-> this root trans)))
         (s3-1 #f)
         (s2-0 #f)
@@ -1580,7 +1514,7 @@ This commonly includes things such as:
 
 (defmethod general-event-handler ((this enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (s5-5 rgbaf) (sv-432 process) (sv-448 event-message-block))
   (cond
     ((= arg2 'track)
@@ -1597,20 +1531,11 @@ This commonly includes things such as:
      )
     ((= arg2 'touched)
      (when (logtest? (-> this enemy-flags) (enemy-flag auto-reset-penetrate))
-       (let* ((s3-1 arg0)
-              (v1-20 (if (type? s3-1 process-drawable)
-                         (the-as process-drawable s3-1)
-                         )
-                     )
-              )
+       (let ((v1-20 (as-type arg0 process-drawable)))
          (when v1-20
-           (let* ((s3-2 (-> v1-20 root))
-                  (a1-4 (if (type? s3-2 collide-shape)
-                            s3-2
-                            )
-                        )
-                  (s3-3 (-> arg3 param 0))
-                  )
+           (let ((a1-4 (the-as trsqv (as-type (-> v1-20 root) collide-shape)))
+                 (s3-3 (-> arg3 param 0))
+                 )
              (if (and a1-4
                       s3-3
                       ((method-of-type touching-shapes-entry prims-touching-action?)
@@ -1998,13 +1923,9 @@ This commonly includes things such as:
   )
 
 (defmethod enemy-method-75 ((this enemy) (arg0 process) (arg1 event-message-block))
-  (let* ((touch-entry (the-as touching-shapes-entry (-> arg1 param 0)))
-         (s2-0 arg0)
-         (s3-0 (if (type? s2-0 process-focusable)
-                   (the-as process-focusable s2-0)
-                   )
-               )
-         )
+  (let ((touch-entry (the-as touching-shapes-entry (-> arg1 param 0)))
+        (s3-0 (as-type arg0 process-focusable))
+        )
     (when (and (the-as uint touch-entry) s3-0)
       (cond
         ((and (focus-test? this dangerous)

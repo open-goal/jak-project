@@ -1125,6 +1125,34 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
   lg::info("Written art group info: in {:.2f} ms", timer.getMs());
 }
 
+void ObjectFileDB::dump_part_group_table(
+    const fs::path& output_dir,
+    const std::unordered_map<u32, std::string>& part_group_table) {
+  lg::info("Writing part group table...");
+  Timer timer;
+
+  if (!part_group_table.empty()) {
+    file_util::create_dir_if_needed(output_dir / "import");
+  }
+
+  auto ptable_fpath = output_dir / "import" / "part-groups.gc";
+  std::string result;
+
+  for (const auto& [id, name] : part_group_table) {
+    result += fmt::format("(defconstant {} (-> *part-group-id-table* {}))", name, id);
+    result += "\n";
+  }
+
+  file_util::write_text_file(ptable_fpath, result);
+
+  auto ptable_dump_fpath = output_dir / "dump" / "part-groups.min.json";
+  nlohmann::json json = part_group_table;
+  file_util::create_dir_if_needed_for_file(ptable_dump_fpath);
+  file_util::write_text_file(ptable_dump_fpath, json.dump(-1));
+
+  lg::info("Written part group table in {:.2f} ms", timer.getMs());
+}
+
 void ObjectFileDB::dump_raw_objects(const fs::path& output_dir) {
   for_each_obj([&](ObjectFileData& data) {
     auto dest = output_dir / data.to_unique_name();

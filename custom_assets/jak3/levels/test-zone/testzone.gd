@@ -4,6 +4,7 @@
 ;; the actual file name still needs to be 8.3
 ("TSZ.DGO"
  (
+  "yakow-ag.go" ;; no code page for this in jak3, so it will spawn dummy viewer process
   "test-zone-obs.o"
   "test-actor-ag.go"
   "test-zone.go"

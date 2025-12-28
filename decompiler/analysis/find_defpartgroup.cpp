@@ -194,7 +194,8 @@ L80:
 
 }  // namespace
 
-void run_defpartgroup(Function& top_level_func) {
+void run_defpartgroup(Function& top_level_func,
+                      std::unordered_map<u32, std::string>& part_group_table) {
   auto& env = top_level_func.ir2.env;
   auto& pool = *top_level_func.ir2.form_pool;
   if (!top_level_func.ir2.top_form) {
@@ -233,6 +234,7 @@ void run_defpartgroup(Function& top_level_func) {
         if (sym.get_str() == "*part-group-id-table*") {
           DefpartgroupElement::StaticInfo group;
           read_static_group_data(src, env, group);
+          part_group_table.emplace(id, group.name);
           auto rewritten = pool.alloc_element<DefpartgroupElement>(group, id);
           if (rewritten) {
             fe = rewritten;

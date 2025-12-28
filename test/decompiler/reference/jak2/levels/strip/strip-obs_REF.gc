@@ -463,7 +463,7 @@
                           (vector<-cspace! (new 'static 'vector) (-> this node-list data 4))
                           )
         )
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 214) this))
+  (set! (-> this part) (create-launch-control group-strip-pitspikes-dust this))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go (method-of-object this idle))
   (none)
@@ -572,7 +572,7 @@
                           (vector<-cspace! (new 'static 'vector) (-> this node-list data 3))
                           )
         )
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 213) this))
+  (set! (-> this part) (create-launch-control group-strip-curtain-saw-dust this))
   (logclear! (-> this mask) (process-mask actor-pause))
   (go (method-of-object this idle))
   (none)
@@ -972,10 +972,10 @@
     )
   (process-drawable-from-entity! this arg0)
   (set! (-> this camera-name) (res-lump-struct (-> this entity) 'camera-name string))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 215) this))
-  (set! (-> this part2) (create-launch-control (-> *part-group-id-table* 216) this))
-  (set! (-> this part3) (create-launch-control (-> *part-group-id-table* 217) this))
-  (set! (-> this part-lightning-hit) (create-launch-control (-> *part-group-id-table* 218) this))
+  (set! (-> this part) (create-launch-control group-grenade-point this))
+  (set! (-> this part2) (create-launch-control group-grenade-point-hit this))
+  (set! (-> this part3) (create-launch-control group-grenade-point-dead this))
+  (set! (-> this part-lightning-hit) (create-launch-control group-lightning-silo-tip this))
   (set! (-> this lightning-time) 0)
   (set! (-> this strike-table)
         (-> *grenade-point-strike-table*
@@ -1214,41 +1214,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw-laser-sight ((this grenade))
   "TODO - confirm If applicable, draw the laser sight particles"
-  (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when gp-0
-      (let ((t9-1 (method-of-type part-tracker activate)))
-        (t9-1
-          (the-as part-tracker gp-0)
-          *entity-pool*
-          (symbol->string (-> part-tracker symbol))
-          (the-as pointer #x70004000)
-          )
-        )
-      (let ((t9-2 run-function-in-process)
-            (a0-3 gp-0)
-            (a1-2 part-tracker-init)
-            (a2-4 (-> *part-group-id-table* 237))
-            (a3-1 0)
-            (t0-0 #f)
-            (t1-0 #f)
-            (t2-0 #f)
-            (t3-0 *launch-matrix*)
-            )
-        (set! (-> t3-0 trans quad) (-> this root trans quad))
-        ((the-as (function object object object object object object object object none) t9-2)
-         a0-3
-         a1-2
-         a2-4
-         a3-1
-         t0-0
-         t1-0
-         t2-0
-         t3-0
-         )
-        )
-      (-> gp-0 ppointer)
-      )
-    )
+  (part-tracker-spawn :to *entity-pool* :group group-grenade-fired :mat-joint (-> this root trans))
   0
   (none)
   )
@@ -1268,41 +1234,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defmethod spawn-shell-particles ((this grenade))
   "TODO - confirm"
-  (let ((gp-0 (get-process *default-dead-pool* part-tracker #x4000)))
-    (when gp-0
-      (let ((t9-1 (method-of-type part-tracker activate)))
-        (t9-1
-          (the-as part-tracker gp-0)
-          *entity-pool*
-          (symbol->string (-> part-tracker symbol))
-          (the-as pointer #x70004000)
-          )
-        )
-      (let ((t9-2 run-function-in-process)
-            (a0-3 gp-0)
-            (a1-2 part-tracker-init)
-            (a2-4 (-> *part-group-id-table* 236))
-            (a3-1 0)
-            (t0-0 #f)
-            (t1-0 #f)
-            (t2-0 #f)
-            (t3-0 *launch-matrix*)
-            )
-        (set! (-> t3-0 trans quad) (-> this root trans quad))
-        ((the-as (function object object object object object object object object none) t9-2)
-         a0-3
-         a1-2
-         a2-4
-         a3-1
-         t0-0
-         t1-0
-         t2-0
-         t3-0
-         )
-        )
-      (-> gp-0 ppointer)
-      )
-    )
+  (part-tracker-spawn :to *entity-pool* :group group-grenade-hit :mat-joint (-> this root trans))
   0
   (none)
   )
@@ -1499,7 +1431,7 @@
   (set! (-> this end-target)
         (process->handle (as-type (send-event (ppointer->process (-> this parent)) 'target) process-drawable))
         )
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 235) this))
+  (set! (-> this part) (create-launch-control group-grenade-armed this))
   (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 204 (seconds 0.1))
   (none)
   )

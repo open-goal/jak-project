@@ -5,6 +5,27 @@
 ;; name in dgo: gstring
 ;; dgos: KERNEL
 
+(defun print-string-bytes ((arg0 string))
+  (let ((str-ptr (-> arg0 data))
+        (first-line-break #f))
+    (while (and (nonzero? (-> str-ptr 0)))
+      (when (and first-line-break (or (= (-> str-ptr 0) #x4) (= (-> str-ptr 0) #x59)))
+        (format #t "~%"))
+      (when (or (= (-> str-ptr 0) #x4) (= (-> str-ptr 0) #x59))
+        (set! first-line-break #t))
+      (format #t "0x~X " (-> str-ptr 0))
+      (set! str-ptr (&-> str-ptr 1))))
+  (format #t "\"~%")
+  (none))
+
+(defun log-string-bytes ((arg0 string) (arg1 object))
+  (let ((str-ptr (-> arg0 data)))
+    (while (and (nonzero? (-> str-ptr 0)))
+      (format arg1 "0x~X " (-> str-ptr 0))
+      (set! str-ptr (&-> str-ptr 1))))
+  (format arg1 "~%~%")
+  (none))
+
 ;; DECOMP BEGINS
 
 (defmethod length ((this string))
@@ -824,5 +845,6 @@
   )
 
 (define *pc-encoded-temp-string* (new 'global 'string 2048 (the-as string #f)))
+;; (define *pc-subtitle-export-temp-string* (new 'global 'string 2048 (the-as string #f)))
 
 (kmemclose)

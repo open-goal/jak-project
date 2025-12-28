@@ -61,8 +61,8 @@ class EyeRenderer : public BucketRenderer {
     GpuEyeTex() : fb(128, 128, GL_UNSIGNED_INT_8_8_8_8_REV) {}
   } m_gpu_eye_textures[NUM_EYE_PAIRS * 2];
 
-  // xyst per vertex, 4 vertices per square, 3 draws per eye, 11 pairs of eyes, 2 eyes per pair.
-  static constexpr int VTX_BUFFER_FLOATS = 4 * 4 * 3 * NUM_EYE_PAIRS * 2;
+  // xyst per vertex, 4 vertices per square, 4 draws per eye, 11 pairs of eyes, 2 eyes per pair.
+  static constexpr int VTX_BUFFER_FLOATS = 4 * 4 * 4 * NUM_EYE_PAIRS * 2;
   float m_gpu_vertex_buffer[VTX_BUFFER_FLOATS];
   GLuint m_vao;
   GLuint m_gl_vertex_buffer;
@@ -74,7 +74,6 @@ class EyeRenderer : public BucketRenderer {
     bool using_64 = false;
 
     int tex_slot() const { return pair * 2 + lr; }
-    u32 clear_color;
     EyeDraw iris;
     GpuTexture* iris_tex = nullptr;
     u64 iris_gl_tex = 0;

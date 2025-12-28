@@ -40,7 +40,9 @@ class CodeTester {
    */
   template <typename T>
   T execute_ret(u64 in0, u64 in1, u64 in2, u64 in3) {
+    // clang-format off
     u64 result_u64 = ((u64(*)(u64, u64, u64, u64))code_buffer)(in0, in1, in2, in3);
+    // clang-format on
     T result_T;
     memcpy(&result_T, &result_u64, sizeof(T));
     return result_T;

@@ -496,35 +496,10 @@
                   (set! (-> self mech forward-vel) -40960.0)
                   )
               (when (or (not s5-2) (= (-> self control send-attack-time) (current-time)))
-                (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s5-3
-                    (let ((t9-7 (method-of-type part-tracker activate)))
-                      (t9-7 (the-as part-tracker s5-3) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                      )
-                    (let ((t9-8 run-function-in-process)
-                          (a0-33 s5-3)
-                          (a1-9 part-tracker-init)
-                          (a2-8 (-> *part-group-id-table* 11))
-                          (a3-4 0)
-                          (t0-1 #f)
-                          (t1-1 #f)
-                          (t2-0 #f)
-                          (t3-0 *launch-matrix*)
-                          )
-                      (set! (-> t3-0 trans quad) (-> (the-as collide-query gp-1) best-other-tri intersect quad))
-                      ((the-as (function object object object object object object object object none) t9-8)
-                       a0-33
-                       a1-9
-                       a2-8
-                       a3-4
-                       t0-1
-                       t1-1
-                       t2-0
-                       t3-0
-                       )
-                      )
-                    (-> s5-3 ppointer)
-                    )
+                (part-tracker-spawn
+                  :to self
+                  :group group-punch-hit
+                  :mat-joint (-> (the-as collide-query gp-1) best-other-tri intersect)
                   )
                 (sound-play "mech-punch-hit" :position (+ (the-as uint gp-1) 48))
                 (activate! *camera-smush-control* 1638.4 15 75 1.0 0.9 (-> *display* camera-clock))
@@ -1220,36 +1195,7 @@
             )
           )
         (sound-play "mech-eject")
-        (let ((gp-7 (get-process *default-dead-pool* part-tracker #x4000)))
-          (when gp-7
-            (let ((t9-33 (method-of-type part-tracker activate)))
-              (t9-33 (the-as part-tracker gp-7) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-              )
-            (let ((t9-34 run-function-in-process)
-                  (a0-72 gp-7)
-                  (a1-35 part-tracker-init)
-                  (a2-31 (-> *part-group-id-table* 202))
-                  (a3-13 0)
-                  (t0-8 #f)
-                  (t1-8 #f)
-                  (t2-5 #f)
-                  (t3-0 *launch-matrix*)
-                  )
-              (set! (-> t3-0 trans quad) (-> self control trans quad))
-              ((the-as (function object object object object object object object object none) t9-34)
-               a0-72
-               a1-35
-               a2-31
-               a3-13
-               t0-8
-               t1-8
-               t2-5
-               t3-0
-               )
-              )
-            (-> gp-7 ppointer)
-            )
-          )
+        (part-tracker-spawn :to self :group group-mech-explode-death :mat-joint (-> self control trans))
         (rot->dir-targ! (-> self control))
         (ja-post)
         (let ((gp-8 (new 'stack 'joint-exploder-tuning (the-as uint 0))))

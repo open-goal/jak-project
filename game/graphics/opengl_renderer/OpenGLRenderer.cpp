@@ -81,7 +81,7 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   glEnable(GL_DEBUG_OUTPUT);
   glDebugMessageCallback(opengl_error_callback, nullptr);
   // disable specific errors
-  const GLuint gl_error_ignores_api_other[1] = {0x20071};
+  const GLuint gl_error_ignores_api_other[1] = {0x20071};  // some annoying nvidia message
   glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_OTHER, GL_DONT_CARE, 1,
                         &gl_error_ignores_api_other[0], GL_FALSE);
 #endif
@@ -91,6 +91,38 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
   lg::info("OpenGL context vendor: {}", (const char*)glGetString(GL_VENDOR));
   lg::info("OpenGL context shading language version: {}",
            (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+  // set up screen draw
+
+  glGenVertexArrays(1, &screen_vao);
+  glGenBuffers(1, &screen_vbo);
+
+  struct Vertex {
+    float x, y;
+  };
+  constexpr std::array<Vertex, 4> vertices = {
+      Vertex{-1, -1},
+      Vertex{-1, 1},
+      Vertex{1, -1},
+      Vertex{1, 1},
+  };
+
+  glBindVertexArray(screen_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, screen_vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * 4, vertices.data(), GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);
+  glVertexAttribPointer(0,               // location 0 in the shader
+                        2,               // 2 floats per vert
+                        GL_FLOAT,        // floats
+                        GL_TRUE,         // normalized, ignored,
+                        sizeof(Vertex),  //
+                        nullptr          //
+  );
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+
+  // end set up screen draw
 
   const tfrag3::Level* common_level = nullptr;
   {
@@ -938,9 +970,9 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
 }
 }  // namespace
 
-void OpenGLRenderer::blit_display() {
+void OpenGLRenderer::blit_display(ScopedProfilerNode& prof) {
   if (m_blit_displays) {
-    m_blit_displays->do_copy_back(&m_render_state);
+    m_blit_displays->do_copy_back(&m_render_state, prof);
   }
 }
 
@@ -989,14 +1021,16 @@ void OpenGLRenderer::render(DmaFollower dma, const RenderOptions& settings) {
   {
     g_current_renderer = "blit-display";
     auto prof = m_profiler.root()->make_scoped_child("blit-display");
-    blit_display();
+    blit_display(prof);
   }
 
-  // apply effects done with PCRTC registers
+  // apply effects done with PCRTC registers, as well as blit the framebuffer to the window and
+  // apply brightness/contrast
   {
     g_current_renderer = "pcrtc";
     auto prof = m_profiler.root()->make_scoped_child("pcrtc");
-    do_pcrtc_effects(settings.pmode_alp_register, &m_render_state, prof);
+    do_pcrtc_effects(settings.pmode_alp_register, settings.brightness_contrast_color,
+                     settings.brightness_contrast_alpha, &m_render_state, prof);
     if (settings.gpu_sync) {
       glFinish();
     }
@@ -1394,6 +1428,11 @@ void OpenGLRenderer::dispatch_buckets_jak3(DmaFollower dma,
       auto p = prof.make_scoped_child("collision-draw");
       m_collide_renderer.render(&m_render_state, p);
     }
+
+    if (bucket_id == (int)jak3::BucketId::TEX_HUD_HUD_ALPHA) {
+      auto p = prof.make_scoped_child("color-filter");
+      m_blit_displays->apply_color_filter(&m_render_state, p);
+    }
   }
   vif_interrupt_callback(m_bucket_renderers.size());
 
@@ -1573,6 +1612,8 @@ void OpenGLRenderer::finish_screenshot(const std::string& output_name,
 }
 
 void OpenGLRenderer::do_pcrtc_effects(float alp,
+                                      int brightness_contrast_color,
+                                      int brightness_contrast_alpha,
                                       SharedRenderState* render_state,
                                       ScopedProfilerNode& prof) {
   Fbo* window_blit_src = nullptr;
@@ -1595,30 +1636,46 @@ void OpenGLRenderer::do_pcrtc_effects(float alp,
     window_blit_src = &m_fbo_state.resources.render_buffer;
   }
 
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, window_blit_src->fbo_id);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-  glBlitFramebuffer(0,                                                          // srcX0
-                    0,                                                          // srcY0
-                    window_blit_src->width,                                     // srcX1
-                    window_blit_src->height,                                    // srcY1
-                    render_state->draw_offset_x,                                // dstX0
-                    render_state->draw_offset_y,                                // dstY0
-                    render_state->draw_offset_x + render_state->draw_region_w,  // dstX1
-                    render_state->draw_offset_y + render_state->draw_region_h,  // dstY1
-                    GL_COLOR_BUFFER_BIT,                                        // mask
-                    GL_LINEAR                                                   // filter
-  );
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+  glViewport(render_state->draw_offset_x, render_state->draw_offset_y, render_state->draw_region_w,
+             render_state->draw_region_h);
+  glBindTexture(GL_TEXTURE_2D, *window_blit_src->tex_id);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+  glBindVertexArray(screen_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, screen_vbo);
+
+  float color = (float)brightness_contrast_color / 128.0f;
+  float alpha = (float)brightness_contrast_alpha / 128.0f;
+  auto& shader = render_state->shaders[ShaderId::POST_PROCESSING];
+  shader.activate();
+  glUniform1i(glGetUniformLocation(shader.id(), "tex_T0"), 0);
+  if (brightness_contrast_color < 0) {
+    // subtractive blend - note that color is already negative
+    float color_neg = color * alpha;
+    glUniform4f(glGetUniformLocation(shader.id(), "color_mult"), 1.0f, 1.0f, 1.0f, alpha);
+    glUniform4f(glGetUniformLocation(shader.id(), "color_add"), color_neg, color_neg, color_neg,
+                0.0f);
+  } else {
+    // additive blend
+    glUniform4f(glGetUniformLocation(shader.id(), "color_mult"), 1.0f, 1.0f, 1.0f, alpha);
+    glUniform4f(glGetUniformLocation(shader.id(), "color_add"), color, color, color, 0.0f);
+  }
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glActiveTexture(GL_TEXTURE0);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+
+  glEnable(GL_BLEND);
   if (alp < 1) {
-    glDisable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     glBlendEquation(GL_FUNC_ADD);
-    glViewport(0, 0, m_fbo_state.resources.window.width, m_fbo_state.resources.window.height);
 
     m_blackout_renderer.draw(Vector4f(0, 0, 0, 1.f - alp), render_state, prof);
-
-    glEnable(GL_DEPTH_TEST);
   }
+  glEnable(GL_DEPTH_TEST);
 }

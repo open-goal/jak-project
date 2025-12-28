@@ -406,11 +406,15 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
     case XI_ButtonRelease:
     {
         const XIDeviceEvent *xev = (const XIDeviceEvent *)cookie->data;
-        X11_PenHandle *pen = X11_FindPenByDeviceID(xev->deviceid);
+        X11_PenHandle *pen = X11_FindPenByDeviceID(xev->sourceid);
         const int button = xev->detail;
         const bool down = (cookie->evtype == XI_ButtonPress);
 
         if (pen) {
+            if (xev->deviceid != xev->sourceid) {
+                // Discard events from "Master" devices to avoid duplicates.
+                break;
+            }
             // Only report button event; if there was also pen movement / pressure changes, we expect an XI_Motion event first anyway.
             SDL_Window *window = xinput2_get_sdlwindow(videodata, xev->event);
             if (button == 1) { // button 1 is the pen tip
@@ -421,9 +425,12 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
         } else {
             // Otherwise assume a regular mouse
             SDL_WindowData *windowdata = xinput2_get_sdlwindowdata(videodata, xev->event);
+            int x_ticks = 0, y_ticks = 0;
 
-            if (xev->deviceid != xev->sourceid) {
-                // Discard events from "Master" devices to avoid duplicates.
+            /* Discard wheel events from "Master" devices to avoid duplicates,
+             * as coarse wheel events are stateless and can't be deduplicated.
+             */
+            if (xev->deviceid != xev->sourceid && X11_IsWheelEvent(button, &x_ticks, &y_ticks)) {
                 break;
             }
 
@@ -449,7 +456,8 @@ void X11_HandleXinput2Event(SDL_VideoDevice *_this, XGenericEventCookie *cookie)
 
         videodata->global_mouse_changed = true;
 
-        X11_PenHandle *pen = X11_FindPenByDeviceID(xev->deviceid);
+        X11_PenHandle *pen = X11_FindPenByDeviceID(xev->sourceid);
+
         if (pen) {
             if (xev->deviceid != xev->sourceid) {
                 // Discard events from "Master" devices to avoid duplicates.

@@ -16,6 +16,7 @@
 
 ;; Having two state machines, one in C++ and one in GOAL is kind of a questionable and confusing design.
 
+(define-extern mark-speedrun-started (function none))
 ;; DECOMP BEGINS
 
 ;; version identifier
@@ -607,6 +608,9 @@
       (set! save-data
             (the-as game-save-tag
                     (&+ (the-as pointer save-data) (logand -16 (+ (* (the-as int (-> save-data elt-size)) (-> save-data elt-count)) 31)))))))
+  ;; og:preserve-this make sure loading a save doesn't reset speedrun state
+  (when (and (-> *pc-settings* speedrunner-mode?) (zero? (-> save new-game)))
+    (mark-speedrun-started))
   ;; if we're a new game, set our checkpoint.
   (when (nonzero? (-> save new-game))
     (set-continue! this "game-start")

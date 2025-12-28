@@ -48,6 +48,9 @@ struct RenderOptions {
 
   float pmode_alp_register = 1.f;
 
+  int brightness_contrast_color = 0;    // 0 - no change
+  int brightness_contrast_alpha = 128;  // 128 - no change
+
   // when enabled, does a `glFinish()` after each major rendering pass. This blocks until the GPU
   // is done working, making it easier to profile GPU utilization.
   bool gpu_sync = false;
@@ -65,6 +68,7 @@ class OpenGLRenderer {
   OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                  std::shared_ptr<Loader> loader,
                  GameVersion version);
+  // TODO delete
 
   // rendering interface: takes the dma chain from the game, and some size/debug settings from
   // the graphics system.
@@ -77,8 +81,12 @@ class OpenGLRenderer {
   void dispatch_buckets_jak2(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
   void dispatch_buckets_jak3(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
 
-  void do_pcrtc_effects(float alp, SharedRenderState* render_state, ScopedProfilerNode& prof);
-  void blit_display();
+  void do_pcrtc_effects(float alp,
+                        int brightness_contrast_color,
+                        int brightness_contrast_alpha,
+                        SharedRenderState* render_state,
+                        ScopedProfilerNode& prof);
+  void blit_display(ScopedProfilerNode& prof);
   void init_bucket_renderers_jak1();
   void init_bucket_renderers_jak2();
   void init_bucket_renderers_jak3();
@@ -134,6 +142,9 @@ class OpenGLRenderer {
 
     Fbo* render_fbo = nullptr;  // the selected fbo from the three above to use for rendering
   } m_fbo_state;
+
+  GLuint screen_vao = 0;  // vertex array object for a screen-space draw
+  GLuint screen_vbo = 0;  // vertex buffer object for a screen-space draw
 
   std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
   std::unique_ptr<BucketRenderer> m_jak3_eye_renderer;

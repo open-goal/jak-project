@@ -6,7 +6,7 @@
 #include "kscheme.h"
 
 #include "common/symbols.h"
-#include "common/util/FontUtils.h"
+#include "common/util/font/font_utils.h"
 
 #include "game/external/discord_jak3.h"
 #include "game/kernel/common/Symbol4.h"

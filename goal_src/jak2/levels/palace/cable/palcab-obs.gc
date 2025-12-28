@@ -50,12 +50,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (the-as process (as-type proc process-focusable))))
          (when (and gp-0 ((method-of-type touching-shapes-entry prims-touching?)
                           (the-as touching-shapes-entry (-> block param 0))
                           (-> self root)
@@ -572,41 +567,7 @@
       (set! (-> *part-id-table* 606 init-specs 10 initial-valuef) f28-0)
       )
     (vector+! gp-0 gp-0 s5-0)
-    (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-      (when s5-1
-        (let ((t9-3 (method-of-type part-tracker activate)))
-          (t9-3
-            (the-as part-tracker s5-1)
-            *entity-pool*
-            (symbol->string (-> part-tracker symbol))
-            (the-as pointer #x70004000)
-            )
-          )
-        (let ((t9-4 run-function-in-process)
-              (a0-12 s5-1)
-              (a1-5 part-tracker-init)
-              (a2-6 (-> *part-group-id-table* 137))
-              (a3-2 0)
-              (t0-1 #f)
-              (t1-0 #f)
-              (t2-0 #f)
-              (t3-0 *launch-matrix*)
-              )
-          (set! (-> t3-0 trans quad) (-> gp-0 quad))
-          ((the-as (function object object object object object object object object none) t9-4)
-           a0-12
-           a1-5
-           a2-6
-           a3-2
-           t0-1
-           t1-0
-           t2-0
-           t3-0
-           )
-          )
-        (-> s5-1 ppointer)
-        )
-      )
+    (part-tracker-spawn :to *entity-pool* :group group-guard-shot-hit :mat-joint gp-0)
     )
   0
   (none)
@@ -761,7 +722,7 @@
       (when (time-elapsed? (-> self fire-timer) (seconds 0.05))
         (let ((gp-0 (new 'stack-no-clear 'matrix)))
           (let ((s5-0 (-> self node-list data (+ (* (-> self gun-index) 2) 4))))
-            (vector<-cspace! (the-as vector (-> gp-0 vector)) s5-0)
+            (vector<-cspace! (-> gp-0 vector 0) s5-0)
             (vector-normalize-copy! (-> gp-0 vector 1) (-> s5-0 bone transform vector 2) 1.0)
             )
           (vector-rotate-x! (-> gp-0 vector 1) (-> gp-0 vector 1) -455.1111)
