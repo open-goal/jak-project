@@ -293,15 +293,14 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     }
 
     if(!found_one){
-      std::string defaulting_string;
       if(const auto color0_iter = attributes.find("COLOR_0"); color0_iter != attributes.end())
       {  
         color0 = colors_from_attribute(model, color0_iter->second);
-        defaulting_string = "COLOR_0";
+        lg::info("{} had colors but no times of day, using COLOR_0.", debug_name);
       }
       else
       {
-        const uint32_t WHITE_COLOR = 0xFF808080;
+        const uint32_t WHITE_COLOR = 0xFF808080; //Because of little-endianness, FF is at the largest address in memory.
         for(auto& vtx_color : vtx_colors) 
         {
           //Write white into the color slot for all times of day.
@@ -311,9 +310,8 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
             std::memcpy(target_ptr, &WHITE_COLOR, sizeof(uint32_t));
           }
         }
-        defaulting_string = "white";
+        lg::info("{} didn't have any colors, using white.", debug_name);
       }
-      lg::info("{} missing all times of day, defaulted to {}.", debug_name, defaulting_string);
     }
 
     if(found_one || color0.has_value())
@@ -332,7 +330,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
           {
             value_name = slot.first;
           }
-          else
+          else //If this time_of_day doesn't have a color, use the closest time_of_day with a color.
           {
             for(int i = 1; i <= 4;++i){
               int neg_index = (slot_index - i + 8) % 8;
@@ -354,24 +352,35 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
           }
           time_name = time_name.substr(1);
           std::transform(time_name.begin(), time_name.end(), time_name.begin(),[](unsigned char c){ return std::tolower(c); });
+          if(time_name == "greensun")
+            time_name = "green sun";
           std::string mapping = time_name + ":" + value_name;
           log_string += log_string.empty() ? mapping : ", " + mapping;
         }
         lg::info("{} missing some times of day, using {}", debug_name, log_string);
       }
 
-      for(size_t slot_index = 0; slot_index < times_of_day.size(); ++slot_index)
+      //Create iterators to colors for each time of day.
+      std::array<std::vector<math::Vector<u8, 4>>::iterator,8> iters;
+      for(int time = 0; time < 8; ++time){
+        std::vector<math::Vector<u8, 4>> &time_color = times_of_day[time].second.has_value() ? 
+          times_of_day[time].second.value() : color0.value();
+
+        assert(time_color.size() == vtx_colors.size());
+        iters[time] = time_color.begin();
+      }
+
+      //Write the color for each time of day into vtx_colors.
+      for(auto& vtx_color : vtx_colors)
       {
-        const auto &colors = times_of_day[slot_index].second.has_value() ? times_of_day[slot_index].second.value() : color0.value();
-        assert(vtx_colors.size() == colors.size());
-        //Write the color for this time of day into the channels for the time of day.
-        auto vtx_color_iter = vtx_colors.begin();
-        auto color_iter = colors.begin();
-        for( ;vtx_color_iter != vtx_colors.end(); ++vtx_color_iter, ++color_iter)
+        for(int slot_index = 0; slot_index < 8; ++slot_index)
         {
-            u8* target_ptr = vtx_color_iter->data() + (4 * slot_index);
-            const u8* source_ptr = color_iter->data();
-            std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
+          u8* target_ptr = vtx_color.data() + (4 * slot_index);
+          auto& color_iter = iters[slot_index];
+          const u8* source_ptr = color_iter->data();
+          std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
+
+          ++color_iter; //Advance the iterator for this time of day.
         }
       }
     }
