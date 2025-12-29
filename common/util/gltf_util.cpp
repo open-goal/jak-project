@@ -278,9 +278,8 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
     bool found_one = false;
     bool found_all = true;
     
-    for(size_t slot_index = 0; slot_index < times_of_day.size(); ++slot_index)
+    for(auto& slot : times_of_day)
     {
-      auto& slot = times_of_day[slot_index];
       if (const auto attr_val = attributes.find(slot.first); attr_val != attributes.end())
       {
         slot.second = colors_from_attribute(model, attr_val->second);
@@ -296,7 +295,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       if(const auto color0_iter = attributes.find("COLOR_0"); color0_iter != attributes.end())
       {  
         color0 = colors_from_attribute(model, color0_iter->second);
-        lg::info("{} had colors but no times of day, using COLOR_0.", debug_name);
+        lg::warn("{} had colors but no times of day, using COLOR_0.", debug_name);
       }
       else
       {
@@ -310,7 +309,7 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
             std::memcpy(target_ptr, &WHITE_COLOR, sizeof(uint32_t));
           }
         }
-        lg::info("{} didn't have any colors, using white.", debug_name);
+        lg::error("{} didn't have any colors, using white.", debug_name);
       }
     }
 
@@ -325,28 +324,27 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
         for(size_t slot_index = 0; slot_index < times_of_day.size(); ++slot_index)
         {
           auto& slot = times_of_day[slot_index];
-          std::string time_name = slot.first, value_name;
+          std::string time_name = slot.first;
+          std::string value_name;
           if(slot.second.has_value())
           {
             value_name = slot.first;
           }
           else //If this time_of_day doesn't have a color, use the closest time_of_day with a color.
           {
-            for(int i = 1; i <= 4;++i){
+            for(int i = 1; !slot.second.has_value();++i){ //Guaranteed to end in 4 iterations or less
               int neg_index = (slot_index - i + 8) % 8;
               int pos_index = (slot_index + i + 8) % 8;
-              if(const auto& near_slot = times_of_day[neg_index]; attributes.contains(near_slot.first) )
-              {
-                slot.second = near_slot.second.value();
-                value_name = near_slot.first;
-                break;
-              }
               
-              if(const auto& near_slot = times_of_day[pos_index]; attributes.contains(near_slot.first) )
+              if(const auto& neg_slot = times_of_day[neg_index]; attributes.contains(neg_slot.first) )
               {
-                slot.second = near_slot.second.value();
-                value_name = near_slot.first;
-                break;
+                slot.second = neg_slot.second.value();
+                value_name = neg_slot.first;
+              }
+              else if(const auto& pos_slot = times_of_day[pos_index]; attributes.contains(pos_slot.first) )
+              {
+                slot.second = pos_slot.second.value();
+                value_name = pos_slot.first;
               }
             }
           }
@@ -357,11 +355,11 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
           std::string mapping = time_name + ":" + value_name;
           log_string += log_string.empty() ? mapping : ", " + mapping;
         }
-        lg::info("{} missing some times of day, using {}", debug_name, log_string);
+        lg::warn("{} missing some times of day, using {}", debug_name, log_string);
       }
 
       //Create iterators to colors for each time of day.
-      std::array<std::vector<math::Vector<u8, 4>>::iterator,8> iters;
+      std::array<std::vector<math::Vector<u8, 4>>::const_iterator,8> iters;
       for(int time = 0; time < 8; ++time){
         std::vector<math::Vector<u8, 4>> &time_color = times_of_day[time].second.has_value() ? 
           times_of_day[time].second.value() : color0.value();
