@@ -128,17 +128,7 @@ void extract(const Input& in,
         // extract vertices
         auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, true, false, mesh.name);
         out.tfrag_vertices.insert(out.tfrag_vertices.end(), verts.vtx.begin(), verts.vtx.end());
-
-        // const u32 time_of_day = 0; //Defaulting to time of day being zero for now.
-        // const u32 vtx_color_offset = time_of_day * 4;
-        // for( const auto &vtx_color : verts.vtx_colors )
-        // {
-        //   math::Vector<u8, 4> &new_color = all_vtx_colors.emplace_back();
-        //   const u8* source_ptr = vtx_color.data() + vtx_color_offset;
-        //   u8* target_ptr = new_color.data();
-        //   std::memcpy(target_ptr, source_ptr, sizeof(uint32_t));
-        // }
-
+        
         all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(), verts.vtx_colors.end());
         ASSERT(all_vtx_colors.size() == out.tfrag_vertices.size());
 
