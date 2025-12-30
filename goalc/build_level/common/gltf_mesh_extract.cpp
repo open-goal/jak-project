@@ -128,7 +128,7 @@ void extract(const Input& in,
         // extract vertices
         auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, true, false, mesh.name);
         out.tfrag_vertices.insert(out.tfrag_vertices.end(), verts.vtx.begin(), verts.vtx.end());
-        
+
         all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(), verts.vtx_colors.end());
         ASSERT(all_vtx_colors.size() == out.tfrag_vertices.size());
 
@@ -282,7 +282,7 @@ void extract(const Input& in,
         // extract vertices
         auto verts = gltf_vertices(model, prim.attributes, n.w_T_node, true, true, mesh.name);
         add_to_packed_verts(&out.vertices, verts.vtx, verts.normals);
-        
+
         all_vtx_colors.insert(all_vtx_colors.end(), verts.vtx_colors.begin(), verts.vtx_colors.end());
         ASSERT(all_vtx_colors.size() == out.vertices.size());
 
