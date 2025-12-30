@@ -13,14 +13,13 @@
 #include "common/util/Timer.h"
 
 namespace {
-  
-  using Color = math::Vector<u8, 32>;
+
+using Color = math::Vector<u8, 32>;
 
 bool color_less_than(const Color& colorA, const Color& colorB)
 {
   for(int channel = 0; channel < 31; ++channel){
-    const s32 sum = colorA[channel] - colorB[channel];
-    if(sum < 0)
+    if(const s32 sum = colorA[channel] - colorB[channel];sum < 0)
       return true;
     else if(sum > 0)
       return false;
@@ -177,14 +176,13 @@ void assign_colors(Node& root, std::vector<Color>& palette_out) {
     if (n.rgb_sum_count) {
       n.final_idx = idx++;
       Color& color = palette_out.emplace_back();
-      
-      // for(int time_of_day = 0; time_of_day < 8; ++time_of_day){
-      //   const std::array<u8,4> raw_color = {(u8)(n.r_sum / n.rgb_sum_count), (u8)(n.g_sum / n.rgb_sum_count), (u8)(n.b_sum / n.rgb_sum_count), (u8)0};
-      //   const auto source_ptr = &raw_color[0];
-      //   const auto target_ptr = color.data() + 4 * time_of_day;
-      //   std::memcpy(target_ptr, source_ptr, sizeof(u32));
-      // }
-      
+
+      for(int time_of_day = 0; time_of_day < 8; ++time_of_day) {
+        const std::array<u8,4> raw_color = {(u8)(n.r_sum / n.rgb_sum_count), (u8)(n.g_sum / n.rgb_sum_count), (u8)(n.b_sum / n.rgb_sum_count), (u8)0};
+        const auto source_ptr = &raw_color[0];
+        const auto target_ptr = color.data() + 4 * time_of_day;
+        std::memcpy(target_ptr, source_ptr, sizeof(u32));
+      }
     }
   });
 }
