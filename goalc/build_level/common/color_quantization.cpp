@@ -5,7 +5,6 @@
 #include <cstring>
 #include <memory>
 #include <tuple>
-#include <unordered_map>
 #include <map>
 #include "common/log/log.h"
 #include "common/math/Vector.h"
@@ -309,7 +308,7 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
         }
       }
       if (all_same) {
-        next_split_dim = (next_split_dim + 1) % 4;
+        next_split_dim = (next_split_dim + 1) % 32;
       } else {
         break;
       }
@@ -364,8 +363,8 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
   }
   */
 
-  split_kd(in->left.get(), depth - 1, (next_split_dim + 1) % 4);
-  split_kd(in->right.get(), depth - 1, (next_split_dim + 1) % 4);
+  split_kd(in->left.get(), depth - 1, (next_split_dim + 1) % 32);
+  split_kd(in->right.get(), depth - 1, (next_split_dim + 1) % 32);
 }
 
 template <typename Func>
@@ -482,7 +481,8 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
   }
 
   // Get final colors:
-  std::map<math::Vector<u8,32>, u32, bool(*)(const math::Vector<u8,32>&, const math::Vector<u8,32>&)> color_value_to_color_idx(&color_less_than);
+  auto cmp = &color_less_than;
+  std::map<math::Vector<u8,32>, u32, decltype(cmp)> color_value_to_color_idx(cmp);
   QuantizedColors result;
   for_each_child(&root, [&](KdNode* node) {
     if (node->colors.empty()) {
@@ -501,7 +501,8 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
     for(int time_of_day = 0; time_of_day < 8; ++time_of_day){
       int color_offset = time_of_day * 4;
 
-      std::array<u8,4> time_of_day_color = {saturate_to_u8(color_totals[color_offset + 0] / n), saturate_to_u8(color_totals[color_offset + 1] / n),
+      std::array<u8,4> time_of_day_color = {saturate_to_u8(color_totals[color_offset + 0] / n), 
+                                      saturate_to_u8(color_totals[color_offset + 1] / n),
                                        saturate_to_u8(color_totals[color_offset + 2] / n),
                                        saturate_to_u8(color_totals[color_offset + 3] / (2 * n))};
       const u8* source_ptr = &time_of_day_color[0];
@@ -509,6 +510,7 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
       std::memcpy(target_ptr, source_ptr, sizeof(u32));
     }
   });
+  
 
   for (auto& color : in) {
     result.vtx_to_color.push_back(color_value_to_color_idx.at(color));
@@ -525,7 +527,8 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
 
     for (size_t i = 0; i < result.vtx_to_color.size(); i++) {
       Color input = in.at(i);
-      input.w() /= 2;
+      for(int alpha_channel = 3; alpha_channel < 32; alpha_channel +=4)
+        input[alpha_channel] /= 2;
       const Color output = result.final_colors.at(result.vtx_to_color.at(i));
       const s32 diff = color_difference(input, output);
       if (diff > worst_diff) {
