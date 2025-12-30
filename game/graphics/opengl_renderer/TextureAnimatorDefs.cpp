@@ -1263,11 +1263,11 @@ void TextureAnimator::setup_texture_anims_jak3() {
     flames.channel_masks[3] = false;
 
     FixedAnimDef hemi_gradient_flames_dest;
-    hemi_gradient_flames_dest.tex_name = "hemi-gradient-dest";
+    hemi_gradient_flames_dest.tex_name = "hemi-gradient-flames-dest";
     hemi_gradient_flames_dest.color = math::Vector4<u8>{0, 0, 0, 0x80};
     hemi_gradient_flames_dest.override_size = math::Vector2<int>(64, 64);
 
-    auto& flames0 = hemi_gradient_dest.layers.emplace_back();
+    auto& flames0 = hemi_gradient_flames_dest.layers.emplace_back();
     flames0.tex_name = "hemi-gradient-flames";
     flames0.end_time = 600.f;
     flames0.set_blend_b2_d1();

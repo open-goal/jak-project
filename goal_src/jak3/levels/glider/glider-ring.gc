@@ -297,19 +297,14 @@
                    (send-event arg0 'ring-pos (-> self root trans) (-> s4-4 fvec))
                    )
                  (set-time! (-> self touch-time))
-                 (if (logtest? (-> *part-group-id-table* 655 flags) (sp-group-flag sp13))
+                 (if (logtest? (-> group-glider-ring-explode flags) (sp-group-flag sp13))
                      (part-tracker-spawn
                        part-tracker-subsampler
                        :to *entity-pool*
-                       :group (-> *part-group-id-table* 655)
+                       :group group-glider-ring-explode
                        :mat-joint (-> self mat)
                        )
-                     (part-tracker-spawn
-                       part-tracker
-                       :to *entity-pool*
-                       :group (-> *part-group-id-table* 655)
-                       :mat-joint (-> self mat)
-                       )
+                     (part-tracker-spawn part-tracker :to *entity-pool* :group group-glider-ring-explode :mat-joint (-> self mat))
                      )
                  (when (logtest? (-> gp-2 root-prim prim-core collide-as) (collide-spec jak))
                    (set! (-> self player-got) #t)
@@ -550,9 +545,9 @@
   (set! (-> this plane w) (- (vector-dot (-> this plane) (-> this root trans))))
   (update-transforms (-> this root))
   (set! (-> this player-got) #f)
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 652) this))
-  (set! (-> this distant-part) (create-launch-control (-> *part-group-id-table* 654) this))
-  (set! (-> this blinky-part) (create-launch-control (-> *part-group-id-table* 660) this))
+  (set! (-> this part) (create-launch-control group-glider-ring this))
+  (set! (-> this distant-part) (create-launch-control group-distant-glider-ring this))
+  (set! (-> this blinky-part) (create-launch-control group-glider-blinking-dot this))
   (set! (-> this blinky-gone?) #f)
   (if (not (-> this persistent))
       (set! (-> this minimap) #f)
@@ -700,7 +695,7 @@
   )
 
 (defmethod init-part-and-mat! ((this glider-thermal))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 656) this))
+  (set! (-> this part) (create-launch-control group-wind-thermal this))
   (matrix-identity! (-> this mat))
   (vector-copy! (-> this mat trans) (-> this root trans))
   0
@@ -765,13 +760,13 @@
 
 (defun glider-launch-mist-particle ((arg0 vector) (arg1 process))
   (cond
-    ((logtest? (-> *part-group-id-table* 657 flags) (sp-group-flag sp13))
+    ((logtest? (-> group-glider-cloud flags) (sp-group-flag sp13))
      (vector-copy! (-> *launch-matrix* trans) arg0)
-     (part-tracker-spawn part-tracker-subsampler :to arg1 :group (-> *part-group-id-table* 657) :duration -1)
+     (part-tracker-spawn part-tracker-subsampler :to arg1 :group group-glider-cloud :duration -1)
      )
     (else
       (vector-copy! (-> *launch-matrix* trans) arg0)
-      (part-tracker-spawn part-tracker :to arg1 :group (-> *part-group-id-table* 657) :duration -1)
+      (part-tracker-spawn part-tracker :to arg1 :group group-glider-cloud :duration -1)
       )
     )
   0

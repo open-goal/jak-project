@@ -186,13 +186,9 @@
   )
 
 (defmethod draw ((this hud-cargo))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 457.0 (* 130.0 (-> this offset))))
-    205
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 457.0 (* 130.0 (-> this offset)))) 205)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -19 27)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -19 27)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -1000,7 +996,7 @@
             (set! (-> gp-2 spawn-point quad) (-> self root trans quad))
             (quaternion-copy! (-> gp-2 spawn-quat) (-> self root quat))
             (set! (-> gp-2 radius) 32768.0)
-            (set! (-> gp-2 group) (-> *part-group-id-table* 161))
+            (set! (-> gp-2 group) group-vehicle-explosion)
             (set! (-> gp-2 collide-with) (collide-spec jak crate hit-by-others-list player-list))
             (set! (-> gp-2 penetrate-using) (penetrate explode))
             (explosion-spawn self explosion gp-2)
@@ -1008,36 +1004,7 @@
           )
          (else
            (process-spawn touch-tracker :init touch-tracker-init (-> self root trans) #x46400000 30 :to self)
-           (let ((gp-4 (get-process *default-dead-pool* part-tracker #x4000)))
-             (when gp-4
-               (let ((t9-12 (method-of-type part-tracker activate)))
-                 (t9-12 (the-as part-tracker gp-4) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                 )
-               (let ((t9-13 run-function-in-process)
-                     (a0-31 gp-4)
-                     (a1-14 part-tracker-init)
-                     (a2-14 (-> *part-group-id-table* 161))
-                     (a3-5 0)
-                     (t0-3 #f)
-                     (t1-2 #f)
-                     (t2-2 #f)
-                     (t3-0 *launch-matrix*)
-                     )
-                 (set! (-> t3-0 trans quad) (-> self root trans quad))
-                 ((the-as (function object object object object object object object object none) t9-13)
-                  a0-31
-                  a1-14
-                  a2-14
-                  a3-5
-                  t0-3
-                  t1-2
-                  t2-2
-                  t3-0
-                  )
-                 )
-               (-> gp-4 ppointer)
-               )
-             )
+           (part-tracker-spawn :to self :group group-vehicle-explosion :mat-joint (-> self root trans))
            )
          )
        )
@@ -1330,41 +1297,7 @@
              )
            0
            (logior! (-> self draw status) (draw-control-status no-draw))
-           (let ((s5-1 (get-process *default-dead-pool* part-tracker #x4000)))
-             (when s5-1
-               (let ((t9-3 (method-of-type part-tracker activate)))
-                 (t9-3
-                   (the-as part-tracker s5-1)
-                   *entity-pool*
-                   (symbol->string (-> part-tracker symbol))
-                   (the-as pointer #x70004000)
-                   )
-                 )
-               (let ((t9-4 run-function-in-process)
-                     (a0-8 s5-1)
-                     (a1-4 part-tracker-init)
-                     (a2-6 (-> *part-group-id-table* 1057))
-                     (a3-2 0)
-                     (t0-0 #f)
-                     (t1-0 #f)
-                     (t2-0 #f)
-                     (t3-0 *launch-matrix*)
-                     )
-                 (set! (-> t3-0 trans quad) (-> self root trans quad))
-                 ((the-as (function object object object object object object object object none) t9-4)
-                  a0-8
-                  a1-4
-                  a2-6
-                  a3-2
-                  t0-0
-                  t1-0
-                  t2-0
-                  t3-0
-                  )
-                 )
-               (-> s5-1 ppointer)
-               )
-             )
+           (part-tracker-spawn :to *entity-pool* :group group-cargo-explosion :mat-joint (-> self root trans))
            (process-spawn
              joint-exploder
              (art-group-get-by-name *level* "skel-ctyport-cargo-explode" (the-as (pointer uint32) #f))
@@ -1842,12 +1775,7 @@
         (dotimes (s5-0 (-> self max-count))
           (when (zero? (-> self data-int32 s5-0))
             (when (-> self slave s5-0)
-              (let* ((s3-0 (handle->process (-> self slave s5-0)))
-                     (s4-0 (if (type? s3-0 process-focusable)
-                               s3-0
-                               )
-                           )
-                     )
+              (let ((s4-0 (the-as process (as-type (handle->process (-> self slave s5-0)) process-focusable))))
                 (when (not gp-0)
                   (set! gp-0 #t)
                   (send-event s4-0 'focus-camera)

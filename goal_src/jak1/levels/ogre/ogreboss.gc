@@ -170,7 +170,7 @@
 (defun ogreboss-rock-explosion-effect ((arg0 basic))
   (with-pp
     (sound-play "ogre-explode" :position (the-as symbol arg0))
-    (process-spawn part-tracker :init part-tracker-init (-> *part-group-id-table* 471) -1 #f #f #f arg0 :to *entity-pool*)
+    (process-spawn part-tracker :init part-tracker-init group-ogreboss-missile-impact -1 #f #f #f arg0 :to *entity-pool*)
     (activate! *camera-smush-control* (the-as float 819.2) 37 600 (the-as float 1.0) (the-as float 0.995))
     (let ((gp-2 (manipy-spawn arg0 (-> pp entity) *ogreboss-shoot-boulder-break-sg* #f :to pp)))
       (quaternion-axis-angle! (-> (the-as manipy (-> gp-2 0)) root quat)
@@ -312,7 +312,7 @@
   (set! (-> self pickup-type) (-> arg0 pickup-type))
   (let ((f30-1 (* 65536.0 (rand-vu))))
     (quaternion-axis-angle! (-> self tumble-quat) (cos f30-1) (the-as float 0.0) (sin f30-1) (the-as float 2730.6667)))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 469) self))
+  (set! (-> self part) (create-launch-control group-ogreboss-missile self))
   (set-vector! (-> self draw color-emissive) 0.125 0.0625 0.0 0.0)
   (go ogreboss-missile-idle)
   (none))
@@ -406,7 +406,7 @@
   (process-spawn part-tracker
                  :init
                  part-tracker-init
-                 (-> *part-group-id-table* 471)
+                 group-ogreboss-missile-impact
                  -1
                  #f
                  #f
@@ -480,7 +480,7 @@
       (set! (-> self joint enable) #f)
       (ja-no-eval :group! ogreboss-super-boulder-roll-ja :num! (seek! (ja-aframe (the-as float 100.0) 0)) :frame-num 0.0)
       (until (ja-done? 0)
-        (when (< 81920.0 (vector-vector-distance (the-as vector (-> self root root-prim prim-core)) (target-pos 0)))
+        (when (< 81920.0 (vector-vector-distance (-> self root root-prim prim-core world-sphere) (target-pos 0)))
           (ja-channel-push! 1 (seconds 0.1))
           (go ogreboss-super-boulder-roll))
         (suspend)
@@ -577,7 +577,7 @@
   (let ((f30-1 (* 65536.0 (rand-vu))))
     (quaternion-axis-angle! (-> self tumble-quat) (cos f30-1) (the-as float 0.0) (sin f30-1) (the-as float 2730.6667)))
   (set! (-> self joint) (new 'process 'joint-mod-blend-local self 3 #f))
-  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 468) self))
+  (set! (-> self part) (create-launch-control group-ogreboss-boulder-grow self))
   (set-vector! (-> self draw color-emissive) 0.125 0.0625 0.0 0.0)
   (set! (-> self speed) 1.0)
   (set! (-> self size) 0.0)
@@ -638,7 +638,7 @@
     (behavior ()
       (vector+*! (-> self root trans) (-> self src-pos) (-> self side-dir) (-> self side-pos))
       (transform-post)
-      (find-ground-and-draw-shadow (the-as vector (-> self root root-prim prim-core))
+      (find-ground-and-draw-shadow (-> self root root-prim prim-core world-sphere)
                                    (the-as vector #f)
                                    (the-as float 49152.0)
                                    (collide-kind background)
@@ -905,7 +905,7 @@
     (process-spawn part-tracker
                    :init
                    part-tracker-init
-                   (-> *part-group-id-table* 470)
+                   group-ogreboss-pre-missile
                    -1
                    #f
                    #f

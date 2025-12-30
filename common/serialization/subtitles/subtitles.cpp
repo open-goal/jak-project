@@ -64,7 +64,7 @@ const std::unordered_map<GameVersion, std::vector<std::string>> locale_lookup = 
     {GameVersion::Jak2, {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "jp-JP", "ko-KR", "en-GB"}},
     {GameVersion::Jak3,
      {"en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "cm-CM", "jp-JP", "ko-KR", "ru-RU", "pt-PT",
-      "nl-NL", "en-GB"}}};
+      "nl-NL", "en-GB", "fi-FI"}}};
 
 std::string lookup_locale_code(const GameVersion game_version, const int language_id) {
   if (locale_lookup.find(game_version) == locale_lookup.end() ||

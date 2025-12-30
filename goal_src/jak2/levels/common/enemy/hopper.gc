@@ -378,41 +378,7 @@
                   (set! (-> s2-0 quad) (-> this root trans quad))
                   (when (logtest? (water-flags touch-water) (-> s3-0 flags))
                     (set! (-> s2-0 y) (-> s3-0 trans y))
-                    (let ((s3-1 (get-process *default-dead-pool* part-tracker #x4000)))
-                      (when s3-1
-                        (let ((t9-2 (method-of-type part-tracker activate)))
-                          (t9-2
-                            (the-as part-tracker s3-1)
-                            *entity-pool*
-                            (symbol->string (-> part-tracker symbol))
-                            (the-as pointer #x70004000)
-                            )
-                          )
-                        (let ((t9-3 run-function-in-process)
-                              (a0-26 s3-1)
-                              (a1-6 part-tracker-init)
-                              (a2-6 (-> *part-group-id-table* 121))
-                              (a3-1 0)
-                              (t0-0 #f)
-                              (t1-0 #f)
-                              (t2-0 #f)
-                              (t3-0 *launch-matrix*)
-                              )
-                          (set! (-> t3-0 trans quad) (-> s2-0 quad))
-                          ((the-as (function object object object object object object object object none) t9-3)
-                           a0-26
-                           a1-6
-                           a2-6
-                           a3-1
-                           t0-0
-                           t1-0
-                           t2-0
-                           t3-0
-                           )
-                          )
-                        (-> s3-1 ppointer)
-                        )
-                      )
+                    (part-tracker-spawn :to *entity-pool* :group group-part-water-splash :mat-joint s2-0)
                     (sound-play "splash-out")
                     )
                   )
@@ -677,7 +643,7 @@
                 (let ((s4-2 (new 'stack-no-clear 'vector))
                       (f28-0 (if (zero? s5-0)
                                  (rnd-float-range self 4096.0 8192.0)
-                                 (rnd-float-range self 8192.0 (fmin 40960.0 (fmax 16384.0 (* 0.5 f30-0))))
+                                 (rnd-float-range self 8192.0 (fmin 40960.0 (fmax 16384.0 (/ f30-0 2))))
                                  )
                              )
                       )
@@ -917,11 +883,11 @@
   (none)
   )
 
-(defmethod relocate ((this hopper) (arg0 int))
+(defmethod relocate ((this hopper) (offset int))
   (if (nonzero? (-> this path-intro))
-      (&+! (-> this path-intro) arg0)
+      (&+! (-> this path-intro) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod init-enemy-collision! ((this hopper))

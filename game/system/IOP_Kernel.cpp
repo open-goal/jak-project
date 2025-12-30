@@ -72,6 +72,7 @@ s32 IOP_Kernel::CreateThread(std::string name, void (*func)(), u32 priority) {
  * Start a thread. Marking it to run on each dispatch of the IOP kernel.
  */
 void IOP_Kernel::StartThread(s32 id) {
+  threads.at(id).waitType = IopThread::Wait::None;
   threads.at(id).state = IopThread::State::Ready;
 }
 
@@ -101,12 +102,20 @@ void IOP_Kernel::DelayThread(u32 usec) {
 void IOP_Kernel::SleepThread() {
   ASSERT(_currentThread);
 
-  _currentThread->state = IopThread::State::Suspend;
+  if (_currentThread->wakeupCount > 0) {
+    _currentThread->wakeupCount--;
+    return;
+  }
+
+  _currentThread->state = IopThread::State::Wait;
+  _currentThread->waitType = IopThread::Wait::Sleep;
+
   leaveThread();
 }
 
 void IOP_Kernel::YieldThread() {
   ASSERT(_currentThread);
+  _currentThread->waitType = IopThread::Wait::None;
   _currentThread->state = IopThread::State::Ready;
   leaveThread();
 }
@@ -116,6 +125,14 @@ void IOP_Kernel::YieldThread() {
  */
 void IOP_Kernel::WakeupThread(s32 id) {
   ASSERT(id > 0);
+
+  auto& thread = threads.at(id);
+  if (thread.state != IopThread::State::Wait || thread.waitType != IopThread::Wait::Sleep) {
+    thread.wakeupCount++;
+    return;
+  }
+
+  threads.at(id).waitType = IopThread::Wait::None;
   threads.at(id).state = IopThread::State::Ready;
 }
 

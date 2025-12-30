@@ -569,7 +569,10 @@ void Generic2::process_dma_prim(DmaFollower& dma, u32 next_bucket) {
   auto direct_setup = dma.read_and_advance();
   ASSERT(direct_setup.size_bytes == 32 && direct_setup.vifcode0().kind == VifCode::Kind::NOP &&
          direct_setup.vifcode1().kind == VifCode::Kind::DIRECT);
-  m_drawing_config.zmsk = false;
+  u64* u64s = (u64*)direct_setup.data;
+  ASSERT(u64s[3] == (u64)GsRegisterAddress::ZBUF_1);
+  GsZbuf buf(u64s[2]);
+  m_drawing_config.zmsk = buf.zmsk();
   m_drawing_config.uses_full_matrix = true;
 
   // STYCYCL to set up generic VU1 constants
@@ -617,6 +620,9 @@ void Generic2::process_dma_prim(DmaFollower& dma, u32 next_bucket) {
     frag->uses_hud = false;
     auto* adgif = &next_adgif();
     memcpy(&adgif->data, up1.data + Generic2::FRAG_HEADER_SIZE, sizeof(AdGifData));
+    // printf("tex0: %lx, tex1: %lx, mip %lx, clamp %lx, alpha %lx\n", adgif->data.tex0_addr,
+    //        adgif->data.tex1_addr, adgif->data.mip_addr, adgif->data.clamp_addr,
+    //        adgif->data.alpha_addr);
     // (new 'static 'gif-tag-regs-32 :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2
     // (gif-reg-id xyzf2))
     int num_vtx = up2.size_bytes / (16 * 3);
