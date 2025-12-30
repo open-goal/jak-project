@@ -298,7 +298,7 @@ void split_kd(KdNode* in, u32 depth, int next_split_dim) {
   }
 
   if (!in->colors.empty()) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 32; i++) {
       bool all_same = true;
       u8 same = in->colors[0][next_split_dim];
       for (auto& color : in->colors) {
