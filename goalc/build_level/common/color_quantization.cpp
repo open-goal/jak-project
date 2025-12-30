@@ -432,18 +432,19 @@ void get_splittable(KdNode* node, std::vector<KdNode*>* out) {
 */
 QuantizedColors quantize_colors_dumb(const std::vector<Color>& in) {
   QuantizedColors result;
-  std::unordered_map<u64, u32> color_to_slot;
-  for (auto& vtx : in) {
-    u64 key;
-    memcpy(&key, vtx.data(), sizeof(u64));
-    const auto& existing = color_to_slot.find(key);
-    if (existing == color_to_slot.end()) {
+  auto less_than = [](const Color& lhs, const Color& rhs) {
+        return color_less_than(lhs, rhs);
+  };
+  std::map<Color, u32, decltype(less_than)> color_to_slot(less_than);
+  for (const auto& vtx : in) {
+    if (const auto iter = color_to_slot.find(vtx); iter != color_to_slot.end()) {
+      result.vtx_to_color.push_back(iter->second);
+    }
+    else {
       auto cidx = result.final_colors.size();
       result.vtx_to_color.push_back(cidx);
-      color_to_slot[key] = cidx;
+      color_to_slot[vtx] = cidx;
       result.final_colors.push_back(vtx);
-    } else {
-      result.vtx_to_color.push_back(existing->second);
     }
   }
   lg::print("quantize_colors_dumb: {} -> {}\n", in.size(), result.final_colors.size());
