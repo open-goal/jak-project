@@ -63,6 +63,7 @@ decomp_config_version_map = {
     "pal": "pal"
   },
   "jakx": {
+    "ntscv1": "ntsc_v1",
     "pal": "pal"
   }
 }
@@ -71,7 +72,7 @@ default_config_version_map = {
   "jak1": "ntsc_v1",
   "jak2": "ntsc_v1",
   "jak3": "ntsc_v1",
-  "jakx": "pal"
+  "jakx": "ntsc_v1"
 }
 
 type_consistency_filter_map = {
