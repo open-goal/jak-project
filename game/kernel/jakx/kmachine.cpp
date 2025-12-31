@@ -153,7 +153,8 @@ void InitParms(int argc, const char* const* argv) {
       DebugSegment = 0;
     }
 
-    if (arg == "-overlord") {
+    // TODO - jak x
+    /*if (arg == "-overlord") {
       Msg(6, "dkernel: overlord 1 mode\n");
       USE_OVERLORD2_W = false;
     }
@@ -161,7 +162,7 @@ void InitParms(int argc, const char* const* argv) {
     if (arg == "-overlord2") {
       Msg(6, "dkernel: overlord 2 mode\n");
       USE_OVERLORD2_W = true;
-    }
+    }*/
 
     if (arg == "-debug-symbols") {
       Msg(6, "dkernel: debug-symbols on\n");
