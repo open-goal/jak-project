@@ -33,7 +33,3 @@ constexpr u32 DEBUG_HEAP_SIZE = 0x2f00000;
 namespace jak3 {
 constexpr u32 DEBUG_HEAP_SIZE = 0x2f00000;
 }
-
-namespace jakx {
-constexpr u32 DEBUG_HEAP_SIZE = 0x2f00000;
-}
