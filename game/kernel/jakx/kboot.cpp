@@ -94,16 +94,14 @@ s32 goal_main(int argc, const char* const* argv) {
   if (result) {
     printf("kboot: error; failed to initialize machine (result=0x%08x)\n", initMachineResult);
     shutdownReason = 2;
-  }
-  else {
+  } else {
     shutdownReason = KernelCheckAndDispatch();  // run kernel
   }
-  ShutdownMachine(shutdownReason);         // kernel died, we should too.
+  ShutdownMachine(shutdownReason);  // kernel died, we should too.
   // movie playback stuff?
   if (MasterExit == RuntimeExitStatus::EXIT) {
     // LoadExecPS2("cdrom0:\\NETGUI\\NTGUI_EU.ELF;1", 1, &movie_args_Q);
-  }
-  else if (MasterExit == RuntimeExitStatus::RESTART_IN_DEBUG) {
+  } else if (MasterExit == RuntimeExitStatus::RESTART_IN_DEBUG) {
     char printBuffer[32];
     sprintf(printBuffer, "cdrom0:\\SCES_%.3s.%2s;1", "532", "86");
   }

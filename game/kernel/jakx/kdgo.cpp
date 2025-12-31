@@ -8,8 +8,8 @@
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
-#include "game/kernel/jakx/klink.h"
 #include "game/kernel/jakx/kboot.h"
+#include "game/kernel/jakx/klink.h"
 #include "game/kernel/jakx/kmachine.h"
 #include "game/overlord/jakx/rpc_interface.h"
 
@@ -97,7 +97,7 @@ Ptr<u8> GetNextDGO(u32* lastObjectFlag) {
   } else {
     // I don't see how this case can happen unless there's a bug. The game does check for this and
     // nothing in this case. (maybe from GOAL this can happen?)
-    printf("last message not set!\n"); // NOTE: this case was not present in Jak Xh
+    printf("last message not set!\n");  // NOTE: this case was not present in Jak Xh
   }
   return buffer;
 }
@@ -158,7 +158,8 @@ void load_and_link_dgo_from_c(const char* name,
 
   // build filename.  If no extension is given, default to CGO.
   char fileName[16];
-  kstrcpyup(fileName, name); // FIXME: Similar decompilation to Jak 3, yet I don't understand how it's functionally the same
+  kstrcpyup(fileName, name);  // FIXME: Similar decompilation to Jak 3, yet I don't understand how
+                              // it's functionally the same
   if (fileName[strlen(fileName) - 4] != '.') {
     strcat(fileName, ".CGO");
   }
@@ -170,8 +171,8 @@ void load_and_link_dgo_from_c(const char* name,
   if (!POWERING_OFF_W) {
     // start load on IOP.
     BeginLoadingDGO(
-      fileName, buffer1, buffer2,
-      Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0));  // 64-byte aligned for IOP DMA
+        fileName, buffer1, buffer2,
+        Ptr<u8>((heap->current + 0x3f).offset & 0xffffffc0));  // 64-byte aligned for IOP DMA
 
     u32 lastObjectLoaded = 0;
     while (!lastObjectLoaded && !POWERING_OFF_W) {
@@ -181,9 +182,9 @@ void load_and_link_dgo_from_c(const char* name,
         continue;
       }
 
-      // if we're on the last object, it is loaded at cheap->current.  So we can safely reset the two
-      // dgo-buffer allocations. We do this _before_ we link! This way, the last file loaded has more
-      // heap available, which is important when we need to use the entire memory.
+      // if we're on the last object, it is loaded at cheap->current.  So we can safely reset the
+      // two dgo-buffer allocations. We do this _before_ we link! This way, the last file loaded has
+      // more heap available, which is important when we need to use the entire memory.
       if (lastObjectLoaded) {
         heap->top = oldHeapTop;
       }

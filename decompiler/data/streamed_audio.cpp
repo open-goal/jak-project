@@ -284,7 +284,8 @@ void process_streamed_audio(const decompiler::Config& config,
 
       lg::info("File {}, total {:.2f} minutes", entry.name, audio_len / 60.0);
       auto data = std::span(wad_data).subspan(entry.start_byte);
-      auto info = process_audio_file(output_path, data, entry.name, suffix, entry.stereo, dir_data.version);
+      auto info =
+          process_audio_file(output_path, data, entry.name, suffix, entry.stereo, dir_data.version);
       audio_len += info.length_seconds;
       filename_data[i][lang_id + 1] = info.filename;
     }

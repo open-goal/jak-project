@@ -1068,7 +1068,7 @@ const std::unordered_map<
                                      8,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
          }},
-         {GameVersion::JakX,
+        {GameVersion::JakX,
          {
              // TODO
          }}};

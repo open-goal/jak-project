@@ -1,8 +1,8 @@
 #pragma once
 #include "common/versions/versions.h"
 
+#include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
-#include <game/graphics/gfx.h>
 
 struct PatColors {
   math::Vector4f pat_mode_colors[PAT_MOD_COUNT];

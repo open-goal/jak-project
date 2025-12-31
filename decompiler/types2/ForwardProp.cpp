@@ -747,7 +747,8 @@ void types2_for_logior(types2::Type& type_out,
     return;
   }
 
-  if (arg0_type.typespec().base_type() == "pointer" && arg1_type.typespec().base_type() == "pointer") {
+  if (arg0_type.typespec().base_type() == "pointer" &&
+      arg1_type.typespec().base_type() == "pointer") {
     env.func->warnings.warning("Using logior on pointers");
     type_out.type = TP_Type::make_from_ts("int");
     return;

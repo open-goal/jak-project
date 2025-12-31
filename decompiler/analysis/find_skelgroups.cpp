@@ -450,8 +450,9 @@ FormElement* rewrite_defskelgroup(LetElement* elt,
   //  (set! *hopper-sg* v1-1)
   ASSERT(elt->body()->size() > 0);
 
-  int last_lod = env.version == GameVersion::Jak3 || env.version == GameVersion::JakX ? (elt->body()->size() - 4) / 2 - 1
-                                                  : (elt->body()->size() - 3) / 2 - 1;
+  int last_lod = env.version == GameVersion::Jak3 || env.version == GameVersion::JakX
+                     ? (elt->body()->size() - 4) / 2 - 1
+                     : (elt->body()->size() - 3) / 2 - 1;
   if (last_lod > skelgroup_info.max_lod) {
     env.func->warnings.error_and_throw("defskelgroup exceeds max-lod of {} ({})",
                                        skelgroup_info.max_lod, last_lod);

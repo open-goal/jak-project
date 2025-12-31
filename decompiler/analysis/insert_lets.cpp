@@ -2745,7 +2745,8 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
 
   // New for Jak 3: they check to see if nothing was added, and skip adding an empty DMA transfer
   // if so. This means the usual 2 ending let body forms are now wrapped in a `when`.
-  const int expected_last_let_body_size = env.version == GameVersion::Jak3 || env.version == GameVersion::JakX ? 1 : 2;
+  const int expected_last_let_body_size =
+      env.version == GameVersion::Jak3 || env.version == GameVersion::JakX ? 1 : 2;
   if (last_part->entries().size() != 1 ||
       last_part->body()->size() != expected_last_let_body_size) {
     return nullptr;

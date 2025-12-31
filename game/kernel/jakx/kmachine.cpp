@@ -114,7 +114,7 @@ void InitParms(int argc, const char* const* argv) {
       modsrc = 2;       // now 2 for Jak 2
       reboot_iop = 0;
     }
-    
+
     // the "fakeiso" mode is the other of two modes for testing without the need for DVDs
     if (arg == "-fakeiso") {
       Msg(6, "dkernel: fakeiso mode\n");
@@ -170,7 +170,7 @@ void InitParms(int argc, const char* const* argv) {
 
     if (arg == "-no-debug-symbols") {
       Msg(6, "dkernel: debug-symbols off\n");
-      DebugSymbols = false; // Was this intentional?
+      DebugSymbols = false;  // Was this intentional?
     }
 
     // the "-level [level-name]" mode is used to inform the game to boot a specific level
@@ -197,7 +197,7 @@ void InitParms(int argc, const char* const* argv) {
       i++;
       std::string artGroupName = argv[i];
       Msg(6, "dkernel: art-group %s\n", artGroupName.c_str());
-      if (strlen(artGroupName.c_str()) != 0) { // argGroupName.length
+      if (strlen(artGroupName.c_str()) != 0) {  // argGroupName.length
         strcpy(DebugBootArtGroup, artGroupName.c_str());
         kstrcpy(DebugBootMessage, "art-group");
       }

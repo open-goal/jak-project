@@ -10,9 +10,9 @@
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/common/kprint.h"
 #include "game/kernel/common/kscheme.h"
+#include "game/kernel/jakx/kboot.h"
 #include "game/kernel/jakx/klink.h"
 #include "game/kernel/jakx/kscheme.h"
-#include "game/kernel/jakx/kboot.h"
 
 namespace jakx {
 
@@ -85,7 +85,7 @@ void ProcessListenerMessage(Ptr<char> msg) {
       KernelShutdown(1);
       MasterExit = RuntimeExitStatus::RESTART_RUNTIME;
       break;
-    case LTT_MSG_SHUTDOWN: // not in Jak X
+    case LTT_MSG_SHUTDOWN:  // not in Jak X
       KernelShutdown(1);
       MasterExit = RuntimeExitStatus::EXIT;
       break;
