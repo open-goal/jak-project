@@ -501,11 +501,11 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
     for(int time_of_day = 0; time_of_day < 8; ++time_of_day){
       int color_offset = time_of_day * 4;
 
-      std::array<u8,4> time_of_day_color = {saturate_to_u8(color_totals[color_offset + 0] / n), 
+      math::Vector<u8,4> time_of_day_color = {saturate_to_u8(color_totals[color_offset] / n),
                                       saturate_to_u8(color_totals[color_offset + 1] / n),
-                                       saturate_to_u8(color_totals[color_offset + 2] / n),
-                                       saturate_to_u8(color_totals[color_offset + 3] / (2 * n))};
-      const u8* source_ptr = &time_of_day_color[0];
+                                      saturate_to_u8(color_totals[color_offset + 2] / n),
+                                      saturate_to_u8(color_totals[color_offset + 3] / (2 * n))};
+      const u8* source_ptr = time_of_day_color.data();
       u8* target_ptr = final_color.data() + color_offset;
       std::memcpy(target_ptr, source_ptr, sizeof(u32));
     }
@@ -529,6 +529,7 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
       Color input = in.at(i);
       for(int alpha_channel = 3; alpha_channel < 32; alpha_channel +=4)
         input[alpha_channel] /= 2;
+
       const Color output = result.final_colors.at(result.vtx_to_color.at(i));
       const s32 diff = color_difference(input, output);
       if (diff > worst_diff) {
@@ -541,6 +542,5 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
     lg::error("Worst diff {} between {} {}", std::sqrt((float)worst_diff),
               worst_in.to_string_hex_byte(), worst_out.to_string_hex_byte());
   }
-
   return result;
 }
