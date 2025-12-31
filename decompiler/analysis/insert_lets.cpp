@@ -1915,7 +1915,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   auto ra = in->entries().at(0).dest;
   std::vector<Matcher> get_process_args = {Matcher::any(0), Matcher::any_symbol(1),
                                            Matcher::any(2)};
-  if (env.version >= GameVersion::Jak3) {
+  if (env.version == GameVersion::Jak3 || env.version == GameVersion::JakX) {
     // this flag appears unused...
     get_process_args.push_back(Matcher::any_integer(3));
   }
@@ -1926,8 +1926,8 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
 
   const auto& proc_type = mr_get_proc.maps.strings.at(1);
 
-  // part-tracker-spawn macro for jak 3
-  if (env.version >= GameVersion::Jak3 &&
+  // part-tracker-spawn macro for jak 3 / jak x
+  if ((env.version == GameVersion::Jak3 || env.version == GameVersion::JakX) &&
       (proc_type == "part-tracker" || proc_type == "part-tracker-subsampler")) {
     auto form = rewrite_part_tracker_new_jak3(proc_type, in, env, pool);
     if (form) {
@@ -2076,7 +2076,7 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
         if (!mr_get_proc.maps.forms.at(2)->to_form(env).is_int(0x4000)) {
           ja_push_form_to_args(pool, args, mr_get_proc.maps.forms.at(2), "stack-size");
         }
-        if (env.version >= GameVersion::Jak3) {
+        if (env.version == GameVersion::Jak3 || env.version == GameVersion::JakX) {
           if (mr_get_proc.maps.ints.at(3) != 1) {
             // TODO better name
             args.push_back(pool.form<ConstantTokenElement>(":unk"));
@@ -2198,7 +2198,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   if (env.version == GameVersion::Jak2) {
     possible_args = possible_args_jak2;
   }
-  if (env.version >= GameVersion::Jak3) {
+  if (env.version == GameVersion::Jak3 || env.version == GameVersion::JakX) {
     possible_args = possible_args_jak3;
   }
 
@@ -2745,7 +2745,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
 
   // New for Jak 3: they check to see if nothing was added, and skip adding an empty DMA transfer
   // if so. This means the usual 2 ending let body forms are now wrapped in a `when`.
-  const int expected_last_let_body_size = env.version >= GameVersion::Jak3 ? 1 : 2;
+  const int expected_last_let_body_size = env.version == GameVersion::Jak3 || env.version == GameVersion::JakX ? 1 : 2;
   if (last_part->entries().size() != 1 ||
       last_part->body()->size() != expected_last_let_body_size) {
     return nullptr;
@@ -2755,7 +2755,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   LetElement* dmatag_let;
   FormElement* insert_tag_call;
 
-  if (env.version >= GameVersion::Jak3) {
+  if (env.version == GameVersion::Jak3 || env.version == GameVersion::JakX) {
     // check for the when:
     auto outer_when = dynamic_cast<CondNoElseElement*>(last_part->body()->at(0));
     if (!outer_when) {
