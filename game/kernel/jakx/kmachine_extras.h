@@ -156,7 +156,7 @@ enum class FocusStatus : u64 {
 // all this has is a marker for LiveSplit to find, and then the pointer
 // to the symbol
 struct AutoSplitterBlock {
-  const char marker[20] = "UnLiStEdStRaTs_JaKx"; // ?
+  const char marker[20] = "UnLiStEdStRaTs_JaKx";  // ?
   u64 pointer_to_symbol = 0;
 };
 

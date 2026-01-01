@@ -838,7 +838,7 @@ void Sprite3::do_block_common(SpriteMode mode,
 
     auto& vert1 = m_vertices_3d.at(start_vtx_id + 0);
 
-    if (render_state->version >= GameVersion::Jak3) {
+    if (render_state->version == GameVersion::Jak3 || render_state->version == GameVersion::JakX) {
       auto flag = m_vec_data_2d[sprite_idx].flag();
 
       if ((flag & 0x10) || (flag & 0x20)) {

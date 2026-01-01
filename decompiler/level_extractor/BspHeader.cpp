@@ -2193,7 +2193,7 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
         get_and_check_ref_to_basic(ref, "collide-hash", "collide-hash", dts), dts, version);
   }
 
-  if (version >= GameVersion::Jak3) {
+  if (version == GameVersion::Jak3 || version == GameVersion::JakX) {
     if (get_word_kind_for_field(ref, "hfrag-drawable", dts) == decompiler::LinkedWord::PTR) {
       hfrag.emplace();
       hfrag->read_from_file(get_and_check_ref_to_basic(ref, "hfrag-drawable", "hfragment", dts),

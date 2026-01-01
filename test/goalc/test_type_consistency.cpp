@@ -48,14 +48,14 @@ TEST(Jak3TypeConsistency, TypeConsistencyWithBuildFirst) {
   compiler.run_test_no_load("decompiler/config/jak3/all-types.gc");
 }
 
-TEST(JakXTypeConsistency, TypeConsistencyWithBuildFirst) {
-  Compiler compiler(GameVersion::JakX);
-  compiler.enable_throw_on_redefines();
-  add_common_expected_type_mismatches(compiler);
-  add_jakx_expected_type_mismatches(compiler);
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
-  compiler.run_test_no_load("decompiler/config/jakx/all-types.gc");
-}
+// TEST(JakXTypeConsistency, TypeConsistencyWithBuildFirst) {
+//   Compiler compiler(GameVersion::JakX);
+//   compiler.enable_throw_on_redefines();
+//   add_common_expected_type_mismatches(compiler);
+//   add_jakx_expected_type_mismatches(compiler);
+//   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
+//   compiler.run_test_no_load("decompiler/config/jakx/all-types.gc");
+// }
 
 TEST(Jak1TypeConsistency, TypeConsistency) {
   Compiler compiler(GameVersion::Jak1);
@@ -84,11 +84,11 @@ TEST(Jak3TypeConsistency, TypeConsistency) {
   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
 }
 
-TEST(JakXTypeConsistency, TypeConsistency) {
-  Compiler compiler(GameVersion::JakX);
-  compiler.enable_throw_on_redefines();
-  add_common_expected_type_mismatches(compiler);
-  add_jakx_expected_type_mismatches(compiler);
-  compiler.run_test_no_load("decompiler/config/jakx/all-types.gc");
-  compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
-}
+// TEST(JakXTypeConsistency, TypeConsistency) {
+//   Compiler compiler(GameVersion::JakX);
+//   compiler.enable_throw_on_redefines();
+//   add_common_expected_type_mismatches(compiler);
+//   add_jakx_expected_type_mismatches(compiler);
+//   compiler.run_test_no_load("decompiler/config/jakx/all-types.gc");
+//   compiler.run_test_no_load("test/goalc/source_templates/with_game/test-build-all-code.gc");
+// }

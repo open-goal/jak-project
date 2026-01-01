@@ -11,7 +11,6 @@
 
 void kmemcard_init_globals();
 
-// TODO: jak 3 & jak x stubs
 constexpr PerGameVersion<s32> SAVE_SIZE(692, 1204, 1060, 1060);  // 691 for jak 1 v1
 constexpr PerGameVersion<s32> BANK_SIZE(0x10000, 0x20000, 0x1e000, 0x1e000);
 
