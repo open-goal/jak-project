@@ -58,7 +58,8 @@ void extract(const std::string& name,
 
         out.new_vertices.insert(out.new_vertices.end(), verts.vtx.begin(), verts.vtx.end());
 
-        out.new_colors.insert(out.new_colors.end(), verts.vtx_colors.begin(),verts.vtx_colors.end());
+        out.new_colors.insert(out.new_colors.end(), verts.vtx_colors.begin(),
+                              verts.vtx_colors.end());
 
         out.normals.insert(out.normals.end(), verts.normals.begin(), verts.normals.end());
         ASSERT(out.new_colors.size() == out.new_vertices.size());
