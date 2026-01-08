@@ -3,9 +3,10 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <map>
 #include <memory>
 #include <tuple>
-#include <map>
+
 #include "common/log/log.h"
 #include "common/math/Vector.h"
 #include "common/util/Assert.h"
@@ -15,12 +16,11 @@ namespace {
 
 using Color = math::Vector<u8, 32>;
 
-bool color_less_than(const Color& colorA, const Color& colorB)
-{
-  for(int channel = 0; channel < 31; ++channel){
-    if(const s32 sum = colorA[channel] - colorB[channel];sum < 0)
+bool color_less_than(const Color& colorA, const Color& colorB) {
+  for (int channel = 0; channel < 31; ++channel) {
+    if (const s32 sum = colorA[channel] - colorB[channel]; sum < 0)
       return true;
-    else if(sum > 0)
+    else if (sum > 0)
       return false;
   }
   return colorA[31] < colorB[31];
@@ -44,31 +44,31 @@ struct Node {
   u32 final_idx = UINT32_MAX;
 };
 
-u8 child_index(Color &color, u8 depth) {
+u8 child_index(Color& color, u8 depth) {
   u8 r_bit = (color.x() >> (7 - depth)) & 1;
   u8 g_bit = (color.y() >> (7 - depth)) & 1;
   u8 b_bit = (color.z() >> (7 - depth)) & 1;
   return (r_bit) + (g_bit * 2) + (b_bit * 4);
 }
 
-std::tuple<u32,u32,u32> color_rgb(Color &color){
+std::tuple<u32, u32, u32> color_rgb(Color& color) {
   u32 r = 0;
   u32 g = 0;
   u32 b = 0;
-  for(int channel = 0;channel < 32;channel += 4){
+  for (int channel = 0; channel < 32; channel += 4) {
     r += color[channel];
     g += color[channel + 1];
     b += color[channel + 2];
   }
-  return std::make_tuple(r,g,b);
+  return std::make_tuple(r, g, b);
 }
 
 void insert(Node& root, Color color, u8 current_depth) {
   if (current_depth == 7) {
     const auto rgb = color_rgb(color);
-    root.r_sum += std::get<0,u32>(rgb);
-    root.g_sum += std::get<1,u32>(rgb);
-    root.b_sum += std::get<2,u32>(rgb);
+    root.r_sum += std::get<0>(rgb);
+    root.g_sum += std::get<1>(rgb);
+    root.b_sum += std::get<2>(rgb);
     if (root.rgb_sum_count == 0) {
       for (auto* up = root.parent; up; up = up->parent) {
         up->leaves_under_me++;
@@ -176,8 +176,10 @@ void assign_colors(Node& root, std::vector<Color>& palette_out) {
       n.final_idx = idx++;
       Color& color = palette_out.emplace_back();
 
-      for(int time_of_day = 0; time_of_day < 8; ++time_of_day) {
-        const std::array<u8,4> raw_color = {(u8)(n.r_sum / n.rgb_sum_count), (u8)(n.g_sum / n.rgb_sum_count), (u8)(n.b_sum / n.rgb_sum_count), (u8)0};
+      for (int time_of_day = 0; time_of_day < 8; ++time_of_day) {
+        const std::array<u8, 4> raw_color = {(u8)(n.r_sum / n.rgb_sum_count),
+                                             (u8)(n.g_sum / n.rgb_sum_count),
+                                             (u8)(n.b_sum / n.rgb_sum_count), (u8)0};
         const auto source_ptr = &raw_color[0];
         const auto target_ptr = color.data() + 4 * time_of_day;
         std::memcpy(target_ptr, source_ptr, sizeof(u32));
@@ -270,8 +272,8 @@ size_t pick_split_point(const std::vector<Color>& colors, int dim) {
 }
 
 int pick_split_dim_final_splits(const std::vector<Color>& colors) {
-  std::vector<int> mins(32,255);
-  std::vector<int> maxes(32,0);
+  std::vector<int> mins(32, 255);
+  std::vector<int> maxes(32, 0);
   for (const auto& color : colors) {
     for (int i = 0; i < 32; i++) {
       mins[i] = std::min(mins[i], (int)color[i]);
@@ -381,7 +383,7 @@ std::vector<Color> remove_duplicates(const std::vector<Color>& in) {
   std::vector<Color> out = in;
   std::sort(out.begin(), out.end(), color_less_than);
   const auto& end_unique = std::unique(out.begin(), out.end());
-  out.erase(end_unique, out.end() );
+  out.erase(end_unique, out.end());
   return out;
 }
 
@@ -427,14 +429,15 @@ void get_splittable(KdNode* node, std::vector<KdNode*>* out) {
 }
 
 /*!
-* Just removes duplicate colors, which can work if there are only a few unique colors.
-*/
+ * Just removes duplicate colors, which can work if there are only a few unique colors.
+ */
 QuantizedColors quantize_colors_dumb(const std::vector<Color>& in) {
   QuantizedColors result;
 
   result.final_colors = remove_duplicates(in);
-  for(const auto& vtx : in) {
-    const auto iter = std::lower_bound(result.final_colors.begin(), result.final_colors.end(), vtx, color_less_than);
+  for (const auto& vtx : in) {
+    const auto iter = std::lower_bound(result.final_colors.begin(), result.final_colors.end(), vtx,
+                                       color_less_than);
     const int index = std::distance(result.final_colors.begin(), iter);
     result.vtx_to_color.push_back(index);
   }
@@ -444,8 +447,7 @@ QuantizedColors quantize_colors_dumb(const std::vector<Color>& in) {
   return result;
 }
 
-QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
-                                        u32 target_depth) {
+QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in, u32 target_depth) {
   Timer timer;
   // Build root node:
   KdNode root;
@@ -482,7 +484,7 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
 
   // Get final colors:
   auto cmp = &color_less_than;
-  std::map<math::Vector<u8,32>, u32, decltype(cmp)> color_value_to_color_idx(cmp);
+  std::map<math::Vector<u8, 32>, u32, decltype(cmp)> color_value_to_color_idx(cmp);
   QuantizedColors result;
   for_each_child(&root, [&](KdNode* node) {
     if (node->colors.empty()) {
@@ -490,27 +492,27 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
     }
 
     const u32 slot = result.final_colors.size();
-    math::Vector<u64,32> color_totals = math::Vector<u64,32>::zero();
+    math::Vector<u64, 32> color_totals = math::Vector<u64, 32>::zero();
     const u32 n = node->colors.size();
     for (auto& color : node->colors) {
       color_value_to_color_idx[color] = slot;
-      for(int channel = 0; channel < 32; ++channel)
+      for (int channel = 0; channel < 32; ++channel)
         color_totals[channel] += color[channel];
     }
     auto& final_color = result.final_colors.emplace_back();
-    for(int time_of_day = 0; time_of_day < 8; ++time_of_day){
+    for (int time_of_day = 0; time_of_day < 8; ++time_of_day) {
       int color_offset = time_of_day * 4;
 
-      math::Vector<u8,4> time_of_day_color = {saturate_to_u8(color_totals[color_offset] / n),
-                                      saturate_to_u8(color_totals[color_offset + 1] / n),
-                                      saturate_to_u8(color_totals[color_offset + 2] / n),
-                                      saturate_to_u8(color_totals[color_offset + 3] / (2 * n))};
+      math::Vector<u8, 4> time_of_day_color = {
+          saturate_to_u8(color_totals[color_offset] / n),
+          saturate_to_u8(color_totals[color_offset + 1] / n),
+          saturate_to_u8(color_totals[color_offset + 2] / n),
+          saturate_to_u8(color_totals[color_offset + 3] / (2 * n))};
       const u8* source_ptr = time_of_day_color.data();
       u8* target_ptr = final_color.data() + color_offset;
       std::memcpy(target_ptr, source_ptr, sizeof(u32));
     }
   });
-  
 
   for (auto& color : in) {
     result.vtx_to_color.push_back(color_value_to_color_idx.at(color));
@@ -527,7 +529,7 @@ QuantizedColors quantize_colors_kd_tree(const std::vector<Color>& in,
 
     for (size_t i = 0; i < result.vtx_to_color.size(); i++) {
       Color input = in.at(i);
-      for(int alpha_channel = 3; alpha_channel < 32; alpha_channel +=4)
+      for (int alpha_channel = 3; alpha_channel < 32; alpha_channel += 4)
         input[alpha_channel] /= 2;
 
       const Color output = result.final_colors.at(result.vtx_to_color.at(i));
