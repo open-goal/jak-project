@@ -471,7 +471,7 @@ ZYCORE_EXPORT ZyanStatus ZyanStringConcatCustomBuffer(ZyanString* destination,
  *
  * @return  A zyan status code.
  *
- * The `ZYAN_STRING_TO_VEW` macro can be used to pass any `ZyanString` instance as value for the
+ * The `ZYAN_STRING_TO_VIEW` macro can be used to pass any `ZyanString` instance as value for the
  * `source` string.
  */
 ZYCORE_EXPORT ZyanStatus ZyanStringViewInsideView(ZyanStringView* view,
@@ -487,7 +487,7 @@ ZYCORE_EXPORT ZyanStatus ZyanStringViewInsideView(ZyanStringView* view,
  *
  * @return  A zyan status code.
  *
- * The `ZYAN_STRING_TO_VEW` macro can be used to pass any `ZyanString` instance as value for the
+ * The `ZYAN_STRING_TO_VIEW` macro can be used to pass any `ZyanString` instance as value for the
  * `source` string.
  */
 ZYCORE_EXPORT ZyanStatus ZyanStringViewInsideViewEx(ZyanStringView* view,

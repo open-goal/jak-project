@@ -129,10 +129,9 @@ static ZyanStatus InitZyanU64(ZyanU64* object)
  *
  * @return  A zyan status code.
  */
-static ZyanStatus FreeZyanU16(ZyanU16* object)
+static void FreeZyanU16(ZyanU16* object)
 {
     *object = 0;
-    return ZYAN_STATUS_SUCCESS;
 }
 
 /* ============================================================================================== */

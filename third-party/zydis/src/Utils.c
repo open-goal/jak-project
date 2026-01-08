@@ -49,7 +49,7 @@ ZyanStatus ZydisCalcAbsoluteAddress(const ZydisDecodedInstruction* instruction,
     switch (operand->type)
     {
     case ZYDIS_OPERAND_TYPE_MEMORY:
-        if (!operand->mem.disp.has_displacement)
+        if (!operand->mem.disp.size)
         {
             return ZYAN_STATUS_INVALID_ARGUMENT;
         }
@@ -85,6 +85,11 @@ ZyanStatus ZydisCalcAbsoluteAddress(const ZydisDecodedInstruction* instruction,
         }
         break;
     case ZYDIS_OPERAND_TYPE_IMMEDIATE:
+        if (!operand->imm.is_address)
+        {
+            return ZYAN_STATUS_INVALID_ARGUMENT;
+        }
+
         if (operand->imm.is_signed && operand->imm.is_relative)
         {
             *result_address = (ZyanU64)((ZyanI64)runtime_address + instruction->length +
@@ -113,6 +118,12 @@ ZyanStatus ZydisCalcAbsoluteAddress(const ZydisDecodedInstruction* instruction,
             }
             return ZYAN_STATUS_SUCCESS;
         }
+        else if (!operand->imm.is_signed && !operand->imm.is_relative && 
+            (instruction->machine_mode == ZYDIS_MACHINE_MODE_LONG_64))
+        {
+            *result_address = operand->imm.value.u;
+            return ZYAN_STATUS_SUCCESS;
+        }
         break;
     default:
         break;
@@ -133,23 +144,36 @@ ZyanStatus ZydisCalcAbsoluteAddressEx(const ZydisDecodedInstruction* instruction
         return ZYAN_STATUS_INVALID_ARGUMENT;
     }
 
-    if ((operand->type != ZYDIS_OPERAND_TYPE_MEMORY) ||
+    if ((operand->type != ZYDIS_OPERAND_TYPE_REGISTER) &&
+        ((operand->type != ZYDIS_OPERAND_TYPE_MEMORY) ||
         ((operand->mem.base == ZYDIS_REGISTER_NONE) &&
          (operand->mem.index == ZYDIS_REGISTER_NONE)) ||
         (operand->mem.base == ZYDIS_REGISTER_EIP) ||
-        (operand->mem.base == ZYDIS_REGISTER_RIP))
+        (operand->mem.base == ZYDIS_REGISTER_RIP)))
     {
         return ZydisCalcAbsoluteAddress(instruction, operand, runtime_address, result_address);
     }
 
-    ZyanU64 value = operand->mem.disp.value;
-    if (operand->mem.base)
+    ZyanU64 value;
+    if (operand->type == ZYDIS_OPERAND_TYPE_REGISTER)
     {
-        value += register_context->values[operand->mem.base];
+        value = register_context->values[operand->reg.value];
     }
-    if (operand->mem.index)
+    else if (operand->type == ZYDIS_OPERAND_TYPE_MEMORY)
     {
-        value += register_context->values[operand->mem.index] * operand->mem.scale;
+        value = operand->mem.disp.value;
+        if (operand->mem.base)
+        {
+            value += register_context->values[operand->mem.base];
+        }
+        if (operand->mem.index)
+        {
+            value += register_context->values[operand->mem.index] * operand->mem.scale;
+        }
+    }
+    else
+    {
+        return ZYAN_STATUS_INVALID_ARGUMENT;
     }
 
     switch (instruction->address_width)
