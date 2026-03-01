@@ -143,10 +143,10 @@
                 darkeco))
 
 (defmethod start-run! ((this speedrun-info))
-  ;; randomize game id so the autosplitter knows to restart
-  (reset! *autosplit-info-jak3*)
   ;; turn on speedrun verification display
   (true! (-> this display-run-info?))
+  ;; reset has-started? flag so we can flip it back to #t when jak touches ground/out of blackout
+  (false! (-> *speedrun-info* has-started?))
   (send-event (ppointer->process *speedrun-manager*) 'start-run)
   ;; ensure any required settings are enabled
   (enforce-settings! this)
@@ -634,6 +634,10 @@
   (set! (-> *speedrun-info* waiting-to-record-practice-attempt?) #f)
   (go-virtual idle))
 
+(defun mark-speedrun-started ()
+  (true! (-> *speedrun-info* has-started?))
+  (none))
+
 (defmethod update! ((this speedrun-info))
   "A per frame update for speedrunning related stuff"
   ;; Ensure the speedrunner menu process is enabled or destroyed
@@ -643,6 +647,21 @@
     (deactivate (-> *speedrun-manager* 0)))
   ;; do speedrunner mode things
   (when (-> *pc-settings* speedrunner-mode?)
+    ;; Check if run/autosplitter should be started (out of blackout and player has control of jak)
+    (when (and (not (-> *speedrun-info* has-started?))
+               *target*
+               ;; not in blackout
+               (>= (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
+               (!= (-> *setting-control* user-current bg-a-force) 1.0)
+               ;; target has landed on ground/water, or we're about to enter target-hit-ground state
+               (or (logtest? (-> *target* control status) (collide-status on-ground on-surface on-water))
+                   (= (-> *target* next-state name) 'target-hit-ground)))
+      (mark-speedrun-started)
+      ;; spawn a process that resets autosplitter after suspending for 1 frame
+      (process-spawn-function process
+        (lambda ()
+          (suspend)
+          (reset! *autosplit-info-jak3*))))
     ;; Update auto-splitter struct
     (update! *autosplit-info-jak3*)
     ;; see if we should stop drawing the run info (when you finish arena training)
