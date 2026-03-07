@@ -608,7 +608,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
 
   auto cc = get_function_calling_convention(function->type(), m_ts);
   RegClass ret_reg_class = RegClass::GPR_64;
-  if (cc.return_reg && cc.return_reg->is_xmm()) {
+  if (cc.return_reg && cc.return_reg->is_128bit_simd()) {
     ret_reg_class = RegClass::INT_128;
   }
 
@@ -642,7 +642,7 @@ Val* Compiler::compile_real_function_call(const goos::Object& form,
     const auto& arg = args.at(i);
     auto reg = cc.arg_regs.at(i);
     arg_outs.push_back(
-        env->make_ireg(arg->type(), reg.is_xmm() ? RegClass::INT_128 : RegClass::GPR_64));
+        env->make_ireg(arg->type(), reg.is_128bit_simd() ? RegClass::INT_128 : RegClass::GPR_64));
     arg_outs.back()->mark_as_settable();
     env->emit_ir<IR_RegSet>(form, arg_outs.back(), arg);
   }

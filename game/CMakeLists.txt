@@ -7,13 +7,13 @@ else()
     message(STATUS "Non-ARM64 architecture detected")
 endif()
 
-if(ARM64_ARCH)
+# TODO - kinda a gross hack, should pass in an explicit flag later
+if(ARM64_ARCH OR CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
     # Add your ARM64-specific configuration or build options here
     set(OG_ASM_FUNCS_FILE kernel/asm_funcs_arm64.s)
     enable_language(ASM)
     set(CMAKE_ASM_SOURCE_FILE_EXTENSIONS ${CMAKE_ASM_SOURCE_FILE_EXTENSIONS} s)
-    # set(CMAKE_ASM_COMPILE_OBJECT "${CMAKE_ASM_COMPILER} -o <OBJECT> <SOURCE>")
-    set_source_files_properties(${OG_ASM_FUNCS_FILE} PROPERTIES COMPILE_FLAGS "-g")
+    set_source_files_properties(${OG_ASM_FUNCS_FILE} PROPERTIES COMPILE_FLAGS "-arch arm64 -g")
 else()
     set(OG_ASM_FUNCS_FILE kernel/asm_funcs_x86_64.asm)
     enable_language(ASM_NASM)

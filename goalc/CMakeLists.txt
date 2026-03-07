@@ -66,6 +66,8 @@ add_library(compiler
         build_actor/jak3/build_actor.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
+        emitter/IGenX86.cpp
+        emitter/IGenARM64.cpp
         listener/Listener.cpp
         listener/MemoryMap.cpp
         make/MakeSystem.cpp

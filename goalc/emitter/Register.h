@@ -145,12 +145,25 @@ class Register {
   // intentionally not explicit so we can use X86_REGs in place of Registers
   Register(int id) : m_id(id) {}
 
-  bool is_xmm() const { return m_id >= XMM0 && m_id <= XMM15; }
+  bool is_128bit_simd() const {
+#ifndef __aarch64__
+    return m_id >= XMM0 && m_id <= XMM15;
+#else
+    return m_id >= Q0 && m_id <= Q31;
+#endif
+  }
 
-  bool is_gpr() const { return m_id >= RAX && m_id <= R15; }
+  bool is_gpr() const {
+#ifndef __aarch64__
+    return m_id >= RAX && m_id <= R15;
+#else
+    return m_id >= X0 && m_id <= X30;
+#endif
+  }
 
   int hw_id() const {
-    if (is_xmm()) {
+    // TODO - ARM64, even needed?
+    if (is_128bit_simd()) {
       return m_id - XMM0;
     } else if (is_gpr()) {
       return m_id - RAX;
