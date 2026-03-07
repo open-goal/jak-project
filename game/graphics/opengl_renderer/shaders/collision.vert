@@ -19,8 +19,8 @@ uniform int version;
 out vec4 fragment_color;
 
 const int PAT_MOD_COUNT = 4;
-const int PAT_EVT_COUNT = 15;
-const int PAT_MAT_COUNT = 29;
+const int PAT_EVT_COUNT = 20;
+const int PAT_MAT_COUNT = 34;
 uniform uint collision_mode_mask[(PAT_MOD_COUNT + 31) / 32];
 uniform uint collision_event_mask[(PAT_EVT_COUNT + 31) / 32];
 uniform uint collision_material_mask[(PAT_MAT_COUNT + 31) / 32];
@@ -42,9 +42,9 @@ bool logtest(uint a, uint b) { return (a & b) != 0; }
 bool logtesta(uint a, uint b) { return (a & b) == b; }
 
 layout(std140) uniform PatColors {
-  vec4 pat_mode_colors[4];
-  vec4 pat_material_colors[32];
-  vec4 pat_event_colors[32];
+  vec4 pat_mode_colors[PAT_MOD_COUNT];
+  vec4 pat_material_colors[PAT_MAT_COUNT];
+  vec4 pat_event_colors[PAT_EVT_COUNT];
 };
 
 void main() {

@@ -726,28 +726,33 @@
           ((< (* f0-6 f0-6) (vector-vector-distance-squared (-> self root trans) (target-pos 0)))
            (forward-up->inv-matrix gp-0 (-> self pre-move-transv) *up-vector*)
            (vector-copy! (-> gp-0 trans) (-> self root trans))
-           (if (logtest? (-> *part-group-id-table* 539 flags) (sp-group-flag sp13))
+           (if (logtest? (-> group-maker-grenade-explosion flags) (sp-group-flag sp13))
                (part-tracker-spawn
                  part-tracker-subsampler
                  :to *entity-pool*
-                 :group (-> *part-group-id-table* 539)
+                 :group group-maker-grenade-explosion
                  :mat-joint gp-0
                  )
-               (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 539) :mat-joint gp-0)
+               (part-tracker-spawn part-tracker :to *entity-pool* :group group-maker-grenade-explosion :mat-joint gp-0)
                )
            (sound-play "ball-explode")
            )
           (else
             (quaternion->matrix gp-0 (-> *target* control quat))
             (vector-copy! (-> gp-0 trans) (-> *target* control trans))
-            (if (logtest? (-> *part-group-id-table* 541 flags) (sp-group-flag sp13))
+            (if (logtest? (-> group-maker-grenade-explosion-bottom flags) (sp-group-flag sp13))
                 (part-tracker-spawn
                   part-tracker-subsampler
                   :to *entity-pool*
-                  :group (-> *part-group-id-table* 541)
+                  :group group-maker-grenade-explosion-bottom
                   :mat-joint gp-0
                   )
-                (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 541) :mat-joint gp-0)
+                (part-tracker-spawn
+                  part-tracker
+                  :to *entity-pool*
+                  :group group-maker-grenade-explosion-bottom
+                  :mat-joint gp-0
+                  )
                 )
             (sound-play "ball-hit-turret")
             )
@@ -847,12 +852,13 @@
         )
     (rand-vu-sphere-point-uniform! s5-1 1.0)
     (vector-normalize! s5-1 1.0)
-    (quaternion-axis-angle! (-> this tumble-quat) (-> s5-1 x) (-> s5-1 y) (-> s5-1 z) f30-1)
+    ;; og:preserve-this changed for high fps
+    (quaternion-axis-angle! (-> this tumble-quat) (-> s5-1 x) (-> s5-1 y) (-> s5-1 z) (* DISPLAY_FPS_RATIO f30-1))
     )
   (set! (-> this draw lod-set lod 0 dist) 696320.0)
   (set! (-> this draw lod-set lod 1 dist) 7372800.0)
   (set! (-> this draw lod-set lod 2 dist) 7372800.0)
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 550) this))
+  (set! (-> this part) (create-launch-control group-maker-grenade-glow this))
   (set! (-> this blast-radius) 122880.0)
   (set! (-> this max-speed) 450560.0)
   (set! (-> this timeout) (seconds 12))

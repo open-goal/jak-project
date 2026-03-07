@@ -2116,18 +2116,9 @@
               (set-time! (-> self control sliding-start-time))
               (set-time! (-> self gun combo-window-start))
               (set! (-> self gun combo-window-state) (-> self state name))
-              (let ((v1-13 (if (type? proc process-focusable)
-                               proc
-                               )
-                           )
-                    )
+              (let ((v1-13 (the-as process (as-type proc process-focusable))))
                 (when v1-13
-                  (let* ((s5-1 (-> (the-as target v1-13) control))
-                         (v1-14 (if (type? s5-1 collide-shape)
-                                    s5-1
-                                    )
-                                )
-                         )
+                  (let ((v1-14 (the-as control-info (as-type (-> (the-as target v1-13) control) collide-shape))))
                     (if (and v1-14 (or (logtest? (-> v1-14 root-prim prim-core collide-as) (collide-spec enemy))
                                        (logtest? (-> v1-14 root-prim prim-core action) (collide-action no-smack))
                                        )
@@ -2445,36 +2436,7 @@
                        (>= 0.0 (vector-dot (-> s5-3 best-other-tri normal) (-> self control impact-ctrl dir)))
                        )
               (when (= (-> s5-3 best-other-tri pat mode) (pat-mode wall))
-                (let ((s4-0 (get-process *default-dead-pool* part-tracker #x4000)))
-                  (when s4-0
-                    (let ((t9-34 (method-of-type part-tracker activate)))
-                      (t9-34 (the-as part-tracker s4-0) self (symbol->string (-> part-tracker symbol)) (the-as pointer #x70004000))
-                      )
-                    (let ((t9-35 run-function-in-process)
-                          (a0-62 s4-0)
-                          (a1-17 part-tracker-init)
-                          (a2-13 (-> *part-group-id-table* 11))
-                          (a3-8 0)
-                          (t0-6 #f)
-                          (t1-5 #f)
-                          (t2-5 #f)
-                          (t3-3 *launch-matrix*)
-                          )
-                      (set! (-> t3-3 trans quad) (-> s5-3 best-other-tri intersect quad))
-                      ((the-as (function object object object object object object object object none) t9-35)
-                       a0-62
-                       a1-17
-                       a2-13
-                       a3-8
-                       t0-6
-                       t1-5
-                       t2-5
-                       t3-3
-                       )
-                      )
-                    (-> s4-0 ppointer)
-                    )
-                  )
+                (part-tracker-spawn :to self :group group-punch-hit :mat-joint (-> s5-3 best-other-tri intersect))
                 (let ((t1-6 (if (using-gun? self)
                                 (the-as sound-name (static-sound-name "gun-punch-w-hit"))
                                 (the-as sound-name (static-sound-name "punch-w-hit"))

@@ -165,6 +165,10 @@ int run_decompilation_process(decompiler::Config config,
     return 1;
   }
 
+  if (config.process_part_group_table && !config.part_group_table.empty()) {
+    db.dts.part_group_table = config.part_group_table;
+  }
+
   if (config.process_tpages && !config.texture_info_dump.empty()) {
     db.dts.textures = config.texture_info_dump;
   }
@@ -190,6 +194,10 @@ int run_decompilation_process(decompiler::Config config,
     db.dump_art_info(out_folder);
   }
 
+  if (config.dump_part_group_table) {
+    db.dump_part_group_table(out_folder, config.part_group_table);
+  }
+
   if (config.hexdump_code || config.hexdump_data) {
     db.write_object_file_words(out_folder, config.hexdump_data, config.hexdump_code);
   }
@@ -207,15 +215,28 @@ int run_decompilation_process(decompiler::Config config,
     if (!result.empty()) {
       file_util::write_text_file(out_folder / "assets" / "game_text.txt", result);
     }
+
+    if (config.game_version == GameVersion::JakX) {
+      auto subtitle_result = db.process_game_text_files(config, "SUBTIT");
+      if (!subtitle_result.empty()) {
+        file_util::write_text_file(out_folder / "assets" / "game_subs.txt", subtitle_result);
+      }
+    }
   }
 
   lg::info("[Mem] After text: {} MB", get_peak_rss() / (1024 * 1024));
 
   if (config.process_subtitle_text || config.process_subtitle_images) {
-    auto result = db.process_all_spool_subtitles(
-        config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
-    if (!result.empty()) {
-      file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+    if (config.game_version == GameVersion::JakX) {
+      lg::warn(
+          "- Jak X does not use spools, ignoring process_subtitle_text and/or "
+          "process_subtitle_images");
+    } else {
+      auto result = db.process_all_spool_subtitles(
+          config, config.process_subtitle_images ? out_folder / "assets" / "subtitle-images" : "");
+      if (!result.empty()) {
+        file_util::write_text_file(out_folder / "assets" / "game_subs.txt", result);
+      }
     }
   }
 

@@ -1067,6 +1067,10 @@ const std::unordered_map<
                 ArrayFieldDecompMeta(TypeSpec("uint64"),
                                      8,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+         }},
+        {GameVersion::JakX,
+         {
+             // TODO
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

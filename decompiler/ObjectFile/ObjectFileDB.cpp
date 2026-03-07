@@ -750,6 +750,8 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
     case GameVersion::Jak3:
       animated_slots = jak3_animated_texture_slots();
       break;
+    case GameVersion::JakX:
+      break;
     default:
       ASSERT_NOT_REACHED();
   }
@@ -857,10 +859,9 @@ std::string ObjectFileDB::process_all_spool_subtitles(const Config& cfg,
   }
 }
 
-std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
+std::string ObjectFileDB::process_game_text_files(const Config& cfg, std::string text_string) {
   try {
     lg::info("- Finding game text...");
-    std::string text_string = "COMMON";
     Timer timer;
     int file_count = 0;
     int string_count = 0;
@@ -868,7 +869,7 @@ std::string ObjectFileDB::process_game_text_files(const Config& cfg) {
     std::unordered_map<int, std::unordered_map<int, std::string>> text_by_language_by_id;
 
     for_each_obj([&](ObjectFileData& data) {
-      if (data.name_in_dgo.substr(1) == text_string) {
+      if (data.name_in_dgo.ends_with(text_string)) {
         file_count++;
         auto statistics = process_game_text(data, cfg.text_version);
         string_count += statistics.total_text;
@@ -924,7 +925,7 @@ void get_joint_info(ObjectFileDB& db, ObjectFileData& obj, JointGeo jg) {
   const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
   for (size_t i = 0; i < jg.length; ++i) {
     u32 label = 0x0;
-    if (db.version() == GameVersion::Jak3) {
+    if (db.version() == GameVersion::Jak3 || db.version() == GameVersion::JakX) {
       label = words.at((jg.offset / 4) + 11 + i).label_id();
     } else {
       label = words.at((jg.offset / 4) + 7 + i).label_id();
@@ -1123,6 +1124,34 @@ void ObjectFileDB::dump_art_info(const fs::path& output_dir) {
   file_util::write_text_file(jg_fpath, jg_result);
 
   lg::info("Written art group info: in {:.2f} ms", timer.getMs());
+}
+
+void ObjectFileDB::dump_part_group_table(
+    const fs::path& output_dir,
+    const std::unordered_map<u32, std::string>& part_group_table) {
+  lg::info("Writing part group table...");
+  Timer timer;
+
+  if (!part_group_table.empty()) {
+    file_util::create_dir_if_needed(output_dir / "import");
+  }
+
+  auto ptable_fpath = output_dir / "import" / "part-groups.gc";
+  std::string result;
+
+  for (const auto& [id, name] : part_group_table) {
+    result += fmt::format("(defconstant {} (-> *part-group-id-table* {}))", name, id);
+    result += "\n";
+  }
+
+  file_util::write_text_file(ptable_fpath, result);
+
+  auto ptable_dump_fpath = output_dir / "dump" / "part-groups.min.json";
+  nlohmann::json json = part_group_table;
+  file_util::create_dir_if_needed_for_file(ptable_dump_fpath);
+  file_util::write_text_file(ptable_dump_fpath, json.dump(-1));
+
+  lg::info("Written part group table in {:.2f} ms", timer.getMs());
 }
 
 void ObjectFileDB::dump_raw_objects(const fs::path& output_dir) {

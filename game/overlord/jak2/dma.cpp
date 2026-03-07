@@ -97,7 +97,7 @@ int SpuDmaIntr(int, void*) {
 
   // if we just finished the first upload, start playing! I'm not entirely sure if this is playing
   // sound yet, or if we're just looping and waiting for the second upload to actually start.
-  // (we don't set the appropriate volumes here, so this is probably not the real playback)
+  // (this is probably not the real playback)
   if (DmaVagCmd->num_processed_chunks == 1) {
     int pitch = CalculateVAGPitch(DmaVagCmd->pitch1, DmaVagCmd->unk_256_pitch2);
     if (!DmaStereoVagCmd) {
@@ -106,6 +106,10 @@ int SpuDmaIntr(int, void*) {
       sceSdSetParam(SD_VP_ADSR1 | DmaVagCmd->voice, 0xf);
       sceSdSetParam(SD_VP_ADSR2 | DmaVagCmd->voice, 0x1fc0);
       sceSdSetParam(SD_VP_PITCH | DmaVagCmd->voice, pitch);
+
+      // setting volume to 0 on first chunk to avoid unpleasant initial chirps of audio.
+      sceSdSetParam(SD_VP_VOLL | DmaVagCmd->voice, 0x0);
+      sceSdSetParam(SD_VP_VOLR | DmaVagCmd->voice, 0x0);
 
       sceSdSetSwitch(SD_S_KON | (DmaVagCmd->voice & 1), VOICE_BIT(DmaVagCmd->voice));
     } else {
@@ -122,6 +126,12 @@ int SpuDmaIntr(int, void*) {
       sceSdSetParam(SD_VP_ADSR2 | DmaStereoVagCmd->voice, 0x1fc0);
       sceSdSetParam(SD_VP_PITCH | DmaVagCmd->voice, pitch);
       sceSdSetParam(SD_VP_PITCH | DmaStereoVagCmd->voice, pitch);
+
+      // setting volume to 0 on first chunk to avoid unpleasant initial chirps of audio.
+      sceSdSetParam(SD_VP_VOLL | DmaVagCmd->voice, 0x0);
+      sceSdSetParam(SD_VP_VOLL | DmaStereoVagCmd->voice, 0x0);
+      sceSdSetParam(SD_VP_VOLR | DmaVagCmd->voice, 0x0);
+      sceSdSetParam(SD_VP_VOLR | DmaStereoVagCmd->voice, 0x0);
 
       sceSdSetSwitch(SD_S_KON | (DmaVagCmd->voice & 1),
                      VOICE_BIT(DmaVagCmd->voice) | VOICE_BIT(DmaStereoVagCmd->voice));

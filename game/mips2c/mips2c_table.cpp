@@ -656,7 +656,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak3::shadow_add_verts::link, jak3::shadow_add_facing_single_tris::link,
        jak3::shadow_add_single_edges::link, jak3::shadow_add_double_edges::link,
        jak3::shadow_add_single_tris::link, jak3::shadow_add_double_tris::link}},
-     {"cloth", {jak3::method_21_cloth_system::link}}}};
+     {"cloth", {jak3::method_21_cloth_system::link}}},
+    /////////// JAK X
+    {}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

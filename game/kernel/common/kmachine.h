@@ -49,6 +49,7 @@ s32 klength(u64 fs);
 s32 kseek(u64 fs, s32 offset, s32 where);
 s32 kread(u64 fs, u64 buffer, s32 size);
 s32 kwrite(u64 fs, u64 buffer, s32 size);
+s32 kmkdir(u64 name);
 u64 kclose(u64 fs);
 void dma_to_iop();
 u64 DecodeLanguage();

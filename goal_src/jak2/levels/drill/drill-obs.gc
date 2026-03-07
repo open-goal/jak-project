@@ -8,13 +8,9 @@
 ;; DECOMP BEGINS
 
 (defmethod draw ((this hud-gruntegg))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    200
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 200)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -25 33)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -25 33)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -45,13 +41,9 @@
   )
 
 (defmethod draw ((this hud-crimsonhover))
-  (set-hud-piece-position!
-    (the-as hud-sprite (-> this sprites))
-    (the int (+ 462.0 (* 130.0 (-> this offset))))
-    200
-    )
+  (set-hud-piece-position! (-> this sprites 0) (the int (+ 462.0 (* 130.0 (-> this offset)))) 200)
   (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
-  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -25 33)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this sprites 0 pos) -25 33)
   ((method-of-type hud draw) this)
   0
   (none)
@@ -537,12 +529,7 @@
 (defmethod commited-to-ride? ((this drill-mech-elevator))
   "@returns if the target is considered within the elevator area enough to begin descending/ascending"
   (when (= (-> this move-pos 1) (-> this bottom-top 0))
-    (let* ((s5-0 *target*)
-           (a0-2 (if (type? s5-0 process-focusable)
-                     s5-0
-                     )
-                 )
-           )
+    (let ((a0-2 (the-as target (as-type *target* process-focusable))))
       (when (and a0-2 (focus-test? a0-2 mech) (not (logtest? (-> a0-2 focus-status) (focus-status dead ignore))))
         (let* ((v1-5 (get-trans a0-2 0))
                (s5-2 (vector-! (new 'stack-no-clear 'vector) v1-5 (-> this root trans)))
@@ -635,12 +622,7 @@
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
       (('touch 'attack)
-       (let* ((s4-0 proc)
-              (gp-0 (if (type? s4-0 process-focusable)
-                        s4-0
-                        )
-                    )
-              )
+       (let ((gp-0 (the-as process (as-type proc process-focusable))))
          (when gp-0
            (when (or (focus-test? (the-as process-focusable gp-0) mech)
                      (time-elapsed? (-> self no-collision-timer) (the-as time-frame (-> *TARGET-bank* hit-invulnerable-timeout)))
@@ -786,8 +768,8 @@
 
 (defmethod set-part ((this fire-floor))
   "Set the particle launch controls for the on/off states."
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 399) this))
-  (set! (-> this part-off) (create-launch-control (-> *part-group-id-table* 398) this))
+  (set! (-> this part) (create-launch-control group-drill-fire-floor-dust this))
+  (set! (-> this part-off) (create-launch-control group-drill-fire-floor-heat this))
   0
   (none)
   )
@@ -860,27 +842,27 @@
         (s3-0 (-> this local-to-world))
         (s5-1 (-> this size))
         )
-    (get-point-in-path! (-> this path) (the-as vector (-> s4-1 vector)) 0.0 'interp)
+    (get-point-in-path! (-> this path) (-> s4-1 vector 0) 0.0 'interp)
     (get-point-in-path! (-> this path) (-> s4-1 vector 1) 1.0 'interp)
     (get-point-in-path! (-> this path) (-> s4-1 vector 2) 3.0 'interp)
     (matrix-identity! s3-0)
     (vector-normalize-copy!
-      (the-as vector (-> s3-0 vector))
-      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (the-as vector (-> s4-1 vector)))
+      (-> s3-0 vector 0)
+      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (-> s4-1 vector 0))
       1.0
       )
     (vector-normalize-copy!
       (-> s3-0 vector 2)
-      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (the-as vector (-> s4-1 vector)))
+      (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (-> s4-1 vector 0))
       1.0
       )
-    (vector-normalize! (vector-cross! (-> s3-0 vector 1) (-> s3-0 vector 2) (the-as vector (-> s3-0 vector))) 1.0)
-    (vector-cross! (-> s3-0 vector 2) (the-as vector (-> s3-0 vector)) (-> s3-0 vector 1))
+    (vector-normalize! (vector-cross! (-> s3-0 vector 1) (-> s3-0 vector 2) (-> s3-0 vector 0)) 1.0)
+    (vector-cross! (-> s3-0 vector 2) (-> s3-0 vector 0) (-> s3-0 vector 1))
     (vector-normalize! (-> s3-0 vector 2) 1.0)
     (set! (-> s3-0 trans quad) (-> s4-1 vector 0 quad))
     (matrix-inverse-of-rot-trans! (-> this world-to-local) (-> this local-to-world))
-    (set! (-> this deadly-width) (vector-vector-distance (-> s4-1 vector 1) (the-as vector (-> s4-1 vector))))
-    (set! (-> this deadly-length) (vector-vector-distance (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
+    (set! (-> this deadly-width) (vector-vector-distance (-> s4-1 vector 1) (-> s4-1 vector 0)))
+    (set! (-> this deadly-length) (vector-vector-distance (-> s4-1 vector 2) (-> s4-1 vector 0)))
     (let ((v1-39 (-> this root root-prim)))
       (vector-reset! (-> v1-39 local-sphere))
       (let* ((f0-14 (/ (-> this deadly-width) 2))
@@ -891,10 +873,10 @@
         )
       )
     (set! (-> s5-1 0)
-          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (the-as vector (-> s4-1 vector))))
+          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 1) (-> s4-1 vector 0)))
           )
     (set! (-> s5-1 1)
-          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (the-as vector (-> s4-1 vector))))
+          (vector-length (vector-! (new 'stack-no-clear 'vector) (-> s4-1 vector 2) (-> s4-1 vector 0)))
           )
     )
   (let* ((v1-46 *game-info*)
@@ -917,8 +899,8 @@
 
 (defmethod set-part ((this fire-floor-a))
   "Set the particle launch controls for the on/off states."
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 401) this))
-  (set! (-> this part-off) (create-launch-control (-> *part-group-id-table* 400) this))
+  (set! (-> this part) (create-launch-control group-drill-fire-floor-a-dust this))
+  (set! (-> this part-off) (create-launch-control group-drill-fire-floor-a-heat this))
   0
   (none)
   )
@@ -1278,8 +1260,8 @@
       )
   (logior! (-> this mask) (process-mask collectable))
   (logclear! (-> this mask) (process-mask no-track))
-  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 451) this))
-  (set! (-> this green-part) (create-launch-control (-> *part-group-id-table* 452) this))
+  (set! (-> this part) (create-launch-control group-drill-switch-red this))
+  (set! (-> this green-part) (create-launch-control group-drill-switch-green this))
   0
   (none)
   )
@@ -1395,15 +1377,11 @@
                (let ((f0-7 (probe-using-line-sphere *collide-cache* s5-1)))
                  (when (>= f0-7 0.0)
                    (vector-float*! (-> s5-1 move-dist) (-> s5-1 move-dist) f0-7)
-                   (let ((s4-2 (-> s5-1 best-other-tri collide-ptr)))
-                     (when (if (type? s4-2 collide-shape-prim-sphere)
-                               s4-2
-                               )
-                       (set! gp-0 #t)
-                       (if (zero? (-> self hit-sound-id))
-                           (set! (-> self hit-sound-id) (sound-play "drill-laser-cut"))
-                           )
-                       )
+                   (when (the-as basic (as-type (-> s5-1 best-other-tri collide-ptr) collide-shape-prim-sphere))
+                     (set! gp-0 #t)
+                     (if (zero? (-> self hit-sound-id))
+                         (set! (-> self hit-sound-id) (sound-play "drill-laser-cut"))
+                         )
                      )
                    )
                  )

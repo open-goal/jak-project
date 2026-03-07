@@ -70,10 +70,21 @@
         (label cfg-11)
         (let ((s3-0 (handle->process (-> this array s5-0))))
           (when s3-0
-            (let ((s2-0 (-> (the-as process-focusable s3-0) rbody)))
+            (let* ((s2-0 (-> (the-as process-focusable s3-0) rbody))
+                    ;; og:preserve-this
+                    ;; in the original game, a threshold of 0.001 seconds was used for remaining time.
+                    ;; the idea is to prevent running rigid-body math if it only needs to simulate a tiny
+                    ;; fraction of a frame. However, if the process clock is running slowly due to slow-time
+                    ;; a frame is 0.0008 seconds at 60 fps, which prevents rigid bodies from working.
+                    ;; On PS2, Haven City often lagged below 60fps, making the (seconds-per-frame) go above 0.001 seconds
+                    ;; To fix this, we assume that the original 0.001 was intended to be used at a normal 60 fps
+                    ;; and scale it based on the frame time
+                   (original-threshold (/ 0.001 (/ 1.0 60.0)))
+                   (new-threshold (* original-threshold (seconds-per-frame)))
+                   )
               (when (and (logtest? (-> s2-0 flags) (rigid-body-flag enable-physics))
                          (not (logtest? s4-0 (-> s3-0 mask)))
-                         (and (< 0.001 (-> s2-0 time-remaining)) (< (-> s2-0 step-count) 4))
+                         (and (< new-threshold (-> s2-0 time-remaining)) (< (-> s2-0 step-count) 4))
                          )
                 (let ((s1-0 pp))
                   (set! pp s3-0)

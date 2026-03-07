@@ -1627,7 +1627,7 @@ void emulate_tie_instance_program(std::vector<TieProtoInfo>& protos, GameVersion
 
           bool inserted = frag.vertex_by_dest_addr.insert({(u32)dest_ptr, vertex_info}).second;
           // TODO hack
-          if (version != GameVersion::Jak3) {
+          if (version != GameVersion::Jak3 && version != GameVersion::JakX) {
             ASSERT(inserted);
           }
           nd.bp1++;
@@ -2571,6 +2571,7 @@ void add_vertices_and_static_draw(tfrag3::TieTree& tree,
         break;
       case GameVersion::Jak2:
       case GameVersion::Jak3:
+      case GameVersion::JakX:
         info = get_jak2_tie_category(proto.proto_flag);
         break;
       default:
