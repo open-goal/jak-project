@@ -8,6 +8,7 @@
 
 namespace emitter {
 namespace IGen {
+namespace ARM64 {
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   MOVES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1147,5 +1148,6 @@ InstructionARM64 vpackuswb(Register dst, Register src0, Register src1) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
+}  // namespace ARM64
 }  // namespace IGen
 }  // namespace emitter

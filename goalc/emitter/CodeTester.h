@@ -33,6 +33,7 @@ class CodeTester {
   CodeTester();
   CodeTester(InstructionSet instruction_set);
   std::string dump_to_hex_string(bool nospace = false);
+  ObjectGenerator generator() const { return m_gen; }
   void init_code_buffer(int capacity);
   void emit_push_all_gprs(bool exclude_rax = false);
   void emit_pop_all_gprs(bool exclude_rax = false);

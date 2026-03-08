@@ -153,7 +153,7 @@ class Register {
 #endif
   }
 
-    bool is_xmm() const {
+  bool is_xmm() const {
 #ifndef __aarch64__
     return false;
 #else

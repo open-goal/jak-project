@@ -4,6 +4,9 @@ add_library(compiler
         emitter/ObjectFileData.cpp
         emitter/ObjectGenerator.cpp
         emitter/Register.cpp
+        emitter/IGen.cpp
+        emitter/IGenARM64.cpp
+        emitter/IGenX86.cpp
         debugger/disassemble.cpp
         build_level/common/build_level.cpp
         build_actor/common/animation_processing.cpp
