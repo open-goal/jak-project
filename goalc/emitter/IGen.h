@@ -1,11 +1,9 @@
 #pragma once
 
-#include <stdexcept>
-
 #include "Instruction.h"
 #include "Register.h"
 
-#include "common/util/Assert.h"
+#include "goalc/emitter/ObjectGenerator.h"
 
 namespace emitter {
 namespace IGen {
@@ -15,49 +13,49 @@ namespace IGen {
 /*!
  * Move data from src to dst. Moves all 64-bits of the GPR.
  */
-extern Instruction mov_gpr64_gpr64(Register dst, Register src);
+Instruction mov_gpr64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move a 64-bit constant into a register.
  */
-extern Instruction mov_gpr64_u64(Register dst, uint64_t val);
+Instruction mov_gpr64_u64(const ObjectGenerator& gen, Register dst, uint64_t val);
 
 /*!
  * Move a 32-bit constant into a register. Zeros the upper 32 bits.
  */
-extern Instruction mov_gpr64_u32(Register dst, uint64_t val);
+Instruction mov_gpr64_u32(const ObjectGenerator& gen, Register dst, uint64_t val);
 
 /*!
  * Move a signed 32-bit constant into a register. Sign extends for the upper 32 bits.
  * When possible prefer mov_gpr64_u32. (use this only for negative values...)
  * This is always bigger than mov_gpr64_u32, but smaller than a mov_gpr_u64.
  */
-extern Instruction mov_gpr64_s32(Register dst, int64_t val);
+Instruction mov_gpr64_s32(const ObjectGenerator& gen, Register dst, int64_t val);
 
 /*!
  * Move 32-bits of xmm to 32 bits of gpr (no sign extension).
  */
-extern Instruction movd_gpr32_xmm32(Register dst, Register src);
+Instruction movd_gpr32_xmm32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 32-bits of gpr to 32-bits of xmm (no sign extension)
  */
-extern Instruction movd_xmm32_gpr32(Register dst, Register src);
+Instruction movd_xmm32_gpr32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 64-bits of xmm to 64 bits of gpr (no sign extension).
  */
-extern Instruction movq_gpr64_xmm64(Register dst, Register src);
+Instruction movq_gpr64_xmm64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 64-bits of gpr to 64-bits of xmm (no sign extension)
  */
-extern Instruction movq_xmm64_gpr64(Register dst, Register src);
+Instruction movq_xmm64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Move 32-bits between xmm's
  */
-extern Instruction mov_xmm32_xmm32(Register dst, Register src);
+Instruction mov_xmm32_xmm32(const ObjectGenerator& gen, Register dst, Register src);
 
 // todo - GPR64 -> XMM64 (zext)
 // todo - XMM -> GPR64
@@ -71,239 +69,341 @@ extern Instruction mov_xmm32_xmm32(Register dst, Register src);
  * addr1 and addr2 have to be different registers.
  * Cannot use rsp.
  */
-extern Instruction load8s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction load8s_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                          Register dst,
+                                          Register addr1,
+                                          Register addr2);
 
-extern Instruction store8_gpr64_gpr64_plus_gpr64(Register addr1, Register addr2, Register value);
+Instruction store8_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                          Register addr1,
+                                          Register addr2,
+                                          Register value);
 
-extern Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                         Register addr1,
-                                                         Register addr2,
-                                                         s64 offset);
+Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                  Register dst,
+                                                  Register addr1,
+                                                  Register addr2,
+                                                  s64 offset);
 
-extern Instruction store8_gpr64_gpr64_plus_gpr64_plus_s8(Register addr1,
-                                                         Register addr2,
-                                                         Register value,
-                                                         s64 offset);
+Instruction store8_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                  Register addr1,
+                                                  Register addr2,
+                                                  Register value,
+                                                  s64 offset);
 
-extern Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load8s_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                   Register dst,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
-extern Instruction store8_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
-                                                          Register addr2,
-                                                          Register value,
-                                                          s64 offset);
+Instruction store8_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   Register value,
+                                                   s64 offset);
 
 /*!
  * movzx dst, BYTE PTR [addr1 + addr2]
  * addr1 and addr2 have to be different registers.
  * Cannot use rsp.
  */
-extern Instruction load8u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction load8u_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                          Register dst,
+                                          Register addr1,
+                                          Register addr2);
 
-extern Instruction load8u_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                         Register addr1,
-                                                         Register addr2,
-                                                         s64 offset);
+Instruction load8u_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                  Register dst,
+                                                  Register addr1,
+                                                  Register addr2,
+                                                  s64 offset);
 
-extern Instruction load8u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load8u_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                   Register dst,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
 /*!
  * movsx dst, WORD PTR [addr1 + addr2]
  * addr1 and addr2 have to be different registers.
  * Cannot use rsp.
  */
-extern Instruction load16s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction load16s_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register dst,
+                                           Register addr1,
+                                           Register addr2);
 
-extern Instruction store16_gpr64_gpr64_plus_gpr64(Register addr1, Register addr2, Register value);
+Instruction store16_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register addr1,
+                                           Register addr2,
+                                           Register value);
 
-extern Instruction store16_gpr64_gpr64_plus_gpr64_plus_s8(Register addr1,
-                                                          Register addr2,
-                                                          Register value,
-                                                          s64 offset);
+Instruction store16_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   Register value,
+                                                   s64 offset);
 
-extern Instruction store16_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
-                                                           Register addr2,
-                                                           Register value,
-                                                           s64 offset);
+Instruction store16_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    Register value,
+                                                    s64 offset);
 
-extern Instruction load16s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load16s_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register dst,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
-extern Instruction load16s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                           Register addr1,
-                                                           Register addr2,
-                                                           s64 offset);
+Instruction load16s_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register dst,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    s64 offset);
 
 /*!
  * movzx dst, WORD PTR [addr1 + addr2]
  * addr1 and addr2 have to be different registers.
  * Cannot use rsp.
  */
-extern Instruction load16u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction load16u_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register dst,
+                                           Register addr1,
+                                           Register addr2);
 
-extern Instruction load16u_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load16u_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register dst,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
-extern Instruction load16u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                           Register addr1,
-                                                           Register addr2,
-                                                           s64 offset);
+Instruction load16u_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register dst,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    s64 offset);
 
 /*!
  * movsxd dst, DWORD PTR [addr1 + addr2]
  * addr1 and addr2 have to be different registers.
  * Cannot use rsp.
  */
-extern Instruction load32s_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction load32s_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register dst,
+                                           Register addr1,
+                                           Register addr2);
 
-extern Instruction store32_gpr64_gpr64_plus_gpr64(Register addr1, Register addr2, Register value);
+Instruction store32_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register addr1,
+                                           Register addr2,
+                                           Register value);
 
-extern Instruction load32s_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load32s_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register dst,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
-extern Instruction store32_gpr64_gpr64_plus_gpr64_plus_s8(Register addr1,
-                                                          Register addr2,
-                                                          Register value,
-                                                          s64 offset);
+Instruction store32_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   Register value,
+                                                   s64 offset);
 
-extern Instruction load32s_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                           Register addr1,
-                                                           Register addr2,
-                                                           s64 offset);
+Instruction load32s_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register dst,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    s64 offset);
 
-extern Instruction store32_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
-                                                           Register addr2,
-                                                           Register value,
-                                                           s64 offset);
+Instruction store32_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    Register value,
+                                                    s64 offset);
 
 /*!
  * movzxd dst, DWORD PTR [addr1 + addr2]
  * addr1 and addr2 have to be different registers.
  * Cannot use rsp.
  */
-extern Instruction load32u_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction load32u_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register dst,
+                                           Register addr1,
+                                           Register addr2);
 
-extern Instruction load32u_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load32u_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register dst,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
-extern Instruction load32u_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                           Register addr1,
-                                                           Register addr2,
-                                                           s64 offset);
+Instruction load32u_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register dst,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    s64 offset);
 
 /*!
  * mov dst, QWORD PTR [addr1 + addr2]
  * addr1 and addr2 have to be different registers.
  * Cannot use rsp.
  */
-extern Instruction load64_gpr64_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction load64_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                          Register dst,
+                                          Register addr1,
+                                          Register addr2);
 
-extern Instruction store64_gpr64_gpr64_plus_gpr64(Register addr1, Register addr2, Register value);
+Instruction store64_gpr64_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register addr1,
+                                           Register addr2,
+                                           Register value);
 
-extern Instruction load64_gpr64_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                         Register addr1,
-                                                         Register addr2,
-                                                         s64 offset);
+Instruction load64_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                  Register dst,
+                                                  Register addr1,
+                                                  Register addr2,
+                                                  s64 offset);
 
-extern Instruction store64_gpr64_gpr64_plus_gpr64_plus_s8(Register addr1,
-                                                          Register addr2,
-                                                          Register value,
-                                                          s64 offset);
+Instruction store64_gpr64_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   Register value,
+                                                   s64 offset);
 
-extern Instruction load64_gpr64_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load64_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                   Register dst,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
-extern Instruction store64_gpr64_gpr64_plus_gpr64_plus_s32(Register addr1,
-                                                           Register addr2,
-                                                           Register value,
-                                                           s64 offset);
+Instruction store64_gpr64_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    Register value,
+                                                    s64 offset);
 
-extern Instruction store_goal_vf(Register addr, Register value, Register off, s64 offset);
+Instruction store_goal_vf(const ObjectGenerator& gen,
+                          Register addr,
+                          Register value,
+                          Register off,
+                          s64 offset);
 
-extern Instruction store_goal_gpr(Register addr,
-                                  Register value,
-                                  Register off,
-                                  int offset,
-                                  int size);
+Instruction store_goal_gpr(const ObjectGenerator& gen,
+                           Register addr,
+                           Register value,
+                           Register off,
+                           int offset,
+                           int size);
 
-extern Instruction load_goal_xmm128(Register dst, Register addr, Register off, int offset);
+Instruction load_goal_xmm128(const ObjectGenerator& gen,
+                             Register dst,
+                             Register addr,
+                             Register off,
+                             int offset);
 
 /*!
  * Load memory at addr + offset, where addr is a GOAL pointer and off is the offset register.
  * This will pick the appropriate fancy addressing mode instruction.
  */
-extern Instruction load_goal_gpr(Register dst,
-                                 Register addr,
-                                 Register off,
-                                 int offset,
-                                 int size,
-                                 bool sign_extend);
+Instruction load_goal_gpr(const ObjectGenerator& gen,
+                          Register dst,
+                          Register addr,
+                          Register off,
+                          int offset,
+                          int size,
+                          bool sign_extend);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   LOADS n' STORES - XMM32
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-extern Instruction store32_xmm32_gpr64_plus_gpr64(Register addr1,
+Instruction store32_xmm32_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                           Register addr1,
+                                           Register addr2,
+                                           Register xmm_value);
+
+Instruction load32_xmm32_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                          Register xmm_dest,
+                                          Register addr1,
+                                          Register addr2);
+
+Instruction store32_xmm32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   Register xmm_value,
+                                                   s64 offset);
+
+Instruction load32_xmm32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                                  Register xmm_dest,
+                                                  Register addr1,
                                                   Register addr2,
-                                                  Register xmm_value);
+                                                  s64 offset);
 
-extern Instruction load32_xmm32_gpr64_plus_gpr64(Register xmm_dest, Register addr1, Register addr2);
+Instruction store32_xmm32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                    Register addr1,
+                                                    Register addr2,
+                                                    Register xmm_value,
+                                                    s64 offset);
 
-extern Instruction store32_xmm32_gpr64_plus_gpr64_plus_s8(Register addr1,
-                                                          Register addr2,
-                                                          Register xmm_value,
-                                                          s64 offset);
+Instruction lea_reg_plus_off32(const ObjectGenerator& gen,
+                               Register dest,
+                               Register base,
+                               s64 offset);
 
-extern Instruction load32_xmm32_gpr64_plus_gpr64_plus_s8(Register xmm_dest,
-                                                         Register addr1,
-                                                         Register addr2,
-                                                         s64 offset);
+Instruction lea_reg_plus_off8(const ObjectGenerator& gen, Register dest, Register base, s64 offset);
 
-extern Instruction store32_xmm32_gpr64_plus_gpr64_plus_s32(Register addr1,
-                                                           Register addr2,
-                                                           Register xmm_value,
-                                                           s64 offset);
+Instruction lea_reg_plus_off(const ObjectGenerator& gen, Register dest, Register base, s64 offset);
 
-extern Instruction lea_reg_plus_off32(Register dest, Register base, s64 offset);
+Instruction store32_xmm32_gpr64_plus_s32(const ObjectGenerator& gen,
+                                         Register base,
+                                         Register xmm_value,
+                                         s64 offset);
 
-extern Instruction lea_reg_plus_off8(Register dest, Register base, s64 offset);
+Instruction store32_xmm32_gpr64_plus_s8(const ObjectGenerator& gen,
+                                        Register base,
+                                        Register xmm_value,
+                                        s64 offset);
 
-extern Instruction lea_reg_plus_off(Register dest, Register base, s64 offset);
+Instruction load32_xmm32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                                   Register xmm_dest,
+                                                   Register addr1,
+                                                   Register addr2,
+                                                   s64 offset);
 
-extern Instruction store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s64 offset);
+Instruction load32_xmm32_gpr64_plus_s32(const ObjectGenerator& gen,
+                                        Register xmm_dest,
+                                        Register base,
+                                        s64 offset);
 
-extern Instruction store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, s64 offset);
+Instruction load32_xmm32_gpr64_plus_s8(const ObjectGenerator& gen,
+                                       Register xmm_dest,
+                                       Register base,
+                                       s64 offset);
 
-extern Instruction load32_xmm32_gpr64_plus_gpr64_plus_s32(Register xmm_dest,
-                                                          Register addr1,
-                                                          Register addr2,
-                                                          s64 offset);
+Instruction load_goal_xmm32(const ObjectGenerator& gen,
+                            Register xmm_dest,
+                            Register addr,
+                            Register off,
+                            s64 offset);
 
-extern Instruction load32_xmm32_gpr64_plus_s32(Register xmm_dest, Register base, s64 offset);
+Instruction store_goal_xmm32(const ObjectGenerator& gen,
+                             Register addr,
+                             Register xmm_value,
+                             Register off,
+                             s64 offset);
 
-extern Instruction load32_xmm32_gpr64_plus_s8(Register xmm_dest, Register base, s64 offset);
+Instruction store_reg_offset_xmm32(const ObjectGenerator& gen,
+                                   Register base,
+                                   Register xmm_value,
+                                   s64 offset);
 
-extern Instruction load_goal_xmm32(Register xmm_dest, Register addr, Register off, s64 offset);
-
-extern Instruction store_goal_xmm32(Register addr, Register xmm_value, Register off, s64 offset);
-
-extern Instruction store_reg_offset_xmm32(Register base, Register xmm_value, s64 offset);
-
-extern Instruction load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset);
+Instruction load_reg_offset_xmm32(const ObjectGenerator& gen,
+                                  Register xmm_dest,
+                                  Register base,
+                                  s64 offset);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   LOADS n' STORES - XMM128
@@ -312,67 +412,97 @@ extern Instruction load_reg_offset_xmm32(Register xmm_dest, Register base, s64 o
 /*!
  * Store a 128-bit xmm into an address stored in a register, no offset
  */
-extern Instruction store128_gpr64_xmm128(Register gpr_addr, Register xmm_value);
+Instruction store128_gpr64_xmm128(const ObjectGenerator& gen,
+                                  Register gpr_addr,
+                                  Register xmm_value);
 
-extern Instruction store128_gpr64_xmm128_s32(Register gpr_addr, Register xmm_value, s64 offset);
+Instruction store128_gpr64_xmm128_s32(const ObjectGenerator& gen,
+                                      Register gpr_addr,
+                                      Register xmm_value,
+                                      s64 offset);
 
-extern Instruction store128_gpr64_xmm128_s8(Register gpr_addr, Register xmm_value, s64 offset);
+Instruction store128_gpr64_xmm128_s8(const ObjectGenerator& gen,
+                                     Register gpr_addr,
+                                     Register xmm_value,
+                                     s64 offset);
 
-extern Instruction load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr);
+Instruction load128_xmm128_gpr64(const ObjectGenerator& gen, Register xmm_dest, Register gpr_addr);
 
-extern Instruction load128_xmm128_gpr64_s32(Register xmm_dest, Register gpr_addr, s64 offset);
+Instruction load128_xmm128_gpr64_s32(const ObjectGenerator& gen,
+                                     Register xmm_dest,
+                                     Register gpr_addr,
+                                     s64 offset);
 
-extern Instruction load128_xmm128_gpr64_s8(Register xmm_dest, Register gpr_addr, s64 offset);
+Instruction load128_xmm128_gpr64_s8(const ObjectGenerator& gen,
+                                    Register xmm_dest,
+                                    Register gpr_addr,
+                                    s64 offset);
 
-extern Instruction load128_xmm128_reg_offset(Register xmm_dest, Register base, s64 offset);
+Instruction load128_xmm128_reg_offset(const ObjectGenerator& gen,
+                                      Register xmm_dest,
+                                      Register base,
+                                      s64 offset);
 
-extern Instruction store128_xmm128_reg_offset(Register base, Register xmm_val, s64 offset);
+Instruction store128_xmm128_reg_offset(const ObjectGenerator& gen,
+                                       Register base,
+                                       Register xmm_val,
+                                       s64 offset);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   RIP loads and stores
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-extern Instruction load64_rip_s32(Register dest, s64 offset);
+Instruction load64_rip_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
-extern Instruction load32s_rip_s32(Register dest, s64 offset);
+Instruction load32s_rip_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
-extern Instruction load32u_rip_s32(Register dest, s64 offset);
+Instruction load32u_rip_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
-extern Instruction load16u_rip_s32(Register dest, s64 offset);
+Instruction load16u_rip_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
-extern Instruction load16s_rip_s32(Register dest, s64 offset);
+Instruction load16s_rip_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
-extern Instruction load8u_rip_s32(Register dest, s64 offset);
+Instruction load8u_rip_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
-extern Instruction load8s_rip_s32(Register dest, s64 offset);
+Instruction load8s_rip_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
-extern Instruction static_load(Register dest, s64 offset, int size, bool sign_extend);
+Instruction static_load(const ObjectGenerator& gen,
+                        Register dest,
+                        s64 offset,
+                        int size,
+                        bool sign_extend);
 
-extern Instruction store64_rip_s32(Register src, s64 offset);
+Instruction store64_rip_s32(const ObjectGenerator& gen, Register src, s64 offset);
 
-extern Instruction store32_rip_s32(Register src, s64 offset);
+Instruction store32_rip_s32(const ObjectGenerator& gen, Register src, s64 offset);
 
-extern Instruction store16_rip_s32(Register src, s64 offset);
+Instruction store16_rip_s32(const ObjectGenerator& gen, Register src, s64 offset);
 
-extern Instruction store8_rip_s32(Register src, s64 offset);
+Instruction store8_rip_s32(const ObjectGenerator& gen, Register src, s64 offset);
 
-extern Instruction static_store(Register value, s64 offset, int size);
+Instruction static_store(const ObjectGenerator& gen, Register value, s64 offset, int size);
 
-extern Instruction static_addr(Register dst, s64 offset);
+Instruction static_addr(const ObjectGenerator& gen, Register dst, s64 offset);
 
-extern Instruction static_load_xmm32(Register xmm_dest, s64 offset);
+Instruction static_load_xmm32(const ObjectGenerator& gen, Register xmm_dest, s64 offset);
 
-extern Instruction static_store_xmm32(Register xmm_value, s64 offset);
+Instruction static_store_xmm32(const ObjectGenerator& gen, Register xmm_value, s64 offset);
 
 // TODO, special load/stores of 128 bit values.
 
 // TODO, consider specialized stack loads and stores?
-extern Instruction load64_gpr64_plus_s32(Register dst_reg, int32_t offset, Register src_reg);
+Instruction load64_gpr64_plus_s32(const ObjectGenerator& gen,
+                                  Register dst_reg,
+                                  int32_t offset,
+                                  Register src_reg);
 
 /*!
  * Store 64-bits from gpr into memory located at 64-bit reg + 32-bit signed offset.
  */
-extern Instruction store64_gpr64_plus_s32(Register addr, int32_t offset, Register value);
+Instruction store64_gpr64_plus_s32(const ObjectGenerator& gen,
+                                   Register addr,
+                                   int32_t offset,
+                                   Register value);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   FUNCTION STUFF
@@ -380,82 +510,82 @@ extern Instruction store64_gpr64_plus_s32(Register addr, int32_t offset, Registe
 /*!
  * Function return. Pops the 64-bit return address (real) off the stack and jumps to it.
  */
-extern Instruction ret();
+Instruction ret(const ObjectGenerator& gen);
 
 /*!
  * Instruction to push gpr (64-bits) onto the stack
  */
-extern Instruction push_gpr64(Register reg);
+Instruction push_gpr64(const ObjectGenerator& gen, Register reg);
 
 /*!
  * Instruction to pop 64 bit gpr from the stack
  */
-extern Instruction pop_gpr64(Register reg);
+Instruction pop_gpr64(const ObjectGenerator& gen, Register reg);
 
 /*!
  * Call a function stored in a 64-bit gpr
  */
-extern Instruction call_r64(Register reg_);
+Instruction call_r64(const ObjectGenerator& gen, Register reg_);
 
 /*!
  * Jump to an x86-64 address stored in a 64-bit gpr.
  */
-extern Instruction jmp_r64(Register reg_);
+Instruction jmp_r64(const ObjectGenerator& gen, Register reg_);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   INTEGER MATH
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-extern Instruction sub_gpr64_imm8s(Register reg, int64_t imm);
+Instruction sub_gpr64_imm8s(const ObjectGenerator& gen, Register reg, int64_t imm);
 
-extern Instruction sub_gpr64_imm32s(Register reg, int64_t imm);
+Instruction sub_gpr64_imm32s(const ObjectGenerator& gen, Register reg, int64_t imm);
 
-extern Instruction add_gpr64_imm8s(Register reg, int64_t v);
+Instruction add_gpr64_imm8s(const ObjectGenerator& gen, Register reg, int64_t v);
 
-extern Instruction add_gpr64_imm32s(Register reg, int64_t v);
+Instruction add_gpr64_imm32s(const ObjectGenerator& gen, Register reg, int64_t v);
 
-extern Instruction add_gpr64_imm(Register reg, int64_t imm);
+Instruction add_gpr64_imm(const ObjectGenerator& gen, Register reg, int64_t imm);
 
-extern Instruction sub_gpr64_imm(Register reg, int64_t imm);
+Instruction sub_gpr64_imm(const ObjectGenerator& gen, Register reg, int64_t imm);
 
-extern Instruction add_gpr64_gpr64(Register dst, Register src);
+Instruction add_gpr64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
-extern Instruction sub_gpr64_gpr64(Register dst, Register src);
+Instruction sub_gpr64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Multiply gprs (32-bit, signed).
  * (Note - probably worth doing imul on gpr64's to implement the EE's unsigned multiply)
  */
-extern Instruction imul_gpr32_gpr32(Register dst, Register src);
+Instruction imul_gpr32_gpr32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Multiply gprs (64-bit, signed).
  * DANGER - this treats all operands as 64-bit. This is not like the EE.
  */
-extern Instruction imul_gpr64_gpr64(Register dst, Register src);
+Instruction imul_gpr64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Divide (idiv, 32 bit)
  */
-extern Instruction idiv_gpr32(Register reg);
+Instruction idiv_gpr32(const ObjectGenerator& gen, Register reg);
 
-extern Instruction unsigned_div_gpr32(Register reg);
+Instruction unsigned_div_gpr32(const ObjectGenerator& gen, Register reg);
 
 /*!
  * Convert doubleword to quadword for division.
  */
-extern Instruction cdq();
+Instruction cdq(const ObjectGenerator& gen);
 
 /*!
  * Move from gpr32 to gpr64, with sign extension.
  * Needed for multiplication/divsion madness.
  */
-extern Instruction movsx_r64_r32(Register dst, Register src);
+Instruction movsx_r64_r32(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Compare gpr64.  This sets the flags for the jumps.
  * todo UNTESTED
  */
-extern Instruction cmp_gpr64_gpr64(Register a, Register b);
+Instruction cmp_gpr64_gpr64(const ObjectGenerator& gen, Register a, Register b);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   BIT STUFF
@@ -464,22 +594,22 @@ extern Instruction cmp_gpr64_gpr64(Register a, Register b);
 /*!
  * Or of two gprs
  */
-extern Instruction or_gpr64_gpr64(Register dst, Register src);
+Instruction or_gpr64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * And of two gprs
  */
-extern Instruction and_gpr64_gpr64(Register dst, Register src);
+Instruction and_gpr64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Xor of two gprs
  */
-extern Instruction xor_gpr64_gpr64(Register dst, Register src);
+Instruction xor_gpr64_gpr64(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Bitwise not a gpr
  */
-extern Instruction not_gpr64(Register reg);
+Instruction not_gpr64(const ObjectGenerator& gen, Register reg);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   SHIFTS
@@ -488,32 +618,32 @@ extern Instruction not_gpr64(Register reg);
 /*!
  * Shift 64-bit gpr left by CL register
  */
-extern Instruction shl_gpr64_cl(Register reg);
+Instruction shl_gpr64_cl(const ObjectGenerator& gen, Register reg);
 
 /*!
  * Shift 64-bit gpr right (logical) by CL register
  */
-extern Instruction shr_gpr64_cl(Register reg);
+Instruction shr_gpr64_cl(const ObjectGenerator& gen, Register reg);
 
 /*!
  * Shift 64-bit gpr right (arithmetic) by CL register
  */
-extern Instruction sar_gpr64_cl(Register reg);
+Instruction sar_gpr64_cl(const ObjectGenerator& gen, Register reg);
 
 /*!
  * Shift 64-ptr left (logical) by the constant shift amount "sa".
  */
-extern Instruction shl_gpr64_u8(Register reg, uint8_t sa);
+Instruction shl_gpr64_u8(const ObjectGenerator& gen, Register reg, uint8_t sa);
 
 /*!
  * Shift 64-ptr right (logical) by the constant shift amount "sa".
  */
-extern Instruction shr_gpr64_u8(Register reg, uint8_t sa);
+Instruction shr_gpr64_u8(const ObjectGenerator& gen, Register reg, uint8_t sa);
 
 /*!
  * Shift 64-ptr right (arithmetic) by the constant shift amount "sa".
  */
-extern Instruction sar_gpr64_u8(Register reg, uint8_t sa);
+Instruction sar_gpr64_u8(const ObjectGenerator& gen, Register reg, uint8_t sa);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   CONTROL FLOW
@@ -522,57 +652,57 @@ extern Instruction sar_gpr64_u8(Register reg, uint8_t sa);
 /*!
  * Jump, 32-bit constant offset.  The offset is by default 0 and must be patched later.
  */
-extern Instruction jmp_32();
+Instruction jmp_32(const ObjectGenerator& gen);
 
 /*!
  * Jump if equal.
  */
-extern Instruction je_32();
+Instruction je_32(const ObjectGenerator& gen);
 
 /*!
  * Jump not equal.
  */
-extern Instruction jne_32();
+Instruction jne_32(const ObjectGenerator& gen);
 
 /*!
  * Jump less than or equal.
  */
-extern Instruction jle_32();
+Instruction jle_32(const ObjectGenerator& gen);
 
 /*!
  * Jump greater than or equal.
  */
-extern Instruction jge_32();
+Instruction jge_32(const ObjectGenerator& gen);
 
 /*!
  * Jump less than
  */
-extern Instruction jl_32();
+Instruction jl_32(const ObjectGenerator& gen);
 
 /*!
  * Jump greater than
  */
-extern Instruction jg_32();
+Instruction jg_32(const ObjectGenerator& gen);
 
 /*!
  * Jump below or equal
  */
-extern Instruction jbe_32();
+Instruction jbe_32(const ObjectGenerator& gen);
 
 /*!
  * Jump above or equal
  */
-extern Instruction jae_32();
+Instruction jae_32(const ObjectGenerator& gen);
 
 /*!
  * Jump below
  */
-extern Instruction jb_32();
+Instruction jb_32(const ObjectGenerator& gen);
 
 /*!
  * Jump above
  */
-extern Instruction ja_32();
+Instruction ja_32(const ObjectGenerator& gen);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   FLOAT MATH
@@ -581,51 +711,51 @@ extern Instruction ja_32();
 /*!
  * Compare two floats and set flag register for jump (ucomiss)
  */
-extern Instruction cmp_flt_flt(Register a, Register b);
+Instruction cmp_flt_flt(const ObjectGenerator& gen, Register a, Register b);
 
-extern Instruction sqrts_xmm(Register dst, Register src);
+Instruction sqrts_xmm(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Multiply two floats in xmm's
  */
-extern Instruction mulss_xmm_xmm(Register dst, Register src);
+Instruction mulss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Divide two floats in xmm's
  */
-extern Instruction divss_xmm_xmm(Register dst, Register src);
+Instruction divss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Subtract two floats in xmm's
  */
-extern Instruction subss_xmm_xmm(Register dst, Register src);
+Instruction subss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Add two floats in xmm's
  */
-extern Instruction addss_xmm_xmm(Register dst, Register src);
+Instruction addss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Floating point minimum.
  */
-extern Instruction minss_xmm_xmm(Register dst, Register src);
+Instruction minss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Floating point maximum.
  */
-extern Instruction maxss_xmm_xmm(Register dst, Register src);
+Instruction maxss_xmm_xmm(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Convert GPR int32 to XMM float (single precision)
  */
-extern Instruction int32_to_float(Register dst, Register src);
+Instruction int32_to_float(const ObjectGenerator& gen, Register dst, Register src);
 
 /*!
  * Convert XMM float to GPR int32(single precision) (truncate)
  */
-extern Instruction float_to_int32(Register dst, Register src);
+Instruction float_to_int32(const ObjectGenerator& gen, Register dst, Register src);
 
-extern Instruction nop();
+Instruction nop(const ObjectGenerator& gen);
 
 // TODO - rsqrt / abs / sqrt
 
@@ -638,49 +768,64 @@ extern Instruction nop();
  * but can be referred to by a label.  Useful to insert in place of a real instruction
  * if the real instruction has been optimized out.
  */
-extern Instruction null();
+Instruction null(const ObjectGenerator& gen);
 
 /////////////////////////////
 // AVX (VF - Vector Float) //
 /////////////////////////////
 
-extern Instruction nop_vf();
+Instruction nop_vf(const ObjectGenerator& gen);
 
-extern Instruction wait_vf();
+Instruction wait_vf(const ObjectGenerator& gen);
 
-extern Instruction mov_vf_vf(Register dst, Register src);
+Instruction mov_vf_vf(const ObjectGenerator& gen, Register dst, Register src);
 
-extern Instruction loadvf_gpr64_plus_gpr64(Register dst, Register addr1, Register addr2);
+Instruction loadvf_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                    Register dst,
+                                    Register addr1,
+                                    Register addr2);
 
-extern Instruction loadvf_gpr64_plus_gpr64_plus_s8(Register dst,
-                                                   Register addr1,
-                                                   Register addr2,
-                                                   s64 offset);
+Instruction loadvf_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                            Register dst,
+                                            Register addr1,
+                                            Register addr2,
+                                            s64 offset);
 
-extern Instruction loadvf_gpr64_plus_gpr64_plus_s32(Register dst,
-                                                    Register addr1,
-                                                    Register addr2,
-                                                    s64 offset);
+Instruction loadvf_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                             Register dst,
+                                             Register addr1,
+                                             Register addr2,
+                                             s64 offset);
 
-extern Instruction storevf_gpr64_plus_gpr64(Register value, Register addr1, Register addr2);
+Instruction storevf_gpr64_plus_gpr64(const ObjectGenerator& gen,
+                                     Register value,
+                                     Register addr1,
+                                     Register addr2);
 
-extern Instruction storevf_gpr64_plus_gpr64_plus_s8(Register value,
-                                                    Register addr1,
-                                                    Register addr2,
-                                                    s64 offset);
+Instruction storevf_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
+                                             Register value,
+                                             Register addr1,
+                                             Register addr2,
+                                             s64 offset);
 
-extern Instruction storevf_gpr64_plus_gpr64_plus_s32(Register value,
-                                                     Register addr1,
-                                                     Register addr2,
-                                                     s64 offset);
+Instruction storevf_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
+                                              Register value,
+                                              Register addr1,
+                                              Register addr2,
+                                              s64 offset);
 
-extern Instruction loadvf_rip_plus_s32(Register dest, s64 offset);
+Instruction loadvf_rip_plus_s32(const ObjectGenerator& gen, Register dest, s64 offset);
 
 // TODO - rip relative loads and stores.
 
-extern Instruction blend_vf(Register dst, Register src1, Register src2, u8 mask);
+Instruction blend_vf(const ObjectGenerator& gen,
+                     Register dst,
+                     Register src1,
+                     Register src2,
+                     u8 mask);
 
-extern Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw);
+Instruction
+shuffle_vf(const ObjectGenerator& gen, Register dst, Register src, u8 dx, u8 dy, u8 dz, u8 dw);
 
 /*
   Generic Swizzle (re-arrangment of packed FPs) operation, the control bytes are quite involved.
@@ -700,7 +845,7 @@ extern Instruction shuffle_vf(Register dst, Register src, u8 dx, u8 dy, u8 dz, u
   SHUFPS xmm1, xmm1, 0x39 ; Rotate right
   > (4.5, 1.5, 2.5, 3.5)
   */
-extern Instruction swizzle_vf(Register dst, Register src, u8 controlBytes);
+Instruction swizzle_vf(const ObjectGenerator& gen, Register dst, Register src, u8 controlBytes);
 
 /*
   Splats a single element in 'src' to all elements in 'dst'
@@ -710,45 +855,60 @@ extern Instruction swizzle_vf(Register dst, Register src, u8 controlBytes);
   splat_vf(xmm1, xmm2, XMM_ELEMENT::X);
   xmm1 = (4, 4, 4, 4)
   */
-extern Instruction splat_vf(Register dst, Register src, Register::VF_ELEMENT element);
+Instruction splat_vf(const ObjectGenerator& gen,
+                     Register dst,
+                     Register src,
+                     Register::VF_ELEMENT element);
 
-extern Instruction xor_vf(Register dst, Register src1, Register src2);
+Instruction xor_vf(const ObjectGenerator& gen, Register dst, Register src1, Register src2);
 
-extern Instruction sub_vf(Register dst, Register src1, Register src2);
+Instruction sub_vf(const ObjectGenerator& gen, Register dst, Register src1, Register src2);
 
-extern Instruction add_vf(Register dst, Register src1, Register src2);
+Instruction add_vf(const ObjectGenerator& gen, Register dst, Register src1, Register src2);
 
-extern Instruction mul_vf(Register dst, Register src1, Register src2);
+Instruction mul_vf(const ObjectGenerator& gen, Register dst, Register src1, Register src2);
 
-extern Instruction max_vf(Register dst, Register src1, Register src2);
+Instruction max_vf(const ObjectGenerator& gen, Register dst, Register src1, Register src2);
 
-extern Instruction min_vf(Register dst, Register src1, Register src2);
+Instruction min_vf(const ObjectGenerator& gen, Register dst, Register src1, Register src2);
 
-extern Instruction div_vf(Register dst, Register src1, Register src2);
+Instruction div_vf(const ObjectGenerator& gen, Register dst, Register src1, Register src2);
 
-extern Instruction sqrt_vf(Register dst, Register src);
+Instruction sqrt_vf(const ObjectGenerator& gen, Register dst, Register src);
 
-extern Instruction itof_vf(Register dst, Register src);
+Instruction itof_vf(const ObjectGenerator& gen, Register dst, Register src);
 
-extern Instruction ftoi_vf(Register dst, Register src);
+Instruction ftoi_vf(const ObjectGenerator& gen, Register dst, Register src);
 
-extern Instruction pw_sra(Register dst, Register src, u8 imm);
+Instruction pw_sra(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction pw_srl(Register dst, Register src, u8 imm);
+Instruction pw_srl(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction ph_srl(Register dst, Register src, u8 imm);
+Instruction ph_srl(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction pw_sll(Register dst, Register src, u8 imm);
+Instruction pw_sll(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction ph_sll(Register dst, Register src, u8 imm);
+Instruction ph_sll(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction parallel_add_byte(Register dst, Register src0, Register src1);
+Instruction parallel_add_byte(const ObjectGenerator& gen,
+                              Register dst,
+                              Register src0,
+                              Register src1);
 
-extern Instruction parallel_bitwise_or(Register dst, Register src0, Register src1);
+Instruction parallel_bitwise_or(const ObjectGenerator& gen,
+                                Register dst,
+                                Register src0,
+                                Register src1);
 
-extern Instruction parallel_bitwise_xor(Register dst, Register src0, Register src1);
+Instruction parallel_bitwise_xor(const ObjectGenerator& gen,
+                                 Register dst,
+                                 Register src0,
+                                 Register src1);
 
-extern Instruction parallel_bitwise_and(Register dst, Register src0, Register src1);
+Instruction parallel_bitwise_and(const ObjectGenerator& gen,
+                                 Register dst,
+                                 Register src0,
+                                 Register src1);
 
 // Reminder - a word in MIPS = 32bits = a DWORD in x86
 //     MIPS   ||   x86
@@ -759,53 +919,71 @@ extern Instruction parallel_bitwise_and(Register dst, Register src0, Register sr
 // doubleword || quadword
 
 // -- Unpack High Data Instructions
-extern Instruction pextub_swapped(Register dst, Register src0, Register src1);
+Instruction pextub_swapped(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction pextuh_swapped(Register dst, Register src0, Register src1);
+Instruction pextuh_swapped(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction pextuw_swapped(Register dst, Register src0, Register src1);
+Instruction pextuw_swapped(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
 // -- Unpack Low Data Instructions
-extern Instruction pextlb_swapped(Register dst, Register src0, Register src1);
+Instruction pextlb_swapped(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction pextlh_swapped(Register dst, Register src0, Register src1);
+Instruction pextlh_swapped(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction pextlw_swapped(Register dst, Register src0, Register src1);
+Instruction pextlw_swapped(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
 // Equal to than comparison as 16 bytes (8 bits)
-extern Instruction parallel_compare_e_b(Register dst, Register src0, Register src1);
+Instruction parallel_compare_e_b(const ObjectGenerator& gen,
+                                 Register dst,
+                                 Register src0,
+                                 Register src1);
 
 // Equal to than comparison as 8 halfwords (16 bits)
-extern Instruction parallel_compare_e_h(Register dst, Register src0, Register src1);
+Instruction parallel_compare_e_h(const ObjectGenerator& gen,
+                                 Register dst,
+                                 Register src0,
+                                 Register src1);
 
 // Equal to than comparison as 4 words (32 bits)
-extern Instruction parallel_compare_e_w(Register dst, Register src0, Register src1);
+Instruction parallel_compare_e_w(const ObjectGenerator& gen,
+                                 Register dst,
+                                 Register src0,
+                                 Register src1);
 
 // Greater than comparison as 16 bytes (8 bits)
-extern Instruction parallel_compare_gt_b(Register dst, Register src0, Register src1);
+Instruction parallel_compare_gt_b(const ObjectGenerator& gen,
+                                  Register dst,
+                                  Register src0,
+                                  Register src1);
 
 // Greater than comparison as 8 halfwords (16 bits)
-extern Instruction parallel_compare_gt_h(Register dst, Register src0, Register src1);
+Instruction parallel_compare_gt_h(const ObjectGenerator& gen,
+                                  Register dst,
+                                  Register src0,
+                                  Register src1);
 
 // Greater than comparison as 4 words (32 bits)
-extern Instruction parallel_compare_gt_w(Register dst, Register src0, Register src1);
+Instruction parallel_compare_gt_w(const ObjectGenerator& gen,
+                                  Register dst,
+                                  Register src0,
+                                  Register src1);
 
-extern Instruction vpunpcklqdq(Register dst, Register src0, Register src1);
+Instruction vpunpcklqdq(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction pcpyld_swapped(Register dst, Register src0, Register src1);
+Instruction pcpyld_swapped(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction pcpyud(Register dst, Register src0, Register src1);
+Instruction pcpyud(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction vpsubd(Register dst, Register src0, Register src1);
+Instruction vpsubd(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 
-extern Instruction vpsrldq(Register dst, Register src, u8 imm);
+Instruction vpsrldq(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction vpslldq(Register dst, Register src, u8 imm);
+Instruction vpslldq(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction vpshuflw(Register dst, Register src, u8 imm);
+Instruction vpshuflw(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction vpshufhw(Register dst, Register src, u8 imm);
+Instruction vpshufhw(const ObjectGenerator& gen, Register dst, Register src, u8 imm);
 
-extern Instruction vpackuswb(Register dst, Register src0, Register src1);
+Instruction vpackuswb(const ObjectGenerator& gen, Register dst, Register src0, Register src1);
 };  // namespace IGen
 }  // namespace emitter

@@ -6,7 +6,11 @@
  * The CodeTester can't be used for tests requiring the full GOAL language/linking.
  */
 
+#include <stdexcept>
+
 #include "common/common_types.h"
+
+#include "goalc/emitter/Instruction.h"
 #ifdef OS_POSIX
 #include <sys/mman.h>
 #elif _WIN32
@@ -23,6 +27,9 @@
 namespace emitter {
 
 CodeTester::CodeTester() : m_info(RegisterInfo::make_register_info()) {}
+
+CodeTester::CodeTester(CodeGenerator::InstructionSet instruction_set)
+    : m_instruction_set(instruction_set), m_info(RegisterInfo::make_register_info()) {}
 
 /*!
  * Convert to a string for comparison against an assembler or tests.
@@ -50,7 +57,7 @@ std::string CodeTester::dump_to_hex_string(bool nospace) {
 /*!
  * Add an instruction to the buffer.
  */
-void CodeTester::emit(const emitter::Instruction& instr) {
+void CodeTester::emit(const emitter::InstructionX86& instr) {
   code_buffer_size += instr.emit(code_buffer + code_buffer_size);
   ASSERT(code_buffer_size <= code_buffer_capacity);
 }
@@ -66,38 +73,44 @@ void CodeTester::emit_return() {
  * Pop all GPRs off of the stack. Optionally exclude rax.
  * Pops RSP always, which is weird, but doesn't cause issues.
  */
-void CodeTester::emit_pop_all_gprs(bool exclude_rax) {
-#ifndef __aarch64__
-  for (int i = 16; i-- > 0;) {
-    if (i != RAX || !exclude_rax) {
-      emit(IGen::pop_gpr64(i));
+void CodeTester::emit_pop_all_gprs(bool exclude_return_register) {
+  if (m_instruction_set == CodeGenerator::InstructionSet::X86) {
+    for (int i = 16; i-- > 0;) {
+      if (i != RAX || !exclude_return_register) {
+        emit(IGen::pop_gpr64(i));
+      }
     }
+  } else if (m_instruction_set == CodeGenerator::InstructionSet::ARM64) {
+    for (int i = 0; i < 32; i++) {
+      if (i != X0 || !exclude_return_register) {
+        emit(IGen::pop_gpr64(i));
+      }
+    }
+  } else {
+    throw std::runtime_error("CodeTester::emit_pop_all_gprs unhandled instruction set");
   }
-#else
-  // TODO find uses for excluding RAX
-  for (int i = 0; i < 32; i++) {
-    emit(IGen::pop_gpr64(i));
-  }
-#endif
 }
 
 /*!
  * Push all GPRs onto the stack. Optionally exclude RAX.
  * Pushes RSP always, which is weird, but doesn't cause issues.
  */
-void CodeTester::emit_push_all_gprs(bool exclude_rax) {
-#ifndef __aarch64__
-  for (int i = 0; i < 16; i++) {
-    if (i != RAX || !exclude_rax) {
-      emit(IGen::push_gpr64(i));
+void CodeTester::emit_push_all_gprs(bool exclude_return_register) {
+  if (m_instruction_set == CodeGenerator::InstructionSet::X86) {
+    for (int i = 16; i-- > 0;) {
+      if (i != RAX || !exclude_return_register) {
+        emit(IGen::push_gpr64(i));
+      }
     }
+  } else if (m_instruction_set == CodeGenerator::InstructionSet::ARM64) {
+    for (int i = 0; i < 32; i++) {
+      if (i != X0 || !exclude_return_register) {
+        emit(IGen::push_gpr64(i));
+      }
+    }
+  } else {
+    throw std::runtime_error("CodeTester::emit_push_all_gprs unhandled instruction set");
   }
-#else
-  // TODO find uses for excluding RAX
-  for (int i = 0; i < 32; i++) {
-    emit(IGen::push_gpr64(i));
-  }
-#endif
 }
 
 /*!

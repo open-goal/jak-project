@@ -329,11 +329,6 @@ void interp_time_of_day_slow(const math::Vector<s32, 4> itimes[4],
 void interp_time_of_day(const math::Vector<s32, 4> itimes[4],
                         const tfrag3::PackedTimeOfDay& packed_colors,
                         math::Vector<u8, 4>* out) {
-#ifdef __aarch64__
-// TODO - make this fast, or maybe it already is since we used intrinsics instead of
-// trying to do things manually here? Unless, does arm64 not have intrinsics
-  interp_time_of_day_slow(itimes, packed_colors, out);
-#else
   math::Vector<u16, 4> weights[8];
   for (int component = 0; component < 8; component++) {
     int quad_idx = component / 2;
@@ -485,7 +480,6 @@ void interp_time_of_day(const math::Vector<s32, 4> itimes[4],
       _mm_storel_epi64((__m128i*)(&out[color_quad * 4 + 2]), result);
     }
   }
-#endif
 }
 
 bool sphere_in_view_ref(const math::Vector4f& sphere, const math::Vector4f* planes) {

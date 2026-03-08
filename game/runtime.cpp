@@ -27,7 +27,6 @@
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/goal_constants.h"
 #include "common/log/log.h"
-#include "common/util/FileUtil.h"
 #include "common/versions/versions.h"
 
 #include "game/external/discord.h"
@@ -55,9 +54,6 @@
 #include "game/kernel/jak3/klisten.h"
 #include "game/kernel/jak3/kscheme.h"
 #include "game/kernel/jakx/kboot.h"
-#include "game/kernel/jakx/kdgo.h"
-#include "game/kernel/jakx/klisten.h"
-#include "game/kernel/jakx/kscheme.h"
 #include "game/overlord/common/fake_iso.h"
 #include "game/overlord/common/iso.h"
 #include "game/overlord/common/sbank.h"
@@ -70,7 +66,6 @@
 #include "game/overlord/jak1/overlord.h"
 #include "game/overlord/jak1/ramdisk.h"
 #include "game/overlord/jak1/srpc.h"
-#include "game/overlord/jak1/ssound.h"
 #include "game/overlord/jak1/stream.h"
 #include "game/overlord/jak2/dma.h"
 #include "game/overlord/jak2/iso_cd.h"
@@ -82,7 +77,6 @@
 #include "game/overlord/jak2/stream.h"
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
-#include "game/overlord/jak3/init.h"
 #include "game/overlord/jak3/overlord.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
@@ -155,7 +149,7 @@ void deci2_runner(SystemThreadInterface& iface) {
 void ee_runner(SystemThreadInterface& iface) {
   prof().root_event();
   // Allocate Main RAM. Must have execute enabled.
-  // TODO Apple Silicone - You cannot make a page be RWX,
+  // TODO Apple Silicon - You cannot make a page be RWX,
   // or more specifically it can't be both writable and executable at the same time
   //
   // https://github.com/zherczeg/sljit/issues/99

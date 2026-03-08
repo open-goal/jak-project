@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "common/common_types.h"
@@ -17,15 +18,19 @@ class HeapObject;
 }  // namespace goos
 
 struct InstructionInfo {
-  emitter::Instruction instruction;  //! the actual x86 instruction
+  std::variant<emitter::InstructionX86, emitter::InstructionARM64> instruction;
   enum class Kind { PROLOGUE, IR, EPILOGUE } kind;
   int ir_idx = -1;
   int offset = -1;
 
-  InstructionInfo(const emitter::Instruction _instruction, Kind _kind)
+  InstructionInfo(const emitter::InstructionX86& _instruction, Kind _kind)
       : instruction(_instruction), kind(_kind) {}
+  InstructionInfo(const emitter::InstructionX86& _instruction, Kind _kind, int _ir_idx)
+      : instruction(_instruction), kind(_kind), ir_idx(_ir_idx) {}
 
-  InstructionInfo(const emitter::Instruction _instruction, Kind _kind, int _ir_idx)
+  InstructionInfo(const emitter::InstructionARM64& _instruction, Kind _kind)
+      : instruction(_instruction), kind(_kind) {}
+  InstructionInfo(const emitter::InstructionARM64& _instruction, Kind _kind, int _ir_idx)
       : instruction(_instruction), kind(_kind), ir_idx(_ir_idx) {}
 };
 
@@ -44,3 +49,5 @@ std::string disassemble_x86_function(
     bool* had_failure,
     bool print_whole_function,
     bool omit_ir);
+
+// TODO ARM64 - disassemble arm64 functions as well

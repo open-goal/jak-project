@@ -7,6 +7,7 @@
 
 #include "CodeGenerator.h"
 
+#include <stdexcept>
 #include <unordered_set>
 
 #include "IR.h"
@@ -18,8 +19,11 @@
 
 using namespace emitter;
 
-CodeGenerator::CodeGenerator(FileEnv* env, DebugInfo* debug_info, GameVersion version)
-    : m_gen(version), m_fe(env), m_debug_info(debug_info) {}
+CodeGenerator::CodeGenerator(FileEnv* env,
+                             DebugInfo* debug_info,
+                             GameVersion version,
+                             InstructionSet instruction_set)
+    : m_gen(version), m_fe(env), m_debug_info(debug_info), m_instruction_set(instruction_set) {}
 
 /*!
  * Generate an object file.
@@ -62,9 +66,21 @@ std::vector<u8> CodeGenerator::run(const TypeSystem* ts) {
 
 void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
   if (env->is_asm_func) {
-    do_asm_function(env, f_idx, env->asm_func_saved_regs);
+    if (m_instruction_set == InstructionSet::X86) {
+      do_asm_function_x86(env, f_idx, env->asm_func_saved_regs);
+    } else if (m_instruction_set == InstructionSet::ARM64) {
+      do_asm_function_arm64(env, f_idx, env->asm_func_saved_regs);
+    } else {
+      throw std::runtime_error("CodeGenerator::do_function, instruction set not supported");
+    }
   } else {
-    do_goal_function(env, f_idx);
+    if (m_instruction_set == InstructionSet::X86) {
+      do_goal_function_x86(env, f_idx);
+    } else if (m_instruction_set == InstructionSet::ARM64) {
+      do_goal_function_arm64(env, f_idx);
+    } else {
+      throw std::runtime_error("CodeGenerator::do_function, instruction set not supported");
+    }
   }
 }
 
@@ -72,7 +88,7 @@ void CodeGenerator::do_function(FunctionEnv* env, int f_idx) {
  * Add instructions to the function, specified by index.
  * Generates prologues / epilogues.
  */
-void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
+void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
   bool use_new_xmms = true;
   auto* debug = &m_debug_info->function_by_name(env->name());
 
@@ -88,7 +104,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   // count how many xmm's we have to backup
   int n_xmm_backups = 0;
   for (auto& saved_reg : allocs.used_saved_regs) {
-    if (saved_reg.is_128bit_simd()) {
+    if (saved_reg.is_xmm()) {
       n_xmm_backups++;
     }
   }
@@ -105,7 +121,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
       // back up xmms
       int i = 0;
       for (auto& saved_reg : allocs.used_saved_regs) {
-        if (saved_reg.is_128bit_simd()) {
+        if (saved_reg.is_xmm()) {
           int offset = i * XMM_SIZE;
           m_gen.add_instr_no_ir(f_rec, IGen::store128_xmm128_reg_offset(RSP, saved_reg, offset),
                                 InstructionInfo::Kind::PROLOGUE);
@@ -116,7 +132,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   } else {
     // back up xmms (currently not aligned)
     for (auto& saved_reg : allocs.used_saved_regs) {
-      if (saved_reg.is_128bit_simd()) {
+      if (saved_reg.is_xmm()) {
         m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(RSP, XMM_SIZE),
                               InstructionInfo::Kind::PROLOGUE);
         m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_xmm128(RSP, saved_reg),
@@ -183,12 +199,12 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
           m_gen.add_instr(IGen::load64_gpr64_plus_s32(
                               op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, RSP),
                           i_rec);
-        } else if (op.reg.is_128bit_simd() && op.reg_class == RegClass::FLOAT) {
+        } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
           // load xmm32 off of the stack
           m_gen.add_instr(IGen::load_reg_offset_xmm32(
                               op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
-        } else if (op.reg.is_128bit_simd() &&
+        } else if (op.reg.is_xmm() &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
           m_gen.add_instr(IGen::load128_xmm128_reg_offset(
                               op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
@@ -200,7 +216,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
     }
 
     // do the actual op
-    ir->do_codegen(&m_gen, allocs, i_rec);
+    ir->do_codegen_x86(&m_gen, allocs, i_rec);
 
     // store things back on the stack if needed.
     for (auto& op : bonus.ops) {
@@ -210,12 +226,12 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
           m_gen.add_instr(IGen::store64_gpr64_plus_s32(
                               RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, op.reg),
                           i_rec);
-        } else if (op.reg.is_128bit_simd() && op.reg_class == RegClass::FLOAT) {
+        } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
           // store xmm32 on the stack
           m_gen.add_instr(IGen::store_reg_offset_xmm32(
                               RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
-        } else if (op.reg.is_128bit_simd() &&
+        } else if (op.reg.is_xmm() &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
           m_gen.add_instr(IGen::store128_xmm128_reg_offset(
                               RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
@@ -254,7 +270,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
       int j = n_xmm_backups;
       for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
         auto& saved_reg = allocs.used_saved_regs.at(i);
-        if (saved_reg.is_128bit_simd()) {
+        if (saved_reg.is_xmm()) {
           j--;
           int offset = j * XMM_SIZE;
           m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_reg_offset(saved_reg, RSP, offset),
@@ -268,7 +284,7 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   } else {
     for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
       auto& saved_reg = allocs.used_saved_regs.at(i);
-      if (saved_reg.is_128bit_simd()) {
+      if (saved_reg.is_xmm()) {
         m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_gpr64(saved_reg, RSP),
                               InstructionInfo::Kind::EPILOGUE);
         m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(RSP, XMM_SIZE),
@@ -280,7 +296,11 @@ void CodeGenerator::do_goal_function(FunctionEnv* env, int f_idx) {
   m_gen.add_instr_no_ir(f_rec, IGen::ret(), InstructionInfo::Kind::EPILOGUE);
 }
 
-void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
+void CodeGenerator::do_goal_function_arm64(FunctionEnv* env, int f_idx) {
+  throw std::runtime_error("NYI - CodeGenerator::do_goal_function_arm64");
+}
+
+void CodeGenerator::do_asm_function_x86(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
   auto f_rec = m_gen.get_existing_function_record(f_idx);
   const auto& allocs = env->alloc_result();
 
@@ -316,6 +336,10 @@ void CodeGenerator::do_asm_function(FunctionEnv* env, int f_idx, bool allow_save
     }
 
     // do the actual op
-    ir->do_codegen(&m_gen, allocs, i_rec);
+    ir->do_codegen_x86(&m_gen, allocs, i_rec);
   }
+}
+
+void CodeGenerator::do_asm_function_arm64(FunctionEnv* env, int f_idx, bool allow_saved_regs) {
+  throw std::runtime_error("NYI - CodeGenerator::do_asm_function");
 }

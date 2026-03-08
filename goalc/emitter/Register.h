@@ -153,6 +153,14 @@ class Register {
 #endif
   }
 
+    bool is_xmm() const {
+#ifndef __aarch64__
+    return false;
+#else
+    return m_id >= Q0 && m_id <= Q31;
+#endif
+  }
+
   bool is_gpr() const {
 #ifndef __aarch64__
     return m_id >= RAX && m_id <= R15;
@@ -163,7 +171,7 @@ class Register {
 
   int hw_id() const {
     // TODO - ARM64, even needed?
-    if (is_128bit_simd()) {
+    if (is_xmm()) {
       return m_id - XMM0;
     } else if (is_gpr()) {
       return m_id - RAX;

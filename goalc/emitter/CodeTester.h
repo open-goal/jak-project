@@ -20,10 +20,20 @@
 
 #include "common/common_types.h"
 
+#include "goalc/compiler/CodeGenerator.h"
+
 namespace emitter {
 class CodeTester {
+ private:
+  int code_buffer_size = 0;
+  int code_buffer_capacity = 0;
+  u8* code_buffer = nullptr;
+  RegisterInfo m_info;
+  CodeGenerator::InstructionSet m_instruction_set = CodeGenerator::InstructionSet::X86;
+
  public:
   CodeTester();
+  CodeTester(CodeGenerator::InstructionSet instruction_set);
   std::string dump_to_hex_string(bool nospace = false);
   void init_code_buffer(int capacity);
   void emit_push_all_gprs(bool exclude_rax = false);
@@ -31,7 +41,8 @@ class CodeTester {
   void emit_push_all_xmms();
   void emit_pop_all_xmms();
   void emit_return();
-  void emit(const Instruction& instr);
+  void emit(const InstructionX86& instr);
+  void emit(const InstructionARM64& instr);
   u64 execute();
   u64 execute(u64 in0, u64 in1, u64 in2, u64 in3);
 
@@ -64,6 +75,7 @@ class CodeTester {
    * Should allow emitter tests which run code to do the right thing on windows.
    */
   Register get_c_abi_arg_reg(int i) {
+    // TODO ARM64 - x86 specific
 #ifdef _WIN32
     switch (i) {
       case 0:
@@ -128,12 +140,6 @@ class CodeTester {
 
   void clear();
   ~CodeTester();
-
- private:
-  int code_buffer_size = 0;
-  int code_buffer_capacity = 0;
-  u8* code_buffer = nullptr;
-  RegisterInfo m_info;
 };
 }  // namespace emitter
 #endif  // JAK_CODETESTER_H

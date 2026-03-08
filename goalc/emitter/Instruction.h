@@ -19,8 +19,6 @@ struct InstructionImpl {
   u8 length() const { return static_cast<const InstructionType*>(this)->length(); }
 };
 
-// TODO probably separate these because x86 has a ton
-
 struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   // The ARM instruction stream is a sequence of word-aligned words. Each ARM instruction is a
   // single 32-bit word in that stream. The encoding of an ARM instruction is:
@@ -1042,10 +1040,24 @@ struct InstructionX86 : InstructionImpl<InstructionX86> {
   }
 };
 
-#ifdef __aarch64__
-using Instruction = InstructionARM64;
-#else
-using Instruction = InstructionX86;
-#endif
+class Instruction {
+ public:
+  using Variant = std::variant<InstructionX86, InstructionARM64>;
+
+  Variant instr;
+
+  Instruction() = delete;
+
+  template <typename T>
+  Instruction(T v) : instr(std::move(v)) {}
+
+  u8 emit(u8* buffer) const {
+    return std::visit([&](auto const& i) { return i.emit(buffer); }, instr);
+  }
+
+  u8 length() const {
+    return std::visit([](auto const& i) { return i.length(); }, instr);
+  }
+};
 
 }  // namespace emitter
