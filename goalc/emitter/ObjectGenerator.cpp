@@ -1,6 +1,6 @@
 /*!
  * @file ObjectGenerator.cpp
- * Tool to build GOAL object files. Will eventually support v3 and v4.
+ * Tool to build GOAL object files.
  *
  * There are 5 steps:
  * 1. The user adds static data / instructions and specifies links.
@@ -21,11 +21,13 @@
 
 #include "goalc/debugger/DebugInfo.h"
 
-#include "fmt/format.h"
-
 namespace emitter {
 
-ObjectGenerator::ObjectGenerator(GameVersion version) : m_version(version) {}
+ObjectGenerator::ObjectGenerator(GameVersion version)
+    : m_version(version), m_instruction_set(InstructionSet::X86) {}
+
+ObjectGenerator::ObjectGenerator(GameVersion version, InstructionSet instr_set)
+    : m_version(version), m_instruction_set(instr_set) {}
 
 /*!
  * Build an object file with the v3 format.

@@ -22,14 +22,12 @@
 #include "CodeTester.h"
 #include "IGen.h"
 
-#include "fmt/format.h"
-
 namespace emitter {
 
-CodeTester::CodeTester() : m_info(RegisterInfo::make_register_info()) {}
+CodeTester::CodeTester() : m_info(RegisterInfo::make_register_info()), m_gen(GameVersion::Jak1) {}
 
-CodeTester::CodeTester(CodeGenerator::InstructionSet instruction_set)
-    : m_instruction_set(instruction_set), m_info(RegisterInfo::make_register_info()) {}
+CodeTester::CodeTester(InstructionSet instruction_set)
+    : m_info(RegisterInfo::make_register_info()), m_gen(GameVersion::Jak1, instruction_set) {}
 
 /*!
  * Convert to a string for comparison against an assembler or tests.
@@ -57,7 +55,7 @@ std::string CodeTester::dump_to_hex_string(bool nospace) {
 /*!
  * Add an instruction to the buffer.
  */
-void CodeTester::emit(const emitter::InstructionX86& instr) {
+void CodeTester::emit(const emitter::Instruction& instr) {
   code_buffer_size += instr.emit(code_buffer + code_buffer_size);
   ASSERT(code_buffer_size <= code_buffer_capacity);
 }
@@ -66,7 +64,7 @@ void CodeTester::emit(const emitter::InstructionX86& instr) {
  * Add a return instruction to the buffer.
  */
 void CodeTester::emit_return() {
-  emit(IGen::ret());
+  emit(IGen::ret(m_gen));
 }
 
 /*!
@@ -74,16 +72,16 @@ void CodeTester::emit_return() {
  * Pops RSP always, which is weird, but doesn't cause issues.
  */
 void CodeTester::emit_pop_all_gprs(bool exclude_return_register) {
-  if (m_instruction_set == CodeGenerator::InstructionSet::X86) {
+  if (m_gen.instr_set() == InstructionSet::X86) {
     for (int i = 16; i-- > 0;) {
       if (i != RAX || !exclude_return_register) {
-        emit(IGen::pop_gpr64(i));
+        emit(IGen::pop_gpr64(m_gen, i));
       }
     }
-  } else if (m_instruction_set == CodeGenerator::InstructionSet::ARM64) {
+  } else if (m_gen.instr_set() == InstructionSet::ARM64) {
     for (int i = 0; i < 32; i++) {
       if (i != X0 || !exclude_return_register) {
-        emit(IGen::pop_gpr64(i));
+        emit(IGen::pop_gpr64(m_gen, i));
       }
     }
   } else {
@@ -96,16 +94,16 @@ void CodeTester::emit_pop_all_gprs(bool exclude_return_register) {
  * Pushes RSP always, which is weird, but doesn't cause issues.
  */
 void CodeTester::emit_push_all_gprs(bool exclude_return_register) {
-  if (m_instruction_set == CodeGenerator::InstructionSet::X86) {
+  if (m_gen.instr_set() == InstructionSet::X86) {
     for (int i = 16; i-- > 0;) {
       if (i != RAX || !exclude_return_register) {
-        emit(IGen::push_gpr64(i));
+        emit(IGen::push_gpr64(m_gen, i));
       }
     }
-  } else if (m_instruction_set == CodeGenerator::InstructionSet::ARM64) {
+  } else if (m_gen.instr_set() == InstructionSet::ARM64) {
     for (int i = 0; i < 32; i++) {
       if (i != X0 || !exclude_return_register) {
-        emit(IGen::push_gpr64(i));
+        emit(IGen::push_gpr64(m_gen, i));
       }
     }
   } else {
@@ -117,10 +115,10 @@ void CodeTester::emit_push_all_gprs(bool exclude_return_register) {
  * Push all xmm registers (all 128-bits) to the stack.
  */
 void CodeTester::emit_push_all_xmms() {
-  emit(IGen::sub_gpr64_imm8s(RSP, 8));
+  emit(IGen::sub_gpr64_imm8s(m_gen, RSP, 8));
   for (int i = 0; i < 16; i++) {
-    emit(IGen::sub_gpr64_imm8s(RSP, 16));
-    emit(IGen::store128_gpr64_xmm128(RSP, XMM0 + i));
+    emit(IGen::sub_gpr64_imm8s(m_gen, RSP, 16));
+    emit(IGen::store128_gpr64_xmm128(m_gen, RSP, XMM0 + i));
   }
 }
 
@@ -129,10 +127,10 @@ void CodeTester::emit_push_all_xmms() {
  */
 void CodeTester::emit_pop_all_xmms() {
   for (int i = 0; i < 16; i++) {
-    emit(IGen::load128_xmm128_gpr64(XMM0 + i, RSP));
-    emit(IGen::add_gpr64_imm8s(RSP, 16));
+    emit(IGen::load128_xmm128_gpr64(m_gen, XMM0 + i, RSP));
+    emit(IGen::add_gpr64_imm8s(m_gen, RSP, 16));
   }
-  emit(IGen::add_gpr64_imm8s(RSP, 8));
+  emit(IGen::add_gpr64_imm8s(m_gen, RSP, 8));
 }
 
 /*!

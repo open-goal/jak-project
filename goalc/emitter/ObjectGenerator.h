@@ -65,6 +65,7 @@ struct ObjectGeneratorStats {
 class ObjectGenerator {
  public:
   ObjectGenerator(GameVersion version);
+  ObjectGenerator(GameVersion version, InstructionSet instr_set);
   ObjectFileData generate_data_v3(const TypeSystem* ts);
   FunctionRecord add_function_to_seg(int seg,
                                      FunctionDebugInfo* debug,

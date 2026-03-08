@@ -18,19 +18,14 @@ class HeapObject;
 }  // namespace goos
 
 struct InstructionInfo {
-  std::variant<emitter::InstructionX86, emitter::InstructionARM64> instruction;
+  emitter::Instruction instruction;
   enum class Kind { PROLOGUE, IR, EPILOGUE } kind;
   int ir_idx = -1;
   int offset = -1;
 
-  InstructionInfo(const emitter::InstructionX86& _instruction, Kind _kind)
+  InstructionInfo(const emitter::Instruction& _instruction, Kind _kind)
       : instruction(_instruction), kind(_kind) {}
-  InstructionInfo(const emitter::InstructionX86& _instruction, Kind _kind, int _ir_idx)
-      : instruction(_instruction), kind(_kind), ir_idx(_ir_idx) {}
-
-  InstructionInfo(const emitter::InstructionARM64& _instruction, Kind _kind)
-      : instruction(_instruction), kind(_kind) {}
-  InstructionInfo(const emitter::InstructionARM64& _instruction, Kind _kind, int _ir_idx)
+  InstructionInfo(const emitter::Instruction& _instruction, Kind _kind, int _ir_idx)
       : instruction(_instruction), kind(_kind), ir_idx(_ir_idx) {}
 };
 

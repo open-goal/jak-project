@@ -21,7 +21,7 @@ class CodeGenerator {
   CodeGenerator(FileEnv* env,
                 DebugInfo* debug_info,
                 GameVersion version,
-                InstructionSet instruction_set = InstructionSet::X86);
+                emitter::InstructionSet instruction_set);
   std::vector<u8> run(const TypeSystem* ts);
   emitter::ObjectGeneratorStats get_obj_stats() const { return m_gen.get_stats(); }
 
@@ -34,5 +34,4 @@ class CodeGenerator {
   emitter::ObjectGenerator m_gen;
   FileEnv* m_fe = nullptr;
   DebugInfo* m_debug_info = nullptr;
-  InstructionSet m_instruction_set;
 };

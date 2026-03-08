@@ -8,9 +8,6 @@
  * The CodeTester can't be used for tests requiring the full GOAL language/linking.
  */
 
-#ifndef JAK_CODETESTER_H
-#define JAK_CODETESTER_H
-
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -20,7 +17,8 @@
 
 #include "common/common_types.h"
 
-#include "goalc/compiler/CodeGenerator.h"
+#include "goalc/emitter/InstructionSet.h"
+#include "goalc/emitter/ObjectGenerator.h"
 
 namespace emitter {
 class CodeTester {
@@ -29,11 +27,11 @@ class CodeTester {
   int code_buffer_capacity = 0;
   u8* code_buffer = nullptr;
   RegisterInfo m_info;
-  CodeGenerator::InstructionSet m_instruction_set = CodeGenerator::InstructionSet::X86;
+  ObjectGenerator m_gen;
 
  public:
   CodeTester();
-  CodeTester(CodeGenerator::InstructionSet instruction_set);
+  CodeTester(InstructionSet instruction_set);
   std::string dump_to_hex_string(bool nospace = false);
   void init_code_buffer(int capacity);
   void emit_push_all_gprs(bool exclude_rax = false);
@@ -41,8 +39,7 @@ class CodeTester {
   void emit_push_all_xmms();
   void emit_pop_all_xmms();
   void emit_return();
-  void emit(const InstructionX86& instr);
-  void emit(const InstructionARM64& instr);
+  void emit(const Instruction& instr);
   u64 execute();
   u64 execute(u64 in0, u64 in1, u64 in2, u64 in3);
 
@@ -142,4 +139,3 @@ class CodeTester {
   ~CodeTester();
 };
 }  // namespace emitter
-#endif  // JAK_CODETESTER_H

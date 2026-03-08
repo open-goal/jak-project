@@ -1149,5 +1149,3 @@ InstructionARM64 vpackuswb(Register dst, Register src0, Register src1) {
 }
 }  // namespace IGen
 }  // namespace emitter
-
-#endif

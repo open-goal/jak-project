@@ -5,7 +5,7 @@
 #include "test/goalc/framework/test_runner.h"
 
 TEST(Jak1NoDebugSegment, Init) {
-  Compiler compiler(GameVersion::Jak1);
+  Compiler compiler(GameVersion::Jak1, emitter::InstructionSet::X86);
   compiler.run_front_end_on_string("(build-kernel)");
   std::thread runtime_thread = std::thread(GoalTest::runtime_with_kernel_no_debug_segment);
 

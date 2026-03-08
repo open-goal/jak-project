@@ -72,20 +72,20 @@ void load_constant(u64 value,
                    Register dest_reg) {
   s64 svalue = value;
   if (svalue == 0) {
-    gen->add_instr(IGen::xor_gpr64_gpr64(dest_reg, dest_reg), irec);
+    gen->add_instr(IGen::xor_gpr64_gpr64(*gen, dest_reg, dest_reg), irec);
   } else if (svalue > 0) {
     if (svalue < UINT32_MAX) {
-      gen->add_instr(IGen::mov_gpr64_u32(dest_reg, value), irec);
+      gen->add_instr(IGen::mov_gpr64_u32(*gen, dest_reg, value), irec);
     } else {
       // need a real 64 bit load
-      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, value), irec);
+      gen->add_instr(IGen::mov_gpr64_u64(*gen, dest_reg, value), irec);
     }
   } else {
     if (svalue >= INT32_MIN) {
-      gen->add_instr(IGen::mov_gpr64_s32(dest_reg, svalue), irec);
+      gen->add_instr(IGen::mov_gpr64_s32(*gen, dest_reg, svalue), irec);
     } else {
       // need a real 64 bit load
-      gen->add_instr(IGen::mov_gpr64_u64(dest_reg, value), irec);
+      gen->add_instr(IGen::mov_gpr64_u64(*gen, dest_reg, value), irec);
     }
   }
 }
@@ -108,42 +108,42 @@ void regset_common(emitter::ObjectGenerator* gen,
     if (src_reg == dst_reg) {
       // eliminate move
       gen->count_eliminated_move();
-      gen->add_instr(IGen::null(), irec);
+      gen->add_instr(IGen::null(*gen), irec);
     } else {
-      gen->add_instr(IGen::mov_gpr64_gpr64(dst_reg, src_reg), irec);
+      gen->add_instr(IGen::mov_gpr64_gpr64(*gen, dst_reg, src_reg), irec);
     }
   } else if (src_class == RegClass::FLOAT && dst_class == RegClass::FLOAT) {
     if (src_reg == dst_reg) {
       // eliminate move
       gen->count_eliminated_move();
-      gen->add_instr(IGen::null(), irec);
+      gen->add_instr(IGen::null(*gen), irec);
     } else {
-      gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
+      gen->add_instr(IGen::mov_xmm32_xmm32(*gen, dst_reg, src_reg), irec);
     }
   } else if (src_is_xmm128 && dst_is_xmm128) {
     if (src_reg == dst_reg) {
       // eliminate move
       gen->count_eliminated_move();
-      gen->add_instr(IGen::null(), irec);
+      gen->add_instr(IGen::null(*gen), irec);
     } else {
-      gen->add_instr(IGen::mov_vf_vf(dst_reg, src_reg), irec);
+      gen->add_instr(IGen::mov_vf_vf(*gen, dst_reg, src_reg), irec);
     }
   } else if (src_class == RegClass::FLOAT && dst_class == RegClass::GPR_64) {
     // xmm 1x -> gpr
-    gen->add_instr(IGen::movd_gpr32_xmm32(dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movd_gpr32_xmm32(*gen, dst_reg, src_reg), irec);
     // don't forget to sign extend
-    gen->add_instr(IGen::movsx_r64_r32(dst_reg, dst_reg), irec);
+    gen->add_instr(IGen::movsx_r64_r32(*gen, dst_reg, dst_reg), irec);
   } else if (src_class == RegClass::GPR_64 && dst_class == RegClass::FLOAT) {
     // gpr -> xmm 1x
-    gen->add_instr(IGen::movd_xmm32_gpr32(dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movd_xmm32_gpr32(*gen, dst_reg, src_reg), irec);
   } else if (src_is_xmm128 && dst_class == RegClass::FLOAT) {
-    gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
+    gen->add_instr(IGen::mov_xmm32_xmm32(*gen, dst_reg, src_reg), irec);
   } else if (src_class == RegClass::FLOAT && dst_is_xmm128) {
-    gen->add_instr(IGen::mov_xmm32_xmm32(dst_reg, src_reg), irec);
+    gen->add_instr(IGen::mov_xmm32_xmm32(*gen, dst_reg, src_reg), irec);
   } else if (src_class == RegClass::GPR_64 && dst_is_xmm128) {
-    gen->add_instr(IGen::movq_xmm64_gpr64(dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movq_xmm64_gpr64(*gen, dst_reg, src_reg), irec);
   } else if (src_is_xmm128 && dst_class == RegClass::GPR_64) {
-    gen->add_instr(IGen::movq_gpr64_xmm64(dst_reg, src_reg), irec);
+    gen->add_instr(IGen::movq_gpr64_xmm64(*gen, dst_reg, src_reg), irec);
   } else {
     ASSERT(false);  // unhandled move.
   }
@@ -188,7 +188,7 @@ void IR_Return::do_codegen_x86(emitter::ObjectGenerator* gen,
   auto dest_reg = get_reg(m_return_reg, allocs, irec);
 
   if (val_reg == dest_reg) {
-    gen->add_instr(IGen::null(), irec);
+    gen->add_instr(IGen::null(*gen), irec);
   } else {
     regset_common(gen, allocs, irec, m_return_reg, m_value, true);
     // gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, val_reg), irec);
@@ -253,21 +253,21 @@ void IR_LoadSymbolPointer::do_codegen_x86(emitter::ObjectGenerator* gen,
   if (m_name == "#f") {
     static_assert(false_symbol_offset() == 0, "false symbol location");
     if (dest_reg.is_xmm()) {
-      gen->add_instr(IGen::movq_xmm64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+      gen->add_instr(IGen::movq_xmm64_gpr64(*gen, dest_reg, gRegInfo.get_st_reg()), irec);
     } else {
-      gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, gRegInfo.get_st_reg()), irec);
+      gen->add_instr(IGen::mov_gpr64_gpr64(*gen, dest_reg, gRegInfo.get_st_reg()), irec);
     }
   } else if (m_name == "#t") {
-    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(),
+    gen->add_instr(IGen::lea_reg_plus_off8(*gen, dest_reg, gRegInfo.get_st_reg(),
                                            true_symbol_offset(gen->version())),
                    irec);
   } else if (m_name == "_empty_") {
-    gen->add_instr(IGen::lea_reg_plus_off8(dest_reg, gRegInfo.get_st_reg(),
+    gen->add_instr(IGen::lea_reg_plus_off8(*gen, dest_reg, gRegInfo.get_st_reg(),
                                            empty_pair_offset_from_s7(gen->version())),
                    irec);
   } else {
-    auto instr =
-        gen->add_instr(IGen::lea_reg_plus_off32(dest_reg, gRegInfo.get_st_reg(), 0x0afecafe), irec);
+    auto instr = gen->add_instr(
+        IGen::lea_reg_plus_off32(*gen, dest_reg, gRegInfo.get_st_reg(), 0x0afecafe), irec);
     gen->link_instruction_symbol_ptr(instr, m_name);
   }
 }
@@ -301,7 +301,7 @@ void IR_SetSymbolValue::do_codegen_x86(emitter::ObjectGenerator* gen,
   auto src_reg = get_reg(m_src, allocs, irec);
   auto instr = gen->add_instr(
       IGen::store32_gpr64_gpr64_plus_gpr64_plus_s32(
-          gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), src_reg, LINK_SYM_NO_OFFSET_FLAG),
+          *gen, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), src_reg, LINK_SYM_NO_OFFSET_FLAG),
       irec);
   gen->link_instruction_symbol_mem(instr, m_dest->name());
 }
@@ -334,16 +334,16 @@ void IR_GetSymbolValue::do_codegen_x86(emitter::ObjectGenerator* gen,
                                        emitter::IR_Record irec) {
   auto dst_reg = get_reg(m_dest, allocs, irec);
   if (m_sext) {
-    auto instr = gen->add_instr(
-        IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
-            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
-        irec);
+    auto instr = gen->add_instr(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
+                                    *gen, dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(),
+                                    LINK_SYM_NO_OFFSET_FLAG),
+                                irec);
     gen->link_instruction_symbol_mem(instr, m_src->name());
   } else {
-    auto instr = gen->add_instr(
-        IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
-            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
-        irec);
+    auto instr = gen->add_instr(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
+                                    *gen, dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(),
+                                    LINK_SYM_NO_OFFSET_FLAG),
+                                irec);
     gen->link_instruction_symbol_mem(instr, m_src->name());
   }
 }
@@ -414,7 +414,7 @@ void IR_GotoLabel::do_codegen_x86(emitter::ObjectGenerator* gen,
                                   const AllocationResult& allocs,
                                   emitter::IR_Record irec) {
   (void)allocs;
-  auto instr = gen->add_instr(IGen::jmp_32(), irec);
+  auto instr = gen->add_instr(IGen::jmp_32(*gen), irec);
   gen->link_instruction_jump(instr, gen->get_future_ir_record_in_same_func(irec, m_dest->idx));
 }
 
@@ -496,8 +496,8 @@ void IR_FunctionCall::do_codegen_x86(emitter::ObjectGenerator* gen,
                                      const AllocationResult& allocs,
                                      emitter::IR_Record irec) {
   auto freg = get_reg(m_func, allocs, irec);
-  gen->add_instr(IGen::add_gpr64_gpr64(freg, emitter::gRegInfo.get_offset_reg()), irec);
-  gen->add_instr(IGen::call_r64(freg), irec);
+  gen->add_instr(IGen::add_gpr64_gpr64(*gen, freg, emitter::gRegInfo.get_offset_reg()), irec);
+  gen->add_instr(IGen::call_r64(*gen, freg), irec);
   // todo, can we do a sub to undo the modification to the register? does that actually work?
 }
 
@@ -530,9 +530,9 @@ void IR_RegValAddr::do_codegen_x86(emitter::ObjectGenerator* gen,
   int stack_offset = get_stack_offset(m_src, allocs);
   auto dst = get_reg(m_dest, allocs, irec);
   // x86 pointer to var
-  gen->add_instr(IGen::lea_reg_plus_off(dst, RSP, stack_offset), irec);
+  gen->add_instr(IGen::lea_reg_plus_off(*gen, dst, RSP, stack_offset), irec);
   // x86 -> GOAL pointer
-  gen->add_instr(IGen::sub_gpr64_gpr64(dst, emitter::gRegInfo.get_offset_reg()), irec);
+  gen->add_instr(IGen::sub_gpr64_gpr64(*gen, dst, emitter::gRegInfo.get_offset_reg()), irec);
 }
 
 void IR_RegValAddr::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -562,9 +562,9 @@ void IR_StaticVarAddr::do_codegen_x86(emitter::ObjectGenerator* gen,
                                       const AllocationResult& allocs,
                                       emitter::IR_Record irec) {
   auto dr = get_reg(m_dest, allocs, irec);
-  auto instr = gen->add_instr(IGen::static_addr(dr, 0), irec);
+  auto instr = gen->add_instr(IGen::static_addr(*gen, dr, 0), irec);
   gen->link_instruction_static(instr, m_src->rec, m_src->get_addr_offset());
-  gen->add_instr(IGen::sub_gpr64_gpr64(dr, emitter::gRegInfo.get_offset_reg()), irec);
+  gen->add_instr(IGen::sub_gpr64_gpr64(*gen, dr, emitter::gRegInfo.get_offset_reg()), irec);
 }
 
 void IR_StaticVarAddr::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -593,9 +593,9 @@ void IR_FunctionAddr::do_codegen_x86(emitter::ObjectGenerator* gen,
                                      const AllocationResult& allocs,
                                      emitter::IR_Record irec) {
   auto dr = get_reg(m_dest, allocs, irec);
-  auto instr = gen->add_instr(IGen::static_addr(dr, 0), irec);
+  auto instr = gen->add_instr(IGen::static_addr(*gen, dr, 0), irec);
   gen->link_instruction_to_function(instr, gen->get_existing_function_record(m_src->idx_in_file));
-  gen->add_instr(IGen::sub_gpr64_gpr64(dr, emitter::gRegInfo.get_offset_reg()), irec);
+  gen->add_instr(IGen::sub_gpr64_gpr64(*gen, dr, emitter::gRegInfo.get_offset_reg()), irec);
 }
 
 void IR_FunctionAddr::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -680,85 +680,90 @@ void IR_IntegerMath::do_codegen_x86(emitter::ObjectGenerator* gen,
   switch (m_kind) {
     case IntegerMathKind::ADD_64:
       gen->add_instr(
-          IGen::add_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::add_gpr64_gpr64(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case IntegerMathKind::SUB_64:
       gen->add_instr(
-          IGen::sub_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::sub_gpr64_gpr64(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case IntegerMathKind::AND_64:
       gen->add_instr(
-          IGen::and_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::and_gpr64_gpr64(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case IntegerMathKind::OR_64:
       gen->add_instr(
-          IGen::or_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::or_gpr64_gpr64(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case IntegerMathKind::XOR_64:
       gen->add_instr(
-          IGen::xor_gpr64_gpr64(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::xor_gpr64_gpr64(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case IntegerMathKind::NOT_64:
-      gen->add_instr(IGen::not_gpr64(get_reg(m_dest, allocs, irec)), irec);
+      gen->add_instr(IGen::not_gpr64(*gen, get_reg(m_dest, allocs, irec)), irec);
       ASSERT(!m_arg);
       break;
     case IntegerMathKind::SHLV_64:
-      gen->add_instr(IGen::shl_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
+      gen->add_instr(IGen::shl_gpr64_cl(*gen, get_reg(m_dest, allocs, irec)), irec);
       ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SHRV_64:
-      gen->add_instr(IGen::shr_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
+      gen->add_instr(IGen::shr_gpr64_cl(*gen, get_reg(m_dest, allocs, irec)), irec);
       ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SARV_64:
-      gen->add_instr(IGen::sar_gpr64_cl(get_reg(m_dest, allocs, irec)), irec);
+      gen->add_instr(IGen::sar_gpr64_cl(*gen, get_reg(m_dest, allocs, irec)), irec);
       ASSERT(get_reg(m_arg, allocs, irec) == emitter::RCX);
       break;
     case IntegerMathKind::SHL_64:
-      gen->add_instr(IGen::shl_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
+      gen->add_instr(IGen::shl_gpr64_u8(*gen, get_reg(m_dest, allocs, irec), m_shift_amount), irec);
       break;
     case IntegerMathKind::SHR_64:
-      gen->add_instr(IGen::shr_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
+      gen->add_instr(IGen::shr_gpr64_u8(*gen, get_reg(m_dest, allocs, irec), m_shift_amount), irec);
       break;
     case IntegerMathKind::SAR_64:
-      gen->add_instr(IGen::sar_gpr64_u8(get_reg(m_dest, allocs, irec), m_shift_amount), irec);
+      gen->add_instr(IGen::sar_gpr64_u8(*gen, get_reg(m_dest, allocs, irec), m_shift_amount), irec);
       break;
     case IntegerMathKind::IMUL_32: {
       // just a 32-bit multiply, signed/unsigned doesn't affect lower 32 bits of result.
       auto dr = get_reg(m_dest, allocs, irec);
-      gen->add_instr(IGen::imul_gpr32_gpr32(dr, get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::imul_gpr32_gpr32(*gen, dr, get_reg(m_arg, allocs, irec)), irec);
       // the PS2 sign extends the result even if we used multu. We replicate this here.
-      gen->add_instr(IGen::movsx_r64_r32(dr, dr), irec);
+      gen->add_instr(IGen::movsx_r64_r32(*gen, dr, dr), irec);
     } break;
     case IntegerMathKind::IMUL_64: {
       auto dr = get_reg(m_dest, allocs, irec);
-      gen->add_instr(IGen::imul_gpr64_gpr64(dr, get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::imul_gpr64_gpr64(*gen, dr, get_reg(m_arg, allocs, irec)), irec);
     } break;
     case IntegerMathKind::IDIV_32: {
-      gen->add_instr(IGen::cdq(), irec);
-      gen->add_instr(IGen::idiv_gpr32(get_reg(m_arg, allocs, irec)), irec);
-      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RAX), irec);
+      gen->add_instr(IGen::cdq(*gen), irec);
+      gen->add_instr(IGen::idiv_gpr32(*gen, get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::movsx_r64_r32(*gen, get_reg(m_dest, allocs, irec), emitter::RAX), irec);
     } break;
     case IntegerMathKind::UDIV_32: {
       // zero extend, not sign extend to avoid overflow
-      gen->add_instr(IGen::xor_gpr64_gpr64(Register(RDX), Register(RDX)), irec);
-      gen->add_instr(IGen::unsigned_div_gpr32(get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::xor_gpr64_gpr64(*gen, Register(RDX), Register(RDX)), irec);
+      gen->add_instr(IGen::unsigned_div_gpr32(*gen, get_reg(m_arg, allocs, irec)), irec);
       // note: this probably needs hardware testing to know for sure if the PS2 actually sign
       // extends here or not. Nothing seems to break either way, and PCSX2/Dobie interpreters both
       // sign extend, so that seems like the safest option.
-      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RAX), irec);
+      gen->add_instr(IGen::movsx_r64_r32(*gen, get_reg(m_dest, allocs, irec), emitter::RAX), irec);
     } break;
     case IntegerMathKind::IMOD_32: {
-      gen->add_instr(IGen::cdq(), irec);
-      gen->add_instr(IGen::idiv_gpr32(get_reg(m_arg, allocs, irec)), irec);
-      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RDX), irec);
+      gen->add_instr(IGen::cdq(*gen), irec);
+      gen->add_instr(IGen::idiv_gpr32(*gen, get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::movsx_r64_r32(*gen, get_reg(m_dest, allocs, irec), emitter::RDX), irec);
     } break;
     case IntegerMathKind::UMOD_32: {
       // zero extend, not sign extend to avoid overflow
-      gen->add_instr(IGen::xor_gpr64_gpr64(Register(RDX), Register(RDX)), irec);
-      gen->add_instr(IGen::unsigned_div_gpr32(get_reg(m_arg, allocs, irec)), irec);
+      gen->add_instr(IGen::xor_gpr64_gpr64(*gen, Register(RDX), Register(RDX)), irec);
+      gen->add_instr(IGen::unsigned_div_gpr32(*gen, get_reg(m_arg, allocs, irec)), irec);
       // see note on udiv, same applies here.
-      gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), emitter::RDX), irec);
+      gen->add_instr(IGen::movsx_r64_r32(*gen, get_reg(m_dest, allocs, irec), emitter::RDX), irec);
     } break;
     default:
       ASSERT(false);
@@ -815,31 +820,37 @@ void IR_FloatMath::do_codegen_x86(emitter::ObjectGenerator* gen,
   switch (m_kind) {
     case FloatMathKind::DIV_SS:
       gen->add_instr(
-          IGen::divss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::divss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case FloatMathKind::MUL_SS:
       gen->add_instr(
-          IGen::mulss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::mulss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case FloatMathKind::ADD_SS:
       gen->add_instr(
-          IGen::addss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::addss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case FloatMathKind::SUB_SS:
       gen->add_instr(
-          IGen::subss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::subss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case FloatMathKind::MAX_SS:
       gen->add_instr(
-          IGen::maxss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::maxss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case FloatMathKind::MIN_SS:
       gen->add_instr(
-          IGen::minss_xmm_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
+          IGen::minss_xmm_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
+          irec);
       break;
     case FloatMathKind::SQRT_SS:
-      gen->add_instr(IGen::sqrts_xmm(get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)),
-                     irec);
+      gen->add_instr(
+          IGen::sqrts_xmm(*gen, get_reg(m_dest, allocs, irec), get_reg(m_arg, allocs, irec)), irec);
       break;
     default:
       ASSERT(false);
@@ -880,12 +891,14 @@ void IR_StaticVarLoad::do_codegen_x86(emitter::ObjectGenerator* gen,
     ASSERT(load_info.load_size == 4);
     ASSERT(load_info.requires_load == true);
 
-    auto instr = gen->add_instr(IGen::static_load_xmm32(get_reg(m_dest, allocs, irec), 0), irec);
+    auto instr =
+        gen->add_instr(IGen::static_load_xmm32(*gen, get_reg(m_dest, allocs, irec), 0), irec);
     gen->link_instruction_static(instr, m_src->rec, 0);
   } else if (m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT) {
     // we don't check the load info intentionally because we want to allow loading an entire
     // vector structure.
-    auto instr = gen->add_instr(IGen::loadvf_rip_plus_s32(get_reg(m_dest, allocs, irec), 0), irec);
+    auto instr =
+        gen->add_instr(IGen::loadvf_rip_plus_s32(*gen, get_reg(m_dest, allocs, irec), 0), irec);
     gen->link_instruction_static(instr, m_src->rec, 0);
   } else {
     ASSERT(false);
@@ -950,38 +963,38 @@ void IR_ConditionalBranch::do_codegen_x86(emitter::ObjectGenerator* gen,
   ASSERT(m_resolved);
   switch (condition.kind) {
     case ConditionKind::EQUAL:
-      jump_instr = IGen::je_32();
+      jump_instr = IGen::je_32(*gen);
       break;
     case ConditionKind::NOT_EQUAL:
-      jump_instr = IGen::jne_32();
+      jump_instr = IGen::jne_32(*gen);
       break;
     case ConditionKind::LEQ:
       if (condition.is_signed) {
-        jump_instr = IGen::jle_32();
+        jump_instr = IGen::jle_32(*gen);
       } else {
-        jump_instr = IGen::jbe_32();
+        jump_instr = IGen::jbe_32(*gen);
       }
       break;
     case ConditionKind::GEQ:
       if (condition.is_signed) {
-        jump_instr = IGen::jge_32();
+        jump_instr = IGen::jge_32(*gen);
       } else {
-        jump_instr = IGen::jae_32();
+        jump_instr = IGen::jae_32(*gen);
       }
       break;
 
     case ConditionKind::LT:
       if (condition.is_signed) {
-        jump_instr = IGen::jl_32();
+        jump_instr = IGen::jl_32(*gen);
       } else {
-        jump_instr = IGen::jb_32();
+        jump_instr = IGen::jb_32(*gen);
       }
       break;
     case ConditionKind::GT:
       if (condition.is_signed) {
-        jump_instr = IGen::jg_32();
+        jump_instr = IGen::jg_32(*gen);
       } else {
-        jump_instr = IGen::ja_32();
+        jump_instr = IGen::ja_32(*gen);
       }
       break;
     default:
@@ -989,11 +1002,11 @@ void IR_ConditionalBranch::do_codegen_x86(emitter::ObjectGenerator* gen,
   }
 
   if (condition.is_float) {
-    gen->add_instr(
-        IGen::cmp_flt_flt(get_reg(condition.a, allocs, irec), get_reg(condition.b, allocs, irec)),
-        irec);
+    gen->add_instr(IGen::cmp_flt_flt(*gen, get_reg(condition.a, allocs, irec),
+                                     get_reg(condition.b, allocs, irec)),
+                   irec);
   } else {
-    gen->add_instr(IGen::cmp_gpr64_gpr64(get_reg(condition.a, allocs, irec),
+    gen->add_instr(IGen::cmp_gpr64_gpr64(*gen, get_reg(condition.a, allocs, irec),
                                          get_reg(condition.b, allocs, irec)),
                    irec);
   }
@@ -1037,21 +1050,21 @@ void IR_LoadConstOffset::do_codegen_x86(emitter::ObjectGenerator* gen,
   auto base_reg = m_use_coloring ? get_reg(m_base, allocs, irec) : get_no_color_reg(m_base);
 
   if (m_dest->ireg().reg_class == RegClass::GPR_64) {
-    gen->add_instr(IGen::load_goal_gpr(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(),
+    gen->add_instr(IGen::load_goal_gpr(*gen, dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(),
                                        m_offset, m_info.size, m_info.sign_extend),
                    irec);
   } else if (m_dest->ireg().reg_class == RegClass::FLOAT && m_info.size == 4 &&
              m_info.sign_extend == false && m_info.reg == RegClass::FLOAT) {
-    gen->add_instr(
-        IGen::load_goal_xmm32(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
-        irec);
+    gen->add_instr(IGen::load_goal_xmm32(*gen, dest_reg, base_reg,
+                                         emitter::gRegInfo.get_offset_reg(), m_offset),
+                   irec);
   } else if ((m_dest->ireg().reg_class == RegClass::VECTOR_FLOAT ||
               m_dest->ireg().reg_class == RegClass::INT_128) &&
              m_info.size == 16 && m_info.sign_extend == false &&
              m_info.reg == m_dest->ireg().reg_class) {
-    gen->add_instr(
-        IGen::load_goal_xmm128(dest_reg, base_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
-        irec);
+    gen->add_instr(IGen::load_goal_xmm128(*gen, dest_reg, base_reg,
+                                          emitter::gRegInfo.get_offset_reg(), m_offset),
+                   irec);
   } else {
     throw std::runtime_error("IR_LoadConstOffset::do_codegen_x86 not supported");
   }
@@ -1091,19 +1104,19 @@ void IR_StoreConstOffset::do_codegen_x86(emitter::ObjectGenerator* gen,
   auto value_reg = m_use_coloring ? get_reg(m_value, allocs, irec) : get_no_color_reg(m_value);
 
   if (m_value->ireg().reg_class == RegClass::GPR_64) {
-    gen->add_instr(IGen::store_goal_gpr(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(),
-                                        m_offset, m_size),
+    gen->add_instr(IGen::store_goal_gpr(*gen, base_reg, value_reg,
+                                        emitter::gRegInfo.get_offset_reg(), m_offset, m_size),
                    irec);
   } else if (m_value->ireg().reg_class == RegClass::FLOAT && m_size == 4) {
-    gen->add_instr(
-        IGen::store_goal_xmm32(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
-        irec);
+    gen->add_instr(IGen::store_goal_xmm32(*gen, base_reg, value_reg,
+                                          emitter::gRegInfo.get_offset_reg(), m_offset),
+                   irec);
   } else if ((m_value->ireg().reg_class == RegClass::VECTOR_FLOAT ||
               m_value->ireg().reg_class == RegClass::INT_128) &&
              m_size == 16) {
-    gen->add_instr(
-        IGen::store_goal_vf(base_reg, value_reg, emitter::gRegInfo.get_offset_reg(), m_offset),
-        irec);
+    gen->add_instr(IGen::store_goal_vf(*gen, base_reg, value_reg,
+                                       emitter::gRegInfo.get_offset_reg(), m_offset),
+                   irec);
   } else {
     throw std::runtime_error(
         fmt::format("IR_StoreConstOffset::do_codegen_x86 can't handle this (c {} sz {})",
@@ -1193,10 +1206,12 @@ RegAllocInstr IR_FloatToInt::to_rai() {
 void IR_FloatToInt::do_codegen_x86(emitter::ObjectGenerator* gen,
                                    const AllocationResult& allocs,
                                    emitter::IR_Record irec) {
-  gen->add_instr(IGen::float_to_int32(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
-                 irec);
-  gen->add_instr(IGen::movsx_r64_r32(get_reg(m_dest, allocs, irec), get_reg(m_dest, allocs, irec)),
-                 irec);
+  gen->add_instr(
+      IGen::float_to_int32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
+      irec);
+  gen->add_instr(
+      IGen::movsx_r64_r32(*gen, get_reg(m_dest, allocs, irec), get_reg(m_dest, allocs, irec)),
+      irec);
 }
 
 void IR_FloatToInt::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -1225,8 +1240,9 @@ RegAllocInstr IR_IntToFloat::to_rai() {
 void IR_IntToFloat::do_codegen_x86(emitter::ObjectGenerator* gen,
                                    const AllocationResult& allocs,
                                    emitter::IR_Record irec) {
-  gen->add_instr(IGen::int32_to_float(get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
-                 irec);
+  gen->add_instr(
+      IGen::int32_to_float(*gen, get_reg(m_dest, allocs, irec), get_reg(m_src, allocs, irec)),
+      irec);
 }
 
 void IR_IntToFloat::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -1258,13 +1274,13 @@ void IR_GetStackAddr::do_codegen_x86(emitter::ObjectGenerator* gen,
   int offset = GPR_SIZE * allocs.get_slot_for_var(m_slot);
 
   if (offset == 0) {
-    gen->add_instr(IGen::mov_gpr64_gpr64(dest_reg, RSP), irec);
-    gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
+    gen->add_instr(IGen::mov_gpr64_gpr64(*gen, dest_reg, RSP), irec);
+    gen->add_instr(IGen::sub_gpr64_gpr64(*gen, dest_reg, gRegInfo.get_offset_reg()), irec);
   } else {
     // dest = offset + RSP
-    gen->add_instr(IGen::lea_reg_plus_off(dest_reg, RSP, offset), irec);
+    gen->add_instr(IGen::lea_reg_plus_off(*gen, dest_reg, RSP, offset), irec);
     // dest = offset + RSP - offset
-    gen->add_instr(IGen::sub_gpr64_gpr64(dest_reg, gRegInfo.get_offset_reg()), irec);
+    gen->add_instr(IGen::sub_gpr64_gpr64(*gen, dest_reg, gRegInfo.get_offset_reg()), irec);
   }
 }
 
@@ -1291,7 +1307,7 @@ RegAllocInstr IR_Nop::to_rai() {
 void IR_Nop::do_codegen_x86(emitter::ObjectGenerator* gen,
                             const AllocationResult&,
                             emitter::IR_Record irec) {
-  gen->add_instr(IGen::nop(), irec);
+  gen->add_instr(IGen::nop(*gen), irec);
 }
 
 void IR_Nop::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -1332,7 +1348,7 @@ void IR_AsmRet::do_codegen_x86(emitter::ObjectGenerator* gen,
                                const AllocationResult& allocs,
                                emitter::IR_Record irec) {
   (void)allocs;
-  gen->add_instr(IGen::ret(), irec);
+  gen->add_instr(IGen::ret(*gen), irec);
 }
 
 void IR_AsmRet::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -1359,7 +1375,7 @@ void IR_AsmFNop::do_codegen_x86(emitter::ObjectGenerator* gen,
                                 const AllocationResult& allocs,
                                 emitter::IR_Record irec) {
   (void)allocs;
-  gen->add_instr(IGen::nop_vf(), irec);
+  gen->add_instr(IGen::nop_vf(*gen), irec);
 }
 
 void IR_AsmFNop::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -1386,7 +1402,7 @@ void IR_AsmFWait::do_codegen_x86(emitter::ObjectGenerator* gen,
                                  const AllocationResult& allocs,
                                  emitter::IR_Record irec) {
   (void)allocs;
-  gen->add_instr(IGen::wait_vf(), irec);
+  gen->add_instr(IGen::wait_vf(*gen), irec);
 }
 
 void IR_AsmFWait::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -1417,9 +1433,9 @@ void IR_AsmPush::do_codegen_x86(emitter::ObjectGenerator* gen,
                                 const AllocationResult& allocs,
                                 emitter::IR_Record irec) {
   if (m_use_coloring) {
-    gen->add_instr(IGen::push_gpr64(get_reg(m_src, allocs, irec)), irec);
+    gen->add_instr(IGen::push_gpr64(*gen, get_reg(m_src, allocs, irec)), irec);
   } else {
-    gen->add_instr(IGen::push_gpr64(get_no_color_reg(m_src)), irec);
+    gen->add_instr(IGen::push_gpr64(*gen, get_no_color_reg(m_src)), irec);
   }
 }
 
@@ -1451,9 +1467,9 @@ void IR_AsmPop::do_codegen_x86(emitter::ObjectGenerator* gen,
                                const AllocationResult& allocs,
                                emitter::IR_Record irec) {
   if (m_use_coloring) {
-    gen->add_instr(IGen::pop_gpr64(get_reg(m_dst, allocs, irec)), irec);
+    gen->add_instr(IGen::pop_gpr64(*gen, get_reg(m_dst, allocs, irec)), irec);
   } else {
-    gen->add_instr(IGen::pop_gpr64(get_no_color_reg(m_dst)), irec);
+    gen->add_instr(IGen::pop_gpr64(*gen, get_no_color_reg(m_dst)), irec);
   }
 }
 
@@ -1489,9 +1505,11 @@ void IR_AsmSub::do_codegen_x86(emitter::ObjectGenerator* gen,
                                emitter::IR_Record irec) {
   if (m_use_coloring) {
     gen->add_instr(
-        IGen::sub_gpr64_gpr64(get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)), irec);
+        IGen::sub_gpr64_gpr64(*gen, get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)),
+        irec);
   } else {
-    gen->add_instr(IGen::sub_gpr64_gpr64(get_no_color_reg(m_dst), get_no_color_reg(m_src)), irec);
+    gen->add_instr(IGen::sub_gpr64_gpr64(*gen, get_no_color_reg(m_dst), get_no_color_reg(m_src)),
+                   irec);
   }
 }
 
@@ -1527,9 +1545,11 @@ void IR_AsmAdd::do_codegen_x86(emitter::ObjectGenerator* gen,
                                emitter::IR_Record irec) {
   if (m_use_coloring) {
     gen->add_instr(
-        IGen::add_gpr64_gpr64(get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)), irec);
+        IGen::add_gpr64_gpr64(*gen, get_reg(m_dst, allocs, irec), get_reg(m_src, allocs, irec)),
+        irec);
   } else {
-    gen->add_instr(IGen::add_gpr64_gpr64(get_no_color_reg(m_dst), get_no_color_reg(m_src)), irec);
+    gen->add_instr(IGen::add_gpr64_gpr64(*gen, get_no_color_reg(m_dst), get_no_color_reg(m_src)),
+                   irec);
   }
 }
 
@@ -1566,16 +1586,16 @@ void IR_GetSymbolValueAsm::do_codegen_x86(emitter::ObjectGenerator* gen,
                                           emitter::IR_Record irec) {
   auto dst_reg = m_use_coloring ? get_reg(m_dest, allocs, irec) : get_no_color_reg(m_dest);
   if (m_sext) {
-    auto instr = gen->add_instr(
-        IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
-            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
-        irec);
+    auto instr = gen->add_instr(IGen::load32s_gpr64_gpr64_plus_gpr64_plus_s32(
+                                    *gen, dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(),
+                                    LINK_SYM_NO_OFFSET_FLAG),
+                                irec);
     gen->link_instruction_symbol_mem(instr, m_sym_name);
   } else {
-    auto instr = gen->add_instr(
-        IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
-            dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(), LINK_SYM_NO_OFFSET_FLAG),
-        irec);
+    auto instr = gen->add_instr(IGen::load32u_gpr64_gpr64_plus_gpr64_plus_s32(
+                                    *gen, dst_reg, gRegInfo.get_st_reg(), gRegInfo.get_offset_reg(),
+                                    LINK_SYM_NO_OFFSET_FLAG),
+                                irec);
     gen->link_instruction_symbol_mem(instr, m_sym_name);
   }
 }
@@ -1608,7 +1628,7 @@ void IR_JumpReg::do_codegen_x86(emitter::ObjectGenerator* gen,
                                 const AllocationResult& allocs,
                                 emitter::IR_Record irec) {
   auto src_reg = m_use_coloring ? get_reg(m_src, allocs, irec) : get_no_color_reg(m_src);
-  gen->add_instr(IGen::jmp_r64(src_reg), irec);
+  gen->add_instr(IGen::jmp_r64(*gen, src_reg), irec);
 }
 
 void IR_JumpReg::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -1710,25 +1730,25 @@ void IR_VFMath3Asm::do_codegen_x86(emitter::ObjectGenerator* gen,
 
   switch (m_kind) {
     case Kind::XOR:
-      gen->add_instr(IGen::xor_vf(dst, src1, src2), irec);
+      gen->add_instr(IGen::xor_vf(*gen, dst, src1, src2), irec);
       break;
     case Kind::SUB:
-      gen->add_instr(IGen::sub_vf(dst, src1, src2), irec);
+      gen->add_instr(IGen::sub_vf(*gen, dst, src1, src2), irec);
       break;
     case Kind::ADD:
-      gen->add_instr(IGen::add_vf(dst, src1, src2), irec);
+      gen->add_instr(IGen::add_vf(*gen, dst, src1, src2), irec);
       break;
     case Kind::MUL:
-      gen->add_instr(IGen::mul_vf(dst, src1, src2), irec);
+      gen->add_instr(IGen::mul_vf(*gen, dst, src1, src2), irec);
       break;
     case Kind::MAX:
-      gen->add_instr(IGen::max_vf(dst, src1, src2), irec);
+      gen->add_instr(IGen::max_vf(*gen, dst, src1, src2), irec);
       break;
     case Kind::MIN:
-      gen->add_instr(IGen::min_vf(dst, src1, src2), irec);
+      gen->add_instr(IGen::min_vf(*gen, dst, src1, src2), irec);
       break;
     case Kind::DIV:
-      gen->add_instr(IGen::div_vf(dst, src1, src2), irec);
+      gen->add_instr(IGen::div_vf(*gen, dst, src1, src2), irec);
       break;
     default:
       ASSERT(false);
@@ -1842,71 +1862,71 @@ void IR_Int128Math3Asm::do_codegen_x86(emitter::ObjectGenerator* gen,
   switch (m_kind) {
     case Kind::PEXTUB:
       // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
-      gen->add_instr(IGen::pextub_swapped(dst, src2, src1), irec);
+      gen->add_instr(IGen::pextub_swapped(*gen, dst, src2, src1), irec);
       break;
     case Kind::PEXTUH:
       // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
-      gen->add_instr(IGen::pextuh_swapped(dst, src2, src1), irec);
+      gen->add_instr(IGen::pextuh_swapped(*gen, dst, src2, src1), irec);
       break;
     case Kind::PEXTUW:
       // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
-      gen->add_instr(IGen::pextuw_swapped(dst, src2, src1), irec);
+      gen->add_instr(IGen::pextuw_swapped(*gen, dst, src2, src1), irec);
       break;
     case Kind::PEXTLB:
       // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
-      gen->add_instr(IGen::pextlb_swapped(dst, src2, src1), irec);
+      gen->add_instr(IGen::pextlb_swapped(*gen, dst, src2, src1), irec);
       break;
     case Kind::PEXTLH:
       // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
-      gen->add_instr(IGen::pextlh_swapped(dst, src2, src1), irec);
+      gen->add_instr(IGen::pextlh_swapped(*gen, dst, src2, src1), irec);
       break;
     case Kind::PEXTLW:
       // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
-      gen->add_instr(IGen::pextlw_swapped(dst, src2, src1), irec);
+      gen->add_instr(IGen::pextlw_swapped(*gen, dst, src2, src1), irec);
       break;
     case Kind::PCPYLD:
       // NOTE: this is intentionally swapped because x86 and PS2 do this opposite ways.
-      gen->add_instr(IGen::pcpyld_swapped(dst, src2, src1), irec);
+      gen->add_instr(IGen::pcpyld_swapped(*gen, dst, src2, src1), irec);
       break;
     case Kind::PCPYUD:
-      gen->add_instr(IGen::pcpyud(dst, src1, src2), irec);
+      gen->add_instr(IGen::pcpyud(*gen, dst, src1, src2), irec);
       break;
     case Kind::PCEQB:
-      gen->add_instr(IGen::parallel_compare_e_b(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_compare_e_b(*gen, dst, src2, src1), irec);
       break;
     case Kind::PCEQH:
-      gen->add_instr(IGen::parallel_compare_e_h(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_compare_e_h(*gen, dst, src2, src1), irec);
       break;
     case Kind::PCEQW:
-      gen->add_instr(IGen::parallel_compare_e_w(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_compare_e_w(*gen, dst, src2, src1), irec);
       break;
     case Kind::PCGTB:
-      gen->add_instr(IGen::parallel_compare_gt_b(dst, src1, src2), irec);
+      gen->add_instr(IGen::parallel_compare_gt_b(*gen, dst, src1, src2), irec);
       break;
     case Kind::PCGTH:
-      gen->add_instr(IGen::parallel_compare_gt_h(dst, src1, src2), irec);
+      gen->add_instr(IGen::parallel_compare_gt_h(*gen, dst, src1, src2), irec);
       break;
     case Kind::PCGTW:
-      gen->add_instr(IGen::parallel_compare_gt_w(dst, src1, src2), irec);
+      gen->add_instr(IGen::parallel_compare_gt_w(*gen, dst, src1, src2), irec);
       break;
     case Kind::PSUBW:
       // psubW on mips is psubD on x86...
-      gen->add_instr(IGen::vpsubd(dst, src1, src2), irec);
+      gen->add_instr(IGen::vpsubd(*gen, dst, src1, src2), irec);
       break;
     case Kind::POR:
-      gen->add_instr(IGen::parallel_bitwise_or(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_bitwise_or(*gen, dst, src2, src1), irec);
       break;
     case Kind::PXOR:
-      gen->add_instr(IGen::parallel_bitwise_xor(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_bitwise_xor(*gen, dst, src2, src1), irec);
       break;
     case Kind::PAND:
-      gen->add_instr(IGen::parallel_bitwise_and(dst, src2, src1), irec);
+      gen->add_instr(IGen::parallel_bitwise_and(*gen, dst, src2, src1), irec);
       break;
     case Kind::PACKUSWB:
-      gen->add_instr(IGen::vpackuswb(dst, src1, src2), irec);
+      gen->add_instr(IGen::vpackuswb(*gen, dst, src1, src2), irec);
       break;
     case Kind::PADDB:
-      gen->add_instr(IGen::parallel_add_byte(dst, src1, src2), irec);
+      gen->add_instr(IGen::parallel_add_byte(*gen, dst, src1, src2), irec);
       break;
     default:
       ASSERT(false);
@@ -1960,10 +1980,10 @@ void IR_VFMath2Asm::do_codegen_x86(emitter::ObjectGenerator* gen,
 
   switch (m_kind) {
     case Kind::ITOF:
-      gen->add_instr(IGen::itof_vf(dst, src), irec);
+      gen->add_instr(IGen::itof_vf(*gen, dst, src), irec);
       break;
     case Kind::FTOI:
-      gen->add_instr(IGen::ftoi_vf(dst, src), irec);
+      gen->add_instr(IGen::ftoi_vf(*gen, dst, src), irec);
       break;
     default:
       ASSERT(false);
@@ -2062,56 +2082,56 @@ void IR_Int128Math2Asm::do_codegen_x86(emitter::ObjectGenerator* gen,
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::pw_sll(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::pw_sll(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::PW_SRL:
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::pw_srl(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::pw_srl(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::PH_SLL:
       // you are technically allowed to put values > 32 in here.
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::ph_sll(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::ph_sll(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::PH_SRL:
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::ph_srl(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::ph_srl(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::PW_SRA:
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::pw_sra(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::pw_sra(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::VPSRLDQ:
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::vpsrldq(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::vpsrldq(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::VPSLLDQ:
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::vpslldq(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::vpslldq(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::VPSHUFLW:
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::vpshuflw(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::vpshuflw(*gen, dst, src, *m_imm), irec);
       break;
     case Kind::VPSHUFHW:
       ASSERT(m_imm.has_value());
       ASSERT(*m_imm >= 0);
       ASSERT(*m_imm <= 255);
-      gen->add_instr(IGen::vpshufhw(dst, src, *m_imm), irec);
+      gen->add_instr(IGen::vpshufhw(*gen, dst, src, *m_imm), irec);
       break;
     default:
       ASSERT(false);
@@ -2154,7 +2174,7 @@ void IR_BlendVF::do_codegen_x86(emitter::ObjectGenerator* gen,
   auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
   auto src1 = get_reg_asm(m_src1, allocs, irec, m_use_coloring);
   auto src2 = get_reg_asm(m_src2, allocs, irec, m_use_coloring);
-  gen->add_instr(IGen::blend_vf(dst, src1, src2, m_mask), irec);
+  gen->add_instr(IGen::blend_vf(*gen, dst, src1, src2, m_mask), irec);
 }
 
 void IR_BlendVF::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -2190,7 +2210,7 @@ void IR_SplatVF::do_codegen_x86(emitter::ObjectGenerator* gen,
                                 emitter::IR_Record irec) {
   auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
   auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
-  gen->add_instr(IGen::splat_vf(dst, src, m_element), irec);
+  gen->add_instr(IGen::splat_vf(*gen, dst, src, m_element), irec);
 }
 
 void IR_SplatVF::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -2226,7 +2246,7 @@ void IR_SwizzleVF::do_codegen_x86(emitter::ObjectGenerator* gen,
                                   emitter::IR_Record irec) {
   auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
   auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
-  gen->add_instr(IGen::swizzle_vf(dst, src, m_controlBytes), irec);
+  gen->add_instr(IGen::swizzle_vf(*gen, dst, src, m_controlBytes), irec);
 }
 
 void IR_SwizzleVF::do_codegen_arm64(emitter::ObjectGenerator* gen,
@@ -2259,7 +2279,7 @@ void IR_SqrtVF::do_codegen_x86(emitter::ObjectGenerator* gen,
                                emitter::IR_Record irec) {
   auto dst = get_reg_asm(m_dst, allocs, irec, m_use_coloring);
   auto src = get_reg_asm(m_src, allocs, irec, m_use_coloring);
-  gen->add_instr(IGen::sqrt_vf(dst, src), irec);
+  gen->add_instr(IGen::sqrt_vf(*gen, dst, src), irec);
 }
 
 void IR_SqrtVF::do_codegen_arm64(emitter::ObjectGenerator* gen,
