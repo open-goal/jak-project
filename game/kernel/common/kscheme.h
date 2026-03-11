@@ -14,6 +14,7 @@ extern Ptr<u32> EnableMethodSet;
 void kscheme_init_globals_common();
 
 constexpr u32 CRC_POLY = 0x04c11db7;
+constexpr u32 REVERSED_CRC_POLY = 0xedb88320;
 constexpr u32 EMPTY_HASH = 0x8454B6E6;
 constexpr u32 OFFSET_MASK = 7;
 
