@@ -1,8 +1,8 @@
 #include <string>
 #include <thread>
 
-#include "game/runtime.h"
 #include "goalc/compiler/Compiler.h"
+#include "goalc/emitter/InstructionSet.h"
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
@@ -14,7 +14,7 @@ class ControlStatementTests : public testing::TestWithParam<ControlStatementPara
  public:
   static void SetUpTestSuite() {
     runtime_thread = std::make_unique<std::thread>(std::thread(GoalTest::runtime_no_kernel_jak1));
-    compiler = std::make_unique<Compiler>(GameVersion::Jak1);
+    compiler = std::make_unique<Compiler>(GameVersion::Jak1, emitter::InstructionSet::X86);
     runner = std::make_unique<GoalTest::CompilerTestRunner>();
     runner->c = compiler.get();
   }

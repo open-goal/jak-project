@@ -10,6 +10,8 @@
 #include "common/link_types.h"
 #include "common/util/FileUtil.h"
 
+#include "goalc/compiler/CodeGenerator.h"
+#include "goalc/emitter/InstructionSet.h"
 #include "goalc/make/Tools.h"
 #include "goalc/regalloc/Allocator.h"
 #include "goalc/regalloc/Allocator_v2.h"
@@ -19,10 +21,12 @@
 using namespace goos;
 
 Compiler::Compiler(GameVersion version,
+                   emitter::InstructionSet instr_set,
                    const std::optional<REPL::Config> repl_config,
                    const std::string& user_profile,
                    std::unique_ptr<REPL::Wrapper> repl)
     : m_version(version),
+      m_instr_set(instr_set),
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
       m_make(repl_config, user_profile),
@@ -307,7 +311,7 @@ std::vector<u8> Compiler::codegen_object_file(FileEnv* env) {
   try {
     auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
     debug_info->clear();
-    CodeGenerator gen(env, debug_info, m_version);
+    CodeGenerator gen(env, debug_info, m_version, m_instr_set);
     bool ok = true;
     auto result = gen.run(&m_ts);
     for (auto& f : env->functions()) {
@@ -331,7 +335,7 @@ bool Compiler::codegen_and_disassemble_object_file(FileEnv* env,
                                                    bool omit_ir) {
   auto debug_info = &m_debugger.get_debug_info_for_object(env->name());
   debug_info->clear();
-  CodeGenerator gen(env, debug_info, m_version);
+  CodeGenerator gen(env, debug_info, m_version, m_instr_set);
   *data_out = gen.run(&m_ts);
   bool ok = true;
   *asm_out = debug_info->disassemble_all_functions(&ok, &m_goos.reader, omit_ir);

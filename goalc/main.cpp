@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
   // if a command is provided on the command line, no REPL just run the compiler on it
   try {
     if (!cmd.empty()) {
-      compiler = std::make_unique<Compiler>(game_version);
+      compiler = std::make_unique<Compiler>(game_version, emitter::InstructionSet::X86);
       compiler->run_front_end_on_string(cmd);
       return 0;
     }
@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
   // the compiler may throw an exception if it fails to load its standard library.
   try {
     compiler = std::make_unique<Compiler>(
-        game_version, std::make_optional(repl_config), username,
+        game_version, emitter::InstructionSet::X86, std::make_optional(repl_config), username,
         std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
     // Start nREPL Server if it spun up successfully
     if (nrepl_server_ok) {
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
           compiler->save_repl_history();
         }
         compiler = std::make_unique<Compiler>(
-            game_version, std::make_optional(repl_config), username,
+            game_version, emitter::InstructionSet::X86, std::make_optional(repl_config), username,
             std::make_unique<REPL::Wrapper>(username, repl_config, startup_file, nrepl_server_ok));
         status = ReplStatus::OK;
       }

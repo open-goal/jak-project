@@ -104,7 +104,7 @@ OfflineTestCompileResult compile(OfflineTestDecompiler& dc,
                                  const OfflineTestWorkGroup& work_group,
                                  const OfflineTestConfig& config) {
   OfflineTestCompileResult result;
-  Compiler compiler(game_name_to_version(config.game_name));
+  Compiler compiler(game_name_to_version(config.game_name), emitter::InstructionSet::X86);
 
   compiler.run_front_end_on_file(
       {"decompiler", "config", game_name_to_all_types[config.game_name]});

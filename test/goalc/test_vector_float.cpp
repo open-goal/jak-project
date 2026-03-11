@@ -51,7 +51,7 @@ class WithMinimalGameTests : public ::testing::Test {
   void TearDown() {}
 
   struct SharedCompiler {
-    SharedCompiler(GameVersion v) : compiler(v) {}
+    SharedCompiler(GameVersion v) : compiler(v, emitter::InstructionSet::X86) {}
     std::thread runtime_thread;
     Compiler compiler;
     GoalTest::CompilerTestRunner runner;

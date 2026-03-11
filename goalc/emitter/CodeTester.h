@@ -8,9 +8,6 @@
  * The CodeTester can't be used for tests requiring the full GOAL language/linking.
  */
 
-#ifndef JAK_CODETESTER_H
-#define JAK_CODETESTER_H
-
 #include <cstring>
 #include <stdexcept>
 #include <string>
@@ -20,11 +17,23 @@
 
 #include "common/common_types.h"
 
+#include "goalc/emitter/InstructionSet.h"
+#include "goalc/emitter/ObjectGenerator.h"
+
 namespace emitter {
 class CodeTester {
+ private:
+  int code_buffer_size = 0;
+  int code_buffer_capacity = 0;
+  u8* code_buffer = nullptr;
+  RegisterInfo m_info;
+  ObjectGenerator m_gen;
+
  public:
   CodeTester();
+  CodeTester(InstructionSet instruction_set);
   std::string dump_to_hex_string(bool nospace = false);
+  ObjectGenerator generator() const { return m_gen; }
   void init_code_buffer(int capacity);
   void emit_push_all_gprs(bool exclude_rax = false);
   void emit_pop_all_gprs(bool exclude_rax = false);
@@ -64,6 +73,7 @@ class CodeTester {
    * Should allow emitter tests which run code to do the right thing on windows.
    */
   Register get_c_abi_arg_reg(int i) {
+    // TODO ARM64 - x86 specific
 #ifdef _WIN32
     switch (i) {
       case 0:
@@ -128,12 +138,5 @@ class CodeTester {
 
   void clear();
   ~CodeTester();
-
- private:
-  int code_buffer_size = 0;
-  int code_buffer_capacity = 0;
-  u8* code_buffer = nullptr;
-  RegisterInfo m_info;
 };
 }  // namespace emitter
-#endif  // JAK_CODETESTER_H

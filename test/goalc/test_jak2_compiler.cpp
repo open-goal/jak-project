@@ -11,7 +11,7 @@ class Jak2GoalcTests : public testing::TestWithParam<Jak2Param> {
  public:
   static void SetUpTestSuite() {
     runtime_thread = std::make_unique<std::thread>(std::thread(GoalTest::runtime_no_kernel_jak2));
-    compiler = std::make_unique<Compiler>(GameVersion::Jak2);
+    compiler = std::make_unique<Compiler>(GameVersion::Jak2, emitter::InstructionSet::X86);
     runner = std::make_unique<GoalTest::CompilerTestRunner>();
     runner->c = compiler.get();
   }

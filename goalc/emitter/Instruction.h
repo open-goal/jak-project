@@ -1,12 +1,41 @@
 #pragma once
 
-#ifndef JAK_INSTRUCTION_H
-#define JAK_INSTRUCTION_H
+#include <cstring>
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
 namespace emitter {
+/*!
+ * A high-level description of a opcode.  It can emit itself.
+ */
+template <typename InstructionType>
+struct InstructionImpl {
+  /*!
+   * Emit into a buffer and return how many bytes written (can be zero)
+   */
+  u8 emit(u8* buffer) const { return static_cast<const InstructionType*>(this)->emit(buffer); }
+
+  u8 length() const { return static_cast<const InstructionType*>(this)->length(); }
+};
+
+struct InstructionARM64 : InstructionImpl<InstructionARM64> {
+  // The ARM instruction stream is a sequence of word-aligned words. Each ARM instruction is a
+  // single 32-bit word in that stream. The encoding of an ARM instruction is:
+  // TODO
+  // https://iitd-plos.github.io/col718/ref/arm-instructionset.pdf
+  u32 instruction_encoding;
+
+  InstructionARM64(u32 encoding) : instruction_encoding(encoding) {}
+
+  uint8_t emit(uint8_t* buffer) const {
+    memcpy(buffer, &instruction_encoding, 4);
+    return 4;
+  }
+
+  uint8_t length() const { return 4; }
+};
+
 /*!
  * The ModRM byte
  */
@@ -133,13 +162,7 @@ struct VEX2 {
       : R(r), reg_id(_reg_id), prefix(_prefix), L(l) {}
 };
 
-/*!
- * A high-level description of an x86-64 opcode.  It can emit itself.
- */
-struct Instruction {
-  Instruction(uint8_t opcode) : op(opcode) {}
-  uint8_t op;
-
+struct InstructionX86 : InstructionImpl<InstructionX86> {
   enum Flags {
     kOp2Set = (1 << 0),
     kOp3Set = (1 << 1),
@@ -151,23 +174,27 @@ struct Instruction {
     kSetImm = (1 << 7),
   };
 
+  InstructionX86(u8 opcode) : op(opcode) {}
+
+  u8 op;
+
   u8 m_flags = 0;
 
-  uint8_t op2;
+  u8 op2;
 
-  uint8_t op3;
+  u8 op3;
 
   u8 n_vex = 0;
-  uint8_t vex[3] = {0, 0, 0};
+  u8 vex[3] = {0, 0, 0};
 
   // the rex byte
-  uint8_t m_rex = 0;
+  u8 m_rex = 0;
 
   // the modrm byte
-  uint8_t m_modrm = 0;
+  u8 m_modrm = 0;
 
   // the sib byte
-  uint8_t m_sib = 0;
+  u8 m_sib = 0;
 
   // the displacement
   Imm disp;
@@ -924,9 +951,6 @@ struct Instruction {
     return offset;
   }
 
-  /*!
-   * Emit into a buffer and return how many bytes written (can be zero)
-   */
   uint8_t emit(uint8_t* buffer) const {
     if (m_flags & kIsNull)
       return 0;
@@ -1015,6 +1039,25 @@ struct Instruction {
     return count;
   }
 };
-}  // namespace emitter
 
-#endif  // JAK_INSTRUCTION_H
+class Instruction {
+ public:
+  using Variant = std::variant<InstructionX86, InstructionARM64>;
+
+  Variant instr;
+
+  Instruction() = delete;
+
+  template <typename T>
+  Instruction(T v) : instr(std::move(v)) {}
+
+  u8 emit(u8* buffer) const {
+    return std::visit([&](auto const& i) { return i.emit(buffer); }, instr);
+  }
+
+  u8 length() const {
+    return std::visit([](auto const& i) { return i.length(); }, instr);
+  }
+};
+
+}  // namespace emitter

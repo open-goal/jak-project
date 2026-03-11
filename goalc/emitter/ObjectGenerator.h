@@ -15,6 +15,7 @@
 #include "common/versions/versions.h"
 
 #include "goalc/debugger/DebugInfo.h"
+#include "goalc/emitter/InstructionSet.h"
 
 struct FunctionDebugInfo;
 class TypeSystem;
@@ -64,6 +65,7 @@ struct ObjectGeneratorStats {
 class ObjectGenerator {
  public:
   ObjectGenerator(GameVersion version);
+  ObjectGenerator(GameVersion version, InstructionSet instr_set);
   ObjectFileData generate_data_v3(const TypeSystem* ts);
   FunctionRecord add_function_to_seg(int seg,
                                      FunctionDebugInfo* debug,
@@ -98,6 +100,8 @@ class ObjectGenerator {
   void count_eliminated_move();
 
   GameVersion version() const { return m_version; }
+
+  InstructionSet instr_set() const { return m_instruction_set; }
 
  private:
   void handle_temp_static_type_links(int seg);
@@ -209,6 +213,7 @@ class ObjectGenerator {
   template <typename T>
   using seg_map = std::array<std::map<std::string, std::vector<T>>, N_SEG>;
   GameVersion m_version;
+  InstructionSet m_instruction_set;
 
   // final data
   seg_vector<u8> m_data_by_seg;

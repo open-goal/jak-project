@@ -18,14 +18,19 @@ class TypeSystem;
 
 class CodeGenerator {
  public:
-  CodeGenerator(FileEnv* env, DebugInfo* debug_info, GameVersion version);
+  CodeGenerator(FileEnv* env,
+                DebugInfo* debug_info,
+                GameVersion version,
+                emitter::InstructionSet instruction_set);
   std::vector<u8> run(const TypeSystem* ts);
   emitter::ObjectGeneratorStats get_obj_stats() const { return m_gen.get_stats(); }
 
  private:
   void do_function(FunctionEnv* env, int f_idx);
-  void do_goal_function(FunctionEnv* env, int f_idx);
-  void do_asm_function(FunctionEnv* env, int f_idx, bool allow_saved_regs);
+  void do_goal_function_x86(FunctionEnv* env, int f_idx);
+  void do_goal_function_arm64(FunctionEnv* env, int f_idx);
+  void do_asm_function_x86(FunctionEnv* env, int f_idx, bool allow_saved_regs);
+  void do_asm_function_arm64(FunctionEnv* env, int f_idx, bool allow_saved_regs);
   emitter::ObjectGenerator m_gen;
   FileEnv* m_fe = nullptr;
   DebugInfo* m_debug_info = nullptr;
