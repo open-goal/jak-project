@@ -601,6 +601,7 @@ void to_json(json& j, const SpeedrunCustomCategoryEntry& obj) {
   json_serialize(cheats);
   json_serialize(continue_point_name);
   json_serialize(completed_task);
+  json_serialize(continue_point);
 }
 
 void from_json(const json& j, SpeedrunCustomCategoryEntry& obj) {
@@ -611,6 +612,7 @@ void from_json(const json& j, SpeedrunCustomCategoryEntry& obj) {
   json_deserialize_if_exists(cheats);
   json_deserialize_if_exists(continue_point_name);
   json_deserialize_if_exists(completed_task);
+  json_deserialize_if_exists(continue_point);
 }
 
 std::vector<SpeedrunPracticeEntry> g_speedrun_practice_entries;
@@ -886,6 +888,7 @@ void pc_sr_mode_init_custom_category_info(s32 entry_index, u32 speedrun_custom_c
     category->forbidden_features = json_info.forbidden_features;
     category->cheats = json_info.cheats;
     category->completed_task = json_info.completed_task;
+    category->continue_point = json_info.continue_point;
   }
 }
 
@@ -912,6 +915,7 @@ void pc_sr_mode_dump_new_custom_category(u32 speedrun_custom_category_ptr) {
     new_category.cheats = category->cheats;
     new_category.completed_task = category->completed_task;
     new_category.continue_point_name = "";
+    new_category.continue_point = category->continue_point;
     g_speedrun_custom_categories.push_back(new_category);
     // convert to json and write file
     json data = g_speedrun_custom_categories;
