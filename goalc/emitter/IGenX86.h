@@ -252,14 +252,14 @@ InstructionX86 load_goal_gpr(Register dst,
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 InstructionX86 store32_xmm32_gpr64_plus_gpr64(Register addr1, Register addr2, Register xmm_value);
 
-InstructionX86 load32_xmm32_gpr64_plus_gpr64(Register xmm_dest, Register addr1, Register addr2);
+InstructionX86 load32_xmm32_gpr64_plus_gpr64(Register simd_dest, Register addr1, Register addr2);
 
 InstructionX86 store32_xmm32_gpr64_plus_gpr64_plus_s8(Register addr1,
                                                       Register addr2,
                                                       Register xmm_value,
                                                       s64 offset);
 
-InstructionX86 load32_xmm32_gpr64_plus_gpr64_plus_s8(Register xmm_dest,
+InstructionX86 load32_xmm32_gpr64_plus_gpr64_plus_s8(Register simd_dest,
                                                      Register addr1,
                                                      Register addr2,
                                                      s64 offset);
@@ -279,22 +279,22 @@ InstructionX86 store32_xmm32_gpr64_plus_s32(Register base, Register xmm_value, s
 
 InstructionX86 store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, s64 offset);
 
-InstructionX86 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register xmm_dest,
+InstructionX86 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
                                                       Register addr1,
                                                       Register addr2,
                                                       s64 offset);
 
-InstructionX86 load32_xmm32_gpr64_plus_s32(Register xmm_dest, Register base, s64 offset);
+InstructionX86 load32_xmm32_gpr64_plus_s32(Register simd_dest, Register base, s64 offset);
 
-InstructionX86 load32_xmm32_gpr64_plus_s8(Register xmm_dest, Register base, s64 offset);
+InstructionX86 load32_xmm32_gpr64_plus_s8(Register simd_dest, Register base, s64 offset);
 
-InstructionX86 load_goal_xmm32(Register xmm_dest, Register addr, Register off, s64 offset);
+InstructionX86 load_goal_xmm32(Register simd_dest, Register addr, Register off, s64 offset);
 
 InstructionX86 store_goal_xmm32(Register addr, Register xmm_value, Register off, s64 offset);
 
 InstructionX86 store_reg_offset_xmm32(Register base, Register xmm_value, s64 offset);
 
-InstructionX86 load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset);
+InstructionX86 load_reg_offset_xmm32(Register simd_dest, Register base, s64 offset);
 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   LOADS n' STORES - XMM128
@@ -303,19 +303,19 @@ InstructionX86 load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offse
 /*!
  * Store a 128-bit xmm into an address stored in a register, no offset
  */
-InstructionX86 store128_gpr64_xmm128(Register gpr_addr, Register xmm_value);
+InstructionX86 store128_gpr64_simd128(Register gpr_addr, Register xmm_value);
 
-InstructionX86 store128_gpr64_xmm128_s32(Register gpr_addr, Register xmm_value, s64 offset);
+InstructionX86 store128_gpr64_simd128_s32(Register gpr_addr, Register xmm_value, s64 offset);
 
-InstructionX86 store128_gpr64_xmm128_s8(Register gpr_addr, Register xmm_value, s64 offset);
+InstructionX86 store128_gpr64_simd128_s8(Register gpr_addr, Register xmm_value, s64 offset);
 
-InstructionX86 load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr);
+InstructionX86 load128_simd128_gpr64(Register simd_dest, Register gpr_addr);
 
-InstructionX86 load128_xmm128_gpr64_s32(Register xmm_dest, Register gpr_addr, s64 offset);
+InstructionX86 load128_simd128_gpr64_s32(Register simd_dest, Register gpr_addr, s64 offset);
 
-InstructionX86 load128_xmm128_gpr64_s8(Register xmm_dest, Register gpr_addr, s64 offset);
+InstructionX86 load128_simd128_gpr64_s8(Register simd_dest, Register gpr_addr, s64 offset);
 
-InstructionX86 load128_xmm128_reg_offset(Register xmm_dest, Register base, s64 offset);
+InstructionX86 load128_xmm128_reg_offset(Register simd_dest, Register base, s64 offset);
 
 InstructionX86 store128_xmm128_reg_offset(Register base, Register xmm_val, s64 offset);
 
@@ -351,7 +351,7 @@ InstructionX86 static_store(Register value, s64 offset, int size);
 
 InstructionX86 static_addr(Register dst, s64 offset);
 
-InstructionX86 static_load_xmm32(Register xmm_dest, s64 offset);
+InstructionX86 static_load_xmm32(Register simd_dest, s64 offset);
 
 InstructionX86 static_store_xmm32(Register xmm_value, s64 offset);
 

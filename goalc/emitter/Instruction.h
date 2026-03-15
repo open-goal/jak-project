@@ -19,17 +19,65 @@ struct InstructionImpl {
   u8 length() const { return static_cast<const InstructionType*>(this)->length(); }
 };
 
+namespace ARM64 {
+struct Field {
+  u32 bits;
+  constexpr explicit Field(u32 v) : bits(v) {}
+};
+
+constexpr u32 Base(u32 value, u32 width) {
+  return value << (32 - width);
+}
+
+constexpr Field Rd(u32 x) {
+  return Field{(x & 31) << 0};
+}
+
+constexpr Field Rt(u32 x) {
+  return Field{(x & 31) << 0};
+}
+
+constexpr Field Rn(u32 x) {
+  return Field{(x & 31) << 5};
+}
+
+constexpr Field Rm(u32 x) {
+  return Field{(x & 31) << 16};
+}
+
+constexpr Field Imm6(u32 x) {
+  return Field{(x & 0b111111) << 10};
+}
+
+constexpr Field Imm9(s32 x) {
+  // assert(x >= -256 && x <= 255);
+  return Field{(static_cast<uint32_t>(x) & 0b111111111) << 12};
+}
+
+constexpr Field Imm12(u32 x) {
+  ASSERT(x >= 0 && x <= 4095);
+  return Field{(static_cast<uint32_t>(x) & 0b111111111111) << 10};
+}
+}  // namespace ARM64
+
 struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   // The ARM instruction stream is a sequence of word-aligned words. Each ARM instruction is a
-  // single 32-bit word in that stream. The encoding of an ARM instruction is:
-  // TODO
-  // https://iitd-plos.github.io/col718/ref/arm-instructionset.pdf
-  u32 instruction_encoding;
+  // single 32-bit word in that stream.
+  // Info:
+  // - https://yurichev.com/mirrors/ARMv8-A_Architecture_Reference_Manual_(Issue_A.a).pdf
+  // - https://www.scs.stanford.edu/~zyedidia/arm64/
+  // - https://armconverter.com/?lock=arm64&code=STR+X0,+[SP,+%23-8]!
+  u32 encoding;
 
-  InstructionARM64(u32 encoding) : instruction_encoding(encoding) {}
+  InstructionARM64() = delete;
+  template <typename... Fs>
+  constexpr InstructionARM64(uint32_t base, Fs... fields) : encoding((base | ... | fields.bits)) {
+    static_assert((std::is_same_v<Fs, emitter::ARM64::Field> && ...),
+                  "All operands must be Field types");
+  }
 
   uint8_t emit(uint8_t* buffer) const {
-    memcpy(buffer, &instruction_encoding, 4);
+    memcpy(buffer, &encoding, 4);
     return 4;
   }
 

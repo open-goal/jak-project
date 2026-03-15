@@ -37,8 +37,8 @@ class CodeTester {
   void init_code_buffer(int capacity);
   void emit_push_all_gprs(bool exclude_rax = false);
   void emit_pop_all_gprs(bool exclude_rax = false);
-  void emit_push_all_xmms();
-  void emit_pop_all_xmms();
+  void emit_push_all_simd();
+  void emit_pop_all_simd();
   void emit_return();
   void emit(const Instruction& instr);
   u64 execute();

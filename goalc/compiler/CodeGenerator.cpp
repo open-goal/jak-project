@@ -104,7 +104,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
   // count how many xmm's we have to backup
   int n_xmm_backups = 0;
   for (auto& saved_reg : allocs.used_saved_regs) {
-    if (saved_reg.is_xmm()) {
+    if (saved_reg.is_xmm(m_gen.instr_set())) {
       n_xmm_backups++;
     }
   }
@@ -121,7 +121,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
       // back up xmms
       int i = 0;
       for (auto& saved_reg : allocs.used_saved_regs) {
-        if (saved_reg.is_xmm()) {
+        if (saved_reg.is_xmm(m_gen.instr_set())) {
           int offset = i * XMM_SIZE;
           m_gen.add_instr_no_ir(f_rec,
                                 IGen::store128_xmm128_reg_offset(m_gen, RSP, saved_reg, offset),
@@ -133,10 +133,10 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
   } else {
     // back up xmms (currently not aligned)
     for (auto& saved_reg : allocs.used_saved_regs) {
-      if (saved_reg.is_xmm()) {
+      if (saved_reg.is_xmm(m_gen.instr_set())) {
         m_gen.add_instr_no_ir(f_rec, IGen::sub_gpr64_imm8s(m_gen, RSP, XMM_SIZE),
                               InstructionInfo::Kind::PROLOGUE);
-        m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_xmm128(m_gen, RSP, saved_reg),
+        m_gen.add_instr_no_ir(f_rec, IGen::store128_gpr64_simd128(m_gen, RSP, saved_reg),
                               InstructionInfo::Kind::PROLOGUE);
         stack_offset += XMM_SIZE;
       }
@@ -145,7 +145,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
 
   // back up gprs
   for (auto& saved_reg : allocs.used_saved_regs) {
-    if (saved_reg.is_gpr()) {
+    if (saved_reg.is_gpr(m_gen.instr_set())) {
       m_gen.add_instr_no_ir(f_rec, IGen::push_gpr64(m_gen, saved_reg),
                             InstructionInfo::Kind::PROLOGUE);
       stack_offset += GPR_SIZE;
@@ -196,17 +196,17 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
     auto& bonus = allocs.stack_ops.at(ir_idx);
     for (auto& op : bonus.ops) {
       if (op.load) {
-        if (op.reg.is_gpr() && op.reg_class == RegClass::GPR_64) {
+        if (op.reg.is_gpr(m_gen.instr_set()) && op.reg_class == RegClass::GPR_64) {
           // todo, s8 or 0 offset if possible?
           m_gen.add_instr(IGen::load64_gpr64_plus_s32(
                               m_gen, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, RSP),
                           i_rec);
-        } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
+        } else if (op.reg.is_xmm(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
           // load xmm32 off of the stack
           m_gen.add_instr(IGen::load_reg_offset_xmm32(
                               m_gen, op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
-        } else if (op.reg.is_xmm() &&
+        } else if (op.reg.is_xmm(m_gen.instr_set()) &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
           m_gen.add_instr(IGen::load128_xmm128_reg_offset(
                               m_gen, op.reg, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
@@ -223,17 +223,17 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
     // store things back on the stack if needed.
     for (auto& op : bonus.ops) {
       if (op.store) {
-        if (op.reg.is_gpr() && op.reg_class == RegClass::GPR_64) {
+        if (op.reg.is_gpr(m_gen.instr_set()) && op.reg_class == RegClass::GPR_64) {
           // todo, s8 or 0 offset if possible?
           m_gen.add_instr(IGen::store64_gpr64_plus_s32(
                               m_gen, RSP, allocs.get_slot_for_spill(op.slot) * GPR_SIZE, op.reg),
                           i_rec);
-        } else if (op.reg.is_xmm() && op.reg_class == RegClass::FLOAT) {
+        } else if (op.reg.is_xmm(m_gen.instr_set()) && op.reg_class == RegClass::FLOAT) {
           // store xmm32 on the stack
           m_gen.add_instr(IGen::store_reg_offset_xmm32(
                               m_gen, RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
                           i_rec);
-        } else if (op.reg.is_xmm() &&
+        } else if (op.reg.is_xmm(m_gen.instr_set()) &&
                    (op.reg_class == RegClass::VECTOR_FLOAT || op.reg_class == RegClass::INT_128)) {
           m_gen.add_instr(IGen::store128_xmm128_reg_offset(
                               m_gen, RSP, op.reg, allocs.get_slot_for_spill(op.slot) * GPR_SIZE),
@@ -262,7 +262,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
 
   for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
     auto& saved_reg = allocs.used_saved_regs.at(i);
-    if (saved_reg.is_gpr()) {
+    if (saved_reg.is_gpr(m_gen.instr_set())) {
       m_gen.add_instr_no_ir(f_rec, IGen::pop_gpr64(m_gen, saved_reg),
                             InstructionInfo::Kind::EPILOGUE);
     }
@@ -273,7 +273,7 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
       int j = n_xmm_backups;
       for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
         auto& saved_reg = allocs.used_saved_regs.at(i);
-        if (saved_reg.is_xmm()) {
+        if (saved_reg.is_xmm(m_gen.instr_set())) {
           j--;
           int offset = j * XMM_SIZE;
           m_gen.add_instr_no_ir(f_rec,
@@ -288,8 +288,8 @@ void CodeGenerator::do_goal_function_x86(FunctionEnv* env, int f_idx) {
   } else {
     for (int i = int(allocs.used_saved_regs.size()); i-- > 0;) {
       auto& saved_reg = allocs.used_saved_regs.at(i);
-      if (saved_reg.is_xmm()) {
-        m_gen.add_instr_no_ir(f_rec, IGen::load128_xmm128_gpr64(m_gen, saved_reg, RSP),
+      if (saved_reg.is_xmm(m_gen.instr_set())) {
+        m_gen.add_instr_no_ir(f_rec, IGen::load128_simd128_gpr64(m_gen, saved_reg, RSP),
                               InstructionInfo::Kind::EPILOGUE);
         m_gen.add_instr_no_ir(f_rec, IGen::add_gpr64_imm8s(m_gen, RSP, XMM_SIZE),
                               InstructionInfo::Kind::EPILOGUE);

@@ -347,10 +347,10 @@ Instruction store32_xmm32_gpr64_plus_gpr64(const ObjectGenerator& gen,
 }
 
 Instruction load32_xmm32_gpr64_plus_gpr64(const ObjectGenerator& gen,
-                                          Register xmm_dest,
+                                          Register simd_dest,
                                           Register addr1,
                                           Register addr2) {
-  IGEN_DISPATCH(load32_xmm32_gpr64_plus_gpr64, xmm_dest, addr1, addr2);
+  IGEN_DISPATCH(load32_xmm32_gpr64_plus_gpr64, simd_dest, addr1, addr2);
 }
 
 Instruction store32_xmm32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
@@ -362,11 +362,11 @@ Instruction store32_xmm32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
 }
 
 Instruction load32_xmm32_gpr64_plus_gpr64_plus_s8(const ObjectGenerator& gen,
-                                                  Register xmm_dest,
+                                                  Register simd_dest,
                                                   Register addr1,
                                                   Register addr2,
                                                   s64 offset) {
-  IGEN_DISPATCH(load32_xmm32_gpr64_plus_gpr64_plus_s8, xmm_dest, addr1, addr2, offset);
+  IGEN_DISPATCH(load32_xmm32_gpr64_plus_gpr64_plus_s8, simd_dest, addr1, addr2, offset);
 }
 
 Instruction store32_xmm32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
@@ -410,33 +410,33 @@ Instruction store32_xmm32_gpr64_plus_s8(const ObjectGenerator& gen,
 }
 
 Instruction load32_xmm32_gpr64_plus_gpr64_plus_s32(const ObjectGenerator& gen,
-                                                   Register xmm_dest,
+                                                   Register simd_dest,
                                                    Register addr1,
                                                    Register addr2,
                                                    s64 offset) {
-  IGEN_DISPATCH(load32_xmm32_gpr64_plus_gpr64_plus_s32, xmm_dest, addr1, addr2, offset);
+  IGEN_DISPATCH(load32_xmm32_gpr64_plus_gpr64_plus_s32, simd_dest, addr1, addr2, offset);
 }
 
 Instruction load32_xmm32_gpr64_plus_s32(const ObjectGenerator& gen,
-                                        Register xmm_dest,
+                                        Register simd_dest,
                                         Register base,
                                         s64 offset) {
-  IGEN_DISPATCH(load32_xmm32_gpr64_plus_s32, xmm_dest, base, offset);
+  IGEN_DISPATCH(load32_xmm32_gpr64_plus_s32, simd_dest, base, offset);
 }
 
 Instruction load32_xmm32_gpr64_plus_s8(const ObjectGenerator& gen,
-                                       Register xmm_dest,
+                                       Register simd_dest,
                                        Register base,
                                        s64 offset) {
-  IGEN_DISPATCH(load32_xmm32_gpr64_plus_s8, xmm_dest, base, offset);
+  IGEN_DISPATCH(load32_xmm32_gpr64_plus_s8, simd_dest, base, offset);
 }
 
 Instruction load_goal_xmm32(const ObjectGenerator& gen,
-                            Register xmm_dest,
+                            Register simd_dest,
                             Register addr,
                             Register off,
                             s64 offset) {
-  IGEN_DISPATCH(load_goal_xmm32, xmm_dest, addr, off, offset);
+  IGEN_DISPATCH(load_goal_xmm32, simd_dest, addr, off, offset);
 }
 
 Instruction store_goal_xmm32(const ObjectGenerator& gen,
@@ -455,55 +455,57 @@ Instruction store_reg_offset_xmm32(const ObjectGenerator& gen,
 }
 
 Instruction load_reg_offset_xmm32(const ObjectGenerator& gen,
-                                  Register xmm_dest,
+                                  Register simd_dest,
                                   Register base,
                                   s64 offset) {
-  IGEN_DISPATCH(load_reg_offset_xmm32, xmm_dest, base, offset);
+  IGEN_DISPATCH(load_reg_offset_xmm32, simd_dest, base, offset);
 }
 
-Instruction store128_gpr64_xmm128(const ObjectGenerator& gen,
-                                  Register gpr_addr,
-                                  Register xmm_value) {
-  IGEN_DISPATCH(store128_gpr64_xmm128, gpr_addr, xmm_value);
+Instruction store128_gpr64_simd128(const ObjectGenerator& gen,
+                                   Register gpr_addr,
+                                   Register xmm_value) {
+  IGEN_DISPATCH(store128_gpr64_simd128, gpr_addr, xmm_value);
 }
 
-Instruction store128_gpr64_xmm128_s32(const ObjectGenerator& gen,
+Instruction store128_gpr64_simd128_s32(const ObjectGenerator& gen,
+                                       Register gpr_addr,
+                                       Register xmm_value,
+                                       s64 offset) {
+  IGEN_DISPATCH(store128_gpr64_simd128_s32, gpr_addr, xmm_value, offset);
+}
+
+Instruction store128_gpr64_simd128_s8(const ObjectGenerator& gen,
                                       Register gpr_addr,
                                       Register xmm_value,
                                       s64 offset) {
-  IGEN_DISPATCH(store128_gpr64_xmm128_s32, gpr_addr, xmm_value, offset);
+  IGEN_DISPATCH(store128_gpr64_simd128_s8, gpr_addr, xmm_value, offset);
 }
 
-Instruction store128_gpr64_xmm128_s8(const ObjectGenerator& gen,
+Instruction load128_simd128_gpr64(const ObjectGenerator& gen,
+                                  Register simd_dest,
+                                  Register gpr_addr) {
+  IGEN_DISPATCH(load128_simd128_gpr64, simd_dest, gpr_addr);
+}
+
+Instruction load128_simd128_gpr64_s32(const ObjectGenerator& gen,
+                                      Register simd_dest,
+                                      Register gpr_addr,
+                                      s64 offset) {
+  IGEN_DISPATCH(load128_simd128_gpr64_s32, simd_dest, gpr_addr, offset);
+}
+
+Instruction load128_simd128_gpr64_s8(const ObjectGenerator& gen,
+                                     Register simd_dest,
                                      Register gpr_addr,
-                                     Register xmm_value,
                                      s64 offset) {
-  IGEN_DISPATCH(store128_gpr64_xmm128_s8, gpr_addr, xmm_value, offset);
-}
-
-Instruction load128_xmm128_gpr64(const ObjectGenerator& gen, Register xmm_dest, Register gpr_addr) {
-  IGEN_DISPATCH(load128_xmm128_gpr64, xmm_dest, gpr_addr);
-}
-
-Instruction load128_xmm128_gpr64_s32(const ObjectGenerator& gen,
-                                     Register xmm_dest,
-                                     Register gpr_addr,
-                                     s64 offset) {
-  IGEN_DISPATCH(load128_xmm128_gpr64_s32, xmm_dest, gpr_addr, offset);
-}
-
-Instruction load128_xmm128_gpr64_s8(const ObjectGenerator& gen,
-                                    Register xmm_dest,
-                                    Register gpr_addr,
-                                    s64 offset) {
-  IGEN_DISPATCH(load128_xmm128_gpr64_s8, xmm_dest, gpr_addr, offset);
+  IGEN_DISPATCH(load128_simd128_gpr64_s8, simd_dest, gpr_addr, offset);
 }
 
 Instruction load128_xmm128_reg_offset(const ObjectGenerator& gen,
-                                      Register xmm_dest,
+                                      Register simd_dest,
                                       Register base,
                                       s64 offset) {
-  IGEN_DISPATCH(load128_xmm128_reg_offset, xmm_dest, base, offset);
+  IGEN_DISPATCH(load128_xmm128_reg_offset, simd_dest, base, offset);
 }
 
 Instruction store128_xmm128_reg_offset(const ObjectGenerator& gen,
@@ -573,8 +575,8 @@ Instruction static_addr(const ObjectGenerator& gen, Register dst, s64 offset) {
   IGEN_DISPATCH(static_addr, dst, offset);
 }
 
-Instruction static_load_xmm32(const ObjectGenerator& gen, Register xmm_dest, s64 offset) {
-  IGEN_DISPATCH(static_load_xmm32, xmm_dest, offset);
+Instruction static_load_xmm32(const ObjectGenerator& gen, Register simd_dest, s64 offset) {
+  IGEN_DISPATCH(static_load_xmm32, simd_dest, offset);
 }
 
 Instruction static_store_xmm32(const ObjectGenerator& gen, Register xmm_value, s64 offset) {

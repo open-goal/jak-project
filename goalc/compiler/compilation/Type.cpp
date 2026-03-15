@@ -572,7 +572,8 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
     IRegConstraint constr;
     constr.instr_idx = 0;  // constraint at function start
     auto ireg_arg = new_func_env->make_ireg(
-        lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+        lambda.params.at(i).type,
+        arg_regs.at(i).is_gpr(m_instr_set) ? RegClass::GPR_64 : RegClass::INT_128);
     ireg_arg->mark_as_settable();
     constr.ireg = ireg_arg->ireg();
     constr.desired_register = arg_regs.at(i);
@@ -609,8 +610,9 @@ Val* Compiler::compile_defmethod(const goos::Object& form, const goos::Object& _
   func_block_env->emit_ir<IR_ValueReset>(form, reset_args_for_coloring);
 
   for (u32 i = 0; i < lambda.params.size(); i++) {
-    auto ireg = new_func_env->make_ireg(
-        lambda.params.at(i).type, arg_regs.at(i).is_gpr() ? RegClass::GPR_64 : RegClass::INT_128);
+    auto ireg = new_func_env->make_ireg(lambda.params.at(i).type, arg_regs.at(i).is_gpr(m_instr_set)
+                                                                      ? RegClass::GPR_64
+                                                                      : RegClass::INT_128);
     ireg->mark_as_settable();
     if (!new_func_env->params.insert({m_goos.intern_ptr(lambda.params.at(i).name), ireg}).second) {
       throw_compiler_error(form, "defmethod has multiple arguments named {}",

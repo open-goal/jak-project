@@ -9,6 +9,9 @@
 
 #include "fmt/format.h"
 
+// TODO ARM64 - just silencing errors while things are not implemented obviously
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 using namespace emitter;
 namespace {
 Register get_reg(const RegVal* rv, const AllocationResult& allocs, emitter::IR_Record irec) {
@@ -252,7 +255,7 @@ void IR_LoadSymbolPointer::do_codegen_x86(emitter::ObjectGenerator* gen,
   auto dest_reg = get_reg(m_dest, allocs, irec);
   if (m_name == "#f") {
     static_assert(false_symbol_offset() == 0, "false symbol location");
-    if (dest_reg.is_xmm()) {
+    if (dest_reg.is_xmm(gen->instr_set())) {
       gen->add_instr(IGen::movq_xmm64_gpr64(*gen, dest_reg, gRegInfo.get_st_reg()), irec);
     } else {
       gen->add_instr(IGen::mov_gpr64_gpr64(*gen, dest_reg, gRegInfo.get_st_reg()), irec);

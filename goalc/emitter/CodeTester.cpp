@@ -11,6 +11,7 @@
 #include "common/common_types.h"
 
 #include "goalc/emitter/Instruction.h"
+#include "goalc/emitter/Register.h"
 #ifdef OS_POSIX
 #include <sys/mman.h>
 #elif _WIN32
@@ -56,10 +57,10 @@ std::string CodeTester::dump_to_hex_string(bool nospace) {
  * Add an instruction to the buffer.
  */
 void CodeTester::emit(const emitter::Instruction& instr) {
-  code_buffer_size += instr.emit(code_buffer + code_buffer_size);
+  u8* start = code_buffer + code_buffer_size;
+  code_buffer_size += instr.emit(start);
   ASSERT(code_buffer_size <= code_buffer_capacity);
 }
-
 /*!
  * Add a return instruction to the buffer.
  */
@@ -79,7 +80,7 @@ void CodeTester::emit_pop_all_gprs(bool exclude_return_register) {
       }
     }
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
-    for (int i = 0; i < 32; i++) {
+    for (int i = 31; i-- > 0;) {
       if (i != X0 || !exclude_return_register) {
         emit(IGen::pop_gpr64(m_gen, i));
       }
@@ -95,13 +96,13 @@ void CodeTester::emit_pop_all_gprs(bool exclude_return_register) {
  */
 void CodeTester::emit_push_all_gprs(bool exclude_return_register) {
   if (m_gen.instr_set() == InstructionSet::X86) {
-    for (int i = 16; i-- > 0;) {
+    for (int i = 0; i < 16; i++) {
       if (i != RAX || !exclude_return_register) {
         emit(IGen::push_gpr64(m_gen, i));
       }
     }
   } else if (m_gen.instr_set() == InstructionSet::ARM64) {
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 31; i++) {
       if (i != X0 || !exclude_return_register) {
         emit(IGen::push_gpr64(m_gen, i));
       }
@@ -114,23 +115,41 @@ void CodeTester::emit_push_all_gprs(bool exclude_return_register) {
 /*!
  * Push all xmm registers (all 128-bits) to the stack.
  */
-void CodeTester::emit_push_all_xmms() {
-  emit(IGen::sub_gpr64_imm8s(m_gen, RSP, 8));
-  for (int i = 0; i < 16; i++) {
-    emit(IGen::sub_gpr64_imm8s(m_gen, RSP, 16));
-    emit(IGen::store128_gpr64_xmm128(m_gen, RSP, XMM0 + i));
+void CodeTester::emit_push_all_simd() {
+  if (m_gen.instr_set() == InstructionSet::X86) {
+    emit(IGen::sub_gpr64_imm8s(m_gen, RSP, 8));
+    for (int i = 0; i < 16; i++) {
+      emit(IGen::sub_gpr64_imm8s(m_gen, RSP, 16));
+      emit(IGen::store128_gpr64_simd128(m_gen, RSP, XMM0 + i));
+    }
+  } else if (m_gen.instr_set() == InstructionSet::ARM64) {
+    for (int i = 0; i < 16; i++) {
+      emit(IGen::sub_gpr64_imm8s(m_gen, SP, 16));
+      emit(IGen::store128_gpr64_simd128(m_gen, SP, Q0 + i));
+    }
+  } else {
+    throw std::runtime_error("CodeTester::emit_push_all_simd unhandled instruction set");
   }
 }
 
 /*!
  * Pop all xmm registers (all 128-bits) from the stack
  */
-void CodeTester::emit_pop_all_xmms() {
-  for (int i = 0; i < 16; i++) {
-    emit(IGen::load128_xmm128_gpr64(m_gen, XMM0 + i, RSP));
-    emit(IGen::add_gpr64_imm8s(m_gen, RSP, 16));
+void CodeTester::emit_pop_all_simd() {
+  if (m_gen.instr_set() == InstructionSet::X86) {
+    for (int i = 0; i < 16; i++) {
+      emit(IGen::load128_simd128_gpr64(m_gen, XMM0 + i, RSP));
+      emit(IGen::add_gpr64_imm8s(m_gen, RSP, 16));
+    }
+    emit(IGen::add_gpr64_imm8s(m_gen, RSP, 8));
+  } else if (m_gen.instr_set() == InstructionSet::ARM64) {
+    for (int i = 0; i < 16; i++) {
+      emit(IGen::load128_simd128_gpr64(m_gen, Q0 + i, SP));
+      emit(IGen::add_gpr64_imm8s(m_gen, SP, 16));
+    }
+  } else {
+    throw std::runtime_error("CodeTester::emit_pop_all_simd unhandled instruction set");
   }
-  emit(IGen::add_gpr64_imm8s(m_gen, RSP, 8));
 }
 
 /*!
@@ -144,8 +163,16 @@ void CodeTester::clear() {
  * Execute the buffered code with no arguments, return the value of RAX.
  */
 u64 CodeTester::execute() {
+#if defined(__aarch64__)
+  // allegedly needed because ARM requires flushing after writing new instructions
+  // on x86 it does nothing
+  __builtin___clear_cache((char*)code_buffer, (char*)code_buffer + code_buffer_size);
+#endif
   // clang-format off
 #if defined(__APPLE__) && defined(__aarch64__)
+  // TODO - we may need to switch to using pthread_jit_write_protect_np
+  // there may also be issues if multiple threasd are involved
+  // but this seems to work so keep it simple until something proves otherwise.
   mprotect(code_buffer, code_buffer_capacity, PROT_EXEC | PROT_READ);
   auto ret = ((u64(*)())code_buffer)();
   mprotect(code_buffer, code_buffer_capacity, PROT_WRITE | PROT_READ);
@@ -177,7 +204,7 @@ u64 CodeTester::execute(u64 in0, u64 in1, u64 in2, u64 in3) {
  * Allocate a code buffer of the given size.
  */
 void CodeTester::init_code_buffer(int capacity) {
-// TODO Apple Silicone - You cannot make a page be RWX,
+// TODO Apple Silicon - You cannot make a page be RWX,
 // or more specifically it can't be both writable and executable at the same time
 //
 // https://github.com/zherczeg/sljit/issues/99
@@ -185,8 +212,8 @@ void CodeTester::init_code_buffer(int capacity) {
 // The solution to this is to flip-flop between permissions, or perhaps have two threads
 // one that has writing permission, and another with executable permission
 #if defined(__APPLE__) && defined(__aarch64__)
-  code_buffer =
-      (u8*)mmap(nullptr, capacity, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
+  code_buffer = (u8*)mmap(nullptr, capacity, PROT_WRITE | PROT_READ,
+                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_JIT, 0, 0);
 #else
   code_buffer = (u8*)mmap(nullptr, capacity, PROT_EXEC | PROT_READ | PROT_WRITE,
                           MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);

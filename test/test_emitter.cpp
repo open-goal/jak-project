@@ -3847,16 +3847,16 @@
 // TEST(EmitterXMM, StackLoadFull32) {
 //   CodeTester tester;
 //   tester.init_code_buffer(1024);
-//   tester.emit(IGen::load128_xmm128_gpr64_s32(XMM0 + 3, RSP, -1234));
-//   tester.emit(IGen::load128_xmm128_gpr64_s32(XMM0 + 13, RSP, -1234));
+//   tester.emit(IGen::load128_simd128_gpr64_s32(XMM0 + 3, RSP, -1234));
+//   tester.emit(IGen::load128_simd128_gpr64_s32(XMM0 + 13, RSP, -1234));
 //   EXPECT_EQ(tester.dump_to_hex_string(true), "660F6F9C242EFBFFFF66440F6FAC242EFBFFFF");
 // }
 
 // TEST(EmitterXMM, StackLoadFull8) {
 //   CodeTester tester;
 //   tester.init_code_buffer(1024);
-//   tester.emit(IGen::load128_xmm128_gpr64_s8(XMM0 + 3, RSP, -12));
-//   tester.emit(IGen::load128_xmm128_gpr64_s8(XMM0 + 13, RSP, -12));
+//   tester.emit(IGen::load128_simd128_gpr64_s8(XMM0 + 3, RSP, -12));
+//   tester.emit(IGen::load128_simd128_gpr64_s8(XMM0 + 13, RSP, -12));
 //   EXPECT_EQ(tester.dump_to_hex_string(true), "660F6F5C24F466440F6F6C24F4");
 // }
 
@@ -3879,16 +3879,16 @@
 // TEST(EmitterXMM, StackStoreFull32) {
 //   CodeTester tester;
 //   tester.init_code_buffer(1024);
-//   tester.emit(IGen::store128_gpr64_xmm128_s32(RSP, XMM0 + 3, -1234));
-//   tester.emit(IGen::store128_gpr64_xmm128_s32(RSP, XMM0 + 13, -1234));
+//   tester.emit(IGen::store128_gpr64_simd128_s32(RSP, XMM0 + 3, -1234));
+//   tester.emit(IGen::store128_gpr64_simd128_s32(RSP, XMM0 + 13, -1234));
 //   EXPECT_EQ(tester.dump_to_hex_string(true), "660F7F9C242EFBFFFF66440F7FAC242EFBFFFF");
 // }
 
 // TEST(EmitterXMM, StackStoreFull8) {
 //   CodeTester tester;
 //   tester.init_code_buffer(1024);
-//   tester.emit(IGen::store128_gpr64_xmm128_s8(RSP, XMM0 + 3, -12));
-//   tester.emit(IGen::store128_gpr64_xmm128_s8(RSP, XMM0 + 13, -12));
+//   tester.emit(IGen::store128_gpr64_simd128_s8(RSP, XMM0 + 3, -12));
+//   tester.emit(IGen::store128_gpr64_simd128_s8(RSP, XMM0 + 13, -12));
 //   EXPECT_EQ(tester.dump_to_hex_string(true), "660F7F5C24F466440F7F6C24F4");
 // }
 

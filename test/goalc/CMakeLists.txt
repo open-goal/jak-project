@@ -1,4 +1,5 @@
 set(GOALC_TEST_CASES
+    ${CMAKE_CURRENT_LIST_DIR}/test_CodeTester.cpp
     ${CMAKE_CURRENT_LIST_DIR}/test_arithmetic.cpp
     ${CMAKE_CURRENT_LIST_DIR}/test_collections.cpp
     ${CMAKE_CURRENT_LIST_DIR}/test_compiler.cpp

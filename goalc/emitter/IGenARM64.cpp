@@ -2,9 +2,14 @@
 #include "IGenARM64.h"
 
 #include "goalc/emitter/Instruction.h"
+#include "goalc/emitter/InstructionSet.h"
+#include "goalc/emitter/Register.h"
 
 // https://armconverter.com/?code=ret
 // https://developer.arm.com/documentation/ddi0487/latest
+
+// TODO ARM64 - just silencing errors while things are not implemented obviously
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 namespace emitter {
 namespace IGen {
@@ -12,6 +17,9 @@ namespace ARM64 {
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   MOVES
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+const auto instr_set = emitter::InstructionSet::ARM64;
+using namespace emitter::ARM64;
 
 InstructionARM64 mov_gpr64_gpr64(Register dst, Register src) {
   ASSERT_MSG(false, "not yet implemented");
@@ -331,7 +339,7 @@ InstructionARM64 store32_xmm32_gpr64_plus_gpr64(Register addr1,
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_gpr64(Register xmm_dest, Register addr1, Register addr2) {
+InstructionARM64 load32_xmm32_gpr64_plus_gpr64(Register simd_dest, Register addr1, Register addr2) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
@@ -344,7 +352,7 @@ InstructionARM64 store32_xmm32_gpr64_plus_gpr64_plus_s8(Register addr1,
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s8(Register xmm_dest,
+InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s8(Register simd_dest,
                                                        Register addr1,
                                                        Register addr2,
                                                        s64 offset) {
@@ -385,7 +393,7 @@ InstructionARM64 store32_xmm32_gpr64_plus_s8(Register base, Register xmm_value, 
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register xmm_dest,
+InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register simd_dest,
                                                         Register addr1,
                                                         Register addr2,
                                                         s64 offset) {
@@ -393,17 +401,17 @@ InstructionARM64 load32_xmm32_gpr64_plus_gpr64_plus_s32(Register xmm_dest,
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_s32(Register xmm_dest, Register base, s64 offset) {
+InstructionARM64 load32_xmm32_gpr64_plus_s32(Register simd_dest, Register base, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load32_xmm32_gpr64_plus_s8(Register xmm_dest, Register base, s64 offset) {
+InstructionARM64 load32_xmm32_gpr64_plus_s8(Register simd_dest, Register base, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load_goal_xmm32(Register xmm_dest, Register addr, Register off, s64 offset) {
+InstructionARM64 load_goal_xmm32(Register simd_dest, Register addr, Register off, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
@@ -418,7 +426,7 @@ InstructionARM64 store_reg_offset_xmm32(Register base, Register xmm_value, s64 o
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load_reg_offset_xmm32(Register xmm_dest, Register base, s64 offset) {
+InstructionARM64 load_reg_offset_xmm32(Register simd_dest, Register base, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
@@ -427,37 +435,47 @@ InstructionARM64 load_reg_offset_xmm32(Register xmm_dest, Register base, s64 off
 //   LOADS n' STORES - SIMD (128-bit, QWORDS)
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-InstructionARM64 store128_gpr64_xmm128(Register gpr_addr, Register xmm_value) {
+InstructionARM64 store128_gpr64_simd128(Register gpr_addr, Register simd_reg) {
+  // https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_fpsimd.html
+  // - STR Qn, [Xn] (unsigned offset)
+  ASSERT(gpr_addr.is_gpr(instr_set));
+  ASSERT(
+      simd_reg.is_128bit_simd(instr_set));  // TODO ARM64 - this assertion isn't as useful for ARM
+                                            // since Q registers are not unique in terms of their id
+  return InstructionARM64(Base(0b0011110110, 10), Rn(gpr_addr.id()), Rt(simd_reg.id()), Imm12(0));
+}
+
+InstructionARM64 store128_gpr64_simd128_s32(Register gpr_addr, Register xmm_value, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 store128_gpr64_xmm128_s32(Register gpr_addr, Register xmm_value, s64 offset) {
+InstructionARM64 store128_gpr64_simd128_s8(Register gpr_addr, Register xmm_value, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 store128_gpr64_xmm128_s8(Register gpr_addr, Register xmm_value, s64 offset) {
+InstructionARM64 load128_simd128_gpr64(Register simd_dest, Register gpr_addr) {
+  // https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_fpsimd.html
+  // - LDR <Qt>, [<Xn|SP>{, #<pimm>}]
+  ASSERT(gpr_addr.is_gpr(instr_set));
+  ASSERT(simd_dest.is_128bit_simd(
+      instr_set));  // TODO ARM64 - this assertion isn't as useful for ARM
+                    // since Q registers are not unique in terms of their id
+  return InstructionARM64(Base(0b0011110111, 10), Rn(gpr_addr.id()), Rt(simd_dest.id()), Imm12(0));
+}
+
+InstructionARM64 load128_simd128_gpr64_s32(Register simd_dest, Register gpr_addr, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load128_xmm128_gpr64(Register xmm_dest, Register gpr_addr) {
+InstructionARM64 load128_simd128_gpr64_s8(Register simd_dest, Register gpr_addr, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 load128_xmm128_gpr64_s32(Register xmm_dest, Register gpr_addr, s64 offset) {
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
-}
-
-InstructionARM64 load128_xmm128_gpr64_s8(Register xmm_dest, Register gpr_addr, s64 offset) {
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
-}
-
-InstructionARM64 load128_xmm128_reg_offset(Register xmm_dest, Register base, s64 offset) {
+InstructionARM64 load128_xmm128_reg_offset(Register simd_dest, Register base, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
@@ -541,7 +559,7 @@ InstructionARM64 static_addr(Register dst, s64 offset) {
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 static_load_xmm32(Register xmm_dest, s64 offset) {
+InstructionARM64 static_load_xmm32(Register simd_dest, s64 offset) {
   ASSERT_MSG(false, "not yet implemented");
   return InstructionARM64(0b0);
 }
@@ -569,22 +587,32 @@ InstructionARM64 store64_gpr64_plus_s32(Register addr, int32_t offset, Register 
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 InstructionARM64 ret() {
-  // pg. 1850
-  return InstructionARM64(0b11010110010111110000001111000000);
+  // https://www.scs.stanford.edu/~zyedidia/arm64/ret.html
+  // - defaults to using X30 if Rn is absent
+  return InstructionARM64(Base(0b1101011001011111000000, 22), Rn(30));
 }
 
 InstructionARM64 push_gpr64(Register reg) {
-  // pg. 1998
-  ASSERT(reg.is_gpr());
-  // TODO - is hw_id needed?
-  return InstructionARM64(0b11111000001);  // TODO - finish
+  // ARM64 stack grows down, so we subtract 16 from SP and store the register
+  // Equivalent assembly: STR reg, [SP, #-16]!
+  // - https://www.scs.stanford.edu/~zyedidia/arm64/str_imm_gen.html
+  // We use 16 because in ARM, the stack must be 16-byte aligned.
+  // This does mean we are inefficiently using the stack, there are a few better options:
+  // - Push in pairs, two registers at a time
+  // - Preallocate stack-space
+  // But we can't do either of these at this level, this is an optimization that has to come from
+  // higher in the stack.  Here we are concerned with just satisfying the need to push a GPR
+  ASSERT(reg.is_gpr(instr_set));
+  return InstructionARM64(Base(0b1111100000000000000011, 22), Imm9(-16), Rn(ARM64_REG::SP),
+                          Rt(reg.id()));
 }
 
 InstructionARM64 pop_gpr64(Register reg) {
-  // pg. 1998
-  ASSERT(reg.is_gpr());
-  // TODO - is hw_id needed?
-  return InstructionARM64(0b11111000011);  // TODO - finish
+  // ldr reg, [sp], #16
+  // - https://www.scs.stanford.edu/~zyedidia/arm64/ldr_imm_gen.html
+  ASSERT(reg.is_gpr(instr_set));
+  return InstructionARM64(Base(0b1111100001000000000001, 22), Imm9(16), Rn(ARM64_REG::SP),
+                          Rt(reg.id()));
 }
 
 InstructionARM64 call_r64(Register reg_) {
@@ -600,23 +628,45 @@ InstructionARM64 jmp_r64(Register reg_) {
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 //   INTEGER MATH
 //;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+// NOTE: ARM can actually handle 12-bit immediate values, so if it's actually worth it, we
+// could leverage these instructions for more than just 8-bit values
 InstructionARM64 sub_gpr64_imm8s(Register reg, int64_t imm) {
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
+  // You cannot subtract or add with a negative immediate in ARM
+  // therefore depending on the value of the immediate, we use a different instruction
+  ASSERT(reg.is_gpr(instr_set));
+  if (imm < 0) {
+    return add_gpr64_imm8s(reg, abs(imm));
+  }
+  // https://www.scs.stanford.edu/~zyedidia/arm64/sub_addsub_imm.html
+  // - SUB <Xd>, <Xn>, #imm12 {, LSL #12}
+  // - using a shift of 0 here (last bit in the base)
+  return InstructionARM64(Base(0b1101000100, 10), Imm12(imm), Rn(reg.id()), Rd(reg.id()));
+}
+
+// NOTE: ARM can actually handle 12-bit immediate values, so if it's actually worth it, we
+// could leverage these instructions for more than just 8-bit values
+InstructionARM64 add_gpr64_imm8s(Register reg, int64_t imm) {
+  // You cannot subtract or add with a negative immediate in ARM
+  // therefore depending on the value of the immediate, we use a different instruction
+  ASSERT(reg.is_gpr(instr_set));
+  if (imm < 0) {
+    return sub_gpr64_imm8s(reg, abs(imm));
+  }
+  // https://www.scs.stanford.edu/~zyedidia/arm64/add_addsub_imm.html
+  // ADD <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
+  return InstructionARM64(Base(0b1001000100, 10), Imm12(imm), Rn(reg.id()), Rd(reg.id()));
 }
 
 InstructionARM64 sub_gpr64_imm32s(Register reg, int64_t imm) {
-  ASSERT_MSG(false, "not yet implemented");
+  // ARM64 does not support this kind of single-instruction
+  ASSERT_MSG(false, "sub_gpr64_imm32s not supported on ARM64");
   return InstructionARM64(0b0);
 }
 
-InstructionARM64 add_gpr64_imm8s(Register reg, int64_t v) {
-  ASSERT_MSG(false, "not yet implemented");
-  return InstructionARM64(0b0);
-}
-
-InstructionARM64 add_gpr64_imm32s(Register reg, int64_t v) {
-  ASSERT_MSG(false, "not yet implemented");
+InstructionARM64 add_gpr64_imm32s(Register reg, int64_t imm) {
+  // ARM64 does not support this kind of single-instruction
+  ASSERT_MSG(false, "sub_gpr64_imm32s not supported on ARM64");
   return InstructionARM64(0b0);
 }
 
