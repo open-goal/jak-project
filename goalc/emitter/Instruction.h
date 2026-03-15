@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <variant>
 
 #include "common/common_types.h"
 #include "common/util/Assert.h"
