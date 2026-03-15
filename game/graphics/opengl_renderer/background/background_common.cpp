@@ -2,13 +2,8 @@
 
 #include "background_common.h"
 
-#ifdef __aarch64__
-#include "third-party/sse2neon/sse2neon.h"
-#else
-#include <immintrin.h>
-#endif
-
 #include "common/util/os.h"
+#include "common/util/simd_util.h"
 
 #include "game/graphics/opengl_renderer/BucketRenderer.h"
 #include "game/graphics/pipelines/opengl.h"

@@ -6,6 +6,7 @@
 #include "common/util/Assert.h"
 
 namespace emitter {
+
 /*!
  * A high-level description of a opcode.  It can emit itself.
  */
@@ -16,7 +17,20 @@ struct InstructionImpl {
    */
   u8 emit(u8* buffer) const { return static_cast<const InstructionType*>(this)->emit(buffer); }
 
+  // TODO - the below might only be relevant for X86, in which case
+  // they can eventually leave this parent type
+  // and at that point, things can likely be simplified
+  //
+  // For now, just trying to make things compile / work
   u8 length() const { return static_cast<const InstructionType*>(this)->length(); }
+
+  int get_imm_size() const { return static_cast<const InstructionType*>(this)->get_imm_size(); }
+
+  int get_disp_size() const { return static_cast<const InstructionType*>(this)->get_disp_size(); }
+
+  int offset_of_imm() const { return static_cast<const InstructionType*>(this)->offset_of_imm(); }
+
+  int offset_of_disp() const { return static_cast<const InstructionType*>(this)->offset_of_disp(); }
 };
 
 namespace ARM64 {
@@ -82,6 +96,14 @@ struct InstructionARM64 : InstructionImpl<InstructionARM64> {
   }
 
   uint8_t length() const { return 4; }
+
+  int get_imm_size() const { return 0; }
+
+  int offset_of_imm() const { return 0; }
+
+  int offset_of_disp() const { return 0; }
+
+  int get_disp_size() const { return 0; }
 };
 
 /*!
@@ -1105,6 +1127,22 @@ class Instruction {
 
   u8 length() const {
     return std::visit([](auto const& i) { return i.length(); }, instr);
+  }
+
+  int get_imm_size() const {
+    return std::visit([](auto const& i) { return i.get_imm_size(); }, instr);
+  }
+
+  int get_disp_size() const {
+    return std::visit([](auto const& i) { return i.get_disp_size(); }, instr);
+  }
+
+  int offset_of_imm() const {
+    return std::visit([](auto const& i) { return i.offset_of_imm(); }, instr);
+  }
+
+  int offset_of_disp() const {
+    return std::visit([](auto const& i) { return i.offset_of_disp(); }, instr);
   }
 };
 

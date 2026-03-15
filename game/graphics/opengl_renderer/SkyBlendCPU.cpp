@@ -1,10 +1,7 @@
 #include "SkyBlendCPU.h"
 
-#ifndef __aarch64__
-#include <immintrin.h>
-#endif
-
 #include "common/util/os.h"
+#include "common/util/simd_util.h"
 
 #include "game/graphics/opengl_renderer/AdgifHandler.h"
 

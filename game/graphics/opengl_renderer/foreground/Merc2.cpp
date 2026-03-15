@@ -1,13 +1,8 @@
 #include "Merc2.h"
 
-#ifdef __aarch64__
-#include "third-party/sse2neon/sse2neon.h"
-#else
-#include <xmmintrin.h>
-#endif
-
 #include "common/global_profiler/GlobalProfiler.h"
 #include "common/util/fnv.h"
+#include "common/util/simd_util.h"
 
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
