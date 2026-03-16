@@ -136,8 +136,10 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         )
 
     # TODO - make a proper flag for arm compiling
-    if(NOT CMAKE_CXX_COMPILER_TARGET STREQUAL "arm64-apple-darwin")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    if (CMAKE_APPLE_SILICON_PROCESSOR STREQUAL "x86_64")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mcrc")
     endif()
 
     # additional c++ flags for release mode for our projects

@@ -1,5 +1,3 @@
-// https://github.com/google/googletest/blob/master/googletest/docs/advanced.md#value-parameterized-tests
-
 #include <chrono>
 #include <iostream>
 #include <random>

@@ -10,17 +10,16 @@ u32 crc32(const u8* data, size_t size);
 
 #ifdef __aarch64__
 #include <arm_acle.h>
+// Computes CRC32C
 inline u32 crc32(const u8* data, size_t size) {
   u32 result = 0xffffffff;
   while (size >= 4) {
-    u32 x;
-    memcpy(&x, data, 4);
+    result = __crc32cw(result, *reinterpret_cast<const u32*>(data));
     data += 4;
     size -= 4;
-    result = __crc32w(result, x);
   }
   while (size) {
-    result = __crc32b(result, *data);
+    result = __crc32cb(result, *data);
     data++;
     size--;
   }
@@ -28,6 +27,7 @@ inline u32 crc32(const u8* data, size_t size) {
 }
 #else
 #include <immintrin.h>
+// Computes CRC32C
 inline u32 crc32(const u8* data, size_t size) {
   u32 result = 0xffffffff;
   while (size >= 4) {
