@@ -1,5 +1,7 @@
 #include "IGenX86.h"
 
+#include <stdexcept>
+
 #include "goalc/emitter/InstructionSet.h"
 
 namespace emitter {

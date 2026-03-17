@@ -65,7 +65,6 @@ constexpr Field Imm6(u32 x) {
 }
 
 constexpr Field Imm9(s32 x) {
-  // assert(x >= -256 && x <= 255);
   return Field{(static_cast<uint32_t>(x) & 0b111111111) << 12};
 }
 

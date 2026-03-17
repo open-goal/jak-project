@@ -636,7 +636,7 @@ InstructionARM64 sub_gpr64_imm8s(Register reg, int64_t imm) {
   // therefore depending on the value of the immediate, we use a different instruction
   ASSERT(reg.is_gpr(instr_set));
   if (imm < 0) {
-    return add_gpr64_imm8s(reg, abs(imm));
+    return add_gpr64_imm8s(reg, std::abs(imm));
   }
   // https://www.scs.stanford.edu/~zyedidia/arm64/sub_addsub_imm.html
   // - SUB <Xd>, <Xn>, #imm12 {, LSL #12}
