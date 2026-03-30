@@ -1,8 +1,7 @@
+import argparse
 import glob
 import json
 import re
-
-import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--fix", action="store_true")
@@ -48,7 +47,8 @@ JAK1_AUTO_REPLACEMENTS = {
     "）": ")",
     "。": ".",
     "×": "x",
-    "？": "?"
+    "？": "?",
+    "…": "..."
 }
 
 JAK2_ALLOWED_CHARACTERS = [
@@ -116,13 +116,16 @@ JAK2_AUTO_REPLACEMENTS = {
 
 return_error = False
 
+
 def is_korean_syllable(char):
-    return '\uAC00' <= char <= '\uD7A3'
+    return "\uac00" <= char <= "\ud7a3"
+
 
 def is_char_allowed(game_name, char, allowed_characters):
     if game_name == "jak1":
         return char in allowed_characters
     return char in allowed_characters or is_korean_syllable(char)
+
 
 def is_allowed_code(pos, text, allowed_codes):
     # Find any occurences of allowed codes in the string
@@ -132,6 +135,7 @@ def is_allowed_code(pos, text, allowed_codes):
             if pos >= match.start() and pos <= match.end():
                 return match.end()
     return -1
+
 
 def fix_character(game_name, char, allowed_characters, auto_replacements):
     # First let's try upper-casing it, if that's allowed, let's use that instead
@@ -150,7 +154,9 @@ def replace_character(string, position, new_character):
     return new_string
 
 
-def lint_characters(game_name, text, allowed_characters, allowed_codes, auto_replacements):
+def lint_characters(
+    game_name, text, allowed_characters, allowed_codes, auto_replacements
+):
     invalid_characters_found = False
     pos = 0
     while pos < len(text):
@@ -162,7 +168,9 @@ def lint_characters(game_name, text, allowed_characters, allowed_codes, auto_rep
                 # If we are fixing instances, attempt to do so
                 char_fixed = False
                 if args.fix:
-                    new_char = fix_character(game_name, character, allowed_characters, auto_replacements)
+                    new_char = fix_character(
+                        game_name, character, allowed_characters, auto_replacements
+                    )
                     if new_char != character:
                         text = replace_character(text, pos, new_char)
                         char_fixed = True
@@ -182,7 +190,10 @@ def lint_characters(game_name, text, allowed_characters, allowed_codes, auto_rep
             pos = pos + 1
     return invalid_characters_found, text
 
-def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_replacements):
+
+def fix_games_translations(
+    game_name, allowed_characters, allowed_codes, auto_replacements
+):
     global return_error
     print(f"Checking {game_name} translations")
     # Iterate through the translations making sure there are no characters that are not allowed
@@ -193,7 +204,9 @@ def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_re
         with open(text_file, encoding="utf-8") as f:
             file_data = json.load(f)
         for id, text in file_data.items():
-            invalid_chars_exist, new_text = lint_characters(game_name, text, allowed_characters, allowed_codes, auto_replacements)
+            invalid_chars_exist, new_text = lint_characters(
+                game_name, text, allowed_characters, allowed_codes, auto_replacements
+            )
             if args.fix:
                 file_data[id] = new_text
             if invalid_chars_exist:
@@ -212,7 +225,9 @@ def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_re
             file_data = json.load(f)
         # Check Speakers
         for id, text in file_data["speakers"].items():
-            invalid_chars_exist, new_text = lint_characters(game_name, text, allowed_characters, allowed_codes, auto_replacements)
+            invalid_chars_exist, new_text = lint_characters(
+                game_name, text, allowed_characters, allowed_codes, auto_replacements
+            )
             if args.fix and new_text != text:
                 file_data["speakers"][id] = new_text
             if invalid_chars_exist:
@@ -220,7 +235,13 @@ def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_re
         # Check Lines
         for id, lines in file_data["cutscenes"].items():
             for i, line in enumerate(lines):
-                invalid_chars_exist, new_text = lint_characters(game_name, line, allowed_characters, allowed_codes, auto_replacements)
+                invalid_chars_exist, new_text = lint_characters(
+                    game_name,
+                    line,
+                    allowed_characters,
+                    allowed_codes,
+                    auto_replacements,
+                )
                 if args.fix and new_text != line:
                     lines[i] = new_text
                 if invalid_chars_exist:
@@ -228,7 +249,13 @@ def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_re
         if game_name == "jak1":
             for id, lines in file_data["hints"].items():
                 for i, line in enumerate(lines):
-                    invalid_chars_exist, new_text = lint_characters(game_name, line, allowed_characters, allowed_codes, auto_replacements)
+                    invalid_chars_exist, new_text = lint_characters(
+                        game_name,
+                        line,
+                        allowed_characters,
+                        allowed_codes,
+                        auto_replacements,
+                    )
                     if args.fix and new_text != line:
                         lines[i] = new_text
                     if invalid_chars_exist:
@@ -236,7 +263,13 @@ def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_re
         else:
             for id, lines in file_data["other"].items():
                 for i, line in enumerate(lines):
-                    invalid_chars_exist, new_text = lint_characters(game_name, line, allowed_characters, allowed_codes, auto_replacements)
+                    invalid_chars_exist, new_text = lint_characters(
+                        game_name,
+                        line,
+                        allowed_characters,
+                        allowed_codes,
+                        auto_replacements,
+                    )
                     if args.fix and new_text != line:
                         lines[i] = new_text
                     if invalid_chars_exist:
@@ -247,8 +280,13 @@ def fix_games_translations(game_name, allowed_characters, allowed_codes, auto_re
                 json.dump(file_data, f, indent=2, ensure_ascii=False)
                 f.write("\n")
 
-fix_games_translations("jak1", JAK1_ALLOWED_CHARACTERS, JAK1_ALLOWED_CODES, JAK1_AUTO_REPLACEMENTS)
-fix_games_translations("jak2", JAK2_ALLOWED_CHARACTERS, JAK2_ALLOWED_CODES, JAK2_AUTO_REPLACEMENTS)
+
+fix_games_translations(
+    "jak1", JAK1_ALLOWED_CHARACTERS, JAK1_ALLOWED_CODES, JAK1_AUTO_REPLACEMENTS
+)
+fix_games_translations(
+    "jak2", JAK2_ALLOWED_CHARACTERS, JAK2_ALLOWED_CODES, JAK2_AUTO_REPLACEMENTS
+)
 
 if return_error:
     print("Invalid characters were found, see above")
