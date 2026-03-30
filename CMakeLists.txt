@@ -189,15 +189,14 @@ endif()
 
 function(build_third_party_lib dir_name target_name)
     add_subdirectory(third-party/${dir_name} EXCLUDE_FROM_ALL)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-        # For Microsoft Visual C++ Compiler (MSVC)
-        target_compile_options(${target_name} PRIVATE /w)
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        # For GNU Compiler Collection (GCC) or Clang
-        target_compile_options(${target_name} PRIVATE -w)
+    # Convert all public include dirs to SYSTEM
+    get_target_property(INCLUDES ${target_name} INTERFACE_INCLUDE_DIRECTORIES)
+    if(INCLUDES)
+        set_target_properties(${target_name} PROPERTIES
+            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${INCLUDES}"
+        )
     endif()
 endfunction()
-
 
 # Dependencies and Libraries
 # includes relative to top level jak-project folder

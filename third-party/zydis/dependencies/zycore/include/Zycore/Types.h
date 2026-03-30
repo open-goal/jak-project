@@ -333,6 +333,86 @@ typedef char* ZyanCharPointer;
  */
 typedef const char* ZyanConstCharPointer;
 
+/* ============================================================================================== */
+/* Type conversion utils                                                                          */
+/* ============================================================================================== */
+
+/**
+ * Collection of functions for swapping byte order in 16/32/64-bit values respectively.
+ *
+ * @param   x       16/32/64-bit value.
+ *
+ * @return  16/32/64-bit value with byte order swapped.
+ */
+#if defined(ZYAN_MSVC)
+#   if defined(ZYAN_NO_LIBC)
+#       if defined(__cplusplus)
+        extern "C" {
+#       endif
+            unsigned short __cdecl _byteswap_ushort(unsigned short);
+            unsigned long  __cdecl _byteswap_ulong(unsigned long);
+            unsigned __int64 __cdecl _byteswap_uint64(unsigned __int64);
+#       if defined(__cplusplus)
+        }
+#       endif
+#   elif defined(ZYAN_KERNEL)
+#       include <wdm.h>
+#   else
+#       include <stdlib.h>
+#   endif
+
+#   define ZYAN_BYTESWAP16(x) _byteswap_ushort((x))
+#   define ZYAN_BYTESWAP32(x) _byteswap_ulong((x))
+#   define ZYAN_BYTESWAP64(x) _byteswap_uint64((x))
+#elif ZYAN_HAS_BUILTIN(__builtin_bswap16) && \
+      ZYAN_HAS_BUILTIN(__builtin_bswap32) && \
+      ZYAN_HAS_BUILTIN(__builtin_bswap64)
+#   define ZYAN_BYTESWAP16(x) __builtin_bswap16((x))
+#   define ZYAN_BYTESWAP32(x) __builtin_bswap32((x))
+#   define ZYAN_BYTESWAP64(x) __builtin_bswap64((x))
+#else
+ZYAN_INLINE ZyanU16 ZYAN_BYTESWAP16(ZyanU16 x)
+{
+    return (((x >> 8) & 0xFFU) | ((x & 0xFFU) << 8));
+}
+
+ZYAN_INLINE ZyanU32 ZYAN_BYTESWAP32(ZyanU32 x)
+{
+    return (((x & 0xFF000000U) >> 24) |
+            ((x & 0x00FF0000U) >> 8 ) |
+            ((x & 0x0000FF00U) << 8 ) |
+            ((x & 0x000000FFU) << 24));
+}
+
+ZYAN_INLINE ZyanU64 ZYAN_BYTESWAP64(ZyanU64 x)
+{
+    return (((x & 0xFF00000000000000ULL) >> 56) |
+            ((x & 0x00FF000000000000ULL) >> 40) |
+            ((x & 0x0000FF0000000000ULL) >> 24) |
+            ((x & 0x000000FF00000000ULL) >> 8 ) |
+            ((x & 0x00000000FF000000ULL) << 8 ) |
+            ((x & 0x0000000000FF0000ULL) << 24) |
+            ((x & 0x000000000000FF00ULL) << 40) |
+            ((x & 0x00000000000000FFULL) << 56));
+}
+#endif
+
+/**
+ * Collection of functions for converting 16/32/64-bit variables from little endian to native endian
+ * of the current platform.
+ *
+ * @param   x       16/32/64-bit variable.
+ */
+#if ZYAN_ENDIAN == ZYAN_LITTLE_ENDIAN
+#   define ZYAN_LE16_TO_NATIVE(x)
+#   define ZYAN_LE32_TO_NATIVE(x)
+#   define ZYAN_LE64_TO_NATIVE(x)
+#else
+#   define ZYAN_LE16_TO_NATIVE(x) (x) = ZYAN_BYTESWAP16((x))
+#   define ZYAN_LE32_TO_NATIVE(x) (x) = ZYAN_BYTESWAP32((x))
+#   define ZYAN_LE64_TO_NATIVE(x) (x) = ZYAN_BYTESWAP64((x))
+#endif
+
 /* ---------------------------------------------------------------------------------------------- */
 
 /* ============================================================================================== */

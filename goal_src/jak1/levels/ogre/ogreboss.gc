@@ -794,7 +794,10 @@
 (defstate ogreboss-idle (ogreboss)
   :enter
     (behavior ()
-      (when (zero? (-> self try-count))
+      (when (#if PC_PORT
+              ;; og:preserve-this skip intro cutscene (and breakable column spawning) for Mountain Pass IL speedruns
+              (and (zero? (-> self try-count)) (not (and PC_PORT (is-speedrun-category? 'il-ogre))))
+              (zero? (-> self try-count)))
         (let ((gp-0 (manipy-spawn (-> self root trans) (-> self entity) *ogreboss-column-sg* #f :to self)))
           (set! (-> self column) (ppointer->handle gp-0))
           (send-event (ppointer->process gp-0) 'anim-mode 'loop)

@@ -9,6 +9,7 @@ from subprocess import Popen, PIPE
 
 TEST_CASE_DIRECTORY = os.path.join('.', 'cases')
 
+
 def get_exitcode_stdout_stderr(path, cmd):
     """
     Executes an external command and returns the exitcode, stdout and stderr.
@@ -18,8 +19,8 @@ def get_exitcode_stdout_stderr(path, cmd):
     proc = Popen(args, stdout=PIPE, stderr=PIPE)
     out, err = proc.communicate()
     exitcode = proc.returncode
-
     return exitcode, out, err
+
 
 parser = argparse.ArgumentParser(description="Regression testing.")
 parser.add_argument(dest="operation", choices=["test", "rebase"])
@@ -42,17 +43,17 @@ for case in os.listdir(TEST_CASE_DIRECTORY):
 
     pre, ext = os.path.splitext(case)
     path = os.path.join(TEST_CASE_DIRECTORY, pre + ".out")
+    out = out.decode().replace('\r\n', '\n')
 
     if args.operation == "rebase":
         with open(path, mode="wb") as f:
-            f.write(out)
+            f.write(out.encode())
         continue
 
     try:
         with open(path, mode="rb") as f:
             expected = f.read().decode().replace('\r\n', '\n')
 
-        out = out.decode().replace('\r\n', '\n')
         if expected != out:
             print(f"FAILED: '{case}' [{payload}]")
             print('\n'.join(difflib.unified_diff(

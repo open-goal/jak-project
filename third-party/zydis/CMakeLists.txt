@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
 if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.15")
     # Enable runtime library selection via CMAKE_MSVC_RUNTIME_LIBRARY
     cmake_policy(SET CMP0091 NEW)
 endif ()
 
-project(Zydis VERSION 4.0.0.0 LANGUAGES C)
+project(Zydis VERSION 5.0.0.0 LANGUAGES C)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -134,7 +134,7 @@ function (locate_zycore)
         "    git submodule update --init\n"
         "or by cloning using\n"
         "    git clone --recursive <url>\n"
-        "Alternatively, you can manually clone zycore to some path and set ZYDIS_ZYCORE_PATH."
+        "Alternatively, you can manually clone zycore to some path and set ZYAN_ZYCORE_PATH."
     )
 endfunction ()
 
@@ -144,14 +144,28 @@ locate_zycore()
 # Library configuration                                                                           #
 # =============================================================================================== #
 
+function (_maybe_set_fuzzer_cfg target)
+    if (ZYDIS_FUZZ_AFL_FAST)
+        target_compile_definitions("${target}" PRIVATE "ZYDIS_FUZZ_AFL_FAST")
+    endif ()
+    if (ZYDIS_LIBFUZZER)
+        target_compile_definitions("${target}" PRIVATE "ZYDIS_LIBFUZZER")
+        if (MSVC)
+            target_compile_options("${target}" PRIVATE "-fsanitize=fuzzer")
+            target_link_libraries("${target}" PRIVATE "clang_rt.fuzzer-x86_64.lib")
+        endif ()
+    endif ()
+endfunction ()
+
 if (ZYDIS_BUILD_SHARED_LIB)
     add_library("Zydis" SHARED)
 else ()
     add_library("Zydis" STATIC)
     target_compile_definitions("Zydis" PUBLIC "ZYDIS_STATIC_BUILD")
 endif ()
+add_library("Zydis::Zydis" ALIAS "Zydis")
 
-target_link_libraries("Zydis" PUBLIC "Zycore")
+target_link_libraries("Zydis" PUBLIC "Zycore::Zycore")
 target_include_directories("Zydis"
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -165,6 +179,7 @@ set_target_properties("Zydis" PROPERTIES
     DEFINE_SYMBOL "ZYDIS_SHOULD_EXPORT")
 zyan_set_common_flags("Zydis")
 zyan_maybe_enable_wpo("Zydis")
+_maybe_set_fuzzer_cfg("Zydis")
 
 if (ZYDIS_FEATURE_FORMATTER AND NOT ZYDIS_FEATURE_DECODER)
     message(
@@ -212,7 +227,6 @@ target_sources("Zydis"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/MetaInfo.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Mnemonic.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Register.h"
-        "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Segment.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/SharedTypes.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/ShortString.h"
         "${CMAKE_CURRENT_LIST_DIR}/include/Zydis/Status.h"
@@ -223,7 +237,6 @@ target_sources("Zydis"
         "src/MetaInfo.c"
         "src/Mnemonic.c"
         "src/Register.c"
-        "src/Segment.c"
         "src/SharedData.c"
         "src/String.c"
         "src/Utils.c"
@@ -313,7 +326,7 @@ endfunction ()
 
 function(_add_example target source_file sub_folder)
     add_executable("${target}" "examples/${source_file}")
-    target_link_libraries("${target}" "Zydis")
+    target_link_libraries("${target}" PUBLIC "Zydis")
     set_target_properties("${target}" PROPERTIES FOLDER "Examples/${sub_folder}")
     target_compile_definitions("${target}" PRIVATE "_CRT_SECURE_NO_WARNINGS")
     zyan_set_common_flags("${target}")
@@ -337,7 +350,7 @@ if (ZYDIS_BUILD_EXAMPLES AND NOT ZYAN_NO_LIBC)
                 OR ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
             target_compile_definitions("ZydisPerfTest" PRIVATE "_GNU_SOURCE")
             find_package(Threads REQUIRED)
-            target_link_libraries("ZydisPerfTest" Threads::Threads)
+            target_link_libraries("ZydisPerfTest" PUBLIC Threads::Threads)
         endif ()
     endif ()
 
@@ -358,7 +371,7 @@ if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
             "tools/ZydisDisasm.c"
             "tools/ZydisToolsShared.c"
             "tools/ZydisToolsShared.h")
-        target_link_libraries("ZydisDisasm" "Zydis")
+        target_link_libraries("ZydisDisasm" PUBLIC "Zydis")
         set_target_properties ("ZydisDisasm" PROPERTIES FOLDER "Tools")
         target_compile_definitions("ZydisDisasm" PRIVATE "_CRT_SECURE_NO_WARNINGS")
         zyan_set_common_flags("ZydisDisasm")
@@ -370,7 +383,7 @@ if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
             "tools/ZydisFuzzDecoder.c"
             "tools/ZydisFuzzShared.c"
             "tools/ZydisFuzzShared.h")
-        target_link_libraries("ZydisFuzzDecoder" "Zydis")
+        target_link_libraries("ZydisFuzzDecoder" PUBLIC "Zydis")
         set_target_properties("ZydisFuzzDecoder" PROPERTIES FOLDER "Tools")
         target_compile_definitions("ZydisFuzzDecoder" PRIVATE "_CRT_SECURE_NO_WARNINGS")
         if (NOT ZYDIS_FEATURE_ENCODER)
@@ -380,52 +393,37 @@ if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
         zyan_set_common_flags("ZydisFuzzDecoder")
         zyan_maybe_enable_wpo("ZydisFuzzDecoder")
         _maybe_set_emscripten_cfg("ZydisFuzzDecoder")
-        if (ZYDIS_FUZZ_AFL_FAST)
-            target_compile_definitions("ZydisFuzzDecoder" PRIVATE "ZYDIS_FUZZ_AFL_FAST")
-        endif ()
-        if (ZYDIS_LIBFUZZER)
-            target_compile_definitions("ZydisFuzzDecoder" PRIVATE "ZYDIS_LIBFUZZER")
-        endif ()
+        _maybe_set_fuzzer_cfg("ZydisFuzzDecoder")
 
         if (ZYDIS_FEATURE_ENCODER)
             add_executable("ZydisFuzzEncoder"
                 "tools/ZydisFuzzEncoder.c"
                 "tools/ZydisFuzzShared.c"
                 "tools/ZydisFuzzShared.h")
-            target_link_libraries("ZydisFuzzEncoder" "Zydis")
+            target_link_libraries("ZydisFuzzEncoder" PUBLIC "Zydis")
             set_target_properties("ZydisFuzzEncoder" PROPERTIES FOLDER "Tools")
             target_compile_definitions("ZydisFuzzEncoder" PRIVATE "_CRT_SECURE_NO_WARNINGS")
             zyan_set_common_flags("ZydisFuzzEncoder")
             zyan_maybe_enable_wpo("ZydisFuzzEncoder")
             _maybe_set_emscripten_cfg("ZydisFuzzEncoder")
-            if (ZYDIS_FUZZ_AFL_FAST)
-                target_compile_definitions("ZydisFuzzEncoder" PRIVATE "ZYDIS_FUZZ_AFL_FAST")
-            endif ()
-            if (ZYDIS_LIBFUZZER)
-                target_compile_definitions("ZydisFuzzEncoder" PRIVATE "ZYDIS_LIBFUZZER")
-            endif ()
+            _maybe_set_fuzzer_cfg("ZydisFuzzEncoder")
 
             add_executable("ZydisFuzzReEncoding"
                 "tools/ZydisFuzzReEncoding.c"
                 "tools/ZydisFuzzShared.c"
                 "tools/ZydisFuzzShared.h")
-            target_link_libraries("ZydisFuzzReEncoding" "Zydis")
+            target_link_libraries("ZydisFuzzReEncoding" PUBLIC "Zydis")
             set_target_properties("ZydisFuzzReEncoding" PROPERTIES FOLDER "Tools")
             target_compile_definitions("ZydisFuzzReEncoding" PRIVATE "_CRT_SECURE_NO_WARNINGS")
             zyan_set_common_flags("ZydisFuzzReEncoding")
             zyan_maybe_enable_wpo("ZydisFuzzReEncoding")
             _maybe_set_emscripten_cfg("ZydisFuzzReEncoding")
-            if (ZYDIS_FUZZ_AFL_FAST)
-                target_compile_definitions("ZydisFuzzReEncoding" PRIVATE "ZYDIS_FUZZ_AFL_FAST")
-            endif ()
-            if (ZYDIS_LIBFUZZER)
-                target_compile_definitions("ZydisFuzzReEncoding" PRIVATE "ZYDIS_LIBFUZZER")
-            endif ()
+            _maybe_set_fuzzer_cfg("ZydisFuzzReEncoding")
 
             if (NOT ZYDIS_BUILD_SHARED_LIB)
                 add_executable("ZydisTestEncoderAbsolute"
                     "tools/ZydisTestEncoderAbsolute.c")
-                target_link_libraries("ZydisTestEncoderAbsolute" "Zydis")
+                target_link_libraries("ZydisTestEncoderAbsolute" PUBLIC "Zydis")
                 set_target_properties("ZydisTestEncoderAbsolute" PROPERTIES FOLDER "Tools")
                 target_compile_definitions("ZydisTestEncoderAbsolute" PRIVATE "_CRT_SECURE_NO_WARNINGS")
                 zyan_set_common_flags("ZydisTestEncoderAbsolute")
@@ -438,7 +436,7 @@ if (ZYDIS_BUILD_TOOLS AND NOT ZYAN_NO_LIBC)
             "tools/ZydisInfo.c"
             "tools/ZydisToolsShared.c"
             "tools/ZydisToolsShared.h")
-        target_link_libraries("ZydisInfo" "Zydis")
+        target_link_libraries("ZydisInfo" PUBLIC "Zydis")
         set_target_properties ("ZydisInfo" PROPERTIES FOLDER "Tools")
         target_compile_definitions("ZydisInfo" PRIVATE "_CRT_SECURE_NO_WARNINGS")
         if (NOT ZYDIS_FEATURE_ENCODER)

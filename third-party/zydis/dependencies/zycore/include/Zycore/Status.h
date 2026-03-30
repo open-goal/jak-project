@@ -89,7 +89,7 @@ typedef ZyanU32 ZyanStatus;
  * @return  `ZYAN_TRUE`, if the operation failed or `ZYAN_FALSE`, if not.
  */
 #define ZYAN_FAILED(status) \
-    ((status) & 0x80000000u)
+    (!!((status) & 0x80000000u))
 
 /**
  * Checks if a zyan operation was successful and returns with the status-code, if not.
