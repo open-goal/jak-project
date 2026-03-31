@@ -14,7 +14,8 @@
 
 // used for - decompiler_out/<jak1> and iso_data/<jak1>
 const std::unordered_map<std::string, std::string> data_subfolders = {{"jak1", "jak1"},
-                                                                      {"jak2", "jak2"}};
+                                                                      {"jak2", "jak2"},
+                                                                      {"jak3", "jak3"}};
 
 IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
   lg::info(
