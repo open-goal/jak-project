@@ -8,9 +8,9 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
-    {"~+4Vç~-4V", ",c"},
+    // portuguese
+    {"~+4Vç~-4V", "ç"},
 
-    // added for translations TODO - check these for jak 2
     {"O~Y~-25H~-1V/~Z", "Ø"},
     {"o~Y~-23H~+4V/~Z", "ø"},
     {"A~Y~-13H~+8V,~Z", "Ą"},
@@ -26,8 +26,8 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     {"s~Y~-25H~-5V'~Z", "ś"},
     {"n~Y~-25H~-5V'~Z", "ń"},
     {"c~Y~-25H~-5V'~Z", "ć"},
-    {"o~Y~-24H~-4V<TIL>~Z", "õ"},
-    {"a~Y~-24H~-4V<TIL>~Z", "ã"},
+    {"o~Y~-25H~-4V<TIL>~Z", "õ"},
+    {"a~Y~-25H~-4V<TIL>~Z", "ã"},
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},
     {"U~Y~-27H~-4V'~-12H'~Z", "Ű"},
     {"o~Y~-28H~-4V'~-9H'~Z", "ő"},
@@ -66,11 +66,11 @@ std::vector<ReplaceInfo> replace_info_jak2 = {
     {"a~Y~-25H~-5V'~Z", "á"},
     {"E~Y~-23H~-9V'~Z", "É"},
     {"e~Y~-26H~-5V'~Z", "é"},
-    {"I~Y~-19H~-5V'~Z", "Í"},
+    {"I~Y~-19H~-8V'~Z", "Í"},
     {"i~Y~-19H~-8V'~Z", "í"},
     {"O~Y~-22H~-4V'~Z", "Ó"},
     {"o~Y~-26H~-4V'~Z", "ó"},
-    {"U~Y~-24H~-3V'~Z", "Ú"},
+    {"U~Y~-25H~-8V'~Z", "Ú"},
     {"u~Y~-24H~-3V'~Z", "ú"},
     {"Z~Y~-24H~-3V'~Z", "Ź"},
     {"z~Y~-24H~-3V'~Z", "ź"},

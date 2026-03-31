@@ -8,9 +8,9 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     // other
     {"A~Y~-21H~-5Vº~Z", "Å"},
     {"N~Y~-6Hº~Z~+10H", "Nº"},
-    {"~+4Vç~-4V", ",c"},
+    // portuguese
+    {"~+4Vç~-4V", "ç"},
 
-    // added for translations TODO - check these for jak 2
     {"O~Y~-25H~-1V/~Z", "Ø"},
     {"o~Y~-23H~+4V/~Z", "ø"},
     {"A~Y~-13H~+8V,~Z", "Ą"},
@@ -26,8 +26,8 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     {"s~Y~-25H~-5V'~Z", "ś"},
     {"n~Y~-25H~-5V'~Z", "ń"},
     {"c~Y~-25H~-5V'~Z", "ć"},
-    {"o~Y~-24H~-4V<TIL>~Z", "õ"},
-    {"a~Y~-24H~-4V<TIL>~Z", "ã"},
+    {"o~Y~-25H~-4V<TIL>~Z", "õ"},
+    {"a~Y~-25H~-4V<TIL>~Z", "ã"},
     {"O~Y~-28H~-4V'~-9H'~Z", "Ő"},
     {"U~Y~-27H~-4V'~-12H'~Z", "Ű"},
     {"o~Y~-28H~-4V'~-9H'~Z", "ő"},
@@ -66,11 +66,11 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     {"a~Y~-25H~-5V'~Z", "á"},
     {"E~Y~-23H~-9V'~Z", "É"},
     {"e~Y~-26H~-5V'~Z", "é"},
-    {"I~Y~-19H~-5V'~Z", "Í"},
+    {"I~Y~-19H~-8V'~Z", "Í"},
     {"i~Y~-19H~-8V'~Z", "í"},
     {"O~Y~-22H~-4V'~Z", "Ó"},
     {"o~Y~-26H~-4V'~Z", "ó"},
-    {"U~Y~-24H~-3V'~Z", "Ú"},
+    {"U~Y~-25H~-8V'~Z", "Ú"},
     {"u~Y~-24H~-3V'~Z", "ú"},
     {"Z~Y~-24H~-3V'~Z", "Ź"},
     {"z~Y~-24H~-3V'~Z", "ź"},
@@ -295,6 +295,13 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
      "+26H",
      "<FLAG_ICELAND>"},
 
+    // korean jamo -- only relevant for the language selection since
+    // non-korean languages don't run through the `convert-korean-text` function and hence the
+    // encoding is "normal"
+    {"~Y~Z\\c03.~Z\\c03\\c1a~Z\\c03\\cc8~Y~Z\\c03œ~Z\\c03k~Z\\c03\\cde~Y~Z\\c03\\c0f~Z\\c03ç",
+     "<LANGUAGE_KOREAN>",
+     "~Y~Z\x03.~Z\x03\x1a~Z\x03\xc8~Y~Z\x03œ~Z\x03k~Z\x03\xde~Y~Z\x03\x0f~Z\x03ç"},
+
     // weird stuff
     // - descenders
     {"~+7Vp~-7V", "p"},
@@ -302,6 +309,15 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     {"~+7Vg~-7V", "g"},
     {"~+7Vq~-7V", "q"},
     {"~+1Vj~-1V", "j"},
+
+    // - cryllic
+    {"~+2Vд~-2V", "д"},
+    {"~+4Vу~-4V", "у"},
+    {"~+4Vр~-4V", "р"},
+    {"~+3Vф~-3V", "ф"},
+    {"~+2Vц~-2V", "ц"},
+    {"~+2VД~-2V", "Д"},
+    {"~+2Vщ~-2V", "щ"},
 
     {"\\\\",
      "~%"},  // this is 2 slashes, duplicated because we use an escape sequence when decompiling
@@ -353,8 +369,6 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
     {"~[~37L", "<COLOR_CREDITS-STAFF-TITLE-1>"},
     {"~[~38L", "<COLOR_CREDITS-STAFF-TITLE-2>"},
     {"~[~39L", "<COLOR_COLOR-39>"}};
-
-// TODO - cryllic
 
 std::vector<EncodeInfo> encode_info_jak3 = {
     {"ˇ", "\x10"},      // caron
@@ -424,6 +438,90 @@ std::vector<EncodeInfo> encode_info_jak3 = {
     {"<PAD_PART_SHOULDER_BOTTOM_RIGHT>", "\xb1"},
     {"<PAD_PART_TRIGGER_BOTTOM_LEFT>", "\xb2"},
     {"<PAD_PART_TRIGGER_BOTTOM_RIGHT>", "\xb3"},
+
+    // cryllic
+    // - uppercase
+    {"А", "\xba"},
+    {"Б", "\xbb"},
+    {"В", "\xbc"},
+    {"Г", "\xbd"},
+    {"Д", "\xbe"},
+    {"Е", "\xbf"},
+    // "Ё" - if ever used in subtitles, likely uses the accents at the end
+    {"Ж", "\xc0"},
+    {"З", "\xc1"},
+    {"И", "\xc2"},
+    // blank (c3)
+    // c4
+    // "Й" - if ever used in subtitles, likely uses the accents at the end
+    {"К", "\xc4"},
+    {"Л", "\xc5"},
+    {"М", "\xc6"},
+    {"Н", "\xc7"},
+    {"О", "\xc8"},
+    {"П", "\xc9"},
+    {"Р", "\xca"},
+    {"С", "\xcb"},
+    {"Т", "\xcc"},
+    // blank (cd)
+    // ce
+    {"У", "\xce"},
+    {"Ф", "\xcf"},
+    {"Х", "\xd0"},
+    {"Ц", "\xd1"},
+    {"Ч", "\xd2"},
+    {"Ш", "\xd3"},
+    {"Щ", "\xd4"},
+    {"Ъ", "\xd5"},
+    {"Ы", "\xd6"},
+    {"Ь", "\xd7"},
+    // d8
+    {"Э", "\xd8"},
+    {"Ю", "\xd9"},
+    {"Я", "\xda"},
+    // - lowercase
+    {"а", "\xdb"},
+    {"б", "\xdc"},
+    {"в", "\xdd"},
+    {"г", "\xde"},
+    {"д", "\xdf"},
+    {"е", "\xe0"},
+    {"ё", "\xe1"},
+    // e2
+    {"ж", "\xe2"},
+    {"з", "\xe3"},
+    {"и", "\xe4"},
+    {"й", "\xe5"},
+    {"к", "\xe6"},
+    {"л", "\xe7"},
+    {"м", "\xe8"},
+    {"н", "\xe9"},
+    {"о", "\xea"},
+    {"п", "\xeb"},
+    // ec
+    {"р", "\xec"},
+    {"с", "\xed"},
+    {"т", "\xee"},
+    {"у", "\xef"},
+    {"ф", "\xf0"},
+    {"х", "\xf1"},
+    {"ц", "\xf2"},
+    {"ч", "\xf3"},
+    {"ш", "\xf4"},
+    {"щ", "\xf5"},
+    // f6
+    {"ъ", "\xf6"},
+    {"ы", "\xf7"},
+    {"ь", "\xf8"},
+    {"э", "\xf9"},
+    {"ю", "\xfa"},
+    {"я", "\xfb"},
+    // - extra accents
+    {"RU-TODO-1",
+     "\xfc"},  // NOTE: they never used this in the game text, maybe in subtitles though
+    {"RU-TODO-2",
+     "\xfd"},  // NOTE: they never used this in the game text, maybe in subtitles though
+
     // {"入", "\x1\x00"}},
     // {"年", "\x1\x01"}},
     // punctuation
