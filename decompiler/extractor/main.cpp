@@ -33,7 +33,7 @@ IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
 }
 
 std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
-    const std::string game_name,
+    const std::string& game_name,
     const fs::path& extracted_iso_path,
     const uint64_t expected_hash,
     const int expected_num_files) {
