@@ -82,7 +82,8 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
 
   // Make sure the game provided matches the expected game (game arg must be provided for jak 2/3)
   if (version_info.game_name != game_name) {
-    lg::error("Serial '{}' is for {}, expecting an ISO for {}", serial.value(), version_info.game_name, game_name);
+    lg::error("Serial '{}' is for {}, expecting an ISO for {}", serial.value(),
+              version_info.game_name, game_name);
     return {std::nullopt, ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB};
   }
 
