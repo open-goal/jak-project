@@ -126,9 +126,9 @@ extractor_iso_database() {
            {{4975852519304227343,  // hash of ELF
              {"Jak 3",             // canonical name
               GAME_TERRITORY_SCEA,
-              749,                 // number of files
-              {61426067393410901}, // iso hash
-              "ntsc_v1",           // decompiler config
+              749,                  // number of files
+              {61426067393410901},  // iso hash
+              "ntsc_v1",            // decompiler config
               "jak3",
               {}}}}},
           // // Jak 3 NTSC-U (Greatest Hits)
