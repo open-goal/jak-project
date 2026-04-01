@@ -33,6 +33,7 @@ IsoFile extract_files(fs::path input_file_path, fs::path extracted_iso_path) {
 }
 
 std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
+    const std::string game_name,
     const fs::path& extracted_iso_path,
     const uint64_t expected_hash,
     const int expected_num_files) {
@@ -78,6 +79,12 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   lg::info("\tRegion - {}", get_territory_name(version_info.region));
   lg::info("\tSerial - {}", dbEntry->first);
   lg::info("\tUses Decompiler Config Version - {}", version_info.decomp_config_version);
+
+  // Make sure the game provided matches the expected game (game arg must be provided for jak 2/3)
+  if (version_info.game_name != game_name) {
+    lg::error("Serial '{}' is for {}, expecting an ISO for {}", serial.value(), version_info.game_name, game_name);
+    return {std::nullopt, ExtractorErrorCode::VALIDATION_SERIAL_MISSING_FROM_DB};
+  }
 
   // - Number of Files
   if (version_info.num_files != expected_num_files) {
@@ -291,7 +298,7 @@ int main(int argc, char** argv) {
       const auto [hash, file_count] = calculate_extraction_hash(iso_file);
       // Validate the result to determine the release
       const auto [version_info, validate_code] =
-          validate(temp_iso_extract_location, hash, file_count);
+          validate(game_name, temp_iso_extract_location, hash, file_count);
       if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);
@@ -335,7 +342,7 @@ int main(int argc, char** argv) {
       // Get hash and file count
       const auto [hash, file_count] = calculate_extraction_hash(iso_data_path);
       // Validate
-      auto [version_info, validate_code] = validate(iso_data_path, hash, file_count);
+      auto [version_info, validate_code] = validate(game_name, iso_data_path, hash, file_count);
       if (validate_code == ExtractorErrorCode::VALIDATION_BAD_EXTRACTION ||
           (flag_fail_on_validation && validate_code != ExtractorErrorCode::SUCCESS)) {
         return static_cast<int>(validate_code);
