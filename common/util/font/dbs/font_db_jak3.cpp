@@ -294,13 +294,19 @@ std::vector<ReplaceInfo> replace_info_jak3 = {
      "STRIPE_RIGHT>~Z~-23H~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~"
      "+26H",
      "<FLAG_ICELAND>"},
+    {"~Y~6L<FLAG_PART_VERT_STRIPE_LARGE>~Z~+15H~3L<FLAG_PART_VERT_STRIPE_LARGE>~Z~+30H~3L<FLAG_"
+     "PART_VERT_STRIPE_LARGE>~Z~+4H~5L<FLAG_PART_PORTUGUAL_1>~Z~+2H~3L<FLAG_PART_PORTUGUAL_2>~Z~+"
+     "2H~1L<FLAG_PART_PORTUGUAL_3>~Z~+47H",
+     "<FLAG_PORTUGUAL>"},
 
     // korean jamo -- only relevant for the language selection since
     // non-korean languages don't run through the `convert-korean-text` function and hence the
     // encoding is "normal"
-    {"~Y~Z\\c03.~Z\\c03\\c1a~Z\\c03\\cc8~Y~Z\\c03œ~Z\\c03k~Z\\c03\\cde~Y~Z\\c03\\c0f~Z\\c03ç",
-     "<LANGUAGE_KOREAN>",
-     "~Y~Z\x03.~Z\x03\x1a~Z\x03\xc8~Y~Z\x03œ~Z\x03k~Z\x03\xde~Y~Z\x03\x0f~Z\x03ç"},
+    {
+        "~Y~Z\\c03.~Z\\c03\\c1a~Z\\c03О~Y~Z\\c03œ~Z\\c03k~Z\\c03г~Y~Z\\c03\\c0f~Z\\c03ç",
+        "<LANGUAGE_KOREAN>",
+        "~Y~Z\x03.~Z\x03\x1a~Z\x03О~Y~Z\x03œ~Z\x03k~Z\x03г~Y~Z\x03\x0f~Z\x03ç",
+    },
 
     // weird stuff
     // - descenders
@@ -438,6 +444,11 @@ std::vector<EncodeInfo> encode_info_jak3 = {
     {"<PAD_PART_SHOULDER_BOTTOM_RIGHT>", "\xb1"},
     {"<PAD_PART_TRIGGER_BOTTOM_LEFT>", "\xb2"},
     {"<PAD_PART_TRIGGER_BOTTOM_RIGHT>", "\xb3"},
+
+    {"<FLAG_PART_PORTUGUAL_1>", "\xb4"},
+    {"<FLAG_PART_PORTUGUAL_2>", "\xb5"},
+    {"<FLAG_PART_PORTUGUAL_3>", "\xb6"},
+    // b7 have something...anything use it?
 
     // cryllic
     // - uppercase
