@@ -112,9 +112,26 @@ void unpack_entry(FILE* fp,
     if (fseek_64(fp, entry.offset_in_file, SEEK_SET)) {
       ASSERT_MSG(false, "Failed to fseek iso when unpacking");
     }
-    if (fread(buffer.data(), buffer.size(), 1, fp) != 1) {
-      ASSERT_MSG(false, "Failed to fread iso when unpacking");
+
+    // https://github.com/open-goal/jak-project/issues/3979
+    // some people rarely get errors here, instead of trying to do a single fread
+    // let fread read in chunks so that we get a little more observability (see how many bytes it
+    // _can_ read)
+    //
+    // additionally, try to log the actual error
+    const auto bytes_read = fread(buffer.data(), 1, buffer.size(), fp);
+    if (bytes_read != buffer.size()) {
+      lg::error("did not read {} bytes, only read {}, in entry: {}", buffer.size(), bytes_read,
+                patched_name);
+      if (feof(fp)) {
+        lg::error("reached end of file before reading all expected bytes");
+      }
+      if (ferror(fp)) {
+        lg::error("generic error reading from file");
+      }
+      ASSERT_MSG(false, "Failed to fread iso entry when unpacking");
     }
+
     file_util::write_binary_file(path_to_entry.string(), buffer.data(), buffer.size());
     iso.files_extracted++;
     if (iso.shouldHash) {
