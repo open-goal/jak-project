@@ -22,7 +22,7 @@ def create_text_file(locale):
         jak1_file = json.load(f)
 
     for jak2_id, jak1_id in mapping.items():
-        jak2_file[jak2_id] = jak1_file[jak1_id].title()
+        jak2_file[jak2_id] = jak1_file[jak1_id]
 
     with open(f"./text/game_custom_text_{locale}.json", "w", encoding="utf-8") as f:
         json.dump(jak2_file, f, indent=2, ensure_ascii=False)
