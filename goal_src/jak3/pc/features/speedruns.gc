@@ -142,6 +142,7 @@
                 lighteco
                 darkeco))
 
+(define-extern reset-arena-trainer-globals (function none))
 (defmethod start-run! ((this speedrun-info))
   ;; turn on speedrun verification display
   (true! (-> this display-run-info?))
@@ -150,6 +151,9 @@
   (send-event (ppointer->process *speedrun-manager*) 'start-run)
   ;; ensure any required settings are enabled
   (enforce-settings! this)
+  ;; make sure silly arena-trainer globals are reset if we're resetting from arena
+  (when (process-by-name "arena-training-1-collect" *entity-pool*)
+    (reset-arena-trainer-globals))
   ;; finalize any category specific setup code
   (case (-> this category)
     (((speedrun-category newgame-normal))
