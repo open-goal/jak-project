@@ -110,6 +110,19 @@ int normalize_axes_value(int sdl_val) {
   return ((sdl_val + 32768) * 256) / 65536;
 }
 
+// Adjust the value range to 0-255 (127 being neutral)
+// Values come out of SDL as -32,768 to 32,767
+// with 5% of the bottom range ignored for drift compensation
+int normalize_axes_value_drift_compensated(int sdl_val) {
+  if (sdl_val < -32768 + 1638) {
+    return 0;
+  }
+  if (sdl_val > 32767 - 1638) {
+    return 255;
+  }
+  return normalize_axes_value(sdl_val);
+}
+
 void GameController::process_event(const SDL_Event& event,
                                    const CommandBindingGroups& commands,
                                    std::shared_ptr<PadData> data,
@@ -162,15 +175,17 @@ void GameController::process_event(const SDL_Event& event,
 
       // and analog triggers
       for (const auto& bind : binds.button_axii.at(event.gaxis.axis)) {
-        data->button_data.at(bind.pad_data_index) = event.gaxis.value > 0;
+        // ignore 5% of the bottom range for temporary drift compensation
+        // do something better later (and for the sticks too)
+        data->button_data.at(bind.pad_data_index) = event.gaxis.value > 1638;
         const auto pressure_index = data->button_index_to_pressure_index(
             static_cast<PadData::ButtonIndex>(bind.pad_data_index));
         if (pressure_index != PadData::PressureIndex::INVALID_PRESSURE) {
           if (m_settings->enable_pressure_sensitivity && m_has_pressure_sensitive_buttons) {
-            data->pressure_data.at(pressure_index) =
-                normalize_axes_value(m_settings->pressure_scale * event.gaxis.value);
+            data->pressure_data.at(pressure_index) = normalize_axes_value_drift_compensated(
+                m_settings->pressure_scale * event.gaxis.value);
           } else {
-            data->pressure_data.at(pressure_index) = event.gaxis.value > 0 ? 255 : 0;
+            data->pressure_data.at(pressure_index) = event.gaxis.value > 1638 ? 255 : 0;
           }
         }
       }
