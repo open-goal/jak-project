@@ -35,6 +35,7 @@
 #include "third-party/SDL/include/SDL3/SDL_hints.h"
 #include "third-party/SDL/include/SDL3/SDL_version.h"
 #include "third-party/imgui/imgui.h"
+#include "third-party/imgui/imgui_freetype.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
 #include "third-party/imgui/imgui_impl_sdl3.h"
 #include "third-party/imgui/imgui_style.h"
@@ -163,39 +164,14 @@ static void init_imgui(SDL_Window* window,
   g_gfx_data->imgui_filename = file_util::get_file_path({"imgui.ini"});
   g_gfx_data->imgui_log_filename = file_util::get_file_path({"imgui_log.txt"});
   ImGuiIO& io = ImGui::GetIO();
-  io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;  // We manage the mouse cursor!
-  if (!Gfx::g_debug_settings.monospaced_font) {
-    // TODO - add or switch to Noto since it supports the entire unicode range
-    std::string font_path =
-        (file_util::get_jak_project_dir() / "game" / "assets" / "fonts" / "NotoSansJP-Medium.ttf")
-            .string();
-    if (file_util::file_exists(font_path)) {
-      static const ImWchar ranges[] = {
-          0x0020, 0x00FF,  // Basic Latin + Latin Supplement
-          0x0400, 0x052F,  // Cyrillic + Cyrillic Supplement
-          0x2000, 0x206F,  // General Punctuation
-          0x2DE0, 0x2DFF,  // Cyrillic Extended-A
-          0x3000, 0x30FF,  // CJK Symbols and Punctuations, Hiragana, Katakana
-          0x3131, 0x3163,  // Korean alphabets
-          0x31F0, 0x31FF,  // Katakana Phonetic Extensions
-          0x4E00, 0x9FAF,  // CJK Ideograms
-          0xA640, 0xA69F,  // Cyrillic Extended-B
-          0xAC00, 0xD7A3,  // Korean characters
-          0xFF00, 0xFFEF,  // Half-width characters
-          0xFFFD, 0xFFFD,  // Invalid
-          0,
-      };
-      io.Fonts->AddFontFromFileTTF(font_path.c_str(), Gfx::g_debug_settings.imgui_font_size,
-                                   nullptr, ranges);
-    }
-  }
-
   io.IniFilename = g_gfx_data->imgui_filename.c_str();
   io.LogFilename = g_gfx_data->imgui_log_filename.c_str();
 
   if (Gfx::g_debug_settings.alternate_style) {
     ImGui::applyAlternateStyle();
   }
+
+  ImGui::applyFontStyle();
 
   // set up to get inputs for this window
   ImGui_ImplSDL3_InitForOpenGL(window, gl_context);

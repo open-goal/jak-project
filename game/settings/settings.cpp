@@ -10,7 +10,7 @@ namespace game_settings {
 void to_json(json& j, const DebugSettings& obj) {
   json_serialize(version);
   json_serialize(show_imgui);
-  json_serialize(imgui_font_size);
+  json_serialize(imgui_font_scale);
   json_serialize(monospaced_font);
   json_serialize(alternate_style);
   json_serialize(ignore_hide_imgui);
@@ -24,7 +24,7 @@ void to_json(json& j, const DebugSettings& obj) {
 void from_json(const json& j, DebugSettings& obj) {
   json_deserialize_if_exists(version);
   json_deserialize_if_exists(show_imgui);
-  json_deserialize_if_exists(imgui_font_size);
+  json_deserialize_if_exists(imgui_font_scale);
   json_deserialize_if_exists(monospaced_font);
   json_deserialize_if_exists(alternate_style);
   json_deserialize_if_exists(ignore_hide_imgui);

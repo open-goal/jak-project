@@ -27,7 +27,7 @@ struct DebugSettings {
   std::string version = current_version;
 
   bool show_imgui = false;
-  int imgui_font_size = 16;
+  float imgui_font_scale = 1.0f;
   bool monospaced_font = true;
   bool alternate_style = false;
   bool ignore_hide_imgui = false;

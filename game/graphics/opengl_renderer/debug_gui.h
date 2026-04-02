@@ -85,3 +85,7 @@ class OpenGlDebugGui {
   bool m_want_screenshot = false;
   float target_fps_input = 60.f;
 };
+
+namespace ImGui {
+void applyFontStyle();
+}
