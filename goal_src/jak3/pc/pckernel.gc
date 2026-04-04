@@ -239,6 +239,7 @@
   (set! (-> *setting-control* user-default dialog-volume) (-> obj memcard-volume-dialog))
   (set! (-> *setting-control* user-default vibration) (-> obj memcard-vibration?))
   (set! (-> *setting-control* user-default subtitle) (-> obj memcard-subtitles?))
+  (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum (-> obj subtitle-language)))
   obj)
 
 (defmethod set-game-setting! ((obj pc-settings-jak3) (setting symbol) (value symbol))
@@ -270,12 +271,12 @@
   )
 
 (defmethod set-game-language! ((obj pc-settings-jak3) (lang language-enum))
-  (set! (-> *setting-control* user-default language) lang)
+  (set! (-> *setting-control* user-default audio-language) lang)
   )
 
 (defmethod get-game-language ((obj pc-settings-jak3))
   ;; if the language is unintialized, return the default
-  (let ((lang (get-current-language)))
+  (let ((lang (-> *setting-control* user-current audio-language)))
     (if (= lang 255)
         (scf-get-language)
         lang
@@ -646,6 +647,8 @@
     (("smooth-minimap?") (set! (-> obj smooth-minimap?) (file-stream-read-symbol file)))
     (("minimap-force-north") (set! (-> obj minimap-force-north) (file-stream-read-symbol file)))
     (("hires-clouds?") (set! (-> obj hires-clouds?) (file-stream-read-symbol file)))
+    (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
+    (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-language (file-stream-read-int file))))
     (("controller-led-status?") (set! (-> obj controller-led-status?) (file-stream-read-symbol file)))
     (("controller-swap-r1-r2?") (set! (-> obj controller-swap-r1-r2?) (file-stream-read-symbol file)))
     (("speedrunner-mode-custom-bind") (set! (-> obj speedrunner-mode-custom-bind) (file-stream-read-int file)))
@@ -700,6 +703,8 @@
   (format file "  (smooth-minimap? ~A)~%" (-> obj smooth-minimap?))
   (format file "  (minimap-force-north ~A)~%" (-> obj minimap-force-north))
   (format file "  (hires-clouds? ~A)~%" (-> obj hires-clouds?))
+  (format file "  (text-language ~D)~%" (-> obj text-language))
+  (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
   (format file "  (controller-led-status? ~A)~%" (-> obj controller-led-status?))
   (format file "  (controller-swap-r1-r2? ~A)~%" (-> obj controller-swap-r1-r2?))
   (format file "  (speedrunner-mode-custom-bind ~D)~%" (-> obj speedrunner-mode-custom-bind))
