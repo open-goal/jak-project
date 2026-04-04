@@ -514,7 +514,7 @@
                 (rot-speed (* DISPLAY_FPS_RATIO (-> *CAM_EYE-bank* rot-speed)))
                 )
             (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-              (let ((f30-0 (analog-input
+              (let ((f30-0 (analog-input-horizontal-first ;; og:preserve-this
                              (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
                              0.0
                              48.0
@@ -522,7 +522,7 @@
                              -1.0
                              )
                            )
-                    (f0-0 (analog-input
+                    (f0-0 (analog-input-vertical-first ;; og:preserve-this
                             (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
                             0.0
                             48.0
@@ -531,9 +531,10 @@
                             )
                           )
                     )
-                (if (-> *camera* settings flip-vertical)
-                    (set! f0-0 (- f0-0))
-                    )
+                ;; og:preserve-this
+                ;; (if (-> *camera* settings flip-vertical)
+                ;;     (set! f0-0 (- f0-0))
+                ;;     )
                 ;; og:preserve-this changed for high fps
                 (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) rot-speed)))
                 (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) rot-speed)))
@@ -947,22 +948,24 @@
          (s4-0 (new 'stack-no-clear 'matrix))
          )
     (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+      ;; og:preserve-this
       (let ((f24-0
-              (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              (analog-input-horizontal-third (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
               )
             (f1-2
-              (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
+              (analog-input-vertical-third (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 (* 8192.0 (seconds-per-frame)))
               )
             (s2-0 (new-stack-matrix0))
             )
         (let ((v1-15 (new 'stack-no-clear 'vector)))
           0.0
-          (if (-> *camera* settings flip-horizontal)
-              (set! f24-0 (- f24-0))
-              )
-          (if (-> *camera* settings flip-vertical)
-              (set! f1-2 (- f1-2))
-              )
+          ;; og:preserve-this
+          ;; (if (-> *camera* settings flip-horizontal)
+          ;;     (set! f24-0 (- f24-0))
+          ;;     )
+          ;; (if (-> *camera* settings flip-vertical)
+          ;;     (set! f1-2 (- f1-2))
+          ;;     )
           (when (< (-> self max-angle-offset) 1820.4445)
             (set! f24-0 0.0)
             (set! f1-2 0.0)
@@ -2374,7 +2377,11 @@
        (set! f0-0 (fmin arg1 (* 0.0125 (+ -160.0 (the float arg0)) arg1)))
        )
       )
-    (the-as float f0-0)
+    ;; og:preserve-this
+    (#if PC_PORT
+      (* (if (-> *pc-settings* third-camera-v-inverted?) 1.0 -1.0) (the-as float f0-0))
+      (the-as float f0-0)
+      )
     )
   )
 
@@ -2560,7 +2567,8 @@
         )
     )
   (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-    (let ((f30-2 (analog-input
+    ;; og:preserve-this
+    (let ((f30-2 (analog-input-horizontal-third
                    (the-as int (-> *cpad-list* cpads 0 rightx))
                    128.0
                    32.0
@@ -2590,9 +2598,10 @@
       (let ((gp-3 (new-stack-vector0))
             (s5-3 (new-stack-vector0))
             )
-        (if (-> *camera* settings flip-horizontal)
-            (set! f30-2 (- f30-2))
-            )
+        ;; og:preserve-this
+        ;; (if (-> *camera* settings flip-horizontal)
+        ;;     (set! f30-2 (- f30-2))
+        ;;     )
         (if (or (logtest? (cam-slave-options-u32 BLOCK_RIGHT_STICK) (-> self options))
                 (logtest? (-> *camera* settings master-options) (cam-master-options BLOCK_RIGHT_STICK))
                 )
@@ -3529,7 +3538,8 @@
         )
     (when (not (paused?))
       (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
-        (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
+        ;; og:preserve-this
+        (let ((f0-0 (analog-input-vertical-third (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
           (cond
             ((< (* 0.05 (- 1.0 (-> self view-off-param))) f0-0)
              (+! (-> self view-off-param) (* 0.05 (- 1.0 (-> self view-off-param))))
@@ -3550,17 +3560,19 @@
             (lerp (-> *CAM_STICK-bank* min-z) (-> *CAM_STICK-bank* max-z) (-> self view-off-param))
             )
       (when (not (logtest? (-> *camera* settings master-options) (cam-master-options IGNORE_ANALOG)))
+        ;; og:preserve-this
         (let ((f0-16
-                (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
+                (analog-input-horizontal-third (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 32.0 110.0 (* 21845.334 (seconds-per-frame)))
                 )
               (gp-0 (new-stack-matrix0))
               (s3-0 (new-stack-vector0))
               (s5-0 (new-stack-vector0))
               (s4-0 (new-stack-vector0))
               )
-          (if (-> *camera* settings flip-horizontal)
-              (set! f0-16 (- f0-16))
-              )
+          ;; og:preserve-this
+          ;; (if (-> *camera* settings flip-horizontal)
+          ;;     (set! f0-16 (- f0-16))
+          ;;     )
           (cond
             ((!= f0-16 0.0)
              (matrix-axis-angle! gp-0 (-> *camera* local-down) f0-16)
