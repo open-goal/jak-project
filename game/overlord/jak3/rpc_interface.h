@@ -171,6 +171,8 @@ enum class SoundCommand : u16 {
   // LINVEL_NOM = 37,
   CANCEL_DGO = 49,
   SET_STEREO_MODE = 50,
+  // custom below
+  MIRROR_MODE = 201,
 };
 
 struct SoundPlayParams {
@@ -273,6 +275,11 @@ struct Rpc_Loader_Set_Stereo_Mode : public Rpc_Player_Base_Cmd {
   s32 mode;
 };
 static_assert(sizeof(Rpc_Loader_Set_Stereo_Mode) == 8);
+
+struct Rpc_Loader_Set_Mirror_Mode : public Rpc_Player_Base_Cmd {
+  u8 mode;
+};
+static_assert(sizeof(Rpc_Loader_Set_Mirror_Mode) == 6);
 
 constexpr int kPlayerCommandStride = 0x50;
 constexpr int kLoaderCommandStride = 0x50;
