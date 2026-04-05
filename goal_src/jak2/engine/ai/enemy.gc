@@ -499,7 +499,7 @@
       )
   )
 
-(defmethod enemy-method-135 ((this enemy) (sound int))
+(defmethod play-damage-or-death-sound ((this enemy) (sound int))
   (let ((name (static-sound-name "")))
     (let ((sound-type sound))
       (cond
@@ -2771,7 +2771,7 @@
   :enter (behavior ()
     (stop-looking-at-target! self)
     (logclear! (-> self mask) (process-mask actor-pause))
-    (enemy-method-135 self 0)
+    (play-damage-or-death-sound self 0)
     )
   :code (behavior ()
     (local-vars (v1-37 enemy-flag) (v1-45 enemy-flag))
@@ -3185,7 +3185,7 @@
         )
     (if (zero? (-> self hit-points))
         (dying self)
-        (enemy-method-135 self 0)
+        (play-damage-or-death-sound self 0)
         )
     (logclear! (-> self focus-status) (focus-status dangerous))
     (if (= (-> self incoming knocked-type) (knocked-type knocked-type-4))
@@ -3322,7 +3322,7 @@
   "Cleans-up the enemy and any associated resources. Potentially spawns skull gems"
   (when (not (logtest? (enemy-flag called-dying) (-> this enemy-flags)))
     (set! (-> this enemy-flags) (the-as enemy-flag (logior (enemy-flag called-dying) (-> this enemy-flags))))
-    (enemy-method-135 this 1)
+    (play-damage-or-death-sound this 1)
     (when (and (>= (-> this enemy-info gem-joint) 0)
                (not (logtest? (enemy-flag spawn-gem) (-> this enemy-flags)))
                (or (and (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status save))))
