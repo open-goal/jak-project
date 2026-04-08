@@ -293,6 +293,37 @@
   (none)
   )
 
+(defun begin-scan ((arg0 hud-box) (arg1 progress))
+  (cond
+    ;; og:preserve-this branch for custom-aspect bigmap
+    ((and (not (-> *pc-settings* use-vis?)) (or (= (-> arg1 current) 'bigmap) (= (-> arg1 next) 'bigmap)))
+     (set! (-> arg0 box min x) (* 256.0 (- 1.0 (/ 1.0 (-> *video-params* relative-x-scale)))))
+     (set! (-> arg0 box min y) 0.0)
+     (set! (-> arg0 box max x) (+ 256.0 (* 256.0 (/ 1.0 (-> *video-params* relative-x-scale)))))
+     (set! (-> arg0 box max y) 416.0)
+     )
+    ((or (= (-> arg1 current) 'bigmap) (= (-> arg1 next) 'bigmap))
+     (set! (-> arg0 box min x) 0.0)
+     (set! (-> arg0 box min y) 0.0)
+     (set! (-> arg0 box max x) 512.0)
+     (set! (-> arg0 box max y) 416.0)
+     )
+    ((= (get-aspect-ratio) 'aspect16x9)
+     (set! (-> arg0 box min x) 79.0)
+     (set! (-> arg0 box min y) 38.0)
+     (set! (-> arg0 box max x) 434.0)
+     (set! (-> arg0 box max y) 362.0)
+     )
+    (else
+      (set! (-> arg0 box min x) 70.0)
+      (set! (-> arg0 box min y) 72.0)
+      (set! (-> arg0 box max x) 444.0)
+      (set! (-> arg0 box max y) 329.0)
+      )
+    )
+  0
+  )
+
 (defun end-scan ((arg0 hud-box) (arg1 float))
   (with-dma-buffer-add-bucket ((s5-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                (bucket-id bucket582)
