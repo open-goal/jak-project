@@ -62,13 +62,15 @@
           (let ((times (-> freq trick))
                 (color (case trick
                           (((board-tricks board-boost) (board-tricks board-jump) (board-tricks board-duck-jump) (board-tricks board-quick-jump))
-                          "~9L") ;; pink
+                          "~9L") ;; pink (X tricks)
                           (((board-tricks board-rail) (board-tricks board-rail-jump))
-                          "~3L") ;; red
-                          (((board-tricks board-spin) (board-tricks board-flip) (board-tricks board-board-flip) (board-tricks board-nosegrab) (board-tricks board-backgrab) (board-tricks board-airwalk))
-                          "~26L") ;; pad-triangle
-                          (((board-tricks board-board-spin) (board-tricks board-method) (board-tricks board-method-cross) (board-tricks board-noseflip) (board-tricks board-kickflip) (board-tricks board-kickspin))
-                          "~15L"))) ;; menu-flag-on
+                          "~3L") ;; red (square tricks)
+                          (((board-tricks board-spin) (board-tricks board-flip))
+                          "~26L") ;; pad-triangle (green, r1 tricks)
+                          (((board-tricks board-method) (board-tricks board-method-cross) (board-tricks board-backgrab) (board-tricks board-airwalk))
+                          "~21L") ;; font-color-21 (blue, l2 tricks)
+                          (((board-tricks board-nosegrab) (board-tricks board-board-spin) (board-tricks board-noseflip) (board-tricks board-kickflip) (board-tricks board-kickspin))
+                          "~15L"))) ;; menu-flag-on (yellow, l1 tricks)
                 (padding (if (zero? i) "" " + "))
                 (trick-name (lookup-text! *common-text* (board-trick->text-id trick) #f)))
 
@@ -81,8 +83,8 @@
 
   ;; Print it finally
   (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 90 320 0.0 (font-color default) (font-flags large shadow kerning middle))))
-    (set-width! font-ctx 332)
-    (set-scale! font-ctx 0.35)
+    (set-width! font-ctx 300)
+    (set-scale! font-ctx 0.25)
     (print-game-text *temp-string* font-ctx #f 44 (bucket-id debug-no-zbuf1))
     ;; Add points
     (+! (-> font-ctx origin y) 36.0)
@@ -966,6 +968,9 @@
   (set! (-> self board unk-float005) 0.0)
   (set! (-> self board unk-float006) 0.0)
   (set! (-> self board unk-float007) 0.0)
+  ;; og:preserve-this reset trick display
+  (#when PC_PORT
+    (reset-combo! *board-trick-tracker*))
   (set! (-> self board trick-count) 0)
   (countdown (v1-69 16)
     (set! (-> self board trick-list 0) (board-tricks none))
@@ -3055,14 +3060,16 @@
         (sound-play "do-trick")
         (let ((t9-4 format)
               (a0-29 #t)
-              (a1-8 "trick: ~S (~D) ~,,0f")
+              (a1-8 "trick: ~S (~,,0f, ~D, ~f) ~,,0f")
               ;; og:preserve-this
               (trick-name (enum->string board-tricks arg0)))
           (t9-4
             a0-29
             a1-8
             trick-name
+            arg1
             s4-0
+            (lerp-scale 1.0 0.1 (the float s4-0) 2.0 6.0)
             s3-1
             )
           )
