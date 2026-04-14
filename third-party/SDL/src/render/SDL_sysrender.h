@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,14 +31,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef enum SDL_TextureAddressMode
-{
-    SDL_TEXTURE_ADDRESS_INVALID = -1,
-    SDL_TEXTURE_ADDRESS_AUTO,
-    SDL_TEXTURE_ADDRESS_CLAMP,
-    SDL_TEXTURE_ADDRESS_WRAP,
-} SDL_TextureAddressMode;
 
 /**
  * A rectangle, with the origin at the upper left (double precision).
@@ -78,6 +70,15 @@ typedef struct SDL_RenderViewState
     SDL_FPoint current_scale;  // this is just `scale * logical_scale`, precalculated, since we use it a lot.
 } SDL_RenderViewState;
 
+// Define the SDL texture palette structure
+typedef struct SDL_TexturePalette
+{
+    int refcount;
+    Uint32 version;
+    Uint32 last_command_generation; // last command queue generation this palette was in.
+    void *internal;             // Driver specific palette representation
+} SDL_TexturePalette;
+
 // Define the SDL texture structure
 struct SDL_Texture
 {
@@ -89,6 +90,7 @@ struct SDL_Texture
     int refcount;               /**< Application reference count, used when freeing texture */
 
     // Private API definition
+    SDL_Renderer *renderer;
     SDL_Colorspace colorspace;  // The colorspace of the texture
     float SDR_white_point;      // The SDR white point for this content
     float HDR_headroom;         // The HDR headroom needed by this content
@@ -97,8 +99,10 @@ struct SDL_Texture
     SDL_ScaleMode scaleMode;    // The texture scale mode
     SDL_FColor color;           // Texture modulation values
     SDL_RenderViewState view;   // Target texture view state
-
-    SDL_Renderer *renderer;
+    SDL_Palette *public_palette;
+    SDL_TexturePalette *palette;
+    Uint32 palette_version;
+    SDL_Surface *palette_surface;
 
     // Support for formats not supported directly by the renderer
     SDL_Texture *native;
@@ -116,6 +120,36 @@ struct SDL_Texture
 
     SDL_Texture *prev;
     SDL_Texture *next;
+};
+
+// Define the GPU render state structure
+typedef struct SDL_GPURenderStateUniformBuffer
+{
+    Uint32 slot_index;
+    void *data;
+    Uint32 length;
+} SDL_GPURenderStateUniformBuffer;
+
+// Define the GPU render state structure
+struct SDL_GPURenderState
+{
+    SDL_Renderer *renderer;
+
+    Uint32 last_command_generation; // last command queue generation this state was in.
+
+    SDL_GPUShader *fragment_shader;
+
+    int num_sampler_bindings;
+    SDL_GPUTextureSamplerBinding *sampler_bindings;
+
+    int num_storage_textures;
+    SDL_GPUTexture **storage_textures;
+
+    int num_storage_buffers;
+    SDL_GPUBuffer **storage_buffers;
+
+    int num_uniform_buffers;
+    SDL_GPURenderStateUniformBuffer *uniform_buffers;
 };
 
 typedef enum
@@ -157,7 +191,9 @@ typedef struct SDL_RenderCommand
             SDL_BlendMode blend;
             SDL_Texture *texture;
             SDL_ScaleMode texture_scale_mode;
-            SDL_TextureAddressMode texture_address_mode;
+            SDL_TextureAddressMode texture_address_mode_u;
+            SDL_TextureAddressMode texture_address_mode_v;
+            SDL_GPURenderState *gpu_render_state;
         } draw;
         struct
         {
@@ -209,6 +245,10 @@ struct SDL_Renderer
 
     void (*InvalidateCachedState)(SDL_Renderer *renderer);
     bool (*RunCommandQueue)(SDL_Renderer *renderer, SDL_RenderCommand *cmd, void *vertices, size_t vertsize);
+    bool (*CreatePalette)(SDL_Renderer *renderer, SDL_TexturePalette *palette);
+    bool (*UpdatePalette)(SDL_Renderer *renderer, SDL_TexturePalette *palette, int ncolors, SDL_Color *colors);
+    void (*DestroyPalette)(SDL_Renderer *renderer, SDL_TexturePalette *palette);
+    bool (*ChangeTexturePalette)(SDL_Renderer *renderer, SDL_Texture *texture);
     bool (*UpdateTexture)(SDL_Renderer *renderer, SDL_Texture *texture,
                          const SDL_Rect *rect, const void *pixels,
                          int pitch);
@@ -245,6 +285,7 @@ struct SDL_Renderer
     SDL_PixelFormat *texture_formats;
     int num_texture_formats;
     bool software;
+    bool npot_texture_wrap_unsupported;
 
     // The window associated with the renderer
     SDL_Window *window;
@@ -265,10 +306,16 @@ struct SDL_Renderer
     // The method of drawing lines
     SDL_RenderLineMethod line_method;
 
+    // Default scale mode for textures created with this renderer
+    SDL_ScaleMode scale_mode;
+
     // The list of textures
     SDL_Texture *textures;
     SDL_Texture *target;
     SDL_Mutex *target_mutex;
+
+    // The list of palettes
+    SDL_HashTable *palettes;
 
     SDL_Colorspace output_colorspace;
     float SDR_white_point;
@@ -278,7 +325,9 @@ struct SDL_Renderer
     float color_scale;
     SDL_FColor color;        /**< Color for drawing operations values */
     SDL_BlendMode blendMode; /**< The drawing blend mode */
-    SDL_TextureAddressMode texture_address_mode;
+    SDL_TextureAddressMode texture_address_mode_u;
+    SDL_TextureAddressMode texture_address_mode_v;
+    SDL_GPURenderState *gpu_render_state;
 
     SDL_RenderCommand *render_commands;
     SDL_RenderCommand *render_commands_tail;
@@ -328,6 +377,7 @@ extern SDL_RenderDriver D3D12_RenderDriver;
 extern SDL_RenderDriver GL_RenderDriver;
 extern SDL_RenderDriver GLES2_RenderDriver;
 extern SDL_RenderDriver METAL_RenderDriver;
+extern SDL_RenderDriver NGAGE_RenderDriver;
 extern SDL_RenderDriver VULKAN_RenderDriver;
 extern SDL_RenderDriver PS2_RenderDriver;
 extern SDL_RenderDriver PSP_RenderDriver;
@@ -337,6 +387,12 @@ extern SDL_RenderDriver GPU_RenderDriver;
 
 // Clean up any renderers at shutdown
 extern void SDL_QuitRender(void);
+
+#define RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v)    \
+    (((scale_mode == SDL_SCALEMODE_NEAREST) << 0) |                 \
+     ((address_u == SDL_TEXTURE_ADDRESS_WRAP) << 1) |               \
+     ((address_v == SDL_TEXTURE_ADDRESS_WRAP) << 2))
+#define RENDER_SAMPLER_COUNT (((1 << 0) | (1 << 1) | (1 << 2)) + 1)
 
 // Add a supported texture format to a renderer
 extern bool SDL_AddSupportedTextureFormat(SDL_Renderer *renderer, SDL_PixelFormat format);

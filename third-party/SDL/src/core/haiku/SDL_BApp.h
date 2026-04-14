@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -82,7 +82,7 @@ extern "C" SDL_BLooper *SDL_Looper;
 class SDL_BLooper : public BLooper
 {
   public:
-    SDL_BLooper(const char* name) : BLooper(name)
+    SDL_BLooper(const char *name) : BLooper(name)
     {
 #ifdef SDL_VIDEO_OPENGL
         _current_context = NULL;

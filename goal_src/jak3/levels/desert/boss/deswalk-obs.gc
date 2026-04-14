@@ -1245,8 +1245,17 @@
     (dm-tentacle-adjust-collision 12 0)
     (logclear! (-> self flags) (dm-tentacle-flag dt7))
     (set! (-> self hit-points) 10.0)
+    (#when PC_PORT ;; og:preserve-this fix dead tentacles being targetable
+        (set! (-> self root root-prim prim-core action) (collide-action solid)))
     )
   :code sleep-code
+  :post (behavior ()
+    (#when PC_PORT ;; og:preserve-this fix dead tentacles being targetable
+      (if (or (not (-> *pc-settings* fix-projectile-focus)))
+          (set! (-> self root root-prim prim-core action) (collide-action solid))
+          (set! (-> self root root-prim prim-core action) (collide-action)))
+      )
+    )
   )
 
 (defstate strike (dm-tentacle)

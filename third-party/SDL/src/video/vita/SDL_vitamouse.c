@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -39,7 +39,7 @@ void VITA_InitMouse(void)
     sceHidMouseEnumerate(&mouse_hid_handle, 1);
 
     if (mouse_hid_handle > 0) {
-        SDL_AddMouse((SDL_MouseID)mouse_hid_handle, NULL, false);
+        SDL_AddMouse((SDL_MouseID)mouse_hid_handle, NULL);
     }
 }
 

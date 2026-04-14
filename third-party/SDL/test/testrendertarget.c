@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -252,17 +252,17 @@ int main(int argc, char *argv[])
 
         drawstate->window = state->windows[i];
         drawstate->renderer = state->renderers[i];
-        if (test_composite) {
-            drawstate->sprite = LoadTexture(drawstate->renderer, "icon-alpha.bmp", true, NULL, NULL);
-        } else {
-            drawstate->sprite = LoadTexture(drawstate->renderer, "icon.bmp", true, NULL, NULL);
-        }
-        drawstate->background = LoadTexture(drawstate->renderer, "sample.bmp", false, NULL, NULL);
+        drawstate->sprite = LoadTexture(drawstate->renderer, "icon.png", true);
+        drawstate->background = LoadTexture(drawstate->renderer, "sample.png", false);
         if (!drawstate->sprite || !drawstate->background) {
             quit(2);
         }
         SDL_GetTextureSize(drawstate->sprite, &drawstate->sprite_rect.w, &drawstate->sprite_rect.h);
         drawstate->scale_direction = 1;
+
+        if (test_composite) {
+            SDL_SetTextureAlphaMod(drawstate->sprite, 0x80);
+        }
     }
 
     /* Main render loop */

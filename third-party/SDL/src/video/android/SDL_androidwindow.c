@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -126,7 +126,7 @@ SDL_FullscreenResult Android_SetWindowFullscreen(SDL_VideoDevice *_this, SDL_Win
         /* Ensure our size matches reality after we've executed the window style change.
          *
          * It is possible that we've set width and height to the full-size display, but on
-         * Samsung DeX or Chromebooks or other windowed Android environemtns, our window may
+         * Samsung DeX or Chromebooks or other windowed Android environments, our window may
          * still not be the full display size.
          */
         if (!SDL_IsDeXMode() && !SDL_IsChromebook()) {
@@ -165,7 +165,7 @@ endfunction:
 
 void Android_MinimizeWindow(SDL_VideoDevice *_this, SDL_Window *window)
 {
-    Android_JNI_MinizeWindow();
+    Android_JNI_MinimizeWindow();
 }
 
 void Android_SetWindowResizable(SDL_VideoDevice *_this, SDL_Window *window, bool resizable)

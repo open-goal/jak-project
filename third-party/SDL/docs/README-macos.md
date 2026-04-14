@@ -32,6 +32,10 @@ sudo cmake --install .
 
 Please note that building SDL requires at least Xcode 12.2 and the macOS 11.0 SDK.
 
+If you are getting errors building SDL_mfijoystick.m with Xcode 12.2, find your SDKs
+directory and move MacOSX10.15.sdk out of the way so it isn't accidentally being used
+by the build environment.
+
 To use the library once it's built, you essential have two possibilities:
 use the traditional autoconf/automake/make method, or use Xcode.
 
@@ -72,6 +76,8 @@ NSApplicationDelegate implementation:
     return NO;
 }
 ```
+
+SDL is [not designed to be used in setuid or setgid executables](README-platforms.md#setuid).
 
 # Using the Simple DirectMedia Layer with a traditional Makefile
 

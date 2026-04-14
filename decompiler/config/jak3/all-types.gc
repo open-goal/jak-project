@@ -34140,34 +34140,31 @@
 ;; cam-debug                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cam-dbg-scratch (structure)
-  ((linevec4w      vector :inline :offset-assert 0) ;; vector4w 2 :inline
-   (color          vector :inline :offset-assert 32) ;; vector4w :inline
-   (plotvec        vector :inline :offset-assert 48) ;; vector4w 2 :inline
-   (linevec        vector :inline :offset-assert 80) ;; vector4w 2 :inline
-   (rel-vec        vector :inline :offset-assert 112)
-   (sphere-v-start vector :inline :offset-assert 128)
-   (sphere-v-end   vector :inline :offset-assert 144)
-   (sphere-v-down  vector :inline :offset-assert 160)
-   (sphere-vec     vector :inline :offset-assert 176)
-   (crossvec       vector :inline :offset-assert 192)
-   (bboxvec        vector :inline :offset-assert 240)
-   (fov-vv         vector :inline :offset-assert 336)
-   (fov-src        vector :inline :offset-assert 400)
-   (fov-dest       vector :inline :offset-assert 416)
-   (fov-vert       vector :inline :offset-assert 432)
-   (fov-horz       vector :inline :offset-assert 448)
+  ((linevec4w      vector4w 2 :inline :offset-assert 0) ;; vector4w 2 :inline
+   (color          vector4w   :inline :offset-assert 32) ;; vector4w :inline
+   (plotvec        vector4w 2 :inline :offset-assert 48) ;; vector4w 2 :inline
+   (linevec        vector4w 2 :inline :offset-assert 80) ;; vector4w 2 :inline
+   (rel-vec        vector     :inline :offset-assert 112)
+   (sphere-v-start vector     :inline :offset-assert 128)
+   (sphere-v-end   vector     :inline :offset-assert 144)
+   (sphere-v-down  vector     :inline :offset-assert 160)
+   (sphere-vec     vector     :inline :offset-assert 176)
+   (crossvec       vector 3   :inline :offset-assert 192)
+   (bboxvec        vector 6   :inline :offset-assert 240)
+   (fov-vv         vector 4   :inline :offset-assert 336)
+   (fov-src        vector     :inline :offset-assert 400)
+   (fov-dest       vector     :inline :offset-assert 416)
+   (fov-vert       vector     :inline :offset-assert 432)
+   (fov-horz       vector     :inline :offset-assert 448)
    )
   :method-count-assert 9
   :size-assert         #x1d0
   :flag-assert         #x9000001d0
   )
-|#
 
-#|
 (deftype cam-debug-tri (structure)
-  ((vertex    vector   3       :offset-assert 0) ;; guessed by decompiler
+  ((vertex    vector 3 :inline :offset-assert 0) ;; guessed by decompiler
    (intersect vector   :inline :offset-assert 48)
    (color     vector4w         :offset-assert 64)
    )
@@ -34175,9 +34172,7 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype cam-collision-record (structure)
   ((pos            vector :inline :offset-assert 0)
    (vel            vector :inline :offset-assert 16)
@@ -34199,9 +34194,7 @@
   :size-assert         #xa8
   :flag-assert         #x9000000a8
   )
-|#
 
-#|
 (deftype cam-collision-record-array (inline-array-class)
   ((data cam-collision-record :dynamic :offset-assert 16) ;; guessed by decompiler
    )
@@ -34209,54 +34202,53 @@
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-;; (define-extern *camera-old-cpu* object) ;; int
-;; (define-extern *camera-old-vu* object) ;; int
-;; (define-extern *camera-old-tfrag-bytes* object) ;; int
-;; (define-extern *camera-old-level* object) ;; string
-;; (define-extern *camera-old-stat-string-tfrag* object) ;; string
-;; (define-extern *camera-old-stat-string-tfrag-near* object) ;; string
-;; (define-extern *camera-old-stat-string-total* object) ;; string
+(define-extern *camera-old-cpu* int)
+(define-extern *camera-old-vu* int)
+(define-extern *camera-old-tfrag-bytes* int)
+(define-extern *camera-old-level* string)
+(define-extern *camera-old-stat-string-tfrag* string)
+(define-extern *camera-old-stat-string-tfrag-near* string)
+(define-extern *camera-old-stat-string-total* string)
 (define-extern cam-slave-options->string (function cam-slave-options object string))
 (define-extern cam-index-options->string (function cam-index-options object string))
 (define-extern slave-los-state->string (function slave-los-state string))
-;; (define-extern cam-line-dma function) ;; (function pointer)
-;; (define-extern camera-line2d function) ;; (function vector4w vector4w pointer)
+(define-extern cam-line-dma (function pointer))
+(define-extern camera-line2d (function vector4w vector4w pointer))
 (define-extern camera-plot-float-func (function float float float float (function float float) vector4w none))
 (define-extern camera-line-setup (function vector4w none))
 (define-extern camera-line-draw (function vector vector none))
 (define-extern camera-line (function vector vector vector4w none))
 (define-extern camera-line-rel (function vector vector vector4w none))
 (define-extern camera-line-rel-len (function vector vector float vector4w none))
-;; (define-extern camera-sphere function) ;; (function vector float vector4w none)
+(define-extern camera-sphere (function vector float vector4w none))
 (define-extern camera-cross (function vector vector vector vector4w meters none))
-;; (define-extern camera-bounding-box-draw function) ;; (function bounding-box basic rgba none)
-;; (define-extern *cam-debug-los-tri-current* object) ;; int
-;; (define-extern *cam-debug-los-tri* object) ;; (inline-array cam-debug-tri)
-;; (define-extern *cam-debug-coll-tri-current* object) ;; int
-;; (define-extern *cam-debug-coll-tri* object) ;; (inline-array cam-debug-tri)
+(define-extern camera-bounding-box-draw (function bounding-box basic rgba none))
+(define-extern *cam-debug-los-tri-current* int)
+(define-extern *cam-debug-los-tri* (inline-array cam-debug-tri))
+(define-extern *cam-debug-coll-tri-current* int)
+(define-extern *cam-debug-coll-tri* (inline-array cam-debug-tri))
 (define-extern cam-debug-reset-coll-tri (function none))
 (define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
-;; (define-extern cam-debug-add-coll-tri function) ;; (function cam-debug-tri vector cam-debug-tri none)
-;; (define-extern cam-debug-draw-tris function) ;; (function symbol)
-;; (define-extern camera-fov-draw function) ;; (function int int vector float float vector4w none)
+(define-extern cam-debug-add-coll-tri (function cam-debug-tri vector cam-debug-tri none))
+(define-extern cam-debug-draw-tris (function symbol))
+(define-extern camera-fov-draw (function int int vector float float vector4w none))
 (define-extern camera-fov-frame (function matrix vector float float float vector4w symbol))
-;; (define-extern debug-euler function) ;; (function cam-dbg-scratch object)
-;; (define-extern bike-cam-limit function) ;; (function float float)
+(define-extern debug-euler (function cam-dbg-scratch object))
+(define-extern bike-cam-limit (function float float))
 (define-extern camera-slave-debug (function camera-slave none))
-;; (define-extern master-draw-coordinates function) ;; (function vector none)
-;; (define-extern *cam-collision-record-first* object) ;; int
-;; (define-extern *cam-collision-record-last* object) ;; int
-;; (define-extern *cam-collision-record-show* object) ;; int
-;; (define-extern *cam-collision-record* object) ;; cam-collision-record-array
+(define-extern master-draw-coordinates (function vector none))
+(define-extern *cam-collision-record-first* int)
+(define-extern *cam-collision-record-last* int)
+(define-extern *cam-collision-record-show* int)
+(define-extern *cam-collision-record* cam-collision-record-array)
 (define-extern cam-collision-record-save (function vector vector int symbol camera-slave none))
-;; (define-extern cam-collision-record-step function) ;; (function int none)
-;; (define-extern cam-collision-record-draw function) ;; (function none)
+(define-extern cam-collision-record-step (function int none))
+(define-extern cam-collision-record-draw (function none))
 (define-extern camera-master-debug (function camera-master none))
 (define-extern debug-set-camera-pos-rot! (function vector matrix vector))
-;; (define-extern cam-restore function) ;; (function none)
-;; (define-extern cam-restore-generic-bug function)
+(define-extern cam-restore (function none))
+(define-extern cam-restore-generic-bug (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cam-start                      ;;
@@ -41061,12 +41053,12 @@
 ;; sampler                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sampler-mem* object) ;; pointer
-;; (define-extern *sampler-compare* object) ;; uint
-;; (define-extern *sampler-count* object) ;; int
-;; (define-extern timer0-handler function) ;; (function none)
-;; (define-extern sampler-start function) ;; (function none)
-;; (define-extern sampler-stop function) ;; (function none)
+(define-extern *sampler-mem* pointer)
+(define-extern *sampler-compare* uint)
+(define-extern *sampler-count* int)
+(define-extern timer0-handler (function none))
+(define-extern sampler-start (function none))
+(define-extern sampler-stop (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; default-menu                   ;;
@@ -44321,7 +44313,6 @@
 ;; hover-nav-edit                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hover-nav-bsp-point (list-node)
   ((index int32          :offset-assert 8)
    (pos   vector :inline :offset-assert 16)
@@ -44329,10 +44320,11 @@
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
+  (:methods
+    (new (symbol type) _type_) ;; 0
+    )
   )
-|#
 
-#|
 (deftype hover-nav-bsp-node (structure)
   ((split-plane vector              :inline :offset-assert 0)
    (point-list  hover-nav-bsp-point         :offset-assert 16)
@@ -44343,14 +44335,12 @@
   :size-assert         #x1c
   :flag-assert         #xb0000001c
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
-    (hover-nav-bsp-node-method-9 () none) ;; 9 ;; (hover-nav-bsp-node-method-9 (_type_) none)
-    (hover-nav-bsp-node-method-10 () none) ;; 10 ;; (hover-nav-bsp-node-method-10 (_type_ int) none)
+    (new (symbol type) _type_) ;; 0
+    (hover-nav-bsp-node-method-9 (_type_) none) ;; 9
+    (hover-nav-bsp-node-method-10 (_type_ int) none) ;; 10
     )
   )
-|#
 
-#|
 (deftype hover-nav-bsp (structure)
   ((root hover-nav-bsp-node  :offset-assert 0)
    )
@@ -44358,16 +44348,15 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern probe-for-clear-collision? function) ;; (function vector vector symbol)
-;; (define-extern hover-nav-graph-process-points function) ;; (function none)
-;; (define-extern hover-nav-graph-output function) ;; (function symbol)
-;; (define-extern *axes-table* array) ;; (array vector)
-;; (define-extern *hover-bsp* object) ;; hover-nav-bsp
-;; (define-extern hover-nav-graph-output-bsp function) ;; (function hover-nav-bsp)
-;; (define-extern hover-nav-network-build-bsp function) ;; (function (array hover-nav-bsp-point) hover-nav-bsp)
-;; (define-extern hover-nav-bsp-output function) ;; (function hover-nav-bsp none)
+(define-extern probe-for-clear-collision? (function vector vector symbol))
+(define-extern hover-nav-graph-process-points (function none))
+(define-extern hover-nav-graph-output (function string object))
+(define-extern *axes-table* (array vector))
+(define-extern *hover-bsp* hover-nav-bsp)
+(define-extern hover-nav-graph-output-bsp (function hover-nav-bsp))
+(define-extern hover-nav-network-build-bsp (function (array hover-nav-bsp-point) hover-nav-bsp))
+(define-extern hover-nav-bsp-output (function hover-nav-bsp none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dp-bipedal-part                ;;
@@ -56758,23 +56747,30 @@
 ;; pilot-recorder                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++pilot-recorder:pilrec-sample-flag
+(defenum pilrec-sample-flag
+  :type uint8
+  :bitfield #t
+  (square 0)
+  (l1 1)
+  (x 2)
+  )
+;; ---pilot-recorder:pilrec-sample-flag
+
 (deftype pilrec-sample (structure)
-  ((sample-time uint64             :offset-assert 0) ;; time-frame
+  ((sample-time time-frame         :offset-assert 0) ;; time-frame
    (pos         vector     :inline :offset-assert 16)
    (quat        quaternion :inline :offset-assert 32)
    (stick-x     float              :offset-assert 48)
    (stick-y     float              :offset-assert 52)
    (throttle    float              :offset-assert 56)
-   (flags       uint8              :offset-assert 60)
+   (flags       pilrec-sample-flag :offset-assert 60)
    )
   :method-count-assert 9
   :size-assert         #x3d
   :flag-assert         #x90000003d
   )
-|#
 
-#|
 (deftype pilot-recorder-samples (basic)
   ((samples (inline-array pilrec-sample)  :offset-assert 4) ;; guessed by decompiler
    )
@@ -56782,18 +56778,16 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype pilot-recorder (process)
   ((info                 race-info                      :offset-assert 128) ;; guessed by decompiler
    (mesh                 race-mesh                      :offset-assert 132) ;; guessed by decompiler
    (select-race          uint64                         :offset-assert 136)
    (path-num             int32                          :offset-assert 144)
    (sample-count         int32                          :offset-assert 148)
-   (samples              pilot-recorder-samples         :offset-assert 152) ;; guessed by decompiler
-   (state-time           uint64                         :offset-assert 160) ;; time-frame
-   (start-time           uint64                         :offset-assert 168) ;; time-frame
+   (samples              (inline-array pilrec-sample)   :offset-assert 152) ;; guessed by decompiler
+   (state-time           time-frame                     :offset-assert 160) ;; time-frame
+   (start-time           time-frame                     :offset-assert 168) ;; time-frame
    (start-record-plane   plane                  :inline :offset-assert 176)
    (start-record-center  vector                 :inline :offset-assert 192)
    (finish-record-plane  plane                  :inline :offset-assert 208)
@@ -56803,34 +56797,33 @@
   :method-count-assert 31
   :size-assert         #x100
   :flag-assert         #x1f00800100
-  (:methods
-    (pilot-recorder-method-22 () none) ;; 22 ;; (pilot-recorder-method-22 () none)
-    (pilot-recorder-method-23 () none) ;; 23 ;; (pilot-recorder-method-23 () none)
-    (pilot-recorder-method-24 () none) ;; 24 ;; (pilot-recorder-method-24 () none)
-    (pilot-recorder-method-25 () none) ;; 25 ;; (pilot-recorder-method-25 () none)
-    (pilot-recorder-method-26 () none) ;; 26 ;; (pilot-recorder-method-26 () none)
-    (pilot-recorder-method-27 () none) ;; 27 ;; (pilot-recorder-method-27 () none)
-    (pilot-recorder-method-28 () none) ;; 28 ;; (pilot-recorder-method-28 () none)
-    (pilot-recorder-method-29 () none) ;; 29 ;; (pilot-recorder-method-29 () none)
-    (pilot-recorder-method-30 () none) ;; 30 ;; (pilot-recorder-method-30 () none)
-    )
   (:state-methods
-    die-fast ;; 14, old: (die-fast () _type_ :state)
-    fail-full ;; 18, old: (fail-full () _type_ :state)
-    fail-save ;; 21, old: (fail-save () _type_ :state)
-    save ;; 20, old: (save () _type_ :state)
-    finished ;; 19, old: (finished () _type_ :state)
-    recording ;; 17, old: (recording () _type_ :state)
-    active ;; 16, old: (active () _type_ :state)
-    idle ;; 15, old: (idle () _type_ :state)
+    die-fast ;; 14
+    idle ;; 15
+    active ;; 16
+    recording ;; 17
+    fail-full ;; 18
+    finished ;; 19
+    save ;; 20
+    fail-save ;; 21
+    )
+  (:methods
+    (pilot-recorder-method-22 (_type_) symbol) ;; 22
+    (passed-starting-line? (_type_ vector vector) symbol) ;; 23
+    (recording-finished? (_type_ vector vector) symbol) ;; 24
+    (draw-starting-line (_type_ vector vector) none) ;; 25
+    (draw-recorded-path (_type_) none) ;; 26
+    (pilot-recorder-method-27 (_type_) none) ;; 27
+    (record-input-sample! (_type_ pilrec-sample) pilrec-sample-flag) ;; 28
+    (lerp-samples! (_type_ pilrec-sample pilrec-sample pilrec-sample float time-frame) none) ;; 29
+    (save-to-db! (_type_) symbol) ;; 30
     )
   )
-|#
 
-;; (define-extern *pilot-recorder-samples* object)
-;; (define-extern delete-race-path function)
-;; (define-extern *pilot-recorder* object)
-;; (define-extern pilot-recorder-init-by-other function)
+(define-extern *pilot-recorder-samples* pilot-recorder-samples)
+(define-extern delete-race-path (function int int object))
+(define-extern *pilot-recorder* (pointer pilot-recorder))
+(define-extern pilot-recorder-init-by-other (function uint int object :behavior pilot-recorder))
 (define-extern start-pilot-recorder (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

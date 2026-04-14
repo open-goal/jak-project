@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -107,6 +107,13 @@ static bool load_sndio_syms(void)
 #undef SDL_SNDIO_SYM
 
 #ifdef SDL_AUDIO_DRIVER_SNDIO_DYNAMIC
+
+SDL_ELF_NOTE_DLOPEN(
+    "audio-libsndio",
+    "Support for audio through libsndio",
+    SDL_ELF_NOTE_DLOPEN_PRIORITY_SUGGESTED,
+    SDL_AUDIO_DRIVER_SNDIO_DYNAMIC
+)
 
 static void UnloadSNDIOLibrary(void)
 {

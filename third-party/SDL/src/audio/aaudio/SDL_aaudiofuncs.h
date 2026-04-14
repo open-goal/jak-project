@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright , (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright , (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -19,6 +19,10 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
+#ifndef SDL_PROC_OPTIONAL
+#define SDL_PROC_OPTIONAL(ret, func, params) SDL_PROC(ret, func, params)
+#endif
+
 #define SDL_PROC_UNUSED(ret, func, params)
 
 SDL_PROC(const char *, AAudio_convertResultToText, (aaudio_result_t returnCode))
@@ -33,9 +37,9 @@ SDL_PROC_UNUSED(void, AAudioStreamBuilder_setSharingMode, (AAudioStreamBuilder *
 SDL_PROC(void, AAudioStreamBuilder_setDirection, (AAudioStreamBuilder * builder, aaudio_direction_t direction))
 SDL_PROC(void, AAudioStreamBuilder_setBufferCapacityInFrames, (AAudioStreamBuilder * builder, int32_t numFrames))
 SDL_PROC(void, AAudioStreamBuilder_setPerformanceMode, (AAudioStreamBuilder * builder, aaudio_performance_mode_t mode))
-SDL_PROC_UNUSED(void, AAudioStreamBuilder_setUsage, (AAudioStreamBuilder * builder, aaudio_usage_t usage))                                         // API 28
+SDL_PROC_OPTIONAL(void, AAudioStreamBuilder_setUsage, (AAudioStreamBuilder * builder, aaudio_usage_t usage))                                         // API 28
 SDL_PROC_UNUSED(void, AAudioStreamBuilder_setContentType, (AAudioStreamBuilder * builder, aaudio_content_type_t contentType))                      // API 28
-SDL_PROC_UNUSED(void, AAudioStreamBuilder_setInputPreset, (AAudioStreamBuilder * builder, aaudio_input_preset_t inputPreset))                      // API 28
+SDL_PROC_OPTIONAL(void, AAudioStreamBuilder_setInputPreset, (AAudioStreamBuilder * builder, aaudio_input_preset_t inputPreset))                      // API 28
 SDL_PROC_UNUSED(void, AAudioStreamBuilder_setAllowedCapturePolicy, (AAudioStreamBuilder * builder, aaudio_allowed_capture_policy_t capturePolicy)) // API 29
 SDL_PROC_UNUSED(void, AAudioStreamBuilder_setSessionId, (AAudioStreamBuilder * builder, aaudio_session_id_t sessionId))                            // API 28
 SDL_PROC_UNUSED(void, AAudioStreamBuilder_setPrivacySensitive, (AAudioStreamBuilder * builder, bool privacySensitive))                             // API 30
@@ -80,3 +84,4 @@ SDL_PROC_UNUSED(bool, AAudioStream_isPrivacySensitive, (AAudioStream * stream)) 
 
 #undef SDL_PROC
 #undef SDL_PROC_UNUSED
+#undef SDL_PROC_OPTIONAL

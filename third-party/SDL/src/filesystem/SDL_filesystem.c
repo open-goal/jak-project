@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,7 +27,7 @@
 
 bool SDL_RemovePath(const char *path)
 {
-    if (!path) {
+    CHECK_PARAM(!path) {
         return SDL_InvalidParamError("path");
     }
     return SDL_SYS_RemovePath(path);
@@ -35,9 +35,10 @@ bool SDL_RemovePath(const char *path)
 
 bool SDL_RenamePath(const char *oldpath, const char *newpath)
 {
-    if (!oldpath) {
+    CHECK_PARAM(!oldpath) {
         return SDL_InvalidParamError("oldpath");
-    } else if (!newpath) {
+    }
+    CHECK_PARAM(!newpath) {
         return SDL_InvalidParamError("newpath");
     }
     return SDL_SYS_RenamePath(oldpath, newpath);
@@ -45,9 +46,10 @@ bool SDL_RenamePath(const char *oldpath, const char *newpath)
 
 bool SDL_CopyFile(const char *oldpath, const char *newpath)
 {
-    if (!oldpath) {
+    CHECK_PARAM(!oldpath) {
         return SDL_InvalidParamError("oldpath");
-    } else if (!newpath) {
+    }
+    CHECK_PARAM(!newpath) {
         return SDL_InvalidParamError("newpath");
     }
     return SDL_SYS_CopyFile(oldpath, newpath);
@@ -55,7 +57,7 @@ bool SDL_CopyFile(const char *oldpath, const char *newpath)
 
 bool SDL_CreateDirectory(const char *path)
 {
-    if (!path) {
+    CHECK_PARAM(!path) {
         return SDL_InvalidParamError("path");
     }
 
@@ -116,9 +118,10 @@ bool SDL_CreateDirectory(const char *path)
 
 bool SDL_EnumerateDirectory(const char *path, SDL_EnumerateDirectoryCallback callback, void *userdata)
 {
-    if (!path) {
+    CHECK_PARAM(!path) {
         return SDL_InvalidParamError("path");
-    } else if (!callback) {
+    }
+    CHECK_PARAM(!callback) {
         return SDL_InvalidParamError("callback");
     }
     return SDL_SYS_EnumerateDirectory(path, callback, userdata);
@@ -133,10 +136,9 @@ bool SDL_GetPathInfo(const char *path, SDL_PathInfo *info)
     }
     SDL_zerop(info);
 
-    if (!path) {
+    CHECK_PARAM(!path) {
         return SDL_InvalidParamError("path");
     }
-
     return SDL_SYS_GetPathInfo(path, info);
 }
 
@@ -201,7 +203,7 @@ static bool WildcardMatch(const char *pattern, const char *str, bool *matched_to
         pch = *(++pattern);
     }
 
-    *matched_to_dir = ((pch == '/') || (pch == '\0'));  // end of string and the pattern is complete or failed at a '/'? We should descend into this directory.
+    *matched_to_dir = (pch == '/');  // end of string and the pattern failed at a '/'? We should descend into this directory.
 
     return (pch == '\0');  // survived the whole pattern? That's a match!
 }
@@ -364,7 +366,7 @@ char **SDL_InternalGlobDirectory(const char *path, const char *pattern, SDL_Glob
     }
     *count = 0;
 
-    if (!path) {
+    CHECK_PARAM(!path) {
         SDL_InvalidParamError("path");
         return NULL;
     }
@@ -378,8 +380,9 @@ char **SDL_InternalGlobDirectory(const char *path, const char *pattern, SDL_Glob
             return NULL;
         }
         char *ptr = &pathcpy[pathlen-1];
-        while ((ptr >= pathcpy) && ((*ptr == '/') || (*ptr == '\\'))) {
+        while ((ptr > pathcpy) && ((*ptr == '/') || (*ptr == '\\'))) {
             *(ptr--) = '\0';
+            --pathlen;
         }
         path = pathcpy;
     }
@@ -423,8 +426,15 @@ char **SDL_InternalGlobDirectory(const char *path, const char *pattern, SDL_Glob
     data.enumerator = enumerator;
     data.getpathinfo = getpathinfo;
     data.fsuserdata = userdata;
-    data.basedirlen = *path ? (SDL_strlen(path) + 1) : 0;  // +1 for the '/' we'll be adding.
 
+    data.basedirlen = 0;
+    if (*path) {
+        if (SDL_strcmp(path, "/") == 0 || SDL_strcmp(path, "\\") == 0) {
+            data.basedirlen = 1;
+        } else {
+            data.basedirlen = pathlen + 1; // +1 for the '/' we'll be adding.
+        }
+    }
 
     char **result = NULL;
     if (data.enumerator(path, GlobDirectoryCallback, &data, data.fsuserdata)) {
@@ -488,7 +498,8 @@ static char *CachedUserFolders[SDL_FOLDER_COUNT];
 const char *SDL_GetUserFolder(SDL_Folder folder)
 {
     const int idx = (int) folder;
-    if ((idx < 0) || (idx >= SDL_arraysize(CachedUserFolders))) {
+
+    CHECK_PARAM((idx < 0) || (idx >= SDL_arraysize(CachedUserFolders))) {
         SDL_InvalidParamError("folder");
         return NULL;
     }
@@ -502,6 +513,16 @@ const char *SDL_GetUserFolder(SDL_Folder folder)
 
 char *SDL_GetPrefPath(const char *org, const char *app)
 {
+    CHECK_PARAM(!app) {
+        SDL_InvalidParamError("app");
+        return NULL;
+    }
+
+    // if org is NULL, just make it "" so backends don't have to check both.
+    if (!org) {
+        org = "";
+    }
+
     return SDL_SYS_GetPrefPath(org, app);
 }
 

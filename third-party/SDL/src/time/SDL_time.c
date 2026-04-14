@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,7 +32,6 @@
  */
 Sint64 SDL_CivilToDays(int year, int month, int day, int *day_of_week, int *day_of_year)
 {
-
     year -= month <= 2;
     const int era = (year >= 0 ? year : year - 399) / 400;
     const unsigned yoe = (unsigned)(year - era * 400);                                  // [0, 399]
@@ -168,13 +167,13 @@ bool SDL_DateTimeToTime(const SDL_DateTime *dt, SDL_Time *ticks)
     static const Sint64 min_seconds = SDL_NS_TO_SECONDS(SDL_MIN_TIME) + 1;
     bool result = true;
 
-    if (!dt) {
+    CHECK_PARAM(!dt) {
         return SDL_InvalidParamError("dt");
     }
-    if (!ticks) {
+    CHECK_PARAM(!ticks) {
         return SDL_InvalidParamError("ticks");
     }
-    if (!SDL_DateTimeIsValid(dt)) {
+    CHECK_PARAM(!SDL_DateTimeIsValid(dt)) {
         // The validation function sets the error string.
         return false;
     }

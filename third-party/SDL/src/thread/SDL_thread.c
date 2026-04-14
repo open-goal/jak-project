@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,7 +41,7 @@ void *SDL_GetTLS(SDL_TLSID *id)
     SDL_TLSData *storage;
     int storage_index;
 
-    if (id == NULL) {
+    CHECK_PARAM(id == NULL) {
         SDL_InvalidParamError("id");
         return NULL;
     }
@@ -59,7 +59,7 @@ bool SDL_SetTLS(SDL_TLSID *id, const void *value, SDL_TLSDestructorCallback dest
     SDL_TLSData *storage;
     int storage_index;
 
-    if (id == NULL) {
+    CHECK_PARAM(id == NULL) {
         return SDL_InvalidParamError("id");
     }
 
@@ -80,6 +80,15 @@ bool SDL_SetTLS(SDL_TLSID *id, const void *value, SDL_TLSDestructorCallback dest
          * will have the same storage index for this id.
          */
         storage_index = SDL_GetAtomicInt(id) - 1;
+    } else {
+        // Make sure we don't allocate an ID clobbering this one
+        int tls_id = SDL_GetAtomicInt(&SDL_tls_id);
+        while (storage_index >= tls_id) {
+            if (SDL_CompareAndSwapAtomicInt(&SDL_tls_id, tls_id, storage_index + 1)) {
+                break;
+            }
+            tls_id = SDL_GetAtomicInt(&SDL_tls_id);
+        }
     }
 
     // Get the storage for the current thread
@@ -90,7 +99,7 @@ bool SDL_SetTLS(SDL_TLSID *id, const void *value, SDL_TLSDestructorCallback dest
 
         oldlimit = storage ? storage->limit : 0;
         newlimit = (storage_index + TLS_ALLOC_CHUNKSIZE);
-        new_storage = (SDL_TLSData *)SDL_realloc(storage, sizeof(*storage) + (newlimit - 1) * sizeof(storage->array[0]));
+        new_storage = (SDL_TLSData *)SDL_realloc(storage, sizeof(*storage) + newlimit * sizeof(storage->array[0]));
         if (!new_storage) {
             return false;
         }
@@ -324,6 +333,8 @@ void SDL_RunThread(SDL_Thread *thread)
     // Get the thread id
     thread->threadid = SDL_GetCurrentThreadID();
 
+    SDL_SignalSemaphore(thread->ready_sem);  // the thread is officially ready to run!
+
     // Run the function
     *statusloc = userfunc(userdata);
 
@@ -333,7 +344,7 @@ void SDL_RunThread(SDL_Thread *thread)
     // Mark us as ready to be joined (or detached)
     if (!SDL_CompareAndSwapAtomicInt(&thread->state, SDL_THREAD_ALIVE, SDL_THREAD_COMPLETE)) {
         // Clean up if something already detached us.
-        if (SDL_GetThreadState(thread) == SDL_THREAD_DETACHED) {
+        if (SDL_GetAtomicInt(&thread->state) == SDL_THREAD_DETACHED) {
             SDL_free(thread->name); // Can't free later, we've already cleaned up TLS
             SDL_free(thread);
         }
@@ -380,6 +391,13 @@ SDL_Thread *SDL_CreateThreadWithPropertiesRuntime(SDL_PropertiesID props,
         }
     }
 
+    thread->ready_sem = SDL_CreateSemaphore(0);
+    if (!thread->ready_sem) {
+        SDL_free(thread->name);
+        SDL_free(thread);
+        return NULL;
+    }
+
     thread->userfunc = fn;
     thread->userdata = userdata;
     thread->stacksize = stacksize;
@@ -390,10 +408,15 @@ SDL_Thread *SDL_CreateThreadWithPropertiesRuntime(SDL_PropertiesID props,
     if (!SDL_SYS_CreateThread(thread, pfnBeginThread, pfnEndThread)) {
         // Oops, failed.  Gotta free everything
         SDL_SetObjectValid(thread, SDL_OBJECT_TYPE_THREAD, false);
+        SDL_DestroySemaphore(thread->ready_sem);
         SDL_free(thread->name);
         SDL_free(thread);
         thread = NULL;
     }
+
+    SDL_WaitSemaphore(thread->ready_sem);
+    SDL_DestroySemaphore(thread->ready_sem);
+    thread->ready_sem = NULL;
 
     // Everything is running now
     return thread;
@@ -487,11 +510,10 @@ void SDL_DetachThread(SDL_Thread *thread)
         return;
     }
 
-    // The thread may vanish at any time, it's no longer valid
-    SDL_SetObjectValid(thread, SDL_OBJECT_TYPE_THREAD, false);
-
     // Grab dibs if the state is alive+joinable.
     if (SDL_CompareAndSwapAtomicInt(&thread->state, SDL_THREAD_ALIVE, SDL_THREAD_DETACHED)) {
+        // The thread may vanish at any time, it's no longer valid
+        SDL_SetObjectValid(thread, SDL_OBJECT_TYPE_THREAD, false);
         SDL_SYS_DetachThread(thread);
     } else {
         // all other states are pretty final, see where we landed.

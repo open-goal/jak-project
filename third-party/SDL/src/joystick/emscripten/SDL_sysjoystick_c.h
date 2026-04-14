@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,12 +34,18 @@ typedef struct SDL_joylist_item
     char *mapping;
     SDL_JoystickID device_instance;
     SDL_Joystick *joystick;
+    int first_hat_button;
+    int first_trigger_button;
+    bool triggers_are_buttons;
+    int nhats;
+    SDL_GUID guid;
     int nbuttons;
     int naxes;
     double timestamp;
-    double axis[64];
+    double axis[64];            // !!! FIXME: don't hardcode 64 on all of these.
     double analogButton[64];
     EM_BOOL digitalButton[64];
+    Uint8 hat;  // there is (currently) only ever one of these, faked from the d-pad buttons.
 
     struct SDL_joylist_item *next;
 } SDL_joylist_item;

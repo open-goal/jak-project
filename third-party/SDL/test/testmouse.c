@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -117,6 +117,8 @@ static void loop(void *arg)
     struct mouse_loop_data *loop_data = (struct mouse_loop_data *)arg;
     SDL_Event event;
     SDL_Renderer *renderer = loop_data->renderer;
+    float fx, fy;
+    SDL_MouseButtonFlags flags;
 
     /* Check for events */
     while (SDL_PollEvent(&event)) {
@@ -211,6 +213,10 @@ static void loop(void *arg)
             break;
 
         case SDL_EVENT_KEY_DOWN:
+            if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+                loop_data->done = true;
+                break;
+            }
             if (event.key.key == SDLK_C) {
                 int x, y, w, h;
                 SDL_GetWindowPosition(window, &x, &y);
@@ -264,6 +270,10 @@ static void loop(void *arg)
     if (active) {
         DrawObject(renderer, active);
     }
+
+    flags = SDL_GetGlobalMouseState(&fx, &fy);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_RenderDebugTextFormat(renderer, 0, 0, "Global Mouse State: x=%f y=%f flags=%" SDL_PRIu32, fx, fy, flags);
 
     SDL_RenderPresent(renderer);
 
@@ -335,6 +345,11 @@ int main(int argc, char *argv[])
     }
 #endif
 
+    while (active) {
+        Object *next = active->next;
+        SDL_free(active);
+        active = next;
+    }
     SDL_DestroyRenderer(loop_data.renderer);
     SDL_DestroyWindow(window);
 

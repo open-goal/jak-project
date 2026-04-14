@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,19 +46,7 @@ char *SDL_SYS_GetPrefPath(const char *org, const char *app)
     const char *envr = "ux0:/data/";
     char *result = NULL;
     char *ptr = NULL;
-    size_t len = 0;
-
-    if (!app) {
-        SDL_InvalidParamError("app");
-        return NULL;
-    }
-    if (!org) {
-        org = "";
-    }
-
-    len = SDL_strlen(envr);
-
-    len += SDL_strlen(org) + SDL_strlen(app) + 3;
+    size_t len = SDL_strlen(envr) + SDL_strlen(org) + SDL_strlen(app) + 3;
     result = (char *)SDL_malloc(len);
     if (!result) {
         return NULL;

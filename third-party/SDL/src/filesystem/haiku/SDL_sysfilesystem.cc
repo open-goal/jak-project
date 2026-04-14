@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -71,14 +71,6 @@ char *SDL_SYS_GetPrefPath(const char *org, const char *app)
     const char *home = SDL_getenv("HOME");
     const char *append = "/config/settings/";
     size_t len = SDL_strlen(home);
-
-    if (!app) {
-        SDL_InvalidParamError("app");
-        return NULL;
-    }
-    if (!org) {
-        org = "";
-    }
 
     if (!len || (home[len - 1] == '/')) {
         ++append; // home empty or ends with separator, skip the one from append

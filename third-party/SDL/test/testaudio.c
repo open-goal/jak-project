@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -718,16 +718,15 @@ static Texture *CreateTexture(const char *fname)
     if (!tex) {
         SDL_Log("Out of memory!");
     } else {
-        int texw, texh;
-        tex->texture = LoadTexture(state->renderers[0], fname, true, &texw, &texh);
+        tex->texture = LoadTexture(state->renderers[0], fname, true);
         if (!tex->texture) {
             SDL_Log("Failed to load '%s': %s", fname, SDL_GetError());
             SDL_free(tex);
             return NULL;
         }
         SDL_SetTextureBlendMode(tex->texture, SDL_BLENDMODE_BLEND);
-        tex->w = (float) texw;
-        tex->h = (float) texh;
+        tex->w = (float)tex->texture->w;
+        tex->h = (float)tex->texture->h;
     }
     return tex;
 }
@@ -1061,6 +1060,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 {
     int i;
 
+    char version[32];  /* use SDL's version number, since this test program is part of SDL's sources. */
+    SDL_snprintf(version, sizeof (version), "%d.%d.%d", SDL_MAJOR_VERSION, SDL_MINOR_VERSION, SDL_MICRO_VERSION);
+    SDL_SetAppMetadata("SDL testaudio", version, "org.libsdl.testaudio");
+
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     if (!state) {
         return SDL_APP_FAILURE;
@@ -1097,12 +1100,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[])
 
     SetDefaultTitleBar();
 
-    if ((physdev_texture = CreateTexture("physaudiodev.bmp")) == NULL) { return SDL_APP_FAILURE; }
-    if ((logdev_texture = CreateTexture("logaudiodev.bmp")) == NULL) { return SDL_APP_FAILURE; }
-    if ((audio_texture = CreateTexture("audiofile.bmp")) == NULL) { return SDL_APP_FAILURE; }
-    if ((trashcan_texture = CreateTexture("trashcan.bmp")) == NULL) { return SDL_APP_FAILURE; }
-    if ((soundboard_texture = CreateTexture("soundboard.bmp")) == NULL) { return SDL_APP_FAILURE; }
-    if ((soundboard_levels_texture = CreateTexture("soundboard_levels.bmp")) == NULL) { return SDL_APP_FAILURE; }
+    if ((physdev_texture = CreateTexture("physaudiodev.png")) == NULL) { return SDL_APP_FAILURE; }
+    if ((logdev_texture = CreateTexture("logaudiodev.png")) == NULL) { return SDL_APP_FAILURE; }
+    if ((audio_texture = CreateTexture("audiofile.png")) == NULL) { return SDL_APP_FAILURE; }
+    if ((trashcan_texture = CreateTexture("trashcan.png")) == NULL) { return SDL_APP_FAILURE; }
+    if ((soundboard_texture = CreateTexture("soundboard.png")) == NULL) { return SDL_APP_FAILURE; }
+    if ((soundboard_levels_texture = CreateTexture("soundboard_levels.png")) == NULL) { return SDL_APP_FAILURE; }
 
     LoadStockWavThings();
     CreateTrashcanThing();

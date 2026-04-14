@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -79,6 +79,7 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
     BOOL rotatingOrientation;
     NSString *committedText;
     NSString *obligateForBackspace;
+    BOOL isOTPMode;
 #endif
 }
 
@@ -280,6 +281,7 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
     textField.hidden = YES;
     textFieldFocused = NO;
+    isOTPMode = NO;
 
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 #ifndef SDL_PLATFORM_TVOS
@@ -338,6 +340,10 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 - (void)setView:(UIView *)view
 {
     [super setView:view];
+
+    if (SDL_WasInit(SDL_INIT_JOYSTICK)) {
+        UIKit_SetViewGameControllerInteraction(view, true);
+    }
 
     [view addSubview:textField];
 
@@ -477,19 +483,33 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
     if (SDL_TextInputActive(window)) {
         [textField becomeFirstResponder];
     }
+
+    isOTPMode =
+        (SDL_GetTextInputType(props) == SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_HIDDEN) ||
+        (SDL_GetTextInputType(props) == SDL_TEXTINPUT_TYPE_NUMBER_PASSWORD_VISIBLE);
 }
 
 /* requests the SDL text field to become focused and accept text input.
  * also shows the onscreen virtual keyboard if no hardware keyboard is attached. */
 - (bool)startTextInput
 {
-    textFieldFocused = YES;
+    if (!textFieldFocused) {
+        textFieldFocused = YES;
+        SDL_SendScreenKeyboardShown();
+    }
+
     if (!textField.window) {
         /* textField has not been added to the view yet,
          * we will try again when that happens. */
         return true;
     }
 
+    if (isOTPMode) {
+        if (textField.text.length == 64 && [textField.text isEqualToString:[@"" stringByPaddingToLength:64 withString:@" " startingAtIndex:0]]) {
+            textField.text = @"";
+            committedText  = @"";
+        }
+    }
     return [textField becomeFirstResponder];
 }
 
@@ -497,7 +517,11 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
  * also hides the onscreen virtual keyboard if no hardware keyboard is attached. */
 - (bool)stopTextInput
 {
-    textFieldFocused = NO;
+    if (textFieldFocused) {
+        textFieldFocused = NO;
+        SDL_SendScreenKeyboardHidden();
+    }
+
     if (!textField.window) {
         /* textField has not been added to the view yet,
          * we will try again when that happens. */
@@ -554,7 +578,19 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
 - (void)textFieldTextDidChange:(NSNotification *)notification
 {
+    // When opening a password manager overlay to select a password and have it auto-filled,
+    // text input becomes stopped as a result of the keyboard being hidden or the text field losing focus.
+    // As a workaround, ensure text input is activated on any changes to the text field.
+    bool startTextInputMomentarily = !SDL_TextInputActive(window);
+
+    if (startTextInputMomentarily)
+        SDL_StartTextInput(window);
+
     if (textField.markedTextRange == nil) {
+        if (isOTPMode && labs((NSInteger)textField.text.length - (NSInteger)committedText.length) != 1) {
+            return;
+        }
+
         NSUInteger compareLength = SDL_min(textField.text.length, committedText.length);
         NSUInteger matchLength;
 
@@ -588,6 +624,9 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
         }
         committedText = textField.text;
     }
+
+    if (startTextInputMomentarily)
+        SDL_StopTextInput(window);
 }
 
 - (void)updateKeyboard
@@ -632,8 +671,8 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 // UITextFieldDelegate method.  Invoked when user types something.
 - (BOOL)textField:(UITextField *)_textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string
 {
-    if (textField.markedTextRange == nil) {
-        if (textField.text.length < 16) {
+    if (!isOTPMode) {
+        if (textField.markedTextRange == nil && [string length] == 0 && textField.text.length < 16) {
             [self resetTextState];
         }
     }
@@ -653,8 +692,10 @@ static void SDLCALL SDL_HideHomeIndicatorHintChanged(void *userdata, const char 
 
 - (void)resetTextState
 {
-    textField.text = obligateForBackspace;
-    committedText = textField.text;
+    if (!isOTPMode) {
+        textField.text = obligateForBackspace;
+        committedText = textField.text;
+    }
 }
 
 #endif
@@ -702,17 +743,6 @@ void UIKit_SetTextInputProperties(SDL_VideoDevice *_this, SDL_Window *window, SD
     @autoreleasepool {
         SDL_uikitviewcontroller *vc = GetWindowViewController(window);
         [vc setTextFieldProperties:props];
-    }
-}
-
-bool UIKit_IsScreenKeyboardShown(SDL_VideoDevice *_this, SDL_Window *window)
-{
-    @autoreleasepool {
-        SDL_uikitviewcontroller *vc = GetWindowViewController(window);
-        if (vc != nil) {
-            return vc.textFieldFocused;
-        }
-        return false;
     }
 }
 

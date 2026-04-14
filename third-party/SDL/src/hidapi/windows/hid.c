@@ -991,9 +991,7 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 			break;
 		}
 
-		if (device_interface_list != NULL) {
-			free(device_interface_list);
-		}
+		free(device_interface_list); // This should NOT be SDL_free()
 
 		device_interface_list = (wchar_t*)calloc(len, sizeof(wchar_t));
 		if (device_interface_list == NULL) {
@@ -1044,7 +1042,7 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 			HidP_GetCaps(pp_data, &caps);
 			HidD_FreePreparsedData(pp_data);
 		}
-		if (HIDAPI_IGNORE_DEVICE(bus_type, attrib.VendorID, attrib.ProductID, caps.UsagePage, caps.Usage)) {
+		if (HIDAPI_IGNORE_DEVICE(bus_type, attrib.VendorID, attrib.ProductID, caps.UsagePage, caps.Usage, false)) {
 			goto cont_close;
 		}
 #endif
@@ -1399,6 +1397,11 @@ int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *dev, unsigned char 
 		}
 	}
 	if (!res) {
+		if (GetLastError() == ERROR_OPERATION_ABORTED) {
+			/* The read request was issued on another thread.
+			   This is harmless, so just ignore it. */
+			return 0;
+		}
 		register_winapi_error(dev, L"hid_read_timeout/GetOverlappedResult");
 	}
 

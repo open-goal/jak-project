@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -85,12 +85,12 @@ void SDL_Blit_Slow(SDL_BlitInfo *info)
         last_index = SDL_LookupRGBAColor(palette_map, last_pixel, dst_pal);
     }
 
-    incy = ((Uint64)info->src_h << 16) / info->dst_h;
-    incx = ((Uint64)info->src_w << 16) / info->dst_w;
+    incy = info->dst_h ? ((Uint64)info->src_h << 16) / info->dst_h : 0;
+    incx = info->dst_w ? ((Uint64)info->src_w << 16) / info->dst_w : 0;
     posy = incy / 2; // start at the middle of pixel
 
     while (info->dst_h--) {
-        Uint8 *src = 0;
+        Uint8 *src = NULL;
         Uint8 *dst = info->dst;
         int n = info->dst_w;
         posx = incx / 2; // start at the middle of pixel
@@ -296,25 +296,25 @@ void SDL_Blit_Slow(SDL_BlitInfo *info)
                 break;
             case SlowBlitPixelAccess_10Bit:
             {
-                Uint32 pixel;
+                Uint32 pixelvalue;
                 switch (dst_fmt->format) {
                 case SDL_PIXELFORMAT_XRGB2101010:
                     dstA = 0xFF;
                     SDL_FALLTHROUGH;
                 case SDL_PIXELFORMAT_ARGB2101010:
-                    ARGB2101010_FROM_RGBA(pixel, dstR, dstG, dstB, dstA);
+                    ARGB2101010_FROM_RGBA(pixelvalue, dstR, dstG, dstB, dstA);
                     break;
                 case SDL_PIXELFORMAT_XBGR2101010:
                     dstA = 0xFF;
                     SDL_FALLTHROUGH;
                 case SDL_PIXELFORMAT_ABGR2101010:
-                    ABGR2101010_FROM_RGBA(pixel, dstR, dstG, dstB, dstA);
+                    ABGR2101010_FROM_RGBA(pixelvalue, dstR, dstG, dstB, dstA);
                     break;
                 default:
-                    pixel = 0;
+                    pixelvalue = 0;
                     break;
                 }
-                *(Uint32 *)dst = pixel;
+                *(Uint32 *)dst = pixelvalue;
                 break;
             }
             case SlowBlitPixelAccess_Large:
@@ -424,49 +424,49 @@ static Uint16 float_to_half(float a)
 static void ReadFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, const SDL_PixelFormatDetails *fmt, const SDL_Palette *pal, SDL_Colorspace colorspace, float SDR_white_point,
                            float *outR, float *outG, float *outB, float *outA)
 {
-    Uint32 pixel;
+    Uint32 pixelvalue;
     Uint32 R, G, B, A;
     float fR = 0.0f, fG = 0.0f, fB = 0.0f, fA = 0.0f;
     float v[4];
 
     switch (access) {
     case SlowBlitPixelAccess_Index8:
-        pixel = *pixels;
-        fR = (float)pal->colors[pixel].r / 255.0f;
-        fG = (float)pal->colors[pixel].g / 255.0f;
-        fB = (float)pal->colors[pixel].b / 255.0f;
-        fA = (float)pal->colors[pixel].a / 255.0f;
+        pixelvalue = *pixels;
+        fR = (float)pal->colors[pixelvalue].r / 255.0f;
+        fG = (float)pal->colors[pixelvalue].g / 255.0f;
+        fB = (float)pal->colors[pixelvalue].b / 255.0f;
+        fA = (float)pal->colors[pixelvalue].a / 255.0f;
         break;
     case SlowBlitPixelAccess_RGB:
-        DISEMBLE_RGB(pixels, fmt->bytes_per_pixel, fmt, pixel, R, G, B);
+        DISEMBLE_RGB(pixels, fmt->bytes_per_pixel, fmt, pixelvalue, R, G, B);
         fR = (float)R / 255.0f;
         fG = (float)G / 255.0f;
         fB = (float)B / 255.0f;
         fA = 1.0f;
         break;
     case SlowBlitPixelAccess_RGBA:
-        DISEMBLE_RGBA(pixels, fmt->bytes_per_pixel, fmt, pixel, R, G, B, A);
+        DISEMBLE_RGBA(pixels, fmt->bytes_per_pixel, fmt, pixelvalue, R, G, B, A);
         fR = (float)R / 255.0f;
         fG = (float)G / 255.0f;
         fB = (float)B / 255.0f;
         fA = (float)A / 255.0f;
         break;
     case SlowBlitPixelAccess_10Bit:
-        pixel = *((Uint32 *)pixels);
+        pixelvalue = *((Uint32 *)pixels);
         switch (fmt->format) {
         case SDL_PIXELFORMAT_XRGB2101010:
-            RGBAFLOAT_FROM_ARGB2101010(pixel, fR, fG, fB, fA);
+            RGBAFLOAT_FROM_ARGB2101010(pixelvalue, fR, fG, fB, fA);
             fA = 1.0f;
             break;
         case SDL_PIXELFORMAT_XBGR2101010:
-            RGBAFLOAT_FROM_ABGR2101010(pixel, fR, fG, fB, fA);
+            RGBAFLOAT_FROM_ABGR2101010(pixelvalue, fR, fG, fB, fA);
             fA = 1.0f;
             break;
         case SDL_PIXELFORMAT_ARGB2101010:
-            RGBAFLOAT_FROM_ARGB2101010(pixel, fR, fG, fB, fA);
+            RGBAFLOAT_FROM_ARGB2101010(pixelvalue, fR, fG, fB, fA);
             break;
         case SDL_PIXELFORMAT_ABGR2101010:
-            RGBAFLOAT_FROM_ABGR2101010(pixel, fR, fG, fB, fA);
+            RGBAFLOAT_FROM_ABGR2101010(pixelvalue, fR, fG, fB, fA);
             break;
         default:
             fR = fG = fB = fA = 0.0f;
@@ -587,7 +587,7 @@ static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, const SDL
                             float fR, float fG, float fB, float fA)
 {
     Uint32 R, G, B, A;
-    Uint32 pixel;
+    Uint32 pixelvalue;
     float v[4];
 
     // We converted to nits so src and dst are guaranteed to be linear and in the same units
@@ -637,19 +637,19 @@ static void WriteFloatPixel(Uint8 *pixels, SlowBlitPixelAccess access, const SDL
             fA = 1.0f;
             SDL_FALLTHROUGH;
         case SDL_PIXELFORMAT_ARGB2101010:
-            ARGB2101010_FROM_RGBAFLOAT(pixel, fR, fG, fB, fA);
+            ARGB2101010_FROM_RGBAFLOAT(pixelvalue, fR, fG, fB, fA);
             break;
         case SDL_PIXELFORMAT_XBGR2101010:
             fA = 1.0f;
             SDL_FALLTHROUGH;
         case SDL_PIXELFORMAT_ABGR2101010:
-            ABGR2101010_FROM_RGBAFLOAT(pixel, fR, fG, fB, fA);
+            ABGR2101010_FROM_RGBAFLOAT(pixelvalue, fR, fG, fB, fA);
             break;
         default:
-            pixel = 0;
+            pixelvalue = 0;
             break;
         }
-        *(Uint32 *)pixels = pixel;
+        *(Uint32 *)pixels = pixelvalue;
         break;
     }
     case SlowBlitPixelAccess_Large:
@@ -897,7 +897,7 @@ void SDL_Blit_Slow_Float(SDL_BlitInfo *info)
     posy = incy / 2; // start at the middle of pixel
 
     while (info->dst_h--) {
-        Uint8 *src = 0;
+        Uint8 *src = NULL;
         Uint8 *dst = info->dst;
         int n = info->dst_w;
         posx = incx / 2; // start at the middle of pixel

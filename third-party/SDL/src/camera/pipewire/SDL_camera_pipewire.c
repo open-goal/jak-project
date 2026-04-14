@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
   Copyright (C) 2024 Wim Taymans <wtaymans@redhat.com>
 
   This software is provided 'as-is', without any express or implied
@@ -24,6 +24,10 @@
 #ifdef SDL_CAMERA_DRIVER_PIPEWIRE
 
 #include "../SDL_syscamera.h"
+
+#ifdef HAVE_DBUS_DBUS_H
+#include "../../core/linux/SDL_dbus.h"
+#endif
 
 #include <spa/utils/type.h>
 #include <spa/pod/builder.h>
@@ -80,6 +84,9 @@ static int (*PIPEWIRE_pw_thread_loop_start)(struct pw_thread_loop *);
 static struct pw_context *(*PIPEWIRE_pw_context_new)(struct pw_loop *, struct pw_properties *, size_t);
 static void (*PIPEWIRE_pw_context_destroy)(struct pw_context *);
 static struct pw_core *(*PIPEWIRE_pw_context_connect)(struct pw_context *, struct pw_properties *, size_t);
+#ifdef SDL_USE_LIBDBUS
+static struct pw_core *(*PIPEWIRE_pw_context_connect_fd)(struct pw_context *, int, struct pw_properties *, size_t);
+#endif
 static void (*PIPEWIRE_pw_proxy_add_object_listener)(struct pw_proxy *, struct spa_hook *, const void *, void *);
 static void (*PIPEWIRE_pw_proxy_add_listener)(struct pw_proxy *, struct spa_hook *, const struct pw_proxy_events *, void *);
 static void *(*PIPEWIRE_pw_proxy_get_user_data)(struct pw_proxy *);
@@ -101,6 +108,13 @@ static int (*PIPEWIRE_pw_properties_set)(struct pw_properties *, const char *, c
 static int (*PIPEWIRE_pw_properties_setf)(struct pw_properties *, const char *, const char *, ...) SPA_PRINTF_FUNC(3, 4);
 
 #ifdef SDL_CAMERA_DRIVER_PIPEWIRE_DYNAMIC
+
+SDL_ELF_NOTE_DLOPEN(
+    "camera-libpipewire",
+    "Support for camera through libpipewire",
+    SDL_ELF_NOTE_DLOPEN_PRIORITY_SUGGESTED,
+    SDL_CAMERA_DRIVER_PIPEWIRE_DYNAMIC
+)
 
 static const char *pipewire_library = SDL_CAMERA_DRIVER_PIPEWIRE_DYNAMIC;
 static SDL_SharedObject *pipewire_handle = NULL;
@@ -175,6 +189,9 @@ static bool load_pipewire_syms(void)
     SDL_PIPEWIRE_SYM(pw_context_new);
     SDL_PIPEWIRE_SYM(pw_context_destroy);
     SDL_PIPEWIRE_SYM(pw_context_connect);
+#ifdef SDL_USE_LIBDBUS
+    SDL_PIPEWIRE_SYM(pw_context_connect_fd);
+#endif
     SDL_PIPEWIRE_SYM(pw_proxy_add_listener);
     SDL_PIPEWIRE_SYM(pw_proxy_add_object_listener);
     SDL_PIPEWIRE_SYM(pw_proxy_get_user_data);
@@ -313,7 +330,7 @@ static struct param *param_add(struct spa_list *params,
         id = SPA_POD_OBJECT_ID(param);
     }
 
-    p = malloc(sizeof(*p) + (param != NULL ? SPA_POD_SIZE(param) : 0));
+    p = malloc(sizeof(*p) + (param != NULL ? SPA_POD_SIZE(param) : 0)); // This should NOT be SDL_malloc()
     if (p == NULL)
         return NULL;
 
@@ -560,7 +577,7 @@ static bool PIPEWIRECAMERA_WaitDevice(SDL_Camera *device)
     return true;
 }
 
-static SDL_CameraFrameResult PIPEWIRECAMERA_AcquireFrame(SDL_Camera *device, SDL_Surface *frame, Uint64 *timestampNS)
+static SDL_CameraFrameResult PIPEWIRECAMERA_AcquireFrame(SDL_Camera *device, SDL_Surface *frame, Uint64 *timestampNS, float *rotation)
 {
     struct pw_buffer *b;
 
@@ -828,7 +845,7 @@ static void node_event_info(void *object, const struct pw_node_info *info)
             if (!(info->params[i].flags & SPA_PARAM_INFO_READ))
                 continue;
 
-            res = pw_node_enum_params((struct pw_node*)g->proxy,
+            res = pw_node_enum_params((struct pw_node *)g->proxy,
                         ++SPA_PARAMS_INFO_SEQ(info->params[i]), id, 0, -1, NULL);
             if (SPA_RESULT_IS_ASYNC(res))
                 SPA_PARAMS_INFO_SEQ(info->params[i]) = res;
@@ -933,7 +950,7 @@ static void hotplug_registry_global_callback(void *object, uint32_t id,
         g->permissions = permissions;
         g->props = props ? PIPEWIRE_pw_properties_new_dict(props) : NULL;
         g->proxy = proxy;
-        g->name = strdup(name);
+        g->name = strdup(name); // This should NOT be SDL_strdup()
         spa_list_init(&g->pending_list);
         spa_list_init(&g->param_list);
         spa_list_append(&hotplug.global_list, &g->link);
@@ -1025,6 +1042,13 @@ static bool pipewire_server_version_at_least(int major, int minor, int patch)
 static bool hotplug_loop_init(void)
 {
     int res;
+#ifdef SDL_USE_LIBDBUS
+    int fd;
+
+    fd = SDL_DBus_CameraPortalRequestAccess();
+    if (fd == -1)
+        return false;
+#endif
 
     spa_list_init(&hotplug.global_list);
 
@@ -1043,8 +1067,15 @@ static bool hotplug_loop_init(void)
     if (!hotplug.context) {
         return SDL_SetError("Pipewire: Failed to create hotplug detection context (%i)", errno);
     }
-
+#ifdef SDL_USE_LIBDBUS
+    if (fd >= 0) {
+        hotplug.core = PIPEWIRE_pw_context_connect_fd(hotplug.context, fd, NULL, 0);
+    } else {
+        hotplug.core = PIPEWIRE_pw_context_connect(hotplug.context, NULL, 0);
+    }
+#else
     hotplug.core = PIPEWIRE_pw_context_connect(hotplug.context, NULL, 0);
+#endif
     if (!hotplug.core) {
         return SDL_SetError("Pipewire: Failed to connect hotplug detection context (%i)", errno);
     }

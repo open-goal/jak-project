@@ -1,8 +1,8 @@
 package org.libsdl.app;
 
+import android.app.Activity;
 import android.content.Context;
 
-import java.lang.Class;
 import java.lang.reflect.Method;
 
 /**
@@ -12,14 +12,14 @@ public class SDL {
 
     // This function should be called first and sets up the native code
     // so it can call into the Java classes
-    public static void setupJNI() {
+    static public void setupJNI() {
         SDLActivity.nativeSetupJNI();
         SDLAudioManager.nativeSetupJNI();
         SDLControllerManager.nativeSetupJNI();
     }
 
     // This function should be called each time the activity is started
-    public static void initialize() {
+    static public void initialize() {
         setContext(null);
 
         SDLActivity.initialize();
@@ -28,20 +28,20 @@ public class SDL {
     }
 
     // This function stores the current activity (SDL or not)
-    public static void setContext(Context context) {
+    static public void setContext(Activity context) {
         SDLAudioManager.setContext(context);
         mContext = context;
     }
 
-    public static Context getContext() {
+    static public Activity getContext() {
         return mContext;
     }
 
-    public static void loadLibrary(String libraryName) throws UnsatisfiedLinkError, SecurityException, NullPointerException {
+    static void loadLibrary(String libraryName) throws UnsatisfiedLinkError, SecurityException, NullPointerException {
         loadLibrary(libraryName, mContext);
     }
 
-    public static void loadLibrary(String libraryName, Context context) throws UnsatisfiedLinkError, SecurityException, NullPointerException {
+    static void loadLibrary(String libraryName, Context context) throws UnsatisfiedLinkError, SecurityException, NullPointerException {
 
         if (libraryName == null) {
             throw new NullPointerException("No library name provided.");
@@ -86,5 +86,5 @@ public class SDL {
         }
     }
 
-    protected static Context mContext;
+    protected static Activity mContext;
 }

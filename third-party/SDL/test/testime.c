@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -473,7 +473,8 @@ static WindowState *GetWindowStateForWindowID(SDL_WindowID windowID)
 static void InitInput(WindowState *ctx)
 {
     /* Prepare a rect for text input */
-    ctx->textRect.x = ctx->textRect.y = 100.0f;
+    ctx->textRect.x = 100.0f;
+	ctx->textRect.y = 250.0f;
     ctx->textRect.w = DEFAULT_WINDOW_WIDTH - 2 * ctx->textRect.x;
     ctx->textRect.h = 50.0f;
     ctx->markedRect = ctx->textRect;
@@ -659,12 +660,23 @@ static void DrawCandidates(WindowState *ctx, SDL_FRect *cursorRect)
 static void UpdateTextInputArea(WindowState *ctx, const SDL_FRect *cursorRect)
 {
     SDL_Rect rect;
-    int cursor_offset = (int)(cursorRect->x - ctx->textRect.x);
+    float x1, y1, x2, y2;
 
-    rect.x = (int)ctx->textRect.x;
-    rect.y = (int)ctx->textRect.y;
-    rect.w = (int)ctx->textRect.w;
-    rect.h = (int)ctx->textRect.h;
+    /* Convert render coordinates to window coordinates for SDL_SetTextInputArea */
+    SDL_RenderCoordinatesToWindow(ctx->renderer, ctx->textRect.x, ctx->textRect.y, &x1, &y1);
+    SDL_RenderCoordinatesToWindow(ctx->renderer, ctx->textRect.x + ctx->textRect.w, ctx->textRect.y + ctx->textRect.h, &x2, &y2);
+
+    rect.x = (int)x1;
+    rect.y = (int)y1;
+    rect.w = (int)(x2 - x1);
+    rect.h = (int)(y2 - y1);
+
+    /* cursor_offset also needs to be in window coordinates */
+    float cursor_x_render = cursorRect->x;
+    float cursor_x_window, dummy;
+    SDL_RenderCoordinatesToWindow(ctx->renderer, cursor_x_render, 0, &cursor_x_window, &dummy);
+    int cursor_offset = (int)(cursor_x_window - x1);
+
     SDL_SetTextInputArea(ctx->window, &rect, cursor_offset);
 }
 
@@ -791,7 +803,11 @@ static void RedrawWindow(WindowState *ctx)
         break;
     }
 
-    SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
+    if (SDL_TextInputActive(ctx->window)) {
+        SDL_SetRenderDrawColor(renderer, backColor.r, backColor.g, backColor.b, backColor.a);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 0x80, 0x80, 0x80, 0xFF);
+    }
     SDL_RenderFillRect(renderer, &ctx->textRect);
 
     /* Initialize the drawn text rectangle for the cursor */
@@ -876,20 +892,22 @@ static void RedrawWindow(WindowState *ctx)
     }
 
     /* Draw the cursor */
-    Uint64 now = SDL_GetTicks();
-    if ((now - ctx->last_cursor_change) >= CURSOR_BLINK_INTERVAL_MS) {
-        ctx->cursor_visible = !ctx->cursor_visible;
-        ctx->last_cursor_change = now;
-    }
-    if (ctx->cursor_length > 0) {
-        /* We'll show a highlight */
-        SDL_SetRenderDrawBlendMode(renderer, highlight_mode);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &cursorRect);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-    } else if (ctx->cursor_visible) {
-        SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
-        SDL_RenderFillRect(renderer, &cursorRect);
+    if (SDL_TextInputActive(ctx->window)) {
+        Uint64 now = SDL_GetTicks();
+        if ((now - ctx->last_cursor_change) >= CURSOR_BLINK_INTERVAL_MS) {
+            ctx->cursor_visible = !ctx->cursor_visible;
+            ctx->last_cursor_change = now;
+        }
+        if (ctx->cursor_length > 0) {
+            /* We'll show a highlight */
+            SDL_SetRenderDrawBlendMode(renderer, highlight_mode);
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            SDL_RenderFillRect(renderer, &cursorRect);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+        } else if (ctx->cursor_visible) {
+            SDL_SetRenderDrawColor(renderer, lineColor.r, lineColor.g, lineColor.b, lineColor.a);
+            SDL_RenderFillRect(renderer, &cursorRect);
+        }
     }
 
     /* Draw the candidates */
@@ -911,6 +929,9 @@ static void Redraw(void)
         SDL_RenderClear(renderer);
 
         RedrawWindow(&windowstate[i]);
+
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderDebugTextFormat(renderer, 4, 4, "Window %d", 1 + i);
 
         SDL_RenderPresent(renderer);
     }
@@ -987,18 +1008,19 @@ int main(int argc, char *argv[])
         WindowState *ctx = &windowstate[i];
         SDL_Window *window = state->windows[i];
         SDL_Renderer *renderer = state->renderers[i];
-        int icon_w = 0, icon_h = 0;
 
         SDL_SetRenderLogicalPresentation(renderer, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
         ctx->window = window;
         ctx->renderer = renderer;
         ctx->rendererID = i;
-        ctx->settings_icon = LoadTexture(renderer, "icon.bmp", true, &icon_w, &icon_h);
-        ctx->settings_rect.x = (float)WINDOW_WIDTH - icon_w - MARGIN;
-        ctx->settings_rect.y = MARGIN;
-        ctx->settings_rect.w = (float)icon_w;
-        ctx->settings_rect.h = (float)icon_h;
+        ctx->settings_icon = LoadTexture(renderer, "icon.png", true);
+        if (ctx->settings_icon) {
+            ctx->settings_rect.w = (float)ctx->settings_icon->w;
+            ctx->settings_rect.h = (float)ctx->settings_icon->h;
+            ctx->settings_rect.x = (float)WINDOW_WIDTH - ctx->settings_rect.w - MARGIN;
+            ctx->settings_rect.y = MARGIN;
+        }
 
         InitInput(ctx);
 
@@ -1034,6 +1056,14 @@ int main(int argc, char *argv[])
                     ToggleSettings(ctx);
                 } else if (ctx->settings_visible) {
                     ClickSettings(ctx, point.x, point.y);
+                } else {
+                    if (SDL_TextInputActive(ctx->window)) {
+                        SDL_Log("Disabling text input\n");
+                        SDL_StopTextInput(ctx->window);
+                    } else {
+                        SDL_Log("Enabling text input\n");
+                        SDL_StartTextInput(ctx->window);
+                    }
                 }
                 break;
             }
@@ -1075,6 +1105,19 @@ int main(int argc, char *argv[])
                     }
                     break;
                 default:
+                    if ((event.key.mod & SDL_KMOD_CTRL) && (event.key.key >= SDLK_KP_1 && event.key.key <= SDLK_KP_9)) {
+                        int index = (event.key.key - SDLK_KP_1);
+                        if (index < state->num_windows) {
+                            SDL_Window *window = state->windows[index];
+                            if (SDL_TextInputActive(window)) {
+                                SDL_Log("Disabling text input for window %d\n", 1 + index);
+                                SDL_StopTextInput(window);
+                            } else {
+                                SDL_Log("Enabling text input for window %d\n", 1 + index);
+                                SDL_StartTextInput(window);
+                            }
+                        }
+                    }
                     break;
                 }
 

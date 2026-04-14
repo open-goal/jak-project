@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -59,7 +59,7 @@ char *HAIKU_GetClipboardText(SDL_VideoDevice *_this) {
     if (be_clipboard->Lock()) {
         if ((clip = be_clipboard->Data())) {
             // Presumably the string of characters is ascii-format
-            clip->FindData("text/plain", B_MIME_TYPE, (const void**)&text,
+            clip->FindData("text/plain", B_MIME_TYPE, (const void **)&text,
                 &length);
         }
         be_clipboard->Unlock();

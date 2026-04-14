@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -54,36 +54,59 @@ static void IME_SetTextInputArea(SDL_VideoData *videodata, HWND hwnd, const SDL_
 #define MAPVK_VSC_TO_VK 1
 #endif
 
-// Alphabetic scancodes for PC keyboards
-void WIN_InitKeyboard(SDL_VideoDevice *_this)
+/* Building keymaps is expensive, so keep a reasonably-sized LRU cache to
+ * enable fast switching between commonly used ones.
+ */
+static struct WIN_KeymapCache
 {
-#ifndef SDL_DISABLE_WINDOWS_IME
-    SDL_VideoData *data = _this->internal;
+    HKL keyboard_layout;
+    SDL_Keymap *keymap;
+} keymap_cache[4];
 
-    data->ime_candlistindexbase = 1;
-    data->ime_composition_length = 32 * sizeof(WCHAR);
-    data->ime_composition = (WCHAR *)SDL_calloc(data->ime_composition_length, sizeof(WCHAR));
-#endif // !SDL_DISABLE_WINDOWS_IME
+static int keymap_cache_size;
 
-    WIN_UpdateKeymap(false);
+static SDL_Keymap *WIN_GetCachedKeymap(HKL layout)
+{
+    SDL_Keymap *keymap = NULL;
+    for (int i = 0; i < keymap_cache_size; ++i) {
+        if (keymap_cache[i].keyboard_layout == layout) {
+            keymap = keymap_cache[i].keymap;
 
-    SDL_SetScancodeName(SDL_SCANCODE_APPLICATION, "Menu");
-    SDL_SetScancodeName(SDL_SCANCODE_LGUI, "Left Windows");
-    SDL_SetScancodeName(SDL_SCANCODE_RGUI, "Right Windows");
-
-    // Are system caps/num/scroll lock active? Set our state to match.
-    SDL_ToggleModState(SDL_KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) ? true : false);
-    SDL_ToggleModState(SDL_KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) ? true : false);
-    SDL_ToggleModState(SDL_KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) ? true : false);
+            // Move the map to the front of the list.
+            if (i) {
+                SDL_memmove(keymap_cache + 1, keymap_cache, sizeof(struct WIN_KeymapCache) * i);
+                keymap_cache[0].keyboard_layout = layout;
+                keymap_cache[0].keymap = keymap;
+            }
+            break;
+        }
+    }
+    return keymap;
 }
 
-void WIN_UpdateKeymap(bool send_event)
+static void WIN_CacheKeymap(HKL layout, SDL_Keymap *keymap)
+{
+    // If the cache is full, evict the last keymap.
+    if (keymap_cache_size == SDL_arraysize(keymap_cache)) {
+        SDL_DestroyKeymap(keymap_cache[--keymap_cache_size].keymap);
+    }
+
+    // Move all elements down by one.
+    if (keymap_cache_size) {
+        SDL_memmove(keymap_cache + 1, keymap_cache, sizeof(struct WIN_KeymapCache) * keymap_cache_size);
+    }
+
+    keymap_cache[0].keyboard_layout = layout;
+    keymap_cache[0].keymap = keymap;
+    ++keymap_cache_size;
+}
+
+static SDL_Keymap *WIN_BuildKeymap()
 {
     SDL_Scancode scancode;
-    SDL_Keymap *keymap;
     BYTE keyboardState[256] = { 0 };
     WCHAR buffer[16];
-    SDL_Keymod mods[] = {
+    const SDL_Keymod mods[] = {
         SDL_KMOD_NONE,
         SDL_KMOD_SHIFT,
         SDL_KMOD_CAPS,
@@ -96,7 +119,10 @@ void WIN_UpdateKeymap(bool send_event)
 
     WIN_ResetDeadKeys();
 
-    keymap = SDL_CreateKeymap();
+    SDL_Keymap *keymap = SDL_CreateKeymap(false);
+    if (!keymap) {
+        return NULL;
+    }
 
     for (int m = 0; m < SDL_arraysize(mods); ++m) {
         for (int i = 0; i < SDL_arraysize(windows_scancode_table); i++) {
@@ -160,7 +186,45 @@ void WIN_UpdateKeymap(bool send_event)
         }
     }
 
+    return keymap;
+}
+
+void WIN_UpdateKeymap(bool send_event)
+{
+    HKL layout = GetKeyboardLayout(0);
+    SDL_Keymap *keymap = WIN_GetCachedKeymap(layout);
+    if (!keymap) {
+        keymap = WIN_BuildKeymap();
+        if (keymap) {
+            WIN_CacheKeymap(layout, keymap);
+        }
+    }
+
     SDL_SetKeymap(keymap, send_event);
+}
+
+// Alphabetic scancodes for PC keyboards
+void WIN_InitKeyboard(SDL_VideoDevice *_this)
+{
+#ifndef SDL_DISABLE_WINDOWS_IME
+    SDL_VideoData *data = _this->internal;
+
+    data->ime_candlistindexbase = 1;
+    data->ime_composition_length = 32 * sizeof(WCHAR);
+    data->ime_composition = (WCHAR *)SDL_calloc(data->ime_composition_length, sizeof(WCHAR));
+#endif // !SDL_DISABLE_WINDOWS_IME
+
+    // Build and bind the current keymap.
+    WIN_UpdateKeymap(false);
+
+    SDL_SetScancodeName(SDL_SCANCODE_APPLICATION, "Menu");
+    SDL_SetScancodeName(SDL_SCANCODE_LGUI, "Left Windows");
+    SDL_SetScancodeName(SDL_SCANCODE_RGUI, "Right Windows");
+
+    // Are system caps/num/scroll lock active? Set our state to match.
+    SDL_ToggleModState(SDL_KMOD_CAPS, (GetKeyState(VK_CAPITAL) & 0x0001) ? true : false);
+    SDL_ToggleModState(SDL_KMOD_NUM, (GetKeyState(VK_NUMLOCK) & 0x0001) ? true : false);
+    SDL_ToggleModState(SDL_KMOD_SCROLL, (GetKeyState(VK_SCROLL) & 0x0001) ? true : false);
 }
 
 void WIN_QuitKeyboard(SDL_VideoDevice *_this)
@@ -175,6 +239,12 @@ void WIN_QuitKeyboard(SDL_VideoDevice *_this)
         data->ime_composition = NULL;
     }
 #endif // !SDL_DISABLE_WINDOWS_IME
+
+    for (int i = 0; i < keymap_cache_size; ++i) {
+        SDL_DestroyKeymap(keymap_cache[i].keymap);
+    }
+    SDL_zeroa(keymap_cache);
+    keymap_cache_size = 0;
 }
 
 void WIN_ResetDeadKeys(void)
@@ -529,14 +599,13 @@ static DWORD IME_GetId(SDL_VideoData *videodata, UINT uIndex)
     static HKL hklprev = 0;
     static DWORD dwRet[2] = { 0 };
     DWORD dwVerSize = 0;
-    DWORD dwVerHandle = 0;
     LPVOID lpVerBuffer = 0;
     LPVOID lpVerData = 0;
     UINT cbVerData = 0;
     char szTemp[256];
     HKL hkl = 0;
     DWORD dwLang = 0;
-    SDL_assert(uIndex < sizeof(dwRet) / sizeof(dwRet[0]));
+    SDL_assert(uIndex < SDL_arraysize(dwRet));
 
     hkl = videodata->ime_hkl;
     if (hklprev == hkl) {
@@ -567,11 +636,11 @@ static DWORD IME_GetId(SDL_VideoData *videodata, UINT uIndex)
             return dwRet[0];
         }
 #undef LCID_INVARIANT
-        dwVerSize = GetFileVersionInfoSizeA(szTemp, &dwVerHandle);
+        dwVerSize = GetFileVersionInfoSizeA(szTemp, NULL);
         if (dwVerSize) {
             lpVerBuffer = SDL_malloc(dwVerSize);
             if (lpVerBuffer) {
-                if (GetFileVersionInfoA(szTemp, dwVerHandle, dwVerSize, lpVerBuffer)) {
+                if (GetFileVersionInfoA(szTemp, 0, dwVerSize, lpVerBuffer)) {
                     if (VerQueryValueA(lpVerBuffer, "\\", &lpVerData, &cbVerData)) {
 #define pVerFixedInfo ((VS_FIXEDFILEINFO FAR *)lpVerData)
                         DWORD dwVer = pVerFixedInfo->dwFileVersionMS;
@@ -745,9 +814,7 @@ static void IME_GetCompositionString(SDL_VideoData *videodata, HIMC himc, DWORD 
 
     length = ImmGetCompositionStringW(himc, string, NULL, 0);
     if (length > 0 && videodata->ime_composition_length < length) {
-        if (videodata->ime_composition) {
-            SDL_free(videodata->ime_composition);
-        }
+        SDL_free(videodata->ime_composition);
 
         videodata->ime_composition = (WCHAR *)SDL_malloc(length + sizeof(WCHAR));
         videodata->ime_composition_length = length;
@@ -1004,6 +1071,14 @@ bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam, SD
         *lParam &= element_mask;
 
         return false;
+    } else if (msg == WM_IME_STARTCOMPOSITION) {
+        SDL_DebugIMELog("WM_IME_STARTCOMPOSITION");
+        if (videodata->ime_internal_composition) {
+            // Windows may still display a composition dialog even with
+            // ISC_SHOWUICOMPOSITIONWINDOW cleared, so trap the message
+            // here to prevent that (even when the IME is disabled).
+            return true;
+        }
     }
 
     if (!videodata->ime_initialized || !videodata->ime_available || !videodata->ime_enabled) {
@@ -1019,15 +1094,17 @@ bool WIN_HandleIMEMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM *lParam, SD
             SDL_DebugIMELog("WM_KEYDOWN normal");
         }
         break;
+    case WM_SYSKEYDOWN:
+        if (wParam == VK_PROCESSKEY) {
+            SDL_DebugIMELog("WM_SYSKEYDOWN VK_PROCESSKEY");
+            trap = true;
+        } else {
+            SDL_DebugIMELog("WM_SYSKEYDOWN normal");
+        }
+        break;
     case WM_INPUTLANGCHANGE:
         SDL_DebugIMELog("WM_INPUTLANGCHANGE");
         IME_InputLangChanged(videodata);
-        break;
-    case WM_IME_STARTCOMPOSITION:
-        SDL_DebugIMELog("WM_IME_STARTCOMPOSITION");
-        if (videodata->ime_internal_composition) {
-            trap = true;
-        }
         break;
     case WM_IME_COMPOSITION:
         SDL_DebugIMELog("WM_IME_COMPOSITION %x", lParam);

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2025 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,19 +23,12 @@
 #ifndef SDL_waylandkeyboard_h_
 #define SDL_waylandkeyboard_h_
 
-typedef struct SDL_WaylandTextInput
-{
-    struct zwp_text_input_v3 *text_input;
-    SDL_Rect text_input_rect;
-    int text_input_cursor;
-    bool has_preedit;
-} SDL_WaylandTextInput;
-
 extern bool Wayland_InitKeyboard(SDL_VideoDevice *_this);
 extern void Wayland_QuitKeyboard(SDL_VideoDevice *_this);
 extern bool Wayland_StartTextInput(SDL_VideoDevice *_this, SDL_Window *window, SDL_PropertiesID props);
 extern bool Wayland_StopTextInput(SDL_VideoDevice *_this, SDL_Window *window);
 extern bool Wayland_UpdateTextInputArea(SDL_VideoDevice *_this, SDL_Window *window);
+extern void Wayland_SeatUpdateTextInput(SDL_WaylandSeat *seat);
 extern bool Wayland_HasScreenKeyboardSupport(SDL_VideoDevice *_this);
 
 #endif // SDL_waylandkeyboard_h_
