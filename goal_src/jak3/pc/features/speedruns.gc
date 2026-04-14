@@ -670,8 +670,10 @@
           (reset! *autosplit-info-jak3*))))
     ;; Update auto-splitter struct
     (update! *autosplit-info-jak3*)
-    ;; see if we should stop drawing the run info (when you finish arena training)
-    (when (and (!= (-> this category) (speedrun-category custom)) (task-complete? *game-info* (game-task arena-training-1)))
+    ;; see if we should stop drawing the run info (when you finish arena training, but also make sure at least 10s have passed)
+    (when (and (!= (-> this category) (speedrun-category custom))
+               (task-complete? *game-info* (game-task arena-training-1))
+               (time-elapsed? (-> this run-started-at) (seconds 10)))
       (false! (-> this display-run-info?)))
     ;; Draw info to the screen
     (when (and (not (-> *speedrun-info* practicing?)) (-> this display-run-info?))
@@ -786,6 +788,6 @@
           (reset! (-> *speedrun-info* active-practice-objective)))
         (when (and (-> *speedrun-info* display-run-info?)
                    (= (-> *speedrun-info* category) (speedrun-category custom))
-                   (time-elapsed? (-> *speedrun-info* run-started-at) (seconds 15)))
+                   (time-elapsed? (-> *speedrun-info* run-started-at) (seconds 10)))
           (false! (-> *speedrun-info* display-run-info?)))
         (suspend))))
