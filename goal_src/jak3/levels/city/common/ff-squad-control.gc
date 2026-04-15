@@ -186,8 +186,12 @@
            (when (and s2-0 (not (focus-test? s2-0 dead inactive)) (= (-> s2-0 target-status handle) (-> arg2 handle)))
              (set! (-> sv-176 sv-184) s2-0)
              (set! (-> sv-180 sv-184) (vector-vector-distance (-> s2-0 root trans) (-> arg2 position)))
-             (set! sv-184 (+ sv-184 1))
-             (set! (-> s2-0 move-index) -1)
+             ;; og:preserve-this only add guard to the list if their distance isn't NaN
+             ;;   any < operation involving NaN will return #t, causing infinite loop in bubble sort below
+             (when (nonzero? (logxor #x7fffffff (the-as int (-> sv-180 sv-184))))
+              (set! sv-184 (+ sv-184 1))
+              (set! (-> s2-0 move-index) -1)
+              )
              )
            )
          )
