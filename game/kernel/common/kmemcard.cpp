@@ -91,6 +91,14 @@ const char* filename_jak3[12] = {
     "BASCUS-97330AYBABTU!/bank4.bin", "BASCUS-97330AYBABTU!/bank5.bin",
     "BASCUS-97330AYBABTU!/bank6.bin", "BASCUS-97330AYBABTU!/bank7.bin"};
 
+const char* filename_jakx[12] = {
+    "BASCUS-97429AYBABTU!",           "BASCUS-97429AYBABTU!/icon.sys",
+    "BASCUS-97429AYBABTU!/icon.ico",  "BASCUS-97429AYBABTU!/BASCUS-97429AYBABTU!",
+    "BASCUS-97429AYBABTU!/bank0.bin", "BASCUS-97429AYBABTU!/bank1.bin",
+    "BASCUS-97429AYBABTU!/bank2.bin", "BASCUS-97429AYBABTU!/bank3.bin",
+    "BASCUS-97429AYBABTU!/bank4.bin", "BASCUS-97429AYBABTU!/bank5.bin",
+    "BASCUS-97429AYBABTU!/bank6.bin", "BASCUS-97429AYBABTU!/bank7.bin"};
+
 const char* mc_get_filename_no_dir(GameVersion version, int ndx) {
   const char** filenames = nullptr;
   switch (version) {
@@ -102,6 +110,9 @@ const char* mc_get_filename_no_dir(GameVersion version, int ndx) {
       break;
     case GameVersion::Jak3:
       filenames = filename_jak3;
+      break;
+    case GameVersion::JakX:
+      filenames = filename_jakx;
       break;
   }
   return filenames[ndx];
