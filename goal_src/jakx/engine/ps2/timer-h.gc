@@ -5,5 +5,40 @@
 ;; name in dgo: timer-h
 ;; dgos: ENGINE, GAME
 
+;; +++timer-clock-selection
+(defenum timer-clock-selection
+  :type uint8
+  (busclk 0)
+  (busclk/16 1)
+  (busclk/256 2)
+  (hblank 3)
+  )
+;; ---timer-clock-selection
+
+
+;; +++timer-mode
+(deftype timer-mode (uint32)
+  "This matches the Tn_MODE register structure of the ps2 EE timers.
+   Only the lower 32 bits of these registers are usable, and the upper 16 hardwired to zero."
+  ((clks  timer-clock-selection :offset 0 :size 2)
+   (gate  uint8 :offset 2 :size 1) ;; gate function enable
+   (gats  uint8 :offset 3 :size 1) ;; gate selection: 0 = hblank, 1 = vblank
+   ;; gate mode:
+   ;;  0: count while gate signal is low
+   ;;  1: start when gate signal rises
+   ;;  2: start when gate signal falls
+   ;;  3: start when gate signal rises/falls
+   (gatm  uint8 :offset 4 :size 2)
+   (zret  uint8 :offset 6 :size 1) ;; zero return: clear counter when equal to reference value
+   (cue   uint8 :offset 7 :size 1) ;; count-up enable
+   (cmpe  uint8 :offset 8 :size 1) ;; compare-interrupt enable
+   (ovfe  uint8 :offset 9 :size 1) ;; overflow-interrupt enable
+   (equf  uint8 :offset 10 :size 1) ;; equal-flag
+   (ovff  uint8 :offset 11 :size 1) ;; overflow-flag
+   )
+  )
+;; ---timer-mode
+
+
 ;; DECOMP BEGINS
 
