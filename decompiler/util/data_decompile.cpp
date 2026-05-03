@@ -1070,7 +1070,8 @@ const std::unordered_map<
          }},
         {GameVersion::JakX,
          {
-             // TODO
+             {"lightning-probe-vars",
+              {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
