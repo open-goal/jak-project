@@ -143,6 +143,10 @@
                 lighteco
                 darkeco))
 
+(defun reset-speedrunner-mode-hm-secrets! ((obj pc-settings-jak3))
+  (set! (-> obj speedrunner-mode-hm-secrets) (the-as uint64 HERO_MODE_SECRETS))
+  (none))
+
 (define-extern reset-arena-trainer-globals (function none))
 (defmethod start-run! ((this speedrun-info))
   ;; turn on speedrun verification display
@@ -175,9 +179,11 @@
          (play-task (game-task arena-training-1) 'debug #f)
          (until (and *target* (!= (-> *target* next-state name) 'target-continue))
            (suspend))
+         (mark-played! (-> *talker-speech* 138)) ;; prevent 600 orbs popup
+         (send-event *target* 'get-pickup (pickup-type skill) 1000.0)
          (send-event *target* 'get-pickup (pickup-type gem) 1000.0)
-         (set! (-> *game-info* secrets) HERO_MODE_SECRETS)
-         (set! (-> *game-info* purchase-secrets) HERO_MODE_SECRETS)
+         (set! (-> *game-info* secrets) (the-as game-secrets (-> *pc-settings* speedrunner-mode-hm-secrets)))
+         (set! (-> *game-info* purchase-secrets) (the-as game-secrets (-> *pc-settings* speedrunner-mode-hm-secrets)))
          (set! (-> *game-info* features) HERO_MODE_FEATURES))))
     (((speedrun-category all-cheats-allowed))
      (process-spawn-function process
@@ -395,6 +401,26 @@
                       :is-toggled?
                       (lambda ()
                         (= (-> *speedrun-info* category) (speedrun-category all-cheats-allowed))))))
+       (new 'static
+            'popup-menu-dynamic-submenu
+            :label "Select Hero Mode secrets"
+            :get-length
+            (lambda ()
+              58)
+            :get-entry-label
+            (lambda ((index int) (str-dest string))
+              (copy-string<-string str-dest (bitfield->string game-secrets index)))
+            :on-entry-confirm
+            (lambda ((index int))
+              (logxor! (-> *pc-settings* speedrunner-mode-hm-secrets) (shl 1 index))
+              (pc-settings-save))
+            :entry-selected?
+            (lambda ((index int))
+              (logtest? (-> *pc-settings* speedrunner-mode-hm-secrets) (shl 1 index)))
+            :on-reset
+            (lambda ()
+              (reset-speedrunner-mode-hm-secrets! *pc-settings*)
+              (pc-settings-save)))
        (new 'static
             'popup-menu-dynamic-submenu
             :label "Custom Category Select"
