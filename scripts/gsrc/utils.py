@@ -5,6 +5,7 @@ import subprocess
 jak1_files = None
 jak2_files = None
 jak3_files = None
+jakx_files = None
 
 with open("./goal_src/jak1/build/all_objs.json", "r") as f:
     jak1_files = json.load(f)
@@ -12,6 +13,8 @@ with open("./goal_src/jak2/build/all_objs.json", "r") as f:
     jak2_files = json.load(f)
 with open("./goal_src/jak3/build/all_objs.json", "r") as f:
     jak3_files = json.load(f)
+with open("./goal_src/jakx/build/all_objs.json", "r") as f:
+    jakx_files = json.load(f)
 
 
 def get_file_list(game_name):
@@ -22,6 +25,8 @@ def get_file_list(game_name):
             return jak2_files
         case "jak3":
             return jak3_files
+        case "jakx":
+            return jakx_files
 
 
 def is_file_in_game(game_name, file_name):
