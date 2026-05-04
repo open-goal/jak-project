@@ -31,6 +31,9 @@ struct BuildActorParams {
   s32 joint_channel = -1;
   math::Vector4f trans_offset = {0.f, 0.f, 0.f, 1.f};
   std::vector<float> lod_dist{};
+  std::string master_art_group;
+  std::map<std::string, int> master_ag_map;  // ja name -> master ag slot
+  float framerate = 60;
 };
 
 struct GltfJoint {
@@ -45,4 +48,7 @@ tinygltf::Model load_gltf_model(const fs::path& path);
 std::vector<GltfJoint> extract_skeleton(const tinygltf::Model& model, int skin_idx);
 std::vector<Joint> convert_joints(const std::vector<GltfJoint>& gjoints);
 std::vector<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
-                                               const std::vector<GltfJoint>& gjoints);
+                                               const std::vector<GltfJoint>& gjoints,
+                                               const std::string& master_art_group,
+                                               const std::map<std::string, int>& master_ag_map,
+                                               float framerate);

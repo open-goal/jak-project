@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 
   switch (game_version) {
     case GameVersion::Jak1: {
-      jak1::BuildActorParams params;
+      jak1::BuildActorParams1 params;
       params.gen_collide_mesh = gen_collide_mesh;
       params.texture_bucket = texture_bucket;
       params.texture_level = texture_level;
@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
       jak1::run_build_actor(mdl_name, output_file, params);
     } break;
     case GameVersion::Jak2: {
-      jak2::BuildActorParams params;
+      jak2::BuildActorParams2 params;
       params.gen_collide_mesh = gen_collide_mesh;
       params.texture_bucket = texture_bucket;
       params.texture_level = texture_level;
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
       jak2::run_build_actor(mdl_name, output_file, params);
     } break;
     case GameVersion::Jak3: {
-      jak3::BuildActorParams params;
+      jak3::BuildActorParams3 params;
       params.gen_collide_mesh = gen_collide_mesh;
       params.texture_bucket = texture_bucket;
       params.texture_level = texture_level;

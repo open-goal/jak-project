@@ -150,7 +150,10 @@ std::vector<Joint> convert_joints(const std::vector<GltfJoint>& gjoints) {
 }
 
 std::vector<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
-                                               const std::vector<GltfJoint>& gjoints) {
+                                               const std::vector<GltfJoint>& gjoints,
+                                               const std::string& master_art_group,
+                                               const std::map<std::string, int>& master_ag_map,
+                                               float framerate) {
   if (model.animations.empty()) {
     lg::warn("no animations detected!");  // TODO: make up a dummy one
     return {};
@@ -164,8 +167,12 @@ std::vector<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
   std::vector<anim::CompressedAnim> ret;
   for (auto& anim : model.animations) {
     lg::info("Processing animation {}", anim.name);
-    ret.push_back(
-        anim::compress_animation(anim::extract_anim_from_gltf(model, anim, node_to_joint, 60)));
+    int master_ag_idx = -1;
+    if (!master_ag_map.empty() && master_ag_map.find(anim.name) != master_ag_map.end()) {
+      master_ag_idx = master_ag_map.at(anim.name);
+    }
+    ret.push_back(anim::compress_animation(anim::extract_anim_from_gltf(
+        model, anim, node_to_joint, master_art_group, master_ag_idx, framerate)));
   }
   return ret;
 }

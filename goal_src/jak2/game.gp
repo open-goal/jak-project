@@ -299,6 +299,10 @@
 ;; Set up the build system to build the level geometry
 ;; this path is relative to the custom_assets/jak2/levels folder
 ;; it should point to the .jsonc file that specifies the level.
+;; options:
+;; - force-run: when #t, always forces a rebuild of the level instead of checking the "last modified" timestamp.
+;; - gen-fr3: when #f, does not generate the .fr3 file for the level. useful for temporarily skipping the slow fr3 build process when
+;; there's many custom levels that include extra art groups.
 (build-custom-level "test-zone")
 ;; the DGO file
 (goal-src "levels/test-zone/test-zone-obs.gc" "process-focusable")
@@ -306,7 +310,19 @@
 
 ;; generate the art group for a custom actor.
 ;; requires a .glb model file in custom_assets/jak1/models/custom_levels
-;; to also generate a collide-mesh, add :gen-mesh #t
+;; options:
+;; - gen-mesh: when #t, generates a collision mesh for this actor.
+;; - force-run: when #t, always forces a rebuild of the actor instead of checking the "last modified" timestamp.
+;; - texture-bucket: sets the "texture-level" of the actor, which determines the level bucket to draw the actor in, affecting
+;; the draw order. default is 0, which sets texture-level 0. if set to #f, no "texture-level" lump will be added to the
+;; art group, defaulting to level 1.
+;; - framerate: set the framerate for custom animations, if available. defaults to 60.
+;; - master-art-group: the name of the art group to link custom animations to. this can be used to
+;; give existing art groups custom animations if there are enough empty slots left over.
+;; - master-ag-map: a list of pairs of (anim-name master-art-group-idx), linking the animation with the given name
+;; to the given index in the master art group.
+;; - joint-channel: how many joint channels the actor should have. defaults to 6.
+;; more complicated actors like jak that make a lot of use of animation blending can have 24+ channels.
 (build-actor "test-actor" :force-run #t :gen-mesh #t)
 
 ;;;;;;;;;;;;;;;;;;;;;
