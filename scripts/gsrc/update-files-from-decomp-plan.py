@@ -6,7 +6,7 @@ import shutil
 # assume this is available/importable
 from utils import get_ref_path_from_filename
 
-BASE_DIR = "../../"
+BASE_DIR = "./"
 OUT_DIR = os.path.join(BASE_DIR, "decompiler_out", "jakx")
 REF_BASE = os.path.join(BASE_DIR, "test", "decompiler", "reference")
 
@@ -19,8 +19,6 @@ def run_decomp(name: str):
     subprocess.run(
         ["task", "decomp-file"],
         env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
         cwd=BASE_DIR,
         check=True,
     )
@@ -43,18 +41,14 @@ def copy_to_ref(name: str):
     shutil.copyfile(src, dst)
 
 
-def main():
-    with open("decomp-plan.json", "r") as f:
-        data = json.load(f)
+with open("./scripts/gsrc/decomp-plan.json", "r") as f:
+    data = json.load(f)
 
-    for entry in data:
-        name = entry.get("name")
-        done = entry.get("done")
+for entry in data:
+    name = entry.get("name")
+    done = entry.get("done")
 
-        if done and name:
-            run_decomp(name)
-            copy_to_ref(name)
-
-
-if __name__ == "__main__":
-    main()
+    if done and name:
+        run_decomp(name)
+        copy_to_ref(name)
+        # exit(1)

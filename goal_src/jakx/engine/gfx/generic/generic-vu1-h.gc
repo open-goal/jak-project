@@ -7,3 +7,72 @@
 
 ;; DECOMP BEGINS
 
+(deftype pris-mtx (structure)
+  "Matrix for merc rendering. Named after the earlier 'pris' renderer.
+Contains a transformation matrix for vertices, one for normals, and a scale.
+This matrix is likely not used by generic VU1, but is used by the merc -> generic converter."
+  ((data    float    32)
+   (vector  vector   8       :overlay-at (-> data 0))
+   (t-mtx   matrix   :inline :overlay-at (-> data 0))
+   (n-mtx   matrix3  :inline :overlay-at (-> data 16))
+   (scale   vector   :inline :overlay-at (-> data 28))
+   )
+  )
+
+
+(deftype generic-pris-mtx-save (structure)
+  ((loc-mtx  pris-mtx  :inline)
+   (par-mtx  pris-mtx  :inline)
+   (dif-mtx  pris-mtx  :inline)
+   )
+  )
+
+
+(deftype generic-constants (structure)
+  "Constant data sent to VU1 for generic rendering."
+  ((fog          vector      :inline)
+   (adgif        gs-gif-tag  :inline)
+   (hvdf-offset  vector      :inline)
+   (hmge-scale   vector      :inline)
+   (invh-scale   vector      :inline)
+   (guard        vector      :inline)
+   (flush        qword       :inline)
+   (stores       qword       :inline)
+   )
+  )
+
+
+(deftype generic-shrub-constants (structure)
+  ((shrub-giftag  generic-gif-tag  :inline)
+   (shrub-adnop   qword            :inline)
+   )
+  )
+
+
+(deftype gcf-shader (structure)
+  ((adgif   uint128       5)
+   (shader  adgif-shader  :inline :overlay-at (-> adgif 0))
+   (pos     uint32                :offset  12)
+   (num     uint32                :offset  28)
+   )
+  )
+
+
+(deftype gcf-control (structure)
+  ((matrix       matrix           :inline)
+   (giftag       generic-gif-tag  :inline)
+   (adnops       gs-adcmd         2 :inline)
+   (num-strips   uint32           :overlay-at (-> giftag data 3))
+   (num-dps      uint32           :overlay-at (-> adnops 0 word 3))
+   (kick-offset  uint32           :offset 108)
+   (shader       gcf-shader       :inline :dynamic)
+   )
+  )
+
+
+(deftype gcf-vertex (structure)
+  ((tex  vector4w        :inline)
+   (clr  gs-packed-rgba  :inline)
+   (pos  gs-packed-xyzw  :inline)
+   )
+  )

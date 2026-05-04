@@ -7,3 +7,72 @@
 
 ;; DECOMP BEGINS
 
+(deftype eye (structure)
+  "Data for a single eye."
+  ((data          vector        2 :inline)
+   (x             float         :overlay-at (-> data 0 data 0))
+   (y             float         :overlay-at (-> data 0 data 1))
+   (lid           float         :overlay-at (-> data 0 data 2))
+   (iris-scale    float         :offset  16)
+   (pupil-scale   float         :offset  20)
+   (lid-scale     float         :offset  24)
+   (tbp           int32)
+   (shader-count  uint32)
+   (shader        adgif-shader  8)
+   )
+  )
+
+
+(deftype eye-control (structure)
+  ((process             uint64)
+   (random-time         uint16)
+   (bucket              uint16)
+   (blink               float)
+   (shaders             (inline-array adgif-shader))
+   (eyes                eye    2 :inline)
+   (left                eye    :inline :overlay-at (-> eyes 0))
+   (right               eye    :inline :offset 112)
+   (level-index         int16)
+   (high-res?           symbol)
+   (level-texture-page  uint32)
+   (art-group-name      uint8  67      :offset 201)
+   )
+  )
+
+
+(deftype eye-control-array (basic)
+  "An array of [[eye-control]]s."
+  ((data  eye-control  32 :inline)
+   )
+  )
+
+
+(deftype eye-work (structure)
+  "Eye renderer DMA data."
+  ((sprite-tmpl   dma-gif-packet  :inline)
+   (sprite-tmpl2  dma-gif-packet  :inline)
+   (adgif-tmpl    dma-gif-packet  :inline)
+   (blink-table   float           10)
+   )
+  )
+
+
+(define *eye-control-array* (new 'static 'eye-control-array))
+
+(dotimes (v1-5 32)
+  (let ((a0-11 (-> *eye-control-array* data v1-5)))
+    (set! (-> a0-11 process) (the-as uint #f))
+    (set! (-> a0-11 random-time) (the-as uint 60))
+    (set! (-> a0-11 blink) 0.0)
+    (set! (-> a0-11 shaders) (the-as (inline-array adgif-shader) #f))
+    (set! (-> a0-11 level-index) -1)
+    (set! (-> a0-11 high-res?) #f)
+    (set! (-> a0-11 art-group-name 3) (the-as uint 0))
+    (dotimes (a1-11 2)
+      (set! (-> a0-11 eyes a1-11 shader-count) (the-as uint 0))
+      (dotimes (a2-11 8)
+        (set! (-> (the-as eye-control (+ (+ (* a2-11 4) (* 80 a1-11)) (the-as int a0-11))) left shader 0) #f)
+        )
+      )
+    )
+  )

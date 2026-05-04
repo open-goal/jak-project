@@ -7,3 +7,202 @@
 
 ;; DECOMP BEGINS
 
+(deftype gsf-vertex (structure)
+  "Vertex used by generic. GSF = generic stripped fragment?"
+  ((data  uint32     8)
+   (byte  uint8      32      :overlay-at (-> data 0))
+   (quad  uint128    2       :overlay-at (-> data 0))
+   (vt    qword      :inline :overlay-at (-> data 0))
+   (pos   vector3s   :inline :overlay-at (-> data 0))
+   (tex   vector2uh  :inline :overlay-at (-> data 3))
+   (nrm   vector3s   :inline :overlay-at (-> data 4))
+   (nc    qword      :inline :overlay-at (-> data 4))
+   (clr   vector4ub  :inline :overlay-at (-> data 7))
+   (dtex  vector2uh  :inline :overlay-at (-> data 4))
+   (dclr  vector4ub  :inline :overlay-at (-> data 5))
+   )
+  )
+
+
+(deftype gsf-vertex-array (structure)
+  ((vtx  gsf-vertex  :dynamic)
+   )
+  )
+
+
+(deftype gsf-fx-vertex (structure)
+  "Color/texture data only. Possibly used to share with a gsf-vertex with
+the same position/normal."
+  ((clr  vector4ub  :inline)
+   (tex  vector2uh  :inline)
+   )
+  )
+
+
+(deftype gsf-fx-vertex-array (structure)
+  ((data  gsf-fx-vertex  :dynamic)
+   )
+  )
+
+
+(deftype gsf-header (structure)
+  "Header for generic data."
+  ((num-strips    uint8)
+   (num-new-vtxs  uint8)
+   (num-dps       uint16)
+   (num-vtxs      uint16)
+   (strip-table   uint8  10)
+   )
+  )
+
+
+(deftype gsf-ik (structure)
+  ((index    uint8)
+   (no-kick  uint8)
+   )
+  )
+
+
+(deftype gsf-info (structure)
+  ((ptr-iks    uint32)
+   (ptr-verts  uint32)
+   (ptr-fx     uint32)
+   (dummy2     uint32)
+   )
+  )
+
+
+(deftype gsf-buffer (structure)
+  ((data       uint8       8192)
+   (info       gsf-info    :inline  :overlay-at (-> data 0))
+   (header     gsf-header  :inline  :overlay-at (-> data 16))
+   (work-area  uint8       :dynamic :overlay-at (-> data 32))
+   )
+  )
+
+
+(deftype generic-frag (structure)
+  ((start-pos  uint16)
+   (end-pos    uint16)
+   )
+  )
+
+
+(deftype generic-strip (structure)
+  ((pos  uint16)
+   (len  uint16)
+   )
+  )
+
+
+(deftype generic-envmap-saves (structure)
+  ((index-mask  vector4w  :inline)
+   (verts       uint128   12)
+   (kicks       uint128   4)
+   )
+  )
+
+
+(deftype generic-interp-job (structure)
+  ((job-type  uint16)
+   (num       uint16)
+   (first     uint16)
+   (pad       uint16)
+   (ptr-data  uint32)
+   (morph-z   uint16)
+   (morph-w   uint16)
+   )
+  :pack-me
+  )
+
+
+(deftype generic-saves (structure)
+  ((ptr-dma            uint32)
+   (ptr-vtxs           uint32)
+   (ptr-clrs           uint32)
+   (ptr-texs           uint32)
+   (ptr-env-clrs       uint32)
+   (ptr-env-texs       uint32)
+   (cur-outbuf         uint32)
+   (ptr-fx-buf         uint32)
+   (xor-outbufs        uint32)
+   (num-dps            uint32)
+   (qwc                uint32)
+   (gsf-buf            gsf-buffer)
+   (ptr-shaders        uint32)
+   (ptr-env-shader     uint32)
+   (is-envmap          uint16)
+   (is-translucent     uint16)
+   (basep              uint32)
+   (ptr-interp-job     generic-interp-job)
+   (gifbuf-adr         uint32)
+   (inbuf-adr          uint32)
+   (fade-val           uint32)
+   (time-of-day-color  rgba)
+   (to-vu0-waits       uint32)
+   (to-spr-waits       uint32)
+   (from-spr-waits     uint32)
+   (envmap             generic-envmap-saves  :inline)
+   )
+  )
+
+
+(deftype generic-gif-tag (structure)
+  ((data        uint32           4)
+   (qword       qword            :inline :overlay-at (-> data 0))
+   (fan-prim    gif-tag-prim             :overlay-at (-> data 0))
+   (str-prim    gif-tag-prim             :overlay-at (-> data 1))
+   (regs        gif-tag-regs-32          :overlay-at (-> data 2))
+   (num-strips  uint32                   :overlay-at (-> data 3))
+   )
+  )
+
+
+(deftype generic-envmap-consts (structure)
+  ((consts  vector           :inline)
+   (strgif  generic-gif-tag  :inline)
+   (colors  vector4w         :inline)
+   (shader  adgif-shader     :inline)
+   )
+  )
+
+
+(deftype generic-consts (structure)
+  ((dma-header         dma-packet             :inline)
+   (vif-header         uint32                 4)
+   (dma-ref-vtxs       dma-packet             :inline)
+   (dma-cnt-call       dma-packet             :inline)
+   (matrix             matrix                 :inline)
+   (base-strgif        generic-gif-tag        :inline)
+   (alpha-opaque       gs-adcmd               :inline)
+   (alpha-translucent  gs-adcmd               :inline)
+   (ztest-normal       gs-adcmd               :inline)
+   (ztest-opaque       gs-adcmd               :inline)
+   (adcmd-offsets      uint8                  16)
+   (stcycle-tag        uint32)
+   (unpack-vtx-tag     uint32)
+   (unpack-clr-tag     uint32)
+   (unpack-tex-tag     uint32)
+   (mscal-tag          uint32)
+   (flush-tag          uint32)
+   (reset-cycle-tag    uint32)
+   (dummy0             uint32)
+   (dma-tag-cnt        uint64)
+   (envmap             generic-envmap-consts  :inline)
+   (light-consts       vector                 :inline)
+   (texture-offset     uint16                 8)
+   )
+  )
+
+
+(deftype generic-storage (structure)
+  ((data  uint128  16)
+   )
+  )
+
+
+(kmemopen global "gsf-buffer")
+
+(define *gsf-buffer* (the-as object (kmalloc global 9216 (kmalloc-flags align-64) "malloc")))
+
+(kmemclose)
