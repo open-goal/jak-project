@@ -496,6 +496,7 @@ void ObjectGenerator::emit_link_type_pointer(int seg, const TypeSystem* ts) {
         break;
       case GameVersion::Jak2:
       case GameVersion::Jak3:  // jak3 opengoal uses same format as jak2 for code.
+      case GameVersion::JakX:  // TODO JAK X - hopefully this is the same
         // the linker/intern_type functions do the +3.
         out.push_back(ts->get_type_method_count(rec.first) / 4);
         break;

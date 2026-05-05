@@ -126,10 +126,11 @@ OfflineTestCompileResult compile(OfflineTestDecompiler& dc,
     compiler.run_front_end_on_file({"goal_src", "jak3", "engine", "data", "textures.gc"});
     compiler.run_front_end_on_file({"goal_src", "jak3", "engine", "data", "part-groups.gc"});
   } else if (config.game_name == "jakx") {
-    compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "art-elts.gc"});
+    // TODO JAKX - not added yet
+    /*compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "art-elts.gc"});
     compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "joint-nodes.gc"});
     compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "textures.gc"});
-    compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "part-groups.gc"});
+    compiler.run_front_end_on_file({"goal_src", "jakx", "engine", "data", "part-groups.gc"});*/
   }
 
   int total_lines = 0;
